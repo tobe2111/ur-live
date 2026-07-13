@@ -45,21 +45,36 @@ admin 전용·멱등·배치 재암호화 엔드포인트로 기존 행을 `encr
 ### 6. 스위치 ON + 검증
 `PII_ENCRYPTION_ENABLED='true'` → 신규 쓰기 암호화. staging 실검증: 카카오 로그인(bidx 조회)·프로필/어드민 표시(복호화)·검색·same-email 자동연결 전부 통과 확인. 이후 prod.
 
-## 대상 컬럼 분류 (조회키 = blind index 필요 / 표시전용 = 복호화만)
+## 대상 컬럼 분류 (정밀 매핑 — 2026-07-13)
 
-> 정밀 file:line 지점 매핑은 활성화 세션에서 재확인. 분류 기준:
+### 표시전용(DISPLAY-ONLY) = blind index 불필요, 복호화만 (안전·우선)
 
-| 컬럼 | 분류 | 처리 |
-|---|---|---|
-| `users.kakao_id` | 🔑 조회키(카카오 로그인) | blind index + dual-mode 조회 |
-| `users.email` | 🔑 조회키(로그인·same-email 연결·검색) | blind index + dual-mode + 검색은 bidx/LIKE 정책 결정 |
-| `users.phone` | 🔑 조회키(검색·선물) + 표시 | blind index + 복호화 |
-| `users.name` | 표시전용(+full-state dedup) | 복호화(dedup 은 bidx 선택) |
-| `sellers.bank_account`(+holder/bank) | 표시전용(정산/어드민) | **최우선 안전 타깃** — 복호화만, 조회 없음 |
-| `shipping_addresses.address/phone/recipient_name` | 표시전용(주문/배송) | 복호화만 |
-| `sellers.business_number` | 조회 가능성 | 확인 후 조회키면 blind index |
+**A. `sellers.bank_account`(+`bank_name`/`account_holder`) — 🥇 첫 파일럿 (가장 민감·경계 명확)**
+- **쓰기 1경로**: `seller-profile.routes.ts:258`(UPDATE, bankChanged 게이트) + `:288`(per-col fallback). → 여기서 `encryptPii`.
+- **읽기 10지점**(전부 `WHERE id=?`, 조회키 아님): seller-profile.routes.ts:71·296(이미 `maskBankAccount` — **복호화를 마스킹 前에**), seller-account.routes.ts:67, admin-sellers.routes.ts:81·96·111·168, payouts-generate.ts:83, admin-payouts.routes.ts:127, restaurant-settlement.routes.ts:129~131. → 각 지점 `decryptPii`.
+- ⚠️ **파생 스냅샷**: 정산/지급 시 `payouts.account_number`·`settlements.account_number`·`user_withdrawals.bank_account` 로 평문 복사(payouts-generate.ts:106 등). 이 파생 컬럼도 암호화할지 별도 결정(같은 비밀 보유).
 
-> 권장: **`sellers.bank_account`(가장 민감·조회 없음) 를 첫 파일럿**으로 end-to-end 배선·검증 후, 조회키 컬럼(email/kakao_id/phone)으로 확대.
+**B. `shipping_addresses.address/address_detail/phone/recipient_name`**
+- 쓰기 2지점(dbHelper insert/update: shipping-address.routes.ts:198/203·305), 읽기 5지점(:124·209·289·307·348, 전부 id/user_id 키). 조회키 없음.
+- ⚠️ 주문 스냅샷 `orders.shipping_address/…recipient_name` 은 별도 컬럼 — 별도 결정.
+
+**C. `sellers.business_number`** — 코드에 등가조회 없음(`idx_sellers_business_number` 인덱스는 있으나 equality 미사용). 표시/세금계산서 ~25지점(전부 id 키). ⚠️ 인덱스 dedup 유일성에 의존한다면 blind index 필요(random-IV 가 유일성 깨뜨림).
+
+### 조회키(LOOKUP KEY) = blind index 필수
+
+**D. `users.kakao_id` — 순수 등가(`= ?`), blind index 로 전부 복원**
+- 로그인 핫패스 3: KakaoAuthService.ts:296·304·449. + deleted_accounts: KakaoAuthService.ts:269, delete-account.service.ts:318·342·387. + admin dedup admin-users.routes.ts:459. (총 8)
+- ⚠️ **`deleted_accounts.kakao_id`** 도 등가비교 — 같은 blind index 배선 필요.
+
+**E. `users.email` — 등가는 blind index 가능하나 ⛔ LIKE 검색이 차단 이슈**
+- 등가: auth.routes.ts:63·134(비번로그인), KakaoAuth:394(takeover)·517(auto-link COUNT), GoogleAuth:92, delete-account:409, admin dedup:458.
+- ⛔ **admin 부분검색 LIKE**: admin-users.routes.ts:78·81, admin-misc.routes.ts:235 — exact HMAC blind index 로 **불가**. 검색 재설계/포기 결정 필요.
+- ⚠️ **커플링**: `users.email` 암호화 시 `sellers.email`(auto-link 조인 KakaoAuth:516, LOWER 매칭)도 함께 안 하면 same-email 자동연결이 조용히 끊김.
+
+**F. `users.phone` / **G. `users.name`** — 등가 dedup(admin-users:460/456)만 blind index 가능, LIKE 검색(admin-users:78/81, admin-misc:235)은 불가. name 은 매 로그인 덮어씀(KakaoAuth:339 → 매 로그인 index 재계산). phone 표시읽기 ~10(전부 id 키 SMS/알림).
+
+### 권장 순서
+**A(bank_account) → B(shipping) 파일럿(표시전용, blind index 0, staging 검증 쉬움) → D(kakao_id, 순수 등가) → E/F/G(email/phone/name — LIKE 검색 재설계 선결).** email 은 sellers.email 동반 필수.
 
 ## 롤백
 스위치 OFF → 신규 쓰기 평문. 기존 암호문은 dual-read 로 계속 복호화(키 유지 필요). 키 폐기 금지(암호문 복구 불가).
