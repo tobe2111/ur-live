@@ -17,7 +17,7 @@ interface Campaign {
   reward_tiers: string; coupon_expires_days: number
   store_count?: number; pending_receipts?: number; issued_total?: number; created_at?: string
 }
-interface StoreRow { id: number; name: string; store_code: string; address?: string | null; is_active: number; used_count?: number; used_amount?: number; bank_name?: string | null; bank_account?: string | null; account_holder?: string | null }
+interface StoreRow { id: number; name: string; store_code: string; address?: string | null; is_active: number; seller_id?: number | null; used_count?: number; used_amount?: number; bank_name?: string | null; bank_account?: string | null; account_holder?: string | null }
 interface ReceiptRow { id: number; user_id: string; user_name?: string | null; store_name?: string | null; amount: number; card_approval_no: string; image_key: string; status: string; reject_reason?: string | null; created_at: string; user_approved_count?: number }
 interface Report { totals?: Record<string, number> | null; by_store?: Array<Record<string, unknown>> }
 
@@ -86,7 +86,7 @@ export default function AdminDistrictCouponsPage() {
   }
 
   const bulkStores = async (id: number) => {
-    if (!bulkLines.trim()) { toast.error('한 줄에 한 매장씩 입력하세요 (이름|주소|전화|은행|계좌|예금주)'); return }
+    if (!bulkLines.trim()) { toast.error('한 줄에 한 매장씩 입력하세요 (이름|주소|전화|은행|계좌|예금주|유어딜매장ID?)'); return }
     setBusy(true)
     try {
       const r = await api.post(`/api/admin/district/campaigns/${id}/stores/bulk`, { lines: bulkLines })
@@ -228,7 +228,7 @@ export default function AdminDistrictCouponsPage() {
                 {tab === 'stores' && (
                   <div className="space-y-3">
                     <div className="bg-white rounded-xl border border-gray-200 p-3">
-                      <p className="text-[12px] font-bold text-gray-900 mb-1.5 flex items-center gap-1"><Store className="w-3.5 h-3.5" />매장 일괄 등록 — 한 줄에 한 매장, <code className="text-[10px]">이름|주소|전화|은행|계좌|예금주</code></p>
+                      <p className="text-[12px] font-bold text-gray-900 mb-1.5 flex items-center gap-1"><Store className="w-3.5 h-3.5" />매장 일괄 등록 — 한 줄에 한 매장, <code className="text-[10px]">이름|주소|전화|은행|계좌|예금주|유어딜매장ID(선택 — 딜 병기 연결)</code></p>
                       <textarea value={bulkLines} onChange={(e) => setBulkLines(e.target.value)} rows={4} placeholder={'김밥천국 서초점|서초대로 1|02-123-4567|국민|123-45|김밥천\n...'} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[12px] text-gray-900 font-mono" />
                       <div className="mt-2 flex justify-end"><button type="button" disabled={busy} onClick={() => void bulkStores(c.id)} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold disabled:opacity-50">등록 (PIN 자동발급)</button></div>
                     </div>
@@ -237,7 +237,7 @@ export default function AdminDistrictCouponsPage() {
                       <div className="max-h-80 overflow-auto">
                         {stores.map((s) => (
                           <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-[11.5px] border-t border-gray-50">
-                            <span className={`flex-1 truncate ${s.is_active ? 'text-gray-800' : 'text-gray-300 line-through'}`}>{s.name}</span>
+                            <span className={`flex-1 truncate ${s.is_active ? 'text-gray-800' : 'text-gray-300 line-through'}`}>{s.name}{s.seller_id ? <span className="ml-1 text-[9.5px] text-emerald-600 font-bold">🔗딜연결</span> : null}</span>
                             <code className="shrink-0 font-mono font-bold text-gray-900 bg-gray-100 rounded px-1.5 py-0.5">{s.store_code}</code>
                             <span className="shrink-0 text-gray-400">사용 {formatNumber(s.used_count)}건 · {formatWon(s.used_amount || 0)}</span>
                             <button type="button" onClick={async () => { await api.post(`/api/admin/district/stores/${s.id}/toggle`).catch(() => null); await loadDetail(c.id, 'stores') }} className="shrink-0 text-[10px] text-gray-400 underline">{s.is_active ? '비활성' : '활성'}</button>

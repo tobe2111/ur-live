@@ -17,7 +17,7 @@ import { ArrowLeft, Camera, MapPin, Receipt, Store, TicketPercent, Wallet } from
 
 interface Tier { min_amount: number; face_value: number }
 interface Campaign { id: number; slug: string; name: string; description?: string | null; status: string; reward_tiers: Tier[]; coupon_expires_days: number }
-interface StoreRow { id: number; name: string; address?: string | null }
+interface StoreRow { id: number; name: string; address?: string | null; deal_count?: number; deal_product_id?: number; deal_name?: string }
 interface MyReceipt { id: number; amount: number; status: string; reject_reason?: string | null; created_at: string; store_name?: string | null; campaign_slug: string }
 interface MyCoupon { id: number; code: string; face_value: number; status: string; expires_at: string; redeemed_at?: string | null; redeemed_store_name?: string | null; campaign_name: string; campaign_slug: string }
 
@@ -104,20 +104,44 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
 
 // ── 쿠폰 사용(PIN) 모달 ──────────────────────────────────────────────────────
 function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon; stores: StoreRow[]; onClose: () => void; onRedeemed: () => void }) {
+  const navigate = useNavigate()
   const [storeId, setStoreId] = useState('')
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
+  // 🔗 전환 다리(게이트 ON 시 서버가 bridge 동봉): 사용 완료 화면에 상권 딜 추천 1줄.
+  const [doneBridge, setDoneBridge] = useState<{ product_id: number; name: string } | null>(null)
   const redeem = async () => {
     if (!storeId) { toast.error('사용할 매장을 선택해주세요'); return }
     if (!/^\d{4,8}$/.test(pin)) { toast.error('매장 카운터의 확인코드(숫자)를 입력해주세요'); return }
     setBusy(true)
     try {
       const r = await api.post(`/api/district/coupons/${coupon.code}/redeem`, { store_id: Number(storeId), store_code: pin })
-      if (r.data?.success) { toast.success(r.data.message || '사용 완료!'); onRedeemed(); onClose() }
+      if (r.data?.success) {
+        onRedeemed()
+        if (r.data.bridge?.product_id) { setDoneBridge(r.data.bridge) }  // 추천 있으면 완료 화면 유지
+        else { toast.success(r.data.message || '사용 완료!'); onClose() }
+      }
       else toast.error(r.data?.error || '사용 처리에 실패했습니다')
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '사용 처리에 실패했습니다')
     } finally { setBusy(false) }
+  }
+  if (doneBridge) {
+    return (
+      <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
+        <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#0A0A0A] p-6 text-center" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <p className="text-3xl" aria-hidden>✅</p>
+          <p className="mt-2 text-[17px] font-extrabold text-gray-900 dark:text-white">사용 완료!</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
+          <button type="button" onClick={() => navigate(`/group-buy/${doneBridge.product_id}`)}
+            className="mt-4 w-full rounded-2xl border border-gray-200 dark:border-[#2A2A2A] px-3 py-3 text-left active:scale-[0.98] transition-transform">
+            <span className="block text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">🎟 이 상권의 동네딜</span>
+            <span className="mt-0.5 block truncate text-[13px] font-bold text-gray-900 dark:text-white">{doneBridge.name} 보러가기 →</span>
+          </button>
+          <button type="button" onClick={onClose} className="mt-2 w-full py-2 text-sm font-bold text-gray-500 dark:text-gray-400">닫기</button>
+        </div>
+      </div>
+    )
   }
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
@@ -225,6 +249,13 @@ export default function DistrictCouponPage() {
                   <li key={s.id} className="text-[12.5px] text-gray-600 dark:text-gray-300">
                     <span className="font-medium text-gray-900 dark:text-white">{s.name}</span>
                     {s.address && <span className="ml-1.5 inline-flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500"><MapPin className="h-3 w-3" />{s.address}</span>}
+                    {/* 🔗 전환 다리(게이트 ON 시에만 서버가 동봉): 이 매장의 유어딜 동네딜 병기 */}
+                    {!!s.deal_product_id && (
+                      <button type="button" onClick={() => navigate(`/group-buy/${s.deal_product_id}`)}
+                        className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400 active:opacity-70">
+                        동네딜 {s.deal_count && s.deal_count > 1 ? `${s.deal_count}개` : ''} →
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
