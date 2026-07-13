@@ -60,11 +60,21 @@
 - 이용권 사용 시 방문 이벤트(`user_id, seller_id/store, ts`) — `district_coupons` 모델 이식, 전 경로 공통.
 - **구현 완료** — 아래 구현 로그 참조.
 
-### 3단계 (2단계 후): 백업 검증 + 보안 5종
-- GitHub Actions D1 export 실제 1회 실행 + 복원 리허설.
-- PII 암호화(fail-closed) / 어드민 read 스코프·마스킹 / PII 조회 audit / bulk 조회 rate-limit+alert / (분석용 가명화 계층).
+### 3단계 (대표 "진행 가장 이상적으로"): 백업 + 보안 5종 + off-live backfill
+- **코드로 완료**(안전·additive): off-live backfill(guarded)·PII 조회 audit·bulk rate-limit+alert·목록 마스킹·CSV 인젝션 fix.
+- **설계+수동조치 필요**(라이브 전체/대시보드 리스크): PII 평문 암호화·백업 실행/바인딩·ADMIN_IP_WHITELIST. → 아래 "잔여 수동 조치".
 
 ---
+
+## 잔여 수동 조치 (코드로 안전하게 끝낼 수 없는 항목 — 대표/운영 결정)
+
+이 환경은 배포·테스트 미실행(npm 403)이라 아래는 blind 적용 금지. 각각 별도 staged 진행 권장.
+
+1. **off-live user_id backfill 실행** — 코드는 완료(dry-run 엔드포인트). live 는 대상 0. off-live 데이터가 있으면:
+   `GET /api/_internal/backfill-user-id`(dry-run 카운트 확인) → `POST` `{ "confirm": true }`(적용). user_points 충돌(conflict)은 자동 병합 안 함 — 있으면 수동 검토.
+2. **PII 평문 암호화** — `data-crypto.ts`(encryptAtRest/decryptAtRest)는 이미 dual-read(평문 통과) 지원하나, users.email/phone/name 읽기 지점이 raw SQL 로 코드 전역에 흩어져 있어 **일괄 암호화 = 전 읽기지점 복호화 배선 필요**(repo 계층 없음). 테스트 불가 환경에서 blind big-bang = 라이브 로그인/표시 전면 붕괴 위험. → **전용 세션 + staging 테스트**로 (write 암호화 + 읽기지점 점진 복호화 + 백필, 기본 OFF 플래그) 진행 권장. 키(`DATA_ENCRYPTION_KEY`) 미설정 시 평문 fallback → 암호화 켤 땐 fail-closed 로 전환.
+3. **백업 파이프라인 실행·검증** — `d1-backup.ts` 코드는 견고(커서 덤프+알림)하나 `BACKUP_BUCKET` 미바인딩이라 미동작(의도적 throw 로 표면화 중). GitHub Actions `d1-backup.yml`(R2 독립, 주간 export→아티팩트)이 가장 안전한 경로 → **workflow_dispatch 로 1회 실제 실행 + 복원 리허설 1회**(D1_RESTORE_RUNBOOK.md "미실시" 해소). R2 백업 원하면 `ur-live-backups` 버킷 생성 후 대시보드 바인딩.
+4. **ADMIN_IP_WHITELIST 켜기** — 코드 지원됨(기본 allow-all). 운영 IP 확정되면 대시보드 env 설정.
 
 ## 구현 로그
 - 2026-07-13 — 조사 완료, 감사 문서 저장.
@@ -83,3 +93,10 @@
   - **유입 클릭 이벤트** `inflow_clicks`(신규, `inflow-clicks.ts`): `anon_id`(클라 UUID `ur_anon_id_v1`, `anon-id.ts`), `ref_id`(인플루언서 users.id), `ref_type`, `campaign`, `landing_path`, `user_id`(로그인 후 바인딩) + UNIQUE(anon_id, ref_id) first-touch. 서버 `POST /api/acquisition/inflow`(공개·rl 20/60s) + `/inflow/bind`(인증, user_id=정규화). 클라: `storeAffiliateRef`(affiliate-track.ts)가 ref 캡처 즉시 클릭 발사(ref별 1회 dedup) + App.tsx 부트스트랩이 로그인 시 bind(멱등). → **전환 안 해도 인플루언서→방문자 유입 서버 보존**(구매 전 유실 0). acquisition(?src=)·affiliate 적립 로직 **미변경**(격리).
   - 개인정보 원칙 준수: 로그는 **가명 키(anon_id / 숫자 user_id)** 만, PII(이름/전화)는 users 분리 유지. 위치 미포함.
   - 검증(이 원격환경): sql-bind/column/table(373→375)/not-null/money 가드 GREEN. tsc/build/vitest 는 CI. ⚠️ staging: (1) `?ref=` 링크 진입 → `inflow_clicks` 1행 + 로그인 후 user_id 바인딩, (2) 이용권 3경로 사용 → `voucher_visits` 1행 + cancel 시 삭제.
+- 2026-07-13 (3단계 구현 — 대표 "진행 가장 이상적으로") — **보안 하드닝 + off-live backfill**(안전·additive만; 高리스크는 설계+수동조치로 분리 — 위 "잔여 수동 조치"):
+  - **off-live backfill**(`user-id-backfill.ts` + `/api/_internal/backfill-user-id` GET dry-run / POST confirm): firebase_uid→숫자 users.id 이력 수렴. orders/vouchers/point_transactions 안전 relabel, user_points 는 충돌(숫자 잔액행 존재) 회피+보고. 멱등·admin 전용·live 대상 0.
+  - **어드민 PII 조회 감사로그**: `/users` 목록(read_user_list — 검색어·건수), `/users/:id`(read_user_detail), `/users/:id/full-state`(read_user_full_state) — GET 은 audit 미들웨어가 안 잡던 사각 해소(누가 언제 무엇을 봤나).
+  - **대량 열람 방어**: `/users` 목록 rate-limit(60/60s) + 깊은 페이지네이션(offset≥2000) `sendAlert` 경보.
+  - **목록 PII 마스킹**(`pii-mask.ts`): 목록 응답 이메일/전화 기본 마스킹(enumeration 유출 최소). 검색은 서버 raw LIKE 라 기능 불변. 단건 상세는 원문(감사로그).
+  - **CSV 수식 인젝션 fix**(`csv-safe.ts`): 어드민 주문 export 의 hand-rolled join → `buildCsv`(= + - @ 선행 무력화). 서비스 중립 유틸(도매 supply-csv 미변경).
+  - 검증: sql-bind/table(375)/column/csv-injection/money 가드 GREEN. tsc/build/vitest CI.
