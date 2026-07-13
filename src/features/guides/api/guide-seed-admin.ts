@@ -780,6 +780,30 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - **kakao phone 자동 저장**: 카카오 OAuth 시 phone_number scope 받으면 users.phone INSERT (기존값 보존 — COALESCE)
 - **kt_alpha_admin_seller_id 필수화**: /admin/kt-alpha 페이지에 빨간 필수 표시 — 미설정 시 voucher_orders INSERT silent fail`,
   },
+  // 🎁 2026-07-12 WP-A: 체험 캠페인 운영 (대행생성 1순위)
+  {
+    key: 'experience-campaign-admin', icon: '🎁', title: '체험 캠페인 운영 — 대행생성·추첨·리포트 (2026-07-12)', order: 175,
+    content: `### 개요 (\`/admin/experience-campaigns\`)
+- 매장 체험단 모듈: **어드민이 매장을 대신해 개설**(1순위 경로 — 사장님 직접 개설은 게이트 \`experience_campaign_seller_create\` 뒤, 기본 OFF).
+- 흐름: 대행 개설 → 소비자 응모(\`/experience\`, 1인 1회) → **공정 추첨** → 선정자 **0원 체험권 자동 발급** → QR 사용 → 리포트.
+
+### 대행 개설
+- 필수: 매장 ID(seller_id) · 제공 이용권 상품 ID(그 매장 소유 상품만 — 서버 검증) · 제목 · 모집 인원.
+- 선택: 응모 마감 · 미션(예: 블로그 후기 게시) · 설명.
+
+### 공정 추첨 (B2G 증빙)
+- CSPRNG 추첨 + **시드·응모풀 스냅샷·당첨자를 영구 기록**(\`experience_draw_logs\`) — 조작 불가 증명. 이력은 캠페인 상세 "추첨 이력"에서 확인.
+- 추첨은 캠페인당 1회(CAS — 이중 추첨 차단), 실행 후 되돌릴 수 없음.
+- 선정자에게 체험권 발급 + 알림 / 미선정자에게도 결과 알림 자동 발송.
+
+### 💰 머니 규칙 (반드시 이해)
+- 0원 체험권 = **매장 자기부담 제공**. 정산·커미션·유어딜 5% **전부 무관**(발급 order \`payment_method='experience'\`, voucher \`is_experience=1\` → auto-settlement 제외 + 사용시점 원장 amount>0 게이트 자동 skip).
+- \`/admin/promo-ledger\` 에 **"비정산 — 0원 체험권"** 패널로 월별 건수 표시. **결제액 합이 0원이 아니면 발급 경로 회귀 의심** — 즉시 조사.
+- 만료 시 소멸(무상이라 환불 대상 아님 — 자동환불 파이프라인 미탑승).
+
+### 리포트
+- 캠페인별 응모/선정/방문(사용)/링크전환 집계 + **CSV export**(\`/admin/experience-campaigns/:id/report.csv\`) — 재단/기관 제출용.`,
+  },
   {
     key: 'admin-users-page', icon: '👥', title: '/admin/users 페이지 운영 (2026-05-24)', order: 180,
     content: `### 검색 (이름 / 이메일 / 전화번호)

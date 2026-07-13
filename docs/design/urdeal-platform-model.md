@@ -82,6 +82,7 @@
 | **숙소(stays)** | 날짜 캘린더 예약형 | `stays` | `/stays`, `/stays/:id` | reserve-before-charge |
 | **디지털** | 다운로드/코드형 (보관함 발급) | `digital` | `/my/digital` | — |
 | **선물(gifts)** | 교환권 선물하기 | `gifts` | `/gift/claim/:token` | — |
+| **체험 캠페인** | 무료 응모→공정추첨→**0원 체험권**(매장 자기부담) → QR 사용·성과 리포트 (2026-07-12, PR #499 draft) | `experience_campaigns` + `vouchers.is_experience=1` | `/experience` | **비정산** — 정산·커미션·5% 무관(원장 amount>0 게이트 우회) |
 | **경매/펀딩/타임딜** | 보조 커머스 메커니즘 | `auction`/`funding`/`timedeal` | — | — |
 
 > ⚠️ **종류 판별 SSOT**: `deal_only===1`(교환권) + `isVoucherCategory(category)`(이용권). `group_buy_status`로 종류 판별 금지(수명주기 전용).
@@ -96,10 +97,11 @@
 - **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **링크샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(지갑) · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
-- **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
+- **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
 ### 에이전시 / 운영 / 도매
 - `/agency/*`(관리·영입·정산) · `/admin/*`(운영 콘솔) · `/wholesale/*`·`/supplier/*`(도매)
