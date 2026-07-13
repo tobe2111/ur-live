@@ -139,12 +139,15 @@ async function issueExperienceVoucher(
       VALUES (?, ?, ?, ?, ?, 100, 0, 1)
       RETURNING id
     `).bind(orderId, campaign.product_id, userId, code, expiresAt).first<{ id: number }>().catch(() => null)
+    // 🛡️ 전수조사 fix: voucher 실패 시 order_item 생략(고아 0원 주문 부속물 방지) — 호출부가
+    //   null 을 보고 선정 마킹/알림을 보류한다.
+    if (!vRow?.id) return null
     // order_item (정산 근거/주문상세 표시 — 0원)
     await DB.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, 0, 0, 1, 0)
     `).bind(orderId, campaign.product_id, p?.name || '체험권').run().catch(() => {})
-    return vRow?.id ?? null
+    return vRow.id
   } catch {
     return null
   }
@@ -323,11 +326,15 @@ adminApp.post('/:id/draw', async (c) => {
   let issued = 0
   for (const uid of winners) {
     const vid = await issueExperienceVoucher(c.env.DB, camp, uid)
+    // 🛡️ 전수조사 fix: 발급 실패면 'selected' 마킹·선정 알림 보류(허위 통지 방지) —
+    //   'issue_failed' 로 남겨 어드민 응모자 목록에서 가시화(수동 재처리 대상).
     await c.env.DB.prepare(
-      "UPDATE experience_campaign_entries SET status='selected', voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
-    ).bind(vid, id, uid).run().catch(() => {})
-    if (vid) issued++
-    await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
+      "UPDATE experience_campaign_entries SET status=?, voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
+    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(() => {})
+    if (vid) {
+      issued++
+      await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
+    }
   }
   // 미선정 알림.
   for (const uid of poolIds.filter((u) => !winners.includes(u))) {
@@ -484,11 +491,15 @@ sellerApp.post('/:id/draw', async (c) => {
   let issued = 0
   for (const uid of winners) {
     const vid = await issueExperienceVoucher(c.env.DB, camp, uid)
+    // 🛡️ 전수조사 fix: 발급 실패면 'selected' 마킹·선정 알림 보류(허위 통지 방지) —
+    //   'issue_failed' 로 남겨 어드민 응모자 목록에서 가시화(수동 재처리 대상).
     await c.env.DB.prepare(
-      "UPDATE experience_campaign_entries SET status='selected', voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
-    ).bind(vid, id, uid).run().catch(() => {})
-    if (vid) issued++
-    await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
+      "UPDATE experience_campaign_entries SET status=?, voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
+    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(() => {})
+    if (vid) {
+      issued++
+      await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
+    }
   }
   for (const uid of poolIds.filter((u) => !winners.includes(u))) {
     await notifyEntry(c.env.DB, uid, '체험단 결과 안내', `[${camp.title}] 아쉽게도 이번엔 선정되지 않으셨어요. 다음 기회에!`, '/my-vouchers')

@@ -457,6 +457,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           `SELECT commission_pct FROM seller_influencer_deals
            WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
              AND (ends_at IS NULL OR ends_at > datetime('now'))
+             AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')
            LIMIT 1`
         ).bind(product.seller_id, referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
         effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {

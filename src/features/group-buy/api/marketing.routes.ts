@@ -425,7 +425,8 @@ sellerApp.post('/deals/:id/respond', async (c) => {
   const newStatus = body.action === 'accept' ? 'active' : 'rejected'
   const result = await c.env.DB.prepare(
     `UPDATE seller_influencer_deals SET status = ?, responded_at = datetime('now')
-     WHERE id = ? AND seller_id = ? AND status = 'proposed' AND proposed_by = 'influencer'`
+     WHERE id = ? AND seller_id = ? AND status = 'proposed' AND proposed_by = 'influencer'
+       AND COALESCE(requires_content_proof, 0) = 0`
   ).bind(newStatus, dealId, sellerId).run()
   if (!result.meta?.changes) return c.json({ success: false, error: 'not found or already responded' }, 404)
   return c.json({ success: true, status: newStatus })
@@ -441,13 +442,20 @@ influencerApp.post('/deals/propose', async (c) => {
   const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
   const cap = Number(capRow?.value ?? 2)
   if (!Number.isFinite(pct) || pct <= 0 || pct > cap) return c.json({ success: false, error: `0 ~ ${cap}` }, 400)
-  await c.env.DB.prepare(
+  // 🛡️ 전수조사 HIGH fix: 매장의 *조건부* 제안(requires_content_proof=1)을 인플 재-propose 가
+  //   덮어쓰지 못하게 DO UPDATE 에 WHERE 가드 — 이전엔 proposed_by 만 'influencer' 로 뒤집혀
+  //   /respond(무조건부 수락 경로)로 콘텐츠 인증 없이 발효되는 백도어가 있었음.
+  const upsert = await c.env.DB.prepare(
     `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
      VALUES (?, ?, ?, ?, 'proposed', 'influencer', ?)
      ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
        commission_pct = excluded.commission_pct, ends_at = excluded.ends_at, status = 'proposed', proposed_by = 'influencer',
-       message = excluded.message, created_at = datetime('now'), responded_at = NULL`
+       message = excluded.message, created_at = datetime('now'), responded_at = NULL
+     WHERE COALESCE(seller_influencer_deals.requires_content_proof, 0) = 0`
   ).bind(sellerId, userId, pct, body.ends_at || null, body.message || null).run()
+  if (upsert.meta.changes === 0) {
+    return c.json({ success: false, error: '매장의 조건부(콘텐츠 인증) 제안이 진행 중입니다 — 정산 페이지에서 링크를 제출해주세요' }, 409)
+  }
   return c.json({ success: true })
 })
 

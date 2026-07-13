@@ -341,7 +341,7 @@ export async function applyGroupBuyReferral(
     const isReferredByThis = sellerRow?.referred_by_influencer === p.referralInfluencerId
     const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
     const dealRow = await DB.prepare(
-      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) LIMIT 1`
+      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved') LIMIT 1`
     ).bind(p.sellerId, p.referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
     effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
       is_referred_by_this_influencer: isReferredByThis,

@@ -16,6 +16,13 @@ import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
+const _expColEnsured = new WeakSet<object>()
+async function ensureIsExperienceColumn(DB: D1Database): Promise<void> {
+  if (_expColEnsured.has(DB as unknown as object)) return
+  try { await DB.prepare("ALTER TABLE vouchers ADD COLUMN is_experience INTEGER DEFAULT 0").run() } catch { /* exists */ }
+  _expColEnsured.add(DB as unknown as object)
+}
+
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -60,6 +67,10 @@ export async function handleAutoSettlement(env: Env) {
 
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
+    // 🛡️ 전수조사 fix: 이 SELECT 가 참조하는 vouchers.is_experience 는 번호 마이그레이션이 없어
+    //   (repair-schema/helpers ensure 로만 추가) 극단적 순서에서 'no such column' 으로 정산 회차
+    //   전체가 skip 될 수 있음 → cron 이 스스로 멱등 보증(WeakSet 메모, 실패 무해).
+    await ensureIsExperienceColumn(DB)
     const usedVouchers = await DB.prepare(`
       SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
              COALESCE(p.commission_rate, ?) as commission_rate

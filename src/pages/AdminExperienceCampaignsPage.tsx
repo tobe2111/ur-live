@@ -79,6 +79,17 @@ export default function AdminExperienceCampaignsPage() {
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '추첨 실패') }
   }
 
+  // 🛡️ 전수조사 fix: 평문 <a> 는 Bearer 미탑재(듀얼로그인 시 403) → api blob 다운로드.
+  const downloadCsv = async (id: number) => {
+    try {
+      const r = await api.get(`/api/admin/experience-campaigns/${id}/report.csv`, { responseType: 'blob' })
+      const url = URL.createObjectURL(r.data as Blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `campaign-${id}-report.csv`; a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch { toast.error('CSV 다운로드 실패') }
+  }
+
   const statusBadge = (s: string) => {
     const m: Record<string, { t: string; c: string }> = {
       open: { t: '모집중', c: 'bg-green-100 text-green-700' },
@@ -148,7 +159,7 @@ export default function AdminExperienceCampaignsPage() {
                 {/* 액션 */}
                 <div className="flex flex-wrap gap-2 py-3">
                   {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />공정 추첨 실행</button>}
-                  <a href={`/api/admin/experience-campaigns/${c.id}/report.csv`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />리포트 CSV</a>
+                  <button type="button" onClick={() => void downloadCsv(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />리포트 CSV</button>
                 </div>
                 {/* 리포트 요약 */}
                 {report?.metrics && (
