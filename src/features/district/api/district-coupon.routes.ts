@@ -156,12 +156,13 @@ async function settingInt(DB: D1Database, key: string, fallback: number): Promis
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
-// 🔗 2026-07-13 전환 다리 게이트(기본 OFF) — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천.
-//   비머니(공개 카탈로그 read 만) · OFF 면 기존 응답 byte-동일.
+// 🔗 2026-07-13 전환 다리 게이트 — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천.
+//   비머니(공개 카탈로그 read 만). 2026-07-13 대표 지시로 **기본 ON**(opt-out):
+//   미설정/비-'false' → 활성. 어드민이 platform_settings 에 'false' 저장 시 즉시 비활성(응답 byte-복원).
 async function bridgeEnabled(DB: D1Database): Promise<boolean> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'district_deal_bridge_enabled'")
     .first<{ value: string }>().catch(() => null)
-  return row?.value === 'true'
+  return row?.value !== 'false'
 }
 /** 연결된 매장(seller_id)별 활성 동네딜 — 소비자 카탈로그 가시성 조건과 동일(도매 원본·교환권 제외). */
 async function activeDealsBySeller(DB: D1Database, campaignId: number): Promise<Map<number, { count: number; product_id: number; name: string }>> {
