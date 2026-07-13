@@ -283,7 +283,8 @@ userApp.get('/my', async (c) => {
 userApp.post('/coupons/:code/redeem',
   rateLimit({
     action: 'district_redeem', max: 5, windowSec: 300, sensitive: true,
-    keyFn: (c) => `district_redeem:${String(c.req.param('code') || '').slice(0, 16)}`,
+    // ⚠️ 핸들러의 code 정규화(trim+upper+slice16)와 byte-일치해야 성공 리셋 DELETE 가 같은 키를 지움.
+    keyFn: (c) => `district_redeem:${String(c.req.param('code') || '').trim().toUpperCase().slice(0, 16)}`,
   }),
   async (c) => {
     await ensureDistrictTables(c.env.DB)

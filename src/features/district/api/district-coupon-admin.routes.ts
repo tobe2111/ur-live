@@ -168,7 +168,10 @@ adminApp.post('/receipts/:id/approve', async (c) => {
   const face = matchTier(parseRewardTiers(receipt.reward_tiers), receipt.amount)
   if (face == null) return c.json({ success: false, error: '보상 기준액 미달 영수증입니다 — 반려하세요' }, 400)
 
-  // 예산 소진 가드(발급합 + 이번 액면 ≤ budget_total; budget_total=0 이면 무제한)
+  // 예산 소진 가드(발급합 + 이번 액면 ≤ budget_total; budget_total=0 이면 무제한).
+  //   ⚠️ 알려진 한계: 검사→발급이 비원자라 '동시' 승인 2건이 둘 다 통과하면 최대 액면 1장만큼
+  //   초과 가능(어드민 전용·검수 큐 순차 처리 전제 — 초과분은 리포트에서 즉시 가시). 원장 PR 에서
+  //   원자화 검토.
   if (receipt.budget_total > 0) {
     const issued = await c.env.DB.prepare(
       'SELECT COALESCE(SUM(face_value), 0) AS total FROM district_coupons WHERE campaign_id = ?',
