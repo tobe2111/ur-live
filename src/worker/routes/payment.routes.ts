@@ -558,6 +558,26 @@ paymentsRouter.post('/confirm', async (c) => {
             }
           } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
         }
+
+        // 🧾 2026-07-13 [UNLOCK] 상권 쿠폰 경로 B(온라인 결제 자동발급) — 대표 승인 "(b) 전면 구현, 게이트 OFF·별도 PR".
+        //   참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인 + 기간 내 + 기준액 이상이면 상권 쿠폰 자동 발급.
+        //   기본 OFF(DISTRICT_AUTO_ISSUE_ENABLED!=='true') — 미설정 시 이 블록 미진입 → /confirm byte-동일.
+        //   ⚠️ 결제 성공 경로 영향 0: waitUntil 후처리 + autoIssue 자체가 완전 fail-soft(절대 throw 안 함) →
+        //      쿠폰 발급 실패가 결제 확정/응답을 롤백시키지 않음. Toss confirm/금액검증/CAS/재고·딜차감 전부 byte-불변.
+        //   병렬 엔티티(district_coupons) — 딜/유어딜 5%/원장 무접촉. 상세: district-coupon-estimate-2026-07.md §경로 B.
+        if (c.env.DISTRICT_AUTO_ISSUE_ENABLED === 'true') {
+          try {
+            const { autoIssueDistrictCouponForOrder } = await import('../../features/district/api/district-coupon.routes')
+            for (const order of orders) {
+              await autoIssueDistrictCouponForOrder(c.env.DB, {
+                orderNumber: String((order as unknown as { order_number?: string }).order_number || ''),
+                userId: String(userId),
+                sellerId: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+                amount: Number((order as unknown as { total_amount?: number | null }).total_amount ?? 0),
+              }, c.env).catch(() => {})
+            }
+          } catch { /* fail-soft — 발급 실패가 결제 무영향 */ }
+        }
       }
       let _fxDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }

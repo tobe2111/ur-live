@@ -19,7 +19,7 @@ interface Tier { min_amount: number; face_value: number }
 interface Campaign { id: number; slug: string; name: string; description?: string | null; status: string; reward_tiers: Tier[]; coupon_expires_days: number }
 interface StoreRow { id: number; name: string; address?: string | null; deal_count?: number; deal_product_id?: number; deal_name?: string }
 interface MyReceipt { id: number; amount: number; status: string; reject_reason?: string | null; created_at: string; store_name?: string | null; campaign_slug: string }
-interface MyCoupon { id: number; code: string; face_value: number; status: string; expires_at: string; redeemed_at?: string | null; redeemed_store_name?: string | null; campaign_name: string; campaign_slug: string }
+interface MyCoupon { id: number; code: string; face_value: number; status: string; expires_at: string; redeemed_at?: string | null; redeemed_store_name?: string | null; campaign_name: string; campaign_slug: string; source?: string }
 
 const RECEIPT_STATUS: Record<string, { label: string; cls: string }> = {
   submitted: { label: '검수 중', cls: 'bg-amber-100 text-amber-700' },
@@ -280,7 +280,9 @@ export default function DistrictCouponPage() {
                   <TicketPercent className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatWon(cp.face_value)}</p>
+                  <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatWon(cp.face_value)}
+                    {cp.source === 'online' && <span className="ml-1.5 align-middle rounded bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 text-[9.5px] font-semibold text-blue-600 dark:text-blue-300">결제 자동지급</span>}
+                  </p>
                   <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{cp.campaign_name} · {new Date(cp.expires_at).toLocaleDateString('ko-KR')}까지</p>
                 </div>
                 <span className="shrink-0 rounded-full bg-gray-900 dark:bg-white px-3 py-1.5 text-[11px] font-bold text-white dark:text-gray-900">사용하기</span>

@@ -3,7 +3,7 @@
  *   불변식: 클라 금액을 신뢰하지 않고 서버가 tier 매칭 / 같은 승인번호의 표기 변형은 같은 키로 수렴.
  */
 import { describe, it, expect } from 'vitest'
-import { parseRewardTiers, matchTier, normalizeApprovalNo } from '@/features/district/district-shared'
+import { parseRewardTiers, matchTier, normalizeApprovalNo, withinCampaignWindow, normalizeFundingSource } from '@/features/district/district-shared'
 
 describe('parseRewardTiers', () => {
   it('유효 구간만 통과 + 높은 기준액 우선 정렬', () => {
@@ -58,5 +58,37 @@ describe('normalizeApprovalNo — 영수증 돌려쓰기 UNIQUE 키', () => {
   it('빈/널 안전', () => {
     expect(normalizeApprovalNo('')).toBe('')
     expect(normalizeApprovalNo(undefined as unknown as string)).toBe('')
+  })
+})
+
+describe('withinCampaignWindow — 경로 B 행사 기간 게이트(상시 아님)', () => {
+  const now = '2026-08-15 12:00:00'
+  it('기간 내 → true (경계 포함)', () => {
+    expect(withinCampaignWindow('2026-08-01 00:00:00', '2026-08-31 23:59:59', now)).toBe(true)
+    expect(withinCampaignWindow('2026-08-15 12:00:00', '2026-08-31', now)).toBe(true) // 시작 경계
+  })
+  it('시작 전 / 종료 후 → false', () => {
+    expect(withinCampaignWindow('2026-09-01 00:00:00', '2026-09-30', now)).toBe(false)
+    expect(withinCampaignWindow('2026-07-01', '2026-08-14 23:59:59', now)).toBe(false)
+  })
+  it('datetime-local(T) ↔ SQLite(space) 포맷 혼용 정규화', () => {
+    expect(withinCampaignWindow('2026-08-01T00:00', '2026-08-31T23:59', now)).toBe(true)
+    expect(withinCampaignWindow('2026-09-01T00:00', null, now)).toBe(false)
+  })
+  it('값 없음 = 제한 없음(status=open 이 상위 게이트) / now 없음 = false', () => {
+    expect(withinCampaignWindow(null, null, now)).toBe(true)
+    expect(withinCampaignWindow('', '', now)).toBe(true)
+    expect(withinCampaignWindow('2026-08-01', '2026-08-31', '')).toBe(false)
+  })
+})
+
+describe('normalizeFundingSource — 재원 분리 태그', () => {
+  it("'urteam' 만 유어팀, 그 외 전부 재단(foundation)", () => {
+    expect(normalizeFundingSource('urteam')).toBe('urteam')
+    expect(normalizeFundingSource('URTEAM')).toBe('urteam')
+    expect(normalizeFundingSource('foundation')).toBe('foundation')
+    expect(normalizeFundingSource('')).toBe('foundation')
+    expect(normalizeFundingSource(null)).toBe('foundation')
+    expect(normalizeFundingSource('garbage')).toBe('foundation')
   })
 })

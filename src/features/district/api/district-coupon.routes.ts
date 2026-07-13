@@ -25,7 +25,12 @@ import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { notifyUser } from '@/lib/notifications'
+import { dispatchNotification } from '@/lib/notification-dispatcher'
 import { intParam } from '@/shared/pagination'
+
+// 🧾 상권 쿠폰 알림톡 게이트 env 최소 형태(전체 Env 미의존).
+export type DistrictAlimtalkEnv = { DB: D1Database; DISTRICT_ALIMTALK_ENABLED?: string; ALIGO_API_KEY?: string; ALIGO_USER_ID?: string; ALIGO_SENDER_KEY?: string; ALIMTALK_SENDER_KEY?: string; ALIGO_SENDER_PHONE?: string }
+export type DistrictNotifyKind = 'issued' | 'rejected' | 'expiring'
 
 export type DistrictEnv = { DB: D1Database; MEDIA_BUCKET?: R2Bucket }
 
@@ -41,11 +46,19 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
       description TEXT,
       status TEXT NOT NULL DEFAULT 'open',
       budget_total INTEGER NOT NULL DEFAULT 0,
+      budget_urteam INTEGER NOT NULL DEFAULT 0,
       reward_tiers TEXT NOT NULL DEFAULT '[]',
       coupon_expires_days INTEGER NOT NULL DEFAULT 30,
+      auto_issue_enabled INTEGER NOT NULL DEFAULT 0,
+      auto_issue_funding_source TEXT NOT NULL DEFAULT 'foundation',
       starts_at TEXT, ends_at TEXT,
       created_by TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`).run()
+    // 🧾 2026-07-13 경로 B(온라인 결제 자동발급) — 기존 캠페인에 멱등 ALTER(예산 2풀·자동발급 게이트·재원).
+    //   budget_urteam=유어팀 자체 예산풀(budget_total=재단 예산풀과 분리). auto_issue=상시 아님(캠페인 게이트).
+    try { await DB.prepare("ALTER TABLE district_campaigns ADD COLUMN budget_urteam INTEGER NOT NULL DEFAULT 0").run() } catch { /* exists */ }
+    try { await DB.prepare("ALTER TABLE district_campaigns ADD COLUMN auto_issue_enabled INTEGER NOT NULL DEFAULT 0").run() } catch { /* exists */ }
+    try { await DB.prepare("ALTER TABLE district_campaigns ADD COLUMN auto_issue_funding_source TEXT NOT NULL DEFAULT 'foundation'").run() } catch { /* exists */ }
     await DB.prepare(`CREATE TABLE IF NOT EXISTS district_stores (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       campaign_id INTEGER NOT NULL,
@@ -68,14 +81,22 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
       store_id INTEGER NOT NULL,
       amount INTEGER NOT NULL,
       card_approval_no TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'receipt',
+      source_ref TEXT,
       image_key TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'submitted',
       reject_reason TEXT,
       reviewed_by TEXT, reviewed_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`).run()
+    // 🧾 2026-07-13 경로 B — source('receipt'=오프라인 영수증/'online'=결제 자동발급) + source_ref(범용 참조).
+    //   card_approval_no 유지(비파괴 확장) — 경로 A=승인번호, 경로 B=결제 order_number 를 source_ref 로 dedup.
+    try { await DB.prepare("ALTER TABLE district_receipts ADD COLUMN source TEXT NOT NULL DEFAULT 'receipt'").run() } catch { /* exists */ }
+    try { await DB.prepare("ALTER TABLE district_receipts ADD COLUMN source_ref TEXT").run() } catch { /* exists */ }
     // 🛡️ 영수증 돌려쓰기 구조 차단 — 승인번호는 캠페인 내 1회(부정방지 1단계 핵심).
     await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_district_receipt_approval ON district_receipts(campaign_id, card_approval_no)").run()
+    // 🛡️ 경로 B 결제건 1회 발급 — (campaign, source_ref) UNIQUE(동일 결제 재발급 구조 차단). NULL 다중 허용(경로 A 무영향).
+    await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_district_receipt_source_ref ON district_receipts(campaign_id, source_ref)").run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_district_receipt_user ON district_receipts(user_id, campaign_id)").run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_district_receipt_status ON district_receipts(campaign_id, status)").run()
     await DB.prepare(`CREATE TABLE IF NOT EXISTS district_coupons (
@@ -85,11 +106,19 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
       receipt_id INTEGER NOT NULL,
       code TEXT NOT NULL UNIQUE,
       face_value INTEGER NOT NULL,
+      source TEXT NOT NULL DEFAULT 'receipt',
+      funding_source TEXT NOT NULL DEFAULT 'foundation',
       status TEXT NOT NULL DEFAULT 'unused',
       redeemed_store_id INTEGER, redeemed_at TEXT,
       expires_at TEXT NOT NULL,
+      expiry_notified_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`).run()
+    // 🧾 2026-07-13 경로 B — 발급 쿠폰에 source(경로 A/B 리포트 구분) + funding_source(재원 분리 집계) 스탬프.
+    try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN source TEXT NOT NULL DEFAULT 'receipt'").run() } catch { /* exists */ }
+    try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN funding_source TEXT NOT NULL DEFAULT 'foundation'").run() } catch { /* exists */ }
+    // 🧾 2026-07-13 만료 임박 알림 dedup — 통지 1회(cron CAS 로 set). NULL=미통지.
+    try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN expiry_notified_at TEXT").run() } catch { /* exists */ }
     // 🛡️ 영수증 1건 = 쿠폰 1장 멱등(승인 동시요청 이중발급 구조 차단).
     await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_district_coupon_receipt ON district_coupons(receipt_id)").run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_district_coupon_user ON district_coupons(user_id, status)").run()
@@ -99,7 +128,7 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
 }
 
 // ── 헬퍼 (순수 계산은 district-shared.ts SSOT — 유닛테스트 공유) ────────────────
-import { parseRewardTiers, matchTier, normalizeApprovalNo, type RewardTier } from '../district-shared'
+import { parseRewardTiers, matchTier, normalizeApprovalNo, withinCampaignWindow, normalizeFundingSource, type RewardTier } from '../district-shared'
 export { parseRewardTiers, matchTier, normalizeApprovalNo }
 export type { RewardTier }
 function couponCode(): string {
@@ -116,14 +145,17 @@ export async function insertCouponForReceipt(
   r: { id: number; campaign_id: number; user_id: string },
   faceValue: number,
   expiresDays: number,
+  opts?: { source?: 'receipt' | 'online'; fundingSource?: 'foundation' | 'urteam' },
 ): Promise<{ id: number; code: string } | null> {
+  const source = opts?.source === 'online' ? 'online' : 'receipt'
+  const fundingSource = opts?.fundingSource === 'urteam' ? 'urteam' : 'foundation'
   // UNIQUE(receipt_id) 멱등 + code 충돌 재시도(최대 5회)
   for (let i = 0; i < 5; i++) {
     const code = `DC${couponCode()}`
     const res = await DB.prepare(
-      `INSERT OR IGNORE INTO district_coupons (campaign_id, user_id, receipt_id, code, face_value, status, expires_at)
-       VALUES (?, ?, ?, ?, ?, 'unused', datetime('now', '+' || ? || ' days')) RETURNING id, code`,
-    ).bind(r.campaign_id, r.user_id, r.id, code, faceValue, Math.max(1, expiresDays)).first<{ id: number; code: string }>().catch(() => null)
+      `INSERT OR IGNORE INTO district_coupons (campaign_id, user_id, receipt_id, code, face_value, source, funding_source, status, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'unused', datetime('now', '+' || ? || ' days')) RETURNING id, code`,
+    ).bind(r.campaign_id, r.user_id, r.id, code, faceValue, source, fundingSource, Math.max(1, expiresDays)).first<{ id: number; code: string }>().catch(() => null)
     if (res?.id) return res
     // IGNORE 로 삽입 0건: receipt_id 기존(멱등 — 기존 행 반환) 또는 code 충돌(재시도)
     const existing = await DB.prepare('SELECT id, code FROM district_coupons WHERE receipt_id = ?')
@@ -131,6 +163,93 @@ export async function insertCouponForReceipt(
     if (existing) return existing
   }
   return null
+}
+
+// ══════════════════════ 경로 B: 온라인 결제 자동 발급 (2026-07-13) ══════════════════════
+// 유어딜 결제 완료 → 참여 매장(district_stores.seller_id 연결) + auto_issue 캠페인 + 기간 내 + 기준액 이상이면
+//   영수증 등록·어드민 승인 없이 상권 쿠폰 자동 발급. 경로 A와 동일 엔티티/지갑/정산.
+// 💸 머니 룰: **완전 fail-soft(절대 throw 안 함)** — 결제 성공 경로에 영향 0(호출부는 waitUntil 후처리).
+//   자동승인 영수증 행(source='online') 모델 → 1인 월 한도가 경로 A와 자동 합산(district_receipts 카운트).
+//   결제건 1회 발급: source_ref=order_number UNIQUE(멱등). 재원 풀별 예산 가드(foundation/urteam 분리).
+export async function autoIssueDistrictCouponForOrder(
+  DB: D1Database,
+  order: { orderNumber: string; userId: string; sellerId: number | null; amount: number },
+  env?: DistrictAlimtalkEnv,
+): Promise<{ issued: boolean; code?: string; reason?: string }> {
+  try {
+    if (!order.sellerId || !(order.amount > 0) || !order.userId || !order.orderNumber) return { issued: false, reason: 'invalid_input' }
+    await ensureDistrictTables(DB)
+    const ref = String(order.orderNumber).slice(0, 64)
+
+    // 참여 매장(seller 연결) → auto_issue 캠페인 매칭(open + auto_issue_enabled). 한 seller 다캠페인이면 최신.
+    const m = await DB.prepare(
+      `SELECT s.id AS store_id, s.campaign_id AS campaign_id,
+              c.reward_tiers AS reward_tiers, c.budget_total AS budget_total, c.budget_urteam AS budget_urteam,
+              c.coupon_expires_days AS coupon_expires_days, c.auto_issue_funding_source AS funding, c.starts_at AS starts_at, c.ends_at AS ends_at
+       FROM district_stores s JOIN district_campaigns c ON c.id = s.campaign_id
+       WHERE s.seller_id = ? AND s.is_active = 1 AND c.status = 'open' AND c.auto_issue_enabled = 1
+       ORDER BY c.id DESC LIMIT 1`,
+    ).bind(order.sellerId).first<{
+      store_id: number; campaign_id: number; reward_tiers: string; budget_total: number; budget_urteam: number
+      coupon_expires_days: number; funding: string; starts_at: string | null; ends_at: string | null
+    }>().catch(() => null)
+    if (!m) return { issued: false, reason: 'no_auto_campaign' }
+
+    // 행사 기간 게이트(상시 아님) — DB 클록(datetime('now'))으로 통일.
+    const nowRow = await DB.prepare("SELECT datetime('now') AS now").first<{ now: string }>().catch(() => null)
+    if (!withinCampaignWindow(m.starts_at, m.ends_at, String(nowRow?.now || ''))) return { issued: false, reason: 'out_of_window' }
+
+    // 기준액(reward_tiers 재사용 — 서버 권위). 미달이면 비발급.
+    const face = matchTier(parseRewardTiers(m.reward_tiers), order.amount)
+    if (face == null) return { issued: false, reason: 'below_min' }
+    const funding = normalizeFundingSource(m.funding)
+
+    // 1인 월 한도 — 경로 A와 합산(district_receipts 카운트, source 무관).
+    const cap = await settingInt(DB, 'district_receipt_monthly_cap', 4)
+    const used = await DB.prepare(
+      `SELECT COUNT(*) AS cnt FROM district_receipts
+       WHERE campaign_id = ? AND user_id = ? AND status IN ('submitted','approved')
+         AND created_at >= datetime('now', 'start of month')`,
+    ).bind(m.campaign_id, order.userId).first<{ cnt: number }>().catch(() => null)
+    if ((Number(used?.cnt) || 0) >= cap) return { issued: false, reason: 'cap_reached' }
+
+    // 재원 풀별 예산 가드(foundation=budget_total / urteam=budget_urteam, 0=무제한).
+    const pool = funding === 'urteam' ? Number(m.budget_urteam) : Number(m.budget_total)
+    if (pool > 0) {
+      const iss = await DB.prepare(
+        'SELECT COALESCE(SUM(face_value),0) AS total FROM district_coupons WHERE campaign_id = ? AND funding_source = ?',
+      ).bind(m.campaign_id, funding).first<{ total: number }>().catch(() => null)
+      if ((Number(iss?.total) || 0) + face > pool) return { issued: false, reason: 'budget_exhausted' }
+    }
+
+    // 자동승인 영수증 행 — source='online', source_ref=order_number(UNIQUE dedup), card_approval_no 비충돌값.
+    const ins = await DB.prepare(
+      `INSERT OR IGNORE INTO district_receipts (campaign_id, user_id, store_id, amount, card_approval_no, source, source_ref, image_key, status, reviewed_by, reviewed_at)
+       VALUES (?, ?, ?, ?, ?, 'online', ?, '', 'approved', 'auto', datetime('now'))`,
+    ).bind(m.campaign_id, order.userId, m.store_id, order.amount, `PAY:${ref}`, ref).run().catch(() => null)
+    if (!ins) return { issued: false, reason: 'insert_error' }
+
+    // 영수증 행 확보(신규 or 기존 멱등) → 쿠폰 발급(UNIQUE(receipt_id) 멱등).
+    const receipt = await DB.prepare('SELECT id FROM district_receipts WHERE campaign_id = ? AND source_ref = ?')
+      .bind(m.campaign_id, ref).first<{ id: number }>().catch(() => null)
+    if (!receipt) return { issued: false, reason: 'no_receipt' }
+    const coupon = await insertCouponForReceipt(
+      DB, { id: receipt.id, campaign_id: Number(m.campaign_id), user_id: order.userId },
+      face, Number(m.coupon_expires_days) || 30, { source: 'online', fundingSource: funding },
+    )
+    if (!coupon) return { issued: false, reason: 'coupon_failed' }
+
+    // 최초 발급건(changes>0)만 알림 — 중복 결제 멱등 재호출은 조용히 skip(이중알림 0).
+    if ((ins.meta?.changes || 0) > 0) {
+      try {
+        await notifyDistrictUser(DB, order.userId, '🎟️ 상권 쿠폰이 지급됐어요', `${face.toLocaleString('ko-KR')}원 상권 쿠폰이 자동 지급됐어요 — 지갑에서 확인하세요`, { env, kind: 'issued' })
+      } catch { /* fail-soft */ }
+      return { issued: true, code: coupon.code }
+    }
+    return { issued: false, reason: 'already_issued', code: coupon.code }
+  } catch {
+    return { issued: false, reason: 'error' } // 결제 성공 경로 영향 0 — 절대 throw 안 함
+  }
 }
 
 // 매직바이트(확장자 위변조 차단 — upload.routes 패턴 복제)
@@ -307,14 +426,14 @@ userApp.get('/my', async (c) => {
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const userId = String(user.id)
   const receipts = await c.env.DB.prepare(
-    `SELECT r.id, r.campaign_id, r.amount, r.status, r.reject_reason, r.created_at, s.name AS store_name, dc.slug AS campaign_slug
+    `SELECT r.id, r.campaign_id, r.amount, r.status, r.reject_reason, r.created_at, r.source, s.name AS store_name, dc.slug AS campaign_slug
      FROM district_receipts r
      JOIN district_campaigns dc ON dc.id = r.campaign_id
      LEFT JOIN district_stores s ON s.id = r.store_id
      WHERE r.user_id = ? ORDER BY r.created_at DESC LIMIT 100`,
   ).bind(userId).all().catch(() => ({ results: [] }))
   const coupons = await c.env.DB.prepare(
-    `SELECT c.id, c.campaign_id, c.code, c.face_value,
+    `SELECT c.id, c.campaign_id, c.code, c.face_value, c.source,
             CASE WHEN c.status = 'unused' AND c.expires_at <= datetime('now') THEN 'expired' ELSE c.status END AS status,
             c.expires_at, c.redeemed_at, s.name AS redeemed_store_name, dc.name AS campaign_name, dc.slug AS campaign_slug
      FROM district_coupons c
@@ -384,9 +503,23 @@ userApp.post('/coupons/:code/redeem',
     return c.json({ success: true, message: '사용 완료! 결제 금액에서 쿠폰 금액을 빼고 결제하세요', bridge })
   })
 
-// 사후 알림 도우미(어드민 승인/반려에서 재사용)
-export async function notifyDistrictUser(DB: D1Database, userId: string, title: string, message: string): Promise<void> {
+// 사후 알림 도우미(어드민 승인/반려·자동발급·만료 cron 공용).
+//   인앱 알림은 항상(현행 동일). 알림톡은 게이트(env DISTRICT_ALIMTALK_ENABLED) + 채널설정 뒤 — opts.env·kind 있을 때만.
+export async function notifyDistrictUser(
+  DB: D1Database, userId: string, title: string, message: string,
+  opts?: { env?: DistrictAlimtalkEnv; kind?: DistrictNotifyKind },
+): Promise<void> {
   await notifyUser(DB, userId, 'district_coupon', title, message, '/district/my')
+  // 🧾 게이트드 알림톡 — OFF(기본)/kind 없음이면 인앱만(byte-동일). 완전 fail-soft.
+  if (!opts?.env || opts.env.DISTRICT_ALIMTALK_ENABLED !== 'true' || !opts.kind) return
+  try {
+    const u = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone?: string | null }>().catch(() => null)
+    const phone = String(u?.phone || '').replace(/[^0-9]/g, '')
+    if (phone.length < 10) return
+    await dispatchNotification(opts.env, `district_coupon_${opts.kind}`, {
+      alimtalk: { phone, templateCode: `district_coupon_${opts.kind}`, message },
+    })
+  } catch { /* fail-soft — 알림톡 실패가 지급/반려/만료 로직 무영향 */ }
 }
 
 export const districtPublicRoutes = new Hono<{ Bindings: DistrictEnv }>()

@@ -19,7 +19,7 @@ interface Campaign {
 }
 interface StoreRow { id: number; name: string; store_code: string; address?: string | null; is_active: number; seller_id?: number | null; used_count?: number; used_amount?: number; bank_name?: string | null; bank_account?: string | null; account_holder?: string | null }
 interface ReceiptRow { id: number; user_id: string; user_name?: string | null; store_name?: string | null; amount: number; card_approval_no: string; image_key: string; status: string; reject_reason?: string | null; created_at: string; user_approved_count?: number }
-interface Report { totals?: Record<string, number> | null; by_store?: Array<Record<string, unknown>> }
+interface Report { totals?: Record<string, number> | null; by_store?: Array<Record<string, unknown>>; by_source?: Array<Record<string, unknown>> }
 
 export default function AdminDistrictCouponsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -29,7 +29,7 @@ export default function AdminDistrictCouponsPage() {
   const [stores, setStores] = useState<StoreRow[]>([])
   const [receipts, setReceipts] = useState<ReceiptRow[]>([])
   const [report, setReport] = useState<Report | null>(null)
-  const [form, setForm] = useState({ slug: '', name: '', budget_total: '', tier1_min: '30000', tier1_face: '3000', tier2_min: '50000', tier2_face: '10000', coupon_expires_days: '30', description: '' })
+  const [form, setForm] = useState({ slug: '', name: '', budget_total: '', budget_urteam: '', tier1_min: '30000', tier1_face: '3000', tier2_min: '50000', tier2_face: '10000', coupon_expires_days: '30', description: '', auto_issue_enabled: false, auto_issue_funding_source: 'foundation' })
   const [bulkLines, setBulkLines] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -74,12 +74,13 @@ export default function AdminDistrictCouponsPage() {
     try {
       const r = await api.post('/api/admin/district/campaigns', {
         slug: form.slug.trim(), name: form.name.trim(), description: form.description || undefined,
-        budget_total: Number(form.budget_total) || 0, reward_tiers: tiers,
+        budget_total: Number(form.budget_total) || 0, budget_urteam: Number(form.budget_urteam) || 0, reward_tiers: tiers,
         coupon_expires_days: Number(form.coupon_expires_days) || 30,
+        auto_issue_enabled: form.auto_issue_enabled, auto_issue_funding_source: form.auto_issue_funding_source,
       })
       if (r.data?.success) {
         toast.success(`캠페인 생성 — 소비자 링크: /district/${form.slug.trim()}`)
-        setForm({ slug: '', name: '', budget_total: '', tier1_min: '30000', tier1_face: '3000', tier2_min: '50000', tier2_face: '10000', coupon_expires_days: '30', description: '' })
+        setForm({ slug: '', name: '', budget_total: '', budget_urteam: '', tier1_min: '30000', tier1_face: '3000', tier2_min: '50000', tier2_face: '10000', coupon_expires_days: '30', description: '', auto_issue_enabled: false, auto_issue_funding_source: 'foundation' })
         void load()
       } else toast.error(r.data?.error || '생성 실패')
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '생성 실패') } finally { setBusy(false) }
@@ -169,6 +170,25 @@ export default function AdminDistrictCouponsPage() {
           <label className="text-[12px] text-gray-600 col-span-2 lg:col-span-4">설명(선택 — 소비자 랜딩에 노출)
             <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
           </label>
+          {/* 🧾 경로 B: 온라인 결제 자동발급(게이트 뒤 — 마스터 스위치 DISTRICT_AUTO_ISSUE_ENABLED 필요) */}
+          <div className="col-span-2 lg:col-span-4 mt-1 p-3 rounded-xl bg-gray-50 border border-gray-200">
+            <label className="flex items-center gap-2 text-[13px] font-semibold text-gray-900">
+              <input type="checkbox" checked={form.auto_issue_enabled} onChange={(e) => setForm((f) => ({ ...f, auto_issue_enabled: e.target.checked }))} className="w-4 h-4" />
+              🧾 온라인 결제 자동발급(경로 B) — 유어딜 결제 시 기준액 이상이면 자동 쿠폰 지급
+            </label>
+            <p className="mt-1 text-[11px] text-gray-500">행사 기간(기준액은 위 보상구간 재사용) 내에만 발급. 실제 발급엔 서버 마스터 스위치 필요.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="text-[12px] text-gray-600">재원 출처
+                <select value={form.auto_issue_funding_source} onChange={(e) => setForm((f) => ({ ...f, auto_issue_funding_source: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900 bg-white">
+                  <option value="foundation">재단 예산</option>
+                  <option value="urteam">유어팀 자체</option>
+                </select>
+              </label>
+              <label className="text-[12px] text-gray-600">유어팀 예산풀 (원, 0=무제한)
+                <input value={form.budget_urteam} onChange={(e) => setForm((f) => ({ ...f, budget_urteam: e.target.value.replace(/\D/g, '') }))} inputMode="numeric" className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
+              </label>
+            </div>
+          </div>
         </div>
         <div className="mt-3 flex justify-end">
           <button type="button" disabled={busy} onClick={createCampaign} className="px-4 py-2 rounded-xl bg-gray-900 text-white text-[13px] font-semibold disabled:opacity-50">캠페인 생성</button>
@@ -258,6 +278,22 @@ export default function AdminDistrictCouponsPage() {
                         </div>
                       ))}
                     </div>
+                    {(report.by_source || []).length > 0 && (
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <p className="text-[12px] font-bold text-gray-900 px-3 py-2 border-b border-gray-100">경로/재원 구분 (온라인·오프라인 유입 + 재원 분리)</p>
+                        <div className="max-h-56 overflow-auto">
+                          {(report.by_source || []).map((s, i) => (
+                            <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-[11.5px] border-t border-gray-50">
+                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${String(s.source) === 'online' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{String(s.source) === 'online' ? '경로B 온라인' : '경로A 영수증'}</span>
+                              <span className="shrink-0 text-gray-400">{String(s.funding_source) === 'urteam' ? '유어팀' : '재단'}</span>
+                              <span className="flex-1 text-right text-gray-400">{formatNumber(Number(s.issued_count) || 0)}건</span>
+                              <span className="shrink-0 font-bold text-gray-900">{formatWon(Number(s.issued_amount) || 0)}</span>
+                              <span className="shrink-0 text-emerald-600">사용 {formatWon(Number(s.used_amount) || 0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                       <p className="text-[12px] font-bold text-gray-900 px-3 py-2 border-b border-gray-100">점포별 정산 (사용 시점 귀속 · 수수료 0)</p>
                       <div className="max-h-80 overflow-auto">
