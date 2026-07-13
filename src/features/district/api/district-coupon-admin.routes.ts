@@ -300,9 +300,11 @@ adminApp.get('/campaigns/:id/report.csv', async (c) => {
   ])
   const srcLabel = (s: unknown) => (String(s) === 'online' ? '경로B(온라인결제)' : '경로A(영수증)')
   const fundLabel = (f: unknown) => (String(f) === 'urteam' ? '유어팀' : '재단')
-  const sourceRows: unknown[][] = [[], ['— 경로/재원 구분 —'], ['구분', '재원', '발급건수', '발급액', '사용액']]
-    .concat((by_source as Array<Record<string, unknown>>).map((r) => [srcLabel(r.source), fundLabel(r.funding_source), r.issued_count, r.issued_amount, r.used_amount]))
-  const summary = [
+  const sourceHeader: unknown[][] = [[], ['— 경로/재원 구분 —'], ['구분', '재원', '발급건수', '발급액', '사용액']]
+  const sourceRows: unknown[][] = sourceHeader.concat(
+    (by_source as Array<Record<string, unknown>>).map((r) => [srcLabel(r.source), fundLabel(r.funding_source), r.issued_count, r.issued_amount, r.used_amount] as unknown[]),
+  )
+  const summary: unknown[][] = [
     [], ['— 요약 —'],
     ['발급 총액', totals?.issued_amount ?? 0], ['사용 총액(정산 대상)', totals?.used_amount ?? 0],
     ['미사용(유효)', totals?.outstanding_amount ?? 0], ['소멸(만료 — 미집행액)', totals?.lapsed_amount ?? 0],
