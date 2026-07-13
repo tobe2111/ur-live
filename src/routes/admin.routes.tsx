@@ -99,6 +99,7 @@ const AdminMerchantCommissionsPage = lazy(() => import('@/pages/AdminMerchantCom
 const AdminInfluencerPayoutsPage = lazy(() => import('@/pages/AdminInfluencerPayoutsPage'))
 const AdminInfluencerDisputesPage = lazy(() => import('@/pages/AdminInfluencerDisputesPage'))
 const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage'))
+const AdminDistrictCouponsPage = lazy(() => import('@/pages/AdminDistrictCouponsPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 // 🛡️ 2026-05-18: 숙소 공구 어드민 — PR 5/6.
@@ -614,6 +615,11 @@ export function AdminRoutes() {
       <Route path="/admin/kakao-reviews" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminKakaoReviewsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/district-coupons" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminDistrictCouponsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/audit-log" element={

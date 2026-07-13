@@ -183,6 +183,8 @@ const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
 // 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
 const LocalTownPage = lazy(() => import('./pages/LocalTownPage'))
+// 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — /district/:slug 랜딩 + /district/my 지갑 (한 컴포넌트)
+const DistrictCouponPage = lazy(() => import('./pages/DistrictCouponPage'))
 const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
 const CommunityGroupBuyMessagesPage = lazy(() => import('./pages/CommunityGroupBuyMessagesPage'))
 
@@ -712,6 +714,7 @@ function AppContent() {
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
             {/* 🏙️ 2026-07-04 상권관 랜딩 — 지역코드 하나로 그 상권의 동네딜+체험단 전체(B2G QR/링크 진입). */}
             <Route path="/local/:code" element={<LocalTownPage />} />
+            <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
