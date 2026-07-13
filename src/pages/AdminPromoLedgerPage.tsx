@@ -42,6 +42,7 @@ interface SummaryData {
   }
   orders: { count: number; amount: number }
   affiliate_promo: { sum: number; count: number }
+  experience_noncash?: { count: number; sum_amount: number; note: string }
   fee_breakdown: {
     count: number
     platform_sum: number
@@ -286,6 +287,29 @@ export default function AdminPromoLedgerPage() {
               sub={`owner_net ${formatWon(s.fee_breakdown.owner_net_sum)}`}
             />
           </div>
+
+          {/* ── 🎬 WP-A 비정산 마킹: 0원 체험권 발급 (매장 자기부담) ────────── */}
+          {s.experience_noncash && s.experience_noncash.count > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-amber-800">
+                  비정산 — 0원 체험권 발급 ({formatNumber(s.experience_noncash.count)}건)
+                </p>
+                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                  s.experience_noncash.sum_amount === 0
+                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                    : 'bg-red-100 text-red-700 border-red-200'
+                }`}>
+                  결제액 합 {formatWon(s.experience_noncash.sum_amount)}
+                  {s.experience_noncash.sum_amount === 0 ? ' ✓ 0원 정상' : ' ⚠︎ 회귀 의심'}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-700">
+                매장 자기부담 체험 제공 — 정산·커미션·유어딜 5% 무관(사용 시 원장/커미션 amount&gt;0 게이트로 자동 skip).
+                QR 사용확인은 정상 기록됩니다.
+              </p>
+            </div>
+          )}
 
           {/* ── 불변식 #44 패널 ────────────────────────────────────────── */}
           {inv && (

@@ -72,6 +72,7 @@ const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
 const SellerAgencyDelegationPage = lazy(() => import('@/pages/SellerAgencyDelegationPage'))
 const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
 const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
+const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
 
 export function SellerRoutes() {
   return (
@@ -328,6 +329,11 @@ export function SellerRoutes() {
       <Route path="/seller/influencer-deals" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerInfluencerDealsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/experience-campaigns" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerExperienceCampaignsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/youtube/callback" element={

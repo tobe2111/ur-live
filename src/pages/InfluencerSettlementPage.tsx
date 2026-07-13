@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
+import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
 
 interface Balance {
   pending_amount: number
@@ -255,6 +256,9 @@ export default function InfluencerSettlementPage() {
 
         {/* 본인 랭킹 카드 */}
         <MyRankCard />
+
+        {/* 🎬 WP-B: 조건부 우대 커미션 — 콘텐츠 링크 제출(대상 제안 있을 때만 렌더) */}
+        <ConditionalDealsSection />
 
         {/* 💡 flip D1 (게이트드 선반영): owner-펀딩 확인 시에만 재원 출처 배너 —
             platform(현행 기본/미확인) 동안 미렌더(기존 화면 byte-동일) */}

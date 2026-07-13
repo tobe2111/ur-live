@@ -82,6 +82,8 @@
 | **숙소(stays)** | 날짜 캘린더 예약형 | `stays` | `/stays`, `/stays/:id` | reserve-before-charge |
 | **디지털** | 다운로드/코드형 (보관함 발급) | `digital` | `/my/digital` | — |
 | **선물(gifts)** | 교환권 선물하기 | `gifts` | `/gift/claim/:token` | — |
+| **체험 캠페인** | 무료 응모→공정추첨→**0원 체험권**(매장 자기부담) → QR 사용·성과 리포트 (2026-07-12, PR #499 draft) | `experience_campaigns` + `vouchers.is_experience=1` | `/experience` | **비정산** — 정산·커미션·5% 무관(원장 amount>0 게이트 우회) |
+| **상권 쿠폰** | B2G 영수증 페이백 — 참여점포 영수증 등록→검수→**무상 쿠폰**(예산 재원)→상권 내 자유 사용(사용 시점 매장 귀속)→매장 정산(수수료 0) (2026-07-13) | `district_campaigns/stores/receipts/coupons` — **병렬 엔티티(vouchers 무접촉·retrofit 금지, 대표 확정)** | `/district/:slug`, `/district/my` | **무상·비결제** — 딜/유어딜 5%/전금법 유상선불과 구조 분리. 만료=소멸 |
 | **경매/펀딩/타임딜** | 보조 커머스 메커니즘 | `auction`/`funding`/`timedeal` | — | — |
 
 > ⚠️ **종류 판별 SSOT**: `deal_only===1`(교환권) + `isVoucherCategory(category)`(이용권). `group_buy_status`로 종류 판별 금지(수명주기 전용).
@@ -96,13 +98,17 @@
 - **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **링크샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(지갑) · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
+- **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
+- **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
 ### 에이전시 / 운영 / 도매
 - `/agency/*`(관리·영입·정산) · `/admin/*`(운영 콘솔) · `/wholesale/*`·`/supplier/*`(도매)
+- 어드민 신규: `/admin/district-coupons`(상권 쿠폰 — 캠페인·매장 PIN 일괄·영수증 검수·정산 CSV)
 
 ---
 
