@@ -84,7 +84,9 @@ export interface Env {
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
   YOUTUBE_REDIRECT_URI?: string;
-  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required)
+  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required) — 인플루언서 발굴에도 사용
+  INFLUENCER_PROVIDER?: string;      // 인스타/틱톡 수집 제공사 이름(apify/ensembledata/modash 등)
+  INFLUENCER_PROVIDER_KEY?: string;  // 제공사 API 키 — 없으면 인스타/틱톡 직접 발굴 비활성(유튜브는 무관)
 
   // ---- 자체 미디어 서버 (OvenMediaEngine) ----
   // 셀러 브라우저 → 우리 OME → YouTube RTMP 릴레이용.
