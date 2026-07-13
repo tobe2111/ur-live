@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-13 — 게이트 활성화 (대표 "알아서 모두 활성화")
+비머니 게이트 2종을 **코드 기본값 ON(opt-out)** 으로 전환(어드민이 `platform_settings` 에 `'false'` 저장 시 즉시 복원):
+- `district_deal_bridge_enabled` — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천(공개 카탈로그 read enrich, 비머니).
+- `experience_campaign_seller_create` — 셀러가 자기 매장 체험 캠페인 셀프 생성(0원 체험권, 정산·커미션 무접촉).
+
+**머니 게이트 3종은 미활성(대표 실행 대기)** — 정산/커미션 재원을 바꾸므로 `docs/design/flip-staging-verification-2026-08.md` 의 순서 강제: 서초 테스트매장 seller_id 확보 → `flip_pilot_seller_ids`/`commission_budget_enabled`/`promo_funding_source` 파일럿 지정 → 실카드 8건 축별검증 → `/admin/promo-ledger` net==5% 확인 → 전역 ON + 대표 클릭. (프로덕션 D1 하나뿐이라 블라인드 flip 금지.)
+
 ## 🔶 2026-07-12 — 4트랙 상태 (다음 세션 필독: 전부 대표 검증/클릭 대기)
 | 트랙 | PR | 상태 | 대표 액션 |
 |---|---|---|---|

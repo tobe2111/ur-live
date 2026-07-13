@@ -395,15 +395,16 @@ adminApp.get('/:id/report.csv', async (c) => {
 })
 
 // ══════════════════════════════════ 셀러 셀프 생성 (2순위 · 게이트 뒤) ══════════════════════════════════
-// 게이트: platform_settings.experience_campaign_seller_create='true' 일 때만 생성 허용(기본 OFF).
-// 어드민 대행생성(1순위)은 게이트 무관. 셀러는 자기 매장(seller_id) 캠페인만 생성/조회/추첨.
+// 게이트: platform_settings.experience_campaign_seller_create. 2026-07-13 대표 지시로 **기본 ON**(opt-out):
+//   미설정/비-'false' → 셀프 생성 허용. 어드민이 'false' 저장 시 즉시 비활성(1순위 대행생성은 게이트 무관).
+//   비머니(0원 체험권 발행 → 정산·커미션 무접촉). 셀러는 자기 매장(seller_id) 캠페인만 생성/조회/추첨.
 const sellerApp = new Hono<{ Bindings: Env }>()
 sellerApp.use('*', requireSeller())
 
 async function sellerCreateEnabled(DB: D1Database): Promise<boolean> {
   const r = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'experience_campaign_seller_create'")
     .first<{ value: string }>().catch(() => null)
-  return r?.value === 'true'
+  return r?.value !== 'false'
 }
 
 sellerApp.post('/', async (c) => {
