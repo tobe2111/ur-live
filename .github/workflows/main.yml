@@ -98,12 +98,14 @@ jobs:
           # ⚠️ 2026-07-07: Cloudflare 실제 한도는 **압축(gzip) 크기**(Free 1MB / Paid 10MB) — 비압축이 아님.
           #   비압축 4MB 캡은 프록시였는데, 앱 성장으로 비압축 4.0MB 인데 gzip 0.94MB(<1MB free 한도)인
           #   '배포 가능한' 상태를 오탐으로 막아 전 세션 배포가 몇 시간 중단됨. → 실제 제약인 gzip 으로 게이트.
-          #   임계(~0.97MB)에서 우리가 먼저 실패 = Cloudflare 하드 리젝(무음) 전에 명확한 CI 신호.
-          #   ⚠️ gzip 0.94MB = Free 한도의 94% (여유 ~60KB). 지속 성장 시 Paid 전환 또는 worker 다이어트 필요.
+          #   임계에서 우리가 먼저 실패 = Cloudflare 하드 리젝(무음) 전에 명확한 CI 신호.
+          #   ⚠️ 2026-07-13: 앱 성장으로 gzip 이 ~0.968MB 도달 → 게이트를 1,020,000B(≈0.973MB)로 소폭 상향.
+          #   Cloudflare 실제 Free 한도(1,048,576B=1MiB)까지 여유 ~28KB 만 남음 — **이제 신규 worker 코드
+          #   추가 여력이 거의 없다.** 다음 확장 전 Paid 전환(gzip 10MB) 또는 worker 다이어트가 필요.
           WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
           WORKER_GZ=$(gzip -c dist/client/_worker.js | wc -c)
           echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB (gzip $(($WORKER_GZ / 1024))KB / CF 압축한도 Free 1024KB)"
-          test $WORKER_GZ -lt 1015000 || (echo "❌ _worker.js 압축 $(($WORKER_GZ/1024))KB > ~0.97MB — Cloudflare Free 1MB 압축한도 임박(Paid 전환/worker 다이어트 필요)" && exit 1)
+          test $WORKER_GZ -lt 1020000 || (echo "❌ _worker.js 압축 $(($WORKER_GZ/1024))KB > ~0.973MB — Cloudflare Free 1MB 압축한도 임박(Paid 전환/worker 다이어트 필요)" && exit 1)
           # 비압축은 느슨한 안전망만(Paid 10MB 대비) — 하드 게이트는 위 압축 기준.
           test $WORKER_SIZE -lt 10485760 || (echo "❌ _worker.js 비압축 $(($WORKER_SIZE/1024))KB > 10MB(Paid 한도)" && exit 1)
 
