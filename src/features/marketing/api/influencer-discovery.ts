@@ -77,9 +77,11 @@ export async function discoverYouTubeInfluencers(
     if (!res.ok) {
       const reason = searchData.error?.errors?.[0]?.reason || ''
       if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
-      return { ok: false, error: 'FAILED', message: '검색에 실패했습니다' }
+      // Google 사유를 그대로 노출(키/시크릿 아님 — accessNotConfigured/keyInvalid/ipRefererBlocked 등 진단용).
+      const detail = reason || searchData.error?.message || `HTTP ${res.status}`
+      return { ok: false, error: 'FAILED', message: `YouTube 검색 실패: ${detail}` }
     }
-  } catch { return { ok: false, error: 'FAILED', message: '검색 요청 중 오류가 발생했습니다' } }
+  } catch (e) { return { ok: false, error: 'FAILED', message: `검색 요청 오류: ${(e as Error)?.message || 'network'}` } }
 
   const channelIds = (searchData.items || []).map(i => i.id?.channelId).filter((x): x is string => !!x)
   if (!channelIds.length) return { ok: true, leads: [] }
