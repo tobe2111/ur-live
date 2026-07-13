@@ -25,7 +25,12 @@ import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { notifyUser } from '@/lib/notifications'
+import { dispatchNotification } from '@/lib/notification-dispatcher'
 import { intParam } from '@/shared/pagination'
+
+// 🧾 상권 쿠폰 알림톡 게이트 env 최소 형태(전체 Env 미의존).
+export type DistrictAlimtalkEnv = { DB: D1Database; DISTRICT_ALIMTALK_ENABLED?: string; ALIGO_API_KEY?: string; ALIGO_USER_ID?: string; ALIGO_SENDER_KEY?: string; ALIMTALK_SENDER_KEY?: string; ALIGO_SENDER_PHONE?: string }
+export type DistrictNotifyKind = 'issued' | 'rejected' | 'expiring'
 
 export type DistrictEnv = { DB: D1Database; MEDIA_BUCKET?: R2Bucket }
 
@@ -106,11 +111,14 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
       status TEXT NOT NULL DEFAULT 'unused',
       redeemed_store_id INTEGER, redeemed_at TEXT,
       expires_at TEXT NOT NULL,
+      expiry_notified_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`).run()
     // 🧾 2026-07-13 경로 B — 발급 쿠폰에 source(경로 A/B 리포트 구분) + funding_source(재원 분리 집계) 스탬프.
     try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN source TEXT NOT NULL DEFAULT 'receipt'").run() } catch { /* exists */ }
     try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN funding_source TEXT NOT NULL DEFAULT 'foundation'").run() } catch { /* exists */ }
+    // 🧾 2026-07-13 만료 임박 알림 dedup — 통지 1회(cron CAS 로 set). NULL=미통지.
+    try { await DB.prepare("ALTER TABLE district_coupons ADD COLUMN expiry_notified_at TEXT").run() } catch { /* exists */ }
     // 🛡️ 영수증 1건 = 쿠폰 1장 멱등(승인 동시요청 이중발급 구조 차단).
     await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_district_coupon_receipt ON district_coupons(receipt_id)").run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_district_coupon_user ON district_coupons(user_id, status)").run()
@@ -166,6 +174,7 @@ export async function insertCouponForReceipt(
 export async function autoIssueDistrictCouponForOrder(
   DB: D1Database,
   order: { orderNumber: string; userId: string; sellerId: number | null; amount: number },
+  env?: DistrictAlimtalkEnv,
 ): Promise<{ issued: boolean; code?: string; reason?: string }> {
   try {
     if (!order.sellerId || !(order.amount > 0) || !order.userId || !order.orderNumber) return { issued: false, reason: 'invalid_input' }
@@ -233,7 +242,7 @@ export async function autoIssueDistrictCouponForOrder(
     // 최초 발급건(changes>0)만 알림 — 중복 결제 멱등 재호출은 조용히 skip(이중알림 0).
     if ((ins.meta?.changes || 0) > 0) {
       try {
-        await notifyDistrictUser(DB, order.userId, '🎟️ 상권 쿠폰이 지급됐어요', `${face.toLocaleString('ko-KR')}원 상권 쿠폰이 자동 지급됐어요 — 지갑에서 확인하세요`)
+        await notifyDistrictUser(DB, order.userId, '🎟️ 상권 쿠폰이 지급됐어요', `${face.toLocaleString('ko-KR')}원 상권 쿠폰이 자동 지급됐어요 — 지갑에서 확인하세요`, { env, kind: 'issued' })
       } catch { /* fail-soft */ }
       return { issued: true, code: coupon.code }
     }
@@ -494,9 +503,23 @@ userApp.post('/coupons/:code/redeem',
     return c.json({ success: true, message: '사용 완료! 결제 금액에서 쿠폰 금액을 빼고 결제하세요', bridge })
   })
 
-// 사후 알림 도우미(어드민 승인/반려에서 재사용)
-export async function notifyDistrictUser(DB: D1Database, userId: string, title: string, message: string): Promise<void> {
+// 사후 알림 도우미(어드민 승인/반려·자동발급·만료 cron 공용).
+//   인앱 알림은 항상(현행 동일). 알림톡은 게이트(env DISTRICT_ALIMTALK_ENABLED) + 채널설정 뒤 — opts.env·kind 있을 때만.
+export async function notifyDistrictUser(
+  DB: D1Database, userId: string, title: string, message: string,
+  opts?: { env?: DistrictAlimtalkEnv; kind?: DistrictNotifyKind },
+): Promise<void> {
   await notifyUser(DB, userId, 'district_coupon', title, message, '/district/my')
+  // 🧾 게이트드 알림톡 — OFF(기본)/kind 없음이면 인앱만(byte-동일). 완전 fail-soft.
+  if (!opts?.env || opts.env.DISTRICT_ALIMTALK_ENABLED !== 'true' || !opts.kind) return
+  try {
+    const u = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone?: string | null }>().catch(() => null)
+    const phone = String(u?.phone || '').replace(/[^0-9]/g, '')
+    if (phone.length < 10) return
+    await dispatchNotification(opts.env, `district_coupon_${opts.kind}`, {
+      alimtalk: { phone, templateCode: `district_coupon_${opts.kind}`, message },
+    })
+  } catch { /* fail-soft — 알림톡 실패가 지급/반려/만료 로직 무영향 */ }
 }
 
 export const districtPublicRoutes = new Hono<{ Bindings: DistrictEnv }>()

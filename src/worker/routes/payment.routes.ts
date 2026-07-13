@@ -574,7 +574,7 @@ paymentsRouter.post('/confirm', async (c) => {
                 userId: String(userId),
                 sellerId: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
                 amount: Number((order as unknown as { total_amount?: number | null }).total_amount ?? 0),
-              }).catch(() => {})
+              }, c.env).catch(() => {})
             }
           } catch { /* fail-soft — 발급 실패가 결제 무영향 */ }
         }

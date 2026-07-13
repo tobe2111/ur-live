@@ -223,7 +223,7 @@ adminApp.post('/receipts/:id/approve', async (c) => {
     const rolled = !!rb && rb.meta.changes > 0
     return c.json({ success: false, error: rolled ? '쿠폰 발급 실패 — 잠시 후 다시 승인해주세요 (대기 상태로 복원됨)' : '쿠폰 발급 실패 — 관리자 확인 필요 (복원 실패)' }, 500)
   }
-  await notifyDistrictUser(c.env.DB, receipt.user_id, '🎉 상권 쿠폰 지급!', `영수증 승인 완료 — ${face.toLocaleString()}원 쿠폰이 지급되었어요. 참여 점포 어디서든 쓸 수 있어요.`)
+  await notifyDistrictUser(c.env.DB, receipt.user_id, '🎉 상권 쿠폰 지급!', `영수증 승인 완료 — ${face.toLocaleString()}원 쿠폰이 지급되었어요. 참여 점포 어디서든 쓸 수 있어요.`, { env: c.env, kind: 'issued' })
   return c.json({ success: true, coupon_code: coupon.code, face_value: face })
 })
 
@@ -240,7 +240,7 @@ adminApp.post('/receipts/:id/reject', async (c) => {
      WHERE id = ? AND status = 'submitted'`,
   ).bind(reason, admin ? String(admin.id) : null, id).run().catch(() => null)
   if (!cas || cas.meta.changes === 0) return c.json({ success: false, error: '이미 처리된 영수증입니다' }, 409)
-  if (row?.user_id) await notifyDistrictUser(c.env.DB, row.user_id, '영수증 반려 안내', `등록하신 영수증이 반려되었어요 — 사유: ${reason}`)
+  if (row?.user_id) await notifyDistrictUser(c.env.DB, row.user_id, '영수증 반려 안내', `등록하신 영수증이 반려되었어요 — 사유: ${reason}`, { env: c.env, kind: 'rejected' })
   return c.json({ success: true })
 })
 

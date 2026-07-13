@@ -4,6 +4,7 @@
 페이백을 두 경로로 확장: 경로 A(오프라인 영수증→어드민 승인, **이미 라이브**) + **경로 B(유어딜 결제→기준액 이상 자동발급, 신규)**. 게이트 `DISTRICT_AUTO_ISSUE_ENABLED`(env, 기본 OFF) + 캠페인 `auto_issue_enabled` + 행사기간. 병렬 엔티티(딜/유어딜5%/원장 무접촉). 대표 4제약: ①결제 성공 영향 0(waitUntil 후처리+fail-soft) ②재원 2풀(foundation/urteam) ③source='online' 자동승인 영수증 행+source_ref 멱등 ④발급 실패가 결제 롤백 못 함.
 - **⚠️ 대표 조건 ①: draft PR·main 머지 금지 — staging 실결제 검증 후에만 머지.** 검증: 파일럿 매장 결제→쿠폰 1장 + 1인 한도 A/B 합산 + 재원별 예산 가드 + 중복결제 재발급 0.
 - 설계: `docs/design/district-coupon-estimate-2026-07.md §9`. 변경: district-shared(withinCampaignWindow/normalizeFundingSource)·district-coupon.routes(autoIssue+스키마)·admin.routes(auto-issue 설정·A/B 리포트)·payment.routes(게이트드 배선, CLAUDE.md Toss audit log)·AdminDistrictCouponsPage·DistrictCouponPage.
+- **알림톡 배선(§9-1)**: 지급·반려·만료임박에 `dispatchNotification` 연결(인앱 항상 + 알림톡 게이트 뒤 — env `DISTRICT_ALIMTALK_ENABLED` + 채널설정 + 콘솔 템플릿 3종). 신규 만료 cron `district-coupon-expire`(D-3 임박 알림 선점CAS dedup + 만료 스위핑 status='expired', 멱등·머니0 — §9-2). 발송 대행사=**Aligo**(기존 연동, 신규 세팅 아님). failover=기존 `ALIMTALK_SMS_FAILOVER` 인프라.
 
 ## ✅ 2026-07-13 — 게이트 활성화 (대표 "알아서 모두 활성화")
 비머니 게이트 2종을 **코드 기본값 ON(opt-out)** 으로 전환(어드민이 `platform_settings` 에 `'false'` 저장 시 즉시 복원):

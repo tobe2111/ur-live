@@ -186,6 +186,13 @@ export interface Env {
   //   staging 실결제 검증(계약 후) 전까지 미설정 유지.
   DISTRICT_AUTO_ISSUE_ENABLED?: string;
 
+  // ---- 상권 쿠폰 알림톡 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 쿠폰 지급/반려/만료임박 시 알림톡(dispatchNotification) 시도. 기본 OFF — 인앱 알림만(현행 동일).
+  //   활성 절차: ① Aligo 콘솔에 district_coupon_issued/rejected/expiring 템플릿 등록·승인
+  //             ② 어드민 채널설정(notification_channel_settings)에서 해당 type alimtalk 켜기
+  //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
+  DISTRICT_ALIMTALK_ENABLED?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.

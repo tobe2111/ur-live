@@ -51,6 +51,9 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   // 🏙️ 2026-07-05 체험단(FCFS) + 이용권 사용 완료 — 콘솔 등록·심사 신청 필요 (문안은 운영이
   //   Aligo 에 등록한 승인 본문과 코드의 message 를 일치시킬 것 — 승인 후 DOCUMENTED 로 이동).
   'fcfs_selected', 'fcfs_replacement', 'voucher_used',
+  // 🧾 2026-07-13 상권 쿠폰 페이백(지급/반려/만료 임박) — 게이트 뒤(DISTRICT_ALIMTALK_ENABLED + 채널설정).
+  //   콘솔 등록·심사 신청 필요. dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code.
+  'district_coupon_issued', 'district_coupon_rejected', 'district_coupon_expiring',
   // 셀러 브랜드메시지 테스트 발송(seller-alimtalk-mgmt) — 셀러 자체 Aligo 계정용 테스트 코드(시스템 알림 아님)
   'test',
 ] as const

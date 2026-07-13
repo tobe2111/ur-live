@@ -97,3 +97,15 @@
 **행사 기간 게이트(상시 아님)**: `withinCampaignWindow(starts_at, ends_at, now)` — 기간 밖 비발급. 기준액은 경로 A 의 `reward_tiers` 재사용(서버 권위).
 
 **활성 순서(대표 조건 ①)**: main 머지 금지 → staging 실결제 검증(파일럿 매장 결제 → 쿠폰 1장 + A/B 한도 합산 + 재원별 예산 가드 + 중복결제 재발급 0) → 통과 후 머지 → env `DISTRICT_AUTO_ISSUE_ENABLED=true` + 캠페인 `auto_issue_enabled`.
+
+### 9-1. 알림톡 배선 (2026-07-13, 게이트 뒤)
+쿠폰 지급·반려·만료 임박에 **`dispatchNotification`**(채널 추상화 — dashboard/email/alimtalk/push, `notification_channel_settings` 기반) 연결. 인앱 알림은 **항상**(현행), 알림톡은 게이트 뒤.
+- **게이트(3중, 전부 OFF 기본)**: ① Aligo 콘솔에 `district_coupon_issued/rejected/expiring` 템플릿 등록·심사 ② 어드민 채널설정에서 해당 type `alimtalk` 켜기 ③ env `DISTRICT_ALIMTALK_ENABLED=true`. ③ OFF 면 인앱만(byte-동일).
+- **failover**: 알림톡→SMS 는 기존 `ALIMTALK_SMS_FAILOVER` 인프라 그대로(코드 작업 0 — Aligo 발신번호 등록 + env 플래그).
+- **템플릿 SSOT**: `src/lib/alimtalk-templates.ts` `ALL_USED` 에 3코드 등록(콘솔 승인 후 DOCUMENTED 로 이동).
+
+### 9-2. 만료 임박 cron 로직 (신설 — `district-coupon-expire.ts`, 별도 보고)
+상권 쿠폰은 만료가 **lazy**(사용 CAS 가 `expires_at` 검증, `/my` 는 CASE 로 'expired' 표시)라 ① 사전 알림 없음 ② status 미전이로 리포트 비결정 가능성. 신설 cron(일 1회, stay/meal-voucher expire 와 동시 `0 9 * * *`|`0 0 * * *`):
+1. **만료 임박(D-3) 알림** — `status='unused' AND expiry_notified_at IS NULL AND expires_at ∈ (now, now+3d]` 쿠폰을 **선점 CAS**(`SET expiry_notified_at WHERE ... IS NULL`)로 마킹 후 알림 → **쿠폰당 1회**(재실행/동시성 이중발송 0). 신규 컬럼 `district_coupons.expiry_notified_at`(dedup).
+2. **만료 스위핑** — `status='unused' AND expires_at<=now` → `status='expired'`. **멱등·머니 0**(만료=소멸, 원장/딜/유어딜5% 무접촉 — 환불/역전 없음). 사용 CAS 가 이미 만료 가드 보유라 스위핑 없어도 이중사용 불가 — 스위핑은 **리포트 결정론(lapsed 확정)** 목적.
+- best-effort — 실패해도 다음 실행 재시도(선점 CAS 라 중복 알림 없음). 결제/정산 무관.
