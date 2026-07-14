@@ -7,6 +7,14 @@
 - **🛡️ 영구 가드 신설**: `scripts/check-pagination-nan.mjs` — request pagination(page/limit/offset/days…)이 `parseInt/Number` NaN 폴백 없이 assign 되면 차단(닫는 괄호 뒤 `|| 숫자` 또는 `isNaN`/`Number.isFinite`/삼항리터럴 필요). `verify.yml`(strict)·`audit-gate.sh`(schema 도메인)·pre-commit(warn)·`AUDIT_INVARIANTS.md`·CLAUDE.md 방어선 표 등록. 현재 위반 0(scanned=143, safe=143). 예외 `pagination-nan-ok` 주석.
 - **검증**: tsc 0(사전 config 경고 제외)·build(client+ssr+prerender+worker+prepare) 0·SQL bind/column 가드 0·audit-gate 38 GREEN(무관 file-size RED 1건=타 세션 blog.routes/worker index).
 - **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
+## ✅ 2026-07-01 — 알림톡 콘솔 심사 자료 + 채널 확인수단 (대표 "알림톡 콘솔 심사 넣고 싶음")
+대표가 유어딜 알림톡을 Aligo 콘솔에 등록·심사 넣으려 함 → ①배선된 템플릿+문안 ②콘솔 등록형 ③secret 확인법.
+- **전수조사 발견(정정)**: 기존 `docs/kakao-alimtalk-templates.md`·SSOT `alimtalk-templates.ts`가 **부정확** — 실제 안 쓰는 코드(`referral_commission_earned`·`stay_reminder_d1/dday`) 등재, 실제 쓰는 코드(`commission_withdrawal_approved/rejected`·`auction_promoted`·`stay_dday`/`stay_d1`) 누락, 기존 문서의 본문이 실제 코드 발송문과 **글자 불일치**(그대로 등록하면 발송 시 거부). 전 `sendSystemAlimtalk`/`sendAlimtalk` 호출부(~25곳) 문안을 실측 추출해 1:1 정합.
+- **SSOT 정정** `src/lib/alimtalk-templates.ts`: 실제 배선 코드로 재작성 + `CONSUMER_*`/`WHOLESALE_*` 분리(서비스 분리 — 유어딜 채널 vs 유통스타트 채널). `isDocumentedRegistered` 시그니처 유지(admin 진단 무영향).
+- **콘솔 등록 문서** `docs/kakao-alimtalk-templates.md` 전면 재작성: 소비자 24종·도매 4종 각 tpl_code·대상·발송시점·**본문(#{변수}, 코드와 글자일치)**·변수설명. ⚠️ **1코드 2문안 2건**(`seller_approved` 신규/재활성, `business_registration_result` 승인/반려)은 카카오 1코드1본문 원칙 위배 → 코드분리/변수화 필요 명시. 셀러 자체계정 발송(order_confirm 등 alimtalk-auto)·미배선(이용권 구매완료/사용 없음) 구분 명시.
+- **확인수단 개선**: `/api/health/env-readiness`(admin)가 `ALIGO_API_KEY`만 보던 것 → **3종(+`ALIGO_USER_ID`·`ALIGO_SENDER_KEY`)** 전부 보고. 또 이 엔드포인트가 `/api/health/detailed/env-readiness`에만 있어 대표가 기대한 `/api/health/env-readiness`가 404였음 → index.ts에 **`app.route('/api/health', healthRoutes)` 별칭 additive**(인라인 `/api/health` 먼저 등록이라 shadow 0 — Hono 실측 검증). `/api/version`·어드민 채널배지 알림톡 판정도 `ALIGO_SENDER_KEY` 포함(3종).
+- 검증: tsc 0 · 전체 2443 pass · build 0 · api-auth(admin 마운트 requireAdmin 상속)·theme·bind·file-size 가드 0.
+
 ## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
 코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
 - 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
