@@ -3,13 +3,13 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/RestaurantMapPage-D5yDusGh.js"
+      "/assets/RestaurantMapPage-Bf2rcSCh.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-CM3qEAMd.js",
+      "/assets/GroupBuyDetailPage-BCmI5GDB.js",
       "/assets/product-flow-Gl0CTbCD.js",
       "/assets/app-group-buy-n1e-wX--.js",
       "/assets/seed-detail-BRqakZJ5.js"
@@ -18,42 +18,42 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-BqnBIMXo.js",
+      "/assets/VoucherDetailPage-C_1ttWI6.js",
       "/assets/seed-detail-BRqakZJ5.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-B98T0FlS.js",
+      "/assets/ProductDetailPage-BMtRekuq.js",
       "/assets/product-flow-Gl0CTbCD.js",
-      "/assets/app-product-components-CBbYn9c6.js",
+      "/assets/app-product-components-DyOufszJ.js",
       "/assets/embla-XVrp4Y8g.js",
-      "/assets/ProductReviews-Suiy_IhM.js"
+      "/assets/ProductReviews-BA8KKqwe.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-DvRA6kze.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js",
-      "/assets/seller-public-fetch-CVokQwcX.js",
-      "/assets/SellerPublicPage-D24SoYoD.js"
+      "/assets/CuratorPage-DZbZSTWN.js",
+      "/assets/BrowseProductCard-DFt5m5BJ.js",
+      "/assets/seller-public-fetch-7WXQ0BKq.js",
+      "/assets/SellerPublicPage-CulCpLIX.js"
     ],
     "css": []
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-sIWMDDmE.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js"
+      "/assets/VouchersPage-DzeKaBVg.js",
+      "/assets/BrowseProductCard-DFt5m5BJ.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-BCOtoPKh.js",
-      "/assets/app-seller-components-DtZZ6JET.js",
-      "/assets/BrowseProductCard-BnBu5KVd.js"
+      "/assets/BrowsePage-CtD8uiE9.js",
+      "/assets/app-seller-components-DNKjVMlu.js",
+      "/assets/BrowseProductCard-DFt5m5BJ.js"
     ],
     "css": []
   }

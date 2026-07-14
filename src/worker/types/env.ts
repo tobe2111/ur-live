@@ -78,6 +78,8 @@ export interface Env {
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
   ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
   ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
+  ALIGO_BUSINESS_REGISTRATION_VERIFIED?: string; // 사업자등록 승인 알림톡 tpl_code(콘솔 자동부여 시 override)
+  ALIGO_BUSINESS_REGISTRATION_REJECTED?: string; // 사업자등록 반려 알림톡 tpl_code(콘솔 자동부여 시 override)
   ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만)
 
   // ---- YouTube ----

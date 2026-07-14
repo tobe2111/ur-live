@@ -60,26 +60,16 @@ curl -s https://live.ur-team.com/api/health/env-readiness \
 ```
 변수: `#{name}` = 신청자 이름
 
-#### `seller_approved` — 셀러 승인 (셀러에게) ⚠️ **1코드 2문안 — 아래 주의**
-발송: 어드민 셀러 승인 시 (`admin-sellers.routes.ts`). 코드가 **신규 승인 / 재활성화** 두 문안을 같은 코드로 보냄.
-카카오 템플릿은 1코드=1고정본문이라, **아래 A안(권장) 또는 B안 중 택1**:
-
-- **A안(권장): 코드를 2개로 분리**해 각각 등록 — `seller_approved`(신규) + `seller_reactivated`(재활성).
-  → 코드 수정 필요(담당자 요청). 문안이 명확히 갈려 심사·가독성 良.
-- **B안: 공통 변수 1개로 등록**(코드 소폭 수정) — 아래처럼 한 문장을 변수화:
-```
-[유어딜] #{name}님,
-#{message}
-```
-  `#{message}` = "셀러 가입이 승인되었어요! 지금 바로 판매를 시작해보세요." 또는
-  "계정이 다시 활성화되었어요. 판매를 이어가실 수 있습니다."
-
-현재 코드가 보내는 실제 두 문안(참고):
+#### `seller_approved` — 셀러 신규 승인 (셀러에게)
+발송: 어드민 셀러 **신규 승인** 시.
 ```
 [유어딜] #{name}님,
 셀러 가입이 승인되었어요!
 지금 바로 판매를 시작해보세요.
 ```
+
+#### `seller_reactivated` — 셀러 계정 재활성화 (셀러에게)
+발송: 정지(suspended) 셀러를 어드민이 다시 승인(재활성)할 때.
 ```
 [유어딜] #{name}님,
 계정이 다시 활성화되었어요.
@@ -101,10 +91,8 @@ curl -s https://live.ur-team.com/api/health/env-readiness \
 대시보드에 접속해 셀러 관리를 시작하세요.
 ```
 
-#### `business_registration_result` — 사업자등록 검증 결과 ⚠️ **1코드 2문안 — 분리 권장**
-발송: 어드민 사업자등록증 검증/반려 시. 승인/반려 문안이 완전히 다르므로 **2코드 분리 권장**
-(`business_registration_verified` + `business_registration_rejected`, 코드 수정 필요).
-현재 코드가 보내는 두 문안:
+#### `business_registration_verified` — 사업자등록 승인 (셀러에게)
+발송: 어드민 사업자등록증 **승인** 시.
 ```
 [유어딜] 사업자등록증 검증 완료
 
@@ -115,6 +103,9 @@ curl -s https://live.ur-team.com/api/health/env-readiness \
 
 이제 현금 정산 + 딜 환급이 가능합니다.
 ```
+
+#### `business_registration_rejected` — 사업자등록 반려 (셀러에게)
+발송: 어드민 사업자등록증 **반려** 시.
 ```
 [유어딜] 사업자등록증 반려
 
@@ -418,7 +409,9 @@ https://utongstart.com/wholesale/login
 ## ⚠️ 등록 전 반드시 확인 (요약)
 
 1. **문안 글자 일치** — 위 본문 그대로. 임의 수정 시 코드 발송과 불일치 → 거부.
-2. **1코드 2문안 2건** — `seller_approved`, `business_registration_result` 는 승인/반려(또는 신규/재활성)가
-   한 코드에 2문안. **코드 분리 또는 변수화** 결정 필요(담당자 요청). 안 하면 한쪽 분기가 거부됨.
+2. **1코드=1본문 정합 완료** — 승인/반려(신규/재활성)가 갈리던 2건은 **각각 별도 tpl_code 로 분리**됨
+   (`seller_approved`+`seller_reactivated`, `business_registration_verified`+`business_registration_rejected`).
+   각 코드에 위 본문 그대로 등록하면 됩니다.
 3. **서비스 분리** — 유통스타트(도매) 4종은 유어딜 채널이 아닌 **유통스타트 채널**에.
-4. **ALIGO 3종 env** — API키·userid·발신프로필키 모두 세팅(위 확인 방법).
+4. **ALIGO 3종 env** — API키·userid·발신프로필키 모두 세팅(위 확인 방법). ⚠️ 현재 **발신프로필키
+   (`ALIGO_SENDER_KEY`) 미설정** — 콘솔 발신프로필 등록 후 발급되는 senderkey 를 env 에 넣어야 발송됨.

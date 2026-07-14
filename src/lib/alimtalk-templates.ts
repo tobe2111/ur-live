@@ -32,9 +32,11 @@
  * 문안: docs/kakao-alimtalk-templates.md 참조.
  */
 export const CONSUMER_ALIMTALK_TEMPLATES: readonly string[] = [
-  // 가입·승인
-  'seller_registered', 'seller_approved', 'agency_registered', 'agency_approved',
-  'business_registration_result',
+  // 가입·승인 (seller_approved/seller_reactivated · business_registration_verified/rejected —
+  //   각 1코드=1본문. 2026-07-01 1코드2문안 분리)
+  'seller_registered', 'seller_approved', 'seller_reactivated',
+  'agency_registered', 'agency_approved',
+  'business_registration_verified', 'business_registration_rejected',
   // 주문·선물·환불
   'new_order', 'gift_received', 'gift_refunded', 'voucher_refunded',
   // 정산·송금
