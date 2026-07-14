@@ -8,10 +8,11 @@ import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { adsAccountIdFrom } from '../ads-account'
 import {
-  discoverYouTubeInfluencers, saveInfluencerLeads,
+  discoverYouTubeInfluencers, discoverNaverBloggers, saveInfluencerLeads,
   listInfluencerLeads, updateInfluencerLead, deleteInfluencerLead,
 } from '../influencer-discovery'
 import { providerAvailable } from '../provider-discovery'
+import { naverOpenId, naverOpenSecret } from './helpers'
 
 const adsInfluencersRoutes = new Hono<{ Bindings: Env }>()
 
@@ -28,7 +29,7 @@ adsInfluencersRoutes.get('/influencers', async (c) => {
   // 어떤 플랫폼이 지금 수집 가능한지 클라에 알림(유튜브=키 보유 시 항상, 인스타/틱톡=제공사 키 있을 때).
   return c.json({
     success: true, leads,
-    sources: { youtube: !!c.env.YOUTUBE_API_KEY, instagram: providerAvailable(c.env), tiktok: providerAvailable(c.env) },
+    sources: { youtube: !!c.env.YOUTUBE_API_KEY, naver_blog: !!(naverOpenId(c.env) && naverOpenSecret(c.env)), instagram: providerAvailable(c.env), tiktok: providerAvailable(c.env) },
   })
 })
 
@@ -46,6 +47,17 @@ adsInfluencersRoutes.post('/influencers/discover', rateLimit({ action: 'ads-inf-
     if (!r.ok) {
       const status = r.error === 'NOT_CONFIGURED' ? 503 : r.error === 'QUOTA' ? 429 : 400
       return c.json({ success: false, error: r.message || (r.error === 'NOT_CONFIGURED' ? 'YouTube 수집이 설정되지 않았습니다 (YOUTUBE_API_KEY)' : '발굴 실패'), code: r.error }, status)
+    }
+    const saved = await saveInfluencerLeads(c.env.DB, id, r.leads)
+    return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(c.env.DB, id) })
+  }
+
+  // 네이버 블로거 — 네이버 검색 오픈API(무료, 보유 키).
+  if (platform === 'naver_blog') {
+    const r = await discoverNaverBloggers(naverOpenId(c.env), naverOpenSecret(c.env), keyword, { display: 50 })
+    if (!r.ok) {
+      const status = r.error === 'NOT_CONFIGURED' ? 503 : 400
+      return c.json({ success: false, error: r.message || (r.error === 'NOT_CONFIGURED' ? '네이버 검색 API가 설정되지 않았습니다' : '발굴 실패'), code: r.error }, status)
     }
     const saved = await saveInfluencerLeads(c.env.DB, id, r.leads)
     return c.json({ success: true, found: r.leads.length, saved, leads: await listInfluencerLeads(c.env.DB, id) })
