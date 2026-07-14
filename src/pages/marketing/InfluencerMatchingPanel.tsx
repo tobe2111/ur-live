@@ -45,6 +45,10 @@ interface Metrics {
   repeatRate: number; gmv: number; aov: number
   categoryStats: CatStat[]; regionStats: RegStat[]
 }
+interface Coverage {
+  totalInflow: number; attributedUsers: number; influencersWithData: number
+  measuredInfluencers: number; totalVisits: number; categoriesCovered: number; regionsCovered: number
+}
 
 const CATEGORIES = [
   { code: 'meal_voucher', label: '식사' },
@@ -90,6 +94,27 @@ export default function InfluencerMatchingPanel() {
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [detail, setDetail] = useState<Record<string, Metrics | null>>({})
+  const [coverage, setCoverage] = useState<Coverage | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiText, setAiText] = useState<string | null>(null)
+  const [aiNote, setAiNote] = useState<string | null>(null)
+
+  // 데이터 준비도(전역) — 마운트 1회.
+  useEffect(() => {
+    api.get('/api/admin/matching/coverage', { headers: authHeader() })
+      .then((r) => setCoverage(r.data?.coverage || null)).catch(() => { /* graceful */ })
+  }, [])
+
+  async function runAi() {
+    setAiBusy(true); setAiText(null); setAiNote(null)
+    try {
+      const r = await api.post('/api/admin/matching/ai-rationale', { category: cat, region }, { headers: authHeader() })
+      if (r.data?.success) { if (r.data.enough) setAiText(r.data.rationale || ''); else setAiNote(r.data.note || '표본 부족') }
+      else setAiNote(r.data?.error || 'AI 근거 생성 실패')
+    } catch (e: unknown) {
+      setAiNote((e as { response?: { data?: { error?: string } } })?.response?.data?.error || 'AI 근거 생성 실패')
+    } finally { setAiBusy(false) }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -138,6 +163,24 @@ export default function InfluencerMatchingPanel() {
         </div>
       )}
 
+      {/* 데이터 준비도 — 매칭 신뢰도 한눈에 */}
+      {coverage && (
+        <div className="mt-3">
+          <div className="text-[10.5px] font-bold tracking-wide text-gray-400 dark:text-gray-500">데이터 준비도</div>
+          <div className="mt-1.5 grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <Cov label="유입" v={won(coverage.totalInflow)} />
+            <Cov label="귀속 방문자" v={won(coverage.attributedUsers)} />
+            <Cov label="매장방문" v={won(coverage.totalVisits)} />
+            <Cov label="인플루언서" v={won(coverage.influencersWithData)} />
+            <Cov label="실측(n≥5)" v={won(coverage.measuredInfluencers)} accent />
+            <Cov label="업종·상권" v={`${coverage.categoriesCovered}·${coverage.regionsCovered}`} />
+          </div>
+          {coverage.measuredInfluencers === 0 && (
+            <p className="mt-1.5 text-[10.5px] text-gray-400 dark:text-gray-500">실측(n≥5) 인플루언서가 아직 없어요 — 아래는 목업 미리보기. 유입·방문이 쌓이면 실측으로 전환됩니다.</p>
+          )}
+        </div>
+      )}
+
       {/* 필터바 — 우리 매장 업종·상권 */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-[11px] text-gray-400 dark:text-gray-500">우리 매장 기준</span>
@@ -151,7 +194,21 @@ export default function InfluencerMatchingPanel() {
             className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border ${region === r.code ? 'bg-gray-900 text-white dark:bg-white dark:text-[#0A0A0A] border-transparent' : 'border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400'}`}>{r.label}</button>
         ))}
         {loading && <span className="text-[11px] text-gray-400 dark:text-gray-500">불러오는 중…</span>}
+        <button onClick={runAi} disabled={aiBusy} className="ml-auto rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-3 py-1 text-[11.5px] font-semibold text-gray-700 dark:text-gray-200 disabled:opacity-50">{aiBusy ? 'AI 분석 중…' : '🤝 AI 매칭 근거'}</button>
       </div>
+
+      {/* AI 매칭 근거(집계·가명만 전송) */}
+      {(aiText || aiNote) && (
+        <div className="mt-2 rounded-lg bg-gray-50 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] p-3">
+          {aiNote && <p className="text-[11.5px] text-amber-700 dark:text-amber-400">{aiNote}</p>}
+          {aiText && (
+            <div className="space-y-1 text-[12px] leading-relaxed text-gray-700 dark:text-gray-200">
+              {aiText.split('\n').filter((l) => l.trim()).map((l, i) => <p key={i}>{l.replace(/\*\*/g, '')}</p>)}
+            </div>
+          )}
+          <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">※ AI 에는 집계·가명 지표(공개 핸들·전환율)만 전송 — 개인정보 없음.</p>
+        </div>
+      )}
 
       {/* 실데이터인데 빈 결과(게이트 ON·표본 부족) — 우아한 안내 */}
       {!preview && rows.length === 0 && (
@@ -235,6 +292,15 @@ export default function InfluencerMatchingPanel() {
       <p className="mt-3 text-[10.5px] text-gray-400 dark:text-gray-500">
         ※ 모든 집계는 가명·집계(개인 식별 불가), 소량 셀(n&lt;5)은 표시 억제, 위치는 상권 단위 — 개인정보·위치정보 원칙 준수.
       </p>
+    </div>
+  )
+}
+
+function Cov({ label, v, accent }: { label: string; v: string; accent?: boolean }) {
+  return (
+    <div className="rounded-lg border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] px-2 py-1.5 text-center">
+      <div className={`text-[14px] font-extrabold tabular-nums ${accent ? 'text-violet-600 dark:text-violet-400' : 'text-gray-900 dark:text-white'}`}>{v}</div>
+      <div className="text-[9.5px] text-gray-400 dark:text-gray-500">{label}</div>
     </div>
   )
 }

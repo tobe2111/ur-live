@@ -461,3 +461,53 @@ export async function rankStoresForInfluencer(
     price: r.price != null ? Number(r.price) : null,
   }))
 }
+
+// ── 데이터 준비도(커버리지) — 어드민이 매칭 신뢰도를 한눈에 ───────────────────
+export interface MatchingCoverage {
+  totalInflow: number          // 전체 유입 클릭(distinct anon_id)
+  attributedUsers: number      // 로그인 귀속된 방문자(distinct user_id)
+  influencersWithData: number  // 귀속 방문 1건+ 인플루언서 수
+  measuredInfluencers: number  // 방문자 ≥ N_MIN(실측 신뢰) 인플루언서 수
+  totalVisits: number          // 귀속 매장 방문 총건수
+  categoriesCovered: number    // 데이터 있는 업종 수
+  regionsCovered: number       // 데이터 있는 상권(구) 수
+}
+
+/** 매칭 데이터 준비도(읽기 전용·graceful). 테이블 없거나 비면 전부 0. */
+export async function getMatchingCoverage(DB: D1Database): Promise<MatchingCoverage> {
+  const inflow = (await safeAll<{ total: number; attributed: number }>(DB,
+    `SELECT COUNT(DISTINCT anon_id) AS total,
+            COUNT(DISTINCT CASE WHEN user_id IS NOT NULL AND user_id != '' THEN user_id END) AS attributed
+     FROM inflow_clicks`))[0]
+  const cov = (await safeAll<{ influencers: number; visits: number; categories: number; regions: number; measured: number }>(DB,
+    `WITH ft AS (
+        SELECT user_id, ref_id FROM (
+          SELECT user_id, ref_id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at ASC, id ASC) AS rn
+          FROM inflow_clicks WHERE user_id IS NOT NULL AND user_id != ''
+        ) WHERE rn = 1
+      ),
+      av AS (
+        SELECT ft.ref_id AS influencer_id, vv.user_id AS visitor, vv.voucher_id AS voucher_id,
+               p.category AS category, substr(pr.region_dong_code, 1, 5) AS gu
+        FROM voucher_visits vv
+        JOIN ft ON ft.user_id = vv.user_id
+        LEFT JOIN products p ON p.id = vv.product_id
+        LEFT JOIN product_regions pr ON pr.product_id = vv.product_id
+      ),
+      per_inf AS (SELECT influencer_id, COUNT(DISTINCT visitor) AS v FROM av GROUP BY influencer_id)
+      SELECT
+        (SELECT COUNT(DISTINCT influencer_id) FROM av) AS influencers,
+        (SELECT COUNT(DISTINCT voucher_id) FROM av) AS visits,
+        (SELECT COUNT(DISTINCT category) FROM av WHERE category IS NOT NULL) AS categories,
+        (SELECT COUNT(DISTINCT gu) FROM av WHERE gu IS NOT NULL) AS regions,
+        (SELECT COUNT(*) FROM per_inf WHERE v >= ${N_MIN}) AS measured`))[0]
+  return {
+    totalInflow: Number(inflow?.total) || 0,
+    attributedUsers: Number(inflow?.attributed) || 0,
+    influencersWithData: Number(cov?.influencers) || 0,
+    measuredInfluencers: Number(cov?.measured) || 0,
+    totalVisits: Number(cov?.visits) || 0,
+    categoriesCovered: Number(cov?.categories) || 0,
+    regionsCovered: Number(cov?.regions) || 0,
+  }
+}

@@ -12,7 +12,8 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { intParam } from '@/shared/pagination'
-import { rankInfluencersForStore, getInfluencerMetrics } from './matching'
+import { rankInfluencersForStore, getInfluencerMetrics, getMatchingCoverage, categoryLabel } from './matching'
+import { callClaude } from './claude-client'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -43,6 +44,38 @@ app.get('/influencers/:id', async (c) => {
   if (!/^\d{1,12}$/.test(influencerId)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const metrics = await getInfluencerMetrics(c.env.DB, influencerId)
   return c.json({ success: true, metrics })
+})
+
+// GET /api/admin/matching/coverage — 데이터 준비도(매칭 신뢰도 한눈에)
+app.get('/coverage', async (c) => {
+  const coverage = await getMatchingCoverage(c.env.DB)
+  return c.json({ success: true, coverage })
+})
+
+// POST /api/admin/matching/ai-rationale { category, region } — AI 매칭 근거(집계·가명만 전송)
+app.post('/ai-rationale', async (c) => {
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const category = cleanCategory(typeof b.category === 'string' ? b.category : undefined)
+  const region = cleanRegion(typeof b.region === 'string' ? b.region : undefined)
+  const candidates = await rankInfluencersForStore(c.env.DB, { category, regionPrefix: region, limit: 8 })
+  const measured = candidates.filter((x) => x.confidence !== 'cold')
+  if (!measured.length) {
+    return c.json({ success: true, rationale: '', enough: false, note: '실측 표본이 부족합니다(n<5 억제). 유입→방문 데이터가 쌓이면 AI 근거를 생성합니다.' })
+  }
+  // ⚠️ 집계·가명만 전송 — user_id/PII 없음(공개 handle·집계 지표만). 개인 식별 불가.
+  const lines = measured.map((x, i) =>
+    `${i + 1}. ${x.handle ? '@' + x.handle : '인플루언서#' + x.influencerId} · 적합도 ${x.fitScore}/100 · 매장방문 ${x.visits} · 재방문율 ${x.repeatRate}% · 업종전환 ${x.suppressed ? '표본부족' : x.categoryCvr + '%'}`,
+  ).join('\n')
+  const r = await callClaude(c.env.ANTHROPIC_API_KEY, {
+    system: '너는 유어딜 직영 에이전시의 매칭 애널리스트다. 팔로워가 아니라 실제 전환(매장방문·재방문·업종전환)을 근거로, 이 업종·상권에 어떤 인플루언서를 우선 붙일지 3~4줄로 추천한다. 근거는 주어진 집계 지표만 사용(개인정보 추정 금지). 표본이 얇으면 신중하게 표현.',
+    user: `업종: ${categoryLabel(category)} / 상권코드: ${region || '전체'}\n실측 후보(집계·가명):\n${lines}\n\n어느 인플루언서를 우선 제안할지와 그 근거를 알려줘.`,
+    maxTokens: 700,
+  })
+  if (!r.ok) {
+    const status = r.error === 'NOT_CONFIGURED' ? 503 : 502
+    return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? 'AI 근거는 ANTHROPIC_API_KEY 설정 후 사용할 수 있습니다.' : r.error }, status)
+  }
+  return c.json({ success: true, rationale: r.text, enough: true })
 })
 
 export { app as adminMatchingRoutes }

@@ -147,6 +147,7 @@
   - **어드민 API** `admin-matching.routes.ts`(`/api/admin/matching/*`, **requireAdmin**) — index.ts 마운트. (초기 업체용 `/api/ads/matching`·인플루언서 `/api/matching` 은 방향 확정으로 제거.)
   - 프론트 `InfluencerMatchingPanel`(실데이터+목업 폴백, `crossrole-ok`) 유어애즈 `sec-matching` 마운트 + 나브 — **어드민(`admin_token`)일 때만 노출**(패널·나브·페이지 마운트 모두). (초기 `MyPerformancePage` 제거.)
   - 게이트: 클라 `feature-flags.MATCHING_ENABLED=false` **+ 어드민 로그인**. 테이블(`inflow_clicks`/`voucher_visits`)은 감사 2단계(#514) — 없으면 빈결과.
+- 2026-07-14 — **어드민 도구 완성도 ↑**(읽기 전용·게이트 유지). ① 엔진 `getMatchingCoverage`(데이터 준비도 — 유입/귀속/방문/인플루언서/실측 n≥5/업종·상권 커버리지, graceful) + `GET /api/admin/matching/coverage` + 패널 "데이터 준비도" 스트립. ② `POST /api/admin/matching/ai-rationale` — 후보(집계·가명: 공개 handle·적합도·방문·재방문·업종전환만, **PII 없음**)를 `callClaude`(기존 ANTHROPIC_API_KEY)로 매칭 근거 요약, 실측 표본 없으면 enough:false(생성 안 함) + 키 없으면 NOT_CONFIGURED. 패널 "🤝 AI 매칭 근거" 버튼. 전부 어드민 잠금 유지.
 - 2026-07-14 — **정산(머니) — 별도 커밋·게이트 OFF**. `src/worker/utils/matching-settlement.ts`
   (`computeMatchingSettlement`/`assertPlatformNetIsFee` — 순수 계산: 매칭 커미션은 매장 promo(5% 밖),
   **유어딜 순수취 == 정확히 5%** 커미션과 독립) + `matching-settlement.test.ts`(예산 아비터 모델로 owner-funded
