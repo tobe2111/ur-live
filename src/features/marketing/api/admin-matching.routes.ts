@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { intParam } from '@/shared/pagination'
 import { rankInfluencersForStore, getInfluencerMetrics } from './matching'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -31,7 +32,7 @@ function cleanRegion(v: string | undefined): string | null {
 app.get('/influencers', async (c) => {
   const category = cleanCategory(c.req.query('category'))
   const region = cleanRegion(c.req.query('region'))
-  const limit = Math.max(1, Math.min(50, Number(c.req.query('limit')) || 20))
+  const limit = Math.max(1, Math.min(50, intParam(c.req.query('limit'), 20)))
   const candidates = await rankInfluencersForStore(c.env.DB, { category, regionPrefix: region, limit })
   return c.json({ success: true, candidates, context: { category, region } })
 })
