@@ -1,5 +1,8 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-14 — 유어딜 전면 활성화 지시서 진행 (STEP 2 선결: 공구 엔진 조종석)
+대표 "유어딜 전면 활성화 지시서" — 게이트 OFF로 파킹한 것들을 파일럿 검증하며 순서대로 켬(STEP 0~6). **STEP 0**(net==5% 테스트 green·#479 payout 가드 코드 확인 — 코드측 통과; 어드민 4항목 스모크·발신프로필키 `ALIGO_SENDER_KEY`·파일럿 매장선정은 대표 액션). **STEP 2 선결 = 공구 엔진 조종석(gap A1) 빌드**: 상품별 gb_mode(off/scheduled/live/ended)·특가·마감·소개비율·링크전용 설정 어드민 UI+API. 저장=`product_supply_meta` gb_* 키(SSOT `shared/gb-session.ts` saveGbSession/validateGbSession 호출만). **머니 무접촉·게이트 뒤**(gb_engine_enabled OFF면 엔진이 안 읽어 소비자/결제 무영향). draft PR·CI green 후 대표 보고 → 파일럿(상품1개 live→실카드1건). 남은 STEP 1(flip)·3(위임)·4(매칭)·5(체험)·6(데이터완결+고위험3종)은 대표 대시보드/파일럿 주도.
+
 ## 🔶 2026-07-14 — 유어애즈 독립 Worker(ur-ads) 분리 (대표 "무료 분리" → "나머지 다 진행") — Phase A~C 완료, D 대기
 메인 `_worker.js`(Pages Free gzip 1MB 천장) 압박 해소 + 유어애즈 확장여력 확보를 위해 **유어애즈만** 독립 Worker(Free 3MB)로 분리. 3서비스 연결 유지의 본질 = **같은 D1**(database_id d9530ba6…) 바인딩. 설계 SSOT: `docs/design/urads-worker-split.md`.
 - **Phase A** ✅ (`e227c1e3`) 스캐폴드 — `src/worker-ads/index.ts`(Hono, marketing/admin-ads/shortlink 마운트 + `/__ads/health`). 라이브 영향 0.

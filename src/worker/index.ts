@@ -238,6 +238,7 @@ import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, i
 // 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — 병렬 엔티티(vouchers 무접촉), district-coupon-estimate-2026-07.md
 import { districtPublicRoutes } from '../features/district/api/district-coupon.routes';
 import { districtAdminRoutes } from '../features/district/api/district-coupon-admin.routes';
+import { gbCockpitRoutes } from '../features/group-buy/api/gb-cockpit.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experienceCampaignSellerRoutes } from '../features/group-buy/api/experience-campaign.routes';
@@ -1776,6 +1777,8 @@ app.route('/api/seller-marketing', sellerMarketingRoutes);
 app.route('/api/influencer-settlement', influencerSettlementRoutes);
 app.route('/api/district', districtPublicRoutes);
 app.route('/api/admin/district', districtAdminRoutes);
+// 🎟️ 2026-07-14 공구 엔진 어드민 조종석(STEP 2 선결 — 상품별 gb_mode 설정). 자체 requireAdmin.
+app.route('/api/admin/gb-cockpit', gbCockpitRoutes);
 app.use('/api/admin-payouts/*', requireAdmin());
 app.route('/api/admin-payouts', adminPayoutRoutes);
 app.route('/api/influencer-discover', influencerDiscoverRoutes);
