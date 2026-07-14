@@ -121,8 +121,8 @@ export default function AdminGbCockpitPage() {
   useEffect(() => { void load() }, [load])
 
   return (
-    <AdminLayout>
-      <DashboardPageHeader icon={Rocket} title="공구 엔진 조종석" subtitle="상품별 공구(gb_mode) 설정 — 진행 상태·특가·마감·소개비율" />
+    <AdminLayout title="공구 엔진 조종석">
+      <DashboardPageHeader icon={<Rocket className="w-5 h-5" />} title="공구 엔진 조종석" subtitle="상품별 공구(gb_mode) 설정 — 진행 상태·특가·마감·소개비율" />
 
       {gbEngine === false && (
         <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
