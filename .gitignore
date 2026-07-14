@@ -59,3 +59,4 @@ GoogleService-Info.plist
 # Test/worktree artifacts
 dist-test/
 .claude/worktrees/
+dist-ads/
