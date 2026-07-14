@@ -83,3 +83,15 @@ export const GB_ENGINE_ENABLED = false
  */
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
+/**
+ * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
+ *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
+ *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
+ *         매장·인플루언서 공개 뷰는 데이터·법무 충분해지면(나중).
+ *   ⚠️ 기본 false = 표면 미노출(나브·패널 숨김). **이중 잠금**: 이 플래그 + **어드민 로그인(admin_token)**
+ *      둘 다여야 노출. 서버 API `/api/admin/matching/*` 는 `requireAdmin` 잠금(비어드민 403). 엔진은
+ *      완성·상시(읽기 전용, 데이터 없으면 빈결과 → 목업 미리보기). false→true 즉시 복원.
+ *      정산(머니)은 별도 스위치(env MATCHING_SETTLEMENT_ENABLED) — 이 플래그와 독립.
+ */
+export const MATCHING_ENABLED = false
+

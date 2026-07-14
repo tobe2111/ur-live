@@ -21,7 +21,9 @@ import ContentStudioPanel from './ContentStudioPanel'
 import ServiceMarketplacePanel from './ServiceMarketplacePanel'
 import ShortLinksPanel from './ShortLinksPanel'
 import InfluencerDiscoveryPanel from './InfluencerDiscoveryPanel'
+import InfluencerMatchingPanel from './InfluencerMatchingPanel'
 import OnboardingChecklist from './OnboardingChecklist'
+import { MATCHING_ENABLED } from '@/shared/feature-flags'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
@@ -58,6 +60,8 @@ const authHeader = () => {
 export default function MarketingDashboardPage() {
   const navigate = useNavigate()
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
+  // 체험단 매칭은 어드민 전용 내부 도구 — 플랫폼 어드민(admin_token) 로그인 시만 노출/호출.
+  const isAdminOperator = typeof window !== 'undefined' && !!localStorage.getItem('admin_token')
 
   // 베타 액세스 코드 게이트: 로그인했지만 미해제면 코드 입력 화면으로(직접/북마크 진입 방어).
   //   캐시('ads_unlocked'==='1')면 즉시 통과, 아니면 서버 확인 후 분기.
@@ -466,6 +470,9 @@ export default function MarketingDashboardPage() {
 
       {/* 인플루언서 발굴 — 유튜브 API 로 채널+연락처 수집(인스타/틱톡 링크 교차 수집) */}
       {hasToken && <LazyMount id="sec-influencers"><InfluencerDiscoveryPanel /></LazyMount>}
+
+      {/* 체험단 매칭(성과기반) — 어드민 전용 내부 도구. 게이트 OFF(MATCHING_ENABLED) + 어드민 로그인 시만 노출 */}
+      {hasToken && MATCHING_ENABLED && isAdminOperator && <LazyMount id="sec-matching"><InfluencerMatchingPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (
