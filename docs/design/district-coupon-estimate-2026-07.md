@@ -74,3 +74,38 @@
 - WP2는 반드시 격리 PR + staging 실정산 검증(머니). 원장/payout 파일 로직 무변경(조합·호출만).
 - 서비스 분리 규칙 부합(상권 쿠폰 = 딜·유상과 별개 무상 유형).
 - 2단계(OCR 자동검증·자동탐지)는 별도 견적 — 1단계 안정화 후.
+
+---
+
+## 9. 경로 B — 온라인 결제 자동발급 (2026-07-13 구현, 게이트 OFF·별도 draft PR)
+
+대표 확정 "(b) 전면 구현". 페이백을 **두 참여 경로**로 확장:
+
+| | 경로 A (오프라인 방문) | 경로 B (온라인 유입) |
+|---|---|---|
+| 트리거 | 영수증 사진 등록 → **어드민 승인** | 유어딜 **결제 완료** 감지(승인 자리를 결제가 대체) |
+| 발급 | 승인 시 쿠폰 발급 | 기준액 이상 + 행사기간 내 자동 발급 |
+| 쿠폰 | 동일 엔티티(`district_coupons`) · 동일 지갑 · 동일 정산 | 좌동 |
+| 데이터 모델 | `district_receipts` source='receipt' | source='online' **자동승인 영수증 행**(승인큐 안 탐) |
+
+**핵심 설계 결정 (대표 승인 4제약)**:
+1. **결제 성공 경로 영향 0** — `/confirm` 의 `_confirmSideFx`(waitUntil 후처리)에서 호출 + `autoIssueDistrictCouponForOrder` 완전 fail-soft(절대 throw 안 함). 발급 실패가 결제 롤백 못 함. `DISTRICT_AUTO_ISSUE_ENABLED`(env, 기본 OFF) 미설정 시 `/confirm` byte-동일.
+2. **1인 한도 A/B 합산** — 경로 B 도 `district_receipts` 행(source='online', 자동 status='approved')을 만들어, 기존 월 캡 쿼리(`status IN('submitted','approved')`)가 **A·B 자동 합산**(한도 로직 무변경).
+3. **결제건 1회 발급** — `source_ref = order_number` UNIQUE(campaign) 멱등 + 쿠폰 `UNIQUE(receipt_id)` 이중방어. `card_approval_no` 는 `PAY:{order}` 로 비충돌 유지(비파괴).
+4. **재원 분리** — `district_campaigns.auto_issue_funding_source`('foundation'/'urteam') + 쿠폰 `funding_source` 스탬프 + 예산 가드 2풀(`budget_total`=재단 / `budget_urteam`=유어팀). **원장 무접촉 — 컬럼 태그 + 집계 GROUP BY**(WP2 원장→payout 은 여전히 격리 PR). 리포트에 경로 A/B × 재원 구분 지표(유입효과·재원 정산).
+
+**행사 기간 게이트(상시 아님)**: `withinCampaignWindow(starts_at, ends_at, now)` — 기간 밖 비발급. 기준액은 경로 A 의 `reward_tiers` 재사용(서버 권위).
+
+**활성 순서(대표 조건 ①)**: main 머지 금지 → staging 실결제 검증(파일럿 매장 결제 → 쿠폰 1장 + A/B 한도 합산 + 재원별 예산 가드 + 중복결제 재발급 0) → 통과 후 머지 → env `DISTRICT_AUTO_ISSUE_ENABLED=true` + 캠페인 `auto_issue_enabled`.
+
+### 9-1. 알림톡 배선 (2026-07-13, 게이트 뒤)
+쿠폰 지급·반려·만료 임박에 **`dispatchNotification`**(채널 추상화 — dashboard/email/alimtalk/push, `notification_channel_settings` 기반) 연결. 인앱 알림은 **항상**(현행), 알림톡은 게이트 뒤.
+- **게이트(3중, 전부 OFF 기본)**: ① Aligo 콘솔에 `district_coupon_issued/rejected/expiring` 템플릿 등록·심사 ② 어드민 채널설정에서 해당 type `alimtalk` 켜기 ③ env `DISTRICT_ALIMTALK_ENABLED=true`. ③ OFF 면 인앱만(byte-동일).
+- **failover**: 알림톡→SMS 는 기존 `ALIMTALK_SMS_FAILOVER` 인프라 그대로(코드 작업 0 — Aligo 발신번호 등록 + env 플래그).
+- **템플릿 SSOT**: `src/lib/alimtalk-templates.ts` `ALL_USED` 에 3코드 등록(콘솔 승인 후 DOCUMENTED 로 이동).
+
+### 9-2. 만료 임박 cron 로직 (신설 — `district-coupon-expire.ts`, 별도 보고)
+상권 쿠폰은 만료가 **lazy**(사용 CAS 가 `expires_at` 검증, `/my` 는 CASE 로 'expired' 표시)라 ① 사전 알림 없음 ② status 미전이로 리포트 비결정 가능성. 신설 cron(일 1회, stay/meal-voucher expire 와 동시 `0 9 * * *`|`0 0 * * *`):
+1. **만료 임박(D-3) 알림** — `status='unused' AND expiry_notified_at IS NULL AND expires_at ∈ (now, now+3d]` 쿠폰을 **선점 CAS**(`SET expiry_notified_at WHERE ... IS NULL`)로 마킹 후 알림 → **쿠폰당 1회**(재실행/동시성 이중발송 0). 신규 컬럼 `district_coupons.expiry_notified_at`(dedup).
+2. **만료 스위핑** — `status='unused' AND expires_at<=now` → `status='expired'`. **멱등·머니 0**(만료=소멸, 원장/딜/유어딜5% 무접촉 — 환불/역전 없음). 사용 CAS 가 이미 만료 가드 보유라 스위핑 없어도 이중사용 불가 — 스위핑은 **리포트 결정론(lapsed 확정)** 목적.
+- best-effort — 실패해도 다음 실행 재시도(선점 CAS 라 중복 알림 없음). 결제/정산 무관.

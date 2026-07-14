@@ -399,6 +399,11 @@ export async function handleCronScheduled(
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])
     }))
+    // 🧾 2026-07-13: 상권 쿠폰 만료 임박(D-3) 알림 + 만료 스위핑(status='expired'). 병렬 엔티티·머니 0.
+    ctx.waitUntil(safeCron('district-coupon-expire', async () => {
+      const { runDistrictCouponExpireCron } = await import('./cron/district-coupon-expire')
+      await runDistrictCouponExpireCron(env as Parameters<typeof runDistrictCouponExpireCron>[0])
+    }))
     // 🛡️ 2026-06-12 (전수조사 4차 B-6): 체크아웃 +1일 경과 confirmed → checked_out 자동 전이 (리뷰 게이트 해제).
     ctx.waitUntil(safeCron('stay-checkout-transition', async () => {
       const { handleStayCheckoutTransition } = await import('./cron/stay-checkout-transition')

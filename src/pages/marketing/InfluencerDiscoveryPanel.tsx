@@ -40,6 +40,7 @@ export default function InfluencerDiscoveryPanel() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
   const [onlyContact, setOnlyContact] = useState(false)
+  const [keyIssue, setKeyIssue] = useState(false)
 
   const load = useCallback(async () => {
     setErr(false)
@@ -52,13 +53,18 @@ export default function InfluencerDiscoveryPanel() {
 
   async function discover() {
     if (keyword.trim().length < 2) { toast.error('키워드를 2자 이상 입력해주세요'); return }
-    setBusy(true)
+    setBusy(true); setKeyIssue(false)
     try {
       const r = await api.post('/api/ads/influencers/discover', { keyword: keyword.trim(), platform, max: 20 }, { headers: authHeader() })
       if (r.data?.success) {
         setLeads(r.data.leads || [])
         toast.success(`${r.data.found}명 발굴 · ${r.data.saved}명 신규 저장`)
-      } else toast.error(r.data?.error || '발굴 실패')
+      } else {
+        // YouTube 키가 서버 호출을 거부(forbidden/미설정) → 콘솔 조치 안내를 화면에 노출.
+        const msg = String(r.data?.error || '')
+        if (platform === 'youtube' && (r.data?.code === 'FAILED' || r.data?.code === 'NOT_CONFIGURED' || /forbidden|검색 실패|설정/.test(msg))) setKeyIssue(true)
+        toast.error(r.data?.error || '발굴 실패')
+      }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '발굴 실패')
     } finally { setBusy(false) }
@@ -123,6 +129,20 @@ export default function InfluencerDiscoveryPanel() {
         <input className={`flex-1 ${input}`} placeholder={platform === 'youtube' ? '예: 뷰티 리뷰, 캠핑, 홈트, 맛집' : '제공사 연동 후 사용 가능'} value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') discover() }} disabled={platform !== 'youtube' && !providerReady} />
         <button onClick={discover} disabled={busy || (platform !== 'youtube' && !providerReady)} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '수집 중…' : '발굴하기'}</button>
       </div>
+
+      {/* 유튜브 API 키 제한 안내 (forbidden 시) */}
+      {keyIssue && (
+        <div className="mt-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-3 text-[11.5px] text-red-800 dark:text-red-300 leading-relaxed">
+          <b>YouTube 수집이 키 제한으로 막혀 있습니다.</b> Google Cloud Console에서 2분이면 해결됩니다:
+          <ol className="mt-1.5 ml-4 list-decimal space-y-0.5">
+            <li>API 및 서비스 → 사용자 인증 정보 → <b>YOUTUBE_API_KEY</b> 클릭</li>
+            <li><b>애플리케이션 제한사항 → "없음"</b> (HTTP 리퍼러·IP 제한은 서버 호출에서 막힘)</li>
+            <li><b>API 제한사항 → "YouTube Data API v3"</b> 허용에 포함</li>
+            <li>해당 프로젝트에서 <b>YouTube Data API v3 사용 설정(Enabled)</b> 확인</li>
+          </ol>
+          <span className="block mt-1.5 text-red-600 dark:text-red-400">설정 후 재배포 없이 즉시 동작합니다.</span>
+        </div>
+      )}
 
       {/* 준법 안내 */}
       <p className="mt-2 text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
