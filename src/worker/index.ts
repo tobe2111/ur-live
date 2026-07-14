@@ -1094,6 +1094,10 @@ app.get('/api/health', async (c) => {
 // Extended health routes: /api/health/detailed, /api/health/circuits
 // ⚠️ Mounted under a sub-path so it does NOT shadow the inline GET /api/health above.
 app.route('/api/health/detailed', healthRoutes);
+// 🔔 2026-07-01: 직관적 경로 별칭도 마운트 — /api/health/env-readiness · /migrations · /circuits.
+//   인라인 GET /api/health(위, 먼저 등록)가 exact 매치를 이기므로 basic health 는 shadow 되지 않고,
+//   서브경로(env-readiness 등)만 healthRoutes 로 라우팅됨. 기존 /api/health/detailed/* 도 유지(하위호환).
+app.route('/api/health', healthRoutes);
 
 // ============================================================
 // 🔒 BOOTSTRAP: 대시보드 비밀번호 재설정

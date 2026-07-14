@@ -55,7 +55,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 const CHANNEL_ROWS: Array<{ label: string; keys: string[] }> = [
   { label: '웹푸시', keys: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'] },
   { label: '이메일', keys: ['RESEND_API_KEY'] },
-  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID'] },
+  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID', 'ALIGO_SENDER_KEY'] },
   { label: '네이티브푸시', keys: ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'] },
 ]
 
