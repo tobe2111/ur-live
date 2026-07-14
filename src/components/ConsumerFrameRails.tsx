@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { QRCodeSVG } from 'qrcode.react'
+// 🟢 2026-07-13 [UNLOCK_LOADING]: qrcode.react static → lazy (LinkshopVisitorRails 와 동일 패턴).
+//   이 static import 때문에 route-chunk-map 이 홈 표면 폐쇄에 `codes`(qrcode/barcode 18KB) 를 포함 →
+//   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱
+//   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
+const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
 import { Home, ShoppingBag, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -88,7 +92,9 @@ export default function ConsumerFrameRails() {
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-white dark:bg-white p-2 flex items-center justify-center shrink-0">
                 {url ? (
-                  <QRCodeSVG value={url} size={84} fgColor="#0A0A0A" bgColor="#ffffff" level="M" />
+                  <Suspense fallback={<div className="w-[84px] h-[84px]" />}>
+                    <QRCodeSVG value={url} size={84} fgColor="#0A0A0A" bgColor="#ffffff" level="M" />
+                  </Suspense>
                 ) : (
                   <div className="w-[84px] h-[84px]" />
                 )}
