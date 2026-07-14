@@ -126,7 +126,7 @@ adminUsersRoutes.get('/users', rateLimit({ action: 'admin_user_list', max: 60, w
     });
     // 🚨 대량 스크래핑 신호(깊은 페이지네이션) 알림 — 정상 CS 는 앞쪽 페이지만 본다.
     if (offset >= 2000) {
-      const admin = c.get('user') as { id?: string | number; email?: string } | undefined;
+      const admin = c.get('user' as never) as { id?: string | number; email?: string } | undefined;
       void sendAlert(c.env, {
         title: '어드민 유저목록 대량 열람',
         message: `admin=${admin?.email ?? admin?.id ?? '?'} page=${page} offset=${offset} search=${search || '-'}`,
