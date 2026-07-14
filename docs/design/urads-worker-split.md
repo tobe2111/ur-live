@@ -84,6 +84,9 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
 - **Phase D 순서**: 로컬 폴백(메인의 marketing 마운트)을 게이트 검증 전에 지우면 OFF 상태에서 유어애즈 다운 → §4 순서 엄수.
 - **CI**: ur-ads 는 별도 `wrangler deploy` 스텝(메인 Pages 배포와 독립). 메인 CLAUDE.md "Pages 단일배포" 룰은 *메인*에 한정 — ads Worker 의 `wrangler deploy` 는 예외로 허용(본 문서가 근거).
 
+> ⚠️ **Pages 는 바인딩/env 변경 후 "새 배포"부터 적용** — 서비스바인딩(`ADS`)이나 `ADS_WORKER_ENABLED` 를
+> 설정해도 *그 시점 이전에 만들어진 활성 배포*엔 안 실린다. 설정 후 반드시 **새 배포를 트리거**(push/재배포)해야 켜짐.
+
 ## 8. 컷오버 절차 (Phase C 게이트 ON — 대표 + 검증)
 1. **사전**: `deploy-ads.yml` 로 ur-ads 최신 코드 배포됨(✅ run 성공) + §5-2 D1 바인딩 + §5-3 시크릿 완료.
 2. **메인 Pages 서비스바인딩**: §5-4 `ADS` → `ur-ads` (메인 ur-live Pages 에서).
@@ -92,6 +95,16 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
    `/__ads/health`(ur-ads 직접은 서비스바인딩 전용이라 메인 경유 경로로) 확인. 기존 베타 사용자 재로그인 안내.
 5. **문제 시 롤백**: `ADS_WORKER_ENABLED` 제거/false → 재배포 → 메인 로컬 처리로 즉시 복귀(위임 실패 폴백도 있음).
 6. **안정 후**: Phase D(메인 marketing 코드 제거)로 `_worker.js` 용량 회복.
+
+### 8-1. 컷오버 검증 방법 (외부에서 확정)
+ur-ads 응답엔 `X-Served-By: ur-ads` 헤더가 실림(메인 로컬 폴백엔 없음). 위임 실패 시 폴백이 200을 반환하므로
+기능 테스트만으론 구분 불가 → **헤더로 확정**:
+```
+curl -s -D - -o /dev/null https://live.ur-team.com/api/ads/ping | grep -i x-served-by
+```
+- `x-served-by: ur-ads` 있으면 → **ur-ads 경유 확정(컷오버 성공)**.
+- 없으면 → 아직 메인 로컬 처리. 점검: ① `ADS_WORKER_ENABLED=true`(Production 환경, 오타 없이) ② `ADS`
+  서비스바인딩 존재 ③ **설정 후 새 배포를 만들었는지**(Pages 는 재배포 전엔 미적용). 셋 확인 후 재배포.
 
 ## 7. 구현 로그
 - Phase A (스캐폴드): commit `e227c1e3` — 설계 + `src/worker-ads/index.ts` 엔트리(라이브 영향 0).
