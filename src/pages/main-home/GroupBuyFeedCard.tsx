@@ -9,7 +9,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
@@ -183,6 +183,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
                 if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
+            onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

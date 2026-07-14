@@ -148,7 +148,13 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (src.startsWith('/api/media/')) {
     const w = opts.width || 400
     const q = opts.quality || 85
-    return `/cdn-cgi/image/width=${w},quality=${q},format=auto/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+    // 🛡️ 2026-07-14 (대표 신고 "이미지가 떴다 안 떴다 불안정"): onerror=redirect 추가.
+    //   피드가 카드 수십~수백 장을 동시에 열면 zone 리사이저가 콜드-fetch 를 그만큼 동시 수행 →
+    //   일부가 순간 타임아웃(524) 시 기존엔 그냥 깨졌음(캐시 후 새로고침하면 정상 = "불안정" 체감).
+    //   onerror=redirect = 리사이즈 실패 시 Cloudflare 가 원본(media.ur-team.com/<key>, 항상 200)으로
+    //   302 → 브라우저가 원본 로드(자가치유). 라이브 실측: 유효 이미지 200 유지 + param 수용 확인.
+    //   외부 호스트 분기(아래)가 이미 쓰는 패턴을 업로드 이미지에도 확장(제거 아님 — additive).
+    return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
   }
   if (src.startsWith('/api/upload/')) {
     if (typeof window !== 'undefined') {
@@ -247,4 +253,24 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number): str
   return [1, 2, 3]
     .map(dpi => `${cfImage(src, { width: baseWidth * dpi })} ${dpi}x`)
     .join(', ')
+}
+
+/**
+ * 🛡️ 2026-07-14 <img onError> 자가치유 폴백 (대표 "이미지 불안정" — 영구 해결 2계층).
+ *
+ * cfImage 변환 URL(리사이즈/외부프록시)이 로드 실패하면 **원본으로 1회 교체 + 표시 복원**.
+ *  - `/api/media/*` 원본 = 워커가 R2 바인딩으로 직접 서빙(리사이저·커스텀도메인 둘 다 우회 — 항상 200).
+ *  - onerror=redirect(서버측 1차 자가치유)마저 실패하는 극단 케이스의 최종 안전망(클라 3차).
+ * 무한루프 방지(1회 플래그) + srcset 제거(원본만) + opacity 복원(하단 카드 숨김 방지).
+ *
+ * 사용: `<img onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} .../>`
+ */
+export function cfImageOnError(img: HTMLImageElement | null | undefined, originalSrc?: string | null): void {
+  if (!img || img.dataset.cfFallback === '1') return
+  img.dataset.cfFallback = '1'
+  img.style.opacity = '1'
+  if (originalSrc && img.getAttribute('src') !== originalSrc) {
+    img.removeAttribute('srcset')
+    img.src = originalSrc
+  }
 }
