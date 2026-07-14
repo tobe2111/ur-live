@@ -22,21 +22,26 @@ interface Lead {
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; collected_at: string
 }
-interface Sources { youtube: boolean; instagram: boolean; tiktok: boolean }
+interface Sources { youtube: boolean; naver_blog: boolean; instagram: boolean; tiktok: boolean }
 
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
 const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 const STATUS_KO: Record<string, string> = { new: '신규', contacted: '컨택함', rejected: '제외' }
-const PLATFORMS = [{ id: 'youtube', label: '유튜브' }, { id: 'instagram', label: '인스타그램' }, { id: 'tiktok', label: '틱톡' }] as const
+const PLATFORMS = [{ id: 'youtube', label: '유튜브' }, { id: 'naver_blog', label: '네이버 블로그' }, { id: 'instagram', label: '인스타그램' }, { id: 'tiktok', label: '틱톡' }] as const
+// 카테고리 프리셋 — 클릭 시 키워드 자동 입력(발굴은 키워드 기반).
+const CATEGORIES = ['뷰티', '맛집', '패션', '여행', '캠핑', '육아', '홈트/운동', 'IT/테크', '반려동물', '인테리어', '재테크', '요리'] as const
+const MIN_SUBS = [{ v: 0, l: '전체' }, { v: 10000, l: '1만+' }, { v: 50000, l: '5만+' }, { v: 100000, l: '10만+' }, { v: 500000, l: '50만+' }] as const
 
 const igUrl = (h: string) => `https://instagram.com/${h}`
 const ttUrl = (h: string) => `https://tiktok.com/@${h}`
 
 export default function InfluencerDiscoveryPanel() {
   const [leads, setLeads] = useState<Lead[]>([])
-  const [sources, setSources] = useState<Sources>({ youtube: false, instagram: false, tiktok: false })
-  const [platform, setPlatform] = useState<'youtube' | 'instagram' | 'tiktok'>('youtube')
+  const [sources, setSources] = useState<Sources>({ youtube: false, naver_blog: false, instagram: false, tiktok: false })
+  const [platform, setPlatform] = useState<'youtube' | 'naver_blog' | 'instagram' | 'tiktok'>('youtube')
   const [keyword, setKeyword] = useState('')
+  const [minSubs, setMinSubs] = useState(0)
+  const [sortBy, setSortBy] = useState<'subs' | 'recent'>('subs')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
   const [onlyContact, setOnlyContact] = useState(false)
@@ -96,9 +101,16 @@ export default function InfluencerDiscoveryPanel() {
       ['이름', '플랫폼', '핸들', '구독자', 'URL', '이메일', '인스타', '틱톡', '링크', '국가', '상태', '메모'], rows)
   }
 
-  const shown = onlyContact ? leads.filter(l => l.email || l.instagram || l.tiktok || l.links) : leads
-  const contactCount = leads.filter(l => l.email || l.instagram || l.tiktok || l.links).length
+  const hasContact = (l: Lead) => !!(l.email || l.instagram || l.tiktok || l.links)
+  const shown = leads
+    .filter(l => (onlyContact ? hasContact(l) : true))
+    .filter(l => l.subscriber_count >= minSubs)
+    .slice()
+    .sort((a, b) => sortBy === 'recent' ? b.id - a.id : b.subscriber_count - a.subscriber_count)
+  const contactCount = leads.filter(hasContact).length
   const providerReady = sources.instagram || sources.tiktok
+  const freePlatform = platform === 'youtube' || platform === 'naver_blog' // 무료 즉시 발굴 가능
+  const canDiscover = freePlatform || providerReady
 
   return (
     <div className={`mt-3 ${card}`}>
@@ -126,9 +138,18 @@ export default function InfluencerDiscoveryPanel() {
 
       {/* 발굴 폼 */}
       <div className="mt-2 flex gap-2">
-        <input className={`flex-1 ${input}`} placeholder={platform === 'youtube' ? '예: 뷰티 리뷰, 캠핑, 홈트, 맛집' : '제공사 연동 후 사용 가능'} value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') discover() }} disabled={platform !== 'youtube' && !providerReady} />
-        <button onClick={discover} disabled={busy || (platform !== 'youtube' && !providerReady)} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '수집 중…' : '발굴하기'}</button>
+        <input className={`flex-1 ${input}`} placeholder={freePlatform ? '예: 뷰티 리뷰, 캠핑, 홈트, 맛집' : '제공사 연동 후 사용 가능'} value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') discover() }} disabled={!canDiscover} />
+        <button onClick={discover} disabled={busy || !canDiscover} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '수집 중…' : '발굴하기'}</button>
       </div>
+
+      {/* 카테고리 프리셋 — 클릭 시 키워드 입력(발굴은 버튼으로) */}
+      {freePlatform && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setKeyword(cat)} className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold ${keyword === cat ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'border border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300'}`}>{cat}</button>
+          ))}
+        </div>
+      )}
 
       {/* 유튜브 API 키 제한 안내 (forbidden 시) */}
       {keyIssue && (
@@ -151,13 +172,26 @@ export default function InfluencerDiscoveryPanel() {
 
       {err && <PanelError onRetry={load} />}
 
-      {/* 리드 목록 */}
+      {/* 리드 목록 헤더 + 필터 */}
       {leads.length > 0 && (
-        <div className="mt-3 flex items-center justify-between text-[12px]">
-          <span className="text-gray-500 dark:text-gray-400">총 {formatNumber(leads.length)}명 · 연락처 확보 {formatNumber(contactCount)}명</span>
-          <label className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer">
-            <input type="checkbox" checked={onlyContact} onChange={e => setOnlyContact(e.target.checked)} /> 연락처 있는 것만
-          </label>
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between text-[12px] flex-wrap gap-2">
+            <span className="text-gray-500 dark:text-gray-400">총 {formatNumber(leads.length)}명 · 표시 {formatNumber(shown.length)} · 연락처 {formatNumber(contactCount)}</span>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={onlyContact} onChange={e => setOnlyContact(e.target.checked)} /> 연락처만
+              </label>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as 'subs' | 'recent')} className="rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 py-1 text-[11px] text-gray-700 dark:text-gray-200">
+                <option value="subs">구독자순</option>
+                <option value="recent">최근 수집순</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {MIN_SUBS.map(m => (
+              <button key={m.v} onClick={() => setMinSubs(m.v)} className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${minSubs === m.v ? 'bg-blue-600 text-white' : 'border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400'}`}>{m.l}</button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -170,8 +204,11 @@ export default function InfluencerDiscoveryPanel() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <a href={l.url} target="_blank" rel="noreferrer" className="text-[13.5px] font-bold text-gray-900 dark:text-white hover:underline">{l.name}</a>
-                  <span className="text-[11.5px] text-gray-500 dark:text-gray-400">구독 {formatNumber(l.subscriber_count)}</span>
-                  {l.country && <span className="text-[10.5px] text-gray-400">{l.country}</span>}
+                  <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A2030] text-[10px] font-bold text-gray-500 dark:text-gray-400">{l.platform === 'naver_blog' ? '블로그' : l.platform === 'youtube' ? '유튜브' : l.platform}</span>
+                  {l.platform === 'naver_blog'
+                    ? <span className="text-[11.5px] text-gray-500 dark:text-gray-400">매칭 글 {formatNumber(l.video_count)}</span>
+                    : <span className="text-[11.5px] text-gray-500 dark:text-gray-400">구독 {formatNumber(l.subscriber_count)}</span>}
+                  {l.country && l.platform !== 'naver_blog' && <span className="text-[10.5px] text-gray-400">{l.country}</span>}
                 </div>
                 {/* 연락처 chips */}
                 <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
