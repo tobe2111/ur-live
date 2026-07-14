@@ -37,8 +37,10 @@ jobs:
 
       - name: Verify secrets
         run: |
-          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
-            echo "❌ CLOUDFLARE_API_TOKEN 미설정 — GitHub repo Settings → Secrets 에 등록 필요 (d1-migrate.yml 과 동일 secret)"
+          # 🔑 2026-07-14: 백업 전용 토큰 우선(CLOUDFLARE_D1_BACKUP_TOKEN, D1:Edit 최소권한) →
+          #   없으면 기존 CLOUDFLARE_API_TOKEN 폴백. 배포 토큰을 안 건드리고 D1 export 권한만 분리.
+          if [ -z "${{ secrets.CLOUDFLARE_D1_BACKUP_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "❌ 토큰 미설정 — GitHub repo Settings → Secrets 에 CLOUDFLARE_D1_BACKUP_TOKEN(권장, D1:Edit) 또는 CLOUDFLARE_API_TOKEN 등록 필요"
             exit 1
           fi
           if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
@@ -48,7 +50,7 @@ jobs:
 
       - name: Export D1 (remote)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_BACKUP_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           # DB 이름 SSOT: wrangler.toml:33 (database_name = "toss-live-commerce-db")
