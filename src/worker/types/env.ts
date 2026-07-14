@@ -219,4 +219,14 @@ export interface Env {
   // Note: env.ASSETS is automatically available when [assets] is configured
   // No explicit binding needed in wrangler.toml
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+
+  // ---- 🎯 유어애즈 독립 Worker(ur-ads) Service Binding (2026-07-14) ----
+  //   설계 SSOT: docs/design/urads-worker-split.md. 메인 Pages(ur-live) → Settings → Functions →
+  //   Service bindings 에서 Variable name `ADS` → Service `ur-ads` 로 바인딩(대표 Cloudflare 셋업).
+  //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
+  //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
+  ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
+  //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
+  ADS_WORKER_ENABLED?: string;
 }

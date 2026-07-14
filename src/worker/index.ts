@@ -980,6 +980,30 @@ app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
 app.route('/', blogSeoRoutes);
 
+// ============================================================
+// 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
+//   설계 SSOT: docs/design/urads-worker-split.md.
+//   ADS_WORKER_ENABLED==='true' + env.ADS 바인딩이 있으면 /api/ads/* · /l/* 를 ur-ads 로 위임.
+//   ⚠️ 기본 OFF(미설정/미바인딩) = 아래 로컬 마운트(marketingRoutes/shortLinkRedirectRoutes)가 그대로
+//      처리 → 라이브 byte-동일. 위임 중 예외가 나면 next() 로 폴백(로컬 처리) — 안전망.
+//   /api/admin/ads/* 는 위임하지 않고 메인 유지(메인 어드민 JWT 사용).
+app.use('*', async (c, next) => {
+  const ads = c.env.ADS;
+  if (c.env.ADS_WORKER_ENABLED === 'true' && ads?.fetch) {
+    const p = new URL(c.req.url).pathname;
+    const isAdsApi = p === '/api/ads' || p.startsWith('/api/ads/');
+    const isShortLink = p === '/l' || p.startsWith('/l/');
+    if (isAdsApi || isShortLink) {
+      try {
+        return await ads.fetch(c.req.raw);
+      } catch {
+        // ur-ads 위임 실패 → 로컬 폴백(아래 마운트가 처리). 라이브 중단 방지.
+      }
+    }
+  }
+  await next();
+});
+
 app.route('/', shortLinkRedirectRoutes); // 🔗 유어애즈 단축링크 공개 리다이렉트 /l/{code} (생성은 /api/ads/links)
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
