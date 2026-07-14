@@ -1004,6 +1004,15 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// 🔎 유어애즈 컷오버 상태 진단 — 메인 런타임이 게이트/바인딩을 실제로 보는지 확정(불리언만, 시크릿/값 노출 0).
+//   프록시 대상 아님(경로가 /api/ads/* 가 아님) → 항상 메인이 응답 → 메인의 env 뷰를 그대로 보고.
+//   gate=true && adsBound=true 인데 /api/ads/ping 에 X-Served-By 가 없으면 = 헤더 스트립(실은 위임 성공).
+//   둘 중 하나라도 false = 컷오버 미적용(Cloudflare 설정/재배포 필요).
+app.get('/api/_diag/ads-cutover', (c) => c.json({
+  gate: c.env.ADS_WORKER_ENABLED === 'true',
+  adsBound: !!(c.env.ADS && c.env.ADS.fetch),
+}));
+
 app.route('/', shortLinkRedirectRoutes); // 🔗 유어애즈 단축링크 공개 리다이렉트 /l/{code} (생성은 /api/ads/links)
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
