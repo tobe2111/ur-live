@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-14 — 유어애즈 독립 Worker(ur-ads) 분리 (대표 "무료 분리" → "나머지 다 진행") — Phase A~C 완료, D 대기
+메인 `_worker.js`(Pages Free gzip 1MB 천장) 압박 해소 + 유어애즈 확장여력 확보를 위해 **유어애즈만** 독립 Worker(Free 3MB)로 분리. 3서비스 연결 유지의 본질 = **같은 D1**(database_id d9530ba6…) 바인딩. 설계 SSOT: `docs/design/urads-worker-split.md`.
+- **Phase A** ✅ (`e227c1e3`) 스캐폴드 — `src/worker-ads/index.ts`(Hono, marketing/admin-ads/shortlink 마운트 + `/__ads/health`). 라이브 영향 0.
+- **Phase B** ✅ (`2324c0da`) 배포 파이프라인 — `wrangler-ads.toml` + `scripts/build-worker-ads.js`(esbuild @/ alias) + `.github/workflows/deploy-ads.yml`. 대표 Cloudflare 셋업(ur-ads Worker + D1 바인딩 + 4시크릿) 완료 → **첫 배포 성공**(Actions run success).
+- **Phase C** ✅ (이 커밋) 게이트드 프록시 — 메인 `index.ts` `app.use('*')` 위임 미들웨어 + Env `ADS`(서비스바인딩)/`ADS_WORKER_ENABLED`. `ADS_WORKER_ENABLED==='true'` + `env.ADS` 있으면 `/api/ads/*`·`/l/*` 를 `env.ADS.fetch(req)` 위임(실패 시 로컬 폴백). `/api/admin/ads/*` 는 메인 유지(어드민 JWT). **기본 OFF/미바인딩 = 라이브 byte-동일**.
+- **⏳ 대표 액션(컷오버 §8)**: ① 메인 ur-live Pages → Settings → Functions → Service bindings 에 `ADS`→`ur-ads`(⚠️ ur-ads 가 아니라 *메인 Pages* 에 만듦 — ur-ads Bindings 탭엔 안 보임). ② 메인 Pages env `ADS_WORKER_ENABLED=true` + **재배포**. ③ 검증(`/l/<code>` 리다이렉트·대시보드 로그인/발굴). 기존 베타 사용자는 1회 재로그인(ur-ads 자체 JWT_SECRET — 메인값 분실).
+- **Phase D**(미착수): ⚠️ **Phase C 게이트 prod ON·검증 후에만** 메인에서 marketing 코드 제거 → `_worker.js` 용량 회복. 순서 역전 금지(폴백 먼저 지우면 OFF 상태 다운).
+
 ## 🔶 2026-07-13 — 상권 쿠폰 경로 B(온라인 결제 자동발급) 구현 (대표 "(b) 전면 구현", draft·미배포)
 페이백을 두 경로로 확장: 경로 A(오프라인 영수증→어드민 승인, **이미 라이브**) + **경로 B(유어딜 결제→기준액 이상 자동발급, 신규)**. 게이트 `DISTRICT_AUTO_ISSUE_ENABLED`(env, 기본 OFF) + 캠페인 `auto_issue_enabled` + 행사기간. 병렬 엔티티(딜/유어딜5%/원장 무접촉). 대표 4제약: ①결제 성공 영향 0(waitUntil 후처리+fail-soft) ②재원 2풀(foundation/urteam) ③source='online' 자동승인 영수증 행+source_ref 멱등 ④발급 실패가 결제 롤백 못 함.
 - **⚠️ 대표 조건 ①: draft PR·main 머지 금지 — staging 실결제 검증 후에만 머지.** 검증: 파일럿 매장 결제→쿠폰 1장 + 1인 한도 A/B 합산 + 재원별 예산 가드 + 중복결제 재발급 0.
