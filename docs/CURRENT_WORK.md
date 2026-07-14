@@ -222,6 +222,7 @@ pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**
 - **콘솔 등록 문서** `docs/kakao-alimtalk-templates.md` 전면 재작성: 소비자 24종·도매 4종 각 tpl_code·대상·발송시점·**본문(#{변수}, 코드와 글자일치)**·변수설명. ⚠️ **1코드 2문안 2건**(`seller_approved` 신규/재활성, `business_registration_result` 승인/반려)은 카카오 1코드1본문 원칙 위배 → 코드분리/변수화 필요 명시. 셀러 자체계정 발송(order_confirm 등 alimtalk-auto)·미배선(이용권 구매완료/사용 없음) 구분 명시.
 - **확인수단 개선**: `/api/health/env-readiness`(admin)가 `ALIGO_API_KEY`만 보던 것 → **3종(+`ALIGO_USER_ID`·`ALIGO_SENDER_KEY`)** 전부 보고. 또 이 엔드포인트가 `/api/health/detailed/env-readiness`에만 있어 대표가 기대한 `/api/health/env-readiness`가 404였음 → index.ts에 **`app.route('/api/health', healthRoutes)` 별칭 additive**(인라인 `/api/health` 먼저 등록이라 shadow 0 — Hono 실측 검증). `/api/version`·어드민 채널배지 알림톡 판정도 `ALIGO_SENDER_KEY` 포함(3종).
 - 검증: tsc 0 · 전체 2443 pass · build 0 · api-auth(admin 마운트 requireAdmin 상속)·theme·bind·file-size 가드 0.
+  - **후속(머지 충돌 해결 + 신규 템플릿 반영)**: main 병합 중 타 세션이 같은 SSOT에 추가한 `voucher_used`(이용권 사용 완료)·`fcfs_selected`/`fcfs_replacement`(체험단)·`district_coupon_*`(상권쿠폰, 게이트 뒤)와 SMS failover 배선을 발견 → 충돌 해결(내 CONSUMER/WHOLESALE 구조 유지 + 신규코드는 미문서/pending 그룹으로). 문서에 `voucher_used`(대표가 물은 "이용권 사용"=이미 배선됨) 본문·fcfs 2종 추가, "이용권 사용 없음" 오기재 정정.
 
 ## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
 코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
