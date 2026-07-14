@@ -17,6 +17,13 @@ import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortli
 
 const app = new Hono<{ Bindings: Env }>()
 
+// 🔎 식별 헤더 — 이 워커가 실제로 서빙 중임을 외부에서 확정하기 위한 신호(운영/컷오버 검증용).
+//   메인이 Service Binding 으로 위임하면 이 헤더가 응답에 실려 나감(메인 로컬 폴백엔 없음) → ur-ads 경유 확인 가능.
+app.use('*', async (c, next) => {
+  await next()
+  try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
+})
+
 // 헬스체크 — 배포/서비스바인딩 검증용.
 app.get('/__ads/health', (c) => c.json({ ok: true, service: 'ur-ads' }))
 
