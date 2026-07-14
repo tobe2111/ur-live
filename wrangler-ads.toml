@@ -10,9 +10,13 @@
 # ============================================================
 
 name = "ur-ads"
-main = "src/worker-ads/index.ts"
+main = "dist-ads/index.js"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
+
+# 배포 전 esbuild 번들(@/ alias resolve) — wrangler deploy 가 이 command 를 먼저 실행.
+[build]
+command = "node scripts/build-worker-ads.js"
 
 # 같은 D1 (메인 ur-live 와 동일 database_id — 데이터 공유의 핵심)
 [[d1_databases]]
