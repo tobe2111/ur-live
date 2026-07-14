@@ -130,7 +130,7 @@ export async function discoverYouTubeInfluencers(
 //   블로그 검색으로 키워드 상위 노출 블로거를 수집(고유 블로거로 집계). 지표는 없고
 //   블로그 링크 + 이름 + 매칭 글 수(활동/관련도 프록시) 제공. 연락처는 글 설명에서 best-effort.
 const NAVER_OPENAPI = 'https://openapi.naver.com'
-const stripTag = (s: string) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
+const stripTag = (s: string | undefined) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
 
 export async function discoverNaverBloggers(
   clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number } = {},
