@@ -56,7 +56,9 @@ jobs:
           # DB 이름 SSOT: wrangler.toml:33 (database_name = "toss-live-commerce-db")
           DB_NAME="toss-live-commerce-db"
           echo "==> wrangler d1 export $DB_NAME (--remote)"
-          npx wrangler@3 d1 export "$DB_NAME" --remote --output=backup.sql
+          # 🛡️ 2026-07-14: wrangler@3 은 FTS5 가상테이블(products_fts) 있는 DB export 불가
+          #   ("cannot export databases with Virtual Tables (fts5)"). wrangler@4 에서 해결됨.
+          npx wrangler@4 d1 export "$DB_NAME" --remote --output=backup.sql
           ls -la backup.sql
           # 빈/깨진 덤프 방어 — schema 문장이 하나도 없으면 실패 처리
           if ! grep -qi 'CREATE TABLE' backup.sql; then
