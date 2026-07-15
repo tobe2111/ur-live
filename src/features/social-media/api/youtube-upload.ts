@@ -12,7 +12,8 @@
 import type { PublishResult } from './threads-client'
 
 const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status'
-const MAX_BYTES = 200 * 1024 * 1024 // 200MB 안전 상한(숏폼)
+// ⚠️ Worker 메모리 128MB — 버퍼링 fallback 은 보수적 상한. content-length 아는 영상은 스트리밍(메모리 무관).
+const MAX_BUFFER_BYTES = 90 * 1024 * 1024 // 길이 미상 영상 버퍼 상한(숏폼 가정)
 
 /** Google OAuth refresh_token → 새 access_token. */
 export async function refreshGoogleAccessToken(
@@ -48,13 +49,25 @@ export async function uploadToYouTube(input: YouTubeUploadInput): Promise<Publis
   if (!videoUrl) return { ok: false, error: '업로드할 영상 URL 이 없습니다' }
   if (!title) return { ok: false, error: '영상 제목이 없습니다' }
 
-  // 영상 바이트 가져오기(크기 확인)
+  // 영상 소스 가져오기. content-length 를 알면 스트리밍(메모리 무관), 모르면 버퍼(보수적 상한).
   const vidRes = await fetch(videoUrl).catch(() => null)
-  if (!vidRes || !vidRes.ok) return { ok: false, error: `영상 소스 가져오기 실패(HTTP ${vidRes?.status || 'network'})` }
+  if (!vidRes || !vidRes.ok || !vidRes.body) return { ok: false, error: `영상 소스 가져오기 실패(HTTP ${vidRes?.status || 'network'})` }
   const contentType = vidRes.headers.get('content-type') || 'video/*'
-  const buf = await vidRes.arrayBuffer().catch(() => null)
-  if (!buf) return { ok: false, error: '영상 다운로드 실패' }
-  if (buf.byteLength > MAX_BYTES) return { ok: false, error: `영상이 너무 큽니다(${Math.round(buf.byteLength / 1024 / 1024)}MB > 200MB)` }
+  const declaredLen = Number(vidRes.headers.get('content-length'))
+  let uploadBody: BodyInit
+  let uploadLen: number
+  if (Number.isFinite(declaredLen) && declaredLen > 0) {
+    // 길이를 아는 경우: 본문 스트림을 그대로 전달(버퍼링 없음 → OOM 방지).
+    uploadBody = vidRes.body
+    uploadLen = declaredLen
+  } else {
+    // 길이 미상: 버퍼링(숏폼 가정, 상한 초과 시 거부).
+    const buf = await vidRes.arrayBuffer().catch(() => null)
+    if (!buf) return { ok: false, error: '영상 다운로드 실패' }
+    if (buf.byteLength > MAX_BUFFER_BYTES) return { ok: false, error: `영상이 너무 큽니다(${Math.round(buf.byteLength / 1024 / 1024)}MB). 길이 정보(content-length)가 있는 URL 을 쓰거나 더 짧은 영상을 사용하세요.` }
+    uploadBody = buf
+    uploadLen = buf.byteLength
+  }
 
   const metadata = {
     snippet: {
@@ -75,7 +88,7 @@ export async function uploadToYouTube(input: YouTubeUploadInput): Promise<Publis
     headers: {
       'authorization': `Bearer ${accessToken}`,
       'content-type': 'application/json; charset=UTF-8',
-      'x-upload-content-length': String(buf.byteLength),
+      'x-upload-content-length': String(uploadLen),
       'x-upload-content-type': contentType,
     },
     body: JSON.stringify(metadata),
@@ -87,11 +100,11 @@ export async function uploadToYouTube(input: YouTubeUploadInput): Promise<Publis
   const sessionUrl = initRes.headers.get('location')
   if (!sessionUrl) return { ok: false, error: '유튜브 업로드 세션 URL 없음' }
 
-  // ② 영상 바이트 PUT
+  // ② 영상 바이트 PUT (스트림 또는 버퍼)
   const putRes = await fetch(sessionUrl, {
     method: 'PUT',
-    headers: { 'content-type': contentType, 'content-length': String(buf.byteLength) },
-    body: buf,
+    headers: { 'content-type': contentType, 'content-length': String(uploadLen) },
+    body: uploadBody,
   }).catch(() => null)
   if (!putRes || !putRes.ok) {
     const err = (await putRes?.json().catch(() => null)) as { error?: { message?: string } } | null

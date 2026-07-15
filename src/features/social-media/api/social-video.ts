@@ -42,9 +42,9 @@ function parseStoryboard(raw: string): Storyboard | null {
     const o = JSON.parse(s) as Record<string, unknown>
     const title = String(o.title || '').trim()
     const description = String(o.description || '').trim()
-    const hashtags = Array.isArray(o.hashtags) ? o.hashtags.map((t) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 12) : []
-    const scenesRaw = Array.isArray(o.scenes) ? o.scenes : []
-    const scenes: StoryboardScene[] = scenesRaw.slice(0, 8).map((x) => {
+    const hashtags = Array.isArray(o.hashtags) ? o.hashtags.map((t: unknown) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 12) : []
+    const scenesRaw: unknown[] = Array.isArray(o.scenes) ? o.scenes : []
+    const scenes: StoryboardScene[] = scenesRaw.slice(0, 8).map((x: unknown) => {
       const sc = x as Record<string, unknown>
       const dur = Number(sc.durationSec)
       return {

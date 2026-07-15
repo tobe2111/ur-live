@@ -104,14 +104,14 @@ export default function AdminSocialPage() {
 
   if (editing) {
     return (
-      <AdminLayout>
+      <AdminLayout title="소셜 홍보">
         <SocialDraftEditor post={editing} onBack={() => setEditing(null)} onSaved={() => { setEditing(null); refetchPosts() }} />
       </AdminLayout>
     )
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout title="소셜 홍보">
       <DashboardPageHeader
         title="소셜 홍보 자동화"
         subtitle="스레드·인스타·유튜브에 유어딜을 홍보 — AI 초안 생성 후 검토·발행 (자동발행 없음)"

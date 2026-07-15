@@ -79,7 +79,7 @@ socialMediaRoutes.post('/posts', async (c) => {
     platform,
     title: b.title ? String(b.title).slice(0, 200) : undefined,
     body: String(b.body || ''),
-    hashtags: Array.isArray(b.hashtags) ? b.hashtags.map((t) => String(t)).slice(0, 15) : undefined,
+    hashtags: Array.isArray(b.hashtags) ? b.hashtags.map((t: unknown) => String(t)).slice(0, 15) : undefined,
     media_url: b.media_url ? String(b.media_url).slice(0, 1000) : undefined,
     media_kind: (['none', 'image', 'video'].includes(String(b.media_kind)) ? String(b.media_kind) : PLATFORM_MEDIA[platform]) as 'none' | 'image' | 'video',
   })
@@ -98,7 +98,7 @@ socialMediaRoutes.patch('/posts/:id', async (c) => {
   await updatePost(c.env.DB, id, {
     title: b.title !== undefined ? String(b.title).slice(0, 200) : undefined,
     body: b.body !== undefined ? String(b.body) : undefined,
-    hashtags: Array.isArray(b.hashtags) ? b.hashtags.map((t) => String(t)).slice(0, 15) : undefined,
+    hashtags: Array.isArray(b.hashtags) ? b.hashtags.map((t: unknown) => String(t)).slice(0, 15) : undefined,
     media_url: b.media_url !== undefined ? String(b.media_url).slice(0, 1000) : undefined,
     media_kind: b.media_kind !== undefined && ['none', 'image', 'video'].includes(String(b.media_kind)) ? String(b.media_kind) : undefined,
     scheduled_at: b.scheduled_at !== undefined ? (b.scheduled_at ? String(b.scheduled_at) : null) : undefined,

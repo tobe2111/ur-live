@@ -22,7 +22,7 @@ function parseSocialJson(raw: string, platform: SocialPlatform): SocialDraft | n
     const title = String(o.title || '').trim()
     const body = String(o.body || '').trim()
     const hashtags = Array.isArray(o.hashtags)
-      ? o.hashtags.map((t) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 15)
+      ? o.hashtags.map((t: unknown) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 15)
       : []
     if (!body) return null
     // youtube 는 제목 필수, 나머지는 title 없으면 body 앞부분으로 라벨 대체
