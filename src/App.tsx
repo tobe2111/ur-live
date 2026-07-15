@@ -643,7 +643,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home mode="list" />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home mode="map" /> /* 🗺️ 2026-07-15 대표 "/map=메인": 홈=지도 */} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
