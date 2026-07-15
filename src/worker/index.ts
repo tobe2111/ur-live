@@ -226,8 +226,10 @@ import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
 import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
-// 🆕 2026-07-15 소셜 미디어 자동화 어드민 라우트(features/social 소비자 소셜그래프와 무관).
-import { socialMediaRoutes } from '../features/social-media/api/social-media.routes';
+// 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화(게이트 OFF·미사용)의 정적 import 를 제거해
+//   메인 워커 번들에서 그래프 분리 → Cloudflare Free 1MB 압축한도 회복(배포 언블록). 재도입 시 아래 mount 와
+//   함께 원복(1줄) + 크론 원복. features/social 소비자 소셜그래프와 무관.
+// import { socialMediaRoutes } from '../features/social-media/api/social-media.routes';
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
@@ -1637,8 +1639,9 @@ adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
 adminApp.route('/blog', adminBlogRoutes);
-// 🆕 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브). adminApp 하위(requireAdmin).
-adminApp.route('/social', socialMediaRoutes);
+// 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
+//   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
+// adminApp.route('/social', socialMediaRoutes);
 // Restaurant settlement (admin)
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
