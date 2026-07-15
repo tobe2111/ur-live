@@ -169,6 +169,28 @@ export interface Env {
   //   초안은 항상 관리자 검토 후 발행. ANTHROPIC_API_KEY 필요.
   BLOG_AI_DRAFTS_ENABLED?: string;
 
+  // ---- 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브) ----
+  //   전부 기본 OFF. 발행은 [게이트 ON + 연결 계정 + 관리자 승인] 3중 조건. 자동 발행 없음.
+  //   설계: docs/design/social-media-automation.md. 공식 API 만 사용(봇/스크래핑 없음).
+  SOCIAL_THREADS_ENABLED?: string;      // 'true' 면 스레드 발행 허용
+  SOCIAL_INSTAGRAM_ENABLED?: string;    // 'true' 면 인스타 발행 허용
+  SOCIAL_YOUTUBE_ENABLED?: string;      // 'true' 면 유튜브 업로드 허용
+  SOCIAL_AUTO_DRAFT_ENABLED?: string;   // 'true' 면 주간 초안 cron 동작(비공개 초안만)
+  //   예약 발행 — 관리자가 승인+예약(scheduled_at)한 글을 매시간 cron 이 발행. 기본 OFF.
+  //   발행은 여전히 플랫폼 게이트+계정+approved 3중 조건 재확인(사람이 승인한 건만).
+  SOCIAL_AUTO_PUBLISH_ENABLED?: string;
+  //   자격증명(Cloudflare Secrets). Meta(스레드/인스타)·Google(유튜브)은 기존 youtube 기능과 공유.
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
+  THREADS_APP_ID?: string;
+  THREADS_APP_SECRET?: string;
+  //   릴스/쇼츠 영상 렌더(스토리보드 → mp4). Worker 는 렌더 불가 → 외부 템플릿 렌더 API 위임.
+  //   기본 OFF. 켜려면 SOCIAL_VIDEO_ENABLED='true' + provider 키. (기획/대본은 ANTHROPIC 로 항상 생성 가능)
+  SOCIAL_VIDEO_ENABLED?: string;        // 'true' 면 영상 렌더 허용
+  SOCIAL_VIDEO_PROVIDER?: string;       // 'creatomate'(기본)
+  SOCIAL_VIDEO_RENDER_KEY?: string;     // 렌더 provider API 키
+  SOCIAL_VIDEO_TEMPLATE_ID?: string;    // (선택) 디자인된 템플릿 ID — 자막만 주입해 품질↑
+
   // ---- fee-resolver 그림자 배선 스위치 (상품 소유 모델 새 수수료 규칙) ----
   //   'true' 면 결제 확정 시 새 규칙 분배를 **계산만 해서 order_fee_breakdown 에 기록**(실제 정산 무변경).
   //   목적: 스테이징/운영에서 새 규칙 vs 현행 정산 비교 검증. 검증 후 authoritative 전환은 *별도* 작업.

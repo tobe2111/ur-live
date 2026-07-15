@@ -226,6 +226,8 @@ import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
 import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
+// 🆕 2026-07-15 소셜 미디어 자동화 어드민 라우트(features/social 소비자 소셜그래프와 무관).
+import { socialMediaRoutes } from '../features/social-media/api/social-media.routes';
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 import { pointsRoutes } from '../features/points/api/points.routes';
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
@@ -1635,6 +1637,8 @@ adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
 adminApp.route('/blog', adminBlogRoutes);
+// 🆕 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브). adminApp 하위(requireAdmin).
+adminApp.route('/social', socialMediaRoutes);
 // Restaurant settlement (admin)
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정

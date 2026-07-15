@@ -161,6 +161,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 🆕 2026-07-15: 소셜 홍보 유지보수 — 영상 렌더 폴링(hands-off 완료) + 예약 발행(승인·예약 건, 게이트 뒤).
+    ctx.waitUntil(safeCron('social-maintenance', async () => {
+      const { handleSocialMaintenance } = await import('./cron/social-maintenance')
+      return handleSocialMaintenance(env)
+    }));
     // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
     ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
       const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
@@ -435,6 +440,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('blog-ai-draft', async () => {
       const { handleBlogAiDraft } = await import('./cron/blog-ai-draft');
       return handleBlogAiDraft(env);
+    }));
+    // 🆕 2026-07-15: 소셜 홍보 초안 주간(스레드/인스타/유튜브, 비공개 초안 — 관리자 검토 후 발행).
+    //   킬스위치 SOCIAL_AUTO_DRAFT_ENABLED='true' 일 때만 — 기본 OFF(토큰 낭비 0). 홍보 전용.
+    ctx.waitUntil(safeCron('social-draft', async () => {
+      const { handleSocialDraft } = await import('./cron/social-draft');
+      return handleSocialDraft(env);
     }));
     ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);

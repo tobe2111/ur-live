@@ -17,7 +17,8 @@
 
 // 소비자 홍보용 서비스 사실 brief (grounding). ⚠️ 운영/내부 수치(수수료·정산·원천징수 등)는
 //   의도적으로 제외 — 모델이 근거로 삼을 수 없게 해서 유출 자체를 차단한다.
-const PROMO_BRIEF = [
+// 🔗 2026-07-15: social 자동화(features/social)가 SSOT 로 재사용 → export.
+export const PROMO_BRIEF = [
   '너는 소비자 혜택 플랫폼 "유어딜"의 블로그 마케터다. 아래 사실만 근거로 소비자 대상 홍보/활용 글을 쓴다.',
   '',
   '## 유어딜 서비스 사실(이것만 사용)',
@@ -60,14 +61,15 @@ export const PROMO_TOPICS: readonly PromoTopic[] = [
 ] as const
 
 // 출력 검증: 운영/내부 정보 유출 + 폐기 용어 + 도매몰 유입을 거부.
-const OUTPUT_FORBIDDEN: RegExp[] = [
+// 🔗 2026-07-15: social 자동화가 동일 검증 재사용 → export.
+export const OUTPUT_FORBIDDEN: RegExp[] = [
   /수수료/, /정산/, /원천징수/, /커미션/, /세금계산서/, /매출/, /백오피스/, /관리자/,
   /도매/, /유통스타트/, /판매사/, /제조사/, /공급가/, /\bB2B\b/,
   /식사권/, /공구권/, /인플루언서/, /크리에이터/, /큐레이터/, /셀러/,
   /라이브\s?커머스/, /라이브\s?방송/, /쇼츠/,
 ]
 
-function findForbidden(text: string): string | null {
+export function findForbidden(text: string): string | null {
   for (const re of OUTPUT_FORBIDDEN) {
     if (re.test(text)) return re.source
   }
