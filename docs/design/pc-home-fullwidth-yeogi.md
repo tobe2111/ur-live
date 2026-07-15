@@ -67,5 +67,20 @@ Artifact: 유어딜 PC 홈 풀너비 시안 (라이트/다크 토글) — sessio
 - [ ] 다크 기본 유지 + 앱 테마 store(`useTheme`) 라이트 토글 대응.
 - [ ] 앱배너/푸터(SiteFooter) 정합·SEO/OG.
 
-## ✅ 구현 완료
-(미구현 — 당근안 목업 승인 대기)
+## ✅ 구현 완료 (2026-07-15 — 당근안 A: 큰 그리드 하나, v2 라이트+실제 카테고리)
+대표 확정: **A(당근처럼 단일 그리드)** + **v2 방향(라이트 기본 + 실제 코드 카테고리)** + "나머진 그대로 진행".
+
+**구현 (홈 `/` 만, lg+ 풀너비. 모바일/태블릿 <lg = 기존 RestaurantMapPage 불변):**
+- `src/pages/pc-home/PcHomePage.tsx` — lg+ 당근 스타일 홈: 좌측 레일 + 제목 + 정렬칩(인기/최신/마감임박/할인율) + 딜 그리드 + 앱배너 + SiteFooter.
+- `src/pages/pc-home/PcHomeRail.tsx` — 지역(내 주변 딜 → /map) + 동네딜 카테고리(전체/식사/미용/숙소/기타 — 실제 `voucher-categories`, 그리드 필터 구동, 숙소는 /stays) + 바로가기(교환권/지도/링크샵/판매자센터).
+- `src/pages/pc-home/HomeRoute.tsx` — 뷰포트 분기(lg+ PcHomePage / 그 외 RestaurantMapPage).
+- `src/hooks/useMediaQuery.ts` — SSR-safe 미디어쿼리 훅.
+- `GroupBuyFeed.tsx` **재사용 확장**: `pc`(4~5열 그리드 + 내부 칩/정렬/카운트 숨김) + controlled category/sort. **props 미전달 시 모바일 홈 동작 byte-불변.** 데이터/SSR시드(`__SSR_INITIAL_MAIN__`)/prefetch/페이지네이션/카드(GroupBuyFeedCard — cf-image·dominant color·hover prefetch) 전부 공유 → 중복 fetch 0, 로딩 잠금 준수.
+- `MobileAppLayout.tsx` **[UNLOCK_LOADING]**: `/` 만 lg+ 풀블리드(액자/앱사이드바/거터 제외) + `body.pc-home` 마커. 2026-06-20 "PC 단일 액자 정체성" 잠금을 홈에 한해 해제.
+- `index.css`: `@media(min-width:1024px){ body.pc-home .app-frame-bar{display:none} }` — PC 홈 하단 네비 숨김(상단 DesktopTopNav + 좌측 레일이 네비 담당). 모바일 하단 네비 불변.
+- `DesktopTopNav.tsx`: 홈(`/`)은 로고+탭 항상 표시 + 사이드바 좌패딩 대신 콘텐츠 폭(1240) 정렬.
+- `App.tsx`: `/` → `<HomeRoute/>`, PC 홈에선 우측 SideBanner 숨김.
+
+**테마**: 홈은 앱 기본 라이트(useTheme default 'light') + `dark:` 대응 — RestaurantMapPage(`bg-white dark:bg-[#020202]`)와 정합. 다크 고정 아님(대표 "다크 아니어도 돼").
+**검증**: tsc 0(config 경고 제외)·audit-gate 45 GREEN(theme·loader-continuity 14·file-size·mobile-viewport 등). ⚠️ 이 환경 npm 403 → vite build/vitest 는 CI(verify.yml). ⚠️ staging 확인 권장: PC(≥1024) 홈 = 레일+그리드 / 모바일 홈 = 지도 그대로 / 라이트·다크 토글 / 카테고리·정렬 필터 동작 / 하단 네비 PC 숨김·모바일 표시.
+**후속(선택)**: PC 홈 하드로드 시 PcHomePage 청크가 직렬 로드(RestaurantMapPage 기존과 동일 패턴) — `generate-route-chunk-map.mjs` 홈 표면에 등재하면 병렬 preload 가능.

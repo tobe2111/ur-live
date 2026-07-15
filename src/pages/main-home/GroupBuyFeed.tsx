@@ -46,9 +46,33 @@ const SORTS = [
 type SortKey = typeof SORTS[number]['key']
 type CategoryKey = typeof CATEGORIES[number]['key']
 
-export default function GroupBuyFeed() {
-  const [category, setCategory] = useState<CategoryKey>('all')
-  const [sort, setSort] = useState<SortKey>('popular')
+// 🖥️ 2026-07-15 (대표 — PC 홈 당근 스타일): 같은 피드를 PC 풀너비 홈(PcHomePage)에서도 재사용.
+//   `pc` = 4~5열 그리드 + 내부 카테고리칩/정렬셀렉트/카운트 숨김(좌측 레일 + 정렬칩이 대신 구동).
+//   category/sort 는 controlled(props) 또는 uncontrolled(내부 state) 겸용 — props 미전달 시 기존 모바일
+//   동작 byte-불변(홈 <GroupBuyFeed/> 무변경). 데이터/SSR시드/prefetch/페이지네이션 전부 공유.
+export default function GroupBuyFeed({
+  pc = false,
+  category: categoryProp,
+  onCategoryChange,
+  sort: sortProp,
+  onSortChange,
+}: {
+  pc?: boolean
+  category?: CategoryKey
+  onCategoryChange?: (c: CategoryKey) => void
+  sort?: SortKey
+  onSortChange?: (s: SortKey) => void
+} = {}) {
+  const [categoryState, setCategoryState] = useState<CategoryKey>('all')
+  const [sortState, setSortState] = useState<SortKey>('popular')
+  const category = categoryProp ?? categoryState
+  const sort = sortProp ?? sortState
+  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
+  const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
+  // 🖥️ PC 그리드는 4~5열, 모바일은 기존 2~3열. 로딩/본문/더보기 스켈레톤 공통 사용.
+  const gridCls = pc
+    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10'
+    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -167,7 +191,9 @@ export default function GroupBuyFeed() {
           하단 DealEarnStrip('딜 모으는 법') + /help/deal-guide 가 동일 교육을 담당 → 중복.
           상단을 비워 카테고리 칩 + 딜 카드가 즉시(첫 화면) 보이도록. */}
 
-      {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리) */}
+      {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리).
+          🖥️ PC 홈에선 좌측 레일이 카테고리를 담당 → 내부 칩 숨김. */}
+      {!pc && (
       <div className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
@@ -188,8 +214,10 @@ export default function GroupBuyFeed() {
           })}
         </div>
       </div>
+      )}
 
-      {/* 정렬 옵션 + 카운트 */}
+      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김. */}
+      {!pc && (
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
         <select
@@ -203,10 +231,11 @@ export default function GroupBuyFeed() {
           ))}
         </select>
       </div>
+      )}
 
       {/* 피드 — 2열 그리드 (당근식) */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
+        <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -230,7 +259,7 @@ export default function GroupBuyFeed() {
         //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
         <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
+        <div className={gridCls}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
@@ -247,7 +276,7 @@ export default function GroupBuyFeed() {
       {!loading && sorted.length > 0 && canLoadMore && (
         <div ref={sentinelRef} className="px-4 pb-6 flex justify-center">
           {loadingMore ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+            <div className={`${gridCls} w-full`}>
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-1.5">
                   <div className="aspect-square rounded-xl skeleton-shimmer" />

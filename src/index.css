@@ -861,6 +861,13 @@ html.dark .gbd {
   .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
 }
 
+/* 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): 풀블리드 홈(`body.pc-home`)에선 lg+(≥1024)에서
+   하단 모바일 네비(BottomNav = `.app-frame-bar`)를 숨긴다. PC 홈은 상단 DesktopTopNav + 좌측 레일이
+   네비를 담당. 모바일/태블릿(<lg)은 하단 네비 그대로(RestaurantMapPage 홈). */
+@media (min-width: 1024px) {
+  body.pc-home .app-frame-bar { display: none !important; }
+}
+
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
    `class="ur-content-narrow"` 같은 형태로 사용 (form / 상세 폼).
    `class="ur-content-wide"` (그리드 카드 페이지).
