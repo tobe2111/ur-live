@@ -39,9 +39,14 @@ export const CONSUMER_ALIMTALK_TEMPLATES: readonly string[] = [
   'business_registration_verified', 'business_registration_rejected',
   // 주문·선물·환불
   'new_order', 'gift_received', 'gift_refunded', 'voucher_refunded',
-  // 정산·송금
+  // 계정 보안
+  'seller_bank_changed',
+  // 정산·송금·커미션
   'seller_settlement_completed', 'settlement_completed', 'payout_completed',
   'commission_withdrawal_approved', 'commission_withdrawal_rejected',
+  'referral_commission_earned',   // 숙소 referral 적립(payment.routes 숙소 경로 — 실발송 확인 2026-07-01)
+  // 이용권 사용·만료
+  'voucher_used', 'voucher_expire_soon',   // 일반 이용권(비-숙소) 만료 D-30/7/3/1
   // 예약(appointment)
   'appointment_seller_new', 'appointment_user_confirmed',
   'appointment_reminder_seller', 'appointment_reminder_user', 'appointment_noshow_alert',
@@ -75,7 +80,7 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   // 🏙️ 2026-07-05 체험단(FCFS) + 이용권 사용 완료, 🧾 2026-07-13 상권 쿠폰 페이백 — 콘솔 등록·심사
   //   신청 대기(게이트 뒤: district 는 DISTRICT_ALIMTALK_ENABLED + 채널설정). 승인 후 CONSUMER 로 이동.
   //   dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code. (아직 DOCUMENTED 아님 → 진단이 '미등록' 표시)
-  'fcfs_selected', 'fcfs_replacement', 'voucher_used',
+  'fcfs_selected', 'fcfs_replacement',
   'district_coupon_issued', 'district_coupon_rejected', 'district_coupon_expiring',
   // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
   //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
