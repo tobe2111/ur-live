@@ -218,6 +218,8 @@ pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**
 - **🛡️ 영구 가드 신설**: `scripts/check-pagination-nan.mjs` — request pagination(page/limit/offset/days…)이 `parseInt/Number` NaN 폴백 없이 assign 되면 차단(닫는 괄호 뒤 `|| 숫자` 또는 `isNaN`/`Number.isFinite`/삼항리터럴 필요). `verify.yml`(strict)·`audit-gate.sh`(schema 도메인)·pre-commit(warn)·`AUDIT_INVARIANTS.md`·CLAUDE.md 방어선 표 등록. 현재 위반 0(scanned=143, safe=143). 예외 `pagination-nan-ok` 주석.
 - **검증**: tsc 0(사전 config 경고 제외)·build(client+ssr+prerender+worker+prepare) 0·SQL bind/column 가드 0·audit-gate 38 GREEN(무관 file-size RED 1건=타 세션 blog.routes/worker index).
 - **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
+<!-- 2026-07-01 재배포 트리거: 대표 ALIGO_SENDER_KEY 등록 → Pages secret 런타임 주입용 -->
+
 ## ✅ 2026-07-01 — 알림톡 콘솔 심사 자료 + 채널 확인수단 (대표 "알림톡 콘솔 심사 넣고 싶음")
 대표가 유어딜 알림톡을 Aligo 콘솔에 등록·심사 넣으려 함 → ①배선된 템플릿+문안 ②콘솔 등록형 ③secret 확인법.
 - **전수조사 발견(정정)**: 기존 `docs/kakao-alimtalk-templates.md`·SSOT `alimtalk-templates.ts`가 **부정확** — 실제 안 쓰는 코드(`referral_commission_earned`·`stay_reminder_d1/dday`) 등재, 실제 쓰는 코드(`commission_withdrawal_approved/rejected`·`auction_promoted`·`stay_dday`/`stay_d1`) 누락, 기존 문서의 본문이 실제 코드 발송문과 **글자 불일치**(그대로 등록하면 발송 시 거부). 전 `sendSystemAlimtalk`/`sendAlimtalk` 호출부(~25곳) 문안을 실측 추출해 1:1 정합.
