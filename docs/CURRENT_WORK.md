@@ -9,7 +9,8 @@
 - **어드민**: `/api/admin/social/*`(requireAdmin) 계정 연결·초안 생성/편집/승인/발행. 주간 cron `social-draft`(게이트 `SOCIAL_AUTO_DRAFT_ENABLED`, 기본 OFF).
 - **env(전부 기본 OFF)**: `SOCIAL_THREADS_ENABLED`·`SOCIAL_INSTAGRAM_ENABLED`·`SOCIAL_YOUTUBE_ENABLED`·`SOCIAL_AUTO_DRAFT_ENABLED` + 자격증명(META/THREADS/YOUTUBE). **미설정 시 라이브 영향 0**(라우트만 추가, cron no-op).
 - **⚠️ 대표 액션(활성 전)**: Meta 앱(스레드/인스타) + 인스타 비즈니스 전환·앱심사(`instagram_content_publish`) + 유튜브 채널 OAuth + 공식 계정 토큰 등록 + 게이트 ON + staging 게시 1회 검증. 설계·플랫폼별 액션: `docs/design/social-media-automation.md`.
-- 검증: audit-gate 45 GREEN(file-size rebaseline: index.ts +4·repair-schema +35 = 필수 마운트/테이블 배선). ⚠️ 이 환경 npm 403 → tsc/build/vitest 는 CI. UI(어드민 페이지)는 후속.
+- **어드민 UI 완료**: `/admin/social`(AdminSocialPage + admin-social/{SocialAccountsPanel,SocialDraftEditor,types}) — 계정 연결/게이트 상태 · 플랫폼별 AI 초안 생성 버튼 · 목록(상태 배지·발행 가능조건 표시) · 편집/승인/발행/보관. 좌측 nav "소셜 홍보"(콘텐츠 그룹). 라이트 대시보드 테마.
+- 검증: audit-gate 45 GREEN(file-size rebaseline: index.ts +4·repair-schema +35·AdminLayout +1·admin.routes +7 = 필수 배선). ⚠️ 이 환경 npm 403 → tsc/build/vitest 는 CI. 활성은 대표 자격증명 세팅 + staging 게시 1회 검증 후.
 
 ## 🔶 2026-07-14 — 유어딜 전면 활성화 지시서 진행 (STEP 2 선결: 공구 엔진 조종석)
 대표 "유어딜 전면 활성화 지시서" — 게이트 OFF로 파킹한 것들을 파일럿 검증하며 순서대로 켬(STEP 0~6). **STEP 0**(net==5% 테스트 green·#479 payout 가드 코드 확인 — 코드측 통과; 어드민 4항목 스모크·발신프로필키 `ALIGO_SENDER_KEY`·파일럿 매장선정은 대표 액션). **STEP 2 선결 = 공구 엔진 조종석(gap A1) 빌드**: 상품별 gb_mode(off/scheduled/live/ended)·특가·마감·소개비율·링크전용 설정 어드민 UI+API. 저장=`product_supply_meta` gb_* 키(SSOT `shared/gb-session.ts` saveGbSession/validateGbSession 호출만). **머니 무접촉·게이트 뒤**(gb_engine_enabled OFF면 엔진이 안 읽어 소비자/결제 무영향). draft PR·CI green 후 대표 보고 → 파일럿(상품1개 live→실카드1건). 남은 STEP 1(flip)·3(위임)·4(매칭)·5(체험)·6(데이터완결+고위험3종)은 대표 대시보드/파일럿 주도.

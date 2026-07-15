@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket,
+  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2,
   type LucideIcon
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
@@ -186,6 +186,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '콘텐츠',
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
+      { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
       { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },

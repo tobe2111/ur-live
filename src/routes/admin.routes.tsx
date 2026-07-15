@@ -81,6 +81,7 @@ const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformMod
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
+const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
 const AdminAgencyPage = lazy(() => import('@/pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
@@ -494,6 +495,12 @@ export function AdminRoutes() {
       <Route path="/admin/blog" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBlogPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🆕 2026-07-15 소셜 홍보 자동화(스레드/인스타/유튜브) */}
+      <Route path="/admin/social" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminSocialPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-04-28: 알림 채널 설정 */}
