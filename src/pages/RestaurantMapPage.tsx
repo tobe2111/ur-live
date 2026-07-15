@@ -287,12 +287,18 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     enrichedRestaurants.reduce((n, r) => n + (matchesFilter(r, rg, dist, rad, price) ? 1 : 0), 0),
     [enrichedRestaurants, matchesFilter])
 
+  // 🔎 2026-07-15 (대표 신고 — "피자 검색해도 결과 안 나옴"): 서버 q검색은 딜 이름뿐 아니라 메뉴/설명까지
+  //   넓게 매칭(피자 8건)하는데, 클라가 이름/매장/주소 글자만 재검색해 그 결과를 버렸음. → 서버가 매칭한
+  //   딜 id(searchDeals)는 클라 글자매칭 실패해도 살린다(합집합).
+  const searchDealIds = useMemo(() => new Set(searchDeals.map(d => (d as { id: number }).id)), [searchDeals])
+
   const filtered = useMemo(() => {
     let items = enrichedRestaurants.filter(r => {
       if (showFavoritesOnly && !favorites.includes(r.id)) return false
       if (search) {
         const q = search.toLowerCase()
-        if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
+        const textMatch = r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q)
+        if (!textMatch && !searchDealIds.has(r.id)) return false // 서버 q검색 매칭분(메뉴/설명 등)은 이름 불일치여도 유지
       }
       if (!matchesFilter(r, region, district, radiusKm, priceRange)) return false
       return true
@@ -315,7 +321,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return 0
     })
     return items
-  }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites, searchDealIds])
 
   // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
   // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 실(non-demo) 선착순만 — 데모는 끌어올리지 않음.
@@ -331,7 +337,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
   //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
   const { viewportList, viewportInCount } = useMemo(() => {
-    if (mode !== 'map' || !mapBounds || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
+    // 🔎 검색 중엔 뷰포트 재정렬 끄기 — 검색 결과(먼 지역 포함)를 지도 밖이라고 뒤로 밀지 않게(관련도 순 유지).
+    if (mode !== 'map' || !mapBounds || search || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
     const { swLat, swLng, neLat, neLng } = mapBounds
     const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
     const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
@@ -341,7 +348,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     for (const r of displayList) (inView(r) ? inB : rest).push(r)
     // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
     return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
-  }, [mode, mapBounds, aggClusters, displayList])
+  }, [mode, mapBounds, aggClusters, displayList, search])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
