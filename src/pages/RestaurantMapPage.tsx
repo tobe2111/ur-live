@@ -32,6 +32,7 @@ import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/const
 import { panToRegionAccurate } from './restaurant-map/pan-to-region'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
+import { checkPermission } from '@/lib/in-app-warning'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -431,30 +432,50 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       }
     }
     const opts = (hi: boolean): PositionOptions => ({ timeout: hi ? 8000 : 6000, enableHighAccuracy: hi, maximumAge: 60000 })
-    const onErr = (err: GeolocationPositionError, triedLow: boolean) => {
+    const onErr = async (err: GeolocationPositionError, triedLow: boolean) => {
       // 타임아웃(code 3) + 고정밀만 시도 → 저정밀 1회 재시도(빠르고 실내서도 잘 잡힘).
       if (err.code === 3 && !triedLow) {
         navigator.geolocation.getCurrentPosition(
           (pos) => applyLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          (e2) => onErr(e2, true),
+          (e2) => { void onErr(e2, true) },
           opts(false),
         )
         return
       }
       setLocating(false)
       // 인앱 브라우저(카톡/인스타 등)면 최우선 — 위치 제한이라 '외부 브라우저로 열기' 유도.
-      if (detectInAppBrowser()) setGeoHelp('inapp')
-      else if (err.code === 1) setGeoHelp('denied')      // PERMISSION_DENIED — 설정 안내
-      else if (err.code === 3) setGeoHelp('timeout')      // TIMEOUT — 재시도
-      else setGeoHelp('unavailable')                      // POSITION_UNAVAILABLE 등
+      if (detectInAppBrowser()) { setGeoHelp('inapp'); return }
+      // 🗺️ 2026-07-15 (대표 — "권한 필요만 뜨지 말고 실제로 수정되게"): 실제 권한 상태를 조회해
+      //   '아직 거부 아님(prompt)' 이면 재시도 = 네이티브 권한창 재요청(설정 안 가도 그 자리서 허용).
+      //   진짜 'denied' 일 때만 설정 안내(+ 아래 effect 가 설정 변경을 감지해 자동 복구).
+      const perm = await checkPermission('geolocation')
+      if (perm === 'denied') setGeoHelp('denied')
+      else if (perm === 'prompt') setGeoHelp('prompt')          // 재요청 가능 — '위치 허용' 버튼이 권한창 재호출
+      else if (err.code === 1) setGeoHelp('denied')             // unknown(iOS 등)+거부코드 → 설정
+      else if (err.code === 3) setGeoHelp('timeout')            // TIMEOUT — 재시도
+      else setGeoHelp('unavailable')                            // POSITION_UNAVAILABLE 등
     }
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => applyLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => onErr(err, false),
+      (err) => { void onErr(err, false) },
       opts(true),
     )
   }, [userLoc, nearMeMode])
+
+  // 🗺️ 2026-07-15 (대표 — "권한 필요만 뜨지 말고 실제로 수정되게"): 안내 시트가 떠 있는 동안 위치 권한이
+  //   'granted' 로 바뀌면(사용자가 설정/권한창에서 허용) **자동으로** 시트를 닫고 내 주변을 켠다 — 다시 안 눌러도 됨.
+  useEffect(() => {
+    if (!geoHelp || typeof navigator === 'undefined' || !navigator.permissions?.query) return
+    let status: PermissionStatus | null = null
+    let cancelled = false
+    navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((s) => {
+      if (cancelled) return
+      status = s
+      s.onchange = () => { if (s.state === 'granted') { setGeoHelp(null); requestNearMe() } }
+    }).catch(() => { /* 미지원(iOS 등) — onchange 없이 사용자가 '위치 허용/다시 시도'로 재요청 */ })
+    return () => { cancelled = true; if (status) status.onchange = null }
+  }, [geoHelp, requestNearMe])
 
   // 📜 2026-07-08 (대표 "카테고리 버튼 누를 때마다 상단으로"): 카테고리 전환 시 리스트 최상단으로 스크롤.
   const selectVoucherType = useCallback((v: MapVoucherType) => {

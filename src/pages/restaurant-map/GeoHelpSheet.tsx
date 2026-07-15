@@ -11,7 +11,7 @@ import { detectInAppBrowser, openInExternalBrowser, isIOS, isAndroid } from '@/l
 import { getInAppLabel } from '@/lib/in-app-warning'
 import { Z } from '@/constants/z-index'
 
-export type GeoHelpReason = 'inapp' | 'denied' | 'timeout' | 'unavailable'
+export type GeoHelpReason = 'inapp' | 'prompt' | 'denied' | 'timeout' | 'unavailable'
 
 export default function GeoHelpSheet({
   reason,
@@ -30,6 +30,7 @@ export default function GeoHelpSheet({
 
   const title =
     effReason === 'inapp' ? '외부 브라우저에서 열어주세요'
+    : effReason === 'prompt' ? '위치 접근을 허용해주세요'
     : effReason === 'denied' ? '위치 권한을 허용해주세요'
     : effReason === 'timeout' ? '위치를 찾는 데 시간이 걸려요'
     : '위치를 가져오지 못했어요'
@@ -40,22 +41,28 @@ export default function GeoHelpSheet({
           `${inAppLabel || '인앱'} 브라우저에선 위치 사용이 제한돼요.`,
           '아래 버튼으로 크롬/사파리에서 열면 내 주변 딜을 정확히 볼 수 있어요.',
         ]
+      : effReason === 'prompt'
+      ? [
+          // 아직 '거부'가 아니라 재요청 가능 — 아래 버튼이 브라우저 권한 창을 다시 띄운다(설정 갈 필요 없음).
+          '아래 "위치 허용"을 누르면 브라우저 권한 창이 다시 떠요.',
+          '창에서 "허용"을 선택하면 바로 내 주변 딜이 보여요.',
+        ]
       : effReason === 'denied' && ios
       ? [
           '① 아이폰 설정 → 개인정보 보호 및 보안 → 위치 서비스 → 켜기',
           '② 설정 → Safari → 위치 → "허용" 또는 "확인"',
-          '③ 이 페이지로 돌아와 다시 시도를 눌러주세요.',
+          '③ 이 페이지로 돌아오면 자동으로 내 주변이 켜져요.',
         ]
       : effReason === 'denied' && android
       ? [
           '① 주소창 왼쪽 자물쇠(ⓘ) → 권한 → 위치 → 허용',
           '② 안드로이드 설정 → 위치 → 켜기(앱 위치 권한도 허용)',
-          '③ 이 페이지로 돌아와 다시 시도를 눌러주세요.',
+          '③ 이 페이지로 돌아오면 자동으로 내 주변이 켜져요.',
         ]
       : effReason === 'denied'
       ? [
           '브라우저 주소창의 위치 아이콘/사이트 설정에서 위치를 "허용"으로 바꿔주세요.',
-          '바꾼 뒤 다시 시도를 눌러주세요.',
+          '허용하면 이 페이지에서 자동으로 내 주변이 켜져요.',
         ]
       : effReason === 'timeout'
       ? [
@@ -66,6 +73,8 @@ export default function GeoHelpSheet({
           '현재 위치를 확인하지 못했어요.',
           '잠시 후 다시 시도하거나, 위 지역 필터로 동네를 직접 선택해보세요.',
         ]
+
+  const retryLabel = effReason === 'prompt' ? '위치 허용' : '다시 시도'
 
   return (
     <div className="fixed inset-0 flex items-end sm:items-center justify-center" style={{ zIndex: Z.SHEET_BODY }}>
@@ -104,7 +113,7 @@ export default function GeoHelpSheet({
                 onClick={() => { onClose(); onRetry() }}
                 className="w-full flex items-center justify-center gap-1.5 bg-blue-600 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
               >
-                <RotateCw className="w-4 h-4" /> 다시 시도
+                <RotateCw className="w-4 h-4" /> {retryLabel}
               </button>
             )
           )}
