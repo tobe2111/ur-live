@@ -325,22 +325,22 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
 
-  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해, 가장 이상적으로"):
-  //   지도 모드에서 리스트를 **현재 보이는 지도 영역**으로 좁힌다(당근/야놀자식 '이 지역'). 좌표 있는 딜은
-  //   bounds 안의 것만, 좌표 없는 딜(지오코딩 대기)은 사라지지 않게 뒤에 붙인다. 줌아웃 집계 모드(aggClusters)나
-  //   bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로 → 무회귀.
-  const viewportList = useMemo(() => {
-    if (mode !== 'map' || !mapBounds || (aggClusters && aggClusters.length > 0)) return displayList
+  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해" + 신고 "왜 18곳만?"):
+  //   지도 모드에서 **현재 보이는 지도 영역의 딜을 리스트 위로** 올린다(당근/야놀자식 '이 지역 먼저').
+  //   ⚠️ 숨기지 않음 — 처음엔 뷰포트로 딱 잘라 82곳(전체 100)이 사라져 "왜 18곳만" 혼란 → 보이는 딜을
+  //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
+  //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
+  const { viewportList, viewportInCount } = useMemo(() => {
+    if (mode !== 'map' || !mapBounds || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
     const { swLat, swLng, neLat, neLng } = mapBounds
     const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
-    const inB: Restaurant[] = []; const noCoord: Restaurant[] = []
-    for (const r of displayList) {
-      if (r.restaurant_lat && r.restaurant_lng) {
-        if (r.restaurant_lat >= swLat - mLat && r.restaurant_lat <= neLat + mLat &&
-            r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng) inB.push(r)
-      } else noCoord.push(r)
-    }
-    return [...inB, ...noCoord]
+    const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
+      r.restaurant_lat >= swLat - mLat && r.restaurant_lat <= neLat + mLat &&
+      r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng)
+    const inB: Restaurant[] = []; const rest: Restaurant[] = []
+    for (const r of displayList) (inView(r) ? inB : rest).push(r)
+    // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
+    return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
   }, [mode, mapBounds, aggClusters, displayList])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
@@ -817,7 +817,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={viewportList.length}
+            filteredCount={displayList.length}
+            viewportCount={viewportInCount}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
