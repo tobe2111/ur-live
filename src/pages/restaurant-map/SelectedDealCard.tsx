@@ -35,6 +35,10 @@ export default function SelectedDealCard({
 }) {
   const navigate = useNavigate()
   const touchX = useRef<number | null>(null)
+  // 🖥️ 2026-07-15 (대표 — "PC 좌우 스와이프 안 됨"): 마우스 드래그도 스와이프로. 드래그 발생 시
+  //   뒤이어 발화되는 카드 click(상세 이동)을 삼킨다(draggedRef).
+  const pointerX = useRef<number | null>(null)
+  const draggedRef = useRef(false)
 
   const discount = selected.original_price > selected.price
     ? Math.round((1 - selected.price / selected.original_price) * 100)
@@ -44,14 +48,39 @@ export default function SelectedDealCard({
     : null
   const thumb = cfImage(selected.image_url, { width: 200, height: 200, fit: 'cover', format: 'auto' })
 
+  const applySwipe = (dx: number) => {
+    if (Math.abs(dx) < 50) return
+    if (dx < 0 && hasNext) onNext()      // 왼쪽으로 스와이프 → 다음
+    else if (dx > 0 && hasPrev) onPrev() // 오른쪽으로 스와이프 → 이전
+  }
   const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX }
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchX.current == null) return
     const dx = e.changedTouches[0].clientX - touchX.current
     touchX.current = null
-    if (Math.abs(dx) < 50) return
-    if (dx < 0 && hasNext) onNext()      // 왼쪽으로 스와이프 → 다음
-    else if (dx > 0 && hasPrev) onPrev() // 오른쪽으로 스와이프 → 이전
+    applySwipe(dx)
+  }
+  // 🖥️ 마우스 드래그(PC) — pointer 이벤트로 터치와 동일하게 좌우 스와이프.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return // 터치는 위 onTouch* 가 처리(중복 방지)
+    pointerX.current = e.clientX
+    draggedRef.current = false
+  }
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (pointerX.current == null) return
+    const dx = e.clientX - pointerX.current
+    pointerX.current = null
+    if (Math.abs(dx) >= 50) { draggedRef.current = true; applySwipe(dx) }
+  }
+  // 드래그 후 뒤이어 오는 카드 click(상세 이동)을 삼킨다.
+  const onCardClick = () => {
+    if (draggedRef.current) { draggedRef.current = false; return }
+    navigate(`/products/${selected.id}`)
+  }
+  // ⌨️ 키보드 좌우 화살표(PC 접근성).
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' && hasPrev) { e.preventDefault(); onPrev() }
+    else if (e.key === 'ArrowRight' && hasNext) { e.preventDefault(); onNext() }
   }
 
   return (
@@ -60,9 +89,15 @@ export default function SelectedDealCard({
       style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 10px)' }}
     >
       <div
-        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] shadow-[0_8px_28px_rgba(0,0,0,0.18)]"
+        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onKeyDown={onKeyDown}
+        tabIndex={0}
+        role="group"
+        aria-label="선택한 딜 — 좌우 화살표로 이동"
       >
         {/* 좌우 이동 버튼 (스와이프 대체) */}
         {hasPrev && (
@@ -92,7 +127,7 @@ export default function SelectedDealCard({
           <X className="w-3.5 h-3.5" />
         </button>
 
-        <button onClick={() => navigate(`/products/${selected.id}`)} className="w-full flex gap-3 p-3 text-left">
+        <button onClick={onCardClick} className="w-full flex gap-3 p-3 text-left">
           {thumb ? (
             <img src={thumb} alt="" className="w-[92px] h-[92px] rounded-xl object-cover shrink-0" loading="eager" />
           ) : (
