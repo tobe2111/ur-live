@@ -293,6 +293,29 @@ export async function setRenderFailed(DB: D1Database, id: number): Promise<void>
   ).bind(id).run().catch(() => null)
 }
 
+/** 예약 발행 대상: 승인됨 + scheduled_at 이 지난 것(미발행). */
+export async function listDuePosts(DB: D1Database): Promise<SocialPostRow[]> {
+  await ensureSocialTables(DB)
+  const r = await DB.prepare(
+    `SELECT * FROM social_posts
+     WHERE status = 'approved' AND external_id IS NULL
+       AND scheduled_at IS NOT NULL AND datetime(scheduled_at) <= datetime('now')
+     ORDER BY scheduled_at LIMIT 50`
+  ).all<SocialPostRow>().catch(() => ({ results: [] as SocialPostRow[] }))
+  return r.results || []
+}
+
+/** 렌더 진행 중(폴링 필요)인 포스트. */
+export async function listProcessingRenders(DB: D1Database): Promise<SocialPostRow[]> {
+  await ensureSocialTables(DB)
+  const r = await DB.prepare(
+    `SELECT * FROM social_posts
+     WHERE render_status = 'processing' AND render_provider_job IS NOT NULL
+     ORDER BY updated_at LIMIT 50`
+  ).all<SocialPostRow>().catch(() => ({ results: [] as SocialPostRow[] }))
+  return r.results || []
+}
+
 /** 이미 생성된 topic_slug 목록(중복 주제 방지). */
 export async function usedTopicSlugs(DB: D1Database, platform: SocialPlatform): Promise<string[]> {
   await ensureSocialTables(DB)

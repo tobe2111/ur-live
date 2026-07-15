@@ -22,6 +22,14 @@ export default function SocialDraftEditor({ post, onBack, onSaved }: Props) {
   const [hashtags, setHashtags] = useState(parseHashtags(post.hashtags).join(', '))
   const [mediaUrl, setMediaUrl] = useState(post.media_url || '')
   const [mediaKind, setMediaKind] = useState(post.media_kind || 'none')
+  // 예약 발행 시각 — datetime-local(로컬 표시) ↔ 저장은 ISO(UTC).
+  const [scheduledAt, setScheduledAt] = useState(() => {
+    if (!post.scheduled_at) return ''
+    const d = new Date(post.scheduled_at)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  })
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
@@ -31,6 +39,7 @@ export default function SocialDraftEditor({ post, onBack, onSaved }: Props) {
         title, body,
         hashtags: hashtags.split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean),
         media_url: mediaUrl.trim(), media_kind: mediaKind,
+        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       })
       if (data?.success) { toast.success('저장했습니다'); onSaved() } else toast.error(data?.error || '저장 실패')
     } catch (e: any) { toast.error(e?.response?.data?.error || '저장 중 오류') } finally { setSaving(false) }
@@ -78,6 +87,11 @@ export default function SocialDraftEditor({ post, onBack, onSaved }: Props) {
             </label>
           ))}
         </div>
+
+        <label className="mb-1 block text-sm font-medium text-gray-700">예약 발행 시각 <span className="text-gray-400">(선택 — 승인 후 이 시각에 자동 발행)</span></label>
+        <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+          className="mb-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900" />
+        <p className="mb-4 text-xs text-gray-400">비워두면 예약 없음(수동 발행). 예약은 매시간 점검되며, 발행 게이트가 켜져 있어야 실제 발행됩니다.</p>
 
         <div className="flex justify-end gap-2">
           <button onClick={onBack} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600">취소</button>

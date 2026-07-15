@@ -14,7 +14,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
-  Sparkles, Edit2, Trash2, Send, CheckCircle2, ExternalLink, Loader2, AlertTriangle, Image as ImageIcon, Video,
+  Sparkles, Edit2, Trash2, Send, CheckCircle2, ExternalLink, Loader2, AlertTriangle, Image as ImageIcon, Video, Clock,
 } from 'lucide-react'
 import SocialAccountsPanel from './admin-social/SocialAccountsPanel'
 import SocialDraftEditor from './admin-social/SocialDraftEditor'
@@ -181,6 +181,11 @@ export default function AdminSocialPage() {
                       {post.ai_generated ? <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">AI</span> : null}
                       {post.media_kind === 'image' && <ImageIcon className="h-3.5 w-3.5 text-gray-400" />}
                       {post.media_kind === 'video' && <Video className="h-3.5 w-3.5 text-gray-400" />}
+                      {post.scheduled_at && post.status !== 'published' && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">
+                          <Clock className="h-3 w-3" /> {new Date(post.scheduled_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 예약
+                        </span>
+                      )}
                     </div>
                     {post.title && <div className="truncate font-semibold text-gray-900">{post.title}</div>}
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 line-clamp-3">{post.body}</p>

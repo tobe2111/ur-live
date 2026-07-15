@@ -176,6 +176,9 @@ export interface Env {
   SOCIAL_INSTAGRAM_ENABLED?: string;    // 'true' 면 인스타 발행 허용
   SOCIAL_YOUTUBE_ENABLED?: string;      // 'true' 면 유튜브 업로드 허용
   SOCIAL_AUTO_DRAFT_ENABLED?: string;   // 'true' 면 주간 초안 cron 동작(비공개 초안만)
+  //   예약 발행 — 관리자가 승인+예약(scheduled_at)한 글을 매시간 cron 이 발행. 기본 OFF.
+  //   발행은 여전히 플랫폼 게이트+계정+approved 3중 조건 재확인(사람이 승인한 건만).
+  SOCIAL_AUTO_PUBLISH_ENABLED?: string;
   //   자격증명(Cloudflare Secrets). Meta(스레드/인스타)·Google(유튜브)은 기존 youtube 기능과 공유.
   META_APP_ID?: string;
   META_APP_SECRET?: string;
