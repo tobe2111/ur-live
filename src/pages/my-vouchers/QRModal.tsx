@@ -187,26 +187,32 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
               <VoucherQRCode value={qrUrl} size={160} />
             </div>
-            {/* 🛡️ 2026-05-16: 사용 완료 / 만료 시 큰 오버레이 (재사용 방지) */}
+            {/* 🛡️ 2026-05-16 → 2026-07-06 (대표 "QR 위에 사용 완료 도장처럼 박기"): 사용/만료 시
+                고무도장 스타일 오버레이 — 비스듬히 박힌 이중 테두리 스탬프 + QR grayscale(위 div) 로
+                재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}
             {isUsed && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/10 rounded-2xl">
-                <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
+                <div className="flex flex-col items-center rounded-xl border-[3px] border-emerald-600/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" strokeWidth={3} />
+                    <span className="text-[19px] font-black tracking-tight text-emerald-700 dark:text-emerald-400">사용 완료</span>
+                  </div>
+                  {voucher.used_at && (
+                    <span className="mt-0.5 text-[10px] font-semibold text-emerald-700/80 dark:text-emerald-400/80">
+                      {safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                  )}
                 </div>
-                <p className="mt-2 text-base font-extrabold text-emerald-700">사용 완료</p>
-                {voucher.used_at && (
-                  <p className="text-[10px] text-emerald-600">{safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-                )}
               </div>
             )}
             {isExpired && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 rounded-2xl">
-                <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center">
-                  <XCircle className="w-12 h-12 text-white" strokeWidth={3} />
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
+                <div className="flex items-center gap-1.5 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <XCircle className="w-5 h-5 text-red-500" strokeWidth={3} />
+                  <span className="text-[19px] font-black tracking-tight text-red-600 dark:text-red-400">
+                    {voucher.status === 'expired' ? '만료됨' : '환불됨'}
+                  </span>
                 </div>
-                <p className="mt-2 text-base font-extrabold text-red-700">
-                  {voucher.status === 'expired' ? '만료됨' : '환불됨'}
-                </p>
               </div>
             )}
           </div>
