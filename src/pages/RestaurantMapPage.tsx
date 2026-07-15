@@ -330,8 +330,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   ⚠️ 숨기지 않음 — 처음엔 뷰포트로 딱 잘라 82곳(전체 100)이 사라져 "왜 18곳만" 혼란 → 보이는 딜을
   //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
   //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
-  const viewportList = useMemo(() => {
-    if (mode !== 'map' || !mapBounds || (aggClusters && aggClusters.length > 0)) return displayList
+  const { viewportList, viewportInCount } = useMemo(() => {
+    if (mode !== 'map' || !mapBounds || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
     const { swLat, swLng, neLat, neLng } = mapBounds
     const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
     const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
@@ -339,7 +339,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng)
     const inB: Restaurant[] = []; const rest: Restaurant[] = []
     for (const r of displayList) (inView(r) ? inB : rest).push(r)
-    return inB.length ? [...inB, ...rest] : displayList // 보이는 딜 먼저, 나머지 뒤에(숨김 없음)
+    // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
+    return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
   }, [mode, mapBounds, aggClusters, displayList])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
@@ -816,7 +817,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={viewportList.length}
+            filteredCount={displayList.length}
+            viewportCount={viewportInCount}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
