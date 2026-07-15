@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-15 — 소셜 미디어 자동화 (유어딜 자체 홍보: 스레드·인스타·유튜브) — draft PR, 전 게이트 OFF
+대표 "유튜브 컨텐츠 제작·업로드 자동화, 스레드·인스타 자동화 모두 가능해? → 모두 가장 이상적으로 진행 / 컨텐츠도 자동으로, AI티 안 나게, 영상도". blog-ai(자체홍보) 패턴을 소셜로 확장 + 실제 게시 연동. **유어애즈(content-studio, 광고주용 B2B)와 무관 / features/social(팔로우·알림 소비자 소셜그래프)과도 무관** → 새 `features/social-media/api/`.
+- **초안-우선 · 자동발행 없음**: AI 생성=항상 draft → 관리자 검토 → 승인 → 발행(3중 조건: 게이트 ON + 계정 연결 + approved). 발행 CAS 선점(멱등).
+- **AI 티 제거**: `HUMAN_VOICE_RULES`(이모지·느낌표도배·최상급·뻔한도입 금지, 문장 리듬) + PROMO_BRIEF grounding + `findForbidden` 검증(운영정보·폐기어·도매 유입 폐기) — blog-ai SSOT 재사용.
+- **커넥터**: Threads Graph API(텍스트/이미지) · Instagram Graph API(피드 이미지/릴스 영상) · YouTube Data API v3(resumable 업로드). 공식 API만(봇/스크래핑 없음). 토큰 at-rest 암호화(`data-crypto`).
+- **영상**: 대본·제목·설명·태그·해시태그는 AI 자동 생성. mp4 렌더는 Worker 불가(ffmpeg 없음) → 외부 렌더(media-gateway video provider) 또는 대표 소재 URL 을 `media_url` 로 받아 업로드.
+- **어드민**: `/api/admin/social/*`(requireAdmin) 계정 연결·초안 생성/편집/승인/발행. 주간 cron `social-draft`(게이트 `SOCIAL_AUTO_DRAFT_ENABLED`, 기본 OFF).
+- **env(전부 기본 OFF)**: `SOCIAL_THREADS_ENABLED`·`SOCIAL_INSTAGRAM_ENABLED`·`SOCIAL_YOUTUBE_ENABLED`·`SOCIAL_AUTO_DRAFT_ENABLED` + 자격증명(META/THREADS/YOUTUBE). **미설정 시 라이브 영향 0**(라우트만 추가, cron no-op).
+- **⚠️ 대표 액션(활성 전)**: Meta 앱(스레드/인스타) + 인스타 비즈니스 전환·앱심사(`instagram_content_publish`) + 유튜브 채널 OAuth + 공식 계정 토큰 등록 + 게이트 ON + staging 게시 1회 검증. 설계·플랫폼별 액션: `docs/design/social-media-automation.md`.
+- 검증: audit-gate 45 GREEN(file-size rebaseline: index.ts +4·repair-schema +35 = 필수 마운트/테이블 배선). ⚠️ 이 환경 npm 403 → tsc/build/vitest 는 CI. UI(어드민 페이지)는 후속.
+
 ## 🔶 2026-07-14 — 유어딜 전면 활성화 지시서 진행 (STEP 2 선결: 공구 엔진 조종석)
 대표 "유어딜 전면 활성화 지시서" — 게이트 OFF로 파킹한 것들을 파일럿 검증하며 순서대로 켬(STEP 0~6). **STEP 0**(net==5% 테스트 green·#479 payout 가드 코드 확인 — 코드측 통과; 어드민 4항목 스모크·발신프로필키 `ALIGO_SENDER_KEY`·파일럿 매장선정은 대표 액션). **STEP 2 선결 = 공구 엔진 조종석(gap A1) 빌드**: 상품별 gb_mode(off/scheduled/live/ended)·특가·마감·소개비율·링크전용 설정 어드민 UI+API. 저장=`product_supply_meta` gb_* 키(SSOT `shared/gb-session.ts` saveGbSession/validateGbSession 호출만). **머니 무접촉·게이트 뒤**(gb_engine_enabled OFF면 엔진이 안 읽어 소비자/결제 무영향). draft PR·CI green 후 대표 보고 → 파일럿(상품1개 live→실카드1건). 남은 STEP 1(flip)·3(위임)·4(매칭)·5(체험)·6(데이터완결+고위험3종)은 대표 대시보드/파일럿 주도.
 

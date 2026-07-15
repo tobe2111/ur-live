@@ -436,6 +436,12 @@ export async function handleCronScheduled(
       const { handleBlogAiDraft } = await import('./cron/blog-ai-draft');
       return handleBlogAiDraft(env);
     }));
+    // 🆕 2026-07-15: 소셜 홍보 초안 주간(스레드/인스타/유튜브, 비공개 초안 — 관리자 검토 후 발행).
+    //   킬스위치 SOCIAL_AUTO_DRAFT_ENABLED='true' 일 때만 — 기본 OFF(토큰 낭비 0). 홍보 전용.
+    ctx.waitUntil(safeCron('social-draft', async () => {
+      const { handleSocialDraft } = await import('./cron/social-draft');
+      return handleSocialDraft(env);
+    }));
     ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       const now = new Date();
