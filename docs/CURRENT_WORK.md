@@ -9,7 +9,8 @@
 - **어드민**: `/api/admin/social/*`(requireAdmin) 계정 연결·초안 생성/편집/승인/발행. 주간 cron `social-draft`(게이트 `SOCIAL_AUTO_DRAFT_ENABLED`, 기본 OFF).
 - **env(전부 기본 OFF)**: `SOCIAL_THREADS_ENABLED`·`SOCIAL_INSTAGRAM_ENABLED`·`SOCIAL_YOUTUBE_ENABLED`·`SOCIAL_AUTO_DRAFT_ENABLED` + 자격증명(META/THREADS/YOUTUBE). **미설정 시 라이브 영향 0**(라우트만 추가, cron no-op).
 - **⚠️ 대표 액션(활성 전)**: Meta 앱(스레드/인스타) + 인스타 비즈니스 전환·앱심사(`instagram_content_publish`) + 유튜브 채널 OAuth + 공식 계정 토큰 등록 + 게이트 ON + staging 게시 1회 검증. 설계·플랫폼별 액션: `docs/design/social-media-automation.md`.
-- **어드민 UI 완료**: `/admin/social`(AdminSocialPage + admin-social/{SocialAccountsPanel,SocialDraftEditor,types}) — 계정 연결/게이트 상태 · 플랫폼별 AI 초안 생성 버튼 · 목록(상태 배지·발행 가능조건 표시) · 편집/승인/발행/보관. 좌측 nav "소셜 홍보"(콘텐츠 그룹). 라이트 대시보드 테마.
+- **어드민 UI 완료**: `/admin/social`(AdminSocialPage + admin-social/{SocialAccountsPanel,SocialDraftEditor,SocialVideoControls,types}) — 계정 연결/게이트 상태 · 플랫폼별 AI 초안 생성 버튼 · 목록(상태 배지·발행 가능조건 표시) · 편집/승인/발행/보관. 좌측 nav "소셜 홍보"(콘텐츠 그룹). 라이트 대시보드 테마.
+- **릴스/쇼츠 영상 파이프라인 완료**(대표 "영상도 릴스/쇼츠용 위주"): AI 영상 기획(`social-video` 스토리보드/대본, 유튜브 쇼츠+인스타 릴스, 세로 9:16) → 렌더 게이트웨이(`social-video-render` Creatomate, 게이트 `SOCIAL_VIDEO_ENABLED` OFF, egress 차단으로 미검증) → done 시 media_url 세팅 → 기존 발행 경로가 쇼츠 업로드/릴스 게시. 라우트 `/posts/:id/{video-plan,render,render-status}` + 어드민 영상 컨트롤(기획 보기·렌더·폴링). `social_posts` 에 storyboard/render_* 컬럼. **기획/대본은 렌더 provider 없이도 항상 생성 가능**(완성 mp4 직접 넣어 발행도 가능).
 - 검증: audit-gate 45 GREEN(file-size rebaseline: index.ts +4·repair-schema +35·AdminLayout +1·admin.routes +7 = 필수 배선). ⚠️ 이 환경 npm 403 → tsc/build/vitest 는 CI. 활성은 대표 자격증명 세팅 + staging 게시 1회 검증 후.
 
 ## 🔶 2026-07-14 — 유어딜 전면 활성화 지시서 진행 (STEP 2 선결: 공구 엔진 조종석)

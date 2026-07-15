@@ -51,6 +51,12 @@ export async function ensureSocialTables(DB: D1Database): Promise<void> {
     )
   `).run().catch(swallow())
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(platform, status)`).run().catch(swallow())
+  // 🎬 영상 기획/렌더 추적 컬럼(추가만 — 기존 배포엔 없을 수 있어 개별 try-catch).
+  for (const ddl of [
+    `ALTER TABLE social_posts ADD COLUMN storyboard TEXT`,
+    `ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT`,
+    `ALTER TABLE social_posts ADD COLUMN render_status TEXT`,
+  ]) { await DB.prepare(ddl).run().catch(swallow()) }
 }
 
 // ── 계정 ──────────────────────────────────────────────────────────────
@@ -148,6 +154,7 @@ export interface SocialPostRow {
   hashtags: string | null; media_url: string | null; media_kind: string; status: string
   external_id: string | null; external_url: string | null; error: string | null
   scheduled_at: string | null; published_at: string | null; ai_generated: number
+  storyboard: string | null; render_provider_job: string | null; render_status: string | null
   created_at: string; updated_at: string
 }
 
@@ -253,6 +260,37 @@ export async function countDrafts(DB: D1Database, platform: SocialPlatform): Pro
     `SELECT COUNT(*) as n FROM social_posts WHERE platform = ? AND status = 'draft'`
   ).bind(platform).first<{ n: number }>().catch(() => null)
   return r?.n || 0
+}
+
+/** 스토리보드 저장 + 본문(대본 요약) 갱신. */
+export async function setStoryboard(DB: D1Database, id: number, storyboardJson: string, body: string, title: string, hashtags: string[]): Promise<void> {
+  await ensureSocialTables(DB)
+  await DB.prepare(
+    `UPDATE social_posts SET storyboard = ?, body = ?, title = ?, hashtags = ?, render_status = 'none', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(storyboardJson, body, title, JSON.stringify(hashtags), id).run().catch(() => null)
+}
+
+/** 렌더 제출 기록(provider job id + processing). */
+export async function setRenderSubmitted(DB: D1Database, id: number, providerJob: string): Promise<void> {
+  await ensureSocialTables(DB)
+  await DB.prepare(
+    `UPDATE social_posts SET render_provider_job = ?, render_status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(providerJob, id).run().catch(() => null)
+}
+
+/** 렌더 완료 → media_url 세팅(발행 준비 완료). */
+export async function setRenderDone(DB: D1Database, id: number, mediaUrl: string): Promise<void> {
+  await ensureSocialTables(DB)
+  await DB.prepare(
+    `UPDATE social_posts SET render_status = 'done', media_url = ?, media_kind = 'video', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(mediaUrl, id).run().catch(() => null)
+}
+
+export async function setRenderFailed(DB: D1Database, id: number): Promise<void> {
+  await ensureSocialTables(DB)
+  await DB.prepare(
+    `UPDATE social_posts SET render_status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(id).run().catch(() => null)
 }
 
 /** 이미 생성된 topic_slug 목록(중복 주제 방지). */

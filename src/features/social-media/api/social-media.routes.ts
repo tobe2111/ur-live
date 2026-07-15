@@ -14,6 +14,8 @@ import {
 } from './social-store'
 import { createSocialDraft } from './social-draft'
 import { publishPost, isPlatformEnabled } from './social-publish'
+import { generateVideoPlan, startVideoRender, checkVideoRender } from './social-video-flow'
+import { videoRenderStatus } from './social-video-render'
 
 const socialMediaRoutes = new Hono<{ Bindings: Env }>()
 
@@ -21,7 +23,7 @@ const socialMediaRoutes = new Hono<{ Bindings: Env }>()
 socialMediaRoutes.get('/accounts', async (c) => {
   const accounts = await listAccounts(c.env.DB)
   const gates = SOCIAL_PLATFORMS.map((p) => ({ platform: p, label: PLATFORM_LABEL[p], enabled: isPlatformEnabled(c.env, p), mediaRequired: PLATFORM_MEDIA[p] }))
-  return c.json({ success: true, accounts, gates })
+  return c.json({ success: true, accounts, gates, video: videoRenderStatus(c.env) })
 })
 
 // POST /accounts — 계정 수동 등록(토큰 암호화 저장)
@@ -120,6 +122,35 @@ socialMediaRoutes.post('/posts/:id/publish', async (c) => {
   const r = await publishPost(c.env, id)
   if (!r.ok) return c.json({ success: false, error: r.error, post: await getPost(c.env.DB, id) }, 400)
   return c.json({ success: true, externalId: r.externalId, externalUrl: r.externalUrl, post: await getPost(c.env.DB, id) })
+})
+
+// ── 릴스/쇼츠 영상 파이프라인(유튜브 쇼츠 + 인스타 릴스) ──────────────────────
+// POST /posts/:id/video-plan — AI 영상 기획(스토리보드/대본) 생성
+socialMediaRoutes.post('/posts/:id/video-plan', async (c) => {
+  if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const r = await generateVideoPlan(c.env, id)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, storyboard: r.storyboard, post: await getPost(c.env.DB, id) })
+})
+
+// POST /posts/:id/render — 스토리보드 → 영상 렌더 제출(게이트 ON + provider 필요)
+socialMediaRoutes.post('/posts/:id/render', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const r = await startVideoRender(c.env, id)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, status: r.status, url: r.url, post: await getPost(c.env.DB, id) })
+})
+
+// GET /posts/:id/render-status — 렌더 상태 폴링(done 시 media_url 세팅됨)
+socialMediaRoutes.get('/posts/:id/render-status', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const r = await checkVideoRender(c.env, id)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, status: r.status, url: r.url, post: await getPost(c.env.DB, id) })
 })
 
 // DELETE /posts/:id — 보관(archive)

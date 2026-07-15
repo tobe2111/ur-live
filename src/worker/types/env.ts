@@ -181,6 +181,12 @@ export interface Env {
   META_APP_SECRET?: string;
   THREADS_APP_ID?: string;
   THREADS_APP_SECRET?: string;
+  //   릴스/쇼츠 영상 렌더(스토리보드 → mp4). Worker 는 렌더 불가 → 외부 템플릿 렌더 API 위임.
+  //   기본 OFF. 켜려면 SOCIAL_VIDEO_ENABLED='true' + provider 키. (기획/대본은 ANTHROPIC 로 항상 생성 가능)
+  SOCIAL_VIDEO_ENABLED?: string;        // 'true' 면 영상 렌더 허용
+  SOCIAL_VIDEO_PROVIDER?: string;       // 'creatomate'(기본)
+  SOCIAL_VIDEO_RENDER_KEY?: string;     // 렌더 provider API 키
+  SOCIAL_VIDEO_TEMPLATE_ID?: string;    // (선택) 디자인된 템플릿 ID — 자막만 주입해 품질↑
 
   // ---- fee-resolver 그림자 배선 스위치 (상품 소유 모델 새 수수료 규칙) ----
   //   'true' 면 결제 확정 시 새 규칙 분배를 **계산만 해서 order_fee_breakdown 에 기록**(실제 정산 무변경).

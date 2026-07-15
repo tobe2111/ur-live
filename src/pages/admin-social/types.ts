@@ -45,6 +45,9 @@ export interface SocialPost {
   scheduled_at: string | null
   published_at: string | null
   ai_generated: number
+  storyboard: string | null            // JSON — 릴스/쇼츠 스토리보드
+  render_provider_job: string | null
+  render_status: string | null          // none | processing | done | failed
   created_at: string
   updated_at: string
 }

@@ -555,6 +555,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
     { desc: 'idx_social_posts_status', sql: "CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(platform, status)" },
+    // 🎬 릴스/쇼츠 영상 기획·렌더 추적(추가만).
+    { desc: 'social_posts.storyboard', sql: "ALTER TABLE social_posts ADD COLUMN storyboard TEXT" },
+    { desc: 'social_posts.render_provider_job', sql: "ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT" },
+    { desc: 'social_posts.render_status', sql: "ALTER TABLE social_posts ADD COLUMN render_status TEXT" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },

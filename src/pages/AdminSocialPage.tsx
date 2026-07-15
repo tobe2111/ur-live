@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import SocialAccountsPanel from './admin-social/SocialAccountsPanel'
 import SocialDraftEditor from './admin-social/SocialDraftEditor'
+import SocialVideoControls from './admin-social/SocialVideoControls'
 import {
   PLATFORMS, STATUS_META, parseHashtags,
   type SocialAccount, type SocialGate, type SocialPost, type SocialPlatform,
@@ -34,12 +35,13 @@ export default function AdminSocialPage() {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
 
-  const { data: acctData, refetch: refetchAccounts } = useApiQuery<{ accounts: SocialAccount[]; gates: SocialGate[] }>(
+  const { data: acctData, refetch: refetchAccounts } = useApiQuery<{ accounts: SocialAccount[]; gates: SocialGate[]; videoEnabled: boolean }>(
     ['admin', 'social', 'accounts'], '/api/admin/social/accounts',
-    { select: (r: any) => ({ accounts: r?.accounts || [], gates: r?.gates || [] }) },
+    { select: (r: any) => ({ accounts: r?.accounts || [], gates: r?.gates || [], videoEnabled: !!r?.video?.enabled }) },
   )
   const accounts = acctData?.accounts || []
   const gates = acctData?.gates || []
+  const videoEnabled = acctData?.videoEnabled || false
 
   const { data: posts = [], isLoading, isError, refetch: refetchPosts } = useApiQuery<SocialPost[]>(
     ['admin', 'social', 'posts', platform || 'all'],
@@ -190,6 +192,10 @@ export default function AdminSocialPage() {
                     )}
                     {post.status === 'failed' && post.error && (
                       <div className="mt-2 flex items-start gap-1 text-xs text-red-600"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{post.error}</div>
+                    )}
+                    {/* 릴스/쇼츠 영상 컨트롤 — 유튜브·인스타 초안(미발행)만 */}
+                    {(post.platform === 'youtube' || post.platform === 'instagram') && post.status !== 'published' && post.status !== 'archived' && (
+                      <SocialVideoControls post={post} videoEnabled={videoEnabled} onChange={() => refetchPosts()} />
                     )}
                   </div>
 

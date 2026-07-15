@@ -133,5 +133,16 @@ YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET  (기존 youtube 기능과 공유)
 - 운영정보 유출은 grounding + 출력검증으로 원천 차단.
 - ⚠️ 이 원격환경 npm 403 → build/vitest 는 CI. 실제 게시는 자격증명 세팅 후 staging 1회 검증 필수.
 
+## 9. 릴스/쇼츠 영상 파이프라인 (대표 "영상도 릴스/쇼츠용 위주")
+
+세로 9:16 숏폼(유튜브 쇼츠 + 인스타 릴스) 중심. 3계층:
+1. **영상 기획(AI, in-worker)** — `social-video.ts generateStoryboard`: 주제 → `{title, description, hashtags, scenes[]}`(장면별 나레이션·화면자막·비주얼·초). 무음 시청 대비 자막 우선. PROMO_BRIEF + HUMAN_VOICE_RULES + findForbidden 검증. **키만 있으면 항상 생성 가능**(렌더와 독립).
+2. **렌더 게이트웨이(외부 provider)** — `social-video-render.ts`: 스토리보드 → mp4. Worker 는 렌더 불가라 외부 템플릿 렌더 API(기본 Creatomate)에 위임(submit→poll). 게이트 `SOCIAL_VIDEO_ENABLED` + `SOCIAL_VIDEO_RENDER_KEY`(+선택 `SOCIAL_VIDEO_TEMPLATE_ID`). 미설정 시 NOT_CONFIGURED. ⚠️ egress 차단 환경이라 실호출 미검증(media-gateway 선례와 동일 — docs 기준 배선).
+3. **발행 연결** — 렌더 done → `social_posts.media_url` + `media_kind='video'` → 기존 발행 경로가 유튜브 업로드 / 인스타 REELS 게시.
+
+`social-video-flow.ts` = 오케스트레이션(generate/start/check). 라우트 `/posts/:id/{video-plan,render,render-status}`. `social_posts` 에 `storyboard`/`render_provider_job`/`render_status` 컬럼 추가.
+운영 팁: 디자인된 렌더 템플릿(`SOCIAL_VIDEO_TEMPLATE_ID`)에 자막만 주입하면 브랜드 품질↑. 렌더 provider 없이도 기획/대본은 나오므로, 완성 mp4 를 대표가 직접 `media_url` 로 넣어 발행도 가능.
+
 ## 구현 로그
-- (진행중) 2026-07-15 초안 — 설계 + 게이트드 foundation (Threads/Instagram/YouTube 커넥터 + 초안-우선 오케스트레이터 + 어드민 라우트 + 주간 cron). 전 게이트 OFF.
+- 2026-07-15 게이트드 foundation — 설계 + Threads/Instagram/YouTube 커넥터 + 초안-우선 오케스트레이터 + 어드민 라우트/UI + 주간 cron. 전 게이트 OFF.
+- 2026-07-15 릴스/쇼츠 영상 파이프라인 — AI 스토리보드 생성(유튜브 쇼츠 + 인스타 릴스) + 렌더 게이트웨이(Creatomate, 게이트 OFF) + 어드민 영상 컨트롤(기획/렌더/폴링). done → media_url → 발행.
