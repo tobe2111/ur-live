@@ -26,7 +26,6 @@ interface FeedProduct extends Product {
   discount_rate?: number
   current_price?: number
   original_price?: number
-  price?: number
   sold_count?: number
   created_at?: string
 }
