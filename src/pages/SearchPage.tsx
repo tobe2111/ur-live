@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useSearchInfinite } from '@/hooks/useSearch'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
 import ProductCard from '@/components/search/ProductCard'
@@ -22,9 +23,10 @@ interface Product {
   seller_username: string
   // 🛡️ 2026-05-19: 검색 결과 탭 (전체/교환권/쇼핑) 분리용.
   deal_only?: number
+  // 🖥️ 2026-07-16: 이용권(voucher 카테고리) 판별용 — 검색을 이용권만으로 필터.
+  category?: string
 }
 
-type TypeTab = 'all' | 'voucher' | 'shop'
 
 interface SearchSuggestion {
   type: 'product' | 'seller'
@@ -80,7 +82,6 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   // 🛡️ 2026-05-19: 검색 결과 타입 탭 (전체/교환권/쇼핑) — 사용자가 결과 안에서 분류 가능.
-  const [typeTab, setTypeTab] = useState<TypeTab>('all')
 
   useEffect(() => { document.title = t('search.pageTitle', { defaultValue: '검색 - 유어딜' }) }, [t])
 
@@ -123,9 +124,11 @@ export default function SearchPage() {
     let filtered = (searchResult.products as Product[]).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
       if (price < priceRange.min || price > priceRange.max) return false
-      // 🛡️ 2026-05-19: 타입 탭 필터 (교환권 vs 쇼핑).
-      if (typeTab === 'voucher' && Number(product.deal_only) !== 1) return false
-      if (typeTab === 'shop' && Number(product.deal_only) === 1) return false
+      // 🖥️ 2026-07-16 (대표 — "검색은 무조건 이용권만"): 교환권(deal_only=1 기프티콘) 항상 제외 +
+      //   category 있으면 이용권(voucher 카테고리: 식사/미용/숙소/기타)만. isVoucherCategory = 이용권 SSOT.
+      //   category 누락 응답에도 결과가 비지 않도록 deal_only 를 1차 가드로 사용(robust).
+      if (Number(product.deal_only) === 1) return false
+      if (product.category && !isVoucherCategory(product.category)) return false
       return true
     })
 
@@ -178,35 +181,7 @@ export default function SearchPage() {
         {/* Results Grid */}
         {showResults && (
           <>
-            {/* 🛡️ 2026-05-19: 타입 탭 (전체/교환권/쇼핑) — 결과 안에서 분류. */}
-            {(() => {
-              const all = (searchResult.products as Product[]) || []
-              const voucherCount = all.filter(p => Number(p.deal_only) === 1).length
-              const shopCount = all.length - voucherCount
-              return (
-                <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar">
-                  {[
-                    { key: 'all' as TypeTab, label: '전체', count: all.length },
-                    { key: 'voucher' as TypeTab, label: '🎁 교환권', count: voucherCount },
-                    { key: 'shop' as TypeTab, label: '🛒 쇼핑', count: shopCount },
-                  ].map(tab => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setTypeTab(tab.key)}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                        typeTab === tab.key
-                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                          : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300'
-                      } ${tab.count === 0 && tab.key !== 'all' ? 'opacity-40' : ''}`}
-                      disabled={tab.count === 0 && tab.key !== 'all'}
-                    >
-                      {tab.label} <span className="text-[10px] opacity-70">({tab.count})</span>
-                    </button>
-                  ))}
-                </div>
-              )
-            })()}
+            {/* 🖥️ 2026-07-16 (대표 — 검색은 이용권만): 교환권/쇼핑 타입 탭 제거(이용권 단일). */}
 
             {/* Sort and Filter Bar with chips */}
             <SortFilterBar
