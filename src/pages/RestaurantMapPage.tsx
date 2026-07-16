@@ -607,7 +607,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     mid: 'calc(100dvh - 40dvh)',
     full: 'calc(100dvh - 80dvh)',
   }
-  const [isLgViewport, setIsLgViewport] = useState(false)
+  // 🗺️ 2026-07-16: 동기 초기화(첫 프레임 flash 방지 — PC 분할 레이아웃이 마운트 후 깜빡이지 않게). SSR-safe.
+  const [isLgViewport, setIsLgViewport] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(min-width: 1024px)').matches
+  )
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -616,6 +619,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [])
+  // 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg 경계를 넘으면 지도 컨테이너 폭(좌 400px 패널 유무)이 바뀌므로
+  //   Kakao 지도를 relayout(중심 보존). 고정 뷰포트 최초 로드는 CSS 정적 오프셋이라 relayout 불필요(무해).
+  useEffect(() => {
+    const map = mapInstance.current
+    if (!map || !window.kakao?.maps) return
+    const c = map.getCenter?.()
+    const id = setTimeout(() => { try { map.relayout(); if (c) map.setCenter(c) } catch { /* silent */ } }, 60)
+    return () => clearTimeout(id)
+  }, [isLgViewport])
   const currentSheetTop = (isLgViewport ? sheetTopByStateLg : sheetTopByState)[sheetSnap]
 
   // 🏠 2026-06-20 (대표 — 홈=당근식 1줄 리스트 + 지도 강조버튼): 리스트 모드. 데이터/지오코딩/정렬/필터는
@@ -719,9 +731,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             swap 없이 inset-0 에 카카오맵이 그려짐. layout shift 0. */}
       {/* 🛡️ 2026-05-16: touchAction='none' — 카카오 SDK 가 핀치/패닝 제스처 완전 take-over.
             기존엔 부모(pb-16) 의 scroll touch 가 핀치 제스처 가로채 줌 안 됨. */}
-      <div ref={mapRef} className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A]" style={{ touchAction: 'none' }} />
+      {/* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 좌측 400px 리스트 패널 오른쪽으로 지도 오프셋(lg:left-[400px]).
+          모바일(<lg)은 inset-0 풀스크린 그대로(lg: no-op). */}
+      <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1A1A]" style={{ touchAction: 'none' }} />
       {!(sdkLoaded && window.kakao?.maps) && (
-        <div className="absolute inset-0 bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
@@ -765,7 +779,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
           (nearMeMode || locating) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
         }`}
-        style={{ bottom: selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)' }}
+        style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >
         {locating ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <LocateFixed className="w-[18px] h-[18px]" />}
       </button>
@@ -785,10 +799,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           total={displayList.length}
         />
       ) : (
-        /* ═══ Bottom Sheet (드래그 가능, 3-snap) — 칩은 상단 MapTopBar 로 이동, 시트는 리스트만 ═══ */
+        /* ═══ Bottom Sheet (드래그 가능, 3-snap) — 칩은 상단 MapTopBar 로 이동, 시트는 리스트만 ═══
+           🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서는 하단 시트가 아니라 좌측 400px 고정 리스트 패널로
+           도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */}
         <div
-          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
-          style={{
+          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#1A1A1A]"
+          style={isLgViewport ? { top: 0 } : {
             top: currentSheetTop,
             transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
             transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
@@ -796,9 +812,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           role="dialog"
           aria-label={t('restaurantMap.listAria', { defaultValue: '맛집 목록' })}
         >
-          {/* Drag handle — 실시간 추적 + snap */}
+          {/* Drag handle — 실시간 추적 + snap (lg+ 좌측 패널에선 드래그 불필요 → 숨김) */}
           <div
-            className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none"
+            className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none lg:hidden"
             onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
             onTouchMove={(e) => handleSheetDragMove(e.touches[0].clientY)}
             onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}

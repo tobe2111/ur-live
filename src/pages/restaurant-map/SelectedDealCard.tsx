@@ -85,7 +85,7 @@ export default function SelectedDealCard({
 
   return (
     <div
-      className="absolute left-0 right-0 z-30 px-3 pointer-events-none"
+      className="absolute left-0 right-0 lg:left-[400px] z-30 px-3 pointer-events-none"
       style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 10px)' }}
     >
       <div
