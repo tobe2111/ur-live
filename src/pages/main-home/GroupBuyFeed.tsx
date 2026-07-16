@@ -25,7 +25,22 @@ interface FeedProduct extends Product {
   business_address?: string
   discount_rate?: number
   current_price?: number
+  original_price?: number
+  price?: number
+  sold_count?: number
   created_at?: string
+}
+
+// 🖥️ 2026-07-16 (대표 신고 — PC 정렬 무반응): 정렬 필드가 sparse(group_buy_current/discount_rate 대부분
+//   null·0)라 인기순/할인율순이 서버 기본순(최신)과 동일해 보였음. 실제 값 기반으로 견고화.
+function soldOf(p: FeedProduct): number {
+  return p.sold_count ?? p.group_buy_current ?? 0
+}
+function discountOf(p: FeedProduct): number {
+  if (p.discount_rate != null && p.discount_rate > 0) return p.discount_rate
+  const price = p.current_price ?? p.price ?? 0
+  const orig = p.original_price ?? 0
+  return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
 const CATEGORIES = [
@@ -168,7 +183,7 @@ export default function GroupBuyFeed({
     const arr = [...allItems]
     switch (sort) {
       case 'popular':
-        return arr.sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
+        return arr.sort((a, b) => soldOf(b) - soldOf(a))
       case 'deadline':
         return arr.sort((a, b) => {
           const ax = a.expires_at ? new Date(a.expires_at).getTime() : Infinity
@@ -176,7 +191,7 @@ export default function GroupBuyFeed({
           return ax - bx
         })
       case 'discount':
-        return arr.sort((a, b) => (b.discount_rate ?? 0) - (a.discount_rate ?? 0))
+        return arr.sort((a, b) => discountOf(b) - discountOf(a))
       case 'newest':
         return arr.sort((a, b) => {
           const ax = a.created_at ? new Date(a.created_at).getTime() : 0

@@ -44,7 +44,9 @@ export default function DesktopTopNav() {
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
-    { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
+    // 🖥️ 2026-07-16 (대표 신고 — 상단 '동네딜' 무의미): 홈=동네딜 + /group-buy→홈 리다이렉트라 '홈'과 중복.
+    //   실제 다른 목적지인 '교환권'(/vouchers)로 교체(하단바 2번째 탭과 정합).
+    { icon: Gift, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
   ]
