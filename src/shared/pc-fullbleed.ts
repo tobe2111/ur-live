@@ -14,6 +14,8 @@ const FULLBLEED_PC_PATHS = new Set<string>([
   '/', '/vouchers', '/stays',
   // 마이/계정(자체 서브헤더 + 전역 상단바 유지 — own-header 아님). ur-content-medium/narrow 중앙정렬.
   '/user/profile', '/my-vouchers', '/my-orders',
+  // 검색/찜(브라우징 그리드 — 전역 상단바 유지). ur-content-wide 중앙정렬.
+  '/search', '/wishlist',
 ])
 
 /** 이 경로는 lg+ 에서 풀너비(프레임/사이드바/거터 제외 + 하단네비 숨김). */
