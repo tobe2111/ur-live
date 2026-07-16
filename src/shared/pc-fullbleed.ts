@@ -10,7 +10,11 @@
  *   - `/vouchers` (교환권): 페이지 자체 헤더(교환권 타이틀/검색/잔액/카테고리)를 그대로 쓰므로
  *     전역 DesktopTopNav 는 숨김(중복 방지) → `OWN_HEADER_PC_PATHS`.
  */
-const FULLBLEED_PC_PATHS = new Set<string>(['/', '/vouchers', '/stays'])
+const FULLBLEED_PC_PATHS = new Set<string>([
+  '/', '/vouchers', '/stays',
+  // 마이/계정(자체 서브헤더 + 전역 상단바 유지 — own-header 아님). ur-content-medium/narrow 중앙정렬.
+  '/user/profile', '/my-vouchers', '/my-orders',
+])
 
 /** 이 경로는 lg+ 에서 풀너비(프레임/사이드바/거터 제외 + 하단네비 숨김). */
 export function isFullBleedPcPath(pathname: string): boolean {

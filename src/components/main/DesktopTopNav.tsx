@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
-import { hasOwnHeaderPc } from '@/shared/pc-fullbleed'
+import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -74,9 +74,10 @@ export default function DesktopTopNav() {
   //   전역 상단바 숨김(중복 방지) — 그 페이지의 검색/카테고리 헤더가 상단을 담당.
   if (hasOwnHeaderPc(location.pathname)) return null
 
-  // 🖥️ 2026-07-15 (당근 스타일 PC 홈): 홈(`/`)은 좌측 앱 사이드바가 없으므로 상단바가 로고+탭을 항상 보이고
-  //   (xl:hidden 해제), 사이드바용 좌패딩 대신 콘텐츠 폭(1240)에 정렬 → PcHomePage 본문과 좌우 정렬 일치.
-  const isHome = location.pathname === '/'
+  // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
+  //   항상 보이고(xl:hidden 해제) 사이드바용 좌패딩 대신 콘텐츠 폭(1600)에 정렬. 자체헤더 카탈로그(교환권/숙소)는
+  //   위에서 이미 return null. isHome 은 이 풀너비-네비 판정으로 일반화.
+  const isHome = isFullBleedPcPath(location.pathname) && !hasOwnHeaderPc(location.pathname)
 
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
