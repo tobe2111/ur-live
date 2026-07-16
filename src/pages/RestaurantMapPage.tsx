@@ -774,6 +774,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         home={home}
       />
 
+      {/* 🗺️ 2026-07-16 (대표 요청 — 위치 로딩 표시): 측위 중이면 상단 중앙(검색바 아래)에 작은 알약.
+          지도를 안 가리게 pointer-events-none. PC 분할에선 지도 영역(좌 400px 패널 오른쪽) 중앙 정렬. */}
+      {locating && (
+        <div className="absolute top-[62px] left-1/2 -translate-x-1/2 lg:left-[calc(50%+200px)] z-20 pointer-events-none">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900/85 text-white text-[12px] font-semibold shadow-lg backdrop-blur">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            내 위치 찾는 중…
+          </span>
+        </div>
+      )}
+
       {/* 🗺️ 2026-06-23 (대표 — 현위치 버튼): 누르면 GPS 현위치로 지도 이동(+파란 점 표시).
           peek 시트(240px) 위로 떠 있게 배치. nearMe 활성 시 강조, 조회 중 스피너. */}
       <button

@@ -595,10 +595,11 @@ export default function GroupBuyDetailPage() {
       </header>
 
       {/* 🖥️ 2026-07-16 (대표 — 동네딜 상세 PC 2단): lg+ 에서 좌 갤러리(sticky) + 우 본문 2단(1080).
-          모바일(<lg)은 갤러리→본문 세로 1열 그대로(lg: no-op). */}
-      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start">
+          🖼️ 2026-07-16 (대표 신고 — PC 이미지가 상단에 너무 붙음): lg 에서 상단 여백(pt-6) + 갤러리 카드화
+          (rounded + 헤더 높이만큼 sticky top). 모바일(<lg)은 갤러리→본문 세로 1열 + 몰입형 풀블리드 그대로. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start lg:pt-[72px]">
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative lg:sticky lg:top-0 lg:self-start" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:sticky lg:top-[72px] lg:self-start lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#1A1A1A]" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
             <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
