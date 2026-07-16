@@ -789,9 +789,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         {locating ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <LocateFixed className="w-[18px] h-[18px]" />}
       </button>
 
-      {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard) →
-          지도 넓게 + 좌우 스와이프 캐러셀. 미선택 시에만 드래그 리스트 시트. (둘은 배타) */}
-      {selected ? (
+      {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard).
+          🗺️ 2026-07-16 (대표 신고 — PC 지도 상품 클릭 시 좌측이 빔): 모바일은 시트↔카드 배타지만,
+          PC(lg)는 좌측 리스트 패널을 '항상' 유지하고 선택 카드는 지도 영역(우)에만 오버레이한다. */}
+      {selected && (
         <SelectedDealCard
           selected={selected}
           userLoc={userLoc}
@@ -803,7 +804,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           position={selectedIndex + 1}
           total={displayList.length}
         />
-      ) : (
+      )}
+
+      {/* 좌측 리스트 패널(시트) — PC(lg)는 선택 여부와 무관하게 항상 표시(빈 좌측 방지), 모바일은 미선택 시만. */}
+      {(!selected || isLgViewport) && (
         /* ═══ Bottom Sheet (드래그 가능, 3-snap) — 칩은 상단 MapTopBar 로 이동, 시트는 리스트만 ═══
            🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서는 하단 시트가 아니라 좌측 400px 고정 리스트 패널로
            도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */
