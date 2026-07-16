@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-16 — 도매몰 별도배포(ur-wholesale) P0 파이프라인 완성 (대표 "C로 가장 이상적으로", 도매 미운영)
+#539가 소비자 워커에서 도매 라우트를 제거(다이어트)했으나 ur-wholesale 배포 인프라가 없어 `/api/wholesale/*`가 메인에서 404(도매 미운영이라 라이브 영향 0). **C안 = 도매 별도배포 완성**. 설계 SSOT: `docs/design/wholesale-separate-deploy.md`.
+- **P0(이 커밋, 코드)**: `.github/workflows/deploy-wholesale.yml` — `WHOLESALE_BUNDLE=1 npm run build`(도매 포함 _worker.js) → `wrangler pages deploy dist/client --project-name=ur-wholesale`. main push/수동 트리거. **새 파일만 — 소비자/머니 경로 무접촉·안전.**
+- **⏳ P1(대표 Cloudflare)**: ur-wholesale Pages 프로젝트 생성 + **같은 D1**(d9530ba6…) 바인딩 + KV/R2/시크릿 복제(JWT_SECRET·DATA_ENCRYPTION_KEY 등, **TOSS_* 제외**·도매는 예치금기반) + Durable Object(RATE_LIMITER). 🔴 **cron trigger 0개**(정산 이중성숙 방지).
+- **⏳ P2(staging)**: `ur-wholesale.pages.dev/wholesale`에서 도매 전 플로우 실검증(카탈로그·발주·예치금·정산성숙·미수금·세금계산서·출금). **머니 경로 — 단독세션+실정산 1회.**
+- **⏳ P3(도메인 스왑)**: utongstart.com → ur-wholesale (검증 후). 소비자 다이어트(P3)는 #539에서 이미 완료.
+- ⚠️ ur-wholesale 프로젝트 생성 전엔 deploy-wholesale 워크플로 실패해도 라이브 무영향(deploy-ads 초기와 동일).
+
 ## 🔶 2026-07-15 — 소셜 자동화 → ur-ads 워커로 이전 (메인 CF Free 1MB 회복) — draft PR, 컷오버 대기
 소셜 자동화(#533)를 메인 워커에 정적 마운트했더니 `_worker.js` gzip 1006KB > CF Free 1MB 게이트 → **Pages 배포 실패**. #537(대표 승인)이 응급으로 메인 배선을 주석화(다이어트)해 배포 언블록 + 소셜 라우트 404·메뉴 숨김. **이 작업 = 영구 해법(A안): 소셜을 독립 ur-ads 워커(3MB)로 이전.**
 - **ur-ads(`src/worker-ads/index.ts`)**: `app.route('/api/admin/social', socialMediaRoutes)` + `scheduled`(매시간 렌더폴링+예약발행 / 주간 초안) 배선. `wrangler-ads.toml` crons `["0 * * * *","0 0 * * 1"]`.
