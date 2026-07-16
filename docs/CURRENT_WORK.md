@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-15 — 소셜 자동화 → ur-ads 워커로 이전 (메인 CF Free 1MB 회복) — draft PR, 컷오버 대기
+소셜 자동화(#533)를 메인 워커에 정적 마운트했더니 `_worker.js` gzip 1006KB > CF Free 1MB 게이트 → **Pages 배포 실패**. #537(대표 승인)이 응급으로 메인 배선을 주석화(다이어트)해 배포 언블록 + 소셜 라우트 404·메뉴 숨김. **이 작업 = 영구 해법(A안): 소셜을 독립 ur-ads 워커(3MB)로 이전.**
+- **ur-ads(`src/worker-ads/index.ts`)**: `app.route('/api/admin/social', socialMediaRoutes)` + `scheduled`(매시간 렌더폴링+예약발행 / 주간 초안) 배선. `wrangler-ads.toml` crons `["0 * * * *","0 0 * * 1"]`.
+- **socialMediaRoutes**: 메인 adminApp 래퍼 밖이라 **자체 `requireAdmin()`** 적용(ur-ads 는 같은 JWT_SECRET → admin 토큰 검증 동일).
+- **메인(`src/worker/index.ts`)**: 프록시에 `/api/admin/social/*` 위임 1줄 추가(기존 `/api/ads/*` 프록시와 동일 게이트 `ADS_WORKER_ENABLED`). **메인은 social 코드 import 0 → `_worker.js` 슬림 유지**(주석 상태 그대로).
+- **⚠️ 활성 = ur-ads 컷오버에 종속**(대표 액션): 메인 Pages Service binding `ADS`→`ur-ads` + `ADS_WORKER_ENABLED=true` + ur-ads 배포(`wrangler -c wrangler-ads.toml deploy`). 컷오버 전엔 `/api/admin/social/*` 404(현행과 동일, 배포는 정상). 컷오버 후 **AdminLayout '소셜 홍보' 메뉴 1줄 주석해제**하면 UI 노출.
+- 검증: audit-gate 45 GREEN. ⚠️ npm 403 → tsc/build/vitest CI(특히 ur-ads 빌드). 설계: `docs/design/social-media-automation.md` §10.
+
 ## 🔶 2026-07-15 — 소셜 미디어 자동화 (유어딜 자체 홍보: 스레드·인스타·유튜브) — draft PR, 전 게이트 OFF
 대표 "유튜브 컨텐츠 제작·업로드 자동화, 스레드·인스타 자동화 모두 가능해? → 모두 가장 이상적으로 진행 / 컨텐츠도 자동으로, AI티 안 나게, 영상도". blog-ai(자체홍보) 패턴을 소셜로 확장 + 실제 게시 연동. **유어애즈(content-studio, 광고주용 B2B)와 무관 / features/social(팔로우·알림 소비자 소셜그래프)과도 무관** → 새 `features/social-media/api/`.
 - **초안-우선 · 자동발행 없음**: AI 생성=항상 draft → 관리자 검토 → 승인 → 발행(3중 조건: 게이트 ON + 계정 연결 + approved). 발행 CAS 선점(멱등).

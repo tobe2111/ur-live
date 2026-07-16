@@ -2,11 +2,14 @@
  * 🆕 2026-07-15 소셜 미디어 자동화 — 어드민 라우트(/api/admin/social/*).
  *
  * ⚠️ features/social(팔로우·알림 — 소비자 소셜그래프)과 무관. 여긴 유어딜 "자체 홍보"
- *    자동화(스레드/인스타/유튜브 초안 생성·게시)다. adminApp 하위 마운트 →
- *    requireAdmin + IP allowlist + audit 자동 적용(별도 인증 불필요). 자동 발행 없음.
+ *    자동화(스레드/인스타/유튜브 초안 생성·게시)다. 자동 발행 없음.
+ * 🥗 2026-07-15 워커 다이어트: 메인 `_worker.js`(CF Free 1MB) 대신 **ur-ads 독립 워커(3MB)** 에
+ *    마운트된다(서비스 분리 + 용량 회복). 메인 adminApp 래퍼 밖이라 requireAdmin 을 **자체 적용**한다
+ *    (ur-ads 는 메인과 같은 JWT_SECRET → admin 토큰 검증 동일). 메인은 프록시로 위임만.
  */
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
+import { requireAdmin } from '../../../worker/middleware/auth'
 import { SOCIAL_PLATFORMS, isSocialPlatform, PLATFORM_LABEL, PLATFORM_MEDIA } from './social-brief'
 import {
   listAccounts, upsertAccount, deleteAccount,
@@ -18,6 +21,10 @@ import { generateVideoPlan, startVideoRender, checkVideoRender } from './social-
 import { videoRenderStatus } from './social-video-render'
 
 const socialMediaRoutes = new Hono<{ Bindings: Env }>()
+
+// 🔐 자체 어드민 인증 — ur-ads 워커에서 독립 마운트되므로 메인 adminApp 래퍼에 의존하지 않는다.
+//    (메인 경유 시에도 프록시가 이 워커로 위임 → 여기서 1회 검증. 같은 JWT_SECRET.)
+socialMediaRoutes.use('*', requireAdmin())
 
 // GET /accounts — 연결 계정(토큰 비노출) + 플랫폼별 게이트 상태
 socialMediaRoutes.get('/accounts', async (c) => {

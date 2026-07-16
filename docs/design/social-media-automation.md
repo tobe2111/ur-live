@@ -143,6 +143,16 @@ YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET  (기존 youtube 기능과 공유)
 `social-video-flow.ts` = 오케스트레이션(generate/start/check). 라우트 `/posts/:id/{video-plan,render,render-status}`. `social_posts` 에 `storyboard`/`render_provider_job`/`render_status` 컬럼 추가.
 운영 팁: 디자인된 렌더 템플릿(`SOCIAL_VIDEO_TEMPLATE_ID`)에 자막만 주입하면 브랜드 품질↑. 렌더 provider 없이도 기획/대본은 나오므로, 완성 mp4 를 대표가 직접 `media_url` 로 넣어 발행도 가능.
 
+## 10. 배포 위치 — ur-ads 독립 워커 (메인 CF Free 1MB 회복)
+
+메인 `_worker.js` 는 Cloudflare **Free 1MB gzip 천장**에 붙어 있어 소셜 그래프를 정적 마운트하면 배포가 깨진다(실제 발생 — #533 머지 후 Pages 배포 실패, #537 이 응급 다이어트). **영구 해법: 소셜은 독립 `ur-ads` 워커(Free 3MB)에 마운트**한다(서비스 분리 원칙에도 부합 — 어드민/마케팅 도구).
+
+- **마운트**: `src/worker-ads/index.ts` 가 `app.route('/api/admin/social', socialMediaRoutes)` + `scheduled`(cron) 배선.
+- **인증**: `socialMediaRoutes` 가 자체 `requireAdmin()` 적용(메인 adminApp 밖). ur-ads 는 메인과 **같은 JWT_SECRET** → admin 토큰 검증 동일.
+- **라우팅**: 메인 워커 프록시(`ADS_WORKER_ENABLED` 게이트)가 `/api/admin/social/*` 를 `env.ADS.fetch()` 로 위임. 메인 번들엔 social import 0(슬림 유지).
+- **cron**: `wrangler-ads.toml` crons `["0 * * * *","0 0 * * 1"]` → ur-ads `scheduled` 가 social-maintenance/social-draft 실행.
+- **⚠️ 활성 = ur-ads 컷오버 종속**: 메인 Pages Service binding `ADS`→`ur-ads` + `ADS_WORKER_ENABLED=true` + ur-ads 배포. 컷오버 후 AdminLayout '소셜 홍보' 메뉴 주석해제.
+
 ## 구현 로그
 - 2026-07-15 게이트드 foundation — 설계 + Threads/Instagram/YouTube 커넥터 + 초안-우선 오케스트레이터 + 어드민 라우트/UI + 주간 cron. 전 게이트 OFF.
 - 2026-07-15 릴스/쇼츠 영상 파이프라인 — AI 스토리보드 생성(유튜브 쇼츠 + 인스타 릴스) + 렌더 게이트웨이(Creatomate, 게이트 OFF) + 어드민 영상 컨트롤(기획/렌더/폴링). done → media_url → 발행.
