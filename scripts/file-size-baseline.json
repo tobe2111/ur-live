@@ -1,5 +1,5 @@
 {
-  "src/App.tsx": 1078,
+  "src/App.tsx": 1079,
   "src/components/AdminLayout.tsx": 640,
   "src/features/admin/api/admin-products.routes.ts": 2070,
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
@@ -57,7 +57,7 @@
   "src/pages/SellerPublicPage.tsx": 627,
   "src/pages/SellerStayDetailPage.tsx": 648,
   "src/pages/StayDetailPage.tsx": 711,
-  "src/pages/VouchersPage.tsx": 1081,
+  "src/pages/VouchersPage.tsx": 1085,
   "src/pages/WholesaleCatalogPage.tsx": 813,
   "src/routes/admin.routes.tsx": 707,
   "src/shared/db/production-schema.ts": 682,

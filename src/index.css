@@ -865,7 +865,7 @@ html.dark .gbd {
    하단 모바일 네비(BottomNav = `.app-frame-bar`)를 숨긴다. PC 홈은 상단 DesktopTopNav + 좌측 레일이
    네비를 담당. 모바일/태블릿(<lg)은 하단 네비 그대로(RestaurantMapPage 홈). */
 @media (min-width: 1024px) {
-  body.pc-home .app-frame-bar { display: none !important; }
+  body.pc-fullbleed .app-frame-bar { display: none !important; }
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
@@ -887,7 +887,9 @@ html.dark .gbd {
 }
 .ur-content-wide {
   width: 100%;
-  max-width: 1280px;
+  /* 🖥️ 2026-07-16 (대표 — 당근처럼 넓게): 1280 → 1600. 프레임(app-framed) 페이지는 430 캡이라 무영향,
+     풀너비(pc-fullbleed) 카탈로그 페이지만 넓어짐. 홈(inline max-w-[1600px])과 폭 정합. */
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
 }

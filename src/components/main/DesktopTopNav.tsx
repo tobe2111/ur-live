@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
+import { hasOwnHeaderPc } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -69,6 +70,9 @@ export default function DesktopTopNav() {
   //   1차 가드는 App.tsx hideBottomNav(마운트 차단). allowlist 회귀해도 자기-차단.
   //   (모든 hook 호출 이후의 early-return — rules-of-hooks 안전.)
   if (isWholesaleSurface(location.pathname)) return null
+  // 🖥️ 2026-07-16 (당근 스타일 PC 카탈로그): 자체 헤더를 쓰는 풀너비 페이지(교환권 /vouchers)는
+  //   전역 상단바 숨김(중복 방지) — 그 페이지의 검색/카테고리 헤더가 상단을 담당.
+  if (hasOwnHeaderPc(location.pathname)) return null
 
   // 🖥️ 2026-07-15 (당근 스타일 PC 홈): 홈(`/`)은 좌측 앱 사이드바가 없으므로 상단바가 로고+탭을 항상 보이고
   //   (xl:hidden 해제), 사이드바용 좌패딩 대신 콘텐츠 폭(1240)에 정렬 → PcHomePage 본문과 좌우 정렬 일치.

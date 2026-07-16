@@ -17,6 +17,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import api from '@/lib/api'
@@ -482,6 +483,9 @@ function readVouchersSsrSeed(embedded: boolean, category: string, brand: string,
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🖥️ 2026-07-16 (대표 — 카탈로그 PC 당근 그리드): /vouchers 모바일=1열 리스트, PC(lg+)=그리드(홈과 통일). gridMode 만 분기(나머지 chrome 불변).
+  const isPc = useMediaQuery('(min-width: 1024px)')
+  const gridMode = embedded || isPc
   // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
   const prefetchProduct = usePrefetchProduct()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -975,8 +979,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 금액권 리스트 */}
       <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-6">
         {loading ? (
-          embedded ? (
-            // 🏠 홈 — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
+          gridMode ? (
+            // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
@@ -1009,8 +1013,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
         ) : (
           <>
-            {embedded ? (
-              // 🏠 홈 — 2/3/4/5열 그리드 카드 (main 의 PC 확장 lg:4 xl:5 반영).
+            {gridMode ? (
+              // 🏠 홈/PC — 2/3/4/5열 그리드 카드 (main 의 PC 확장 lg:4 xl:5 반영).
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
