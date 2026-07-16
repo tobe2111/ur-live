@@ -3,10 +3,15 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
+// 🏭 [wholesale-split 2026-07-16] 도매(features/supply) 라우트 포함 여부 — esbuild define 로 index.ts 에 주입.
+//   - 소비자(ur-live): WHOLESALE_BUNDLE 미설정 → false → mount-wholesale + 도매 그래프 전체 DCE 제외(워커 ~200KB↓).
+//   - 도매(ur-wholesale): 빌드 env WHOLESALE_BUNDLE=1 → true → 도매 라우트 포함.
+const INCLUDE_WHOLESALE = process.env.WHOLESALE_BUNDLE === '1';
+
 async function buildWorker() {
   try {
-    console.log('🔧 Building Worker bundle...');
-    
+    console.log(`🔧 Building Worker bundle... (wholesale routes: ${INCLUDE_WHOLESALE ? 'INCLUDED' : 'excluded'})`);
+
     await esbuild.build({
       entryPoints: ['src/worker/index.ts'],
       bundle: true,
@@ -40,6 +45,8 @@ async function buildWorker() {
         'import.meta.env.PROD': 'true',
         'import.meta.env.MODE': '"production"',
         'import.meta.env.SSR': 'true',
+        // 🏭 [wholesale-split] 도매 라우트 트리셰이킹 스위치 (index.ts 의 __INCLUDE_WHOLESALE__).
+        '__INCLUDE_WHOLESALE__': INCLUDE_WHOLESALE ? 'true' : 'false',
       },
       logLevel: 'info',
       metafile: true,
