@@ -40,6 +40,14 @@
       "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
       "date": "2026-06-22",
       "review": "transitive 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-xv26-6w52-cph6",
+      "pkg": "websocket-driver",
+      "reason": "dev/빌드툴 전용(faye-websocket→websocket-driver@0.7.4, wrangler/miniflare 경유). src/ 미참조 → production Workers 번들 미포함, 런타임은 자체 WebSocket API 사용 → 도달 불가. 위 ws/undici 와 동일 클래스. 2026-07-15 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-07-15 (AskUserQuestion 명시 승인, dev-WebSocket 도달불가 클래스)",
+      "date": "2026-07-15",
+      "review": "wrangler/miniflare 업그레이드로 faye-websocket 갱신 시 재확인 후 제거."
     }
   ]
 }
