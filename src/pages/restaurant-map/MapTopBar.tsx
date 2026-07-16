@@ -48,7 +48,8 @@ export default function MapTopBar({
   const navigate = useNavigate()
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none">
+    {/* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 검색/카테고리 바를 좌측 400px 리스트 패널 오른쪽(지도 영역)에만. */}
+    <div className="absolute top-0 left-0 right-0 lg:left-[400px] z-40 px-3 pt-3 pointer-events-none">
       <div className="ur-content-wide pointer-events-auto space-y-2">
         {/* ── Row 1: 흰 네모박스 검색바 ── */}
         <div className="flex items-center gap-2">
