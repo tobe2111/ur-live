@@ -157,11 +157,12 @@ import { adminUcansignRoutes } from '../features/admin/api/admin-ucansign.routes
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
-import { donationsRoutes } from '../features/donations/api/donations.routes';
-import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
-import youtubeRoutes from '../features/youtube/api/youtube.routes';
-// 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live.routes(160KB) 제거 — 워커 다이어트.
-import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
+// 🥗 2026-07-15 워커 다이어트 3차(대표 AskUserQuestion 4항목 명시 승인): 라이브커머스 영구중단 잔재 라우트 분리 —
+//   donations(라이브 후원·소비자 미호출)·youtube(라이브 유튜브 연동)·multi-platform(멀티스트림)·tiktok(아래). 도달 0. 재도입=원복.
+// import { donationsRoutes } from '../features/donations/api/donations.routes';
+// import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
+// import youtubeRoutes from '../features/youtube/api/youtube.routes';
+// import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
@@ -214,7 +215,8 @@ import { adminAgencyApprovalsRoutes } from '../features/admin/api/admin-agency-a
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
 import { publicUtilityRoutes } from './routes/public-utility.routes';
-import { tiktokRoutes } from '../features/multi-platform/api/tiktok.routes';
+// 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 틱톡 Login/Display 라우트 분리(위 참조). 재도입=원복.
+// import { tiktokRoutes } from '../features/multi-platform/api/tiktok.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -1748,9 +1750,9 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 // 🛡️ 2026-04-28: restaurant-map 옵션 B — 사용자 수요 신호 (셀러 영입/알림)
 app.route('/api/restaurant-suggestions', restaurantSuggestionsRoutes);
 
-// ── 후원(도네이션) ──
-app.route('/api/donations', donationsRoutes);
-app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing note — non-overlapping /donations/* sub-routes)
+// ── 후원(도네이션) ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 라이브 후원(소비자 미호출·라이브 영구중단) 마운트 분리. 재도입=원복.
+// app.route('/api/donations', donationsRoutes);
+// app.route('/api/seller', sellerDonationsRoutes); // (see /api/seller routing note — non-overlapping /donations/* sub-routes)
 
 // ── 식당 정산 (셀러용) ──
 app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
@@ -1940,8 +1942,8 @@ app.route('/api/debug', debugRoutes);
 //    분기되므로 prefix '' 마운트.
 app.route('/', publicUtilityRoutes);
 
-// ── 🛡️ 2026-04-26 T1: TikTok Login + Display API (셀러 외부 SNS 연동) ──
-app.route('/api/seller/tiktok', tiktokRoutes);
+// ── 🛡️ 2026-04-26 T1: TikTok Login + Display API ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 마운트 분리. 재도입=원복.
+// app.route('/api/seller/tiktok', tiktokRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
@@ -2006,12 +2008,12 @@ app.route('/api/guides', guideRoutes);
 //   sub-router 내부 등록도 유지하여 정상 작동 시 동일하게 동작.
 // 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live 방송 생성/OME admission/라이브 채팅
 //   마운트 전부 제거(youtube-live.routes·youtube-chat.routes·ome-push/cache/hmac 삭제). 계정연동(youtubeRoutes)은 유지.
-app.route('/api/seller/youtube', youtubeRoutes);
-app.route('/api/youtube', youtubeRoutes); // legacy path alias
+// 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 유튜브라이브 계정연동 마운트 분리. 재도입=원복.
+// app.route('/api/seller/youtube', youtubeRoutes);
+// app.route('/api/youtube', youtubeRoutes); // legacy path alias
 
-// 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)
-//   GET /api/platforms 로 지원 플랫폼 상태 조회. 미구현 플랫폼은 501 반환.
-app.route('/api', multiPlatformRoutes);
+// 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 다중 플랫폼(멀티스트림/RTMP, 라이브 전용) 마운트 분리. 재도입=원복.
+// app.route('/api', multiPlatformRoutes);
 
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
