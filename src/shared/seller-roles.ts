@@ -40,7 +40,7 @@ export const SELLER_ROLES: Record<SellerRole, RoleMeta> = {
     canBroadcast: true,
     canRegisterStore: false,
     canPromote: true,
-    description: '라이브 / 인스타 / 카톡으로 매장 공구 홍보·영입 → commission 적립',
+    description: '인스타·카톡·링크샵으로 매장 공구 홍보·영입 → 커미션 적립',
   },
   store_owner: {
     label: '🏪 매장 사장님',
