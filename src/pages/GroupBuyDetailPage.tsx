@@ -546,7 +546,7 @@ export default function GroupBuyDetailPage() {
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] ${
           headerSolid
             ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
             : 'bg-transparent border-b border-transparent'
@@ -594,8 +594,11 @@ export default function GroupBuyDetailPage() {
         </div>
       </header>
 
+      {/* 🖥️ 2026-07-16 (대표 — 동네딜 상세 PC 2단): lg+ 에서 좌 갤러리(sticky) + 우 본문 2단(1080).
+          모바일(<lg)은 갤러리→본문 세로 1열 그대로(lg: no-op). */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start">
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:sticky lg:top-0 lg:self-start" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
             <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
@@ -916,13 +919,18 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 112 }} />
       </main>
+      </div>{/* /lg 2단 grid */}
 
       {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
-            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
+            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속.
+            🖥️ 2026-07-16 (PC 2단): lg+ 에서 footer 는 1080 투명 포지셔너, 실제 바 박스는 우측 컬럼(정보 쪽)에 정렬. */}
       <footer
-        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] lg:pointer-events-none"
         role="contentinfo" aria-label="결제 영역"
+      >
+      <div
+        className="lg:pointer-events-auto lg:ml-auto lg:w-[calc(50%-20px)] lg:rounded-t-2xl"
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
@@ -951,6 +959,7 @@ export default function GroupBuyDetailPage() {
         >
           {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+      </div>{/* /bar box */}
       </footer>
     </div>
   )
