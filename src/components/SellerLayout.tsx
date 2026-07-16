@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
@@ -539,6 +539,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🏠 2026-07-16 (대표 요청 — 셀러 대시보드에서 메인 서비스로 이동 버튼): 유어딜 소비자 홈(/)으로. */}
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600 text-xs font-semibold"
+              aria-label={t('seller.goMainService', { defaultValue: '유어딜 메인 서비스로 이동' })}
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('seller.mainService', { defaultValue: '유어딜 홈' })}</span>
+            </Link>
             {/* Language Switcher */}
             <div className="relative">
               <button
