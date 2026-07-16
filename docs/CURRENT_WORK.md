@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-16 — 메인 워커 추가 다이어트: OpenAPI/Swagger 문서 DCE (대표 "죽은 코드/큰 의존성 정리 모두")
+소셜(ur-ads 이전)·도매(ur-wholesale 분리) 이후 남은 큰 **도달 가능(reachable)** 번들 청크를 제거. esbuild 단일파일 번들은 **죽은 코드는 트리셰이킹(이득 ~0)**이라, 실제 레버는 "프로덕션에서 안 쓰는데 번들에 실린 큰 코드". 개발자용 `src/worker/openapi.ts`(1544줄 ~48KB) + `@hono/swagger-ui`가 `/docs`·`/api/openapi.json`(개발자 대면, 소비자 워커 불필요)만 위해 `_worker.js`에 실려 있었음(기존 "동적 import"는 esbuild 단일번들에선 인라인이라 절감 0 — 도매/ads 분리와 같은 오해 클래스).
+- **수정(2파일, `__INCLUDE_WHOLESALE__` 패턴 미러)**: `docs.routes.ts`의 라우트 등록을 `if (__INCLUDE_DOCS__)` 게이트로 감싸고 openapi.ts·swagger-ui를 게이트 블록 안 동적 import → `build-worker.js` define `__INCLUDE_DOCS__`(기본 false, `DOCS_BUNDLE=1`이면 true). 프로덕션(소비자/도매) 빌드는 false → esbuild가 dead-block을 import 해석 전에 제거 → openapi.ts + swagger-ui 번들 제외.
+- **효과(예상)**: gzip ~10~15KB↓ (872KB → ~857~862KB, CF Free 1MB 게이트 여유 확대). `/docs`는 프로덕션 미노출(필요 시 `DOCS_BUNDLE=1` 빌드).
+- ⚠️ npm 403 → 실제 절감치는 CI(`_worker.js` gzip) 확인. **소비자/머니/인증 경로 무접촉 — 문서 라우트 게이트만.**
+
 ## 🔶 2026-07-16 — 도매몰 별도배포(ur-wholesale) P0 파이프라인 완성 (대표 "C로 가장 이상적으로", 도매 미운영)
 #539가 소비자 워커에서 도매 라우트를 제거(다이어트)했으나 ur-wholesale 배포 인프라가 없어 `/api/wholesale/*`가 메인에서 404(도매 미운영이라 라이브 영향 0). **C안 = 도매 별도배포 완성**. 설계 SSOT: `docs/design/wholesale-separate-deploy.md`.
 - **P0(이 커밋, 코드)**: `.github/workflows/deploy-wholesale.yml` — `WHOLESALE_BUNDLE=1 npm run build`(도매 포함 _worker.js) → `wrangler pages deploy dist/client --project-name=ur-wholesale`. main push/수동 트리거. **새 파일만 — 소비자/머니 경로 무접촉·안전.**

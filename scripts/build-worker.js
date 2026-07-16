@@ -8,6 +8,12 @@ const path = require('path');
 //   - 도매(ur-wholesale): 빌드 env WHOLESALE_BUNDLE=1 → true → 도매 라우트 포함.
 const INCLUDE_WHOLESALE = process.env.WHOLESALE_BUNDLE === '1';
 
+// 🥗 [docs-split 2026-07-16] 개발자용 API 문서(OpenAPI spec ~48KB + @hono/swagger-ui) 포함 여부.
+//   - 프로덕션(소비자/도매): DOCS_BUNDLE 미설정 → false → docs.routes.ts 의 if(__INCLUDE_DOCS__) 블록 DCE
+//     → openapi.ts + swagger-ui 번들 제외(gzip ~10~15KB↓). /docs·/api/openapi.json 은 프로덕션 미노출.
+//   - 문서 필요 시: DOCS_BUNDLE=1 npm run build.
+const INCLUDE_DOCS = process.env.DOCS_BUNDLE === '1';
+
 async function buildWorker() {
   try {
     console.log(`🔧 Building Worker bundle... (wholesale routes: ${INCLUDE_WHOLESALE ? 'INCLUDED' : 'excluded'})`);
@@ -47,6 +53,8 @@ async function buildWorker() {
         'import.meta.env.SSR': 'true',
         // 🏭 [wholesale-split] 도매 라우트 트리셰이킹 스위치 (index.ts 의 __INCLUDE_WHOLESALE__).
         '__INCLUDE_WHOLESALE__': INCLUDE_WHOLESALE ? 'true' : 'false',
+        // 🥗 [docs-split] OpenAPI/Swagger 문서 트리셰이킹 스위치 (docs.routes.ts 의 __INCLUDE_DOCS__).
+        '__INCLUDE_DOCS__': INCLUDE_DOCS ? 'true' : 'false',
       },
       logLevel: 'info',
       metafile: true,
