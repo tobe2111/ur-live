@@ -417,14 +417,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return
     }
     if (userLoc) {
-      // 이미 위치 있음 — 즉시 적용
+      // 🗺️ 2026-07-16 (대표 — 현위치 버튼 정확도 낮음): 기존엔 캐시된 userLoc(패시브 저정밀 fetch
+      //   enableHighAccuracy:false·maximumAge 10분 산출)을 그대로 재사용하고 return → 클릭해도 저정밀
+      //   위치에 고착. 이제 캐시 위치로 '즉시 반응'(빠른 pan)만 하고, 아래로 fall through 해서 신선한
+      //   고정밀 GPS(maximumAge:0)로 재측위→정밀 보정한다.
       setNearMeMode(true)
       setSortBy('distance')
       if (mapInstance.current && window.kakao?.maps) {
         mapInstance.current.panTo(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
         mapInstance.current.setLevel(5)
       }
-      return
+      // return 하지 않음 — 아래 고정밀 재측위로 갱신
     }
     // 🗺️ 2026-07-15 (대표 — "내 주변 누르니 권한 필요 뜨면?"): 원인별 처리 + 타임아웃 저정밀 재시도.
     const applyLoc = (loc: { lat: number; lng: number }) => {
@@ -438,7 +441,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         mapInstance.current.setLevel(5)
       }
     }
-    const opts = (hi: boolean): PositionOptions => ({ timeout: hi ? 8000 : 6000, enableHighAccuracy: hi, maximumAge: 60000 })
+    // 🗺️ 2026-07-16 (대표 — 정확도): 명시적 '현위치' 클릭은 고정밀 + maximumAge:0(캐시 무시, 신선한 실측)로
+    //   정밀 측위. 저정밀 폴백(타임아웃 재시도)만 60초 캐시 허용(빠른 폴백).
+    const opts = (hi: boolean): PositionOptions => ({ timeout: hi ? 10000 : 6000, enableHighAccuracy: hi, maximumAge: hi ? 0 : 60000 })
     const onErr = async (err: GeolocationPositionError, triedLow: boolean) => {
       // 타임아웃(code 3) + 고정밀만 시도 → 저정밀 1회 재시도(빠르고 실내서도 잘 잡힘).
       if (err.code === 3 && !triedLow) {
