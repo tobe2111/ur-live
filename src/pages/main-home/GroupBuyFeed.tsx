@@ -69,9 +69,10 @@ export default function GroupBuyFeed({
   const sort = sortProp ?? sortState
   const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
-  // 🖥️ PC 그리드는 4~5열, 모바일은 기존 2~3열. 로딩/본문/더보기 스켈레톤 공통 사용.
+  // 🖥️ PC 홈(pc)은 한 줄 4개(대표 요청 — 카드 크게), 모바일은 기존 2~3열. PcHomePage 는 lg+ 에서만
+  //   렌더되므로 grid-cols-4 고정으로 충분(레일 옆 flex-1 폭에서 카드가 그만큼 커짐). 로딩/본문/더보기 공통.
   const gridCls = pc
-    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10'
+    ? 'grid grid-cols-4 gap-5 pb-10'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
