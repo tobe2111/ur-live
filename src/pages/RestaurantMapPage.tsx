@@ -12,7 +12,6 @@ import { storage } from '@/shared/utils/storage'
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
 // 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
-import { REGIONS } from './restaurant-map/constants'
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
@@ -30,6 +29,10 @@ import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
+import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
+import { detectInAppBrowser } from '@/lib/in-app-browser'
+import { checkPermission } from '@/lib/in-app-warning'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -132,6 +135,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [nearMeMode, setNearMeMode] = useState(false)
   // 🗺️ 2026-06-23 (대표 — 현위치 버튼): GPS 조회 중 로딩 표시.
   const [locating, setLocating] = useState(false)
+  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해"): 현재 지도 뷰포트 bounds.
+  //   map idle 마다 갱신 → 리스트를 보이는 영역으로 좁힘(viewportList). 줌아웃 집계 모드/리스트 모드엔 미적용.
+  const [mapBounds, setMapBounds] = useState<{ swLat: number; swLng: number; neLat: number; neLng: number } | null>(null)
+  // 🗺️ 2026-07-15 (대표 — "내 주변 누르니 권한 필요 뜨면?"): 위치 실패 시 상황별 안내 시트 사유.
+  const [geoHelp, setGeoHelp] = useState<GeoHelpReason | null>(null)
   // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
   const [searchHistory, setSearchHistory] = useState<string[]>(() =>
     storage.getJSON<string[]>('restaurant_search_history', [])
@@ -139,6 +147,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [searchFocused, setSearchFocused] = useState(false)
   const dragStartY = useRef<number | null>(null)
   const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
+  // 🗺️ idle/dragend 리스너가 재구독 없이 현재 지역필터를 읽도록 ref 미러(사용자 드래그 시 필터 해제 판단용).
+  const regionRef = useRef(region); regionRef.current = region
+  const districtRef = useRef(district); districtRef.current = district
   const listScrollRef = useRef<HTMLDivElement>(null)  // 📜 지도모드 바텀시트 ScrollArea — 카테고리 전환 시 최상단
 
   // 🛡️ 2026-04-30 Phase 5: 검색어 확정 시 히스토리 저장
@@ -276,12 +287,18 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     enrichedRestaurants.reduce((n, r) => n + (matchesFilter(r, rg, dist, rad, price) ? 1 : 0), 0),
     [enrichedRestaurants, matchesFilter])
 
+  // 🔎 2026-07-15 (대표 신고 — "피자 검색해도 결과 안 나옴"): 서버 q검색은 딜 이름뿐 아니라 메뉴/설명까지
+  //   넓게 매칭(피자 8건)하는데, 클라가 이름/매장/주소 글자만 재검색해 그 결과를 버렸음. → 서버가 매칭한
+  //   딜 id(searchDeals)는 클라 글자매칭 실패해도 살린다(합집합).
+  const searchDealIds = useMemo(() => new Set(searchDeals.map(d => (d as { id: number }).id)), [searchDeals])
+
   const filtered = useMemo(() => {
     let items = enrichedRestaurants.filter(r => {
       if (showFavoritesOnly && !favorites.includes(r.id)) return false
       if (search) {
         const q = search.toLowerCase()
-        if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
+        const textMatch = r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q)
+        if (!textMatch && !searchDealIds.has(r.id)) return false // 서버 q검색 매칭분(메뉴/설명 등)은 이름 불일치여도 유지
       }
       if (!matchesFilter(r, region, district, radiusKm, priceRange)) return false
       return true
@@ -304,7 +321,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return 0
     })
     return items
-  }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites, searchDealIds])
 
   // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
   // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 실(non-demo) 선착순만 — 데모는 끌어올리지 않음.
@@ -313,6 +330,25 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     const boost = (id: number) => { const f = fcfsMap.get(id); return f && !f.demo ? 1 : 0 }
     return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
+
+  // 🗺️ 2026-07-15 (대표 — "지도 보는 위치에 따라 그 지역 이용권이 떠야 해" + 신고 "왜 18곳만?"):
+  //   지도 모드에서 **현재 보이는 지도 영역의 딜을 리스트 위로** 올린다(당근/야놀자식 '이 지역 먼저').
+  //   ⚠️ 숨기지 않음 — 처음엔 뷰포트로 딱 잘라 82곳(전체 100)이 사라져 "왜 18곳만" 혼란 → 보이는 딜을
+  //   앞으로, 나머지는 뒤에 붙여 전체가 다 보이되 현 지역이 먼저 뜨게. (엄격한 '이 지역만'은 지역 필터가 담당.)
+  //   줌아웃 집계 모드(aggClusters)·bounds 미확정(초기)·리스트 모드에선 전체(displayList) 그대로.
+  const { viewportList, viewportInCount } = useMemo(() => {
+    // 🔎 검색 중엔 뷰포트 재정렬 끄기 — 검색 결과(먼 지역 포함)를 지도 밖이라고 뒤로 밀지 않게(관련도 순 유지).
+    if (mode !== 'map' || !mapBounds || search || (aggClusters && aggClusters.length > 0)) return { viewportList: displayList, viewportInCount: null as number | null }
+    const { swLat, swLng, neLat, neLng } = mapBounds
+    const mLat = (neLat - swLat) * 0.1, mLng = (neLng - swLng) * 0.1 // 경계 약간 여유
+    const inView = (r: Restaurant) => !!(r.restaurant_lat && r.restaurant_lng &&
+      r.restaurant_lat >= swLat - mLat && r.restaurant_lat <= neLat + mLat &&
+      r.restaurant_lng >= swLng - mLng && r.restaurant_lng <= neLng + mLng)
+    const inB: Restaurant[] = []; const rest: Restaurant[] = []
+    for (const r of displayList) (inView(r) ? inB : rest).push(r)
+    // 보이는 딜 먼저, 나머지 뒤에(숨김 없음) + 이 지역(뷰포트) 딜 수 = inB.length(카운트 "이 지역 N · 전체 M"용)
+    return { viewportList: inB.length ? [...inB, ...rest] : displayList, viewportInCount: inB.length }
+  }, [mode, mapBounds, aggClusters, displayList, search])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -377,7 +413,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return
     }
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      toast.error(t('restaurantMap.geoNotSupported'))
+      setGeoHelp('unavailable')
       return
     }
     if (userLoc) {
@@ -390,23 +426,63 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       }
       return
     }
+    // 🗺️ 2026-07-15 (대표 — "내 주변 누르니 권한 필요 뜨면?"): 원인별 처리 + 타임아웃 저정밀 재시도.
+    const applyLoc = (loc: { lat: number; lng: number }) => {
+      setLocating(false)
+      setUserLoc(loc)
+      try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+      setNearMeMode(true)
+      setSortBy('distance')
+      if (mapInstance.current && window.kakao?.maps) {
+        mapInstance.current.panTo(new window.kakao.maps.LatLng(loc.lat, loc.lng))
+        mapInstance.current.setLevel(5)
+      }
+    }
+    const opts = (hi: boolean): PositionOptions => ({ timeout: hi ? 8000 : 6000, enableHighAccuracy: hi, maximumAge: 60000 })
+    const onErr = async (err: GeolocationPositionError, triedLow: boolean) => {
+      // 타임아웃(code 3) + 고정밀만 시도 → 저정밀 1회 재시도(빠르고 실내서도 잘 잡힘).
+      if (err.code === 3 && !triedLow) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => applyLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (e2) => { void onErr(e2, true) },
+          opts(false),
+        )
+        return
+      }
+      setLocating(false)
+      // 인앱 브라우저(카톡/인스타 등)면 최우선 — 위치 제한이라 '외부 브라우저로 열기' 유도.
+      if (detectInAppBrowser()) { setGeoHelp('inapp'); return }
+      // 🗺️ 2026-07-15 (대표 — "권한 필요만 뜨지 말고 실제로 수정되게"): 실제 권한 상태를 조회해
+      //   '아직 거부 아님(prompt)' 이면 재시도 = 네이티브 권한창 재요청(설정 안 가도 그 자리서 허용).
+      //   진짜 'denied' 일 때만 설정 안내(+ 아래 effect 가 설정 변경을 감지해 자동 복구).
+      const perm = await checkPermission('geolocation')
+      if (perm === 'denied') setGeoHelp('denied')
+      else if (perm === 'prompt') setGeoHelp('prompt')          // 재요청 가능 — '위치 허용' 버튼이 권한창 재호출
+      else if (err.code === 1) setGeoHelp('denied')             // unknown(iOS 등)+거부코드 → 설정
+      else if (err.code === 3) setGeoHelp('timeout')            // TIMEOUT — 재시도
+      else setGeoHelp('unavailable')                            // POSITION_UNAVAILABLE 등
+    }
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false)
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        setUserLoc(loc)
-        setNearMeMode(true)
-        setSortBy('distance')
-        if (mapInstance.current && window.kakao?.maps) {
-          mapInstance.current.panTo(new window.kakao.maps.LatLng(loc.lat, loc.lng))
-          mapInstance.current.setLevel(5)
-        }
-      },
-      () => { setLocating(false); toast.error(t('restaurantMap.geoPermissionDenied')) },
-      { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
+      (pos) => applyLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => { void onErr(err, false) },
+      opts(true),
     )
   }, [userLoc, nearMeMode])
+
+  // 🗺️ 2026-07-15 (대표 — "권한 필요만 뜨지 말고 실제로 수정되게"): 안내 시트가 떠 있는 동안 위치 권한이
+  //   'granted' 로 바뀌면(사용자가 설정/권한창에서 허용) **자동으로** 시트를 닫고 내 주변을 켠다 — 다시 안 눌러도 됨.
+  useEffect(() => {
+    if (!geoHelp || typeof navigator === 'undefined' || !navigator.permissions?.query) return
+    let status: PermissionStatus | null = null
+    let cancelled = false
+    navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((s) => {
+      if (cancelled) return
+      status = s
+      s.onchange = () => { if (s.state === 'granted') { setGeoHelp(null); requestNearMe() } }
+    }).catch(() => { /* 미지원(iOS 등) — onchange 없이 사용자가 '위치 허용/다시 시도'로 재요청 */ })
+    return () => { cancelled = true; if (status) status.onchange = null }
+  }, [geoHelp, requestNearMe])
 
   // 📜 2026-07-08 (대표 "카테고리 버튼 누를 때마다 상단으로"): 카테고리 전환 시 리스트 최상단으로 스크롤.
   const selectVoucherType = useCallback((v: MapVoucherType) => {
@@ -432,6 +508,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     if (!map || !window.kakao?.maps) return
     let timer: ReturnType<typeof setTimeout> | null = null
     const onIdle = () => {
+      // 🗺️ 2026-07-15: 뷰포트 bounds 를 즉시 갱신 → 리스트(viewportList)가 지도 이동을 바로 따라감. fetch 는 아래 디바운스.
+      try {
+        const bb = map.getBounds()
+        if (bb) {
+          const s = bb.getSouthWest(), n = bb.getNorthEast()
+          setMapBounds({ swLat: s.getLat(), swLng: s.getLng(), neLat: n.getLat(), neLng: n.getLng() })
+        }
+      } catch { /* */ }
       if (timer) clearTimeout(timer)
       timer = setTimeout(async () => {
         try {
@@ -448,22 +532,35 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             if (arr.length) setAggClusters(arr)  // 빈 응답이면 기존 렌더 유지(깜빡임 방지)
           } else {
             setAggClusters(null)
-            // 동네 줌 — 로드분이 바운드(500)에 닿았을 때만 뷰포트 bbox 딜 보충(현재 규모에선 미발동=무회귀)
-            if (baseRestaurants.length >= 500) {
-              const res = await api.get('/api/group-buy/products', { params: { category: cat, bbox, limit: 500 } })
-              const arr = (res.data?.success ? (res.data.data || []) : []) as Restaurant[]
-              if (arr.length) setViewportDeals(prev => {
-                const seen = new Set(prev.map(p => (p as { id?: number | string }).id))
-                const add = arr.filter(p => !seen.has((p as { id?: number | string }).id))
-                return add.length ? [...prev, ...add] : prev
-              })
-            }
+            // 🗺️ 2026-07-15 (대표 — "지도 보는 위치의 이용권이 떠야 해" + "물량 많아지면?"): 동네 줌에선
+            //   항상 보이는 영역(bbox) 딜을 로드·병합 → 초기 근접 로드 밖(다른 동네로 패닝)도 그 지역 딜이 뜸.
+            //   서버 응답은 edge-cache(300s)·limit 500 이라 스케일 안전. (기존: 로드분 500개 넘을 때만 발동.)
+            const res = await api.get('/api/group-buy/products', { params: { category: cat, bbox, limit: 500 } })
+            const arr = (res.data?.success ? (res.data.data || []) : []) as Restaurant[]
+            if (arr.length) setViewportDeals(prev => {
+              const seen = new Set(prev.map(p => (p as { id?: number | string }).id))
+              const add = arr.filter(p => !seen.has((p as { id?: number | string }).id))
+              return add.length ? [...prev, ...add] : prev
+            })
           }
         } catch { /* graceful — 기존 딜 렌더 유지 */ }
       }, 400)
     }
+    // 🗺️ 2026-07-15: 사용자가 지도를 **직접 드래그**하면 뷰포트가 위치를 지배 → 남은 지역 필터 해제
+    //   (패닝해 간 동네가 이전 필터에 가려지지 않게). dragend 는 프로그램적 panTo/setBounds/핀클릭엔 미발화 →
+    //   필터/‘내 주변’/핀 선택 이동은 필터 유지, 손으로 끈 것만 해제.
+    const onDragEnd = () => {
+      if (regionRef.current || districtRef.current) { setRegion(''); setDistrict('') }
+    }
     window.kakao.maps.event.addListener(map, 'idle', onIdle)
-    return () => { if (timer) clearTimeout(timer); try { window.kakao.maps.event.removeListener(map, 'idle', onIdle) } catch { /* */ } }
+    window.kakao.maps.event.addListener(map, 'dragend', onDragEnd)
+    return () => {
+      if (timer) clearTimeout(timer)
+      try {
+        window.kakao.maps.event.removeListener(map, 'idle', onIdle)
+        window.kakao.maps.event.removeListener(map, 'dragend', onDragEnd)
+      } catch { /* */ }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapView, sdkLoaded, baseRestaurants.length, voucherType])
 
@@ -727,7 +824,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={filtered.length}
+            filteredCount={displayList.length}
+            viewportCount={viewportInCount}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
@@ -750,7 +848,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             )}
             <RestaurantList
               loading={loading}
-              filtered={displayList}
+              filtered={viewportList}
               selected={selected}
               userLoc={userLoc}
               onSelect={selectAndPan}
@@ -787,15 +885,27 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)
-            // 시/도 중심으로 지도 이동(좌표 있는 주요 시/도만). 세부지역/미좌표 시/도는 리스트·핀 필터로 반영.
-            const target = REGIONS.find(x => x.key === rg)
-            if (target && mapInstance.current && window.kakao?.maps) {
-              mapInstance.current.panTo(new window.kakao.maps.LatLng(target.lat, target.lng))
-              mapInstance.current.setLevel(target.level)
-            }
             setFilterSheetOpen(false)
+            // 🗺️ 2026-07-15 (대표 — "필터로 위치 설정하면 그거에 맞게 지도가 최대한 정확하게"):
+            //   선택 지역에 매칭되는 딜 핀에 fit(가장 정확) → 없으면 지오코딩 → 시/도표 폴백. (기존 REGIONS 9개
+            //   시/도 중심 pan 은 세부지역·미등록 시/도를 못 맞췄음.) 좌표 없는 rg 는 no-op(가드 내부 처리).
+            if (rg && mapInstance.current && window.kakao?.maps) {
+              const pins = enrichedRestaurants
+                .filter(r => matchesFilter(r, rg, dist, radius, price) && r.restaurant_lat && r.restaurant_lng)
+                .map(r => ({ lat: r.restaurant_lat, lng: r.restaurant_lng }))
+              void panToRegionAccurate(mapInstance.current, rg, dist, pins)
+            }
           }}
           onClose={() => setFilterSheetOpen(false)}
+        />
+      )}
+
+      {/* 🗺️ 2026-07-15 (대표 — "내 주변 누르니 권한 필요 뜨면?"): 위치 실패 상황별 안내 시트. */}
+      {geoHelp && (
+        <GeoHelpSheet
+          reason={geoHelp}
+          onClose={() => setGeoHelp(null)}
+          onRetry={requestNearMe}
         />
       )}
     </Screen>
