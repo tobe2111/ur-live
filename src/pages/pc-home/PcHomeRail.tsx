@@ -38,17 +38,43 @@ export default function PcHomeRail({
 
   return (
     <aside className="w-[220px] shrink-0 sticky top-[72px] self-start hidden lg:flex flex-col gap-5">
-      {/* 지역 — 내 주변 진입(지도 near-me). 당근식 '동네' 표현/인증 없음(대표 지시). */}
+      {/* 🗺️ 2026-07-16 (대표 시안 이미지): 지도 썸네일 버튼 — 지도 배경 + 빨강 핀 + "지도에서 가까운 딜 보기".
+          지도 그래픽은 항상 라이트(사진처럼) — 텍스트/색은 인라인 hex(테마 무관, 가드-안전). 클릭 → /map. */}
       <button
         onClick={() => navigate('/map')}
-        className="text-left rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-4 py-3.5 hover:border-gray-300 dark:hover:border-white/20 transition-colors"
+        aria-label="지도에서 가까운 딜 보기"
+        className="relative block w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-colors group"
       >
-        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">지역</p>
-        <p className="flex items-center gap-1.5 text-[15px] font-extrabold text-gray-900 dark:text-white">
-          <Map className="w-4 h-4 text-gray-900 dark:text-white" strokeWidth={2.2} />
-          내 주변 딜 찾기
-        </p>
-        <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">지도에서 가까운 딜 보기 →</p>
+        <svg viewBox="0 0 340 132" className="w-full block" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+          <rect width="340" height="132" fill="#edefeb" />
+          {/* 녹지 코너 */}
+          <path d="M0 0 L66 0 L0 56 Z" fill="#cfe7a4" />
+          <path d="M340 0 L340 42 L294 0 Z" fill="#cfe7a4" />
+          <path d="M0 132 L0 82 L56 132 Z" fill="#cfe7a4" />
+          <path d="M340 132 L286 132 L340 90 Z" fill="#cfe7a4" />
+          {/* 물(파랑) 살짝 */}
+          <path d="M340 0 L340 24 L318 0 Z" fill="#a9d8ef" />
+          {/* 도로(회색) */}
+          <g stroke="#d9dbd6" strokeWidth="6" strokeLinecap="round">
+            <path d="M0 44 H340" /><path d="M0 90 H340" />
+            <path d="M96 0 V132" /><path d="M192 0 V132" /><path d="M266 0 V132" />
+          </g>
+          {/* 주요 도로(노랑) */}
+          <g stroke="#f6d24a" strokeWidth="10" strokeLinecap="round" fill="none">
+            <path d="M-8 26 C 70 14, 120 40, 210 16" />
+            <path d="M0 66 H340" />
+            <path d="M-10 130 L 150 -8" />
+          </g>
+        </svg>
+        {/* 빨강 핀 */}
+        <svg width="30" height="38" viewBox="0 0 24 32" className="absolute left-1/2 -translate-x-1/2" style={{ top: '20%' }} aria-hidden="true">
+          <path d="M12 0C5.4 0 0 5.3 0 11.9 0 20.4 12 32 12 32s12-11.6 12-20.1C24 5.3 18.6 0 12 0z" fill="#ea4335" />
+          <circle cx="12" cy="11.5" r="4.4" fill="#fff" />
+        </svg>
+        {/* 문구 */}
+        <span className="absolute inset-x-0 text-center font-extrabold" style={{ bottom: '16%', color: '#191b1f', fontSize: '15px' }}>
+          지도에서 가까운 딜 보기
+        </span>
       </button>
 
       {/* 동네딜 카테고리 — 우측 그리드 필터 */}
