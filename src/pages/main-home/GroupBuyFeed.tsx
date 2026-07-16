@@ -154,25 +154,42 @@ export default function GroupBuyFeed({
   // 카테고리 변경 시 누적분 리셋
   useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
 
-  // page1(items) + 추가 페이지 병합 후 id 중복 제거(경계 겹침 방어).
-  const allItems = useMemo(() => {
-    const merged = [...items, ...extraPages.flat()]
-    const seen = new Set<number | string>()
-    const out: FeedProduct[] = []
-    for (const p of merged) {
-      if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
+  // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
+  //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
+  // 지역 필터: restaurant_address 텍스트 매칭(주소 없으면 표시=전국) + 매칭 0 이면 전체 폴백(빈 화면 방지).
+  const inRegion = (p: FeedProduct) => {
+    if (!regionKey) return true
+    const a = p.restaurant_address || p.business_address
+    return !a || matchAddress(a, regionKey, districtKey)
+  }
+  const sortBand = (arr: FeedProduct[]) => {
+    const a = [...arr]
+    switch (sort) {
+      case 'near': {
+        if (!userLoc) return a
+        const d2 = (p: FeedProduct) => {
+          const la = p.restaurant_lat, ln = p.restaurant_lng
+          if (la == null || ln == null || !Number.isFinite(la) || !Number.isFinite(ln)) return Infinity
+          const dy = la - userLoc.lat, dx = ln - userLoc.lng
+          return dy * dy + dx * dx
+        }
+        return a.sort((x, y) => d2(x) - d2(y))
+      }
+      case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
+      case 'deadline': return a.sort((x, y) => {
+        const ax = x.expires_at ? new Date(x.expires_at).getTime() : Infinity
+        const bx = y.expires_at ? new Date(y.expires_at).getTime() : Infinity
+        return ax - bx
+      })
+      case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
+      case 'newest': return a.sort((x, y) => {
+        const ax = x.created_at ? new Date(x.created_at).getTime() : 0
+        const bx = y.created_at ? new Date(y.created_at).getTime() : 0
+        return bx - ax
+      })
+      default: return a
     }
-    // 🗺️ 2026-07-16 (대표 신고 '위치 클릭하면 이용권이 안 뜬다'): 지역 필터가 (1) 잘못된 필드
-    //   business_address(API 는 restaurant_address 반환) + (2) 주소 없는 딜(전국 교환권 등)을 전부 숨겨
-    //   빈 화면을 만들었음. 수정: 올바른 필드 사용 + 주소 없으면 표시(전국 상품) + **매칭 0 이면 전체 표시**
-    //   (지역 필터가 절대 빈 피드를 만들지 않게 — 로드된 페이지가 그 지역 딜을 안 가진 경우 대비).
-    if (!regionKey) return out
-    const inRegion = out.filter((p) => {
-      const addr = p.restaurant_address || p.business_address
-      return !addr || matchAddress(addr, regionKey, districtKey)
-    })
-    return inRegion.length > 0 ? inRegion : out
-  }, [items, extraPages, regionKey, districtKey])
+  }
 
   const loadMore = async () => {
     if (loadingMore || reachedEnd) return
@@ -202,39 +219,25 @@ export default function GroupBuyFeed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canLoadMore, extraPages.length, loadingMore])
 
-  // 클라이언트 사이드 정렬 — 누적 로드분 전체를 정렬(모든 페이지 동일 base 정렬이라 전역 정렬 정합).
+  // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 재정렬): 페이지(밴드)별로 정렬해 이어붙임 → page1 은 page2 가
+  //   로드돼도 위치 고정(재정렬 없음), 새 페이지만 아래로. 밴드 안에서만 정렬(정렬칩 의미 유지) + id dedup.
   const sorted = useMemo(() => {
-    const arr = [...allItems]
-    switch (sort) {
-      case 'near': {
-        // 🗺️ 2026-07-16: 현위치 기준 거리순(제곱거리 — 순위만 필요하므로 sqrt 생략). 좌표 없는 딜은 맨 뒤.
-        if (!userLoc) return arr
-        const d2 = (p: FeedProduct) => {
-          const la = p.restaurant_lat, ln = p.restaurant_lng
-          if (la == null || ln == null || !Number.isFinite(la) || !Number.isFinite(ln)) return Infinity
-          const dy = la - userLoc.lat, dx = ln - userLoc.lng
-          return dy * dy + dx * dx
-        }
-        return arr.sort((a, b) => d2(a) - d2(b))
+    const bands = [items, ...extraPages]
+    const seen = new Set<number | string>()
+    const out: FeedProduct[] = []
+    const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
+      const src = filterRegion ? band.filter(inRegion) : band
+      for (const p of sortBand(src)) {
+        if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
       }
-      case 'popular':
-        return arr.sort((a, b) => soldOf(b) - soldOf(a))
-      case 'deadline':
-        return arr.sort((a, b) => {
-          const ax = a.expires_at ? new Date(a.expires_at).getTime() : Infinity
-          const bx = b.expires_at ? new Date(b.expires_at).getTime() : Infinity
-          return ax - bx
-        })
-      case 'discount':
-        return arr.sort((a, b) => discountOf(b) - discountOf(a))
-      case 'newest':
-        return arr.sort((a, b) => {
-          const ax = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bx = b.created_at ? new Date(b.created_at).getTime() : 0
-          return bx - ax
-        })
     }
-  }, [allItems, sort, userLoc])
+    for (const band of bands) pushBand(band, true)
+    // 지역 매칭 0(전부 필터로 사라짐) → 지역 무시 전체 폴백(빈 화면 방지).
+    if (regionKey && out.length === 0) { seen.clear(); out.length = 0; for (const band of bands) pushBand(band, false) }
+    return out
+    // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, extraPages, sort, userLoc, regionKey, districtKey])
 
   return (
     <>
@@ -318,7 +321,7 @@ export default function GroupBuyFeed({
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
           })}
         </div>
       )}

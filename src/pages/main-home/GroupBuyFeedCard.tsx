@@ -36,6 +36,9 @@ interface FeedCardProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
+  // restaurant_address 는 base Product(string|undefined) 상속 — 재선언 금지(TS2430).
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   discount_rate?: number
   current_price?: number
   original_price?: number
@@ -89,7 +92,7 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; userLoc?: { lat: number; lng: number } | null }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -137,6 +140,18 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false }: { p: FeedC
   )
   const rating = p.avg_rating ?? 0
   const soldCount = p.sold_count ?? 0
+  // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
+  const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
+  const distKm = (() => {
+    if (!userLoc || p.restaurant_lat == null || p.restaurant_lng == null) return null
+    const la = Number(p.restaurant_lat), ln = Number(p.restaurant_lng)
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null
+    const toRad = (d: number) => (d * Math.PI) / 180
+    const dLat = toRad(la - userLoc.lat), dLng = toRad(ln - userLoc.lng)
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(userLoc.lat)) * Math.cos(toRad(la)) * Math.sin(dLng / 2) ** 2
+    const km = 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+    return km < 1 ? `${Math.round(km * 10) / 10}` : `${Math.round(km)}`
+  })()
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
   // 🎨 2026-06-18 (대표 신고 — 홈 공구 카드 그라데이션 사라짐): /group-buy 와 동일한 cardGradient 룩 복원.
@@ -250,6 +265,14 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false }: { p: FeedC
           </span>
         </p>
 
+        {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
+        {(addrShort || distKm != null) && (
+          <p className={`flex items-center gap-1 mt-0.5 text-[11px] min-w-0 ${cSub}`} style={tSub}>
+            <span className="shrink-0">📍</span>
+            {addrShort && <span className="truncate">{addrShort}</span>}
+            {distKm != null && <span className={`shrink-0 whitespace-nowrap font-bold ${cText}`} style={tText}>· {distKm}km</span>}
+          </p>
+        )}
         {/* ⭐ 평점 + 구매수 */}
         {(rating > 0 || soldCount > 0) && (
           <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`} style={tSub}>
