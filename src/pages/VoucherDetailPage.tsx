@@ -314,7 +314,7 @@ export default function VoucherDetailPage() {
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur">
-        <div className="ur-content-narrow h-14 px-2 flex items-center">
+        <div className="ur-content-narrow lg:max-w-[1000px] h-14 px-2 flex items-center">
           <button
             onClick={() => navigate(-1)}
             aria-label="뒤로"
@@ -325,10 +325,12 @@ export default function VoucherDetailPage() {
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4">
+      {/* 🖥️ 2026-07-16 (대표 — 상세 PC 2단): lg+ 에서 좌 이미지(sticky) + 우 정보 2단(교환권 상세).
+          모바일(<lg)은 기존 720 단일 컬럼 그대로(lg: no-op). */}
+      <div className="ur-content-narrow lg:max-w-[1000px] px-4 lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start lg:pt-6">
         {/* 🎨 상품 카드 — 사용자 요청: 사진이 카드를 가득 채움(object-cover, 정사각 풀블리드).
             그라데이션은 로딩 중/투명 이미지 대비 base 로만 유지(채워지면 안 보임). */}
-        <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]">
+        <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115] lg:sticky lg:top-20">
           {product.image_url && (
             // 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP. LCP 우선 → eager.
             <img
@@ -345,7 +347,7 @@ export default function VoucherDetailPage() {
         </div>
 
         {/* 정보 */}
-        <div className="pt-[18px]">
+        <div className="pt-[18px] lg:pt-0">
           <div className="flex items-center">
             <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
@@ -406,7 +408,7 @@ export default function VoucherDetailPage() {
         className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow px-4 pt-3">
+        <div className="ur-content-narrow lg:max-w-[1000px] px-4 pt-3">
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
             <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#121212] rounded-xl px-3.5 py-2.5 mb-3">
