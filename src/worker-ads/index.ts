@@ -10,10 +10,14 @@
  *   실제 배포는 Phase B(별도 wrangler-ads.toml + esbuild)에서. 컷오버는 Phase C(ADS_WORKER_ENABLED 게이트).
  */
 import { Hono } from 'hono'
+import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
+// 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
+//   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
+import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -31,5 +35,28 @@ app.get('/__ads/health', (c) => c.json({ ok: true, service: 'ur-ads' }))
 app.route('/', shortLinkRedirectRoutes)      // /l/:code (공개 리다이렉트)
 app.route('/api/ads', marketingRoutes)        // 유어애즈 데이터/인증 API
 app.route('/api/admin/ads', adminAdsRoutes)   // 유어애즈 운영 어드민
+app.route('/api/admin/social', socialMediaRoutes) // 🥗 소셜 홍보 자동화(자체 requireAdmin, 같은 JWT_SECRET)
 
-export default app
+// ⏰ Cron — 소셜 홍보 유지보수/초안(메인에서 이관). 전부 게이트 OFF 기본 → 미설정 시 no-op.
+//   wrangler-ads.toml crons: "0 * * * *"(매시간 렌더폴링+예약발행) · "0 0 * * 1"(주간 초안).
+async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  const cron = event.cron
+  if (cron === '0 * * * *') {
+    ctx.waitUntil((async () => {
+      try {
+        const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
+        await handleSocialMaintenance(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
+  if (cron === '0 0 * * 1') {
+    ctx.waitUntil((async () => {
+      try {
+        const { handleSocialDraft } = await import('@/worker/cron/social-draft')
+        await handleSocialDraft(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
+}
+
+export default { fetch: app.fetch, scheduled }
