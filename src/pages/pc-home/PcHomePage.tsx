@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Smartphone } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import PcHomeRail, { type DealCategory } from './PcHomeRail'
+import PcHomeAppBand from './PcHomeAppBand'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -21,31 +21,6 @@ const SORT_CHIPS = [
   { key: 'discount', label: '할인율순' },
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key']
-
-function AppBand() {
-  return (
-    <div className="mt-6 border-t border-gray-100 dark:border-[#1A1A1A] bg-gradient-to-r from-orange-50 to-rose-50 dark:from-[#241a13] dark:to-[#2c1c12]">
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-10 flex items-center justify-between gap-6">
-        <div>
-          <h2 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white leading-tight">
-            더 많은 딜, 앱에서 더 빠르게.
-          </h2>
-          <p className="mt-2 text-[14px] text-gray-500 dark:text-gray-400">
-            내 손안의 동네 딜 — 이용권 · 공동구매 · 교환권을 한 곳에서.
-          </p>
-          <div className="mt-5 flex gap-2.5">
-            <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13.5px] font-bold">
-              <Smartphone className="w-4 h-4" /> App Store
-            </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13.5px] font-bold">
-              <Smartphone className="w-4 h-4" /> Google Play
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function PcHomePage() {
   const [category, setCategory] = useState<DealCategory>('all')
@@ -104,7 +79,7 @@ export default function PcHomePage() {
         </main>
       </div>
 
-      <AppBand />
+      <PcHomeAppBand />
       <SiteFooter />
     </div>
   )
