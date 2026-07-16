@@ -24,7 +24,7 @@ interface FeedProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
-  restaurant_address?: string | null
+  // restaurant_address 는 base Product 에 이미 있음(string|undefined) — 재선언 금지(TS2430 extends 충돌).
   restaurant_lat?: number | null
   restaurant_lng?: number | null
   discount_rate?: number
