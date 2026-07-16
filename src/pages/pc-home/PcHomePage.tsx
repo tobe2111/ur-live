@@ -4,6 +4,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import PcHomeRail, { type DealCategory } from './PcHomeRail'
 import PcHomeAppBand from './PcHomeAppBand'
+import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -25,6 +26,8 @@ type SortKey = typeof SORT_CHIPS[number]['key']
 export default function PcHomePage() {
   const [category, setCategory] = useState<DealCategory>('all')
   const [sort, setSort] = useState<SortKey>('popular')
+  // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
+  const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
 
   return (
     <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
@@ -39,8 +42,14 @@ export default function PcHomePage() {
         <PcHomeRail category={category} onCategory={setCategory} />
 
         <main className="flex-1 min-w-0">
+          {/* 🗺️ 2026-07-16 (대표 — 카테고리 위 위치 표시/설정): 현재 지역 + '현 위치로 설정' → 그 지역 딜 필터. */}
+          <div className="mb-4">
+            <PcHomeLocationBar value={region} onChange={setRegion} />
+          </div>
           <header className="mb-4">
-            <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">가까운 동네 딜</h1>
+            <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
+              {region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+            </h1>
             <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400">
               이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.
             </p>
@@ -75,6 +84,8 @@ export default function PcHomePage() {
             onCategoryChange={setCategory}
             sort={sort}
             onSortChange={setSort}
+            regionKey={region.regionKey}
+            districtKey={region.districtKey}
           />
         </main>
       </div>

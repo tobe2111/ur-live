@@ -13,6 +13,7 @@ import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
+import { matchAddress } from '@/shared/constants/korea-regions'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -70,12 +71,18 @@ export default function GroupBuyFeed({
   onCategoryChange,
   sort: sortProp,
   onSortChange,
+  regionKey,
+  districtKey,
 }: {
   pc?: boolean
   category?: CategoryKey
   onCategoryChange?: (c: CategoryKey) => void
   sort?: SortKey
   onSortChange?: (s: SortKey) => void
+  // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(시/도 key + 세부지역 key)으로 피드를 클라이언트
+  //   주소-텍스트 매칭 필터(matchAddress). 미지정이면 matchAddress 가 true → 기존 동작 byte-불변.
+  regionKey?: string
+  districtKey?: string
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
@@ -141,13 +148,16 @@ export default function GroupBuyFeed({
   useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
 
   // page1(items) + 추가 페이지 병합 후 id 중복 제거(경계 겹침 방어).
+  //   🗺️ 2026-07-16: 지역 선택 시 business_address 텍스트 매칭 필터(matchAddress). 미선택이면 통과(불변).
   const allItems = useMemo(() => {
     const merged = [...items, ...extraPages.flat()]
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
-    for (const p of merged) { if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) } }
+    for (const p of merged) {
+      if (p?.id != null && !seen.has(p.id) && matchAddress(p.business_address, regionKey, districtKey)) { seen.add(p.id); out.push(p) }
+    }
     return out
-  }, [items, extraPages])
+  }, [items, extraPages, regionKey, districtKey])
 
   const loadMore = async () => {
     if (loadingMore || reachedEnd) return
