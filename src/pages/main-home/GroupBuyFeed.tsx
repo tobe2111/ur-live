@@ -26,7 +26,8 @@ interface FeedProduct extends Product {
   discount_rate?: number
   current_price?: number
   original_price?: number
-  price?: number
+  // price 는 Product 에서 상속(number, 필수) — 여기서 optional 로 재선언하면 TS2430(base 계약 약화).
+  //   사용부는 이미 방어적(`p.current_price ?? p.price ?? 0`)이라 재선언 불필요.
   sold_count?: number
   created_at?: string
 }
