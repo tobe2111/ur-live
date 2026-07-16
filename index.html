@@ -108,6 +108,20 @@
             }).catch(function () {});
           }
         } catch (e) {}
+        // 🛡️ 2026-07-16 (대표 신고 "새로고침 버튼 눌러도 항상 한번에 새로고침이 안돼"): 워커가 #root 를 정적
+        //   URDEAL 로더로 교체하므로(worker/index.ts urdealLoaderHtml) 기존 8초 슬로우힌트(#ur-pre-react/
+        //   #ur-slow-hint — #root 안이라 미서빙)가 죽어 있었음 → 앱이 청크404/stale-SW/네트워크 행으로 안 뜨면
+        //   로더가 무한 회전 + 화면 안 탈출구 0 → 사용자는 브라우저 새로고침(plain reload)만 → 또 stale 재서빙 →
+        //   "한번에 새로고침 안됨". 서빙되는 이 부트가드에 워치독을 둬, 12초 뒤에도 앱이 안 떴으면(로더 그대로)
+        //   showStuckUI(자체 fixed 오버레이 + hardRecover 1클릭 완전복구)를 띄운다. 앱이 늦게라도 뜨면
+        //   main.tsx 가 오버레이를 제거(느린 회선 false-positive 자동 해제). 정상 부팅엔 no-op.
+        setTimeout(function () {
+          try {
+            if (window.__urMounted) return;                                  // 앱 정상 마운트 → no-op
+            if (!document.querySelector('#root .ur-loader-breathe')) return; // 로더가 이미 교체됨(=마운트) → no-op
+            showStuckUI();
+          } catch (e) { /* silent */ }
+        }, 12000);
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
