@@ -118,12 +118,14 @@ import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-event
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import { sellerTransferRespondRoutes } from '../features/seller/api/seller-transfer-respond.routes';
-import {
-  adminAdvertiserRoutes,
-  adminCastingRoutes,
-  sellerCastingRoutes,
-} from '../features/casting/api/casting.routes';
-import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
+// 🥗 2026-07-15 워커 다이어트(대표 승인): 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) 잔재 라우트 분리 —
+//   casting(캐스팅/광고주, 페이지 없음·nav 숨김) · donation-booster(쓰는 컴포넌트 0). 클라 미호출이라 라이브 영향 0. 재도입=원복.
+// import {
+//   adminAdvertiserRoutes,
+//   adminCastingRoutes,
+//   sellerCastingRoutes,
+// } from '../features/casting/api/casting.routes';
+// import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
@@ -232,7 +234,8 @@ import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes'
 // import { socialMediaRoutes } from '../features/social-media/api/social-media.routes';
 import { restaurantSettlementRoutes, sellerSettlementRoutes } from '../features/settlement/api/restaurant-settlement.routes';
 import { pointsRoutes } from '../features/points/api/points.routes';
-import { shortsRoutes } from '../features/shorts/api/shorts.routes';
+// 🥗 2026-07-15 워커 다이어트(대표 승인): 쇼츠(라이브커머스 영구중단, /shorts UI 제거됨) 라우트 분리 — 클라 미호출. 재도입=원복.
+// import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
 import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
@@ -523,9 +526,9 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'VOUCHERS', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
     } else if (url.pathname === '/browse' && !url.search) {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
-    } else if (url.pathname === '/live' && !url.search) {
-      // 🛡️ 2026-05-27 (Step P1-2): 라이브 페이지 SSR inject — 사용자 체류 시간 큰 페이지.
-      ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
+    // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯 제거 — 라이브커머스 영구중단으로 /live 라우트·/api/streams 마운트 모두 제거됨(죽은 self-fetch).
+    // } else if (url.pathname === '/live' && !url.search) {
+    //   ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
     //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
     //   콜드 시 최대 1.5s self-fetch 로 리다이렉트 응답만 느리게 만들던 순수 낭비였음. (라우트가 부활하면
@@ -1351,7 +1354,8 @@ app.use('/api/products', publicCache(60), cacheControl(60));     // 1 min — li
 app.use('/api/products/:id', publicCache(120), cacheControl(120));      // 2 min — detail (user-agnostic)
 app.use('/api/products/:id/options', publicCache(300), cacheControl(300));  // 5 min — 거의 안 변함
 app.use('/api/reviews/product/:id/summary', publicCache(180), cacheControl(180));  // 3 min
-app.use('/api/streams', publicCache(30), cacheControl(30));      // 30 sec (공개 라이브 목록 — user-agnostic)
+// 🥗 2026-07-15 워커 다이어트: /api/streams 캐시 미들웨어 제거 — 해당 라우트 마운트가 없음(라이브커머스 영구중단).
+// app.use('/api/streams', publicCache(30), cacheControl(30));      // 30 sec (공개 라이브 목록 — user-agnostic)
 // 🧯 2026-07-02 (대표 "트래픽 폭주" 점검): 추첨 /active — 홈·지도 마운트마다 전 방문자 호출 + 캐시 0 + 상품별 COUNT → 폭주 시 D1 스탬피드. user-agnostic(내 응모는 /:id/me 인증 경로 별도) → 30s. 응모 직후 카운트는 POST /apply 응답이 fresh 라 UX 영향 0.
 app.use('/api/fcfs/active', publicCache(30), cacheControl(30));
 // 🛡️ 2026-05-22 사용자 신고 "메인 공구 상품 로딩 너무 느림" 영구 해결:
@@ -1369,9 +1373,9 @@ app.use('/api/og/curator/*', publicCache(3600), cacheControl(3600)); // 🖼️ 
 app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율 1h (전역 데이터)
 app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
-app.use('/api/shorts', publicCache(60), cacheControl(60));                // 쇼츠 피드 1min (공개)
-// 🛡️ 2026-06-04 [LOADING_ADDITIVE]: /api/shorts/feed (서브경로) 는 위 정확매칭에서 누락 → 링크샵 쇼츠탭 cold.
-app.use('/api/shorts/feed', publicCache(60), cacheControl(60));           // 쇼츠 feed 1min (공개)
+// 🥗 2026-07-15 워커 다이어트: 쇼츠 라우트 분리로 캐시 미들웨어도 불필요(라이브커머스 영구중단).
+// app.use('/api/shorts', publicCache(60), cacheControl(60));                // 쇼츠 피드 1min (공개)
+// app.use('/api/shorts/feed', publicCache(60), cacheControl(60));           // 쇼츠 feed 1min (공개)
 app.use('/api/reviews/product/*', publicCache(120), cacheControl(120));   // 리뷰 목록 2min (리뷰 쓰기는 POST 라 캐시 무영향)
 app.use('/api/restaurants', publicCache(300), cacheControl(300));         // 식당 목록 5min (공개)
 // 🛡️ 2026-04-28: 메인페이지 통합 endpoint — 1회 호출 + 1분 edge cache (공개 — user 무관)
@@ -1498,14 +1502,14 @@ app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부 (agency 대행 금지)
 app.route('/api/seller/transfers', sellerTransferRespondRoutes);
-// 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
-app.route('/api/admin/advertisers', adminAdvertiserRoutes);
-app.route('/api/admin/castings', adminCastingRoutes);
-app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민
-app.route('/api/seller/castings', sellerCastingRoutes);
-// 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
-app.route('/api/donation-boosters', donationBoosterRoutes);
-app.route('/api/donation-boosters-public', donationBoosterPublicRoutes);
+// 🥗 2026-07-15 워커 다이어트(대표 승인): 캐스팅 마켓플레이스(라이브커머스 잔재, 페이지 없음) 마운트 분리.
+// app.route('/api/admin/advertisers', adminAdvertiserRoutes);
+// app.route('/api/admin/castings', adminCastingRoutes);
+app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
+// app.route('/api/seller/castings', sellerCastingRoutes);
+// 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
+// app.route('/api/donation-boosters', donationBoosterRoutes);
+// app.route('/api/donation-boosters-public', donationBoosterPublicRoutes);
 // 🗑️ 2026-07-07 (라이브커머스 제거 3/N): PK 배틀(라이브 매출경쟁) 라우트 제거.
 
 // Email notifications (global)
@@ -1754,8 +1758,8 @@ app.route('/api/seller/restaurant-settlements', sellerSettlementRoutes);
 // ── 딜 포인트 ──
 app.route('/api/points', pointsRoutes);
 
-// ── 쇼츠 ──
-app.route('/api/shorts', shortsRoutes);
+// ── 쇼츠 ── 🥗 2026-07-15 워커 다이어트(대표 승인): 라이브커머스 영구중단 — 마운트 분리. 재도입=원복.
+// app.route('/api/shorts', shortsRoutes);
 
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
