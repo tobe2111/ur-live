@@ -21,13 +21,19 @@ const SORT_CHIPS = [
   { key: 'deadline', label: '마감임박' },
   { key: 'discount', label: '할인율순' },
 ] as const
-type SortKey = typeof SORT_CHIPS[number]['key']
+type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
 export default function PcHomePage() {
   const [category, setCategory] = useState<DealCategory>('all')
   const [sort, setSort] = useState<SortKey>('popular')
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
+  // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
+  const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
+  // 지역 드롭다운 선택 → 지역 필터 모드(거리순 해제).
+  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
     <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
@@ -42,21 +48,34 @@ export default function PcHomePage() {
         <PcHomeRail category={category} onCategory={setCategory} />
 
         <main className="flex-1 min-w-0">
-          {/* 🗺️ 2026-07-16 (대표 — 카테고리 위 위치 표시/설정): 현재 지역 + '현 위치로 설정' → 그 지역 딜 필터. */}
+          {/* 🗺️ 2026-07-16 (대표 — 카테고리 위 위치 표시/설정): 현재 지역 + '현 위치로 설정'(→가까운 순). */}
           <div className="mb-4">
-            <PcHomeLocationBar value={region} onChange={setRegion} />
+            <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
           </div>
           <header className="mb-4">
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
-              {region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+              {userLoc ? '내 주변 가까운 딜' : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
             <p className="mt-1.5 text-[14px] text-gray-500 dark:text-gray-400">
               이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.
             </p>
           </header>
 
-          {/* 정렬 칩 */}
+          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
           <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {userLoc && (
+              <button
+                onClick={() => setSort('near')}
+                aria-pressed={sort === 'near'}
+                className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors inline-flex items-center gap-1 ${
+                  sort === 'near'
+                    ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                }`}
+              >
+                📍 가까운 순
+              </button>
+            )}
             {SORT_CHIPS.map(s => {
               const active = sort === s.key
               return (
@@ -86,6 +105,7 @@ export default function PcHomePage() {
             onSortChange={setSort}
             regionKey={region.regionKey}
             districtKey={region.districtKey}
+            userLoc={userLoc}
           />
         </main>
       </div>
