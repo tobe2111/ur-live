@@ -1,6 +1,15 @@
 # 도매몰(유통스타트) 별도 배포 설계 — Worker 다이어트
 
-> 상태: **설계 제안 (대표 승인 대기)**. 코드 변경 전. 2026-07-16.
+> 상태: **P0~P1 진행 + P3 코드 구현 완료(머지 대기)**. 2026-07-16.
+> 대표 확정: 별도배포 B안 진행 · utongstart.com 미사용 · 현재 서비스 미운영 → 도매 라우트 빌드타임 분리 구현.
+>
+> **✅ P3 구현 (commit 93c0989)**: `src/worker/mount-wholesale.ts`(도매 라우트 마운트) + `index.ts` 가드
+> `if (__INCLUDE_WHOLESALE__) await import('./mount-wholesale')` + `build-worker.js` 의 `WHOLESALE_BUNDLE` env.
+> 소비자(ur-live) 빌드 = 도매 그래프 DCE 제외(gzip ~200KB↓). 도매(ur-wholesale) 빌드 = `WHOLESALE_BUNDLE=1`.
+>
+> 🔴 **머지 전 필수(대표)**: ur-wholesale 프로젝트 → Settings → Variables and Secrets(빌드 env) 에
+> **`WHOLESALE_BUNDLE=1`** 추가. 안 하면 머지 후 ur-wholesale 재빌드가 도매를 빼서 `ur-wholesale.pages.dev/wholesale` 가 깨짐
+> (미운영이라 치명적이진 않으나 먼저 설정 권장). ur-live 는 도매 미서빙이라 머지 즉시 영향 0.
 > 배경: 유어딜 소비자 worker gzip 이 CF 무료 1MiB(게이트 ~996KB) 한도에 근접. 도매몰(`features/supply/**`)이 worker 번들의 ~25%(gzip ~260KB). 대표 지시: "별도로 배포하고 싶어 신중하게 작업해줘."
 
 ---
