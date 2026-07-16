@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
+import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -44,7 +45,9 @@ export default function DesktopTopNav() {
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
-    { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
+    // 🖥️ 2026-07-16 (대표 신고 — 상단 '동네딜' 무의미): 홈=동네딜 + /group-buy→홈 리다이렉트라 '홈'과 중복.
+    //   실제 다른 목적지인 '교환권'(/vouchers)로 교체(하단바 2번째 탭과 정합).
+    { icon: Gift, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
   ]
@@ -67,15 +70,19 @@ export default function DesktopTopNav() {
   //   1차 가드는 App.tsx hideBottomNav(마운트 차단). allowlist 회귀해도 자기-차단.
   //   (모든 hook 호출 이후의 early-return — rules-of-hooks 안전.)
   if (isWholesaleSurface(location.pathname)) return null
+  // 🖥️ 2026-07-16 (당근 스타일 PC 카탈로그): 자체 헤더를 쓰는 풀너비 페이지(교환권 /vouchers)는
+  //   전역 상단바 숨김(중복 방지) — 그 페이지의 검색/카테고리 헤더가 상단을 담당.
+  if (hasOwnHeaderPc(location.pathname)) return null
 
-  // 🖥️ 2026-07-15 (당근 스타일 PC 홈): 홈(`/`)은 좌측 앱 사이드바가 없으므로 상단바가 로고+탭을 항상 보이고
-  //   (xl:hidden 해제), 사이드바용 좌패딩 대신 콘텐츠 폭(1240)에 정렬 → PcHomePage 본문과 좌우 정렬 일치.
-  const isHome = location.pathname === '/'
+  // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
+  //   항상 보이고(xl:hidden 해제) 사이드바용 좌패딩 대신 콘텐츠 폭(1600)에 정렬. 자체헤더 카탈로그(교환권/숙소)는
+  //   위에서 이미 return null. isHome 은 이 풀너비-네비 판정으로 일반화.
+  const isHome = isFullBleedPcPath(location.pathname) && !hasOwnHeaderPc(location.pathname)
 
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
       <div className={isHome
-        ? 'flex items-center gap-4 h-14 max-w-[1240px] mx-auto w-full px-5 lg:px-8'
+        ? 'flex items-center gap-4 h-14 max-w-[1600px] mx-auto w-full px-6 lg:px-10'
         : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-14'}>
         {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김(홈은 사이드바 없음 → 항상 표시) */}
         <Link to="/" className={isHome ? 'flex items-center shrink-0' : 'flex items-center shrink-0 xl:hidden'}>

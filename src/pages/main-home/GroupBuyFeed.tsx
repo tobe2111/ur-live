@@ -25,7 +25,21 @@ interface FeedProduct extends Product {
   business_address?: string
   discount_rate?: number
   current_price?: number
+  original_price?: number
+  sold_count?: number
   created_at?: string
+}
+
+// 🖥️ 2026-07-16 (대표 신고 — PC 정렬 무반응): 정렬 필드가 sparse(group_buy_current/discount_rate 대부분
+//   null·0)라 인기순/할인율순이 서버 기본순(최신)과 동일해 보였음. 실제 값 기반으로 견고화.
+function soldOf(p: FeedProduct): number {
+  return p.sold_count ?? p.group_buy_current ?? 0
+}
+function discountOf(p: FeedProduct): number {
+  if (p.discount_rate != null && p.discount_rate > 0) return p.discount_rate
+  const price = p.current_price ?? p.price ?? 0
+  const orig = p.original_price ?? 0
+  return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
 const CATEGORIES = [
@@ -69,9 +83,10 @@ export default function GroupBuyFeed({
   const sort = sortProp ?? sortState
   const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
-  // 🖥️ PC 그리드는 4~5열, 모바일은 기존 2~3열. 로딩/본문/더보기 스켈레톤 공통 사용.
+  // 🖥️ PC 홈(pc)은 한 줄 4개(대표 요청 — 카드 크게), 모바일은 기존 2~3열. PcHomePage 는 lg+ 에서만
+  //   렌더되므로 grid-cols-4 고정으로 충분(레일 옆 flex-1 폭에서 카드가 그만큼 커짐). 로딩/본문/더보기 공통.
   const gridCls = pc
-    ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10'
+    ? 'grid grid-cols-4 gap-5 pb-10'
     : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
@@ -167,7 +182,7 @@ export default function GroupBuyFeed({
     const arr = [...allItems]
     switch (sort) {
       case 'popular':
-        return arr.sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
+        return arr.sort((a, b) => soldOf(b) - soldOf(a))
       case 'deadline':
         return arr.sort((a, b) => {
           const ax = a.expires_at ? new Date(a.expires_at).getTime() : Infinity
@@ -175,7 +190,7 @@ export default function GroupBuyFeed({
           return ax - bx
         })
       case 'discount':
-        return arr.sort((a, b) => (b.discount_rate ?? 0) - (a.discount_rate ?? 0))
+        return arr.sort((a, b) => discountOf(b) - discountOf(a))
       case 'newest':
         return arr.sort((a, b) => {
           const ax = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -267,7 +282,7 @@ export default function GroupBuyFeed({
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} />
           })}
         </div>
       )}

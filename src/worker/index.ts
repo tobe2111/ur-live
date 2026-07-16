@@ -986,7 +986,9 @@ app.use('*', async (c, next) => {
     const p = new URL(c.req.url).pathname;
     const isAdsApi = p === '/api/ads' || p.startsWith('/api/ads/');
     const isShortLink = p === '/l' || p.startsWith('/l/');
-    if (isAdsApi || isShortLink) {
+    // 🥗 2026-07-15 소셜 홍보 자동화(ur-ads 로 이전) — 어드민 토큰째 위임(ur-ads 자체 requireAdmin, 같은 JWT_SECRET).
+    const isAdminSocial = p === '/api/admin/social' || p.startsWith('/api/admin/social/');
+    if (isAdsApi || isShortLink || isAdminSocial) {
       try {
         return await ads.fetch(c.req.raw);
       } catch {
