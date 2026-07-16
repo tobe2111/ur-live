@@ -268,7 +268,7 @@ export default function GroupBuyFeed({
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} />
           })}
         </div>
       )}

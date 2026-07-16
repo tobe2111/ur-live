@@ -75,7 +75,7 @@ export default function DesktopTopNav() {
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
       <div className={isHome
-        ? 'flex items-center gap-4 h-14 max-w-[1240px] mx-auto w-full px-5 lg:px-8'
+        ? 'flex items-center gap-4 h-14 max-w-[1600px] mx-auto w-full px-6 lg:px-10'
         : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-14'}>
         {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김(홈은 사이드바 없음 → 항상 표시) */}
         <Link to="/" className={isHome ? 'flex items-center shrink-0' : 'flex items-center shrink-0 xl:hidden'}>
