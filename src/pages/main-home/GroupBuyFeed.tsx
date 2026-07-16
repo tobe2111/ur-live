@@ -24,6 +24,9 @@ interface FeedProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
+  restaurant_address?: string | null
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   discount_rate?: number
   current_price?: number
   original_price?: number
@@ -148,15 +151,23 @@ export default function GroupBuyFeed({
   useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
 
   // page1(items) + 추가 페이지 병합 후 id 중복 제거(경계 겹침 방어).
-  //   🗺️ 2026-07-16: 지역 선택 시 business_address 텍스트 매칭 필터(matchAddress). 미선택이면 통과(불변).
   const allItems = useMemo(() => {
     const merged = [...items, ...extraPages.flat()]
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
     for (const p of merged) {
-      if (p?.id != null && !seen.has(p.id) && matchAddress(p.business_address, regionKey, districtKey)) { seen.add(p.id); out.push(p) }
+      if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
     }
-    return out
+    // 🗺️ 2026-07-16 (대표 신고 '위치 클릭하면 이용권이 안 뜬다'): 지역 필터가 (1) 잘못된 필드
+    //   business_address(API 는 restaurant_address 반환) + (2) 주소 없는 딜(전국 교환권 등)을 전부 숨겨
+    //   빈 화면을 만들었음. 수정: 올바른 필드 사용 + 주소 없으면 표시(전국 상품) + **매칭 0 이면 전체 표시**
+    //   (지역 필터가 절대 빈 피드를 만들지 않게 — 로드된 페이지가 그 지역 딜을 안 가진 경우 대비).
+    if (!regionKey) return out
+    const inRegion = out.filter((p) => {
+      const addr = p.restaurant_address || p.business_address
+      return !addr || matchAddress(addr, regionKey, districtKey)
+    })
+    return inRegion.length > 0 ? inRegion : out
   }, [items, extraPages, regionKey, districtKey])
 
   const loadMore = async () => {
