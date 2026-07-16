@@ -77,7 +77,7 @@
 ### 2.5 대표 Cloudflare 대시보드 체크리스트 (코드로 불가 — 사람이 해야 함)
 1. 새 Pages 프로젝트 `ur-wholesale` 생성 (또는 기존 staging 패턴 재사용). 같은 레포 연결, build command `npm run build`(P0-lite=같은 번들) — 또는 P3 후 `npm run build:wholesale`.
 2. **D1 바인딩**: `ur-wholesale` → 같은 DB `DB`(`d9530ba6-7a26-4c02-9295-3ce5aef112a3`). ⚠️ 반드시 **같은** DB (별도 DB 금지 — 정산/products/sellers 데이터 공유).
-3. KV/R2/Secrets 바인딩 복제: `RATE_LIMIT_KV`·`SESSION_KV`·`CACHE_KV`·`MEDIA_BUCKET`·`BACKUP_BUCKET`·`DATA_ENCRYPTION_KEY`·`JWT_SECRET`·`TOSS_*`·`KAKAO_*`·`ALIMTALK_*`·`ANTHROPIC_API_KEY`·`DISCORD_WEBHOOK_URL` 등 도매 worker 가 쓰는 것 전부. + Durable Objects(`LIVE_STREAM`·`RATE_LIMITER`) — RATE_LIMITER 는 rate-limit 미들웨어가 씀.
+3. KV/R2/Secrets 바인딩 복제: `RATE_LIMIT_KV`·`SESSION_KV`·`CACHE_KV`·`MEDIA_BUCKET`·`BACKUP_BUCKET`·`DATA_ENCRYPTION_KEY`·`JWT_SECRET`·`KAKAO_*`·`ALIMTALK_*`·`ANTHROPIC_API_KEY`·`DISCORD_WEBHOOK_URL` 등 도매 worker 가 쓰는 것 전부. + Durable Objects(`RATE_LIMITER`) — rate-limit 미들웨어가 씀. ⚠️ **`TOSS_*` 는 불필요(대표 확정 2026-07-16 "도매몰은 토스 안 씀" — 도매몰은 예치금/계좌이체 기반, 카드결제 경로 미사용).** 값 모르는 시크릿은 스킵 가능(도매 미사용분은 런타임에 안 읽힘). 헷갈리면 **ur-live 시크릿을 값 아는 것만 그대로 복사 + 토스만 제외**가 가장 안전.
 4. 🔴 **Cron trigger = ur-wholesale 에는 절대 설정하지 말 것 (0개).** `wrangler.toml:142-148` 의 9개 cron 은 **오직 ur-live 에서만** 돈다. 도매 worker 에도 같은 cron 이 걸리면 `scheduled.ts` 의 정산 성숙(`matureSupplierSettlements`)·예치금/출금 reconcile 이 **이중 실행 → 이중 지급**(멱등키가 2차 방어지만 1차로 반드시 차단). Pages 프로젝트는 대시보드에서 cron 을 별도 설정해야 하므로 "설정 안 함"이 곧 안전 — 확인만.
 5. **커스텀 도메인 `utongstart.com` 이전**: ur-live → ur-wholesale. (다운타임 최소화: ur-wholesale 배포·검증 완료 후 도메인 스왑. TTL 낮춰 빠른 전환.) 이전 후 ur-live 는 `live.ur-team.com` 만 서빙.
 
