@@ -1,6 +1,12 @@
 # 도매몰(유통스타트) 별도 배포 설계 — Worker 다이어트
 
-> 상태: **P0~P1 진행 + P3 코드 구현 완료(머지 대기)**. 2026-07-16.
+> 상태: **P0 배포 파이프라인 완료 + P3 코드 구현 완료. P1(대표 대시보드)·P2(staging)·P3(도메인 스왑) 대기**. 2026-07-16.
+>
+> **✅ P0 배포 파이프라인 (이 커밋)**: `.github/workflows/deploy-wholesale.yml` — main push/수동 시
+> `WHOLESALE_BUNDLE=1 npm run build`(도매 포함 _worker.js) → `wrangler pages deploy dist/client
+> --project-name=ur-wholesale`. ur-live(main.yml)와 동일 dist/client, worker 번들만 도매 포함.
+> ⚠️ ur-wholesale Pages 프로젝트 미생성 시 이 워크플로는 실패하지만 **라이브 무영향**(도매 미운영).
+> 🔴 ur-wholesale 에 **cron trigger 절대 금지**(정산 이중성숙 방지 — §2.5-4).
 > 대표 확정: 별도배포 B안 진행 · utongstart.com 미사용 · 현재 서비스 미운영 → 도매 라우트 빌드타임 분리 구현.
 >
 > **✅ P3 구현 (commit 93c0989)**: `src/worker/mount-wholesale.ts`(도매 라우트 마운트) + `index.ts` 가드
