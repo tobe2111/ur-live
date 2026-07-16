@@ -61,7 +61,8 @@ const SORTS = [
   { key: 'newest',   label: '🆕 최신순' },
 ] as const
 
-type SortKey = typeof SORTS[number]['key']
+// 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
+type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
 
 // 🖥️ 2026-07-15 (대표 — PC 홈 당근 스타일): 같은 피드를 PC 풀너비 홈(PcHomePage)에서도 재사용.
@@ -76,6 +77,7 @@ export default function GroupBuyFeed({
   onSortChange,
   regionKey,
   districtKey,
+  userLoc,
 }: {
   pc?: boolean
   category?: CategoryKey
@@ -86,6 +88,8 @@ export default function GroupBuyFeed({
   //   주소-텍스트 매칭 필터(matchAddress). 미지정이면 matchAddress 가 true → 기존 동작 byte-불변.
   regionKey?: string
   districtKey?: string
+  // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
+  userLoc?: { lat: number; lng: number } | null
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
@@ -202,6 +206,17 @@ export default function GroupBuyFeed({
   const sorted = useMemo(() => {
     const arr = [...allItems]
     switch (sort) {
+      case 'near': {
+        // 🗺️ 2026-07-16: 현위치 기준 거리순(제곱거리 — 순위만 필요하므로 sqrt 생략). 좌표 없는 딜은 맨 뒤.
+        if (!userLoc) return arr
+        const d2 = (p: FeedProduct) => {
+          const la = p.restaurant_lat, ln = p.restaurant_lng
+          if (la == null || ln == null || !Number.isFinite(la) || !Number.isFinite(ln)) return Infinity
+          const dy = la - userLoc.lat, dx = ln - userLoc.lng
+          return dy * dy + dx * dx
+        }
+        return arr.sort((a, b) => d2(a) - d2(b))
+      }
       case 'popular':
         return arr.sort((a, b) => soldOf(b) - soldOf(a))
       case 'deadline':
@@ -219,7 +234,7 @@ export default function GroupBuyFeed({
           return bx - ax
         })
     }
-  }, [allItems, sort])
+  }, [allItems, sort, userLoc])
 
   return (
     <>

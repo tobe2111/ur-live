@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
-import { KOREA_REGIONS, findRegionByKey, matchAddress } from '@/shared/constants/korea-regions'
-import { ensureKakaoMaps } from '@/lib/kakao-sdk'
+import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
 
 /**
@@ -39,9 +38,15 @@ function labelFor(r: HomeRegion): string {
 export default function PcHomeLocationBar({
   value,
   onChange,
+  onLocate,
+  located = false,
 }: {
   value: HomeRegion
   onChange: (r: HomeRegion) => void
+  // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 성공 시 실좌표를 상위로 → 피드 거리순 정렬.
+  onLocate?: (loc: { lat: number; lng: number }) => void
+  // 거리순(near) 모드 활성 여부 — 라벨을 '내 주변'으로 표시.
+  located?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [locating, setLocating] = useState(false)
@@ -71,34 +76,10 @@ export default function PcHomeLocationBar({
       )
       const { latitude: lat, longitude: lng } = pos.coords
       try { localStorage.setItem('ur_last_loc_v1', JSON.stringify({ lat, lng })) } catch { /* ignore */ }
-      await ensureKakaoMaps()
-      const kakao = (window as unknown as { kakao?: any }).kakao
-      if (!kakao?.maps?.services) { toast.error('주소 변환을 불러오지 못했어요 — 지역을 직접 선택해 주세요'); setOpen(true); return }
-      const geocoder = new kakao.maps.services.Geocoder()
-      const address: string = await new Promise((resolve) => {
-        geocoder.coord2Address(lng, lat, (result: any[], status: string) => {
-          if (status === kakao.maps.services.Status.OK && result[0]) {
-            const a = result[0]
-            resolve(a.road_address?.address_name || a.address?.address_name || '')
-          } else resolve('')
-        })
-      })
-      // 주소 → KOREA_REGIONS 매칭(세부지역 우선, 없으면 시/도).
-      let matched: HomeRegion | null = null
-      for (const region of KOREA_REGIONS) {
-        for (const dg of region.districtGroups) {
-          if (dg.keywords.some(k => address.includes(k))) { matched = { regionKey: region.key, districtKey: dg.key }; break }
-        }
-        if (matched) break
-        if (matchAddress(address, region.key, undefined)) matched = { regionKey: region.key }
-      }
-      if (matched) {
-        apply(matched)
-        toast.success(`현 위치: ${labelFor(matched)}`)
-      } else {
-        toast.error('가까운 지역을 찾지 못했어요 — 직접 선택해 주세요')
-        setOpen(true)
-      }
+      // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 실좌표를 상위로 → 피드를 '가까운 순' 정렬(지역 필터 아님,
+      //   숨기지 않고 거리순 재배열). 역지오코딩/지역세팅은 하지 않음(빈 화면·Kakao 의존 제거).
+      onLocate?.({ lat, lng })
+      toast.success('현 위치 기준 가까운 순으로 정렬했어요')
     } catch {
       toast.error('위치 권한이 필요해요 — 지역을 직접 선택할 수 있어요')
       setOpen(true)
@@ -118,7 +99,7 @@ export default function PcHomeLocationBar({
           aria-expanded={open}
         >
           <MapPin className="w-[18px] h-[18px] text-gray-900 dark:text-white shrink-0" />
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white max-w-[220px] truncate">{labelFor(value)}</span>
+          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white max-w-[220px] truncate">{located ? '내 주변' : labelFor(value)}</span>
           <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         <button
