@@ -40,6 +40,14 @@
       "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
       "date": "2026-06-22",
       "review": "transitive 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-xv26-6w52-cph6",
+      "pkg": "websocket-driver",
+      "reason": "@firebase/database → faye-websocket → websocket-driver (Node.js 서버 전용 WebSocket 구현, net/tls 의존). 브라우저 번들은 네이티브 WebSocket 사용(Node 전용 모듈은 Vite 브라우저 빌드 포함 불가), Cloudflare 워커는 firebase database 미사용(한국=카카오 세션, Firebase 호출 0) → production 도달 불가. 취약점 자체도 websocket-driver 로 프레임을 파싱하는 서버 맥락 한정.",
+      "accepted_by": "세션 분석(claude-fable-5) 2026-07-18 — 기존 5건과 동일 클래스(빌드툴/도달불가 transitive). 대표 사후 확인 요망",
+      "date": "2026-07-18",
+      "review": "firebase major 업그레이드로 faye-websocket 제거되면 삭제. npm 접근 가능한 환경에서 `npm ls websocket-driver --omit=dev` 재확인."
     }
   ]
 }
