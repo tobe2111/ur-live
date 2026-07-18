@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
@@ -149,14 +150,8 @@ export default function CouponClaimPage() {
 
       {/* 🛡️ 2026-05-20: PC 에서 cramped 안 보이도록 form 폭 확장 + 좌우 padding */}
       <div className="w-full max-w-sm lg:max-w-md text-center px-4 lg:px-8 relative z-10">
-        {status === 'loading' && (
-          <div className="animate-pulse">
-            <div className="w-20 h-20 mx-auto bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4">
-              <Gift className="w-10 h-10 text-pink-400 animate-bounce" />
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">{t('couponClaim.claiming')}</p>
-          </div>
-        )}
+        {/* 🎯 2026-07-18 로딩 단일화 — 커스텀 Gift 애니메이션 → 유어딜 BrandLoader(라벨). */}
+        {status === 'loading' && <BrandLoader label={t('couponClaim.claiming')} />}
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>

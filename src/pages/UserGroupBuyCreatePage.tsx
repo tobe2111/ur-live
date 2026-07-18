@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { ChevronLeft, MapPin, Phone, Loader2, AlertCircle } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import api from '@/lib/api'
@@ -120,14 +121,8 @@ export default function UserGroupBuyCreatePage() {
     )
   }
 
-  // 자격 확인 중 로딩
-  if (eligibleAsInfluencer === null) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <p className="text-sm text-gray-500">권한 확인 중...</p>
-      </div>
-    )
-  }
+  // 자격 확인 중 로딩 — 🎯 2026-07-18 로딩 단일화
+  if (eligibleAsInfluencer === null) return <BrandLoader fullScreen label="권한 확인 중" />
 
   const kakaoJsKey =
     import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''

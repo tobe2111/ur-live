@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -59,14 +60,12 @@ export default function PointsChargeSuccessPage() {
   }, [paymentKey, orderId, amount])
 
   if (loading) {
+    // 🎯 2026-07-18 로딩 단일화 — 유어딜 BrandLoader(SEO 는 head 로 렌더되므로 형제 배치).
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
+      <>
         <SEO title={t('pointsCharge.processingTitle', { defaultValue: '딜 충전 처리' })} description={t('pointsCharge.processingDesc', { defaultValue: '딜 포인트 충전 처리 중' })} url="/points/charge/success" noindex />
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">{t('pointsCharge.processingMsg', { defaultValue: '충전을 처리하는 중...' })}</p>
-        </div>
-      </div>
+        <BrandLoader fullScreen label={t('pointsCharge.processingMsg', { defaultValue: '충전을 처리하는 중...' })} />
+      </>
     )
   }
 

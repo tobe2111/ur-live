@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -208,9 +209,7 @@ export default function InfluencerSettlementPage() {
     } finally { setSaving(false) }
   }
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212]"><p className="text-sm text-gray-500 dark:text-gray-400">로딩 중...</p></div>
-  }
+  if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
