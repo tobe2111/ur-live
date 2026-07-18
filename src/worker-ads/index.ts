@@ -41,6 +41,44 @@ app.route('/api/admin/social', socialMediaRoutes) // 🥗 소셜 홍보 자동�
 //   wrangler-ads.toml crons: "0 * * * *"(매시간 렌더폴링+예약발행) · "0 0 * * 1"(주간 초안).
 async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
   const cron = event.cron
+  // 🎯 Phase E(2026-07-18): 광고 cron 5종+섀도우 — 메인 scheduled.ts 에서 이관(설계 §4 Phase E).
+  //   로직/게이트/멱등 전부 메인과 동일(같은 D1 이라 데이터 정합 무변). 메인 쪽은 같은 커밋에서 제거.
+  if (cron === '*/5 * * * *') {
+    // 자동입찰 — 글로벌 킬스위치(ADS_AUTOBID_ENABLED='true')일 때만 실제 동작(기본 OFF = no-op).
+    if (env.ADS_AUTOBID_ENABLED === 'true') {
+      ctx.waitUntil((async () => {
+        try {
+          const { runAutobidAll } = await import('@/features/marketing/api/autobid')
+          await runAutobidAll(env)
+        } catch { /* fail-soft */ }
+      })())
+    }
+  }
+  if (cron === '0 18 * * *') {
+    // 일일 배치(순서 유지: 가격 갱신 → 순위 → 스냅샷 → 알림(최신 last_lowest 반영) → 자동입찰 섀도우).
+    ctx.waitUntil((async () => {
+      try {
+        const { refreshAllWatches } = await import('@/features/marketing/api/price-monitor')
+        await refreshAllWatches(env)
+      } catch { /* fail-soft */ }
+      try {
+        const { refreshAllRankTargets } = await import('@/features/marketing/api/rank-tracker')
+        await refreshAllRankTargets(env)
+      } catch { /* fail-soft */ }
+      try {
+        const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history')
+        await snapshotAllAccounts(env)
+      } catch { /* fail-soft */ }
+      try {
+        const { runAlertsAll } = await import('@/features/marketing/api/alerts')
+        await runAlertsAll(env)
+      } catch { /* fail-soft */ }
+      try {
+        const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid')
+        await runAutobidShadowAll(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
   if (cron === '0 * * * *') {
     ctx.waitUntil((async () => {
       try {
@@ -54,6 +92,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try {
         const { handleSocialDraft } = await import('@/worker/cron/social-draft')
         await handleSocialDraft(env)
+      } catch { /* fail-soft */ }
+    })())
+    // 🎯 Phase E: 유어애즈 AI 주간 리포트(주당 1회 멱등, 연결 고객사만) — 메인 agency-weekly-batch 에서 이관.
+    ctx.waitUntil((async () => {
+      try {
+        const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report')
+        await handleAdsWeeklyReport(env)
       } catch { /* fail-soft */ }
     })())
   }
