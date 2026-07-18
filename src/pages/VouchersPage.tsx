@@ -17,6 +17,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import api from '@/lib/api'
@@ -194,9 +195,9 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
             {p.brand_name && <span className="text-[11px] font-bold">{p.brand_name}</span>}
           </div>
         )}
-        {/* 🎨 할인 배지 — 브랜드 옐로우(상세 페이지 칩과 동일 톤) */}
+        {/* 🎨 할인 배지 — 잘 보이게 딜 코랄레드 (대표 신고 "할인 % 나와야지"). */}
         {discountRate > 0 && (
-          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded-md px-1.5 py-0.5">{discountRate}%</span>
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-[#fb2d3f] rounded-md px-1.5 py-0.5">{discountRate}%</span>
         )}
       </div>
       {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. 컴팩트(별점 제거·여백 축소). */}
@@ -205,7 +206,11 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
           <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
         )}
         <p className="text-[13px] leading-tight line-clamp-2 font-medium text-gray-800 dark:text-gray-100">{p.name}</p>
-        <div className="flex items-baseline gap-0.5 mt-1">
+        <div className="flex items-baseline gap-1 mt-1">
+          {/* 🖥️ 2026-07-16 (대표 — 할인 % 나와야지): 가격 옆에 할인율 코랄레드로 명시. */}
+          {discountRate > 0 && (
+            <span className="text-[15px] font-extrabold text-[#fb2d3f] dark:text-[#ff7a4f] tracking-tight">{discountRate}%</span>
+          )}
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
           {hasStrike && (
@@ -482,6 +487,9 @@ function readVouchersSsrSeed(embedded: boolean, category: string, brand: string,
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🖥️ 2026-07-16 (대표 — 카탈로그 PC 당근 그리드): /vouchers 모바일=1열 리스트, PC(lg+)=그리드(홈과 통일). gridMode 만 분기(나머지 chrome 불변).
+  const isPc = useMediaQuery('(min-width: 1024px)')
+  const gridMode = embedded || isPc
   // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
   const prefetchProduct = usePrefetchProduct()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -975,8 +983,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 금액권 리스트 */}
       <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-6">
         {loading ? (
-          embedded ? (
-            // 🏠 홈 — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
+          gridMode ? (
+            // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
@@ -1009,8 +1017,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
         ) : (
           <>
-            {embedded ? (
-              // 🏠 홈 — 2/3/4/5열 그리드 카드 (main 의 PC 확장 lg:4 xl:5 반영).
+            {gridMode ? (
+              // 🏠 홈/PC — 2/3/4/5열 그리드 카드 (main 의 PC 확장 lg:4 xl:5 반영).
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>

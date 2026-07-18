@@ -126,6 +126,57 @@ export async function discoverYouTubeInfluencers(
   return { ok: true, leads }
 }
 
+// ── 네이버 블로거 발굴 (네이버 검색 오픈API — 무료, 보유 키) ────────────────────
+//   블로그 검색으로 키워드 상위 노출 블로거를 수집(고유 블로거로 집계). 지표는 없고
+//   블로그 링크 + 이름 + 매칭 글 수(활동/관련도 프록시) 제공. 연락처는 글 설명에서 best-effort.
+const NAVER_OPENAPI = 'https://openapi.naver.com'
+const stripTag = (s: string | undefined) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
+
+export async function discoverNaverBloggers(
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number } = {},
+): Promise<DiscoverResult> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  const q = (keyword || '').trim()
+  if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
+  const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
+  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string }>; errorMessage?: string } | null
+  if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `블로그 검색 오류 (HTTP ${res.status})` }
+  // 고유 블로거로 집계(블로그홈 링크 기준).
+  const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
+  for (const it of (data?.items || [])) {
+    const home = String(it.bloggerlink || '').trim()
+    if (!home) continue
+    const key = home.replace(/\/$/, '')
+    const handle = key.replace(/^https?:\/\/(blog\.naver\.com\/)?/, '').replace(/\/.*$/, '') || null
+    const text = `${stripTag(it.title)} ${stripTag(it.description)}`
+    const ex = existingOrNew(byBlog, key, String(it.bloggername || handle || '블로거'), key, handle)
+    ex._matches += 1
+    // 첫 매칭의 설명에서 컨택 시도(누적).
+    const c = extractContacts(text)
+    if (!ex.email && c.emails[0]) ex.email = c.emails[0]
+    if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
+    if (!ex.tiktok && c.tiktok[0]) ex.tiktok = c.tiktok[0]
+    if (!ex.links && c.links.length) ex.links = c.links.join(' ')
+    if (!ex.description) ex.description = text.slice(0, 300)
+  }
+  const leads = Array.from(byBlog.values())
+    .map(({ _matches, ...l }) => ({ ...l, video_count: _matches })) // video_count = 매칭 글 수(활동 프록시)
+    .sort((a, b) => b.video_count - a.video_count)
+  return { ok: true, leads }
+}
+
+function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, key: string, name: string, url: string, handle: string | null): InfluencerLead & { _matches: number } {
+  let ex = m.get(key)
+  if (!ex) {
+    ex = { platform: 'naver_blog', channel_id: key, handle, name, url, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }
+    m.set(key, ex)
+  }
+  return ex
+}
+
 // ── 저장/관리 (계정별 리드 DB) ────────────────────────────────────────────────
 export interface LeadRow extends InfluencerLead { id: number; status: string; memo: string | null; collected_at: string }
 

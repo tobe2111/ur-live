@@ -2,6 +2,7 @@ import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
+import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
 const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
@@ -93,12 +94,17 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
   //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
   const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외(풀너비).
-  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
+  // 🖥️ 2026-07-15~16 [UNLOCK_LOADING] (대표 시안 — 당근 스타일 PC): 홈·카탈로그(교환권 등)를 lg+ 풀너비
+  //   (액자/사이드바/거터 제외)로. SSOT = `shared/pc-fullbleed.ts`. 모바일(<lg)은 프레임 CSS 가 lg+ 전용이라
+  //   영향 0. 2026-06-20 "PC 단일 액자 정체성" 잠금을 이 경로들에 한해 해제.
+  const isFullBleedHome = isFullBleedPcPath(location.pathname)
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 + 풀블리드 홈은 제외(풀너비).
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome
   // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
   //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
   //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 링크샵 방문자가 아닐 때만.
-  const showSidebar = !hideSidebar && !linkshopVisitor && !framed
+  // 🖥️ 풀블리드 홈은 앱 사이드바(DesktopLiveSidebar)도 숨김 — PcHomePage 자체 레일이 좌측을 담당.
+  const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome
   const showFrameRails = framed && !linkshopVisitor
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
@@ -116,8 +122,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     } else {
       body.classList.remove('app-frame-host', 'app-frame-dark')
     }
-    return () => { body.classList.remove('app-frame-host', 'app-frame-dark') }
-  }, [framed, applied])
+    // 🖥️ 2026-07-15~16: 풀블리드 마커 — index.css 가 lg+ 에서 하단 네비(app-frame-bar) 를 숨김(PC 자체 네비/레일).
+    body.classList.toggle('pc-fullbleed', isFullBleedHome)
+    return () => { body.classList.remove('app-frame-host', 'app-frame-dark', 'pc-fullbleed') }
+  }, [framed, applied, isFullBleedHome])
 
   return (
     <>

@@ -1,0 +1,77 @@
+# 🏭 도매몰(유통스타트) 별도 Pages 배포 — ur-wholesale
+#   설계 SSOT: docs/design/wholesale-separate-deploy.md (옵션 2 / P0).
+#
+#   ur-live(main.yml)와 동일한 dist/client 를 배포하되, worker 번들만 WHOLESALE_BUNDLE=1 로 빌드해
+#   도매(features/supply) 라우트를 포함시킨다(__INCLUDE_WHOLESALE__=true). 같은 D1 공유.
+#   → ur-wholesale 은 utongstart.com(도매 전용 도메인)을 서빙. ur-live 는 도매 미서빙(다이어트).
+#
+#   ⚠️ 안전:
+#     - ur-wholesale Pages 프로젝트가 없으면 이 워크플로는 실패하지만 **라이브 무영향**(도매 미운영).
+#     - 🔴 ur-wholesale 에는 **cron trigger 를 절대 걸지 말 것**(정산 이중성숙 방지 — 설계 §2.5-4).
+#       cron 은 오직 ur-live 에서만. (Pages 는 대시보드에서 별도 설정하므로 "설정 안 함"이 곧 안전.)
+#     - D1/KV/시크릿 바인딩은 대시보드에서 관리(대표 P1). 이 배포는 *코드*만 갱신.
+#   요구 secret: CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID (main.yml 과 동일 재사용).
+name: Deploy ur-wholesale
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    # ur-wholesale = 소비자와 같은 index.ts/client 를 공유하므로 main 의 모든 변경에 재빌드(드리프트 방지).
+
+concurrency:
+  group: deploy-wholesale
+  cancel-in-progress: true
+
+jobs:
+  deploy-wholesale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 🏭 도매 포함 빌드 — WHOLESALE_BUNDLE=1 → worker 번들에 도매 라우트 포함. client 는 ur-live 와 동일.
+      - name: Build (WHOLESALE_BUNDLE=1)
+        run: WHOLESALE_BUNDLE=1 npm run build
+        env:
+          WHOLESALE_BUNDLE: '1'
+
+      - name: Deploy to Cloudflare Pages (ur-wholesale)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN 미설정 — ur-wholesale 배포 불가"
+            exit 1
+          fi
+          set -e
+          MAX_RETRY=3
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== Deploy attempt $i/$MAX_RETRY (ur-wholesale) ==="
+            if npx wrangler@3 pages deploy dist/client \
+                --project-name=ur-wholesale \
+                --branch=main \
+                --commit-dirty=true \
+                --commit-message="wholesale deploy ${{ github.sha }}"; then
+              echo "✅ ur-wholesale deploy succeeded on attempt $i"
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              SLEEP=$((i * 10)); echo "⚠️ attempt $i 실패. ${SLEEP}s 후 재시도..."; sleep $SLEEP
+            fi
+          done
+          echo "❌ ur-wholesale 배포 $MAX_RETRY 회 모두 실패."
+          exit 1

@@ -11,6 +11,8 @@
  *   구체 provider 응답 파싱은 계약(어떤 벤더) 확정 후 이 파일에 추가 — 미검증 추측 구현은 넣지 않는다.
  */
 
+// env: INFLUENCER_PROVIDER(벤더명) + INFLUENCER_PROVIDER_KEY(키). 유튜브 발굴은 이와 무관하게
+//   YOUTUBE_API_KEY 만으로 동작(무료) — 이 seam 은 인스타/틱톡 직접 발굴 확장용.
 export function providerAvailable(env: { INFLUENCER_PROVIDER_KEY?: string }): boolean {
   return !!(env as { INFLUENCER_PROVIDER_KEY?: string }).INFLUENCER_PROVIDER_KEY
 }

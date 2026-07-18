@@ -12,49 +12,80 @@
  *   (인앱 알림/웹푸시는 별개 경로라 대부분 사용자가 완전 무통보는 아님.)
  *
  * 이 파일의 역할:
- *  - 코드베이스가 **사용하는** 모든 template 코드 목록(ALL_USED_ALIMTALK_TEMPLATES) — 오타/중복 방지.
- *  - 저장소에 **등록됨으로 문서화된** 코드(DOCUMENTED_REGISTERED) — Aligo 콘솔 등록의 SSOT 후보.
+ *  - 코드베이스가 **사용하는** 모든 platform template 코드 목록(ALL_USED_ALIMTALK_TEMPLATES) — 오타/중복 방지.
+ *  - 문서화된(콘솔 등록 대상) 코드(DOCUMENTED_REGISTERED) — `docs/kakao-alimtalk-templates.md` SSOT.
  *  - `isDocumentedRegistered(code)` — 진단(admin)에서 "이 실패가 미등록 템플릿 때문인지" 주석용.
  *
  * ⚠️ 이 목록은 **발송을 막지 않는다**(fail-open). 실제 등록 여부는 Aligo 콘솔(운영 사실)이 SSOT이며,
  *   문서가 최신이 아닐 수 있어 하드 게이트로 쓰면 정상 발송을 막을 위험이 있다. 진단/문서 전용.
  *
- * 새 알림톡 트리거 추가 시: (1) 여기 ALL_USED 에 코드 추가, (2) Aligo 콘솔에 동일 tpl_code 로 템플릿
- *   등록·승인, (3) 승인되면 DOCUMENTED_REGISTERED 로 이동 + docs/kakao-alimtalk-templates.md 갱신.
+ * 📌 문안(본문) 전체는 `docs/kakao-alimtalk-templates.md` 에 콘솔 등록형(#{변수})으로 정리됨.
+ *   새 알림톡 트리거 추가 시: (1) 여기 ALL_USED 에 코드 추가, (2) docs 에 본문(#{변수}) 추가,
+ *   (3) Aligo 콘솔에 동일 tpl_code + 동일 본문 등록·승인.
+ *
+ * 🧱 서비스 분리: 소비자(유어딜, live.ur-team.com)와 도매(유통스타트, utongstart.com)는
+ *   **발신 프로필(카카오 채널)이 다르다.** 아래 WHOLESALE 코드는 유통스타트 채널에 등록.
  */
 
-/** Aligo 콘솔에 등록됨으로 저장소에 문서화된 코드 (system-alimtalk 헤더 + docs/kakao-alimtalk-templates.md). */
-export const DOCUMENTED_REGISTERED_ALIMTALK_TEMPLATES: readonly string[] = [
-  // 가입·승인 (system-alimtalk.ts 헤더)
-  'seller_registered', 'seller_approved', 'seller_rejected',
+/**
+ * 소비자(유어딜) platform 알림톡 코드 — live.ur-team.com 발신 프로필.
+ * 문안: docs/kakao-alimtalk-templates.md 참조.
+ */
+export const CONSUMER_ALIMTALK_TEMPLATES: readonly string[] = [
+  // 가입·승인 (seller_approved/seller_reactivated · business_registration_verified/rejected —
+  //   각 1코드=1본문. 2026-07-01 1코드2문안 분리)
+  'seller_registered', 'seller_approved', 'seller_reactivated',
   'agency_registered', 'agency_approved',
-  'new_order', 'gift_received', 'gift_refunded', 'settlement_completed',
-  // docs/kakao-alimtalk-templates.md
-  'stay_reminder_d1', 'stay_reminder_dday', 'stay_voucher_expire_soon',
-  'referral_commission_earned', 'business_registration_result',
+  'business_registration_verified', 'business_registration_rejected',
+  // 주문·선물·환불
+  'new_order', 'gift_received', 'gift_refunded', 'voucher_refunded',
+  // 계정 보안
+  'seller_bank_changed',
+  // 정산·송금·커미션
+  'seller_settlement_completed', 'settlement_completed', 'payout_completed',
+  'commission_withdrawal_approved', 'commission_withdrawal_rejected',
+  'referral_commission_earned',   // 숙소 referral 적립(payment.routes 숙소 경로 — 실발송 확인 2026-07-01)
+  // 이용권 사용·만료
+  'voucher_used', 'voucher_expire_soon',   // 일반 이용권(비-숙소) 만료 D-30/7/3/1
+  // 예약(appointment)
+  'appointment_seller_new', 'appointment_user_confirmed',
+  'appointment_reminder_seller', 'appointment_reminder_user', 'appointment_noshow_alert',
+  // 경매
+  'auction_won', 'auction_promoted',
+  // 숙소
+  'stay_dday', 'stay_d1', 'stay_voucher_expire_soon',
 ] as const
 
 /**
- * 코드베이스가 실제로 `sendSystemAlimtalk`/`sendAlimtalk` 로 넘기는 모든 template 코드.
- * DOCUMENTED_REGISTERED 에 없는 항목은 "등록 미확인" — 프로덕션에서 거부되고 있을 가능성이 높다
- * (admin 진단 GET /api/admin/alimtalk-failures 의 by_template 에서 registered:false 로 표시됨).
+ * 도매(유통스타트) platform 알림톡 코드 — utongstart.com 발신 프로필(소비자와 별개 채널).
+ */
+export const WHOLESALE_ALIMTALK_TEMPLATES: readonly string[] = [
+  'supplier_approved', 'supplier_rejected',
+  'distributor_approved', 'distributor_rejected',
+] as const
+
+/** Aligo 콘솔에 등록됨으로 저장소에 문서화된 코드 (docs/kakao-alimtalk-templates.md). */
+export const DOCUMENTED_REGISTERED_ALIMTALK_TEMPLATES: readonly string[] = [
+  ...CONSUMER_ALIMTALK_TEMPLATES,
+  ...WHOLESALE_ALIMTALK_TEMPLATES,
+] as const
+
+/**
+ * 코드베이스가 실제로 `sendSystemAlimtalk`/`sendAlimtalk` 로 넘기는 모든 platform template 코드.
+ * DOCUMENTED_REGISTERED 에 없는 항목은 "문서 미기재" — 오타이거나 새로 추가하고 문서를 안 갱신한 것.
  */
 export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
-  ...DOCUMENTED_REGISTERED_ALIMTALK_TEMPLATES,
-  // 예약(appointment) — 등록 미확인
-  'appointment_seller_new', 'appointment_user_confirmed',
-  'appointment_reminder_seller', 'appointment_reminder_user', 'appointment_noshow_alert',
-  // 경매 / 교환권 / 정산 / 지급 — 등록 미확인
-  'auction_won', 'voucher_refunded', 'seller_settlement_completed', 'payout_completed',
-  // 도매(판매사/제조사) — 등록 미확인
-  'distributor_approved', 'distributor_rejected', 'supplier_approved', 'supplier_rejected',
-  // 🏙️ 2026-07-05 체험단(FCFS) + 이용권 사용 완료 — 콘솔 등록·심사 신청 필요 (문안은 운영이
-  //   Aligo 에 등록한 승인 본문과 코드의 message 를 일치시킬 것 — 승인 후 DOCUMENTED 로 이동).
-  'fcfs_selected', 'fcfs_replacement', 'voucher_used',
-  // 🧾 2026-07-13 상권 쿠폰 페이백(지급/반려/만료 임박) — 게이트 뒤(DISTRICT_ALIMTALK_ENABLED + 채널설정).
-  //   콘솔 등록·심사 신청 필요. dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code.
+  ...CONSUMER_ALIMTALK_TEMPLATES,
+  ...WHOLESALE_ALIMTALK_TEMPLATES,
+  // 🏙️ 2026-07-05 체험단(FCFS) + 이용권 사용 완료, 🧾 2026-07-13 상권 쿠폰 페이백 — 콘솔 등록·심사
+  //   신청 대기(게이트 뒤: district 는 DISTRICT_ALIMTALK_ENABLED + 채널설정). 승인 후 CONSUMER 로 이동.
+  //   dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code. (아직 DOCUMENTED 아님 → 진단이 '미등록' 표시)
+  'fcfs_selected', 'fcfs_replacement',
   'district_coupon_issued', 'district_coupon_rejected', 'district_coupon_expiring',
-  // 셀러 브랜드메시지 테스트 발송(seller-alimtalk-mgmt) — 셀러 자체 Aligo 계정용 테스트 코드(시스템 알림 아님)
+  // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
+  //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
+  'order_confirm', 'shipping_start', 'delivery_completed', 'low_stock_alert',
+  // 셀러 브랜드메시지 테스트 발송(seller-alimtalk-mgmt) — 셀러 자체 계정 테스트 코드.
   'test',
 ] as const
 

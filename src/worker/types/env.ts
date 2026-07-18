@@ -78,6 +78,8 @@ export interface Env {
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
   ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
   ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
+  ALIGO_BUSINESS_REGISTRATION_VERIFIED?: string; // 사업자등록 승인 알림톡 tpl_code(콘솔 자동부여 시 override)
+  ALIGO_BUSINESS_REGISTRATION_REJECTED?: string; // 사업자등록 반려 알림톡 tpl_code(콘솔 자동부여 시 override)
   ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만)
 
   // ---- YouTube ----
@@ -174,6 +176,28 @@ export interface Env {
   //   초안은 항상 관리자 검토 후 발행. ANTHROPIC_API_KEY 필요.
   BLOG_AI_DRAFTS_ENABLED?: string;
 
+  // ---- 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브) ----
+  //   전부 기본 OFF. 발행은 [게이트 ON + 연결 계정 + 관리자 승인] 3중 조건. 자동 발행 없음.
+  //   설계: docs/design/social-media-automation.md. 공식 API 만 사용(봇/스크래핑 없음).
+  SOCIAL_THREADS_ENABLED?: string;      // 'true' 면 스레드 발행 허용
+  SOCIAL_INSTAGRAM_ENABLED?: string;    // 'true' 면 인스타 발행 허용
+  SOCIAL_YOUTUBE_ENABLED?: string;      // 'true' 면 유튜브 업로드 허용
+  SOCIAL_AUTO_DRAFT_ENABLED?: string;   // 'true' 면 주간 초안 cron 동작(비공개 초안만)
+  //   예약 발행 — 관리자가 승인+예약(scheduled_at)한 글을 매시간 cron 이 발행. 기본 OFF.
+  //   발행은 여전히 플랫폼 게이트+계정+approved 3중 조건 재확인(사람이 승인한 건만).
+  SOCIAL_AUTO_PUBLISH_ENABLED?: string;
+  //   자격증명(Cloudflare Secrets). Meta(스레드/인스타)·Google(유튜브)은 기존 youtube 기능과 공유.
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
+  THREADS_APP_ID?: string;
+  THREADS_APP_SECRET?: string;
+  //   릴스/쇼츠 영상 렌더(스토리보드 → mp4). Worker 는 렌더 불가 → 외부 템플릿 렌더 API 위임.
+  //   기본 OFF. 켜려면 SOCIAL_VIDEO_ENABLED='true' + provider 키. (기획/대본은 ANTHROPIC 로 항상 생성 가능)
+  SOCIAL_VIDEO_ENABLED?: string;        // 'true' 면 영상 렌더 허용
+  SOCIAL_VIDEO_PROVIDER?: string;       // 'creatomate'(기본)
+  SOCIAL_VIDEO_RENDER_KEY?: string;     // 렌더 provider API 키
+  SOCIAL_VIDEO_TEMPLATE_ID?: string;    // (선택) 디자인된 템플릿 ID — 자막만 주입해 품질↑
+
   // ---- fee-resolver 그림자 배선 스위치 (상품 소유 모델 새 수수료 규칙) ----
   //   'true' 면 결제 확정 시 새 규칙 분배를 **계산만 해서 order_fee_breakdown 에 기록**(실제 정산 무변경).
   //   목적: 스테이징/운영에서 새 규칙 vs 현행 정산 비교 검증. 검증 후 authoritative 전환은 *별도* 작업.
@@ -226,4 +250,14 @@ export interface Env {
   // Note: env.ASSETS is automatically available when [assets] is configured
   // No explicit binding needed in wrangler.toml
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+
+  // ---- 🎯 유어애즈 독립 Worker(ur-ads) Service Binding (2026-07-14) ----
+  //   설계 SSOT: docs/design/urads-worker-split.md. 메인 Pages(ur-live) → Settings → Functions →
+  //   Service bindings 에서 Variable name `ADS` → Service `ur-ads` 로 바인딩(대표 Cloudflare 셋업).
+  //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
+  //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
+  ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
+  //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
+  ADS_WORKER_ENABLED?: string;
 }
