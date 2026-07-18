@@ -14,12 +14,14 @@ import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import NotificationDropdown from './NotificationDropdown'
 
 export default function DesktopTopNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
+  const [notifOpen, setNotifOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
   // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
@@ -142,20 +144,24 @@ export default function DesktopTopNav() {
             {t('nav.sellerCenter', { defaultValue: '판매자센터' })}
           </button>
 
-          {/* 알림 */}
+          {/* 알림 — 🖥️ 2026-07-18 (대표 요청): PC 는 페이지 이동 대신 드롭다운으로 그 자리에서 바로 표시. */}
           {loggedIn && (
-            <button
-              onClick={() => navigate('/notifications')}
-              aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
-              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
-            >
-              <Bell className="w-5 h-5" strokeWidth={1.75} />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
+                aria-expanded={notifOpen}
+                className={`relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${notifOpen ? 'bg-gray-100 dark:bg-white/[0.08]' : ''}`}
+              >
+                <Bell className="w-5 h-5" strokeWidth={1.75} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && <NotificationDropdown onClose={() => setNotifOpen(false)} />}
+            </div>
           )}
 
           {/* 장바구니 */}

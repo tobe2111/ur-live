@@ -138,7 +138,8 @@ const CHECKS = [
     hint: "prefetch 쿼리 키의 id 는 반드시 String() 정규화 — RQ 키는 123 ≠ '123' 입니다.",
   },
   {
-    file: 'src/pages/VouchersPage.tsx',
+    // 🖥️ 2026-07-18: 교환권 카드/행(VoucherCard/VoucherRow)이 VouchersPage → vouchers/shared.tsx 로 추출됨(PC 2단 분리).
+    file: 'src/pages/vouchers/shared.tsx',
     name: '교환권 카드 prefetch = 상세와 동일 세계 (group-buy 키/엔드포인트)',
     // 🚑 2026-07-10: 카드 목적지 /vouchers/:id 는 /api/group-buy/products/:id + groupBuyProduct 키.
     //   usePrefetchProduct(/api/products/:id, ['product'] 키)로 되돌리면 프리페치 100% 낭비 재발.
