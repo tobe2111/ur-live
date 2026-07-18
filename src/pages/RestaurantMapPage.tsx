@@ -630,9 +630,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     const map = mapInstance.current
     if (!map || !window.kakao?.maps) return
     const c = map.getCenter?.()
+    // 🗺️ 2026-07-16 (대표 신고 — 마우스 지도 이동): 지도 생성 직후에도 relayout 1회 — 컨테이너 폭이 CSS(lg
+    //   분할 오프셋)로 확정된 뒤 Kakao 내부 크기/히트영역을 재계산해 드래그 좌표 오차 방지.
     const id = setTimeout(() => { try { map.relayout(); if (c) map.setCenter(c) } catch { /* silent */ } }, 60)
     return () => clearTimeout(id)
-  }, [isLgViewport])
+  }, [isLgViewport, sdkLoaded])
   const currentSheetTop = (isLgViewport ? sheetTopByStateLg : sheetTopByState)[sheetSnap]
 
   // 🏠 2026-06-20 (대표 — 홈=당근식 1줄 리스트 + 지도 강조버튼): 리스트 모드. 데이터/지오코딩/정렬/필터는
