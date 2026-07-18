@@ -5,20 +5,40 @@
         "appIDs": ["TEAMID.com.urteam.yourdeal"],
         "components": [
           {
-            "/": "/products/*",
-            "comment": "상품 상세 — 앱이 있으면 앱으로 deep link"
+            "/": "/u/*",
+            "comment": "링크샵(유저 쇼핑몰) — 주력 공유 경로, 앱으로 deep link"
           },
           {
-            "/": "/live/*",
-            "comment": "라이브 방송 — 앱으로 deep link"
+            "/": "/group-buy/*",
+            "comment": "동네딜/이용권 상세 — 앱으로 deep link"
+          },
+          {
+            "/": "/vouchers/*",
+            "comment": "교환권 상세 — 앱으로 deep link"
+          },
+          {
+            "/": "/my-vouchers",
+            "comment": "내 이용권함(QR 지갑) — 알림 탭 목적지"
+          },
+          {
+            "/": "/products/*",
+            "comment": "상품 상세"
           },
           {
             "/": "/profile/*",
-            "comment": "셀러 프로필"
+            "comment": "셀러 프로필(레거시 경로 — /u 로 단일화됐지만 기존 공유 링크 존속)"
+          },
+          {
+            "/": "/s/*",
+            "comment": "셀러 단축 경로"
           },
           {
             "/": "/restaurant-map",
-            "comment": "맛집 지도"
+            "comment": "동네딜 지도"
+          },
+          {
+            "/": "/blog/*",
+            "comment": "블로그(SEO 유입) — 앱 설치자는 앱에서"
           },
           {
             "/": "/coupon/*",
@@ -33,6 +53,11 @@
             "/": "/auth/*",
             "exclude": true,
             "comment": "OAuth 콜백은 web 유지"
+          },
+          {
+            "/": "/admin/*",
+            "exclude": true,
+            "comment": "어드민은 web 전용"
           }
         ]
       }
