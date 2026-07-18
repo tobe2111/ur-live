@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-18 — 앱 출시 대비 세팅 배치 (대표 "너가 할 수 있는 세팅 다 해줘")
+- **SSOT**: `docs/APP_STORE_LAUNCH_RUNBOOK.md` (남은 절차=대부분 대표 계정 작업 + 실기기 검증 체크리스트). 선행 점검 `app-ready-audit-2026-07.md` 의 "전환 착수 시 To-Do" 소화.
+- **네이티브**: MainActivity 에 카드사 `intent://`/커스텀 스킴 브릿지(파싱→startActivity, 미설치=폴백 URL/마켓, 실패 무음 — 토스 실결제 필수) + AndroidManifest `<queries>` 결제앱 24종·CAMERA·POST_NOTIFICATIONS. iOS Info.plist NSCameraUsageDescription + LSApplicationQueriesSchemes 카드사 27종.
+- **핵심 결정 — server.url 모드**: `capacitor.config.ts` production `server.url='https://live.ur-team.com'` (앱=라이브 직접 로드). 이유: api.ts same-origin + httpOnly 쿠키 세션이라 번들 모드는 cross-origin 으로 로그인/API 전멸. 웹 배포=앱 업데이트. `limitsNavigationsToAppBoundDomains` true→false(WKAppBoundDomains 10개 한도가 토스 카드사 도메인과 양립 불가).
+- **웹측**: `in-app-browser.ts` `isOwnAppWebView()`(Capacitor 판별) — 자사 앱 안에서 "외부 브라우저로 열기" 배너/자동 redirect 오발동 구조적 차단. AASA 딥링크 경로 현행화(/u/* /group-buy/* /vouchers/* /my-vouchers 등 + /live 제거, TEAMID/지문은 플레이스홀더 유지).
+- **CI**: `app-android.yml`(debug APK 상시 + ANDROID_KEYSTORE_* 시크릿 있으면 서명 AAB) / `app-ios.yml`(macos 무서명 컴파일 검증, 수동).
+- **대표 할 일**: Play Console($25)·Apple Developer($99/년, D-U-N-S 선신청)·Firebase FCM — 런북 §1~2. IAP 리스크는 충전 종료로 소멸.
+
 ## ✅ 2026-07-18 — 딜 충전 서비스 전체 종료 (대표 확정 "딜 포인트 충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거)
 - **결정**: 딜 = **활동 적립 전용 리워드 통화**(친구초대·링크샵 추천 커미션·리뷰·이벤트·상권 방문). 유상 충전(현금→딜)만 종료 — 딜 *사용*(교환권 딜결제·혼합 차감)·*환불 복원*·기보유 유상 딜 환급은 전부 불변.
 - **구현(가역 플래그 `TOPUP_DISABLED`, shared/feature-flags SSOT)**: ① 라우트 게이트 — `IosTopupGate` 확장(전 플랫폼 종료 안내 + 적립 유도, /points/charge). ② 진입점 6곳 — DealEarnStrip(충전 카드 제외, grid 3열), VouchersPage 잔액카드(탭→딜내역·'내역' 칩·부족문구→적립 안내), TeamPointsCard(충전 버튼 숨김), MyDealHistoryPage(충전→딜 모으기·charge 항목 클릭 no-op), 상세 3페이지(GroupBuy/Voucher/Product) INSUFFICIENT_POINTS 충전 유도→적립 안내, checkout PaymentSection(충전 링크→부족 안내 박스). ③ 서버 — `/api/points/charge/init` 403(**/charge/confirm 은 유지** — 배포 시점 진행중 결제 완결, 돈 안전). ④ 문서/블로그 — platform-model §5-1·비즈니스플랜 B-4/B-7 갱신, blog-seed 6곳 적립 프레임 재작성 + `BLOG_SEED_VERSION` 5→6.

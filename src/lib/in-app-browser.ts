@@ -56,8 +56,22 @@ export const IN_APP_LABELS: Record<InAppBrowserName, string> = {
   threads: 'Threads',
 }
 
+/**
+ * 🛡️ 2026-07-18 앱 출시 대비 (app-ready-audit §2 선결과제): 자사 Capacitor 래퍼 감지.
+ *   자사 앱의 WebView 는 '적대적 인앱 브라우저'가 아님 — 외부 브라우저 유도 배너/자동 redirect 를
+ *   띄우면 안 됨(앱에서 앱 밖으로 쫓아내는 꼴). Capacitor 전역 객체로 판별(주입 전 아주 이른
+ *   시점엔 UA 폴백 없음 — 배너 컴포넌트는 마운트 후 호출이라 안전).
+ */
+export function isOwnAppWebView(): boolean {
+  if (typeof window === 'undefined') return false
+  const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+  try { return !!cap?.isNativePlatform?.() } catch { return false }
+}
+
 export function detectInAppBrowser(): InAppBrowserName | null {
   if (typeof navigator === 'undefined') return null
+  // 자사 앱 래퍼는 인앱 브라우저 아님 — 배너/외부유도 대상에서 제외
+  if (isOwnAppWebView()) return null
   const ua = navigator.userAgent
   for (const { name, regex } of PATTERNS) {
     if (regex.test(ua)) return name
