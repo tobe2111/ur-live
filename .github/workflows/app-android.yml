@@ -17,6 +17,13 @@ on:
   workflow_dispatch:
   push:
     tags: ['app-v*']
+    # 🛡️ 네이티브/설정 변경 시 자동 검증 — 이 환경(원격 세션)은 dispatch 권한/태그 push 가 막혀 있어
+    #   path 트리거가 유일한 자동 실행 수단이기도 함. 웹 배포(main.yml)와 무관(앱 파일만 매칭).
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - '.github/workflows/app-android.yml'
 
 jobs:
   android:
