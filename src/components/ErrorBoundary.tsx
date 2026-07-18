@@ -71,6 +71,8 @@ class ErrorBoundary extends Component<Props, State> {
       // 🛡️ 청크 에러(새 배포 업데이트) — 무서운 에러 대신 "업데이트 중" 안내.
       //   componentDidCatch 가 자동 새로고침(캐시버스트) 중이라 보통 즉시 사라짐.
       //   자동복구가 막힌 환경(storage/location 차단·2회차)에선 수동 버튼으로 폴백.
+      // consumer-loader-ok: 이건 페이지 콘텐츠 로딩이 아니라 '배포-청크 자가복구' 에러 바운더리 UI
+      //   (전용 문구 + 수동 새로고침 버튼) — 유어딜 BrandLoader 로 통일 대상 아님.
       if (this.state.isChunkError) {
         const exhausted = this.state.chunkExhausted;
         return (

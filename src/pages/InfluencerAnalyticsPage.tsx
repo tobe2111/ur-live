@@ -6,6 +6,7 @@
 
 import { Link } from 'react-router-dom'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { TrendingUp, Award, Clock, ChevronLeft, BarChart3 } from 'lucide-react'
 
@@ -31,7 +32,7 @@ export default function InfluencerAnalyticsPage() {
     { select: (raw) => ((raw as { success?: boolean; data?: Analytics })?.success ? ((raw as { data: Analytics }).data) : null) },
   )
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212]"><p className="text-sm text-gray-500 dark:text-gray-400">로딩 중...</p></div>
+  if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
   if (!data) return null
 
   const maxDaily = Math.max(...data.daily.map(d => d.amt), 1)

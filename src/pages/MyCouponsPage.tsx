@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
@@ -61,9 +62,7 @@ export default function MyCouponsPage() {
 
       <main className="ur-content-narrow px-4 py-4 pb-20">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          </div>
+          <BrandLoader />  /* 🎯 2026-07-18 로딩 단일화 (헤더 유지 → 인라인) */
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />

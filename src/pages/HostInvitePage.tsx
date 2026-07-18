@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import SEO from '@/components/SEO'
 import { hostingApi, type InviteView } from '@/features/hosting/api/hosting-api'
 import { formatWon, formatNumber } from '@/utils/format'
@@ -42,13 +43,7 @@ export default function HostInvitePage() {
     navigate(`/products/${data.product_id}?ref=${data.host_user_id}&from=invite&code=${data.invite_code}`)
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">
-        <p className="text-gray-400">{t('common.loading')}</p>
-      </div>
-    )
-  }
+  if (loading) return <BrandLoader fullScreen forceDark />  // 🎯 2026-07-18 로딩 단일화(다크 #020202 표면)
 
   if (error || !data) {
     return (
