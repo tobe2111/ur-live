@@ -58,6 +58,11 @@ const KNOWN_TABLES_EXTRA = new Set([
   'search_history',                      // 검색 이력 (delete-account)
   'schema_repair_history',               // repair-schema 실행 이력 (internal-admin-tools)
   'refund_history',                      // 레거시 감사 write-only(읽기 0, swallow 처리) — 존재무관 무해(refund.ts recordRefundHistory)
+  // 2026-07-14 데이터 감사 2단계(#514) 이벤트 테이블 — write path(ensureInflowClicksTable/
+  //   ensureVoucherVisitsTable)가 CREATE 보유하나 별도 브랜치. 매칭 엔진은 읽기 전용 참조(없으면
+  //   safeAll 이 빈 결과). #514 머지 시 inline CREATE 로 자동 인식 → 이 등록은 그때 무해·잉여.
+  'inflow_clicks',                       // 인플루언서 유입 클릭 이벤트 (marketing/matching)
+  'voucher_visits',                      // 이용권 사용(매장 방문) 이벤트 (matching)
   // 참고: admin_notifications·admin_dashboard_notifications 는 오타였음(실제=dashboard_notifications).
   //   2026-07-01 교정 완료 → 더는 참조 없음(여기 등록 불필요).
 ])

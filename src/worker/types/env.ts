@@ -210,6 +210,13 @@ export interface Env {
   //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
   SHOPPING_LEDGER_ENABLED?: string;
 
+  // ---- 인플루언서↔업체 성과기반 매칭 정산 스위치 (2026-07-14) ----
+  //   매칭 자체는 **어드민 전용 읽기 도구**(requireAdmin — env 게이트 불필요). 아래는 **정산(머니)** 전용:
+  //   MATCHING_SETTLEMENT_ENABLED='true' 면 매칭 성사 수수료 적립(머니 경로) 활성 — #496 규율:
+  //   promo 재원(5% 밖), 인플루언서 딜 레일 재사용, staging 축별 실결제 검증 전 미설정 유지.
+  //   (라이브 적립 배선은 SSOT 아비터 경유 — 단독 flip 세션. 이 커밋엔 순수 계산·불변식만.)
+  MATCHING_SETTLEMENT_ENABLED?: string;
+
   // ---- 상권 쿠폰 경로 B: 온라인 결제 자동발급 마스터 스위치 (2026-07-13) ----
   //   'true' 면 유어딜 결제 확정 시 참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인에서
   //   기준액 이상이면 상권 쿠폰 자동 발급(waitUntil 후처리, 완전 fail-soft — 결제 성공 경로 영향 0).

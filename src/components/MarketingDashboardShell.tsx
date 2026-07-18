@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { MATCHING_ENABLED } from '@/shared/feature-flags'
 
 interface Tenant { customer_id: string; tenant_label: string | null; connected_at: string | null; is_active: number }
 const authHeader = () => {
@@ -31,6 +32,8 @@ const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-services', label: '서비스몰', icon: <path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M3 9h18M9 13h6" /> },
   { id: 'sec-links', label: '단축 링크', icon: <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /> },
   { id: 'sec-influencers', label: '인플루언서 발굴', icon: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /> },
+  // 체험단 매칭(성과기반) — 게이트 OFF(MATCHING_ENABLED) 시 나브에서도 숨김(패널 미마운트와 정합).
+  ...(MATCHING_ENABLED ? [{ id: 'sec-matching', label: '체험단 매칭', icon: <path d="M20 7l-8 4-8-4 8-4 8 4zM4 7v6l8 4 8-4V7M12 11v10" /> }] : []),
   { id: 'sec-ai', label: 'AI 마케터', icon: <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" /> },
   { id: 'sec-report', label: '주간 리포트', icon: <path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" /> },
   { id: 'sec-fraud', label: '부정클릭 방어', icon: <path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3zM9 12l2 2 4-4" /> },
@@ -69,6 +72,9 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
   // 계정 드롭다운(헤더) — 회사명/계정설정/로그아웃. 모든 화면에서 직접 로그아웃.
   const [acctOpen, setAcctOpen] = useState(false)
   const company = typeof window !== 'undefined' ? (localStorage.getItem('ads_company') || '내 계정') : '내 계정'
+  // 체험단 매칭 나브는 어드민 전용 — 비어드민에겐 숨김(패널 미마운트와 정합).
+  const isAdmin = typeof window !== 'undefined' && !!localStorage.getItem('admin_token')
+  const navItems = NAV.filter((n) => n.id !== 'sec-matching' || isAdmin)
   function logout() {
     for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
     navigate('/ads/login', { replace: true })
@@ -181,7 +187,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
 
         <nav style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto' }}>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>MENU</div>
-          {showNav ? NAV.map((n) => (
+          {showNav ? navItems.map((n) => (
             <button key={n.id} type="button" onClick={() => go(n.id)} className={`uad-nav${active === n.id ? ' active' : ''}`}>
               <NavIcon>{n.icon}</NavIcon>{n.label}
             </button>
