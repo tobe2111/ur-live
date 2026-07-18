@@ -13,6 +13,7 @@ import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
+import { matchAddress } from '@/shared/constants/korea-regions'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -23,9 +24,26 @@ interface FeedProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
+  // restaurant_address 는 base Product 에 이미 있음(string|undefined) — 재선언 금지(TS2430 extends 충돌).
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   discount_rate?: number
   current_price?: number
+  original_price?: number
+  sold_count?: number
   created_at?: string
+}
+
+// 🖥️ 2026-07-16 (대표 신고 — PC 정렬 무반응): 정렬 필드가 sparse(group_buy_current/discount_rate 대부분
+//   null·0)라 인기순/할인율순이 서버 기본순(최신)과 동일해 보였음. 실제 값 기반으로 견고화.
+function soldOf(p: FeedProduct): number {
+  return p.sold_count ?? p.group_buy_current ?? 0
+}
+function discountOf(p: FeedProduct): number {
+  if (p.discount_rate != null && p.discount_rate > 0) return p.discount_rate
+  const price = p.current_price ?? p.price ?? 0
+  const orig = p.original_price ?? 0
+  return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
 }
 
 const CATEGORIES = [
@@ -43,12 +61,47 @@ const SORTS = [
   { key: 'newest',   label: '🆕 최신순' },
 ] as const
 
-type SortKey = typeof SORTS[number]['key']
+// 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
+type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
 
-export default function GroupBuyFeed() {
-  const [category, setCategory] = useState<CategoryKey>('all')
-  const [sort, setSort] = useState<SortKey>('popular')
+// 🖥️ 2026-07-15 (대표 — PC 홈 당근 스타일): 같은 피드를 PC 풀너비 홈(PcHomePage)에서도 재사용.
+//   `pc` = 4~5열 그리드 + 내부 카테고리칩/정렬셀렉트/카운트 숨김(좌측 레일 + 정렬칩이 대신 구동).
+//   category/sort 는 controlled(props) 또는 uncontrolled(내부 state) 겸용 — props 미전달 시 기존 모바일
+//   동작 byte-불변(홈 <GroupBuyFeed/> 무변경). 데이터/SSR시드/prefetch/페이지네이션 전부 공유.
+export default function GroupBuyFeed({
+  pc = false,
+  category: categoryProp,
+  onCategoryChange,
+  sort: sortProp,
+  onSortChange,
+  regionKey,
+  districtKey,
+  userLoc,
+}: {
+  pc?: boolean
+  category?: CategoryKey
+  onCategoryChange?: (c: CategoryKey) => void
+  sort?: SortKey
+  onSortChange?: (s: SortKey) => void
+  // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(시/도 key + 세부지역 key)으로 피드를 클라이언트
+  //   주소-텍스트 매칭 필터(matchAddress). 미지정이면 matchAddress 가 true → 기존 동작 byte-불변.
+  regionKey?: string
+  districtKey?: string
+  // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
+  userLoc?: { lat: number; lng: number } | null
+} = {}) {
+  const [categoryState, setCategoryState] = useState<CategoryKey>('all')
+  const [sortState, setSortState] = useState<SortKey>('popular')
+  const category = categoryProp ?? categoryState
+  const sort = sortProp ?? sortState
+  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
+  const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
+  // 🖥️ PC 홈(pc)은 한 줄 4개(대표 요청 — 카드 크게), 모바일은 기존 2~3열. PcHomePage 는 lg+ 에서만
+  //   렌더되므로 grid-cols-4 고정으로 충분(레일 옆 flex-1 폭에서 카드가 그만큼 커짐). 로딩/본문/더보기 공통.
+  const gridCls = pc
+    ? 'grid grid-cols-4 gap-5 pb-10'
+    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -101,14 +154,42 @@ export default function GroupBuyFeed() {
   // 카테고리 변경 시 누적분 리셋
   useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
 
-  // page1(items) + 추가 페이지 병합 후 id 중복 제거(경계 겹침 방어).
-  const allItems = useMemo(() => {
-    const merged = [...items, ...extraPages.flat()]
-    const seen = new Set<number | string>()
-    const out: FeedProduct[] = []
-    for (const p of merged) { if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) } }
-    return out
-  }, [items, extraPages])
+  // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
+  //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
+  // 지역 필터: restaurant_address 텍스트 매칭(주소 없으면 표시=전국) + 매칭 0 이면 전체 폴백(빈 화면 방지).
+  const inRegion = (p: FeedProduct) => {
+    if (!regionKey) return true
+    const a = p.restaurant_address || p.business_address
+    return !a || matchAddress(a, regionKey, districtKey)
+  }
+  const sortBand = (arr: FeedProduct[]) => {
+    const a = [...arr]
+    switch (sort) {
+      case 'near': {
+        if (!userLoc) return a
+        const d2 = (p: FeedProduct) => {
+          const la = p.restaurant_lat, ln = p.restaurant_lng
+          if (la == null || ln == null || !Number.isFinite(la) || !Number.isFinite(ln)) return Infinity
+          const dy = la - userLoc.lat, dx = ln - userLoc.lng
+          return dy * dy + dx * dx
+        }
+        return a.sort((x, y) => d2(x) - d2(y))
+      }
+      case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
+      case 'deadline': return a.sort((x, y) => {
+        const ax = x.expires_at ? new Date(x.expires_at).getTime() : Infinity
+        const bx = y.expires_at ? new Date(y.expires_at).getTime() : Infinity
+        return ax - bx
+      })
+      case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
+      case 'newest': return a.sort((x, y) => {
+        const ax = x.created_at ? new Date(x.created_at).getTime() : 0
+        const bx = y.created_at ? new Date(y.created_at).getTime() : 0
+        return bx - ax
+      })
+      default: return a
+    }
+  }
 
   const loadMore = async () => {
     if (loadingMore || reachedEnd) return
@@ -138,28 +219,25 @@ export default function GroupBuyFeed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canLoadMore, extraPages.length, loadingMore])
 
-  // 클라이언트 사이드 정렬 — 누적 로드분 전체를 정렬(모든 페이지 동일 base 정렬이라 전역 정렬 정합).
+  // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 재정렬): 페이지(밴드)별로 정렬해 이어붙임 → page1 은 page2 가
+  //   로드돼도 위치 고정(재정렬 없음), 새 페이지만 아래로. 밴드 안에서만 정렬(정렬칩 의미 유지) + id dedup.
   const sorted = useMemo(() => {
-    const arr = [...allItems]
-    switch (sort) {
-      case 'popular':
-        return arr.sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
-      case 'deadline':
-        return arr.sort((a, b) => {
-          const ax = a.expires_at ? new Date(a.expires_at).getTime() : Infinity
-          const bx = b.expires_at ? new Date(b.expires_at).getTime() : Infinity
-          return ax - bx
-        })
-      case 'discount':
-        return arr.sort((a, b) => (b.discount_rate ?? 0) - (a.discount_rate ?? 0))
-      case 'newest':
-        return arr.sort((a, b) => {
-          const ax = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bx = b.created_at ? new Date(b.created_at).getTime() : 0
-          return bx - ax
-        })
+    const bands = [items, ...extraPages]
+    const seen = new Set<number | string>()
+    const out: FeedProduct[] = []
+    const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
+      const src = filterRegion ? band.filter(inRegion) : band
+      for (const p of sortBand(src)) {
+        if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
+      }
     }
-  }, [allItems, sort])
+    for (const band of bands) pushBand(band, true)
+    // 지역 매칭 0(전부 필터로 사라짐) → 지역 무시 전체 폴백(빈 화면 방지).
+    if (regionKey && out.length === 0) { seen.clear(); out.length = 0; for (const band of bands) pushBand(band, false) }
+    return out
+    // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, extraPages, sort, userLoc, regionKey, districtKey])
 
   return (
     <>
@@ -167,7 +245,9 @@ export default function GroupBuyFeed() {
           하단 DealEarnStrip('딜 모으는 법') + /help/deal-guide 가 동일 교육을 담당 → 중복.
           상단을 비워 카테고리 칩 + 딜 카드가 즉시(첫 화면) 보이도록. */}
 
-      {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리) */}
+      {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리).
+          🖥️ PC 홈에선 좌측 레일이 카테고리를 담당 → 내부 칩 숨김. */}
+      {!pc && (
       <div className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-12 z-10">
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
           {CATEGORIES.map(c => {
@@ -188,8 +268,10 @@ export default function GroupBuyFeed() {
           })}
         </div>
       </div>
+      )}
 
-      {/* 정렬 옵션 + 카운트 */}
+      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김. */}
+      {!pc && (
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
         <select
@@ -203,10 +285,11 @@ export default function GroupBuyFeed() {
           ))}
         </select>
       </div>
+      )}
 
       {/* 피드 — 2열 그리드 (당근식) */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
+        <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -230,7 +313,7 @@ export default function GroupBuyFeed() {
         //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
         <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
+        <div className={gridCls}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
@@ -238,7 +321,7 @@ export default function GroupBuyFeed() {
           {sorted.map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} />
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
           })}
         </div>
       )}
@@ -247,7 +330,7 @@ export default function GroupBuyFeed() {
       {!loading && sorted.length > 0 && canLoadMore && (
         <div ref={sentinelRef} className="px-4 pb-6 flex justify-center">
           {loadingMore ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+            <div className={`${gridCls} w-full`}>
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-1.5">
                   <div className="aspect-square rounded-xl skeleton-shimmer" />

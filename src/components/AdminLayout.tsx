@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText,
+  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2,
   type LucideIcon
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
@@ -117,6 +117,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/gb-cockpit',       label: '공구 엔진 조종석', icon: Rocket },
       { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
       { path: '/admin/experience-campaigns', label: '체험 캠페인',   icon: Gift },
@@ -185,6 +186,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: '콘텐츠',
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
+      // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전(메인 슬림 유지). ur-ads 컷오버 완료 후 메뉴 재노출.
+      { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
       { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },

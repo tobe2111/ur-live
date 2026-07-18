@@ -12,6 +12,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useTokenAutoRefresh } from './hooks/useTokenAutoRefresh'
+import HomeRoute from './pages/pc-home/HomeRoute' // 🖥️ 홈 뷰포트 분기(lg+ PC 홈 / 그 외 지도)
+import { isFullBleedPcPath } from './shared/pc-fullbleed' // 🖥️ 풀너비 PC 페이지(홈·카탈로그)
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
@@ -313,7 +315,12 @@ function AppContent() {
     import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
       captureAcquisitionSource()
       import('@/utils/auth').then(({ isLoggedInSync }) => {
-        claimAcquisitionIfLoggedIn(isLoggedInSync())
+        const loggedIn = isLoggedInSync()
+        claimAcquisitionIfLoggedIn(loggedIn)
+        // 📡 2026-07-13 (데이터 감사 2단계): 익명 유입 클릭 → 유저 귀속(멱등, 완결고리 '유입' 노드).
+        import('@/utils/affiliate-track').then(({ bindInflowClicksIfLoggedIn }) => {
+          bindInflowClicksIfLoggedIn(loggedIn)
+        }).catch(() => {})
       }).catch(() => {})
     }).catch(swallow('app:acquisition-import'))
   }, [])
@@ -643,7 +650,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home mode="list" />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
@@ -1029,7 +1036,7 @@ function AppContent() {
           </main>
           </div>
           {!hideBottomNav && <BottomNav />}
-          {!fullScreen && <Suspense fallback={null}><SideBanner /></Suspense>}
+          {!fullScreen && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <Suspense fallback={null}><SideBanner /></Suspense>}
           {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
               복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
           {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}

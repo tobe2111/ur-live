@@ -380,6 +380,14 @@ async function bootApp() {
         </ThemeProvider>
       )
 
+      // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
+      //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).
+      //   청크404/stale-SW 로 엔트리 번들이 아예 안 돌면 이 라인에 도달 못함 → 워치독이 1클릭 복구 UI 제공.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+      } catch { /* silent */ }
+
       // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
       import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
 
@@ -394,10 +402,12 @@ async function bootApp() {
             <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
             <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
             <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
-            <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+            <button id="ur-render-fail-reload" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
           </div>
         </div>
       `
+      // 🛡️ 2026-07-16: 인라인 onclick 은 CSP 차단 가능 + plain reload 는 stale HTML 재서빙 → 캐시버스트 복구로.
+      try { document.getElementById('ur-render-fail-reload')?.addEventListener('click', () => reloadWithCacheBust()) } catch { /* silent */ }
     }
   }
 }

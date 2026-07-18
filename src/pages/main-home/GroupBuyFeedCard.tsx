@@ -36,6 +36,9 @@ interface FeedCardProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
+  // restaurant_address 는 base Product(string|undefined) 상속 — 재선언 금지(TS2430).
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   discount_rate?: number
   current_price?: number
   original_price?: number
@@ -89,7 +92,7 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; userLoc?: { lat: number; lng: number } | null }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -137,12 +140,32 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
   )
   const rating = p.avg_rating ?? 0
   const soldCount = p.sold_count ?? 0
+  // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
+  const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
+  const distKm = (() => {
+    if (!userLoc || p.restaurant_lat == null || p.restaurant_lng == null) return null
+    const la = Number(p.restaurant_lat), ln = Number(p.restaurant_lng)
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null
+    const toRad = (d: number) => (d * Math.PI) / 180
+    const dLat = toRad(la - userLoc.lat), dLng = toRad(ln - userLoc.lng)
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(userLoc.lat)) * Math.cos(toRad(la)) * Math.sin(dLng / 2) ** 2
+    const km = 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+    return km < 1 ? `${Math.round(km * 10) / 10}` : `${Math.round(km)}`
+  })()
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
   // 🎨 2026-06-18 (대표 신고 — 홈 공구 카드 그라데이션 사라짐): /group-buy 와 동일한 cardGradient 룩 복원.
   //   대표색 단색 카드 + 사진 하단 같은색 번짐 + 대비 글자색. (GroupBuyGridCard 와 정합)
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   const grad = cardGradient(cardColor)
+  // 🖥️ 2026-07-16 (대표 — PC 카드 가시성): pc 면 대표색 그라데이션(카드 틴트 + 사진 하단 번짐 + 흐린 글자색)
+  //   제거 → 깔끔한 흰/다크 카드 + 표준 텍스트색(선명). 모바일(!pc)은 기존 그라데이션 룩 그대로.
+  const tSub = pc ? undefined : { color: grad.sub }
+  const tText = pc ? undefined : { color: grad.text }
+  const tAccent = pc ? undefined : { color: grad.accent }
+  const cSub = pc ? 'text-gray-500 dark:text-gray-400' : ''
+  const cText = pc ? 'text-gray-900 dark:text-white' : ''
+  const cAccent = pc ? 'text-[#fb2d3f] dark:text-[#ff7a4f]' : ''
 
   return (
     <Link
@@ -151,13 +174,14 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className="block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
-      style={{ backgroundColor: grad.base }}
+      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A2A2A] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
+      style={pc ? undefined : { backgroundColor: grad.base }}
     >
-      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩 */}
+      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
+          🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성). */}
       <div
-        className="relative aspect-square w-full overflow-hidden"
-        style={{ backgroundColor: grad.base }}
+        className={`relative aspect-square w-full overflow-hidden ${pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}`}
+        style={pc ? undefined : { backgroundColor: grad.base }}
       >
         {p.image_url ? (
           <img
@@ -193,8 +217,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
           </div>
         )}
 
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거). 🖥️ PC 는 깔끔한 이미지(번짐 제거). */}
+        {!pc && <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />}
 
         {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
         {isUrgent && (
@@ -207,10 +231,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
         {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
       </div>
 
-      <div className="px-2.5 pb-2.5 pt-1.5">
+      <div className={pc ? 'px-3.5 pb-3.5 pt-2.5' : 'px-2.5 pb-2.5 pt-1.5'}>
         {/* 브랜드 (gift_catalog) — 있을 때만. 🏪 온누리 가맹 뱃지는 브랜드 유무와 무관 표시 */}
         {(brandName || p.onnuri_merchant) && (
-          <p className="flex items-center gap-1 text-[10px] leading-none mb-0.5" style={{ color: grad.sub }}>
+          <p className={`flex items-center gap-1 text-[10px] leading-none mb-0.5 ${cSub}`} style={tSub}>
             {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
             {brandName && <span className="truncate">{brandName}</span>}
             {p.onnuri_merchant && (
@@ -221,33 +245,41 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
 
         {/* 원가 strikethrough (있을 때만) */}
         {originalPrice > price && originalPrice > 0 && (
-          <p className="text-[11px] line-through leading-tight" style={{ color: grad.sub }}>
+          <p className={`text-[11px] line-through leading-tight ${cSub}`} style={tSub}>
             {formatNumber(originalPrice)}원
           </p>
         )}
 
         {/* 제목 — 2줄 max */}
-        <p className="text-[13px] font-semibold line-clamp-2 leading-tight mt-0.5" style={{ color: grad.text }}>
+        <p className={`${pc ? 'text-[14.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
           {p.name}
         </p>
 
         {/* 할인% + 최종가 — 핵심 강조 */}
         <p className="flex items-baseline gap-1 mt-1">
           {discount > 0 && (
-            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
+            <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cAccent}`} style={tAccent}>{discount}%</span>
           )}
-          <span className="text-[15px] font-extrabold" style={{ color: grad.text }}>
+          <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
             {formatNumber(price)}원
           </span>
         </p>
 
+        {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
+        {(addrShort || distKm != null) && (
+          <p className={`flex items-center gap-1 mt-0.5 text-[11px] min-w-0 ${cSub}`} style={tSub}>
+            <span className="shrink-0">📍</span>
+            {addrShort && <span className="truncate">{addrShort}</span>}
+            {distKm != null && <span className={`shrink-0 whitespace-nowrap font-bold ${cText}`} style={tText}>· {distKm}km</span>}
+          </p>
+        )}
         {/* ⭐ 평점 + 구매수 */}
         {(rating > 0 || soldCount > 0) && (
-          <p className="flex items-center gap-1.5 mt-0.5 text-[11px]" style={{ color: grad.sub }}>
+          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`} style={tSub}>
             {rating > 0 && (
               <span className="flex items-center gap-0.5">
                 <span className="text-yellow-500">★</span>
-                <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
+                <span className={`font-bold ${cText}`} style={tText}>{rating.toFixed(1)}</span>
               </span>
             )}
             {soldCount > 0 && (

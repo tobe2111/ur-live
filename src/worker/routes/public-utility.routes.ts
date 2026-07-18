@@ -116,6 +116,7 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     RESEND_API_KEY: !!env.RESEND_API_KEY,
     ALIGO_API_KEY: !!env.ALIGO_API_KEY,
     ALIGO_USER_ID: !!env.ALIGO_USER_ID,
+    ALIGO_SENDER_KEY: !!env.ALIGO_SENDER_KEY,
     DB: !!env.DB,
   }
   try {

@@ -161,6 +161,12 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
+    //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
+    // ctx.waitUntil(safeCron('social-maintenance', async () => {
+    //   const { handleSocialMaintenance } = await import('./cron/social-maintenance')
+    //   return handleSocialMaintenance(env)
+    // }));
     // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
     ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
       const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
@@ -436,6 +442,12 @@ export async function handleCronScheduled(
       const { handleBlogAiDraft } = await import('./cron/blog-ai-draft');
       return handleBlogAiDraft(env);
     }));
+    // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 초안 주간 크론 배선 분리(위 social-maintenance 와 동일 사유).
+    //   기본 OFF 라 미실행 무해. 재도입 시 원복.
+    // ctx.waitUntil(safeCron('social-draft', async () => {
+    //   const { handleSocialDraft } = await import('./cron/social-draft');
+    //   return handleSocialDraft(env);
+    // }));
     ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       const now = new Date();

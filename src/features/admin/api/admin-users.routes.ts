@@ -18,6 +18,9 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 //   세팅하므로 require2FA 는 admins 테이블(totp_secret/totp_enabled)로 정상 해석된다.
 import { require2FA } from '@/worker/middleware/require-2fa';
 import { intParam } from '@/shared/pagination'
+import { rateLimit } from '@/worker/middleware/rate-limit';
+import { maskEmail, maskPhone } from '@/worker/utils/pii-mask';
+import { sendAlert } from '@/worker/utils/alerts';
 
 export const adminUsersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -45,7 +48,7 @@ interface UserDetailRow extends UserRow {
 }
 
 // 🛡️ 2026-05-24: 페이지네이션 + 정렬 (created_at / order_count / total_spent / review_count) + 검색 (이름/이메일/전화번호).
-adminUsersRoutes.get('/users', cors(), async (c) => {
+adminUsersRoutes.get('/users', rateLimit({ action: 'admin_user_list', max: 60, windowSec: 60 }), cors(), async (c) => {
   try {
     const DB = c.env.DB;
     const page = Math.max(1, intParam(c.req.query('page'), 1));
@@ -112,9 +115,28 @@ adminUsersRoutes.get('/users', cors(), async (c) => {
       [...params, limit, offset]
     );
 
+    // 🕶️ 2026-07-13 (데이터 감사 3단계): 대량 목록 PII 마스킹 — 이메일/전화 기본 마스킹(enumeration 유출 최소).
+    //   원문은 단건 상세(full-state, 감사로그)에서만. 검색은 서버측 raw LIKE 라 마스킹 무관(기능 불변).
+    const maskedUsers = users.map(u => ({ ...u, email: maskEmail(u.email as string | null), phone: maskPhone(u.phone as string | null) }));
+
+    // 🛡️ PII 대량 열람 감사 로그(누가·검색어·건수·페이지) — GET 은 audit 미들웨어가 안 잡으므로 명시 기록.
+    void writeAuditLog(c, {
+      action: 'read_user_list', targetType: 'user',
+      after: { count: users.length, page, limit, search: search || null, total },
+    });
+    // 🚨 대량 스크래핑 신호(깊은 페이지네이션) 알림 — 정상 CS 는 앞쪽 페이지만 본다.
+    if (offset >= 2000) {
+      const admin = c.get('user' as never) as { id?: string | number; email?: string } | undefined;
+      void sendAlert(c.env, {
+        title: '어드민 유저목록 대량 열람',
+        message: `admin=${admin?.email ?? admin?.id ?? '?'} page=${page} offset=${offset} search=${search || '-'}`,
+        severity: 'warn',
+      }).catch(() => {});
+    }
+
     return c.json({
       success: true,
-      data: users,
+      data: maskedUsers,
       // 🛡️ 2026-05-24: frontend 호환 — 기존 res.data.totalPages / res.data.total 직접 읽기.
       totalPages: Math.ceil(total / limit),
       total,
@@ -268,6 +290,8 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
     if (!userId || userId.trim().length === 0) {
       return c.json({ success: false, error: 'Invalid user ID' }, 400);
     }
+    // 🛡️ 2026-07-13 (데이터 감사 3단계): 단건 PII 원문 열람 감사 로그(누가 어느 유저를 봤나).
+    void writeAuditLog(c, { action: 'read_user_detail', targetType: 'user', targetId: userId });
 
     // 🛡️ 2026-04-28: phone 컬럼이 production users 테이블에 없을 수도 → fallback 처리.
     let users: UserRow[] = [];
@@ -415,6 +439,8 @@ adminUsersRoutes.get('/users/:id/full-state', cors(), async (c) => {
     if (!userId || userId.trim().length === 0) {
       return c.json({ success: false, error: 'Invalid user ID' }, 400);
     }
+    // 🛡️ 2026-07-13 (데이터 감사 3단계): full-state 는 kakao_id 포함 원문 PII + 중복행까지 노출 → 감사 로그.
+    void writeAuditLog(c, { action: 'read_user_full_state', targetType: 'user', targetId: userId });
     const idStr = String(userId);
 
     // 1. 사용자 본인

@@ -144,6 +144,18 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         ).bind(code).first<{ voucher_id: number; order_id: number | null; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
+          // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+          //   user_id 는 vouchers.user_id(meta.user_id) 그대로 → 이용권↔방문↔유저 단일 조인키.
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+              await recordVoucherVisit(DB, {
+                voucher_id: meta.voucher_id, user_id: meta.user_id,
+                seller_id: meta.consigned_from_seller_id ?? meta.seller_id,
+                amount: meta.applied_price, path: 'pin',
+              })
+            } catch { /* best-effort */ }
+          })())
           // 🛡️ 2026-05-21 Phase C: voucher 사용 시점 자동 정산 ledger entries 3개 기록.
           //   merchant (가게) + seller (위탁 판매 셀러, optional) + platform fee 분배.
           //   멱등 — voucher_id 별 1회만 실행 (내부에서 SELECT 중복 체크).
@@ -337,6 +349,18 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         "UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'"
       ).bind(voucher.id).run()
       if (!result.meta?.changes) return c.json({ success: false, error: '동시성 충돌 — 다시 시도해주세요' }, 409)
+
+      // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+      c.executionCtx?.waitUntil((async () => {
+        try {
+          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await recordVoucherVisit(DB, {
+            voucher_id: voucher.id, user_id: voucher.user_id,
+            seller_id: voucher.consigned_from_seller_id ?? voucher.seller_id,
+            product_id: voucher.product_id, amount: voucher.applied_price, path: 'seller_scan',
+          })
+        } catch { /* best-effort */ }
+      })())
 
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {

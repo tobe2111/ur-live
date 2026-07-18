@@ -520,6 +520,45 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       UNIQUE(account_id, tenant, snap_date)
     )` },
     { desc: 'idx_ad_daily_metrics_uniq', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_daily_metrics_uniq ON ad_daily_metrics(account_id, tenant, snap_date)" },
+    // 🆕 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브). 토큰 at-rest 암호화.
+    { desc: 'social_accounts', sql: `CREATE TABLE IF NOT EXISTS social_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      account_ref TEXT,
+      display_name TEXT,
+      access_token_enc TEXT,
+      refresh_token_enc TEXT,
+      token_expires_at DATETIME,
+      extra TEXT DEFAULT '{}',
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { desc: 'idx_social_accounts_platform', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_social_accounts_platform ON social_accounts(platform)" },
+    { desc: 'social_posts', sql: `CREATE TABLE IF NOT EXISTS social_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      topic_slug TEXT,
+      title TEXT,
+      body TEXT NOT NULL,
+      hashtags TEXT DEFAULT '[]',
+      media_url TEXT,
+      media_kind TEXT DEFAULT 'none',
+      status TEXT DEFAULT 'draft',
+      external_id TEXT,
+      external_url TEXT,
+      error TEXT,
+      scheduled_at DATETIME,
+      published_at DATETIME,
+      ai_generated INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { desc: 'idx_social_posts_status', sql: "CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(platform, status)" },
+    // 🎬 릴스/쇼츠 영상 기획·렌더 추적(추가만).
+    { desc: 'social_posts.storyboard', sql: "ALTER TABLE social_posts ADD COLUMN storyboard TEXT" },
+    { desc: 'social_posts.render_provider_job', sql: "ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT" },
+    { desc: 'social_posts.render_status', sql: "ALTER TABLE social_posts ADD COLUMN render_status TEXT" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },
@@ -2330,6 +2369,27 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const result = await runSchemaRepair(DB);
   return c.json({ success: true, ...result });
+});
+
+// 🔧 2026-07-13 (데이터 감사 3단계): off-live user_id 이력 backfill (firebase_uid → 숫자 users.id).
+//   GET(또는 apply 미지정)=dry-run 카운트만. apply 실행은 POST + body {confirm:true}. 멱등·admin 전용.
+//   live(카카오)=대상 0(무동작). user_points 충돌(숫자 잔액행 이미 존재)은 건드리지 않고 conflict 보고.
+repairSchemaRoutes.get('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, false); // dry-run
+  return c.json({ success: true, dry_run: true, ...result });
+});
+
+repairSchemaRoutes.post('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const body = await c.req.json<{ confirm?: boolean }>().catch(() => ({} as { confirm?: boolean }));
+  const apply = body.confirm === true;
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, apply);
+  return c.json({ success: true, dry_run: !apply, ...result });
 });
 
 export { repairSchemaRoutes };

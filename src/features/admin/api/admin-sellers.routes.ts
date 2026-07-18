@@ -492,7 +492,10 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
       const sellerName = sellerInfo[0]?.name || '';
       if (phone) {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
-        sendSystemAlimtalk(c.env, phone, 'seller_approved',
+        // 🔔 2026-07-01: 카카오 알림톡은 1코드=1고정본문 → 신규승인/재활성을 별도 tpl_code 로 분리
+        //   (seller_approved / seller_reactivated). 각 본문이 승인 템플릿과 글자 일치해야 발송됨.
+        sendSystemAlimtalk(c.env, phone,
+          isReactivation ? 'seller_reactivated' : 'seller_approved',
           isReactivation
             ? `[유어딜] ${sellerName}님,\n계정이 다시 활성화되었어요.\n판매를 이어가실 수 있습니다.`
             : `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
@@ -897,7 +900,11 @@ async function sendBusinessRegistrationAlimtalk(
   const apiKey = env.ALIGO_API_KEY
   const userId = env.ALIGO_USER_ID
   const senderKey = env.ALIGO_SENDER_KEY
-  const templateCode = env.ALIGO_BUSINESS_REGISTRATION_RESULT || 'business_registration_result'
+  // 🔔 2026-07-01: 승인/반려 본문이 완전히 달라 1코드=1본문 원칙상 tpl_code 분리
+  //   (business_registration_verified / business_registration_rejected). env override 도 action 별.
+  const templateCode = action === 'verify'
+    ? (env.ALIGO_BUSINESS_REGISTRATION_VERIFIED || 'business_registration_verified')
+    : (env.ALIGO_BUSINESS_REGISTRATION_REJECTED || 'business_registration_rejected')
   if (!apiKey || !userId || !senderKey) return  // env 미설정 → skip
 
   const seller = await env.DB.prepare(

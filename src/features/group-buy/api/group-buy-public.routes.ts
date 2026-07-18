@@ -15,6 +15,7 @@
 
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
@@ -751,6 +752,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
     const { DB } = c.env
 
+    // 🔑 user_id 정규화(데이터 감사 1단계): 쓰기 경로가 DB users.id(숫자)로 통일되므로 읽기도 정규화.
+    //   전환기 안전: 정규화 id(신규 행)와 raw id(과거 firebase_uid 키 행)를 **둘 다** 매칭(IN)해
+    //   backfill 없이 이력 유실 0. live(카카오)=두 값 동일→기존과 동일 동작. (코드베이스 dual-key 관행)
+    const uidNorm = await resolveUserIdString(DB, user.id, user.isDbId)
+    const uidRaw = String(user.id)
+    const uidBinds: string[] = uidNorm === uidRaw ? [uidRaw, uidRaw] : [uidNorm, uidRaw]
+
     // 🛡️ 2026-05-22 P1 영구 fix (사용자 신고 "교환권 로딩 늦음"):
     //   - 이전: ensureTables(20+ ALTER/CREATE) cold-start 마다 첫 호출 시 ~50-200ms.
     //   - 이전: SELECT v.* (모든 컬럼) + LEFT JOIN products + ORDER BY DESC + LIMIT 없음.
@@ -778,11 +786,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
       FROM vouchers v
       LEFT JOIN products p ON v.product_id = p.id
-      WHERE v.user_id = ?
+      WHERE v.user_id IN (?, ?)
         AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
       ORDER BY v.created_at DESC
       LIMIT 200
-    `).bind(String(user.id)).all().catch(async (err) => {
+    `).bind(...uidBinds).all().catch(async (err) => {
       if (typeof console !== 'undefined') console.warn('[/vouchers/my] full SELECT failed, fallback:', String(err))
       // 컬럼 누락 환경 graceful fallback — applied_price 도 포함.
       const r = await DB.prepare(`
@@ -794,10 +802,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
         FROM vouchers v
         LEFT JOIN products p ON v.product_id = p.id
-        WHERE v.user_id = ?
+        WHERE v.user_id IN (?, ?)
         ORDER BY v.created_at DESC
         LIMIT 200
-      `).bind(String(user.id)).all().catch(async (err2) => {
+      `).bind(...uidBinds).all().catch(async (err2) => {
         // 한 번 더 fallback — applied_price 도 없는 극단 환경 (구 DB).
         if (typeof console !== 'undefined') console.warn('[/vouchers/my] applied_price SELECT failed, fallback again:', String(err2))
         return await DB.prepare(`
@@ -808,10 +816,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                  p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
           FROM vouchers v
           LEFT JOIN products p ON v.product_id = p.id
-          WHERE v.user_id = ?
+          WHERE v.user_id IN (?, ?)
           ORDER BY v.created_at DESC
           LIMIT 200
-        `).bind(String(user.id)).all()
+        `).bind(...uidBinds).all()
       })
       return r
     })
@@ -841,8 +849,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE o.user_id = ? AND vo.status IN ('sent', 'processing', 'failed')
         ORDER BY vo.created_at DESC
         LIMIT 100`
-      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(user.id)).all<any>().catch(() => null)
-      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(user.id)).all<any>().catch(() => ({ results: [] as any[] }))
+      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(uidNorm)).all<any>().catch(() => null)
+      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(uidNorm)).all<any>().catch(() => ({ results: [] as any[] }))
       ktAlphaItems = (ktRes?.results || []).map((vo: any) => ({
         source: 'kt_alpha',
         id: `kt-${vo.id}`,
@@ -958,7 +966,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         SELECT v.id, v.code, v.status, v.used_at, v.product_id, v.applied_price, p.name as product_name, p.restaurant_name, p.seller_id
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE v.code=? AND v.user_id=?
-      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
+      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_id?: number | null; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
 
       if (!row) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
@@ -969,6 +977,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         try {
           const { recordVoucherRedemptionLocation } = await import('../../../worker/utils/voucher-redemption')
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
+        } catch { /* best-effort */ }
+        // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+        try {
+          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await recordVoucherVisit(DB, {
+            voucher_id: Number(row.id), user_id: user.id, seller_id: row.seller_id,
+            product_id: row.product_id, amount: row.applied_price, path: 'self',
+          })
         } catch { /* best-effort */ }
       }
       // 🔔 2026-07-02: 셀프 사용 즉시 사장님 대시보드 알림 — 카운터 크로스체크(위조·취소 악용 억제).
@@ -1015,8 +1031,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       // 🎟️ 2026-07-02 모드 게이트: 셀프취소는 self_free 매장에서만 — store_code/scan_only 매장은
       //   취소 권한이 매장(사장님)에 있음("보여주고 나가서 60초 내 취소" 악용 차단).
       const pre = await DB.prepare(
-        'SELECT p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
-      ).bind(code, user.id).first<{ seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
+        'SELECT v.id AS voucher_id, p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ voucher_id: number; seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
       if (pre?.seller_id != null) {
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
@@ -1033,6 +1049,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
+      }
+      // 🚪 2026-07-13 (데이터 감사 2단계): 오스캔 정정 → 방문 이벤트도 되돌림(실제 방문 아님).
+      if (pre?.voucher_id != null) {
+        try {
+          const { removeVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await removeVoucherVisit(DB, Number(pre.voucher_id))
+        } catch { /* best-effort */ }
       }
       // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
       if (pre?.seller_id != null) {
