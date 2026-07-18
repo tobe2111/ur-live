@@ -118,7 +118,7 @@ export default function MarketingAccountPage() {
         <div className="ua-acc-card">
           <div style={{ fontSize: 14, fontWeight: 700, color: '#0B0E14', marginBottom: 12 }}>비밀번호 변경</div>
           <input className="ua-acc-input" type="password" autoComplete="current-password" value={curPw} onChange={(e) => setCurPw(e.target.value)} placeholder="현재 비밀번호" />
-          <input className="ua-acc-input" style={{ marginTop: 10 }} type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="새 비밀번호 (10자 이상·대소문자·숫자·특수문자)" />
+          <input className="ua-acc-input" style={{ marginTop: 10 }} type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="새 비밀번호 (8자 이상·영문·숫자·특수문자 중 2종 이상)" />
           <div style={{ marginTop: 16, textAlign: 'right' }}>
             <button className="ua-acc-btn" onClick={changePassword} disabled={savingPw}>{savingPw ? '변경 중…' : '비밀번호 변경'}</button>
           </div>

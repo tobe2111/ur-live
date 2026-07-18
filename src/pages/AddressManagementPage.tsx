@@ -15,6 +15,7 @@ import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -179,10 +180,11 @@ export default function AddressManagementPage() {
     setFormData(EMPTY_FORM)
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

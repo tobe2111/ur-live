@@ -16,6 +16,14 @@ import EfficiencyPanel from './EfficiencyPanel'
 import RankPanel from './RankPanel'
 import TrendPanel from './TrendPanel'
 import SavedKeywordsPanel from './SavedKeywordsPanel'
+import OpportunityPanel from './OpportunityPanel'
+import ContentStudioPanel from './ContentStudioPanel'
+import ServiceMarketplacePanel from './ServiceMarketplacePanel'
+import ShortLinksPanel from './ShortLinksPanel'
+import InfluencerDiscoveryPanel from './InfluencerDiscoveryPanel'
+import InfluencerMatchingPanel from './InfluencerMatchingPanel'
+import OnboardingChecklist from './OnboardingChecklist'
+import { MATCHING_ENABLED } from '@/shared/feature-flags'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
@@ -52,6 +60,8 @@ const authHeader = () => {
 export default function MarketingDashboardPage() {
   const navigate = useNavigate()
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
+  // 체험단 매칭은 어드민 전용 내부 도구 — 플랫폼 어드민(admin_token) 로그인 시만 노출/호출.
+  const isAdminOperator = typeof window !== 'undefined' && !!localStorage.getItem('admin_token')
 
   // 베타 액세스 코드 게이트: 로그인했지만 미해제면 코드 입력 화면으로(직접/북마크 진입 방어).
   //   캐시('ads_unlocked'==='1')면 즉시 통과, 아니면 서버 확인 후 분기.
@@ -203,6 +213,9 @@ export default function MarketingDashboardPage() {
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
+
+      {/* 온보딩 체크리스트 — 미완료 스텝 있을 때만(완료/닫기 시 스스로 숨김) */}
+      {hasToken && <OnboardingChecklist />}
 
       {/* KPI 요약 홈 — 최근 30일 통합실적(연동·데이터 있을 때만). 빈 0 노출 방지. */}
       {hasToken && summary && (summary.salesAmt > 0 || summary.impCnt > 0) && (
@@ -381,6 +394,9 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
+      {/* 기회 키워드 발굴(연관키워드 × 내 보유 교차 — 미보유·저경쟁·고검색량) */}
+      {hasToken && <LazyMount id="sec-opportunity"><OpportunityPanel /></LazyMount>}
+
       {/* 키워드 포트폴리오(저장한 키워드·태그) */}
       {hasToken && <LazyMount id="sec-portfolio"><SavedKeywordsPanel /></LazyMount>}
 
@@ -442,6 +458,21 @@ export default function MarketingDashboardPage() {
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <LazyMount id="sec-fraud"><ClickGuardPanel /></LazyMount>}
+
+      {/* AI 콘텐츠 스튜디오 (리퍼포징·생성·댓글답변·성과분석) */}
+      {hasToken && <LazyMount id="sec-content"><ContentStudioPanel /></LazyMount>}
+
+      {/* 마케팅 서비스몰 (서비스 패키지 주문 — 무결제 접수) */}
+      {hasToken && <LazyMount id="sec-services"><ServiceMarketplacePanel /></LazyMount>}
+
+      {/* 무료 단축 링크 — /l/{code} 생성·클릭 추적 (무료 리드 마그넷, 액세스 코드 불요) */}
+      {hasToken && <LazyMount id="sec-links"><ShortLinksPanel /></LazyMount>}
+
+      {/* 인플루언서 발굴 — 유튜브 API 로 채널+연락처 수집(인스타/틱톡 링크 교차 수집) */}
+      {hasToken && <LazyMount id="sec-influencers"><InfluencerDiscoveryPanel /></LazyMount>}
+
+      {/* 체험단 매칭(성과기반) — 어드민 전용 내부 도구. 게이트 OFF(MATCHING_ENABLED) + 어드민 로그인 시만 노출 */}
+      {hasToken && MATCHING_ENABLED && isAdminOperator && <LazyMount id="sec-matching"><InfluencerMatchingPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (

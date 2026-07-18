@@ -148,7 +148,13 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (src.startsWith('/api/media/')) {
     const w = opts.width || 400
     const q = opts.quality || 85
-    return `/cdn-cgi/image/width=${w},quality=${q},format=auto/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+    // 🛡️ 2026-07-14 (대표 신고 "이미지가 떴다 안 떴다 불안정"): onerror=redirect 추가.
+    //   피드가 카드 수십~수백 장을 동시에 열면 zone 리사이저가 콜드-fetch 를 그만큼 동시 수행 →
+    //   일부가 순간 타임아웃(524) 시 기존엔 그냥 깨졌음(캐시 후 새로고침하면 정상 = "불안정" 체감).
+    //   onerror=redirect = 리사이즈 실패 시 Cloudflare 가 원본(media.ur-team.com/<key>, 항상 200)으로
+    //   302 → 브라우저가 원본 로드(자가치유). 라이브 실측: 유효 이미지 200 유지 + param 수용 확인.
+    //   외부 호스트 분기(아래)가 이미 쓰는 패턴을 업로드 이미지에도 확장(제거 아님 — additive).
+    return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/https://media.ur-team.com/${src.slice('/api/media/'.length)}`
   }
   if (src.startsWith('/api/upload/')) {
     if (typeof window !== 'undefined') {
@@ -187,13 +193,12 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 워커 경로(/api/media 등)는 zone 리사이저가 origin 을 못 풀어 404(2026-06-06 사고) —
       //   그 분기는 기존 프록시 유지. EXTERNAL_PROXY_HOSTS 목록·Save-Data quality 불변(제거 X).
       // media.ur-team.com: 2026-06-11 diag 실측 통과 (cf-resized, 779KB→9.7KB) — 신규 업로드 절대 URL 용.
-      // 🔴 2026-06-17 [UNLOCK_LOADING] (사용자 승인 — 무료 524 수리): giftishow 가 데이터센터/CF IP 를 차단해
-      //   cdn-cgi 리사이저·워커 프록시 둘 다 서버사이드 fetch 실패(524/403). → 원본 URL 로 브라우저 직접 로드
-      //   (리사이즈 없음·비용 0, 느리지만 표시됨). R2 재호스팅은 바이트를 못 받아(IP 차단) 불가 — giftishow 가
-      //   CF IP 화이트리스트 해주면 cdn-cgi/R2 로 복원. EXTERNAL_PROXY_HOSTS 목록은 불변(분기만 raw).
-      if (host === 'giftishow.com' || host.endsWith('.giftishow.com')) {
-        return src
-      }
+      // 🟢 2026-07-13 [UNLOCK_LOADING] (대표 신고 "홈 첫방문 느림" — 라이브 실측 후 복원): giftishow 가
+      //   과거(2026-06-17) 데이터센터/CF IP 를 차단해 cdn-cgi 524/403 → raw 강제였으나, **현재 차단 해제됨**.
+      //   prod 실측(5/5 이미지 `cf-resized: internal=ok`, 원본 20~86KB → 3~12KB, 4~6× 축소, same-origin+엣지캐시).
+      //   홈 교환권 피드 이미지 = 100% bizimg.giftishow.com 라 이 복원이 홈 첫페인트 이미지 최대 레버.
+      //   `onerror=redirect` 안전판: 향후 재차단 시 리사이저 실패 → 원본 302 폴백(사용자 브라우저 IP 는 미차단)
+      //   = 2026-06-17 raw 동작과 동일 → 최악의 경우 다운사이드 0. (raw 강제 분기 제거 — CDN_CGI_VERIFIED 로 승격.)
       // 🏁 2026-07-02 [LOADING_ADDITIVE] (라이브 실측 — 홈 피드 이미지 1MB 원본 다운로드 수리):
       //   ldb-phinf.pstatic.net / naverbooking-phinf.pstatic.net / imgnews.naver.net /
       //   yt3.googleusercontent.com / picsum.photos 전부 `cf-resized: internal=ok` 실측 통과
@@ -201,7 +206,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net']  // giftishow 제거 (524 — 위에서 raw 처리)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com']  // giftishow 2026-07-13 재실측 복원(onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
       }
@@ -247,4 +252,24 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number): str
   return [1, 2, 3]
     .map(dpi => `${cfImage(src, { width: baseWidth * dpi })} ${dpi}x`)
     .join(', ')
+}
+
+/**
+ * 🛡️ 2026-07-14 <img onError> 자가치유 폴백 (대표 "이미지 불안정" — 영구 해결 2계층).
+ *
+ * cfImage 변환 URL(리사이즈/외부프록시)이 로드 실패하면 **원본으로 1회 교체 + 표시 복원**.
+ *  - `/api/media/*` 원본 = 워커가 R2 바인딩으로 직접 서빙(리사이저·커스텀도메인 둘 다 우회 — 항상 200).
+ *  - onerror=redirect(서버측 1차 자가치유)마저 실패하는 극단 케이스의 최종 안전망(클라 3차).
+ * 무한루프 방지(1회 플래그) + srcset 제거(원본만) + opacity 복원(하단 카드 숨김 방지).
+ *
+ * 사용: `<img onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} .../>`
+ */
+export function cfImageOnError(img: HTMLImageElement | null | undefined, originalSrc?: string | null): void {
+  if (!img || img.dataset.cfFallback === '1') return
+  img.dataset.cfFallback = '1'
+  img.style.opacity = '1'
+  if (originalSrc && img.getAttribute('src') !== originalSrc) {
+    img.removeAttribute('srcset')
+    img.src = originalSrc
+  }
 }

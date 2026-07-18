@@ -11,8 +11,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import StreamCard from './seller-public/StreamCard'
-import VideosTab from './seller-public/VideosTab'
+// 🗑️ 2026-07-07 라이브커머스 제거: StreamCard/VideosTab import 제거.
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
@@ -22,6 +21,7 @@ import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
+import FeaturedCard from './seller-public/FeaturedCard'
 // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장 링크샵 하단 추천(핀) opt-in 섹션.
 import CuratorPinsSection from './seller-public/CuratorPinsSection'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
@@ -29,6 +29,7 @@ import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short } from './seller-public/types'
+import { fetchSellerPublicShared } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
 //   ./seller-public/ 디렉토리로 추출.
@@ -54,20 +55,54 @@ interface SellerPublicPageProps {
    *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
    *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 링크샵 뷰를 가르지 않는다. */
   ownerOverride?: boolean
+  /** 🚀 2026-07-11 (1-RTT): CuratorPage 가 서버 동봉(linked_seller_public)으로 받은 셀러 공개 페이로드.
+   *  일치 검증 후 동기 소비 → 셀러 /public fetch 자체를 생략(구캐시/미동봉이면 기존 fetch 폴백). */
+  sellerSeed?: Record<string, unknown> | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride }: SellerPublicPageProps = {}) {
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_SELLER__)를 동기(useState 초기값)
+//   소비용 헬퍼로 추출 + **정체성(id/username) 일치 검증 추가** — 기존 effect 소비는 검증 없이 setSeller 라
+//   SPA 로 다른 셀러 페이지 이동 시 이전 하드로드 시드를 오소비할 수 있었음(잘못된 셀러 잔상 + 메인 fetch skip).
+//   일치할 때만 시드 → 로더 프레임 0, 불일치/부재면 기존 fetch fallback.
+function readSellerSeed(sellerId: string | undefined): Seller | null {
+  if (!sellerId || typeof document === 'undefined') return null
+  try {
+    const el = document.getElementById('__SSR_INITIAL_SELLER__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    const d = parsed?.success ? parsed.data : null
+    if (!d?.id) return null
+    const key = String(sellerId).toLowerCase().replace(/^@/, '')
+    const ok = String(d.id) === String(sellerId) || (d.username && String(d.username).toLowerCase() === key)
+    return ok ? (d as Seller) : null
+  } catch { return null }
+}
+
+// 🚀 2026-07-11 (1-RTT): 서버 동봉 시드(prop)도 동일한 정체성 검증 후 채택 — curator 응답이 준
+//   linked_seller.username 과 같은 응답에서 온 페이로드라 사실상 항상 일치하나, 방어적으로 검증.
+function matchSellerSeedProp(seed: Record<string, unknown> | null | undefined, sellerId: string | undefined): Seller | null {
+  if (!seed || !sellerId) return null
+  const d = seed as { id?: number | string; username?: string }
+  if (!d.id) return null
+  const key = String(sellerId).toLowerCase().replace(/^@/, '')
+  const ok = String(d.id) === String(sellerId) || (d.username && String(d.username).toLowerCase() === key)
+  return ok ? (seed as unknown as Seller) : null
+}
+
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride, sellerSeed }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
   const navigate = useNavigate()
   // sellerId는 숫자 ID 또는 slug/username
   const sellerId = rawParam
-  const [seller, setSeller] = useState<Seller | null>(null)
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: SSR 시드 동기 소비(일치 검증 포함) — 시드 있으면 로더 프레임 0.
+  // 🚀 2026-07-11: 서버 동봉 시드(prop, /u/ 사업자 경로)도 동기 소비 — 둘 중 있는 쪽으로 즉시 페인트.
+  const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId))
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [shorts, setShorts] = useState<Short[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(seller == null)
 
   // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
   //   (/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip, 연결 핸들 없는
@@ -184,20 +219,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     //   기존: SSR setSeller 후에도 sellers API axios fetch 재호출 → 중복 RTT 200-500ms
     //   수정: SSR data 있으면 메인 fetch skip, products/streams/shorts 만 background fetch.
     //   효과: 링크샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
-    let initialSellerData: any = null
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_SELLER__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && parsed?.data) {
-            initialSellerData = parsed.data
-            setSeller(parsed.data)
-            setLoading(false)
-          }
-        }
-      }
-    } catch { /* SSR inject 누락 / 손상 — fallback */ }
+    // 🚑 2026-07-10: 소비를 readSellerSeed(정체성 일치 검증)로 — 다른 셀러의 잔존 시드 오소비 차단.
+    //   (동기 초기값과 같은 헬퍼 — mount 시엔 이미 시드 반영돼 setLoading(true→false)가 배치로 상쇄됨.)
+    // 🚀 2026-07-11: 서버 동봉 시드(prop)도 동급 — 있으면 셀러 /public fetch 자체를 생략(1-RTT 완성).
+    const initialSellerData = readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId)
+    if (initialSellerData) {
+      setSeller(initialSellerData)
+      setLoading(false)
+    }
 
     // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch — 홈탭이 셋 다 프리뷰하므로 모두 즉시(비차단).
     //   로딩 속도는 prewarm(products) + /api/shorts/feed edge cache 로 해결(cold D1 제거). lazy-탭은 홈 프리뷰 회귀라 미적용.
@@ -232,8 +261,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     if (sellerNumericId) { fetchSubData(sellerNumericId); subFetched = true }
 
     // SSR miss → 메인 fetch (헤더/정보용). sub-data 는 병렬 시작 안 됐을 때만 여기서.
-    api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
-      const sellerData = sellerRes.data.data
+    // 🚑 2026-07-10 [UNLOCK_LOADING]: 공유 in-flight fetch — CuratorPage 가 linked_seller 확인 즉시
+    //   warm 해둔 요청을 이어받아 [curator → 청크 → seller] 직렬을 [curator → max(청크, seller)]로 단축.
+    fetchSellerPublicShared(sellerId).then(raw => {
+      const sellerData = raw as Seller | null
       if (!sellerData) { setSeller(null); setLoading(false); return }
       setSeller(sellerData)
       setLoading(false)
@@ -312,6 +343,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
+  // 🎨 2026-07-07 리디자인(휑함 해소): 대표 상품 1개를 큰 '이번 주 픽' 히어로로. 상품 우선, 없으면 이용권.
+  //   featured 는 자기 섹션 그리드에서 제외(중복 방지) → 아이템 적어도 "큐레이션"으로 보이게.
+  const featured = shopProducts[0] || mealVouchers[0] || null
+  const featuredIsProduct = !!shopProducts[0]
+  const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
+  const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
   // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
   //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
@@ -443,35 +480,69 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
-        {/* ① 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
-        {(shopProducts.length > 0 || ownerView) && (
+        {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
+        {shopProducts.length > 0 && mealVouchers.length > 0 && (
+          <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden">
+            {([
+              { label: t('seller.publicPage.chipAll', { defaultValue: '전체' }), to: null as string | null },
+              { label: t('seller.publicPage.shop', { defaultValue: '내 상품' }), to: 'ls-shop' },
+              { label: t('seller.publicPage.vouchers', { defaultValue: '이용권' }), to: 'ls-vou' },
+            ]).map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => chip.to ? document.getElementById(chip.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* 🎨 2026-07-07 리디자인: '이번 주 픽' 대표 상품 히어로 (상품 우선·없으면 이용권). 아이템 적어도 채워짐. */}
+        {featured && (
+          <div className="mb-2">
+            <FeaturedCard
+              product={featured}
+              to={`/products/${featured.id}`}
+              eyebrow={t('seller.publicPage.featuredPick', { defaultValue: '이번 주 픽' })}
+            />
+          </div>
+        )}
+        {/* ① 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts). 소유자 0개는 컴팩트 제목 행. */}
+        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0)) && (
           shopProducts.length === 0 ? (
-            // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
-            //   정식 등록 풀페이지(/seller/products/new — 이미지·상세·옵션)로 이동 → 간결 + 발견성 ↑.
-            <div className="mt-7 flex items-center justify-between gap-3">
-              <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} 0</h3>
+            // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
+            //   내 상품이 링크샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
+            <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              </div>
+              <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 상품을 올려 쇼핑몰을 채워보세요' })}</h3>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 링크샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
-                className="shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:scale-95"
+                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
               </button>
             </div>
           ) : (
             <>
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
-            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) */}
+            <h3 id="ls-shop" className="scroll-mt-4 text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
+            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
+            {shopProducts.length >= 6 && (
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
             </div>
+            )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
-              {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
+              {gridProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
                 // 🏁 2026-06-25 (대표 "카드 1종"): 추천핀과 동일한 표준 BrowseProductCard 로 통일.
                 <BrowseProductCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count } as BrowseProduct}
+                  product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count, restaurant_name: p.restaurant_name } as BrowseProduct}
                   aboveFold={false}
                   to={`/products/${p.id}`}
                   fallbackColor={seededColor(p.id)}
@@ -482,33 +553,15 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           )
         )}
 
-        {/* ③ 교환권 */}
-        {mealVouchers.length > 0 && (
-          <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {mealVouchers.length}</h3>
-            <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+        {/* ③ 이용권 — featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers). */}
+        {gridVouchers.length > 0 && (
+          <section id="ls-vou" className="scroll-mt-4 pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
+            <VouchersTab mealVouchers={gridVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
         )}
 
-        {/* ④ 영상 (있을 때만) */}
-        {!LIVE_COMMERCE_SUSPENDED && shorts.length > 0 && (
-          <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.videos', { defaultValue: '영상' })} {shorts.length}</h3>
-            <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
-          </section>
-        )}
-
-        {/* ⑤ 라이브 (있을 때만) */}
-        {!LIVE_COMMERCE_SUSPENDED && streams.length > 0 && (
-          <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabLive', { defaultValue: '라이브' })} {streams.length}</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {streams.map(s => (
-                <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* 🗑️ 2026-07-07 라이브커머스 제거: 영상(VideosTab)·라이브(StreamCard) 섹션 제거. */}
 
         {/* ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 하단 "추천(핀)" opt-in 섹션.
             본인 상품이 hero 인 스토어프론트 정체성은 유지 — 맨 아래, 명확한 라벨, 기본 off.
@@ -525,9 +578,30 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </section>
         )}
 
+        {/* 🎨 2026-07-07 리디자인(휑함 해소 + 전환): 상품/이용권이 있을 때 구매 신뢰 배지 2종 —
+            "유어딜 안전결제 · 사업자 인증 판매자". 콘텐츠 아래 공간을 가치로 채우고 전환율을 올린다. */}
+        {(shopProducts.length > 0 || mealVouchers.length > 0) && (
+          <div className="mt-8 grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
+              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
+                <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                {t('seller.publicPage.trustPay', { defaultValue: '유어딜 안전결제' })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustPayDesc', { defaultValue: '결제·정산을 유어딜이 보증해요' })}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
+              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
+                <svg className="w-4 h-4 text-[#1d9bf0]" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0"/><path d="M9.8 15.6l-3-3 1.2-1.2 1.8 1.8 4.4-4.4 1.2 1.2z" fill="#fff"/></svg>
+                {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 판매자' })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인된 판매자예요' })}</p>
+            </div>
+          </div>
+        )}
+
         {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
-        <footer className="mt-12 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
+        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
           <InfoTab
             seller={seller}
             isOwner={ownerView}

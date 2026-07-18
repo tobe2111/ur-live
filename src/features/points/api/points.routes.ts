@@ -16,6 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL} from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
@@ -671,6 +672,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   await ensureTables(DB);
 
   const userId = String(user.id);
+  // 🔑 완결고리 조인키(데이터 감사 1단계): orders.user_id 는 정규화된 DB users.id 로 기록.
+  //   지갑(user_points/point_transactions/coupon_uses)은 raw userId 유지 — 잔액 키 미변경(오프라이브
+  //   Firebase 잔액 stranding 방지). 주문 클러스터(멱등 조회 + INSERT)만 orderUserId 로 통일해
+  //   멱등 read↔write 일치(이중발급 0). live(카카오)=두 값 동일→무동작.
+  const orderUserId = await resolveUserIdString(DB, user.id, user.isDbId);
 
   // ✅ SECURITY FIX: Ignore client-supplied total_amount/price. Recompute server-side.
   const { order_number, items, shipping, live_stream_id, coupon_id } = await c.req.json<{
@@ -722,7 +728,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
        WHERE (order_number = ? OR order_number LIKE ?)
          AND user_id = ?
        LIMIT 1`
-    ).bind(order_number, `${order_number}_s%`, userId)
+    ).bind(order_number, `${order_number}_s%`, orderUserId)
      .first<{ id: number; order_number: string; total_amount: number }>();
     if (existingOrder) {
       const wallet2 = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
@@ -992,7 +998,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo, live_stream_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '', ?)
         `).bind(
-          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          sellerOrderNumber, orderUserId, sellerId === '0' ? null : sellerId,
           groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' }),
@@ -1003,7 +1009,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
         `).bind(
-          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          sellerOrderNumber, orderUserId, sellerId === '0' ? null : sellerId,
           groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })

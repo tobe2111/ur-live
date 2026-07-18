@@ -48,7 +48,8 @@ export default function MapTopBar({
   const navigate = useNavigate()
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none">
+    /* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 검색/카테고리 바를 좌측 400px 리스트 패널 오른쪽(지도 영역)에만. */
+    <div className="absolute top-0 left-0 right-0 lg:left-[400px] z-40 px-3 pt-3 pointer-events-none">
       <div className="ur-content-wide pointer-events-auto space-y-2">
         {/* ── Row 1: 흰 네모박스 검색바 ── */}
         <div className="flex items-center gap-2">
@@ -56,9 +57,11 @@ export default function MapTopBar({
             <Link
               to="/"
               aria-label={t('nav.home', { defaultValue: '홈' })}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] shadow-sm shrink-0"
+              /* 🖤 2026-07-15 (대표 신고 — 로고 겹침): 워드마크(가로로 긴 로고)를 w-11 고정 정사각에 넣어
+                 삐져나오던 것 → 높이만 고정(h-11)·가로 auto(px-3)로 로고가 박스 안에 맞게. overflow-hidden 백스톱. */
+              className="h-11 px-3 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] shadow-sm shrink-0 overflow-hidden"
             >
-              <UrDealLogo size={20} />
+              <UrDealLogo size={18} />
             </Link>
           ) : (
             <button

@@ -14,6 +14,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger } from '@/worker/utils/ledger'
 import { swallow } from '@/worker/utils/swallow'
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { getCommissionRates, calcInfluencerCommissionPct } from './commission-rates'
 import type { Env } from '@/worker/types/env'
@@ -64,7 +65,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
   }
   const productId = productIdNum
-  const userId = String(user.id)
+  // 🔑 user_id 정규화(데이터 감사 1단계): 읽기·쓰기가 동일 DB users.id 를 쓰게 해 이중키 분열 차단.
+  //   live(카카오 세션)=이미 숫자→무동작 / Firebase 유저만 교정. 실패 시 raw 폴백(결제 무중단).
+  const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
   const body = await c.req.json<{
     quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
   }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined }))
@@ -259,6 +262,16 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       return c.json({ success: false, error: '재고가 부족합니다' }, 409)
     }
 
+    // 🛡️ 2026-07-11 (pre-launch audit R6 — 공구 /join 재고누수): 위 차감 '이후'의 조기 return
+    //   (promo 검증 실패 / KT phone 미등록 / 딜 잔액 부족)이 복원 없이 빠지면 재고가 영구 누수
+    //   (조기품절 — promo 오류 연타만으로 재고 소진 가능). 차감 이후 모든 조기 return 앞에서 호출.
+    const restoreReservedStock = async () => {
+      try {
+        await DB.prepare('UPDATE products SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .bind(qty, productId).run()
+      } catch (e) { console.error('[group-buy/join] early-return stock restore failed', e) }
+    }
+
     // 🛡️ 2026-05-30: 즉시판매 단일가 모델 (A2) — 인원 무관 최대 tier 할인을 모두에게 즉시 적용.
     //   AS-IS(calcTierDiscount, 인원 늘수록 깎임) 는 "먼저 산 사람이 더 비쌈" 모순 → 제거.
     //   design/groupbuy-instant-sale.md 참조. 공구가 = price × (1 - maxTier). promo 는 그대로 cascade.
@@ -276,16 +289,21 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         id: number; seller_id: number; discount_pct: number; audience: string;
         max_uses: number; per_user_limit: number; used_count: number; expires_at: string | null; is_active: number
       }>().catch(() => null)
+      // 🛡️ 2026-07-11 R6: 아래 promo 검증 실패 return 은 전부 stock 차감 이후 — 복원 필수.
       if (!promo || !promo.is_active) {
+        await restoreReservedStock()
         return c.json({ success: false, error: '코드 없음 또는 비활성', code: 'PROMO_INVALID' }, 400)
       }
       if (Number(promo.seller_id) !== Number(product.seller_id)) {
+        await restoreReservedStock()
         return c.json({ success: false, error: '이 셀러의 코드가 아닙니다', code: 'PROMO_WRONG_SELLER' }, 400)
       }
       if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        await restoreReservedStock()
         return c.json({ success: false, error: '만료된 코드', code: 'PROMO_EXPIRED' }, 400)
       }
       if (promo.max_uses > 0 && promo.used_count >= promo.max_uses) {
+        await restoreReservedStock()
         return c.json({ success: false, error: '사용 한도 도달', code: 'PROMO_LIMIT' }, 400)
       }
       // audience 검증
@@ -293,18 +311,25 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         const isFollower = await DB.prepare(
           `SELECT 1 FROM seller_follows WHERE seller_id = ? AND user_id = ?`
         ).bind(promo.seller_id, userId).first().catch(() => null)
-        if (!isFollower) return c.json({ success: false, error: '단골 전용 코드 — 단골 등록 후 다시 시도', code: 'PROMO_FOLLOWERS_ONLY' }, 400)
+        if (!isFollower) {
+          await restoreReservedStock()
+          return c.json({ success: false, error: '단골 전용 코드 — 단골 등록 후 다시 시도', code: 'PROMO_FOLLOWERS_ONLY' }, 400)
+        }
       } else if (promo.audience === 'new_users_only') {
         const hasOrder = await DB.prepare(
           `SELECT 1 FROM orders WHERE user_id = ? AND seller_id = ? AND status = 'PAID' LIMIT 1`
         ).bind(userId, promo.seller_id).first().catch(() => null)
-        if (hasOrder) return c.json({ success: false, error: '신규 고객 전용 코드', code: 'PROMO_NEW_ONLY' }, 400)
+        if (hasOrder) {
+          await restoreReservedStock()
+          return c.json({ success: false, error: '신규 고객 전용 코드', code: 'PROMO_NEW_ONLY' }, 400)
+        }
       }
       // per-user-limit
       const userUses = await DB.prepare(
         `SELECT COUNT(*) AS cnt FROM promo_redemptions WHERE promo_id = ? AND user_id = ?`
       ).bind(promo.id, userId).first<{ cnt: number }>().catch(() => ({ cnt: 0 } as { cnt: number }))
       if ((userUses?.cnt ?? 0) >= promo.per_user_limit) {
+        await restoreReservedStock()
         return c.json({ success: false, error: `1인당 ${promo.per_user_limit}회 한도 도달`, code: 'PROMO_USER_LIMIT' }, 400)
       }
       // 적용 결정 — 차감은 voucher 발급 직전 (atomic)
@@ -326,6 +351,27 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const { ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
     await ensureDealBuckets(DB)
 
+    // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT (orders/items/vouchers/progress)
+    //   실패 시 자동 환불. D1 은 trx 미지원 — 명시적 rollback 으로 처리.
+    //   복구 대상: deal 차감 + stock 차감 (이미 위에서 atomic 처리됨 → 여기서 함께 복구).
+    // 🛡️ 2026-07-11 R6: 정의를 딜 결제 블록 '앞'으로 hoist — 아래 원장 INSERT throw 경로도 커버.
+    //   (호출은 여전히 딜 차감 '성공 이후' 경로에서만 — 미차감 상태에서 환급되는 일 없음)
+    const rollbackDealAndStock = async () => {
+      if (payment_method === 'deal') {
+        try {
+          // 💸 버킷 대칭: 방금 무상에서 차감된 만큼 무상으로 복원.
+          await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+            .bind(totalAmount, freeUsedJoin, userId).run()
+          await DB.prepare(
+            `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
+             VALUES (?, 'refund', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+          ).bind(userId, totalAmount, totalAmount, userId, `공동구매 자동 환불 (주문 실패): ${product.name}`, orderNumber, freeUsedJoin).run()
+        } catch (e) { console.error('[group-buy/join] deal rollback failed', e) }
+      }
+      // stock 도 복구 (R6: 조기 return 복원 헬퍼 재사용 — 동일 SQL)
+      await restoreReservedStock()
+    }
+
     // 딜 결제
     if (payment_method === 'deal') {
       // 🛡️ 2026-05-24: KT Alpha 상품 (kt_alpha_gift_code 보유) 인데 사용자 phone 없으면
@@ -336,6 +382,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           .bind(userId).first<{ phone: string | null }>().catch(() => null)
         const phone = String(userRow?.phone || '').replace(/\D/g, '')
         if (!/^01\d{8,9}$/.test(phone)) {
+          // 🛡️ 2026-07-11 R6: stock 차감 이후 조기 return — 복원 (딜은 아직 미차감).
+          await restoreReservedStock()
           return c.json({
             success: false,
             error: 'KT Alpha 기프티쇼 발송을 위해 전화번호 등록이 필요합니다',
@@ -354,36 +402,23 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       if (!deductResult.meta.changes) {
         const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
           .bind(userId).first<{ balance: number }>().catch(() => null)
+        // 🛡️ 2026-07-11 R6: 딜 미차감(changes==0) — stock 만 복원 후 return.
+        await restoreReservedStock()
         return c.json({ success: false, error: `딜이 부족합니다 (보유: ${wallet?.balance ?? 0}딜)`, code: 'INSUFFICIENT_POINTS' }, 400)
       }
       freeUsedJoin = Math.min(Math.max(0, Number(freeRowJoin?.fb ?? 0)), totalAmount)
 
-      await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
-         VALUES (?, 'donate', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
-      ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber, -freeUsedJoin).run()
-    }
-
-    // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT (orders/items/vouchers/progress)
-    //   실패 시 자동 환불. D1 은 trx 미지원 — 명시적 rollback 으로 처리.
-    //   복구 대상: deal 차감 + stock 차감 (이미 위에서 atomic 처리됨 → 여기서 함께 복구).
-    const rollbackDealAndStock = async () => {
-      if (payment_method === 'deal') {
-        try {
-          // 💸 버킷 대칭: 방금 무상에서 차감된 만큼 무상으로 복원.
-          await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
-            .bind(totalAmount, freeUsedJoin, userId).run()
-          await DB.prepare(
-            `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
-             VALUES (?, 'refund', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
-          ).bind(userId, totalAmount, totalAmount, userId, `공동구매 자동 환불 (주문 실패): ${product.name}`, orderNumber, freeUsedJoin).run()
-        } catch (e) { console.error('[group-buy/join] deal rollback failed', e) }
-      }
-      // stock 도 복구
+      // 🛡️ 2026-07-11 R6: 이 원장 INSERT 는 아래 inner try '밖' — throw 시 deal+stock 이 복원
+      //   없이 외부 catch 로 빠져 누수되던 갭. 실패 시 대칭 복원 후 rethrow(외부 catch 가 500 안내).
       try {
-        await DB.prepare("UPDATE products SET stock = stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-          .bind(qty, productId).run()
-      } catch (e) { console.error('[group-buy/join] stock rollback failed', e) }
+        await DB.prepare(
+          `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
+           VALUES (?, 'donate', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+        ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber, -freeUsedJoin).run()
+      } catch (txnErr) {
+        await rollbackDealAndStock()
+        throw txnErr
+      }
     }
 
     try {
@@ -425,6 +460,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           `SELECT commission_pct FROM seller_influencer_deals
            WHERE seller_id = ? AND influencer_id = ? AND status = 'active'
              AND (ends_at IS NULL OR ends_at > datetime('now'))
+             AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved')
            LIMIT 1`
         ).bind(product.seller_id, referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
         effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
@@ -1076,7 +1112,8 @@ registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /vouch
 groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const userId = String(user.id)
+  // 🔑 user_id 정규화(데이터 감사 1단계) — /join 과 동일(이중키 분열 차단, 카카오=무동작, Firebase 교정).
+  const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
 
   const body = await c.req.json<{ paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }>().catch(() => ({} as { paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }))
   const { paymentKey, orderId, amount, productId, qty: rawQty } = body

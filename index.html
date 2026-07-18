@@ -84,6 +84,11 @@
         }
         // 부팅 후 배선(main.tsx)·React ErrorBoundary 가 못 잡는 최악의 케이스(잔존 SW 고착)에서도 복구 UI 를 낼 수 있게 노출.
         window.__urShowStuckUI = showStuckUI;
+        // 🛡️ 2026-07-16 (대표 신고 "새로고침 버튼 눌러도 한번에 안돼"): 슬로우 힌트(#ur-pre-react 8s 고착)의
+        //   '↻ 새로고침'이 plain location.reload() 였음 — 옛 문서(bfcache/edge/heuristic·잔존 SW)를 그대로 재서빙 →
+        //   또 고착 → 무한 반복(+ javascript: href 는 CSP 차단 가능). hardRecover(SW/캐시 삭제 + __cb 캐시버스트)를
+        //   전역 노출해 그 버튼이 stuck-UI 버튼과 동일한 '1클릭 완전복구' 경로를 쓰게 한다.
+        window.__urHardRecover = hardRecover;
         window.addEventListener('error', function (e) {
           if (isAppChunk(e && e.target)) { reloadOnce(); return; } // app 청크(/assets/*.{js,css}) 리소스 실패
           if (e && isChunkMsg(e.message)) reloadOnce();            // 인라인 스크립트 파싱/모듈 에러 변종
@@ -103,6 +108,18 @@
             }).catch(function () {});
           }
         } catch (e) {}
+        // 🛡️ 2026-07-16 (대표 신고 "새로고침 버튼 눌러도 항상 한번에 새로고침이 안돼"): 워커가 #root 를 정적
+        //   URDEAL 로더로 교체하므로(worker/index.ts urdealLoaderHtml) 기존 8초 슬로우힌트(#ur-pre-react/
+        //   #ur-slow-hint — #root 안이라 미서빙)가 죽어 있었음 → 앱이 청크404/stale-SW/네트워크 행으로 안 뜨면
+        //   로더가 무한 회전 + 화면 안 탈출구 0 → 사용자는 브라우저 새로고침(plain reload)만 → 또 stale 재서빙 →
+        //   "한번에 새로고침 안됨". 서빙되는 이 부트가드에 워치독을 둬, 12초 뒤에도 앱이 안 떴으면(로더 그대로)
+        //   showStuckUI(자체 fixed 오버레이 + hardRecover 1클릭 완전복구)를 띄운다. 앱이 늦게라도 뜨면
+        //   main.tsx 가 오버레이를 제거(느린 회선 false-positive 자동 해제). 정상 부팅엔 no-op.
+        //   전 표면 커버: main.tsx 는 라우트 무관 성공 부팅 시 __urMounted=1 을 세팅하므로, #root 가 소비자
+        //   로더든 대시보드/도매/블로그 placeholder 든 상관없이 '앱 미마운트' 하나로 판정(로더 마크업 의존 X).
+        setTimeout(function () {
+          try { if (!window.__urMounted) showStuckUI(); } catch (e) { /* silent */ }
+        }, 12000);
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -124,9 +141,6 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="유어딜" />
     <title>유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜</title>
 
     <!-- 🛡️ 2026-05-27 (Lighthouse 진단 — 잠금 해제): preconnect 14→3개 정리.
@@ -395,7 +409,7 @@
           <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin-top:24px;max-width:280px;line-height:1.5;">
             10초 이상 멈춰있다면 브라우저 캐시를 비우거나<br/>다른 브라우저(Chrome/Safari)로 열어주세요.
             <br/><br/>
-            <a href="javascript:location.reload()" style="color:#4a9eff;text-decoration:none;">↻ 새로고침</a>
+            <button type="button" id="ur-slow-reload" style="background:none;border:0;padding:0;font:inherit;color:#4a9eff;text-decoration:none;cursor:pointer;">↻ 새로고침</button>
           </div>
         </div>
       </div>
@@ -420,7 +434,15 @@
             // 8초 후에도 placeholder 남으면 슬로우 힌트 표시 (일반 브라우저 전용)
             setTimeout(function() {
               var hint = document.getElementById('ur-slow-hint');
-              if (hint && document.getElementById('ur-pre-react')) hint.style.display = 'block';
+              if (hint && document.getElementById('ur-pre-react')) {
+                hint.style.display = 'block';
+                // 🛡️ 2026-07-16: '↻ 새로고침' → hardRecover(1클릭 완전복구). CSP-safe 이벤트 배선(inline onclick/
+                //   javascript: href 대신 — stuck-btn 과 동일 패턴). 전역 미정의(엣지케이스) 시 plain reload 폴백.
+                var rb = document.getElementById('ur-slow-reload');
+                if (rb) rb.addEventListener('click', function () {
+                  if (window.__urHardRecover) window.__urHardRecover(); else location.reload();
+                });
+              }
             }, 8000);
             return;
           }

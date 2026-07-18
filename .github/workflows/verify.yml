@@ -20,7 +20,12 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
+      # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
+      # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). PR/push 양쪽 이벤트 모두 커버.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -180,8 +185,13 @@ jobs:
       #   대형 파일이 더 커지면 차단 → 줄이는 건 OK, 키우는 건 금지(god 파일이 다시 못 자람).
       #   대형 파일을 더 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
       #   우회: 파일 상단 `file-size-ok` 주석 또는 커밋 메시지 [SKIP_SIZE]. 규칙: CLAUDE.md 영구 방어선.
+      # 🛡️ 2026-07-11: `-a`(전수) → `--changed-only`(merge-base(origin/main, HEAD)..HEAD 변경분만).
+      #   main 자체 머지로 baseline 동결 파일이 자라면(RestaurantMapPage 714→768→769) 전수 모드는
+      #   **무관한 PR 을 건드리지도 않은 파일로 실패**시켜 baseline 정렬 잡일 커밋이 반복됨(당일 3회).
+      #   PR 은 자기 변경 파일만 책임 — repo 전체 드리프트는 audit-gate(-a)/rebaseline 담당.
+      #   merge-base 는 위 checkout fetch-depth: 0 이 보장 (실패 시 스크립트가 전수 폴백 + 안내).
       - name: File-size ratchet (god file guard, strict)
-        run: node scripts/check-file-size.mjs -a -s
+        run: node scripts/check-file-size.mjs --changed-only -s
         continue-on-error: false
 
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
@@ -320,6 +330,14 @@ jobs:
         run: STRICT_LOADER_CONTINUITY=1 node scripts/check-loader-continuity.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-07: 링크샵 소유권 단일화 — "내 링크샵인데 방문자로 보임/편집 사라짐" 회귀 방지(대표 신고 클래스).
+      #   /u/{handle} 주인 = 로그인 소비자 유저(단일 신호). seller_token 은 셀러 대시보드 전용 — 링크샵 뷰를 안 가름.
+      #   ① CuratorPage→SellerPublicPage ownerOverride 전달 ② isOwner 가 ownerOverride 포함(seller_token 단독 금지)
+      #   ③ 순수 뷰 자식은 prop 구동(seller_token 직접 read 금지). 예외 `linkshop-ownership-ok`.
+      - name: Linkshop ownership unification guard (strict)
+        run: STRICT_LINKSHOP_OWNERSHIP=1 node scripts/check-linkshop-ownership.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").
       #   풀스크린 오버레이(fixed inset-0 z-[N])가 네비(9999)보다 낮은 z 면 네비가 덮음. 현재 위반 0 → strict.
       #   표준: 모달 10500 / 시트 10600 (src/constants/z-index.ts). 예외는 `modal-zindex-ok` 주석.
@@ -396,10 +414,13 @@ jobs:
         continue-on-error: true   # drift 가 있어도 fail 하지 않음 (정보 용도)
 
       # ── 3. 타입 체크 ──
+      # 🛡️ 2026-07-12: frontend tsc 를 strict 로 (이전 warn-only → BrandLoader import 누락이
+      #   Verify 를 통과하고 배포까지 가 블로그 상세 전면 크래시). 현재 에러 0 — 유지 강제.
       - name: Type check (frontend)
         run: npx tsc --noEmit --skipLibCheck
-        continue-on-error: true
+        continue-on-error: false
 
+      # worker 전용 tsconfig 는 선재 에러(env 타입/Buffer 등) 정리 전까지 warn 유지 — 별도 세션에서 정리.
       - name: Type check (worker)
         run: npx tsc --noEmit --skipLibCheck --project tsconfig.worker.json
         continue-on-error: true

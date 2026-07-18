@@ -12,6 +12,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useTokenAutoRefresh } from './hooks/useTokenAutoRefresh'
+import HomeRoute from './pages/pc-home/HomeRoute' // 🖥️ 홈 뷰포트 분기(lg+ PC 홈 / 그 외 지도)
+import { isFullBleedPcPath } from './shared/pc-fullbleed' // 🖥️ 풀너비 PC 페이지(홈·카탈로그)
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
@@ -74,7 +76,6 @@ const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
 const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
 const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
-const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 
@@ -84,12 +85,7 @@ const JoinChoicePage = lazy(() => import('./pages/JoinChoicePage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallbackPage'))
 const KakaoLinkCallbackPage = lazy(() => import('./pages/KakaoLinkCallbackPage'))
-const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
-const LiveListPage = lazy(() => import('./pages/LiveListPage'))
-const LiveRecapPage = lazy(() => import('./pages/LiveRecapPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
-const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
-const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
@@ -118,6 +114,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const MyStorePage = lazy(() => import('./pages/MyStorePage'))
+const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -129,6 +126,7 @@ const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazy(() => import('./pages/VouchersPage'))
+const ExperienceCampaignsPage = lazy(() => import('./pages/ExperienceCampaignsPage'))
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads (유어딜/도매몰과 분리된 surface)
 // 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드
 const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
@@ -188,6 +186,8 @@ const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
 // 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
 const LocalTownPage = lazy(() => import('./pages/LocalTownPage'))
+// 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — /district/:slug 랜딩 + /district/my 지갑 (한 컴포넌트)
+const DistrictCouponPage = lazy(() => import('./pages/DistrictCouponPage'))
 const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
 const CommunityGroupBuyMessagesPage = lazy(() => import('./pages/CommunityGroupBuyMessagesPage'))
 
@@ -205,6 +205,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
 const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
+const GbMarketplacePage = lazy(() => import('./pages/GbMarketplacePage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 🔧 Debug 페이지
@@ -234,6 +235,19 @@ function CuratorPinClientRedirect() {
 // 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
 //   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
 const PageLoader = () => <BrandLoader fullScreen />
+
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin·/agency)·유어애즈(/ads) 전용
+//   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
+//   fallback 이 테마 추종 PageLoader(다크 토글 사용자는 다크 로고)라 [라이트 빈화면 → 다크 로더 →
+//   라이트 대시보드] 색 점프가 났음. 도매 WholesaleLoader 와 동일한 정합을 유어딜 브랜드로.
+//   (대시보드는 라이트 고정 규칙 — dark: variant 금지 표면이라 forceLight 가 맞는 동작.)
+const DashboardLoader = () => (
+  <div style={{ background: '#F4F5F7' }}>
+    <BrandLoader fullScreen forceLight />
+  </div>
+)
+const isDashboardLoaderSurface = (pathname: string) =>
+  /^\/(seller|admin|agency|ads)(\/|$)/.test(pathname)
 
 // 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
 //   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서
@@ -301,7 +315,12 @@ function AppContent() {
     import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
       captureAcquisitionSource()
       import('@/utils/auth').then(({ isLoggedInSync }) => {
-        claimAcquisitionIfLoggedIn(isLoggedInSync())
+        const loggedIn = isLoggedInSync()
+        claimAcquisitionIfLoggedIn(loggedIn)
+        // 📡 2026-07-13 (데이터 감사 2단계): 익명 유입 클릭 → 유저 귀속(멱등, 완결고리 '유입' 노드).
+        import('@/utils/affiliate-track').then(({ bindInflowClicksIfLoggedIn }) => {
+          bindInflowClicksIfLoggedIn(loggedIn)
+        }).catch(() => {})
       }).catch(() => {})
     }).catch(swallow('app:acquisition-import'))
   }, [])
@@ -429,8 +448,14 @@ function AppContent() {
 
   const location = useLocation()
   // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
-  const initialLocationKeyRef = useRef(location.key)
-  const pageEnterCls = location.key === initialLocationKeyRef.current ? undefined : 'ur-page-enter'
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: 기준을 location.key → pathname 변경 여부로. key 기준이면 쿼리-전용
+  //   내비(setSearchParams — 정렬/카테고리 칩)가 첫 내비일 때 클래스가 처음 붙으며 전체 페이드가 재생됨
+  //   (아래 div key 가 pathname 인 지금은 리마운트 없이 class 추가만으로 애니메이션이 1회 발화하는 아티팩트).
+  //   실제 경로 이동이 한 번이라도 있으면 클래스 상시 유지 — 애니메이션은 리마운트(key=pathname 변경)가 트리거.
+  const initialPathRef = useRef(location.pathname)
+  const pathChangedRef = useRef(false)
+  if (location.pathname !== initialPathRef.current) pathChangedRef.current = true
+  const pageEnterCls = pathChangedRef.current ? 'ur-page-enter' : undefined
 
   // 🛡️ 2026-05-27 v5 [UNLOCK_LOADING] (Lighthouse 100점 시도, 사용자 명령):
   //   idle prefetch 전체 제거 — Lighthouse 메인 페이지 측정 시 lazy chunk 동시 fetch → 점수 ↓.
@@ -548,9 +573,8 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/my-orders', '/store/scan']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
-    || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
@@ -577,8 +601,13 @@ function AppContent() {
     <>
       <FrameWrapper>
         {/* 🏭 2026-06-29 (대표 요청): 도매 surface 는 라이트 브랜드 로더로, 그 외(소비자)는 기존 PageLoader.
-            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지). */}
-        <Suspense fallback={isWholesaleSurface(location.pathname) ? <WholesaleLoader /> : <PageLoader />}>
+            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지).
+            🚑 2026-07-10: 대시보드/애즈는 라이트 고정 DashboardLoader — worker 라이트 placeholder 와 색 정합. */}
+        <Suspense fallback={
+          isWholesaleSurface(location.pathname) ? <WholesaleLoader />
+            : isDashboardLoaderSurface(location.pathname) ? <DashboardLoader />
+            : <PageLoader />
+        }>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
               각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.
               MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}
@@ -605,16 +634,23 @@ function AppContent() {
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
           {/* 🖥️ 2026-06-20: 하단 네비가 이제 PC(lg+) 액자에도 표시되므로 lg:pb-0 제거 — 모든 뷰포트에서 하단 여백 예약. */}
           <main id="main-content" className={(hideBottomNav || mapFullScreen) ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
-          <ErrorBoundary key={location.key}>
+          {/* 🚑 2026-07-10 [UNLOCK_LOADING] (대표 신고 "로딩 → 새로고침 → 다시 로딩" — 라이브 재현으로 특정):
+              key 를 location.key → location.pathname 으로. location.key 는 **쿼리만 바뀌는
+              setSearchParams(정렬/카테고리/브랜드 칩, /vouchers 첫 진입 자동 카테고리 선택 등)에도 매번
+              새 값** → 페이지 전체 리마운트 + enter 페이드 재생 + (리마운트로 SSR 시드 미매칭 →) 풀스크린
+              로더 재등장 — "방금 뜬 페이지가 리셋되고 다시 로딩"의 정체. pathname keying 은 실제 페이지
+              이동(06-10 페이드 의도)에만 리마운트/페이드, 쿼리 변경은 제자리 갱신(각 페이지 effect 가
+              searchParams deps 로 이미 처리 — 06-05 "화면 비우지 않고 백그라운드 교체" 설계 복원). */}
+          <ErrorBoundary key={location.pathname}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
           {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale" replace />}
-          <div key={location.key} className={pageEnterCls}>
+          <div key={location.pathname} className={pageEnterCls}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home mode="list" />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
@@ -657,13 +693,14 @@ function AppContent() {
             <Route path="/wholesale/start" element={<WholesaleStartPage />} />
             <Route path="/partnership" element={<PartnershipInquiryPage />} />
             <Route path="/wholesale/staff-login" element={<WholesaleStaffLoginPage />} />
-            <Route path="/shorts" element={<ShortsPage />} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /shorts 라우트 제거 */}
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
+            <Route path="/experience" element={<ExperienceCampaignsPage />} />
             {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
             {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
             <Route path="/ads" element={<ErrorBoundary><MarketingLandingPage /></ErrorBoundary>} />
@@ -686,6 +723,7 @@ function AppContent() {
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
             {/* 🏙️ 2026-07-04 상권관 랜딩 — 지역코드 하나로 그 상권의 동네딜+체험단 전체(B2G QR/링크 진입). */}
             <Route path="/local/:code" element={<LocalTownPage />} />
+            <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
@@ -702,9 +740,7 @@ function AppContent() {
             <Route path="/seller/prospects" element={<SellerProspectsPage />} />
             <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
             <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
-            <Route path="/live" element={<LiveListPage />} />
-            <Route path="/live/recap/:id" element={<LiveRecapPage />} />
-            <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
@@ -852,6 +888,12 @@ function AppContent() {
                 <MyStorePage />
               </ProtectedRoute>
             } />
+            {/* 🎟️ 2026-07-06 독립 계산대 스캔 POS — 마이 탭에서 1탭, 셀러 대시보드 안 거침. seller_token 자체가드. */}
+            <Route path="/store/scan" element={
+              <ProtectedRoute requireUser>
+                <StoreScanPage />
+              </ProtectedRoute>
+            } />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>
                 <InfluencerSettlementPage />
@@ -924,8 +966,7 @@ function AppContent() {
             {import.meta.env.DEV && <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />}
 
             {/* 임베드 위젯 (외부 서비스용) */}
-            <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
-            <Route path="/embed/seller-overlay/:streamId" element={<SellerOverlayPage />} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /embed/live·/embed/seller-overlay 라우트 제거 */}
             <Route path="/payment/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
@@ -968,6 +1009,7 @@ function AppContent() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
             <Route path="/user/affiliate" element={<AffiliatePage />} />
+            <Route path="/gb-market" element={<GbMarketplacePage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
             {/* ✅ 마이페이지 메뉴에서 사용하는 긴 형식 경로 → 짧은 경로로 리다이렉트 */}
@@ -994,7 +1036,7 @@ function AppContent() {
           </main>
           </div>
           {!hideBottomNav && <BottomNav />}
-          {!fullScreen && <Suspense fallback={null}><SideBanner /></Suspense>}
+          {!fullScreen && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <Suspense fallback={null}><SideBanner /></Suspense>}
           {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
               복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
           {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}
@@ -1022,7 +1064,13 @@ interface AppProps {
 
 function App({
   Router = BrowserRouter as unknown as RouterLike,
-  routerProps = { future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+  // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): v7_startTransition=true 면 React Router 가
+  //   네비게이션을 startTransition 으로 감싸, 목적지 lazy 청크가 아직 안 받아졌을 때 React 18 이 Suspense
+  //   fallback(유어딜 BrandLoader)을 '건너뛰고' 현재 화면(예: /map 분할)을 그대로 붙잡아 둠 → 청크 다운로드
+  //   동안 이전 페이지가 남아 보였음(=로더 말고 다른 게 보이는 원인). false 로 두면 청크 미로드 시 즉시
+  //   fallback(불투명 BrandLoader) 표출 → "클릭 → 유어딜 로더 → 상세" 로 통일. (이미 로드된 청크는 서스펜드
+  //   안 해 즉시 전환 — 플래시 없음. BrandLoader 는 위상동기라 짧은 로드도 블링크 없음.)
+  routerProps = { future: { v7_startTransition: false, v7_relativeSplatPath: true } },
 }: AppProps = {}) {
   return (
     // 🛡️ 청크(배포 전환) + 일반 에러를 단일 ErrorBoundary 가 처리(청크는 recoverFromChunkError 자동복구).

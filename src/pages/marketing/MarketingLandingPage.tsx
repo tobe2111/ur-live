@@ -144,6 +144,7 @@ export default function MarketingLandingPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--hair)', background: 'var(--panel2)' }}>
                 <div style={{ display: 'flex', gap: 6 }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: '#E0E2E8' }} />)}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>app.urads.kr/dashboard</div>
+                <div style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 'auto', opacity: .8 }}>예시 화면</div>
               </div>
               <div style={{ padding: 18 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}><span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>통합 실적</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--up)' }} />실시간 동기화</span></div>
@@ -193,6 +194,7 @@ export default function MarketingLandingPage() {
             </div>
           ))}
         </div>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>* 위 수치·화면은 서비스 소개용 예시입니다. 실제 성과는 계정·업종·예산에 따라 다릅니다.</p>
       </section>
 
       {/* ── FEATURES ── */}
@@ -389,6 +391,7 @@ export default function MarketingLandingPage() {
               </div>
             ))}
           </div>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 14 }}>* 서비스 소개용 예시 사례입니다.</p>
         </div>
       </section>
 

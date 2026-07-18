@@ -14,6 +14,12 @@ export interface AiMarketerContext {
   keyword?: { seed: string; related: Array<{ keyword: string; monthlyTotal: number; compIdx: string }>; shoppingTotal: number; trendPct: number }
   // 전주 대비(WoW) 추세 — ad_daily_metrics 시계열 기반(있을 때만). 증감률(%)·최근/직전 ROAS.
   trend?: { wowCostPct: number | null; wowConvPct: number | null; recentRoas: number | null; prevRoas: number | null; days: number }
+  // 🆕 2026-07-01 grounding 확장 — 유어애즈가 이미 모은 4종 데이터를 진단에 주입(전부 optional·fail-soft).
+  //   키워드 효율(낭비 키워드), 쇼핑 오가닉 순위(변동), 부정클릭 의심, 최저가 역전(가격경쟁력).
+  efficiency?: { days: number; scanned: number; waste: Array<{ keyword: string; cost: number; clicks: number }>; top: Array<{ keyword: string; cost: number; conv: number; roas: number | null }> }
+  ranks?: Array<{ keyword: string; mall: string; rank: number | null; prevRank: number | null }>
+  clickguard?: { days: number; totalClicks: number; adClicks: number; suspiciousIps: number }
+  price?: Array<{ query: string; myPrice: number | null; lowest: number | null; lowestMall: string | null; undercut: boolean }>
 }
 
 const SYSTEM = [
@@ -22,6 +28,10 @@ const SYSTEM = [
   '데이터에 없는 수치나 사실을 지어내지 마라. 모르면 모른다고 한다.',
   '출력은 마크다운으로, 아래 섹션을 순서대로: ## 진단 / ## 잘되는 점 / ## 개선할 점 / ## 추천 액션 / ## 주의.',
   'trend(전주 대비 증감률·ROAS 변화)가 있으면 반드시 진단에 반영하라 — 예: 광고비는 늘었는데 ROAS가 떨어졌으면 경고, 전환매출이 오르면 확대 제안.',
+  'efficiency.waste(전환 0인데 비용 큰 낭비 키워드)가 있으면 제외/입찰인하 후보로 반드시 짚어라.',
+  'ranks(쇼핑 오가닉 순위)가 있으면 순위 하락 키워드는 광고 보강, 오가닉 상위 키워드는 광고비 절감 여지를 검토하라.',
+  'clickguard.suspiciousIps 가 0보다 크면 부정클릭 의심을 경고하고 차단 목록 검토를 권하라.',
+  'price 에 undercut=true(경쟁몰이 내 가격보다 낮음) 항목이 있으면 가격경쟁력 관점(광고만으로 전환이 어려움)을 지적하라.',
   '추천 액션은 3~5개, 각 항목은 "무엇을 / 왜 / 어떻게"가 드러나게 구체적으로(키워드 추가·제외, 입찰 방향, 예산 조정 등).',
   '광고비/입찰 변경은 사용자가 직접 적용한다는 전제로 제안만 한다.',
 ].join(' ')

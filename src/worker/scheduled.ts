@@ -33,9 +33,7 @@ import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
-import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
-import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
@@ -49,8 +47,6 @@ import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
-import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
-import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
@@ -61,7 +57,6 @@ import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
-import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
@@ -77,6 +72,7 @@ import { getFeatureFlags } from './utils/feature-flags';
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
+import { reportCronFailure } from './utils/cron-reporter';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -84,10 +80,17 @@ import { logError, logInfo } from './utils/logger';
  * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
  * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
  * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
+ *
+ * 🔔 2026-07-08 (무인운영 감사): Discord 만으로는 `DISCORD_WEBHOOK_URL` 미설정 시 전면 무음 +
+ *   실패 이력이 남지 않아 사후추적 불가 → reportCronFailure 를 함께 호출해 **Discord + cron_failures
+ *   테이블 + 어드민 벨 3채널**에 도달시킨다. 이제 모든 safeCron 실패가 pull(어드민 벨/DB)로도 보인다.
+ *   (reportCronFailure 는 내부적으로 완전 fail-soft — 이 호출이 알림 자체를 막지 않는다.)
  */
 export async function notifyCronFailure(env: Env, name: string, err: unknown): Promise<void> {
   const msg = (err as Error)?.message || String(err);
   logError(`[cron:${name}] FAILED`, { error: msg });
+  // 영구 기록 + 어드민 벨 (Discord secret 미설정이어도 pull 로 보이게).
+  try { await reportCronFailure(env, name, err, undefined, 'error'); } catch { /* 리포터 자체 실패 무시 */ }
   const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
   if (webhook) {
     try {
@@ -123,19 +126,11 @@ export async function handleCronScheduled(
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
       return handleScheduled(env)
     }));
-    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
-    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존) (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
-    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
@@ -153,19 +148,25 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
-    // 🆕 2026-06-27 유어애즈 자동입찰 — 활성 규칙의 입찰가 자동조정(목표순위→추정→max_bid 클램프).
-    //   글로벌 킬스위치(ADS_AUTOBID_ENABLED='true')일 때만 실제 동작 — 아니면 즉시 no-op(라이브검증 전 OFF).
-    if (env.ADS_AUTOBID_ENABLED === 'true') {
-      ctx.waitUntil(safeCron('ads-autobid', async () => {
-        const { runAutobidAll } = await import('../features/marketing/api/autobid')
-        return runAutobidAll(env)
-      }));
-    }
+    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid → ur-ads worker cron 으로 이관(wrangler-ads.toml "*/5").
+    //   이중실행 방지 위해 메인에서 제거 — 재도입=원복.
+    // if (env.ADS_AUTOBID_ENABLED === 'true') {
+    //   ctx.waitUntil(safeCron('ads-autobid', async () => {
+    //     const { runAutobidAll } = await import('../features/marketing/api/autobid')
+    //     return runAutobidAll(env)
+    //   }));
+    // }
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
+    //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
+    // ctx.waitUntil(safeCron('social-maintenance', async () => {
+    //   const { handleSocialMaintenance } = await import('./cron/social-maintenance')
+    //   return handleSocialMaintenance(env)
+    // }));
     // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
     ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
       const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
@@ -247,27 +248,9 @@ export async function handleCronScheduled(
       await matureReferralCommissions(env.DB, env);
     }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
-    // 🆕 2026-06-27 유어애즈 가격 모니터링 — 등록된 워치의 네이버쇼핑 최저가 일일 갱신(읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-price-refresh', async () => {
-      const { refreshAllWatches } = await import('../features/marketing/api/price-monitor')
-      return refreshAllWatches(env)
-    }));
-    // 🆕 2026-06-28 유어애즈 쇼핑 순위 추적 — 등록 키워드의 내 몰 순위 일일 갱신(읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-rank-track', async () => {
-      const { refreshAllRankTargets } = await import('../features/marketing/api/rank-tracker')
-      return refreshAllRankTargets(env)
-    }));
-    // 🆕 2026-06-30 유어애즈 일별 메트릭 스냅샷 — 연결 계정의 '어제' 실적을 ad_daily_metrics 에 1행/계정/일(추세 차트 원천, 읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-metrics-snapshot', async () => {
-      const { snapshotAllAccounts } = await import('../features/marketing/api/metrics-history')
-      return snapshotAllAccounts(env)
-    }));
-    // 🆕 2026-06-28 유어애즈 임계값 알림 — 예산 소진/최저가 역전 점검 후 이메일(계정+날짜 멱등 1일 1회).
-    //   가격 갱신 후 실행되도록 동일 블록 뒤에 등록(최신 last_lowest 반영).
-    ctx.waitUntil(safeCron('ads-alerts', async () => {
-      const { runAlertsAll } = await import('../features/marketing/api/alerts')
-      return runAlertsAll(env)
-    }));
+    // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 일일 cron 5종(price-refresh/rank-track/metrics-snapshot/
+    //   alerts/autobid-shadow) → ur-ads worker cron("0 18 * * *")으로 이관 — src/worker-ads/index.ts scheduled().
+    //   같은 D1 이라 데이터 정합 무변. 이중실행 방지 위해 메인에서 제거(마지막 marketing 참조 → 번들 추가 감소). 재도입=원복.
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
@@ -349,8 +332,6 @@ export async function handleCronScheduled(
           logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
         }
       } catch (e) { await notifyCronFailure(env, 'agency-cron-batch/agency-intro-monthly-bonus', e) }
-      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일) — 라이브 중단 시 skip
-      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/live-metrics', e));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
@@ -400,6 +381,11 @@ export async function handleCronScheduled(
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])
     }))
+    // 🧾 2026-07-13: 상권 쿠폰 만료 임박(D-3) 알림 + 만료 스위핑(status='expired'). 병렬 엔티티·머니 0.
+    ctx.waitUntil(safeCron('district-coupon-expire', async () => {
+      const { runDistrictCouponExpireCron } = await import('./cron/district-coupon-expire')
+      await runDistrictCouponExpireCron(env as Parameters<typeof runDistrictCouponExpireCron>[0])
+    }))
     // 🛡️ 2026-06-12 (전수조사 4차 B-6): 체크아웃 +1일 경과 confirmed → checked_out 자동 전이 (리뷰 게이트 해제).
     ctx.waitUntil(safeCron('stay-checkout-transition', async () => {
       const { handleStayCheckoutTransition } = await import('./cron/stay-checkout-transition')
@@ -432,6 +418,18 @@ export async function handleCronScheduled(
       const { handleBlogAiDraft } = await import('./cron/blog-ai-draft');
       return handleBlogAiDraft(env);
     }));
+    // 🔧 2026-07-18: off-live user_id backfill 자동 스위퍼(데이터 감사 3단계 자동화 — 대표 "실행도 자동으로").
+    //   멱등 + 모호매핑 0 + user_points 충돌은 자동병합 안 함(어드민 벨 보고만). 대상 0 이면 no-op.
+    ctx.waitUntil(safeCron('user-id-backfill-sweep', async () => {
+      const { handleUserIdBackfillSweep } = await import('./cron/user-id-backfill-sweep');
+      return handleUserIdBackfillSweep(env);
+    }));
+    // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 초안 주간 크론 배선 분리(위 social-maintenance 와 동일 사유).
+    //   기본 OFF 라 미실행 무해. 재도입 시 원복.
+    // ctx.waitUntil(safeCron('social-draft', async () => {
+    //   const { handleSocialDraft } = await import('./cron/social-draft');
+    //   return handleSocialDraft(env);
+    // }));
     ctx.waitUntil(safeCron('agency-weekly-batch', async () => {
       const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
       const now = new Date();
@@ -460,11 +458,8 @@ export async function handleCronScheduled(
       if (dayOfMonth <= 7) {
         await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
       }
-      // 🆕 2026-06-27 유어애즈 AI 주간 리포트 (매주 월요일, 주당 1회 멱등). 연결 고객사만.
-      await (async () => {
-        const { handleAdsWeeklyReport } = await import('../features/marketing/api/weekly-report');
-        return handleAdsWeeklyReport(env);
-      })().catch(e => notifyCronFailure(env, 'agency-weekly-batch/ads-weekly-report', e));
+      // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
+      //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));
   }
 }

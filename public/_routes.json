@@ -9,6 +9,8 @@
     "/favicon.svg",
     "/favicon-utong.svg",
     "/robots.txt",
+    "/.well-known/apple-app-site-association",
+    "/.well-known/assetlinks.json",
     "/sw.js",
     "/push-sw.js",
     "/pwa-sw.js",

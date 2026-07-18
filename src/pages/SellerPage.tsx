@@ -444,17 +444,7 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      {/* 🏭 라이브 잠정 중단 동안 송출 버튼 숨김 — nav 는 mode 필터로 숨겨졌는데
-          이 버튼만 역할(isInfluencer) 게이트라 도달불가 페이지로 유도하던 잔재. 재개 시 자동 복원. */}
-      {!LIVE_COMMERCE_SUSPENDED && isInfluencer && (
-        <button
-          onClick={() => navigate('/seller/live-broadcast')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Play className="w-3.5 h-3.5" />
-          {t('seller.startLive')}
-        </button>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: 송출 버튼 삭제. */}
     </div>
   )
 
@@ -658,41 +648,38 @@ export default function SellerPage() {
             </div>
           )}
 
-          {/* ── Main grid ── */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+          {/* ── Main grid ──
+              🖥️ 2026-07-16 (대표 신고 — 공간활용 안 됨): 실시간 주문 패널 제거(2026-06-04) 후 3열 그리드에
+              오른쪽 패널 1개만 남아 2/3 가 비었음. 4개 블록(빠른액션·전환퍼널·알림·공개페이지)을 직접
+              그리드 자식으로 펼쳐 2×2(md+)로 폭을 꽉 채움. items-start 로 상단 정렬. */}
+          <div className="grid md:grid-cols-2 gap-3 sm:gap-5 items-start">
 
-            {/* 🏭 2026-06-04 (사용자 요청): 실시간 주문 패널 제거 — 셀러 대시보드 간소화. */}
+            {/* 빠른 액션 — 활동 데이터 기반 동적 배치(가장 자주 쓰는 액션 → 좌상단) */}
+            <QuickActions
+              hasMealVouchers={hasMealVouchers}
+              sellerType={sellerType}
+              activeGroupBuys={activeGroupBuys}
+              isInfluencer={isInfluencer}
+              hasLiveHistory={hasLiveHistory}
+            />
 
-            {/* ── Right panel (col-span-1) ── */}
-            <div className="space-y-4">
+            {/* 알림 */}
+            <AlertsGrid
+              followerCount={followerCount}
+              stockAlertCount={stockAlertCount}
+              pendingOrders={stats.pendingOrders || 0}
+              pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
+              fmtShort={fmtShort}
+            />
 
-              {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
-              <ConversionFunnel
-                totalViewers={stats.totalViewers}
-                totalOrders={stats.totalOrders}
-              />
+            {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
+            <ConversionFunnel
+              totalViewers={stats.totalViewers}
+              totalOrders={stats.totalOrders}
+            />
 
-              {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
-              <QuickActions
-                hasMealVouchers={hasMealVouchers}
-                sellerType={sellerType}
-                activeGroupBuys={activeGroupBuys}
-                isInfluencer={isInfluencer}
-                hasLiveHistory={hasLiveHistory}
-              />
-
-              {/* 알림 */}
-              <AlertsGrid
-                followerCount={followerCount}
-                stockAlertCount={stockAlertCount}
-                pendingOrders={stats.pendingOrders || 0}
-                pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
-                fmtShort={fmtShort}
-              />
-
-              {/* 내 공개 페이지 미리보기 */}
-              <PublicPagePreview />
-            </div>
+            {/* 내 공개 페이지 미리보기 */}
+            <PublicPagePreview />
           </div>
 
           {/* ── Chart ── */}

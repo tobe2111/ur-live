@@ -30,6 +30,8 @@ export interface GbSession {
    *   true        = "링크 전용" — 상시 노출 숨김, ?ref 링크로만 공구가(상시 구매는 상시가).
    */
   linkOnly?: boolean
+  /** 방향 B(인플루언서 제안→매장 승인)로 열린 경우 제안한 인플루언서 id(우선 노출/전용 링크). */
+  proposerId?: string | null
 }
 
 /** product_supply_meta 키 이름 (prelaunch 패턴 미러). */
@@ -41,6 +43,7 @@ export const GB_META_KEYS = {
   price: 'gb_price',
   promo: 'gb_promo_pct',
   linkOnly: 'gb_link_only',
+  proposer: 'gb_proposer',
 } as const
 
 const OFF: GbSession = { mode: 'off' }
@@ -64,6 +67,7 @@ export function parseGbSession(rec: Record<string, string> | undefined | null): 
     price: rec[GB_META_KEYS.price] != null && rec[GB_META_KEYS.price] !== '' ? toIntOrNull(rec[GB_META_KEYS.price]) : null,
     promoPct: rec[GB_META_KEYS.promo] != null && rec[GB_META_KEYS.promo] !== '' ? Number(rec[GB_META_KEYS.promo]) : null,
     linkOnly: rec[GB_META_KEYS.linkOnly] === '1' || rec[GB_META_KEYS.linkOnly] === 'true',
+    proposerId: rec[GB_META_KEYS.proposer] || null,
   }
 }
 
@@ -71,7 +75,8 @@ export function parseGbSession(rec: Record<string, string> | undefined | null): 
 export function gbSessionToMeta(s: GbSession): Record<string, string | number | null> {
   if (s.mode === 'off') {
     return { [GB_META_KEYS.mode]: 'off', [GB_META_KEYS.start]: null, [GB_META_KEYS.deadline]: null,
-      [GB_META_KEYS.target]: null, [GB_META_KEYS.price]: null, [GB_META_KEYS.promo]: null, [GB_META_KEYS.linkOnly]: null }
+      [GB_META_KEYS.target]: null, [GB_META_KEYS.price]: null, [GB_META_KEYS.promo]: null,
+      [GB_META_KEYS.linkOnly]: null, [GB_META_KEYS.proposer]: null }
   }
   return {
     [GB_META_KEYS.mode]: s.mode,
@@ -81,6 +86,7 @@ export function gbSessionToMeta(s: GbSession): Record<string, string | number | 
     [GB_META_KEYS.price]: s.price ?? null,
     [GB_META_KEYS.promo]: s.promoPct ?? null,
     [GB_META_KEYS.linkOnly]: s.linkOnly ? '1' : '0',
+    [GB_META_KEYS.proposer]: s.proposerId ?? null,
   }
 }
 

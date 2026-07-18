@@ -29,6 +29,10 @@ import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { storeAffiliateRef } from '@/utils/affiliate-track'
+// 🚑 2026-07-10 [UNLOCK_LOADING]: 사업자 링크샵 워터폴 완화 — linked_seller 확인 즉시 셀러 /public 워밍
+//   (SellerPublicPage lazy 청크 다운로드와 병렬). 독립 모듈이라 lazy 청크 분리 불변.
+import { warmSellerPublic } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -85,6 +89,17 @@ export default function CuratorPage() {
     return false
   })()
 
+  // 💸 2026-07-07 (대표 결정 — "링크샵에 들어왔다면 수익이 생기게" · 진입=세션 귀속): 링크샵에 들어온 순간
+  //   주인(user_id)을 24h affiliate_ref 로 심는다 → 이후 방문자가 이 링크샵을 통해 뭘 사든(핀·이용권·쇼핑)
+  //   결제 시 referrer_id 로 전송돼 주인에게 커미션 귀속. 기존엔 '핀 클릭'만 귀속돼 링크샵 진입 자체는 무귀속이던
+  //   갭을 메움. storeAffiliateRef 가 본인(my user_id===ref)이면 자동 skip(자기 링크샵 진입은 무귀속) +
+  //   숫자 user_id 검증. 자기 상품 구매는 서버 self-seller 가드로 판매수익만(추천수수료 이중지급 방지).
+  useEffect(() => {
+    const cid = data?.curator?.id
+    if (!cid || isOwner) return
+    storeAffiliateRef(String(cid))
+  }, [data?.curator?.id, isOwner])
+
   useEffect(() => {
     if (!handle) return
     let alive = true
@@ -110,6 +125,16 @@ export default function CuratorPage() {
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [handle, t])
+
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: linked_seller 확인 즉시(SSR 시드 포함) 셀러 /public 페치 시작 —
+  //   SellerPublicPage 는 마운트 후 같은 in-flight 를 이어받음(seller-public-fetch 공유 모듈).
+  //   기존엔 [curator 응답 → lazy 청크 로드/마운트 → 그제서야 seller fetch] 완전 직렬 워터폴.
+  // 🚀 2026-07-11 (1-RTT): 서버가 linked_seller_public 을 동봉하면 fetch 자체가 불필요 → warm 스킵.
+  //   구캐시(필드 없는 edge 응답 최대 900s)/동봉 실패 시에만 기존 warm 폴백(점진 롤아웃 호환).
+  useEffect(() => {
+    const u = data?.linked_seller?.username
+    if (u && !data?.linked_seller_public) warmSellerPublic(u)
+  }, [data?.linked_seller?.username, data?.linked_seller_public])
 
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {
@@ -185,7 +210,9 @@ export default function CuratorPage() {
             SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
             "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} />
+        {/* 🚀 2026-07-11 (1-RTT): 서버 동봉 셀러 페이로드를 시드로 전달 — SellerPublicPage 가 동기 소비해
+            셀러 fetch 생략(없으면 기존 fetch 폴백). */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} sellerSeed={data.linked_seller_public ?? null} />
       </Suspense>
     )
   }

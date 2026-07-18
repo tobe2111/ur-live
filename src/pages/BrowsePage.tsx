@@ -23,6 +23,25 @@ interface BrowsePageProps {
 // 🛡️ 2026-06-01 (loading): 상품 카드 React.memo — 2026-06-10 ./browse/BrowseProductCard 로 추출
 //   (홈 상품 레일과 카드 공유 — 사용자 요청 "쇼핑 페이지에서 썼던 그대로"). 코드/렌더 결과 불변.
 
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_BROWSE__)를 useState 초기값에서
+//   동기 소비 — 기존엔 useEffect(페인트 후) 소비라 시드가 있어도 풀스크린 로더 1프레임이 떴음
+//   (VouchersPage/GroupBuyListPage 동기 패턴과 비대칭). 기본 상태(category=all·sort=popular)에서만 유효.
+//   기존 effect 의 소비 로직은 그대로(hasMore 세팅·파라미터 변경 대응) — 초기 페인트만 앞당김.
+function readBrowseSeed(defaultCategory?: string): Product[] | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const cat = defaultCategory || sp.get('category') || 'all'
+    const sort = sp.get('sort') || 'popular'
+    if (cat !== 'all' || sort !== 'popular') return null
+    const el = document.getElementById('__SSR_INITIAL_BROWSE__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    if (parsed?.success && Array.isArray(parsed.data)) return parsed.data as Product[]
+  } catch { /* 손상된 inject — fetch fallback */ }
+  return null
+}
+
 export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -30,8 +49,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const prefetchProduct = usePrefetchProduct()
   // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (URL ?seller=ID) sessionStorage 저장.
   useEffect(() => { captureTrackingFromUrl() }, [])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🚑 2026-07-10: SSR 시드 동기 소비 — 시드 있으면 로더 프레임 0 (위 readBrowseSeed 주석 참조).
+  const [initialSeed] = useState<Product[] | null>(() => readBrowseSeed(defaultCategory))
+  const [products, setProducts] = useState<Product[]>(initialSeed ?? [])
+  const [loading, setLoading] = useState(initialSeed == null)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()

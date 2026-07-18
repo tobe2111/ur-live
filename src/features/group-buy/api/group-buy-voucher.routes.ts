@@ -144,13 +144,25 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         ).bind(code).first<{ voucher_id: number; order_id: number | null; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
+          // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+          //   user_id 는 vouchers.user_id(meta.user_id) 그대로 → 이용권↔방문↔유저 단일 조인키.
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+              await recordVoucherVisit(DB, {
+                voucher_id: meta.voucher_id, user_id: meta.user_id,
+                seller_id: meta.consigned_from_seller_id ?? meta.seller_id,
+                amount: meta.applied_price, path: 'pin',
+              })
+            } catch { /* best-effort */ }
+          })())
           // 🛡️ 2026-05-21 Phase C: voucher 사용 시점 자동 정산 ledger entries 3개 기록.
           //   merchant (가게) + seller (위탁 판매 셀러, optional) + platform fee 분배.
           //   멱등 — voucher_id 별 1회만 실행 (내부에서 SELECT 중복 체크).
           //   waitUntil 비동기 — 응답 지연 0.
           c.executionCtx?.waitUntil((async () => {
             try {
-              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
+              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
@@ -257,19 +269,39 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       await upsertRedemptionSettings(c.env.DB, Number(user.id), s.mode, code)
       s.store_code = code
     }
-    return c.json({ success: true, data: s })
+    // 🎟️ 2026-07-06 매장별 사용조건(프리셋 선택 + 커스텀) — seller_meta 저장.
+    let usage_conditions: string[] = []
+    let usage_custom = ''
+    try {
+      const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+      const meta = await getSellerMeta(c.env.DB, [Number(user.id)])
+      const raw = meta?.get(Number(user.id))
+      usage_conditions = JSON.parse(String(raw?.voucher_usage_conditions || '[]'))
+      usage_custom = String(raw?.voucher_usage_custom || '')
+    } catch { /* 미설정 */ }
+    return c.json({ success: true, data: { ...s, usage_conditions: Array.isArray(usage_conditions) ? usage_conditions : [], usage_custom } })
   })
 
   router.put('/redemption-settings', requireAuth(), async (c) => {
     const user = getCurrentUser(c)
     if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
-    const body = await c.req.json<{ mode?: string; regenerate_code?: boolean }>().catch(() => ({} as { mode?: string; regenerate_code?: boolean }))
+    const body = await c.req.json<{ mode?: string; regenerate_code?: boolean; usage_conditions?: unknown; usage_custom?: unknown }>().catch(() => ({} as { mode?: string; regenerate_code?: boolean; usage_conditions?: unknown; usage_custom?: unknown }))
     const { getRedemptionSettings, upsertRedemptionSettings, generateStoreCode, REDEMPTION_MODES } = await import('../../../worker/utils/redemption-settings')
     const cur = await getRedemptionSettings(c.env.DB, Number(user.id))
     const mode = (REDEMPTION_MODES as readonly string[]).includes(String(body.mode || '')) ? (body.mode as typeof cur.mode) : cur.mode
     const storeCode = body.regenerate_code ? generateStoreCode() : (cur.store_code || generateStoreCode())
     await upsertRedemptionSettings(c.env.DB, Number(user.id), mode, storeCode)
-    return c.json({ success: true, data: { mode, store_code: storeCode } })
+    // 🎟️ 2026-07-06 매장별 사용조건 저장(프리셋 선택 + 커스텀) — 본문에 있을 때만 갱신.
+    let outConditions: string[] | undefined
+    let outCustom: string | undefined
+    if ('usage_conditions' in body || 'usage_custom' in body) {
+      const { sanitizeUsageConditions } = await import('../../../shared/voucher-usage-conditions')
+      const { keys, custom } = sanitizeUsageConditions(body.usage_conditions, body.usage_custom)
+      const { setSellerMeta } = await import('../../../worker/utils/seller-meta')
+      await setSellerMeta(c.env.DB, Number(user.id), { voucher_usage_conditions: JSON.stringify(keys), voucher_usage_custom: custom || null }).catch(() => {})
+      outConditions = keys; outCustom = custom
+    }
+    return c.json({ success: true, data: { mode, store_code: storeCode, ...(outConditions ? { usage_conditions: outConditions, usage_custom: outCustom } : {}) } })
   })
 
   // ── POST /:code/use-by-seller — 매장 사장님이 본인 매장 voucher 사용 (PIN 없이, seller JWT) ──
@@ -318,10 +350,22 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       ).bind(voucher.id).run()
       if (!result.meta?.changes) return c.json({ success: false, error: '동시성 충돌 — 다시 시도해주세요' }, 409)
 
+      // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+      c.executionCtx?.waitUntil((async () => {
+        try {
+          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await recordVoucherVisit(DB, {
+            voucher_id: voucher.id, user_id: voucher.user_id,
+            seller_id: voucher.consigned_from_seller_id ?? voucher.seller_id,
+            product_id: voucher.product_id, amount: voucher.applied_price, path: 'seller_scan',
+          })
+        } catch { /* best-effort */ }
+      })())
+
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {
         try {
-          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
+          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
           const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
           const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
           const amount = voucher.applied_price || 0

@@ -3,10 +3,21 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
+// 🏭 [wholesale-split 2026-07-16] 도매(features/supply) 라우트 포함 여부 — esbuild define 로 index.ts 에 주입.
+//   - 소비자(ur-live): WHOLESALE_BUNDLE 미설정 → false → mount-wholesale + 도매 그래프 전체 DCE 제외(워커 ~200KB↓).
+//   - 도매(ur-wholesale): 빌드 env WHOLESALE_BUNDLE=1 → true → 도매 라우트 포함.
+const INCLUDE_WHOLESALE = process.env.WHOLESALE_BUNDLE === '1';
+
+// 🥗 [docs-split 2026-07-16] 개발자용 API 문서(OpenAPI spec ~48KB + @hono/swagger-ui) 포함 여부.
+//   - 프로덕션(소비자/도매): DOCS_BUNDLE 미설정 → false → docs.routes.ts 의 if(__INCLUDE_DOCS__) 블록 DCE
+//     → openapi.ts + swagger-ui 번들 제외(gzip ~10~15KB↓). /docs·/api/openapi.json 은 프로덕션 미노출.
+//   - 문서 필요 시: DOCS_BUNDLE=1 npm run build.
+const INCLUDE_DOCS = process.env.DOCS_BUNDLE === '1';
+
 async function buildWorker() {
   try {
-    console.log('🔧 Building Worker bundle...');
-    
+    console.log(`🔧 Building Worker bundle... (wholesale routes: ${INCLUDE_WHOLESALE ? 'INCLUDED' : 'excluded'})`);
+
     await esbuild.build({
       entryPoints: ['src/worker/index.ts'],
       bundle: true,
@@ -40,6 +51,10 @@ async function buildWorker() {
         'import.meta.env.PROD': 'true',
         'import.meta.env.MODE': '"production"',
         'import.meta.env.SSR': 'true',
+        // 🏭 [wholesale-split] 도매 라우트 트리셰이킹 스위치 (index.ts 의 __INCLUDE_WHOLESALE__).
+        '__INCLUDE_WHOLESALE__': INCLUDE_WHOLESALE ? 'true' : 'false',
+        // 🥗 [docs-split] OpenAPI/Swagger 문서 트리셰이킹 스위치 (docs.routes.ts 의 __INCLUDE_DOCS__).
+        '__INCLUDE_DOCS__': INCLUDE_DOCS ? 'true' : 'false',
       },
       logLevel: 'info',
       metafile: true,

@@ -112,7 +112,26 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
       }
     }
     if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd}`)
+
+    // 🔔 2026-07-08 (무인운영 감사): 성공 하트비트 — 주간 정산 생성이 조용히 멈추면(무소식)
+    //   운영자가 알아채도록 매 run 요약을 어드민 벨 + Discord 로 push. 리포트가 "안 오는 것"이
+    //   곧 이상신호가 되게 한다. 집계/INSERT 로직은 불변 — 요약 통지 1블록만 추가.
+    try {
+      const summary = `주간 정산 생성: ${created}건 (${periodStart} ~ ${periodEnd})`
+      try {
+        const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(DB, 'admin', null, 'payouts_generated', '💸 주간 정산 생성', summary, '/admin/payouts')
+      } catch { /* 벨 실패 무시 */ }
+      const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
+      if (webhook) {
+        const { sendDiscordAlert } = await import('../utils/discord-alert')
+        await sendDiscordAlert(webhook, '💸 주간 정산 생성', summary, 'info').catch(() => {})
+      }
+    } catch { /* 하트비트 실패는 정산 생성에 영향 없음 */ }
   } catch (e) {
+    // 🔔 2026-07-08: 이전엔 여기서 삼켜 safeCron 의 실패 알림 경로에 안 닿았음(무음).
+    //   재throw → scheduled.ts safeCron → notifyCronFailure(Discord + cron_failures + 어드민 벨).
     logError('[payouts-cron] failed', { error: (e as Error).message })
+    throw e
   }
 }

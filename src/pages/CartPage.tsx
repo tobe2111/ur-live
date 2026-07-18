@@ -14,6 +14,7 @@ import { getCartItemPrice } from '@/types/cart'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
 //   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
@@ -75,7 +76,7 @@ function CartPageContent() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
-  const { data: cartData, isLoading: loading, refetch } = useCart()
+  const { data: cartData, isLoading: loading } = useCart()
   const updateQuantityMutation = useUpdateCartQuantity()
   const removeItemMutation = useRemoveFromCart()
   const updateOptionMutation = useUpdateCartOption()
@@ -135,8 +136,8 @@ function CartPageContent() {
     }
 
     // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
-    // React Query가 자동으로 데이터 로딩
-    refetch()
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 수동 refetch() 제거 — useCart 가 이미 refetchOnMount:true 라
+    //   콜드 마운트에서 /api/cart 를 2번 치던 중복 요청. React Query 가 자동 로딩.
   }, [])
 
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
@@ -419,13 +420,11 @@ function CartPageContent() {
     })
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0A0A0A]">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">{t('cart.loading')}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen label={t('cart.loading')} />
       </div>
     )
   }

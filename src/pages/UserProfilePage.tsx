@@ -6,10 +6,10 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { cfImage } from '@/utils/cf-image'
-import { logout } from '@/features/auth/login-flow.service'
+import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight, Store, ScanLine } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -31,6 +31,7 @@ import {
   ProfileEditModal,
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -90,13 +91,11 @@ export default function UserProfilePage() {
   }, [user])
 
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#020202]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
@@ -113,18 +112,17 @@ export default function UserProfilePage() {
   }
 
   // ✅ 로그아웃 핸들러
-  // 🔑 2026-07-07 (대표 신고 "로그아웃이 제 때 안돼"): 반드시 'user'(소비자) 세션을 명시 로그아웃.
-  //   버그: logout() 무인자는 localStorage.user_type 로 타입 자동감지하는데, safeSetUserType()(useAuthKR)
-  //   가 다중역할(사업자유저/어드민) 계정의 user_type='seller'/'admin' 을 보존(다운그레이드 안 함) →
-  //   여기(소비자 마이페이지)에서 무인자 호출 시 seller/admin 세션만 지우고 소비자 ur_session 이 살아남아
-  //   /api/auth/me 가 재인증 → "로그아웃해도 로그인" (+ 엉뚱하게 admin/seller 토큰만 날림).
-  //   이 페이지는 소비자 마이페이지이므로 항상 'user' 세션을 로그아웃(듀얼로그인 보호 — seller/admin 세션은 각 대시보드에서).
+  // 🔑 2026-07-07 (대표 확정 "전부 로그아웃"): 마이페이지 로그아웃 = 소비자+셀러+어드민+에이전시 전 세션 종료.
+  //   배경: 이전엔 logout('user') 로 소비자만 지웠으나, 다중역할 계정(어드민/셀러 + 소비자)에선
+  //   대시보드 Bearer 토큰(seller_token/admin_token 등)이 남아 isLoggedInSync()=true → 홈이 여전히
+  //   "로그인됨"으로 보임 → 대표 신고 "로그아웃이 안 됨". 이중 로그인 편의를 포기하고 명시적
+  //   로그아웃은 전 역할을 완전히 종료(logoutAll — 서버 ur_* 세션쿠키 전체 삭제 await + 전 역할 localStorage 정리).
   const handleLogout = async () => {
     try {
-      await logout('user')
-      navigate('/', { replace: true })
+      await logoutAll()  // 내부에서 하드 리로드('/') 로 마무리
     } catch (error) {
       if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+      window.location.href = '/'
     }
   }
 
@@ -254,6 +252,24 @@ export default function UserProfilePage() {
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
+        {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
+            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => navigate('/store/scan')}
+            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+          >
+            <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
+              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+            </span>
+            <span className="text-left min-w-0">
+              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
+            </span>
+          </button>
+        )}
+
         {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
         {!!localStorage.getItem('seller_token') && (
           <button

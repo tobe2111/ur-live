@@ -1,0 +1,39 @@
+# ============================================================
+# 유어애즈 독립 Worker (ur-ads) — 설계: docs/design/urads-worker-split.md
+#
+# ⚠️ 이것은 **표준(standalone) Worker** 설정입니다 (메인 wrangler.toml 은 Pages).
+#   배포: `npx wrangler@3 deploy --config wrangler-ads.toml`
+#   메인 Pages(ur-live)와 **같은 D1** 을 바인딩 → 3서비스 데이터 연결 유지.
+#   ⚠️ 이 Worker 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고 방지). Service Binding 으로만 접근.
+#
+#   Phase A: 스캐폴드(미배포). Phase B 에서 대표가 Cloudflare 셋업 후 이 설정으로 배포.
+# ============================================================
+
+name = "ur-ads"
+main = "dist-ads/index.js"
+compatibility_date = "2025-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 배포 전 esbuild 번들(@/ alias resolve) — wrangler deploy 가 이 command 를 먼저 실행.
+[build]
+command = "node scripts/build-worker-ads.js"
+
+# ⏰ Cron — 소셜 홍보 자동화(메인에서 이관). 전부 게이트 OFF 기본이라 미설정 시 no-op.
+#   매시간: 영상 렌더 폴링 + 예약 발행(SOCIAL_AUTO_PUBLISH_ENABLED). 주간(월): 홍보 초안(SOCIAL_AUTO_DRAFT_ENABLED).
+[triggers]
+# 🎯 Phase E(2026-07-18): 광고 cron 이관 — "*/5"(자동입찰, ADS_AUTOBID_ENABLED 게이트) ·
+#   "0 18 * * *"(일일 배치: 가격/순위/스냅샷/알림/섀도우). 메인 scheduled.ts 에선 같은 커밋에서 제거(이중실행 방지).
+crons = ["*/5 * * * *", "0 * * * *", "0 18 * * *", "0 0 * * 1"]
+
+# 같은 D1 (메인 ur-live 와 동일 database_id — 데이터 공유의 핵심)
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+
+# KV (있으면 메인과 동일 namespace 를 대시보드 Bindings 에 등록):
+#   RATE_LIMIT_KV · SESSION_KV · CACHE_KV
+#
+# 시크릿 (대시보드 Settings → Variables and Secrets, 메인과 동일 값):
+#   JWT_SECRET(필수·동일) · YOUTUBE_API_KEY · NAVER_SEARCH_CLIENT_ID/SECRET(또는 NAVER_CLIENT_ID/SECRET)
+#   · DATA_ENCRYPTION_KEY · ANTHROPIC_API_KEY · ADS_* 플래그 · RESEND_*(선택)

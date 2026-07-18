@@ -29,6 +29,7 @@ interface Summary {
   available_commission: number
   paid_commission: number
   commission_pct?: number  // 🏷️ 2026-07-02: 본 에이전시 실제 적용 요율(설정값 연동, 기본 SSOT 1%)
+  funding_source?: string  // 💡 flip B1 선반영 — 'platform'(기본) | 'owner' (프레이밍 게이트)
 }
 
 interface IntroducedStore {
@@ -112,6 +113,9 @@ export default function AgencyIntroducedStoresPage() {
   const commissions = commissionsQ.data ?? []
   const introCode = introCodeQ.data ?? null
   const loading = summaryQ.isLoading || storesQ.isLoading || commissionsQ.isLoading || introCodeQ.isLoading
+  // 💡 2026-07-11 (flip B1 선반영): 재원 게이트 — 'owner' 확인 시에만 "매장 promo 재원" 프레이밍.
+  //   미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  const ownerFunded = summary?.funding_source === 'owner'
 
   const handleCopyCode = async () => {
     if (!introCode?.share_url) return
@@ -130,7 +134,11 @@ export default function AgencyIntroducedStoresPage() {
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="내가 입점시킨 가게"
-          subtitle={`입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
+          /* 💡 flip B1 (게이트드 선반영): owner-펀딩 확인 시에만 "매장 promo 재원" 병기 —
+             platform(현행 기본) 은 기존 문구 byte-동일 */
+          subtitle={ownerFunded
+            ? `입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission — 매장 promo(매장 몫) 재원 (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`
+            : `입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
           icon={<Store className="h-5 w-5" />}
         />
 
@@ -191,6 +199,8 @@ export default function AgencyIntroducedStoresPage() {
                 <br />
                 가입 시 자동 매칭 → 입점 가게의 매출에 <strong>{introCode?.commission_pct ?? 1}%</strong> commission
                 {introCode?.term_months ? ` (첫 판매 확정일로부터 ${introCode.term_months}개월)` : ''}.
+                {/* 💡 flip B1: owner-펀딩일 때만 재원 출처 병기 — platform 동안 미렌더(기존 문구 불변) */}
+                {ownerFunded && ' 커미션은 매장 promo(매장 몫) 재원에서 지급됩니다.'}
               </p>
             </div>
 

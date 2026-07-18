@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
@@ -12,6 +12,7 @@ import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import BrandLoader from '@/components/brand/BrandLoader'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 
@@ -84,6 +85,10 @@ const NAV_GROUPS: {
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
+      // 🤝 2026-07-10: 인플루언서 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
+      { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
+      // 🎁 2026-07-12 WP-A: 체험 캠페인(무료 응모·추첨 체험단). 생성은 게이트 뒤, 관리는 상시.
+      { path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', icon: Gift, mode: 'common' },
       { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
     ],
   },
@@ -92,6 +97,9 @@ const NAV_GROUPS: {
     items: [
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
+      // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
+      { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
+      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
@@ -162,6 +170,22 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   //        (분류기 오분류 — 예: 홍보전용 인플루언서, 상품 0 — 이어도 영구 트랩 불가).
   //     ③ `?as=seller`(도매몰의 '셀러 대시보드' 링크 등) 명시 진입은 강제이동 영구 면제.
   const [wholesaleOnly, setWholesaleOnly] = useState(false)
+  // 🚑 2026-07-10 (로딩 전수조사 — 첫 진입 오표면 플래시 제거): 판정이 필요한 조건(아래 effect 와 동일)이면
+  //   서버 판정(/api/seller/surface) 이 끝날 때까지 셀러 대시보드를 그리지 않고 라이트 로더 유지.
+  //   기존엔 도매전용 계정 첫 진입 시 [셀러 대시보드 풀 렌더 → /wholesale 바운스] 플래시가 세션당 1회 났음.
+  //   판정 불필요(비판매사/캐시/명시진입)면 false 로 시작 = 기존과 byte-동일. fail-open 유지(로더가 셀러 화면으로 풀림).
+  const [surfacePending, setSurfacePending] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      if (localStorage.getItem('is_distributor') !== '1') return false
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('as') === 'seller') return false
+      if (sessionStorage.getItem('ur_force_seller') === '1') return false
+      if (sessionStorage.getItem('ur_seller_bounced') === '1') return false
+      if (sessionStorage.getItem('ur_seller_surface') === 'seller') return false
+      return true
+    } catch { return false }
+  })
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (localStorage.getItem('is_distributor') !== '1') return // 도매 접근권 없으면 절대 도매 전용 아님
@@ -186,9 +210,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       .then((r) => {
         if (!alive) return
         if ((r?.data as { wholesale_only?: boolean })?.wholesale_only) bounce()
-        else sessionStorage.setItem('ur_seller_surface', 'seller') // 겸업 — 이후 재조회 skip
+        else {
+          sessionStorage.setItem('ur_seller_surface', 'seller') // 겸업 — 이후 재조회 skip
+          setSurfacePending(false) // 🚑 2026-07-10: 판정 완료 — 셀러 대시보드 렌더
+        }
       })
-      .catch(() => { /* fail-open: 대시보드 유지(lock-out 금지) */ })
+      .catch(() => { if (alive) setSurfacePending(false) /* fail-open: 대시보드 유지(lock-out 금지) */ })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
@@ -471,6 +498,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 셀러 대시보드 렌더 X (깜빡임 방지).
   //   ⚠️ is_distributor 직접 비교 금지(겸업 lock-out) — 서버 권위 판정 결과(wholesaleOnly)로만 차단.
   if (wholesaleOnly) return null
+  // 🚑 2026-07-10 (로딩 전수조사): 표면 판정 대기 중엔 라이트 로더 — 도매전용 계정 첫 진입 시
+  //   [셀러 대시보드 풀 렌더 → /wholesale 바운스] 오표면 플래시 제거. 판정/실패 시 즉시 해제(fail-open).
+  if (surfacePending) {
+    return (
+      <div className="seller-light-theme" style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
 
   return (
     <div className="seller-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
@@ -503,6 +539,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🏠 2026-07-16 (대표 요청 — 셀러 대시보드에서 메인 서비스로 이동 버튼): 유어딜 소비자 홈(/)으로. */}
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600 text-xs font-semibold"
+              aria-label={t('seller.goMainService', { defaultValue: '유어딜 메인 서비스로 이동' })}
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('seller.mainService', { defaultValue: '유어딜 홈' })}</span>
+            </Link>
             {/* Language Switcher */}
             <div className="relative">
               <button

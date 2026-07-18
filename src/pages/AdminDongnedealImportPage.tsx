@@ -9,6 +9,7 @@ import ManualDealForm from './admin-dongnedeal/ManualDealForm'
 import DealList from './admin-dongnedeal/DealList'
 import type { DealRow } from './admin-dongnedeal/types'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
+import { cleanSido, buildRegionParam } from './admin-dongnedeal/region-util'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -21,22 +22,8 @@ const CAT_LABEL: Record<string, string> = {
   meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
 }
 
-// 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): 소비자 홈 지역필터와 **동일 SSOT**(KOREA_REGIONS)
-//   를 1차(시/도)·2차(동네그룹)로 사용. 선택값을 카카오가 지오코딩 가능한 검색어로 변환 → 그 동네 실매장 매칭.
-function cleanSido(label: string): string {
-  // '전주/전북' → '전주', '충남\n세종' → '충남', '서울' → '서울'
-  return label.replace(/\n[\s\S]*/, '').split('/')[0].trim()
-}
-function buildRegionParam(sidoKey: string, districtKey: string): string {
-  const region = findRegionByKey(sidoKey)
-  if (!region) return ''
-  const sido = cleanSido(region.label)
-  if (districtKey) {
-    const dg = region.districtGroups.find((g) => g.key === districtKey)
-    if (dg && dg.keywords.length) return `${sido} ${dg.keywords[0]}`.trim()  // 예: "서울 강남", "경기 인계동"
-  }
-  return sido  // 동네그룹 미선택 = 시/도 전체
-}
+// 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): cleanSido/buildRegionParam 은
+//   region-util.ts SSOT 로 이동(목록 필터 DealList 와 공유). 여기선 import 해서 사용.
 
 interface ImportRow { row: number; name?: string; status: 'ok' | 'error'; reason?: string }
 interface ImportResult { summary: { total: number; created: number; failed: number }; results: ImportRow[] }

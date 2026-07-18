@@ -63,7 +63,7 @@ adsAuthRoutes.patch('/auth/account', rateLimit({ action: 'ads-account-patch', ma
 })
 
 // POST /api/ads/auth/password — 비밀번호 변경(현재 비번 확인)
-adsAuthRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, windowSec: 600 }), async (c) => {
+adsAuthRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, windowSec: 600, sensitive: true }), async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -73,7 +73,7 @@ adsAuthRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, wind
 })
 
 // POST /api/ads/auth/unlock — 베타 액세스 코드 입력 → 계정 잠금 해제(1회)
-adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, windowSec: 300 }), async (c) => {
+adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, windowSec: 300, sensitive: true }), async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -83,28 +83,38 @@ adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, wi
 })
 
 // POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.
-adsAuthRoutes.post('/auth/forgot', rateLimit({ action: 'ads-forgot', max: 5, windowSec: 600 }), async (c) => {
+adsAuthRoutes.post('/auth/forgot', rateLimit({ action: 'ads-forgot', max: 5, windowSec: 600, sensitive: true }), async (c) => {
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const reset = await requestPasswordReset(c.env.DB, String(body.email || '')).catch(() => null)
-  if (reset && c.env.RESEND_API_KEY && c.env.RESEND_FROM) {
-    const origin = new URL(c.req.url).origin
-    const link = `${origin}/ads/reset?token=${reset.token}`
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${c.env.RESEND_API_KEY}` },
-      body: JSON.stringify({
-        from: c.env.RESEND_FROM, to: reset.email,
-        subject: '[유어애즈] 비밀번호 재설정',
-        text: `아래 링크에서 비밀번호를 재설정하세요(1시간 유효):\n\n${link}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.\n\n— 유어애즈 UR Ads`,
-      }),
-    }).catch(() => null)
+  if (reset) {
+    // 이메일 발송 인프라(Resend)가 없으면 재설정 토큰은 발급됐는데 링크가 영영 안 감(무음 데드엔드).
+    //   → 운영자가 알 수 있게 서버 로그로 경보(응답은 여전히 열거방지 위해 동일).
+    if (!c.env.RESEND_API_KEY || !c.env.RESEND_FROM) {
+      console.error('[ads-forgot] RESEND_API_KEY/RESEND_FROM 미설정 — 재설정 링크를 발송하지 못했습니다. 어드민 비번 재설정 도구(/admin/ads-accounts)로 처리하세요.')
+    } else {
+      const origin = new URL(c.req.url).origin
+      const link = `${origin}/ads/reset?token=${reset.token}`
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${c.env.RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: c.env.RESEND_FROM, to: reset.email,
+          subject: '[유어애즈] 비밀번호 재설정',
+          text: `아래 링크에서 비밀번호를 재설정하세요(1시간 유효):\n\n${link}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.\n\n— 유어애즈 UR Ads`,
+        }),
+      }).catch(() => null)
+      // Resend 가 4xx/5xx(키 만료·쿼터초과·도메인 미인증)를 반환하면 조용히 삼키지 말고 로그.
+      if (!res || !res.ok) {
+        console.error('[ads-forgot] 재설정 메일 발송 실패', { status: res?.status ?? 'network-error' })
+      }
+    }
   }
   // 이메일 존재 여부 노출 금지 — 항상 동일 응답.
   return c.json({ success: true, message: '가입된 이메일이면 재설정 링크를 보냈습니다.' })
 })
 
 // POST /api/ads/auth/reset — 토큰으로 새 비밀번호 설정
-adsAuthRoutes.post('/auth/reset', rateLimit({ action: 'ads-reset', max: 10, windowSec: 600 }), async (c) => {
+adsAuthRoutes.post('/auth/reset', rateLimit({ action: 'ads-reset', max: 10, windowSec: 600, sensitive: true }), async (c) => {
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await resetPasswordWithToken(c.env.DB, String(body.token || ''), String(body.new_password || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400)

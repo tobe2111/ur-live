@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
@@ -215,6 +216,8 @@ export default function AgencyLoginPage() {
 
               <a
                 href={`/auth/kakao/start?redirect=${encodeURIComponent('/agency')}&intent=agency`}
+                /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 무반응 구간에 공용 브랜드 오버레이. */
+                onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors no-underline"
               >
                 <span className="text-base">💬</span>

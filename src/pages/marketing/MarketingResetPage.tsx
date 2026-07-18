@@ -65,7 +65,7 @@ export default function MarketingResetPage() {
           </>
         ) : (
           <>
-            <input className="ua-auth-input" style={{ marginTop: 20 }} type="password" autoComplete="new-password" placeholder="새 비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <input className="ua-auth-input" style={{ marginTop: 20 }} type="password" autoComplete="new-password" placeholder="새 비밀번호 (8자 이상·영문·숫자·특수문자 중 2종 이상)" value={pw} onChange={(e) => setPw(e.target.value)} />
             {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626' }}>{err}</p>}
             <button type="submit" className="ua-auth-btn" style={{ marginTop: 14 }} disabled={busy}>{busy ? '변경 중…' : '비밀번호 변경'}</button>
           </>

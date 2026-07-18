@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText,
+  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2,
   type LucideIcon
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
@@ -16,6 +16,7 @@ import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface NavItem {
   path: string
@@ -61,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🎯 유어애즈 · 운영',
     items: [
       { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
+      { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
     ],
   },
   {
@@ -115,8 +117,10 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/gb-cockpit',       label: '공구 엔진 조종석', icon: Rocket },
       { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
+      { path: '/admin/experience-campaigns', label: '체험 캠페인',   icon: Gift },
       { path: '/admin/voucher-disputes', label: '사용처리 분쟁',  icon: AlertOctagon },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
@@ -160,6 +164,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
+      // 🧾 2026-07-10: 불변식 #44 콕핏 — promo 재원/원장 platform:revenue 대칭 감사 (read-only, 8월 flip 검증 표면).
+      { path: '/admin/promo-ledger',     label: 'promo 재원 원장', icon: FileText },
       // 🔧 2026-07-01 (대표 "무슨 말인지 모르겠어"): '수수료 규칙 비교'(fee-resolver 그림자검증 — 개발/검증 전용,
       //   기본 OFF·돈 안 움직임)는 재무 실무 메뉴에서 오해 소지 → 아래 '개발자 도구' 그룹으로 이동.
     ],
@@ -172,6 +178,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
       { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
+      { path: '/admin/district-coupons', label: '상권 쿠폰(영수증 페이백)', icon: Ticket },
       { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },
     ],
   },
@@ -179,6 +186,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: '콘텐츠',
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
+      // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전(메인 슬림 유지). ur-ads 컷오버 완료 후 메뉴 재노출.
+      { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
       { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },
@@ -376,27 +385,32 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
   // 🆕 도매 파트너가 비-도매 어드민 경로(/admin 소비자 홈, /admin/users 등)로 직접 진입 시 도매 현황으로 리다이렉트.
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
-  useEffect(() => {
-    if (adminRole !== 'wholesale') return
-    // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
-    //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
-    //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
+  // 🚑 2026-07-10 (로딩 전수조사 — 바운스 전 오화면 플래시 제거): 리다이렉트 조건을 렌더 시점에 동기
+  //   계산(willBounce*)해, 리다이렉트가 예정된 프레임엔 콘솔 대신 라이트 로더를 그림(아래 render 가드).
+  //   조건·effect·ALWAYS_ALLOWED 면제는 전부 기존과 동일(무한루프 사고 방지 로직 불변) — 페인트만 억제.
+  // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
+  //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
+  //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
+  const willBounceWholesale = (() => {
+    if (adminRole !== 'wholesale') return false
     const allowed = [
       ...roleNavGroups.flatMap((g) => g.items.flatMap((it) => [it.path, ...(it.also || [])])),
       ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS,
     ]
-    const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
-    if (!ok) navigate('/admin/wholesale-overview', { replace: true })
+    return !allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
+  })()
+  useEffect(() => {
+    if (willBounceWholesale) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
 
   // 🆕 보안 PIN 강제 설정 게이트 — 강제 대상(도매 파트너/슈퍼)인데 미설정이면 PIN 설정 페이지로 가둠.
   //   로그인 시 must_set_pin 플래그 설정 → 설정 성공 시 해제. /admin/set-pin 자신은 면제(루프 방지).
+  const willBouncePin = typeof window !== 'undefined'
+    && localStorage.getItem('admin_must_set_pin') === '1'
+    && location.pathname !== '/admin/set-pin'
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (localStorage.getItem('admin_must_set_pin') === '1' && location.pathname !== '/admin/set-pin') {
-      navigate('/admin/set-pin', { replace: true })
-    }
+    if (willBouncePin) navigate('/admin/set-pin', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
@@ -571,6 +585,16 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </div>
     </aside>
   )
+
+  // 🚑 2026-07-10 (로딩 전수조사): 리다이렉트 예정 프레임엔 콘솔 대신 라이트 로더 — 도매 RBAC/PIN 게이트
+  //   바운스 직전에 다른 어드민 화면이 한 번 그려지던 플래시 제거. effect 가 즉시 navigate (조건 동일 — 위 주석).
+  if (willBounceWholesale || willBouncePin) {
+    return (
+      <div className="admin-light-theme [color-scheme:light]" style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
 
   return (
     <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">

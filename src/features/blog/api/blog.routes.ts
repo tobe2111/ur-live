@@ -10,7 +10,8 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 import { swallow } from '@/worker/utils/swallow';
 import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
-import { blogSeedPosts } from './blog-seed';
+// 🥗 2026-07-15 워커 다이어트(대표 승인): blog-seed(임베드 블로그 글 ~62KB)는 syncBlogSeed 안에서만 쓰이므로
+//   정적 import → 동적 import 로 이동(guide-seed 와 동일 검증된 패턴). 시드 동기화 발생 시에만 로드 → 메인 워커 번들 축소.
 import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env }>()
 
@@ -247,6 +248,7 @@ const LEGACY_SEED_SLUGS = [
 // 시드↔DB 동기화: 신규 글 삽입 / 시드 관리 글 최신화 / 낡은 시드 글 비공개.
 // 관리자가 수정(manually_edited=1)하거나 직접 작성(is_seed=0)한 글은 절대 건드리지 않음.
 async function syncBlogSeed(DB: D1Database) {
+  const { blogSeedPosts } = await import('./blog-seed') // 🥗 동적 로드(위 import 주석 참조) — 시드 동기화 시에만
   const posts = blogSeedPosts()
 
   // 구 시드 글을 시드 관리 대상으로 표시(1회, 멱등) → 낡은 글 정리 가능하게

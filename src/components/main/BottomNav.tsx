@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
+import { Home, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -200,7 +200,10 @@ export default function BottomNav() {
     //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
     // 🛍️ 2026-06-20 (대표 결정 — 홈=동네딜지도 / 일반상품을 교환권 탭에 통합): 탭2 = '쇼핑'(교환권 기프티콘 + 일반상품).
     //   라벨 교환권→쇼핑, 아이콘 Gift→ShoppingBag. path 는 /vouchers 그대로(페이지가 교환권+일반상품 포괄).
-    { icon: ShoppingBag, label: t('nav.shopping', { defaultValue: '쇼핑' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    // 🎟️ 2026-07-10 [UNLOCK_LOADING] (대표 결정 — 일반상품 SHOPPING_TAB_HIDDEN 게이트로 숨김·교환권 유지):
+    //   /vouchers 가 순수 교환권 페이지로 복귀(06-19 형태) → 라벨 쇼핑→교환권, 아이콘 ShoppingBag→Gift.
+    //   path/prefetch 불변. SHOPPING_TAB_HIDDEN=false 로 일반상품 복원 시 라벨 재검토.
+    { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
@@ -409,22 +412,7 @@ export default function BottomNav() {
                        'DISPLAY 는 active_role 로만' 룰은 탭/내비 표시용 — ➕ 시트는 역할 행동 메뉴라 토큰 기준. */}
                   {(isSeller || hasSellerToken) && (
                     <div className="space-y-3">
-                      {/* 🏭 2026-06-04 라이브커머스 잠정 중단 — '라이브 방송 시작하기' 진입 숨김. */}
-                      {!LIVE_COMMERCE_SUSPENDED && (
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Radio className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">{t('bottomNav.liveBroadcastStart', { defaultValue: '라이브 방송 시작하기' })}</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">{t('bottomNav.liveBroadcastDesc', { defaultValue: 'YouTube 연동으로 바로 방송 시작' })}</p>
-                        </div>
-                      </button>
-                      )}
-
+                      {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작하기' 진입 삭제. */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"

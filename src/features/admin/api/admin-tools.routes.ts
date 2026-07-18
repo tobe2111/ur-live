@@ -14,6 +14,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { validateImageUrl } from '@/worker/utils/validation'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { intParam } from '@/shared/pagination'
+import { validatePlatformSettings } from '@/worker/utils/platform-settings-validation'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -305,6 +306,14 @@ adminToolsRoutes.get('/settings', async (c) => {
 
 adminToolsRoutes.put('/settings', async (c) => {
   const body = await c.req.json<Record<string, string>>().catch(() => ({} as Record<string, string>))
+  // 💸 2026-07-11: 알려진 키 값 검증 레지스트리 (2026-07-10 gb_engine 단일 가드를 흡수/일반화).
+  //   8월 flip 머니 스위치들이 이 endpoint 를 경유 — 오타값(예: 'True', '1')이 저장되면 read-site 의
+  //   ==='true' / ==='owner' strict 비교가 조용히 OFF/폴백으로 동작해 flip 세션이 오판.
+  //   위반 시 요청 전체 거부(부분 적용 금지). 미등재 키는 기존대로 통과(hard-whitelist 아님).
+  const invalid = validatePlatformSettings(body)
+  if (invalid) {
+    return c.json({ success: false, error: `${invalid} — 저장이 취소되었습니다 (전체 미적용)` }, 400)
+  }
   try { await c.env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

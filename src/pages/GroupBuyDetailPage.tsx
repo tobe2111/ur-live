@@ -8,6 +8,7 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -33,6 +34,8 @@ import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+// 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
+const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
 
 // 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
 //   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
@@ -96,13 +99,6 @@ interface GroupBuyDetail {
   seller_facebook?: string | null
 }
 
-interface Participant {
-  masked_name: string
-  avatar?: string
-  created_at: string
-  quantity: number
-}
-
 function CategoryEmoji({ cat }: { cat: string }) {
   const map: Record<string, string> = {
     meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
@@ -126,7 +122,9 @@ export default function GroupBuyDetailPage() {
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
   // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
-  useEffect(() => { storeAffiliateRef(searchParams.get('aff')) }, [searchParams])
+  // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) 도 커미션 레일에 저장 — 기존엔 랜딩 배너
+  //   플래그(refUserId)로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
+  useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
 
   // 🛡️ 2026-06-11 (플로우 감사 갭#5): 토스 실패 복귀(?fail=1) 무안내였음 — failUrl 만 만들고
   //   읽는 코드가 없어 유저가 결제 성패를 모름. 1회 toast + URL 정리(새로고침 중복 방지).
@@ -157,10 +155,10 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [id, qc])
   const [detail, setDetail] = useState<GroupBuyDetail | null>(seedDetail)
-  const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
@@ -221,10 +219,9 @@ export default function GroupBuyDetailPage() {
       },
       staleTime: 60_000,
     })
-    Promise.all([
-      detailPromise,
-      api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailData, partRes]) => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): participants fetch 제거 — 리디자인 후 어디서도 렌더 안 되던
+    //   죽은 요청(상세 진입마다 무의미한 왕복 1개). 상세 payload 만 로드.
+    detailPromise.then((detailData) => {
       if (cancelled) return
       if (detailData) {
         setDetail(detailData)
@@ -240,16 +237,32 @@ export default function GroupBuyDetailPage() {
           })
         } catch { /* silent */ }
       }
-      setParticipants(partRes.data?.data || [])
     }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [productId, navigate, qc])
 
   // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
+  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 이 섹션은 폴드 아래(페이지 최하단 가로 스크롤)라
+  //   마운트 즉시 전체 active 목록을 받던 것을 IntersectionObserver 로 게이팅 — 사용자가 그 근처까지
+  //   스크롤할 때만 1회 fetch. HomeProductsRail 과 동일 패턴(600px rootMargin). SSR seed·폴링·below-fold
+  //   lazy 전부 불변(additive — 관찰 게이트 1개 추가). 대다수(빠른 이탈/구매) 뷰에서 요청 자체가 사라짐.
+  const [otherDealsInView, setOtherDealsInView] = useState(false)
+  const otherDealsSentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = otherDealsSentinelRef.current
+    if (!el || otherDealsInView) return
+    if (typeof IntersectionObserver === 'undefined') { setOtherDealsInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setOtherDealsInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [otherDealsInView, detail?.seller_id])
+
   useEffect(() => {
     const sid = detail?.seller_id
-    if (!sid) return
+    if (!sid || !otherDealsInView) return
     let cancelled = false
     api.get('/api/group-buy/products?status=active')
       .then(r => {
@@ -263,7 +276,7 @@ export default function GroupBuyDetailPage() {
       })
       .catch(() => { /* silent */ })
     return () => { cancelled = true }
-  }, [detail?.seller_id, productId])
+  }, [detail?.seller_id, productId, otherDealsInView])
 
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
@@ -539,7 +552,7 @@ export default function GroupBuyDetailPage() {
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] ${
           headerSolid
             ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
             : 'bg-transparent border-b border-transparent'
@@ -587,8 +600,12 @@ export default function GroupBuyDetailPage() {
         </div>
       </header>
 
+      {/* 🖥️ 2026-07-16 (대표 — 동네딜 상세 PC 2단): lg+ 에서 좌 갤러리(sticky) + 우 본문 2단(1080).
+          🖼️ 2026-07-16 (대표 신고 — PC 이미지가 상단에 너무 붙음): lg 에서 상단 여백(pt-6) + 갤러리 카드화
+          (rounded + 헤더 높이만큼 sticky top). 모바일(<lg)은 갤러리→본문 세로 1열 + 몰입형 풀블리드 그대로. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start lg:pt-[72px]">
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:sticky lg:top-[72px] lg:self-start lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#1A1A1A]" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
             <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
@@ -857,8 +874,26 @@ export default function GroupBuyDetailPage() {
               <ProductReviews productId={productId} limit={5} />
             </Suspense>
           </DeferUntilVisible>
-        </div>
 
+          {/* 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 — GB_ENGINE_ENABLED 게이트(기본 OFF, 미노출) */}
+          {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
+            <button
+              onClick={() => setShowPropose(true)}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
+            >
+              📣 이 매장에 공구 제안하기 (인플루언서)
+            </button>
+          )}
+        </div>
+        {GB_ENGINE_ENABLED && showPropose && detail && (
+          <Suspense fallback={null}>
+            <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
+          </Suspense>
+        )}
+
+        {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
+        <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
         {otherDeals.length > 0 && (
           <>
@@ -891,13 +926,18 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 112 }} />
       </main>
+      </div>{/* /lg 2단 grid */}
 
       {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
-            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
+            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속.
+            🖥️ 2026-07-16 (PC 2단): lg+ 에서 footer 는 1080 투명 포지셔너, 실제 바 박스는 우측 컬럼(정보 쪽)에 정렬. */}
       <footer
-        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] lg:pointer-events-none"
         role="contentinfo" aria-label="결제 영역"
+      >
+      <div
+        className="lg:pointer-events-auto lg:ml-auto lg:w-[calc(50%-20px)] lg:rounded-t-2xl"
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
@@ -926,6 +966,7 @@ export default function GroupBuyDetailPage() {
         >
           {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+      </div>{/* /bar box */}
       </footer>
     </div>
   )

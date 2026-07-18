@@ -73,7 +73,8 @@ export async function createAdsAccount(
   const phone = (input.phone || '').trim() || null
   if (!EMAIL_RE.test(email)) return { ok: false, status: 400, error: '올바른 이메일을 입력해주세요' }
   if (!company || company.length > 80) return { ok: false, status: 400, error: '회사(고객사) 이름을 입력해주세요' }
-  const pw = validatePasswordComplexity(input.password)
+  // 2026-07-10 대표 결정: 유어애즈 비번 정책 = 완화 모드(8자+ · 영문/숫자/특수 2종+) — 대문자 강제 해제.
+  const pw = validatePasswordComplexity(input.password, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   // 중복 이메일 사전 검사(인덱스가 최종 방어 — 경쟁 시 INSERT 실패).
   const dup = await DB.prepare('SELECT id FROM ad_accounts WHERE LOWER(email) = ?').bind(email).first<{ id: number }>().catch(() => null)
@@ -185,7 +186,7 @@ export async function resetPasswordWithToken(DB: D1Database, token: string, newP
   const row = await DB.prepare("SELECT id, account_id FROM ad_password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')")
     .bind(tokenHash).first<{ id: number; account_id: number }>().catch(() => null)
   if (!row) return { ok: false, status: 400, error: '만료되었거나 이미 사용된 링크입니다. 다시 요청해주세요.' }
-  const pw = validatePasswordComplexity(newPassword)
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   const hash = await hashPassword(newPassword)
   await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, row.account_id).run().catch(() => null)
@@ -226,7 +227,20 @@ export async function changeAdsPassword(DB: D1Database, id: number, currentPassw
   if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
   const { valid } = await verifyPassword(currentPassword, row.password_hash)
   if (!valid) return { ok: false, status: 401, error: '현재 비밀번호가 올바르지 않습니다' }
-  const pw = validatePasswordComplexity(newPassword)
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
+  if (!pw.ok) return { ok: false, status: 400, error: pw.error }
+  const hash = await hashPassword(newPassword)
+  await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)
+  return { ok: true }
+}
+
+/** 어드민 강제 비밀번호 재설정 — 현재 비번 확인 없이 새 비번 세팅(운영자 콘솔 전용).
+ *  호출측(라우트)에서 requireAdmin 게이트 필수. 새 비번은 요청 바디로만 전달(레포에 하드코딩 금지). */
+export async function adminSetPassword(DB: D1Database, id: number, newPassword: string): Promise<PasswordResult> {
+  await ensureAdsAccountSchema(DB)
+  const row = await DB.prepare('SELECT id FROM ad_accounts WHERE id = ?').bind(id).first<{ id: number }>().catch(() => null)
+  if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   const hash = await hashPassword(newPassword)
   await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)

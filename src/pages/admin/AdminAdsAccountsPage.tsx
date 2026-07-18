@@ -13,15 +13,18 @@ import { safeDate } from '@/utils/safe-date'
 interface AdsAccountRow {
   id: number; email: string; company_name: string | null; phone: string | null
   status: string | null; access_unlocked: number; created_at: string; last_login_at: string | null
-  connected: boolean; alert_on: boolean
+  connected: boolean; alert_on: boolean; plan: string
 }
+const PLANS = ['free', 'starter', 'pro'] as const
 interface Stats { total: number; unlocked: number; suspended: number; recent7: number }
+interface Media { enabled: boolean; image: string | null; voice: string | null; video: string | null }
 
 const fmtD = (s: string | null) => { const d = safeDate(s); return d ? d.toLocaleDateString('ko-KR') : '—' }
 
 export default function AdminAdsAccountsPage() {
   const [rows, setRows] = useState<AdsAccountRow[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [media, setMedia] = useState<Media | null>(null)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
@@ -34,20 +37,32 @@ export default function AdminAdsAccountsPage() {
         api.get('/api/admin/ads/stats'),
       ])
       if (a.data?.success) setRows(a.data.accounts || [])
-      if (s.data?.success) setStats(s.data.stats || null)
+      if (s.data?.success) { setStats(s.data.stats || null); setMedia(s.data.media || null) }
     } catch {
       toast.error('가입자 정보를 불러오지 못했습니다')
     } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
 
-  async function patch(id: number, body: { access_unlocked?: number; status?: string }, label: string) {
+  async function patch(id: number, body: { access_unlocked?: number; status?: string; plan?: string }, label: string) {
     setBusy(id)
     try {
       const r = await api.patch(`/api/admin/ads/accounts/${id}`, body)
       if (r.data?.success) { toast.success(`${label} 완료`); await load(q) }
       else toast.error(r.data?.error || '변경 실패')
     } catch { toast.error('변경 실패') } finally { setBusy(null) }
+  }
+
+  async function resetPassword(row: AdsAccountRow) {
+    const pw = window.prompt(`${row.email} 계정의 새 비밀번호를 입력하세요.\n(8자 이상 · 영문/숫자/특수문자 중 2종 이상)`)
+    if (pw === null) return
+    if (!pw.trim()) { toast.error('비밀번호를 입력해주세요'); return }
+    setBusy(row.id)
+    try {
+      const r = await api.post(`/api/admin/ads/accounts/${row.id}/reset-password`, { password: pw })
+      if (r.data?.success) toast.success('비밀번호를 재설정했습니다')
+      else toast.error(r.data?.error || '재설정 실패')
+    } catch { toast.error('재설정 실패') } finally { setBusy(null) }
   }
 
   const statCards = [
@@ -70,6 +85,16 @@ export default function AdminAdsAccountsPage() {
         ))}
       </div>
 
+      {media && (
+        <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-[12px]">
+          <span className="font-semibold text-gray-700">미디어 생성</span>
+          <span className={`ml-2 px-1.5 py-0.5 rounded font-bold ${media.enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>{media.enabled ? 'ON' : 'OFF (ADS_MEDIA_ENABLED)'}</span>
+          {(['image', 'voice', 'video'] as const).map(k => (
+            <span key={k} className="ml-2 text-gray-500">{k}: <b className={media[k] ? 'text-emerald-600' : 'text-gray-400'}>{media[k] || '미설정'}</b></span>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') load(q) }}
           placeholder="이메일 또는 회사명 검색" className="h-10 w-full max-w-sm rounded-lg border border-gray-300 px-3 text-sm text-gray-900" />
@@ -80,13 +105,13 @@ export default function AdminAdsAccountsPage() {
       <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead><tr className="text-left text-gray-500 border-b border-gray-100">
-            <th className="py-2.5 px-3">ID</th><th className="py-2.5 px-3">이메일 · 회사</th><th className="py-2.5 px-3">가입</th><th className="py-2.5 px-3">최근 로그인</th><th className="py-2.5 px-3 text-center">연동</th><th className="py-2.5 px-3 text-center">알림</th><th className="py-2.5 px-3 text-center">액세스</th><th className="py-2.5 px-3 text-center">상태</th><th className="py-2.5 px-3"></th>
+            <th className="py-2.5 px-3">ID</th><th className="py-2.5 px-3">이메일 · 회사</th><th className="py-2.5 px-3">가입</th><th className="py-2.5 px-3">최근 로그인</th><th className="py-2.5 px-3 text-center">연동</th><th className="py-2.5 px-3 text-center">알림</th><th className="py-2.5 px-3 text-center">플랜</th><th className="py-2.5 px-3 text-center">액세스</th><th className="py-2.5 px-3 text-center">상태</th><th className="py-2.5 px-3"></th>
           </tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="py-10 text-center text-gray-400">불러오는 중…</td></tr>
+              <tr><td colSpan={10} className="py-10 text-center text-gray-400">불러오는 중…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9} className="py-10 text-center text-gray-400">가입자가 없습니다.</td></tr>
+              <tr><td colSpan={10} className="py-10 text-center text-gray-400">가입자가 없습니다.</td></tr>
             ) : rows.map((r) => (
               <tr key={r.id} className="border-b border-gray-50 text-gray-700">
                 <td className="py-2.5 px-3 tabular-nums text-gray-400">{r.id}</td>
@@ -95,6 +120,12 @@ export default function AdminAdsAccountsPage() {
                 <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap">{fmtD(r.last_login_at)}</td>
                 <td className="py-2.5 px-3 text-center">{r.connected ? <span className="text-emerald-600">●</span> : <span className="text-gray-300">○</span>}</td>
                 <td className="py-2.5 px-3 text-center">{r.alert_on ? <span className="text-emerald-600">●</span> : <span className="text-gray-300">○</span>}</td>
+                <td className="py-2.5 px-3 text-center">
+                  <select value={r.plan || 'free'} disabled={busy === r.id} onChange={(e) => patch(r.id, { plan: e.target.value }, `플랜 ${e.target.value}`)}
+                    className="rounded border border-gray-200 bg-white px-1 py-0.5 text-[11px] font-semibold text-gray-700">
+                    {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${r.access_unlocked ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.access_unlocked ? '해제됨' : '잠김'}</span>
                 </td>
@@ -106,6 +137,8 @@ export default function AdminAdsAccountsPage() {
                     className="text-[12px] font-semibold text-blue-600 hover:underline disabled:opacity-40">{r.access_unlocked ? '잠그기' : '잠금해제'}</button>
                   <button disabled={busy === r.id} onClick={() => patch(r.id, { status: r.status !== 'active' ? 'active' : 'suspended' }, r.status !== 'active' ? '활성화' : '정지')}
                     className="ml-3 text-[12px] font-semibold text-red-500 hover:underline disabled:opacity-40">{r.status !== 'active' ? '활성화' : '정지'}</button>
+                  <button disabled={busy === r.id} onClick={() => resetPassword(r)}
+                    className="ml-3 text-[12px] font-semibold text-gray-500 hover:underline disabled:opacity-40">비번설정</button>
                 </td>
               </tr>
             ))}

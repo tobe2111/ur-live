@@ -135,7 +135,8 @@ export async function ensureTables(DB: D1Database): Promise<void> {
     `).run()
   } catch { /* exists */ }
   // applied_* 컬럼 자동 추가 (기존 테이블 마이그레이션)
-  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER']) {
+  // 🎁 2026-07-12 is_experience: 0원 체험권 마킹(정산 제외용, 체험 캠페인 트랙 WP-A).
+  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER', 'is_experience INTEGER DEFAULT 0']) {
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   _ensuredTables = true
@@ -340,7 +341,7 @@ export async function applyGroupBuyReferral(
     const isReferredByThis = sellerRow?.referred_by_influencer === p.referralInfluencerId
     const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
     const dealRow = await DB.prepare(
-      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) LIMIT 1`
+      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved') LIMIT 1`
     ).bind(p.sellerId, p.referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
     effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
       is_referred_by_this_influencer: isReferredByThis,

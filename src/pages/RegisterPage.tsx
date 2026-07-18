@@ -8,6 +8,7 @@ import { isKorea } from '@/config/region'
 import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -105,13 +106,11 @@ export default function RegisterPage() {
     }
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#111] mx-auto"></div>
-          <p className="mt-4 text-[13px] text-[#999]">{t('register.loading', { defaultValue: '로딩 중...' })}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

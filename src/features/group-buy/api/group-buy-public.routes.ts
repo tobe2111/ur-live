@@ -15,6 +15,8 @@
 
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
@@ -116,20 +118,54 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
     //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
     const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
-    const orderBy = `${DEMO_LAST}, ${ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'}`
+    // 🌍 2026-07-08 (대표 "수천개 늘 때 미리 — 업체들 근본 방식"): 지오 스케일 파라미터(additive, 검증 float 인라인).
+    //   near=lat,lng → 거리순 랭킹. bbox=swLat,swLng,neLat,neLng → 보이는 지도영역만 반환(스케일 핵심 — 전국
+    //   전체 대신 뷰포트만 로드). 검증된 숫자만 SQL 에 들어가므로 인젝션 불가. 기본 요청(파라미터 없음)엔 미영향
+    //   → 키/materialized/SSR 0-RTT 불변. (공간 인덱스 idx_products_geo 로 스케일 시 빠른 조회.)
+    const fnum = (v: string, lo: number, hi: number): number | null => { const n = parseFloat(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null }
+    const np = (c.req.query('near') || '').split(',')
+    const nearLat = np.length === 2 ? fnum(np[0], -90, 90) : null
+    const nearLng = np.length === 2 ? fnum(np[1], -180, 180) : null
+    const hasNear = nearLat != null && nearLng != null
+    const bp = (c.req.query('bbox') || '').split(',')
+    let bbox: { swLat: number; swLng: number; neLat: number; neLng: number } | null = null
+    if (bp.length === 4) {
+      const a = fnum(bp[0], -90, 90), b = fnum(bp[1], -180, 180), cc = fnum(bp[2], -90, 90), d = fnum(bp[3], -180, 180)
+      if (a != null && b != null && cc != null && d != null && a <= cc && b <= d) bbox = { swLat: a, swLng: b, neLat: cc, neLng: d }
+    }
+    const hasBbox = !!bbox
+    // near 있으면 거리 오름차순(제곱거리 — sqrt 불필요, 정렬만), 없으면 기존 정렬.
+    const baseOrder = hasNear
+      ? `((p.restaurant_lat-(${nearLat}))*(p.restaurant_lat-(${nearLat})) + (p.restaurant_lng-(${nearLng}))*(p.restaurant_lng-(${nearLng}))) ASC`
+      : (ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC')
+    const orderBy = `${DEMO_LAST}, ${baseOrder}`
+    const bboxWhere = hasBbox
+      ? `AND p.restaurant_lat BETWEEN ${bbox!.swLat} AND ${bbox!.neLat} AND p.restaurant_lng BETWEEN ${bbox!.swLng} AND ${bbox!.neLng}`
+      : ''
     const pageNum = Math.max(1, intParam(c.req.query('page'), 1))
-    const pageLimit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
+    const pageLimit = Math.min(hasBbox ? 500 : 100, Math.max(1, intParam(c.req.query('limit'), 50)))  // bbox 는 뷰포트 전체 → 상한 ↑
     const offset = (pageNum - 1) * pageLimit
     // 🗺️ 2026-06-18 [UNLOCK_LOADING]: "내 동네 딜" 지역 필터. region = 시군구코드(5자리) 또는 행정동코드(~10자리).
     //   기본 요청(region 없음)은 키/쿼리/materialized 전부 불변 → SSR 0-RTT 보존. region 붙은 요청만 분기.
     const regionRaw = (c.req.query('region') || '').trim()
     const regionParam = /^\d{5,12}$/.test(regionRaw) ? regionRaw : ''
     const hasRegion = !!regionParam
+    // 🔎 2026-07-12 (대표 "계속" — 스케일 검색): q = 이름/매장명 부분검색(additive). 근접 바운드/뷰포트
+    //   로딩에서 안 로드된 먼 매장도 지도·리스트 검색에 잡히게. LIKE 와일드카드(%/_) 는 제거 후 바인딩.
+    const qRaw = (c.req.query('q') || '').trim().replace(/[%_]/g, '').slice(0, 40)
+    const hasQ = qRaw.length >= 1
+    const qWhere = hasQ ? 'AND (p.name LIKE ? OR p.restaurant_name LIKE ?)' : ''
+    const qBind: string[] = hasQ ? [`%${qRaw}%`, `%${qRaw}%`] : []
     // hasFilters=false 인 "정확한 기본 요청"만 기존 경로(키/materialized/LIMIT 50). 그 외는 분기.
-    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null || hasRegion
+    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null || hasRegion || hasNear || hasBbox || hasQ
     const limitClause = hasFilters ? `${pageLimit} OFFSET ${offset}` : '50'
+    // near/bbox 는 좌표를 ~0.02°(≈2km)로 라운딩해 캐시키 카디널리티 억제(에지 캐시 적중률 유지).
+    const rnd = (n: number) => (Math.round(n / 0.02) * 0.02).toFixed(2)
+    const geoKey = hasBbox
+      ? `b${[bbox!.swLat, bbox!.swLng, bbox!.neLat, bbox!.neLng].map(rnd).join('_')}`
+      : hasNear ? `n${rnd(nearLat!)}_${rnd(nearLng!)}` : 'geoall'
     const cacheKey = hasFilters
-      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}:r${regionParam || 'all'}`
+      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}:r${regionParam || 'all'}:${geoKey}:q${qRaw || 'none'}`
       : `group_buy_products:${status}:${categories.join(',')}`
 
     const results = await cacheGet(
@@ -175,6 +211,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
           p.restaurant_name, p.restaurant_address, p.slug,
+          p.restaurant_lat, p.restaurant_lng,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
@@ -196,9 +233,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                   AND (p.group_buy_status = ? OR ? = 'all')
                   AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
                   ${regionWhere}
+                  ${bboxWhere}
+                  ${qWhere}
                 ORDER BY ${orderBy}
                 LIMIT ${limitClause}
-              `).bind(...categories, status, status, ...regionBind).all()
+              `).bind(...categories, status, status, ...regionBind, ...qBind).all()
               if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
               return r.results ?? []
             } catch (e) {
@@ -215,9 +254,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
               AND (p.group_buy_status = ? OR ? = 'all')
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
               ${regionWhere}
+              ${bboxWhere}
+              ${qWhere}
             ORDER BY ${orderBy}
             LIMIT ${limitClause}
-          `).bind(...categories, status, status, ...regionBind).all()
+          `).bind(...categories, status, status, ...regionBind, ...qBind).all()
           return r.results ?? []
         }
         try {
@@ -351,6 +392,63 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     } catch { /* fail-soft */ }
 
     return c.json({ success: true, data: withOnnuri })
+  })
+
+  // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──
+  //   줌아웃(전국/시 단위) 지도에서 개별 딜 대신 **격자별 집계**(개수·최저가·중심좌표·대표사진)만 반환.
+  //   매장 수만 개여도 응답은 격자 수(수십~수백)로 고정 → 다운로드·렌더 모두 O(화면). 업체(직방/Airbnb) 정석.
+  //   cell = 격자 크기(도 단위, 화이트리스트 스냅 — 인젝션 불가), bbox = 보이는 영역(검증 float 인라인).
+  //   ⚠️ /products/:id 보다 먼저 등록해야 'map-clusters' 가 :id 로 매칭되지 않음.
+  router.get('/products/map-clusters', async (c) => {
+    const { DB } = c.env
+    const categoryParam = c.req.query('category') || 'all'
+    const validCategories = VOUCHER_CATEGORIES as readonly string[]
+    const categories = categoryParam === 'all'
+      ? validCategories
+      : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
+    const fnum = (v: string, lo: number, hi: number): number | null => { const n = parseFloat(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null }
+    const bp = (c.req.query('bbox') || '').split(',')
+    if (bp.length !== 4) return c.json({ success: false, error: 'bbox required' }, 400)
+    const swLat = fnum(bp[0], -90, 90), swLng = fnum(bp[1], -180, 180), neLat = fnum(bp[2], -90, 90), neLng = fnum(bp[3], -180, 180)
+    if (swLat == null || swLng == null || neLat == null || neLng == null || swLat > neLat || swLng > neLng) {
+      return c.json({ success: false, error: 'bad bbox' }, 400)
+    }
+    const CELLS = [0.02, 0.05, 0.1, 0.25, 0.5, 1, 2] as const
+    const cellRaw = parseFloat(c.req.query('cell') || '0.25')
+    const cell = CELLS.reduce<number>((best, cd) => (Number.isFinite(cellRaw) && Math.abs(cd - cellRaw) < Math.abs(best - cellRaw) ? cd : best), 0.25)
+    // 캐시키: bbox 를 cell 단위로 라운딩(팬 미세이동에도 적중) + cell + 카테고리.
+    const rnd = (n: number) => (Math.round(n / cell) * cell).toFixed(3)
+    const cacheKey = `gb_map_clusters:${categories.join(',')}:c${cell}:${rnd(swLat)}_${rnd(swLng)}_${rnd(neLat)}_${rnd(neLng)}`
+    try {
+      const results = await cacheGet(
+        c.env.SESSION_KV,
+        cacheKey,
+        async () => {
+          const placeholders = categories.map(() => '?').join(',')
+          const r = await DB.prepare(`
+            SELECT COUNT(*) AS count,
+                   MIN(p.price) AS min_price,
+                   AVG(p.restaurant_lat) AS lat,
+                   AVG(p.restaurant_lng) AS lng,
+                   MAX(p.image_url) AS image_url
+            FROM products p
+            WHERE p.category IN (${placeholders}) AND p.is_active = 1
+              AND p.group_buy_status = 'active'
+              AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND p.restaurant_lat BETWEEN ? AND ? AND p.restaurant_lng BETWEEN ? AND ?
+            GROUP BY CAST(p.restaurant_lat / ${cell} AS INTEGER), CAST(p.restaurant_lng / ${cell} AS INTEGER)
+            LIMIT 400
+          `).bind(...categories, swLat, neLat, swLng, neLng).all()
+          return r.results ?? []
+        },
+        { ttl: 120, staleWhileRevalidate: 120 },
+      )
+      c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+      c.header('CDN-Cache-Control', 'public, max-age=300')
+      return c.json({ success: true, data: results })
+    } catch (err) {
+      return safeError(c, err, '지도 집계 조회 중 오류가 발생했습니다', '[gb map-clusters]')
+    }
   })
 
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
@@ -550,6 +648,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
+  // ── POST /products/:id/ensure-geocode — 좌표 없는 딜의 서버측 지오코딩 lazy 백필 ──
+  // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 지도가 좌표 없는 딜을 만나면 이 endpoint 를 1회 호출 →
+  //   서버가 **저장된 주소로** 지오코딩(geocodeProductNow, only-if-NULL)해 products.restaurant_lat/lng 영구 저장.
+  //   → 다음 로드부터 피드가 좌표 반환(클라 지오코딩 0 = 429 스케일 문제 근본 해소). 신규 사업자 상품은 이미
+  //   등록 시 지오코딩되므로 이건 기존/누락분 자가치유. 좌표는 클라 신뢰 X(서버가 주소로 계산) → 위조 불가.
+  router.post('/products/:id/ensure-geocode', async (c) => {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'bad id' }, 400)
+    try {
+      const { geocodeProductNow } = await import('../../../worker/cron/restaurant-geocode')
+      const geocoded = await geocodeProductNow(c.env, id)  // 좌표 이미 있으면 내부 skip(반복 호출 무해)
+      return c.json({ success: true, geocoded })
+    } catch {
+      return c.json({ success: true, geocoded: false })  // fail-soft — 지도 표시엔 클라 폴백 유지
+    }
+  })
+
   // ── GET /live-ticker — 전체 공구 최근 참여 (SNS 스타일 ticker) ──
   router.get('/live-ticker', async (c) => {
     const { DB } = c.env
@@ -637,6 +752,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
     const { DB } = c.env
 
+    // 🔑 user_id 정규화(데이터 감사 1단계): 쓰기 경로가 DB users.id(숫자)로 통일되므로 읽기도 정규화.
+    //   전환기 안전: 정규화 id(신규 행)와 raw id(과거 firebase_uid 키 행)를 **둘 다** 매칭(IN)해
+    //   backfill 없이 이력 유실 0. live(카카오)=두 값 동일→기존과 동일 동작. (코드베이스 dual-key 관행)
+    const uidNorm = await resolveUserIdString(DB, user.id, user.isDbId)
+    const uidRaw = String(user.id)
+    const uidBinds: string[] = uidNorm === uidRaw ? [uidRaw, uidRaw] : [uidNorm, uidRaw]
+
     // 🛡️ 2026-05-22 P1 영구 fix (사용자 신고 "교환권 로딩 늦음"):
     //   - 이전: ensureTables(20+ ALTER/CREATE) cold-start 마다 첫 호출 시 ~50-200ms.
     //   - 이전: SELECT v.* (모든 컬럼) + LEFT JOIN products + ORDER BY DESC + LIMIT 없음.
@@ -664,11 +786,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
       FROM vouchers v
       LEFT JOIN products p ON v.product_id = p.id
-      WHERE v.user_id = ?
+      WHERE v.user_id IN (?, ?)
         AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
       ORDER BY v.created_at DESC
       LIMIT 200
-    `).bind(String(user.id)).all().catch(async (err) => {
+    `).bind(...uidBinds).all().catch(async (err) => {
       if (typeof console !== 'undefined') console.warn('[/vouchers/my] full SELECT failed, fallback:', String(err))
       // 컬럼 누락 환경 graceful fallback — applied_price 도 포함.
       const r = await DB.prepare(`
@@ -680,10 +802,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
         FROM vouchers v
         LEFT JOIN products p ON v.product_id = p.id
-        WHERE v.user_id = ?
+        WHERE v.user_id IN (?, ?)
         ORDER BY v.created_at DESC
         LIMIT 200
-      `).bind(String(user.id)).all().catch(async (err2) => {
+      `).bind(...uidBinds).all().catch(async (err2) => {
         // 한 번 더 fallback — applied_price 도 없는 극단 환경 (구 DB).
         if (typeof console !== 'undefined') console.warn('[/vouchers/my] applied_price SELECT failed, fallback again:', String(err2))
         return await DB.prepare(`
@@ -694,10 +816,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                  p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
           FROM vouchers v
           LEFT JOIN products p ON v.product_id = p.id
-          WHERE v.user_id = ?
+          WHERE v.user_id IN (?, ?)
           ORDER BY v.created_at DESC
           LIMIT 200
-        `).bind(String(user.id)).all()
+        `).bind(...uidBinds).all()
       })
       return r
     })
@@ -727,8 +849,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE o.user_id = ? AND vo.status IN ('sent', 'processing', 'failed')
         ORDER BY vo.created_at DESC
         LIMIT 100`
-      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(user.id)).all<any>().catch(() => null)
-      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(user.id)).all<any>().catch(() => ({ results: [] as any[] }))
+      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(uidNorm)).all<any>().catch(() => null)
+      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(uidNorm)).all<any>().catch(() => ({ results: [] as any[] }))
       ktAlphaItems = (ktRes?.results || []).map((vo: any) => ({
         source: 'kt_alpha',
         id: `kt-${vo.id}`,
@@ -768,10 +890,27 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     return c.json({ success: true, data: merged })
   })
 
+  // 🛡️ self-redeem rate limit 키 SSOT — 미들웨어 keyFn + 성공 시 리셋(DELETE)이 같은 키를 써야 함.
+  const SELF_REDEEM_RL_ACTION = 'voucher_self_redeem'
+
   // ── POST /vouchers/:code/self-redeem — 🎟️ 2026-06-20 소비자 셀프 사용처리 (대표 — 카운터 느슨/정산 검문) ──
   //   본인 미사용 이용권을 현장에서 직접 사용. CAS(claim-before-credit) 일회성 — 동시/중복 차단.
   //   라이브 '사용완료' 화면 데이터 반환(매장명·used_at). 60초 내 cancel 가능(아래). 돈 이동 X(에스크로는 Phase 2).
-  router.post('/vouchers/:code/self-redeem', requireAuth(), async (c) => {
+  //   🛡️ 2026-07-11 보안(R1, docs/design/pre-launch-security-audit-2026-07.md): rate limit 추가 —
+  //   store_code 브루트포스 차단. 키 = voucher code(IP 아님 — IP 로테이션 무력화). 5회/300초.
+  //   store_code 불일치(403)도 카운트에 잡힘(미들웨어가 핸들러 앞에서 전부 카운트) — 성공 시에만
+  //   아래 claimed 지점에서 리셋. 소유자 본인 오타 여유 5회/5분이면 충분.
+  router.post(
+    '/vouchers/:code/self-redeem',
+    rateLimit({
+      action: SELF_REDEEM_RL_ACTION,
+      max: 5,
+      windowSec: 300,
+      // 코드 미매칭(이론상 없음) 시 IP 폴백 — 무제한 버킷 방지.
+      keyFn: (c) => `${SELF_REDEEM_RL_ACTION}:${c.req.param('code') || c.req.header('CF-Connecting-IP') || 'unknown'}`,
+    }),
+    requireAuth(),
+    async (c) => {
     const { DB } = c.env
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -800,7 +939,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           if (redemptionMode === 'store_code') {
             const input = String(body.store_code || '').trim()
             if (!input || !s.store_code || input !== s.store_code) {
-              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드 4자리를 입력해주세요.' }, 403)
+              // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
+              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
             }
           }
         } catch { /* fail-open — 기존 self_free 동작 */ }
@@ -812,11 +952,21 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       const claimed = (res.meta?.changes || 0) === 1
 
+      // 🛡️ 2026-07-11: 성공(방금 사용 확정) 시에만 rate limit 카운터 리셋 — 정당 사용자의 앞선
+      //   오타 시도가 남아 잠기지 않게. 실패(코드 불일치 403)는 리셋 안 됨 → 브루트포스 방어 불변.
+      //   커스텀 키(voucher code)라 resetRateLimit(IP 키 전용) 대신 동일 키로 직접 DELETE(best-effort).
+      if (claimed) {
+        const rlResetJob = DB.prepare('DELETE FROM rate_limit_attempts WHERE key = ? AND action = ?')
+          .bind(`${SELF_REDEEM_RL_ACTION}:${code}`, SELF_REDEEM_RL_ACTION).run()
+          .catch(() => { /* best-effort — 리셋 실패해도 사용처리 무영향 */ })
+        c.executionCtx?.waitUntil?.(rlResetJob as Promise<unknown>)
+      }
+
       const row = await DB.prepare(`
         SELECT v.id, v.code, v.status, v.used_at, v.product_id, v.applied_price, p.name as product_name, p.restaurant_name, p.seller_id
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE v.code=? AND v.user_id=?
-      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
+      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_id?: number | null; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
 
       if (!row) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
@@ -827,6 +977,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         try {
           const { recordVoucherRedemptionLocation } = await import('../../../worker/utils/voucher-redemption')
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
+        } catch { /* best-effort */ }
+        // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+        try {
+          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await recordVoucherVisit(DB, {
+            voucher_id: Number(row.id), user_id: user.id, seller_id: row.seller_id,
+            product_id: row.product_id, amount: row.applied_price, path: 'self',
+          })
         } catch { /* best-effort */ }
       }
       // 🔔 2026-07-02: 셀프 사용 즉시 사장님 대시보드 알림 — 카운터 크로스체크(위조·취소 악용 억제).
@@ -873,8 +1031,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       // 🎟️ 2026-07-02 모드 게이트: 셀프취소는 self_free 매장에서만 — store_code/scan_only 매장은
       //   취소 권한이 매장(사장님)에 있음("보여주고 나가서 60초 내 취소" 악용 차단).
       const pre = await DB.prepare(
-        'SELECT p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
-      ).bind(code, user.id).first<{ seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
+        'SELECT v.id AS voucher_id, p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ voucher_id: number; seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
       if (pre?.seller_id != null) {
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
@@ -891,6 +1049,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
+      }
+      // 🚪 2026-07-13 (데이터 감사 2단계): 오스캔 정정 → 방문 이벤트도 되돌림(실제 방문 아님).
+      if (pre?.voucher_id != null) {
+        try {
+          const { removeVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await removeVoucherVisit(DB, Number(pre.voucher_id))
+        } catch { /* best-effort */ }
       }
       // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
       if (pre?.seller_id != null) {
@@ -927,13 +1092,22 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).first<{ seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       let mode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'  // 미설정/조회실패 = 기존 동작
+      let conditions: string[] = []
       if (pre.seller_id != null) {
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
           mode = (await getRedemptionSettings(DB, Number(pre.seller_id))).mode
         } catch { /* fail-open — self_free */ }
+        // 🎟️ 2026-07-06 매장별 사용조건(사장님이 선택) → 소비자 '이용 안내'에 표준 문구로 표시.
+        try {
+          const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+          const { resolveUsageConditions } = await import('../../../shared/voucher-usage-conditions')
+          const raw = (await getSellerMeta(DB, [Number(pre.seller_id)]))?.get(Number(pre.seller_id))
+          const keys = JSON.parse(String(raw?.voucher_usage_conditions || '[]'))
+          conditions = resolveUsageConditions(Array.isArray(keys) ? keys : [], String(raw?.voucher_usage_custom || ''))
+        } catch { /* 미설정 */ }
       }
-      return c.json({ success: true, data: { mode } })
+      return c.json({ success: true, data: { mode, conditions } })
     } catch (err) {
       return safeError(c, err, '사용 방식 조회 중 오류가 발생했습니다', '[redemption-info]')
     }

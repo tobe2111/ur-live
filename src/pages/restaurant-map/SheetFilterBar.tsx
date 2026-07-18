@@ -1,7 +1,16 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigation, ArrowUpDown, Heart, SlidersHorizontal } from 'lucide-react'
+import { Navigation, ArrowUpDown, Heart, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import type { SortBy } from './types'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
+import SortSheet from './SortSheet'
+
+const SORT_LABEL: Record<SortBy, { labelKey: string; def: string }> = {
+  distance: { labelKey: 'restaurantMap.sort.distance', def: '가까운 순' },
+  discount: { labelKey: 'restaurantMap.sort.discount', def: '할인율 순' },
+  price: { labelKey: 'restaurantMap.sort.price', def: '낮은 가격 순' },
+  rating: { labelKey: 'restaurantMap.sort.rating', def: '평점 순' },
+}
 
 interface Props {
   activeFilterCount: number
@@ -11,6 +20,8 @@ interface Props {
   voucherType: MapVoucherType
   setVoucherType: (v: MapVoucherType) => void
   filteredCount: number
+  /** 🗺️ 2026-07-15: 지도 뷰포트에 보이는 딜 수(있으면 "이 지역 N · 전체 M" 표기). 미지정=전체만. */
+  viewportCount?: number | null
   userLoc: { lat: number; lng: number } | null
   sortBy: SortBy
   setSortBy: (v: SortBy) => void
@@ -33,6 +44,7 @@ export default function SheetFilterBar({
   voucherType,
   setVoucherType,
   filteredCount,
+  viewportCount = null,
   userLoc,
   sortBy,
   setSortBy,
@@ -42,6 +54,9 @@ export default function SheetFilterBar({
   hideChips = false,
 }: Props) {
   const { t } = useTranslation()
+  const [sortOpen, setSortOpen] = useState(false)
+  // "이 지역 N · 전체 M" — 뷰포트 수가 전체보다 적을 때만 이중 표기(지도가 특정 영역을 보고 있을 때).
+  const showViewport = viewportCount != null && viewportCount < filteredCount
 
   return (
     <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#1A1A1A] shrink-0">
@@ -98,7 +113,14 @@ export default function SheetFilterBar({
       <div className="flex items-center justify-between mt-2 px-1">
         <div className="flex items-center gap-2">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">
-            <span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
+            {showViewport ? (
+              <>
+                <span className="font-bold text-gray-900 dark:text-white">{t('map.sheet.thisArea', { defaultValue: '이 지역' })} {viewportCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
+                <span className="ml-1 text-gray-400 dark:text-gray-500">· {t('map.sheet.total', { defaultValue: '전체' })} {filteredCount}{t('map.sheet.count', { defaultValue: '곳' })}</span>
+              </>
+            ) : (
+              <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
+            )}
             {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
@@ -115,21 +137,20 @@ export default function SheetFilterBar({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        {/* 🗺️ 2026-07-15 (대표 — "우리 서비스 팝업으로"): OS 네이티브 select → 인앱 바텀시트(SortSheet). */}
+        <button
+          onClick={() => setSortOpen(true)}
+          aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
+          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1A1A1A]"
+        >
           <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
-            className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-transparent focus:outline-none"
-          >
-            {userLoc && <option value="distance">{t('restaurantMap.sort.distance')}</option>}
-            <option value="discount">{t('restaurantMap.sort.discount')}</option>
-            <option value="price">{t('restaurantMap.sort.price')}</option>
-            <option value="rating">{t('restaurantMap.sort.rating')}</option>
-          </select>
-        </div>
+          <span>{t(SORT_LABEL[sortBy].labelKey, { defaultValue: SORT_LABEL[sortBy].def })}</span>
+          <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+        </button>
       </div>
+      {sortOpen && (
+        <SortSheet sortBy={sortBy} setSortBy={setSortBy} hasUserLoc={!!userLoc} onClose={() => setSortOpen(false)} />
+      )}
     </div>
   )
 }

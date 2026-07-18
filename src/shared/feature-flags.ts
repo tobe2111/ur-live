@@ -95,3 +95,16 @@ export const TOPUP_DISABLED = true
  */
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
+/**
+ * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
+ *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
+ *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
+ *         매장·인플루언서 공개 뷰는 데이터·법무 충분해지면(나중).
+ *   ✅ 2026-07-18 true 전환(대표 "자동으로 켜둬") — **실질 게이트는 어드민 잠금**: 이 플래그가 true 여도
+ *      **어드민 로그인(admin_token) + 서버 `requireAdmin`(비어드민 403)** 이라 소비자/광고주 노출 0.
+ *      읽기 전용·머니 무접촉이라 상시 ON 이 안전 — 데이터 없으면 목업 미리보기, 쌓이면 실측 자동 전환.
+ *      false 로 내리면 어드민에게도 즉시 숨김(가역).
+ *      정산(머니)은 별도 스위치(env MATCHING_SETTLEMENT_ENABLED, 기본 OFF 유지) — 이 플래그와 독립.
+ */
+export const MATCHING_ENABLED = true
+

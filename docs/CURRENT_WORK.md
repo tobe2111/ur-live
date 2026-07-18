@@ -6,6 +6,155 @@
 - **보존**: 충전 코드 전체·success/confirm 페이지·어드민 충전 모니터링(과거 데이터)·약관 충전 조항(기존 유상 딜 근거). 플래그 false 로 즉시 복원.
 - **배경**: 앱스토어 전환 시 저장형 가치(딜 충전)가 Apple IAP 30% 대상 → 충전 자체 제거로 심사 리스크 0 + 딜 경제를 추천/영입 루프(성장 엔진)로 순화.
 
+## ✅ 2026-07-18 — 데이터 완결고리·매칭 3 PR 머지 완료 (대표 "모두 완료시켜줘")
+**#514(데이터 감사 1·2·3단계) + #523(성과기반 매칭 어드민 도구) + #525(방배 활성 런북) 전부 main 머지·배포.**
+- **#514**: 유입(`inflow_clicks`)→방문(`voucher_visits`)→결제→재방문 완결고리 **라이브 자동 수집 시작**(배포 시점부터). user_id 정규화(라이브 무동작)·GPS 상권격자 하향·어드민 PII 마스킹/감사로그. PII 암호화는 dual-read+기본 OFF.
+- **#523**: 매칭 엔진+`/api/admin/matching/*`(requireAdmin)+유어애즈 `sec-matching` 패널 — **이중 잠금**(`MATCHING_ENABLED=false`+admin_token) → 라이브 노출 0. 정산은 순수 계산·"순수취==5%" 테스트만(적립 배선=단독 flip 세션, `MATCHING_SETTLEMENT_ENABLED` OFF). ⚠️ #545(유어애즈 워커분리)와 조합 확인됨 — admin 네임스페이스는 main 워커 잔류(admin-ads 패턴 정합).
+- **#525**: `docs/ONBOARDING_ACTIVATION_RUNBOOK.md` = **방배 활성 순서 SSOT**(1 데이터→2 보안/PII→3 매칭 읽기→4 정산 머니). 전면 활성화 지시서의 STEP 4(매칭)·6(데이터완결)의 코드측 선결 완료.
+- **남은 것(전부 대표/운영 — 코드 아님)**: 런북 참조 — staging 4항목 검증(방배 온보딩 때)·off-live backfill 실행(dry-run→apply)·PII 스위치 ON·백업 복원 리허설 1회·ADMIN_IP_WHITELIST·매칭/정산 활성 flip.
+
+## 🔶 2026-07-16 — 메인 워커 추가 다이어트: OpenAPI/Swagger 문서 DCE (대표 "죽은 코드/큰 의존성 정리 모두")
+소셜(ur-ads 이전)·도매(ur-wholesale 분리) 이후 남은 큰 **도달 가능(reachable)** 번들 청크를 제거. esbuild 단일파일 번들은 **죽은 코드는 트리셰이킹(이득 ~0)**이라, 실제 레버는 "프로덕션에서 안 쓰는데 번들에 실린 큰 코드". 개발자용 `src/worker/openapi.ts`(1544줄 ~48KB) + `@hono/swagger-ui`가 `/docs`·`/api/openapi.json`(개발자 대면, 소비자 워커 불필요)만 위해 `_worker.js`에 실려 있었음(기존 "동적 import"는 esbuild 단일번들에선 인라인이라 절감 0 — 도매/ads 분리와 같은 오해 클래스).
+- **수정(2파일, `__INCLUDE_WHOLESALE__` 패턴 미러)**: `docs.routes.ts`의 라우트 등록을 `if (__INCLUDE_DOCS__)` 게이트로 감싸고 openapi.ts·swagger-ui를 게이트 블록 안 동적 import → `build-worker.js` define `__INCLUDE_DOCS__`(기본 false, `DOCS_BUNDLE=1`이면 true). 프로덕션(소비자/도매) 빌드는 false → esbuild가 dead-block을 import 해석 전에 제거 → openapi.ts + swagger-ui 번들 제외.
+- **효과(예상)**: gzip ~10~15KB↓ (872KB → ~857~862KB, CF Free 1MB 게이트 여유 확대). `/docs`는 프로덕션 미노출(필요 시 `DOCS_BUNDLE=1` 빌드).
+- ⚠️ npm 403 → 실제 절감치는 CI(`_worker.js` gzip) 확인. **소비자/머니/인증 경로 무접촉 — 문서 라우트 게이트만.**
+
+## 🔶 2026-07-16 — 도매몰 별도배포(ur-wholesale) P0 파이프라인 완성 (대표 "C로 가장 이상적으로", 도매 미운영)
+#539가 소비자 워커에서 도매 라우트를 제거(다이어트)했으나 ur-wholesale 배포 인프라가 없어 `/api/wholesale/*`가 메인에서 404(도매 미운영이라 라이브 영향 0). **C안 = 도매 별도배포 완성**. 설계 SSOT: `docs/design/wholesale-separate-deploy.md`.
+- **P0(이 커밋, 코드)**: `.github/workflows/deploy-wholesale.yml` — `WHOLESALE_BUNDLE=1 npm run build`(도매 포함 _worker.js) → `wrangler pages deploy dist/client --project-name=ur-wholesale`. main push/수동 트리거. **새 파일만 — 소비자/머니 경로 무접촉·안전.**
+- **⏳ P1(대표 Cloudflare)**: ur-wholesale Pages 프로젝트 생성 + **같은 D1**(d9530ba6…) 바인딩 + KV/R2/시크릿 복제(JWT_SECRET·DATA_ENCRYPTION_KEY 등, **TOSS_* 제외**·도매는 예치금기반) + Durable Object(RATE_LIMITER). 🔴 **cron trigger 0개**(정산 이중성숙 방지).
+- **⏳ P2(staging)**: `ur-wholesale.pages.dev/wholesale`에서 도매 전 플로우 실검증(카탈로그·발주·예치금·정산성숙·미수금·세금계산서·출금). **머니 경로 — 단독세션+실정산 1회.**
+- **⏳ P3(도메인 스왑)**: utongstart.com → ur-wholesale (검증 후). 소비자 다이어트(P3)는 #539에서 이미 완료.
+- ⚠️ ur-wholesale 프로젝트 생성 전엔 deploy-wholesale 워크플로 실패해도 라이브 무영향(deploy-ads 초기와 동일).
+
+## 🔶 2026-07-15 — 소셜 자동화 → ur-ads 워커로 이전 (메인 CF Free 1MB 회복) — draft PR, 컷오버 대기
+소셜 자동화(#533)를 메인 워커에 정적 마운트했더니 `_worker.js` gzip 1006KB > CF Free 1MB 게이트 → **Pages 배포 실패**. #537(대표 승인)이 응급으로 메인 배선을 주석화(다이어트)해 배포 언블록 + 소셜 라우트 404·메뉴 숨김. **이 작업 = 영구 해법(A안): 소셜을 독립 ur-ads 워커(3MB)로 이전.**
+- **ur-ads(`src/worker-ads/index.ts`)**: `app.route('/api/admin/social', socialMediaRoutes)` + `scheduled`(매시간 렌더폴링+예약발행 / 주간 초안) 배선. `wrangler-ads.toml` crons `["0 * * * *","0 0 * * 1"]`.
+- **socialMediaRoutes**: 메인 adminApp 래퍼 밖이라 **자체 `requireAdmin()`** 적용(ur-ads 는 같은 JWT_SECRET → admin 토큰 검증 동일).
+- **메인(`src/worker/index.ts`)**: 프록시에 `/api/admin/social/*` 위임 1줄 추가(기존 `/api/ads/*` 프록시와 동일 게이트 `ADS_WORKER_ENABLED`). **메인은 social 코드 import 0 → `_worker.js` 슬림 유지**(주석 상태 그대로).
+- **⚠️ 활성 = ur-ads 컷오버에 종속**(대표 액션): 메인 Pages Service binding `ADS`→`ur-ads` + `ADS_WORKER_ENABLED=true` + ur-ads 배포(`wrangler -c wrangler-ads.toml deploy`). 컷오버 전엔 `/api/admin/social/*` 404(현행과 동일, 배포는 정상). 컷오버 후 **AdminLayout '소셜 홍보' 메뉴 1줄 주석해제**하면 UI 노출.
+- 검증: audit-gate 45 GREEN. ⚠️ npm 403 → tsc/build/vitest CI(특히 ur-ads 빌드). 설계: `docs/design/social-media-automation.md` §10.
+
+## 🔶 2026-07-15 — 소셜 미디어 자동화 (유어딜 자체 홍보: 스레드·인스타·유튜브) — draft PR, 전 게이트 OFF
+대표 "유튜브 컨텐츠 제작·업로드 자동화, 스레드·인스타 자동화 모두 가능해? → 모두 가장 이상적으로 진행 / 컨텐츠도 자동으로, AI티 안 나게, 영상도". blog-ai(자체홍보) 패턴을 소셜로 확장 + 실제 게시 연동. **유어애즈(content-studio, 광고주용 B2B)와 무관 / features/social(팔로우·알림 소비자 소셜그래프)과도 무관** → 새 `features/social-media/api/`.
+- **초안-우선 · 자동발행 없음**: AI 생성=항상 draft → 관리자 검토 → 승인 → 발행(3중 조건: 게이트 ON + 계정 연결 + approved). 발행 CAS 선점(멱등).
+- **AI 티 제거**: `HUMAN_VOICE_RULES`(이모지·느낌표도배·최상급·뻔한도입 금지, 문장 리듬) + PROMO_BRIEF grounding + `findForbidden` 검증(운영정보·폐기어·도매 유입 폐기) — blog-ai SSOT 재사용.
+- **커넥터**: Threads Graph API(텍스트/이미지) · Instagram Graph API(피드 이미지/릴스 영상) · YouTube Data API v3(resumable 업로드). 공식 API만(봇/스크래핑 없음). 토큰 at-rest 암호화(`data-crypto`).
+- **영상**: 대본·제목·설명·태그·해시태그는 AI 자동 생성. mp4 렌더는 Worker 불가(ffmpeg 없음) → 외부 렌더(media-gateway video provider) 또는 대표 소재 URL 을 `media_url` 로 받아 업로드.
+- **어드민**: `/api/admin/social/*`(requireAdmin) 계정 연결·초안 생성/편집/승인/발행. 주간 cron `social-draft`(게이트 `SOCIAL_AUTO_DRAFT_ENABLED`, 기본 OFF).
+- **env(전부 기본 OFF)**: `SOCIAL_THREADS_ENABLED`·`SOCIAL_INSTAGRAM_ENABLED`·`SOCIAL_YOUTUBE_ENABLED`·`SOCIAL_AUTO_DRAFT_ENABLED` + 자격증명(META/THREADS/YOUTUBE). **미설정 시 라이브 영향 0**(라우트만 추가, cron no-op).
+- **⚠️ 대표 액션(활성 전)**: Meta 앱(스레드/인스타) + 인스타 비즈니스 전환·앱심사(`instagram_content_publish`) + 유튜브 채널 OAuth + 공식 계정 토큰 등록 + 게이트 ON + staging 게시 1회 검증. 설계·플랫폼별 액션: `docs/design/social-media-automation.md`.
+- **어드민 UI 완료**: `/admin/social`(AdminSocialPage + admin-social/{SocialAccountsPanel,SocialDraftEditor,SocialVideoControls,types}) — 계정 연결/게이트 상태 · 플랫폼별 AI 초안 생성 버튼 · 목록(상태 배지·발행 가능조건 표시) · 편집/승인/발행/보관. 좌측 nav "소셜 홍보"(콘텐츠 그룹). 라이트 대시보드 테마.
+- **릴스/쇼츠 영상 파이프라인 완료**(대표 "영상도 릴스/쇼츠용 위주"): AI 영상 기획(`social-video` 스토리보드/대본, 유튜브 쇼츠+인스타 릴스, 세로 9:16) → 렌더 게이트웨이(`social-video-render` Creatomate, 게이트 `SOCIAL_VIDEO_ENABLED` OFF, egress 차단으로 미검증) → done 시 media_url 세팅 → 기존 발행 경로가 쇼츠 업로드/릴스 게시. 라우트 `/posts/:id/{video-plan,render,render-status}` + 어드민 영상 컨트롤(기획 보기·렌더·폴링). `social_posts` 에 storyboard/render_* 컬럼. **기획/대본은 렌더 provider 없이도 항상 생성 가능**(완성 mp4 직접 넣어 발행도 가능).
+- **예약 발행 + 렌더 자동완료**(hands-off 개선): `scheduled_at`(승인+예약 → 매시간 cron `social-maintenance` 가 발행, 게이트 `SOCIAL_AUTO_PUBLISH_ENABLED` OFF·발행은 여전히 3중 조건 재확인) + 영상 렌더 자동 폴링(processing 건 done 시 media_url 세팅 — 수동 새로고침 불필요). 편집기에 예약 시각 입력(datetime-local↔ISO) + 카드 예약 배지.
+- 검증: **CI Verify GREEN**(tsc 통과 — CI 가 잡은 타입오류 7건 수정: AdminLayout title·noImplicitAny). 유튜브 업로드 OOM 방지(스트리밍). audit-gate 45 GREEN. (Workers Builds: ur-live-global 실패는 별개 CF Workers 빌드 — 실배포 Pages, pre-existing 무관.) 활성은 대표 자격증명 + staging 검증 후.
+
+## 🔶 2026-07-14 — 유어딜 전면 활성화 지시서 진행 (STEP 2 선결: 공구 엔진 조종석)
+대표 "유어딜 전면 활성화 지시서" — 게이트 OFF로 파킹한 것들을 파일럿 검증하며 순서대로 켬(STEP 0~6). **STEP 0**(net==5% 테스트 green·#479 payout 가드 코드 확인 — 코드측 통과; 어드민 4항목 스모크·발신프로필키 `ALIGO_SENDER_KEY`·파일럿 매장선정은 대표 액션). **STEP 2 선결 = 공구 엔진 조종석(gap A1) 빌드**: 상품별 gb_mode(off/scheduled/live/ended)·특가·마감·소개비율·링크전용 설정 어드민 UI+API. 저장=`product_supply_meta` gb_* 키(SSOT `shared/gb-session.ts` saveGbSession/validateGbSession 호출만). **머니 무접촉·게이트 뒤**(gb_engine_enabled OFF면 엔진이 안 읽어 소비자/결제 무영향). draft PR·CI green 후 대표 보고 → 파일럿(상품1개 live→실카드1건). 남은 STEP 1(flip)·3(위임)·4(매칭)·5(체험)·6(데이터완결+고위험3종)은 대표 대시보드/파일럿 주도.
+
+## 🔶 2026-07-14 — 유어애즈 독립 Worker(ur-ads) 분리 (대표 "무료 분리" → "나머지 다 진행") — Phase A~C 완료, D 대기
+메인 `_worker.js`(Pages Free gzip 1MB 천장) 압박 해소 + 유어애즈 확장여력 확보를 위해 **유어애즈만** 독립 Worker(Free 3MB)로 분리. 3서비스 연결 유지의 본질 = **같은 D1**(database_id d9530ba6…) 바인딩. 설계 SSOT: `docs/design/urads-worker-split.md`.
+- **Phase A** ✅ (`e227c1e3`) 스캐폴드 — `src/worker-ads/index.ts`(Hono, marketing/admin-ads/shortlink 마운트 + `/__ads/health`). 라이브 영향 0.
+- **Phase B** ✅ (`2324c0da`) 배포 파이프라인 — `wrangler-ads.toml` + `scripts/build-worker-ads.js`(esbuild @/ alias) + `.github/workflows/deploy-ads.yml`. 대표 Cloudflare 셋업(ur-ads Worker + D1 바인딩 + 4시크릿) 완료 → **첫 배포 성공**(Actions run success).
+- **Phase C** ✅ (이 커밋) 게이트드 프록시 — 메인 `index.ts` `app.use('*')` 위임 미들웨어 + Env `ADS`(서비스바인딩)/`ADS_WORKER_ENABLED`. `ADS_WORKER_ENABLED==='true'` + `env.ADS` 있으면 `/api/ads/*`·`/l/*` 를 `env.ADS.fetch(req)` 위임(실패 시 로컬 폴백). `/api/admin/ads/*` 는 메인 유지(어드민 JWT). **기본 OFF/미바인딩 = 라이브 byte-동일**.
+- **⏳ 대표 액션(컷오버 §8)**: ① 메인 ur-live Pages → Settings → Functions → Service bindings 에 `ADS`→`ur-ads`(⚠️ ur-ads 가 아니라 *메인 Pages* 에 만듦 — ur-ads Bindings 탭엔 안 보임). ② 메인 Pages env `ADS_WORKER_ENABLED=true` + **재배포**. ③ 검증(`/l/<code>` 리다이렉트·대시보드 로그인/발굴). 기존 베타 사용자는 1회 재로그인(ur-ads 자체 JWT_SECRET — 메인값 분실).
+- **Phase D**(미착수): ⚠️ **Phase C 게이트 prod ON·검증 후에만** 메인에서 marketing 코드 제거 → `_worker.js` 용량 회복. 순서 역전 금지(폴백 먼저 지우면 OFF 상태 다운).
+
+## 🔶 2026-07-13 — 상권 쿠폰 경로 B(온라인 결제 자동발급) 구현 (대표 "(b) 전면 구현", draft·미배포)
+페이백을 두 경로로 확장: 경로 A(오프라인 영수증→어드민 승인, **이미 라이브**) + **경로 B(유어딜 결제→기준액 이상 자동발급, 신규)**. 게이트 `DISTRICT_AUTO_ISSUE_ENABLED`(env, 기본 OFF) + 캠페인 `auto_issue_enabled` + 행사기간. 병렬 엔티티(딜/유어딜5%/원장 무접촉). 대표 4제약: ①결제 성공 영향 0(waitUntil 후처리+fail-soft) ②재원 2풀(foundation/urteam) ③source='online' 자동승인 영수증 행+source_ref 멱등 ④발급 실패가 결제 롤백 못 함.
+- **⚠️ 대표 조건 ①: draft PR·main 머지 금지 — staging 실결제 검증 후에만 머지.** 검증: 파일럿 매장 결제→쿠폰 1장 + 1인 한도 A/B 합산 + 재원별 예산 가드 + 중복결제 재발급 0.
+- 설계: `docs/design/district-coupon-estimate-2026-07.md §9`. 변경: district-shared(withinCampaignWindow/normalizeFundingSource)·district-coupon.routes(autoIssue+스키마)·admin.routes(auto-issue 설정·A/B 리포트)·payment.routes(게이트드 배선, CLAUDE.md Toss audit log)·AdminDistrictCouponsPage·DistrictCouponPage.
+- **알림톡 배선(§9-1)**: 지급·반려·만료임박에 `dispatchNotification` 연결(인앱 항상 + 알림톡 게이트 뒤 — env `DISTRICT_ALIMTALK_ENABLED` + 채널설정 + 콘솔 템플릿 3종). 신규 만료 cron `district-coupon-expire`(D-3 임박 알림 선점CAS dedup + 만료 스위핑 status='expired', 멱등·머니0 — §9-2). 발송 대행사=**Aligo**(기존 연동, 신규 세팅 아님). failover=기존 `ALIMTALK_SMS_FAILOVER` 인프라.
+
+## ✅ 2026-07-13 — 게이트 활성화 (대표 "알아서 모두 활성화")
+비머니 게이트 2종을 **코드 기본값 ON(opt-out)** 으로 전환(어드민이 `platform_settings` 에 `'false'` 저장 시 즉시 복원):
+- `district_deal_bridge_enabled` — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천(공개 카탈로그 read enrich, 비머니).
+- `experience_campaign_seller_create` — 셀러가 자기 매장 체험 캠페인 셀프 생성(0원 체험권, 정산·커미션 무접촉).
+
+**머니 게이트 3종은 미활성(대표 실행 대기)** — 정산/커미션 재원을 바꾸므로 `docs/design/flip-staging-verification-2026-08.md` 의 순서 강제: 서초 테스트매장 seller_id 확보 → `flip_pilot_seller_ids`/`commission_budget_enabled`/`promo_funding_source` 파일럿 지정 → 실카드 8건 축별검증 → `/admin/promo-ledger` net==5% 확인 → 전역 ON + 대표 클릭. (프로덕션 D1 하나뿐이라 블라인드 flip 금지.)
+
+## 🔶 2026-07-12 — 4트랙 상태 (다음 세션 필독: 전부 대표 검증/클릭 대기)
+| 트랙 | PR | 상태 | 대표 액션 |
+|---|---|---|---|
+| flip(커미션 재원 owner 전환) | #496 | **main 머지·전 스위치 OFF**(`promo_funding_source`/`commission_budget_enabled`/`flip_pilot_seller_ids`) | 서초 테스트매장 온보딩 → seller_id 파일럿 지정 → 8단계 실결제 → promo-ledger net==5% 확인 → 전역 ON |
+| 체험 캠페인+조건부 우대커미션 | #499 (draft) | CI green. WP-A(어드민 대행생성 1순위·소비자 `/experience`·추첨 B2G·0원발급 비정산·리포트 CSV·셀러 게이트드 셀프생성) + WP-B(콘텐츠 인증 시 발효 — `requires_content_proof`/`submit-proof`/`approve-proof`) + WP-C(ref TTL 7d). 게이트: `experience_campaign_seller_create`(OFF) | §스모크 1회 왕복 후 머지 (`docs/design/trial-campaign-track-2026-07.md`) |
+| 앱-레디(PWA/TWA 대비) | #503 (draft) | CI green. `.well-known` 서빙 결함 수정·오프라인 QR 안심문구·컨텍스트 A2HS. 점검표 `docs/design/app-ready-audit-2026-07.md` | 리뷰 후 머지. 전환 착수 시 선결: in-app-browser.ts 래퍼 UA 감지 |
+| 상권 쿠폰(영수증 페이백) 견적 | #504 (draft, 문서만) | **병렬 엔티티(district_coupons) 확정·retrofit 금지**(대표 승인). 공수 ~7~7.5주/500만 방어 가능. `docs/design/district-coupon-estimate-2026-07.md` | 실장 제안서 확정. **구현은 계약 확정 후 별도 지시** |
+
+- 룰(대표): 실장 연락·견적 건 발생 시 세션 즉시 중단하고 그쪽 먼저.
+- 이 커밋에서 #499 룰-컴플라이언스 마감: 가이드 시드(admin+seller) `GUIDE_SEED_VERSION=4` · 플랫폼모델 §3~4(체험 캠페인·`/experience`) · SellerExperienceCampaignsPage i18n(6개 언어 `seller.expCampaigns.*`).
+
+
+## ✅ 2026-07-12 — SSR 페이로드 전역(KV) 워밍: 콜드 콜로 TTFB 마감 (대표 "계속 진행. 이상적으로")
+로딩 전수 최적화의 마지막 레버. `caches.default` 는 콜로별이라 콜드 콜로 하드로드가 self-fetch(콜드 D1, 0.5~1.5s)를 대기 → TTFB 1.1~1.9s. 진단 중 발견: `CACHE_KV` 는 선언/안내만 있고 SSR 경로에서 **아무도 KV 를 읽지도 쓰지도 않음**(바인딩만 해선 no-op) → 코드 완성. ① cron `cache-prewarm.ts` 가 SSR 슬롯 6키만 `ssr:{path}` KV put(**15분 표본화 576 writes/day < 무료 1K — KV 비용 잠금 준수**, TTL 30분). ② worker SSR 읽기 [edge miss → KV read → self-fetch] 계층(`X-SSR-Status: kv-hit`). 상세: CLAUDE.md 로딩 audit log 2026-07-12.
+- ⚠️ **효과 발생엔 운영 1스텝**: Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Bindings → KV `CACHE_KV` 바인딩(미바인딩=현행 100% 동일). 바인딩 후 `curl -sI https://live.ur-team.com/ | grep -i x-ssr-status` 로 kv-hit 확인.
+
+## ✅ 2026-07-12 — 전 표면 로딩 스윕 + "앞으로의 페이지" 로딩 표준화 (대표 "전체적으로도 봐봐 + 앞으로 만들 페이지들도 이상적이어야")
+- **스윕(라이브 13표면)**: 콘텐츠 완성 0.4~1.3s(warm) — 병적 표면 0. 잔여 변수는 콜드 콜로 HTML TTFB(SSR self-fetch, 콜로별 edge 캐시) — 운영 레버 `CACHE_KV` 전역 캐시 바인딩 권장(2026-06-19 audit log 참조).
+- **표준화**: `docs/LOADING_ARCHITECTURE.md` "✅ 새 페이지 로딩 체크리스트" 신설(로더=BrandLoader·시드 동기소비·prefetch 세계일치·청크표면 등재·쿼리 제자리갱신·probe 실측) + CLAUDE.md 새 페이지 체크리스트 7번 갱신.
+- **도구**: `scripts/probe-loading.mjs`(표면당 TTFB/로더구간/콘텐츠/스켈레톤 1줄 + 로더 재등장 ⚠️ 감지) 레포 커밋.
+- **가드**: loader-continuity 에 chunk-surface 동기 검사 신설 — 생성기 ROUTES ↔ worker chunkSurface 키셋 불일치 차단(negative test 검증).
+
+
+## ✅ 2026-07-12 — 상세 하드로드 청크 병렬화 (대표 "/group-buy/2609 로딩 아쉬워")
+실측: 로더 구간(~1.2s) 대부분 = lazy 페이지 청크 직렬 다운로드. vite manifest → 라우트별 청크 맵 생성(`generate-route-chunk-map.mjs`, build:worker 선두) → 워커가 7개 표면에 modulepreload 주입(엔트리와 병렬). 상세: CLAUDE.md 로딩 audit log 2026-07-12. ⚠️ 배포 후 라이브 실측으로 단축 확인.
+
+
+## ✅ 2026-07-11 — 사업자 링크샵 1-RTT 화 (로딩 전수조사 마지막 항목, 대표 "가장 이상적으로")
+curator 응답에 `linked_seller_public`(셀러 공개 페이로드, `buildSellerPublicPayload` SSOT — seller.routes `/public` 와 공유) additive 동봉 → SellerPublicPage 가 시드로 동기 소비, 셀러 `/public` fetch 생략. 하드로드는 SSR CURATOR 슬롯에 실려 0-RTT. 구캐시 호환 폴백(warm) 유지. 가드: loader-continuity 12·13번째 불변식. 상세: CLAUDE.md 로딩 audit log 2026-07-11.
+
+
+## ✅ 2026-07-10 — 로딩 전수조사: 불필요 로딩 화면 일괄 수리 (대표 "철저한 전수조사" + "전부 수정" 승인)
+3축 병렬 감사(워커 첫페인트 / 소비자 페이지 / 가드·대시보드) → 검증된 결함만 수리. 상세는 CLAUDE.md 로딩 잠금 audit log 2026-07-10 항목.
+- **HIGH**: ① 쇼핑 prefetch 키 number/string 불일치(항상 캐시 미스 — `usePrefetchProduct` String 정규화) ② 교환권 카드 prefetch 가 상세와 다른 엔드포인트·키(100% 낭비 — `usePrefetchGroupBuyProduct` 로 교체) ③ 홈 `__SSR_INITIAL_MAIN__` 미소비(useMapProducts 동기 시드 — 첫 페인트 스켈레톤 제거).
+- **MEDIUM**: Browse/VoucherDetail/SellerPublic 시드 동기 소비(+SellerPublic 시드 정체성 검증 신설) · 사업자 링크샵 curator→seller 워터폴 겹침(`seller-public-fetch.ts` in-flight 공유) · worker GROUPBUY 슬롯/데드변수 제거 · 대시보드 Suspense fallback 라이트 정합(BrandLoader forceLight/forceDark + DashboardLoader) · SellerLayout/AdminLayout 바운스 전 오화면 플래시 억제(조건 불변, 페인트만).
+- **LOW(로더 통일)**: 소비자 11개 풀스크린 + 6개 인라인 ad-hoc 스피너/텍스트 → BrandLoader · Supplier 본문 → WholesaleLoading · RouteGuards self-heal null → 라이트 로더.
+- ⚠️ 이 환경 npm 403 — vite build/vitest 는 CI 검증. staging 확인 권장: 교환권 카드 탭 즉시표시 / 홈 하드로드 첫 페인트 / 겸업 계정 /seller 첫 진입 / 도매전용 /seller 진입 로더→/wholesale.
+
+## ✅ 2026-07-10 — 3단 위임·promo 투명성 표면 선구현 (대표 "미구현+필요한 것 모두, 가장 이상적으로" — 머니 경로 3종은 8월 단독 세션 유지)
+flip UI 체크리스트(`docs/design/flip-ui-checklist-2026-08.md`)의 ❌ 미구현 표면 전부 + C3·C6 구현. **돈 이동 0 — 정산·커미션 계산 파일 접촉 0(diff 증명), 재원 프레이밍은 `promo_funding_source` 런타임 게이트**(owner 일 때만 promo 문구 — 대표 조건 ①② 준수).
+- **백엔드**(`91c7b8f7`): `store_agency_delegation` 테이블(§4.3 스케치 그대로, repair-schema 등록) + `/api/agency/delegation`(목록·promo-summary·모드 요청만) · `/api/seller/delegation`(grant/revoke 무조건) · `/api/seller/promo-spend` · `/api/admin/promo-ledger`(불변식 #44 조종석).
+- **UI**: `AgencyDelegationsPage`(`3f5134c3`) · `AdminPromoLedgerPage`(`dced7699`) · `SellerAgencyDelegationPage`/`SellerPromoSpendPage`/`SellerInfluencerDealsPage`+PrimaryActions CTA 정리+i18n 115키×6언어(`86c3755f`).
+- **8월 flip 세션에 남긴 것**: A1 스위치 ON(staging 실결제) · A3~A9 요율/지급/세무 재배선 · B3 분배 엔진(vendor_commission_splits) · B1/D1 **기존** 표면 문구 전환 · C1/C2/E1. 상세 체크리스트: `flip-ui-checklist-2026-08.md`(구현분 [x] 마킹). 설계 구현 로그: `vendor-commission-passthrough.md` §4.3.
+- guide-update-pending: 셀러/에이전시/어드민 가이드에 신규 표면 링크 추가는 후속.
+
+## ✅ 2026-07-02 — 유어애즈 마케팅 서비스몰(주문 관리) + 미디어 게이트웨이 (대표 시안 "카카오톡 공구 늘리기" 상품 페이지 + "일단 다 해줘")
+대표 스크린샷(마케팅 서비스를 상품처럼 파는 페이지) → **마케팅 서비스몰** 구현. 결정(AskUserQuestion): **무결제(주문요청 접수) · 확장형 카탈로그 · 유어애즈 안(/ads/services)**. 설계: `docs/design/urads-service-marketplace.md`.
+- **⚠️ 윤리/약관 핵심(대표 질문 "팔로워 늘리기 어떻게 구현?")**: 봇/가짜계정/자동팔로우는 **구현하지 않음**(카카오·인스타·네이버 약관 위반·어뷰징). 이 모듈은 **상품몰+주문큐(소프트웨어)만** 담당하고, 실제 성장 이행은 **정당한 마케팅 실행**(유료광고 집행=자동입찰 엔진·AI 콘텐츠·인플루언서·체험단)으로 사람이 채움. 주문에 `fulfillment_method` 기록.
+- **backend** `ad-services.ts`: `ad_services`(카탈로그)·`ad_service_orders`(주문큐, 상태 requested→confirmed→in_progress→done/cancelled) + 순수 `computeServicePrice`(단위가×수량→수량구간할인→+옵션, 서버 권위·클라 불신) + 시드3(카카오톡 오픈채팅/인스타/블로그, 전부 정당 실행 기준 설명) + 어드민 함수.
+- **라우트** `routes/services.routes.ts`: `/services`·`/:id`·`/quote`(가격 미리보기)·`/order`(무결제 접수)·`/order-history`. admin-ads: `/service-orders`(접수함)·`/services`(상품 관리)·PATCH(상태/이행방식/메모).
+- **UI** `ServiceMarketplacePanel.tsx`(카탈로그→상세: 티어 프리셋+수량+옵션+실시간 가격+연락처+주문요청, 내 주문 상태) 대시보드 `sec-services` + 셸 nav. admin `AdminAdsServicesPage`(접수함 탭: 상태/이행방식/메모, 상품관리 탭: 노출토글) + admin.routes/AdminLayout 배선.
+- 단위테스트 `ads-service-price`(할인구간·클램프·옵션). file-size baseline 갱신(AdminLayout 608→609·admin.routes 661→668, 새 어드민 페이지 배선 정당 성장).
+- 검증: tsc 0(config 경고 제외)·sql bind/table/not-null/status-constraint/theme/crossrole/api-auth 가드 0·신규 파일 전부 <600줄. ⚠️ vitest/worker-build CI 검증.
+
+## ✅ 2026-07-02 — 유어애즈 AI 콘텐츠 스튜디오 (대표 "블로그 자동작성·인스타/틱톡·광고문구·댓글답변·성과분석 서비스 구현" + "리퍼포징/멀티플랫폼 자동화" 아이디어)
+유어애즈에 AI 콘텐츠 스튜디오 신설(유어애즈 경계 안, 소비자 `blog-ai.ts`와 무관). 전부 **초안 생성(자동 게시 없음)** + AI 미터링(`content_per_day`, 집행은 `ADS_BILLING_ENFORCED` 게이트) + `ANTHROPIC_API_KEY` 필요(없으면 503).
+- **모듈**: `claude-client.ts`(공유 Claude 호출 + `parseJsonLoose` 관대 파서) · `content-studio.ts`(생성/리퍼포징/답변/분석 + 라이브러리 `ad_content` + 순수 파서 `normalizeAdCopy`/`extractHashtags`/`extractTitle`) · `routes/content.routes.ts`(`/content/*` 서브라우터, marketing.routes 마운트).
+- **① 리퍼포징(핵심)**: 원문 1개(유튜브 대본·블로그·제품설명) → 요약+블로그+인스타+틱톡+광고문구+SEO를 **1회 호출(JSON)**. "하나 올리면 여러 채널" 자동화의 텍스트 파트.
+- **② 생성**: 블로그(SEO 마크다운)·인스타(캡션+해시태그)·틱톡(훅+씬 대본+해시태그)·광고문구(네이버 소재 제목15·설명45자 규격 검증+변형4). 
+- **③ 댓글/리뷰 답변 초안**: 톤 4종(정중/친근/사과·해결/간결).
+- **④ 성과분석(콘텐츠 관점)**: 실적(accountStats+keywordEfficiency, 연동 시) 근거로 "잘 통하는 메시지" 분석 + 콘텐츠 방향 제안 → 생성으로 루프.
+- **UI**: `ContentStudioPanel.tsx` 5모드 탭(리퍼포징/생성/댓글답변/성과분석/보관함) + 복사/보관함저장. 셸 nav `sec-content` + 대시보드 LazyMount. 광고문구 글자수 배지(초과 빨강).
+- **엔타이틀먼트**: `PLAN_LIMITS`에 `content_per_day`(free 10/starter 50/pro 200) 추가.
+- **미디어 생성 게이트웨이(2026-07-02 "일단 다 해줘")**: `media-gateway.ts` — provider-agnostic(이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen) + 킬스위치 `ADS_MEDIA_ENABLED`(기본 OFF) + 잡모델 `ad_media_jobs`(비동기 영상 submit/poll) + `media_per_day` 한도. 토스게이트웨이 철학(직접 fetch 금지). 라우트 `/content/media/{status,image,voice,video,video/:id}` + 패널 '미디어' 모드(키 없으면 "설정 필요" 안내) + 어드민 provider 상태 배지. env.ts 타입 6종 추가. 게이트 앞단 단위테스트(트랩DB — 킬스위치 OFF/키 없음 시 DB·네트워크 미접근 증명). **⚠️ egress 차단으로 실 provider 호출 미검증 — 대표가 키 설정 후 provider별 스펙(Replicate 모델버전·HeyGen 페이로드) 1회 실검증 필요.** 남은 건 대표의 키 설정 + 킬스위치 ON + 단가/구독 정책.
+- 검증: tsc 0(config 경고 제외) · sql bind/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄(content-studio 239·panel 226) · 단위테스트 `ads-content-studio`(파서/정규화/규격). ⚠️ vitest/worker-build CI 검증.
+
+## ✅ 2026-07-01 — 유어애즈 기능 확장 6종 (대표 "모두 가장 이상적으로 진행해줘" — 전수감사 후속 개선/아이디어 실행)
+전수감사에서 제안한 개선(A)·신기능(B) 중 **유어애즈 경계 안 + 보유 데이터/인프라만 쓰는 것 전부** 구현. 크로스서비스(유어딜 판매채널 번들)는 분리 룰상 정산·CS·소유권 대표 결정 선행이라 설계 문서 상태 유지(미착수 명시).
+- **① 키워드 기회 발굴기(B1)** — `keyword-opportunities.ts` 순수 스코어러(`score = 월검색량 × 경쟁가중치(낮음1.0/중간0.55/높음0.25)`, 보유(자동입찰 규칙+저장 키워드+선택 시 그룹 등록 키워드) 공백무시 제외, 검색량<100 컷) + GET `/api/ads/keywords/opportunities?seed=` + `OpportunityPanel.tsx`(발굴→포트폴리오 저장 '기회' 태그) + 셸 nav 'sec-opportunity'. 단위테스트 6케이스.
+- **② AI 마케터 grounding 확장(A2)** — `/ai-marketer` 컨텍스트에 4종 주입: 키워드 효율(낭비 키워드 8·상위 전환 5, 연결 시)·쇼핑 오가닉 순위(10)·부정클릭 의심 IP 수·최저가 역전(undercut). 전부 fail-soft(Promise.allSettled). SYSTEM 프롬프트에 각 데이터 활용 지시 4줄. 주간리포트 cron 은 quota 보호 위해 기존(stats+trend) 유지.
+- **③ 수익화 엔타이틀먼트 뼈대(A1)** — `ads-entitlements.ts`: `ad_entitlements`(플랜)·`ad_usage_daily`(사용량) + `PLAN_LIMITS`(free/starter/pro — 숫자만 바꾸면 됨) + `checkCapacity`/`meterDaily`. **집행은 `ADS_BILLING_ENFORCED='true'` 킬스위치(기본 OFF = 현행 무제한 byte-동일)**. 게이트 배선 5곳: 자동입찰 규칙(단일402/벌크)·clickguard 사이트·순위 타겟·가격 워치 + AI 일일 미터링(429). 어드민 `/api/admin/ads` PATCH plan + 목록 plan 컬럼 + `AdminAdsAccountsPage` 플랜 셀렉터. 단위테스트(킬스위치 OFF 무조건 통과 불변식 포함).
+- **④ 자동입찰 섀도우 모드(A6)** — `runAutobidShadowAll`: 활성 규칙을 dryRun 으로 돌려 "했을 변경"만 `ad_autobid_shadow`(seller×keyword×일 UNIQUE 멱등)에 기록. **PUT 0**. 게이트 = `ADS_AUTOBID_SHADOW_ENABLED='true'`(기본 OFF) && 실엔진 OFF(중복 방지). 일일 cron(`ads-autobid-shadow`, scheduled.ts additive) + GET `/searchad/autobid/shadow` + AutobidPanel '섀도우 기록' 섹션. 실엔진 켜기 전 신뢰 축적용. 게이트 단위테스트(트랩 DB 로 미접근 증명).
+- **⑤ 온보딩 체크리스트(A5-lite)** — `OnboardingChecklist.tsx`: 연동→키워드→자동화 3스텝(기존 API 3개 재사용), 앵커 점프, 전부 완료/닫기 시 자동 숨김. 대시보드 상단.
+- **⑥ 랜딩 예시 라벨(A3)** — hero 목업 '예시 화면' + 수치 밴드/고객사례 각주("서비스 소개용 예시"). 시안 훼손 없는 각주 방식(실데이터 교체는 라이브 검증 후).
+- 검증: tsc 0(config 경고 제외) · sql bind/column/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄. ⚠️ vitest/worker-build 는 환경 제약으로 CI 검증. 상세: `urads-HANDOFF.md` §4 표 + §5 env 표 + §7-B.
+
+## ✅ 2026-07-01 — 유어애즈(UR Ads) 2차 전수감사 (4축 병렬 심층) + 예방 하드닝 2건 (대표 "유어애즈 서비스 전수조사해봐")
+audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축을 병렬 서브에이전트로 심층 재감사: **①인증·IDOR ②머니 하드캡 ③런타임크래시·입력검증 ④서비스분리·배선.** 결과 = 6.6 라이브감사 이후 **신규 확정 결함 0**(unlock 은 이미 상수시간 `timingSafeEqual` 로 수정됨 · IDOR 0 · 크래시 0 · 분리 완전 클린 · JWT HS256 핀·reset토큰 CSPRNG+해시+1회용 · planBid 하드캡 이중강제 확인). 예방적 하드닝 2건만 반영:
+- **refreshWatch 자기-스코프화**(`price-monitor.ts`) — UPDATE 에 `AND seller_id=?` 추가(라우트로 차폐됐던 잠재 IDOR, 헬퍼 자체 안전화, 호출부 3곳 배선).
+- **자동입찰 규칙 생성 시 활성 고객사 필수**(`marketing.routes.ts` `/searchad/autobid/rule`·`/rules/bulk`) — `tenant=NULL` 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 **잘못된-계정 과금** 벡터 차단(`getActiveTenantId` null→400). autobid 킬스위치 기본 OFF 라 현재 라이브 영향 0, 켜기 전 예방.
+- 잔존 2건도 **대표 "응 원해" → 서버측 강제로 수정**: ① `access_unlocked` 서버측 게이트(`requireAdsUnlocked` 미들웨어, 데이터 API 전체 — 면제=ping/auth/공개픽셀, 정지계정 옛토큰도 차단) ② clickguard `domainMatches` null-Origin **거부**(위조 hit→의심리포트 오염 완화). HTTP 데이터 라우트 타는 ads 테스트 5개에 unlock 계정 시딩 + 게이트 회귀테스트 신설.
+- 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination/crossrole/api-auth 가드 0. marketing.routes.ts 447줄(baseline+7, `[SKIP_SIZE]` — routes/ 추가분할 시 해소). ⚠️ vitest/worker-build 는 이 환경 제약으로 미실행(CI 검증). 상세: `docs/design/urads-HANDOFF.md` §6.7.
 ## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
 - `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
 - i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
@@ -32,7 +181,9 @@ GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로
 - **게이트** `GB_ENGINE_ENABLED`(클라 빌드플래그, OFF) + 서버 `platform_settings.gb_engine_enabled`(예정) — 이중 안전. SELLER_PROMO_FIELD 와 동일 활성 순서(owner-funding 먼저).
 - 검증: tsc 0 · build 0 · vitest +21 · 테마/file-size GREEN.
 - **§2-A 매장 "공구 열기"(방향 A — 서초 사용)**: `POST/GET /api/seller/products/:id/group-buy`(seller 소유권 + `platform_settings.gb_engine_enabled` 게이트 · open/close · validateGbSession) + `GroupBuyOpenPanel`(SellerGroupBuyPage 행별, GB_ENGINE_ENABLED 게이트) — 마감·할인율·promo·링크전용 입력 + ThreeWaySplitCalculator 미리보기 → gb-session-store 저장. **상태 저장만**(소비자가/커미션 authoritative 적용은 owner-funding 검증 후 다음 슬라이스).
-- ⏭️ **다음 슬라이스**: §4 인플루언서 공구 탐색·수익 뷰(promo순 정렬·예상수익·담기 ?ref) → §2-B 인플 제안 플로우(제안→매장 승인) → 소비자 상세 실효가+promo→커미션 authoritative 배선(잠금 group-buy-public + resolver, 게이트). 완료기준: staging 실결제 원장 정합.
+- **§4 인플루언서 공구 탐색·수익 뷰**: `GET /api/gb-marketplace`(신규 라우트 — 잠금 group-buy-public 미변경 · gb_engine 게이트 · live gb 세션 product_supply_meta 수집→상품 조인(정지셀러 `s.is_active=0` 제외)→resolveGbPricing→promo>0만→promo% 순 정렬 · 카테고리/지역 필터 · intParam) + `GbMarketplacePage`(/gb-market, 다크지원): 소개비% 배지·공구가·건당/100건 예상 소개비·**담기(기존 usePinAction 핀 재사용)**. GB_ENGINE_ENABLED OFF면 "준비 중" 빈상태. 나브 링크는 flip 시 추가.
+- **§2-B 양방향 공구 제안(완결 — 게이트 OFF)**: `gb_proposals` 테이블(proposed_by='influencer'|'seller') + `gb-proposals.routes`(잠금 미변경 · gb_engine 게이트 · 승인=CAS 후 gb open, proposerId=인플). 클라: 매장 `GbProposalsPanel`(SellerGroupBuyPage — 받은 제안 승인/거절 + 인플에게 핸들로 협업 제안) · 인플 `GbMyProposals`(GbMarketplacePage — 받은 협업 수락/거절 + 내 제안 상태) · `GbProposeModal`(GroupBuyDetailPage 게이트 버튼 — 인플→매장 제안). 양방향 알림.
+- ⏭️ **남은 것**: 소비자 상세 **실효가(resolveGbPricing)+promo→커미션 authoritative 배선**(잠금 group-buy-public + resolver — owner-funding staging flip 전제) · 크리에이터 콘솔 공구별 실적(어필리에이트 집계 재사용) · flip 시 나브 링크. 완료기준: staging 실결제 원장 정합.
 
 ### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
 - **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).
@@ -116,6 +267,47 @@ pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**
 - **🛡️ 영구 가드 신설**: `scripts/check-pagination-nan.mjs` — request pagination(page/limit/offset/days…)이 `parseInt/Number` NaN 폴백 없이 assign 되면 차단(닫는 괄호 뒤 `|| 숫자` 또는 `isNaN`/`Number.isFinite`/삼항리터럴 필요). `verify.yml`(strict)·`audit-gate.sh`(schema 도메인)·pre-commit(warn)·`AUDIT_INVARIANTS.md`·CLAUDE.md 방어선 표 등록. 현재 위반 0(scanned=143, safe=143). 예외 `pagination-nan-ok` 주석.
 - **검증**: tsc 0(사전 config 경고 제외)·build(client+ssr+prerender+worker+prepare) 0·SQL bind/column 가드 0·audit-gate 38 GREEN(무관 file-size RED 1건=타 세션 blog.routes/worker index).
 - **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
+<!-- 2026-07-01 재배포 트리거: 대표 ALIGO_SENDER_KEY 등록 → Pages secret 런타임 주입용 -->
+
+## ✅ 2026-07-01 — 알림톡 콘솔 심사 자료 + 채널 확인수단 (대표 "알림톡 콘솔 심사 넣고 싶음")
+대표가 유어딜 알림톡을 Aligo 콘솔에 등록·심사 넣으려 함 → ①배선된 템플릿+문안 ②콘솔 등록형 ③secret 확인법.
+- **전수조사 발견(정정)**: 기존 `docs/kakao-alimtalk-templates.md`·SSOT `alimtalk-templates.ts`가 **부정확** — 실제 안 쓰는 코드(`referral_commission_earned`·`stay_reminder_d1/dday`) 등재, 실제 쓰는 코드(`commission_withdrawal_approved/rejected`·`auction_promoted`·`stay_dday`/`stay_d1`) 누락, 기존 문서의 본문이 실제 코드 발송문과 **글자 불일치**(그대로 등록하면 발송 시 거부). 전 `sendSystemAlimtalk`/`sendAlimtalk` 호출부(~25곳) 문안을 실측 추출해 1:1 정합.
+- **SSOT 정정** `src/lib/alimtalk-templates.ts`: 실제 배선 코드로 재작성 + `CONSUMER_*`/`WHOLESALE_*` 분리(서비스 분리 — 유어딜 채널 vs 유통스타트 채널). `isDocumentedRegistered` 시그니처 유지(admin 진단 무영향).
+- **콘솔 등록 문서** `docs/kakao-alimtalk-templates.md` 전면 재작성: 소비자 24종·도매 4종 각 tpl_code·대상·발송시점·**본문(#{변수}, 코드와 글자일치)**·변수설명. ⚠️ **1코드 2문안 2건**(`seller_approved` 신규/재활성, `business_registration_result` 승인/반려)은 카카오 1코드1본문 원칙 위배 → 코드분리/변수화 필요 명시. 셀러 자체계정 발송(order_confirm 등 alimtalk-auto)·미배선(이용권 구매완료/사용 없음) 구분 명시.
+- **확인수단 개선**: `/api/health/env-readiness`(admin)가 `ALIGO_API_KEY`만 보던 것 → **3종(+`ALIGO_USER_ID`·`ALIGO_SENDER_KEY`)** 전부 보고. 또 이 엔드포인트가 `/api/health/detailed/env-readiness`에만 있어 대표가 기대한 `/api/health/env-readiness`가 404였음 → index.ts에 **`app.route('/api/health', healthRoutes)` 별칭 additive**(인라인 `/api/health` 먼저 등록이라 shadow 0 — Hono 실측 검증). `/api/version`·어드민 채널배지 알림톡 판정도 `ALIGO_SENDER_KEY` 포함(3종).
+- 검증: tsc 0 · 전체 2443 pass · build 0 · api-auth(admin 마운트 requireAdmin 상속)·theme·bind·file-size 가드 0.
+  - **후속(머지 충돌 해결 + 신규 템플릿 반영)**: main 병합 중 타 세션이 같은 SSOT에 추가한 `voucher_used`(이용권 사용 완료)·`fcfs_selected`/`fcfs_replacement`(체험단)·`district_coupon_*`(상권쿠폰, 게이트 뒤)와 SMS failover 배선을 발견 → 충돌 해결(내 CONSUMER/WHOLESALE 구조 유지 + 신규코드는 미문서/pending 그룹으로). 문서에 `voucher_used`(대표가 물은 "이용권 사용"=이미 배선됨) 본문·fcfs 2종 추가, "이용권 사용 없음" 오기재 정정.
+  - **1코드 2문안 분리(대표 "가장 이상적으로")**: 카카오 1코드=1본문 원칙 위배 2건을 tpl_code 분리 — `seller_approved`→(`seller_approved` 신규 / `seller_reactivated` 재활성), `business_registration_result`→(`business_registration_verified` / `business_registration_rejected`, env override도 action별 `ALIGO_BUSINESS_REGISTRATION_VERIFIED/REJECTED`). `admin-sellers.routes` 발송 분기·SSOT·문서 정합. 라이브 실측: `ALIGO_SENDER_KEY` 미설정(false) — 콘솔 발신프로필 등록 후 senderkey env 설정해야 발송(문서 명시). 검증: tsc 0·전체 2540 pass·build 0.
+
+## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
+코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
+- 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
+- 🟠 **네이티브 푸시(FCM v1)도 미설정 가능성**: `messages:send`가 `FIREBASE_PROJECT_ID` 필요(URL). `/api/version`이 그동안 이 값을 안 봐 미확인 — 이번에 진단에 추가. (설정돼도 Capacitor 앱 유저 한정, 웹 미해결.)
+- 🟡 **운영 가시성 공백**: `/api/version` secret 진단이 VAPID_*·FIREBASE_PROJECT_ID를 안 봐 이 누락이 표준 진단에서 안 보였음(그래서 대량 코드작업에도 미발견).
+
+**반영(안전·additive, 잠금파일 무수정)**:
+1. `PushNotificationSetup.tsx` — VAPID 공개키를 **런타임 서버(`/api/push/vapid-public-key`) 우선**으로 해석(`resolveVapidKey()`, 빌드변수 폴백). → 공개키 SSOT를 서버 런타임 하나로 통합(build/runtime drift 제거) + secret 설정만으로 **재배포 없이** 구독+서명 키 자동 일치. 키 없으면 기존처럼 배너/구독 skip.
+2. `public-utility.routes.ts` `/api/version` — secret 진단에 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`/`FIREBASE_PROJECT_ID` boolean 추가(값 미노출).
+
+**⚠️ 근본 해결은 운영자 몫(코드 아님)**: Cloudflare에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(웹푸시), `FIREBASE_PROJECT_ID`(+기존 FIREBASE_PRIVATE_KEY/CLIENT_EMAIL, 네이티브푸시) secret 설정 필요. 설정 후 `/api/version`으로 확인 → 웹푸시 즉시 활성(1의 런타임 해석 덕에 재빌드 불필요). VAPID 키쌍 생성: `npx web-push generate-vapid-keys`.
+  - **2026-07-01 후속**: 대표가 VAPID 3종 secret 등록 완료. Pages는 secret 추가 시 새 배포가 있어야 런타임 주입되므로 본 커밋으로 재배포 트리거(secret 값 자체는 미변경). **라이브 검증 완료**: `/api/version` VAPID 3종 `true` · `/api/push/vapid-public-key`가 등록한 공개키 반환(빈문자열→해결) · 서버↔등록키 일치.
+  - **2026-07-01 3차 개선(대표 "더 개선할 부분?")**: 채널 진단 배포 즉시 **이메일(Resend) 채널만 미설정**으로 확인(셀러 일일리포트·에이전시 월간리포트·배송메일 0건 발송 중 — 켤지는 대표 결정 대기). 나머지 3채널(웹푸시/네이티브/알림톡) LIVE. 추가 구현 2건: (1) **채널 회귀 워치독** `cron/channel-watchdog.ts`(매시간) — 채널 설정 스냅샷을 `platform_settings` 에 저장, **LIVE→죽음 전환 시 1회 critical 경보**(reportCronFailure → cron_failures + 어드민 벨). VAPID 미설정으로 수개월 조용히 죽어있던 사고의 재발 방지(한번도 설정 안 된 채널 false→false 는 무경보 = 노이즈 0). `env.ts` 에 `VAPID_SUBJECT` 타입 추가. (2) **dead-letter 가시성** — `push_failures`/`email_failures` 는 재시도 크론만 있고 볼 UI 가 0 이었음 → admin `GET /api/admin/delivery-failures`(양쪽 items+7일 stats) + `POST /delivery-failures/:kind/:id/retry`(next_retry_at 즉시화 + 포기건 retry_count 복원 → 5분 크론이 수거) + 모니터링 페이지 3번째 탭 '푸시·이메일 실패'(웹푸시/이메일 배지·즉시 재시도 버튼). 부수 확인: `enable_push_notifications` 기본 ON(false 는 비상모드 전용), `PushNotificationSetup` 은 App 전역 마운트(셀러/어드민 포함), push_failures drain 크론 정상 등록. 검증: tsc 0 · 전체 2443 pass · build 0 · theme/table/bind/column/file-size 가드 0.
+  - **2026-07-01 2차 개선(웹푸시 활성화 후 추가 확인)**: (1) **채널 진단 확장** — `/api/version` secret 진단에 `RESEND_API_KEY`(이메일)·`ALIGO_API_KEY`/`ALIGO_USER_ID`(알림톡) 추가. 이 둘도 키 없으면 조용히 no-op 하는 동일 패턴이라 이제 어느 채널이 죽었는지 한눈에 보임. (2) **셀프 테스트 푸시** `POST /api/push/test`(requireAuth, 호출자 **본인 구독에만** 발송 — 임의 대상 불가) — VAPID 켠 뒤 실제 전달을 E2E 확인할 유일 수단이 없던 공백 해소. 반환값(skipped/subscription_count/delivered/expired)으로 미도달 원인 진단. (3) 어드민 `AdminSystemMonitoringPage`에 **알림 채널 상태 배지(웹푸시/이메일/알림톡/네이티브푸시 ✓✕) + "나에게 테스트 푸시" 버튼**(라이트 테마, dark: 0). 발송경로 조사 결과 `sendSystemPush`는 VAPID 게이트·`push_enabled` 유저설정 존중·410 만료삭제·dead-letter 재시도·네이티브 독립으로 **건강** 확인. push-sw.js는 `no-store`(핸들러 갱신 전파 OK)·subscribe 401(인증) 정상. 검증: tsc 0·theme-consistency(strict) 0·build 0.
+- 검증: tsc 0(사전 config 경고 제외) · build(client+ssr+prerender+worker+prepare) 0 · theme(strict) 0.
+
+## ✅ 2026-07-01 — 이용권 명칭 통일 잔여 "숙소권" → "숙소 이용권" (대표 "이용권 내용 진행 — 모두")
+이용권 전수조사(명칭/버그/UI/기능 4방향 병렬) → **실제 잔여 부채는 명칭 1종**. 나머지 3방향은 오탐/기수정/별도영역 확인.
+- **명칭 (수정 완료)**: 사용자-가시 "숙소권" 12건(6파일) → "숙소 이용권"(SSOT `getVoucherShortLabel`='숙소 이용권'과 정합). 파일: `stay-voucher-expire.ts`(알림톡 제목)·`StayCheckout.tsx`·`SellerStayNewPage.tsx`(판매방식 라벨·유효기간 필드)·`StaysSearchPage.tsx`·`MyStaysPage.tsx`(배지)·`StayDetailPage.tsx`(3곳: 모드 라벨·요약)·`stays-public.routes.ts`(3곳: 에러메시지·응답 라벨). 주석 5건(GroupBuyListPage·stays-public 버그기록)은 CLAUDE.md 규칙대로 보존. "평일권/주말권"(권종 변형)은 불변.
+- **버그 (조사 결과 오탐/기수정)**: ① 셀프취소 정산 미회수 의혹 → 셀프취소는 `status='unused'` CAS 대상뿐이라 정산분 없음(오탐). ② influencer_attributions voucher_id NULL 누수 → 2026-05-31 order_id 기반으로 기수정. ③ MyVouchers 절약액 NaN → 이미 `(pct>0 && pct<100 && paid>0)` 가드. 감사 게이트 머니 GREEN 영역 견고 재확인.
+- **다국어 locale**: zh/es/fr/ja 의 옛 "식사권"·团购券 → **2026-06-29 결정("전면 다국어 prose 정합=KR-primary라 별도")** 유지(대부분 `[TODO]` 미번역 플레이스홀더). ko(주 언어)는 이미 0건.
+- **알아둘 것(미수정, 대표 판단 필요)**: 카드결제 교환권 셀프취소 시 Toss 취소가 waitUntil 비동기라 실패하면 voucher='refunded'인데 orders='PAID' 잔존 갭 — 드물고 잠긴 결제영역 인접이라 문서화만.
+- 검증: tsc 0(config 경고 제외)·theme(strict) 0·sql-bind 0·blog-seed-currency 0·build(client+ssr+prerender+worker+prepare) 0.
+## ✅ 2026-07-01 — 유어딜 소비자 전수감사(가드 미보유 영역) — 확정 3건 fix (대표 "더 깊게 파봐")
+감사 게이트(37 GREEN/1 RED=선재 file-size 드리프트) 후 **가드 미보유 3영역**(결제 금액정확성·런타임 크래시·외부 PG 실응답)을 라이브+정적으로 심층 감사. 라이브 소비자 API/SSR 전부 건강(200·주입 정상), 크래시 스윕 CLEAN(신규 fcfs/블로그/알림 UI 방어적). **확정 3건 수정**:
+- **#1 (SEO) sitemap.xml stale — 블로그 20개 중 16개 404 + 상품/공구 전무**: 근본원인=`public/sitemap.xml`(옛 하드코딩, 폐기 슬러그 why-live-commerce·meal-voucher-business 등)이 `_routes.json` exclude 로 Pages 직접 서빙 → 워커 동적 `sitemap.routes.ts`(`WHERE is_published=1`) 완전 우회. **수정**: exclude 에서 `/sitemap.xml` 제거 + 정적파일 삭제(git rm) → 워커 동적 라우트가 서빙(상품/공구/블로그 published + 서비스분리 필터 포함). 동적 배열의 `/live`·`/shorts`(LIVE_COMMERCE_SUSPENDED)도 제거(폐기기능 URL 크롤 방지).
+- **#2 (머니) 반품환불 경로 쿠폰 미복원**: `returns.routes PUT /:id/refund` 이 역전을 인라인 재구현하며 `coupon_uses` 복원만 누락(`refundOrderFully`·주문취소는 복원). → 1회용 쿠폰 영구소진+used_count 과대. **수정**: order-refund SSOT 미러 쿠폰 un-use 블록 추가(CAS `transitioned` 게이트 하 단일실행, 자연멱등).
+- **#3 (머니) 초대보상 1,000딜 환불 미회수(파밍 벡터)**: `grantInviteRewardForFirstPurchase` 적립만 있고 clawback 0. **수정**: `reverseInviteRewardOnRefund`(invite-reward.ts) 신설 — 환불 후 초대받은 유저 유효주문 0이면 초대자 보상 회수(다른 유효구매 있으면 보류), 멱등 CAS(granted→expired) + `MAX(0,...)` clamp. `reverseOrderAncillaryOnRefund`(전액환불·주문취소 자동커버) + returns 양경로 배선.
+- 검증: tsc 0 · build 0(client+ssr+prerender+worker) · money-pattern/sql bind·not-null·column·table 가드 0 · audit-gate 37 GREEN(file-size RED 는 선재 드리프트, 본 변경 무관). ⚠️ staging 실결제 권장: 쿠폰주문 반품환불 시 쿠폰 재사용 가능 + 초대유저 첫구매 환불 시 초대자 딜 회수.
 
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**

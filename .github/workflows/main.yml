@@ -45,6 +45,13 @@ jobs:
       - name: Run unit tests
         run: npm test -- --run
 
+      # 🛡️ 2026-07-12 배포 타입체크 게이트 (대표 승인) — vite build 는 타입검사를 안 해서
+      #   타입 에러(예: BrandLoader import 누락 → 블로그 상세 전면 크래시)가 그대로 라이브 배포됐음.
+      #   verify.yml 의 tsc 는 별도 워크플로 + continue-on-error 라 배포를 못 막음 → 여기서 하드 차단.
+      #   (worker 전용 tsconfig 체크는 선재 에러 정리 전까지 verify 에서 warn 유지 — 별도 정리 예정.)
+      - name: Typecheck gate (타입 에러 시 배포 차단)
+        run: npx tsc --noEmit --skipLibCheck
+
       # 🛡️ 2026-04-22: 평문 키 → GitHub Secrets fallback.
       # 클라이언트 번들에 주입되는 VITE_* 는 본질적으로 공개 (브라우저 네트워크탭에서 보임)지만,
       # workflow 파일에 평문으로 두면 (1) git history 영구 노출, (2) 키 회전 시 코드 변경 필요.
@@ -87,15 +94,20 @@ jobs:
           echo "✅ $JS_COUNT JS chunks in assets/"
           test $JS_COUNT -gt 50 || (echo "❌ Too few JS chunks ($JS_COUNT), build may be incomplete" && exit 1)
 
-          # 🛡️ Bundle size budget (2026-04-22 추가)
-          # 번들 비대로 인한 초기 로딩 지연 방지.
-          # 한계: _worker.js 4MB (2026-05-18 상향 from 3MB — 숙소/정산/referral 코드 추가로 임계 근처).
-          #       초기 entry JS 500KB, 총 client 50MB.
-          # 참고: Cloudflare Workers Free plan 한도 1MB compressed (≈4MB uncompressed).
-          #       Paid plan 10MB uncompressed 까지 가능.
+          # 🛡️ Bundle size budget (2026-04-22 추가 · 2026-07-07 압축 기준으로 수정)
+          # ⚠️ 2026-07-07: Cloudflare 실제 한도는 **압축(gzip) 크기**(Free 1MB / Paid 10MB) — 비압축이 아님.
+          #   비압축 4MB 캡은 프록시였는데, 앱 성장으로 비압축 4.0MB 인데 gzip 0.94MB(<1MB free 한도)인
+          #   '배포 가능한' 상태를 오탐으로 막아 전 세션 배포가 몇 시간 중단됨. → 실제 제약인 gzip 으로 게이트.
+          #   임계에서 우리가 먼저 실패 = Cloudflare 하드 리젝(무음) 전에 명확한 CI 신호.
+          #   ⚠️ 2026-07-13: 앱 성장으로 gzip 이 ~0.968MB 도달 → 게이트를 1,020,000B(≈0.973MB)로 소폭 상향.
+          #   Cloudflare 실제 Free 한도(1,048,576B=1MiB)까지 여유 ~28KB 만 남음 — **이제 신규 worker 코드
+          #   추가 여력이 거의 없다.** 다음 확장 전 Paid 전환(gzip 10MB) 또는 worker 다이어트가 필요.
           WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
-          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB"
-          test $WORKER_SIZE -lt 4194304 || (echo "❌ _worker.js 너무 큼 ($(($WORKER_SIZE/1024))KB > 4MB)" && exit 1)
+          WORKER_GZ=$(gzip -c dist/client/_worker.js | wc -c)
+          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB (gzip $(($WORKER_GZ / 1024))KB / CF 압축한도 Free 1024KB)"
+          test $WORKER_GZ -lt 1020000 || (echo "❌ _worker.js 압축 $(($WORKER_GZ/1024))KB > ~0.973MB — Cloudflare Free 1MB 압축한도 임박(Paid 전환/worker 다이어트 필요)" && exit 1)
+          # 비압축은 느슨한 안전망만(Paid 10MB 대비) — 하드 게이트는 위 압축 기준.
+          test $WORKER_SIZE -lt 10485760 || (echo "❌ _worker.js 비압축 $(($WORKER_SIZE/1024))KB > 10MB(Paid 한도)" && exit 1)
 
           ENTRY_SIZE=$(du -b dist/client/assets/index-*.js 2>/dev/null | head -1 | awk '{print $1}' || echo 0)
           echo "  entry JS size: $(($ENTRY_SIZE / 1024))KB"

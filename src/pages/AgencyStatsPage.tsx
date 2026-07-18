@@ -65,10 +65,23 @@ export default function AgencyStatsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 체인 → useApiQuery (sellers→stats/compare 의존, enabled 게이트).
   const sellersQ = useApiQuery<Seller[]>(['agency', 'stats-sellers'], '/api/agency/sellers', { select: (r: any) => (r?.data || []) })
   const sellers = sellersQ.data ?? []
-  const profileQ = useApiQuery<number>(['agency', 'stats-profile-rate'], '/api/agency/profile', {
-    select: (r: any) => { const rate = r?.data?.commission_rate; return (typeof rate === 'number' && rate > 0) ? rate : 2.0 },
+  // 💡 2026-07-11 (flip B1 선반영): profile 응답의 funding_source 동봉 소비 — 'owner' 확인 시에만
+  //   "조율 몫(매장 promo)" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 라벨 byte-동일.
+  const profileQ = useApiQuery<{ rate: number; funding: string }>(['agency', 'stats-profile'], '/api/agency/profile', {
+    select: (r: any) => {
+      const rate = r?.data?.commission_rate
+      return { rate: (typeof rate === 'number' && rate > 0) ? rate : 2.0, funding: r?.data?.funding_source || 'platform' }
+    },
   })
-  const commissionRate = profileQ.data ?? 2.0
+  const commissionRate = profileQ.data?.rate ?? 2.0
+  const ownerFunded = profileQ.data?.funding === 'owner'
+  // 구모델(플랫폼이 정한 수수료 수익) ↔ 신모델(매장 promo 안 조율 몫) 라벨 — 게이트드.
+  const commissionRevenueLabel = ownerFunded
+    ? t('agency.stats.coordShareOwner', { defaultValue: '조율 몫(매장 promo)' })
+    : t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' })
+  const commissionRateLabel = ownerFunded
+    ? t('agency.stats.coordShareRateOwner', { defaultValue: '조율 몫 비율' })
+    : t('agency.stats.commissionRate', { defaultValue: '수수료율' })
 
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>; streams: Record<number, { stream_count: number; total_viewers: number }> } | null>(
@@ -149,7 +162,7 @@ export default function AgencyStatsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: t('agency.stats.totalRevenue', { defaultValue: '총 매출' }), value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
-          { label: t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }), value: `${formatNumber(Math.round(totals.revenue * commissionRate / 100))}원`, icon: DollarSign, color: 'bg-indigo-600' },
+          { label: commissionRevenueLabel, value: `${formatNumber(Math.round(totals.revenue * commissionRate / 100))}원`, icon: DollarSign, color: 'bg-indigo-600' },
           { label: t('agency.stats.totalOrders', { defaultValue: '총 주문' }), value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
           { label: t('agency.stats.totalLives', { defaultValue: '총 라이브' }), value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
           { label: t('agency.stats.totalViewers', { defaultValue: '총 시청자' }), value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },
@@ -174,7 +187,7 @@ export default function AgencyStatsPage() {
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold text-gray-900">{t('agency.stats.sellerComparison', { defaultValue: '셀러별 성과 비교' })}</h2>
             <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
-              {t('agency.stats.commissionRate', { defaultValue: '수수료율' })} {commissionRate}%
+              {commissionRateLabel} {commissionRate}%
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -207,7 +220,7 @@ export default function AgencyStatsPage() {
                     t('agency.stats.colSeller', { defaultValue: '셀러' }),
                     t('agency.stats.sortRevenue', { defaultValue: '매출' }),
                     t('agency.stats.sortOrders', { defaultValue: '주문' }),
-                    t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }),
+                    commissionRevenueLabel,
                     t('agency.stats.colSellerRevenue', { defaultValue: '셀러수익' }),
                     t('agency.stats.sortLive', { defaultValue: '라이브' }),
                     t('agency.stats.colViewers', { defaultValue: '시청자' }),

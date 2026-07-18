@@ -18,9 +18,15 @@ interface BrandLoaderProps {
   size?: number
   /** 진행 바 아래 상황 문구(예: "결제 승인 중"). 없으면 로고+바만. */
   label?: string
+  /** 🚑 2026-07-10 (로딩 전수조사): 라이트 고정 표면(대시보드 #F4F5F7 placeholder 등)용 — 전역 다크
+   *  토글과 무관하게 항상 라이트 색(잉크 로고/바). 대시보드는 라이트 고정 규칙이라 다크 로고가 끼면
+   *  [라이트 placeholder → 다크 로더 → 라이트 대시보드] 색 점프가 났음. */
+  forceLight?: boolean
+  /** 다크 고정 표면(bg-[#020202] 페이지 등)용 — 항상 흰 로고/바 (라이트 토글 사용자도 보이게). */
+  forceDark?: boolean
 }
 
-export default function BrandLoader({ fullScreen = false, size = 34, label }: BrandLoaderProps) {
+export default function BrandLoader({ fullScreen = false, size = 34, label, forceLight = false, forceDark = false }: BrandLoaderProps) {
   // 🎯 2026-07-01 (대표 "로딩이 2번 나뉘어" — 근본): 로더가 연달아 재마운트(Suspense 청크 로더 →
   //   페이지 데이터 로더)되면 CSS 애니메이션이 keyframe 0 부터 재시작 — breathe 는 opacity 0.5(로고 확
   //   어두워짐), sweep 바는 화면 밖(-120%)에서 시작(바 사라짐) → "떴다 안떴다 다시 뜨는" 블링크.
@@ -40,33 +46,38 @@ export default function BrandLoader({ fullScreen = false, size = 34, label }: Br
   const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
   const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
   const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
+  // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): fullScreen 로더가 배경 없는 in-flow
+  //   박스(min-h-[100dvh])라, 뒤/주변의 이전 페이지(예: /map 분할)·body 배경이 비쳐 보였음(로더가
+  //   화면을 '덮지' 못함). → 불투명 fixed inset-0 오버레이(z-[10000], 네비 9999 위·모달 10500 아래)로
+  //   승격해 로딩 순간엔 오직 유어딜 로더만 보이게. 인라인(fullScreen=false) 로더는 기존 in-flow 유지.
+  const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#020202]' : 'bg-white dark:bg-[#0A0A0A]'
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? 'min-h-[100dvh]' : 'py-16'}`}
+      className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? `fixed inset-0 z-[10000] ${fsBg}` : 'py-16'}`}
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
       {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}
       <div className="ur-loader-breathe" style={{ animationDelay: breatheDelay }}>
-        <UrDealLogo size={size} />
+        <UrDealLogo size={size} forceLight={forceLight} forceDark={forceDark} />
       </div>
 
       {/* 인디터미넌트 진행 바 — 전역 위상 동기 스윕 (이전 200ms 지연은 재마운트 시 바가 사라지는
           블링크의 원인이라 제거 — 연속성이 우선). */}
       <div
-        className="relative overflow-hidden rounded-full bg-gray-200/70 dark:bg-white/10"
+        className={`relative overflow-hidden rounded-full ${forceLight ? 'bg-gray-200/70' : forceDark ? 'bg-white/10' : 'bg-gray-200/70 dark:bg-white/10'}`}
         style={{ width: 96, height: 3 }}
         aria-hidden
       >
         <div
-          className="ur-loader-sweep absolute inset-y-0 left-0 rounded-full bg-gray-900 dark:bg-white"
+          className={`ur-loader-sweep absolute inset-y-0 left-0 rounded-full ${forceLight ? 'bg-gray-900' : forceDark ? 'bg-white' : 'bg-gray-900 dark:bg-white'}`}
           style={{ width: '38%', animationDelay: sweepDelay }}
         />
       </div>
 
       {label ? (
-        <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{label}</p>
+        <p className={`text-[13px] font-medium ${forceLight ? 'text-gray-500' : forceDark ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{label}</p>
       ) : null}
       <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>

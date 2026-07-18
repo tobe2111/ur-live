@@ -73,17 +73,22 @@ export interface Env {
   ALIMTALK_SENDER_KEY?: string;
   ALIGO_SENDER_KEY?: string;
   ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
+  ALIMTALK_SMS_FAILOVER?: string;        // 'true' 일 때만 알림톡 실패 시 SMS 대체발송(failover) 활성 (기본 OFF — 활성 전 Aligo 콘솔 SMS 발신번호 등록 필요)
   ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
   ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
   ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
+  ALIGO_BUSINESS_REGISTRATION_VERIFIED?: string; // 사업자등록 승인 알림톡 tpl_code(콘솔 자동부여 시 override)
+  ALIGO_BUSINESS_REGISTRATION_REJECTED?: string; // 사업자등록 반려 알림톡 tpl_code(콘솔 자동부여 시 override)
   ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만)
 
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
   YOUTUBE_REDIRECT_URI?: string;
-  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required)
+  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required) — 인플루언서 발굴에도 사용
+  INFLUENCER_PROVIDER?: string;      // 인스타/틱톡 수집 제공사 이름(apify/ensembledata/modash 등)
+  INFLUENCER_PROVIDER_KEY?: string;  // 제공사 API 키 — 없으면 인스타/틱톡 직접 발굴 비활성(유튜브는 무관)
 
   // ---- 자체 미디어 서버 (OvenMediaEngine) ----
   // 셀러 브라우저 → 우리 OME → YouTube RTMP 릴레이용.
@@ -116,6 +121,13 @@ export interface Env {
   // 32자 이상의 random string. Cloudflare Dashboard → Variables and Secrets 에서 설정.
   DATA_ENCRYPTION_KEY?: string;
 
+  // 🔒 2026-07-13 (데이터 감사 3단계): PII 컬럼 at-rest 암호화 마스터 스위치.
+  //   'true' 일 때만 신규 쓰기가 PII 를 암호화(+blind index) 로 저장. 기본 미설정=OFF=현행 평문(무변화).
+  //   ⚠️ 활성화 전 staging 필수: 조회(blind index)·표시(복호화) 배선 검증 후에만 ON.
+  PII_ENCRYPTION_ENABLED?: string;
+  // blind index(조회용 결정적 HMAC) 전용 키. 미설정 시 DATA_ENCRYPTION_KEY 파생값 사용.
+  PII_BLIND_INDEX_KEY?: string;
+
   // ---- Naver Ad Scraper ----
   // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면
   // 정보주체의 명시적 동의가 선행되어야 합니다(개인정보 보호법 제15·22조).
@@ -146,10 +158,45 @@ export interface Env {
   //   ⚠️ 실 계정 1회 검증(estimate 응답·bid PUT 동작) 후에만 'true' 로.
   ADS_AUTOBID_ENABLED?: string;
 
+  // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
+  //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면
+  //   NOT_CONFIGURED/DISABLED — 기능 자동 숨김). ⚠️ 이 환경 egress 차단으로 실호출 미검증(docs 기준 배선).
+  ADS_MEDIA_ENABLED?: string;          // 'true' 아니면 미디어 생성 전면 OFF(비용 방어)
+  OPENAI_API_KEY?: string;             // 이미지 생성(OpenAI Images) — image provider
+  ELEVENLABS_API_KEY?: string;         // AI 음성(TTS) — voice provider
+  REPLICATE_API_TOKEN?: string;        // 숏폼 영상 생성(Replicate 모델) — video provider
+  HEYGEN_API_KEY?: string;             // 아바타 영상(HeyGen) — video(avatar) provider
+  ADS_IMAGE_PROVIDER?: string;         // 선택: 'openai'(기본) 등
+  ADS_VIDEO_PROVIDER?: string;         // 선택: 'replicate'(기본) | 'heygen'
+  // 유어애즈 서비스몰 수기 결제(계좌이체) 안내문 — 예: "국민은행 123-45-678 (주)유어팀". 미설정 시 안내 생략.
+  ADS_BANK_INFO?: string;
+
   // ---- 블로그 AI 홍보 초안 주간 cron 킬스위치 ----
   //   'true' 일 때만 주간 cron 이 홍보 초안(비공개)을 생성. 미설정/기타값이면 skip(기본 OFF).
   //   초안은 항상 관리자 검토 후 발행. ANTHROPIC_API_KEY 필요.
   BLOG_AI_DRAFTS_ENABLED?: string;
+
+  // ---- 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브) ----
+  //   전부 기본 OFF. 발행은 [게이트 ON + 연결 계정 + 관리자 승인] 3중 조건. 자동 발행 없음.
+  //   설계: docs/design/social-media-automation.md. 공식 API 만 사용(봇/스크래핑 없음).
+  SOCIAL_THREADS_ENABLED?: string;      // 'true' 면 스레드 발행 허용
+  SOCIAL_INSTAGRAM_ENABLED?: string;    // 'true' 면 인스타 발행 허용
+  SOCIAL_YOUTUBE_ENABLED?: string;      // 'true' 면 유튜브 업로드 허용
+  SOCIAL_AUTO_DRAFT_ENABLED?: string;   // 'true' 면 주간 초안 cron 동작(비공개 초안만)
+  //   예약 발행 — 관리자가 승인+예약(scheduled_at)한 글을 매시간 cron 이 발행. 기본 OFF.
+  //   발행은 여전히 플랫폼 게이트+계정+approved 3중 조건 재확인(사람이 승인한 건만).
+  SOCIAL_AUTO_PUBLISH_ENABLED?: string;
+  //   자격증명(Cloudflare Secrets). Meta(스레드/인스타)·Google(유튜브)은 기존 youtube 기능과 공유.
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
+  THREADS_APP_ID?: string;
+  THREADS_APP_SECRET?: string;
+  //   릴스/쇼츠 영상 렌더(스토리보드 → mp4). Worker 는 렌더 불가 → 외부 템플릿 렌더 API 위임.
+  //   기본 OFF. 켜려면 SOCIAL_VIDEO_ENABLED='true' + provider 키. (기획/대본은 ANTHROPIC 로 항상 생성 가능)
+  SOCIAL_VIDEO_ENABLED?: string;        // 'true' 면 영상 렌더 허용
+  SOCIAL_VIDEO_PROVIDER?: string;       // 'creatomate'(기본)
+  SOCIAL_VIDEO_RENDER_KEY?: string;     // 렌더 provider API 키
+  SOCIAL_VIDEO_TEMPLATE_ID?: string;    // (선택) 디자인된 템플릿 ID — 자막만 주입해 품질↑
 
   // ---- fee-resolver 그림자 배선 스위치 (상품 소유 모델 새 수수료 규칙) ----
   //   'true' 면 결제 확정 시 새 규칙 분배를 **계산만 해서 order_fee_breakdown 에 기록**(실제 정산 무변경).
@@ -162,6 +209,27 @@ export interface Env {
   //   기본 OFF — 미설정/기타값이면 원장 기록 안 함(현행과 100% 동일). staging 검증 후 활성.
   //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
   SHOPPING_LEDGER_ENABLED?: string;
+
+  // ---- 인플루언서↔업체 성과기반 매칭 정산 스위치 (2026-07-14) ----
+  //   매칭 자체는 **어드민 전용 읽기 도구**(requireAdmin — env 게이트 불필요). 아래는 **정산(머니)** 전용:
+  //   MATCHING_SETTLEMENT_ENABLED='true' 면 매칭 성사 수수료 적립(머니 경로) 활성 — #496 규율:
+  //   promo 재원(5% 밖), 인플루언서 딜 레일 재사용, staging 축별 실결제 검증 전 미설정 유지.
+  //   (라이브 적립 배선은 SSOT 아비터 경유 — 단독 flip 세션. 이 커밋엔 순수 계산·불변식만.)
+  MATCHING_SETTLEMENT_ENABLED?: string;
+
+  // ---- 상권 쿠폰 경로 B: 온라인 결제 자동발급 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 유어딜 결제 확정 시 참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인에서
+  //   기준액 이상이면 상권 쿠폰 자동 발급(waitUntil 후처리, 완전 fail-soft — 결제 성공 경로 영향 0).
+  //   기본 OFF — 미설정/기타값이면 /confirm byte-동일. 캠페인별 auto_issue_enabled + 기간 게이트가 2차.
+  //   staging 실결제 검증(계약 후) 전까지 미설정 유지.
+  DISTRICT_AUTO_ISSUE_ENABLED?: string;
+
+  // ---- 상권 쿠폰 알림톡 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 쿠폰 지급/반려/만료임박 시 알림톡(dispatchNotification) 시도. 기본 OFF — 인앱 알림만(현행 동일).
+  //   활성 절차: ① Aligo 콘솔에 district_coupon_issued/rejected/expiring 템플릿 등록·승인
+  //             ② 어드민 채널설정(notification_channel_settings)에서 해당 type alimtalk 켜기
+  //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
+  DISTRICT_ALIMTALK_ENABLED?: string;
 
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
@@ -189,4 +257,14 @@ export interface Env {
   // Note: env.ASSETS is automatically available when [assets] is configured
   // No explicit binding needed in wrangler.toml
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+
+  // ---- 🎯 유어애즈 독립 Worker(ur-ads) Service Binding (2026-07-14) ----
+  //   설계 SSOT: docs/design/urads-worker-split.md. 메인 Pages(ur-live) → Settings → Functions →
+  //   Service bindings 에서 Variable name `ADS` → Service `ur-ads` 로 바인딩(대표 Cloudflare 셋업).
+  //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
+  //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
+  ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
+  //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
+  ADS_WORKER_ENABLED?: string;
 }

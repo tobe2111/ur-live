@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { hasConsumerSession } from '@/utils/auth'
 
 // Kakao SDK 타입 선언
@@ -135,55 +136,8 @@ export default function LoginPage() {
   // 🛡️ 2026-06-23 (대표 신고 — 로딩 장면 없어 반복 클릭): 클릭 즉시 풀스크린 로딩 오버레이.
   //   ⚠️ React setState 금지 (2026-05-04 사고: 카카오 클릭 시 re-render → iOS Safari navigation 큐잉 freeze).
   //   → 순수 DOM 으로 주입(렌더 사이클 무관) 후 즉시 navigation. 페이지가 떠나기 전까지 오버레이 노출 → 재클릭 차단 + 체감속도.
-  function showKakaoLoadingOverlay() {
-    try {
-      if (typeof document === 'undefined' || document.getElementById('ur-kakao-loading')) return
-      const isDark = document.documentElement.classList.contains('dark')
-      const reduce = typeof window !== 'undefined' && window.matchMedia
-        && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      // 모노톤(잉크) 미니멀 — 핑크 그라데이션 제거. 솔리드 워드마크 + 슬림 인디터미닛 바.
-      const bg = isDark ? '#0a0a0a' : '#ffffff'
-      const ink = isDark ? '#ffffff' : '#111827'
-      const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(17,24,39,0.08)'
-      const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'
-      const o = document.createElement('div')
-      o.id = 'ur-kakao-loading'
-      o.setAttribute('role', 'alert')
-      o.setAttribute('aria-live', 'assertive')
-      o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:${bg};${reduce ? '' : 'animation:ur-kakao-fade 0.28s ease both'}`
-      // 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): '유어딜' 텍스트 → UR·DEAL 워드마크(부팅 스플래시/BrandLoader 동일 룩). 순수 DOM.
-      const logo = document.createElement('div')
-      logo.setAttribute('aria-label', 'UR·DEAL')
-      logo.style.cssText = `position:relative;display:inline-flex;align-items:center;font-weight:900;font-style:italic;font-size:27px;line-height:1;letter-spacing:-0.055em;color:${ink}`
-      const urWrap = document.createElement('span')
-      urWrap.style.cssText = 'position:relative;display:inline-flex;align-items:baseline'
-      urWrap.textContent = 'UR'
-      const play = document.createElement('span')
-      play.style.cssText = 'position:absolute;left:4.9px;top:7.6px;width:0;height:0;border-left:3.8px solid currentColor;border-top:2.4px solid transparent;border-bottom:2.4px solid transparent;opacity:.85'
-      urWrap.appendChild(play)
-      const dot = document.createElement('span')
-      dot.style.cssText = 'display:inline-block;width:3.8px;height:3.8px;background:currentColor;border-radius:50%;margin:0 2.2px;transform:translateY(-1.6px)'
-      const deal = document.createElement('span'); deal.textContent = 'DEAL'
-      logo.appendChild(urWrap); logo.appendChild(dot); logo.appendChild(deal)
-      const bar = document.createElement('div')
-      bar.style.cssText = `position:relative;width:128px;height:3px;border-radius:999px;background:${track};overflow:hidden`
-      const seg = document.createElement('div')
-      seg.style.cssText = reduce
-        ? `position:absolute;top:0;left:0;height:100%;width:100%;border-radius:999px;background:${ink};opacity:0.55`
-        : `position:absolute;top:0;left:0;height:100%;width:40%;border-radius:999px;background:${ink};animation:ur-kakao-bar 1.15s cubic-bezier(0.4,0,0.2,1) infinite`
-      bar.appendChild(seg)
-      const tx = document.createElement('div')
-      tx.style.cssText = `color:${sub};font-size:12.5px;font-weight:500;letter-spacing:0.01em`
-      tx.textContent = '로그인 중이에요'
-      o.appendChild(logo); o.appendChild(bar); o.appendChild(tx)
-      if (!document.getElementById('ur-kakao-spin-kf')) {
-        const st = document.createElement('style'); st.id = 'ur-kakao-spin-kf'
-        st.textContent = '@keyframes ur-kakao-bar{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}@keyframes ur-kakao-fade{from{opacity:0}to{opacity:1}}'
-        document.head.appendChild(st)
-      }
-      document.body.appendChild(o)
-    } catch { /* 오버레이 실패가 navigation 막지 않음 */ }
-  }
+  // 🚑 2026-07-10: 카카오 로딩 오버레이 → 공용 SSOT(utils/kakao-login-overlay — BrandLoader 와
+  //   픽셀·위상 동일, 순수 DOM(iOS freeze 제약) 유지). 셀러/에이전시 로그인과 공유.
 
   function handleKakaoLogin() {
     if (kakaoNavRef.current) return // 이미 진행 중 — 반복 클릭 무시
@@ -197,11 +151,11 @@ export default function LoginPage() {
       if (wantsSwitch) {
         params.set('force_account', '1')
       }
-      showKakaoLoadingOverlay() // 순수 DOM — iOS freeze 없음
+      showKakaoLoadingOverlay() // 공용 SSOT — 순수 DOM, iOS freeze 없음
       window.location.href = `/auth/kakao/start?${params.toString()}`
     } catch (err: unknown) {
       kakaoNavRef.current = false // 실패 시 재시도 허용
-      try { document.getElementById('ur-kakao-loading')?.remove() } catch { /* */ }
+      removeKakaoLoadingOverlay()
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
       toast.error(t('auth.kakaoLoginError'))
     }

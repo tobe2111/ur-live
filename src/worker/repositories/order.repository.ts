@@ -506,8 +506,26 @@ export class OrderRepository {
     const results = await this.qb.batch(statements);
 
     // rowsAffected === 0 → 재고 부족 또는 상품 비활성
+    // 🛡️ 2026-07-11 (pre-launch audit R6 — 재고 동시성): D1 batch 는 '구문 에러' 시에만 전체
+    //   롤백 — changes==0(조건 불일치)은 에러가 아니라서 앞 품목들의 차감이 그대로 남았음.
+    //   다품목 카트에서 한 품목만 품절이어도 성공한 품목 재고가 유령 차감(조기품절 누수).
+    //   실패 반환 전, 실제 차감된(changes>0) 품목만 보상 복원 batch 1회.
     for (let i = 0; i < results.length; i++) {
       if ((results[i]?.meta?.changes ?? 0) === 0) {
+        const compensations = items
+          .filter((_, j) => (results[j]?.meta?.changes ?? 0) > 0)
+          .map(item => ({
+            sql: `UPDATE products
+                  SET stock = stock + ?,
+                      updated_at = datetime('now')
+                  WHERE id = ?`,
+            params: [item.quantity, item.product_id],
+          }));
+        if (compensations.length > 0) {
+          await this.qb.batch(compensations).catch((e) => {
+            console.error('[OrderRepository] reserveStock compensation restore failed:', e);
+          });
+        }
         return {
           success: false,
           insufficientProduct: items[i]?.product_name ?? items[i]?.product_id ?? 'unknown',
