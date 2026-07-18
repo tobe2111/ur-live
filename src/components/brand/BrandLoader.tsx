@@ -46,9 +46,14 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
   const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
   const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
   const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
+  // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): fullScreen 로더가 배경 없는 in-flow
+  //   박스(min-h-[100dvh])라, 뒤/주변의 이전 페이지(예: /map 분할)·body 배경이 비쳐 보였음(로더가
+  //   화면을 '덮지' 못함). → 불투명 fixed inset-0 오버레이(z-[10000], 네비 9999 위·모달 10500 아래)로
+  //   승격해 로딩 순간엔 오직 유어딜 로더만 보이게. 인라인(fullScreen=false) 로더는 기존 in-flow 유지.
+  const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#020202]' : 'bg-white dark:bg-[#0A0A0A]'
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? 'min-h-[100dvh]' : 'py-16'}`}
+      className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? `fixed inset-0 z-[10000] ${fsBg}` : 'py-16'}`}
       role="status"
       aria-live="polite"
       aria-busy="true"

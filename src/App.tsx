@@ -1064,7 +1064,13 @@ interface AppProps {
 
 function App({
   Router = BrowserRouter as unknown as RouterLike,
-  routerProps = { future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+  // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): v7_startTransition=true 면 React Router 가
+  //   네비게이션을 startTransition 으로 감싸, 목적지 lazy 청크가 아직 안 받아졌을 때 React 18 이 Suspense
+  //   fallback(유어딜 BrandLoader)을 '건너뛰고' 현재 화면(예: /map 분할)을 그대로 붙잡아 둠 → 청크 다운로드
+  //   동안 이전 페이지가 남아 보였음(=로더 말고 다른 게 보이는 원인). false 로 두면 청크 미로드 시 즉시
+  //   fallback(불투명 BrandLoader) 표출 → "클릭 → 유어딜 로더 → 상세" 로 통일. (이미 로드된 청크는 서스펜드
+  //   안 해 즉시 전환 — 플래시 없음. BrandLoader 는 위상동기라 짧은 로드도 블링크 없음.)
+  routerProps = { future: { v7_startTransition: false, v7_relativeSplatPath: true } },
 }: AppProps = {}) {
   return (
     // 🛡️ 청크(배포 전환) + 일반 에러를 단일 ErrorBoundary 가 처리(청크는 recoverFromChunkError 자동복구).
