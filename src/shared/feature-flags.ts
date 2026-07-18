@@ -73,6 +73,18 @@ export const SELLER_PROMO_FIELD_ENABLED = false
 export const GB_ENGINE_ENABLED = false
 
 /**
+ * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정
+ *   "딜 포인트 충전 자체를 빼자 우리 서비스에서" — 앱 전환 시 Apple IAP 30% 이슈 원천 제거).
+ *   딜 = **적립 전용 리워드 통화**로 전환: 친구초대·추천(핀)·커미션 등 무상 적립과 딜 *사용*
+ *   (교환권 딜결제·혼합결제 차감)·환불 복원은 전부 불변 — 유상 충전 *진입*만 닫는다.
+ *   true: 충전 진입점 전부 숨김/안내 전환(/points/charge 라우트 게이트 + 홈 딜모으는법 · 마이 ·
+ *         교환권 잔액카드 · 딜내역 · 잔액부족 CTA) + 서버 /api/points/charge/init 403.
+ *   보존: 충전 코드·라우트·성공/확인 페이지(/points/charge/success — 배포 시점 진행중 결제 완결용)·
+ *         어드민 충전 모니터링(과거 데이터). false 로 바꾸면 즉시 복원(가역).
+ */
+export const TOPUP_DISABLED = true
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권

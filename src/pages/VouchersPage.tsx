@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
-import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -579,7 +579,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 딜 잔액 — 컴팩트 카드 */}
             <button
               type="button"
-              onClick={() => navigate('/points/charge')}
+              /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
+              onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
               className="w-full text-left rounded-2xl p-4 active:scale-[0.99] transition-transform"
               style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
             >
@@ -590,7 +591,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
               <p className="text-[10px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
               <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-white/10">
-                충전하기 <ArrowRight className="w-3.5 h-3.5" />
+                {TOPUP_DISABLED ? '딜 내역 보기' : '충전하기'} <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </button>
 
@@ -781,7 +782,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
         <button
           type="button"
-          onClick={() => navigate('/points/charge')}
+          /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
+          onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
           /* 🏭 2026-06-05 (사용자 요청): 토스식 프리미엄 다크 그라데이션(은은한 인디고 틴트). */
           className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
           style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
@@ -799,11 +801,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
             </div>
             <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
-              충전 <ArrowRight className="w-3.5 h-3.5" />
+              {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
           {dealBalance != null && dealBalance < 10000 && (
-            <p className="text-[11px] text-amber-400 mt-3">잔액이 부족해요 — 지금 충전하기</p>
+            <p className="text-[11px] text-amber-400 mt-3">
+              {TOPUP_DISABLED ? '딜은 친구 초대·링크샵 추천으로 모을 수 있어요' : '잔액이 부족해요 — 지금 충전하기'}
+            </p>
           )}
         </button>
         {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}

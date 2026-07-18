@@ -21,6 +21,7 @@ import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
 import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
 import { intParam } from '@/shared/pagination'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -125,6 +126,11 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 
 // ── POST /api/points/charge/init ─────────────────────────────────────
 pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+  // 🛡️ 2026-07-18 (대표 확정 "충전 자체를 빼자"): 유상 충전 서비스 종료 — 신규 충전 시작 차단.
+  //   ⚠️ /charge/confirm 은 열어둠(배포 시점 진행 중이던 결제의 승인 완결 — 돈 안전). 가역(플래그).
+  if (TOPUP_DISABLED) {
+    return c.json({ success: false, error: '딜 충전 서비스가 종료되었습니다. 딜은 친구 초대·추천으로 적립할 수 있어요.' }, 403);
+  }
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

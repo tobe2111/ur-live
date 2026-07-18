@@ -5,6 +5,7 @@ import { ArrowLeft, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
@@ -225,6 +226,11 @@ export default function VoucherDetailPage() {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const code = e?.response?.data?.code
       if (code === 'INSUFFICIENT_POINTS') {
+        // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+        if (TOPUP_DISABLED) {
+          toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+          return
+        }
         const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
         if (charge) {
           localStorage.setItem('loginReturnUrl', window.location.pathname)

@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
@@ -59,7 +59,8 @@ export default function MyDealHistoryPage() {
   const total = data?.total ?? 0
 
   function onItemClick(tx: Transaction) {
-    if (tx.type === 'charge') navigate('/points/charge')
+    // 🛡️ 2026-07-18: 충전 종료 — 과거 충전 항목 클릭은 no-op (내역 자체는 보존 표시).
+    if (tx.type === 'charge') { if (!TOPUP_DISABLED) navigate('/points/charge'); return }
     else if (tx.order_id) navigate('/my-orders')
     // 🧭 2026-06-17: 그룹 referral 숨김 — 초대보너스는 /user/profile 의 MyReferralCard 로.
     else if (tx.type === 'referral_bonus') navigate(REFERRAL_GROUP_DISCOUNT_DISABLED ? '/user/profile' : '/referral')
@@ -89,10 +90,18 @@ export default function MyDealHistoryPage() {
           <p className="text-[11px] font-medium opacity-80">현재 딜 잔액</p>
           <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-base ml-1 font-bold opacity-80">딜</span></p>
           <div className="mt-3 flex gap-2">
+            {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
+            {TOPUP_DISABLED ? (
+              <button onClick={() => navigate('/user/profile')}
+                className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
+                딜 모으기
+              </button>
+            ) : (
             <button onClick={() => navigate('/points/charge')}
               className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
               충전
             </button>
+            )}
             {/* 🧭 2026-06-10: '쇼핑'(잠정 숨김 탭) → '교환권' — 딜의 실제 사용처로 유도 */}
             <button onClick={() => navigate('/vouchers')}
               className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">

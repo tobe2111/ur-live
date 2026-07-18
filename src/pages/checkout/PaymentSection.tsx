@@ -11,6 +11,7 @@ import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import { isKorea } from '@/config/region'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { showErrorToast } from '@/lib/errorHandler'
 import { CartItem } from '@/types/cart'
 import DealPointsSection from './DealPointsSection'
@@ -89,13 +90,21 @@ export default function PaymentSection({
         totalAmount={totalAmount}
       />
 
+      {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 링크 → 적립 안내 (TOPUP_DISABLED) */}
       {dealOnly && insufficientDeal && (
+        TOPUP_DISABLED ? (
+          <div className="w-full py-3.5 px-4 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-center mb-3">
+            <p className="text-sm font-bold text-gray-900 dark:text-white">딜이 {(totalBeforeDeal - dealBalance).toLocaleString()}딜 부족해요</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">딜은 친구 초대·링크샵 추천으로 모을 수 있어요</p>
+          </div>
+        ) : (
         <a
           href={`/points/charge?return=${encodeURIComponent('/checkout')}&amount=${Math.max(0, totalBeforeDeal - dealBalance)}`}
           className="block w-full py-3.5 rounded-2xl bg-gradient-to-r from-gray-800 to-gray-800 text-white text-sm font-bold text-center mb-3"
         >
           딜 잔액 부족 — {(totalBeforeDeal - dealBalance).toLocaleString()}딜 충전하기 →
         </a>
+        )
       )}
 
       {dealToUse >= totalBeforeDeal ? (

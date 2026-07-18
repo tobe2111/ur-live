@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -286,6 +287,11 @@ export default function ProductDetailPage() {
       const code = e?.response?.data?.code
       if (code === 'INSUFFICIENT_POINTS') {
         setDealConfirm(null)
+        // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+        if (TOPUP_DISABLED) {
+          showToast(t('groupBuy.insufficientDealEarn', { defaultValue: '딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.' }), 'error')
+          return
+        }
         showToast(t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족해요. 충전 페이지로 이동합니다.' }), 'error')
         localStorage.setItem('loginReturnUrl', window.location.pathname)
         setTimeout(() => navigate('/points/charge'), 900)

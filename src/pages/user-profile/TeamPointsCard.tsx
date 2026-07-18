@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function TeamPointsCard() {
   const { t } = useTranslation()
@@ -67,8 +68,10 @@ export default function TeamPointsCard() {
             </div>
           </div>
         </div>
-        {/* 🛡️ 2026-05-24: 충전 + 내역 보기 2버튼 */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* 🛡️ 2026-05-24: 충전 + 내역 보기 2버튼
+            🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): TOPUP_DISABLED 시 충전 버튼 숨김 → 내역 풀폭. */}
+        <div className={`grid ${TOPUP_DISABLED ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+          {!TOPUP_DISABLED && (
           <button
             type="button"
             onClick={() => navigate('/points/charge')}
@@ -76,6 +79,7 @@ export default function TeamPointsCard() {
           >
             {t('my.charge', { defaultValue: '충전하기' })}
           </button>
+          )}
           <button
             type="button"
             onClick={() => navigate('/my-deal-history')}
