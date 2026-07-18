@@ -418,6 +418,12 @@ export async function handleCronScheduled(
       const { handleBlogAiDraft } = await import('./cron/blog-ai-draft');
       return handleBlogAiDraft(env);
     }));
+    // 🔧 2026-07-18: off-live user_id backfill 자동 스위퍼(데이터 감사 3단계 자동화 — 대표 "실행도 자동으로").
+    //   멱등 + 모호매핑 0 + user_points 충돌은 자동병합 안 함(어드민 벨 보고만). 대상 0 이면 no-op.
+    ctx.waitUntil(safeCron('user-id-backfill-sweep', async () => {
+      const { handleUserIdBackfillSweep } = await import('./cron/user-id-backfill-sweep');
+      return handleUserIdBackfillSweep(env);
+    }));
     // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 초안 주간 크론 배선 분리(위 social-maintenance 와 동일 사유).
     //   기본 OFF 라 미실행 무해. 재도입 시 원복.
     // ctx.waitUntil(safeCron('social-draft', async () => {
