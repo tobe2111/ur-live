@@ -17,6 +17,16 @@ main = "src/worker/index.ts"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# 🛠️ 2026-07-18: 빌드 상수 define — worker-deploy(cron 워커, `wrangler deploy`) 배선 수리.
+#   Pages 경로는 scripts/build-worker.js 의 esbuild define 이 __INCLUDE_* 를 치환하지만,
+#   cron 워커는 wrangler 자체 번들이라 미정의 → `ReferenceError: __INCLUDE_DOCS__ is not defined`
+#   (upload validation 10021)로 worker-deploy 가 깨졌었음(docs-DCE 2026-07-16 이후).
+#   cron 워커는 fetch 라우트 소비자가 아니므로 둘 다 false(=Pages 소비자 빌드와 동일 DCE).
+#   ⚠️ 새 __INCLUDE_* 빌드 상수를 추가하면 build-worker.js 와 여기 **둘 다** 등록할 것.
+[define]
+__INCLUDE_WHOLESALE__ = "false"
+__INCLUDE_DOCS__ = "false"
+
 # Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
 [build]
 command = "npm run build"
