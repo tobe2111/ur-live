@@ -345,6 +345,13 @@ jobs:
         run: STRICT_MODAL_Z=1 node scripts/check-modal-zindex.mjs
         continue-on-error: false
 
+      # 🎯 2026-07-18: 로딩 단일화 — 소비자 페이지 로딩은 유어딜 BrandLoader 로 통일(대표 "로딩 중엔 무조건
+      #   하나로 통일, 도매몰 제외"). 소비자 파일에 풀페이지 스피너(min-h-screen + animate-spin/Loader2)가
+      #   BrandLoader 없이 새로 생기면 차단. 도매몰/대시보드 자동 제외. 예외 `consumer-loader-ok`.
+      - name: Consumer loader unify guard (strict)
+        run: STRICT_CONSUMER_LOADER=1 node scripts/check-consumer-loader-unify.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
       #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
 import api from '@/lib/api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface SearchStatesProps {
   loading: boolean
@@ -67,15 +68,8 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     saveRecent([])
   }
 
-  // Loading State
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-[#007aff] animate-spin mb-4" />
-        <p className="text-[15px] text-[#6e6e73]">검색 중...</p>
-      </div>
-    )
-  }
+  // Loading State — 🎯 2026-07-18 로딩 단일화 (검색 결과 영역 인라인)
+  if (loading) return <BrandLoader label="검색 중" />
 
   // Error State
   if (error) {

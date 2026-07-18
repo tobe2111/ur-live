@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -85,13 +86,7 @@ export default function GiftClaimPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
-      </div>
-    )
-  }
+  if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
   if (!gift) {
     return (
