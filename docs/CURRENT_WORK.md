@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-18 — 데이터 완결고리·매칭 3 PR 머지 완료 (대표 "모두 완료시켜줘")
+**#514(데이터 감사 1·2·3단계) + #523(성과기반 매칭 어드민 도구) + #525(방배 활성 런북) 전부 main 머지·배포.**
+- **#514**: 유입(`inflow_clicks`)→방문(`voucher_visits`)→결제→재방문 완결고리 **라이브 자동 수집 시작**(배포 시점부터). user_id 정규화(라이브 무동작)·GPS 상권격자 하향·어드민 PII 마스킹/감사로그. PII 암호화는 dual-read+기본 OFF.
+- **#523**: 매칭 엔진+`/api/admin/matching/*`(requireAdmin)+유어애즈 `sec-matching` 패널 — **이중 잠금**(`MATCHING_ENABLED=false`+admin_token) → 라이브 노출 0. 정산은 순수 계산·"순수취==5%" 테스트만(적립 배선=단독 flip 세션, `MATCHING_SETTLEMENT_ENABLED` OFF). ⚠️ #545(유어애즈 워커분리)와 조합 확인됨 — admin 네임스페이스는 main 워커 잔류(admin-ads 패턴 정합).
+- **#525**: `docs/ONBOARDING_ACTIVATION_RUNBOOK.md` = **방배 활성 순서 SSOT**(1 데이터→2 보안/PII→3 매칭 읽기→4 정산 머니). 전면 활성화 지시서의 STEP 4(매칭)·6(데이터완결)의 코드측 선결 완료.
+- **남은 것(전부 대표/운영 — 코드 아님)**: 런북 참조 — staging 4항목 검증(방배 온보딩 때)·off-live backfill 실행(dry-run→apply)·PII 스위치 ON·백업 복원 리허설 1회·ADMIN_IP_WHITELIST·매칭/정산 활성 flip.
+
 ## 🔶 2026-07-16 — 메인 워커 추가 다이어트: OpenAPI/Swagger 문서 DCE (대표 "죽은 코드/큰 의존성 정리 모두")
 소셜(ur-ads 이전)·도매(ur-wholesale 분리) 이후 남은 큰 **도달 가능(reachable)** 번들 청크를 제거. esbuild 단일파일 번들은 **죽은 코드는 트리셰이킹(이득 ~0)**이라, 실제 레버는 "프로덕션에서 안 쓰는데 번들에 실린 큰 코드". 개발자용 `src/worker/openapi.ts`(1544줄 ~48KB) + `@hono/swagger-ui`가 `/docs`·`/api/openapi.json`(개발자 대면, 소비자 워커 불필요)만 위해 `_worker.js`에 실려 있었음(기존 "동적 import"는 esbuild 단일번들에선 인라인이라 절감 0 — 도매/ads 분리와 같은 오해 클래스).
 - **수정(2파일, `__INCLUDE_WHOLESALE__` 패턴 미러)**: `docs.routes.ts`의 라우트 등록을 `if (__INCLUDE_DOCS__)` 게이트로 감싸고 openapi.ts·swagger-ui를 게이트 블록 안 동적 import → `build-worker.js` define `__INCLUDE_DOCS__`(기본 false, `DOCS_BUNDLE=1`이면 true). 프로덕션(소비자/도매) 빌드는 false → esbuild가 dead-block을 import 해석 전에 제거 → openapi.ts + swagger-ui 번들 제외.
