@@ -148,14 +148,14 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
-    // 🆕 2026-06-27 유어애즈 자동입찰 — 활성 규칙의 입찰가 자동조정(목표순위→추정→max_bid 클램프).
-    //   글로벌 킬스위치(ADS_AUTOBID_ENABLED='true')일 때만 실제 동작 — 아니면 즉시 no-op(라이브검증 전 OFF).
-    if (env.ADS_AUTOBID_ENABLED === 'true') {
-      ctx.waitUntil(safeCron('ads-autobid', async () => {
-        const { runAutobidAll } = await import('../features/marketing/api/autobid')
-        return runAutobidAll(env)
-      }));
-    }
+    // 🎯 [urads-split Phase E 2026-07-18] ads-autobid → ur-ads worker cron 으로 이관(wrangler-ads.toml "*/5").
+    //   이중실행 방지 위해 메인에서 제거 — 재도입=원복.
+    // if (env.ADS_AUTOBID_ENABLED === 'true') {
+    //   ctx.waitUntil(safeCron('ads-autobid', async () => {
+    //     const { runAutobidAll } = await import('../features/marketing/api/autobid')
+    //     return runAutobidAll(env)
+    //   }));
+    // }
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
@@ -248,33 +248,9 @@ export async function handleCronScheduled(
       await matureReferralCommissions(env.DB, env);
     }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
-    // 🆕 2026-06-27 유어애즈 가격 모니터링 — 등록된 워치의 네이버쇼핑 최저가 일일 갱신(읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-price-refresh', async () => {
-      const { refreshAllWatches } = await import('../features/marketing/api/price-monitor')
-      return refreshAllWatches(env)
-    }));
-    // 🆕 2026-06-28 유어애즈 쇼핑 순위 추적 — 등록 키워드의 내 몰 순위 일일 갱신(읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-rank-track', async () => {
-      const { refreshAllRankTargets } = await import('../features/marketing/api/rank-tracker')
-      return refreshAllRankTargets(env)
-    }));
-    // 🆕 2026-06-30 유어애즈 일별 메트릭 스냅샷 — 연결 계정의 '어제' 실적을 ad_daily_metrics 에 1행/계정/일(추세 차트 원천, 읽기, 돈 0).
-    ctx.waitUntil(safeCron('ads-metrics-snapshot', async () => {
-      const { snapshotAllAccounts } = await import('../features/marketing/api/metrics-history')
-      return snapshotAllAccounts(env)
-    }));
-    // 🆕 2026-06-28 유어애즈 임계값 알림 — 예산 소진/최저가 역전 점검 후 이메일(계정+날짜 멱등 1일 1회).
-    //   가격 갱신 후 실행되도록 동일 블록 뒤에 등록(최신 last_lowest 반영).
-    ctx.waitUntil(safeCron('ads-alerts', async () => {
-      const { runAlertsAll } = await import('../features/marketing/api/alerts')
-      return runAlertsAll(env)
-    }));
-    // 🆕 2026-07-01 유어애즈 자동입찰 섀도우 — 실제 적용 없이 "했을 변경"만 일일 기록(PUT 0, 읽기+DB).
-    //   ADS_AUTOBID_SHADOW_ENABLED='true' && 실제 자동입찰 OFF 일 때만(킬스위치 기본 OFF).
-    ctx.waitUntil(safeCron('ads-autobid-shadow', async () => {
-      const { runAutobidShadowAll } = await import('../features/marketing/api/autobid')
-      return runAutobidShadowAll(env)
-    }));
+    // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 일일 cron 5종(price-refresh/rank-track/metrics-snapshot/
+    //   alerts/autobid-shadow) → ur-ads worker cron("0 18 * * *")으로 이관 — src/worker-ads/index.ts scheduled().
+    //   같은 D1 이라 데이터 정합 무변. 이중실행 방지 위해 메인에서 제거(마지막 marketing 참조 → 번들 추가 감소). 재도입=원복.
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.
@@ -476,11 +452,8 @@ export async function handleCronScheduled(
       if (dayOfMonth <= 7) {
         await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
       }
-      // 🆕 2026-06-27 유어애즈 AI 주간 리포트 (매주 월요일, 주당 1회 멱등). 연결 고객사만.
-      await (async () => {
-        const { handleAdsWeeklyReport } = await import('../features/marketing/api/weekly-report');
-        return handleAdsWeeklyReport(env);
-      })().catch(e => notifyCronFailure(env, 'agency-weekly-batch/ads-weekly-report', e));
+      // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
+      //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));
   }
 }

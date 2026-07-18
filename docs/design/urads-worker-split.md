@@ -111,4 +111,12 @@ curl -s -D - -o /dev/null https://live.ur-team.com/api/ads/ping | grep -i x-serv
 - Phase B (배포 파이프라인): commit `2324c0da` — `build-worker-ads.js` + `deploy-ads.yml`(ur-ads `wrangler deploy`).
   대표 Cloudflare 셋업(ur-ads Worker + D1 바인딩 + 시크릿) 완료 → 첫 배포 성공(Actions run "success").
 - Phase C (게이트드 프록시): commit `<이 커밋>` — 메인 `index.ts` `app.use('*')` 위임 미들웨어 + Env `ADS`/`ADS_WORKER_ENABLED`. 기본 OFF = 라이브 byte-동일.
+- **Phase E (광고 cron 이관)**: 2026-07-18 — 메인 `scheduled.ts` 의 유어애즈 cron 7종(ads-autobid "*/5" ·
+  일일 배치 5종 "0 18": price-refresh/rank-track/metrics-snapshot/alerts/autobid-shadow · AI 주간 리포트
+  "0 0 * * 1")을 `src/worker-ads/index.ts` `scheduled()` + `wrangler-ads.toml` crons 로 이관. 같은 커밋에서
+  메인 블록 제거(이중실행 방지, 주석 보존=원복). 게이트(`ADS_AUTOBID_ENABLED`)·멱등(계정+날짜/주당 1회)·순서
+  (가격→순위→스냅샷→알림→섀도우) 전부 동일. env 의존(NAVER_SEARCH_*·DATA_ENCRYPTION_KEY·ANTHROPIC_API_KEY)은
+  Phase B 에서 대표가 이미 설정 — **대시보드 추가작업 0**(Worker cron 은 wrangler deploy 가 toml 로 자동 등록).
+  ALIGO/RESEND 미설정 시 알림·메일만 fail-soft 스킵(cron 자체는 정상). 메인의 marketing 활성 참조 =
+  `admin-ads.routes` 1개만 잔류(의도 — 메인 어드민 JWT).
 - **Phase D (메인 폴백 제거)**: 2026-07-16 — 사전 검증: prod `curl /api/ads/ping` → **`x-served-by: ur-ads` 확인(컷오버 ON 상태)** → §4 순서 충족. 메인 `index.ts` 에서 `marketingRoutes`(/api/ads)·`shortLinkRedirectRoutes`(/l) import+mount 제거(주석 보존, 재도입=원복). **잔류**: ① `/api/admin/ads`(`adminAdsRoutes` + ads-account/entitlements/media-gateway/ad-services/reviews/short-links 서브그래프 ~81KB 소스) — 프록시 비위임 설계(메인 어드민 JWT) 유지 ② `scheduled.ts` ads-* cron 5종(autobid/price-monitor/rank-tracker/metrics-history/alerts ~53KB+전이) — 현행 라이브 동작 보존, ur-ads 이전은 Phase E. ⚠️ 이후 `ADS_WORKER_ENABLED`/`ADS` 바인딩은 **끄면 유어애즈 404**(폴백 없음) — 롤백은 이 커밋 revert.
