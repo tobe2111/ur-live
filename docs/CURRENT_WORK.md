@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-18 — 딜 충전 서비스 전체 종료 (대표 확정 "딜 포인트 충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거)
+- **결정**: 딜 = **활동 적립 전용 리워드 통화**(친구초대·링크샵 추천 커미션·리뷰·이벤트·상권 방문). 유상 충전(현금→딜)만 종료 — 딜 *사용*(교환권 딜결제·혼합 차감)·*환불 복원*·기보유 유상 딜 환급은 전부 불변.
+- **구현(가역 플래그 `TOPUP_DISABLED`, shared/feature-flags SSOT)**: ① 라우트 게이트 — `IosTopupGate` 확장(전 플랫폼 종료 안내 + 적립 유도, /points/charge). ② 진입점 6곳 — DealEarnStrip(충전 카드 제외, grid 3열), VouchersPage 잔액카드(탭→딜내역·'내역' 칩·부족문구→적립 안내), TeamPointsCard(충전 버튼 숨김), MyDealHistoryPage(충전→딜 모으기·charge 항목 클릭 no-op), 상세 3페이지(GroupBuy/Voucher/Product) INSUFFICIENT_POINTS 충전 유도→적립 안내, checkout PaymentSection(충전 링크→부족 안내 박스). ③ 서버 — `/api/points/charge/init` 403(**/charge/confirm 은 유지** — 배포 시점 진행중 결제 완결, 돈 안전). ④ 문서/블로그 — platform-model §5-1·비즈니스플랜 B-4/B-7 갱신, blog-seed 6곳 적립 프레임 재작성 + `BLOG_SEED_VERSION` 5→6.
+- **보존**: 충전 코드 전체·success/confirm 페이지·어드민 충전 모니터링(과거 데이터)·약관 충전 조항(기존 유상 딜 근거). 플래그 false 로 즉시 복원.
+- **배경**: 앱스토어 전환 시 저장형 가치(딜 충전)가 Apple IAP 30% 대상 → 충전 자체 제거로 심사 리스크 0 + 딜 경제를 추천/영입 루프(성장 엔진)로 순화.
+
 ## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
 - `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
 - i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.

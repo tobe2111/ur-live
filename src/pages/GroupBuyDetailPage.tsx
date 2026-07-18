@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -383,6 +384,11 @@ export default function GroupBuyDetailPage() {
         const e = err as { response?: { data?: { error?: string; code?: string } } }
         const code = e?.response?.data?.code
         if (code === 'INSUFFICIENT_POINTS') {
+          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+          if (TOPUP_DISABLED) {
+            toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+            return
+          }
           const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
           if (charge) {
             localStorage.setItem('loginReturnUrl', window.location.pathname)
