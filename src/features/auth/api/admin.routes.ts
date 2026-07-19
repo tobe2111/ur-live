@@ -197,7 +197,10 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     //   ⚠️ fail-safe: totp_* 컬럼 미존재(프로덕션 drift 가능 — twofa.routes 가 setup 시 ALTER 로 추가)면
     //     catch → null → 미등록 취급(로그인 차단 없음). admins 테이블 컬럼 추가 없음(read-only).
     let mustSet2fa = false;
-    {
+    // 🔕 2026-07-19 대표 지시 "어드민 대시보드 2단계 인증 없애줘" — 로그인 TOTP 게이트 전면 비활성
+    //   (totp_enabled 계정도 비번+PIN 만으로 로그인, must_set_2fa 유도 중단). 재도입 = 이 상수 false 로.
+    const TOTP_LOGIN_GATE_DISABLED = true;
+    if (!TOTP_LOGIN_GATE_DISABLED) {
       const totpRow = await DB.prepare('SELECT totp_secret, totp_enabled FROM admins WHERE id = ?')
         .bind(admin.id).first<{ totp_secret: string | null; totp_enabled: number }>().catch(() => null);
       if (totpRow?.totp_enabled && totpRow.totp_secret) {
