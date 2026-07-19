@@ -66,7 +66,7 @@ export default function MapSearchHeader({
             onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
             placeholder={t('restaurantMap.searchPlaceholder')}
             aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
-            className="w-full pl-10 pr-9 py-2.5 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
+            className="w-full pl-10 pr-9 py-2.5 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-md"
           />
           {search && (
             <button onClick={() => setSearch('')} aria-label={t('map.search.clearAria', { defaultValue: '검색어 지우기' })} className="absolute right-3 top-1/2 -translate-y-1/2">

@@ -84,7 +84,7 @@ export default function MapTopBar({
               onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
               placeholder={t('restaurantMap.searchPlaceholder')}
               aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
-              className="w-full h-11 pl-11 pr-9 bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-200 dark:border-[#2A3446] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-sm"
+              className="w-full h-11 pl-11 pr-9 bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-200 dark:border-[#2A3446] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
             />
             {search && (
               <button onClick={() => setSearch('')} aria-label={t('map.search.clearAria', { defaultValue: '검색어 지우기' })} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -147,7 +147,7 @@ export default function MapTopBar({
             aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
               activeFilterCount > 0
-                ? 'bg-pink-500 text-white border-pink-500'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446]'
             }`}
           >

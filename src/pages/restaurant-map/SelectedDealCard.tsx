@@ -3,7 +3,8 @@ import { MapPin, X, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { distanceKm } from './utils'
+import { distanceKm, nearKmLabel } from './utils'
+import { stripStorePrefix } from '@/utils/deal-title'
 import type { Restaurant } from './types'
 
 /**
@@ -136,7 +137,7 @@ export default function SelectedDealCard({
           <div className="flex-1 min-w-0 pr-6 py-0.5">
             {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 위치 줄로 강등. */}
             <div className="flex items-center gap-1.5">
-              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{selected.name || selected.restaurant_name}</p>
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(selected.name, selected.restaurant_name) || selected.restaurant_name}</p>
               {selected.rating > 0 && (
                 <span className="flex items-center gap-0.5 text-[11px] font-semibold text-amber-500 shrink-0">
                   <Star className="w-3 h-3" fill="currentColor" />{selected.rating.toFixed(1)}
@@ -149,10 +150,10 @@ export default function SelectedDealCard({
                 <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
               )}
               <span className="truncate">{selected.restaurant_address || '주소 미등록'}</span>
-              {dist != null && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {dist.toFixed(1)}km</span>}
+              {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
             <div className="flex items-baseline gap-1.5 mt-2">
-              {discount > 0 && <span className="text-[13px] font-extrabold text-pink-500 shrink-0">{discount}%</span>}
+              {discount > 0 && <span className="text-[13px] font-extrabold text-brand dark:text-[#EF6E85] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}

@@ -59,7 +59,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
             <MapPin className="w-3 h-3" />
             {place.road_address_name || place.address_name}
-            {place.distance && <span className="ml-1 text-pink-500">· {Math.round(Number(place.distance))}m</span>}
+            {place.distance && <span className="ml-1 text-brand dark:text-[#EF6E85]">· {Math.round(Number(place.distance))}m</span>}
           </p>
         </div>
 
@@ -81,12 +81,12 @@ export default function SuggestionModal({ place, onClose }: Props) {
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="010-0000-0000"
-                  className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-pink-400 focus:outline-none"
+                  className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-brand focus:outline-none"
                 />
                 <button
                   onClick={() => submit('notify')}
                   disabled={submitting || !phone.trim()}
-                  className="px-4 py-2.5 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+                  className="px-4 py-2.5 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50"
                 >알림</button>
               </div>
             </div>

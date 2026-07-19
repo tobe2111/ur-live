@@ -47,7 +47,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
           </div>
           <button
             onClick={() => navigate(`/products/${selected.id}`)}
-            className="self-center px-3 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+            className="self-center px-3 py-2 bg-brand text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
           >
             {t('map.detail.buy', { defaultValue: '구매' })}
           </button>

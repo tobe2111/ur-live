@@ -8,6 +8,12 @@ export function kakaoDirectionsUrl(r: { restaurant_name?: string; restaurant_lat
   return `https://map.kakao.com/link/to/${name},${r.restaurant_lat},${r.restaurant_lng}`
 }
 
+/** 📍 2026-07-19 (대표 UI v2 P1 — 거리 표시 로직): 10km 이상 딜은 km 라벨 대신 지역명(주소)을
+ *  우선 표기 — 모든 카드가 주소를 이미 노출하므로 km 라벨을 10km 미만에서만 반환. */
+export function nearKmLabel(km: number): string | null {
+  return km < 10 ? `${km.toFixed(1)}km` : null
+}
+
 // Haversine 거리 계산 (km)
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -31,14 +37,5 @@ export function regionShort(address?: string | null): string {
 // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거): 제목이 "한성식당 · 곱창전골 2인" 처럼 매장명으로
 //   시작하면 매장명 프리픽스를 떼고 메뉴/오퍼명만 반환(매장명은 카드 보조 줄이 전담).
 //   시드/heal 이 DB 를 신형으로 정정하지만, 셀러 수기 등록·구캐시 응답도 커버하는 표시측 방어.
-export function stripStorePrefix(name?: string | null, store?: string | null): string {
-  const n = (name || '').trim()
-  const s = (store || '').trim()
-  if (!n || !s) return n
-  const prefix = `${s} · `
-  if (n.startsWith(prefix)) {
-    const rest = n.slice(prefix.length).trim()
-    if (rest) return rest
-  }
-  return n
-}
+//   구현 SSOT: @/utils/deal-title (구분자 일반화 버전 — "매장명 · " 외 공백/하이픈 등도 커버). 재수출만.
+export { stripStorePrefix } from '@/utils/deal-title'

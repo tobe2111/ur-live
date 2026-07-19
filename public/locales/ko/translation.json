@@ -870,6 +870,7 @@
     "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
+    "simple": { "scan": "QR 스캔", "settlement": "정산", "myDeals": "내 딜", "fullMenu": "전체 메뉴", "scanSub": "손님 바우처 사용 처리", "settlementSub": "매출·지급 확인", "myDealsSub": "승인 대기 포함" },
     "kakaoNotify": {
       "confirmResend": "이미 발송했습니다. 다시 발송하시겠습니까?",
       "defaultMessage": "지금 라이브가 시작됐어요! 같이 봐요 🔴",

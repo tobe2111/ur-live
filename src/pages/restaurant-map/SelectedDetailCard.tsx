@@ -3,7 +3,7 @@ import { cfImage } from '@/utils/cf-image'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
-import { distanceKm, kakaoDirectionsUrl } from './utils'
+import { distanceKm, kakaoDirectionsUrl, nearKmLabel } from './utils'
 import type { Restaurant } from './types'
 
 interface Props {
@@ -43,11 +43,10 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
             <MapPin className="w-3 h-3 shrink-0" />
             {selected.restaurant_address}
-            {userLoc && selected.restaurant_lat && selected.restaurant_lng && (
-              <span className="ml-1 font-semibold text-pink-500">
-                · {distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng).toFixed(1)}km
-              </span>
-            )}
+            {userLoc && selected.restaurant_lat && selected.restaurant_lng && (() => {
+              const l = nearKmLabel(distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng))
+              return l && <span className="ml-1 font-semibold text-brand dark:text-[#EF6E85]">· {l}</span>
+            })()}
           </p>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-lg font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
@@ -68,7 +67,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           onClick={() => onToggleFavorite(selected.id)}
           aria-label={favorites.includes(selected.id) ? t('map.detail.unfavorite', { defaultValue: '즐겨찾기 해제' }) : t('map.detail.favorite', { defaultValue: '즐겨찾기' })}
           className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-            favorites.includes(selected.id) ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-500' : 'bg-white dark:bg-[#0F151D] text-gray-400 dark:text-gray-500'
+            favorites.includes(selected.id) ? 'bg-[var(--brand-tint)] dark:bg-[#3A2530] text-brand' : 'bg-white dark:bg-[#0F151D] text-gray-400 dark:text-gray-500'
           }`}
         >
           <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
@@ -90,7 +89,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
         )}
         <button
           onClick={() => navigate(`/products/${selected.id}`)}
-          className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-pink-500 text-white rounded-xl text-sm font-bold active:scale-[0.97] transition-transform"
+          className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-brand text-white rounded-xl text-sm font-bold active:scale-[0.97] transition-transform"
         >
           <Ticket className="w-4 h-4" /> {t('map.detail.buyVoucher', { defaultValue: '바우처 구매' })}
         </button>
