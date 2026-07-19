@@ -102,7 +102,7 @@ export default function YouTubeCallbackPage() {
                 <span className="text-[22px] font-black" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
-              <div className="w-12 h-12 rounded-2xl bg-[#007aff] flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
                 <Radio className="w-6 h-6 text-white" />
               </div>
               <ConnectDots />
@@ -132,7 +132,7 @@ export default function YouTubeCallbackPage() {
                     {i < loadingStep ? (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
                     ) : i === loadingStep ? (
-                      <Loader2 className="w-4 h-4 text-[#007aff] animate-spin" />
+                      <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
                       <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A3446] block" />
                     )}
@@ -186,7 +186,7 @@ export default function YouTubeCallbackPage() {
             </div>
             <button
               onClick={() => navigate('/seller')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl hover:bg-[#0051d5] transition-colors text-[15px] font-semibold"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-semibold"
             >
               <RefreshCw className="w-4 h-4" />
               다시 시도하기

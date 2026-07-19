@@ -50,7 +50,7 @@ export default function ServerErrorPage() {
             {t('serverError.refresh')}
           </Button>
 
-          <Button className="apple-button border border-[#007aff] bg-white dark:bg-transparent text-[#007aff] hover:bg-[#007aff] hover:text-white" asChild>
+          <Button className="apple-button border border-brand bg-white dark:bg-transparent text-brand hover:bg-brand hover:text-white" asChild>
             <Link to="/">
               <Home className="mr-2 h-4 w-4" />
               {t('serverError.goHome')}
@@ -66,7 +66,7 @@ export default function ServerErrorPage() {
           <a
             href="http://pf.kakao.com/_AITdn/chat"
             target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-[#007aff] hover:text-[#0051d5] transition-colors rounded-lg hover:bg-[#007aff]/5"
+            className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-brand hover:text-brand-dark transition-colors rounded-lg hover:bg-brand/5"
           >
             <MessageCircle className="mr-2 h-4 w-4" />
             {t('serverError.contactSupport')}
@@ -80,7 +80,7 @@ export default function ServerErrorPage() {
             <a
               href="https://live.ur-team.com"
               target="_blank" rel="noopener noreferrer"
-              className="text-[#007aff] hover:text-[#0051d5] transition-colors"
+              className="text-brand hover:text-brand-dark transition-colors"
             >
               live.ur-team.com
             </a>

@@ -202,7 +202,7 @@ export default function StaysSearchPage() {
                     )}
                     <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
                       {s.price_from ? (
-                        <p className="text-sm font-extrabold text-[#fb2d3f] dark:text-[#ff7a4f]">
+                        <p className="text-sm font-extrabold text-brand dark:text-[#EF6E85]">
                           ₩{formatNumber(s.price_from)}
                           <span className="text-[10px] text-gray-400 dark:text-gray-500 font-normal ml-1">/박~</span>
                         </p>

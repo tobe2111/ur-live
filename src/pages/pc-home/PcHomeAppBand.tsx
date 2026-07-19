@@ -128,7 +128,7 @@ function PhoneDetail() {
         <div className="flex items-center gap-2 px-3.5 py-3 border-t border-gray-100">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>
           <div className="flex flex-col leading-none">
-            <span className="text-[9px] text-[#fb2d3f] font-bold">40%</span>
+            <span className="text-[9px] text-brand font-bold">40%</span>
             <span className="text-[14px] font-black text-gray-900">27,000원</span>
           </div>
           <span className="ml-auto text-[12px] font-bold text-white bg-brand px-4 py-2 rounded-xl">구매하기</span>

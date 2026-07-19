@@ -57,11 +57,13 @@ export default function MapTopBar({
             <Link
               to="/"
               aria-label={t('nav.home', { defaultValue: '홈' })}
-              /* 🖤 2026-07-15 (대표 신고 — 로고 겹침): 워드마크(가로로 긴 로고)를 w-11 고정 정사각에 넣어
-                 삐져나오던 것 → 높이만 고정(h-11)·가로 auto(px-3)로 로고가 박스 안에 맞게. overflow-hidden 백스톱. */
-              className="h-11 px-3 flex items-center justify-center rounded-2xl bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] shadow-sm shrink-0 overflow-hidden"
+              /* 🎨 2026-07-19 (대표 — "로고 뒤 흰색 카드 없애줘, 투명하게"): 알약 카드(bg/border/shadow) 제거.
+                 지도 위 가독성은 MapSearchHeader 와 동일한 옅은 드롭섀도로. h-11 터치 타깃 유지. */
+              className="h-11 px-1 flex items-center justify-center shrink-0"
             >
-              <UrDealLogo size={18} />
+              <span className="drop-shadow-[0_1px_3px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+                <UrDealLogo size={18} />
+              </span>
             </Link>
           ) : (
             <button
