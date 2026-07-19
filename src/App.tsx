@@ -529,7 +529,7 @@ function AppContent() {
         dynamic.setAttribute('data-dynamic', '1')
         document.head.appendChild(dynamic)
       }
-      dynamic.setAttribute('content', isLight ? '#FFFFFF' : '#020202')
+      dynamic.setAttribute('content', isLight ? '#E0526B' : '#020202') // 🎨 2026-07-19 라이트=브랜드 로즈(지시서 §5), 다크 유지
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 

@@ -222,7 +222,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
 
         {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
         {isUrgent && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm">
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm">
             ⏰ {remaining}
           </span>
         )}
