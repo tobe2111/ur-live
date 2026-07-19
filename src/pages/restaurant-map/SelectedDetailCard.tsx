@@ -54,7 +54,8 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             {selected.original_price > selected.price && (
               <>
                 <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
-                <span className="text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-md">
+                {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
+                <span className="text-xs bg-brand text-white font-bold px-1.5 py-0.5 rounded-md">
                   -{Math.round((1 - selected.price / selected.original_price) * 100)}%
                 </span>
               </>

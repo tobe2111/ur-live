@@ -1657,7 +1657,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "Comisión de recomendación (%)",
       "promoRecommend": "Recomendado {{min}}~{{max}}%",
-      "promoHint": "Cuando un influencer vende por su enlace, pagas esta parte como comisión. Diséñala junto al descuento como un solo presupuesto de marketing. Sin venta referida, sin costo."
+      "promoHint": "Cuando un influencer vende por su enlace, pagas esta parte como comisión. Diséñala junto al descuento como un solo presupuesto de marketing. Sin venta referida, sin costo.",
+      "photoGuideTitle": "💡 Las fotos de la comida o del resultado del servicio venden más que las del letrero o el menú",
+      "photoGuideGood": "✅ Recomendado: primer plano del plato estrella · resultados del servicio (antes/después) · lo que realmente se ofrece",
+      "photoGuideBad": "❌ Evita: letreros · tableros de menú · fachadas del edificio"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

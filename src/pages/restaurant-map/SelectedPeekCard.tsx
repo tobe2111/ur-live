@@ -37,8 +37,9 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
             </p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-base font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+              {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
               {selected.original_price > selected.price && (
-                <span className="text-[10px] bg-red-500 text-white font-bold px-1 py-0.5 rounded">
+                <span className="text-[10px] bg-brand text-white font-bold px-1 py-0.5 rounded">
                   -{Math.round((1 - selected.price / selected.original_price) * 100)}%
                 </span>
               )}

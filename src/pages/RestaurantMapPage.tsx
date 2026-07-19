@@ -16,6 +16,7 @@ import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
+import NearbyEmptyBanner from './restaurant-map/NearbyEmptyBanner'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
 import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
@@ -688,6 +689,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         </div>
         {/* 1줄 리스트 */}
         <div className="ur-content-wide px-3 lg:px-8 pt-3 pb-28">
+          {/* 🗺️ 2026-07-19 (대표 — 거리 표시 로직): 반경 5km 내 딜 0개 → 안내 배너 + 지역선택 유도. */}
+          <NearbyEmptyBanner loading={loading} userLoc={userLoc} sortBy={sortBy} list={displayList} onOpenRegion={() => setFilterSheetOpen(true)} />
           <RestaurantList
             loading={loading}
             filtered={displayList}

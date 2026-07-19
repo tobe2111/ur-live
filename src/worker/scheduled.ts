@@ -194,6 +194,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
     // 🔄 2026-07-05 (대표 "마감돼도 사라지면 안 됨 — 콜드스타트"): 데모 추첨 마감 자동 연장(5~10일 롤링).
     ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
+    // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, "직접 해줘"): 기존 데모 상품명의 '{매장명} · ' 프리픽스를
+    //   배포 후 자동으로 in-place 제거(멱등 — 치유 완료 후엔 SELECT 1회 + no-op). 시드 heal 블록과 동일 함수.
+    ctx.waitUntil(safeCron('demo-name-heal', async () => {
+      const { healDemoNamesInPlace } = await import('../features/admin/api/admin-products.routes');
+      return healDemoNamesInPlace(env.DB);
+    }));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.

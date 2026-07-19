@@ -40,7 +40,8 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
                 )}
-                <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+                {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
+                <span className="absolute top-1.5 left-1.5 bg-brand text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded">
                   -{discount}%
                 </span>
                 {r.seller_id && liveSellerIds.has(r.seller_id) && (
