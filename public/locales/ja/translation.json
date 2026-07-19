@@ -2336,7 +2336,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "紹介手数料 (%)",
       "promoRecommend": "推奨 {{min}}~{{max}}%",
-      "promoHint": "インフルエンサーが紹介リンクで販売するとこの割合を紹介料として支払います。割引と合わせて一つのマーケティング予算として設計してください。紹介販売がなければ発生しません。"
+      "promoHint": "インフルエンサーが紹介リンクで販売するとこの割合を紹介料として支払います。割引と合わせて一つのマーケティング予算として設計してください。紹介販売がなければ発生しません。",
+      "photoGuideTitle": "💡 看板・メニュー表より、料理や施術結果の写真の方がよく売れます",
+      "photoGuideGood": "✅ おすすめ例: 看板メニューのクローズアップ · 施術結果(ビフォー/アフター) · 実際に提供される様子",
+      "photoGuideBad": "❌ 避けてください: 看板 · メニュー表 · 建物の外観写真"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

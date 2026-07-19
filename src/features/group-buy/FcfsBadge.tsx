@@ -1,12 +1,14 @@
 /**
- * 🎯 추첨 모집 현황 배지 — 사회적 증거("N명 지원").
+ * 🎯 소셜프루프 배지 — 사회적 증거("N명 구매 중").
  * 🎨 2026-07-06 (대표 "검은 알약이 너무 튀어 가격을 누름" → A안 채택): 두 렌더 모드로 분리.
- *   · variant='inline'(기본) — **조용한 소셜증거 라인**(배경 없음, 흐린 텍스트 + 지원 숫자만 진하게).
+ *   · variant='inline'(기본) — **조용한 소셜증거 라인**(배경 없음, 흐린 텍스트 + 숫자만 진하게).
  *     플레인 배경(RestaurantList·LocalTownPage)에서 가격이 주인공이 되게. 검은 알약 폐기.
  *   · variant='overlay' — 사진 위(GroupBuyFeedCard·GroupBuyGridCard, absolute)에선 배경 없는 텍스트가
  *     안 보이므로 **소프트 글래스 알약**(반투명 다크 + blur, 흰 글자)로 가독성 유지(솔리드 검정보다 가벼움).
  *   prelaunch(오픈 예정)는 판매중이 아닌 '상태' 신호라 소프트 앰버 알약으로 항상 구분.
- *   spots=모집 정원, appliedDisplay=지원자(굵게 강조).
+ * 🏷️ 2026-07-19 (대표 — 카피 변경): "지원 중 · N명 모집" → "구매 중 · 마감 임박".
+ *   "지원/모집"은 성사형 공구(안 모이면 취소)로 오독됨 — 우리 모델은 결제 즉시 확정.
+ *   spots(모집 정원)는 표시용이라 노출 자체를 제거(로직/타입 불변, appliedDisplay 만 강조).
  */
 import { formatNumber } from '@/utils/format'
 import type { FcfsInfo } from './useFcfs'
@@ -15,7 +17,6 @@ export default function FcfsBadge(
   { info, className = '', variant = 'inline' }: { info: FcfsInfo; className?: string; variant?: 'inline' | 'overlay' },
 ) {
   const applied = formatNumber(info.appliedDisplay)
-  const spots = formatNumber(info.spots)
 
   // 🏷️ 오픈 예정형 — 판매 중이 아니라 '오픈 예정 + 사전 응모' 소구. 상태 신호라 소프트 앰버 알약 유지.
   if (info.prelaunch) {
@@ -35,19 +36,19 @@ export default function FcfsBadge(
     )
   }
 
-  // 🎯 추첨 응모 현황 — 사진 위(overlay)면 소프트 글래스 알약, 아니면 조용한 라인(A안).
+  // 🎯 구매 현황 — 사진 위(overlay)면 소프트 글래스 알약, 아니면 조용한 라인(A안).
   if (variant === 'overlay') {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
-        <span className="animate-fcfs-flame">🔥</span> <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 지원
+        <span className="animate-fcfs-flame">🔥</span> <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 구매 중
       </span>
     )
   }
   return (
     <span className={`inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 ${className}`}>
       <span className="animate-fcfs-flame">🔥</span>
-      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 지원 중</span>
-      <span className="opacity-70">· {spots}명 모집</span>
+      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 구매 중</span>
+      <span className="opacity-70">· 마감 임박</span>
     </span>
   )
 }

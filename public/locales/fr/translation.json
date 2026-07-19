@@ -1657,7 +1657,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "Commission de recommandation (%)",
       "promoRecommend": "Recommandé {{min}}~{{max}}%",
-      "promoHint": "Quand un influenceur vend via son lien, vous payez cette part en commission. Concevez-la avec la remise comme un seul budget marketing. Pas de vente référée, pas de coût."
+      "promoHint": "Quand un influenceur vend via son lien, vous payez cette part en commission. Concevez-la avec la remise comme un seul budget marketing. Pas de vente référée, pas de coût.",
+      "photoGuideTitle": "💡 Les photos du plat ou du résultat de la prestation vendent mieux que celles de l'enseigne ou du menu",
+      "photoGuideGood": "✅ Recommandé : gros plan du plat phare · résultats de la prestation (avant/après) · ce qui est réellement servi",
+      "photoGuideBad": "❌ À éviter : enseignes · panneaux de menu · façades du bâtiment"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

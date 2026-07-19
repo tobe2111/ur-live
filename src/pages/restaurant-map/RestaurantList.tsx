@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { distanceKm } from './utils'
+import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
@@ -107,6 +107,12 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
   fcfs?: { spots: number; appliedDisplay: number }
 }) {
   const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0
+  // 🗺️ 2026-07-19 (대표 — 거리 표시 로직): 10km 이상 원거리 딜은 "42km" 강조가 "동네딜" 컨셉과
+  //   충돌 → 지역명("서울 중구") 우선, 거리는 흐린 보조 표기로 강등. 근거리(<10km)는 기존 강조 유지.
+  const dist = userLoc && r.restaurant_lat && r.restaurant_lng
+    ? distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng)
+    : null
+  const isFar = dist != null && dist >= 10
   return (
     <button
       onClick={() => onSelect(r)}
@@ -126,22 +132,28 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
       )}
       <div className="flex-1 min-w-0">
         {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(r.name)을 볼드 제목으로, 매장명은 보조 줄로.
-            🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 선명한
-            모집현황 chip("N명 모집 · M명 지원", FcfsBadge)로 전용 줄에 배치(긴 제목 안 찌그러뜨림). */}
-        <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
+            🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 소셜프루프
+            라인(FcfsBadge)으로 전용 줄에 배치(긴 제목 안 찌그러뜨림).
+            🏷️ 2026-07-19 (대표 — 제목 중복 제거): 제목의 "매장명 · " 프리픽스 제거 — 매장명은 아랫줄 한 곳에만. */}
+        <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
           <MapPin className="w-3 h-3 shrink-0" />
-          {r.restaurant_address || '주소 미등록'}
-          {userLoc && r.restaurant_lat && r.restaurant_lng && (
+          {isFar
+            ? (regionShort(r.restaurant_address) || r.restaurant_address || '주소 미등록')
+            : (r.restaurant_address || '주소 미등록')}
+          {dist != null && (isFar ? (
+            <span className="ml-1 shrink-0">· {Math.round(dist)}km</span>
+          ) : (
             <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">
-              · {distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km
+              · {dist.toFixed(1)}km
             </span>
-          )}
+          ))}
         </p>
         <div className="flex items-baseline gap-1.5 mt-1.5">
+          {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 순수 빨강 → 웜 로즈 brand 토큰(라이트/다크 var 보정). */}
           {discount > 0 && (
-            <span className="text-[16px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>
+            <span className="text-[16px] font-extrabold text-brand-text">{discount}%</span>
           )}
           <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
           {r.original_price > r.price && (
