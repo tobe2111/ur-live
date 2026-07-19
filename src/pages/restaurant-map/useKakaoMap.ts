@@ -329,11 +329,11 @@ export function useKakaoMap({
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
       const cornerBadge = isLive
-        ? `<span style="position:absolute;top:-4px;right:-4px;background:#111827;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
+        ? `<span style="position:absolute;top:-4px;right:-4px;background:#E0526B;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
         : hasDiscount
-        ? `<span style="position:absolute;top:-6px;right:-8px;background:#111827;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
+        ? `<span style="position:absolute;top:-6px;right:-8px;background:#E0526B;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
         : isFav
-        ? `<span style="position:absolute;top:-3px;right:-3px;color:#111827;font-size:11px;line-height:1;">❤</span>`
+        ? `<span style="position:absolute;top:-3px;right:-3px;color:#E0526B;font-size:11px;line-height:1;">❤</span>`
         : groupSize > 1
         ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
@@ -341,7 +341,7 @@ export function useKakaoMap({
       // 🗺️ 2026-06-22 (대표 — 핀 아이콘 = 상품 사진): 흰 원+이모지 → 상품 썸네일(cfImage 96px) 원형 핀
       //   + 카테고리 컬러 링 + 기존 모서리 배지. 사진 없음/로드 실패 시 이모지 폴백(뒤에 깔린 span).
       //   라이브는 링을 잉크색으로 강조 유지. 선택 시 확대 + 잉크 외곽 링.
-      const ring = isLive ? '#111827' : categoryColor(cat)
+      const ring = isLive ? '#E0526B' : categoryColor(cat)
       const photoSize = isSelected ? 50 : 42
       const thumb = cfImage(r.image_url, { width: 96, height: 96, fit: 'cover', format: 'auto' })
 
@@ -355,7 +355,7 @@ export function useKakaoMap({
           background: ${ring};
           padding: 3px;
           box-sizing: border-box;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(17,24,39,0.85)' : ''};
+          box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(224,82,107,0.9)' : ''};
           cursor: pointer;
           transform: translate(-50%, -50%) scale(${isSelected ? 1.08 : 1});
           transition: transform 0.15s;
@@ -509,7 +509,7 @@ export function useKakaoMap({
       const size = sel ? 50 : 42
       el.style.width = `${size}px`
       el.style.height = `${size}px`
-      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(17,24,39,0.85)' : ''}`
+      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(224,82,107,0.9)' : ''}`
       el.style.transform = `translate(-50%, -50%) scale(${sel ? 1.08 : 1})`
     })
   }, [selected?.id])

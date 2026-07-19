@@ -90,7 +90,7 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 345 100% 65%;      /* #FF4D6D */
+    --primary: 349 70% 60%;       /* 🎨 #E0526B 브랜드 웜로즈 (2026-07-19 지시서, 구 #FF4D6D) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 10%;
@@ -99,7 +99,7 @@
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 50%;
 
-    --accent: 345 100% 65%;
+    --accent: 349 70% 60%;        /* 🎨 = --primary (#E0526B) */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 100% 50%;
@@ -107,9 +107,20 @@
 
     --border: 0 0% 12%;           /* #1F1F1F */
     --input: 0 0% 12%;
-    --ring: 345 100% 65%;
+    --ring: 349 70% 60%;          /* 🎨 #E0526B */
 
     --radius: 0.75rem;
+
+    /* 🎨 2026-07-19 브랜드 토큰 (대표 지시서 §1 — 리터럴 hex, tailwind brand/ink/gray 스케일과 동일 SSOT) */
+    --brand: #E0526B;       /* 웜 로즈 — 주요 행동 버튼·강조·활성 */
+    --brand-dark: #C43D55;  /* hover/pressed */
+    --brand-tint: #FBEDF0;  /* 옅은 로즈 배경 — 뱃지·선택됨 */
+    --ink: #1A2C42;         /* 딥네이비 — 제목/본문/가격 */
+    --ink-soft: #5F6B7A;    /* 보조 텍스트 */
+    --ink-faint: #8A8580;   /* 비활성/플레이스홀더 */
+    --bg: #FAF7F5;          /* 페이지 배경(웜 화이트) */
+    --surface: #FFFFFF;     /* 카드/시트/입력창 */
+    --line: #EAE4E0;        /* 구분선/테두리 */
   }
 
 }
@@ -207,6 +218,12 @@
   --border: 0 0% 89%;
   --input: 0 0% 89%;
   --ring: 211 100% 50%;
+}
+/* 🎨 2026-07-19 브랜드(지시서 §5): 셀러 대시보드 액센트만 로즈 — 어드민은 "후순위 무접촉"이라
+   공용 셀렉터에서 분리해 셀러에만 override (bg #F4F5F7 구조·어드민 파랑 불변). */
+.seller-light-theme {
+  --primary: 349 70% 60%;   /* #E0526B */
+  --ring: 349 70% 60%;
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -772,15 +789,17 @@ html.dark .mobile-app-container {
 
 /* 🎨 2026-06-16 공구 상세 리디자인 토큰 (docs/design/group-buy-detail.md) — .gbd 스코프 + html.dark 듀얼.
    Claude Design 핸드오프(프리미엄 커머스: 잉크블랙 CTA·헤어라인·정직한 즉시구매)를 var 로 포팅. */
+/* 🎨 2026-07-19 브랜드 적용: 라이트=웜화이트+네이비 잉크+로즈 CTA/액센트(지시서 60-30-10),
+   다크=서피스 유지+액센트만 로즈(대표 확정). danger(기능색)는 유지. */
 .gbd {
-  --gbd-bg:#EDEEF1; --gbd-card:#ffffff; --gbd-ink:#16181B; --gbd-ink2:#3D424A; --gbd-sub:#8B929C; --gbd-sub2:#AFB4BC;
-  --gbd-line2:#E6E8EC; --gbd-chip:#F5F6F8; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
-  --gbd-cta-bg:#16181B; --gbd-cta-fg:#ffffff; --gbd-accent:#2B6FF0;
+  --gbd-bg:#FAF7F5; --gbd-card:#ffffff; --gbd-ink:#1A2C42; --gbd-ink2:#3D4C60; --gbd-sub:#5F6B7A; --gbd-sub2:#8A8580;
+  --gbd-line2:#EAE4E0; --gbd-chip:#F3EEEA; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
+  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E0526B;
 }
 html.dark .gbd {
   --gbd-bg:#070809; --gbd-card:#141517; --gbd-ink:#F3F4F6; --gbd-ink2:#C5C9D0; --gbd-sub:#888F99; --gbd-sub2:#5E646D;
   --gbd-line2:#2A2D31; --gbd-chip:#1E2023; --gbd-danger:#FF5C69; --gbd-danger-soft:#2E1518;
-  --gbd-cta-bg:#F3F4F6; --gbd-cta-fg:#16181B; --gbd-accent:#5B93F7;
+  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E76B81;
 }
 .gbd .noscroll::-webkit-scrollbar{display:none;}
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
