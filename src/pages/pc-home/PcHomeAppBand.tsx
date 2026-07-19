@@ -131,7 +131,7 @@ function PhoneDetail() {
             <span className="text-[9px] text-[#fb2d3f] font-bold">40%</span>
             <span className="text-[14px] font-black text-gray-900">27,000원</span>
           </div>
-          <span className="ml-auto text-[12px] font-bold text-white bg-[#fb2d3f] px-4 py-2 rounded-xl">구매하기</span>
+          <span className="ml-auto text-[12px] font-bold text-white bg-brand px-4 py-2 rounded-xl">구매하기</span>
         </div>
       </div>
     </div>

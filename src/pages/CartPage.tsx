@@ -591,7 +591,7 @@ function CartPageContent() {
               <button
                 onClick={handleCheckout}
                 disabled={selectedIds.size === 0 || updating}
-                className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
+                className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
               >
                 {selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })}
               </button>

@@ -38,7 +38,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onDone()
             window.location.href = '/seller'
           }}
-          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
@@ -264,8 +264,8 @@ export default function BottomNav() {
           aria-label={label}
           aria-haspopup="dialog"
         >
-          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-gray-900 dark:bg-white">
-            <Icon size={20} className="text-white dark:text-[#020202]" strokeWidth={2.25} />
+          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-brand">
+            <Icon size={20} className="text-white" strokeWidth={2.25} />
           </span>
           <span className="text-[9px] mt-0.5 text-gray-500">{label}</span>
         </button>
@@ -295,12 +295,12 @@ export default function BottomNav() {
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-500'}
+            className={active ? 'text-brand' : 'text-gray-400'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
         <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500'
+          active ? 'font-bold text-brand' : 'text-gray-400'
         }`}>
           {label}
         </span>
@@ -491,7 +491,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
