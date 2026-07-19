@@ -197,28 +197,22 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     //   ⚠️ fail-safe: totp_* 컬럼 미존재(프로덕션 drift 가능 — twofa.routes 가 setup 시 ALTER 로 추가)면
     //     catch → null → 미등록 취급(로그인 차단 없음). admins 테이블 컬럼 추가 없음(read-only).
     let mustSet2fa = false;
-    {
+    // 🔕 2026-07-19 대표 지시 "어드민 대시보드 2단계 인증 없애줘" — 로그인 TOTP 게이트 전면 비활성(재도입 = false 로).
+    const TOTP_LOGIN_GATE_DISABLED = true;
+    if (!TOTP_LOGIN_GATE_DISABLED) {
       const totpRow = await DB.prepare('SELECT totp_secret, totp_enabled FROM admins WHERE id = ?')
         .bind(admin.id).first<{ totp_secret: string | null; totp_enabled: number }>().catch(() => null);
       if (totpRow?.totp_enabled && totpRow.totp_secret) {
         const totpCode = String((body as { totp_code?: string }).totp_code || '').trim();
         if (!/^\d{6}$/.test(totpCode)) {
-          return c.json({
-            success: false,
-            totp_required: true,
-            code: 'ADMIN_2FA_REQUIRED',
-            message: '이 계정은 2단계 인증(OTP)이 설정되어 있습니다. 인증 앱의 6자리 코드를 입력하세요.',
-          }, 401);
+          return c.json({ success: false, totp_required: true, code: 'ADMIN_2FA_REQUIRED',
+            message: '이 계정은 2단계 인증(OTP)이 설정되어 있습니다. 인증 앱의 6자리 코드를 입력하세요.' }, 401);
         }
         const { verifyTOTP } = await import('../../../worker/middleware/require-2fa');
         const totpOk = await verifyTOTP(totpRow.totp_secret, totpCode);
         if (!totpOk) {
-          return c.json({
-            success: false,
-            totp_required: true,
-            code: 'ADMIN_2FA_INVALID',
-            error: 'OTP 코드가 올바르지 않습니다. 인증 앱의 최신 코드를 다시 입력하세요.',
-          }, 401);
+          return c.json({ success: false, totp_required: true, code: 'ADMIN_2FA_INVALID',
+            error: 'OTP 코드가 올바르지 않습니다. 인증 앱의 최신 코드를 다시 입력하세요.' }, 401);
         }
       } else {
         const TOTP_ENFORCED_ROLES = ['finance', 'super', 'super_admin'];
