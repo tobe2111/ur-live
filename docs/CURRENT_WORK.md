@@ -5,8 +5,9 @@
 - **P1 거리 표시**: ① `NearbyEmptyBanner`(restaurant-map) 신설 — "내 주변 · 거리순"인데 반경 5km 내 딜 0개면 리스트 상단 "내 주변엔 아직 딜이 없어요 / 가까운 순으로 보여드릴게요" + 지역선택 CTA(필터시트). ② `RestaurantList` 행: 10km 이상 원거리 딜은 지역명(`regionShort` — "서울 중구") 우선, 거리는 흐린 보조 표기(반올림 km)로 강등. 근거리(<10km)는 기존 강조 유지.
 - **P2 제목 중복 제거**: 데모 시드 `dispName` = 오퍼(메뉴명)만(07-06 '매장명 · 오퍼' 역전) + `healDemoNamesInPlace` 를 프리픽스 **제거** 방향으로 뒤집음(시드/수동 엔드포인트에서 기존 데이터 in-place 자동 치유) + 표시측 방어 `stripStorePrefix`(셀러 수기 등록·구캐시 커버). 매장명은 카드 아랫줄 한 곳에만.
 - **P2 강조색 브랜드 통일**: 홈 리스트 할인율 텍스트(`text-brand-text`) + 지도 카드/핫딜 캐러셀 할인 뱃지(`bg-brand`) — 순수 빨강 → 웜 로즈 #E0526B 토큰(tailwind `brand`, 07-19 브랜드 롤아웃 SSOT). 하단탭 활성은 기롤아웃 완료 확인. LIVE 뱃지는 기능 빨강이라 불변. 🔥 는 이모지라 색 통제 불가(교체 필요 시 lucide Flame + text-brand — 별도 결정).
-- **P3 대표사진 가이드**: `SellerVoucherPhotoGuide` 컴포넌트 — 이용권 등록 대표 이미지 단계에 "음식·시술 결과 사진이 간판·메뉴판보다 판매가 잘 돼요" + 추천/비추천 예시 안내. i18n 6개 언어(`seller.mealVoucher.photoGuide*`). 예시 *이미지* 에셋은 미포함(문구+예시 리스트로 대체 — 에셋 확보 시 후속).
-- 검증: tsc 0 · audit-gate 45 GREEN(file-size 는 배너/가이드 컴포넌트 추출 후 rebaseline — 잔여 +3줄 import/사용부 정당 성장). ⚠️ npm 403 → build/vitest 는 CI.
+- **P3 대표사진 가이드**: `SellerVoucherPhotoGuide` 컴포넌트 — 이용권 등록 대표 이미지 단계에 "음식·시술 결과 사진이 간판·메뉴판보다 판매가 잘 돼요" + 추천/비추천 **내장 SVG 예시 일러스트**(외부 에셋·네트워크 0, ~1KB — 음식 클로즈업 vs 간판/외관). i18n 6개 언어(`seller.mealVoucher.photoGuide*`).
+- **후속 결정(대표)**: 🔥 이모지 → Flame 아이콘 교체는 **안 함**(확정). 기존 DB 제목 치유는 **cron `demo-name-heal`**(scheduled.ts, 매시간·멱등 — 치유 완료 후 no-op)로 배포만으로 자동 실행(수동 엔드포인트도 존치). 상세 추첨 응모 블록 카피는 실제 응모형 기능이라 유지(대표 인지).
+- 검증: tsc 0 · audit-gate 45 GREEN(file-size 는 배너/가이드 컴포넌트 추출 후 rebaseline — 잔여 +3줄 import/사용부 정당 성장) · **PR #561 Verify CI GREEN**. ⚠️ npm 403 → build/vitest 는 CI.
 
 ## ✅ 2026-07-18 — 앱 출시 대비 세팅 배치 (대표 "너가 할 수 있는 세팅 다 해줘")
 - **SSOT**: `docs/APP_STORE_LAUNCH_RUNBOOK.md` (남은 절차=대부분 대표 계정 작업 + 실기기 검증 체크리스트). 선행 점검 `app-ready-audit-2026-07.md` 의 "전환 착수 시 To-Do" 소화.
