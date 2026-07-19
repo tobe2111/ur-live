@@ -71,7 +71,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
         aria-hidden
       >
         <div
-          className={`ur-loader-sweep absolute inset-y-0 left-0 rounded-full ${forceLight ? 'bg-gray-900' : forceDark ? 'bg-white' : 'bg-gray-900 dark:bg-white'}`}
+          className={`ur-loader-sweep absolute inset-y-0 left-0 rounded-full ${forceLight ? 'bg-gray-900' : forceDark ? 'bg-brand' : 'bg-brand dark:bg-brand'}`}
           style={{ width: '38%', animationDelay: sweepDelay }}
         />
       </div>

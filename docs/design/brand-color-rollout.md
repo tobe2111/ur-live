@@ -38,3 +38,4 @@ QR 흑백 유지(렌더 코드 무접촉 — 인벤토리상 fgColor 지정 1곳
 
 ## 구현 로그
 - 2026-07-19 1차: 토큰층 + CTA 표적 + PWA meta + 맵 핀 (이 커밋)
+- 2026-07-19 2차(마감): 상태바 theme-color 라이트=로즈(App.tsx 동적 writer) · 로더 스윕바 로즈(BrandLoader 기본/forceDark + 워커 정적 로더 [UNLOCK_LOADING] — forceLight 대시보드 중립 유지) · 피드 할인뱃지 red→brand · favicon.svg UR 마크 로즈.
