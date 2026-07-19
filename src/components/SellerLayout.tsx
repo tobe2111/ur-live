@@ -1,18 +1,15 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home
-} from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
-import { HOSTING_HIDDEN } from '@/shared/feature-flags'
+import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 
@@ -186,6 +183,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       return true
     } catch { return false }
   })
+  // 🎨 2026-07-19 확정 로고: 셀러 대시보드 탭 = 세컨더리(비즈니스) 파비콘, 이탈 시 원복.
+  useEffect(() => { applyBizFavicon(); return restoreDefaultFavicon }, [])
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (localStorage.getItem('is_distributor') !== '1') return // 도매 접근권 없으면 절대 도매 전용 아님

@@ -32,7 +32,8 @@ interface SEOProps {
 const SITE_NAME = '유어딜'
 // 🛡️ 2026-05-21: SEO 타이틀/설명 변경 (사용자 요청) — "돈버는 쇼핑" 강조, 오프라인 공동구매 우선.
 const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.'
-const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.svg'
+// 🎨 2026-07-19 확정 로고: 기본 OG = 신규 브랜드 래스터(og-image.png — 카카오 등 raster 선호 크롤러 호환).
+const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.png'
 const BASE_URL = 'https://live.ur-team.com'
 
 // 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 을 canonical 로 성장.
