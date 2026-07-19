@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-19 — 운영 자동화 백로그 4종 (대표 "8월 중 순차, 전부 라이브 무접촉·읽기전용 우선") — draft PR
+전부 read-only 수집 + 발송 게이트 기본 OFF — **머지 = 라이브 영향 0**. 어드민 가이드 §운영 자동화(`GUIDE_SEED_VERSION=6`) 참조.
+- **① 일일 다이제스트** (`cron/ops-daily-digest.ts`, hourly 슬롯 UTC22=KST07 게이트 + KST 날짜 멱등): 어제 판매/QR 사용/신규 가입 + 이상 신호(환불 급증 2×7일평균·미사용 임박·cron 실패·어뷰징 high). 벨+Discord 항상, 이메일/알림톡은 platform_settings `ops_digest_email`/`ops_digest_phone` 설정 시(알림톡은 env `OPS_DIGEST_ALIMTALK_ENABLED` 추가 게이트). 공용 헬퍼 `utils/ops-report.ts`(KST 윈도우·배달 경로 — ④와 공유).
+- **② 알림톡 시퀀스**: 신규 2종 — 드랍 D-1 예고(`cron/drop-d1-reminder.ts`, fcfs_deadline 내일(KST)인 상품 응모자, KST 18:00) + 체험단 게시 리마인드(`cron/experience-post-reminder.ts`, selected 48h~14d + `experience_content_proofs` 없음 → 평생 1회; proofs 테이블은 WP-B 선행 lazy-create 스캐폴드). **둘 다 env `OPS_SEQUENCES_ENABLED` 게이트(기본 OFF — 인앱 알림 포함 전체 미발송)**. 만료 임박은 기존 `meal-voucher-expire`(D-30/7/3/1)가 이미 담당 — 신규 없음. 템플릿 `drop_d1_reminder`/`experience_post_reminder` 레지스트리+docs 등재(콘솔 등록 대기).
+- **③ CS FAQ 봇**: 카카오 i 오픈빌더 스킬 서버 `POST /api/cs/kakao-skill`(`routes/kakao-skill-webhook.routes.ts`) — FAQ SSOT `features/cs/api/cs-faq.ts`(QR 사용법·환불·정산일·유효기간·딜 포인트, 충전 종료 반영). **완전 read-only(DB 0)** + env `KAKAO_SKILL_SECRET` 미설정=404(비활성)/설정 시 `x-skill-secret` 헤더 검증. 항상 200+폴백(오픈빌더 5xx 방지).
+- **④ 주간 코호트 리포트** (`cron/weekly-cohort-report.ts`, '0 0 * * 1' = 월 KST 09:00): 최근 8주 가입 주차 코호트 — 가입→구매전환→14일내 구매→재구매→QR 사용 표 1장. weekly-metrics(스냅샷)와 상보. 배달 경로 ①과 공유.
+- **⏳ 대표 액션(활성 시)**: ⓐ platform_settings `ops_digest_email`(+선택 `ops_digest_phone`) 등록 ⓑ Aligo 콘솔 신규 템플릿 3종 등록·승인 후 `OPS_SEQUENCES_ENABLED=true` ⓒ 오픈빌더 챗봇 생성 + `KAKAO_SKILL_SECRET` 등록 ⓓ ①④는 배포 즉시 벨+Discord 로 동작(게이트 불필요 — 어드민 대상 read-only).
+- ⚠️ cron 은 별도 Workers 배포(`worker-deploy.yml` 자동 트리거 — scheduled.ts 변경 포함). npm 403 환경 → tsc/build 은 CI 검증.
+
 ## ✅ 2026-07-19 — 홈 리스트 UI 수정 5건 (대표 지시서 P1~P3)
 - **P1 소셜프루프 카피**: `FcfsBadge` "지금 N명 지원 중 · M명 모집" → "지금 N명 구매 중 · 마감 임박"(overlay 는 "N명 구매 중"). "지원/모집"이 성사형 공구로 오독되는 CS 리스크 제거 — 모집 정원(spots) 노출 자체 삭제(로직/타입 불변). prelaunch(오픈 예정·사전응모)는 별개 상태라 불변.
 - **P1 거리 표시**: ① `NearbyEmptyBanner`(restaurant-map) 신설 — "내 주변 · 거리순"인데 반경 5km 내 딜 0개면 리스트 상단 "내 주변엔 아직 딜이 없어요 / 가까운 순으로 보여드릴게요" + 지역선택 CTA(필터시트). ② `RestaurantList` 행: 10km 이상 원거리 딜은 지역명(`regionShort` — "서울 중구") 우선, 거리는 흐린 보조 표기(반올림 km)로 강등. 근거리(<10km)는 기존 강조 유지.
