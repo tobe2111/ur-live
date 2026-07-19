@@ -2,7 +2,7 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 export default function SiteFooter() {
   return (
-    <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]">
+    <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]">
       <div className="flex flex-col gap-1.5 footer-tiny">
         {/* 🛡️ 2026-05-21: 역할별 진입 CTA — 사용자/사장님/셀러/에이전시 가입 직접 link.
               마이페이지의 CTA grid 와 동일 destination. */}

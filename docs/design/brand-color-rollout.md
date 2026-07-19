@@ -39,3 +39,4 @@ QR 흑백 유지(렌더 코드 무접촉 — 인벤토리상 fgColor 지정 1곳
 ## 구현 로그
 - 2026-07-19 1차: 토큰층 + CTA 표적 + PWA meta + 맵 핀 (이 커밋)
 - 2026-07-19 2차(마감): 상태바 theme-color 라이트=로즈(App.tsx 동적 writer) · 로더 스윕바 로즈(BrandLoader 기본/forceDark + 워커 정적 로더 [UNLOCK_LOADING] — forceLight 대시보드 중립 유지) · 피드 할인뱃지 red→brand · favicon.svg UR 마크 로즈.
+- 2026-07-19 3차(STEP B — 다크 토큰, 지시서 §6): 다크 hex 일괄 이행(#020202/#0A0A0A→#0F151D · #121212→#1A2334 · #1A1A1A→border는 #2A3446/bg는 #1A2334 · #2A2A2A/#1F1F1F→#2A3446, 소비자+셀러 263파일 — 도매/유어애즈/어드민/에이전시 제외) · :root shadcn 다크 var 네이비 혈통화+웜화이트 foreground · `.dark`/[data-theme=dark] 토큰 블록(--brand-text #EF6E85·--brand-tint #3A2530) · tailwind brand.text/tint var화(테마 자동 적응) · BottomNav 활성=text-brand-text · gbd 다크(음식사진 배경 근검정 유지, accent #EF6E85) · theme-color 라이트 #FAF7F5/다크 #0F151D(§6 확정, manifest 동일) · 가드 hex 목록 동기(check-theme-consistency 83/108). 한계 고지: dark:text-white 리터럴(순백)은 잔존 — var 소비자(foreground)는 #F5F3F1, 시각차 미미.

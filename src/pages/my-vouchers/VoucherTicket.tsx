@@ -96,12 +96,12 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
       role={tappable ? 'button' : undefined}
       tabIndex={tappable ? 0 : undefined}
       onKeyDown={tappable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onShowQr() } } : undefined}
-      className={`relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] ${tappable ? 'cursor-pointer' : ''}`}
+      className={`relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] ${tappable ? 'cursor-pointer' : ''}`}
       style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 14px 30px -12px rgba(10,10,10,0.16)' }}
     >
       {/* 헤더: 썸네일 + 가게 + 상태 배지 */}
       <div className="flex items-center gap-2.5 px-4 pt-3.5">
-        <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+        <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
           {v.product_image ? (
             <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
           ) : (
@@ -170,7 +170,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         <>
           {/* 천공 — 점선 + 양옆 노치 (실물 티켓 메타포) */}
           <div className="relative" aria-hidden>
-            <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A2A2A]" />
+            <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A3446]" />
             <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
             <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
           </div>
@@ -204,7 +204,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                 <button
                   type="button"
                   onClick={() => navigate(`/group-buy/${v.product_id}`)}
-                  className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold active:scale-[0.98] transition-transform"
+                  className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white text-[13px] font-bold active:scale-[0.98] transition-transform"
                 >
                   {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
                 </button>
@@ -256,12 +256,12 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
   return (
     <div
-      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-[13px]"
+      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] p-[13px]"
       style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
       <div className="flex items-stretch gap-3">
         {/* 썸네일 60px */}
-        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F]">
           {v.product_image ? (
             <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
@@ -315,7 +315,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           ) : <span />}
           {sendFailed ? (
             <a href="tel:0507-0177-0432" aria-label={t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
-              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
+              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
               {t('voucher.contactSupportShort', { defaultValue: '고객센터' })}
             </a>
           ) : (
@@ -328,7 +328,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
       {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
       {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0F151D] border border-gray-100 dark:border-[#2A3446] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

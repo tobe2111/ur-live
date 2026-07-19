@@ -12,9 +12,9 @@ import SEO from '@/components/SEO'
 export default function InfluencerTermsPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
       <SEO title="인플루언서 약관 - 유어딜" description="유어딜 인플루언서 활동 및 정산 약관" url="/terms/influencer" />
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">인플루언서 약관</h1>

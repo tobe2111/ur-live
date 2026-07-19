@@ -649,10 +649,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (nearDong || '내 주변')
       : '전국'
     return (
-      <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
+      <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
         <SEO title={t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜' })} description={t('seo.home.description', { defaultValue: '내 주변 동네딜을 한눈에. 식사·뷰티·헬스·숙소·반려·액티비티 이용권.' })} url="/" />
         {/* 상단: 로고 + 지역선택 + 알림/장바구니 */}
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
           <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between gap-2">
             {/* 🗺️ 2026-06-22 (대표 — 위치 교체): 로고를 좌측으로, 지역선택(전국)을 우측 그룹으로. */}
             <Link to="/" aria-label="홈" className="shrink-0 flex items-center">
@@ -726,7 +726,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }
 
   return (
-    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
+    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden pb-16">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
@@ -740,9 +740,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             기존엔 부모(pb-16) 의 scroll touch 가 핀치 제스처 가로채 줌 안 됨. */}
       {/* 🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서 좌측 400px 리스트 패널 오른쪽으로 지도 오프셋(lg:left-[400px]).
           모바일(<lg)은 inset-0 풀스크린 그대로(lg: no-op). */}
-      <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1A1A]" style={{ touchAction: 'none' }} />
+      <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A2334]" style={{ touchAction: 'none' }} />
       {!(sdkLoaded && window.kakao?.maps) && (
-        <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A1A1A] flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1A2334] flex flex-col items-center justify-center pointer-events-none">
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
@@ -795,7 +795,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
         aria-pressed={nearMeMode}
         className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
-          (nearMeMode || locating) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
+          (nearMeMode || locating) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0F151D] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#2A3446]'
         }`}
         style={{ bottom: isLgViewport ? (selected ? '150px' : '24px') : (selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)') }}
       >
@@ -825,7 +825,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
            🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서는 하단 시트가 아니라 좌측 400px 고정 리스트 패널로
            도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */
         <div
-          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#1A1A1A]"
+          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0F151D] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2A3446]"
           style={isLgViewport ? { top: 0 } : {
             top: currentSheetTop,
             transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',

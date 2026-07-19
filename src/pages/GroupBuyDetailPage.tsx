@@ -482,7 +482,7 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
         <button onClick={() => navigate('/group-buy')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
@@ -554,7 +554,7 @@ export default function GroupBuyDetailPage() {
       <header
         className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] ${
           headerSolid
-            ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
+            ? 'bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]'
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
@@ -564,7 +564,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => navigate(-1)}
             className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
             aria-label="뒤로가기"
           >
@@ -594,7 +594,7 @@ export default function GroupBuyDetailPage() {
             buttonText="나도 참여하기"
             compact
             className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
           />
         </div>
@@ -605,10 +605,10 @@ export default function GroupBuyDetailPage() {
           (rounded + 헤더 높이만큼 sticky top). 모바일(<lg)은 갤러리→본문 세로 1열 + 몰입형 풀블리드 그대로. */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start lg:pt-[72px]">
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative lg:sticky lg:top-[72px] lg:self-start lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#1A1A1A]" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:sticky lg:top-[72px] lg:self-start lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1A2334', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {!src && <CategoryEmoji cat={detail.category} />}
             </div>
           ))}

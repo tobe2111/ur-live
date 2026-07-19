@@ -72,10 +72,10 @@ export default function TimedealCard({
   return (
     <button
       onClick={() => navigate(`/products/${id}`)}
-      className="w-full text-left bg-white dark:bg-[#121212] rounded-xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] active:scale-[0.98] transition-transform"
+      className="w-full text-left bg-white dark:bg-[#1A2334] rounded-xl overflow-hidden border border-gray-100 dark:border-[#2A3446] active:scale-[0.98] transition-transform"
     >
       {/* 상품 이미지 */}
-      <div className="relative aspect-square w-full bg-gray-100 dark:bg-[#1A1A1A]">
+      <div className="relative aspect-square w-full bg-gray-100 dark:bg-[#1A2334]">
         {image_url && (
           <img
             src={image_url}
@@ -125,7 +125,7 @@ export default function TimedealCard({
         {/* 진행률 바 */}
         {stockN > 0 && (
           <div>
-            <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A2A2A] rounded-full overflow-hidden mb-1">
+            <div className="w-full h-1.5 bg-gray-100 dark:bg-[#2A3446] rounded-full overflow-hidden mb-1">
               <div
                 className="h-full bg-gray-900 dark:bg-white rounded-full transition-all"
                 style={{ width: `${progressPct}%` }}

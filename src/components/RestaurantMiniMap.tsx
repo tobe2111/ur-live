@@ -149,8 +149,8 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
   if (!address && !resolvedCoord) return null
 
   return (
-    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] overflow-hidden">
+      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
           <div className="min-w-0">

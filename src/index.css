@@ -80,15 +80,15 @@
 
 @layer base {
   :root {
-    /* Dark Theme — #020202 base */
-    --background: 0 0% 1%;        /* #020202 */
-    --foreground: 0 0% 100%;
+    /* 🎨 2026-07-19 지시서 §6 — 다크 = 네이비 혈통 근검정(#0F151D 계열) + 웜 화이트 잉크 */
+    --background: 214 32% 9%;     /* #0F151D */
+    --foreground: 30 17% 95%;     /* #F5F3F1 (순백 아닌 웜 화이트) */
 
-    --card: 0 0% 7%;              /* #121212 */
-    --card-foreground: 0 0% 100%;
+    --card: 219 33% 15%;          /* #1A2334 */
+    --card-foreground: 30 17% 95%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 219 33% 15%;
+    --popover-foreground: 30 17% 95%;
 
     --primary: 349 70% 60%;       /* 🎨 #E0526B 브랜드 웜로즈 (2026-07-19 지시서, 구 #FF4D6D) */
     --primary-foreground: 0 0% 100%;
@@ -105,8 +105,8 @@
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 12%;           /* #1F1F1F */
-    --input: 0 0% 12%;
+    --border: 219 25% 22%;        /* #2A3446 */
+    --input: 219 25% 22%;
     --ring: 349 70% 60%;          /* 🎨 #E0526B */
 
     --radius: 0.75rem;
@@ -121,6 +121,20 @@
     --bg: #FAF7F5;          /* 페이지 배경(웜 화이트) */
     --surface: #FFFFFF;     /* 카드/시트/입력창 */
     --line: #EAE4E0;        /* 구분선/테두리 */
+    --brand-text: #E0526B;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
+  }
+
+  /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
+     로즈가 '면'(버튼 배경)일 땐 --brand+흰 글자(라이트와 동일), '글자·뱃지'일 땐 --brand-text(밝힌 로즈). */
+  .dark, [data-theme="dark"] {
+    --bg: #0F151D;          /* 네이비 혈통 근검정 (#1A2C42 전면 사용 금지) */
+    --surface: #1A2334;     /* 카드/시트 */
+    --line: #2A3446;
+    --ink: #F5F3F1;         /* 순백 아닌 웜 화이트 */
+    --ink-soft: #9AA5B5;
+    --ink-faint: #6B7686;
+    --brand-text: #EF6E85;  /* 다크 배경 위 로즈 글자·뱃지 (보정값) */
+    --brand-tint: #3A2530;  /* 로즈 옅은 배경의 다크 대응 */
   }
 
 }
@@ -187,9 +201,9 @@
     letter-spacing: -0.022em;
   }
 
-  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #020202. light 모드는 #ffffff (위 body 규칙). */
+  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #0F151D. light 모드는 #ffffff (위 body 규칙). */
   html.dark body {
-    background-color: #020202;
+    background-color: #0F151D;
   }
 
   /* Footer tiny text override */
@@ -448,7 +462,7 @@
 
 /* Card with subtle shadow */
 .apple-card {
-  background: #121212;
+  background: #1A2334;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -757,9 +771,9 @@ html.native-app nav {
      PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
 }
 
-/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #020202. */
+/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #0F151D. */
 html.dark .mobile-app-container {
-  background-color: #020202;
+  background-color: #0F151D;
 }
 
 /* 🛡️ 2026-05-14 revert: 라이브/쇼츠 액자 항상 430px 모바일 폰 크기 (확대 X).
@@ -799,7 +813,7 @@ html.dark .mobile-app-container {
 html.dark .gbd {
   --gbd-bg:#070809; --gbd-card:#141517; --gbd-ink:#F3F4F6; --gbd-ink2:#C5C9D0; --gbd-sub:#888F99; --gbd-sub2:#5E646D;
   --gbd-line2:#2A2D31; --gbd-chip:#1E2023; --gbd-danger:#FF5C69; --gbd-danger-soft:#2E1518;
-  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E76B81;
+  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#EF6E85;
 }
 .gbd .noscroll::-webkit-scrollbar{display:none;}
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}

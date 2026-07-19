@@ -43,9 +43,9 @@ export default function GbMarketplacePage() {
   }, [])
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#020202] pb-24">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-24">
       <SEO title="공구 마켓 - 유어딜" description="지금 소개비가 걸린 공구를 찾아 내 링크샵에 담으세요." url="/gb-market" noindex />
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -76,9 +76,9 @@ export default function GbMarketplacePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {deals.map(d => (
-              <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] overflow-hidden">
+              <div key={d.product_id} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] overflow-hidden">
                 <div className="flex gap-3 p-3">
-                  <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+                  <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
                     {d.image_url && <img src={cfImage(d.image_url, { width: 160 })} alt={d.name} className="w-full h-full object-cover" loading="lazy" />}
                   </div>
                   <div className="flex-1 min-w-0">

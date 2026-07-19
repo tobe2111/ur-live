@@ -43,7 +43,7 @@ function DealCard({ p, onClick }: { p: TownProduct; onClick: () => void }) {
   const discount = orig > price && orig > 0 ? Math.round((1 - price / orig) * 100) : 0
   return (
     <button type="button" onClick={onClick} className="text-left group">
-      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
         {p.image_url ? (
           <img
             src={cfImage(p.image_url, { width: 480, quality: 82, format: 'auto' }) || p.image_url}
@@ -114,7 +114,7 @@ export default function LocalTownPage() {
 
   if (!code) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#020202] flex flex-col items-center justify-center gap-3 px-6">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center gap-3 px-6">
         <MapPin className="w-12 h-12 text-gray-200 dark:text-gray-700" />
         <p className="text-gray-900 dark:text-white font-bold">{t('local.badCode', { defaultValue: '올바르지 않은 상권 주소예요' })}</p>
         <button type="button" onClick={() => navigate('/')} className="text-sm font-bold text-gray-500 dark:text-gray-400 underline">
@@ -129,7 +129,7 @@ export default function LocalTownPage() {
   const fcfsCount = fcfs?.length ?? 0
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#020202]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
       <SEO
         title={`${townName} 상권관 - 유어딜`}
         description={`${townName}의 동네딜 이용권과 체험단 모음 — 우리 동네 매장을 할인가로 만나보세요`}
@@ -137,7 +137,7 @@ export default function LocalTownPage() {
       />
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-center gap-2 px-3 h-12">
           <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-1.5 -ml-1 text-gray-700 dark:text-gray-200">
             <ChevronLeft className="w-5 h-5" />
@@ -174,9 +174,9 @@ export default function LocalTownPage() {
                   key={p.id}
                   type="button"
                   onClick={() => navigate(`/group-buy/${p.id}`)}
-                  className="w-full flex gap-3 p-3 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50/60 dark:bg-[#0E0E0E] text-left active:scale-[0.995] transition-transform"
+                  className="w-full flex gap-3 p-3 rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-gray-50/60 dark:bg-[#0E0E0E] text-left active:scale-[0.995] transition-transform"
                 >
-                  <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A] shrink-0">
+                  <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334] shrink-0">
                     {p.image_url ? (
                       <img src={cfImage(p.image_url, { width: 144, quality: 82, format: 'auto' }) || p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" />
                     ) : <div className="w-full h-full flex items-center justify-center text-2xl">🎁</div>}
@@ -205,9 +205,9 @@ export default function LocalTownPage() {
             <div className="grid grid-cols-2 gap-3" aria-hidden="true">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i}>
-                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-                  <div className="mt-2 h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-                  <div className="mt-1.5 h-4 w-1/2 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
+                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
+                  <div className="mt-2 h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
+                  <div className="mt-1.5 h-4 w-1/2 rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
                 </div>
               ))}
             </div>
@@ -234,7 +234,7 @@ export default function LocalTownPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="w-full py-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
+            className="w-full py-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
           >
             <MapPin className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
           </button>

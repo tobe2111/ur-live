@@ -52,7 +52,7 @@ export async function initNativeFeatures() {
     // 다크 테마 메인 → 밝은 텍스트
     await StatusBar.setStyle({ style: Style.Dark })
     if (isAndroid()) {
-      await StatusBar.setBackgroundColor({ color: '#020202' })
+      await StatusBar.setBackgroundColor({ color: '#0F151D' })
       await StatusBar.setOverlaysWebView({ overlay: false })
     }
   } catch {}
@@ -149,7 +149,7 @@ export async function setStatusBarStyle(mode: 'dark' | 'light') {
     const { StatusBar, Style } = await import('@capacitor/status-bar')
     await StatusBar.setStyle({ style: mode === 'dark' ? Style.Dark : Style.Light })
     if (isAndroid()) {
-      await StatusBar.setBackgroundColor({ color: mode === 'dark' ? '#020202' : '#ffffff' })
+      await StatusBar.setBackgroundColor({ color: mode === 'dark' ? '#0F151D' : '#ffffff' })
     }
   } catch {}
 }

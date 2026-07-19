@@ -23,9 +23,9 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     const isDark = !opts.forceLight && document.documentElement.classList.contains('dark')
     const reduce = typeof window !== 'undefined' && window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // 모노톤(잉크) — BrandLoader 와 동일 톤 (라이트 잉크 #0A0A0A ↔ 다크 흰색).
-    const bg = isDark ? '#0a0a0a' : '#ffffff'
-    const ink = isDark ? '#ffffff' : '#0A0A0A'
+    // 모노톤(잉크) — BrandLoader 와 동일 톤 (라이트 잉크 #0F151D ↔ 다크 흰색).
+    const bg = isDark ? '#0F151D' : '#ffffff'
+    const ink = isDark ? '#ffffff' : '#0F151D'
     const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(229,231,235,0.7)' // = dark:bg-white/10 · bg-gray-200/70
     const barInk = isDark ? '#ffffff' : '#111827'                              // = dark:bg-white · bg-gray-900
     const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'

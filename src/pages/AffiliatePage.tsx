@@ -20,12 +20,12 @@ export default function AffiliatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334]">
       <SEO title={t('affiliate.seoTitle')} description={t('affiliate.seoDescription')} url="/user/affiliate" />
       {/* 헤더 */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('affiliate.title')}</h1>
@@ -49,11 +49,11 @@ export default function AffiliatePage() {
             <p className="text-xs opacity-70">{t('affiliate.totalEarned')}</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="bg-white/15 dark:bg-[#0A0A0A]/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#0F151D]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{data.total_referrals}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.totalReferrals')}</p>
               </div>
-              <div className="bg-white/15 dark:bg-[#0A0A0A]/15 rounded-xl px-3 py-2.5 text-center">
+              <div className="bg-white/15 dark:bg-[#0F151D]/15 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-bold">{formatNumber(data.monthly_earned || 0)}</p>
                 <p className="text-[10px] opacity-70">{t('affiliate.monthlyEarned')}</p>
               </div>
@@ -61,7 +61,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 추천 링크 */}
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Share2 className="w-4 h-4 text-violet-600" />
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.myLinkTitle')}</p>
@@ -74,7 +74,7 @@ export default function AffiliatePage() {
               />
             </p>
             <div className="flex gap-2">
-              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
+              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
@@ -85,7 +85,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 이용 방법 */}
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 shadow-sm">
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
             <div className="space-y-3">
               {[
@@ -102,8 +102,8 @@ export default function AffiliatePage() {
           </div>
 
           {/* 수수료 안내 */}
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.feeTitle')}</p>
             </div>
             <div className="divide-y divide-gray-50">
@@ -128,8 +128,8 @@ export default function AffiliatePage() {
           <TopGroupsToShare />
 
           {/* 최근 내역 */}
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2A3446] flex items-center justify-between">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.historyTitle')}</p>
               <span className="text-xs text-gray-400 dark:text-gray-500">{t('affiliate.historyCount', { count: (data.recent || []).length })}</span>
             </div>
@@ -178,12 +178,12 @@ function TopGroupsToShare() {
   if (groups.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div className="bg-white dark:bg-[#0F151D] rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">🔥 지금 share 하기 좋은 공구</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">마감임박 + 진행률 높음 = 친구 가입 가능성 높음</p>
       </div>
-      <div className="divide-y divide-gray-50 dark:divide-[#1A1A1A]">
+      <div className="divide-y divide-gray-50 dark:divide-[#2A3446]">
         {groups.slice(0, 6).map(g => (
           <div key={g.id} className="px-4 py-3 flex items-center gap-3">
             {g.image_url ? (
@@ -209,7 +209,7 @@ function TopGroupsToShare() {
             </button>
             <button
               onClick={() => navigate(`/group-buy/${g.id}`)}
-              className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
+              className="px-2.5 py-1.5 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 rounded-lg text-[11px] font-bold shrink-0"
               aria-label="상세 보기"
             >
               <ChevronRight className="w-3 h-3" />
@@ -234,15 +234,15 @@ function FunnelStats() {
   const maxDailyCount = Math.max(...data.daily.map(d => d.count), 1)
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div className="bg-white dark:bg-[#0F151D] rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">📊 내 share 성과</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">친구 가입 → 보상 받은 횟수 + 카테고리별 / 일별 추이</p>
       </div>
 
       {/* 카테고리별 */}
       {data.by_category.length > 0 && (
-        <div className="p-4 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="p-4 border-b border-gray-100 dark:border-[#2A3446]">
           <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">카테고리별</p>
           <div className="space-y-1.5">
             {data.by_category.map(c => (

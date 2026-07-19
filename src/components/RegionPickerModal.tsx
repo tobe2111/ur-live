@@ -40,18 +40,18 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-[#0F151D] w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-gray-200 dark:border-[#2A3446] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="지역 선택"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-1 -ml-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1A1A1A]"
+              className="p-1 -ml-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1A2334]"
               aria-label="닫기"
             >
               <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
@@ -63,7 +63,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
         {/* Body: 2 column */}
         <div className="flex-1 flex min-h-0">
           {/* 좌측 시/도 sidebar */}
-          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#1A1A1A] overflow-y-auto bg-gray-50 dark:bg-[#0A0A0A]">
+          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#2A3446] overflow-y-auto bg-gray-50 dark:bg-[#0F151D]">
             {KOREA_REGIONS.map(r => {
               const active = r.key === activeRegion
               return (
@@ -90,7 +90,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                 onSelect(region.key, null)
                 onClose()
               }}
-              className={`w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] transition-colors ${
+              className={`w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2A3446] transition-colors ${
                 regionKey === region.key && !districtKey
                   ? 'bg-pink-50 dark:bg-pink-950/30'
                   : 'hover:bg-gray-50 dark:hover:bg-[#111]'

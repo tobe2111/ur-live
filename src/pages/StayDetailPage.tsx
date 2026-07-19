@@ -141,15 +141,15 @@ export default function StayDetailPage() {
   })()
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 맨 텍스트 "로딩 중..." → BrandLoader (다크 표면).
-  if (loading) return <div className="min-h-[100dvh] bg-[#020202]"><BrandLoader fullScreen forceDark /></div>
-  if (!stay) return <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
+  if (loading) return <div className="min-h-[100dvh] bg-[#0F151D]"><BrandLoader fullScreen forceDark /></div>
+  if (!stay) return <div className="min-h-screen bg-[#0F151D] text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white pb-32">
+    <div className="min-h-screen bg-[#0F151D] text-white pb-32">
       <SEO title={`${stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
       {/* Hero */}
-      <div className="relative aspect-[16/10] sm:aspect-[21/9] bg-[#1A1A1A]">
+      <div className="relative aspect-[16/10] sm:aspect-[21/9] bg-[#1A2334]">
         {stay.image_url && <img src={stay.image_url} alt={stay.name} className="w-full h-full object-cover" />}
         <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
           <ChevronLeft className="w-5 h-5" />
@@ -212,20 +212,20 @@ export default function StayDetailPage() {
         )}
 
         {/* selector — 모드에 따라 다른 UI */}
-        <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-4 mb-5">
+        <div className="bg-[#0F151D] border border-[#2A3446] rounded-xl p-4 mb-5">
           {(stay.sale_mode === 'voucher' || (stay.sale_mode === 'both' && activeMode === 'voucher')) ? (
             <>
               {/* voucher 모드: 평일/주말 + 박수 */}
               <div className="grid grid-cols-2 gap-2 mb-2">
                 {!stay.voucher_weekend_only && (
                   <button onClick={() => setVoucherType('weekday')}
-                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-blue-500 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
+                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekday' ? 'bg-blue-500 text-white' : 'bg-[#1A2334] text-gray-300'}`}>
                     🌅 평일권 (월-목)
                   </button>
                 )}
                 {!stay.voucher_weekday_only && (
                   <button onClick={() => setVoucherType('weekend')}
-                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-[#1A1A1A] text-gray-300'}`}>
+                    className={`p-3 rounded-lg text-xs font-bold ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-[#1A2334] text-gray-300'}`}>
                     🌇 주말권 (금-토)
                   </button>
                 )}
@@ -234,13 +234,13 @@ export default function StayDetailPage() {
                 <label className="block text-[10px] font-bold text-gray-400 mb-1">박수</label>
                 <input type="number" min={1} max={7} value={voucherNights}
                   onChange={(e) => setVoucherNights(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
-                  className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                  className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 mb-1 mt-2">인원</label>
                 <input type="number" min={1} max={20} value={guests}
                   onChange={(e) => setGuests(Number(e.target.value) || 1)}
-                  className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                  className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 ℹ️ 결제 후 매장과 직접 일정 협의 — 유효기간 {stay.voucher_validity_days || 180}일
@@ -252,16 +252,16 @@ export default function StayDetailPage() {
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 mb-1">체크인</label>
-                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 mb-1">체크아웃</label>
-                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 mb-1">인원</label>
-                <input type="number" min={1} max={20} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+                <input type="number" min={1} max={20} value={guests} onChange={(e) => setGuests(Number(e.target.value) || 1)} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
               </div>
               <p className="text-xs text-gray-500 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
             </>
@@ -284,7 +284,7 @@ export default function StayDetailPage() {
               {amenitiesArr.map((a) => {
                 const m = AMENITY_LABELS[a]
                 return (
-                  <div key={a} className="flex flex-col items-center gap-1 p-2 bg-[#0A0A0A] rounded-lg border border-[#1A1A1A]">
+                  <div key={a} className="flex flex-col items-center gap-1 p-2 bg-[#0F151D] rounded-lg border border-[#2A3446]">
                     {m?.icon || <span className="text-base">•</span>}
                     <span className="text-[10px] text-gray-300">{m?.label || a}</span>
                   </div>
@@ -304,7 +304,7 @@ export default function StayDetailPage() {
           ) : (
             <div className="space-y-3">
               {rooms.map((r) => (
-                <div key={r.room_id} className={`bg-[#0A0A0A] border rounded-xl p-4 ${r.available ? 'border-[#1A1A1A]' : 'border-red-900/30 opacity-60'}`}>
+                <div key={r.room_id} className={`bg-[#0F151D] border rounded-xl p-4 ${r.available ? 'border-[#2A3446]' : 'border-red-900/30 opacity-60'}`}>
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold">{r.name}</h3>
@@ -345,7 +345,7 @@ export default function StayDetailPage() {
                               type="button"
                               onClick={() => setCartQty((q) => ({ ...q, [r.room_id]: Math.max(0, (q[r.room_id] || 0) - 1) }))}
                               disabled={(cartQty[r.room_id] || 0) === 0}
-                              className="w-6 h-6 rounded-full bg-[#1A1A1A] text-white disabled:opacity-30 font-bold"
+                              className="w-6 h-6 rounded-full bg-[#1A2334] text-white disabled:opacity-30 font-bold"
                             >−</button>
                             <span className="w-6 text-center font-bold text-white">{cartQty[r.room_id] || 0}</span>
                             <button
@@ -456,7 +456,7 @@ export default function StayDetailPage() {
 
 function PolicyCard({ icon, title, content }: { icon: React.ReactNode; title: string; content: React.ReactNode }) {
   return (
-    <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-4">
+    <div className="bg-[#0F151D] border border-[#2A3446] rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">{icon}<h3 className="text-sm font-bold">{title}</h3></div>
       {content}
     </div>
@@ -522,8 +522,8 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#1A1A1A] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-[#0A0A0A] px-5 py-4 border-b border-[#1A1A1A]">
+      <div className="bg-[#0F151D] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#2A3446] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-[#0F151D] px-5 py-4 border-b border-[#2A3446]">
           <h3 className="text-base font-bold">예약 정보</h3>
           <p className="text-[11px] text-gray-400 mt-0.5">{stay.name} · {room.name}</p>
         </div>
@@ -548,19 +548,19 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">예약자 이름 *</label>
-            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">전화번호 *</label>
-            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">이메일</label>
-            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">특이 요청</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm resize-none" />
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-white/[0.06] text-white text-sm font-semibold rounded-lg hover:bg-white/[0.1] disabled:opacity-50">취소</button>
@@ -656,8 +656,8 @@ function MultiBookingModal({
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#1A1A1A] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-[#0A0A0A] px-5 py-4 border-b border-[#1A1A1A]">
+      <div className="bg-[#0F151D] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-[#2A3446] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-[#0F151D] px-5 py-4 border-b border-[#2A3446]">
           <h3 className="text-base font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[11px] text-gray-400 mt-0.5">{stay.name}</p>
         </div>
@@ -681,19 +681,19 @@ function MultiBookingModal({
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">대표 예약자 이름 *</label>
-            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">전화번호 *</label>
-            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">이메일</label>
-            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm" />
+            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-sm resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-[#1A2334] border border-[#2A3446] rounded-lg text-sm resize-none" />
           </div>
           <p className="text-[10px] text-gray-500">
             ⓘ {totalQty}객실 모두 같은 sale_mode / 기간으로 예약됩니다. 인원은 객실별 최대 인원까지 자동 분배.

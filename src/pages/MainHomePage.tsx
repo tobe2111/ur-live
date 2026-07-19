@@ -58,7 +58,7 @@ export default function MainHomePage() {
       <div className="ur-content-wide px-4 lg:px-8 mt-5">
         <button
           onClick={() => navigate('/vouchers')}
-          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3.5 active:scale-[0.99] transition-transform"
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-4 py-3.5 active:scale-[0.99] transition-transform"
         >
           <span className="flex items-center gap-2.5 min-w-0">
             <span className="text-[20px]">📱</span>

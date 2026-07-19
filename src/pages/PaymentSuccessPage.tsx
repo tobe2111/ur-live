@@ -295,7 +295,7 @@ export default function PaymentSuccessPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
           <p className="text-[#6e6e73] dark:text-gray-400 font-medium">{t('paymentSuccess.approving')}</p>
@@ -306,7 +306,7 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
@@ -314,7 +314,7 @@ export default function PaymentSuccessPage() {
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] text-[#1d1d1f] dark:text-white"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] text-[#1d1d1f] dark:text-white"
             >
               다시 시도
             </Button>
@@ -331,10 +331,10 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A3446]">
           {/* 성공 아이콘 */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-3 sm:mb-4">
@@ -379,7 +379,7 @@ export default function PaymentSuccessPage() {
           {/* 주문 정보 */}
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1A1A] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+              <div className="bg-[#f5f5f7] dark:bg-[#1A2334] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
@@ -428,7 +428,7 @@ export default function PaymentSuccessPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
+                  <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A3446]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                       {formatNumber(parseInt(amount || '0'))}원
@@ -452,7 +452,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.receipt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -470,7 +470,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.cashReceipt.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -492,7 +492,7 @@ export default function PaymentSuccessPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-gray-300 leading-relaxed">
                     주문이 정상적으로 완료되었습니다. 배송 현황은 주문 내역에서 확인하실 수 있습니다.
                   </p>
@@ -507,7 +507,7 @@ export default function PaymentSuccessPage() {
               <>
                 <Button
                   onClick={() => navigate('/payment/demo')}
-                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A3446] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   다시 테스트하기
                 </Button>
@@ -522,7 +522,7 @@ export default function PaymentSuccessPage() {
               <>
                 <Button
                   onClick={() => navigate('/my-orders')}
-                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A3446] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   주문 내역 보기
                 </Button>
@@ -538,7 +538,7 @@ export default function PaymentSuccessPage() {
           </div>
 
           {/* 고객센터 정보 */}
-          <div className="mt-5 sm:mt-6 lg:mt-8 pt-5 sm:pt-6 border-t border-[#e5e5e7] dark:border-[#2A2A2A] text-center">
+          <div className="mt-5 sm:mt-6 lg:mt-8 pt-5 sm:pt-6 border-t border-[#e5e5e7] dark:border-[#2A3446] text-center">
             <p className="text-xs sm:text-sm text-[#86868b] dark:text-gray-500 mb-2">
               궁금한 점이 있으신가요?
             </p>

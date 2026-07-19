@@ -70,8 +70,8 @@ export default function HostingNewPage() {
   return (
     <>
       <SEO title={t('hosting.newTitle', { defaultValue: '공구 열기' })} noindex />
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-24">
+        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold">+ {t('hosting.newTitle', { defaultValue: '공구 열기' })}</h1>
             <button onClick={() => navigate('/host')} className="text-sm text-gray-500 dark:text-gray-400">{t('common.back')}</button>
@@ -85,7 +85,7 @@ export default function HostingNewPage() {
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                   category === cat.key
                     ? 'bg-pink-500 text-white'
-                    : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300'
+                    : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300'
                 }`}
               >
                 {cat.emoji} {cat.label}
@@ -104,12 +104,12 @@ export default function HostingNewPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {items.map(item => (
-                <div key={item.id} className={`bg-gray-50 dark:bg-[#121212] rounded-xl border ${selectedId === item.id ? 'border-pink-500' : 'border-gray-100 dark:border-[#1A1A1A]'} overflow-hidden`}>
+                <div key={item.id} className={`bg-gray-50 dark:bg-[#1A2334] rounded-xl border ${selectedId === item.id ? 'border-pink-500' : 'border-gray-100 dark:border-[#2A3446]'} overflow-hidden`}>
                   <button
                     onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                     className="block w-full text-left"
                   >
-                    <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]">
+                    <div className="aspect-square bg-gray-100 dark:bg-[#1A2334]">
                       {(item.thumbnail || item.image_url) && (
                         <img src={item.thumbnail || item.image_url || ''} alt={item.name} className="w-full h-full object-cover" />
                       )}
@@ -126,7 +126,7 @@ export default function HostingNewPage() {
 
                   {/* inline 시작 폼 */}
                   {selectedId === item.id && !item.my_host_id && (
-                    <div className="p-3 pt-0 border-t border-gray-100 dark:border-[#1A1A1A] space-y-2">
+                    <div className="p-3 pt-0 border-t border-gray-100 dark:border-[#2A3446] space-y-2">
                       <div>
                         <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-1">목표 인원 (2-100)</label>
                         <input
@@ -135,7 +135,7 @@ export default function HostingNewPage() {
                           max={100}
                           value={target}
                           onChange={(e) => setTarget(Math.max(2, Math.min(100, Number(e.target.value) || 5)))}
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <div>
@@ -145,7 +145,7 @@ export default function HostingNewPage() {
                           value={note}
                           onChange={(e) => setNote(e.target.value.slice(0, 200))}
                           placeholder="같이 사실 분 모집!"
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <button

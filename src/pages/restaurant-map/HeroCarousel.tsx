@@ -31,7 +31,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
             <button
               key={`hero-${r.id}`}
               onClick={() => onSelect(r)}
-              className="shrink-0 w-[140px] rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1A1A1A] overflow-hidden text-left active:scale-[0.97] transition-transform"
+              className="shrink-0 w-[140px] rounded-2xl bg-white dark:bg-[#0F151D] border border-gray-100 dark:border-[#2A3446] overflow-hidden text-left active:scale-[0.97] transition-transform"
             >
               <div className="relative aspect-square bg-pink-50 dark:bg-pink-900/20">
                 {r.image_url ? (

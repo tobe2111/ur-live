@@ -11,7 +11,7 @@ export default function ServerErrorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center px-4">
       <SEO title={t('serverError.title')} description={t('serverError.seoDescription')} url="/500" noindex />
       <div className="max-w-lg w-full text-center px-4 lg:px-8">
         {/* Error Icon */}

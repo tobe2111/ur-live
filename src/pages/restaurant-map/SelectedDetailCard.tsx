@@ -20,14 +20,14 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
   const { t } = useTranslation()
   return (
     <div className="bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-300 dark:border-pink-700 rounded-2xl p-4 mb-3 relative">
-      <button onClick={onClose} aria-label={t('map.detail.deselect', { defaultValue: '선택 해제' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/80">
+      <button onClick={onClose} aria-label={t('map.detail.deselect', { defaultValue: '선택 해제' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#0F151D]/80">
         <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
       </button>
       <div className="flex gap-3 pr-6">
         {selected.image_url ? (
           <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
         ) : (
-          <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#0A0A0A] flex items-center justify-center shrink-0">
+          <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#0F151D] flex items-center justify-center shrink-0">
             <span className="text-2xl">🍽️</span>
           </div>
         )}
@@ -67,13 +67,13 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           onClick={() => onToggleFavorite(selected.id)}
           aria-label={favorites.includes(selected.id) ? t('map.detail.unfavorite', { defaultValue: '즐겨찾기 해제' }) : t('map.detail.favorite', { defaultValue: '즐겨찾기' })}
           className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
-            favorites.includes(selected.id) ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-400 dark:text-gray-500'
+            favorites.includes(selected.id) ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-500' : 'bg-white dark:bg-[#0F151D] text-gray-400 dark:text-gray-500'
           }`}
         >
           <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
         </button>
         {selected.restaurant_phone && (
-          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-white dark:bg-[#0A0A0A] rounded-xl text-gray-700 dark:text-gray-200">
+          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-white dark:bg-[#0F151D] rounded-xl text-gray-700 dark:text-gray-200">
             <Phone className="w-4 h-4" />
           </a>
         )}
