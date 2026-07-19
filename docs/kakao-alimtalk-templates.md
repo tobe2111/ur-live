@@ -361,6 +361,40 @@ https://live.ur-team.com/my-vouchers
 > tpl_code는 위 3개(지급/반려/만료임박)로 배선돼 있으나 **본문은 `src/features/district/` 발송부에서
 > 확정** — 등록 전 담당자에게 최종 문안 확인 요청. (일반 소비자 대상은 아니고 상권 캠페인 참여자 한정.)
 
+### 운영 자동화 (2026-07-19 신규 — 게이트 뒤, 콘솔 등록 필요)
+
+> 시퀀스 2종은 env `OPS_SEQUENCES_ENABLED='true'` 일 때만 발송(기본 OFF, 인앱 알림 포함 전체 게이트).
+> 다이제스트는 env `OPS_DIGEST_ALIMTALK_ENABLED='true'` + platform_settings `ops_digest_phone` 필요.
+> 콘솔이 tpl_code 자동부여 시 env override: `ALIGO_DROP_D1_REMINDER` / `ALIGO_EXPERIENCE_POST_REMINDER` / `ALIGO_OPS_DAILY_DIGEST`.
+
+#### `drop_d1_reminder` — 드랍 마감 전날 예고 (응모자에게, cron `drop-d1-reminder` KST 18:00)
+```
+[유어딜] 드랍 마감 전날 안내
+
+응모하신 #{product_name} 이(가) 내일 마감됩니다.
+
+· 마감일: #{deadline}
+
+마감 후 추첨 결과를 알려드릴게요.
+```
+
+#### `experience_post_reminder` — 체험단 게시 리마인드 (당첨 48시간 경과, 평생 1회)
+```
+[유어딜] 체험단 미션 안내
+
+#{campaign_name} 체험단에 당첨되신 지 48시간이 지났습니다.
+
+· 미션: #{mission}
+
+방문·이용 후 콘텐츠 게시를 부탁드려요. 이용권은 앱 '내 지갑'에서 확인하실 수 있습니다.
+```
+> `#{mission}` 줄은 캠페인에 미션이 있을 때만 — **변수가 빈 값이 될 수 있는 줄**이라 콘솔 등록 시 유의.
+
+#### `ops_daily_digest` — 어드민 일일 다이제스트 (운영자 번호 1개, cron `ops-daily-digest` KST 07:00)
+> 수신자 = platform_settings `ops_digest_phone`(운영자 본인) 1명. 본문은 일자별 집계 숫자라
+> 가변 — 콘솔 등록 시 전체를 `#{digest}` 변수 1개로 등록 권장. 이메일(`ops_digest_email`)이
+> 더 유연하므로 알림톡은 선택 채널.
+
 ---
 
 ## 🏭 유통스타트(도매) 템플릿 — **utongstart.com 발신 프로필에 별도 등록**

@@ -231,6 +231,20 @@ export interface Env {
   //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
   DISTRICT_ALIMTALK_ENABLED?: string;
 
+  // ---- 운영 자동화 백로그 (2026-07-19 — ①일일 다이제스트 ②알림톡 시퀀스 ③CS FAQ 봇) ----
+  //   전부 기본 OFF/미설정 = 라이브 무접촉. 어드민 수신처는 platform_settings
+  //   `ops_digest_email`/`ops_digest_phone` 키(미설정 = 벨+Discord 만).
+  /** 'true' 면 소비자 대상 시퀀스 2종(드랍 D-1 예고·체험단 게시 리마인드) 발송. 기본 OFF. */
+  OPS_SEQUENCES_ENABLED?: string;
+  /** 'true' + ops_digest_phone 설정 시 일일 다이제스트 알림톡 발송. 기본 OFF(벨/메일만). */
+  OPS_DIGEST_ALIMTALK_ENABLED?: string;
+  /** 카카오 오픈빌더 스킬(CS FAQ 봇) 공유 시크릿 — 미설정 = 봇 endpoint 404(비활성). */
+  KAKAO_SKILL_SECRET?: string;
+  /** Aligo 콘솔이 tpl_code 를 자동부여한 경우 override (기본: 문서 코드 그대로). */
+  ALIGO_DROP_D1_REMINDER?: string;
+  ALIGO_EXPERIENCE_POST_REMINDER?: string;
+  ALIGO_OPS_DAILY_DIGEST?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.
