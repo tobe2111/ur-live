@@ -134,7 +134,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                       // 다른 페이지는 live 시뮬레이션 표시
                       <>
                         {/* Video Area - Simulated live stream background */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#1a2332] via-[#141414] to-[#0a0a0a]">
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#1a2332] via-[#141414] to-[#0F151D]">
                           {/* Simulated product showcase area */}
                           <div className="absolute inset-x-0 top-0 flex h-[55%] items-center justify-center">
                             <div className="flex flex-col items-center gap-3">

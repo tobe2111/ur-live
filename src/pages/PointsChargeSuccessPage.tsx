@@ -71,9 +71,9 @@ export default function PointsChargeSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
         <SEO title={t('pointsCharge.failTitle', { defaultValue: '딜 충전 실패' })} description={t('pointsCharge.failDesc', { defaultValue: '딜 포인트 충전에 실패했습니다' })} url="/points/charge/success" noindex />
-        <div className="max-w-md w-full text-center bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#1A1A1A]">
+        <div className="max-w-md w-full text-center bg-white dark:bg-[#0F151D] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#2A3446]">
           <p className="text-red-600 mb-4">{error}</p>
           <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
             {t('common.retry', { defaultValue: '다시 시도' })}
@@ -84,9 +84,9 @@ export default function PointsChargeSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
       <SEO title={t('pointsCharge.successTitle', { defaultValue: '딜 충전 완료' })} description={t('pointsCharge.successDesc', { defaultValue: '딜 포인트 충전이 완료되었습니다' })} url="/points/charge/success" noindex />
-      <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#1A1A1A]">
+      <div className="max-w-md w-full bg-white dark:bg-[#0F151D] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#2A3446]">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
@@ -113,7 +113,7 @@ export default function PointsChargeSuccessPage() {
               }
               navigate(-2)
             }}
-            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
+            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
             {t('pointsCharge.goBack', { defaultValue: '이전 화면으로' })}
           </button>

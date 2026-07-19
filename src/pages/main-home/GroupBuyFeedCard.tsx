@@ -165,7 +165,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   const tAccent = pc ? undefined : { color: grad.accent }
   const cSub = pc ? 'text-gray-500 dark:text-gray-400' : ''
   const cText = pc ? 'text-gray-900 dark:text-white' : ''
-  const cAccent = pc ? 'text-[#fb2d3f] dark:text-[#ff7a4f]' : ''
+  const cAccent = pc ? 'text-brand-text' : ''
 
   return (
     <Link
@@ -174,7 +174,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A2A2A] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
+      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
       style={pc ? undefined : { backgroundColor: grad.base }}
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.

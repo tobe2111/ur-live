@@ -84,19 +84,19 @@ export function WalletSkeleton() {
   return (
     <div className="animate-pulse" aria-hidden>
       {/* 히어로 */}
-      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A1A1A] h-[120px] mb-4" />
+      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A2334] h-[120px] mb-4" />
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
-        <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-4 mb-4">
+        <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] p-4 mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#1F1F1F]" />
-            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
-            <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#1F1F1F]" />
+            <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2A3446]" />
+            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2A3446]" />
+            <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#2A3446]" />
           </div>
-          <div className="mt-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
+          <div className="mt-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-[#2A3446]" />
           <div className="mt-3 flex items-center justify-between">
-            <div className="h-6 w-24 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
-            <div className="h-9 w-24 rounded-[13px] bg-gray-200 dark:bg-[#1F1F1F]" />
+            <div className="h-6 w-24 rounded bg-gray-200 dark:bg-[#2A3446]" />
+            <div className="h-9 w-24 rounded-[13px] bg-gray-200 dark:bg-[#2A3446]" />
           </div>
         </div>
       ))}
@@ -153,7 +153,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
         {steps.map((label, i) => (
           <Fragment key={i}>
             {i > 0 && (
-              <div className="flex-1 mt-[16px] h-px mx-1.5 rounded-full bg-gray-200 dark:bg-[#2A2A2A]" aria-hidden />
+              <div className="flex-1 mt-[16px] h-px mx-1.5 rounded-full bg-gray-200 dark:bg-[#2A3446]" aria-hidden />
             )}
             <div className="flex flex-col items-center gap-2 w-[58px] shrink-0">
               <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[14px] font-bold font-mono bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-[0_2px_6px_rgba(10,10,10,0.18)] dark:shadow-none">{i + 1}</div>

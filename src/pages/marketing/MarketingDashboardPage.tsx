@@ -205,8 +205,8 @@ export default function MarketingDashboardPage() {
     } finally { setAiBusy(false) }
   }
 
-  const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
-  const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+  const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <MarketingDashboardShell title="대시보드" showNav={hasToken}>
@@ -231,7 +231,7 @@ export default function MarketingDashboardPage() {
             { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
             { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
           ].map((m) => (
-            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-3">
+            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-3">
               <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
               <div className="mt-0.5 text-[15px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
             </div>
@@ -243,15 +243,15 @@ export default function MarketingDashboardPage() {
         <div className={`mt-5 ${card}`}>
           <p className="text-[13px] text-gray-700 dark:text-gray-300">유어애즈 계정으로 로그인 후 이용할 수 있습니다. 가입은 1분이면 됩니다.</p>
           <div className="mt-3 flex gap-2">
-            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인</a>
-            <a href="/ads/signup" className="inline-block rounded-lg border border-gray-300 dark:border-[#2A2A2A] px-4 py-2 text-[13px] font-bold text-gray-700 dark:text-gray-200">회원가입</a>
+            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0F151D]">로그인</a>
+            <a href="/ads/signup" className="inline-block rounded-lg border border-gray-300 dark:border-[#2A3446] px-4 py-2 text-[13px] font-bold text-gray-700 dark:text-gray-200">회원가입</a>
           </div>
         </div>
       )}
 
       {/* 핵심 시작점 안내 — 유어애즈의 주 기능(자동입찰·실적)은 검색광고 연동에서 시작. 발주수집(스마트스토어)과 혼동 방지. */}
       {hasToken && (
-        <a href="#sec-searchad" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4 hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-colors">
+        <a href="#sec-searchad" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4 hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-colors">
           <div>
             <div className="text-[13.5px] font-bold text-gray-900 dark:text-white">네이버 검색광고 계정 연동으로 시작하기</div>
             <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">고객ID·액세스라이선스·비밀키를 연결하면 자동입찰·통합실적·예상입찰가를 바로 사용합니다. <span className="text-gray-400 dark:text-gray-500">(아래 스마트스토어 발주수집과는 다른 키입니다.)</span></p>
@@ -269,8 +269,8 @@ export default function MarketingDashboardPage() {
               <div className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
                 연결됨 <span className="text-gray-400 dark:text-gray-500">({maskedId})</span>
                 <div className="mt-3 flex gap-2">
-                  <button onClick={sync} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">발주 동기화</button>
-                  <button onClick={async () => { await api.delete('/api/ads/naver/connect', { headers: authHeader() }); loadStatus() }} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">연결 해제</button>
+                  <button onClick={sync} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">발주 동기화</button>
+                  <button onClick={async () => { await api.delete('/api/ads/naver/connect', { headers: authHeader() }); loadStatus() }} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">연결 해제</button>
                 </div>
               </div>
             ) : !storeOpen ? (
@@ -290,7 +290,7 @@ export default function MarketingDashboardPage() {
                   <p className="text-[11.5px] text-red-600 dark:text-red-400 leading-relaxed">{connectErr}</p>
                 )}
                 <div className="flex gap-2">
-                  <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
+                  <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
                   <button onClick={() => { setStoreOpen(false); setConnectErr(null) }} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>
                 </div>
               </div>
@@ -303,7 +303,7 @@ export default function MarketingDashboardPage() {
             <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">연관키워드 + 월 검색량 · 검색어 트렌드 · 쇼핑 경쟁(상품수·가격대)</p>
             <div className="mt-2 flex gap-2">
               <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
-              <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
+              <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
             </div>
             {kwErr && <PanelError onRetry={() => analyzeKeyword()} busy={kwBusy} label="키워드 분석 실패" />}
             {kwShop && (
@@ -332,7 +332,7 @@ export default function MarketingDashboardPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {kwAuto.slice(0, 16).map((s) => (
                     <button key={s} onClick={() => analyzeKeyword(s)}
-                      className="rounded-full border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
+                      className="rounded-full border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
                       {s}
                     </button>
                   ))}
@@ -354,7 +354,7 @@ export default function MarketingDashboardPage() {
             <button onClick={() => downloadCsv(`유어애즈_연관키워드_${kw || 'all'}.csv`,
               ['키워드', '월검색량', 'PC', '모바일', '월클릭', '경쟁'],
               kwRelated.map((r) => [r.keyword, r.monthlyTotal, r.monthlyPc, r.monthlyMobile, r.monthlyAvgClick, r.compIdx || '']))}
-              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A3446] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
           </div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">네이버 검색광고 기준 월 검색량 · 경쟁정도 — 총 검색량 순. 광고 타겟 키워드 발굴에 활용하세요.</p>
           <div className="mt-3 overflow-x-auto">
@@ -370,7 +370,7 @@ export default function MarketingDashboardPage() {
               </tr></thead>
               <tbody>
                 {kwRelated.slice(0, 30).map((r) => (
-                  <tr key={r.keyword} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                  <tr key={r.keyword} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                     <td className="py-1.5 pr-3 font-medium text-gray-900 dark:text-white">{r.keyword}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums font-bold">{formatNumber(r.monthlyTotal)}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{formatNumber(r.monthlyPc)}</td>
@@ -409,7 +409,7 @@ export default function MarketingDashboardPage() {
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">블로그·카페·뉴스 언급량 + 최근 글. 브랜드·상호 검색어로 평판/노출을 추적하세요.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {kwRep.channels.map((ch) => (
-              <div key={ch.channel} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+              <div key={ch.channel} className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[12px] font-bold text-gray-900 dark:text-white">{CHANNEL_LABEL[ch.channel]}</span>
                   <span className="text-[12px] tabular-nums font-bold text-gray-900 dark:text-white">{formatNumber(ch.total)}<span className="text-gray-400 dark:text-gray-500 font-medium">건</span></span>
@@ -481,7 +481,7 @@ export default function MarketingDashboardPage() {
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">실적·키워드 데이터를 분석해 개선 액션을 제안합니다(추천만 — 자동 실행 없음). 계정 연동 시 실적까지 반영.</p>
           <div className="mt-2 flex gap-2">
             <input className={input} placeholder="중심 키워드 (선택, 예: 무선이어폰)" value={aiSeed} onChange={(e) => setAiSeed(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAiMarketer() }} />
-            <button onClick={runAiMarketer} disabled={aiBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{aiBusy ? '분석 중…' : 'AI 분석 받기'}</button>
+            <button onClick={runAiMarketer} disabled={aiBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{aiBusy ? '분석 중…' : 'AI 분석 받기'}</button>
           </div>
           {aiOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">AI 마케터는 Anthropic API 키 설정 후 사용할 수 있습니다.</p>}
           {aiAdvice && (
@@ -515,7 +515,7 @@ export default function MarketingDashboardPage() {
                 </tr></thead>
                 <tbody>
                   {orders.map((o) => (
-                    <tr key={o.productOrderId} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                    <tr key={o.productOrderId} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                       <td className="py-1.5 pr-3">{o.productName || '-'}</td>
                       <td className="py-1.5 pr-3">{o.quantity}</td>
                       <td className="py-1.5 pr-3">₩{formatNumber(o.totalAmount)}</td>

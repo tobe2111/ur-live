@@ -1,7 +1,7 @@
 // Mobile Footer Component - v2.0
 export default function MobileFooter() {
   return (
-    <footer className="bg-gray-50 dark:bg-[#121212] border-t border-gray-200 dark:border-[#2A2A2A] py-4 px-4 mt-8">
+    <footer className="bg-gray-50 dark:bg-[#1A2334] border-t border-gray-200 dark:border-[#2A3446] py-4 px-4 mt-8">
       {/* Contact */}
       <div className="mb-3">
         <p style={{ fontSize: '9px', lineHeight: '1.2' }} className="text-gray-600 dark:text-gray-300 text-center">
@@ -30,7 +30,7 @@ export default function MobileFooter() {
       </div>
 
       {/* Copyright */}
-      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-[#2A2A2A]">
+      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-[#2A3446]">
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-500 dark:text-gray-400 text-center">
           © 2026 리스터코퍼레이션. All rights reserved.
         </p>

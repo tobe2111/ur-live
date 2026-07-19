@@ -82,7 +82,7 @@ export default function DesktopTopNav() {
   const isHome = isFullBleedPcPath(location.pathname) && !hasOwnHeaderPc(location.pathname)
 
   return (
-    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
       <div className={isHome
         ? 'flex items-center gap-4 h-14 max-w-[1600px] mx-auto w-full px-6 lg:px-10'
         : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-14'}>

@@ -34,12 +34,12 @@ interface Appointment {
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   confirmed: { label: '예약 확정', cls: 'bg-emerald-100 text-emerald-700' },
-  cancelled: { label: '취소', cls: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300' },
+  cancelled: { label: '취소', cls: 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300' },
   no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
   completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
-const STATUS_LABEL_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300' } as const
+const STATUS_LABEL_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300' } as const
 
 // 🛡️ 2026-06-12 (B-5): 예약 가능(결제 완료 + booking_required + 미예약) 구매 항목.
 interface BookableItem {
@@ -120,9 +120,9 @@ export default function MyAppointmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
       <SEO title="내 예약 - 유어딜" description="뷰티/액티비티 예약 관리" url="/my-appointments" noindex />
-      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
@@ -144,7 +144,7 @@ export default function MyAppointmentsPage() {
             <div className="space-y-2">
               {bookable.map((b) => (
                 <div key={`${b.order_id}-${b.product_id}`} className="rounded-2xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/10 p-3 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden shrink-0">
                     {b.image_url ? <img src={b.image_url} alt={b.product_name} className="w-full h-full object-cover" loading="lazy" /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -183,9 +183,9 @@ export default function MyAppointmentsPage() {
             {items.map(a => {
               const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
-                <div key={a.id} className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] p-4">
+                <div key={a.id} className="rounded-2xl border border-gray-200 dark:border-[#2A3446] p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
                         <img src={a.image_url} alt={a.product_name} className="w-full h-full object-cover" loading="lazy" />
                       ) : null}
@@ -216,7 +216,7 @@ export default function MyAppointmentsPage() {
                   {a.status === 'confirmed' && (
                     <button
                       onClick={() => cancel(a)}
-                      className="mt-3 w-full py-2 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg flex items-center justify-center gap-1"
+                      className="mt-3 w-full py-2 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg flex items-center justify-center gap-1"
                     >
                       <X className="w-3 h-3" /> 예약 취소
                     </button>
@@ -310,10 +310,10 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#1A1A1A] max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0F151D] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2A3446] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="sticky top-0 bg-white dark:bg-[#0F151D] px-5 py-4 border-b border-gray-100 dark:border-[#2A3446]">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">
             {t('myAppointments.modalTitle', { defaultValue: '예약 날짜·시간 선택' })}
           </h3>
@@ -329,7 +329,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={date}
               min={todayIso}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -354,7 +354,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
                     className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
                       selectedSlot?.start_time === s.start_time
                         ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:border-purple-400'
+                        : 'bg-white dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446] hover:border-purple-400'
                     }`}
                   >
                     {s.start_time}
@@ -373,7 +373,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <input
               value={form.user_name}
               onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -384,7 +384,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.user_phone}
               onChange={(e) => setForm({ ...form, user_phone: e.target.value })}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -395,14 +395,14 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white resize-none"
+              className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white resize-none"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 text-sm font-semibold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 text-sm font-semibold rounded-lg disabled:opacity-50"
             >
               {t('common.cancel', { defaultValue: '취소' })}
             </button>

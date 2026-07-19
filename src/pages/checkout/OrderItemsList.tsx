@@ -16,7 +16,7 @@ interface Props {
 export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) {
   const { t } = useTranslation()
   return (
-    <section className="bg-white dark:bg-[#0A0A0A] px-5 py-6">
+    <section className="bg-white dark:bg-[#0F151D] px-5 py-6">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.items.title', { defaultValue: '주문 상품' })}</h2>
         <span className="text-[13px] text-gray-400 dark:text-gray-500">{t('checkout.items.count', { defaultValue: '{{count}}개', count: totalItemCount })}</span>
@@ -24,14 +24,14 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
 
       <div className="mt-5 flex flex-col gap-5">
         {Object.values(sellerGroups).map((group) => (
-          <div key={group.seller_id} className="border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4">
+          <div key={group.seller_id} className="border border-gray-200 dark:border-[#2A3446] rounded-2xl p-4">
             <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-3">
               {group.seller_name}
             </p>
 
             {group.items.map((item) => (
-              <div key={item.id} className="flex gap-4 py-3 border-t border-gray-200 dark:border-[#2A2A2A] first:border-t-0">
-                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#121212]">
+              <div key={item.id} className="flex gap-4 py-3 border-t border-gray-200 dark:border-[#2A3446] first:border-t-0">
+                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1A2334]">
                   {item.image_url ? (
                     <img
                       src={item.image_url}
@@ -64,7 +64,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
             ))}
 
             {/* 배송비 정보 */}
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2A2A2A] flex justify-between text-[13px]">
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2A3446] flex justify-between text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
               <span className="font-semibold text-gray-900 dark:text-white">
                 {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold

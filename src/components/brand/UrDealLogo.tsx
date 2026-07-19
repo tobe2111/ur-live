@@ -25,14 +25,14 @@ export default function UrDealLogo({ size = 20, forceDark = false, forceLight = 
   const urClass = forceDark
     ? 'text-white'
     : forceLight
-    ? 'text-[#0A0A0A]'
-    : 'text-[#0A0A0A] dark:text-white'
+    ? 'text-[#0F151D]'
+    : 'text-[#0F151D] dark:text-white'
 
   const dealClass = forceDark
     ? 'text-white'
     : forceLight
-    ? 'text-[#0A0A0A]'
-    : 'text-[#0A0A0A] dark:text-white'
+    ? 'text-[#0F151D]'
+    : 'text-[#0F151D] dark:text-white'
 
   return (
     <span

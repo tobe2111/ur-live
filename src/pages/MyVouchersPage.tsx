@@ -40,7 +40,7 @@ function walkMinutes(m: number): number {
 
 const STATUS_MAP = {
   unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
-  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400', icon: CheckCircle },
+  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400', icon: CheckCircle },
   expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: XCircle },
   refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
 } as const
@@ -206,10 +206,10 @@ export default function MyVouchersPage() {
                       key={v.id}
                       type="button"
                       onClick={() => setMapSelected(v)}
-                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2A3446]'}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
-                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
                         {v.product_image
                           ? <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
                           : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
@@ -292,7 +292,7 @@ export default function MyVouchersPage() {
           🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
       {giftCount > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 mb-4">
-          <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]">
+          <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A2334]">
             {([
               ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '이용권' }), gbCount],
               ['gift', '📱', t('voucher.tabGifticon', { defaultValue: '교환권' }), giftCount],
@@ -363,7 +363,7 @@ export default function MyVouchersPage() {
 
             {/* 사용 완료 / 만료·환불 — 헤어라인 박스 (탭하면 인라인 펼침) */}
             {(usedItems.length > 0 || archivedItems.length > 0) && (
-              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#1F1F1F] overflow-hidden">
+              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#2A3446] overflow-hidden">
                 {([
                   { key: 'used', label: t('voucher.groupUsed', { defaultValue: '사용 완료' }), items: usedItems },
                   { key: 'archived', label: t('voucher.groupArchived', { defaultValue: '만료 · 환불' }), items: archivedItems },
@@ -371,7 +371,7 @@ export default function MyVouchersPage() {
                   const open = expandedGroups.has(g.key)
                   return (
                     <Fragment key={g.key}>
-                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#1F1F1F] mx-[15px]" />}
+                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#2A3446] mx-[15px]" />}
                       <button type="button"
                         onClick={() => setExpandedGroups(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
                         className="w-full flex items-center justify-between px-[15px] py-3.5 text-left">

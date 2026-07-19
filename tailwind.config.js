@@ -65,9 +65,10 @@ export default {
         },
         // 🎨 브랜드 토큰 (2026-07-19 지시서) — 로즈는 "행동과 강조" 10% 이하에만.
         brand: {
-          DEFAULT: '#E0526B',  // 웜 로즈 — 주요 행동 버튼·강조·활성
-          dark: '#C43D55',     // hover/pressed
-          tint: '#FBEDF0',     // 옅은 로즈 배경 — 뱃지·선택됨
+          DEFAULT: '#E0526B',        // 웜 로즈 — 로즈가 '면'(버튼 배경)일 때. 라이트/다크 동일 + 흰 글자
+          dark: '#C43D55',           // hover/pressed
+          tint: 'var(--brand-tint)', // 옅은 로즈 배경 — 라이트 #FBEDF0 / 다크 #3A2530 (index.css)
+          text: 'var(--brand-text)', // 로즈 '글자·뱃지' — 라이트 #E0526B / 다크 #EF6E85 (§6 보정값)
         },
         ink: {
           DEFAULT: '#1A2C42',  // 딥네이비 — 제목/본문/가격

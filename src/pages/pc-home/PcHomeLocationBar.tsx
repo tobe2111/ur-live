@@ -95,7 +95,7 @@ export default function PcHomeLocationBar({
       <div className="flex items-center gap-2">
         <button
           onClick={() => setOpen(o => !o)}
-          className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-2 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+          className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-2 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           aria-expanded={open}
         >
           <MapPin className="w-[18px] h-[18px] text-gray-900 dark:text-white shrink-0" />
@@ -105,7 +105,7 @@ export default function PcHomeLocationBar({
         <button
           onClick={useMyLocation}
           disabled={locating}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[13px] font-bold text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[13px] font-bold text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-60"
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
           현 위치로 설정
@@ -113,8 +113,8 @@ export default function PcHomeLocationBar({
       </div>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-[10500] w-[520px] max-w-[90vw] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="absolute left-0 top-[calc(100%+8px)] z-[10500] w-[520px] max-w-[90vw] rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
             <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
             <div className="flex items-center gap-2">
               <button onClick={() => apply({})} className="text-[12px] font-bold text-gray-500 dark:text-gray-400 hover:underline">전국</button>
@@ -123,7 +123,7 @@ export default function PcHomeLocationBar({
           </div>
           <div className="flex h-[320px]">
             {/* 시/도 */}
-            <div className="w-[42%] overflow-y-auto border-r border-gray-100 dark:border-[#1A1A1A] py-1">
+            <div className="w-[42%] overflow-y-auto border-r border-gray-100 dark:border-[#2A3446] py-1">
               {KOREA_REGIONS.map(r => (
                 <button
                   key={r.key}

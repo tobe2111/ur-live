@@ -286,7 +286,7 @@ export default function BottomNav() {
             src={cfImage(profileImage, { width: 96 })}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
+              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0F151D]' : 'opacity-60'
             }`}
             loading="lazy"
             decoding="async"
@@ -295,7 +295,7 @@ export default function BottomNav() {
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-brand' : 'text-gray-400'}
+            className={active ? 'text-brand-text' : 'text-gray-400'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
@@ -329,7 +329,7 @@ export default function BottomNav() {
           로직은 무변경(표시 위치만). */}
       <div data-testid="bottom-nav" className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
         {/* 🛡️ 2026-05-19: 사용자 요청 — 진한 border-t (검정색 선) 제거. 다크 모드는 그대로, 라이트는 미세 회색 (gray-100). */}
-        <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]"
+        <div className="pointer-events-auto bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
@@ -356,7 +356,7 @@ export default function BottomNav() {
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
             <div>
               <div
-                className="bg-gray-50 dark:bg-[#121212] rounded-t-3xl"
+                className="bg-gray-50 dark:bg-[#1A2334] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
@@ -428,7 +428,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A2334] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
@@ -445,7 +445,7 @@ export default function BottomNav() {
                   {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A2334] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
                     >
                       <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                         <span className="text-lg">💼</span>
@@ -500,7 +500,7 @@ export default function BottomNav() {
                       {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/supplier')) }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A2334] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
                         {t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}
