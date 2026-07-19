@@ -23,11 +23,11 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     const isDark = !opts.forceLight && document.documentElement.classList.contains('dark')
     const reduce = typeof window !== 'undefined' && window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // 모노톤(잉크) — BrandLoader 와 동일 톤 (라이트 잉크 #0F151D ↔ 다크 흰색).
+    // 🎨 2026-07-19 확정 로고: 워드마크 잉크 = UrDealLogo 와 동일(라이트 네이비 #1A2C42 ↔ 다크 웜화이트 #FAF7F5).
     const bg = isDark ? '#0F151D' : '#ffffff'
-    const ink = isDark ? '#ffffff' : '#0F151D'
+    const ink = isDark ? '#FAF7F5' : '#1A2C42'
     const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(229,231,235,0.7)' // = dark:bg-white/10 · bg-gray-200/70
-    const barInk = isDark ? '#ffffff' : '#111827'                              // = dark:bg-white · bg-gray-900
+    const barInk = opts.forceLight ? '#111827' : '#E0526B'                     // = BrandLoader: forceLight 중립 · 기본/다크 bg-brand
     const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'
     // 🎯 위상 전역동기 — BrandLoader.tsx 와 동일 계산(FCP 기준 음수 delay).
     let phaseBase = 0
@@ -44,21 +44,15 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     o.setAttribute('role', 'alert')
     o.setAttribute('aria-live', 'assertive')
     o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:${bg};${reduce ? '' : 'animation:ur-kakao-fade 0.28s ease both'}`
-    // 워드마크 — 워커 정적 로더(urdealLoaderHtml)/BrandLoader 와 동일 치수(34px). 번들 클래스로 호흡.
+    // 워드마크 — 워커 정적 로더(urdealLoaderHtml)/UrDealLogo 와 픽셀 동일(34px "urdeal"+로즈 점, 2026-07 확정 로고).
     const logo = document.createElement('div')
     logo.className = 'ur-loader-breathe'
-    logo.setAttribute('aria-label', 'UR·DEAL')
-    logo.style.cssText = `animation-delay:${breatheDelay};position:relative;display:inline-flex;align-items:center;font-family:'Pretendard Variable',system-ui,sans-serif;font-weight:900;font-style:italic;font-size:34px;line-height:1;letter-spacing:-0.055em;color:${ink}`
-    const urWrap = document.createElement('span')
-    urWrap.style.cssText = 'position:relative;display:inline-flex;align-items:baseline'
-    urWrap.textContent = 'UR'
-    const play = document.createElement('span')
-    play.style.cssText = 'position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85'
-    urWrap.appendChild(play)
+    logo.setAttribute('aria-label', 'urdeal — 유어딜')
+    logo.style.cssText = `animation-delay:${breatheDelay};display:inline-flex;align-items:baseline;font-family:'Poppins','Pretendard Variable',system-ui,sans-serif;font-weight:800;font-size:34px;line-height:1;letter-spacing:-0.035em;color:${ink}`
+    logo.appendChild(document.createTextNode('urdeal'))
     const dot = document.createElement('span')
-    dot.style.cssText = 'display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)'
-    const deal = document.createElement('span'); deal.textContent = 'DEAL'
-    logo.appendChild(urWrap); logo.appendChild(dot); logo.appendChild(deal)
+    dot.style.cssText = 'display:inline-block;width:6.12px;height:6.12px;background:#E0526B;border-radius:50%;margin-left:2.72px'
+    logo.appendChild(dot)
     // 진행 바 — BrandLoader 와 동일(96×3, 38% 세그먼트, 번들 sweep 클래스 + 위상 delay).
     const bar = document.createElement('div')
     bar.style.cssText = `position:relative;width:96px;height:3px;border-radius:999px;background:${track};overflow:hidden`

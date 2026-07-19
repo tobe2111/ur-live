@@ -133,7 +133,9 @@
     <meta name="theme-color" content="#0F151D" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- 🎯 파비콘 (브라우저 탭) — UR 브랜드 마크. SVG 우선 + PNG 폴백 -->
+    <!-- 🎯 파비콘 (브라우저 탭) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본). PNG 실치수 우선 -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
@@ -152,6 +154,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <link rel="preconnect" href="https://img1.kakaocdn.net" crossorigin />
+    <!-- 🎨 2026-07-19 확정 워드마크(urdeal.) — Poppins 800 을 urdeal 6글자 서브셋(&text=, ~2KB)만 로드.
+         첫 페인트 로더 워드마크가 즉시 사용 → preconnect 정당. CSP style-src(fonts.googleapis)/font-src(fonts.gstatic) 기허용. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=swap" rel="stylesheet" />
     <link rel="dns-prefetch" href="https://js.tosspayments.com" />
     <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />

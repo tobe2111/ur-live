@@ -261,7 +261,7 @@ export default function SellerPage() {
               if (Notification.permission === 'granted') {
                 new Notification(t('seller.newOrderNotifTitle', { defaultValue: '🛒 새 주문이 들어왔어요!' }), {
                   body: t('seller.newOrderNotifBody', { defaultValue: '{{count}}건의 새 주문을 확인하세요', count: newIds.size }),
-                  icon: '/favicon.ico',
+                  icon: '/icon-biz-192.png',
                 })
               } else if (Notification.permission === 'default') {
                 Notification.requestPermission()

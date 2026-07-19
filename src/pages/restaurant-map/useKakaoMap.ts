@@ -222,7 +222,7 @@ export function useKakaoMap({
               ${aThumb ? `<img class="ur-agg-photo" src="${escapeHtml(aThumb)}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />` : ''}
               <span style="position:absolute;left:0;right:0;bottom:0;background:rgba(17,24,39,0.72);color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:3px 0;">${formatNumber(sc.min_price || 0)}원~</span>
             </div>
-            <span style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${sc.count}</span>
+            <span style="position:absolute;top:-7px;right:-7px;background:#E0526B;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${sc.count}</span>
           </div>
         `
         const aImg = aContent.querySelector('img.ur-agg-photo')
@@ -273,7 +273,7 @@ export function useKakaoMap({
               ${cThumb ? `<img class="ur-cluster-photo" src="${escapeHtml(cThumb)}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />` : ''}
               <span style="position:absolute;left:0;right:0;bottom:0;background:rgba(17,24,39,0.72);color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:3px 0;">${formatNumber(minPrice)}원~</span>
             </div>
-            <span style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${items.length}</span>
+            <span style="position:absolute;top:-7px;right:-7px;background:#E0526B;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${items.length}</span>
           </div>
         `
         // 사진 로드 실패 시 img 제거 → 뒤 이모지 폴백(CSP 로 inline onerror 불가 → addEventListener).
