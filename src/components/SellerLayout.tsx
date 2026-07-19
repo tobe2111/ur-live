@@ -5,13 +5,14 @@ import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Roc
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
+import { getRoleShortLabel, isStoreOwner, isStoreOnly } from '@/shared/seller-roles'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
+import SellerSimpleNav from './seller-layout/SellerSimpleNav'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
 
@@ -183,8 +184,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       return true
     } catch { return false }
   })
-  // 🎨 2026-07-19 확정 로고: 셀러 대시보드 탭 = 세컨더리(비즈니스) 파비콘, 이탈 시 원복.
-  useEffect(() => { applyBizFavicon(); return restoreDefaultFavicon }, [])
+  useEffect(() => { applyBizFavicon(); return restoreDefaultFavicon }, []) // 🎨 확정 로고: 셀러 탭=biz 파비콘(이탈 원복)
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (localStorage.getItem('is_distributor') !== '1') return // 도매 접근권 없으면 절대 도매 전용 아님
@@ -283,14 +283,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
   const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
 
-  const languages = [
-    { code: 'ko', label: '한국어', flag: '🇰🇷' },
-    { code: 'en', label: 'English', flag: '🇺🇸' },
-    { code: 'ja', label: '日本語', flag: '🇯🇵' },
-    { code: 'zh', label: '中文', flag: '🇨🇳' },
-    { code: 'es', label: 'Español', flag: '🇪🇸' },
-    { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  ]
+  // 🧭 2026-07-19 (대표 UI v2 P2 — 셀러 심플 모드, SellerSimpleNav 참조): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘.
+  const simpleMode = isStoreOnly(sellerType)
+  const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
+  const toggleFullMenu = () => setFullMenuOpen(v => { try { localStorage.setItem('ur_seller_full_menu', v ? '0' : '1') } catch { /* noop */ } return !v })
+
+  const languages = [{ code: 'ko', label: '한국어', flag: '🇰🇷' }, { code: 'en', label: 'English', flag: '🇺🇸' }, { code: 'ja', label: '日本語', flag: '🇯🇵' }, { code: 'zh', label: '中文', flag: '🇨🇳' }, { code: 'es', label: 'Español', flag: '🇪🇸' }, { code: 'fr', label: 'Français', flag: '🇫🇷' }]
 
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
 
@@ -395,9 +393,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </div>
       )}
 
-      {/* Grouped navigation */}
+      {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {orderedNavGroups.map((group, gi) => (
+        {simpleMode && (
+          <SellerSimpleNav isActive={isActive} onNavigate={() => setSidebarOpen(false)} fullMenuOpen={fullMenuOpen} onToggleFullMenu={toggleFullMenu} />
+        )}
+        {(!simpleMode || fullMenuOpen) && orderedNavGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (
               <div

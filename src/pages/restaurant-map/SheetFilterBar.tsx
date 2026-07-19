@@ -67,7 +67,7 @@ export default function SheetFilterBar({
           aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
           className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
             activeFilterCount > 0
-              ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+              ? 'bg-brand text-white shadow-md shadow-brand/30'
               : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A3446]'
           }`}
         >
@@ -121,15 +121,15 @@ export default function SheetFilterBar({
             ) : (
               <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-pink-500">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
+            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#EF6E85]">{t('map.sheet.nearMeLabel', { defaultValue: '📍 내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button
               onClick={() => setShowFavoritesOnly(v => !v)}
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                 showFavoritesOnly
-                  ? 'bg-pink-500 text-white border-pink-500'
-                  : 'bg-white dark:bg-[#0F151D] text-pink-500 border-pink-200'
+                  ? 'bg-brand text-white border-brand'
+                  : 'bg-white dark:bg-[#0F151D] text-brand border-[#F4C2CC]'
               }`}
             >
               <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />

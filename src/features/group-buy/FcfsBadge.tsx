@@ -17,6 +17,9 @@ export default function FcfsBadge(
   { info, className = '', variant = 'inline' }: { info: FcfsInfo; className?: string; variant?: 'inline' | 'overlay' },
 ) {
   const applied = formatNumber(info.appliedDisplay)
+  // 🗣️ 2026-07-19 (대표 UI v2 — 통합 정합): 스펙 카피 그대로 "오늘 {n}명이 샀어요" + gb_deadline 있을 때만
+  //   "마감 임박"(무조건 표시는 마감 없는 딜에 오표시). spots 노출 제거는 #561 과 동일(로직/타입 불변).
+  const closingSoon = !!info.deadline
 
   // 🏷️ 오픈 예정형 — 판매 중이 아니라 '오픈 예정 + 사전 응모' 소구. 상태 신호라 소프트 앰버 알약 유지.
   if (info.prelaunch) {
@@ -40,15 +43,16 @@ export default function FcfsBadge(
   if (variant === 'overlay') {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
-        <span className="animate-fcfs-flame">🔥</span> <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 구매 중
+        <span className="animate-fcfs-flame">🔥</span> 오늘 <span className="font-extrabold animate-fcfs-spark">{applied}</span>명이 샀어요
+        {closingSoon && <span className="text-[#EF6E85] font-extrabold">· 마감 임박</span>}
       </span>
     )
   }
   return (
     <span className={`inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 ${className}`}>
       <span className="animate-fcfs-flame">🔥</span>
-      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 구매 중</span>
-      <span className="opacity-70">· 마감 임박</span>
+      <span>오늘 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b>이 샀어요</span>
+      {closingSoon && <span className="font-bold text-brand">· 마감 임박</span>}
     </span>
   )
 }

@@ -191,6 +191,7 @@
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez"
   },
   "seller": {
+    "simple": { "scan": "Scan QR", "settlement": "Règlement", "myDeals": "Mes deals", "fullMenu": "Menu complet", "scanSub": "Valider les bons", "settlementSub": "Ventes et paiements", "myDealsSub": "Incl. en attente" },
     "dashboard": "Tableau de bord",
     "dashboardSubtitle": "Tableau de bord vendeur — Ventes / Commandes / Statut en direct",
     "products": {

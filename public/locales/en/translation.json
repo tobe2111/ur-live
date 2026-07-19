@@ -870,6 +870,7 @@
     "seoDesc": "View your saved products"
   },
   "seller": {
+    "simple": { "scan": "QR Scan", "settlement": "Settlement", "myDeals": "My Deals", "fullMenu": "All menus", "scanSub": "Redeem customer vouchers", "settlementSub": "Sales & payouts", "myDealsSub": "Incl. pending approval" },
     "dashboard": "Dashboard",
     "dashboardSubtitle": "Seller Dashboard — Sales / Orders / Live status",
     "products": {

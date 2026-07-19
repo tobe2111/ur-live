@@ -8,6 +8,12 @@ export function kakaoDirectionsUrl(r: { restaurant_name?: string; restaurant_lat
   return `https://map.kakao.com/link/to/${name},${r.restaurant_lat},${r.restaurant_lng}`
 }
 
+/** 📍 2026-07-19 (대표 UI v2 P1 — 거리 표시 로직): 10km 이상 딜은 km 라벨 대신 지역명(주소)을
+ *  우선 표기 — 모든 카드가 주소를 이미 노출하므로 km 라벨을 10km 미만에서만 반환. */
+export function nearKmLabel(km: number): string | null {
+  return km < 10 ? `${km.toFixed(1)}km` : null
+}
+
 // Haversine 거리 계산 (km)
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371

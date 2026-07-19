@@ -870,6 +870,7 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
+    "simple": { "scan": "扫码", "settlement": "结算", "myDeals": "我的优惠", "fullMenu": "全部菜单", "scanSub": "核销顾客券", "settlementSub": "销售与结算", "myDealsSub": "含待审批" },
     "dashboard": "仪表盘",
     "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",
     "products": {
