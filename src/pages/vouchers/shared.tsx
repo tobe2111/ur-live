@@ -93,7 +93,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         )}
         {/* 🎨 할인 배지 — 잘 보이게 딜 코랄레드 (대표 신고 "할인 % 나와야지"). */}
         {discountRate > 0 && (
-          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-[#fb2d3f] rounded-md px-1.5 py-0.5">{discountRate}%</span>
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-white bg-brand rounded-md px-1.5 py-0.5">{discountRate}%</span>
         )}
       </div>
       {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. 컴팩트(별점 제거·여백 축소). */}
@@ -105,7 +105,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         <div className="flex items-baseline gap-1 mt-1">
           {/* 🖥️ 2026-07-16 (대표 — 할인 % 나와야지): 가격 옆에 할인율 코랄레드로 명시. */}
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-[#fb2d3f] dark:text-[#ff7a4f] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-brand dark:text-[#EF6E85] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>

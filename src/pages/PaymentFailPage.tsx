@@ -150,7 +150,7 @@ export default function PaymentFailPage() {
             </Button>
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12 flex items-center justify-center gap-2"
+              className="flex-1 bg-brand hover:bg-brand-dark text-white h-12 flex items-center justify-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
               {t('paymentFail.retry')}
