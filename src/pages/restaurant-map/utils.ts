@@ -37,14 +37,5 @@ export function regionShort(address?: string | null): string {
 // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거): 제목이 "한성식당 · 곱창전골 2인" 처럼 매장명으로
 //   시작하면 매장명 프리픽스를 떼고 메뉴/오퍼명만 반환(매장명은 카드 보조 줄이 전담).
 //   시드/heal 이 DB 를 신형으로 정정하지만, 셀러 수기 등록·구캐시 응답도 커버하는 표시측 방어.
-export function stripStorePrefix(name?: string | null, store?: string | null): string {
-  const n = (name || '').trim()
-  const s = (store || '').trim()
-  if (!n || !s) return n
-  const prefix = `${s} · `
-  if (n.startsWith(prefix)) {
-    const rest = n.slice(prefix.length).trim()
-    if (rest) return rest
-  }
-  return n
-}
+//   구현 SSOT: @/utils/deal-title (구분자 일반화 버전 — "매장명 · " 외 공백/하이픈 등도 커버). 재수출만.
+export { stripStorePrefix } from '@/utils/deal-title'

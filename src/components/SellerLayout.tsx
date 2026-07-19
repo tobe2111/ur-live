@@ -283,8 +283,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
   const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
 
-  // 🧭 2026-07-19 (대표 UI v2 P2 — 셀러 심플 모드, SellerSimpleNav 참조): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘.
-  const simpleMode = isStoreOnly(sellerType)
+  const simpleMode = isStoreOnly(sellerType) // 🧭 심플 모드(SellerSimpleNav): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘
   const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
   const toggleFullMenu = () => setFullMenuOpen(v => { try { localStorage.setItem('ur_seller_full_menu', v ? '0' : '1') } catch { /* noop */ } return !v })
 
