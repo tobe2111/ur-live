@@ -1,11 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
 
 /**
  * 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 좌측 세로 레일 → **상단 가로 카테고리 바**로 전환.
- *   동네딜 카테고리(전체/식사/미용/숙소/기타) → 홈 GroupBuyFeed 필터 구동(controlled). 숙소는 전용 /stays 이동.
+ *   동네딜 카테고리(전체/식사/미용/숙소/기타) → 홈 GroupBuyFeed 필터 구동(controlled).
  *   (기존 좌측 레일의 지도 썸네일·바로가기는 상단 네비 DesktopTopNav 카테고리 바/액션이 대체 — 중복 제거.)
  *   순수 프레젠테이션 — 카테고리는 props 로 controlled. 라이트 기본 + dark: 대응(홈 테마 정합).
+ *   🧭 2026-07-20 (대표 신고 "카테고리 클릭하면 가끔 저절로 동네딜로 넘어감" 전수조사): 카테고리 클릭은
+ *   **절대 페이지 이동하지 않는다(제자리 필터)** — 숙소도 navigate('/stays') 대신 필터로 통일.
+ *   날짜·인원 숙소 검색(/stays)은 숙소 카테고리 활성 시 PcHomePage 가 배너 링크로 안내(명시적 이동만).
  */
 
 export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'
@@ -25,8 +27,6 @@ export default function PcHomeRail({
   category: DealCategory
   onCategory: (c: DealCategory) => void
 }) {
-  const navigate = useNavigate()
-
   return (
     <nav aria-label="동네딜 카테고리" className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
       {DEAL_CATS.map(({ key, label, icon: Icon }) => {
@@ -34,7 +34,7 @@ export default function PcHomeRail({
         return (
           <button
             key={key}
-            onClick={() => { if (key === 'stay_voucher') navigate('/stays'); else onCategory(key) }}
+            onClick={() => onCategory(key)}
             aria-current={active ? 'true' : undefined}
             className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-bold border transition-colors ${
               active

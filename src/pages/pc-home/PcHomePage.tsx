@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
@@ -24,8 +25,17 @@ const SORT_CHIPS = [
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
+const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
+
 export default function PcHomePage() {
-  const [category, setCategory] = useState<DealCategory>('all')
+  // 🧭 2026-07-20 (카테고리 이동 전수조사): `/?category=` 딥링크로 초기 카테고리 지정 지원 —
+  //   /stays 칩이 홈 필터로 되돌아오는 경로(모바일 지도 홈 RestaurantMapPage 의 ?category 초기화와 쌍).
+  const [category, setCategory] = useState<DealCategory>(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('category') as DealCategory | null
+      return q && DEAL_CATEGORY_KEYS.includes(q) ? q : 'all'
+    } catch { return 'all' }
+  })
   const [sort, setSort] = useState<SortKey>('popular')
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
   const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
@@ -100,6 +110,18 @@ export default function PcHomePage() {
               )
             })}
           </div>
+
+          {/* 🏨 2026-07-20: 숙소 카테고리 = 제자리 필터(카테고리 클릭 무이동 원칙). 날짜·인원 검색은
+              명시적 배너 링크로만 /stays 이동(이전: 숙소 칩이 저절로 /stays 로 넘어가던 것 제거). */}
+          {category === 'stay_voucher' && (
+            <Link
+              to="/stays"
+              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2A3446] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+            >
+              <span className="text-[13px] font-bold text-gray-900 dark:text-white">🏨 날짜·인원으로 숙소 검색하기</span>
+              <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
+            </Link>
+          )}
 
           {/* 딜 그리드 — 모바일 홈과 동일 GroupBuyFeed (pc 레이아웃).
               GroupBuyFeed 하단에 '전체 동네딜 보기 →' 링크가 이미 포함됨(중복 방지 위해 여기선 미추가). */}
