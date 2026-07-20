@@ -358,6 +358,9 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   // 기존 테이블(구버전) 대비 컬럼 보강 — 이미 있으면 catch 로 무시(자동 수집 출처 분류용).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT').run().catch(() => null)
+  // 아웃리치 후속 관리 — 컨택 시점 + 다음 팔로업 예정일(무응답 리드 추적용).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
@@ -393,7 +396,7 @@ export async function listInfluencerLeads(DB: D1Database, accountId: number, fil
   return r?.results || []
 }
 
-export async function updateInfluencerLead(DB: D1Database, accountId: number, id: number, patch: { status?: string; memo?: string }): Promise<{ ok: boolean; error?: string }> {
+export async function updateInfluencerLead(DB: D1Database, accountId: number, id: number, patch: { status?: string; memo?: string; follow_up_at?: string | null }): Promise<{ ok: boolean; error?: string }> {
   await ensureInfluencerSchema(DB)
   const sets: string[] = []
   const binds: (string | number | null)[] = []
@@ -401,8 +404,16 @@ export async function updateInfluencerLead(DB: D1Database, accountId: number, id
     // 아웃리치 파이프라인: 신규→컨택함→관심→계약 / 거절·보류.
     if (!['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(patch.status)) return { ok: false, error: '상태 값이 올바르지 않습니다' }
     sets.push('status = ?'); binds.push(patch.status)
+    // 컨택 이후 단계로 넘어가면 최초 컨택 시점 기록(이미 있으면 유지).
+    if (['contacted', 'interested', 'contracted'].includes(patch.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
   }
   if (patch.memo !== undefined) { sets.push('memo = ?'); binds.push(patch.memo.slice(0, 500) || null) }
+  if (patch.follow_up_at !== undefined) {
+    const f = patch.follow_up_at
+    if (f === null || f === '') { sets.push('follow_up_at = NULL') }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(f)) { sets.push('follow_up_at = ?'); binds.push(f) }
+    else return { ok: false, error: '날짜 형식(YYYY-MM-DD)이 올바르지 않습니다' }
+  }
   if (!sets.length) return { ok: false, error: '변경할 항목이 없습니다' }
   const r = await DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, id, accountId).run().catch(() => null)
   if (!r || r.meta?.changes === 0) return { ok: false, error: '리드를 찾을 수 없습니다' }

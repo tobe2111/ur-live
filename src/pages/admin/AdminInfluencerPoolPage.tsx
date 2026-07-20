@@ -16,8 +16,9 @@ interface Lead {
   subscriber_count: number; video_count: number; thumbnail: string | null
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
+  contacted_at?: string | null; follow_up_at?: string | null
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -48,6 +49,8 @@ export default function AdminInfluencerPoolPage() {
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
+  const [needFollowup, setNeedFollowup] = useState(false)
+  const [merging, setMerging] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
@@ -65,11 +68,12 @@ export default function AdminInfluencerPoolPage() {
       if (tier) params.set('tier', tier)
       if (sort) params.set('sort', sort)
       if (statusFilter) params.set('status', statusFilter)
+      if (needFollowup) params.set('needFollowup', '1')
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/ads/influencer-pool?${params.toString()}`)
       if (r.data?.success) setLeads(r.data.leads || [])
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, q])
 
   const loadMeta = useCallback(async () => {
     try {
@@ -128,6 +132,25 @@ export default function AdminInfluencerPoolPage() {
     try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { memo }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, memo } : x)) }
     catch { toast.error('메모 저장 실패') }
   }
+  async function setFollowUp(l: Lead) {
+    const cur = l.follow_up_at || ''
+    const v = window.prompt('다음 팔로업 예정일 (YYYY-MM-DD, 비우면 해제)', cur)
+    if (v === null) return
+    const val = v.trim()
+    if (val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) { toast.error('YYYY-MM-DD 형식으로 입력'); return }
+    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)) }
+    catch { toast.error('저장 실패') }
+  }
+  async function mergeDuplicates() {
+    if (!window.confirm('같은 이메일의 중복 리드를 통합할까요? (상태·정보가 가장 앞선 1건만 남기고 나머지 삭제)')) return
+    setMerging(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
+      if (r.data?.success) { toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리(${formatNumber(r.data.groups)}명)`); await Promise.all([loadLeads(), loadMeta()]) }
+      else toast.error('통합 실패')
+    } catch { toast.error('통합 실패') } finally { setMerging(false) }
+  }
+  function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
   // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
   //   ⚠️ 광고성 발송은 정보통신망법상 사전 수신동의 필요 — 이 버튼은 초안(mailto)만 열고, 발송은 사람이 판단.
   function draftMail(l: Lead) {
@@ -186,7 +209,7 @@ export default function AdminInfluencerPoolPage() {
             { label: '네이버블로그', value: stats.naver_blog },
             { label: '네이버카페', value: stats.naver_cafe },
             { label: '이메일 보유', value: stats.with_email },
-            { label: '최근 7일', value: stats.recent7 },
+            { label: '오늘 수집', value: stats.today },
           ].map(s => (
             <div key={s.label} className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.label}</div>
@@ -205,11 +228,15 @@ export default function AdminInfluencerPoolPage() {
             { v: 'interested', label: '관심', n: stats.st_interested },
             { v: 'contracted', label: '계약', n: stats.st_contracted },
           ].map(s => (
-            <button key={s.v || 'all'} onClick={() => setStatusFilter(s.v)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${statusFilter === s.v ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+            <button key={s.v || 'all'} onClick={() => { setStatusFilter(s.v); setNeedFollowup(false) }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${statusFilter === s.v && !needFollowup ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
               {s.label} {s.n != null ? formatNumber(s.n) : ''}
             </button>
           ))}
+          <button onClick={() => { setNeedFollowup(v => !v); setStatusFilter('') }}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border ${needFollowup ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400'}`}>
+            ⏰ 팔로업 필요 {stats.need_followup != null ? formatNumber(stats.need_followup) : ''}
+          </button>
         </div>
 
         {run && (
@@ -238,6 +265,7 @@ export default function AdminInfluencerPoolPage() {
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
           </button>
           <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
+          <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
         </div>
 
         {/* 키워드 관리 */}
@@ -353,10 +381,13 @@ export default function AdminInfluencerPoolPage() {
                       <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
                         {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                       </select>
+                      {l.contacted_at && (() => { const d = daysAgo(l.contacted_at); return d != null ? <div className="text-[11px] text-gray-400 mt-0.5">컨택 {d === 0 ? '오늘' : `${d}일 전`}</div> : null })()}
+                      {l.follow_up_at && <div className={`text-[11px] mt-0.5 ${l.follow_up_at <= new Date().toISOString().slice(0, 10) ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>⏰ {l.follow_up_at}</div>}
                       {l.memo && <div className="text-[11px] text-gray-400 mt-0.5 max-w-[140px] truncate" title={l.memo}>📝 {l.memo}</div>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       {l.email && <button onClick={() => draftMail(l)} className="text-xs text-emerald-600 hover:underline mr-2" title="메일 초안 열기(직접 발송)">✉ 메일</button>}
+                      <button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
                       <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
                       <button onClick={() => del(l.id)} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
                     </td>

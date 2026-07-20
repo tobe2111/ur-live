@@ -186,6 +186,8 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
+  // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
+  if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
   //   'subscribers'(구독자순) · 'recent'(최근수집).
@@ -199,7 +201,7 @@ app.get('/influencer-pool', async (c) => {
          WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
          ELSE 3
        END ASC, subscriber_count DESC, id DESC`
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at
     FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY ${orderBy} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [] })
@@ -218,6 +220,8 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
       SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
       SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
+      SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
+      SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS today,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
@@ -225,16 +229,53 @@ app.get('/influencer-pool/stats', async (c) => {
   return c.json({ success: true, stats: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
 })
 
-// PATCH /api/admin/ads/influencer-pool/:id { status?, memo? } — 큐레이션
+// PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
 app.patch('/influencer-pool/:id', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const sets: string[] = []; const binds: (string | number)[] = []
-  if (typeof b.status === 'string' && ['new', 'contacted', 'rejected'].includes(b.status)) { sets.push('status = ?'); binds.push(b.status) }
+  if (typeof b.status === 'string' && ['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(b.status)) {
+    sets.push('status = ?'); binds.push(b.status)
+    if (['contacted', 'interested', 'contracted'].includes(b.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
+  }
   if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  if (b.follow_up_at !== undefined) {
+    const f = b.follow_up_at
+    if (f === null || f === '') sets.push('follow_up_at = NULL')
+    else if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f)) { sets.push('follow_up_at = ?'); binds.push(f) }
+    else return c.json({ success: false, error: '날짜 형식(YYYY-MM-DD) 오류' }, 400)
+  }
   if (!sets.length) return c.json({ success: false, error: '변경 항목 없음' }, 400)
   await c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, id, POOL).run().catch(() => null)
   return c.json({ success: true })
+})
+
+// POST /api/admin/ads/influencer-pool/merge-duplicates — 같은 이메일 중복 리드 통합(1건만 남김)
+//   유튜브+블로그 등 여러 플랫폼에 같은 사람이 잡히는 경우. 상태 진전(계약>관심>컨택함>신규)·정보 많은 순
+//   으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필). 이메일 있는 리드만 대상.
+app.post('/influencer-pool/merge-duplicates', async (c) => {
+  const groups = (await c.env.DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
+    WHERE account_id = ? AND email IS NOT NULL GROUP BY email HAVING n > 1`).bind(POOL)
+    .all<{ email: string; n: number }>().catch(() => null))?.results || []
+  let merged = 0
+  const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
+  for (const g of groups) {
+    const rows = (await c.env.DB.prepare(`SELECT id, instagram, tiktok, links, memo FROM ad_influencer_leads
+      WHERE account_id = ? AND email = ? ORDER BY ${rank} DESC,
+        (CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC,
+        subscriber_count DESC, id ASC`).bind(POOL, g.email)
+      .all<{ id: number; instagram: string | null; tiktok: string | null; links: string | null; memo: string | null }>().catch(() => null))?.results || []
+    if (rows.length < 2) continue
+    const keep = rows[0]; const drop = rows.slice(1)
+    // 대표에 없는 컨택/메모는 나머지에서 백필.
+    const ig = keep.instagram || drop.find(r => r.instagram)?.instagram || null
+    const tt = keep.tiktok || drop.find(r => r.tiktok)?.tiktok || null
+    const lk = keep.links || drop.find(r => r.links)?.links || null
+    await c.env.DB.prepare('UPDATE ad_influencer_leads SET instagram = ?, tiktok = ?, links = ? WHERE id = ?').bind(ig, tt, lk, keep.id).run().catch(() => null)
+    await c.env.DB.batch(drop.map(r => c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
+    merged += drop.length
+  }
+  return c.json({ success: true, merged, groups: groups.length })
 })
 
 // DELETE /api/admin/ads/influencer-pool/:id
