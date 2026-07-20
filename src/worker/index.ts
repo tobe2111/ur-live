@@ -1029,6 +1029,15 @@ app.get('/robots.txt', async (c) => {
   }
   return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
+
+// 🔎 2026-07-20 네이버 서치어드바이저 소유확인 파일 — 워커가 직접 서빙(정적 자산 서빙이 새 존에서 404 나는 문제 우회).
+//   _routes.json exclude 에서 빼서 이 라우트가 처리하도록 함. 내용은 네이버 발급 파일 본문 그대로(파일명=값).
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) =>
+  c.text('naver-site-verification: naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', 200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  }),
+);
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
