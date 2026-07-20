@@ -44,13 +44,16 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6 flex gap-8 items-start">
-        <PcHomeRail category={category} onCategory={setCategory} />
-
-        <main className="flex-1 min-w-0">
+      {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail). */}
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6">
+        <main className="min-w-0">
           {/* 🗺️ 2026-07-16 (대표 — 카테고리 위 위치 표시/설정): 현재 지역 + '현 위치로 설정'(→가까운 순). */}
           <div className="mb-4">
             <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
+          </div>
+          {/* 동네딜 카테고리 — 상단 가로 바(좌측 레일에서 이동) */}
+          <div className="mb-5 border-b border-gray-100 dark:border-[#2A3446] pb-3">
+            <PcHomeRail category={category} onCategory={setCategory} />
           </div>
           <header className="mb-4">
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
