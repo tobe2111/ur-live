@@ -42,6 +42,12 @@ interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
   promoted?: string[]; youtube_quota_hit?: boolean
+  /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
+   *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
+  diag?: {
+    yt: { configured: boolean; found: number; saved: number; error?: string }
+    naver: { configured: boolean; found: number; saved: number; error?: string }
+  }
 }
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
@@ -152,6 +158,13 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
     for (const l of leads) for (const t of mineHashtags(`${l.description} ${l.links || ''} ${l.name}`)) hashtagFreq.set(t, (hashtagFreq.get(t) || 0) + 1)
   }
+  // 🔎 플랫폼별 진단 누적 — fail-soft 로 삼키더라도 *사유는 기록*해 어드민에서 0건 원인 확인 가능.
+  const diag = {
+    yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
+    naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
+  }
+  if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
+  if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
   for (let i = 0; i < batch; i++) {
     const k = kws[(cursor + i) % kws.length]
@@ -159,15 +172,23 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (hasYouTube && !quotaHit) {
       try {
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 15 })
-        if (r.ok && r.leads?.length) { saved += await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); mine(r.leads) }
-        else if (!r.ok && r.error === 'QUOTA') quotaHit = true
-      } catch { /* fail-soft */ }
+        if (r.ok) {
+          diag.yt.found += r.leads?.length || 0
+          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
+        } else {
+          if (r.error === 'QUOTA') quotaHit = true
+          if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
+        }
+      } catch (e) { if (!diag.yt.error) diag.yt.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
     if (hasNaver) {
       try {
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 30 })
-        if (r.ok && r.leads?.length) { saved += await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); mine(r.leads) }
-      } catch { /* fail-soft */ }
+        if (r.ok) {
+          diag.naver.found += r.leads?.length || 0
+          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
+        } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
+      } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
   }
 
@@ -193,7 +214,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit,
+    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, diag,
   }
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
