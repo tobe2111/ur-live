@@ -88,16 +88,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         await runAutobidShadowAll(env)
       } catch { /* fail-soft */ }
     })())
-    // 🎯 인플루언서 자동 수집(Phase E, 2026-07-20) — 게이트 ADS_AUTO_COLLECT_ENABLED='true' 일 때만.
-    //   무료 공식 API(YouTube·네이버)로 시드 키워드 순환 발굴 → 공용 풀(account_id=0) 누적. 독립 fail-soft.
-    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-      ctx.waitUntil((async () => {
-        try {
-          const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
-          await runInfluencerAutoCollect(env)
-        } catch { /* fail-soft */ }
-      })())
-    }
+    // (인플루언서 자동 수집은 2026-07-20 부터 매시간 블록("0 * * * *")에서 실행 — 18시 중복 실행 방지 위해 여기선 제거.)
   }
   if (cron === '0 * * * *') {
     ctx.waitUntil((async () => {
@@ -106,6 +97,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         await handleSocialMaintenance(env)
       } catch { /* fail-soft */ }
     })())
+    // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지"(2026-07-20). 매시간 4키워드씩 순환:
+    //   24회/day × YT ~400units = 일일 쿼터(10k)를 거의 전부 소진할 때까지 수집, QUOTA 도달 시 그 틱부터
+    //   네이버만 계속(quotaHit 가드) → 다음날 쿼터 리셋에 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED='true'.
+    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+      ctx.waitUntil((async () => {
+        try {
+          const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+          await runInfluencerAutoCollect(env)
+        } catch { /* fail-soft */ }
+      })())
+    }
   }
   if (cron === '0 0 * * 1') {
     ctx.waitUntil((async () => {

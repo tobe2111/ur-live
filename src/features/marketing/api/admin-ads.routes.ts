@@ -173,6 +173,8 @@ app.get('/influencer-pool', async (c) => {
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
+  if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
+  if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
