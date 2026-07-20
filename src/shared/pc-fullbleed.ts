@@ -32,10 +32,11 @@ export function isFullBleedPcPath(pathname: string): boolean {
 }
 
 /** 풀너비지만 페이지 자체 상단 헤더를 쓰는 경로 → 전역 DesktopTopNav 숨김.
- *  🖥️ 2026-07-19 (대표 — "상단은 어느 페이지든 공통"): /vouchers·/stays·/group-buy 를 제거 —
- *  전역 상단 네비(로고+검색+앱/판매+카테고리 바)가 전 소비자 페이지 공통. 각 페이지의 PC 자체
- *  헤더는 삭제/lg:hidden 처리. /map 만 예외(몰입형 풀스크린 지도 — 자체 MapTopBar). */
-const OWN_HEADER_PC_PATHS = ['/map']
+ *  🖥️ 2026-07-19 (대표 — "상단은 어느 페이지든 공통, /map 도"): 예외 전부 제거 — 전역 상단 네비
+ *  (로고+검색+앱/판매+카테고리 바)가 PC(lg+) 전 소비자 페이지 공통. 지도(/map)도 여기어때식으로
+ *  [전역 네비 위 + 지도 분할 아래]. lg 미만(모바일/태블릿)의 자체 헤더 유지는 DesktopTopNav 내부
+ *  LEGACY_OWN_HEADER 게이트가 담당(이중 헤더 방지). */
+const OWN_HEADER_PC_PATHS: string[] = []
 export function hasOwnHeaderPc(pathname: string): boolean {
   return OWN_HEADER_PC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }

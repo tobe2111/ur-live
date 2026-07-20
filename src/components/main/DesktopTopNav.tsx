@@ -40,6 +40,17 @@ export default function DesktopTopNav() {
     mq.addEventListener('change', on)
     return () => mq.removeEventListener('change', on)
   }, [])
+  // 🖥️ 2026-07-19 (상단 네비 공통화 후속 — 태블릿 이중 헤더 방지): 교환권/숙소/동네딜 상세는 <lg 에서
+  //   자체 모바일 헤더(sticky/fixed top-0)를 쓰므로, 그 구간(md~lg)에 전역 네비까지 겹치면 이중 헤더.
+  //   lg+ 에서만 전역 공통(대표 지시 — PC 공통 상단), 미만은 기존 자체 헤더 유지.
+  const [isLg, setIsLg] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const on = () => setIsLg(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
   const { data: unreadCount = 0 } = useUnreadCount(isDesktop)
   const { data: cartCount = 0 } = useCartCount(isDesktop)
@@ -88,6 +99,10 @@ export default function DesktopTopNav() {
   // 🖥️ 2026-07-16 (당근 스타일 PC 카탈로그): 자체 헤더를 쓰는 풀너비 페이지(교환권 /vouchers)는
   //   전역 상단바 숨김(중복 방지) — 그 페이지의 검색/카테고리 헤더가 상단을 담당.
   if (hasOwnHeaderPc(location.pathname)) return null
+  // 🖥️ 2026-07-19 (상단 공통화 후속 — 태블릿 이중 헤더 방지): 이 경로들은 <lg 에서 자체 모바일 헤더
+  //   (sticky/fixed top-0)를 쓰므로 전역 네비는 lg+ 에서만(겹치면 이중 헤더/가림).
+  const LEGACY_OWN_HEADER = ['/vouchers', '/stays', '/group-buy', '/map']
+  if (!isLg && LEGACY_OWN_HEADER.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))) return null
 
   // 🖥️ 2026-07-15~16 (당근 스타일 PC): 풀너비 페이지(홈·마이 등, 앱 사이드바 없음)는 상단바가 로고+탭을
   //   항상 보이고(xl:hidden 해제) 사이드바용 좌패딩 대신 콘텐츠 폭(1600)에 정렬. 자체헤더 카탈로그(교환권/숙소)는
