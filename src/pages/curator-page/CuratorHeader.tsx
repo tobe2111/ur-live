@@ -39,7 +39,6 @@ interface CuratorHeaderProps {
     instagram_url?: string | null
     tiktok_url?: string | null
   }
-  pinCount: number
   isOwner: boolean
   // 🏁 2026-06-25 (대표 — 일반/사업자 구분 표시): 이름 옆 작은 배지. 'business'=사업자 유저(인증/판매), 'user'=일반.
   accountType?: 'user' | 'business'
@@ -49,7 +48,6 @@ interface CuratorHeaderProps {
 
 export default function CuratorHeader({
   curator,
-  pinCount,
   isOwner,
   accountType,
   onCopyLink,
@@ -432,7 +430,7 @@ export default function CuratorHeader({
                           </span>
                         </span>
                         <span className="block mt-1 text-[11px] text-white/70 dark:text-gray-500 leading-snug">
-                          {t('curator.verifiedBusinessDesc', { defaultValue: '사업자등록 정보가 확인된 판매자예요.' })}
+                          {t('curator.verifiedBusinessDesc', { defaultValue: '사업자등록 정보가 확인되었어요.' })}
                         </span>
                       </span>
                     </>
