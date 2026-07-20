@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-20 — 유어애즈 인플루언서 자동 수집(Phase E, "무료 프리미엄") — 대표 "DB 자동 계속 수집"
+ur-ads 일일 cron 이 무료 공식 API(YouTube·네이버)로 인플루언서를 자동 발굴해 **공용 풀**(`ad_influencer_leads.account_id=0`)에 누적. 게이트 `ADS_AUTO_COLLECT_ENABLED`(env, 기본 OFF). 무료 프리미엄 3종: ① 동적 키워드 테이블(`ad_discovery_keywords` 시드+어드민추가) ② 출처 카테고리 태그 ③ 해시태그 자가확장(≥3회 등장 시 키워드 자동 활성, 상한 200). 멱등(UNIQUE INSERT OR IGNORE)·YouTube 공유한도 보호(QUOTA 시 네이버만). 어드민 `/admin/influencer-pool`(열람/큐레이션/키워드/수동수집) — 수동 트리거는 `env.ADS` 서비스바인딩으로 ur-ads `/__ads/collect` 위임(발굴 코드 메인 미유입, inline SQL 만). 인스타/틱톡 직접 발굴은 유료 제공사 필요(무료 API 부재) — `INFLUENCER_PROVIDER_KEY` 있으면 자동 편입(현재 미설정 skip). ⚠️ [PIPA] 공개 데이터·공식 API 수집만, 마케팅 발송은 사전동의 별도(수집 ≠ 발송).
+- **대표 활성**: Cloudflare(ur-live) → Variables → `ADS_AUTO_COLLECT_ENABLED=true` + 재배포(또는 어드민 "지금 수집" 버튼으로 즉시 1회). 설계: `docs/design/urads-worker-split.md` §7 Phase E.
+- 변경: `influencer-auto-collect.ts`(신규 엔진)·`influencer-discovery.ts`(saveInfluencerLeads 메타/카테고리 컬럼)·`worker-ads/index.ts`(cron+`/__ads/collect`)·`admin-ads.routes.ts`(pool/keywords/collect inline)·`AdminInfluencerPoolPage.tsx`+라우트+메뉴·env(`ADS_AUTO_COLLECT_ENABLED`/`ADS_AUTOCOLLECT_BATCH`).
+
 ## 🔶 2026-07-19 — 운영 자동화 백로그 4종 (대표 "8월 중 순차, 전부 라이브 무접촉·읽기전용 우선") — draft PR
 전부 read-only 수집 + 발송 게이트 기본 OFF — **머지 = 라이브 영향 0**. 어드민 가이드 §운영 자동화(`GUIDE_SEED_VERSION=6`) 참조.
 - **① 일일 다이제스트** (`cron/ops-daily-digest.ts`, hourly 슬롯 UTC22=KST07 게이트 + KST 날짜 멱등): 어제 판매/QR 사용/신규 가입 + 이상 신호(환불 급증 2×7일평균·미사용 임박·cron 실패·어뷰징 high). 벨+Discord 항상, 이메일/알림톡은 platform_settings `ops_digest_email`/`ops_digest_phone` 설정 시(알림톡은 env `OPS_DIGEST_ALIMTALK_ENABLED` 추가 게이트). 공용 헬퍼 `utils/ops-report.ts`(KST 윈도우·배달 경로 — ④와 공유).

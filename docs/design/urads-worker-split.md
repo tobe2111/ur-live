@@ -120,3 +120,13 @@ curl -s -D - -o /dev/null https://live.ur-team.com/api/ads/ping | grep -i x-serv
   ALIGO/RESEND 미설정 시 알림·메일만 fail-soft 스킵(cron 자체는 정상). 메인의 marketing 활성 참조 =
   `admin-ads.routes` 1개만 잔류(의도 — 메인 어드민 JWT).
 - **Phase D (메인 폴백 제거)**: 2026-07-16 — 사전 검증: prod `curl /api/ads/ping` → **`x-served-by: ur-ads` 확인(컷오버 ON 상태)** → §4 순서 충족. 메인 `index.ts` 에서 `marketingRoutes`(/api/ads)·`shortLinkRedirectRoutes`(/l) import+mount 제거(주석 보존, 재도입=원복). **잔류**: ① `/api/admin/ads`(`adminAdsRoutes` + ads-account/entitlements/media-gateway/ad-services/reviews/short-links 서브그래프 ~81KB 소스) — 프록시 비위임 설계(메인 어드민 JWT) 유지 ② `scheduled.ts` ads-* cron 5종(autobid/price-monitor/rank-tracker/metrics-history/alerts ~53KB+전이) — 현행 라이브 동작 보존, ur-ads 이전은 Phase E. ⚠️ 이후 `ADS_WORKER_ENABLED`/`ADS` 바인딩은 **끄면 유어애즈 404**(폴백 없음) — 롤백은 이 커밋 revert.
+- **Phase E (인플루언서 자동 수집)**: 2026-07-20 — "무료 프리미엄"(대표 선택). ur-ads 일일 cron("0 18")에
+  `runInfluencerAutoCollect`(`influencer-auto-collect.ts`) 게이트 `ADS_AUTO_COLLECT_ENABLED='true'`(기본 OFF).
+  무료 공식 API(YouTube Data v3·네이버 검색)로 **동적 키워드 테이블**(`ad_discovery_keywords`, 시드+어드민추가)
+  을 커서 순환 발굴 → **공용 풀 `ad_influencer_leads.account_id=0`** 누적(카테고리/출처키워드 태그). 자가성장:
+  수집물 소개글 #해시태그를 후보 적립→반복 등장(≥3회) 시 자동 활성화(상한 200). YouTube 공유 한도 보호(QUOTA
+  응답 시 네이버만 계속) + 멱등(UNIQUE(account_id,platform,channel_id) INSERT OR IGNORE). 어드민 열람/큐레이션/
+  키워드관리/**수동 수집**은 메인 `/api/admin/ads/influencer-pool/*`(어드민 JWT) — 수동 트리거는 `env.ADS`
+  서비스바인딩으로 ur-ads `/__ads/collect` 위임(발굴 코드는 ur-ads 에만 → 메인 번들 무영향, inline SQL 만 추가).
+  UI: `/admin/influencer-pool`(AdminInfluencerPoolPage). ⚠️ [PIPA] 공개 데이터·공식 API 수집만 — 마케팅 발송은
+  사전동의 별도(수집 ≠ 발송). 활성: 대표가 `ADS_AUTO_COLLECT_ENABLED=true` 설정+재배포(또는 "지금 수집" 버튼).
