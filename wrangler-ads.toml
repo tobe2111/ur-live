@@ -28,9 +28,10 @@ command = "node scripts/build-worker-ads.js"
 # ⏰ Cron — 소셜 홍보 자동화(메인에서 이관). 전부 게이트 OFF 기본이라 미설정 시 no-op.
 #   매시간: 영상 렌더 폴링 + 예약 발행(SOCIAL_AUTO_PUBLISH_ENABLED). 주간(월): 홍보 초안(SOCIAL_AUTO_DRAFT_ENABLED).
 [triggers]
-# 🎯 Phase E(2026-07-18): 광고 cron 이관 — "*/5"(자동입찰, ADS_AUTOBID_ENABLED 게이트) ·
-#   "0 18 * * *"(일일 배치: 가격/순위/스냅샷/알림/섀도우). 메인 scheduled.ts 에선 같은 커밋에서 제거(이중실행 방지).
-crons = ["*/5 * * * *", "0 * * * *", "0 18 * * *", "0 0 * * 1"]
+# ⚠️ 2026-07-20: Cloudflare **계정 전체 cron 5개 한도**(code 10072) — ur-ads 4개 등록이 통째 거부돼
+#   자동수집/일일배치가 전혀 안 돌았음. **cron 1개로 통합**(scheduled 핸들러가 event.scheduledTime 시각/요일
+#   분기로 매시간/일일18시/주간월요일 처리). autobid "*/5" 는 매시간 게이트 뒤로 흡수. 계정 slot 부담 4→1.
+crons = ["0 * * * *"]
 
 # 같은 D1 (메인 ur-live 와 동일 database_id — 데이터 공유의 핵심)
 [[d1_databases]]

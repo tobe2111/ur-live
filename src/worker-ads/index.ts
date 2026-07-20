@@ -47,81 +47,58 @@ app.route('/api/ads', marketingRoutes)        // 유어애즈 데이터/인증 A
 app.route('/api/admin/ads', adminAdsRoutes)   // 유어애즈 운영 어드민
 app.route('/api/admin/social', socialMediaRoutes) // 🥗 소셜 홍보 자동화(자체 requireAdmin, 같은 JWT_SECRET)
 
-// ⏰ Cron — 소셜 홍보 유지보수/초안(메인에서 이관). 전부 게이트 OFF 기본 → 미설정 시 no-op.
-//   wrangler-ads.toml crons: "0 * * * *"(매시간 렌더폴링+예약발행) · "0 0 * * 1"(주간 초안).
+// ⏰ Cron — ⚠️ 2026-07-20: Cloudflare **계정 전체 cron 5개 한도**(code 10072)에 걸려 ur-ads 의 4개
+//   등록이 통째로 거부됐음(→ 자동수집/일일배치 전부 미실행). **cron 1개("0 * * * *")로 통합** +
+//   scheduled 핸들러 안에서 event.scheduledTime 의 시각/요일로 분기 → 계정 slot 부담 4→1.
+//   (autobid "*/5" 는 게이트 OFF 기본이라 제거 — 필요 시 매시간 틱에서 게이트 뒤로 실행.)
 async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-  const cron = event.cron
-  // 🎯 Phase E(2026-07-18): 광고 cron 5종+섀도우 — 메인 scheduled.ts 에서 이관(설계 §4 Phase E).
-  //   로직/게이트/멱등 전부 메인과 동일(같은 D1 이라 데이터 정합 무변). 메인 쪽은 같은 커밋에서 제거.
-  if (cron === '*/5 * * * *') {
-    // 자동입찰 — 글로벌 킬스위치(ADS_AUTOBID_ENABLED='true')일 때만 실제 동작(기본 OFF = no-op).
-    if (env.ADS_AUTOBID_ENABLED === 'true') {
-      ctx.waitUntil((async () => {
-        try {
-          const { runAutobidAll } = await import('@/features/marketing/api/autobid')
-          await runAutobidAll(env)
-        } catch { /* fail-soft */ }
-      })())
-    }
-  }
-  if (cron === '0 18 * * *') {
-    // 일일 배치(순서 유지: 가격 갱신 → 순위 → 스냅샷 → 알림(최신 last_lowest 반영) → 자동입찰 섀도우).
+  const now = new Date(event.scheduledTime)
+  const hourUTC = now.getUTCHours()
+  const dowUTC = now.getUTCDay() // 0=일 … 1=월
+
+  // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
+  ctx.waitUntil((async () => {
+    try {
+      const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
+      await handleSocialMaintenance(env)
+    } catch { /* fail-soft */ }
+  })())
+  // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
+  //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
+  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       try {
-        const { refreshAllWatches } = await import('@/features/marketing/api/price-monitor')
-        await refreshAllWatches(env)
-      } catch { /* fail-soft */ }
-      try {
-        const { refreshAllRankTargets } = await import('@/features/marketing/api/rank-tracker')
-        await refreshAllRankTargets(env)
-      } catch { /* fail-soft */ }
-      try {
-        const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history')
-        await snapshotAllAccounts(env)
-      } catch { /* fail-soft */ }
-      try {
-        const { runAlertsAll } = await import('@/features/marketing/api/alerts')
-        await runAlertsAll(env)
-      } catch { /* fail-soft */ }
-      try {
-        const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid')
-        await runAutobidShadowAll(env)
+        const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+        await runInfluencerAutoCollect(env)
       } catch { /* fail-soft */ }
     })())
-    // (인플루언서 자동 수집은 2026-07-20 부터 매시간 블록("0 * * * *")에서 실행 — 18시 중복 실행 방지 위해 여기선 제거.)
   }
-  if (cron === '0 * * * *') {
+  // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
+  if (env.ADS_AUTOBID_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       try {
-        const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
-        await handleSocialMaintenance(env)
+        const { runAutobidAll } = await import('@/features/marketing/api/autobid')
+        await runAutobidAll(env)
       } catch { /* fail-soft */ }
     })())
-    // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지"(2026-07-20). 매시간 4키워드씩 순환:
-    //   24회/day × YT ~400units = 일일 쿼터(10k)를 거의 전부 소진할 때까지 수집, QUOTA 도달 시 그 틱부터
-    //   네이버만 계속(quotaHit 가드) → 다음날 쿼터 리셋에 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED='true'.
-    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-      ctx.waitUntil((async () => {
-        try {
-          const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
-          await runInfluencerAutoCollect(env)
-        } catch { /* fail-soft */ }
-      })())
-    }
   }
-  if (cron === '0 0 * * 1') {
+
+  // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────
+  if (hourUTC === 18) {
     ctx.waitUntil((async () => {
-      try {
-        const { handleSocialDraft } = await import('@/worker/cron/social-draft')
-        await handleSocialDraft(env)
-      } catch { /* fail-soft */ }
+      try { const { refreshAllWatches } = await import('@/features/marketing/api/price-monitor'); await refreshAllWatches(env) } catch { /* fail-soft */ }
+      try { const { refreshAllRankTargets } = await import('@/features/marketing/api/rank-tracker'); await refreshAllRankTargets(env) } catch { /* fail-soft */ }
+      try { const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history'); await snapshotAllAccounts(env) } catch { /* fail-soft */ }
+      try { const { runAlertsAll } = await import('@/features/marketing/api/alerts'); await runAlertsAll(env) } catch { /* fail-soft */ }
+      try { const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid'); await runAutobidShadowAll(env) } catch { /* fail-soft */ }
     })())
-    // 🎯 Phase E: 유어애즈 AI 주간 리포트(주당 1회 멱등, 연결 고객사만) — 메인 agency-weekly-batch 에서 이관.
+  }
+
+  // ── 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트 ────────────────────
+  if (hourUTC === 0 && dowUTC === 1) {
     ctx.waitUntil((async () => {
-      try {
-        const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report')
-        await handleAdsWeeklyReport(env)
-      } catch { /* fail-soft */ }
+      try { const { handleSocialDraft } = await import('@/worker/cron/social-draft'); await handleSocialDraft(env) } catch { /* fail-soft */ }
+      try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
     })())
   }
 }
