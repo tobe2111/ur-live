@@ -175,11 +175,30 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
+  // 🎯 규모 필터(tier) — 유어딜 딜은 마이크로/중형(1만~50만)이 실전 효율 최고. YT 구독자 기준(네이버블로그는 지표 없어 무관).
+  const tier = (c.req.query('tier') || '').trim()
+  if (tier === 'nano') where.push('subscriber_count > 0 AND subscriber_count < 10000')
+  else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
+  else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
+  else if (tier === 'macro') where.push('subscriber_count >= 500000')
+  else if (tier === 'sweet') where.push("(platform='naver_blog' OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
+  // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
+  //   'subscribers'(구독자순) · 'recent'(최근수집).
+  const sort = (c.req.query('sort') || 'fit').trim()
+  const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
+    : sort === 'recent' ? 'id DESC'
+    : `CASE
+         WHEN platform='naver_blog' THEN 0
+         WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
+         WHEN subscriber_count >= 500000 AND subscriber_count < 1000000 THEN 1
+         WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
+         ELSE 3
+       END ASC, subscriber_count DESC, id DESC`
   const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY subscriber_count DESC, id DESC LIMIT ?`)
+    FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY ${orderBy} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [] })
 })
