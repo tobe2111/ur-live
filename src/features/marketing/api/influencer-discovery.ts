@@ -256,6 +256,22 @@ async function fetchNaverBlogRss(handle: string): Promise<string> {
   } catch { return '' }
 }
 
+/** 🏠 네이버 블로그 **홈(모바일)** 공개 HTML — 프로필 소개글 + 위젯(인스타/링크트리/오픈카톡/이메일)이 여기 있음.
+ *  RSS(글 본문)보다 컨택 적중률 높음(블로거는 이메일을 글이 아니라 프로필/위젯에 둠). 공개 페이지 · 쿼터 무관 · fail-soft.
+ *  모바일 SSR(m.blog.naver.com)이 데스크톱 iframe 보다 정적 텍스트가 풍부 → 브라우저 UA 로 요청. */
+async function fetchNaverBlogHome(handle: string): Promise<string> {
+  if (!/^[A-Za-z0-9_-]{2,40}$/.test(handle)) return ''
+  try {
+    const res = await fetch(`https://m.blog.naver.com/${handle}`, {
+      signal: AbortSignal.timeout(10000),
+      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1', accept: 'text/html' },
+      redirect: 'follow',
+    })
+    if (!res.ok) return ''
+    return (await res.text()).slice(0, 80000) // 프로필/위젯 영역에 mailto:·instagram.com·linktr.ee 링크
+  } catch { return '' }
+}
+
 export async function discoverNaverBloggers(
   clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget } = {},
 ): Promise<DiscoverResult> {
@@ -292,17 +308,24 @@ export async function discoverNaverBloggers(
     .map(({ _matches, ...l }) => ({ ...l, video_count: _matches })) // video_count = 매칭 글 수(활동 프록시)
     .sort((a, b) => b.video_count - a.video_count)
 
-  // 📧 컨택 보충 — 이메일 없는 블로거는 RSS(공개 피드)로 최근 글 본문 스캔(활동 많은 순 상한 enrichMax).
-  //    유튜브 영상설명 스캔과 동형. pickBusinessEmail 로 협찬문의 맥락 이메일 우선.
+  // 📧 컨택 보충 — 이메일 **또는 인스타/링크** 아무 컨택도 없는 블로거를 보강(활동 많은 순 상한 enrichMax).
+  //   1차 블로그 홈(프로필·위젯 — 적중률 높음), 홈에서 못 찾고 예산 남으면 2차 RSS(글 본문). 링크트리는
+  //   여기서 links 로 잡히고 이후 enrichPoolFromLinkInBio 가 다시 따라가 이메일까지 체인 추출.
   const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 8))
-  const targets = leads.filter(l => !l.email && l.handle).slice(0, enrichMax)
+  const targets = leads.filter(l => (!l.email && !l.instagram && !l.links) && l.handle).slice(0, enrichMax)
   for (const l of targets) {
-    if (outOfBudget(opts.budget)) break // 예산 소진 — RSS 컨택 보충 조기 종료
+    if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료
     spendBudget(opts.budget)
-    const rss = await fetchNaverBlogRss(l.handle!)
-    if (!rss) continue
-    const c = extractContacts(rss)
-    const biz = pickBusinessEmail(rss)
+    let text = await fetchNaverBlogHome(l.handle!)
+    let c = text ? extractContacts(text) : { emails: [], instagram: [], tiktok: [], links: [] }
+    let biz = text ? pickBusinessEmail(text) : null
+    // 홈에서 아무 컨택도 못 찾고 예산 남으면 RSS(글 본문)도 시도.
+    if (!biz && !c.instagram[0] && !c.links.length && !outOfBudget(opts.budget)) {
+      spendBudget(opts.budget)
+      const rss = await fetchNaverBlogRss(l.handle!)
+      if (rss) { text = rss; c = extractContacts(rss); biz = pickBusinessEmail(rss) }
+    }
+    if (!text) continue
     if (biz) l.email = biz
     if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
     if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
