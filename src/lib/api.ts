@@ -279,6 +279,17 @@ api.interceptors.request.use(
       // fallthrough → user token / cookie
     }
 
+    // ── Admin 내부 도구 (/api/_errors/recent, /api/_internal/*) ──────────────
+    // 🛡️ 2026-07-20: underscore 경로는 아래 admin 패턴(/api/admin/* · /api/<feature>/admin/*)에
+    //   안 걸려 admin_token 미부착 → 서버 JWT 검증 401 (어드민 에러 대시보드가 로그인해도 항상 401).
+    //   AdminKakaoLoginDiagPage 는 수동 헤더로 개별 우회했던 같은 클래스 — 여기서 구조적으로 부착.
+    //   (/api/_errors/log 는 공개 telemetry 라 제외 — recent 만 매칭.)
+    if (url.startsWith('/api/_errors/recent') || url.startsWith('/api/_internal/')) {
+      const token = localStorage.getItem('admin_token');
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
+      return config;
+    }
+
     // ── Admin API (/api/admin/* + 하이픈 마운트 /api/admin-payouts, /api/admin-review-bonus) ──
     // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
     // throw 제거 — cookie 만으로도 서버에서 인증 통과.
