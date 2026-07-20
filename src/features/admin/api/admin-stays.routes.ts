@@ -272,71 +272,107 @@ adminStaysRoutes.get('/stays/kpi', cors(), async (c) => {
   }
 })
 
-// ─── 🏨 2026-07-20 (대표 — "숙소 이용권 더미데이터"): 데모 숙소 시드 ─────────────────
-//   멱등: slug 'demo-stay-N' 존재하면 skip(재실행 안전). 동네딜 데모(demo-deal-N)와 동일 철학 —
-//   유저에겐 실제 숙소처럼 보이고, 데모 식별은 slug 로만. 이미지 = picsum.photos(시드 고정 —
-//   cf-image EXTERNAL_PROXY 등재 호스트). 삭제: DELETE /stays/seed-demo (데모만 비활성).
-const DEMO_STAYS = [
-  { slug: 'demo-stay-1', name: '가평 숲속 풀빌라 펜션', type: 'pension', sido: '경기', sigungu: '가평군', addr: '경기 가평군 청평면 호반로 1223', lat: 37.7452, lng: 127.4223, star: null,
-    desc: '북한강이 내려다보이는 숲속 독채 풀빌라. 전 객실 개별 수영장 + 바비큐 테라스.',
-    rooms: [ { name: '스탠다드 풀빌라', bg: 2, mg: 4, wd: 129000, we: 189000 }, { name: '프리미엄 풀빌라 스위트', bg: 2, mg: 6, wd: 219000, we: 299000 } ] },
-  { slug: 'demo-stay-2', name: '강릉 오션뷰 스테이', type: 'hotel', sido: '강원', sigungu: '강릉시', addr: '강원 강릉시 창해로 307', lat: 37.7911, lng: 128.9183, star: 4,
-    desc: '경포해변 도보 3분, 전 객실 바다 전망. 조식 포함 플랜과 루프탑 인피니티 스파.',
-    rooms: [ { name: '오션뷰 더블', bg: 2, mg: 2, wd: 89000, we: 129000 }, { name: '패밀리 트윈', bg: 2, mg: 4, wd: 119000, we: 159000 } ] },
-  { slug: 'demo-stay-3', name: '제주 애월 감성 독채', type: 'pension', sido: '제주', sigungu: '제주시', addr: '제주 제주시 애월읍 애월해안로 632', lat: 33.4658, lng: 126.3272, star: null,
-    desc: '애월 바다 앞 돌담 독채 스테이. 노을 명소 한담해변 도보 5분, 감성 자쿠지 포함.',
-    rooms: [ { name: '독채 A (자쿠지)', bg: 2, mg: 4, wd: 149000, we: 199000 }, { name: '독채 B (오션뷰)', bg: 2, mg: 5, wd: 169000, we: 229000 } ] },
-  { slug: 'demo-stay-4', name: '부산 해운대 시티호텔', type: 'hotel', sido: '부산', sigungu: '해운대구', addr: '부산 해운대구 해운대해변로 264', lat: 35.1587, lng: 129.1604, star: 4,
-    desc: '해운대해수욕장 도보 1분. 시티뷰/오션뷰 선택, 24시간 프런트와 발레파킹.',
-    rooms: [ { name: '스탠다드 더블', bg: 2, mg: 2, wd: 79000, we: 109000 }, { name: '디럭스 오션뷰', bg: 2, mg: 3, wd: 109000, we: 149000 } ] },
-  { slug: 'demo-stay-5', name: '전주 한옥마을 고즈넉 스테이', type: 'guesthouse', sido: '전북', sigungu: '전주시', addr: '전북 전주시 완산구 은행로 39', lat: 35.8155, lng: 127.1534, star: null,
-    desc: '한옥마을 중심 골목의 전통 한옥 스테이. 온돌방·툇마루·전통차 웰컴 세트.',
-    rooms: [ { name: '온돌방', bg: 2, mg: 3, wd: 99000, we: 139000 }, { name: '별채 (독채)', bg: 2, mg: 4, wd: 139000, we: 179000 } ] },
-  { slug: 'demo-stay-6', name: '속초 설악 리조트', type: 'resort', sido: '강원', sigungu: '속초시', addr: '강원 속초시 미시령로 2983', lat: 38.2070, lng: 128.5189, star: 4,
-    desc: '설악산 케이블카 5분 거리. 온수풀·사우나·키즈존을 갖춘 패밀리 리조트.',
-    rooms: [ { name: '패밀리 스위트', bg: 2, mg: 4, wd: 99000, we: 149000 }, { name: '설악뷰 스위트', bg: 2, mg: 5, wd: 159000, we: 219000 } ] },
+
+// ─── 🏨 2026-07-20 (대표 — "숙소 이용권 더미데이터" → "데모 채우기 카테고리로 통합"): 생성형 데모 숙소 시드 ──
+//   동네딜 데모(DEMO_BIZ 생성형)와 동일 철학 — 스팟×유형 조합 문법으로 지역/개수 옵션 지원.
+//   멱등/충돌 0: slug 'demo-stay-N' 최대 N 다음부터 누적. 이미지 = picsum(시드 고정, cf-image 등재 호스트).
+//   ⚠️ 일정·인원은 시드 옵션 불필요(설계): 캘린더 행이 없으면 검색 가용성 통과(NOT EXISTS) = 전 날짜 예약
+//   가능으로 취급되고, 객실 인원은 아래 문법이 2~6인을 자동 분산해 인원 필터 검색이 항상 유효.
+const STAY_SPOTS = [
+  { label: '가평', sido: '경기', sigungu: '가평군', addr: '경기 가평군 청평면 호반로', lat: 37.7452, lng: 127.4223 },
+  { label: '강릉', sido: '강원', sigungu: '강릉시', addr: '강원 강릉시 창해로', lat: 37.7911, lng: 128.9183 },
+  { label: '제주 애월', sido: '제주', sigungu: '제주시', addr: '제주 제주시 애월읍 애월해안로', lat: 33.4658, lng: 126.3272 },
+  { label: '부산 해운대', sido: '부산', sigungu: '해운대구', addr: '부산 해운대구 해운대해변로', lat: 35.1587, lng: 129.1604 },
+  { label: '전주', sido: '전북', sigungu: '전주시', addr: '전북 전주시 완산구 은행로', lat: 35.8155, lng: 127.1534 },
+  { label: '속초', sido: '강원', sigungu: '속초시', addr: '강원 속초시 미시령로', lat: 38.2070, lng: 128.5189 },
+  { label: '여수', sido: '전남', sigungu: '여수시', addr: '전남 여수시 돌산읍 돌산로', lat: 34.7365, lng: 127.7469 },
+  { label: '경주', sido: '경북', sigungu: '경주시', addr: '경북 경주시 보문로', lat: 35.8419, lng: 129.2846 },
+  { label: '양양', sido: '강원', sigungu: '양양군', addr: '강원 양양군 현남면 인구길', lat: 37.9670, lng: 128.7622 },
+  { label: '춘천', sido: '강원', sigungu: '춘천시', addr: '강원 춘천시 남산면 남이섬길', lat: 37.8813, lng: 127.7300 },
+  { label: '통영', sido: '경남', sigungu: '통영시', addr: '경남 통영시 도남로', lat: 34.8368, lng: 128.4207 },
+  { label: '서울 성수', sido: '서울', sigungu: '성동구', addr: '서울 성동구 연무장길', lat: 37.5446, lng: 127.0561 },
+]
+const STAY_TYPES = [
+  { type: 'pension', label: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '독채형 펜션 — 바비큐 테라스와 프라이빗한 휴식.' },
+  { type: 'hotel', label: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트.' },
+  { type: 'guesthouse', label: '스테이', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '감성 숙소 — 조용한 골목에서 즐기는 로컬 감성.' },
+  { type: 'resort', label: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
+  { type: 'glamping', label: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
 ]
 
 adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
   try {
     const { DB } = c.env
-    let created = 0, skipped = 0
-    for (const s of DEMO_STAYS) {
-      const exists = await DB.prepare(`SELECT id FROM products WHERE slug = ?`).bind(s.slug).first<{ id: number }>()
-      if (exists?.id) { skipped++; continue }
-      const img = `https://picsum.photos/seed/${s.slug}/800/600`
+    const body = (await c.req.json().catch(() => ({}))) as { region?: string; count?: number }
+    const regionQ = String(body.region || '').trim()
+    const count = Math.max(1, Math.min(24, Number(body.count) || 6))
+    // 지역 옵션: label/sido 부분일치 스팟만(예 "강원"→강릉·속초·양양·춘천, "해운대"→부산 해운대). 미매칭 시 전체.
+    const spotsAll = regionQ
+      ? STAY_SPOTS.filter((s) => s.label.includes(regionQ) || s.sido.includes(regionQ) || regionQ.includes(s.label) || regionQ.includes(s.sido))
+      : STAY_SPOTS
+    const spots = spotsAll.length > 0 ? spotsAll : STAY_SPOTS
+    // slug 누적 번호(demo-stay-N 최대 N 다음) — 재실행 충돌 0.
+    const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE 'demo-stay-%'`)
+      .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }))
+    let n = 0
+    for (const r of (slugRows.results || [])) {
+      const m = /^demo-stay-(\d+)$/.exec(r.slug || '')
+      if (m) n = Math.max(n, Number(m[1]))
+    }
+    let created = 0
+    for (let i = 0; i < count; i++) {
+      n++
+      const slug = `demo-stay-${n}`
+      const spot = spots[(n + i) % spots.length]
+      const ty = STAY_TYPES[n % STAY_TYPES.length]
+      const mod = ty.mods[n % ty.mods.length]
+      const name = `${spot.label} ${mod} ${ty.label}`
+      const desc = `${spot.label}의 ${mod} ${ty.label}. ${ty.desc}`
+      // 좌표 지터(±~1.5km) — 같은 스팟 반복 시 지도에서 겹치지 않게(결정적 — 번호 기반).
+      const jLat = spot.lat + (((n * 7) % 21) - 10) * 0.0015
+      const jLng = spot.lng + (((n * 13) % 21) - 10) * 0.0015
+      const img = `https://picsum.photos/seed/${slug}/800/600`
       const ins = await DB.prepare(
         `INSERT INTO products (seller_id, name, description, image_url, price, category, product_type, is_active, slug, created_at, updated_at)
          VALUES (NULL, ?, ?, ?, 0, 'stay_voucher', 'featured', 1, ?, datetime('now'), datetime('now'))`
-      ).bind(s.name, s.desc, img, s.slug).run()
+      ).bind(name, desc, img, slug).run()
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
+      const star = ty.type === 'hotel' || ty.type === 'resort' ? 3 + (n % 3) : null
       await DB.prepare(
         `INSERT INTO product_stay_info (
            product_id, property_type, star_rating, total_rooms, check_in_time, check_out_time,
            address, region_sido, region_sigungu, latitude, longitude,
            amenities, room_amenities, cancellation_policy, description_full,
            min_nights, advance_booking_days)
-         VALUES (?, ?, ?, ?, '15:00', '11:00', ?, ?, ?, ?, ?, ?, ?, 'standard', ?, 1, 90)`
+         VALUES (?, ?, ?, 2, '15:00', '11:00', ?, ?, ?, ?, ?, ?, ?, 'standard', ?, 1, 90)`
       ).bind(
-        pid, s.type, s.star, s.rooms.length, s.addr, s.sido, s.sigungu, s.lat, s.lng,
-        JSON.stringify(['무료 주차', '와이파이', '조식']), JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), s.desc,
+        pid, ty.type, star, `${spot.addr} ${100 + (n % 80)}`, spot.sido, spot.sigungu, jLat, jLng,
+        JSON.stringify(['무료 주차', '와이파이', ty.type === 'glamping' ? '개별 화로' : '조식']),
+        JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), desc,
       ).run()
+      // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
+      const baseWd = 69000 + ((n % 6) * 20000)
+      const rooms = [
+        { name: `스탠다드 ${ty.label === '글램핑' ? '텐트' : '룸'}`, bg: 2, mg: 2 + ((n % 2) * 2), wd: baseWd, we: Math.round(baseWd * 1.4 / 1000) * 1000 },
+        { name: `프리미엄 ${mod}${ty.label === '펜션' ? ' 독채' : ' 스위트'}`, bg: 2, mg: 4 + (n % 3), wd: baseWd + 60000, we: Math.round((baseWd + 60000) * 1.4 / 1000) * 1000 },
+      ]
       let order = 0
-      for (const r of s.rooms) {
+      for (const r of rooms) {
+        order++
         await DB.prepare(
           `INSERT INTO product_stay_rooms (
              product_id, name, description, display_order, base_guests, max_guests, extra_guest_fee,
              base_price_weekday, base_price_weekend, total_inventory, amenities, image_urls, is_active)
            VALUES (?, ?, NULL, ?, ?, ?, 20000, ?, ?, 3, ?, ?, 1)`
         ).bind(
-          pid, r.name, order++, r.bg, r.mg, r.wd, r.we,
-          JSON.stringify(['에어컨', '냉장고']), JSON.stringify([`https://picsum.photos/seed/${s.slug}-r${order}/800/600`]),
+          pid, r.name, order, r.bg, r.mg, r.wd, r.we,
+          JSON.stringify(['에어컨', '냉장고']), JSON.stringify([`https://picsum.photos/seed/${slug}-r${order}/800/600`]),
         ).run()
       }
       created++
     }
-    return c.json({ success: true, data: { created, skipped, total: DEMO_STAYS.length } })
+    return c.json({ success: true, data: { created, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

@@ -108,6 +108,17 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const regionParam = buildRegionParam(seedSido, seedDistrict)
+      // 🏨 2026-07-20 (대표 — 카테고리로 숙소 통합): 숙소 선택 시 전용 생성형 시드(객실 2종·좌표·주중/주말가
+      //   자동 — /stays 검색 스키마). 지역/개수 옵션 공유. 일정·인원 옵션 불필요: 캘린더 무행 = 전 날짜
+      //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
+      if (seedCategory === 'stay_voucher') {
+        const r = await api.post('/api/admin/stays/seed-demo', { region: regionParam || undefined, count: seedCount }, { ...h, timeout: 120000 })
+        const d = r.data?.data || {}
+        toast.success(`데모 숙소 ${d.created ?? 0}개 생성${d.region ? ` (${d.region})` : ''}`)
+        loadStats(); setListNonce((nn) => nn + 1)
+        setCleaning(false)
+        return
+      }
       const aMin = parseInt(seedApplicantsMin, 10)
       const aMax = parseInt(seedApplicantsMax, 10)
       // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요 → 요청당 5분 명시.
@@ -145,15 +156,7 @@ export default function AdminDongnedealImportPage() {
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
 
-  // 🏨 2026-07-20 (대표 — "숙소 이용권 더미데이터"): 데모 숙소 6종 시드(멱등, slug demo-stay-N).
-  const seedStays = async () => {
-    setCleaning(true)
-    try {
-      const r = await api.post('/api/admin/stays/seed-demo', {}, { ...h, timeout: 120000 })
-      const d = r.data?.data || {}
-      toast.success(`데모 숙소 ${d.created ?? 0}개 생성${d.skipped ? ` · ${d.skipped}개 이미 존재` : ''}`)
-    } catch { toast.error('숙소 데모 생성 중 오류') } finally { setCleaning(false) }
-  }
+  // 🏨 2026-07-20: 숙소 데모 생성은 seedDemo() 카테고리 분기(stay_voucher)로 통합 — 여긴 정리만.
   const clearStays = async () => {
     if (!confirm('데모 숙소(demo-stay-*)를 비활성 처리할까요?')) return
     setCleaning(true)
@@ -251,6 +254,9 @@ export default function AdminDongnedealImportPage() {
                   <option value="meal_voucher">맛집 이용권</option>
                   <option value="beauty_voucher">미용</option>
                   <option value="etc_voucher">기타</option>
+                  {/* 🏨 2026-07-20 (대표 — "데모 채우기 카테고리에서 숙소도"): 숙소는 별도 시드(/stays 검색용
+                      객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
+                  <option value="stay_voucher">🏨 숙소</option>
                   <option value="general">일반 상품</option>
                 </select>
                 {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
@@ -288,8 +294,7 @@ export default function AdminDongnedealImportPage() {
                 <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
                 <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
-                {/* 🏨 2026-07-20: 숙소(/stays) 데모 6종 — 멱등(slug demo-stay-N) */}
-                <button onClick={seedStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50">🏨 숙소 데모 채우기</button>
+                {/* 🏨 숙소 생성은 카테고리 '🏨 숙소' 선택 후 '데모 채우기' — 정리 버튼만 별도. */}
                 <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">숙소 데모 정리</button>
               </div>
             </div>
