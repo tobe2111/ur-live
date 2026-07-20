@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, saveInfluencerLeads } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, ensureInfluencerSchema, type InfluencerLead } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -53,6 +53,33 @@ interface AutoCollectStats {
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 
+/**
+ * 🚀 일괄 저장(DB.batch) — 행단위 INSERT 수백 subrequest 가 Free 한도를 깨던 것(2026-07-20 실사고)을
+ *   청크당 1 batch 호출로 축소. 의미는 saveInfluencerLeads 와 동일(INSERT OR IGNORE 멱등, changes 합산).
+ */
+async function saveLeadsBatch(
+  DB: D1Database, accountId: number, leads: InfluencerLead[],
+  meta: { category?: string | null; sourceKeyword?: string | null },
+): Promise<number> {
+  if (!leads.length) return 0
+  const sql = `INSERT OR IGNORE INTO ad_influencer_leads
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  let saved = 0
+  const CHUNK = 25
+  for (let i = 0; i < leads.length; i += CHUNK) {
+    const stmts = leads.slice(i, i + CHUNK).map(l => DB.prepare(sql).bind(
+      accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
+      l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
+      l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
+      meta.category ?? null, meta.sourceKeyword ?? null,
+    ))
+    const rs = await DB.batch(stmts).catch(() => null)
+    if (rs) for (const r of rs) if (r?.meta?.changes === 1) saved++
+  }
+  return saved
+}
+
 async function readSetting(DB: D1Database, key: string): Promise<string | null> {
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
   const v = row?.value
@@ -73,12 +100,11 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
     source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
-  for (const g of SEED) {
-    for (const kw of g.keywords) {
-      await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-        .bind(kw, g.category, 'seed').run().catch(() => null)
-    }
-  }
+  // 시드 ~40개 — 개별 INSERT(40 subrequest) 대신 1 batch (Free 한도 절약).
+  const stmts = SEED.flatMap(g => g.keywords.map(kw =>
+    DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+      .bind(kw, g.category, 'seed')))
+  await DB.batch(stmts).catch(() => null)
 }
 
 export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
@@ -129,6 +155,7 @@ function mineHashtags(text: string): string[] {
  */
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
   const DB = env.DB
+  await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
   await ensureDiscoveryKeywords(DB)
   const active = await DB.prepare('SELECT id, keyword, category FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<{ id: number; keyword: string; category: string | null }>().catch(() => null)
@@ -141,7 +168,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     return empty
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 12))
+  // ⚠️ 2026-07-20 실사고: batch=12 × 행단위 INSERT 수백 건이 Workers Free 호출당 한도 초과 →
+  //   241건 저장 후 중도 사망(통계 미기록, "수집 실패" 표시). 기본 4 로 축소 + 저장은 DB.batch(아래).
+  //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤.
+  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
   let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   cursor = cursor % kws.length
@@ -174,7 +204,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 15 })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
         } else {
           if (r.error === 'QUOTA') quotaHit = true
           if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -186,26 +216,33 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 30 })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
   }
 
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
+  //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
   const promoted: string[] = []
-  const activeCount = kws.length
-  let room = Math.max(0, MAX_ACTIVE_KEYWORDS - activeCount)
-  for (const [tag, freq] of hashtagFreq) {
-    if (freq < 1) continue
-    await DB.prepare(`INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
+  const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
+  if (topTags.length) {
+    const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
       VALUES (?, '자동', 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`).bind(tag, freq).run().catch(() => null)
+      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
+    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
+    // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
+    const room = Math.max(0, MAX_ACTIVE_KEYWORDS - kws.length)
     if (room > 0) {
-      const row = await DB.prepare('SELECT id, hits, active FROM ad_discovery_keywords WHERE keyword = ?').bind(tag).first<{ id: number; hits: number; active: number }>().catch(() => null)
-      if (row && row.active === 0 && row.hits >= AUTO_PROMOTE_HITS) {
-        await DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(row.id).run().catch(() => null)
-        promoted.push(tag); room--
+      const ph = topTags.map(() => '?').join(',')
+      const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
+        WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
+        .bind(AUTO_PROMOTE_HITS, ...topTags.map(([t]) => t), room)
+        .all<{ id: number; keyword: string }>().catch(() => null)
+      const rows = cands?.results || []
+      if (rows.length) {
+        await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)
+        promoted.push(...rows.map(r => r.keyword))
       }
     }
   }
