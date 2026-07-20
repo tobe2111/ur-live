@@ -444,7 +444,41 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       }
       created++
     }
-    return c.json({ success: true, data: { created, skipped, realPhotos, healed, requested: count, region: regionQ || null } })
+    // 🎲 v3.1 오퍼 다양화 (2026-07-20 대표 — "모두 스탠다드 숙박권으로 떠서 어색"): 우리가 생성한
+    //   오퍼명 패턴('평일/주말 1박 숙박권…') 행 전체를 id%3 규칙으로 [스탠다드 평일권 / 프리미엄 평일권 /
+    //   스탠다드 주말권] 고루 로테이션 + 가격을 해당 객실·요일가로 동기(멱등 수렴 — 목표명과 같으면 skip,
+    //   수동 개명 행은 패턴 밖이라 불침범). 신규 생성분도 이 패스가 같은 요청 안에서 다양화.
+    let varied = 0
+    try {
+      const roomSub = (col: string, off: number) =>
+        `(SELECT r.${col} FROM product_stay_rooms r WHERE r.product_id = p.id AND r.is_active = 1 ORDER BY r.display_order ASC LIMIT 1 OFFSET ${off})`
+      const vRows = await DB.prepare(
+        `SELECT p.id, p.name,
+                ${roomSub('name', 0)} AS r1_name, ${roomSub('base_price_weekday', 0)} AS r1_wd, ${roomSub('base_price_weekend', 0)} AS r1_we,
+                ${roomSub('name', 1)} AS r2_name, ${roomSub('base_price_weekday', 1)} AS r2_wd
+         FROM products p
+         WHERE p.slug LIKE 'demo-stay-%' AND (p.name LIKE '평일 1박 숙박권%' OR p.name LIKE '주말 1박 숙박권%')`
+      ).all<{ id: number; name: string; r1_name: string | null; r1_wd: number | null; r1_we: number | null; r2_name: string | null; r2_wd: number | null }>()
+      for (const v of (vRows.results || [])) {
+        if (!v.r1_name) continue
+        const tmpl = v.id % 3
+        const usePremium = tmpl === 1 && !!v.r2_name
+        const roomName = usePremium ? String(v.r2_name) : String(v.r1_name)
+        const wantName = tmpl === 2 ? `주말 1박 숙박권 (${roomName})` : `평일 1박 숙박권 (${roomName})`
+        const wantPrice = Number(tmpl === 2 ? v.r1_we : usePremium ? v.r2_wd : v.r1_wd) || 0
+        if (v.name === wantName) continue
+        const orig = wantPrice > 0 ? Math.round(wantPrice * 1.3 / 1000) * 1000 : 0
+        const r = await DB.prepare(
+          `UPDATE products SET name = ?,
+             price = CASE WHEN ? > 0 THEN ? ELSE price END,
+             original_price = CASE WHEN ? > 0 THEN ? ELSE original_price END,
+             updated_at = datetime('now')
+           WHERE id = ?`
+        ).bind(wantName, wantPrice, wantPrice, orig, orig, v.id).run().catch(() => null)
+        if (r && (r.meta.changes || 0) > 0) varied++
+      }
+    } catch { /* best-effort — 다양화 실패가 시드를 막지 않음 */ }
+    return c.json({ success: true, data: { created, skipped, realPhotos, healed, varied, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }
