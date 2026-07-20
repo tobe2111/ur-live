@@ -16,8 +16,10 @@ interface Lead {
   subscriber_count: number; video_count: number; thumbnail: string | null
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
-  contacted_at?: string | null; follow_up_at?: string | null
+  contacted_at?: string | null; follow_up_at?: string | null; contact_channel?: string | null
 }
+// 컨택 채널 — 서버 enum ↔ 한글 라벨.
+const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
 interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
@@ -31,7 +33,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
 interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
-interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string }
+interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
 
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', instagram: '인스타', tiktok: '틱톡' }
 // ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
@@ -158,6 +160,14 @@ export default function AdminInfluencerPoolPage() {
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
     catch { toast.error('변경 실패') }
+  }
+  // 컨택 채널 기록(이메일/DM/쪽지…) — 값 있으면 첫 접촉으로 보고 신규→컨택함 동반 승격.
+  async function setChannel(l: Lead, channel: string) {
+    try {
+      const promote = channel && l.status === 'new'
+      await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) })
+      setLeads(prev => prev.map(x => x.id === l.id ? { ...x, contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) } : x))
+    } catch { toast.error('변경 실패') }
   }
   async function editMemo(l: Lead) {
     const memo = window.prompt('메모(내부 관리용)', l.memo || '')
@@ -342,13 +352,13 @@ export default function AdminInfluencerPoolPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {keywords.map(k => (
-                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.category || '일반'} · ${k.source}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
+                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
                   className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-                  {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}
+                  {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}{k.saved_total ? <span className={k.active ? 'text-emerald-300' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : ''}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장.</p>
+            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로).</p>
           </div>
         </details>
 
@@ -466,6 +476,10 @@ export default function AdminInfluencerPoolPage() {
                     <td className="px-3 py-2">
                       <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
                         {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                      </select>
+                      <select value={l.contact_channel || ''} onChange={e => setChannel(l, e.target.value)} className="mt-1 block px-1.5 py-0.5 rounded border border-gray-200 text-[11px] text-gray-600 bg-white" title="컨택 채널 — 선택하면 자동으로 '컨택함' 처리">
+                        <option value="">채널…</option>
+                        {Object.entries(CHANNELS).map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
                       </select>
                       {l.contacted_at && (() => { const d = daysAgo(l.contacted_at); return d != null ? <div className="text-[11px] text-gray-400 mt-0.5">컨택 {d === 0 ? '오늘' : `${d}일 전`}</div> : null })()}
                       {l.follow_up_at && <div className={`text-[11px] mt-0.5 ${l.follow_up_at <= new Date().toISOString().slice(0, 10) ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>⏰ {l.follow_up_at}</div>}

@@ -381,6 +381,8 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   // 아웃리치 후속 관리 — 컨택 시점 + 다음 팔로업 예정일(무응답 리드 추적용).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME').run().catch(() => null)
+  // 컨택 채널(이메일/인스타DM/네이버쪽지/카톡/전화/기타) — memo 규칙 대신 구조화 필드.
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */

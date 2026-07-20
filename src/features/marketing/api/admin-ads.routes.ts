@@ -163,6 +163,11 @@ async function ensureKeywordTable(DB: D1Database) {
     id INTEGER PRIMARY KEY AUTOINCREMENT, keyword TEXT NOT NULL UNIQUE, category TEXT,
     active INTEGER NOT NULL DEFAULT 1, hits INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => null)
+  // 📊 키워드별 성과 컬럼(수집 엔진 ensureDiscoveryKeywords 와 동일 — 어드민이 먼저 조회해도 안전).
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
 }
 
 // GET /api/admin/ads/influencer-pool?platform=&category=&hasContact=1&q=&limit=
@@ -207,7 +212,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -245,6 +250,13 @@ app.patch('/influencer-pool/:id', async (c) => {
     if (['contacted', 'interested', 'contracted'].includes(b.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
   }
   if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  // 컨택 채널(이메일/인스타DM/네이버쪽지/카톡/전화/기타) — 빈 문자열이면 해제.
+  if (b.contact_channel !== undefined) {
+    const ch = b.contact_channel
+    if (ch === null || ch === '') sets.push('contact_channel = NULL')
+    else if (typeof ch === 'string' && ['email', 'dm', 'note', 'kakao', 'call', 'other'].includes(ch)) { sets.push('contact_channel = ?'); binds.push(ch) }
+    else return c.json({ success: false, error: '컨택 채널 값 오류' }, 400)
+  }
   if (b.follow_up_at !== undefined) {
     const f = b.follow_up_at
     if (f === null || f === '') sets.push('follow_up_at = NULL')
@@ -330,7 +342,8 @@ app.delete('/influencer-pool/:id', async (c) => {
 // GET /api/admin/ads/influencer-pool/keywords — 수집 키워드 목록(활성/후보)
 app.get('/influencer-pool/keywords', async (c) => {
   await ensureKeywordTable(c.env.DB)
-  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
+  // 성과순(saved_total) 정렬 — "잘 무는" 키워드가 위로. 지역 시딩 조정용.
+  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
   return c.json({ success: true, keywords: r?.results || [] })
 })
 
