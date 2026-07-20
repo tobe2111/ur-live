@@ -66,7 +66,7 @@ import ThemeProvider from '@/components/ThemeProvider'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
 // 🛡️ 2026-05-23 Frontend 에러 telemetry — window.onerror + unhandledrejection 캐치 → /api/_errors/log
-import { installErrorTelemetry } from '@/lib/error-telemetry'
+import { installErrorTelemetry, reportError } from '@/lib/error-telemetry'
 installErrorTelemetry()
 import { logRegionInfo, isKorea } from '@/shared/config/region'
 // 🛡️ 2026-05-27 (loading P1): env-validator (zod ~52KB) dynamic import — critical path 제거.
@@ -386,6 +386,9 @@ async function bootApp() {
       try {
         ;(window as unknown as { __urMounted?: number }).__urMounted = 1
         document.getElementById('ur-stuck-recover')?.remove()
+        // 🛡️ 2026-07-20: 정상 마운트 → 이 세션의 '복구 UI 본 적 있음' 플래그 해제(다음 느린 로드는
+        //   다시 부드러운 1단계부터 안내). 부트가드 showStuckUI 의 에스컬레이션 상태와 짝.
+        sessionStorage.removeItem('__ur_stuck_shown__')
       } catch { /* silent */ }
 
       // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
@@ -396,6 +399,20 @@ async function bootApp() {
       setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
     } catch (error) {
       console.error('[App] ❌ React 렌더링 실패:', error)
+      // 🛡️ 2026-07-20 (대표 신고 "새로고침 버튼 눌러도 계속 안됨" 전수조사): 렌더 실패는 *캐시 문제가 아니라*
+      //   결정적(deterministic) 에러다. __urMounted 를 안 세우면 index.html 부트가드의 12초 워치독이 '앱 미마운트'
+      //   로 오판해 "저장된 옛 버전이 남아 있어요" 복구 오버레이(z-index max)를 이 실제 에러 화면 위에 덮어씌운다
+      //   → 사용자는 진짜 원인 대신 캐시-복구 안내만 보고, __cb 캐시버스트로는 못 고치는 에러라 무한 새로고침
+      //   루프에 갇힌다. 마운트 신호를 세워 워치독을 잠재우고(진짜 에러 화면 노출) + 진단 beacon 을 남긴다.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+      } catch { /* silent */ }
+      try {
+        reportError('React render failed: ' + String((error as Error)?.message || error), {
+          stack: (error as Error)?.stack, tag: 'boot-render',
+        })
+      } catch { /* telemetry 실패 무시 */ }
       rootElement.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
           <div style="text-align: center; padding: 2rem;">
