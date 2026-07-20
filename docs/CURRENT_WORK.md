@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-20 — PC 그루폰화 배치 + 로딩 단일 통일 + 셀러 매장 콘솔 (대표 연속 지시, 전부 main 배포)
+- **상단 네비 전 페이지 공통**(그루폰식): `urdeal 로고+검색+앱(QR팝업)+유어딜에서 판매하세요+카테고리 바` 2행 — PC(lg+) 전 소비자 페이지(지도 /map 포함, 예외 0). `pc-fullbleed.ts` OWN_HEADER=[] + DesktopTopNav `LEGACY_OWN_HEADER`(<lg 자체 헤더 경로는 네비 미표시 — 태블릿 이중헤더 가드). 앱 QR 팝업은 createPortal(body) — blur 헤더가 fixed containing block 이 되는 잘림 수리. QR 링크는 앱 출시 전까지 모바일웹.
+- **교환권 /vouchers PC 2단**: 좌 필터레일(딜잔액+카테고리, sticky 120px) + 우 그리드. 브랜드는 레일 하단→상품 위 가로 스트립(대표 "불편"). 카드/행은 `vouchers/shared.tsx` 추출(래칫).
+- **이용권 상세 그루폰식**: PC = 좌 콘텐츠(갤러리→섹션탭[정보/위치/리뷰, 핀·공유 우측]→무엇을 기대하세요→지도→리뷰→다른 공구) + 우 360px sticky 구매박스(`group-buy/DealPurchaseBox` — 옵션카드/수량/CTA/안심배지, handleJoin 공유). 하단 구매바는 모바일 전용. `DealMenuList`/`OtherDealsRow` 추출(973 래칫 준수).
+- **PC 홈**: 좌 레일 → 상단 가로 카테고리 + 위치바, 우측 빈 공간에 지도 썸네일 버튼(`PcHomeMapButton`). 알림 벨 = PC 인라인 드롭다운(`NotificationDropdown`).
+- **로딩 단일 통일(도매몰 제외)**: 소비자 PAGE-level 커스텀 로더 11곳(+Toss 잠금 PaymentSuccessPage — 대표 승인 [UNLOCK]) → BrandLoader. BrandLoader fullScreen = 불투명 fixed inset-0 z-10000(뒤 비침 수리) + `v7_startTransition=false`(청크 로딩 중 이전 페이지 잔존 수리). **신규 가드 `check-consumer-loader-unify.mjs`**(verify strict).
+- **홈 피드 수리**: '전체 동네딜 보기' 죽은 버튼(/group-buy→홈 리다이렉트) → /map. 지역필터 누수(주소-미상 딜이 전 지역 통과 — "부산인데 연남버거") → 지역 선택 시 제외 + 폴백 안내 배너.
+- **셀러 대시보드 = 순수 매장 콘솔**(`SELLER_STORE_ONLY_MODE`, 가역): 온라인 상품/도매 소싱 nav 숨김(전 타입), 대납 검토→이용권 그룹, nav 최상단 '내 링크샵'(/u/me), 전환퍼널(라이브 잔재) 숨김. 상품 판매 = 링크샵 일원화. platform-model.md 갱신. **guide-update-pending**(셀러 가이드 시드 후속).
+- **남은 백로그**: ① 장바구니/결제 PC 정돈 ② 셀러 가이드 시드 갱신 ③ 지역 매칭 좌표 기반 고도화(현 텍스트) ④ 앱 QR 스토어 URL 교체(출시 시).
+
 ## ✅ 2026-07-20 — 유어애즈 인플루언서 자동 수집(Phase E, "무료 프리미엄") — 대표 "DB 자동 계속 수집"
 ur-ads 일일 cron 이 무료 공식 API(YouTube·네이버)로 인플루언서를 자동 발굴해 **공용 풀**(`ad_influencer_leads.account_id=0`)에 누적. 게이트 `ADS_AUTO_COLLECT_ENABLED`(env, 기본 OFF). 무료 프리미엄 3종: ① 동적 키워드 테이블(`ad_discovery_keywords` 시드+어드민추가) ② 출처 카테고리 태그 ③ 해시태그 자가확장(≥3회 등장 시 키워드 자동 활성, 상한 200). 멱등(UNIQUE INSERT OR IGNORE)·YouTube 공유한도 보호(QUOTA 시 네이버만). 어드민 `/admin/influencer-pool`(열람/큐레이션/키워드/수동수집) — 수동 트리거는 `env.ADS` 서비스바인딩으로 ur-ads `/__ads/collect` 위임(발굴 코드 메인 미유입, inline SQL 만). 인스타/틱톡 직접 발굴은 유료 제공사 필요(무료 API 부재) — `INFLUENCER_PROVIDER_KEY` 있으면 자동 편입(현재 미설정 skip). ⚠️ [PIPA] 공개 데이터·공식 API 수집만, 마케팅 발송은 사전동의 별도(수집 ≠ 발송).
 - **대표 활성**: Cloudflare(ur-live) → Variables → `ADS_AUTO_COLLECT_ENABLED=true` + 재배포(또는 어드민 "지금 수집" 버튼으로 즉시 1회). 설계: `docs/design/urads-worker-split.md` §7 Phase E.
