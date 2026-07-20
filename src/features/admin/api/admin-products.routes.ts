@@ -1422,7 +1422,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
-    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
+    const { fetchNaverImageUrl, fetchNaverImageUrls } = await import('../../../worker/utils/naver-image-search');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
@@ -1479,17 +1479,24 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           regionCenter,
         ).catch(() => null))
       );
-      // 🖼️ 2단계: **그 매장 이름으로** 실사진 검색(진짜 그 가게 사진 확률 ↑) → 실패 시 업종 일반 사진 폴백.
-      const resolvedImgs = await Promise.all(
-        work.map((w, i) => resolvedPlaces[i]?.name
-          ? fetchNaverImageUrl(c.env, `${resolvedPlaces[i]!.name} ${w.t.pq}`, 0)
-              .then((u) => u || fetchNaverImageUrl(c.env, w.t.iq || w.t.pq, Math.floor(Math.random() * 8)))
-              .catch(() => null)
-          : Promise.resolve(null))
+      // 🖼️ 2단계: **그 매장 이름으로** 실사진 3~5장(랜덤) 스코어링 검색 — 2026-07-20 대표
+      //   ("연관없는 사진 가끔" + "3~5장 랜덤 등록"). fetchNaverImageUrls 가 제목-매장명 토큰 매칭 +
+      //   플레이스/블로그 CDN 우대 + 스톡사진 배제로 관련도 순 반환. 실패 시 업종 일반 사진 폴백(1장).
+      const resolvedImgSets = await Promise.all(
+        work.map(async (w, i) => {
+          if (!resolvedPlaces[i]?.name) return [] as string[]
+          try {
+            const arr = await fetchNaverImageUrls(c.env, `${resolvedPlaces[i]!.name} ${w.t.pq}`, { count: 3 + Math.floor(Math.random() * 3), nameQuery: resolvedPlaces[i]!.name })
+            if (arr.length) return arr
+            const fb = await fetchNaverImageUrl(c.env, w.t.iq || w.t.pq, Math.floor(Math.random() * 8))
+            return fb ? [fb] : []
+          } catch { return [] as string[] }
+        })
       );
-      // 🎯 2026-07-03: 검색된 실사진을 우리 R2 로 재호스팅 → 저장 URL 은 항상 우리 도메인(/api/media/…).
+      // 🎯 2026-07-03: 대표(카드) 사진 1장만 우리 R2 로 재호스팅(/api/media/…) — 서브리퀘스트 한도 보호.
+      //   추가 갤러리 사진(2~5번째)은 search.pstatic(네이버 자체 CDN, 인증서·핫링크 안전) URL 그대로 사용.
       const validImgs = await Promise.all(
-        resolvedImgs.map((u) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, u)),
+        resolvedImgSets.map((arr) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)),
       );
       for (let i = 0; i < work.length && seeded < reqCount; i++) {
         const t = work[i].t;
@@ -1558,6 +1565,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
         if (pid > 0 && place?.placeUrl) {
           await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
+        }
+        // 🖼️ 2026-07-20 (대표 "사진 3~5장 랜덤"): 갤러리 = [대표(R2 재호스팅)] + 추가 실사진(pstatic CDN)
+        //   → products.images(JSON, 상세 스와이프 갤러리 소비). 컬럼 미존재 환경 조용히 skip.
+        {
+          const extraImgs = resolvedImgSets[i].slice(1, 5);
+          if (pid > 0 && extraImgs.length > 0) {
+            await DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+              .bind(JSON.stringify([img, ...extraImgs]), pid).run().catch(() => {});
+          }
         }
         // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
         if (pid > 0 && !isPrelaunch) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });  // 🏷️ 오픈 예정형 = 리뷰 미부착
