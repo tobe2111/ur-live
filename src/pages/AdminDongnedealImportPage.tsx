@@ -113,7 +113,7 @@ export default function AdminDongnedealImportPage() {
       //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
       if (seedCategory === 'stay_voucher') {
         // 실숙소 매칭+실사진(카카오/네이버 외부호출) — 요청당 한도 보호 위해 6개씩 청크(동네딜 8개 청크와 동일 이유).
-        let sCreated = 0, sSkipped = 0, sPhotos = 0
+        let sCreated = 0, sSkipped = 0, sPhotos = 0, sHealed = 0
         const SCHUNK = 6
         for (let done = 0; done < seedCount; done += SCHUNK) {
           const r = await api.post('/api/admin/stays/seed-demo', {
@@ -122,9 +122,13 @@ export default function AdminDongnedealImportPage() {
           }, { ...h, timeout: 300000 })
           const d = r.data?.data || {}
           sCreated += Number(d.created ?? 0); sSkipped += Number(d.skipped ?? 0); sPhotos += Number(d.realPhotos ?? 0)
+          sHealed += Number(d.healed ?? 0)
         }
+        const healNote = sHealed ? ` · 기존 ${sHealed}개 보정(좌표·가격·이용권명)` : ''
         if (sCreated > 0) {
-          toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
+          toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
+        } else if (sHealed > 0) {
+          toast.success(`신규 생성 0 —${healNote.replace(' ·', '')} 완료${sSkipped ? ` · ${sSkipped}개 건너뜀` : ''}`)
         } else {
           toast.error(sSkipped ? `생성 0 — ${sSkipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
         }
