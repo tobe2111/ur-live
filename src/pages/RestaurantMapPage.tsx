@@ -15,7 +15,7 @@ import { storage } from '@/shared/utils/storage'
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
-import RestaurantList from './restaurant-map/RestaurantList'
+import RestaurantList from './restaurant-map/RestaurantList'; import SiteFooter from '@/components/main/SiteFooter'
 import NearbyEmptyBanner from './restaurant-map/NearbyEmptyBanner'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
 import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
@@ -697,10 +697,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             selected={null}
             userLoc={userLoc}
             onSelect={(r) => navigate(`/products/${r.id}`)}
-            fcfsMap={fcfsMap}
-            onApplyFcfs={applyFcfs}
-            voucherType={voucherType}
+            fcfsMap={fcfsMap} onApplyFcfs={applyFcfs} voucherType={voucherType}
           />
+          <SiteFooter />{/* 🧭 2026-07-19 대표 — 서비스 최하단 소개 3종 링크(모바일 홈=리스트라 푸터 부재였음) */}
         </div>
         {/* 플로팅 '지도로 보기' 버튼 — 하단 네비 위 중앙.
             🎨 2026-07-03 (대표 시안 A 선택): 이모지(📍/기기별 편차) → lucide Map(접힌 지도) 라인 아이콘.
