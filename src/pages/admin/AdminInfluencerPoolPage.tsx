@@ -185,12 +185,15 @@ export default function AdminInfluencerPoolPage() {
     catch { toast.error('저장 실패') }
   }
   async function mergeDuplicates() {
-    if (!window.confirm('같은 이메일의 중복 리드를 통합할까요? (상태·정보가 가장 앞선 1건만 남기고 나머지 삭제)')) return
+    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들(이메일 없는 크로스플랫폼 동일인)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
     setMerging(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
-      if (r.data?.success) { toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리(${formatNumber(r.data.groups)}명)`); await Promise.all([loadLeads(), loadMeta()]) }
-      else toast.error('통합 실패')
+      if (r.data?.success) {
+        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0
+        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)})`)
+        await Promise.all([loadLeads(), loadMeta()])
+      } else toast.error('통합 실패')
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
   }
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
