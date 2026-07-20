@@ -214,8 +214,19 @@ export async function discoverYouTubeInfluencers(
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: string | undefined) => String(s || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
 
+/** 네이버 블로그 RSS(공개 피드)로 최근 글 본문 텍스트 취득 — 검색 스니펫보다 풍부해 컨택(이메일/카톡/인스타) 커버.
+ *  네이버 오픈API 쿼터와 무관(단순 HTTP GET). 실패/차단 시 빈 문자열(fail-soft). */
+async function fetchNaverBlogRss(handle: string): Promise<string> {
+  if (!/^[A-Za-z0-9_-]{2,40}$/.test(handle)) return ''
+  try {
+    const res = await fetch(`https://rss.blog.naver.com/${handle}.xml`, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) return ''
+    return (await res.text()).slice(0, 20000) // 최근 글 몇 개면 충분
+  } catch { return '' }
+}
+
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -247,6 +258,21 @@ export async function discoverNaverBloggers(
   const leads = Array.from(byBlog.values())
     .map(({ _matches, ...l }) => ({ ...l, video_count: _matches })) // video_count = 매칭 글 수(활동 프록시)
     .sort((a, b) => b.video_count - a.video_count)
+
+  // 📧 컨택 보충 — 이메일 없는 블로거는 RSS(공개 피드)로 최근 글 본문 스캔(활동 많은 순 상한 enrichMax).
+  //    유튜브 영상설명 스캔과 동형. pickBusinessEmail 로 협찬문의 맥락 이메일 우선.
+  const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 8))
+  const targets = leads.filter(l => !l.email && l.handle).slice(0, enrichMax)
+  for (const l of targets) {
+    const rss = await fetchNaverBlogRss(l.handle!)
+    if (!rss) continue
+    const c = extractContacts(rss)
+    const biz = pickBusinessEmail(rss)
+    if (biz) l.email = biz
+    if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
+    if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
+    if (!l.links && c.links.length) l.links = c.links.join(' ')
+  }
   return { ok: true, leads }
 }
 
