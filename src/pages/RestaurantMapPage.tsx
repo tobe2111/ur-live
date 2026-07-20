@@ -729,7 +729,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }
 
   return (
-    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden pb-16">
+    /* 🖥️ 2026-07-19 (대표 — "/map 도 상단바"): lg+ 는 전역 DesktopTopNav(2행 ~102px)가 위에 오므로
+       지도 표면 높이를 그만큼 축소(여기어때식 [네비 위 + 지도 분할 아래]). <lg 는 기존 풀스크린 그대로. */
+    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
