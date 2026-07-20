@@ -71,6 +71,9 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
      베타 로그인 사용자는 1회 재로그인** 필요(그전 토큰은 메인 JWT 로 서명됨). `/api/admin/ads/*` 는 메인 어드민 JWT
      라 무관.
    - `YOUTUBE_API_KEY` · `NAVER_SEARCH_CLIENT_ID/SECRET`(또는 `NAVER_CLIENT_ID/SECRET`) · `DATA_ENCRYPTION_KEY` · `ANTHROPIC_API_KEY` · `ADS_*` 플래그 · `RESEND_*`(선택) 등 유어애즈가 쓰는 것.
+   - 📌 **계정 메모(대표 지시 2026-07-20 "꼭 기억해줘")**: `YOUTUBE_API_KEY` 는 **Google Cloud Console 을
+     `urteam.corp@gmail.com` 계정으로 로그인**해서 확인(APIs & Services → Credentials → SHOW KEY).
+     네이버 키는 developers.naver.com(동일 맥락). 키 분실 시 이 계정으로 재확인.
 4. **메인 Pages(ur-live) → Settings → Functions → Service bindings**: 바인딩명 `ADS` → Worker `ur-ads`.
    ⚠️ 이 바인딩은 **ur-ads 가 아니라 *메인 ur-live Pages* 프로젝트**에 만든다(ur-ads 의 Bindings 탭엔 안 보임).
 5. **메인 Pages(ur-live) → Settings → Variables**: `ADS_WORKER_ENABLED` = `true`(컷오버). 미설정/기타값이면 OFF(현행).
