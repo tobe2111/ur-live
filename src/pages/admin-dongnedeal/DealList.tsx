@@ -36,6 +36,8 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   const [fMode, setFMode] = useState('')        // '' | 'live' | 'prelaunch'
   const [fSource, setFSource] = useState('')    // '' | 'real' | 'demo'
   const [fStatus, setFStatus] = useState('')    // '' | 'active' | 'hidden'
+  // 🔃 2026-07-20 (대표 — "최신순으로도"): 정렬 — 서버 sort 화이트리스트와 1:1.
+  const [fSort, setFSort] = useState('newest')  // newest | oldest | name | price_high | price_low
   const fSidoRegion = findRegionByKey(fSido)
 
   const openFcfs = async (d: DealRow) => {
@@ -77,6 +79,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     if (fMode) qs.set('mode', fMode)
     if (fSource) qs.set('source', fSource)
     if (fStatus) qs.set('status', fStatus)
+    if (fSort && fSort !== 'newest') qs.set('sort', fSort)
     api.get(`/api/admin/dongnedeal/list?${qs.toString()}`, h)
       .then((r) => {
         if (r.data?.success) {
@@ -89,7 +92,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       .finally(() => { if (append) setLoadingMore(false); else setLoading(false) })
   }
   // nonce(외부 갱신) + 필터 변경 시 처음부터 재조회.
-  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus, fSort]) // eslint-disable-line react-hooks/exhaustive-deps
   const anyFilter = !!(fSido || fCategory || fMode || fSource || fStatus)
   const resetFilters = () => { setFSido(''); setFDistrict(''); setFCategory(''); setFMode(''); setFSource(''); setFStatus('') }
 
@@ -200,6 +203,13 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
           <option value="">전체 상태</option>
           <option value="active">노출중</option>
           <option value="hidden">숨김</option>
+        </select>
+        <select value={fSort} onChange={(e) => setFSort(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="정렬">
+          <option value="newest">최신 등록순</option>
+          <option value="oldest">오래된순</option>
+          <option value="name">이름순</option>
+          <option value="price_high">가격 높은순</option>
+          <option value="price_low">가격 낮은순</option>
         </select>
         {anyFilter && (
           <button onClick={resetFilters} className="text-[12px] text-gray-500 hover:text-gray-800 underline underline-offset-2">필터 초기화</button>
