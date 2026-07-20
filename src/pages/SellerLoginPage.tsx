@@ -284,6 +284,9 @@ export default function SellerLoginPage() {
                 >
                   {t('auth.forgotPassword')}
                 </Link>
+                <Link to="/seller/relink" className="block mt-1.5 text-brand font-bold hover:underline">
+                  {t('seller.relink.entry', { defaultValue: '카카오 계정이 바뀌셨나요? 계정 재연결 →' })}
+                </Link>
               </div>
 
               {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
