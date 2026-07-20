@@ -133,12 +133,23 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     }
   }
 
+  // 🔎 2026-07-20 XML 이스케이프 — 상품 이미지 URL 의 `&`(예: ?width=836&height=607) 등이
+  //   미이스케이프로 들어가면 sitemap XML 이 깨져 네이버/구글이 파싱 실패("시스템 오류").
+  //   loc/image:loc 에 반드시 적용. & 를 가장 먼저 치환(이중 이스케이프 방지).
+  const xmlEscape = (s: string) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls.map(u => {
-    const imageBlock = u.image ? `\n    <image:image><image:loc>${u.image.startsWith('http') ? u.image : origin + u.image}</image:loc></image:image>` : '';
-    const lastmodBlock = u.lastmod ? `\n    <lastmod>${u.lastmod.replace(' ', 'T')}Z</lastmod>` : '';
-    return `  <url>\n    <loc>${origin}${u.loc}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
+    const imgLoc = u.image ? (u.image.startsWith('http') ? u.image : origin + u.image) : '';
+    const imageBlock = imgLoc ? `\n    <image:image><image:loc>${xmlEscape(imgLoc)}</image:loc></image:image>` : '';
+    const lastmodBlock = u.lastmod ? `\n    <lastmod>${xmlEscape(u.lastmod.replace(' ', 'T'))}Z</lastmod>` : '';
+    return `  <url>\n    <loc>${xmlEscape(origin + u.loc)}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
   }).join('\n')}
 </urlset>`;
 
