@@ -84,17 +84,17 @@ export default function StaysSearchPage() {
           </button>
         </div>
 
-        {/* 🧭 2026-07-20 (대표 — "다른 카테고리랑 너무 분리"): 칩 목적지 수리 — 기존 /group-buy?category= 는
-            홈 리다이렉트(쿼리 무시)라 전부 죽은 링크였음 → 실제 브라우즈 표면 /map?category= 로(파라미터
-            지원 신설). 라벨은 홈 카테고리와 SSOT 정합(식사/미용/숙소/기타 — '맛집 이용권' 폐기).
-            '일반 상품'(general)은 제거된 카테고리(2026-07-02 동네딜 분리)라 칩 삭제. */}
+        {/* 🧭 2026-07-20 v2 (대표 신고 "카테고리 클릭하면 가끔 저절로 동네딜로 넘어감" 전수조사): 1차 수리가
+            칩을 /map?category= 로 보냈는데, 홈 칩과 똑같이 생긴 칩이 동네딜 **지도**로 점프해 "저절로 동네딜"
+            체감의 원인이 됨 → 홈 카테고리 필터(`/?category=`) 복귀로 정정(PC PcHomePage·모바일 지도 홈 둘 다
+            ?category 초기화 지원). 라벨은 홈 카테고리와 SSOT 정합. 지도는 명시적 '지도에서 보기' 링크만. */}
         <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
           {[
-            { key: 'all', to: '/map', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-            { key: 'meal_voucher', to: '/map?category=meal_voucher', label: t('groupBuy.categoryMeal', { defaultValue: '🍽️ 식사' }) },
-            { key: 'beauty_voucher', to: '/map?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
+            { key: 'all', to: '/', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
+            { key: 'meal_voucher', to: '/?category=meal_voucher', label: t('groupBuy.categoryMeal', { defaultValue: '🍽️ 식사' }) },
+            { key: 'beauty_voucher', to: '/?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
             { key: 'stay_voucher', to: '/stays', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
-            { key: 'etc_voucher', to: '/map?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
+            { key: 'etc_voucher', to: '/?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
           ].map((cat) => {
             const active = cat.key === 'stay_voucher'
             return (
