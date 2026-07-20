@@ -67,13 +67,14 @@ export default function StaysSearchPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-safe-nav">
-      <SEO title="숙소 공구 - 유어딜" description="펜션 호텔 모텔 등 매장 이용권 — 최대 70% 할인" url="/stays" />
+      {/* 🏷️ 2026-07-20 (대표 — "숙소 공구 표현 맞나?"): '공구' 프레이밍 폐기(즉시판매 전환·명칭 SSOT) → '숙소'. */}
+      <SEO title="숙소 - 유어딜" description="펜션·호텔·풀빌라 숙소 이용권 — 할인가로 예약하고 매장에서 바로 사용" url="/stays" />
 
       {/* Sticky Top Bar */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <Link to="/" className="text-sm font-bold">←</Link>
-          <h1 className="text-base font-bold flex-1">🏨 숙소 공구</h1>
+          <h1 className="text-base font-bold flex-1">🏨 숙소</h1>
           <button
             onClick={() => setShowFilters(true)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.06]"
@@ -83,16 +84,17 @@ export default function StaysSearchPage() {
           </button>
         </div>
 
-        {/* 🧭 2026-06-17: 동네딜 카테고리 칩 — /stays 도 같은 분류 내비(일관성). 숙소만 현재 페이지,
-            나머지는 동네딜(/group-buy?category=)로. 숙소는 전용 검색/예약이 필요해 별도 페이지 유지. */}
+        {/* 🧭 2026-07-20 (대표 — "다른 카테고리랑 너무 분리"): 칩 목적지 수리 — 기존 /group-buy?category= 는
+            홈 리다이렉트(쿼리 무시)라 전부 죽은 링크였음 → 실제 브라우즈 표면 /map?category= 로(파라미터
+            지원 신설). 라벨은 홈 카테고리와 SSOT 정합(식사/미용/숙소/기타 — '맛집 이용권' 폐기).
+            '일반 상품'(general)은 제거된 카테고리(2026-07-02 동네딜 분리)라 칩 삭제. */}
         <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
           {[
-            { key: 'all', to: '/group-buy', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-            { key: 'meal_voucher', to: '/group-buy?category=meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 맛집 이용권' }) },
-            { key: 'beauty_voucher', to: '/group-buy?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
+            { key: 'all', to: '/map', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
+            { key: 'meal_voucher', to: '/map?category=meal_voucher', label: t('groupBuy.categoryMeal', { defaultValue: '🍽️ 식사' }) },
+            { key: 'beauty_voucher', to: '/map?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
             { key: 'stay_voucher', to: '/stays', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
-            { key: 'etc_voucher', to: '/group-buy?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
-            { key: 'general', to: '/group-buy?category=general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 일반 상품' }) },
+            { key: 'etc_voucher', to: '/map?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
           ].map((cat) => {
             const active = cat.key === 'stay_voucher'
             return (
@@ -145,9 +147,12 @@ export default function StaysSearchPage() {
             <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-sm font-bold bg-gray-900 text-white dark:bg-white dark:text-gray-900">다시 시도</button>
           </div>
         ) : items.length === 0 ? (
+          // 🧭 2026-07-20 (대표 — 빈 화면이 막다른 골목): 차가운 '검색 결과 없음' → 안내 + 다른 딜 CTA.
           <div className="text-center py-20">
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">검색 결과가 없습니다</p>
+            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">조건에 맞는 숙소가 아직 없어요</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">날짜·인원을 바꿔 보거나, 주변 다른 딜을 둘러보세요.</p>
+            <Link to="/map" className="inline-block px-5 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold">지도에서 동네딜 보기 →</Link>
           </div>
         ) : (
           // 🖥️ 2026-07-16 (풀너비): 모바일 1열 → PC 최대 4열(교환권 그리드와 정합).
