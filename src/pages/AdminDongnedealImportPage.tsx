@@ -112,9 +112,22 @@ export default function AdminDongnedealImportPage() {
       //   자동 — /stays 검색 스키마). 지역/개수 옵션 공유. 일정·인원 옵션 불필요: 캘린더 무행 = 전 날짜
       //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
       if (seedCategory === 'stay_voucher') {
-        const r = await api.post('/api/admin/stays/seed-demo', { region: regionParam || undefined, count: seedCount }, { ...h, timeout: 120000 })
-        const d = r.data?.data || {}
-        toast.success(`데모 숙소 ${d.created ?? 0}개 생성${d.region ? ` (${d.region})` : ''}`)
+        // 실숙소 매칭+실사진(카카오/네이버 외부호출) — 요청당 한도 보호 위해 6개씩 청크(동네딜 8개 청크와 동일 이유).
+        let sCreated = 0, sSkipped = 0, sPhotos = 0
+        const SCHUNK = 6
+        for (let done = 0; done < seedCount; done += SCHUNK) {
+          const r = await api.post('/api/admin/stays/seed-demo', {
+            region: regionParam || undefined,
+            count: Math.min(SCHUNK, seedCount - done),
+          }, { ...h, timeout: 300000 })
+          const d = r.data?.data || {}
+          sCreated += Number(d.created ?? 0); sSkipped += Number(d.skipped ?? 0); sPhotos += Number(d.realPhotos ?? 0)
+        }
+        if (sCreated > 0) {
+          toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
+        } else {
+          toast.error(sSkipped ? `생성 0 — ${sSkipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
+        }
         loadStats(); setListNonce((nn) => nn + 1)
         setCleaning(false)
         return

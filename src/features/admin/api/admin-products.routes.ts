@@ -1239,7 +1239,8 @@ async function resolveRegionCenter(
   } catch { return null; }
 }
 
-async function kakaoPlaceLookup(
+// 🏨 2026-07-20: 숙소 데모 시드(admin-stays.routes)도 동일한 실매장 매칭을 쓰도록 export.
+export async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
   pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
@@ -1907,6 +1908,18 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
 
     const whereClause = where.join(' AND ');
+    // 🔃 2026-07-20 (대표 — "최신순으로도 보고 싶다"): 정렬 화이트리스트. 기본 최신순은 기존과 동일하되
+    //   **id DESC tie-break 추가** — 한 배치로 시드된 데모는 created_at(초 단위)이 동일해 동순위 순서가
+    //   임의였음(최신순처럼 안 보이던 원인). id 는 단조증가라 배치 내에서도 진짜 등록순 보장.
+    const sortParam = String(c.req.query('sort') || '').trim();
+    const ORDER_SQL: Record<string, string> = {
+      newest: 'created_at DESC, id DESC',
+      oldest: 'created_at ASC, id ASC',
+      name: 'name ASC, id DESC',
+      price_high: 'price DESC, id DESC',
+      price_low: 'price ASC, id DESC',
+    };
+    const orderBy = ORDER_SQL[sortParam] || ORDER_SQL.newest;
     // 전체 개수(같은 WHERE) — '더 보기' 판정 + 헤더 표시용.
     const totalRow = await c.env.DB.prepare(
       `SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`
@@ -1915,7 +1928,7 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
               COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
-         FROM products WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+         FROM products WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
