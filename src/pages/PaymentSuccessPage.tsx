@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -293,16 +294,9 @@ export default function PaymentSuccessPage() {
     return () => clearTimeout(t)
   }, [autoReturnSec, navigate])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-[#6e6e73] dark:text-gray-400 font-medium">{t('paymentSuccess.approving')}</p>
-        </div>
-      </div>
-    )
-  }
+  // 🎯 2026-07-18 [UNLOCK] 로딩 단일화(대표 승인 "통일해") — loading=true 동안의 스피너를 유어딜 BrandLoader 로.
+  //   ⚠️ 결제 확정/금액검증/TossPaymentObject(receipt/cashReceipt/easyPay/card) 표시 로직은 loading=false 이후라 전부 byte-불변.
+  if (loading) return <BrandLoader fullScreen label={t('paymentSuccess.approving')} />
 
   if (error) {
     return (
