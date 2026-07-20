@@ -293,11 +293,11 @@ const STAY_SPOTS = [
   { label: '서울 성수', sido: '서울', sigungu: '성동구', addr: '서울 성동구 연무장길', lat: 37.5446, lng: 127.0561 },
 ]
 const STAY_TYPES = [
-  { type: 'pension', label: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '독채형 펜션 — 바비큐 테라스와 프라이빗한 휴식.' },
-  { type: 'hotel', label: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트.' },
-  { type: 'guesthouse', label: '스테이', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '감성 숙소 — 조용한 골목에서 즐기는 로컬 감성.' },
-  { type: 'resort', label: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
-  { type: 'glamping', label: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
+  { type: 'pension', label: '펜션', kakao: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '독채형 펜션 — 바비큐 테라스와 프라이빗한 휴식.' },
+  { type: 'hotel', label: '호텔', kakao: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트.' },
+  { type: 'guesthouse', label: '스테이', kakao: '게스트하우스', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '감성 숙소 — 조용한 골목에서 즐기는 로컬 감성.' },
+  { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
+  { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
 ]
 
 adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
@@ -319,25 +319,42 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       const m = /^demo-stay-(\d+)$/.exec(r.slug || '')
       if (m) n = Math.max(n, Number(m[1]))
     }
-    let created = 0
+    // 🏨 2026-07-20 v2 (대표 — "다른 데모처럼 실제처럼"): 동네딜 데모와 동일한 실제화 2단 —
+    //   ① 카카오 실숙소 매칭(kakaoPlaceLookup 랜덤 — 실제 있는 펜션/호텔만 데모화, 실명·실주소·실좌표)
+    //   ② 네이버 실사진(fetchNaverImageUrl — 매장명 우선, 실패 시 "{지역} {유형}" 일반 검색, 최후 picsum).
+    //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
+    const { kakaoPlaceLookup } = await import('./admin-products.routes')
+    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search')
+    let created = 0, skipped = 0, realPhotos = 0
     for (let i = 0; i < count; i++) {
+      const spot = spots[(n + 1 + i) % spots.length]
+      const ty = STAY_TYPES[(n + 1 + i) % STAY_TYPES.length]
+      // ① 실숙소 매칭 — 스팟 좌표 반경 20km 거리순 + 랜덤 후보(같은 지역 재시드에도 다른 실숙소).
+      const place = await kakaoPlaceLookup(c.env, `${spot.label} ${ty.kakao}`, -1, { x: String(spot.lng), y: String(spot.lat) })
+      if (!place?.name || place.lat == null || place.lng == null) { skipped++; continue }
+      // 같은 실숙소 중복 시드 방지(이름 정확일치).
+      const dup = await DB.prepare(`SELECT id FROM products WHERE category = 'stay_voucher' AND name = ? LIMIT 1`)
+        .bind(place.name).first<{ id: number }>().catch(() => null)
+      if (dup?.id) { skipped++; continue }
       n++
       const slug = `demo-stay-${n}`
-      const spot = spots[(n + i) % spots.length]
-      const ty = STAY_TYPES[n % STAY_TYPES.length]
-      const mod = ty.mods[n % ty.mods.length]
-      const name = `${spot.label} ${mod} ${ty.label}`
-      const desc = `${spot.label}의 ${mod} ${ty.label}. ${ty.desc}`
-      // 좌표 지터(±~1.5km) — 같은 스팟 반복 시 지도에서 겹치지 않게(결정적 — 번호 기반).
-      const jLat = spot.lat + (((n * 7) % 21) - 10) * 0.0015
-      const jLng = spot.lng + (((n * 13) % 21) - 10) * 0.0015
-      const img = `https://picsum.photos/seed/${slug}/800/600`
+      // ② 실사진 — 매장명 검색 → 지역+유형 일반 검색 → picsum 폴백.
+      let img = await fetchNaverImageUrl(c.env, place.name, 0).catch(() => null)
+      if (!img) img = await fetchNaverImageUrl(c.env, `${spot.label} ${ty.kakao}`, Math.floor(Math.random() * 8)).catch(() => null)
+      if (img) realPhotos++
+      if (!img) img = `https://picsum.photos/seed/${slug}/800/600`
+      const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
       const ins = await DB.prepare(
         `INSERT INTO products (seller_id, name, description, image_url, price, category, product_type, is_active, slug, created_at, updated_at)
          VALUES (NULL, ?, ?, ?, 0, 'stay_voucher', 'featured', 1, ?, datetime('now'), datetime('now'))`
-      ).bind(name, desc, img, slug).run()
+      ).bind(place.name, desc, img, slug).run()
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
+      // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
+      if (place.placeUrl) {
+        const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {})
+      }
       const star = ty.type === 'hotel' || ty.type === 'resort' ? 3 + (n % 3) : null
       await DB.prepare(
         `INSERT INTO product_stay_info (
@@ -347,11 +364,12 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
            min_nights, advance_booking_days)
          VALUES (?, ?, ?, 2, '15:00', '11:00', ?, ?, ?, ?, ?, ?, ?, 'standard', ?, 1, 90)`
       ).bind(
-        pid, ty.type, star, `${spot.addr} ${100 + (n % 80)}`, spot.sido, spot.sigungu, jLat, jLng,
+        pid, ty.type, star, place.address || `${spot.addr}`, spot.sido, spot.sigungu, place.lat, place.lng,
         JSON.stringify(['무료 주차', '와이파이', ty.type === 'glamping' ? '개별 화로' : '조식']),
         JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), desc,
       ).run()
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
+      const mod = ty.mods[n % ty.mods.length]
       const baseWd = 69000 + ((n % 6) * 20000)
       const rooms = [
         { name: `스탠다드 ${ty.label === '글램핑' ? '텐트' : '룸'}`, bg: 2, mg: 2 + ((n % 2) * 2), wd: baseWd, we: Math.round(baseWd * 1.4 / 1000) * 1000 },
@@ -367,12 +385,12 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
            VALUES (?, ?, NULL, ?, ?, ?, 20000, ?, ?, 3, ?, ?, 1)`
         ).bind(
           pid, r.name, order, r.bg, r.mg, r.wd, r.we,
-          JSON.stringify(['에어컨', '냉장고']), JSON.stringify([`https://picsum.photos/seed/${slug}-r${order}/800/600`]),
+          JSON.stringify(['에어컨', '냉장고']), JSON.stringify([img]),
         ).run()
       }
       created++
     }
-    return c.json({ success: true, data: { created, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }
