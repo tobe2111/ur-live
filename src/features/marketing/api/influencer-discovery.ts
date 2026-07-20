@@ -85,6 +85,19 @@ interface YTChannelsResp {
 }
 interface YTPlaylistItemsResp { items?: Array<{ snippet?: { description?: string } }>; error?: { errors?: Array<{ reason?: string }> } }
 
+/** 🔗 링크인바이오(linktr.ee/litt.ly/인포크 등) 공개 페이지 텍스트 취득 — 소개글엔 없고 링크트리에만
+ *  이메일·인스타를 적어둔 인플루언서 커버(공개 웹페이지 = 합법·무료·쿼터 무관). 실패 시 빈 문자열(fail-soft).
+ *  링크는 extractContacts 의 LINKINBIO_RE 매칭 결과만 받는다(허용 호스트 외 fetch 없음 — SSRF 방지). */
+export async function fetchLinkInBioText(link: string): Promise<string> {
+  const m = String(link || '').match(/^(?:https?:\/\/)?((?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\/[A-Za-z0-9_.\-/]{1,60})$/i)
+  if (!m) return ''
+  try {
+    const res = await fetch(`https://${m[1]}`, { signal: AbortSignal.timeout(8000), headers: { accept: 'text/html' }, redirect: 'follow' })
+    if (!res.ok) return ''
+    return (await res.text()).slice(0, 80000) // SSR HTML 에 mailto:/instagram.com 링크가 포함됨 — 상한 컷
+  } catch { return '' }
+}
+
 /** 채널 최근 영상 설명 텍스트 합본을 가져온다(비즈니스 이메일이 About 버튼 뒤가 아니라 영상 더보기에 있는 경우 커버).
  *  playlistItems.list = 1 unit(최대 50개). 실패/쿼터 시 빈 문자열(fail-soft) — 상위에서 다음 search 가 QUOTA 감지. */
 async function fetchRecentVideoText(key: string, uploadsPlaylistId: string): Promise<string> {
@@ -385,6 +398,8 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT').run().catch(() => null)
   // ✍ 개인화 제안 초안(JSON {subject,body,dm,generated_at}) — 생성만, 발송 없음(정보통신망법).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT').run().catch(() => null)
+  // 🔗 링크인바이오 보강 시도 시각 — NULL 이면 미시도(cron 이 잔여 예산으로 순차 소진, 재시도 폭주 방지).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
