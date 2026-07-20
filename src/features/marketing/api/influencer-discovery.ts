@@ -50,8 +50,22 @@ interface YTChannelsResp {
     snippet?: { title?: string; description?: string; customUrl?: string; country?: string; thumbnails?: { default?: { url?: string }; medium?: { url?: string } } }
     statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string; hiddenSubscriberCount?: boolean }
     brandingSettings?: { channel?: { description?: string } }
+    contentDetails?: { relatedPlaylists?: { uploads?: string } }
   }>
   error?: { message?: string; errors?: Array<{ reason?: string }> }
+}
+interface YTPlaylistItemsResp { items?: Array<{ snippet?: { description?: string } }>; error?: { errors?: Array<{ reason?: string }> } }
+
+/** 채널 최근 영상 설명 텍스트 합본을 가져온다(비즈니스 이메일이 About 버튼 뒤가 아니라 영상 더보기에 있는 경우 커버).
+ *  playlistItems.list = 1 unit(최대 50개). 실패/쿼터 시 빈 문자열(fail-soft) — 상위에서 다음 search 가 QUOTA 감지. */
+async function fetchRecentVideoText(key: string, uploadsPlaylistId: string): Promise<string> {
+  try {
+    const url = `${YT_BASE}/playlistItems?part=snippet&maxResults=8&playlistId=${uploadsPlaylistId}&key=${key}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
+    const data = await res.json() as YTPlaylistItemsResp
+    if (!res.ok) return ''
+    return (data.items || []).map(it => it.snippet?.description || '').join('\n')
+  } catch { return '' }
 }
 
 export type DiscoverResult =
@@ -60,7 +74,7 @@ export type DiscoverResult =
 
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출. maxResults 1~25(quota: search=100 units/call). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -88,8 +102,8 @@ export async function discoverYouTubeInfluencers(
   const channelIds = (searchData.items || []).map(i => i.id?.channelId).filter((x): x is string => !!x)
   if (!channelIds.length) return { ok: true, leads: [] }
 
-  // 2) 채널 상세(지표 + 설명 + 브랜딩).
-  const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings&id=${channelIds.join(',')}&maxResults=50&key=${key}`
+  // 2) 채널 상세(지표 + 설명 + 브랜딩 + 업로드 재생목록). contentDetails 추가는 channels.list 비용 불변(1콜/1unit).
+  const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${channelIds.join(',')}&maxResults=50&key=${key}`
   let chData: YTChannelsResp
   try {
     const res = await fetch(chUrl, { signal: AbortSignal.timeout(15000) })
@@ -121,8 +135,30 @@ export async function discoverYouTubeInfluencers(
       tiktok: c.tiktok[0] || null,
       links: c.links.length ? c.links.join(' ') : null,
       description: desc.slice(0, 500),
-    }
+      // 업로드 재생목록(영상 설명 보충용 — lead 엔 저장 안 함, 아래 enrich 후 제거).
+      _uploads: ch.contentDetails?.relatedPlaylists?.uploads,
+    } as InfluencerLead & { _uploads?: string }
   })
+
+  // 3) 📧 이메일 보충 — About 에 이메일 없는 채널만 최근 영상 설명 스캔(playlistItems 1unit/채널, 상한 enrichMax).
+  //    유튜브 "이메일 주소 보기" 버튼 값은 CAPTCHA 게이트라 API 불가 → 대신 영상 더보기에 적힌 비즈니스 메일 커버.
+  const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 15))
+  const targets = (leads as Array<InfluencerLead & { _uploads?: string }>)
+    .filter(l => !l.email && l._uploads)
+    .sort((a, b) => b.subscriber_count - a.subscriber_count)
+    .slice(0, enrichMax)
+  for (const l of targets) {
+    const vidText = await fetchRecentVideoText(key, l._uploads!)
+    if (!vidText) continue
+    const c = extractContacts(vidText)
+    if (c.emails[0]) l.email = c.emails[0]
+    if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
+    if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
+    if (!l.links && c.links.length) l.links = c.links.join(' ')
+  }
+  // 내부 필드 제거(저장 스키마엔 없음).
+  for (const l of leads as Array<InfluencerLead & { _uploads?: string }>) delete l._uploads
+
   // 구독자 많은 순.
   leads.sort((a, b) => b.subscriber_count - a.subscriber_count)
   return { ok: true, leads }
