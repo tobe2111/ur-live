@@ -13,9 +13,9 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
-import type { Env } from '@/worker/types/env'
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
