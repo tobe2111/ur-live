@@ -94,7 +94,7 @@ export default function TrendPanel() {
     } finally { setBusy(false) }
   }
 
-  const card = 'mt-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
+  const card = 'mt-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
   const hasData = useMemo(() => (series || []).some(d => d.cost > 0 || d.imp > 0 || d.conv_amt > 0), [series])
   const cur = METRICS.find(m => m.key === metric)!
 
@@ -118,18 +118,18 @@ export default function TrendPanel() {
             <button onClick={() => downloadCsv('유어애즈_성과추세_30일.csv',
               ['날짜', '광고비', '전환매출', 'ROAS(%)', '클릭', '전환', '노출', '평균순위'],
               series.map((d) => [d.snap_date, d.cost, d.conv_amt, d.roas ?? '', d.clicks, d.conv, d.imp, d.avg_rnk ?? '']))}
-              className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+              className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
           )}
-          <button onClick={snapshotNow} disabled={busy} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{busy ? '갱신 중…' : '지금 갱신'}</button>
+          <button onClick={snapshotNow} disabled={busy} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{busy ? '갱신 중…' : '지금 갱신'}</button>
         </div>
       </div>
 
       {err ? (
         <PanelError onRetry={load} busy={loading} label="추세 조회 실패" />
       ) : loading ? (
-        <div className="mt-4 h-[160px] animate-pulse rounded-xl bg-gray-100 dark:bg-[#1A1A1A]" />
+        <div className="mt-4 h-[160px] animate-pulse rounded-xl bg-gray-100 dark:bg-[#1A2334]" />
       ) : !hasData ? (
-        <div className="mt-3 rounded-xl border border-dashed border-gray-200 dark:border-[#2A2A2A] p-5 text-center">
+        <div className="mt-3 rounded-xl border border-dashed border-gray-200 dark:border-[#2A3446] p-5 text-center">
           <p className="text-[12.5px] text-gray-500 dark:text-gray-400">{notConnected
             ? '검색광고 계정을 먼저 연결하면 매일 실적이 자동 적재됩니다.'
             : '아직 적재된 실적이 없습니다. 연동 직후라면 \'지금 갱신\'으로 최근 실적을 바로 불러올 수 있어요. 이후로는 매일 자동 적립됩니다.'}</p>
@@ -144,7 +144,7 @@ export default function TrendPanel() {
                 { l: '전환매출 (7일)', v: `₩${formatNumber(wow.recent.conv_amt)}`, pct: wow.convPct, goodUp: true },
                 { l: 'ROAS (7일)', v: wow.recent.roas != null ? `${formatNumber(wow.recent.roas)}%` : '–', pct: null, goodUp: true },
               ].map((m) => (
-                <div key={m.l} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-2.5">
+                <div key={m.l} className="rounded-xl border border-gray-100 dark:border-[#2A3446] p-2.5">
                   <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
                   <div className="mt-0.5 text-[14px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
                   {m.pct != null && (
@@ -162,8 +162,8 @@ export default function TrendPanel() {
             {METRICS.map((m) => (
               <button key={m.key} onClick={() => setMetric(m.key)}
                 className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${metric === m.key
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]'
-                  : 'border border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300'}`}>{m.label}</button>
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]'
+                  : 'border border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300'}`}>{m.label}</button>
             ))}
           </div>
 

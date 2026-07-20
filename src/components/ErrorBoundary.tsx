@@ -76,10 +76,10 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.state.isChunkError) {
         const exhausted = this.state.chunkExhausted;
         return (
-          <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-4">
+          <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#0F151D] px-4">
             <div className="max-w-sm w-full text-center">
               {!exhausted && (
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] border-t-gray-900 dark:border-t-white animate-spin" />
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2A3446] border-t-gray-900 dark:border-t-white animate-spin" />
               )}
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}
@@ -107,8 +107,8 @@ class ErrorBoundary extends Component<Props, State> {
 
       // 기본 폴백 UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212] px-4">
-          <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-lg p-8 text-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#1A2334] px-4">
+          <div className="max-w-md w-full bg-white dark:bg-[#0F151D] rounded-2xl shadow-lg p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
                 className="w-8 h-8 text-red-600"
@@ -138,7 +138,7 @@ class ErrorBoundary extends Component<Props, State> {
                 <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                   오류 상세 보기 (개발 환경)
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A1A1A] p-3 rounded overflow-auto max-h-60">
+                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1A2334] p-3 rounded overflow-auto max-h-60">
                   {this.state.error.toString()}
                   {'\n\n--- Stack ---\n'}
                   {this.state.error?.stack || ''}
@@ -157,7 +157,7 @@ class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 onClick={() => window.location.href = '/'}
-                className="flex-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 py-3 px-4 rounded-full font-medium hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 py-3 px-4 rounded-full font-medium hover:bg-gray-200 dark:hover:bg-[#2A3446] transition-colors"
               >
                 홈으로
               </button>

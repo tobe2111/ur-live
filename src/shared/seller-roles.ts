@@ -74,6 +74,11 @@ export function isStoreOwner(role: string | null | undefined): boolean {
 export function isBoth(role: string | null | undefined): boolean {
   return role === 'both'
 }
+/** 🧭 2026-07-19 (대표 UI v2 P2 — 셀러 대시보드 심플 모드): 매장 단독(크리에이터 능력 없음).
+ *  심플 모드(3메뉴 기본 + 전체 메뉴 접힘) 대상. both(겸업)·influencer 는 기존 전체 노출 유지. */
+export function isStoreOnly(role: string | null | undefined): boolean {
+  return role === 'store_owner'
+}
 export function getRoleMeta(role: string | null | undefined): RoleMeta {
   if (role && role in SELLER_ROLES) return SELLER_ROLES[role as SellerRole]
   return SELLER_ROLES.influencer  // graceful default

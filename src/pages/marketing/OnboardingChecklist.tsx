@@ -60,7 +60,7 @@ export default function OnboardingChecklist() {
           <button key={i} onClick={() => go(it.anchor)} disabled={it.ok}
             className={`rounded-xl border p-2.5 text-left transition ${it.ok
               ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/5 cursor-default'
-              : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] hover:border-blue-300 dark:hover:border-blue-500/40'}`}>
+              : 'border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] hover:border-blue-300 dark:hover:border-blue-500/40'}`}>
             <div className={`text-[12px] font-bold ${it.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
               {it.ok ? '✓ ' : `${i + 1}. `}{it.label}
             </div>

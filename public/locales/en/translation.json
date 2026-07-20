@@ -870,6 +870,7 @@
     "seoDesc": "View your saved products"
   },
   "seller": {
+    "simple": { "scan": "QR Scan", "settlement": "Settlement", "myDeals": "My Deals", "fullMenu": "All menus", "scanSub": "Redeem customer vouchers", "settlementSub": "Sales & payouts", "myDealsSub": "Incl. pending approval" },
     "dashboard": "Dashboard",
     "dashboardSubtitle": "Seller Dashboard — Sales / Orders / Live status",
     "products": {
@@ -2337,7 +2338,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "Referral commission (%)",
       "promoRecommend": "Recommended {{min}}~{{max}}%",
-      "promoHint": "When an influencer sells via their referral link, you pay this share as commission. Design it together with your discount as one marketing budget. No referral sale, no cost."
+      "promoHint": "When an influencer sells via their referral link, you pay this share as commission. Design it together with your discount as one marketing budget. No referral sale, no cost.",
+      "photoGuideTitle": "💡 Photos of the food or treatment results sell better than storefront or menu-board photos",
+      "photoGuideGood": "✅ Recommended: close-up of the signature dish · treatment results (before/after) · what customers actually get",
+      "photoGuideBad": "❌ Avoid: storefront signs · menu boards · building exteriors"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

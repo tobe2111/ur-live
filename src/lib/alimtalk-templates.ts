@@ -82,6 +82,9 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   //   dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code. (아직 DOCUMENTED 아님 → 진단이 '미등록' 표시)
   'fcfs_selected', 'fcfs_replacement',
   'district_coupon_issued', 'district_coupon_rejected', 'district_coupon_expiring',
+  // 🧰 2026-07-19 운영 자동화 백로그 — 콘솔 등록·심사 대기(게이트 뒤: 시퀀스 2종은
+  //   OPS_SEQUENCES_ENABLED, 다이제스트는 OPS_DIGEST_ALIMTALK_ENABLED + ops_digest_phone).
+  'drop_d1_reminder', 'experience_post_reminder', 'ops_daily_digest',
   // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
   //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
   'order_confirm', 'shipping_start', 'delivery_completed', 'low_stock_alert',

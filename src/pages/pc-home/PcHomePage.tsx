@@ -3,6 +3,7 @@ import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import PcHomeRail, { type DealCategory } from './PcHomeRail'
+import PcHomeMapButton from './PcHomeMapButton'
 import PcHomeAppBand from './PcHomeAppBand'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 
@@ -36,7 +37,7 @@ export default function PcHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -44,13 +45,18 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6 flex gap-8 items-start">
-        <PcHomeRail category={category} onCategory={setCategory} />
-
-        <main className="flex-1 min-w-0">
-          {/* 🗺️ 2026-07-16 (대표 — 카테고리 위 위치 표시/설정): 현재 지역 + '현 위치로 설정'(→가까운 순). */}
-          <div className="mb-4">
-            <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
+      {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail). */}
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-6">
+        <main className="min-w-0">
+          {/* 🗺️ 상단 헤더 행 — 좌: 위치바+카테고리 / 우: 지도 썸네일 버튼(대표 지정 위치 — 빈 공간 활용). */}
+          <div className="mb-5 border-b border-gray-100 dark:border-[#2A3446] pb-3 flex items-start justify-between gap-8">
+            <div className="flex-1 min-w-0">
+              <div className="mb-4">
+                <PcHomeLocationBar value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} />
+              </div>
+              <PcHomeRail category={category} onCategory={setCategory} />
+            </div>
+            <PcHomeMapButton />
           </div>
           <header className="mb-4">
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
@@ -70,7 +76,7 @@ export default function PcHomePage() {
                 className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 📍 가까운 순
@@ -86,7 +92,7 @@ export default function PcHomePage() {
                   className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors ${
                     active
                       ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                   }`}
                 >
                   {s.label}

@@ -35,7 +35,7 @@ export default function GbMyPerformance() {
   const totalPending = rows.reduce((s, r) => s + r.pending_commission, 0)
 
   return (
-    <div className="mb-5 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+    <div className="mb-5 rounded-2xl border border-gray-100 dark:border-[#2A3446] p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="flex items-center gap-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200">
           <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> 내 공구 실적 (진행 중)
@@ -47,7 +47,7 @@ export default function GbMyPerformance() {
       </div>
       {rows.map(r => (
         <div key={r.product_id} className="flex items-center gap-2.5 py-2 border-t border-gray-50 dark:border-[#151515]">
-          <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+          <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
             {r.image_url && <img src={cfImage(r.image_url, { width: 72 })} alt={r.name} className="w-full h-full object-cover" loading="lazy" />}
           </div>
           <div className="flex-1 min-w-0">

@@ -178,7 +178,7 @@ function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, ke
 }
 
 // ── 저장/관리 (계정별 리드 DB) ────────────────────────────────────────────────
-export interface LeadRow extends InfluencerLead { id: number; status: string; memo: string | null; collected_at: string }
+export interface LeadRow extends InfluencerLead { id: number; status: string; memo: string | null; collected_at: string; category: string | null; source_keyword: string | null }
 
 const _schemaDone = new WeakSet<object>()
 export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
@@ -204,22 +204,32 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
     description TEXT,
     status TEXT NOT NULL DEFAULT 'new',
     memo TEXT,
+    category TEXT,
+    source_keyword TEXT,
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(account_id, platform, channel_id)
   )`).run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_acct ON ad_influencer_leads(account_id, id)').run().catch(() => null)
+  // 기존 테이블(구버전) 대비 컬럼 보강 — 이미 있으면 catch 로 무시(자동 수집 출처 분류용).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
-export async function saveInfluencerLeads(DB: D1Database, accountId: number, leads: InfluencerLead[]): Promise<number> {
+export async function saveInfluencerLeads(
+  DB: D1Database, accountId: number, leads: InfluencerLead[],
+  meta?: { category?: string | null; sourceKeyword?: string | null },
+): Promise<number> {
   await ensureInfluencerSchema(DB)
+  const category = meta?.category ?? null
+  const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
     const r = await DB.prepare(`INSERT OR IGNORE INTO ad_influencer_leads
-      (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url, l.subscriber_count, l.view_count, l.video_count,
-        l.country, l.thumbnail, l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500))
+        l.country, l.thumbnail, l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500), category, sourceKeyword)
       .run().catch(() => null)
     if (r?.meta?.changes === 1) saved++
   }
@@ -232,7 +242,7 @@ export async function listInfluencerLeads(DB: D1Database, accountId: number, fil
   const binds: (string | number)[] = [accountId]
   if (filter.status && ['new', 'contacted', 'rejected'].includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasContact) where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
-  const r = await DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, collected_at
+  const r = await DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
     FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY subscriber_count DESC, id DESC LIMIT 500`)
     .bind(...binds).all<LeadRow>().catch(() => null)
   return r?.results || []

@@ -16,7 +16,7 @@ describe('SearchStates', () => {
       </BrowserRouter>
     )
 
-    expect(screen.getByText('검색 중...')).toBeDefined()
+    expect(screen.getAllByText('검색 중').length).toBeGreaterThan(0)
   })
 
   it('renders loading spinner in loading state', () => {
@@ -105,7 +105,7 @@ describe('SearchStates', () => {
       </BrowserRouter>
     )
 
-    expect(screen.getByText('검색 중...')).toBeDefined()
+    expect(screen.getAllByText('검색 중').length).toBeGreaterThan(0)
     expect(screen.queryByText('오류가 발생했습니다')).toBeNull()
   })
 

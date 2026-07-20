@@ -94,7 +94,7 @@ export default function UserProfilePage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#020202]">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -128,13 +128,13 @@ export default function UserProfilePage() {
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
+    <div className="bg-white dark:bg-[#0F151D] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#020202]">
+      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0F151D]">
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img

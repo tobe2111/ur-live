@@ -31,6 +31,16 @@ app.use('*', async (c, next) => {
 // 헬스체크 — 배포/서비스바인딩 검증용.
 app.get('/__ads/health', (c) => c.json({ ok: true, service: 'ur-ads' }))
 
+// 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
+//   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
+app.post('/__ads/collect', async (c) => {
+  try {
+    const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+    const stats = await runInfluencerAutoCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 메인 Worker 의 마운트와 동일 경로 — Service Binding 위임 시 URL 이 그대로 전달되므로 경로 일치가 중요.
 app.route('/', shortLinkRedirectRoutes)      // /l/:code (공개 리다이렉트)
 app.route('/api/ads', marketingRoutes)        // 유어애즈 데이터/인증 API
@@ -78,6 +88,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         await runAutobidShadowAll(env)
       } catch { /* fail-soft */ }
     })())
+    // 🎯 인플루언서 자동 수집(Phase E, 2026-07-20) — 게이트 ADS_AUTO_COLLECT_ENABLED='true' 일 때만.
+    //   무료 공식 API(YouTube·네이버)로 시드 키워드 순환 발굴 → 공용 풀(account_id=0) 누적. 독립 fail-soft.
+    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+      ctx.waitUntil((async () => {
+        try {
+          const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+          await runInfluencerAutoCollect(env)
+        } catch { /* fail-soft */ }
+      })())
+    }
   }
   if (cron === '0 * * * *') {
     ctx.waitUntil((async () => {

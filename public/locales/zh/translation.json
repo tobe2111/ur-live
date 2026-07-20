@@ -870,6 +870,7 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
+    "simple": { "scan": "扫码", "settlement": "结算", "myDeals": "我的优惠", "fullMenu": "全部菜单", "scanSub": "核销顾客券", "settlementSub": "销售与结算", "myDealsSub": "含待审批" },
     "dashboard": "仪表盘",
     "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",
     "products": {
@@ -2336,7 +2337,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "推荐佣金 (%)",
       "promoRecommend": "建议 {{min}}~{{max}}%",
-      "promoHint": "网红通过推荐链接售出时，您按此比例支付佣金。请与折扣一起作为一个营销预算来设计。没有推荐销售就不产生费用。"
+      "promoHint": "网红通过推荐链接售出时，您按此比例支付佣金。请与折扣一起作为一个营销预算来设计。没有推荐销售就不产生费用。",
+      "photoGuideTitle": "💡 食物·服务效果照片比招牌·菜单照片更能带动销量",
+      "photoGuideGood": "✅ 推荐示例: 招牌菜特写 · 服务效果(前/后) · 实际提供的样子",
+      "photoGuideBad": "❌ 请避免: 招牌 · 菜单板 · 建筑外观照片"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

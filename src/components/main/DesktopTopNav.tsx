@@ -5,8 +5,9 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles } from 'lucide-react'
+import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import AppDownloadModal from './AppDownloadModal'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
@@ -22,6 +23,7 @@ export default function DesktopTopNav() {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
+  const [appOpen, setAppOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
   // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
@@ -54,6 +56,17 @@ export default function DesktopTopNav() {
     { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
   ]
 
+  // 🖥️ 2026-07-19 (대표 요청 — 그루폰식 상단 카테고리 바): 좌측 사이드바 대신 상단 2번째 행에 카테고리/섹션을
+  //   가로로. 전부 실제 라우트(끊긴 링크 0). 홈/풀블리드 상단바에서만 노출.
+  const categoryItems = [
+    { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
+    { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
+    { icon: MapPin, label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/map' },
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
+    { icon: Sparkles, label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
+    { icon: BookOpen, label: t('nav.blog', { defaultValue: '블로그' }), path: '/blog' },
+  ]
+
   const isActivePath = (path: string) => {
     const cur = location.pathname
     if (path === '/') return cur === '/'
@@ -82,7 +95,7 @@ export default function DesktopTopNav() {
   const isHome = isFullBleedPcPath(location.pathname) && !hasOwnHeaderPc(location.pathname)
 
   return (
-    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+    <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
       <div className={isHome
         ? 'flex items-center gap-4 h-14 max-w-[1600px] mx-auto w-full px-6 lg:px-10'
         : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-14'}>
@@ -91,8 +104,9 @@ export default function DesktopTopNav() {
           <UrDealLogo size={20} />
         </Link>
 
-        {/* 탭 메뉴 — xl 이상에서는 사이드바에 있으므로 숨김(홈은 항상 표시) */}
-        <nav className={isHome ? 'flex items-center gap-1' : 'flex items-center gap-1 xl:hidden'}>
+        {/* 탭 메뉴 — 🖥️ 2026-07-19: 홈/풀블리드에선 아래 2번째 행(카테고리 바)이 담당 → row1 인라인 탭 숨김.
+            비-홈(사이드바 페이지)은 기존대로 인라인 탭(xl 에서만 사이드바로 대체). */}
+        <nav className={isHome ? 'hidden' : 'flex items-center gap-1 xl:hidden'}>
           {navItems.map(item => {
             const active = isActivePath(item.path)
             const Icon = item.icon
@@ -136,12 +150,23 @@ export default function DesktopTopNav() {
         <div className="flex items-center gap-1 shrink-0 ml-auto">
           {/* 🗑️ 2026-07-07 라이브커머스 제거: LIVE 배지 삭제(/live 페이지 제거됨). */}
 
-          {/* 판매자센터 */}
+          {/* 앱 — 🖥️ 2026-07-19 (대표 요청): 클릭 시 QR 다운로드 팝업(그루폰식). */}
+          <button
+            onClick={() => setAppOpen(true)}
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+          >
+            <Smartphone className="w-4 h-4" strokeWidth={1.75} />
+            {t('nav.app', { defaultValue: '앱' })}
+          </button>
+
+          {/* 판매하세요 — 🖥️ 2026-07-19 (대표 요청): '판매자센터' → '유어딜(로고)에서 판매하세요'(그루폰식). */}
           <button
             onClick={() => navigate('/seller')}
-            className="hidden xl:block px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+            aria-label={t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
           >
-            {t('nav.sellerCenter', { defaultValue: '판매자센터' })}
+            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
           </button>
 
           {/* 알림 — 🖥️ 2026-07-18 (대표 요청): PC 는 페이지 이동 대신 드롭다운으로 그 자리에서 바로 표시. */}
@@ -199,6 +224,36 @@ export default function DesktopTopNav() {
           )}
         </div>
       </div>
+
+      {/* 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 그루폰식 상단 카테고리 바(2번째 행).
+          홈/풀블리드 상단바에서만. 좌측 사이드바 대신 가로 카테고리 네비. */}
+      {isHome && (
+        <div className="border-t border-gray-100 dark:border-[#2A3446]">
+          <nav className="max-w-[1600px] mx-auto w-full px-6 lg:px-10 h-11 flex items-center gap-1 overflow-x-auto no-scrollbar">
+            {categoryItems.map((item) => {
+              const active = isActivePath(item.path)
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    active
+                      ? 'text-brand'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" strokeWidth={active ? 2 : 1.6} />
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+      )}
+
+      {appOpen && <AppDownloadModal onClose={() => setAppOpen(false)} />}
     </header>
   )
 }

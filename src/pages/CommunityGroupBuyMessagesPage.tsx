@@ -128,7 +128,7 @@ export default function CommunityGroupBuyMessagesPage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -136,7 +136,7 @@ export default function CommunityGroupBuyMessagesPage() {
 
   if (notFound || !group) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center px-4">
         <p className="text-gray-900 dark:text-white font-bold text-lg">
           {t('groupbuyMessages.notFound', { defaultValue: '공동구매를 찾을 수 없습니다' })}
         </p>
@@ -148,14 +148,14 @@ export default function CommunityGroupBuyMessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] flex flex-col">
       <SEO
         title={`${group.restaurant_name} - 유어딜`}
         description={t('groupbuyMessages.seoDesc', { defaultValue: '공동구매 메시지' })}
         url={`/community-group-buy/${code}/messages`}
       />
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
           <button
             onClick={() => navigate(`/community-group-buy/${code}`)}
@@ -195,12 +195,12 @@ export default function CommunityGroupBuyMessagesPage() {
           </p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-3 border border-gray-100 dark:border-[#1A1A1A]">
+            <div key={m.id} className="bg-white dark:bg-[#0F151D] rounded-2xl p-3 border border-gray-100 dark:border-[#2A3446]">
               <div className="flex items-center gap-2">
                 <span className="text-[12px] font-bold text-gray-900 dark:text-white">
                   {m.sender_name || t('groupbuyMessages.anonymous', { defaultValue: '익명' })}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400">
                   {m.sender_type === 'admin' ? t('groupbuyMessages.roleAdmin', { defaultValue: '운영자' })
                     : m.sender_type === 'agency' ? t('groupbuyMessages.roleAgency', { defaultValue: '에이전시' })
                     : m.sender_type === 'restaurant' ? t('groupbuyMessages.roleRestaurant', { defaultValue: '식당' })
@@ -219,7 +219,7 @@ export default function CommunityGroupBuyMessagesPage() {
 
       {/* 입력 바 */}
       {!forbidden && (
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] px-4 py-3 z-50">
           <div className="ur-content-narrow flex items-center gap-2">
             <input
               type="text"
@@ -228,7 +228,7 @@ export default function CommunityGroupBuyMessagesPage() {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend() }}
               maxLength={1000}
               placeholder={t('groupbuyMessages.inputPlaceholder', { defaultValue: '메시지를 입력하세요' })}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
             />
             <button
               onClick={handleSend}

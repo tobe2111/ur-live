@@ -113,7 +113,7 @@ export default function CuratorHeader({
   const accentText = (() => {
     const h = accentColor.replace('#', '')
     const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1a1a1a' : '#ffffff'
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1A2334' : '#ffffff'
   })()
   async function saveAccent(hex: string) {
     const prev = curator.accent || ''
@@ -240,12 +240,12 @@ export default function CuratorHeader({
   useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
   // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로 (브랜드 앰버 + 잉크).
-  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A1A1A 130%)'
+  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A2334 130%)'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
   return (
-    <header className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A]">
+    <header className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
       {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
       <div className="max-w-3xl mx-auto">
         {editingHeadline ? (
@@ -337,7 +337,7 @@ export default function CuratorHeader({
             />
           )}
           {/* 하단 그라데이션 페이드 — 배너가 페이지 배경으로 자연스럽게 melt (좌우 풀블리드 + 부드러운 전환) */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-[#020202]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-[#0F151D]" />
           {/* 공유 (방문자/소유자 공통) — 우상단 오버레이 */}
           <button
             type="button"
@@ -385,8 +385,8 @@ export default function CuratorHeader({
                 onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
                 maxLength={40}
               />
-              <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-1.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#020202] shrink-0 active:scale-95 disabled:opacity-50"><Check className="w-4 h-4" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95"><X className="w-4 h-4" /></button>
+              <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-1.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#0F151D] shrink-0 active:scale-95 disabled:opacity-50"><Check className="w-4 h-4" /></button>
+              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 dark:bg-[#2A3446] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95"><X className="w-4 h-4" /></button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-1.5">
@@ -453,11 +453,11 @@ export default function CuratorHeader({
                 onChange={(e) => setEditBio(e.target.value)}
                 rows={2}
                 maxLength={200}
-                className="w-full text-[13.5px] text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0A0A] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none text-center"
+                className="w-full text-[13.5px] text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0F151D] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none text-center"
               />
               <div className="flex gap-2 mt-1 justify-center">
-                <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg">저장</button>
-                <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
+                <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-xs font-bold rounded-lg">저장</button>
+                <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
               </div>
             </div>
           ) : (curator.bio || isOwner) && (
@@ -498,7 +498,7 @@ export default function CuratorHeader({
 
         {/* SNS 편집 패널 (소유자) */}
         {isOwner && editingSns && (
-          <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3 space-y-2 max-w-md mx-auto">
+          <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-3 space-y-2 max-w-md mx-auto">
             {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
@@ -506,13 +506,13 @@ export default function CuratorHeader({
                   value={snsForm[key]}
                   onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
                   placeholder="@핸들 또는 링크"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                 />
               </div>
             ))}
             <div className="flex gap-2 pt-1">
-              <button onClick={saveSns} disabled={saving} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
-              <button onClick={() => setEditingSns(false)} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+              <button onClick={saveSns} disabled={saving} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
+              <button onClick={() => setEditingSns(false)} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
             </div>
           </div>
         )}
@@ -521,7 +521,7 @@ export default function CuratorHeader({
         {isOwner ? (
           <div className="mt-4 max-w-md mx-auto">
             {/* 🔗 2026-06-17 (사용자 요청 — "링크 공유가 우선, 주소 변경과 묶어서"): 주소 표시 + 복사/카카오 공유 + 주소 변경 한 카드. */}
-            <div className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3.5">
+            <div className="rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-3.5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 링크샵 주소</span>
                 {!editingHandle && (
@@ -535,7 +535,7 @@ export default function CuratorHeader({
               </div>
               {editingHandle ? (
                 <div>
-                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
+                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A3446] bg-white dark:bg-[#1A2334]">
                     <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
                     <input
                       value={handleVal}
@@ -549,14 +549,14 @@ export default function CuratorHeader({
                     <p className={`text-[11.5px] mt-1.5 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400' : 'text-red-500'}`}>{handleMsg}</p>
                   )}
                   <div className="flex gap-2 mt-2">
-                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
-                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
+                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
                   </div>
                 </div>
               ) : (
                 // 🔗 2026-06-18 (사용자 요청 — 배너 우상단 공유 버튼과 중복): 주소 카드의 링크복사/카카오공유 제거.
                 //   주소 표시 + '주소 변경'만 유지. 공유는 배너 히어로 우상단 공유 아이콘으로 일원화.
-                <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
+                <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446]">
                   <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
                 </div>
               )}

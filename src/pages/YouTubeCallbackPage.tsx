@@ -90,7 +90,7 @@ export default function YouTubeCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
       <div className="apple-card p-8 sm:p-10 text-center max-w-sm w-full">
 
         {/* ── 로딩 ── */}
@@ -98,11 +98,11 @@ export default function YouTubeCallbackPage() {
           <div className="space-y-8">
             {/* 브랜드 플로우 */}
             <div className="flex items-center justify-center gap-2.5">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#1A1A1A] shadow-sm flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#2A3446] shadow-sm flex items-center justify-center">
                 <span className="text-[22px] font-black" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
-              <div className="w-12 h-12 rounded-2xl bg-[#007aff] flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
                 <Radio className="w-6 h-6 text-white" />
               </div>
               <ConnectDots />
@@ -132,9 +132,9 @@ export default function YouTubeCallbackPage() {
                     {i < loadingStep ? (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
                     ) : i === loadingStep ? (
-                      <Loader2 className="w-4 h-4 text-[#007aff] animate-spin" />
+                      <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
-                      <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] block" />
+                      <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A3446] block" />
                     )}
                   </div>
                   {/* 🛡️ 2026-05-14: 진행 안 한 단계 text-[#c7c7cc] (RGB 199) 너무 흐림 → 가독성 보강 (gray-500). */}
@@ -186,7 +186,7 @@ export default function YouTubeCallbackPage() {
             </div>
             <button
               onClick={() => navigate('/seller')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl hover:bg-[#0051d5] transition-colors text-[15px] font-semibold"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-semibold"
             >
               <RefreshCw className="w-4 h-4" />
               다시 시도하기

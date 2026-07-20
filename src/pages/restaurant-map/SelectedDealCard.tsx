@@ -3,7 +3,8 @@ import { MapPin, X, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { distanceKm } from './utils'
+import { distanceKm, nearKmLabel } from './utils'
+import { stripStorePrefix } from '@/utils/deal-title'
 import type { Restaurant } from './types'
 
 /**
@@ -89,7 +90,7 @@ export default function SelectedDealCard({
       style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 10px)' }}
     >
       <div
-        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
+        className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onPointerDown={onPointerDown}
@@ -104,7 +105,7 @@ export default function SelectedDealCard({
           <button
             onClick={onPrev}
             aria-label="이전 딜"
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A1A1A]/90 shadow text-gray-700 dark:text-gray-200"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A2334]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -113,7 +114,7 @@ export default function SelectedDealCard({
           <button
             onClick={onNext}
             aria-label="다음 딜"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A1A1A]/90 shadow text-gray-700 dark:text-gray-200"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1A2334]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -122,7 +123,7 @@ export default function SelectedDealCard({
         <button
           onClick={onClose}
           aria-label="선택 해제"
-          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-gray-100/90 dark:bg-[#1A1A1A]/90 text-gray-500 dark:text-gray-400"
+          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-gray-100/90 dark:bg-[#1A2334]/90 text-gray-500 dark:text-gray-400"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -131,12 +132,12 @@ export default function SelectedDealCard({
           {thumb ? (
             <img src={thumb} alt="" className="w-[92px] h-[92px] rounded-xl object-cover shrink-0" loading="eager" />
           ) : (
-            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center shrink-0"><span className="text-2xl">🍽️</span></div>
+            <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center shrink-0"><span className="text-2xl">🍽️</span></div>
           )}
           <div className="flex-1 min-w-0 pr-6 py-0.5">
             {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 위치 줄로 강등. */}
             <div className="flex items-center gap-1.5">
-              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{selected.name || selected.restaurant_name}</p>
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(selected.name, selected.restaurant_name) || selected.restaurant_name}</p>
               {selected.rating > 0 && (
                 <span className="flex items-center gap-0.5 text-[11px] font-semibold text-amber-500 shrink-0">
                   <Star className="w-3 h-3" fill="currentColor" />{selected.rating.toFixed(1)}
@@ -149,10 +150,10 @@ export default function SelectedDealCard({
                 <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
               )}
               <span className="truncate">{selected.restaurant_address || '주소 미등록'}</span>
-              {dist != null && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {dist.toFixed(1)}km</span>}
+              {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
             <div className="flex items-baseline gap-1.5 mt-2">
-              {discount > 0 && <span className="text-[13px] font-extrabold text-pink-500 shrink-0">{discount}%</span>}
+              {discount > 0 && <span className="text-[13px] font-extrabold text-brand dark:text-[#EF6E85] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}
@@ -166,7 +167,7 @@ export default function SelectedDealCard({
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-[#0A0A0A]/80 px-1.5 rounded-full">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-[#0F151D]/80 px-1.5 rounded-full">
             {position} / {total}
           </div>
         )}

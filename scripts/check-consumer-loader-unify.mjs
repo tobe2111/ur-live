@@ -21,9 +21,8 @@ const ROOTS = ['src/pages', 'src/components', 'src/features']
 // 도매몰(서비스 분리) + 대시보드(라이트 고정 로더) = 통일 제외 스코프.
 const EXCLUDE_RE = /(wholesale|supplier|Wholesale|Supplier|\/admin\/|Admin|\/agency|Agency|Seller|seller-page|seller-dashboard|dashboard|DashboardLoading|WholesaleLoading)/
 // 잠금/보류 파일 — 별도 결정 대기(대표 승인 필요). 승인 후 제거.
-const KNOWN_EXCEPTIONS = new Set([
-  'src/pages/PaymentSuccessPage.tsx', // Toss V2 audit 잠금 — 로더 통일은 대표 승인 대기
-])
+//   PaymentSuccessPage: 2026-07-18 대표 승인("통일해") → BrandLoader 통일 완료(예외 해제).
+const KNOWN_EXCEPTIONS = new Set([])
 
 function walk(dir, out = []) {
   let ents

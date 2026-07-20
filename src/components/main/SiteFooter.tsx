@@ -2,7 +2,7 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 export default function SiteFooter() {
   return (
-    <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]">
+    <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]">
       <div className="flex flex-col gap-1.5 footer-tiny">
         {/* 🛡️ 2026-05-21: 역할별 진입 CTA — 사용자/사장님/셀러/에이전시 가입 직접 link.
               마이페이지의 CTA grid 와 동일 destination. */}
@@ -26,6 +26,13 @@ export default function SiteFooter() {
           <a href="/wholesale/intro" className="text-amber-600 dark:text-amber-400 hover:underline">
             📦 유통스타트 B2B 도매몰 (제조사·판매사) →
           </a>
+        </div>
+
+        {/* 🧭 2026-07-19 (대표 — "3개 페이지를 서비스 최하단 링크 버튼으로"): 소개 랜딩 3종 pill 버튼 */}
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          <a href="/about" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">서비스 소개</a>
+          <a href="/partners" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">🏪 입점 안내</a>
+          <a href="/creators" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">✨ 크리에이터 모집</a>
         </div>
 
         {/* Contact */}

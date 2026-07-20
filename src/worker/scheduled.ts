@@ -161,6 +161,12 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // 📰 2026-07-19 (운영 자동화 ①): 어드민 일일 다이제스트 — hourly 슬롯에서 UTC 22시(KST 07:00)만
+    //   실행(내부 게이트 + 같은 KST 날짜 멱등). read-only 집계 → 벨+Discord(+설정 시 메일/알림톡).
+    ctx.waitUntil(safeCron('ops-daily-digest', async () => {
+      const { isOpsDigestHour, runOpsDailyDigest } = await import('./cron/ops-daily-digest');
+      if (isOpsDigestHour()) await runOpsDailyDigest(env);
+    }));
     // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 홍보 유지보수 크론 배선 분리 — 소셜 자동화 그래프를 워커에서
     //   완전 제거해 CF 1MB 압축한도 회복. 기능 게이트 OFF·미사용이라 미실행 무해. 재도입 시 원복.
     // ctx.waitUntil(safeCron('social-maintenance', async () => {
@@ -194,6 +200,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
     // 🔄 2026-07-05 (대표 "마감돼도 사라지면 안 됨 — 콜드스타트"): 데모 추첨 마감 자동 연장(5~10일 롤링).
     ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
+    // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, "직접 해줘"): 기존 데모 상품명의 '{매장명} · ' 프리픽스를
+    //   배포 후 자동으로 in-place 제거(멱등 — 치유 완료 후엔 SELECT 1회 + no-op). 시드 heal 블록과 동일 함수.
+    ctx.waitUntil(safeCron('demo-name-heal', async () => {
+      const { healDemoNamesInPlace } = await import('../features/admin/api/admin-products.routes');
+      return healDemoNamesInPlace(env.DB);
+    }));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
@@ -381,6 +393,16 @@ export async function handleCronScheduled(
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])
     }))
+    // ⏰ 2026-07-19 (운영 자동화 ② — 게이트 OPS_SEQUENCES_ENABLED, 기본 OFF): 소비자 시퀀스 2종.
+    //   드랍 D-1 예고(fcfs 응모자, KST 18:00) + 체험단 게시 리마인드(당첨 48h 경과, 평생 1회).
+    ctx.waitUntil(safeCron('drop-d1-reminder', async () => {
+      const { runDropD1Reminder } = await import('./cron/drop-d1-reminder')
+      await runDropD1Reminder(env as Parameters<typeof runDropD1Reminder>[0])
+    }))
+    ctx.waitUntil(safeCron('experience-post-reminder', async () => {
+      const { runExperiencePostReminder } = await import('./cron/experience-post-reminder')
+      await runExperiencePostReminder(env as Parameters<typeof runExperiencePostReminder>[0])
+    }))
     // 🧾 2026-07-13: 상권 쿠폰 만료 임박(D-3) 알림 + 만료 스위핑(status='expired'). 병렬 엔티티·머니 0.
     ctx.waitUntil(safeCron('district-coupon-expire', async () => {
       const { runDistrictCouponExpireCron } = await import('./cron/district-coupon-expire')
@@ -411,6 +433,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('weekly-metrics-summary', async () => {
       const { runWeeklyMetricsSummary } = await import('./cron/weekly-metrics-summary');
       return runWeeklyMetricsSummary(env);
+    }));
+    // 📈 2026-07-19 (운영 자동화 ④): 주간 코호트 리포트 — 최근 8주 가입 코호트 전환/리텐션 표 1장.
+    //   read-only, 벨+Discord(+설정 시 메일). weekly-metrics(스냅샷)와 상보 — 추세용.
+    ctx.waitUntil(safeCron('weekly-cohort-report', async () => {
+      const { runWeeklyCohortReport } = await import('./cron/weekly-cohort-report');
+      return runWeeklyCohortReport(env);
     }));
     // 📝 2026-07-01: 블로그 AI 홍보 초안 주간 1편(비공개, 관리자 검토 후 발행).
     //   킬스위치 BLOG_AI_DRAFTS_ENABLED='true' 일 때만 — 기본 OFF(토큰 낭비 0). 홍보 전용.

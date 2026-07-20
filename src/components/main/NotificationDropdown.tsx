@@ -60,12 +60,12 @@ export default function NotificationDropdown({ onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#0F0F0F] border border-gray-100 dark:border-[#1F1F1F] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
+      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
       role="dialog"
       aria-label="알림"
     >
       {/* 헤더 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2A3446]">
         <h3 className="text-[14px] font-extrabold text-gray-900 dark:text-white">알림</h3>
         {hasUnread && (
           <button
@@ -97,7 +97,7 @@ export default function NotificationDropdown({ onClose }: Props) {
                 if (n.link) navigate(safeInternalPath(n.link, '/'))
                 onClose()
               }}
-              className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-gray-50 dark:border-[#151515] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
+              className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-gray-50 dark:border-[#22304A] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
             >
               <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-pink-500'}`} />
               <div className="flex-1 min-w-0">
@@ -116,7 +116,7 @@ export default function NotificationDropdown({ onClose }: Props) {
       <button
         type="button"
         onClick={() => { navigate('/notifications'); onClose() }}
-        className="w-full py-3 text-[13px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.03] border-t border-gray-100 dark:border-[#1A1A1A]"
+        className="w-full py-3 text-[13px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.03] border-t border-gray-100 dark:border-[#2A3446]"
       >
         전체 보기 →
       </button>
