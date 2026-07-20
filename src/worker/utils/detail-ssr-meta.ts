@@ -36,19 +36,23 @@ interface DetailData {
   restaurant_lat?: number
   restaurant_lng?: number
   seller_name?: string
+  brand_name?: string
   price?: number
+  original_price?: number
+  deal_only?: number
   current_discount_pct?: number
   description?: string
   image_url?: string
+  category?: string
   group_buy_status?: string
   group_buy_deadline?: string
 }
 
-/** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → 동적 OG 카드). */
-function absImage(raw: string, origin: string, id: number | string | undefined): string {
+/** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → fallback). */
+function absImage(raw: string, origin: string, id: number | string | undefined, fallback?: string): string {
   if (raw.startsWith('http')) return raw
   if (raw.startsWith('/')) return `${origin}${raw}`
-  return `${origin}/api/og/group-buy/${id ?? ''}.png`
+  return fallback || `${origin}/api/og/group-buy/${id ?? ''}.png`
 }
 
 /**
@@ -187,6 +191,54 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ],
     }
     const jsonLd = escapeScript(JSON.stringify([lodging, breadcrumb]))
+    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+  } catch { return null }
+}
+
+/**
+ * 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타.
+ *   그간 PRODUCT 슬롯은 데이터(`__SSR_INITIAL_PRODUCT__`)만 주입하고 메타는 index.html 기본(제네릭 홈)을
+ *   서빙 → 카톡/소셜/네이버가 상품 링크를 "유어딜 홈" 카드로 봄(가장 약한 서버 OG). DETAIL(공구/이용권)과
+ *   동일 패턴으로 가격·할인율이 들어간 정밀 OG + Product/Offer JSON-LD 주입.
+ *   딜(원화 아님) 상품은 offer 가격을 생략(KRW 전용 스키마). payload 파싱 실패 시 null(기본 메타 유지).
+ */
+export function buildProductMeta(ssrPayload: string, origin: string, pathname: string): DetailMeta | null {
+  try {
+    const d = (JSON.parse(ssrPayload) as { data?: DetailData })?.data
+    if (!d || !d.name) return null
+    const id = d.id
+    const name = String(d.name).trim()
+    const brand = String(d.brand_name || '').trim()
+    const price = Number(d.price) || 0
+    const original = Number(d.original_price) || 0
+    const isDeal = Number(d.deal_only) === 1
+    const unit = isDeal ? '딜' : '원'
+    const rate = original > price && price > 0 ? Math.round((1 - price / original) * 100) : 0
+    const canonical = `${origin}${pathname}`
+    const ogImage = absImage(String(d.image_url || ''), origin, id, `${origin}/og-image.png`)
+    const priceStr = price.toLocaleString('ko-KR')
+
+    const pageTitle = `${name} - 유어딜`
+    const description = (rate > 0
+      ? `🎉 ${rate}% 할인! ${name} — ${priceStr}${unit}, 유어딜에서 바로 구매`
+      : `${name} — ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+
+    const product: Record<string, unknown> = {
+      '@context': 'https://schema.org', '@type': 'Product',
+      name,
+      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      ...(d.image_url ? { image: [ogImage] } : {}),
+      ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
+      // 💰 KRW 상품만 offer 가격 노출(딜 상품은 통화 스키마 부적합 → 가격 생략).
+      ...(!isDeal && price > 0 ? {
+        offers: {
+          '@type': 'Offer', url: canonical, priceCurrency: 'KRW', price,
+          availability: 'https://schema.org/InStock',
+          ...(d.seller_name ? { seller: { '@type': 'Organization', name: String(d.seller_name) } } : {}),
+        },
+      } : {}),
+    }
+    const jsonLd = escapeScript(JSON.stringify([product]))
     return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }

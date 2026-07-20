@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, ensureInfluencerSchema, type InfluencerLead } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -27,15 +27,19 @@ const AUTO_PROMOTE_HITS = 3
  * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
  * 절반을 항상 이 카테고리 키워드에 배정(별도 커서로 순환), 나머지 절반이 전체 일반 순환.
  */
-export const PRIORITY_CATEGORIES = ['맛집', '푸드', '숙소', '네일', '뷰티']
+// ⭐ 유어딜 연관 최우선 카테고리 — 동네 맛집·카페·뷰티·네일·숙소 딜 + 외식/자영업(매장 사장·창업).
+//   예: 홍석천·이원일 유튜브(맛집/외식업) 결. 매 배치의 3/4 를 이 풀에 배정.
+export const PRIORITY_CATEGORIES = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
 const SEED: { category: string; keywords: string[] }[] = [
   // ⭐ 우선 분야 (대폭 보강)
   { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천', '헤어 스타일링', '피부관리 루틴', '뷰티 하울', '왁싱 후기'] },
   { category: '네일', keywords: ['네일아트', '셀프네일', '젤네일 디자인', '네일샵 추천', '네일 튜토리얼'] },
-  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집'] },
+  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집', '로컬 맛집', '숨은 맛집', '노포 맛집', '골목식당'] },
   { category: '푸드', keywords: ['맛집 브이로그', '먹방', '홈카페', '베이킹 레시피', '자취요리'] },
+  // ⭐ 외식/자영업 — 유어딜 매장(셀러) 결. 홍석천·이원일 류 외식업 인플루언서·매장 사장·창업 채널.
+  { category: '외식창업', keywords: ['외식업', '자영업', '소상공인', '식당 창업', '카페 창업', '장사 노하우', '가게 홍보', '매장 마케팅', '요식업', '음식점 사장', '동네 가게', '소상공인 창업'] },
   { category: '숙소', keywords: ['숙소 추천', '펜션 추천', '풀빌라 후기', '호텔 리뷰', '감성숙소', '글램핑 후기', '한옥스테이'] },
   // 일반 분야
   { category: '패션', keywords: ['패션 하울', '데일리룩', '코디 추천', '빈티지 패션'] },
@@ -63,19 +67,71 @@ interface AutoCollectStats {
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
+const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
+
+type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string } }
 
 /**
- * 🚀 일괄 저장(DB.batch) — 행단위 INSERT 수백 subrequest 가 Free 한도를 깨던 것(2026-07-20 실사고)을
- *   청크당 1 batch 호출로 축소. 의미는 saveInfluencerLeads 와 동일(INSERT OR IGNORE 멱등, changes 합산).
+ * 🔔 조용한 실패 방어(2026-07-20) — 수집이 켜져 있는데 **키 소실/전 플랫폼 0건**이면 Discord 경보.
+ *   배경: 시크릿이 `wrangler deploy`(plaintext var wipe)로 지워져 "신규 0건"이 조용히 며칠 지속되던 사고
+ *   클래스(2026-07-20 실발생) — diag 는 저장만 되고 push 가 없어 대시보드를 열기 전까지 아무도 모름.
+ *   판정: 키 미설정(configured=false, =시크릿 소실 신호) 또는 saved===0(quota 소진이어도 naver 까지 0이면 문제).
+ *   throttle: settings alert_at 로 6h 1회(24알림/day 방지) + 회복 시 즉시 해제(다음 실패는 지연 없이 알림).
+ *   전부 fail-soft — 알림 실패가 수집을 막지 않는다. DISCORD_WEBHOOK_URL 미설정이면 no-op(회귀 0).
+ */
+async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
+  const webhook = env.DISCORD_WEBHOOK_URL
+  if (!webhook) return
+  const { diag, saved, quotaHit } = run
+  const keyMissing = !diag.yt.configured || !diag.naver.configured
+  const unhealthy = keyMissing || saved === 0
+  const prevAt = await readSetting(DB, ALERT_KEY)
+  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
+  if (!unhealthy) {
+    if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
+      await writeSetting(DB, ALERT_KEY, '')
+      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
+    }
+    return
+  }
+  const last = prevAt ? Date.parse(prevAt) : 0
+  const now = Date.now()
+  if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
+  await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
+  const lines = [
+    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
+    `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
+    `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
+    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
+    '어드민 인플루언서 풀에서 상세 확인.',
+  ].filter(Boolean)
+  await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
+}
+
+/**
+ * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
+ *   2026-07-20 ①: INSERT OR IGNORE → **컨택 백필 upsert**. 신규는 INSERT, 기존 리드는 이메일/인스타/틱톡/
+ *   링크가 **비어있을 때만** 새로 찾은 값으로 채움(늦게 발견된 컨택 자동 반영 — 자가치유). status/memo(수동
+ *   큐레이션)·category 는 불변. DO UPDATE 의 WHERE 로 실제 채울 게 있을 때만 change=1 → 중복 인플레 없음.
  */
 async function saveLeadsBatch(
   DB: D1Database, accountId: number, leads: InfluencerLead[],
   meta: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
   if (!leads.length) return 0
-  const sql = `INSERT OR IGNORE INTO ad_influencer_leads
+  const sql = `INSERT INTO ad_influencer_leads
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id, platform, channel_id) DO UPDATE SET
+      email = COALESCE(ad_influencer_leads.email, excluded.email),
+      instagram = COALESCE(ad_influencer_leads.instagram, excluded.instagram),
+      tiktok = COALESCE(ad_influencer_leads.tiktok, excluded.tiktok),
+      links = COALESCE(ad_influencer_leads.links, excluded.links),
+      subscriber_count = CASE WHEN excluded.subscriber_count > 0 THEN excluded.subscriber_count ELSE ad_influencer_leads.subscriber_count END
+    WHERE (ad_influencer_leads.email IS NULL AND excluded.email IS NOT NULL)
+       OR (ad_influencer_leads.instagram IS NULL AND excluded.instagram IS NOT NULL)
+       OR (ad_influencer_leads.tiktok IS NULL AND excluded.tiktok IS NOT NULL)
+       OR (ad_influencer_leads.links IS NULL AND excluded.links IS NOT NULL)`
   let saved = 0
   const CHUNK = 50
   for (let i = 0; i < leads.length; i += CHUNK) {
@@ -196,7 +252,8 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
   const NAVER_EXTRA = 4
   const totalPick = batch + NAVER_EXTRA
-  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick / 2)) : 0
+  // 유어딜 연관(맛집·외식창업·뷰티·네일·숙소) 우선 — 배치의 3/4 를 우선 풀에(나머지 1/4 일반: 자가확장용 다양성).
+  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick * 3 / 4)) : 0
   const nGen = Math.min(genPool.length, totalPick - basePri)
   const nPri = Math.min(priPool.length, totalPick - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
   // 우선/일반 인터리브 — YT 슬롯(앞 batch 개)에 우선·일반이 골고루 들어가게.
@@ -214,6 +271,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
+  // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
+  //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
+  //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
+  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 180) }
 
   let saved = 0
   let quotaHit = false
@@ -230,14 +291,17 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
+  // YT 검색 페이지 수(키워드당 깊이) — 기본 2(page1=1~50위, page2=51~100위…). 쿼터는 quotaHit 가드가 관리.
+  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 2))
   let ytUsed = 0
   for (const k of picks) {
+    if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
     used.push(k.keyword)
-    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50=같은 100units 로 3.3×.
+    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50 })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
@@ -249,12 +313,17 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100 })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
+      // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
+      try {
+        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget })
+        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; mine(r.leads) }
+      } catch { /* fail-soft */ }
     }
   }
 
@@ -294,5 +363,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
+  try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
 }

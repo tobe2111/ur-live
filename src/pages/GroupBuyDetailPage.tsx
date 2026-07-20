@@ -599,6 +599,11 @@ export default function GroupBuyDetailPage() {
             imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
+            {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+              salePrice: detail.price,
+              discountRate: detail.current_discount_pct,
+              secondaryButtonText: '자세히 보기',
+            })}
             compact
             className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
               headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
@@ -664,6 +669,11 @@ export default function GroupBuyDetailPage() {
               imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
               link={shareLink}
               buttonText="나도 참여하기"
+              {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+                salePrice: detail.price,
+                discountRate: detail.current_discount_pct,
+                secondaryButtonText: '자세히 보기',
+              })}
               compact
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A2334]"
             />

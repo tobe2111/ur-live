@@ -11,6 +11,7 @@
 
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
@@ -310,7 +311,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
   router.post(
     '/:code/use-by-seller',
     rateLimit({ action: 'voucher_use_seller', max: 30, windowSec: 60 }),
-    requireAuth(),
+    scanOrSellerAuth(), // 📟 2026-07-20 직원 폰/공기계: X-Scan-Device-Key 도 인증 — 키 없으면 requireAuth 그대로 위임(행동 불변). 이 라우트 한정(최소 권한)
     async (c) => {
       const user = getCurrentUser(c)
       if (!user || (user.type !== 'seller' && user.type !== 'admin')) {

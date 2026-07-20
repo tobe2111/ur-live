@@ -163,7 +163,9 @@ export interface Env {
   //   순환 발굴해 공용 풀(ad_influencer_leads.account_id=0)에 누적. 기본 OFF(미설정) = no-op.
   //   공개 데이터·공식 API 만 사용(수집 ≠ 발송 — 마케팅 발송은 정보통신망법상 사전동의 별도).
   ADS_AUTO_COLLECT_ENABLED?: string;
-  ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 12) — 공유 YouTube 일일 한도 보호용.
+  ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
+  ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 2, 1~5) — 깊이 확장(page2=51~100위). 쿼터는 quotaHit 가드 관리.
+  ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
 
   // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
   //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면

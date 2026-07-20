@@ -92,6 +92,7 @@ import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
 import { sellerAdSlotsRoutes } from '../features/seller/api/seller-ad-slots.routes';
 import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
+import { sellerScanDevicesRoutes } from '../features/seller/api/seller-scan-devices.routes';
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
 import { sellerProfileRoutes } from '../features/seller/api/seller-profile.routes';
@@ -160,7 +161,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
-import { buildDetailMeta, buildStayDetailMeta } from './utils/detail-ssr-meta';
+import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -312,6 +313,38 @@ declare const __INCLUDE_WHOLESALE__: boolean;
 const app = new Hono<{ Bindings: Env }>();
 
 // ============================================================
+// 🛡️ 2026-07-20 (대표 신고 — urdeal.kr 에서 /assets/*.js 가 text/html 반환 → "Expected a JavaScript
+//   module ... MIME type text/html" → 앱 로드 불능): 도메인 이전 후 '새 존' 정적 서빙 404 우회.
+//   근본원인(#598 이 robots.txt·네이버 파일로 이미 확인): urdeal.kr 신규 존에서 _routes.json exclude 로
+//   워커를 우회한 정적 경로가 404 → SPA HTML 폴백. /assets/* 도 exclude 라 동일 증상(청크 404→HTML→MIME).
+//   → 워커가 env.ASSETS 로 직접 서빙(존재하면 원본 MIME + immutable, 없으면 깔끔한 404 로 정정해
+//   HTML-as-JS MIME 에러 재발 차단 + 클라 청크-복구가 정상 동작). _routes.json 에서 /assets/* 를 exclude
+//   에서 제거해 이 핸들러로 라우팅. ⚠️ 반드시 전-라우트 미들웨어(CSP/SSR/nonce) *앞*에 등록 —
+//   에셋은 오버헤드 0 로 즉시 서빙 + 응답을 가로채는 rewriter 를 안 탐. immutable 라 엣지/브라우저 캐시.
+// ============================================================
+app.get('/assets/*', async (c) => {
+  try {
+    const assets = (c.env as unknown as { ASSETS?: { fetch: (r: Request) => Promise<Response> } }).ASSETS;
+    if (!assets?.fetch) return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    const res = await assets.fetch(c.req.raw);
+    const ctype = res.headers.get('content-type') || '';
+    // env.ASSETS 는 미존재 파일에 SPA index.html(text/html)을 200 으로 돌려줌 → 그건 에셋이 아니므로 404 로
+    //   정정(HTML 을 .js 로 주면 브라우저가 "Expected a JavaScript module ... text/html" 로 거부 = 원래 버그).
+    //   404 면 클라(chunk-error.ts)가 __cb 캐시버스트로 최신 HTML(새 해시)을 받아 자가복구.
+    if (!res.ok || ctype.includes('text/html')) {
+      return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    }
+    // ⚠️ res 를 init 으로 그대로 복제 → Content-Type/Content-Encoding/ETag 등 body 와 정합 유지
+    //   (headers 재조립 시 인코딩 헤더/본문 불일치로 브라우저 디코드 오류 나는 footgun 회피). Cache-Control 만 override.
+    const out = new Response(res.body, res);
+    out.headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // content-hash 파일 — _headers /assets/* 와 동일(워커 서빙 시 _headers 미적용이라 명시)
+    return out;
+  } catch {
+    return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+  }
+});
+
+// ============================================================
 // Admin Sub-Application (code-level separation)
 // All admin routes go through their own Hono app with:
 //   1. CORS
@@ -430,6 +463,9 @@ app.use('*', async (c, next) => {
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     `connect-src 'self' https: wss: https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app wss://${new URL(FIREBASE_RTDB_URL).host}; ` +
     "frame-src 'self' " +
+      // 🛡️ 2026-07-20: Turnstile 위젯은 challenges.cloudflare.com iframe 필수 — 누락 시
+      //   위젯 렌더 실패 → 토큰 없음 → (TURNSTILE_SECRET 설정 후) 로그인 전면 차단.
+      "https://challenges.cloudflare.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       `https://*.firebaseapp.com ${FIREBASE_APP_URL} ` +
@@ -935,6 +971,29 @@ app.use('*', async (c, next) => {
           } });
       }
     }
+    // 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타 — DETAIL 과 동일 패턴.
+    //   그간 PRODUCT 는 데이터만 주입하고 메타는 제네릭 홈 → 카톡/소셜 공유 시 상품 대신 '유어딜 홈' 카드.
+    //   가격·할인율 OG + Product JSON-LD 주입(카톡 커머스 공유 카드와 정합). SSR inject·0-RTT·로더 전부 불변 — 메타 rewrite만 additive.
+    if (ssrSlot === 'PRODUCT' && ssrPayload) {
+      const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
+      if (pm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(pm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', pm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', pm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', pm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', pm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${pm.canonical}">`, { html: true });
+            if (pm.jsonLd) el.append(`<script type="application/ld+json">${pm.jsonLd}</script>`, { html: true });
+          } });
+      }
+    }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
@@ -1050,6 +1109,16 @@ app.get('/robots.txt', async (c) => {
   }
   return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
+
+// 🔎 2026-07-20 네이버 서치어드바이저 소유확인 파일 — 워커가 직접 서빙(정적 자산 서빙이 새 존에서 404 나는 문제 우회).
+//   _routes.json exclude 에서 빼서 이 라우트가 처리하도록 함. 내용은 네이버 발급 파일 본문 그대로(파일명=값).
+//   ⚠️ Cloudflare Pages 가 `.html` URL 을 확장자 없는 경로로 308 리다이렉트하므로(html_handling),
+//      네이버가 리다이렉트를 따라가도 통과되도록 두 경로(.html + 확장자 없음) 모두 동일 본문 서빙.
+const naverVerifyBody = 'naver-site-verification: naverd3ccc68d1f14dc53e76aa95f4a02bb68.html';
+const serveNaverVerify = (c: { text: (b: string, s: number, h: Record<string, string>) => Response }) =>
+  c.text(naverVerifyBody, 200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c));
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
@@ -1479,6 +1548,7 @@ app.route('/api/seller', sellerStaysRoutes);
 app.route('/api/seller', sellerAccountRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
 app.route('/api/seller', sellerKakaoLinkRoutes);
+app.route('/api/seller', sellerScanDevicesRoutes); // 📟 2026-07-20 직원 폰/공기계 스캔 전용 기기 링크
 // 🛡️ 2026-04-28 TD-006 (split): /alimtalk* (account/balance/test/send/messages/charge)
 app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 // 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업)

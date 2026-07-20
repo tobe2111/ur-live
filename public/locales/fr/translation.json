@@ -191,6 +191,8 @@
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez"
   },
   "seller": {
+    "relink": {"title": "Compte Kakao changé ?", "desc": "Votre compte vendeur est conservé. Connectez-vous avec le nouveau Kakao puis confirmez votre e-mail et mot de passe vendeur.", "step1": "Connexion avec le nouveau Kakao", "step2": "Vérifier le compte vendeur", "kakaoBtn": "Connexion Kakao", "emailPh": "E-mail vendeur", "pwPh": "Mot de passe", "submit": "Reconnecter et ouvrir le tableau", "busy": "Reconnexion…", "fail": "Échec de la reconnexion", "needKakao": "Connectez-vous d'abord avec le nouveau Kakao.", "noPw": "Inscrit via Kakao sans mot de passe ? Nous le reconnectons après vérification.", "channel": "Contacter via le canal Kakao", "entry": "Kakao changé ? Reconnecter →"},
+    "scanDevices": {"title": "Lien de scan pour le personnel", "issue": "Générer le lien", "desc": "Lien scan-uniquement pour le téléphone du personnel ou un appareil du magasin, sans connexion du propriétaire. Scannez le QR avec cet appareil ou envoyez le lien. Révocable immédiatement en cas de perte.", "oneTime": "Affiché une seule fois", "copyLink": "Copier le lien", "lastUsed": "Dernière utilisation", "neverUsed": "Jamais utilisé", "revoke": "Révoquer", "revoked": "Révoqué", "revokeConfirm": "Révoquer ce lien ? Cet appareil ne pourra plus scanner.", "revokeFail": "Échec de la révocation", "issueFail": "Échec de l'émission"},
     "simple": {
       "scan": "Scan QR",
       "settlement": "Règlement",

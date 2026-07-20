@@ -169,19 +169,47 @@ async function ensureKeywordTable(DB: D1Database) {
 app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  if (['youtube', 'naver_blog', 'naver_cafe', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
+  const status = (c.req.query('status') || '').trim()   // 아웃리치 상태 필터
+  if (['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(status)) { where.push('status = ?'); binds.push(status) }
+  // 🎯 규모 필터(tier) — 유어딜 딜은 마이크로/중형(1만~50만)이 실전 효율 최고. YT 구독자 기준(네이버블로그는 지표 없어 무관).
+  const tier = (c.req.query('tier') || '').trim()
+  if (tier === 'nano') where.push('subscriber_count > 0 AND subscriber_count < 10000')
+  else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
+  else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
+  else if (tier === 'macro') where.push('subscriber_count >= 500000')
+  else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
+  // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
+  if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY subscriber_count DESC, id DESC LIMIT ?`)
-    .bind(...binds, limit).all().catch(() => null)
-  return c.json({ success: true, leads: rows?.results || [] })
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
+  // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
+  //   'subscribers'(구독자순) · 'recent'(최근수집).
+  const sort = (c.req.query('sort') || 'fit').trim()
+  const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
+    : sort === 'recent' ? 'id DESC'
+    : `CASE
+         WHEN platform IN ('naver_blog','naver_cafe') THEN 0
+         WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
+         WHEN subscriber_count >= 500000 AND subscriber_count < 1000000 THEN 1
+         WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
+         ELSE 3
+       END ASC, subscriber_count DESC, id DESC`
+  const whereSql = where.join(' AND ')
+  // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
+    .bind(...binds).first<{ n: number }>().catch(() => null)
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at
+    FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
+    .bind(...binds, limit, offset).all().catch(() => null)
+  return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
 })
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
@@ -191,6 +219,14 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
       SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
       SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
+      SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
+      SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
+      SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
+      SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
+      SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
+      SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
+      SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS today,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
@@ -198,16 +234,89 @@ app.get('/influencer-pool/stats', async (c) => {
   return c.json({ success: true, stats: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
 })
 
-// PATCH /api/admin/ads/influencer-pool/:id { status?, memo? } — 큐레이션
+// PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
 app.patch('/influencer-pool/:id', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const sets: string[] = []; const binds: (string | number)[] = []
-  if (typeof b.status === 'string' && ['new', 'contacted', 'rejected'].includes(b.status)) { sets.push('status = ?'); binds.push(b.status) }
+  if (typeof b.status === 'string' && ['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(b.status)) {
+    sets.push('status = ?'); binds.push(b.status)
+    if (['contacted', 'interested', 'contracted'].includes(b.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
+  }
   if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  if (b.follow_up_at !== undefined) {
+    const f = b.follow_up_at
+    if (f === null || f === '') sets.push('follow_up_at = NULL')
+    else if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f)) { sets.push('follow_up_at = ?'); binds.push(f) }
+    else return c.json({ success: false, error: '날짜 형식(YYYY-MM-DD) 오류' }, 400)
+  }
   if (!sets.length) return c.json({ success: false, error: '변경 항목 없음' }, 400)
   await c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, id, POOL).run().catch(() => null)
   return c.json({ success: true })
+})
+
+// POST /api/admin/ads/influencer-pool/merge-duplicates — 같은 이메일 중복 리드 통합(1건만 남김)
+//   유튜브+블로그 등 여러 플랫폼에 같은 사람이 잡히는 경우. 상태 진전(계약>관심>컨택함>신규)·정보 많은 순
+//   으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필). 이메일 있는 리드만 대상.
+app.post('/influencer-pool/merge-duplicates', async (c) => {
+  const groups = (await c.env.DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
+    WHERE account_id = ? AND email IS NOT NULL GROUP BY email HAVING n > 1`).bind(POOL)
+    .all<{ email: string; n: number }>().catch(() => null))?.results || []
+  let merged = 0
+  const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
+  for (const g of groups) {
+    const rows = (await c.env.DB.prepare(`SELECT id, instagram, tiktok, links, memo FROM ad_influencer_leads
+      WHERE account_id = ? AND email = ? ORDER BY ${rank} DESC,
+        (CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC,
+        subscriber_count DESC, id ASC`).bind(POOL, g.email)
+      .all<{ id: number; instagram: string | null; tiktok: string | null; links: string | null; memo: string | null }>().catch(() => null))?.results || []
+    if (rows.length < 2) continue
+    const keep = rows[0]; const drop = rows.slice(1)
+    // 대표에 없는 컨택/메모는 나머지에서 백필.
+    const ig = keep.instagram || drop.find(r => r.instagram)?.instagram || null
+    const tt = keep.tiktok || drop.find(r => r.tiktok)?.tiktok || null
+    const lk = keep.links || drop.find(r => r.links)?.links || null
+    await c.env.DB.prepare('UPDATE ad_influencer_leads SET instagram = ?, tiktok = ?, links = ? WHERE id = ?').bind(ig, tt, lk, keep.id).run().catch(() => null)
+    await c.env.DB.batch(drop.map(r => c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
+    merged += drop.length
+  }
+  return c.json({ success: true, merged, groups: groups.length })
+})
+
+// GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)
+//   인플루언서 카테고리 → 유어딜 이용권 카테고리 매핑 → 그 카테고리 승인 매장 목록 + **지역 커버리지** 반환.
+//   region 파라미터(선택): 매장 상품의 시/군구/동(product_regions, 텍스트 LIKE)으로 필터 → 로컬 딜 근접 매칭.
+//   ⚠️ 서비스 경계: sellers/products/product_regions 를 **읽기만** 함(변경 0). 매칭 판단은 어드민(사람).
+app.get('/seller-match', async (c) => {
+  const cat = (c.req.query('category') || '').trim()
+  const region = (c.req.query('region') || '').trim().slice(0, 40)
+  // 인플루언서 카테고리 → 유어딜 이용권 카테고리.
+  const MAP: Record<string, string> = {
+    '맛집': 'meal_voucher', '푸드': 'meal_voucher', '외식창업': 'meal_voucher',
+    '뷰티': 'beauty_voucher', '네일': 'beauty_voucher',
+    '숙소': 'stay_voucher',
+  }
+  const vcat = MAP[cat]
+  if (!vcat) return c.json({ success: true, category: cat, voucher_category: null, region: region || null, sellers: [], note: '이 카테고리는 유어딜 이용권 카테고리(맛집/뷰티/네일/숙소)와 직접 매칭되지 않습니다.' })
+  // product_regions(시/군구/동 텍스트 태깅, best-effort — 태깅된 매장만 지역 표시)로 커버리지 집계 + 선택 필터.
+  //   region 지정 시 그 지역에 태깅된 매장만(LEFT JOIN + HAVING 으로 지역 없는 매장 제외).
+  const regionLike = region ? `%${region}%` : ''
+  const havingRegion = region
+    ? `HAVING SUM(CASE WHEN pr.region_si LIKE ? OR pr.region_gu LIKE ? OR pr.region_dong LIKE ? THEN 1 ELSE 0 END) > 0`
+    : ''
+  const sql = `SELECT s.id, COALESCE(NULLIF(s.business_name,''), s.name) AS name,
+      COUNT(DISTINCT p.id) AS product_count,
+      GROUP_CONCAT(DISTINCT COALESCE(NULLIF(pr.region_gu,''), NULLIF(pr.region_si,''))) AS regions
+    FROM sellers s
+    JOIN products p ON p.seller_id = s.id AND p.is_active = 1 AND p.category = ?
+    LEFT JOIN product_regions pr ON pr.product_id = p.id
+    WHERE s.status = 'approved'
+    GROUP BY s.id ${havingRegion}
+    ORDER BY product_count DESC, s.id DESC LIMIT 100`
+  const binds = region ? [vcat, regionLike, regionLike, regionLike] : [vcat]
+  const rows = (await c.env.DB.prepare(sql).bind(...binds)
+    .all<{ id: number; name: string; product_count: number; regions: string | null }>().catch(() => null))?.results || []
+  return c.json({ success: true, category: cat, voucher_category: vcat, region: region || null, sellers: rows })
 })
 
 // DELETE /api/admin/ads/influencer-pool/:id
