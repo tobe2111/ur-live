@@ -268,32 +268,47 @@ app.patch('/influencer-pool/:id', async (c) => {
   return c.json({ success: true })
 })
 
-// POST /api/admin/ads/influencer-pool/merge-duplicates — 같은 이메일 중복 리드 통합(1건만 남김)
-//   유튜브+블로그 등 여러 플랫폼에 같은 사람이 잡히는 경우. 상태 진전(계약>관심>컨택함>신규)·정보 많은 순
-//   으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필). 이메일 있는 리드만 대상.
+// POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)
+//   1차: 같은 이메일 / 2차: 같은 인스타 핸들(이메일 없이 유튜브+블로그로 잡힌 동일인 — 인스타는 사람마다 고유).
+//   상태 진전(계약>관심>컨택함>신규)·정보 많은 순으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필).
 app.post('/influencer-pool/merge-duplicates', async (c) => {
-  const groups = (await c.env.DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
-    WHERE account_id = ? AND email IS NOT NULL GROUP BY email HAVING n > 1`).bind(POOL)
-    .all<{ email: string; n: number }>().catch(() => null))?.results || []
-  let merged = 0
+  const DB = c.env.DB
   const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
-  for (const g of groups) {
-    const rows = (await c.env.DB.prepare(`SELECT id, instagram, tiktok, links, memo FROM ad_influencer_leads
-      WHERE account_id = ? AND email = ? ORDER BY ${rank} DESC,
-        (CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC,
-        subscriber_count DESC, id ASC`).bind(POOL, g.email)
-      .all<{ id: number; instagram: string | null; tiktok: string | null; links: string | null; memo: string | null }>().catch(() => null))?.results || []
-    if (rows.length < 2) continue
+  // 한 그룹(같은 키의 리드들)을 대표 1건으로 통합 — 대표에 없는 이메일/인스타/틱톡/링크는 나머지에서 백필.
+  const mergeRows = async (rows: Array<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>): Promise<number> => {
+    if (rows.length < 2) return 0
     const keep = rows[0]; const drop = rows.slice(1)
-    // 대표에 없는 컨택/메모는 나머지에서 백필.
+    const em = keep.email || drop.find(r => r.email)?.email || null
     const ig = keep.instagram || drop.find(r => r.instagram)?.instagram || null
     const tt = keep.tiktok || drop.find(r => r.tiktok)?.tiktok || null
     const lk = keep.links || drop.find(r => r.links)?.links || null
-    await c.env.DB.prepare('UPDATE ad_influencer_leads SET instagram = ?, tiktok = ?, links = ? WHERE id = ?').bind(ig, tt, lk, keep.id).run().catch(() => null)
-    await c.env.DB.batch(drop.map(r => c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
-    merged += drop.length
+    await DB.prepare('UPDATE ad_influencer_leads SET email = ?, instagram = ?, tiktok = ?, links = ? WHERE id = ?').bind(em, ig, tt, lk, keep.id).run().catch(() => null)
+    await DB.batch(drop.map(r => DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
+    return drop.length
   }
-  return c.json({ success: true, merged, groups: groups.length })
+  const orderBy = `${rank} DESC, (CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC, subscriber_count DESC, id ASC`
+  let mergedEmail = 0, mergedInsta = 0
+  // 1차 — 이메일.
+  const emailGroups = (await DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
+    WHERE account_id = ? AND email IS NOT NULL AND email != '' GROUP BY LOWER(email) HAVING n > 1`).bind(POOL)
+    .all<{ email: string; n: number }>().catch(() => null))?.results || []
+  for (const g of emailGroups) {
+    const rows = (await DB.prepare(`SELECT id, email, instagram, tiktok, links FROM ad_influencer_leads
+      WHERE account_id = ? AND LOWER(email) = LOWER(?) ORDER BY ${orderBy}`).bind(POOL, g.email)
+      .all<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
+    mergedEmail += await mergeRows(rows)
+  }
+  // 2차 — 인스타 핸들(이메일 병합 후 남은 상태 기준). 크로스플랫폼 동일인 자동 병합.
+  const igGroups = (await DB.prepare(`SELECT LOWER(instagram) AS ig, COUNT(*) AS n FROM ad_influencer_leads
+    WHERE account_id = ? AND instagram IS NOT NULL AND instagram != '' GROUP BY LOWER(instagram) HAVING n > 1`).bind(POOL)
+    .all<{ ig: string; n: number }>().catch(() => null))?.results || []
+  for (const g of igGroups) {
+    const rows = (await DB.prepare(`SELECT id, email, instagram, tiktok, links FROM ad_influencer_leads
+      WHERE account_id = ? AND LOWER(instagram) = ? ORDER BY ${orderBy}`).bind(POOL, g.ig)
+      .all<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
+    mergedInsta += await mergeRows(rows)
+  }
+  return c.json({ success: true, merged: mergedEmail + mergedInsta, mergedEmail, mergedInsta, groups: emailGroups.length + igGroups.length })
 })
 
 // GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)
