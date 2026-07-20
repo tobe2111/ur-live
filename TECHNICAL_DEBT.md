@@ -2,6 +2,22 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-07-20 — 유어애즈 인플루언서 자동수집(Phase E) 신규 코드 부채
+무료 공식 API(YouTube Data v3 · 네이버 검색 오픈API)로 인플루언서를 매시간 순환 발굴 → **공용 풀**(`ad_influencer_leads.account_id=0`)에 누적. 어드민 `/admin/influencer-pool` 에서 열람/큐레이션/아웃리치. 코드: `src/features/marketing/api/influencer-{discovery,auto-collect}.ts` · `admin-ads.routes.ts` · `src/pages/admin/AdminInfluencerPoolPage.tsx` · ur-ads 워커 cron. ⚠️ **수집 ≠ 발송** — 실제 마케팅 발송은 정보통신망법상 사전동의 별도(이 엔진 범위 아님, mailto 초안만).
+
+### ✅ 2026-07-20 라이브 사고 3건 수정
+- ✅ **"Too many subrequests by single Worker invocation"** — 한 cron 실행에 키워드별 외부 fetch(검색+채널+채널별 컨택보충)가 누적돼 Worker subrequest 한도 초과 → 432건 저장 후 중도 실패(이후 키워드 전부 "네트워크 실패"로 오표시). **수정: `FetchBudget`(공유 카운터) 을 3개 발굴 함수(YT/네이버블로그/네이버카페)의 모든 `fetch` 앞에 배선 → 소진 시 우아하게 조기 종료(에러 아님)**. 기본 180(env `ADS_SUBREQUEST_BUDGET`), 커서가 다음 틱 이어받아 커버리지 손실 0(매시간 실행). enrichMax 도 YT 15→8·네이버 8→5 로 축소(폭 우선). 미전달이면 무제한(단건 수동 발굴 불변).
+- ✅ **어드민 풀 목록 500개 절단(전체 미열람)** — `/influencer-pool` 가 `LIMIT 500` 하드캡·페이지네이션 부재라 1800+ 풀 중 일부만 보임. **수정: `offset` 파라미터 + 필터별 `total` COUNT 반환 + UI "더 보기"(200씩 append) + "N / 전체 표시".**
+- ✅ **조용한 실패(silent failure)** — diag(플랫폼별 found/saved/error)를 저장만 하고 push 없음 → 시크릿 소실(=`wrangler deploy` plaintext wipe, 실발생)·쿼터소진 시 "신규 0건"이 조용히 지속. **수정: `maybeAlertCollectHealth` — 키 미설정 또는 전 플랫폼 saved=0 이면 Discord 경보(6h throttle + 회복 시 즉시 해제). `DISCORD_WEBHOOK_URL` 미설정이면 no-op.**
+- ✅ **셀러 매칭 지역(geo) 추가** — `GET /seller-match` 에 `product_regions`(시/군구/동 텍스트) LEFT JOIN → 매장별 지역 커버리지 표시 + `?region=` 텍스트 필터(로컬 딜 근접 매칭). **읽기 전용**(유어딜 데이터 무변경).
+
+### 🟢 남은 한계(저위험 · 구조적)
+- 🟢 **`ensureInfluencerSchema` 런타임 DDL SSOT 미등재** — `ad_influencer_leads`·`ad_discovery_keywords` 가 CLAUDE.md 허용 패턴(런타임 self-heal)이나 `production-schema.ts` 인터페이스 미등재. 동작 무관, 문서화 후속. **Low.**
+- 🟢 **연락처 확보율 = API 할당량 상한** — 영상설명·RSS 파싱으로 무료 범위 최대치. 유료 provider(인스타/틱톡 직접) 외 개선 여지 적음(구조적, 대표 "유료 보류"). **Low.**
+- 🟢 **중복 통합이 수동 버튼(email 기준)** — 자동 아님. UNIQUE(account_id,platform,channel_id) 로 채널 중복은 원천 차단되나 동일인의 크로스-플랫폼 중복은 수동 병합. **Low.**
+- 🟢 **셀러 매칭 지역 데이터 sparse** — `product_regions` 태깅된 매장만 지역 표시(미태깅 매장은 카테고리만). 인플루언서 측엔 위치 신호 없음 → 지역 매칭은 운영자 주도(텍스트 필터). **Low.**
+- 🟡 **자동수집 라이브 정확도는 실키 의존** — 이 개발환경 egress 차단이라 실 API 응답은 배포 후 검증(현재 라이브 동작 확인됨: 풀 1800+ 누적). 형제 유어애즈 모듈(`media-gateway`·`content-studio`·`order-collection`·`searchad-client`)도 egress-blind → 아래 06-27 항목과 동일하게 실계정 1회 검증 필요.
+
 ## 📊 2026-06-27 — 유어애즈(UR Ads, 3번째 서비스) 신규 코드 부채
 보라웨어식 검색광고 마케팅 툴 신규 구축(`src/features/marketing/**`, `src/pages/marketing/**`). 이 환경은 외부 egress 차단이라 **네이버 실 API 호출 미검증** — 아래는 배포 후 실 키/실 계정으로 1회 검증 필요한 항목 + 알려진 한계.
 

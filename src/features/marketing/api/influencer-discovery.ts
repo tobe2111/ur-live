@@ -101,11 +101,19 @@ export type DiscoverResult =
   | { ok: true; leads: InfluencerLead[] }
   | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string }
 
+/** 🔒 서브리퀘스트 예산(2026-07-20) — Cloudflare Worker 1회 실행의 subrequest 한도 방어.
+ *   여러 키워드 발굴이 한 cron 실행에 누적돼 "Too many subrequests" 로 중도 실패하던 사고 방지.
+ *   호출자가 공유 객체를 넘기면 각 외부 fetch 전에 소진 → 0 이 되면 발굴을 우아하게 조기 종료(에러 아님).
+ *   미전달이면 무제한(단건 수동 발굴 등 기존 동작 불변). */
+export type FetchBudget = { left: number }
+const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
+
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
  *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
  *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -118,6 +126,8 @@ export async function discoverYouTubeInfluencers(
   const channelIds: string[] = []
   let pageToken = ''
   for (let p = 0; p < pages; p++) {
+    if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
+    spendBudget(opts.budget)
     const searchUrl = `${YT_BASE}/search?part=snippet&type=channel&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
@@ -143,6 +153,8 @@ export async function discoverYouTubeInfluencers(
   // 2) 채널 상세 — id 50개씩 배치(channels.list 는 1콜당 최대 50 id/1 unit). contentDetails 로 업로드 재생목록.
   const chItems: NonNullable<YTChannelsResp['items']> = []
   for (let i = 0; i < uniqIds.length; i += 50) {
+    if (outOfBudget(opts.budget)) break
+    spendBudget(opts.budget)
     const batch = uniqIds.slice(i, i + 50)
     const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${batch.join(',')}&maxResults=50&key=${key}`
     try {
@@ -191,6 +203,8 @@ export async function discoverYouTubeInfluencers(
     .sort((a, b) => b.subscriber_count - a.subscriber_count)
     .slice(0, enrichMax)
   for (const l of targets) {
+    if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
+    spendBudget(opts.budget)
     const vidText = await fetchRecentVideoText(key, l._uploads!)
     if (!vidText) continue
     const c = extractContacts(vidText)
@@ -226,11 +240,13 @@ async function fetchNaverBlogRss(handle: string): Promise<string> {
 }
 
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
   if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
+  if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
+  spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
@@ -264,6 +280,8 @@ export async function discoverNaverBloggers(
   const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 8))
   const targets = leads.filter(l => !l.email && l.handle).slice(0, enrichMax)
   for (const l of targets) {
+    if (outOfBudget(opts.budget)) break // 예산 소진 — RSS 컨택 보충 조기 종료
+    spendBudget(opts.budget)
     const rss = await fetchNaverBlogRss(l.handle!)
     if (!rss) continue
     const c = extractContacts(rss)
@@ -289,11 +307,13 @@ function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, ke
 //   카페는 개인이 아니라 커뮤니티 단위 → 게시글 상위 노출 카페를 집계(카페홈 링크 기준).
 //   지표 없음, 매칭 글 수(활동 프록시) + best-effort 컨택. platform='naver_cafe'.
 export async function discoverNaverCafes(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; budget?: FetchBudget } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
   if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
+  if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
+  spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)

@@ -189,6 +189,7 @@ app.get('/influencer-pool', async (c) => {
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
   //   'subscribers'(구독자순) · 'recent'(최근수집).
   const sort = (c.req.query('sort') || 'fit').trim()
@@ -201,10 +202,14 @@ app.get('/influencer-pool', async (c) => {
          WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
          ELSE 3
        END ASC, subscriber_count DESC, id DESC`
+  const whereSql = where.join(' AND ')
+  // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
+    .bind(...binds).first<{ n: number }>().catch(() => null)
   const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY ${orderBy} LIMIT ?`)
-    .bind(...binds, limit).all().catch(() => null)
-  return c.json({ success: true, leads: rows?.results || [] })
+    FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
+    .bind(...binds, limit, offset).all().catch(() => null)
+  return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
 })
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
@@ -278,11 +283,13 @@ app.post('/influencer-pool/merge-duplicates', async (c) => {
   return c.json({ success: true, merged, groups: groups.length })
 })
 
-// GET /api/admin/ads/seller-match?category=맛집 — 🔗 유어딜 셀러 매칭(읽기 전용)
-//   인플루언서 카테고리 → 유어딜 이용권 카테고리 매핑 → 그 카테고리 승인 매장 목록을 반환.
-//   ⚠️ 서비스 경계: sellers/products 를 **읽기만** 함(변경 0). 매칭 판단은 어드민(사람). 유어딜 데이터 미변경.
+// GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)
+//   인플루언서 카테고리 → 유어딜 이용권 카테고리 매핑 → 그 카테고리 승인 매장 목록 + **지역 커버리지** 반환.
+//   region 파라미터(선택): 매장 상품의 시/군구/동(product_regions, 텍스트 LIKE)으로 필터 → 로컬 딜 근접 매칭.
+//   ⚠️ 서비스 경계: sellers/products/product_regions 를 **읽기만** 함(변경 0). 매칭 판단은 어드민(사람).
 app.get('/seller-match', async (c) => {
   const cat = (c.req.query('category') || '').trim()
+  const region = (c.req.query('region') || '').trim().slice(0, 40)
   // 인플루언서 카테고리 → 유어딜 이용권 카테고리.
   const MAP: Record<string, string> = {
     '맛집': 'meal_voucher', '푸드': 'meal_voucher', '외식창업': 'meal_voucher',
@@ -290,15 +297,26 @@ app.get('/seller-match', async (c) => {
     '숙소': 'stay_voucher',
   }
   const vcat = MAP[cat]
-  if (!vcat) return c.json({ success: true, category: cat, voucher_category: null, sellers: [], note: '이 카테고리는 유어딜 이용권 카테고리(맛집/뷰티/네일/숙소)와 직접 매칭되지 않습니다.' })
-  const rows = (await c.env.DB.prepare(`SELECT s.id, COALESCE(NULLIF(s.business_name,''), s.name) AS name,
-      COUNT(DISTINCT p.id) AS product_count
+  if (!vcat) return c.json({ success: true, category: cat, voucher_category: null, region: region || null, sellers: [], note: '이 카테고리는 유어딜 이용권 카테고리(맛집/뷰티/네일/숙소)와 직접 매칭되지 않습니다.' })
+  // product_regions(시/군구/동 텍스트 태깅, best-effort — 태깅된 매장만 지역 표시)로 커버리지 집계 + 선택 필터.
+  //   region 지정 시 그 지역에 태깅된 매장만(LEFT JOIN + HAVING 으로 지역 없는 매장 제외).
+  const regionLike = region ? `%${region}%` : ''
+  const havingRegion = region
+    ? `HAVING SUM(CASE WHEN pr.region_si LIKE ? OR pr.region_gu LIKE ? OR pr.region_dong LIKE ? THEN 1 ELSE 0 END) > 0`
+    : ''
+  const sql = `SELECT s.id, COALESCE(NULLIF(s.business_name,''), s.name) AS name,
+      COUNT(DISTINCT p.id) AS product_count,
+      GROUP_CONCAT(DISTINCT COALESCE(NULLIF(pr.region_gu,''), NULLIF(pr.region_si,''))) AS regions
     FROM sellers s
     JOIN products p ON p.seller_id = s.id AND p.is_active = 1 AND p.category = ?
+    LEFT JOIN product_regions pr ON pr.product_id = p.id
     WHERE s.status = 'approved'
-    GROUP BY s.id ORDER BY product_count DESC, s.id DESC LIMIT 100`).bind(vcat)
-    .all<{ id: number; name: string; product_count: number }>().catch(() => null))?.results || []
-  return c.json({ success: true, category: cat, voucher_category: vcat, sellers: rows })
+    GROUP BY s.id ${havingRegion}
+    ORDER BY product_count DESC, s.id DESC LIMIT 100`
+  const binds = region ? [vcat, regionLike, regionLike, regionLike] : [vcat]
+  const rows = (await c.env.DB.prepare(sql).bind(...binds)
+    .all<{ id: number; name: string; product_count: number; regions: string | null }>().catch(() => null))?.results || []
+  return c.json({ success: true, category: cat, voucher_category: vcat, region: region || null, sellers: rows })
 })
 
 // DELETE /api/admin/ads/influencer-pool/:id

@@ -53,27 +53,45 @@ export default function AdminInfluencerPoolPage() {
   const [merging, setMerging] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
   const [collecting, setCollecting] = useState(false)
   const [newKw, setNewKw] = useState('')
+
+  const PAGE = 200
+  // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름).
+  const buildParams = useCallback((offset: number) => {
+    const params = new URLSearchParams()
+    if (platform) params.set('platform', platform)
+    if (hasContact) params.set('hasContact', '1')
+    if (hasEmail) params.set('hasEmail', '1')
+    if (hasInstagram) params.set('hasInstagram', '1')
+    if (category) params.set('category', category)
+    if (tier) params.set('tier', tier)
+    if (sort) params.set('sort', sort)
+    if (statusFilter) params.set('status', statusFilter)
+    if (needFollowup) params.set('needFollowup', '1')
+    if (q.trim()) params.set('q', q.trim())
+    params.set('limit', String(PAGE)); params.set('offset', String(offset))
+    return params
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, q])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (platform) params.set('platform', platform)
-      if (hasContact) params.set('hasContact', '1')
-      if (hasEmail) params.set('hasEmail', '1')
-      if (hasInstagram) params.set('hasInstagram', '1')
-      if (category) params.set('category', category)
-      if (tier) params.set('tier', tier)
-      if (sort) params.set('sort', sort)
-      if (statusFilter) params.set('status', statusFilter)
-      if (needFollowup) params.set('needFollowup', '1')
-      if (q.trim()) params.set('q', q.trim())
-      const r = await api.get(`/api/admin/ads/influencer-pool?${params.toString()}`)
-      if (r.data?.success) setLeads(r.data.leads || [])
+      const r = await api.get(`/api/admin/ads/influencer-pool?${buildParams(0).toString()}`)
+      if (r.data?.success) { setLeads(r.data.leads || []); setTotal(r.data.total ?? (r.data.leads?.length || 0)) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, q])
+  }, [buildParams])
+
+  // 더 보기 — 현재 로드된 개수를 offset 으로 다음 페이지 append(필터 유지).
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true)
+    try {
+      const r = await api.get(`/api/admin/ads/influencer-pool?${buildParams(leads.length).toString()}`)
+      if (r.data?.success) { setLeads(prev => [...prev, ...(r.data.leads || [])]); if (typeof r.data.total === 'number') setTotal(r.data.total) }
+    } catch { toast.error('더 불러오지 못했습니다') } finally { setLoadingMore(false) }
+  }, [buildParams, leads.length])
 
   const loadMeta = useCallback(async () => {
     try {
@@ -151,14 +169,16 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
   }
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
-  // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록.
-  const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number }[] | null>(null)
+  // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록(+지역 커버리지/필터).
+  const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number; regions?: string | null }[] | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
+  const [matchRegion, setMatchRegion] = useState('') // 지역(시/군구/동) 텍스트 필터 — 로컬 딜 근접 매칭
   async function loadSellerMatch() {
     if (!category) { toast.error('먼저 카테고리(맛집/뷰티/네일/숙소)를 선택하세요'); return }
     setMatchLoading(true)
     try {
-      const r = await api.get(`/api/admin/ads/seller-match?category=${encodeURIComponent(category)}`)
+      const rq = matchRegion.trim() ? `&region=${encodeURIComponent(matchRegion.trim())}` : ''
+      const r = await api.get(`/api/admin/ads/seller-match?category=${encodeURIComponent(category)}${rq}`)
       if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast.info('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
     } catch { toast.error('매칭 조회 실패') } finally { setMatchLoading(false) }
   }
@@ -336,7 +356,8 @@ export default function AdminInfluencerPoolPage() {
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름/핸들 검색" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
-          <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리의 유어딜 매장 목록(읽기 전용)">
+          <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
+          <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
             {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}
           </button>
         </div>
@@ -345,15 +366,15 @@ export default function AdminInfluencerPoolPage() {
         {matchSellers && (
           <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50/50 px-4 py-3">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-indigo-900">🔗 「{category}」 매칭 유어딜 매장 — {formatNumber(matchSellers.length)}곳</div>
+              <div className="text-sm font-medium text-indigo-900">🔗 「{category}」{matchRegion.trim() ? ` · ${matchRegion.trim()}` : ''} 매칭 유어딜 매장 — {formatNumber(matchSellers.length)}곳</div>
               <button onClick={() => setMatchSellers(null)} className="text-xs text-gray-400 hover:text-gray-700">닫기</button>
             </div>
             {matchSellers.length === 0 ? (
-              <div className="text-xs text-gray-500">해당 카테고리의 승인된 유어딜 매장이 아직 없습니다. (매장이 늘면 이 인플루언서들을 연결 제안할 수 있어요)</div>
+              <div className="text-xs text-gray-500">해당 카테고리{matchRegion.trim() ? `·「${matchRegion.trim()}」 지역` : ''}의 승인된 유어딜 매장이 아직 없습니다. (매장이 늘면 이 인플루언서들을 연결 제안할 수 있어요)</div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {matchSellers.map(s => (
-                  <span key={s.id} className="px-2.5 py-1 rounded-full bg-white border border-indigo-200 text-xs text-gray-700">{s.name} <span className="text-gray-400">· 상품 {s.product_count}</span></span>
+                  <span key={s.id} className="px-2.5 py-1 rounded-full bg-white border border-indigo-200 text-xs text-gray-700">{s.name} <span className="text-gray-400">· 상품 {s.product_count}{s.regions ? ` · ${s.regions}` : ''}</span></span>
                 ))}
               </div>
             )}
@@ -429,6 +450,16 @@ export default function AdminInfluencerPoolPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && leads.length > 0 && (
+          <div className="mt-3 flex items-center justify-center gap-3 text-sm">
+            <span className="text-gray-400">{formatNumber(leads.length)} / {formatNumber(total)}명 표시</span>
+            {leads.length < total && (
+              <button onClick={loadMore} disabled={loadingMore} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium disabled:opacity-50">
+                {loadingMore ? '불러오는 중…' : `더 보기 (+${formatNumber(Math.min(PAGE, total - leads.length))})`}
+              </button>
+            )}
           </div>
         )}
       </div>

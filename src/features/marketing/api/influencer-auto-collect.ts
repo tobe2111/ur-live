@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, type InfluencerLead } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -67,6 +67,46 @@ interface AutoCollectStats {
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
+const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
+
+type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string } }
+
+/**
+ * 🔔 조용한 실패 방어(2026-07-20) — 수집이 켜져 있는데 **키 소실/전 플랫폼 0건**이면 Discord 경보.
+ *   배경: 시크릿이 `wrangler deploy`(plaintext var wipe)로 지워져 "신규 0건"이 조용히 며칠 지속되던 사고
+ *   클래스(2026-07-20 실발생) — diag 는 저장만 되고 push 가 없어 대시보드를 열기 전까지 아무도 모름.
+ *   판정: 키 미설정(configured=false, =시크릿 소실 신호) 또는 saved===0(quota 소진이어도 naver 까지 0이면 문제).
+ *   throttle: settings alert_at 로 6h 1회(24알림/day 방지) + 회복 시 즉시 해제(다음 실패는 지연 없이 알림).
+ *   전부 fail-soft — 알림 실패가 수집을 막지 않는다. DISCORD_WEBHOOK_URL 미설정이면 no-op(회귀 0).
+ */
+async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
+  const webhook = env.DISCORD_WEBHOOK_URL
+  if (!webhook) return
+  const { diag, saved, quotaHit } = run
+  const keyMissing = !diag.yt.configured || !diag.naver.configured
+  const unhealthy = keyMissing || saved === 0
+  const prevAt = await readSetting(DB, ALERT_KEY)
+  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
+  if (!unhealthy) {
+    if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
+      await writeSetting(DB, ALERT_KEY, '')
+      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
+    }
+    return
+  }
+  const last = prevAt ? Date.parse(prevAt) : 0
+  const now = Date.now()
+  if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
+  await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
+  const lines = [
+    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
+    `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
+    `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
+    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
+    '어드민 인플루언서 풀에서 상세 확인.',
+  ].filter(Boolean)
+  await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
+}
 
 /**
  * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
@@ -231,6 +271,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
+  // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
+  //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
+  //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
+  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 180) }
 
   let saved = 0
   let quotaHit = false
@@ -251,12 +295,13 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 2))
   let ytUsed = 0
   for (const k of picks) {
+    if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
     used.push(k.keyword)
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
@@ -268,7 +313,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100 })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
@@ -276,7 +321,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
       try {
-        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50 })
+        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
@@ -318,5 +363,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
+  try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
 }
