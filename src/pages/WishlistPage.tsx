@@ -116,8 +116,8 @@ const WishlistCard = memo(function WishlistCard({
           disabled={item.stock === 0}
           className="w-full mt-auto py-2 rounded-xl text-sm font-medium transition-colors disabled:cursor-not-allowed"
           style={{
-            background: item.stock === 0 ? 'rgba(127,127,127,0.25)' : (grad.isLight ? '#1a1a1a' : '#ffffff'),
-            color: item.stock === 0 ? grad.sub : (grad.isLight ? '#ffffff' : '#1a1a1a'),
+            background: item.stock === 0 ? 'rgba(127,127,127,0.25)' : (grad.isLight ? '#1A2334' : '#ffffff'),
+            color: item.stock === 0 ? grad.sub : (grad.isLight ? '#ffffff' : '#1A2334'),
           }}
         >
           {item.stock === 0 ? t('product.outOfStock') : t('wishlist.addToCart')}

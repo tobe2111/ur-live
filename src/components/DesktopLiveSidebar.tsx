@@ -82,11 +82,11 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#0A0A0A] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#0F151D] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
-      <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
+      <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
         <span className="xl:hidden text-[18px] font-black text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>

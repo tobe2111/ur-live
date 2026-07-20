@@ -51,7 +51,7 @@ export default function MapSearchHeader({
           <button
             onClick={() => navigate(-1)}
             aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0F151D]/95 backdrop-blur-md shadow-md shrink-0"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
@@ -66,7 +66,7 @@ export default function MapSearchHeader({
             onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
             placeholder={t('restaurantMap.searchPlaceholder')}
             aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
-            className="w-full pl-10 pr-9 py-2.5 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-400 shadow-md"
+            className="w-full pl-10 pr-9 py-2.5 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md rounded-full text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-md"
           />
           {search && (
             <button onClick={() => setSearch('')} aria-label={t('map.search.clearAria', { defaultValue: '검색어 지우기' })} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -75,8 +75,8 @@ export default function MapSearchHeader({
           )}
           {/* 🛡️ Phase 5: 검색 히스토리 dropdown — focus 시 + 입력값 비어있을 때만 */}
           {searchFocused && !search && searchHistory.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden z-10">
-              <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A]">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0F151D] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2A3446] overflow-hidden z-10">
+              <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100 dark:border-[#2A3446]">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">{t('restaurantMap.recentSearch')}</span>
                 <button
                   onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
@@ -90,7 +90,7 @@ export default function MapSearchHeader({
                   <button
                     key={q}
                     onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] flex items-center gap-2"
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334] flex items-center gap-2"
                   >
                     <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                     <span className="truncate">{q}</span>
@@ -105,14 +105,14 @@ export default function MapSearchHeader({
             <button
               onClick={() => navigate('/notifications')}
               aria-label={t('mainHome.ariaNotifications', { defaultValue: '알림' })}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md"
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0F151D]/95 backdrop-blur-md shadow-md"
             >
               <Bell className="w-5 h-5 text-gray-700 dark:text-gray-200" />
             </button>
             <button
               onClick={() => navigate('/cart')}
               aria-label={t('mainHome.ariaCart', { defaultValue: '장바구니' })}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md"
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0F151D]/95 backdrop-blur-md shadow-md"
             >
               <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-200" />
             </button>

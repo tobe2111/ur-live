@@ -66,8 +66,8 @@ export default function HostingPage() {
   return (
     <>
       <SEO title={t('hosting.title', { defaultValue: '내 공구 호스팅' })} noindex />
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-24">
+        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
             <button
@@ -88,7 +88,7 @@ export default function HostingPage() {
                 { label: '성공', value: formatNumber(summary.achieved), accent: 'text-emerald-500' },
                 { label: '적립', value: formatWon(summary.total_earnings), accent: 'text-pink-500' },
               ].map(card => (
-                <div key={card.label} className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3 border border-gray-100 dark:border-[#1A1A1A]">
+                <div key={card.label} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-3 border border-gray-100 dark:border-[#2A3446]">
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{card.label}</p>
                   <p className={`text-base font-bold ${card.accent || ''}`}>{card.value}</p>
                 </div>
@@ -116,7 +116,7 @@ export default function HostingPage() {
               {hosts.map(host => {
                 const status = STATUS_LABEL[host.status] || STATUS_LABEL.active
                 return (
-                  <div key={host.id} className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
+                  <div key={host.id} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 border border-gray-100 dark:border-[#2A3446]">
                     <div className="flex gap-3 mb-3">
                       {(host.thumbnail || host.image_url) && (
                         <img src={host.thumbnail || host.image_url || ''} alt={host.product_name} className="w-16 h-16 rounded-lg object-cover" />
@@ -136,13 +136,13 @@ export default function HostingPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyInvite(host)}
-                        className="flex-1 py-2 bg-white dark:bg-[#1A1A1A] hover:bg-gray-100 dark:hover:bg-[#2A2A2A] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-gray-200 dark:border-[#2A2A2A]"
+                        className="flex-1 py-2 bg-white dark:bg-[#1A2334] hover:bg-gray-100 dark:hover:bg-[#2A3446] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-gray-200 dark:border-[#2A3446]"
                       >
                         🔗 초대 링크
                       </button>
                       <Link
                         to={`/host/${host.id}`}
-                        className="flex-1 py-2 bg-white dark:bg-[#1A1A1A] hover:bg-gray-100 dark:hover:bg-[#2A2A2A] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg text-center border border-gray-200 dark:border-[#2A2A2A]"
+                        className="flex-1 py-2 bg-white dark:bg-[#1A2334] hover:bg-gray-100 dark:hover:bg-[#2A3446] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg text-center border border-gray-200 dark:border-[#2A3446]"
                       >
                         👥 참여자
                       </Link>

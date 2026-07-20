@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function TeamPointsCard() {
   const { t } = useTranslation()
@@ -40,7 +41,7 @@ export default function TeamPointsCard() {
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 py-3">
-      <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
+      <div className="bg-gray-50 dark:bg-[#1A2334] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A3446]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎁</span>
@@ -67,8 +68,10 @@ export default function TeamPointsCard() {
             </div>
           </div>
         </div>
-        {/* 🛡️ 2026-05-24: 충전 + 내역 보기 2버튼 */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* 🛡️ 2026-05-24: 충전 + 내역 보기 2버튼
+            🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): TOPUP_DISABLED 시 충전 버튼 숨김 → 내역 풀폭. */}
+        <div className={`grid ${TOPUP_DISABLED ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+          {!TOPUP_DISABLED && (
           <button
             type="button"
             onClick={() => navigate('/points/charge')}
@@ -76,10 +79,11 @@ export default function TeamPointsCard() {
           >
             {t('my.charge', { defaultValue: '충전하기' })}
           </button>
+          )}
           <button
             type="button"
             onClick={() => navigate('/my-deal-history')}
-            className="py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.12] rounded-lg border border-gray-200 dark:border-[#2A2A2A] active:scale-[0.98] transition-all"
+            className="py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.12] rounded-lg border border-gray-200 dark:border-[#2A3446] active:scale-[0.98] transition-all"
           >
             📋 {t('my.dealHistory', { defaultValue: '사용 내역' })}
           </button>

@@ -870,6 +870,7 @@
     "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
+    "simple": { "scan": "QR 스캔", "settlement": "정산", "myDeals": "내 딜", "fullMenu": "전체 메뉴", "scanSub": "손님 바우처 사용 처리", "settlementSub": "매출·지급 확인", "myDealsSub": "승인 대기 포함" },
     "kakaoNotify": {
       "confirmResend": "이미 발송했습니다. 다시 발송하시겠습니까?",
       "defaultMessage": "지금 라이브가 시작됐어요! 같이 봐요 🔴",
@@ -2367,7 +2368,10 @@
       "imageSearchPlaceholder": "다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)",
       "promoLabel": "추천 소개비 (%)",
       "promoRecommend": "권장 {{min}}~{{max}}%",
-      "promoHint": "인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요."
+      "promoHint": "인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.",
+      "photoGuideTitle": "💡 음식·시술 결과 사진이 간판·메뉴판 사진보다 판매가 잘 돼요",
+      "photoGuideGood": "✅ 추천 예시: 대표 메뉴 클로즈업 · 시술 결과(전/후) · 실제 제공되는 모습",
+      "photoGuideBad": "❌ 피해주세요: 간판 · 메뉴판 · 건물 외관 사진"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",

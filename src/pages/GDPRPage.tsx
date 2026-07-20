@@ -6,7 +6,7 @@ export default function GDPRPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
       <SEO title="Privacy Policy (GDPR) - YourDeal" description="YourDeal privacy policy and GDPR compliance information." url="/gdpr" />
       {/* 🛡️ 2026-05-20: 정책 페이지 ur-content-medium (1024px) 으로 PC 가독성 향상. */}
       <div className="ur-content-medium px-5 lg:px-8 py-8 lg:py-12">

@@ -78,7 +78,7 @@ export default function ConditionalDealsSection() {
   if (!loaded || deals.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
+    <div className="bg-white dark:bg-[#0F151D] border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">조건부 우대 커미션 제안</h3>
@@ -92,7 +92,7 @@ export default function ConditionalDealsSection() {
           const ps = d.proof_status
           const canSubmit = d.status === 'proposed' && (ps === 'pending' || ps === 'rejected')
           return (
-            <div key={d.id} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] p-3">
+            <div key={d.id} className="rounded-lg border border-gray-200 dark:border-[#2A3446] p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
                   매장 #{d.seller_id} · {d.commission_pct}%
@@ -128,7 +128,7 @@ export default function ConditionalDealsSection() {
                     value={urlById[d.id] || ''}
                     onChange={(e) => setUrlById((m) => ({ ...m, [d.id]: e.target.value }))}
                     placeholder="https://blog.naver.com/..."
-                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3 py-2 text-sm text-gray-900 dark:text-white"
                   />
                   <button
                     type="button"

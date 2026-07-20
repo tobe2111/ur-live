@@ -43,11 +43,11 @@ export default function HostInvitePage() {
     navigate(`/products/${data.product_id}?ref=${data.host_user_id}&from=invite&code=${data.invite_code}`)
   }
 
-  if (loading) return <BrandLoader fullScreen forceDark />  // 🎯 2026-07-18 로딩 단일화(다크 #020202 표면)
+  if (loading) return <BrandLoader fullScreen forceDark />  // 🎯 2026-07-18 로딩 단일화(다크 #0F151D 표면)
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#020202] text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-screen bg-[#0F151D] text-white flex flex-col items-center justify-center px-4 text-center">
         <p className="text-5xl mb-3">😢</p>
         <p className="text-base mb-2">{error}</p>
         <Link to="/" className="mt-4 px-6 py-3 bg-pink-500 rounded-xl font-bold">홈으로</Link>
@@ -65,13 +65,13 @@ export default function HostInvitePage() {
         description={data.note || `${data.host_name} 님이 공구를 모집 중이에요`}
         url={`/g/${data.invite_code}`}
       />
-      <div className="min-h-screen bg-[#020202] text-white pb-24">
+      <div className="min-h-screen bg-[#0F151D] text-white pb-24">
         {/* 호스트 헤더 */}
         <header className="px-4 pt-8 pb-6 text-center">
           {data.host_profile ? (
-            <img src={data.host_profile} alt={data.host_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2 bg-[#1A1A1A]" />
+            <img src={data.host_profile} alt={data.host_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2 bg-[#1A2334]" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#1A1A1A] flex items-center justify-center text-2xl font-bold text-pink-400 mx-auto mb-2">
+            <div className="w-16 h-16 rounded-full bg-[#1A2334] flex items-center justify-center text-2xl font-bold text-pink-400 mx-auto mb-2">
               {(data.host_name || '?').slice(0, 1)}
             </div>
           )}
@@ -82,9 +82,9 @@ export default function HostInvitePage() {
 
         {/* 상품 카드 */}
         <div className="max-w-md mx-auto px-4">
-          <div className="bg-[#0A0A0A] rounded-2xl border border-[#1A1A1A] overflow-hidden">
+          <div className="bg-[#0F151D] rounded-2xl border border-[#2A3446] overflow-hidden">
             {(data.thumbnail || data.image_url) && (
-              <div className="aspect-video bg-[#121212]">
+              <div className="aspect-video bg-[#1A2334]">
                 <img src={data.thumbnail || data.image_url || ''} alt={data.product_name} className="w-full h-full object-cover" />
               </div>
             )}
@@ -98,14 +98,14 @@ export default function HostInvitePage() {
               </div>
 
               {/* 진행 상황 */}
-              <div className="bg-[#121212] rounded-xl p-3 mb-4">
+              <div className="bg-[#1A2334] rounded-xl p-3 mb-4">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-gray-400">모집 현황</span>
                   <span className="font-bold">
                     {formatNumber(data.current_quantity)}/{formatNumber(data.target_quantity)}명
                   </span>
                 </div>
-                <div className="h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+                <div className="h-2 bg-[#1A2334] rounded-full overflow-hidden">
                   <div className="h-full bg-pink-500" style={{ width: `${progress}%` }} />
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function HostInvitePage() {
                   🎉 공구 참여하기
                 </button>
               ) : (
-                <div className="w-full py-3 bg-[#1A1A1A] text-gray-500 text-center text-base font-bold rounded-xl">
+                <div className="w-full py-3 bg-[#1A2334] text-gray-500 text-center text-base font-bold rounded-xl">
                   {data.status === 'achieved' ? '🎉 달성 완료' : '⏰ 마감되었어요'}
                 </div>
               )}

@@ -36,7 +36,7 @@ export default function PcHomePage() {
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
   return (
-    <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#0F151D] min-h-[100dvh]">
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
@@ -70,7 +70,7 @@ export default function PcHomePage() {
                 className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
                 📍 가까운 순
@@ -86,7 +86,7 @@ export default function PcHomePage() {
                   className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-colors ${
                     active
                       ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                      : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                   }`}
                 >
                   {s.label}

@@ -25,6 +25,7 @@ import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
 import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
+import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -41,6 +42,7 @@ import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { meRegionRoutes, adminRegionRoutes, publicRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도 + 좌표해석
+import { adminMatchingRoutes } from '../features/marketing/api/admin-matching.routes'; // 🤝 성과기반 매칭(어드민 전용 내부 도구)
 import { acquisitionRoutes } from './routes/acquisition.routes'; // 📡 유입 소스 어트리뷰션 (?src= 퍼널)
 import { termsRoutes } from './routes/terms.routes'; // 📜 약관 동의 로그 (누가·언제·몇 버전)
 import { i18nMiddleware } from './middleware/i18n.middleware';
@@ -59,7 +61,7 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
-import { adminSuppliersRoutes } from '../features/admin/api/admin-suppliers.routes';
+// 🏭 [wholesale-split 2026-07-16] adminSuppliersRoutes → src/worker/mount-wholesale.ts (도매 분리)
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
 import { adminStaysRoutes } from '../features/admin/api/admin-stays.routes';
 // 🛡️ 2026-05-19: KT Alpha (기프티쇼) 어드민.
@@ -128,31 +130,10 @@ import { sellerTransferRespondRoutes } from '../features/seller/api/seller-trans
 // import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
-import { supplyRoutes } from '../features/supply/api/supply.routes';
-import { supplierAuthRoutes } from '../features/supply/api/supplier-auth.routes';
-import { supplierDashboardRoutes } from '../features/supply/api/supplier-dashboard.routes';
-import { distributorAdminRoutes } from '../features/supply/api/distributor-admin.routes';
-import { wholesaleRoutes } from '../features/supply/api/wholesale.routes';
-import { wholesaleSupplierRoutes } from '../features/supply/api/wholesale-supplier.routes';
-import { wholesaleClaimsRoutes } from '../features/supply/api/wholesale-claims.routes';
-import { naverCommerceRoutes } from '../features/supply/api/naver-commerce.routes';
-import { coupangCommerceRoutes } from '../features/supply/api/coupang-commerce.routes';
-import { wholesaleQuotesRoutes } from '../features/supply/api/wholesale-quotes.routes';
-import { supplierAnalyticsRoutes } from '../features/supply/api/supplier-analytics.routes';
-import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-price-reference.routes';
-import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
-import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
-import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
-import { wholesaleShipAddressRoutes } from '../features/supply/api/wholesale-ship-address.routes';
-import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features/supply/api/wholesale-deposit.routes';
-import { wholesalePlusRoutes } from '../features/supply/api/wholesale-plus.routes';
-import { supplierWithdrawalRoutes, adminWholesaleWithdrawalRoutes } from '../features/supply/api/supplier-withdrawal.routes';
-import { wholesaleChatRoutes } from '../features/supply/api/wholesale-chat.routes';
-import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesaleProposalRoutes, adminWholesaleProductRoutes, adminWholesaleDepositAccountRoutes } from '../features/supply/api/wholesale-main.routes';
-import { wholesaleBoardPublicRoutes, wholesaleWishlistRoutes, adminWholesaleBoardRoutes } from '../features/supply/api/wholesale-board.routes';
+// 🏭 [wholesale-split 2026-07-16] 도매(features/supply) 라우트 import 는 src/worker/mount-wholesale.ts 로 이동.
+//   소비자(ur-live) 번들에서 제외 — WHOLESALE_BUNDLE=1 빌드에서만 동적 import(esbuild DCE). 상세: mount-wholesale.ts 헤더.
+//   partnership(광고/제휴 문의)은 도매 아님 → 소비자 유지(아래 1줄 잔류).
 import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partnership.routes';
-import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
-import { adminWholesaleOverviewRoutes } from '../features/supply/api/wholesale-overview-admin.routes';
 import { adminUcansignRoutes } from '../features/admin/api/admin-ucansign.routes';
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
@@ -200,9 +181,13 @@ import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.rou
 import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
-// 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스. /api/ads/* (유어딜/도매몰과 분리된 네임스페이스).
-import { marketingRoutes } from '../features/marketing/api/marketing.routes';
-import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
+// 🎯 [urads-split Phase D 2026-07-16] 유어애즈 로컬 폴백(marketingRoutes·shortLinkRedirectRoutes) 제거 —
+//   prod 컷오버 확인(`x-served-by: ur-ads`) 후 설계(docs/design/urads-worker-split.md §4 Phase D)대로.
+//   /api/ads/*·/l/* 는 Service Binding 프록시(env.ADS)가 ur-ads 워커로 위임(아래 app.use('*') 블록).
+//   ⚠️ ADS_WORKER_ENABLED=true + ADS 바인딩이 이제 필수(폴백 없음) — 끄면 유어애즈 다운. 재도입=원복.
+// import { marketingRoutes } from '../features/marketing/api/marketing.routes';
+// import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
+// /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
@@ -319,6 +304,10 @@ function privateNoCache() {
     c.header('Vary', 'Authorization, Cookie');
   };
 }
+
+// 🏭 [wholesale-split 2026-07-16] 빌드타임 상수 — esbuild `define` 로 치환됨.
+//   build-worker.js: 기본 false(소비자 ur-live) → 도매 그래프 DCE 제외. WHOLESALE_BUNDLE=1 → true(도매 ur-wholesale).
+declare const __INCLUDE_WHOLESALE__: boolean;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -879,19 +868,18 @@ app.use('*', async (c, next) => {
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
     // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
-    //   ▶ 플레이 마커 + 블록 도트(size34 사전계산). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 미세 점프.
+    //   size34 사전계산. 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 미세 점프.
     //   테마 가변 대응: dark: variant 로 다크/라이트 자동. CSS(ur-loader-breathe/sweep)는 번들에 존재.
+    // 🎨 2026-07-19 [UNLOCK_LOADING] 대표 확정 로고(Final 핸드오프): "urdeal"+로즈 점 — UrDealLogo 재작성과 픽셀 동일
+    //   (Poppins 800 · 자간 −3.5% · 점 6.12px/좌 2.72px = 34px 기준). 구조·위상동기·ur-loader-* 클래스 불변.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
-          '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
-            '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
-          '</span>' +
-          '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
-          '<span>DEAL</span>' +
+        '<div class="ur-loader-breathe text-[#1A2C42] dark:text-[#FAF7F5]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
+          'urdeal' +
+          '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
         '</div>' +
         '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
-          '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
+          '<div class="ur-loader-sweep bg-brand dark:bg-brand" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
         '</div>' +
       '</div>';
     // 🔎 2026-07-07 [UNLOCK_LOADING] (대표 "각 이용권 페이지마다 SEO 다 잘 되지?"): 공구/이용권/교환권 상세
@@ -994,8 +982,8 @@ app.route('/', blogSeoRoutes);
 // 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
 //   설계 SSOT: docs/design/urads-worker-split.md.
 //   ADS_WORKER_ENABLED==='true' + env.ADS 바인딩이 있으면 /api/ads/* · /l/* 를 ur-ads 로 위임.
-//   ⚠️ 기본 OFF(미설정/미바인딩) = 아래 로컬 마운트(marketingRoutes/shortLinkRedirectRoutes)가 그대로
-//      처리 → 라이브 byte-동일. 위임 중 예외가 나면 next() 로 폴백(로컬 처리) — 안전망.
+//   🎯 [Phase D 2026-07-16] 로컬 폴백(marketingRoutes/shortLinkRedirectRoutes) 제거됨 — 이 프록시가 유일 경로.
+//      ⚠️ ADS_WORKER_ENABLED=true + ADS 바인딩을 끄면 유어애즈 404(폴백 없음). 위임 예외 시 next()=SPA 셸.
 //   /api/admin/ads/* 는 위임하지 않고 메인 유지(메인 어드민 JWT 사용).
 app.use('*', async (c, next) => {
   const ads = c.env.ADS;
@@ -1016,7 +1004,8 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-app.route('/', shortLinkRedirectRoutes); // 🔗 유어애즈 단축링크 공개 리다이렉트 /l/{code} (생성은 /api/ads/links)
+// 🎯 [urads-split Phase D] /l/{code} 단축링크 로컬 폴백 제거 — 위 프록시가 ur-ads 로 위임(컷오버 검증됨).
+// app.route('/', shortLinkRedirectRoutes);
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
 //   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
@@ -1040,6 +1029,7 @@ app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
+app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
 app.route('/', repairSchemaRoutes);
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
@@ -1339,6 +1329,7 @@ app.route('/api/users', usersRouter);
 app.route('/api/me', meRegionRoutes);              // 🗺️ 내 동네 설정/조회
 app.route('/api/region', publicRegionRoutes);      // 🗺️ 좌표 → 동네 해석 (공개, 비로그인 자동감지)
 app.route('/api/admin/region', adminRegionRoutes); // 🗺️ 동별 딜 밀도 (영입 타겟)
+app.route('/api/admin/matching', adminMatchingRoutes); // 🤝 성과기반 매칭 — 어드민 전용(requireAdmin)
 app.route('/api/acquisition', acquisitionRoutes);  // 📡 유입 소스 어트리뷰션 (시설물 QR ?src= 퍼널)
 app.route('/api/terms', termsRoutes);              // 📜 약관 동의 로그 (버전 스탬프 + 재동의 골격)
 
@@ -1437,7 +1428,8 @@ app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec
 
 // Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
-app.route('/api/ads', marketingRoutes);  // 🆕 통합 마케팅 서비스(3번째) — /api/ads/*
+// 🎯 [urads-split Phase D] /api/ads 로컬 폴백 제거 — Service Binding 프록시(env.ADS→ur-ads)가 전담. 재도입=원복.
+// app.route('/api/ads', marketingRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
@@ -1613,10 +1605,8 @@ adminApp.route('/', adminStatsRoutes);
 adminApp.route('/', adminSellersRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
-// 🛡️ 2026-06-01 도매몰: 공급자 계정 관리 + 지급 실행
-adminApp.route('/', adminSuppliersRoutes);
-// 🏦 2026-06-09 도매몰: 제조사 정산금 출금 신청 승인/반려 (requireAdmin + IP whitelist + audit 체인)
-adminApp.route('/', adminWholesaleWithdrawalRoutes);
+// 🏭 [wholesale-split] 도매 admin 마운트(suppliers/withdrawal) → mount-wholesale.ts
+//   (app.route('/api/admin', adminApp) 직전의 __INCLUDE_WHOLESALE__ 블록에서 TLA 로 등록)
 // 🛡️ 2026-05-18: 숙소 공구 어드민 (PR 1 Foundation).
 adminApp.route('/', adminStaysRoutes);
 // 🛡️ 2026-05-19: KT Alpha 관리 (catalog sync, markup, biz money 잔액).
@@ -1661,6 +1651,13 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // - scraped_advertisers 테이블은 데이터 보존용으로 남겨둠 (직접 SQL 조회 가능)
 // - 스크래핑 기능은 이미 CLAUDE.md 에 따라 제거됨 (PIPA/정보통신망법 리스크)
 
+// 🏭 [wholesale-split 2026-07-16] 도매 라우트는 WHOLESALE_BUNDLE=1 빌드에서만 포함.
+//   __INCLUDE_WHOLESALE__=false(소비자) → esbuild DCE 로 mount-wholesale + 도매 그래프 전체 제외(워커 gzip ~200KB↓).
+//   ⚠️ adminApp 도매 마운트가 app.route('/api/admin', adminApp) 전에 등록돼야 해 TLA(await)로 여기서 호출.
+if (__INCLUDE_WHOLESALE__) {
+  const { mountWholesale } = await import('./mount-wholesale');
+  mountWholesale(app, adminApp);
+}
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
@@ -1671,45 +1668,9 @@ app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
 // Account
 app.route('/api/account', accountRoutes);
 
-// Supply chain (공급가 시스템)
-app.route('/api/supply', supplyRoutes);
-app.route('/api/supplier', supplierAuthRoutes); // 도매몰 INC-3: 외부 도매상 인증
-app.route('/api/supplier', supplierDashboardRoutes); // 도매몰 INC-4/6: 공급자 카탈로그 self-serve + 대시보드
-app.route('/api/admin/distributor', distributorAdminRoutes); // 유통스타트: 판매사 등급/마진 설정 (Phase 1b)
-// 🏭 2026-06-16 [LOADING_ADDITIVE] 도매 user-agnostic 엔드포인트 엣지캐시 — 소비자 /api/products 와 동일 publicCache.
-//   실측: 기존 cf-cache DYNAMIC(매 요청 워커) → publicCache 로 HIT(~10ms). banners/mall/board 는 전 사용자 동일 응답.
-//   (catalog 는 등급가라 핸들러 내부 캐시로 처리 — 여기 미적용.) 라우트 mount 보다 먼저 등록해야 적용됨.
-app.use('/api/wholesale/banners', publicCache(120));
-app.use('/api/wholesale/mall', publicCache(300));
-app.use('/api/wholesale/board/posts', publicCache(120));
-// 🏭 2026-06-16 [LOADING_ADDITIVE] 상품 상세(/catalog/:id) 게스트 엣지캐시 — edgeCache(bypassIfAuthed): 게스트=캐시(가격 null),
-//   로그인(Authorization 헤더)=bypass→핸들러(등급가). 200 만 캐시(edge-cache.ts:150, 4xx/5xx 제외) → 머니/오류 안전.
-//   리스트(/catalog)는 핸들러 내부 조기 단락으로 처리(여긴 /catalog/* = 상세만 매칭).
-app.use('/api/wholesale/catalog/*', edgeCache(120));
-app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 판매사 도매 카탈로그 + B2B 주문 (Phase 2)
-app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
-app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 판매사 발의 클레임/RMA + admin 검수
-app.route('/api/wholesale/naver', naverCommerceRoutes); // 🛒 2026-06-12: 판매사 스마트스토어 연동 (네이버 커머스API Phase A)
-app.route('/api/wholesale/coupang', coupangCommerceRoutes); // 🛒 2026-06-12: 판매사 쿠팡 연동 (Wing 오픈API — 내보내기)
-app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
-app.route('/api/wholesale', wholesaleNotificationsRoutes); // NOTI-1: 재입고 알림 + 주문 메모 스레드
-app.route('/api/wholesale', wholesaleShipAddressRoutes); // 🚚 판매사 배송지 주소록(기본/최근) — 체크아웃
-app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import
-app.route('/api/supplier', supplierWithdrawalRoutes); // 🏦 제조사 정산금 출금 신청/내역 (requireSupplier)
-app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
-app.route('/api/admin/wholesale', wholesaleTaxRoutes); // TAX-1: 미수/미지급 aging + 매입 역발행(수동)
-app.route('/api/admin/wholesale/integrity', wholesaleIntegrityRoutes); // DATA-1: 고아행 무결성 리포트
-app.route('/api/wholesale', wholesaleDepositRoutes); // 🏦 예치금(선불) 결제 — 판매사 잔액/충전요청
-app.route('/api/wholesale/plus', wholesalePlusRoutes); // 🏅 프로 멤버십(연 구독) — 예치금 차감
-app.route('/api/admin/wholesale-deposits', adminWholesaleDepositRoutes); // 🏦 예치금 입금확인/거절/보정 (어드민)
-app.route('/api/wholesale/chat', wholesaleChatRoutes); // 💬 판매사↔제조사 채팅 (D1 polling, websocket/DO 없음)
-// 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 배너/제안·신고/프리미엄/입금계좌
-app.route('/api/wholesale', wholesaleMainPublicRoutes); // 공개 배너 캐러셀(GET /banners, 캐시) + 판매사 제안·신고(POST/GET /proposals)
-app.route('/api/admin/wholesale-banners', adminWholesaleBannerRoutes); // 어드민 배너 CRUD
-app.route('/api/wholesale/board', wholesaleBoardPublicRoutes); // 🏭 통합 게시판(공지/자료실) 공개 읽기
-app.route('/api/wholesale/wishlist', wholesaleWishlistRoutes); // 🏭 판매사 찜리스트 (로그인)
-app.route('/api/admin/wholesale-board', adminWholesaleBoardRoutes); // 어드민 게시글 CRUD
-app.route('/api/partnership', partnershipPublicRoutes); // 🤝 광고/제휴 문의 (공개 접수)
+// 🏭 [wholesale-split 2026-07-16] 도매 라우트 마운트(supply/supplier/wholesale/admin-wholesale) →
+//   src/worker/mount-wholesale.ts 로 이동, 위 __INCLUDE_WHOLESALE__ 블록에서 호출. 소비자 번들 제외.
+app.route('/api/partnership', partnershipPublicRoutes); // 🤝 광고/제휴 문의 (공개 접수) — 도매 아님, 소비자 유지
 app.route('/api/admin/partnership-inquiries', adminPartnershipRoutes); // 어드민 접수함
 
 // 🔐 2026-06-11 SSR Phase 2 (docs/SSR_PHASE2_AUTH.md §3.2-4): 로그아웃 시 ud_* 토큰 쿠키 삭제.
@@ -1739,11 +1700,7 @@ app.post('/api/auth/logout-cookies', async (c) => {
   c.header('Set-Cookie', authTokenClearCookie('ud_supplier_token', host), { append: true });
   return c.json({ success: true });
 });
-app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리
-app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes); // 어드민 프리미엄 전용관 토글
-app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
-app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes); // 🏬 어드민 멀티-몰 관리 CRUD (식품/패션 등 카테고리별 도매몰)
-app.route('/api/admin/wholesale-overview', adminWholesaleOverviewRoutes); // 🏬 어드민 도매 통합 현황 (크로스-몰 read-only 집계)
+// 🏭 [wholesale-split] 도매 admin 라우트(proposals/products/deposit-account/malls/overview) → mount-wholesale.ts
 app.route('/api/admin/ucansign', adminUcansignRoutes); // 🖋️ 전자계약(유캔싸인) 설정 진단 — read-only 준비완료 점검
 
 // 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller

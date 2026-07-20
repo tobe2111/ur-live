@@ -10,10 +10,10 @@ import type { TermsDoc } from './terms-types'
 export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string }) {
   const navigate = useNavigate()
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] pb-20">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-20">
       <SEO title={`${doc.title} - 유어딜`} description={`${doc.title} (시행 ${doc.effective} · v${doc.version})`} url={url} />
 
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -31,7 +31,7 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
 
         <div className="mt-5">
           {doc.sections.map((s, i) => (
-            <section key={i} className={i > 0 ? 'border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6' : ''}>
+            <section key={i} className={i > 0 ? 'border-t border-gray-100 dark:border-[#2A3446] pt-6 mt-6' : ''}>
               {s.chapter && (
                 <p className="text-[12px] font-bold tracking-wide text-gray-400 dark:text-gray-500 mb-3">{s.chapter}</p>
               )}
@@ -48,7 +48,7 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
           ))}
         </div>
 
-        <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 mt-8">
+        <div className="bg-gray-50 dark:bg-[#1A2334] rounded-lg p-4 mt-8">
           <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">{doc.footer}</p>
         </div>
       </div>

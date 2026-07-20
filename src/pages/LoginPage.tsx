@@ -269,14 +269,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center">
         <div className="text-gray-500 dark:text-gray-400">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
+    <div className="relative min-h-screen bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
 
       {/* 은은한 에메랄드→틸 그라데이션 포인트 (장식 — 본문 가독성 영향 없음) */}
@@ -298,11 +298,11 @@ export default function LoginPage() {
             {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-[12px] text-gray-700 dark:text-gray-300">
               <MapPin className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-[12px] text-gray-700 dark:text-gray-300">
               <Ticket className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
@@ -334,7 +334,7 @@ export default function LoginPage() {
         {!showEmailLogin && !showForgotPassword && (
           <div>
             {/* 주 CTA 카드 — 카카오(KR)/구글(GLOBAL) 로그인. 버튼 로직/마크업 불변, 배치만 강조 */}
-            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] p-5 shadow-sm">
+            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm">
             {/* ✅ Region-based Primary Login Button */}
             {isKR ? (
               /* Kakao Login Button (KR) */

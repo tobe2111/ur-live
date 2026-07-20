@@ -27,7 +27,7 @@
             <!-- 🛡️ 2026-04-30: Android App Link — live.ur-team.com 링크 클릭 시 앱으로 직접 진입.
                  카카오톡/Line/FB 등 인앱 webview 우회 효과.
                  활성화 조건: /.well-known/assetlinks.json 에 production keystore SHA256 등록.
-                 검증: adb shell pm verify-app-links --re-verify com.urteam.yourdeal -->
+                 검증: adb shell pm verify-app-links (re-verify 플래그) com.urteam.yourdeal -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -60,4 +60,43 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 🛡️ 2026-07-18 앱 출시 대비: 셀러 QR 스캔(웹뷰 getUserMedia — Capacitor 가 onPermissionRequest 처리) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Android 13+ 푸시 알림 런타임 권한 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 🛡️ 2026-07-18 앱 출시 대비: Android 11+ 패키지 가시성 — MainActivity 의 intent://
+         카드사 앱 위임(startActivity)이 미설치/설치를 판별하려면 대상 패키지를 선언해야 함.
+         토스 위젯이 호출하는 국내 카드사/간편결제/은행 앱 주요 목록. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <package android:name="com.android.chrome" />
+        <package android:name="com.kakao.talk" />
+        <package android:name="viva.republica.toss" />
+        <package android:name="com.nhnent.payapp" />
+        <package android:name="com.samsung.android.spay" />
+        <package android:name="kvp.jjy.MispAndroid320" />
+        <package android:name="com.kbcard.cxh.appcard" />
+        <package android:name="com.kbstar.kbbank" />
+        <package android:name="com.shcard.smartpay" />
+        <package android:name="com.shinhancard.smartshinhan" />
+        <package android:name="com.shinhan.sbanking" />
+        <package android:name="com.hyundaicard.appcard" />
+        <package android:name="com.lcacApp" />
+        <package android:name="com.lotte.lottesmartpay" />
+        <package android:name="com.lottemembers.android" />
+        <package android:name="com.hanaskcard.paycla" />
+        <package android:name="kr.co.hanamembers.hmscustomer" />
+        <package android:name="nh.smart.nhallonepay" />
+        <package android:name="com.wooricard.smartapp" />
+        <package android:name="com.wooribank.smart.npib" />
+        <package android:name="kr.co.citibank.citimobile" />
+        <package android:name="com.kftc.bankpay.android" />
+        <package android:name="com.TouchEn.mVaccine.webs" />
+        <package android:name="kr.co.samsungcard.mpocket" />
+    </queries>
 </manifest>

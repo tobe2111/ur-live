@@ -173,7 +173,7 @@ export default function PushNotificationSetup() {
 
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
-      <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl shadow-xl p-4 flex items-start gap-3">
+      <div className="bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-2xl shadow-xl p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center shrink-0">
           <Bell className="w-5 h-5 text-pink-500" />
         </div>
@@ -190,7 +190,7 @@ export default function PushNotificationSetup() {
               {t('push.promptOn', { defaultValue: '켜기' })}
             </button>
             <button onClick={snooze}
-              className="px-3.5 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
+              className="px-3.5 py-1.5 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
               {t('push.promptLater', { defaultValue: '나중에' })}
             </button>
           </div>

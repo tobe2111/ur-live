@@ -89,7 +89,7 @@ export default function LinkshopVisitorRails() {
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-white dark:bg-white p-1.5 shrink-0">
-                <Suspense fallback={<div className="w-[84px] h-[84px] rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
+                <Suspense fallback={<div className="w-[84px] h-[84px] rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />}>
                   {url ? <QRCodeSVG value={url} size={84} level="M" /> : <div className="w-[84px] h-[84px]" />}
                 </Suspense>
               </div>

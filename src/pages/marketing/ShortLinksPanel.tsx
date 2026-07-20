@@ -17,8 +17,8 @@ const authHeader = () => {
 
 interface LinkRow { id: number; code: string; target_url: string; title: string | null; active: number; click_count: number; last_click_at: string | null; created_at: string }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
-const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 const shortUrl = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'}/l/${code}`
 
@@ -103,7 +103,7 @@ export default function ShortLinksPanel() {
         <input className={input} placeholder="https:// 이동할 전체 URL" value={target} onChange={e => setTarget(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') create() }} />
         <input className={input} placeholder="메모 (선택)" value={title} onChange={e => setTitle(e.target.value)} />
         <input className={input} placeholder="커스텀 코드 (선택)" value={customCode} onChange={e => setCustomCode(e.target.value)} />
-        <button onClick={create} disabled={busy} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '생성 중…' : '단축하기'}</button>
+        <button onClick={create} disabled={busy} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '생성 중…' : '단축하기'}</button>
       </div>
 
       {err && <PanelError onRetry={load} />}

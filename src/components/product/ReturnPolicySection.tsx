@@ -50,7 +50,7 @@ export function ReturnPolicySection() {
       </div>
 
       {/* 제22조 (환불) */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-[#2A2A2A]">
+      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-[#2A3446]">
         <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-2">제22조 (환불)</h3>
         <div className="space-y-2">
           <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">

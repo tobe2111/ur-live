@@ -73,6 +73,18 @@ export const SELLER_PROMO_FIELD_ENABLED = false
 export const GB_ENGINE_ENABLED = false
 
 /**
+ * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정
+ *   "딜 포인트 충전 자체를 빼자 우리 서비스에서" — 앱 전환 시 Apple IAP 30% 이슈 원천 제거).
+ *   딜 = **적립 전용 리워드 통화**로 전환: 친구초대·추천(핀)·커미션 등 무상 적립과 딜 *사용*
+ *   (교환권 딜결제·혼합결제 차감)·환불 복원은 전부 불변 — 유상 충전 *진입*만 닫는다.
+ *   true: 충전 진입점 전부 숨김/안내 전환(/points/charge 라우트 게이트 + 홈 딜모으는법 · 마이 ·
+ *         교환권 잔액카드 · 딜내역 · 잔액부족 CTA) + 서버 /api/points/charge/init 403.
+ *   보존: 충전 코드·라우트·성공/확인 페이지(/points/charge/success — 배포 시점 진행중 결제 완결용)·
+ *         어드민 충전 모니터링(과거 데이터). false 로 바꾸면 즉시 복원(가역).
+ */
+export const TOPUP_DISABLED = true
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권
@@ -82,4 +94,17 @@ export const GB_ENGINE_ENABLED = false
  *   true: iOS 네이티브에서 `/points/charge` 진입 시 외부 브라우저(웹)로 충전 유도.
  */
 export const IOS_HIDE_DIGITAL_TOPUP = false
+
+/**
+ * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
+ *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
+ *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
+ *         매장·인플루언서 공개 뷰는 데이터·법무 충분해지면(나중).
+ *   ✅ 2026-07-18 true 전환(대표 "자동으로 켜둬") — **실질 게이트는 어드민 잠금**: 이 플래그가 true 여도
+ *      **어드민 로그인(admin_token) + 서버 `requireAdmin`(비어드민 403)** 이라 소비자/광고주 노출 0.
+ *      읽기 전용·머니 무접촉이라 상시 ON 이 안전 — 데이터 없으면 목업 미리보기, 쌓이면 실측 자동 전환.
+ *      false 로 내리면 어드민에게도 즉시 숨김(가역).
+ *      정산(머니)은 별도 스위치(env MATCHING_SETTLEMENT_ENABLED, 기본 OFF 유지) — 이 플래그와 독립.
+ */
+export const MATCHING_ENABLED = true
 

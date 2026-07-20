@@ -1388,7 +1388,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       }
     } catch { /* best-effort */ }
 
-    // 🏷️ 2026-07-06 (대표 "기존 데모 데이터 많은데"): 옛 '[구] 오퍼' 이름을 '{실매장명} · {오퍼}' 신형으로
+    // 🏷️ 2026-07-19 (대표 — 제목 중복 제거): 옛 '{실매장명} · 오퍼'/'[구] 오퍼' 이름을 '오퍼만' 신형으로
     //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
     await healDemoNamesInPlace(DB).catch(() => {});
 
@@ -1510,11 +1510,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
-        // 🎯 2026-07-06 (대표 "가장 현실적인 느낌"): 상품명 = **실매장명 · 오퍼** (쿠팡/카카오 이용권 스타일).
-        //   홈 피드는 상품명만 노출 → 매장명을 앞세워야 (a) 매장마다 유니크(매장 dedup) (b) 진짜 이용권 느낌.
-        //   지역 프리픽스([구])는 제거 — 실 매장명이 지점명(…마포점)으로 지역을 담고, 주소/거리는 카드·상세가 별도 표시.
-        const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
-        const dispName = restName ? `${restName} · ${offer.name}` : (realRegion ? `[${realRegion}] ${offer.name}` : offer.name);
+        // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 2026-07-06 '매장명 · 오퍼' 역전): 상품명 = **오퍼(메뉴명)만**.
+        //   홈 리스트가 제목 아랫줄에 매장명(restaurant_name)을 별도 표시하므로 제목의 매장명 프리픽스는
+        //   중복이었음("한성식당 · 곱창전골 2인" + 아랫줄 "한성식당"). 매장 구분은 restaurant_name 컬럼 전담.
+        const dispName = offer.name;
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
         let res;
         try {
@@ -1944,10 +1943,10 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   }
 });
 
-// 🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
-//   기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정** — 좌표·R2사진·리뷰·응모·
-//   수요인사이트 전부 보존한 채 이름만 신형으로. 멱등(이미 ' · ' 신형이면 skip).
-//   엔드포인트(수동) + 시드 heal 블록(자동) + 후속 데모 유지 cron 어디서든 재사용.
+// 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 07-06 정정 방향 역전): 기존 데모 상품명의
+//   '{실매장명} · ' 프리픽스를 **제자리(in-place)에서 제거** — 좌표·R2사진·리뷰·응모·수요인사이트
+//   전부 보존한 채 이름만 '오퍼(메뉴명)만' 신형으로. 옛 '[구] ' 지역 프리픽스도 함께 정리.
+//   멱등(프리픽스 없으면 skip). 엔드포인트(수동) + 시드 heal 블록(자동) + 데모 유지 cron 재사용.
 export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: number; skipped: number; samples: Array<{ id: number; from: string; to: string }> }> {
   const { results } = await DB.prepare(
     `SELECT id, name, restaurant_name FROM products
@@ -1959,12 +1958,11 @@ export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: nu
   for (const r of (results || [])) {
     const store = (r.restaurant_name || '').trim();
     const cur = (r.name || '').trim();
-    if (!store || !cur) { skipped++; continue; }
-    if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
-    const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
-    if (!offer) { skipped++; continue; }
-    const next = `${store} · ${offer}`;
-    if (next === cur) { skipped++; continue; }
+    if (!cur) { skipped++; continue; }
+    let next = cur;
+    if (store && next.startsWith(`${store} · `)) next = next.slice(`${store} · `.length).trim(); // 매장명 프리픽스 제거
+    next = next.replace(/^\[[^\]]+\]\s*/, '').trim();             // 옛 '[구] ' 프리픽스 제거
+    if (!next || next === cur) { skipped++; continue; }           // 이미 신형(프리픽스 없음)
     const res = await DB.prepare(
       `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(next, r.id).run().catch(() => null);

@@ -1,5 +1,58 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-19 — 운영 자동화 백로그 4종 (대표 "8월 중 순차, 전부 라이브 무접촉·읽기전용 우선") — draft PR
+전부 read-only 수집 + 발송 게이트 기본 OFF — **머지 = 라이브 영향 0**. 어드민 가이드 §운영 자동화(`GUIDE_SEED_VERSION=6`) 참조.
+- **① 일일 다이제스트** (`cron/ops-daily-digest.ts`, hourly 슬롯 UTC22=KST07 게이트 + KST 날짜 멱등): 어제 판매/QR 사용/신규 가입 + 이상 신호(환불 급증 2×7일평균·미사용 임박·cron 실패·어뷰징 high). 벨+Discord 항상, 이메일/알림톡은 platform_settings `ops_digest_email`/`ops_digest_phone` 설정 시(알림톡은 env `OPS_DIGEST_ALIMTALK_ENABLED` 추가 게이트). 공용 헬퍼 `utils/ops-report.ts`(KST 윈도우·배달 경로 — ④와 공유).
+- **② 알림톡 시퀀스**: 신규 2종 — 드랍 D-1 예고(`cron/drop-d1-reminder.ts`, fcfs_deadline 내일(KST)인 상품 응모자, KST 18:00) + 체험단 게시 리마인드(`cron/experience-post-reminder.ts`, selected 48h~14d + `experience_content_proofs` 없음 → 평생 1회; proofs 테이블은 WP-B 선행 lazy-create 스캐폴드). **둘 다 env `OPS_SEQUENCES_ENABLED` 게이트(기본 OFF — 인앱 알림 포함 전체 미발송)**. 만료 임박은 기존 `meal-voucher-expire`(D-30/7/3/1)가 이미 담당 — 신규 없음. 템플릿 `drop_d1_reminder`/`experience_post_reminder` 레지스트리+docs 등재(콘솔 등록 대기).
+- **③ CS FAQ 봇**: 카카오 i 오픈빌더 스킬 서버 `POST /api/cs/kakao-skill`(`routes/kakao-skill-webhook.routes.ts`) — FAQ SSOT `features/cs/api/cs-faq.ts`(QR 사용법·환불·정산일·유효기간·딜 포인트, 충전 종료 반영). **완전 read-only(DB 0)** + env `KAKAO_SKILL_SECRET` 미설정=404(비활성)/설정 시 `x-skill-secret` 헤더 검증. 항상 200+폴백(오픈빌더 5xx 방지).
+- **④ 주간 코호트 리포트** (`cron/weekly-cohort-report.ts`, '0 0 * * 1' = 월 KST 09:00): 최근 8주 가입 주차 코호트 — 가입→구매전환→14일내 구매→재구매→QR 사용 표 1장. weekly-metrics(스냅샷)와 상보. 배달 경로 ①과 공유.
+- **⏳ 대표 액션(활성 시)**: ⓐ platform_settings `ops_digest_email`(+선택 `ops_digest_phone`) 등록 ⓑ Aligo 콘솔 신규 템플릿 3종 등록·승인 후 `OPS_SEQUENCES_ENABLED=true` ⓒ 오픈빌더 챗봇 생성 + `KAKAO_SKILL_SECRET` 등록 ⓓ ①④는 배포 즉시 벨+Discord 로 동작(게이트 불필요 — 어드민 대상 read-only).
+- ⚠️ cron 은 별도 Workers 배포(`worker-deploy.yml` 자동 트리거 — scheduled.ts 변경 포함). npm 403 환경 → tsc/build 은 CI 검증.
+
+## ✅ 2026-07-19 — 홈 리스트 UI 수정 5건 (대표 지시서 P1~P3)
+- **P1 소셜프루프 카피**: `FcfsBadge` "지금 N명 지원 중 · M명 모집" → "지금 N명 구매 중 · 마감 임박"(overlay 는 "N명 구매 중"). "지원/모집"이 성사형 공구로 오독되는 CS 리스크 제거 — 모집 정원(spots) 노출 자체 삭제(로직/타입 불변). prelaunch(오픈 예정·사전응모)는 별개 상태라 불변.
+- **P1 거리 표시**: ① `NearbyEmptyBanner`(restaurant-map) 신설 — "내 주변 · 거리순"인데 반경 5km 내 딜 0개면 리스트 상단 "내 주변엔 아직 딜이 없어요 / 가까운 순으로 보여드릴게요" + 지역선택 CTA(필터시트). ② `RestaurantList` 행: 10km 이상 원거리 딜은 지역명(`regionShort` — "서울 중구") 우선, 거리는 흐린 보조 표기(반올림 km)로 강등. 근거리(<10km)는 기존 강조 유지.
+- **P2 제목 중복 제거**: 데모 시드 `dispName` = 오퍼(메뉴명)만(07-06 '매장명 · 오퍼' 역전) + `healDemoNamesInPlace` 를 프리픽스 **제거** 방향으로 뒤집음(시드/수동 엔드포인트에서 기존 데이터 in-place 자동 치유) + 표시측 방어 `stripStorePrefix`(셀러 수기 등록·구캐시 커버). 매장명은 카드 아랫줄 한 곳에만.
+- **P2 강조색 브랜드 통일**: 홈 리스트 할인율 텍스트(`text-brand-text`) + 지도 카드/핫딜 캐러셀 할인 뱃지(`bg-brand`) — 순수 빨강 → 웜 로즈 #E0526B 토큰(tailwind `brand`, 07-19 브랜드 롤아웃 SSOT). 하단탭 활성은 기롤아웃 완료 확인. LIVE 뱃지는 기능 빨강이라 불변. 🔥 는 이모지라 색 통제 불가(교체 필요 시 lucide Flame + text-brand — 별도 결정).
+- **P3 대표사진 가이드**: `SellerVoucherPhotoGuide` 컴포넌트 — 이용권 등록 대표 이미지 단계에 "음식·시술 결과 사진이 간판·메뉴판보다 판매가 잘 돼요" + 추천/비추천 **내장 SVG 예시 일러스트**(외부 에셋·네트워크 0, ~1KB — 음식 클로즈업 vs 간판/외관). i18n 6개 언어(`seller.mealVoucher.photoGuide*`).
+- **후속 결정(대표)**: 🔥 이모지 → Flame 아이콘 교체는 **안 함**(확정). 기존 DB 제목 치유는 **cron `demo-name-heal`**(scheduled.ts, 매시간·멱등 — 치유 완료 후 no-op)로 배포만으로 자동 실행(수동 엔드포인트도 존치). 상세 추첨 응모 블록 카피는 실제 응모형 기능이라 유지(대표 인지).
+- 검증: tsc 0 · audit-gate 45 GREEN(file-size 는 배너/가이드 컴포넌트 추출 후 rebaseline — 잔여 +3줄 import/사용부 정당 성장) · **PR #561 Verify CI GREEN**. ⚠️ npm 403 → build/vitest 는 CI.
+
+## ✅ 2026-07-18 — 앱 출시 대비 세팅 배치 (대표 "너가 할 수 있는 세팅 다 해줘")
+- **SSOT**: `docs/APP_STORE_LAUNCH_RUNBOOK.md` (남은 절차=대부분 대표 계정 작업 + 실기기 검증 체크리스트). 선행 점검 `app-ready-audit-2026-07.md` 의 "전환 착수 시 To-Do" 소화.
+- **네이티브**: MainActivity 에 카드사 `intent://`/커스텀 스킴 브릿지(파싱→startActivity, 미설치=폴백 URL/마켓, 실패 무음 — 토스 실결제 필수) + AndroidManifest `<queries>` 결제앱 24종·CAMERA·POST_NOTIFICATIONS. iOS Info.plist NSCameraUsageDescription + LSApplicationQueriesSchemes 카드사 27종.
+- **핵심 결정 — server.url 모드**: `capacitor.config.ts` production `server.url='https://live.ur-team.com'` (앱=라이브 직접 로드). 이유: api.ts same-origin + httpOnly 쿠키 세션이라 번들 모드는 cross-origin 으로 로그인/API 전멸. 웹 배포=앱 업데이트. `limitsNavigationsToAppBoundDomains` true→false(WKAppBoundDomains 10개 한도가 토스 카드사 도메인과 양립 불가).
+- **웹측**: `in-app-browser.ts` `isOwnAppWebView()`(Capacitor 판별) — 자사 앱 안에서 "외부 브라우저로 열기" 배너/자동 redirect 오발동 구조적 차단. AASA 딥링크 경로 현행화(/u/* /group-buy/* /vouchers/* /my-vouchers 등 + /live 제거, TEAMID/지문은 플레이스홀더 유지).
+- **CI**: `app-android.yml`(debug APK 상시 + ANDROID_KEYSTORE_* 시크릿 있으면 서명 AAB) / `app-ios.yml`(macos 무서명 컴파일 검증, 수동).
+- **대표 할 일**: Play Console($25)·Apple Developer($99/년, D-U-N-S 선신청)·Firebase FCM — 런북 §1~2. IAP 리스크는 충전 종료로 소멸.
+
+## ✅ 2026-07-18 — 딜 충전 서비스 전체 종료 (대표 확정 "딜 포인트 충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거)
+- **결정**: 딜 = **활동 적립 전용 리워드 통화**(친구초대·링크샵 추천 커미션·리뷰·이벤트·상권 방문). 유상 충전(현금→딜)만 종료 — 딜 *사용*(교환권 딜결제·혼합 차감)·*환불 복원*·기보유 유상 딜 환급은 전부 불변.
+- **구현(가역 플래그 `TOPUP_DISABLED`, shared/feature-flags SSOT)**: ① 라우트 게이트 — `IosTopupGate` 확장(전 플랫폼 종료 안내 + 적립 유도, /points/charge). ② 진입점 6곳 — DealEarnStrip(충전 카드 제외, grid 3열), VouchersPage 잔액카드(탭→딜내역·'내역' 칩·부족문구→적립 안내), TeamPointsCard(충전 버튼 숨김), MyDealHistoryPage(충전→딜 모으기·charge 항목 클릭 no-op), 상세 3페이지(GroupBuy/Voucher/Product) INSUFFICIENT_POINTS 충전 유도→적립 안내, checkout PaymentSection(충전 링크→부족 안내 박스). ③ 서버 — `/api/points/charge/init` 403(**/charge/confirm 은 유지** — 배포 시점 진행중 결제 완결, 돈 안전). ④ 문서/블로그 — platform-model §5-1·비즈니스플랜 B-4/B-7 갱신, blog-seed 6곳 적립 프레임 재작성 + `BLOG_SEED_VERSION` 5→6.
+- **보존**: 충전 코드 전체·success/confirm 페이지·어드민 충전 모니터링(과거 데이터)·약관 충전 조항(기존 유상 딜 근거). 플래그 false 로 즉시 복원.
+- **배경**: 앱스토어 전환 시 저장형 가치(딜 충전)가 Apple IAP 30% 대상 → 충전 자체 제거로 심사 리스크 0 + 딜 경제를 추천/영입 루프(성장 엔진)로 순화.
+
+## ✅ 2026-07-18 — 데이터 완결고리·매칭 3 PR 머지 완료 (대표 "모두 완료시켜줘")
+**#514(데이터 감사 1·2·3단계) + #523(성과기반 매칭 어드민 도구) + #525(방배 활성 런북) 전부 main 머지·배포.**
+- **#514**: 유입(`inflow_clicks`)→방문(`voucher_visits`)→결제→재방문 완결고리 **라이브 자동 수집 시작**(배포 시점부터). user_id 정규화(라이브 무동작)·GPS 상권격자 하향·어드민 PII 마스킹/감사로그. PII 암호화는 dual-read+기본 OFF.
+- **#523**: 매칭 엔진+`/api/admin/matching/*`(requireAdmin)+유어애즈 `sec-matching` 패널 — **이중 잠금**(`MATCHING_ENABLED=false`+admin_token) → 라이브 노출 0. 정산은 순수 계산·"순수취==5%" 테스트만(적립 배선=단독 flip 세션, `MATCHING_SETTLEMENT_ENABLED` OFF). ⚠️ #545(유어애즈 워커분리)와 조합 확인됨 — admin 네임스페이스는 main 워커 잔류(admin-ads 패턴 정합).
+- **#525**: `docs/ONBOARDING_ACTIVATION_RUNBOOK.md` = **방배 활성 순서 SSOT**(1 데이터→2 보안/PII→3 매칭 읽기→4 정산 머니). 전면 활성화 지시서의 STEP 4(매칭)·6(데이터완결)의 코드측 선결 완료.
+- **남은 것(전부 대표/운영 — 코드 아님)**: 런북 참조 — staging 4항목 검증(방배 온보딩 때)·off-live backfill 실행(dry-run→apply)·PII 스위치 ON·백업 복원 리허설 1회·ADMIN_IP_WHITELIST·매칭/정산 활성 flip.
+
+## 🔶 2026-07-16 — 메인 워커 추가 다이어트: OpenAPI/Swagger 문서 DCE (대표 "죽은 코드/큰 의존성 정리 모두")
+소셜(ur-ads 이전)·도매(ur-wholesale 분리) 이후 남은 큰 **도달 가능(reachable)** 번들 청크를 제거. esbuild 단일파일 번들은 **죽은 코드는 트리셰이킹(이득 ~0)**이라, 실제 레버는 "프로덕션에서 안 쓰는데 번들에 실린 큰 코드". 개발자용 `src/worker/openapi.ts`(1544줄 ~48KB) + `@hono/swagger-ui`가 `/docs`·`/api/openapi.json`(개발자 대면, 소비자 워커 불필요)만 위해 `_worker.js`에 실려 있었음(기존 "동적 import"는 esbuild 단일번들에선 인라인이라 절감 0 — 도매/ads 분리와 같은 오해 클래스).
+- **수정(2파일, `__INCLUDE_WHOLESALE__` 패턴 미러)**: `docs.routes.ts`의 라우트 등록을 `if (__INCLUDE_DOCS__)` 게이트로 감싸고 openapi.ts·swagger-ui를 게이트 블록 안 동적 import → `build-worker.js` define `__INCLUDE_DOCS__`(기본 false, `DOCS_BUNDLE=1`이면 true). 프로덕션(소비자/도매) 빌드는 false → esbuild가 dead-block을 import 해석 전에 제거 → openapi.ts + swagger-ui 번들 제외.
+- **효과(예상)**: gzip ~10~15KB↓ (872KB → ~857~862KB, CF Free 1MB 게이트 여유 확대). `/docs`는 프로덕션 미노출(필요 시 `DOCS_BUNDLE=1` 빌드).
+- ⚠️ npm 403 → 실제 절감치는 CI(`_worker.js` gzip) 확인. **소비자/머니/인증 경로 무접촉 — 문서 라우트 게이트만.**
+
+## 🔶 2026-07-16 — 도매몰 별도배포(ur-wholesale) P0 파이프라인 완성 (대표 "C로 가장 이상적으로", 도매 미운영)
+#539가 소비자 워커에서 도매 라우트를 제거(다이어트)했으나 ur-wholesale 배포 인프라가 없어 `/api/wholesale/*`가 메인에서 404(도매 미운영이라 라이브 영향 0). **C안 = 도매 별도배포 완성**. 설계 SSOT: `docs/design/wholesale-separate-deploy.md`.
+- **P0(이 커밋, 코드)**: `.github/workflows/deploy-wholesale.yml` — `WHOLESALE_BUNDLE=1 npm run build`(도매 포함 _worker.js) → `wrangler pages deploy dist/client --project-name=ur-wholesale`. main push/수동 트리거. **새 파일만 — 소비자/머니 경로 무접촉·안전.**
+- **⏳ P1(대표 Cloudflare)**: ur-wholesale Pages 프로젝트 생성 + **같은 D1**(d9530ba6…) 바인딩 + KV/R2/시크릿 복제(JWT_SECRET·DATA_ENCRYPTION_KEY 등, **TOSS_* 제외**·도매는 예치금기반) + Durable Object(RATE_LIMITER). 🔴 **cron trigger 0개**(정산 이중성숙 방지).
+- **⏳ P2(staging)**: `ur-wholesale.pages.dev/wholesale`에서 도매 전 플로우 실검증(카탈로그·발주·예치금·정산성숙·미수금·세금계산서·출금). **머니 경로 — 단독세션+실정산 1회.**
+- **⏳ P3(도메인 스왑)**: utongstart.com → ur-wholesale (검증 후). 소비자 다이어트(P3)는 #539에서 이미 완료.
+- ⚠️ ur-wholesale 프로젝트 생성 전엔 deploy-wholesale 워크플로 실패해도 라이브 무영향(deploy-ads 초기와 동일).
+
 ## 🔶 2026-07-15 — 소셜 자동화 → ur-ads 워커로 이전 (메인 CF Free 1MB 회복) — draft PR, 컷오버 대기
 소셜 자동화(#533)를 메인 워커에 정적 마운트했더니 `_worker.js` gzip 1006KB > CF Free 1MB 게이트 → **Pages 배포 실패**. #537(대표 승인)이 응급으로 메인 배선을 주석화(다이어트)해 배포 언블록 + 소셜 라우트 404·메뉴 숨김. **이 작업 = 영구 해법(A안): 소셜을 독립 ur-ads 워커(3MB)로 이전.**
 - **ur-ads(`src/worker-ads/index.ts`)**: `app.route('/api/admin/social', socialMediaRoutes)` + `scheduled`(매시간 렌더폴링+예약발행 / 주간 초안) 배선. `wrangler-ads.toml` crons `["0 * * * *","0 0 * * 1"]`.

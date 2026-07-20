@@ -121,6 +121,13 @@ export interface Env {
   // 32자 이상의 random string. Cloudflare Dashboard → Variables and Secrets 에서 설정.
   DATA_ENCRYPTION_KEY?: string;
 
+  // 🔒 2026-07-13 (데이터 감사 3단계): PII 컬럼 at-rest 암호화 마스터 스위치.
+  //   'true' 일 때만 신규 쓰기가 PII 를 암호화(+blind index) 로 저장. 기본 미설정=OFF=현행 평문(무변화).
+  //   ⚠️ 활성화 전 staging 필수: 조회(blind index)·표시(복호화) 배선 검증 후에만 ON.
+  PII_ENCRYPTION_ENABLED?: string;
+  // blind index(조회용 결정적 HMAC) 전용 키. 미설정 시 DATA_ENCRYPTION_KEY 파생값 사용.
+  PII_BLIND_INDEX_KEY?: string;
+
   // ---- Naver Ad Scraper ----
   // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면
   // 정보주체의 명시적 동의가 선행되어야 합니다(개인정보 보호법 제15·22조).
@@ -203,6 +210,13 @@ export interface Env {
   //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
   SHOPPING_LEDGER_ENABLED?: string;
 
+  // ---- 인플루언서↔업체 성과기반 매칭 정산 스위치 (2026-07-14) ----
+  //   매칭 자체는 **어드민 전용 읽기 도구**(requireAdmin — env 게이트 불필요). 아래는 **정산(머니)** 전용:
+  //   MATCHING_SETTLEMENT_ENABLED='true' 면 매칭 성사 수수료 적립(머니 경로) 활성 — #496 규율:
+  //   promo 재원(5% 밖), 인플루언서 딜 레일 재사용, staging 축별 실결제 검증 전 미설정 유지.
+  //   (라이브 적립 배선은 SSOT 아비터 경유 — 단독 flip 세션. 이 커밋엔 순수 계산·불변식만.)
+  MATCHING_SETTLEMENT_ENABLED?: string;
+
   // ---- 상권 쿠폰 경로 B: 온라인 결제 자동발급 마스터 스위치 (2026-07-13) ----
   //   'true' 면 유어딜 결제 확정 시 참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인에서
   //   기준액 이상이면 상권 쿠폰 자동 발급(waitUntil 후처리, 완전 fail-soft — 결제 성공 경로 영향 0).
@@ -216,6 +230,20 @@ export interface Env {
   //             ② 어드민 채널설정(notification_channel_settings)에서 해당 type alimtalk 켜기
   //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
   DISTRICT_ALIMTALK_ENABLED?: string;
+
+  // ---- 운영 자동화 백로그 (2026-07-19 — ①일일 다이제스트 ②알림톡 시퀀스 ③CS FAQ 봇) ----
+  //   전부 기본 OFF/미설정 = 라이브 무접촉. 어드민 수신처는 platform_settings
+  //   `ops_digest_email`/`ops_digest_phone` 키(미설정 = 벨+Discord 만).
+  /** 'true' 면 소비자 대상 시퀀스 2종(드랍 D-1 예고·체험단 게시 리마인드) 발송. 기본 OFF. */
+  OPS_SEQUENCES_ENABLED?: string;
+  /** 'true' + ops_digest_phone 설정 시 일일 다이제스트 알림톡 발송. 기본 OFF(벨/메일만). */
+  OPS_DIGEST_ALIMTALK_ENABLED?: string;
+  /** 카카오 오픈빌더 스킬(CS FAQ 봇) 공유 시크릿 — 미설정 = 봇 endpoint 404(비활성). */
+  KAKAO_SKILL_SECRET?: string;
+  /** Aligo 콘솔이 tpl_code 를 자동부여한 경우 override (기본: 문서 코드 그대로). */
+  ALIGO_DROP_D1_REMINDER?: string;
+  ALIGO_EXPERIENCE_POST_REMINDER?: string;
+  ALIGO_OPS_DAILY_DIGEST?: string;
 
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).

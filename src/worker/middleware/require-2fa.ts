@@ -69,8 +69,12 @@ export async function verifyTOTP(secretBase32: string, code: string): Promise<bo
   return false
 }
 
+// 🔕 2026-07-19 대표 지시 "어드민 대시보드 2단계 인증 없애줘" — 전면 비활성(아래 early-return).
+//   등록계정 포함 모든 요청 통과. 인프라(설정 페이지·verifyTOTP·검증 로직)는 존치 — 재도입 = 이 스위치 한 줄 제거.
+const TWO_FA_DISABLED = true
 export function require2FA(): MiddlewareHandler<{ Bindings: Env }> {
   return async (c, next) => {
+    if (TWO_FA_DISABLED) return await next()
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
     const userAsAny = user as unknown as { id?: number | string; type?: string }
