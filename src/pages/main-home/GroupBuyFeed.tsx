@@ -13,7 +13,7 @@ import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
-import { matchAddress } from '@/shared/constants/korea-regions'
+import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -162,7 +162,13 @@ export default function GroupBuyFeed({
   const inRegion = (p: FeedProduct) => {
     if (!regionKey) return true
     const a = p.restaurant_address || p.business_address
-    return !!a && matchAddress(a, regionKey, districtKey)
+    if (a) return matchAddress(a, regionKey, districtKey)
+    // 🗺️ 2026-07-20 (좌표 고도화): 주소-미상 딜은 좌표가 있으면 시/도 반경(matchRegionCoords)으로 판정 —
+    //   주소 없이도 지역 필터에 정확히 포함/제외. 좌표까지 없으면 제외(누수 방지). district 는 텍스트 전용.
+    if (districtKey) return false
+    const la = p.restaurant_lat, ln = p.restaurant_lng
+    if (la != null && ln != null) return matchRegionCoords(la, ln, regionKey) === true
+    return false
   }
   const sortBand = (arr: FeedProduct[]) => {
     const a = [...arr]

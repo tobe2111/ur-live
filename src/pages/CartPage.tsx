@@ -8,6 +8,7 @@ import { CartHeader } from '@/components/cart/CartHeader'
 import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
+import { CartCtaButton } from '@/components/cart/CartCtaButton'
 import { ShoppingCart, ChevronRight, Store, X } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
@@ -449,7 +450,9 @@ function CartPageContent() {
         <EmptyCart />
       ) : (
         <>
-          <main className="ur-content-narrow w-full flex-1 pb-32">
+          {/* 🖥️ 2026-07-20 장바구니 PC 2단 — 좌 아이템 + 우 sticky 요약/CTA. 모바일(<lg) 1열+하단바 불변. */}
+          <main className="ur-content-narrow w-full flex-1 pb-32 lg:max-w-[1020px] lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 lg:items-start lg:pb-12">
+            <div className="lg:min-w-0">
             {/* v4 Seller Group Cards */}
             {Object.values(sellerGroups).map((group) => {
               const groupAllSelected = group.items.every(item => selectedIds.has(item.id))
@@ -573,28 +576,25 @@ function CartPageContent() {
               )
             })}
 
-            {/* v4 Summary section */}
-            <div className="mt-2 bg-white dark:bg-[#0F151D] px-4 py-4">
+            </div>{/* /좌측 아이템 컬럼 */}
+            <aside className="mt-2 bg-white dark:bg-[#0F151D] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:border lg:border-gray-100 dark:lg:border-[#2A3446]">
               <CartSummary
                 totalItems={totalItems}
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 total={total}
               />
-            </div>
+              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating} className="hidden lg:block mt-4"
+                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+            </aside>
           </main>
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
-          <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] safe-bottom">
+          <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
-              <button
-                onClick={handleCheckout}
-                disabled={selectedIds.size === 0 || updating}
-                className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all"
-              >
-                {selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })}
-              </button>
+              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}
+                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
             </div>
           </div>
         </>
