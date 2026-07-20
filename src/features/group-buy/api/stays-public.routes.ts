@@ -10,6 +10,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 
 type Bindings = { DB: D1Database }
@@ -96,18 +97,27 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
   }
 })
 
-// 상세
-staysPublicRoutes.get('/stays/:productId', cors(), async (c) => {
+// 상세 — 🖼️ 2026-07-20 (대표 SSR/OG): publicCache(120) 로 edge 캐시 → 워커 SSR self-fetch 0-RTT.
+//   user-agnostic(좌표는 숙소 공개 주소 — 지도 노출용, 비공개 정보 아님). 로그인/등급가 없음.
+staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) => {
   try {
     const productId = Number(c.req.param('productId'))
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'Invalid productId' }, 400)
 
+    // ⭐ 평점: 실예약 리뷰(stay_booking_reviews) 우선, 없으면 products 집계(데모 리뷰=product_reviews →
+    //   seedDemoReviews 가 products.avg_rating/review_count 갱신)로 폴백 → 카드·상세 평점 일치.
     const product = await c.env.DB.prepare(
       `SELECT p.id, p.name, p.description, p.image_url, p.is_active, p.seller_id,
+              p.restaurant_name, p.images,
               psi.*,
               s.name as seller_name,
-              (SELECT AVG(rating_overall) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) as avg_rating,
-              (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) as review_count
+              COALESCE(
+                (SELECT AVG(rating_overall) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1),
+                p.avg_rating
+              ) as avg_rating,
+              CASE WHEN (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) > 0
+                   THEN (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1)
+                   ELSE COALESCE(p.review_count, 0) END as review_count
          FROM products p
          INNER JOIN product_stay_info psi ON psi.product_id = p.id
          LEFT JOIN sellers s ON s.id = p.seller_id

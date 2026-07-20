@@ -160,7 +160,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
-import { buildDetailMeta } from './utils/detail-ssr-meta';
+import { buildDetailMeta, buildStayDetailMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -545,10 +545,14 @@ app.use('*', async (c, next) => {
       const productMatch = url.pathname.match(/^\/products\/(\d+)(?:[/?#]|$)/);
       // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
       const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
+      // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 도 DETAIL 패턴으로 0-RTT + 서버 메타.
+      const stayMatch = url.pathname.match(/^\/stays\/(\d+)(?:[/?#]|$)/);
       if (productMatch) {
         ssrTarget = { slot: 'PRODUCT', path: `/api/products/${productMatch[1]}` };
       } else if (detailMatch) {
         ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
+      } else if (stayMatch) {
+        ssrTarget = { slot: 'STAYDETAIL', path: `/api/group-buy/stays/${stayMatch[1]}` };
       } else {
         // 🛡️ 2026-05-27: /profile/:sellerId 외 /s/:sellerId 도 동일 SellerPublicPage — SSR inject 확장.
         const profileMatch = url.pathname.match(/^\/(?:profile|s)\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
@@ -619,7 +623,7 @@ app.use('*', async (c, next) => {
         //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
         //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
         //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG') ? 2000
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG' || ssrTarget.slot === 'STAYDETAIL') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
@@ -908,6 +912,27 @@ app.use('*', async (c, next) => {
           } });
         // 교환권(/vouchers/:id)은 색인 제외 — index.html 기본 robots(index,follow)를 noindex 로 rewrite.
         if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+      }
+    }
+    // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD(DETAIL 과 동일 패턴, 페이로드만 다름).
+    if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
+      const sm = buildStayDetailMeta(ssrPayload, origin2, url.pathname);
+      if (sm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(sm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', sm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', sm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', sm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', sm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${sm.canonical}">`, { html: true });
+            if (sm.jsonLd) el.append(`<script type="application/ld+json">${sm.jsonLd}</script>`, { html: true });
+          } });
       }
     }
     if (needsRootBlank) {

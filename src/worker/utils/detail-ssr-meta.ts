@@ -114,3 +114,79 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }
+
+interface StayData {
+  id?: number | string
+  name?: string
+  restaurant_name?: string
+  description?: string
+  description_full?: string
+  image_url?: string
+  region_sido?: string
+  region_sigungu?: string
+  address?: string
+  property_type?: string
+  star_rating?: number
+  avg_rating?: number
+  review_count?: number
+  latitude?: number
+  longitude?: number
+}
+const STAY_TYPE_LABEL: Record<string, string> = {
+  pension: '펜션', hotel: '호텔', guesthouse: '게스트하우스', resort: '리조트', glamping: '글램핑',
+}
+
+/**
+ * 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD. 응답 형태가 DETAIL 과 달라
+ *   `{ data: { product, rooms } }` — product + rooms(최저가) 로 빌드. 숙소명(restaurant_name) 우선 타이틀,
+ *   지역·유형·평점 설명, LodgingBusiness/Offer JSON-LD. id 는 pathname 에서 추출(psi.* 컬럼 충돌 회피).
+ */
+export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname: string): DetailMeta | null {
+  try {
+    const parsed = JSON.parse(ssrPayload) as { data?: { product?: StayData; rooms?: Array<{ base_price_weekday?: number }> } }
+    const p = parsed?.data?.product
+    if (!p || !(p.restaurant_name || p.name)) return null
+    const idm = pathname.match(/\/stays\/(\d+)/)
+    const id = idm ? idm[1] : (p.id ?? '')
+    const stayName = String(p.restaurant_name || p.name).trim()
+    const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
+    const typeLabel = p.property_type ? (STAY_TYPE_LABEL[p.property_type] || '숙소') : '숙소'
+    const rooms = parsed?.data?.rooms || []
+    const fromPrice = rooms.reduce((min, r) => {
+      const v = Number(r.base_price_weekday) || 0
+      return v > 0 && (min === 0 || v < min) ? v : min
+    }, 0)
+    const canonical = `${origin}/stays/${id}`
+    const ogImage = absImage(String(p.image_url || ''), origin, id)
+    const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
+    const priceStr = fromPrice > 0 ? `1박 ${fromPrice.toLocaleString('ko-KR')}원~ ` : ''
+    const rating = Number(p.avg_rating) || 0
+    const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
+    const baseDesc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
+    const description = (`${ratingStr}${region ? region + ' ' : ''}${typeLabel} · ${priceStr}${baseDesc}`
+      || `${stayName} — 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
+
+    const lodging: Record<string, unknown> = {
+      '@context': 'https://schema.org', '@type': 'LodgingBusiness',
+      name: stayName,
+      ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
+      ...(p.image_url ? { image: [ogImage] } : {}),
+      ...(p.address ? { address: { '@type': 'PostalAddress', streetAddress: String(p.address), addressRegion: p.region_sido || undefined, addressCountry: 'KR' } } : {}),
+      ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
+      ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
+      ...(rating > 0 && Number(p.review_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) } } : {}),
+      ...(fromPrice > 0 ? { priceRange: `₩${fromPrice.toLocaleString('ko-KR')}~` } : {}),
+      url: canonical,
+    }
+    const breadcrumb = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
+        { '@type': 'ListItem', position: 2, name: '숙소', item: `${origin}/stays` },
+        { '@type': 'ListItem', position: 3, name: stayName, item: canonical },
+      ],
+    }
+    const jsonLd = escapeScript(JSON.stringify([lodging, breadcrumb]))
+    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+  } catch { return null }
+}

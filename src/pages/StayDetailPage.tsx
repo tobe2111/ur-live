@@ -17,6 +17,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 interface StayDetail {
   id: number
   name: string
+  restaurant_name?: string | null  // 🏨 숙소명(오퍼명 name 과 별도) — h1 우선
   description: string
   image_url?: string
   property_type: string
@@ -77,14 +78,25 @@ const AMENITY_LABELS: Record<string, { label: string; icon: React.ReactNode }> =
 function todayIso() { return new Date().toISOString().slice(0, 10) }
 function tomorrowIso() { return new Date(Date.now() + 86400000).toISOString().slice(0, 10) }
 
+// 🏨 2026-07-20 (숙소 상세 SSR/OG): worker 가 __SSR_INITIAL_STAYDETAIL__ 로 주입한 payload 를
+//   첫 렌더에 동기 소비 → 로더 1프레임 생략(정체성 id 일치 검증 — SPA 로 다른 숙소 이동 시 오소비 방지).
+function readStaySeed(productId: number): StayDetail | null {
+  try {
+    const el = document.getElementById('__SSR_INITIAL_STAYDETAIL__')
+    if (!el?.textContent) return null
+    const p = (JSON.parse(el.textContent) as { data?: { product?: StayDetail } })?.data?.product
+    return p && Number(p.id) === productId ? p : null
+  } catch { return null }
+}
+
 export default function StayDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const productId = Number(id)
 
-  const [stay, setStay] = useState<StayDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stay, setStay] = useState<StayDetail | null>(() => readStaySeed(productId))
+  const [loading, setLoading] = useState(() => !readStaySeed(productId))
   const [rooms, setRooms] = useState<AvailRoom[]>([])
   const [roomsLoading, setRoomsLoading] = useState(false)
 
@@ -244,7 +256,7 @@ export default function StayDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#0F151D] text-gray-900 dark:text-white pb-32 lg:pb-16">
-      <SEO title={`${stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
+      <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
       <div className="lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5">
       {/* Hero */}
@@ -267,7 +279,7 @@ export default function StayDetailPage() {
               </span>
             ) : null}
           </div>
-          <h1 className="text-xl lg:text-2xl font-extrabold">{stay.name}</h1>
+          <h1 className="text-xl lg:text-2xl font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
             <MapPin className="w-3 h-3" />
             <span>{stay.region_sido} {stay.region_sigungu} · {stay.address}</span>
@@ -583,7 +595,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
       <div className="bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-200 dark:border-[#2A3446] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#0F151D] px-5 py-4 border-b border-gray-200 dark:border-[#2A3446]">
           <h3 className="text-base font-bold">예약 정보</h3>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stay.name} · {room.name}</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-xs">
@@ -717,7 +729,7 @@ function MultiBookingModal({
       <div className="bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-200 dark:border-[#2A3446] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#0F151D] px-5 py-4 border-b border-gray-200 dark:border-[#2A3446]">
           <h3 className="text-base font-bold">묶음 예약 ({totalQty}객실)</h3>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stay.name}</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stay.restaurant_name || stay.name}</p>
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-xs space-y-1.5">
