@@ -151,6 +151,17 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
   }
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
+  // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록.
+  const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number }[] | null>(null)
+  const [matchLoading, setMatchLoading] = useState(false)
+  async function loadSellerMatch() {
+    if (!category) { toast.error('먼저 카테고리(맛집/뷰티/네일/숙소)를 선택하세요'); return }
+    setMatchLoading(true)
+    try {
+      const r = await api.get(`/api/admin/ads/seller-match?category=${encodeURIComponent(category)}`)
+      if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
+    } catch { toast.error('매칭 조회 실패') } finally { setMatchLoading(false) }
+  }
   // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
   //   ⚠️ 광고성 발송은 정보통신망법상 사전 수신동의 필요 — 이 버튼은 초안(mailto)만 열고, 발송은 사람이 판단.
   function draftMail(l: Lead) {
@@ -325,7 +336,30 @@ export default function AdminInfluencerPoolPage() {
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름/핸들 검색" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+          <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리의 유어딜 매장 목록(읽기 전용)">
+            {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}
+          </button>
         </div>
+
+        {/* 🔗 유어딜 셀러 매칭 결과(읽기 전용) */}
+        {matchSellers && (
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50/50 px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-indigo-900">🔗 「{category}」 매칭 유어딜 매장 — {formatNumber(matchSellers.length)}곳</div>
+              <button onClick={() => setMatchSellers(null)} className="text-xs text-gray-400 hover:text-gray-700">닫기</button>
+            </div>
+            {matchSellers.length === 0 ? (
+              <div className="text-xs text-gray-500">해당 카테고리의 승인된 유어딜 매장이 아직 없습니다. (매장이 늘면 이 인플루언서들을 연결 제안할 수 있어요)</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {matchSellers.map(s => (
+                  <span key={s.id} className="px-2.5 py-1 rounded-full bg-white border border-indigo-200 text-xs text-gray-700">{s.name} <span className="text-gray-400">· 상품 {s.product_count}</span></span>
+                ))}
+              </div>
+            )}
+            <div className="text-[11px] text-gray-400 mt-2">※ 읽기 전용 참고용 — 유어딜 매장 데이터는 변경되지 않습니다. 실제 매칭/컨택은 운영자가 판단.</div>
+          </div>
+        )}
 
         {/* 목록 */}
         {loading ? (

@@ -278,8 +278,32 @@ app.post('/influencer-pool/merge-duplicates', async (c) => {
   return c.json({ success: true, merged, groups: groups.length })
 })
 
+// GET /api/admin/ads/seller-match?category=맛집 — 🔗 유어딜 셀러 매칭(읽기 전용)
+//   인플루언서 카테고리 → 유어딜 이용권 카테고리 매핑 → 그 카테고리 승인 매장 목록을 반환.
+//   ⚠️ 서비스 경계: sellers/products 를 **읽기만** 함(변경 0). 매칭 판단은 어드민(사람). 유어딜 데이터 미변경.
+app.get('/seller-match', async (c) => {
+  const cat = (c.req.query('category') || '').trim()
+  // 인플루언서 카테고리 → 유어딜 이용권 카테고리.
+  const MAP: Record<string, string> = {
+    '맛집': 'meal_voucher', '푸드': 'meal_voucher', '외식창업': 'meal_voucher',
+    '뷰티': 'beauty_voucher', '네일': 'beauty_voucher',
+    '숙소': 'stay_voucher',
+  }
+  const vcat = MAP[cat]
+  if (!vcat) return c.json({ success: true, category: cat, voucher_category: null, sellers: [], note: '이 카테고리는 유어딜 이용권 카테고리(맛집/뷰티/네일/숙소)와 직접 매칭되지 않습니다.' })
+  const rows = (await c.env.DB.prepare(`SELECT s.id, COALESCE(NULLIF(s.business_name,''), s.name) AS name,
+      COUNT(DISTINCT p.id) AS product_count
+    FROM sellers s
+    JOIN products p ON p.seller_id = s.id AND p.is_active = 1 AND p.category = ?
+    WHERE s.status = 'approved'
+    GROUP BY s.id ORDER BY product_count DESC, s.id DESC LIMIT 100`).bind(vcat)
+    .all<{ id: number; name: string; product_count: number }>().catch(() => null))?.results || []
+  return c.json({ success: true, category: cat, voucher_category: vcat, sellers: rows })
+})
+
 // DELETE /api/admin/ads/influencer-pool/:id
 app.delete('/influencer-pool/:id', async (c) => {
+  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   await c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(id, POOL).run().catch(() => null)
   return c.json({ success: true })
