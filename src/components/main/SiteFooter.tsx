@@ -30,13 +30,16 @@ export default function SiteFooter() {
             </a>
           </div>
 
-          {/* 유어딜 */}
+          {/* 유어딜 — 🧭 2026-07-20 (대표 "더 추가될 페이지?"): 실존 라우트만 추가(숙소/체험단/FAQ). */}
           <nav aria-label="유어딜">
             <h3 className={colTitle}>유어딜</h3>
             <a href="/about" className={colLink}>서비스 소개</a>
-            <a href="/blog" className={colLink}>블로그</a>
             <a href="/vouchers" className={colLink}>교환권</a>
             <a href="/map" className={colLink}>동네딜 지도</a>
+            <a href="/stays" className={colLink}>숙소</a>
+            <a href="/experience" className={colLink}>체험단 모집</a>
+            <a href="/blog" className={colLink}>블로그</a>
+            <a href="/faq" className={colLink}>자주 묻는 질문</a>
           </nav>
 
           {/* 파트너 */}
@@ -62,16 +65,18 @@ export default function SiteFooter() {
           </nav>
         </div>
 
-        {/* ── 하단: 법적 고지 (11px — 법정 표기 관례 크기, 8px 강제 폐기) ── */}
-        <div className="mt-8 pt-5 border-t border-gray-100 dark:border-[#2A3446] text-[11px] leading-[1.8] text-gray-400 dark:text-gray-500">
-          <p>
+        {/* ── 하단: 법적 고지 (11px — 법정 표기 관례 크기) ──
+            ⚠️ 전역 `p { font-size: clamp(15~17px) }`(index.css)가 <p> 에 직접 크기를 박아 부모 상속(11px)을
+            이김 → 각 <p> 에 text-[11px] 를 직접(클래스 > 요소 선택자) 지정해야 실제 11px 로 렌더. */}
+        <div className="mt-8 pt-5 border-t border-gray-100 dark:border-[#2A3446] text-gray-400 dark:text-gray-500">
+          <p className="text-[11px] leading-[1.8]">
             상호명: 리스터코퍼레이션 · 대표자: 정지원 · 사업자등록번호: 479-09-02930 · 통신판매업신고: 2025-부산금정-0540
           </p>
-          <p>
+          <p className="text-[11px] leading-[1.8]">
             사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 대표이메일: jiwon@ur-team.com
           </p>
-          <p>서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
-          <p className="mt-2 text-gray-400 dark:text-gray-600">© 2026 리스터코퍼레이션. All rights reserved.</p>
+          <p className="text-[11px] leading-[1.8]">서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
+          <p className="text-[11px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-600">© 2026 리스터코퍼레이션. All rights reserved.</p>
         </div>
       </div>
     </footer>
