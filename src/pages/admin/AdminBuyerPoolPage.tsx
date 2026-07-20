@@ -6,41 +6,57 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 
 /**
- * 🌐 2026-07-20 유통스타트 해외 수출 바이어 풀 (/admin/buyer-pool).
- *   격리 테이블 `overseas_buyer_leads` 열람/큐레이션 + 발굴 타깃(카테고리×국가) 관리 + 수동 수집 + CSV.
- *   API: /api/admin/buyer-pool/*. 게이트 OFF 면 수집 no-op(소스 미설정 시 found:0 정상).
- *   ⚠️ 공개 비즈니스 컨택만 수집 — 콜드 아웃리치는 국가별 규제(GDPR·CAN-SPAM) 별도(수집 ≠ 발송).
+ * 🌐 2026-07-20 유통스타트 해외 수출 바이어 파이프라인 (/admin/buyer-pool).
+ *   인플루언서 풀(영입 깔때기)과 결이 다름 — **의도 자격심사 + 매칭 스코어 + 회사→담당자 2단 + BD 파이프라인**.
+ *   격리 테이블 `overseas_buyer_leads`. API: /api/admin/buyer-pool/*. 게이트 OFF 면 수집 no-op.
+ *   ⚠️ 공개 비즈니스 컨택만 — 콜드 아웃리치는 GDPR·CAN-SPAM·CASL 별도(수집 ≠ 발송).
  */
 interface Lead {
-  id: number; source: string; company: string; country: string | null; category: string | null
-  website: string | null; email: string | null; phone: string | null; contact_name: string | null
-  description: string | null; source_keyword: string | null; status: string; memo: string | null
+  id: number; source: string; intent_signal: string; company: string; country: string | null
+  target_market: string | null; category: string | null; imports_from_korea: number | null
+  website: string | null; email: string | null; phone: string | null
+  decision_maker: string | null; decision_maker_title: string | null; decision_maker_email: string | null
+  est_volume: string | null; match_score: number | null; description: string | null
+  source_keyword: string | null; status: string; memo: string | null
   contacted_at: string | null; follow_up_at: string | null; collected_at: string
 }
-interface Stats { total: number; with_contact: number; worked: number; recent7: number }
+interface Stats { total: number; hot: number; proven: number; with_contact: number; with_dm: number; active_pipeline: number; recent7: number }
 interface Dist { k: string; n: number }
 interface Target { id: number; category: string; country: string; keyword: string | null; active: number; hits: number; found_total: number; saved_total: number; last_run_at: string | null }
+type IntentTiers = Record<string, { label: string; weight: number }>
 
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  negotiating: { label: '협상', cls: 'bg-indigo-100 text-indigo-700' },
-  contracted: { label: '계약', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '거절', cls: 'bg-gray-100 text-gray-400' },
+// BD 파이프라인 단계 — 자격심사·샘플·협상.
+const STAGE_META: Record<string, { label: string; cls: string }> = {
+  lead: { label: '리드', cls: 'bg-gray-100 text-gray-600' },
+  qualified: { label: '자격확인', cls: 'bg-blue-100 text-blue-700' },
+  sampling: { label: '샘플발송', cls: 'bg-cyan-100 text-cyan-700' },
+  negotiating: { label: '협상', cls: 'bg-amber-100 text-amber-700' },
+  won: { label: '성사', cls: 'bg-emerald-100 text-emerald-700' },
+  lost: { label: '실패', cls: 'bg-gray-100 text-gray-400' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
-const STATUS_ORDER = ['new', 'contacted', 'interested', 'negotiating', 'contracted', 'rejected', 'hold']
+const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'lost', 'hold']
+
+function scoreCls(s: number | null): string {
+  const v = s ?? 0
+  if (v >= 70) return 'bg-emerald-500 text-white'
+  if (v >= 50) return 'bg-amber-400 text-white'
+  return 'bg-gray-200 text-gray-600'
+}
 
 export default function AdminBuyerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
-  const [stats, setStats] = useState<Stats>({ total: 0, with_contact: 0, worked: 0, recent7: 0 })
+  const [stats, setStats] = useState<Stats>({ total: 0, hot: 0, proven: 0, with_contact: 0, with_dm: 0, active_pipeline: 0, recent7: 0 })
+  const [byIntent, setByIntent] = useState<Dist[]>([])
   const [byCountry, setByCountry] = useState<Dist[]>([])
   const [byCategory, setByCategory] = useState<Dist[]>([])
+  const [intentTiers, setIntentTiers] = useState<IntentTiers>({})
   const [meta, setMeta] = useState<{ enabled: boolean; provider: string | null; directories: number }>({ enabled: false, provider: null, directories: 0 })
   const [targets, setTargets] = useState<Target[]>([])
   const [status, setStatus] = useState('')
   const [country, setCountry] = useState('')
+  const [intent, setIntent] = useState('')
+  const [minScore, setMinScore] = useState(0)
   const [hasContact, setHasContact] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
@@ -53,7 +69,8 @@ export default function AdminBuyerPoolPage() {
     try {
       const r = await api.get('/api/admin/buyer-pool/stats')
       if (r.data?.success) {
-        setStats(r.data.stats); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
+        setStats(r.data.stats); setByIntent(r.data.byIntent || []); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
+        setIntentTiers(r.data.intentTiers || {})
         setMeta({ enabled: !!r.data.enabled, provider: r.data.provider || null, directories: r.data.directories || 0 })
       }
     } catch { /* noop */ }
@@ -65,12 +82,14 @@ export default function AdminBuyerPoolPage() {
       const params = new URLSearchParams()
       if (status) params.set('status', status)
       if (country) params.set('country', country)
+      if (intent) params.set('intent', intent)
+      if (minScore > 0) params.set('minScore', String(minScore))
       if (hasContact) params.set('hasContact', '1')
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/buyer-pool?${params.toString()}`)
       if (r.data?.success) setLeads(r.data.leads || [])
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [status, country, hasContact, q])
+  }, [status, country, intent, minScore, hasContact, q])
 
   const loadTargets = useCallback(async () => {
     try { const r = await api.get('/api/admin/buyer-pool/targets'); if (r.data?.success) setTargets(r.data.targets || []) } catch { /* noop */ }
@@ -99,19 +118,19 @@ export default function AdminBuyerPoolPage() {
   }
 
   const remove = async (id: number) => {
-    if (!confirm('이 리드를 삭제할까요?')) return
+    if (!confirm('이 바이어를 삭제할까요?')) return
     try { await api.delete(`/api/admin/buyer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); loadStats() } catch { toast.error('삭제 실패') }
   }
 
   const addTarget = async () => {
-    if (newCat.trim().length < 2 || newCountry.trim().length < 2) { toast.error('카테고리·국가를 입력하세요'); return }
+    if (newCat.trim().length < 2 || newCountry.trim().length < 2) { toast.error('카테고리·시장을 입력하세요'); return }
     try {
       const r = await api.post('/api/admin/buyer-pool/targets', { category: newCat.trim(), country: newCountry.trim() })
-      if (r.data?.success) { setNewCat(''); setNewCountry(''); loadTargets() } else toast.error(r.data?.error || '추가 실패')
+      if (r.data?.success) { setNewCat(''); setNewCountry(''); loadTargets(); loadLeads() } else toast.error(r.data?.error || '추가 실패')
     } catch { toast.error('추가 실패') }
   }
   const toggleTarget = async (t: Target) => {
-    try { await api.patch(`/api/admin/buyer-pool/targets/${t.id}`, { active: !t.active }); loadTargets() } catch { toast.error('변경 실패') }
+    try { await api.patch(`/api/admin/buyer-pool/targets/${t.id}`, { active: !t.active }); loadTargets(); loadLeads() } catch { toast.error('변경 실패') }
   }
 
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
@@ -119,19 +138,27 @@ export default function AdminBuyerPoolPage() {
   return (
     <AdminLayout>
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-        <DashboardPageHeader title="🌐 해외 바이어 풀" subtitle="유통스타트 수출 바이어 발굴 — 공개 디렉토리·공식 무역 데이터 수집" />
+        <DashboardPageHeader title="🌐 해외 바이어 파이프라인" subtitle="유통스타트 수출 — 의도 자격심사 · 매칭 스코어 · 회사→담당자" />
 
         {/* 게이트/소스 상태 */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
           <span>자동 수집: <b className={meta.enabled ? 'text-emerald-600' : 'text-gray-400'}>{meta.enabled ? 'ON' : 'OFF (BUYER_AUTO_COLLECT_ENABLED)'}</b></span>
-          <span>공개 디렉토리: <b className="text-gray-800">{meta.directories}개</b></span>
+          <span>의도 피드/디렉토리: <b className="text-gray-800">{meta.directories}개</b></span>
           <span>유료 provider: <b className="text-gray-800">{meta.provider || '미설정'}</b></span>
-          <span className="text-gray-400">· 수집 ≠ 발송 — 공개 비즈니스 컨택만</span>
+          <span className="text-gray-400">· 공개 비즈니스 컨택만 · 수집 ≠ 발송</span>
         </div>
 
-        {/* 통계 */}
+        {/* 통계 — 바이어 결(핫리드/수입실적/담당자확보/파이프라인) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          {[{ l: '전체 바이어', v: stats.total }, { l: '컨택 보유', v: stats.with_contact }, { l: '진행 중', v: stats.worked }, { l: '최근 7일', v: stats.recent7 }].map(s => (
+          {[
+            { l: '전체 바이어', v: stats.total },
+            { l: '🔥 핫리드 (스코어≥70)', v: stats.hot },
+            { l: '한국 수입 이력', v: stats.proven },
+            { l: '담당자 확보', v: stats.with_dm },
+            { l: '진행 중 파이프라인', v: stats.active_pipeline },
+            { l: '컨택 보유', v: stats.with_contact },
+            { l: '최근 7일', v: stats.recent7 },
+          ].map(s => (
             <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.l}</div>
               <div className="text-2xl font-bold text-gray-900">{formatNumber(s.v)}</div>
@@ -139,7 +166,22 @@ export default function AdminBuyerPoolPage() {
           ))}
         </div>
 
-        {/* 분포 */}
+        {/* 의도 티어 분포 (바이어 핵심 신호) */}
+        {byIntent.length > 0 && (
+          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
+            <div className="text-xs font-semibold text-gray-500 mb-2">의도 신호 (강→약)</div>
+            <div className="flex flex-wrap gap-1.5">
+              {byIntent.map(d => (
+                <button key={d.k} onClick={() => setIntent(intent === d.k ? '' : d.k)}
+                  className={`px-2 py-1 rounded-full text-xs ${intent === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  {intentTiers[d.k]?.label || d.k} {d.n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 국가/카테고리 분포 */}
         {(byCountry.length > 0 || byCategory.length > 0) && (
           <div className="grid lg:grid-cols-2 gap-3 mb-4">
             <div className="rounded-xl border border-gray-200 bg-white p-3">
@@ -160,24 +202,30 @@ export default function AdminBuyerPoolPage() {
         {/* 액션 바 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
-          <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">발굴 타깃 {showTargets ? '숨기기' : '관리'}</button>
+          <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
           <button onClick={exportCsv} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">CSV 내보내기</button>
           <div className="flex-1" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="회사/이메일 검색" className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 w-44" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="회사/이메일/담당자" className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 w-44" />
+          <select value={String(minScore)} onChange={e => setMinScore(Number(e.target.value))} className="px-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-900">
+            <option value="0">전체 스코어</option>
+            <option value="70">🔥 70+</option>
+            <option value="50">50+</option>
+          </select>
           <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-900">
-            <option value="">전체 상태</option>
-            {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+            <option value="">전체 단계</option>
+            {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_META[s].label}</option>)}
           </select>
           <label className="flex items-center gap-1 text-sm text-gray-600"><input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 컨택만</label>
-          {country && <button onClick={() => setCountry('')} className="text-xs text-gray-500 underline">국가필터 해제({country})</button>}
+          {(country || intent) && <button onClick={() => { setCountry(''); setIntent('') }} className="text-xs text-gray-500 underline">필터 해제</button>}
         </div>
 
-        {/* 타깃 관리 */}
+        {/* 매칭 타깃 관리 (= 무엇을 어디로 미는가 = 매칭 기준) */}
         {showTargets && (
           <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
+            <div className="text-xs text-gray-500 mb-2">매칭 타깃 = 우리 수출 카테고리 × 타깃 시장. 여기 있는 조합에 부합하는 바이어가 매칭 스코어 +25 (변경 시 풀 자동 재스코어).</div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="카테고리(K-beauty)" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 w-40" />
-              <input value={newCountry} onChange={e => setNewCountry(e.target.value)} placeholder="국가(Vietnam)" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 w-40" />
+              <input value={newCountry} onChange={e => setNewCountry(e.target.value)} placeholder="시장(Vietnam)" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 w-40" />
               <button onClick={addTarget} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm">타깃 추가</button>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -191,31 +239,39 @@ export default function AdminBuyerPoolPage() {
           </div>
         )}
 
-        {/* 리스트 */}
+        {/* 리스트 — 매칭 스코어 우선 정렬 */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-gray-400 text-sm">불러오는 중…</div>
           ) : leads.length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">
-              바이어가 없습니다. {meta.directories === 0 && !meta.provider ? '공개 디렉토리 URL(BUYER_DIRECTORY_URLS) 또는 provider 키를 등록한 뒤 「지금 수집」을 눌러주세요.' : '「지금 수집」을 눌러 발굴을 시작하세요.'}
+              바이어가 없습니다. {meta.directories === 0 && !meta.provider ? '의도 피드/디렉토리 URL(BUYER_DIRECTORY_URLS) 또는 provider 키를 등록한 뒤 「지금 수집」을 눌러주세요.' : '「지금 수집」을 눌러 발굴을 시작하세요.'}
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
               {leads.map(l => (
                 <div key={l.id} className="p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold ${scoreCls(l.match_score)}`} title="매칭 스코어">{l.match_score ?? '–'}</div>
                   <div className="min-w-[180px] flex-1">
-                    <div className="font-medium text-gray-900">{l.company}</div>
-                    <div className="text-xs text-gray-500">{[l.country, l.category, l.source].filter(Boolean).join(' · ')}</div>
+                    <div className="font-medium text-gray-900 flex items-center gap-1.5">
+                      {l.company}
+                      {l.imports_from_korea === 1 && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px]">🇰🇷 수입이력</span>}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {[intentTiers[l.intent_signal]?.label || l.intent_signal, l.category, l.country, l.target_market && `→${l.target_market}`, l.est_volume].filter(Boolean).join(' · ')}
+                    </div>
                   </div>
                   <div className="min-w-[200px] text-xs text-gray-600">
-                    {l.email && <div>✉ {l.email}</div>}
+                    {l.decision_maker && <div className="text-gray-800">👤 {l.decision_maker}{l.decision_maker_title ? ` (${l.decision_maker_title})` : ''}</div>}
+                    {l.decision_maker_email && <div>✉ {l.decision_maker_email}</div>}
+                    {!l.decision_maker_email && l.email && <div>✉ {l.email}</div>}
                     {l.phone && <div>☎ {l.phone}</div>}
                     {l.website && <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600 underline">{l.website}</a>}
-                    {!l.email && !l.phone && !l.website && <span className="text-gray-300">컨택 없음</span>}
+                    {!l.email && !l.decision_maker_email && !l.phone && !l.website && <span className="text-gray-300">컨택 없음</span>}
                   </div>
                   <select value={l.status} onChange={e => patch(l.id, { status: e.target.value })}
-                    className={`px-2 py-1 rounded-full text-xs border-0 ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
-                    {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+                    className={`px-2 py-1 rounded-full text-xs border-0 ${STAGE_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
+                    {STAGE_ORDER.map(s => <option key={s} value={s}>{STAGE_META[s].label}</option>)}
                   </select>
                   <button onClick={() => remove(l.id)} className="text-xs text-gray-300 hover:text-red-500">삭제</button>
                 </div>
@@ -224,7 +280,7 @@ export default function AdminBuyerPoolPage() {
           )}
         </div>
         <p className="mt-3 text-xs text-gray-400">
-          ⚠️ 수집된 이메일/연락처는 공개된 비즈니스 컨택입니다. 마케팅 발송(콜드 아웃리치)은 대상 국가 규제(EU GDPR·미국 CAN-SPAM·캐나다 CASL)를 따르세요 — 이 도구는 수집·정리까지만 담당합니다.
+          ⚠️ 수집된 컨택은 공개된 비즈니스 정보입니다. 마케팅 발송(콜드 아웃리치)은 대상국 규제(EU GDPR·미국 CAN-SPAM·캐나다 CASL)를 따르세요 — 이 도구는 발굴·자격심사·매칭까지만 담당합니다.
         </p>
       </div>
     </AdminLayout>

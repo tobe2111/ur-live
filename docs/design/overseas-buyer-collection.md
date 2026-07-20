@@ -3,9 +3,26 @@
 > 2026-07-20 대표 확정: **A안 = 유통스타트 수출 바이어** + **무료 우선 하이브리드**.
 > 한국 상품(K-뷰티/K-푸드 등)을 사입할 **해외 수입상·유통사·리테일러**를 발굴해 격리 풀에 누적한다.
 
-## 0. 한 줄 요약
+## 0. 한 줄 요약 — 인플루언서와 **결이 다르다**
 
-유어애즈 인플루언서 자동수집 엔진(`influencer-auto-collect.ts`)의 **B2B 아날로그**. "타깃 순환 → 소스 어댑터 → 공개 컨택 추출 → 멱등 저장 → 어드민 큐레이션 → 게이트 OFF 기본"까지 검증된 패턴을 그대로 미러링. **머지 = 라이브 영향 0**(신규 격리 테이블 + 게이트 기본 OFF).
+인플루언서 수집 = **영입 깔때기**(많이 긁어 큐레이션, 볼륨 게임). 해외 바이어 = **매칭·자격심사 파이프라인**(소수 고가치 B2B 관계). 그래서 인프라(격리 테이블·게이트 OFF·멱등 저장)만 공유하고, **축은 다르게** 설계한다:
+
+| | 🎬 인플루언서 | 🌐 해외 바이어 |
+|---|---|---|
+| 성격 | 영입 깔때기 | 매칭·자격심사 파이프라인 |
+| 발견 | 키워드 × 콘텐츠 플랫폼(무료 검색 API) | **의도 신호**(RFQ·구매리드·수입실적) + 거래데이터 |
+| 신호 | 구독자 수 | **한국 수입 이력**(행동 증거) · 취급 카테고리 적합 |
+| 컨택 | 채널 주인 이메일 1개 | **회사 → 구매담당자(MD)** 2단 |
+| 관계 | 단방향(우리가 원함) | 양방향 적합(바이어도 우리 품목을 원해야) |
+| 지표 | 도달수 | **매칭 스코어**(수출품 × 시장 × 의도) |
+| 상태 | 컨택/관심 | BD 단계 lead→qualified→sampling→negotiating→won/lost |
+
+**머지 = 라이브 영향 0**(신규 격리 테이블 + `BUYER_AUTO_COLLECT_ENABLED` 기본 OFF).
+
+### 매칭 스코어(0~100) = 의도 티어 + 타깃 부합 + 행동 증거 + 담당자
+- 의도 티어(기저): RFQ 50 · 구매리드 48 · 수입실적 45 · 전시회 30 · 담당자보강 20 · 디렉토리 15.
+- +25 우리 활성 타깃(수출 카테고리×시장)에 부합 · +20 한국 수입 이력 · +10 담당자 직통 이메일 확보.
+- 타깃 테이블이 "무엇을 어디로 미는가"의 SSOT → 별도 수출 카탈로그 없이 자기완결. 타깃 변경 시 풀 자동 재스코어.
 
 ## 1. 서비스 분리 (CLAUDE.md 준수)
 
@@ -45,14 +62,18 @@
 ## 6. 스키마
 
 ```
-overseas_buyer_leads(id, company_key UNIQUE, source, company, country, category,
-  website, email, phone, contact_name, description, source_keyword,
-  status['new'|contacted|interested|negotiating|contracted|rejected|hold], memo,
+overseas_buyer_leads(id, company_key UNIQUE, source, intent_signal, company, country,
+  target_market, category, imports_from_korea, website, email, phone,
+  decision_maker, decision_maker_title, decision_maker_email, est_volume, match_score,
+  description, source_keyword,
+  status['lead'|qualified|sampling|negotiating|won|lost|hold], memo,
   contacted_at, follow_up_at, collected_at)
 buyer_discovery_targets(id, category, country, keyword, active, hits,
   found_total, saved_total, last_run_at, created_at, UNIQUE(category,country))
 ```
-멱등 = `company_key`(정규화: 소문자+법인접미사/특수문자 제거) UNIQUE + upsert 백필. cursor = `platform_settings.buyer_collect_cursor`.
+멱등 = `company_key`(정규화: 소문자+법인/무역 접미사·특수문자 제거) UNIQUE + upsert 백필(빈 컨택/담당자만, 더 높은 score 만). cursor = `platform_settings.buyer_collect_cursor`.
+
+**의도 피드 입력 스키마**(대표가 정제해 게시하는 JSON 항목): `{company, country, target_market?, category?, intent?('rfq'|'buying_lead'|'import_record'|'exhibitor'|'directory'), imports_from_korea?, website?, email?, phone?, contact_name?, contact_title?, contact_email?, est_volume?, description?}`. `intent` 를 명시하면 그 티어로 스코어링(미명시=directory).
 
 ## 7. 롤백
 
