@@ -222,7 +222,7 @@ export default function AdminInfluencerPoolPage() {
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="">전체 카테고리</option>
-            {['맛집', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동'].map(c => <option key={c} value={c}>{c}</option>)}
+            {['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동'].map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
             <input type="checkbox" checked={hasEmail} onChange={e => setHasEmail(e.target.checked)} /> ✉ 이메일 있음
