@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -57,6 +57,7 @@ interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
   promoted?: string[]; youtube_quota_hit?: boolean
+  bio_enriched?: number // 🔗 이번 실행에서 링크인바이오 페이지로 이메일/인스타를 새로 채운 리드 수
   /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
    *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
   diag?: {
@@ -145,6 +146,44 @@ async function saveLeadsBatch(
     if (rs) for (const r of rs) if (r?.meta?.changes === 1) saved++
   }
   return saved
+}
+
+// 링크인바이오 서비스 자체 도메인 메일(support@linktr.ee 등) — 채널 주인 컨택 아님.
+const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
+
+/** 🔗 링크인바이오 백필(2026-07-20) — 이메일/인스타 없는 풀 리드의 linktr.ee 류 **공개 페이지**를 열어 컨택 보강.
+ *  소개글엔 링크트리만 적고 이메일은 그 안에 두는 인플루언서 커버(합법·무료·쿼터 무관 — 무료 범위의 마지막 레버).
+ *  매 실행 잔여 서브리퀘스트 예산으로 max 건(구독자 큰 순). 시도한 행은 성공/실패 무관 bio_checked_at 스탬프
+ *  (재시도 폭주 방지) — 기존 풀 3천+ 도 매시간 순차 소진(자가치유). 채움은 빈 칸만(수동 데이터 불변). */
+export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
+  if (max <= 0 || budget.left <= 0) return 0
+  const rows = (await DB.prepare(`SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads
+    WHERE account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
+      AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')
+    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
+    .all<{ id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }>().catch(() => null))?.results || []
+  if (!rows.length) return 0
+  let enriched = 0
+  const stmts: ReturnType<D1Database['prepare']>[] = []
+  for (const r of rows) {
+    if (budget.left <= 0) break // 예산 소진 — 스탬프 없이 중단(다음 틱이 이어받음)
+    budget.left -= 1
+    const link = (r.links || '').split(/\s+/).find(l => /^(?:https?:\/\/)?(?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\//i.test(l)) || ''
+    const html = link ? await fetchLinkInBioText(link) : ''
+    const c = html ? extractContacts(html) : { emails: [], instagram: [], tiktok: [], links: [] }
+    let email = r.email
+    if (!email && html) {
+      const picked = pickBusinessEmail(html)
+      email = (picked && !PLATFORM_EMAIL_RE.test(picked) ? picked : null) || c.emails.find(e => !PLATFORM_EMAIL_RE.test(e)) || null
+    }
+    const insta = r.instagram || c.instagram[0] || null
+    const tt = r.tiktok || c.tiktok[0] || null
+    if ((email && !r.email) || (insta && !r.instagram) || (tt && !r.tiktok)) enriched++
+    stmts.push(DB.prepare("UPDATE ad_influencer_leads SET email = ?, instagram = ?, tiktok = ?, bio_checked_at = datetime('now') WHERE id = ? AND account_id = ?")
+      .bind(email, insta, tt, r.id, POOL_ACCOUNT_ID))
+  }
+  if (stmts.length) await DB.batch(stmts).catch(() => null)
+  return enriched
 }
 
 async function readSetting(DB: D1Database, key: string): Promise<string | null> {
@@ -367,13 +406,17 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
   }
 
+  // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
+  let bioEnriched = 0
+  try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
+
   // 두 커서 각각 전진(우선/일반 풀 독립 순환).
   const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
   const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, diag,
+    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, diag,
   }
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))

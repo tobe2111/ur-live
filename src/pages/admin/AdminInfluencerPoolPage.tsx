@@ -38,7 +38,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
+interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
 interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
 
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', instagram: '인스타', tiktok: '틱톡' }
@@ -342,7 +342,7 @@ export default function AdminInfluencerPoolPage() {
 
         {run && (
           <div className="mb-4 text-xs text-gray-500">
-            마지막 수집 {run.last_run || '—'} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회
+            마지막 수집 {run.last_run || '—'} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
             {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
             {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
           </div>
