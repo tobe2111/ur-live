@@ -37,7 +37,7 @@ export default function SellerRelinkPage() {
           if (s.seller?.id != null) localStorage.setItem('seller_id', String(s.seller.id))
           if (s.seller?.username) localStorage.setItem('seller_username', s.seller.username)
           if (s.seller?.business_name) localStorage.setItem('seller_name', s.seller.business_name)
-          if (s.seller?.is_distributor) localStorage.setItem('is_distributor', '1')
+          if (s.seller?.is_distributor) localStorage.setItem('is_distributor', '1') // multi-role-redirect-ok: 재발급 키 저장만(RouteGuards SelfHeal 동일) — 게이트/redirect 아님
         }
         navigate('/seller', { replace: true })
       } else {
