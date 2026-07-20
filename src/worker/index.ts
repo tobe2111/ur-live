@@ -430,6 +430,9 @@ app.use('*', async (c, next) => {
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     `connect-src 'self' https: wss: https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app wss://${new URL(FIREBASE_RTDB_URL).host}; ` +
     "frame-src 'self' " +
+      // 🛡️ 2026-07-20: Turnstile 위젯은 challenges.cloudflare.com iframe 필수 — 누락 시
+      //   위젯 렌더 실패 → 토큰 없음 → (TURNSTILE_SECRET 설정 후) 로그인 전면 차단.
+      "https://challenges.cloudflare.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       `https://*.firebaseapp.com ${FIREBASE_APP_URL} ` +
