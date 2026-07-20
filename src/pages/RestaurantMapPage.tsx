@@ -60,7 +60,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     } catch { return null }
   })
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
-  const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
+  // 🧭 2026-07-20 (대표 — /stays 칩 죽은 링크 수리): `?category=` 딥링크로 초기 카테고리 선택 지원
+  //   (예: /map?category=meal_voucher — /stays 칩·외부 공유용). 무효 값은 'all' 폴백.
+  const [voucherType, setVoucherType] = useState<MapVoucherType>(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('category')
+      return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
+    } catch { return 'all' }
+  })
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
   // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 내 위치(near) 거리순 + 근접 바운드 로딩.
   const { data: baseRestaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType, userLoc)

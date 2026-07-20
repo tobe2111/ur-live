@@ -145,6 +145,24 @@ export default function AdminDongnedealImportPage() {
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
 
+  // 🏨 2026-07-20 (대표 — "숙소 이용권 더미데이터"): 데모 숙소 6종 시드(멱등, slug demo-stay-N).
+  const seedStays = async () => {
+    setCleaning(true)
+    try {
+      const r = await api.post('/api/admin/stays/seed-demo', {}, { ...h, timeout: 120000 })
+      const d = r.data?.data || {}
+      toast.success(`데모 숙소 ${d.created ?? 0}개 생성${d.skipped ? ` · ${d.skipped}개 이미 존재` : ''}`)
+    } catch { toast.error('숙소 데모 생성 중 오류') } finally { setCleaning(false) }
+  }
+  const clearStays = async () => {
+    if (!confirm('데모 숙소(demo-stay-*)를 비활성 처리할까요?')) return
+    setCleaning(true)
+    try {
+      const r = await api.delete('/api/admin/stays/seed-demo', { ...h, timeout: 60000 })
+      toast.success(`데모 숙소 ${r.data?.data?.retired ?? 0}개 비활성`)
+    } catch { toast.error('숙소 데모 정리 중 오류') } finally { setCleaning(false) }
+  }
+
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
@@ -270,6 +288,9 @@ export default function AdminDongnedealImportPage() {
                 <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
                 <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
+                {/* 🏨 2026-07-20: 숙소(/stays) 데모 6종 — 멱등(slug demo-stay-N) */}
+                <button onClick={seedStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50">🏨 숙소 데모 채우기</button>
+                <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">숙소 데모 정리</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
