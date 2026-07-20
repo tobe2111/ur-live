@@ -158,6 +158,13 @@ export interface Env {
   //   ⚠️ 실 계정 1회 검증(estimate 응답·bid PUT 동작) 후에만 'true' 로.
   ADS_AUTOBID_ENABLED?: string;
 
+  // ---- 유어애즈 인플루언서 자동 수집 cron 킬스위치 (2026-07-20, Phase E) ----
+  //   'true' 일 때만 ur-ads 일일 cron 이 무료 공식 API(YouTube·네이버)로 카테고리 시드 키워드를
+  //   순환 발굴해 공용 풀(ad_influencer_leads.account_id=0)에 누적. 기본 OFF(미설정) = no-op.
+  //   공개 데이터·공식 API 만 사용(수집 ≠ 발송 — 마케팅 발송은 정보통신망법상 사전동의 별도).
+  ADS_AUTO_COLLECT_ENABLED?: string;
+  ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 12) — 공유 YouTube 일일 한도 보호용.
+
   // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
   //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면
   //   NOT_CONFIGURED/DISABLED — 기능 자동 숨김). ⚠️ 이 환경 egress 차단으로 실호출 미검증(docs 기준 배선).

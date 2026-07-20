@@ -153,4 +153,104 @@ app.patch('/short-links/:id', async (c) => {
   return c.json({ success: true })
 })
 
+// ── 🎯 인플루언서 공용 풀(자동 수집) 어드민 (2026-07-20, Phase E) ───────────────
+//   수집 엔진은 ur-ads 워커 cron. 여기(메인 어드민)는 결과 열람/큐레이션 + 키워드 관리 + 수동 트리거만.
+//   ⚠️ 메인 번들 경량 유지 위해 수집/발굴 코드는 import 안 하고 전부 inline SQL(공용 풀 = account_id 0).
+const POOL = 0
+
+async function ensureKeywordTable(DB: D1Database) {
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, keyword TEXT NOT NULL UNIQUE, category TEXT,
+    active INTEGER NOT NULL DEFAULT 1, hits INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'seed',
+    created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => null)
+}
+
+// GET /api/admin/ads/influencer-pool?platform=&category=&hasContact=1&q=&limit=
+app.get('/influencer-pool', async (c) => {
+  const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
+  const platform = (c.req.query('platform') || '').trim()
+  if (['youtube', 'naver_blog', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  const category = (c.req.query('category') || '').trim()
+  if (category) { where.push('category = ?'); binds.push(category) }
+  if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
+  const q = (c.req.query('q') || '').trim().toLowerCase()
+  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
+  const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
+    FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY subscriber_count DESC, id DESC LIMIT ?`)
+    .bind(...binds, limit).all().catch(() => null)
+  return c.json({ success: true, leads: rows?.results || [] })
+})
+
+// GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
+app.get('/influencer-pool/stats', async (c) => {
+  const agg = await c.env.DB.prepare(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
+      SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
+      SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
+      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
+    FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
+  const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
+  let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
+  return c.json({ success: true, stats: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
+})
+
+// PATCH /api/admin/ads/influencer-pool/:id { status?, memo? } — 큐레이션
+app.patch('/influencer-pool/:id', async (c) => {
+  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const sets: string[] = []; const binds: (string | number)[] = []
+  if (typeof b.status === 'string' && ['new', 'contacted', 'rejected'].includes(b.status)) { sets.push('status = ?'); binds.push(b.status) }
+  if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  if (!sets.length) return c.json({ success: false, error: '변경 항목 없음' }, 400)
+  await c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, id, POOL).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// DELETE /api/admin/ads/influencer-pool/:id
+app.delete('/influencer-pool/:id', async (c) => {
+  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  await c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(id, POOL).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// GET /api/admin/ads/influencer-pool/keywords — 수집 키워드 목록(활성/후보)
+app.get('/influencer-pool/keywords', async (c) => {
+  await ensureKeywordTable(c.env.DB)
+  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
+  return c.json({ success: true, keywords: r?.results || [] })
+})
+
+// POST /api/admin/ads/influencer-pool/keywords { keyword, category? } — 키워드 추가
+app.post('/influencer-pool/keywords', async (c) => {
+  await ensureKeywordTable(c.env.DB)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const kw = String(b.keyword || '').trim()
+  if (kw.length < 2 || kw.length > 40) return c.json({ success: false, error: '키워드는 2~40자' }, 400)
+  await c.env.DB.prepare("INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, 'manual')")
+    .bind(kw, String(b.category || '수동').slice(0, 40)).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// PATCH /api/admin/ads/influencer-pool/keywords/:id { active } — 활성/비활성
+app.patch('/influencer-pool/keywords/:id', async (c) => {
+  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await c.env.DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(b.active ? 1 : 0, id).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
+app.post('/influencer-pool/collect', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  try {
+    const res = await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' }))
+    const data = await res.json().catch(() => null) as { ok?: boolean; stats?: unknown } | null
+    if (!res.ok || !data?.ok) return c.json({ success: false, error: '수집 실행 실패' }, 502)
+    return c.json({ success: true, stats: data.stats })
+  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
 export { app as adminAdsRoutes }
