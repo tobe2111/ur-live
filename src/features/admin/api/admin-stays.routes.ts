@@ -332,6 +332,41 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
     //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
     const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchNaverImageUrl>[0]
+    // 🩹 v3 자동 치유 (2026-07-20 대표 — "좌표가 없고, 가격도 이름도 안 정해져 불완전"): v2 시드가
+    //   product_stay_info 에만 좌표/주소를 넣고 목록·카드가 읽는 products 레벨(restaurant_* / price)을
+    //   안 채웠음. 기존 시드분을 stay_info + 최저 객실가에서 복사 치유(멱등 — 치유 대상만 매칭, 재실행 무해).
+    //   products.name 도 숙소명 그대로였던 것 → 동네딜 규칙(제목=오퍼만, 매장명=restaurant_name 전담)으로 개명.
+    let healed = 0
+    try {
+      const healRows = await DB.prepare(
+        `SELECT p.id, p.name,
+                psi.address AS psi_address, psi.latitude AS psi_lat, psi.longitude AS psi_lng,
+                (SELECT MIN(r.base_price_weekday) FROM product_stay_rooms r WHERE r.product_id = p.id AND r.is_active = 1) AS min_wd,
+                (SELECT r2.name FROM product_stay_rooms r2 WHERE r2.product_id = p.id AND r2.is_active = 1 ORDER BY r2.display_order ASC LIMIT 1) AS room_name
+         FROM products p JOIN product_stay_info psi ON psi.product_id = p.id
+         WHERE p.slug LIKE 'demo-stay-%'
+           AND (p.restaurant_lat IS NULL OR p.restaurant_name IS NULL OR COALESCE(p.price, 0) <= 0)`
+      ).all<{ id: number; name: string; psi_address: string | null; psi_lat: number | null; psi_lng: number | null; min_wd: number | null; room_name: string | null }>()
+      for (const h of (healRows.results || [])) {
+        const minWd = Number(h.min_wd) || 0
+        const offerName = h.room_name ? `평일 1박 숙박권 (${h.room_name})` : '평일 1박 숙박권'
+        const orig = minWd > 0 ? Math.round(minWd * 1.3 / 1000) * 1000 : 0
+        // 한 UPDATE 안의 컬럼 참조는 전부 갱신 전 값 → restaurant_name IS NULL(=아직 숙소명이 제목) 조건이 정확.
+        const r = await DB.prepare(
+          `UPDATE products SET
+             restaurant_name = COALESCE(restaurant_name, name),
+             restaurant_address = COALESCE(restaurant_address, ?),
+             restaurant_lat = COALESCE(restaurant_lat, ?),
+             restaurant_lng = COALESCE(restaurant_lng, ?),
+             price = CASE WHEN COALESCE(price, 0) <= 0 AND ? > 0 THEN ? ELSE price END,
+             original_price = CASE WHEN COALESCE(original_price, 0) <= 0 AND ? > 0 THEN ? ELSE original_price END,
+             name = CASE WHEN restaurant_name IS NULL OR name = restaurant_name THEN ? ELSE name END,
+             updated_at = datetime('now')
+           WHERE id = ?`
+        ).bind(h.psi_address, h.psi_lat, h.psi_lng, minWd, minWd, orig, orig, offerName, h.id).run().catch(() => null)
+        if (r && (r.meta.changes || 0) > 0) healed++
+      }
+    } catch { /* restaurant_lat 컬럼 미존재 환경 등 — 치유는 best-effort, 시드 진행 */ }
     let created = 0, skipped = 0, realPhotos = 0
     for (let i = 0; i < count; i++) {
       const spot = spots[(n + 1 + i) % spots.length]
@@ -351,10 +386,33 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       if (img) realPhotos++
       if (!img) img = `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
-      const ins = await DB.prepare(
-        `INSERT INTO products (seller_id, name, description, image_url, price, category, product_type, is_active, slug, created_at, updated_at)
-         VALUES (NULL, ?, ?, ?, 0, 'stay_voucher', 'featured', 1, ?, datetime('now'), datetime('now'))`
-      ).bind(place.name, desc, img, slug).run()
+      // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
+      //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.
+      const mod = ty.mods[n % ty.mods.length]
+      const baseWd = 69000 + ((n % 6) * 20000)
+      const rooms = [
+        { name: `스탠다드 ${ty.label === '글램핑' ? '텐트' : '룸'}`, bg: 2, mg: 2 + ((n % 2) * 2), wd: baseWd, we: Math.round(baseWd * 1.4 / 1000) * 1000 },
+        { name: `프리미엄 ${mod}${ty.label === '펜션' ? ' 독채' : ' 스위트'}`, bg: 2, mg: 4 + (n % 3), wd: baseWd + 60000, we: Math.round((baseWd + 60000) * 1.4 / 1000) * 1000 },
+      ]
+      // 🏷️ v3 (동네딜 규칙 미러): 제목 = 오퍼만, 숙소명 = restaurant_name 전담. 가격 = 최저 객실 주중가.
+      const offerName = `평일 1박 숙박권 (${rooms[0].name})`
+      const price = rooms[0].wd
+      const origPrice = Math.round(price * 1.3 / 1000) * 1000
+      let ins
+      try {
+        ins = await DB.prepare(
+          `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
+             is_active, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, place.lat, place.lng, slug).run()
+      } catch {
+        // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(동네딜 시드와 동일 방어).
+        ins = await DB.prepare(
+          `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
+             is_active, restaurant_name, restaurant_address, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, slug).run()
+      }
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
       // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
@@ -375,13 +433,6 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         JSON.stringify(['무료 주차', '와이파이', ty.type === 'glamping' ? '개별 화로' : '조식']),
         JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), desc,
       ).run()
-      // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
-      const mod = ty.mods[n % ty.mods.length]
-      const baseWd = 69000 + ((n % 6) * 20000)
-      const rooms = [
-        { name: `스탠다드 ${ty.label === '글램핑' ? '텐트' : '룸'}`, bg: 2, mg: 2 + ((n % 2) * 2), wd: baseWd, we: Math.round(baseWd * 1.4 / 1000) * 1000 },
-        { name: `프리미엄 ${mod}${ty.label === '펜션' ? ' 독채' : ' 스위트'}`, bg: 2, mg: 4 + (n % 3), wd: baseWd + 60000, we: Math.round((baseWd + 60000) * 1.4 / 1000) * 1000 },
-      ]
       let order = 0
       for (const r of rooms) {
         order++
@@ -397,7 +448,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       }
       created++
     }
-    return c.json({ success: true, data: { created, skipped, realPhotos, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, healed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }
