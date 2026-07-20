@@ -259,6 +259,43 @@ function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, ke
   return ex
 }
 
+// ── 네이버 카페 발굴 (네이버 검색 오픈API cafearticle — 무료, 동일 키) ──────────
+//   카페는 개인이 아니라 커뮤니티 단위 → 게시글 상위 노출 카페를 집계(카페홈 링크 기준).
+//   지표 없음, 매칭 글 수(활동 프록시) + best-effort 컨택. platform='naver_cafe'.
+export async function discoverNaverCafes(
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number } = {},
+): Promise<DiscoverResult> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  const q = (keyword || '').trim()
+  if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
+  const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
+  const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  if (!res) return { ok: false, error: 'FAILED', message: '카페 검색 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
+  if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `카페 검색 오류 (HTTP ${res.status})` }
+  const byCafe = new Map<string, InfluencerLead & { _matches: number }>()
+  for (const it of (data?.items || [])) {
+    const home = String(it.cafeurl || '').trim()
+    if (!home) continue
+    const key = home.replace(/\/$/, '')
+    const handle = key.replace(/^https?:\/\/(cafe\.naver\.com\/)?/, '').replace(/\/.*$/, '') || null
+    const text = `${stripTag(it.title)} ${stripTag(it.description)}`
+    let ex = byCafe.get(key)
+    if (!ex) { ex = { platform: 'naver_cafe', channel_id: key, handle, name: String(it.cafename || handle || '카페'), url: key, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }; byCafe.set(key, ex) }
+    ex._matches += 1
+    const c = extractContacts(text)
+    if (!ex.email && c.emails[0]) ex.email = c.emails[0]
+    if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
+    if (!ex.links && c.links.length) ex.links = c.links.join(' ')
+    if (!ex.description) ex.description = text.slice(0, 300)
+  }
+  const leads = Array.from(byCafe.values())
+    .map(({ _matches, ...l }) => ({ ...l, video_count: _matches }))
+    .sort((a, b) => b.video_count - a.video_count)
+  return { ok: true, leads }
+}
+
 // ── 저장/관리 (계정별 리드 DB) ────────────────────────────────────────────────
 export interface LeadRow extends InfluencerLead { id: number; status: string; memo: string | null; collected_at: string; category: string | null; source_keyword: string | null }
 
