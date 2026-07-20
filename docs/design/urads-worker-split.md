@@ -62,11 +62,18 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
    - **D1**: 바인딩명 `DB` → 데이터베이스 `toss-live-commerce-db` (**id `d9530ba6-7a26-4c02-9295-3ce5aef112a3`** — 메인과 동일해야 데이터 공유).
    - **KV**(있으면): `RATE_LIMIT_KV` · `SESSION_KV` · `CACHE_KV` → 메인과 동일 namespace.
 3. **Settings → Variables and Secrets**:
+   > 🚨 **2026-07-20 실사고**: 여기 넣은 값이 **일반 텍스트(Variable) 타입**이면 CI 의 `wrangler deploy` 가
+   > 배포마다 **삭제**함(toml [vars] 로 통째 교체 — Secret 타입만 생존). Phase B 값들이 이렇게 wipe 되어
+   > 유어애즈 로그인 "서버 설정 오류(JWT_SECRET)" + 인플루언서 수집 0건 발생. 조치: `wrangler-ads.toml`
+   > `keep_vars = true`(보존) + **값은 반드시 "Encrypt"(Secret) 타입으로 재입력**.
    - `JWT_SECRET` — ⚠️ **메인 값이 분실(Cloudflare 시크릿은 쓰기전용·복구불가)** 되어 ur-ads 는 **자체 새 값**을 사용.
      결과: `ads_token` 은 **ur-ads 안에서만** 발급·검증되므로 문제없음. 단 **컷오버(게이트 ON) 시점에 기존 유어애즈
      베타 로그인 사용자는 1회 재로그인** 필요(그전 토큰은 메인 JWT 로 서명됨). `/api/admin/ads/*` 는 메인 어드민 JWT
      라 무관.
    - `YOUTUBE_API_KEY` · `NAVER_SEARCH_CLIENT_ID/SECRET`(또는 `NAVER_CLIENT_ID/SECRET`) · `DATA_ENCRYPTION_KEY` · `ANTHROPIC_API_KEY` · `ADS_*` 플래그 · `RESEND_*`(선택) 등 유어애즈가 쓰는 것.
+   - 📌 **계정 메모(대표 지시 2026-07-20 "꼭 기억해줘")**: `YOUTUBE_API_KEY` 는 **Google Cloud Console 을
+     `urteam.corp@gmail.com` 계정으로 로그인**해서 확인(APIs & Services → Credentials → SHOW KEY).
+     네이버 키는 developers.naver.com(동일 맥락). 키 분실 시 이 계정으로 재확인.
 4. **메인 Pages(ur-live) → Settings → Functions → Service bindings**: 바인딩명 `ADS` → Worker `ur-ads`.
    ⚠️ 이 바인딩은 **ur-ads 가 아니라 *메인 ur-live Pages* 프로젝트**에 만든다(ur-ads 의 Bindings 탭엔 안 보임).
 5. **메인 Pages(ur-live) → Settings → Variables**: `ADS_WORKER_ENABLED` = `true`(컷오버). 미설정/기타값이면 OFF(현행).
@@ -75,6 +82,11 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
 
 > ⚠️ **2026-04-22 사고 교훈(wrangler.toml)**: Worker 가 Custom Domain 을 가로채면 시크릿 없이 동작 → 장애.
 > ur-ads Worker 에는 **Custom Domain 을 붙이지 않는다**(Service Binding 으로만 접근). `live.ur-team.com` 은 계속 Pages(ur-live) 전용.
+
+> 🔐 **workers.dev 라우트 (2026-07-20 발견)**: ur-ads 는 `ur-ads.jiwon-1a2.workers.dev` 가 **활성**이라
+> `/__ads/collect`(무인증 수집 트리거)가 공개 도달 가능(악용 시 YouTube 쿼터 소모 — 머니/데이터 위험은 없음).
+> **권장**: 대시보드 ur-ads → Settings → Domains & Routes 에서 workers.dev 라우트 **비활성**(Service Binding 은
+> 라우트 불필요라 메인 위임·cron 전부 무영향). 비활성 전까지는 낮은 리스크로 허용.
 
 ## 6. 리스크 & 완화
 

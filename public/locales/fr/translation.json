@@ -191,7 +191,15 @@
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez"
   },
   "seller": {
-    "simple": { "scan": "Scan QR", "settlement": "Règlement", "myDeals": "Mes deals", "fullMenu": "Menu complet", "scanSub": "Valider les bons", "settlementSub": "Ventes et paiements", "myDealsSub": "Incl. en attente" },
+    "simple": {
+      "scan": "Scan QR",
+      "settlement": "Règlement",
+      "myDeals": "Mes deals",
+      "fullMenu": "Menu complet",
+      "scanSub": "Valider les bons",
+      "settlementSub": "Ventes et paiements",
+      "myDealsSub": "Incl. en attente"
+    },
     "dashboard": "Tableau de bord",
     "dashboardSubtitle": "Tableau de bord vendeur — Ventes / Commandes / Statut en direct",
     "products": {
@@ -1741,7 +1749,8 @@
       "agencyDelegation": "Délégation d'agence",
       "promoSpend": "Dépenses promo",
       "influencerDeals": "Collabs influenceurs",
-      "experienceCampaigns": "Campagnes d'essai"
+      "experienceCampaigns": "Campagnes d'essai",
+      "myLinkshop": "Ma boutique"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

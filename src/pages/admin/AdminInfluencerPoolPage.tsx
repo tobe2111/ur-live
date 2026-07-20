@@ -18,7 +18,8 @@ interface Lead {
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
 }
 interface PoolStats { total?: number; youtube?: number; naver_blog?: number; with_contact?: number; recent7?: number }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean }
+interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
+interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
 interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string }
 
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버', instagram: '인스타', tiktok: '틱톡' }
@@ -67,8 +68,16 @@ export default function AdminInfluencerPoolPage() {
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/collect', {})
       if (r.data?.success) {
-        const saved = r.data.stats?.last_saved ?? 0
-        toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
+        const st = r.data.stats || {}
+        const saved = st.last_saved ?? 0
+        const d = st.diag
+        if (saved > 0) toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
+        else {
+          // 0건이면 플랫폼별 사유를 그대로 보여줌(진단 — 아래 배너에도 상세 표시).
+          const why = d ? [d.yt.error && `유튜브: ${d.yt.error}`, d.naver.error && `네이버: ${d.naver.error}`].filter(Boolean).join(' / ') : ''
+          const foundDup = d && (d.yt.found + d.naver.found) > 0
+          toast.error(foundDup ? `발굴 ${formatNumber(d.yt.found + d.naver.found)}건 전부 기존과 중복(신규 0)` : `신규 0건 — ${why || '원인 미상(아래 진단 참고)'}`)
+        }
         await Promise.all([loadLeads(), loadMeta()])
       } else toast.error(r.data?.error || '수집 실패')
     } catch { toast.error('수집 실행 실패') } finally { setCollecting(false) }
@@ -142,6 +151,16 @@ export default function AdminInfluencerPoolPage() {
             마지막 수집 {run.last_run || '—'} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회
             {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
             {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
+          </div>
+        )}
+
+        {/* 🔎 플랫폼별 진단 — 문제(에러/미설정) 있을 때만 노출 */}
+        {run?.diag && (run.diag.yt.error || run.diag.naver.error) && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 space-y-1">
+            <div className="font-medium">수집 진단 (마지막 실행)</div>
+            <div>유튜브 — {run.diag.yt.configured ? `발굴 ${formatNumber(run.diag.yt.found)} · 저장 ${formatNumber(run.diag.yt.saved)}` : '키 미설정'}{run.diag.yt.error ? ` · ⚠️ ${run.diag.yt.error}` : ' · 정상'}</div>
+            <div>네이버 — {run.diag.naver.configured ? `발굴 ${formatNumber(run.diag.naver.found)} · 저장 ${formatNumber(run.diag.naver.saved)}` : '키 미설정'}{run.diag.naver.error ? ` · ⚠️ ${run.diag.naver.error}` : ' · 정상'}</div>
+            <div className="text-red-500">키 미설정이면: Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>
           </div>
         )}
 

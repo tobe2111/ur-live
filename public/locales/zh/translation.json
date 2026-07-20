@@ -870,7 +870,15 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
-    "simple": { "scan": "扫码", "settlement": "结算", "myDeals": "我的优惠", "fullMenu": "全部菜单", "scanSub": "核销顾客券", "settlementSub": "销售与结算", "myDealsSub": "含待审批" },
+    "simple": {
+      "scan": "扫码",
+      "settlement": "结算",
+      "myDeals": "我的优惠",
+      "fullMenu": "全部菜单",
+      "scanSub": "核销顾客券",
+      "settlementSub": "销售与结算",
+      "myDealsSub": "含待审批"
+    },
     "dashboard": "仪表盘",
     "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",
     "products": {
@@ -2420,7 +2428,8 @@
       "agencyDelegation": "门店委托",
       "promoSpend": "促销支出",
       "influencerDeals": "达人合作",
-      "experienceCampaigns": "体验活动"
+      "experienceCampaigns": "体验活动",
+      "myLinkshop": "我的链接商店"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

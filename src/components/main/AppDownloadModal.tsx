@@ -4,6 +4,7 @@
  *   모바일 웹으로 안내(출시 시 스토어 URL 로 교체). 모달 z-index 는 표준(10500, 네비 위).
  */
 import { lazy, Suspense, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -23,7 +24,11 @@ export default function AppDownloadModal({ onClose }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  return (
+  // 🚑 2026-07-19 (대표 신고 — "팝업 위가 잘리고 상단만 블러"): 부모 DesktopTopNav 헤더가 backdrop-blur
+  //   (backdrop-filter)를 가져 CSS 규칙상 fixed 자손의 containing block 이 헤더가 됨 → inset-0 오버레이가
+  //   화면 전체가 아닌 '헤더 영역'에만 깔리고 모달이 헤더 기준으로 잘렸음. createPortal 로 body 직속
+  //   렌더 → 진짜 뷰포트 기준 fixed(전체 딤 + 중앙 정렬).
+  return createPortal(
     <div
       className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
       role="dialog"
@@ -87,6 +92,7 @@ export default function AppDownloadModal({ onClose }: Props) {
           <UrDealLogo size={16} forceDark /> 지금 유어딜 열기
         </a>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

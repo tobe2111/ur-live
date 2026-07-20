@@ -870,7 +870,15 @@
     "seoDesc": "気になる商品をまとめて見る"
   },
   "seller": {
-    "simple": { "scan": "QRスキャン", "settlement": "精算", "myDeals": "マイディール", "fullMenu": "全メニュー", "scanSub": "バウチャー使用処理", "settlementSub": "売上・支払確認", "myDealsSub": "承認待ち含む" },
+    "simple": {
+      "scan": "QRスキャン",
+      "settlement": "精算",
+      "myDeals": "マイディール",
+      "fullMenu": "全メニュー",
+      "scanSub": "バウチャー使用処理",
+      "settlementSub": "売上・支払確認",
+      "myDealsSub": "承認待ち含む"
+    },
     "dashboard": "ダッシュボード",
     "dashboardSubtitle": "セラーダッシュボード — 売上 / 注文 / ライブ状況",
     "products": {
@@ -2436,7 +2444,8 @@
       "agencyDelegation": "店舗委任",
       "promoSpend": "プロモ支出",
       "influencerDeals": "インフル協業",
-      "experienceCampaigns": "体験キャンペーン"
+      "experienceCampaigns": "体験キャンペーン",
+      "myLinkshop": "マイリンクショップ"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",

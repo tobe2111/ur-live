@@ -14,6 +14,13 @@ main = "dist-ads/index.js"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# 🚨 2026-07-20 실사고 재발 방지: 대시보드에서 넣은 **일반 텍스트(plaintext) Variables** 는
+#   `wrangler deploy` 가 이 toml 의 [vars] 로 통째 교체하며 **삭제**한다(Secret 타입만 생존).
+#   Phase B 에서 대표가 넣은 JWT_SECRET/YOUTUBE_API_KEY/NAVER_* 가 CI 배포마다 wipe →
+#   유어애즈 로그인 "서버 설정 오류(JWT_SECRET)" + 인플루언서 수집 0건.
+#   keep_vars = true → 대시보드 설정 변수를 배포가 보존. (신규 값은 가급적 Secret 타입으로.)
+keep_vars = true
+
 # 배포 전 esbuild 번들(@/ alias resolve) — wrangler deploy 가 이 command 를 먼저 실행.
 [build]
 command = "node scripts/build-worker-ads.js"
