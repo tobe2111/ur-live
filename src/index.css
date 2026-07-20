@@ -206,12 +206,8 @@
     background-color: #0F151D;
   }
 
-  /* Footer tiny text override */
-  .footer-tiny,
-  .footer-tiny * {
-    font-size: 8px !important;
-    line-height: 1.4 !important;
-  }
+  /* 🗑️ 2026-07-20: .footer-tiny(전체 강제 8px !important) 제거 — SiteFooter 재설계로 사용처 0.
+     푸터 가독성 불만("글씨 크기")의 근본 원인이던 함정 클래스라 재사용 방지 위해 삭제. */
 }
 
 /* 셀러/어드민 대시보드: 라이트 CSS 변수 오버라이드 */
