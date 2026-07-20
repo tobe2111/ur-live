@@ -87,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
+      { path: '/admin/buyer-pool',         label: '🌐 해외 바이어 풀', icon: Megaphone },
     ],
   },
   {

@@ -190,6 +190,7 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { buyerPoolRoutes } from '../features/marketing/api/buyer-pool.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
@@ -1597,6 +1598,7 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 // app.route('/api/admin/castings', adminCastingRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
+app.route('/api/admin/buyer-pool', buyerPoolRoutes); // 🌐 유통스타트 해외 수출 바이어 풀(격리 테이블·게이트 OFF)
 // app.route('/api/seller/castings', sellerCastingRoutes);
 // 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
 // app.route('/api/donation-boosters', donationBoosterRoutes);
