@@ -212,7 +212,7 @@ export default function CuratorPage() {
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
         {/* 🚀 2026-07-11 (1-RTT): 서버 동봉 셀러 페이로드를 시드로 전달 — SellerPublicPage 가 동기 소비해
             셀러 fetch 생략(없으면 기존 fetch 폴백). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} sellerSeed={data.linked_seller_public ?? null} />
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} ownerOverride={isOwner} sellerSeed={data.linked_seller_public ?? null} />
       </Suspense>
     )
   }
