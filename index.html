@@ -25,8 +25,11 @@
           try {
             var t = 0;
             try { t = Math.round(window.performance && performance.now ? performance.now() : 0); } catch (e) {}
+            // 엔트리 번들이 실행됐는지(=main.tsx 가 window.__urBootStarted 세팅). 안 돌았으면 청크404/CSP/네트워크,
+            //   돌았으면 마운트가 느리거나 막힌 것(무거운 렌더/행/렌더에러) — 진짜 원인 구분의 핵심 신호.
+            var bs = 0; try { bs = window.__urBootStarted || 0; } catch (e) {}
             var payload = JSON.stringify({
-              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
+              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' entryRan=' + (bs ? 'y' : 'n') + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
               url: location.pathname + location.search,
               type: 'manual',
               user_agent: navigator.userAgent
@@ -165,7 +168,14 @@
         //   전 표면 커버: main.tsx 는 라우트 무관 성공 부팅 시 __urMounted=1 을 세팅하므로, #root 가 소비자
         //   로더든 대시보드/도매/블로그 placeholder 든 상관없이 '앱 미마운트' 하나로 판정(로더 마크업 의존 X).
         setTimeout(function () {
-          try { if (!window.__urMounted) showStuckUI(chunkSeen ? 'chunk' : 'slow'); } catch (e) { /* silent */ }
+          try {
+            if (window.__urMounted) return;
+            // reason 3분류로 진단 정밀화: chunk(확증된 404/MIME) / entry-stalled(엔트리 미실행 = 다운로드/차단/
+            //   네트워크) / mount-slow(엔트리는 돌았는데 마운트 미완 = 무거운 렌더·행·렌더에러). 셋 다 gentle 1단계
+            //   부터(=캐시 안 지움) — 청크 확증이나 세션 내 재발 시에만 showStuckUI 가 완전복구로 승격.
+            var reason = chunkSeen ? 'chunk' : (window.__urBootStarted ? 'mount-slow' : 'entry-stalled');
+            showStuckUI(reason);
+          } catch (e) { /* silent */ }
         }, 12000);
       })();
     </script>

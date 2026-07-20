@@ -2,6 +2,11 @@
 //   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
 import { isChunkLoadError, isAppChunkUrl, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error'
+// 🛡️ 2026-07-20 (대표 신고 전수조사): 엔트리 번들 실행 신호. ES 모듈은 import 가 전부 resolve 된 뒤에야
+//   모듈 본문이 실행되므로, 엔트리(또는 그 정적 의존 청크)가 404/CSP/네트워크로 못 뜨면 이 줄이 아예 안 돈다.
+//   index.html 부트가드 워치독/진단이 '엔트리가 아예 안 돌았나(=stale/404/차단) vs 돌았는데 마운트가
+//   느리거나 막혔나(무거운 렌더/행/에러)'를 구분 → 진짜 원인 특정(캐시버스트로 못 고치는 부류 판별).
+try { (window as unknown as { __urBootStarted?: number }).__urBootStarted = Date.now() } catch { /* window 차단 환경 — 무시 */ }
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
 // 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
