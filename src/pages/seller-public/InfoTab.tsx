@@ -63,8 +63,8 @@ export default function InfoTab({
       {editingField === 'kakao' ? (
         <div className="flex gap-2">
           <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
-            className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#1A2334] text-gray-900 dark:text-white" />
-          <button onClick={() => saveEdit('kakao', editKakao)} disabled={saving} aria-label={t('common.save', { defaultValue: '저장' })} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
+            className="flex-1 px-2 py-1.5 border border-brand rounded-lg text-sm bg-gray-50 dark:bg-[#1A2334] text-gray-900 dark:text-white" />
+          <button onClick={() => saveEdit('kakao', editKakao)} disabled={saving} aria-label={t('common.save', { defaultValue: '저장' })} className="px-2 py-1.5 bg-brand hover:bg-brand-dark text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
           <button onClick={() => setEditingField(null)} aria-label={t('common.cancel', { defaultValue: '취소' })} className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
         </div>
       ) : (seller.kakao_chat_link || seller.phone || canSellerEdit) ? (
