@@ -286,8 +286,8 @@ export default function SellerLoginPage() {
                 </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🛡️ Cloudflare Turnstile — 비가시 봇 검증 (size="invisible" 은 유효값 아님 — appearance 기본값이 담당) */}
+              <TurnstileWidget onVerify={setTurnstileToken} />
 
               {/* Login button */}
               <button

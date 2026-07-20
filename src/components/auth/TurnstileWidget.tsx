@@ -25,7 +25,7 @@ declare global {
           'error-callback'?: () => void
           'expired-callback'?: () => void
           theme?: 'light' | 'dark' | 'auto'
-          size?: 'normal' | 'compact' | 'invisible'
+          size?: 'normal' | 'flexible' | 'compact'
           appearance?: 'always' | 'execute' | 'interaction-only'
         },
       ) => string
@@ -68,7 +68,10 @@ interface TurnstileWidgetProps {
   onError?: () => void
   onExpire?: () => void
   theme?: 'light' | 'dark' | 'auto'
-  size?: 'normal' | 'compact' | 'invisible'
+  // ⚠️ 'invisible' 은 유효한 size 값이 아님 (Turnstile api.js 가 throw → 위젯 미렌더 →
+  //   토큰 미발급 → 로그인 403). 비가시 UX 는 appearance='interaction-only' 사용.
+  size?: 'normal' | 'flexible' | 'compact'
+  appearance?: 'always' | 'execute' | 'interaction-only'
   className?: string
 }
 
@@ -77,7 +80,8 @@ export default function TurnstileWidget({
   onError,
   onExpire,
   theme = 'auto',
-  size = 'invisible',
+  size = 'normal',
+  appearance = 'interaction-only',
   className = '',
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -103,6 +107,7 @@ export default function TurnstileWidget({
           'expired-callback': () => onExpire?.(),
           theme,
           size,
+          appearance,
         })
       })
       .catch(() => {
@@ -118,7 +123,7 @@ export default function TurnstileWidget({
         } catch { /* ignore */ }
       }
     }
-  }, [onVerify, onError, onExpire, theme, size])
+  }, [onVerify, onError, onExpire, theme, size, appearance])
 
   if (!SITE_KEY) return null
 
