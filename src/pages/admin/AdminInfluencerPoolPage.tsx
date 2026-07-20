@@ -112,6 +112,17 @@ export default function AdminInfluencerPoolPage() {
     catch { toast.error('삭제 실패') }
   }
 
+  const [exporting, setExporting] = useState(false)
+  async function exportExcel() {
+    setExporting(true)
+    try {
+      // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls)
+      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
+      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url)
+    } catch { toast.error('엑셀 내보내기 실패') } finally { setExporting(false) }
+  }
+
   function exportCsv() {
     const esc = (v: unknown) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? `'${s}` : /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
     const head = ['플랫폼', '이름', '핸들', 'URL', '구독자', '이메일', '인스타', '틱톡', '링크', '카테고리', '키워드', '상태']
@@ -174,7 +185,10 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
             {collecting ? '수집 중…' : '지금 수집'}
           </button>
-          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV 내보내기</button>
+          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
+            {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
+          </button>
+          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
         </div>
 
         {/* 키워드 관리 */}

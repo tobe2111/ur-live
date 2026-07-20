@@ -77,7 +77,7 @@ async function saveLeadsBatch(
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   let saved = 0
-  const CHUNK = 25
+  const CHUNK = 50
   for (let i = 0; i < leads.length; i += CHUNK) {
     const stmts = leads.slice(i, i + CHUNK).map(l => DB.prepare(sql).bind(
       accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
@@ -192,12 +192,23 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(batch / 2)) : 0
-  const nGen = Math.min(genPool.length, batch - basePri)
-  const nPri = Math.min(priPool.length, batch - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
+  // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
+  //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
+  const NAVER_EXTRA = 4
+  const totalPick = batch + NAVER_EXTRA
+  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick / 2)) : 0
+  const nGen = Math.min(genPool.length, totalPick - basePri)
+  const nPri = Math.min(priPool.length, totalPick - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
+  // 우선/일반 인터리브 — YT 슬롯(앞 batch 개)에 우선·일반이 골고루 들어가게.
+  const priPicks: { id: number; keyword: string; category: string | null }[] = []
+  const genPicks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
+  for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
   const picks: { id: number; keyword: string; category: string | null }[] = []
-  for (let i = 0; i < nPri; i++) picks.push(priPool[(priCursor + i) % priPool.length])
-  for (let i = 0; i < nGen; i++) picks.push(genPool[(cursor + i) % genPool.length])
+  for (let i = 0; i < Math.max(priPicks.length, genPicks.length); i++) {
+    if (i < priPicks.length) picks.push(priPicks[i])
+    if (i < genPicks.length) picks.push(genPicks[i])
+  }
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -219,11 +230,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
+  let ytUsed = 0
   for (const k of picks) {
     used.push(k.keyword)
-    if (hasYouTube && !quotaHit) {
+    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50=같은 100units 로 3.3×.
+    if (hasYouTube && !quotaHit && ytUsed < batch) {
+      ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 15 })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50 })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
@@ -235,7 +249,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 30 })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100 })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
