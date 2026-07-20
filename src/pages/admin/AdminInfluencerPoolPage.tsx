@@ -278,15 +278,27 @@ export default function AdminInfluencerPoolPage() {
           </div>
         )}
 
-        {/* 🔎 플랫폼별 진단 — 문제(에러/미설정) 있을 때만 노출 */}
-        {run?.diag && (run.diag.yt.error || run.diag.naver.error) && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 space-y-1">
-            <div className="font-medium">수집 진단 (마지막 실행)</div>
-            <div>유튜브 — {run.diag.yt.configured ? `발굴 ${formatNumber(run.diag.yt.found)} · 저장 ${formatNumber(run.diag.yt.saved)}` : '키 미설정'}{run.diag.yt.error ? ` · ⚠️ ${run.diag.yt.error}` : ' · 정상'}</div>
-            <div>네이버 — {run.diag.naver.configured ? `발굴 ${formatNumber(run.diag.naver.found)} · 저장 ${formatNumber(run.diag.naver.saved)}` : '키 미설정'}{run.diag.naver.error ? ` · ⚠️ ${run.diag.naver.error}` : ' · 정상'}</div>
-            <div className="text-red-500">키 미설정이면: Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>
-          </div>
-        )}
+        {/* 🔎 플랫폼별 진단 — 실제 문제(키없음/전건실패)면 빨강, 일시 부분실패(저장>0)면 앰버 참고, 완전정상이면 숨김 */}
+        {run?.diag && (() => {
+          // 플랫폼 상태: 키없음 or (에러 & 저장0)=hard, (에러 & 저장>0)=일시부분실패, 그 외 정상.
+          const cls = (p: PlatformDiag) => !p.configured ? 'missing' : (p.error && p.saved === 0) ? 'failed' : (p.error && p.saved > 0) ? 'partial' : 'ok'
+          const yt = cls(run.diag.yt), nv = cls(run.diag.naver)
+          const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed'
+          const soft = yt === 'partial' || nv === 'partial'
+          if (!hard && !soft) return null // 완전 정상이면 배너 숨김
+          const line = (label: string, p: PlatformDiag, st: string) => (
+            <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
+              {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ⚠️ ${p.error}` : ''}</div>
+          )
+          return (
+            <div className={`mb-4 rounded-lg border px-4 py-3 text-xs space-y-1 ${hard ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+              <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
+              {line('유튜브', run.diag.yt, yt)}
+              {line('네이버', run.diag.naver, nv)}
+              {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
+            </div>
+          )
+        })()}
 
         <div className="flex flex-wrap gap-2 mb-4">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
