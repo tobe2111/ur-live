@@ -41,7 +41,7 @@ interface PlatformDiag { configured: boolean; found: number; saved: number; erro
 interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
 interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
 
-const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', instagram: '인스타', tiktok: '틱톡' }
+const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 // ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
 const PRIORITY_CATS = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
@@ -417,6 +417,7 @@ export default function AdminInfluencerPoolPage() {
             <option value="youtube">유튜브</option>
             <option value="naver_blog">네이버 블로그</option>
             <option value="naver_cafe">네이버 카페</option>
+            <option value="tistory">티스토리</option>
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="">전체 카테고리</option>
@@ -507,7 +508,7 @@ export default function AdminInfluencerPoolPage() {
                       </a>
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">
-                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
+                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그</span> : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
                         <span className="inline-flex items-center gap-1.5 justify-end">
                           {formatNumber(l.subscriber_count)}
                           {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}

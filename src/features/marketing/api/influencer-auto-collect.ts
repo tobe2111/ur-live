@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -50,6 +50,15 @@ const SEED: { category: string; keywords: string[] }[] = [
   { category: '리빙', keywords: ['자취 인테리어', '살림 꿀팁', '홈스타일링'] },
   { category: 'IT/재테크', keywords: ['IT 리뷰', '가전 리뷰', '앱 추천', '재테크 브이로그', '주식 초보'] },
   { category: '취미', keywords: ['캘리그라피', '그림 그리기', '독서 추천', '차박 브이로그'] },
+]
+
+// 🗺️ 지역×업종 그리드 — 서울 25구 × {맛집·카페·뷰티·네일}. 소스 추가 없이 로컬 커버리지 극대화(유어딜 동네딜 결).
+//   카페는 맛집 카테고리로 태깅(우선 커서). 커서 순환이라 쿼터 부담 없이 며칠에 걸쳐 도는 구조.
+const SEOUL_GU = ['강남', '서초', '송파', '강동', '마포', '용산', '성동', '광진', '영등포', '동작', '관악', '강서', '양천', '구로', '금천', '종로', '중구', '성북', '동대문', '중랑', '노원', '도봉', '강북', '은평', '서대문']
+const REGION_SEED: { category: string; keywords: string[] }[] = [
+  { category: '맛집', keywords: SEOUL_GU.flatMap(gu => [`${gu} 맛집`, `${gu} 카페`]) },
+  { category: '뷰티', keywords: SEOUL_GU.map(gu => `${gu} 뷰티`) },
+  { category: '네일', keywords: SEOUL_GU.map(gu => `${gu} 네일`) },
 ]
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
@@ -211,8 +220,8 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
-  // 시드 ~40개 — 개별 INSERT(40 subrequest) 대신 1 batch (Free 한도 절약).
-  const stmts = SEED.flatMap(g => g.keywords.map(kw =>
+  // 시드(일반 ~90 + 지역그리드 100) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+  const stmts = [...SEED, ...REGION_SEED].flatMap(g => g.keywords.map(kw =>
     DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
       .bind(kw, g.category, 'seed')))
   await DB.batch(stmts).catch(() => null)
@@ -315,6 +324,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
+  const kakaoKey = env.KAKAO_REST_API_KEY
+  const hasTistory = !!kakaoKey
+  // 🎥 YT 검색 각도 교대(런 짝수=채널 / 홀수=영상) — 같은 쿼터로 두 그물을 번갈아(채널명에 키워드 없는 소형 채널 커버).
+  const ytSearchType: 'channel' | 'video' = ((prev?.total_runs || 0) % 2 === 0) ? 'channel' : 'video'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
   //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
@@ -347,7 +360,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytSearchType })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
@@ -368,6 +381,13 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
       try {
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget })
+        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
+      } catch { /* fail-soft */ }
+    }
+    // 티스토리(카카오 Daum 블로그 검색 — 무료 3만/일, 새 소스). 네이버 블로그와 무관한 별도 풀.
+    if (hasTistory) {
+      try {
+        const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
