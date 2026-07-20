@@ -329,12 +329,15 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
     const { kakaoPlaceLookup } = await import('./admin-products.routes')
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search')
+    // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
+    //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
+    const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchNaverImageUrl>[0]
     let created = 0, skipped = 0, realPhotos = 0
     for (let i = 0; i < count; i++) {
       const spot = spots[(n + 1 + i) % spots.length]
       const ty = STAY_TYPES[(n + 1 + i) % STAY_TYPES.length]
       // ① 실숙소 매칭 — 스팟 좌표 반경 20km 거리순 + 랜덤 후보(같은 지역 재시드에도 다른 실숙소).
-      const place = await kakaoPlaceLookup(c.env, `${spot.label} ${ty.kakao}`, -1, { x: String(spot.lng), y: String(spot.lat) })
+      const place = await kakaoPlaceLookup(extEnv, `${spot.label} ${ty.kakao}`, -1, { x: String(spot.lng), y: String(spot.lat) })
       if (!place?.name || place.lat == null || place.lng == null) { skipped++; continue }
       // 같은 실숙소 중복 시드 방지(이름 정확일치).
       const dup = await DB.prepare(`SELECT id FROM products WHERE category = 'stay_voucher' AND name = ? LIMIT 1`)
@@ -343,8 +346,8 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       n++
       const slug = `demo-stay-${n}`
       // ② 실사진 — 매장명 검색 → 지역+유형 일반 검색 → picsum 폴백.
-      let img = await fetchNaverImageUrl(c.env, place.name, 0).catch(() => null)
-      if (!img) img = await fetchNaverImageUrl(c.env, `${spot.label} ${ty.kakao}`, Math.floor(Math.random() * 8)).catch(() => null)
+      let img = await fetchNaverImageUrl(extEnv, place.name, 0).catch(() => null)
+      if (!img) img = await fetchNaverImageUrl(extEnv, `${spot.label} ${ty.kakao}`, Math.floor(Math.random() * 8)).catch(() => null)
       if (img) realPhotos++
       if (!img) img = `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
