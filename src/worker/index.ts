@@ -1032,12 +1032,13 @@ app.get('/robots.txt', async (c) => {
 
 // 🔎 2026-07-20 네이버 서치어드바이저 소유확인 파일 — 워커가 직접 서빙(정적 자산 서빙이 새 존에서 404 나는 문제 우회).
 //   _routes.json exclude 에서 빼서 이 라우트가 처리하도록 함. 내용은 네이버 발급 파일 본문 그대로(파일명=값).
-app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) =>
-  c.text('naver-site-verification: naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', 200, {
-    'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': 'no-store',
-  }),
-);
+//   ⚠️ Cloudflare Pages 가 `.html` URL 을 확장자 없는 경로로 308 리다이렉트하므로(html_handling),
+//      네이버가 리다이렉트를 따라가도 통과되도록 두 경로(.html + 확장자 없음) 모두 동일 본문 서빙.
+const naverVerifyBody = 'naver-site-verification: naverd3ccc68d1f14dc53e76aa95f4a02bb68.html';
+const serveNaverVerify = (c: { text: (b: string, s: number, h: Record<string, string>) => Response }) =>
+  c.text(naverVerifyBody, 200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c));
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
