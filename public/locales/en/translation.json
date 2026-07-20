@@ -870,8 +870,36 @@
     "seoDesc": "View your saved products"
   },
   "seller": {
-    "relink": {"title": "Changed your Kakao account?", "desc": "Your seller account stays intact. Log in with your new Kakao, then confirm your seller email and password to continue.", "step1": "Log in with new Kakao", "step2": "Verify existing seller account", "kakaoBtn": "Kakao Login", "emailPh": "Seller email", "pwPh": "Password", "submit": "Relink & open dashboard", "busy": "Relinking…", "fail": "Relink failed", "needKakao": "Please log in with your new Kakao account first.", "noPw": "Signed up with Kakao only and have no password? We will relink it for you after identity check.", "channel": "Contact via Kakao channel", "entry": "Changed your Kakao account? Relink →"},
-    "scanDevices": {"title": "Staff / spare-device scan link", "issue": "Issue link", "desc": "A scan-only link for staff phones or a spare store device — no owner login needed. Scan the QR with that device or send the link. Revoke instantly if lost.", "oneTime": "Shown only once (cannot be viewed again)", "copyLink": "Copy link", "lastUsed": "Last used", "neverUsed": "Not used yet", "revoke": "Revoke", "revoked": "Revoked", "revokeConfirm": "Revoke this device link? It will no longer be able to scan.", "revokeFail": "Failed to revoke", "issueFail": "Failed to issue"},
+    "relink": {
+      "title": "Changed your Kakao account?",
+      "desc": "Your seller account stays intact. Log in with your new Kakao, then confirm your seller email and password to continue.",
+      "step1": "Log in with new Kakao",
+      "step2": "Verify existing seller account",
+      "kakaoBtn": "Kakao Login",
+      "emailPh": "Seller email",
+      "pwPh": "Password",
+      "submit": "Relink & open dashboard",
+      "busy": "Relinking…",
+      "fail": "Relink failed",
+      "needKakao": "Please log in with your new Kakao account first.",
+      "noPw": "Signed up with Kakao only and have no password? We will relink it for you after identity check.",
+      "channel": "Contact via Kakao channel",
+      "entry": "Changed your Kakao account? Relink →"
+    },
+    "scanDevices": {
+      "title": "Staff / spare-device scan link",
+      "issue": "Issue link",
+      "desc": "A scan-only link for staff phones or a spare store device — no owner login needed. Scan the QR with that device or send the link. Revoke instantly if lost.",
+      "oneTime": "Shown only once (cannot be viewed again)",
+      "copyLink": "Copy link",
+      "lastUsed": "Last used",
+      "neverUsed": "Not used yet",
+      "revoke": "Revoke",
+      "revoked": "Revoked",
+      "revokeConfirm": "Revoke this device link? It will no longer be able to scan.",
+      "revokeFail": "Failed to revoke",
+      "issueFail": "Failed to issue"
+    },
     "simple": {
       "scan": "QR Scan",
       "settlement": "Settlement",
@@ -4673,7 +4701,8 @@
     "stepGift3": "Show\nat store",
     "deal": "deal",
     "heroBalanceLabelGift": "Gift voucher balance",
-    "loadFailed": "Could not load your vouchers"
+    "loadFailed": "Could not load your vouchers",
+    "totalCount": "{{count}} total"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

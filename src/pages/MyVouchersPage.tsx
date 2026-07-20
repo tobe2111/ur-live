@@ -9,7 +9,8 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, ChevronRight, Map } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
-import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import WalletHeader from './my-vouchers/WalletHeader'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
@@ -248,12 +249,21 @@ export default function MyVouchersPage() {
     <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
 
-      {/* 🎨 2026-06-20: back-only 빈 상단 바 제거 (최상위 탭 화면 — 시안엔 없음). LargeTitle 이 최상단. */}
-
-      {/* Large Title + 메타 */}
-      <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+      {/* 🎨 2026-07-20 (대표 — 지갑 상단 리디자인): LargeTitle + 회색 세그먼트 → 모던 지갑 헤더
+          (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
+      <WalletHeader
+        title={t('voucher.myVouchers')}
+        totalLabel={vouchers.length > 0 ? t('voucher.totalCount', { count: vouchers.length }) : null}
+        tabs={giftCount > 0 ? [
+          { key: 'gb', label: t('voucher.tabGroupBuy', { defaultValue: '이용권' }), count: gbCount },
+          { key: 'gift', label: t('voucher.tabGifticon', { defaultValue: '교환권' }), count: giftCount },
+        ] : undefined}
+        activeTab={sourceTab}
+        onTab={setSourceTab}
+      />
 
       {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
+      <div className="mt-4" />
       <VoucherDisputeBanner />
 
       {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
@@ -288,31 +298,6 @@ export default function MyVouchersPage() {
         </div>
       )}
 
-      {/* 🎟️ 2026-06-18: 이용권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 이용권.
-          🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
-      {giftCount > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-4">
-          <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A2334]">
-            {([
-              ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '이용권' }), gbCount],
-              ['gift', '📱', t('voucher.tabGifticon', { defaultValue: '교환권' }), giftCount],
-            ] as const).map(([key, emoji, label, count]) => {
-              const active = sourceTab === key
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSourceTab(key)}
-                  className={`flex-1 py-2 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5 transition-all ${active ? 'bg-white dark:bg-[#2C2C2E] text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  <span aria-hidden>{emoji}</span>
-                  {label}
-                  <span className={`min-w-[17px] px-1 inline-flex items-center justify-center rounded-full text-[10px] font-extrabold tabular-nums ${active ? 'bg-black/[0.06] text-gray-500 dark:bg-white/10 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{count}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
