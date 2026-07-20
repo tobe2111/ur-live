@@ -13,6 +13,7 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import { stripStorePrefix } from '@/utils/deal-title'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
@@ -174,7 +175,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   return (
     <Link
       ref={linkRef}
-      to={`/group-buy/${p.id}`}
+      // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
+      //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
+      to={canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
@@ -267,6 +270,10 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
           <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
             {formatNumber(price)}원
           </span>
+          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
+          {p.category === 'stay_voucher' && price > 0 && (
+            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
+          )}
         </p>
 
         {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
