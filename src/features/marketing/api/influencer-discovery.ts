@@ -152,8 +152,10 @@ export async function discoverYouTubeInfluencers(
       searchData = await res.json() as YTSearchResp
       if (!res.ok) {
         const reason = searchData.error?.errors?.[0]?.reason || ''
-        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
-          if (p === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
+        // 일일 쿼터 + **단기 요청 한도(rateLimit)** 둘 다 QUOTA 로 취급 → 호출자가 quotaHit 로 이번 틱 YT 중단
+        //   (rateLimit 은 계속 재시도하면 예산만 태우고 전부 실패 — 멈추면 다음 정시에 자동 재개).
+        if (['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(reason)) {
+          if (p === 0) return { ok: false, error: 'QUOTA', message: reason.startsWith('rate') || reason.startsWith('user') ? 'YouTube 단기 요청 한도 — 다음 시간에 자동 재개됩니다.' : '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
           break // 이후 page 만 실패 — 지금까지 모은 것 계속 처리
         }
         if (p === 0) { const detail = reason || searchData.error?.message || `HTTP ${res.status}`; return { ok: false, error: 'FAILED', message: `YouTube 검색 실패: ${detail}` } }
@@ -179,7 +181,7 @@ export async function discoverYouTubeInfluencers(
       const chData = await res.json() as YTChannelsResp
       if (!res.ok) {
         const reason = chData.error?.errors?.[0]?.reason || ''
-        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') { if (i === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다.' }; break }
+        if (['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(reason)) { if (i === 0) return { ok: false, error: 'QUOTA', message: 'YouTube 조회 한도 — 다음 시간에 자동 재개됩니다.' }; break }
         if (i === 0) return { ok: false, error: 'FAILED', message: '채널 정보를 불러오지 못했습니다' }; break
       }
       for (const it of chData.items || []) chItems.push(it)
