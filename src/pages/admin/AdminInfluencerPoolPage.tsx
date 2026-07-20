@@ -17,7 +17,17 @@ interface Lead {
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; with_contact?: number; recent7?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
+
+// 아웃리치 파이프라인 상태 — 라벨 + 색.
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
+  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
+  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
+  contracted: { label: '계약', cls: 'bg-emerald-100 text-emerald-700' },
+  rejected: { label: '거절', cls: 'bg-gray-100 text-gray-400' },
+  hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
+}
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
 interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
 interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string }
@@ -37,6 +47,7 @@ export default function AdminInfluencerPoolPage() {
   const [category, setCategory] = useState('')
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
+  const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
@@ -53,11 +64,12 @@ export default function AdminInfluencerPoolPage() {
       if (category) params.set('category', category)
       if (tier) params.set('tier', tier)
       if (sort) params.set('sort', sort)
+      if (statusFilter) params.set('status', statusFilter)
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/ads/influencer-pool?${params.toString()}`)
       if (r.data?.success) setLeads(r.data.leads || [])
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, q])
 
   const loadMeta = useCallback(async () => {
     try {
@@ -110,6 +122,21 @@ export default function AdminInfluencerPoolPage() {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
     catch { toast.error('변경 실패') }
   }
+  async function editMemo(l: Lead) {
+    const memo = window.prompt('메모(내부 관리용)', l.memo || '')
+    if (memo === null) return
+    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { memo }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, memo } : x)) }
+    catch { toast.error('메모 저장 실패') }
+  }
+  // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
+  //   ⚠️ 광고성 발송은 정보통신망법상 사전 수신동의 필요 — 이 버튼은 초안(mailto)만 열고, 발송은 사람이 판단.
+  function draftMail(l: Lead) {
+    if (!l.email) { toast.error('이메일이 없는 리드입니다'); return }
+    const subject = `[유어딜] ${l.name}님 제휴 제안 — 동네 맛집·뷰티 공동구매 딜`
+    const body = `안녕하세요, ${l.name}님.\n유어딜(동네 맛집·카페·뷰티·네일·숙소 공동구매 딜 플랫폼) 제휴 담당자입니다.\n${l.name}님 채널과 결이 잘 맞아 협업을 제안드리고자 연락드립니다.\n\n- 제안: 유어딜 딜 콘텐츠 제휴 / 공동 프로모션\n- 조건은 협의 가능합니다.\n\n관심 있으시면 회신 부탁드립니다. 감사합니다.\n\n(수신을 원치 않으시면 회신으로 알려주세요.)`
+    window.open(`mailto:${l.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
+    if (l.status === 'new') setStatus(l.id, 'contacted') // 초안 열면 자동으로 '컨택함' 승격
+  }
   async function del(id: number) {
     if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
     try { await api.delete(`/api/admin/ads/influencer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)) }
@@ -152,18 +179,36 @@ export default function AdminInfluencerPoolPage() {
         )}
 
         {/* 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
           {[
             { label: '전체', value: stats.total },
             { label: '유튜브', value: stats.youtube },
-            { label: '네이버', value: stats.naver_blog },
-            { label: '연락처 보유', value: stats.with_contact },
+            { label: '네이버블로그', value: stats.naver_blog },
+            { label: '네이버카페', value: stats.naver_cafe },
+            { label: '이메일 보유', value: stats.with_email },
             { label: '최근 7일', value: stats.recent7 },
           ].map(s => (
             <div key={s.label} className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.label}</div>
               <div className="text-2xl font-bold text-gray-900">{formatNumber(s.value)}</div>
             </div>
+          ))}
+        </div>
+
+        {/* 아웃리치 파이프라인 — 상태별 카운트(클릭 시 필터). 발송 자동화 없음(메일은 리드별 직접 발송). */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-medium text-gray-500 mr-1">아웃리치:</span>
+          {[
+            { v: '', label: '전체', n: stats.total },
+            { v: 'new', label: '신규', n: stats.st_new },
+            { v: 'contacted', label: '컨택함', n: stats.st_contacted },
+            { v: 'interested', label: '관심', n: stats.st_interested },
+            { v: 'contracted', label: '계약', n: stats.st_contracted },
+          ].map(s => (
+            <button key={s.v || 'all'} onClick={() => setStatusFilter(s.v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${statusFilter === s.v ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+              {s.label} {s.n != null ? formatNumber(s.n) : ''}
+            </button>
           ))}
         </div>
 
@@ -305,13 +350,14 @@ export default function AdminInfluencerPoolPage() {
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-500">{l.category || '—'}</td>
                     <td className="px-3 py-2">
-                      <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className="px-2 py-1 rounded border border-gray-200 text-xs text-gray-900">
-                        <option value="new">신규</option>
-                        <option value="contacted">컨택함</option>
-                        <option value="rejected">보류</option>
+                      <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
+                        {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                       </select>
+                      {l.memo && <div className="text-[11px] text-gray-400 mt-0.5 max-w-[140px] truncate" title={l.memo}>📝 {l.memo}</div>}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {l.email && <button onClick={() => draftMail(l)} className="text-xs text-emerald-600 hover:underline mr-2" title="메일 초안 열기(직접 발송)">✉ 메일</button>}
+                      <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
                       <button onClick={() => del(l.id)} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
                     </td>
                   </tr>
