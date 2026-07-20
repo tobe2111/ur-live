@@ -28,6 +28,13 @@ export default function SiteFooter() {
           </a>
         </div>
 
+        {/* 🧭 2026-07-19 (대표 — "3개 페이지를 서비스 최하단 링크 버튼으로"): 소개 랜딩 3종 pill 버튼 */}
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          <a href="/about" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">서비스 소개</a>
+          <a href="/partners" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">🏪 입점 안내</a>
+          <a href="/creators" className="px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#2A3446] text-[11.5px] font-bold text-gray-700 dark:text-gray-200 hover:border-brand hover:text-brand transition-colors">✨ 크리에이터 모집</a>
+        </div>
+
         {/* Contact */}
         <p className="text-gray-500 dark:text-gray-400">
           제휴 | 입점 문의 : <a href="/partnership" className="underline">광고/제휴 문의하기</a> · jiwon@ur-team.com
