@@ -501,7 +501,7 @@ ${data.statsUrl}
 
 /**
  * 🛡️ 2026-05-16: 사용자에게 voucher 발급 알림톡 (결제 완료 직후).
- *   링크: https://live.ur-team.com/my-vouchers (QR 코드 화면 진입)
+ *   링크: https://urdeal.kr/my-vouchers (QR 코드 화면 진입)
  */
 export async function sendBuyerVoucherIssuedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
@@ -521,7 +521,7 @@ ${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
 ${data.qty}장 발급되었습니다.
 
 📱 매장에서 QR 코드 보여주세요:
-https://live.ur-team.com/my-vouchers
+https://urdeal.kr/my-vouchers
 
 ⏰ 유효기간: ${expDate}까지
 
@@ -597,7 +597,7 @@ ${data.restaurantName}
 "${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
 
 손님이 곧 방문할 수 있어요. 판매/사용 현황:
-https://live.ur-team.com/seller/group-buy
+https://urdeal.kr/seller/group-buy
 
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
@@ -634,7 +634,7 @@ ${data.restaurantName}
 손님이 매장에서 셀프 사용 처리했어요.
 정산은 사용 +7일 후 등록 계좌로 자동 진행됩니다.
 
-사용 내역: https://live.ur-team.com/seller/group-buy
+사용 내역: https://urdeal.kr/seller/group-buy
 
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
@@ -675,7 +675,7 @@ ${ts ? '사용 시각: ' + ts : ''}
 맛있게 드세요! 🍱
 
 후기 작성하면 보너스 딜 지급:
-https://live.ur-team.com/my-vouchers
+https://urdeal.kr/my-vouchers
 
 문의: 유어딜 고객센터`
     // ① Aligo 카카오 알림톡 (시스템 SSOT — ALIGO_* 미설정 시 내부 silent skip)

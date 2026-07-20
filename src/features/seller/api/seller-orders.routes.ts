@@ -900,7 +900,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
         const phone = body.restaurant_phone;
         const restaurantName = body.restaurant_name;
         if (phone && restaurantName) {
-          const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+          const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
           // fire-and-forget — 알림톡 실패해도 등록은 진행
           c.executionCtx.waitUntil(
             (async () => {
@@ -1262,7 +1262,7 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
       try { await db.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, productId).run(); } catch { /* column may not exist */ }
     }
 
-    const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+    const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
     const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
     await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',

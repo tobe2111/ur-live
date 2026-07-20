@@ -22,7 +22,7 @@ interface SEOProps {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[]
   /**
    * 🏭 2026-06-08 도메인 인식 — canonical/og:url/site_name 베이스 도메인 선택.
-   *   'main' (기본): live.ur-team.com / '유어딜' (소비자몰) — 기존 동작과 byte-identical.
+   *   'main' (기본): urdeal.kr / '유어딜' (소비자몰) — 기존 동작과 byte-identical.
    *   'wholesale': utongstart.com / '유통스타트' (B2B 도매몰, utongstart.com 정규 도메인).
    *   ⚠️ 'main' default 라 기존 호출부는 전부 변경 불필요 (하위 호환).
    */
@@ -33,8 +33,8 @@ const SITE_NAME = '유어딜'
 // 🛡️ 2026-05-21: SEO 타이틀/설명 변경 (사용자 요청) — "돈버는 쇼핑" 강조, 오프라인 공동구매 우선.
 const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.'
 // 🎨 2026-07-19 확정 로고: 기본 OG = 신규 브랜드 래스터(og-image.png — 카카오 등 raster 선호 크롤러 호환).
-const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.png'
-const BASE_URL = 'https://live.ur-team.com'
+const DEFAULT_IMAGE = 'https://urdeal.kr/og-image.png'
+const BASE_URL = 'https://urdeal.kr'
 
 // 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 을 canonical 로 성장.
 const WHOLESALE_SITE_NAME = '유통스타트'
@@ -109,7 +109,7 @@ export default function SEO({
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       <meta name="apple-mobile-web-app-title" content={siteName} />
 
-      {/* Naver — main 도메인(live.ur-team.com) 전용 인증 토큰. utongstart.com 은 별도 토큰 필요 → 잘못된 토큰 노출 방지 위해 도매에선 생략. */}
+      {/* Naver — main 도메인(urdeal.kr) 전용 인증 토큰. utongstart.com 은 별도 토큰 필요 → 잘못된 토큰 노출 방지 위해 도매에선 생략. */}
       {!isWholesale && <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />}
 
       {/* JSON-LD — 단일 또는 배열 둘 다 지원 (Google 권장: 페이지당 여러 개 OK) */}

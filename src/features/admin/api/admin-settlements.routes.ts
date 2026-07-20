@@ -318,7 +318,7 @@ adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: '
           const row = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(seller.seller_id).first<{ phone: string; business_name: string }>().catch(() => null);
           if (!row?.phone) continue;
           const amount = (seller.settlement_amount || 0).toLocaleString('ko-KR');
-          const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: live.ur-team.com/seller/settlements`;
+          const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: urdeal.kr/seller/settlements`;
           await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, row.phone, 'seller_settlement_completed', message);
         }
       } catch (e) {

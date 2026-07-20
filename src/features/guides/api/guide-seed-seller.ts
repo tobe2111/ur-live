@@ -593,7 +593,7 @@ sender 가 결제 → recipient 에게 카카오톡 알림 → recipient 가 받
 #### 알림톡 템플릿
 - 템플릿 코드: \`gift_received\`
 - 발송 트리거: 결제 confirm 직후 (best-effort, 실패 시 재시도 필요)
-- 메시지 예시: \`[유어딜] 선물이 도착했어요! 받기 → https://live.ur-team.com/gift/claim/<token>\``,
+- 메시지 예시: \`[유어딜] 선물이 도착했어요! 받기 → https://urdeal.kr/gift/claim/<token>\``,
   },
   {
     key: 'seller-live-tips-2026-05', icon: '🎥', title: '라이브 송출 베스트 프랙티스 (2026-05 신규)', order: 200,

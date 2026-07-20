@@ -143,7 +143,7 @@ async function sendAlertAlimtalk(env: Env, phone: string | null, items: AlertIte
       { ALIGO_API_KEY: env.ALIGO_API_KEY, ALIGO_USER_ID: env.ALIGO_USER_ID },
       {
         senderKey, templateCode: tpl, to, message,
-        buttons: [{ type: 'WL', name: '대시보드 열기', url_mobile: 'https://live.ur-team.com/ads/dashboard', url_pc: 'https://live.ur-team.com/ads/dashboard' }],
+        buttons: [{ type: 'WL', name: '대시보드 열기', url_mobile: 'https://urdeal.kr/ads/dashboard', url_pc: 'https://urdeal.kr/ads/dashboard' }],
       },
     )
   } catch { /* 발송 실패는 이메일로 이미 도달(멱등 기록됨) — graceful */ }
@@ -157,7 +157,7 @@ async function sendAlertEmail(env: Env, to: string, items: AlertItem[]): Promise
     body: JSON.stringify({
       from: env.RESEND_FROM, to,
       subject: `[유어애즈] 광고 알림 ${items.length}건`,
-      text: `유어애즈 임계값 알림\n\n${lines}\n\n대시보드에서 확인: https://live.ur-team.com/ads/dashboard\n\n— 유어애즈 UR Ads`,
+      text: `유어애즈 임계값 알림\n\n${lines}\n\n대시보드에서 확인: https://urdeal.kr/ads/dashboard\n\n— 유어애즈 UR Ads`,
     }),
   })
 }

@@ -504,7 +504,7 @@ export default function GroupBuyDetailPage() {
             : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${detail.price.toLocaleString('ko-KR')}원`
         }
         url={`/group-buy/${productId}`}
-        image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
+        image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
         type="product"
         jsonLd={[{
           '@context': 'https://schema.org',
@@ -515,7 +515,7 @@ export default function GroupBuyDetailPage() {
           brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
           offers: {
             '@type': 'Offer',
-            url: `https://live.ur-team.com/group-buy/${productId}`,
+            url: `https://urdeal.kr/group-buy/${productId}`,
             priceCurrency: 'KRW',
             price: unitPrice,
             availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
@@ -541,9 +541,9 @@ export default function GroupBuyDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
-            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
-            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://live.ur-team.com/group-buy/${productId}` },
+            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://urdeal.kr/' },
+            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://urdeal.kr/group-buy' },
+            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://urdeal.kr/group-buy/${productId}` },
           ],
         }]}
       />
@@ -595,7 +595,7 @@ export default function GroupBuyDetailPage() {
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
             description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-            imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+            imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
             compact
@@ -660,7 +660,7 @@ export default function GroupBuyDetailPage() {
             <KakaoShareButton
               title={`${detail.name} 공구 참여하기`}
               description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
-              imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+              imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
               link={shareLink}
               buttonText="나도 참여하기"
               compact

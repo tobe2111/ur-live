@@ -34,7 +34,7 @@ export default function MyReferralCard() {
     try { return localStorage.getItem('user_id') } catch { return null }
   })()
   const inviteUrl = myUserId
-    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'}/?invite=${myUserId}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'}/?invite=${myUserId}`
     : ''
 
   useEffect(() => {

@@ -1009,7 +1009,7 @@ app.use('*', async (c, next) => {
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
 //   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
-//   live.ur-team.com 등 다른 호스트는 원본 그대로(회귀 0).
+//   urdeal.kr 등 다른 호스트는 원본 그대로(회귀 0).
 app.get('/robots.txt', async (c) => {
   const host = new URL(c.req.url).hostname.toLowerCase();
   const isWholesaleHost = host === 'utongstart.com' || host === 'www.utongstart.com';
@@ -1019,7 +1019,7 @@ app.get('/robots.txt', async (c) => {
     const res = await (c.env as { ASSETS?: { fetch?: (u: string) => Promise<Response> } }).ASSETS?.fetch?.(assetUrl.toString());
     if (res && res.ok) body = await res.text();
   } catch { /* ASSETS 미바인딩 — 아래 fallback */ }
-  if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://live.ur-team.com/sitemap.xml\n';
+  if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://urdeal.kr/sitemap.xml\n';
   if (isWholesaleHost) {
     body = body.replace(/Sitemap:\s*https?:\/\/\S+/i, 'Sitemap: https://utongstart.com/sitemap.xml');
   }
@@ -1108,7 +1108,7 @@ app.route('/api/health', healthRoutes);
 //   미세팅 시 404 로 엔드포인트 자체 숨김.
 //
 // 사용법:
-//   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
+//   curl -X POST https://urdeal.kr/api/_bootstrap/reset-dashboard-password \
 //     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
 //     -H "Content-Type: application/json" \
 //     -d '{"email":"...","password":"...","role":"all|admin|seller|agency"}'
@@ -2033,7 +2033,7 @@ app.get('/api/image/resize', async (c) => {
   //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
   const ALLOWED_HOSTS = [
     'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
-    'live.ur-team.com', 'ur-live.pages.dev',
+    'urdeal.kr', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
     'giftishow.com', // KT Alpha (image / imghub / bizapi / mall / gift / static)
@@ -2136,7 +2136,7 @@ app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 //       link card 의 제목/이미지/설명 표시. 일반 카톡 인앱 'KAKAOTALK' 와 다른 UA.
 const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord|KakaoTalk-Scrap/i;
 
-const BASE_URL = 'https://live.ur-team.com';
+const BASE_URL = 'https://urdeal.kr';
 // 🛡️ 2026-05-21: 사용자 요청 — "돈버는 쇼핑" 키워드 노출 + 오프라인 공동구매 우선.
 //   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
@@ -2336,7 +2336,7 @@ import { swallow } from './utils/swallow';
 // 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
 //   utongstart.com = 도매몰 전용. 도매몰 surface 밖의 페이지 경로는 /wholesale/intro 로 서버 302.
 //   ⚠️ 잠긴 SSR inject / caches.default 블록은 미수정 — fetch 진입부에 additive 가드만.
-//   live.ur-team.com 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
+//   urdeal.kr 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
 const WHOLESALE_HOSTS = new Set(['utongstart.com', 'www.utongstart.com']);
 
 // 🏭 2026-06-04 도매몰 도메인 게이팅 (사용자 승인 "가장 이상적이고 근본적으로").
@@ -2362,7 +2362,9 @@ function isWholesaleAllowedPath(pathname: string): boolean {
 
 // 🏬 2026-06-09 멀티몰: wholesale_malls 에 등록된 host 도 '도매몰 전용'으로 인식(루트→/wholesale).
 //   ⚠️ 소비자 호스트는 fast-path 로 DB 조회 skip(핫패스 byte-identical). 미지 호스트만 캐시된 몰-호스트 set 조회.
-const CONSUMER_FAST_PATH = new Set(['live.ur-team.com', 'ur-live.pages.dev', 'localhost']);
+const CONSUMER_FAST_PATH = new Set(['urdeal.kr', 'www.urdeal.kr', 'live.ur-team.com', 'ur-live.pages.dev', 'localhost']);
+// 🌐 2026-07-20 도메인 이전 (대표 확정 urdeal.kr): 구 소비자 도메인 — 내비게이션만 301, API 는 계속 서빙.
+const LEGACY_CONSUMER_HOSTS = new Set(['live.ur-team.com']);
 let _mallHostCache: { hosts: Set<string>; at: number } | null = null;
 async function getWholesaleMallHosts(env: unknown): Promise<Set<string>> {
   const now = Date.now();
@@ -2389,6 +2391,24 @@ export default {
     try {
       const url = new URL(request.url);
       const host = url.hostname.toLowerCase();
+      // 🌐 2026-07-20 도메인 이전 [UNLOCK_LOADING] (대표 확정 urdeal.kr — "같이 작업, 빠짐없이"):
+      //   구 도메인 GET/HEAD 내비게이션 → https://urdeal.kr 301 (영구). 발급된 QR(/v/*)·카톡/MMS 링크·
+      //   검색 색인 전부 이 한 블록이 새 도메인으로 인계.
+      //   ❗ 제외 3종 (도메인 이전 문서 §C 근거):
+      //   - /api/*  : 토스 웹훅(POST, 301 추종 미보장 — 머니) · 구 도메인에 열린 SPA 의 same-origin
+      //               fetch(cross-origin 301 = CORS 실패) · 카카오 콘솔 등록 콜백 보존
+      //   - /assets/*: 전환 순간 열려 있던 구 SPA 탭의 청크 lazy-load 보호 (문서 GET 은 어차피 301)
+      //   - /.well-known/*: 딥링크 검증 파일은 각 호스트에서 직접 서빙
+      //   www.urdeal.kr → urdeal.kr 정규화도 동일 블록이 처리.
+      if (
+        (LEGACY_CONSUMER_HOSTS.has(host) || host === 'www.urdeal.kr') &&
+        (request.method === 'GET' || request.method === 'HEAD') &&
+        !url.pathname.startsWith('/api/') &&
+        !url.pathname.startsWith('/assets/') &&
+        !url.pathname.startsWith('/.well-known/')
+      ) {
+        return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
+      }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
       if (!isWhHost && !CONSUMER_FAST_PATH.has(host)) {

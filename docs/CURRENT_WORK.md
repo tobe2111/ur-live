@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-20 — 도메인 이전: live.ur-team.com → **urdeal.kr** (대표 확정 "나랑 같이, 빠짐없이" — 코드 완료, 대표 콘솔 작업 진행 중)
+- **코드(이 커밋)**: `live.ur-team.com`→`urdeal.kr` 일괄 치환 105+파일(워크플로 8종 포함). **의도적 병기 잔존 5파일**: constants(CORS 구+신 병기 — 전환기 구 도메인 API 생존), worker/index(`LEGACY_CONSUMER_HOSTS`), auth-cookies.test(구 도메인 케이스), capacitor(allowNavigation 구 호스트 — 앱 안 301 통과용), AndroidManifest(구 호스트 딥링크 — 기발송 링크도 앱으로).
+- **워커 301** `[UNLOCK_LOADING]`: 구 도메인 GET/HEAD 내비게이션 → `https://urdeal.kr` 301. **제외 3종** — `/api/*`(토스 웹훅 POST 301 미보장·구 SPA same-origin fetch CORS·카카오 콜백), `/assets/*`(열린 구 탭 청크), `/.well-known/*`. www.urdeal.kr→urdeal.kr 정규화 동일 블록.
+- **쿠키**: `domainAttr` 에 `.urdeal.kr` 분기 추가(서브도메인 공유 대비) + 테스트 정합. **앱**: capacitor server.url=urdeal.kr, Manifest 딥링크 3호스트(urdeal/www/구). **가이드 시드** 4종 링크 갱신 → `GUIDE_SEED_VERSION` 7→8. CLAUDE.md 분리표·platform-model §1·business-plan 도메인 SSOT 갱신.
+- **⏳ 머지 게이트**: 대표가 Cloudflare [존 추가→네임서버→Pages 커스텀 도메인 urdeal.kr+www] 완료 확인 후 머지(순서 어기면 새 도메인 링크가 죽은 도메인). **대표 콘솔 체크리스트**: `docs/design/domain-migration-impact.md` §C — 🔴토스 웹훅 URL 최우선, 카카오 플랫폼/Redirect(구 URI 유지), Turnstile 호스트, Firebase/Google, Cafe24, 알림톡 템플릿 재심사(최장), 서치콘솔·OG캐시.
+- **불변**: `media.ur-team.com`(R2)·`utongstart.com`(도매)·`beta.ur-team.com`·이메일 주소(@ur-team.com) 무접촉. 구 도메인 존은 **영구 유지**(발급 QR/MMS 링크).
 ## ✅ 2026-07-20 — PC 그루폰화 배치 + 로딩 단일 통일 + 셀러 매장 콘솔 (대표 연속 지시, 전부 main 배포)
 - **상단 네비 전 페이지 공통**(그루폰식): `urdeal 로고+검색+앱(QR팝업)+유어딜에서 판매하세요+카테고리 바` 2행 — PC(lg+) 전 소비자 페이지(지도 /map 포함, 예외 0). `pc-fullbleed.ts` OWN_HEADER=[] + DesktopTopNav `LEGACY_OWN_HEADER`(<lg 자체 헤더 경로는 네비 미표시 — 태블릿 이중헤더 가드). 앱 QR 팝업은 createPortal(body) — blur 헤더가 fixed containing block 이 되는 잘림 수리. QR 링크는 앱 출시 전까지 모바일웹.
 - **교환권 /vouchers PC 2단**: 좌 필터레일(딜잔액+카테고리, sticky 120px) + 우 그리드. 브랜드는 레일 하단→상품 위 가로 스트립(대표 "불편"). 카드/행은 `vouchers/shared.tsx` 추출(래칫).

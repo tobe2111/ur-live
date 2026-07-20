@@ -11,7 +11,7 @@
  *   설정 시 → 요청 헤더 `x-skill-secret` 일치해야 응답 (오픈빌더 스킬 설정에서 커스텀 헤더 등록).
  *
  * 활성 절차(대표 액션): ① 카카오 비즈니스 → 챗봇(오픈빌더) 생성 → 시나리오 폴백 블록에 스킬 연결
- *   ② 스킬 URL: https://live.ur-team.com/api/cs/kakao-skill + 헤더 x-skill-secret
+ *   ② 스킬 URL: https://urdeal.kr/api/cs/kakao-skill + 헤더 x-skill-secret
  *   ③ env `KAKAO_SKILL_SECRET` 등록(같은 값) ④ 채널 챗봇 배포. "상담원 연결"은 오픈빌더의
  *   상담원 전환 블록으로 처리(봇은 폴백 안내만).
  */

@@ -1,7 +1,7 @@
 /**
  * RouteGuards — 로그인 보호 라우트
  *
- * 한국 (live.ur-team.com):
+ * 한국 (urdeal.kr):
  *   - localStorage 동기 체크만 (user_type + user_id)
  *   - Firebase 0, Zustand 0, isAuthReady 0, 타임아웃 0
  *

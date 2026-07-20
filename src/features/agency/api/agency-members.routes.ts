@@ -207,7 +207,7 @@ app.post('/invite', async (c) => {
       data: {
         id: result.meta.last_row_id,
         invite_token: inviteToken,
-        // 프론트엔드에서 https://live.ur-team.com/agency/accept-invite?token=... URL 생성
+        // 프론트엔드에서 https://urdeal.kr/agency/accept-invite?token=... URL 생성
       },
     }, 201)
   } catch (e) {

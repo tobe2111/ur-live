@@ -727,7 +727,7 @@ export default function ProductDetailPage() {
                 <button
                   onClick={async () => {
                     const userId = getUserId()
-                    const url = `https://live.ur-team.com/products/${product.id}?ref=${userId}`
+                    const url = `https://urdeal.kr/products/${product.id}?ref=${userId}`
                     // 1) clipboard 복사 (즉시)
                     try { await navigator.clipboard.writeText(url) } catch { /* fallback 무시 */ }
                     // 2) 자동 핀 추가 (idempotent — ALREADY_PINNED graceful)

@@ -38,7 +38,7 @@ jobs:
           curl -s -D "$HDRS" -o /tmp/login.json --max-time 20 \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"$WS_E2E_EMAIL\",\"password\":\"$WS_E2E_PASSWORD\"}" \
-            https://live.ur-team.com/api/seller/login
+            https://urdeal.kr/api/seller/login
           TOKEN=$(grep -i '^set-cookie: ud_seller_token=' "$HDRS" | head -1 | sed 's/^[Ss]et-[Cc]ookie: ud_seller_token=\([^;]*\).*/\1/')
           if [ -z "$TOKEN" ]; then
             echo "::error::로그인 응답에 ud_seller_token Set-Cookie 없음"; cat /tmp/login.json | head -c 300; exit 1

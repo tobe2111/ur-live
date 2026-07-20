@@ -25,7 +25,7 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
 //   v4 = 2026-07-12 체험 캠페인(어드민 대행생성·추첨·비정산) + 조건부 우대 커미션(셀러) 섹션.
 //   v5 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션 — 양 트랙 머지 통합 bump.
-const GUIDE_SEED_VERSION = 7 // 2026-07-19 홈 UI 5건(#561) + 셀러 심플 모드 안내
+const GUIDE_SEED_VERSION = 8 // 2026-07-20 도메인 이전 urdeal.kr — 가이드 4종 내 링크/도메인 표기 갱신
 
 // 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
 type GuideType = 'admin' | 'seller' | 'agency' | 'wholesale'

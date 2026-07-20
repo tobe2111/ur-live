@@ -551,14 +551,14 @@ export default function GroupBuyListPage() {
             '@type': 'CollectionPage',
             name: '유어딜 공동구매',
             description: '맛집·뷰티·헬스·펫·숙박·액티비티 공동구매 모음',
-            url: 'https://live.ur-team.com/group-buy',
+            url: 'https://urdeal.kr/group-buy',
           },
           {
             '@context': 'https://schema.org',
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
-              { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
+              { '@type': 'ListItem', position: 1, name: '홈', item: 'https://urdeal.kr/' },
+              { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://urdeal.kr/group-buy' },
             ],
           },
           // 진행 중 공구가 있으면 ItemList 로 노출 (SERP rich result)
@@ -569,7 +569,7 @@ export default function GroupBuyListPage() {
               '@type': 'ListItem',
               position: i + 1,
               name: p.name,
-              url: `https://live.ur-team.com/group-buy/${p.id}`,
+              url: `https://urdeal.kr/group-buy/${p.id}`,
               ...(p.image_url ? { image: p.image_url } : {}),
             })),
           }] : []),

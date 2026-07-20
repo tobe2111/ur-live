@@ -55,7 +55,7 @@ adminUcansignRoutes.get('/health', async (c) => {
   if (!config.template_supplier && !config.template_fallback) hints.push('제조사 템플릿 없음 — UCANSIGN_TEMPLATE_ID_SUPPLIER(또는 공용 UCANSIGN_TEMPLATE_ID) 설정')
   if (!config.template_distributor && !config.template_fallback) hints.push('판매사 템플릿 없음 — UCANSIGN_TEMPLATE_ID_DISTRIBUTOR(또는 공용 UCANSIGN_TEMPLATE_ID) 설정')
   if (!config.webhook_secret) hints.push('UCANSIGN_WEBHOOK_SECRET 미설정 — 권장(웹훅 위조 방지). 미설정 시 documentId 매칭만으로 동작')
-  hints.push('유캔싸인 개발자>Webhook 에 URL 등록 필요(이 진단으로는 확인 불가): https://live.ur-team.com/api/webhooks/ucansign · signing_completed_all')
+  hints.push('유캔싸인 개발자>Webhook 에 URL 등록 필요(이 진단으로는 확인 불가): https://urdeal.kr/api/webhooks/ucansign · signing_completed_all')
   if (config.test_mode) hints.push('UCANSIGN_TEST_MODE=true — 테스트 발송(효력 미보장 워터마크·포인트 0). 운영 전 해제')
 
   return c.json({
@@ -63,7 +63,7 @@ adminUcansignRoutes.get('/health', async (c) => {
     config,
     api_key_valid: apiKeyValid,
     ready,
-    webhook_url: 'https://live.ur-team.com/api/webhooks/ucansign',
+    webhook_url: 'https://urdeal.kr/api/webhooks/ucansign',
     overall_ready: ready.supplier && ready.distributor,
     hints,
   })
