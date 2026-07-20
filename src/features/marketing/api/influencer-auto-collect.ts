@@ -167,6 +167,11 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
     source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
+  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
   // 시드 ~40개 — 개별 INSERT(40 subrequest) 대신 1 batch (Free 한도 절약).
   const stmts = SEED.flatMap(g => g.keywords.map(kw =>
     DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
@@ -279,6 +284,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   let saved = 0
   let quotaHit = false
   const used: string[] = []
+  const kwStats = new Map<number, { found: number; saved: number }>() // 📊 키워드별 발굴/저장(성과 관측)
   const hashtagFreq = new Map<string, number>()
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
     for (const l of leads) for (const t of mineHashtags(`${l.description} ${l.links || ''} ${l.name}`)) hashtagFreq.set(t, (hashtagFreq.get(t) || 0) + 1)
@@ -297,14 +303,15 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   for (const k of picks) {
     if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
     used.push(k.keyword)
+    let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget })
         if (r.ok) {
-          diag.yt.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
+          diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
         } else {
           if (r.error === 'QUOTA') quotaHit = true
           if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -315,16 +322,24 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       try {
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget })
         if (r.ok) {
-          diag.naver.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
+          diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
       try {
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget })
-        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; mine(r.leads) }
+        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
+    const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
+    kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
+  }
+  // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
+  if (kwStats.size) {
+    await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>
+      DB.prepare("UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?, last_run_at = datetime('now') WHERE id = ?")
+        .bind(v.found, v.saved, v.saved, id))).catch(() => null)
   }
 
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).

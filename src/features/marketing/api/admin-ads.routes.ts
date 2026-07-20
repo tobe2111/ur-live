@@ -163,6 +163,11 @@ async function ensureKeywordTable(DB: D1Database) {
     id INTEGER PRIMARY KEY AUTOINCREMENT, keyword TEXT NOT NULL UNIQUE, category TEXT,
     active INTEGER NOT NULL DEFAULT 1, hits INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => null)
+  // 📊 키워드별 성과 컬럼(수집 엔진 ensureDiscoveryKeywords 와 동일 — 어드민이 먼저 조회해도 안전).
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
 }
 
 // GET /api/admin/ads/influencer-pool?platform=&category=&hasContact=1&q=&limit=
@@ -184,8 +189,9 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
   else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
+  // 이름/핸들 + source_keyword(수집 키워드) 매칭 — "방배" 검색 시 '방배 맛집'으로 찾은 리드도 걸림(지역 시딩 거르기).
   const q = (c.req.query('q') || '').trim().toLowerCase()
-  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
+  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
@@ -206,7 +212,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -244,6 +250,13 @@ app.patch('/influencer-pool/:id', async (c) => {
     if (['contacted', 'interested', 'contracted'].includes(b.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
   }
   if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  // 컨택 채널(이메일/인스타DM/네이버쪽지/카톡/전화/기타) — 빈 문자열이면 해제.
+  if (b.contact_channel !== undefined) {
+    const ch = b.contact_channel
+    if (ch === null || ch === '') sets.push('contact_channel = NULL')
+    else if (typeof ch === 'string' && ['email', 'dm', 'note', 'kakao', 'call', 'other'].includes(ch)) { sets.push('contact_channel = ?'); binds.push(ch) }
+    else return c.json({ success: false, error: '컨택 채널 값 오류' }, 400)
+  }
   if (b.follow_up_at !== undefined) {
     const f = b.follow_up_at
     if (f === null || f === '') sets.push('follow_up_at = NULL')
@@ -329,7 +342,8 @@ app.delete('/influencer-pool/:id', async (c) => {
 // GET /api/admin/ads/influencer-pool/keywords — 수집 키워드 목록(활성/후보)
 app.get('/influencer-pool/keywords', async (c) => {
   await ensureKeywordTable(c.env.DB)
-  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
+  // 성과순(saved_total) 정렬 — "잘 무는" 키워드가 위로. 지역 시딩 조정용.
+  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
   return c.json({ success: true, keywords: r?.results || [] })
 })
 
@@ -383,15 +397,17 @@ app.get('/influencer-pool/export', async (c) => {
 })
 
 // POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
+//   🔥 백그라운드 실행(2026-07-20): 수집은 외부 API 수십 건 순회라 수십 초 걸려 동기 대기 시 브라우저 타임아웃
+//   → "실패"로 오표시. waitUntil 로 넘겨 즉시 started 반환, 완료는 UI 가 stats(last_run) 폴링으로 따라잡음.
+//   main 의 waitUntil 이 서비스바인딩 subrequest(ur-ads 동기 수집)를 살려둠 — 매시간 cron 과 동일 지속성.
 app.post('/influencer-pool/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  try {
-    const res = await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' }))
-    const data = await res.json().catch(() => null) as { ok?: boolean; stats?: unknown } | null
-    if (!res.ok || !data?.ok) return c.json({ success: false, error: '수집 실행 실패' }, 502)
-    return c.json({ success: true, stats: data.stats })
-  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  // 폴백(waitUntil 미지원 환경): 동기 실행(구 동작).
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 export { app as adminAdsRoutes }
