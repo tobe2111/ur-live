@@ -23,10 +23,21 @@ export const POOL_ACCOUNT_ID = 0
 const MAX_ACTIVE_KEYWORDS = 200
 const AUTO_PROMOTE_HITS = 3
 
+/**
+ * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
+ * 절반을 항상 이 카테고리 키워드에 배정(별도 커서로 순환), 나머지 절반이 전체 일반 순환.
+ */
+export const PRIORITY_CATEGORIES = ['맛집', '푸드', '숙소', '네일', '뷰티']
+
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
 const SEED: { category: string; keywords: string[] }[] = [
-  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천'] },
+  // ⭐ 우선 분야 (대폭 보강)
+  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천', '헤어 스타일링', '피부관리 루틴', '뷰티 하울', '왁싱 후기'] },
+  { category: '네일', keywords: ['네일아트', '셀프네일', '젤네일 디자인', '네일샵 추천', '네일 튜토리얼'] },
+  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집'] },
   { category: '푸드', keywords: ['맛집 브이로그', '먹방', '홈카페', '베이킹 레시피', '자취요리'] },
+  { category: '숙소', keywords: ['숙소 추천', '펜션 추천', '풀빌라 후기', '호텔 리뷰', '감성숙소', '글램핑 후기', '한옥스테이'] },
+  // 일반 분야
   { category: '패션', keywords: ['패션 하울', '데일리룩', '코디 추천', '빈티지 패션'] },
   { category: '여행', keywords: ['국내여행 브이로그', '호캉스 후기', '캠핑 브이로그', '해외여행 팁'] },
   { category: '육아', keywords: ['육아 브이로그', '아기용품 리뷰', '엄마표 놀이'] },
@@ -170,11 +181,23 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
 
   // ⚠️ 2026-07-20 실사고: batch=12 × 행단위 INSERT 수백 건이 Workers Free 호출당 한도 초과 →
   //   241건 저장 후 중도 사망(통계 미기록, "수집 실패" 표시). 기본 4 로 축소 + 저장은 DB.batch(아래).
-  //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤.
+  //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
+
+  // ⭐ 우선 카테고리 절반 배정 — 배치의 ceil(1/2)은 우선 풀(맛집·푸드·숙소·네일·뷰티, 별도 커서),
+  //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
+  const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
+  const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
+  let priCursor = parseInt((await readSetting(DB, 'ads_autocollect_cursor_pri')) || '0', 10)
+  if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  cursor = cursor % kws.length
+  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(batch / 2)) : 0
+  const nGen = Math.min(genPool.length, batch - basePri)
+  const nPri = Math.min(priPool.length, batch - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
+  const picks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < nPri; i++) picks.push(priPool[(priCursor + i) % priPool.length])
+  for (let i = 0; i < nGen; i++) picks.push(genPool[(cursor + i) % genPool.length])
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -196,8 +219,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
-  for (let i = 0; i < batch; i++) {
-    const k = kws[(cursor + i) % kws.length]
+  for (const k of picks) {
     used.push(k.keyword)
     if (hasYouTube && !quotaHit) {
       try {
@@ -247,12 +269,15 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
   }
 
-  const nextCursor = (cursor + batch) % kws.length
+  // 두 커서 각각 전진(우선/일반 풀 독립 순환).
+  const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
+  const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, diag,
   }
+  await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
   return stats
