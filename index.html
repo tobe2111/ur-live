@@ -13,6 +13,31 @@
          ⚠️ 제3자/외부 스크립트는 /assets/ prefix 검사로 제외 → 불필요한 reload 0. -->
     <script>
       (function () {
+        // 🛡️ 2026-07-20 (대표 신고 "새로고침 버튼 눌러도 계속 잘 안돼" — 고질적 문제 전수조사):
+        //   복구 UI 가 왜 떴는지 진단 데이터를 남긴다. chunkSeen=진짜 청크404/MIME 확증, lastErr=마지막 에러
+        //   메시지. 서빙 HTML 은 no-store(브라우저 stale 불가)라, 복구 UI 는 대부분 '느린/실패한 첫 마운트'
+        //   워치독에서 뜨는데(캐시 문제 아님) 기존엔 무조건 "저장된 옛 버전" 오진 + __cb 캐시버스트만 반복해
+        //   못 고치는 케이스가 루프에 갇혔다. 이제 원인을 서버(frontend_errors)로 beacon → 다음 발생 시 진짜
+        //   원인 가시화(어드민 /api/_errors/recent). 부트가드는 엔트리 청크 실패 전 실행이라 self-contained.
+        var lastErr = '';
+        var chunkSeen = false;
+        function beaconStuck(reason) {
+          try {
+            var t = 0;
+            try { t = Math.round(window.performance && performance.now ? performance.now() : 0); } catch (e) {}
+            // 엔트리 번들이 실행됐는지(=main.tsx 가 window.__urBootStarted 세팅). 안 돌았으면 청크404/CSP/네트워크,
+            //   돌았으면 마운트가 느리거나 막힌 것(무거운 렌더/행/렌더에러) — 진짜 원인 구분의 핵심 신호.
+            var bs = 0; try { bs = window.__urBootStarted || 0; } catch (e) {}
+            var payload = JSON.stringify({
+              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' entryRan=' + (bs ? 'y' : 'n') + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
+              url: location.pathname + location.search,
+              type: 'manual',
+              user_agent: navigator.userAgent
+            });
+            if (navigator.sendBeacon) { navigator.sendBeacon('/api/_errors/log', new Blob([payload], { type: 'application/json' })); }
+            else if (window.fetch) { fetch('/api/_errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {}); }
+          } catch (e) { /* beacon 실패는 무시 — 진단은 best-effort */ }
+        }
         function isAppChunk(t) {
           if (!t || t === window) return false;
           var url = t.src || t.href || '';
@@ -34,20 +59,42 @@
         }
         // 🛡️ 2회 초과(진짜 stale 고착 — 예: 잔존 캐시-우선 SW 가 옛 문서 계속 서빙)면 무한 reload/무한로딩 대신
         //   정적 복구 화면을 띄운다 → 사용자가 절대 "응답 없는 페이지"/무한 스피너에 갇히지 않음(1클릭 완전복구).
-        function showStuckUI() {
+        // 🛡️ 2026-07-20 (대표 신고 전수조사): 복구 UI 를 원인별로 구분 + 에스컬레이션 + 진단.
+        //   reason='chunk' (진짜 청크404/MIME 확증) → 즉시 강한 복구(캐시/SW 완전삭제 + __cb).
+        //   reason='slow'  (12s 워치독인데 청크 에러 증거 없음 = 네트워크 지연/느린 콜드스타트/결정적 에러) →
+        //     ① 1단계: 부드러운 안내 + '다시 시도'(가벼운 __cb 캐시버스트만, 캐시 안 지움 — 오진 시 무해).
+        //     ② 이미 이 세션에서 복구 UI 를 본 적 있으면(앞선 시도가 안 통함) 강한 복구로 자동 승격.
+        //   기존엔 무조건 "저장된 옛 버전"(캐시 오진) + hardRecover 반복 → 캐시 문제 아닌 케이스가 루프.
+        function showStuckUI(reason) {
           try {
             if (document.getElementById('ur-stuck-recover')) return;
+            var shownBefore = false;
+            try { shownBefore = sessionStorage.getItem('__ur_stuck_shown__') === '1'; sessionStorage.setItem('__ur_stuck_shown__', '1'); } catch (e) {}
+            beaconStuck(reason || (chunkSeen ? 'chunk' : 'slow'));
+            var hard = reason === 'chunk' || chunkSeen || shownBefore; // 확증된 청크 or 재발 → 완전복구
             var dark = false;
             try { dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
             var bg = dark ? '#0F151D' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
+            var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
+            var desc = hard
+              ? '앱이 업데이트되어 저장된 옛 버전이 남아 있을 수 있어요. 아래 버튼을 누르면 캐시를 비우고 최신 화면으로 복구합니다.'
+              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 아래 버튼으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
+            var primaryLabel = hard ? '최신 화면으로 새로고침' : '다시 시도';
             var d = document.createElement('div');
             d.id = 'ur-stuck-recover';
             d.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:' + bg + ';color:' + fg + ';font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif');
-            d.innerHTML = '<div style="font-weight:800;font-size:20px">화면을 새로 불러올게요</div>'
-              + '<div style="font-size:14px;line-height:1.6;color:' + sub + ';max-width:320px">앱이 업데이트되어 저장된 옛 버전이 남아 있어요. 아래 버튼을 누르면 캐시를 비우고 최신 화면으로 복구합니다.</div>'
-              + '<button id="ur-stuck-btn" style="margin-top:4px;padding:12px 28px;border:0;border-radius:999px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer">최신 화면으로 새로고침</button>';
+            var html = '<div style="font-weight:800;font-size:20px">' + title + '</div>'
+              + '<div style="font-size:14px;line-height:1.6;color:' + sub + ';max-width:320px">' + desc + '</div>'
+              + '<button id="ur-stuck-btn" style="margin-top:4px;padding:12px 28px;border:0;border-radius:999px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer">' + primaryLabel + '</button>';
+            if (!hard) {
+              html += '<button id="ur-stuck-hard" style="margin-top:2px;padding:6px 12px;border:0;background:none;color:' + sub + ';font-size:12px;text-decoration:underline;cursor:pointer">그래도 안 되면 · 캐시 비우고 복구</button>';
+            }
+            d.innerHTML = html;
             document.body.appendChild(d);
-            document.getElementById('ur-stuck-btn').addEventListener('click', function () { hardRecover(); });
+            var pb = document.getElementById('ur-stuck-btn');
+            if (pb) pb.addEventListener('click', function () { if (hard) hardRecover(); else bustReload(); });
+            var hb = document.getElementById('ur-stuck-hard');
+            if (hb) hb.addEventListener('click', function () { hardRecover(); });
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
@@ -76,7 +123,7 @@
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
             var within = now - st.t < 60000;
-            if (within && st.n >= 2) { showStuckUI(); return; } // 60초 내 2회 — stale 고착 → 무한 reload 대신 복구 UI
+            if (within && st.n >= 2) { showStuckUI('chunk'); return; } // 60초 내 2회 — stale 고착 → 무한 reload 대신 복구 UI
             sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }));
             try { var u = new URL(location.href); u.searchParams.set('__cb', now.toString(36)); location.replace(u.toString()); }
             catch (e) { location.reload(); }
@@ -90,11 +137,25 @@
         //   전역 노출해 그 버튼이 stuck-UI 버튼과 동일한 '1클릭 완전복구' 경로를 쓰게 한다.
         window.__urHardRecover = hardRecover;
         window.addEventListener('error', function (e) {
-          if (isAppChunk(e && e.target)) { reloadOnce(); return; } // app 청크(/assets/*.{js,css}) 리소스 실패
-          if (e && isChunkMsg(e.message)) reloadOnce();            // 인라인 스크립트 파싱/모듈 에러 변종
+          if (isAppChunk(e && e.target)) { chunkSeen = true; try { lastErr = 'asset ' + ((e.target && (e.target.src || e.target.href)) || ''); } catch (x) {} reloadOnce(); return; } // app 청크(/assets/*.{js,css}) 리소스 실패
+          if (e && isChunkMsg(e.message)) { chunkSeen = true; lastErr = String(e.message).slice(0, 240); reloadOnce(); return; } // 인라인 스크립트 파싱/모듈 에러 변종
+          if (e && e.message) lastErr = String(e.message).slice(0, 240); // 비-청크 에러도 진단용 기록(마운트 못 하는 진짜 원인 포착)
         }, true); // capture: 리소스 로드 에러는 버블하지 않음
         window.addEventListener('unhandledrejection', function (e) {
-          if (e && e.reason && isChunkMsg(e.reason.message || e.reason)) reloadOnce(); // React.lazy dynamic import reject
+          var m = e && e.reason && (e.reason.message || e.reason);
+          if (isChunkMsg(m)) { chunkSeen = true; lastErr = String(m).slice(0, 240); reloadOnce(); } // React.lazy dynamic import reject
+          else if (m) { try { lastErr = String(m).slice(0, 240); } catch (x) {} } // 진단용
+        });
+        // 🛡️ 2026-07-20 (전수조사): CSP 위반은 스크립트를 *조용히* 차단한다(error 이벤트 없음) → 엔트리 스크립트가
+        //   CSP 로 막히면 'entry-stalled' 로만 보이고 원인이 안 남는다(캐시버스트로 절대 못 고치는 결정적 부류).
+        //   securitypolicyviolation 을 잡아 차단 리소스를 lastErr 에 기록 → beacon → /admin/errors 에서 즉시 판별.
+        window.addEventListener('securitypolicyviolation', function (e) {
+          try {
+            var uri = (e && (e.blockedURI || e.violatedDirective)) || '';
+            lastErr = 'CSP ' + (e && e.effectiveDirective || e && e.violatedDirective || '') + ' blocked ' + String(uri).slice(0, 160);
+            // 우리 앱 스크립트/청크가 CSP 로 막힌 거면 엔트리 실행 불능 = 진짜 stuck 원인 확증.
+            if (isAppChunk({ tagName: 'SCRIPT', src: uri }) || /\/assets\//.test(String(uri))) chunkSeen = true;
+          } catch (x) { /* 진단 실패 무시 */ }
         });
         // 🛡️ 잔존 캐시-우선 SW 조기 제거 — 옛 pwa-sw/sw 가 삭제된 청크를 서빙해 무한로딩/"응답없음"을 만드는 근본원인.
         //   어떤 앱 청크보다 먼저 실행 → main.tsx(엔트리 번들)가 SW 캐시에 막혀 못 도는 케이스도 커버. push-sw.js 만 보호.
@@ -118,7 +179,14 @@
         //   전 표면 커버: main.tsx 는 라우트 무관 성공 부팅 시 __urMounted=1 을 세팅하므로, #root 가 소비자
         //   로더든 대시보드/도매/블로그 placeholder 든 상관없이 '앱 미마운트' 하나로 판정(로더 마크업 의존 X).
         setTimeout(function () {
-          try { if (!window.__urMounted) showStuckUI(); } catch (e) { /* silent */ }
+          try {
+            if (window.__urMounted) return;
+            // reason 3분류로 진단 정밀화: chunk(확증된 404/MIME) / entry-stalled(엔트리 미실행 = 다운로드/차단/
+            //   네트워크) / mount-slow(엔트리는 돌았는데 마운트 미완 = 무거운 렌더·행·렌더에러). 셋 다 gentle 1단계
+            //   부터(=캐시 안 지움) — 청크 확증이나 세션 내 재발 시에만 showStuckUI 가 완전복구로 승격.
+            var reason = chunkSeen ? 'chunk' : (window.__urBootStarted ? 'mount-slow' : 'entry-stalled');
+            showStuckUI(reason);
+          } catch (e) { /* silent */ }
         }, 12000);
       })();
     </script>
