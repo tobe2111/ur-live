@@ -62,6 +62,10 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
    - **D1**: 바인딩명 `DB` → 데이터베이스 `toss-live-commerce-db` (**id `d9530ba6-7a26-4c02-9295-3ce5aef112a3`** — 메인과 동일해야 데이터 공유).
    - **KV**(있으면): `RATE_LIMIT_KV` · `SESSION_KV` · `CACHE_KV` → 메인과 동일 namespace.
 3. **Settings → Variables and Secrets**:
+   > 🚨 **2026-07-20 실사고**: 여기 넣은 값이 **일반 텍스트(Variable) 타입**이면 CI 의 `wrangler deploy` 가
+   > 배포마다 **삭제**함(toml [vars] 로 통째 교체 — Secret 타입만 생존). Phase B 값들이 이렇게 wipe 되어
+   > 유어애즈 로그인 "서버 설정 오류(JWT_SECRET)" + 인플루언서 수집 0건 발생. 조치: `wrangler-ads.toml`
+   > `keep_vars = true`(보존) + **값은 반드시 "Encrypt"(Secret) 타입으로 재입력**.
    - `JWT_SECRET` — ⚠️ **메인 값이 분실(Cloudflare 시크릿은 쓰기전용·복구불가)** 되어 ur-ads 는 **자체 새 값**을 사용.
      결과: `ads_token` 은 **ur-ads 안에서만** 발급·검증되므로 문제없음. 단 **컷오버(게이트 ON) 시점에 기존 유어애즈
      베타 로그인 사용자는 1회 재로그인** 필요(그전 토큰은 메인 JWT 로 서명됨). `/api/admin/ads/*` 는 메인 어드민 JWT
