@@ -92,6 +92,7 @@ import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
 import { sellerAdSlotsRoutes } from '../features/seller/api/seller-ad-slots.routes';
 import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
+import { sellerScanDevicesRoutes } from '../features/seller/api/seller-scan-devices.routes';
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
 import { sellerProfileRoutes } from '../features/seller/api/seller-profile.routes';
@@ -1457,6 +1458,7 @@ app.route('/api/seller', sellerStaysRoutes);
 app.route('/api/seller', sellerAccountRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
 app.route('/api/seller', sellerKakaoLinkRoutes);
+app.route('/api/seller', sellerScanDevicesRoutes); // 📟 2026-07-20 직원 폰/공기계 스캔 전용 기기 링크
 // 🛡️ 2026-04-28 TD-006 (split): /alimtalk* (account/balance/test/send/messages/charge)
 app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 // 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업)

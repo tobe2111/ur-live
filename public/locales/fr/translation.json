@@ -191,6 +191,7 @@
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez"
   },
   "seller": {
+    "scanDevices": {"title": "Lien de scan pour le personnel", "issue": "Générer le lien", "desc": "Lien scan-uniquement pour le téléphone du personnel ou un appareil du magasin, sans connexion du propriétaire. Scannez le QR avec cet appareil ou envoyez le lien. Révocable immédiatement en cas de perte.", "oneTime": "Affiché une seule fois", "copyLink": "Copier le lien", "lastUsed": "Dernière utilisation", "neverUsed": "Jamais utilisé", "revoke": "Révoquer", "revoked": "Révoqué", "revokeConfirm": "Révoquer ce lien ? Cet appareil ne pourra plus scanner.", "revokeFail": "Échec de la révocation", "issueFail": "Échec de l'émission"},
     "simple": {
       "scan": "Scan QR",
       "settlement": "Règlement",

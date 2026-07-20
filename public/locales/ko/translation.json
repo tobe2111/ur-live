@@ -870,6 +870,7 @@
     "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
+    "scanDevices": {"title": "직원·공기계용 스캔 링크", "issue": "링크 발급", "desc": "직원 폰이나 매장 공기계에서 사장님 로그인 없이 스캔만 할 수 있는 링크예요. QR을 그 기기로 찍거나 링크를 보내 홈 화면에 추가하세요. 분실하면 즉시 회수하면 돼요.", "oneTime": "이 화면에서만 표시돼요 (다시 못 봄)", "copyLink": "링크 복사 (카톡으로 보내기)", "lastUsed": "마지막 사용", "neverUsed": "아직 사용 전", "revoke": "회수", "revoked": "회수 완료", "revokeConfirm": "이 기기의 스캔 링크를 회수할까요? 그 기기에선 더 이상 스캔할 수 없어요.", "revokeFail": "회수에 실패했습니다", "issueFail": "발급에 실패했습니다"},
     "simple": {
       "scan": "QR 스캔",
       "settlement": "정산",

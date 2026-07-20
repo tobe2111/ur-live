@@ -55,8 +55,10 @@ export default function VoucherScanner() {
     setBusy(true)
     try {
       const token = localStorage.getItem('seller_token')
+      // 📟 2026-07-20: 직원 폰/공기계 = 스캔 전용 기기 키(X-Scan-Device-Key) — seller 토큰 없을 때만
+      const deviceKey = !token ? localStorage.getItem('scan_device_key') : null
       const res = await api.post(`/api/group-buy/${encodeURIComponent(code)}/use-by-seller`, {}, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : (deviceKey ? { 'X-Scan-Device-Key': deviceKey } : {}),
       })
       const d = res.data || {}
       setResults((prev) => [{

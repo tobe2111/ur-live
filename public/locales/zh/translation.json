@@ -870,6 +870,7 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
+    "scanDevices": {"title": "员工/备用机扫码链接", "issue": "生成链接", "desc": "员工手机或店内备用机无需老板登录即可扫码的专用链接。用该设备扫二维码或发送链接。丢失可立即撤销。", "oneTime": "仅此一次显示（无法再次查看）", "copyLink": "复制链接", "lastUsed": "最近使用", "neverUsed": "尚未使用", "revoke": "撤销", "revoked": "已撤销", "revokeConfirm": "撤销该设备链接？该设备将无法再扫码。", "revokeFail": "撤销失败", "issueFail": "生成失败"},
     "simple": {
       "scan": "扫码",
       "settlement": "结算",

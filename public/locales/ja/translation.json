@@ -870,6 +870,7 @@
     "seoDesc": "気になる商品をまとめて見る"
   },
   "seller": {
+    "scanDevices": {"title": "スタッフ・共用端末用スキャンリンク", "issue": "リンク発行", "desc": "オーナーのログインなしでスキャンだけできるリンクです。QRをその端末で読み取るか、リンクを送ってください。紛失時は即時回収できます。", "oneTime": "この画面のみ表示（再表示不可）", "copyLink": "リンクをコピー", "lastUsed": "最終使用", "neverUsed": "未使用", "revoke": "回収", "revoked": "回収完了", "revokeConfirm": "この端末のリンクを回収しますか？その端末ではスキャンできなくなります。", "revokeFail": "回収に失敗しました", "issueFail": "発行に失敗しました"},
     "simple": {
       "scan": "QRスキャン",
       "settlement": "精算",
