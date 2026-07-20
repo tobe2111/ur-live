@@ -114,7 +114,7 @@ export default function CuratorPage() {
         const moved = (res as { new_handle?: string } | null)?.new_handle
         if (moved) { navigate(`/u/${moved}`, { replace: true }); return }
         if (!res || !res.success) {
-          setError(res?.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
+          setError(res?.error || t('curator.notFound', { defaultValue: '링크샵을 찾을 수 없어요' }))
           return
         }
         // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있어도 redirect X.
@@ -267,7 +267,6 @@ export default function CuratorPage() {
         )}
         <CuratorHeader
           curator={curator}
-          pinCount={pins.length}
           isOwner={ownerView}
           accountType="user"
           onCopyLink={copyLink}

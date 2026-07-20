@@ -27,8 +27,7 @@ import CuratorPinsSection from './seller-public/CuratorPinsSection'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import type { Seller, LiveStream, Product, Short } from './seller-public/types'
+import type { Seller, Product } from './seller-public/types'
 import { fetchSellerPublicShared } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
@@ -100,8 +99,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🚀 2026-07-11: 서버 동봉 시드(prop, /u/ 사업자 경로)도 동기 소비 — 둘 중 있는 쪽으로 즉시 페인트.
   const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId))
   const [products, setProducts] = useState<Product[]>([])
-  const [streams, setStreams] = useState<LiveStream[]>([])
-  const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(seller == null)
 
   // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
@@ -228,23 +225,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       setLoading(false)
     }
 
-    // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch — 홈탭이 셋 다 프리뷰하므로 모두 즉시(비차단).
-    //   로딩 속도는 prewarm(products) + /api/shorts/feed edge cache 로 해결(cold D1 제거). lazy-탭은 홈 프리뷰 회귀라 미적용.
+    // 🛡️ 셀러 상품 background fetch(비차단). 로딩 속도는 prewarm(products)로 해결(cold D1 제거).
+    //   🧹 2026-07-20 (링크샵 전수조사): 라이브/쇼츠 fetch 제거 — 영구중단(LIVE_COMMERCE_SUSPENDED)이라
+    //   상품만 필요. streams/shorts 배선·30초 폴링·관련 state/타입 통째 제거(도달불가 코드 청소).
     const fetchSubData = (numericId: number) => {
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))
-        .catch(() => { /* graceful */ })
-      // 🏁 2026-06-25 (대표 신고 — 로딩 김): 라이브 영구중단이면 영상/라이브 섹션 미렌더라
-      //   streams/shorts fetch 는 순수 낭비 → 스킵 (요청 2개 + 30초 폴링 제거).
-      if (LIVE_COMMERCE_SUSPENDED) return
-      api.get(`/api/streams?seller_id=${numericId}&limit=20`)
-        .then(r => setStreams(r.data.data || []))
-        .catch(() => { /* graceful */ })
-      api.get(`/api/shorts/feed?limit=20&seller_id=${numericId}`)
-        .then(r => {
-          const list = r.data.data || []
-          setShorts(list.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
-        })
         .catch(() => { /* graceful */ })
     }
 
@@ -272,42 +258,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     }).catch(() => { setSeller(null); setLoading(false) })
   }, [sellerId, sellerNumericId])
 
-  // 실시간 라이브 감지 — 공개 페이지 머물러 있을 때 셀러가 라이브 시작하면 즉시 반영
-  // 30초마다 streams 만 재조회 (가벼운 쿼리)
-  useEffect(() => {
-    if (!seller) return
-    if (LIVE_COMMERCE_SUSPENDED) return  // 🏁 2026-06-25 라이브 영구중단 — 30초 streams 폴링 낭비 제거
-    const numericId = seller.id
-    let prevLiveCount = streams.filter(s => s.status === 'live').length
-
-    const poll = async () => {
-      try {
-        const res = await api.get(`/api/streams?seller_id=${numericId}&limit=20`)
-        const fresh: LiveStream[] = res.data.data || []
-        const freshLiveCount = fresh.filter(s => s.status === 'live').length
-        setStreams(fresh)
-
-        // 라이브 시작 감지 (0 → 1+)
-        if (prevLiveCount === 0 && freshLiveCount > 0) {
-          const liveStream = fresh.find(s => s.status === 'live')
-          toast.success(`${seller.name} 셀러의 라이브가 시작됐어요!`)
-          if (liveStream) {
-            // 배너 확인 용이하게 소리 없는 vibration (모바일)
-            try { if ('vibrate' in navigator) navigator.vibrate(200) } catch { /* ignore */ }
-          }
-        }
-        // 라이브 종료 감지 (1+ → 0)
-        if (prevLiveCount > 0 && freshLiveCount === 0) {
-          toast.info(t('seller.public.liveEnded', { defaultValue: '라이브 방송이 종료됐어요.' }))
-        }
-        prevLiveCount = freshLiveCount
-      } catch { /* silent */ }
-    }
-
-    const id = setInterval(() => { if (!document.hidden) poll() }, 30000)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seller?.id])
+  // 🧹 2026-07-20 (링크샵 전수조사): 라이브커머스 영구중단으로 '실시간 라이브 감지 30초 폴링' effect 제거
+  //   (LIVE_COMMERCE_SUSPENDED 조기반환이라 원래 미실행 — 도달불가 코드 청소).
 
   // 🏁 2026-06-25 (대표 신고 — 로딩 김): 헤더 정체성(curator 우선·seller 폴백) 객체. seller 로드 전에도
   //   curator 만으로 헤더를 즉시 렌더 → /u/ 사업자 진입 시 콜드 seller fetch 동안 빈 스피너 대신 헤더 표시.
@@ -337,9 +289,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     </div>
   )
 
-  const liveNow = streams.find(s => s.status === 'live')
-  const recentStreams = streams.slice(0, 6)
-
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
@@ -350,9 +299,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
   const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
-  // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
-  //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
-  //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
@@ -470,7 +416,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
       <CuratorHeader
         curator={headerCurator}
-        pinCount={products.length}
         isOwner={ownerView}
         accountType="business"
         onCopyLink={copyLink}
@@ -557,7 +502,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         {gridVouchers.length > 0 && (
           <section id="ls-vou" className="scroll-mt-4 pt-7">
             <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
-            <VouchersTab mealVouchers={gridVouchers} isOwner={ownerView} textClass={T.text} />
+            <VouchersTab mealVouchers={gridVouchers} />
           </section>
         )}
 
@@ -592,9 +537,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#1A2334] p-3.5">
               <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
                 <svg className="w-4 h-4 text-[#1d9bf0]" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0"/><path d="M9.8 15.6l-3-3 1.2-1.2 1.8 1.8 4.4-4.4 1.2 1.2z" fill="#fff"/></svg>
-                {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 판매자' })}
+                {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 완료' })}
               </div>
-              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인된 판매자예요' })}</p>
+              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인되었어요' })}</p>
             </div>
           </div>
         )}
