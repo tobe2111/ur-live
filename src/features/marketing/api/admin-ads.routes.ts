@@ -304,7 +304,6 @@ app.get('/seller-match', async (c) => {
 // DELETE /api/admin/ads/influencer-pool/:id
 app.delete('/influencer-pool/:id', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
-  const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   await c.env.DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(id, POOL).run().catch(() => null)
   return c.json({ success: true })
 })

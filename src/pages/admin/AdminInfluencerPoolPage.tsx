@@ -159,7 +159,7 @@ export default function AdminInfluencerPoolPage() {
     setMatchLoading(true)
     try {
       const r = await api.get(`/api/admin/ads/seller-match?category=${encodeURIComponent(category)}`)
-      if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
+      if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast.info('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
     } catch { toast.error('매칭 조회 실패') } finally { setMatchLoading(false) }
   }
   // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
