@@ -8,7 +8,7 @@ import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 
 /**
  * Parse voucher code from QR scanned content.
- * QR encodes: https://live.ur-team.com/v/{voucher_code}
+ * QR encodes: https://urdeal.kr/v/{voucher_code}
  * Also accepts raw voucher codes.
  */
 function parseVoucherCode(input: string): string {

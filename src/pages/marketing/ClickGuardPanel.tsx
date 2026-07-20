@@ -31,7 +31,7 @@ export default function ClickGuardPanel() {
   const [blocklist, setBlocklist] = useState<Array<{ ip: string; reason: string | null; created_at: string }>>([])
   const [blocking, setBlocking] = useState<string | null>(null)
   const [err, setErr] = useState(false)
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'
 
   const loadSites = useCallback(async () => {
     setErr(false)

@@ -136,7 +136,7 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
       monthly_earned: monthly?.earned || 0,
       commission_rate: rate * 100,
       recent: recent?.results || [],
-      share_url: `https://live.ur-team.com?ref=${userId}`,
+      share_url: `https://urdeal.kr?ref=${userId}`,
     },
   })
 })
@@ -241,7 +241,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
     const data = (results ?? []).map((r: any) => ({
       ...r,
       type: 'group-buy' as const,
-      share_url: `https://live.ur-team.com/group-buy/${r.id}?ref=${userId}`,
+      share_url: `https://urdeal.kr/group-buy/${r.id}?ref=${userId}`,
     }))
 
     // 🛡️ 2026-05-18: referral 활성화된 stay 도 같이 추가 (top 10).
@@ -263,7 +263,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
     const stayData = (stays ?? []).map((r: any) => ({
       ...r,
       type: 'stay' as const,
-      share_url: `https://live.ur-team.com/stays/${r.id}?ref=${userId}`,
+      share_url: `https://urdeal.kr/stays/${r.id}?ref=${userId}`,
     }))
 
     return c.json({ success: true, data: [...stayData, ...data] })
@@ -286,7 +286,7 @@ affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
     : `/products/${id}`
   return c.json({
     success: true,
-    data: { url: `https://live.ur-team.com${path}?ref=${user.id}` },
+    data: { url: `https://urdeal.kr${path}?ref=${user.id}` },
   })
 })
 

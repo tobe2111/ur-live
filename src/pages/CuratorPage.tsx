@@ -231,7 +231,7 @@ export default function CuratorPage() {
         title={`${curator.name} (@${curator.handle})의 링크샵`}
         description={curator.bio || `${curator.name} 님이 추천하는 ${pins.length}개의 상품`}
         url={`/u/${curator.handle}`}
-        image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+        image={`https://urdeal.kr/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-28">
         {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.

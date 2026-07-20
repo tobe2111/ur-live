@@ -10,7 +10,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 export default function InviteLinkSection() {
   const { t } = useTranslation()
   const agencyId = typeof localStorage !== 'undefined' ? localStorage.getItem('agency_id') : null
-  const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
+  const inviteUrl = `https://urdeal.kr/seller/register?agency=${agencyId}`
   const [copied, setCopied] = useState(false)
 
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동. 영입 셀러 수.

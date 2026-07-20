@@ -10,7 +10,7 @@ import { isNative, isIOS, openExternalUrl } from '@/lib/native'
  *   기본 플래그 OFF → 평소엔 children 그대로(웹·Android·iOS 전부 byte-동일, 회귀 0).
  *   ⚠️ `/pay/widget`(범용 결제·공구·숙소 등 실세계)에는 적용하지 말 것 — 딜충전 진입만.
  */
-const CHARGE_WEB_URL = 'https://live.ur-team.com/points/charge'
+const CHARGE_WEB_URL = 'https://urdeal.kr/points/charge'
 
 /**
  * 🛡️ 2026-07-18 (대표 확정 "충전 자체를 빼자"): TOPUP_DISABLED — 유상 충전 서비스 전체 종료.

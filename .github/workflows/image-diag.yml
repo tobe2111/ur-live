@@ -16,7 +16,7 @@ jobs:
       - name: Probe image pipeline
         run: |
           set -e
-          PROD="https://live.ur-team.com"
+          PROD="https://urdeal.kr"
           echo "=== 1) 실상품 이미지 URL 추출 ==="
           IMG=$(curl -s --max-time 15 "$PROD/api/products?limit=5" | python3 -c "
           import sys, json

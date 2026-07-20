@@ -20,7 +20,7 @@ interface LinkRow { id: number; code: string; target_url: string; title: string 
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
 const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
-const shortUrl = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'}/l/${code}`
+const shortUrl = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'}/l/${code}`
 
 export default function ShortLinksPanel() {
   const [links, setLinks] = useState<LinkRow[]>([])
@@ -94,7 +94,7 @@ export default function ShortLinksPanel() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-[14px] font-bold text-gray-900 dark:text-white">무료 단축 링크</h3>
-          <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">긴 URL을 <span className="font-semibold">{typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'}/l/코드</span> 로 줄이고 클릭수를 추적하세요. 무료 · 100개까지.</p>
+          <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">긴 URL을 <span className="font-semibold">{typeof window !== 'undefined' ? window.location.host : 'urdeal.kr'}/l/코드</span> 로 줄이고 클릭수를 추적하세요. 무료 · 100개까지.</p>
         </div>
       </div>
 

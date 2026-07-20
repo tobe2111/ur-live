@@ -38,7 +38,7 @@
 
 | 서비스 | 정체성 | 행위자 | 도메인 | 코드 경계 |
 |---|---|---|---|---|
-| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `live.ur-team.com` | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
+| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `urdeal.kr` (2026-07-20 이전, 구 `live.ur-team.com`=영구 301) | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
 | **🏭 도매몰** (유통스타트) | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 제조사·판매사·도매 어드민 | `utongstart.com` | `features/supply/**`, `pages/wholesale*`, `pages/supplier-dashboard` |
 | **📣 유어애즈** (마케팅) | 광고·자동입찰·부정클릭방지·통합실적 | 광고주(매장/셀러)·운영 | `/ads` | `features/marketing`, urads-* 문서 |
 

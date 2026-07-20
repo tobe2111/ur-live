@@ -177,7 +177,7 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 40px 0;">
-                <a href="https://live.ur-team.com/seller" style="display: inline-block; background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #1d1d1f; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);">
+                <a href="https://urdeal.kr/seller" style="display: inline-block; background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #1d1d1f; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);">
                   셀러 대시보드 바로가기 →
                 </a>
               </div>

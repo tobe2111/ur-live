@@ -123,7 +123,7 @@ function generateSVG(p: ProductForOG, imageAbs: string): string {
   </g>
 
   <!-- 하단 브랜드 -->
-  <text x="580" y="588" font-size="24" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#9CA3AF">유어딜 · live.ur-team.com</text>
+  <text x="580" y="588" font-size="24" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#9CA3AF">유어딜 · urdeal.kr</text>
 </svg>`
 }
 
@@ -176,7 +176,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
   ${tiles}
 
   <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 링크샵</text>
-  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">live.ur-team.com/u/${safeHandle}</text>
+  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${safeHandle}</text>
 </svg>`
 }
 

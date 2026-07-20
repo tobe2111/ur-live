@@ -177,7 +177,7 @@ app.get('/intro-code', async (c) => {
       // 0 = 무제한(미설정). 잔여기간 계산은 매장별 term_started_at(첫 결제)과 조합 — UI 담당.
       term_months: Number(row?.commission_term_months) > 0 ? Number(row?.commission_term_months) : 0,
       share_url: row?.intro_code
-        ? `https://live.ur-team.com/seller/register/supplier?agency=${row.intro_code}`
+        ? `https://urdeal.kr/seller/register/supplier?agency=${row.intro_code}`
         : null,
     },
   })

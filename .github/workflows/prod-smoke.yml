@@ -22,7 +22,7 @@ jobs:
 
       - name: 핵심 불변식 단언 (도매몰 + 소비자)
         run: |
-          BASE="https://live.ur-team.com"
+          BASE="https://urdeal.kr"
           FAIL=0
           # 일시 콜드/네트워크로 인한 가짜 실패 방지: 최대 3회 재시도.
           # $1=설명 $2=URL $3=본문에 반드시 포함돼야 할 문자열(없으면 '')

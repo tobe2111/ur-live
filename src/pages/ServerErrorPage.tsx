@@ -78,11 +78,11 @@ export default function ServerErrorPage() {
           <p className="text-[12px] font-normal text-[#6e6e73] dark:text-gray-500">
             {t('serverError.statusCheck')}{' '}
             <a
-              href="https://live.ur-team.com"
+              href="https://urdeal.kr"
               target="_blank" rel="noopener noreferrer"
               className="text-brand hover:text-brand-dark transition-colors"
             >
-              live.ur-team.com
+              urdeal.kr
             </a>
           </p>
         </div>

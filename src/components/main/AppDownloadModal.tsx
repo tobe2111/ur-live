@@ -1,6 +1,6 @@
 /**
  * 🖥️ 2026-07-19 (대표 요청 — 그루폰식 '앱' 버튼): PC 상단 네비의 '앱' 버튼 클릭 시 뜨는 앱 다운로드 팝업.
- *   QR + 스토어 배지 + 안내. QR/스토어 링크는 모바일 사이트(live.ur-team.com)로 — 네이티브 앱 출시 전까지
+ *   QR + 스토어 배지 + 안내. QR/스토어 링크는 모바일 사이트(urdeal.kr)로 — 네이티브 앱 출시 전까지
  *   모바일 웹으로 안내(출시 시 스토어 URL 로 교체). 모달 z-index 는 표준(10500, 네비 위).
  */
 import { lazy, Suspense, useEffect } from 'react'
@@ -10,7 +10,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 // 🟢 qrcode.react lazy (ConsumerFrameRails/LinkshopVisitorRails 와 동일 — 첫 페인트 번들 제외).
 const QRCodeSVG = lazy(() => import('qrcode.react').then((m) => ({ default: m.QRCodeSVG })))
 
-const APP_URL = 'https://live.ur-team.com'
+const APP_URL = 'https://urdeal.kr'
 
 interface Props {
   onClose: () => void

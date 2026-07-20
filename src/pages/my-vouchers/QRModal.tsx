@@ -39,7 +39,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const [voucher, setVoucher] = useState(initialVoucher)
   const [now, setNow] = useState(Date.now())
   const [wakeActive, setWakeActive] = useState(false)  // 🎨 개선 #3: 화면 꺼짐 방지 활성 표시
-  const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
+  const qrUrl = `https://urdeal.kr/v/${voucher.code}`
 
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 사용자 셀프 구매취소(청약철회). 미사용 + 구매 7일 이내만.
   const invalidateVouchers = useInvalidateMyVouchers()

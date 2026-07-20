@@ -20,7 +20,7 @@ export default function GDPRPage() {
         <div className="space-y-6 text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
           <section>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">1. Data Controller</h2>
-            <p>Lister Corporation ("YourDeal") is the data controller for personal data processed through live.ur-team.com.</p>
+            <p>Lister Corporation ("YourDeal") is the data controller for personal data processed through urdeal.kr.</p>
             <p className="mt-1">Contact: jiwon@ur-team.com</p>
           </section>
 

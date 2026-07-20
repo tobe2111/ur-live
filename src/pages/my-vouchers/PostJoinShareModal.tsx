@@ -3,7 +3,7 @@ import { toast } from '@/hooks/useToast'
 
 export default function PostJoinShareModal({ data, onClose }: { data: { product_id: number; name: string; image_url?: string }; onClose: () => void }) {
   const userId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
-  const shareUrl = `https://live.ur-team.com/group-buy/${data.product_id}${userId ? `?ref=${userId}` : ''}`
+  const shareUrl = `https://urdeal.kr/group-buy/${data.product_id}${userId ? `?ref=${userId}` : ''}`
 
   async function shareToKakao() {
     try {
@@ -14,7 +14,7 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
         content: {
           title: `${data.name} 공구 함께해요!`,
           description: '친구 가입 시 양쪽 0.5% 보너스 딜 🎁',
-          imageUrl: data.image_url || `https://live.ur-team.com/api/og/group-buy/${data.product_id}`,
+          imageUrl: data.image_url || `https://urdeal.kr/api/og/group-buy/${data.product_id}`,
           link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
         },
         buttons: [{ title: '나도 참여하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],

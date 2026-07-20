@@ -39,7 +39,7 @@ describe('UR Ads 단축 링크', () => {
     expect(validateTargetUrl('ftp://example.com').ok).toBe(false)
     expect(validateTargetUrl('not a url').ok).toBe(false)
     expect(validateTargetUrl('').ok).toBe(false)
-    expect(validateTargetUrl('https://live.ur-team.com/l/abc123').ok).toBe(false) // 재귀 차단
+    expect(validateTargetUrl('https://urdeal.kr/l/abc123').ok).toBe(false) // 재귀 차단
   })
 
   it('genCode: 6자, 혼동문자(0/O/1/l/I) 없음', () => {

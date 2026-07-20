@@ -11,7 +11,7 @@
 | 패키지/번들 ID | `com.urteam.yourdeal` |
 | 카테고리 | Google: 쇼핑 / Apple: 쇼핑 (보조: 라이프스타일) |
 | 콘텐츠 등급 | 전체이용가 (구글 설문: 폭력/도박/약물 전부 '아니오', 디지털 구매 '예') |
-| 개인정보처리방침 URL | `https://live.ur-team.com/privacy-policy` |
+| 개인정보처리방침 URL | `https://urdeal.kr/privacy-policy` |
 | 지원 이메일 | urteam.corp@gmail.com |
 
 ## 2. 짧은 설명 (구글 80자 이내)

@@ -108,7 +108,7 @@ export default function InfluencerDashboardPage() {
             content: {
               title: item.name,
               description,
-              imageUrl: item.image_url || 'https://live.ur-team.com/og-default.png',
+              imageUrl: item.image_url || 'https://urdeal.kr/og-default.png',
               link: { mobileWebUrl: url, webUrl: url },
             },
             buttons: [{ title: '바로 보기', link: { mobileWebUrl: url, webUrl: url } }],

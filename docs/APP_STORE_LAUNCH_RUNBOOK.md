@@ -35,7 +35,7 @@
 3. `google-services.json` → `android/app/` 커밋(또는 시크릿 주입) — FCM 푸시 활성
 4. Actions → **App Android Build** 실행 → `yourdeal-release-aab` 아티팩트 → Play Console 업로드
 5. Play Console **App signing** 페이지의 SHA-256 지문 복사 → `public/.well-known/assetlinks.json` 의 플레이스홀더 교체 + 배포 (App Links 활성)
-6. 스토어 등록정보: 스크린샷(폰 2~8장)·아이콘 512px·개인정보처리방침 URL(`https://live.ur-team.com/privacy-policy`)·데이터 보안 설문
+6. 스토어 등록정보: 스크린샷(폰 2~8장)·아이콘 512px·개인정보처리방침 URL(`https://urdeal.kr/privacy-policy`)·데이터 보안 설문
 7. 내부 테스트 트랙 → 실기기 검증(§3) → 프로덕션 심사 제출 (보통 수 시간~1일)
 
 ### iOS
@@ -57,7 +57,7 @@
 | 4 | **QR 사용** — 내 이용권함 → QR 표시 → (매장) 스캔 사용 | 사용 완료 도장 표시. 오프라인(비행기모드)에서도 QR 표시 |
 | 5 | **셀러 QR 스캔** — 카메라 권한 요청 → 스캔 | 권한 팝업 정상. 거부 시 수동 코드 입력 폴백 |
 | 6 | **푸시** — 주문/알림 발생 → 기기 알림 도착 → 탭 → 해당 화면 | FCM 토큰 등록(native_push_tokens) + 딥링크 |
-| 7 | 딥링크 — 카톡으로 `live.ur-team.com/u/{handle}` 공유 → 링크 탭 | 앱 열림(App Links/Universal Links — 지문 등록 후) |
+| 7 | 딥링크 — 카톡으로 `urdeal.kr/u/{handle}` 공유 → 링크 탭 | 앱 열림(App Links/Universal Links — 지문 등록 후) |
 | 8 | 뒤로가기(Android) / 스와이프(제스처) | 앱 종료 아닌 히스토리 뒤로 |
 | 9 | 계정 삭제 경로 진입 (`/account/settings`) | 애플 심사 요건 — 실제 삭제까지 1회 |
 
@@ -72,5 +72,5 @@
 ## 5. 주의 (재발 방지 룰과의 관계)
 
 - **Service Worker 금지 정책 불변** — 앱이어도 오프라인 캐시를 SW 로 구현하지 않는다 (2026-04-27 OAuth 사고). 오프라인 QR 은 localStorage 방식 유지.
-- 앱 웹뷰는 **`live.ur-team.com` 라이브를 직접 로드**(`capacitor.config.ts` `server.url` — 2026-07-18 확정). 이유: API 가 same-origin + httpOnly 쿠키 세션이라 번들 모드는 cross-origin 으로 로그인/API 전부 깨짐. server.url 모드는 쿠키·OAuth·결제가 웹과 100% 동일 + **웹 배포가 곧 앱 업데이트**(스토어 재심사 없이 기능 배포). 심사 대비: 푸시·카메라·딥링크 등 네이티브 기능 보유로 "최소 기능성(4.2)" 방어.
+- 앱 웹뷰는 **`urdeal.kr` 라이브를 직접 로드**(`capacitor.config.ts` `server.url` — 2026-07-18 확정). 이유: API 가 same-origin + httpOnly 쿠키 세션이라 번들 모드는 cross-origin 으로 로그인/API 전부 깨짐. server.url 모드는 쿠키·OAuth·결제가 웹과 100% 동일 + **웹 배포가 곧 앱 업데이트**(스토어 재심사 없이 기능 배포). 심사 대비: 푸시·카메라·딥링크 등 네이티브 기능 보유로 "최소 기능성(4.2)" 방어.
 - `IOS_HIDE_DIGITAL_TOPUP` 플래그는 존치하나 **딜 충전 자체가 종료**(TOPUP_DISABLED)라 사실상 무의미 — 충전 부활 시에만 재검토.

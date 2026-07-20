@@ -27,7 +27,7 @@
 | 라우트(페이지) | `/wholesale/*` · `/supplier/*` · `/admin/wholesale-*` · `/admin/distributor*` · `/admin/suppliers` · `/admin/distributor-approval` | `/` · `/group-buy` · `/community-group-buy` · `/vouchers` · `/products` · `/browse` · `/u/*` · `/seller/*`(소비자 셀러) |
 | API 네임스페이스 | `/api/wholesale/*` · `/api/supplier/*` · `/api/admin/wholesale-*` · `/api/admin/distributor*` · `/api/admin/suppliers` · `/api/admin/supplier-products` | `/api/group-buy/*` · `/api/community-group-buy/*` · `/api/products` · `/api/vouchers` · `/api/orders`(소비자) |
 | 코드 | `src/features/supply/**` · `src/pages/wholesale*/**` · `src/pages/supplier-dashboard/**` · `src/components/wholesale/**` | `src/features/group-buy/**` · `src/features/community-group-buy/**` · `src/pages/main-home/**` · `src/pages/GroupBuy*.tsx` · `src/pages/Vouchers*.tsx` |
-| 브랜드/도메인 | 유통스타트 · `utongstart.com` | 유어딜 · `live.ur-team.com` |
+| 브랜드/도메인 | 유통스타트 · `utongstart.com` | 유어딜 · `urdeal.kr` (2026-07-20 이전 — 구 `live.ur-team.com` 은 영구 301) |
 
 **룰**:
 1. **한 서비스 작업 시 다른 서비스 파일/라우트/네임스페이스를 건드리지 말 것.** 예: 도매 정산 수정이 소비자 정산을, 도매 상품등록이 소비자 카탈로그를 바꾸면 안 됨.
