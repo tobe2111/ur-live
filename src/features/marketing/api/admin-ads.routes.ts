@@ -175,6 +175,8 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
+  const status = (c.req.query('status') || '').trim()   // 아웃리치 상태 필터
+  if (['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(status)) { where.push('status = ?'); binds.push(status) }
   // 🎯 규모 필터(tier) — 유어딜 딜은 마이크로/중형(1만~50만)이 실전 효율 최고. YT 구독자 기준(네이버블로그는 지표 없어 무관).
   const tier = (c.req.query('tier') || '').trim()
   if (tier === 'nano') where.push('subscriber_count > 0 AND subscriber_count < 10000')
@@ -210,6 +212,12 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
       SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
       SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
+      SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
+      SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
+      SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
+      SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
+      SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)

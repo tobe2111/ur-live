@@ -385,7 +385,7 @@ export async function listInfluencerLeads(DB: D1Database, accountId: number, fil
   await ensureInfluencerSchema(DB)
   const where = ['account_id = ?']
   const binds: (string | number)[] = [accountId]
-  if (filter.status && ['new', 'contacted', 'rejected'].includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
+  if (filter.status && ['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasContact) where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   const r = await DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at
     FROM ad_influencer_leads WHERE ${where.join(' AND ')} ORDER BY subscriber_count DESC, id DESC LIMIT 500`)
@@ -398,7 +398,8 @@ export async function updateInfluencerLead(DB: D1Database, accountId: number, id
   const sets: string[] = []
   const binds: (string | number | null)[] = []
   if (patch.status !== undefined) {
-    if (!['new', 'contacted', 'rejected'].includes(patch.status)) return { ok: false, error: '상태 값이 올바르지 않습니다' }
+    // 아웃리치 파이프라인: 신규→컨택함→관심→계약 / 거절·보류.
+    if (!['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(patch.status)) return { ok: false, error: '상태 값이 올바르지 않습니다' }
     sets.push('status = ?'); binds.push(patch.status)
   }
   if (patch.memo !== undefined) { sets.push('memo = ?'); binds.push(patch.memo.slice(0, 500) || null) }

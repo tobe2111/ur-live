@@ -69,17 +69,29 @@ const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 
 /**
- * 🚀 일괄 저장(DB.batch) — 행단위 INSERT 수백 subrequest 가 Free 한도를 깨던 것(2026-07-20 실사고)을
- *   청크당 1 batch 호출로 축소. 의미는 saveInfluencerLeads 와 동일(INSERT OR IGNORE 멱등, changes 합산).
+ * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
+ *   2026-07-20 ①: INSERT OR IGNORE → **컨택 백필 upsert**. 신규는 INSERT, 기존 리드는 이메일/인스타/틱톡/
+ *   링크가 **비어있을 때만** 새로 찾은 값으로 채움(늦게 발견된 컨택 자동 반영 — 자가치유). status/memo(수동
+ *   큐레이션)·category 는 불변. DO UPDATE 의 WHERE 로 실제 채울 게 있을 때만 change=1 → 중복 인플레 없음.
  */
 async function saveLeadsBatch(
   DB: D1Database, accountId: number, leads: InfluencerLead[],
   meta: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
   if (!leads.length) return 0
-  const sql = `INSERT OR IGNORE INTO ad_influencer_leads
+  const sql = `INSERT INTO ad_influencer_leads
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id, platform, channel_id) DO UPDATE SET
+      email = COALESCE(ad_influencer_leads.email, excluded.email),
+      instagram = COALESCE(ad_influencer_leads.instagram, excluded.instagram),
+      tiktok = COALESCE(ad_influencer_leads.tiktok, excluded.tiktok),
+      links = COALESCE(ad_influencer_leads.links, excluded.links),
+      subscriber_count = CASE WHEN excluded.subscriber_count > 0 THEN excluded.subscriber_count ELSE ad_influencer_leads.subscriber_count END
+    WHERE (ad_influencer_leads.email IS NULL AND excluded.email IS NOT NULL)
+       OR (ad_influencer_leads.instagram IS NULL AND excluded.instagram IS NOT NULL)
+       OR (ad_influencer_leads.tiktok IS NULL AND excluded.tiktok IS NOT NULL)
+       OR (ad_influencer_leads.links IS NULL AND excluded.links IS NOT NULL)`
   let saved = 0
   const CHUNK = 50
   for (let i = 0; i < leads.length; i += CHUNK) {
