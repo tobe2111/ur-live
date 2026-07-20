@@ -328,10 +328,12 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   ② 네이버 실사진(fetchNaverImageUrl — 매장명 우선, 실패 시 "{지역} {유형}" 일반 검색, 최후 picsum).
     //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
     const { kakaoPlaceLookup } = await import('./admin-products.routes')
-    const { fetchNaverImageUrls } = await import('../../../worker/utils/naver-image-search')
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set')
     // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
     //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
-    const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchNaverImageUrls>[0]
+    const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchDemoPhotos>[0]
+    // 🎯 시드된 숙소 — 응답 후 매장특색 리뷰(seedDemoReviews, stay 토픽) 배선용.
+    const seededStays: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = []
     // 🩹 v3 자동 치유 (2026-07-20 대표 — "좌표가 없고, 가격도 이름도 안 정해져 불완전"): v2 시드가
     //   product_stay_info 에만 좌표/주소를 넣고 목록·카드가 읽는 products 레벨(restaurant_* / price)을
     //   안 채웠음. 기존 시드분을 stay_info + 최저 객실가에서 복사 치유(멱등 — 치유 대상만 매칭, 재실행 무해).
@@ -380,15 +382,16 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       if (dup?.id) { skipped++; continue }
       n++
       const slug = `demo-stay-${n}`
-      // ② 실사진 3~5장(랜덤 — 2026-07-20 대표 "사진 3~5장, 랜덤으로") — 매장명 스코어링 검색
-      //   (fetchNaverImageUrls: 제목-매장명 토큰 매칭 + 플레이스/블로그 CDN 우대 + 스톡사진 배제)
-      //   → 부족하면 지역+유형 일반 검색으로 채움 → 그래도 0이면 picsum 폴백.
+      // ② 실사진 3~5장(랜덤 — 2026-07-20 대표 "사진 3~5장, 랜덤으로" + "카카오 플레이스 사진도 함께"):
+      //   fetchDemoPhotos = 카카오 플레이스 등록 사진(그 숙소 실제 사진, 관련도 100%) 우선 →
+      //   부족분 네이버 매장명 스코어링 → 지역+유형 일반 폴백. 전부 실패 시 picsum.
       const wantPhotos = 3 + Math.floor(Math.random() * 3)
-      let imgs = await fetchNaverImageUrls(extEnv, place.name, { count: wantPhotos, nameQuery: place.name }).catch(() => [] as string[])
-      if (imgs.length < wantPhotos) {
-        const extra = await fetchNaverImageUrls(extEnv, `${spot.label} ${ty.kakao}`, { count: wantPhotos - imgs.length, pickIndex: Math.floor(Math.random() * 8) }).catch(() => [] as string[])
-        imgs = Array.from(new Set([...imgs, ...extra]))
-      }
+      const imgs = await fetchDemoPhotos(extEnv, {
+        placeId: place.placeId,
+        nameQuery: place.name,
+        fallbackQuery: `${spot.label} ${ty.kakao}`,
+        count: wantPhotos,
+      }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
       const img = imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
@@ -460,6 +463,8 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
           JSON.stringify(imgs.length ? [imgs[(order - 1) % imgs.length], ...(imgs.length > 2 ? [imgs[(order + 1) % imgs.length]] : [])] : [img]),
         ).run()
       }
+      // 🎯 매장특색 리뷰 대상 — 오퍼명이 다양화 패스에서 바뀌므로 숙소명(place.name)으로 grounding.
+      seededStays.push({ id: pid, name: place.name, category: 'stay_voucher', storeName: place.name, price })
       created++
     }
     // 🎲 v3.1 오퍼 다양화 (2026-07-20 대표 — "모두 스탠다드 숙박권으로 떠서 어색"): 우리가 생성한
@@ -496,7 +501,36 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (r && (r.meta.changes || 0) > 0) varied++
       }
     } catch { /* best-effort — 다양화 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, healed, varied, requested: count, region: regionQ || null } })
+    // ⭐ 매장특색 리뷰/평점 (2026-07-20 대표 "리뷰/평점도 이용권 수준 퀄리티로") — 동네딜과 **동일**
+    //   seedDemoReviews(stay 토픽: 객실/뷰/체크인/조식 풀 + Claude Haiku grounding). 신규 시드분 +
+    //   기존 리뷰 없는 데모 숙소까지 함께 채움(리뷰 있으면 seedDemoReviews 가 자체 skip → 멱등).
+    //   응답 후 waitUntil(외부 LLM 호출이라 응답 블록 방지). review_count>0 채워 generic cron 무관.
+    let reviewed = 0
+    try {
+      const noRev = await DB.prepare(
+        `SELECT p.id, p.name, p.restaurant_name, COALESCE(p.price,0) AS price
+           FROM products p
+          WHERE p.slug LIKE 'demo-stay-%' AND COALESCE(p.is_active,1) = 1
+            AND (p.review_count IS NULL OR p.review_count = 0)
+            AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
+          LIMIT 60`
+      ).all<{ id: number; name: string; restaurant_name: string | null; price: number }>().catch(() => ({ results: [] as { id: number; name: string; restaurant_name: string | null; price: number }[] }))
+      const byId = new Map<number, { id: number; name: string; category: string; storeName: string | null; price: number }>()
+      for (const s of seededStays) byId.set(s.id, s)
+      for (const r of (noRev.results || [])) {
+        if (!byId.has(r.id)) byId.set(r.id, { id: r.id, name: r.restaurant_name || r.name, category: 'stay_voucher', storeName: r.restaurant_name, price: r.price })
+      }
+      const targets = Array.from(byId.values())
+      reviewed = targets.length
+      if (targets.length > 0) {
+        const run = import('../../../worker/utils/demo-review-generator').then((m) => {
+          const seenShared = new Set<string>()
+          return Promise.all(targets.map((p) => m.seedDemoReviews(c.env as unknown as Parameters<typeof m.seedDemoReviews>[0], p, 6 + Math.floor(Math.random() * 7), seenShared).catch(() => 0)))
+        }).catch(() => {})
+        if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
+      }
+    } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
+    return c.json({ success: true, data: { created, skipped, realPhotos, healed, varied, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

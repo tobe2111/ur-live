@@ -1245,7 +1245,7 @@ export async function kakaoPlaceLookup(
   query: string,
   pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
   center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
-): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null; placeId: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
@@ -1278,6 +1278,7 @@ export async function kakaoPlaceLookup(
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
       placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+      placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
     };
   } catch { return null; }
 }
@@ -1422,7 +1423,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
-    const { fetchNaverImageUrl, fetchNaverImageUrls } = await import('../../../worker/utils/naver-image-search');
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
@@ -1479,17 +1480,21 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           regionCenter,
         ).catch(() => null))
       );
-      // 🖼️ 2단계: **그 매장 이름으로** 실사진 3~5장(랜덤) 스코어링 검색 — 2026-07-20 대표
-      //   ("연관없는 사진 가끔" + "3~5장 랜덤 등록"). fetchNaverImageUrls 가 제목-매장명 토큰 매칭 +
-      //   플레이스/블로그 CDN 우대 + 스톡사진 배제로 관련도 순 반환. 실패 시 업종 일반 사진 폴백(1장).
+      // 🖼️ 2단계: 실사진 3~5장(랜덤) — 2026-07-20 대표("연관없는 사진 가끔" + "3~5장 랜덤" +
+      //   "카카오 플레이스 사진도 함께"). fetchDemoPhotos = 카카오 플레이스 등록 사진(그 매장 실제 사진,
+      //   관련도 100%) 우선 → 부족분 네이버 매장명 스코어링 → 업종 일반 폴백.
       const resolvedImgSets = await Promise.all(
         work.map(async (w, i) => {
-          if (!resolvedPlaces[i]?.name) return [] as string[]
+          const pl = resolvedPlaces[i]
+          if (!pl?.name) return [] as string[]
           try {
-            const arr = await fetchNaverImageUrls(c.env, `${resolvedPlaces[i]!.name} ${w.t.pq}`, { count: 3 + Math.floor(Math.random() * 3), nameQuery: resolvedPlaces[i]!.name })
-            if (arr.length) return arr
-            const fb = await fetchNaverImageUrl(c.env, w.t.iq || w.t.pq, Math.floor(Math.random() * 8))
-            return fb ? [fb] : []
+            return await fetchDemoPhotos(c.env, {
+              placeId: pl.placeId,
+              nameQuery: pl.name,
+              naverQuery: `${pl.name} ${w.t.pq}`,
+              fallbackQuery: w.t.iq || w.t.pq,
+              count: 3 + Math.floor(Math.random() * 3),
+            })
           } catch { return [] as string[] }
         })
       );
