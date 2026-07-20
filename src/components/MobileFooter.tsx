@@ -9,10 +9,15 @@ export default function MobileFooter() {
         </p>
       </div>
 
-      {/* Links */}
+      {/* 🧭 2026-07-19 (대표 — "3개 페이지를 서비스 최하단 링크 버튼으로"): 소개 랜딩 3종 pill 버튼 */}
       <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
-        <a href="/about" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">서비스 소개</a>
-        <span style={{ fontSize: '8px' }} className="text-gray-500 dark:text-gray-400">|</span>
+        <a href="/about" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">서비스 소개</a>
+        <a href="/partners" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">🏪 입점 안내</a>
+        <a href="/creators" className="px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#2A3446] text-[10px] font-bold text-gray-700 dark:text-gray-200">✨ 크리에이터 모집</a>
+      </div>
+
+      {/* Links (서비스 소개는 위 pill 버튼으로 승격 — 중복 제거) */}
+      <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
         <a href="/terms" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">서비스 이용약관</a>
         <span style={{ fontSize: '8px' }} className="text-gray-500 dark:text-gray-400">|</span>
         <a href="/privacy" style={{ fontSize: '8px', lineHeight: '1.2' }} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">개인정보처리방침</a>
