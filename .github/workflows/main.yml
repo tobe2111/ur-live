@@ -75,6 +75,9 @@ jobs:
           VITE_KAKAO_JAVASCRIPT_KEY: ${{ secrets.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865' }}
           # KAKAO_REST_API_KEY 는 서버 전용 (wrangler secret). 클라이언트 번들 금지.
           VITE_TOSS_CLIENT_KEY: ${{ secrets.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY' }}
+          # 🛡️ 2026-07-20 Turnstile 활성(대표 "봇 방어도 하자"): sitekey 는 공개값(위젯 렌더용).
+          #   서버 짝(TURNSTILE_SECRET)은 Pages 대시보드 Secret — 클라 배포 후 대표가 등록(순서: 위젯 먼저).
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD5rMDAJvQnAWr0w' }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488' }}
           VITE_SENTRY_ENVIRONMENT: production
           # 🛡️ 2026-04-27: Sentry release 와 source map upload 의 release 이름 통일.
