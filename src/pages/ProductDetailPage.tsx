@@ -767,6 +767,12 @@ export default function ProductDetailPage() {
             imageUrl={product.image_url || undefined}
             link={`/products/${product.id}`}
             buttonText={t('productDetailPage.viewProductCta')}
+            {...(Number(product.deal_only) === 1 ? {} : {
+              // 💰 원화 상품만 커머스 카드(딜 결제 상품은 '원' 표기 부적합 → 기본 카드)
+              regularPrice: product.original_price && product.original_price > product.price ? product.original_price : undefined,
+              salePrice: product.price,
+              secondaryButtonText: '자세히 보기',
+            })}
           />
         </div>
 
