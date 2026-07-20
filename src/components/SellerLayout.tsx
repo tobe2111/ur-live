@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
-import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import { getRoleShortLabel, isStoreOwner, isStoreOnly } from '@/shared/seller-roles'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -47,22 +47,24 @@ const NAV_GROUPS: {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
       { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
+      // 🏪 2026-07-19 (대표 확정 — "상품은 링크샵에서만"): 상품(물건) 판매 표면 = 링크샵. nav 최상단 진입.
+      ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
     ],
   },
   // 🏭 2026-06-04 (사용자 요청): 방송 그룹(라이브 방송/송출 키/쇼츠/라이브 분석) 숨김 — 셀러 대시보드 간소화.
-  {
+  // 🏪 2026-07-19 (대표 확정 — SELLER_STORE_ONLY_MODE): 상품·소싱 그룹(온라인 상품 관리/도매 소싱) 숨김 —
+  //   셀러 대시보드 = 순수 매장(이용권) 콘솔. 상품 판매는 링크샵으로 일원화. 라우트/코드 보존(가역).
+  ...(SELLER_STORE_ONLY_MODE ? [] : [{
     // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
     labelKey: 'seller.layout.products',
     items: [
       // 🧭 2026-06-09 IA 정리: 묶음/재고는 상품 페이지 상단 SellerProductTabs 로 이동 — nav 1항목.
       //   라우트는 보존(딥링크 안전), also 로 탭 형제 라우트에서도 활성 표시.
-      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common', also: ['/seller/bundles', '/seller/inventory'] },
-      // 🏁 2026-06-12 (4차 감사 D5): /seller/proxy-products 고아 라우트 진입점 — 크리에이터 대행 등록 검토/승인 (매장).
-      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
+      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' as SellerMode, also: ['/seller/bundles', '/seller/inventory'] },
       // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
-      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
+      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' as SellerMode },
     ],
-  },
+  }]),
   {
     labelKey: 'seller.layout.groupbuy',
     mode: 'store',
@@ -71,6 +73,9 @@ const NAV_GROUPS: {
       // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
       { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
+      // 🏁 2026-06-12 (4차 감사 D5) → 🏪 2026-07-19 상품그룹 숨김에 따라 이용권 그룹으로 이동:
+      //   크리에이터 대행 등록 검토/승인(매장) — 이용권 운영의 일부.
+      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
       // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
       { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store', hideFor: ['influencer'] },
