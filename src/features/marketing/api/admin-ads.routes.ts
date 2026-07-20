@@ -13,6 +13,8 @@ import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } f
 import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
+import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
+import { ensureInfluencerSchema } from './influencer-discovery'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -212,7 +214,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -266,6 +268,29 @@ app.patch('/influencer-pool/:id', async (c) => {
   if (!sets.length) return c.json({ success: false, error: '변경 항목 없음' }, 400)
   await c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, id, POOL).run().catch(() => null)
   return c.json({ success: true })
+})
+
+// POST /api/admin/ads/influencer-pool/outreach-drafts { ids } — ✍ 개인화 제안 초안 일괄 생성(최대 10명)
+//   ⚖️ 생성만, 발송 없음(정보통신망법 — 발송은 사람이 1건씩 검토 후). 초안은 리드 행(outreach_draft)에 저장.
+app.post('/influencer-pool/outreach-drafts', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(n => Number.isFinite(n) && n > 0).slice(0, OUTREACH_BATCH_MAX)
+  if (!ids.length) return c.json({ success: false, error: `초안을 만들 리드를 선택해주세요 (최대 ${OUTREACH_BATCH_MAX}명)` }, 400)
+  const ph = ids.map(() => '?').join(',')
+  const rows = (await c.env.DB.prepare(`SELECT id, name, platform, subscriber_count, category, source_keyword, description
+    FROM ad_influencer_leads WHERE account_id = ? AND id IN (${ph})`).bind(POOL, ...ids)
+    .all<OutreachLeadInput>().catch(() => null))?.results || []
+  if (!rows.length) return c.json({ success: false, error: '선택한 리드를 찾을 수 없습니다' }, 404)
+  const r = await generateOutreachDrafts(c.env.ANTHROPIC_API_KEY, rows)
+  if (!r.ok || !r.drafts) return c.json({ success: false, error: r.error || '생성 실패' }, 502)
+  // 저장(1 batch) — {subject,body,dm,generated_at} JSON. 재생성 시 덮어씀(초안일 뿐 — 사람 검토가 최종).
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  await c.env.DB.batch(Array.from(r.drafts.entries()).map(([id, d]) =>
+    c.env.DB.prepare('UPDATE ad_influencer_leads SET outreach_draft = ? WHERE id = ? AND account_id = ?')
+      .bind(JSON.stringify({ ...d, generated_at: now }), id, POOL))).catch(() => null)
+  const failed = ids.filter(id => !r.drafts!.has(id))
+  return c.json({ success: true, generated: r.drafts.size, failed, drafts: Object.fromEntries(Array.from(r.drafts.entries()).map(([id, d]) => [id, { ...d, generated_at: now }])) })
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)

@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -17,9 +18,14 @@ interface Lead {
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
   contacted_at?: string | null; follow_up_at?: string | null; contact_channel?: string | null
+  outreach_draft?: string | null // JSON {subject,body,dm,generated_at} — ✍ 개인화 초안(생성만, 발송 없음)
 }
 // 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
+function parseDraft(raw?: string | null): OutreachDraftData | null {
+  if (!raw) return null
+  try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
+}
 interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
@@ -212,12 +218,48 @@ export default function AdminInfluencerPoolPage() {
   }
   // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
   //   ⚠️ 광고성 발송은 정보통신망법상 사전 수신동의 필요 — 이 버튼은 초안(mailto)만 열고, 발송은 사람이 판단.
+  //   ✍ AI 개인화 초안이 있으면 그걸 우선 사용(없으면 공통 템플릿).
   function draftMail(l: Lead) {
     if (!l.email) { toast.error('이메일이 없는 리드입니다'); return }
+    const d = parseDraft(l.outreach_draft)
+    if (d) {
+      window.open(`mailto:${l.email}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`, '_blank')
+      if (l.status === 'new') setStatus(l.id, 'contacted')
+      return
+    }
     const subject = `[유어딜] ${l.name}님 제휴 제안 — 동네 맛집·뷰티 공동구매 딜`
     const body = `안녕하세요, ${l.name}님.\n유어딜(동네 맛집·카페·뷰티·네일·숙소 공동구매 딜 플랫폼) 제휴 담당자입니다.\n${l.name}님 채널과 결이 잘 맞아 협업을 제안드리고자 연락드립니다.\n\n- 제안: 유어딜 딜 콘텐츠 제휴 / 공동 프로모션\n- 조건은 협의 가능합니다.\n\n관심 있으시면 회신 부탁드립니다. 감사합니다.\n\n(수신을 원치 않으시면 회신으로 알려주세요.)`
     window.open(`mailto:${l.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
     if (l.status === 'new') setStatus(l.id, 'contacted') // 초안 열면 자동으로 '컨택함' 승격
+  }
+
+  // ✍ 개인화 초안 일괄 생성 — 선택 리드(최대 10명)를 서버로 → Claude 1회 호출 → 리드 행에 저장.
+  //   ⚖️ 생성만, 발송 없음 — 초안은 사람이 검토·수정 후 1건씩 직접 발송(정보통신망법).
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [drafting, setDrafting] = useState(false)
+  const [draftView, setDraftView] = useState<{ lead: Lead; draft: OutreachDraftData } | null>(null)
+  function toggleSelect(id: number) {
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) { n.delete(id); return n }
+      if (n.size >= 10) { toast.error('한 번에 최대 10명까지 선택할 수 있어요'); return prev }
+      n.add(id); return n
+    })
+  }
+  async function generateDrafts() {
+    const ids = Array.from(selected)
+    if (!ids.length) { toast.error('체크박스로 리드를 선택해주세요 (최대 10명)'); return }
+    setDrafting(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/outreach-drafts', { ids })
+      if (r.data?.success) {
+        const drafts = (r.data.drafts || {}) as Record<string, OutreachDraftData>
+        setLeads(prev => prev.map(l => drafts[l.id] ? { ...l, outreach_draft: JSON.stringify(drafts[l.id]) } : l))
+        setSelected(new Set())
+        const failedN = (r.data.failed || []).length
+        toast.success(`초안 ${formatNumber(r.data.generated)}건 생성 완료${failedN ? ` (${failedN}건 실패 — 다시 시도)` : ''} — ✍ 버튼으로 검토하세요`)
+      } else toast.error(r.data?.error || '초안 생성 실패')
+    } catch { toast.error('초안 생성 실패') } finally { setDrafting(false) }
   }
   async function del(id: number) {
     if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
@@ -337,6 +379,9 @@ export default function AdminInfluencerPoolPage() {
           </button>
           <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
           <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
+          <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드(최대 10명)의 개인화 제안 초안을 AI 로 일괄 생성 — 발송은 사람이 검토 후 직접">
+            {drafting ? '초안 생성 중…' : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
         </div>
 
         {/* 키워드 관리 */}
@@ -436,6 +481,7 @@ export default function AdminInfluencerPoolPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
+                  <th className="px-2 py-2" title="초안 생성 대상 선택(최대 10명)"></th>
                   <th className="text-left px-3 py-2 font-medium">인플루언서</th>
                   <th className="text-right px-3 py-2 font-medium">구독자</th>
                   <th className="text-left px-3 py-2 font-medium">✉ 이메일</th>
@@ -448,6 +494,9 @@ export default function AdminInfluencerPoolPage() {
               <tbody>
                 {leads.map(l => (
                   <tr key={l.id} className="border-t border-gray-100">
+                    <td className="px-2 py-2">
+                      <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} aria-label={`${l.name} 초안 대상 선택`} />
+                    </td>
                     <td className="px-3 py-2">
                       <a href={l.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">
                         {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
@@ -489,6 +538,7 @@ export default function AdminInfluencerPoolPage() {
                       {l.memo && <div className="text-[11px] text-gray-400 mt-0.5 max-w-[140px] truncate" title={l.memo}>📝 {l.memo}</div>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {(() => { const d = parseDraft(l.outreach_draft); return d ? <button onClick={() => setDraftView({ lead: l, draft: d })} className="text-xs text-violet-600 hover:underline mr-2" title="AI 개인화 초안 검토(발송은 직접)">✍ 초안</button> : null })()}
                       {l.email && <button onClick={() => draftMail(l)} className="text-xs text-emerald-600 hover:underline mr-2" title="메일 초안 열기(직접 발송)">✉ 메일</button>}
                       <button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
                       <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
@@ -509,6 +559,17 @@ export default function AdminInfluencerPoolPage() {
               </button>
             )}
           </div>
+        )}
+
+        {/* ✍ 초안 뷰어 — 검토·복사·메일 열기(발송 없음) */}
+        {draftView && (
+          <DraftModal
+            name={draftView.lead.name}
+            email={draftView.lead.email}
+            draft={draftView.draft}
+            onClose={() => setDraftView(null)}
+            onOpenMail={() => { draftMail(draftView.lead); setDraftView(null) }}
+          />
         )}
       </div>
     </AdminLayout>
