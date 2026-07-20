@@ -275,7 +275,7 @@ app.patch('/influencer-pool/:id', async (c) => {
 app.post('/influencer-pool/outreach-drafts', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
-  const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(n => Number.isFinite(n) && n > 0).slice(0, OUTREACH_BATCH_MAX)
+  const ids: number[] = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, OUTREACH_BATCH_MAX)
   if (!ids.length) return c.json({ success: false, error: `초안을 만들 리드를 선택해주세요 (최대 ${OUTREACH_BATCH_MAX}명)` }, 400)
   const ph = ids.map(() => '?').join(',')
   const rows = (await c.env.DB.prepare(`SELECT id, name, platform, subscriber_count, category, source_keyword, description
@@ -289,7 +289,7 @@ app.post('/influencer-pool/outreach-drafts', async (c) => {
   await c.env.DB.batch(Array.from(r.drafts.entries()).map(([id, d]) =>
     c.env.DB.prepare('UPDATE ad_influencer_leads SET outreach_draft = ? WHERE id = ? AND account_id = ?')
       .bind(JSON.stringify({ ...d, generated_at: now }), id, POOL))).catch(() => null)
-  const failed = ids.filter(id => !r.drafts!.has(id))
+  const failed = ids.filter((id: number) => !r.drafts!.has(id))
   return c.json({ success: true, generated: r.drafts.size, failed, drafts: Object.fromEntries(Array.from(r.drafts.entries()).map(([id, d]) => [id, { ...d, generated_at: now }])) })
 })
 
