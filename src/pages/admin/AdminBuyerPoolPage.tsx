@@ -51,7 +51,7 @@ export default function AdminBuyerPoolPage() {
   const [byCountry, setByCountry] = useState<Dist[]>([])
   const [byCategory, setByCategory] = useState<Dist[]>([])
   const [intentTiers, setIntentTiers] = useState<IntentTiers>({})
-  const [meta, setMeta] = useState<{ enabled: boolean; provider: string | null; directories: number }>({ enabled: false, provider: null, directories: 0 })
+  const [meta, setMeta] = useState<{ enabled: boolean; feeds: number }>({ enabled: false, feeds: 0 })
   const [targets, setTargets] = useState<Target[]>([])
   const [status, setStatus] = useState('')
   const [country, setCountry] = useState('')
@@ -71,7 +71,7 @@ export default function AdminBuyerPoolPage() {
       if (r.data?.success) {
         setStats(r.data.stats); setByIntent(r.data.byIntent || []); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
         setIntentTiers(r.data.intentTiers || {})
-        setMeta({ enabled: !!r.data.enabled, provider: r.data.provider || null, directories: r.data.directories || 0 })
+        setMeta({ enabled: !!r.data.enabled, feeds: r.data.feeds || 0 })
       }
     } catch { /* noop */ }
   }, [])
@@ -143,9 +143,8 @@ export default function AdminBuyerPoolPage() {
         {/* 게이트/소스 상태 */}
         <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
           <span>자동 수집: <b className={meta.enabled ? 'text-emerald-600' : 'text-gray-400'}>{meta.enabled ? 'ON' : 'OFF (BUYER_AUTO_COLLECT_ENABLED)'}</b></span>
-          <span>의도 피드/디렉토리: <b className="text-gray-800">{meta.directories}개</b></span>
-          <span>유료 provider: <b className="text-gray-800">{meta.provider || '미설정'}</b></span>
-          <span className="text-gray-400">· 공개 비즈니스 컨택만 · 수집 ≠ 발송</span>
+          <span>무료 피드/오픈API: <b className="text-gray-800">{meta.feeds}개</b></span>
+          <span className="text-gray-400">· 유료 provider 없음 · 공개 비즈니스 컨택만 · 수집 ≠ 발송</span>
         </div>
 
         {/* 통계 — 바이어 결(핫리드/수입실적/담당자확보/파이프라인) */}
@@ -245,7 +244,7 @@ export default function AdminBuyerPoolPage() {
             <div className="p-8 text-center text-gray-400 text-sm">불러오는 중…</div>
           ) : leads.length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">
-              바이어가 없습니다. {meta.directories === 0 && !meta.provider ? '의도 피드/디렉토리 URL(BUYER_DIRECTORY_URLS) 또는 provider 키를 등록한 뒤 「지금 수집」을 눌러주세요.' : '「지금 수집」을 눌러 발굴을 시작하세요.'}
+              바이어가 없습니다. {meta.feeds === 0 ? '무료 피드/오픈API URL(BUYER_FEED_URLS)을 등록한 뒤 「지금 수집」을 눌러주세요.' : '「지금 수집」을 눌러 발굴을 시작하세요.'}
             </div>
           ) : (
             <div className="divide-y divide-gray-100">

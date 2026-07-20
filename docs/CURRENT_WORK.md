@@ -1,11 +1,13 @@
 # 🚧 진행 중 작업
 
-## 🔶 2026-07-20 — 🌐 해외 수출 바이어 DB 자동 수집 (유통스타트 B2B, 대표 A안 확정) — draft PR, 게이트 OFF
-유어애즈 인플루언서 엔진의 **B2B 아날로그**. 한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀 `overseas_buyer_leads` 에 멱등 누적. **머지 = 라이브 영향 0**(신규 격리 테이블 + `BUYER_AUTO_COLLECT_ENABLED` 기본 OFF). 소비자/도매 트랜잭션 테이블 무접촉.
-- **소스(무료 우선 하이브리드)**: ① 공개 디렉토리 어댑터 — 대표가 합법 수집분(KOTRA BuyKorea·TradeKorea·전시회 공개명단·정부 무역 오픈데이터)을 JSON 정제·게시(`BUYER_DIRECTORY_URLS`)하면 코드변경 0 편입(임의 스크래핑 안 함 — 수집 근거를 대표가 통제). ② 유료 provider 어댑터(Apollo) — `BUYER_PROVIDER_KEY` 있으면 편입, 없으면 skip.
-- **구현**: 엔진 `marketing/api/buyer-discovery.ts`(스키마·멱등 upsert·타깃[카테고리×국가] 순환·2어댑터·`runBuyerCollection` fail-soft) · 어드민 API `buyer-pool.routes.ts`(`/api/admin/buyer-pool/*`, requireAdmin — 목록/통계/큐레이션/타깃/수동수집/CSV 수식인젝션방어) · UI `AdminBuyerPoolPage.tsx`(`/admin/buyer-pool`, 도매몰·운영 메뉴) · env 6종.
-- **⚠️ [LEGAL]** 공개 비즈니스 컨택만 수집 — 콜드 아웃리치는 GDPR·CAN-SPAM·CASL 별도(수집 ≠ 발송). 이 엔진은 수집·정리까지만.
-- **⏳ 대표 액션(활성 시)**: ⓐ 소스 등록(무료 URL 또는 provider 키) ⓑ `/admin/buyer-pool` 「지금 수집」 1회 검증 ⓒ `BUYER_AUTO_COLLECT_ENABLED=true` ⓓ cron 은 소스 검증 후 **ur-ads 워커**에 `runBuyerCollection` 추가(별도 커밋 — ur-wholesale 엔 cron 금지). 설계 SSOT: `docs/design/overseas-buyer-collection.md`.
+## 🔶 2026-07-20 — 🌐 해외 수출 바이어 DB 자동 수집 (유통스타트 B2B) — draft PR #614, 게이트 OFF
+한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀 `overseas_buyer_leads` 에 매칭 누적. **머지 = 라이브 영향 0**(신규 격리 테이블 + `BUYER_AUTO_COLLECT_ENABLED` 기본 OFF). 대표 확정 3원칙: **① 최대한 무료(유료 provider 없음) ② 유어딜과 무관(유통스타트 자립) ③ 인플루언서와 결이 다름(매칭·자격심사 파이프라인)**.
+- **인플루언서와 다른 결**: 영입 깔때기(볼륨)가 아니라 **의도 자격심사 + 매칭**. `intent_signal` 티어링(RFQ 50>구매리드 48>수입실적 45>전시회 30>디렉토리 15) · `imports_from_korea`(행동 증거) · 회사→구매담당자(MD) 2단 컨택 · `match_score`(0~100, 타깃 부합+수입이력+담당자) · BD 파이프라인(lead→qualified→sampling→negotiating→won/lost). 타깃 테이블(수출카테고리×시장)이 매칭 SSOT — 변경 시 풀 자동 재스코어.
+- **유어딜 무관 분리**: 코드 `features/supply/api/`(유통스타트 자립, 유어애즈 헬퍼 의존 0 — 컨택추출 인라인). 마운트 `mount-wholesale.ts`(소비자 ur-live 번들 DCE 제외 — 도매 워커 전용). 격리 테이블만.
+- **최대한 무료**: 유료 Apollo 제거. 유일 소스 = `fetchFeeds`(`BUYER_FEED_URLS`) — 대표가 무료 소스(KOTRA BuyKorea/TradeKorea 구매리드·전시회 명단·data.go.kr 무료 오픈API)를 JSON 게시/직결하면 코드변경 0 편입. JSON배열/NDJSON/오픈API(`response.body.items`) 자동 파싱. 임의 스크래핑 없음.
+- **구현**: `supply/api/buyer-discovery.ts`(엔진) · `supply/api/buyer-pool.routes.ts`(`/api/admin/buyer-pool/*`, requireAdmin, mount-wholesale) · `AdminBuyerPoolPage.tsx`(`/admin/buyer-pool`, 도매몰·운영) · env 4종(`BUYER_AUTO_COLLECT_ENABLED`/`BUYER_AUTOCOLLECT_BATCH`/`BUYER_SUBREQUEST_BUDGET`/`BUYER_FEED_URLS`).
+- **⚠️ [LEGAL]** 공개 비즈니스 컨택만 — 콜드 아웃리치는 GDPR·CAN-SPAM·CASL 별도(수집 ≠ 발송). 발굴·자격심사·매칭까지만.
+- **⏳ 대표 액션(활성 시)**: ⓐ 무료 소스 JSON 게시 → `BUYER_FEED_URLS` 등록 ⓑ `/admin/buyer-pool` 「지금 수집」 검증 ⓒ `BUYER_AUTO_COLLECT_ENABLED=true` ⓓ ur-wholesale 배포에 포함(WHOLESALE_BUNDLE). 설계 SSOT: `docs/design/overseas-buyer-collection.md`.
 - 검증: tsc 0(baseUrl 경고는 기존 CI 무관) · sql-table/bind/column·theme·csv·pagination·file-size 가드 GREEN. ⚠️ npm 403 → build/vitest 는 CI.
 
 ## 🔶 2026-07-20 — 도메인 이전: live.ur-team.com → **urdeal.kr** (대표 확정 "나랑 같이, 빠짐없이" — 코드 완료, 대표 콘솔 작업 진행 중)

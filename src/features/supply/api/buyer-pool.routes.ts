@@ -1,7 +1,7 @@
 /**
  * 🌐 유통스타트 — 해외 수출 바이어 파이프라인 어드민 (2026-07-20).
- *   격리 테이블 `overseas_buyer_leads` 자격심사·매칭 열람/큐레이션 + 발굴 타깃(수출카테고리×시장) 관리
- *   + 수동 수집 + 재스코어 + CSV. /api/admin/buyer-pool/*. 게이트 OFF 면 수집 no-op.
+ *   격리 테이블 `overseas_buyer_leads` 자격심사·매칭 열람/큐레이션 + 발굴 타깃 관리 + 무료 수집 + 재스코어 + CSV.
+ *   /api/admin/buyer-pool/*. 유어딜 무관 — 유통스타트(도매) 워커에 마운트(소비자 번들 DCE). 게이트 OFF 면 no-op.
  *   ⚠️ 공개 비즈니스 컨택만 — 콜드 아웃리치는 국가별 규제 별도(수집 ≠ 발송).
  */
 import { Hono } from 'hono'
@@ -32,7 +32,7 @@ app.get('/', async (c) => {
   return c.json({ success: true, leads: rows, intentTiers: INTENT_TIERS })
 })
 
-// GET /api/admin/buyer-pool/stats — 총계 + 핫리드(고스코어) + 의도/국가/카테고리 분포 + 소스 상태
+// GET /api/admin/buyer-pool/stats
 app.get('/stats', async (c) => {
   await ensureBuyerSchema(c.env.DB)
   const t = await c.env.DB.prepare(`SELECT
@@ -56,8 +56,7 @@ app.get('/stats', async (c) => {
     },
     byIntent, byCountry, byCategory, intentTiers: INTENT_TIERS,
     enabled: c.env.BUYER_AUTO_COLLECT_ENABLED === 'true',
-    provider: c.env.BUYER_PROVIDER_KEY ? (c.env.BUYER_PROVIDER || 'apollo') : null,
-    directories: (c.env.BUYER_DIRECTORY_URLS || '').split(',').map(s => s.trim()).filter(Boolean).length,
+    feeds: (c.env.BUYER_FEED_URLS || '').split(',').map(s => s.trim()).filter(Boolean).length,
   })
 })
 
@@ -78,7 +77,7 @@ app.delete('/:id', async (c) => {
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
-// GET /api/admin/buyer-pool/targets — 발굴 타깃(수출 카테고리×시장 = 매칭 기준 SSOT)
+// GET /api/admin/buyer-pool/targets
 app.get('/targets', async (c) => {
   const targets = await listBuyerTargets(c.env.DB)
   return c.json({ success: true, targets })
@@ -101,19 +100,19 @@ app.patch('/targets/:id', async (c) => {
   return c.json({ success: true, rescored })
 })
 
-// POST /api/admin/buyer-pool/rescore — 매칭 스코어 전체 재계산
+// POST /api/admin/buyer-pool/rescore
 app.post('/rescore', async (c) => {
   const n = await rescoreBuyerLeads(c.env.DB).catch(() => 0)
   return c.json({ success: true, rescored: n })
 })
 
-// POST /api/admin/buyer-pool/collect — 수동 수집 1회(force). 소스 미설정이면 found:0(정상).
+// POST /api/admin/buyer-pool/collect — 무료 수집 1회(force). 피드 미설정이면 found:0(정상).
 app.post('/collect', async (c) => {
-  const r = await runBuyerCollection(c.env, { force: true }).catch((e) => ({ ran: false, reason: String(e), saved: 0, found: 0, targets: [], diag: { directory: 0, provider: 0 } }))
+  const r = await runBuyerCollection(c.env, { force: true }).catch((e) => ({ ran: false, reason: String(e), saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
   return c.json({ success: true, result: r })
 })
 
-// GET /api/admin/buyer-pool/export?format=csv — 풀 다운로드(엑셀 호환, 수식 인젝션 방어)
+// GET /api/admin/buyer-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어)
 app.get('/export', async (c) => {
   const rows = await listBuyerLeads(c.env.DB, { limit: 5000 })
   const esc = (v: unknown): string => {

@@ -1,7 +1,11 @@
 # 🌐 해외 수출 바이어 DB 자동 수집 (유통스타트 B2B) — 설계 SSOT
 
-> 2026-07-20 대표 확정: **A안 = 유통스타트 수출 바이어** + **무료 우선 하이브리드**.
+> 2026-07-20 대표 확정: **A안 = 유통스타트 수출 바이어** · **최대한 무료**(유료 provider 없음) · **유어딜과 무관**.
 > 한국 상품(K-뷰티/K-푸드 등)을 사입할 **해외 수입상·유통사·리테일러**를 발굴해 격리 풀에 누적한다.
+
+> **분리 원칙 (대표 "바이어는 유어딜과 무관")**: 코드는 `src/features/supply/**`(유통스타트 자립), 유어딜/유어애즈
+> 코드 의존 0(컨택 추출 헬퍼도 인라인). 마운트는 `mount-wholesale.ts`(도매 워커 전용 — 소비자 ur-live 번들에서
+> DCE 제외). 테이블도 격리(`overseas_buyer_leads`/`buyer_discovery_targets`). 소비자/도매 트랜잭션 무접촉.
 
 ## 0. 한 줄 요약 — 인플루언서와 **결이 다르다**
 
@@ -28,17 +32,17 @@
 
 - 이건 **유통스타트(도매 B2B) 수출** 축이다. 소비자(유어딜 공구) 코드/네임스페이스에 새면 안 된다.
 - **격리 테이블만 신규** — `overseas_buyer_leads`, `buyer_discovery_targets`. 소비자/도매 트랜잭션 테이블(`orders`/`products`/`sellers`/`wholesale_orders`/원장) **무접촉**.
-- 수집 *메커니즘*은 유어애즈(마케팅) 도메인과 동일해 코드는 `src/features/marketing/api/` 에 둔다(인플루언서 엔진과 헬퍼 공유: `extractContacts`/`pickBusinessEmail`). 관리 대상(바이어)은 유통스타트다.
+- 코드는 `src/features/supply/api/`(유통스타트 자립). 유어딜/유어애즈 의존 0 — 컨택 추출 헬퍼(`pickBusinessEmail`/`pickPhone`)도 **인라인**. 마운트는 `mount-wholesale.ts`(도매 워커 전용 → 소비자 ur-live 번들 DCE 제외).
 
-## 2. 데이터 소스 (합법·무료 우선 → 유료 보강)
+## 2. 데이터 소스 (⭐ 최대한 무료 — 유료 provider 없음)
 
 | Tier | 소스 | 어댑터 | 상태 |
 |---|---|---|---|
-| ① 무료·공식 | KOTRA **BuyKorea**·**TradeKorea** 바이어 인콰이어리, 전시회 공개 참가사, 정부 무역 오픈데이터 | `fetchDirectory` — 대표가 합법 수집분을 JSON/NDJSON 으로 정제·게시(`BUYER_DIRECTORY_URLS`)하면 코드변경 0 편입 | 배선 완료 (URL 미설정=skip) |
-| ② 유료 provider | Apollo.io / Hunter / ZoomInfo — firmographic + 검증 이메일 | `fetchProvider`(Apollo mixed_companies) — `BUYER_PROVIDER_KEY` 있으면 자동 편입, 없으면 skip | 배선 완료 (키 미설정=skip) |
-| ③ 주의(ToS) | LinkedIn/Sales Navigator | ❌ 직접 스크래핑 금지 — 공식 API/수동 export 만 | 미구현(의도) |
+| ① 무료·공식 | KOTRA **BuyKorea**·**TradeKorea** 바이어 인콰이어리/구매리드, 전시회 공개 참가사, **data.go.kr 무료 오픈API**(무료 serviceKey) | `fetchFeeds` — 대표가 무료 소스를 JSON 게시/직결(`BUYER_FEED_URLS`)하면 코드변경 0 편입. JSON 배열/NDJSON/오픈API 응답(`response.body.items` 등) 자동 파싱 | 배선 완료 (URL 미설정=skip) |
+| ② 유료 provider | ~~Apollo/Hunter/ZoomInfo~~ | **미채택** (대표 "최대한 무료") | 제거됨 |
+| ③ 주의(ToS) | LinkedIn/Sales Navigator | ❌ 직접 스크래핑 금지 | 미구현(의도) |
 
-> ⚠️ **임의 웹 스크래핑을 하지 않는다.** `fetchDirectory` 는 **대표가 등록한 정제 파일**만 읽는다 → 수집 근거·합법성을 대표가 통제. 이 설계의 안전판.
+> ⚠️ **임의 웹 스크래핑을 하지 않는다.** `fetchFeeds` 는 **대표가 등록한 무료 소스 URL**만 읽는다 → 수집 근거·합법성을 대표가 통제. 이 설계의 안전판.
 
 ## 3. 법률 (반드시 준수 — 인플루언서 [PIPA] 원칙의 해외판)
 
@@ -47,17 +51,17 @@
 
 ## 4. 구현 (이 PR)
 
-- **엔진** `buyer-discovery.ts`: 스키마·멱등 upsert(빈 컨택만 백필)·타깃(카테고리×국가) 테이블·2 어댑터·`runBuyerCollection`(게이트/커서/fail-soft).
-- **어드민 API** `buyer-pool.routes.ts` → `/api/admin/buyer-pool/*`(requireAdmin): 목록/통계/큐레이션(status·memo·follow_up)/타깃 관리/수동 수집/CSV(수식인젝션 방어).
+- **엔진** `src/features/supply/api/buyer-discovery.ts`: 스키마·멱등 upsert(빈 컨택/담당자만 백필, 더 높은 score만)·타깃(카테고리×시장)·매칭 스코어·`fetchFeeds`(무료 유일 어댑터)·`runBuyerCollection`(게이트/커서/fail-soft). 컨택 추출 헬퍼 인라인(유어딜 무관).
+- **어드민 API** `src/features/supply/api/buyer-pool.routes.ts` → `/api/admin/buyer-pool/*`(requireAdmin): 목록/통계/큐레이션/타깃/수동수집/재스코어/CSV(수식인젝션 방어). **마운트 = `mount-wholesale.ts`**(소비자 워커 DCE).
 - **어드민 UI** `AdminBuyerPoolPage.tsx` → `/admin/buyer-pool`(도매몰 · 운영 메뉴).
-- **env**: `BUYER_AUTO_COLLECT_ENABLED`(기본 OFF)·`BUYER_AUTOCOLLECT_BATCH`·`BUYER_SUBREQUEST_BUDGET`·`BUYER_DIRECTORY_URLS`·`BUYER_PROVIDER`/`BUYER_PROVIDER_KEY`.
+- **env**: `BUYER_AUTO_COLLECT_ENABLED`(기본 OFF)·`BUYER_AUTOCOLLECT_BATCH`·`BUYER_SUBREQUEST_BUDGET`·`BUYER_FEED_URLS`. (유료 provider env 없음.)
 
 ## 5. 활성화 절차 (대표)
 
-1. **소스 등록**: 무료 → 합법 수집분을 JSON 배열로 정제해 R2/gist 게시 후 `BUYER_DIRECTORY_URLS` 에 URL(쉼표구분). 유료 → `BUYER_PROVIDER=apollo` + `BUYER_PROVIDER_KEY`.
-2. **수동 1회 검증**: `/admin/buyer-pool` → 「지금 수집」 → 풀에 바이어 적재 + 컨택 추출 확인.
+1. **무료 소스 등록**: KOTRA BuyKorea/TradeKorea 구매리드·전시회 명단·data.go.kr 무료 오픈API(무료 serviceKey 발급) 를 JSON 으로 게시/직결 → `BUYER_FEED_URLS` 에 URL(쉼표구분). 응답은 JSON 배열/NDJSON/오픈API(`response.body.items`) 자동 파싱. 항목에 `intent`(rfq/buying_lead/import_record/exhibitor) 명시하면 그 티어로 스코어.
+2. **수동 1회 검증**: `/admin/buyer-pool` → 「지금 수집」 → 풀 적재 + 매칭 스코어 + 담당자 추출 확인.
 3. **자동화 켜기**: `BUYER_AUTO_COLLECT_ENABLED=true`.
-4. **cron 배치(후속 결정)**: 수집 메커니즘상 **ur-ads 워커 cron**이 자연스러운 자리(인플루언서와 동일). 현재는 어드민 수동 트리거만 배선 — cron 은 소스 검증 후 `worker-ads/index.ts` scheduled 에 `runBuyerCollection(env)` 추가(별도 커밋). ⚠️ ur-wholesale 워커엔 cron 금지(정산 이중성숙) — 여기 두지 말 것.
+4. **배포**: 유통스타트(도매) 워커 소관이라 `mount-wholesale.ts` 경유 — **ur-wholesale 배포**(WHOLESALE_BUNDLE=1)에 포함. 소비자 ur-live 번들엔 미포함(DCE). cron 자동화는 소스 검증 후 별도 결정(도매 워커 cron 제약 고려 — 현재는 어드민 수동 트리거만).
 
 ## 6. 스키마
 

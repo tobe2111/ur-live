@@ -166,18 +166,16 @@ export interface Env {
   ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
 
   // ---- 🌐 해외 수출 바이어 자동 수집 (유통스타트 B2B, 2026-07-20) ----
-  //   유어애즈 인플루언서 엔진(위)의 B2B 아날로그 — 공개 디렉토리/공식 무역 데이터에서 한국 상품을
-  //   사입할 해외 수입상·유통사·리테일러를 발굴해 격리 풀(overseas_buyer_leads)에 멱등 누적.
-  //   기본 OFF(미설정) = no-op. [PIPA/GDPR/CAN-SPAM] 공개된 *비즈니스* 컨택만 수집 — 수집 ≠ 발송.
+  //   유어딜과 무관 — 유통스타트(도매/수출) 소관. features/supply 자립 엔진(mount-wholesale 마운트 =
+  //   소비자 워커 DCE). 한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀(overseas_buyer_leads)에 매칭 누적.
+  //   ⭐ 최대한 무료 — 유료 provider 없음. [PIPA/GDPR/CAN-SPAM] 공개된 *비즈니스* 컨택만 — 수집 ≠ 발송.
   BUYER_AUTO_COLLECT_ENABLED?: string; // 'true' 일 때만 자동/수동 수집 동작(기본 OFF).
-  BUYER_AUTOCOLLECT_BATCH?: string;    // 1회 실행당 타깃(카테고리×국가) 수(기본 3).
+  BUYER_AUTOCOLLECT_BATCH?: string;    // 1회 실행당 타깃(카테고리×시장) 수(기본 3).
   BUYER_SUBREQUEST_BUDGET?: string;    // 1회 실행 외부 fetch 총량 상한(기본 60) — subrequest 방어.
-  // 무료 소스: 대표가 합법적으로 수집 가능한 공개 디렉토리(JSON 배열/NDJSON)를 호스팅하고 URL 등록.
-  //   예: KOTRA/전시회 공개명단을 CSV→JSON 으로 정제해 R2/gist 에 게시. 미설정이면 이 어댑터 skip.
-  BUYER_DIRECTORY_URLS?: string;       // 쉼표구분 공개 디렉토리 URL 목록.
-  // 유료 provider(Apollo.io 등) — 키 있으면 firmographic 검색으로 자동 편입, 없으면 skip(인플루언서 패턴).
-  BUYER_PROVIDER?: string;             // 'apollo' 등 provider 이름.
-  BUYER_PROVIDER_KEY?: string;         // provider API 키 — 미설정이면 유료 어댑터 비활성.
+  // 무료 피드/오픈API: 대표가 합법 수집분(KOTRA BuyKorea·TradeKorea 구매리드·전시회 공개명단·data.go.kr
+  //   무료 serviceKey URL)을 JSON 으로 게시/직결하고 URL 등록. JSON 배열/NDJSON/오픈API 응답 자동 파싱.
+  //   미설정이면 수집 no-op(found:0). 임의 스크래핑 없음 — 수집 근거를 대표가 통제.
+  BUYER_FEED_URLS?: string;            // 쉼표구분 무료 피드/오픈API URL 목록.
   ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 2, 1~5) — 깊이 확장(page2=51~100위). 쿼터는 quotaHit 가드 관리.
   ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
 
