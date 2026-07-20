@@ -126,9 +126,11 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
  *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…).
  *  opts.searchType: 'channel'(기본, 채널명·소개에 키워드) | 'video'(그 주제 영상을 올린 채널 — 채널명엔
- *    키워드 없는 소형·신생 크리에이터까지 커버. 같은 쿼터, 다른 그물). video 는 snippet.channelId 로 채널 수집. */
+ *    키워드 없는 소형·신생 크리에이터까지 커버. 같은 쿼터, 다른 그물). video 는 snippet.channelId 로 채널 수집.
+ *  opts.order: 검색 정렬 — 'relevance'(관련도) | 'date'(최신, 신생·소형) | 'viewCount'(인기) | 'rating'.
+ *    같은 키워드도 정렬을 바꾸면 다른 채널이 나옴 → 매 실행 교대 시 top-N 재탕이 아니라 커버리지가 계속 확장(수렴). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video' } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating' } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -137,6 +139,9 @@ export async function discoverYouTubeInfluencers(
   const n = Math.min(50, Math.max(1, Math.round(opts.maxResults || 15)))
   const pages = Math.max(1, Math.min(5, Math.round(opts.pages || 1)))
   const searchType = opts.searchType === 'video' ? 'video' : 'channel'
+  // date 정렬은 video 에만 의미(채널 정렬 date 는 지원 약함) → channel 검색이면 relevance/viewCount 만 허용.
+  const order = ['relevance', 'date', 'viewCount', 'rating'].includes(opts.order || '')
+    ? (searchType === 'channel' && opts.order === 'date' ? 'relevance' : opts.order!) : 'relevance'
 
   // 1) 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
   //    channel=채널 결과(id.channelId) / video=영상 결과(snippet.channelId → 그 영상 주인 채널).
@@ -145,7 +150,7 @@ export async function discoverYouTubeInfluencers(
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
     spendBudget(opts.budget)
-    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
+    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
       const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })
@@ -275,7 +280,7 @@ async function fetchNaverBlogHome(handle: string): Promise<string> {
 }
 
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -283,7 +288,8 @@ export async function discoverNaverBloggers(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
   spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
-  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
+  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string }>; errorMessage?: string } | null
@@ -349,7 +355,7 @@ function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, ke
 //   카페는 개인이 아니라 커뮤니티 단위 → 게시글 상위 노출 카페를 집계(카페홈 링크 기준).
 //   지표 없음, 매칭 글 수(활동 프록시) + best-effort 컨택. platform='naver_cafe'.
 export async function discoverNaverCafes(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; budget?: FetchBudget } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -357,7 +363,8 @@ export async function discoverNaverCafes(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
   spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
-  const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const sort = opts.sort === 'date' ? 'date' : 'sim'
+  const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '카페 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
@@ -389,7 +396,7 @@ export async function discoverNaverCafes(
 //   지표 없음, 매칭 글 수(활동 프록시) + 스니펫 컨택. platform='tistory'. 키: KAKAO_REST_API_KEY(KakaoAK).
 const KAKAO_DAPI = 'https://dapi.kakao.com'
 export async function discoverTistoryBloggers(
-  restKey: string | undefined, keyword: string, opts: { size?: number; budget?: FetchBudget } = {},
+  restKey: string | undefined, keyword: string, opts: { size?: number; budget?: FetchBudget; sort?: 'accuracy' | 'recency' } = {},
 ): Promise<DiscoverResult> {
   if (!restKey) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -397,7 +404,8 @@ export async function discoverTistoryBloggers(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] }
   spendBudget(opts.budget)
   const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
-  const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=accuracy`
+  const sort = opts.sort === 'recency' ? 'recency' : 'accuracy'
+  const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=${sort}`
   const res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '티스토리 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
