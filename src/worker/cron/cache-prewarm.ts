@@ -122,7 +122,7 @@ const SSR_KV_PATHS: readonly string[] = [
 const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급 수준)
 
 export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
-  const baseUrl = env.FRONTEND_URL || 'https://live.ur-team.com';
+  const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
   // 🌍 2026-07-12: KV 쓰기 표본화 창 — 5분 cron 중 매시 0/15/30/45분대 실행만 기록(576 writes/day < 1K 한도).
   const kvWriteWindow = new Date().getMinutes() % 15 < 5;
 
@@ -182,7 +182,7 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   }
 
   // 🏭 2026-06-18 (전수조사 — 도매 카탈로그 cold/느림 근본원인): caches.default 는 요청 URL의 origin 으로
-  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=live.ur-team.com) origin 만 데우는데, 실제 도매 사용자는
+  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=urdeal.kr) origin 만 데우는데, 실제 도매 사용자는
   //   utongstart.com 호스트로 접속 → /catalog 핸들러의 early-match/put 키가 utongstart origin 이라
   //   prewarm 이 채운 live origin 캐시와 영영 불일치 → utongstart 도매몰은 prewarm 혜택 0(매 요청 cold D1).
   //   도매 전용 path 만 utongstart origin 으로도 한 번 더 데운다(additive, HOT 24+dynamic≈20+WS 5 ≈ 49 < 50).

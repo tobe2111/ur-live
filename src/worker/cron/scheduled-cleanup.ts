@@ -417,7 +417,7 @@ export async function handleScheduled(env: Env) {
   //   비용: 1회/5분 fetch (무료 한도 안전, KV write 100K/day << 일 288회).
   try {
     const { warmMainPageCache } = await import('./cache-warming')
-    const baseUrl = (env as { BASE_URL?: string }).BASE_URL || 'https://live.ur-team.com'
+    const baseUrl = (env as { BASE_URL?: string }).BASE_URL || 'https://urdeal.kr'
     const r = await warmMainPageCache(env as any, baseUrl)
     ;(results as any).cache_warming = r
   } catch (e) { logError('[Cron] cache-warming error:', { error: String(e) }) }

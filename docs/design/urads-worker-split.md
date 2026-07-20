@@ -83,6 +83,11 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
 > ⚠️ **2026-04-22 사고 교훈(wrangler.toml)**: Worker 가 Custom Domain 을 가로채면 시크릿 없이 동작 → 장애.
 > ur-ads Worker 에는 **Custom Domain 을 붙이지 않는다**(Service Binding 으로만 접근). `live.ur-team.com` 은 계속 Pages(ur-live) 전용.
 
+> 🔐 **workers.dev 라우트 (2026-07-20 발견)**: ur-ads 는 `ur-ads.jiwon-1a2.workers.dev` 가 **활성**이라
+> `/__ads/collect`(무인증 수집 트리거)가 공개 도달 가능(악용 시 YouTube 쿼터 소모 — 머니/데이터 위험은 없음).
+> **권장**: 대시보드 ur-ads → Settings → Domains & Routes 에서 workers.dev 라우트 **비활성**(Service Binding 은
+> 라우트 불필요라 메인 위임·cron 전부 무영향). 비활성 전까지는 낮은 리스크로 허용.
+
 ## 6. 리스크 & 완화
 
 - **토큰 재로그인**: ur-ads 는 자체 `JWT_SECRET`(메인값 분실) → 컷오버 시 기존 베타 사용자 1회 재로그인(§5-3). 신규는 무관.

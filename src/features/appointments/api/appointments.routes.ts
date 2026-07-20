@@ -222,7 +222,7 @@ appointmentsRoutes.post('/appointments/book', requireAuth(), async (c) => {
         const userRow = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(String(user.id)).first<{ phone: string }>().catch(() => null)
         const userPhone = body.user_phone || userRow?.phone
         if (userPhone) {
-          const msg = `[유어딜] 예약 확정 — ${product.name}\n일시: ${bookingDate} ${startTime}~${endTime}\n예약 확인 / 변경: live.ur-team.com/my-appointments`
+          const msg = `[유어딜] 예약 확정 — ${product.name}\n일시: ${bookingDate} ${startTime}~${endTime}\n예약 확인 / 변경: urdeal.kr/my-appointments`
           await sendSystemAlimtalk(env, userPhone, 'appointment_user_confirmed', msg)
         }
       } catch (e) {

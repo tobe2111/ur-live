@@ -173,6 +173,8 @@ app.get('/influencer-pool', async (c) => {
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
+  if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
+  if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
@@ -239,6 +241,36 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   await c.env.DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(b.active ? 1 : 0, id).run().catch(() => null)
   return c.json({ success: true })
+})
+
+// GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
+//   xls = SpreadsheetML(엑셀이 여는 XML) **카테고리별 시트 분리** + 전체 시트. csv = BOM 단일 파일(엑셀 호환).
+//   화면 500개 제한과 무관하게 전체(안전 상한 20,000) 내보냄. 셀은 String 타입이라 수식 실행 없음(csv 는 가드).
+app.get('/influencer-pool/export', async (c) => {
+  const rows = (await c.env.DB.prepare(`SELECT platform, name, handle, url, subscriber_count, video_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at
+    FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, subscriber_count DESC, id DESC LIMIT 20000`)
+    .bind(POOL).all<{ platform: string; name: string; handle: string | null; url: string; subscriber_count: number; video_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string }>()
+    .catch(() => null))?.results || []
+  const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', instagram: '인스타그램', tiktok: '틱톡' }
+  const HEAD = ['플랫폼', '이름', '핸들', 'URL', '구독자', '이메일', '인스타그램', '틱톡', '기타링크', '카테고리', '수집키워드', '상태', '수집일']
+  const cells = (r: typeof rows[number]) => [PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url, r.platform === 'naver_blog' ? '' : String(r.subscriber_count || 0), r.email || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '', r.category || '기타', r.source_keyword || '', r.status, (r.collected_at || '').slice(0, 10)]
+
+  if (c.req.query('format') === 'csv') {
+    const csvEscapeCell = (v: string) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
+    const body = [HEAD.join(','), ...rows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
+    return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="influencer-pool.csv"` } })
+  }
+
+  // SpreadsheetML — 카테고리별 시트 + 전체 시트. 시트명은 엑셀 제약(31자·특수문자) 정리.
+  const xe = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const rowXml = (vals: string[]) => `<Row>${vals.map(v => `<Cell><Data ss:Type="String">${xe(v)}</Data></Cell>`).join('')}</Row>`
+  const sheetXml = (name: string, rs: typeof rows) => `<Worksheet ss:Name="${xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')}"><Table>${rowXml(HEAD)}${rs.map(r => rowXml(cells(r))).join('')}</Table></Worksheet>`
+  const byCat = new Map<string, typeof rows>()
+  for (const r of rows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
+  const sheets = [sheetXml(`전체 (${rows.length})`, rows), ...Array.from(byCat.entries()).map(([k, rs]) => sheetXml(`${k} (${rs.length})`, rs))].join('')
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${sheets}</Workbook>`
+  return new Response(xml, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="influencer-pool.xls"` } })
 })
 
 // POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)

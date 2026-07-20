@@ -7,14 +7,17 @@ const config: CapacitorConfig = {
   server: {
     // 🛡️ 2026-07-18 앱 출시 대비: production = live 사이트 직접 로드 (server.url 모드).
     //   이유: api.ts 가 same-origin(baseURL '/') + 세션이 httpOnly 쿠키(ur_session) 기반이라,
-    //   번들(webDir) 모드면 capacitor://localhost ↔ live.ur-team.com 이 cross-origin 이 되어
+    //   번들(webDir) 모드면 capacitor://localhost ↔ urdeal.kr 이 cross-origin 이 되어
     //   API 와 로그인 쿠키가 전부 깨짐(iOS WKWebView 서드파티 쿠키 차단). server.url 모드는
     //   앱 = 라이브 사이트 + 네이티브 브릿지 주입 → 쿠키/OAuth/결제 웹과 동일 + 웹 배포가 곧 앱 업데이트.
-    url: process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : 'https://live.ur-team.com',
+    url: process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : 'https://urdeal.kr',
     // 🛡️ 2026-04-22: production 에선 HTTPS 강제 (MITM 방어)
     cleartext: process.env.NODE_ENV === 'development',
     // 와일드카드 축소 — 특정 서브도메인만 허용 (DNS rebinding 방어)
     allowNavigation: [
+      'urdeal.kr',
+      'www.urdeal.kr',
+      // 전환기: 구 도메인 링크(카톡/문자로 이미 발송분)가 앱 안에서 301 을 타려면 구 호스트 허용 필요
       'live.ur-team.com',
       'ur-team.com',
       'kauth.kakao.com',

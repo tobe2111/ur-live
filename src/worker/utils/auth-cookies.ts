@@ -12,7 +12,11 @@ const THIRTY_DAYS = 30 * 24 * 3600
 export type AuthTokenCookieName = 'ud_seller_token' | 'ud_agency_token' | 'ud_admin_token' | 'ud_supplier_token'
 
 function domainAttr(host: string | null | undefined): string {
-  return host && (host === 'ur-team.com' || host.endsWith('.ur-team.com')) ? '; Domain=.ur-team.com' : ''
+  if (!host) return ''
+  // 🌐 2026-07-20 도메인 이전: 정식 도메인 urdeal.kr — 서브도메인 공유 대비 동일 패턴.
+  if (host === 'urdeal.kr' || host.endsWith('.urdeal.kr')) return '; Domain=.urdeal.kr'
+  if (host === 'ur-team.com' || host.endsWith('.ur-team.com')) return '; Domain=.ur-team.com'
+  return ''
 }
 
 /** 로그인 응답용 Set-Cookie 값 (기존 응답 바디/localStorage 흐름 불변 — 추가 발급만). */

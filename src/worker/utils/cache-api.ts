@@ -26,7 +26,7 @@ import { swallow } from './swallow'
 
 /**
  * Cloudflare default cache 사용 (모든 worker 공유).
- *   trackingDomain: 우리 도메인 (live.ur-team.com 등) 이어야 cache hit 가능.
+ *   trackingDomain: 우리 도메인 (urdeal.kr 등) 이어야 cache hit 가능.
  *   Cache API 는 origin 도메인 기준 — Workers 안에서는 어떤 도메인이든 OK.
  */
 const CACHE_PREFIX = 'https://cache.internal.ur-live/'

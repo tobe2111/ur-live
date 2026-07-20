@@ -62,7 +62,7 @@ export default function CuratorHeader({
   //   "사업자 인증이 된 유저" 설명 팝오버. hover title 은 모바일 미노출이라 tap 기반으로 전환.
   const [showVerified, setShowVerified] = useState(false)
   // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
-  const shareHost = typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'
+  const shareHost = typeof window !== 'undefined' ? window.location.host : 'urdeal.kr'
   const [editingHandle, setEditingHandle] = useState(false)
   const [handleVal, setHandleVal] = useState(curator.handle)
   const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')

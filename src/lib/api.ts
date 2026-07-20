@@ -731,7 +731,7 @@ api.interceptors.response.use(
         if (Date.now() - _last > 30_000) {
           _recent5xx.set(_k, Date.now());
           import('@/hooks/useToast').then(({ toast }) =>
-            toast.error('현재 네트워크(IP)가 어드민 허용목록에 없어 서버가 차단했습니다. live.ur-team.com/recover 에서 현재 IP 확인 후 Cloudflare 환경변수 ADMIN_IP_WHITELIST 에 추가하세요.', { duration: 10000 })
+            toast.error('현재 네트워크(IP)가 어드민 허용목록에 없어 서버가 차단했습니다. urdeal.kr/recover 에서 현재 IP 확인 후 Cloudflare 환경변수 ADMIN_IP_WHITELIST 에 추가하세요.', { duration: 10000 })
           ).catch(() => { /* toast 불가 환경 — console 만 */ });
         }
       }

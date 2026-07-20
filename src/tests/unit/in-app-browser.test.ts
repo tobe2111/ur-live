@@ -120,39 +120,39 @@ describe('자동 redirect scheme 결정', () => {
 
   it('iOS 카톡 → kakaotalk:// 스킴', () => {
     const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 KAKAOTALK 10.5.5';
-    const s = resolveScheme(ua, 'https://live.ur-team.com/');
+    const s = resolveScheme(ua, 'https://urdeal.kr/');
     expect(s).toMatch(/^kakaotalk:\/\/web\/openExternal\?url=/);
-    expect(s).toContain(encodeURIComponent('https://live.ur-team.com/'));
+    expect(s).toContain(encodeURIComponent('https://urdeal.kr/'));
   });
 
   it('Android 카톡 → intent:// (Chrome) + S.browser_fallback_url', () => {
     const ua = 'Mozilla/5.0 (Linux; Android 14) Chrome/119.0.0.0 Mobile Safari/537.36;KAKAOTALK 10.5.5';
-    const s = resolveScheme(ua, 'https://live.ur-team.com/');
+    const s = resolveScheme(ua, 'https://urdeal.kr/');
     // 🛡️ 2026-06-20 (C1): Chrome 미설치 단말 빈 화면 방지 — fallback URL 필수.
     expect(s).toMatch(/^intent:\/\/.+#Intent;scheme=https;package=com\.android\.chrome;S\.browser_fallback_url=.+;end$/);
-    expect(s).toContain('S.browser_fallback_url=' + encodeURIComponent('https://live.ur-team.com/'));
+    expect(s).toContain('S.browser_fallback_url=' + encodeURIComponent('https://urdeal.kr/'));
   });
 
   it('iOS 라인 → openExternalBrowser=1 쿼리', () => {
     const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Line/13.5.0';
-    const s = resolveScheme(ua, 'https://live.ur-team.com/');
-    expect(s).toBe('https://live.ur-team.com/?openExternalBrowser=1');
+    const s = resolveScheme(ua, 'https://urdeal.kr/');
+    expect(s).toBe('https://urdeal.kr/?openExternalBrowser=1');
   });
 
   it('iOS 라인 — 기존 쿼리 있으면 & 로 append', () => {
     const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Line/13.5.0';
-    const s = resolveScheme(ua, 'https://live.ur-team.com/?foo=bar');
-    expect(s).toBe('https://live.ur-team.com/?foo=bar&openExternalBrowser=1');
+    const s = resolveScheme(ua, 'https://urdeal.kr/?foo=bar');
+    expect(s).toBe('https://urdeal.kr/?foo=bar&openExternalBrowser=1');
   });
 
   it('iOS 페이스북 → 빈 문자열 (자동 호출 스킴 없음, 수동 가이드만)', () => {
     const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 [FBAN/FBIOS]';
-    expect(resolveScheme(ua, 'https://live.ur-team.com/')).toBe('');
+    expect(resolveScheme(ua, 'https://urdeal.kr/')).toBe('');
   });
 
   it('일반 브라우저 → 빈 문자열', () => {
     const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
-    expect(resolveScheme(ua, 'https://live.ur-team.com/')).toBe('');
+    expect(resolveScheme(ua, 'https://urdeal.kr/')).toBe('');
   });
 });
 

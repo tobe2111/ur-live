@@ -16,7 +16,7 @@
  *   <img src={cfImage(p.image_url, { width: 400, format: 'auto' })} ... />
  *
  * 주의:
- *   - 같은 도메인 (live.ur-team.com) 이미지만 동작 (외부 URL X)
+ *   - 같은 도메인 (urdeal.kr) 이미지만 동작 (외부 URL X)
  *   - 외부 URL (i.ibb.co 등) 는 그대로 반환
  *   - SVG 는 변환 불가 — 그대로 반환
  */
@@ -30,7 +30,7 @@ interface ResizeOptions {
 }
 
 const SUPPORTED_HOSTS = new Set([
-  'live.ur-team.com',
+  'urdeal.kr',
   'ur-live.pages.dev',
 ])
 
@@ -137,7 +137,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
   //   리사이즈가 워커 서브요청 소스를 못 풀어 404 가 났음. 외부 이미지(Firebase 등)와 동일하게
   //   검증된 워커 프록시(/api/image/resize, cf.image fetch)로 경유 — 리사이즈가 비활성이어도 원본을
-  //   200 으로 반환(절대 404 안 남). live.ur-team.com/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
+  //   200 으로 반환(절대 404 안 남). urdeal.kr/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
   //   (ADD only — SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS·Save-Data 동작 불변)
   // 🏁 2026-06-11 [LOADING_ADDITIVE] (사용자 승인 — R2 커스텀 도메인 media.ur-team.com 연결):
   //   prod 실측(diag): https://media.ur-team.com/<key> 200 image/jpeg + zone 리사이저 래핑 시
@@ -171,7 +171,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (isAbsolute) {
     try { host = new URL(src).hostname } catch { return src }
   } else {
-    host = 'live.ur-team.com'  // 상대 경로는 같은 도메인 가정
+    host = 'urdeal.kr'  // 상대 경로는 같은 도메인 가정
   }
 
   // 외부 도메인 (Firebase Storage 등) → worker proxy 경유

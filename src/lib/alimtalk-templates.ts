@@ -23,12 +23,12 @@
  *   새 알림톡 트리거 추가 시: (1) 여기 ALL_USED 에 코드 추가, (2) docs 에 본문(#{변수}) 추가,
  *   (3) Aligo 콘솔에 동일 tpl_code + 동일 본문 등록·승인.
  *
- * 🧱 서비스 분리: 소비자(유어딜, live.ur-team.com)와 도매(유통스타트, utongstart.com)는
+ * 🧱 서비스 분리: 소비자(유어딜, urdeal.kr)와 도매(유통스타트, utongstart.com)는
  *   **발신 프로필(카카오 채널)이 다르다.** 아래 WHOLESALE 코드는 유통스타트 채널에 등록.
  */
 
 /**
- * 소비자(유어딜) platform 알림톡 코드 — live.ur-team.com 발신 프로필.
+ * 소비자(유어딜) platform 알림톡 코드 — urdeal.kr 발신 프로필.
  * 문안: docs/kakao-alimtalk-templates.md 참조.
  */
 export const CONSUMER_ALIMTALK_TEMPLATES: readonly string[] = [

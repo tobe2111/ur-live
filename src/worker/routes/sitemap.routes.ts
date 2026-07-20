@@ -11,7 +11,7 @@ import type { Env } from '@/worker/types/env';
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
 // 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 호스트면 도매 전용 sitemap 발행.
-//   소비자(live.ur-team.com) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
+//   소비자(urdeal.kr) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
 const WHOLESALE_HOSTS = ['utongstart.com', 'www.utongstart.com'];
 const WHOLESALE_BASE = 'https://utongstart.com';
 
@@ -64,7 +64,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
     { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
-    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(live.ur-team.com) sitemap 에서 제거.
+    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(urdeal.kr) sitemap 에서 제거.
     //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
   ];
 

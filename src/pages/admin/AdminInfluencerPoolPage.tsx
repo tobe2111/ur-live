@@ -32,6 +32,9 @@ export default function AdminInfluencerPoolPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
   const [hasContact, setHasContact] = useState(false)
+  const [hasEmail, setHasEmail] = useState(false)
+  const [hasInstagram, setHasInstagram] = useState(false)
+  const [category, setCategory] = useState('')
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
@@ -43,11 +46,14 @@ export default function AdminInfluencerPoolPage() {
       const params = new URLSearchParams()
       if (platform) params.set('platform', platform)
       if (hasContact) params.set('hasContact', '1')
+      if (hasEmail) params.set('hasEmail', '1')
+      if (hasInstagram) params.set('hasInstagram', '1')
+      if (category) params.set('category', category)
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/ads/influencer-pool?${params.toString()}`)
       if (r.data?.success) setLeads(r.data.leads || [])
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [platform, hasContact, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, q])
 
   const loadMeta = useCallback(async () => {
     try {
@@ -104,6 +110,17 @@ export default function AdminInfluencerPoolPage() {
     if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
     try { await api.delete(`/api/admin/ads/influencer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)) }
     catch { toast.error('삭제 실패') }
+  }
+
+  const [exporting, setExporting] = useState(false)
+  async function exportExcel() {
+    setExporting(true)
+    try {
+      // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls)
+      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
+      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url)
+    } catch { toast.error('엑셀 내보내기 실패') } finally { setExporting(false) }
   }
 
   function exportCsv() {
@@ -168,7 +185,10 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
             {collecting ? '수집 중…' : '지금 수집'}
           </button>
-          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV 내보내기</button>
+          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
+            {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
+          </button>
+          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
         </div>
 
         {/* 키워드 관리 */}
@@ -200,8 +220,18 @@ export default function AdminInfluencerPoolPage() {
             <option value="youtube">유튜브</option>
             <option value="naver_blog">네이버 블로그</option>
           </select>
+          <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
+            <option value="">전체 카테고리</option>
+            {['맛집', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동'].map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
-            <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 연락처 있음
+            <input type="checkbox" checked={hasEmail} onChange={e => setHasEmail(e.target.checked)} /> ✉ 이메일 있음
+          </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
+            <input type="checkbox" checked={hasInstagram} onChange={e => setHasInstagram(e.target.checked)} /> IG 인스타 있음
+          </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
+            <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름/핸들 검색" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
         </div>
@@ -218,7 +248,8 @@ export default function AdminInfluencerPoolPage() {
                 <tr>
                   <th className="text-left px-3 py-2 font-medium">인플루언서</th>
                   <th className="text-right px-3 py-2 font-medium">구독자</th>
-                  <th className="text-left px-3 py-2 font-medium">연락처</th>
+                  <th className="text-left px-3 py-2 font-medium">✉ 이메일</th>
+                  <th className="text-left px-3 py-2 font-medium">인스타 · 틱톡</th>
                   <th className="text-left px-3 py-2 font-medium">카테고리</th>
                   <th className="text-left px-3 py-2 font-medium">상태</th>
                   <th className="px-3 py-2"></th>
@@ -237,11 +268,15 @@ export default function AdminInfluencerPoolPage() {
                       </a>
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">{l.platform === 'naver_blog' ? '—' : formatNumber(l.subscriber_count)}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {l.email
+                        ? <button onClick={() => { navigator.clipboard?.writeText(l.email!).then(() => toast.success('이메일 복사됨')) }} title="클릭 시 복사" className="text-blue-600 hover:underline break-all text-left">{l.email}</button>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
-                      {l.email && <div>✉ {l.email}</div>}
-                      {l.instagram && <div>IG @{l.instagram}</div>}
-                      {l.tiktok && <div>TT @{l.tiktok}</div>}
-                      {!l.email && !l.instagram && !l.tiktok && !l.links && <span className="text-gray-300">—</span>}
+                      {l.instagram && <a href={`https://instagram.com/${l.instagram}`} target="_blank" rel="noreferrer" className="block text-pink-600 hover:underline">IG @{l.instagram}</a>}
+                      {l.tiktok && <a href={`https://tiktok.com/@${l.tiktok}`} target="_blank" rel="noreferrer" className="block text-gray-700 hover:underline">TT @{l.tiktok}</a>}
+                      {!l.instagram && !l.tiktok && <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-500">{l.category || '—'}</td>
                     <td className="px-3 py-2">

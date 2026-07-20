@@ -32,7 +32,7 @@ export async function sendEmail(params: EmailParams): Promise<{ success: boolean
           },
         ],
         from: {
-          email: 'noreply@live.ur-team.com',
+          email: 'noreply@urdeal.kr',
           name: '리스터코퍼레이션',
         },
         subject: subject,
@@ -82,7 +82,7 @@ export async function sendLiveStreamCreatedEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   const { streamId, title, sellerName, platform, scheduledAt, status } = params
   
-  const liveUrl = `https://live.ur-team.com/live/${streamId}`
+  const liveUrl = `https://urdeal.kr/live/${streamId}`
   const statusText = status === 'live' ? '🔴 라이브 중' : 
                      status === 'scheduled' ? '📅 예약됨' : 
                      '⏸️ 대기 중'

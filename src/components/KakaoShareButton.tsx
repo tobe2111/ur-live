@@ -26,7 +26,7 @@ async function shareKakao(title: string, description: string, imageUrl: string |
     content: {
       title,
       description,
-      imageUrl: imageUrl || 'https://live.ur-team.com/icons/og-default.png',
+      imageUrl: imageUrl || 'https://urdeal.kr/icons/og-default.png',
       link: { mobileWebUrl: fullUrl, webUrl: fullUrl },
     },
     buttons: [
@@ -46,7 +46,7 @@ async function shareNative(title: string, description: string, fullUrl: string) 
 
 export default function KakaoShareButton({ title, description, imageUrl, link, buttonText, className, compact, style }: ShareButtonProps) {
   const { t } = useTranslation()
-  const fullUrl = `https://live.ur-team.com${link}`
+  const fullUrl = `https://urdeal.kr${link}`
   const kr = isKorea()
 
   const handleShare = async () => {

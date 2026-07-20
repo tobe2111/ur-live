@@ -150,7 +150,7 @@ export default function BlogDetailPage() {
             <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
               <Search className="w-4 h-4" />
             </Link>
-            <button onClick={() => nativeShare({ title: post.title, url: `https://live.ur-team.com/blog/${post.slug}` })}
+            <button onClick={() => nativeShare({ title: post.title, url: `https://urdeal.kr/blog/${post.slug}` })}
               aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A2334]">
               <Share2 className="w-4 h-4" />
             </button>

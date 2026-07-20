@@ -33,6 +33,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
+                <!-- 🌐 2026-07-20 도메인 이전: 정식 urdeal.kr + 구 도메인(기발송 카톡/MMS 링크도 앱으로) -->
+                <data android:host="urdeal.kr" />
+                <data android:host="www.urdeal.kr" />
                 <data android:host="live.ur-team.com" />
             </intent-filter>
 

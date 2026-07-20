@@ -460,7 +460,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           name: seller.name || seller.username || '유어딜 링크샵',
           description: seller.bio || `${seller.name || seller.username || ''}의 링크샵 — 상품·이용권 모음`,
           image: seller.profile_image || undefined,
-          url: `https://live.ur-team.com/profile/${seller.username || seller.slug || seller.id}`,
+          url: `https://urdeal.kr/profile/${seller.username || seller.slug || seller.id}`,
           ...((seller as any).follower_count != null && { interactionStatistic: { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: (seller as any).follower_count } }),
         }}
       />

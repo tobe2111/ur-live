@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, saveInfluencerLeads } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, ensureInfluencerSchema, type InfluencerLead } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -23,10 +23,21 @@ export const POOL_ACCOUNT_ID = 0
 const MAX_ACTIVE_KEYWORDS = 200
 const AUTO_PROMOTE_HITS = 3
 
+/**
+ * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
+ * 절반을 항상 이 카테고리 키워드에 배정(별도 커서로 순환), 나머지 절반이 전체 일반 순환.
+ */
+export const PRIORITY_CATEGORIES = ['맛집', '푸드', '숙소', '네일', '뷰티']
+
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
 const SEED: { category: string; keywords: string[] }[] = [
-  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천'] },
+  // ⭐ 우선 분야 (대폭 보강)
+  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천', '헤어 스타일링', '피부관리 루틴', '뷰티 하울', '왁싱 후기'] },
+  { category: '네일', keywords: ['네일아트', '셀프네일', '젤네일 디자인', '네일샵 추천', '네일 튜토리얼'] },
+  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집'] },
   { category: '푸드', keywords: ['맛집 브이로그', '먹방', '홈카페', '베이킹 레시피', '자취요리'] },
+  { category: '숙소', keywords: ['숙소 추천', '펜션 추천', '풀빌라 후기', '호텔 리뷰', '감성숙소', '글램핑 후기', '한옥스테이'] },
+  // 일반 분야
   { category: '패션', keywords: ['패션 하울', '데일리룩', '코디 추천', '빈티지 패션'] },
   { category: '여행', keywords: ['국내여행 브이로그', '호캉스 후기', '캠핑 브이로그', '해외여행 팁'] },
   { category: '육아', keywords: ['육아 브이로그', '아기용품 리뷰', '엄마표 놀이'] },
@@ -53,6 +64,33 @@ interface AutoCollectStats {
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 
+/**
+ * 🚀 일괄 저장(DB.batch) — 행단위 INSERT 수백 subrequest 가 Free 한도를 깨던 것(2026-07-20 실사고)을
+ *   청크당 1 batch 호출로 축소. 의미는 saveInfluencerLeads 와 동일(INSERT OR IGNORE 멱등, changes 합산).
+ */
+async function saveLeadsBatch(
+  DB: D1Database, accountId: number, leads: InfluencerLead[],
+  meta: { category?: string | null; sourceKeyword?: string | null },
+): Promise<number> {
+  if (!leads.length) return 0
+  const sql = `INSERT OR IGNORE INTO ad_influencer_leads
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  let saved = 0
+  const CHUNK = 50
+  for (let i = 0; i < leads.length; i += CHUNK) {
+    const stmts = leads.slice(i, i + CHUNK).map(l => DB.prepare(sql).bind(
+      accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
+      l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
+      l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
+      meta.category ?? null, meta.sourceKeyword ?? null,
+    ))
+    const rs = await DB.batch(stmts).catch(() => null)
+    if (rs) for (const r of rs) if (r?.meta?.changes === 1) saved++
+  }
+  return saved
+}
+
 async function readSetting(DB: D1Database, key: string): Promise<string | null> {
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
   const v = row?.value
@@ -73,12 +111,11 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
     source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
-  for (const g of SEED) {
-    for (const kw of g.keywords) {
-      await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-        .bind(kw, g.category, 'seed').run().catch(() => null)
-    }
-  }
+  // 시드 ~40개 — 개별 INSERT(40 subrequest) 대신 1 batch (Free 한도 절약).
+  const stmts = SEED.flatMap(g => g.keywords.map(kw =>
+    DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+      .bind(kw, g.category, 'seed')))
+  await DB.batch(stmts).catch(() => null)
 }
 
 export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
@@ -129,6 +166,7 @@ function mineHashtags(text: string): string[] {
  */
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
   const DB = env.DB
+  await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
   await ensureDiscoveryKeywords(DB)
   const active = await DB.prepare('SELECT id, keyword, category FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<{ id: number; keyword: string; category: string | null }>().catch(() => null)
@@ -141,10 +179,36 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     return empty
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 12))
+  // ⚠️ 2026-07-20 실사고: batch=12 × 행단위 INSERT 수백 건이 Workers Free 호출당 한도 초과 →
+  //   241건 저장 후 중도 사망(통계 미기록, "수집 실패" 표시). 기본 4 로 축소 + 저장은 DB.batch(아래).
+  //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
+  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
+
+  // ⭐ 우선 카테고리 절반 배정 — 배치의 ceil(1/2)은 우선 풀(맛집·푸드·숙소·네일·뷰티, 별도 커서),
+  //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
+  const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
+  const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
+  let priCursor = parseInt((await readSetting(DB, 'ads_autocollect_cursor_pri')) || '0', 10)
+  if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
   let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  cursor = cursor % kws.length
+  // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
+  //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
+  const NAVER_EXTRA = 4
+  const totalPick = batch + NAVER_EXTRA
+  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick / 2)) : 0
+  const nGen = Math.min(genPool.length, totalPick - basePri)
+  const nPri = Math.min(priPool.length, totalPick - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
+  // 우선/일반 인터리브 — YT 슬롯(앞 batch 개)에 우선·일반이 골고루 들어가게.
+  const priPicks: { id: number; keyword: string; category: string | null }[] = []
+  const genPicks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
+  for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
+  const picks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < Math.max(priPicks.length, genPicks.length); i++) {
+    if (i < priPicks.length) picks.push(priPicks[i])
+    if (i < genPicks.length) picks.push(genPicks[i])
+  }
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -166,15 +230,17 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
-  for (let i = 0; i < batch; i++) {
-    const k = kws[(cursor + i) % kws.length]
+  let ytUsed = 0
+  for (const k of picks) {
     used.push(k.keyword)
-    if (hasYouTube && !quotaHit) {
+    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50=같은 100units 로 3.3×.
+    if (hasYouTube && !quotaHit && ytUsed < batch) {
+      ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 15 })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50 })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
         } else {
           if (r.error === 'QUOTA') quotaHit = true
           if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -183,39 +249,49 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 30 })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100 })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0
-          if (r.leads?.length) { const s = await saveInfluencerLeads(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
+          if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
   }
 
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
+  //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
   const promoted: string[] = []
-  const activeCount = kws.length
-  let room = Math.max(0, MAX_ACTIVE_KEYWORDS - activeCount)
-  for (const [tag, freq] of hashtagFreq) {
-    if (freq < 1) continue
-    await DB.prepare(`INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
+  const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
+  if (topTags.length) {
+    const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
       VALUES (?, '자동', 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`).bind(tag, freq).run().catch(() => null)
+      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
+    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
+    // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
+    const room = Math.max(0, MAX_ACTIVE_KEYWORDS - kws.length)
     if (room > 0) {
-      const row = await DB.prepare('SELECT id, hits, active FROM ad_discovery_keywords WHERE keyword = ?').bind(tag).first<{ id: number; hits: number; active: number }>().catch(() => null)
-      if (row && row.active === 0 && row.hits >= AUTO_PROMOTE_HITS) {
-        await DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(row.id).run().catch(() => null)
-        promoted.push(tag); room--
+      const ph = topTags.map(() => '?').join(',')
+      const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
+        WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
+        .bind(AUTO_PROMOTE_HITS, ...topTags.map(([t]) => t), room)
+        .all<{ id: number; keyword: string }>().catch(() => null)
+      const rows = cands?.results || []
+      if (rows.length) {
+        await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)
+        promoted.push(...rows.map(r => r.keyword))
       }
     }
   }
 
-  const nextCursor = (cursor + batch) % kws.length
+  // 두 커서 각각 전진(우선/일반 풀 독립 순환).
+  const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
+  const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, diag,
   }
+  await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
   return stats

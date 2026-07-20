@@ -66,7 +66,9 @@ export async function discoverYouTubeInfluencers(
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
   if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
-  const n = Math.min(25, Math.max(1, Math.round(opts.maxResults || 15)))
+  // 2026-07-20 대표 "최대한 많이": search 호출은 maxResults 무관 100 units 고정 → 상한 25→50(API 최대).
+  //   같은 쿼터로 3.3× 더 수집. channels.list 도 id 50개까지 1콜.
+  const n = Math.min(50, Math.max(1, Math.round(opts.maxResults || 15)))
 
   // 1) 채널 검색(한국 우선).
   const searchUrl = `${YT_BASE}/search?part=snippet&type=channel&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}&key=${key}`

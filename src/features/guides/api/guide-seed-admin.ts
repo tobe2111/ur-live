@@ -387,7 +387,7 @@ Cloudflare Dashboard → Pages → Deployments → 이전 버전 "Rollback"
     key: 'deploy', icon: '🚀', title: '배포 절차', order: 140,
     content: `### 배포 구조
 - **Cloudflare Pages** 프로젝트 \`ur-live\`
-- 커스텀 도메인: \`live.ur-team.com\`
+- 커스텀 도메인: \`urdeal.kr\`
 - 자동 배포: feature 브랜치 → main 머지 시 GitHub Actions 가 Pages 에 배포
 
 ### 배포 명령
