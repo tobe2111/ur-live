@@ -72,7 +72,7 @@ export interface InfluencerLead {
   description: string
 }
 
-interface YTSearchResp { items?: Array<{ id?: { channelId?: string } }>; nextPageToken?: string; error?: { message?: string; errors?: Array<{ reason?: string }> } }
+interface YTSearchResp { items?: Array<{ id?: { channelId?: string }; snippet?: { channelId?: string } }>; nextPageToken?: string; error?: { message?: string; errors?: Array<{ reason?: string }> } }
 interface YTChannelsResp {
   items?: Array<{
     id: string
@@ -124,9 +124,11 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
  *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
- *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…). */
+ *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…).
+ *  opts.searchType: 'channel'(기본, 채널명·소개에 키워드) | 'video'(그 주제 영상을 올린 채널 — 채널명엔
+ *    키워드 없는 소형·신생 크리에이터까지 커버. 같은 쿼터, 다른 그물). video 는 snippet.channelId 로 채널 수집. */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video' } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -134,14 +136,16 @@ export async function discoverYouTubeInfluencers(
   if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
   const n = Math.min(50, Math.max(1, Math.round(opts.maxResults || 15)))
   const pages = Math.max(1, Math.min(5, Math.round(opts.pages || 1)))
+  const searchType = opts.searchType === 'video' ? 'video' : 'channel'
 
-  // 1) 채널 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
+  // 1) 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
+  //    channel=채널 결과(id.channelId) / video=영상 결과(snippet.channelId → 그 영상 주인 채널).
   const channelIds: string[] = []
   let pageToken = ''
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
     spendBudget(opts.budget)
-    const searchUrl = `${YT_BASE}/search?part=snippet&type=channel&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
+    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
       const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })
@@ -156,7 +160,7 @@ export async function discoverYouTubeInfluencers(
         break
       }
     } catch (e) { if (p === 0) return { ok: false, error: 'FAILED', message: `검색 요청 오류: ${(e as Error)?.message || 'network'}` }; break }
-    for (const it of searchData.items || []) { const id = it.id?.channelId; if (id) channelIds.push(id) }
+    for (const it of searchData.items || []) { const id = it.id?.channelId || it.snippet?.channelId; if (id) channelIds.push(id) }
     pageToken = searchData.nextPageToken || ''
     if (!pageToken) break // 더 깊은 페이지 없음
   }
@@ -350,6 +354,49 @@ export async function discoverNaverCafes(
     if (!ex.description) ex.description = text.slice(0, 300)
   }
   const leads = Array.from(byCafe.values())
+    .map(({ _matches, ...l }) => ({ ...l, video_count: _matches }))
+    .sort((a, b) => b.video_count - a.video_count)
+  return { ok: true, leads }
+}
+
+// ── 티스토리 블로거 발굴 (카카오 Daum 블로그 검색 API — 무료 일 3만, 새 소스) ──────────
+//   네이버 블로그 엔진과 동형이나 **티스토리 도메인만** 수집(네이버는 기존 엔진이 커버 — 중복 방지).
+//   지표 없음, 매칭 글 수(활동 프록시) + 스니펫 컨택. platform='tistory'. 키: KAKAO_REST_API_KEY(KakaoAK).
+const KAKAO_DAPI = 'https://dapi.kakao.com'
+export async function discoverTistoryBloggers(
+  restKey: string | undefined, keyword: string, opts: { size?: number; budget?: FetchBudget } = {},
+): Promise<DiscoverResult> {
+  if (!restKey) return { ok: false, error: 'NOT_CONFIGURED' }
+  const q = (keyword || '').trim()
+  if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
+  if (outOfBudget(opts.budget)) return { ok: true, leads: [] }
+  spendBudget(opts.budget)
+  const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
+  const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=accuracy`
+  const res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  if (!res) return { ok: false, error: 'FAILED', message: '티스토리 검색 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
+  if (!res.ok) return { ok: false, error: 'FAILED', message: data?.message || `티스토리 검색 오류 (HTTP ${res.status})` }
+  const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
+  for (const it of (data?.documents || [])) {
+    const u = String(it.url || '').trim()
+    const m = u.match(/^https?:\/\/([a-z0-9-]{2,40}\.tistory\.com)/i) // 티스토리만(네이버 등 타 플랫폼 skip)
+    if (!m) continue
+    const host = m[1].toLowerCase()
+    const handle = host.replace(/\.tistory\.com$/i, '')
+    const home = `https://${host}`
+    const text = `${stripTag(it.title)} ${stripTag(it.contents)}`
+    let ex = byBlog.get(host)
+    if (!ex) { ex = { platform: 'tistory', channel_id: home, handle, name: String(it.blogname || handle || '티스토리'), url: home, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: it.thumbnail || null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }; byBlog.set(host, ex) }
+    ex._matches += 1
+    const c = extractContacts(text)
+    if (!ex.email && c.emails[0]) ex.email = c.emails[0]
+    if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
+    if (!ex.tiktok && c.tiktok[0]) ex.tiktok = c.tiktok[0]
+    if (!ex.links && c.links.length) ex.links = c.links.join(' ')
+    if (!ex.description) ex.description = text.slice(0, 300)
+  }
+  const leads = Array.from(byBlog.values())
     .map(({ _matches, ...l }) => ({ ...l, video_count: _matches }))
     .sort((a, b) => b.video_count - a.video_count)
   return { ok: true, leads }

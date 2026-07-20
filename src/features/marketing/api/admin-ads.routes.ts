@@ -176,7 +176,7 @@ async function ensureKeywordTable(DB: D1Database) {
 app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'naver_cafe', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
@@ -190,7 +190,7 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
-  else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
+  else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe','tistory') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
   // 이름/핸들 + source_keyword(수집 키워드) 매칭 — "방배" 검색 시 '방배 맛집'으로 찾은 리드도 걸림(지역 시딩 거르기).
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
@@ -204,7 +204,7 @@ app.get('/influencer-pool', async (c) => {
   const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
     : sort === 'recent' ? 'id DESC'
     : `CASE
-         WHEN platform IN ('naver_blog','naver_cafe') THEN 0
+         WHEN platform IN ('naver_blog','naver_cafe','tistory') THEN 0
          WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
          WHEN subscriber_count >= 500000 AND subscriber_count < 1000000 THEN 1
          WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
@@ -414,9 +414,10 @@ app.get('/influencer-pool/export', async (c) => {
     FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, subscriber_count DESC, id DESC LIMIT 20000`)
     .bind(POOL).all<{ platform: string; name: string; handle: string | null; url: string; subscriber_count: number; video_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string }>()
     .catch(() => null))?.results || []
-  const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', instagram: '인스타그램', tiktok: '틱톡' }
+  const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const HEAD = ['플랫폼', '이름', '핸들', 'URL', '구독자', '이메일', '인스타그램', '틱톡', '기타링크', '카테고리', '수집키워드', '상태', '수집일']
-  const cells = (r: typeof rows[number]) => [PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url, r.platform === 'naver_blog' ? '' : String(r.subscriber_count || 0), r.email || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '', r.category || '기타', r.source_keyword || '', r.status, (r.collected_at || '').slice(0, 10)]
+  const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
+  const cells = (r: typeof rows[number]) => [PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url, noSub(r.platform) ? '' : String(r.subscriber_count || 0), r.email || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '', r.category || '기타', r.source_keyword || '', r.status, (r.collected_at || '').slice(0, 10)]
 
   if (c.req.query('format') === 'csv') {
     const csvEscapeCell = (v: string) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
