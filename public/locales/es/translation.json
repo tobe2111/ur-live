@@ -191,7 +191,15 @@
     "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo"
   },
   "seller": {
-    "simple": { "scan": "Escanear QR", "settlement": "Liquidación", "myDeals": "Mis ofertas", "fullMenu": "Menú completo", "scanSub": "Canjear vales", "settlementSub": "Ventas y pagos", "myDealsSub": "Incl. pendientes" },
+    "simple": {
+      "scan": "Escanear QR",
+      "settlement": "Liquidación",
+      "myDeals": "Mis ofertas",
+      "fullMenu": "Menú completo",
+      "scanSub": "Canjear vales",
+      "settlementSub": "Ventas y pagos",
+      "myDealsSub": "Incl. pendientes"
+    },
     "dashboard": "Panel",
     "dashboardSubtitle": "Panel del vendedor — Ventas / Pedidos / Estado en vivo",
     "products": {
@@ -1741,7 +1749,8 @@
       "agencyDelegation": "Delegación de agencia",
       "promoSpend": "Gasto promo",
       "influencerDeals": "Colabs influencers",
-      "experienceCampaigns": "Campañas de prueba"
+      "experienceCampaigns": "Campañas de prueba",
+      "myLinkshop": "Mi Linkshop"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

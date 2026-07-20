@@ -104,6 +104,11 @@
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- 🏪 **2026-07-19 대표 확정 — 셀러 대시보드 = 순수 '매장 운영 콘솔'** (`SELLER_STORE_ONLY_MODE`, 가역):
+  온라인 상품 관리(`/seller/products`)·도매 소싱(`/seller/supply`) nav 숨김(전 셀러 타입). **상품(물건)
+  판매 표면 = 링크샵(`/u/{handle}`) 일원화** — nav 최상단 '내 링크샵' 진입. 대시보드 핵심 동선 =
+  이용권 등록/관리 · QR 스캔 · 정산 · 리뷰 · 매장 통계(심플모드 SellerSimpleNav 와 정합). 전환퍼널
+  (시청자→주문, 라이브 잔재)은 홈에서 숨김. 라우트/API/데이터 보존 — 플래그 false 로 즉시 복원.
 - **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
 ### 에이전시 / 운영 / 도매

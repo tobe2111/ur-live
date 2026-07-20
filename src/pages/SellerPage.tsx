@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useSellerMode } from '@/hooks/useSellerMode'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
@@ -657,11 +657,14 @@ export default function SellerPage() {
               fmtShort={fmtShort}
             />
 
-            {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
-            <ConversionFunnel
-              totalViewers={stats.totalViewers}
-              totalOrders={stats.totalOrders}
-            />
+            {/* 전환 퍼널(시청자→주문 — 라이브커머스 지표) — 🏪 2026-07-19 SELLER_STORE_ONLY_MODE:
+                매장 콘솔에선 숨김(라이브 영구중단 + 매장 업주에게 무의미한 '시청자' 지표 = 정신없음의 일부). */}
+            {!SELLER_STORE_ONLY_MODE && (
+              <ConversionFunnel
+                totalViewers={stats.totalViewers}
+                totalOrders={stats.totalOrders}
+              />
+            )}
 
             {/* 내 공개 페이지 미리보기 */}
             <PublicPagePreview />

@@ -96,6 +96,17 @@ export const TOPUP_DISABLED = true
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
 /**
+ * SELLER_STORE_ONLY_MODE — 셀러 대시보드 = 순수 '매장 운영 콘솔' (2026-07-19 대표 확정
+ *   "온라인 판매·소싱은 필요없다 — 이용권 파는 매장 업주만을 위한 형태로. 상품은 링크샵에서만").
+ *   true: 셀러 nav 에서 **온라인 상품 관리(/seller/products)·도매 소싱(/seller/supply)** 을 전 셀러
+ *         타입에서 숨김(심플모드 여부 무관). 상품(물건) 판매는 링크샵(/u/{handle})으로 일원화 —
+ *         nav 에 '내 링크샵' 진입 추가. 대납 검토(/seller/proxy-products)는 이용권 그룹으로 이동.
+ *         라우트·API·데이터 전부 보존(직접 URL 진입 가능) — false 로 바꾸면 즉시 복원(가역).
+ *   ⚠️ 도매몰(판매사/제조사)은 별도 서비스(/wholesale) — 이 플래그와 무관(서비스 분리).
+ */
+export const SELLER_STORE_ONLY_MODE = true
+
+/**
  * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
  *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
  *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
