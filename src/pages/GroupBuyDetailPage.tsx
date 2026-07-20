@@ -555,8 +555,10 @@ export default function GroupBuyDetailPage() {
 
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
+      {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 상단 담당 → 이 플로팅 헤더는
+          모바일 전용(lg:hidden). 핀/공유는 lg 섹션 탭 우측에 별도 렌더. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1200px] ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
           headerSolid
             ? 'bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]'
             : 'bg-transparent border-b border-transparent'
@@ -607,7 +609,7 @@ export default function GroupBuyDetailPage() {
       {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
           이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
           하단 고정 구매바 그대로(불변). */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-[72px]">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-5">
       <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
       <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
@@ -652,6 +654,19 @@ export default function GroupBuyDetailPage() {
               {tab.label}
             </button>
           ))}
+          {/* 핀/공유 — 모바일 플로팅 헤더가 lg:hidden 이라 PC 는 여기서 제공 */}
+          <span className="ml-auto flex items-center gap-1 pb-1">
+            <PinButton productId={detail.id} price={detail.price} variant="detail-floating" className="!w-9 !h-9 shrink-0" />
+            <KakaoShareButton
+              title={`${detail.name} 공구 참여하기`}
+              description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
+              imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+              link={shareLink}
+              buttonText="나도 참여하기"
+              compact
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A2334]"
+            />
+          </span>
         </nav>
         {/* 추천 진입 배너 (?ref=) — 어트리뷰션 유지 */}
         {isInfluencerLanding && (
@@ -767,7 +782,7 @@ export default function GroupBuyDetailPage() {
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
         {/* 상품 안내 — 🖥️ 2026-07-19 그루폰식 헤더('무엇을 기대하세요?') + 탭 앵커 */}
-        <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 64 }}>
+        <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>무엇을 기대하세요?</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
             {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
@@ -786,7 +801,7 @@ export default function GroupBuyDetailPage() {
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
             <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 64 }}>
+            <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
                 <DeferUntilVisible minHeight={172}>
@@ -857,7 +872,7 @@ export default function GroupBuyDetailPage() {
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-        <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 64 }}>
+        <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
               <ProductReviews productId={productId} limit={5} />
@@ -891,7 +906,7 @@ export default function GroupBuyDetailPage() {
       </div>{/* /좌측 콘텐츠 컬럼 */}
 
       {/* 🖥️ 우측 sticky 구매 박스 — PC 전용(모바일은 하단 고정 구매바). 상태/핸들러 공유(controlled). */}
-      <aside className="hidden lg:block lg:sticky lg:top-[84px] lg:self-start lg:pb-10">
+      <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:self-start lg:pb-10">
         <DealPurchaseBox
           name={detail.name}
           discountPct={detail.current_discount_pct || 0}

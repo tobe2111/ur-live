@@ -156,11 +156,13 @@ export default function GroupBuyFeed({
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
   //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
-  // 지역 필터: restaurant_address 텍스트 매칭(주소 없으면 표시=전국) + 매칭 0 이면 전체 폴백(빈 화면 방지).
+  // 지역 필터: restaurant_address 텍스트 매칭. 🗺️ 2026-07-19 (대표 신고 — 부산 선택인데 연남버거 상단):
+  //   주소 없는 딜을 통과(`!a ||`)시키던 것이 지역 필터 누수의 원인 → 지역 선택 시 주소-미상 딜은 제외.
+  //   (매칭 0 이면 아래 폴백이 '전체' 로 전환 + 안내 문구 — 조용한 오표시 대신 명시.)
   const inRegion = (p: FeedProduct) => {
     if (!regionKey) return true
     const a = p.restaurant_address || p.business_address
-    return !a || matchAddress(a, regionKey, districtKey)
+    return !!a && matchAddress(a, regionKey, districtKey)
   }
   const sortBand = (arr: FeedProduct[]) => {
     const a = [...arr]
@@ -221,7 +223,7 @@ export default function GroupBuyFeed({
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 재정렬): 페이지(밴드)별로 정렬해 이어붙임 → page1 은 page2 가
   //   로드돼도 위치 고정(재정렬 없음), 새 페이지만 아래로. 밴드 안에서만 정렬(정렬칩 의미 유지) + id dedup.
-  const sorted = useMemo(() => {
+  const { list: sorted, regionFallback } = useMemo(() => {
     const bands = [items, ...extraPages]
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
@@ -232,9 +234,11 @@ export default function GroupBuyFeed({
       }
     }
     for (const band of bands) pushBand(band, true)
-    // 지역 매칭 0(전부 필터로 사라짐) → 지역 무시 전체 폴백(빈 화면 방지).
-    if (regionKey && out.length === 0) { seen.clear(); out.length = 0; for (const band of bands) pushBand(band, false) }
-    return out
+    // 지역 매칭 0(전부 필터로 사라짐) → 지역 무시 전체 폴백(빈 화면 방지) + 🗺️ 2026-07-19 안내 플래그
+    //   (조용히 전체를 보여주면 "부산인데 서울 딜이 왜?" 오해 — 명시 문구로 전환 사실을 알림).
+    let fb = false
+    if (regionKey && out.length === 0) { fb = true; seen.clear(); out.length = 0; for (const band of bands) pushBand(band, false) }
+    return { list: out, regionFallback: fb }
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, extraPages, sort, userLoc, regionKey, districtKey])
@@ -313,6 +317,15 @@ export default function GroupBuyFeed({
         //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
         <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
+        <>
+        {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
+        {regionFallback && (
+          <div className={pc ? 'mb-4' : 'mx-4 mb-3'}>
+            <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-semibold">
+              선택한 지역에 아직 등록된 딜이 없어요 — 전체 지역 딜을 보여드릴게요.
+            </p>
+          </div>
+        )}
         <div className={gridCls}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
@@ -324,6 +337,7 @@ export default function GroupBuyFeed({
             return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} pc={pc} userLoc={userLoc} />
           })}
         </div>
+        </>
       )}
 
       {/* 📄 무한 스크롤 — 50개 초과분 이어 로드(센티넬 도달 시 자동). 실패/대기 시 수동 버튼. */}
@@ -350,16 +364,17 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 전체 동네딜(지역/검색) 페이지 링크.
-          🧭 2026-06-19: 홈은 동네딜 '피드'(카테고리+정렬)라 지역필터/검색은 /group-buy 허브에. 링크 대상 /vouchers→/group-buy 정정.
-          하단바 5탭에서 동네딜 탭이 교환권으로 바뀌므로(홈=동네딜이라 중복), 이 링크가 전체 동네딜 페이지의 상시 진입점. */}
+      {/* 하단 — 전체 동네딜 진입점.
+          🚑 2026-07-19 (대표 신고 — "이 버튼 이상적인가?"): 기존 to="/group-buy" 는 App 라우트가 홈으로
+          리다이렉트(Navigate to="/")라 눌러도 제자리로 돌아오는 죽은 버튼이었음 → 실제 전체 브라우즈
+          표면인 지도(/map — 리스트+지도+지역/카테고리)로 정정 + 라벨 명확화. */}
       {!loading && sorted.length > 0 && (
         <div className="px-4 pb-8 text-center">
           <Link
-            to="/group-buy"
+            to="/map"
             className="inline-block px-5 py-3 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
-            전체 동네딜 보기 →
+            지도에서 전체 동네딜 보기 →
           </Link>
         </div>
       )}

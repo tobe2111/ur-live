@@ -14,7 +14,7 @@
  */
 import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -29,7 +29,6 @@ import { VoucherCard, VoucherRow, type VoucherProduct } from './vouchers/shared'
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
-import UrDealLogo from '@/components/brand/UrDealLogo'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -558,24 +557,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
           url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
         />
-        {/* 자체 상단 헤더 — /vouchers 는 own-header(전역 DesktopTopNav 숨김)라 로고+타이틀+검색을 직접 제공. */}
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
-          <div className="ur-content-wide px-8 h-14 flex items-center gap-4">
-            <Link to="/" className="shrink-0" aria-label="유어딜 홈"><UrDealLogo size={22} /></Link>
-            <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">교환권</span>
-            <div className="flex-1" />
-            <button
-              onClick={() => navigate('/search')}
-              className="flex items-center gap-2 bg-gray-100 dark:bg-[#1A2334] rounded-full px-4 py-2 text-[13px] text-gray-400 dark:text-gray-500 w-[240px] hover:bg-gray-200 dark:hover:bg-[#222] transition-colors"
-            >
-              <Search className="w-4 h-4" /> 브랜드·상품 검색
-            </button>
-          </div>
-        </div>
-
+        {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): 자체 PC 헤더 삭제 — 전역 DesktopTopNav(로고+검색+카테고리 바)가 담당. */}
         <div className="ur-content-wide px-8 py-6 grid grid-cols-[248px_minmax(0,1fr)] gap-8 items-start">
-          {/* ── 좌측 필터 레일 (sticky) ── */}
-          <aside className="sticky top-[70px] self-start space-y-6">
+          {/* ── 좌측 필터 레일 (sticky — 전역 네비 2행(~101px) 아래) ── */}
+          <aside className="sticky top-[120px] self-start space-y-6">
             {/* 딜 잔액 — 컴팩트 카드 */}
             <button
               type="button"
@@ -623,11 +608,16 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
 
-            {/* 인기 브랜드 — 로고 그리드 */}
+            {/* 🖥️ 2026-07-19 (대표 — "브랜드가 레일 하단이라 불편"): 인기 브랜드를 우측 콘텐츠 상단 가로 스트립으로 이동. */}
+          </aside>
+
+          {/* ── 우측 상품 그리드 ── */}
+          <main>
+            {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length > 0 && (
-              <div>
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 px-1">인기 브랜드</h3>
-                <div className="grid grid-cols-4 gap-2.5">
+              <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2A3446]">
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">인기 브랜드</h3>
+                <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
                   {orderedBrands.map(b => {
                     const selected = b.brand_name === brand
                     return (
@@ -635,20 +625,20 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         key={b.brand_name}
                         type="button"
                         onClick={() => setBrand(selected ? '' : b.brand_name)}
-                        className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                        className="flex flex-col items-center gap-1 active:scale-95 transition-transform shrink-0"
                       >
-                        <div className={`w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
+                        <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
                           selected
                             ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
                             : 'border-gray-200 dark:border-white/10 opacity-90'
                         }`}>
                           {b.brand_icon_url ? (
-                            <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-7 h-7 object-contain" />
+                            <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-8 h-8 object-contain" />
                           ) : (
                             <span className="text-lg">🎁</span>
                           )}
                         </div>
-                        <span className={`text-[10px] line-clamp-1 max-w-[52px] text-center ${
+                        <span className={`text-[10px] line-clamp-1 max-w-[56px] text-center ${
                           selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
                         }`}>{b.brand_name}</span>
                       </button>
@@ -657,10 +647,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
             )}
-          </aside>
-
-          {/* ── 우측 상품 그리드 ── */}
-          <main>
             <div className="flex items-center justify-between gap-2 mb-4">
               <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <Gift className="w-5 h-5 text-amber-500 shrink-0" />
