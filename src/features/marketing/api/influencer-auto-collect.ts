@@ -326,8 +326,19 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const hasNaver = !!(naverId && naverSecret)
   const kakaoKey = env.KAKAO_REST_API_KEY
   const hasTistory = !!kakaoKey
-  // 🎥 YT 검색 각도 교대(런 짝수=채널 / 홀수=영상) — 같은 쿼터로 두 그물을 번갈아(채널명에 키워드 없는 소형 채널 커버).
-  const ytSearchType: 'channel' | 'video' = ((prev?.total_runs || 0) % 2 === 0) ? 'channel' : 'video'
+  // 🎥 YT 검색 각도 교대 — (검색타입 × 정렬)을 매 실행 순환. 같은 키워드도 각도가 다르면 다른 채널이 나옴
+  //   → top-N 재탕이 아니라 커버리지가 계속 확장(수렴). date=신생/소형, viewCount=인기, relevance=관련.
+  const YT_ANGLES: { searchType: 'channel' | 'video'; order: 'relevance' | 'date' | 'viewCount' }[] = [
+    { searchType: 'channel', order: 'relevance' },
+    { searchType: 'video', order: 'date' },       // 최신 — 계속 새로 생기는 소형 크리에이터
+    { searchType: 'channel', order: 'viewCount' }, // 인기 채널
+    { searchType: 'video', order: 'relevance' },
+    { searchType: 'video', order: 'viewCount' },
+  ]
+  const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
+  // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
+  const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
+  const tistorySort: 'accuracy' | 'recency' = ((prev?.total_runs || 0) % 2 === 0) ? 'accuracy' : 'recency'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
   //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
@@ -350,7 +361,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
   // YT 검색 페이지 수(키워드당 깊이) — 기본 2(page1=1~50위, page2=51~100위…). 쿼터는 quotaHit 가드가 관리.
-  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 2))
+  // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
+  //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
+  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
   let ytUsed = 0
   for (const k of picks) {
     if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
@@ -360,7 +373,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytSearchType })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
@@ -372,7 +385,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
@@ -380,14 +393,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
       try {
-        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget })
+        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
     // 티스토리(카카오 Daum 블로그 검색 — 무료 3만/일, 새 소스). 네이버 블로그와 무관한 별도 풀.
     if (hasTistory) {
       try {
-        const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget })
+        const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget, sort: tistorySort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
