@@ -34,6 +34,8 @@ interface RunStats { last_run?: string; last_saved?: number; total_saved?: numbe
 interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string }
 
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', instagram: '인스타', tiktok: '틱톡' }
+// ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
+const PRIORITY_CATS = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -57,6 +59,7 @@ export default function AdminInfluencerPoolPage() {
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
   const [collecting, setCollecting] = useState(false)
   const [newKw, setNewKw] = useState('')
+  const [newKwCat, setNewKwCat] = useState('맛집') // 신규 키워드 카테고리(우선 커서 태깅)
 
   const PAGE = 200
   // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름).
@@ -107,32 +110,44 @@ export default function AdminInfluencerPoolPage() {
   useEffect(() => { loadMeta() }, [loadMeta])
   useEffect(() => { loadLeads() }, [loadLeads])
 
+  // 수동 수집 — 백그라운드 실행(수십 초)이라 즉시 '시작됨' 안내 후 stats(last_run) 폴링으로 완료를 따라잡음.
+  //   구 동기 대기는 브라우저 타임아웃→"실패" 오표시였음. started=false(폴백 동기)면 기존처럼 즉시 결과 반영.
   async function collectNow() {
     setCollecting(true)
+    const prevRun = run?.last_run || ''
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/collect', {})
-      if (r.data?.success) {
-        const st = r.data.stats || {}
-        const saved = st.last_saved ?? 0
-        const d = st.diag
-        if (saved > 0) toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
-        else {
-          // 0건이면 플랫폼별 사유를 그대로 보여줌(진단 — 아래 배너에도 상세 표시).
-          const why = d ? [d.yt.error && `유튜브: ${d.yt.error}`, d.naver.error && `네이버: ${d.naver.error}`].filter(Boolean).join(' / ') : ''
-          const foundDup = d && (d.yt.found + d.naver.found) > 0
-          toast.error(foundDup ? `발굴 ${formatNumber(d.yt.found + d.naver.found)}건 전부 기존과 중복(신규 0)` : `신규 0건 — ${why || '원인 미상(아래 진단 참고)'}`)
-        }
-        await Promise.all([loadLeads(), loadMeta()])
-      } else toast.error(r.data?.error || '수집 실패')
-    } catch { toast.error('수집 실행 실패') } finally { setCollecting(false) }
+      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); setCollecting(false); return }
+      if (r.data.started === false) { await Promise.all([loadLeads(), loadMeta()]); toast.success('수집 완료'); setCollecting(false); return }
+      toast.success('수집을 시작했어요 — 백그라운드 진행 중, 결과가 자동 갱신됩니다')
+      // last_run 이 갱신되면 완료. 최대 ~80초 폴링(수집이 그보다 길면 안내 후 종료 — 자동 갱신은 계속).
+      let done = false
+      for (let i = 0; i < 10 && !done; i++) {
+        await new Promise(res => setTimeout(res, 8000))
+        try {
+          const s = await api.get('/api/admin/ads/influencer-pool/stats')
+          if (!s.data?.success) continue
+          setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate)
+          const lr = s.data.run?.last_run || ''
+          if (lr && lr !== prevRun) {
+            done = true
+            const saved = s.data.run?.last_saved ?? 0
+            toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
+            await loadLeads()
+          }
+        } catch { /* 폴링 지속 */ }
+      }
+      if (!done) toast.info('수집이 계속 진행 중이에요. 잠시 후 새로고침하면 최신 결과가 보입니다')
+    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
   }
 
   async function addKeyword() {
     const kw = newKw.trim()
     if (kw.length < 2) { toast.error('키워드는 2자 이상'); return }
     try {
-      const r = await api.post('/api/admin/ads/influencer-pool/keywords', { keyword: kw })
-      if (r.data?.success) { setNewKw(''); toast.success('키워드 추가'); await loadMeta() }
+      // category 를 우선 카테고리로 보내면 우선 커서(배치 3/4)를 탐 — 지역+업종 시딩용.
+      const r = await api.post('/api/admin/ads/influencer-pool/keywords', { keyword: kw, category: newKwCat })
+      if (r.data?.success) { setNewKw(''); toast.success(`키워드 추가 (${newKwCat})`); await loadMeta() }
       else toast.error(r.data?.error || '추가 실패')
     } catch { toast.error('추가 실패') }
   }
@@ -317,19 +332,23 @@ export default function AdminInfluencerPoolPage() {
             수집 키워드 관리 (활성 {activeKw.length} · 후보 {candidateKw.length})
           </summary>
           <div className="px-4 pb-4">
-            <div className="flex gap-2 mb-3">
-              <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 캠핑 유튜버)" className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+            <div className="flex flex-wrap gap-2 mb-3">
+              <select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
+                {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>⭐{cat}</option>)}
+                <option value="일반">일반</option>
+              </select>
+              <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 방배 맛집)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
               <button onClick={addKeyword} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm">추가</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {keywords.map(k => (
-                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.source}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
+                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.category || '일반'} · ${k.source}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
                   className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-                  {k.keyword}{k.source === 'auto' ? ' 🌱' : ''}
+                  {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. 🌱 = 수집물 해시태그에서 자동확장된 키워드.</p>
+            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장.</p>
           </div>
         </details>
 
@@ -367,7 +386,7 @@ export default function AdminInfluencerPoolPage() {
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름/핸들 검색" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·수집키워드 검색 (예: 방배)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
           <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
           <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
             {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}

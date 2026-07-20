@@ -184,8 +184,9 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
   else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
+  // 이름/핸들 + source_keyword(수집 키워드) 매칭 — "방배" 검색 시 '방배 맛집'으로 찾은 리드도 걸림(지역 시딩 거르기).
   const q = (c.req.query('q') || '').trim().toLowerCase()
-  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
+  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
@@ -383,15 +384,17 @@ app.get('/influencer-pool/export', async (c) => {
 })
 
 // POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
+//   🔥 백그라운드 실행(2026-07-20): 수집은 외부 API 수십 건 순회라 수십 초 걸려 동기 대기 시 브라우저 타임아웃
+//   → "실패"로 오표시. waitUntil 로 넘겨 즉시 started 반환, 완료는 UI 가 stats(last_run) 폴링으로 따라잡음.
+//   main 의 waitUntil 이 서비스바인딩 subrequest(ur-ads 동기 수집)를 살려둠 — 매시간 cron 과 동일 지속성.
 app.post('/influencer-pool/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  try {
-    const res = await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' }))
-    const data = await res.json().catch(() => null) as { ok?: boolean; stats?: unknown } | null
-    if (!res.ok || !data?.ok) return c.json({ success: false, error: '수집 실행 실패' }, 502)
-    return c.json({ success: true, stats: data.stats })
-  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  // 폴백(waitUntil 미지원 환경): 동기 실행(구 동작).
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 export { app as adminAdsRoutes }
