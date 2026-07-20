@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractContacts } from '@/features/marketing/api/influencer-discovery'
+import { extractContacts, pickBusinessEmail } from '@/features/marketing/api/influencer-discovery'
 
 /**
  * 🆕 2026-07-13 유어애즈 인플루언서 발굴 — 공개 설명 컨택 추출 순수함수 잠금.
@@ -46,5 +46,30 @@ describe('extractContacts', () => {
   it('빈/undefined 입력 안전', () => {
     expect(extractContacts('').emails).toEqual([])
     expect(extractContacts(undefined as unknown as string).instagram).toEqual([])
+  })
+})
+
+/**
+ * 🆕 2026-07-20 영상 설명 노이즈(협찬사·서비스 메일)에서 채널 주인 비즈니스 이메일 선별.
+ */
+describe('pickBusinessEmail', () => {
+  it('비즈니스 문맥어 근처 이메일 우선(협찬사 메일보다)', () => {
+    const t = '이 영상은 유료광고를 포함합니다. 제품 문의 partner@bigbrand.com\n비즈니스 문의: zuyoni.biz@gmail.com'
+    expect(pickBusinessEmail(t)).toBe('zuyoni.biz@gmail.com')
+  })
+
+  it('서비스/자동응답 계정(support@ 등)은 감점', () => {
+    const t = 'support@youtube-partner.com 로 문제 신고\n연락: creator.deal@naver.com'
+    expect(pickBusinessEmail(t)).toBe('creator.deal@naver.com')
+  })
+
+  it('개인메일 도메인 가산점 — 문맥 동률 시', () => {
+    const t = 'a@corp.io\nb@gmail.com'
+    expect(pickBusinessEmail(t)).toBe('b@gmail.com')
+  })
+
+  it('후보 없음 → null / 이미지 URL 제외', () => {
+    expect(pickBusinessEmail('구독 좋아요!')).toBeNull()
+    expect(pickBusinessEmail('thumb.png@2x')).toBeNull()
   })
 })

@@ -35,6 +35,35 @@ export function extractContacts(text: string): ExtractedContacts {
   return { emails, instagram, tiktok, links }
 }
 
+// 비즈니스 문의 맥락 키워드 — 이 근처의 이메일이 채널 주인의 컨택일 확률이 높다.
+// ⚠️ bare "mail" 은 gmail 등 주소 자체에 오매칭되므로 제외 — 한국어 "메일"/"이메일" 과 명시 문맥어만.
+const BIZ_CONTEXT_RE = /(비즈니스|문의|제휴|협찬|광고|연락|섭외|business|inquir|contact|sponsor|collab|partnership|advert|이메일|메일)/i
+// 협찬사/서비스/자동응답 등 채널 주인이 아닐 확률이 높은 이메일(감점).
+const NON_OWNER_EMAIL_RE = /^(no-?reply|noreply|support|help|admin|contact|info|cs|care|hello|team)@/i
+
+/**
+ * 여러 후보 이메일 중 **채널 주인의 비즈니스 이메일**을 고른다(영상 설명은 협찬사 메일 등 노이즈가 많음).
+ *   점수: 비즈니스 문맥어(문의/business…) 근처(±40자) +3 · 개인메일 도메인(gmail/naver/daum/kakao/hanmail) +1
+ *        · 서비스/자동응답 계정(support@ 등) −2. 동점이면 먼저 등장한 것. 후보 0개면 null.
+ */
+export function pickBusinessEmail(text: string): string | null {
+  const t = String(text || '')
+  const raw = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 12)
+  if (!raw.length) return null
+  const lower = t.toLowerCase()
+  let best: string | null = null; let bestScore = -Infinity; let bestIdx = Infinity
+  for (const email of raw) {
+    const idx = lower.indexOf(email)
+    const around = idx >= 0 ? t.slice(Math.max(0, idx - 40), idx + email.length + 10) : ''
+    let score = 0
+    if (BIZ_CONTEXT_RE.test(around)) score += 3
+    if (/@(gmail|naver|daum|kakao|hanmail|nate)\./i.test(email)) score += 1
+    if (NON_OWNER_EMAIL_RE.test(email)) score -= 2
+    if (score > bestScore || (score === bestScore && idx < bestIdx)) { best = email; bestScore = score; bestIdx = idx }
+  }
+  return best
+}
+
 export interface InfluencerLead {
   platform: string; channel_id: string; handle: string | null; name: string; url: string
   subscriber_count: number; view_count: number; video_count: number
@@ -43,7 +72,7 @@ export interface InfluencerLead {
   description: string
 }
 
-interface YTSearchResp { items?: Array<{ id?: { channelId?: string } }>; error?: { message?: string; errors?: Array<{ reason?: string }> } }
+interface YTSearchResp { items?: Array<{ id?: { channelId?: string } }>; nextPageToken?: string; error?: { message?: string; errors?: Array<{ reason?: string }> } }
 interface YTChannelsResp {
   items?: Array<{
     id: string
@@ -72,50 +101,63 @@ export type DiscoverResult =
   | { ok: true; leads: InfluencerLead[] }
   | { ok: false; error: 'NOT_CONFIGURED' | 'QUOTA' | 'FAILED'; message?: string }
 
-/** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출. maxResults 1~25(quota: search=100 units/call). */
+/** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
+ *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
+ *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
   if (q.length < 2) return { ok: false, error: 'FAILED', message: '키워드를 2자 이상 입력해주세요' }
-  // 2026-07-20 대표 "최대한 많이": search 호출은 maxResults 무관 100 units 고정 → 상한 25→50(API 최대).
-  //   같은 쿼터로 3.3× 더 수집. channels.list 도 id 50개까지 1콜.
   const n = Math.min(50, Math.max(1, Math.round(opts.maxResults || 15)))
+  const pages = Math.max(1, Math.min(5, Math.round(opts.pages || 1)))
 
-  // 1) 채널 검색(한국 우선).
-  const searchUrl = `${YT_BASE}/search?part=snippet&type=channel&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}&key=${key}`
-  let searchData: YTSearchResp
-  try {
-    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })
-    searchData = await res.json() as YTSearchResp
-    if (!res.ok) {
-      const reason = searchData.error?.errors?.[0]?.reason || ''
-      if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
-      // Google 사유를 그대로 노출(키/시크릿 아님 — accessNotConfigured/keyInvalid/ipRefererBlocked 등 진단용).
-      const detail = reason || searchData.error?.message || `HTTP ${res.status}`
-      return { ok: false, error: 'FAILED', message: `YouTube 검색 실패: ${detail}` }
-    }
-  } catch (e) { return { ok: false, error: 'FAILED', message: `검색 요청 오류: ${(e as Error)?.message || 'network'}` } }
+  // 1) 채널 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
+  const channelIds: string[] = []
+  let pageToken = ''
+  for (let p = 0; p < pages; p++) {
+    const searchUrl = `${YT_BASE}/search?part=snippet&type=channel&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
+    let searchData: YTSearchResp
+    try {
+      const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })
+      searchData = await res.json() as YTSearchResp
+      if (!res.ok) {
+        const reason = searchData.error?.errors?.[0]?.reason || ''
+        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
+          if (p === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
+          break // 이후 page 만 실패 — 지금까지 모은 것 계속 처리
+        }
+        if (p === 0) { const detail = reason || searchData.error?.message || `HTTP ${res.status}`; return { ok: false, error: 'FAILED', message: `YouTube 검색 실패: ${detail}` } }
+        break
+      }
+    } catch (e) { if (p === 0) return { ok: false, error: 'FAILED', message: `검색 요청 오류: ${(e as Error)?.message || 'network'}` }; break }
+    for (const it of searchData.items || []) { const id = it.id?.channelId; if (id) channelIds.push(id) }
+    pageToken = searchData.nextPageToken || ''
+    if (!pageToken) break // 더 깊은 페이지 없음
+  }
+  const uniqIds = Array.from(new Set(channelIds))
+  if (!uniqIds.length) return { ok: true, leads: [] }
 
-  const channelIds = (searchData.items || []).map(i => i.id?.channelId).filter((x): x is string => !!x)
-  if (!channelIds.length) return { ok: true, leads: [] }
+  // 2) 채널 상세 — id 50개씩 배치(channels.list 는 1콜당 최대 50 id/1 unit). contentDetails 로 업로드 재생목록.
+  const chItems: NonNullable<YTChannelsResp['items']> = []
+  for (let i = 0; i < uniqIds.length; i += 50) {
+    const batch = uniqIds.slice(i, i + 50)
+    const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${batch.join(',')}&maxResults=50&key=${key}`
+    try {
+      const res = await fetch(chUrl, { signal: AbortSignal.timeout(15000) })
+      const chData = await res.json() as YTChannelsResp
+      if (!res.ok) {
+        const reason = chData.error?.errors?.[0]?.reason || ''
+        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') { if (i === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다.' }; break }
+        if (i === 0) return { ok: false, error: 'FAILED', message: '채널 정보를 불러오지 못했습니다' }; break
+      }
+      for (const it of chData.items || []) chItems.push(it)
+    } catch { if (i === 0) return { ok: false, error: 'FAILED', message: '채널 요청 중 오류가 발생했습니다' }; break }
+  }
 
-  // 2) 채널 상세(지표 + 설명 + 브랜딩 + 업로드 재생목록). contentDetails 추가는 channels.list 비용 불변(1콜/1unit).
-  const chUrl = `${YT_BASE}/channels?part=snippet,statistics,brandingSettings,contentDetails&id=${channelIds.join(',')}&maxResults=50&key=${key}`
-  let chData: YTChannelsResp
-  try {
-    const res = await fetch(chUrl, { signal: AbortSignal.timeout(15000) })
-    chData = await res.json() as YTChannelsResp
-    if (!res.ok) {
-      const reason = chData.error?.errors?.[0]?.reason || ''
-      if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다.' }
-      return { ok: false, error: 'FAILED', message: '채널 정보를 불러오지 못했습니다' }
-    }
-  } catch { return { ok: false, error: 'FAILED', message: '채널 요청 중 오류가 발생했습니다' } }
-
-  const leads: InfluencerLead[] = (chData.items || []).map(ch => {
+  const leads: InfluencerLead[] = chItems.map(ch => {
     const desc = `${ch.snippet?.description || ''}\n${ch.brandingSettings?.channel?.description || ''}`.trim()
     const c = extractContacts(desc)
     const custom = ch.snippet?.customUrl || null
@@ -130,7 +172,7 @@ export async function discoverYouTubeInfluencers(
       video_count: parseInt(ch.statistics?.videoCount || '0', 10) || 0,
       country: ch.snippet?.country || null,
       thumbnail: ch.snippet?.thumbnails?.medium?.url || ch.snippet?.thumbnails?.default?.url || null,
-      email: c.emails[0] || null,
+      email: pickBusinessEmail(desc), // About 이메일도 비즈니스 문맥 우선 선별
       instagram: c.instagram[0] || null,
       tiktok: c.tiktok[0] || null,
       links: c.links.length ? c.links.join(' ') : null,
@@ -142,7 +184,8 @@ export async function discoverYouTubeInfluencers(
 
   // 3) 📧 이메일 보충 — About 에 이메일 없는 채널만 최근 영상 설명 스캔(playlistItems 1unit/채널, 상한 enrichMax).
   //    유튜브 "이메일 주소 보기" 버튼 값은 CAPTCHA 게이트라 API 불가 → 대신 영상 더보기에 적힌 비즈니스 메일 커버.
-  const enrichMax = Math.max(0, Math.min(20, opts.enrichMax ?? 15))
+  //    노이즈(협찬사 메일 등) 방지: pickBusinessEmail 로 문맥 우선 선별.
+  const enrichMax = Math.max(0, Math.min(30, opts.enrichMax ?? 15))
   const targets = (leads as Array<InfluencerLead & { _uploads?: string }>)
     .filter(l => !l.email && l._uploads)
     .sort((a, b) => b.subscriber_count - a.subscriber_count)
@@ -151,7 +194,8 @@ export async function discoverYouTubeInfluencers(
     const vidText = await fetchRecentVideoText(key, l._uploads!)
     if (!vidText) continue
     const c = extractContacts(vidText)
-    if (c.emails[0]) l.email = c.emails[0]
+    const bizEmail = pickBusinessEmail(vidText)
+    if (bizEmail) l.email = bizEmail
     if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
     if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
     if (!l.links && c.links.length) l.links = c.links.join(' ')

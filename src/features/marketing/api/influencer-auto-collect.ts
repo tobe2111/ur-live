@@ -230,14 +230,16 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
+  // YT 검색 페이지 수(키워드당 깊이) — 기본 2(page1=1~50위, page2=51~100위…). 쿼터는 quotaHit 가드가 관리.
+  const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 2))
   let ytUsed = 0
   for (const k of picks) {
     used.push(k.keyword)
-    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50=같은 100units 로 3.3×.
+    // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch) {
       ytUsed++
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50 })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; mine(r.leads) }
