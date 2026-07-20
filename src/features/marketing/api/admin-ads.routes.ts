@@ -169,7 +169,7 @@ async function ensureKeywordTable(DB: D1Database) {
 app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  if (['youtube', 'naver_blog', 'naver_cafe', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
@@ -181,7 +181,7 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
-  else if (tier === 'sweet') where.push("(platform='naver_blog' OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
+  else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`) }
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
@@ -191,7 +191,7 @@ app.get('/influencer-pool', async (c) => {
   const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
     : sort === 'recent' ? 'id DESC'
     : `CASE
-         WHEN platform='naver_blog' THEN 0
+         WHEN platform IN ('naver_blog','naver_cafe') THEN 0
          WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
          WHEN subscriber_count >= 500000 AND subscriber_count < 1000000 THEN 1
          WHEN subscriber_count > 0 AND subscriber_count < 10000 THEN 2
