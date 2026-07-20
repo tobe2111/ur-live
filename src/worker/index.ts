@@ -313,6 +313,38 @@ declare const __INCLUDE_WHOLESALE__: boolean;
 const app = new Hono<{ Bindings: Env }>();
 
 // ============================================================
+// 🛡️ 2026-07-20 (대표 신고 — urdeal.kr 에서 /assets/*.js 가 text/html 반환 → "Expected a JavaScript
+//   module ... MIME type text/html" → 앱 로드 불능): 도메인 이전 후 '새 존' 정적 서빙 404 우회.
+//   근본원인(#598 이 robots.txt·네이버 파일로 이미 확인): urdeal.kr 신규 존에서 _routes.json exclude 로
+//   워커를 우회한 정적 경로가 404 → SPA HTML 폴백. /assets/* 도 exclude 라 동일 증상(청크 404→HTML→MIME).
+//   → 워커가 env.ASSETS 로 직접 서빙(존재하면 원본 MIME + immutable, 없으면 깔끔한 404 로 정정해
+//   HTML-as-JS MIME 에러 재발 차단 + 클라 청크-복구가 정상 동작). _routes.json 에서 /assets/* 를 exclude
+//   에서 제거해 이 핸들러로 라우팅. ⚠️ 반드시 전-라우트 미들웨어(CSP/SSR/nonce) *앞*에 등록 —
+//   에셋은 오버헤드 0 로 즉시 서빙 + 응답을 가로채는 rewriter 를 안 탐. immutable 라 엣지/브라우저 캐시.
+// ============================================================
+app.get('/assets/*', async (c) => {
+  try {
+    const assets = (c.env as unknown as { ASSETS?: { fetch: (r: Request) => Promise<Response> } }).ASSETS;
+    if (!assets?.fetch) return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    const res = await assets.fetch(c.req.raw);
+    const ctype = res.headers.get('content-type') || '';
+    // env.ASSETS 는 미존재 파일에 SPA index.html(text/html)을 200 으로 돌려줌 → 그건 에셋이 아니므로 404 로
+    //   정정(HTML 을 .js 로 주면 브라우저가 "Expected a JavaScript module ... text/html" 로 거부 = 원래 버그).
+    //   404 면 클라(chunk-error.ts)가 __cb 캐시버스트로 최신 HTML(새 해시)을 받아 자가복구.
+    if (!res.ok || ctype.includes('text/html')) {
+      return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    }
+    // ⚠️ res 를 init 으로 그대로 복제 → Content-Type/Content-Encoding/ETag 등 body 와 정합 유지
+    //   (headers 재조립 시 인코딩 헤더/본문 불일치로 브라우저 디코드 오류 나는 footgun 회피). Cache-Control 만 override.
+    const out = new Response(res.body, res);
+    out.headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // content-hash 파일 — _headers /assets/* 와 동일(워커 서빙 시 _headers 미적용이라 명시)
+    return out;
+  } catch {
+    return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+  }
+});
+
+// ============================================================
 // Admin Sub-Application (code-level separation)
 // All admin routes go through their own Hono app with:
 //   1. CORS
