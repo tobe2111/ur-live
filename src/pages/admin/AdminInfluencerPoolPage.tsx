@@ -110,7 +110,7 @@ export default function AdminInfluencerPoolPage() {
   const candidateKw = keywords.filter(k => !k.active)
 
   return (
-    <AdminLayout>
+    <AdminLayout title="인플루언서 풀">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <DashboardPageHeader title="인플루언서 공용 풀" subtitle="무료 공식 API(YouTube·네이버)로 자동 수집한 인플루언서 DB — 열람·큐레이션·키워드 관리" />
 
