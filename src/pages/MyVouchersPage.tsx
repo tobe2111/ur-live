@@ -332,7 +332,8 @@ export default function MyVouchersPage() {
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
-            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/group-buy')}
+            /* 🧭 2026-07-20: /group-buy 는 홈 리다이렉트(이중 홉) — 이용권 CTA 는 홈(동네딜 피드) 직행 */
+            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/')}
             t={t}
           />
         ) : (

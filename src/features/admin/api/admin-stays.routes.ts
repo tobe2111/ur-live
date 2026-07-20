@@ -324,10 +324,10 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   ② 네이버 실사진(fetchNaverImageUrl — 매장명 우선, 실패 시 "{지역} {유형}" 일반 검색, 최후 picsum).
     //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
     const { kakaoPlaceLookup } = await import('./admin-products.routes')
-    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search')
+    const { fetchNaverImageUrls } = await import('../../../worker/utils/naver-image-search')
     // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
     //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
-    const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchNaverImageUrl>[0]
+    const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchNaverImageUrls>[0]
     // 🩹 v3 자동 치유 (2026-07-20 대표 — "좌표가 없고, 가격도 이름도 안 정해져 불완전"): v2 시드가
     //   product_stay_info 에만 좌표/주소를 넣고 목록·카드가 읽는 products 레벨(restaurant_* / price)을
     //   안 채웠음. 기존 시드분을 stay_info + 최저 객실가에서 복사 치유(멱등 — 치유 대상만 매칭, 재실행 무해).
@@ -376,11 +376,17 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       if (dup?.id) { skipped++; continue }
       n++
       const slug = `demo-stay-${n}`
-      // ② 실사진 — 매장명 검색 → 지역+유형 일반 검색 → picsum 폴백.
-      let img = await fetchNaverImageUrl(extEnv, place.name, 0).catch(() => null)
-      if (!img) img = await fetchNaverImageUrl(extEnv, `${spot.label} ${ty.kakao}`, Math.floor(Math.random() * 8)).catch(() => null)
-      if (img) realPhotos++
-      if (!img) img = `https://picsum.photos/seed/${slug}/800/600`
+      // ② 실사진 3~5장(랜덤 — 2026-07-20 대표 "사진 3~5장, 랜덤으로") — 매장명 스코어링 검색
+      //   (fetchNaverImageUrls: 제목-매장명 토큰 매칭 + 플레이스/블로그 CDN 우대 + 스톡사진 배제)
+      //   → 부족하면 지역+유형 일반 검색으로 채움 → 그래도 0이면 picsum 폴백.
+      const wantPhotos = 3 + Math.floor(Math.random() * 3)
+      let imgs = await fetchNaverImageUrls(extEnv, place.name, { count: wantPhotos, nameQuery: place.name }).catch(() => [] as string[])
+      if (imgs.length < wantPhotos) {
+        const extra = await fetchNaverImageUrls(extEnv, `${spot.label} ${ty.kakao}`, { count: wantPhotos - imgs.length, pickIndex: Math.floor(Math.random() * 8) }).catch(() => [] as string[])
+        imgs = Array.from(new Set([...imgs, ...extra]))
+      }
+      if (imgs.length) realPhotos++
+      const img = imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
       //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.
@@ -411,6 +417,12 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       }
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
+      // 🖼️ 다중 사진(2장+) → products.images(JSON, PRODUCT_DETAIL_FIELDS 기포함 — 상세 갤러리 소비).
+      //   컬럼 미존재 환경은 조용히 skip(best-effort).
+      if (imgs.length > 1) {
+        await DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+          .bind(JSON.stringify(imgs.slice(0, 5)), pid).run().catch(() => {})
+      }
       // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
       if (place.placeUrl) {
         const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
@@ -439,7 +451,9 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
            VALUES (?, ?, NULL, ?, ?, ?, 20000, ?, ?, 3, ?, ?, 1)`
         ).bind(
           pid, r.name, order, r.bg, r.mg, r.wd, r.we,
-          JSON.stringify(['에어컨', '냉장고']), JSON.stringify([img]),
+          // 🖼️ 객실 사진 — 확보한 실사진을 객실별로 로테이션 분배(스탠다드=1번째부터, 프리미엄=2번째부터).
+          JSON.stringify(['에어컨', '냉장고']),
+          JSON.stringify(imgs.length ? [imgs[(order - 1) % imgs.length], ...(imgs.length > 2 ? [imgs[(order + 1) % imgs.length]] : [])] : [img]),
         ).run()
       }
       created++

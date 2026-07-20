@@ -1,7 +1,7 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 빈 상태/스켈레톤/티켓 일러스트(verbatim 추출). 동작 불변.
 //   TicketShape·WalletEmptyGlyph 는 모듈 내부 전용, WalletSkeleton·EmptyVouchers 만 페이지가 사용.
 import { Fragment } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ShoppingBag, Wallet, QrCode, Gift, Smartphone, Store, type LucideIcon } from 'lucide-react'
 
 function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
   className?: string
@@ -105,11 +105,13 @@ export function WalletSkeleton() {
 }
 
 /**
- * 🎨 2026-06-20 흑백 iOS-클린 리디자인 (docs/design/my-vouchers-wallet-bw.md 화면5):
- *   기존(핑크 그라데이션 일러스트 + CTA + 카드형 3스텝) → 잉크 톤 통일.
- *   뉴트럴 라운드 일러스트 + 1·2·3 원형 잉크 번호(셰브론) + 블랙 필 CTA.
- *   화이트 테마(다크 토글 지원) — 모든 라이트 토큰에 dark: variant 동반.
- *   🎨 2026-06-21 고급 마감: 일러스트 → WalletEmptyGlyph(스택 티켓), 스텝 셰브론 → 연결 트랙.
+ * 🎨 2026-06-20 흑백 iOS-클린 리디자인 (docs/design/my-vouchers-wallet-bw.md 화면5) →
+ * 🎨 2026-07-20 브랜드 로즈 워밍 (대표 — "/my-vouchers 디자인 너무 투박해"):
+ *   - 스텝: 검정 숫자 원(투박) → 로즈 틴트 아이콘 칩(bg-brand-tint/text-brand-text — §브랜드 지시서
+ *     '강조'용, 라이트/다크 자동 보정) + 작은 스텝 번호. 구매→지갑→매장 흐름이 아이콘으로 즉독.
+ *   - CTA: 블랙 필 → 브랜드 로즈(bg-brand, '행동'). 하단 네비 로즈 액센트와 정합.
+ *   - 문구: 옛 멘탈모델("공구 참여") → 현행 즉시구매("이용권 구매 → 지갑 도착 → 매장 QR 사용").
+ *   티켓 일러스트는 잉크 유지(로즈는 행동·강조 10% 이하 룰). 화이트 테마(다크 토글 지원).
  */
 export function EmptyVouchers({ mode, onExplore, t }: {
   mode: 'gb' | 'gift'
@@ -122,22 +124,22 @@ export function EmptyVouchers({ mode, onExplore, t }: {
     : t('voucher.emptyGbTitle', { defaultValue: '받아둔 이용권이 없어요' })
   const desc = isGift
     ? t('voucher.emptyGiftDesc', { defaultValue: '교환권을 구매하면 휴대폰으로 발송되고\n여기에서도 모아볼 수 있어요' })
-    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면\n선결제 이용권이 여기에 쌓여요' })
+    : t('voucher.emptyGbDesc', { defaultValue: '동네 이용권을 할인가로 구매하면\n여기에 담기고 매장에서 바로 써요' })
   const cta = isGift
     ? t('voucher.emptyGiftCta', { defaultValue: '교환권 보러가기' })
-    : t('voucher.emptyGbCta', { defaultValue: '공구 보러가기' })
+    : t('voucher.emptyGbCta', { defaultValue: '동네 이용권 보러가기' })
 
-  // 🎨 흑백 리디자인 화면5 — 1·2·3 원형 스텝(2줄 라벨)
-  const steps: string[] = isGift
+  // 🎨 2026-07-20 — 아이콘 스텝(구매 → 지갑 → 매장). 교환권은 구매 → MMS → 매장.
+  const steps: { icon: LucideIcon; label: string }[] = isGift
     ? [
-        t('voucher.stepGift1', { defaultValue: '교환권\n구매' }),
-        t('voucher.stepGift2', { defaultValue: 'MMS\n발송' }),
-        t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }),
+        { icon: Gift, label: t('voucher.stepGift1', { defaultValue: '교환권\n구매' }) },
+        { icon: Smartphone, label: t('voucher.stepGift2', { defaultValue: 'MMS\n발송' }) },
+        { icon: Store, label: t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }) },
       ]
     : [
-        t('voucher.stepGb1', { defaultValue: '공구\n참여' }),
-        t('voucher.stepGb2', { defaultValue: '지갑에\n이용권' }),
-        t('voucher.stepGb3', { defaultValue: '매장에서\nQR 제시' }),
+        { icon: ShoppingBag, label: t('voucher.stepGb1', { defaultValue: '이용권\n구매' }) },
+        { icon: Wallet, label: t('voucher.stepGb2', { defaultValue: '지갑에\n도착' }) },
+        { icon: QrCode, label: t('voucher.stepGb3', { defaultValue: '매장에서\nQR 사용' }) },
       ]
 
   return (
@@ -148,15 +150,18 @@ export function EmptyVouchers({ mode, onExplore, t }: {
       <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
       <p className="mt-2 max-w-[264px] text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
-      {/* 사용 흐름 1·2·3 — 잉크 원형 번호 + 연결 트랙(헤어라인) */}
-      <div className="mt-9 w-full max-w-[300px] flex items-start">
-        {steps.map((label, i) => (
+      {/* 사용 흐름 — 로즈 틴트 아이콘 칩 + 연결 트랙(헤어라인) + 작은 스텝 번호 */}
+      <div className="mt-9 w-full max-w-[312px] flex items-start">
+        {steps.map(({ icon: Icon, label }, i) => (
           <Fragment key={i}>
             {i > 0 && (
-              <div className="flex-1 mt-[16px] h-px mx-1.5 rounded-full bg-gray-200 dark:bg-[#2A3446]" aria-hidden />
+              <div className="flex-1 mt-[22px] h-px mx-1 rounded-full bg-gray-200 dark:bg-[#2A3446]" aria-hidden />
             )}
-            <div className="flex flex-col items-center gap-2 w-[58px] shrink-0">
-              <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[14px] font-bold font-mono bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-[0_2px_6px_rgba(10,10,10,0.18)] dark:shadow-none">{i + 1}</div>
+            <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
+              <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
+                <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
+                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
+              </div>
               <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>
           </Fragment>
@@ -165,7 +170,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-gray-900 dark:bg-white text-white dark:text-gray-900 active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(10,10,10,0.20)] dark:shadow-none"
+        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(224,82,107,0.32)] dark:shadow-[0_8px_22px_rgba(224,82,107,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

@@ -339,13 +339,14 @@ export default function GroupBuyDetailPage() {
   const isPrelaunch = !!detail?.prelaunch
   const buyable = isJoinable && !isPrelaunch
 
-  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + detail_images/image_urls(JSON) 병합·중복제거.
+  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
+  //   🖼️ 2026-07-20: products.images(PRODUCT_DETAIL_FIELDS 기포함 — 데모 시드 3~5장) 병합 추가.
   const galleryImages: string[] = (() => {
     if (!detail) return []
     const out: string[] = []
     if (detail.image_url) out.push(detail.image_url)
-    const extra = detail as { detail_images?: string | null; image_urls?: string | null }
-    for (const raw of [extra.image_urls, extra.detail_images]) {
+    const extra = detail as { detail_images?: string | null; image_urls?: string | null; images?: string | null }
+    for (const raw of [extra.images, extra.image_urls, extra.detail_images]) {
       if (!raw) continue
       try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
     }
