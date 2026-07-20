@@ -324,8 +324,9 @@ export default function AdminLoginPage() {
                 </label>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge (VITE_TURNSTILE_SITE_KEY 미설정 시 자동 통과) */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🛡️ Cloudflare Turnstile — 비가시 봇 검증 (VITE_TURNSTILE_SITE_KEY 미설정 시 자동 통과).
+                  size="invisible" 은 유효값 아님(api.js throw → 토큰 미발급 → 403) — appearance 기본값(interaction-only)이 비가시 UX 담당. */}
+              <TurnstileWidget onVerify={setTurnstileToken} />
 
               <button
                 type="submit"
