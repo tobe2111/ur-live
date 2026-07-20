@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
+import VerifiedSeal from '@/components/VerifiedSeal'
 
 export default function SellOwnProductsCTA() {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ export default function SellOwnProductsCTA() {
     }
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🛍️ 내 쇼핑몰 운영 중 <USeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🛍️ 내 쇼핑몰 운영 중 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
           상품·이용권을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
         </p>
@@ -124,7 +125,7 @@ export default function SellOwnProductsCTA() {
         onClick={() => setShowBenefits(true)}
         className="w-full mb-6 flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-[#161616] text-white p-4 text-left active:scale-[0.99] transition-transform shadow-lg shadow-gray-900/10 dark:ring-1 dark:ring-[#2A3446]"
       >
-        <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><USeal size={22} /></span>
+        <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
         <span className="flex-1 min-w-0">
           <span className="block text-[14.5px] font-extrabold">인증받고 내 쇼핑몰 열기</span>
           <span className="block text-[11.5px] text-gray-300 mt-0.5">내 상품 판매 · 현금 정산 · 파란 인증 씰</span>
@@ -138,16 +139,6 @@ export default function SellOwnProductsCTA() {
         />
       )}
     </>
-  )
-}
-
-// 🔵 유어딜 인증 씰 (인스타 파란딱지 스타일 + U). CuratorHeader 와 동일 비주얼.
-function USeal({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
-      <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
-    </svg>
   )
 }
 
@@ -168,13 +159,13 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
         <div className="flex items-center gap-1.5 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
           <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-[11px] font-bold">유저</span>
           <span className="font-extrabold text-gray-400">→</span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[11px] font-bold"><USeal size={13} /> 인증 유저</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[11px] font-bold"><VerifiedSeal size={13} /> 인증 유저</span>
           로 전환하면
         </div>
         <div className="mt-5 space-y-4">
           {benefits.map((b, i) => (
             <div key={i} className="flex items-start gap-3">
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A2334]'}`}>{b.seal ? <USeal size={22} /> : b.icon}</span>
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A2334]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.icon}</span>
               <div>
                 <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{b.t}</p>
                 <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{b.d}</p>

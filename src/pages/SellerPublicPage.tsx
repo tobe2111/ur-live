@@ -11,6 +11,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import VerifiedSeal from '@/components/VerifiedSeal'
 // 🗑️ 2026-07-07 라이브커머스 제거: StreamCard/VideosTab import 제거.
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
@@ -285,7 +286,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   if (!seller) return (
     <div className={`min-h-screen ${T.bg} flex flex-col items-center justify-center`}>
       <p className={T.textMuted}>{t('seller.sellerNotFound')}</p>
-      <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">{t('seller.goToHome')}</button>
+      <button onClick={() => navigate('/')} className="mt-3 text-sm text-brand-text font-semibold">{t('seller.goToHome')}</button>
     </div>
   )
 
@@ -536,7 +537,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             </div>
             <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#1A2334] p-3.5">
               <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
-                <svg className="w-4 h-4 text-[#1d9bf0]" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0"/><path d="M9.8 15.6l-3-3 1.2-1.2 1.8 1.8 4.4-4.4 1.2 1.2z" fill="#fff"/></svg>
+                <VerifiedSeal size={16} className="shrink-0" />
                 {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 완료' })}
               </div>
               <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인되었어요' })}</p>

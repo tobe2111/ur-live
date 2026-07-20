@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, ImagePlus } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
+import VerifiedSeal from '@/components/VerifiedSeal'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { toast } from '@/hooks/useToast'
@@ -103,7 +104,8 @@ export default function CuratorHeader({
   // 🎨 2026-06-18 마퀴 헤드라인 편집(소유자).
   const [editingHeadline, setEditingHeadline] = useState(false)
   const [headlineVal, setHeadlineVal] = useState(curator.headline || '')
-  // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 주황.
+  // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 중립 회색(마퀴 바는 면적이 커 로즈=면 강조
+  //   '10% 이하' 룰 위배라 중립 유지 — 브랜드 로즈는 폴백 배너 그라데이션·행동 요소에만).
   const ACCENT_DEFAULT = '#6b7280'
   const ACCENT_PRESETS = ['#6b7280', '#4b5563', '#374151', '#1f2937', '#0E9F6E', '#111827']
   const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
@@ -237,8 +239,9 @@ export default function CuratorHeader({
   const [bannerBroken, setBannerBroken] = useState(false)
   useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
-  // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로 (브랜드 앰버 + 잉크).
-  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A2334 130%)'
+  // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로. 🎨 2026-07-20 (accent 잔재 정합): 옛 주황(#FF8A3D)
+  //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 링크샵만 노출).
+  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #E0526B 42%, #1A2334 130%)'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
@@ -405,10 +408,7 @@ export default function CuratorHeader({
                     aria-expanded={showVerified}
                     className="inline-flex active:scale-90 transition-transform"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
-                      <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
-                    </svg>
+                    <VerifiedSeal size={18} />
                   </button>
                   {showVerified && (
                     <>
@@ -421,10 +421,7 @@ export default function CuratorHeader({
                         {/* 위쪽 꼭지 */}
                         <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900 dark:bg-white" />
                         <span className="flex items-center gap-1.5">
-                          <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-                            <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
-                            <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
-                          </svg>
+                          <VerifiedSeal size={13} className="shrink-0" />
                           <span className="text-[12.5px] font-bold text-white dark:text-gray-900 leading-tight whitespace-nowrap">
                             {t('curator.verifiedBusinessUser', { defaultValue: '사업자 인증이 된 유저예요' })}
                           </span>
