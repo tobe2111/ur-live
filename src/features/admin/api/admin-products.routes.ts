@@ -1520,7 +1520,11 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1, usedOffers);
         usedOffers.add(offer.name);
         usedTypes.add(t.pq);  // 이 업종은 시드됨 → 다음 라운드 nextWork 에서 뒤로
-        const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
+        // 🖼️ 커버 = 대표사진 우선순위: ① R2 재호스팅본(카카오 대표사진→우리 도메인) → ② 재호스팅 실패 시
+        //   대표사진 원본 URL(resolvedImgSets[0] = 카카오 대표사진, 없으면 네이버 top) → ③ 최후 picsum.
+        //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
+        //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
+        const img = realPhoto || resolvedImgSets[i][0] || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
         // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 2026-07-06 '매장명 · 오퍼' 역전): 상품명 = **오퍼(메뉴명)만**.
