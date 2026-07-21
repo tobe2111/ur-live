@@ -5,7 +5,7 @@
  * - 객실 목록 (가용/가격/총액 자동 계산)
  * - 객실 선택 → 게스트 정보 입력 → 예약 생성 → /checkout 으로 이동
  */
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -14,12 +14,22 @@ import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Chev
 import { formatNumber } from '@/utils/format'
 import BrandLoader from '@/components/brand/BrandLoader'
 
+// 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
+//   IntersectionObserver 게이트(RestaurantMiniMap 내부)라 스크롤 도달 전 Kakao SDK 0 fetch.
+const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
+
 interface StayDetail {
   id: number
   name: string
   restaurant_name?: string | null  // 🏨 숙소명(오퍼명 name 과 별도) — h1 우선
   description: string
   image_url?: string
+  // 🖼️ 2026-07-21: 데모 시드가 저장하는 실사진 3~5장(products.images JSON) — 스와이프 갤러리 소비.
+  images?: string | null
+  // 🗺️ 2026-07-21: 위치(product_stay_info psi.* 로 이미 응답에 포함) + 카카오 장소 페이지 URL(supply_meta 동봉).
+  latitude?: number | null
+  longitude?: number | null
+  kakao_place_url?: string | null
   property_type: string
   star_rating: number | null
   region_sido: string
@@ -111,6 +121,10 @@ export default function StayDetailPage() {
   const [cartQty, setCartQty] = useState<Record<number, number>>({})
   const [multiBookingOpen, setMultiBookingOpen] = useState(false)
 
+  // 🖼️ 2026-07-21: 히어로 스와이프 갤러리(사진 3~5장) — 스크롤 스냅 + 인덱스 도트.
+  const galRef = useRef<HTMLDivElement>(null)
+  const [activeImage, setActiveImage] = useState(0)
+
   // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
   const referrerId = params.get('ref') || ''
 
@@ -161,6 +175,25 @@ export default function StayDetailPage() {
     if (!stay?.amenities) return []
     try { const v = JSON.parse(stay.amenities); return Array.isArray(v) ? v : [] } catch { return [] }
   })()
+
+  // 🖼️ 2026-07-21 (대표 "사진 3~5장"): 딜 상세와 동일 병합 — image_url + images(JSON) 중복제거.
+  const galleryImages: string[] = (() => {
+    if (!stay) return []
+    const out: string[] = []
+    if (stay.image_url) out.push(stay.image_url)
+    if (stay.images) {
+      try {
+        const arr = JSON.parse(stay.images)
+        if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u)
+      } catch { /* not json */ }
+    }
+    return Array.from(new Set(out)).slice(0, 8)
+  })()
+  const onGalScroll = () => {
+    const el = galRef.current; if (!el) return
+    const i = Math.round(el.scrollLeft / el.clientWidth)
+    if (i !== activeImage) setActiveImage(i)
+  }
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일) + 2026-07-20 테마 정합: 테마-가변 BrandLoader.
   if (loading) return <BrandLoader fullScreen />
@@ -259,9 +292,40 @@ export default function StayDetailPage() {
       <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
       <div className="lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5">
-      {/* Hero */}
+      {/* Hero — 🖼️ 2026-07-21: 단일 이미지 → 스와이프 갤러리(사진 3~5장, 딜 상세와 동일 UX) */}
       <div className="relative aspect-[16/10] sm:aspect-[21/9] bg-gray-100 dark:bg-[#1A2334] lg:rounded-2xl lg:overflow-hidden">
-        {stay.image_url && <img src={stay.image_url} alt={stay.name} className="w-full h-full object-cover" />}
+        {galleryImages.length > 1 ? (
+          <>
+            <div
+              ref={galRef}
+              onScroll={onGalScroll}
+              className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {galleryImages.map((src, i) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={`${stay.restaurant_name || stay.name} 사진 ${i + 1}`}
+                  className="w-full h-full object-cover shrink-0 snap-center"
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  onError={(e) => { e.currentTarget.style.opacity = '0.15' }}
+                />
+              ))}
+            </div>
+            {/* 인덱스 도트 + 장수 배지 */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+              {galleryImages.map((_, i) => (
+                <span key={i} className={`rounded-full transition-all ${i === activeImage ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`} />
+              ))}
+            </div>
+            <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/55 text-white text-[10px] font-semibold">
+              {activeImage + 1} / {galleryImages.length}
+            </span>
+          </>
+        ) : (
+          stay.image_url && <img src={stay.image_url} alt={stay.name} className="w-full h-full object-cover" />
+        )}
         <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -406,6 +470,23 @@ export default function StayDetailPage() {
             </div>
           )}
         </div>
+
+        {/* 🗺️ 위치 — 카카오맵 미니맵 + 매장(숙소) 페이지 연결 (딜 상세 RestaurantMiniMap 재사용).
+            좌표(psi.latitude/longitude) 있으면 즉시 마커, 없어도 주소 지오코딩 폴백 → 항상 연결. */}
+        {(stay.address || (stay.latitude != null && stay.longitude != null)) && (
+          <div className="mb-5">
+            <h2 className="text-sm font-bold mb-2">위치</h2>
+            <Suspense fallback={<div className="h-[220px] rounded-2xl bg-gray-100 dark:bg-[#1A2334]" />}>
+              <RestaurantMiniMap
+                name={stay.restaurant_name || stay.name}
+                address={stay.address}
+                lat={stay.latitude}
+                lng={stay.longitude}
+                placeUrl={stay.kakao_place_url}
+              />
+            </Suspense>
+          </div>
+        )}
 
         {/* Cancellation + House Rules */}
         <div className="space-y-4">

@@ -113,7 +113,7 @@ export default function AdminDongnedealImportPage() {
       //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
       if (seedCategory === 'stay_voucher') {
         // 실숙소 매칭+실사진(카카오/네이버 외부호출) — 요청당 한도 보호 위해 6개씩 청크(동네딜 8개 청크와 동일 이유).
-        let sCreated = 0, sSkipped = 0, sPhotos = 0, sHealed = 0, sVaried = 0, sReviewed = 0
+        let sCreated = 0, sSkipped = 0, sPhotos = 0, sHealed = 0, sPhotoHealed = 0, sVaried = 0, sReviewed = 0
         const SCHUNK = 6
         for (let done = 0; done < seedCount; done += SCHUNK) {
           const r = await api.post('/api/admin/stays/seed-demo', {
@@ -122,12 +122,12 @@ export default function AdminDongnedealImportPage() {
           }, { ...h, timeout: 300000 })
           const d = r.data?.data || {}
           sCreated += Number(d.created ?? 0); sSkipped += Number(d.skipped ?? 0); sPhotos += Number(d.realPhotos ?? 0)
-          sHealed += Number(d.healed ?? 0); sVaried += Number(d.varied ?? 0); sReviewed += Number(d.reviewed ?? 0)
+          sHealed += Number(d.healed ?? 0); sPhotoHealed += Number(d.photoHealed ?? 0); sVaried += Number(d.varied ?? 0); sReviewed += Number(d.reviewed ?? 0)
         }
-        const healNote = `${sHealed ? ` · 기존 ${sHealed}개 보정(좌표·가격·이용권명)` : ''}${sVaried ? ` · 오퍼 다양화 ${sVaried}개` : ''}${sReviewed ? ` · 리뷰 생성 ${sReviewed}개(응답 후 반영)` : ''}`
+        const healNote = `${sHealed ? ` · 기존 ${sHealed}개 보정(좌표·가격·이용권명)` : ''}${sPhotoHealed ? ` · 사진·지도링크 보정 ${sPhotoHealed}개` : ''}${sVaried ? ` · 오퍼 다양화 ${sVaried}개` : ''}${sReviewed ? ` · 리뷰 생성 ${sReviewed}개(응답 후 반영)` : ''}`
         if (sCreated > 0) {
           toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
-        } else if (sHealed > 0 || sVaried > 0 || sReviewed > 0) {
+        } else if (sHealed > 0 || sPhotoHealed > 0 || sVaried > 0 || sReviewed > 0) {
           toast.success(`신규 생성 0 — 기존 데모 정비 완료${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀` : ''}`)
         } else {
           toast.error(sSkipped ? `생성 0 — ${sSkipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
@@ -425,19 +425,38 @@ export default function AdminDongnedealImportPage() {
           )}
         </div>
 
-        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
+        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼 (신규 등록 전용).
+            🖊️ 2026-07-21 (대표 "수정하려면 스크롤 위로 올라가야 해 불편"): 수정은 목록 제자리 모달로 분리 —
+            아래 editing 모달 참조. 상단 폼은 더 이상 수정 모드로 전환되지 않음. */}
         <ManualDealForm
-          editDeal={editing}
-          onCancelEdit={() => setEditing(null)}
-          onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+          onSaved={() => { loadStats(); setListNonce((n) => n + 1) }}
         />
 
-        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정 / 삭제 */}
+        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정(모달) / 삭제 */}
         <DealList
           nonce={listNonce}
-          onEdit={(d) => { setEditing(d); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onEdit={(d) => setEditing(d)}
           onChanged={() => { loadStats(); setListNonce((n) => n + 1) }}
         />
+
+        {/* 🖊️ 수정 모달 — 스크롤 위치 유지한 채 제자리 편집(표준 z-index 모달 스케일). 배경 클릭/취소로 닫힘. */}
+        {editing && (
+          <div
+            className="fixed inset-0 z-[10500] bg-black/50 overflow-y-auto overscroll-contain p-4"
+            onClick={() => setEditing(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="동네딜 수정"
+          >
+            <div className="max-w-3xl mx-auto my-6" onClick={(e) => e.stopPropagation()}>
+              <ManualDealForm
+                editDeal={editing}
+                onCancelEdit={() => setEditing(null)}
+                onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

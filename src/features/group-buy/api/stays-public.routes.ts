@@ -131,6 +131,16 @@ staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) =
         ORDER BY base_price_weekday`
     ).bind(productId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
 
+    // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): kakao_place_url 은 products 컬럼이
+    //   아니라 product_supply_meta(컬럼 예산제) — 상세 응답에 동봉해야 StayDetailPage 미니맵이
+    //   매장 페이지로 직접 연결됨(없으면 클라가 숙소명+주소 link/search 폴백). fail-soft.
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+      const meta = await getSupplyMeta(c.env.DB, [productId])
+      const placeUrl = meta.get(productId)?.kakao_place_url
+      if (placeUrl) (product as Record<string, unknown>).kakao_place_url = placeUrl
+    } catch { /* 메타 실패가 상세를 막지 않음 */ }
+
     return c.json({
       success: true,
       data: { product, rooms: rooms.results || [] },

@@ -369,6 +369,50 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (r && (r.meta.changes || 0) > 0) healed++
       }
     } catch { /* restaurant_lat 컬럼 미존재 환경 등 — 치유는 best-effort, 시드 진행 */ }
+    // 🖼️ v4 사진·카카오링크 자동 치유 (2026-07-21 대표 "카카오맵 무조건 + 사진 3~5장"): 갤러리(images)
+    //   없는 기존 데모 숙소를 요청당 3개까지 실사진 3~5장 + kakao_place_url 백필(외부호출 한도 보호 —
+    //   신규 생성 6개×4~5콜 뒤에도 50 한도 안). placeId 는 저장된 kakao_place_url 에서 추출, 없으면
+    //   숙소 실명으로 재조회(정확일치일 때만 링크 신뢰 — 오매칭 방지, 사진은 네이버 스코어링 폴백).
+    let photoHealed = 0
+    try {
+      const needPhoto = await DB.prepare(
+        `SELECT p.id, p.restaurant_name, p.image_url,
+                psi.latitude AS lat, psi.longitude AS lng
+           FROM products p JOIN product_stay_info psi ON psi.product_id = p.id
+          WHERE p.slug LIKE 'demo-stay-%'
+            AND (p.images IS NULL OR p.images = '' OR p.images = '[]')
+          LIMIT 3`
+      ).all<{ id: number; restaurant_name: string | null; image_url: string | null; lat: number | null; lng: number | null }>()
+      const rows = needPhoto.results || []
+      if (rows.length > 0) {
+        const { getSupplyMeta, setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+        const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id))
+        for (const row of rows) {
+          if (!row.restaurant_name) continue
+          let placeRef: string | null = metaMap.get(row.id)?.kakao_place_url || null
+          if (!placeRef) {
+            const found = await kakaoPlaceLookup(extEnv, row.restaurant_name, 0,
+              row.lat != null && row.lng != null ? { x: String(row.lng), y: String(row.lat) } : null)
+            if (found?.name === row.restaurant_name && found.placeUrl) {
+              placeRef = found.placeUrl
+              await setSupplyMeta(DB, row.id, { kakao_place_url: found.placeUrl }).catch(() => {})
+            }
+          }
+          const imgs = await fetchDemoPhotos(extEnv, {
+            placeId: placeRef,
+            nameQuery: row.restaurant_name,
+            count: 3 + Math.floor(Math.random() * 3),
+          }).catch(() => [] as string[])
+          if (imgs.length === 0) continue
+          // 대표가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진이면 유지하고 갤러리에 병합.
+          const isPlaceholder = !row.image_url || /picsum\.photos/.test(row.image_url)
+          const gallery = (isPlaceholder ? imgs : Array.from(new Set([row.image_url as string, ...imgs]))).slice(0, 5)
+          await DB.prepare(`UPDATE products SET images = ?, image_url = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(JSON.stringify(gallery), gallery[0], row.id).run().catch(() => {})
+          photoHealed++
+        }
+      }
+    } catch { /* images 컬럼 미존재 환경 등 — best-effort */ }
     let created = 0, skipped = 0, realPhotos = 0
     for (let i = 0; i < count; i++) {
       const spot = spots[(n + 1 + i) % spots.length]
@@ -530,7 +574,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
       }
     } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, healed, varied, reviewed, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, healed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

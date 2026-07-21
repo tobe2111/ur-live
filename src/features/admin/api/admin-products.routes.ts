@@ -26,6 +26,8 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
+// 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
+import { rehostImageToR2 } from '@/worker/utils/rehost-image';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -1308,31 +1310,8 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 //   저장되는 건 항상 우리 URL 이라 렌더 시 cfImage(zone 리사이저)가 same-origin 으로 리사이즈.
 //   이 함수가 URL 을 돌려주면 = "정상 이미지 확보"(검증+영구화 동시). 실패(키·네트워크·비이미지·과대/과소)
 //   → null → 호출측이 좌표없음과 결합해 '유령 데모' 스킵 판정에 사용.
-async function rehostImageToR2(env: { MEDIA_BUCKET?: R2Bucket }, srcUrl: string | null | undefined): Promise<string | null> {
-  if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    let res: Response;
-    try {
-      res = await fetch(srcUrl, { signal: ctrl.signal });  // 인증서오류/DNS → throw → null
-    } finally { clearTimeout(timer); }
-    if (!res.ok) return null;
-    const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
-    if (!ct.startsWith('image/')) return null;
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null; // 아이콘/깨짐 or 과대
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg';
-    const yyyymm = new Date().toISOString().slice(0, 7);
-    const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const key = `uploads/demo/${yyyymm}/${rand}.${ext}`;
-    await env.MEDIA_BUCKET.put(key, buf, {
-      httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
-      customMetadata: { source: 'dongnedeal-demo', at: new Date().toISOString() },
-    });
-    return `/api/media/${key}`;  // upload.routes 의 same-origin 서빙 규약과 동일(PUBLIC_R2_URL 무관하게 표시)
-  } catch { return null; }
-}
+// 🎯 2026-07-21: rehostImageToR2 본체를 worker/utils/rehost-image.ts 로 추출(공용 SSOT — 시드 커버 +
+//   demo-image-rehost cron 이 공유). import 는 파일 상단(파일 중간 import 금지 룰) — 동작/시그니처 불변.
 
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
@@ -1952,14 +1931,24 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const total = Number(totalRow?.total ?? 0);
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
-              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug,
+              images, detail_images
          FROM products WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
+    // 🖼️ 2026-07-21 (대표 "어드민이 사진 직접 수정"): 갤러리(images=데모 시드 / detail_images=수기·수정)
+    //   병합 → gallery(string[]) 로 동봉 — 수정 폼이 현재 사진을 보여주고 교체할 수 있게. raw 는 제거.
     for (const r of rows) {
       r.is_demo = String(r.slug || '').startsWith('demo-deal-') ? 1 : 0;
       delete r.slug;
+      const g: string[] = [];
+      for (const raw of [r.images, r.detail_images]) {
+        if (typeof raw !== 'string' || !raw) continue;
+        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u && !g.includes(u)) g.push(u); } catch { /* not json */ }
+      }
+      r.gallery = g.slice(0, 8);
+      delete r.images; delete r.detail_images;
     }
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
     try {
@@ -2055,11 +2044,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
     // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    let galleryArr: string[] | null = null;
     if (b.image_urls !== undefined) {
       const arr = Array.isArray(b.image_urls)
         ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
         : [];
       put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
+      galleryArr = arr;  // 🖼️ 2026-07-21: 데모 시드 갤러리(images 컬럼)도 아래에서 동기 — 옛 시드 사진 잔존 방지
     }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
@@ -2093,6 +2084,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (params.length > 0) {
       params.push(id);
       await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 어드민이 갤러리를 바꾸면 데모 시드가 쓴
+    //   images 컬럼도 같은 값으로 교체 — 상세 병합 렌더에서 옛 시드 사진이 섞여 남지 않게.
+    //   별도 문(best-effort) — images 컬럼 미존재 환경에서도 본 수정은 성공.
+    if (galleryArr !== null) {
+      await c.env.DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+        .bind(galleryArr.length > 0 ? JSON.stringify(galleryArr) : null, id).run().catch(() => {});
     }
     await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
