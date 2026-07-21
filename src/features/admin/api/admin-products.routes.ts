@@ -1952,14 +1952,24 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const total = Number(totalRow?.total ?? 0);
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
-              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug,
+              images, detail_images
          FROM products WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
+    // 🖼️ 2026-07-21 (대표 "어드민이 사진 직접 수정"): 갤러리(images=데모 시드 / detail_images=수기·수정)
+    //   병합 → gallery(string[]) 로 동봉 — 수정 폼이 현재 사진을 보여주고 교체할 수 있게. raw 는 제거.
     for (const r of rows) {
       r.is_demo = String(r.slug || '').startsWith('demo-deal-') ? 1 : 0;
       delete r.slug;
+      const g: string[] = [];
+      for (const raw of [r.images, r.detail_images]) {
+        if (typeof raw !== 'string' || !raw) continue;
+        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u && !g.includes(u)) g.push(u); } catch { /* not json */ }
+      }
+      r.gallery = g.slice(0, 8);
+      delete r.images; delete r.detail_images;
     }
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
     try {
@@ -2055,11 +2065,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
     // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    let galleryArr: string[] | null = null;
     if (b.image_urls !== undefined) {
       const arr = Array.isArray(b.image_urls)
         ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
         : [];
       put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
+      galleryArr = arr;  // 🖼️ 2026-07-21: 데모 시드 갤러리(images 컬럼)도 아래에서 동기 — 옛 시드 사진 잔존 방지
     }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
@@ -2093,6 +2105,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (params.length > 0) {
       params.push(id);
       await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 어드민이 갤러리를 바꾸면 데모 시드가 쓴
+    //   images 컬럼도 같은 값으로 교체 — 상세 병합 렌더에서 옛 시드 사진이 섞여 남지 않게.
+    //   별도 문(best-effort) — images 컬럼 미존재 환경에서도 본 수정은 성공.
+    if (galleryArr !== null) {
+      await c.env.DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+        .bind(galleryArr.length > 0 ? JSON.stringify(galleryArr) : null, id).run().catch(() => {});
     }
     await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
