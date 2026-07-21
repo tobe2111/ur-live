@@ -140,6 +140,42 @@ export function parseB2BLeadList(text: string): BuyerLead[] {
 /** @deprecated parseB2BLeadList 로 통합(buyKorea 포함). 하위호환 별칭. */
 export const parseBuyKoreaList = parseB2BLeadList
 
+/* ── plain-text 리스트 붙여넣기(Ctrl+A → Ctrl+C → Ctrl+V) → 리드 ─────────────────
+ *   브라우저에서 리스트를 통째 복사해 <textarea> 에 붙이면 마크다운 링크가 사라진 *순수 텍스트*가 됨:
+ *     제목 / 국가 / "게시기간 : 2026.07.15~2027.01.11" / 메세지0 / Favorites0 / view8  (항목당 블록)
+ *   parseB2BLeadList(링크 필요)가 0 을 반환하는 케이스 — 날짜줄을 앵커로 역추적한다. */
+const DATE_ANCHOR_RE = /^게시기간|^(?:19|20)\d{2}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2}/
+const LEAD_NOISE_RE = /^(메세지|favorites|view|게시기간|정렬|필터|검색|카테고리|국가|전체|열기|닫기|새로|등록순|인기순|home|인콰이어리|일반상품|소재|서비스|search|message|my ?page|레이어|기업대표|goodsctgry|https?:|\d+$|ㄱ|ㅎ)/i
+
+/** 리스트 순수 텍스트(링크 제거됨) → 리드. 날짜줄(게시기간/날짜범위) 위 두 줄 = [제목, 국가]. 최대 500. */
+export function parseDatedLeadList(text: string): BuyerLead[] {
+  const raw = String(text || '')
+  const lines = raw.split(/\r?\n/).map(l => l.replace(/^[\s>*\-•·]+/, '').trim())
+  const pageCat = detectBkCategory(raw)
+  const isNoise = (s: string) => !s || s.length < 2 || LEAD_NOISE_RE.test(s) || BK_CATEGORIES.includes(s)
+  const out: BuyerLead[] = []
+  const seen = new Set<string>()
+  for (let i = 2; i < lines.length; i++) {
+    if (!DATE_ANCHOR_RE.test(lines[i])) continue
+    const country = lines[i - 1]
+    const title = lines[i - 2].replace(/^\(공개\)\s*/, '')
+    if (isNoise(title) || isNoise(country)) continue
+    const key = title.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const c = normCountry(country)
+    out.push({
+      source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
+      country: c, target_market: c, category: pageCat, imports_from_korea: null,
+      website: null, email: null, phone: null,
+      decision_maker: null, decision_maker_title: null, decision_maker_email: null,
+      est_volume: null, description: `구매요청: ${title}`.slice(0, 800), source_keyword: 'buykorea-paste',
+    })
+    if (out.length >= 500) break
+  }
+  return out
+}
+
 /* ── buyKorea 인콰이어리 상세 통째 붙여넣기 → 자동 추출 ──────────────────────── */
 
 // buyKorea 상세 라벨(한글) → 표준 필드.

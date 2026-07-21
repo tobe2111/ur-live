@@ -13,7 +13,7 @@ import {
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
-import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList } from './buyer-parsers'
+import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -68,11 +68,15 @@ app.post('/', async (c) => {
 app.post('/import', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { text?: string }
   const text = String(b.text || '')
-  // 자동 판별: B2B 소스 리스트(buyKorea/tradeKorea/EC21…) → buyKorea 상세(회사명 표) → 일반 CSV/TSV.
+  // 자동 판별: B2B 링크 리스트 → plain-text 리스트(Ctrl+A/V, 링크 없음) → buyKorea 상세(회사명 표) → 일반 CSV/TSV.
   let leads = parseB2BLeadList(text)
+  if (!leads.length) leads = parseDatedLeadList(text)
   if (!leads.length) leads = parseBuyKoreaInquiries(text)
   if (!leads.length) leads = parseBulkBuyers(text)
-  if (!leads.length) return c.json({ success: false, error: 'buyKorea·tradeKorea 등 구매리드 리스트/상세를 복사하거나, 헤더(회사명 포함) 있는 표를 붙여넣어 주세요', parsed: 0, saved: 0 }, 400)
+  if (!leads.length) {
+    const sample = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(0, 6)
+    return c.json({ success: false, error: 'buyKorea·tradeKorea 등 구매리드 리스트/상세를 복사(Ctrl+A → Ctrl+C)해 붙여넣거나, 헤더(회사명 포함) 있는 표를 붙여넣어 주세요', parsed: 0, saved: 0, _debug: { lines: text.split(/\r?\n/).filter(l => l.trim()).length, sample } }, 400)
+  }
   const saved = await saveBuyerLeads(c.env.DB, leads).catch(() => 0)
   return c.json({ success: true, parsed: leads.length, saved })
 })
