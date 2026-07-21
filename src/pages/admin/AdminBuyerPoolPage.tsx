@@ -108,6 +108,8 @@ export default function AdminBuyerPoolPage() {
   const [importing, setImporting] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [showAuto, setShowAuto] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [autoCookie, setAutoCookie] = useState('')
   const [autoListUrl, setAutoListUrl] = useState('')
   const [autoMax, setAutoMax] = useState(10)
@@ -280,23 +282,24 @@ export default function AdminBuyerPoolPage() {
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🌐 해외 바이어 파이프라인" subtitle="유통스타트 수출 — 의도 자격심사 · 매칭 스코어 · 회사→담당자" />
 
-        {/* 게이트/소스 상태 */}
-        <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span>자동 수집: <b className={meta.enabled ? 'text-emerald-600' : 'text-gray-400'}>{meta.enabled ? 'ON' : 'OFF (BUYER_AUTO_COLLECT_ENABLED)'}</b></span>
-          <span>무료 피드/오픈API: <b className="text-gray-800">{meta.feeds}개</b></span>
-          <span className="text-gray-400">· 유료 provider 없음 · 공개 비즈니스 컨택만 · 수집 ≠ 발송</span>
+        {/* 3단계 안내 — 대표가 실제로 하는 일 */}
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
+            <span className="font-semibold text-indigo-700">이렇게 쓰세요:</span>
+            <span><b>①</b> 「📋 수집 방법 · 북마클릿」 열어 즐겨찾기 등록 → buyKorea에서 클릭</span>
+            <span className="text-gray-300">→</span>
+            <span><b>②</b> 「🌐 이메일 찾기」로 연락처 보강</span>
+            <span className="text-gray-300">→</span>
+            <span><b>③</b> 「CSV 내보내기」로 저장</span>
+          </div>
         </div>
 
-        {/* 통계 — 바이어 결(핫리드/수입실적/담당자확보/파이프라인) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {/* 핵심 숫자 3개만 (나머지는 접기) */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {[
             { l: '전체 바이어', v: stats.total },
-            { l: '🔥 핫리드 (스코어≥70)', v: stats.hot },
-            { l: '한국 수입 이력', v: stats.proven },
+            { l: '연락처 확보', v: stats.with_contact },
             { l: '담당자 확보', v: stats.with_dm },
-            { l: '진행 중 파이프라인', v: stats.active_pipeline },
-            { l: '컨택 보유', v: stats.with_contact },
-            { l: '최근 7일', v: stats.recent7 },
           ].map(s => (
             <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.l}</div>
@@ -305,48 +308,56 @@ export default function AdminBuyerPoolPage() {
           ))}
         </div>
 
-        {/* 의도 티어 분포 (바이어 핵심 신호) */}
-        {byIntent.length > 0 && (
-          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
-            <div className="text-xs font-semibold text-gray-500 mb-2">의도 신호 (강→약)</div>
-            <div className="flex flex-wrap gap-1.5">
-              {byIntent.map(d => (
-                <button key={d.k} onClick={() => setIntent(intent === d.k ? '' : d.k)}
-                  className={`px-2 py-1 rounded-full text-xs ${intent === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                  {intentTiers[d.k]?.label || d.k} {d.n}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 국가/카테고리 분포 */}
-        {(byCountry.length > 0 || byCategory.length > 0) && (
-          <div className="grid lg:grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold text-gray-500 mb-2">국가별</div>
-              <div className="flex flex-wrap gap-1.5">
-                {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+        {/* 상세 통계·국가·카테고리 — 접기(기본 숨김) */}
+        <div className="mb-4">
+          <button onClick={() => setShowStats(v => !v)} className="text-xs text-gray-500 hover:text-gray-700">📊 국가·카테고리·상세 통계 {showStats ? '접기 ▲' : '펼치기 ▼'}</button>
+          {showStats && (
+            <div className="mt-2 space-y-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { l: '🔥 핫리드 (스코어≥70)', v: stats.hot },
+                  { l: '한국 수입 이력', v: stats.proven },
+                  { l: '진행 중 파이프라인', v: stats.active_pipeline },
+                  { l: '최근 7일', v: stats.recent7 },
+                ].map(s => (
+                  <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs text-gray-500">{s.l}</div>
+                    <div className="text-xl font-bold text-gray-900">{formatNumber(s.v)}</div>
+                  </div>
+                ))}
               </div>
+              {(byCountry.length > 0 || byCategory.length > 0) && (
+                <div className="grid lg:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">국가별 (클릭해 필터)</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {byCategory.map(d => <span key={d.k} className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{d.k} {d.n}</span>)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
-              <div className="flex flex-wrap gap-1.5">
-                {byCategory.map(d => <span key={d.k} className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{d.k} {d.n}</span>)}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 액션 바 */}
+        {/* 액션 바 — 자주 쓰는 3개만 크게, 나머지는 「고급」에 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button onClick={() => setShowGuide(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">📋 수집 방법 {showGuide ? '숨기기' : '보기'}</button>
-          <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
-          <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium">+ 바이어 직접 추가</button>
-          <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
-          <button onClick={enrichWebsites} disabled={enriching} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 없는 리드의 웹사이트를 방문해 이메일/전화를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 웹사이트에서 이메일 찾기'}</button>
-          <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
-          <button onClick={exportCsv} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">CSV 내보내기</button>
+          <button onClick={() => setShowGuide(v => !v)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">📋 수집 방법 · 북마클릿 {showGuide ? '숨기기' : ''}</button>
+          <button onClick={enrichWebsites} disabled={enriching} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="연락처 없는 리드의 웹사이트를 방문해 이메일·주소를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 이메일 찾기'}</button>
+          <button onClick={exportCsv} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 font-medium">CSV 내보내기</button>
+          <button onClick={() => setShowAdvanced(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-500">고급 {showAdvanced ? '▲' : '▼'}</button>
+          {showAdvanced && <>
+            <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">+ 직접 추가</button>
+            <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 disabled:opacity-50">{collecting ? '수집 중…' : '피드 수집'}</button>
+            <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
+            <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
+          </>}
           <div className="flex-1" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="회사/이메일/담당자" className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 w-44" />
           <select value={String(minScore)} onChange={e => setMinScore(Number(e.target.value))} className="px-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-900">
