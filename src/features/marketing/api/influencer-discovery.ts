@@ -32,8 +32,32 @@ const YT_URL_RE = /https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:@[A-Za-z0-9_.\-]
 const BLOG_URL_RE = /https?:\/\/(?:[A-Za-z0-9_-]{2,40}\.tistory\.com|(?:m\.)?blog\.naver\.com\/[A-Za-z0-9_-]{2,40}|brunch\.co\.kr\/@[A-Za-z0-9_.\-]{2,40})/gi
 // 핸들 정규화 — @ 제거·소문자·후행 구두점(.,) 제거(uniqLower 전 적용). "@Foodie_Kim." → "foodie_kim".
 const normHandle = (h: string): string => h.trim().replace(/^@+/, '').replace(/[.,]+$/, '').toLowerCase()
+// URL 스킴 보장 — Naver 검색 API 의 bloggerlink/cafeurl 은 스킴 없이 오기도 함("blog.naver.com/id").
+//   스킴 없이 저장하면 <a href> 가 상대경로로 해석돼 404 → 항상 https:// 부여.
+const ensureScheme = (u: string): string => (u && !/^https?:\/\//i.test(u) ? 'https://' + u.replace(/^\/+/, '') : u)
 // 이메일 오탐 필터 — 이미지/파일 확장자로 끝나는 건 컨택 아님.
 const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
+
+/**
+ * 🕵️ 이메일 난독화 복원 — 크리에이터가 봇 회피용으로 흩어 쓴 이메일을 표준형으로 되살린다(EMAIL_RE 매칭 전 적용).
+ *   "abc [at] gmail [dot] com" · "abc(엣)naver.com" · "abc 골뱅이 gmail.com" · "abc@gmail．com" · "abc @ gmail . com".
+ *   순수함수(단위테스트) — @ 뒤 도메인 맥락에서만 공백·점을 정리해 일반 문장 오염을 피한다.
+ */
+export function deobfuscateEmail(text: string): string {
+  let t = String(text || '')
+  // ① 괄호/대괄호 마커: [at] (at) {at} → @ · [dot] (dot) {dot} → .  (영문 at/dot + 한글 골뱅이/앳/엣/점)
+  t = t.replace(/\s*[[({]\s*(?:at|@|골뱅이|앳|엣)\s*[\])}]\s*/gi, '@')
+  t = t.replace(/\s*[[({]\s*(?:dot|점)\s*[\])}]\s*/gi, '.')
+  // ② 한글 골뱅이/전각 @ → @ · 전각 점(．·)·가운뎃점 → .
+  t = t.replace(/골뱅이|앳|＠/g, '@').replace(/[．]/g, '.')
+  // ③ 단어형 " at " / " dot " — 양옆이 이메일 토큰(영숫자)일 때만(문장 오탐 최소).
+  t = t.replace(/([A-Za-z0-9._%+-])\s+(?:at|@)\s+([A-Za-z0-9])/gi, '$1@$2')
+  t = t.replace(/([A-Za-z0-9])\s+dot\s+([A-Za-z]{2,})/gi, '$1.$2')
+  // ④ @ 주변 공백 제거 + @ 뒤 도메인의 점 주변 공백 제거(@ 있는 토큰 한정 — 일반 마침표 미접촉).
+  //   "biz @ daum . net" 처럼 점 양옆 공백도 흡수(도메인 마지막 라벨 앞 `\s*\.\s*`).
+  t = t.replace(/([A-Za-z0-9._%+-]+)\s*@\s*([A-Za-z0-9][A-Za-z0-9\- ]*?(?:\s*\.\s*[A-Za-z]{2,})+)/g, (_m, a, b) => `${a}@${String(b).replace(/\s+/g, '')}`)
+  return t
+}
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
@@ -47,7 +71,8 @@ export function isLikelyNoise(name?: string | null, description?: string | null)
 /** 공개 텍스트(채널/영상 설명)에서 컨택 추출 — 순수함수(단위테스트 잠금). */
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
-  const emails = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 5)
+  // 이메일은 난독화 복원본에서 추출(핸들/링크는 원문 — URL 훼손 방지).
+  const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 5)
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
   const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta']
   const instagram = uniqLower([
@@ -80,7 +105,7 @@ const NON_OWNER_EMAIL_RE = /^(no-?reply|noreply|support|help|admin|contact|info|
  *        · 서비스/자동응답 계정(support@ 등) −2. 동점이면 먼저 등장한 것. 후보 0개면 null.
  */
 export function pickBusinessEmail(text: string): string | null {
-  const t = String(text || '')
+  const t = deobfuscateEmail(String(text || '')) // 난독화 복원 후 문맥 점수 계산(around 컨텍스트도 복원본 기준).
   const raw = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 12)
   if (!raw.length) return null
   const lower = t.toLowerCase()
@@ -330,10 +355,10 @@ export async function discoverNaverBloggers(
   // 고유 블로거로 집계(블로그홈 링크 기준).
   const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
   for (const it of (data?.items || [])) {
-    const home = String(it.bloggerlink || '').trim()
+    const home = ensureScheme(String(it.bloggerlink || '').trim()) // 🐛 Naver API 는 스킴 없이 반환 → 상대경로 404 방지
     if (!home) continue
     const key = home.replace(/\/$/, '')
-    const handle = key.replace(/^https?:\/\/(blog\.naver\.com\/)?/, '').replace(/\/.*$/, '') || null
+    const handle = key.replace(/^https?:\/\/(?:m\.)?blog\.naver\.com\//i, '').replace(/[/?#].*$/, '') || null
     const text = `${stripTag(it.title)} ${stripTag(it.description)}`
     const ex = existingOrNew(byBlog, key, String(it.bloggername || handle || '블로거'), key, handle)
     ex._matches += 1
@@ -404,10 +429,10 @@ export async function discoverNaverCafes(
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `카페 검색 오류 (HTTP ${res.status})` }
   const byCafe = new Map<string, InfluencerLead & { _matches: number }>()
   for (const it of (data?.items || [])) {
-    const home = String(it.cafeurl || '').trim()
+    const home = ensureScheme(String(it.cafeurl || '').trim()) // 🐛 스킴 보장(상대경로 404 방지)
     if (!home) continue
     const key = home.replace(/\/$/, '')
-    const handle = key.replace(/^https?:\/\/(cafe\.naver\.com\/)?/, '').replace(/\/.*$/, '') || null
+    const handle = key.replace(/^https?:\/\/(?:cafe\.naver\.com\/)?/i, '').replace(/[/?#].*$/, '') || null
     const text = `${stripTag(it.title)} ${stripTag(it.description)}`
     let ex = byCafe.get(key)
     if (!ex) { ex = { platform: 'naver_cafe', channel_id: key, handle, name: String(it.cafename || handle || '카페'), url: key, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }; byCafe.set(key, ex) }

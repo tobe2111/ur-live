@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractContacts, pickBusinessEmail } from '@/features/marketing/api/influencer-discovery'
+import { extractContacts, pickBusinessEmail, deobfuscateEmail } from '@/features/marketing/api/influencer-discovery'
 
 /**
  * 🆕 2026-07-13 유어애즈 인플루언서 발굴 — 공개 설명 컨택 추출 순수함수 잠금.
@@ -52,6 +52,32 @@ describe('extractContacts', () => {
     expect(r.links.some(l => l.includes('youtube.com/@myfood_tv'))).toBe(true)
     expect(r.links.some(l => l.includes('foodie.tistory.com'))).toBe(true)
     expect(r.links.some(l => l.includes('blog.naver.com/foodielog'))).toBe(true)
+  })
+})
+
+describe('deobfuscateEmail — 봇 회피 난독화 복원', () => {
+  it('괄호/대괄호 at·dot', () => {
+    expect(deobfuscateEmail('contact [at] gmail [dot] com')).toContain('contact@gmail.com')
+    expect(deobfuscateEmail('abc(at)naver.com')).toContain('abc@naver.com')
+  })
+  it('한글 골뱅이·앳·엣 + 전각 점', () => {
+    expect(deobfuscateEmail('문의 foodie 골뱅이 gmail.com')).toContain('foodie@gmail.com')
+    expect(deobfuscateEmail('abc(엣)naver.com')).toContain('abc@naver.com')
+    expect(deobfuscateEmail('abc@gmail．com')).toContain('abc@gmail.com')
+  })
+  it('공백 흩뿌리기 (@ 와 점 양옆 공백)', () => {
+    expect(deobfuscateEmail('biz @ daum . net')).toContain('biz@daum.net')
+    expect(deobfuscateEmail('hello at kakao dot com')).toContain('hello@kakao.com')
+    expect(deobfuscateEmail('sub.brand @ company . co . kr')).toContain('sub.brand@company.co.kr')
+  })
+  it('일반 문장은 이메일로 오인하지 않음', () => {
+    const EMAIL = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g
+    expect((deobfuscateEmail('I eat at home and relax').match(EMAIL) || [])).toEqual([])
+    expect((deobfuscateEmail('follow me at instagram').match(EMAIL) || [])).toEqual([])
+  })
+  it('extractContacts/pickBusinessEmail 가 난독화 이메일을 회수', () => {
+    expect(extractContacts('협업문의: brand [at] gmail [dot] com').emails).toContain('brand@gmail.com')
+    expect(pickBusinessEmail('비즈니스 문의 deal 골뱅이 naver.com')).toBe('deal@naver.com')
   })
 
   it('중복 제거 + 소문자 정규화', () => {
