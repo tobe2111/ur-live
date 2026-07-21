@@ -24,7 +24,8 @@ app.post('/', async (c) => {
   if (!ok) return c.json({ success: false, error: 'INVALID_TOKEN' }, 401, CORS)
   const htmls = Array.isArray(b.htmls) ? b.htmls.filter(h => typeof h === "string").slice(0, 80) : (b.text ? [String(b.text)] : [])
   if (!htmls.length) return c.json({ success: false, error: 'NO_HTML' }, 400, CORS)
-  const result = await ingestHtmls(c.env, htmls).catch((e) => ({ parsed: 0, saved: 0, error: String(e) }))
+  // 내부 에러 문자열을 크로스오리진 응답에 노출하지 않음(safe-error 룰) — 카운트만 반환.
+  const result = await ingestHtmls(c.env, htmls).catch(() => ({ parsed: 0, saved: 0 }))
   return c.json({ success: true, result }, 200, CORS)
 })
 

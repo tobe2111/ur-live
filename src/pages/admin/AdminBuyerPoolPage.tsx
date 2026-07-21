@@ -51,7 +51,7 @@ function buildBookmarklet(token: string): string {
     `if(pageParam&&maxPage>1){for(var pg=2;pg<=maxPage;pg++){S('유어딜: 리스트 '+pg+'/'+maxPage+' 페이지 수집...');try{var lu=new URL(location.href);lu.searchParams.set(pageParam,String(pg));var lr=await fetch(lu.href,{credentials:'include'});if(lr.ok){grab(await lr.text(),lu.href).forEach(function(u){L.push(u)})}}catch(e){}await new Promise(function(x){setTimeout(x,250)})}}` +
     `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,600);var self=IDRE.test(location.search)&&HINT.test(location.pathname);` +
     `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열거나 리스트를 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
-    `var CHUNK=10,MAXB=3e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='';` +
+    `var CHUNK=10,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='';` +
     `var strip=function(h){return String(h||'').replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<svg[\\s\\S]*?<\\/svg>/gi,' ').replace(/<!--[\\s\\S]*?-->/g,' ')};` +
     `var push=function(h){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push(h);bb+=h.length;tR++};` +
     `var send=async function(batch){if(!batch.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:batch})});if(!res.ok){ef++;err='HTTP '+res.status;return}var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else{ef++;if(j&&j.error)err=j.error}}catch(e){ef++;err=String(e&&e.message||e)}};` +
@@ -110,6 +110,7 @@ export default function AdminBuyerPoolPage() {
   const [showAuto, setShowAuto] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [autoCookie, setAutoCookie] = useState('')
   const [autoListUrl, setAutoListUrl] = useState('')
   const [autoMax, setAutoMax] = useState(10)
@@ -126,8 +127,9 @@ export default function AdminBuyerPoolPage() {
         setStats(r.data.stats); setByIntent(r.data.byIntent || []); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
         setIntentTiers(r.data.intentTiers || {})
         setMeta({ enabled: !!r.data.enabled, feeds: r.data.feeds || 0, autoFetchEnabled: !!r.data.autoFetchEnabled })
+        setLoadError(false)
       }
-    } catch { /* noop */ }
+    } catch { setLoadError(true) } // 실패를 '0건'으로 오표시하지 않도록 배너 노출.
   }, [])
 
   const loadLeads = useCallback(async () => {
@@ -141,8 +143,8 @@ export default function AdminBuyerPoolPage() {
       if (hasContact) params.set('hasContact', '1')
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/buyer-pool?${params.toString()}`)
-      if (r.data?.success) setLeads(r.data.leads || [])
-    } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
+      if (r.data?.success) { setLeads(r.data.leads || []); setLoadError(false) }
+    } catch { setLoadError(true); toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
   }, [status, country, intent, minScore, hasContact, q])
 
   const loadTargets = useCallback(async () => {
@@ -283,7 +285,16 @@ export default function AdminBuyerPoolPage() {
     } catch { toast.error('이메일 추출 실패') } finally { setEnriching(false) }
   }
 
-  const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
+  // window.open 은 쿠키만 보내 Bearer(localStorage) 인증 어드민에선 401 → 에러 JSON 다운로드됨.
+  //   axios(Bearer 첨부)로 blob 받아 저장.
+  const exportCsv = async () => {
+    try {
+      const r = await api.get('/api/admin/buyer-pool/export?format=csv', { responseType: 'blob' })
+      const url = URL.createObjectURL(r.data as Blob)
+      const a = document.createElement('a'); a.href = url; a.download = 'overseas-buyers.csv'; document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch { toast.error('CSV 내보내기 실패') }
+  }
 
   return (
     <AdminLayout title="해외 바이어 풀">
@@ -301,6 +312,14 @@ export default function AdminBuyerPoolPage() {
             <span><b>③</b> 「CSV 내보내기」로 저장</span>
           </div>
         </div>
+
+        {/* 로드 실패 배너 — '0건'을 실제 빈 풀로 오인하지 않게 */}
+        {loadError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-center justify-between gap-2">
+            <span>⚠️ 데이터를 불러오지 못했습니다(네트워크·서버 오류). 아래 숫자·목록은 정확하지 않을 수 있습니다.</span>
+            <button onClick={() => { loadStats(); loadLeads() }} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium shrink-0">다시 시도</button>
+          </div>
+        )}
 
         {/* 핵심 숫자 3개만 (나머지는 접기) */}
         <div className="grid grid-cols-3 gap-3 mb-4">

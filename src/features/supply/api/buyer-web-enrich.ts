@@ -53,7 +53,8 @@ export function addressFromHtml(html: string): string | null {
   const sa = h.match(/streetAddress"?\s*[:=]\s*"?([^"<\n]{8,180})/i)
   if (sa) { const t = sa[1].replace(/\s+/g, ' ').trim(); if (t.length > 8) return t.slice(0, 300) }
   const text = h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ')
-  const m = text.match(/(?:address|주소|소재지|office)\s*[:：]\s*([^\n]{10,140})/i)
+  // "office:" 는 "Box office:" 등 오탐 → 제외. 주소 라벨만.
+  const m = text.match(/(?:company\s+address|business\s+address|address|주소|소재지|본사\s*주소)\s*[:：]\s*([^\n]{10,140})/i)
   if (m) { const t = m[1].replace(/\s+/g, ' ').trim(); if (t.length > 8) return t.slice(0, 300) }
   return null
 }
@@ -66,20 +67,32 @@ function normUrl(website: string): string | null {
   try { return new URL(w).origin } catch { return null }
 }
 
-// AbortController 로 8s 에 실제 fetch 도 중단(dangling subrequest 방지).
+// AbortController 로 8s 중단 + redirect:'manual' 로 SSRF 방어.
+//   redirect:'follow' 는 공개 사이트가 내부 IP(169.254.169.254 등)로 302 하면 그대로 따라감(내부 응답 유출).
+//   → manual 로 받아 Location 을 isPublicHttpUrl 로 재검증한 뒤 최대 2회만 수동 추종.
 async function fetchText(url: string, headers: Record<string, string>): Promise<string> {
-  const ac = new AbortController()
-  const t = setTimeout(() => ac.abort(), 8000)
-  try {
-    const res = await fetch(url, { headers, redirect: 'follow', signal: ac.signal })
+  let cur = url
+  for (let hop = 0; hop < 3; hop++) {
+    if (!isPublicHttpUrl(cur)) return '' // 매 홉 공개 호스트 재검증(SSRF)
+    const ac = new AbortController()
+    const t = setTimeout(() => ac.abort(), 8000)
+    let res: Response
+    try { res = await fetch(cur, { headers, redirect: 'manual', signal: ac.signal }) }
+    catch { return '' } finally { clearTimeout(t) }
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location'); if (!loc) return ''
+      try { cur = new URL(loc, cur).toString() } catch { return '' }
+      continue // 다음 홉에서 재검증
+    }
     return res.ok ? await res.text() : ''
-  } catch { return '' } finally { clearTimeout(t) }
+  }
+  return ''
 }
 
 export interface WebEnrichResult { ran: boolean; reason?: string; scanned: number; enriched: number; fetches: number; sample: string[] }
 
 /** 웹사이트 있고 이메일 없는 리드를 방문해 이메일/전화 백필. 스코어 높은 순. */
-export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number } = {}): Promise<WebEnrichResult> {
+export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; budget?: number } = {}): Promise<WebEnrichResult> {
   const DB = env.DB
   await ensureBuyerSchema(DB)
   const max = Math.min(40, Math.max(1, opts.max || 15))
@@ -94,7 +107,7 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number } =
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'accept': 'text/html,application/xhtml+xml', 'accept-language': 'en;q=0.9,ko;q=0.8',
   }
-  const budget = Math.min(25, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '25', 10) || 25)) // Cloudflare subrequest 한도 보호
+  const budget = opts.budget != null ? Math.max(4, Math.min(30, opts.budget)) : Math.min(25, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '25', 10) || 25)) // Cloudflare subrequest 한도 보호(크론은 명시 budget 로 합산 상한)
   let fetches = 0, enriched = 0
   const sample: string[] = []
   const SITE_CAP = 5 // 사이트당 최대 방문(홈 + 연락 페이지 몇 개) — 예산을 여러 리드에 분산.

@@ -373,8 +373,10 @@ app.use('*', logger());
 // 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
 //    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
 const _bodyLimit1m = bodyLimit(1_000_000);
-const _bodyLimit8m = bodyLimit(8_000_000);
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit8m(c, next) : _bodyLimit1m(c, next));
+// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 8MB 는 무인증 파싱 증폭(DoS) 표면 → 3MB 로 축소.
+//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 3MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
+const _bodyLimit3m = bodyLimit(3_000_000);
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit3m(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
 // 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지).
 app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : (rateLimiterMiddleware as any)(c, next));
