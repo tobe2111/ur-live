@@ -14,7 +14,7 @@ import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { ensureInfluencerSchema } from './influencer-discovery'
+import { ensureInfluencerSchema, extractContacts, pickBusinessEmail } from './influencer-discovery'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
@@ -350,6 +350,38 @@ app.post('/influencer-pool/send-consented', async (c) => {
   }
   const eligible = new Set(rows.map(r => r.id))
   return c.json({ success: true, sent, failed: failedIds, skipped: ids.filter(id => !eligible.has(id)) })
+})
+
+// POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
+//   신규 추출기(@핸들·키워드형 인스타/틱톡·유튜브/블로그 링크)를 저장된 description 에 재적용 → API 재호출 0.
+//   ⚠️ 덮어쓰기 안 함 — 비어있는 email/instagram/tiktok 만 채우고, links 는 합집합(기존 보존 + 신규 추가).
+app.post('/influencer-pool/reextract', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  let scanned = 0, filled = 0
+  for (let off = 0; ; off += 2000) {
+    const rows = (await c.env.DB.prepare(`SELECT id, description, email, instagram, tiktok, links FROM ad_influencer_leads
+        WHERE account_id = ? AND description IS NOT NULL AND description != '' ORDER BY id ASC LIMIT 2000 OFFSET ?`).bind(POOL, off)
+      .all<{ id: number; description: string | null; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
+    if (!rows.length) break
+    scanned += rows.length
+    const ups: ReturnType<typeof c.env.DB.prepare>[] = []
+    for (const r of rows) {
+      const ex = extractContacts(r.description || '')
+      const sets: string[] = []; const binds: (string | number)[] = []
+      if (!r.email) { const em = pickBusinessEmail(r.description || '') || ex.emails[0]; if (em) { sets.push('email = ?'); binds.push(em) } }
+      if (!r.instagram && ex.instagram[0]) { sets.push('instagram = ?'); binds.push(ex.instagram[0]) }
+      if (!r.tiktok && ex.tiktok[0]) { sets.push('tiktok = ?'); binds.push(ex.tiktok[0]) }
+      // links 합집합(공백 조인, dedup, 최대 8) — 기존 링크인바이오 보존 + 신규 유튜브/블로그 추가.
+      const existing = (r.links || '').split(/\s+/).filter(Boolean)
+      const merged = Array.from(new Set([...existing, ...ex.links])).slice(0, 8).join(' ')
+      if (merged && merged !== (r.links || '')) { sets.push('links = ?'); binds.push(merged) }
+      if (sets.length) ups.push(c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, r.id, POOL))
+    }
+    for (let i = 0; i < ups.length; i += 100) await c.env.DB.batch(ups.slice(i, i + 100)).catch(() => null)
+    filled += ups.length
+    if (rows.length < 2000) break
+  }
+  return c.json({ success: true, scanned, filled })
 })
 
 // POST /api/admin/ads/influencer-pool/reclassify — 🏷️ 기존 풀 콘텐츠 기반 카테고리 재분류(백필, 멱등)
