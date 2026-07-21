@@ -68,8 +68,12 @@ app.post('/', async (c) => {
 app.post('/import', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { text?: string }
   const text = String(b.text || '')
-  // 자동 판별: B2B 링크 리스트 → plain-text 리스트(Ctrl+A/V, 링크 없음) → buyKorea 상세(회사명 표) → 일반 CSV/TSV.
+  // 상세 페이지(회사명/이메일 라벨 + 날짜줄 거의 없음)면 상세 파서 우선 → 리스트 행 연락처 보강.
+  const dateCount = (text.match(/게시기간/g) || []).length
+  const detailFirst = dateCount < 2 && /회사명|\bcompany\b|\bimporter\b|\bbuyer\b|이메일|e-?mail/i.test(text)
+  // 자동 판별: B2B 링크 리스트 → (상세) → plain-text 리스트(Ctrl+A/V) → (상세 폴백) → 일반 CSV/TSV.
   let leads = parseB2BLeadList(text)
+  if (!leads.length && detailFirst) leads = parseBuyKoreaInquiries(text)
   if (!leads.length) leads = parseDatedLeadList(text)
   if (!leads.length) leads = parseBuyKoreaInquiries(text)
   if (!leads.length) leads = parseBulkBuyers(text)
