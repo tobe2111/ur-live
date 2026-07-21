@@ -240,11 +240,15 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   }
   // 제목 꼬리의 UI 버튼 텍스트 제거(예: "제목 좋아요"/"제목 공유하기") → 리스트 제목과 매칭 정합.
   title = title.replace(/\s*(좋아요|공유하기|공유|관심|북마크|스크랩|찜|like|share|save)\s*$/i, '').trim()
-  // 정규식 폴백 — 라벨이 없어도 본문에서 이메일/전화/홈페이지 확보.
-  if (!row.email) { const e = pickBusinessEmail(chunk); if (e) row.email = e }
-  if (!row.phone) { const p = pickPhone(chunk); if (p) row.phone = p }
+  // 플랫폼(사이트 자체) 컨택 제외 — buyKorea 푸터(buykorea@kotra.or.kr)·KOTRA 패밀리사이트·CDN 을 바이어로 오인 방지.
+  const PLATFORM_EMAIL = /@(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org)$/i
+  const PLATFORM_HOST = /(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|samsungsdscloud|gcdn\.|globalwindow|investkorea|exportvoucher|payverse)/i
+  if (row.email && PLATFORM_EMAIL.test(row.email)) delete row.email
+  // 정규식 폴백(라벨 없을 때) — 플랫폼 이메일 제외. 전화는 + 국제표기만(인콰이어리 번호 오인식 방지). 홈페이지는 플랫폼 호스트 제외.
+  if (!row.email) { const e = pickBusinessEmail(chunk); if (e && !PLATFORM_EMAIL.test(e)) row.email = e }
+  if (!row.phone) { const p = pickPhone(chunk); if (p && /^\s*\+/.test(p)) row.phone = p }
   if (!row.website) {
-    const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u))
+    const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u) && !PLATFORM_HOST.test(u))
     if (url) row.website = url.replace(/[.,)]+$/, '')
   }
   const company = (row.company || '').trim()
