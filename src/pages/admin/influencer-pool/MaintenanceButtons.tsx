@@ -62,8 +62,11 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     setRefetching(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/refetch-live', { passes: 5 })
-      if (r.data?.success) { toast.success(`🔄 ${formatNumber(r.data.processed)}개 채널 라이브 재조회 완료 (이메일·카테고리 교정)`); await onChanged() }
-      else toast.error(r.data?.error || '라이브 재조회 실패')
+      if (r.data?.success) {
+        if (r.data.started) toast.success('🔄 라이브 재조회를 백그라운드에서 시작했어요 — 잠시 후 통계를 새로고침하면 교정 결과가 반영됩니다')
+        else toast.success(`🔄 ${formatNumber(r.data.processed)}개 채널 라이브 재조회 완료 (이메일·카테고리 교정)`)
+        await onChanged()
+      } else toast.error(r.data?.error || '라이브 재조회 실패')
     } catch (e) {
       const ax = e as { response?: { data?: { error?: string } } }
       toast.error(ax.response?.data?.error || '라이브 재조회 실패')
