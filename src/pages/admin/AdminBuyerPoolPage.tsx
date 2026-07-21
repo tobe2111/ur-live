@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -36,6 +36,13 @@ const STAGE_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'lost', 'hold']
+
+// 북마클릿 — buyKorea 등에서 클릭 시 상세 페이지들을 세션으로 읽어 유어딜로 전송(F12·쿠키 불필요).
+function buildBookmarklet(token: string): string {
+  const api = `${window.location.origin}/api/buyer-ingest`
+  const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};var s='a[href*="Detail.do"],a[href*="inqryDetail"],a[href*="offerDetail"],a[href*="/offer/"],a[href*="tradeLead"],a[href*="buyOffer"],a[href*="itemView"]';var L=[].slice.call(document.querySelectorAll(s)).map(function(a){return a.href}).filter(function(h){return /^https?:/.test(h)});L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,30);var H=[];if(/detail|offer|view/i.test(location.href))H.push(document.documentElement.outerHTML);for(var i=0;i<L.length;i++){try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,400)})}if(!H.length){alert('상세 링크를 못 찾았어요. 구매요청 리스트나 상세 페이지에서 눌러주세요.');return}var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();if(j&&j.success){alert('유어딜 수집 완료: '+((j.result&&j.result.saved)||0)+'건 저장 / '+((j.result&&j.result.parsed)||0)+' 파싱')}else{alert('실패: '+((j&&j.error)||'인증 오류'))}}catch(e){alert('전송 실패: '+e)}})()`
+  return 'javascript:' + encodeURIComponent(code)
+}
 
 // 무료 B2B 구매리드(바이어 구매요청) 수집처. 2단계: ① 리스트(발굴) ② 각 상세(연락처).
 // 전부 무료 가입, 유료 provider 없음. list=구매요청 목록, detail=각 건의 상세(회사명·이메일·홈페이지).
@@ -87,6 +94,8 @@ export default function AdminBuyerPoolPage() {
   const [autoMax, setAutoMax] = useState(10)
   const [autoRunning, setAutoRunning] = useState(false)
   const [autoSave, setAutoSave] = useState(true)
+  const [ingestToken, setIngestToken] = useState('')
+  const bmRef = useRef<HTMLAnchorElement>(null)
   const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean }>({ sources: [], cookieHosts: [], enabled: false })
 
   const loadStats = useCallback(async () => {
@@ -219,6 +228,15 @@ export default function AdminBuyerPoolPage() {
 
   const forgetSource = async (url: string) => {
     try { await api.post('/api/admin/buyer-pool/auto-fetch/forget', { url }); loadAutoConfig() } catch { toast.error('삭제 실패') }
+  }
+
+  const loadToken = useCallback(async () => {
+    try { const r = await api.get('/api/admin/buyer-pool/ingest-token'); if (r.data?.success) setIngestToken(r.data.token) } catch { /* noop */ }
+  }, [])
+  useEffect(() => { if (showAuto && !ingestToken) loadToken() }, [showAuto, ingestToken, loadToken])
+  useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken])
+  const resetToken = async () => {
+    try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 드래그해 등록하세요') } } catch { toast.error('재발급 실패') }
   }
 
   const [enriching, setEnriching] = useState(false)
@@ -360,6 +378,19 @@ export default function AdminBuyerPoolPage() {
         {/* 🤖 상세 서버 자동 수집 (대표 승인 "위험 감수" — 계정 정지 위험, 게이트 무장 필요) */}
         {showAuto && (
           <div className="mb-4 rounded-xl border-2 border-red-200 bg-red-50/50 p-4">
+            {/* 🔖 북마클릿 — F12·쿠키 없이 원클릭(추천). 대표 브라우저 세션으로 읽어 안전 */}
+            <div className="mb-3 rounded-lg border-2 border-indigo-200 bg-indigo-50/60 p-3">
+              <div className="text-sm font-semibold text-indigo-700 mb-1">🔖 원클릭 북마클릿 (추천 · F12·쿠키 복사 없음)</div>
+              <div className="text-[11px] text-gray-600 mb-2">아래 파란 버튼을 <b>브라우저 즐겨찾기 바(북마크바)로 드래그</b>해 등록하세요. 그다음 buyKorea 등에서 <b>구매요청 리스트나 상세 페이지를 열고 이 즐겨찾기를 클릭</b>하면, 그 페이지의 바이어들이 자동으로 여기에 저장됩니다. <b>대표님이 이미 로그인한 브라우저</b>가 읽는 것이라 F12·쿠키·서버 로그인이 전혀 필요 없고, 계정 위험도 가장 낮습니다.</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
+                <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium cursor-move select-none inline-block" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
+                <span className="text-[11px] text-gray-400">← 이 버튼을 즐겨찾기 바로 드래그</span>
+                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline">토큰 재발급</button>}
+              </div>
+              <div className="mt-1.5 text-[11px] text-gray-400">※ buyKorea 는 바이어 이메일을 가리므로, 이 방법도 회사명·웹사이트·국가·품목까지 모읍니다. 이메일은 위 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
+            </div>
+            <div className="text-xs text-gray-400 mb-2">— 또는 아래는 서버가 직접 방문하는 방식(고급·위험) —</div>
             <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
             <div className="text-xs text-red-700 bg-red-100/70 rounded-lg p-2 mb-3">
               ⚠️ 이 기능은 <b>대표님 로그인 쿠키로 서버가 상세 페이지들을 자동 방문</b>합니다. buyKorea·tradeKorea·EC21·ECPlaza·GoBizKorea 각 사이트 약관은 자동·대량 수집을 금지하며, <b>계정이 정지될 수 있습니다.</b> 위험을 감수하고 사용하세요. (방어: 소량 배치 · 요청 간 지연 · 쿠키는 저장하지 않고 이 요청에만 사용)
