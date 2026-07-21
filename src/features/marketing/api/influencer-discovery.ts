@@ -25,6 +25,13 @@ const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
+// 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
+//   보수적(오탐 최소) — 애매한 '공식/브랜드'는 제외 안 함(진짜 파트너 후보일 수 있음). 저장 시점에 걸러 풀 오염 방지.
+const NOISE_RE = /(뉴스|신문사|방송국|아나운서|연합뉴스|ytn|jtbc|kbs|mbc|sbs|체험단|서포터즈|기자단|리뷰어\s*모집|블로그\s*마케팅|바이럴\s*마케팅|마케팅\s*대행|광고\s*대행|대행사|공기업|공단|주민센터|[가-힣]{1,6}(구청|시청|군청|도청)|재단법인|사단법인)/i
+export function isLikelyNoise(name?: string | null, description?: string | null): boolean {
+  return NOISE_RE.test(`${name || ''} ${description || ''}`)
+}
+
 /** 공개 텍스트(채널/영상 설명)에서 컨택 추출 — 순수함수(단위테스트 잠금). */
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
@@ -480,6 +487,9 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT').run().catch(() => null)
   // 🔗 링크인바이오 보강 시도 시각 — NULL 이면 미시도(cron 이 잔여 예산으로 순차 소진, 재시도 폭주 방지).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME').run().catch(() => null)
+  // 📥 유입 출처(자동수집=NULL/'auto', 인바운드 신청='inbound') + 사전동의 시각(인바운드=신청 시 기록 → 자유 연락 가능).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
@@ -492,6 +502,7 @@ export async function saveInfluencerLeads(
   const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
+    if (isLikelyNoise(l.name, l.description)) continue // 🧹 뉴스·방송·기관·체험단모집·대행 등 노이즈 제외
     const r = await DB.prepare(`INSERT OR IGNORE INTO ad_influencer_leads
       (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

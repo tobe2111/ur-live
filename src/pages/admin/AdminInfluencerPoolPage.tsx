@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
+import FunnelCard from './influencer-pool/FunnelCard'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -19,6 +20,7 @@ interface Lead {
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
   contacted_at?: string | null; follow_up_at?: string | null; contact_channel?: string | null
   outreach_draft?: string | null // JSON {subject,body,dm,generated_at} — ✍ 개인화 초안(생성만, 발송 없음)
+  source?: string | null; consented_at?: string | null // 📥 inbound=신청(사전동의)
 }
 // 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
@@ -26,7 +28,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -60,6 +62,8 @@ export default function AdminInfluencerPoolPage() {
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
   const [needFollowup, setNeedFollowup] = useState(false)
+  const [hideNoise, setHideNoise] = useState(false)
+  const [inboundOnly, setInboundOnly] = useState(false)
   const [merging, setMerging] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
@@ -82,10 +86,12 @@ export default function AdminInfluencerPoolPage() {
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
     if (needFollowup) params.set('needFollowup', '1')
+    if (hideNoise) params.set('hideNoise', '1')
+    if (inboundOnly) params.set('source', 'inbound')
     if (q.trim()) params.set('q', q.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, inboundOnly, q])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -319,6 +325,9 @@ export default function AdminInfluencerPoolPage() {
           ))}
         </div>
 
+        {/* 📊 아웃리치 전환 퍼널 — '모은 게 성과로 이어지나' 측정(컨택 이력 있을 때만). */}
+        <FunnelCard stats={stats} />
+
         {/* 아웃리치 파이프라인 — 상태별 카운트(클릭 시 필터). 발송 자동화 없음(메일은 리드별 직접 발송). */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-xs font-medium text-gray-500 mr-1">아웃리치:</span>
@@ -445,6 +454,12 @@ export default function AdminInfluencerPoolPage() {
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer" title="뉴스·방송·기관·체험단모집·대행 등 노이즈 숨김">
+            <input type="checkbox" checked={hideNoise} onChange={e => setHideNoise(e.target.checked)} /> 🧹 노이즈 숨김
+          </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
+            <input type="checkbox" checked={inboundOnly} onChange={e => setInboundOnly(e.target.checked)} /> 📥 신청·동의
+          </label>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·수집키워드 검색 (예: 방배)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
           <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
           <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
@@ -503,6 +518,7 @@ export default function AdminInfluencerPoolPage() {
                         {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
                         <span>
                           <span className="font-medium">{l.name}</span>
+                          {l.source === 'inbound' && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[10px] font-medium align-middle" title="스스로 신청 · 사전동의">📥 신청</span>}
                           <span className="ml-1.5 text-xs text-gray-400">{PLATFORM_LABEL[l.platform] || l.platform}{l.handle ? ` · ${l.handle}` : ''}</span>
                         </span>
                       </a>

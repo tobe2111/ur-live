@@ -190,6 +190,7 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
@@ -1524,6 +1525,8 @@ app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec
 app.route('/api/products', featureProductsRoutes);
 // 🎯 [urads-split Phase D] /api/ads 로컬 폴백 제거 — Service Binding 프록시(env.ADS→ur-ads)가 전담. 재도입=원복.
 // app.route('/api/ads', marketingRoutes);
+// 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
+app.route('/api/creator-apply', influencerApplyRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
