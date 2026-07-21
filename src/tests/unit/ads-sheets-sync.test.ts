@@ -7,7 +7,8 @@ import { b64url, SHEET_HEADER, leadToRow, type SheetLead } from '@/features/mark
  */
 const lead: SheetLead = {
   id: 7, platform: 'youtube', name: '방배미식가', handle: '@bb', url: 'https://youtube.com/@bb',
-  subscriber_count: 12000, email: 'a@b.com', instagram: 'bb_ig', tiktok: null, category: '맛집',
+  subscriber_count: 12000, recent_avg_views: 3400, recent_avg_comments: 21, recent_posts_30d: null,
+  email: 'a@b.com', instagram: 'bb_ig', tiktok: null, category: '맛집',
   source_keyword: '방배 맛집', status: 'new', contact_channel: null, contacted_at: null,
   follow_up_at: null, source: 'inbound', consented_at: '2026-07-21 01:00:00', memo: null, collected_at: '2026-07-20 10:00:00',
 }
@@ -28,6 +29,12 @@ describe('leadToRow ↔ SHEET_HEADER 정렬', () => {
     const row = leadToRow(lead)
     expect(row[SHEET_HEADER.indexOf('틱톡')]).toBe('')
     expect(row[SHEET_HEADER.indexOf('메모')]).toBe('')
+    expect(row[SHEET_HEADER.indexOf('月포스팅')]).toBe('') // perf 미수집 = 빈칸(0 과 구분)
+  })
+  it('📈 성과 열 — 평균조회/평균댓글 위치 고정', () => {
+    const row = leadToRow(lead)
+    expect(row[SHEET_HEADER.indexOf('평균조회수')]).toBe(3400)
+    expect(row[SHEET_HEADER.indexOf('평균댓글')]).toBe(21)
   })
 })
 

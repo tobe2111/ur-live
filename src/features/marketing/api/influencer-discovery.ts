@@ -12,6 +12,8 @@
  *   개인정보 최소화: 원시 IP/UA 등은 저장 안 하고, 크리에이터가 공개한 비즈니스 컨택만 기록.
  */
 
+import { resolveCategory } from './influencer-classify'
+
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
 export interface ExtractedContacts { emails: string[]; instagram: string[]; tiktok: string[]; links: string[] }
@@ -490,6 +492,11 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   // 📥 유입 출처(자동수집=NULL/'auto', 인바운드 신청='inbound') + 사전동의 시각(인바운드=신청 시 기록 → 자유 연락 가능).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME').run().catch(() => null)
+  // 📈 성과 지표(2026-07-21) — YT 최근 영상 ≤10 평균 조회/댓글, 네이버 RSS 30일 포스팅 수, 수집 스탬프.
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_views INTEGER').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_comments INTEGER').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_posts_30d INTEGER').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN perf_checked_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
@@ -498,11 +505,12 @@ export async function saveInfluencerLeads(
   meta?: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
   await ensureInfluencerSchema(DB)
-  const category = meta?.category ?? null
   const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
     if (isLikelyNoise(l.name, l.description)) continue // 🧹 뉴스·방송·기관·체험단모집·대행 등 노이즈 제외
+    // 🏷️ 콘텐츠(이름+소개글) 신호 우선 분류 — 키워드 상속의 오분류('자동'/교차 카테고리) 방지.
+    const category = resolveCategory(l.name, l.description, meta?.category)
     const r = await DB.prepare(`INSERT OR IGNORE INTO ad_influencer_leads
       (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

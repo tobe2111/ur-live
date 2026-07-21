@@ -17,6 +17,7 @@ import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } fr
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
+import { classifyCategory } from './influencer-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -214,6 +215,7 @@ app.get('/influencer-pool', async (c) => {
   const sort = (c.req.query('sort') || 'fit').trim()
   const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
     : sort === 'recent' ? 'id DESC'
+    : sort === 'perf' ? '(recent_avg_views IS NULL) ASC, recent_avg_views DESC, subscriber_count DESC, id DESC' // 📈 최근 평균조회수순(미수집 후순위)
     : `CASE
          WHEN platform IN ('naver_blog','naver_cafe','tistory') THEN 0
          WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
@@ -225,7 +227,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -348,6 +350,29 @@ app.post('/influencer-pool/send-consented', async (c) => {
   }
   const eligible = new Set(rows.map(r => r.id))
   return c.json({ success: true, sent, failed: failedIds, skipped: ids.filter(id => !eligible.has(id)) })
+})
+
+// POST /api/admin/ads/influencer-pool/reclassify — 🏷️ 기존 풀 콘텐츠 기반 카테고리 재분류(백필, 멱등)
+//   키워드 상속의 오분류('자동'/교차 카테고리)를 채널 이름+소개글 신호로 교정. 신호 있고 다를 때만 UPDATE.
+app.post('/influencer-pool/reclassify', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  let scanned = 0, changed = 0
+  for (let off = 0; ; off += 3000) {
+    const rows = (await c.env.DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
+        WHERE account_id = ? ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(POOL, off)
+      .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
+    if (!rows.length) break
+    scanned += rows.length
+    const ups: ReturnType<typeof c.env.DB.prepare>[] = []
+    for (const r of rows) {
+      const byContent = classifyCategory(r.name, r.description)
+      if (byContent && byContent !== r.category) ups.push(c.env.DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = ?').bind(byContent, r.id, POOL))
+    }
+    for (let i = 0; i < ups.length; i += 100) await c.env.DB.batch(ups.slice(i, i + 100)).catch(() => null)
+    changed += ups.length
+    if (rows.length < 3000) break
+  }
+  return c.json({ success: true, scanned, changed })
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)

@@ -15,6 +15,8 @@
  */
 import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { resolveCategory } from './influencer-classify'
+import { enrichYouTubePerformance, enrichNaverActivity } from './influencer-performance'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -67,6 +69,7 @@ interface AutoCollectStats {
   total_runs: number; total_saved: number; cursor: number
   promoted?: string[]; youtube_quota_hit?: boolean
   bio_enriched?: number // 🔗 이번 실행에서 링크인바이오 페이지로 이메일/인스타를 새로 채운 리드 수
+  perf_enriched?: number // 📈 이번 실행에서 성과 지표(YT 평균조회/네이버 활동성)를 채운 리드 수
   /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
    *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
   diag?: {
@@ -152,7 +155,7 @@ async function saveLeadsBatch(
       accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
       l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
       l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
-      meta.category ?? null, meta.sourceKeyword ?? null,
+      resolveCategory(l.name, l.description, meta.category), meta.sourceKeyword ?? null, // 🏷️ 콘텐츠 신호 우선 분류
     ))
     const rs = await DB.batch(stmts).catch(() => null)
     if (rs) for (const r of rs) if (r?.meta?.changes === 1) saved++
@@ -491,6 +494,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
   let bioEnriched = 0
   try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
+  // 📈 성과 지표 백필 — YT 최근 영상 평균 조회/댓글(units 유휴분 — 검색 예산과 무관) + 네이버 RSS 활동성.
+  let perfEnriched = 0
+  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
+  try { perfEnriched += await enrichNaverActivity(DB, budget, 12) } catch { /* fail-soft */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환).
   const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
@@ -500,7 +507,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, diag,
+    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
