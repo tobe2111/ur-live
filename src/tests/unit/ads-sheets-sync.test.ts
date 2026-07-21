@@ -8,7 +8,7 @@ import { b64url, SHEET_HEADER, leadToRow, type SheetLead } from '@/features/mark
 const lead: SheetLead = {
   id: 7, platform: 'youtube', name: '방배미식가', handle: '@bb', url: 'https://youtube.com/@bb',
   subscriber_count: 12000, recent_avg_views: 3400, recent_avg_comments: 21, recent_posts_30d: null,
-  email: 'a@b.com', instagram: 'bb_ig', tiktok: null, category: '맛집',
+  email: 'a@b.com', instagram: 'bb_ig', tiktok: null, links: 'https://foo.tistory.com', category: '맛집',
   source_keyword: '방배 맛집', status: 'new', contact_channel: null, contacted_at: null,
   follow_up_at: null, source: 'inbound', consented_at: '2026-07-21 01:00:00', memo: null, collected_at: '2026-07-20 10:00:00',
 }
