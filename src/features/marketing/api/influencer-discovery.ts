@@ -487,6 +487,9 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT').run().catch(() => null)
   // 🔗 링크인바이오 보강 시도 시각 — NULL 이면 미시도(cron 이 잔여 예산으로 순차 소진, 재시도 폭주 방지).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME').run().catch(() => null)
+  // 📥 유입 출처(자동수집=NULL/'auto', 인바운드 신청='inbound') + 사전동의 시각(인바운드=신청 시 기록 → 자유 연락 가능).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
