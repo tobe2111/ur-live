@@ -43,13 +43,16 @@ function buildBookmarklet(token: string): string {
   const api = `${window.location.origin}/api/buyer-ingest`
   const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};` +
     `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:280px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
-    `var host=location.host,HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i;` +
-    `var L=[].slice.call(document.querySelectorAll('a[href]')).map(function(a){return a.href}).filter(function(h){try{var u=new URL(h);return u.host===host&&HINT.test(u.pathname+u.search)&&(/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i.test(u.search)||/\\/\\d{3,}(\\/|$)/.test(u.pathname))}catch(e){return false}});` +
-    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(HINT.test(location.pathname))H.push(document.documentElement.outerHTML);` +
-    `if(!L.length&&!H.length){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 열고 다시 누르거나, 리스트를 100/200개로 펼치세요.');setTimeout(function(){b.remove()},7000);return}` +
-    `for(var i=0;i<L.length;i++){S('유어딜: 수집 중 '+(i+1)+'/'+L.length);try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,300)})}` +
+    `var host=location.host,cur=location.href.split('#')[0],ht=document.documentElement.outerHTML,HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i,IDRE=/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i,m,cand=[];` +
+    `[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){cand.push(a.href)});` +
+    `var re1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=re1.exec(ht))){cand.push(m[0])}` +
+    `var re2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=re2.exec(ht))){cand.push('/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}` +
+    `var L=cand.map(function(h){try{return new URL(h,location.href).href}catch(e){return ''}}).filter(function(u){if(!u)return false;try{var x=new URL(u);return x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&u.split('#')[0]!==cur}catch(e){return false}});` +
+    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(IDRE.test(location.search)&&HINT.test(location.pathname))H.push(ht);` +
+    `if(!L.length&&!H.length){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열고 누르거나, 리스트를 100/200개로 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
+    `for(var i=0;i<L.length;i++){S('유어딜: 상세 수집 '+(i+1)+'/'+L.length);try{var r=await fetch(L[i],{credentials:'include'});if(r.ok)H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,300)})}` +
     `S('유어딜: 전송 중... ('+H.length+'건)');var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();` +
-    `if(j&&j.success){S('✅ 저장 '+((j.result&&j.result.saved)||0)+'건 / 파싱 '+((j.result&&j.result.parsed)||0)+' — 유어딜에서 확인하세요')}else{S('❌ 실패: '+((j&&j.error)||('HTTP '+res.status)))}setTimeout(function(){b.remove()},9000);` +
+    `if(j&&j.success){S('✅ 저장 '+((j.result&&j.result.saved)||0)+'건 / 파싱 '+((j.result&&j.result.parsed)||0)+' (상세 '+L.length+'개) — 유어딜에서 확인')}else{S('❌ 실패: '+((j&&j.error)||('HTTP '+res.status)))}setTimeout(function(){b.remove()},10000);` +
     `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
