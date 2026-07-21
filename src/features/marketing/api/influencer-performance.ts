@@ -68,9 +68,11 @@ export async function enrichYouTubePerformance(
   apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number,
 ): Promise<number> {
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
+  await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
+  // perf 미수집 + 개설일 미보강(기존 풀 백필 — 자기종료: channel_published_at 채워지면 재선택 안 됨, 겸사 avg 갱신).
   const rows = (await DB.prepare(`SELECT id, channel_id FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'youtube' AND perf_checked_at IS NULL
-      ORDER BY subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
+      WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR channel_published_at IS NULL)
+      ORDER BY (channel_published_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
     .all<{ id: number; channel_id: string }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
