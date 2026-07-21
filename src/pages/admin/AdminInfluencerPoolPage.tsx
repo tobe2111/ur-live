@@ -185,6 +185,8 @@ export default function AdminInfluencerPoolPage() {
   // 🧰 유지보수(중복통합·시트·재분류·재추출)는 MaintenanceButtons 컴포넌트로 추출(600줄 캡).
   const reloadAll = useCallback(async () => { await Promise.all([loadLeads(), loadMeta()]) }, [loadLeads, loadMeta])
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
+  // 🕐 서버 저장 시각은 UTC(datetime('now')/toISOString) — 한국시간(KST)으로 표시.
+  function fmtKST(dt?: string | null): string { if (!dt) return '—'; const d = new Date(dt.replace(' ', 'T') + 'Z'); return Number.isFinite(d.getTime()) ? d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : dt }
   // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록(+지역 커버리지/필터).
   const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number; regions?: string | null }[] | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
@@ -330,7 +332,7 @@ export default function AdminInfluencerPoolPage() {
 
         {run && (
           <div className="mb-4 text-xs text-gray-500">
-            마지막 수집 {run.last_run || '—'} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
+            마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
             {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-amber-600 font-medium' : ''}>{` · 🎯 YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
             {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
             {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
