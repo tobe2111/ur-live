@@ -447,10 +447,19 @@ export async function discoverTistoryBloggers(
 // ── 저장/관리 (계정별 리드 DB) ────────────────────────────────────────────────
 export interface LeadRow extends InfluencerLead { id: number; status: string; memo: string | null; collected_at: string; category: string | null; source_keyword: string | null }
 
-const _schemaDone = new WeakSet<object>()
-export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
-  if (_schemaDone.has(DB)) return
-  _schemaDone.add(DB)
+// ⚠️ 2026-07-21: 동시성 안전 — 인-플라이트 Promise 캐시(완료 후 재사용). 이전 WeakSet 방식은 ALTER
+//   *완료 전에* 플래그를 세워, 병렬 요청(어드민 목록+통계 동시 로드)에서 한쪽이 컬럼 추가 중일 때
+//   다른 쪽이 '이미 완료'로 착각하고 신규 컬럼 SELECT → 'no such column' → 빈 목록(배포마다 재발).
+//   이제 두 요청이 *같은 Promise* 를 await → 컬럼 존재 보장 후에만 조회 진행.
+const _schemaPromise = new WeakMap<object, Promise<void>>()
+export function ensureInfluencerSchema(DB: D1Database): Promise<void> {
+  const cached = _schemaPromise.get(DB)
+  if (cached) return cached
+  const p = _ensureInfluencerSchema(DB)
+  _schemaPromise.set(DB, p)
+  return p
+}
+async function _ensureInfluencerSchema(DB: D1Database): Promise<void> {
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_influencer_leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id INTEGER NOT NULL,
