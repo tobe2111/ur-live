@@ -14,7 +14,7 @@ import {
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
-import { runBuyerAutoFetch } from './buyer-autofetch'
+import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf } from './buyer-autofetch'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -89,12 +89,36 @@ app.post('/import', async (c) => {
 // POST /api/admin/buyer-pool/auto-fetch { cookie, listUrl?, urls?, max? } — ⚠️ 상세 서버 자동 수집(위험·게이트).
 //   로그인 쿠키로 상세 페이지를 서버가 직접 fetch → 파싱 → 저장. 쿠키 미저장(요청당). 게이트 OFF 면 no-op.
 app.post('/auto-fetch', async (c) => {
-  const b = await c.req.json().catch(() => ({})) as { cookie?: string; listUrl?: string; urls?: string[]; max?: number }
+  const b = await c.req.json().catch(() => ({})) as { cookie?: string; listUrl?: string; urls?: string[]; max?: number; save?: boolean }
   const urls = Array.isArray(b.urls) ? b.urls.filter(u => typeof u === 'string').slice(0, 30) : undefined
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
-  const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl: b.listUrl ? String(b.listUrl) : undefined, urls, max })
+  const listUrl = b.listUrl ? String(b.listUrl) : undefined
+  const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl, urls, max })
     .catch((e) => ({ ran: false, reason: String(e), urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
+  // 저장 옵션: 쿠키(호스트별 암호화)·리스트 URL 저장 → 다음부터 재입력 없이 재사용.
+  if (b.save && result.ran) {
+    if (b.cookie && listUrl) await saveCookieForHost(c.env, hostOf(listUrl), String(b.cookie)).catch(() => null)
+    if (listUrl) await addSource(c.env, listUrl).catch(() => null)
+  }
   return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/auto-fetch/config — 저장된 소스·쿠키 호스트(존재여부만)·게이트 상태.
+app.get('/auto-fetch/config', async (c) => c.json({ success: true, ...(await getAutofetchConfig(c.env)) }))
+
+// POST /api/admin/buyer-pool/auto-fetch/run-saved { max? } — 저장된 소스 전부 저장쿠키로 자동 수집.
+app.post('/auto-fetch/run-saved', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { max?: number }
+  const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
+  const result = await runSavedSources(c.env, max).catch((e) => ({ ran: false, reason: String(e), saved: 0, sources: [] }))
+  return c.json({ success: true, result })
+})
+
+// POST /api/admin/buyer-pool/auto-fetch/forget { url } — 저장된 소스 삭제.
+app.post('/auto-fetch/forget', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { url?: string }
+  if (b.url) await removeSource(c.env, String(b.url)).catch(() => null)
+  return c.json({ success: true })
 })
 
 // GET /api/admin/buyer-pool/stats

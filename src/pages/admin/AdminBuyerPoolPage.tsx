@@ -86,6 +86,8 @@ export default function AdminBuyerPoolPage() {
   const [autoListUrl, setAutoListUrl] = useState('')
   const [autoMax, setAutoMax] = useState(10)
   const [autoRunning, setAutoRunning] = useState(false)
+  const [autoSave, setAutoSave] = useState(true)
+  const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean }>({ sources: [], cookieHosts: [], enabled: false })
 
   const loadStats = useCallback(async () => {
     try {
@@ -117,7 +119,11 @@ export default function AdminBuyerPoolPage() {
     try { const r = await api.get('/api/admin/buyer-pool/targets'); if (r.data?.success) setTargets(r.data.targets || []) } catch { /* noop */ }
   }, [])
 
-  useEffect(() => { loadStats(); loadTargets() }, [loadStats, loadTargets])
+  const loadAutoConfig = useCallback(async () => {
+    try { const r = await api.get('/api/admin/buyer-pool/auto-fetch/config'); if (r.data?.success) setAutoConfig({ sources: r.data.sources || [], cookieHosts: r.data.cookieHosts || [], enabled: !!r.data.enabled }) } catch { /* noop */ }
+  }, [])
+
+  useEffect(() => { loadStats(); loadTargets(); loadAutoConfig() }, [loadStats, loadTargets, loadAutoConfig])
   useEffect(() => { loadLeads() }, [loadLeads])
 
   const collect = async () => {
@@ -187,15 +193,32 @@ export default function AdminBuyerPoolPage() {
     if (!/^https?:\/\//.test(autoListUrl.trim())) { toast.error('리스트 페이지 URL을 넣어 주세요'); return }
     setAutoRunning(true)
     try {
-      const r = await api.post('/api/admin/buyer-pool/auto-fetch', { cookie: autoCookie.trim(), listUrl: autoListUrl.trim(), max: autoMax })
+      const r = await api.post('/api/admin/buyer-pool/auto-fetch', { cookie: autoCookie.trim(), listUrl: autoListUrl.trim(), max: autoMax, save: autoSave })
       const res = r.data?.result
-      if (res?.ran) toast.success(`상세 ${res.fetched}건 방문 · ${res.parsed}건 추출 · ${res.saved}건 신규/보강 (실패 ${res.errors})`)
+      if (res?.ran && !res.reason) { toast.success(`상세 ${res.fetched}건 방문 · ${res.parsed}건 추출 · ${res.saved}건 신규/보강 (실패 ${res.errors})`); if (autoSave) setAutoCookie('') }
       else toast.error(res?.reason || '자동 수집 실패')
-      await Promise.all([loadStats(), loadLeads()])
+      await Promise.all([loadStats(), loadLeads(), loadAutoConfig()])
     } catch (e) {
       const err = e as { response?: { data?: { error?: string } } }
       toast.error(err?.response?.data?.error || '자동 수집 실패')
     } finally { setAutoRunning(false) }
+  }
+
+  const runSaved = async () => {
+    setAutoRunning(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/auto-fetch/run-saved', { max: autoMax })
+      const res = r.data?.result
+      if (res?.ran) {
+        const expired = (res.sources || []).filter((s: { reason?: string }) => s.reason?.startsWith('COOKIE_EXPIRED')).map((s: { label: string }) => s.label)
+        toast.success(`저장된 소스 ${res.sources?.length || 0}곳 · 총 ${res.saved}건 신규/보강` + (expired.length ? ` · ⚠️ 쿠키 만료: ${expired.join(', ')}` : ''))
+      } else toast.error(res?.reason || '저장된 소스가 없습니다')
+      await Promise.all([loadStats(), loadLeads(), loadAutoConfig()])
+    } catch { toast.error('자동 수집 실패') } finally { setAutoRunning(false) }
+  }
+
+  const forgetSource = async (url: string) => {
+    try { await api.post('/api/admin/buyer-pool/auto-fetch/forget', { url }); loadAutoConfig() } catch { toast.error('삭제 실패') }
   }
 
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
@@ -334,13 +357,35 @@ export default function AdminBuyerPoolPage() {
               <li>브라우저 <b>F12 → Network</b> 탭 → 아무 요청 클릭 → <b>Request Headers</b> 의 <code>cookie:</code> 값을 통째로 복사해 아래에 붙여넣기.</li>
               <li>그 리스트 페이지의 <b>주소(URL)</b>를 복사해 붙여넣고 「자동 수집 실행」.</li>
             </ol>
-            <textarea value={autoCookie} onChange={e => setAutoCookie(e.target.value)} rows={2} placeholder="로그인 쿠키(cookie: 헤더 값 전체) 붙여넣기 — 저장되지 않습니다" className="w-full px-2 py-1.5 rounded-lg border border-red-200 text-xs font-mono text-gray-900 mb-2" />
+            <textarea value={autoCookie} onChange={e => setAutoCookie(e.target.value)} rows={2} placeholder="로그인 쿠키(cookie: 헤더 값 전체) 붙여넣기" className="w-full px-2 py-1.5 rounded-lg border border-red-200 text-xs font-mono text-gray-900 mb-2" />
             <div className="flex flex-wrap items-center gap-2">
               <input value={autoListUrl} onChange={e => setAutoListUrl(e.target.value)} placeholder="리스트 페이지 URL (예: https://www.buykorea.org/seller/ec/inq/selectInquiryList.do?...)" className="flex-1 min-w-[240px] px-2 py-1.5 rounded-lg border border-red-200 text-sm text-gray-900" />
               <label className="text-xs text-gray-600">최대 <input type="number" min={1} max={30} value={autoMax} onChange={e => setAutoMax(Math.min(30, Math.max(1, Number(e.target.value) || 10)))} className="w-16 px-2 py-1.5 rounded-lg border border-red-200 text-sm text-gray-900" />건</label>
               <button onClick={runAutoFetch} disabled={autoRunning} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-50">{autoRunning ? '수집 중…' : '자동 수집 실행'}</button>
             </div>
-            <div className="mt-2 text-[11px] text-gray-400">※ 한 번에 최대 30건(계정 보호). 상세 URL 을 직접 넣고 싶으면 관리자에게 문의(엔드포인트 <code>urls[]</code> 지원). buyKorea 외 사이트는 리스트 HTML 구조에 따라 링크 인식이 다를 수 있어, 안 되면 리스트 URL 대신 상세 URL 직접 지정이 안전합니다.</div>
+            <label className="mt-2 flex items-center gap-1.5 text-xs text-gray-700"><input type="checkbox" checked={autoSave} onChange={e => setAutoSave(e.target.checked)} /> <b>쿠키·URL 저장</b> (다음부턴 아래 「저장된 소스 전부 수집」 버튼 한 번이면 됩니다 · 쿠키는 암호화 저장, 만료 시에만 다시 붙여넣기)</label>
+
+            {/* 저장된 소스 — 재입력 없이 원클릭/반복 수집 */}
+            <div className="mt-3 pt-3 border-t border-red-100">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xs font-semibold text-gray-800">💾 저장된 소스 {autoConfig.sources.length > 0 && `(${autoConfig.sources.length})`} {autoConfig.cookieHosts.length > 0 && <span className="text-[11px] font-normal text-emerald-600">· 쿠키 저장됨: {autoConfig.cookieHosts.join(', ')}</span>}</div>
+                {autoConfig.sources.length > 0 && <button onClick={runSaved} disabled={autoRunning} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium disabled:opacity-50">{autoRunning ? '수집 중…' : '▶ 저장된 소스 전부 수집'}</button>}
+              </div>
+              {autoConfig.sources.length === 0 ? (
+                <div className="text-[11px] text-gray-400">아직 없습니다. 위에서 「쿠키·URL 저장」 체크하고 한 번 실행하면 여기에 쌓입니다.</div>
+              ) : (
+                <div className="space-y-1">
+                  {autoConfig.sources.map(s => (
+                    <div key={s.url} className="flex items-center gap-2 text-[11px] bg-white rounded-lg border border-gray-200 px-2 py-1">
+                      <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">{s.host}</span>
+                      <span className="flex-1 truncate text-gray-500" title={s.url}>{s.url}</span>
+                      <button onClick={() => forgetSource(s.url)} className="text-gray-300 hover:text-red-500 shrink-0">삭제</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-[11px] text-gray-400">※ 한 번에 최대 30건(계정 보호). buyKorea 외 사이트는 리스트 HTML 구조에 따라 링크 인식이 다를 수 있어, 안 되면 상세 URL 직접 지정이 안전합니다.</div>
           </div>
         )}
 
