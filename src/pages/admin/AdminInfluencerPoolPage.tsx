@@ -7,6 +7,9 @@ import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard from './influencer-pool/FunnelCard'
 import { pickReach } from './influencer-pool/reach'
+import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
+import SendQueueModal from './influencer-pool/SendQueueModal'
+import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -42,11 +45,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
 interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
-interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
-
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
-// ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
-const PRIORITY_CATS = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -71,8 +70,6 @@ export default function AdminInfluencerPoolPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
   const [collecting, setCollecting] = useState(false)
-  const [newKw, setNewKw] = useState('')
-  const [newKwCat, setNewKwCat] = useState('맛집') // 신규 키워드 카테고리(우선 커서 태깅)
 
   const PAGE = 200
   // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름).
@@ -156,20 +153,6 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
   }
 
-  async function addKeyword() {
-    const kw = newKw.trim()
-    if (kw.length < 2) { toast.error('키워드는 2자 이상'); return }
-    try {
-      // category 를 우선 카테고리로 보내면 우선 커서(배치 3/4)를 탐 — 지역+업종 시딩용.
-      const r = await api.post('/api/admin/ads/influencer-pool/keywords', { keyword: kw, category: newKwCat })
-      if (r.data?.success) { setNewKw(''); toast.success(`키워드 추가 (${newKwCat})`); await loadMeta() }
-      else toast.error(r.data?.error || '추가 실패')
-    } catch { toast.error('추가 실패') }
-  }
-  async function toggleKeyword(k: Keyword) {
-    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await loadMeta() }
-    catch { toast.error('변경 실패') }
-  }
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
     catch { toast.error('변경 실패') }
@@ -240,6 +223,7 @@ export default function AdminInfluencerPoolPage() {
   const [drafting, setDrafting] = useState(false)
   const [draftProgress, setDraftProgress] = useState('')
   const [draftView, setDraftView] = useState<{ lead: Lead; draft: OutreachDraftData } | null>(null)
+  const [queueOpen, setQueueOpen] = useState(false) // 🚀 발송 모드(선택 있으면 선택만, 없으면 현재 필터 전체)
   function toggleSelect(id: number) {
     setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }
@@ -297,8 +281,6 @@ export default function AdminInfluencerPoolPage() {
     const a = document.createElement('a'); a.href = url; a.download = `influencer-pool-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
-  const activeKw = keywords.filter(k => k.active)
-  const candidateKw = keywords.filter(k => !k.active)
 
   return (
     <AdminLayout title="인플루언서 풀">
@@ -395,33 +377,13 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
             {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
           </button>
+          <button onClick={() => setQueueOpen(true)} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
+            🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
+          </button>
+          <ConsentedSendPanel />
         </div>
 
-        {/* 키워드 관리 */}
-        <details className="mb-4 rounded-lg border border-gray-200 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">
-            수집 키워드 관리 (활성 {activeKw.length} · 후보 {candidateKw.length})
-          </summary>
-          <div className="px-4 pb-4">
-            <div className="flex flex-wrap gap-2 mb-3">
-              <select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
-                {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>⭐{cat}</option>)}
-                <option value="일반">일반</option>
-              </select>
-              <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 방배 맛집)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
-              <button onClick={addKeyword} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm">추가</button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {keywords.map(k => (
-                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
-                  className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-                  {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}{k.saved_total ? <span className={k.active ? 'text-emerald-300' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : ''}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로).</p>
-          </div>
-        </details>
+        <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
         {/* 필터 */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -592,6 +554,8 @@ export default function AdminInfluencerPoolPage() {
             onOpenMail={() => { reachOut(draftView.lead); setDraftView(null) }}
           />
         )}
+        {/* 🚀 발송 모드 — 한 명씩 원클릭(Enter) 발송 큐. 선택 있으면 선택만. */}
+        {queueOpen && <SendQueueModal leads={selected.size ? leads.filter(l => selected.has(l.id)) : leads} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
       </div>
     </AdminLayout>
   )
