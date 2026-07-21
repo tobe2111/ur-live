@@ -149,7 +149,8 @@ export async function ensureBuyerSchema(DB: D1Database): Promise<void> {
 
 export interface BuyerTarget { id: number; category: string; country: string; keyword: string | null; active: number; hits: number; source: string; found_total: number; saved_total: number; last_run_at: string | null; created_at: string }
 
-const CATEGORY_SEED = ['K-beauty', 'K-food', 'health supplement', 'fashion', 'baby & kids', 'home & living']
+// 타깃 카테고리 = buyKorea 자동분류 라벨과 동일 어휘(매칭 스코어 정합). 소비재 수출 중심 시드.
+const CATEGORY_SEED = ['미용', '식음료/농업', '생활건강', '패션', '가구/홈데코', '의료기기']
 const COUNTRY_SEED = ['United States', 'Japan', 'China', 'Vietnam', 'Indonesia', 'Thailand', 'Singapore', 'United Arab Emirates']
 
 const _targetsDone = new WeakSet<object>()
@@ -471,12 +472,30 @@ function normCountry(s: string | null | undefined): string | null {
   return t ? (KO_COUNTRY[t] || t) : null
 }
 
+// buyKorea 최상위 카테고리 18종(대표 제공 순서 = 사이트 표기). 자동 분류 라벨.
+export const BK_CATEGORIES = [
+  '생활건강', '가구/홈데코', '미용', '스포츠/완구/취미', '패션', '식음료/농업', 'ICT', '가전/전기전자부품',
+  '건설기자재', '기계중장비', '기초소재', '반도체/디스플레이', '의료기기', '자동차 부품', '전력플랜트',
+  '제약', '조선기자재', '항공부품', '서비스',
+]
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+
+/** 붙여넣은 buyKorea 페이지의 최상위 카테고리 판별 — 리스트 H1("미용\n전체 88") 우선, 상세 브레드크럼(일반상품 다음) 폴백. */
+export function detectBkCategory(text: string): string | null {
+  const t = String(text || '')
+  for (const cat of BK_CATEGORIES) if (new RegExp(escRe(cat) + '\\s*\\n\\s*전체\\s*\\d').test(t)) return cat
+  const after = t.split(/일반상품/)[1] || ''
+  for (const cat of BK_CATEGORIES) if (new RegExp('(^|[\\s>\\]])' + escRe(cat) + '([\\s<\\n]|$)').test(after)) return cat
+  return null
+}
+
 /** buyKorea 인콰이어리 *리스트* 페이지 붙여넣기 → 요청건별 리드(제품·국가·상세링크). 회사/연락처는 상세에 있음. */
 export function parseBuyKoreaList(text: string): BuyerLead[] {
   const raw = String(text || '')
   if (!/inqrySn=/.test(raw)) return []
   // [제목](…inqrySn=123…) 다음 줄의 국가 캡처.
   const re = /\[([^\]]+)\]\((https?:\/\/[^)]*inqrySn=(\d+)[^)]*)\)[^\n]*\n\s*[*\-]?\s*([^\n*]+)/g
+  const pageCat = detectBkCategory(raw) // 페이지 카테고리 자동 분류(전 항목 공통)
   const out: BuyerLead[] = []
   const seen = new Set<string>()
   let m: RegExpExecArray | null
@@ -489,7 +508,7 @@ export function parseBuyKoreaList(text: string): BuyerLead[] {
     const country = normCountry(m[4])
     out.push({
       source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
-      country, target_market: country, category: null, imports_from_korea: null,
+      country, target_market: country, category: pageCat, imports_from_korea: null,
       website: m[2].trim(), email: null, phone: null,
       decision_maker: null, decision_maker_title: null, decision_maker_email: null,
       est_volume: null, description: `buyKorea 구매요청: ${title}`, source_keyword: `buykorea-inq-${sn}`,
@@ -522,6 +541,7 @@ export function parseBuyKoreaInquiries(text: string): BuyerLead[] {
   // 여러 건(인콰이어리 번호 마커 2개 이상)만 분할 — 단건은 제목이 마커 앞에 있어 통째로 둔다.
   const markerCount = (raw.match(/인콰이어리\s*번호/g) || []).length
   const chunks = markerCount >= 2 ? raw.split(/(?=인콰이어리\s*번호)/).map(b => b.trim()).filter(Boolean) : [raw]
+  const pageCat = detectBkCategory(raw) // 브레드크럼 기반 카테고리 자동 분류
   const out: BuyerLead[] = []
   for (const chunk of chunks) {
     const cells = chunk.split(/[\t\n]+/).map(c => c.trim()).filter(Boolean)
@@ -544,7 +564,7 @@ export function parseBuyKoreaInquiries(text: string): BuyerLead[] {
     const desc = [title, row.use, row.category_raw, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
     out.push({
       source: 'buykorea', intent_signal: 'buying_lead', company: company.slice(0, 200),
-      country, target_market: country, category: null, imports_from_korea: null,
+      country, target_market: country, category: pageCat, imports_from_korea: null,
       website: row.website || null, email: null, phone: null,
       decision_maker: null, decision_maker_title: null, decision_maker_email: null,
       est_volume: row.est_volume ? row.est_volume.slice(0, 60) : null,
