@@ -508,4 +508,17 @@ app.post('/influencer-pool/collect', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
+// POST /api/admin/ads/influencer-pool/sheets-sync — 📊 구글시트 수동 동기화(ur-ads 위임, 동기 응답).
+//   시트 미러는 수초 내라 결과(행수/에러)를 그대로 전달 — 설정 안내가 사용자에게 보여야 함.
+app.post('/influencer-pool/sheets-sync', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
+  try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/sheets-sync', { method: 'POST' }))
+    const j = await r.json().catch(() => null) as { ok?: boolean; rows?: number; error?: string } | null
+    if (j?.ok) return c.json({ success: true, rows: j.rows || 0 })
+    return c.json({ success: false, error: j?.error || '동기화 실패' }, 400)
+  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
 export { app as adminAdsRoutes }
