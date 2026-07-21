@@ -18,7 +18,7 @@
  */
 import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
-import { getSupplyMeta, setSupplyMeta } from '../utils/product-supply-meta'
+import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
 import { fetchDemoPhotos } from '../utils/demo-photo-set'
 
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
@@ -43,27 +43,26 @@ function parseJsonArr(raw: string | null): string[] {
  *   커버 + 갤러리 외부 URL 을 R2(/api/media)로 옮기고 products.image_url/images 갱신. remaining 반환.
  *   fail-soft. MEDIA_BUCKET 없으면 0(호출측이 배너로 안내).
  */
-export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ rehosted: number; images: number; remaining: number; bucketBound: boolean }> {
+export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ rehosted: number; images: number; failed: number; remaining: number; bucketBound: boolean }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   const bucketBound = !!bucketEnv.MEDIA_BUCKET
+  await ensureSupplyMetaTable(DB)
+  // 이관 대상 = 외부 커버 데모 중 아직 '이관 불가(rehost_skip)' 로 마킹 안 된 것. skip 마킹으로 수렴.
+  const WHERE = `(slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+        AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
+        AND id NOT IN (SELECT product_id FROM product_supply_meta WHERE key='rehost_skip' AND value='1')`
   const countExternal = async () => {
-    const r = await DB.prepare(
-      `SELECT COUNT(*) AS n FROM products
-        WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
-          AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'`
-    ).first<{ n: number }>().catch(() => ({ n: 0 }))
+    const r = await DB.prepare(`SELECT COUNT(*) AS n FROM products WHERE ${WHERE}`)
+      .first<{ n: number }>().catch(() => ({ n: 0 }))
     return Number(r?.n ?? 0)
   }
-  if (!bucketBound) return { rehosted: 0, images: 0, remaining: await countExternal(), bucketBound }
+  if (!bucketBound) return { rehosted: 0, images: 0, failed: 0, remaining: await countExternal(), bucketBound }
   const { results } = await DB.prepare(
-    `SELECT id, slug, image_url, images FROM products
-      WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
-        AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
-      ORDER BY id LIMIT ?`
+    `SELECT id, slug, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
   ).bind(Math.max(1, Math.min(12, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null }[] }))
-  let rehosted = 0, images = 0
+  let rehosted = 0, images = 0, failed = 0
   for (const row of (results || [])) {
     const gallery = parseJsonArr(row.images)
     const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u))
@@ -96,13 +95,14 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
       if (newCover !== row.image_url) rehosted++
       images += mapping.size
     } else {
-      // 커버 이관 실패(도달불가/깨짐) — 이 커버가 remaining 에서 안 빠지면 루프가 멈추니, 깨진 것으로 마킹해
-      //   다음 순환에서 heal(재획득)로 넘김. 여기선 placeholder 로 치환해 카드 깨짐만 즉시 제거.
-      await DB.prepare(`UPDATE products SET image_url = ? WHERE id = ?`)
-        .bind(`https://picsum.photos/seed/heal-${row.id}/600/600`, row.id).run().catch(() => {})
+      // 커버 이관 실패(도달불가/삭제/차단) — 원본 URL 은 **유지**(비파괴: 전송 실패일 수도 있는 매장
+      //   대표사진을 picsum 랜덤으로 덮지 않는다). 대신 'rehost_skip' 마킹으로 이 라운드 큐에서 제외 →
+      //   remaining 감소로 수렴. 실제 깨진 커버는 heal(재획득)/recondition 파이프라인이 별도로 되살림.
+      await setSupplyMeta(DB, row.id, { rehost_skip: '1' })
+      failed++
     }
   }
-  return { rehosted, images, remaining: await countExternal(), bucketBound }
+  return { rehosted, images, failed, remaining: await countExternal(), bucketBound }
 }
 
 function isPlaceholderUrl(u: string | null | undefined): boolean {
@@ -285,7 +285,8 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
         if (fresh.length > 0) {
           for (const u of fresh) if (!seenU.has(u)) { seenU.add(u); rebuilt.push(u) }
           healRefetched = true
-          await setSupplyMeta(DB, row.id, { img_heal_rounds: String(rounds + 1) }).catch(() => {})
+          // 대표사진을 새로 받았으니 이관-불가 마킹 해제 → 새 외부 URL 이 bulk/cron 이관 큐에 다시 들어감.
+          await setSupplyMeta(DB, row.id, { img_heal_rounds: String(rounds + 1), rehost_skip: '0' }).catch(() => {})
         }
       }
     }
