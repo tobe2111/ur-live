@@ -22,7 +22,7 @@ app.post('/', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { token?: string; htmls?: string[]; text?: string }
   const ok = await verifyIngestToken(c.env, String(b.token || '')).catch(() => false)
   if (!ok) return c.json({ success: false, error: 'INVALID_TOKEN' }, 401, CORS)
-  const htmls = Array.isArray(b.htmls) ? b.htmls.filter(h => typeof h === 'string').slice(0, 40) : (b.text ? [String(b.text)] : [])
+  const htmls = Array.isArray(b.htmls) ? b.htmls.filter(h => typeof h === "string").slice(0, 80) : (b.text ? [String(b.text)] : [])
   if (!htmls.length) return c.json({ success: false, error: 'NO_HTML' }, 400, CORS)
   const result = await ingestHtmls(c.env, htmls).catch((e) => ({ parsed: 0, saved: 0, error: String(e) }))
   return c.json({ success: true, result }, 200, CORS)

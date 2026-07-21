@@ -202,8 +202,11 @@ const DETAIL_LABELS: Record<string, string> = {
   '직책': 'decision_maker_title', 'title': 'decision_maker_title', 'position': 'decision_maker_title', 'job title': 'decision_maker_title',
   // email / phone
   '이메일': 'email', 'email': 'email', 'e-mail': 'email', 'e mail': 'email', 'mail': 'email',
-  '휴대번호': 'phone', '전화': 'phone', '연락처': 'phone', 'phone': 'phone', 'tel': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'contact number': 'phone', 'cell': 'phone', 'fax': 'phone',
+  '휴대번호': 'phone', '휴대전화': 'phone', '전화': 'phone', '전화번호': 'phone', '연락처': 'phone', 'phone': 'phone', 'tel': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'contact number': 'phone', 'cell': 'phone', 'fax': 'phone', 'whatsapp': 'phone',
   '주소': 'address', 'address': 'address',
+  // 유형(품목 타입)·사용처·인콰이어리 상세(실제 요청 문구=RFQ, 가장 가치 큰 필드) — 설명에 담아 최대한 자세히.
+  '유형': 'ptype', 'type': 'ptype', 'product type': 'ptype',
+  '인콰이어리 상세': 'rfq', '인콰이어리상세': 'rfq', '문의내용': 'rfq', '요청사항': 'rfq', 'inquiry detail': 'rfq', 'inquiry details': 'rfq', 'details': 'rfq', 'message': 'rfq', 'requirements': 'rfq', 'remark': 'rfq', 'remarks': 'rfq', 'description': 'rfq', 'comment': 'rfq',
 }
 const DETAIL_LABEL_SET = new Set(Object.keys(DETAIL_LABELS))
 const looksLabel = (s: string) => DETAIL_LABEL_SET.has(s.toLowerCase().replace(/[:：]\s*$/, '').trim())
@@ -235,6 +238,8 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
     }
     if (!title && line.length > 3 && !/인콰이어리|게시기간|번호|메세지|favorites|^view|^\d+$|[:：]$/i.test(line)) title = line
   }
+  // 제목 꼬리의 UI 버튼 텍스트 제거(예: "제목 좋아요"/"제목 공유하기") → 리스트 제목과 매칭 정합.
+  title = title.replace(/\s*(좋아요|공유하기|공유|관심|북마크|스크랩|찜|like|share|save)\s*$/i, '').trim()
   // 정규식 폴백 — 라벨이 없어도 본문에서 이메일/전화/홈페이지 확보.
   if (!row.email) { const e = pickBusinessEmail(chunk); if (e) row.email = e }
   if (!row.phone) { const p = pickPhone(chunk); if (p) row.phone = p }
@@ -248,7 +253,7 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   // 회사명도 이메일도 홈페이지도 없으면 상세로 볼 수 없음.
   if (company.length < 2 && !email && !website) return null
   const country = normCountry((row.country || '').split(/[/,]/)[0].trim())
-  const desc = [title, row.use, row.category_raw, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
+  const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
   const isEmailName = (row.decision_maker || '').includes('@')
   return {
     source: 'b2b_detail', intent_signal: 'buying_lead',

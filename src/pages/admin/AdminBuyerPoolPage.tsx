@@ -40,7 +40,7 @@ const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'los
 // 북마클릿 — buyKorea 등에서 클릭 시 상세 페이지들을 세션으로 읽어 유어딜로 전송(F12·쿠키 불필요).
 function buildBookmarklet(token: string): string {
   const api = `${window.location.origin}/api/buyer-ingest`
-  const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};var s='a[href*="Detail.do"],a[href*="inqryDetail"],a[href*="offerDetail"],a[href*="/offer/"],a[href*="tradeLead"],a[href*="buyOffer"],a[href*="itemView"]';var L=[].slice.call(document.querySelectorAll(s)).map(function(a){return a.href}).filter(function(h){return /^https?:/.test(h)});L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,30);var H=[];if(/detail|offer|view/i.test(location.href))H.push(document.documentElement.outerHTML);for(var i=0;i<L.length;i++){try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,400)})}if(!H.length){alert('상세 링크를 못 찾았어요. 구매요청 리스트나 상세 페이지에서 눌러주세요.');return}var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();if(j&&j.success){alert('유어딜 수집 완료: '+((j.result&&j.result.saved)||0)+'건 저장 / '+((j.result&&j.result.parsed)||0)+' 파싱')}else{alert('실패: '+((j&&j.error)||'인증 오류'))}}catch(e){alert('전송 실패: '+e)}})()`
+  const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};var s='a[href*="Detail.do"],a[href*="inqryDetail"],a[href*="offerDetail"],a[href*="/offer/"],a[href*="tradeLead"],a[href*="buyOffer"],a[href*="itemView"]';var L=[].slice.call(document.querySelectorAll(s)).map(function(a){return a.href}).filter(function(h){return /^https?:/.test(h)});L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(/detail|offer|view/i.test(location.href))H.push(document.documentElement.outerHTML);for(var i=0;i<L.length;i++){try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,350)})}if(!H.length){alert('상세 링크를 못 찾았어요. 구매요청 리스트나 상세 페이지에서 눌러주세요.');return}var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();if(j&&j.success){alert('유어딜 수집 완료: '+((j.result&&j.result.saved)||0)+'건 저장 / '+((j.result&&j.result.parsed)||0)+' 파싱')}else{alert('실패: '+((j&&j.error)||'인증 오류'))}}catch(e){alert('전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
 
@@ -391,7 +391,7 @@ export default function AdminBuyerPoolPage() {
                 <span className="text-[11px] text-gray-400">← 이 버튼을 즐겨찾기 바로 드래그</span>
                 {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline">토큰 재발급</button>}
               </div>
-              <div className="mt-1.5 text-[11px] text-gray-400">※ buyKorea 는 바이어 이메일을 가리므로, 이 방법도 회사명·웹사이트·국가·품목까지 모읍니다. 이메일은 위 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
+              <div className="mt-1.5 text-[11px] text-gray-400">💡 <b>많이 모으려면</b>: buyKorea 리스트에서 <b>100/200개로 펼친 뒤</b> 북마클릿을 누르면 한 번에 최대 60건까지 상세를 긁어옵니다(회사명·국가·웹사이트·품목·수량·<b>실제 요청문구</b>까지). ※ 바이어 이메일은 마스킹되니, 이메일은 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
             </div>
             <div className="text-xs text-gray-400 mb-2">— 또는 아래는 서버가 직접 방문하는 방식(고급·위험) —</div>
             <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
