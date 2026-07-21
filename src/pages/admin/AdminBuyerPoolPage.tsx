@@ -37,6 +37,16 @@ const STAGE_META: Record<string, { label: string; cls: string }> = {
 }
 const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'lost', 'hold']
 
+// 무료 B2B 구매리드(바이어 구매요청) 수집처 — 로그인 후 리스트 페이지를 Ctrl+A → Ctrl+C → 아래 붙여넣기.
+// 전부 무료 가입, 유료 provider 없음. 각 사이트의 "구매요청/바이어 인콰이어리" 메뉴가 핵심.
+const BUYER_SOURCES: { name: string; url: string; org: string; menu: string; note: string }[] = [
+  { name: 'buyKorea', url: 'https://www.buykorea.org', org: 'KOTRA (대한무역투자진흥공사)', menu: '로그인 → 상단 「인콰이어리(Inquiry)」 → 「일반상품」 또는 카테고리(미용·식음료/농업 등) 선택 → 바이어 구매요청 리스트', note: '가장 추천 — 해외 바이어가 한국 상품을 직접 찾는 요청. 카테고리·국가 필터 후 100/200개씩 펼쳐서 복사.' },
+  { name: 'tradeKorea', url: 'https://www.tradekorea.com', org: 'KITA (한국무역협회)', menu: '로그인 → 「Buying Offers」(구매오퍼) 메뉴 → 바이어 구매요청 리스트', note: 'Product Category / Country 필터 지원. 리스트 통째 복사.' },
+  { name: 'GoBizKorea', url: 'https://www.gobizkorea.com', org: '중소기업유통센터', menu: '로그인 → 「Buying Leads」(구매정보) → 바이어 구매요청 리스트', note: '중소기업 대상 해외 구매리드.' },
+  { name: 'EC21', url: 'https://www.ec21.com', org: '글로벌 B2B 마켓플레이스', menu: '로그인 → 「Trade Leads → Buying Leads」 → 바이어 구매요청 리스트', note: 'Buy Offers 를 카테고리/키워드로 검색 후 리스트 복사.' },
+  { name: 'ECPlaza', url: 'https://www.ecplaza.net', org: '글로벌 B2B 마켓플레이스', menu: '로그인 → 「Trade Leads → Buy Offers」 → 바이어 구매요청 리스트', note: 'Buy Offers 리스트 복사.' },
+]
+
 function scoreCls(s: number | null): string {
   const v = s ?? 0
   if (v >= 70) return 'bg-emerald-500 text-white'
@@ -70,6 +80,7 @@ export default function AdminBuyerPoolPage() {
   const [saving, setSaving] = useState(false)
   const [bulkText, setBulkText] = useState('')
   const [importing, setImporting] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
 
   const loadStats = useCallback(async () => {
     try {
@@ -152,7 +163,7 @@ export default function AdminBuyerPoolPage() {
   }
 
   const submitBulk = async () => {
-    if (bulkText.trim().split(/\r?\n/).filter(Boolean).length < 2) { toast.error('헤더 + 데이터 행이 필요합니다'); return }
+    if (bulkText.trim().split(/\r?\n/).filter(Boolean).length < 2) { toast.error('리스트/표를 붙여넣어 주세요'); return }
     setImporting(true)
     try {
       const r = await api.post('/api/admin/buyer-pool/import', { text: bulkText })
@@ -160,7 +171,10 @@ export default function AdminBuyerPoolPage() {
         toast.success(`${r.data.parsed}건 파싱 · ${r.data.saved}건 신규 저장`)
         setBulkText(''); await Promise.all([loadStats(), loadLeads()])
       } else toast.error(r.data?.error || '가져오기 실패')
-    } catch { toast.error('가져오기 실패') } finally { setImporting(false) }
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err?.response?.data?.error || '가져오기 실패 — 리스트/표 형식을 확인해 주세요')
+    } finally { setImporting(false) }
   }
 
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
@@ -230,6 +244,7 @@ export default function AdminBuyerPoolPage() {
 
         {/* 액션 바 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button onClick={() => setShowGuide(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">📋 수집 방법 {showGuide ? '숨기기' : '보기'}</button>
           <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium">+ 바이어 직접 추가</button>
           <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
           <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
@@ -248,6 +263,37 @@ export default function AdminBuyerPoolPage() {
           <label className="flex items-center gap-1 text-sm text-gray-600"><input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 컨택만</label>
           {(country || intent) && <button onClick={() => { setCountry(''); setIntent('') }} className="text-xs text-gray-500 underline">필터 해제</button>}
         </div>
+
+        {/* 📋 수집 방법 안내 — 어디서 어떻게 바이어 DB 를 모으는가 (전부 무료) */}
+        {showGuide && (
+          <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+            <div className="text-sm font-semibold text-gray-900 mb-1">📋 해외 바이어 DB, 어디서 어떻게 모으나요?</div>
+            <p className="text-xs text-gray-600 mb-3">아래 무료 B2B 사이트에 로그인 → <b>바이어 구매요청(구매리드) 리스트 페이지</b>를 열고 → <b>Ctrl+A</b>(전체 선택) → <b>Ctrl+C</b>(복사) → 이 페이지 「+ 바이어 직접 추가」 안의 붙여넣기 칸에 <b>Ctrl+V</b> → 「붙여넣기 일괄 추가」. 회사명·국가·제품·카테고리가 자동 추출됩니다. (전부 무료 가입 · 유료 결제 없음)</p>
+            <div className="space-y-2">
+              {BUYER_SOURCES.map((s, i) => (
+                <div key={s.name} className="rounded-lg bg-white border border-gray-200 p-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="w-5 h-5 shrink-0 rounded-full bg-gray-900 text-white text-[11px] flex items-center justify-center font-bold">{i + 1}</span>
+                    <a href={s.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-600 underline">{s.name}</a>
+                    <span className="text-[11px] text-gray-400">{s.org}</span>
+                    {i === 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px]">추천</span>}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-700"><b>수집 경로:</b> {s.menu}</div>
+                  <div className="mt-0.5 text-[11px] text-gray-500">{s.note}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-lg bg-white border border-gray-200 p-3 text-xs text-gray-700">
+              <b>3단계 요약</b>
+              <ol className="mt-1 ml-4 list-decimal space-y-0.5 text-gray-600">
+                <li>위 사이트에서 바이어 구매요청 <b>리스트 페이지</b>를 연다 (카테고리·국가 필터 후 100/200개씩 펼치면 한 번에 더 많이 수집).</li>
+                <li>페이지 안을 클릭한 뒤 <b>Ctrl+A → Ctrl+C</b>로 통째로 복사.</li>
+                <li>「<b>+ 바이어 직접 추가</b>」를 열고 맨 아래 붙여넣기 칸에 <b>Ctrl+V</b> → 「<b>붙여넣기 일괄 추가</b>」 클릭.</li>
+              </ol>
+              <div className="mt-2 text-[11px] text-gray-400">※ 회사명·연락처는 각 <b>상세 페이지</b>에 있습니다. 관심 있는 건의 상세를 열어 통째로 복사해 다시 붙여넣으면 담당자·이메일·현재수입국까지 채워집니다. · ⚠️ 각 사이트 약관을 준수하세요(자동 크롤링 금지 — 수동 복사만).</div>
+            </div>
+          </div>
+        )}
 
         {/* 바이어 직접 추가 (LinkedIn/buyKorea 손수 발굴분 — 완전 무료 수동 입력) */}
         {showAdd && (
@@ -276,7 +322,7 @@ export default function AdminBuyerPoolPage() {
 
             {/* 여러 건 붙여넣기 (buyKorea 목록 복붙 / 엑셀·시트) */}
             <div className="mt-4 pt-3 border-t border-gray-100">
-              <div className="text-xs text-gray-500 mb-1.5"><b>buyKorea 인콰이어리 페이지를 통째로 복사(Ctrl+A → Ctrl+C)해 붙여넣기</b> → 회사명·국가·웹사이트·제품·현재수입국 자동 추출(여러 건 한 번에, 마스킹된 연락처는 자동 제외). 또는 엑셀/시트 표(첫 줄 헤더, 탭·쉼표 구분)도 인식.</div>
+              <div className="text-xs text-gray-500 mb-1.5"><b>buyKorea·tradeKorea·EC21 등 구매요청 리스트를 통째로 복사(Ctrl+A → Ctrl+C)해 붙여넣기(Ctrl+V)</b> → 제품·국가·카테고리 자동 추출(여러 건 한 번에). 상세 페이지를 붙여넣으면 회사명·담당자·이메일·현재수입국까지 채워집니다(마스킹된 연락처는 자동 제외). 엑셀/시트 표(첫 줄 헤더, 탭·쉼표 구분)도 인식. <button type="button" onClick={() => setShowGuide(true)} className="text-blue-600 underline">수집 방법 보기</button></div>
               <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={4} placeholder={'buyKorea 인콰이어리 페이지 전체를 붙여넣거나,\ncompany\tcountry\tcategory\temail\nABC Trading\tVietnam\tK-beauty\tbuyer@abc.com'} className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-mono text-gray-900" />
               <button onClick={submitBulk} disabled={importing} className="mt-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '가져오는 중…' : '붙여넣기 일괄 추가'}</button>
             </div>
