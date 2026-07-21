@@ -1474,6 +1474,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             return await fetchDemoPhotos(c.env, {
               placeId: pl.placeId,
               nameQuery: pl.name,
+              address: pl.address,  // 🖼️ 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
               naverQuery: `${pl.name} ${w.t.pq}`,
               fallbackQuery: w.t.iq || w.t.pq,
               count: 3 + Math.floor(Math.random() * 3),

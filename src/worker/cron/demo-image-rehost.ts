@@ -21,9 +21,10 @@ import { rehostImageToR2, isExternalImageUrl } from '../utils/rehost-image'
 import { getSupplyMeta, setSupplyMeta } from '../utils/product-supply-meta'
 import { fetchDemoPhotos } from '../utils/demo-photo-set'
 
-// 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(카카오 대표사진 + 3~5장).
-//   v2 = og:image 대표사진 커버 + 3~5장 갤러리(2026-07-21). 향후 규칙 바뀌면 +1.
-export const DEMO_COND_V = '2'
+// 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
+//   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
+//   v3 = + 네이버 지도(플레이스) 대표사진 커버 폴백(카카오 사진 없는 매장, 2026-07-21 대표 지시).
+export const DEMO_COND_V = '3'
 
 const RECONDITION_PER_RUN = 3
 const REHOST_PER_RUN = 2
@@ -48,7 +49,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   const DB = env.DB
   const out = { reconditioned: 0, skipped: 0 }
   const { results } = await DB.prepare(
-    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
+    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
         AND COALESCE(p.is_active, 1) = 1
@@ -59,8 +60,8 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         )
       ORDER BY p.id
       LIMIT ?`
-  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
-    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
+  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
   const rows = results || []
   if (rows.length === 0) return out
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
@@ -80,7 +81,8 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     const placeUrl = meta.kakao_place_url || null
     const imgs = await fetchDemoPhotos(env, {
       placeId: placeUrl,                  // 있으면 imgs[0] = 카카오 대표(og)사진 — 커버 교체 grounding
-      nameQuery: row.restaurant_name,     // 실매장명 — 네이버 스코어링 grounding
+      nameQuery: row.restaurant_name,     // 실매장명 — 네이버 지도 대표사진 + 스코어링 grounding
+      address: row.restaurant_address,    // 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
       count: 3 + Math.floor(Math.random() * 3),
     }).catch(() => [] as string[])
     if (imgs.length === 0) {
