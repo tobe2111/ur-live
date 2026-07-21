@@ -372,19 +372,22 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
       else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l))
     } catch { items = [] }
     for (const it of items.slice(0, 500)) {
-      const company = String(it.company || it.name || it.company_name || it.corpNm || it.buyerNm || '').trim()
+      // 회사명 — 일반 피드는 company/name, 미국 ITA Trade Leads 는 title(입찰/기관명)이 회사 자리.
+      const company = String(it.company || it.name || it.company_name || it.corpNm || it.buyerNm || it.title || '').trim()
       if (!company) continue
       const description = String(it.description || it.inquiry || it.note || it.product || it.item || '')
       let email = it.email ? String(it.email) : null
       if (!email && description) email = pickBusinessEmail(description)
-      const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent) : 'directory'
+      // intent — 항목이 명시하면 그 값. 없고 입찰/계약 날짜(ITA 조달리드 신호)가 있으면 buying_lead, 아니면 directory.
+      const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent)
+        : (it.tender_start_date || it.tender_end_date || it.contract_start_date) ? 'buying_lead' : 'directory'
       out.push({
-        source: 'feed', intent_signal: intent, company,
-        country: it.country ? String(it.country) : target.country,
+        source: 'feed', intent_signal: intent, company: company.slice(0, 200),
+        country: it.country ? String(it.country) : (it.country_code ? String(it.country_code) : target.country),
         target_market: it.target_market ? String(it.target_market) : null,
         category: it.category ? String(it.category) : target.category,
         imports_from_korea: truthy(it.imports_from_korea ?? it.imports_korea),
-        website: it.website ? String(it.website) : (it.homepage ? String(it.homepage) : null),
+        website: it.website ? String(it.website) : (it.homepage ? String(it.homepage) : (it.url ? String(it.url) : null)),
         email, phone: it.phone ? String(it.phone) : (it.tel ? String(it.tel) : (description ? pickPhone(description) : null)),
         decision_maker: it.contact_name ? String(it.contact_name).slice(0, 80) : null,
         decision_maker_title: it.contact_title ? String(it.contact_title).slice(0, 80) : null,

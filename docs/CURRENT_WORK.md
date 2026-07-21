@@ -7,7 +7,9 @@
 - **최대한 무료**: 유료 Apollo 제거. 유일 소스 = `fetchFeeds`(`BUYER_FEED_URLS`) — 대표가 무료 소스(KOTRA BuyKorea/TradeKorea 구매리드·전시회 명단·data.go.kr 무료 오픈API)를 JSON 게시/직결하면 코드변경 0 편입. JSON배열/NDJSON/오픈API(`response.body.items`) 자동 파싱. 임의 스크래핑 없음.
 - **구현**: `supply/api/buyer-discovery.ts`(엔진) · `supply/api/buyer-pool.routes.ts`(`/api/admin/buyer-pool/*`, requireAdmin, mount-wholesale) · `AdminBuyerPoolPage.tsx`(`/admin/buyer-pool`, 도매몰·운영) · env 4종(`BUYER_AUTO_COLLECT_ENABLED`/`BUYER_AUTOCOLLECT_BATCH`/`BUYER_SUBREQUEST_BUDGET`/`BUYER_FEED_URLS`).
 - **⚠️ [LEGAL]** 공개 비즈니스 컨택만 — 콜드 아웃리치는 GDPR·CAN-SPAM·CASL 별도(수집 ≠ 발송). 발굴·자격심사·매칭까지만.
-- **⏳ 대표 액션(활성 시)**: ⓐ 무료 소스 JSON 게시 → `BUYER_FEED_URLS` 등록 ⓑ `/admin/buyer-pool` 「지금 수집」 검증 ⓒ `BUYER_AUTO_COLLECT_ENABLED=true` ⓓ ur-wholesale 배포에 포함(WHOLESALE_BUNDLE). 설계 SSOT: `docs/design/overseas-buyer-collection.md`.
+- **무료 소스 확정(리서치)**: 실제 바이어 연락처 무료 대량 API 없음(관세/BoL=유료가 사업모델). 정타 = **KOTRA buyKorea/KITA tradekorea 인바운드 인콰이어리**(대표 B안 선택). ITA Trade Leads(`data.trade.gov/trade_leads/v1/search`)는 UK 조달만이라 파이프라인 검증·데모용. `fetchFeeds` 가 ITA `results[]`(title→company·country_code·url·입찰날짜→buying_lead) + buyKorea JSON 둘 다 자동 파싱. env `BUYER_FEED_HEADER`(ITA subscription-key 헤더).
+- **⏳ TEMP 테스트 마운트**: 정규는 mount-wholesale(도매 워커)라 라이브 어드민 404 → `worker/index.ts` 에 임시 마운트(admin 전용·격리·게이트, ur-wholesale 배포 시 제거). 대표가 지금 `/admin/buyer-pool` 「지금 수집」 검증 가능.
+- **⏳ 대표 액션**: ⓐ (B) buyKorea 무료 가입 → 바이어 인콰이어리를 §2-2 JSON 형식으로 게시 → `BUYER_FEED_URLS` 등록 ⓑ `/admin/buyer-pool` 「지금 수집」 검증 ⓒ `BUYER_AUTO_COLLECT_ENABLED=true`. 설계 SSOT: `docs/design/overseas-buyer-collection.md`.
 - 검증: tsc 0(baseUrl 경고는 기존 CI 무관) · sql-table/bind/column·theme·csv·pagination·file-size 가드 GREEN. ⚠️ npm 403 → build/vitest 는 CI.
 
 ## 🔶 2026-07-20 — 도메인 이전: live.ur-team.com → **urdeal.kr** (대표 확정 "나랑 같이, 빠짐없이" — 코드 완료, 대표 콘솔 작업 진행 중)

@@ -57,6 +57,25 @@
 - ⚠️ **불가피한 1스텝**: 위 API 는 전부 **무료지만 계정/키 발급**이 필요(계정 귀속이라 대표만 가능). 코드는 키만 꽂으면 즉시 수집하게 준비됨(`fetchFeeds` + `BUYER_FEED_HEADER`).
 - 참고(유료, 미채택): Volza·ImportGenius·Tendata·Panjiva(관세데이터) / Apollo·ZoomInfo(담당자 enrichment). 대표 방침 "최대한 무료" 라 미배선 — 필요 시 같은 feed 모델로 편입 가능.
 
+### 2-2. 실측 확정 스키마 & 등록값
+
+**① 미국 ITA Trade Leads** (엔드포인트 확인: `https://data.trade.gov/trade_leads/v1/search`, 현재 **영국(UK) 조달 리드만** — 파이프라인 검증·데모용. K-상품 정타 아님):
+- 응답 `results[]`: `{ id, url, country_code, title, description, tender_start_date, tender_end_date, contract_start_date, contract_end_date }` (회사 필드 없음 — `title`=입찰/기관명을 회사 자리에 매핑).
+- `fetchFeeds` 자동 매핑: `title→company`, `country_code→country`, `url→website`, 입찰/계약 날짜 존재→`intent=buying_lead`. `results` 배열은 `digArray` 가 인식.
+- 등록: `BUYER_FEED_URLS = https://data.trade.gov/trade_leads/v1/search?size=50` · `BUYER_FEED_HEADER = subscription-key: <Primary key>`.
+
+**② KOTRA buyKorea / KITA tradekorea** (정타 — 한국 상품 인바운드 바이어 인콰이어리). 공개 대량 API 가 아니므로, 회원 페이지의 인콰이어리를 아래 **JSON 형식**으로 정제해 게시(R2/gist/시트→JSON) 후 URL 등록:
+```json
+[{ "company": "ABC Cosmetics Trading", "country": "Vietnam", "target_market": "Vietnam",
+   "category": "K-beauty", "intent": "buying_lead", "imports_from_korea": 1,
+   "email": "buyer@abc.com", "contact_name": "Nguyen T.", "contact_title": "Purchasing Mgr",
+   "website": "abc.com", "description": "Looking for Korean sheet masks, MOQ 5000" }]
+```
+`intent` 은 `rfq`/`buying_lead`/`import_record`/`exhibitor` 중 실제 강도로. `imports_from_korea:1` 이면 매칭 스코어 +20.
+
+### 2-3. ⏳ TEMP 테스트 마운트 (도매 워커 배포 전)
+정규 마운트는 `mount-wholesale.ts`(도매 워커 전용)라 소비자 라이브 어드민에선 `/api/admin/buyer-pool` 이 404. 대표가 지금 검증할 수 있도록 `worker/index.ts` 에 **임시 마운트**(admin 전용·격리 테이블·게이트) 추가. **ur-wholesale 배포 시 index.ts 의 TEMP import+route 2블록 제거** → mount-wholesale 단일 마운트로 복귀.
+
 ## 3. 법률 (반드시 준수 — 인플루언서 [PIPA] 원칙의 해외판)
 
 - 수집 대상 = **공개된 *비즈니스* 컨택**만. 개인정보 최소화(원시 IP/UA 미저장, 개인 신상 미수집).
