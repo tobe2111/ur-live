@@ -166,7 +166,7 @@ export default function AdminBuyerPoolPage() {
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
 
   return (
-    <AdminLayout>
+    <AdminLayout title="해외 바이어 풀">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🌐 해외 바이어 파이프라인" subtitle="유통스타트 수출 — 의도 자격심사 · 매칭 스코어 · 회사→담당자" />
 

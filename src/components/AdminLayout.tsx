@@ -64,6 +64,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
       { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
+      { path: '/admin/buyer-pool',       label: '🌐 해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
     ],
   },
   {
@@ -87,7 +88,6 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
-      { path: '/admin/buyer-pool',         label: '🌐 해외 바이어 풀', icon: Megaphone },
     ],
   },
   {
