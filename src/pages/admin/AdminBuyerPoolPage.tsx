@@ -119,6 +119,10 @@ export default function AdminBuyerPoolPage() {
     try { const r = await api.get('/api/admin/buyer-pool/targets'); if (r.data?.success) setTargets(r.data.targets || []) } catch { /* noop */ }
   }, [])
 
+  const loadAutoConfig = useCallback(async () => {
+    try { const r = await api.get('/api/admin/buyer-pool/auto-fetch/config'); if (r.data?.success) setAutoConfig({ sources: r.data.sources || [], cookieHosts: r.data.cookieHosts || [], enabled: !!r.data.enabled }) } catch { /* noop */ }
+  }, [])
+
   useEffect(() => { loadStats(); loadTargets(); loadAutoConfig() }, [loadStats, loadTargets, loadAutoConfig])
   useEffect(() => { loadLeads() }, [loadLeads])
 
@@ -183,10 +187,6 @@ export default function AdminBuyerPoolPage() {
       toast.error(err?.response?.data?.error || '가져오기 실패 — 리스트/표 형식을 확인해 주세요')
     } finally { setImporting(false) }
   }
-
-  const loadAutoConfig = useCallback(async () => {
-    try { const r = await api.get('/api/admin/buyer-pool/auto-fetch/config'); if (r.data?.success) setAutoConfig({ sources: r.data.sources || [], cookieHosts: r.data.cookieHosts || [], enabled: !!r.data.enabled }) } catch { /* noop */ }
-  }, [])
 
   const runAutoFetch = async () => {
     if (autoCookie.trim().length < 10) { toast.error('로그인 쿠키를 붙여넣어 주세요'); return }
