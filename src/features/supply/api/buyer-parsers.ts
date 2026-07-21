@@ -158,8 +158,10 @@ export function parseDatedLeadList(text: string): BuyerLead[] {
   const seen = new Set<string>()
   for (let i = 2; i < lines.length; i++) {
     if (!DATE_ANCHOR_RE.test(lines[i])) continue
-    const country = lines[i - 1]
-    const title = lines[i - 2].replace(/^\(공개\)\s*/, '')
+    // 마크다운 링크가 남은 붙여넣기( [제목](url) )는 제목 텍스트만 추출 — 회사명에 URL 이 섞이는 가비지 방지.
+    const unMd = (s: string) => s.replace(/^\[([^\]]+)\]\([^)]*\)\s*$/, '$1').replace(/\]\([^)]*\)/g, '').replace(/^\[/, '').trim()
+    const country = unMd(lines[i - 1])
+    const title = unMd(lines[i - 2]).replace(/^\(공개\)\s*/, '')
     if (isNoise(title) || isNoise(country)) continue
     const key = title.toLowerCase()
     if (seen.has(key)) continue
@@ -187,15 +189,15 @@ const DETAIL_LABELS: Record<string, string> = {
   // company
   '회사명': 'company', 'company': 'company', 'company name': 'company', 'buyer': 'company', 'buyer name': 'company', 'importer': 'company', 'business name': 'company', 'firm': 'company', 'corporation': 'company', 'organization': 'company',
   // country
-  '국가 / 도시': 'country', '국가/도시': 'country', '국가': 'country', 'country': 'country', 'country / city': 'country', 'location': 'country', 'nation': 'country',
+  '국가 / 도시': 'country', '국가/도시': 'country', '국가': 'country', 'country': 'country', 'country / city': 'country', 'country/region': 'country', 'country / region': 'country', 'region': 'country', 'location': 'country', 'nation': 'country', 'importing country': 'country',
   // category / product
-  '카테고리': 'category_raw', 'category': 'category_raw', 'product': 'category_raw', 'product name': 'category_raw', 'item': 'category_raw', 'products': 'category_raw',
+  '카테고리': 'category_raw', 'category': 'category_raw', 'product': 'category_raw', 'product name': 'category_raw', 'product/service': 'category_raw', 'product / service': 'category_raw', 'item': 'category_raw', 'items': 'category_raw', 'products': 'category_raw', 'main products': 'category_raw',
   // website
   '웹사이트': 'website', 'website': 'website', 'homepage': 'website', 'home page': 'website', 'web': 'website', 'web site': 'website', 'url': 'website',
   // current import
   '현재 수입국가': 'current_import', '현재수입국가': 'current_import', 'current import': 'current_import', 'currently importing from': 'current_import',
   // volume / quantity
-  '수량': 'est_volume', 'quantity': 'est_volume', 'order quantity': 'est_volume', 'volume': 'est_volume', 'qty': 'est_volume', 'annual volume': 'est_volume',
+  '수량': 'est_volume', 'quantity': 'est_volume', 'order quantity': 'est_volume', 'expected order quantity': 'est_volume', 'quantity required': 'est_volume', 'volume': 'est_volume', 'qty': 'est_volume', 'annual volume': 'est_volume', 'moq': 'est_volume',
   '사용처': 'use', 'application': 'use', 'usage': 'use',
   // contact person
   '이름': 'decision_maker', 'name': 'decision_maker', 'contact': 'decision_maker', 'contact person': 'decision_maker', 'contact name': 'decision_maker', 'representative': 'decision_maker', 'manager': 'decision_maker',
@@ -206,7 +208,7 @@ const DETAIL_LABELS: Record<string, string> = {
   '주소': 'address', 'address': 'address',
   // 유형(품목 타입)·사용처·인콰이어리 상세(실제 요청 문구=RFQ, 가장 가치 큰 필드) — 설명에 담아 최대한 자세히.
   '유형': 'ptype', 'type': 'ptype', 'product type': 'ptype',
-  '인콰이어리 상세': 'rfq', '인콰이어리상세': 'rfq', '문의내용': 'rfq', '요청사항': 'rfq', 'inquiry detail': 'rfq', 'inquiry details': 'rfq', 'details': 'rfq', 'message': 'rfq', 'requirements': 'rfq', 'remark': 'rfq', 'remarks': 'rfq', 'description': 'rfq', 'comment': 'rfq',
+  '인콰이어리 상세': 'rfq', '인콰이어리상세': 'rfq', '문의내용': 'rfq', '요청사항': 'rfq', 'inquiry detail': 'rfq', 'inquiry details': 'rfq', 'detailed description': 'rfq', 'detailed buying request': 'rfq', 'buying request': 'rfq', 'details': 'rfq', 'message': 'rfq', 'requirements': 'rfq', 'remark': 'rfq', 'remarks': 'rfq', 'description': 'rfq', 'comment': 'rfq',
 }
 const DETAIL_LABEL_SET = new Set(Object.keys(DETAIL_LABELS))
 const looksLabel = (s: string) => DETAIL_LABEL_SET.has(s.toLowerCase().replace(/[:：]\s*$/, '').trim())
@@ -236,17 +238,18 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
       if (f && v && !looksLabel(v) && !v.includes('*') && !row[f]) { row[f] = v; i++ }
       continue
     }
-    if (!title && line.length > 3 && !/인콰이어리|게시기간|번호|메세지|favorites|^view|^\d+$|[:：]$/i.test(line)) title = line
+    // 제목 후보 — 마스킹(*)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
+    if (!title && line.length > 3 && !line.includes('*') && !BK_CATEGORIES.includes(line)
+      && !/인콰이어리|게시기간|번호|메세지|favorites|^view$|^\d+$|[:：]$|^(home|sign ?in|sign ?up|login|logout|my ?page|menu|search|list|back|목록|검색|메뉴|로그인|로그아웃|판매자센터|바이코리아)$/i.test(line)) title = line
   }
   // 제목 꼬리의 UI 버튼 텍스트 제거(예: "제목 좋아요"/"제목 공유하기") → 리스트 제목과 매칭 정합.
   title = title.replace(/\s*(좋아요|공유하기|공유|관심|북마크|스크랩|찜|like|share|save)\s*$/i, '').trim()
-  // 플랫폼(사이트 자체) 컨택 제외 — buyKorea 푸터(buykorea@kotra.or.kr)·KOTRA 패밀리사이트·CDN 을 바이어로 오인 방지.
-  const PLATFORM_EMAIL = /@(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org)$/i
-  const PLATFORM_HOST = /(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|samsungsdscloud|gcdn\.|globalwindow|investkorea|exportvoucher|payverse)/i
+  // 플랫폼(사이트 자체) 컨택 제외 — 푸터 이메일·KOTRA 패밀리·CDN·소셜(facebook 등)을 바이어로 오인 방지.
+  const PLATFORM_EMAIL = /@(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|globalwindow\.org|investkorea\.org|exportvoucher\.com|kosme\.or\.kr)$/i
+  const PLATFORM_HOST = /(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|samsungsdscloud|gcdn\.|globalwindow|investkorea|exportvoucher|payverse|kosme\.|facebook\.|fb\.com|linkedin\.|youtube\.|youtu\.be|twitter\.|x\.com|instagram\.|pinterest\.|tiktok\.|googleapis|gstatic|google-analytics|googletagmanager|cloudfront|cloudflare|jsdelivr|unpkg|wix\.|squarespace|w3\.org|schema\.org)/i
   if (row.email && PLATFORM_EMAIL.test(row.email)) delete row.email
-  // 정규식 폴백(라벨 없을 때) — 플랫폼 이메일 제외. 전화는 + 국제표기만(인콰이어리 번호 오인식 방지). 홈페이지는 플랫폼 호스트 제외.
+  // 폴백(라벨 없을 때) — 플랫폼 이메일 제외. 전화 폴백은 제거(마스킹/인콰이어리번호/KOTRA 푸터 오인식 → 라벨 전화만 신뢰).
   if (!row.email) { const e = pickBusinessEmail(chunk); if (e && !PLATFORM_EMAIL.test(e)) row.email = e }
-  if (!row.phone) { const p = pickPhone(chunk); if (p && /^\s*\+/.test(p)) row.phone = p }
   if (!row.website) {
     const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u) && !PLATFORM_HOST.test(u))
     if (url) row.website = url.replace(/[.,)]+$/, '')
@@ -254,15 +257,18 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   const company = (row.company || '').trim()
   const email = (row.email || '').trim()
   const website = (row.website || '').trim()
-  // 회사명도 이메일도 홈페이지도 없으면 상세로 볼 수 없음.
-  if (company.length < 2 && !email && !website) return null
+  // 회사명도 이메일도 없으면 리드로 볼 수 없음(웹사이트만 있는 크롬/네비 페이지 = 가비지, 저장 안 함).
+  if (company.length < 2 && !email) return null
   const country = normCountry((row.country || '').split(/[/,]/)[0].trim())
   const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
   const isEmailName = (row.decision_maker || '').includes('@')
+  // 회사명 폴백 — 프리메일 도메인(gmail/naver 등)은 회사명으로 쓰지 않음.
+  const FREEMAIL = /^(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|icloud|naver|daum|hanmail|qq|163|126|aol|proton|protonmail|gmx|mail|yandex)\./i
+  const emailDomain = email ? email.split('@')[1] : ''
   return {
     source: 'b2b_detail', intent_signal: 'buying_lead',
-    company: (company || title || (email ? email.split('@')[1] : '') || '상세 미확인').slice(0, 200),
-    country, target_market: country, category: pageCat, imports_from_korea: null,
+    company: (company || title || (emailDomain && !FREEMAIL.test(emailDomain) ? emailDomain : '') || '상세 미확인').slice(0, 200),
+    country, target_market: country, category: pageCat || (row.category_raw ? row.category_raw.slice(0, 60) : null), imports_from_korea: null,
     website: website || null, email: email || null, phone: (row.phone || '').slice(0, 40) || null,
     decision_maker: isEmailName ? null : (row.decision_maker || null),
     decision_maker_title: row.decision_maker_title || null,

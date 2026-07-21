@@ -370,9 +370,14 @@ app.use('*', timing());
 app.use('*', logger());
 // Reject any request body larger than 1MB before it hits route handlers.
 // Bulk-upload routes apply a larger limit locally if needed.
-app.use('/api/*', bodyLimit(1_000_000));
+// 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
+//    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
+const _bodyLimit1m = bodyLimit(1_000_000);
+const _bodyLimit8m = bodyLimit(8_000_000);
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit8m(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
-app.use('/api/*', rateLimiterMiddleware as any);
+// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지).
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({

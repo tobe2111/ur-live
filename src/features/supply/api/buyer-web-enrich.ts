@@ -6,12 +6,14 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureBuyerSchema, pickBusinessEmail, pickPhone } from './buyer-discovery'
+import { isPublicHttpUrl } from './buyer-autofetch'
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 // 홈 → 자주 쓰는 연락 경로 순회(이메일 찾으면 중단). 과도한 요청 방지 위해 소수만.
 const CONTACT_PATHS = ['', '/contact', '/contact-us', '/en/contact', '/about', '/company']
 const IMG_EMAIL = /\.(png|jpe?g|gif|webp|svg|ico)$/i
-const JUNK_EMAIL = /(example\.|sentry|wixpress|\.wix|godaddy|@sentry|no-?reply@|test@|email@|your@|user@|domain\.com)/i
+// 3rd-party/플랫폼/개발툴 이메일 제외(바이어 실컨택만).
+const JUNK_EMAIL = /(example\.|sentry|wixpress|\.wix|godaddy|@sentry|no-?reply@|noreply@|test@|email@|your@|user@|name@|info@example|domain\.com|@sentry\.|intercom|zendesk|hubspot|mailchimp|cloudflare|squarespace|shopify|@wordpress|@2x|privacy@|dpo@|abuse@|postmaster@|@w3\.org|@schema\.org|@googlegroups)/i
 
 /** HTML 에서 이메일 후보 추출 — mailto: 우선(가장 확실). */
 function emailsFromHtml(html: string): string[] {
@@ -25,17 +27,18 @@ function normUrl(website: string): string | null {
   let w = String(website || '').trim()
   if (!w) return null
   if (!/^https?:\/\//i.test(w)) w = 'https://' + w
+  if (!isPublicHttpUrl(w)) return null // SSRF: 내부/사설 호스트 차단
   try { return new URL(w).origin } catch { return null }
 }
 
+// AbortController 로 8s 에 실제 fetch 도 중단(dangling subrequest 방지).
 async function fetchText(url: string, headers: Record<string, string>): Promise<string> {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), 8000)
   try {
-    const r = await Promise.race([
-      fetch(url, { headers, redirect: 'follow' }).then(res => (res.ok ? res.text() : '')),
-      delay(8000).then(() => ''),
-    ])
-    return typeof r === 'string' ? r : ''
-  } catch { return '' }
+    const res = await fetch(url, { headers, redirect: 'follow', signal: ac.signal })
+    return res.ok ? await res.text() : ''
+  } catch { return '' } finally { clearTimeout(t) }
 }
 
 export interface WebEnrichResult { ran: boolean; reason?: string; scanned: number; enriched: number; fetches: number; sample: string[] }
@@ -56,7 +59,7 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number } =
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'accept': 'text/html,application/xhtml+xml', 'accept-language': 'en;q=0.9,ko;q=0.8',
   }
-  const budget = Math.max(10, parseInt(env.BUYER_SUBREQUEST_BUDGET || '60', 10) || 60)
+  const budget = Math.min(25, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '25', 10) || 25)) // Cloudflare subrequest 한도 보호
   let fetches = 0, enriched = 0
   const sample: string[] = []
   for (const row of rows) {
@@ -68,8 +71,15 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number } =
       fetches++
       const html = await fetchText(origin + path, headers)
       if (!html) { await delay(300); continue }
-      if (!email) { const es = emailsFromHtml(html); email = pickBusinessEmail(es.join(' ')) || es[0] || null }
-      if (!phone) phone = pickPhone(html)
+      if (!email) {
+        const es = emailsFromHtml(html) // 이미 정크/이미지 필터됨
+        // mailto: 최우선 → 전체 HTML 문맥 스코어(pickBusinessEmail) → 첫 후보.
+        const mail = es.find(e => new RegExp('mailto:' + e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(html))
+        const ctx = pickBusinessEmail(html)
+        const ctxOk = ctx && !IMG_EMAIL.test(ctx) && !JUNK_EMAIL.test(ctx) ? ctx : null
+        email = mail || ctxOk || es[0] || null
+      }
+      if (!phone) { const p = pickPhone(html); if (p && /^\s*\+/.test(p)) phone = p }
       await delay(400) // throttle
       if (email) break
     }

@@ -16,6 +16,17 @@ import { saveBuyerLeads, type BuyerLead } from './buyer-discovery'
 const CK_KEY = 'buyer_af_cookies', SRC_KEY = 'buyer_af_sources'
 export function hostOf(url: string): string { try { return new URL(url).host } catch { return '' } }
 
+// SSRF/사설망 차단 — 쿠키 실린 서버 fetch 는 반드시 공개 http(s) 호스트만(내부/메타데이터 IP 차단).
+const PRIVATE_HOST_RE = /^(?:localhost|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|\[?::1\]?|metadata\.google|169\.254\.169\.254)|\.(?:local|internal|lan)$/i
+export function isPublicHttpUrl(u: string): boolean {
+  try {
+    const x = new URL(u)
+    if (x.protocol !== 'https:' && x.protocol !== 'http:') return false
+    if (!x.hostname || PRIVATE_HOST_RE.test(x.hostname)) return false
+    return true
+  } catch { return false }
+}
+
 async function getSetting(env: Env, key: string): Promise<string> {
   const r = await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
   return r?.value || ''
@@ -148,20 +159,21 @@ export async function runBuyerAutoFetch(env: Env, opts: { cookie: string; listUr
   const budget = Math.max(5, parseInt(env.BUYER_SUBREQUEST_BUDGET || '60', 10) || 60)
   const max = Math.min(30, budget - 1, Math.max(1, opts.max || 10))
   let urls = (opts.urls || []).filter(u => /^https?:\/\//.test(u))
-  if (opts.listUrl && /^https?:\/\//.test(opts.listUrl)) {
-    const listHtml = await fetch(opts.listUrl, { headers, redirect: 'follow' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
+  // ⚠️ 쿠키 유출/SSRF 방어: 쿠키는 primaryHost 세션이므로 **primaryHost + 공개호스트** URL 에만 붙인다.
+  //   redirect:'manual' — 외부로 302 시 쿠키 따라가는 것 차단(2xx 만 파싱).
+  if (opts.listUrl && isPublicHttpUrl(opts.listUrl) && hostOf(opts.listUrl) === primaryHost) {
+    const listHtml = await fetch(opts.listUrl, { headers, redirect: 'manual' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
     const found = listHtml ? extractDetailUrls(listHtml, opts.listUrl) : []
-    // 링크 0 + 로그인 페이지 마커 → 쿠키 만료로 판단(재입력 유도).
     if (!found.length && LOGIN_MARKER.test(listHtml)) return { ...empty, ran: true, reason: 'COOKIE_EXPIRED — 로그인 쿠키가 만료된 것 같습니다. 쿠키를 다시 붙여넣어 주세요.' }
     urls = urls.concat(found)
   }
-  urls = Array.from(new Set(urls)).slice(0, max)
-  if (!urls.length) return { ...empty, ran: true, reason: '상세 링크를 찾지 못했습니다 — 리스트 페이지 URL·로그인 쿠키를 확인하거나, 상세 URL 을 직접 넣어 주세요.' }
+  urls = Array.from(new Set(urls)).filter(u => isPublicHttpUrl(u) && hostOf(u) === primaryHost).slice(0, max)
+  if (!urls.length) return { ...empty, ran: true, reason: '상세 링크를 찾지 못했습니다(같은 사이트 링크만 수집) — 리스트 페이지 URL·로그인 쿠키를 확인하세요.' }
   const leads: BuyerLead[] = []
   let fetched = 0, errors = 0
   const sample: string[] = []
   for (const u of urls) {
-    const html = await fetch(u, { headers, redirect: 'follow' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
+    const html = await fetch(u, { headers, redirect: 'manual' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
     if (!html) { errors++; await delay(400); continue }
     fetched++
     const got = parseBuyKoreaInquiries(htmlToText(html))
@@ -177,13 +189,17 @@ export interface SavedRunResult { ran: boolean; reason?: string; saved: number; 
 /** 저장된 소스(리스트 URL) 전부를 저장된 쿠키로 자동 수집 — 버튼 한 번(또는 크론)으로. */
 export async function runSavedSources(env: Env, max?: number): Promise<SavedRunResult> {
   if (env.BUYER_AUTO_FETCH_ENABLED !== 'true') return { ran: false, reason: 'DISABLED', saved: 0, sources: [] }
-  const sources = await loadSources(env)
+  // 밴/subrequest 보호: 한 실행 최대 8소스 + 전체 공유 fetch 예산(소스마다 예산 재설정하던 폭발 차단).
+  const sources = (await loadSources(env)).slice(0, 8)
   if (!sources.length) return { ran: false, reason: 'NO_SOURCES — 저장된 리스트 URL 이 없습니다(자동 수집 실행 시 "저장" 체크).', saved: 0, sources: [] }
-  let saved = 0
+  let saved = 0, remaining = Math.max(10, Math.min(40, parseInt(env.BUYER_SUBREQUEST_BUDGET || '40', 10) || 40))
   const out: SavedRunResult['sources'] = []
   for (const s of sources) {
-    const r = await runBuyerAutoFetch(env, { cookie: '', listUrl: s.url, max }).catch(() => null)
+    if (remaining <= 2) { out.push({ url: s.url, label: s.label, saved: 0, parsed: 0, reason: 'BUDGET_EXHAUSTED' }); continue }
+    const perMax = Math.min(max || 15, Math.max(1, remaining - 1))
+    const r = await runBuyerAutoFetch(env, { cookie: '', listUrl: s.url, max: perMax }).catch(() => null)
     saved += r?.saved || 0
+    remaining -= (r?.fetched || 0) + 1 // 리스트 1 + 상세 fetch 수
     out.push({ url: s.url, label: s.label, saved: r?.saved || 0, parsed: r?.parsed || 0, reason: r?.reason })
   }
   return { ran: true, saved, sources: out }
