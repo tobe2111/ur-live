@@ -25,6 +25,7 @@ interface Lead {
   contacted_at?: string | null; follow_up_at?: string | null; contact_channel?: string | null
   outreach_draft?: string | null // JSON {subject,body,dm,generated_at} — ✍ 개인화 초안(생성만, 발송 없음)
   source?: string | null; consented_at?: string | null // 📥 inbound=신청(사전동의)
+  recent_avg_views?: number | null; recent_avg_comments?: number | null; recent_posts_30d?: number | null // 📈 성과(YT 최근평균/네이버 30일 포스팅)
 }
 // 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
@@ -44,7 +45,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
+interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 
 export default function AdminInfluencerPoolPage() {
@@ -191,6 +192,17 @@ export default function AdminInfluencerPoolPage() {
         await Promise.all([loadLeads(), loadMeta()])
       } else toast.error('통합 실패')
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
+  }
+  // 🏷️ 카테고리 재분류(백필) — 채널 이름+소개글 신호로 기존 풀 교정(신호 있고 다를 때만 UPDATE).
+  const [reclassifying, setReclassifying] = useState(false)
+  async function reclassify() {
+    if (!window.confirm('풀 전체를 채널 이름·소개글 기반으로 재분류할까요?\n(콘텐츠 신호가 있고 현재와 다를 때만 변경 — 멱등)')) return
+    setReclassifying(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/reclassify', {})
+      if (r.data?.success) { toast.success(`🏷️ ${formatNumber(r.data.scanned)}명 스캔 · ${formatNumber(r.data.changed)}명 재분류`); await loadLeads() }
+      else toast.error('재분류 실패')
+    } catch { toast.error('재분류 실패') } finally { setReclassifying(false) }
   }
   // 📊 구글시트 수동 동기화 — 결과(행수/설정 안내)를 그대로 토스트.
   const [sheetsSyncing, setSheetsSyncing] = useState(false)
@@ -389,6 +401,7 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
           <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
           <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
+          <button onClick={reclassify} disabled={reclassifying} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="채널 이름·소개글 신호로 카테고리 재분류(키워드 상속 오분류 교정 — 1회성 백필, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류'}</button>
           <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
             {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
           </button>
@@ -423,6 +436,7 @@ export default function AdminInfluencerPoolPage() {
           </select>
           <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="fit">유어딜 핏순</option>
+            <option value="perf">📈 평균조회수순</option>
             <option value="subscribers">구독자순</option>
             <option value="recent">최근 수집순</option>
           </select>
@@ -505,10 +519,13 @@ export default function AdminInfluencerPoolPage() {
                       </a>
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">
-                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그</span> : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
-                        <span className="inline-flex items-center gap-1.5 justify-end">
-                          {formatNumber(l.subscriber_count)}
-                          {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
+                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그{l.recent_posts_30d != null ? ` · 月${l.recent_posts_30d}글` : ''}</span> : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
+                        <span className="inline-flex flex-col items-end">
+                          <span className="inline-flex items-center gap-1.5 justify-end">
+                            {formatNumber(l.subscriber_count)}
+                            {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
+                          </span>
+                          {l.recent_avg_views != null && <span className="text-[11px] text-gray-400" title="최근 영상 ≤10개 평균(구독자수보다 정직한 협업 지표)">📈 평균 {formatNumber(l.recent_avg_views)}회{l.recent_avg_comments ? ` · 💬${formatNumber(l.recent_avg_comments)}` : ''}</span>}
                         </span>
                       )}
                     </td>
