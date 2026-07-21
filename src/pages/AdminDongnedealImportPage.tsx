@@ -137,7 +137,14 @@ export default function AdminDongnedealImportPage() {
       .then(r => { if (r.data?.success) setStats(r.data as DealStats) })
       .catch(() => { /* 현황 실패는 무시 */ })
   }
-  useEffect(() => { loadStats(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 건강 진단 — R2 바인딩 + 커버 내부/외부 비율.
+  const [imgHealth, setImgHealth] = useState<{ bucketBound: boolean; cover: { total: number; internal_r2: number; external: number; naver: number; none: number }; hint: string } | null>(null)
+  const loadImgHealth = () => {
+    api.get('/api/admin/dongnedeal/image-health', h)
+      .then(r => { if (r.data?.success) setImgHealth(r.data) })
+      .catch(() => { /* 무시 */ })
+  }
+  useEffect(() => { loadStats(); loadImgHealth(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
   const clearDemo = async () => {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
@@ -269,6 +276,24 @@ export default function AdminDongnedealImportPage() {
     <AdminLayout title="동네딜 상품 일괄 등록">
       <div className="ur-content-wide px-4 lg:px-6 py-5 space-y-5">
         <DashboardPageHeader title="동네딜 상품 일괄 등록" subtitle="CSV로 동네딜(오프라인 공동구매) 상품을 한 번에 등록 — 즉시 동네딜에 노출됩니다." />
+
+        {/* 🩺 이미지 건강 진단 — 사진 반복 깨짐의 근본원인(R2 미바인딩/외부 커버) 가시화 */}
+        {imgHealth && (
+          <div className={`rounded-2xl border p-4 ${!imgHealth.bucketBound ? 'bg-red-50 border-red-200' : imgHealth.cover.external > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex items-start gap-2">
+              <span className="text-lg">{!imgHealth.bucketBound ? '🛑' : imgHealth.cover.external > 0 ? '⚠️' : '✅'}</span>
+              <div className="min-w-0">
+                <p className={`text-sm font-bold ${!imgHealth.bucketBound ? 'text-red-700' : imgHealth.cover.external > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  데모 사진 상태 — 커버 {imgHealth.cover.total}개 중 안전(R2) <b>{imgHealth.cover.internal_r2}</b> · 외부 URL <b>{imgHealth.cover.external}</b>{imgHealth.cover.naver > 0 ? ` (네이버 ${imgHealth.cover.naver})` : ''}{imgHealth.cover.none > 0 ? ` · 커버없음 ${imgHealth.cover.none}` : ''}
+                </p>
+                <p className="text-[12px] text-gray-600 mt-1">{imgHealth.hint}</p>
+                {!imgHealth.bucketBound && (
+                  <p className="text-[12px] text-red-700 font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {stats && (
           <div className={card}>

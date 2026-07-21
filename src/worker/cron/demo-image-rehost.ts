@@ -17,7 +17,7 @@
  *   - 규모가 크면 시간당 소량이라 며칠에 걸쳐 수렴(어드민 무개입) — 즉시 전체는 별도 수동 트리거 가능.
  */
 import type { Env } from '../types/env'
-import { rehostImageToR2, isExternalImageUrl } from '../utils/rehost-image'
+import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
 import { getSupplyMeta, setSupplyMeta } from '../utils/product-supply-meta'
 import { fetchDemoPhotos } from '../utils/demo-photo-set'
 
@@ -91,10 +91,11 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     }
     // 커버 결정:
     //   - placeUrl 있음 → imgs[0](카카오 대표사진)로 교체 = "가장 메인이 되는 사진" 확정.
-    //   - placeUrl 없음 → 기존 커버가 실사진이면 유지(네이버끼리 교체 무의미), placeholder 면 imgs[0].
-    const cover = placeUrl
-      ? imgs[0]
-      : (isPlaceholderUrl(row.image_url) ? imgs[0] : (row.image_url as string))
+    //   - placeUrl 없음 → 기존 커버가 실사진이고 **실제 로드되면** 유지, placeholder/깨짐이면 imgs[0].
+    //   🩹 2026-07-21 전수조사 #4: 기존 커버를 무조건 유지하던 것 → validateImageLoads 로 검증해
+    //     깨진/핫링크 커버가 살아남지 않게(감사 지적 — 깨진 커버가 recondition 을 통과하던 구멍).
+    const keepOld = !placeUrl && !isPlaceholderUrl(row.image_url) && await validateImageLoads(row.image_url)
+    const cover = keepOld ? (row.image_url as string) : imgs[0]
     const gallery = Array.from(new Set([cover, ...imgs])).slice(0, 5)
     await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(cover, JSON.stringify(gallery), row.id).run().catch(() => {})

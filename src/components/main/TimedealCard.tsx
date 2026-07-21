@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface TimedealCardProps {
   id: number
@@ -78,10 +79,11 @@ export default function TimedealCard({
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-[#1A2334]">
         {image_url && (
           <img
-            src={image_url}
+            src={cfImage(image_url, { width: 400, quality: 82, format: 'auto' }) || image_url}
             alt={name}
             loading="lazy"
             className="w-full h-full object-cover"
+            onError={(e) => cfImageOnError(e.currentTarget, image_url)}
           />
         )}
 

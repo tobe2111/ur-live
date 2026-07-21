@@ -2117,7 +2117,43 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
       await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     }
-    return c.json({ success: true, checked, healed, remaining: Number(remainRow?.n ?? 0) });
+    // 🩹 R2 바인딩 상태 동봉 — 미바인딩이면 rehost(영구화) 전멸이라 사진 반복 깨짐의 근본 원인.
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    return c.json({ success: true, checked, healed, remaining: Number(remainRow?.n ?? 0), bucketBound });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/image-health — 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 진단.
+//   R2 바인딩 여부(rehost 가능성) + 커버가 외부 URL(깨질 위험) vs 내부(/api/media, 안전) 비율.
+adminProductsRoutes.get('/dongnedeal/image-health', cors(), async (c) => {
+  try {
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const row = await c.env.DB.prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN COALESCE(image_url,'') = '' THEN 1 ELSE 0 END) AS no_cover,
+         SUM(CASE WHEN image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS internal_cover,
+         SUM(CASE WHEN image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS external_cover,
+         SUM(CASE WHEN image_url LIKE '%pstatic.net%' OR image_url LIKE '%phinf%' THEN 1 ELSE 0 END) AS naver_cover
+       FROM products
+      WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1`
+    ).first<{ total: number; no_cover: number; internal_cover: number; external_cover: number; naver_cover: number }>().catch(() => null);
+    return c.json({
+      success: true,
+      bucketBound,
+      cover: {
+        total: Number(row?.total ?? 0),
+        internal_r2: Number(row?.internal_cover ?? 0),   // 안전(우리 도메인) — 안 깨짐
+        external: Number(row?.external_cover ?? 0),        // 외부 URL — 핫링크/삭제 시 깨질 위험
+        naver: Number(row?.naver_cover ?? 0),              // 그중 네이버 CDN
+        none: Number(row?.no_cover ?? 0),
+      },
+      hint: bucketBound
+        ? '외부 커버는 rehost cron/재적용으로 R2(내부) 이관 시 영구 안정화.'
+        : '⚠️ MEDIA_BUCKET(R2) 미바인딩 — 사진 R2 이관이 전부 안 됨. Cloudflare 대시보드 → ur-live → Settings → Bindings → R2 → MEDIA_BUCKET 바인딩 필요(근본 해결).',
+    });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

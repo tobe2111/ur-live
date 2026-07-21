@@ -16,6 +16,7 @@ import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
+import { rehostImageToR2 } from '@/worker/utils/rehost-image'
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
@@ -469,7 +470,11 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         count: wantPhotos,
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
-      const img = imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
+      // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
+      //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,
+      //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).
+      const coverHosted = imgs[0] ? await rehostImageToR2(extEnv as unknown as { MEDIA_BUCKET?: R2Bucket }, imgs[0], 'demo-stay-seed').catch(() => null) : null
+      const img = coverHosted || imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
       //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.

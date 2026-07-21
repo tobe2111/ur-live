@@ -18,6 +18,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Gift, Loader2, CheckCircle2, XCircle, MapPin, Phone, Sparkles } from 'lucide-react'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 
 interface GiftInfo {
@@ -137,7 +138,7 @@ export default function GiftClaimPage() {
         <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm mb-4">
           <div className="flex gap-3 mb-4">
             {gift.product_thumbnail ? (
-              <img src={gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" />
+              <img src={cfImage(gift.product_thumbnail, { width: 200, quality: 82, format: 'auto' }) || gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, gift.product_thumbnail)} />
             ) : (
               <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center flex-shrink-0">
                 <Gift className="w-8 h-8 text-gray-300 dark:text-gray-600" />
