@@ -92,11 +92,31 @@ export function pickPhone(text: string): string | null {
 
 export interface ActiveTarget { category: string; country: string }
 
+// 국가명 정규화(스코어 비교용) — 흔한 별칭 통일. 'USA'/'US'/'United States' → 동일 키.
+const COUNTRY_ALIAS: Record<string, string> = {
+  usa: 'unitedstates', us: 'unitedstates', america: 'unitedstates', unitedstatesofamerica: 'unitedstates',
+  uk: 'unitedkingdom', greatbritain: 'unitedkingdom', england: 'unitedkingdom',
+  uae: 'unitedarabemirates', emirates: 'unitedarabemirates',
+  korea: 'southkorea', republicofkorea: 'southkorea', rok: 'southkorea',
+  prc: 'china', 중화인민공화국: 'china', türkiye: 'turkey', 튀르키예: 'turkey',
+}
+function normCountryKey(s: string | null | undefined): string {
+  const k = String(s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '')
+  return COUNTRY_ALIAS[k] || k
+}
+
 export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category' | 'country' | 'target_market' | 'imports_from_korea' | 'decision_maker_email'>, targets: ActiveTarget[]): number {
   let s = INTENT_TIERS[lead.intent_signal]?.weight ?? INTENT_TIERS.directory.weight
-  const cat = (lead.category || '').toLowerCase()
-  const markets = [lead.target_market, lead.country].filter(Boolean).map(m => String(m).toLowerCase())
-  if (targets.some(t => t.category.toLowerCase() === cat && markets.includes(t.country.toLowerCase()))) s += 25
+  const cat = (lead.category || '').toLowerCase().trim()
+  const markets = [lead.target_market, lead.country].filter(Boolean).map(m => normCountryKey(String(m)))
+  const tCats = targets.map(t => t.category.toLowerCase().trim()).filter(Boolean)
+  const tCountries = targets.map(t => normCountryKey(t.country)).filter(Boolean)
+  // 카테고리·국가 독립 부분점수 — (category,country) 정확 페어만 요구하던 것을 완화해 실데이터에서도 변별.
+  const catMatch = !!cat && tCats.some(tc => tc === cat || cat.includes(tc) || tc.includes(cat))
+  const countryMatch = markets.some(m => !!m && tCountries.includes(m))
+  if (catMatch && countryMatch) s += 25
+  else if (catMatch) s += 15
+  else if (countryMatch) s += 8
   if (lead.imports_from_korea === 1) s += 20
   if (lead.decision_maker_email) s += 10
   return Math.max(0, Math.min(100, Math.round(s)))
@@ -104,11 +124,13 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 
 /* ── 정규화 ─────────────────────────────────────────────────────────────── */
 
+// 회사명 키 — 구두점/공백만 제거하고 **단어는 보존**(Trading/Import/Ltd 를 떼면 서로 다른 회사가 병합됨).
+//   비면(구두점만) 붕괴 방지 폴백. 유니코드 문자/숫자 보존(아랍/키릴 회사명도 키 생성).
 export function normalizeCompanyKey(company: string, country?: string | null): string {
-  const base = String(company || '').toLowerCase()
-    .replace(/\b(co\.?,?\s*ltd\.?|ltd\.?|inc\.?|llc|corp\.?|corporation|gmbh|s\.?a\.?|pvt\.?|company|limited|trading|import(?:s|er|ers)?|distribution|distributor)\b/g, '')
-    .replace(/[^a-z0-9가-힣]/g, '').trim()
-  const c = String(country || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '')
+  const raw = String(company || '')
+  let base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  if (!base) base = 'x' + raw.trim().toLowerCase().replace(/\s+/g, '') || 'x'
+  const c = String(country || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
   return `${base}|${c}`.slice(0, 160)
 }
 
@@ -209,18 +231,25 @@ async function getActiveTargets(DB: D1Database): Promise<ActiveTarget[]> {
 
 /* ── 저장(멱등 upsert — 빈 컨택/담당자만 백필, 더 높은 score 만) ─────────────────── */
 
-/** 상세(연락처 보유) 리드로 기존 리스트 행을 인콰이어리 제목으로 매칭해 보강. 매칭·보강 시 true. */
+/** 상세(연락처 보유) 리드로 **미보강 리스트 플레이스홀더 행만** 인콰이어리 제목으로 매칭해 보강. 매칭·보강 시 true.
+ *   ⚠️ 이미 실회사명/이메일이 있는 행은 절대 매칭 안 함(제목 충돌로 서로 다른 바이어가 병합되던 HIGH 버그 차단). */
 async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active: ActiveTarget[]): Promise<boolean> {
   const title = (l.inquiry_title || '').slice(0, 200)
   if (!title) return false
-  const existing = await DB.prepare('SELECT id FROM overseas_buyer_leads WHERE inquiry_title = ? LIMIT 1').bind(title)
-    .first<{ id: number }>().catch(() => null)
+  const existing = await DB.prepare(
+    `SELECT id, country FROM overseas_buyer_leads
+     WHERE inquiry_title = ? AND email IS NULL AND decision_maker_email IS NULL
+       AND (company IS NULL OR company = inquiry_title) LIMIT 1`).bind(title)
+    .first<{ id: number; country: string | null }>().catch(() => null)
   if (!existing) return false
   const intent = INTENT_KEYS.includes(l.intent_signal) ? l.intent_signal : 'buying_lead'
   const score = scoreBuyerFit({ ...l, intent_signal: intent }, active)
   const desc = (l.description || '').slice(0, 800)
+  const company = (l.company || '').slice(0, 200)
+  // 회사명이 실명으로 바뀌면 company_key 재계산(안 하면 다음 상세가 dedup 못해 중복 생성). 충돌 시 catch→INSERT 위임.
+  const newKey = normalizeCompanyKey(company || title, l.country || existing.country)
   const r = await DB.prepare(`UPDATE overseas_buyer_leads SET
-      company = CASE WHEN ? <> '' THEN ? ELSE company END,
+      company = CASE WHEN ? <> '' THEN ? ELSE company END, company_key = ?,
       email = COALESCE(email, ?), phone = COALESCE(phone, ?), website = COALESCE(website, ?),
       decision_maker = COALESCE(decision_maker, ?), decision_maker_title = COALESCE(decision_maker_title, ?),
       decision_maker_email = COALESCE(decision_maker_email, ?), imports_from_korea = COALESCE(imports_from_korea, ?),
@@ -230,7 +259,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       source = ?, intent_signal = ?, match_score = MAX(COALESCE(match_score,0), ?)
     WHERE id = ?`)
     .bind(
-      (l.company || '').slice(0, 200), (l.company || '').slice(0, 200),
+      company, company, newKey,
       l.email, l.phone, l.website, l.decision_maker, l.decision_maker_title, l.decision_maker_email,
       l.imports_from_korea, l.category, l.est_volume, l.target_market, l.country,
       desc.length, desc, l.source, intent, score, existing.id,
@@ -262,6 +291,10 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
       decision_maker_email = COALESCE(overseas_buyer_leads.decision_maker_email, excluded.decision_maker_email),
       imports_from_korea = COALESCE(overseas_buyer_leads.imports_from_korea, excluded.imports_from_korea),
       inquiry_title = COALESCE(overseas_buyer_leads.inquiry_title, excluded.inquiry_title),
+      category = COALESCE(overseas_buyer_leads.category, excluded.category),
+      country = COALESCE(overseas_buyer_leads.country, excluded.country),
+      target_market = COALESCE(overseas_buyer_leads.target_market, excluded.target_market),
+      est_volume = COALESCE(overseas_buyer_leads.est_volume, excluded.est_volume),
       match_score = MAX(COALESCE(overseas_buyer_leads.match_score, 0), COALESCE(excluded.match_score, 0))
     WHERE (overseas_buyer_leads.email IS NULL AND excluded.email IS NOT NULL)
        OR (overseas_buyer_leads.decision_maker_email IS NULL AND excluded.decision_maker_email IS NOT NULL)
@@ -269,6 +302,8 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
        OR (overseas_buyer_leads.website IS NULL AND excluded.website IS NOT NULL)
        OR (overseas_buyer_leads.imports_from_korea IS NULL AND excluded.imports_from_korea IS NOT NULL)
        OR (overseas_buyer_leads.inquiry_title IS NULL AND excluded.inquiry_title IS NOT NULL)
+       OR (overseas_buyer_leads.category IS NULL AND excluded.category IS NOT NULL)
+       OR (overseas_buyer_leads.country IS NULL AND excluded.country IS NOT NULL)
        OR (COALESCE(excluded.match_score,0) > COALESCE(overseas_buyer_leads.match_score,0))`
   const CHUNK = 50
   for (let i = 0; i < toInsert.length; i += CHUNK) {
