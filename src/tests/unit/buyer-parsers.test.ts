@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseDatedLeadList, parseBuyKoreaInquiries } from '@/features/supply/api/buyer-parsers'
+import { htmlToText } from '@/features/supply/api/buyer-autofetch'
 
 /**
  * 🌐 유통스타트 바이어 풀 파서 회귀 테스트 (2026-07-21 전수조사).
@@ -79,4 +80,28 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const garbage = leads.filter(l => /바이코리아|판매자센터|kotra/i.test((l.company || '') + (l.email || '')))
     expect(garbage.length).toBe(0)
   })
+})
+
+describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들도 되게끔)', () => {
+  // 각 사이트의 상세 표 레이아웃(table td / dl dt·dd / div)을 실제 서버 htmlToText 경유로 파싱.
+  const cases: Array<{ site: string; html: string; company: string; country: string }> = [
+    { site: 'tradeKorea', country: 'United Arab Emirates', company: 'Beauty World Trading LLC',
+      html: '<h1>Buying Offer</h1><table><tr><td>Company Name</td><td>Beauty World Trading LLC</td></tr><tr><td>Country</td><td>United Arab Emirates</td></tr><tr><td>Homepage</td><td>https://beautyworld.ae</td></tr><tr><td>Email</td><td>purchasing@beautyworld.ae</td></tr><tr><td>Quantity Required</td><td>10000 units</td></tr></table>' },
+    { site: 'EC21', country: 'Nigeria', company: 'Lagos Import Group',
+      html: '<h2>Buy Offer</h2><dl><dt>Buyer</dt><dd>Lagos Import Group</dd><dt>Country / Region</dt><dd>Nigeria</dd><dt>Web Site</dt><dd>www.lagosimport.ng</dd><dt>E-mail</dt><dd>info@lagosimport.ng</dd></dl>' },
+    { site: 'ECPlaza', country: 'Brazil', company: 'Sao Paulo Distribuidora',
+      html: '<div>Importer: Sao Paulo Distribuidora</div><div>Country: Brazil</div><div>Website: https://spdistrib.com.br</div><div>Email: compras@spdistrib.com.br</div>' },
+    { site: 'GoBizKorea', country: 'Vietnam', company: 'Hanoi Trading Co',
+      html: '<table><tr><td>Business Name</td><td>Hanoi Trading Co</td></tr><tr><td>Importing Country</td><td>Vietnam</td></tr><tr><td>URL</td><td>hanoitrading.vn</td></tr><tr><td>Contact Email</td><td>import@hanoitrading.vn</td></tr></table>' },
+  ]
+  for (const c of cases) {
+    it(`${c.site}: 회사명·국가·연락처 추출`, () => {
+      const leads = parseBuyKoreaInquiries(htmlToText(c.html))
+      expect(leads.length).toBeGreaterThanOrEqual(1)
+      const l = leads[0]
+      expect(l.company).toBe(c.company)
+      expect(l.country).toBe(c.country)
+      expect(l.email || l.website).toBeTruthy()
+    })
+  }
 })
