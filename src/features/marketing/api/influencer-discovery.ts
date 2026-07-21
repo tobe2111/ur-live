@@ -20,8 +20,18 @@ export interface ExtractedContacts { emails: string[]; instagram: string[]; tikt
 
 const EMAIL_RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g
 const IG_RE = /(?:instagram\.com|instagr\.am)\/([A-Za-z0-9_.]{2,40})/gi
+// 🆕 키워드+@ 근접형 — URL 없이 "인스타 @foodie", "IG: @foodie_kim", "insta @x" 처럼 쓴 핸들 포착.
+//   @ 를 필수로 둬 "instagram is great" 같은 일반 문장 오탐을 원천 차단(@뒤 토큰만 핸들로 인정).
+//   (?<![A-Za-z]) = 앞이 영문자면 매칭 안 함 → "big @brand" 의 "ig" 오탐 차단(짧은 키워드 ig/insta 보호).
+const IG_AT_RE = /(?<![A-Za-z])(?:인스타(?:그램)?|instagram|insta|ig)\s*[:：]?\s*@([A-Za-z0-9_.]{2,30})/gi
 const TT_RE = /tiktok\.com\/@?([A-Za-z0-9_.]{2,40})/gi
+const TT_AT_RE = /(?<![A-Za-z])(?:틱톡|tiktok)\s*[:：]?\s*@([A-Za-z0-9_.]{2,30})/gi
 const LINKINBIO_RE = /(?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\/[A-Za-z0-9_.\-/]{1,60}/gi
+// 🔗 유튜브·블로그 교차링크(다른 SNS 를 프로필에 교차게시) — 완전 URL 형만(오탐 최소). links 로 함께 수집.
+const YT_URL_RE = /https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:@[A-Za-z0-9_.\-]{2,40}|channel\/[A-Za-z0-9_-]{4,40}|c\/[A-Za-z0-9_.\-]{2,40}|user\/[A-Za-z0-9_.\-]{2,40})|youtu\.be\/[A-Za-z0-9_-]{4,20})/gi
+const BLOG_URL_RE = /https?:\/\/(?:[A-Za-z0-9_-]{2,40}\.tistory\.com|(?:m\.)?blog\.naver\.com\/[A-Za-z0-9_-]{2,40}|brunch\.co\.kr\/@[A-Za-z0-9_.\-]{2,40})/gi
+// 핸들 정규화 — @ 제거·소문자·후행 구두점(.,) 제거(uniqLower 전 적용). "@Foodie_Kim." → "foodie_kim".
+const normHandle = (h: string): string => h.trim().replace(/^@+/, '').replace(/[.,]+$/, '').toLowerCase()
 // 이메일 오탐 필터 — 이미지/파일 확장자로 끝나는 건 컨택 아님.
 const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
 
@@ -38,9 +48,23 @@ export function isLikelyNoise(name?: string | null, description?: string | null)
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
   const emails = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 5)
-  const instagram = uniqLower(Array.from(t.matchAll(IG_RE), m => m[1]).filter(h => !['p', 'reel', 'reels', 'explore', 'stories', 'tv'].includes(h.toLowerCase()))).slice(0, 5)
-  const tiktok = uniqLower(Array.from(t.matchAll(TT_RE), m => m[1]).filter(h => !['video', 'tag', 'discover'].includes(h.toLowerCase()))).slice(0, 5)
-  const links = uniqLower(t.match(LINKINBIO_RE) || []).slice(0, 5)
+  // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
+  const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta']
+  const instagram = uniqLower([
+    ...Array.from(t.matchAll(IG_RE), m => m[1]),
+    ...Array.from(t.matchAll(IG_AT_RE), m => m[1]),
+  ].map(normHandle).filter(h => h.length >= 2 && !IG_BAD.includes(h))).slice(0, 5)
+  const TT_BAD = ['video', 'tag', 'discover', 'tiktok']
+  const tiktok = uniqLower([
+    ...Array.from(t.matchAll(TT_RE), m => m[1]),
+    ...Array.from(t.matchAll(TT_AT_RE), m => m[1]),
+  ].map(normHandle).filter(h => h.length >= 2 && !TT_BAD.includes(h))).slice(0, 5)
+  // 🔗 링크인바이오 + 유튜브/블로그 교차링크(완전 URL) 통합 — 크로스플랫폼 발자국 보존.
+  const links = uniqLower([
+    ...(t.match(LINKINBIO_RE) || []),
+    ...(t.match(YT_URL_RE) || []),
+    ...(t.match(BLOG_URL_RE) || []),
+  ]).slice(0, 8)
   return { emails, instagram, tiktok, links }
 }
 

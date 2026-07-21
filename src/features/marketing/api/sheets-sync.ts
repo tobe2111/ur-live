@@ -60,18 +60,18 @@ async function getToken(env: Env): Promise<string | null> {
 }
 
 // ── 행 매핑(순수 — 테스트 가능): 헤더와 leadToRow 는 항상 같은 순서 유지 ──────
-export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '구독자수', '평균조회수', '평균댓글', '月포스팅', '이메일', '인스타', '틱톡', '카테고리', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
+export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '구독자수', '평균조회수', '평균댓글', '月포스팅', '이메일', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
 export interface SheetLead {
   id: number; platform: string; name: string; handle: string | null; url: string
   subscriber_count: number; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null
-  email: string | null; instagram: string | null; tiktok: string | null
+  email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   category: string | null; source_keyword: string | null; status: string; contact_channel: string | null
   contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null
   memo: string | null; collected_at: string
 }
 export function leadToRow(l: SheetLead): (string | number)[] {
   return [l.id, l.platform, l.name, l.handle || '', l.url, l.subscriber_count || 0, l.recent_avg_views ?? '', l.recent_avg_comments ?? '', l.recent_posts_30d ?? '', l.email || '', l.instagram || '',
-    l.tiktok || '', l.category || '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
+    l.tiktok || '', l.links || '', l.category || '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
     l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at]
 }
 
@@ -107,7 +107,7 @@ export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolea
   // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
   const rows: (string | number)[][] = [[...SHEET_HEADER]]
   for (let off = 0; ; off += PAGE) {
-    const page = (await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok,
+    const page = (await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
       .bind(PAGE, off).all<SheetLead>().catch(() => null))?.results || []

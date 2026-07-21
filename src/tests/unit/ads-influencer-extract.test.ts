@@ -29,6 +29,31 @@ describe('extractContacts', () => {
     expect(r.links.some(l => l.includes('litt.ly/shop'))).toBe(true)
   })
 
+  it('🆕 URL 없는 키워드+@ 표기 포착 (인스타 @foodie / IG: @x / 틱톡 @y)', () => {
+    const r = extractContacts('📸 인스타 @foodie_kim  ·  IG: @seoul.eats  ·  틱톡 @dance_king')
+    expect(r.instagram).toContain('foodie_kim')
+    expect(r.instagram).toContain('seoul.eats')
+    expect(r.tiktok).toContain('dance_king')
+  })
+
+  it('🆕 @ 없는 일반 문장은 핸들로 오인하지 않음 (오탐 방지)', () => {
+    const r = extractContacts('My instagram is the best place to follow me every day')
+    expect(r.instagram).toEqual([]) // "instagram is" 를 핸들로 잡지 않음(@ 필수)
+  })
+
+  it('🆕 @ 접두·후행 구두점 정규화 ("@Foodie." → "foodie")', () => {
+    const r = extractContacts('인스타 @Foodie_Kim.')
+    expect(r.instagram).toContain('foodie_kim')
+    expect(r.instagram.some(h => h.startsWith('@') || h.endsWith('.'))).toBe(false)
+  })
+
+  it('🆕 유튜브·블로그 교차링크는 links 로 수집 (크로스플랫폼)', () => {
+    const r = extractContacts('유튜브 https://youtube.com/@myfood_tv 블로그 https://foodie.tistory.com 네이버 https://blog.naver.com/foodielog')
+    expect(r.links.some(l => l.includes('youtube.com/@myfood_tv'))).toBe(true)
+    expect(r.links.some(l => l.includes('foodie.tistory.com'))).toBe(true)
+    expect(r.links.some(l => l.includes('blog.naver.com/foodielog'))).toBe(true)
+  })
+
   it('중복 제거 + 소문자 정규화', () => {
     const r = extractContacts('메일 Deal@X.com deal@x.com DEAL@x.com\nig instagram.com/AA instagram.com/aa')
     expect(r.emails).toEqual(['deal@x.com'])
