@@ -50,6 +50,8 @@ export interface BuyerLead {
   est_volume: string | null
   description: string
   source_keyword: string | null
+  /** 회사 주소(상세/웹사이트에서 추출) — 아웃리치·통관·신뢰도 판단용. */
+  address?: string | null
   /** buyKorea 등 인콰이어리(구매요청) 제목 — 리스트↔상세 매칭 키(상세 붙여넣기가 리스트 행을 보강). 파서 전용. */
   inquiry_title?: string | null
 }
@@ -60,6 +62,10 @@ const EMAIL_RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g
 const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
 const BIZ_CONTEXT_RE = /(구매|수입|바이어|문의|담당|business|inquir|contact|purchas|import|sourcing|procurement|이메일|메일)/i
 const NON_OWNER_EMAIL_RE = /^(no-?reply|noreply|support|help|admin|webmaster|cs|care|hello|team)@/i
+// 구매 의도 local-part 2단(구매/수입/영업/무역 담당 = 강, 일반 회사메일 = 약) — 여러 이메일 중 구매담당 우선.
+//   local-part 접두 매칭(purchasing/imports/sales 등 변형 포함).
+const STRONG_INTENT_LOCAL_RE = /^(purchas|procure|sourc|import|buy|sales|sale|trade|order|export|ceo|director)/i
+const WEAK_INTENT_LOCAL_RE = /^(info|contact|office|enquir|inquir|business|biz|marketing|mail|admin)/i
 
 /** 공개 텍스트에서 회사 컨택 이메일 1개 선택(문맥 가점) — 순수함수. */
 export function pickBusinessEmail(text: string): string | null {
@@ -72,7 +78,10 @@ export function pickBusinessEmail(text: string): string | null {
     const idx = lower.indexOf(email)
     const around = idx >= 0 ? t.slice(Math.max(0, idx - 40), idx + email.length + 10) : ''
     let score = 0
+    const local = email.split('@')[0]
     if (BIZ_CONTEXT_RE.test(around)) score += 3
+    if (STRONG_INTENT_LOCAL_RE.test(local)) score += 3       // purchasing@/import@/sales@ 등 구매담당 최우선
+    else if (WEAK_INTENT_LOCAL_RE.test(local)) score += 1     // info@/contact@ 등 일반 회사메일(랜덤보단 우선)
     if (NON_OWNER_EMAIL_RE.test(email)) score -= 2
     if (score > bestScore || (score === bestScore && idx < bestIdx)) { best = email; bestScore = score; bestIdx = idx }
   }
@@ -158,6 +167,7 @@ export async function ensureBuyerSchema(DB: D1Database): Promise<void> {
     decision_maker_email TEXT,
     est_volume TEXT,
     inquiry_title TEXT,
+    address TEXT,
     match_score INTEGER,
     description TEXT,
     source_keyword TEXT,
@@ -168,8 +178,9 @@ export async function ensureBuyerSchema(DB: D1Database): Promise<void> {
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
-  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키.
+  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키 + 회사 주소.
   await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN inquiry_title TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN address TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_score ON overseas_buyer_leads(match_score DESC, id DESC)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_ctry ON overseas_buyer_leads(country, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_inq ON overseas_buyer_leads(inquiry_title)').run().catch(() => null)
@@ -254,7 +265,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       decision_maker = COALESCE(decision_maker, ?), decision_maker_title = COALESCE(decision_maker_title, ?),
       decision_maker_email = COALESCE(decision_maker_email, ?), imports_from_korea = COALESCE(imports_from_korea, ?),
       category = COALESCE(category, ?), est_volume = COALESCE(est_volume, ?), target_market = COALESCE(target_market, ?),
-      country = COALESCE(country, ?),
+      country = COALESCE(country, ?), address = COALESCE(address, ?),
       description = CASE WHEN LENGTH(COALESCE(description,'')) < ? THEN ? ELSE description END,
       source = ?, intent_signal = ?, match_score = MAX(COALESCE(match_score,0), ?)
     WHERE id = ?`)
@@ -262,6 +273,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       company, company, newKey,
       l.email, l.phone, l.website, l.decision_maker, l.decision_maker_title, l.decision_maker_email,
       l.imports_from_korea, l.category, l.est_volume, l.target_market, l.country,
+      (l.address || '').slice(0, 300) || null,
       desc.length, desc, l.source, intent, score, existing.id,
     ).run().catch(() => null)
   return !!(r && (r.meta?.changes ?? 0) > 0)
@@ -280,9 +292,10 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
     toInsert.push(l)
   }
   const sql = `INSERT INTO overseas_buyer_leads
-    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, match_score, description, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company_key) DO UPDATE SET
+      address = COALESCE(overseas_buyer_leads.address, excluded.address),
       email = COALESCE(overseas_buyer_leads.email, excluded.email),
       phone = COALESCE(overseas_buyer_leads.phone, excluded.phone),
       website = COALESCE(overseas_buyer_leads.website, excluded.website),
@@ -304,6 +317,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
        OR (overseas_buyer_leads.inquiry_title IS NULL AND excluded.inquiry_title IS NOT NULL)
        OR (overseas_buyer_leads.category IS NULL AND excluded.category IS NOT NULL)
        OR (overseas_buyer_leads.country IS NULL AND excluded.country IS NOT NULL)
+       OR (overseas_buyer_leads.address IS NULL AND excluded.address IS NOT NULL)
        OR (COALESCE(excluded.match_score,0) > COALESCE(overseas_buyer_leads.match_score,0))`
   const CHUNK = 50
   for (let i = 0; i < toInsert.length; i += CHUNK) {
@@ -314,7 +328,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
         normalizeCompanyKey(l.company, l.country), l.source, intent, l.company.slice(0, 200),
         l.country, l.target_market, l.category, l.imports_from_korea, l.website, l.email, l.phone,
         l.decision_maker, l.decision_maker_title, l.decision_maker_email, l.est_volume,
-        (l.inquiry_title || '').slice(0, 200) || null, score,
+        (l.inquiry_title || '').slice(0, 200) || null, (l.address || '').slice(0, 300) || null, score,
         (l.description || '').slice(0, 800), l.source_keyword,
       )
     })
@@ -330,11 +344,11 @@ export interface BuyerLeadRow {
   website: string | null; email: string | null; phone: string | null
   decision_maker: string | null; decision_maker_title: string | null; decision_maker_email: string | null
   est_volume: string | null; match_score: number | null; description: string | null; source_keyword: string | null
-  inquiry_title: string | null
+  inquiry_title: string | null; address: string | null
   status: string; memo: string | null; contacted_at: string | null; follow_up_at: string | null; collected_at: string
 }
 
-const SELECT_COLS = 'id, company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, match_score, description, source_keyword, status, memo, contacted_at, follow_up_at, collected_at'
+const SELECT_COLS = 'id, company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword, status, memo, contacted_at, follow_up_at, collected_at'
 
 export async function listBuyerLeads(DB: D1Database, filter: { status?: string; country?: string; category?: string; intent?: string; minScore?: number; hasContact?: boolean; q?: string; limit?: number } = {}): Promise<BuyerLeadRow[]> {
   await ensureBuyerSchema(DB)

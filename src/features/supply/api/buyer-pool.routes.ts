@@ -58,6 +58,7 @@ app.post('/', async (c) => {
     decision_maker_title: b.decision_maker_title ? String(b.decision_maker_title).slice(0, 80) : null,
     decision_maker_email: b.decision_maker_email ? String(b.decision_maker_email).slice(0, 120) : null,
     est_volume: b.est_volume ? String(b.est_volume).slice(0, 60) : null,
+    address: b.address ? String(b.address).slice(0, 300) : null,
     description: b.description ? String(b.description).slice(0, 800) : '',
     source_keyword: 'manual',
   }
@@ -233,10 +234,10 @@ app.get('/export', async (c) => {
     if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
     return s
   }
-  const header = ['match_score', 'intent', 'company', 'country', 'target_market', 'category', 'imports_from_korea', 'website', 'email', 'phone', 'decision_maker', 'dm_title', 'dm_email', 'est_volume', 'status', 'source', 'collected_at']
+  const header = ['match_score', 'intent', 'company', 'country', 'target_market', 'category', 'imports_from_korea', 'website', 'email', 'phone', 'address', 'decision_maker', 'dm_title', 'dm_email', 'est_volume', 'status', 'source', 'collected_at']
   const lines = [header.join(',')]
   for (const r of rows) {
-    lines.push([r.match_score ?? '', r.intent_signal, r.company, r.country, r.target_market, r.category, r.imports_from_korea ?? '', r.website, r.email, r.phone, r.decision_maker, r.decision_maker_title, r.decision_maker_email, r.est_volume, r.status, r.source, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
+    lines.push([r.match_score ?? '', r.intent_signal, r.company, r.country, r.target_market, r.category, r.imports_from_korea ?? '', r.website, r.email, r.phone, r.address, r.decision_maker, r.decision_maker_title, r.decision_maker_email, r.est_volume, r.status, r.source, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
   }
   return new Response('﻿' + lines.join('\n'), {
     headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': 'attachment; filename="overseas-buyers.csv"' },
