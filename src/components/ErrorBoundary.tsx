@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     // 🛡️ 청크 에러(=새 배포 업데이트) 는 무서운 에러 대신 자동 새로고침(캐시버스트)으로 조용히 복구.
-    //   단일 SSOT(recoverFromChunkError) — 인라인 부트가드·main.tsx 와 같은 가드(60초 2회) 공유.
+    //   단일 SSOT(recoverFromChunkError) — 인라인 부트가드·main.tsx 와 같은 가드(90초 3회·유예) 공유.
     //   가드 한도 초과(진짜 에러)면 chunkExhausted 로 수동 새로고침 UI 폴백.
     if (isChunkLoadError(error?.message)) {
       if (!recoverFromChunkError()) this.setState({ chunkExhausted: true });
