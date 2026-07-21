@@ -258,7 +258,8 @@ export default function AdminBuyerPoolPage() {
     try { const r = await api.get('/api/admin/buyer-pool/ingest-token'); if (r.data?.success) setIngestToken(r.data.token) } catch { /* noop */ }
   }, [])
   useEffect(() => { if (showAuto && !ingestToken) loadToken() }, [showAuto, ingestToken, loadToken])
-  useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken])
+  // showGuide 가 열릴 때 버튼이 마운트되므로 deps 에 포함(안 그러면 href 미주입 = 드래그해도 빈 북마클릿).
+  useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken, showGuide])
   const resetToken = async () => {
     try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 드래그해 등록하세요') } } catch { toast.error('재발급 실패') }
   }
@@ -376,8 +377,29 @@ export default function AdminBuyerPoolPage() {
         {/* 📋 수집 방법 안내 — 2단계(발굴→연락처), 전 사이트 공통, 전부 무료 */}
         {showGuide && (
           <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-            <div className="text-sm font-semibold text-gray-900 mb-1">📋 해외 바이어 DB, 어디서 어떻게 모으나요? (2단계)</div>
-            <p className="text-xs text-gray-600 mb-3">모든 사이트가 <b>연락처(이메일·홈페이지·회사명)를 각 상세 페이지 안에 로그인 상태로만</b> 보여줍니다. 그래서 <b>① 리스트로 발굴</b> → <b>② 관심 건의 상세로 연락처 확보</b> 2단계로 모읍니다. 붙여넣는 곳은 「+ 바이어 직접 추가」 맨 아래 칸(Ctrl+V) → 「붙여넣기 일괄 추가」. (전부 무료 · 유료 결제 없음)</p>
+            <div className="text-sm font-semibold text-gray-900 mb-2">📋 바이어 수집 방법</div>
+
+            {/* 🔖 방법 1 (추천) — 원클릭 북마클릿. 맨 위·크게 */}
+            <div className="mb-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 p-4">
+              <div className="text-sm font-bold text-indigo-700 mb-1.5">🔖 방법 1 (추천) · 원클릭 북마클릿 — F12·쿠키 필요 없음</div>
+              <ol className="text-xs text-gray-700 mb-2.5 ml-4 list-decimal space-y-1">
+                <li><b>아래 파란 버튼을 브라우저 상단 「즐겨찾기 바(북마크바)」로 드래그</b>해 등록합니다. <span className="text-gray-400">(최초 1회만. 즐겨찾기 바가 안 보이면 Ctrl+Shift+B)</span></li>
+                <li><b>buyKorea에 로그인</b>하고 「인콰이어리」 구매요청 <b>리스트 페이지</b>를 엽니다.</li>
+                <li>방금 등록한 <b>즐겨찾기(📥 유어딜 바이어 수집)를 클릭</b>합니다. 끝!</li>
+              </ol>
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
+                <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-bold cursor-move select-none inline-block shadow" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
+                <span className="text-xs text-indigo-600 font-semibold">← 이 버튼을 즐겨찾기 바로 <u>드래그</u> (클릭 아님)</span>
+                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline ml-2">토큰 재발급</button>}
+              </div>
+              <div className="rounded-lg bg-white/70 p-2 text-[11px] text-gray-600">
+                ✅ 클릭하면 화면 우상단에 <b>「리스트 2/5 페이지 수집… → 상세 수집 … → ✅ 저장 N건」</b>이 뜨며, 리스트의 <b>모든 페이지를 자동으로 넘기며</b> 각 상세로 들어가 회사명·국가·웹사이트·품목·수량·주소를 저장합니다. 상세를 하나씩 열 필요 없습니다.<br/>※ 바이어 <b>이메일은 사이트가 가려서</b>, 수집 후 위의 <b>「🌐 이메일 찾기」</b> 버튼으로 채웁니다.
+              </div>
+            </div>
+
+            <div className="text-xs font-semibold text-gray-700 mb-1">또는 · 방법 2 · 수동 복사 붙여넣기 (북마클릿이 안 되는 사이트용)</div>
+            <p className="text-xs text-gray-600 mb-3">구매요청 <b>리스트를 Ctrl+A → Ctrl+C</b> 한 뒤, 「고급 ▼ → + 직접 추가」 맨 아래 칸에 <b>Ctrl+V → 붙여넣기 일괄 추가</b>. 상세 페이지도 같은 방법으로 붙여넣으면 회사·연락처가 같은 행에 채워집니다. 아래는 사이트별 리스트 위치 안내입니다.</p>
             <div className="grid sm:grid-cols-2 gap-2 mb-3">
               <div className="rounded-lg bg-white border border-gray-200 p-2.5">
                 <div className="text-xs font-semibold text-gray-900">1단계 · 발굴 (리스트)</div>
@@ -403,7 +425,7 @@ export default function AdminBuyerPoolPage() {
               ))}
             </div>
             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">
-              💡 상세는 로그인 페이지라 <b>사이트가 자동 일괄 다운로드를 막습니다</b>(자동 크롤링 = 약관 위반·계정 정지 위험). 그래서 상세는 <b>관심 가는 건만</b> 한 페이지씩 복사합니다 — 매칭 스코어(🔥)가 높은 상위 건부터 채우면 됩니다. (buyKorea 상세는 여러 건을 한 번에 이어붙여도 인식되고, 영문 사이트는 한 건씩 붙여넣는 것을 권장합니다.) ⚠️ 수집한 컨택으로의 콜드 발송은 대상국 규제(GDPR/CAN-SPAM/CASL)를 따르세요.
+              💡 <b>방법 1(북마클릿)이 대부분 사이트에서 가장 빠릅니다</b> — 리스트 전체 페이지를 자동으로 돌아 상세까지 수집. 수동 복사는 북마클릿이 안 될 때만 쓰세요. ⚠️ 수집한 컨택으로의 콜드 발송은 대상국 규제(GDPR/CAN-SPAM/CASL)를 따르세요.
             </div>
           </div>
         )}
@@ -411,19 +433,7 @@ export default function AdminBuyerPoolPage() {
         {/* 🤖 상세 서버 자동 수집 (대표 승인 "위험 감수" — 계정 정지 위험, 게이트 무장 필요) */}
         {showAuto && (
           <div className="mb-4 rounded-xl border-2 border-red-200 bg-red-50/50 p-4">
-            {/* 🔖 북마클릿 — F12·쿠키 없이 원클릭(추천). 대표 브라우저 세션으로 읽어 안전 */}
-            <div className="mb-3 rounded-lg border-2 border-indigo-200 bg-indigo-50/60 p-3">
-              <div className="text-sm font-semibold text-indigo-700 mb-1">🔖 원클릭 북마클릿 (추천 · F12·쿠키 복사 없음)</div>
-              <div className="text-[11px] text-gray-600 mb-2">아래 파란 버튼을 <b>브라우저 즐겨찾기 바(북마크바)로 드래그</b>해 등록하세요. 그다음 buyKorea 등에서 <b>구매요청 리스트나 상세 페이지를 열고 이 즐겨찾기를 클릭</b>하면, 그 페이지의 바이어들이 자동으로 여기에 저장됩니다. <b>대표님이 이미 로그인한 브라우저</b>가 읽는 것이라 F12·쿠키·서버 로그인이 전혀 필요 없고, 계정 위험도 가장 낮습니다.</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
-                <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium cursor-move select-none inline-block" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
-                <span className="text-[11px] text-gray-400">← 이 버튼을 즐겨찾기 바로 드래그</span>
-                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline">토큰 재발급</button>}
-              </div>
-              <div className="mt-1.5 text-[11px] text-gray-400">💡 <b>많이 모으려면</b>: buyKorea 리스트에서 <b>100/200개로 펼친 뒤</b> 북마클릿을 누르면 한 번에 최대 200건까지 상세로 들어가 긁어옵니다(25개씩 나눠 전송)(회사명·국가·웹사이트·품목·수량·<b>실제 요청문구</b>까지). ※ 바이어 이메일은 마스킹되니, 이메일은 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
-            </div>
-            <div className="text-xs text-gray-400 mb-2">— 또는 아래는 서버가 직접 방문하는 방식(고급·위험) —</div>
+            <div className="text-[11px] text-gray-500 mb-2">💡 대부분은 「📋 수집 방법·북마클릿」의 <b>방법 1(북마클릿)</b>이면 충분합니다. 아래는 서버가 저장된 쿠키로 직접 방문하는 <b>고급·위험</b> 방식입니다.</div>
             <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
             <div className="text-xs text-red-700 bg-red-100/70 rounded-lg p-2 mb-3">
               ⚠️ 이 기능은 <b>대표님 로그인 쿠키로 서버가 상세 페이지들을 자동 방문</b>합니다. buyKorea·tradeKorea·EC21·ECPlaza·GoBizKorea 각 사이트 약관은 자동·대량 수집을 금지하며, <b>계정이 정지될 수 있습니다.</b> 위험을 감수하고 사용하세요. (방어: 소량 배치 · 요청 간 지연 · 쿠키는 저장하지 않고 이 요청에만 사용)
