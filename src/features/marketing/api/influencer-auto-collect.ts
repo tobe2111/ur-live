@@ -420,9 +420,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
+  const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
-    used.push(k.keyword)
+    used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
@@ -504,9 +505,12 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
   try { perfEnriched += await enrichNaverActivity(DB, budget, 12) } catch { /* fail-soft */ }
 
-  // 두 커서 각각 전진(우선/일반 풀 독립 순환).
-  const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
-  const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
+  // 두 커서 각각 전진(우선/일반 풀 독립 순환) — **실제 처리한 픽 수만큼만** 전진(예산 소진으로 못 돈 키워드는
+  //   다음 틱이 이어받도록 leapfrog 방지). 처리 픽은 finalPicks 앞쪽 prefix 라 filter 개수 = 처리한 접두 길이.
+  const priDone = priPicks.filter(p => processedIds.has(p.id)).length
+  const genDone = genPicks.filter(p => processedIds.has(p.id)).length
+  const nextPriCursor = priPool.length ? (priCursor + priDone) % priPool.length : 0
+  const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
   const stats: AutoCollectStats = {
