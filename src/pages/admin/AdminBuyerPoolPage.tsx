@@ -257,11 +257,18 @@ export default function AdminBuyerPoolPage() {
   const loadToken = useCallback(async () => {
     try { const r = await api.get('/api/admin/buyer-pool/ingest-token'); if (r.data?.success) setIngestToken(r.data.token) } catch { /* noop */ }
   }, [])
-  useEffect(() => { if (showAuto && !ingestToken) loadToken() }, [showAuto, ingestToken, loadToken])
-  // showGuide 가 열릴 때 버튼이 마운트되므로 deps 에 포함(안 그러면 href 미주입 = 드래그해도 빈 북마클릿).
+  // 북마클릿은 「수집 방법(showGuide)」·「상세 자동수집(showAuto)」 어느 패널에서든 필요 → 둘 중 하나 열리면 토큰 로드.
+  useEffect(() => { if ((showGuide || showAuto) && !ingestToken) loadToken() }, [showGuide, showAuto, ingestToken, loadToken])
+  // 패널이 열릴 때 버튼이 마운트되므로 deps 에 포함(안 그러면 href 미주입 = 드래그해도 빈 북마클릿).
   useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken, showGuide])
   const resetToken = async () => {
-    try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 드래그해 등록하세요') } } catch { toast.error('재발급 실패') }
+    try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 등록하세요') } } catch { toast.error('재발급 실패') }
+  }
+  // 드래그가 막히는 브라우저(크롬 최신 등) 대비 — 북마클릿 코드를 클립보드로 복사(즐겨찾기 URL 에 붙여넣기).
+  const copyBookmarklet = async () => {
+    if (!ingestToken) { toast.error('잠시 후 다시 시도해주세요(토큰 로딩 중)'); return }
+    try { await navigator.clipboard.writeText(buildBookmarklet(ingestToken)); toast.success('북마클릿 코드 복사됨 — 즐겨찾기 새로 만들고 URL 칸에 붙여넣기(Ctrl+V)') }
+    catch { toast.error('복사 실패 — 아래 코드를 길게 눌러 직접 복사하세요') }
   }
 
   const [enriching, setEnriching] = useState(false)
@@ -390,11 +397,21 @@ export default function AdminBuyerPoolPage() {
               <div className="flex items-center gap-2 flex-wrap mb-2">
                 {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
                 <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-bold cursor-move select-none inline-block shadow" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
-                <span className="text-xs text-indigo-600 font-semibold">← 이 버튼을 즐겨찾기 바로 <u>드래그</u> (클릭 아님)</span>
-                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline ml-2">토큰 재발급</button>}
+                <span className="text-xs text-indigo-600 font-semibold">← 즐겨찾기 바로 <u>드래그</u></span>
+                <button onClick={copyBookmarklet} className="px-3 py-2 rounded-lg bg-white border border-indigo-300 text-indigo-700 text-xs font-semibold">📋 드래그 안 되면: 코드 복사</button>
+                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline ml-1">토큰 재발급</button>}
               </div>
+              <details className="mb-2">
+                <summary className="text-[11px] text-indigo-600 cursor-pointer">🖱️ 드래그가 안 되나요? (크롬 최신 버전 등) — 코드 복사로 등록하기</summary>
+                <div className="mt-1.5 rounded-lg bg-white p-2.5 text-[11px] text-gray-600 leading-relaxed">
+                  <b>「📋 코드 복사」</b> 누른 뒤:<br/>
+                  ① 브라우저 즐겨찾기 <b>아무거나 하나 새로 만들기</b> (주소창 옆 ⭐ 또는 Ctrl+D)<br/>
+                  ② 그 즐겨찾기 <b>편집</b> → 이름 = <b>유어딜 바이어 수집</b>, <b>URL 칸</b>에 <b>붙여넣기(Ctrl+V)</b> → 저장<br/>
+                  ③ 이제 buyKorea 리스트에서 그 즐겨찾기를 누르면 수집됩니다.
+                </div>
+              </details>
               <div className="rounded-lg bg-white/70 p-2 text-[11px] text-gray-600">
-                ✅ 클릭하면 화면 우상단에 <b>「리스트 2/5 페이지 수집… → 상세 수집 … → ✅ 저장 N건」</b>이 뜨며, 리스트의 <b>모든 페이지를 자동으로 넘기며</b> 각 상세로 들어가 회사명·국가·웹사이트·품목·수량·주소를 저장합니다. 상세를 하나씩 열 필요 없습니다.<br/>※ 바이어 <b>이메일은 사이트가 가려서</b>, 수집 후 위의 <b>「🌐 이메일 찾기」</b> 버튼으로 채웁니다.
+                ✅ 누르면 화면 우상단에 <b>「리스트 2/5 페이지 수집… → 상세 수집 … → ✅ 저장 N건」</b>이 뜨며, 리스트의 <b>모든 페이지를 자동으로 넘기며</b> 각 상세로 들어가 회사명·국가·웹사이트·품목·수량·주소를 저장합니다. 상세를 하나씩 열 필요 없습니다.<br/>※ 바이어 <b>이메일은 사이트가 가려서</b>, 수집 후 위의 <b>「🌐 이메일 찾기」</b> 버튼으로 채웁니다.
               </div>
             </div>
 
