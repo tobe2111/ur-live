@@ -161,9 +161,11 @@ export async function enrichYouTubePerformance(
 
   // ② 채널별 최근 영상 id ≤10 — 채널당 1콜.
   const videoIdsByLead = new Map<number, string[]>()
+  const budgetSkipped = new Set<number>() // 예산 소진으로 영상통계를 못 잰 채널 — perf 를 0 으로 찍지 않고 보류(다음 틱 재선택)
   for (const r of rows) {
     const pl = uploads.get(r.channel_id)
-    if (!pl || budget.left <= 2) { videoIdsByLead.set(r.id, []); continue }
+    if (!pl) { videoIdsByLead.set(r.id, []); continue }                 // 업로드 재생목록 없음 = 실제로 영상 0 → avg 0 이 정답
+    if (budget.left <= 2) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue } // 예산 소진 — perf 보류
     budget.left--
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
@@ -182,13 +184,18 @@ export async function enrichYouTubePerformance(
     for (const it of vj?.items || []) if (it.id) stats.set(it.id, { views: parseInt(it.statistics?.viewCount || '0', 10) || 0, comments: parseInt(it.statistics?.commentCount || '0', 10) || 0 })
   }
 
-  // ④ 평균 계산 + 저장(1 batch). 실패/영상없음도 스탬프(재시도 폭주 방지).
+  // ④ 평균 계산 + 저장(1 batch). 영상없음(!pl)/실패는 스탬프(재시도 폭주 방지)하되, **예산 소진으로 못 잰 채널**은
+  //   avg=0/perf_checked_at 을 찍지 않는다 — 찍으면 progress 재선택(perf_checked_at IS NULL)에서 영구 제외돼
+  //   라이브 채널이 avg 0 으로 묻힘(enrichNaverActivity 는 budget break 로 이미 안전). 이미 받은 About/개설일/카테고리 교정만 반영.
   const stmts = rows.map(r => {
-    const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
-    const { avgViews, avgComments } = avgStats(vids)
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
     const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
     const catFill = !r.category ? (topicCat.get(r.channel_id) || null) : null // 미분류만 topicDetails 로 채움(기존 분류 보존)
+    if (budgetSkipped.has(r.id)) // 예산으로 perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = COALESCE(category, ?) WHERE id = ?`)
+        .bind(pub, fixEmail, catFill, r.id)
+    const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
+    const { avgViews, avgComments } = avgStats(vids)
     return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = COALESCE(category, ?), perf_checked_at = datetime('now') WHERE id = ?`)
       .bind(avgViews, avgComments, pub, fixEmail, catFill, r.id)
   })
