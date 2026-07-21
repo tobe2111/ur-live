@@ -48,11 +48,13 @@ function buildBookmarklet(token: string): string {
     `var re1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=re1.exec(ht))){cand.push(m[0])}` +
     `var re2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=re2.exec(ht))){cand.push('/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}` +
     `var L=cand.map(function(h){try{return new URL(h,location.href).href}catch(e){return ''}}).filter(function(u){if(!u)return false;try{var x=new URL(u);return x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&u.split('#')[0]!==cur}catch(e){return false}});` +
-    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(IDRE.test(location.search)&&HINT.test(location.pathname))H.push(ht);` +
-    `if(!L.length&&!H.length){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열고 누르거나, 리스트를 100/200개로 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
-    `for(var i=0;i<L.length;i++){S('유어딜: 상세 수집 '+(i+1)+'/'+L.length);try{var r=await fetch(L[i],{credentials:'include'});if(r.ok)H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,300)})}` +
-    `S('유어딜: 전송 중... ('+H.length+'건)');var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();` +
-    `if(j&&j.success){S('✅ 저장 '+((j.result&&j.result.saved)||0)+'건 / 파싱 '+((j.result&&j.result.parsed)||0)+' (상세 '+L.length+'개) — 유어딜에서 확인')}else{S('❌ 실패: '+((j&&j.error)||('HTTP '+res.status)))}setTimeout(function(){b.remove()},10000);` +
+    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,200);var self=IDRE.test(location.search)&&HINT.test(location.pathname);` +
+    `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열고 누르거나, 리스트를 100/200개로 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
+    `var CHUNK=25,buf=[],tS=0,tP=0,err='';var flush=async function(){if(!buf.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:buf})});var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else if(j&&j.error){err=j.error}}catch(e){err=String(e)}buf=[]};` +
+    `if(self)buf.push(ht);` +
+    `for(var i=0;i<L.length;i++){S('유어딜: 상세 수집 '+(i+1)+'/'+L.length+' · 저장 '+tS);try{var r=await fetch(L[i],{credentials:'include'});if(r.ok)buf.push(await r.text())}catch(e){}if(buf.length>=CHUNK)await flush();await new Promise(function(x){setTimeout(x,300)})}` +
+    `await flush();` +
+    `if(err&&!tS){S('❌ 실패: '+err)}else{S('✅ 완료 · 저장 '+tS+'건 / 상세 '+L.length+'개 처리 — 유어딜에서 확인')}setTimeout(function(){b.remove()},12000);` +
     `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
@@ -404,7 +406,7 @@ export default function AdminBuyerPoolPage() {
                 <span className="text-[11px] text-gray-400">← 이 버튼을 즐겨찾기 바로 드래그</span>
                 {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline">토큰 재발급</button>}
               </div>
-              <div className="mt-1.5 text-[11px] text-gray-400">💡 <b>많이 모으려면</b>: buyKorea 리스트에서 <b>100/200개로 펼친 뒤</b> 북마클릿을 누르면 한 번에 최대 60건까지 상세를 긁어옵니다(회사명·국가·웹사이트·품목·수량·<b>실제 요청문구</b>까지). ※ 바이어 이메일은 마스킹되니, 이메일은 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
+              <div className="mt-1.5 text-[11px] text-gray-400">💡 <b>많이 모으려면</b>: buyKorea 리스트에서 <b>100/200개로 펼친 뒤</b> 북마클릿을 누르면 한 번에 최대 200건까지 상세로 들어가 긁어옵니다(25개씩 나눠 전송)(회사명·국가·웹사이트·품목·수량·<b>실제 요청문구</b>까지). ※ 바이어 이메일은 마스킹되니, 이메일은 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
             </div>
             <div className="text-xs text-gray-400 mb-2">— 또는 아래는 서버가 직접 방문하는 방식(고급·위험) —</div>
             <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
