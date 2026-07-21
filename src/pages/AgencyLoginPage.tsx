@@ -18,6 +18,9 @@ export default function AgencyLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도 전 토큰 재발급 — 일회용 Turnstile 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   const [rememberMe, setRememberMe] = useState(false)
 
   // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
@@ -64,6 +67,8 @@ export default function AgencyLoginPage() {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       setError(err_.response?.data?.error || t('auth.invalidCredentials'))
+      // 🛡️ 실패 → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -195,7 +200,7 @@ export default function AgencyLoginPage() {
               </div>
 
               {/* 🛡️ Cloudflare Turnstile — 비가시 봇 검증 (size="invisible" 은 유효값 아님 — appearance 기본값이 담당) */}
-              <TurnstileWidget onVerify={setTurnstileToken} />
+              <TurnstileWidget onVerify={setTurnstileToken} onExpire={refreshTurnstile} resetSignal={turnstileReset} />
 
               <button
                 type="submit"
