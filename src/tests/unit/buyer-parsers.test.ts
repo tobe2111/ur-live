@@ -138,3 +138,27 @@ describe('buyer-pool — 필요한 정보 전부 추출(이메일·회사·주�
     expect(addressFromHtml('<p>Address: 88 Nanjing Road, Shanghai</p>')).toMatch(/Nanjing Road/)
   })
 })
+
+import { jsonLdFields } from '@/features/supply/api/buyer-parsers'
+import { htmlToText as htmlToText2 } from '@/features/supply/api/buyer-autofetch'
+
+describe('buyer-parsers — JSON-LD 구조화 데이터 우선(더 정확히)', () => {
+  it('jsonLdFields: schema.org Organization 필드 추출', () => {
+    const f = jsonLdFields('__JSONLD__ {"@type":"Organization","name":"X Co","email":"purchasing@x.com","telephone":"+8210","url":"https://x.com","streetAddress":"1 Main St","addressLocality":"Seoul","addressCountry":"South Korea"} __JSONLD__')
+    expect(f.company).toBe('X Co')
+    expect(f.email).toBe('purchasing@x.com')
+    expect(f.address).toMatch(/Main St/)
+    expect(f.country).toBe('South Korea')
+  })
+  it('라벨 없는 상세라도 JSON-LD 로 회사·이메일·주소 추출', () => {
+    const detail = '<h1>Beauty wanted</h1> __JSONLD__ {"@type":"Organization","name":"Nairobi Cosmetics Ltd","email":"import@nairobicos.co.ke","address":{"streetAddress":"12 Kimathi St","addressLocality":"Nairobi","addressCountry":"Kenya"}} __JSONLD__'
+    const l = parseBuyKoreaInquiries(htmlToText2(detail))[0]
+    expect(l.company).toBe('Nairobi Cosmetics Ltd')
+    expect(l.email).toBe('import@nairobicos.co.ke')
+    expect(l.address).toMatch(/Kimathi/)
+    expect(l.country).toBe('Kenya')
+  })
+  it('JSON-LD 없으면 무해(빈 객체)', () => {
+    expect(Object.keys(jsonLdFields('no structured data here')).length).toBe(0)
+  })
+})

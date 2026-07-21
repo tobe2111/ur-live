@@ -217,6 +217,31 @@ const labelField = (s: string) => DETAIL_LABELS[s.toLowerCase().replace(/[:：]\
 const URL_RE = /https?:\/\/[^\s)\]"'<>]+/g
 const EMAIL_ANYWHERE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/
 
+// JSON-LD(schema.org) 구조화 데이터에서 회사/이메일/전화/URL/주소/국가 추출 — 북마클릿이 `__JSONLD__…__JSONLD__` 로 보존.
+//   중첩 JSON 이 htmlToText 로 변형돼도 필드별 정규식이라 견고(JSON.parse 불필요). 없으면 빈 객체(무해).
+export function jsonLdFields(text: string): Partial<Record<'company' | 'email' | 'phone' | 'website' | 'address' | 'country', string>> {
+  const out: Record<string, string> = {}
+  const m = String(text || '').match(/__JSONLD__([\s\S]*?)__JSONLD__/)
+  const blob = m ? m[1] : ''
+  if (!blob) return out
+  const pick = (re: RegExp) => { const x = blob.match(re); return x ? x[1].trim() : '' }
+  const org = pick(/"(?:legalName|name)"\s*:\s*"([^"]{2,120})"/i)
+  const email = pick(/"email"\s*:\s*"(?:mailto:)?([^"]{5,80})"/i)
+  const tel = pick(/"telephone"\s*:\s*"([^"]{6,40})"/i)
+  const url = pick(/"url"\s*:\s*"(https?:\/\/[^"]{4,150})"/i)
+  const street = pick(/"streetAddress"\s*:\s*"([^"]{4,180})"/i)
+  const locality = pick(/"addressLocality"\s*:\s*"([^"]{2,80})"/i)
+  const ctry = pick(/"addressCountry"\s*:\s*"?([^",}]{2,60})"?/i)
+  if (org) out.company = org
+  if (email && !email.includes('*') && email.includes('@')) out.email = email.toLowerCase()
+  if (tel) out.phone = tel
+  if (url) out.website = url
+  const addr = [street, locality].filter(Boolean).join(', ')
+  if (addr) out.address = addr
+  if (ctry) out.country = ctry
+  return out
+}
+
 /** 상세 텍스트 1건에서 라벨:값 + 정규식 폴백으로 필드 추출. company/email/website 중 하나라도 있으면 리드. */
 function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null {
   const rawLines = chunk.split(/\r?\n/).map(l => l.replace(/^[\s>*\-•·]+/, '').trim())
@@ -248,13 +273,20 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   const PLATFORM_EMAIL = /@(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|globalwindow\.org|investkorea\.org|exportvoucher\.com|kosme\.or\.kr)$/i
   const PLATFORM_HOST = /(?:kotra\.or\.kr|tradekorea\.com|kita\.org|ec21\.com|ecplaza\.net|gobizkorea\.com|buykorea\.org|samsungsdscloud|gcdn\.|globalwindow|investkorea|exportvoucher|payverse|kosme\.|facebook\.|fb\.com|linkedin\.|youtube\.|youtu\.be|twitter\.|x\.com|instagram\.|pinterest\.|tiktok\.|googleapis|gstatic|google-analytics|googletagmanager|cloudfront|cloudflare|jsdelivr|unpkg|wix\.|squarespace|w3\.org|schema\.org)/i
   if (row.email && PLATFORM_EMAIL.test(row.email)) delete row.email
-  // 폴백(라벨 없을 때) — 플랫폼 이메일 제외. 전화 폴백은 제거(마스킹/인콰이어리번호/KOTRA 푸터 오인식 → 라벨 전화만 신뢰).
+  // JSON-LD(구조화 데이터)로 라벨 누락분 채움 — 텍스트 휴리스틱보다 정확(회사/이메일/전화/URL/주소/국가).
+  const jl = jsonLdFields(chunk)
+  if (!row.email && jl.email && !PLATFORM_EMAIL.test(jl.email)) row.email = jl.email
+  if (!row.website && jl.website && !PLATFORM_HOST.test(jl.website)) row.website = jl.website
+  if (!row.phone && jl.phone) row.phone = jl.phone
+  if (!row.address && jl.address) row.address = jl.address
+  if (!row.country && jl.country) row.country = jl.country
+  // 폴백(라벨·JSON-LD 없을 때) — 플랫폼 이메일 제외. 전화 폴백은 제거(마스킹/인콰이어리번호/KOTRA 푸터 오인식 → 라벨 전화만 신뢰).
   if (!row.email) { const e = pickBusinessEmail(chunk); if (e && !PLATFORM_EMAIL.test(e)) row.email = e }
   if (!row.website) {
     const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u) && !PLATFORM_HOST.test(u))
     if (url) row.website = url.replace(/[.,)]+$/, '')
   }
-  const company = (row.company || '').trim()
+  const company = (row.company || jl.company || '').trim()
   const email = (row.email || '').trim()
   const website = (row.website || '').trim()
   // 회사명도 이메일도 없으면 리드로 볼 수 없음(웹사이트만 있는 크롬/네비 페이지 = 가비지, 저장 안 함).
