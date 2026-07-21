@@ -221,6 +221,18 @@ export default function AdminBuyerPoolPage() {
     try { await api.post('/api/admin/buyer-pool/auto-fetch/forget', { url }); loadAutoConfig() } catch { toast.error('삭제 실패') }
   }
 
+  const [enriching, setEnriching] = useState(false)
+  const enrichWebsites = async () => {
+    setEnriching(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/enrich-websites', { max: 15 })
+      const res = r.data?.result
+      if (res?.ran) toast.success(res.scanned === 0 ? (res.reason || '대상 없음') : `웹사이트 ${res.scanned}곳 방문 · 이메일/전화 ${res.enriched}건 확보`)
+      else toast.error(res?.reason || '이메일 추출 실패')
+      await Promise.all([loadStats(), loadLeads()])
+    } catch { toast.error('이메일 추출 실패') } finally { setEnriching(false) }
+  }
+
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
 
   return (
@@ -292,6 +304,7 @@ export default function AdminBuyerPoolPage() {
           <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
           <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium">+ 바이어 직접 추가</button>
           <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
+          <button onClick={enrichWebsites} disabled={enriching} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 없는 리드의 웹사이트를 방문해 이메일/전화를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 웹사이트에서 이메일 찾기'}</button>
           <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
           <button onClick={exportCsv} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">CSV 내보내기</button>
           <div className="flex-1" />
