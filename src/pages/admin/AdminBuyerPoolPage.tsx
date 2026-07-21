@@ -37,10 +37,20 @@ const STAGE_META: Record<string, { label: string; cls: string }> = {
 }
 const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'lost', 'hold']
 
-// 북마클릿 — buyKorea 등에서 클릭 시 상세 페이지들을 세션으로 읽어 유어딜로 전송(F12·쿠키 불필요).
+// 북마클릿 — 모든 B2B 사이트에서 클릭 시 상세 페이지들을 세션으로 읽어 유어딜로 전송(F12·쿠키 불필요).
+//   상세 링크를 사이트-무관 휴리스틱(detail/view/offer/inqry/lead/goods + id)으로 탐색 + 화면 우상단 상태박스로 진행 표시.
 function buildBookmarklet(token: string): string {
   const api = `${window.location.origin}/api/buyer-ingest`
-  const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};var s='a[href*="Detail.do"],a[href*="inqryDetail"],a[href*="offerDetail"],a[href*="/offer/"],a[href*="tradeLead"],a[href*="buyOffer"],a[href*="itemView"]';var L=[].slice.call(document.querySelectorAll(s)).map(function(a){return a.href}).filter(function(h){return /^https?:/.test(h)});L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(/detail|offer|view/i.test(location.href))H.push(document.documentElement.outerHTML);for(var i=0;i<L.length;i++){try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,350)})}if(!H.length){alert('상세 링크를 못 찾았어요. 구매요청 리스트나 상세 페이지에서 눌러주세요.');return}var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();if(j&&j.success){alert('유어딜 수집 완료: '+((j.result&&j.result.saved)||0)+'건 저장 / '+((j.result&&j.result.parsed)||0)+' 파싱')}else{alert('실패: '+((j&&j.error)||'인증 오류'))}}catch(e){alert('전송 실패: '+e)}})()`
+  const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};` +
+    `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:280px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
+    `var host=location.host,HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i;` +
+    `var L=[].slice.call(document.querySelectorAll('a[href]')).map(function(a){return a.href}).filter(function(h){try{var u=new URL(h);return u.host===host&&HINT.test(u.pathname+u.search)&&(/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i.test(u.search)||/\\/\\d{3,}(\\/|$)/.test(u.pathname))}catch(e){return false}});` +
+    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,60);var H=[];if(HINT.test(location.pathname))H.push(document.documentElement.outerHTML);` +
+    `if(!L.length&&!H.length){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 열고 다시 누르거나, 리스트를 100/200개로 펼치세요.');setTimeout(function(){b.remove()},7000);return}` +
+    `for(var i=0;i<L.length;i++){S('유어딜: 수집 중 '+(i+1)+'/'+L.length);try{var r=await fetch(L[i],{credentials:'include'});H.push(await r.text())}catch(e){}await new Promise(function(x){setTimeout(x,300)})}` +
+    `S('유어딜: 전송 중... ('+H.length+'건)');var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:H})});var j=await res.json();` +
+    `if(j&&j.success){S('✅ 저장 '+((j.result&&j.result.saved)||0)+'건 / 파싱 '+((j.result&&j.result.parsed)||0)+' — 유어딜에서 확인하세요')}else{S('❌ 실패: '+((j&&j.error)||('HTTP '+res.status)))}setTimeout(function(){b.remove()},9000);` +
+    `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
 

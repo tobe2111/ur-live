@@ -375,7 +375,7 @@ app.use('/api/*', i18nMiddleware);
 app.use('/api/*', rateLimiterMiddleware as any);
 
 // CORS — multi-region support
-app.use('*', cors({
+const _globalCors = cors({
   origin: (origin, c) => {
     const env = (c as any).env as Env;
     const allowed: string[] = [
@@ -396,7 +396,9 @@ app.use('*', cors({
   exposeHeaders: ['X-Request-ID', 'Server-Timing'],
   credentials: true,
   maxAge: 86400,
-}));
+});
+// 🔖 북마클릿 인제스트(/api/buyer-ingest)는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
+app.use('*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : _globalCors(c, next));
 
 // ============================================================
 // Security Headers (CSP etc.)
