@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractContacts, pickBusinessEmail, deobfuscateEmail } from '@/features/marketing/api/influencer-discovery'
+import { extractContacts, pickBusinessEmail, deobfuscateEmail, isLikelyNoise } from '@/features/marketing/api/influencer-discovery'
 
 /**
  * 🆕 2026-07-13 유어애즈 인플루언서 발굴 — 공개 설명 컨택 추출 순수함수 잠금.
@@ -122,5 +122,36 @@ describe('pickBusinessEmail', () => {
   it('후보 없음 → null / 이미지 URL 제외', () => {
     expect(pickBusinessEmail('구독 좋아요!')).toBeNull()
     expect(pickBusinessEmail('thumb.png@2x')).toBeNull()
+  })
+
+  it('영어 전치사 "at" 을 @로 오변환하지 않음(가짜 이메일 방지)', () => {
+    // "products at home.com" 같은 산문은 이메일이 아님(리터럴 점이 있으면 산문).
+    expect(pickBusinessEmail('I review products at home.com daily')).toBeNull()
+    expect(pickBusinessEmail('meet me at naver.com for details')).toBeNull()
+    expect(extractContacts('check out my shop at store.co.kr').emails).toEqual([])
+    // 진짜 난독화(점도 dot 로 가림)는 여전히 복원.
+    expect(deobfuscateEmail('문의 foo at gmail dot com')).toContain('foo@gmail.com')
+  })
+
+  it('정상 창작자를 노이즈로 오제외하지 않음(협찬 환영·대행사 아님)', () => {
+    expect(isLikelyNoise('뷰티 유튜버', '협찬/체험단 문의 환영')).toBe(false)
+    expect(isLikelyNoise('여행 유튜버', '대행사 아님 직접 운영')).toBe(false)
+    expect(isLikelyNoise('일상 브이로그', '서포터즈 활동 중')).toBe(false)
+    // 시청(=watching)·구청역(지하철역)·성공단계(공단) 등 흔한 창작자 어휘 오제외 금지.
+    expect(isLikelyNoise('먹방', '본방시청 필수! 재시청 환영')).toBe(false)
+    expect(isLikelyNoise('맛집', '마포구청역 근처 맛집 투어')).toBe(false)
+    expect(isLikelyNoise('재테크', '성공단계별 전략 공유')).toBe(false)
+    // 진짜 노이즈(모집/대행 자기지칭)는 계속 제외.
+    expect(isLikelyNoise('OO', '체험단 모집합니다')).toBe(true)
+    expect(isLikelyNoise('마케팅', '블로그 마케팅 대행')).toBe(true)
+    expect(isLikelyNoise('연합뉴스TV', '뉴스 채널')).toBe(true)
+  })
+
+  it('개인메일이 문맥 없어도 대행사(문맥 있는) 메일을 이김 — 티벳동생 케이스', () => {
+    // 대행사 메일만 "비즈니스 문의" 문맥, 창작자 개인메일은 "contact:" 뿐 — 개인도메인이 지배적이어야 함.
+    const t = '비즈니스 문의: know@fleekers.co.kr\ncontact: ilsan9924@naver.com'
+    expect(pickBusinessEmail(t)).toBe('ilsan9924@naver.com')
+    // 문맥이 전혀 없어도 개인도메인 우선.
+    expect(pickBusinessEmail('제휴 문의 agency@company.co.kr\nilsan9924@naver.com')).toBe('ilsan9924@naver.com')
   })
 })

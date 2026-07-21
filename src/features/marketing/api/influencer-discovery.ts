@@ -50,20 +50,20 @@ export function deobfuscateEmail(text: string): string {
   t = t.replace(/\s*[[({]\s*(?:dot|점)\s*[\])}]\s*/gi, '.')
   // ② 한글 골뱅이/전각 @ → @ · 전각 점(．·)·가운뎃점 → .
   t = t.replace(/골뱅이|앳|＠/g, '@').replace(/[．]/g, '.')
-  // ③ 단어형 " at " / " dot " — 양옆이 이메일 토큰(영숫자)일 때만(문장 오탐 최소).
-  t = t.replace(/([A-Za-z0-9._%+-])\s+(?:at|@)\s+([A-Za-z0-9])/gi, '$1@$2')
+  // ③ 단어형 " at " — **뒤에 " dot " 난독화가 이어질 때만** @로(영어 전치사 "at" 오탐 방지: "products at home.com"→가짜 이메일 금지). 공백 낀 리터럴 @ 는 ④가 처리.
+  t = t.replace(/([A-Za-z0-9._%+-])\s+at\s+(?=[A-Za-z0-9][A-Za-z0-9\-]*\s+dot\s+)/gi, '$1@')
   t = t.replace(/([A-Za-z0-9])\s+dot\s+([A-Za-z]{2,})/gi, '$1.$2')
   // ④ @ 주변 공백 제거 + @ 뒤 도메인의 점 주변 공백 제거(@ 있는 토큰 한정 — 일반 마침표 미접촉).
   //   "biz @ daum . net" 처럼 점 양옆 공백도 흡수(도메인 마지막 라벨 앞 `\s*\.\s*`).
-  t = t.replace(/([A-Za-z0-9._%+-]+)\s*@\s*([A-Za-z0-9][A-Za-z0-9\- ]*?(?:\s*\.\s*[A-Za-z]{2,})+)/g, (_m, a, b) => `${a}@${String(b).replace(/\s+/g, '')}`)
+  t = t.replace(/([A-Za-z0-9._%+-]+)\s*@\s*([A-Za-z0-9][A-Za-z0-9\-]*?(?:\s*\.\s*[A-Za-z]{2,})+)/g, (_m, a, b) => `${a}@${String(b).replace(/\s+/g, '')}`) // 도메인 라벨에 공백 불허(과거 "DM @ourteam for rates . more"→가짜메일 방지). 점 양옆 공백만 \s*\.\s* 로 흡수.
   return t
 }
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
-//   보수적(오탐 최소) — 애매한 '공식/브랜드'는 제외 안 함(진짜 파트너 후보일 수 있음). 저장 시점에 걸러 풀 오염 방지.
-const NOISE_RE = /(뉴스|신문사|방송국|아나운서|연합뉴스|ytn|jtbc|kbs|mbc|sbs|체험단|서포터즈|기자단|리뷰어\s*모집|블로그\s*마케팅|바이럴\s*마케팅|마케팅\s*대행|광고\s*대행|대행사|공기업|공단|주민센터|[가-힣]{1,6}(구청|시청|군청|도청)|재단법인|사단법인)/i
+//   보수적(오탐 최소) — bare 체험단/서포터즈/대행사 는 정상 창작자(협찬 환영·"대행사 아님") 오제외라 '…모집'·부정문만 노이즈.
+const NOISE_RE =/(뉴스|신문사|방송국|아나운서|연합뉴스|\b(?:ytn|jtbc|kbs|mbc|sbs)\b|체험단\s*모집|서포터즈\s*모집|기자단\s*모집|리뷰어\s*모집|블로그\s*마케팅|바이럴\s*마케팅|마케팅\s*대행|광고\s*대행|대행사(?!\s*(?:아님|아니))|주민센터|재단법인|사단법인)/i
 export function isLikelyNoise(name?: string | null, description?: string | null): boolean {
   return NOISE_RE.test(`${name || ''} ${description || ''}`)
 }
@@ -72,17 +72,17 @@ export function isLikelyNoise(name?: string | null, description?: string | null)
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
   // 이메일은 난독화 복원본에서 추출(핸들/링크는 원문 — URL 훼손 방지).
-  const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 5)
+  const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).sort((a, b) => (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(b) ? 1 : 0) - (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(a) ? 1 : 0)).slice(0, 5) // 개인도메인 우선 정렬 → emails[0]=창작자 본인(블로그/카페/재추출이 대행사 메일 먼저 잡던 문제)
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
-  const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta']
-  const instagram = uniqLower([
-    ...Array.from(t.matchAll(IG_RE), m => m[1]),
+  const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta', 'about', 'accounts']
+  const instagram = uniqLower([ // 라벨형("인스타:@x"=본인선언) 우선, URL형(태그일 수 있음) 후순위 → [0]=본인 확률↑
     ...Array.from(t.matchAll(IG_AT_RE), m => m[1]),
+    ...Array.from(t.matchAll(IG_RE), m => m[1]),
   ].map(normHandle).filter(h => h.length >= 2 && !IG_BAD.includes(h))).slice(0, 5)
-  const TT_BAD = ['video', 'tag', 'discover', 'tiktok']
+  const TT_BAD = ['video', 'tag', 'discover', 'tiktok', 'music', 'foryou']
   const tiktok = uniqLower([
-    ...Array.from(t.matchAll(TT_RE), m => m[1]),
     ...Array.from(t.matchAll(TT_AT_RE), m => m[1]),
+    ...Array.from(t.matchAll(TT_RE), m => m[1]),
   ].map(normHandle).filter(h => h.length >= 2 && !TT_BAD.includes(h))).slice(0, 5)
   // 🔗 링크인바이오 + 유튜브/블로그 교차링크(완전 URL) 통합 — 크로스플랫폼 발자국 보존.
   const links = uniqLower([
@@ -114,9 +114,9 @@ export function pickBusinessEmail(text: string): string | null {
     const idx = lower.indexOf(email)
     const around = idx >= 0 ? t.slice(Math.max(0, idx - 40), idx + email.length + 10) : ''
     let score = 0
-    if (BIZ_CONTEXT_RE.test(around)) score += 3
-    if (/@(gmail|naver|daum|kakao|hanmail|nate)\./i.test(email)) score += 1
-    if (NON_OWNER_EMAIL_RE.test(email)) score -= 2
+    if (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(email)) score += 5 // 개인도메인=창작자 본인(대행사/MCN 코퍼레이트 메일보다 지배적 — 협찬사 오수집 방지)
+    if (BIZ_CONTEXT_RE.test(around)) score += 2
+    if (NON_OWNER_EMAIL_RE.test(email)) score -= 3
     if (score > bestScore || (score === bestScore && idx < bestIdx)) { best = email; bestScore = score; bestIdx = idx }
   }
   return best

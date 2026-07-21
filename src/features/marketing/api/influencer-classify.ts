@@ -9,8 +9,9 @@
 const RULES: { cat: string; re: RegExp }[] = [
   { cat: '네일', re: /네일|nail\s*art|젤네일|손톱/i },
   { cat: '뷰티', re: /뷰티|메이크업|화장품|코스메틱|스킨케어|헤어|미용|beauty|makeup|cosmetic/i },
-  { cat: '카페', re: /카페|디저트|베이커리|빵집|브런치|커피|cafe|dessert|bakery/i },
-  { cat: '맛집', re: /맛집|먹방|푸드|음식|식당|맛스타|먹스타|요리|레시피|food|mukbang|맛있|외식/i },
+  { cat: '외식창업', re: /외식업|자영업|소상공인|식당\s*창업|카페\s*창업|장사\s*노하우|매장\s*마케팅|요식업|음식점\s*사장/i },
+  { cat: '카페', re: /카페(?!인|트)|디저트|베이커리|빵집|브런치|커피|\bcafe\b|dessert|bakery/i }, // 카페인(caffeine)·카페트(carpet) 오분류 제외
+  { cat: '맛집', re: /맛집|먹방|푸드|음식|식당|맛스타|먹스타|요리|레시피|\bfood\b|mukbang|맛있|외식/i }, // \bfood\b: superfood/seafood 오매칭 방지
   { cat: '숙소', re: /숙소|호텔|펜션|리조트|글램핑|캠핑|스테이|hotel|pension|airbnb/i },
   { cat: '여행', re: /여행|트래블|travel|배낭|투어|나들이/i },
   { cat: '육아', re: /육아|맘스타|아기|키즈|워킹맘|엄마표|junior|kids/i },

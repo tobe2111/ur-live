@@ -14,9 +14,9 @@ import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { ensureInfluencerSchema, extractContacts, pickBusinessEmail } from './influencer-discovery'
+import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns } from './influencer-performance'
+import { ensurePerfExtraColumns, reextractEmail } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
@@ -362,7 +362,8 @@ app.post('/influencer-pool/send-consented', async (c) => {
 
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
 //   신규 추출기(@핸들·키워드형 인스타/틱톡·유튜브/블로그 링크)를 저장된 description 에 재적용 → API 재호출 0.
-//   ⚠️ 덮어쓰기 안 함 — 비어있는 email/instagram/tiktok 만 채우고, links 는 합집합(기존 보존 + 신규 추가).
+//   ⚠️ instagram/tiktok 는 비어있을 때만 채움. email 은 비어있으면 채우고, **대행사(비-개인도메인) 저장값은
+//   소개글의 개인도메인 메일로 교정**(협찬/MCN 메일 오수집 정정 — 전 플랫폼). links 는 합집합(기존 보존).
 app.post('/influencer-pool/reextract', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   let scanned = 0, filled = 0
@@ -375,8 +376,9 @@ app.post('/influencer-pool/reextract', async (c) => {
     const ups: ReturnType<typeof c.env.DB.prepare>[] = []
     for (const r of rows) {
       const ex = extractContacts(r.description || '')
-      const sets: string[] = []; const binds: (string | number)[] = []
-      if (!r.email) { const em = pickBusinessEmail(r.description || '') || ex.emails[0]; if (em) { sets.push('email = ?'); binds.push(em) } }
+      const sets: string[] = []; const binds: (string | number | null)[] = []
+      const emFix = reextractEmail(r.description, r.email) // 빈칸 채움 + 대행사→개인 교정 + 가짜메일(전치사 at) 제거
+      if (emFix !== undefined) { sets.push('email = ?'); binds.push(emFix) }
       if (!r.instagram && ex.instagram[0]) { sets.push('instagram = ?'); binds.push(ex.instagram[0]) }
       if (!r.tiktok && ex.tiktok[0]) { sets.push('tiktok = ?'); binds.push(ex.tiktok[0]) }
       // links 합집합(공백 조인, dedup, 최대 8) — 기존 링크인바이오 보존 + 신규 유튜브/블로그 추가.
