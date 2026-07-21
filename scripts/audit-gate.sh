@@ -107,6 +107,7 @@ if domain deploy; then
   run "Hono 라우터 패턴(405)"            bash scripts/check-router-patterns.sh
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
+  run "KV delete 무료한도(fan-out)"      node scripts/check-kv-delete-budget.mjs -s
 fi
 
 echo "────────────────────────────────────────────────────"

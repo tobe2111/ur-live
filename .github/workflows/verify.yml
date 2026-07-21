@@ -240,6 +240,13 @@ jobs:
         run: node scripts/check-commission-budget.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 초과 방지 — cacheInvalidate 의 KV.delete 는
+      #   L2_KV_ENABLED 게이트 뒤에 있어야(쓰기 OFF 면 삭제도 skip) + fan-out KV.delete 무방비 금지.
+      #   cacheGet L2 OFF 인데 삭제만 살아 존재않는 키를 28/호출 지워 한도 폭식한 사고(대표 신고).
+      - name: KV delete budget guard (strict)
+        run: node scripts/check-kv-delete-budget.mjs -s
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.

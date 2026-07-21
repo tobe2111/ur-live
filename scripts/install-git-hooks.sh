@@ -211,6 +211,12 @@ node scripts/check-deprecated-pricing.mjs || true
 echo "==> Pre-commit: 잔액 절대값 write 가드 (warn-only)..."
 node scripts/check-balance-absolute-write.mjs || true
 
+# 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 폭식 방지 (warn-only).
+#   cacheInvalidate 의 KV.delete 는 L2_KV_ENABLED 게이트 뒤에(쓰기 OFF 면 삭제 skip) + fan-out 금지.
+#   cacheGet L2 OFF 인데 삭제만 살아 28/호출 낭비한 사고. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: KV delete 무료한도 가드 (warn-only)..."
+node scripts/check-kv-delete-budget.mjs || true
+
 # 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
 #   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
 #   다크모드에서 글자 안 보임 사고. 차단은 verify.yml CI strict (STRICT_LIGHT_INPUT=1).
