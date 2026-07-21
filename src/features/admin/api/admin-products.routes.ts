@@ -2144,6 +2144,54 @@ adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
   }
 });
 
+// GET /dongnedeal/rehost-diagnose — 🔍 2026-07-21 (대표 "되는거 아닌 것 같은데?"): R2 이관 0 의 진짜 원인
+//   규명 — 외부 커버 몇 개를 서버가 실제로 fetch 해보고 상태/컨텐츠타입/바이트/실패사유를 그대로 반환.
+//   (네이버/카카오 CDN 이 CF 워커 서버fetch 를 403/HTML차단/타임아웃 하는지 실측 — 추측 금지 원칙.)
+adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const rows = ((await DB.prepare(
+      `SELECT id, image_url FROM products
+        WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+          AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
+        ORDER BY RANDOM() LIMIT 6`
+    ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }))).results) || [];
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const samples: Array<{ id: number; host: string; ok: boolean; status: number; contentType: string; bytes: number; reason: string }> = [];
+    for (const row of rows) {
+      let host = ''; try { host = new URL(row.image_url).hostname; } catch { /* noop */ }
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      let ok = false, status = 0, contentType = '', bytes = 0, reason = '';
+      try {
+        const res = await fetch(row.image_url, { signal: ctrl.signal });
+        status = res.status;
+        contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!res.ok) reason = `HTTP ${status}`;
+        else if (!contentType.startsWith('image/')) reason = `이미지 아님(${contentType || '무형식'})`;
+        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 6 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
+      } catch (e) { reason = (e as Error)?.name === 'AbortError' ? '타임아웃(8s)' : '연결 실패'; }
+      finally { clearTimeout(timer); }
+      samples.push({ id: row.id, host, ok, status, contentType, bytes, reason: ok ? '정상' : reason });
+    }
+    const okCount = samples.filter((s) => s.ok).length;
+    return c.json({ success: true, bucketBound, okCount, total: samples.length, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/rehost-reset-skip — 🔄 이전 실패 런이 남긴 'rehost_skip'(이관 불가 마킹)을 전부 해제 →
+//   근본원인 수정 후 모든 커버를 다시 이관 시도할 수 있게. (사진 정리 시작 시 클라가 먼저 호출.)
+adminProductsRoutes.post('/dongnedeal/rehost-reset-skip', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`DELETE FROM product_supply_meta WHERE key='rehost_skip'`).run().catch(() => ({ meta: { changes: 0 } }));
+    return c.json({ success: true, cleared: Number((r as { meta?: { changes?: number } })?.meta?.changes ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // GET /dongnedeal/image-health — 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 진단.
 //   R2 바인딩 여부(rehost 가능성) + 커버가 외부 URL(깨질 위험) vs 내부(/api/media, 안전) 비율.
 adminProductsRoutes.get('/dongnedeal/image-health', cors(), async (c) => {
