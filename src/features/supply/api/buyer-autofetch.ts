@@ -52,9 +52,13 @@ export async function addSource(env: Env, url: string, label?: string): Promise<
 export async function removeSource(env: Env, url: string): Promise<void> {
   await setSetting(env, SRC_KEY, JSON.stringify((await loadSources(env)).filter(s => s.url !== url)))
 }
-export async function getAutofetchConfig(env: Env): Promise<{ sources: AutofetchSource[]; cookieHosts: string[]; enabled: boolean }> {
-  const [sources, map] = await Promise.all([loadSources(env), loadCookieMap(env)])
-  return { sources, cookieHosts: Object.keys(map), enabled: env.BUYER_AUTO_FETCH_ENABLED === 'true' }
+const CRON_KEY = 'buyer_af_cron'
+export async function getCronEnabled(env: Env): Promise<boolean> { return (await getSetting(env, CRON_KEY)) === '1' }
+export async function setCronEnabled(env: Env, on: boolean): Promise<void> { await setSetting(env, CRON_KEY, on ? '1' : '0') }
+
+export async function getAutofetchConfig(env: Env): Promise<{ sources: AutofetchSource[]; cookieHosts: string[]; enabled: boolean; cronEnabled: boolean }> {
+  const [sources, map, cron] = await Promise.all([loadSources(env), loadCookieMap(env), getCronEnabled(env)])
+  return { sources, cookieHosts: Object.keys(map), enabled: env.BUYER_AUTO_FETCH_ENABLED === 'true', cronEnabled: cron }
 }
 
 /* ── 북마클릿 인제스트 — F12·쿠키 복사 없이 대표 브라우저에서 원클릭 수집 ────────────────
