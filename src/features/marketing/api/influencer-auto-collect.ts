@@ -24,6 +24,8 @@ export const POOL_ACCOUNT_ID = 0
 /** 자동확장 활성 키워드 상한(런어웨이 방지) + 후보 자동승격 임계(반복 등장 횟수). */
 const MAX_ACTIVE_KEYWORDS = 200
 const AUTO_PROMOTE_HITS = 3
+/** 🎯 유튜브 최소 구독자(대표 지시 2026-07-21) — 미만 채널은 수집 안 함(소형 노이즈 컷). 네이버/카페/티스토리는 지표 없어 무관. */
+export const MIN_YT_SUBSCRIBERS = 1000
 
 /**
  * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
@@ -133,7 +135,8 @@ async function saveLeadsBatch(
   DB: D1Database, accountId: number, rawLeads: InfluencerLead[],
   meta: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
-  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description)) // 🧹 노이즈(뉴스·방송·기관·대행) 제외
+  // 🧹 노이즈(뉴스·방송·기관·대행) 제외 + 🎯 유튜브는 구독자 1000 이상만 수집(대표 지시 — 소형 노이즈 컷).
+  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description) && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS))
   if (!leads.length) return 0
   const sql = `INSERT INTO ad_influencer_leads
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)

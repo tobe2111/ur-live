@@ -19,7 +19,7 @@ import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
-import { classifyCategory } from './influencer-classify'
+import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -407,6 +407,8 @@ app.post('/influencer-pool/reclassify', async (c) => {
     for (const r of rows) {
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(c.env.DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = ?').bind(byContent, r.id, POOL))
+      // 콘텐츠 신호 없고 현재가 레거시 '자동'/'일반' 이면 → 미분류(NULL)로 정리(혼란스러운 '자동' 버킷 제거).
+      else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(c.env.DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = ?').bind(r.id, POOL))
     }
     for (let i = 0; i < ups.length; i += 100) await c.env.DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length

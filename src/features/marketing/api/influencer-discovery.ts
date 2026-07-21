@@ -566,7 +566,7 @@ export async function saveInfluencerLeads(
   const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
-    if (isLikelyNoise(l.name, l.description)) continue // 🧹 뉴스·방송·기관·체험단모집·대행 등 노이즈 제외
+    if (isLikelyNoise(l.name, l.description) || (l.platform === 'youtube' && (l.subscriber_count || 0) < 1000)) continue // 🧹 노이즈 제외 + 🎯 유튜브 구독자 1000 미만 제외(대표 지시)
     // 🏷️ 콘텐츠(이름+소개글) 신호 우선 분류 — 키워드 상속의 오분류('자동'/교차 카테고리) 방지.
     const category = resolveCategory(l.name, l.description, meta?.category)
     const r = await DB.prepare(`INSERT OR IGNORE INTO ad_influencer_leads
