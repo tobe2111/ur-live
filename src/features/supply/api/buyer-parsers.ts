@@ -158,8 +158,10 @@ export function parseDatedLeadList(text: string): BuyerLead[] {
   const seen = new Set<string>()
   for (let i = 2; i < lines.length; i++) {
     if (!DATE_ANCHOR_RE.test(lines[i])) continue
-    const country = lines[i - 1]
-    const title = lines[i - 2].replace(/^\(공개\)\s*/, '')
+    // 마크다운 링크가 남은 붙여넣기( [제목](url) )는 제목 텍스트만 추출 — 회사명에 URL 이 섞이는 가비지 방지.
+    const unMd = (s: string) => s.replace(/^\[([^\]]+)\]\([^)]*\)\s*$/, '$1').replace(/\]\([^)]*\)/g, '').replace(/^\[/, '').trim()
+    const country = unMd(lines[i - 1])
+    const title = unMd(lines[i - 2]).replace(/^\(공개\)\s*/, '')
     if (isNoise(title) || isNoise(country)) continue
     const key = title.toLowerCase()
     if (seen.has(key)) continue
