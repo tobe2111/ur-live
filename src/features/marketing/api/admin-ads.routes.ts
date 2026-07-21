@@ -404,13 +404,15 @@ app.post('/influencer-pool/reclassify', async (c) => {
 
 // POST /api/admin/ads/influencer-pool/refetch-live — 🔄 유튜브 라이브 재조회(현재 About 다시 불러 이메일/카테고리 교정)
 //   재추출(저장데이터)로 못 고치는 케이스(티벳동생: 현재 About 에만 개인메일) 대응. YouTube units 사용(검색 쿼터 무관).
+//   🔥 백그라운드(waitUntil): passes×20 채널 순회는 수십 초 → 동기 대기 시 요청 타임아웃 "실패" 오표시(/collect 동일 클래스). 즉시 started 반환, 완료는 UI 통계 재조회로 따라잡음.
 app.post('/influencer-pool/refetch-live', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   if (!c.env.YOUTUBE_API_KEY) return c.json({ success: false, error: 'YouTube API 키가 설정되어 있지 않습니다' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const passes = Math.max(1, Math.min(10, Number(b.passes) || 5))
-  const r = await runYtLiveRefetch(c.env, passes)
-  return c.json({ success: true, ...r })
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runYtLiveRefetch(c.env, passes).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await runYtLiveRefetch(c.env, passes) // 폴백(waitUntil 미지원 환경): 동기 실행
+  return c.json({ success: true, started: false, ...r })
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)
