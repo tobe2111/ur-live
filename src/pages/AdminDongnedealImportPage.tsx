@@ -36,72 +36,42 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
-  // 🖼️ 2026-07-21 (대표 "이미 만들어진 데모도 모두 지금 컨디션으로 — 갤러리 있는 것까지"): 기존 데모
-  //   사진 즉시 재적용(카카오 대표사진 커버 + 3~5장). 청크 반복 호출로 전량 처리(cron 도 자동 수렴하나 즉시용).
-  const [recond, setRecond] = useState<{ running: boolean; done: number; remaining: number | null }>({ running: false, done: 0, remaining: null })
-  const reconditionImages = async () => {
-    if (recond.running) return
-    if (!confirm('기존 데모 상품(동네딜+숙소) 사진을 모두 현재 컨디션으로 재적용할까요?\n· 커버 = 카카오 대표사진, 갤러리 3~5장\n· 이미 갤러리가 있는 데모도 전부 갱신됩니다(수 분 소요 가능).')) return
-    setRecond({ running: true, done: 0, remaining: null })
-    let done = 0
+  // 🖼️ 2026-07-21 (대표 "임시 버튼 많고 UI 복잡 — 정리 필요"): 사진 문제를 **한 버튼**으로 통합.
+  //   기존 3버튼(재적용/R2이관/복구)을 순차 오케스트레이션 — ① 외부 커버를 R2(우리 서버)로 영구 이관해
+  //   원본 삭제·핫링크 차단에도 안 깨지게 → ② 그래도 안 뜨는(이관 불가·죽은) 커버는 매장 대표사진으로
+  //   재획득. 정상 사진 무접촉. (데모를 "현재 컨디션"으로 맞추는 재조정은 cron 이 버전게이트로 자동 수렴.)
+  const [fixing, setFixing] = useState<{ running: boolean; phase: string; rehosted: number; healed: number; remaining: number | null }>(
+    { running: false, phase: '', rehosted: 0, healed: 0, remaining: null })
+  const fixImages = async () => {
+    if (fixing.running) return
+    if (!confirm('데모 사진을 정리할까요?\n① 외부(네이버/카카오) 커버 → 우리 서버(R2) 영구 이관: 원본이 삭제·차단돼도 안 깨짐\n② 그래도 안 뜨는 커버는 매장 대표사진으로 새로 받아옴\n· 정상 사진은 건드리지 않습니다 (수 분 소요).')) return
+    setFixing({ running: true, phase: 'R2 영구 이관', rehosted: 0, healed: 0, remaining: null })
+    let rehosted = 0, healed = 0
     try {
-      for (let i = 0; i < 200; i++) { // 안전 상한(최대 200청크×6=1200개)
-        const r = await api.post('/api/admin/dongnedeal/recondition-images', { count: 6 }, { ...h, timeout: 300000 })
-        if (!r.data?.success) { toast.error(r.data?.error || '재적용 실패'); break }
-        done += Number(r.data.reconditioned ?? 0) + Number(r.data.skipped ?? 0)
-        const remaining = Number(r.data.remaining ?? 0)
-        setRecond({ running: true, done, remaining })
-        if (remaining <= 0) break
-      }
-      toast.success(`데모 사진 재적용 완료 — ${done}개 처리`)
-      loadStats(); setListNonce((n) => n + 1)
-    } catch { toast.error('재적용 중 오류') } finally {
-      setRecond((s) => ({ ...s, running: false }))
-    }
-  }
-  // ☁️ 2026-07-21 (대표 스샷 "외부 커버 293"): 외부 커버를 R2로 대량 이관(영구 안정화).
-  const [rehosting, setRehosting] = useState<{ running: boolean; done: number; remaining: number | null }>({ running: false, done: 0, remaining: null })
-  const rehostImages = async () => {
-    if (rehosting.running) return
-    if (!confirm('데모 사진을 우리 서버(R2)로 대량 이관할까요?\n· 네이버/카카오 외부 URL → /api/media(우리 도메인) 영구 저장\n· 이관 후엔 원본이 삭제·차단돼도 안 깨집니다 (수 분 소요).')) return
-    setRehosting({ running: true, done: 0, remaining: null })
-    let done = 0
-    try {
+      // ① 외부 커버 → R2 이관 (marker 기반 수렴: 매 라운드 remaining 이 반드시 감소)
       for (let i = 0; i < 400; i++) {
         const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 8 }, { ...h, timeout: 300000 })
         if (!r.data?.success) { toast.error(r.data?.error || '이관 실패'); break }
         if (r.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
-        done += Number(r.data.rehosted ?? 0)
+        rehosted += Number(r.data.rehosted ?? 0)
         const remaining = Number(r.data.remaining ?? 0)
-        setRehosting({ running: true, done, remaining })
-        if (remaining <= 0 || (Number(r.data.rehosted ?? 0) === 0 && Number(r.data.images ?? 0) === 0)) break
+        setFixing({ running: true, phase: 'R2 영구 이관', rehosted, healed, remaining })
+        if (remaining <= 0) break
       }
-      toast.success(`R2 이관 완료 — 커버 ${done}개 영구 저장`)
-      loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
-    } catch { toast.error('이관 중 오류') } finally {
-      setRehosting((s) => ({ ...s, running: false }))
-    }
-  }
-  // 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 커버만 감지·재획득(성한 건 무접촉).
-  const [healing, setHealing] = useState<{ running: boolean; checked: number; healed: number; remaining: number | null }>({ running: false, checked: 0, healed: 0, remaining: null })
-  const healBrokenImages = async () => {
-    if (healing.running) return
-    if (!confirm('안 뜨는(깨진) 데모 사진만 찾아서 새로 받아올까요?\n· 커버가 실제로 로드되는지 검사 → 죽었으면 대표사진 재획득\n· 정상 사진은 건드리지 않습니다.')) return
-    setHealing({ running: true, checked: 0, healed: 0, remaining: null })
-    let checked = 0, healed = 0
-    try {
+      // ② 남은 깨진 커버 재획득 (대표사진으로)
+      setFixing((s) => ({ ...s, phase: '깨진 사진 복구', remaining: null }))
       for (let i = 0; i < 300; i++) {
         const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 6 }, { ...h, timeout: 300000 })
-        if (!r.data?.success) { toast.error(r.data?.error || '검사 실패'); break }
-        checked += Number(r.data.checked ?? 0); healed += Number(r.data.healed ?? 0)
+        if (!r.data?.success) { toast.error(r.data?.error || '복구 실패'); break }
+        healed += Number(r.data.healed ?? 0)
         const remaining = Number(r.data.remaining ?? 0)
-        setHealing({ running: true, checked, healed, remaining })
+        setFixing((s) => ({ ...s, phase: '깨진 사진 복구', healed, remaining }))
         if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
       }
-      toast.success(`검사 ${checked}개 · 깨진 사진 ${healed}개 새로 받아옴`)
-      loadStats(); setListNonce((n) => n + 1)
-    } catch { toast.error('검사 중 오류') } finally {
-      setHealing((s) => ({ ...s, running: false }))
+      toast.success(`사진 정리 완료 — R2 이관 ${rehosted}개 · 복구 ${healed}개`)
+      loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
+    } catch { toast.error('사진 정리 중 오류') } finally {
+      setFixing((s) => ({ ...s, running: false }))
     }
   }
   // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
@@ -330,20 +300,10 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
-                {/* 🖼️ 기존 데모 사진 즉시 재적용 — 갤러리 있는 것까지 전부 카카오 대표사진+3~5장으로 */}
+                {/* 🖼️ 사진 정리 — 한 버튼(외부 커버 R2 영구 이관 → 남은 깨진 커버 대표사진 재획득) */}
                 {stats.demo > 0 && (
-                  <button onClick={reconditionImages} disabled={recond.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50" title="기존 데모(동네딜+숙소) 사진을 모두 현재 컨디션으로 — 커버는 카카오 대표사진, 갤러리 3~5장. 이미 갤러리가 있는 것도 갱신.">
-                    {recond.running ? `사진 재적용 중… ${recond.done}개${recond.remaining != null ? ` · 남은 ${recond.remaining}` : ''}` : '📸 기존 데모 사진 재적용'}
-                  </button>
-                )}
-                {stats.demo > 0 && (
-                  <button onClick={rehostImages} disabled={rehosting.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50" title="외부(네이버/카카오) 커버를 우리 서버(R2)로 대량 이관 — 이관 후엔 원본 삭제·차단돼도 안 깨짐.">
-                    {rehosting.running ? `R2 이관 중… ${rehosting.done}개${rehosting.remaining != null ? ` · 남은 ${rehosting.remaining}` : ''}` : '☁️ 사진 R2로 이관(영구화)'}
-                  </button>
-                )}
-                {stats.demo > 0 && (
-                  <button onClick={healBrokenImages} disabled={healing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50" title="안 뜨는(깨진) 데모 커버만 검사해 대표사진으로 새로 받아옵니다. 정상 사진은 무접촉.">
-                    {healing.running ? `깨진 사진 검사 중… ${healing.checked}개 · 복구 ${healing.healed}${healing.remaining != null ? ` · 남은 ${healing.remaining}` : ''}` : '🩹 안 뜨는 사진 복구'}
+                  <button onClick={fixImages} disabled={fixing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50" title="데모 사진을 정리합니다 — ① 외부(네이버/카카오) 커버를 우리 서버(R2)로 영구 이관해 안 깨지게 → ② 그래도 안 뜨는 커버는 매장 대표사진으로 재획득. 정상 사진 무접촉.">
+                    {fixing.running ? `사진 정리 중… ${fixing.phase} · 이관 ${fixing.rehosted}·복구 ${fixing.healed}${fixing.remaining != null ? ` · 남은 ${fixing.remaining}` : ''}` : '🖼️ 사진 정리'}
                   </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
