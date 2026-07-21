@@ -265,11 +265,21 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number): str
  * 사용: `<img onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} .../>`
  */
 export function cfImageOnError(img: HTMLImageElement | null | undefined, originalSrc?: string | null): void {
-  if (!img || img.dataset.cfFallback === '1') return
-  img.dataset.cfFallback = '1'
-  img.style.opacity = '1'
-  if (originalSrc && img.getAttribute('src') !== originalSrc) {
-    img.removeAttribute('srcset')
-    img.src = originalSrc
+  if (!img) return
+  // 1단계: cfImage 변환 실패 → 원본으로 1회 교체(리사이저 우회).
+  if (img.dataset.cfFallback !== '1' && img.dataset.cfFallback !== '2') {
+    img.dataset.cfFallback = '1'
+    img.style.opacity = '1'
+    if (originalSrc && img.getAttribute('src') !== originalSrc) {
+      img.removeAttribute('srcset')
+      img.src = originalSrc
+      return  // 원본 재시도 — 이것도 실패하면 onError 재발화 → 아래 2단계.
+    }
+  }
+  // 2단계 (2026-07-21 대표 "사진 깨지는 경우 처리"): 원본까지 죽음(404/삭제/핫링크차단) →
+  //   깨진 아이콘 박스 대신 **이미지 숨김**으로 부모(카테고리색/스켈레톤 배경)가 보이게. 무한루프 0.
+  if (img.dataset.cfFallback !== '2') {
+    img.dataset.cfFallback = '2'
+    img.style.visibility = 'hidden'
   }
 }

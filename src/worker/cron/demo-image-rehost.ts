@@ -31,7 +31,7 @@ const REHOST_PER_RUN = 2
 const MAX_IMAGES_PER_PRODUCT = 5
 const MAX_TRIES = 3
 
-interface CandidateRow { id: number; slug: string; image_url: string | null; images: string | null }
+interface CandidateRow { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string | null; restaurant_address: string | null }
 
 function parseJsonArr(raw: string | null): string[] {
   if (!raw) return []
@@ -141,9 +141,9 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const result = { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
   if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 — 이관만 no-op(재조정은 이미 수행)
 
-  // ② 이관 — 외부 CDN URL → R2.
+  // ② 이관 + 깨진 사진 자가치유 — 외부 CDN URL → R2, 3회 시도해도 못 옮기는 URL 은 깨진 것으로 판정해 제거.
   const { results } = await DB.prepare(
-    `SELECT p.id, p.slug, p.image_url, p.images
+    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
        FROM products p
       WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
         AND COALESCE(p.is_active, 1) = 1
@@ -172,15 +172,12 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
     if (processed >= REHOST_PER_RUN) continue // 이번 시간 예산 소진 — 다음 시간에
     processed++
 
-    const tries = Number(metaMap.get(row.id)?.img_rehost_tries || 0)
-    if (tries >= MAX_TRIES) {
-      // 반복 실패(원본 만료 등) — 포기 종결. 외부 URL 유지 = 표시 현행과 동일이라 무해.
-      await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
-      result.done++
-      continue
-    }
+    const meta = metaMap.get(row.id) || {}
+    const tries = Number(meta.img_rehost_tries || 0)
+    const lastTry = tries + 1 >= MAX_TRIES  // 이번이 마지막 시도 → 못 옮긴 외부 URL 은 깨진 것으로 판정·제거
 
-    // 외부 URL → R2 이관 매핑(중복 URL 은 1회만 fetch).
+    // 외부 URL → R2 이관 매핑(중복 URL 은 1회만 fetch). rehostImageToR2 는 fetch+검증(image/*·크기)
+    //   포함이라 성공=성한 사진, 실패=도달불가/비이미지(=깨진 후보).
     const mapping = new Map<string, string>()
     let fetches = 0
     for (const u of externals) {
@@ -190,38 +187,82 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
       const hosted = await rehostImageToR2(bucketEnv, u, 'demo-image-rehost')
       if (hosted) mapping.set(u, hosted)
     }
+    // URL 해석기: 이관 성공→R2, 내부(/api/media)→그대로, 그 외 외부→(마지막 시도면 깨진 것으로 제거).
+    const isStillExternalBroken = (u: string) => isExternalImageUrl(u) && !mapping.has(u)
+    const resolve = (u: string) => mapping.get(u) || u
+    const keep = (u: string) => !(lastTry && isStillExternalBroken(u))  // 마지막 시도: 못 옮긴 외부 제거
 
-    if (mapping.size > 0) {
-      const newCover = row.image_url && mapping.has(row.image_url) ? mapping.get(row.image_url)! : row.image_url
-      const newGallery = gallery.map((u) => mapping.get(u) || u)
-      await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(newCover, newGallery.length > 0 ? JSON.stringify(newGallery) : row.images, row.id)
-        .run().catch(() => {})
-      // 🏨 숙소 데모: 객실 썸네일(product_stay_rooms.image_urls)이 같은 URL 을 재사용 — 동일 매핑 동기.
-      if (row.slug.startsWith('demo-stay-')) {
-        const roomRows = await DB.prepare(`SELECT id, image_urls FROM product_stay_rooms WHERE product_id = ?`)
-          .bind(row.id).all<{ id: number; image_urls: string | null }>().catch(() => ({ results: [] as { id: number; image_urls: string | null }[] }))
-        for (const rr of (roomRows.results || [])) {
-          const arr = parseJsonArr(rr.image_urls)
-          if (arr.length === 0) continue
-          const next = arr.map((u) => mapping.get(u) || u)
-          if (JSON.stringify(next) !== JSON.stringify(arr)) {
-            await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`)
-              .bind(JSON.stringify(next), rr.id).run().catch(() => {})
-          }
-        }
-      }
-      result.migrated++
-      result.images += mapping.size
+    // 커버+갤러리 재구성(순서 보존·중복 제거). 마지막 시도면 깨진 외부는 빠짐.
+    const rebuilt: string[] = []
+    const seenU = new Set<string>()
+    for (const u of [row.image_url, ...gallery]) {
+      if (!u) continue
+      if (!keep(u)) continue
+      const r = resolve(u)
+      if (!seenU.has(r)) { seenU.add(r); rebuilt.push(r) }
     }
 
-    // 잔여 외부 여부로 종결/재시도 판정.
-    const remaining = externals.filter((u) => !mapping.has(u))
-    if (remaining.length === 0) {
+    let healRefetched = false
+    if (rebuilt.length === 0 && lastTry) {
+      // 🩹 모든 사진이 깨짐(전부 도달불가) → 대표사진을 다시 받아 복구(회당 1회, heal 라운드 캡).
+      const rounds = Number(meta.img_heal_rounds || 0)
+      if (rounds < 2 && row.restaurant_name) {
+        const fresh = await fetchDemoPhotos(env, {
+          placeId: meta.kakao_place_url || null,
+          nameQuery: row.restaurant_name,
+          address: row.restaurant_address,
+          count: 3 + Math.floor(Math.random() * 3),
+        }).catch(() => [] as string[])
+        if (fresh.length > 0) {
+          for (const u of fresh) if (!seenU.has(u)) { seenU.add(u); rebuilt.push(u) }
+          healRefetched = true
+          await setSupplyMeta(DB, row.id, { img_heal_rounds: String(rounds + 1) }).catch(() => {})
+        }
+      }
+    }
+
+    // 커버 = 재구성 첫 장(대표사진 우선순위 보존). 갤러리 = 재구성 전체. 아무것도 없으면 기존 유지(placeholder 방지).
+    const newCover = rebuilt[0] ?? row.image_url
+    const newImages = rebuilt.length > 0 ? JSON.stringify(rebuilt) : row.images
+    const changed = newCover !== row.image_url || newImages !== row.images
+    if (changed) {
+      await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(newCover, newImages, row.id).run().catch(() => {})
+    }
+    // 🏨 숙소 데모: 객실 썸네일 정합 — 깨진 URL 제거 + 이관 매핑 반영(빈배열이면 새 갤러리로 대체).
+    if (row.slug.startsWith('demo-stay-') && (mapping.size > 0 || lastTry)) {
+      const roomRows = await DB.prepare(`SELECT id, image_urls FROM product_stay_rooms WHERE product_id = ?`)
+        .bind(row.id).all<{ id: number; image_urls: string | null }>().catch(() => ({ results: [] as { id: number; image_urls: string | null }[] }))
+      let order = 0
+      for (const rr of (roomRows.results || [])) {
+        const arr = parseJsonArr(rr.image_urls)
+        let next = arr.map(resolve).filter(keep)
+        if (next.length === 0 && rebuilt.length > 0) {
+          // 객실 사진이 전부 깨짐 → 새 갤러리에서 로테이션 분배(시드 규칙 미러).
+          next = rebuilt.length ? [rebuilt[order % rebuilt.length], ...(rebuilt.length > 2 ? [rebuilt[(order + 1) % rebuilt.length]] : [])] : []
+        }
+        next = Array.from(new Set(next))
+        if (JSON.stringify(next) !== JSON.stringify(arr) && next.length > 0) {
+          await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`)
+            .bind(JSON.stringify(next), rr.id).run().catch(() => {})
+        }
+        order++
+      }
+    }
+    if (mapping.size > 0) { result.migrated++; result.images += mapping.size }
+
+    // 종결/재시도 판정: 잔여 외부(미이관·미제거) 없으면 종결. heal 재조회했으면 새 외부 URL 이관 위해 계속.
+    const remainingExternal = rebuilt.some((u) => isExternalImageUrl(u))
+    if (!remainingExternal) {
+      await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
+      result.done++
+    } else if (lastTry && !healRefetched) {
+      // 마지막 시도인데 여전히 외부 남음(=깨진 건 이미 제거, 남은 건 이관 실패한 성한 URL) → 종결(다음 순환에서 재시도되게 tries 리셋).
       await setSupplyMeta(DB, row.id, { img_rehost_done: '1' }).catch(() => {})
       result.done++
     } else {
-      await setSupplyMeta(DB, row.id, { img_rehost_tries: String(tries + 1) }).catch(() => {})
+      // heal 재조회했으면 tries 리셋(새 URL 이관 기회), 아니면 +1.
+      await setSupplyMeta(DB, row.id, { img_rehost_tries: healRefetched ? '0' : String(tries + 1) }).catch(() => {})
     }
   }
   return result
