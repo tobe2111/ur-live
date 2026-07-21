@@ -1,30 +1,34 @@
 /**
- * 🖼️ 2026-07-21 (대표 "남은 이상적인 것까지 하자"): 데모 상품 갤러리 외부 URL → R2 점진 이관 cron.
+ * 🖼️ 2026-07-21 (대표 "남은 이상적인 것까지 하자"): 데모 상품 이미지 자가치유 cron — 2스테이지.
  *
- * 배경: 데모 시드는 서브리퀘스트 한도(요청당 50) 때문에 **대표(커버) 1장만** R2 재호스팅하고,
- *   갤러리 2~5번째는 외부 CDN(search.pstatic / t1.daumcdn 등) URL 을 그대로 저장한다(2026-07-03 결정).
- *   외부 링크는 원본 삭제/핫링크 차단/인증서 문제로 언젠가 깨질 수 있음 → 시간당 소량씩 우리
- *   R2(/api/media/…)로 옮겨 영구화한다. 옮긴 뒤엔 cfImage(zone 리사이저)가 same-origin 리사이즈.
+ *   ① 재조정(recondition, 버전 게이트): **모든** 기존 데모(동네딜+숙소)를 "현재 컨디션"으로 한 번씩
+ *      맞춘다 — 카카오 대표(메인)사진을 커버로 + 3~5장 갤러리. 블로그 시드 버전(BLOG_SEED_VERSION)과
+ *      동일 철학: meta `demo_cond_v` 가 현재 버전(DEMO_COND_V)과 다르면 재처리 → 처리 후 마킹 → 수렴.
+ *      배경: 사진 3~5장 + og:image 대표사진 파이프라인 이전에 시드된 데모는 (a) 갤러리가 아예 없거나
+ *      (b) 갤러리는 있어도 커버가 옛 네이버 웹검색 결과(대표사진 아님)라, 버전 bump 로 일괄 재적용한다.
+ *   ② 이관(rehost): 재조정으로 들어온 외부 CDN URL(카카오/네이버)을 우리 R2(/api/media/…)로 옮겨 영구화
+ *      (원본 삭제/핫링크 차단 면역). 옮긴 뒤엔 cfImage(zone 리사이저)가 same-origin 리사이즈.
  *
  * 설계(예산 보호가 1원칙 — hourly 슬롯은 다른 cron 과 서브리퀘스트 예산을 공유):
- *   - 회당 상품 2개 × 이미지 최대 5장 = 외부 fetch ≤10 (R2 put 은 바인딩 op — fetch 예산 무관).
- *   - 멱등/종결: product_supply_meta `img_rehost_done`='1' 이면 후보 제외. 시도 카운터
- *     `img_rehost_tries` ≥3 이면 포기하고 done 마킹(영구 깨진 원본이 큐를 점유하지 못하게 —
- *     외부 URL 그대로 둬도 표시는 기존과 동일하므로 다운사이드 0).
- *   - 외부 URL 없는 행(이미 전부 내부/placeholder)은 스캔 즉시 done 마킹 — 백로그가 빠르게 수렴.
- *   - demo-stay 는 product_stay_rooms.image_urls 도 같은 매핑으로 동기(객실 썸네일 동일 URL 재사용 구조).
- *   - 완전 fail-soft: 개별 실패는 다음 시간에 재시도, cron 자체는 절대 throw 안 함(safeCron 래핑).
+ *   - 재조정 회당 상품 3개(외부 fetch ≈ 카카오 og 1 + 네이버 1~2 = 상품당 ~3) · 이관 회당 2개.
+ *   - 멱등/수렴: 재조정=`demo_cond_v` 마커, 이관=`img_rehost_done` 마커. 시도 카운터 ≥3 이면 포기 마킹
+ *     (깨진 원본이 큐를 점유하지 못하게 — 기존 표시 유지라 다운사이드 0).
+ *   - 완전 fail-soft: 개별 실패는 다음 시간 재시도, cron 자체는 절대 throw 안 함(safeCron 래핑).
+ *   - 규모가 크면 시간당 소량이라 며칠에 걸쳐 수렴(어드민 무개입) — 즉시 전체는 별도 수동 트리거 가능.
  */
 import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl } from '../utils/rehost-image'
 import { getSupplyMeta, setSupplyMeta } from '../utils/product-supply-meta'
 import { fetchDemoPhotos } from '../utils/demo-photo-set'
 
-const PRODUCTS_PER_RUN = 2
+// 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(카카오 대표사진 + 3~5장).
+//   v2 = og:image 대표사진 커버 + 3~5장 갤러리(2026-07-21). 향후 규칙 바뀌면 +1.
+export const DEMO_COND_V = '2'
+
+const RECONDITION_PER_RUN = 3
+const REHOST_PER_RUN = 2
 const MAX_IMAGES_PER_PRODUCT = 5
 const MAX_TRIES = 3
-// 🖼️ 백필 스테이지(아래 backfill) 예산 — 상품당 외부 fetch ≈3(카카오 og 1 + 네이버 1~2).
-const BACKFILL_PER_RUN = 2
 
 interface CandidateRow { id: number; slug: string; image_url: string | null; images: string | null }
 
@@ -32,74 +36,110 @@ function parseJsonArr(raw: string | null): string[] {
   if (!raw) return []
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((u): u is string => typeof u === 'string' && !!u) : [] } catch { return [] }
 }
+function isPlaceholderUrl(u: string | null | undefined): boolean {
+  return !u || /picsum\.photos/.test(u)
+}
 
 /**
- * 🖼️ 갤러리 백필 (2026-07-21 대표 "숙소 말고 다른 이용권들도 확인" — 전수조사 갭): 사진 3~5장
- *   파이프라인(2026-07-20) **이전에** 시드된 구형 데모(동네딜+숙소)는 커버 1장뿐(images NULL)인데,
- *   숙소만 시드 재실행 heal 이 있고 동네딜은 백필 경로가 없었음 → cron 이 시간당 2개씩 자동 채움.
- *   사진 소스는 시드와 동일 SSOT(fetchDemoPhotos — 카카오 대표사진 og 우선 → 네이버 매장명 스코어링).
- *   성공 시 img_rehost_done 을 '0' 으로 리셋 → 다음 시간 rehost 스테이지가 새 외부 URL 을 R2 로 이관.
+ * ① 재조정 — 버전 마커(demo_cond_v)가 현재와 다른 데모를 현재 컨디션으로 맞춘다.
+ *   커버 = 카카오 대표(og)사진(placeUrl 있을 때, imgs[0]) · 갤러리 = 3~5장. 성공 시 rehost 재큐잉.
  */
-async function backfillDemoGalleries(env: Env): Promise<{ backfilled: number; backfillDone: number }> {
+export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): Promise<{ reconditioned: number; skipped: number }> {
   const DB = env.DB
-  const out = { backfilled: 0, backfillDone: 0 }
+  const out = { reconditioned: 0, skipped: 0 }
   const { results } = await DB.prepare(
-    `SELECT p.id, p.image_url, p.restaurant_name
+    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
         AND COALESCE(p.is_active, 1) = 1
-        AND (p.images IS NULL OR p.images = '' OR p.images = '[]')
         AND p.restaurant_name IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM product_supply_meta m
-           WHERE m.product_id = p.id AND m.key = 'img_backfill_done' AND m.value = '1'
+           WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?
         )
       ORDER BY p.id
       LIMIT ?`
-  ).bind(BACKFILL_PER_RUN).all<{ id: number; image_url: string | null; restaurant_name: string }>()
-    .catch(() => ({ results: [] as { id: number; image_url: string | null; restaurant_name: string }[] }))
+  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
   const rows = results || []
   if (rows.length === 0) return out
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
+  // 📞 2026-07-21 (대표 "다 넣어줘 — 모두 다"): 기존 데모 전화·실업종 백필용 — 카카오 키워드 조회.
+  //   admin-stays 시드와 동일한 dynamic-import 패턴(순환은 둘 다 lazy 라 무해).
+  const { kakaoPlaceLookup } = await import('../../features/admin/api/admin-products.routes').catch(() => ({ kakaoPlaceLookup: null as unknown as null }))
+
   for (const row of rows) {
     const meta = metaMap.get(row.id) || {}
-    const tries = Number(meta.img_backfill_tries || 0)
+    const tries = Number(meta.demo_cond_tries || 0)
     if (tries >= MAX_TRIES) {
-      await setSupplyMeta(DB, row.id, { img_backfill_done: '1' }).catch(() => {})
-      out.backfillDone++
+      // 반복 실패(매칭/사진 확보 불가) — 현재 상태 유지하고 버전만 마킹(큐에서 제외, 수렴).
+      await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V }).catch(() => {})
+      out.skipped++
       continue
     }
+    const placeUrl = meta.kakao_place_url || null
     const imgs = await fetchDemoPhotos(env, {
-      placeId: meta.kakao_place_url || null,          // 시드가 저장한 카카오 장소 — 대표사진 grounding
-      nameQuery: row.restaurant_name,                  // 실매장명 — 네이버 스코어링 grounding
+      placeId: placeUrl,                  // 있으면 imgs[0] = 카카오 대표(og)사진 — 커버 교체 grounding
+      nameQuery: row.restaurant_name,     // 실매장명 — 네이버 스코어링 grounding
       count: 3 + Math.floor(Math.random() * 3),
     }).catch(() => [] as string[])
     if (imgs.length === 0) {
-      await setSupplyMeta(DB, row.id, { img_backfill_tries: String(tries + 1) }).catch(() => {})
+      await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1) }).catch(() => {})
       continue
     }
-    // 커버가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진(R2 재호스팅본 포함)이면 유지+병합.
-    const isPlaceholder = !row.image_url || /picsum\.photos/.test(row.image_url)
-    const gallery = (isPlaceholder ? imgs : Array.from(new Set([row.image_url as string, ...imgs]))).slice(0, 5)
+    // 커버 결정:
+    //   - placeUrl 있음 → imgs[0](카카오 대표사진)로 교체 = "가장 메인이 되는 사진" 확정.
+    //   - placeUrl 없음 → 기존 커버가 실사진이면 유지(네이버끼리 교체 무의미), placeholder 면 imgs[0].
+    const cover = placeUrl
+      ? imgs[0]
+      : (isPlaceholderUrl(row.image_url) ? imgs[0] : (row.image_url as string))
+    const gallery = Array.from(new Set([cover, ...imgs])).slice(0, 5)
     await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
-      .bind(gallery[0], JSON.stringify(gallery), row.id).run().catch(() => {})
-    // 새로 들어온 외부 URL 을 rehost 스테이지가 다시 집도록 종결 마크 해제 + 백필 종결.
-    await setSupplyMeta(DB, row.id, { img_backfill_done: '1', img_rehost_done: '0' }).catch(() => {})
-    out.backfilled++
-    out.backfillDone++
+      .bind(cover, JSON.stringify(gallery), row.id).run().catch(() => {})
+    // 🏨 숙소: 객실 썸네일도 새 갤러리로 정합(hero=새사진 / 객실=옛사진 불일치 방지). 객실별 로테이션 분배.
+    if (row.slug.startsWith('demo-stay-')) {
+      const roomRows = await DB.prepare(`SELECT id FROM product_stay_rooms WHERE product_id = ? AND is_active = 1 ORDER BY display_order ASC`)
+        .bind(row.id).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }))
+      let order = 0
+      for (const rr of (roomRows.results || [])) {
+        const pics = gallery.length ? [gallery[order % gallery.length], ...(gallery.length > 2 ? [gallery[(order + 1) % gallery.length]] : [])] : [cover]
+        await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`)
+          .bind(JSON.stringify(pics), rr.id).run().catch(() => {})
+        order++
+      }
+    }
+    // 📞 전화·실업종 백필(기존 데모도 "모두 다") — 전화 없고 placeUrl 있을 때만, 카카오 키워드로 재조회.
+    //   같은 매장 보장: 반환 placeId 가 저장된 place URL 의 id 와 일치할 때만 신뢰(오매칭 방지).
+    if (kakaoPlaceLookup && placeUrl && !row.restaurant_phone) {
+      const storedId = (placeUrl.match(/(\d{6,})/) || [])[1] || null
+      const center = row.restaurant_lat != null && row.restaurant_lng != null
+        ? { x: String(row.restaurant_lng), y: String(row.restaurant_lat) } : null
+      const look = await kakaoPlaceLookup(env as unknown as { KAKAO_REST_API_KEY?: string }, row.restaurant_name, 0, center).catch(() => null)
+      if (look && (!storedId || look.placeId === storedId)) {
+        if (look.phone) {
+          await DB.prepare(`UPDATE products SET restaurant_phone = ? WHERE id = ?`).bind(look.phone, row.id).run().catch(() => {})
+        }
+        if (look.categoryName) {
+          await setSupplyMeta(DB, row.id, { kakao_category: look.categoryName }).catch(() => {})
+        }
+      }
+    }
+    // 버전 마킹(수렴) + rehost 재큐잉(새 외부 URL 을 R2 로 이관하도록 종결 마크 해제).
+    await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V, img_rehost_done: '0' }).catch(() => {})
+    out.reconditioned++
   }
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ scanned: number; migrated: number; images: number; done: number; backfilled: number }> {
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
-  // 🖼️ 0) 구형 데모 갤러리 백필(사진 3~5장) — R2 버킷과 무관하게 실행(외부 URL 저장도 표시엔 유효,
-  //    이후 rehost 스테이지가 버킷 있으면 영구화). fail-soft.
-  const bf = await backfillDemoGalleries(env).catch(() => ({ backfilled: 0, backfillDone: 0 }))
-  const result = { scanned: 0, migrated: 0, images: 0, done: 0, backfilled: bf.backfilled }
-  if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 환경 — 이관만 no-op
+  // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
+  const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0 }))
+  const result = { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
+  if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 — 이관만 no-op(재조정은 이미 수행)
 
+  // ② 이관 — 외부 CDN URL → R2.
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images
        FROM products p
@@ -113,7 +153,6 @@ export async function handleDemoImageRehost(env: Env): Promise<{ scanned: number
       LIMIT 20`
   ).bind().all<CandidateRow>().catch(() => ({ results: [] as CandidateRow[] }))
   const rows = results || []
-  result.scanned = rows.length
   if (rows.length === 0) return result
 
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
@@ -128,7 +167,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ scanned: number
       result.done++
       continue
     }
-    if (processed >= PRODUCTS_PER_RUN) continue // 이번 시간 예산 소진 — 다음 시간에
+    if (processed >= REHOST_PER_RUN) continue // 이번 시간 예산 소진 — 다음 시간에
     processed++
 
     const tries = Number(metaMap.get(row.id)?.img_rehost_tries || 0)

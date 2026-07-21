@@ -36,6 +36,29 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🖼️ 2026-07-21 (대표 "이미 만들어진 데모도 모두 지금 컨디션으로 — 갤러리 있는 것까지"): 기존 데모
+  //   사진 즉시 재적용(카카오 대표사진 커버 + 3~5장). 청크 반복 호출로 전량 처리(cron 도 자동 수렴하나 즉시용).
+  const [recond, setRecond] = useState<{ running: boolean; done: number; remaining: number | null }>({ running: false, done: 0, remaining: null })
+  const reconditionImages = async () => {
+    if (recond.running) return
+    if (!confirm('기존 데모 상품(동네딜+숙소) 사진을 모두 현재 컨디션으로 재적용할까요?\n· 커버 = 카카오 대표사진, 갤러리 3~5장\n· 이미 갤러리가 있는 데모도 전부 갱신됩니다(수 분 소요 가능).')) return
+    setRecond({ running: true, done: 0, remaining: null })
+    let done = 0
+    try {
+      for (let i = 0; i < 200; i++) { // 안전 상한(최대 200청크×6=1200개)
+        const r = await api.post('/api/admin/dongnedeal/recondition-images', { count: 6 }, { ...h, timeout: 300000 })
+        if (!r.data?.success) { toast.error(r.data?.error || '재적용 실패'); break }
+        done += Number(r.data.reconditioned ?? 0) + Number(r.data.skipped ?? 0)
+        const remaining = Number(r.data.remaining ?? 0)
+        setRecond({ running: true, done, remaining })
+        if (remaining <= 0) break
+      }
+      toast.success(`데모 사진 재적용 완료 — ${done}개 처리`)
+      loadStats(); setListNonce((n) => n + 1)
+    } catch { toast.error('재적용 중 오류') } finally {
+      setRecond((s) => ({ ...s, running: false }))
+    }
+  }
   // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
   const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
   const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
@@ -236,6 +259,12 @@ export default function AdminDongnedealImportPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
+                )}
+                {/* 🖼️ 기존 데모 사진 즉시 재적용 — 갤러리 있는 것까지 전부 카카오 대표사진+3~5장으로 */}
+                {stats.demo > 0 && (
+                  <button onClick={reconditionImages} disabled={recond.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50" title="기존 데모(동네딜+숙소) 사진을 모두 현재 컨디션으로 — 커버는 카카오 대표사진, 갤러리 3~5장. 이미 갤러리가 있는 것도 갱신.">
+                    {recond.running ? `사진 재적용 중… ${recond.done}개${recond.remaining != null ? ` · 남은 ${recond.remaining}` : ''}` : '📸 기존 데모 사진 재적용'}
+                  </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
                     1차 시/도 → 2차 동네그룹. 선택값을 카카오 지오코딩 → 그 동네 실매장 매칭. */}

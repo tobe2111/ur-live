@@ -1247,7 +1247,7 @@ export async function kakaoPlaceLookup(
   query: string,
   pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
   center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
-): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null; placeId: string | null } | null> {
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null; placeId: string | null; phone: string | null; categoryName: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
@@ -1261,7 +1261,7 @@ export async function kakaoPlaceLookup(
     if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
-    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; phone?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
     let docs = data?.documents || [];
     if (!docs.length) return null;
     // 🎯 2026-07-05 (오매칭 축소 — 갈비집에 샤브샤브): 랜덤 모드에선 카카오 카테고리/상호에
@@ -1281,6 +1281,10 @@ export async function kakaoPlaceLookup(
       lng: Number.isFinite(lng) ? lng : null,
       placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
       placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
+      // 📞 2026-07-21 (대표 "다 넣어줘 — 최대한 다 긁어와"): 카카오 키워드 API 가 주는 실전화·실업종을
+      //   그간 흘리던 것 → 캡처. 전화=restaurant_phone(상세 노출), 업종=meta(참조/추후 활용).
+      phone: doc.phone || null,
+      categoryName: doc.category_name || null,  // 예 "음식점 > 한식 > 곰탕,설렁탕"
     };
   } catch { return null; }
 }
@@ -1511,20 +1515,21 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         //   중복이었음("한성식당 · 곱창전골 2인" + 아랫줄 "한성식당"). 매장 구분은 restaurant_name 컬럼 전담.
         const dispName = offer.name;
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
+        const restPhone = place?.phone || null;  // 📞 카카오 실전화(있으면) — 상세 노출
         let res;
         try {
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, place?.lat ?? null, place?.lng ?? null, slug).run();
         } catch {
           // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, slug).run();
         }
         seeded++;
         // 🧹 2026-07-05 (리뷰 57~119개 부풀림 근본원인): SQLite 가 삭제된 옛 데모의 rowid 를 재사용 →
@@ -1550,9 +1555,12 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             ...(isPrelaunch ? { prelaunch: '1' } : {}),  // 🏷️ 오픈 예정형 표시(소비자 배지·CTA 분기)
           }).catch(() => {});
         }
-        // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
+        // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) + 실업종(참조/추후 활용) — 매칭 성공 시만.
         if (pid > 0 && place?.placeUrl) {
-          await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
+          await setSupplyMeta(DB, pid, {
+            kakao_place_url: place.placeUrl,
+            ...(place.categoryName ? { kakao_category: place.categoryName } : {}),
+          }).catch(() => {});
         }
         // 🖼️ 2026-07-20 (대표 "사진 3~5장 랜덤"): 갤러리 = [대표(R2 재호스팅)] + 추가 실사진(pstatic CDN)
         //   → products.images(JSON, 상세 스와이프 갤러리 소비). 컬럼 미존재 환경 조용히 skip.
@@ -2025,6 +2033,31 @@ adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     await writeAuditLog(c, { action: 'dongnedeal_refresh_reviews', targetType: 'product', after: { refreshed, reviews, remaining } }).catch(() => {});
     return c.json({ success: true, refreshed, reviews, remaining });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/recondition-images — 🖼️ 2026-07-21 (대표 "이미 만들어진 데모도 모두 지금 컨디션으로,
+//   갤러리 있는 것까지 전부"): 기존 데모(동네딜+숙소)를 즉시 현재 컨디션으로 재적용(카카오 대표사진 커버 +
+//   3~5장 갤러리). cron(demo-image-rehost)이 시간당 소량 자동 수렴하는 것과 동일 로직(reconditionDemos SSOT)을
+//   어드민이 온디맨드로 청크(회당 6개, 서브리퀘스트 예산 안)로 돌린다. 클라가 remaining>0 이면 반복 호출.
+adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => {
+  try {
+    const { reconditionDemos, DEMO_COND_V } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const r = await reconditionDemos(c.env as unknown as Env, perRun);
+    // 남은 대상 수(버전 마커 미보유 데모) — 클라 진행바/반복 종료 판정용.
+    const remainRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?)`
+    ).bind(DEMO_COND_V).first<{ n: number }>().catch(() => ({ n: 0 }));
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, reconditioned: r.reconditioned, skipped: r.skipped, remaining: Number(remainRow?.n ?? 0) });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
