@@ -303,6 +303,15 @@ const STAY_TYPES = [
   { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
   { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
 ]
+// 🏨 2026-07-21 (대표 "시설 설정 안 됨" — 이상적): 업종별 대표 시설 세트(5~6개). 상세 시설 아이콘 매핑
+//   (StayDetailPage amenityMeta)이 한글 키워드로 인식. 공통 + 유형 특색.
+const STAY_AMENITIES: Record<string, string[]> = {
+  pension: ['무료 주차', '와이파이', '바비큐', '취사 가능', '에어컨', '개별 테라스'],
+  hotel: ['무료 주차', '와이파이', '조식', '24시간 프런트', '에어컨', '엘리베이터'],
+  guesthouse: ['무료 주차', '와이파이', '조식', '공용 라운지', '에어컨'],
+  resort: ['무료 주차', '와이파이', '조식', '온수풀', '사우나', '피트니스'],
+  glamping: ['무료 주차', '와이파이', '개별 화로', '바비큐', '냉난방', '샤워실'],
+}
 
 adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
   try {
@@ -495,8 +504,8 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
          VALUES (?, ?, ?, 2, '15:00', '11:00', ?, ?, ?, ?, ?, ?, ?, 'standard', ?, 1, 90)`
       ).bind(
         pid, ty.type, star, place.address || `${spot.addr}`, spot.sido, spot.sigungu, place.lat, place.lng,
-        JSON.stringify(['무료 주차', '와이파이', ty.type === 'glamping' ? '개별 화로' : '조식']),
-        JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), desc,
+        JSON.stringify(STAY_AMENITIES[ty.type] || ['무료 주차', '와이파이', '에어컨']),
+        JSON.stringify(['에어컨', '냉장고', 'TV', '무료 세면용품', '헤어드라이어']), desc,
       ).run()
       let order = 0
       for (const r of rooms) {
