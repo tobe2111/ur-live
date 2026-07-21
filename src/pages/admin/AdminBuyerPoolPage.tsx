@@ -14,7 +14,7 @@ import { formatNumber } from '@/utils/format'
 interface Lead {
   id: number; source: string; intent_signal: string; company: string; country: string | null
   target_market: string | null; category: string | null; imports_from_korea: number | null
-  website: string | null; email: string | null; phone: string | null
+  website: string | null; email: string | null; phone: string | null; address: string | null
   decision_maker: string | null; decision_maker_title: string | null; decision_maker_email: string | null
   est_volume: string | null; match_score: number | null; description: string | null
   source_keyword: string | null; status: string; memo: string | null; inquiry_title: string | null
@@ -100,7 +100,7 @@ export default function AdminBuyerPoolPage() {
   const [newCat, setNewCat] = useState('')
   const [newCountry, setNewCountry] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const emptyForm = { company: '', country: '', category: '', target_market: '', intent_signal: 'buying_lead', imports_from_korea: false, website: '', email: '', decision_maker: '', decision_maker_title: '', decision_maker_email: '', est_volume: '', description: '' }
+  const emptyForm = { company: '', country: '', category: '', target_market: '', intent_signal: 'buying_lead', imports_from_korea: false, website: '', email: '', address: '', decision_maker: '', decision_maker_title: '', decision_maker_email: '', est_volume: '', description: '' }
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [bulkText, setBulkText] = useState('')
@@ -474,7 +474,8 @@ export default function AdminBuyerPoolPage() {
               <input value={form.decision_maker_title} onChange={e => setForm(f => ({ ...f, decision_maker_title: e.target.value }))} placeholder="담당자 직책" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900" />
               <input value={form.decision_maker_email} onChange={e => setForm(f => ({ ...f, decision_maker_email: e.target.value }))} placeholder="담당자 이메일" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900" />
               <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="회사 이메일" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900" />
-              <input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} placeholder="웹사이트/LinkedIn URL" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 lg:col-span-2" />
+              <input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} placeholder="웹사이트/홈페이지 URL" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 lg:col-span-2" />
+              <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="회사 주소" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900 lg:col-span-2" />
               <input value={form.est_volume} onChange={e => setForm(f => ({ ...f, est_volume: e.target.value }))} placeholder="규모/물량 (선택)" className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-900" />
               <label className="flex items-center gap-1.5 text-sm text-gray-600 px-1"><input type="checkbox" checked={form.imports_from_korea} onChange={e => setForm(f => ({ ...f, imports_from_korea: e.target.checked }))} /> 한국 수입 이력</label>
             </div>
@@ -540,7 +541,8 @@ export default function AdminBuyerPoolPage() {
                     {l.decision_maker_email && <div>✉ {l.decision_maker_email}</div>}
                     {!l.decision_maker_email && l.email && <div>✉ {l.email}</div>}
                     {l.phone && <div>☎ {l.phone}</div>}
-                    {l.website && <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600 underline">{l.website}</a>}
+                    {l.address && <div className="text-gray-600" title="회사 주소">📍 {l.address}</div>}
+                    {l.website && <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600 underline">🌐 {l.website}</a>}
                     {!l.email && !l.decision_maker_email && !l.phone && !l.website && <span className="text-amber-600" title="상세 페이지를 붙여넣으면 이 행에 연락처가 채워집니다">🔎 상세 확인 필요</span>}
                   </div>
                   <select value={l.status} onChange={e => patch(l.id, { status: e.target.value })}

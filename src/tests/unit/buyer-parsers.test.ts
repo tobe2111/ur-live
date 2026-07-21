@@ -105,3 +105,36 @@ describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들�
     })
   }
 })
+
+import { pickBusinessEmail } from '@/features/supply/api/buyer-discovery'
+import { discoverContactPaths, addressFromHtml } from '@/features/supply/api/buyer-web-enrich'
+
+describe('buyer-pool — 필요한 정보 전부 추출(이메일·회사·주소·홈페이지)', () => {
+  it('상세에서 회사 주소(address) 추출', () => {
+    const detail = htmlToText('<table><tr><td>Company Name</td><td>Cairo Beauty Imports</td></tr><tr><td>Country</td><td>Egypt</td></tr><tr><td>Address</td><td>15 Tahrir Square, Cairo, Egypt</td></tr><tr><td>Email</td><td>purchasing@cairobeauty.com</td></tr></table>')
+    const l = parseBuyKoreaInquiries(detail)[0]
+    expect(l.company).toBe('Cairo Beauty Imports')
+    expect(l.address).toMatch(/Tahrir Square/)
+    expect(l.email).toBe('purchasing@cairobeauty.com')
+  })
+
+  it('이메일 우선순위: 구매담당(purchasing/sales/import) > 일반(info) > 랜덤', () => {
+    expect(pickBusinessEmail('hello@x.com info@x.com purchasing@x.com')).toBe('purchasing@x.com')
+    expect(pickBusinessEmail('info@acme.com sales@acme.com')).toBe('sales@acme.com')
+    expect(pickBusinessEmail('webmaster@a.com imports@a.com')).toBe('imports@a.com')
+  })
+
+  it('홈 HTML 에서 실제 연락/소개 링크 발견(추측 경로보다 우선)', () => {
+    const home = '<a href="/home">Home</a><a href="/en/contact-us">Contact Us</a><a href="https://facebook.com/x">FB</a><a href="/about-company">회사소개</a>'
+    const paths = discoverContactPaths(home, 'https://buyer.example')
+    expect(paths).toContain('/en/contact-us')
+    expect(paths).toContain('/about-company')
+    expect(paths.some(p => p.includes('facebook'))).toBe(false) // 외부 SNS 제외
+  })
+
+  it('웹사이트 HTML 에서 회사 주소 추출(<address> / streetAddress / 라벨)', () => {
+    expect(addressFromHtml('<address>221B Baker Street, London, UK</address>')).toMatch(/Baker Street/)
+    expect(addressFromHtml('{"streetAddress":"5 Rue de Rivoli, Paris"}')).toMatch(/Rivoli/)
+    expect(addressFromHtml('<p>Address: 88 Nanjing Road, Shanghai</p>')).toMatch(/Nanjing Road/)
+  })
+})

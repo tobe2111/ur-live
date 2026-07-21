@@ -205,7 +205,7 @@ const DETAIL_LABELS: Record<string, string> = {
   // email / phone
   '이메일': 'email', 'email': 'email', 'e-mail': 'email', 'e mail': 'email', 'mail': 'email',
   '휴대번호': 'phone', '휴대전화': 'phone', '전화': 'phone', '전화번호': 'phone', '연락처': 'phone', 'phone': 'phone', 'tel': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'contact number': 'phone', 'cell': 'phone', 'fax': 'phone', 'whatsapp': 'phone',
-  '주소': 'address', 'address': 'address',
+  '주소': 'address', '회사주소': 'address', '소재지': 'address', 'address': 'address', 'company address': 'address', 'office address': 'address', 'head office': 'address', 'business address': 'address', 'addr': 'address',
   // 유형(품목 타입)·사용처·인콰이어리 상세(실제 요청 문구=RFQ, 가장 가치 큰 필드) — 설명에 담아 최대한 자세히.
   '유형': 'ptype', 'type': 'ptype', 'product type': 'ptype',
   '인콰이어리 상세': 'rfq', '인콰이어리상세': 'rfq', '문의내용': 'rfq', '요청사항': 'rfq', 'inquiry detail': 'rfq', 'inquiry details': 'rfq', 'detailed description': 'rfq', 'detailed buying request': 'rfq', 'buying request': 'rfq', 'details': 'rfq', 'message': 'rfq', 'requirements': 'rfq', 'remark': 'rfq', 'remarks': 'rfq', 'description': 'rfq', 'comment': 'rfq',
@@ -274,6 +274,7 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
     decision_maker_title: row.decision_maker_title || null,
     decision_maker_email: /@/.test(email) ? email : null,
     est_volume: row.est_volume ? row.est_volume.slice(0, 60) : null,
+    address: row.address ? row.address.slice(0, 300) : null,
     description: desc.slice(0, 800), source_keyword: 'b2b-detail-paste',
     inquiry_title: title ? title.slice(0, 200) : null,
   }
