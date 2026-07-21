@@ -56,6 +56,37 @@ export async function getAutofetchConfig(env: Env): Promise<{ sources: Autofetch
   const [sources, map] = await Promise.all([loadSources(env), loadCookieMap(env)])
   return { sources, cookieHosts: Object.keys(map), enabled: env.BUYER_AUTO_FETCH_ENABLED === 'true' }
 }
+
+/* ── 북마클릿 인제스트 — F12·쿠키 복사 없이 대표 브라우저에서 원클릭 수집 ────────────────
+ *   토큰 인증(관리자 쿠키 대신 — 크로스오리진). 북마클릿이 buyKorea 세션으로 상세 HTML 을 읽어 전송. */
+const INGEST_TOKEN_KEY = 'buyer_ingest_token'
+function randToken(): string {
+  const a = new Uint8Array(24); crypto.getRandomValues(a)
+  return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+export async function getIngestToken(env: Env): Promise<string> {
+  let t = await getSetting(env, INGEST_TOKEN_KEY)
+  if (!t) { t = randToken(); await setSetting(env, INGEST_TOKEN_KEY, t) }
+  return t
+}
+export async function resetIngestToken(env: Env): Promise<string> {
+  const t = randToken(); await setSetting(env, INGEST_TOKEN_KEY, t); return t
+}
+export async function verifyIngestToken(env: Env, token: string): Promise<boolean> {
+  if (!token || token.length < 20) return false
+  const t = await getSetting(env, INGEST_TOKEN_KEY)
+  return !!t && t === token
+}
+/** 북마클릿이 보낸 상세 HTML 배열을 파싱·저장(리스트 행 보강 포함). */
+export async function ingestHtmls(env: Env, htmls: string[]): Promise<{ parsed: number; saved: number }> {
+  const leads: BuyerLead[] = []
+  for (const html of htmls.slice(0, 40)) {
+    if (typeof html !== 'string' || !html) continue
+    leads.push(...parseBuyKoreaInquiries(htmlToText(html)))
+  }
+  const saved = await saveBuyerLeads(env.DB, leads).catch(() => 0)
+  return { parsed: leads.length, saved }
+}
 const LOGIN_MARKER = /(login|signin|<input[^>]+type=["']?password|로그인이 필요|아이디.{0,6}비밀번호)/i
 
 /** 리스트 HTML 에서 같은 호스트의 상세 링크 추출(사이트 무관 휴리스틱: detail/view/offer/inqry 힌트 + id). */

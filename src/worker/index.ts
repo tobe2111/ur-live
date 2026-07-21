@@ -193,6 +193,7 @@ import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
+import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
@@ -1607,6 +1608,8 @@ app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운�
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
 //   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
 app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
+// 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
+app.route('/api/buyer-ingest', buyerIngestRoutes);
 // app.route('/api/seller/castings', sellerCastingRoutes);
 // 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
 // app.route('/api/donation-boosters', donationBoosterRoutes);

@@ -14,7 +14,7 @@ import {
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
-import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf } from './buyer-autofetch'
+import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken } from './buyer-autofetch'
 import { enrichLeadsFromWebsites } from './buyer-web-enrich'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -121,6 +121,11 @@ app.post('/auto-fetch/forget', async (c) => {
   if (b.url) await removeSource(c.env, String(b.url)).catch(() => null)
   return c.json({ success: true })
 })
+
+// GET /api/admin/buyer-pool/ingest-token — 북마클릿용 인제스트 토큰(없으면 생성).
+app.get('/ingest-token', async (c) => c.json({ success: true, token: await getIngestToken(c.env) }))
+// POST /api/admin/buyer-pool/ingest-token/reset — 토큰 재발급(기존 북마클릿 무효화).
+app.post('/ingest-token/reset', async (c) => c.json({ success: true, token: await resetIngestToken(c.env) }))
 
 // POST /api/admin/buyer-pool/enrich-websites { max? } — 이메일 없는 웹사이트 리드를 방문해 이메일/전화 백필.
 //   buyKorea 가 마스킹한 이메일을 바이어 공개 웹사이트에서 확보. 공개 사이트라 게이트 불필요.
