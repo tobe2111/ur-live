@@ -6,7 +6,27 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { pickBusinessEmail, type FetchBudget } from './influencer-discovery'
+import { pickBusinessEmail, extractContacts, type FetchBudget } from './influencer-discovery'
+
+const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/**
+ * 🧹 기존 풀 이메일 재정리(백필) — 저장된 소개글(description)에 개선된 추출기를 재적용해 판정.
+ *   반환: string=이 값으로 교체 · null=비우기(가짜 제거) · undefined=변경 없음.
+ *   ① **가짜 이메일 제거**: 저장 이메일이 소개글에 문자 그대로 없고, "로컬파트 at 도메인라벨"(과거 전치사 'at'
+ *      오변환 흔적)이 소개글에 있으면 날조 → 재도출값으로 교체(없으면 비움). ② 빈칸이면 재도출로 채움.
+ *      ③ 대행사(비-개인도메인) 저장값 + 소개글에 개인도메인 메일 → 개인메일로 교정.
+ */
+export function reextractEmail(description: string | null | undefined, stored: string | null): string | null | undefined {
+  const desc = description || ''
+  const derived = pickBusinessEmail(desc) || extractContacts(desc).emails[0] || null // 개선된(수정된) 추출기
+  if (!stored) return derived || undefined // 빈칸 채움
+  const s = stored.toLowerCase(); const [local, domain] = s.split('@'); const label = (domain || '').split('.')[0]
+  const fabricated = !desc.toLowerCase().includes(s) && !!local && !!label
+    && new RegExp(`${_reEsc(local)}\\s+at\\s+${_reEsc(label)}`, 'i').test(desc) // "out at naver" 류 날조 흔적
+  if (fabricated) return derived && derived !== stored ? derived : null // 진짜 메일로 교체 or 비움
+  if (!PERSONAL_EMAIL_RE.test(stored) && derived && PERSONAL_EMAIL_RE.test(derived)) return derived // 대행사→개인
+  return undefined // 유지
+}
 
 // 개인(창작자 본인) 메일 도메인 — 대행사/MCN 코퍼레이트 메일과 구분. About 에 이 도메인 메일이 있으면 우선.
 const PERSONAL_EMAIL_RE = /@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i
@@ -77,6 +97,21 @@ export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
+/** 🎯 YouTube topicDetails(구글 자체 주제분류, Wikipedia URL)를 우리 카테고리로 매핑 — 텍스트 파싱보다 신뢰도↑.
+ *  구체적 주제 먼저. 없거나 매핑 불가면 null(호출부가 기존 category 유지). part=topicDetails 는 추가 쿼터 0. */
+export function topicToCategory(topicUrls: string[] | undefined): string | null {
+  const t = (topicUrls || []).join(' ')
+  if (!t) return null
+  if (/\/(Cosmetics|Beauty)\b/i.test(t)) return '뷰티'
+  if (/\/Fashion\b/i.test(t)) return '패션'
+  if (/\/(Food|Cooking)\b/i.test(t)) return '맛집'
+  if (/\/Tourism\b/i.test(t)) return '여행'
+  if (/\/Physical_fitness\b/i.test(t)) return '운동'
+  if (/\/(Pet|Pets)\b/i.test(t)) return '반려동물'
+  if (/\/Hobby\b/i.test(t)) return '취미'
+  return null
+}
+
 /**
  * 유튜브 최근성과 보강 — perf 미수집 채널을 구독자 많은 순으로 max 개.
  *   채널당: channels.list(uploads 재생목록, 50개 배치 1점) → playlistItems(1점) → videos.list(50 id 배치 1점 공유).
@@ -87,25 +122,27 @@ export async function enrichYouTubePerformance(
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
   // perf 미수집 + 개설일 조회 미시도(기존 풀 백필 — pub_checked_at 로 자기종료: 좀비채널도 1회 시도 후 재선택 안 함).
-  const rows = (await DB.prepare(`SELECT id, channel_id, email FROM ad_influencer_leads
+  const rows = (await DB.prepare(`SELECT id, channel_id, email, category FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR pub_checked_at IS NULL)
       ORDER BY (pub_checked_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
-    .all<{ id: number; channel_id: string; email: string | null }>().catch(() => null))?.results || []
+    .all<{ id: number; channel_id: string; email: string | null; category: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
-  // ① uploads 재생목록 id — 50개 배치 1콜. snippet 추가(개설일 publishedAt — parts 는 비용 안 늘림, 같은 1점).
+  // ① uploads 재생목록 id — 50개 배치 1콜. snippet(개설일·소개글)+topicDetails(주제분류) 추가 — parts 는 비용 안 늘림(같은 1점).
   budget.left--
   await ensurePerfExtraColumns(DB)
-  const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
+  const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet,topicDetails&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
     { signal: AbortSignal.timeout(10000) }).catch(() => null)
-  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string; description?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] } | null : null
+  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string; description?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } }; topicDetails?: { topicCategories?: string[] } }[] } | null : null
   const uploads = new Map<string, string>() // channel_id → uploads playlist
   const publishedAt = new Map<string, string>() // channel_id → 개설일(계정 나이 신호)
   const aboutDesc = new Map<string, string>() // channel_id → 최신 About 소개글(이메일 재교정용 — 이미 받는 snippet)
+  const topicCat = new Map<string, string>() // channel_id → topicDetails 매핑 카테고리(빈 category 채움용)
   for (const it of chJson?.items || []) {
     if (it.id && it.contentDetails?.relatedPlaylists?.uploads) uploads.set(it.id, it.contentDetails.relatedPlaylists.uploads)
     if (it.id && it.snippet?.publishedAt) publishedAt.set(it.id, it.snippet.publishedAt)
     if (it.id && it.snippet?.description) aboutDesc.set(it.id, it.snippet.description)
+    if (it.id) { const tc = topicToCategory(it.topicDetails?.topicCategories); if (tc) topicCat.set(it.id, tc) }
   }
 
   // ② 채널별 최근 영상 id ≤10 — 채널당 1콜.
@@ -137,8 +174,9 @@ export async function enrichYouTubePerformance(
     const { avgViews, avgComments } = avgStats(vids)
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
     const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, pub, fixEmail, r.id)
+    const catFill = !r.category ? (topicCat.get(r.channel_id) || null) : null // 미분류만 topicDetails 로 채움(기존 분류 보존)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = COALESCE(category, ?), perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, pub, fixEmail, catFill, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length

@@ -14,9 +14,9 @@ import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { ensureInfluencerSchema, extractContacts, pickBusinessEmail } from './influencer-discovery'
+import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns } from './influencer-performance'
+import { ensurePerfExtraColumns, reextractEmail } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
@@ -376,9 +376,9 @@ app.post('/influencer-pool/reextract', async (c) => {
     const ups: ReturnType<typeof c.env.DB.prepare>[] = []
     for (const r of rows) {
       const ex = extractContacts(r.description || '')
-      const sets: string[] = []; const binds: (string | number)[] = []
-      const em = pickBusinessEmail(r.description || '') || ex.emails[0]
-      if (em && (!r.email || (!/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(r.email) && /@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(em)))) { sets.push('email = ?'); binds.push(em) } // 빈칸 채움 + 대행사→개인도메인 교정
+      const sets: string[] = []; const binds: (string | number | null)[] = []
+      const emFix = reextractEmail(r.description, r.email) // 빈칸 채움 + 대행사→개인 교정 + 가짜메일(전치사 at) 제거
+      if (emFix !== undefined) { sets.push('email = ?'); binds.push(emFix) }
       if (!r.instagram && ex.instagram[0]) { sets.push('instagram = ?'); binds.push(ex.instagram[0]) }
       if (!r.tiktok && ex.tiktok[0]) { sets.push('tiktok = ?'); binds.push(ex.tiktok[0]) }
       // links 합집합(공백 조인, dedup, 최대 8) — 기존 링크인바이오 보존 + 신규 유튜브/블로그 추가.
