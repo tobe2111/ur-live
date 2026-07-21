@@ -123,7 +123,7 @@ try {
 //     수정: ① `__cb` 캐시버스트 파라미터 + location.replace 로 옛 문서 재서빙 우회(항상 새 HTML→새 청크 해시),
 //           ② 가드를 60초 윈도 내 2회로 — 그 안에서 못 고치면 진짜 에러로 보고 멈춤(무한 reload 차단),
 //              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
-// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(60초 2회)·캐시버스트 reload 를
+// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(90초 3회·유예)·캐시버스트 reload 를
 //   ErrorBoundary·인라인 부트가드와 공유(이중 카운트·무한 reload 0). 로직 중복 제거.
 //   복구 한도(60초 내 2회) 초과 = stale 고착(예: 잔존 캐시-우선 SW) → 무한 reload/무한로딩 대신 인라인
 //   부트가드의 정적 복구 UI(캐시 완전삭제 후 새로고침 버튼)를 띄운다. React ErrorBoundary 밖(window

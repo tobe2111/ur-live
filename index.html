@@ -21,6 +21,7 @@
         //   원인 가시화(어드민 /api/_errors/recent). 부트가드는 엔트리 청크 실패 전 실행이라 self-contained.
         var lastErr = '';
         var chunkSeen = false;
+        var reloadPending = false; // 🛡️ 재시도 유예(setTimeout) 중 다중 청크에러가 카운트를 소진하지 않게(재진입 가드).
         function beaconStuck(reason) {
           try {
             var t = 0;
@@ -119,14 +120,24 @@
           setTimeout(bustReload, 1500); // SW/caches API 가 걸려도 최대 1.5s 뒤 강제 진행
         }
         function reloadOnce() {
+          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
           try {
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
-            var within = now - st.t < 60000;
-            if (within && st.n >= 2) { showStuckUI('chunk'); return; } // 60초 내 2회 — stale 고착 → 무한 reload 대신 복구 UI
-            sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }));
-            try { var u = new URL(location.href); u.searchParams.set('__cb', now.toString(36)); location.replace(u.toString()); }
-            catch (e) { location.reload(); }
+            var within = now - st.t < 90000;
+            if (within && st.n >= 3) { showStuckUI('chunk'); return; } // 90초 내 3회 — stale 고착 → 무한 reload 대신 복구 UI
+            var attempt = within ? st.n + 1 : 1;
+            sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
+            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기). 배포 직후 새 index.html 은
+            //   서빙되나 새 청크가 엣지에 아직 안 퍼진 수초의 창에서 *즉시* reload 하면 또 404 → 연속 실패 → 수동 UI.
+            //   짧게(시도마다 0.7~2.5s) 기다렸다 __cb reload 하면 전파 완료 후 통과 → 사용자는 수동 복구 화면을 거의
+            //   안 본다. 유예 중엔 워커가 심은 URDEAL 로더가 계속 회전(무해). 무한루프는 3회 캡이 여전히 차단.
+            reloadPending = true;
+            var grace = Math.min(700 * attempt, 2500);
+            setTimeout(function () {
+              try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
+              catch (e) { try { location.reload(); } catch (_) {} }
+            }, grace);
           } catch (e) { try { location.reload(); } catch (_) { /* sessionStorage/location 차단 — silent */ } }
         }
         // 부팅 후 배선(main.tsx)·React ErrorBoundary 가 못 잡는 최악의 케이스(잔존 SW 고착)에서도 복구 UI 를 낼 수 있게 노출.
