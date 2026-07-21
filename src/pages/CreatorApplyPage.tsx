@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import api from '@/lib/api'
-import { SEO } from '@/components/SEO'
+import SEO from '@/components/SEO'
 
 /**
  * 📥 유어딜 제휴 크리에이터 모집 (공개 신청 페이지, /creators).
