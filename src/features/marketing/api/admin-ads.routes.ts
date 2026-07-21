@@ -362,7 +362,8 @@ app.post('/influencer-pool/send-consented', async (c) => {
 
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
 //   신규 추출기(@핸들·키워드형 인스타/틱톡·유튜브/블로그 링크)를 저장된 description 에 재적용 → API 재호출 0.
-//   ⚠️ 덮어쓰기 안 함 — 비어있는 email/instagram/tiktok 만 채우고, links 는 합집합(기존 보존 + 신규 추가).
+//   ⚠️ instagram/tiktok 는 비어있을 때만 채움. email 은 비어있으면 채우고, **대행사(비-개인도메인) 저장값은
+//   소개글의 개인도메인 메일로 교정**(협찬/MCN 메일 오수집 정정 — 전 플랫폼). links 는 합집합(기존 보존).
 app.post('/influencer-pool/reextract', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   let scanned = 0, filled = 0
@@ -376,7 +377,8 @@ app.post('/influencer-pool/reextract', async (c) => {
     for (const r of rows) {
       const ex = extractContacts(r.description || '')
       const sets: string[] = []; const binds: (string | number)[] = []
-      if (!r.email) { const em = pickBusinessEmail(r.description || '') || ex.emails[0]; if (em) { sets.push('email = ?'); binds.push(em) } }
+      const em = pickBusinessEmail(r.description || '') || ex.emails[0]
+      if (em && (!r.email || (!/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(r.email) && /@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(em)))) { sets.push('email = ?'); binds.push(em) } // 빈칸 채움 + 대행사→개인도메인 교정
       if (!r.instagram && ex.instagram[0]) { sets.push('instagram = ?'); binds.push(ex.instagram[0]) }
       if (!r.tiktok && ex.tiktok[0]) { sets.push('tiktok = ?'); binds.push(ex.tiktok[0]) }
       // links 합집합(공백 조인, dedup, 최대 8) — 기존 링크인바이오 보존 + 신규 유튜브/블로그 추가.

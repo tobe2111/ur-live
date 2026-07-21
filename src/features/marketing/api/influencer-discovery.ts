@@ -75,14 +75,14 @@ export function extractContacts(text: string): ExtractedContacts {
   const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).sort((a, b) => (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(b) ? 1 : 0) - (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(a) ? 1 : 0)).slice(0, 5) // 개인도메인 우선 정렬 → emails[0]=창작자 본인(블로그/카페/재추출이 대행사 메일 먼저 잡던 문제)
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
   const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta']
-  const instagram = uniqLower([
-    ...Array.from(t.matchAll(IG_RE), m => m[1]),
+  const instagram = uniqLower([ // 라벨형("인스타:@x"=본인선언) 우선, URL형(태그일 수 있음) 후순위 → [0]=본인 확률↑
     ...Array.from(t.matchAll(IG_AT_RE), m => m[1]),
+    ...Array.from(t.matchAll(IG_RE), m => m[1]),
   ].map(normHandle).filter(h => h.length >= 2 && !IG_BAD.includes(h))).slice(0, 5)
   const TT_BAD = ['video', 'tag', 'discover', 'tiktok']
   const tiktok = uniqLower([
-    ...Array.from(t.matchAll(TT_RE), m => m[1]),
     ...Array.from(t.matchAll(TT_AT_RE), m => m[1]),
+    ...Array.from(t.matchAll(TT_RE), m => m[1]),
   ].map(normHandle).filter(h => h.length >= 2 && !TT_BAD.includes(h))).slice(0, 5)
   // 🔗 링크인바이오 + 유튜브/블로그 교차링크(완전 URL) 통합 — 크로스플랫폼 발자국 보존.
   const links = uniqLower([
