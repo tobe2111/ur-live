@@ -59,6 +59,28 @@ export default function AdminDongnedealImportPage() {
       setRecond((s) => ({ ...s, running: false }))
     }
   }
+  // 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 커버만 감지·재획득(성한 건 무접촉).
+  const [healing, setHealing] = useState<{ running: boolean; checked: number; healed: number; remaining: number | null }>({ running: false, checked: 0, healed: 0, remaining: null })
+  const healBrokenImages = async () => {
+    if (healing.running) return
+    if (!confirm('안 뜨는(깨진) 데모 사진만 찾아서 새로 받아올까요?\n· 커버가 실제로 로드되는지 검사 → 죽었으면 대표사진 재획득\n· 정상 사진은 건드리지 않습니다.')) return
+    setHealing({ running: true, checked: 0, healed: 0, remaining: null })
+    let checked = 0, healed = 0
+    try {
+      for (let i = 0; i < 300; i++) {
+        const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 6 }, { ...h, timeout: 300000 })
+        if (!r.data?.success) { toast.error(r.data?.error || '검사 실패'); break }
+        checked += Number(r.data.checked ?? 0); healed += Number(r.data.healed ?? 0)
+        const remaining = Number(r.data.remaining ?? 0)
+        setHealing({ running: true, checked, healed, remaining })
+        if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
+      }
+      toast.success(`검사 ${checked}개 · 깨진 사진 ${healed}개 새로 받아옴`)
+      loadStats(); setListNonce((n) => n + 1)
+    } catch { toast.error('검사 중 오류') } finally {
+      setHealing((s) => ({ ...s, running: false }))
+    }
+  }
   // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
   const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
   const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
@@ -264,6 +286,11 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={reconditionImages} disabled={recond.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50" title="기존 데모(동네딜+숙소) 사진을 모두 현재 컨디션으로 — 커버는 카카오 대표사진, 갤러리 3~5장. 이미 갤러리가 있는 것도 갱신.">
                     {recond.running ? `사진 재적용 중… ${recond.done}개${recond.remaining != null ? ` · 남은 ${recond.remaining}` : ''}` : '📸 기존 데모 사진 재적용'}
+                  </button>
+                )}
+                {stats.demo > 0 && (
+                  <button onClick={healBrokenImages} disabled={healing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50" title="안 뜨는(깨진) 데모 커버만 검사해 대표사진으로 새로 받아옵니다. 정상 사진은 무접촉.">
+                    {healing.running ? `깨진 사진 검사 중… ${healing.checked}개 · 복구 ${healing.healed}${healing.remaining != null ? ` · 남은 ${healing.remaining}` : ''}` : '🩹 안 뜨는 사진 복구'}
                   </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).

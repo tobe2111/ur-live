@@ -2064,6 +2064,65 @@ adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => 
   }
 });
 
+// POST /dongnedeal/heal-broken-images — 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 사진만
+//   즉시 감지·재획득. 커버를 서버측 검증(referer 없이 fetch)해 죽었으면(404/삭제) 대표사진 재획득 +
+//   갤러리에서 깨진 것 제거. 성한 커버는 건드리지 않음(working 사진 churn 0). img_heal_ck 마커로 수렴.
+adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const { validateImageLoads } = await import('../../../worker/utils/rehost-image');
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    const HEAL_CK = '1';  // 검증 완료 마커 버전(재검증 필요 시 bump)
+    const rows = (await DB.prepare(
+      `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
+         FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)
+        ORDER BY p.id LIMIT ?`
+    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
+      .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
+    let checked = 0, healed = 0;
+    const metaMap = await getSupplyMeta(DB, rows.map(r => r.id)).catch(() => new Map<number, Record<string, string>>());
+    for (const row of rows) {
+      checked++;
+      const coverOk = await validateImageLoads(row.image_url);
+      if (!coverOk) {
+        // 커버가 죽음 → 대표사진 재획득(카카오/네이버 대표사진 우선).
+        const fresh = await fetchDemoPhotos(c.env, {
+          placeId: metaMap.get(row.id)?.kakao_place_url || null,
+          nameQuery: row.restaurant_name,
+          address: row.restaurant_address,
+          count: 3 + Math.floor(Math.random() * 3),
+        }).catch(() => [] as string[]);
+        if (fresh.length > 0) {
+          await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(fresh[0], JSON.stringify(fresh.slice(0, 5)), row.id).run().catch(() => {});
+          // 새 외부 URL 을 R2 로 이관하도록 rehost 재큐잉.
+          await setSupplyMeta(DB, row.id, { img_rehost_done: '0' }).catch(() => {});
+          healed++;
+        }
+      }
+      await setSupplyMeta(DB, row.id, { img_heal_ck: HEAL_CK }).catch(() => {});
+    }
+    const remainRow = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)`
+    ).bind(HEAL_CK).first<{ n: number }>().catch(() => ({ n: 0 }));
+    if (healed > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    return c.json({ success: true, checked, healed, remaining: Number(remainRow?.n ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
 adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
   try {

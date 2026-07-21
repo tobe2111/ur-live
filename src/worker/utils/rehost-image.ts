@@ -38,6 +38,31 @@ export async function rehostImageToR2(
   } catch { return null }
 }
 
+/**
+ * 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 이미지 URL 이 실제로 로드되는지 서버측 검증.
+ *   referer 없이 fetch(네이버 핫링크 차단 우회) → 200 + image/* + 최소크기면 성한 사진.
+ *   내부(/api/media·상대경로)는 워커가 항상 200 서빙이라 성함으로 간주(fetch 생략). fail→false.
+ */
+export async function validateImageLoads(url: string | null | undefined): Promise<boolean> {
+  if (!url) return false
+  if (!/^https?:\/\//i.test(url)) return true          // 상대경로(/api/media 등) = 내부 서빙, 항상 OK
+  if (url.includes('/api/media/') || (() => { try { return new URL(url).hostname === 'media.ur-team.com' } catch { return false } })()) return true
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 6000)
+    let res: Response
+    try {
+      res = await fetch(url, { signal: ctrl.signal })  // referer 없음(워커 기본) → 네이버 핫링크 통과
+    } finally { clearTimeout(timer) }
+    if (!res.ok) return false
+    const ct = (res.headers.get('content-type') || '').toLowerCase()
+    if (!ct.startsWith('image/')) return false
+    const len = Number(res.headers.get('content-length') || 0)
+    if (len && len < 500) return false                 // 아이콘/깨짐 방지(길이 헤더 있을 때만)
+    return true
+  } catch { return false }
+}
+
 /** 우리 도메인/R2 가 아닌 외부 http(s) URL 인지 — 재호스팅 후보 판정. */
 export function isExternalImageUrl(u: string | null | undefined): boolean {
   if (!u || typeof u !== 'string') return false
