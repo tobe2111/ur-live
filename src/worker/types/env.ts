@@ -181,6 +181,13 @@ export interface Env {
   BUYER_FEED_HEADER?: string;          // 예: "subscription-key: abc123" 또는 "Authorization: Bearer xxx"
   ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 1, 1~5) — 깊이 확장(page2=51~100위). 쿼터 여유 시 상향. quotaHit 가드 관리.
   ADS_YT_SEARCH_BUDGET?: string;  // 🎯 YT Search Queries/day 예산(기본 100 — 실측 병목). 구글 콘솔 증설 승인 시 함께 상향.
+
+  // ---- 📊 인플루언서 풀 → 구글 스프레드시트 자동 동기화 (2026-07-21, ur-ads Variables) ----
+  //   서비스계정 JWT 직접 호출(제3자 없음). 미설정 시 조용히 skip(fail-soft). 시트는 SA 이메일에 편집자 공유 필수.
+  GSHEETS_SA_EMAIL?: string;         // 서비스계정 이메일(...@...iam.gserviceaccount.com)
+  GSHEETS_SA_KEY?: string;           // 서비스계정 JSON 의 private_key(PEM, \n 이스케이프 허용) — Secret 타입 권장
+  GSHEETS_SHEET_ID?: string;         // 스프레드시트 ID(URL /d/{이것}/edit)
+  ADS_SHEETS_SYNC_ENABLED?: string;  // 'true' 면 매시간 cron 이 시트 미러(수동 버튼은 게이트 무관)
   ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
 
   // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
