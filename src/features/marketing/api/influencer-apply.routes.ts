@@ -8,6 +8,8 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureInfluencerSchema } from './influencer-discovery'
+import { welcomeEmail, textToHtml } from './outreach-send'
+import { sendEmail } from '@/services/email'
 
 const app = new Hono<{ Bindings: Env }>()
 const POOL = 0 // 공용 풀 센티넬
@@ -44,6 +46,14 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
       source = 'inbound',
       consented_at = COALESCE(ad_influencer_leads.consented_at, excluded.consented_at)`)
     .bind(POOL, platform, channelId, name, url, email || null, category, memo).run().catch(() => null)
+  // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
+  if (email && c.env.RESEND_API_KEY) {
+    const send = async () => {
+      const w = welcomeEmail(name)
+      await sendEmail({ to: email, subject: w.subject, html: textToHtml(w.body) }, c.env.RESEND_API_KEY!, c.env.RESEND_FROM, c.env.DB).catch(() => null)
+    }
+    if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(send()); else await send().catch(() => null)
+  }
   return c.json({ success: true, message: '신청이 접수되었습니다. 검토 후 제휴 담당자가 연락드립니다.' })
 })
 

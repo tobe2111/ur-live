@@ -15,6 +15,8 @@ import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { ensureInfluencerSchema } from './influencer-discovery'
+import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
+import { sendEmail } from '@/services/email'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -314,6 +316,38 @@ app.post('/influencer-pool/outreach-drafts', async (c) => {
       .bind(JSON.stringify({ ...d, generated_at: now }), id, POOL))).catch(() => null)
   const failed = ids.filter((id: number) => !r.drafts!.has(id))
   return c.json({ success: true, generated: r.drafts.size, failed, drafts: Object.fromEntries(Array.from(r.drafts.entries()).map(([id, d]) => [id, { ...d, generated_at: now }])) })
+})
+
+// POST /api/admin/ads/influencer-pool/send-consented { ids, subject, body } — 📨 **동의 리드 한정** 자동 발송
+//   ⚖️ [LEGAL] 사전 수신동의자(consented_at)에게만 — SQL 이 강제(클라 값 신뢰 X). 콜드 리드 자동 발송 경로 없음.
+//   body 의 {name}/{이름} 은 리드 이름으로 치환, 수신거부 안내는 코드가 강제 첨부. 회당 최대 50명(클라가 분할).
+app.post('/influencer-pool/send-consented', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (!c.env.RESEND_API_KEY) return c.json({ success: false, error: '발송은 RESEND_API_KEY 설정 후 사용할 수 있습니다 (Cloudflare → ur-live → Variables)' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const ids: number[] = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, CONSENTED_SEND_MAX)
+  const subject = String(b.subject || '').trim().slice(0, 150)
+  const template = String(b.body || '').trim().slice(0, 5000)
+  if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
+  if (!subject || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+  // ⚖️ 동의 강제: consented_at + email 있는 행만 — 미동의/이메일 없는 id 는 조용히 제외(응답에 skipped 로 보고).
+  const ph = ids.map(() => '?').join(',')
+  const rows = (await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL`)
+    .bind(POOL, ...ids).all<{ id: number; name: string; email: string }>().catch(() => null))?.results || []
+  if (!rows.length) return c.json({ success: false, error: '선택한 리드 중 발송 가능한(사전동의 + 이메일 보유) 리드가 없습니다' }, 400)
+  let sent = 0; const failedIds: number[] = []
+  for (const r of rows) {
+    const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부 강제
+    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, c.env.RESEND_API_KEY, c.env.RESEND_FROM, c.env.DB).catch(() => ({ success: false }))
+    if (res.success) {
+      sent++
+      await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
+        status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
+    } else failedIds.push(r.id)
+  }
+  const eligible = new Set(rows.map(r => r.id))
+  return c.json({ success: true, sent, failed: failedIds, skipped: ids.filter(id => !eligible.has(id)) })
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)
