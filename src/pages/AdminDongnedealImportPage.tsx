@@ -49,8 +49,9 @@ export default function AdminDongnedealImportPage() {
     let rehosted = 0, healed = 0
     try {
       // ① 외부 커버 → R2 이관 (marker 기반 수렴: 매 라운드 remaining 이 반드시 감소)
+      //   ⚡ 커버 1장/상품 × 5 = 요청당 ~5 fetch → CF 엣지 한도(~100s·524) 안쪽. 라운드 수로 전량 처리.
       for (let i = 0; i < 400; i++) {
-        const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 8 }, { ...h, timeout: 300000 })
+        const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 5 }, { ...h, timeout: 120000 })
         if (!r.data?.success) { toast.error(r.data?.error || '이관 실패'); break }
         if (r.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
         rehosted += Number(r.data.rehosted ?? 0)
@@ -60,8 +61,8 @@ export default function AdminDongnedealImportPage() {
       }
       // ② 남은 깨진 커버 재획득 (대표사진으로)
       setFixing((s) => ({ ...s, phase: '깨진 사진 복구', remaining: null }))
-      for (let i = 0; i < 300; i++) {
-        const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 6 }, { ...h, timeout: 300000 })
+      for (let i = 0; i < 400; i++) {
+        const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 4 }, { ...h, timeout: 120000 })
         if (!r.data?.success) { toast.error(r.data?.error || '복구 실패'); break }
         healed += Number(r.data.healed ?? 0)
         const remaining = Number(r.data.remaining ?? 0)

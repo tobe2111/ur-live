@@ -60,49 +60,27 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   if (!bucketBound) return { rehosted: 0, images: 0, failed: 0, remaining: await countExternal(), bucketBound }
   const { results } = await DB.prepare(
     `SELECT id, slug, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
-  ).bind(Math.max(1, Math.min(12, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
+  ).bind(Math.max(1, Math.min(6, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null }[] }))
-  let rehosted = 0, images = 0, failed = 0
+  let rehosted = 0, failed = 0
   for (const row of (results || [])) {
-    const gallery = parseJsonArr(row.images)
-    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u))
-    const mapping = new Map<string, string>()
-    let fetches = 0
-    for (const u of externals) {
-      if (fetches >= MAX_IMAGES_PER_PRODUCT) break
-      if (mapping.has(u)) continue
-      fetches++
-      const hosted = await rehostImageToR2(bucketEnv, u, 'demo-bulk-rehost')
-      if (hosted) mapping.set(u, hosted)
-    }
-    const resolve = (u: string) => mapping.get(u) || u
-    const newCover = row.image_url ? resolve(row.image_url) : row.image_url
-    const newGallery = gallery.map(resolve)
-    // 커버가 여전히 외부(이관 실패)면 이 라운드는 skip(다음에 재시도) — 무한루프 방지는 remaining 감소로.
-    if (newCover !== row.image_url || JSON.stringify(newGallery) !== JSON.stringify(gallery)) {
-      await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(newCover, newGallery.length ? JSON.stringify(newGallery) : row.images, row.id).run().catch(() => {})
-      // 숙소 객실 썸네일도 매핑 반영.
-      if (row.slug.startsWith('demo-stay-') && mapping.size > 0) {
-        const rr = await DB.prepare(`SELECT id, image_urls FROM product_stay_rooms WHERE product_id = ?`).bind(row.id)
-          .all<{ id: number; image_urls: string | null }>().catch(() => ({ results: [] as { id: number; image_urls: string | null }[] }))
-        for (const room of (rr.results || [])) {
-          const arr = parseJsonArr(room.image_urls); if (!arr.length) continue
-          const next = arr.map(resolve)
-          if (JSON.stringify(next) !== JSON.stringify(arr)) await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`).bind(JSON.stringify(next), room.id).run().catch(() => {})
-        }
-      }
-      if (newCover !== row.image_url) rehosted++
-      images += mapping.size
+    // ⚡ 524 방지: **커버 1장만** 이관(요청당 상품 6개 × 1 fetch). 갤러리 2~N번째는 시간당 cron 이
+    //   점진 이관(handleDemoImageRehost) — 배너/카드가 보는 건 커버라 여기선 커버에 집중해 요청을 짧게.
+    if (!isExternalImageUrl(row.image_url)) { await setSupplyMeta(DB, row.id, { rehost_skip: '1' }); failed++; continue }
+    const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost')
+    if (hosted) {
+      await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(hosted, row.id).run().catch(() => {})
+      rehosted++
     } else {
       // 커버 이관 실패(도달불가/삭제/차단) — 원본 URL 은 **유지**(비파괴: 전송 실패일 수도 있는 매장
-      //   대표사진을 picsum 랜덤으로 덮지 않는다). 대신 'rehost_skip' 마킹으로 이 라운드 큐에서 제외 →
+      //   대표사진을 picsum 랜덤으로 덮지 않는다). 'rehost_skip' 마킹으로 이 라운드 큐에서 제외 →
       //   remaining 감소로 수렴. 실제 깨진 커버는 heal(재획득)/recondition 파이프라인이 별도로 되살림.
       await setSupplyMeta(DB, row.id, { rehost_skip: '1' })
       failed++
     }
   }
-  return { rehosted, images, failed, remaining: await countExternal(), bucketBound }
+  return { rehosted, images: rehosted, failed, remaining: await countExternal(), bucketBound }
 }
 
 function isPlaceholderUrl(u: string | null | undefined): boolean {
