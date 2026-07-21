@@ -511,7 +511,7 @@ export default function AdminInfluencerPoolPage() {
                       <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} aria-label={`${l.name} 초안 대상 선택`} />
                     </td>
                     <td className="px-3 py-2">
-                      <a href={l.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">
+                      <a href={/^https?:\/\//i.test(l.url) ? l.url : `https://${(l.url || '').replace(/^\/+/, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">{/* 🐛 스킴 없는 옛 URL(blog.naver.com/..) 도 절대경로로 — 상대경로 404 방지 */}
                         {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
                         <span>
                           <span className="font-medium">{l.name}</span>
