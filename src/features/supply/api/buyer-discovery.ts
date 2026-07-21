@@ -400,6 +400,56 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
   return out
 }
 
+/* ── 붙여넣기 일괄 파싱(buyKorea 바이어 목록 복붙 → 리드) ───────────────────────── */
+
+// 열 이름 별칭 → 표준 필드(한/영, 소문자 비교). buyKorea/엑셀/시트 복붙 헤더를 유연 매핑.
+const COL_ALIAS: Record<string, string> = {
+  company: 'company', 회사: 'company', 회사명: 'company', buyer: 'company', name: 'company', company_name: 'company', 바이어: 'company',
+  country: 'country', 국가: 'country', 국가명: 'country',
+  category: 'category', 카테고리: 'category', 품목: 'category', product: 'category', item: 'category',
+  target_market: 'target_market', market: 'target_market', 시장: 'target_market',
+  intent: 'intent', 의도: 'intent',
+  imports_from_korea: 'imports_from_korea', korea: 'imports_from_korea', 수입이력: 'imports_from_korea', 한국수입: 'imports_from_korea',
+  email: 'email', 이메일: 'email', 'e-mail': 'email',
+  phone: 'phone', tel: 'phone', 전화: 'phone', 연락처: 'phone',
+  contact: 'decision_maker', contact_name: 'decision_maker', 담당자: 'decision_maker', decision_maker: 'decision_maker', 담당자명: 'decision_maker',
+  title: 'decision_maker_title', 직책: 'decision_maker_title', position: 'decision_maker_title',
+  contact_email: 'decision_maker_email', 담당자이메일: 'decision_maker_email',
+  website: 'website', url: 'website', 홈페이지: 'website', homepage: 'website', link: 'website', linkedin: 'website',
+  volume: 'est_volume', 물량: 'est_volume', 규모: 'est_volume', est_volume: 'est_volume',
+  description: 'description', note: 'description', memo: 'description', 메모: 'description', 요청: 'description', 요청사항: 'description', inquiry: 'description',
+}
+
+/** 탭/쉼표 구분 복붙 텍스트를 리드로 파싱(첫 줄=헤더). 순수함수 — 회사명 없는 행 skip, 최대 500. */
+export function parseBulkBuyers(text: string): BuyerLead[] {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  if (lines.length < 2) return []
+  const delim = lines[0].includes('\t') ? '\t' : ','
+  const split = (line: string) => line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''))
+  const header = split(lines[0]).map(h => COL_ALIAS[h.toLowerCase()] || '')
+  if (!header.includes('company')) return []
+  const out: BuyerLead[] = []
+  for (const line of lines.slice(1, 501)) {
+    const cells = split(line)
+    const row: Record<string, string> = {}
+    header.forEach((f, i) => { if (f && cells[i] != null) row[f] = cells[i] })
+    const company = (row.company || '').trim()
+    if (company.length < 2) continue
+    const ik = (row.imports_from_korea || '').toLowerCase()
+    const intent = INTENT_KEYS.includes(row.intent) ? row.intent : 'buying_lead'
+    out.push({
+      source: 'buykorea', intent_signal: intent, company: company.slice(0, 200),
+      country: row.country || null, target_market: row.target_market || null, category: row.category || null,
+      imports_from_korea: ['1', 'y', 'yes', 'true', 'o', '수입', 'korea'].includes(ik) ? 1 : (ik ? 0 : null),
+      website: row.website || null, email: row.email || null, phone: row.phone || null,
+      decision_maker: row.decision_maker || null, decision_maker_title: row.decision_maker_title || null,
+      decision_maker_email: row.decision_maker_email || null, est_volume: row.est_volume || null,
+      description: (row.description || '').slice(0, 800), source_keyword: 'buykorea-paste',
+    })
+  }
+  return out
+}
+
 /* ── 오케스트레이터 ─────────────────────────────────────────────────────────── */
 
 export interface BuyerCollectResult { ran: boolean; reason?: string; saved: number; found: number; targets: string[]; diag: { feed: number } }

@@ -11,7 +11,7 @@ import { intParam } from '@/shared/pagination'
 import {
   ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
-  INTENT_TIERS, type BuyerLead,
+  parseBulkBuyers, INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -60,6 +60,15 @@ app.post('/', async (c) => {
   }
   const saved = await saveBuyerLeads(c.env.DB, [lead]).catch(() => 0)
   return c.json({ success: true, saved })
+})
+
+// POST /api/admin/buyer-pool/import { text } — 붙여넣기 일괄 추가(buyKorea 목록 복붙). 멱등 + 자동 스코어.
+app.post('/import', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { text?: string }
+  const leads = parseBulkBuyers(String(b.text || ''))
+  if (!leads.length) return c.json({ success: false, error: '헤더 행(회사명 포함)과 데이터가 필요합니다', parsed: 0, saved: 0 }, 400)
+  const saved = await saveBuyerLeads(c.env.DB, leads).catch(() => 0)
+  return c.json({ success: true, parsed: leads.length, saved })
 })
 
 // GET /api/admin/buyer-pool/stats

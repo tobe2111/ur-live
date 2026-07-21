@@ -68,6 +68,8 @@ export default function AdminBuyerPoolPage() {
   const emptyForm = { company: '', country: '', category: '', target_market: '', intent_signal: 'buying_lead', imports_from_korea: false, website: '', email: '', decision_maker: '', decision_maker_title: '', decision_maker_email: '', est_volume: '', description: '' }
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [bulkText, setBulkText] = useState('')
+  const [importing, setImporting] = useState(false)
 
   const loadStats = useCallback(async () => {
     try {
@@ -147,6 +149,18 @@ export default function AdminBuyerPoolPage() {
         setForm(emptyForm); setShowAdd(false); await Promise.all([loadStats(), loadLeads()])
       } else toast.error(r.data?.error || '추가 실패')
     } catch { toast.error('추가 실패') } finally { setSaving(false) }
+  }
+
+  const submitBulk = async () => {
+    if (bulkText.trim().split(/\r?\n/).filter(Boolean).length < 2) { toast.error('헤더 + 데이터 행이 필요합니다'); return }
+    setImporting(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/import', { text: bulkText })
+      if (r.data?.success) {
+        toast.success(`${r.data.parsed}건 파싱 · ${r.data.saved}건 신규 저장`)
+        setBulkText(''); await Promise.all([loadStats(), loadLeads()])
+      } else toast.error(r.data?.error || '가져오기 실패')
+    } catch { toast.error('가져오기 실패') } finally { setImporting(false) }
   }
 
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
@@ -258,6 +272,13 @@ export default function AdminBuyerPoolPage() {
             <div className="mt-2 flex gap-2">
               <button onClick={submitAdd} disabled={saving} className="px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-medium disabled:opacity-50">{saving ? '저장 중…' : '추가'}</button>
               <button onClick={() => { setForm(emptyForm); setShowAdd(false) }} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-600">취소</button>
+            </div>
+
+            {/* 여러 건 붙여넣기 (buyKorea 목록 복붙 / 엑셀·시트) */}
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <div className="text-xs text-gray-500 mb-1.5">여러 건 한 번에 — buyKorea/엑셀/시트에서 <b>첫 줄 헤더 + 데이터</b>를 복사해 붙여넣기(탭 또는 쉼표 구분). 인식 열: company(필수)·country·category·email·contact(담당자)·contact_email·intent·website·description·수입이력.</div>
+              <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={4} placeholder={'company\tcountry\tcategory\temail\ncontact\nABC Trading\tVietnam\tK-beauty\tbuyer@abc.com'} className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-mono text-gray-900" />
+              <button onClick={submitBulk} disabled={importing} className="mt-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '가져오는 중…' : '붙여넣기 일괄 추가'}</button>
             </div>
           </div>
         )}
