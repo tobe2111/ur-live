@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { Search, MapPin, Calendar, Users, Star, SlidersHorizontal, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -170,7 +171,9 @@ export default function StaysSearchPage() {
                 >
                   <div className="relative aspect-[4/3] bg-gray-100 dark:bg-[#1A2334]">
                     {s.image_url ? (
-                      <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
+                      // 🖼️ 2026-07-21 (대표 "상세엔 사진 있는데 메인 카드엔 빈 사진"): raw src → cfImage
+                      //   (네이버 블로그 CDN 핫링크 우회·리사이즈) + cfImageOnError(깨지면 원본 재시도→숨김).
+                      <img src={cfImage(s.image_url, { width: 400, quality: 82, format: 'auto' }) || s.image_url} alt={s.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, s.image_url)} />
                     ) : null}
                     {s.property_type && (
                       <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] font-semibold text-white">
