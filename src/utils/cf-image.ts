@@ -206,6 +206,17 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
+      // 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
+      //   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
+      //   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
+      //   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
+      //   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
+      //   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
+      //   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
+      const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net']
+      if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
+        return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
+      }
       const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com']  // giftishow 2026-07-13 재실측 복원(onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
