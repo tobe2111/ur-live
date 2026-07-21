@@ -73,6 +73,10 @@ interface TurnstileWidgetProps {
   size?: 'normal' | 'flexible' | 'compact'
   appearance?: 'always' | 'execute' | 'interaction-only'
   className?: string
+  // 🛡️ 2026-07-21: Turnstile 토큰은 **일회용 + ~300s 만료**. 로그인이 2단계(비번→PIN)이거나
+  //   재시도되면 이미 소비/만료된 토큰을 다시 보내 siteverify 가 timeout-or-duplicate → 403.
+  //   부모가 이 값을 증가시키면 위젯을 reset → 새 토큰을 callback 으로 재발급한다.
+  resetSignal?: number
 }
 
 export default function TurnstileWidget({
@@ -83,6 +87,7 @@ export default function TurnstileWidget({
   size = 'normal',
   appearance = 'interaction-only',
   className = '',
+  resetSignal = 0,
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
@@ -124,6 +129,17 @@ export default function TurnstileWidget({
       }
     }
   }, [onVerify, onError, onExpire, theme, size, appearance])
+
+  // 🛡️ 2026-07-21: resetSignal 증가 시 위젯 reset → 새 토큰 재발급(callback → onVerify).
+  //   초기값 0 은 무시(마운트 시 위 render 가 이미 첫 토큰 발급). SITE_KEY 미설정이면 no-op.
+  useEffect(() => {
+    if (!resetSignal || !SITE_KEY) return
+    if (widgetIdRef.current && window.turnstile) {
+      try {
+        window.turnstile.reset(widgetIdRef.current)
+      } catch { /* ignore — reset 실패 시 기존 토큰 유지 */ }
+    }
+  }, [resetSignal])
 
   if (!SITE_KEY) return null
 
