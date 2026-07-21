@@ -180,6 +180,7 @@ export interface Env {
   //   세미콜론(;)으로 여러 개. 모든 피드 요청에 적용. URL 파라미터로 키를 넣는 API(UN Comtrade)는 불필요.
   BUYER_FEED_HEADER?: string;          // 예: "subscription-key: abc123" 또는 "Authorization: Bearer xxx"
   ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 1, 1~5) — 깊이 확장(page2=51~100위). 쿼터 여유 시 상향. quotaHit 가드 관리.
+  ADS_YT_SEARCH_BUDGET?: string;  // 🎯 YT Search Queries/day 예산(기본 100 — 실측 병목). 구글 콘솔 증설 승인 시 함께 상향.
   ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
 
   // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----

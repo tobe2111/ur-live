@@ -73,6 +73,8 @@ interface AutoCollectStats {
     yt: { configured: boolean; found: number; saved: number; error?: string }
     naver: { configured: boolean; found: number; saved: number; error?: string }
   }
+  /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
+  yt_budget?: { used: number; total: number; day: string }
 }
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
@@ -269,6 +271,35 @@ function mineHashtags(text: string): string[] {
   return out
 }
 
+// ── 🎯 YT 검색 슬롯 성과 가중 선택 (2026-07-21 — 실병목 발견: Search Queries/day = 100회) ──
+//   희소한 YT 검색을 균등 순환 대신 "잘 무는 키워드 + 신규 탐색" 에 배정. 네이버 폭 커버는 기존 커서 순환 유지.
+export interface YtPickKeyword { id: number; keyword: string; category: string | null; saved_total?: number; last_saved?: number; last_run_at?: string | null }
+const YT_PICK_COOLDOWN_MS = 6 * 3600 * 1000 // 같은 키워드 최소 6h 간격(하루 최대 4회 — 5각도 회전과 조합)
+
+/** 성과 가중 YT 키워드 선택(순수 — 테스트 가능). 탐색 슬롯 1개(미실행 키워드) + 나머지는 성과순(쿨다운 준수). */
+export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, priorityCats: string[] = PRIORITY_CATEGORIES): YtPickKeyword[] {
+  if (n <= 0 || !kws.length) return []
+  const ranAt = (k: YtPickKeyword) => k.last_run_at ? Date.parse(k.last_run_at.replace(' ', 'T') + (/[zZ+]/.test(k.last_run_at.slice(10)) ? '' : 'Z')) : NaN
+  const score = (k: YtPickKeyword) => (k.last_saved || 0) * 3 + Math.min(k.saved_total || 0, 100) + (k.category && priorityCats.includes(k.category) ? 50 : 0)
+  const neverRun = kws.filter(k => !k.last_run_at).sort((a, b) => a.id - b.id)
+  const cooled = kws.filter(k => { const t = ranAt(k); return Number.isFinite(t) && nowMs - t >= YT_PICK_COOLDOWN_MS })
+    .sort((a, b) => score(b) - score(a) || ranAt(a) - ranAt(b))
+  const picks: YtPickKeyword[] = []; const seen = new Set<number>()
+  const take = (k?: YtPickKeyword) => { if (k && !seen.has(k.id) && picks.length < n) { seen.add(k.id); picks.push(k) } }
+  take(neverRun[0]) // 탐색 보장 — 새 키워드가 영영 안 돌지 않게(있을 때만)
+  for (const k of cooled) take(k)
+  for (const k of neverRun) take(k)
+  if (picks.length < n) for (const k of kws.slice().sort((a, b) => score(b) - score(a))) take(k) // 쿨다운 무시 폴백(풀이 작을 때)
+  return picks
+}
+
+// ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
+export const YT_SEARCH_BUDGET_DEFAULT = 100 // 실측 병목(Search Queries per day) 기본값 — env ADS_YT_SEARCH_BUDGET
+export function ytQuotaDayKey(nowMs: number): string {
+  return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
+}
+const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — 날짜 바뀌면 자동 0부터
+
 /**
  * 한 번의 자동 수집 실행(cron 1틱 또는 수동). 게이트 체크는 호출부에서.
  *   활성 키워드를 커서로 batch 개 순환 → YouTube+네이버 발굴 → 공용 풀 저장(카테고리 태그).
@@ -278,8 +309,8 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const DB = env.DB
   await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
   await ensureDiscoveryKeywords(DB)
-  const active = await DB.prepare('SELECT id, keyword, category FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
-    .all<{ id: number; keyword: string; category: string | null }>().catch(() => null)
+  const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+    .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
   const prev = await getAutoCollectStats(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -320,6 +351,11 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (i < priPicks.length) picks.push(priPicks[i])
     if (i < genPicks.length) picks.push(genPicks[i])
   }
+  // 🎯 YT 슬롯(희소 자원 — Search Queries/day 기본 100회)은 성과 가중 선택으로 교체.
+  //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
+  const ytPicks = pickYtKeywords(kws, batch, Date.now())
+  const ytIds = new Set(ytPicks.map(k => k.id))
+  const finalPicks = [...ytPicks, ...picks.filter(p => !ytIds.has(p.id))].slice(0, totalPick)
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -366,20 +402,32 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
   const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
   let ytUsed = 0
-  for (const k of picks) {
+  // 🎯 YT 검색 예산 카운터(실병목 Search Queries/day, 태평양 자정 리셋) — 자동+수동이 같은 예산 공유.
+  //   소진 시 이번 틱 YT 스킵(네이버 계속) + 어드민에 "오늘 n/100" 노출. env ADS_YT_SEARCH_BUDGET 로 조정.
+  const ytBudgetTotal = Math.max(1, Math.min(100000, parseInt(env.ADS_YT_SEARCH_BUDGET || '', 10) || YT_SEARCH_BUDGET_DEFAULT))
+  const ytDay = ytQuotaDayKey(Date.now())
+  let ytSearchUsed = 0
+  {
+    const raw = await readSetting(DB, YT_USED_KEY)
+    if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
+  }
+  let ytBudgetBlocked = false
+  for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
     used.push(k.keyword)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
-    if (hasYouTube && !quotaHit && ytUsed < batch) {
+    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
+    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages <= ytBudgetTotal) {
       ytUsed++
+      ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
         } else {
-          if (r.error === 'QUOTA') quotaHit = true
+          if (r.error === 'QUOTA') { quotaHit = true; ytSearchUsed = Math.max(ytSearchUsed, ytBudgetTotal) } // 구글이 초과 선언 → 카운터도 소진 처리(다음 틱 헛호출 방지)
           if (!diag.yt.error) diag.yt.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
         }
       } catch (e) { if (!diag.yt.error) diag.yt.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
@@ -447,11 +495,15 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 두 커서 각각 전진(우선/일반 풀 독립 순환).
   const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
   const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
+  // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
+  if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, diag,
+    yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
   }
+  await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
