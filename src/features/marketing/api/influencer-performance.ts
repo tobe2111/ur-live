@@ -6,7 +6,9 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, type FetchBudget } from './influencer-discovery'
+import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -218,4 +220,44 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   }
   if (stmts.length) await DB.batch(stmts).catch(() => null)
   return stmts.length
+}
+
+/**
+ * 🔄 유튜브 라이브 재조회(수동) — 저장된 소개글이 아니라 **현재 라이브 About 을 다시 불러** 이메일/카테고리/성과를 갱신.
+ *   대표 신고(티벳동생): 저장값은 수집 당시 영상설명의 대행사 메일인데 현재 About 엔 개인메일 — 재추출(저장데이터)로는
+ *   못 고치고, 라이브 About 재조회가 필요. enrichYouTubePerformance 를 여러 패스 돌려 구독자 많은 순으로 처리
+ *   (correctedAboutEmail 이 라이브 About 개인메일로 대행사/스테일 메일 교정 + topicDetails 카테고리 채움).
+ *   YouTube units 사용(검색 쿼터와 무관 — channels/videos.list). passes×20 채널.
+ */
+export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processed: number }> {
+  const budget: FetchBudget = { left: 250 }
+  let processed = 0
+  for (let i = 0; i < Math.max(1, Math.min(10, passes)) && budget.left > 5; i++) {
+    const n = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, env.DB, budget, 20).catch(() => 0)
+    processed += n
+    if (n === 0) break // 더 처리할 대상 없음
+  }
+  return { processed }
+}
+
+/** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
+export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: number; changed: number }> {
+  let scanned = 0, changed = 0
+  for (let off = 0; ; off += 3000) {
+    const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
+        WHERE account_id = 0 ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(off)
+      .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
+    if (!rows.length) break
+    scanned += rows.length
+    const ups: ReturnType<D1Database['prepare']>[] = []
+    for (const r of rows) {
+      const byContent = classifyCategory(r.name, r.description)
+      if (byContent && byContent !== r.category) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(byContent, r.id))
+      else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
+    }
+    for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
+    changed += ups.length
+    if (rows.length < 3000) break
+  }
+  return { scanned, changed }
 }
