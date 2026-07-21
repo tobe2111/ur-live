@@ -18,10 +18,13 @@
 import type { Env } from '../types/env'
 import { rehostImageToR2, isExternalImageUrl } from '../utils/rehost-image'
 import { getSupplyMeta, setSupplyMeta } from '../utils/product-supply-meta'
+import { fetchDemoPhotos } from '../utils/demo-photo-set'
 
 const PRODUCTS_PER_RUN = 2
 const MAX_IMAGES_PER_PRODUCT = 5
 const MAX_TRIES = 3
+// 🖼️ 백필 스테이지(아래 backfill) 예산 — 상품당 외부 fetch ≈3(카카오 og 1 + 네이버 1~2).
+const BACKFILL_PER_RUN = 2
 
 interface CandidateRow { id: number; slug: string; image_url: string | null; images: string | null }
 
@@ -30,11 +33,72 @@ function parseJsonArr(raw: string | null): string[] {
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((u): u is string => typeof u === 'string' && !!u) : [] } catch { return [] }
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ scanned: number; migrated: number; images: number; done: number }> {
+/**
+ * 🖼️ 갤러리 백필 (2026-07-21 대표 "숙소 말고 다른 이용권들도 확인" — 전수조사 갭): 사진 3~5장
+ *   파이프라인(2026-07-20) **이전에** 시드된 구형 데모(동네딜+숙소)는 커버 1장뿐(images NULL)인데,
+ *   숙소만 시드 재실행 heal 이 있고 동네딜은 백필 경로가 없었음 → cron 이 시간당 2개씩 자동 채움.
+ *   사진 소스는 시드와 동일 SSOT(fetchDemoPhotos — 카카오 대표사진 og 우선 → 네이버 매장명 스코어링).
+ *   성공 시 img_rehost_done 을 '0' 으로 리셋 → 다음 시간 rehost 스테이지가 새 외부 URL 을 R2 로 이관.
+ */
+async function backfillDemoGalleries(env: Env): Promise<{ backfilled: number; backfillDone: number }> {
+  const DB = env.DB
+  const out = { backfilled: 0, backfillDone: 0 }
+  const { results } = await DB.prepare(
+    `SELECT p.id, p.image_url, p.restaurant_name
+       FROM products p
+      WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+        AND COALESCE(p.is_active, 1) = 1
+        AND (p.images IS NULL OR p.images = '' OR p.images = '[]')
+        AND p.restaurant_name IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM product_supply_meta m
+           WHERE m.product_id = p.id AND m.key = 'img_backfill_done' AND m.value = '1'
+        )
+      ORDER BY p.id
+      LIMIT ?`
+  ).bind(BACKFILL_PER_RUN).all<{ id: number; image_url: string | null; restaurant_name: string }>()
+    .catch(() => ({ results: [] as { id: number; image_url: string | null; restaurant_name: string }[] }))
+  const rows = results || []
+  if (rows.length === 0) return out
+  const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
+  for (const row of rows) {
+    const meta = metaMap.get(row.id) || {}
+    const tries = Number(meta.img_backfill_tries || 0)
+    if (tries >= MAX_TRIES) {
+      await setSupplyMeta(DB, row.id, { img_backfill_done: '1' }).catch(() => {})
+      out.backfillDone++
+      continue
+    }
+    const imgs = await fetchDemoPhotos(env, {
+      placeId: meta.kakao_place_url || null,          // 시드가 저장한 카카오 장소 — 대표사진 grounding
+      nameQuery: row.restaurant_name,                  // 실매장명 — 네이버 스코어링 grounding
+      count: 3 + Math.floor(Math.random() * 3),
+    }).catch(() => [] as string[])
+    if (imgs.length === 0) {
+      await setSupplyMeta(DB, row.id, { img_backfill_tries: String(tries + 1) }).catch(() => {})
+      continue
+    }
+    // 커버가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진(R2 재호스팅본 포함)이면 유지+병합.
+    const isPlaceholder = !row.image_url || /picsum\.photos/.test(row.image_url)
+    const gallery = (isPlaceholder ? imgs : Array.from(new Set([row.image_url as string, ...imgs]))).slice(0, 5)
+    await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(gallery[0], JSON.stringify(gallery), row.id).run().catch(() => {})
+    // 새로 들어온 외부 URL 을 rehost 스테이지가 다시 집도록 종결 마크 해제 + 백필 종결.
+    await setSupplyMeta(DB, row.id, { img_backfill_done: '1', img_rehost_done: '0' }).catch(() => {})
+    out.backfilled++
+    out.backfillDone++
+  }
+  return out
+}
+
+export async function handleDemoImageRehost(env: Env): Promise<{ scanned: number; migrated: number; images: number; done: number; backfilled: number }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
-  const result = { scanned: 0, migrated: 0, images: 0, done: 0 }
-  if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 환경 — no-op
+  // 🖼️ 0) 구형 데모 갤러리 백필(사진 3~5장) — R2 버킷과 무관하게 실행(외부 URL 저장도 표시엔 유효,
+  //    이후 rehost 스테이지가 버킷 있으면 영구화). fail-soft.
+  const bf = await backfillDemoGalleries(env).catch(() => ({ backfilled: 0, backfillDone: 0 }))
+  const result = { scanned: 0, migrated: 0, images: 0, done: 0, backfilled: bf.backfilled }
+  if (!bucketEnv.MEDIA_BUCKET) return result // 바인딩 미등록 환경 — 이관만 no-op
 
   const { results } = await DB.prepare(
     `SELECT p.id, p.slug, p.image_url, p.images
