@@ -10,6 +10,7 @@ import { pickReach } from './influencer-pool/reach'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
+import { exportFilteredCsv } from './influencer-pool/export-csv'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -297,13 +298,14 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('엑셀 내보내기 실패') } finally { setExporting(false) }
   }
 
-  function exportCsv() {
-    const esc = (v: unknown) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? `'${s}` : /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const head = ['플랫폼', '이름', '핸들', 'URL', '구독자', '이메일', '인스타', '틱톡', '링크', '카테고리', '키워드', '상태']
-    const body = leads.map(l => [PLATFORM_LABEL[l.platform] || l.platform, l.name, l.handle, l.url, l.subscriber_count, l.email, l.instagram, l.tiktok, l.links, l.category, l.source_keyword, l.status].map(esc).join(','))
-    const csv = '﻿' + [head.join(','), ...body].join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const a = document.createElement('a'); a.href = url; a.download = `influencer-pool-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url)
+  // 📤 CSV — 화면 로드분(200)만 나가던 결함 수리: 현재 필터 **전체**를 500개씩 끝까지 페치(공유 헬퍼, 22열).
+  const [csvExporting, setCsvExporting] = useState(false)
+  async function exportCsv() {
+    setCsvExporting(true)
+    try {
+      const n = await exportFilteredCsv(async off => { const p = buildParams(off); p.set('limit', '500'); const r = await api.get(`/api/admin/ads/influencer-pool?${p.toString()}`); return r.data?.leads || [] })
+      if (n) toast.success(`CSV ${formatNumber(n)}건 내보냄 (현재 필터 전체)`)
+    } catch { toast.error('CSV 내보내기 실패') } finally { setCsvExporting(false) }
   }
 
 
@@ -398,7 +400,7 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
           </button>
-          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
+          <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 22열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
           <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
           <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
           <button onClick={reclassify} disabled={reclassifying} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="채널 이름·소개글 신호로 카테고리 재분류(키워드 상속 오분류 교정 — 1회성 백필, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류'}</button>
@@ -575,6 +577,8 @@ export default function AdminInfluencerPoolPage() {
             )}
           </div>
         )}
+
+        <p className="mt-2 text-center text-[11px] text-gray-400">데이터 출처: YouTube Data API · 네이버 검색 API · 카카오(Daum) 검색 API — 공개 정보만 수집</p>
 
         {/* ✍ 초안 뷰어 — 검토·복사·메일 열기(발송 없음) */}
         {draftView && (
