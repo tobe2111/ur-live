@@ -61,6 +61,33 @@ export default function AffiliatePage() {
             </div>
           </div>
 
+          {/* 🆕 내 성과(잔존 장치 ⓑ) — 클릭·전환율·적립예정·정산예정일 (본인 ref 한정 읽기전용) */}
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-violet-600" />
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.perfTitle', { defaultValue: '내 성과' })}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1A2334] px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfClicks', { defaultValue: '링크 클릭' })}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(data.clicks || 0)}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1A2334] px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfCvr', { defaultValue: '전환율' })}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{data.conversion_rate != null ? `${data.conversion_rate}%` : '—'}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1A2334] px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfPending', { defaultValue: '적립 예정' })}</p>
+                <p className="text-lg font-bold text-amber-600">{formatNumber(data.pending_amount || 0)}<span className="text-xs ml-0.5">딜</span></p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1A2334] px-3 py-2.5">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('affiliate.perfSettle', { defaultValue: '정산 예정일' })}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">{data.next_settlement_date || (data.pending_count ? '—' : t('affiliate.perfSettleNone', { defaultValue: '대기 없음' }))}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">{t('affiliate.perfHint', { defaultValue: '적립 예정은 구매 확정(교환권 사용 또는 영업일 경과) 후 정산됩니다.' })}</p>
+          </div>
+
           {/* 추천 링크 */}
           <div className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
