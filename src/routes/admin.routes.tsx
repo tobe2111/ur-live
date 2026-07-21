@@ -67,6 +67,7 @@ const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPa
 const AdminAdsServicesPage = lazy(() => import('@/pages/admin/AdminAdsServicesPage'))
 const AdminInfluencerPoolPage = lazy(() => import('@/pages/admin/AdminInfluencerPoolPage'))
 const AdminBuyerPoolPage = lazy(() => import('@/pages/admin/AdminBuyerPoolPage'))
+const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 // 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) — 어드민 Bearer 로 조회
@@ -186,6 +187,11 @@ export function AdminRoutes() {
       <Route path="/admin/buyer-pool" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBuyerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/partner-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPartnerPoolPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지 */}

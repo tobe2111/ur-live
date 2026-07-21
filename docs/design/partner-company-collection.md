@@ -168,10 +168,11 @@ contacted_at, follow_up_at, collected_at
 
 ## 9. 구현 todo 체크리스트
 
-- [ ] `ad_company_leads` 테이블 + `ensureCompanySchema()` (런타임, UNIQUE·백필)
-- [ ] `/admin/partner-pool` 페이지 (인플루언서 풀 복제) + `/api/admin/ads/partner-pool/*` (메인)
-- [ ] 아웃리치 상태머신·팔로업·엑셀·중복통합 재사용 배선
-- [ ] tier 인라인 수동 조정
+- [x] `ad_company_leads` 테이블 + `ensureCompanySchema()` (런타임, `UNIQUE(company_key)`·빈컨택 백필) — `company-discovery.ts`
+- [x] `/admin/partner-pool` 페이지 + `/api/admin/partner-pool/*` (메인 워커, requireAdmin, 프록시 비위임) — `partner-pool.routes.ts` · `AdminPartnerPoolPage.tsx`
+- [x] 아웃리치 상태머신(new→contacted→interested→contracted/rejected·hold)·팔로업·CSV(수식인젝션 방어) — 수동입력 + 인라인 편집
+- [x] tier 인라인 수동 조정 (1~5, 목록 셀렉트 + 추가 폼)
+- [ ] 중복통합(website/회사명|지역 키 멱등 upsert 로 1차 방어 — merge UI 는 후속)
 - [ ] **레인 A**: 네이버 지역검색(`local.json`) + 웹문서(`webkr.json`) 어댑터 (ur-ads 신규 엔드포인트)
 - [ ] 키워드 풀 `ad_company_keywords`(type 구분) + 방배/서초/강남 시딩
 - [ ] 크론 짝/홀 분기 + `runCompanyAutoCollect` + 커서 + `FetchBudget` 공유
@@ -187,4 +188,4 @@ contacted_at, follow_up_at, collected_at
 
 ## 10. 구현 로그
 
-_(착수 시 commit hash 기록)_
+- **2026-07-21 — 1단계(테이블·어드민·수동입력) 구현.** `ad_company_leads` 격리 테이블(`company-discovery.ts` 런타임 스키마, `UNIQUE(company_key)` = website 우선/회사명|지역 폴백, 빈컨택만 백필) + `/api/admin/partner-pool/*`(`partner-pool.routes.ts`, requireAdmin, 메인 워커 마운트 — 프록시 비위임) + `/admin/partner-pool` 페이지(`AdminPartnerPoolPage.tsx`, 라이트 테마, 통계·필터·수동추가·인라인 상태머신/tier/채널/팔로업/메모·CSV). 대표가 방배 리드 손입력 가능. **레인 A(네이버 지역검색)·B(레지스트리)·C 수집엔진은 후속.** tsc 0·sql/theme/csv/pagination/file-size 가드 GREEN.

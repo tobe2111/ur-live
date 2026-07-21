@@ -190,6 +190,8 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+// 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
+import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
@@ -1610,6 +1612,7 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 // app.route('/api/admin/castings', adminCastingRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
+app.route('/api/admin/partner-pool', partnerPoolRoutes); // 🤝 B2B 파트너(업체) 풀 — 메인 어드민 JWT(프록시 비위임), ad_company_leads 격리
 // 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
 // ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터

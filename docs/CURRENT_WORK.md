@@ -1,6 +1,9 @@
 # 🚧 진행 중 작업
 
-## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 설계 승인 ✅ / 착수 대기(우선순위 뒤)
+## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 1단계(테이블·어드민) 구현 ✅ / 수집엔진 후속
+**1단계 완료(이 커밋)**: `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·아웃리치 상태머신·tier·CSV) — 대표 방배 리드 손입력 가능. `company-discovery.ts`(런타임 스키마·CRUD·접점분류 SSOT) · `partner-pool.routes.ts`(`/api/admin/partner-pool/*`, requireAdmin, 메인 워커 마운트) · `AdminPartnerPoolPage.tsx`(라이트) · 라우트/메뉴 배선. tsc 0·가드 GREEN. **레인 A(네이버 지역검색)·B(공정위 레지스트리)·C 수집엔진은 후속.** 설계 SSOT: `docs/design/partner-company-collection.md`.
+
+<details><summary>설계(초기) — 3레인/접점분류/우선순위</summary>
 유어딜 매장 입점을 대신 데려올 **업체 공개 연락처 DB**(1차 마케팅 대행사, 2차 POS·간판·세무사·주류도매·프랜차이즈 본사 등). ur-ads 워커에 인플루언서 수집 옆에 additive — **인플루언서 트랙의 사실상 복제**(같은 워커·FetchBudget·어드민 풀 UI·아웃리치 상태머신). 신규 격리 테이블 `ad_company_leads` + 게이트 `ADS_COMPANY_COLLECT_ENABLED`(기본 OFF). **머지 = 라이브 영향 0**.
 - **3레인 설계(대표 승인)**: A=자동수집(네이버 지역검색 `local.json` 주력+웹문서 보충+홈페이지 이메일 크롤) · B=레지스트리 배치(공정위 프랜차이즈 정보공개서·명부) · C=수동 큐레이션(상인회·조합, 어드민 수기). `source` 컬럼으로 구분.
 - **접점 분류(수집 카테고리 SSOT)**: category(매장인프라/정기납품/전문서비스/창업생태계/지역조직/미디어/대행사) × subcategory. **tier(1~5, 어드민 수동 조정)**·region 1급 필터. ⚠️ 맘카페/당근 운영진 **수집 제외**(개인·미공개 연락처).
@@ -8,7 +11,8 @@
 - **우선순위(대표 확정)**: 지역 키워드 시딩(기존 요청)·유어애즈 8문항 **먼저** → 그다음 이 트랙(9월 대행사 영업 전 라이브면 충분).
 - **⚠️ 착수 전 결정 2건(표본검증 후)**: ① 홈페이지 이메일 크롤 방식 — (a) robots.txt 존중 임의도메인 fetcher 신설[ur-ads 현재 없음] vs (b) 검색 스니펫만[안전·확보율↓]. ② 전화 우선 vs 이메일 우선(지역검색이 전화 바로 줌 → (b)로도 수용기준 40% 가능성).
 - **⚠️ 구현자 정정**: 인플루언서 트랙은 `local.json`/`webkr.json` **안 씀**(blog/cafe+유튜브+카카오) → 지역검색/웹문서는 ur-ads 신규 엔드포인트(같은 네이버 무료 키). `pickBusinessEmail`은 크롤 X(텍스트 추출만). 테이블은 런타임 `ensureSchema`. 어드민 CRUD는 메인, 수집엔진만 ur-ads.
-- **미착수(설계만)**. 설계 SSOT: `docs/design/partner-company-collection.md`.
+- 설계 SSOT: `docs/design/partner-company-collection.md`.
+</details>
 
 ## 🔶 2026-07-20 — 🌐 해외 수출 바이어 DB 자동 수집 (유통스타트 B2B) — draft PR #614, 게이트 OFF
 한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀 `overseas_buyer_leads` 에 매칭 누적. **머지 = 라이브 영향 0**(신규 격리 테이블 + `BUYER_AUTO_COLLECT_ENABLED` 기본 OFF). 대표 확정 3원칙: **① 최대한 무료(유료 provider 없음) ② 유어딜과 무관(유통스타트 자립) ③ 인플루언서와 결이 다름(매칭·자격심사 파이프라인)**.
