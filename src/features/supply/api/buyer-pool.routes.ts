@@ -14,7 +14,7 @@ import {
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
-import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken } from './buyer-autofetch'
+import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
 import { enrichLeadsFromWebsites } from './buyer-web-enrich'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -113,6 +113,13 @@ app.post('/auto-fetch/run-saved', async (c) => {
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
   const result = await runSavedSources(c.env, max).catch((e) => ({ ran: false, reason: String(e), saved: 0, sources: [] }))
   return c.json({ success: true, result })
+})
+
+// POST /api/admin/buyer-pool/auto-fetch/cron { enabled } — 매일 밤 무인 자동 수집 토글.
+app.post('/auto-fetch/cron', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { enabled?: boolean }
+  await setCronEnabled(c.env, !!b.enabled)
+  return c.json({ success: true, cronEnabled: !!b.enabled })
 })
 
 // POST /api/admin/buyer-pool/auto-fetch/forget { url } — 저장된 소스 삭제.

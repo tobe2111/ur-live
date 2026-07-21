@@ -370,6 +370,11 @@ export async function handleCronScheduled(
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
     }))
+    // 🌐 바이어 풀 완전 무인 — 저장 소스 자동 수집 + 웹사이트 이메일 보강(이중 게이트).
+    ctx.waitUntil(safeCron('buyer-autofetch', async () => {
+      const { handleBuyerAutofetchCron } = await import('./cron/buyer-autofetch')
+      await handleBuyerAutofetchCron(env)
+    }))
   }
 
   // 🛡️ 2026-05-19: 이용권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.

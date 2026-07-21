@@ -96,7 +96,7 @@ export default function AdminBuyerPoolPage() {
   const [autoSave, setAutoSave] = useState(true)
   const [ingestToken, setIngestToken] = useState('')
   const bmRef = useRef<HTMLAnchorElement>(null)
-  const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean }>({ sources: [], cookieHosts: [], enabled: false })
+  const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean; cronEnabled: boolean }>({ sources: [], cookieHosts: [], enabled: false, cronEnabled: false })
 
   const loadStats = useCallback(async () => {
     try {
@@ -129,7 +129,7 @@ export default function AdminBuyerPoolPage() {
   }, [])
 
   const loadAutoConfig = useCallback(async () => {
-    try { const r = await api.get('/api/admin/buyer-pool/auto-fetch/config'); if (r.data?.success) setAutoConfig({ sources: r.data.sources || [], cookieHosts: r.data.cookieHosts || [], enabled: !!r.data.enabled }) } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/buyer-pool/auto-fetch/config'); if (r.data?.success) setAutoConfig({ sources: r.data.sources || [], cookieHosts: r.data.cookieHosts || [], enabled: !!r.data.enabled, cronEnabled: !!r.data.cronEnabled }) } catch { /* noop */ }
   }, [])
 
   useEffect(() => { loadStats(); loadTargets(); loadAutoConfig() }, [loadStats, loadTargets, loadAutoConfig])
@@ -228,6 +228,9 @@ export default function AdminBuyerPoolPage() {
 
   const forgetSource = async (url: string) => {
     try { await api.post('/api/admin/buyer-pool/auto-fetch/forget', { url }); loadAutoConfig() } catch { toast.error('삭제 실패') }
+  }
+  const toggleCron = async (enabled: boolean) => {
+    try { await api.post('/api/admin/buyer-pool/auto-fetch/cron', { enabled }); setAutoConfig(c => ({ ...c, cronEnabled: enabled })); toast.success(enabled ? '매일 밤 무인 자동 수집 ON' : '무인 자동 수집 OFF') } catch { toast.error('변경 실패') }
   }
 
   const loadToken = useCallback(async () => {
@@ -428,8 +431,13 @@ export default function AdminBuyerPoolPage() {
                   ))}
                 </div>
               )}
+              {/* 🌙 완전 무인 — 매일 밤 저장 소스 자동 수집 + 웹사이트 이메일 보강 */}
+              <label className="mt-2 flex items-start gap-1.5 text-xs text-gray-700">
+                <input type="checkbox" checked={autoConfig.cronEnabled} onChange={e => toggleCron(e.target.checked)} className="mt-0.5" />
+                <span><b>🌙 매일 밤 무인 자동 수집</b> — 저장된 소스를 매일 자동으로 수집하고, 웹사이트에서 이메일까지 채웁니다. (저장된 쿠키가 유효한 동안만 · 쿠키 만료 시 다시 붙여넣기 필요{!autoConfig.cronEnabled ? '' : ' · 현재 ON'})</span>
+              </label>
             </div>
-            <div className="mt-2 text-[11px] text-gray-400">※ 한 번에 최대 30건(계정 보호). buyKorea 외 사이트는 리스트 HTML 구조에 따라 링크 인식이 다를 수 있어, 안 되면 상세 URL 직접 지정이 안전합니다.</div>
+            <div className="mt-2 text-[11px] text-gray-400">※ 한 번에 최대 30건(계정 보호). buyKorea 외 사이트는 리스트 HTML 구조에 따라 링크 인식이 다를 수 있어, 안 되면 상세 URL 직접 지정이 안전합니다. 무인 수집은 <code>BUYER_AUTO_FETCH_ENABLED=true</code> + 위 토글 ON 일 때만 작동(매일 UTC 03시 = 한국 낮 12시).</div>
           </div>
         )}
 
