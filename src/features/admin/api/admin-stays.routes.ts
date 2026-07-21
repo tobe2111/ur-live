@@ -451,20 +451,21 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       const offerName = `평일 1박 숙박권 (${rooms[0].name})`
       const price = rooms[0].wd
       const origPrice = Math.round(price * 1.3 / 1000) * 1000
+      const stayPhone = place.phone || null  // 📞 2026-07-21 (대표 "다 넣어줘"): 카카오 실전화 캡처
       let ins
       try {
         ins = await DB.prepare(
           `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
-             is_active, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, place.lat, place.lng, slug).run()
+             is_active, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, stayPhone, place.lat, place.lng, slug).run()
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(동네딜 시드와 동일 방어).
         ins = await DB.prepare(
           `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
-             is_active, restaurant_name, restaurant_address, slug, created_at, updated_at)
-           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, slug).run()
+             is_active, restaurant_name, restaurant_address, restaurant_phone, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, stayPhone, slug).run()
       }
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
@@ -477,7 +478,10 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
       if (place.placeUrl) {
         const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
-        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {})
+        await setSupplyMeta(DB, pid, {
+          kakao_place_url: place.placeUrl,
+          ...(place.categoryName ? { kakao_category: place.categoryName } : {}),
+        }).catch(() => {})
       }
       const star = ty.type === 'hotel' || ty.type === 'resort' ? 3 + (n % 3) : null
       await DB.prepare(

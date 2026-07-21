@@ -48,7 +48,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   const DB = env.DB
   const out = { reconditioned: 0, skipped: 0 }
   const { results } = await DB.prepare(
-    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name
+    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
         AND COALESCE(p.is_active, 1) = 1
@@ -59,11 +59,14 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         )
       ORDER BY p.id
       LIMIT ?`
-  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string }>()
-    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string }[] }))
+  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
   const rows = results || []
   if (rows.length === 0) return out
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
+  // 📞 2026-07-21 (대표 "다 넣어줘 — 모두 다"): 기존 데모 전화·실업종 백필용 — 카카오 키워드 조회.
+  //   admin-stays 시드와 동일한 dynamic-import 패턴(순환은 둘 다 lazy 라 무해).
+  const { kakaoPlaceLookup } = await import('../../features/admin/api/admin-products.routes').catch(() => ({ kakaoPlaceLookup: null as unknown as null }))
 
   for (const row of rows) {
     const meta = metaMap.get(row.id) || {}
@@ -103,6 +106,22 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`)
           .bind(JSON.stringify(pics), rr.id).run().catch(() => {})
         order++
+      }
+    }
+    // 📞 전화·실업종 백필(기존 데모도 "모두 다") — 전화 없고 placeUrl 있을 때만, 카카오 키워드로 재조회.
+    //   같은 매장 보장: 반환 placeId 가 저장된 place URL 의 id 와 일치할 때만 신뢰(오매칭 방지).
+    if (kakaoPlaceLookup && placeUrl && !row.restaurant_phone) {
+      const storedId = (placeUrl.match(/(\d{6,})/) || [])[1] || null
+      const center = row.restaurant_lat != null && row.restaurant_lng != null
+        ? { x: String(row.restaurant_lng), y: String(row.restaurant_lat) } : null
+      const look = await kakaoPlaceLookup(env as unknown as { KAKAO_REST_API_KEY?: string }, row.restaurant_name, 0, center).catch(() => null)
+      if (look && (!storedId || look.placeId === storedId)) {
+        if (look.phone) {
+          await DB.prepare(`UPDATE products SET restaurant_phone = ? WHERE id = ?`).bind(look.phone, row.id).run().catch(() => {})
+        }
+        if (look.categoryName) {
+          await setSupplyMeta(DB, row.id, { kakao_category: look.categoryName }).catch(() => {})
+        }
       }
     }
     // 버전 마킹(수렴) + rehost 재큐잉(새 외부 URL 을 R2 로 이관하도록 종결 마크 해제).
