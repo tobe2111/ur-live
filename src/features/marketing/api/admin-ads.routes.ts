@@ -246,6 +246,8 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
       SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
       SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL THEN 1 ELSE 0 END) AS yt_with_email,
+      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL AND (email LIKE '%@gmail.%' OR email LIKE '%@naver.%' OR email LIKE '%@daum.%' OR email LIKE '%@kakao.%' OR email LIKE '%@hanmail.%' OR email LIKE '%@nate.%') THEN 1 ELSE 0 END) AS yt_email_personal,
       SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
       SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
       SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
