@@ -59,6 +59,29 @@ export default function AdminDongnedealImportPage() {
       setRecond((s) => ({ ...s, running: false }))
     }
   }
+  // ☁️ 2026-07-21 (대표 스샷 "외부 커버 293"): 외부 커버를 R2로 대량 이관(영구 안정화).
+  const [rehosting, setRehosting] = useState<{ running: boolean; done: number; remaining: number | null }>({ running: false, done: 0, remaining: null })
+  const rehostImages = async () => {
+    if (rehosting.running) return
+    if (!confirm('데모 사진을 우리 서버(R2)로 대량 이관할까요?\n· 네이버/카카오 외부 URL → /api/media(우리 도메인) 영구 저장\n· 이관 후엔 원본이 삭제·차단돼도 안 깨집니다 (수 분 소요).')) return
+    setRehosting({ running: true, done: 0, remaining: null })
+    let done = 0
+    try {
+      for (let i = 0; i < 400; i++) {
+        const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 8 }, { ...h, timeout: 300000 })
+        if (!r.data?.success) { toast.error(r.data?.error || '이관 실패'); break }
+        if (r.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
+        done += Number(r.data.rehosted ?? 0)
+        const remaining = Number(r.data.remaining ?? 0)
+        setRehosting({ running: true, done, remaining })
+        if (remaining <= 0 || (Number(r.data.rehosted ?? 0) === 0 && Number(r.data.images ?? 0) === 0)) break
+      }
+      toast.success(`R2 이관 완료 — 커버 ${done}개 영구 저장`)
+      loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
+    } catch { toast.error('이관 중 오류') } finally {
+      setRehosting((s) => ({ ...s, running: false }))
+    }
+  }
   // 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 커버만 감지·재획득(성한 건 무접촉).
   const [healing, setHealing] = useState<{ running: boolean; checked: number; healed: number; remaining: number | null }>({ running: false, checked: 0, healed: 0, remaining: null })
   const healBrokenImages = async () => {
@@ -311,6 +334,11 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={reconditionImages} disabled={recond.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50" title="기존 데모(동네딜+숙소) 사진을 모두 현재 컨디션으로 — 커버는 카카오 대표사진, 갤러리 3~5장. 이미 갤러리가 있는 것도 갱신.">
                     {recond.running ? `사진 재적용 중… ${recond.done}개${recond.remaining != null ? ` · 남은 ${recond.remaining}` : ''}` : '📸 기존 데모 사진 재적용'}
+                  </button>
+                )}
+                {stats.demo > 0 && (
+                  <button onClick={rehostImages} disabled={rehosting.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50" title="외부(네이버/카카오) 커버를 우리 서버(R2)로 대량 이관 — 이관 후엔 원본 삭제·차단돼도 안 깨짐.">
+                    {rehosting.running ? `R2 이관 중… ${rehosting.done}개${rehosting.remaining != null ? ` · 남은 ${rehosting.remaining}` : ''}` : '☁️ 사진 R2로 이관(영구화)'}
                   </button>
                 )}
                 {stats.demo > 0 && (

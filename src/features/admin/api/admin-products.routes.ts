@@ -2125,6 +2125,24 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
   }
 });
 
+// POST /dongnedeal/rehost-images — ☁️ 2026-07-21 (대표 스샷 "커버 294개 중 R2 1 · 외부 293"): 외부 커버를
+//   즉시 대량 R2 이관(cron 2/시간이라 느림 → 온디맨드 청크). 클라가 remaining 0까지 반복.
+adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
+  try {
+    const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(12, Math.max(1, intParam(String(body.count ?? 8), 8)));
+    const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
+    if (r.rehosted > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    return c.json({ success: true, ...r });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // GET /dongnedeal/image-health — 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 진단.
 //   R2 바인딩 여부(rehost 가능성) + 커버가 외부 URL(깨질 위험) vs 내부(/api/media, 안전) 비율.
 adminProductsRoutes.get('/dongnedeal/image-health', cors(), async (c) => {
