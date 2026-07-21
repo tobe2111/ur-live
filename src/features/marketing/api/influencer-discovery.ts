@@ -72,7 +72,7 @@ export function isLikelyNoise(name?: string | null, description?: string | null)
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
   // 이메일은 난독화 복원본에서 추출(핸들/링크는 원문 — URL 훼손 방지).
-  const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).slice(0, 5)
+  const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e))).sort((a, b) => (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(b) ? 1 : 0) - (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(a) ? 1 : 0)).slice(0, 5) // 개인도메인 우선 정렬 → emails[0]=창작자 본인(블로그/카페/재추출이 대행사 메일 먼저 잡던 문제)
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
   const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta']
   const instagram = uniqLower([
@@ -114,9 +114,9 @@ export function pickBusinessEmail(text: string): string | null {
     const idx = lower.indexOf(email)
     const around = idx >= 0 ? t.slice(Math.max(0, idx - 40), idx + email.length + 10) : ''
     let score = 0
-    if (BIZ_CONTEXT_RE.test(around)) score += 3
-    if (/@(gmail|naver|daum|kakao|hanmail|nate)\./i.test(email)) score += 1
-    if (NON_OWNER_EMAIL_RE.test(email)) score -= 2
+    if (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(email)) score += 5 // 개인도메인=창작자 본인(대행사/MCN 코퍼레이트 메일보다 지배적 — 협찬사 오수집 방지)
+    if (BIZ_CONTEXT_RE.test(around)) score += 2
+    if (NON_OWNER_EMAIL_RE.test(email)) score -= 3
     if (score > bestScore || (score === bestScore && idx < bestIdx)) { best = email; bestScore = score; bestIdx = idx }
   }
   return best

@@ -123,4 +123,12 @@ describe('pickBusinessEmail', () => {
     expect(pickBusinessEmail('구독 좋아요!')).toBeNull()
     expect(pickBusinessEmail('thumb.png@2x')).toBeNull()
   })
+
+  it('개인메일이 문맥 없어도 대행사(문맥 있는) 메일을 이김 — 티벳동생 케이스', () => {
+    // 대행사 메일만 "비즈니스 문의" 문맥, 창작자 개인메일은 "contact:" 뿐 — 개인도메인이 지배적이어야 함.
+    const t = '비즈니스 문의: know@fleekers.co.kr\ncontact: ilsan9924@naver.com'
+    expect(pickBusinessEmail(t)).toBe('ilsan9924@naver.com')
+    // 문맥이 전혀 없어도 개인도메인 우선.
+    expect(pickBusinessEmail('제휴 문의 agency@company.co.kr\nilsan9924@naver.com')).toBe('ilsan9924@naver.com')
+  })
 })
