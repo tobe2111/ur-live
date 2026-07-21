@@ -16,10 +16,9 @@ import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns, reextractEmail } from './influencer-performance'
+import { ensurePerfExtraColumns, reextractEmail, runReclassifyPool, runYtLiveRefetch } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
-import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -247,6 +246,8 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
       SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
       SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL THEN 1 ELSE 0 END) AS yt_with_email,
+      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL AND (email LIKE '%@gmail.%' OR email LIKE '%@naver.%' OR email LIKE '%@daum.%' OR email LIKE '%@kakao.%' OR email LIKE '%@hanmail.%' OR email LIKE '%@nate.%') THEN 1 ELSE 0 END) AS yt_email_personal,
       SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
       SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
       SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
@@ -395,28 +396,21 @@ app.post('/influencer-pool/reextract', async (c) => {
 })
 
 // POST /api/admin/ads/influencer-pool/reclassify — 🏷️ 기존 풀 콘텐츠 기반 카테고리 재분류(백필, 멱등)
-//   키워드 상속의 오분류('자동'/교차 카테고리)를 채널 이름+소개글 신호로 교정. 신호 있고 다를 때만 UPDATE.
 app.post('/influencer-pool/reclassify', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
-  let scanned = 0, changed = 0
-  for (let off = 0; ; off += 3000) {
-    const rows = (await c.env.DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
-        WHERE account_id = ? ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(POOL, off)
-      .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
-    scanned += rows.length
-    const ups: ReturnType<typeof c.env.DB.prepare>[] = []
-    for (const r of rows) {
-      const byContent = classifyCategory(r.name, r.description)
-      if (byContent && byContent !== r.category) ups.push(c.env.DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = ?').bind(byContent, r.id, POOL))
-      // 콘텐츠 신호 없고 현재가 레거시 '자동'/'일반' 이면 → 미분류(NULL)로 정리(혼란스러운 '자동' 버킷 제거).
-      else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(c.env.DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = ?').bind(r.id, POOL))
-    }
-    for (let i = 0; i < ups.length; i += 100) await c.env.DB.batch(ups.slice(i, i + 100)).catch(() => null)
-    changed += ups.length
-    if (rows.length < 3000) break
-  }
-  return c.json({ success: true, scanned, changed })
+  const r = await runReclassifyPool(c.env.DB)
+  return c.json({ success: true, ...r })
+})
+
+// POST /api/admin/ads/influencer-pool/refetch-live — 🔄 유튜브 라이브 재조회(현재 About 다시 불러 이메일/카테고리 교정)
+//   재추출(저장데이터)로 못 고치는 케이스(티벳동생: 현재 About 에만 개인메일) 대응. YouTube units 사용(검색 쿼터 무관).
+app.post('/influencer-pool/refetch-live', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (!c.env.YOUTUBE_API_KEY) return c.json({ success: false, error: 'YouTube API 키가 설정되어 있지 않습니다' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const passes = Math.max(1, Math.min(10, Number(b.passes) || 5))
+  const r = await runYtLiveRefetch(c.env, passes)
+  return c.json({ success: true, ...r })
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)

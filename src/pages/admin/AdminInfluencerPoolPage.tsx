@@ -35,7 +35,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -329,6 +329,14 @@ export default function AdminInfluencerPoolPage() {
             ⏰ 팔로업 필요 {stats.need_followup != null ? formatNumber(stats.need_followup) : ''}
           </button>
         </div>
+        {/* 📧 유튜브 이메일 확보율 — 유튜브는 About '이메일 버튼'(CAPTCHA, API 불가)이라 텍스트 공개분만 확보. 실제 커버리지 노출. */}
+        {stats.youtube ? (
+          <div className="text-[11px] text-gray-500 mt-1">
+            📧 유튜브 이메일 확보 {formatNumber(stats.yt_with_email)}/{formatNumber(stats.youtube)} ({Math.round((Number(stats.yt_with_email) || 0) / Math.max(1, Number(stats.youtube)) * 100)}%)
+            {stats.yt_with_email ? ` · 개인메일 ${formatNumber(stats.yt_email_personal)} · 대행사·기타 ${formatNumber((Number(stats.yt_with_email) || 0) - (Number(stats.yt_email_personal) || 0))}` : ''}
+            <span className="text-gray-400"> — 나머지는 유튜브가 이메일을 CAPTCHA로 가려 API로 불가</span>
+          </div>
+        ) : null}
 
         {run && (
           <div className="mb-4 text-xs text-gray-500">

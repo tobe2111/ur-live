@@ -13,6 +13,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [sheetsSyncing, setSheetsSyncing] = useState(false)
   const [reclassifying, setReclassifying] = useState(false)
   const [reextracting, setReextracting] = useState(false)
+  const [refetching, setRefetching] = useState(false)
 
   async function mergeDuplicates() {
     if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들(이메일 없는 크로스플랫폼 동일인)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
@@ -56,6 +57,19 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } catch { toast.error('재추출 실패') } finally { setReextracting(false) }
   }
 
+  async function refetchLive() {
+    if (!window.confirm('유튜브 채널의 현재 About을 라이브로 다시 불러 이메일·카테고리를 교정할까요?\n(재추출로 안 고쳐지는 케이스 — 현재 About에만 개인메일이 있는 채널. YouTube API 사용, 구독자 많은 순 처리)')) return
+    setRefetching(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/refetch-live', { passes: 5 })
+      if (r.data?.success) { toast.success(`🔄 ${formatNumber(r.data.processed)}개 채널 라이브 재조회 완료 (이메일·카테고리 교정)`); await onChanged() }
+      else toast.error(r.data?.error || '라이브 재조회 실패')
+    } catch (e) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '라이브 재조회 실패')
+    } finally { setRefetching(false) }
+  }
+
   const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
   return (
     <>
@@ -63,6 +77,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
       <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
       <button onClick={reclassify} disabled={reclassifying} className={cls} title="채널 이름·소개글 신호로 카테고리 재분류(키워드 상속 오분류 교정 — 1회성 백필, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류'}</button>
       <button onClick={reextract} disabled={reextracting} className={cls} title="기존 리드의 저장된 소개글에서 연락처 재추출(신규 @핸들·유튜브/블로그 포착 — 비어있는 것만 채움, API 재호출 0)">{reextracting ? '재추출 중…' : '🔗 연락처 재추출'}</button>
+      <button onClick={refetchLive} disabled={refetching} className="px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-sm font-medium disabled:opacity-50" title="유튜브 채널의 현재 라이브 About을 다시 불러 이메일·카테고리 교정(재추출로 안 되는 케이스 — 현재 About에만 개인메일. YouTube API 사용)">{refetching ? '라이브 재조회 중…' : '🔄 유튜브 라이브 재조회'}</button>
     </>
   )
 }
