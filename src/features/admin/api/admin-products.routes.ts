@@ -26,6 +26,8 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
+// 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
+import { rehostImageToR2 } from '@/worker/utils/rehost-image';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -1308,31 +1310,8 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 //   저장되는 건 항상 우리 URL 이라 렌더 시 cfImage(zone 리사이저)가 same-origin 으로 리사이즈.
 //   이 함수가 URL 을 돌려주면 = "정상 이미지 확보"(검증+영구화 동시). 실패(키·네트워크·비이미지·과대/과소)
 //   → null → 호출측이 좌표없음과 결합해 '유령 데모' 스킵 판정에 사용.
-async function rehostImageToR2(env: { MEDIA_BUCKET?: R2Bucket }, srcUrl: string | null | undefined): Promise<string | null> {
-  if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    let res: Response;
-    try {
-      res = await fetch(srcUrl, { signal: ctrl.signal });  // 인증서오류/DNS → throw → null
-    } finally { clearTimeout(timer); }
-    if (!res.ok) return null;
-    const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
-    if (!ct.startsWith('image/')) return null;
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null; // 아이콘/깨짐 or 과대
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg';
-    const yyyymm = new Date().toISOString().slice(0, 7);
-    const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const key = `uploads/demo/${yyyymm}/${rand}.${ext}`;
-    await env.MEDIA_BUCKET.put(key, buf, {
-      httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
-      customMetadata: { source: 'dongnedeal-demo', at: new Date().toISOString() },
-    });
-    return `/api/media/${key}`;  // upload.routes 의 same-origin 서빙 규약과 동일(PUBLIC_R2_URL 무관하게 표시)
-  } catch { return null; }
-}
+// 🎯 2026-07-21: rehostImageToR2 본체를 worker/utils/rehost-image.ts 로 추출(공용 SSOT — 시드 커버 +
+//   demo-image-rehost cron 이 공유). import 는 파일 상단(파일 중간 import 금지 룰) — 동작/시그니처 불변.
 
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
