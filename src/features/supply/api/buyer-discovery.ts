@@ -450,6 +450,62 @@ export function parseBulkBuyers(text: string): BuyerLead[] {
   return out
 }
 
+/* ── buyKorea 인콰이어리 페이지 통째 붙여넣기 → 자동 추출 ──────────────────────── */
+
+// buyKorea 상세 라벨(한글) → 표준 필드.
+const BK_LABELS: Record<string, string> = {
+  '회사명': 'company',
+  '국가 / 도시': 'country', '국가/도시': 'country', '국가': 'country',
+  '카테고리': 'category_raw',
+  '웹사이트': 'website',
+  '현재 수입국가': 'current_import', '현재수입국가': 'current_import',
+  '수량': 'est_volume',
+  '사용처': 'use',
+  '이름': 'decision_maker',
+  '이메일': 'email',
+  '휴대번호': 'phone', '전화': 'phone', '연락처': 'phone',
+}
+const BK_LABEL_SET = new Set(Object.keys(BK_LABELS))
+
+/** buyKorea 인콰이어리 상세를 통째로 복붙한 텍스트에서 리드 추출(라벨:값 표 인식). 여러 건(인콰이어리 번호 기준 분할) 지원. */
+export function parseBuyKoreaInquiries(text: string): BuyerLead[] {
+  const raw = String(text || '')
+  if (!raw.includes('회사명') && !raw.includes('인콰이어리')) return []
+  // 여러 건(인콰이어리 번호 마커 2개 이상)만 분할 — 단건은 제목이 마커 앞에 있어 통째로 둔다.
+  const markerCount = (raw.match(/인콰이어리\s*번호/g) || []).length
+  const chunks = markerCount >= 2 ? raw.split(/(?=인콰이어리\s*번호)/).map(b => b.trim()).filter(Boolean) : [raw]
+  const out: BuyerLead[] = []
+  for (const chunk of chunks) {
+    const cells = chunk.split(/[\t\n]+/).map(c => c.trim()).filter(Boolean)
+    const row: Record<string, string> = {}
+    let title = ''
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i]
+      if (BK_LABEL_SET.has(cell)) {
+        const val = (cells[i + 1] || '').trim()
+        // 마스킹(***) 값·다음 라벨은 건너뜀.
+        if (val && !BK_LABEL_SET.has(val) && !val.includes('*')) row[BK_LABELS[cell]] = val
+        i++
+      } else if (!title && cell.length > 3 && !/인콰이어리|게시기간|번호|[:：]/.test(cell)) {
+        title = cell // 제목(=원하는 제품)
+      }
+    }
+    const company = (row.company || '').trim()
+    if (company.length < 2) continue
+    const country = ((row.country || '').split('/')[0].trim()) || null
+    const desc = [title, row.use, row.category_raw, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
+    out.push({
+      source: 'buykorea', intent_signal: 'buying_lead', company: company.slice(0, 200),
+      country, target_market: country, category: null, imports_from_korea: null,
+      website: row.website || null, email: null, phone: null,
+      decision_maker: null, decision_maker_title: null, decision_maker_email: null,
+      est_volume: row.est_volume ? row.est_volume.slice(0, 60) : null,
+      description: desc.slice(0, 800), source_keyword: 'buykorea-paste',
+    })
+  }
+  return out
+}
+
 /* ── 오케스트레이터 ─────────────────────────────────────────────────────────── */
 
 export interface BuyerCollectResult { ran: boolean; reason?: string; saved: number; found: number; targets: string[]; diag: { feed: number } }

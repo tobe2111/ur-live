@@ -276,8 +276,8 @@ export default function AdminBuyerPoolPage() {
 
             {/* 여러 건 붙여넣기 (buyKorea 목록 복붙 / 엑셀·시트) */}
             <div className="mt-4 pt-3 border-t border-gray-100">
-              <div className="text-xs text-gray-500 mb-1.5">여러 건 한 번에 — buyKorea/엑셀/시트에서 <b>첫 줄 헤더 + 데이터</b>를 복사해 붙여넣기(탭 또는 쉼표 구분). 인식 열: company(필수)·country·category·email·contact(담당자)·contact_email·intent·website·description·수입이력.</div>
-              <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={4} placeholder={'company\tcountry\tcategory\temail\ncontact\nABC Trading\tVietnam\tK-beauty\tbuyer@abc.com'} className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-mono text-gray-900" />
+              <div className="text-xs text-gray-500 mb-1.5"><b>buyKorea 인콰이어리 페이지를 통째로 복사(Ctrl+A → Ctrl+C)해 붙여넣기</b> → 회사명·국가·웹사이트·제품·현재수입국 자동 추출(여러 건 한 번에, 마스킹된 연락처는 자동 제외). 또는 엑셀/시트 표(첫 줄 헤더, 탭·쉼표 구분)도 인식.</div>
+              <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={4} placeholder={'buyKorea 인콰이어리 페이지 전체를 붙여넣거나,\ncompany\tcountry\tcategory\temail\nABC Trading\tVietnam\tK-beauty\tbuyer@abc.com'} className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-mono text-gray-900" />
               <button onClick={submitBulk} disabled={importing} className="mt-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '가져오는 중…' : '붙여넣기 일괄 추가'}</button>
             </div>
           </div>
