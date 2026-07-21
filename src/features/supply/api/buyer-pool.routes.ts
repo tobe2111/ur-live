@@ -10,7 +10,8 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
   ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
-  listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, INTENT_TIERS,
+  listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
+  INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -30,6 +31,35 @@ app.get('/', async (c) => {
     limit: Math.min(1000, Math.max(1, intParam(c.req.query('limit'), 500))),
   })
   return c.json({ success: true, leads: rows, intentTiers: INTENT_TIERS })
+})
+
+// POST /api/admin/buyer-pool — 수동 바이어 추가(LinkedIn/buyKorea 손수 발굴분). 멱등 저장 + 자동 스코어.
+app.post('/', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
+  const company = String(b.company || '').trim()
+  if (company.length < 2) return c.json({ success: false, error: '회사명을 입력하세요' }, 400)
+  const intent = String(b.intent_signal || 'directory')
+  const ik = b.imports_from_korea
+  const lead: BuyerLead = {
+    source: 'manual',
+    intent_signal: Object.keys(INTENT_TIERS).includes(intent) ? intent : 'directory',
+    company,
+    country: b.country ? String(b.country).slice(0, 60) : null,
+    target_market: b.target_market ? String(b.target_market).slice(0, 60) : null,
+    category: b.category ? String(b.category).slice(0, 60) : null,
+    imports_from_korea: ik === 1 || ik === true || ik === '1' ? 1 : (ik === 0 || ik === false || ik === '0' ? 0 : null),
+    website: b.website ? String(b.website).slice(0, 200) : null,
+    email: b.email ? String(b.email).slice(0, 120) : null,
+    phone: b.phone ? String(b.phone).slice(0, 40) : null,
+    decision_maker: b.decision_maker ? String(b.decision_maker).slice(0, 80) : null,
+    decision_maker_title: b.decision_maker_title ? String(b.decision_maker_title).slice(0, 80) : null,
+    decision_maker_email: b.decision_maker_email ? String(b.decision_maker_email).slice(0, 120) : null,
+    est_volume: b.est_volume ? String(b.est_volume).slice(0, 60) : null,
+    description: b.description ? String(b.description).slice(0, 800) : '',
+    source_keyword: 'manual',
+  }
+  const saved = await saveBuyerLeads(c.env.DB, [lead]).catch(() => 0)
+  return c.json({ success: true, saved })
 })
 
 // GET /api/admin/buyer-pool/stats
