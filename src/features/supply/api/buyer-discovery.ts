@@ -489,33 +489,51 @@ export function detectBkCategory(text: string): string | null {
   return null
 }
 
-/** buyKorea 인콰이어리 *리스트* 페이지 붙여넣기 → 요청건별 리드(제품·국가·상세링크). 회사/연락처는 상세에 있음. */
-export function parseBuyKoreaList(text: string): BuyerLead[] {
+// 지원 B2B 무역 소스 호스트(구매리드/인콰이어리 리스트 붙여넣기). buyKorea 외 tradeKorea·EC21 등 겸용.
+const B2B_HOST_RE = /buykorea\.org|tradekorea\.com|kita\.org|gobizkorea\.com|ec21\.com|ecplaza\.net/
+function b2bSource(url: string): string {
+  if (/buykorea\.org/.test(url)) return 'buykorea'
+  if (/tradekorea\.com|kita\.org/.test(url)) return 'tradekorea'
+  if (/gobizkorea\.com/.test(url)) return 'gobizkorea'
+  if (/ec21\.com/.test(url)) return 'ec21'
+  if (/ecplaza\.net/.test(url)) return 'ecplaza'
+  return 'feed'
+}
+const SRC_LABEL: Record<string, string> = { buykorea: 'buyKorea', tradekorea: 'tradeKorea', gobizkorea: 'GoBizKorea', ec21: 'EC21', ecplaza: 'ECPlaza' }
+
+/**
+ * B2B 무역 소스 *리스트* 페이지 붙여넣기 → 요청건별 리드(제품·국가·상세링크). buyKorea/tradeKorea/EC21/ECPlaza/
+ *   GoBizKorea 겸용(호스트 자동판별). 회사명·연락처는 각 상세에 있음(상세 붙여넣기로 보강).
+ */
+export function parseB2BLeadList(text: string): BuyerLead[] {
   const raw = String(text || '')
-  if (!/inqrySn=/.test(raw)) return []
-  // [제목](…inqrySn=123…) 다음 줄의 국가 캡처.
-  const re = /\[([^\]]+)\]\((https?:\/\/[^)]*inqrySn=(\d+)[^)]*)\)[^\n]*\n\s*[*\-]?\s*([^\n*]+)/g
+  if (!B2B_HOST_RE.test(raw)) return []
+  // [제목](…지원호스트…) 다음 줄의 국가 캡처.
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)]*(?:buykorea\.org|tradekorea\.com|kita\.org|gobizkorea\.com|ec21\.com|ecplaza\.net)[^)]*)\)[^\n]*\n\s*[*\-]?\s*([^\n*]+)/g
   const pageCat = detectBkCategory(raw) // 페이지 카테고리 자동 분류(전 항목 공통)
   const out: BuyerLead[] = []
   const seen = new Set<string>()
   let m: RegExpExecArray | null
   while ((m = re.exec(raw))) {
-    const sn = m[3]
-    if (seen.has(sn)) continue
-    seen.add(sn)
+    const url = m[2].trim()
+    if (seen.has(url)) continue
+    seen.add(url)
     const title = m[1].trim().replace(/^\(공개\)\s*/, '')
-    if (title.length < 2) continue
-    const country = normCountry(m[4])
+    if (title.length < 2 || /^(HOME|인콰이어리|일반상품|이용약관|개인정보|facebook|linkedIn)$/i.test(title)) continue
+    const country = normCountry(m[3])
+    const src = b2bSource(url)
     out.push({
-      source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
+      source: src, intent_signal: 'buying_lead', company: title.slice(0, 200),
       country, target_market: country, category: pageCat, imports_from_korea: null,
-      website: m[2].trim(), email: null, phone: null,
+      website: url, email: null, phone: null,
       decision_maker: null, decision_maker_title: null, decision_maker_email: null,
-      est_volume: null, description: `buyKorea 구매요청: ${title}`, source_keyword: `buykorea-inq-${sn}`,
+      est_volume: null, description: `${SRC_LABEL[src] || src} 구매요청: ${title}`, source_keyword: src,
     })
   }
   return out
 }
+/** @deprecated parseB2BLeadList 로 통합(buyKorea 포함). 하위호환 별칭. */
+export const parseBuyKoreaList = parseB2BLeadList
 
 /* ── buyKorea 인콰이어리 상세 통째 붙여넣기 → 자동 추출 ──────────────────────── */
 
