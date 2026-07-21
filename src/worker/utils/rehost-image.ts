@@ -15,8 +15,10 @@ export async function rehostImageToR2(
 ): Promise<string | null> {
   if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null
   try {
+    // ⏱️ 2026-07-21: 실측상 일부 커버(카카오 CDN)가 6s 를 넘겨 타임아웃 → 이관 실패. 10s 로 상향
+    //   (요청당 커버 ~5개라 최악 50s 도 CF 엣지 100s 안쪽). 느린 대표사진도 이관되게.
     const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 6000)
+    const timer = setTimeout(() => ctrl.abort(), 10000)
     let res: Response
     try {
       res = await fetch(srcUrl, { signal: ctrl.signal })  // 인증서오류/DNS → throw → null
