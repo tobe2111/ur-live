@@ -39,7 +39,7 @@ export default function CreatorApplyPage() {
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-4">
-      <SEO title="유어딜 제휴 크리에이터 모집 - 유어딜" description="동네 맛집·카페·뷰티·숙소 딜을 소개할 크리에이터를 찾습니다. 지금 제휴 신청하세요." url="/creators" />
+      <SEO title="유어딜 제휴 크리에이터 모집 - 유어딜" description="동네 맛집·카페·뷰티·숙소 딜을 소개할 크리에이터를 찾습니다. 지금 제휴 신청하세요." url="/creators/apply" />
       <div className="mx-auto max-w-lg">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-gray-900">유어딜 제휴 크리에이터 모집</h1>
