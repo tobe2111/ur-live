@@ -196,6 +196,12 @@ app.get('/influencer-pool', async (c) => {
   if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
+  // 🧹 노이즈 숨김 — 기존 풀에 남은 뉴스·방송·기관·체험단모집·대행 계정 제외(신규는 저장 시점에 이미 필터).
+  if (c.req.query('hideNoise') === '1') {
+    for (const w of ['뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단', '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청']) {
+      where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
+    }
+  }
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
@@ -233,6 +239,19 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
       SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
       SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
+      SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) AS st_rejected,
+      SUM(CASE WHEN status='hold' THEN 1 ELSE 0 END) AS st_hold,
+      -- 📊 아웃리치 퍼널: 한 번이라도 컨택한 리드(컨택/관심/계약) = 실제 아웃리치 모수
+      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
+      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
+      -- 컨택 채널 분해(어느 채널이 먹히는지)
+      SUM(CASE WHEN contact_channel='email' THEN 1 ELSE 0 END) AS ch_email,
+      SUM(CASE WHEN contact_channel='dm' THEN 1 ELSE 0 END) AS ch_dm,
+      SUM(CASE WHEN contact_channel='note' THEN 1 ELSE 0 END) AS ch_note,
+      SUM(CASE WHEN contact_channel='kakao' THEN 1 ELSE 0 END) AS ch_kakao,
+      SUM(CASE WHEN contact_channel='call' THEN 1 ELSE 0 END) AS ch_call,
+      SUM(CASE WHEN contact_channel='other' THEN 1 ELSE 0 END) AS ch_other,
+      SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
       SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
       SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS today,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7

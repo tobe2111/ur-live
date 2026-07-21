@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -125,9 +125,10 @@ async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: Co
  *   큐레이션)·category 는 불변. DO UPDATE 의 WHERE 로 실제 채울 게 있을 때만 change=1 → 중복 인플레 없음.
  */
 async function saveLeadsBatch(
-  DB: D1Database, accountId: number, leads: InfluencerLead[],
+  DB: D1Database, accountId: number, rawLeads: InfluencerLead[],
   meta: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
+  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description)) // 🧹 노이즈(뉴스·방송·기관·대행) 제외
   if (!leads.length) return 0
   const sql = `INSERT INTO ad_influencer_leads
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
