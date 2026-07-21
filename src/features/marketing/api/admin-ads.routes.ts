@@ -174,6 +174,7 @@ async function ensureKeywordTable(DB: D1Database) {
 
 // GET /api/admin/ads/influencer-pool?platform=&category=&hasContact=1&q=&limit=
 app.get('/influencer-pool', async (c) => {
+  await ensureInfluencerSchema(c.env.DB) // SELECT 가 최신 컬럼(source/consented_at 등) 참조 — 미보강 DB 면 'no such column' 로 빈 목록 → 스키마 선보강(멱등·memoized)
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
@@ -230,6 +231,7 @@ app.get('/influencer-pool', async (c) => {
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
 app.get('/influencer-pool/stats', async (c) => {
+  await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   const agg = await c.env.DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
