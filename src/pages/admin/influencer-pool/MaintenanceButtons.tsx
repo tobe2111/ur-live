@@ -1,0 +1,68 @@
+import { useState } from 'react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+
+/**
+ * 🧰 인플루언서 풀 유지보수 버튼群 — 중복통합·구글시트·카테고리 재분류·연락처 재추출.
+ *   페이지 600줄 캡 준수를 위해 추출. onChanged = 완료 후 목록·통계 재조회(부모).
+ *   전부 멱등 백필/동기화(API 재호출 없이 저장된 데이터에 재적용 — reextract/reclassify).
+ */
+export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged: () => Promise<void>; canMerge: boolean }) {
+  const [merging, setMerging] = useState(false)
+  const [sheetsSyncing, setSheetsSyncing] = useState(false)
+  const [reclassifying, setReclassifying] = useState(false)
+  const [reextracting, setReextracting] = useState(false)
+
+  async function mergeDuplicates() {
+    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들(이메일 없는 크로스플랫폼 동일인)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
+    setMerging(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
+      if (r.data?.success) {
+        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0
+        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)})`)
+        await onChanged()
+      } else toast.error('통합 실패')
+    } catch { toast.error('통합 실패') } finally { setMerging(false) }
+  }
+  async function sheetsSync() {
+    setSheetsSyncing(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/sheets-sync', {})
+      if (r.data?.success) toast.success(`📊 구글시트에 ${formatNumber(r.data.rows)}행 반영 완료`)
+      else toast.error(r.data?.error || '시트 동기화 실패')
+    } catch (e) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '시트 동기화 실패')
+    } finally { setSheetsSyncing(false) }
+  }
+  async function reclassify() {
+    if (!window.confirm('풀 전체를 채널 이름·소개글 기반으로 재분류할까요?\n(콘텐츠 신호가 있고 현재와 다를 때만 변경 — 멱등)')) return
+    setReclassifying(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/reclassify', {})
+      if (r.data?.success) { toast.success(`🏷️ ${formatNumber(r.data.scanned)}명 스캔 · ${formatNumber(r.data.changed)}명 재분류`); await onChanged() }
+      else toast.error('재분류 실패')
+    } catch { toast.error('재분류 실패') } finally { setReclassifying(false) }
+  }
+  async function reextract() {
+    if (!window.confirm('기존 리드의 저장된 소개글에서 연락처를 다시 추출할까요?\n(비어있는 이메일·인스타·틱톡만 채우고 유튜브·블로그 링크 추가 — 기존값 보존, 멱등)')) return
+    setReextracting(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/reextract', {})
+      if (r.data?.success) { toast.success(`🔗 ${formatNumber(r.data.scanned)}명 스캔 · ${formatNumber(r.data.filled)}명 연락처 보강`); await onChanged() }
+      else toast.error('재추출 실패')
+    } catch { toast.error('재추출 실패') } finally { setReextracting(false) }
+  }
+
+  const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
+  return (
+    <>
+      <button onClick={mergeDuplicates} disabled={merging || !canMerge} className={cls} title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
+      <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
+      <button onClick={reclassify} disabled={reclassifying} className={cls} title="채널 이름·소개글 신호로 카테고리 재분류(키워드 상속 오분류 교정 — 1회성 백필, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류'}</button>
+      <button onClick={reextract} disabled={reextracting} className={cls} title="기존 리드의 저장된 소개글에서 연락처 재추출(신규 @핸들·유튜브/블로그 포착 — 비어있는 것만 채움, API 재호출 0)">{reextracting ? '재추출 중…' : '🔗 연락처 재추출'}</button>
+    </>
+  )
+}

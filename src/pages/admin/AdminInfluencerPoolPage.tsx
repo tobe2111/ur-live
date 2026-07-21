@@ -10,6 +10,7 @@ import { pickReach } from './influencer-pool/reach'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
+import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 
 /**
@@ -66,7 +67,6 @@ export default function AdminInfluencerPoolPage() {
   const [needFollowup, setNeedFollowup] = useState(false)
   const [hideNoise, setHideNoise] = useState(false)
   const [inboundOnly, setInboundOnly] = useState(false)
-  const [merging, setMerging] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -182,42 +182,8 @@ export default function AdminInfluencerPoolPage() {
     try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)) }
     catch { toast.error('저장 실패') }
   }
-  async function mergeDuplicates() {
-    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들(이메일 없는 크로스플랫폼 동일인)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
-    setMerging(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
-      if (r.data?.success) {
-        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0
-        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)})`)
-        await Promise.all([loadLeads(), loadMeta()])
-      } else toast.error('통합 실패')
-    } catch { toast.error('통합 실패') } finally { setMerging(false) }
-  }
-  // 🏷️ 카테고리 재분류(백필) — 채널 이름+소개글 신호로 기존 풀 교정(신호 있고 다를 때만 UPDATE).
-  const [reclassifying, setReclassifying] = useState(false)
-  async function reclassify() {
-    if (!window.confirm('풀 전체를 채널 이름·소개글 기반으로 재분류할까요?\n(콘텐츠 신호가 있고 현재와 다를 때만 변경 — 멱등)')) return
-    setReclassifying(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/reclassify', {})
-      if (r.data?.success) { toast.success(`🏷️ ${formatNumber(r.data.scanned)}명 스캔 · ${formatNumber(r.data.changed)}명 재분류`); await loadLeads() }
-      else toast.error('재분류 실패')
-    } catch { toast.error('재분류 실패') } finally { setReclassifying(false) }
-  }
-  // 📊 구글시트 수동 동기화 — 결과(행수/설정 안내)를 그대로 토스트.
-  const [sheetsSyncing, setSheetsSyncing] = useState(false)
-  async function sheetsSync() {
-    setSheetsSyncing(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/sheets-sync', {})
-      if (r.data?.success) toast.success(`📊 구글시트에 ${formatNumber(r.data.rows)}행 반영 완료`)
-      else toast.error(r.data?.error || '시트 동기화 실패')
-    } catch (e) {
-      const ax = e as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '시트 동기화 실패')
-    } finally { setSheetsSyncing(false) }
-  }
+  // 🧰 유지보수(중복통합·시트·재분류·재추출)는 MaintenanceButtons 컴포넌트로 추출(600줄 캡).
+  const reloadAll = useCallback(async () => { await Promise.all([loadLeads(), loadMeta()]) }, [loadLeads, loadMeta])
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
   // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록(+지역 커버리지/필터).
   const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number; regions?: string | null }[] | null>(null)
@@ -401,9 +367,7 @@ export default function AdminInfluencerPoolPage() {
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
           </button>
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 22열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
-          <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
-          <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
-          <button onClick={reclassify} disabled={reclassifying} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="채널 이름·소개글 신호로 카테고리 재분류(키워드 상속 오분류 교정 — 1회성 백필, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류'}</button>
+          <MaintenanceButtons onChanged={reloadAll} canMerge={!!leads.length} />
           <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
             {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
           </button>
