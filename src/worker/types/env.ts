@@ -176,6 +176,9 @@ export interface Env {
   //   무료 serviceKey URL)을 JSON 으로 게시/직결하고 URL 등록. JSON 배열/NDJSON/오픈API 응답 자동 파싱.
   //   미설정이면 수집 no-op(found:0). 임의 스크래핑 없음 — 수집 근거를 대표가 통제.
   BUYER_FEED_URLS?: string;            // 쉼표구분 무료 피드/오픈API URL 목록.
+  // 무료 API 키 헤더(예: 미국 ITA api.trade.gov 는 `subscription-key: XXX` 헤더 필요). "이름: 값" 형식,
+  //   세미콜론(;)으로 여러 개. 모든 피드 요청에 적용. URL 파라미터로 키를 넣는 API(UN Comtrade)는 불필요.
+  BUYER_FEED_HEADER?: string;          // 예: "subscription-key: abc123" 또는 "Authorization: Bearer xxx"
   ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 2, 1~5) — 깊이 확장(page2=51~100위). 쿼터는 quotaHit 가드 관리.
   ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
 

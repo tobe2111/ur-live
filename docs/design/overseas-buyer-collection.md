@@ -42,7 +42,20 @@
 | ② 유료 provider | ~~Apollo/Hunter/ZoomInfo~~ | **미채택** (대표 "최대한 무료") | 제거됨 |
 | ③ 주의(ToS) | LinkedIn/Sales Navigator | ❌ 직접 스크래핑 금지 | 미구현(의도) |
 
-> ⚠️ **임의 웹 스크래핑을 하지 않는다.** `fetchFeeds` 는 **대표가 등록한 무료 소스 URL**만 읽는다 → 수집 근거·합법성을 대표가 통제. 이 설계의 안전판.
+> ⚠️ **임의 웹 스크래핑을 하지 않는다.** `fetchFeeds` 는 **대표가 등록한 무료 소스 URL**만 읽는다 → 수집 근거·합법성을 대표가 통제. 이 설계의 안전판. (리서치 확인: ImportYeti·Tradewheel·EC21 등 무료 바이어 사이트는 봇 차단[403]+ToS 대량수집 금지 → 스크래핑 불가·불법. 실제 바이어 *연락처* 대량 데이터는 관세/BoL 기반 유료가 사실상 유일 — 그게 그들의 사업모델.)
+
+### 2-1. 무료 소스 레시피 (바로 `BUYER_FEED_URLS` 에 등록)
+
+바이어 DB 서비스의 진짜 소스는 **관세·선하증권(BoL) 거래 데이터**(HS코드별 실제 수입 선적 → 진짜 바이어 특정)이고 유료다. 무료+자동+합법으로 실제 되는 건 아래 3종:
+
+| 소스 | 무료 | 주는 것 | 붙이는 법 |
+|---|---|---|---|
+| **미국 ITA Trade Leads API** (`api.trade.gov`, ITA Data Services Platform) | ✅ 무료 키 | 해외 정부·기업 **구매 리드/입찰**(구매 의도 = intent) | 무료 키 발급 → URL 을 `BUYER_FEED_URLS`, 키를 `BUYER_FEED_HEADER="subscription-key: XXX"`. 응답 `results[]` 자동 파싱. 항목 JSON 에 `intent:"buying_lead"` 매핑 권장 |
+| **UN Comtrade API** (`comtradeapi.un.org`) | ✅ 무료 | HS코드×국가 **수입 수요 통계**(어느 시장이 뜨는지 = 타깃 우선순위) | 무료 키 URL 파라미터. 연락처는 없음 — **타깃 큐레이션용**(어느 category×country 를 활성화할지) |
+| **KOTRA buyKorea / KITA tradekorea** | ✅ 무료 가입 | 한국 상품 찾는 **인바운드 바이어 인콰이어리**(최고 관련성·intent=inquiry) | 한국 수출기업이면 무료 회원 → 바이어 인콰이어리를 CSV/JSON 으로 정제해 게시 후 URL 등록 |
+
+- ⚠️ **불가피한 1스텝**: 위 API 는 전부 **무료지만 계정/키 발급**이 필요(계정 귀속이라 대표만 가능). 코드는 키만 꽂으면 즉시 수집하게 준비됨(`fetchFeeds` + `BUYER_FEED_HEADER`).
+- 참고(유료, 미채택): Volza·ImportGenius·Tendata·Panjiva(관세데이터) / Apollo·ZoomInfo(담당자 enrichment). 대표 방침 "최대한 무료" 라 미배선 — 필요 시 같은 feed 모델로 편입 가능.
 
 ## 3. 법률 (반드시 준수 — 인플루언서 [PIPA] 원칙의 해외판)
 

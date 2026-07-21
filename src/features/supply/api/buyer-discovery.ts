@@ -352,11 +352,17 @@ function digArray(root: unknown): Record<string, unknown>[] {
 export async function fetchFeeds(env: Env, budget: FetchBudget, target: { category: string; country: string }): Promise<BuyerLead[]> {
   const urls = (env.BUYER_FEED_URLS || '').split(',').map(s => s.trim()).filter(Boolean)
   if (!urls.length) return []
+  // 무료 API 키 헤더(ITA api.trade.gov 의 subscription-key 등) — "이름: 값; 이름2: 값2" 파싱.
+  const headers: Record<string, string> = { accept: 'application/json,application/x-ndjson,text/plain' }
+  for (const pair of (env.BUYER_FEED_HEADER || '').split(';').map(s => s.trim()).filter(Boolean)) {
+    const idx = pair.indexOf(':')
+    if (idx > 0) headers[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim()
+  }
   const out: BuyerLead[] = []
   for (const url of urls) {
     if (budget.left <= 0) break
     budget.left -= 1
-    const text = await fetch(url, { headers: { accept: 'application/json,application/x-ndjson,text/plain' } })
+    const text = await fetch(url, { headers })
       .then(r => (r.ok ? r.text() : '')).catch(() => '')
     if (!text) continue
     let items: Record<string, unknown>[] = []
