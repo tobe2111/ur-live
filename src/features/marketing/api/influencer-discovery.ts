@@ -25,6 +25,13 @@ const NOT_EMAIL_SUFFIX = /\.(png|jpg|jpeg|gif|webp|svg|mp4|webm)$/i
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
+// 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
+//   보수적(오탐 최소) — 애매한 '공식/브랜드'는 제외 안 함(진짜 파트너 후보일 수 있음). 저장 시점에 걸러 풀 오염 방지.
+const NOISE_RE = /(뉴스|신문사|방송국|아나운서|연합뉴스|ytn|jtbc|kbs|mbc|sbs|체험단|서포터즈|기자단|리뷰어\s*모집|블로그\s*마케팅|바이럴\s*마케팅|마케팅\s*대행|광고\s*대행|대행사|공기업|공단|주민센터|[가-힣]{1,6}(구청|시청|군청|도청)|재단법인|사단법인)/i
+export function isLikelyNoise(name?: string | null, description?: string | null): boolean {
+  return NOISE_RE.test(`${name || ''} ${description || ''}`)
+}
+
 /** 공개 텍스트(채널/영상 설명)에서 컨택 추출 — 순수함수(단위테스트 잠금). */
 export function extractContacts(text: string): ExtractedContacts {
   const t = String(text || '')
@@ -126,9 +133,11 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
  *  opts.pages: 검색 페이지 수(1~5, 기본 1) — 키워드당 깊이 확장(page 2=51~100위…).
  *  opts.searchType: 'channel'(기본, 채널명·소개에 키워드) | 'video'(그 주제 영상을 올린 채널 — 채널명엔
- *    키워드 없는 소형·신생 크리에이터까지 커버. 같은 쿼터, 다른 그물). video 는 snippet.channelId 로 채널 수집. */
+ *    키워드 없는 소형·신생 크리에이터까지 커버. 같은 쿼터, 다른 그물). video 는 snippet.channelId 로 채널 수집.
+ *  opts.order: 검색 정렬 — 'relevance'(관련도) | 'date'(최신, 신생·소형) | 'viewCount'(인기) | 'rating'.
+ *    같은 키워드도 정렬을 바꾸면 다른 채널이 나옴 → 매 실행 교대 시 top-N 재탕이 아니라 커버리지가 계속 확장(수렴). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video' } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating' } = {},
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -137,6 +146,9 @@ export async function discoverYouTubeInfluencers(
   const n = Math.min(50, Math.max(1, Math.round(opts.maxResults || 15)))
   const pages = Math.max(1, Math.min(5, Math.round(opts.pages || 1)))
   const searchType = opts.searchType === 'video' ? 'video' : 'channel'
+  // date 정렬은 video 에만 의미(채널 정렬 date 는 지원 약함) → channel 검색이면 relevance/viewCount 만 허용.
+  const order = ['relevance', 'date', 'viewCount', 'rating'].includes(opts.order || '')
+    ? (searchType === 'channel' && opts.order === 'date' ? 'relevance' : opts.order!) : 'relevance'
 
   // 1) 검색 — pageToken 으로 pages 만큼 깊이 순회(각 page=100 units). 첫 page 실패는 에러, 이후는 있는 만큼 진행.
   //    channel=채널 결과(id.channelId) / video=영상 결과(snippet.channelId → 그 영상 주인 채널).
@@ -145,15 +157,17 @@ export async function discoverYouTubeInfluencers(
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
     spendBudget(opts.budget)
-    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=relevance&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
+    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
       const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })
       searchData = await res.json() as YTSearchResp
       if (!res.ok) {
         const reason = searchData.error?.errors?.[0]?.reason || ''
-        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
-          if (p === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
+        // 일일 쿼터 + **단기 요청 한도(rateLimit)** 둘 다 QUOTA 로 취급 → 호출자가 quotaHit 로 이번 틱 YT 중단
+        //   (rateLimit 은 계속 재시도하면 예산만 태우고 전부 실패 — 멈추면 다음 정시에 자동 재개).
+        if (['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(reason)) {
+          if (p === 0) return { ok: false, error: 'QUOTA', message: reason.startsWith('rate') || reason.startsWith('user') ? 'YouTube 단기 요청 한도 — 다음 시간에 자동 재개됩니다.' : '오늘 YouTube 조회 한도에 도달했습니다. 내일 다시 시도해주세요.' }
           break // 이후 page 만 실패 — 지금까지 모은 것 계속 처리
         }
         if (p === 0) { const detail = reason || searchData.error?.message || `HTTP ${res.status}`; return { ok: false, error: 'FAILED', message: `YouTube 검색 실패: ${detail}` } }
@@ -179,7 +193,7 @@ export async function discoverYouTubeInfluencers(
       const chData = await res.json() as YTChannelsResp
       if (!res.ok) {
         const reason = chData.error?.errors?.[0]?.reason || ''
-        if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') { if (i === 0) return { ok: false, error: 'QUOTA', message: '오늘 YouTube 조회 한도에 도달했습니다.' }; break }
+        if (['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(reason)) { if (i === 0) return { ok: false, error: 'QUOTA', message: 'YouTube 조회 한도 — 다음 시간에 자동 재개됩니다.' }; break }
         if (i === 0) return { ok: false, error: 'FAILED', message: '채널 정보를 불러오지 못했습니다' }; break
       }
       for (const it of chData.items || []) chItems.push(it)
@@ -273,7 +287,7 @@ async function fetchNaverBlogHome(handle: string): Promise<string> {
 }
 
 export async function discoverNaverBloggers(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -281,7 +295,8 @@ export async function discoverNaverBloggers(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
   spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
-  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
+  const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string }>; errorMessage?: string } | null
@@ -347,7 +362,7 @@ function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, ke
 //   카페는 개인이 아니라 커뮤니티 단위 → 게시글 상위 노출 카페를 집계(카페홈 링크 기준).
 //   지표 없음, 매칭 글 수(활동 프록시) + best-effort 컨택. platform='naver_cafe'.
 export async function discoverNaverCafes(
-  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; budget?: FetchBudget } = {},
+  clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
 ): Promise<DiscoverResult> {
   if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -355,7 +370,8 @@ export async function discoverNaverCafes(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] } // 예산 소진 — 조기 종료(에러 아님)
   spendBudget(opts.budget)
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
-  const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=sim`
+  const sort = opts.sort === 'date' ? 'date' : 'sim'
+  const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '카페 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
@@ -387,7 +403,7 @@ export async function discoverNaverCafes(
 //   지표 없음, 매칭 글 수(활동 프록시) + 스니펫 컨택. platform='tistory'. 키: KAKAO_REST_API_KEY(KakaoAK).
 const KAKAO_DAPI = 'https://dapi.kakao.com'
 export async function discoverTistoryBloggers(
-  restKey: string | undefined, keyword: string, opts: { size?: number; budget?: FetchBudget } = {},
+  restKey: string | undefined, keyword: string, opts: { size?: number; budget?: FetchBudget; sort?: 'accuracy' | 'recency' } = {},
 ): Promise<DiscoverResult> {
   if (!restKey) return { ok: false, error: 'NOT_CONFIGURED' }
   const q = (keyword || '').trim()
@@ -395,7 +411,8 @@ export async function discoverTistoryBloggers(
   if (outOfBudget(opts.budget)) return { ok: true, leads: [] }
   spendBudget(opts.budget)
   const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
-  const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=accuracy`
+  const sort = opts.sort === 'recency' ? 'recency' : 'accuracy'
+  const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=${sort}`
   const res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '티스토리 검색 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
@@ -470,6 +487,9 @@ export async function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT').run().catch(() => null)
   // 🔗 링크인바이오 보강 시도 시각 — NULL 이면 미시도(cron 이 잔여 예산으로 순차 소진, 재시도 폭주 방지).
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME').run().catch(() => null)
+  // 📥 유입 출처(자동수집=NULL/'auto', 인바운드 신청='inbound') + 사전동의 시각(인바운드=신청 시 기록 → 자유 연락 가능).
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME').run().catch(() => null)
 }
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
@@ -482,6 +502,7 @@ export async function saveInfluencerLeads(
   const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
+    if (isLikelyNoise(l.name, l.description)) continue // 🧹 뉴스·방송·기관·체험단모집·대행 등 노이즈 제외
     const r = await DB.prepare(`INSERT OR IGNORE INTO ad_influencer_leads
       (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

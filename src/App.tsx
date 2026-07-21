@@ -77,6 +77,7 @@ const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
 const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
+const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -649,6 +650,7 @@ function AppContent() {
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
+            <Route path="/creators/apply" element={<CreatorApplyPage />} />
             <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} />
             <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
