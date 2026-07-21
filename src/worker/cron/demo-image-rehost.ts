@@ -37,6 +37,74 @@ function parseJsonArr(raw: string | null): string[] {
   if (!raw) return []
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((u): u is string => typeof u === 'string' && !!u) : [] } catch { return [] }
 }
+/**
+ * ☁️ 2026-07-21 (대표 스샷 — "커버 294개 중 R2 1 · 외부 293"): 외부 커버를 **즉시 대량** R2 이관.
+ *   cron 은 시간당 2개라 293개면 수일 → 어드민 온디맨드로 청크 이관(각 요청 = 새 서브리퀘스트 예산).
+ *   커버 + 갤러리 외부 URL 을 R2(/api/media)로 옮기고 products.image_url/images 갱신. remaining 반환.
+ *   fail-soft. MEDIA_BUCKET 없으면 0(호출측이 배너로 안내).
+ */
+export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ rehosted: number; images: number; remaining: number; bucketBound: boolean }> {
+  const DB = env.DB
+  const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
+  const bucketBound = !!bucketEnv.MEDIA_BUCKET
+  const countExternal = async () => {
+    const r = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM products
+        WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+          AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'`
+    ).first<{ n: number }>().catch(() => ({ n: 0 }))
+    return Number(r?.n ?? 0)
+  }
+  if (!bucketBound) return { rehosted: 0, images: 0, remaining: await countExternal(), bucketBound }
+  const { results } = await DB.prepare(
+    `SELECT id, slug, image_url, images FROM products
+      WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+        AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
+      ORDER BY id LIMIT ?`
+  ).bind(Math.max(1, Math.min(12, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null }[] }))
+  let rehosted = 0, images = 0
+  for (const row of (results || [])) {
+    const gallery = parseJsonArr(row.images)
+    const externals = [row.image_url, ...gallery].filter((u): u is string => isExternalImageUrl(u))
+    const mapping = new Map<string, string>()
+    let fetches = 0
+    for (const u of externals) {
+      if (fetches >= MAX_IMAGES_PER_PRODUCT) break
+      if (mapping.has(u)) continue
+      fetches++
+      const hosted = await rehostImageToR2(bucketEnv, u, 'demo-bulk-rehost')
+      if (hosted) mapping.set(u, hosted)
+    }
+    const resolve = (u: string) => mapping.get(u) || u
+    const newCover = row.image_url ? resolve(row.image_url) : row.image_url
+    const newGallery = gallery.map(resolve)
+    // 커버가 여전히 외부(이관 실패)면 이 라운드는 skip(다음에 재시도) — 무한루프 방지는 remaining 감소로.
+    if (newCover !== row.image_url || JSON.stringify(newGallery) !== JSON.stringify(gallery)) {
+      await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(newCover, newGallery.length ? JSON.stringify(newGallery) : row.images, row.id).run().catch(() => {})
+      // 숙소 객실 썸네일도 매핑 반영.
+      if (row.slug.startsWith('demo-stay-') && mapping.size > 0) {
+        const rr = await DB.prepare(`SELECT id, image_urls FROM product_stay_rooms WHERE product_id = ?`).bind(row.id)
+          .all<{ id: number; image_urls: string | null }>().catch(() => ({ results: [] as { id: number; image_urls: string | null }[] }))
+        for (const room of (rr.results || [])) {
+          const arr = parseJsonArr(room.image_urls); if (!arr.length) continue
+          const next = arr.map(resolve)
+          if (JSON.stringify(next) !== JSON.stringify(arr)) await DB.prepare(`UPDATE product_stay_rooms SET image_urls = ? WHERE id = ?`).bind(JSON.stringify(next), room.id).run().catch(() => {})
+        }
+      }
+      if (newCover !== row.image_url) rehosted++
+      images += mapping.size
+    } else {
+      // 커버 이관 실패(도달불가/깨짐) — 이 커버가 remaining 에서 안 빠지면 루프가 멈추니, 깨진 것으로 마킹해
+      //   다음 순환에서 heal(재획득)로 넘김. 여기선 placeholder 로 치환해 카드 깨짐만 즉시 제거.
+      await DB.prepare(`UPDATE products SET image_url = ? WHERE id = ?`)
+        .bind(`https://picsum.photos/seed/heal-${row.id}/600/600`, row.id).run().catch(() => {})
+    }
+  }
+  return { rehosted, images, remaining: await countExternal(), bucketBound }
+}
+
 function isPlaceholderUrl(u: string | null | undefined): boolean {
   return !u || /picsum\.photos/.test(u)
 }
