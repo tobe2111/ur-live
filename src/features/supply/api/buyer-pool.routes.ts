@@ -15,6 +15,7 @@ import {
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf } from './buyer-autofetch'
+import { enrichLeadsFromWebsites } from './buyer-web-enrich'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -119,6 +120,15 @@ app.post('/auto-fetch/forget', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { url?: string }
   if (b.url) await removeSource(c.env, String(b.url)).catch(() => null)
   return c.json({ success: true })
+})
+
+// POST /api/admin/buyer-pool/enrich-websites { max? } — 이메일 없는 웹사이트 리드를 방문해 이메일/전화 백필.
+//   buyKorea 가 마스킹한 이메일을 바이어 공개 웹사이트에서 확보. 공개 사이트라 게이트 불필요.
+app.post('/enrich-websites', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { max?: number }
+  const max = Number.isFinite(b.max) ? Math.min(40, Math.max(1, Number(b.max))) : undefined
+  const result = await enrichLeadsFromWebsites(c.env, { max }).catch((e) => ({ ran: false, reason: String(e), scanned: 0, enriched: 0, fetches: 0, sample: [] }))
+  return c.json({ success: true, result })
 })
 
 // GET /api/admin/buyer-pool/stats
