@@ -84,7 +84,7 @@ export async function verifyIngestToken(env: Env, token: string): Promise<boolea
 /** 북마클릿이 보낸 상세 HTML 배열을 파싱·저장(리스트 행 보강 포함). */
 export async function ingestHtmls(env: Env, htmls: string[]): Promise<{ parsed: number; saved: number }> {
   const leads: BuyerLead[] = []
-  for (const html of htmls.slice(0, 40)) {
+  for (const html of htmls.slice(0, 80)) {
     if (typeof html !== 'string' || !html) continue
     leads.push(...parseBuyKoreaInquiries(htmlToText(html)))
   }
@@ -118,7 +118,7 @@ export function htmlToText(html: string): string {
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:tr|div|p|li|h[1-6]|table|dt|dd|th|td|section)>/gi, '\n')
+    .replace(/<\/(?:tr|div|p|li|h[1-6]|table|dt|dd|th|td|section|button)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"').replace(/&#0?39;|&apos;/gi, "'")
