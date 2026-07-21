@@ -67,7 +67,11 @@ export function parseNaverNeighborCount(html: string): number {
 const _perfColPromise = new WeakMap<object, Promise<void>>()
 export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
   const c = _perfColPromise.get(DB); if (c) return c
-  const p = DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().then(() => undefined).catch(() => undefined)
+  // channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지).
+  const p = (async () => {
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().catch(() => null)
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME').run().catch(() => null)
+  })()
   _perfColPromise.set(DB, p); return p
 }
 
@@ -82,10 +86,10 @@ export async function enrichYouTubePerformance(
 ): Promise<number> {
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
-  // perf 미수집 + 개설일 미보강(기존 풀 백필 — 자기종료: channel_published_at 채워지면 재선택 안 됨, 겸사 avg 갱신).
+  // perf 미수집 + 개설일 조회 미시도(기존 풀 백필 — pub_checked_at 로 자기종료: 좀비채널도 1회 시도 후 재선택 안 함).
   const rows = (await DB.prepare(`SELECT id, channel_id, email FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR channel_published_at IS NULL)
-      ORDER BY (channel_published_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
+      WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR pub_checked_at IS NULL)
+      ORDER BY (pub_checked_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
     .all<{ id: number; channel_id: string; email: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
@@ -133,7 +137,7 @@ export async function enrichYouTubePerformance(
     const { avgViews, avgComments } = avgStats(vids)
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
     const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), perf_checked_at = datetime('now') WHERE id = ?`)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), perf_checked_at = datetime('now') WHERE id = ?`)
       .bind(avgViews, avgComments, pub, fixEmail, r.id)
   })
   await DB.batch(stmts).catch(() => null)

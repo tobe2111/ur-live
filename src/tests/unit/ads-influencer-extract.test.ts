@@ -137,9 +137,14 @@ describe('pickBusinessEmail', () => {
     expect(isLikelyNoise('뷰티 유튜버', '협찬/체험단 문의 환영')).toBe(false)
     expect(isLikelyNoise('여행 유튜버', '대행사 아님 직접 운영')).toBe(false)
     expect(isLikelyNoise('일상 브이로그', '서포터즈 활동 중')).toBe(false)
+    // 시청(=watching)·구청역(지하철역)·성공단계(공단) 등 흔한 창작자 어휘 오제외 금지.
+    expect(isLikelyNoise('먹방', '본방시청 필수! 재시청 환영')).toBe(false)
+    expect(isLikelyNoise('맛집', '마포구청역 근처 맛집 투어')).toBe(false)
+    expect(isLikelyNoise('재테크', '성공단계별 전략 공유')).toBe(false)
     // 진짜 노이즈(모집/대행 자기지칭)는 계속 제외.
     expect(isLikelyNoise('OO', '체험단 모집합니다')).toBe(true)
     expect(isLikelyNoise('마케팅', '블로그 마케팅 대행')).toBe(true)
+    expect(isLikelyNoise('연합뉴스TV', '뉴스 채널')).toBe(true)
   })
 
   it('개인메일이 문맥 없어도 대행사(문맥 있는) 메일을 이김 — 티벳동생 케이스', () => {
