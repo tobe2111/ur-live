@@ -11,8 +11,9 @@ import { intParam } from '@/shared/pagination'
 import {
   ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
-  parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, INTENT_TIERS, type BuyerLead,
+  INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
+import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList } from './buyer-parsers'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
