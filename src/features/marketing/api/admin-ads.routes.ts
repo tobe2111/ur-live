@@ -414,33 +414,36 @@ app.post('/influencer-pool/refetch-live', async (c) => {
 })
 
 // POST /api/admin/ads/influencer-pool/merge-duplicates — 중복 리드 통합(1건만 남김)
-//   1차: 같은 이메일 / 2차: 같은 인스타 핸들(이메일 없이 유튜브+블로그로 잡힌 동일인 — 인스타는 사람마다 고유).
-//   상태 진전(계약>관심>컨택함>신규)·정보 많은 순으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필).
+//   1차 같은 이메일 · 2차 같은 인스타 핸들 · 3차 공유 링크(linktr.ee/블로그/유튜브 교차링크 — 사람마다 고유·고정밀)
+//   · 4차 이름+카테고리 코로보레이션(⚠️ 동명이인 리스크 → 이메일·인스타 둘 다 없는 잔여 + 같은 카테고리 + 2개+ 플랫폼일 때만, 별도 카운트로 감사).
+//   상태 진전(계약>관심>컨택함>신규)·정보 많은 순으로 대표 1건을 남기고 나머지 삭제. 링크는 전 채널 합집합으로 보존(멀티채널 발자국 유지).
 app.post('/influencer-pool/merge-duplicates', async (c) => {
   const DB = c.env.DB
-  const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
-  // 한 그룹(같은 키의 리드들)을 대표 1건으로 통합 — 대표에 없는 이메일/인스타/틱톡/링크는 나머지에서 백필.
-  const mergeRows = async (rows: Array<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>): Promise<number> => {
+  const rankSql = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
+  type MergeRow = { id: number; status?: string | null; subscriber_count?: number | null; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }
+  // 한 그룹(같은 키의 리드들)을 대표 1건으로 통합 — 대표에 없는 이메일/인스타/틱톡은 백필, 링크는 전 채널 합집합(멀티채널 발자국 보존).
+  const mergeRows = async (rows: MergeRow[]): Promise<number> => {
     if (rows.length < 2) return 0
     const keep = rows[0]; const drop = rows.slice(1)
     const em = keep.email || drop.find(r => r.email)?.email || null
     const ig = keep.instagram || drop.find(r => r.instagram)?.instagram || null
     const tt = keep.tiktok || drop.find(r => r.tiktok)?.tiktok || null
-    const lk = keep.links || drop.find(r => r.links)?.links || null
+    const allLinks = [keep, ...drop].flatMap(r => String(r.links || '').split(/\s+/)).filter(Boolean)
+    const lk = allLinks.length ? [...new Set(allLinks)].slice(0, 12).join(' ') : null
     await DB.prepare('UPDATE ad_influencer_leads SET email = ?, instagram = ?, tiktok = ?, links = ? WHERE id = ?').bind(em, ig, tt, lk, keep.id).run().catch(() => null)
     await DB.batch(drop.map(r => DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
     return drop.length
   }
-  const orderBy = `${rank} DESC, (CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC, subscriber_count DESC, id ASC`
-  let mergedEmail = 0, mergedInsta = 0
+  const orderBy = `${rankSql} DESC, (CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC, subscriber_count DESC, id ASC`
+  let mergedEmail = 0, mergedInsta = 0, mergedLink = 0, mergedName = 0
   // 1차 — 이메일.
   const emailGroups = (await DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
     WHERE account_id = ? AND email IS NOT NULL AND email != '' GROUP BY LOWER(email) HAVING n > 1`).bind(POOL)
     .all<{ email: string; n: number }>().catch(() => null))?.results || []
   for (const g of emailGroups) {
-    const rows = (await DB.prepare(`SELECT id, email, instagram, tiktok, links FROM ad_influencer_leads
+    const rows = (await DB.prepare(`SELECT id, status, subscriber_count, email, instagram, tiktok, links FROM ad_influencer_leads
       WHERE account_id = ? AND LOWER(email) = LOWER(?) ORDER BY ${orderBy}`).bind(POOL, g.email)
-      .all<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
+      .all<MergeRow>().catch(() => null))?.results || []
     mergedEmail += await mergeRows(rows)
   }
   // 2차 — 인스타 핸들(이메일 병합 후 남은 상태 기준). 크로스플랫폼 동일인 자동 병합.
@@ -448,12 +451,47 @@ app.post('/influencer-pool/merge-duplicates', async (c) => {
     WHERE account_id = ? AND instagram IS NOT NULL AND instagram != '' GROUP BY LOWER(instagram) HAVING n > 1`).bind(POOL)
     .all<{ ig: string; n: number }>().catch(() => null))?.results || []
   for (const g of igGroups) {
-    const rows = (await DB.prepare(`SELECT id, email, instagram, tiktok, links FROM ad_influencer_leads
+    const rows = (await DB.prepare(`SELECT id, status, subscriber_count, email, instagram, tiktok, links FROM ad_influencer_leads
       WHERE account_id = ? AND LOWER(instagram) = ? ORDER BY ${orderBy}`).bind(POOL, g.ig)
-      .all<{ id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
+      .all<MergeRow>().catch(() => null))?.results || []
     mergedInsta += await mergeRows(rows)
   }
-  return c.json({ success: true, merged: mergedEmail + mergedInsta, mergedEmail, mergedInsta, groups: emailGroups.length + igGroups.length })
+  // 3차 — 공유 링크. links 는 소문자 URL 공백결합(linktr.ee/blog.naver/tistory/유튜브 교차링크) — 사람마다 고유라 고정밀.
+  //   인메모리 그룹핑(멀티값 컬럼이라 SQL GROUP BY 불가). 토큰 길이 8+ 로 잡링크 배제.
+  const rankJs = (s?: string | null) => s === 'contracted' ? 4 : s === 'interested' ? 3 : s === 'contacted' ? 2 : s === 'hold' ? 1 : 0
+  const rich = (r: MergeRow) => (r.email ? 1 : 0) + (r.instagram ? 1 : 0) + (r.links ? 1 : 0)
+  const cmpRow = (a: MergeRow, b: MergeRow) => rankJs(b.status) - rankJs(a.status) || rich(b) - rich(a) || (Number(b.subscriber_count) || 0) - (Number(a.subscriber_count) || 0) || a.id - b.id
+  const linkRows = (await DB.prepare(`SELECT id, status, subscriber_count, email, instagram, tiktok, links FROM ad_influencer_leads
+    WHERE account_id = ? AND links IS NOT NULL AND links != ''`).bind(POOL).all<MergeRow>().catch(() => null))?.results || []
+  const byLink = new Map<string, MergeRow[]>()
+  for (const r of linkRows) for (const tok of String(r.links || '').split(/\s+/).filter(t => t.length >= 8)) {
+    const arr = byLink.get(tok) || []; arr.push(r); byLink.set(tok, arr)
+  }
+  const doneIds = new Set<number>()
+  for (const [, group] of byLink) {
+    const rows = group.filter(r => !doneIds.has(r.id))
+    if (rows.length < 2) continue
+    rows.sort(cmpRow)
+    const n = await mergeRows(rows)
+    if (n) { mergedLink += n; rows.forEach(r => doneIds.add(r.id)) }
+  }
+  // 4차 — 이름+카테고리 코로보레이션(동명이인 오병합 방지). 이메일·인스타 모두 없는 잔여 + 같은 카테고리 + 2개+ 플랫폼 + 이름 3자↑·불용어 제외.
+  const NAME_STOP = new Set(['영상', '채널', '유튜브', '블로그', '공식', 'official', 'daily', 'vlog', 'tv'])
+  const nameGroups = (await DB.prepare(`SELECT LOWER(TRIM(name)) AS nm, LOWER(COALESCE(category,'')) AS cat, COUNT(*) AS n, COUNT(DISTINCT platform) AS plats
+    FROM ad_influencer_leads
+    WHERE account_id = ? AND name IS NOT NULL AND LENGTH(TRIM(name)) >= 3
+      AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '')
+    GROUP BY LOWER(TRIM(name)), LOWER(COALESCE(category,'')) HAVING n > 1 AND plats > 1`).bind(POOL)
+    .all<{ nm: string; cat: string; n: number; plats: number }>().catch(() => null))?.results || []
+  for (const g of nameGroups) {
+    if (!g.nm || NAME_STOP.has(g.nm)) continue
+    const rows = (await DB.prepare(`SELECT id, status, subscriber_count, email, instagram, tiktok, links FROM ad_influencer_leads
+      WHERE account_id = ? AND LOWER(TRIM(name)) = ? AND LOWER(COALESCE(category,'')) = ?
+        AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '') ORDER BY ${orderBy}`).bind(POOL, g.nm, g.cat)
+      .all<MergeRow>().catch(() => null))?.results || []
+    mergedName += await mergeRows(rows)
+  }
+  return c.json({ success: true, merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName })
 })
 
 // GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)

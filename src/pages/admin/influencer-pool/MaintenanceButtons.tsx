@@ -16,13 +16,13 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [refetching, setRefetching] = useState(false)
 
   async function mergeDuplicates() {
-    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들(이메일 없는 크로스플랫폼 동일인)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
+    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(⚠️동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
     setMerging(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
       if (r.data?.success) {
-        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0
-        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)})`)
+        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0, lk = r.data.mergedLink ?? 0, nm = r.data.mergedName ?? 0
+        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)} · 링크 ${formatNumber(lk)} · 이름 ${formatNumber(nm)})`)
         await onChanged()
       } else toast.error('통합 실패')
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
