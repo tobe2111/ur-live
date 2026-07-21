@@ -32,6 +32,32 @@ export function extractPubDates(xml: string): string[] {
   return out
 }
 
+/** 네이버 블로그 홈 HTML 에서 이웃수(규모 프록시) 파싱 — best-effort. 네이버 오픈API 는 구독/이웃수를
+ *  안 줘서(비공개) 이미 받는 홈 HTML 에서 긁는 게 무료 최선. 여러 레이아웃 대비 다중 패턴, 못 찾으면 0. */
+export function parseNaverNeighborCount(html: string): number {
+  if (!html) return 0
+  const pats: RegExp[] = [
+    /"buddyCount"\s*:\s*"?(\d{1,9})"?/i,         // 상태 JSON blob
+    /buddyCount['"]?\s*[:=]\s*['"]?(\d{1,9})/i,
+    /이웃\s*<[^>]*>\s*([\d,]{1,12})/,            // "이웃 <em>1,234</em>"
+    /이웃[^0-9]{0,6}([\d,]{2,12})\s*명/,         // "이웃 1,234명"
+    /([\d,]{2,12})\s*명의?\s*이웃/,              // "1,234명의 이웃"
+  ]
+  for (const re of pats) {
+    const m = html.match(re)
+    if (m) { const n = parseInt(m[1].replace(/,/g, ''), 10); if (Number.isFinite(n) && n > 0 && n < 100_000_000) return n }
+  }
+  return 0
+}
+
+// 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
+const _perfColPromise = new WeakMap<object, Promise<void>>()
+export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
+  const c = _perfColPromise.get(DB); if (c) return c
+  const p = DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().then(() => undefined).catch(() => undefined)
+  _perfColPromise.set(DB, p); return p
+}
+
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
 /**
@@ -42,19 +68,26 @@ export async function enrichYouTubePerformance(
   apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number,
 ): Promise<number> {
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
+  await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
+  // perf 미수집 + 개설일 미보강(기존 풀 백필 — 자기종료: channel_published_at 채워지면 재선택 안 됨, 겸사 avg 갱신).
   const rows = (await DB.prepare(`SELECT id, channel_id FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'youtube' AND perf_checked_at IS NULL
-      ORDER BY subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
+      WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR channel_published_at IS NULL)
+      ORDER BY (channel_published_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
     .all<{ id: number; channel_id: string }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
-  // ① uploads 재생목록 id — 50개 배치 1콜.
+  // ① uploads 재생목록 id — 50개 배치 1콜. snippet 추가(개설일 publishedAt — parts 는 비용 안 늘림, 같은 1점).
   budget.left--
-  const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
+  await ensurePerfExtraColumns(DB)
+  const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
     { signal: AbortSignal.timeout(10000) }).catch(() => null)
-  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] } | null : null
+  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] } | null : null
   const uploads = new Map<string, string>() // channel_id → uploads playlist
-  for (const it of chJson?.items || []) if (it.id && it.contentDetails?.relatedPlaylists?.uploads) uploads.set(it.id, it.contentDetails.relatedPlaylists.uploads)
+  const publishedAt = new Map<string, string>() // channel_id → 개설일(계정 나이 신호)
+  for (const it of chJson?.items || []) {
+    if (it.id && it.contentDetails?.relatedPlaylists?.uploads) uploads.set(it.id, it.contentDetails.relatedPlaylists.uploads)
+    if (it.id && it.snippet?.publishedAt) publishedAt.set(it.id, it.snippet.publishedAt)
+  }
 
   // ② 채널별 최근 영상 id ≤10 — 채널당 1콜.
   const videoIdsByLead = new Map<number, string[]>()
@@ -83,8 +116,9 @@ export async function enrichYouTubePerformance(
   const stmts = rows.map(r => {
     const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
     const { avgViews, avgComments } = avgStats(vids)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, r.id)
+    const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, pub, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
@@ -100,6 +134,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       ORDER BY id DESC LIMIT ?`).bind(Math.min(max, 15))
     .all<{ id: number; handle: string }>().catch(() => null))?.results || []
   if (!rows.length) return 0
+  const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
     if (budget.left <= 0) break
@@ -109,7 +144,19 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(r.handle)}.xml`, { signal: AbortSignal.timeout(8000) })
       if (res.ok) posts30 = countRecentPosts(extractPubDates((await res.text()).slice(0, 120_000)), Date.now())
     } catch { /* fail-soft — 스탬프만 */ }
-    stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET recent_posts_30d = ?, perf_checked_at = datetime('now') WHERE id = ?`).bind(posts30, r.id))
+    // 🏠 이웃수(규모 프록시) — 홈 HTML 파싱(best-effort). 네이버 오픈API 미제공이라 blog 리드는 지금 전부 0.
+    //   예산 남을 때만 홈 1콜 추가 시도(fail-soft). 찾으면 subscriber_count 채움(0>0 일 때만 — 수동값 보존).
+    let neighbors = 0
+    if (budget.left > 0 && /^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) {
+      budget.left--
+      try {
+        const hr = await fetch(`https://m.blog.naver.com/${r.handle}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
+        if (hr.ok) neighbors = parseNaverNeighborCount((await hr.text()).slice(0, 80_000))
+      } catch { /* fail-soft */ }
+    }
+    stmts.push(neighbors > 0
+      ? DB.prepare(`UPDATE ad_influencer_leads SET recent_posts_30d = ?, subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END, perf_checked_at = datetime('now') WHERE id = ?`).bind(posts30, neighbors, r.id)
+      : DB.prepare(`UPDATE ad_influencer_leads SET recent_posts_30d = ?, perf_checked_at = datetime('now') WHERE id = ?`).bind(posts30, r.id))
   }
   if (stmts.length) await DB.batch(stmts).catch(() => null)
   return stmts.length

@@ -338,7 +338,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
   //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
-  const NAVER_EXTRA = 4
+  //   2026-07-21: YT 검색 쿼터 확장이 어려워 네이버(실측 ~2% 활용)로 볼륨 이전 — 기본 4→12(틱당 네이버 총 batch+12).
+  //   서브리퀘스트 예산(아래 300)이 실제 상한이라 초과분은 커서가 다음 틱에서 이어받음(커버리지 손실 0). 런어웨이 방지 max 40.
+  const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
   const totalPick = batch + NAVER_EXTRA
   // 유어딜 연관(맛집·외식창업·뷰티·네일·숙소) 우선 — 배치의 3/4 를 우선 풀에(나머지 1/4 일반: 자가확장용 다양성).
   const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick * 3 / 4)) : 0
@@ -382,7 +384,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
   //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 180) }
+  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300) }
 
   let saved = 0
   let quotaHit = false

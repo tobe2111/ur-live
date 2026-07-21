@@ -110,6 +110,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })())
   }
 
+  // ── 매일 23:00 UTC(=08:00 KST) — 유어애즈 아웃리치 팔로업 리마인더(무응답·회신도착 다이제스트) ──
+  //   0건이면 무발송(no-op) — Discord 스팸 방지. 자동 감지는 웹훅(resend)이 실시간 처리, 여기선 요약만.
+  if (hourUTC === 23) {
+    ctx.waitUntil((async () => {
+      try { const { runFollowupReminder } = await import('@/features/marketing/api/outreach-webhook'); await runFollowupReminder(env) } catch { /* fail-soft */ }
+    })())
+  }
+
   // ── 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트 ────────────────────
   if (hourUTC === 0 && dowUTC === 1) {
     ctx.waitUntil((async () => {

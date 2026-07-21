@@ -136,7 +136,7 @@ interface YTChannelsResp {
     id: string
     snippet?: { title?: string; description?: string; customUrl?: string; country?: string; thumbnails?: { default?: { url?: string }; medium?: { url?: string } } }
     statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string; hiddenSubscriberCount?: boolean }
-    brandingSettings?: { channel?: { description?: string } }
+    brandingSettings?: { channel?: { description?: string; keywords?: string } }
     contentDetails?: { relatedPlaylists?: { uploads?: string } }
   }>
   error?: { message?: string; errors?: Array<{ reason?: string }> }
@@ -252,7 +252,7 @@ export async function discoverYouTubeInfluencers(
   }
 
   const leads: InfluencerLead[] = chItems.map(ch => {
-    const desc = `${ch.snippet?.description || ''}\n${ch.brandingSettings?.channel?.description || ''}`.trim()
+    const desc = `${ch.snippet?.description || ''}\n${ch.brandingSettings?.channel?.description || ''}\n${(ch.brandingSettings?.channel?.keywords || '').replace(/"/g, ' ')}`.trim() // 🏷️ 채널 등록 키워드(이미 받는 응답)도 분류 신호로 — 정확도↑, 쿼터 0
     const c = extractContacts(desc)
     const custom = ch.snippet?.customUrl || null
     return {

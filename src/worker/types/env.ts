@@ -192,7 +192,8 @@ export interface Env {
   GSHEETS_SA_KEY?: string;           // 서비스계정 JSON 의 private_key(PEM, \n 이스케이프 허용) — Secret 타입 권장
   GSHEETS_SHEET_ID?: string;         // 스프레드시트 ID(URL /d/{이것}/edit)
   ADS_SHEETS_SYNC_ENABLED?: string;  // 'true' 면 매시간 cron 이 시트 미러(수동 버튼은 게이트 무관)
-  ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 180) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
+  ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 300) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
+  ADS_NAVER_EXTRA?: string;        // YT 배정(batch) 위에 추가로 도는 네이버 전용 키워드 수(기본 12 → 틱당 네이버 총 batch+12). 네이버 25k/day 헤드룸 활용. 서브리퀘스트 예산 안에서 클램프(max 40).
 
   // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
   //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면
