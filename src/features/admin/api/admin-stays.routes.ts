@@ -376,13 +376,13 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     let photoHealed = 0
     try {
       const needPhoto = await DB.prepare(
-        `SELECT p.id, p.restaurant_name, p.image_url,
+        `SELECT p.id, p.restaurant_name, p.image_url, p.restaurant_address AS addr,
                 psi.latitude AS lat, psi.longitude AS lng
            FROM products p JOIN product_stay_info psi ON psi.product_id = p.id
           WHERE p.slug LIKE 'demo-stay-%'
             AND (p.images IS NULL OR p.images = '' OR p.images = '[]')
           LIMIT 3`
-      ).all<{ id: number; restaurant_name: string | null; image_url: string | null; lat: number | null; lng: number | null }>()
+      ).all<{ id: number; restaurant_name: string | null; image_url: string | null; addr: string | null; lat: number | null; lng: number | null }>()
       const rows = needPhoto.results || []
       if (rows.length > 0) {
         const { getSupplyMeta, setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
@@ -401,6 +401,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
           const imgs = await fetchDemoPhotos(extEnv, {
             placeId: placeRef,
             nameQuery: row.restaurant_name,
+            address: row.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
             count: 3 + Math.floor(Math.random() * 3),
           }).catch(() => [] as string[])
           if (imgs.length === 0) continue
@@ -433,6 +434,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       const imgs = await fetchDemoPhotos(extEnv, {
         placeId: place.placeId,
         nameQuery: place.name,
+        address: place.address || spot.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
         fallbackQuery: `${spot.label} ${ty.kakao}`,
         count: wantPhotos,
       }).catch(() => [] as string[])
