@@ -11,7 +11,7 @@ import { intParam } from '@/shared/pagination'
 import {
   ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
-  parseBulkBuyers, parseBuyKoreaInquiries, INTENT_TIERS, type BuyerLead,
+  parseBulkBuyers, parseBuyKoreaInquiries, parseBuyKoreaList, INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -67,8 +67,11 @@ app.post('/', async (c) => {
 app.post('/import', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { text?: string }
   const text = String(b.text || '')
-  const leads = (text.includes('회사명') || text.includes('인콰이어리')) ? parseBuyKoreaInquiries(text) : parseBulkBuyers(text)
-  if (!leads.length) return c.json({ success: false, error: 'buyKorea 인콰이어리 페이지를 통째로 복사하거나, 헤더(회사명 포함) 있는 표를 붙여넣어 주세요', parsed: 0, saved: 0 }, 400)
+  // 자동 판별: buyKorea 리스트(inqrySn 링크) → 상세(회사명 표) → 일반 CSV/TSV.
+  let leads = parseBuyKoreaList(text)
+  if (!leads.length) leads = parseBuyKoreaInquiries(text)
+  if (!leads.length) leads = parseBulkBuyers(text)
+  if (!leads.length) return c.json({ success: false, error: 'buyKorea 인콰이어리 리스트/상세를 복사하거나, 헤더(회사명 포함) 있는 표를 붙여넣어 주세요', parsed: 0, saved: 0 }, 400)
   const saved = await saveBuyerLeads(c.env.DB, leads).catch(() => 0)
   return c.json({ success: true, parsed: leads.length, saved })
 })

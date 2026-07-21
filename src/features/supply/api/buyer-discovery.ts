@@ -450,7 +450,55 @@ export function parseBulkBuyers(text: string): BuyerLead[] {
   return out
 }
 
-/* ── buyKorea 인콰이어리 페이지 통째 붙여넣기 → 자동 추출 ──────────────────────── */
+/* ── buyKorea 붙여넣기 (리스트 / 상세) → 자동 추출 ─────────────────────────────── */
+
+// 한글 국가명 → 영어(매칭 스코어가 영어 타깃과 맞도록). 미매핑은 원문 유지.
+const KO_COUNTRY: Record<string, string> = {
+  '나이지리아': 'Nigeria', '인도': 'India', '일본': 'Japan', '중화인민공화국': 'China', '중국': 'China',
+  '미국': 'United States', '독일': 'Germany', '베트남': 'Vietnam', '인도네시아': 'Indonesia', '태국': 'Thailand',
+  '싱가포르': 'Singapore', '아랍에미리트': 'United Arab Emirates', '말레이시아': 'Malaysia', '필리핀': 'Philippines',
+  '대만': 'Taiwan', '홍콩': 'Hong Kong', '영국': 'United Kingdom', '프랑스': 'France', '러시아': 'Russia',
+  '브라질': 'Brazil', '멕시코': 'Mexico', '사우디아라비아': 'Saudi Arabia', '튀르키예': 'Turkey', '터키': 'Turkey',
+  '스페인': 'Spain', '이탈리아': 'Italy', '캐나다': 'Canada', '호주': 'Australia', '파라과이': 'Paraguay',
+  '케냐': 'Kenya', '요르단': 'Jordan', '파키스탄': 'Pakistan', '우즈베키스탄': 'Uzbekistan', '에콰도르': 'Ecuador',
+  '콜롬비아': 'Colombia', '캄보디아': 'Cambodia', '이집트': 'Egypt', '도미니카 공화국': 'Dominican Republic',
+  '스위스': 'Switzerland', '핀란드': 'Finland', '에스토니아': 'Estonia', '남아프리카 공화국': 'South Africa',
+  '루마니아': 'Romania', '모로코': 'Morocco', '우크라이나': 'Ukraine', '말라위': 'Malawi', '이스라엘': 'Israel',
+}
+function normCountry(s: string | null | undefined): string | null {
+  // 괄호 병기 제거(예: "튀르키예(터키)" → "튀르키예") 후 매핑.
+  const t = String(s || '').replace(/\s*\(.*?\)\s*/g, '').trim()
+  return t ? (KO_COUNTRY[t] || t) : null
+}
+
+/** buyKorea 인콰이어리 *리스트* 페이지 붙여넣기 → 요청건별 리드(제품·국가·상세링크). 회사/연락처는 상세에 있음. */
+export function parseBuyKoreaList(text: string): BuyerLead[] {
+  const raw = String(text || '')
+  if (!/inqrySn=/.test(raw)) return []
+  // [제목](…inqrySn=123…) 다음 줄의 국가 캡처.
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)]*inqrySn=(\d+)[^)]*)\)[^\n]*\n\s*[*\-]?\s*([^\n*]+)/g
+  const out: BuyerLead[] = []
+  const seen = new Set<string>()
+  let m: RegExpExecArray | null
+  while ((m = re.exec(raw))) {
+    const sn = m[3]
+    if (seen.has(sn)) continue
+    seen.add(sn)
+    const title = m[1].trim().replace(/^\(공개\)\s*/, '')
+    if (title.length < 2) continue
+    const country = normCountry(m[4])
+    out.push({
+      source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
+      country, target_market: country, category: null, imports_from_korea: null,
+      website: m[2].trim(), email: null, phone: null,
+      decision_maker: null, decision_maker_title: null, decision_maker_email: null,
+      est_volume: null, description: `buyKorea 구매요청: ${title}`, source_keyword: `buykorea-inq-${sn}`,
+    })
+  }
+  return out
+}
+
+/* ── buyKorea 인콰이어리 상세 통째 붙여넣기 → 자동 추출 ──────────────────────── */
 
 // buyKorea 상세 라벨(한글) → 표준 필드.
 const BK_LABELS: Record<string, string> = {
@@ -492,7 +540,7 @@ export function parseBuyKoreaInquiries(text: string): BuyerLead[] {
     }
     const company = (row.company || '').trim()
     if (company.length < 2) continue
-    const country = ((row.country || '').split('/')[0].trim()) || null
+    const country = normCountry((row.country || '').split('/')[0].trim())
     const desc = [title, row.use, row.category_raw, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
     out.push({
       source: 'buykorea', intent_signal: 'buying_lead', company: company.slice(0, 200),
