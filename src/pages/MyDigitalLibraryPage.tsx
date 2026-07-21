@@ -13,6 +13,7 @@ import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIco
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { isLoggedInSync } from '@/utils/auth'
@@ -140,7 +141,7 @@ export default function MyDigitalLibraryPage() {
                 <li key={it.access_id} className={`bg-white dark:bg-[#0F151D] border ${isExpired ? 'border-red-200 dark:border-red-900 opacity-70' : 'border-gray-200 dark:border-[#2A3446]'} rounded-2xl p-4`}>
                   <div className="flex gap-3">
                     {it.image_url ? (
-                      <img src={it.image_url} alt="" loading="lazy" className="w-16 h-16 rounded-lg object-cover shrink-0 bg-gray-100 dark:bg-[#1A2334]" />
+                      <img src={cfImage(it.image_url, { width: 200, quality: 82, format: 'auto' }) || it.image_url} alt="" loading="lazy" className="w-16 h-16 rounded-lg object-cover shrink-0 bg-gray-100 dark:bg-[#1A2334]" onError={(e) => cfImageOnError(e.currentTarget, it.image_url)} />
                     ) : (
                       <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0">
                         <Icon className="w-7 h-7 text-white" />

@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Link2, Copy, Share2, Search } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface Product {
   id: number
@@ -156,7 +157,7 @@ export default function InfluencerDiscoverPage() {
                 <li key={p.id} className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl overflow-hidden">
                   <div className="flex gap-3 p-3">
                     {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" />
+                      <img src={cfImage(p.image_url, { width: 200, quality: 82, format: 'auto' }) || p.image_url} alt={p.name} className="w-20 h-20 object-cover rounded-lg shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
                     ) : (
                       <div className="w-20 h-20 bg-gray-100 dark:bg-[#1A2334] rounded-lg shrink-0" />
                     )}

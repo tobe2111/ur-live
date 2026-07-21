@@ -6,6 +6,7 @@ import { ArrowLeft, Copy, TrendingUp, Users, Gift, Loader2, Share2, ChevronRight
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 export default function AffiliatePage() {
   const { t } = useTranslation()
@@ -187,7 +188,7 @@ function TopGroupsToShare() {
         {groups.slice(0, 6).map(g => (
           <div key={g.id} className="px-4 py-3 flex items-center gap-3">
             {g.image_url ? (
-              <img src={g.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
+              <img src={cfImage(g.image_url, { width: 200, quality: 82, format: 'auto' }) || g.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, g.image_url)} />
             ) : (
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 shrink-0" />
             )}

@@ -5,6 +5,7 @@ import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 /**
  * Parse voucher code from QR scanned content.
@@ -167,7 +168,7 @@ export default function VoucherVerifyPage() {
             {/* 바우처 정보 카드 */}
             <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 mb-5">
               {voucher.product_image && (
-                <img src={voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" />
+                <img src={cfImage(voucher.product_image, { width: 400, quality: 82, format: 'auto' }) || voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, voucher.product_image)} />
               )}
               <p className="text-base font-bold text-gray-900 dark:text-white">{voucher.product_name}</p>
               {voucher.restaurant_name && (

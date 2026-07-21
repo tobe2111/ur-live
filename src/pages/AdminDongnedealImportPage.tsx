@@ -59,6 +59,28 @@ export default function AdminDongnedealImportPage() {
       setRecond((s) => ({ ...s, running: false }))
     }
   }
+  // 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 커버만 감지·재획득(성한 건 무접촉).
+  const [healing, setHealing] = useState<{ running: boolean; checked: number; healed: number; remaining: number | null }>({ running: false, checked: 0, healed: 0, remaining: null })
+  const healBrokenImages = async () => {
+    if (healing.running) return
+    if (!confirm('안 뜨는(깨진) 데모 사진만 찾아서 새로 받아올까요?\n· 커버가 실제로 로드되는지 검사 → 죽었으면 대표사진 재획득\n· 정상 사진은 건드리지 않습니다.')) return
+    setHealing({ running: true, checked: 0, healed: 0, remaining: null })
+    let checked = 0, healed = 0
+    try {
+      for (let i = 0; i < 300; i++) {
+        const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 6 }, { ...h, timeout: 300000 })
+        if (!r.data?.success) { toast.error(r.data?.error || '검사 실패'); break }
+        checked += Number(r.data.checked ?? 0); healed += Number(r.data.healed ?? 0)
+        const remaining = Number(r.data.remaining ?? 0)
+        setHealing({ running: true, checked, healed, remaining })
+        if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
+      }
+      toast.success(`검사 ${checked}개 · 깨진 사진 ${healed}개 새로 받아옴`)
+      loadStats(); setListNonce((n) => n + 1)
+    } catch { toast.error('검사 중 오류') } finally {
+      setHealing((s) => ({ ...s, running: false }))
+    }
+  }
   // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
   const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
   const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
@@ -115,7 +137,14 @@ export default function AdminDongnedealImportPage() {
       .then(r => { if (r.data?.success) setStats(r.data as DealStats) })
       .catch(() => { /* 현황 실패는 무시 */ })
   }
-  useEffect(() => { loadStats(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 건강 진단 — R2 바인딩 + 커버 내부/외부 비율.
+  const [imgHealth, setImgHealth] = useState<{ bucketBound: boolean; cover: { total: number; internal_r2: number; external: number; naver: number; none: number }; hint: string } | null>(null)
+  const loadImgHealth = () => {
+    api.get('/api/admin/dongnedeal/image-health', h)
+      .then(r => { if (r.data?.success) setImgHealth(r.data) })
+      .catch(() => { /* 무시 */ })
+  }
+  useEffect(() => { loadStats(); loadImgHealth(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
   const clearDemo = async () => {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
@@ -248,6 +277,24 @@ export default function AdminDongnedealImportPage() {
       <div className="ur-content-wide px-4 lg:px-6 py-5 space-y-5">
         <DashboardPageHeader title="동네딜 상품 일괄 등록" subtitle="CSV로 동네딜(오프라인 공동구매) 상품을 한 번에 등록 — 즉시 동네딜에 노출됩니다." />
 
+        {/* 🩺 이미지 건강 진단 — 사진 반복 깨짐의 근본원인(R2 미바인딩/외부 커버) 가시화 */}
+        {imgHealth && (
+          <div className={`rounded-2xl border p-4 ${!imgHealth.bucketBound ? 'bg-red-50 border-red-200' : imgHealth.cover.external > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex items-start gap-2">
+              <span className="text-lg">{!imgHealth.bucketBound ? '🛑' : imgHealth.cover.external > 0 ? '⚠️' : '✅'}</span>
+              <div className="min-w-0">
+                <p className={`text-sm font-bold ${!imgHealth.bucketBound ? 'text-red-700' : imgHealth.cover.external > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  데모 사진 상태 — 커버 {imgHealth.cover.total}개 중 안전(R2) <b>{imgHealth.cover.internal_r2}</b> · 외부 URL <b>{imgHealth.cover.external}</b>{imgHealth.cover.naver > 0 ? ` (네이버 ${imgHealth.cover.naver})` : ''}{imgHealth.cover.none > 0 ? ` · 커버없음 ${imgHealth.cover.none}` : ''}
+                </p>
+                <p className="text-[12px] text-gray-600 mt-1">{imgHealth.hint}</p>
+                {!imgHealth.bucketBound && (
+                  <p className="text-[12px] text-red-700 font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {stats && (
           <div className={card}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -264,6 +311,11 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={reconditionImages} disabled={recond.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50" title="기존 데모(동네딜+숙소) 사진을 모두 현재 컨디션으로 — 커버는 카카오 대표사진, 갤러리 3~5장. 이미 갤러리가 있는 것도 갱신.">
                     {recond.running ? `사진 재적용 중… ${recond.done}개${recond.remaining != null ? ` · 남은 ${recond.remaining}` : ''}` : '📸 기존 데모 사진 재적용'}
+                  </button>
+                )}
+                {stats.demo > 0 && (
+                  <button onClick={healBrokenImages} disabled={healing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50" title="안 뜨는(깨진) 데모 커버만 검사해 대표사진으로 새로 받아옵니다. 정상 사진은 무접촉.">
+                    {healing.running ? `깨진 사진 검사 중… ${healing.checked}개 · 복구 ${healing.healed}${healing.remaining != null ? ` · 남은 ${healing.remaining}` : ''}` : '🩹 안 뜨는 사진 복구'}
                   </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).

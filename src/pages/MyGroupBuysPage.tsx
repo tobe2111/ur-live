@@ -8,6 +8,7 @@ import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGr
 import { hasConsumerSession } from '@/utils/auth';
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
 import BrandLoader from '@/components/brand/BrandLoader'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -273,7 +274,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
         {/* 썸네일 */}
         <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden shrink-0 flex items-center justify-center">
           {item.image ? (
-            <img src={item.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={cfImage(item.image, { width: 200, quality: 82, format: 'auto' }) || item.image} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image)} />
           ) : (
             <SourceIcon source={item.source} />
           )}

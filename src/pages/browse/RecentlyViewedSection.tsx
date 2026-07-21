@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Clock } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { RecentProduct } from './types'
 
 export default function RecentlyViewedSection() {
@@ -43,7 +44,7 @@ export default function RecentlyViewedSection() {
           >
             <div className="aspect-square bg-gray-100 dark:bg-[#1A2334] rounded-xl overflow-hidden">
               {p.image ? (
-                <img src={p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" />
+                <img src={cfImage(p.image, { width: 400, quality: 82, format: 'auto' }) || p.image} alt={p.name || '상품 이미지'} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, p.image)} />
               ) : (
                 <div className="w-full h-full bg-gray-100 dark:bg-[#1A2334]" />
               )}

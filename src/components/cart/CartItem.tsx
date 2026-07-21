@@ -1,6 +1,7 @@
 import React from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useTranslation } from 'react-i18next'
 
 interface CartItem {
@@ -74,11 +75,12 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         const thumbnail = item.image_url || (item as { product_image?: string }).product_image
         return thumbnail ? (
           <img
-            src={thumbnail}
+            src={cfImage(thumbnail, { width: 200, quality: 82, format: 'auto' }) || thumbnail}
             alt={item.product_name}
             className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A2334] shrink-0"
             loading="lazy"
             decoding="async"
+            onError={(e) => cfImageOnError(e.currentTarget, thumbnail)}
           />
         ) : (
           <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A2334] shrink-0 flex items-center justify-center">

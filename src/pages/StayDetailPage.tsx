@@ -10,8 +10,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, Shield } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, ChevronRight, Shield, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
@@ -76,13 +77,26 @@ interface AvailRoom {
   avg_per_night: number
 }
 
-const AMENITY_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
-  wifi: { label: '와이파이', icon: <Wifi className="w-4 h-4" /> },
-  parking: { label: '주차', icon: <Car className="w-4 h-4" /> },
-  parking_free: { label: '무료주차', icon: <Car className="w-4 h-4" /> },
-  breakfast: { label: '조식', icon: <Coffee className="w-4 h-4" /> },
-  pool: { label: '수영장', icon: <Waves className="w-4 h-4" /> },
-  spa: { label: '스파', icon: <Sparkles className="w-4 h-4" /> },
+// 🏨 2026-07-21 (대표 "시설 아이콘이 점으로만 뜸"): 시드가 시설을 **한글**(무료 주차/와이파이/조식 등)로
+//   저장하는데 기존 매핑은 영문 키(wifi/parking)만 알아 매칭 실패 → 점(•) 폴백. 한글/영문 **키워드 매칭**으로
+//   교체(부분일치) — 시드/수기/미래 표현 다 인식. 미매칭도 점 대신 체크 아이콘(설정된 시설로 보이게).
+const AMENITY_ICON_CLS = 'w-4 h-4 text-gray-500 dark:text-gray-400'
+function amenityMeta(a: string): { label: string; icon: React.ReactNode } {
+  const s = String(a || '').toLowerCase()
+  const has = (...keys: string[]) => keys.some((k) => s.includes(k))
+  let icon: React.ReactNode = <Check className={AMENITY_ICON_CLS} />
+  if (has('주차', 'parking')) icon = <Car className={AMENITY_ICON_CLS} />
+  else if (has('와이파이', '와이', 'wifi', 'wi-fi', '인터넷')) icon = <Wifi className={AMENITY_ICON_CLS} />
+  else if (has('조식', '아침', 'breakfast')) icon = <Coffee className={AMENITY_ICON_CLS} />
+  else if (has('수영', '풀', 'pool')) icon = <Waves className={AMENITY_ICON_CLS} />
+  else if (has('스파', '사우나', '온천', '온수풀', 'spa', 'sauna', '자쿠지', '욕조', 'bath')) icon = <Bath className={AMENITY_ICON_CLS} />
+  else if (has('화로', '바비큐', 'bbq', '불멍', '캠프파이어', 'grill')) icon = <Flame className={AMENITY_ICON_CLS} />
+  else if (has('취사', '주방', '조리', '키친', 'kitchen', '요리')) icon = <Utensils className={AMENITY_ICON_CLS} />
+  else if (has('에어컨', '냉난방', '냉방', '난방', 'air')) icon = <Wind className={AMENITY_ICON_CLS} />
+  else if (has('헬스', '피트니스', 'gym', 'fitness')) icon = <Dumbbell className={AMENITY_ICON_CLS} />
+  else if (has('반려', '애견', '펫', 'pet')) icon = <PawPrint className={AMENITY_ICON_CLS} />
+  else if (has('금연', 'non-smoking', 'no smoking')) icon = <CigaretteOff className={AMENITY_ICON_CLS} />
+  return { label: a, icon }
 }
 
 function todayIso() { return new Date().toISOString().slice(0, 10) }
@@ -193,6 +207,12 @@ export default function StayDetailPage() {
     const el = galRef.current; if (!el) return
     const i = Math.round(el.scrollLeft / el.clientWidth)
     if (i !== activeImage) setActiveImage(i)
+  }
+  // 🖼️ 2026-07-21 (대표 "사진 좌우 스크롤 안 됨"): PC 는 스와이프가 없으므로 화살표·도트 클릭으로 이동.
+  const scrollToImage = (i: number) => {
+    const el = galRef.current; if (!el) return
+    const clamped = Math.max(0, Math.min((/* len */ el.children.length) - 1, i))
+    el.scrollTo({ left: clamped * el.clientWidth, behavior: 'smooth' })
   }
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일) + 2026-07-20 테마 정합: 테마-가변 BrandLoader.
@@ -305,18 +325,32 @@ export default function StayDetailPage() {
               {galleryImages.map((src, i) => (
                 <img
                   key={src}
-                  src={src}
+                  src={cfImage(src, { width: 1200, quality: 82, format: 'auto' }) || src}
                   alt={`${stay.restaurant_name || stay.name} 사진 ${i + 1}`}
                   className="w-full h-full object-cover shrink-0 snap-center"
                   loading={i === 0 ? 'eager' : 'lazy'}
-                  onError={(e) => { e.currentTarget.style.opacity = '0.15' }}
+                  onError={(e) => cfImageOnError(e.currentTarget, src)}
                 />
               ))}
             </div>
-            {/* 인덱스 도트 + 장수 배지 */}
+            {/* ◀▶ 좌우 이동(PC — 스와이프 없음). 첫/마지막에선 해당 화살표 숨김. */}
+            {activeImage > 0 && (
+              <button type="button" onClick={() => scrollToImage(activeImage - 1)} aria-label="이전 사진"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur flex items-center justify-center text-white transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            {activeImage < galleryImages.length - 1 && (
+              <button type="button" onClick={() => scrollToImage(activeImage + 1)} aria-label="다음 사진"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur flex items-center justify-center text-white transition-colors">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+            {/* 인덱스 도트(클릭 이동) + 장수 배지 */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
               {galleryImages.map((_, i) => (
-                <span key={i} className={`rounded-full transition-all ${i === activeImage ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`} />
+                <button key={i} type="button" onClick={() => scrollToImage(i)} aria-label={`${i + 1}번째 사진`}
+                  className={`rounded-full transition-all ${i === activeImage ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'}`} />
               ))}
             </div>
             <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-black/55 text-white text-[10px] font-semibold">
@@ -324,7 +358,7 @@ export default function StayDetailPage() {
             </span>
           </>
         ) : (
-          stay.image_url && <img src={stay.image_url} alt={stay.name} className="w-full h-full object-cover" />
+          stay.image_url && <img src={cfImage(stay.image_url, { width: 1200, quality: 82, format: 'auto' }) || stay.image_url} alt={stay.name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, stay.image_url)} />
         )}
         <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white lg:hidden">
           <ChevronLeft className="w-5 h-5" />
@@ -388,11 +422,11 @@ export default function StayDetailPage() {
             <h2 className="text-sm font-bold mb-2">시설</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {amenitiesArr.map((a) => {
-                const m = AMENITY_LABELS[a]
+                const m = amenityMeta(a)
                 return (
                   <div key={a} className="flex flex-col items-center gap-1 p-2 bg-white dark:bg-[#0F151D] rounded-lg border border-gray-200 dark:border-[#2A3446]">
-                    {m?.icon || <span className="text-base">•</span>}
-                    <span className="text-[10px] text-gray-600 dark:text-gray-300">{m?.label || a}</span>
+                    {m.icon}
+                    <span className="text-[10px] text-gray-600 dark:text-gray-300">{m.label}</span>
                   </div>
                 )
               })}

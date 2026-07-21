@@ -15,6 +15,7 @@ import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import SEO from '@/components/SEO'
 import { useMyAppointments } from '@/hooks/queries/useMyData'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface Appointment {
   id: number
@@ -145,7 +146,7 @@ export default function MyAppointmentsPage() {
               {bookable.map((b) => (
                 <div key={`${b.order_id}-${b.product_id}`} className="rounded-2xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/10 p-3 flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden shrink-0">
-                    {b.image_url ? <img src={b.image_url} alt={b.product_name} className="w-full h-full object-cover" loading="lazy" /> : null}
+                    {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white line-clamp-1">{b.product_name}</p>
@@ -187,7 +188,7 @@ export default function MyAppointmentsPage() {
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
-                        <img src={a.image_url} alt={a.product_name} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={cfImage(a.image_url, { width: 200, quality: 82, format: 'auto' }) || a.image_url} alt={a.product_name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, a.image_url)} />
                       ) : null}
                     </div>
                     <div className="flex-1 min-w-0">

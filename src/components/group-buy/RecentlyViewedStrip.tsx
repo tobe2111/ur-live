@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const KEY = 'gb_recently_viewed_v1'
 const MAX = 12
@@ -61,7 +62,7 @@ export default function RecentlyViewedStrip() {
           >
             <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
               {item.image_url ? (
-                <img src={item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
+                <img src={cfImage(item.image_url, { width: 400, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
               )}

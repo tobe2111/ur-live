@@ -13,6 +13,7 @@ import SEO from '@/components/SEO'
 import { hostingApi, type HostingCatalogItem } from '@/features/hosting/api/hosting-api'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const CATEGORIES: Array<{ key: string; label: string; emoji: string }> = [
   { key: '', label: '전체', emoji: '🛍️' },
@@ -111,7 +112,7 @@ export default function HostingNewPage() {
                   >
                     <div className="aspect-square bg-gray-100 dark:bg-[#1A2334]">
                       {(item.thumbnail || item.image_url) && (
-                        <img src={item.thumbnail || item.image_url || ''} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={cfImage(item.thumbnail || item.image_url || '', { width: 400, quality: 82, format: 'auto' }) || (item.thumbnail || item.image_url || '')} alt={item.name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, item.thumbnail || item.image_url || '')} />
                       )}
                     </div>
                     <div className="p-3">
