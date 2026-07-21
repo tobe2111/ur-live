@@ -6,7 +6,20 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import type { FetchBudget } from './influencer-discovery'
+import { pickBusinessEmail, type FetchBudget } from './influencer-discovery'
+
+// 개인(창작자 본인) 메일 도메인 — 대행사/MCN 코퍼레이트 메일과 구분. About 에 이 도메인 메일이 있으면 우선.
+const PERSONAL_EMAIL_RE = /@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i
+/** 저장된 이메일을 최신 About 이메일로 교정할지 판단(보수적 — 값을 나쁘게 만들지 않음).
+ *  대상: 저장값이 없거나(NULL) 개인도메인이 아닌 경우(대행사 co.kr 등) + About 에 개인도메인 비즈니스 메일이 있을 때만.
+ *  → 채널 주인이 나중에 About 에 본인 메일을 추가한 케이스(수집 당시엔 영상설명의 대행사 메일만 잡힘)를 자동 정정. */
+export function correctedAboutEmail(aboutDesc: string | undefined, stored: string | null): string | null {
+  if (!aboutDesc) return null
+  const fresh = pickBusinessEmail(aboutDesc)
+  if (!fresh || !PERSONAL_EMAIL_RE.test(fresh) || fresh === (stored || '')) return null
+  const storedIsPersonal = !!stored && PERSONAL_EMAIL_RE.test(stored)
+  return storedIsPersonal ? null : fresh // 이미 개인메일이면 안 건드림(처닝 방지), 아니면(대행사/NULL) 교정
+}
 
 // ── 순수 계산(테스트 가능) ──────────────────────────────────────────────────
 export function avgStats(videos: { views: number; comments: number }[]): { avgViews: number; avgComments: number } {
@@ -70,10 +83,10 @@ export async function enrichYouTubePerformance(
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
   // perf 미수집 + 개설일 미보강(기존 풀 백필 — 자기종료: channel_published_at 채워지면 재선택 안 됨, 겸사 avg 갱신).
-  const rows = (await DB.prepare(`SELECT id, channel_id FROM ad_influencer_leads
+  const rows = (await DB.prepare(`SELECT id, channel_id, email FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR channel_published_at IS NULL)
       ORDER BY (channel_published_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
-    .all<{ id: number; channel_id: string }>().catch(() => null))?.results || []
+    .all<{ id: number; channel_id: string; email: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
   // ① uploads 재생목록 id — 50개 배치 1콜. snippet 추가(개설일 publishedAt — parts 는 비용 안 늘림, 같은 1점).
@@ -81,12 +94,14 @@ export async function enrichYouTubePerformance(
   await ensurePerfExtraColumns(DB)
   const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
     { signal: AbortSignal.timeout(10000) }).catch(() => null)
-  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] } | null : null
+  const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string; description?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } } }[] } | null : null
   const uploads = new Map<string, string>() // channel_id → uploads playlist
   const publishedAt = new Map<string, string>() // channel_id → 개설일(계정 나이 신호)
+  const aboutDesc = new Map<string, string>() // channel_id → 최신 About 소개글(이메일 재교정용 — 이미 받는 snippet)
   for (const it of chJson?.items || []) {
     if (it.id && it.contentDetails?.relatedPlaylists?.uploads) uploads.set(it.id, it.contentDetails.relatedPlaylists.uploads)
     if (it.id && it.snippet?.publishedAt) publishedAt.set(it.id, it.snippet.publishedAt)
+    if (it.id && it.snippet?.description) aboutDesc.set(it.id, it.snippet.description)
   }
 
   // ② 채널별 최근 영상 id ≤10 — 채널당 1콜.
@@ -117,8 +132,9 @@ export async function enrichYouTubePerformance(
     const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
     const { avgViews, avgComments } = avgStats(vids)
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, pub, r.id)
+    const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, pub, fixEmail, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
