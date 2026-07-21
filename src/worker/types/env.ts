@@ -179,6 +179,10 @@ export interface Env {
   // 무료 API 키 헤더(예: 미국 ITA api.trade.gov 는 `subscription-key: XXX` 헤더 필요). "이름: 값" 형식,
   //   세미콜론(;)으로 여러 개. 모든 피드 요청에 적용. URL 파라미터로 키를 넣는 API(UN Comtrade)는 불필요.
   BUYER_FEED_HEADER?: string;          // 예: "subscription-key: abc123" 또는 "Authorization: Bearer xxx"
+  // ⚠️ [위험] 상세 페이지 서버 자동 수집(대표 명시 "위험 감수하고 하자", 2026-07-21). 로그인 게이트 상세를
+  //   대표 세션 쿠키로 서버가 직접 fetch — 각 사이트 약관상 자동수집 금지·계정정지 위험. 기본 OFF(의도적 무장).
+  //   방어: 게이트 + 소량 배치 캡 + 요청 간 지연 + 쿠키 미저장(요청당 1회). buyKorea/tradeKorea/EC21/ECPlaza/GoBizKorea 겸용.
+  BUYER_AUTO_FETCH_ENABLED?: string;   // 'true' 일 때만 상세 자동 fetch 동작(기본 OFF).
   ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 1, 1~5) — 깊이 확장(page2=51~100위). 쿼터 여유 시 상향. quotaHit 가드 관리.
   ADS_YT_SEARCH_BUDGET?: string;  // 🎯 YT Search Queries/day 예산(기본 100 — 실측 병목). 구글 콘솔 증설 승인 시 함께 상향.
 

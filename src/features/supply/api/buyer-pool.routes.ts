@@ -14,6 +14,7 @@ import {
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
+import { runBuyerAutoFetch } from './buyer-autofetch'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -85,6 +86,17 @@ app.post('/import', async (c) => {
   return c.json({ success: true, parsed: leads.length, saved })
 })
 
+// POST /api/admin/buyer-pool/auto-fetch { cookie, listUrl?, urls?, max? } — ⚠️ 상세 서버 자동 수집(위험·게이트).
+//   로그인 쿠키로 상세 페이지를 서버가 직접 fetch → 파싱 → 저장. 쿠키 미저장(요청당). 게이트 OFF 면 no-op.
+app.post('/auto-fetch', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { cookie?: string; listUrl?: string; urls?: string[]; max?: number }
+  const urls = Array.isArray(b.urls) ? b.urls.filter(u => typeof u === 'string').slice(0, 30) : undefined
+  const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
+  const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl: b.listUrl ? String(b.listUrl) : undefined, urls, max })
+    .catch((e) => ({ ran: false, reason: String(e), urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
+  return c.json({ success: true, result })
+})
+
 // GET /api/admin/buyer-pool/stats
 app.get('/stats', async (c) => {
   await ensureBuyerSchema(c.env.DB)
@@ -109,6 +121,7 @@ app.get('/stats', async (c) => {
     },
     byIntent, byCountry, byCategory, intentTiers: INTENT_TIERS,
     enabled: c.env.BUYER_AUTO_COLLECT_ENABLED === 'true',
+    autoFetchEnabled: c.env.BUYER_AUTO_FETCH_ENABLED === 'true',
     feeds: (c.env.BUYER_FEED_URLS || '').split(',').map(s => s.trim()).filter(Boolean).length,
   })
 })

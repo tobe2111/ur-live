@@ -61,7 +61,7 @@ export default function AdminBuyerPoolPage() {
   const [byCountry, setByCountry] = useState<Dist[]>([])
   const [byCategory, setByCategory] = useState<Dist[]>([])
   const [intentTiers, setIntentTiers] = useState<IntentTiers>({})
-  const [meta, setMeta] = useState<{ enabled: boolean; feeds: number }>({ enabled: false, feeds: 0 })
+  const [meta, setMeta] = useState<{ enabled: boolean; feeds: number; autoFetchEnabled: boolean }>({ enabled: false, feeds: 0, autoFetchEnabled: false })
   const [targets, setTargets] = useState<Target[]>([])
   const [status, setStatus] = useState('')
   const [country, setCountry] = useState('')
@@ -81,6 +81,11 @@ export default function AdminBuyerPoolPage() {
   const [bulkText, setBulkText] = useState('')
   const [importing, setImporting] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [showAuto, setShowAuto] = useState(false)
+  const [autoCookie, setAutoCookie] = useState('')
+  const [autoListUrl, setAutoListUrl] = useState('')
+  const [autoMax, setAutoMax] = useState(10)
+  const [autoRunning, setAutoRunning] = useState(false)
 
   const loadStats = useCallback(async () => {
     try {
@@ -88,7 +93,7 @@ export default function AdminBuyerPoolPage() {
       if (r.data?.success) {
         setStats(r.data.stats); setByIntent(r.data.byIntent || []); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
         setIntentTiers(r.data.intentTiers || {})
-        setMeta({ enabled: !!r.data.enabled, feeds: r.data.feeds || 0 })
+        setMeta({ enabled: !!r.data.enabled, feeds: r.data.feeds || 0, autoFetchEnabled: !!r.data.autoFetchEnabled })
       }
     } catch { /* noop */ }
   }, [])
@@ -177,6 +182,22 @@ export default function AdminBuyerPoolPage() {
     } finally { setImporting(false) }
   }
 
+  const runAutoFetch = async () => {
+    if (autoCookie.trim().length < 10) { toast.error('로그인 쿠키를 붙여넣어 주세요'); return }
+    if (!/^https?:\/\//.test(autoListUrl.trim())) { toast.error('리스트 페이지 URL을 넣어 주세요'); return }
+    setAutoRunning(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/auto-fetch', { cookie: autoCookie.trim(), listUrl: autoListUrl.trim(), max: autoMax })
+      const res = r.data?.result
+      if (res?.ran) toast.success(`상세 ${res.fetched}건 방문 · ${res.parsed}건 추출 · ${res.saved}건 신규/보강 (실패 ${res.errors})`)
+      else toast.error(res?.reason || '자동 수집 실패')
+      await Promise.all([loadStats(), loadLeads()])
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err?.response?.data?.error || '자동 수집 실패')
+    } finally { setAutoRunning(false) }
+  }
+
   const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
 
   return (
@@ -245,6 +266,7 @@ export default function AdminBuyerPoolPage() {
         {/* 액션 바 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button onClick={() => setShowGuide(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">📋 수집 방법 {showGuide ? '숨기기' : '보기'}</button>
+          <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
           <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium">+ 바이어 직접 추가</button>
           <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
           <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
@@ -296,6 +318,29 @@ export default function AdminBuyerPoolPage() {
             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">
               💡 상세는 로그인 페이지라 <b>사이트가 자동 일괄 다운로드를 막습니다</b>(자동 크롤링 = 약관 위반·계정 정지 위험). 그래서 상세는 <b>관심 가는 건만</b> 한 페이지씩 복사합니다 — 매칭 스코어(🔥)가 높은 상위 건부터 채우면 됩니다. (buyKorea 상세는 여러 건을 한 번에 이어붙여도 인식되고, 영문 사이트는 한 건씩 붙여넣는 것을 권장합니다.) ⚠️ 수집한 컨택으로의 콜드 발송은 대상국 규제(GDPR/CAN-SPAM/CASL)를 따르세요.
             </div>
+          </div>
+        )}
+
+        {/* 🤖 상세 서버 자동 수집 (대표 승인 "위험 감수" — 계정 정지 위험, 게이트 무장 필요) */}
+        {showAuto && (
+          <div className="mb-4 rounded-xl border-2 border-red-200 bg-red-50/50 p-4">
+            <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
+            <div className="text-xs text-red-700 bg-red-100/70 rounded-lg p-2 mb-3">
+              ⚠️ 이 기능은 <b>대표님 로그인 쿠키로 서버가 상세 페이지들을 자동 방문</b>합니다. buyKorea·tradeKorea·EC21·ECPlaza·GoBizKorea 각 사이트 약관은 자동·대량 수집을 금지하며, <b>계정이 정지될 수 있습니다.</b> 위험을 감수하고 사용하세요. (방어: 소량 배치 · 요청 간 지연 · 쿠키는 저장하지 않고 이 요청에만 사용)
+              {!meta.autoFetchEnabled && <div className="mt-1 font-semibold">🔒 현재 OFF — Cloudflare 환경변수 <code>BUYER_AUTO_FETCH_ENABLED=true</code> 를 설정해야 작동합니다.</div>}
+            </div>
+            <ol className="text-[11px] text-gray-600 ml-4 list-decimal space-y-0.5 mb-2">
+              <li>수집할 사이트에 <b>로그인</b>한 뒤, 구매요청 <b>리스트 페이지</b>를 엽니다.</li>
+              <li>브라우저 <b>F12 → Network</b> 탭 → 아무 요청 클릭 → <b>Request Headers</b> 의 <code>cookie:</code> 값을 통째로 복사해 아래에 붙여넣기.</li>
+              <li>그 리스트 페이지의 <b>주소(URL)</b>를 복사해 붙여넣고 「자동 수집 실행」.</li>
+            </ol>
+            <textarea value={autoCookie} onChange={e => setAutoCookie(e.target.value)} rows={2} placeholder="로그인 쿠키(cookie: 헤더 값 전체) 붙여넣기 — 저장되지 않습니다" className="w-full px-2 py-1.5 rounded-lg border border-red-200 text-xs font-mono text-gray-900 mb-2" />
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={autoListUrl} onChange={e => setAutoListUrl(e.target.value)} placeholder="리스트 페이지 URL (예: https://www.buykorea.org/seller/ec/inq/selectInquiryList.do?...)" className="flex-1 min-w-[240px] px-2 py-1.5 rounded-lg border border-red-200 text-sm text-gray-900" />
+              <label className="text-xs text-gray-600">최대 <input type="number" min={1} max={30} value={autoMax} onChange={e => setAutoMax(Math.min(30, Math.max(1, Number(e.target.value) || 10)))} className="w-16 px-2 py-1.5 rounded-lg border border-red-200 text-sm text-gray-900" />건</label>
+              <button onClick={runAutoFetch} disabled={autoRunning} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-50">{autoRunning ? '수집 중…' : '자동 수집 실행'}</button>
+            </div>
+            <div className="mt-2 text-[11px] text-gray-400">※ 한 번에 최대 30건(계정 보호). 상세 URL 을 직접 넣고 싶으면 관리자에게 문의(엔드포인트 <code>urls[]</code> 지원). buyKorea 외 사이트는 리스트 HTML 구조에 따라 링크 인식이 다를 수 있어, 안 되면 리스트 URL 대신 상세 URL 직접 지정이 안전합니다.</div>
           </div>
         )}
 
