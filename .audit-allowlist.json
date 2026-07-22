@@ -96,6 +96,14 @@
       "accepted_by": "대표(urteam.corp) 승인 — Node-어댑터 전용 취약점, 브라우저/Workers 런타임 도달불가",
       "date": "2026-07-21",
       "review": "npm 설치 가능 환경에서 axios 패치 버전(GHSA-gcfj 수정본) 상향 후 제거 — 근본 해결 우선."
+    },
+    {
+      "ghsa": "GHSA-f88m-g3jw-g9cj",
+      "pkg": "sharp",
+      "reason": "sharp→libvips 이미지 디코딩 취약점(CVE-2026-33327/33328/35590/35591). sharp 는 package.json 직접 의존 아님(transitive) + src/·scripts/ 어디에도 import 없음 → production Workers/브라우저 번들 미포함, 네이티브 바이너리라 Cloudflare Workers 런타임 실행 불가 → 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재(위 tar/js-yaml/axios 선례와 동일 클래스).",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례 동일)",
+      "date": "2026-07-22",
+      "review": "sharp/libvips 상위 툴 갱신 시 재확인 후 제거."
     }
   ]
 }
