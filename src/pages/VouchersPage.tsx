@@ -798,7 +798,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </button>
         {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
         <div className="mt-2 flex items-center gap-3 text-[11px] px-1">
-          <button type="button" onClick={() => navigate('/group-buy')} className="text-gray-500 dark:text-gray-400 hover:underline">
+          <button type="button" onClick={() => navigate('/map')} className="text-gray-500 dark:text-gray-400 hover:underline">
             공구로 적립
           </button>
           <span className="text-gray-300 dark:text-gray-700">·</span>

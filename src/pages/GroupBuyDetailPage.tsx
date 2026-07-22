@@ -202,7 +202,7 @@ export default function GroupBuyDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
       toast.error('잘못된 ID')
-      navigate('/group-buy')
+      navigate('/map') // 🧹 2026-07-20: /group-buy 는 홈 리다이렉트(죽은 경로) → 동네딜 지도로
       return
     }
     let cancelled = false
@@ -489,7 +489,7 @@ export default function GroupBuyDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/group-buy')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
     )
   }
@@ -501,8 +501,8 @@ export default function GroupBuyDetailPage() {
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
           detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${unitPrice.toLocaleString('ko-KR')}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${detail.price.toLocaleString('ko-KR')}원`
+            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
         url={`/group-buy/${productId}`}
         image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
