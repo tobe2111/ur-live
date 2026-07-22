@@ -22,8 +22,11 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
       if (r.data?.success) {
-        const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0, lk = r.data.mergedLink ?? 0, nm = r.data.mergedName ?? 0
-        toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)} · 링크 ${formatNumber(lk)} · 이름 ${formatNumber(nm)})`)
+        if (r.data.started) toast.success('🧬 중복 통합을 백그라운드에서 시작했어요 — 잠시 후 통계를 새로고침하면 반영됩니다')
+        else {
+          const em = r.data.mergedEmail ?? 0, ig = r.data.mergedInsta ?? 0, lk = r.data.mergedLink ?? 0, nm = r.data.mergedName ?? 0
+          toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리 (이메일 ${formatNumber(em)} · 인스타 ${formatNumber(ig)} · 링크 ${formatNumber(lk)} · 이름 ${formatNumber(nm)})`)
+        }
         await onChanged()
       } else toast.error('통합 실패')
     } catch { toast.error('통합 실패') } finally { setMerging(false) }
