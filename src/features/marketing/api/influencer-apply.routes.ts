@@ -15,7 +15,8 @@ const app = new Hono<{ Bindings: Env }>()
 const POOL = 0 // 공용 풀 센티넬
 
 const PLATFORMS = ['youtube', 'instagram', 'naver_blog', 'tistory', 'tiktok', 'etc']
-const CATEGORIES = ['맛집', '카페', '뷰티', '네일', '숙소', '패션', '여행', '육아', '기타']
+// 분류 택소노미와 정합(influencer-classify RULES 15종 + 기타) — 인바운드 신청자가 자기 분야를 정확히 선택.
+const CATEGORIES = ['맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
 const clean = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max)
 
 // POST /api/creator-apply — 신청 접수(공개). body: { name, platform, url, category, email?, contact?, message?, agree }

@@ -147,30 +147,36 @@ async function saveLeadsBatch(
   // 🧹 노이즈(뉴스·방송·기관·대행) 제외 + 🎯 유튜브는 구독자 1000 이상만 수집(대표 지시 — 소형 노이즈 컷).
   const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description) && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS))
   if (!leads.length) return 0
-  const sql = `INSERT INTO ad_influencer_leads
+  // 2-패스: ① INSERT OR IGNORE — changes=1 ⟺ **진짜 신규**(백필 UPDATE 를 신규로 오집계하던 버그 방지:
+  //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
+  //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
+  const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
     (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(account_id, platform, channel_id) DO UPDATE SET
-      email = COALESCE(ad_influencer_leads.email, excluded.email),
-      instagram = COALESCE(ad_influencer_leads.instagram, excluded.instagram),
-      tiktok = COALESCE(ad_influencer_leads.tiktok, excluded.tiktok),
-      links = COALESCE(ad_influencer_leads.links, excluded.links),
-      subscriber_count = CASE WHEN excluded.subscriber_count > 0 THEN excluded.subscriber_count ELSE ad_influencer_leads.subscriber_count END
-    WHERE (ad_influencer_leads.email IS NULL AND excluded.email IS NOT NULL)
-       OR (ad_influencer_leads.instagram IS NULL AND excluded.instagram IS NOT NULL)
-       OR (ad_influencer_leads.tiktok IS NULL AND excluded.tiktok IS NOT NULL)
-       OR (ad_influencer_leads.links IS NULL AND excluded.links IS NOT NULL)`
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  const backfillSql = `UPDATE ad_influencer_leads SET
+      email = COALESCE(email, ?), instagram = COALESCE(instagram, ?), tiktok = COALESCE(tiktok, ?), links = COALESCE(links, ?),
+      subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END
+    WHERE account_id = ? AND platform = ? AND channel_id = ?
+      AND ((email IS NULL AND ? IS NOT NULL) OR (instagram IS NULL AND ? IS NOT NULL) OR (tiktok IS NULL AND ? IS NOT NULL) OR (links IS NULL AND ? IS NOT NULL))`
   let saved = 0
   const CHUNK = 50
   for (let i = 0; i < leads.length; i += CHUNK) {
-    const stmts = leads.slice(i, i + CHUNK).map(l => DB.prepare(sql).bind(
+    const slice = leads.slice(i, i + CHUNK)
+    const insStmts = slice.map(l => DB.prepare(insSql).bind(
       accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
       l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
       l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
       resolveCategory(l.name, l.description, meta.category), meta.sourceKeyword ?? null, // 🏷️ 콘텐츠 신호 우선 분류
     ))
-    const rs = await DB.batch(stmts).catch(() => null)
-    if (rs) for (const r of rs) if (r?.meta?.changes === 1) saved++
+    const rs = await DB.batch(insStmts).catch(() => null)
+    const existing: typeof slice = []
+    slice.forEach((l, idx) => { if (rs?.[idx]?.meta?.changes === 1) saved++; else existing.push(l) }) // 신규만 카운트
+    if (existing.length) { // 기존 행 연락처 백필(신규 아님)
+      await DB.batch(existing.map(l => DB.prepare(backfillSql).bind(
+        l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
+        accountId, l.platform, l.channel_id, l.email, l.instagram, l.tiktok, l.links,
+      ))).catch(() => null)
+    }
   }
   return saved
 }
@@ -429,9 +435,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
+  const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
-    used.push(k.keyword)
+    used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
@@ -513,9 +520,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
   try { perfEnriched += await enrichNaverActivity(DB, budget, 12) } catch { /* fail-soft */ }
 
-  // 두 커서 각각 전진(우선/일반 풀 독립 순환).
-  const nextPriCursor = priPool.length ? (priCursor + nPri) % priPool.length : 0
-  const nextCursor = genPool.length ? (cursor + nGen) % genPool.length : 0
+  // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
+  //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
+  //   (leapfrog). prefix 방식은 앞에서 처리 안 된 키워드가 나오면 멈춰, 못 돈 키워드를 다음 틱이 정확히 이어받음.
+  const prefixDone = (ps: { id: number }[]) => { let n = 0; for (const p of ps) { if (processedIds.has(p.id)) n++; else break } return n }
+  const priDone = prefixDone(priPicks)
+  const genDone = prefixDone(genPicks)
+  const nextPriCursor = priPool.length ? (priCursor + priDone) % priPool.length : 0
+  const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
   const stats: AutoCollectStats = {

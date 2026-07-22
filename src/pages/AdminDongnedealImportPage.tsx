@@ -42,32 +42,66 @@ export default function AdminDongnedealImportPage() {
   //   재획득. 정상 사진 무접촉. (데모를 "현재 컨디션"으로 맞추는 재조정은 cron 이 버전게이트로 자동 수렴.)
   const [fixing, setFixing] = useState<{ running: boolean; phase: string; rehosted: number; healed: number; remaining: number | null }>(
     { running: false, phase: '', rehosted: 0, healed: 0, remaining: null })
+  // 🔍 진단 결과(서버가 외부 커버를 실제로 못 가져올 때 그 이유를 화면에 표시).
+  type DiagSample = { id: number; host: string; ok: boolean; status: number; contentType: string; bytes: number; reason: string }
+  const [diag, setDiag] = useState<{ okCount: number; total: number; samples: DiagSample[] } | null>(null)
   const fixImages = async () => {
     if (fixing.running) return
     if (!confirm('데모 사진을 정리할까요?\n① 외부(네이버/카카오) 커버 → 우리 서버(R2) 영구 이관: 원본이 삭제·차단돼도 안 깨짐\n② 그래도 안 뜨는 커버는 매장 대표사진으로 새로 받아옴\n· 정상 사진은 건드리지 않습니다 (수 분 소요).')) return
-    setFixing({ running: true, phase: 'R2 영구 이관', rehosted: 0, healed: 0, remaining: null })
+    setDiag(null)
+    setFixing({ running: true, phase: '진단', rehosted: 0, healed: 0, remaining: null })
     let rehosted = 0, healed = 0
     try {
-      // ① 외부 커버 → R2 이관 (marker 기반 수렴: 매 라운드 remaining 이 반드시 감소)
-      //   ⚡ 커버 1장/상품 × 5 = 요청당 ~5 fetch → CF 엣지 한도(~100s·524) 안쪽. 라운드 수로 전량 처리.
-      for (let i = 0; i < 400; i++) {
-        const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 5 }, { ...h, timeout: 120000 })
-        if (!r.data?.success) { toast.error(r.data?.error || '이관 실패'); break }
-        if (r.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
-        rehosted += Number(r.data.rehosted ?? 0)
-        const remaining = Number(r.data.remaining ?? 0)
-        setFixing({ running: true, phase: 'R2 영구 이관', rehosted, healed, remaining })
-        if (remaining <= 0) break
+      // 🔍 0. 프로브 — 이전 실패 마킹 초기화 후, 서버가 외부 커버를 실제로 가져올 수 있는지 먼저 실측.
+      //   전부 실패면(네이버/카카오가 서버fetch 차단) 헛도는 대신 원인을 화면에 보여주고 중단.
+      await api.post('/api/admin/dongnedeal/rehost-reset-skip', {}, h).catch(() => {})
+      const probe = await api.get('/api/admin/dongnedeal/rehost-diagnose', h).catch(() => null)
+      if (probe?.data?.success) {
+        if (probe.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); setFixing((s) => ({ ...s, running: false })); return }
+        setDiag({ okCount: Number(probe.data.okCount ?? 0), total: Number(probe.data.total ?? 0), samples: probe.data.samples || [] })
+        if (Number(probe.data.total ?? 0) > 0 && Number(probe.data.okCount ?? 0) === 0) {
+          toast.error('서버가 외부(네이버/카카오) 사진을 하나도 못 가져와요 — 아래 진단 결과를 확인하세요.')
+          setFixing((s) => ({ ...s, running: false }))
+          return
+        }
       }
-      // ② 남은 깨진 커버 재획득 (대표사진으로)
+      setFixing((s) => ({ ...s, phase: 'R2 영구 이관' }))
+      // ① 외부 커버 → R2 이관. 워커가 커버 fetch 를 **병렬**(요청당 6개 — 대용량 커버 메모리 안전)로 처리.
+      //   **라운드별 내구성**: 느린 CDN 배치가 524/타임아웃 나도 전체를 죽이지 않고 그 라운드만 건너뛰고
+      //   계속(연속 에러 6회면 중단 — 다시 눌러 이어서). 안 눌러도 시간당 cron 이 자동 수렴.
+      let errs1 = 0
+      for (let i = 0; i < 800; i++) {
+        try {
+          const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 6 }, { ...h, timeout: 90000 })
+          if (r.data?.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
+          if (!r.data?.success) { if (++errs1 >= 6) { toast.error(r.data?.error || '이관 지연 — 잠시 후 다시 시도하세요'); break } continue }
+          errs1 = 0
+          rehosted += Number(r.data.rehosted ?? 0)
+          const remaining = Number(r.data.remaining ?? 0)
+          setFixing({ running: true, phase: 'R2 영구 이관', rehosted, healed, remaining })
+          if (i % 4 === 0) loadImgHealth()
+          if (remaining <= 0) break
+        } catch {
+          if (++errs1 >= 6) { toast.error('네트워크 지연으로 일시 중단 — 다시 눌러 이어서 진행하세요'); break }
+          await new Promise((res) => setTimeout(res, 1500))  // 백오프 후 다음 라운드 재시도
+        }
+      }
+      // ② 남은 깨진 커버 재획득 (대표사진으로) — 동일하게 라운드별 내구성 + 작은 배치(2).
       setFixing((s) => ({ ...s, phase: '깨진 사진 복구', remaining: null }))
-      for (let i = 0; i < 400; i++) {
-        const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 4 }, { ...h, timeout: 120000 })
-        if (!r.data?.success) { toast.error(r.data?.error || '복구 실패'); break }
-        healed += Number(r.data.healed ?? 0)
-        const remaining = Number(r.data.remaining ?? 0)
-        setFixing((s) => ({ ...s, phase: '깨진 사진 복구', healed, remaining }))
-        if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
+      let errs2 = 0
+      for (let i = 0; i < 800; i++) {
+        try {
+          const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 2 }, { ...h, timeout: 90000 })
+          if (!r.data?.success) { if (++errs2 >= 6) break; continue }
+          errs2 = 0
+          healed += Number(r.data.healed ?? 0)
+          const remaining = Number(r.data.remaining ?? 0)
+          setFixing({ running: true, phase: '깨진 사진 복구', rehosted, healed, remaining })
+          if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
+        } catch {
+          if (++errs2 >= 6) break
+          await new Promise((res) => setTimeout(res, 1500))
+        }
       }
       toast.success(`사진 정리 완료 — R2 이관 ${rehosted}개 · 복구 ${healed}개`)
       loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
@@ -285,6 +319,27 @@ export default function AdminDongnedealImportPage() {
                   <p className="text-[12px] text-red-700 font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🔍 진단 결과 — 서버가 외부 커버를 실제로 가져올 수 있는지 실측 샘플(이관 0 원인 규명) */}
+        {diag && (
+          <div className={`rounded-2xl border p-4 ${diag.okCount === 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+            <p className={`text-sm font-bold ${diag.okCount === 0 ? 'text-red-700' : 'text-slate-700'}`}>
+              🔍 사진 가져오기 실측 — 샘플 {diag.total}개 중 성공 <b>{diag.okCount}</b> / 실패 <b>{diag.total - diag.okCount}</b>
+            </p>
+            {diag.okCount === 0 && (
+              <p className="text-[12px] text-red-700 mt-1">서버(Cloudflare)에서 이 CDN들이 사진 요청을 차단하고 있어요 → R2 이관 불가. 아래 사유 참고. (대표사진 재획득/다른 소스로 우회 필요)</p>
+            )}
+            <div className="mt-2 space-y-1">
+              {diag.samples.map((s) => (
+                <div key={s.id} className="text-[11px] font-mono flex items-center gap-2">
+                  <span className={s.ok ? 'text-emerald-600' : 'text-red-600'}>{s.ok ? '✓' : '✗'}</span>
+                  <span className="text-gray-500 truncate max-w-[220px]">{s.host}</span>
+                  <span className={s.ok ? 'text-gray-600' : 'text-red-600 font-semibold'}>{s.reason}{s.status ? ` · HTTP ${s.status}` : ''}{s.bytes ? ` · ${Math.round(s.bytes / 1024)}KB` : ''}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}

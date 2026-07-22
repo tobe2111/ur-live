@@ -15,17 +15,24 @@ export async function rehostImageToR2(
 ): Promise<string | null> {
   if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null
   try {
+    // ⏱️ 2026-07-21: 실측상 일부 커버(카카오 CDN)가 6s 를 넘겨 타임아웃 → 이관 실패. 10s 로 상향
+    //   (요청당 커버 ~5개라 최악 50s 도 CF 엣지 100s 안쪽). 느린 대표사진도 이관되게.
     const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 6000)
+    const timer = setTimeout(() => ctrl.abort(), 12000)
     let res: Response
     try {
+      // 🖼️ 2026-07-22: **원본 직접 fetch**. 서버측 리사이즈 시도 전부 실패 확인 —
+      //   ① `cf.image` fetch 옵션: 이 환경 미적용(원본 8MB 그대로). ② `/cdn-cgi/image/…/<외부URL>`:
+      //   카카오/다음 외부 호스트는 리사이저가 404(외부 origin 리사이즈 미허용). 직접 fetch 만 200.
+      //   → 원본을 그대로 R2 저장하고, **표시는 same-origin `/api/media` 를 cfImage(/cdn-cgi/image)가
+      //   리사이즈**(same-origin 은 리사이저 작동) → 화면 대역폭은 작게 유지. R2 저장은 무료 10GB 여유.
       res = await fetch(srcUrl, { signal: ctrl.signal })  // 인증서오류/DNS → throw → null
     } finally { clearTimeout(timer) }
     if (!res.ok) return null
     const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
     if (!ct.startsWith('image/')) return null
     const buf = await res.arrayBuffer()
-    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null // 아이콘/깨짐 or 과대
+    if (buf.byteLength < 500 || buf.byteLength > 11 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(11MB 초과만 제외)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const yyyymm = new Date().toISOString().slice(0, 7)
     const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`

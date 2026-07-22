@@ -162,3 +162,48 @@ describe('buyer-parsers — JSON-LD 구조화 데이터 우선(더 정확히)', 
     expect(Object.keys(jsonLdFields('no structured data here')).length).toBe(0)
   })
 })
+
+import { normalizeCompanyKey } from '@/features/supply/api/buyer-discovery'
+import { isPublicHttpUrl } from '@/features/supply/api/buyer-autofetch'
+
+describe('buyer-pool — 전수조사 감사 수정 회귀', () => {
+  it('H1: 같은 제목·다른 국가 리드가 유실되지 않음(제목+국가 dedup)', () => {
+    const list = ['일반상품 전체 3', 'Cosmetics', '베트남', '게시기간 : 2026.07.20~2026.08.19',
+      'Cosmetics', '인도', '게시기간 : 2026.07.20~2026.08.19', 'Cosmetics', '미국', '게시기간 : 2026.07.20~2026.08.19'].join('\n')
+    expect(parseDatedLeadList(list).length).toBe(3)
+  })
+  it('M4: JSON-LD 회사명은 Organization 블록에서만(WebPage name 오귀속 방지)', () => {
+    expect(jsonLdFields('__JSONLD__ {"@type":"WebPage","name":"Inquiry Detail"} {"@type":"Organization","legalName":"ABC Corp"} __JSONLD__').company).toBe('ABC Corp')
+    expect(jsonLdFields('__JSONLD__ {"@type":"WebPage","name":"Home"} __JSONLD__').company).toBeUndefined()
+  })
+  it('M4: 중첩 addressCountry {name} 추출', () => {
+    expect(jsonLdFields('__JSONLD__ {"@type":"Organization","name":"N","addressCountry":{"@type":"Country","name":"Kenya"}} __JSONLD__').country).toBe('Kenya')
+  })
+  it('M3: US / United States / 미국 이 같은 company_key(중복 방지)', () => {
+    expect(normalizeCompanyKey('ABC', 'US')).toBe(normalizeCompanyKey('ABC', 'United States'))
+  })
+  it('E1: SSRF — 내부/사설 호스트 차단, 공개 호스트 허용', () => {
+    for (const u of ['http://127.0.0.1/', 'http://[fd00::1]/', 'http://[::ffff:127.0.0.1]/', 'http://169.254.169.254/', 'http://100.64.0.1/', 'http://foo.localhost/', 'http://2130706433/'])
+      expect(isPublicHttpUrl(u)).toBe(false)
+    for (const u of ['https://buyer.example.com/', 'http://8.8.8.8/', 'http://[2606:4700::1111]/'])
+      expect(isPublicHttpUrl(u)).toBe(true)
+  })
+})
+
+describe('buyer-parsers — buyKorea 실제 상세 구조(라이브 검증 기반)', () => {
+  // 대표 라이브 확인: 회사명 Al Dayagem / 국가 JORDAN / 웹사이트 power-bob / 이메일·이름 마스킹.
+  const h2t = (h: string) => String(h).replace(/<\/(?:tr|div|p|li|h[1-6]|table|dt|dd|th|td|section|button)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').split('\n').map(l => l.trim()).filter((l, i, a) => l || (a[i - 1] || '').length > 0).join('\n')
+  it('table 구조(th/td): 회사명·국가·웹사이트 추출 + 마스킹 이메일 제외', () => {
+    const l = parseBuyKoreaInquiries(h2t('<h1>Fertilizer</h1><table><tr><th>회사명</th><td>Al Dayagem for Trading agencies</td></tr><tr><th>국가/도시</th><td>JORDAN / All areas</td></tr><tr><th>웹사이트</th><td>https://www.power-bob.com</td></tr><tr><th>이메일</th><td>mu**************</td></tr></table>'))[0]
+    expect(l.company).toBe('Al Dayagem for Trading agencies')
+    expect(l.country).toBe('JORDAN')
+    expect(l.website).toMatch(/power-bob\.com/)
+    expect(l.email == null || !l.email.includes('*')).toBe(true)
+  })
+  it('화살표 구분(라벨 → 값): 콜론 없는 사이트도 추출', () => {
+    const l = parseBuyKoreaInquiries(h2t('<div>회사명 → Zhome Co</div><div>국가/도시 → 베트남</div><div>웹사이트 → https://zhome.vn</div>'))[0]
+    expect(l.company).toBe('Zhome Co')
+    expect(l.country).toBe('Vietnam')
+    expect(l.website).toMatch(/zhome\.vn/)
+  })
+})

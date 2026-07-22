@@ -70,6 +70,14 @@ const KO_COUNTRY: Record<string, string> = {
   '콜롬비아': 'Colombia', '캄보디아': 'Cambodia', '이집트': 'Egypt', '도미니카 공화국': 'Dominican Republic',
   '스위스': 'Switzerland', '핀란드': 'Finland', '에스토니아': 'Estonia', '남아프리카 공화국': 'South Africa',
   '루마니아': 'Romania', '모로코': 'Morocco', '우크라이나': 'Ukraine', '말라위': 'Malawi', '이스라엘': 'Israel',
+  '방글라데시': 'Bangladesh', '네덜란드': 'Netherlands', '폴란드': 'Poland', '아르헨티나': 'Argentina', '칠레': 'Chile',
+  '페루': 'Peru', '스웨덴': 'Sweden', '노르웨이': 'Norway', '덴마크': 'Denmark', '뉴질랜드': 'New Zealand',
+  '미얀마': 'Myanmar', '몽골': 'Mongolia', '스리랑카': 'Sri Lanka', '네팔': 'Nepal', '카자흐스탄': 'Kazakhstan',
+  '오스트리아': 'Austria', '벨기에': 'Belgium', '포르투갈': 'Portugal', '그리스': 'Greece', '체코': 'Czech Republic',
+  '헝가리': 'Hungary', '아일랜드': 'Ireland', '가나': 'Ghana', '탄자니아': 'Tanzania', '우간다': 'Uganda',
+  '에티오피아': 'Ethiopia', '알제리': 'Algeria', '튀니지': 'Tunisia', '레바논': 'Lebanon', '쿠웨이트': 'Kuwait',
+  '카타르': 'Qatar', '바레인': 'Bahrain', '오만': 'Oman', '이라크': 'Iraq', '이란': 'Iran',
+  '베네수엘라': 'Venezuela', '볼리비아': 'Bolivia', '과테말라': 'Guatemala', '온두라스': 'Honduras', '파나마': 'Panama',
 }
 function normCountry(s: string | null | undefined): string | null {
   // 괄호 병기 제거(예: "튀르키예(터키)" → "튀르키예") 후 매핑.
@@ -163,10 +171,11 @@ export function parseDatedLeadList(text: string): BuyerLead[] {
     const country = unMd(lines[i - 1])
     const title = unMd(lines[i - 2]).replace(/^\(공개\)\s*/, '')
     if (isNoise(title) || isNoise(country)) continue
-    const key = title.toLowerCase()
+    const c = normCountry(country)
+    // dedup 키에 국가 포함 — 제목만으로 dedup 하면 "Cosmetics"(베트남/인도/미국)처럼 흔한 제목의 서로 다른 바이어가 유실됨.
+    const key = title.toLowerCase() + '|' + String(c || '').toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    const c = normCountry(country)
     out.push({
       source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
       country: c, target_market: c, category: pageCat, imports_from_korea: null,
@@ -224,17 +233,27 @@ export function jsonLdFields(text: string): Partial<Record<'company' | 'email' |
   const m = String(text || '').match(/__JSONLD__([\s\S]*?)__JSONLD__/)
   const blob = m ? m[1] : ''
   if (!blob) return out
-  const pick = (re: RegExp) => { const x = blob.match(re); return x ? x[1].trim() : '' }
-  const org = pick(/"(?:legalName|name)"\s*:\s*"([^"]{2,120})"/i)
-  const email = pick(/"email"\s*:\s*"(?:mailto:)?([^"]{5,80})"/i)
-  const tel = pick(/"telephone"\s*:\s*"([^"]{6,40})"/i)
-  const url = pick(/"url"\s*:\s*"(https?:\/\/[^"]{4,150})"/i)
-  const street = pick(/"streetAddress"\s*:\s*"([^"]{4,180})"/i)
-  const locality = pick(/"addressLocality"\s*:\s*"([^"]{2,80})"/i)
-  const ctry = pick(/"addressCountry"\s*:\s*"?([^",}]{2,60})"?/i)
+  // 회사 정보는 Organization/Business 블록 우선 — 페이지가 WebPage/Breadcrumb/Product 스키마를 먼저 emit 하면
+  //   첫 "name" 이 "Inquiry Detail" 같은 페이지 제목이라 오귀속됨. org 블록 창(600자) 안에서만 회사명/연락처 추출.
+  const orgIdx = blob.search(/"@type"\s*:\s*"(?:Organization|Corporation|LocalBusiness|[A-Za-z]*Business|Store|WholesaleStore|Manufacturer)"/i)
+  // 스코프는 org 객체가 시작되는 '{' 부터(이전 객체의 name 이 새지 않게) org+700자 까지.
+  const objStart = orgIdx >= 0 ? blob.lastIndexOf('{', orgIdx) : -1
+  const scope = orgIdx >= 0 ? blob.slice(objStart >= 0 ? objStart : orgIdx, orgIdx + 700) : blob
+  const pick = (s: string, re: RegExp) => { const x = s.match(re); return x && x[1] ? x[1].trim() : '' }
+  const GENERIC = /^(inquiry|detail|home|main|web\s?page|web\s?site|search|list|breadcrumb|product|page|untitled|바이코리아|인콰이어리|buykorea)/i
+  // Organization 블록이 있을 때만 회사명 신뢰(없으면 제목/라벨에 맡김). 제네릭 페이지명 제외.
+  let org = orgIdx >= 0 ? pick(scope, /"(?:legalName|name)"\s*:\s*"([^"]{2,120})"/i) : ''
+  if (org && GENERIC.test(org)) org = ''
+  const email = pick(scope, /"email"\s*:\s*"(?:mailto:)?([^"]{5,80})"/i)
+  const tel = pick(scope, /"telephone"\s*:\s*"([^"]{6,40})"/i)
+  const url = pick(scope, /"url"\s*:\s*"(https?:\/\/[^"]{4,150})"/i)
+  const street = pick(scope, /"streetAddress"\s*:\s*"([^"]{4,180})"/i)
+  const locality = pick(scope, /"addressLocality"\s*:\s*"([^"]{2,80})"/i)
+  // addressCountry 는 문자열 또는 {name:"US"} 중첩 — 둘 다 지원.
+  const ctry = pick(scope, /"addressCountry"\s*:\s*"([^",}]{2,60})"/i) || pick(scope, /"addressCountry"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"]{2,60})"/i)
   if (org) out.company = org
   if (email && !email.includes('*') && email.includes('@')) out.email = email.toLowerCase()
-  if (tel) out.phone = tel
+  if (tel && !tel.includes('*')) out.phone = tel
   if (url) out.website = url
   const addr = [street, locality].filter(Boolean).join(', ')
   if (addr) out.address = addr
@@ -250,8 +269,8 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]
     if (!line) continue
-    // "라벨: 값" (한 줄)
-    const m = line.match(/^([^:：]{1,24})[:：]\s*(.+)$/)
+    // "라벨: 값" 또는 "라벨 → 값"(화살표·불릿·탭 구분 — buyKorea 등 사이트가 콜론 대신 씀) (한 줄)
+    const m = line.match(/^([^:：→▶»►·|\t]{1,24})\s*[:：→▶»►·|\t]\s*(.+)$/)
     if (m && looksLabel(m[1])) {
       const f = labelField(m[1]); const v = m[2].trim()
       if (f && v && !v.includes('*') && !row[f]) row[f] = v

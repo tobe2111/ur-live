@@ -42,23 +42,27 @@ const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'los
 function buildBookmarklet(token: string): string {
   const api = `${window.location.origin}/api/buyer-ingest`
   const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};` +
-    `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:280px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
+    `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:300px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
     `var host=location.host,cur=location.href.split('#')[0],HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i,IDRE=/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i;` +
-    `var grab=function(ht,base){var out=[],m;var r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){out.push(m[0])}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){out.push('/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}var ra=/href\\s*=\\s*["']([^"'#\\s]+)["']/gi;while((m=ra.exec(ht))){out.push(m[1])}return out.map(function(h){try{return new URL(h,base).href}catch(e){return ''}}).filter(function(u){if(!u)return false;try{var x=new URL(u);return x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&u.split('#')[0]!==cur}catch(e){return false}})};` +
-    `var ht=document.documentElement.outerHTML,L=grab(ht,location.href);` +
-    `[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.href);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&a.href.split('#')[0]!==cur)L.push(a.href)}catch(e){}});` +
-    `var PGP=/[?&](pageIndex|pageNo|pageNum|page|cpage|currPage)=(\\d+)/gi,pageParam='',maxPage=1,pm;while((pm=PGP.exec(ht))){var pn=parseInt(pm[2],10);if(pn>=1&&pn<=500){if(!pageParam)pageParam=pm[1];if(pm[1].toLowerCase()===pageParam.toLowerCase()&&pn>maxPage)maxPage=pn}}maxPage=Math.min(maxPage,20);` +
-    `if(pageParam&&maxPage>1){for(var pg=2;pg<=maxPage;pg++){S('유어딜: 리스트 '+pg+'/'+maxPage+' 페이지 수집...');try{var lu=new URL(location.href);lu.searchParams.set(pageParam,String(pg));var lr=await fetch(lu.href,{credentials:'include'});if(lr.ok){grab(await lr.text(),lu.href).forEach(function(u){L.push(u)})}}catch(e){}await new Promise(function(x){setTimeout(x,250)})}}` +
-    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,600);var self=IDRE.test(location.search)&&HINT.test(location.pathname);` +
-    `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열거나 리스트를 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
-    `var CHUNK=10,MAXB=3e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='';` +
+    // 상세 링크 탐색: 실제 앵커 href 우선(진짜 링크), 없으면 HTML 정규식 폴백(JS 링크 사이트).
+    `var L=[];[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.href);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&a.href.split('#')[0]!==cur)L.push(x.href.split('#')[0])}catch(e){}});` +
+    `if(!L.length){var ht=document.documentElement.outerHTML,m;var r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){try{L.push(new URL(m[0],location.href).href.split('#')[0])}catch(e){}}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){L.push(location.origin+'/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}}` +
+    `var self=IDRE.test(location.search)&&HINT.test(location.pathname);L=L.filter(function(v,i){return v&&L.indexOf(v)===i}).slice(0,60);` +
+    `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 구매요청 리스트 페이지(목록)에서 눌러주세요.');setTimeout(function(){b.remove()},8000);return}` +
+    // ⚠️ buyKorea 는 fetch 요청을 로그인으로 돌려보냄 → 숨은 iframe 으로 실제 이동시켜 세션째 읽는다(같은 사이트라 DOM 접근 가능).
+    `var readIf=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(h){if(done)return;done=true;clearTimeout(tm);try{f.remove()}catch(e){}res(h||'')};f.onload=function(){setTimeout(function(){try{fin(f.contentDocument.documentElement.outerHTML)}catch(e){fin('')}},800)};tm=setTimeout(function(){fin('')},13000);f.src=url;document.body.appendChild(f)})};` +
+    `var CHUNK=6,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='',lg=0;` +
     `var strip=function(h){return String(h||'').replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<svg[\\s\\S]*?<\\/svg>/gi,' ').replace(/<!--[\\s\\S]*?-->/g,' ')};` +
     `var push=function(h){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push(h);bb+=h.length;tR++};` +
     `var send=async function(batch){if(!batch.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:batch})});if(!res.ok){ef++;err='HTTP '+res.status;return}var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else{ef++;if(j&&j.error)err=j.error}}catch(e){ef++;err=String(e&&e.message||e)}};` +
-    `if(self)push(ht);` +
-    `for(var i=0;i<L.length;i++){S('유어딜: 상세 수집 '+(i+1)+'/'+L.length+' · 저장 '+tS);try{var r=await fetch(L[i],{credentials:'include'});if(r.ok)push(await r.text())}catch(e){}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,300)})}` +
+    `if(self)push(document.documentElement.outerHTML);` +
+    `for(var i=0;i<L.length;i++){S('유어딜: 상세 읽는 중 '+(i+1)+'/'+L.length+' · 저장 '+tS);var html=await readIf(L[i]);if(html){if(/일반회원\\s*로그인|아이디를\\s*입력|비밀번호를\\s*입력/i.test(html.slice(0,6000)))lg++;push(html)}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,120)})}` +
     `await send(buf);buf=[];bb=0;` +
-    `if(ef||err){S('❌ 전송 실패: '+(err||('배치 '+ef))+' (읽음 '+tR+' · 저장 '+tS+') — 관리자 문의')}else if(!tP){S('⚠️ 상세 '+tR+'개 읽었지만 파싱 0 — 로그인 세션/상세가 열리는지 확인 후 다시')}else{S('✅ 완료 · 읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건 — 유어딜에서 확인')}setTimeout(function(){b.remove()},15000);` +
+    `if(ef||err){S('❌ 전송 실패: '+(err||('배치 '+ef))+' (읽음 '+tR+' · 저장 '+tS+') — 관리자 문의')}` +
+    `else if(tR===0){S('❌ 상세를 못 읽음(iframe 차단?) · 링크 '+L.length+'개 — 관리자에게 알려주세요')}` +
+    `else if(lg>=tR&&!tP){S('⚠️ 로그인 페이지가 읽혔어요 — buyKorea 재로그인 후 다시 눌러주세요')}` +
+    `else if(!tP){S('⚠️ '+tR+'개 읽었지만 파싱 0 — 상세 1건을 Ctrl+A→Ctrl+C 해서 관리자에게 보내주세요')}` +
+    `else{S('✅ 이 페이지 완료 · 읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건 — 다음 페이지로 넘겨 다시 눌러주세요(중복 자동 제외)')}setTimeout(function(){b.remove()},24000);` +
     `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
@@ -108,6 +112,9 @@ export default function AdminBuyerPoolPage() {
   const [importing, setImporting] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [showAuto, setShowAuto] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [autoCookie, setAutoCookie] = useState('')
   const [autoListUrl, setAutoListUrl] = useState('')
   const [autoMax, setAutoMax] = useState(10)
@@ -124,8 +131,9 @@ export default function AdminBuyerPoolPage() {
         setStats(r.data.stats); setByIntent(r.data.byIntent || []); setByCountry(r.data.byCountry || []); setByCategory(r.data.byCategory || [])
         setIntentTiers(r.data.intentTiers || {})
         setMeta({ enabled: !!r.data.enabled, feeds: r.data.feeds || 0, autoFetchEnabled: !!r.data.autoFetchEnabled })
+        setLoadError(false)
       }
-    } catch { /* noop */ }
+    } catch { setLoadError(true) } // 실패를 '0건'으로 오표시하지 않도록 배너 노출.
   }, [])
 
   const loadLeads = useCallback(async () => {
@@ -139,8 +147,8 @@ export default function AdminBuyerPoolPage() {
       if (hasContact) params.set('hasContact', '1')
       if (q.trim()) params.set('q', q.trim())
       const r = await api.get(`/api/admin/buyer-pool?${params.toString()}`)
-      if (r.data?.success) setLeads(r.data.leads || [])
-    } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
+      if (r.data?.success) { setLeads(r.data.leads || []); setLoadError(false) }
+    } catch { setLoadError(true); toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
   }, [status, country, intent, minScore, hasContact, q])
 
   const loadTargets = useCallback(async () => {
@@ -255,10 +263,18 @@ export default function AdminBuyerPoolPage() {
   const loadToken = useCallback(async () => {
     try { const r = await api.get('/api/admin/buyer-pool/ingest-token'); if (r.data?.success) setIngestToken(r.data.token) } catch { /* noop */ }
   }, [])
-  useEffect(() => { if (showAuto && !ingestToken) loadToken() }, [showAuto, ingestToken, loadToken])
-  useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken])
+  // 북마클릿은 「수집 방법(showGuide)」·「상세 자동수집(showAuto)」 어느 패널에서든 필요 → 둘 중 하나 열리면 토큰 로드.
+  useEffect(() => { if ((showGuide || showAuto) && !ingestToken) loadToken() }, [showGuide, showAuto, ingestToken, loadToken])
+  // 패널이 열릴 때 버튼이 마운트되므로 deps 에 포함(안 그러면 href 미주입 = 드래그해도 빈 북마클릿).
+  useEffect(() => { if (bmRef.current && ingestToken) bmRef.current.setAttribute('href', buildBookmarklet(ingestToken)) }, [ingestToken, showGuide])
   const resetToken = async () => {
-    try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 드래그해 등록하세요') } } catch { toast.error('재발급 실패') }
+    try { const r = await api.post('/api/admin/buyer-pool/ingest-token/reset'); if (r.data?.success) { setIngestToken(r.data.token); toast.success('토큰 재발급 — 북마클릿을 다시 등록하세요') } } catch { toast.error('재발급 실패') }
+  }
+  // 드래그가 막히는 브라우저(크롬 최신 등) 대비 — 북마클릿 코드를 클립보드로 복사(즐겨찾기 URL 에 붙여넣기).
+  const copyBookmarklet = async () => {
+    if (!ingestToken) { toast.error('잠시 후 다시 시도해주세요(토큰 로딩 중)'); return }
+    try { await navigator.clipboard.writeText(buildBookmarklet(ingestToken)); toast.success('북마클릿 코드 복사됨 — 즐겨찾기 새로 만들고 URL 칸에 붙여넣기(Ctrl+V)') }
+    catch { toast.error('복사 실패 — 아래 코드를 길게 눌러 직접 복사하세요') }
   }
 
   const [enriching, setEnriching] = useState(false)
@@ -273,30 +289,48 @@ export default function AdminBuyerPoolPage() {
     } catch { toast.error('이메일 추출 실패') } finally { setEnriching(false) }
   }
 
-  const exportCsv = () => { window.open('/api/admin/buyer-pool/export?format=csv', '_blank') }
+  // window.open 은 쿠키만 보내 Bearer(localStorage) 인증 어드민에선 401 → 에러 JSON 다운로드됨.
+  //   axios(Bearer 첨부)로 blob 받아 저장.
+  const exportCsv = async () => {
+    try {
+      const r = await api.get('/api/admin/buyer-pool/export?format=csv', { responseType: 'blob' })
+      const url = URL.createObjectURL(r.data as Blob)
+      const a = document.createElement('a'); a.href = url; a.download = 'overseas-buyers.csv'; document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch { toast.error('CSV 내보내기 실패') }
+  }
 
   return (
     <AdminLayout title="해외 바이어 풀">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🌐 해외 바이어 파이프라인" subtitle="유통스타트 수출 — 의도 자격심사 · 매칭 스코어 · 회사→담당자" />
 
-        {/* 게이트/소스 상태 */}
-        <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span>자동 수집: <b className={meta.enabled ? 'text-emerald-600' : 'text-gray-400'}>{meta.enabled ? 'ON' : 'OFF (BUYER_AUTO_COLLECT_ENABLED)'}</b></span>
-          <span>무료 피드/오픈API: <b className="text-gray-800">{meta.feeds}개</b></span>
-          <span className="text-gray-400">· 유료 provider 없음 · 공개 비즈니스 컨택만 · 수집 ≠ 발송</span>
+        {/* 3단계 안내 — 대표가 실제로 하는 일 */}
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
+            <span className="font-semibold text-indigo-700">이렇게 쓰세요:</span>
+            <span><b>①</b> 「📋 수집 방법 · 북마클릿」 열어 즐겨찾기 등록 → buyKorea에서 클릭</span>
+            <span className="text-gray-300">→</span>
+            <span><b>②</b> 「🌐 이메일 찾기」로 연락처 보강</span>
+            <span className="text-gray-300">→</span>
+            <span><b>③</b> 「CSV 내보내기」로 저장</span>
+          </div>
         </div>
 
-        {/* 통계 — 바이어 결(핫리드/수입실적/담당자확보/파이프라인) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {/* 로드 실패 배너 — '0건'을 실제 빈 풀로 오인하지 않게 */}
+        {loadError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-center justify-between gap-2">
+            <span>⚠️ 데이터를 불러오지 못했습니다(네트워크·서버 오류). 아래 숫자·목록은 정확하지 않을 수 있습니다.</span>
+            <button onClick={() => { loadStats(); loadLeads() }} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium shrink-0">다시 시도</button>
+          </div>
+        )}
+
+        {/* 핵심 숫자 3개만 (나머지는 접기) */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {[
             { l: '전체 바이어', v: stats.total },
-            { l: '🔥 핫리드 (스코어≥70)', v: stats.hot },
-            { l: '한국 수입 이력', v: stats.proven },
+            { l: '연락처 확보', v: stats.with_contact },
             { l: '담당자 확보', v: stats.with_dm },
-            { l: '진행 중 파이프라인', v: stats.active_pipeline },
-            { l: '컨택 보유', v: stats.with_contact },
-            { l: '최근 7일', v: stats.recent7 },
           ].map(s => (
             <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.l}</div>
@@ -305,48 +339,56 @@ export default function AdminBuyerPoolPage() {
           ))}
         </div>
 
-        {/* 의도 티어 분포 (바이어 핵심 신호) */}
-        {byIntent.length > 0 && (
-          <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
-            <div className="text-xs font-semibold text-gray-500 mb-2">의도 신호 (강→약)</div>
-            <div className="flex flex-wrap gap-1.5">
-              {byIntent.map(d => (
-                <button key={d.k} onClick={() => setIntent(intent === d.k ? '' : d.k)}
-                  className={`px-2 py-1 rounded-full text-xs ${intent === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                  {intentTiers[d.k]?.label || d.k} {d.n}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 국가/카테고리 분포 */}
-        {(byCountry.length > 0 || byCategory.length > 0) && (
-          <div className="grid lg:grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold text-gray-500 mb-2">국가별</div>
-              <div className="flex flex-wrap gap-1.5">
-                {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+        {/* 상세 통계·국가·카테고리 — 접기(기본 숨김) */}
+        <div className="mb-4">
+          <button onClick={() => setShowStats(v => !v)} className="text-xs text-gray-500 hover:text-gray-700">📊 국가·카테고리·상세 통계 {showStats ? '접기 ▲' : '펼치기 ▼'}</button>
+          {showStats && (
+            <div className="mt-2 space-y-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { l: '🔥 핫리드 (스코어≥70)', v: stats.hot },
+                  { l: '한국 수입 이력', v: stats.proven },
+                  { l: '진행 중 파이프라인', v: stats.active_pipeline },
+                  { l: '최근 7일', v: stats.recent7 },
+                ].map(s => (
+                  <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs text-gray-500">{s.l}</div>
+                    <div className="text-xl font-bold text-gray-900">{formatNumber(s.v)}</div>
+                  </div>
+                ))}
               </div>
+              {(byCountry.length > 0 || byCategory.length > 0) && (
+                <div className="grid lg:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">국가별 (클릭해 필터)</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {byCategory.map(d => <span key={d.k} className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{d.k} {d.n}</span>)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
-              <div className="flex flex-wrap gap-1.5">
-                {byCategory.map(d => <span key={d.k} className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{d.k} {d.n}</span>)}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 액션 바 */}
+        {/* 액션 바 — 자주 쓰는 3개만 크게, 나머지는 「고급」에 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button onClick={() => setShowGuide(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">📋 수집 방법 {showGuide ? '숨기기' : '보기'}</button>
-          <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
-          <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium">+ 바이어 직접 추가</button>
-          <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '수집 중…' : '지금 수집'}</button>
-          <button onClick={enrichWebsites} disabled={enriching} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 없는 리드의 웹사이트를 방문해 이메일/전화를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 웹사이트에서 이메일 찾기'}</button>
-          <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
-          <button onClick={exportCsv} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">CSV 내보내기</button>
+          <button onClick={() => setShowGuide(v => !v)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">📋 수집 방법 · 북마클릿 {showGuide ? '숨기기' : ''}</button>
+          <button onClick={enrichWebsites} disabled={enriching} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="연락처 없는 리드의 웹사이트를 방문해 이메일·주소를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 이메일 찾기'}</button>
+          <button onClick={exportCsv} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 font-medium">CSV 내보내기</button>
+          <button onClick={() => setShowAdvanced(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-500">고급 {showAdvanced ? '▲' : '▼'}</button>
+          {showAdvanced && <>
+            <button onClick={() => setShowAdd(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">+ 직접 추가</button>
+            <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 disabled:opacity-50">{collecting ? '수집 중…' : '피드 수집'}</button>
+            <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
+            <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
+          </>}
           <div className="flex-1" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="회사/이메일/담당자" className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 w-44" />
           <select value={String(minScore)} onChange={e => setMinScore(Number(e.target.value))} className="px-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-900">
@@ -365,8 +407,39 @@ export default function AdminBuyerPoolPage() {
         {/* 📋 수집 방법 안내 — 2단계(발굴→연락처), 전 사이트 공통, 전부 무료 */}
         {showGuide && (
           <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-            <div className="text-sm font-semibold text-gray-900 mb-1">📋 해외 바이어 DB, 어디서 어떻게 모으나요? (2단계)</div>
-            <p className="text-xs text-gray-600 mb-3">모든 사이트가 <b>연락처(이메일·홈페이지·회사명)를 각 상세 페이지 안에 로그인 상태로만</b> 보여줍니다. 그래서 <b>① 리스트로 발굴</b> → <b>② 관심 건의 상세로 연락처 확보</b> 2단계로 모읍니다. 붙여넣는 곳은 「+ 바이어 직접 추가」 맨 아래 칸(Ctrl+V) → 「붙여넣기 일괄 추가」. (전부 무료 · 유료 결제 없음)</p>
+            <div className="text-sm font-semibold text-gray-900 mb-2">📋 바이어 수집 방법</div>
+
+            {/* 🔖 방법 1 (추천) — 원클릭 북마클릿. 맨 위·크게 */}
+            <div className="mb-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 p-4">
+              <div className="text-sm font-bold text-indigo-700 mb-1.5">🔖 방법 1 (추천) · 원클릭 북마클릿 — F12·쿠키 필요 없음</div>
+              <ol className="text-xs text-gray-700 mb-2.5 ml-4 list-decimal space-y-1">
+                <li><b>아래 파란 버튼을 브라우저 상단 「즐겨찾기 바(북마크바)」로 드래그</b>해 등록합니다. <span className="text-gray-400">(최초 1회만. 즐겨찾기 바가 안 보이면 Ctrl+Shift+B)</span></li>
+                <li><b>buyKorea에 로그인</b>하고 「인콰이어리」 구매요청 <b>리스트 페이지</b>를 엽니다.</li>
+                <li>방금 등록한 <b>즐겨찾기(📥 유어딜 바이어 수집)를 클릭</b>합니다. 끝!</li>
+              </ol>
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
+                <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-bold cursor-move select-none inline-block shadow" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
+                <span className="text-xs text-indigo-600 font-semibold">← 즐겨찾기 바로 <u>드래그</u></span>
+                <button onClick={copyBookmarklet} className="px-3 py-2 rounded-lg bg-white border border-indigo-300 text-indigo-700 text-xs font-semibold">📋 드래그 안 되면: 코드 복사</button>
+                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline ml-1">토큰 재발급</button>}
+              </div>
+              <details className="mb-2">
+                <summary className="text-[11px] text-indigo-600 cursor-pointer">🖱️ 드래그가 안 되나요? (크롬 최신 버전 등) — 코드 복사로 등록하기</summary>
+                <div className="mt-1.5 rounded-lg bg-white p-2.5 text-[11px] text-gray-600 leading-relaxed">
+                  <b>「📋 코드 복사」</b> 누른 뒤:<br/>
+                  ① 브라우저 즐겨찾기 <b>아무거나 하나 새로 만들기</b> (주소창 옆 ⭐ 또는 Ctrl+D)<br/>
+                  ② 그 즐겨찾기 <b>편집</b> → 이름 = <b>유어딜 바이어 수집</b>, <b>URL 칸</b>에 <b>붙여넣기(Ctrl+V)</b> → 저장<br/>
+                  ③ 이제 buyKorea 리스트에서 그 즐겨찾기를 누르면 수집됩니다.
+                </div>
+              </details>
+              <div className="rounded-lg bg-white/70 p-2 text-[11px] text-gray-600">
+                ✅ 누르면 화면 우상단에 <b>「리스트 2/5 페이지 수집… → 상세 수집 … → ✅ 저장 N건」</b>이 뜨며, 리스트의 <b>모든 페이지를 자동으로 넘기며</b> 각 상세로 들어가 회사명·국가·웹사이트·품목·수량·주소를 저장합니다. 상세를 하나씩 열 필요 없습니다.<br/>※ 바이어 <b>이메일은 사이트가 가려서</b>, 수집 후 위의 <b>「🌐 이메일 찾기」</b> 버튼으로 채웁니다.
+              </div>
+            </div>
+
+            <div className="text-xs font-semibold text-gray-700 mb-1">또는 · 방법 2 · 수동 복사 붙여넣기 (북마클릿이 안 되는 사이트용)</div>
+            <p className="text-xs text-gray-600 mb-3">구매요청 <b>리스트를 Ctrl+A → Ctrl+C</b> 한 뒤, 「고급 ▼ → + 직접 추가」 맨 아래 칸에 <b>Ctrl+V → 붙여넣기 일괄 추가</b>. 상세 페이지도 같은 방법으로 붙여넣으면 회사·연락처가 같은 행에 채워집니다. 아래는 사이트별 리스트 위치 안내입니다.</p>
             <div className="grid sm:grid-cols-2 gap-2 mb-3">
               <div className="rounded-lg bg-white border border-gray-200 p-2.5">
                 <div className="text-xs font-semibold text-gray-900">1단계 · 발굴 (리스트)</div>
@@ -392,7 +465,7 @@ export default function AdminBuyerPoolPage() {
               ))}
             </div>
             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">
-              💡 상세는 로그인 페이지라 <b>사이트가 자동 일괄 다운로드를 막습니다</b>(자동 크롤링 = 약관 위반·계정 정지 위험). 그래서 상세는 <b>관심 가는 건만</b> 한 페이지씩 복사합니다 — 매칭 스코어(🔥)가 높은 상위 건부터 채우면 됩니다. (buyKorea 상세는 여러 건을 한 번에 이어붙여도 인식되고, 영문 사이트는 한 건씩 붙여넣는 것을 권장합니다.) ⚠️ 수집한 컨택으로의 콜드 발송은 대상국 규제(GDPR/CAN-SPAM/CASL)를 따르세요.
+              💡 <b>방법 1(북마클릿)이 대부분 사이트에서 가장 빠릅니다</b> — 리스트 전체 페이지를 자동으로 돌아 상세까지 수집. 수동 복사는 북마클릿이 안 될 때만 쓰세요. ⚠️ 수집한 컨택으로의 콜드 발송은 대상국 규제(GDPR/CAN-SPAM/CASL)를 따르세요.
             </div>
           </div>
         )}
@@ -400,19 +473,7 @@ export default function AdminBuyerPoolPage() {
         {/* 🤖 상세 서버 자동 수집 (대표 승인 "위험 감수" — 계정 정지 위험, 게이트 무장 필요) */}
         {showAuto && (
           <div className="mb-4 rounded-xl border-2 border-red-200 bg-red-50/50 p-4">
-            {/* 🔖 북마클릿 — F12·쿠키 없이 원클릭(추천). 대표 브라우저 세션으로 읽어 안전 */}
-            <div className="mb-3 rounded-lg border-2 border-indigo-200 bg-indigo-50/60 p-3">
-              <div className="text-sm font-semibold text-indigo-700 mb-1">🔖 원클릭 북마클릿 (추천 · F12·쿠키 복사 없음)</div>
-              <div className="text-[11px] text-gray-600 mb-2">아래 파란 버튼을 <b>브라우저 즐겨찾기 바(북마크바)로 드래그</b>해 등록하세요. 그다음 buyKorea 등에서 <b>구매요청 리스트나 상세 페이지를 열고 이 즐겨찾기를 클릭</b>하면, 그 페이지의 바이어들이 자동으로 여기에 저장됩니다. <b>대표님이 이미 로그인한 브라우저</b>가 읽는 것이라 F12·쿠키·서버 로그인이 전혀 필요 없고, 계정 위험도 가장 낮습니다.</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* href 는 ref 로 주입(React 의 javascript: 차단 우회) */}
-                <a ref={bmRef} onClick={e => e.preventDefault()} draggable className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium cursor-move select-none inline-block" title="이 버튼을 브라우저 즐겨찾기 바로 드래그하세요">📥 유어딜 바이어 수집</a>
-                <span className="text-[11px] text-gray-400">← 이 버튼을 즐겨찾기 바로 드래그</span>
-                {ingestToken && <button onClick={resetToken} className="text-[11px] text-gray-400 underline">토큰 재발급</button>}
-              </div>
-              <div className="mt-1.5 text-[11px] text-gray-400">💡 <b>많이 모으려면</b>: buyKorea 리스트에서 <b>100/200개로 펼친 뒤</b> 북마클릿을 누르면 한 번에 최대 200건까지 상세로 들어가 긁어옵니다(25개씩 나눠 전송)(회사명·국가·웹사이트·품목·수량·<b>실제 요청문구</b>까지). ※ 바이어 이메일은 마스킹되니, 이메일은 「🌐 웹사이트에서 이메일 찾기」로 채우세요.</div>
-            </div>
-            <div className="text-xs text-gray-400 mb-2">— 또는 아래는 서버가 직접 방문하는 방식(고급·위험) —</div>
+            <div className="text-[11px] text-gray-500 mb-2">💡 대부분은 「📋 수집 방법·북마클릿」의 <b>방법 1(북마클릿)</b>이면 충분합니다. 아래는 서버가 저장된 쿠키로 직접 방문하는 <b>고급·위험</b> 방식입니다.</div>
             <div className="text-sm font-semibold text-red-700 mb-1">🤖 상세 페이지 서버 자동 수집 (실험 · 위험)</div>
             <div className="text-xs text-red-700 bg-red-100/70 rounded-lg p-2 mb-3">
               ⚠️ 이 기능은 <b>대표님 로그인 쿠키로 서버가 상세 페이지들을 자동 방문</b>합니다. buyKorea·tradeKorea·EC21·ECPlaza·GoBizKorea 각 사이트 약관은 자동·대량 수집을 금지하며, <b>계정이 정지될 수 있습니다.</b> 위험을 감수하고 사용하세요. (방어: 소량 배치 · 요청 간 지연 · 쿠키는 저장하지 않고 이 요청에만 사용)

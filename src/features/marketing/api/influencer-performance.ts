@@ -30,8 +30,12 @@ export function reextractEmail(description: string | null | undefined, stored: s
   return undefined // 유지
 }
 
-// 개인(창작자 본인) 메일 도메인 — 대행사/MCN 코퍼레이트 메일과 구분. About 에 이 도메인 메일이 있으면 우선.
-const PERSONAL_EMAIL_RE = /@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i
+// 개인(창작자 본인) 메일 도메인 SSOT — 대행사/MCN 코퍼레이트 메일과 구분. About 에 이 도메인 메일이 있으면 우선.
+//   통계(admin-ads `yt_email_personal`)·교정(correctedAboutEmail) 둘 다 이 집합에서 파생 → 정의 드리프트 방지.
+export const PERSONAL_EMAIL_DOMAINS = ['gmail', 'naver', 'daum', 'kakao', 'hanmail', 'nate', 'hotmail', 'outlook', 'icloud'] as const
+const PERSONAL_EMAIL_RE = new RegExp(`@(${PERSONAL_EMAIL_DOMAINS.join('|')})\\.`, 'i')
+/** 통계용 SQL 조건 — 주어진 컬럼이 개인도메인 메일인지(위 SSOT 와 동일 집합). 도메인 리터럴만이라 인젝션 무관. */
+export const personalEmailSqlClause = (col = 'email'): string => PERSONAL_EMAIL_DOMAINS.map(d => `${col} LIKE '%@${d}.%'`).join(' OR ')
 /** 저장된 이메일을 최신 About 이메일로 교정할지 판단(보수적 — 값을 나쁘게 만들지 않음).
  *  대상: 저장값이 없거나(NULL) 개인도메인이 아닌 경우(대행사 co.kr 등) + About 에 개인도메인 비즈니스 메일이 있을 때만.
  *  → 채널 주인이 나중에 About 에 본인 메일을 추가한 케이스(수집 당시엔 영상설명의 대행사 메일만 잡힘)를 자동 정정. */
@@ -119,14 +123,24 @@ export function topicToCategory(topicUrls: string[] | undefined): string | null 
  *   채널당: channels.list(uploads 재생목록, 50개 배치 1점) → playlistItems(1점) → videos.list(50 id 배치 1점 공유).
  */
 export async function enrichYouTubePerformance(
-  apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number,
+  apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number, mode: 'progress' | 'refresh' = 'progress',
 ): Promise<number> {
   if (!apiKey || max <= 0 || budget.left <= 3) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
-  // perf 미수집 + 개설일 조회 미시도(기존 풀 백필 — pub_checked_at 로 자기종료: 좀비채널도 1회 시도 후 재선택 안 함).
+  // 선택 대상 — progress(cron): perf 미수집 채널을 구독자 많은 순(pub_checked_at 로 자기종료: 좀비채널도 1회 후 재선택 X).
+  //   refresh(수동 라이브 재조회): 이미 수집됐어도 **개인메일이 아직 없는 채널**(NULL·대행사)을 오래된 조회순으로 재선택
+  //   → 저장값이 대행사 메일이지만 현재 About 엔 개인메일인 케이스(티벳동생)를 correctedAboutEmail 이 실제로 교정.
+  //   반복 클릭 시 pub_checked_at 이 now 로 갱신돼 큐 뒤로 밀리므로 전 풀을 순회(무한 재조회 없음, 개인메일 확보되면 대상서 제외).
+  //   + **recent_avg_views = 0 힐**: 과거 예산소진 버그로 avg 0 으로 굳은 채널(개설일 스탬프됨 → 진행모드 재선택 안 됨)도
+  //   재조회 대상에 포함해 실제 조회수로 교정(예산소진 스킵은 이제 0 을 안 찍으므로 재감염 없음, 진짜 0 이면 실측 후 유지).
+  const refresh = mode === 'refresh'
+  const whereMode = refresh
+    ? `channel_id IS NOT NULL AND ((email IS NULL OR NOT (${personalEmailSqlClause()})) OR recent_avg_views = 0)`
+    : `(perf_checked_at IS NULL OR pub_checked_at IS NULL)`
+  const orderMode = refresh ? `pub_checked_at ASC` : `(pub_checked_at IS NULL) DESC, subscriber_count DESC`
   const rows = (await DB.prepare(`SELECT id, channel_id, email, category FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'youtube' AND (perf_checked_at IS NULL OR pub_checked_at IS NULL)
-      ORDER BY (pub_checked_at IS NULL) DESC, subscriber_count DESC LIMIT ?`).bind(Math.min(max, 20))
+      WHERE account_id = 0 AND platform = 'youtube' AND ${whereMode}
+      ORDER BY ${orderMode} LIMIT ?`).bind(Math.min(max, 20))
     .all<{ id: number; channel_id: string; email: string | null; category: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
@@ -149,9 +163,11 @@ export async function enrichYouTubePerformance(
 
   // ② 채널별 최근 영상 id ≤10 — 채널당 1콜.
   const videoIdsByLead = new Map<number, string[]>()
+  const budgetSkipped = new Set<number>() // 예산 소진으로 영상통계를 못 잰 채널 — perf 를 0 으로 찍지 않고 보류(다음 틱 재선택)
   for (const r of rows) {
     const pl = uploads.get(r.channel_id)
-    if (!pl || budget.left <= 2) { videoIdsByLead.set(r.id, []); continue }
+    if (!pl) { videoIdsByLead.set(r.id, []); continue }                 // 업로드 재생목록 없음 = 실제로 영상 0 → avg 0 이 정답
+    if (budget.left <= 2) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue } // 예산 소진 — perf 보류
     budget.left--
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
@@ -170,13 +186,18 @@ export async function enrichYouTubePerformance(
     for (const it of vj?.items || []) if (it.id) stats.set(it.id, { views: parseInt(it.statistics?.viewCount || '0', 10) || 0, comments: parseInt(it.statistics?.commentCount || '0', 10) || 0 })
   }
 
-  // ④ 평균 계산 + 저장(1 batch). 실패/영상없음도 스탬프(재시도 폭주 방지).
+  // ④ 평균 계산 + 저장(1 batch). 영상없음(!pl)/실패는 스탬프(재시도 폭주 방지)하되, **예산 소진으로 못 잰 채널**은
+  //   avg=0/perf_checked_at 을 찍지 않는다 — 찍으면 progress 재선택(perf_checked_at IS NULL)에서 영구 제외돼
+  //   라이브 채널이 avg 0 으로 묻힘(enrichNaverActivity 는 budget break 로 이미 안전). 이미 받은 About/개설일/카테고리 교정만 반영.
   const stmts = rows.map(r => {
-    const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
-    const { avgViews, avgComments } = avgStats(vids)
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
     const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
     const catFill = !r.category ? (topicCat.get(r.channel_id) || null) : null // 미분류만 topicDetails 로 채움(기존 분류 보존)
+    if (budgetSkipped.has(r.id)) // 예산으로 perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = COALESCE(category, ?) WHERE id = ?`)
+        .bind(pub, fixEmail, catFill, r.id)
+    const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
+    const { avgViews, avgComments } = avgStats(vids)
     return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = COALESCE(category, ?), perf_checked_at = datetime('now') WHERE id = ?`)
       .bind(avgViews, avgComments, pub, fixEmail, catFill, r.id)
   })
@@ -225,15 +246,16 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
 /**
  * 🔄 유튜브 라이브 재조회(수동) — 저장된 소개글이 아니라 **현재 라이브 About 을 다시 불러** 이메일/카테고리/성과를 갱신.
  *   대표 신고(티벳동생): 저장값은 수집 당시 영상설명의 대행사 메일인데 현재 About 엔 개인메일 — 재추출(저장데이터)로는
- *   못 고치고, 라이브 About 재조회가 필요. enrichYouTubePerformance 를 여러 패스 돌려 구독자 많은 순으로 처리
- *   (correctedAboutEmail 이 라이브 About 개인메일로 대행사/스테일 메일 교정 + topicDetails 카테고리 채움).
+ *   못 고치고, 라이브 About 재조회가 필요. enrichYouTubePerformance 를 refresh 모드로 여러 패스 —
+ *   **이미 수집됐어도 개인메일이 아직 없는 채널**(NULL·대행사)을 오래된 조회순으로 재선택해(진행 모드는 미수집만 보므로
+ *   티벳동생처럼 이미 처리된 채널엔 안 닿던 게 근본 원인) correctedAboutEmail 이 라이브 About 개인메일로 교정 + topicDetails 카테고리 채움.
  *   YouTube units 사용(검색 쿼터와 무관 — channels/videos.list). passes×20 채널.
  */
 export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processed: number }> {
   const budget: FetchBudget = { left: 250 }
   let processed = 0
   for (let i = 0; i < Math.max(1, Math.min(10, passes)) && budget.left > 5; i++) {
-    const n = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, env.DB, budget, 20).catch(() => 0)
+    const n = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, env.DB, budget, 20, 'refresh').catch(() => 0)
     processed += n
     if (n === 0) break // 더 처리할 대상 없음
   }

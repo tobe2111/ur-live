@@ -58,12 +58,15 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   async function refetchLive() {
-    if (!window.confirm('유튜브 채널의 현재 About을 라이브로 다시 불러 이메일·카테고리를 교정할까요?\n(재추출로 안 고쳐지는 케이스 — 현재 About에만 개인메일이 있는 채널. YouTube API 사용, 구독자 많은 순 처리)')) return
+    if (!window.confirm('유튜브 채널의 현재 About을 라이브로 다시 불러 이메일·카테고리·평균조회수를 교정할까요?\n(현재 About에만 개인메일이 있는 채널 + 과거 버그로 "평균 0회"로 굳은 채널을 실제 조회수로 교정. YouTube API 사용. 한 번에 100개 처리 — 많으면 여러 번 눌러주세요)')) return
     setRefetching(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/refetch-live', { passes: 5 })
-      if (r.data?.success) { toast.success(`🔄 ${formatNumber(r.data.processed)}개 채널 라이브 재조회 완료 (이메일·카테고리 교정)`); await onChanged() }
-      else toast.error(r.data?.error || '라이브 재조회 실패')
+      if (r.data?.success) {
+        if (r.data.started) toast.success('🔄 라이브 재조회를 백그라운드에서 시작했어요 — 잠시 후 통계를 새로고침하면 교정 결과가 반영됩니다')
+        else toast.success(`🔄 ${formatNumber(r.data.processed)}개 채널 라이브 재조회 완료 (이메일·카테고리 교정)`)
+        await onChanged()
+      } else toast.error(r.data?.error || '라이브 재조회 실패')
     } catch (e) {
       const ax = e as { response?: { data?: { error?: string } } }
       toast.error(ax.response?.data?.error || '라이브 재조회 실패')

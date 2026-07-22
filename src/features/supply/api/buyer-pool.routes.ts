@@ -96,7 +96,7 @@ app.post('/auto-fetch', async (c) => {
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
   const listUrl = b.listUrl ? String(b.listUrl) : undefined
   const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl, urls, max })
-    .catch((e) => ({ ran: false, reason: String(e), urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
+    .catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
   // 저장 옵션: 쿠키(호스트별 암호화)·리스트 URL 저장 → 다음부터 재입력 없이 재사용.
   if (b.save && result.ran) {
     if (b.cookie && listUrl) await saveCookieForHost(c.env, hostOf(listUrl), String(b.cookie)).catch(() => null)
@@ -112,7 +112,7 @@ app.get('/auto-fetch/config', async (c) => c.json({ success: true, ...(await get
 app.post('/auto-fetch/run-saved', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { max?: number }
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
-  const result = await runSavedSources(c.env, max).catch((e) => ({ ran: false, reason: String(e), saved: 0, sources: [] }))
+  const result = await runSavedSources(c.env, max).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, sources: [] }))
   return c.json({ success: true, result })
 })
 
@@ -140,7 +140,7 @@ app.post('/ingest-token/reset', async (c) => c.json({ success: true, token: awai
 app.post('/enrich-websites', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { max?: number }
   const max = Number.isFinite(b.max) ? Math.min(40, Math.max(1, Number(b.max))) : undefined
-  const result = await enrichLeadsFromWebsites(c.env, { max }).catch((e) => ({ ran: false, reason: String(e), scanned: 0, enriched: 0, fetches: 0, sample: [] }))
+  const result = await enrichLeadsFromWebsites(c.env, { max }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', scanned: 0, enriched: 0, fetches: 0, sample: [] }))
   return c.json({ success: true, result })
 })
 
@@ -209,6 +209,9 @@ app.patch('/targets/:id', async (c) => {
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
   const b = await c.req.json().catch(() => ({})) as { active?: boolean }
   await setBuyerTargetActive(c.env.DB, id, !!b.active)
+  // 재스코어는 무겁고(수천 UPDATE) 토글마다 실행 → 응답을 막지 않게 waitUntil 로 백그라운드(ctx 없으면 동기 폴백).
+  const ctx = c.executionCtx as { waitUntil?: (p: Promise<unknown>) => void } | undefined
+  if (ctx?.waitUntil) { ctx.waitUntil(rescoreBuyerLeads(c.env.DB).catch(() => 0)); return c.json({ success: true, rescored: null, rescoring: true }) }
   const rescored = await rescoreBuyerLeads(c.env.DB).catch(() => 0)
   return c.json({ success: true, rescored })
 })
@@ -221,7 +224,7 @@ app.post('/rescore', async (c) => {
 
 // POST /api/admin/buyer-pool/collect — 무료 수집 1회(force). 피드 미설정이면 found:0(정상).
 app.post('/collect', async (c) => {
-  const r = await runBuyerCollection(c.env, { force: true }).catch((e) => ({ ran: false, reason: String(e), saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
+  const r = await runBuyerCollection(c.env, { force: true }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
   return c.json({ success: true, result: r })
 })
 

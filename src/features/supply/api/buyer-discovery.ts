@@ -138,8 +138,9 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 export function normalizeCompanyKey(company: string, country?: string | null): string {
   const raw = String(company || '')
   let base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
-  if (!base) base = 'x' + raw.trim().toLowerCase().replace(/\s+/g, '') || 'x'
-  const c = String(country || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  if (!base) base = ('x' + raw.trim().toLowerCase().replace(/\s+/g, '')) || 'x'
+  // 국가는 별칭 정규화(normCountryKey) — 'US'/'USA'/'United States'/'미국' 이 같은 키가 되게(피드·붙여넣기 소스간 중복 방지).
+  const c = normCountryKey(country)
   return `${base}|${c}`.slice(0, 160)
 }
 
@@ -247,10 +248,14 @@ async function getActiveTargets(DB: D1Database): Promise<ActiveTarget[]> {
 async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active: ActiveTarget[]): Promise<boolean> {
   const title = (l.inquiry_title || '').slice(0, 200)
   if (!title) return false
+  // 국가까지 일치해야 매칭 — 같은 제목("Skincare products")의 다른 국가 바이어에 엉뚱한 연락처가 붙던 HIGH 버그 차단.
+  //   상세 국가가 있으면 국가 일치(또는 플레이스홀더 국가 미상)만, 상세 국가가 없으면 제목 매칭 유지(최선).
+  const lc = (l.country || '').trim()
   const existing = await DB.prepare(
     `SELECT id, country FROM overseas_buyer_leads
      WHERE inquiry_title = ? AND email IS NULL AND decision_maker_email IS NULL
-       AND (company IS NULL OR company = inquiry_title) LIMIT 1`).bind(title)
+       AND (company IS NULL OR company = inquiry_title)
+       AND (? = '' OR country IS NULL OR country = ?) LIMIT 1`).bind(title, lc, lc)
     .first<{ id: number; country: string | null }>().catch(() => null)
   if (!existing) return false
   const intent = INTENT_KEYS.includes(l.intent_signal) ? l.intent_signal : 'buying_lead'
@@ -396,10 +401,13 @@ export async function deleteBuyerLead(DB: D1Database, id: number): Promise<{ ok:
   return { ok: true }
 }
 
-export async function rescoreBuyerLeads(DB: D1Database): Promise<number> {
+// 최신 리드 우선 재스코어 — 전체 무제한 SELECT+UPDATE 는 대량 시 Worker CPU/subrequest 한도 초과(타깃 토글마다 동기 실행).
+//   최근 5000행으로 캡(스코어에 중요한 신규분 우선). 호출부는 waitUntil 로 비동기 실행 권장.
+export async function rescoreBuyerLeads(DB: D1Database, cap = 5000): Promise<number> {
   await ensureBuyerSchema(DB)
   const targets = await getActiveTargets(DB)
-  const rows = (await DB.prepare('SELECT id, intent_signal, category, country, target_market, imports_from_korea, decision_maker_email FROM overseas_buyer_leads')
+  const rows = (await DB.prepare('SELECT id, intent_signal, category, country, target_market, imports_from_korea, decision_maker_email FROM overseas_buyer_leads ORDER BY id DESC LIMIT ?')
+    .bind(Math.max(100, Math.min(20000, cap)))
     .all<Pick<BuyerLeadRow, 'id' | 'intent_signal' | 'category' | 'country' | 'target_market' | 'imports_from_korea' | 'decision_maker_email'>>().catch(() => null))?.results || []
   let n = 0
   const CHUNK = 100
@@ -465,7 +473,8 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
     const trimmed = text.trim()
     try {
       if (trimmed.startsWith('[') || trimmed.startsWith('{')) items = digArray(JSON.parse(trimmed))
-      else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l))
+      // NDJSON — 줄별 개별 파싱(한 줄 깨져도 나머지 유지; 통째 파싱하면 한 줄 오류로 전체 폐기).
+      else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) as Record<string, unknown>[]
     } catch { items = [] }
     for (const it of items.slice(0, 500)) {
       // 회사명 — 일반 피드는 company/name, 미국 ITA Trade Leads 는 title(입찰/기관명)이 회사 자리.
@@ -489,6 +498,7 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
         decision_maker_title: it.contact_title ? String(it.contact_title).slice(0, 80) : null,
         decision_maker_email: it.contact_email ? String(it.contact_email) : null,
         est_volume: it.est_volume ? String(it.est_volume).slice(0, 60) : null,
+        address: it.address ? String(it.address).slice(0, 300) : (it.addr ? String(it.addr).slice(0, 300) : (it.location ? String(it.location).slice(0, 300) : null)),
         description, source_keyword: `${target.category} · ${target.country}`,
       })
     }
