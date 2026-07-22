@@ -11,7 +11,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §3 레인 A.
  */
 import type { Env } from '@/worker/types/env'
-import { type FetchBudget, outOfBudget, spendBudget } from './influencer-discovery'
+import { type FetchBudget, outOfBudget, spendBudget, pickBusinessEmail } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 const NAVER_OPENAPI = 'https://openapi.naver.com'
@@ -112,7 +112,29 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
   return out
 }
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
+/** 📧 홈페이지 이메일 크롤(레인 A 보충 — 옵션 a) — robots.txt 존중, 홈 1페이지 1회(재시도 없음), 예산 합산.
+ *   website 는 네이버 지역검색이 준 업체 등록 홈페이지(사용자 입력 아님) — http(s) 만, pickBusinessEmail 재사용. */
+async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
+  let url: URL
+  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return null }
+  if (!/^https?:$/.test(url.protocol)) return null
+  // robots.txt 존중(간이) — User-agent:* 에 Disallow:/ (전면차단)면 크롤 안 함.
+  if (outOfBudget(budget)) return null
+  spendBudget(budget)
+  const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
+  if (robots) {
+    const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
+    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return null
+  }
+  if (outOfBudget(budget)) return null
+  spendBudget(budget)
+  const html = await fetch(url.origin, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
+    .then(r => r.ok ? r.text() : '').catch(() => '')
+  if (!html) return null
+  return pickBusinessEmail(html.slice(0, 200000))
+}
+
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 
@@ -160,10 +182,25 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     await DB.prepare("UPDATE ad_company_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_run_at = datetime('now') WHERE id = ?")
       .bind(leads.length, n, kw.id).run().catch(() => null)
   }
+
+  // 📧 이메일 보충(옵션 a) — 홈페이지 있고 이메일 없는 최근 리드를 예산 내에서 크롤. phone-first 위 additive.
+  let emailed = 0
+  if (!outOfBudget(budget)) {
+    const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE source = 'local' AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY id DESC LIMIT 15")
+      .all<{ id: number; website: string }>().catch(() => null))?.results || []
+    for (const t of targets) {
+      if (outOfBudget(budget)) break
+      const email = await crawlCompanyEmail(t.website, budget)
+      if (email) {
+        const r = await DB.prepare("UPDATE ad_company_leads SET email = ? WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
+        if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
+      }
+    }
+  }
   const nextCursor = (cursor + batch) % kws.length
 
   const s: CompanyCollectStats = {
-    last_run: stamp, found, saved, keywords: used, cursor: nextCursor,
+    last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     diag: { configured: true },
   }
