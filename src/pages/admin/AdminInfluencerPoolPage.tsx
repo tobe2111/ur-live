@@ -259,11 +259,17 @@ export default function AdminInfluencerPoolPage() {
   async function exportExcel() {
     setExporting(true)
     try {
-      // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls)
-      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob' })
+      // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls).
+      //   ⚠️ 20k행이면 전체+카테고리별 시트로 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
+      //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
+      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob', timeout: 120000 })
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
       const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url)
-    } catch { toast.error('엑셀 내보내기 실패') } finally { setExporting(false) }
+    } catch (e) {
+      const ax = e as { code?: string; response?: { status?: number } }
+      if (ax.code === 'ECONNABORTED') toast.error('엑셀 내보내기 시간 초과 — 데이터가 많습니다. 잠시 후 다시 시도하거나 CSV를 이용하세요')
+      else toast.error(`엑셀 내보내기 실패${ax.response?.status ? ` (HTTP ${ax.response.status})` : ''}`)
+    } finally { setExporting(false) }
   }
 
   // 📤 CSV — 화면 로드분(200)만 나가던 결함 수리: 현재 필터 **전체**를 500개씩 끝까지 페치(공유 헬퍼, 22열).
