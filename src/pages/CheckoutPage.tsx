@@ -432,7 +432,7 @@ function CartCheckout() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f4f4f4] overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#f4f4f4] overflow-x-hidden">
       <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
       {/* 🛡️ 2026-05-21: 뒤로가기 무한 루프 영구 fix.
             기존: navigate('/cart') → new history entry → [prev, /cart, /checkout, /cart].
