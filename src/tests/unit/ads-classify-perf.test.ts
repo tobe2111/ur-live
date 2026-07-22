@@ -17,6 +17,22 @@ describe('classifyCategory — 콘텐츠 신호', () => {
   it('신호 없으면 null', () => {
     expect(classifyCategory('일상 브이로그', '그냥 일상')).toBeNull()
   })
+  it('맛집 오탐 제거 — 캐주얼 "맛있" 은 맛집 아님', () => {
+    expect(classifyCategory('일상 기록', '오늘 점심 맛있었어요')).toBeNull() // 과거엔 "맛있" → 맛집 오분류
+  })
+  it('니치가 맛집보다 우선 — 음식어 스침에 안 뺏김', () => {
+    expect(classifyCategory('헬스 브이로그', '다이어트 도시락 레시피')).toBe('운동')   // 다이어트(운동) > 레시피(푸드)
+    expect(classifyCategory('멍멍이랑', '강아지 수제간식 만들기')).toBe('반려동물')      // 강아지(반려) > 간식
+    expect(classifyCategory('우리 아기', '이유식 레시피 공유')).toBe('육아')            // 이유식(육아) > 레시피
+  })
+  it('신규 카테고리 분류(과거엔 규칙 없어 맛집/미분류로 샜음)', () => {
+    expect(classifyCategory('우리집 냥이', '고양이 일상')).toBe('반려동물')
+    expect(classifyCategory('홈트 채널', '매일 홈트레이닝 루틴')).toBe('운동')
+    expect(classifyCategory('살림의 여왕', '정리수납 꿀팁')).toBe('리빙')
+    expect(classifyCategory('재테크 노트', '주식 투자 기록')).toBe('IT/재테크')
+    expect(classifyCategory('자취요리', '간단 레시피')).toBe('푸드')            // 요리/레시피 → 푸드(맛집 아님)
+    expect(classifyCategory('예쁜 카페 투어', '디저트 맛집')).toBe('카페')       // 카페 > 맛집
+  })
 })
 
 describe('resolveCategory — 콘텐츠 우선 + 키워드 폴백', () => {
