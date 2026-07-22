@@ -5,6 +5,7 @@ import { formatNumber } from '@/utils/format'
 import { downloadCsv } from '@/utils/csv-download'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PanelError from './PanelError'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 /**
  * 🆕 2026-07-13 유어애즈 — 인플루언서 발굴/연락처 수집 패널.
@@ -200,7 +201,7 @@ export default function InfluencerDiscoveryPanel() {
         {shown.map(l => (
           <div key={l.id} className={`rounded-xl border p-3 ${l.status === 'rejected' ? 'border-gray-100 dark:border-[#2A3446] opacity-60' : 'border-gray-100 dark:border-[#1F2637]'}`}>
             <div className="flex items-start gap-3">
-              {l.thumbnail && <img src={l.thumbnail} alt="" className="w-10 h-10 rounded-full shrink-0" loading="lazy" />}
+              {l.thumbnail && <img src={cfImage(l.thumbnail, { width: 200, quality: 82, format: 'auto' }) || l.thumbnail} alt="" className="w-10 h-10 rounded-full shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, l.thumbnail)} />}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <a href={l.url} target="_blank" rel="noreferrer" className="text-[13.5px] font-bold text-gray-900 dark:text-white hover:underline">{l.name}</a>

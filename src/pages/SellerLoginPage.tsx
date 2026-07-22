@@ -6,7 +6,6 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
@@ -25,6 +24,9 @@ export default function SellerLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도 전 토큰 재발급 — 일회용 Turnstile 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   // 🔗 2026-06-26 카카오 단일로그인 통일 (Step 2a): 카카오 우선, 이메일 폼은 기존 셀러용 fallback.
   //   저장된 remember_email 이 있으면(=기존 이메일 셀러) 폼을 자동으로 펼쳐 회귀 0.
   const [showEmailLogin, setShowEmailLogin] = useState(false)
@@ -100,6 +102,8 @@ export default function SellerLoginPage() {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       setError(err_.response?.data?.error || t('seller.loginErrorDefault'))
+      // 🛡️ 실패 → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -289,8 +293,7 @@ export default function SellerLoginPage() {
                 </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — 비가시 봇 검증 (size="invisible" 은 유효값 아님 — appearance 기본값이 담당) */}
-              <TurnstileWidget onVerify={setTurnstileToken} />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               {/* Login button */}
               <button

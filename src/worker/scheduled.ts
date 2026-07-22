@@ -200,6 +200,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
     // 🔄 2026-07-05 (대표 "마감돼도 사라지면 안 됨 — 콜드스타트"): 데모 추첨 마감 자동 연장(5~10일 롤링).
     ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
+    // 🖼️ 2026-07-21 (대표 "남은 이상적인 것"): 데모 갤러리 외부 CDN URL → R2 점진 이관(시간당 상품 2개,
+    //   외부 fetch ≤10 — 서브리퀘스트 예산 보호). 멱등(img_rehost_done meta 종결) — 수렴 후 SELECT 1회 no-op.
+    ctx.waitUntil(safeCron('demo-image-rehost', async () => {
+      const { handleDemoImageRehost } = await import('./cron/demo-image-rehost');
+      return handleDemoImageRehost(env);
+    }));
     // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, "직접 해줘"): 기존 데모 상품명의 '{매장명} · ' 프리픽스를
     //   배포 후 자동으로 in-place 제거(멱등 — 치유 완료 후엔 SELECT 1회 + no-op). 시드 heal 블록과 동일 함수.
     ctx.waitUntil(safeCron('demo-name-heal', async () => {
@@ -364,6 +370,11 @@ export async function handleCronScheduled(
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
     }))
+    // 🌐 바이어 풀 완전 무인 — 저장 소스 자동 수집 + 웹사이트 이메일 보강(이중 게이트).
+    ctx.waitUntil(safeCron('buyer-autofetch', async () => {
+      const { handleBuyerAutofetchCron } = await import('./cron/buyer-autofetch')
+      await handleBuyerAutofetchCron(env)
+    }))
   }
 
   // 🛡️ 2026-05-19: 이용권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.
@@ -373,6 +384,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('restaurant-geocode', async () => {
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
       await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+    }))
+    // 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 정리 — 기본 리포트-온리(삭제는 R2_ORPHAN_CLEANUP_ENABLED
+    //   플래그 + 60일 경과 + biz-cert 제외 + 회당 50개 캡). 일 1회면 충분(R2 list 비용 절감).
+    ctx.waitUntil(safeCron('r2-orphan-cleanup', async () => {
+      const { r2OrphanCleanup } = await import('./cron/r2-orphan-cleanup')
+      await r2OrphanCleanup(env)
     }))
   }
 

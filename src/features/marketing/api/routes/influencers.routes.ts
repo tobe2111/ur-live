@@ -29,7 +29,7 @@ adsInfluencersRoutes.get('/influencers', async (c) => {
   // 어떤 플랫폼이 지금 수집 가능한지 클라에 알림(유튜브=키 보유 시 항상, 인스타/틱톡=제공사 키 있을 때).
   return c.json({
     success: true, leads,
-    sources: { youtube: !!c.env.YOUTUBE_API_KEY, naver_blog: !!(naverOpenId(c.env) && naverOpenSecret(c.env)), naver_cafe: !!(naverOpenId(c.env) && naverOpenSecret(c.env)), instagram: providerAvailable(c.env), tiktok: providerAvailable(c.env) },
+    sources: { youtube: !!c.env.YOUTUBE_API_KEY, naver_blog: !!(naverOpenId(c.env) && naverOpenSecret(c.env)), naver_cafe: !!(naverOpenId(c.env) && naverOpenSecret(c.env)), tistory: !!c.env.KAKAO_REST_API_KEY, instagram: providerAvailable(c.env), tiktok: providerAvailable(c.env) },
   })
 })
 

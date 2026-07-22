@@ -1,5 +1,6 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 참여완료 카카오 공유 모달(verbatim 추출). 동작 불변.
 import { toast } from '@/hooks/useToast'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 export default function PostJoinShareModal({ data, onClose }: { data: { product_id: number; name: string; image_url?: string }; onClose: () => void }) {
   const userId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
@@ -34,7 +35,7 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-gray-900 dark:text-white">0.5% 보너스 딜</span></p>
         </div>
         {data.image_url && (
-          <img src={data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" />
+          <img src={cfImage(data.image_url, { width: 800, quality: 82, format: 'auto' }) || data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, data.image_url)} />
         )}
         <p className="text-sm font-bold text-center text-gray-900 dark:text-white mb-4">{data.name}</p>
         <button

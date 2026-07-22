@@ -91,6 +91,7 @@ if domain ui; then
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
+  run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
 fi
 
 if domain structure; then

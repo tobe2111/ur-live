@@ -7,6 +7,7 @@ import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { Ticket, MapPin, QrCode, Copy, Gift, Smartphone } from 'lucide-react'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 
@@ -103,7 +104,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
       <div className="flex items-center gap-2.5 px-4 pt-3.5">
         <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
           {v.product_image ? (
-            <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+            <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
             <Ticket className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.6} />
           )}
@@ -263,7 +264,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         {/* 썸네일 60px */}
         <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F]">
           {v.product_image ? (
-            <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
+            <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
             <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
           )}

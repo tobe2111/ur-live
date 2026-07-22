@@ -1,5 +1,31 @@
 # 🚧 진행 중 작업
 
+## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — **3레인 전부 구현 완료** ✅
+**완료**: ① 1단계 = `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·상태머신·tier·CSV) ② **레인 A** = 네이버 지역검색(`local.json`) 자동수집(ur-ads 홀수시 크론 게이트드 `ADS_COMPANY_COLLECT_ENABLED`, 방배/서초/강남×12업종 키워드, phone-first) + **이메일 홈페이지 크롤**(robots.txt 존중, `pickBusinessEmail`) + 수동 '지금 수집'(서비스바인딩 위임) ③ **레인 B·C** = 명부 붙여넣기 임포트(`parsePartnerPaste`, 공정위 정보공개서·상인회 CSV/TSV). 파일: `company-discovery.ts`·`company-collect.ts`·`partner-pool.routes.ts`·`AdminPartnerPoolPage.tsx`·`worker-ads/index.ts`. tsc 0·가드 GREEN. **후속(선택)**: 웹문서 `webkr.json` 보충·data.go.kr API 피드. **⚠️ 레인 A 활성**: `NAVER_SEARCH_CLIENT_ID/SECRET` + `ADS_COMPANY_COLLECT_ENABLED=true` → '지금 수집' 표본검증. 설계 SSOT: `docs/design/partner-company-collection.md`.
+
+<details><summary>설계(초기) — 3레인/접점분류/우선순위</summary>
+유어딜 매장 입점을 대신 데려올 **업체 공개 연락처 DB**(1차 마케팅 대행사, 2차 POS·간판·세무사·주류도매·프랜차이즈 본사 등). ur-ads 워커에 인플루언서 수집 옆에 additive — **인플루언서 트랙의 사실상 복제**(같은 워커·FetchBudget·어드민 풀 UI·아웃리치 상태머신). 신규 격리 테이블 `ad_company_leads` + 게이트 `ADS_COMPANY_COLLECT_ENABLED`(기본 OFF). **머지 = 라이브 영향 0**.
+- **3레인 설계(대표 승인)**: A=자동수집(네이버 지역검색 `local.json` 주력+웹문서 보충+홈페이지 이메일 크롤) · B=레지스트리 배치(공정위 프랜차이즈 정보공개서·명부) · C=수동 큐레이션(상인회·조합, 어드민 수기). `source` 컬럼으로 구분.
+- **접점 분류(수집 카테고리 SSOT)**: category(매장인프라/정기납품/전문서비스/창업생태계/지역조직/미디어/대행사) × subcategory. **tier(1~5, 어드민 수동 조정)**·region 1급 필터. ⚠️ 맘카페/당근 운영진 **수집 제외**(개인·미공개 연락처).
+- **착수 순서(대표 확정)**: 테이블·어드민(상태머신) 먼저 → 레인A → B → C. 어드민 뜨면 대표가 방배 리드 첫 주부터 손입력.
+- **우선순위(대표 확정)**: 지역 키워드 시딩(기존 요청)·유어애즈 8문항 **먼저** → 그다음 이 트랙(9월 대행사 영업 전 라이브면 충분).
+- **⚠️ 착수 전 결정 2건(표본검증 후)**: ① 홈페이지 이메일 크롤 방식 — (a) robots.txt 존중 임의도메인 fetcher 신설[ur-ads 현재 없음] vs (b) 검색 스니펫만[안전·확보율↓]. ② 전화 우선 vs 이메일 우선(지역검색이 전화 바로 줌 → (b)로도 수용기준 40% 가능성).
+- **⚠️ 구현자 정정**: 인플루언서 트랙은 `local.json`/`webkr.json` **안 씀**(blog/cafe+유튜브+카카오) → 지역검색/웹문서는 ur-ads 신규 엔드포인트(같은 네이버 무료 키). `pickBusinessEmail`은 크롤 X(텍스트 추출만). 테이블은 런타임 `ensureSchema`. 어드민 CRUD는 메인, 수집엔진만 ur-ads.
+- 설계 SSOT: `docs/design/partner-company-collection.md`.
+</details>
+
+## 🔶 2026-07-20 — 🌐 해외 수출 바이어 DB 자동 수집 (유통스타트 B2B) — draft PR #614, 게이트 OFF
+한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀 `overseas_buyer_leads` 에 매칭 누적. **머지 = 라이브 영향 0**(신규 격리 테이블 + `BUYER_AUTO_COLLECT_ENABLED` 기본 OFF). 대표 확정 3원칙: **① 최대한 무료(유료 provider 없음) ② 유어딜과 무관(유통스타트 자립) ③ 인플루언서와 결이 다름(매칭·자격심사 파이프라인)**.
+- **인플루언서와 다른 결**: 영입 깔때기(볼륨)가 아니라 **의도 자격심사 + 매칭**. `intent_signal` 티어링(RFQ 50>구매리드 48>수입실적 45>전시회 30>디렉토리 15) · `imports_from_korea`(행동 증거) · 회사→구매담당자(MD) 2단 컨택 · `match_score`(0~100, 타깃 부합+수입이력+담당자) · BD 파이프라인(lead→qualified→sampling→negotiating→won/lost). 타깃 테이블(수출카테고리×시장)이 매칭 SSOT — 변경 시 풀 자동 재스코어.
+- **유어딜 무관 분리**: 코드 `features/supply/api/`(유통스타트 자립, 유어애즈 헬퍼 의존 0 — 컨택추출 인라인). 마운트 `mount-wholesale.ts`(소비자 ur-live 번들 DCE 제외 — 도매 워커 전용). 격리 테이블만.
+- **최대한 무료**: 유료 Apollo 제거. 유일 소스 = `fetchFeeds`(`BUYER_FEED_URLS`) — 대표가 무료 소스(KOTRA BuyKorea/TradeKorea 구매리드·전시회 명단·data.go.kr 무료 오픈API)를 JSON 게시/직결하면 코드변경 0 편입. JSON배열/NDJSON/오픈API(`response.body.items`) 자동 파싱. 임의 스크래핑 없음.
+- **구현**: `supply/api/buyer-discovery.ts`(엔진) · `supply/api/buyer-pool.routes.ts`(`/api/admin/buyer-pool/*`, requireAdmin, mount-wholesale) · `AdminBuyerPoolPage.tsx`(`/admin/buyer-pool`, 도매몰·운영) · env 4종(`BUYER_AUTO_COLLECT_ENABLED`/`BUYER_AUTOCOLLECT_BATCH`/`BUYER_SUBREQUEST_BUDGET`/`BUYER_FEED_URLS`).
+- **⚠️ [LEGAL]** 공개 비즈니스 컨택만 — 콜드 아웃리치는 GDPR·CAN-SPAM·CASL 별도(수집 ≠ 발송). 발굴·자격심사·매칭까지만.
+- **무료 소스 확정(리서치)**: 실제 바이어 연락처 무료 대량 API 없음(관세/BoL=유료가 사업모델). 정타 = **KOTRA buyKorea/KITA tradekorea 인바운드 인콰이어리**(대표 B안 선택). ITA Trade Leads(`data.trade.gov/trade_leads/v1/search`)는 UK 조달만이라 파이프라인 검증·데모용. `fetchFeeds` 가 ITA `results[]`(title→company·country_code·url·입찰날짜→buying_lead) + buyKorea JSON 둘 다 자동 파싱. env `BUYER_FEED_HEADER`(ITA subscription-key 헤더).
+- **⏳ TEMP 테스트 마운트**: 정규는 mount-wholesale(도매 워커)라 라이브 어드민 404 → `worker/index.ts` 에 임시 마운트(admin 전용·격리·게이트, ur-wholesale 배포 시 제거). 대표가 지금 `/admin/buyer-pool` 「지금 수집」 검증 가능.
+- **⏳ 대표 액션**: ⓐ (B) buyKorea 무료 가입 → 바이어 인콰이어리를 §2-2 JSON 형식으로 게시 → `BUYER_FEED_URLS` 등록 ⓑ `/admin/buyer-pool` 「지금 수집」 검증 ⓒ `BUYER_AUTO_COLLECT_ENABLED=true`. 설계 SSOT: `docs/design/overseas-buyer-collection.md`.
+- 검증: tsc 0(baseUrl 경고는 기존 CI 무관) · sql-table/bind/column·theme·csv·pagination·file-size 가드 GREEN. ⚠️ npm 403 → build/vitest 는 CI.
+
 ## 🔶 2026-07-20 — 도메인 이전: live.ur-team.com → **urdeal.kr** (대표 확정 "나랑 같이, 빠짐없이" — 코드 완료, 대표 콘솔 작업 진행 중)
 - **코드(이 커밋)**: `live.ur-team.com`→`urdeal.kr` 일괄 치환 105+파일(워크플로 8종 포함). **의도적 병기 잔존 5파일**: constants(CORS 구+신 병기 — 전환기 구 도메인 API 생존), worker/index(`LEGACY_CONSUMER_HOSTS`), auth-cookies.test(구 도메인 케이스), capacitor(allowNavigation 구 호스트 — 앱 안 301 통과용), AndroidManifest(구 호스트 딥링크 — 기발송 링크도 앱으로).
 - **워커 301** `[UNLOCK_LOADING]`: 구 도메인 GET/HEAD 내비게이션 → `https://urdeal.kr` 301. **제외 3종** — `/api/*`(토스 웹훅 POST 301 미보장·구 SPA same-origin fetch CORS·카카오 콜백), `/assets/*`(열린 구 탭 청크), `/.well-known/*`. www.urdeal.kr→urdeal.kr 정규화 동일 블록.

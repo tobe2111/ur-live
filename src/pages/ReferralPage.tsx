@@ -11,6 +11,7 @@ import { useReferral, type Tier, type Member, type ReferralGroup, type ProductIn
 import { hasConsumerSession } from '@/utils/auth'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 /** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
@@ -276,7 +277,7 @@ export default function ReferralPage() {
           {product && (
             <div className="flex gap-3 mb-4">
               {product.image_url && (
-                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#2A3446]" loading="lazy" />
+                <img src={cfImage(product.image_url, { width: 200, quality: 82, format: 'auto' }) || product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#2A3446]" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>

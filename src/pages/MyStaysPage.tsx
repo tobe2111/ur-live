@@ -12,6 +12,7 @@ import SEO from '@/components/SEO'
 import { Building2, Calendar, Star, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -103,7 +104,7 @@ export default function MyStaysPage() {
                 <div key={b.id} className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
-                      {b.image_url ? <img src={b.image_url} alt={b.product_name} className="w-full h-full object-cover" /> : null}
+                      {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">

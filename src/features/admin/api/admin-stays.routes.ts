@@ -16,6 +16,7 @@ import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
+import { rehostImageToR2 } from '@/worker/utils/rehost-image'
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
@@ -303,6 +304,15 @@ const STAY_TYPES = [
   { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '가족 단위 리조트 — 온수풀·사우나 등 부대시설 완비.' },
   { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비 없이 즐기는 글램핑 — 개별 화로와 냉난방 텐트.' },
 ]
+// 🏨 2026-07-21 (대표 "시설 설정 안 됨" — 이상적): 업종별 대표 시설 세트(5~6개). 상세 시설 아이콘 매핑
+//   (StayDetailPage amenityMeta)이 한글 키워드로 인식. 공통 + 유형 특색.
+const STAY_AMENITIES: Record<string, string[]> = {
+  pension: ['무료 주차', '와이파이', '바비큐', '취사 가능', '에어컨', '개별 테라스'],
+  hotel: ['무료 주차', '와이파이', '조식', '24시간 프런트', '에어컨', '엘리베이터'],
+  guesthouse: ['무료 주차', '와이파이', '조식', '공용 라운지', '에어컨'],
+  resort: ['무료 주차', '와이파이', '조식', '온수풀', '사우나', '피트니스'],
+  glamping: ['무료 주차', '와이파이', '개별 화로', '바비큐', '냉난방', '샤워실'],
+}
 
 adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
   try {
@@ -369,6 +379,72 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (r && (r.meta.changes || 0) > 0) healed++
       }
     } catch { /* restaurant_lat 컬럼 미존재 환경 등 — 치유는 best-effort, 시드 진행 */ }
+    // 🏨 시설 백필 (2026-07-21 대표 "기존 숙소도 시설 채워져?"): 옛 시드가 시설 3개(주차/와이파이/조식)만
+    //   넣은 기존 데모를 업종별 5~6개 풍부 세트(STAY_AMENITIES)로 갱신. 4개 미만인 것만 대상(멱등 — 이미
+    //   풍부하면 skip, 관리자 수기 편집분도 대개 4개+ 라 무접촉). property_type 로 세트 선택.
+    let amenityHealed = 0
+    try {
+      const thin = await DB.prepare(
+        `SELECT psi.product_id AS pid, psi.property_type AS ptype, psi.amenities AS amen
+           FROM product_stay_info psi JOIN products p ON p.id = psi.product_id
+          WHERE p.slug LIKE 'demo-stay-%' AND COALESCE(p.is_active,1) = 1`
+      ).all<{ pid: number; ptype: string | null; amen: string | null }>()
+        .catch(() => ({ results: [] as { pid: number; ptype: string | null; amen: string | null }[] }))
+      for (const row of (thin.results || [])) {
+        let cur: string[] = []
+        try { const v = JSON.parse(row.amen || '[]'); if (Array.isArray(v)) cur = v.filter((x) => typeof x === 'string') } catch { /* bad json → 교체 */ }
+        if (cur.length >= 4) continue  // 이미 풍부 — 무접촉
+        const rich = STAY_AMENITIES[row.ptype || ''] || STAY_AMENITIES.hotel
+        const r = await DB.prepare(`UPDATE product_stay_info SET amenities = ? WHERE product_id = ?`)
+          .bind(JSON.stringify(rich), row.pid).run().catch(() => null)
+        if (r && (r.meta.changes || 0) > 0) amenityHealed++
+      }
+    } catch { /* best-effort — 시설 백필 실패가 시드를 막지 않음 */ }
+    // 🖼️ v4 사진·카카오링크 자동 치유 (2026-07-21 대표 "카카오맵 무조건 + 사진 3~5장"): 갤러리(images)
+    //   없는 기존 데모 숙소를 요청당 3개까지 실사진 3~5장 + kakao_place_url 백필(외부호출 한도 보호 —
+    //   신규 생성 6개×4~5콜 뒤에도 50 한도 안). placeId 는 저장된 kakao_place_url 에서 추출, 없으면
+    //   숙소 실명으로 재조회(정확일치일 때만 링크 신뢰 — 오매칭 방지, 사진은 네이버 스코어링 폴백).
+    let photoHealed = 0
+    try {
+      const needPhoto = await DB.prepare(
+        `SELECT p.id, p.restaurant_name, p.image_url, p.restaurant_address AS addr,
+                psi.latitude AS lat, psi.longitude AS lng
+           FROM products p JOIN product_stay_info psi ON psi.product_id = p.id
+          WHERE p.slug LIKE 'demo-stay-%'
+            AND (p.images IS NULL OR p.images = '' OR p.images = '[]')
+          LIMIT 3`
+      ).all<{ id: number; restaurant_name: string | null; image_url: string | null; addr: string | null; lat: number | null; lng: number | null }>()
+      const rows = needPhoto.results || []
+      if (rows.length > 0) {
+        const { getSupplyMeta, setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+        const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id))
+        for (const row of rows) {
+          if (!row.restaurant_name) continue
+          let placeRef: string | null = metaMap.get(row.id)?.kakao_place_url || null
+          if (!placeRef) {
+            const found = await kakaoPlaceLookup(extEnv, row.restaurant_name, 0,
+              row.lat != null && row.lng != null ? { x: String(row.lng), y: String(row.lat) } : null)
+            if (found?.name === row.restaurant_name && found.placeUrl) {
+              placeRef = found.placeUrl
+              await setSupplyMeta(DB, row.id, { kakao_place_url: found.placeUrl }).catch(() => {})
+            }
+          }
+          const imgs = await fetchDemoPhotos(extEnv, {
+            placeId: placeRef,
+            nameQuery: row.restaurant_name,
+            address: row.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
+            count: 3 + Math.floor(Math.random() * 3),
+          }).catch(() => [] as string[])
+          if (imgs.length === 0) continue
+          // 대표가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진이면 유지하고 갤러리에 병합.
+          const isPlaceholder = !row.image_url || /picsum\.photos/.test(row.image_url)
+          const gallery = (isPlaceholder ? imgs : Array.from(new Set([row.image_url as string, ...imgs]))).slice(0, 5)
+          await DB.prepare(`UPDATE products SET images = ?, image_url = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(JSON.stringify(gallery), gallery[0], row.id).run().catch(() => {})
+          photoHealed++
+        }
+      }
+    } catch { /* images 컬럼 미존재 환경 등 — best-effort */ }
     let created = 0, skipped = 0, realPhotos = 0
     for (let i = 0; i < count; i++) {
       const spot = spots[(n + 1 + i) % spots.length]
@@ -389,11 +465,16 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       const imgs = await fetchDemoPhotos(extEnv, {
         placeId: place.placeId,
         nameQuery: place.name,
+        address: place.address || spot.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
         fallbackQuery: `${spot.label} ${ty.kakao}`,
         count: wantPhotos,
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
-      const img = imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
+      // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
+      //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,
+      //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).
+      const coverHosted = imgs[0] ? await rehostImageToR2(extEnv as unknown as { MEDIA_BUCKET?: R2Bucket }, imgs[0], 'demo-stay-seed').catch(() => null) : null
+      const img = coverHosted || imgs[0] || `https://picsum.photos/seed/${slug}/800/600`
       const desc = `${spot.label}의 ${ty.kakao} — ${ty.desc}`
       // 객실 2종 — 인원 2~6 자동 분산(인원 필터 검색이 항상 유효하게) + 주중/주말가.
       //   products INSERT 보다 먼저 계산: 대표가(price)=최저 객실 주중가, 오퍼명이 객실명을 참조.
@@ -407,20 +488,21 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       const offerName = `평일 1박 숙박권 (${rooms[0].name})`
       const price = rooms[0].wd
       const origPrice = Math.round(price * 1.3 / 1000) * 1000
+      const stayPhone = place.phone || null  // 📞 2026-07-21 (대표 "다 넣어줘"): 카카오 실전화 캡처
       let ins
       try {
         ins = await DB.prepare(
           `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
-             is_active, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, place.lat, place.lng, slug).run()
+             is_active, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, stayPhone, place.lat, place.lng, slug).run()
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(동네딜 시드와 동일 방어).
         ins = await DB.prepare(
           `INSERT INTO products (seller_id, name, description, image_url, price, original_price, category, product_type,
-             is_active, restaurant_name, restaurant_address, slug, created_at, updated_at)
-           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, slug).run()
+             is_active, restaurant_name, restaurant_address, restaurant_phone, slug, created_at, updated_at)
+           VALUES (NULL, ?, ?, ?, ?, ?, 'stay_voucher', 'featured', 1, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(offerName, desc, img, price, origPrice, place.name, place.address || spot.addr, stayPhone, slug).run()
       }
       const pid = Number(ins.meta.last_row_id)
       if (!pid) continue
@@ -433,7 +515,10 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       // 카카오 place URL — products 컬럼 아님(예산제) → product_supply_meta 사이드테이블(동네딜 시드와 동일).
       if (place.placeUrl) {
         const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
-        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {})
+        await setSupplyMeta(DB, pid, {
+          kakao_place_url: place.placeUrl,
+          ...(place.categoryName ? { kakao_category: place.categoryName } : {}),
+        }).catch(() => {})
       }
       const star = ty.type === 'hotel' || ty.type === 'resort' ? 3 + (n % 3) : null
       await DB.prepare(
@@ -445,8 +530,8 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
          VALUES (?, ?, ?, 2, '15:00', '11:00', ?, ?, ?, ?, ?, ?, ?, 'standard', ?, 1, 90)`
       ).bind(
         pid, ty.type, star, place.address || `${spot.addr}`, spot.sido, spot.sigungu, place.lat, place.lng,
-        JSON.stringify(['무료 주차', '와이파이', ty.type === 'glamping' ? '개별 화로' : '조식']),
-        JSON.stringify(['에어컨', '냉장고', '무료 세면용품']), desc,
+        JSON.stringify(STAY_AMENITIES[ty.type] || ['무료 주차', '와이파이', '에어컨']),
+        JSON.stringify(['에어컨', '냉장고', 'TV', '무료 세면용품', '헤어드라이어']), desc,
       ).run()
       let order = 0
       for (const r of rooms) {
@@ -530,7 +615,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
       }
     } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, healed, varied, reviewed, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, healed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

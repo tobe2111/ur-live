@@ -1,0 +1,265 @@
+/**
+ * 🌐 유통스타트 — 해외 수출 바이어 파이프라인 어드민 (2026-07-20).
+ *   격리 테이블 `overseas_buyer_leads` 자격심사·매칭 열람/큐레이션 + 발굴 타깃 관리 + 무료 수집 + 재스코어 + CSV.
+ *   /api/admin/buyer-pool/*. 유어딜 무관 — 유통스타트(도매) 워커에 마운트(소비자 번들 DCE). 게이트 OFF 면 no-op.
+ *   ⚠️ 공개 비즈니스 컨택만 — 콜드 아웃리치는 국가별 규제 별도(수집 ≠ 발송).
+ */
+import { Hono } from 'hono'
+import type { Env } from '@/worker/types/env'
+import { requireAdmin } from '@/worker/middleware/auth'
+import { intParam } from '@/shared/pagination'
+import {
+  ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, deleteBuyerLeads, deleteAllBuyerLeads, rescoreBuyerLeads,
+  listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
+  INTENT_TIERS, type BuyerLead,
+} from './buyer-discovery'
+import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
+import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
+import { enrichLeadsFromWebsites } from './buyer-web-enrich'
+
+const app = new Hono<{ Bindings: Env }>()
+app.use('*', requireAdmin())
+
+// GET /api/admin/buyer-pool?status=&country=&category=&intent=&minScore=&hasContact=1&q=&limit=
+app.get('/', async (c) => {
+  const minScoreRaw = c.req.query('minScore')
+  const rows = await listBuyerLeads(c.env.DB, {
+    status: c.req.query('status') || undefined,
+    country: c.req.query('country') || undefined,
+    category: c.req.query('category') || undefined,
+    intent: c.req.query('intent') || undefined,
+    minScore: minScoreRaw != null && minScoreRaw !== '' ? intParam(minScoreRaw, 0) : undefined,
+    hasContact: c.req.query('hasContact') === '1',
+    q: (c.req.query('q') || '').trim() || undefined,
+    limit: Math.min(1000, Math.max(1, intParam(c.req.query('limit'), 500))),
+  })
+  return c.json({ success: true, leads: rows, intentTiers: INTENT_TIERS })
+})
+
+// POST /api/admin/buyer-pool — 수동 바이어 추가(LinkedIn/buyKorea 손수 발굴분). 멱등 저장 + 자동 스코어.
+app.post('/', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
+  const company = String(b.company || '').trim()
+  if (company.length < 2) return c.json({ success: false, error: '회사명을 입력하세요' }, 400)
+  const intent = String(b.intent_signal || 'directory')
+  const ik = b.imports_from_korea
+  const lead: BuyerLead = {
+    source: 'manual',
+    intent_signal: Object.keys(INTENT_TIERS).includes(intent) ? intent : 'directory',
+    company,
+    country: b.country ? String(b.country).slice(0, 60) : null,
+    target_market: b.target_market ? String(b.target_market).slice(0, 60) : null,
+    category: b.category ? String(b.category).slice(0, 60) : null,
+    imports_from_korea: ik === 1 || ik === true || ik === '1' ? 1 : (ik === 0 || ik === false || ik === '0' ? 0 : null),
+    website: b.website ? String(b.website).slice(0, 200) : null,
+    email: b.email ? String(b.email).slice(0, 120) : null,
+    phone: b.phone ? String(b.phone).slice(0, 40) : null,
+    decision_maker: b.decision_maker ? String(b.decision_maker).slice(0, 80) : null,
+    decision_maker_title: b.decision_maker_title ? String(b.decision_maker_title).slice(0, 80) : null,
+    decision_maker_email: b.decision_maker_email ? String(b.decision_maker_email).slice(0, 120) : null,
+    est_volume: b.est_volume ? String(b.est_volume).slice(0, 60) : null,
+    address: b.address ? String(b.address).slice(0, 300) : null,
+    description: b.description ? String(b.description).slice(0, 800) : '',
+    source_keyword: 'manual',
+  }
+  const saved = await saveBuyerLeads(c.env.DB, [lead]).catch(() => 0)
+  return c.json({ success: true, saved })
+})
+
+// POST /api/admin/buyer-pool/import { text } — 붙여넣기 일괄 추가. buyKorea 인콰이어리 페이지 통째 복붙 또는
+//   헤더 있는 표(CSV/TSV) 자동 판별. 멱등 + 자동 스코어.
+app.post('/import', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { text?: string }
+  const text = String(b.text || '')
+  // 상세 페이지(회사명/이메일 라벨 + 날짜줄 거의 없음)면 상세 파서 우선 → 리스트 행 연락처 보강.
+  const dateCount = (text.match(/게시기간/g) || []).length
+  const detailFirst = dateCount < 2 && /회사명|\bcompany\b|\bimporter\b|\bbuyer\b|이메일|e-?mail/i.test(text)
+  // 자동 판별: B2B 링크 리스트 → (상세) → plain-text 리스트(Ctrl+A/V) → (상세 폴백) → 일반 CSV/TSV.
+  let leads = parseB2BLeadList(text)
+  if (!leads.length && detailFirst) leads = parseBuyKoreaInquiries(text)
+  if (!leads.length) leads = parseDatedLeadList(text)
+  if (!leads.length) leads = parseBuyKoreaInquiries(text)
+  if (!leads.length) leads = parseBulkBuyers(text)
+  if (!leads.length) {
+    const sample = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(0, 6)
+    return c.json({ success: false, error: 'buyKorea·tradeKorea 등 구매리드 리스트/상세를 복사(Ctrl+A → Ctrl+C)해 붙여넣거나, 헤더(회사명 포함) 있는 표를 붙여넣어 주세요', parsed: 0, saved: 0, _debug: { lines: text.split(/\r?\n/).filter(l => l.trim()).length, sample } }, 400)
+  }
+  const saved = await saveBuyerLeads(c.env.DB, leads).catch(() => 0)
+  return c.json({ success: true, parsed: leads.length, saved })
+})
+
+// POST /api/admin/buyer-pool/auto-fetch { cookie, listUrl?, urls?, max? } — ⚠️ 상세 서버 자동 수집(위험·게이트).
+//   로그인 쿠키로 상세 페이지를 서버가 직접 fetch → 파싱 → 저장. 쿠키 미저장(요청당). 게이트 OFF 면 no-op.
+app.post('/auto-fetch', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { cookie?: string; listUrl?: string; urls?: string[]; max?: number; save?: boolean }
+  const urls = Array.isArray(b.urls) ? b.urls.filter(u => typeof u === 'string').slice(0, 30) : undefined
+  const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
+  const listUrl = b.listUrl ? String(b.listUrl) : undefined
+  const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl, urls, max })
+    .catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
+  // 저장 옵션: 쿠키(호스트별 암호화)·리스트 URL 저장 → 다음부터 재입력 없이 재사용.
+  if (b.save && result.ran) {
+    if (b.cookie && listUrl) await saveCookieForHost(c.env, hostOf(listUrl), String(b.cookie)).catch(() => null)
+    if (listUrl) await addSource(c.env, listUrl).catch(() => null)
+  }
+  return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/auto-fetch/config — 저장된 소스·쿠키 호스트(존재여부만)·게이트 상태.
+app.get('/auto-fetch/config', async (c) => c.json({ success: true, ...(await getAutofetchConfig(c.env)) }))
+
+// POST /api/admin/buyer-pool/auto-fetch/run-saved { max? } — 저장된 소스 전부 저장쿠키로 자동 수집.
+app.post('/auto-fetch/run-saved', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { max?: number }
+  const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
+  const result = await runSavedSources(c.env, max).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, sources: [] }))
+  return c.json({ success: true, result })
+})
+
+// POST /api/admin/buyer-pool/auto-fetch/cron { enabled } — 매일 밤 무인 자동 수집 토글.
+app.post('/auto-fetch/cron', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { enabled?: boolean }
+  await setCronEnabled(c.env, !!b.enabled)
+  return c.json({ success: true, cronEnabled: !!b.enabled })
+})
+
+// POST /api/admin/buyer-pool/auto-fetch/forget { url } — 저장된 소스 삭제.
+app.post('/auto-fetch/forget', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { url?: string }
+  if (b.url) await removeSource(c.env, String(b.url)).catch(() => null)
+  return c.json({ success: true })
+})
+
+// GET /api/admin/buyer-pool/ingest-token — 북마클릿용 인제스트 토큰(없으면 생성).
+app.get('/ingest-token', async (c) => c.json({ success: true, token: await getIngestToken(c.env) }))
+// POST /api/admin/buyer-pool/ingest-token/reset — 토큰 재발급(기존 북마클릿 무효화).
+app.post('/ingest-token/reset', async (c) => c.json({ success: true, token: await resetIngestToken(c.env) }))
+
+// POST /api/admin/buyer-pool/enrich-websites { max? } — 이메일 없는 웹사이트 리드를 방문해 이메일/전화 백필.
+//   buyKorea 가 마스킹한 이메일을 바이어 공개 웹사이트에서 확보. 공개 사이트라 게이트 불필요.
+app.post('/enrich-websites', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { max?: number }
+  const max = Number.isFinite(b.max) ? Math.min(40, Math.max(1, Number(b.max))) : undefined
+  const result = await enrichLeadsFromWebsites(c.env, { max }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', scanned: 0, enriched: 0, fetches: 0, sample: [] }))
+  return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/stats
+app.get('/stats', async (c) => {
+  await ensureBuyerSchema(c.env.DB)
+  const t = await c.env.DB.prepare(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN COALESCE(match_score,0) >= 70 THEN 1 ELSE 0 END) AS hot,
+      SUM(CASE WHEN imports_from_korea = 1 THEN 1 ELSE 0 END) AS proven,
+      SUM(CASE WHEN email IS NOT NULL OR decision_maker_email IS NOT NULL OR phone IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
+      SUM(CASE WHEN decision_maker_email IS NOT NULL THEN 1 ELSE 0 END) AS with_dm,
+      SUM(CASE WHEN status NOT IN ('lead','lost') THEN 1 ELSE 0 END) AS active_pipeline,
+      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
+    FROM overseas_buyer_leads`).first<Record<string, number>>().catch(() => null)
+  const byIntent = (await c.env.DB.prepare("SELECT COALESCE(intent_signal,'directory') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY intent_signal ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  const byCountry = (await c.env.DB.prepare("SELECT COALESCE(country,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY country ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  const byCategory = (await c.env.DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  return c.json({
+    success: true,
+    stats: {
+      total: Number(t?.total) || 0, hot: Number(t?.hot) || 0, proven: Number(t?.proven) || 0,
+      with_contact: Number(t?.with_contact) || 0, with_dm: Number(t?.with_dm) || 0,
+      active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
+    },
+    byIntent, byCountry, byCategory, intentTiers: INTENT_TIERS,
+    enabled: c.env.BUYER_AUTO_COLLECT_ENABLED === 'true',
+    autoFetchEnabled: c.env.BUYER_AUTO_FETCH_ENABLED === 'true',
+    feeds: (c.env.BUYER_FEED_URLS || '').split(',').map(s => s.trim()).filter(Boolean).length,
+  })
+})
+
+// PATCH /api/admin/buyer-pool/:id { status?, memo?, follow_up_at? }
+app.patch('/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
+  const b = await c.req.json().catch(() => ({})) as { status?: string; memo?: string; follow_up_at?: string | null }
+  const r = await updateBuyerLead(c.env.DB, id, b)
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// DELETE /api/admin/buyer-pool/:id
+app.delete('/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
+  const r = await deleteBuyerLead(c.env.DB, id)
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// POST /api/admin/buyer-pool/bulk-delete { ids?: number[] } | { all: true } — 선택/전체 삭제.
+//   전체 삭제는 파괴적이므로 { all:true, confirm:'DELETE_ALL' } 이중 확인 필요(오클릭 방지).
+app.post('/bulk-delete', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { ids?: unknown; all?: boolean; confirm?: string }
+  if (b.all === true) {
+    if (b.confirm !== 'DELETE_ALL') return c.json({ success: false, error: 'CONFIRM_REQUIRED' }, 400)
+    const r = await deleteAllBuyerLeads(c.env.DB)
+    return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
+  }
+  const ids = Array.isArray(b.ids) ? (b.ids as unknown[]).map(Number).filter(n => Number.isInteger(n) && n > 0) : []
+  if (!ids.length) return c.json({ success: false, error: 'NO_IDS' }, 400)
+  const r = await deleteBuyerLeads(c.env.DB, ids)
+  return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
+})
+
+// GET /api/admin/buyer-pool/targets
+app.get('/targets', async (c) => {
+  const targets = await listBuyerTargets(c.env.DB)
+  return c.json({ success: true, targets })
+})
+
+// POST /api/admin/buyer-pool/targets { category, country, keyword? }
+app.post('/targets', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { category?: string; country?: string; keyword?: string }
+  const r = await addBuyerTarget(c.env.DB, b.category || '', b.country || '', b.keyword)
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// PATCH /api/admin/buyer-pool/targets/:id { active } — 매칭 기준 변경 → 풀 자동 재스코어
+app.patch('/targets/:id', async (c) => {
+  const id = parseInt(c.req.param('id'), 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
+  const b = await c.req.json().catch(() => ({})) as { active?: boolean }
+  await setBuyerTargetActive(c.env.DB, id, !!b.active)
+  // 재스코어는 무겁고(수천 UPDATE) 토글마다 실행 → 응답을 막지 않게 waitUntil 로 백그라운드(ctx 없으면 동기 폴백).
+  const ctx = c.executionCtx as { waitUntil?: (p: Promise<unknown>) => void } | undefined
+  if (ctx?.waitUntil) { ctx.waitUntil(rescoreBuyerLeads(c.env.DB).catch(() => 0)); return c.json({ success: true, rescored: null, rescoring: true }) }
+  const rescored = await rescoreBuyerLeads(c.env.DB).catch(() => 0)
+  return c.json({ success: true, rescored })
+})
+
+// POST /api/admin/buyer-pool/rescore
+app.post('/rescore', async (c) => {
+  const n = await rescoreBuyerLeads(c.env.DB).catch(() => 0)
+  return c.json({ success: true, rescored: n })
+})
+
+// POST /api/admin/buyer-pool/collect — 무료 수집 1회(force). 피드 미설정이면 found:0(정상).
+app.post('/collect', async (c) => {
+  const r = await runBuyerCollection(c.env, { force: true }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
+  return c.json({ success: true, result: r })
+})
+
+// GET /api/admin/buyer-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어)
+app.get('/export', async (c) => {
+  const rows = await listBuyerLeads(c.env.DB, { limit: 5000 })
+  const esc = (v: unknown): string => {
+    let s = v == null ? '' : String(v)
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+  const header = ['match_score', 'intent', 'company', 'country', 'target_market', 'category', 'imports_from_korea', 'website', 'email', 'phone', 'address', 'decision_maker', 'dm_title', 'dm_email', 'est_volume', 'status', 'source', 'collected_at']
+  const lines = [header.join(',')]
+  for (const r of rows) {
+    lines.push([r.match_score ?? '', r.intent_signal, r.company, r.country, r.target_market, r.category, r.imports_from_korea ?? '', r.website, r.email, r.phone, r.address, r.decision_maker, r.decision_maker_title, r.decision_maker_email, r.est_volume, r.status, r.source, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
+  }
+  return new Response('﻿' + lines.join('\n'), {
+    headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': 'attachment; filename="overseas-buyers.csv"' },
+  })
+})
+
+export { app as buyerPoolRoutes }

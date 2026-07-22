@@ -9,9 +9,9 @@ import { Link2, MousePointerClick, Share2, UserPlus, ArrowRight, Bell, BarChart3
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
-/** 📋 시드 모집 구글폼 — 대표 전달 시 실제 URL 로 교체(없으면 카카오채널 폴백 버튼 노출). */
+/** 📋 시드 모집 폼 — 기본은 유어딜 네이티브 신청 폼(/creators/apply, 사전동의·풀 자동적재).
+ *  대표가 별도 구글폼 URL 을 전달하면 여기에 넣어 iframe 임베드로 대체(없으면 네이티브 폼 사용). */
 const GOOGLE_FORM_URL = ''
-const KAKAO_CHANNEL = 'http://pf.kakao.com/_AITdn/chat'
 
 const STEPS = [
   { icon: UserPlus, t: '가입', d: '카카오 로그인 1분 — 내 링크샵이 자동으로 생겨요' },
@@ -100,10 +100,10 @@ export default function CreatorsPage() {
               <iframe src={GOOGLE_FORM_URL} title="시드 크리에이터 지원 폼" className="w-full h-[640px] border-0" loading="lazy" />
             </div>
           ) : (
-            <div className="rounded-2xl bg-[#1A2C42] dark:bg-[#1A2334] p-6 text-center">
+            <Link to="/creators/apply" className="block rounded-2xl bg-[#1A2C42] dark:bg-[#1A2334] p-6 text-center active:scale-[0.99] transition-transform">
               <p className="text-[15px] font-extrabold text-[#FAF7F5]">1기 시드 크리에이터를 모집하고 있어요</p>
-              <p className="text-[12.5px] text-[#9AA5B5] mt-1.5">아래 버튼으로 지원하시면 온보딩 안내를 보내드립니다</p>
-            </div>
+              <p className="text-[12.5px] text-[#9AA5B5] mt-1.5">지금 지원하시면 온보딩 안내를 보내드립니다</p>
+            </Link>
           )}
         </section>
       </main>
@@ -111,10 +111,17 @@ export default function CreatorsPage() {
       {/* 하단 고정 CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-t border-gray-100 dark:border-[#2A3446] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto flex gap-2.5">
-          <a href={GOOGLE_FORM_URL || KAKAO_CHANNEL} target="_blank" rel="noopener noreferrer"
-            className="flex-1 h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
-            시드 크리에이터 지원 <ArrowRight className="w-4 h-4" />
-          </a>
+          {GOOGLE_FORM_URL ? (
+            <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
+              className="flex-1 h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+              시드 크리에이터 지원 <ArrowRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <Link to="/creators/apply"
+              className="flex-1 h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+              시드 크리에이터 지원 <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

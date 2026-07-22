@@ -14,6 +14,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import SEO from '@/components/SEO'
 import { hostingApi, type InviteView } from '@/features/hosting/api/hosting-api'
 import { formatWon, formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 export default function HostInvitePage() {
   const { t } = useTranslation()
@@ -85,7 +86,7 @@ export default function HostInvitePage() {
           <div className="bg-[#0F151D] rounded-2xl border border-[#2A3446] overflow-hidden">
             {(data.thumbnail || data.image_url) && (
               <div className="aspect-video bg-[#1A2334]">
-                <img src={data.thumbnail || data.image_url || ''} alt={data.product_name} className="w-full h-full object-cover" />
+                <img src={cfImage(data.thumbnail || data.image_url || '', { width: 800, quality: 82, format: 'auto' }) || (data.thumbnail || data.image_url || '')} alt={data.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, data.thumbnail || data.image_url || '')} />
               </div>
             )}
             <div className="p-5">

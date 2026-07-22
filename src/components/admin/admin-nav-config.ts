@@ -58,6 +58,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
       { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
+      { path: '/admin/buyer-pool',       label: '🌐 해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
+      { path: '/admin/partner-pool',     label: '🤝 파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
     ],
   },
   {

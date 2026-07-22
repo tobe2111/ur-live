@@ -15,6 +15,7 @@ import SEO from '@/components/SEO'
 import { hostingApi, type HostSession, type HostingSummary } from '@/features/hosting/api/hosting-api'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   active: { label: '모집 중', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' },
@@ -119,7 +120,7 @@ export default function HostingPage() {
                   <div key={host.id} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 border border-gray-100 dark:border-[#2A3446]">
                     <div className="flex gap-3 mb-3">
                       {(host.thumbnail || host.image_url) && (
-                        <img src={host.thumbnail || host.image_url || ''} alt={host.product_name} className="w-16 h-16 rounded-lg object-cover" />
+                        <img src={cfImage(host.thumbnail || host.image_url || '', { width: 200, quality: 82, format: 'auto' }) || (host.thumbnail || host.image_url || '')} alt={host.product_name} className="w-16 h-16 rounded-lg object-cover" onError={(e) => cfImageOnError(e.currentTarget, host.thumbnail || host.image_url || '')} />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">

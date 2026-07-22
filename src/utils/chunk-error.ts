@@ -51,23 +51,33 @@ export function reloadWithCacheBust(): void {
   }
 }
 
+let _reloadPending = false // 🛡️ 유예 재시도 중 다중 청크에러가 카운트를 소진하지 않게(재진입 가드).
+
 /**
  * 🛡️ 청크 에러 자동복구 — 단일 루프 가드 SSOT.
  *   index.html 인라인 부트가드 + main.tsx window 핸들러 + React ErrorBoundary 가 모두 이 함수를 통해
  *   같은 sessionStorage 키(`__ur_chunk_reload__`)·포맷(`{n,t}`)·윈도(60초 내 2회)를 공유 → 이중 카운트·무한 reload 0.
  *   (인라인 가드는 모듈 로드 전 실행이라 같은 로직을 하드코딩으로 별도 보유 — 키/포맷/윈도만 일치.)
- * @returns true = 캐시버스트 새로고침 트리거함(곧 새 문서) / false = 60초 내 2회 초과(=stale 아닌 진짜 에러 → UI 표시)
+ * @returns true = 캐시버스트 새로고침 트리거함(유예 후 새 문서) / false = 90초 내 3회 초과(=stale 아닌 진짜 에러 → UI 표시)
+ *
+ * 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 짧은 유예(배포 전파 대기) + 90초 3회 관용.
+ *   배포 직후 새 청크가 엣지에 안 퍼진 수초 창에서 즉시 reload 하면 또 404 → 연속실패 → 수동 UI.
+ *   유예 후 reload 하면 전파 완료 후 통과 → 수동 복구 화면 노출 급감. 무한루프는 3회 캡이 차단.
+ *   index.html 인라인 부트가드의 reloadOnce 와 KEY/포맷/윈도(90s·3회)·유예식 동일(SSOT 미러).
  */
 export function recoverFromChunkError(): boolean {
+  if (_reloadPending) return true // 이미 유예 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
   try {
     const KEY = '__ur_chunk_reload__'
     const now = Date.now()
     let st: { n: number; t: number } = { n: 0, t: 0 }
     try { const raw = sessionStorage.getItem(KEY); if (raw) { const p = JSON.parse(raw); if (p && typeof p === 'object') st = p } } catch { /* 옛 포맷 — 리셋 */ }
-    const within = now - st.t < 60_000
-    if (within && st.n >= 2) return false // 60초 내 2회 — 진짜 에러 → 무한 reload 차단
-    sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }))
-    reloadWithCacheBust()
+    const within = now - st.t < 90_000
+    if (within && st.n >= 3) return false // 90초 내 3회 — 진짜 에러 → 무한 reload 차단(수동 복구 UI)
+    const attempt = within ? st.n + 1 : 1
+    sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }))
+    _reloadPending = true
+    setTimeout(reloadWithCacheBust, Math.min(700 * attempt, 2500)) // 전파 대기 유예(시도마다 0.7~2.5s)
     return true
   } catch {
     try { window.location.reload(); return true } catch { return false }

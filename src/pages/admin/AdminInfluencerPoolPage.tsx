@@ -4,6 +4,14 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
+import FunnelCard from './influencer-pool/FunnelCard'
+import { pickReach } from './influencer-pool/reach'
+import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
+import SendQueueModal from './influencer-pool/SendQueueModal'
+import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
+import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
+import { exportFilteredCsv } from './influencer-pool/export-csv'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -16,9 +24,18 @@ interface Lead {
   subscriber_count: number; video_count: number; thumbnail: string | null
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   status: string; memo: string | null; category: string | null; source_keyword: string | null; collected_at: string
-  contacted_at?: string | null; follow_up_at?: string | null
+  contacted_at?: string | null; follow_up_at?: string | null; contact_channel?: string | null
+  outreach_draft?: string | null // JSON {subject,body,dm,generated_at} — ✍ 개인화 초안(생성만, 발송 없음)
+  source?: string | null; consented_at?: string | null // 📥 inbound=신청(사전동의)
+  recent_avg_views?: number | null; recent_avg_comments?: number | null; recent_posts_30d?: number | null // 📈 성과(YT 최근평균/네이버 30일 포스팅)
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number }
+// 컨택 채널 — 서버 enum ↔ 한글 라벨.
+const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
+function parseDraft(raw?: string | null): OutreachDraftData | null {
+  if (!raw) return null
+  try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
+}
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -30,10 +47,8 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; diag?: { yt: PlatformDiag; naver: PlatformDiag } }
-interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string }
-
-const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', instagram: '인스타', tiktok: '틱톡' }
+interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
+const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -50,13 +65,13 @@ export default function AdminInfluencerPoolPage() {
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
   const [needFollowup, setNeedFollowup] = useState(false)
-  const [merging, setMerging] = useState(false)
+  const [hideNoise, setHideNoise] = useState(false)
+  const [inboundOnly, setInboundOnly] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
   const [collecting, setCollecting] = useState(false)
-  const [newKw, setNewKw] = useState('')
 
   const PAGE = 200
   // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름).
@@ -71,10 +86,12 @@ export default function AdminInfluencerPoolPage() {
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
     if (needFollowup) params.set('needFollowup', '1')
+    if (hideNoise) params.set('hideNoise', '1')
+    if (inboundOnly) params.set('source', 'inbound')
     if (q.trim()) params.set('q', q.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, inboundOnly, q])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -107,42 +124,48 @@ export default function AdminInfluencerPoolPage() {
   useEffect(() => { loadMeta() }, [loadMeta])
   useEffect(() => { loadLeads() }, [loadLeads])
 
+  // 수동 수집 — 백그라운드 실행(수십 초)이라 즉시 '시작됨' 안내 후 stats(last_run) 폴링으로 완료를 따라잡음.
+  //   구 동기 대기는 브라우저 타임아웃→"실패" 오표시였음. started=false(폴백 동기)면 기존처럼 즉시 결과 반영.
   async function collectNow() {
     setCollecting(true)
+    const prevRun = run?.last_run || ''
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/collect', {})
-      if (r.data?.success) {
-        const st = r.data.stats || {}
-        const saved = st.last_saved ?? 0
-        const d = st.diag
-        if (saved > 0) toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
-        else {
-          // 0건이면 플랫폼별 사유를 그대로 보여줌(진단 — 아래 배너에도 상세 표시).
-          const why = d ? [d.yt.error && `유튜브: ${d.yt.error}`, d.naver.error && `네이버: ${d.naver.error}`].filter(Boolean).join(' / ') : ''
-          const foundDup = d && (d.yt.found + d.naver.found) > 0
-          toast.error(foundDup ? `발굴 ${formatNumber(d.yt.found + d.naver.found)}건 전부 기존과 중복(신규 0)` : `신규 0건 — ${why || '원인 미상(아래 진단 참고)'}`)
-        }
-        await Promise.all([loadLeads(), loadMeta()])
-      } else toast.error(r.data?.error || '수집 실패')
-    } catch { toast.error('수집 실행 실패') } finally { setCollecting(false) }
+      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); setCollecting(false); return }
+      if (r.data.started === false) { await Promise.all([loadLeads(), loadMeta()]); toast.success('수집 완료'); setCollecting(false); return }
+      toast.success('수집을 시작했어요 — 백그라운드 진행 중, 결과가 자동 갱신됩니다')
+      // last_run 이 갱신되면 완료. 최대 ~80초 폴링(수집이 그보다 길면 안내 후 종료 — 자동 갱신은 계속).
+      let done = false
+      for (let i = 0; i < 10 && !done; i++) {
+        await new Promise(res => setTimeout(res, 8000))
+        try {
+          const s = await api.get('/api/admin/ads/influencer-pool/stats')
+          if (!s.data?.success) continue
+          setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate)
+          const lr = s.data.run?.last_run || ''
+          if (lr && lr !== prevRun) {
+            done = true
+            const saved = s.data.run?.last_saved ?? 0
+            toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
+            await loadLeads()
+          }
+        } catch { /* 폴링 지속 */ }
+      }
+      if (!done) toast.info('수집이 계속 진행 중이에요. 잠시 후 새로고침하면 최신 결과가 보입니다')
+    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
   }
 
-  async function addKeyword() {
-    const kw = newKw.trim()
-    if (kw.length < 2) { toast.error('키워드는 2자 이상'); return }
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/keywords', { keyword: kw })
-      if (r.data?.success) { setNewKw(''); toast.success('키워드 추가'); await loadMeta() }
-      else toast.error(r.data?.error || '추가 실패')
-    } catch { toast.error('추가 실패') }
-  }
-  async function toggleKeyword(k: Keyword) {
-    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await loadMeta() }
-    catch { toast.error('변경 실패') }
-  }
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
     catch { toast.error('변경 실패') }
+  }
+  // 컨택 채널 기록(이메일/DM/쪽지…) — 값 있으면 첫 접촉으로 보고 신규→컨택함 동반 승격.
+  async function setChannel(l: Lead, channel: string) {
+    try {
+      const promote = channel && l.status === 'new'
+      await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) })
+      setLeads(prev => prev.map(x => x.id === l.id ? { ...x, contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) } : x))
+    } catch { toast.error('변경 실패') }
   }
   async function editMemo(l: Lead) {
     const memo = window.prompt('메모(내부 관리용)', l.memo || '')
@@ -159,16 +182,11 @@ export default function AdminInfluencerPoolPage() {
     try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)) }
     catch { toast.error('저장 실패') }
   }
-  async function mergeDuplicates() {
-    if (!window.confirm('같은 이메일의 중복 리드를 통합할까요? (상태·정보가 가장 앞선 1건만 남기고 나머지 삭제)')) return
-    setMerging(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
-      if (r.data?.success) { toast.success(`중복 통합 완료 — ${formatNumber(r.data.merged)}건 정리(${formatNumber(r.data.groups)}명)`); await Promise.all([loadLeads(), loadMeta()]) }
-      else toast.error('통합 실패')
-    } catch { toast.error('통합 실패') } finally { setMerging(false) }
-  }
+  // 🧰 유지보수(중복통합·시트·재분류·재추출)는 MaintenanceButtons 컴포넌트로 추출(600줄 캡).
+  const reloadAll = useCallback(async () => { await Promise.all([loadLeads(), loadMeta()]) }, [loadLeads, loadMeta])
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
+  // 🕐 서버 저장 시각은 UTC(datetime('now')/toISOString) — 한국시간(KST)으로 표시.
+  function fmtKST(dt?: string | null): string { if (!dt) return '—'; const d = new Date(dt.replace(' ', 'T') + 'Z'); return Number.isFinite(d.getTime()) ? d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : dt }
   // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록(+지역 커버리지/필터).
   const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number; regions?: string | null }[] | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
@@ -182,14 +200,54 @@ export default function AdminInfluencerPoolPage() {
       if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast.info('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
     } catch { toast.error('매칭 조회 실패') } finally { setMatchLoading(false) }
   }
-  // ✉ 메일 초안 — 운영자가 직접 1건씩 발송(자동 대량발송 아님). 공개된 비즈니스 문의 메일 대상.
-  //   ⚠️ 광고성 발송은 정보통신망법상 사전 수신동의 필요 — 이 버튼은 초안(mailto)만 열고, 발송은 사람이 판단.
-  function draftMail(l: Lead) {
-    if (!l.email) { toast.error('이메일이 없는 리드입니다'); return }
-    const subject = `[유어딜] ${l.name}님 제휴 제안 — 동네 맛집·뷰티 공동구매 딜`
-    const body = `안녕하세요, ${l.name}님.\n유어딜(동네 맛집·카페·뷰티·네일·숙소 공동구매 딜 플랫폼) 제휴 담당자입니다.\n${l.name}님 채널과 결이 잘 맞아 협업을 제안드리고자 연락드립니다.\n\n- 제안: 유어딜 딜 콘텐츠 제휴 / 공동 프로모션\n- 조건은 협의 가능합니다.\n\n관심 있으시면 회신 부탁드립니다. 감사합니다.\n\n(수신을 원치 않으시면 회신으로 알려주세요.)`
-    window.open(`mailto:${l.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
-    if (l.status === 'new') setStatus(l.id, 'contacted') // 초안 열면 자동으로 '컨택함' 승격
+  // 📨 "지금 연락" — 최적 채널(이메일→인스타DM→블로그 쪽지/댓글)을 열고, 이메일이 아니면 DM 초안을
+  //   클립보드에 담아준다. 채널 기록 + 신규→컨택함 자동 승격. 이메일 없는 블로거도 원클릭 연락 가능.
+  //   ⚖️ [LEGAL] 자동 발송 없음 — 링크만 열고 사람이 눈으로 확인 후 직접 보냄(정보통신망법 사전동의).
+  function reachOut(l: Lead) {
+    const plan = pickReach(l)
+    if (!plan) { toast.error('열 수 있는 연락 채널이 없습니다 (이메일·인스타·URL 없음)'); return }
+    if (plan.channel !== 'email') navigator.clipboard?.writeText(plan.clipboard).then(() => toast.success('DM/쪽지 초안이 복사됐어요 — 붙여넣어 직접 보내세요')).catch(() => {})
+    window.open(plan.href, '_blank')
+    setChannel(l, plan.channel) // 컨택 채널 기록 + 신규→컨택함 승격
+  }
+
+  // ✍ 개인화 초안 일괄 생성 — 선택 리드를 10명씩 묶어(서버=Claude 1회 호출 한도) 순차 생성 → 리드 행 저장.
+  //   ⚖️ 생성만, 발송 없음 — 초안은 사람이 검토·수정 후 1건씩 직접 발송(정보통신망법). 대량 선택 OK(자동발송 X).
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [drafting, setDrafting] = useState(false)
+  const [draftProgress, setDraftProgress] = useState('')
+  const [draftView, setDraftView] = useState<{ lead: Lead; draft: OutreachDraftData } | null>(null)
+  const [queueOpen, setQueueOpen] = useState(false) // 🚀 발송 모드(선택 있으면 선택만, 없으면 현재 필터 전체)
+  function toggleSelect(id: number) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+  const allSelected = leads.length > 0 && leads.every(l => selected.has(l.id))
+  function toggleSelectAll() {
+    setSelected(prev => { const n = new Set(prev); const on = leads.every(l => n.has(l.id)); leads.forEach(l => on ? n.delete(l.id) : n.add(l.id)); return n })
+  }
+  async function generateDrafts() {
+    const ids = Array.from(selected)
+    if (!ids.length) { toast.error('체크박스로 리드를 선택해주세요'); return }
+    setDrafting(true)
+    let generated = 0, failed = 0
+    try {
+      const chunks: number[][] = []
+      for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10))
+      for (let ci = 0; ci < chunks.length; ci++) {
+        if (chunks.length > 1) setDraftProgress(`${ci + 1}/${chunks.length} 묶음 생성 중… (${generated}건 완료)`)
+        try {
+          const r = await api.post('/api/admin/ads/influencer-pool/outreach-drafts', { ids: chunks[ci] })
+          if (r.data?.success) {
+            const drafts = (r.data.drafts || {}) as Record<string, OutreachDraftData>
+            setLeads(prev => prev.map(l => drafts[l.id] ? { ...l, outreach_draft: JSON.stringify(drafts[l.id]) } : l))
+            generated += r.data.generated || 0; failed += (r.data.failed || []).length
+          } else { failed += chunks[ci].length; if (chunks.length === 1) toast.error(r.data?.error || '초안 생성 실패') }
+        } catch { failed += chunks[ci].length }
+      }
+      setSelected(new Set())
+      if (generated) toast.success(`초안 ${formatNumber(generated)}건 생성 완료${failed ? ` (${failed}건 실패 — 다시 시도)` : ''} — ✍ 버튼으로 검토하세요`)
+      else toast.error('초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요')
+    } finally { setDrafting(false); setDraftProgress('') }
   }
   async function del(id: number) {
     if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
@@ -208,17 +266,16 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('엑셀 내보내기 실패') } finally { setExporting(false) }
   }
 
-  function exportCsv() {
-    const esc = (v: unknown) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? `'${s}` : /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const head = ['플랫폼', '이름', '핸들', 'URL', '구독자', '이메일', '인스타', '틱톡', '링크', '카테고리', '키워드', '상태']
-    const body = leads.map(l => [PLATFORM_LABEL[l.platform] || l.platform, l.name, l.handle, l.url, l.subscriber_count, l.email, l.instagram, l.tiktok, l.links, l.category, l.source_keyword, l.status].map(esc).join(','))
-    const csv = '﻿' + [head.join(','), ...body].join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const a = document.createElement('a'); a.href = url; a.download = `influencer-pool-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url)
+  // 📤 CSV — 화면 로드분(200)만 나가던 결함 수리: 현재 필터 **전체**를 500개씩 끝까지 페치(공유 헬퍼, 22열).
+  const [csvExporting, setCsvExporting] = useState(false)
+  async function exportCsv() {
+    setCsvExporting(true)
+    try {
+      const n = await exportFilteredCsv(async off => { const p = buildParams(off); p.set('limit', '500'); const r = await api.get(`/api/admin/ads/influencer-pool?${p.toString()}`); return r.data?.leads || [] })
+      if (n) toast.success(`CSV ${formatNumber(n)}건 내보냄 (현재 필터 전체)`)
+    } catch { toast.error('CSV 내보내기 실패') } finally { setCsvExporting(false) }
   }
 
-  const activeKw = keywords.filter(k => k.active)
-  const candidateKw = keywords.filter(k => !k.active)
 
   return (
     <AdminLayout title="인플루언서 풀">
@@ -249,6 +306,9 @@ export default function AdminInfluencerPoolPage() {
           ))}
         </div>
 
+        {/* 📊 아웃리치 전환 퍼널 — '모은 게 성과로 이어지나' 측정(컨택 이력 있을 때만). */}
+        <FunnelCard stats={stats} />
+
         {/* 아웃리치 파이프라인 — 상태별 카운트(클릭 시 필터). 발송 자동화 없음(메일은 리드별 직접 발송). */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-xs font-medium text-gray-500 mr-1">아웃리치:</span>
@@ -269,10 +329,19 @@ export default function AdminInfluencerPoolPage() {
             ⏰ 팔로업 필요 {stats.need_followup != null ? formatNumber(stats.need_followup) : ''}
           </button>
         </div>
+        {/* 📧 유튜브 이메일 확보율 — 유튜브는 About '이메일 버튼'(CAPTCHA, API 불가)이라 텍스트 공개분만 확보. 실제 커버리지 노출. */}
+        {stats.youtube ? (
+          <div className="text-[11px] text-gray-500 mt-1">
+            📧 유튜브 이메일 확보 {formatNumber(stats.yt_with_email)}/{formatNumber(stats.youtube)} ({Math.round((Number(stats.yt_with_email) || 0) / Math.max(1, Number(stats.youtube)) * 100)}%)
+            {stats.yt_with_email ? ` · 개인메일 ${formatNumber(stats.yt_email_personal)} · 대행사·기타 ${formatNumber((Number(stats.yt_with_email) || 0) - (Number(stats.yt_email_personal) || 0))}` : ''}
+            <span className="text-gray-400"> — 나머지는 유튜브가 이메일을 CAPTCHA로 가려 API로 불가</span>
+          </div>
+        ) : null}
 
         {run && (
           <div className="mb-4 text-xs text-gray-500">
-            마지막 수집 {run.last_run || '—'} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회
+            마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
+            {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-amber-600 font-medium' : ''}>{` · 🎯 YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
             {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
             {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
           </div>
@@ -307,31 +376,18 @@ export default function AdminInfluencerPoolPage() {
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
           </button>
-          <button onClick={exportCsv} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50">CSV (현재 필터)</button>
-          <button onClick={mergeDuplicates} disabled={merging} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
+          <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 22열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
+          <MaintenanceButtons onChanged={reloadAll} canMerge={!!leads.length} />
+          <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
+            {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
+          <button onClick={() => setQueueOpen(true)} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
+            🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
+          </button>
+          <ConsentedSendPanel />
         </div>
 
-        {/* 키워드 관리 */}
-        <details className="mb-4 rounded-lg border border-gray-200 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">
-            수집 키워드 관리 (활성 {activeKw.length} · 후보 {candidateKw.length})
-          </summary>
-          <div className="px-4 pb-4">
-            <div className="flex gap-2 mb-3">
-              <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 캠핑 유튜버)" className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
-              <button onClick={addKeyword} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm">추가</button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {keywords.map(k => (
-                <button key={k.id} onClick={() => toggleKeyword(k)} title={`${k.source}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
-                  className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-                  {k.keyword}{k.source === 'auto' ? ' 🌱' : ''}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. 🌱 = 수집물 해시태그에서 자동확장된 키워드.</p>
-          </div>
-        </details>
+        <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
         {/* 필터 */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -340,6 +396,7 @@ export default function AdminInfluencerPoolPage() {
             <option value="youtube">유튜브</option>
             <option value="naver_blog">네이버 블로그</option>
             <option value="naver_cafe">네이버 카페</option>
+            <option value="tistory">티스토리</option>
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="">전체 카테고리</option>
@@ -355,6 +412,7 @@ export default function AdminInfluencerPoolPage() {
           </select>
           <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="fit">유어딜 핏순</option>
+            <option value="perf">📈 평균조회수순</option>
             <option value="subscribers">구독자순</option>
             <option value="recent">최근 수집순</option>
           </select>
@@ -367,7 +425,13 @@ export default function AdminInfluencerPoolPage() {
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름/핸들 검색" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer" title="뉴스·방송·기관·체험단모집·대행 등 노이즈 숨김">
+            <input type="checkbox" checked={hideNoise} onChange={e => setHideNoise(e.target.checked)} /> 🧹 노이즈 숨김
+          </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
+            <input type="checkbox" checked={inboundOnly} onChange={e => setInboundOnly(e.target.checked)} /> 📥 신청·동의
+          </label>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·수집키워드 검색 (예: 방배)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
           <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
           <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
             {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}
@@ -404,6 +468,7 @@ export default function AdminInfluencerPoolPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
+                  <th className="px-2 py-2" title="전체 선택/해제 — 선택 리드는 10명씩 묶어 초안 일괄 생성"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label="전체 선택" /></th>
                   <th className="text-left px-3 py-2 font-medium">인플루언서</th>
                   <th className="text-right px-3 py-2 font-medium">구독자</th>
                   <th className="text-left px-3 py-2 font-medium">✉ 이메일</th>
@@ -416,20 +481,27 @@ export default function AdminInfluencerPoolPage() {
               <tbody>
                 {leads.map(l => (
                   <tr key={l.id} className="border-t border-gray-100">
+                    <td className="px-2 py-2">
+                      <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} aria-label={`${l.name} 초안 대상 선택`} />
+                    </td>
                     <td className="px-3 py-2">
-                      <a href={l.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">
+                      <a href={/^https?:\/\//i.test(l.url) ? l.url : `https://${(l.url || '').replace(/^\/+/, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">{/* 🐛 스킴 없는 옛 URL(blog.naver.com/..) 도 절대경로로 — 상대경로 404 방지 */}
                         {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
                         <span>
                           <span className="font-medium">{l.name}</span>
+                          {l.source === 'inbound' && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[10px] font-medium align-middle" title="스스로 신청 · 사전동의">📥 신청</span>}
                           <span className="ml-1.5 text-xs text-gray-400">{PLATFORM_LABEL[l.platform] || l.platform}{l.handle ? ` · ${l.handle}` : ''}</span>
                         </span>
                       </a>
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">
-                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
-                        <span className="inline-flex items-center gap-1.5 justify-end">
-                          {formatNumber(l.subscriber_count)}
-                          {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
+                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그{l.recent_posts_30d != null ? ` · 月${l.recent_posts_30d}글` : ''}</span> : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
+                        <span className="inline-flex flex-col items-end">
+                          <span className="inline-flex items-center gap-1.5 justify-end">
+                            {formatNumber(l.subscriber_count)}
+                            {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
+                          </span>
+                          {l.recent_avg_views != null && <span className="text-[11px] text-gray-400" title="최근 영상 ≤10개 평균(구독자수보다 정직한 협업 지표)">📈 평균 {formatNumber(l.recent_avg_views)}회{l.recent_avg_comments ? ` · 💬${formatNumber(l.recent_avg_comments)}` : ''}</span>}
                         </span>
                       )}
                     </td>
@@ -448,12 +520,17 @@ export default function AdminInfluencerPoolPage() {
                       <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
                         {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                       </select>
+                      <select value={l.contact_channel || ''} onChange={e => setChannel(l, e.target.value)} className="mt-1 block px-1.5 py-0.5 rounded border border-gray-200 text-[11px] text-gray-600 bg-white" title="컨택 채널 — 선택하면 자동으로 '컨택함' 처리">
+                        <option value="">채널…</option>
+                        {Object.entries(CHANNELS).map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
+                      </select>
                       {l.contacted_at && (() => { const d = daysAgo(l.contacted_at); return d != null ? <div className="text-[11px] text-gray-400 mt-0.5">컨택 {d === 0 ? '오늘' : `${d}일 전`}</div> : null })()}
                       {l.follow_up_at && <div className={`text-[11px] mt-0.5 ${l.follow_up_at <= new Date().toISOString().slice(0, 10) ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>⏰ {l.follow_up_at}</div>}
                       {l.memo && <div className="text-[11px] text-gray-400 mt-0.5 max-w-[140px] truncate" title={l.memo}>📝 {l.memo}</div>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {l.email && <button onClick={() => draftMail(l)} className="text-xs text-emerald-600 hover:underline mr-2" title="메일 초안 열기(직접 발송)">✉ 메일</button>}
+                      {(() => { const d = parseDraft(l.outreach_draft); return d ? <button onClick={() => setDraftView({ lead: l, draft: d })} className="text-xs text-violet-600 hover:underline mr-2" title="AI 개인화 초안 검토(발송은 직접)">✍ 초안</button> : null })()}
+                      <button onClick={() => reachOut(l)} className="text-xs text-emerald-600 hover:underline mr-2" title={l.email ? '메일 초안 열기(직접 발송)' : '인스타 DM·블로그 열기 + 초안 복사(직접 발송)'}>{l.email ? '✉ 메일' : '💬 연락'}</button>
                       <button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
                       <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
                       <button onClick={() => del(l.id)} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
@@ -474,6 +551,21 @@ export default function AdminInfluencerPoolPage() {
             )}
           </div>
         )}
+
+        <p className="mt-2 text-center text-[11px] text-gray-400">데이터 출처: YouTube Data API · 네이버 검색 API · 카카오(Daum) 검색 API — 공개 정보만 수집</p>
+
+        {/* ✍ 초안 뷰어 — 검토·복사·메일 열기(발송 없음) */}
+        {draftView && (
+          <DraftModal
+            name={draftView.lead.name}
+            email={draftView.lead.email}
+            draft={draftView.draft}
+            onClose={() => setDraftView(null)}
+            onOpenMail={() => { reachOut(draftView.lead); setDraftView(null) }}
+          />
+        )}
+        {/* 🚀 발송 모드 — 한 명씩 원클릭(Enter) 발송 큐. 선택 있으면 선택만. */}
+        {queueOpen && <SendQueueModal leads={selected.size ? leads.filter(l => selected.has(l.id)) : leads} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
       </div>
     </AdminLayout>
   )

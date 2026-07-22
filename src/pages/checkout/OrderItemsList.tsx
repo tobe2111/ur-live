@@ -6,6 +6,7 @@
 import { Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { SellerGroup } from './types'
 
 interface Props {
@@ -34,9 +35,10 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                 <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1A2334]">
                   {item.image_url ? (
                     <img
-                      src={item.image_url}
+                      src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url}
                       alt={item.product_name}
                       className="object-cover w-full h-full" loading="lazy" decoding="async"
+                      onError={(e) => cfImageOnError(e.currentTarget, item.image_url)}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">

@@ -41,6 +41,24 @@ app.post('/__ads/collect', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
+app.post('/__ads/collect-company', async (c) => {
+  try {
+    const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
+    const stats = await runCompanyAutoCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
+// 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
+app.post('/__ads/sheets-sync', async (c) => {
+  try {
+    const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
+    const r = await syncInfluencerPoolToSheets(c.env)
+    return c.json(r, r.ok ? 200 : 400)
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 메인 Worker 의 마운트와 동일 경로 — Service Binding 위임 시 URL 이 그대로 전달되므로 경로 일치가 중요.
 app.route('/', shortLinkRedirectRoutes)      // /l/:code (공개 리다이렉트)
 app.route('/api/ads', marketingRoutes)        // 유어애즈 데이터/인증 API
@@ -65,11 +83,28 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
-  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
+  ctx.waitUntil((async () => {
+    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
       try {
         const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
         await runInfluencerAutoCollect(env)
+      } catch { /* fail-soft */ }
+    }
+    // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
+    if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
+      try {
+        const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
+        await syncInfluencerPoolToSheets(env)
+      } catch { /* fail-soft */ }
+    }
+  })())
+  // 🤝 파트너(업체) 자동수집 — 홀수시만(인플루언서는 매시간 유지 → 반토막 방지, 겹침 최소). 네이버 지역검색(local.json).
+  //   게이트 ADS_COMPANY_COLLECT_ENABLED(기본 OFF). 별도 FetchBudget/커서/키워드 → 인플루언서 트랙 무영향.
+  if (hourUTC % 2 === 1 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
+        await runCompanyAutoCollect(env)
       } catch { /* fail-soft */ }
     })())
   }
@@ -91,6 +126,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history'); await snapshotAllAccounts(env) } catch { /* fail-soft */ }
       try { const { runAlertsAll } = await import('@/features/marketing/api/alerts'); await runAlertsAll(env) } catch { /* fail-soft */ }
       try { const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid'); await runAutobidShadowAll(env) } catch { /* fail-soft */ }
+    })())
+  }
+
+  // ── 매일 23:00 UTC(=08:00 KST) — 유어애즈 아웃리치 팔로업 리마인더(무응답·회신도착 다이제스트) ──
+  //   0건이면 무발송(no-op) — Discord 스팸 방지. 자동 감지는 웹훅(resend)이 실시간 처리, 여기선 요약만.
+  if (hourUTC === 23) {
+    ctx.waitUntil((async () => {
+      try { const { runFollowupReminder } = await import('@/features/marketing/api/outreach-webhook'); await runFollowupReminder(env) } catch { /* fail-soft */ }
     })())
   }
 

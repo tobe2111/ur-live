@@ -20,6 +20,8 @@ export interface DealRow {
   is_demo?: number
   /** 🔎 오픈예정형(prelaunch) 여부 — 목록 뱃지용. */
   prelaunch?: number
+  /** 🖼️ 현재 갤러리(images+detail_images 병합, 서버 동봉) — 수정 폼 프리필용. */
+  gallery?: string[] | null
 }
 
 export const CAT_LABEL: Record<string, string> = {

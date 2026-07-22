@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Share2, TrendingUp, Users, DollarSign, Copy, Building2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { hasConsumerSession } from '@/utils/auth'
 
 interface Stats {
@@ -215,7 +216,7 @@ export default function InfluencerDashboardPage() {
                         item.type === 'group-buy' ? `/group-buy/${item.id}` :
                         `/products/${item.id}`
                       } className="w-12 h-12 shrink-0 rounded bg-[#1A2334] overflow-hidden">
-                        {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" /> : null}
+                        {item.image_url ? <img src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} /> : null}
                       </Link>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold line-clamp-1">{item.name}</p>
