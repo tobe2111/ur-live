@@ -46,33 +46,47 @@ function buildBookmarklet(token: string): string {
     `var host=location.host,HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i,IDRE=/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i;` +
     // 문서(현재 페이지/리스트 iframe)에서 상세 링크 추출 — 앵커 href 우선, 없으면 HTML 정규식 폴백.
     `var linksFrom=function(doc,base){var out=[],cur=String(base||'').split('#')[0];try{[].slice.call(doc.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.getAttribute('href'),base);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&x.href.split('#')[0]!==cur)out.push(x.href.split('#')[0])}catch(e){}})}catch(e){}if(!out.length){var ht='';try{ht=doc.documentElement.outerHTML}catch(e){}var m,r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){try{out.push(new URL(m[0],base).href.split('#')[0])}catch(e){}}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){out.push(location.origin+'/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}}return out};` +
-    // 리스트 페이지를 숨은 iframe 으로 로드 → 내용 나타날 때까지 폴링 후 document 반환(자동 페이지 넘김용).
-    `var loadDoc=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(d){if(done)return;done=true;clearTimeout(tm);res({d:d,f:f})};f.onload=function(){var n=0;var poll=function(){n++;var d=null,ok=false;try{d=f.contentDocument;var h=d?d.documentElement.outerHTML:'';ok=h.length>1500&&/href=|inqryDetail|offerDetail|goodsDetail|itemView|회사명|Company|인콰이어리/i.test(h)}catch(e){}if(ok||n>=14){fin(d)}else setTimeout(poll,300)};setTimeout(poll,350)};tm=setTimeout(function(){var d=null;try{d=f.contentDocument}catch(e){}fin(d)},15000);f.src=url;document.body.appendChild(f)})};` +
-    // 페이지 파라미터 탐지(URL → 페이지네이션 앵커) — 없으면 pageIndex 로 폴백.
+    // 리스트 iframe 링크 시그니처/대기 + 다음페이지 컨트롤 탐지·실행(GET 파라미터 & POST/JS 클릭 겸용).
+    `var sigOf=function(a){return a.slice().sort().join('|').slice(0,4000)};` +
+    `var readList=function(fr){try{return linksFrom(fr.contentDocument,fr.contentWindow.location.href)}catch(e){return[]}};` +
+    `var waitList=function(fr,prev){return new Promise(function(res){var n=0;var p=function(){n++;var a=readList(fr),s=sigOf(a);if((s&&s!==prev)||n>=16){res(a)}else setTimeout(p,300)};setTimeout(p,400)})};` +
+    `var findNext=function(doc,pg){try{var as=[].slice.call(doc.querySelectorAll('a'));for(var i=0;i<as.length;i++){var t=(as[i].textContent||'').trim(),h=(as[i].getAttribute('href')||'')+' '+(as[i].getAttribute('onclick')||'');if(t===String(pg)&&/page|link_page|goPage|fnPage|fn_egov|movePage|list|Index|No=/i.test(h))return as[i]}for(var j=0;j<as.length;j++){var t2=(as[j].textContent||'').trim();if(/^(다음|next|›|»|＞|>)$/i.test(t2))return as[j]}}catch(e){}return null};` +
+    `var fire=function(win,a){try{var h=a.getAttribute('href')||'',o=a.getAttribute('onclick')||'';if(/^javascript:/i.test(h)){win.eval('(function(){'+h.replace(/^javascript:/i,'')+'})()');return true}if(o){win.eval('(function(){'+o+'})()');return true}if(h){win.location.href=new URL(h,win.location.href).href;return true}a.click();return true}catch(e){return false}};` +
+    // 페이지 파라미터 탐지(URL → 페이지네이션 앵커) — GET 폴백용. 없으면 pageIndex.
     `var baseUrl=location.href.split('#')[0],PGRE=/[?&](pageIndex|pageNo|pageNum|currentPageNo|cpage|nowPage|pgno|page)=(\\d+)/i;` +
-    `var pm=baseUrl.match(PGRE),pname=pm?pm[1]:'';if(!pname){try{var as=document.querySelectorAll('a[href]');for(var k=0;k<as.length&&!pname;k++){var hv=as[k].getAttribute('href')||'';var hm=hv.match(PGRE);if(hm)pname=hm[1]}}catch(e){}}if(!pname)pname='pageIndex';` +
+    `var pm=baseUrl.match(PGRE),pname=pm?pm[1]:'';if(!pname){try{var pas=document.querySelectorAll('a[href]');for(var k=0;k<pas.length&&!pname;k++){var hv=pas[k].getAttribute('href')||'';var hm=hv.match(PGRE);if(hm)pname=hm[1]}}catch(e){}}if(!pname)pname='pageIndex';` +
     `var pageUrl=function(n){var re=new RegExp('([?&]'+pname+'=)\\\\d+','i');if(re.test(baseUrl))return baseUrl.replace(re,'$1'+n);return baseUrl+(baseUrl.indexOf('?')>=0?'&':'?')+pname+'='+n};` +
     `var self=IDRE.test(location.search)&&HINT.test(location.pathname);` +
-    // 현재 페이지(1페이지) 링크 수집 후, 새 링크가 나오는 한 다음 페이지로 자동 진행(끝/안전상한까지).
+    // 1페이지(현재 DOM) 수집 후, 리스트 iframe 으로 다음 페이지를 클릭(POST/JS) 또는 GET 으로 넘기며 누적(끝/안전상한까지).
     `var seen={},L=[],addL=function(a){for(var q=0;q<a.length;q++){if(a[q]&&!seen[a[q]]){seen[a[q]]=1;L.push(a[q])}}};` +
     `addL(linksFrom(document,baseUrl));var LP=1,MAXP=40,DCAP=600;` +
-    `if(!self){for(var pg=2;pg<=MAXP&&L.length<DCAP;pg++){S('유어딜: 리스트 '+pg+'페이지 수집 중 · 상세링크 '+L.length+'개');var gr=await loadDoc(pageUrl(pg));var before=L.length;if(gr&&gr.d)addL(linksFrom(gr.d,pageUrl(pg)));try{gr&&gr.f&&gr.f.remove()}catch(e){}if(L.length===before)break;LP=pg;await new Promise(function(x){setTimeout(x,150)})}}` +
+    `if(!self){var lf=document.createElement('iframe');lf.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:1400px;border:0';document.body.appendChild(lf);` +
+    `await new Promise(function(res){var to=setTimeout(res,15000);lf.onload=function(){clearTimeout(to);setTimeout(res,700)};lf.src=baseUrl});` +
+    `var prevSig=sigOf(readList(lf));addL(readList(lf));` +
+    `for(var pg=2;pg<=MAXP&&L.length<DCAP;pg++){S('유어딜: 리스트 '+pg+'페이지 수집 중 · 상세링크 '+L.length+'개');var a=findNext(lf.contentDocument,pg),got=null;if(a&&fire(lf.contentWindow,a)){got=await waitList(lf,prevSig)}else{try{lf.src=pageUrl(pg)}catch(e){}got=await waitList(lf,prevSig)}var ns=sigOf(got||[]);if(!ns||ns===prevSig)break;prevSig=ns;addL(got);LP=pg;await new Promise(function(x){setTimeout(x,120)})}` +
+    `try{lf.remove()}catch(e){}}` +
     `var TF=L.length;L=L.slice(0,DCAP);` +
     `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 구매요청 리스트 페이지(목록)에서 눌러주세요.');setTimeout(function(){b.remove()},8000);return}` +
+    // ② 이미 저장된 상세 건너뛰기 — 서버에 ref(host|id) 조회 후 신규만 남김(재수집 효율).
+    `var refKey=function(u){try{var h=new URL(u).host.replace(/^www\\./,'');var m=u.match(/[?&](\\w*(?:sn|no|id|seq|idx|code|num))=(\\d+)/i);return h+'|'+(m?m[1].toLowerCase()+'='+m[2]:u.split('#')[0].slice(-80))}catch(e){return String(u).slice(0,120)}};` +
+    `var allRefs=L.map(refKey),known={};if(!self){try{var kr=await fetch(A+'/known',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,refs:allRefs})});if(kr.ok){var kj=await kr.json();if(kj&&kj.known)for(var z=0;z<kj.known.length;z++)known[kj.known[z]]=1}}catch(e){}}` +
+    `var FOUND=L.length,skip=0,L2=[],RF=[];for(var w=0;w<L.length;w++){if(known[allRefs[w]]){skip++}else{L2.push(L[w]);RF.push(allRefs[w])}}L=L2;` +
+    `if(!L.length&&!self){S('✅ 새 상세 없음 — '+FOUND+'건 모두 이미 저장됨(리스트 '+LP+'p)');setTimeout(function(){b.remove()},9000);return}` +
     // ⚠️ buyKorea 는 fetch 요청을 로그인으로 돌려보냄 → 숨은 iframe 으로 실제 이동시켜 세션째 읽는다(같은 사이트라 DOM 접근 가능).
     `var readIf=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(h){if(done)return;done=true;clearTimeout(tm);try{f.remove()}catch(e){}res(h||'')};f.onload=function(){var n=0;var poll=function(){n++;var html='',ok=false;try{html=f.contentDocument.documentElement.outerHTML;ok=/회사명|Company\\s*Name|인콰이어리\\s*번호|Buyer\\s*Info|국가\\s*\\/?\\s*도시|현재\\s*수입/i.test(html)}catch(e){}if(ok||n>=16){fin(html)}else setTimeout(poll,300)};setTimeout(poll,350)};tm=setTimeout(function(){fin('')},18000);f.src=url;document.body.appendChild(f)})};` +
     `var CHUNK=6,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='',lg=0;` +
     `var strip=function(h){return String(h||'').replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<svg[\\s\\S]*?<\\/svg>/gi,' ').replace(/<!--[\\s\\S]*?-->/g,' ')};` +
-    `var push=function(h){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push(h);bb+=h.length;tR++};` +
-    `var send=async function(batch){if(!batch.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:batch})});if(!res.ok){ef++;err='HTTP '+res.status;return}var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else{ef++;if(j&&j.error)err=j.error}}catch(e){ef++;err=String(e&&e.message||e)}};` +
-    `if(self)push(document.documentElement.outerHTML);` +
-    `for(var i=0;i<L.length;i++){S('유어딜: 상세 읽는 중 '+(i+1)+'/'+L.length+' (리스트 '+LP+'p) · 저장 '+tS);var html=await readIf(L[i]);if(html){if(/일반회원\\s*로그인|아이디를\\s*입력|비밀번호를\\s*입력/i.test(html.slice(0,6000)))lg++;push(html)}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,120)})}` +
+    `var push=function(h,r){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push({h:h,r:r||''});bb+=h.length;tR++};` +
+    `var send=async function(batch){if(!batch.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:batch.map(function(x){return x.h}),refs:batch.map(function(x){return x.r})})});if(!res.ok){ef++;err='HTTP '+res.status;return}var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else{ef++;if(j&&j.error)err=j.error}}catch(e){ef++;err=String(e&&e.message||e)}};` +
+    `if(self)push(document.documentElement.outerHTML,refKey(location.href));` +
+    // ① 상세를 CONC개씩 병렬로 읽어 수집 시간 단축(순차 대비 ~3배).
+    `var CONC=3;for(var i=0;i<L.length;i+=CONC){var sl=L.slice(i,i+CONC),rl=RF.slice(i,i+CONC);S('유어딜: 상세 읽는 중 '+(i+1)+'-'+Math.min(i+CONC,L.length)+'/'+L.length+' (리스트 '+LP+'p) · 저장 '+tS);var hs=await Promise.all(sl.map(function(u){return readIf(u)}));for(var j=0;j<hs.length;j++){var html=hs[j];if(html){if(/일반회원\\s*로그인|아이디를\\s*입력|비밀번호를\\s*입력/i.test(html.slice(0,6000)))lg++;push(html,rl[j])}}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,80)})}` +
     `await send(buf);buf=[];bb=0;` +
     `if(ef||err){S('❌ 전송 실패: '+(err||('배치 '+ef))+' (읽음 '+tR+' · 저장 '+tS+') — 관리자 문의')}` +
     `else if(tR===0){S('❌ 상세를 못 읽음(iframe 차단?) · 링크 '+L.length+'개 — 관리자에게 알려주세요')}` +
     `else if(lg>=tR&&!tP){S('⚠️ 로그인 페이지가 읽혔어요 — buyKorea 재로그인 후 다시 눌러주세요')}` +
     `else if(!tP){S('⚠️ '+tR+'개 읽었지만 파싱 0 — 상세 1건을 Ctrl+A→Ctrl+C 해서 관리자에게 보내주세요')}` +
-    `else{S('✅ 완료 · 리스트 '+LP+'페이지 자동수집 · 읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건'+(TF>L.length?(' (상세 '+TF+'개 중 '+DCAP+'개까지 — 다시 눌러 이어서, 중복 자동 제외)'):'')+(LP>=MAXP?' (안전상 '+MAXP+'페이지까지)':''))}setTimeout(function(){b.remove()},24000);` +
+    `else{S('✅ 완료 · 리스트 '+LP+'p 자동수집 · 신규읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건'+(skip?(' · 기존 '+skip+'건 건너뜀'):'')+(TF>FOUND?(' (상세 '+TF+'개 중 '+DCAP+'개까지 — 다시 눌러 이어서)'):'')+(LP>=MAXP?' (안전상 '+MAXP+'p까지)':''))}setTimeout(function(){b.remove()},24000);` +
     `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }

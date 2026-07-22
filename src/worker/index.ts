@@ -380,8 +380,8 @@ const _bodyLimit1m = bodyLimit(1_000_000);
 const _bodyLimit3m = bodyLimit(3_000_000);
 app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit3m(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
-// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지).
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : (rateLimiterMiddleware as any)(c, next));
+// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
+app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -406,8 +406,8 @@ const _globalCors = cors({
   credentials: true,
   maxAge: 86400,
 });
-// 🔖 북마클릿 인제스트(/api/buyer-ingest)는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
-app.use('*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : _globalCors(c, next));
+// 🔖 북마클릿 인제스트(/api/buyer-ingest[/known])는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
+app.use('*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : _globalCors(c, next));
 
 // ============================================================
 // Security Headers (CSP etc.)

@@ -117,6 +117,23 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const garbage = leads.filter(l => /바이코리아|판매자센터|hongseungkyun|가공식품/i.test((l.company || '') + (l.email || '')))
     expect(garbage.length).toBe(0)
   })
+
+  // ④ 연락처 재현율 — 마스킹 없는 상세에서 본문 이메일이 웹사이트 도메인과 일치하면 확정, 아니면 '확인필요' 후보로만.
+  it('본문 이메일이 웹사이트 도메인과 일치하면 확정', () => {
+    const corr = ['회사명 : Global Traders Inc', '국가 : Germany', '웹사이트 : https://globaltraders.de', '문의하기 sales@globaltraders.de 로 연락'].join('\n')
+    expect(parseBuyKoreaInquiries(corr)[0].email).toBe('sales@globaltraders.de')
+  })
+  it('도메인 불일치 이메일은 확정 안 하고 설명에 "후보이메일(확인필요)"로 보전', () => {
+    const nc = ['회사명 : Foo Trading Ltd', '국가 : Germany', '웹사이트 : https://footrading.de', '연락 buyer.foo@gmail.com 으로'].join('\n')
+    const l = parseBuyKoreaInquiries(nc)[0]
+    expect(l.email).toBeNull()
+    expect(l.description).toMatch(/후보이메일.*buyer\.foo@gmail\.com/)
+  })
+  it('마스킹 상세(buyKorea)는 크롬 이메일을 후보로도 새지 않음', () => {
+    const mk = ['바이코리아 | 판매자센터', 'hongseungkyun@naver.com', '회사명 → Al Dayagem', '국가/도시 → JORDAN', '이메일 → mu*****', '웹사이트 → https://power-bob.com'].join('\n')
+    const l = parseBuyKoreaInquiries(mk)[0]
+    expect(/hongseungkyun|후보이메일/.test((l.email || '') + (l.description || ''))).toBe(false)
+  })
 })
 
 describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들도 되게끔)', () => {
