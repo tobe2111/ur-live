@@ -271,6 +271,49 @@ export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processe
   return { processed }
 }
 
+/**
+ * 🧭 카테고리 전체 재보정(라이브·초경량) — 유튜브 카테고리는 채널당 무거운 호출 없이 **channels.list 50개 배치**
+ *   (part=snippet,topicDetails)만으로 라이브 About + YouTube 자체분류를 받아 reconcileCategory 로 교정.
+ *   전 YT 풀(수천)도 ≈ N/50 호출(4,200개 ≈ 85콜, 하루 쿼터 10k 의 <1%) → **버튼 한 번에 전 풀 재보정**(waitUntil 백그라운드).
+ *   반복 클릭·수백 클릭 불필요. 멱등(같은 결과 재적용 무해). 0-views/perf 힐과 무관(그건 채널당 호출이라 별도).
+ */
+export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number }> {
+  const apiKey = env.YOUTUBE_API_KEY
+  if (!apiKey) return { scanned: 0, changed: 0 }
+  const DB = env.DB
+  await ensurePerfExtraColumns(DB)
+  const CAP = Math.max(1, Math.min(opts?.maxChannels ?? 12000, 20000)) // 안전 상한(≈400콜) — 넘으면 다음 실행/커서가 이어받음(현재 풀은 1콜 세션 내 완료)
+  let scanned = 0, changed = 0
+  for (let off = 0; scanned < CAP; off += 1000) {
+    const rows = (await DB.prepare(`SELECT id, channel_id, name, category FROM ad_influencer_leads
+        WHERE account_id = 0 AND platform = 'youtube' AND channel_id IS NOT NULL
+        ORDER BY id ASC LIMIT 1000 OFFSET ?`).bind(off)
+      .all<{ id: number; channel_id: string; name: string | null; category: string | null }>().catch(() => null))?.results || []
+    if (!rows.length) break
+    for (let i = 0; i < rows.length && scanned < CAP; i += 50) {
+      const batch = rows.slice(i, i + 50)
+      const res = await fetch(`${YT_BASE}/channels?part=snippet,topicDetails&id=${batch.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
+        { signal: AbortSignal.timeout(10000) }).catch(() => null)
+      const json = res?.ok ? await res.json().catch(() => null) as { items?: { id?: string; snippet?: { description?: string }; topicDetails?: { topicCategories?: string[] } }[] } | null : null
+      const aboutById = new Map<string, string>(), topicById = new Map<string, string>()
+      for (const it of json?.items || []) {
+        if (it.id && it.snippet?.description) aboutById.set(it.id, it.snippet.description)
+        if (it.id) { const tc = topicToCategory(it.topicDetails?.topicCategories); if (tc) topicById.set(it.id, tc) }
+      }
+      const ups = batch
+        .map(r => ({ id: r.id, finalCat: reconcileCategory(r.category, classifyCategory(r.name || '', aboutById.get(r.channel_id) || ''), topicById.get(r.channel_id) || null), prev: r.category }))
+        .filter(x => x.finalCat !== x.prev) // 변경분만 write
+      if (ups.length) {
+        await DB.batch(ups.map(x => DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id))).catch(() => null)
+        changed += ups.length
+      }
+      scanned += batch.length
+    }
+    if (rows.length < 1000) break
+  }
+  return { scanned, changed }
+}
+
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
 export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: number; changed: number }> {
   let scanned = 0, changed = 0

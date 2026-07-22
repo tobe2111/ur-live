@@ -10,7 +10,7 @@ import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runReclassifyPool, runYtLiveRefetch } from './influencer-performance'
+import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 
@@ -258,6 +258,17 @@ app.post('/influencer-pool/reclassify', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   const r = await runReclassifyPool(c.env.DB)
   return c.json({ success: true, ...r })
+})
+
+// POST /api/admin/ads/influencer-pool/recategorize — 🧭 카테고리 전체 재보정(라이브·초경량)
+//   channels.list 50개 배치(part=snippet,topicDetails)만으로 전 YT 풀을 한 번에 재보정(≈N/50 콜, 4천개≈85콜).
+//   버튼 한 번=전 풀(반복 클릭 불필요). 수십 초 걸려 waitUntil 백그라운드(즉시 started, UI 통계 재조회로 따라잡음).
+app.post('/influencer-pool/recategorize', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (!c.env.YOUTUBE_API_KEY) return c.json({ success: false, error: 'YouTube API 키가 설정되어 있지 않습니다' }, 400)
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runCategoryRescan(c.env).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await runCategoryRescan(c.env) // 폴백(waitUntil 미지원): 동기
+  return c.json({ success: true, started: false, ...r })
 })
 
 // POST /api/admin/ads/influencer-pool/refetch-live — 🔄 유튜브 라이브 재조회(현재 About 다시 불러 이메일/카테고리 교정)
