@@ -135,9 +135,14 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 
 // 회사명 키 — 구두점/공백만 제거하고 **단어는 보존**(Trading/Import/Ltd 를 떼면 서로 다른 회사가 병합됨).
 //   비면(구두점만) 붕괴 방지 폴백. 유니코드 문자/숫자 보존(아랍/키릴 회사명도 키 생성).
+// 법인격 접미어(같은 회사의 다른 표기를 유발) — 정규화 시 제거해 "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 통합.
+const LEGAL_SUFFIX_RE = /\b(private|pvt|limited|ltd|inc|incorporated|llc|co|corp|corporation|company|gmbh|srl|plc|llp|pte|pty|sdn|bhd|spa|sarl|sas|aps)\b/g
 export function normalizeCompanyKey(company: string, country?: string | null): string {
   const raw = String(company || '')
-  let base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  // 법인격 접미어 제거 후 영숫자만 — 표기 차이(Pvt. Ltd. / , / .)에 강건한 dedup 키.
+  const stripped = raw.toLowerCase().replace(/[.,]/g, ' ').replace(LEGAL_SUFFIX_RE, ' ')
+  let base = stripped.replace(/[^\p{L}\p{N}]/gu, '')
+  if (!base) base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') // 접미어 제거로 비면 원문 폴백
   if (!base) base = ('x' + raw.trim().toLowerCase().replace(/\s+/g, '')) || 'x'
   // 국가는 별칭 정규화(normCountryKey) — 'US'/'USA'/'United States'/'미국' 이 같은 키가 되게(피드·붙여넣기 소스간 중복 방지).
   const c = normCountryKey(country)
@@ -399,6 +404,28 @@ export async function deleteBuyerLead(DB: D1Database, id: number): Promise<{ ok:
   const r = await DB.prepare('DELETE FROM overseas_buyer_leads WHERE id = ?').bind(id).run().catch(() => null)
   if (!r || r.meta?.changes === 0) return { ok: false, error: '리드를 찾을 수 없습니다' }
   return { ok: true }
+}
+
+// 선택 삭제(체크박스 다건). 유효 정수 id 만, 한 번에 최대 500개(D1 IN 절/subrequest 안전) — 초과분은 청크 반복.
+export async function deleteBuyerLeads(DB: D1Database, ids: number[]): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const clean = Array.from(new Set((ids || []).map(n => Number(n)).filter(n => Number.isInteger(n) && n > 0)))
+  if (!clean.length) return { ok: false, deleted: 0 }
+  let deleted = 0
+  for (let i = 0; i < clean.length; i += 500) {
+    const chunk = clean.slice(i, i + 500)
+    const ph = chunk.map(() => '?').join(',')
+    const r = await DB.prepare(`DELETE FROM overseas_buyer_leads WHERE id IN (${ph})`).bind(...chunk).run().catch(() => null)
+    deleted += (r?.meta?.changes as number) || 0
+  }
+  return { ok: true, deleted }
+}
+
+// 전체 삭제(풀 비우기) — 어드민이 명시 확인 후에만 호출. 격리 테이블이라 유어딜/도매 무관.
+export async function deleteAllBuyerLeads(DB: D1Database): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const r = await DB.prepare('DELETE FROM overseas_buyer_leads').run().catch(() => null)
+  return { ok: !!r, deleted: (r?.meta?.changes as number) || 0 }
 }
 
 // 최신 리드 우선 재스코어 — 전체 무제한 SELECT+UPDATE 는 대량 시 Worker CPU/subrequest 한도 초과(타깃 토글마다 동기 실행).

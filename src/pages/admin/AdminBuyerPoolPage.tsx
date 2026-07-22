@@ -47,10 +47,10 @@ function buildBookmarklet(token: string): string {
     // 상세 링크 탐색: 실제 앵커 href 우선(진짜 링크), 없으면 HTML 정규식 폴백(JS 링크 사이트).
     `var L=[];[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.href);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&a.href.split('#')[0]!==cur)L.push(x.href.split('#')[0])}catch(e){}});` +
     `if(!L.length){var ht=document.documentElement.outerHTML,m;var r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){try{L.push(new URL(m[0],location.href).href.split('#')[0])}catch(e){}}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){L.push(location.origin+'/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}}` +
-    `var self=IDRE.test(location.search)&&HINT.test(location.pathname);L=L.filter(function(v,i){return v&&L.indexOf(v)===i}).slice(0,60);` +
+    `var self=IDRE.test(location.search)&&HINT.test(location.pathname);L=L.filter(function(v,i){return v&&L.indexOf(v)===i}).slice(0,100);` +
     `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 구매요청 리스트 페이지(목록)에서 눌러주세요.');setTimeout(function(){b.remove()},8000);return}` +
     // ⚠️ buyKorea 는 fetch 요청을 로그인으로 돌려보냄 → 숨은 iframe 으로 실제 이동시켜 세션째 읽는다(같은 사이트라 DOM 접근 가능).
-    `var readIf=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(h){if(done)return;done=true;clearTimeout(tm);try{f.remove()}catch(e){}res(h||'')};f.onload=function(){setTimeout(function(){try{fin(f.contentDocument.documentElement.outerHTML)}catch(e){fin('')}},800)};tm=setTimeout(function(){fin('')},13000);f.src=url;document.body.appendChild(f)})};` +
+    `var readIf=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(h){if(done)return;done=true;clearTimeout(tm);try{f.remove()}catch(e){}res(h||'')};f.onload=function(){var n=0;var poll=function(){n++;var html='',ok=false;try{html=f.contentDocument.documentElement.outerHTML;ok=/회사명|Company\\s*Name|인콰이어리\\s*번호|Buyer\\s*Info|국가\\s*\\/?\\s*도시|현재\\s*수입/i.test(html)}catch(e){}if(ok||n>=16){fin(html)}else setTimeout(poll,300)};setTimeout(poll,350)};tm=setTimeout(function(){fin('')},18000);f.src=url;document.body.appendChild(f)})};` +
     `var CHUNK=6,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='',lg=0;` +
     `var strip=function(h){return String(h||'').replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<svg[\\s\\S]*?<\\/svg>/gi,' ').replace(/<!--[\\s\\S]*?-->/g,' ')};` +
     `var push=function(h){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push(h);bb+=h.length;tR++};` +
@@ -121,6 +121,8 @@ export default function AdminBuyerPoolPage() {
   const [autoRunning, setAutoRunning] = useState(false)
   const [autoSave, setAutoSave] = useState(true)
   const [ingestToken, setIngestToken] = useState('')
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const bmRef = useRef<HTMLAnchorElement>(null)
   const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean; cronEnabled: boolean }>({ sources: [], cookieHosts: [], enabled: false, cronEnabled: false })
 
@@ -183,7 +185,38 @@ export default function AdminBuyerPoolPage() {
 
   const remove = async (id: number) => {
     if (!confirm('이 바이어를 삭제할까요?')) return
-    try { await api.delete(`/api/admin/buyer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); loadStats() } catch { toast.error('삭제 실패') }
+    try { await api.delete(`/api/admin/buyer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); setSelected(prev => { const n = new Set(prev); n.delete(id); return n }); loadStats() } catch { toast.error('삭제 실패') }
+  }
+
+  // 체크박스 선택 토글 / 현재 목록 전체선택 토글.
+  const toggleOne = (id: number) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allSelected = leads.length > 0 && leads.every(l => selected.has(l.id))
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leads.map(l => l.id)))
+
+  // 선택 삭제(체크된 리드) — 서버 bulk-delete 후 로컬 반영.
+  const deleteSelected = async () => {
+    const ids = leads.filter(l => selected.has(l.id)).map(l => l.id)
+    if (!ids.length) { toast.error('선택된 리드가 없습니다'); return }
+    if (!confirm(`선택한 ${ids.length}개 리드를 삭제할까요?`)) return
+    setBulkDeleting(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/bulk-delete', { ids })
+      if (r.data?.success) { const del = new Set(ids); setLeads(prev => prev.filter(l => !del.has(l.id))); setSelected(new Set()); loadStats(); toast.success(`${r.data.deleted}개 삭제`) }
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch { toast.error('삭제 실패') } finally { setBulkDeleting(false) }
+  }
+
+  // 전체 삭제(풀 비우기) — 파괴적: 타이핑 확인(DELETE) 후 서버 이중 확인.
+  const deleteAll = async () => {
+    if (!leads.length && stats.total === 0) { toast.error('삭제할 리드가 없습니다'); return }
+    const ans = prompt(`⚠️ 수집된 바이어 리드 전체를 삭제합니다(복구 불가).\n진행하려면 DELETE 를 입력하세요.`)
+    if (ans !== 'DELETE') return
+    setBulkDeleting(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/bulk-delete', { all: true, confirm: 'DELETE_ALL' })
+      if (r.data?.success) { setLeads([]); setSelected(new Set()); loadStats(); toast.success(`전체 ${r.data.deleted}개 삭제`) }
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch { toast.error('삭제 실패') } finally { setBulkDeleting(false) }
   }
 
   const addTarget = async () => {
@@ -578,6 +611,26 @@ export default function AdminBuyerPoolPage() {
 
         {/* 리스트 — 매칭 스코어 우선 정렬 */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          {/* 선택/전체 삭제 툴바 */}
+          {!loading && leads.length > 0 && (
+            <div className="px-3 py-2 flex flex-wrap items-center gap-3 border-b border-gray-100 bg-gray-50 text-sm">
+              <label className="flex items-center gap-1.5 cursor-pointer text-gray-700 select-none">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-blue-600" />
+                전체선택
+              </label>
+              {selected.size > 0 && <span className="text-gray-500">{selected.size}개 선택됨</span>}
+              <div className="ml-auto flex items-center gap-2">
+                <button onClick={deleteSelected} disabled={bulkDeleting || selected.size === 0}
+                  className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium disabled:opacity-40">
+                  선택 삭제{selected.size > 0 ? ` (${selected.size})` : ''}
+                </button>
+                <button onClick={deleteAll} disabled={bulkDeleting}
+                  className="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 text-xs font-medium disabled:opacity-40">
+                  전체 삭제
+                </button>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="p-8 text-center text-gray-400 text-sm">불러오는 중…</div>
           ) : leads.length === 0 ? (
@@ -587,7 +640,8 @@ export default function AdminBuyerPoolPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {leads.map(l => (
-                <div key={l.id} className="p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <div key={l.id} className={`p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${selected.has(l.id) ? 'bg-blue-50' : ''}`}>
+                  <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleOne(l.id)} className="w-4 h-4 shrink-0 accent-blue-600" title="선택" />
                   <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold ${scoreCls(l.match_score)}`} title="매칭 스코어">{l.match_score ?? '–'}</div>
                   <div className="min-w-[180px] flex-1">
                     <div className="font-medium text-gray-900 flex items-center gap-1.5">

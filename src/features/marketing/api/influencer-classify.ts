@@ -56,3 +56,25 @@ export function resolveCategory(name: string, description: string | null | undef
   const kc = (keywordCat || '').trim()
   return kc && !NON_CATEGORIES.has(kc) ? kc : null
 }
+
+// 🎯 YouTube topicDetails(구글 자체 영상기반 분류)가 구분 가능한 '거친' 카테고리 = topicToCategory 출력 범위.
+export const YT_COARSE_CATEGORIES = new Set(['뷰티', '패션', '맛집', '여행', '운동', '반려동물', '취미'])
+// 우리 세분 카테고리 → 유튜브가 뭉뚱그리는 상위. 이 관계면 유튜브 상위로 안 덮음(우리가 더 정확: 네일<뷰티, 카페/푸드/외식창업<맛집).
+const FINE_PARENT: Record<string, string> = { 네일: '뷰티', 카페: '맛집', 푸드: '맛집', 외식창업: '맛집' }
+
+/**
+ * 🧭 최종 카테고리 종합(라이브 재조회/enrichment 용) — 우리 라이브 규칙(liveCat, 15종)을 1차, YouTube 신호(topicCat)를
+ *   거친 카테고리 '교정자'로. 과거엔 topicCat 을 빈칸 채움만 했으나, 여기선 적극 교정:
+ *   ① 우리 규칙 우선(없으면 저장값). ② 유튜브가 거친 수준에서 불일치하면 교정하되 — 우리가 더 세분(FINE_PARENT)이면 유지,
+ *   우리 라이브 규칙이 저장값을 독립 지지하면 유지. ③ 유튜브가 못 판단하는 세분(육아/리빙/IT/숙소 등)은 우리값 유지.
+ *   저장값이 있으면 절대 null 로 만들지 않음(정보 소실 방지).
+ */
+export function reconcileCategory(stored: string | null, liveCat: string | null, topicCat: string | null): string | null {
+  const best = liveCat || stored || null
+  if (topicCat && topicCat !== best) {
+    if (best && FINE_PARENT[best] === topicCat) return best                        // 우리가 더 세분 → 유지
+    if (!best) return topicCat                                                     // 미분류 → 유튜브로 채움
+    if (YT_COARSE_CATEGORIES.has(best)) return liveCat === best ? best : topicCat  // 거친 불일치 → 라이브규칙 지지 없으면 유튜브 교정
+  }
+  return best
+}

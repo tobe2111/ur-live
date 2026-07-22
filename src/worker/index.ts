@@ -2563,8 +2563,20 @@ export default {
         } catch { /* 조회 실패 — 기존 /profile 서빙으로 통과 */ }
       }
     } catch { /* URL 파싱 시 통과 */ }
+    // 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): 플래그 ON 일 때만 env.DB 를 rows_read 집계 프록시로 감쌈.
+    //   기본 OFF = 프록시 미적용(오버헤드 0). 잠긴 SSR/캐시 블록 무관 — app.fetch 위임 직전 additive.
+    let fenv: unknown = env;
+    try {
+      if ((env as { D1_PROFILE_ENABLED?: string })?.D1_PROFILE_ENABLED === 'true') {
+        const dbEnv = env as { DB?: D1Database };
+        if (dbEnv.DB) {
+          const { profileD1 } = await import('./utils/d1-profiler');
+          fenv = { ...(env as object), DB: profileD1(dbEnv.DB, new URL(request.url).pathname) };
+        }
+      }
+    } catch { /* 프로파일 배선 실패 — 원본 env 로 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
-    return app.fetch(request, env, ctx);
+    return app.fetch(request, fenv, ctx);
   },
   scheduled: handleCronScheduled,
 };

@@ -8,7 +8,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, type FetchBudget } from './influencer-discovery'
-import { classifyCategory, NON_CATEGORIES } from './influencer-classify'
+import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -133,15 +133,16 @@ export async function enrichYouTubePerformance(
   //   반복 클릭 시 pub_checked_at 이 now 로 갱신돼 큐 뒤로 밀리므로 전 풀을 순회(무한 재조회 없음, 개인메일 확보되면 대상서 제외).
   //   + **recent_avg_views = 0 힐**: 과거 예산소진 버그로 avg 0 으로 굳은 채널(개설일 스탬프됨 → 진행모드 재선택 안 됨)도
   //   재조회 대상에 포함해 실제 조회수로 교정(예산소진 스킵은 이제 0 을 안 찍으므로 재감염 없음, 진짜 0 이면 실측 후 유지).
+  //   + **category IS NULL 힐**: 분류 못 한 채널도 재조회해 라이브 About(우리 15종 규칙) + YouTube topicDetails 로 채움.
   const refresh = mode === 'refresh'
   const whereMode = refresh
-    ? `channel_id IS NOT NULL AND ((email IS NULL OR NOT (${personalEmailSqlClause()})) OR recent_avg_views = 0)`
+    ? `channel_id IS NOT NULL AND ((email IS NULL OR NOT (${personalEmailSqlClause()})) OR recent_avg_views = 0 OR category IS NULL)`
     : `(perf_checked_at IS NULL OR pub_checked_at IS NULL)`
   const orderMode = refresh ? `pub_checked_at ASC` : `(pub_checked_at IS NULL) DESC, subscriber_count DESC`
-  const rows = (await DB.prepare(`SELECT id, channel_id, email, category FROM ad_influencer_leads
+  const rows = (await DB.prepare(`SELECT id, channel_id, name, email, category FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'youtube' AND ${whereMode}
       ORDER BY ${orderMode} LIMIT ?`).bind(Math.min(max, 20))
-    .all<{ id: number; channel_id: string; email: string | null; category: string | null }>().catch(() => null))?.results || []
+    .all<{ id: number; channel_id: string; name: string | null; email: string | null; category: string | null }>().catch(() => null))?.results || []
   if (!rows.length) return 0
 
   // ① uploads 재생목록 id — 50개 배치 1콜. snippet(개설일·소개글)+topicDetails(주제분류) 추가 — parts 는 비용 안 늘림(같은 1점).
@@ -192,14 +193,19 @@ export async function enrichYouTubePerformance(
   const stmts = rows.map(r => {
     const pub = publishedAt.get(r.channel_id) || null // 개설일(계정 나이) — 있으면 채움, 기존값 보존
     const fixEmail = correctedAboutEmail(aboutDesc.get(r.channel_id), r.email) // 최신 About 개인메일로 대행사/스테일 메일 정정(NULL=유지)
-    const catFill = !r.category ? (topicCat.get(r.channel_id) || null) : null // 미분류만 topicDetails 로 채움(기존 분류 보존)
+    // 카테고리: 우리 라이브 규칙(15종, 현재 About) + YouTube topicDetails 종합. **refresh(수동 재조회)=적극 교정**
+    //   (reconcileCategory — 저장값 있으면 null 안 됨), **progress(cron)=미분류만 채움**(기존/수동 분류 보존).
+    const liveCat = classifyCategory(r.name || '', aboutDesc.get(r.channel_id) || '')
+    const catToWrite = refresh
+      ? reconcileCategory(r.category, liveCat, topicCat.get(r.channel_id) || null)
+      : (r.category || liveCat || topicCat.get(r.channel_id) || null)
     if (budgetSkipped.has(r.id)) // 예산으로 perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
-      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = COALESCE(category, ?) WHERE id = ?`)
-        .bind(pub, fixEmail, catFill, r.id)
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ? WHERE id = ?`)
+        .bind(pub, fixEmail, catToWrite, r.id)
     const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
     const { avgViews, avgComments } = avgStats(vids)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = COALESCE(category, ?), perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, pub, fixEmail, catFill, r.id)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, pub, fixEmail, catToWrite, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
