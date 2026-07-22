@@ -50,6 +50,15 @@ app.post('/__ads/collect-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 📧 파트너 리드 연락처 보강(보류 리드 이메일 크롤) — 메인 어드민이 env.ADS 로만 호출.
+app.post('/__ads/enrich-company', async (c) => {
+  try {
+    const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+    const stats = await enrichHeldLeads(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🏪 상가정보(공공데이터) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
 app.post('/__ads/collect-storeinfo', async (c) => {
   try {

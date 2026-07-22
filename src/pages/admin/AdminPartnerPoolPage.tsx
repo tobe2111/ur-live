@@ -13,7 +13,7 @@ import { formatNumber } from '@/utils/format'
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
   tier: number | null; region: string | null; website: string | null; email: string | null; phone: string | null
-  address: string | null; status: string; memo: string | null; contact_channel: string | null
+  address: string | null; status: string; active: number; memo: string | null; contact_channel: string | null
   follow_up_at: string | null; source: string; source_keyword: string | null; collected_at: string
 }
 interface Stats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number }
@@ -72,8 +72,9 @@ export default function AdminPartnerPoolPage() {
       if (fTier) p.set('tier', fTier)
       if (fStatus) p.set('status', fStatus)
       if (fContact === 'contact') p.set('hasContact', '1')
-      if (fContact === 'email') p.set('hasEmail', '1')
-      if (fContact === 'held') p.set('includeHeld', '1') // 연락처 없어 보류된 리드만 검토.
+      else if (fContact === 'email') p.set('hasEmail', '1')
+      else if (fContact === 'held') p.set('heldOnly', '1')   // 연락처 미확보(보류)만
+      else p.set('includeHeld', '1')                          // 기본: 전체(보류 포함) 노출 — 368개 다 보이게
       if (q.trim()) p.set('q', q.trim())
       const r = await api.get(`/api/admin/partner-pool?${p.toString()}`)
       if (r.data?.success) setLeads(r.data.leads || [])
@@ -146,6 +147,19 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('수집 위임 실패') } finally { setCollectingSI(false) }
   }
 
+  const [enriching, setEnriching] = useState(false)
+  async function runEnrich() {
+    if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정'); return }
+    setEnriching(true)
+    try {
+      const r = await api.post('/api/admin/partner-pool/enrich', {})
+      if (r.data?.success) {
+        toast.success('연락처 보강 시작 — 홈페이지 있는 보류 리드의 이메일을 채웁니다')
+        for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadLeads()]) }
+      } else toast.error(r.data?.error || '보강 위임 실패')
+    } catch { toast.error('보강 위임 실패') } finally { setEnriching(false) }
+  }
+
   async function deleteSelected() {
     const ids = [...selected]
     if (!ids.length) return
@@ -187,6 +201,7 @@ export default function AdminPartnerPoolPage() {
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title={collect?.adsBinding ? '네이버 지역검색으로 방배/서초/강남 업체 1회 수집(레인 A)' : 'ur-ads 서비스바인딩 필요'}>{collecting ? '수집 중…' : '🔍 지금 수집'}</button>
           <button onClick={runCollectStoreinfo} disabled={collectingSI || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공공 상가정보(data.go.kr)로 tier 2~5 업종 통째 수집 + 네이버 전화 역조회 보강 (소스 ①)">{collectingSI ? '수집 중…' : '🏪 상가정보 수집'}</button>
+          <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="연락처 미확보 리드 중 홈페이지 있는 것의 이메일을 크롤로 채웁니다(허위 부착 없음)">{enriching ? '보강 중…' : '📧 연락처 보강'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
@@ -307,7 +322,10 @@ export default function AdminPartnerPoolPage() {
                     </select>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="font-medium text-gray-900">{l.company_name}</div>
+                    <div className="font-medium text-gray-900">
+                      {l.active === 0 && <span className="mr-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold" title="전화·이메일 미확보 — 주소로 수동 접촉 대상">연락처 미확보</span>}
+                      {l.company_name}
+                    </div>
                     <div className="text-xs text-gray-400">{[l.category, l.subcategory].filter(Boolean).join(' · ') || '—'}{l.website && <> · <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600">홈</a></>}</div>
                     {l.memo && <div className="text-xs text-gray-500 mt-0.5">📝 {l.memo}</div>}
                   </td>

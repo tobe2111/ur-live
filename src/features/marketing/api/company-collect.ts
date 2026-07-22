@@ -159,6 +159,29 @@ export async function crawlCompanyEmail(website: string, budget?: FetchBudget): 
   return pickBusinessEmail(html.slice(0, 200000))
 }
 
+/** 📧 연락처 보강 전용 패스 — 보류(active=0) 리드 중 홈페이지 있는 것을 이메일 크롤로 채움(수집 없이).
+ *   네이버 지역검색은 전화를 빈 값으로 주는 경우가 많아 대부분 보류로 쌓임 → 홈페이지 이메일이 유일 자동 경로.
+ *   상가정보/명부 등 홈페이지 없는 보류는 크롤 불가(주소로 수동 접촉 대상). tier1 우선. */
+export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
+  const DB = env.DB
+  await ensureCompanySchema(DB)
+  const budget: FetchBudget = { left: Math.max(10, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
+  const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE active = 0 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 40")
+    .all<{ id: number; website: string }>().catch(() => null))?.results || []
+  let enriched = 0, processed = 0
+  for (const t of targets) {
+    if (outOfBudget(budget)) break
+    processed++
+    const email = await crawlCompanyEmail(t.website, budget)
+    if (email) {
+      const r = await DB.prepare("UPDATE ad_company_leads SET email = ?, active = 1 WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
+      if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) enriched++
+    }
+  }
+  const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')").first<{ n: number }>().catch(() => null)
+  return { processed, enriched, remaining: Number(rem?.n) || 0 }
+}
+
 export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
