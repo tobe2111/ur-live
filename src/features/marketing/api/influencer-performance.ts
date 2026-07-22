@@ -133,12 +133,15 @@ export async function enrichYouTubePerformance(
   //   반복 클릭 시 pub_checked_at 이 now 로 갱신돼 큐 뒤로 밀리므로 전 풀을 순회(무한 재조회 없음, 개인메일 확보되면 대상서 제외).
   //   + **recent_avg_views = 0 힐**: 과거 예산소진 버그로 avg 0 으로 굳은 채널(개설일 스탬프됨 → 진행모드 재선택 안 됨)도
   //   재조회 대상에 포함해 실제 조회수로 교정(예산소진 스킵은 이제 0 을 안 찍으므로 재감염 없음, 진짜 0 이면 실측 후 유지).
-  //   + **category IS NULL 힐**: 분류 못 한 채널도 재조회해 라이브 About(우리 15종 규칙) + YouTube topicDetails 로 채움.
+  //   + **전체 재스캔**(2026-07-22): 키워드 상속으로 잘못 분류된 채널은 저장 소개글에 신호가 없어 reclassify(저장 기반)로
+  //   못 고침 → refresh 는 **전 YT 채널**을 오래된 조회순으로 순회하며 라이브 About(우리 15종) + YouTube topicDetails 로
+  //   카테고리/이메일/조회수를 실제 재검증(reconcileCategory). 명백히 깨진 것(미분류·0회·무메일) 먼저, 처리분은 pub_checked_at=now
+  //   로 뒤로 밀려 반복 클릭이 전 풀을 한 바퀴 순회(idempotent — 재클릭은 같은 결과라 무해).
   const refresh = mode === 'refresh'
-  const whereMode = refresh
-    ? `channel_id IS NOT NULL AND ((email IS NULL OR NOT (${personalEmailSqlClause()})) OR recent_avg_views = 0 OR category IS NULL)`
-    : `(perf_checked_at IS NULL OR pub_checked_at IS NULL)`
-  const orderMode = refresh ? `pub_checked_at ASC` : `(pub_checked_at IS NULL) DESC, subscriber_count DESC`
+  const whereMode = refresh ? `channel_id IS NOT NULL` : `(perf_checked_at IS NULL OR pub_checked_at IS NULL)`
+  const orderMode = refresh
+    ? `(category IS NULL OR recent_avg_views = 0 OR email IS NULL) DESC, pub_checked_at ASC`
+    : `(pub_checked_at IS NULL) DESC, subscriber_count DESC`
   const rows = (await DB.prepare(`SELECT id, channel_id, name, email, category FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'youtube' AND ${whereMode}
       ORDER BY ${orderMode} LIMIT ?`).bind(Math.min(max, 20))
