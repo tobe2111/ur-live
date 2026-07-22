@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -30,7 +30,7 @@ import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate, panToPlaceQuery } from './restaurant-map/pan-to-region'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -47,7 +47,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [region, setRegion] = useState('')
   // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
   const [district, setDistrict] = useState('')
-  const [search, setSearch] = useState('')
+  // 🔎 2026-07-20 (대표 — "지도 검색은 지도에서 계속"): 검색어를 URL(?q=)에 반영 → 뒤로가기·공유·새로고침
+  //   일관 + 지역명이면 지도 재중심(panToPlaceQuery). 초기값은 ?q= 에서 시드.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') || '')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
@@ -506,6 +509,25 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }
   }, [])
 
+  // 🔎 2026-07-20 (대표 — 지도 검색 URL 반영): search ↔ ?q= 동기(replace, 히스토리 오염 X). 카테고리(?category)는 보존.
+  useEffect(() => {
+    const cur = searchParams.get('q') || ''
+    const q = search.trim()
+    if (cur === q) return
+    const p = new URLSearchParams(searchParams)
+    if (q) p.set('q', q); else p.delete('q')
+    setSearchParams(p, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
+
+  // 🗺️ 2026-07-20 (대표 — "부산 검색하면 지도가 부산으로"): 검색 제출(Enter/최근검색 선택) 시 지역/장소명이면
+  //   지도를 그 위치로 재중심. 매칭 실패면 no-op(딜 이름/매장명 텍스트 필터는 그대로 동작).
+  const submitMapSearch = useCallback((q: string) => {
+    const query = (q || '').trim()
+    if (!query || !mapInstance.current || !window.kakao?.maps) return
+    void panToPlaceQuery(mapInstance.current, query)
+  }, [])
+
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
   //     매장 수만 개여도 다운로드·오버레이가 격자 수(수십 개)로 고정.
@@ -773,6 +795,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       <MapTopBar
         search={search}
         setSearch={setSearch}
+        onSubmitSearch={submitMapSearch}
         searchFocused={searchFocused}
         setSearchFocused={setSearchFocused}
         searchHistory={searchHistory}
