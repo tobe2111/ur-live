@@ -50,6 +50,15 @@ app.post('/__ads/collect-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🏪 상가정보(공공데이터) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+app.post('/__ads/collect-storeinfo', async (c) => {
+  try {
+    const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
+    const stats = await runStoreInfoCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
@@ -105,6 +114,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try {
         const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
         await runCompanyAutoCollect(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
+  // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
+  //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
+  if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
+        await runStoreInfoCollect(env)
       } catch { /* fail-soft */ }
     })())
   }

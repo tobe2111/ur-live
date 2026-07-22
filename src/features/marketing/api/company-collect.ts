@@ -139,7 +139,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
 
 /** 📧 홈페이지 이메일 크롤(레인 A 보충 — 옵션 a) — robots.txt 존중, 홈 1페이지 1회(재시도 없음), 예산 합산.
  *   website 는 네이버 지역검색이 준 업체 등록 홈페이지(사용자 입력 아님) — http(s) 만, pickBusinessEmail 재사용. */
-async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
+export async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return null }
   if (!/^https?:$/.test(url.protocol)) return null
@@ -190,6 +190,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   }
 
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 8))
+  const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
@@ -202,7 +203,8 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
     found += leads.length
-    const n = await saveCompanyLeads(DB, leads).catch(() => 0)
+    // 연락처 필수(기본 ON): 전화·이메일 없는 리드는 active=0(보류) 로 저장 → 보강이 채우면 승격.
+    const n = await saveCompanyLeads(DB, leads, { requireContact }).catch(() => 0)
     saved += n
     await DB.prepare("UPDATE ad_company_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_run_at = datetime('now') WHERE id = ?")
       .bind(leads.length, n, kw.id).run().catch(() => null)
@@ -218,7 +220,8 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
       if (outOfBudget(budget)) break
       const email = await crawlCompanyEmail(t.website, budget)
       if (email) {
-        const r = await DB.prepare("UPDATE ad_company_leads SET email = ? WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
+        // 이메일 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책).
+        const r = await DB.prepare("UPDATE ad_company_leads SET email = ?, active = 1 WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
         if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
       }
     }
