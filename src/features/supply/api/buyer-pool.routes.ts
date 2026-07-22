@@ -9,7 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
+  ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, deleteBuyerLeads, deleteAllBuyerLeads, rescoreBuyerLeads,
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
@@ -188,6 +188,21 @@ app.delete('/:id', async (c) => {
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
   const r = await deleteBuyerLead(c.env.DB, id)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// POST /api/admin/buyer-pool/bulk-delete { ids?: number[] } | { all: true } — 선택/전체 삭제.
+//   전체 삭제는 파괴적이므로 { all:true, confirm:'DELETE_ALL' } 이중 확인 필요(오클릭 방지).
+app.post('/bulk-delete', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { ids?: unknown; all?: boolean; confirm?: string }
+  if (b.all === true) {
+    if (b.confirm !== 'DELETE_ALL') return c.json({ success: false, error: 'CONFIRM_REQUIRED' }, 400)
+    const r = await deleteAllBuyerLeads(c.env.DB)
+    return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
+  }
+  const ids = Array.isArray(b.ids) ? (b.ids as unknown[]).map(Number).filter(n => Number.isInteger(n) && n > 0) : []
+  if (!ids.length) return c.json({ success: false, error: 'NO_IDS' }, 400)
+  const r = await deleteBuyerLeads(c.env.DB, ids)
+  return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
 })
 
 // GET /api/admin/buyer-pool/targets

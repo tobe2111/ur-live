@@ -406,6 +406,28 @@ export async function deleteBuyerLead(DB: D1Database, id: number): Promise<{ ok:
   return { ok: true }
 }
 
+// 선택 삭제(체크박스 다건). 유효 정수 id 만, 한 번에 최대 500개(D1 IN 절/subrequest 안전) — 초과분은 청크 반복.
+export async function deleteBuyerLeads(DB: D1Database, ids: number[]): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const clean = Array.from(new Set((ids || []).map(n => Number(n)).filter(n => Number.isInteger(n) && n > 0)))
+  if (!clean.length) return { ok: false, deleted: 0 }
+  let deleted = 0
+  for (let i = 0; i < clean.length; i += 500) {
+    const chunk = clean.slice(i, i + 500)
+    const ph = chunk.map(() => '?').join(',')
+    const r = await DB.prepare(`DELETE FROM overseas_buyer_leads WHERE id IN (${ph})`).bind(...chunk).run().catch(() => null)
+    deleted += (r?.meta?.changes as number) || 0
+  }
+  return { ok: true, deleted }
+}
+
+// 전체 삭제(풀 비우기) — 어드민이 명시 확인 후에만 호출. 격리 테이블이라 유어딜/도매 무관.
+export async function deleteAllBuyerLeads(DB: D1Database): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const r = await DB.prepare('DELETE FROM overseas_buyer_leads').run().catch(() => null)
+  return { ok: !!r, deleted: (r?.meta?.changes as number) || 0 }
+}
+
 // 최신 리드 우선 재스코어 — 전체 무제한 SELECT+UPDATE 는 대량 시 Worker CPU/subrequest 한도 초과(타깃 토글마다 동기 실행).
 //   최근 5000행으로 캡(스코어에 중요한 신규분 우선). 호출부는 waitUntil 로 비동기 실행 권장.
 export async function rescoreBuyerLeads(DB: D1Database, cap = 5000): Promise<number> {
