@@ -11,7 +11,7 @@ import { storage } from '@/shared/utils/storage'
 
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
-// 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
+// 🛡️ 2026-05-06: TD-006 추가 분할 — SheetFilterBar 추출. (MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.)
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
