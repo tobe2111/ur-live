@@ -94,15 +94,20 @@ app.post('/enrich', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
-// POST /api/admin/partner-pool/collect-storeinfo — 소스 ① 상가정보 수동 수집(ur-ads 위임). 게이트 무관(수동=의도).
-app.post('/collect-storeinfo', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-storeinfo', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// 소스별 수동 수집 위임(ur-ads). 게이트 무관(수동=의도). storeinfo/commerce/franchise.
+function delegateCollect(path: string) {
+  return async (c: import('hono').Context<{ Bindings: Env }>) => {
+    const ads = c.env.ADS
+    if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+    const kick = async () => { try { await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' })) } catch { /* fail-soft */ } }
+    if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+    try { await kick(); return c.json({ success: true, started: false }) }
+    catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+  }
+}
+app.post('/collect-storeinfo', delegateCollect('collect-storeinfo')) // 소스① 상가정보
+app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신판매사업자(전화+이메일)
+app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
 
 // POST /api/admin/partner-pool — 수동 업체 추가(대표 방배 리드 손입력). 멱등 저장(website/회사명|지역 키).
 app.post('/', async (c) => {

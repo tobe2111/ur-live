@@ -68,6 +68,17 @@ app.post('/__ads/collect-storeinfo', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너 수동 트리거 — 메인 어드민이 env.ADS 로만 호출.
+app.post('/__ads/collect-commerce', async (c) => {
+  try { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return c.json({ ok: true, stats: await runCommerceCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+app.post('/__ads/collect-franchise', async (c) => {
+  try { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return c.json({ ok: true, stats: await runFranchiseCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+app.post('/__ads/scan-notices', async (c) => {
+  try { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return c.json({ ok: true, stats: await runNoticeScan(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🏪 매장 후보(인허가) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
 app.post('/__ads/collect-localdata', async (c) => {
   try {
@@ -153,6 +164,18 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         await runLocalDataCollect(env)
       } catch { /* fail-soft */ }
     })())
+  }
+  const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
+  // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).
+  if (hourUTC % 2 === 0 && envx.ADS_COMMERCE_ENABLED === 'true') {
+    ctx.waitUntil((async () => { try { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); await runCommerceCollect(env) } catch { /* fail-soft */ } })())
+  }
+  if (hourUTC === 22 && envx.ADS_FRANCHISE_ENABLED === 'true') {
+    ctx.waitUntil((async () => { try { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); await runFranchiseCollect(env) } catch { /* fail-soft */ } })())
+  }
+  // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시). 게이트 ADS_NOTICE_ENABLED.
+  if (hourUTC === 21 && envx.ADS_NOTICE_ENABLED === 'true') {
+    ctx.waitUntil((async () => { try { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); await runNoticeScan(env) } catch { /* fail-soft */ } })())
   }
   // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
   if (env.ADS_AUTOBID_ENABLED === 'true') {
