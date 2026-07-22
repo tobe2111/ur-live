@@ -2131,8 +2131,9 @@ adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
   try {
     const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
     const body = (await c.req.json().catch(() => ({}))) as { count?: number };
-    // ⚡ 커버 fetch 를 워커에서 **병렬** 처리하므로 한 요청에 최대 16개(≈가장 느린 커버 1개 시간, 엣지 100s 안쪽).
-    const perRun = Math.min(16, Math.max(1, intParam(String(body.count ?? 12), 12)));
+    // ⚡ 병렬 fetch(요청당 6개). 대용량 커버(카카오/다음 1~3MB)를 12+개 동시에 받으면 워커 메모리 압박 →
+    //   요청 실패("멈춤"). 6개면 ≤~18MB 로 안전하면서도 순차 대비 6× 빠름.
+    const perRun = Math.min(8, Math.max(1, intParam(String(body.count ?? 6), 6)));
     const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
     if (r.rehosted > 0) {
       await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
