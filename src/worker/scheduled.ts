@@ -385,6 +385,12 @@ export async function handleCronScheduled(
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
       await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
     }))
+    // 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 정리 — 기본 리포트-온리(삭제는 R2_ORPHAN_CLEANUP_ENABLED
+    //   플래그 + 60일 경과 + biz-cert 제외 + 회당 50개 캡). 일 1회면 충분(R2 list 비용 절감).
+    ctx.waitUntil(safeCron('r2-orphan-cleanup', async () => {
+      const { r2OrphanCleanup } = await import('./cron/r2-orphan-cleanup')
+      await r2OrphanCleanup(env)
+    }))
   }
 
   if (cron === '0 9 * * *' || cron === '0 0 * * *') {
