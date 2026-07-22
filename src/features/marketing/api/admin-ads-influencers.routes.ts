@@ -13,6 +13,7 @@ import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
+import { classifyCategory } from './influencer-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -251,6 +252,25 @@ app.post('/influencer-pool/reextract', async (c) => {
     if (rows.length < 2000) break
   }
   return c.json({ success: true, scanned, filled })
+})
+
+// GET /api/admin/ads/influencer-pool/classify-debug?q=세븐일레븐 — 🔎 분류 진단(왜 이 카테고리인가)
+//   저장 이름/소개글에 우리 규칙(classifyCategory)을 재적용해, 콘텐츠 신호 매칭인지 vs 키워드 상속인지 드러냄.
+app.get('/influencer-pool/classify-debug', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  const q = (c.req.query('q') || '').trim().toLowerCase()
+  if (!q) return c.json({ success: false, error: 'q 파라미터 필요' }, 400)
+  const rows = (await c.env.DB.prepare(`SELECT id, platform, name, handle, description, category, source_keyword FROM ad_influencer_leads
+      WHERE account_id = 0 AND (LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ?) LIMIT 20`)
+    .bind(`%${q}%`, `%${q}%`).all<{ id: number; platform: string; name: string | null; handle: string | null; description: string | null; category: string | null; source_keyword: string | null }>().catch(() => null))?.results || []
+  const results = rows.map(r => {
+    const contentCat = classifyCategory(r.name || '', r.description)
+    const why = contentCat
+      ? (contentCat === r.category ? `콘텐츠 신호=${contentCat}(현재와 동일)` : `콘텐츠 신호=${contentCat}(현재 ${r.category}와 다름 — 재분류로 교정 가능)`)
+      : (r.category ? `콘텐츠 신호 없음 → 키워드 상속(source_keyword="${r.source_keyword}") → 라이브 재보정(🧭)으로만 교정` : '미분류')
+    return { id: r.id, platform: r.platform, name: r.name, handle: r.handle, stored_category: r.category, content_category: contentCat, source_keyword: r.source_keyword, why, description: (r.description || '').slice(0, 400) }
+  })
+  return c.json({ success: true, count: results.length, results })
 })
 
 // POST /api/admin/ads/influencer-pool/reclassify — 🏷️ 기존 풀 콘텐츠 기반 카테고리 재분류(백필, 멱등)
