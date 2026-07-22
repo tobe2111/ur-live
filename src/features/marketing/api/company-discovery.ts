@@ -43,7 +43,8 @@ export interface CompanyLead {
   phone?: string | null
   address?: string | null
   description?: string | null
-  source?: string | null        // 'manual' | 'local' | 'webkr' | 'registry'
+  business_no?: string | null   // 사업자등록번호(있을 때만 — 통신판매/수동. 폐업 상태조회 키). 상가정보엔 없음.
+  source?: string | null        // 'manual' | 'local' | 'webkr' | 'registry' | 'storeinfo'(공공 상가정보)
   source_keyword?: string | null
 }
 
@@ -51,12 +52,16 @@ export interface CompanyLeadRow {
   id: number; company_key: string; company_name: string
   category: string | null; subcategory: string | null; tier: number | null; region: string | null
   website: string | null; email: string | null; phone: string | null; address: string | null
-  description: string | null; source: string; source_keyword: string | null
-  status: string; memo: string | null; contact_channel: string | null
-  contacted_at: string | null; follow_up_at: string | null; collected_at: string
+  description: string | null; business_no: string | null; source: string; source_keyword: string | null
+  status: string; active: number; memo: string | null; contact_channel: string | null
+  contacted_at: string | null; follow_up_at: string | null; last_verified_at: string | null; collected_at: string
 }
 
-const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, source, source_keyword, status, memo, contact_channel, contacted_at, follow_up_at, collected_at'
+/** 연락처(전화 또는 이메일) 보유 여부 — "연락처 필수" 판정 SSOT. */
+export const hasContact = (l: Pick<CompanyLead, 'phone' | 'email'>): boolean =>
+  !!(l.phone && String(l.phone).trim()) || !!(l.email && String(l.email).trim())
+
+const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
 
 /* ── 스키마 (런타임 보장 — ur-ads 는 CI 마이그레이션 미작동, repair-schema 패턴) ─────── */
 const _schemaDone = new WeakSet<object>()
@@ -86,9 +91,14 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
+  // additive 컬럼(공공데이터 전환 §11) — 기존 행 무영향. active=1(액션풀), 연락처 없거나 폐업이면 0.
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN active INTEGER NOT NULL DEFAULT 1').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)').run().catch(() => null)
 }
 
 /** 중복 차단 키 — 웹사이트(정규화) 우선, 없으면 회사명|지역(소문자). SQLite NULL-distinct 회피용 결정 키. */
@@ -101,7 +111,9 @@ export function companyKey(lead: Pick<CompanyLead, 'company_name' | 'website' | 
 }
 
 /* ── 저장(멱등 upsert — 빈 컨택만 백필, 큐레이션 필드 불변) ────────────────────────── */
-export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[]): Promise<number> {
+//   requireContact=true: 연락처(전화/이메일) 없는 리드는 active=0(액션풀 제외·보류) 로 저장 →
+//   이후 보강 UPDATE 가 연락처를 채우면 active=1 로 승격("연락처 필수" 정책). 수동/명부는 false(항상 활성).
+export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opts: { requireContact?: boolean } = {}): Promise<number> {
   if (!leads.length) return 0
   await ensureCompanySchema(DB)
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
@@ -112,20 +124,27 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[]): Pr
   let saved = 0
   for (let i = 0; i < rows.length; i += CHUNK) {
     const slice = rows.slice(i, i + CHUNK)
-    const stmts = slice.map(l => DB.prepare(
-      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, source, source_keyword)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    const stmts = slice.map(l => {
+      const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
+      return DB.prepare(
+      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(company_key) DO UPDATE SET
          email = COALESCE(ad_company_leads.email, excluded.email),
          phone = COALESCE(ad_company_leads.phone, excluded.phone),
          website = COALESCE(ad_company_leads.website, excluded.website),
-         address = COALESCE(ad_company_leads.address, excluded.address)`
+         address = COALESCE(ad_company_leads.address, excluded.address),
+         business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
+         active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
+                         OR COALESCE(ad_company_leads.phone, excluded.phone) IS NOT NULL
+                       THEN 1 ELSE ad_company_leads.active END`
     ).bind(
       companyKey(l), l.company_name.slice(0, 120),
       clamp(l.category, 40), clamp(l.subcategory, 40), tierOf(l.tier), clamp(l.region, 60),
       clamp(l.website, 200), clamp(l.email, 120), clamp(l.phone, 40), clamp(l.address, 300),
-      clamp(l.description, 800), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60),
-    ))
+      clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
+    )
+    })
     const res = await DB.batch(stmts).catch(() => null)
     if (res) saved += slice.length
   }
@@ -175,11 +194,13 @@ export function parsePartnerPaste(text: string): CompanyLead[] {
 /* ── 목록/필터 ─────────────────────────────────────────────────────────────── */
 export async function listCompanyLeads(DB: D1Database, filter: {
   category?: string; subcategory?: string; region?: string; tier?: number
-  status?: string; hasContact?: boolean; hasEmail?: boolean; q?: string; limit?: number
+  status?: string; hasContact?: boolean; hasEmail?: boolean; includeHeld?: boolean; q?: string; limit?: number
 } = {}): Promise<CompanyLeadRow[]> {
   await ensureCompanySchema(DB)
   const where: string[] = ['1=1']
   const binds: (string | number)[] = []
+  // 기본: 액션풀(active=1) 만 — 연락처 없어 보류(active=0)된 리드는 includeHeld 로만 노출("연락처 필수").
+  if (!filter.includeHeld) where.push('active = 1')
   if (filter.category) { where.push('category = ?'); binds.push(filter.category) }
   if (filter.subcategory) { where.push('subcategory = ?'); binds.push(filter.subcategory) }
   if (filter.region) { where.push('region LIKE ?'); binds.push(`%${filter.region}%`) }
@@ -247,13 +268,14 @@ export async function deleteCompanyLead(DB: D1Database, id: number): Promise<{ o
 }
 
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
-export interface CompanyStats { total: number; with_contact: number; with_email: number; active_pipeline: number; recent7: number }
+export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number }
 export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }> }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS with_contact,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) AS held_no_contact,
       SUM(CASE WHEN status NOT IN ('new','rejected') THEN 1 ELSE 0 END) AS active_pipeline,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM ad_company_leads`).first<Record<string, number>>().catch(() => null)
@@ -262,6 +284,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
   return {
     stats: {
       total: Number(t?.total) || 0, with_contact: Number(t?.with_contact) || 0, with_email: Number(t?.with_email) || 0,
+      held_no_contact: Number(t?.held_no_contact) || 0,
       active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
     },
     byCategory, byTier,
