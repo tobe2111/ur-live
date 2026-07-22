@@ -2183,6 +2183,19 @@ adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
   }
 });
 
+// GET /d1-profile — 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): rows_read 상위 쿼리 조회(isolate-로컬).
+//   ?reset=1 로 집계 초기화. D1_PROFILE_ENABLED='true' 여야 데이터가 쌓임(기본 OFF).
+adminProductsRoutes.get('/d1-profile', cors(), async (c) => {
+  try {
+    const { getD1Profile, resetD1Profile } = await import('../../../worker/utils/d1-profiler');
+    if (c.req.query('reset') === '1') { resetD1Profile(); return c.json({ success: true, reset: true }); }
+    const enabled = (c.env as unknown as { D1_PROFILE_ENABLED?: string }).D1_PROFILE_ENABLED === 'true';
+    return c.json({ success: true, enabled, top: getD1Profile(30) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // GET /r2-orphan-report — 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 리포트(온디맨드). 기본 삭제 안 함
 //   (R2_ORPHAN_CLEANUP_ENABLED='true' 여야 실제 삭제). 참조 없는 60일+ 객체 수/용량만 집계해 반환.
 adminProductsRoutes.get('/r2-orphan-report', cors(), async (c) => {
