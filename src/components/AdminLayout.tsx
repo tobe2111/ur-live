@@ -18,6 +18,7 @@ import {
   VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf,
   ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
 } from '@/components/admin/admin-nav-config'
+import AdminCommandPalette, { type CommandItem } from '@/components/admin/AdminCommandPalette'
 
 
 interface AdminLayoutProps {
@@ -94,6 +95,19 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 그룹 접힘 시 합계 배지
   const groupBadgeTotal = (items: { path: string }[]) => items.reduce((s, it) => s + (navBadges[it.path] || 0), 0)
 
+  // ⌘K 2026-07-20: 커맨드 팔레트(메뉴 빠른 이동). ⌘K/Ctrl+K 로 토글.
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
   const [searchQuery, setSearchQuery] = useState('')
   const handleSearch = (e: React.FormEvent) => {
@@ -132,6 +146,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   사이드바 맨 위 '즐겨찾기' 섹션에 pin 순서대로 모임. 역할별로 보이는 항목만 고정 가능(roleNavGroups 해석).
   //   localStorage 영속. 최초(미설정)엔 역할별 기본값 시드 → 바로 유용하게 보이되 이후 자유 큐레이션.
   const allVisibleItems = roleNavGroups.flatMap((g) => g.items)
+  // ⌘K 커맨드 팔레트 대상 — 역할 가시 항목 flat + 그룹명(맥락 표시/검색용).
+  const commandItems: CommandItem[] = roleNavGroups.flatMap((g) =>
+    g.items.map((it) => ({ path: it.path, label: it.label, icon: it.icon, group: g.title })),
+  )
   const DEFAULT_PINS = adminRole === 'wholesale'
     ? ['/admin/wholesale-overview', '/admin/wholesale-orders', '/admin/suppliers']
     : ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
@@ -302,6 +320,18 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </form>
       )}
 
+      {/* ⌘K 메뉴 빠른 이동 — 60여 개 메뉴를 이름으로 즉시 점프(전 역할). */}
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
+        className={`mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left ${adminRole === 'wholesale' ? 'mt-3' : ''}`}
+        style={{ background: 'rgba(255,255,255,0.03)' }}
+      >
+        <Search size={12} className="text-white/35 flex-shrink-0" />
+        <span className="flex-1 text-[11px] text-white/40">메뉴 빠른 이동</span>
+        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+      </button>
+
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {/* ⭐ 즐겨찾기(고정) — 대표 "자주 쓰는 페이지를 좌측 상단에". 각 메뉴 ★ 토글로 큐레이션. */}
@@ -398,6 +428,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
   return (
     <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">
+      {/* ⌘K 커맨드 팔레트 — 전 어드민 페이지 공통(레이아웃 마운트). */}
+      <AdminCommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
