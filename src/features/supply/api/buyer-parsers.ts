@@ -93,9 +93,10 @@ export const BK_CATEGORIES = [
 ]
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
 
-// 사이트 자체 브랜딩/센터명 — 회사명/제목으로 오인 금지(로그인 사용자가 보는 크롬). "바이코리아 | 판매자센터" 등.
-//   ⚠️ JS \b 는 한글 뒤에서 불안정 → 센터 접두(판매자/셀러/구매자/바이어) + 브랜드-단독 라인만 매칭.
-const BK_SITE_CHROME = /(?:판매자|셀러|구매자|바이어)\s*센터|(?:seller|buyer)\s*center|^\s*(?:바이\s*코리아|buy\s?korea|tradekorea|ec21|ecplaza|gobizkorea|kotra)\s*(?:[|·ㆍ\-–—]|$)/i
+// 사이트 자체 브랜딩/센터명 + UI 컨트롤 라벨 — 회사명/제목으로 오인 금지(로그인 사용자가 보는 크롬).
+//   "바이코리아 | 판매자센터" · "레이어 열기/닫기"(아코디언 토글) · "더보기"/"자세히" 등.
+//   ⚠️ JS \b 는 한글 뒤에서 불안정 → 센터 접두(판매자/셀러/구매자/바이어) + 브랜드-단독 + UI토글만 매칭.
+const BK_SITE_CHROME = /(?:판매자|셀러|구매자|바이어)\s*센터|(?:seller|buyer)\s*center|^\s*(?:바이\s*코리아|buy\s?korea|tradekorea|ec21|ecplaza|gobizkorea|kotra)\s*(?:[|·ㆍ\-–—]|$)|레이어\s*[열닫]|열기\s*[／/]\s*닫기|^\s*(?:열기|닫기|더보기|접기|펼치기|자세히보기|자세히|목록보기|목록|이전|다음|처음|마지막|layer|toggle|expand|collapse|more|prev|next|prev\s*next)\s*$|(?:show|read|view)\s*more/i
 
 /** 붙여넣은 buyKorea 페이지의 최상위 카테고리 판별 — 리스트 H1("미용\n전체 88") 우선, 상세 브레드크럼(일반상품 다음) 폴백. */
 export function detectBkCategory(text: string): string | null {

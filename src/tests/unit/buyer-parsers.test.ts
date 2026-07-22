@@ -134,6 +134,16 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const l = parseBuyKoreaInquiries(mk)[0]
     expect(/hongseungkyun|후보이메일/.test((l.email || '') + (l.description || ''))).toBe(false)
   })
+  // UI 아코디언 토글 라벨("레이어 열기/닫기")이 회사명으로 잡히던 것 차단(대표 신고).
+  it('회사명 라벨이 있으면 UI 토글 라벨이 아니라 라벨값이 회사명', () => {
+    const withCo = ['레이어 열기/닫기', '회사명 : Poly-ion engineering services', '국가 : Ecuador', '웹사이트 : https://www.poly-ion.org'].join('\n')
+    expect(parseBuyKoreaInquiries(withCo)[0].company).toBe('Poly-ion engineering services')
+  })
+  it('UI 토글만 있는 크롬 조각은 회사명으로 저장하지 않음', () => {
+    const noCo = ['레이어 열기/닫기', '이름 : Alejandro Calvache', '전화 : +593 999', '국가 : Ecuador'].join('\n')
+    const l = parseBuyKoreaInquiries(noCo)[0]
+    expect(l == null || !/레이어|열기|닫기/.test(l.company)).toBe(true)
+  })
 })
 
 describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들도 되게끔)', () => {
