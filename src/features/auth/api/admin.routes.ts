@@ -106,11 +106,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400);
     }
 
-    // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — 로그인 Turnstile 게이트 비활성(재도입 = true).
-    //   배경: 위젯 sitekey ↔ 서버 TURNSTILE_SECRET 짝/허용도메인(urdeal.kr) 불일치로 정상 관리자도
-    //   항상 403 잠김. 로그인은 rate-limit(admin_login) + 비밀번호 + 보안 PIN 으로 방어되므로 게이트만 제거.
-    //   재도입 시: 대시보드에서 sitekey↔secret 짝·urdeal.kr 도메인 확정 후 아래 플래그 true.
-    const TURNSTILE_LOGIN_ENABLED = false;
+    const TURNSTILE_LOGIN_ENABLED = false; // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — sitekey↔secret/도메인 불일치 잠금 해소(재도입=true; rate-limit+비번+PIN 방어).
     if (TURNSTILE_LOGIN_ENABLED) {
       const ip = c.req.header('cf-connecting-ip') || undefined;
       const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
