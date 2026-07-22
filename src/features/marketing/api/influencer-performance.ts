@@ -131,9 +131,11 @@ export async function enrichYouTubePerformance(
   //   refresh(수동 라이브 재조회): 이미 수집됐어도 **개인메일이 아직 없는 채널**(NULL·대행사)을 오래된 조회순으로 재선택
   //   → 저장값이 대행사 메일이지만 현재 About 엔 개인메일인 케이스(티벳동생)를 correctedAboutEmail 이 실제로 교정.
   //   반복 클릭 시 pub_checked_at 이 now 로 갱신돼 큐 뒤로 밀리므로 전 풀을 순회(무한 재조회 없음, 개인메일 확보되면 대상서 제외).
+  //   + **recent_avg_views = 0 힐**: 과거 예산소진 버그로 avg 0 으로 굳은 채널(개설일 스탬프됨 → 진행모드 재선택 안 됨)도
+  //   재조회 대상에 포함해 실제 조회수로 교정(예산소진 스킵은 이제 0 을 안 찍으므로 재감염 없음, 진짜 0 이면 실측 후 유지).
   const refresh = mode === 'refresh'
   const whereMode = refresh
-    ? `channel_id IS NOT NULL AND (email IS NULL OR NOT (${personalEmailSqlClause()}))`
+    ? `channel_id IS NOT NULL AND ((email IS NULL OR NOT (${personalEmailSqlClause()})) OR recent_avg_views = 0)`
     : `(perf_checked_at IS NULL OR pub_checked_at IS NULL)`
   const orderMode = refresh ? `pub_checked_at ASC` : `(pub_checked_at IS NULL) DESC, subscriber_count DESC`
   const rows = (await DB.prepare(`SELECT id, channel_id, email, category FROM ad_influencer_leads
