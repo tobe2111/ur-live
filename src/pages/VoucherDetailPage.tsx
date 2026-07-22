@@ -315,7 +315,7 @@ export default function VoucherDetailPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-52 lg:pb-40">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-52 lg:pb-40">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}

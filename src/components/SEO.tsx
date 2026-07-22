@@ -31,7 +31,9 @@ interface SEOProps {
 
 const SITE_NAME = '유어딜'
 // 🛡️ 2026-05-21: SEO 타이틀/설명 변경 (사용자 요청) — "돈버는 쇼핑" 강조, 오프라인 공동구매 우선.
-const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.'
+// 🧹 2026-07-20 (소비자 감사): 폐기된 '라이브 쇼핑/라이브커머스'(2026-07-07 영구중단) 문구 제거 —
+//   이 기본 메타는 전 소비자 페이지 타이틀/설명/트위터 카드에 실려 구글/소셜 공유에 노출됨.
+const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 · 동네딜 · 교환권.'
 // 🎨 2026-07-19 확정 로고: 기본 OG = 신규 브랜드 래스터(og-image.png — 카카오 등 raster 선호 크롤러 호환).
 const DEFAULT_IMAGE = 'https://urdeal.kr/og-image.png'
 const BASE_URL = 'https://urdeal.kr'
@@ -63,7 +65,7 @@ export default function SEO({
     ? `${title} - ${siteName}`
     : (isWholesale
       ? `${siteName} - B2B 도매사이트, 제조사 직거래 도매가 사입`
-      : `${siteName} - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스`)
+      : `${siteName} - 돈버는 쇼핑, 동네 가게 공동구매 · 이용권`)
   const fullUrl = url ? `${baseUrl}${url}` : baseUrl
   const twitterSite = isWholesale ? '@utongstart' : '@urdeal_kr'
 
@@ -101,7 +103,7 @@ export default function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />
-      <meta name="twitter:image:alt" content={isWholesale ? `${siteName} B2B 도매몰` : `${siteName} 라이브 커머스`} />
+      <meta name="twitter:image:alt" content={isWholesale ? `${siteName} B2B 도매몰` : `${siteName} 동네 공동구매 · 이용권`} />
 
       {/* Theme color (모바일 status bar) */}
       <meta name="theme-color" content={isWholesale ? '#0A0A0A' : '#0F151D'} />

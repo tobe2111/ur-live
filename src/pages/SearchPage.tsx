@@ -155,15 +155,25 @@ export default function SearchPage() {
   }
 
   const products = getSortedAndFilteredProducts()
-  const hasResults = !!(searchResult && searchResult.total > 0)
-  const showResults = !loading && !error && query && hasResults
+  // 🧹 2026-07-20 (소비자 감사): 결과 유무는 서버 total(교환권·쇼핑 포함 전체)이 아니라 **필터 후(이용권 전용)
+  //   products.length** 기준. 서버 매칭이 전부 비-이용권이면 total>0 이라 빈 그리드에 "N개 결과"만 뜨던 버그.
+  const hasResults = products.length > 0
+  // 현재 로드분이 전부 필터로 걸러졌지만 다음 페이지가 남았으면 자동으로 더 불러와 '결과 없음' 오표시 방지.
+  useEffect(() => {
+    if (query.length >= 2 && products.length === 0 && hasNextPage && !isFetchingNextPage && !loading) {
+      fetchNextPage()
+    }
+  }, [query, products.length, hasNextPage, isFetchingNextPage, loading, fetchNextPage])
+  // 아직 필터 통과 결과가 0건인데 더 불러올 게 남아 있으면 '없음' 대신 로딩 유지(자동 페치 중).
+  const stillLoadingResults = loading || (query.length >= 2 && products.length === 0 && (isFetchingNextPage || hasNextPage))
+  const showResults = !stillLoadingResults && !error && query && hasResults
 
   const relatedKeywords = DEFAULT_RELATED_KEYWORD_KEYS.map(k => t(`search.related.${k.key}`, { defaultValue: k.defaultValue }))
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
     <div className="bg-white dark:bg-[#0F151D] pb-safe-nav md:pb-20 min-h-[100dvh]">
-      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요.' })} url="/search" noindex />
+      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
         query={query}
@@ -177,7 +187,7 @@ export default function SearchPage() {
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
-          loading={loading}
+          loading={stillLoadingResults}
           error={error}
           query={query}
           hasResults={hasResults}
@@ -191,7 +201,7 @@ export default function SearchPage() {
 
             {/* Sort and Filter Bar with chips */}
             <SortFilterBar
-              totalResults={searchResult.total}
+              totalResults={products.length}
               sortBy={sortBy}
               onSortChange={setSortBy}
             />
