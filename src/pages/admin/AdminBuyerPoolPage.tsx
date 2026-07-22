@@ -108,6 +108,17 @@ function scoreCls(s: number | null): string {
   return 'bg-gray-200 text-gray-600'
 }
 
+// 링크 표시용 축약 — 도메인 + 짧은 경로(긴 쿼리스트링 제거). href/title 은 전체 유지.
+function prettyUrl(u: string): string {
+  try {
+    const url = new URL(u.startsWith('http') ? u : `https://${u}`)
+    const host = url.hostname.replace(/^www\./, '')
+    const path = url.pathname.replace(/\/$/, '')
+    const short = path && path !== '' ? host + (path.length > 24 ? path.slice(0, 24) + '…' : path) : host
+    return short.length > 42 ? short.slice(0, 42) + '…' : short
+  } catch { return u.length > 42 ? u.slice(0, 42) + '…' : u }
+}
+
 export default function AdminBuyerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [stats, setStats] = useState<Stats>({ total: 0, hot: 0, proven: 0, with_contact: 0, with_dm: 0, active_pipeline: 0, recent7: 0 })
@@ -668,7 +679,7 @@ export default function AdminBuyerPoolPage() {
               {leads.map(l => (
                 <div key={l.id} className={`p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${selected.has(l.id) ? 'bg-blue-50' : ''}`}>
                   <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleOne(l.id)} className="w-4 h-4 shrink-0 accent-blue-600" title="선택" />
-                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold ${scoreCls(l.match_score)}`} title="매칭 스코어">{l.match_score ?? '–'}</div>
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold ${scoreCls(l.match_score)}`} title="매칭 스코어 — 수출 타깃(카테고리×국가) 적합도. 70↑ 핫리드">{l.match_score ?? '–'}</div>
                   <div className="min-w-[180px] flex-1">
                     <div className="font-medium text-gray-900 flex items-center gap-1.5">
                       {l.company}
@@ -684,7 +695,7 @@ export default function AdminBuyerPoolPage() {
                     {!l.decision_maker_email && l.email && <div>✉ {l.email}</div>}
                     {l.phone && <div>☎ {l.phone}</div>}
                     {l.address && <div className="text-gray-600" title="회사 주소">📍 {l.address}</div>}
-                    {l.website && <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600 underline">🌐 {l.website}</a>}
+                    {l.website && <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" title={l.website} className="text-blue-600 underline break-all">🌐 {prettyUrl(l.website)}</a>}
                     {!l.email && !l.decision_maker_email && !l.phone && !l.website && <span className="text-amber-600" title="상세 페이지를 붙여넣으면 이 행에 연락처가 채워집니다">🔎 상세 확인 필요</span>}
                   </div>
                   <select value={l.status} onChange={e => patch(l.id, { status: e.target.value })}
