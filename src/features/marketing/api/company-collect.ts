@@ -17,30 +17,44 @@ import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './compa
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
-/** 🗺️ 방배 상권 우선 시드(대표) — 지역 × 접점 업종 그리드 + 지역무관 대행사. category/subcategory=COMPANY_CATEGORIES 정합. */
-const REGIONS = ['방배', '서초', '강남']
-const TRADES: { kw: string; category: string; subcategory: string }[] = [
-  { kw: '마케팅 대행', category: '대행사', subcategory: '마케팅대행' },
-  { kw: 'POS', category: '매장인프라', subcategory: 'POS·카드단말기' },
-  { kw: '키오스크', category: '매장인프라', subcategory: '키오스크' },
-  { kw: '간판', category: '매장인프라', subcategory: '간판' },
-  { kw: '인테리어', category: '매장인프라', subcategory: '인테리어' },
-  { kw: '세무사', category: '전문서비스', subcategory: '세무·기장' },
-  { kw: '노무사', category: '전문서비스', subcategory: '노무' },
-  { kw: '주류 도매', category: '정기납품', subcategory: '주류도매' },
-  { kw: '식자재', category: '정기납품', subcategory: '식자재유통' },
-  { kw: '상가 부동산', category: '전문서비스', subcategory: '상가부동산' },
-  { kw: '창업 컨설팅', category: '창업생태계', subcategory: '창업컨설팅' },
-  { kw: '배달대행', category: '정기납품', subcategory: '배달대행' },
+/** 🗺️ 파트너 키워드 그리드(대표 플레이북 8종 — 2026-07-22). subcategory=업종명, tier=플레이북 순위
+ *   (대행사1·주류식자재2·부동산간판3·POS4·세무5 — 어드민 수동 조정 가능). 1단계(방배 실전) 먼저 시드
+ *   → 낮은 id = 커서 우선. ⚠️ 향후 공공데이터 API(상가정보) 전환 대상 = tier 2~5(설계 §5). 대행사(tier1)만 네이버 유지. */
+type Trade = { kw: string; category: string; subcategory: string; tier: number }
+// 1단계 — 지역 {서초·방배·강남·동작} × tier 2~5 업종.
+const S1_REGIONS = ['서초', '방배', '강남', '동작']
+const S1_TRADES: Trade[] = [
+  { kw: '주류 도매', category: '정기납품', subcategory: '주류 도매', tier: 2 },
+  { kw: '주류도매상', category: '정기납품', subcategory: '주류도매상', tier: 2 },
+  { kw: '식자재 유통', category: '정기납품', subcategory: '식자재 유통', tier: 2 },
+  { kw: '업소용 식자재', category: '정기납품', subcategory: '업소용 식자재', tier: 2 },
+  { kw: '식자재 마트', category: '정기납품', subcategory: '식자재 마트', tier: 2 },
+  { kw: '커피 원두 납품', category: '정기납품', subcategory: '커피 원두 납품', tier: 2 },
+  { kw: '상가 전문 부동산', category: '전문서비스', subcategory: '상가 전문 부동산', tier: 3 },
+  { kw: '상가 임대', category: '전문서비스', subcategory: '상가 임대', tier: 3 },
+  { kw: '간판 제작', category: '매장인프라', subcategory: '간판 제작', tier: 3 },
+  { kw: '상업 인테리어', category: '매장인프라', subcategory: '상업 인테리어', tier: 3 },
+  { kw: '주방설비', category: '매장인프라', subcategory: '주방설비', tier: 3 },
+  { kw: '포스 대리점', category: '매장인프라', subcategory: '포스 대리점', tier: 4 },
+  { kw: '카드단말기', category: '매장인프라', subcategory: '카드단말기', tier: 4 },
+  { kw: 'VAN 대리점', category: '매장인프라', subcategory: 'VAN 대리점', tier: 4 },
+  { kw: '키오스크 설치', category: '매장인프라', subcategory: '키오스크 설치', tier: 4 },
+  { kw: '테이블오더', category: '매장인프라', subcategory: '테이블오더', tier: 4 },
+  { kw: '세무사무소', category: '전문서비스', subcategory: '세무사무소', tier: 5 },
+  { kw: '기장 세무사', category: '전문서비스', subcategory: '기장 세무사', tier: 5 },
+  { kw: '노무사 사무소', category: '전문서비스', subcategory: '노무사 사무소', tier: 5 },
 ]
-const GENERAL: { kw: string; category: string; subcategory: string }[] = [
-  { kw: '마케팅 대행사', category: '대행사', subcategory: '마케팅대행' },
-  { kw: '퍼포먼스 마케팅 대행사', category: '대행사', subcategory: '마케팅대행' },
-  { kw: '바이럴 마케팅 대행사', category: '대행사', subcategory: '마케팅대행' },
-  { kw: '소상공인 마케팅', category: '대행사', subcategory: '마케팅대행' },
-  { kw: '병원 마케팅 대행', category: '대행사', subcategory: '병원·뷰티마케팅' },
+// 2단계 — 대행사 전국(tier 1, 이메일 크롤 우선). 서울 25구 + 6 광역시.
+const S2_REGIONS = ['강남', '서초', '송파', '강동', '마포', '용산', '성동', '광진', '영등포', '동작', '관악', '강서', '양천', '구로', '금천', '종로', '중구', '성북', '동대문', '중랑', '노원', '도봉', '강북', '은평', '서대문', '부산', '대구', '인천', '광주', '대전', '울산']
+const S2_TRADES: Trade[] = [
+  { kw: '마케팅 대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '퍼포먼스 마케팅 대행사', category: '대행사', subcategory: '퍼포먼스 마케팅 대행사', tier: 1 },
+  { kw: '바이럴 마케팅 대행사', category: '대행사', subcategory: '바이럴 마케팅 대행사', tier: 1 },
+  { kw: '소상공인 마케팅', category: '대행사', subcategory: '소상공인 마케팅', tier: 1 },
+  { kw: '창업 컨설팅', category: '창업생태계', subcategory: '창업 컨설팅', tier: 1 },
+  { kw: '상권분석', category: '창업생태계', subcategory: '상권분석', tier: 1 },
 ]
-interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null }
+interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
 const _kwDone = new WeakSet<object>()
 export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
@@ -52,6 +66,7 @@ export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
     category TEXT,
     subcategory TEXT,
     region TEXT,
+    tier INTEGER,
     active INTEGER NOT NULL DEFAULT 1,
     source TEXT NOT NULL DEFAULT 'seed',
     found_total INTEGER NOT NULL DEFAULT 0,
@@ -59,28 +74,33 @@ export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
     last_run_at DATETIME,
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
-  const rows: { keyword: string; category: string; subcategory: string; region: string | null }[] = [
-    ...REGIONS.flatMap(r => TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r }))),
-    ...GENERAL.map(g => ({ keyword: g.kw, category: g.category, subcategory: g.subcategory, region: null })),
+  await DB.prepare('ALTER TABLE ad_company_keywords ADD COLUMN tier INTEGER').run().catch(() => null)
+  // 1단계 먼저(낮은 id = 커서 우선) → 2단계. 262행이라 100씩 청크 batch.
+  const rows: { keyword: string; category: string; subcategory: string; region: string; tier: number }[] = [
+    ...S1_REGIONS.flatMap(r => S1_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    ...S2_REGIONS.flatMap(r => S2_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
   ]
-  const stmts = rows.map(r => DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, active, source) VALUES (?, ?, ?, ?, 1, 'seed')")
-    .bind(r.keyword, r.category, r.subcategory, r.region))
-  await DB.batch(stmts).catch(() => null)
+  for (let i = 0; i < rows.length; i += 100) {
+    const stmts = rows.slice(i, i + 100).map(r => DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'seed')")
+      .bind(r.keyword, r.category, r.subcategory, r.region, r.tier))
+    await DB.batch(stmts).catch(() => null)
+  }
 }
 
 export async function listCompanyKeywords(DB: D1Database): Promise<Array<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>> {
   await ensureCompanyKeywords(DB)
-  const r = await DB.prepare('SELECT id, keyword, category, subcategory, region, active, found_total, saved_total, last_run_at FROM ad_company_keywords ORDER BY active DESC, saved_total DESC, id ASC LIMIT 500')
+  const r = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier, active, found_total, saved_total, last_run_at FROM ad_company_keywords ORDER BY active DESC, (tier IS NULL) ASC, tier ASC, saved_total DESC, id ASC LIMIT 1000')
     .all<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>().catch(() => null)
   return r?.results || []
 }
 
-export async function addCompanyKeyword(DB: D1Database, keyword: string, category?: string, subcategory?: string, region?: string): Promise<{ ok: boolean; error?: string }> {
+export async function addCompanyKeyword(DB: D1Database, keyword: string, category?: string, subcategory?: string, region?: string, tier?: number): Promise<{ ok: boolean; error?: string }> {
   const kw = (keyword || '').trim()
   if (kw.length < 2 || kw.length > 40) return { ok: false, error: 'INVALID' }
   await ensureCompanyKeywords(DB)
-  await DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, active, source) VALUES (?, ?, ?, ?, 1, 'manual')")
-    .bind(kw, (category || '').slice(0, 40) || null, (subcategory || '').slice(0, 40) || null, (region || '').slice(0, 40) || null).run().catch(() => null)
+  const t = Number(tier); const tierVal = Number.isFinite(t) && t >= 1 && t <= 5 ? Math.round(t) : null
+  await DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'manual')")
+    .bind(kw, (category || '').slice(0, 40) || null, (subcategory || '').slice(0, 40) || null, (region || '').slice(0, 40) || null, tierVal).run().catch(() => null)
   return { ok: true }
 }
 
@@ -100,6 +120,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
       company_name: name,
       category: kw.category,
       subcategory: kw.subcategory,
+      tier: kw.tier,
       region: kw.region,
       website: (it.link || '').trim() || null,
       phone: (it.telephone || '').trim() || null,
@@ -156,7 +177,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     return s
   }
 
-  const active = await DB.prepare('SELECT id, keyword, category, subcategory, region FROM ad_company_keywords WHERE active = 1 ORDER BY id ASC').all<CompanyKeyword>().catch(() => null)
+  const active = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier FROM ad_company_keywords WHERE active = 1 ORDER BY id ASC').all<CompanyKeyword>().catch(() => null)
   const kws = active?.results || []
   if (!kws.length) {
     const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true } }
@@ -186,7 +207,8 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   // 📧 이메일 보충(옵션 a) — 홈페이지 있고 이메일 없는 최근 리드를 예산 내에서 크롤. phone-first 위 additive.
   let emailed = 0
   if (!outOfBudget(budget)) {
-    const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE source = 'local' AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY id DESC LIMIT 15")
+    // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
+    const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE source = 'local' AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
       .all<{ id: number; website: string }>().catch(() => null))?.results || []
     for (const t of targets) {
       if (outOfBudget(budget)) break

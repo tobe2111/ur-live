@@ -59,8 +59,8 @@ app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCo
 
 // POST /api/admin/partner-pool/keywords { keyword, category?, subcategory?, region? }
 app.post('/keywords', async (c) => {
-  const b = await c.req.json().catch(() => ({})) as { keyword?: string; category?: string; subcategory?: string; region?: string }
-  const r = await addCompanyKeyword(c.env.DB, b.keyword || '', b.category, b.subcategory, b.region)
+  const b = await c.req.json().catch(() => ({})) as { keyword?: string; category?: string; subcategory?: string; region?: string; tier?: number }
+  const r = await addCompanyKeyword(c.env.DB, b.keyword || '', b.category, b.subcategory, b.region, b.tier)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
