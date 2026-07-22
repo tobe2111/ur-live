@@ -245,6 +245,11 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-22 — 나머지 소스 전부 구현 (통신판매·공정위·공고 스캐너, 게이트 OFF).** 대표 "모두 다 소스부터 진행".
+  - **🛒 통신판매사업자**(`commerce-notify-collect.ts`, 공정위 1130000) → `ad_company_leads` source='commerce'. **전화·이메일이 데이터에 직접 붙어 옴**(매칭 없음=오매칭 0) → 온라인 겸업 업체 발굴 + 이메일 소스. 게이트 `ADS_COMMERCE_ENABLED`.
+  - **🏢 공정위 가맹정보**(`franchise-collect.ts`) → source='franchise'. 프랜차이즈 본사(브랜드·대표전화·가맹점수). 게이트 `ADS_FRANCHISE_ENABLED`.
+  - **📢 공고 스캐너**(신규 엔티티 `gov_notices` + `notice-scan.ts`) — 나라장터 입찰(용역) + 기업마당 지원사업, "상권활성화·소상공인·마케팅·창업·상권" 키워드 스캔 → 복합키 UNIQUE(source, notice_no). 어드민 '📢 공고 스캐너'(`/admin/gov-notices`, nav 등록) + 상태머신(신규→응모/전달/수주). 게이트 `ADS_NOTICE_ENABLED`. ur-ads 크론: 통신판매 짝수시·공정위 22시·공고 21시.
+  - 파트너 풀에 '🛒 통신판매'·'🏢 프랜차이즈' 수집 버튼 + `/collect-commerce`·`/collect-franchise` 위임. 키 전부 `PUBLIC_DATA_SERVICE_KEY`. ⚠️ 엔드포인트/필드는 표준 기준(placeholder) — 활용가이드/diag.sample로 확정. tsc 0·sql/theme/file-size 가드 GREEN.
 - **2026-07-22 — 매장 후보(store_prospects) + 인허가 어댑터 구현 (게이트 OFF).** 대표 스펙 지시("복합키·전일 변동분·pageSize 500·4업종").
   - **신규 엔티티 `store_prospects`**(`store-prospects.ts`) — 파트너 리드(`ad_company_leads`)와 별개. **복합키 UNIQUE(opn_svc_id, opn_sf_team_code, mgt_no)**. 영업상태구분(01영업중=active1 / 02휴업 / 03폐업·04말소=active0) + **신규 개업 감지**(`is_new_open`, apvPermYmd 최근 30일 · todayYmd 주입=비결정 회피). 멱등 upsert(변동분 재수신 시 상태/주소/전화 갱신·active/개업 재계산).
   - **인허가 어댑터**(`localdata-collect.ts`) — 지방행정 인허가 4업종(일반음식점·휴게음식점·미용업·숙박업) × **전일 변동분(lastModTsBgn/End)** × pageSize 500 페이지네이션. 전국 수집 → region은 응답 자치단체코드/주소로 유도. 키 `ADS_LOCALDATA_SERVICE_KEY || PUBLIC_DATA_SERVICE_KEY`(같은 data.go.kr 계정이면 공유). ur-ads **일1회 크론**(hourUTC=20=KST05시, `ADS_LOCALDATA_ENABLED` OFF) + `/__ads/collect-localdata` ← `/api/admin/store-prospects/collect` 위임.
