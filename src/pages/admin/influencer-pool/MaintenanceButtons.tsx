@@ -75,12 +75,12 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   async function recategorize() {
-    if (!window.confirm('유튜브 전체 풀의 카테고리를 라이브로 한 번에 재보정할까요?\n(channels.list 배치로 전 채널의 현재 About + YouTube 자체분류를 받아 카테고리 교정 — 수천 개도 버튼 한 번, 반복 클릭 불필요. 백그라운드 약 1분 후 새로고침하면 반영. YouTube 쿼터 소량.)')) return
+    if (!window.confirm('유튜브 전체 풀의 카테고리를 라이브로 한 번에 재보정할까요?\n(channels.list 배치로 전 채널의 현재 About + YouTube 자체분류를 받아 카테고리 교정 — 수천 개도 버튼 한 번, 반복 클릭 불필요. 백그라운드 약 1분 후 새로고침하면 반영. + "평균 0회" 채널은 cron 자동 재측정 큐에 올려 시간당 자동으로 실제 조회수로 채워집니다. YouTube 쿼터 소량.)')) return
     setRecategorizing(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/recategorize', {})
       if (r.data?.success) {
-        if (r.data.started) toast.success('🧭 카테고리 전체 재보정을 백그라운드에서 시작했어요 — 약 1분 후 새로고침하면 전 풀 카테고리가 정리됩니다')
+        if (r.data.started) toast.success('🧭 카테고리 전체 재보정 시작 — 약 1분 후 새로고침하면 반영됩니다. "평균 0회"는 cron이 자동으로 채웁니다(클릭 불필요)')
         else toast.success(`🧭 ${formatNumber(r.data.scanned)}개 스캔 · ${formatNumber(r.data.changed)}개 카테고리 교정`)
         await onChanged()
       } else toast.error(r.data?.error || '재보정 실패')
