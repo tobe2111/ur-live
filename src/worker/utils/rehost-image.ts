@@ -21,13 +21,20 @@ export async function rehostImageToR2(
     const timer = setTimeout(() => ctrl.abort(), 10000)
     let res: Response
     try {
-      res = await fetch(srcUrl, { signal: ctrl.signal })  // 인증서오류/DNS → throw → null
+      // 🖼️ 2026-07-22: **fetch 시점 리사이즈**(Cloudflare Image Resizing) — 카카오/다음 원본이 8~10MB
+      //   풀해상도라 6MB 캡에 걸려 이관 실패하던 것 근본해결. 1600px/품질82 로 축소해 받으면 ~100~400KB
+      //   → 캡 통과 + 다운로드/메모리/R2 저장 전부 경량. fit:scale-down = 작은 원본은 그대로(확대 안 함).
+      //   리사이즈 미적용(기능 off/원본 접근불가) 시엔 원본 반환이라 아래 크기 캡이 최종 안전판.
+      res = await fetch(srcUrl, {
+        signal: ctrl.signal,
+        cf: { image: { width: 1600, quality: 82, fit: 'scale-down' } },
+      } as RequestInit)  // 인증서오류/DNS → throw → null
     } finally { clearTimeout(timer) }
     if (!res.ok) return null
     const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
     if (!ct.startsWith('image/')) return null
     const buf = await res.arrayBuffer()
-    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null // 아이콘/깨짐 or 과대
+    if (buf.byteLength < 500 || buf.byteLength > 8 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(리사이즈 후엔 사실상 불가)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const yyyymm = new Date().toISOString().slice(0, 7)
     const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`
