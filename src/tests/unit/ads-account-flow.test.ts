@@ -161,7 +161,8 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     const DB2 = makeD1()
     const acc = await createAdsAccount(DB2, { email: 'lock@x.com', password: PW, company_name: 'X' })
     if (!acc.ok) throw new Error('setup')
-    const env = { DB: DB2, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    // 🔒 베타 게이트는 env ADS_ACCESS_CODE 전용(공개 폴백 358533 제거) — 테스트가 코드를 env 로 주입.
+    const env = { DB: DB2, JWT_SECRET: JWT, ADS_ACCESS_CODE: '358533' } as unknown as Parameters<typeof marketingRoutes.request>[2]
     const headers = { Authorization: 'Bearer ' + await signAdsToken(acc.account.id, JWT), 'content-type': 'application/json' }
     // 잠긴 계정(access_unlocked=0) → 데이터 라우트 403 + locked 플래그
     const locked = await marketingRoutes.request('/alerts/settings', { headers }, env)
@@ -174,8 +175,9 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     expect((await marketingRoutes.request('/alerts/settings', { headers }, env)).status).toBe(200)
   })
 
-  it('회귀: POST /auth/unlock 라우트 — 틀린 코드 400 / 기본코드 358533 해제', async () => {
-    const env = { DB: makeD1(), JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+  it('회귀: POST /auth/unlock 라우트 — 틀린 코드 400 / env 설정코드 해제', async () => {
+    // 🔒 env ADS_ACCESS_CODE 로 게이트 코드 주입(공개 폴백 358533 제거 후 fail-closed).
+    const env = { DB: makeD1(), JWT_SECRET: JWT, ADS_ACCESS_CODE: '358533' } as unknown as Parameters<typeof marketingRoutes.request>[2]
     const acc = await createAdsAccount((env as unknown as { DB: D1Database }).DB, { email: 'u@x.com', password: PW, company_name: 'X' })
     if (!acc.ok) throw new Error('setup')
     const headers = { Authorization: 'Bearer ' + await signAdsToken(acc.account.id, JWT), 'content-type': 'application/json' }
