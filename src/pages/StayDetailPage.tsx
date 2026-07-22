@@ -396,7 +396,7 @@ export default function StayDetailPage() {
           <div className="bg-pink-50 dark:bg-gray-800/[0.15] border border-pink-300 dark:border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
             <span className="text-xl">💸</span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-pink-600 dark:text-pink-300">인플루언서 추천 — {stay.influencer_discount_pct}% 할인 적용</p>
+              <p className="text-xs font-bold text-pink-600 dark:text-pink-300">추천 할인 — {stay.influencer_discount_pct}% 적용</p>
               <p className="text-[10px] text-pink-500/80 dark:text-pink-200/70 mt-0.5">결제 시 자동 적용됩니다</p>
             </div>
           </div>
@@ -726,7 +726,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
             {referrerId && (room.discount_pct || 0) > 0 && (
               <>
                 <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">정가</span><span className="line-through text-gray-400 dark:text-gray-500">₩{formatNumber(room.total_price)}</span></p>
-                <p className="flex justify-between mt-1"><span className="text-pink-600 dark:text-pink-300">인플 할인 -{room.discount_pct}%</span><span className="font-semibold text-pink-600 dark:text-pink-300">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
+                <p className="flex justify-between mt-1"><span className="text-pink-600 dark:text-pink-300">추천 할인 -{room.discount_pct}%</span><span className="font-semibold text-pink-600 dark:text-pink-300">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
               </>
             )}
             <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-extrabold text-brand dark:text-pink-400">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>

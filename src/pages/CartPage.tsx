@@ -431,7 +431,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F4F4F4]">
+    <div className="flex flex-col min-h-[100dvh] bg-[#F4F4F4]">
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}

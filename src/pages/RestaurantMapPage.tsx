@@ -762,7 +762,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
-        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
+        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 이용권 사용 가능 맛집을 지도에서 찾아보세요. 내 주변 동네 가게 할인 이용권.' })}
         url={home ? '/' : '/map'}
       />
 

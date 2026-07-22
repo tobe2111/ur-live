@@ -4,6 +4,7 @@
  */
 import { MapPin, Radio } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
+import { formatNumber } from '@/utils/format'
 import { distanceKm, nearKmLabel } from './utils'
 import { stripStorePrefix } from '@/utils/deal-title'
 import type { Restaurant } from './types'
@@ -62,7 +63,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                     return l && <span className="shrink-0">· {l}</span>
                   })()}
                 </p>
-                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">{r.price?.toLocaleString()}원</p>
+                <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">{formatNumber(r.price ?? 0)}원</p>
               </div>
             </button>
           )

@@ -495,7 +495,7 @@ export default function GroupBuyDetailPage() {
   }
 
   return (
-    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100vh' }}>
+    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100dvh' }}>
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
