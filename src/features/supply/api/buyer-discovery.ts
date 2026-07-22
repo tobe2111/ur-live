@@ -135,9 +135,14 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 
 // 회사명 키 — 구두점/공백만 제거하고 **단어는 보존**(Trading/Import/Ltd 를 떼면 서로 다른 회사가 병합됨).
 //   비면(구두점만) 붕괴 방지 폴백. 유니코드 문자/숫자 보존(아랍/키릴 회사명도 키 생성).
+// 법인격 접미어(같은 회사의 다른 표기를 유발) — 정규화 시 제거해 "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 통합.
+const LEGAL_SUFFIX_RE = /\b(private|pvt|limited|ltd|inc|incorporated|llc|co|corp|corporation|company|gmbh|srl|plc|llp|pte|pty|sdn|bhd|spa|sarl|sas|aps)\b/g
 export function normalizeCompanyKey(company: string, country?: string | null): string {
   const raw = String(company || '')
-  let base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  // 법인격 접미어 제거 후 영숫자만 — 표기 차이(Pvt. Ltd. / , / .)에 강건한 dedup 키.
+  const stripped = raw.toLowerCase().replace(/[.,]/g, ' ').replace(LEGAL_SUFFIX_RE, ' ')
+  let base = stripped.replace(/[^\p{L}\p{N}]/gu, '')
+  if (!base) base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') // 접미어 제거로 비면 원문 폴백
   if (!base) base = ('x' + raw.trim().toLowerCase().replace(/\s+/g, '')) || 'x'
   // 국가는 별칭 정규화(normCountryKey) — 'US'/'USA'/'United States'/'미국' 이 같은 키가 되게(피드·붙여넣기 소스간 중복 방지).
   const c = normCountryKey(country)

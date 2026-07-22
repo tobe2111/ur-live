@@ -80,6 +80,43 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const garbage = leads.filter(l => /바이코리아|판매자센터|kotra/i.test((l.company || '') + (l.email || '')))
     expect(garbage.length).toBe(0)
   })
+
+  // 🔑 로그인 판매자 본인 크롬 이메일 오수집 방지 — buyKorea 는 바이어 연락처를 마스킹(mu*****)하므로
+  //   페이지의 언마스킹 이메일(hongseungkyun@naver.com)은 헤더/마이페이지의 *본인* 이메일이다.
+  const realDetail = [
+    '바이코리아 | 판매자센터',            // 사이트 크롬(회사명 오인 금지)
+    'hongseungkyun@naver.com',           // 로그인 판매자 본인 이메일(헤더 크롬)
+    'HOME 인콰이어리 일반상품',
+    '인콰이어리 번호 : inq260426-000011',
+    '이름 → Mr*****',
+    '이메일 → mu*****',
+    '회사명 → Al Dayagem for Trading agencies',
+    '국가/도시 → JORDAN',
+    '웹사이트 → https://www.power-bob.com',
+    '메세지0 Favorites0 view7',
+  ].join('\n')
+
+  it('마스킹 바이어 상세: 회사명은 라벨값, 사이트 크롬("판매자센터")은 회사명 아님', () => {
+    const leads = parseBuyKoreaInquiries(realDetail)
+    expect(leads.length).toBe(1)
+    const l = leads[0]
+    expect(l.company).toBe('Al Dayagem for Trading agencies')
+    expect(/바이코리아|판매자센터/.test(l.company)).toBe(false)
+    expect(l.country).toBe('JORDAN')
+    expect(l.website).toMatch(/power-bob\.com/)
+  })
+
+  it('로그인 판매자 본인 이메일(hongseungkyun@naver.com)을 바이어로 저장하지 않음', () => {
+    const l = parseBuyKoreaInquiries(realDetail)[0]
+    expect(l.email == null || !/hongseungkyun|@naver\.com/i.test(l.email)).toBe(true)
+  })
+
+  it('크롬만(바이어 없음)인 상세 조각은 리드로 저장하지 않음', () => {
+    const chromeOnly = ['바이코리아 | 판매자센터', 'hongseungkyun@naver.com', 'my page', 'view', '가공식품'].join('\n')
+    const leads = parseBuyKoreaInquiries(chromeOnly)
+    const garbage = leads.filter(l => /바이코리아|판매자센터|hongseungkyun|가공식품/i.test((l.company || '') + (l.email || '')))
+    expect(garbage.length).toBe(0)
+  })
 })
 
 describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들도 되게끔)', () => {
@@ -181,6 +218,12 @@ describe('buyer-pool — 전수조사 감사 수정 회귀', () => {
   })
   it('M3: US / United States / 미국 이 같은 company_key(중복 방지)', () => {
     expect(normalizeCompanyKey('ABC', 'US')).toBe(normalizeCompanyKey('ABC', 'United States'))
+  })
+  it('법인격 접미어 정규화 — "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 같은 키(퍼지 중복 통합)', () => {
+    expect(normalizeCompanyKey('Zarya Impex', 'India')).toBe(normalizeCompanyKey('Zarya Impex Pvt. Ltd.', 'India'))
+    expect(normalizeCompanyKey('GAMZEN INFRASTRUCTURE', 'India')).toBe(normalizeCompanyKey('GAMZEN INFRASTRUCTURE PVT LTD', 'India'))
+    // 서로 다른 회사는 여전히 구분(과잉 병합 금지).
+    expect(normalizeCompanyKey('Global Corp', 'US')).not.toBe(normalizeCompanyKey('Global Trading', 'US'))
   })
   it('E1: SSRF — 내부/사설 호스트 차단, 공개 호스트 허용', () => {
     for (const u of ['http://127.0.0.1/', 'http://[fd00::1]/', 'http://[::ffff:127.0.0.1]/', 'http://169.254.169.254/', 'http://100.64.0.1/', 'http://foo.localhost/', 'http://2130706433/'])

@@ -93,6 +93,10 @@ export const BK_CATEGORIES = [
 ]
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
 
+// 사이트 자체 브랜딩/센터명 — 회사명/제목으로 오인 금지(로그인 사용자가 보는 크롬). "바이코리아 | 판매자센터" 등.
+//   ⚠️ JS \b 는 한글 뒤에서 불안정 → 센터 접두(판매자/셀러/구매자/바이어) + 브랜드-단독 라인만 매칭.
+const BK_SITE_CHROME = /(?:판매자|셀러|구매자|바이어)\s*센터|(?:seller|buyer)\s*center|^\s*(?:바이\s*코리아|buy\s?korea|tradekorea|ec21|ecplaza|gobizkorea|kotra)\s*(?:[|·ㆍ\-–—]|$)/i
+
 /** 붙여넣은 buyKorea 페이지의 최상위 카테고리 판별 — 리스트 H1("미용\n전체 88") 우선, 상세 브레드크럼(일반상품 다음) 폴백. */
 export function detectBkCategory(text: string): string | null {
   const t = String(text || '')
@@ -282,9 +286,11 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
       if (f && v && !looksLabel(v) && !v.includes('*') && !row[f]) { row[f] = v; i++ }
       continue
     }
-    // 제목 후보 — 마스킹(*)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
-    if (!title && line.length > 3 && !line.includes('*') && !BK_CATEGORIES.includes(line)
-      && !/인콰이어리|게시기간|번호|메세지|favorites|^view$|^\d+$|[:：]$|^(home|sign ?in|sign ?up|login|logout|my ?page|menu|search|list|back|목록|검색|메뉴|로그인|로그아웃|판매자센터|바이코리아)$/i.test(line)) title = line
+    // 제목 후보 — 마스킹(*)·이메일(@)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
+    //   BK_SITE_CHROME 는 사이트 브랜딩/센터명(예 "바이코리아 | 판매자센터") — 위치 무관 제외. 이메일 라인은 제목 아님(로그인 크롬 이메일 오인).
+    if (!title && line.length > 3 && !line.includes('*') && !/@/.test(line) && !BK_CATEGORIES.includes(line)
+      && !BK_SITE_CHROME.test(line)
+      && !/인콰이어리|게시기간|번호|메세지|favorites|^view$|^\d+$|[:：]$|^(home|sign ?in|sign ?up|login|logout|my ?page|menu|search|list|back|목록|검색|메뉴|로그인|로그아웃)$/i.test(line)) title = line
   }
   // 제목 꼬리의 UI 버튼 텍스트 제거(예: "제목 좋아요"/"제목 공유하기") → 리스트 제목과 매칭 정합.
   title = title.replace(/\s*(좋아요|공유하기|공유|관심|북마크|스크랩|찜|like|share|save)\s*$/i, '').trim()
@@ -299,13 +305,26 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   if (!row.phone && jl.phone) row.phone = jl.phone
   if (!row.address && jl.address) row.address = jl.address
   if (!row.country && jl.country) row.country = jl.country
-  // 폴백(라벨·JSON-LD 없을 때) — 플랫폼 이메일 제외. 전화 폴백은 제거(마스킹/인콰이어리번호/KOTRA 푸터 오인식 → 라벨 전화만 신뢰).
-  if (!row.email) { const e = pickBusinessEmail(chunk); if (e && !PLATFORM_EMAIL.test(e)) row.email = e }
   if (!row.website) {
     const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u) && !PLATFORM_HOST.test(u))
     if (url) row.website = url.replace(/[.,)]+$/, '')
   }
-  const company = (row.company || jl.company || '').trim()
+  // 🔑 이메일 폴백 — buyKorea/tradeKorea 등은 바이어 연락처를 마스킹(mu*****·+593***·ke****@****)한다.
+  //   그래서 페이지에 *마스킹* 흔적이 있으면, 언마스킹 이메일은 사실상 *로그인한 판매자 본인*의 크롬 이메일
+  //   (헤더/마이페이지)이다 → 절대 바이어로 채우지 않는다. 마스킹이 없을 때도, 폴백 이메일은 바이어 웹사이트
+  //   도메인과 일치할 때만 신뢰(프리메일 크롬 이메일 hongseungkyun@naver.com 오인 방지). 실제 바이어 이메일은
+  //   라벨·JSON-LD(Organization) 또는 웹사이트 보강으로만 채운다.
+  const hasMask = /\*{3,}|[A-Za-z0-9]\*{2,}|\*{2,}@|@\*{2,}/.test(chunk)
+  if (!row.email && !hasMask) {
+    const e = pickBusinessEmail(chunk)
+    if (e && !PLATFORM_EMAIL.test(e)) {
+      const dom = (e.split('@')[1] || '').toLowerCase().replace(/^www\./, '')
+      const site = (row.website || jl.website || '').toLowerCase()
+      if (dom && site && site.includes(dom)) row.email = e // 도메인 corroboration 통과분만
+    }
+  }
+  let company = (row.company || jl.company || '').trim()
+  if (company && BK_SITE_CHROME.test(company)) company = '' // 사이트 크롬(판매자센터 등)은 회사명 아님
   const email = (row.email || '').trim()
   const website = (row.website || '').trim()
   // 회사명도 이메일도 없으면 리드로 볼 수 없음(웹사이트만 있는 크롬/네비 페이지 = 가비지, 저장 안 함).
