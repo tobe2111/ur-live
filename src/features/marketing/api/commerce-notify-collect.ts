@@ -66,6 +66,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
         region: pickRegion(addr), address: addr || null,
         phone: stripTag(it.telno) || null, email: stripTag(it.email || it.coEml) || null,
         business_no: stripTag(it.bizrno) || null, description: stripTag(it.rprsvNm) ? `대표 ${stripTag(it.rprsvNm)}` : null,
+        contact_source: 'commerce', // 통신판매 신고 등록본(전화·이메일이 데이터에 직접 붙어옴)
         source: 'commerce', source_keyword: stripTag(it.prmmiMnno) || 'commerce',
       }
     }).filter(l => l.company_name.length >= 2)

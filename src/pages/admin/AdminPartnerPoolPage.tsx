@@ -13,9 +13,10 @@ import { formatNumber } from '@/utils/format'
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
   tier: number | null; region: string | null; website: string | null; email: string | null; phone: string | null
-  address: string | null; status: string; active: number; memo: string | null; contact_channel: string | null
+  address: string | null; status: string; active: number; contact_source: string | null; memo: string | null; contact_channel: string | null
   follow_up_at: string | null; source: string; source_keyword: string | null; collected_at: string
 }
+const SRC_LABEL: Record<string, string> = { govreg: '정부등록', kakao: '카카오', homepage: '홈페이지', naver: '네이버', commerce: '통신판매', franchise: '공정위', registry: '명부' }
 interface Stats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number }
 interface Meta { categories: Record<string, string[]>; statuses: string[]; channels: string[]; tier: { min: number; max: number } }
 interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string } }
@@ -349,6 +350,7 @@ export default function AdminPartnerPoolPage() {
                     {l.phone ? <div>📞 {l.phone}</div> : null}
                     {l.email ? <div className="text-xs text-gray-500">✉ {l.email}</div> : null}
                     {!l.phone && !l.email && <span className="text-gray-300">—</span>}
+                    {(l.phone || l.email) && l.contact_source && <div className="text-[10px] text-gray-400 mt-0.5" title="연락처 출처">출처: {SRC_LABEL[l.contact_source] || l.contact_source}</div>}
                   </td>
                   <td className="px-3 py-2">
                     <select value={l.status} onChange={e => patchLead(l.id, { status: e.target.value })} className={`rounded px-2 py-1 text-xs font-medium border-0 ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
