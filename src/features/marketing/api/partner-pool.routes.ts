@@ -31,6 +31,7 @@ app.get('/', async (c) => {
     hasContact: c.req.query('hasContact') === '1',
     hasEmail: c.req.query('hasEmail') === '1',
     includeHeld: c.req.query('includeHeld') === '1', // 연락처 없어 보류(active=0)된 리드까지 노출.
+    heldOnly: c.req.query('heldOnly') === '1',        // 보류(active=0)만.
     q: (c.req.query('q') || '').trim() || undefined,
     limit: Math.min(2000, Math.max(1, intParam(c.req.query('limit'), 500))),
   })
@@ -78,6 +79,16 @@ app.post('/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
   const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// POST /api/admin/partner-pool/enrich — 보류(연락처 없음) 리드 이메일 보강(ur-ads 위임). 홈페이지 있는 것만.
+app.post('/enrich', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' })) } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }

@@ -194,13 +194,14 @@ export function parsePartnerPaste(text: string): CompanyLead[] {
 /* ── 목록/필터 ─────────────────────────────────────────────────────────────── */
 export async function listCompanyLeads(DB: D1Database, filter: {
   category?: string; subcategory?: string; region?: string; tier?: number
-  status?: string; hasContact?: boolean; hasEmail?: boolean; includeHeld?: boolean; q?: string; limit?: number
+  status?: string; hasContact?: boolean; hasEmail?: boolean; includeHeld?: boolean; heldOnly?: boolean; q?: string; limit?: number
 } = {}): Promise<CompanyLeadRow[]> {
   await ensureCompanySchema(DB)
   const where: string[] = ['1=1']
   const binds: (string | number)[] = []
-  // 기본: 액션풀(active=1) 만 — 연락처 없어 보류(active=0)된 리드는 includeHeld 로만 노출("연락처 필수").
-  if (!filter.includeHeld) where.push('active = 1')
+  // heldOnly: 연락처 없어 보류(active=0)된 것만. includeHeld: 전체(보류 포함). 기본(둘 다 false): 액션풀(active=1)만.
+  if (filter.heldOnly) where.push('active = 0')
+  else if (!filter.includeHeld) where.push('active = 1')
   if (filter.category) { where.push('category = ?'); binds.push(filter.category) }
   if (filter.subcategory) { where.push('subcategory = ?'); binds.push(filter.subcategory) }
   if (filter.region) { where.push('region LIKE ?'); binds.push(`%${filter.region}%`) }
@@ -216,7 +217,7 @@ export async function listCompanyLeads(DB: D1Database, filter: {
   // 정렬: tier 우선(1=최우선, NULL 은 뒤) → 최근 수집순.
   const r = await DB.prepare(
     `SELECT ${SELECT_COLS} FROM ad_company_leads WHERE ${where.join(' AND ')}
-     ORDER BY (tier IS NULL) ASC, tier ASC, collected_at DESC, id DESC LIMIT ?`)
+     ORDER BY active DESC, (tier IS NULL) ASC, tier ASC, collected_at DESC, id DESC LIMIT ?`)
     .bind(...binds, limit).all<CompanyLeadRow>().catch(() => null)
   return r?.results || []
 }

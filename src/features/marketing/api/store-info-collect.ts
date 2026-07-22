@@ -68,22 +68,34 @@ async function fetchStoreInfoPage(serviceKey: string, t: StoreTarget, page: numb
   return { items: arr, total }
 }
 
-/** 📞 네이버 지역검색으로 전화 역조회(상가정보엔 전화 없음). "상호 지역" 1건 → 이름 근접 시 전화·홈페이지 채택. */
-async function lookupPhoneViaLocal(clientId: string, clientSecret: string, name: string, region: string | null, budget?: FetchBudget): Promise<{ phone: string | null; website: string | null }> {
+/** 📞 네이버 지역검색으로 전화 역조회(상가정보엔 전화 없음).
+ *   ⚠️ 허위 부착 금지: **상호 완전일치 + 주소(도로명/지번) 동일 매장**일 때만 전화 채택. 동명이업체 오매칭 차단.
+ *   불확실하면 채택 안 함(연락처는 비워둠 — 지어내지 않음). */
+async function lookupPhoneViaLocal(clientId: string, clientSecret: string, name: string, region: string | null, storeAddr: string, budget?: FetchBudget): Promise<{ phone: string | null; website: string | null }> {
   if (outOfBudget(budget)) return { phone: null, website: null }
   spendBudget(budget)
   const q = `${name} ${region || ''}`.trim()
-  const url = `${NAVER_OPENAPI}/v1/search/local.json?query=${encodeURIComponent(q)}&display=1&sort=random`
+  const url = `${NAVER_OPENAPI}/v1/search/local.json?query=${encodeURIComponent(q)}&display=3&sort=random`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
   if (!res || !res.ok) return { phone: null, website: null }
-  const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; telephone?: string; link?: string }> } | null
-  const it = data?.items?.[0]
-  if (!it) return { phone: null, website: null }
-  const hit = stripTag(it.title).replace(/\s+/g, '')
+  const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; telephone?: string; link?: string; address?: string; roadAddress?: string }> } | null
   const want = name.replace(/\s+/g, '')
-  // 이름 근접(포함) 시에만 채택 — 오매칭 방지.
-  if (!hit || (!hit.includes(want.slice(0, 4)) && !want.includes(hit.slice(0, 4)))) return { phone: null, website: null }
-  return { phone: (it.telephone || '').trim() || null, website: (it.link || '').trim() || null }
+  // 주소 지문: 도로명/지번에서 숫자(번지)+동/로 토큰 추출 → 두 주소가 같은 실주소인지 판정.
+  const addrTokens = (s: string) => new Set((s || '').replace(/\s+/g, ' ').match(/[가-힣]+[동로길]|\d+(-\d+)?/g) || [])
+  const storeTok = addrTokens(storeAddr)
+  for (const it of (data?.items || [])) {
+    const hit = stripTag(it.title).replace(/\s+/g, '')
+    if (!hit) continue
+    // ① 상호 완전일치(또는 한쪽이 다른쪽을 완전 포함, 최소 2자) — 4자 프리픽스 근접 금지.
+    const nameOk = hit === want || (want.length >= 2 && (hit.includes(want) || want.includes(hit)))
+    if (!nameOk) continue
+    // ② 주소 동일 매장 검증 — 네이버 결과 주소와 상가정보 주소가 번지/동 토큰을 충분히 공유.
+    const naverTok = addrTokens(stripTag(it.roadAddress || it.address))
+    let shared = 0; for (const t of naverTok) if (storeTok.has(t)) shared++
+    if (storeTok.size > 0 && shared < 2) continue // 주소 불일치 → 다른 매장일 수 있음 → 채택 안 함(허위 방지)
+    return { phone: (it.telephone || '').trim() || null, website: (it.link || '').trim() || null }
+  }
+  return { phone: null, website: null }
 }
 
 export interface StoreInfoStats { last_run: string; found: number; saved: number; enriched: number; target: string; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
@@ -142,12 +154,13 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   // 📞📧 연락처 보강 — 상가정보 리드(연락처 없어 보류 active=0)를 네이버 전화 역조회 + 이메일 크롤로 채움.
   let enriched = 0
   if (clientId && clientSecret) {
-    const held = (await DB.prepare("SELECT id, company_name, region, website FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 ORDER BY id DESC LIMIT 20")
-      .all<{ id: number; company_name: string; region: string | null; website: string | null }>().catch(() => null))?.results || []
+    const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 ORDER BY id DESC LIMIT 20")
+      .all<{ id: number; company_name: string; region: string | null; website: string | null; address: string | null }>().catch(() => null))?.results || []
     for (const h of held) {
       if (outOfBudget(budget)) break
       let website = h.website
-      const { phone, website: w } = await lookupPhoneViaLocal(clientId, clientSecret, h.company_name, h.region, budget)
+      // 주소 동일 매장일 때만 전화 채택(허위 부착 방지) — 상가정보 주소를 매칭 기준으로 전달.
+      const { phone, website: w } = await lookupPhoneViaLocal(clientId, clientSecret, h.company_name, h.region, h.address || '', budget)
       if (w && !website) website = w
       let email: string | null = null
       if (!phone && website && !outOfBudget(budget)) email = await crawlCompanyEmail(website, budget)
