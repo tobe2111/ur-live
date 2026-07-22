@@ -217,8 +217,35 @@ contacted_at, follow_up_at, collected_at
 ### 착수 게이트(대표 몫)
 data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신청**(개발계정 30분 / 운영계정 승인 1~2일). 발급 후 어댑터 착수 — **소스 ① 부터**.
 
+## 12. 🗺️ 공공데이터 소스 로드맵 (2026-07-22 대표 확정 — A급 지금 신청 / B급 후속)
+
+**엔티티 3개 분리** (한쪽 쿼리가 반대쪽 무접촉):
+| 엔티티 | 테이블 | 소스 | 용도 |
+|---|---|---|---|
+| 업체 파트너 리드 | `ad_company_leads`(구현됨) | 네이버·상가정보·공정위·통신판매 | 매장을 *데려올* 업체 |
+| 🆕 매장 후보 | `store_prospects`(신규) | **지방행정 인허가정보** | 유어딜에 *입점시킬* 매장 |
+| 🆕 공고 스캐너 | `gov_notices`(신규) | 나라장터·기업마당 | B2G 수주 + 지원사업 관계영업 |
++ **도로명주소 API** = 3 엔티티 공통 주소정규화·좌표통일 → **중복 판별 백본**(소스 3~4개면 필수).
+
+### A급 (지금 신청·구현)
+1. **지방행정 인허가정보** → `store_prospects` (유어딜 최고 소스). 일반음식점·휴게음식점·미용업·숙박업 등. **전체분 다운로드(월)** + **변동분 OPEN API(일)**. `영업상태구분코드` = 01 영업중 / 02 휴업 / 03 폐업 / 04 취소·말소·만료·정지. 3용도 동시: ⓐ 매장 발굴(방배 요식·미용 전수) ⓑ **신규 개업 감지**(이번주 인허가 → 개업 직후 = 입점 전환율 최고 세그먼트, 개업 패키지 영업 리드 자동 축적) ⓒ 폐업 자동 정리(03/04 → 4루프 '정리' 완성). ⚠️ **localdata.go.kr 2026-04-16 폐쇄** → 공공데이터포털 이관(데이터찾기 > 국가중점데이터 > '인허가').
+2. **소상공인 상가(상권)정보** → `ad_company_leads`. **구현 완료**(아래 로그, 2026-07-22 코드 확정). tier3·5 전문서비스·인프라. ⚠️ 도매업 분류 없음 → tier2 도매는 네이버.
+3. **조달청 나라장터 입찰공고정보** → `gov_notices`. 물품·용역·공사·외자 입찰공고+기초금액+참가지역+변경이력. **오퍼레이션이 업무구분별로 나뉨**(맞는 것 써야 정상응답). "상권활성화·소상공인·마케팅" 키워드 매일 스캔 → 알림. 하반기 공고 러시(10~12월) 누락 방지.
+4. **기업마당(bizinfo) 지원사업 공고 API** → `gov_notices`. 기관·분야별 지원사업 공모. 지자체 소상공인 지원사업 자동수집 → ⓐ 직접 응모 ⓑ 상인회·아인에 "이런 사업 떴어요" 전달(관계 영업 무기).
+
+### B급 (붙이면 좋은 것)
+- **공정위 가맹정보**(tier6 프랜차이즈, 결정 완료) · **통신판매사업자**(이메일 보강) — 둘 다 `ad_company_leads`.
+- **도로명주소 API** — 주소 정규화·좌표 통일(소스 3~4개로 늘면 중복 판별 필수).
+- **한국관광공사 TourAPI** — 숙소 카테고리 보강 + 지역 축제·행사 → 드랍 캘린더 시즌 편성.
+- **기상청 단기예보** — 날씨 연동 딜 추천(비 오는 날 국밥). 후순위.
+
+### 착수 순서(권장)
+① 상가정보(완료) → ② 인허가 `store_prospects`(매장 발굴+개업 감지+폐업 정리 = 핵심) → ③ 공고 스캐너(나라장터+기업마당) → ④ 도로명주소 dedup → B급.
+각 소스: **대표 활용신청 → 키 → 게이트 OFF 배포 → 라이브 실측/diag → 확정.** (이 환경은 네트워크 정책상 data.go.kr 미도달 → 실검증은 ur-ads 라이브에서.)
+
 ## 10. 구현 로그
 
+- **2026-07-22 — 소스 ① 상가정보 업종코드·명세 확정 (활용가이드 검증).** 대표가 OpenApi 활용가이드.zip 제공(HWP 가이드 + 업종분류표 2302 xlsx). **HWP 로 operation/파라미터/필드 전부 확인**: `storeListInUpjong`·`divId`·`indsSclsCd`/`indsMclsCd`·`bizesNm`·`rdnmAdr`·`lnoAdr`·`indsSclsNm`·`numOfRows`·`pageNo`·`serviceKey` — 어댑터 가정과 100% 일치. **유일 오류 = placeholder 업종코드** → 업종분류표에서 **실제 소분류코드 확정**: 세무사 M10402·회계 M10401·노무 M10307·간판/광고물제작 M11401·광고물설계 M10504·옥외광고 M10502·인테리어 M11201·상가부동산 L10203·경영컨설팅 M10703. `divId` 를 `indsSclsCd`(소분류 정밀) 로 전환. **핵심 발견: 상가정보 업종분류에 도매업 없음**(소매·서비스만) → tier2 주류/식자재 도매는 상가정보 미커버, 네이버 유지 확정. `store-info-collect.ts` STOREINFO_TARGETS 실코드 교체 + 헤더 문서화. tsc 0·sql/file-size 가드 GREEN. ⚠️ 이 환경 프록시가 apis.data.go.kr 차단(조직 정책) → 실호출 검증은 ur-ads 라이브에서(`ADS_STOREINFO_ENABLED=true` + '🏪 상가정보 수집' → diag.sample).
 - **2026-07-22 — 소스 ① 상가정보 어댑터 + "연락처 필수" 정책 구현 (게이트 OFF).** 대표 "연락처 필수 + 1번 진행".
   - **연락처 필수(모든 소스 공통)**: `company-discovery.ts` `saveCompanyLeads(…, {requireContact})` — 전화·이메일 없는 리드는 `active=0`(보류, 액션풀 제외). 보강(전화 역조회/이메일 크롤)이 연락처를 채우면 `active=1` 승격(ON CONFLICT + UPDATE 대칭). `hasContact()` SSOT. 스키마 additive: `active`/`business_no`/`last_verified_at` + `idx_company_leads_active`. `listCompanyLeads` 기본 `active=1` 만(→ `includeHeld` 로 보류 검토), `companyStats.held_no_contact`. env `ADS_COMPANY_REQUIRE_CONTACT`(기본 ON). company-collect 저장/이메일보강도 승계.
   - **소스 ① 상가정보**: 신규 `store-info-collect.ts` `runStoreInfoCollect` — data.go.kr B553077 `storeListInUpjong`(업종중분류코드 × 커서 페이지) 통째 조회 → 상호·업종·주소(전화 없음) → `source='storeinfo'` 리드 저장(연락처 없어 active=0 보류) → **연락처 보강**(네이버 `local.json` 전화 역조회 이름근접 매칭 + 홈페이지 이메일 크롤) → active=1 승격. 키 `PUBLIC_DATA_SERVICE_KEY || NTS_API_KEY`(동일 data.go.kr 계정 serviceKey 재활용). ur-ads 크론 **짝수시** 게이트드(`ADS_STOREINFO_ENABLED`, 기본 OFF — company-collect 홀수시와 분리) + `/__ads/collect-storeinfo` ← `/api/admin/partner-pool/collect-storeinfo` 위임 + 어드민 '🏪 상가정보 수집' 버튼·상태·'연락처 보류' 통계/필터.
