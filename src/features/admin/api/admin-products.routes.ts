@@ -2165,14 +2165,13 @@ adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
       const timer = setTimeout(() => ctrl.abort(), 8000);
       let ok = false, status = 0, contentType = '', bytes = 0, reason = '';
       try {
-        // 실제 이관과 동일하게 /cdn-cgi/image 리사이즈(1600px)로 받아 migratability 를 정확히 예측.
-        const resizeUrl = `https://urdeal.kr/cdn-cgi/image/width=1600,quality=80,fit=scale-down,onerror=redirect/${row.image_url}`;
-        const res = await fetch(resizeUrl, { signal: ctrl.signal });
+        // 실제 이관과 동일하게 원본 직접 fetch(서버측 리사이즈는 외부 호스트 미지원 확인) → 11MB 캡.
+        const res = await fetch(row.image_url, { signal: ctrl.signal });
         status = res.status;
         contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
         if (!res.ok) reason = `HTTP ${status}`;
         else if (!contentType.startsWith('image/')) reason = `이미지 아님(${contentType || '무형식'})`;
-        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 10 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
+        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 11 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
       } catch (e) { reason = (e as Error)?.name === 'AbortError' ? '타임아웃(8s)' : '연결 실패'; }
       finally { clearTimeout(timer); }
       samples.push({ id: row.id, host, ok, status, contentType, bytes, reason: ok ? '정상' : reason });

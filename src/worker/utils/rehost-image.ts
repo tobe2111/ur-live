@@ -8,10 +8,6 @@
  * 실패(키·네트워크·비이미지·과대/과소) → null → 호출측이 원본 유지/스킵 판단. 완전 fail-soft.
  */
 
-// 프로덕션 존(이미지 리사이징 활성) — cfImage 표시 경로와 동일한 /cdn-cgi/image 리사이저 베이스.
-//   워커가 자기 존의 cdn-cgi 를 fetch → 엣지에서 리사이즈된 바이트 반환(cdn-cgi 는 워커 우회라 루프 없음).
-const RESIZE_BASE = 'https://urdeal.kr'
-
 export async function rehostImageToR2(
   env: { MEDIA_BUCKET?: R2Bucket },
   srcUrl: string | null | undefined,
@@ -25,18 +21,18 @@ export async function rehostImageToR2(
     const timer = setTimeout(() => ctrl.abort(), 12000)
     let res: Response
     try {
-      // 🖼️ 2026-07-22: 리사이즈해서 받는다 — 카카오/다음 원본이 8~10MB 풀해상도라 캡에 걸려 이관 실패 +
-      //   R2 저장 낭비. `cf.image` fetch 옵션은 이 환경에서 미적용(실측 8MB 그대로) → cfImage **표시 경로와
-      //   동일한 `/cdn-cgi/image/` URL**(프로덕션 존=이미지 리사이징 활성)로 받아 축소. width1600/q80 →
-      //   대개 ~100~400KB. `onerror=redirect`: 리사이즈 불가 호스트는 원본으로 폴백(그래도 이관되게 캡 10MB).
-      const resizeUrl = `${RESIZE_BASE}/cdn-cgi/image/width=1600,quality=80,fit=scale-down,onerror=redirect/${srcUrl}`
-      res = await fetch(resizeUrl, { signal: ctrl.signal })  // 인증서오류/DNS → throw → null
+      // 🖼️ 2026-07-22: **원본 직접 fetch**. 서버측 리사이즈 시도 전부 실패 확인 —
+      //   ① `cf.image` fetch 옵션: 이 환경 미적용(원본 8MB 그대로). ② `/cdn-cgi/image/…/<외부URL>`:
+      //   카카오/다음 외부 호스트는 리사이저가 404(외부 origin 리사이즈 미허용). 직접 fetch 만 200.
+      //   → 원본을 그대로 R2 저장하고, **표시는 same-origin `/api/media` 를 cfImage(/cdn-cgi/image)가
+      //   리사이즈**(same-origin 은 리사이저 작동) → 화면 대역폭은 작게 유지. R2 저장은 무료 10GB 여유.
+      res = await fetch(srcUrl, { signal: ctrl.signal })  // 인증서오류/DNS → throw → null
     } finally { clearTimeout(timer) }
     if (!res.ok) return null
     const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
     if (!ct.startsWith('image/')) return null
     const buf = await res.arrayBuffer()
-    if (buf.byteLength < 500 || buf.byteLength > 10 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(리사이즈 폴백 안전판)
+    if (buf.byteLength < 500 || buf.byteLength > 11 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(11MB 초과만 제외)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const yyyymm = new Date().toISOString().slice(0, 7)
     const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`
