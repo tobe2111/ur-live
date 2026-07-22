@@ -14,6 +14,7 @@ import {
   COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead,
 } from './company-discovery'
+import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -47,7 +48,31 @@ app.get('/meta', (c) => c.json({
 // GET /api/admin/partner-pool/stats
 app.get('/stats', async (c) => {
   const s = await companyStats(c.env.DB)
-  return c.json({ success: true, ...s })
+  // 🤝 레인 A 수집 상태 — 게이트 + 마지막 실행(ads_company_stats). ur-ads 서비스바인딩 존재여부.
+  const runRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_stats'").first<{ value: string }>().catch(() => null)
+  let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
+  return c.json({ success: true, ...s, collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run } })
+})
+
+// GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
+app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))
+
+// POST /api/admin/partner-pool/keywords { keyword, category?, subcategory?, region? }
+app.post('/keywords', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { keyword?: string; category?: string; subcategory?: string; region?: string }
+  const r = await addCompanyKeyword(c.env.DB, b.keyword || '', b.category, b.subcategory, b.region)
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// POST /api/admin/partner-pool/collect — 레인 A 수동 수집(ur-ads 워커에 서비스바인딩 위임 → 메인 번들 무영향).
+//   백그라운드(waitUntil): 지역검색 순회는 수십 초 → 즉시 started 반환, 완료는 UI 가 stats(run.last_run) 폴링.
+app.post('/collect', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 // POST /api/admin/partner-pool — 수동 업체 추가(대표 방배 리드 손입력). 멱등 저장(website/회사명|지역 키).

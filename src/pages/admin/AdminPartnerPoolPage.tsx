@@ -18,6 +18,7 @@ interface Lead {
 }
 interface Stats { total: number; with_contact: number; with_email: number; active_pipeline: number; recent7: number }
 interface Meta { categories: Record<string, string[]>; statuses: string[]; channels: string[]; tier: { min: number; max: number } }
+interface Collect { gate: boolean; adsBinding: boolean; run: { last_run?: string; found?: number; saved?: number; total_saved?: number; diag?: { configured?: boolean; error?: string } } | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -34,6 +35,8 @@ const EMPTY_ADD = { company_name: '', category: '', subcategory: '', tier: '', r
 export default function AdminPartnerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [collect, setCollect] = useState<Collect | null>(null)
+  const [collecting, setCollecting] = useState(false)
   const [meta, setMeta] = useState<Meta | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -50,7 +53,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) setStats(r.data.stats) } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -99,6 +102,18 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('삭제 실패') }
   }
 
+  async function runCollect() {
+    if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
+    setCollecting(true)
+    try {
+      const r = await api.post('/api/admin/partner-pool/collect', {})
+      if (r.data?.success) {
+        toast.success('레인 A 수집 시작 — 잠시 후 반영됩니다')
+        for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadLeads()]) }
+      } else toast.error(r.data?.error || '수집 위임 실패')
+    } catch { toast.error('수집 위임 실패') } finally { setCollecting(false) }
+  }
+
   const subcats = meta && add.category ? (meta.categories[add.category] || []) : []
   const statCard = (label: string, val: number, hint?: string) => (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -125,10 +140,21 @@ export default function AdminPartnerPoolPage() {
         {/* 액션 바 */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={() => setShowAdd(v => !v)} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium">{showAdd ? '입력 닫기' : '＋ 업체 추가'}</button>
+          <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title={collect?.adsBinding ? '네이버 지역검색으로 방배/서초/강남 업체 1회 수집(레인 A)' : 'ur-ads 서비스바인딩 필요'}>{collecting ? '수집 중…' : '🔍 지금 수집'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·수집키워드 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
         </div>
+
+        {/* 레인 A(네이버 지역검색) 자동수집 상태 */}
+        {collect && (
+          <div className="mb-3 text-xs text-gray-500">
+            레인 A 자동수집 <span className={collect.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 홀수시' : 'OFF'}</span>
+            {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
+              : collect.run?.last_run ? <span> · 최근 {collect.run.last_run.slice(5, 16)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
+                : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+          </div>
+        )}
 
         {/* 수동 입력 폼 */}
         {showAdd && (

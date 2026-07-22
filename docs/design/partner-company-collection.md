@@ -173,10 +173,11 @@ contacted_at, follow_up_at, collected_at
 - [x] 아웃리치 상태머신(new→contacted→interested→contracted/rejected·hold)·팔로업·CSV(수식인젝션 방어) — 수동입력 + 인라인 편집
 - [x] tier 인라인 수동 조정 (1~5, 목록 셀렉트 + 추가 폼)
 - [ ] 중복통합(website/회사명|지역 키 멱등 upsert 로 1차 방어 — merge UI 는 후속)
-- [ ] **레인 A**: 네이버 지역검색(`local.json`) + 웹문서(`webkr.json`) 어댑터 (ur-ads 신규 엔드포인트)
-- [ ] 키워드 풀 `ad_company_keywords`(type 구분) + 방배/서초/강남 시딩
-- [ ] 크론 짝/홀 분기 + `runCompanyAutoCollect` + 커서 + `FetchBudget` 공유
-- [ ] 홈페이지 이메일 크롤 (결정 1 확정 후 (a) or (b))
+- [x] **레인 A**: 네이버 지역검색(`local.json`) 어댑터 — `company-collect.ts` `searchNaverLocal`(전화·주소·홈페이지링크·카테고리, display 5) → `saveCompanyLeads`. (웹문서 `webkr.json` 은 후속 보충)
+- [x] 키워드 풀 `ad_company_keywords`(category/subcategory/region) + 방배/서초/강남 × 12업종 + 지역무관 대행사 5 시딩
+- [x] 크론 **홀수시** 분기(인플루언서 매시간 유지 → 반토막 방지) + `runCompanyAutoCollect` + 커서(`ads_company_cursor`) + `FetchBudget`(별도 60) · 수동 트리거 `/__ads/collect-company`(ur-ads) ← `/api/admin/partner-pool/collect`(메인 위임) · 어드민 '지금 수집' 버튼 + 게이트/최근실행 상태
+- [ ] 홈페이지 이메일 크롤 (결정 1 확정 후 (a) or (b)) — phone-first 라 수용기준은 지역검색 전화로 충족, 이메일은 additive 후속
+- [ ] 웹문서 `webkr.json` 보충(대행사 홈페이지)
 - [ ] **레인 B**: 공정위 정보공개서·명부 배치 임포트(`fetchFeeds` 패턴)
 - [ ] **레인 C**: 어드민 수기 입력 경로
 - [ ] diag(company found/saved/error) + Discord 경보 합류
@@ -188,4 +189,5 @@ contacted_at, follow_up_at, collected_at
 
 ## 10. 구현 로그
 
+- **2026-07-21 — 레인 A(네이버 지역검색 자동수집) 구현.** `company-collect.ts` — `ad_company_keywords` 풀(방배/서초/강남 × 12업종 + 대행사 5 시드) + `runCompanyAutoCollect`(커서 순환·`FetchBudget` 60·네이버 `local.json` display 5 → 전화·주소·홈페이지·카테고리 파싱 → `saveCompanyLeads`). ur-ads 크론 **홀수시** 게이트드(`ADS_COMPANY_COLLECT_ENABLED`, 기본 OFF — 인플루언서 매시간 유지, 반토막 방지) + 내부 트리거 `/__ads/collect-company` ← 메인 `/api/admin/partner-pool/collect` 위임(서비스바인딩) + 어드민 '지금 수집' 버튼·게이트/최근실행 상태·키워드 관리 API. **phone-first**(지역검색 전화로 수용기준 40% 충족) — 이메일 크롤(robots.txt fetcher, 결정 대기)·웹문서 보충은 후속. tsc 0·sql/theme/file-size/pagination 가드 GREEN. **⚠️ 활성 전**: `NAVER_SEARCH_CLIENT_ID/SECRET` + `ADS_COMPANY_COLLECT_ENABLED=true` → '지금 수집' 표본 검증(전화 확보율).
 - **2026-07-21 — 1단계(테이블·어드민·수동입력) 구현.** `ad_company_leads` 격리 테이블(`company-discovery.ts` 런타임 스키마, `UNIQUE(company_key)` = website 우선/회사명|지역 폴백, 빈컨택만 백필) + `/api/admin/partner-pool/*`(`partner-pool.routes.ts`, requireAdmin, 메인 워커 마운트 — 프록시 비위임) + `/admin/partner-pool` 페이지(`AdminPartnerPoolPage.tsx`, 라이트 테마, 통계·필터·수동추가·인라인 상태머신/tier/채널/팔로업/메모·CSV). 대표가 방배 리드 손입력 가능. **레인 A(네이버 지역검색)·B(레지스트리)·C 수집엔진은 후속.** tsc 0·sql/theme/csv/pagination/file-size 가드 GREEN.
