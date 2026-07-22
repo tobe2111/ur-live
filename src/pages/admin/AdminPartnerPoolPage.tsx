@@ -41,6 +41,7 @@ export default function AdminPartnerPoolPage() {
   const [storeinfo, setStoreinfo] = useState<StoreInfo | null>(null)
   const [collecting, setCollecting] = useState(false)
   const [collectingSI, setCollectingSI] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -64,6 +65,7 @@ export default function AdminPartnerPoolPage() {
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
+    setSelected(new Set()) // 목록 갱신 시 선택 초기화(스테일 방지)
     try {
       const p = new URLSearchParams()
       if (fCategory) p.set('category', fCategory)
@@ -144,6 +146,17 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('수집 위임 실패') } finally { setCollectingSI(false) }
   }
 
+  async function deleteSelected() {
+    const ids = [...selected]
+    if (!ids.length) return
+    if (!confirm(`선택한 ${ids.length}개 업체를 삭제할까요? 되돌릴 수 없습니다.`)) return
+    try {
+      const r = await api.post('/api/admin/partner-pool/delete-bulk', { ids })
+      if (r.data?.success) { toast.success(`${r.data.deleted}개 삭제됨`); setSelected(new Set()); await Promise.all([loadLeads(), loadStats()]) }
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch { toast.error('삭제 실패') }
+  }
+
   const subcats = meta && add.category ? (meta.categories[add.category] || []) : []
   const statCard = (label: string, val: number, hint?: string) => (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -175,6 +188,9 @@ export default function AdminPartnerPoolPage() {
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title={collect?.adsBinding ? '네이버 지역검색으로 방배/서초/강남 업체 1회 수집(레인 A)' : 'ur-ads 서비스바인딩 필요'}>{collecting ? '수집 중…' : '🔍 지금 수집'}</button>
           <button onClick={runCollectStoreinfo} disabled={collectingSI || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공공 상가정보(data.go.kr)로 tier 2~5 업종 통째 수집 + 네이버 전화 역조회 보강 (소스 ①)">{collectingSI ? '수집 중…' : '🏪 상가정보 수집'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
+          {selected.size > 0 && (
+            <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
+          )}
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·수집키워드 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
         </div>
@@ -259,6 +275,10 @@ export default function AdminPartnerPoolPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="px-3 py-2 font-medium">
+                  <input type="checkbox" aria-label="전체 선택" checked={leads.length > 0 && selected.size === leads.length}
+                    onChange={e => setSelected(e.target.checked ? new Set(leads.map(l => l.id)) : new Set())} />
+                </th>
                 <th className="px-3 py-2 font-medium">순위</th>
                 <th className="px-3 py-2 font-medium">업체 / 분류</th>
                 <th className="px-3 py-2 font-medium">지역</th>
@@ -271,11 +291,15 @@ export default function AdminPartnerPoolPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">불러오는 중…</td></tr>
+                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">불러오는 중…</td></tr>
               ) : leads.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">등록된 업체가 없습니다. ‘＋ 업체 추가’로 시작하세요.</td></tr>
+                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">등록된 업체가 없습니다. ‘＋ 업체 추가’로 시작하세요.</td></tr>
               ) : leads.map(l => (
-                <tr key={l.id} className="border-b border-gray-100 align-top">
+                <tr key={l.id} className={`border-b border-gray-100 align-top ${selected.has(l.id) ? 'bg-rose-50' : ''}`}>
+                  <td className="px-3 py-2">
+                    <input type="checkbox" aria-label={`${l.company_name} 선택`} checked={selected.has(l.id)}
+                      onChange={e => setSelected(s => { const n = new Set(s); if (e.target.checked) n.add(l.id); else n.delete(l.id); return n })} />
+                  </td>
                   <td className="px-3 py-2">
                     <select value={l.tier ?? ''} onChange={e => patchLead(l.id, { tier: e.target.value ? Number(e.target.value) : null })} className="rounded border border-gray-200 bg-white text-gray-900 text-xs px-1 py-1">
                       <option value="">—</option>

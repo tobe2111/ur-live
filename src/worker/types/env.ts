@@ -173,6 +173,11 @@ export interface Env {
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
   ADS_STOREINFO_BATCH?: string;           // 1회 실행당 (업종×지역) 페어 수(기본 3).
   PUBLIC_DATA_SERVICE_KEY?: string;       // data.go.kr 일반 인증키. 미설정 시 NTS_API_KEY(동일 계정 serviceKey) 폴백.
+  // 🏪 매장 후보 — 지방행정 인허가정보(store_prospects). 기본 OFF, 활용신청 후 ON.
+  ADS_LOCALDATA_ENABLED?: string;         // ur-ads 일1회 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_LOCALDATA_SERVICE_KEY?: string;     // 인허가 전용 인증키. 미설정 시 PUBLIC_DATA_SERVICE_KEY 폴백(같은 계정이면 공유).
+  ADS_LOCALDATA_ENDPOINT?: string;        // 엔드포인트 override(이관 후 확정 시). 미설정 시 코드 기본.
+  ADS_LOCALDATA_MAX_PAGES?: string;       // 업종당 페이지 상한(기본 6, 페이지당 500).
 
   // ---- 🌐 해외 수출 바이어 자동 수집 (유통스타트 B2B, 2026-07-20) ----
   //   유어딜과 무관 — 유통스타트(도매/수출) 소관. features/supply 자립 엔진(mount-wholesale 마운트 =
