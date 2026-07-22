@@ -245,6 +245,11 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-22 — 연락처 확보 폭포수(waterfall) + 출처(provenance) 태그.** 대표 "지금 방식+다른 경로 섞어서 가장 이상적으로".
+  - **📇 `contact-enrich.ts`**: ① **카카오 로컬 API**(`dapi.kakao.com/v2/local/search/keyword`, `KAKAO_REST_API_KEY` 보유) — 네이버가 못 주는 **전화를 준다**. 상호 완전일치 + 주소 동일매장(토큰 2개+ 공유)일 때만 채택. ② **홈페이지 크롤 확장** — 이메일 + **전화(tel:/패턴)** 를 root+/contact+/about 에서(robots 준수, 추측 0).
+  - **폭포수**: `enrichHeldLeads` 재작성 — 보류 리드에 [카카오 전화 → 홈페이지 이메일/전화] 순차, 홈페이지 없어도 카카오로 전화 확보 가능(상가정보 보류에 특히 유효). 못 찾으면 비워둠.
+  - **출처 태그**: `ad_company_leads.contact_source`(govreg/kakao/homepage/commerce/franchise…) 컬럼 + 저장/보강이 기록 + 어드민 '출처: 카카오/홈페이지…' 표시 → 허위 우려 원천 차단(어디서 왔는지 다 보임). 통신판매='commerce'·공정위='franchise' 태그.
+  - tsc 0·sql/theme/file-size 가드 GREEN. 게이트 무관(어드민 보강). ⚠️ 카카오 로컬은 실호출로 검증 필요(이 환경 외부망 제한).
 - **2026-07-22 — 나머지 소스 전부 구현 (통신판매·공정위·공고 스캐너, 게이트 OFF).** 대표 "모두 다 소스부터 진행".
   - **🛒 통신판매사업자**(`commerce-notify-collect.ts`, 공정위 1130000) → `ad_company_leads` source='commerce'. **전화·이메일이 데이터에 직접 붙어 옴**(매칭 없음=오매칭 0) → 온라인 겸업 업체 발굴 + 이메일 소스. 게이트 `ADS_COMMERCE_ENABLED`.
   - **🏢 공정위 가맹정보**(`franchise-collect.ts`) → source='franchise'. 프랜차이즈 본사(브랜드·대표전화·가맹점수). 게이트 `ADS_FRANCHISE_ENABLED`.

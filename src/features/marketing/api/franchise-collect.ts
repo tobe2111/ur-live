@@ -66,6 +66,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
         region: pickRegion(addr), address: addr || null, website: stripTag(it.hpUrl) || null,
         phone: stripTag(it.telNo) || null,
         description: [stripTag(it.indutyNm), cnt ? `가맹점 ${cnt}` : '', stripTag(it.rprsntvNm) ? `대표 ${stripTag(it.rprsntvNm)}` : ''].filter(Boolean).join(' · ') || null,
+        contact_source: stripTag(it.telNo) ? 'franchise' : null, // 공정위 정보공개서 등록 대표전화
         source: 'franchise', source_keyword: stripTag(it.corpNm) || 'franchise',
       }
     }).filter(l => l.company_name.length >= 2)

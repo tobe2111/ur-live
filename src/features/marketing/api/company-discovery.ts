@@ -44,6 +44,7 @@ export interface CompanyLead {
   address?: string | null
   description?: string | null
   business_no?: string | null   // 사업자등록번호(있을 때만 — 통신판매/수동. 폐업 상태조회 키). 상가정보엔 없음.
+  contact_source?: string | null // 연락처 출처(provenance): govreg/kakao/homepage/naver/commerce/franchise/registry
   source?: string | null        // 'manual' | 'local' | 'webkr' | 'registry' | 'storeinfo'(공공 상가정보)
   source_keyword?: string | null
 }
@@ -53,7 +54,7 @@ export interface CompanyLeadRow {
   category: string | null; subcategory: string | null; tier: number | null; region: string | null
   website: string | null; email: string | null; phone: string | null; address: string | null
   description: string | null; business_no: string | null; source: string; source_keyword: string | null
-  status: string; active: number; memo: string | null; contact_channel: string | null
+  status: string; active: number; contact_source: string | null; memo: string | null; contact_channel: string | null
   contacted_at: string | null; follow_up_at: string | null; last_verified_at: string | null; collected_at: string
 }
 
@@ -61,7 +62,7 @@ export interface CompanyLeadRow {
 export const hasContact = (l: Pick<CompanyLead, 'phone' | 'email'>): boolean =>
   !!(l.phone && String(l.phone).trim()) || !!(l.email && String(l.email).trim())
 
-const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
+const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, contact_source, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
 
 /* ── 스키마 (런타임 보장 — ur-ads 는 CI 마이그레이션 미작동, repair-schema 패턴) ─────── */
 const _schemaDone = new WeakSet<object>()
@@ -95,6 +96,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN active INTEGER NOT NULL DEFAULT 1').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN contact_source TEXT').run().catch(() => null) // 연락처 출처(provenance): govreg/kakao/homepage/naver/registry
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
@@ -127,14 +129,15 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
     const stmts = slice.map(l => {
       const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
       return DB.prepare(
-      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(company_key) DO UPDATE SET
          email = COALESCE(ad_company_leads.email, excluded.email),
          phone = COALESCE(ad_company_leads.phone, excluded.phone),
          website = COALESCE(ad_company_leads.website, excluded.website),
          address = COALESCE(ad_company_leads.address, excluded.address),
          business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
+         contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
          active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
                          OR COALESCE(ad_company_leads.phone, excluded.phone) IS NOT NULL
                        THEN 1 ELSE ad_company_leads.active END`
@@ -142,7 +145,7 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
       companyKey(l), l.company_name.slice(0, 120),
       clamp(l.category, 40), clamp(l.subcategory, 40), tierOf(l.tier), clamp(l.region, 60),
       clamp(l.website, 200), clamp(l.email, 120), clamp(l.phone, 40), clamp(l.address, 300),
-      clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
+      clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.contact_source, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
     )
     })
     const res = await DB.batch(stmts).catch(() => null)
