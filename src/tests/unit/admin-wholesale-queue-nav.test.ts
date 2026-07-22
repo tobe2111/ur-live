@@ -8,7 +8,10 @@ import { resolve } from 'path'
 //   wholesale-role RBAC 가드가 /admin/wholesale-overview 로 **바운스** → 클릭이 안 먹히는 것처럼 보임.
 //   불변식: 큐 카드의 모든 목적지는 wholesale-role 어드민이 도달 가능해야 한다(정적 검사 — import 무게 없음).
 
-const layout = readFileSync(resolve(process.cwd(), 'src/components/AdminLayout.tsx'), 'utf8')
+// 🧱 2026-07-20: nav 데이터/RBAC 경로 상수(VISIBLE_NAV_GROUPS·WHOLESALE_EXTRA_ALLOWED_PATHS 등)가
+//   AdminLayout.tsx → admin-nav-config.ts 로 분리됨(즐겨찾기 리팩토링). 정적 검사도 그 SSOT 를 읽는다.
+//   (런타임 RBAC 은 AdminLayout 이 이 config 를 그대로 import — 동작 불변, 이 파일이 도달성의 진실원천.)
+const layout = readFileSync(resolve(process.cwd(), 'src/components/admin/admin-nav-config.ts'), 'utf8')
 const overview = readFileSync(resolve(process.cwd(), 'src/pages/admin/AdminWholesaleOverviewPage.tsx'), 'utf8')
 
 /** AdminLayout 에서 wholesale-role 어드민에게 허용되는 /admin 경로 집합을 정적으로 재구성. */
