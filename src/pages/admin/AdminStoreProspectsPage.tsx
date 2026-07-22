@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import DashboardPageHeader from '@/components/admin/DashboardPageHeader'
-import { api } from '@/lib/api'
-import { toast } from '@/lib/toast'
+import { DashboardPageHeader } from '@/components/dashboard'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 
 interface Prospect {
