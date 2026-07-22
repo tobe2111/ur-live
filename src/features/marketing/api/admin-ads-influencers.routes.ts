@@ -14,7 +14,6 @@ import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runRecl
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
-import { startLlmRecategorize, getLlmRecatState } from './influencer-llm-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -296,23 +295,6 @@ app.post('/influencer-pool/recategorize', async (c) => {
   return c.json({ success: true, started: false, ...r })
 })
 
-// POST /api/admin/ads/influencer-pool/recategorize-ai — 🤖 LLM(Claude) 전 풀 카테고리 분류(하이브리드)
-//   정규식 한계(문맥 미이해·브랜드채널 오분류) 보완. 클릭 1회 → active=1 → cron 이 완주까지 이어받음(전 플랫폼).
-//   비창작자(브랜드 공식/뉴스/기관)는 '해당없음' → NULL. waitUntil 백그라운드(첫 배치 즉시).
-app.post('/influencer-pool/recategorize-ai', async (c) => {
-  await ensureInfluencerSchema(c.env.DB)
-  if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'ANTHROPIC_API_KEY 가 설정되어 있지 않습니다(블로그 AI 와 동일 키)' }, 400)
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(startLlmRecategorize(c.env, 500).catch(() => null)); return c.json({ success: true, started: true }) }
-  const r = await startLlmRecategorize(c.env, 500)
-  return c.json({ success: true, started: false, ...r })
-})
-
-// GET /api/admin/ads/influencer-pool/recategorize-ai/status — 🤖 LLM 분류 진행 상태(active/누적 스캔·변경)
-app.get('/influencer-pool/recategorize-ai/status', async (c) => {
-  const st = await getLlmRecatState(c.env.DB)
-  return c.json({ success: true, ...st })
-})
-
 // POST /api/admin/ads/influencer-pool/refetch-live — 🔄 유튜브 라이브 재조회(현재 About 다시 불러 이메일/카테고리 교정)
 //   재추출(저장데이터)로 못 고치는 케이스(티벳동생: 현재 About 에만 개인메일) 대응. YouTube units 사용(검색 쿼터 무관).
 //   🔥 백그라운드(waitUntil): passes×20 채널 순회는 수십 초 → 동기 대기 시 요청 타임아웃 "실패" 오표시(/collect 동일 클래스). 즉시 started 반환, 완료는 UI 통계 재조회로 따라잡음.
@@ -331,6 +313,9 @@ app.post('/influencer-pool/refetch-live', async (c) => {
 //   상태 진전(계약>관심>컨택함>신규)·정보 많은 순으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필).
 app.post('/influencer-pool/merge-duplicates', async (c) => {
   const DB = c.env.DB
+  // 🔥 백그라운드(waitUntil): 4패스 × 그룹별 순차 SELECT/UPDATE/DELETE 라 20k+ 풀에선 수천 쿼리 → 동기 대기 시
+  //   요청 타임아웃 "실패"(/collect 동일 클래스). 즉시 started 반환, 완료는 UI 통계 재조회로 따라잡음(멱등 — 재클릭 수렴).
+  const doMerge = async () => {
   const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
   type MRow = { id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; status: string | null; consented_at: string | null; source: string | null; memo: string | null; contacted_at: string | null; follow_up_at: string | null }
   const MERGE_COLS = 'id, email, instagram, tiktok, links, status, consented_at, source, memo, contacted_at, follow_up_at'
@@ -422,7 +407,12 @@ app.post('/influencer-pool/merge-duplicates', async (c) => {
       .all<MRow>().catch(() => null))?.results || []
     mergedName += await mergeRows(rows)
   }
-  return c.json({ success: true, merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName, groups: emailGroups.length + igGroups.length })
+  return { merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName, groups: emailGroups.length + igGroups.length }
+  }
+  // waitUntil 지원 시 즉시 started 반환(20k+ 풀에서 동기 대기하면 타임아웃). 미지원 폴백은 동기 실행.
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(doMerge().catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await doMerge()
+  return c.json({ success: true, started: false, ...r })
 })
 
 // GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)
@@ -522,15 +512,31 @@ app.get('/influencer-pool/export', async (c) => {
   }
 
   // SpreadsheetML — 카테고리별 시트 + 전체 시트. 시트명은 엑셀 제약(31자·특수문자) 정리.
+  //   ⚠️ 20k 행 × (전체 + 카테고리별 = 행 2배) 를 하나의 문자열로 연결하면 ~40MB → Worker 128MB 메모리 초과(OOM)로
+  //   "내보내기 실패". pull 기반 ReadableStream 으로 시트/256행 단위로 흘려보내 피크 메모리를 한 청크로 억제.
   const xe = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const rowXml = (vals: string[]) => `<Row>${vals.map(v => `<Cell><Data ss:Type="String">${xe(v)}</Data></Cell>`).join('')}</Row>`
-  const sheetXml = (name: string, rs: typeof rows) => `<Worksheet ss:Name="${xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')}"><Table>${rowXml(HEAD)}${rs.map(r => rowXml(cells(r))).join('')}</Table></Worksheet>`
+  const sheetName = (name: string) => xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')
   const byCat = new Map<string, typeof rows>()
   for (const r of rows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
-  const sheets = [sheetXml(`전체 (${rows.length})`, rows), ...Array.from(byCat.entries()).map(([k, rs]) => sheetXml(`${k} (${rs.length})`, rs))].join('')
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${sheets}</Workbook>`
-  return new Response(xml, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="influencer-pool.xls"` } })
+  const sheetPlan = [{ name: `전체 (${rows.length})`, rs: rows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
+  const enc = new TextEncoder()
+  function* chunks(): Generator<string> {
+    yield `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`
+    for (const { name, rs } of sheetPlan) {
+      yield `<Worksheet ss:Name="${sheetName(name)}"><Table>${rowXml(HEAD)}`
+      let buf = ''
+      for (let i = 0; i < rs.length; i++) { buf += rowXml(cells(rs[i])); if ((i & 255) === 255) { yield buf; buf = '' } } // 256행마다 flush
+      if (buf) yield buf
+      yield '</Table></Worksheet>'
+    }
+    yield '</Workbook>'
+  }
+  const it = chunks()
+  const stream = new ReadableStream({
+    pull(ctrl) { const { value, done } = it.next(); if (done) { ctrl.close(); return } ctrl.enqueue(enc.encode(value)) },
+  })
+  return new Response(stream, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="influencer-pool.xls"` } })
 })
 
 // POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
