@@ -328,7 +328,48 @@ app.post('/influencer-pool/merge-duplicates', async (c) => {
       .all<MRow>().catch(() => null))?.results || []
     mergedInsta += await mergeRows(rows, { guardDistinctEmail: true }) // 인스타 병합은 서로 다른 이메일이면 다른 사람 → 스킵
   }
-  return c.json({ success: true, merged: mergedEmail + mergedInsta, mergedEmail, mergedInsta, groups: emailGroups.length + igGroups.length })
+  // 3차 — 공유 링크(links: linktr.ee/블로그/유튜브 교차링크, 소문자 공백결합 — 사람마다 고유라 고정밀). 인메모리 그룹핑(멀티값 컬럼).
+  let mergedLink = 0
+  const richness = (r: MRow) => (r.email ? 1 : 0) + (r.instagram ? 1 : 0) + (r.links ? 1 : 0)
+  type MRowSub = MRow & { subscriber_count: number | null }
+  const cmpMR = (a: MRowSub, b: MRowSub) =>
+    ((b.consented_at ? 1 : 0) - (a.consented_at ? 1 : 0)) ||
+    (((b.source === 'inbound') ? 1 : 0) - ((a.source === 'inbound') ? 1 : 0)) ||
+    (rankOf(b.status) - rankOf(a.status)) ||
+    (richness(b) - richness(a)) ||
+    ((Number(b.subscriber_count) || 0) - (Number(a.subscriber_count) || 0)) ||
+    (a.id - b.id)
+  const linkRows = (await DB.prepare(`SELECT ${MERGE_COLS}, subscriber_count FROM ad_influencer_leads WHERE account_id = ? AND links IS NOT NULL AND links != ''`).bind(POOL)
+    .all<MRowSub>().catch(() => null))?.results || []
+  const byLink = new Map<string, MRowSub[]>()
+  for (const r of linkRows) for (const tok of String(r.links || '').split(/\s+/).filter(t => t.length >= 8)) {
+    const arr = byLink.get(tok) || []; arr.push(r); byLink.set(tok, arr)
+  }
+  const doneLink = new Set<number>()
+  for (const [, group] of byLink) {
+    const rows = group.filter(r => !doneLink.has(r.id))
+    if (rows.length < 2) continue
+    rows.sort(cmpMR)
+    const n = await mergeRows(rows)
+    if (n) { mergedLink += n; rows.forEach(r => doneLink.add(r.id)) }
+  }
+  // 4차 — 이름+카테고리 코로보레이션(동명이인 방지: 이메일·인스타 둘 다 없는 잔여 + 같은 카테고리 + 2개+ 플랫폼 + 이름 3자↑).
+  let mergedName = 0
+  const NAME_STOP = new Set(['영상', '채널', '유튜브', '블로그', '공식', 'official', 'daily', 'vlog', 'tv'])
+  const nameGroups = (await DB.prepare(`SELECT LOWER(TRIM(name)) AS nm, LOWER(COALESCE(category,'')) AS cat, COUNT(*) AS n, COUNT(DISTINCT platform) AS plats
+    FROM ad_influencer_leads WHERE account_id = ? AND name IS NOT NULL AND LENGTH(TRIM(name)) >= 3
+      AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '')
+    GROUP BY LOWER(TRIM(name)), LOWER(COALESCE(category,'')) HAVING n > 1 AND plats > 1`).bind(POOL)
+    .all<{ nm: string; cat: string; n: number; plats: number }>().catch(() => null))?.results || []
+  for (const g of nameGroups) {
+    if (!g.nm || NAME_STOP.has(g.nm)) continue
+    const rows = (await DB.prepare(`SELECT ${MERGE_COLS} FROM ad_influencer_leads
+      WHERE account_id = ? AND LOWER(TRIM(name)) = ? AND LOWER(COALESCE(category,'')) = ?
+        AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '') ORDER BY ${orderBy}`).bind(POOL, g.nm, g.cat)
+      .all<MRow>().catch(() => null))?.results || []
+    mergedName += await mergeRows(rows)
+  }
+  return c.json({ success: true, merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName, groups: emailGroups.length + igGroups.length })
 })
 
 // GET /api/admin/ads/seller-match?category=맛집&region=강남 — 🔗 유어딜 셀러 매칭(읽기 전용)

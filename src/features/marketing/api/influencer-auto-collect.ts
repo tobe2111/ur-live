@@ -65,6 +65,15 @@ const REGION_SEED: { category: string; keywords: string[] }[] = [
   { category: '네일', keywords: SEOUL_GU.map(gu => `${gu} 네일`) },
 ]
 
+// 📍 방배 국지 시딩(2026-07-21 대표 — 8월 방배 시드 크리에이터 소싱). 동/역세권 단위(서울 25구 그리드보다 좁음).
+//   전부 우선풀 업종(맛집/뷰티/네일)으로 태깅 → 우선 커서(3/4 배정)를 탄다(전국 확대보다 방배가 먼저 커버).
+//   '카페'는 REGION_SEED 관례대로 맛집 태깅 · '피티'(PT)는 운동이 우선풀에 없어 매장 결의 뷰티로 태깅(우선 커서 편입 목적).
+const BANGBAE_SEED: { category: string; keywords: string[] }[] = [
+  { category: '맛집', keywords: ['방배 맛집', '방배동 맛집', '방배 카페', '방배역 맛집', '이수역 맛집', '내방역 맛집', '사당역 맛집', '서리풀공원 맛집'] },
+  { category: '뷰티', keywords: ['방배 미용실', '방배 피티'] },
+  { category: '네일', keywords: ['방배 네일'] },
+]
+
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
@@ -235,8 +244,8 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
-  // 시드(일반 ~90 + 지역그리드 100) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
-  const stmts = [...SEED, ...REGION_SEED].flatMap(g => g.keywords.map(kw =>
+  // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+  const stmts = [...SEED, ...REGION_SEED, ...BANGBAE_SEED].flatMap(g => g.keywords.map(kw =>
     DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
       .bind(kw, g.category, 'seed')))
   await DB.batch(stmts).catch(() => null)

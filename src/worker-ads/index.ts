@@ -41,6 +41,15 @@ app.post('/__ads/collect', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
+app.post('/__ads/collect-company', async (c) => {
+  try {
+    const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
+    const stats = await runCompanyAutoCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
@@ -89,6 +98,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch { /* fail-soft */ }
     }
   })())
+  // 🤝 파트너(업체) 자동수집 — 홀수시만(인플루언서는 매시간 유지 → 반토막 방지, 겹침 최소). 네이버 지역검색(local.json).
+  //   게이트 ADS_COMPANY_COLLECT_ENABLED(기본 OFF). 별도 FetchBudget/커서/키워드 → 인플루언서 트랙 무영향.
+  if (hourUTC % 2 === 1 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
+        await runCompanyAutoCollect(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
   // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
   if (env.ADS_AUTOBID_ENABLED === 'true') {
     ctx.waitUntil((async () => {
