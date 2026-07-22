@@ -189,3 +189,21 @@ describe('buyer-pool — 전수조사 감사 수정 회귀', () => {
       expect(isPublicHttpUrl(u)).toBe(true)
   })
 })
+
+describe('buyer-parsers — buyKorea 실제 상세 구조(라이브 검증 기반)', () => {
+  // 대표 라이브 확인: 회사명 Al Dayagem / 국가 JORDAN / 웹사이트 power-bob / 이메일·이름 마스킹.
+  const h2t = (h: string) => String(h).replace(/<\/(?:tr|div|p|li|h[1-6]|table|dt|dd|th|td|section|button)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').split('\n').map(l => l.trim()).filter((l, i, a) => l || (a[i - 1] || '').length > 0).join('\n')
+  it('table 구조(th/td): 회사명·국가·웹사이트 추출 + 마스킹 이메일 제외', () => {
+    const l = parseBuyKoreaInquiries(h2t('<h1>Fertilizer</h1><table><tr><th>회사명</th><td>Al Dayagem for Trading agencies</td></tr><tr><th>국가/도시</th><td>JORDAN / All areas</td></tr><tr><th>웹사이트</th><td>https://www.power-bob.com</td></tr><tr><th>이메일</th><td>mu**************</td></tr></table>'))[0]
+    expect(l.company).toBe('Al Dayagem for Trading agencies')
+    expect(l.country).toBe('JORDAN')
+    expect(l.website).toMatch(/power-bob\.com/)
+    expect(l.email == null || !l.email.includes('*')).toBe(true)
+  })
+  it('화살표 구분(라벨 → 값): 콜론 없는 사이트도 추출', () => {
+    const l = parseBuyKoreaInquiries(h2t('<div>회사명 → Zhome Co</div><div>국가/도시 → 베트남</div><div>웹사이트 → https://zhome.vn</div>'))[0]
+    expect(l.company).toBe('Zhome Co')
+    expect(l.country).toBe('Vietnam')
+    expect(l.website).toMatch(/zhome\.vn/)
+  })
+})

@@ -269,8 +269,8 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]
     if (!line) continue
-    // "라벨: 값" (한 줄)
-    const m = line.match(/^([^:：]{1,24})[:：]\s*(.+)$/)
+    // "라벨: 값" 또는 "라벨 → 값"(화살표·불릿·탭 구분 — buyKorea 등 사이트가 콜론 대신 씀) (한 줄)
+    const m = line.match(/^([^:：→▶»►·|\t]{1,24})\s*[:：→▶»►·|\t]\s*(.+)$/)
     if (m && looksLabel(m[1])) {
       const f = labelField(m[1]); const v = m[2].trim()
       if (f && v && !v.includes('*') && !row[f]) row[f] = v

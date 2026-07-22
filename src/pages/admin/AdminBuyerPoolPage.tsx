@@ -42,23 +42,27 @@ const STAGE_ORDER = ['lead', 'qualified', 'sampling', 'negotiating', 'won', 'los
 function buildBookmarklet(token: string): string {
   const api = `${window.location.origin}/api/buyer-ingest`
   const code = `(async()=>{try{var T=${JSON.stringify(token)},A=${JSON.stringify(api)};` +
-    `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:280px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
+    `var b=document.createElement('div');b.style.cssText='position:fixed;top:12px;right:12px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 -apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:300px';document.body.appendChild(b);var S=function(t){b.textContent=t};S('유어딜: 상세 링크 탐색 중...');` +
     `var host=location.host,cur=location.href.split('#')[0],HINT=/detail|view|inqry|inquiry|offer|lead|goods|read/i,IDRE=/[?&]\\w*(sn|no|id|seq|idx|code|num)=\\d+/i;` +
-    `var grab=function(ht,base){var out=[],m;var r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){out.push(m[0])}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){out.push('/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}var ra=/href\\s*=\\s*["']([^"'#\\s]+)["']/gi;while((m=ra.exec(ht))){out.push(m[1])}return out.map(function(h){try{return new URL(h,base).href}catch(e){return ''}}).filter(function(u){if(!u)return false;try{var x=new URL(u);return x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&u.split('#')[0]!==cur}catch(e){return false}})};` +
-    `var ht=document.documentElement.outerHTML,L=grab(ht,location.href);` +
-    `[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.href);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&a.href.split('#')[0]!==cur)L.push(a.href)}catch(e){}});` +
-    `var PGP=/[?&](pageIndex|pageNo|pageNum|page|cpage|currPage)=(\\d+)/gi,pageParam='',maxPage=1,pm;while((pm=PGP.exec(ht))){var pn=parseInt(pm[2],10);if(pn>=1&&pn<=500){if(!pageParam)pageParam=pm[1];if(pm[1].toLowerCase()===pageParam.toLowerCase()&&pn>maxPage)maxPage=pn}}maxPage=Math.min(maxPage,20);` +
-    `if(pageParam&&maxPage>1){for(var pg=2;pg<=maxPage;pg++){S('유어딜: 리스트 '+pg+'/'+maxPage+' 페이지 수집...');try{var lu=new URL(location.href);lu.searchParams.set(pageParam,String(pg));var lr=await fetch(lu.href,{credentials:'include'});if(lr.ok){grab(await lr.text(),lu.href).forEach(function(u){L.push(u)})}}catch(e){}await new Promise(function(x){setTimeout(x,250)})}}` +
-    `L=L.filter(function(v,i){return L.indexOf(v)===i}).slice(0,600);var self=IDRE.test(location.search)&&HINT.test(location.pathname);` +
-    `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 상세 페이지를 직접 열거나 리스트를 펼치세요.');setTimeout(function(){b.remove()},8000);return}` +
-    `var CHUNK=10,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='';` +
+    // 상세 링크 탐색: 실제 앵커 href 우선(진짜 링크), 없으면 HTML 정규식 폴백(JS 링크 사이트).
+    `var L=[];[].slice.call(document.querySelectorAll('a[href]')).forEach(function(a){try{var x=new URL(a.href);if(x.host===host&&HINT.test(x.pathname+x.search)&&IDRE.test(x.search)&&a.href.split('#')[0]!==cur)L.push(x.href.split('#')[0])}catch(e){}});` +
+    `if(!L.length){var ht=document.documentElement.outerHTML,m;var r1=/[\\w./-]*(?:inqryDetail|offerDetail|goodsDetail|buyOffer|itemView|prdDetail|Detail|View)[\\w./-]*\\.(?:do|jsp|html?|nhn)\\?[^"'\\s<>()]*(?:sn|no|id|seq|idx|num)=\\d+/gi;while((m=r1.exec(ht))){try{L.push(new URL(m[0],location.href).href.split('#')[0])}catch(e){}}if(/buykorea/i.test(host)){var r2=/inqrySn['"\\s:=,>]+(\\d{4,})/gi;while((m=r2.exec(ht))){L.push(location.origin+'/seller/ec/inq/inqryDetail.do?inqrySn='+m[1])}}}` +
+    `var self=IDRE.test(location.search)&&HINT.test(location.pathname);L=L.filter(function(v,i){return v&&L.indexOf(v)===i}).slice(0,60);` +
+    `if(!L.length&&!self){S('❌ 상세 링크를 못 찾았어요. 구매요청 리스트 페이지(목록)에서 눌러주세요.');setTimeout(function(){b.remove()},8000);return}` +
+    // ⚠️ buyKorea 는 fetch 요청을 로그인으로 돌려보냄 → 숨은 iframe 으로 실제 이동시켜 세션째 읽는다(같은 사이트라 DOM 접근 가능).
+    `var readIf=function(url){return new Promise(function(res){var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0';var done=false,tm;var fin=function(h){if(done)return;done=true;clearTimeout(tm);try{f.remove()}catch(e){}res(h||'')};f.onload=function(){setTimeout(function(){try{fin(f.contentDocument.documentElement.outerHTML)}catch(e){fin('')}},800)};tm=setTimeout(function(){fin('')},13000);f.src=url;document.body.appendChild(f)})};` +
+    `var CHUNK=6,MAXB=1.2e6,buf=[],bb=0,tS=0,tP=0,tR=0,ef=0,err='',lg=0;` +
     `var strip=function(h){return String(h||'').replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<svg[\\s\\S]*?<\\/svg>/gi,' ').replace(/<!--[\\s\\S]*?-->/g,' ')};` +
     `var push=function(h){h=String(h||'');var ld='',lm,lre=/<script[^>]*ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi;while((lm=lre.exec(h))){ld+=' '+lm[1]}h=strip(h)+(ld?(' __JSONLD__'+ld.replace(/\\s+/g,' ')+'__JSONLD__'):'');buf.push(h);bb+=h.length;tR++};` +
     `var send=async function(batch){if(!batch.length)return;try{var res=await fetch(A,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:T,htmls:batch})});if(!res.ok){ef++;err='HTTP '+res.status;return}var j=await res.json();if(j&&j.result){tS+=(j.result.saved||0);tP+=(j.result.parsed||0)}else{ef++;if(j&&j.error)err=j.error}}catch(e){ef++;err=String(e&&e.message||e)}};` +
-    `if(self)push(ht);` +
-    `for(var i=0;i<L.length;i++){S('유어딜: 상세 수집 '+(i+1)+'/'+L.length+' · 저장 '+tS);try{var r=await fetch(L[i],{credentials:'include'});if(r.ok)push(await r.text())}catch(e){}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,300)})}` +
+    `if(self)push(document.documentElement.outerHTML);` +
+    `for(var i=0;i<L.length;i++){S('유어딜: 상세 읽는 중 '+(i+1)+'/'+L.length+' · 저장 '+tS);var html=await readIf(L[i]);if(html){if(/일반회원\\s*로그인|아이디를\\s*입력|비밀번호를\\s*입력/i.test(html.slice(0,6000)))lg++;push(html)}if(buf.length>=CHUNK||bb>=MAXB){await send(buf);buf=[];bb=0}await new Promise(function(x){setTimeout(x,120)})}` +
     `await send(buf);buf=[];bb=0;` +
-    `if(ef||err){S('❌ 전송 실패: '+(err||('배치 '+ef))+' (읽음 '+tR+' · 저장 '+tS+') — 관리자 문의')}else if(!tP){S('⚠️ 상세 '+tR+'개 읽었지만 파싱 0 — 로그인 세션/상세가 열리는지 확인 후 다시')}else{S('✅ 완료 · 읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건 — 유어딜에서 확인')}setTimeout(function(){b.remove()},15000);` +
+    `if(ef||err){S('❌ 전송 실패: '+(err||('배치 '+ef))+' (읽음 '+tR+' · 저장 '+tS+') — 관리자 문의')}` +
+    `else if(tR===0){S('❌ 상세를 못 읽음(iframe 차단?) · 링크 '+L.length+'개 — 관리자에게 알려주세요')}` +
+    `else if(lg>=tR&&!tP){S('⚠️ 로그인 페이지가 읽혔어요 — buyKorea 재로그인 후 다시 눌러주세요')}` +
+    `else if(!tP){S('⚠️ '+tR+'개 읽었지만 파싱 0 — 상세 1건을 Ctrl+A→Ctrl+C 해서 관리자에게 보내주세요')}` +
+    `else{S('✅ 이 페이지 완료 · 읽음 '+tR+' · 파싱 '+tP+' · 저장 '+tS+'건 — 다음 페이지로 넘겨 다시 눌러주세요(중복 자동 제외)')}setTimeout(function(){b.remove()},24000);` +
     `}catch(e){alert('유어딜 전송 실패: '+e)}})()`
   return 'javascript:' + encodeURIComponent(code)
 }
