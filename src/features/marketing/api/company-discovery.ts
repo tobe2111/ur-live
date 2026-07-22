@@ -267,6 +267,22 @@ export async function deleteCompanyLead(DB: D1Database, id: number): Promise<{ o
   return { ok: true }
 }
 
+/** 선택 삭제(체크박스) — 정수 id 목록만 신뢰(최대 500). 삭제 건수 반환. */
+export async function deleteCompanyLeads(DB: D1Database, ids: number[]): Promise<number> {
+  await ensureCompanySchema(DB)
+  const clean = [...new Set(ids.map(n => Math.trunc(Number(n))).filter(n => Number.isFinite(n) && n > 0))].slice(0, 500)
+  if (!clean.length) return 0
+  let deleted = 0
+  const CHUNK = 100
+  for (let i = 0; i < clean.length; i += CHUNK) {
+    const slice = clean.slice(i, i + CHUNK)
+    const ph = slice.map(() => '?').join(',')
+    const r = await DB.prepare(`DELETE FROM ad_company_leads WHERE id IN (${ph})`).bind(...slice).run().catch(() => null)
+    deleted += (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0
+  }
+  return deleted
+}
+
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
 export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number }
 export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }> }> {

@@ -10,7 +10,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  ensureCompanySchema, listCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, companyStats,
+  ensureCompanySchema, listCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, companyStats,
   parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead,
 } from './company-discovery'
@@ -143,6 +143,15 @@ app.delete('/:id', async (c) => {
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
   const r = await deleteCompanyLead(c.env.DB, id)
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
+// POST /api/admin/partner-pool/delete-bulk { ids: number[] } — 체크박스 선택 삭제(최대 500).
+app.post('/delete-bulk', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { ids?: unknown }
+  const ids = Array.isArray(b.ids) ? b.ids.map(n => Number(n)) : []
+  if (!ids.length) return c.json({ success: false, error: '선택된 항목이 없습니다' }, 400)
+  const deleted = await deleteCompanyLeads(c.env.DB, ids)
+  return c.json({ success: true, deleted })
 })
 
 // GET /api/admin/partner-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어). 대표 동선표용.

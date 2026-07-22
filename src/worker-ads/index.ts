@@ -59,6 +59,15 @@ app.post('/__ads/collect-storeinfo', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🏪 매장 후보(인허가) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+app.post('/__ads/collect-localdata', async (c) => {
+  try {
+    const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+    const stats = await runLocalDataCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
@@ -124,6 +133,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try {
         const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
         await runStoreInfoCollect(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
+  // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
+  if (hourUTC === 20 && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+        await runLocalDataCollect(env)
       } catch { /* fail-soft */ }
     })())
   }
