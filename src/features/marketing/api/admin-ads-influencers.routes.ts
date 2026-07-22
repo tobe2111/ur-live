@@ -266,6 +266,10 @@ app.post('/influencer-pool/reclassify', async (c) => {
 app.post('/influencer-pool/recategorize', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   if (!c.env.YOUTUBE_API_KEY) return c.json({ success: false, error: 'YouTube API 키가 설정되어 있지 않습니다' }, 400)
+  await ensurePerfExtraColumns(c.env.DB)
+  // 📉 '평균 0회' 백로그를 cron 자동 재측정 큐에 올림(1회성 perf_checked_at 리셋). cron progress(perf_checked_at IS NULL)가
+  //   시간당 이어받아 실제 조회수로 자동 힐 → 대표는 클릭 불필요. P1-A 수정으로 재측정 시 0 재감염 없음, 진짜 0 은 1회 후 종료.
+  await c.env.DB.prepare("UPDATE ad_influencer_leads SET perf_checked_at = NULL WHERE account_id = 0 AND platform = 'youtube' AND recent_avg_views = 0").run().catch(() => null)
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runCategoryRescan(c.env).catch(() => null)); return c.json({ success: true, started: true }) }
   const r = await runCategoryRescan(c.env) // 폴백(waitUntil 미지원): 동기
   return c.json({ success: true, started: false, ...r })
