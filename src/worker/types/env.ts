@@ -164,6 +164,10 @@ export interface Env {
   //   공개 데이터·공식 API 만 사용(수집 ≠ 발송 — 마케팅 발송은 정보통신망법상 사전동의 별도).
   ADS_AUTO_COLLECT_ENABLED?: string;
   ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
+  // ---- 🤝 B2B 파트너(업체) 자동 수집 (레인 A 네이버 지역검색, 2026-07-21) ----
+  ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
+  ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
+  ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
 
   // ---- 🌐 해외 수출 바이어 자동 수집 (유통스타트 B2B, 2026-07-20) ----
   //   유어딜과 무관 — 유통스타트(도매/수출) 소관. features/supply 자립 엔진(mount-wholesale 마운트 =

@@ -11,8 +11,12 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §3 레인 A.
  */
 import type { Env } from '@/worker/types/env'
-import { type FetchBudget, outOfBudget, spendBudget, pickBusinessEmail } from './influencer-discovery'
+import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+
+// 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
+const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
