@@ -14,6 +14,7 @@ import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runRecl
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
+import { startLlmRecategorize, getLlmRecatState } from './influencer-llm-classify'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -293,6 +294,23 @@ app.post('/influencer-pool/recategorize', async (c) => {
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runCategoryRescan(c.env).catch(() => null)); return c.json({ success: true, started: true }) }
   const r = await runCategoryRescan(c.env) // 폴백(waitUntil 미지원): 동기
   return c.json({ success: true, started: false, ...r })
+})
+
+// POST /api/admin/ads/influencer-pool/recategorize-ai — 🤖 LLM(Claude) 전 풀 카테고리 분류(하이브리드)
+//   정규식 한계(문맥 미이해·브랜드채널 오분류) 보완. 클릭 1회 → active=1 → cron 이 완주까지 이어받음(전 플랫폼).
+//   비창작자(브랜드 공식/뉴스/기관)는 '해당없음' → NULL. waitUntil 백그라운드(첫 배치 즉시).
+app.post('/influencer-pool/recategorize-ai', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'ANTHROPIC_API_KEY 가 설정되어 있지 않습니다(블로그 AI 와 동일 키)' }, 400)
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(startLlmRecategorize(c.env, 500).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await startLlmRecategorize(c.env, 500)
+  return c.json({ success: true, started: false, ...r })
+})
+
+// GET /api/admin/ads/influencer-pool/recategorize-ai/status — 🤖 LLM 분류 진행 상태(active/누적 스캔·변경)
+app.get('/influencer-pool/recategorize-ai/status', async (c) => {
+  const st = await getLlmRecatState(c.env.DB)
+  return c.json({ success: true, ...st })
 })
 
 // POST /api/admin/ads/influencer-pool/refetch-live — 🔄 유튜브 라이브 재조회(현재 About 다시 불러 이메일/카테고리 교정)
