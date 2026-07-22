@@ -66,12 +66,13 @@ export default function AdminDongnedealImportPage() {
         }
       }
       setFixing((s) => ({ ...s, phase: 'R2 영구 이관' }))
-      // ① 외부 커버 → R2 이관. **라운드별 내구성**: 느린 CDN 배치가 524/타임아웃 나도 전체를 죽이지 않고
-      //   그 라운드만 건너뛰고 계속(연속 에러 6회면 중단 — 다시 눌러 이어서). 배치 작게(3)해 524 확률↓.
+      // ① 외부 커버 → R2 이관. 워커가 커버 fetch 를 **병렬**(요청당 12개)로 처리 → 라운드당 ≈가장 느린
+      //   커버 1개 시간(~10s)이라 빠름. **라운드별 내구성**: 느린 CDN 배치가 524/타임아웃 나도 전체를
+      //   죽이지 않고 그 라운드만 건너뛰고 계속(연속 에러 6회면 중단 — 다시 눌러 이어서).
       let errs1 = 0
       for (let i = 0; i < 800; i++) {
         try {
-          const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 3 }, { ...h, timeout: 90000 })
+          const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 12 }, { ...h, timeout: 90000 })
           if (r.data?.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
           if (!r.data?.success) { if (++errs1 >= 6) { toast.error(r.data?.error || '이관 지연 — 잠시 후 다시 시도하세요'); break } continue }
           errs1 = 0

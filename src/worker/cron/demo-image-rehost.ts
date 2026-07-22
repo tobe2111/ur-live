@@ -60,14 +60,18 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   if (!bucketBound) return { rehosted: 0, images: 0, failed: 0, remaining: await countExternal(), bucketBound }
   const { results } = await DB.prepare(
     `SELECT id, slug, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
-  ).bind(Math.max(1, Math.min(6, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
+  ).bind(Math.max(1, Math.min(16, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null }[] }))
   let rehosted = 0, failed = 0
-  for (const row of (results || [])) {
-    // ⚡ 524 방지: **커버 1장만** 이관(요청당 상품 6개 × 1 fetch). 갤러리 2~N번째는 시간당 cron 이
-    //   점진 이관(handleDemoImageRehost) — 배너/카드가 보는 건 커버라 여기선 커버에 집중해 요청을 짧게.
-    if (!isExternalImageUrl(row.image_url)) { await setSupplyMeta(DB, row.id, { rehost_skip: '1' }); failed++; continue }
-    const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost')
+  // ⚡ 속도: 커버 fetch 를 **병렬**로(요청당 최대 16개 동시) — 순차면 상품수×느린CDN(최대 10s)라 오래
+  //   걸리던 것을 max(개별시간)≈10s 로 단축. 커버 1장만 이관(갤러리는 시간당 cron 점진). fetch 병렬 →
+  //   DB 반영 순차(D1 트랜잭션 안전). 라운드당 소요 ≈ 가장 느린 커버 1개 시간이라 라운드 수↓·체감 속도↑.
+  const fetched = await Promise.all((results || []).map(async (row) => {
+    if (!isExternalImageUrl(row.image_url)) return { row, hosted: null as string | null }
+    const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost').catch(() => null)
+    return { row, hosted }
+  }))
+  for (const { row, hosted } of fetched) {
     if (hosted) {
       await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
         .bind(hosted, row.id).run().catch(() => {})

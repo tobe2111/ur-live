@@ -2131,8 +2131,8 @@ adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
   try {
     const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
     const body = (await c.req.json().catch(() => ({}))) as { count?: number };
-    // ⚡ 524 방지: 커버 1장/상품 × 소량(최대 6). 각 요청이 CF 엣지 한도(~100s) 훨씬 안쪽에서 끝나게.
-    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 5), 5)));
+    // ⚡ 커버 fetch 를 워커에서 **병렬** 처리하므로 한 요청에 최대 16개(≈가장 느린 커버 1개 시간, 엣지 100s 안쪽).
+    const perRun = Math.min(16, Math.max(1, intParam(String(body.count ?? 12), 12)));
     const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
     if (r.rehosted > 0) {
       await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
