@@ -42,6 +42,9 @@ export default function AdminPartnerPoolPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [add, setAdd] = useState({ ...EMPTY_ADD })
   const [saving, setSaving] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importing, setImporting] = useState(false)
   // 필터
   const [fCategory, setFCategory] = useState('')
   const [fTier, setFTier] = useState('')
@@ -102,6 +105,16 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('삭제 실패') }
   }
 
+  async function submitImport() {
+    if (importText.trim().length < 10) { toast.error('헤더(회사명 포함) 있는 표를 붙여넣으세요'); return }
+    setImporting(true)
+    try {
+      const r = await api.post('/api/admin/partner-pool/import', { text: importText })
+      if (r.data?.success) { toast.success(`${r.data.parsed}건 중 ${r.data.saved}건 저장`); setImportText(''); setShowImport(false); await Promise.all([loadLeads(), loadStats()]) }
+      else toast.error(r.data?.error || '임포트 실패')
+    } catch { toast.error('임포트 실패') } finally { setImporting(false) }
+  }
+
   async function runCollect() {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
     setCollecting(true)
@@ -140,6 +153,7 @@ export default function AdminPartnerPoolPage() {
         {/* 액션 바 */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={() => setShowAdd(v => !v)} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium">{showAdd ? '입력 닫기' : '＋ 업체 추가'}</button>
+          <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title={collect?.adsBinding ? '네이버 지역검색으로 방배/서초/강남 업체 1회 수집(레인 A)' : 'ur-ads 서비스바인딩 필요'}>{collecting ? '수집 중…' : '🔍 지금 수집'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
           <div className="grow" />
@@ -153,6 +167,17 @@ export default function AdminPartnerPoolPage() {
             {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
               : collect.run?.last_run ? <span> · 최근 {collect.run.last_run.slice(5, 16)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+          </div>
+        )}
+
+        {/* 명부 붙여넣기(레인 B·C) */}
+        {showImport && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
+            <p className="text-xs text-gray-500 mb-2">헤더(회사명·전화·주소·홈페이지·이메일·업종…) 있는 표를 붙여넣으세요. 공정위 정보공개서·상인회 명부 CSV/TSV 자동 인식. 회사명 컬럼 필수.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} placeholder={'회사명\t전화\t주소\t홈페이지\nOO간판\t02-...\t서초구...\thttp://...'} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-mono" />
+            <div className="flex justify-end mt-2">
+              <button onClick={submitImport} disabled={importing} className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{importing ? '저장 중…' : '임포트'}</button>
+            </div>
           </div>
         )}
 

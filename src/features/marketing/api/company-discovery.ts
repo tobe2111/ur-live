@@ -132,6 +132,46 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[]): Pr
   return saved
 }
 
+/* ── 붙여넣기 임포트(레인 B 공정위 정보공개서 · C 상인회 명부 등) ─────────────────── */
+//   헤더 행이 있는 표(CSV/TSV)를 붙여넣으면 컬럼을 한글/영문 헤더로 매핑 → CompanyLead[]. source='registry'.
+const IMPORT_HEADER_MAP: { keys: string[]; field: keyof CompanyLead }[] = [
+  { keys: ['회사명', '상호', '업체명', '브랜드', '영업표지', 'company', 'name'], field: 'company_name' },
+  { keys: ['전화', '연락처', '대표번호', '전화번호', 'tel', 'phone'], field: 'phone' },
+  { keys: ['이메일', '메일', 'email', 'e-mail'], field: 'email' },
+  { keys: ['홈페이지', '사이트', 'website', 'url', 'homepage'], field: 'website' },
+  { keys: ['주소', '소재지', 'address'], field: 'address' },
+  { keys: ['지역', 'region'], field: 'region' },
+  { keys: ['업종', '카테고리', 'category'], field: 'category' },
+  { keys: ['세부', 'subcategory'], field: 'subcategory' },
+]
+export function parsePartnerPaste(text: string): CompanyLead[] {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  if (lines.length < 2) return []
+  const delim = (lines[0].match(/\t/g) || []).length >= (lines[0].match(/,/g) || []).length ? '\t' : ','
+  const header = lines[0].split(delim).map(h => h.trim().toLowerCase())
+  const col: Partial<Record<keyof CompanyLead, number>> = {}
+  header.forEach((h, i) => {
+    for (const m of IMPORT_HEADER_MAP) if (col[m.field] === undefined && m.keys.some(k => h.includes(k.toLowerCase()))) col[m.field] = i
+  })
+  if (col.company_name === undefined) return []
+  const out: CompanyLead[] = []
+  for (const line of lines.slice(1)) {
+    const cells = line.split(delim)
+    const get = (f: keyof CompanyLead): string => col[f] !== undefined ? String(cells[col[f] as number] || '').trim() : ''
+    const name = get('company_name')
+    if (name.length < 2) continue
+    out.push({
+      company_name: name,
+      phone: get('phone') || null, email: get('email') || null, website: get('website') || null,
+      address: get('address') || null, region: get('region') || null,
+      category: get('category') || null, subcategory: get('subcategory') || null,
+      source: 'registry', source_keyword: 'import',
+    })
+    if (out.length >= 2000) break
+  }
+  return out
+}
+
 /* ── 목록/필터 ─────────────────────────────────────────────────────────────── */
 export async function listCompanyLeads(DB: D1Database, filter: {
   category?: string; subcategory?: string; region?: string; tier?: number

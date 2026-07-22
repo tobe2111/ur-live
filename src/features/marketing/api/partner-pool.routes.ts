@@ -11,7 +11,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
   ensureCompanySchema, listCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, companyStats,
-  COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
+  parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
   type CompanyLead,
 } from './company-discovery'
 import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
@@ -96,6 +96,16 @@ app.post('/', async (c) => {
   }
   const saved = await saveCompanyLeads(c.env.DB, [lead]).catch(() => 0)
   return c.json({ success: saved > 0, saved })
+})
+
+// POST /api/admin/partner-pool/import { text } — 레인 B(공정위 정보공개서)·C(상인회 명부) 붙여넣기 일괄 추가.
+//   헤더(회사명 포함) 있는 CSV/TSV 자동 파싱 → 멱등 저장(company_key). 즉시 동작(API 키 대기 없음).
+app.post('/import', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { text?: string }
+  const leads = parsePartnerPaste(String(b.text || ''))
+  if (!leads.length) return c.json({ success: false, error: '헤더(회사명 포함)가 있는 표(CSV/TSV)를 붙여넣어 주세요', parsed: 0, saved: 0 }, 400)
+  const saved = await saveCompanyLeads(c.env.DB, leads).catch(() => 0)
+  return c.json({ success: true, parsed: leads.length, saved })
 })
 
 // PATCH /api/admin/partner-pool/:id { status?, memo?, tier?, follow_up_at?, contact_channel? }
