@@ -58,7 +58,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   async function refetchLive() {
-    if (!window.confirm('유튜브 채널의 현재 About을 라이브로 다시 불러 이메일·카테고리·평균조회수를 교정할까요?\n(현재 About에만 개인메일이 있는 채널 + 과거 버그로 "평균 0회"로 굳은 채널을 실제 조회수로 교정. YouTube API 사용. 한 번에 100개 처리 — 많으면 여러 번 눌러주세요)')) return
+    if (!window.confirm('유튜브 채널을 라이브로 전체 재스캔해 카테고리·이메일·평균조회수를 실제 데이터로 재검증할까요?\n(현재 About + YouTube 자체분류로 카테고리 교정 · 개인메일/평균조회수 보강. 키워드 상속으로 잘못 분류된 채널은 재분류로 안 고쳐지고 이 버튼으로만 교정됩니다. YouTube API 사용 · 한 번에 100개 — 많으면 여러 번 눌러주세요)')) return
     setRefetching(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/refetch-live', { passes: 5 })
