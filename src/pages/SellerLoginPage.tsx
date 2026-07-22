@@ -6,7 +6,6 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
@@ -294,8 +293,7 @@ export default function SellerLoginPage() {
                 </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — 비가시 봇 검증 (size="invisible" 은 유효값 아님 — appearance 기본값이 담당) */}
-              <TurnstileWidget onVerify={setTurnstileToken} onExpire={refreshTurnstile} resetSignal={turnstileReset} />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               {/* Login button */}
               <button
