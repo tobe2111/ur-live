@@ -15,6 +15,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [reextracting, setReextracting] = useState(false)
   const [refetching, setRefetching] = useState(false)
   const [recategorizing, setRecategorizing] = useState(false)
+  const [aiClassifying, setAiClassifying] = useState(false)
 
   async function mergeDuplicates() {
     if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(⚠️동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
@@ -90,12 +91,29 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } finally { setRecategorizing(false) }
   }
 
+  async function aiClassify() {
+    if (!window.confirm('AI(Claude)로 전 풀 카테고리를 분류할까요?\n(채널 이름+소개글을 AI가 문맥까지 이해해 정확 분류 — 정규식이 못 잡는 케이스 교정. 브랜드 공식채널·뉴스·기관은 "해당없음"→미분류로 걸러냅니다. 버튼 한 번=시작, cron이 완주까지 자동 진행(전 플랫폼). 완료까지 몇 시간, ANTHROPIC 키 필요.)')) return
+    setAiClassifying(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/recategorize-ai', {})
+      if (r.data?.success) {
+        if (r.data.started) toast.success('🤖 AI 카테고리 분류를 시작했어요 — cron이 전 풀을 완주까지 자동 분류합니다. 잠시 후 새로고침하면 반영됩니다')
+        else toast.success(`🤖 ${formatNumber(r.data.processed)}개 분류 · ${formatNumber(r.data.changed)}개 교정${r.data.done ? ' (완료)' : ''}`)
+        await onChanged()
+      } else toast.error(r.data?.error || 'AI 분류 실패')
+    } catch (e) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || 'AI 분류 실패')
+    } finally { setAiClassifying(false) }
+  }
+
   const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
   return (
     <>
       <button onClick={mergeDuplicates} disabled={merging || !canMerge} className={cls} title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
       <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
-      <button onClick={recategorize} disabled={recategorizing} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="유튜브 전 풀의 카테고리를 라이브(channels.list 배치)로 한 번에 재보정 — 수천 개도 버튼 한 번, 반복 클릭 불필요">{recategorizing ? '재보정 중…' : '🧭 카테고리 전체 재보정'}</button>
+      <button onClick={aiClassify} disabled={aiClassifying} className="px-4 py-2 rounded-lg border border-purple-300 bg-purple-50 text-purple-700 text-sm font-medium disabled:opacity-50" title="AI(Claude)가 이름+소개글을 문맥까지 이해해 전 풀 카테고리 분류 — 정규식이 못 잡는 브랜드채널/모호 케이스 교정. 버튼 한 번=시작, cron이 완주까지 자동">{aiClassifying ? 'AI 분류 시작 중…' : '🤖 AI 카테고리 분류'}</button>
+      <button onClick={recategorize} disabled={recategorizing} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="유튜브 전 풀의 카테고리를 라이브(channels.list 배치)로 한 번에 재보정 — 규칙 기반, AI 없이 빠름">{recategorizing ? '재보정 중…' : '🧭 카테고리 전체 재보정(규칙)'}</button>
       <button onClick={reclassify} disabled={reclassifying} className={cls} title="채널 이름·소개글 신호로 카테고리 재분류(저장 소개글 기반 — 라이브 재보정으로 안 되는 네이버/티스토리 보조, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류(저장)'}</button>
       <button onClick={reextract} disabled={reextracting} className={cls} title="기존 리드의 저장된 소개글에서 연락처 재추출(신규 @핸들·유튜브/블로그 포착 — 비어있는 것만 채움, API 재호출 0)">{reextracting ? '재추출 중…' : '🔗 연락처 재추출'}</button>
       <button onClick={refetchLive} disabled={refetching} className="px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-sm font-medium disabled:opacity-50" title="유튜브 채널의 현재 라이브 About을 다시 불러 이메일·카테고리 교정(재추출로 안 되는 케이스 — 현재 About에만 개인메일. YouTube API 사용)">{refetching ? '라이브 재조회 중…' : '🔄 유튜브 라이브 재조회'}</button>

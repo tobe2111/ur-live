@@ -17,6 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 import { resolveCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity } from './influencer-performance'
+import { getLlmRecatState, runLlmRecategorize } from './influencer-llm-classify'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -519,6 +520,8 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   let perfEnriched = 0
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
   try { perfEnriched += await enrichNaverActivity(DB, budget, 12) } catch { /* fail-soft */ }
+  // 🤖 LLM 재분류 스윕 진행 중이면 이어받기(버튼 1회로 active=1, 완료 시 자동 정지) — 전 풀 분류를 cron 이 완주.
+  try { if ((await getLlmRecatState(DB)).active === 1) await runLlmRecategorize(env, 500) } catch { /* fail-soft */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
