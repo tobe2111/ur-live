@@ -122,6 +122,7 @@ export default function AdminBuyerPoolPage() {
   const [intent, setIntent] = useState('')
   const [minScore, setMinScore] = useState(0)
   const [hasContact, setHasContact] = useState(false)
+  const [category, setCategory] = useState('')
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
@@ -168,6 +169,7 @@ export default function AdminBuyerPoolPage() {
       const params = new URLSearchParams()
       if (status) params.set('status', status)
       if (country) params.set('country', country)
+      if (category) params.set('category', category)
       if (intent) params.set('intent', intent)
       if (minScore > 0) params.set('minScore', String(minScore))
       if (hasContact) params.set('hasContact', '1')
@@ -175,7 +177,7 @@ export default function AdminBuyerPoolPage() {
       const r = await api.get(`/api/admin/buyer-pool?${params.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setLoadError(false) }
     } catch { setLoadError(true); toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [status, country, intent, minScore, hasContact, q])
+  }, [status, country, category, intent, minScore, hasContact, q])
 
   const loadTargets = useCallback(async () => {
     try { const r = await api.get('/api/admin/buyer-pool/targets'); if (r.data?.success) setTargets(r.data.targets || []) } catch { /* noop */ }
@@ -425,7 +427,7 @@ export default function AdminBuyerPoolPage() {
                   <div className="rounded-xl border border-gray-200 bg-white p-3">
                     <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
                     <div className="flex flex-wrap gap-1.5">
-                      {byCategory.map(d => <span key={d.k} className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{d.k} {d.n}</span>)}
+                      {byCategory.map(d => <button key={d.k} onClick={() => setCategory(category === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${category === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
                     </div>
                   </div>
                 </div>
