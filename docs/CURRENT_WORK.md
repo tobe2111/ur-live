@@ -1,7 +1,7 @@
 # 🚧 진행 중 작업
 
-## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 1단계(테이블·어드민) 구현 ✅ / 수집엔진 후속
-**1단계 완료(이 커밋)**: `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·아웃리치 상태머신·tier·CSV) — 대표 방배 리드 손입력 가능. `company-discovery.ts`(런타임 스키마·CRUD·접점분류 SSOT) · `partner-pool.routes.ts`(`/api/admin/partner-pool/*`, requireAdmin, 메인 워커 마운트) · `AdminPartnerPoolPage.tsx`(라이트) · 라우트/메뉴 배선. tsc 0·가드 GREEN. **레인 A(네이버 지역검색)·B(공정위 레지스트리)·C 수집엔진은 후속.** 설계 SSOT: `docs/design/partner-company-collection.md`.
+## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — **3레인 전부 구현 완료** ✅
+**완료**: ① 1단계 = `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·상태머신·tier·CSV) ② **레인 A** = 네이버 지역검색(`local.json`) 자동수집(ur-ads 홀수시 크론 게이트드 `ADS_COMPANY_COLLECT_ENABLED`, 방배/서초/강남×12업종 키워드, phone-first) + **이메일 홈페이지 크롤**(robots.txt 존중, `pickBusinessEmail`) + 수동 '지금 수집'(서비스바인딩 위임) ③ **레인 B·C** = 명부 붙여넣기 임포트(`parsePartnerPaste`, 공정위 정보공개서·상인회 CSV/TSV). 파일: `company-discovery.ts`·`company-collect.ts`·`partner-pool.routes.ts`·`AdminPartnerPoolPage.tsx`·`worker-ads/index.ts`. tsc 0·가드 GREEN. **후속(선택)**: 웹문서 `webkr.json` 보충·data.go.kr API 피드. **⚠️ 레인 A 활성**: `NAVER_SEARCH_CLIENT_ID/SECRET` + `ADS_COMPANY_COLLECT_ENABLED=true` → '지금 수집' 표본검증. 설계 SSOT: `docs/design/partner-company-collection.md`.
 
 <details><summary>설계(초기) — 3레인/접점분류/우선순위</summary>
 유어딜 매장 입점을 대신 데려올 **업체 공개 연락처 DB**(1차 마케팅 대행사, 2차 POS·간판·세무사·주류도매·프랜차이즈 본사 등). ur-ads 워커에 인플루언서 수집 옆에 additive — **인플루언서 트랙의 사실상 복제**(같은 워커·FetchBudget·어드민 풀 UI·아웃리치 상태머신). 신규 격리 테이블 `ad_company_leads` + 게이트 `ADS_COMPANY_COLLECT_ENABLED`(기본 OFF). **머지 = 라이브 영향 0**.
