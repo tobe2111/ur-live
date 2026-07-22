@@ -121,6 +121,8 @@ export default function AdminBuyerPoolPage() {
   const [autoRunning, setAutoRunning] = useState(false)
   const [autoSave, setAutoSave] = useState(true)
   const [ingestToken, setIngestToken] = useState('')
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const bmRef = useRef<HTMLAnchorElement>(null)
   const [autoConfig, setAutoConfig] = useState<{ sources: { host: string; url: string; label: string }[]; cookieHosts: string[]; enabled: boolean; cronEnabled: boolean }>({ sources: [], cookieHosts: [], enabled: false, cronEnabled: false })
 
@@ -183,7 +185,38 @@ export default function AdminBuyerPoolPage() {
 
   const remove = async (id: number) => {
     if (!confirm('이 바이어를 삭제할까요?')) return
-    try { await api.delete(`/api/admin/buyer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); loadStats() } catch { toast.error('삭제 실패') }
+    try { await api.delete(`/api/admin/buyer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); setSelected(prev => { const n = new Set(prev); n.delete(id); return n }); loadStats() } catch { toast.error('삭제 실패') }
+  }
+
+  // 체크박스 선택 토글 / 현재 목록 전체선택 토글.
+  const toggleOne = (id: number) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allSelected = leads.length > 0 && leads.every(l => selected.has(l.id))
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leads.map(l => l.id)))
+
+  // 선택 삭제(체크된 리드) — 서버 bulk-delete 후 로컬 반영.
+  const deleteSelected = async () => {
+    const ids = leads.filter(l => selected.has(l.id)).map(l => l.id)
+    if (!ids.length) { toast.error('선택된 리드가 없습니다'); return }
+    if (!confirm(`선택한 ${ids.length}개 리드를 삭제할까요?`)) return
+    setBulkDeleting(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/bulk-delete', { ids })
+      if (r.data?.success) { const del = new Set(ids); setLeads(prev => prev.filter(l => !del.has(l.id))); setSelected(new Set()); loadStats(); toast.success(`${r.data.deleted}개 삭제`) }
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch { toast.error('삭제 실패') } finally { setBulkDeleting(false) }
+  }
+
+  // 전체 삭제(풀 비우기) — 파괴적: 타이핑 확인(DELETE) 후 서버 이중 확인.
+  const deleteAll = async () => {
+    if (!leads.length && stats.total === 0) { toast.error('삭제할 리드가 없습니다'); return }
+    const ans = prompt(`⚠️ 수집된 바이어 리드 전체를 삭제합니다(복구 불가).\n진행하려면 DELETE 를 입력하세요.`)
+    if (ans !== 'DELETE') return
+    setBulkDeleting(true)
+    try {
+      const r = await api.post('/api/admin/buyer-pool/bulk-delete', { all: true, confirm: 'DELETE_ALL' })
+      if (r.data?.success) { setLeads([]); setSelected(new Set()); loadStats(); toast.success(`전체 ${r.data.deleted}개 삭제`) }
+      else toast.error(r.data?.error || '삭제 실패')
+    } catch { toast.error('삭제 실패') } finally { setBulkDeleting(false) }
   }
 
   const addTarget = async () => {
@@ -578,6 +611,26 @@ export default function AdminBuyerPoolPage() {
 
         {/* 리스트 — 매칭 스코어 우선 정렬 */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          {/* 선택/전체 삭제 툴바 */}
+          {!loading && leads.length > 0 && (
+            <div className="px-3 py-2 flex flex-wrap items-center gap-3 border-b border-gray-100 bg-gray-50 text-sm">
+              <label className="flex items-center gap-1.5 cursor-pointer text-gray-700 select-none">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-blue-600" />
+                전체선택
+              </label>
+              {selected.size > 0 && <span className="text-gray-500">{selected.size}개 선택됨</span>}
+              <div className="ml-auto flex items-center gap-2">
+                <button onClick={deleteSelected} disabled={bulkDeleting || selected.size === 0}
+                  className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium disabled:opacity-40">
+                  선택 삭제{selected.size > 0 ? ` (${selected.size})` : ''}
+                </button>
+                <button onClick={deleteAll} disabled={bulkDeleting}
+                  className="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 text-xs font-medium disabled:opacity-40">
+                  전체 삭제
+                </button>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="p-8 text-center text-gray-400 text-sm">불러오는 중…</div>
           ) : leads.length === 0 ? (
@@ -587,7 +640,8 @@ export default function AdminBuyerPoolPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {leads.map(l => (
-                <div key={l.id} className="p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <div key={l.id} className={`p-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${selected.has(l.id) ? 'bg-blue-50' : ''}`}>
+                  <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleOne(l.id)} className="w-4 h-4 shrink-0 accent-blue-600" title="선택" />
                   <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold ${scoreCls(l.match_score)}`} title="매칭 스코어">{l.match_score ?? '–'}</div>
                   <div className="min-w-[180px] flex-1">
                     <div className="font-medium text-gray-900 flex items-center gap-1.5">
