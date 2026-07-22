@@ -90,7 +90,8 @@ async function resizeStoredImageInPlace(
       httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { resized: '1', at: new Date().toISOString() },
     })
-    try { await caches.default.delete(`${origin}/api/media/${key}`) } catch { /* noop */ }
+    // 🛡️ caches.default 는 Cloudflare Workers 전용 — DOM lib CacheStorage 엔 없음(cache-api.ts 선례 캐스트).
+    try { await (caches as unknown as { default: Cache }).default.delete(`${origin}/api/media/${key}`) } catch { /* noop */ }
     return buf.byteLength
   } catch { return originalSize }
 }
@@ -252,7 +253,8 @@ uploadRoutes.get('/media/:key{.+}', cors(), async (c) => {
     // 🗄️ 2026-07-22 (R2 최적화 #2): 엣지 캐시(caches.default) 우선 — 히트면 워커가 R2 를 안 읽고 바로 서빙
     //   (워커 호출·R2 Class B 읽기 절감). 업로드는 랜덤키+immutable 이라 캐시 안전. GET 만.
     const cacheKey = new Request(new URL(c.req.url).toString(), { method: 'GET' })
-    const cache = caches.default
+    // 🛡️ caches.default 캐스트 — DOM lib CacheStorage 엔 .default 없음(cache-api.ts 선례).
+    const cache = (caches as unknown as { default: Cache }).default
     const hit = await cache.match(cacheKey).catch(() => undefined)
     if (hit) return hit
     const obj = await c.env.MEDIA_BUCKET.get(key)
