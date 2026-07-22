@@ -54,6 +54,8 @@ export interface BuyerLead {
   address?: string | null
   /** buyKorea 등 인콰이어리(구매요청) 제목 — 리스트↔상세 매칭 키(상세 붙여넣기가 리스트 행을 보강). 파서 전용. */
   inquiry_title?: string | null
+  /** 소스 상세 참조 키(북마클릿이 보낸 host|id) — 재수집 시 이미 읽은 상세 건너뛰기용. */
+  source_ref?: string | null
 }
 
 /* ── 컨택 추출(자립 — 유어애즈 의존 제거, 인라인) ───────────────────────────── */
@@ -179,17 +181,36 @@ export async function ensureBuyerSchema(DB: D1Database): Promise<void> {
     source_keyword TEXT,
     status TEXT NOT NULL DEFAULT 'lead',
     memo TEXT,
+    source_ref TEXT,
     contacted_at DATETIME,
     follow_up_at DATETIME,
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
-  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키 + 회사 주소.
+  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키 + 회사 주소 + 재수집 건너뛰기용 소스 참조.
   await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN inquiry_title TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN address TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN source_ref TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_score ON overseas_buyer_leads(match_score DESC, id DESC)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_ctry ON overseas_buyer_leads(country, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_inq ON overseas_buyer_leads(inquiry_title)').run().catch(() => null)
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_ref ON overseas_buyer_leads(source_ref)').run().catch(() => null)
+}
+
+/** 재수집 시 이미 저장된 상세(북마클릿이 보낸 source_ref)를 건너뛰기 위한 조회 — 존재하는 ref 집합 반환. */
+export async function listKnownRefs(DB: D1Database, refs: string[]): Promise<string[]> {
+  await ensureBuyerSchema(DB)
+  const clean = Array.from(new Set((refs || []).map(r => String(r || '').slice(0, 200)).filter(Boolean)))
+  if (!clean.length) return []
+  const out: string[] = []
+  for (let i = 0; i < clean.length; i += 200) {
+    const chunk = clean.slice(i, i + 200)
+    const ph = chunk.map(() => '?').join(',')
+    const rs = await DB.prepare(`SELECT DISTINCT source_ref FROM overseas_buyer_leads WHERE source_ref IN (${ph})`)
+      .bind(...chunk).all<{ source_ref: string }>().catch(() => null)
+    if (rs?.results) for (const r of rs.results) if (r.source_ref) out.push(r.source_ref)
+  }
+  return out
 }
 
 export interface BuyerTarget { id: number; category: string; country: string; keyword: string | null; active: number; hits: number; source: string; found_total: number; saved_total: number; last_run_at: string | null; created_at: string }
@@ -276,6 +297,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       decision_maker_email = COALESCE(decision_maker_email, ?), imports_from_korea = COALESCE(imports_from_korea, ?),
       category = COALESCE(category, ?), est_volume = COALESCE(est_volume, ?), target_market = COALESCE(target_market, ?),
       country = COALESCE(country, ?), address = COALESCE(address, ?),
+      source_ref = COALESCE(source_ref, ?),
       description = CASE WHEN LENGTH(COALESCE(description,'')) < ? THEN ? ELSE description END,
       source = ?, intent_signal = ?, match_score = MAX(COALESCE(match_score,0), ?)
     WHERE id = ?`)
@@ -283,7 +305,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       company, company, newKey,
       l.email, l.phone, l.website, l.decision_maker, l.decision_maker_title, l.decision_maker_email,
       l.imports_from_korea, l.category, l.est_volume, l.target_market, l.country,
-      (l.address || '').slice(0, 300) || null,
+      (l.address || '').slice(0, 300) || null, (l.source_ref || '').slice(0, 200) || null,
       desc.length, desc, l.source, intent, score, existing.id,
     ).run().catch(() => null)
   return !!(r && (r.meta?.changes ?? 0) > 0)
@@ -302,9 +324,10 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
     toInsert.push(l)
   }
   const sql = `INSERT INTO overseas_buyer_leads
-    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword, source_ref)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company_key) DO UPDATE SET
+      source_ref = COALESCE(overseas_buyer_leads.source_ref, excluded.source_ref),
       address = COALESCE(overseas_buyer_leads.address, excluded.address),
       email = COALESCE(overseas_buyer_leads.email, excluded.email),
       phone = COALESCE(overseas_buyer_leads.phone, excluded.phone),
@@ -328,6 +351,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
        OR (overseas_buyer_leads.category IS NULL AND excluded.category IS NOT NULL)
        OR (overseas_buyer_leads.country IS NULL AND excluded.country IS NOT NULL)
        OR (overseas_buyer_leads.address IS NULL AND excluded.address IS NOT NULL)
+       OR (overseas_buyer_leads.source_ref IS NULL AND excluded.source_ref IS NOT NULL)
        OR (COALESCE(excluded.match_score,0) > COALESCE(overseas_buyer_leads.match_score,0))`
   const CHUNK = 50
   for (let i = 0; i < toInsert.length; i += CHUNK) {
@@ -339,7 +363,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
         l.country, l.target_market, l.category, l.imports_from_korea, l.website, l.email, l.phone,
         l.decision_maker, l.decision_maker_title, l.decision_maker_email, l.est_volume,
         (l.inquiry_title || '').slice(0, 200) || null, (l.address || '').slice(0, 300) || null, score,
-        (l.description || '').slice(0, 800), l.source_keyword,
+        (l.description || '').slice(0, 800), l.source_keyword, (l.source_ref || '').slice(0, 200) || null,
       )
     })
     const rs = await DB.batch(stmts).catch(() => null)

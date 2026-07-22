@@ -315,12 +315,14 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   //   도메인과 일치할 때만 신뢰(프리메일 크롬 이메일 hongseungkyun@naver.com 오인 방지). 실제 바이어 이메일은
   //   라벨·JSON-LD(Organization) 또는 웹사이트 보강으로만 채운다.
   const hasMask = /\*{3,}|[A-Za-z0-9]\*{2,}|\*{2,}@|@\*{2,}/.test(chunk)
+  let candidateEmail = '' // corroboration 실패분 — 버리지 않고 '확인필요'로 남겨 재현율 보전(대표 판단).
   if (!row.email && !hasMask) {
     const e = pickBusinessEmail(chunk)
     if (e && !PLATFORM_EMAIL.test(e)) {
       const dom = (e.split('@')[1] || '').toLowerCase().replace(/^www\./, '')
       const site = (row.website || jl.website || '').toLowerCase()
-      if (dom && site && site.includes(dom)) row.email = e // 도메인 corroboration 통과분만
+      if (dom && site && site.includes(dom)) row.email = e // 도메인 corroboration 통과분만 확정
+      else candidateEmail = e // 미corroboration → 후보로만(크롬 오인 가능성 있어 확정 X)
     }
   }
   let company = (row.company || jl.company || '').trim()
@@ -330,7 +332,9 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   // 회사명도 이메일도 없으면 리드로 볼 수 없음(웹사이트만 있는 크롬/네비 페이지 = 가비지, 저장 안 함).
   if (company.length < 2 && !email) return null
   const country = normCountry((row.country || '').split(/[/,]/)[0].trim())
-  const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
+  // 확정 이메일이 없고 후보(미corroboration)만 있으면 설명에 '확인필요'로 노출 — 대표가 승격 판단.
+  const candNote = (!email && candidateEmail) ? `후보이메일(확인필요): ${candidateEmail}` : ''
+  const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : '', candNote].filter(Boolean).join(' · ')
   const isEmailName = (row.decision_maker || '').includes('@')
   // 회사명 폴백 — 프리메일 도메인(gmail/naver 등)은 회사명으로 쓰지 않음.
   const FREEMAIL = /^(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|icloud|naver|daum|hanmail|qq|163|126|aol|proton|protonmail|gmx|mail|yandex)\./i

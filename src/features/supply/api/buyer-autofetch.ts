@@ -116,11 +116,17 @@ export async function verifyIngestToken(env: Env, token: string): Promise<boolea
   return !!t && t === token
 }
 /** 북마클릿이 보낸 상세 HTML 배열을 파싱·저장(리스트 행 보강 포함). */
-export async function ingestHtmls(env: Env, htmls: string[]): Promise<{ parsed: number; saved: number }> {
+export async function ingestHtmls(env: Env, htmls: string[], refs?: string[]): Promise<{ parsed: number; saved: number }> {
   const leads: BuyerLead[] = []
-  for (const html of htmls.slice(0, 80)) {
+  const list = htmls.slice(0, 200)
+  for (let i = 0; i < list.length; i++) {
+    const html = list[i]
     if (typeof html !== 'string' || !html) continue
-    leads.push(...parseBuyKoreaInquiries(htmlToText(html)))
+    const ref = Array.isArray(refs) ? String(refs[i] || '').slice(0, 200) || null : null
+    const got = parseBuyKoreaInquiries(htmlToText(html))
+    // 재수집 건너뛰기용 소스 참조를 이 상세에서 나온 리드에 태깅(북마클릿 known 조회와 대칭).
+    if (ref) for (const g of got) g.source_ref = ref
+    leads.push(...got)
   }
   const saved = await saveBuyerLeads(env.DB, leads).catch(() => 0)
   return { parsed: leads.length, saved }
