@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyCategory, resolveCategory } from '@/features/marketing/api/influencer-classify'
+import { classifyCategory, resolveCategory, reconcileCategory } from '@/features/marketing/api/influencer-classify'
 import { avgStats, countRecentPosts, extractPubDates } from '@/features/marketing/api/influencer-performance'
 
 /**
@@ -45,6 +45,29 @@ describe('resolveCategory — 콘텐츠 우선 + 키워드 폴백', () => {
   it("'자동'/'일반'은 실제 카테고리 아님 → null", () => {
     expect(resolveCategory('일상채널', null, '자동')).toBeNull()
     expect(resolveCategory('일상채널', null, '일반')).toBeNull()
+  })
+})
+
+describe('reconcileCategory — 우리 규칙 + YouTube topicDetails 종합', () => {
+  it('미분류는 우리 규칙 우선, 없으면 유튜브로 채움', () => {
+    expect(reconcileCategory(null, '뷰티', null)).toBe('뷰티')
+    expect(reconcileCategory(null, null, '운동')).toBe('운동')
+    expect(reconcileCategory(null, null, null)).toBeNull()
+  })
+  it('유튜브가 거친 카테고리에서 불일치 → 교정(오분류 맛집을 실제 운동으로)', () => {
+    expect(reconcileCategory('맛집', null, '운동')).toBe('운동')   // 라이브 규칙 지지 없음 → 유튜브 교정
+    expect(reconcileCategory('맛집', '맛집', '운동')).toBe('맛집') // 라이브 규칙이 맛집 지지 → 유지
+  })
+  it('우리가 더 세분이면 유튜브 상위로 안 덮음', () => {
+    expect(reconcileCategory('네일', null, '뷰티')).toBe('네일')   // 네일 < 뷰티
+    expect(reconcileCategory('카페', null, '맛집')).toBe('카페')   // 카페 < 맛집
+  })
+  it('유튜브가 못 판단하는 세분 카테고리는 우리값 유지', () => {
+    expect(reconcileCategory('육아', null, '맛집')).toBe('육아')   // 육아는 YT 거친셋 아님 → 유지
+    expect(reconcileCategory('숙소', null, '여행')).toBe('숙소')
+  })
+  it('라이브 규칙이 저장값을 교정(키워드 상속 오류 치유)', () => {
+    expect(reconcileCategory('맛집', '운동', null)).toBe('운동')   // 라이브 About 이 운동 → 교정
   })
 })
 
