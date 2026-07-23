@@ -11,7 +11,10 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
-const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBsInfoService02'
+// ✅ 실 엔드포인트(웹 확인 2026-07-23): 공정위 통신판매사업자 등록현황 = MllBs_2Service / getMllBsInfo_2.
+//   (이전 MllBsInfoService02/getMllBsInfoDetail 은 placeholder 오류 — 0건 원인). ⚠️ 별도 활용신청 필요.
+const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBs_2Service'
+const COMMERCE_OP = 'getMllBsInfo_2'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
@@ -26,19 +29,26 @@ function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) 
 /** 인터넷도메인 필드(있으면 이메일 없을 때 크롤 관문). 이메일 형태는 제외. */
 function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entries(it)) { if (!/dmn|domain|url|site|hmpg|hompage|homepage/i.test(k)) continue; const s = stripTag(v); if (s && !s.includes('@') && DOMAIN_RE.test(s)) return s } return '' }
 
-async function fetchCommercePage(base: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number }> {
+async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/getMllBsInfoDetail?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&resultType=json`
+  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json`
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
-  if (!res || !res.ok) return { items: [], count: 0 }
-  const data = await res.json().catch(() => null) as Record<string, unknown> | null
-  if (!data) return { items: [], count: 0 }
-  const body = ((data.response as Record<string, unknown>)?.body ?? data.body ?? data) as Record<string, unknown>
+  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
+  const raw = await res.text().catch(() => '')
+  let data: Record<string, unknown> | null = null
+  try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
+  if (!data) return { items: [], count: 0, msg: raw.slice(0, 160).replace(/<[^>]+>/g, ' ').trim() || '비JSON 응답' } // XML 오류(등록안됨 등) 그대로 노출
+  const resp = (data.response ?? data) as Record<string, unknown>
+  const header = resp.header as Record<string, unknown> | undefined
+  const rc = header ? String(header.resultCode ?? '') : ''
+  const rm = header ? String(header.resultMsg ?? '') : ''
+  const body = (resp.body ?? data.body ?? data) as Record<string, unknown>
   let items = (body?.items ?? body?.item ?? data.data ?? []) as unknown
   if (items && !Array.isArray(items) && typeof items === 'object') items = (items as Record<string, unknown>).item ?? []
-  const arr = Array.isArray(items) ? items as RawCommerce[] : []
-  return { items: arr, count: arr.length }
+  const arr = Array.isArray(items) ? items as RawCommerce[] : (items && typeof items === 'object' ? [items as RawCommerce] : [])
+  const msg = (rc && rc !== '00' && rc !== '0') || (rm && !/normal|정상|success/i.test(rm)) ? `${rc} ${rm}`.trim() : undefined
+  return { items: arr, count: arr.length, msg }
 }
 
 export interface CommerceStats { last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
@@ -51,6 +61,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
   const base = (env as unknown as { ADS_COMMERCE_ENDPOINT?: string }).ADS_COMMERCE_ENDPOINT || COMMERCE_BASE
+  const op = (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || COMMERCE_OP
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: CommerceStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CommerceStats : null } catch { prev = null }
@@ -60,9 +71,10 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
   const budget = { left: Math.max(3, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 8) }
-  let found = 0, saved = 0, sample: unknown
+  let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
-    const { items, count } = await fetchCommercePage(base, key, page, budget)
+    const { items, count, msg } = await fetchCommercePage(base, op, key, page, budget)
+    if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]
     if (!count) break
     const leads: CompanyLead[] = items.map(it => {
@@ -86,7 +98,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  const s: CommerceStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, sample } }
+  // 0건인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
+  const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  const s: CommerceStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s
 }
