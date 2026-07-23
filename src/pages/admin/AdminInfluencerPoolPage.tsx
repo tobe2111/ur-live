@@ -362,7 +362,8 @@ export default function AdminInfluencerPoolPage() {
           )
         })()}
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* 핵심 액션 — 항상 보임(수집 + 내보내기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
+        <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="누르면 오늘 YouTube 검색 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집">
             {collecting ? '수집 중…' : '지금 수집 (YT 예산 소진)'}
           </button>
@@ -370,15 +371,29 @@ export default function AdminInfluencerPoolPage() {
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
           </button>
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 22열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
-          <MaintenanceButtons onChanged={reloadAll} canMerge={!!leads.length} />
-          <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
-            {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
-          </button>
-          <button onClick={() => setQueueOpen(true)} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
-            🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
-          </button>
-          <ConsentedSendPanel />
         </div>
+
+        {/* 🛠️ 정비 도구 — 자주 안 쓰는 관리 작업. 접이식으로 감춰 기본 화면 단순화. */}
+        <details className="mb-3 rounded-lg border border-gray-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">🛠️ 정비 도구 (중복 통합 · 카테고리 재보정 · 연락처 재추출 · 라이브 재조회 · 구글시트)</summary>
+          <div className="px-4 pb-4 flex flex-wrap gap-2">
+            <MaintenanceButtons onChanged={reloadAll} canMerge={!!leads.length} />
+          </div>
+        </details>
+
+        {/* 📨 발송 — 사람이 직접 검토·발송(정보통신망법: 동의 리드만 자동발송). 접이식. */}
+        <details className="mb-4 rounded-lg border border-gray-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">📨 발송 (초안 생성 · 발송 모드 · 동의 리드 일괄발송)</summary>
+          <div className="px-4 pb-4 flex flex-wrap gap-2">
+            <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
+              {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
+            </button>
+            <button onClick={() => setQueueOpen(true)} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
+              🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
+            </button>
+            <ConsentedSendPanel />
+          </div>
+        </details>
 
         <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
