@@ -218,3 +218,55 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; bu
   }
   return { ran: true, scanned: rows.length, enriched, resolvedSites, fetches, sample }
 }
+
+// ── 진단(왜 이메일이 안 나오나) — 실제 코드경로를 워커에서 그대로 찔러 ground truth 수집 ──────
+//   추측 금지: DDG 가 CF 워커에서 응답하는지 / 대상 리드가 있는지 / 회사명이 도메인으로 풀리는지를 실측.
+export async function diagnoseWebEnrich(env: Env): Promise<Record<string, unknown>> {
+  const DB = env.DB
+  await ensureBuyerSchema(DB)
+  const headers = {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'accept': 'text/html,application/xhtml+xml', 'accept-language': 'en;q=0.9,ko;q=0.8',
+  }
+  // ① 리드 자격 집계 — 대상이 아예 없으면(모두 이메일 보유/회사명 없음) '실패'가 아니라 '대상 0'.
+  const counts = await DB.prepare(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN (email IS NULL OR email='') AND (decision_maker_email IS NULL OR decision_maker_email='') THEN 1 ELSE 0 END) AS no_email,
+      SUM(CASE WHEN company IS NOT NULL AND company!='' THEN 1 ELSE 0 END) AS has_company,
+      SUM(CASE WHEN website IS NOT NULL AND website!='' THEN 1 ELSE 0 END) AS has_website,
+      SUM(CASE WHEN (email IS NULL OR email='') AND (decision_maker_email IS NULL OR decision_maker_email='')
+           AND ((website IS NOT NULL AND website!='') OR (company IS NOT NULL AND company!='')) THEN 1 ELSE 0 END) AS eligible
+    FROM overseas_buyer_leads`).first<Record<string, number>>().catch((e) => ({ error: String(e) } as unknown as Record<string, number>))
+  const sample = (await DB.prepare(
+    `SELECT id, company, country, website FROM overseas_buyer_leads
+     WHERE (email IS NULL OR email='') AND (decision_maker_email IS NULL OR decision_maker_email='')
+       AND ((website IS NOT NULL AND website!='') OR (company IS NOT NULL AND company!=''))
+     ORDER BY id DESC LIMIT 3`).all<{ id: number; company: string | null; country: string | null; website: string | null }>().catch(() => null))?.results || []
+  // ② DDG 프로브 — 워커에서 DuckDuckGo 가 실제로 HTML 을 주는지(=차단 여부의 결정적 신호).
+  const ddgQuery = (sample[0]?.company ? `${sample[0].company} ${sample[0].country || ''}` : 'Estée Lauder USA') + ' official website'
+  const ddgHtml = await fetchText('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(ddgQuery.trim()), headers)
+  const ddgFirst = ddgHtml ? await ddgFirstDomain(ddgQuery.trim(), headers) : ''
+  const ddgBlocked = !ddgHtml || /anomaly|blocked|captcha|unusual traffic|rate limit/i.test(ddgHtml.slice(0, 4000))
+  // ③ 도메인 추정 프로브 — 샘플 회사명 slug 로 www.slug.com 이 열리고 회사명이 그 페이지에 있는지.
+  let guess: Record<string, unknown> = { tried: false }
+  if (sample[0]?.company) {
+    const slug = companySlug(sample[0].company)
+    let hit = ''
+    if (slug.length >= 3) {
+      const url = `https://www.${slug}.com`
+      const html = await fetchText(url, headers)
+      if (html && html.toLowerCase().includes(slug.slice(0, Math.min(slug.length, 8)))) hit = url
+      guess = { tried: true, company: sample[0].company, slug, guessedUrl: url, htmlLen: html.length, matched: !!hit }
+    } else guess = { tried: false, company: sample[0].company, slug, reason: 'slug<3' }
+  }
+  return {
+    counts, sampleEligible: sample,
+    ddg: { query: ddgQuery.trim(), responded: !!ddgHtml, htmlLen: ddgHtml.length, firstDomain: ddgFirst, likelyBlocked: ddgBlocked },
+    domainGuess: guess,
+    verdict: (!counts || (counts as Record<string, number>).eligible === 0)
+      ? '대상 리드 0 — 회사명/웹사이트 없는 리드뿐이거나 이미 이메일 보유'
+      : ddgBlocked && !guess.matched
+        ? 'DDG 차단 + 도메인추정 실패 — 무료 웹검색 경로가 CF 워커에서 막힘(예상 시나리오)'
+        : 'DDG 또는 도메인추정 작동 — 이메일 미확보는 사이트가 이메일을 안 올린 것일 가능성',
+  }
+}

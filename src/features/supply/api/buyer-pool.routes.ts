@@ -15,7 +15,7 @@ import {
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
-import { enrichLeadsFromWebsites } from './buyer-web-enrich'
+import { enrichLeadsFromWebsites, diagnoseWebEnrich } from './buyer-web-enrich'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -142,6 +142,12 @@ app.post('/enrich-websites', async (c) => {
   const max = Number.isFinite(b.max) ? Math.min(40, Math.max(1, Number(b.max))) : undefined
   const result = await enrichLeadsFromWebsites(c.env, { max }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', scanned: 0, enriched: 0, fetches: 0, sample: [] }))
   return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/enrich-diag — 이메일 보강 진단(왜 안 나오나 ground truth). 추측 대신 실측.
+app.get('/enrich-diag', async (c) => {
+  const diag = await diagnoseWebEnrich(c.env).catch((e) => ({ error: '진단 실행 오류', detail: String(e) }))
+  return c.json({ success: true, diag })
 })
 
 // GET /api/admin/buyer-pool/stats
