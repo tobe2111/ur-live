@@ -24,6 +24,7 @@ app.get('/', async (c) => {
     newOpenOnly: c.req.query('newOpen') === '1',
     includeClosed: c.req.query('includeClosed') === '1',
     hasPhone: c.req.query('hasPhone') === '1',
+    hasEmail: c.req.query('hasEmail') === '1',
     q: (c.req.query('q') || '').trim() || undefined,
     limit: Math.min(2000, Math.max(1, intParam(c.req.query('limit'), 500))),
   })
@@ -65,6 +66,16 @@ app.post('/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
   const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-localdata', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// POST /api/admin/store-prospects/enrich-contacts — 이메일 우선 연락처 보강(ur-ads 위임). 게이트 무관(수동).
+app.post('/enrich-contacts', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/enrich-prospects', { method: 'POST' })) } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }

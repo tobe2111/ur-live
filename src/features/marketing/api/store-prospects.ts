@@ -36,6 +36,9 @@ export interface StoreProspect {
   uptae?: string | null              // 업태명(세부)
   addr_road?: string | null; addr_lot?: string | null
   phone?: string | null
+  email?: string | null              // 인허가엔 없음 — 보강(홈페이지 크롤)으로만 채움
+  website?: string | null            // 보강(네이버 지역검색 link)으로 발견한 매장 홈페이지
+  contact_source?: string | null     // 연락처 출처(govreg/kakao/naver/homepage) — 허위 방지 투명성
   local_code?: string | null         // 자치단체코드(지역 필터 키)
   region?: string | null             // 자치단체코드/주소에서 유도
   trd_state?: string | null          // 영업상태구분코드 01~04
@@ -51,7 +54,7 @@ export interface StoreProspectRow extends StoreProspect {
   collected_at: string; last_verified_at: string | null
 }
 
-const SELECT_COLS = 'id, opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, status, active, is_new_open, memo, contact_channel, follow_up_at, collected_at, last_verified_at'
+const SELECT_COLS = 'id, opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, email, website, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, status, active, is_new_open, memo, contact_channel, follow_up_at, collected_at, last_verified_at'
 
 const _schemaDone = new WeakSet<object>()
 export async function ensureProspectSchema(DB: D1Database): Promise<void> {
@@ -68,6 +71,9 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
     addr_road TEXT,
     addr_lot TEXT,
     phone TEXT,
+    email TEXT,
+    website TEXT,
+    contact_source TEXT,
     local_code TEXT,
     region TEXT,
     trd_state TEXT,
@@ -86,6 +92,10 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
     last_verified_at DATETIME,
     UNIQUE(opn_svc_id, opn_sf_team_code, mgt_no)
   )`).run().catch(() => null)
+  // 기존 테이블 보강(연락처 확장 — 인허가엔 없어 크롤로만 채움).
+  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN email TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN website TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN contact_source TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)').run().catch(() => null)
@@ -118,14 +128,16 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
     const stmts = slice.map(r => {
       const active = isOperating(r.trd_state) ? 1 : 0
       const newOpen = active && isNewOpen(r.apv_perm_ymd, todayYmd) ? 1 : 0
+      const phone = clamp(r.phone, 40)
       return DB.prepare(
-        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(opn_svc_id, opn_sf_team_code, mgt_no) DO UPDATE SET
            biz_name = excluded.biz_name,
            addr_road = COALESCE(excluded.addr_road, store_prospects.addr_road),
            addr_lot = COALESCE(excluded.addr_lot, store_prospects.addr_lot),
            phone = COALESCE(excluded.phone, store_prospects.phone),
+           contact_source = COALESCE(store_prospects.contact_source, excluded.contact_source),
            region = COALESCE(excluded.region, store_prospects.region),
            trd_state = excluded.trd_state,
            trd_state_nm = excluded.trd_state_nm,
@@ -135,7 +147,7 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
            last_verified_at = datetime('now')`
       ).bind(
         clamp(r.opn_svc_id, 40), clamp(r.opn_sf_team_code, 40), clamp(r.mgt_no, 60), (r.biz_name || '').slice(0, 120),
-        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), clamp(r.phone, 40),
+        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, phone ? 'govreg' : null,
         clamp(r.local_code, 20), clamp(r.region, 60), clamp(r.trd_state, 4), clamp(r.trd_state_nm, 40),
         clamp(r.apv_perm_ymd, 8), clamp(r.last_mod_ts, 20), num(r.lon), num(r.lat), active, newOpen,
       )
@@ -148,7 +160,7 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
 
 /* ── 목록/통계/큐레이션 ─────────────────────────────────────────────────────── */
 export async function listProspects(DB: D1Database, filter: {
-  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean; hasPhone?: boolean; q?: string; limit?: number
+  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean; hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number
 } = {}): Promise<StoreProspectRow[]> {
   await ensureProspectSchema(DB)
   const where: string[] = ['1=1']; const binds: (string | number)[] = []
@@ -158,6 +170,7 @@ export async function listProspects(DB: D1Database, filter: {
   if (filter.region) { where.push('region LIKE ?'); binds.push(`%${filter.region}%`) }
   if (filter.status && PROSPECT_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
+  if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
   if (filter.q) { where.push('(LOWER(biz_name) LIKE ? OR COALESCE(region,\'\') LIKE ? OR COALESCE(phone,\'\') LIKE ?)'); const l = `%${filter.q.toLowerCase()}%`; binds.push(l, `%${filter.q}%`, `%${filter.q}%`) }
   const limit = Math.min(2000, Math.max(1, filter.limit || 500))
   const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM store_prospects WHERE ${where.join(' AND ')}
@@ -165,7 +178,7 @@ export async function listProspects(DB: D1Database, filter: {
   return r?.results || []
 }
 
-export interface ProspectStats { total: number; operating: number; new_open: number; closed: number; with_phone: number; onboarded: number }
+export interface ProspectStats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
 export async function prospectStats(DB: D1Database): Promise<{ stats: ProspectStats; byCategory: Array<{ k: string; n: number }> }> {
   await ensureProspectSchema(DB)
   const t = await DB.prepare(`SELECT
@@ -174,13 +187,14 @@ export async function prospectStats(DB: D1Database): Promise<{ stats: ProspectSt
       SUM(CASE WHEN is_new_open = 1 THEN 1 ELSE 0 END) AS new_open,
       SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) AS closed,
       SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) AS with_phone,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
       SUM(CASE WHEN status = 'onboarded' THEN 1 ELSE 0 END) AS onboarded
     FROM store_prospects`).first<Record<string, number>>().catch(() => null)
   const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM store_prospects WHERE active = 1 GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
   return {
     stats: {
       total: Number(t?.total) || 0, operating: Number(t?.operating) || 0, new_open: Number(t?.new_open) || 0,
-      closed: Number(t?.closed) || 0, with_phone: Number(t?.with_phone) || 0, onboarded: Number(t?.onboarded) || 0,
+      closed: Number(t?.closed) || 0, with_phone: Number(t?.with_phone) || 0, with_email: Number(t?.with_email) || 0, onboarded: Number(t?.onboarded) || 0,
     }, byCategory,
   }
 }

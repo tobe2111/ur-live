@@ -112,6 +112,15 @@ app.post('/__ads/collect-localdata', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 📧 매장 후보(인허가) 이메일 우선 연락처 보강 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+app.post('/__ads/enrich-prospects', async (c) => {
+  try {
+    const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
+    const stats = await enrichProspectContacts(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
@@ -196,6 +205,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try {
         const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
         await runLocalDataCollect(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
+  // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 홈페이지 크롤/네이버 링크발견.
+  //   게이트 ADS_LOCALDATA_ENABLED(매장 후보 트랙 켜면 보강도 자동). 이메일 백로그를 시간당 자동 소진.
+  if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
+        await enrichProspectContacts(env)
       } catch { /* fail-soft */ }
     })())
   }
