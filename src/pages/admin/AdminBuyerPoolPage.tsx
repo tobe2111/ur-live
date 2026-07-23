@@ -353,7 +353,7 @@ export default function AdminBuyerPoolPage() {
     try {
       const r = await api.post('/api/admin/buyer-pool/enrich-websites', { max: 15 })
       const res = r.data?.result
-      if (res?.ran) toast.success(res.scanned === 0 ? (res.reason || '대상 없음') : `웹사이트 ${res.scanned}곳 방문 · 이메일/전화 ${res.enriched}건 확보`)
+      if (res?.ran) toast.success(res.scanned === 0 ? (res.reason || '대상 없음') : `리드 ${res.scanned}건 처리${res.resolvedSites ? ` · 웹사이트 ${res.resolvedSites}곳 발견` : ''} · 이메일/전화 ${res.enriched}건 확보`)
       else toast.error(res?.reason || '이메일 추출 실패')
       await Promise.all([loadStats(), loadLeads()])
     } catch { toast.error('이메일 추출 실패') } finally { setEnriching(false) }
