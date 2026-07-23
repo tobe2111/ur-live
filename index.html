@@ -533,41 +533,17 @@
             return;
           }
 
-          // 🛡️ 2026-04-30: 풀스크린 block 안 띄움 (사용자 신고). app 정상 렌더 + InAppBrowserBanner 가 dismissible 안내.
-
-          // OS 별 자동 호출 스킴 (1회 시도)
-          var url = window.location.href;
-          // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리 데스크톱 UA(Macintosh+touch)도 iOS 로 판별 — in-app-browser.ts 와 일치.
-          var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
-          var isAndroid = /Android/i.test(ua);
-          // 🛡️ 2026-07-23 (대표 지시 "그냥 나오게"): 카카오톡 인앱만 자동 외부 이동.
-          //   인스타/페북/네이버/라인 인앱은 "외부 앱을 열려고 합니다" 확인 팝업(안드로이드 Chrome intent)
-          //   없이 앱을 그대로 렌더 + 상단 InAppBrowserBanner 로 수동 안내 → 링크가 인앱에서 바로 뜸.
-          //   React 쪽 autoRedirectKakaoToExternal(카톡 전용)과 정책 일치(SSOT). 카톡만 흰화면/무한 reload 가
-          //   심해 자동 이동 유지, 나머지 인앱은 둘러보기 정상이라 팝업 제거가 이탈률에 유리.
-          var scheme = '';
-          if (isKakao && isIOS) {
-            scheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
-          } else if (isKakao && isAndroid) {
-            // S.browser_fallback_url: Chrome 미설치(삼성인터넷 기본 등, 한국 점유율 높음) 단말에서 intent
-            //   미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지. sessionStorage 가드(REDIRECT_KEY)가
-            //   재이동을 막아 그 로드에서 React 정상 마운트.
-            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal) 와 동일 형식 유지(SSOT).
-            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
-          }
-
-          // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.
-          //   카톡 in-app 에서 kakaotalk:// 스킴이 외부 브라우저 호출 후
-          //   webview 가 reload 되면 이 스크립트가 다시 실행됨. 가드 없으면
-          //   "유저 로그인 무한 루프" 증상 발생 (mobile only).
-          //   key 는 main.tsx 의 autoRedirectKakaoToExternal 와 공유.
-          var REDIRECT_KEY = 'ur_kakao_external_redirect_v1';
-          var alreadyTried = false;
-          try { alreadyTried = sessionStorage.getItem(REDIRECT_KEY) === '1'; } catch (e) {}
-          if (scheme && !alreadyTried) {
-            try { sessionStorage.setItem(REDIRECT_KEY, '1'); } catch (e) {}
-            try { window.location.href = scheme; } catch (e) {}
-          }
+          // 🛡️ 2026-07-23 (대표 지시 "카톡도 그냥 열리게"): 인앱 브라우저에서 외부 브라우저로
+          //   자동 이동/팝업("외부 앱을 열려고 합니다")을 더 이상 시도하지 않음. 카카오톡 포함 모든
+          //   인앱(카톡/인스타/페북/네이버/라인)은 앱을 그대로 렌더하고, 외부 브라우저가 필요한
+          //   사용자는 상단 InAppBrowserBanner 의 "외부 브라우저로 열기"(openInExternalBrowser)로 수동 이동.
+          //   React 쪽 autoRedirectKakaoToExternal 도 no-op 으로 정렬(SSOT).
+          //   배경: 무한 reload 는 sessionStorage 가드로, 흰화면의 근본 원인이던 Service Worker 는
+          //     2026-04-27 제거로 해소 + 부팅/청크 자가복구 견고화 → 강제 이동 불필요. 카카오 로그인은
+          //     카톡 인앱(자체 세션) 안에서가 오히려 제일 잘 됨.
+          //   ⚠️ 회귀(카톡 흰화면) 시 롤백: git 이력에서 이 블록의 카톡 scheme 자동 이동 + REDIRECT_KEY
+          //     가드 복원 + in-app-browser.ts autoRedirectKakaoToExternal 본문 복원(SSOT 쌍).
+          //   (inApp 이면 위 8초 슬로우 힌트도 건너뜀 — 그대로 유지.)
         } catch (e) { /* never break the page */ }
       })();
     </script>
