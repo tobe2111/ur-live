@@ -55,10 +55,10 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
     const arr = asArr(it); if (arr.length) return { rows: arr }
   }
   if (body?.item) { const arr = asArr(body.item); if (arr.length) return { rows: arr } }
-  // C) result.body.rows[0].row (localdata 클래식)
-  const rows = (resp.body as Record<string, unknown>)?.rows ?? (data.result as Record<string, unknown>)?.body
-  if (Array.isArray(rows) && rows[0] && typeof rows[0] === 'object' && Array.isArray((rows[0] as Record<string, unknown>).row)) {
-    return { rows: (rows[0] as Record<string, unknown>).row as RawLicense[] }
+  // C) result.body.rows[0].row (localdata 클래식) — result.body.rows 또는 response.body.rows
+  const classicRows = ((data.result as Record<string, unknown>)?.body as Record<string, unknown>)?.rows ?? (body as Record<string, unknown>)?.rows
+  if (Array.isArray(classicRows) && classicRows[0] && typeof classicRows[0] === 'object' && Array.isArray((classicRows[0] as Record<string, unknown>).row)) {
+    return { rows: (classicRows[0] as Record<string, unknown>).row as RawLicense[] }
   }
   // D) localdata REST: {<serviceName>:{head:[…],row:[…]}} — 최상위 아무 객체값의 row 배열
   let msg: string | undefined
