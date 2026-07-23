@@ -167,32 +167,35 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   await ensureCompanySchema(DB)
   const { kakaoLocalLookup, crawlContact } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
-  const budget: FetchBudget = { left: Math.max(10, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
-  const targets = (await DB.prepare("SELECT id, company_name, region, address, website FROM ad_company_leads WHERE active = 0 ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 40")
+  // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
+  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 45) }
+  const targets = (await DB.prepare("SELECT id, company_name, region, address, website FROM ad_company_leads WHERE active = 0 ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 80")
     .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null }>().catch(() => null))?.results || []
   let enriched = 0, processed = 0
+  const upd = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
+    const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = 1 WHERE id = ? AND active = 0")
+      .bind(phone, email, website, source || null, id).run().catch(() => null)
+    if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) enriched++
+  }
+  // ── Pass 1: 카카오 로컬 전화(1건 1요청) — 최대한 많은 리드 처리 ──
+  const noPhone: Array<{ id: number; website: string | null }> = []
   for (const t of targets) {
     if (outOfBudget(budget)) break
     processed++
-    let phone: string | null = null, email: string | null = null, website = t.website, source = ''
-    // ① 카카오 로컬 — 전화(상호+주소 일치 시만)
+    let phone: string | null = null, website = t.website
     if (kakaoKey) {
       const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address || '', budget)
-      if (k.phone) { phone = k.phone; source = 'kakao' }
+      if (k.phone) phone = k.phone
       if (k.website && !website) website = k.website
     }
-    // ② 홈페이지 크롤 — 이메일(+전화 폴백)
-    if (website && !outOfBudget(budget)) {
-      const c = await crawlContact(website, budget)
-      if (c.email) { email = c.email }
-      if (!phone && c.phone) { phone = c.phone; source = 'homepage' }
-      if (c.email && !source) source = 'homepage'
-    }
-    if (phone || email) {
-      const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = 1 WHERE id = ? AND active = 0")
-        .bind(phone, email, website, source || null, t.id).run().catch(() => null)
-      if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) enriched++
-    }
+    if (phone) await upd(t.id, phone, null, website, 'kakao')
+    else if (website) noPhone.push({ id: t.id, website }) // Pass 2 이메일 크롤 후보
+  }
+  // ── Pass 2: 잔여 예산으로 홈페이지 크롤(이메일+전화) — 전화 못 찾은 것만 ──
+  for (const p of noPhone) {
+    if (budget.left <= 2) break
+    const c = await crawlContact(p.website!, budget)
+    if (c.email || c.phone) await upd(p.id, c.phone, c.email, p.website, 'homepage')
   }
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   return { processed, enriched, remaining: Number(rem?.n) || 0 }

@@ -245,6 +245,12 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-23 — 인허가 어댑터 실구조 교정 (업종별 개별 REST 엔드포인트 + localdata 소문자 필드).** 대표가 활성화 화면 2장 공유(일반음식점 `/1741000/general_restaurants`·휴게음식점 `/1741000/rest_cafes`, 참고문서 개방자치단체코드·영업상태코드.xlsx, REST/JSON, 처리상태 승인).
+  - **발견**: 인허가는 **단일 API + opnSvcId 파라미터가 아니라 업종별 엔드포인트가 따로**이고, 응답 필드는 **localdata 표준 소문자**(bplcnm/sitetel/sitewhladdr/rdnwhladdr/trdstategbn/apvpermymd/lastmodts/opnsvcid/mgtno/opnsfteamcode/uptaenm/x/y). opnSvcId 는 쿼리가 아니라 **응답 필드**에서 복합키로 회수. (이전 어댑터는 단일 URL+opnSvcId 쿼리+카멜케이스 가정 — 전부 교정.)
+  - **`store-prospects.ts`**: `LICENSE_UPJONG` 를 **endpoint 슬러그→카테고리 SSOT**로 재정의(general_restaurants=일반음식점·rest_cafes=휴게음식점 2종 승인분; 미용업·숙박업은 활성화 후 추가) + 필터 표시용 `LICENSE_CATEGORIES`(4업종 전체). 라우트 `/meta` categories = LICENSE_CATEGORIES.
+  - **`localdata-collect.ts`**: 베이스 `https://apis.data.go.kr/1741000` + `Object.entries(LICENSE_UPJONG)` 순회로 `/{slug}` 조회(opnSvcId 쿼리 제거). URL `?serviceKey&pageIndex&pageSize=500&type=json&resultType=json&lastModTsBgn&lastModTsEnd`. `extractRows`(봉투 다형태: `{<svc>:{row}}`·response.body.items.item·result.body.rows[0].row·data[]) + `g()`(소문자 우선·카멜 폴백) 방어 파싱. head[].RESULT.MESSAGE 회수 → 0건 시 diag.error 노출(키오류/등록대기 감지). 복합키 opn_svc_id 는 응답 opnsvcid(없으면 슬러그 폴백).
+  - **무배포 확장**: `ADS_LOCALDATA_ENDPOINTS` env(JSON `{"beauty_shops":"미용업",…}`)로 미용업·숙박업 슬러그를 활성화 후 코드배포 없이 병합. `ADS_LOCALDATA_ENDPOINT` 는 이제 공통 베이스 override.
+  - tsc 0·sql(bind/table)/file-size 가드 GREEN. ⚠️ 실검증은 ur-ads 라이브(이 환경 프록시 data.go.kr 차단): `ADS_LOCALDATA_ENABLED=true` + '인허가 수집' → diag.sample 로 실필드 최종 확인.
 - **2026-07-22 — 연락처 확보 폭포수(waterfall) + 출처(provenance) 태그.** 대표 "지금 방식+다른 경로 섞어서 가장 이상적으로".
   - **📇 `contact-enrich.ts`**: ① **카카오 로컬 API**(`dapi.kakao.com/v2/local/search/keyword`, `KAKAO_REST_API_KEY` 보유) — 네이버가 못 주는 **전화를 준다**. 상호 완전일치 + 주소 동일매장(토큰 2개+ 공유)일 때만 채택. ② **홈페이지 크롤 확장** — 이메일 + **전화(tel:/패턴)** 를 root+/contact+/about 에서(robots 준수, 추측 0).
   - **폭포수**: `enrichHeldLeads` 재작성 — 보류 리드에 [카카오 전화 → 홈페이지 이메일/전화] 순차, 홈페이지 없어도 카카오로 전화 확보 가능(상가정보 보류에 특히 유효). 못 찾으면 비워둠.

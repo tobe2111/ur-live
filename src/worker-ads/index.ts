@@ -170,6 +170,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch { /* fail-soft */ }
     })())
   }
+  // 📇 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 보류(연락처 없는) 리드에 카카오 전화+홈페이지 크롤.
+  //   게이트 ADS_COMPANY_COLLECT_ENABLED(수집 켜면 보강도 자동). 백로그를 시간당 ~45건씩 자동 소진 → 수동 클릭 불필요.
+  if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+        await enrichHeldLeads(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {

@@ -9,7 +9,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
   listProspects, prospectStats, updateProspect,
-  LICENSE_UPJONG, PROSPECT_STATUSES, PROSPECT_CONTACT_CHANNELS,
+  LICENSE_CATEGORIES, PROSPECT_STATUSES, PROSPECT_CONTACT_CHANNELS,
 } from './store-prospects'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -33,7 +33,7 @@ app.get('/', async (c) => {
 // GET /api/admin/store-prospects/meta
 app.get('/meta', (c) => c.json({
   success: true,
-  categories: Object.values(LICENSE_UPJONG),
+  categories: LICENSE_CATEGORIES,
   statuses: PROSPECT_STATUSES,
   channels: PROSPECT_CONTACT_CHANNELS,
 }))
