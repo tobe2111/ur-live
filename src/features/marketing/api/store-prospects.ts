@@ -11,13 +11,20 @@
  */
 import type { Env } from '@/worker/types/env'
 
-/** 인허가 업종(신청 4종) — opnSvcId ↔ 카테고리. ⚠️ opnSvcId 값은 인허가 활용가이드로 확정(placeholder 표기). */
+/**
+ * 인허가 업종 ↔ REST 엔드포인트 슬러그(SSOT). 지방행정 인허가는 **업종별 개별 엔드포인트**다(단일 아님):
+ *   `https://apis.data.go.kr/1741000/<slug>`. 응답 필드는 localdata 표준 소문자(bplcnm/sitetel/…).
+ *   현재 승인 2종만 코드에 고정 — 미용업·숙박업은 활성화 후 슬러그 확정 시 여기 추가(또는 무배포로
+ *   `ADS_LOCALDATA_ENDPOINTS` env JSON 병합). localdata-collect.ts 가 이 맵을 endpoint→category 로 순회.
+ */
 export const LICENSE_UPJONG: Record<string, string> = {
-  '07_24_04_P': '일반음식점',
-  '07_24_05_P': '휴게음식점',
-  '07_25_01_P': '미용업',
-  '07_23_01_P': '숙박업',
+  general_restaurants: '일반음식점',   // 행정안전부_식품_일반음식점 조회서비스 (승인)
+  rest_cafes: '휴게음식점',            // 행정안전부_식품_휴게음식점 조회서비스 (승인)
+  // beauty_shops: '미용업',          // ⏳ 활성화 후 실제 슬러그로 추가
+  // lodging: '숙박업',               // ⏳ 활성화 후 실제 슬러그로 추가
 }
+/** 신청 4업종 전체(필터 드롭다운 표시용 — 아직 미수집 업종도 노출). */
+export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업']
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
