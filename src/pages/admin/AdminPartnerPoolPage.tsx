@@ -19,7 +19,7 @@ interface Lead {
 const SRC_LABEL: Record<string, string> = { govreg: '정부등록', kakao: '카카오', homepage: '홈페이지', naver: '네이버', commerce: '통신판매', franchise: '공정위', registry: '명부' }
 interface Stats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number }
 interface Meta { categories: Record<string, string[]>; statuses: string[]; channels: string[]; tier: { min: number; max: number } }
-interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string } }
+interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface StoreInfo { gate: boolean; run: RunInfo | null }
 
@@ -238,6 +238,7 @@ export default function AdminPartnerPoolPage() {
             {storeinfo?.run?.diag?.error ? <span className="text-amber-600"> · {storeinfo.run.diag.error}</span>
               : storeinfo?.run?.last_run ? <span> · 최근 {storeinfo.run.last_run.slice(5, 16)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+            {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
           </div>
         )}
 

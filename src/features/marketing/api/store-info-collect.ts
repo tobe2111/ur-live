@@ -14,13 +14,12 @@
  *   활성 전 게이트 OFF. 첫 조회 결과는 stats.diag.sample(원응답 첫 항목)로 확인.
  */
 import type { Env } from '@/worker/types/env'
-import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
+import { type FetchBudget } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { crawlCompanyEmail } from './company-collect'
+import { kakaoLocalLookup, naverLocalLookup, crawlContact } from './contact-enrich'
 
 const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
-const NAVER_OPENAPI = 'https://openapi.naver.com'
 const STOREINFO_BASE = 'https://apis.data.go.kr/B553077/api/open/sdsc2'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
@@ -68,37 +67,7 @@ async function fetchStoreInfoPage(serviceKey: string, t: StoreTarget, page: numb
   return { items: arr, total }
 }
 
-/** 📞 네이버 지역검색으로 전화 역조회(상가정보엔 전화 없음).
- *   ⚠️ 허위 부착 금지: **상호 완전일치 + 주소(도로명/지번) 동일 매장**일 때만 전화 채택. 동명이업체 오매칭 차단.
- *   불확실하면 채택 안 함(연락처는 비워둠 — 지어내지 않음). */
-async function lookupPhoneViaLocal(clientId: string, clientSecret: string, name: string, region: string | null, storeAddr: string, budget?: FetchBudget): Promise<{ phone: string | null; website: string | null }> {
-  if (outOfBudget(budget)) return { phone: null, website: null }
-  spendBudget(budget)
-  const q = `${name} ${region || ''}`.trim()
-  const url = `${NAVER_OPENAPI}/v1/search/local.json?query=${encodeURIComponent(q)}&display=3&sort=random`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
-  if (!res || !res.ok) return { phone: null, website: null }
-  const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; telephone?: string; link?: string; address?: string; roadAddress?: string }> } | null
-  const want = name.replace(/\s+/g, '')
-  // 주소 지문: 도로명/지번에서 숫자(번지)+동/로 토큰 추출 → 두 주소가 같은 실주소인지 판정.
-  const addrTokens = (s: string) => new Set((s || '').replace(/\s+/g, ' ').match(/[가-힣]+[동로길]|\d+(-\d+)?/g) || [])
-  const storeTok = addrTokens(storeAddr)
-  for (const it of (data?.items || [])) {
-    const hit = stripTag(it.title).replace(/\s+/g, '')
-    if (!hit) continue
-    // ① 상호 완전일치(또는 한쪽이 다른쪽을 완전 포함, 최소 2자) — 4자 프리픽스 근접 금지.
-    const nameOk = hit === want || (want.length >= 2 && (hit.includes(want) || want.includes(hit)))
-    if (!nameOk) continue
-    // ② 주소 동일 매장 검증 — 네이버 결과 주소와 상가정보 주소가 번지/동 토큰을 충분히 공유.
-    const naverTok = addrTokens(stripTag(it.roadAddress || it.address))
-    let shared = 0; for (const t of naverTok) if (storeTok.has(t)) shared++
-    if (storeTok.size > 0 && shared < 2) continue // 주소 불일치 → 다른 매장일 수 있음 → 채택 안 함(허위 방지)
-    return { phone: (it.telephone || '').trim() || null, website: (it.link || '').trim() || null }
-  }
-  return { phone: null, website: null }
-}
-
-export interface StoreInfoStats { last_run: string; found: number; saved: number; enriched: number; target: string; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
+export interface StoreInfoStats { last_run: string; found: number; saved: number; enriched: number; target: string; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 const STATS_KEY = 'ads_storeinfo_stats'
 const CURSOR_KEY = 'ads_storeinfo_cursor' // 'targetIdx:page'
 
@@ -151,29 +120,39 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const nextPage = page + batch
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, `${ti}:${nextPage}`).run().catch(() => null)
 
-  // 📞📧 연락처 보강 — 상가정보 리드(연락처 없어 보류 active=0)를 네이버 전화 역조회 + 이메일 크롤로 채움.
+  // 📞📧 연락처 보강 — ⚠️ 네이버 지역검색 telephone 은 폐지(항상 빈값) → **카카오 로컬로 전화**(업체 등록 전화를
+  //   준다) + 홈페이지 이메일 크롤(mailto 우선). 네이버는 홈페이지 link 발견용으로만. 상호+주소 완전일치만(허위 방지).
   let enriched = 0
-  if (clientId && clientSecret) {
+  const kakaoKey = env.KAKAO_REST_API_KEY || ''
+  const hasNaver = !!(clientId && clientSecret)
+  if (kakaoKey || hasNaver) {
     const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 ORDER BY id DESC LIMIT 20")
       .all<{ id: number; company_name: string; region: string | null; website: string | null; address: string | null }>().catch(() => null))?.results || []
     for (const h of held) {
       if (outOfBudget(budget)) break
-      let website = h.website
-      // 주소 동일 매장일 때만 전화 채택(허위 부착 방지) — 상가정보 주소를 매칭 기준으로 전달.
-      const { phone, website: w } = await lookupPhoneViaLocal(clientId, clientSecret, h.company_name, h.region, h.address || '', budget)
-      if (w && !website) website = w
-      let email: string | null = null
-      if (!phone && website && !outOfBudget(budget)) email = await crawlCompanyEmail(website, budget)
+      let phone: string | null = null, email: string | null = null, website = h.website, source: string | null = null
+      // ① 카카오 전화(업체 등록) — 상호+주소 완전일치만.
+      if (kakaoKey) { const k = await kakaoLocalLookup(kakaoKey, h.company_name, h.region, h.address || '', budget); if (k.phone) { phone = k.phone; source = 'kakao' } }
+      // ② 홈페이지 없으면 네이버 지역검색으로 link 발견(이메일 크롤의 관문). 전화도 없으면 부가 채택.
+      if (!website && hasNaver && !outOfBudget(budget)) {
+        const nv = await naverLocalLookup(clientId, clientSecret, h.company_name, h.region, h.address || '', budget)
+        if (nv.website) website = nv.website
+        if (!phone && nv.phone) { phone = nv.phone; source = 'naver' }
+      }
+      // ③ 홈페이지 크롤 — 이메일(mailto 우선) + 전화 보충.
+      if (website && !outOfBudget(budget)) { const c = await crawlContact(website, budget); if (c.email) { email = c.email; source = 'homepage' } if (!phone && c.phone) phone = c.phone }
       if (phone || email || (website && website !== h.website)) {
-        // 연락처(전화/이메일) 생기면 active=1 승격. website 만 갱신 시엔 유지.
-        const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), active = CASE WHEN (COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL) THEN 1 ELSE active END WHERE id = ?")
-          .bind(phone, email, website, phone, email, h.id).run().catch(() => null)
+        const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = CASE WHEN (COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL) THEN 1 ELSE active END WHERE id = ?")
+          .bind(phone, email, website, source, phone, email, h.id).run().catch(() => null)
         if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++
       }
     }
   }
+  const enrichNote = !kakaoKey && !hasNaver ? 'KAKAO_REST_API_KEY·NAVER 키 둘 다 미설정 — 연락처 보강 불가'
+    : !kakaoKey ? 'KAKAO_REST_API_KEY 미설정 — 전화 보강 불가(네이버 telephone 은 폐지됨). 카카오 키 설정 권장'
+      : undefined
 
-  const s: StoreInfoStats = { last_run: stamp, found, saved, enriched, target: `${t.subcategory}(${t.code})`, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, sample } }
+  const s: StoreInfoStats = { last_run: stamp, found, saved, enriched, target: `${t.subcategory}(${t.code})`, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, sample, kakao: !!kakaoKey, naver: hasNaver, enrich_note: enrichNote } }
   await persist(s)
   return s
 }
