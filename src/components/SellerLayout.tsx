@@ -398,7 +398,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       )}
 
       {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
-      <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+      <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
         {simpleMode && (
           <SellerSimpleNav isActive={isActive} onNavigate={() => setSidebarOpen(false)} fullMenuOpen={fullMenuOpen} onToggleFullMenu={toggleFullMenu} />
         )}
@@ -513,7 +513,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
 
   return (
-    <div className="seller-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="seller-light-theme flex h-[100dvh] overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -587,7 +587,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
+        <main className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
           {children}
