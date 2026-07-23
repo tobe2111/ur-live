@@ -170,7 +170,7 @@ export default function AdminPartnerPoolPage() {
     try {
       const r = await api.post('/api/admin/partner-pool/enrich', {})
       if (r.data?.success) {
-        toast.success('연락처 보강 시작 — 홈페이지 있는 보류 리드의 이메일을 채웁니다')
+        toast.success('연락처 보강 시작 — 기존 리드까지 이메일 소급 보강(홈페이지 크롤/네이버 발견)')
         for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadLeads()]) }
       } else toast.error(r.data?.error || '보강 위임 실패')
     } catch { toast.error('보강 위임 실패') } finally { setEnriching(false) }
@@ -219,7 +219,7 @@ export default function AdminPartnerPoolPage() {
           <button onClick={runCollectStoreinfo} disabled={collectingSI || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공공 상가정보(data.go.kr)로 tier 2~5 업종 통째 수집 + 네이버 전화 역조회 보강 (소스 ①)">{collectingSI ? '수집 중…' : '🏪 상가정보 수집'}</button>
           <button onClick={() => runCollectSrc('collect-commerce', '통신판매사업자')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공정위 통신판매사업자 — 전화+이메일이 데이터에 붙어 옵니다">{busySrc === 'collect-commerce' ? '수집 중…' : '🛒 통신판매'}</button>
           <button onClick={() => runCollectSrc('collect-franchise', '공정위 가맹정보')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공정위 가맹사업 정보공개서 — 프랜차이즈 본사(대표전화)">{busySrc === 'collect-franchise' ? '수집 중…' : '🏢 프랜차이즈'}</button>
-          <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="연락처 미확보 리드 중 홈페이지 있는 것의 이메일을 크롤로 채웁니다(허위 부착 없음)">{enriching ? '보강 중…' : '📧 연락처 보강'}</button>
+          <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="기존 리드 포함 — 이메일 없는 리드의 홈페이지를 크롤(없으면 네이버로 발견)해 이메일을 소급 보강. 매시간 자동으로도 진행(허위 0)">{enriching ? '보강 중…' : '📧 연락처 보강'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>

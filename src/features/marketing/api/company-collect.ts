@@ -167,8 +167,10 @@ export async function crawlCompanyEmail(website: string, budget?: FetchBudget): 
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, crawlContact } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, crawlContact } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
+  const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
+  const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
   const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 100) }
@@ -200,6 +202,32 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     const c = await crawlContact(p.website!, budget)
     if (c.email || c.phone) await upd(p.id, c.phone, c.email, p.website, 'homepage')
   }
+
+  // ── Pass 3·4: 기존 DB **소급 이메일 backfill** — 이미 전화 확보(active=1)해도 이메일 없는 리드를 채움 ──
+  //   (upd 는 active=0 전용이라 별도 updEmail. 이메일 있는 것만 채우고 없으면 비워둠 — 허위 0.)
+  const updEmail = async (id: number, email: string | null, website: string | null) => {
+    if (!email) return
+    const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, 'homepage') WHERE id = ? AND (email IS NULL OR email = '')")
+      .bind(email, website, id).run().catch(() => null)
+    if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) enriched++
+  }
+  // Pass 3: 홈페이지 보유 + 이메일 없음 → 크롤(저렴·수율↑). active 무관(전화만 있는 것도 대상).
+  if (budget.left > 2) {
+    const withSite = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 120")
+      .all<{ id: number; website: string }>().catch(() => null))?.results || []
+    for (const t of withSite) { if (budget.left <= 2) break; const c = await crawlContact(t.website, budget); if (c.email) await updEmail(t.id, c.email, t.website) }
+  }
+  // Pass 4: 홈페이지 없음 + 이메일 없음 → 네이버로 홈페이지 발견 → 크롤(1건당 비쌈, 잔여 예산만).
+  if (budget.left > 4 && nvId && nvSecret) {
+    const noSite = (await DB.prepare("SELECT id, company_name, region, address FROM ad_company_leads WHERE (email IS NULL OR email = '') AND (website IS NULL OR website = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 40")
+      .all<{ id: number; company_name: string; region: string | null; address: string | null }>().catch(() => null))?.results || []
+    for (const t of noSite) {
+      if (budget.left <= 4) break
+      const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
+      if (nv.website && budget.left > 1) { const c = await crawlContact(nv.website, budget); await updEmail(t.id, c.email, nv.website) }
+    }
+  }
+
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   return { processed, enriched, remaining: Number(rem?.n) || 0 }
 }
