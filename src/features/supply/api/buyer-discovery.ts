@@ -553,14 +553,14 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
       // 회사명 — 일반 피드 company/name, ITA 는 title, data.go.kr 은 corpNm/cmpnyNm/entrpsNm 등.
       const company = g('company', 'name', 'company_name', 'corpNm', 'cmpnyNm', 'entrpsNm', 'entNm', 'coNm', 'bzentyNm', 'buyerNm', 'title')
       if (!company) continue
-      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType', 'ksicNm', 'jobNm', 'induEntNm')
+      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType', 'ksicNm', 'epmtKsicNm', 'entTyNm', 'jobNm', 'induEntNm')
       let email = g('email', 'emlAddr', 'eml', 'contact_email') || null
       if (!email && description) email = pickBusinessEmail(description)
       const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent)
         : (it.tender_start_date || it.tender_end_date || it.contract_start_date) ? 'buying_lead' : 'directory'
       out.push({
         source: 'feed', intent_signal: intent, company: company.slice(0, 200),
-        country: g('country', 'country_code', 'natnNm', 'cntyNm', 'nationNm', 'natnCd') || target.country,
+        country: g('country', 'country_code', 'natnNm', 'cntyNm', 'nationNm', 'entNationNm', 'natnCd') || target.country,
         target_market: g('target_market') || null,
         category: g('category') || target.category,
         imports_from_korea: truthy(it.imports_from_korea ?? it.imports_korea),
