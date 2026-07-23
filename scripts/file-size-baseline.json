@@ -30,6 +30,7 @@
   "src/features/seller/api/seller-registration.routes.ts": 787,
   "src/features/seller/api/seller-settlements.routes.ts": 1076,
   "src/features/seller/api/seller-stays.routes.ts": 803,
+  "src/features/supply/api/buyer-discovery.ts": 623,
   "src/features/supply/api/supplier-dashboard.routes.ts": 1467,
   "src/features/supply/api/wholesale.routes.ts": 2298,
   "src/features/youtube/api/youtube.routes.ts": 602,
