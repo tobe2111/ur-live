@@ -14,6 +14,7 @@ import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runRecl
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
+import { buildInfluencerExportResponse } from './influencer-pool-export'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -486,58 +487,8 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 })
 
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
-//   xls = SpreadsheetML(엑셀이 여는 XML) **카테고리별 시트 분리** + 전체 시트. csv = BOM 단일 파일(엑셀 호환).
-//   화면 500개 제한과 무관하게 전체(안전 상한 20,000) 내보냄. 셀은 String 타입이라 수식 실행 없음(csv 는 가드).
-app.get('/influencer-pool/export', async (c) => {
-  await ensureInfluencerSchema(c.env.DB) // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
-  const rows = (await c.env.DB.prepare(`SELECT platform, name, handle, url, subscriber_count, video_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
-      recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo
-    FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, subscriber_count DESC, id DESC LIMIT 20000`)
-    .bind(POOL).all<{ platform: string; name: string; handle: string | null; url: string; subscriber_count: number; video_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null }>()
-    .catch(() => null))?.results || []
-  const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
-  const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
-  // 📈 2026-07-21: 성과(평균조회/댓글/月포스팅)·컨택 이력·출처/동의·메모 — 구글시트/필터CSV 와 동일 22열 세계.
-  const HEAD = ['플랫폼', '이름', '핸들', 'URL', '구독자', '평균조회수', '평균댓글', '月포스팅', '이메일', '인스타그램', '틱톡', '기타링크', '카테고리', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
-  const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
-  const cells = (r: typeof rows[number]) => [PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url, noSub(r.platform) ? '' : String(r.subscriber_count || 0),
-    r.recent_avg_views != null ? String(r.recent_avg_views) : '', r.recent_avg_comments != null ? String(r.recent_avg_comments) : '', r.recent_posts_30d != null ? String(r.recent_posts_30d) : '',
-    r.email || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '', r.category || '기타', r.source_keyword || '', r.status,
-    CH_KO[r.contact_channel || ''] || '', r.contacted_at || '', r.follow_up_at || '', r.source || '', r.consented_at || '', r.memo || '', (r.collected_at || '').slice(0, 10)]
-
-  if (c.req.query('format') === 'csv') {
-    const csvEscapeCell = (v: string) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
-    const body = [HEAD.join(','), ...rows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
-    return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="influencer-pool.csv"` } })
-  }
-
-  // SpreadsheetML — 카테고리별 시트 + 전체 시트. 시트명은 엑셀 제약(31자·특수문자) 정리.
-  //   ⚠️ 20k 행 × (전체 + 카테고리별 = 행 2배) 를 하나의 문자열로 연결하면 ~40MB → Worker 128MB 메모리 초과(OOM)로
-  //   "내보내기 실패". pull 기반 ReadableStream 으로 시트/256행 단위로 흘려보내 피크 메모리를 한 청크로 억제.
-  const xe = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-  const rowXml = (vals: string[]) => `<Row>${vals.map(v => `<Cell><Data ss:Type="String">${xe(v)}</Data></Cell>`).join('')}</Row>`
-  const sheetName = (name: string) => xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')
-  const byCat = new Map<string, typeof rows>()
-  for (const r of rows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
-  const sheetPlan = [{ name: `전체 (${rows.length})`, rs: rows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
-  const enc = new TextEncoder()
-  function* chunks(): Generator<string> {
-    yield `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`
-    for (const { name, rs } of sheetPlan) {
-      yield `<Worksheet ss:Name="${sheetName(name)}"><Table>${rowXml(HEAD)}`
-      let buf = ''
-      for (let i = 0; i < rs.length; i++) { buf += rowXml(cells(rs[i])); if ((i & 255) === 255) { yield buf; buf = '' } } // 256행마다 flush
-      if (buf) yield buf
-      yield '</Table></Worksheet>'
-    }
-    yield '</Workbook>'
-  }
-  const it = chunks()
-  const stream = new ReadableStream({
-    pull(ctrl) { const { value, done } = it.next(); if (done) { ctrl.close(); return } ctrl.enqueue(enc.encode(value)) },
-  })
-  return new Response(stream, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="influencer-pool.xls"` } })
-})
+//   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
+app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls'))
 
 // POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
 //   🔥 백그라운드 실행(2026-07-20): 수집은 외부 API 수십 건 순회라 수십 초 걸려 동기 대기 시 브라우저 타임아웃
@@ -551,6 +502,44 @@ app.post('/influencer-pool/collect', async (c) => {
   // 폴백(waitUntil 미지원 환경): 동기 실행(구 동작).
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// POST /api/admin/ads/influencer-pool/collect-burst — 🔥 오늘 YT 검색 예산 즉시 소진(버스트)
+//   대표 "YT 검색 예산 최대한 바로 다 쓰는 방향". 배경: YT 무료 상한 = 하루 10k units = 검색 100회.
+//   워커 한 실행은 30s·서브리퀘스트 한도라 100회를 한 번에 못 쏨(2026-07-20 'Too many subrequests' 사고).
+//   병렬 실행은 공유 카운터(ads_yt_search_used)/커서를 경합해 중복 발굴로 쿼터 낭비 → **순차만 안전**.
+//   ⇒ 백그라운드에서 수집 런을 연달아(각각 fresh ur-ads 인보케이션 = fresh 예산) 돌려 예산 소진까지 태움.
+//   시간/횟수/진전 가드로 워커 과부하·무한루프 차단. 한 클릭에 다 못 태우면 카운터가 영속이라 재클릭/시간당 cron 이 이어받음.
+type BurstStats = { youtube_quota_hit?: boolean; yt_budget?: { used?: number; total?: number } }
+app.post('/influencer-pool/collect-burst', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const burn = async () => {
+    const startedAt = Date.now()
+    let prevUsed = -1
+    for (let i = 0; i < 40; i++) {
+      if (Date.now() - startedAt > 220_000) break // ⏱️ 시간 예산(안전) — waitUntil 과부하 방지. 남은 예산은 재클릭/cron 이 이어받음.
+      let body: { chained?: boolean; stats?: BurstStats } | null = null
+      try {
+        // self-chain 엔드포인트 — ads 에 SELF 바인딩이 있으면 chained=true 로 백그라운드 자가전파(메인 루프 종료).
+        const r = await ads.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${i}&pu=${prevUsed}`, { method: 'POST' }))
+        body = (await r.json().catch(() => null)) as { chained?: boolean; stats?: BurstStats } | null
+      } catch { break }
+      if (!body) break
+      if (body.chained) break                                  // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
+      const stats = body.stats
+      if (!stats) break
+      if (stats.youtube_quota_hit) break                       // 구글이 초과 선언 — 오늘 끝
+      const yb = stats.yt_budget
+      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') break
+      if (yb.used >= yb.total) break                           // 오늘 예산(기본 100회) 소진 — 완료
+      if (yb.used <= prevUsed) break                           // 진전 없음(YT 키워드 소진/YT 불가) — 무한루프 방지
+      prevUsed = yb.used
+    }
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
+  await burn().catch(() => null) // 폴백(waitUntil 미지원): 동기 소진
+  return c.json({ success: true, started: false })
 })
 
 // POST /api/admin/ads/influencer-pool/sheets-sync — 📊 구글시트 수동 동기화(ur-ads 위임, 동기 응답).

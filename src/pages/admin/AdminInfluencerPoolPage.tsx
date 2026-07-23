@@ -155,6 +155,24 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
   }
 
+  // 🔥 오늘 YT 검색 예산 즉시 소진 — 백그라운드로 수집 런을 연달아 태워 하루치(기본 100회) 예산을 몇 분 안에 소진.
+  const [bursting, setBursting] = useState(false)
+  async function burstCollect() {
+    if (!window.confirm('오늘 남은 YouTube 검색 예산(하루 100회 = 구글 무료 상한)을 지금 몰아서 소진할까요?\n백그라운드에서 수집을 연달아 실행합니다(수 분 소요). 큰 풀은 한 번 더 눌러 마무리하세요.\n소진 후엔 다음날(태평양 자정) 리셋 전까지 시간당 자동수집이 네이버 위주로 돕니다.')) return
+    setBursting(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
+      if (!r.data?.success) { toast.error(r.data?.error || '버스트 시작 실패'); return }
+      toast.success('🔥 오늘 YT 예산 소진을 백그라운드에서 시작했어요 — 수 분 후 새로고침하면 반영됩니다')
+      // 진행 반영을 위해 몇 차례 통계 폴링(완료 대기 아님 — 백그라운드는 계속 진행).
+      for (let i = 0; i < 6; i++) {
+        await new Promise(res => setTimeout(res, 12000))
+        try { const s = await api.get('/api/admin/ads/influencer-pool/stats'); if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null) } } catch { /* 폴링 지속 */ }
+      }
+      await loadLeads()
+    } catch { toast.error('버스트 시작 실패') } finally { setBursting(false) }
+  }
+
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
     catch { toast.error('변경 실패') }
@@ -378,6 +396,9 @@ export default function AdminInfluencerPoolPage() {
         <div className="flex flex-wrap gap-2 mb-4">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
             {collecting ? '수집 중…' : '지금 수집'}
+          </button>
+          <button onClick={burstCollect} disabled={bursting} className="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium disabled:opacity-50" title="오늘 남은 YouTube 검색 예산(하루 100회)을 백그라운드로 몰아서 소진 — 몇 분 내 최대 수집">
+            {bursting ? 'YT 예산 소진 중…' : '🔥 오늘 YT 예산 소진'}
           </button>
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}

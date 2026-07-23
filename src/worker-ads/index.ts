@@ -41,6 +41,30 @@ app.post('/__ads/collect', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🔁 인플루언서 수집 self-chain — YT 예산 버스트용. 한 인보케이션이 1회 수집 후, 예산이 남고 SELF 바인딩이 있으면
+//   다음 인보케이션(fresh 서브리퀘스트 예산)을 waitUntil 로 던지고 즉시 반환 → 오케스트레이터 시간제한 없이
+//   하루 예산(기본 100회)을 백그라운드에서 끝까지 소진. 가드: depth 40 상한 + 예산소진/쿼터초과/진전없음 시 중단.
+//   SELF 미바인딩이면 chained=false 로 1회만 실행(메인 오케스트레이터가 시간예산 내 폴백). 메인 어드민/자기자신만 호출.
+app.post('/__ads/collect-chain', async (c) => {
+  const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
+  const pv = parseInt(c.req.query('pu') || '-1', 10); const prevUsed = Number.isFinite(pv) ? pv : -1
+  let stats: import('@/features/marketing/api/influencer-auto-collect').AutoCollectStats | null = null
+  try {
+    const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+    stats = await runInfluencerAutoCollect(c.env)
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+  const yb = stats?.yt_budget
+  const used = yb && typeof yb.used === 'number' ? yb.used : -1
+  const total = yb && typeof yb.total === 'number' ? yb.total : 0
+  const done = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed || depth >= 40 // 소진/쿼터/진전없음/깊이 상한
+  let chained = false
+  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${depth + 1}&pu=${used}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  return c.json({ ok: true, stats, chained })
+})
+
 // 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
 app.post('/__ads/collect-company', async (c) => {
   try {

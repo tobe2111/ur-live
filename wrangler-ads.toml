@@ -39,6 +39,12 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
+# 🔁 자기참조 서비스바인딩 — YT 예산 버스트 self-chain(각 수집 인보케이션이 다음을 fresh 예산으로 던지고 즉시 종료).
+#   Custom Domain 아님(2026-04-22 사고 무관) — 워커 내부 바인딩. wrangler deploy 가 toml 로 자동 생성(대시보드 불필요).
+[[services]]
+binding = "SELF"
+service = "ur-ads"
+
 # KV (있으면 메인과 동일 namespace 를 대시보드 Bindings 에 등록):
 #   RATE_LIMIT_KV · SESSION_KV · CACHE_KV
 #
