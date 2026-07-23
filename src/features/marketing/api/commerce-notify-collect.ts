@@ -11,11 +11,33 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
-// ✅ 실 엔드포인트(대표 활용신청 화면 확인 2026-07-23): 공정위 통신판매사업자 등록**상세** 제공 서비스
-//   = MllBsDtl_3Service / getMllBsInfoDetail_3. 시도/시군구/상호/사업자번호 등으로 조회(필터는 선택),
-//   pageNo/numOfRows(최대 10000) 페이지네이션. 상세 = 연락처 포함 가능성 큰 풀필드. ADS_COMMERCE_ENDPOINT/OP 로 override.
-const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBsDtl_3Service'
-const COMMERCE_OP = 'getMllBsInfoDetail_3'
+// ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
+//   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
+//   ② 등록상세 MllBsDtl_3Service/getMllBsInfoDetail_3 = 부가필드(운영상태/법인명 등)
+//   각각 data.go.kr 활용신청 필요 — 미신청 서비스는 diag.error 로 표시되고 스킵(다른 서비스는 정상 수집).
+//   ADS_COMMERCE_ENDPOINT/OP 는 ①(현황)을 override. pageNo/numOfRows(최대 10000) 페이지네이션.
+const COMMERCE_SERVICES = [
+  { name: 'status', label: '등록현황', base: 'https://apis.data.go.kr/1130000/MllBs_2Service', op: 'getMllBsInfo_2' },
+  { name: 'detail', label: '등록상세', base: 'https://apis.data.go.kr/1130000/MllBsDtl_3Service', op: 'getMllBsInfoDetail_3' },
+]
+
+/** 통신판매 원항목 → CompanyLead. 필드명이 서비스/버전마다 달라 g() 다중별칭 + anyEmail/anyDomain 폴백. */
+function mapCommerceLead(it: RawCommerce): CompanyLead {
+  const addr = g(it, 'addr', 'lctnAddr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
+  const email = g(it, 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
+  const domain = anyDomain(it)
+  return {
+    company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '대행사', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 1,
+    region: pickRegion(addr), address: addr || null,
+    phone: g(it, 'telno', 'telNo', 'cttpcNo', 'phone', 'telnoCn') || null,
+    email: email || null,
+    website: (email ? null : domain) ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null,
+    business_no: g(it, 'bizrno', 'brno', 'bzmnRegNo') || null,
+    description: g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') ? `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}` : null,
+    contact_source: 'commerce',
+    source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
+  }
+}
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
@@ -33,7 +55,7 @@ function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entrie
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json`
+  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=500&type=json&_type=json&resultType=json`
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
   if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
   const raw = await res.text().catch(() => '')
@@ -61,47 +83,44 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   await ensureCompanySchema(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const key = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
-  const base = (env as unknown as { ADS_COMMERCE_ENDPOINT?: string }).ADS_COMMERCE_ENDPOINT || COMMERCE_BASE
-  const op = (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || COMMERCE_OP
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: CommerceStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CommerceStats : null } catch { prev = null }
   const persist = async (s: CommerceStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: CommerceStats = { last_run: stamp, found: 0, saved: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
-  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
-  let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
-  const budget = { left: Math.max(3, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 8) }
-  let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
-  for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
-    const { items, count, msg } = await fetchCommercePage(base, op, key, page, budget)
-    if (msg) lastMsg = msg
-    if (!sample && items[0]) sample = items[0]
-    if (!count) break
-    const leads: CompanyLead[] = items.map(it => {
-      const addr = g(it, 'addr', 'lctnAddr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
-      const email = g(it, 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
-      const domain = anyDomain(it)
-      return {
-        company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '대행사', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 1,
-        region: pickRegion(addr), address: addr || null,
-        phone: g(it, 'telno', 'telNo', 'cttpcNo', 'phone', 'telnoCn') || null,
-        email: email || null,
-        website: (email ? null : domain) ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null, // 이메일 없으면 도메인 → 크롤 관문
-        business_no: g(it, 'bizrno', 'brno', 'bzmnRegNo') || null,
-        description: g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') ? `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}` : null,
-        contact_source: 'commerce', // 통신판매 신고 등록본(전화·이메일이 데이터에 직접 붙어옴)
-        source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
-      }
-    }).filter(l => l.company_name.length >= 2)
-    found += leads.length
-    saved += await saveCompanyLeads(DB, leads, { requireContact: true }).catch(() => 0)
-    page++
+  // ①(현황)에 env override 적용. 두 서비스 각각 별도 커서 + 공유 예산.
+  const services = COMMERCE_SERVICES.map((svc, idx) => idx === 0 ? {
+    ...svc,
+    base: (env as unknown as { ADS_COMMERCE_ENDPOINT?: string }).ADS_COMMERCE_ENDPOINT || svc.base,
+    op: (env as unknown as { ADS_COMMERCE_OP?: string }).ADS_COMMERCE_OP || svc.op,
+  } : svc)
+  const totalBudget = Math.max(4, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 12)
+  const budget = { left: totalBudget }
+  const perService = Math.max(2, Math.floor(totalBudget / services.length))
+
+  let found = 0, saved = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
+  const msgs: string[] = []
+  for (const svc of services) {
+    const ck = `${CURSOR_KEY}_${svc.name}`
+    const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(ck).first<{ value: string }>().catch(() => null)
+    let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
+    for (let p = 0; p < perService && budget.left > 0; p++) {
+      const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
+      if (msg) msgs.push(`${svc.label}: ${msg}`)
+      if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
+      if (!count) break
+      const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
+      found += leads.length
+      saved += await saveCompanyLeads(DB, leads, { requireContact: true }).catch(() => 0)
+      page++
+    }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(ck, String(page)).run().catch(() => null)
+    lastPage = page
   }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  // 0건인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
-  const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
+  const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
+  const s: CommerceStats = { last_run: stamp, found, saved, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s
 }

@@ -22,6 +22,7 @@ interface Meta { categories: Record<string, string[]>; statuses: string[]; chann
 interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface StoreInfo { gate: boolean; run: RunInfo | null }
+interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean } }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -40,6 +41,7 @@ export default function AdminPartnerPoolPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<Collect | null>(null)
   const [storeinfo, setStoreinfo] = useState<StoreInfo | null>(null)
+  const [commerce, setCommerce] = useState<Commerce | null>(null)
   const [collecting, setCollecting] = useState(false)
   const [collectingSI, setCollectingSI] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -62,7 +64,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -239,6 +241,21 @@ export default function AdminPartnerPoolPage() {
               : storeinfo?.run?.last_run ? <span> · 최근 {kstShort(storeinfo.run.last_run)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
             {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
+          </div>
+        )}
+
+        {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
+        {commerce?.run && (
+          <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+            <span className="font-semibold text-gray-700">🛒 통신판매</span>
+            {commerce.run.diag?.error ? <span className="text-amber-600"> · {commerce.run.diag.error}</span>
+              : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {commerce.run.found ?? 0} / 저장 {commerce.run.saved ?? 0}</span>}
+            {commerce.probe && (
+              <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? '있음 ✅' : '없음 ❌'}</span></span>
+            )}
+            {commerce.probe?.keys?.length ? (
+              <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>
+            ) : null}
           </div>
         )}
 
