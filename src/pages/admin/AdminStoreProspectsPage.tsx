@@ -8,11 +8,13 @@ import { formatNumber } from '@/utils/format'
 interface Prospect {
   id: number; biz_name: string; category: string | null; uptae: string | null
   addr_road: string | null; addr_lot: string | null; phone: string | null; region: string | null
+  email: string | null; website: string | null; contact_source: string | null
   trd_state: string | null; trd_state_nm: string | null; apv_perm_ymd: string | null
   status: string; active: number; is_new_open: number; memo: string | null
   contact_channel: string | null; follow_up_at: string | null
 }
-interface Stats { total: number; operating: number; new_open: number; closed: number; with_phone: number; onboarded: number }
+interface Stats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
+const SRC_LABEL: Record<string, string> = { govreg: '인허가', kakao: '카카오', naver: '네이버', homepage: '홈페이지' }
 interface RunInfo { last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; diag?: { error?: string } }
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 
@@ -31,6 +33,7 @@ export default function AdminStoreProspectsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<Collect | null>(null)
   const [collecting, setCollecting] = useState(false)
+  const [enriching, setEnriching] = useState(false)
   const [loading, setLoading] = useState(true)
   const [fCategory, setFCategory] = useState('')
   const [fRegion, setFRegion] = useState('')
@@ -49,6 +52,7 @@ export default function AdminStoreProspectsPage() {
       if (fView === 'newOpen') p.set('newOpen', '1')
       if (fView === 'closed') p.set('includeClosed', '1')
       if (fView === 'phone') p.set('hasPhone', '1')
+      if (fView === 'email') p.set('hasEmail', '1')
       if (q.trim()) p.set('q', q.trim())
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
       if (r.data?.success) setRows(r.data.prospects || [])
@@ -68,6 +72,18 @@ export default function AdminStoreProspectsPage() {
         for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadRows()]) }
       } else toast.error(r.data?.error || '수집 위임 실패')
     } catch { toast.error('수집 위임 실패') } finally { setCollecting(false) }
+  }
+
+  async function runEnrich() {
+    if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
+    setEnriching(true)
+    try {
+      const r = await api.post('/api/admin/store-prospects/enrich-contacts', {})
+      if (r.data?.success) {
+        toast.success('이메일 보강 시작 — 홈페이지 크롤/네이버 링크발견 (게시된 것만)')
+        for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 6000)); await Promise.all([loadStats(), loadRows()]) }
+      } else toast.error(r.data?.error || '보강 위임 실패')
+    } catch { toast.error('보강 위임 실패') } finally { setEnriching(false) }
   }
 
   async function patchStatus(id: number, status: string) {
@@ -91,17 +107,19 @@ export default function AdminStoreProspectsPage() {
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🏪 매장 후보" subtitle="지방행정 인허가로 발굴한 유어딜 입점 대상 매장 — 발굴·개업감지·폐업정리 (수집 ≠ 발송)" />
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}
           {statCard('영업중', stats?.operating || 0)}
           {statCard('🆕 신규 개업', stats?.new_open || 0, '최근 인허가 · 전환율 최고', 'text-rose-600')}
           {statCard('전화 보유', stats?.with_phone || 0)}
+          {statCard('📧 이메일 보유', stats?.with_email || 0, '홈페이지 게시분', 'text-indigo-600')}
           {statCard('입점 완료', stats?.onboarded || 0, undefined, 'text-green-600')}
           {statCard('폐업', stats?.closed || 0, '자동 정리됨', 'text-gray-400')}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="지방행정 인허가 전일 변동분 1회 수집(일반음식점·휴게음식점·미용업·숙박업)">{collecting ? '수집 중…' : '🏪 인허가 수집'}</button>
+          <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="지방행정 인허가 전일 변동분 1회 수집(일반음식점·휴게음식점·미용업·숙박업·동물미용업)">{collecting ? '수집 중…' : '🏪 인허가 수집'}</button>
+          <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 우선 연락처 보강 — 홈페이지 크롤 + 네이버 링크발견(게시된 것만, 추측 0)">{enriching ? '보강 중…' : '📧 이메일 보강'}</button>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>
@@ -122,12 +140,14 @@ export default function AdminStoreProspectsPage() {
             <option value="휴게음식점">휴게음식점</option>
             <option value="미용업">미용업</option>
             <option value="숙박업">숙박업</option>
+            <option value="동물미용업">동물미용업</option>
           </select>
           <input value={fRegion} onChange={e => setFRegion(e.target.value)} placeholder="지역(예: 서초)" className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 w-32" />
           <select value={fView} onChange={e => setFView(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">영업중</option>
             <option value="newOpen">🆕 신규 개업만</option>
             <option value="phone">전화 보유만</option>
+            <option value="email">📧 이메일 보유만</option>
             <option value="closed">폐업 포함</option>
           </select>
         </div>
@@ -141,15 +161,16 @@ export default function AdminStoreProspectsPage() {
                   <th className="text-left px-3 py-2 font-medium">업종</th>
                   <th className="text-left px-3 py-2 font-medium">지역</th>
                   <th className="text-left px-3 py-2 font-medium">전화</th>
+                  <th className="text-left px-3 py-2 font-medium">📧 이메일</th>
                   <th className="text-left px-3 py-2 font-medium">인허가일</th>
                   <th className="text-left px-3 py-2 font-medium">상태</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">불러오는 중…</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">불러오는 중…</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">후보가 없습니다. '인허가 수집'을 눌러 발굴하세요.</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">후보가 없습니다. '인허가 수집'을 눌러 발굴하세요.</td></tr>
                 ) : rows.map(r => (
                   <tr key={r.id} className={r.active ? '' : 'opacity-50'}>
                     <td className="px-3 py-2 text-gray-900">
@@ -160,6 +181,14 @@ export default function AdminStoreProspectsPage() {
                     <td className="px-3 py-2 text-gray-600">{r.category || '—'}{r.uptae && <span className="text-gray-400"> · {r.uptae}</span>}</td>
                     <td className="px-3 py-2 text-gray-600">{r.region || '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.phone || <span className="text-gray-300">없음</span>}</td>
+                    <td className="px-3 py-2 text-gray-600">
+                      {r.email ? (
+                        <span className="inline-flex items-center gap-1">
+                          <a href={`mailto:${r.email}`} className="text-indigo-600 hover:underline break-all">{r.email}</a>
+                          {r.contact_source && <span className="text-[10px] px-1 py-0.5 rounded bg-gray-100 text-gray-500">{SRC_LABEL[r.contact_source] || r.contact_source}</span>}
+                        </span>
+                      ) : <span className="text-gray-300">없음</span>}
+                    </td>
                     <td className="px-3 py-2 text-gray-500 text-xs">{r.apv_perm_ymd ? `${r.apv_perm_ymd.slice(0, 4)}.${r.apv_perm_ymd.slice(4, 6)}.${r.apv_perm_ymd.slice(6, 8)}` : '—'}</td>
                     <td className="px-3 py-2">
                       <select value={r.status} onChange={e => patchStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>

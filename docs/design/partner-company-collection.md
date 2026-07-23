@@ -245,6 +245,11 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-23 — 이메일 확보 최우선 강화 (대표 "이메일이 가장 중요, 가장 이상적으로").**
+  - **크롤러 `mailto:` 우선화**: `contact-enrich.ts` 신규 `extractEmailFromHtml` — HTML 의 `mailto:` href(업체가 명시적으로 건 연락 링크 = 최고 신뢰) 먼저, 없으면 본문 `pickBusinessEmail`(난독복원+문맥점수). 플랫폼 기본값/플레이스홀더(wixpress/example/your-domain…) 제외. `crawlContact`(홈+/contact/about/company/contact-us/company/contact 6경로)·`crawlCompanyEmail` 둘 다 이 추출기 경유 → 이메일 수율↑. 추측·조합 0.
+  - **매장 후보(store_prospects) 이메일 경로 신설(기존 0)**: 인허가엔 이메일이 없음 → `email`/`website`/`contact_source` 컬럼 추가(ALTER 보강) + 신규 `prospect-enrich.ts` `enrichProspectContacts`: ① website 있으면 홈페이지 크롤 ② 없으면 **네이버 지역검색으로 홈페이지 link 발견**(`naverLocalLookup` — 카카오 place_url 은 지도라 크롤 불가, 네이버 `link` 가 실홈페이지) → 크롤 ③ 전화 없으면 카카오로 부가 보강. 상호+주소 완전일치만 채택(허위 방지). 인허가 전화는 `contact_source='govreg'` 태그, 재수집이 이메일/홈페이지 덮어쓰지 않음(COALESCE 대칭).
+  - **배선**: `/api/admin/store-prospects/enrich-contacts` → ur-ads `/__ads/enrich-prospects`(`enrichProspectContacts`) + **매시간 자동 드레인**(게이트 `ADS_LOCALDATA_ENABLED`) → 이메일 백로그 자동 소진. 어드민 '📧 이메일 보강' 버튼 · '이메일 보유' 통계 · '이메일 보유만' 필터 · 목록 이메일 컬럼(출처 태그 + mailto 링크).
+  - **정직한 한계 명시**: 식당·미용실·숙박 대다수는 홈페이지/게시 이메일이 없어 이메일 수율은 구조적으로 낮음(버그 아님). 이메일이 많은 곳 = 온라인 겸업(**통신판매사업자** — 등록 이메일 직접 제공)·프랜차이즈·홈페이지 보유 매장. tsc 0·sql(bind/column/table/not-null)/theme/file-size/pagination 가드 GREEN.
 - **2026-07-23 — 인허가 전 업종 엔드포인트 고정 (미용업·숙박업·동물미용업 승인 완료).** 대표 활성화 화면 3장 추가 공유. `LICENSE_UPJONG` SSOT 에 `beauty_salons=미용업`·`tourist_accommodations=숙박업`·`pet_grooming=동물미용업` 고정(기존 general_restaurants·rest_cafes 와 합쳐 5업종). `LICENSE_CATEGORIES` 5종. env 임시병합(ADS_LOCALDATA_ENDPOINTS) 불필요해짐(향후 추가 업종용으로만 잔존). tsc 0·sql/file-size 가드 GREEN. ⚠️ 키(일반 인증키)는 Cloudflare 환경변수에만 — 코드 무노출.
 - **2026-07-23 — 인허가 어댑터 실구조 교정 (업종별 개별 REST 엔드포인트 + localdata 소문자 필드).** 대표가 활성화 화면 2장 공유(일반음식점 `/1741000/general_restaurants`·휴게음식점 `/1741000/rest_cafes`, 참고문서 개방자치단체코드·영업상태코드.xlsx, REST/JSON, 처리상태 승인).
   - **발견**: 인허가는 **단일 API + opnSvcId 파라미터가 아니라 업종별 엔드포인트가 따로**이고, 응답 필드는 **localdata 표준 소문자**(bplcnm/sitetel/sitewhladdr/rdnwhladdr/trdstategbn/apvpermymd/lastmodts/opnsvcid/mgtno/opnsfteamcode/uptaenm/x/y). opnSvcId 는 쿼리가 아니라 **응답 필드**에서 복합키로 회수. (이전 어댑터는 단일 URL+opnSvcId 쿼리+카멜케이스 가정 — 전부 교정.)

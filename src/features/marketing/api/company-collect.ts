@@ -11,7 +11,8 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §3 레인 A.
  */
 import type { Env } from '@/worker/types/env'
-import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
+import { type FetchBudget } from './influencer-discovery'
+import { extractEmailFromHtml } from './contact-enrich'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -156,7 +157,8 @@ export async function crawlCompanyEmail(website: string, budget?: FetchBudget): 
   const html = await fetch(url.origin, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
     .then(r => r.ok ? r.text() : '').catch(() => '')
   if (!html) return null
-  return pickBusinessEmail(html.slice(0, 200000))
+  return extractEmailFromHtml(html.slice(0, 200000)) // mailto: 우선 → 본문 문맥선별
+
 }
 
 /** 📇 연락처 보강 폭포수 — 보류(active=0) 리드에 [카카오 로컬 전화 → 홈페이지 이메일/전화] 순차 시도.
