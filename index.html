@@ -540,17 +540,19 @@
           // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리 데스크톱 UA(Macintosh+touch)도 iOS 로 판별 — in-app-browser.ts 와 일치.
           var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
           var isAndroid = /Android/i.test(ua);
+          // 🛡️ 2026-07-23 (대표 지시 "그냥 나오게"): 카카오톡 인앱만 자동 외부 이동.
+          //   인스타/페북/네이버/라인 인앱은 "외부 앱을 열려고 합니다" 확인 팝업(안드로이드 Chrome intent)
+          //   없이 앱을 그대로 렌더 + 상단 InAppBrowserBanner 로 수동 안내 → 링크가 인앱에서 바로 뜸.
+          //   React 쪽 autoRedirectKakaoToExternal(카톡 전용)과 정책 일치(SSOT). 카톡만 흰화면/무한 reload 가
+          //   심해 자동 이동 유지, 나머지 인앱은 둘러보기 정상이라 팝업 제거가 이탈률에 유리.
           var scheme = '';
           if (isKakao && isIOS) {
             scheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
-          } else if (isLine && (isIOS || isAndroid)) {
-            scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
-          } else if (isAndroid) {
-            // 🛡️ 2026-06-20 (C1): S.browser_fallback_url 추가 — Chrome 미설치(삼성인터넷 기본 등,
-            //   한국 점유율 높음) 단말에서 intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지.
-            //   sessionStorage 가드(REDIRECT_KEY)가 재이동을 막아 그 로드에서 React 정상 마운트.
-            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal/openInExternalBrowser) 와
-            //   동일 형식 유지(SSOT) — 한쪽 변경 시 양쪽 같이 갱신. 가드 키도 공유.
+          } else if (isKakao && isAndroid) {
+            // S.browser_fallback_url: Chrome 미설치(삼성인터넷 기본 등, 한국 점유율 높음) 단말에서 intent
+            //   미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지. sessionStorage 가드(REDIRECT_KEY)가
+            //   재이동을 막아 그 로드에서 React 정상 마운트.
+            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal) 와 동일 형식 유지(SSOT).
             scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
           }
 
