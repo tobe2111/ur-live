@@ -20,7 +20,7 @@ export interface ProspectEnrichResult { processed: number; email_found: number; 
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
   const DB = env.DB
   await ensureProspectSchema(DB)
-  const { crawlContact, naverLocalLookup, kakaoLocalLookup } = await import('./contact-enrich')
+  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
@@ -64,14 +64,16 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       if (budget.left <= 4) break
       processed++
       const nv = await naverLocalLookup(nvId, nvSecret, p.biz_name, p.region, addr(p), budget)
+      let site = nv.website
+      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget) // 웹/블로그 검색으로 홈페이지 발견
       let email: string | null = null
-      if (nv.website) { siteFound++; const c = await crawlContact(nv.website, budget); email = c.email }
+      if (site) { siteFound++; const c = await crawlContact(site, budget); email = c.email }
       // 전화가 없으면 네이버 → 카카오 순으로 보강(부가). 이메일이 주목적.
       let phone: string | null = p.phone ? null : nv.phone
       if (!p.phone && !phone && kakaoKey && budget.left > 1) { const k = await kakaoLocalLookup(kakaoKey, p.biz_name, p.region, addr(p), budget); phone = k.phone }
-      if (email || nv.website || phone) {
-        const source = email ? 'homepage' : (nv.website ? null : (phone ? (nv.phone ? 'naver' : 'kakao') : null))
-        const ok = await upd(p.id, { email, website: nv.website, phone, source })
+      if (email || site || phone) {
+        const source = email ? 'homepage' : (site ? null : (phone ? (nv.phone ? 'naver' : 'kakao') : null))
+        const ok = await upd(p.id, { email, website: site, phone, source })
         if (ok) { if (email) emailFound++; if (phone) phoneFound++ }
       }
     }

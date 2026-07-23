@@ -167,7 +167,7 @@ export async function crawlCompanyEmail(website: string, budget?: FetchBudget): 
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, naverLocalLookup, crawlContact } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -210,6 +210,8 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
       if (nv.website) site = nv.website
       if (!t.phone && nv.phone) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
+      // 지역검색에 홈페이지 없으면 웹/블로그 검색으로 발견(홈페이지 크롤 관문 대폭 확장 → 이메일↑)
+      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget)
     }
     if (site && budget.left > 2) {
       const c = await crawlContact(site, budget)

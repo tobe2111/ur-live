@@ -106,6 +106,29 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
   return { phone: null, website: null }
 }
 
+/** ①-c 네이버 웹/블로그 검색으로 **홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
+ *   웹/블로그에서 자기 사이트를 노출. 상호가 결과 제목/설명에 포함될 때만 채택(오매칭 방지). 크롤 관문 확장. */
+export async function naverHomepageSearch(clientId: string, clientSecret: string, name: string, region: string | null, budget?: FetchBudget): Promise<string | null> {
+  if (!clientId || !clientSecret || !name || name.length < 2) return null
+  const want = norm(name)
+  const q = `${name} ${region || ''}`.trim()
+  for (const kind of ['webkr', 'blog']) {
+    if (outOfBudget(budget)) break
+    spendBudget(budget)
+    const url = `https://openapi.naver.com/v1/search/${kind}.json?query=${encodeURIComponent(q)}&display=5`
+    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+    if (!res || !res.ok) continue
+    const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+    for (const it of (data?.items || [])) {
+      const hay = norm(stripTag(it.title) + ' ' + stripTag(it.description))
+      if (!hay.includes(want)) continue // 상호가 제목/설명에 없으면 다른 사이트 → 스킵
+      const link = (it.link || '').trim()
+      if (link && /^https?:\/\//i.test(link)) return link
+    }
+  }
+  return null
+}
+
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음. */
 export async function crawlContact(website: string, budget?: FetchBudget): Promise<{ email: string | null; phone: string | null }> {
   let url: URL
