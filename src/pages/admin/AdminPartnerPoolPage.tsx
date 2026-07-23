@@ -22,7 +22,7 @@ interface Meta { categories: Record<string, string[]>; statuses: string[]; chann
 interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface StoreInfo { gate: boolean; run: RunInfo | null }
-interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean } }
+interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -251,7 +251,7 @@ export default function AdminPartnerPoolPage() {
             {commerce.run.diag?.error ? <span className="text-amber-600"> · {commerce.run.diag.error}</span>
               : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {commerce.run.found ?? 0} / 저장 {commerce.run.saved ?? 0}</span>}
             {commerce.probe && (
-              <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? '있음 ✅' : '없음 ❌'}</span></span>
+              <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? `있음 ✅${commerce.probe.emailField ? ` (${commerce.probe.emailField}, 선택입력이라 일부만 채워짐)` : ''}` : '없음 ❌'}</span></span>
             )}
             {commerce.probe?.keys?.length ? (
               <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>

@@ -60,12 +60,15 @@ app.get('/stats', async (c) => {
   const cmRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
   let commerceRun: Record<string, unknown> | null = null; try { commerceRun = cmRow?.value ? JSON.parse(cmRow.value) : null } catch { commerceRun = null }
   // 원본 첫 항목에서 필드명 목록 + 이메일 형태 값 존재여부를 뽑아 UI 에 노출(추측 대신 실제 확인).
-  let commerceProbe: { keys?: string[]; hasEmail?: boolean } | undefined
+  let commerceProbe: { keys?: string[]; hasEmail?: boolean; emailField?: string } | undefined
   const sample = (commerceRun?.diag as Record<string, unknown> | undefined)?.sample as Record<string, unknown> | undefined
   if (sample && typeof sample === 'object') {
     const keys = Object.keys(sample).slice(0, 40)
-    const hasEmail = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
-    commerceProbe = { keys, hasEmail }
+    // 이메일 필드 존재 = ① 키 이름이 이메일계열(eml/mail/emladr) 또는 ② 어떤 값이 이메일 형태.
+    //   (대표자 이메일 rprsvEmladr 은 선택입력이라 첫 레코드 값이 비어도 필드는 존재 — 키로 판정.)
+    const emailField = keys.find(k => /eml|email|mail/i.test(k))
+    const hasEmailVal = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
+    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }
   }
   return c.json({
     success: true, ...s,
