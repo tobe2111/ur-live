@@ -133,7 +133,7 @@ export default function AdminInfluencerPoolPage() {
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
       if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); return }
-      toast.success('수집을 시작했어요 — 오늘 YouTube 예산을 소진할 때까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
+      toast.success('통합 수집을 시작했어요 — 유튜브·네이버·티스토리 전 매체, YouTube 예산 소진까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
       for (let i = 0; i < 8; i++) {
         await new Promise(res => setTimeout(res, 12000))
         try { const s = await api.get('/api/admin/ads/influencer-pool/stats'); if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate) } } catch { /* 폴링 지속 */ }
@@ -364,8 +364,8 @@ export default function AdminInfluencerPoolPage() {
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
-          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="누르면 오늘 YouTube 검색 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집">
-            {collecting ? '수집 중…' : '지금 수집 (YT 예산 소진)'}
+          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페·티스토리 전 매체를 한 번에 수집 — YouTube 검색 예산(하루 100회) 소진할 때까지 백그라운드로 연속 실행">
+            {collecting ? '수집 중…' : '🔄 통합 수집'}
           </button>
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
