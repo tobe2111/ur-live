@@ -11,10 +11,11 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
-// ✅ 실 엔드포인트(웹 확인 2026-07-23): 공정위 통신판매사업자 등록현황 = MllBs_2Service / getMllBsInfo_2.
-//   (이전 MllBsInfoService02/getMllBsInfoDetail 은 placeholder 오류 — 0건 원인). ⚠️ 별도 활용신청 필요.
-const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBs_2Service'
-const COMMERCE_OP = 'getMllBsInfo_2'
+// ✅ 실 엔드포인트(대표 활용신청 화면 확인 2026-07-23): 공정위 통신판매사업자 등록**상세** 제공 서비스
+//   = MllBsDtl_3Service / getMllBsInfoDetail_3. 시도/시군구/상호/사업자번호 등으로 조회(필터는 선택),
+//   pageNo/numOfRows(최대 10000) 페이지네이션. 상세 = 연락처 포함 가능성 큰 풀필드. ADS_COMMERCE_ENDPOINT/OP 로 override.
+const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBsDtl_3Service'
+const COMMERCE_OP = 'getMllBsInfoDetail_3'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
