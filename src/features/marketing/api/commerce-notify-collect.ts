@@ -15,10 +15,16 @@ const COMMERCE_BASE = 'https://apis.data.go.kr/1130000/MllBsInfoService02'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
-interface RawCommerce {
-  bzmnNm?: string; prmmiMnno?: string; rprsvNm?: string; telno?: string; email?: string; coEml?: string
-  addr?: string; lctnAddr?: string; upteNm?: string; bizrno?: string; [k: string]: unknown
-}
+type RawCommerce = Record<string, unknown>
+const EMAIL_RE = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i
+const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$/i
+
+/** 첫 매칭 키의 값(태그 제거). 표준 필드명이 API 버전마다 달라 다중 별칭. */
+function g(it: RawCommerce, ...keys: string[]): string { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+/** ⚠️ 필드명 불확실 대비 — **어떤 필드든 이메일 형태면** 회수(통신판매 신고본은 전자우편이 있음, 키 이름만 버전차). */
+function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) { const s = stripTag(v); const m = s.match(EMAIL_RE); if (m && !/@(?:example|test|sample)\./i.test(m[0])) return m[0].toLowerCase() } return '' }
+/** 인터넷도메인 필드(있으면 이메일 없을 때 크롤 관문). 이메일 형태는 제외. */
+function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entries(it)) { if (!/dmn|domain|url|site|hmpg|hompage|homepage/i.test(k)) continue; const s = stripTag(v); if (s && !s.includes('@') && DOMAIN_RE.test(s)) return s } return '' }
 
 async function fetchCommercePage(base: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number }> {
   if (budget.left <= 0) return { items: [], count: 0 }
@@ -60,14 +66,19 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     if (!sample && items[0]) sample = items[0]
     if (!count) break
     const leads: CompanyLead[] = items.map(it => {
-      const addr = stripTag(it.addr || it.lctnAddr)
+      const addr = g(it, 'addr', 'lctnAddr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
+      const email = g(it, 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
+      const domain = anyDomain(it)
       return {
-        company_name: stripTag(it.bzmnNm), category: '대행사', subcategory: stripTag(it.upteNm) || '통신판매', tier: 1,
+        company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '대행사', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 1,
         region: pickRegion(addr), address: addr || null,
-        phone: stripTag(it.telno) || null, email: stripTag(it.email || it.coEml) || null,
-        business_no: stripTag(it.bizrno) || null, description: stripTag(it.rprsvNm) ? `대표 ${stripTag(it.rprsvNm)}` : null,
+        phone: g(it, 'telno', 'telNo', 'cttpcNo', 'phone', 'telnoCn') || null,
+        email: email || null,
+        website: (email ? null : domain) ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null, // 이메일 없으면 도메인 → 크롤 관문
+        business_no: g(it, 'bizrno', 'brno', 'bzmnRegNo') || null,
+        description: g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') ? `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}` : null,
         contact_source: 'commerce', // 통신판매 신고 등록본(전화·이메일이 데이터에 직접 붙어옴)
-        source: 'commerce', source_keyword: stripTag(it.prmmiMnno) || 'commerce',
+        source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
       }
     }).filter(l => l.company_name.length >= 2)
     found += leads.length
