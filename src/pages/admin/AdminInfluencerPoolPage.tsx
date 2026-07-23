@@ -126,51 +126,20 @@ export default function AdminInfluencerPoolPage() {
 
   // 수동 수집 — 백그라운드 실행(수십 초)이라 즉시 '시작됨' 안내 후 stats(last_run) 폴링으로 완료를 따라잡음.
   //   구 동기 대기는 브라우저 타임아웃→"실패" 오표시였음. started=false(폴백 동기)면 기존처럼 즉시 결과 반영.
+  // 🔥 지금 수집 = 오늘 YouTube 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집(self-chain).
+  //   한 번 실행 = 예산 전부 소진(대표 요청 단순화 — 별도 버스트 버튼 통합). 진행은 통계 자동 갱신으로 따라잡음.
   async function collectNow() {
     setCollecting(true)
-    const prevRun = run?.last_run || ''
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/collect', {})
-      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); setCollecting(false); return }
-      if (r.data.started === false) { await Promise.all([loadLeads(), loadMeta()]); toast.success('수집 완료'); setCollecting(false); return }
-      toast.success('수집을 시작했어요 — 백그라운드 진행 중, 결과가 자동 갱신됩니다')
-      // last_run 이 갱신되면 완료. 최대 ~80초 폴링(수집이 그보다 길면 안내 후 종료 — 자동 갱신은 계속).
-      let done = false
-      for (let i = 0; i < 10 && !done; i++) {
-        await new Promise(res => setTimeout(res, 8000))
-        try {
-          const s = await api.get('/api/admin/ads/influencer-pool/stats')
-          if (!s.data?.success) continue
-          setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate)
-          const lr = s.data.run?.last_run || ''
-          if (lr && lr !== prevRun) {
-            done = true
-            const saved = s.data.run?.last_saved ?? 0
-            toast.success(`수집 완료 — 신규 ${formatNumber(saved)}건`)
-            await loadLeads()
-          }
-        } catch { /* 폴링 지속 */ }
-      }
-      if (!done) toast.info('수집이 계속 진행 중이에요. 잠시 후 새로고침하면 최신 결과가 보입니다')
-    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
-  }
-
-  // 🔥 오늘 YT 검색 예산 즉시 소진 — 백그라운드로 수집 런을 연달아 태워 하루치(기본 100회) 예산을 몇 분 안에 소진.
-  const [bursting, setBursting] = useState(false)
-  async function burstCollect() {
-    if (!window.confirm('오늘 남은 YouTube 검색 예산(하루 100회 = 구글 무료 상한)을 지금 몰아서 소진할까요?\n백그라운드에서 수집을 연달아 실행합니다(수 분 소요). 큰 풀은 한 번 더 눌러 마무리하세요.\n소진 후엔 다음날(태평양 자정) 리셋 전까지 시간당 자동수집이 네이버 위주로 돕니다.')) return
-    setBursting(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
-      if (!r.data?.success) { toast.error(r.data?.error || '버스트 시작 실패'); return }
-      toast.success('🔥 오늘 YT 예산 소진을 백그라운드에서 시작했어요 — 수 분 후 새로고침하면 반영됩니다')
-      // 진행 반영을 위해 몇 차례 통계 폴링(완료 대기 아님 — 백그라운드는 계속 진행).
-      for (let i = 0; i < 6; i++) {
+      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); return }
+      toast.success('수집을 시작했어요 — 오늘 YouTube 예산을 소진할 때까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
+      for (let i = 0; i < 8; i++) {
         await new Promise(res => setTimeout(res, 12000))
-        try { const s = await api.get('/api/admin/ads/influencer-pool/stats'); if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null) } } catch { /* 폴링 지속 */ }
+        try { const s = await api.get('/api/admin/ads/influencer-pool/stats'); if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate) } } catch { /* 폴링 지속 */ }
       }
       await loadLeads()
-    } catch { toast.error('버스트 시작 실패') } finally { setBursting(false) }
+    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
   }
 
   async function setStatus(id: number, status: string) {
@@ -394,11 +363,8 @@ export default function AdminInfluencerPoolPage() {
         })()}
 
         <div className="flex flex-wrap gap-2 mb-4">
-          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
-            {collecting ? '수집 중…' : '지금 수집'}
-          </button>
-          <button onClick={burstCollect} disabled={bursting} className="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium disabled:opacity-50" title="오늘 남은 YouTube 검색 예산(하루 100회)을 백그라운드로 몰아서 소진 — 몇 분 내 최대 수집">
-            {bursting ? 'YT 예산 소진 중…' : '🔥 오늘 YT 예산 소진'}
+          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="누르면 오늘 YouTube 검색 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집">
+            {collecting ? '수집 중…' : '지금 수집 (YT 예산 소진)'}
           </button>
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
             {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
