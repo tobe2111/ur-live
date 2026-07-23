@@ -23,6 +23,7 @@ interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface StoreInfo { gate: boolean; run: RunInfo | null }
 interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
+interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -42,6 +43,7 @@ export default function AdminPartnerPoolPage() {
   const [collect, setCollect] = useState<Collect | null>(null)
   const [storeinfo, setStoreinfo] = useState<StoreInfo | null>(null)
   const [commerce, setCommerce] = useState<Commerce | null>(null)
+  const [franchise, setFranchise] = useState<Franchise | null>(null)
   const [collecting, setCollecting] = useState(false)
   const [collectingSI, setCollectingSI] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -64,7 +66,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -256,6 +258,16 @@ export default function AdminPartnerPoolPage() {
             {commerce.probe?.keys?.length ? (
               <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>
             ) : null}
+          </div>
+        )}
+
+        {/* 🏢 공정위 가맹(프랜차이즈) 수집 상태 */}
+        {franchise?.run && (
+          <div className="mb-3 text-xs text-gray-500">
+            🏢 프랜차이즈 <span className={franchise.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{franchise.gate ? 'ON · 22시' : 'OFF'}</span>
+            {franchise.run.diag?.error ? <span className="text-amber-600"> · {franchise.run.diag.error}</span>
+              : <span> · 최근 {kstShort(franchise.run.last_run)} · 발굴 {franchise.run.found ?? 0} / 저장 {franchise.run.saved ?? 0}</span>}
+            <span className="text-gray-400"> · 연락처는 보강(홈페이지 검색)으로 채워짐</span>
           </div>
         )}
 

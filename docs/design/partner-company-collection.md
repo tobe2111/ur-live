@@ -245,6 +245,11 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-23 — 공정위 가맹(프랜차이즈) 실엔드포인트 교정 + 무료 이메일 확보 강화 종합.** 대표 "남은 것도 가장 이상적으로".
+  - **프랜차이즈**(`franchise-collect.ts`): 실 엔드포인트 `FftcBrandRlsInfo2_Service/getBrandList`(웹 확인) 로 교체(이전 FftcIffInfoService/getIffInfo placeholder). 이 API 는 브랜드·법인·사업자번호·대표·업종까지만(연락처 직접 없음) → **discovery 리드**로 저장(requireContact:true, 보류) → **enrichHeldLeads 가 브랜드명으로 네이버 홈페이지 검색→크롤로 연락처 채움**(프랜차이즈 본사는 홈페이지 보유율 높아 이메일 수율 우수). 방어파싱(g/봉투)+header resultMsg 오류표시+probe. ADS_FRANCHISE_OP/YEAR env override. 파트너풀 '🏢 프랜차이즈' 상태줄.
+  - **무료 이메일 최대 레버**(`naverHomepageSearch`): 네이버 웹(webkr)/블로그 검색으로 홈페이지 발견 — 지역검색에 없는 업체도 상호 매칭 시 크롤 관문 확보(enrichHeldLeads·prospect-enrich 배선). 기존 네이버 키 재사용(무료).
+  - **마스킹 이메일 차단**: data.go.kr 개인정보보호로 대표자 이메일(rprsvEmladr) 대부분 마스킹(`dduki0**@`) → 발송불가라 저장 차단 + 기존분 NULL 정리. 실 발송 이메일 주력 = 홈페이지 크롤(mailto).
+  - 검증: tsc 0·sql/theme/file-size 가드 GREEN. ⚠️ 프랜차이즈 실검증은 라이브(활용신청+실행→probe).
 - **2026-07-23 — 이메일 확보 최우선 강화 (대표 "이메일이 가장 중요, 가장 이상적으로").**
   - **크롤러 `mailto:` 우선화**: `contact-enrich.ts` 신규 `extractEmailFromHtml` — HTML 의 `mailto:` href(업체가 명시적으로 건 연락 링크 = 최고 신뢰) 먼저, 없으면 본문 `pickBusinessEmail`(난독복원+문맥점수). 플랫폼 기본값/플레이스홀더(wixpress/example/your-domain…) 제외. `crawlContact`(홈+/contact/about/company/contact-us/company/contact 6경로)·`crawlCompanyEmail` 둘 다 이 추출기 경유 → 이메일 수율↑. 추측·조합 0.
   - **매장 후보(store_prospects) 이메일 경로 신설(기존 0)**: 인허가엔 이메일이 없음 → `email`/`website`/`contact_source` 컬럼 추가(ALTER 보강) + 신규 `prospect-enrich.ts` `enrichProspectContacts`: ① website 있으면 홈페이지 크롤 ② 없으면 **네이버 지역검색으로 홈페이지 link 발견**(`naverLocalLookup` — 카카오 place_url 은 지도라 크롤 불가, 네이버 `link` 가 실홈페이지) → 크롤 ③ 전화 없으면 카카오로 부가 보강. 상호+주소 완전일치만 채택(허위 방지). 인허가 전화는 `contact_source='govreg'` 태그, 재수집이 이메일/홈페이지 덮어쓰지 않음(COALESCE 대칭).
