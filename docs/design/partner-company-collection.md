@@ -245,6 +245,7 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-23 — 인허가 전 업종 엔드포인트 고정 (미용업·숙박업·동물미용업 승인 완료).** 대표 활성화 화면 3장 추가 공유. `LICENSE_UPJONG` SSOT 에 `beauty_salons=미용업`·`tourist_accommodations=숙박업`·`pet_grooming=동물미용업` 고정(기존 general_restaurants·rest_cafes 와 합쳐 5업종). `LICENSE_CATEGORIES` 5종. env 임시병합(ADS_LOCALDATA_ENDPOINTS) 불필요해짐(향후 추가 업종용으로만 잔존). tsc 0·sql/file-size 가드 GREEN. ⚠️ 키(일반 인증키)는 Cloudflare 환경변수에만 — 코드 무노출.
 - **2026-07-23 — 인허가 어댑터 실구조 교정 (업종별 개별 REST 엔드포인트 + localdata 소문자 필드).** 대표가 활성화 화면 2장 공유(일반음식점 `/1741000/general_restaurants`·휴게음식점 `/1741000/rest_cafes`, 참고문서 개방자치단체코드·영업상태코드.xlsx, REST/JSON, 처리상태 승인).
   - **발견**: 인허가는 **단일 API + opnSvcId 파라미터가 아니라 업종별 엔드포인트가 따로**이고, 응답 필드는 **localdata 표준 소문자**(bplcnm/sitetel/sitewhladdr/rdnwhladdr/trdstategbn/apvpermymd/lastmodts/opnsvcid/mgtno/opnsfteamcode/uptaenm/x/y). opnSvcId 는 쿼리가 아니라 **응답 필드**에서 복합키로 회수. (이전 어댑터는 단일 URL+opnSvcId 쿼리+카멜케이스 가정 — 전부 교정.)
   - **`store-prospects.ts`**: `LICENSE_UPJONG` 를 **endpoint 슬러그→카테고리 SSOT**로 재정의(general_restaurants=일반음식점·rest_cafes=휴게음식점 2종 승인분; 미용업·숙박업은 활성화 후 추가) + 필터 표시용 `LICENSE_CATEGORIES`(4업종 전체). 라우트 `/meta` categories = LICENSE_CATEGORIES.

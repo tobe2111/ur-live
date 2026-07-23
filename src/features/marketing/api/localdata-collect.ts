@@ -5,9 +5,9 @@
  *   자치단체코드/주소로 우리 쪽에서 필터. pageSize 최대 500 → 페이지네이션. (대표 스펙 2026-07-22)
  *
  *   ⚠️ 실구조(대표 활성화 화면 확인 2026-07-23): 인허가는 **단일 API 아님 — 업종별 REST 엔드포인트가 따로**다.
- *     일반음식점 → https://apis.data.go.kr/1741000/general_restaurants
- *     휴게음식점 → https://apis.data.go.kr/1741000/rest_cafes
- *     (미용업·숙박업은 활성화 후 슬러그 확정 시 LICENSE_UPJONG 또는 ADS_LOCALDATA_ENDPOINTS env 로 추가)
+ *     일반음식점 → /1741000/general_restaurants · 휴게음식점 → /1741000/rest_cafes
+ *     미용업 → /1741000/beauty_salons · 숙박업 → /1741000/tourist_accommodations · 동물미용업 → /1741000/pet_grooming
+ *     (전 업종 승인 완료 — LICENSE_UPJONG SSOT 고정. 추가 업종은 ADS_LOCALDATA_ENDPOINTS env 로 무배포 병합)
  *   응답 필드는 **localdata 표준 소문자**(bplcnm/sitetel/sitewhladdr/rdnwhladdr/trdstategbn/apvpermymd/lastmodts/
  *   opnsvcid/mgtno/opnsfteamcode/uptaenm/x/y). opnSvcId 는 쿼리 파라미터가 아니라 **응답 필드**에서 온다.
  *
