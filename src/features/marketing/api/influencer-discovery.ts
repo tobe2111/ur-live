@@ -141,7 +141,7 @@ interface YTChannelsResp {
   }>
   error?: { message?: string; errors?: Array<{ reason?: string }> }
 }
-interface YTPlaylistItemsResp { items?: Array<{ snippet?: { description?: string } }>; error?: { errors?: Array<{ reason?: string }> } }
+interface YTPlaylistItemsResp { items?: Array<{ snippet?: { title?: string; description?: string } }>; error?: { errors?: Array<{ reason?: string }> } }
 
 /** 🔗 링크인바이오(linktr.ee/litt.ly/인포크 등) 공개 페이지 텍스트 취득 — 소개글엔 없고 링크트리에만
  *  이메일·인스타를 적어둔 인플루언서 커버(공개 웹페이지 = 합법·무료·쿼터 무관). 실패 시 빈 문자열(fail-soft).
