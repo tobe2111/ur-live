@@ -391,6 +391,11 @@ export async function handleCronScheduled(
       const { r2OrphanCleanup } = await import('./cron/r2-orphan-cleanup')
       await r2OrphanCleanup(env)
     }))
+    // 🖼️ 2026-07-22 (대표 "이미지 자동 모니터링"): 커버 깨짐 표본검증 → 임계 초과 시 알림(dedup 12h).
+    ctx.waitUntil(safeCron('image-health-monitor', async () => {
+      const { imageHealthMonitor } = await import('./cron/image-health-monitor')
+      await imageHealthMonitor(env)
+    }))
   }
 
   if (cron === '0 9 * * *' || cron === '0 0 * * *') {

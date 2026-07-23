@@ -1,7 +1,7 @@
 {
   "src/App.tsx": 1092,
   "src/components/SellerLayout.tsx": 611,
-  "src/features/admin/api/admin-products.routes.ts": 2327,
+  "src/features/admin/api/admin-products.routes.ts": 2330,
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
   "src/features/admin/api/admin-sellers.routes.ts": 1079,
   "src/features/admin/api/admin-stays.routes.ts": 635,
@@ -66,7 +66,7 @@
   "src/shared/db/production-schema.ts": 682,
   "src/utils/auth.ts": 616,
   "src/worker/cron/scheduled-cleanup.ts": 1029,
-  "src/worker/index.ts": 2586,
+  "src/worker/index.ts": 2591,
   "src/worker/middleware/auth.ts": 737,
   "src/worker/openapi.ts": 1544,
   "src/worker/repositories/order.repository.ts": 764,
