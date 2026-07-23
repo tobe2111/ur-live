@@ -70,11 +70,15 @@ app.get('/stats', async (c) => {
     const hasEmailVal = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
     commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }
   }
+  // 🏢 공정위 가맹(프랜차이즈) 수집 상태(ads_franchise_stats).
+  const frRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
+  let franchiseRun: unknown = null; try { franchiseRun = frRow?.value ? JSON.parse(frRow.value) : null } catch { franchiseRun = null }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
     storeinfo: { gate: c.env.ADS_STOREINFO_ENABLED === 'true', run: storeinfoRun },
     commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
+    franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
   })
 })
 

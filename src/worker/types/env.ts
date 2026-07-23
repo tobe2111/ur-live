@@ -186,6 +186,8 @@ export interface Env {
   ADS_COMMERCE_ENDPOINT?: string;
   ADS_FRANCHISE_ENABLED?: string;         // 공정위 가맹정보 크론 게이트. ADS_FRANCHISE_ENDPOINT override.
   ADS_FRANCHISE_ENDPOINT?: string;
+  ADS_FRANCHISE_OP?: string;              // 가맹 operation override(기본 getBrandList = FftcBrandRlsInfo2_Service).
+  ADS_FRANCHISE_YEAR?: string;            // 브랜드 기준년도(yr) — API 가 필수 요구 시 설정(예: 2024). 미설정 시 생략.
   ADS_NOTICE_ENABLED?: string;            // 공고 스캐너 크론 게이트. ADS_NARA_ENDPOINT / ADS_BIZINFO_ENDPOINT override.
   ADS_NARA_ENDPOINT?: string;
   ADS_BIZINFO_ENDPOINT?: string;
