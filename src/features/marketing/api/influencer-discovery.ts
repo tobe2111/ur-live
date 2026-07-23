@@ -12,7 +12,7 @@
  *   개인정보 최소화: 원시 IP/UA 등은 저장 안 하고, 크리에이터가 공개한 비즈니스 컨택만 기록.
  */
 
-import { resolveCategory } from './influencer-classify'
+import { resolveCategory, classifyCategory } from './influencer-classify'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
@@ -156,16 +156,16 @@ export async function fetchLinkInBioText(link: string): Promise<string> {
   } catch { return '' }
 }
 
-/** 채널 최근 영상 설명 텍스트 합본을 가져온다(비즈니스 이메일이 About 버튼 뒤가 아니라 영상 더보기에 있는 경우 커버).
- *  playlistItems.list = 1 unit(최대 50개). 실패/쿼터 시 빈 문자열(fail-soft) — 상위에서 다음 search 가 QUOTA 감지. */
-async function fetchRecentVideoText(key: string, uploadsPlaylistId: string): Promise<string> {
+/** 채널 최근 영상 스니펫 — descText(설명=이메일/링크 추출용) + titleText(제목=카테고리 신호). playlistItems 1 unit. */
+async function fetchRecentVideoSnippets(key: string, uploadsPlaylistId: string): Promise<{ descText: string; titleText: string }> {
   try {
     const url = `${YT_BASE}/playlistItems?part=snippet&maxResults=8&playlistId=${uploadsPlaylistId}&key=${key}`
     const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
     const data = await res.json() as YTPlaylistItemsResp
-    if (!res.ok) return ''
-    return (data.items || []).map(it => it.snippet?.description || '').join('\n')
-  } catch { return '' }
+    if (!res.ok) return { descText: '', titleText: '' }
+    const items = data.items || []
+    return { descText: items.map(it => it.snippet?.description || '').join('\n'), titleText: items.map(it => it.snippet?.title || '').filter(Boolean).join(' · ') }
+  } catch { return { descText: '', titleText: '' } }
 }
 
 export type DiscoverResult =
@@ -276,25 +276,25 @@ export async function discoverYouTubeInfluencers(
     } as InfluencerLead & { _uploads?: string }
   })
 
-  // 3) 📧 이메일 보충 — About 에 이메일 없는 채널만 최근 영상 설명 스캔(playlistItems 1unit/채널, 상한 enrichMax).
-  //    유튜브 "이메일 주소 보기" 버튼 값은 CAPTCHA 게이트라 API 불가 → 대신 영상 더보기에 적힌 비즈니스 메일 커버.
-  //    노이즈(협찬사 메일 등) 방지: pickBusinessEmail 로 문맥 우선 선별.
+  // 3) 📧🏷️ 영상 스니펫 보충(playlistItems 1unit/채널, 상한 enrichMax) — 이메일 없거나(영상 더보기 비즈니스메일 커버,
+  //    pickBusinessEmail 노이즈 방지) 소개글로 카테고리 분류가 안 되는(영상 제목으로 교정) 채널. 같은 1콜로 둘 다 보강(쿼터 0).
   const enrichMax = Math.max(0, Math.min(30, opts.enrichMax ?? 15))
   const targets = (leads as Array<InfluencerLead & { _uploads?: string }>)
-    .filter(l => !l.email && l._uploads)
+    .filter(l => l._uploads && (!l.email || !classifyCategory(l.name, l.description)))
     .sort((a, b) => b.subscriber_count - a.subscriber_count)
     .slice(0, enrichMax)
   for (const l of targets) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 컨택 보충 조기 종료(핵심 메타는 이미 수집됨)
     spendBudget(opts.budget)
-    const vidText = await fetchRecentVideoText(key, l._uploads!)
-    if (!vidText) continue
-    const c = extractContacts(vidText)
-    const bizEmail = pickBusinessEmail(vidText)
-    if (bizEmail) l.email = bizEmail
-    if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
-    if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
-    if (!l.links && c.links.length) l.links = c.links.join(' ')
+    const { descText, titleText } = await fetchRecentVideoSnippets(key, l._uploads!)
+    if (descText) {
+      const c = extractContacts(descText); const bizEmail = pickBusinessEmail(descText)
+      if (bizEmail && !l.email) l.email = bizEmail
+      if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
+      if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
+      if (!l.links && c.links.length) l.links = c.links.join(' ')
+    }
+    if (titleText) l.description = `${l.description} | 영상: ${titleText}`.slice(0, 500) // 🏷️ 영상 제목을 카테고리 신호로(resolveCategory)
   }
   // 내부 필드 제거(저장 스키마엔 없음).
   for (const l of leads as Array<InfluencerLead & { _uploads?: string }>) delete l._uploads

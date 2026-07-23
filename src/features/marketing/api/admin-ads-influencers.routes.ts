@@ -510,6 +510,7 @@ app.post('/influencer-pool/collect', async (c) => {
 //   병렬 실행은 공유 카운터(ads_yt_search_used)/커서를 경합해 중복 발굴로 쿼터 낭비 → **순차만 안전**.
 //   ⇒ 백그라운드에서 수집 런을 연달아(각각 fresh ur-ads 인보케이션 = fresh 예산) 돌려 예산 소진까지 태움.
 //   시간/횟수/진전 가드로 워커 과부하·무한루프 차단. 한 클릭에 다 못 태우면 카운터가 영속이라 재클릭/시간당 cron 이 이어받음.
+type BurstStats = { youtube_quota_hit?: boolean; yt_budget?: { used?: number; total?: number } }
 app.post('/influencer-pool/collect-burst', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
@@ -518,11 +519,15 @@ app.post('/influencer-pool/collect-burst', async (c) => {
     let prevUsed = -1
     for (let i = 0; i < 40; i++) {
       if (Date.now() - startedAt > 220_000) break // ⏱️ 시간 예산(안전) — waitUntil 과부하 방지. 남은 예산은 재클릭/cron 이 이어받음.
-      let stats: { youtube_quota_hit?: boolean; yt_budget?: { used?: number; total?: number } } | null = null
+      let body: { chained?: boolean; stats?: BurstStats } | null = null
       try {
-        const r = await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' }))
-        stats = ((await r.json().catch(() => null)) as { stats?: typeof stats } | null)?.stats ?? null
+        // self-chain 엔드포인트 — ads 에 SELF 바인딩이 있으면 chained=true 로 백그라운드 자가전파(메인 루프 종료).
+        const r = await ads.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${i}&pu=${prevUsed}`, { method: 'POST' }))
+        body = (await r.json().catch(() => null)) as { chained?: boolean; stats?: BurstStats } | null
       } catch { break }
+      if (!body) break
+      if (body.chained) break                                  // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
+      const stats = body.stats
       if (!stats) break
       if (stats.youtube_quota_hit) break                       // 구글이 초과 선언 — 오늘 끝
       const yb = stats.yt_budget

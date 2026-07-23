@@ -75,7 +75,7 @@ const BANGBAE_SEED: { category: string; keywords: string[] }[] = [
 ]
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
-interface AutoCollectStats {
+export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
   promoted?: string[]; youtube_quota_hit?: boolean

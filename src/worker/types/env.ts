@@ -337,6 +337,10 @@ export interface Env {
   //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
   //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
   ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 🔁 ur-ads 자기참조 서비스바인딩(wrangler-ads.toml [[services]] SELF→ur-ads) — YT 예산 버스트 self-chain 용.
+  //   각 수집 인보케이션이 다음 인보케이션(fresh 서브리퀘스트 예산)을 던지고 즉시 종료 → 오케스트레이터 시간제한 없이
+  //   하루 예산을 백그라운드에서 끝까지 소진. 미바인딩 시 chained=false → 메인 오케스트레이터가 시간예산 내 폴백.
+  SELF?: { fetch: (req: Request) => Promise<Response> };
   // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
   //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
   ADS_WORKER_ENABLED?: string;
