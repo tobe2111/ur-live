@@ -18,13 +18,14 @@ import type { Env } from '@/worker/types/env'
  *   `ADS_LOCALDATA_ENDPOINTS` env JSON 병합). localdata-collect.ts 가 이 맵을 endpoint→category 로 순회.
  */
 export const LICENSE_UPJONG: Record<string, string> = {
-  general_restaurants: '일반음식점',   // 행정안전부_식품_일반음식점 조회서비스 (승인)
-  rest_cafes: '휴게음식점',            // 행정안전부_식품_휴게음식점 조회서비스 (승인)
-  // beauty_shops: '미용업',          // ⏳ 활성화 후 실제 슬러그로 추가
-  // lodging: '숙박업',               // ⏳ 활성화 후 실제 슬러그로 추가
+  general_restaurants: '일반음식점',       // 행정안전부_식품_일반음식점 조회서비스 (승인)
+  rest_cafes: '휴게음식점',                // 행정안전부_식품_휴게음식점 조회서비스 (승인)
+  beauty_salons: '미용업',                 // 행정안전부_생활_미용업 조회서비스 (승인)
+  tourist_accommodations: '숙박업',        // 행정안전부_문화_관광숙박업 조회서비스 (승인)
+  pet_grooming: '동물미용업',              // 행정안전부_동물_동물미용업 조회서비스 (승인)
 }
-/** 신청 4업종 전체(필터 드롭다운 표시용 — 아직 미수집 업종도 노출). */
-export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업']
+/** 필터 드롭다운 표시용 카테고리(수집 업종). */
+export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업']
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
