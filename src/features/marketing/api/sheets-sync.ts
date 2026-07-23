@@ -81,14 +81,27 @@ async function sheetsFetch(token: string, sheetId: string, path: string, init?: 
   })
 }
 
-/** pool 탭 보장 — 없으면 생성(1회성). */
-async function ensureTab(token: string, sheetId: string): Promise<void> {
-  const meta = await sheetsFetch(token, sheetId, '?fields=sheets.properties.title').catch(() => null)
+/** pool 탭 보장 + 그리드 크기(행/열)를 데이터 전량에 맞게 확장.
+ *  ⚠️ 신규 시트/탭 기본 그리드는 1000행이라 28k행 미러 시 2001행+ 기록이 'exceeds grid limits'(400)로 실패.
+ *  → 쓰기 전에 rowCount/columnCount 를 needRows/needCols 이상으로 키운다(작으면만; 이미 크면 no-op). */
+async function ensurePoolSheet(token: string, sheetId: string, needRows: number, needCols: number): Promise<void> {
+  const meta = await sheetsFetch(token, sheetId, '?fields=sheets.properties(sheetId,title,gridProperties)').catch(() => null)
   if (!meta?.ok) return
-  const j = await meta.json().catch(() => null) as { sheets?: { properties?: { title?: string } }[] } | null
-  if (j?.sheets?.some(s => s.properties?.title === TAB)) return
+  const j = await meta.json().catch(() => null) as { sheets?: { properties?: { sheetId?: number; title?: string; gridProperties?: { rowCount?: number; columnCount?: number } } }[] } | null
+  const tab = j?.sheets?.find(s => s.properties?.title === TAB)?.properties
+  if (!tab) { // 없으면 필요한 크기로 바로 생성
+    await sheetsFetch(token, sheetId, ':batchUpdate', {
+      method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB, gridProperties: { rowCount: needRows, columnCount: needCols } } } }] }),
+    }).catch(() => null)
+    return
+  }
+  const curRows = tab.gridProperties?.rowCount || 0, curCols = tab.gridProperties?.columnCount || 0
+  if (curRows >= needRows && curCols >= needCols) return // 이미 충분
   await sheetsFetch(token, sheetId, ':batchUpdate', {
-    method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB } } }] }),
+    method: 'POST', body: JSON.stringify({ requests: [{ updateSheetProperties: {
+      properties: { sheetId: tab.sheetId, gridProperties: { rowCount: Math.max(curRows, needRows), columnCount: Math.max(curCols, needCols) } },
+      fields: 'gridProperties.rowCount,gridProperties.columnCount',
+    } }] }),
   }).catch(() => null)
 }
 
@@ -102,7 +115,6 @@ export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolea
   const token = await getToken(env)
   if (!token) return { ok: false, error: 'AUTH: 서비스계정 토큰 발급 실패 — SA 키/이메일 확인' }
   const sheetId = env.GSHEETS_SHEET_ID
-  await ensureTab(token, sheetId)
 
   // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
   const rows: (string | number)[][] = [[...SHEET_HEADER]]
@@ -115,6 +127,8 @@ export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolea
     if (page.length < PAGE) break
   }
 
+  // 탭 보장 + 그리드를 데이터 전량 크기로 확장(1000행 기본 한계 → 2001행+ 400 방지) 후 clear → 청크 기록.
+  await ensurePoolSheet(token, sheetId, rows.length + 1, SHEET_HEADER.length)
   // clear → 청크 기록(멱등 미러). RAW 입력(수식 해석 없음 — 시트측 수식 인젝션 원천 차단).
   const clear = await sheetsFetch(token, sheetId, `/values/${TAB}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
   if (!clear?.ok) return { ok: false, error: `CLEAR: 시트 접근 실패(${clear?.status || 'net'}) — 시트를 SA 이메일에 편집자 공유했는지 확인` }
