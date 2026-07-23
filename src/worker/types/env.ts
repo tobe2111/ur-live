@@ -168,6 +168,7 @@ export interface Env {
   ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
   ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
   ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
+  ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 100) — 수집과 분리, 백로그 대량 소진용. 크론 서브요청 1000 한도 내에서 상향 가능.
   ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
   // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
@@ -180,6 +181,7 @@ export interface Env {
   ADS_LOCALDATA_ENDPOINTS?: string;       // 업종 슬러그→카테고리 JSON 병합(무배포 추가). 예: {"beauty_shops":"미용업","lodging":"숙박업"}
   ADS_LOCALDATA_MAX_PAGES?: string;       // 업종당 페이지 상한(기본 6, 페이지당 500).
   // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.
+  ADS_COMMERCE_OP?: string;               // 통신판매 operation override(기본 getMllBsInfo_2).
   ADS_COMMERCE_ENABLED?: string;          // 통신판매사업자 크론 게이트. ADS_COMMERCE_ENDPOINT override.
   ADS_COMMERCE_ENDPOINT?: string;
   ADS_FRANCHISE_ENABLED?: string;         // 공정위 가맹정보 크론 게이트. ADS_FRANCHISE_ENDPOINT override.

@@ -24,7 +24,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
-  const budget: FetchBudget = { left: Math.max(15, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 45) }
+  const budget: FetchBudget = { left: Math.max(15, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 80) }
 
   let processed = 0, emailFound = 0, phoneFound = 0, siteFound = 0
   const upd = async (id: number, patch: { email?: string | null; website?: string | null; phone?: string | null; source?: string | null }) => {

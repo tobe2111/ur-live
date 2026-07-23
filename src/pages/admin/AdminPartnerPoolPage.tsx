@@ -8,7 +8,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
-import { formatNumber } from '@/utils/format'
+import { formatNumber, kstShort } from '@/utils/format'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -231,12 +231,12 @@ export default function AdminPartnerPoolPage() {
           <div className="mb-3 text-xs text-gray-500">
             레인 A 자동수집 <span className={collect.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 홀수시' : 'OFF'}</span>
             {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
-              : collect.run?.last_run ? <span> · 최근 {collect.run.last_run.slice(5, 16)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
+              : collect.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
             <span className="mx-2 text-gray-300">|</span>
             🏪 상가정보 <span className={storeinfo?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{storeinfo?.gate ? 'ON · 짝수시' : 'OFF'}</span>
             {storeinfo?.run?.diag?.error ? <span className="text-amber-600"> · {storeinfo.run.diag.error}</span>
-              : storeinfo?.run?.last_run ? <span> · 최근 {storeinfo.run.last_run.slice(5, 16)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
+              : storeinfo?.run?.last_run ? <span> · 최근 {kstShort(storeinfo.run.last_run)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
             {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
           </div>

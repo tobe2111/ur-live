@@ -170,8 +170,9 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const { kakaoLocalLookup, crawlContact } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 45) }
-  const targets = (await DB.prepare("SELECT id, company_name, region, address, website FROM ad_company_leads WHERE active = 0 ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 80")
+  //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
+  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 100) }
+  const targets = (await DB.prepare("SELECT id, company_name, region, address, website FROM ad_company_leads WHERE active = 0 ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")
     .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null }>().catch(() => null))?.results || []
   let enriched = 0, processed = 0
   const upd = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
