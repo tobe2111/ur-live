@@ -167,39 +167,56 @@ export async function crawlCompanyEmail(website: string, budget?: FetchBudget): 
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, crawlContact } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, crawlContact } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
+  const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
+  const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
   const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 100) }
-  const targets = (await DB.prepare("SELECT id, company_name, region, address, website FROM ad_company_leads WHERE active = 0 ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")
-    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null }>().catch(() => null))?.results || []
+  // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급). 보류 우선(active ASC).
+  const targets = (await DB.prepare("SELECT id, company_name, region, address, website, phone, email FROM ad_company_leads WHERE active = 0 OR email IS NULL OR email = '' ORDER BY active ASC, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")
+    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null }>().catch(() => null))?.results || []
   let enriched = 0, processed = 0
-  const upd = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
-    const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = 1 WHERE id = ? AND active = 0")
-      .bind(phone, email, website, source || null, id).run().catch(() => null)
-    if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) enriched++
+  // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
+  const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
+  // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
+  const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
+    if (!phone && !email && !website) return
+    const r = await DB.prepare(
+      `UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?),
+         contact_source = COALESCE(contact_source, ?),
+         active = CASE WHEN COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL THEN 1 ELSE active END
+       WHERE id = ?`
+    ).bind(phone, email, website, source || null, phone, email, id).run().catch(() => null)
+    if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++
   }
-  // ── Pass 1: 카카오 로컬 전화(1건 1요청) — 최대한 많은 리드 처리 ──
-  const noPhone: Array<{ id: number; website: string | null }> = []
+
+  // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
   for (const t of targets) {
     if (outOfBudget(budget)) break
     processed++
-    let phone: string | null = null, website = t.website
-    if (kakaoKey) {
-      const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address || '', budget)
-      if (k.phone) phone = k.phone
-      if (k.website && !website) website = k.website
-    }
-    if (phone) await upd(t.id, phone, null, website, 'kakao')
-    else if (website) noPhone.push({ id: t.id, website }) // Pass 2 이메일 크롤 후보
+    if (t.phone || !kakaoKey) continue
+    const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address || '', budget)
+    if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
-  // ── Pass 2: 잔여 예산으로 홈페이지 크롤(이메일+전화) — 전화 못 찾은 것만 ──
-  for (const p of noPhone) {
+  // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
+  //   ★ 핵심 수정: 홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link 발견으로 구제 → 이메일/전화 확보.
+  for (const t of targets) {
     if (budget.left <= 2) break
-    const c = await crawlContact(p.website!, budget)
-    if (c.email || c.phone) await upd(p.id, c.phone, c.email, p.website, 'homepage')
+    if (t.email) continue // 이미 이메일 있음
+    let site = realSite(t.website)
+    if (!site && nvId && nvSecret && budget.left > 3) {
+      const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
+      if (nv.website) site = nv.website
+      if (!t.phone && nv.phone) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
+    }
+    if (site && budget.left > 2) {
+      const c = await crawlContact(site, budget)
+      if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
+    }
   }
+
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   return { processed, enriched, remaining: Number(rem?.n) || 0 }
 }
