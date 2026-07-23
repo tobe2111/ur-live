@@ -359,6 +359,16 @@ export default function AdminBuyerPoolPage() {
     } catch { toast.error('이메일 추출 실패') } finally { setEnriching(false) }
   }
 
+  const [diagResult, setDiagResult] = useState<string>('')
+  const [diagLoading, setDiagLoading] = useState(false)
+  const runDiag = async () => {
+    setDiagLoading(true); setDiagResult('')
+    try {
+      const r = await api.get('/api/admin/buyer-pool/enrich-diag')
+      setDiagResult(JSON.stringify(r.data?.diag ?? r.data, null, 2))
+    } catch (e) { setDiagResult('진단 호출 실패: ' + String(e)) } finally { setDiagLoading(false) }
+  }
+
   // window.open 은 쿠키만 보내 Bearer(localStorage) 인증 어드민에선 401 → 에러 JSON 다운로드됨.
   //   axios(Bearer 첨부)로 blob 받아 저장.
   const exportCsv = async () => {
@@ -458,6 +468,7 @@ export default function AdminBuyerPoolPage() {
             <button onClick={collect} disabled={collecting} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 disabled:opacity-50">{collecting ? '수집 중…' : '피드 수집'}</button>
             <button onClick={() => setShowAuto(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-sm text-red-600">🤖 상세 자동 수집 {showAuto ? '숨기기' : ''}</button>
             <button onClick={() => setShowTargets(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700">매칭 타깃 {showTargets ? '숨기기' : '관리'}</button>
+            <button onClick={runDiag} disabled={diagLoading} className="px-3 py-2 rounded-lg bg-white border border-amber-300 text-sm text-amber-700 disabled:opacity-50" title="이메일이 왜 안 나오는지 서버에서 실측 진단">{diagLoading ? '진단 중…' : '🔍 이메일찾기 진단'}</button>
           </>}
           <div className="flex-1" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="회사/이메일/담당자" className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 w-44" />
@@ -473,6 +484,17 @@ export default function AdminBuyerPoolPage() {
           <label className="flex items-center gap-1 text-sm text-gray-600"><input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 컨택만</label>
           {(country || intent) && <button onClick={() => { setCountry(''); setIntent('') }} className="text-xs text-gray-500 underline">필터 해제</button>}
         </div>
+
+        {/* 🔍 진단 결과 — 이메일이 안 나오는 원인 실측(verdict 를 캡션으로) */}
+        {diagResult && (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold text-gray-900">🔍 이메일찾기 진단 결과</div>
+              <button onClick={() => setDiagResult('')} className="text-xs text-gray-500 underline">닫기</button>
+            </div>
+            <pre className="text-xs text-gray-800 whitespace-pre-wrap break-all max-h-96 overflow-auto bg-white rounded-lg p-3 border border-amber-200">{diagResult}</pre>
+          </div>
+        )}
 
         {/* 📋 수집 방법 안내 — 2단계(발굴→연락처), 전 사이트 공통, 전부 무료 */}
         {showGuide && (
