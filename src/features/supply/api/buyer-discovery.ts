@@ -551,9 +551,9 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
       // 첫 비어있지 않은 필드값 선택(피드/ITA/data.go.kr 필드명 편차 흡수). data.go.kr 은 camelCase 한글약어(corpNm/telNo/emlAddr…).
       const g = (...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return String(v).trim() } return '' }
       // 회사명 — 일반 피드 company/name, ITA 는 title, data.go.kr 은 corpNm/cmpnyNm/entrpsNm 등.
-      const company = g('company', 'name', 'company_name', 'corpNm', 'cmpnyNm', 'entrpsNm', 'coNm', 'bzentyNm', 'buyerNm', 'title')
+      const company = g('company', 'name', 'company_name', 'corpNm', 'cmpnyNm', 'entrpsNm', 'entNm', 'coNm', 'bzentyNm', 'buyerNm', 'title')
       if (!company) continue
-      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType')
+      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType', 'ksicNm', 'jobNm', 'induEntNm')
       let email = g('email', 'emlAddr', 'eml', 'contact_email') || null
       if (!email && description) email = pickBusinessEmail(description)
       const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent)
