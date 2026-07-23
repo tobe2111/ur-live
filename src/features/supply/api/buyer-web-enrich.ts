@@ -89,32 +89,88 @@ async function fetchText(url: string, headers: Record<string, string>): Promise<
   return ''
 }
 
-export interface WebEnrichResult { ran: boolean; reason?: string; scanned: number; enriched: number; fetches: number; sample: string[] }
+export interface WebEnrichResult { ran: boolean; reason?: string; scanned: number; enriched: number; resolvedSites?: number; fetches: number; sample: string[] }
 
-/** 웹사이트 있고 이메일 없는 리드를 방문해 이메일/전화 백필. 스코어 높은 순. */
+// ── 회사명 → 공식 웹사이트 추정(무료, best-effort) ─────────────────────────────
+//   tradeKorea 등은 회사명+국가만 주고 웹사이트가 없다 → 웹사이트를 우리가 찾아 이메일 보강의 출발점 확보.
+//   ① 도메인 추정(slug.com — 회사명 토큰이 페이지에 있어야 채택) ② DuckDuckGo HTML 검색 폴백.
+//   ⚠️ 구글 자동검색은 차단/약관 위반이라 미사용. DDG 도 CF 워커 IP 를 막을 수 있음(수율 변동, 실측 필요).
+const LEGAL_SFX = /\b(inc|llc|ltd|limited|corp|co|company|gmbh|srl|sa|plc|pvt|group|holdings?|services?|trading|import|export|international|intl)\b/gi
+function companySlug(company: string): string {
+  return String(company || '').toLowerCase().replace(/&/g, ' ').replace(/[.,'’]/g, ' ')
+    .replace(LEGAL_SFX, ' ').replace(/[^a-z0-9]/g, '').slice(0, 40)
+}
+const BAD_HOST = /(facebook|linkedin|instagram|twitter|x\.com|youtube|youtu\.be|pinterest|tiktok|wikipedia|tradekorea|kompass|bloomberg|crunchbase|zoominfo|dnb\.com|opencorporates|amazon\.|alibaba|made-in-china|indeed|glassdoor|yelp|yellowpages|google\.|bing\.|duckduckgo|reddit)/i
+
+/** DuckDuckGo HTML 결과에서 첫 유효 외부 도메인 origin 반환(소셜/디렉토리 제외). */
+async function ddgFirstDomain(query: string, headers: Record<string, string>): Promise<string> {
+  const html = await fetchText('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), headers)
+  if (!html) return ''
+  for (const m of html.matchAll(/uddg=([^"&]+)/g)) {
+    try {
+      const u = new URL(decodeURIComponent(m[1]))
+      if (/^https?:$/.test(u.protocol) && !BAD_HOST.test(u.host) && isPublicHttpUrl(u.origin)) return u.origin
+    } catch { /* skip */ }
+  }
+  return ''
+}
+
+/** 회사명(+국가) → 웹사이트 origin. spend() 는 예산 소모(true=진행 가능). 못 찾으면 ''. */
+async function resolveWebsiteForCompany(company: string, country: string, headers: Record<string, string>, spend: () => boolean): Promise<string> {
+  const slug = companySlug(company)
+  if (slug.length >= 3) {
+    for (const guess of [`https://www.${slug}.com`, `https://${slug}.com`]) {
+      if (!spend()) return ''
+      const html = await fetchText(guess, headers)
+      // 회사명 토큰이 실제로 그 페이지에 있어야 채택(우연히 존재하는 무관 도메인 배제).
+      if (html && html.toLowerCase().includes(slug.slice(0, Math.min(slug.length, 8)))) { try { return new URL(guess).origin } catch { /* skip */ } }
+      await delay(200)
+    }
+  }
+  if (!spend()) return ''
+  const dom = await ddgFirstDomain(`${company} ${country || ''} official website`.trim(), headers)
+  await delay(300)
+  return dom
+}
+
+
+/** 이메일 없는 리드를 방문해 이메일/전화 백필. 웹사이트 없으면 회사명→웹사이트 추정 후 진행. 스코어 높은 순. */
 export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; budget?: number } = {}): Promise<WebEnrichResult> {
   const DB = env.DB
   await ensureBuyerSchema(DB)
   const max = Math.min(40, Math.max(1, opts.max || 15))
+  // 웹사이트 보유 리드 우선(즉시 방문) → 웹사이트 없지만 회사명 있는 리드(웹사이트 먼저 추정) 후순위.
   const rows = (await DB.prepare(
-    `SELECT id, website FROM overseas_buyer_leads
-     WHERE website IS NOT NULL AND website != ''
-       AND (email IS NULL OR email = '') AND (decision_maker_email IS NULL OR decision_maker_email = '')
-     ORDER BY COALESCE(match_score,0) DESC, id DESC LIMIT ?`).bind(max)
-    .all<{ id: number; website: string }>().catch(() => null))?.results || []
-  if (!rows.length) return { ran: true, reason: '이메일 없는 웹사이트 리드가 없습니다.', scanned: 0, enriched: 0, fetches: 0, sample: [] }
+    `SELECT id, website, company, country FROM overseas_buyer_leads
+     WHERE (email IS NULL OR email = '') AND (decision_maker_email IS NULL OR decision_maker_email = '')
+       AND ( (website IS NOT NULL AND website != '') OR (company IS NOT NULL AND company != '') )
+     ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
+              COALESCE(match_score,0) DESC, id DESC LIMIT ?`).bind(max)
+    .all<{ id: number; website: string | null; company: string | null; country: string | null }>().catch(() => null))?.results || []
+  if (!rows.length) return { ran: true, reason: '이메일 없는 (웹사이트/회사명) 리드가 없습니다.', scanned: 0, enriched: 0, resolvedSites: 0, fetches: 0, sample: [] }
   const headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'accept': 'text/html,application/xhtml+xml', 'accept-language': 'en;q=0.9,ko;q=0.8',
   }
   const budget = opts.budget != null ? Math.max(4, Math.min(30, opts.budget)) : Math.min(25, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '25', 10) || 25)) // Cloudflare subrequest 한도 보호(크론은 명시 budget 로 합산 상한)
-  let fetches = 0, enriched = 0
+  let fetches = 0, enriched = 0, resolvedSites = 0
   const sample: string[] = []
   const SITE_CAP = 5 // 사이트당 최대 방문(홈 + 연락 페이지 몇 개) — 예산을 여러 리드에 분산.
+  const spend = () => { if (fetches >= budget) return false; fetches++; return true } // 예산 소모(true=진행 가능)
   const originCache = new Map<string, { email: string | null; phone: string | null; address: string | null }>() // 같은 도메인 재방문 방지.
   for (const row of rows) {
     if (fetches >= budget) break
-    const origin = normUrl(row.website)
+    let origin = normUrl(row.website || '')
+    // 웹사이트가 없으면 회사명(+국가)으로 추정 → 찾으면 저장하고 이어서 이메일 보강.
+    if (!origin && row.company && row.company.trim() && fetches < budget) {
+      const found = await resolveWebsiteForCompany(row.company, row.country || '', headers, spend)
+      if (found) {
+        origin = found
+        resolvedSites++
+        await DB.prepare(`UPDATE overseas_buyer_leads SET website = COALESCE(website, ?),
+             source_keyword = COALESCE(source_keyword, 'web-enrich') WHERE id = ?`).bind(found, row.id).run().catch(() => null)
+      }
+    }
     if (!origin) continue
     let res = originCache.get(origin)
     if (!res) {
@@ -160,5 +216,5 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; bu
     }
     if (fetches >= budget) break
   }
-  return { ran: true, scanned: rows.length, enriched, fetches, sample }
+  return { ran: true, scanned: rows.length, enriched, resolvedSites, fetches, sample }
 }
