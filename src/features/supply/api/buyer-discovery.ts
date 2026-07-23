@@ -483,6 +483,24 @@ const truthy = (v: unknown): number | null => {
 }
 
 /** 응답에서 항목 배열을 찾는다 — 최상위 배열 / data|items|list|results / data.go.kr response.body.items 형태. */
+// data.go.kr XML 응답의 <item> 블록을 평면 객체 배열로 추출(워커-safe, DOM 불필요). CDATA 지원.
+//   ⚠️ item *내부* 콘텐츠만(그룹1) 필드 파싱 — 안 그러면 백레퍼런스가 <item>…</item> 래퍼 자체를 한 필드로 삼킴.
+function parseXmlItems(xml: string): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  const blockRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi
+  let bm: RegExpExecArray | null
+  while ((bm = blockRe.exec(xml)) !== null) {
+    const inner = bm[1]
+    const obj: Record<string, unknown> = {}
+    for (const m of inner.matchAll(/<([A-Za-z_][\w.-]*)>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/\1>/g)) {
+      const v = m[2].trim()
+      if (v) obj[m[1]] = v
+    }
+    if (Object.keys(obj).length) out.push(obj)
+  }
+  return out
+}
+
 function digArray(root: unknown): Record<string, unknown>[] {
   if (Array.isArray(root)) return root as Record<string, unknown>[]
   if (root && typeof root === 'object') {
@@ -524,32 +542,35 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
     const trimmed = text.trim()
     try {
       if (trimmed.startsWith('[') || trimmed.startsWith('{')) items = digArray(JSON.parse(trimmed))
+      // data.go.kr 오픈API 는 dataType 미지정 시 XML 반환 — <item> 블록을 평면 객체로 추출(JSON 파라미터 몰라도 동작).
+      else if (trimmed.startsWith('<')) items = parseXmlItems(trimmed)
       // NDJSON — 줄별 개별 파싱(한 줄 깨져도 나머지 유지; 통째 파싱하면 한 줄 오류로 전체 폐기).
       else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) as Record<string, unknown>[]
     } catch { items = [] }
     for (const it of items.slice(0, 500)) {
-      // 회사명 — 일반 피드는 company/name, 미국 ITA Trade Leads 는 title(입찰/기관명)이 회사 자리.
-      const company = String(it.company || it.name || it.company_name || it.corpNm || it.buyerNm || it.title || '').trim()
+      // 첫 비어있지 않은 필드값 선택(피드/ITA/data.go.kr 필드명 편차 흡수). data.go.kr 은 camelCase 한글약어(corpNm/telNo/emlAddr…).
+      const g = (...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return String(v).trim() } return '' }
+      // 회사명 — 일반 피드 company/name, ITA 는 title, data.go.kr 은 corpNm/cmpnyNm/entrpsNm 등.
+      const company = g('company', 'name', 'company_name', 'corpNm', 'cmpnyNm', 'entrpsNm', 'entNm', 'coNm', 'bzentyNm', 'buyerNm', 'title')
       if (!company) continue
-      const description = String(it.description || it.inquiry || it.note || it.product || it.item || '')
-      let email = it.email ? String(it.email) : null
+      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType', 'ksicNm', 'epmtKsicNm', 'entTyNm', 'jobNm', 'induEntNm')
+      let email = g('email', 'emlAddr', 'eml', 'contact_email') || null
       if (!email && description) email = pickBusinessEmail(description)
-      // intent — 항목이 명시하면 그 값. 없고 입찰/계약 날짜(ITA 조달리드 신호)가 있으면 buying_lead, 아니면 directory.
       const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent)
         : (it.tender_start_date || it.tender_end_date || it.contract_start_date) ? 'buying_lead' : 'directory'
       out.push({
         source: 'feed', intent_signal: intent, company: company.slice(0, 200),
-        country: it.country ? String(it.country) : (it.country_code ? String(it.country_code) : target.country),
-        target_market: it.target_market ? String(it.target_market) : null,
-        category: it.category ? String(it.category) : target.category,
+        country: g('country', 'country_code', 'natnNm', 'cntyNm', 'nationNm', 'entNationNm', 'natnCd') || target.country,
+        target_market: g('target_market') || null,
+        category: g('category') || target.category,
         imports_from_korea: truthy(it.imports_from_korea ?? it.imports_korea),
-        website: it.website ? String(it.website) : (it.homepage ? String(it.homepage) : (it.url ? String(it.url) : null)),
-        email, phone: it.phone ? String(it.phone) : (it.tel ? String(it.tel) : (description ? pickPhone(description) : null)),
-        decision_maker: it.contact_name ? String(it.contact_name).slice(0, 80) : null,
-        decision_maker_title: it.contact_title ? String(it.contact_title).slice(0, 80) : null,
-        decision_maker_email: it.contact_email ? String(it.contact_email) : null,
-        est_volume: it.est_volume ? String(it.est_volume).slice(0, 60) : null,
-        address: it.address ? String(it.address).slice(0, 300) : (it.addr ? String(it.addr).slice(0, 300) : (it.location ? String(it.location).slice(0, 300) : null)),
+        website: g('website', 'homepage', 'url', 'homepgUrl', 'hmpgUrl', 'hmpgAddr', 'siteUrl') || null,
+        email, phone: g('phone', 'tel', 'telNo', 'telno', 'phoneNumber', 'rprsTelno') || (description ? pickPhone(description) : null),
+        decision_maker: g('contact_name', 'chrgrNm', 'picNm').slice(0, 80) || null,
+        decision_maker_title: g('contact_title', 'chrgrJbps').slice(0, 80) || null,
+        decision_maker_email: g('contact_email', 'chrgrEml') || null,
+        est_volume: g('est_volume').slice(0, 60) || null,
+        address: g('address', 'addr', 'location', 'adres', 'rdnmadr', 'lctnAddr').slice(0, 300) || null,
         description, source_keyword: `${target.category} · ${target.country}`,
       })
     }
@@ -573,9 +594,14 @@ export async function runBuyerCollection(env: Env, opts: { force?: boolean } = {
 
   const cursorRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'buyer_collect_cursor'").first<{ value: string }>().catch(() => null)
   let cursor = parseInt(cursorRow?.value || '0', 10) || 0
-  const active = (await DB.prepare('SELECT id, category, country FROM buyer_discovery_targets WHERE active = 1 ORDER BY id ASC')
+  let active = (await DB.prepare('SELECT id, category, country FROM buyer_discovery_targets WHERE active = 1 ORDER BY id ASC')
     .all<{ id: number; category: string; country: string }>().catch(() => null))?.results || []
-  if (!active.length) return { ...empty, ran: true, reason: 'NO_TARGETS' }
+  // 발굴 타깃이 없어도 무료 피드(BUYER_FEED_URLS)가 있으면 기본 타깃 1개로 1회 수집 — data.go.kr 등 자립형 피드는
+  //   타깃 설정 없이도 동작(피드 항목이 국가/카테고리를 자체 제공). 타깃은 매칭 스코어링용 fallback 일 뿐.
+  if (!active.length) {
+    if ((env.BUYER_FEED_URLS || '').trim()) active = [{ id: 0, category: '', country: '' }]
+    else return { ...empty, ran: true, reason: 'NO_TARGETS' }
+  }
   const activeKeys: ActiveTarget[] = active.map(t => ({ category: t.category, country: t.country }))
 
   let saved = 0, found = 0, feed = 0
