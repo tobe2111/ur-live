@@ -27,7 +27,10 @@ function mapCommerceLead(it: RawCommerce): CompanyLead {
   //    주소 rnAddr(도로명)/lctnAddr(지번) · 사업자번호 brno · 신고번호 prmmiMnno.
   //  ⚠️ chrgDeptTelno = 처리부서(관공서) 전화 → **업체 전화 아님**(허위 방지, 매핑 금지). 업체 전화는 보강(카카오)로.
   const addr = g(it, 'rnAddr', 'lctnAddr', 'addr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
-  const email = g(it, 'rprsvEmladr', 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
+  // ⚠️ data.go.kr 이 개인정보 보호로 대표자 이메일을 마스킹(dduki0**@naver.com)해서 줌 → 발송 불가 →
+  //    마스킹(`*` 포함)이거나 이메일 형식 아니면 저장 안 함(쓸모없는 주소로 숫자 부풀리기 방지). anyEmail 은 이미 정규식 검증.
+  const rawEml = g(it, 'rprsvEmladr', 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres')
+  const email = (rawEml && !rawEml.includes('*') && EMAIL_RE.test(rawEml)) ? rawEml.toLowerCase() : anyEmail(it)
   const domain = anyDomain(it)
   return {
     company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '대행사', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 1,
@@ -91,6 +94,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as CommerceStats : null } catch { prev = null }
   const persist = async (s: CommerceStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: CommerceStats = { last_run: stamp, found: 0, saved: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
+
+  // 🧹 기존에 저장된 마스킹 이메일(발송 불가) 정리 — NULL 처리 + 전화 없으면 보류로 되돌려 재보강(홈페이지 크롤로 진짜 이메일).
+  await DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN contact_source = 'commerce' THEN NULL ELSE contact_source END, active = CASE WHEN (phone IS NULL OR phone = '') THEN 0 ELSE active END WHERE email LIKE '%*%'").run().catch(() => null)
 
   // ①(현황)에 env override 적용. 두 서비스 각각 별도 커서 + 공유 예산.
   const services = COMMERCE_SERVICES.map((svc, idx) => idx === 0 ? {
