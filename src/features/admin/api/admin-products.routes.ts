@@ -2189,8 +2189,11 @@ adminProductsRoutes.get('/d1-profile', cors(), async (c) => {
   try {
     const { getD1Profile, resetD1Profile } = await import('../../../worker/utils/d1-profiler');
     if (c.req.query('reset') === '1') { resetD1Profile(); return c.json({ success: true, reset: true }); }
-    const enabled = (c.env as unknown as { D1_PROFILE_ENABLED?: string }).D1_PROFILE_ENABLED === 'true';
-    return c.json({ success: true, enabled, top: getD1Profile(30) });
+    const pe = c.env as unknown as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+    const forceOn = pe.D1_PROFILE_ENABLED === 'true';
+    const sampleRate = forceOn ? 1 : (pe.D1_PROFILE_SAMPLE != null && pe.D1_PROFILE_SAMPLE !== '' ? Number(pe.D1_PROFILE_SAMPLE) : 0.02);
+    // 샘플링이라 isolate-로컬 집계(전량 아님). 상시 2% 자동 수집 — 무거운 쿼리는 rows≥2000 콘솔 로그로도 포착.
+    return c.json({ success: true, mode: forceOn ? 'forced-100%' : `sampling-${Math.round(sampleRate * 100)}%`, sampleRate, top: getD1Profile(30) });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

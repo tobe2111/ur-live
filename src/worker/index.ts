@@ -2567,11 +2567,16 @@ export default {
         } catch { /* 조회 실패 — 기존 /profile 서빙으로 통과 */ }
       }
     } catch { /* URL 파싱 시 통과 */ }
-    // 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): 플래그 ON 일 때만 env.DB 를 rows_read 집계 프록시로 감쌈.
-    //   기본 OFF = 프록시 미적용(오버헤드 0). 잠긴 SSR/캐시 블록 무관 — app.fetch 위임 직전 additive.
+    // 📊 2026-07-22 (대표 "모두 진행"): D1 rows_read 집계 프록시 — **저율 자동 샘플링(상시)**.
+    //   토글(`D1_PROFILE_ENABLED='true'`)=100% 강제, 아니면 기본 2%(`D1_PROFILE_SAMPLE` 로 조정, '0'=OFF).
+    //   샘플된 요청만 프록시 → 오버헤드 사실상 0인데 데이터는 상시 축적(수동 토글 불필요). 저장 쓰기 0.
     let fenv: unknown = env;
     try {
-      if ((env as { D1_PROFILE_ENABLED?: string })?.D1_PROFILE_ENABLED === 'true') {
+      const pe = env as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+      const forceOn = pe?.D1_PROFILE_ENABLED === 'true';
+      const rawSample = pe?.D1_PROFILE_SAMPLE;
+      const sampleRate = forceOn ? 1 : (rawSample != null && rawSample !== '' ? Number(rawSample) : 0.02);
+      if (sampleRate > 0 && (forceOn || Math.random() < sampleRate)) {
         const dbEnv = env as { DB?: D1Database };
         if (dbEnv.DB) {
           const { profileD1 } = await import('./utils/d1-profiler');
