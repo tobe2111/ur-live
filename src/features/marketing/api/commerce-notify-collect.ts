@@ -23,18 +23,21 @@ const COMMERCE_SERVICES = [
 
 /** 통신판매 원항목 → CompanyLead. 필드명이 서비스/버전마다 달라 g() 다중별칭 + anyEmail/anyDomain 폴백. */
 function mapCommerceLead(it: RawCommerce): CompanyLead {
-  const addr = g(it, 'addr', 'lctnAddr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
-  const email = g(it, 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
+  // ✅ 실 필드(라이브 diag 확인 2026-07-23): 상호 bzmnNm · 대표 rprsvNm · 이메일 **rprsvEmladr**(대표자 이메일) ·
+  //    주소 rnAddr(도로명)/lctnAddr(지번) · 사업자번호 brno · 신고번호 prmmiMnno.
+  //  ⚠️ chrgDeptTelno = 처리부서(관공서) 전화 → **업체 전화 아님**(허위 방지, 매핑 금지). 업체 전화는 보강(카카오)로.
+  const addr = g(it, 'rnAddr', 'lctnAddr', 'addr', 'dtlLctnAddr', 'bizAddr', 'lctnRoadNmAddr', 'lctnRnAddr')
+  const email = g(it, 'rprsvEmladr', 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres') || anyEmail(it)
   const domain = anyDomain(it)
   return {
     company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '대행사', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 1,
     region: pickRegion(addr), address: addr || null,
-    phone: g(it, 'telno', 'telNo', 'cttpcNo', 'phone', 'telnoCn') || null,
+    phone: null, // 통신판매 데이터엔 업체 전화 없음(chrgDeptTelno 는 관공서) → 보강 단계에서 카카오로 확보
     email: email || null,
     website: (email ? null : domain) ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null,
-    business_no: g(it, 'bizrno', 'brno', 'bzmnRegNo') || null,
-    description: g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') ? `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}` : null,
-    contact_source: 'commerce',
+    business_no: g(it, 'brno', 'bizrno', 'bzmnRegNo') || null,
+    description: [g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') && `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}`, g(it, 'operSttusCdNm', 'operSttus')].filter(Boolean).join(' · ') || null,
+    contact_source: email ? 'commerce' : null, // 이메일 있을 때만 통신판매 출처(전화는 보강 출처가 기록)
     source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
   }
 }
