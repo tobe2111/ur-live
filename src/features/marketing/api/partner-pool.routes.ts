@@ -56,10 +56,22 @@ app.get('/stats', async (c) => {
   // 🏪 소스 ① 상가정보 수집 상태(ads_storeinfo_stats) — 게이트 + 마지막 실행.
   const siRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_storeinfo_stats'").first<{ value: string }>().catch(() => null)
   let storeinfoRun: unknown = null; try { storeinfoRun = siRow?.value ? JSON.parse(siRow.value) : null } catch { storeinfoRun = null }
+  // 🛒 통신판매 수집 상태(ads_commerce_stats) — 원본 응답 필드 진단(이메일 필드 유무 확인용).
+  const cmRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
+  let commerceRun: Record<string, unknown> | null = null; try { commerceRun = cmRow?.value ? JSON.parse(cmRow.value) : null } catch { commerceRun = null }
+  // 원본 첫 항목에서 필드명 목록 + 이메일 형태 값 존재여부를 뽑아 UI 에 노출(추측 대신 실제 확인).
+  let commerceProbe: { keys?: string[]; hasEmail?: boolean } | undefined
+  const sample = (commerceRun?.diag as Record<string, unknown> | undefined)?.sample as Record<string, unknown> | undefined
+  if (sample && typeof sample === 'object') {
+    const keys = Object.keys(sample).slice(0, 40)
+    const hasEmail = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
+    commerceProbe = { keys, hasEmail }
+  }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
     storeinfo: { gate: c.env.ADS_STOREINFO_ENABLED === 'true', run: storeinfoRun },
+    commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
   })
 })
 

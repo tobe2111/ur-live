@@ -33,7 +33,7 @@ function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entrie
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json`
+  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=500&type=json&_type=json&resultType=json`
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
   if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
   const raw = await res.text().catch(() => '')
@@ -71,7 +71,8 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
 
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
-  const budget = { left: Math.max(3, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 8) }
+  // 페이지당 500건 × 기본 12페이지 = ~6000건/실행(수동 버튼 1회에도 대량). ADS_ENRICH_BUDGET 로 상향 가능.
+  const budget = { left: Math.max(3, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 12) }
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
     const { items, count, msg } = await fetchCommercePage(base, op, key, page, budget)
