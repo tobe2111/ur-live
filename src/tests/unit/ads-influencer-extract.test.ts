@@ -155,3 +155,45 @@ describe('pickBusinessEmail', () => {
     expect(pickBusinessEmail('제휴 문의 agency@company.co.kr\nilsan9924@naver.com')).toBe('ilsan9924@naver.com')
   })
 })
+
+// 🛡️ 2026-07-23 전수조사 — 컨택 오염 수리(가짜 이메일 날조·브랜드 계정·당첨자 메일·문맥 필수·제목 세그먼트).
+import { stripVideoTitles } from '@/features/marketing/api/influencer-discovery'
+
+describe('F-01 — 플랫폼 라벨 가짜 이메일 날조 차단', () => {
+  it('"insta @sunny.day" 가 insta@sunny.day 이메일로 날조되지 않음', () => {
+    expect(extractContacts('insta @sunny.day 놀러오세요').emails).toEqual([])
+    expect(extractContacts('IG @jieun.kim / 문의는 DM').emails).toEqual([])
+    expect(pickBusinessEmail('tiktok @dance.kim')).toBeNull()
+  })
+  it('진짜 이메일은 그대로 추출', () => {
+    expect(extractContacts('문의 sunny@gmail.com').emails).toContain('sunny@gmail.com')
+  })
+})
+
+describe('F-02 — 라벨형 인스타에서 브랜드 official 계정 제외', () => {
+  it('협업 브랜드 @xxx_official 은 본인 계정으로 안 잡힘(URL 형 본인 계정이 우선)', () => {
+    const r = extractContacts('협업 브랜드 인스타 @oliveyoung_official 확인! 제 계정 instagram.com/mina_daily')
+    expect(r.instagram[0]).toBe('mina_daily')
+  })
+})
+
+describe('F-04 — 당첨자/이벤트 언급 메일 감점', () => {
+  it('당첨자 개인메일 대신 문맥 있는 비즈니스 메일 선택', () => {
+    expect(pickBusinessEmail('협업문의 biz@sandboxnetwork.net · 이벤트 참여 당첨 hong123@naver.com 님 축하')).toBe('biz@sandboxnetwork.net')
+  })
+})
+
+describe('F-03 — requireContext(스니펫 제3자 메일 차단)', () => {
+  it('비즈니스 문맥 없으면 null, 있으면 채택', () => {
+    expect(pickBusinessEmail('사장님 이메일 jeongsik.store@naver.com 로 예약', { requireContext: false })).toBeTruthy()
+    expect(pickBusinessEmail('오늘 방문한 가게 jeongsik.store@naver.com 최고', { requireContext: true })).toBeNull()
+    expect(pickBusinessEmail('협업 문의 mina@gmail.com', { requireContext: true })).toBe('mina@gmail.com')
+  })
+})
+
+describe('stripVideoTitles — 제목 세그먼트 분리', () => {
+  it('" | 영상: …" 이후 제거(컨택 재추출 오염 방지)', () => {
+    expect(stripVideoTitles('맛집 채널 소개 | 영상: 제니 인스타 @jennierubyjane 공개')).toBe('맛집 채널 소개')
+    expect(stripVideoTitles('세그먼트 없음')).toBe('세그먼트 없음')
+  })
+})

@@ -134,9 +134,18 @@ export default function AdminInfluencerPoolPage() {
       const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
       if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); return }
       toast.success('통합 수집을 시작했어요 — 유튜브·네이버·티스토리 전 매체, YouTube 예산 소진까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
-      for (let i = 0; i < 8; i++) {
+      // 예산 소진(used>=total)까지 버튼 잠금 유지(최대 5분) — 조기 재클릭이 진행 중 체인과 경합하던 것 방지
+      //   (서버도 실행 lease 로 병렬 차단하지만, UI 도 완료 전 재클릭을 유도하지 않게).
+      for (let i = 0; i < 25; i++) {
         await new Promise(res => setTimeout(res, 12000))
-        try { const s = await api.get('/api/admin/ads/influencer-pool/stats'); if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate) } } catch { /* 폴링 지속 */ }
+        try {
+          const s = await api.get('/api/admin/ads/influencer-pool/stats')
+          if (s.data?.success) {
+            setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate)
+            const yb = s.data.run?.yt_budget
+            if (yb && typeof yb.used === 'number' && typeof yb.total === 'number' && yb.used >= yb.total) { toast.success(`오늘 YouTube 예산 소진 완료 (${yb.used}/${yb.total}) — 수집 마감`); break }
+          }
+        } catch { /* 폴링 지속 */ }
       }
       await loadLeads()
     } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }

@@ -8,7 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
+import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
@@ -239,7 +239,7 @@ app.post('/influencer-pool/reextract', async (c) => {
     scanned += rows.length
     const ups: ReturnType<typeof c.env.DB.prepare>[] = []
     for (const r of rows) {
-      const ex = extractContacts(r.description || '')
+      const ex = extractContacts(stripVideoTitles(r.description || '')) // 🏷️ 영상 제목 속 타인 핸들 오수집 방지(F-10)
       const sets: string[] = []; const binds: (string | number | null)[] = []
       const emFix = reextractEmail(r.description, r.email) // 빈칸 채움 + 대행사→개인 교정 + 가짜메일(전치사 at) 제거
       if (emFix !== undefined) { sets.push('email = ?'); binds.push(emFix) }

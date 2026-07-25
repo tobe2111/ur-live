@@ -7,7 +7,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { pickBusinessEmail, extractContacts, type FetchBudget } from './influencer-discovery'
+import { pickBusinessEmail, extractContacts, stripVideoTitles, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -19,7 +19,7 @@ const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  *      ③ 대행사(비-개인도메인) 저장값 + 소개글에 개인도메인 메일 → 개인메일로 교정.
  */
 export function reextractEmail(description: string | null | undefined, stored: string | null): string | null | undefined {
-  const desc = description || ''
+  const desc = stripVideoTitles(description || '') // 🏷️ 영상 제목 세그먼트(분류 전용 신호)의 타인 메일 오추출 방지
   const derived = pickBusinessEmail(desc) || extractContacts(desc).emails[0] || null // 개선된(수정된) 추출기
   if (!stored) return derived || undefined // 빈칸 채움
   const s = stored.toLowerCase(); const [local, domain] = s.split('@'); const label = (domain || '').split('.')[0]
