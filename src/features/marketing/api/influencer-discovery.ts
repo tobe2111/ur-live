@@ -116,23 +116,39 @@ const NON_OWNER_EMAIL_RE = /^(no-?reply|noreply|support|help|admin|contact|info|
  *   점수: 비즈니스 문맥어(문의/business…) 근처(±40자) +3 · 개인메일 도메인(gmail/naver/daum/kakao/hanmail) +1
  *        · 서비스/자동응답 계정(support@ 등) −2. 동점이면 먼저 등장한 것. 후보 0개면 null.
  */
-// 🛡️ 당첨자/이벤트 언급 근처 이메일 = 시청자 메일(채널 주인 아님) — 영상 더보기란 흔한 노이즈(2026-07-23 전수조사 F-04).
-const WINNER_CONTEXT_RE = /(당첨|추첨|이벤트\s*참여|응모|사연\s*(보내|접수)|퀴즈)/i
+// 🛡️ 당첨자 발표 언급 근처 이메일 = 시청자 메일(채널 주인 아님) — 영상 더보기란 흔한 노이즈(2026-07-23 전수조사 F-04).
+//   강한 신호만(당첨/추첨/사연/퀴즈 — '이벤트 참여'는 "이벤트 참여 문의" 류 정상 비즈니스 문맥에도 흔해 제외).
+const WINNER_CONTEXT_RE = /(당첨|추첨|응모\s*하|사연\s*(보내|접수)|퀴즈\s*정답)/gi
 
 export function pickBusinessEmail(text: string, opts?: { requireContext?: boolean }): string | null {
   const t = deobfuscateEmail(String(text || '')) // 난독화 복원 후 문맥 점수 계산(around 컨텍스트도 복원본 기준).
   const raw = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e) && !isPlatformLabelEmail(e))).slice(0, 12)
   if (!raw.length) return null
   const lower = t.toLowerCase()
+  // 당첨 문맥은 **가장 가까운 이메일 1개에만** 귀속(±40) — 창(window) 방식은 앞 이메일의 뒤쪽 창이 다음 문장
+  //   ("… · 이벤트 당첨 hong@…")까지 물어 비즈니스 메일이 억울하게 감점되는 오귀속이 있었음.
+  const emailPos = raw.map(e => ({ e, idx: lower.indexOf(e) })).filter(p => p.idx >= 0)
+  const winnerPenalized = new Set<string>()
+  {
+    WINNER_CONTEXT_RE.lastIndex = 0
+    let wm: RegExpExecArray | null
+    while ((wm = WINNER_CONTEXT_RE.exec(t)) !== null) {
+      let bestE: string | null = null; let bestD = Infinity
+      for (const { e, idx } of emailPos) {
+        const d = wm.index < idx ? Math.max(0, idx - (wm.index + wm[0].length)) : Math.max(0, wm.index - (idx + e.length))
+        if (d < bestD) { bestD = d; bestE = e }
+      }
+      if (bestE && bestD <= 40) winnerPenalized.add(bestE)
+    }
+  }
   let best: string | null = null; let bestScore = -Infinity; let bestIdx = Infinity; let bestHasCtx = false
-  for (const email of raw) {
-    const idx = lower.indexOf(email)
-    const around = idx >= 0 ? t.slice(Math.max(0, idx - 40), idx + email.length + 10) : ''
+  for (const { e: email, idx } of emailPos) {
+    const around = t.slice(Math.max(0, idx - 40), idx + email.length + 10)
     const hasCtx = BIZ_CONTEXT_RE.test(around)
     let score = 0
     if (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(email)) score += 5 // 개인도메인=창작자 본인(대행사/MCN 코퍼레이트 메일보다 지배적 — 협찬사 오수집 방지)
     if (hasCtx) score += 2
-    if (WINNER_CONTEXT_RE.test(around)) score -= 6 // 당첨자/이벤트 언급 메일 — 개인도메인 가점(+5)을 상쇄하고도 남게
+    if (winnerPenalized.has(email)) score -= 6 // 당첨자 발표 메일 — 개인도메인 가점(+5)을 상쇄하고도 남게
     if (NON_OWNER_EMAIL_RE.test(email)) score -= 3
     if (score > bestScore || (score === bestScore && idx < bestIdx)) { best = email; bestScore = score; bestIdx = idx; bestHasCtx = hasCtx }
   }
