@@ -61,13 +61,10 @@ export function deobfuscateEmail(text: string): string {
 
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
-// 🛡️ 2026-07-23 전수조사(F-01): "insta @sunny.day" 류가 난독화 복원 ④(@ 주변 공백 흡수)를 거쳐 insta@sunny.day
-//   가짜 이메일이 되던 날조 차단 — 로컬파트가 플랫폼 라벨 단어면 이메일이 아니라 "라벨 + @핸들" 표기다.
-const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|인스타그램|youtube|yt|facebook|fb|twitter|threads|telegram|텔레그램|kakao|kakaotalk|카톡|x)$/i
+const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|인스타그램|youtube|yt|facebook|fb|twitter|threads|telegram|텔레그램|kakao|kakaotalk|카톡|x)$/i // 🛡️ F-01: "insta @sunny.day"→insta@sunny.day 가짜 이메일 날조 차단(로컬파트=플랫폼 라벨이면 "라벨+@핸들" 표기)
 const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
 
-/** 🏷️ 영상 제목 세그먼트(카테고리 신호용 " | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝이 타인 핸들·캠페인
- *  태그(제목 속)를 오수집하지 않게 분리(제목은 분류 전용 신호). */
+/** 🏷️ 영상 제목 세그먼트(" | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지(제목=분류 전용). */
 export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s영상:[\s\S]*$/, '')
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
@@ -84,8 +81,7 @@ export function extractContacts(text: string): ExtractedContacts {
   const emails = uniqLower((deobfuscateEmail(t).match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e) && !isPlatformLabelEmail(e))).sort((a, b) => (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(b) ? 1 : 0) - (/@(gmail|naver|daum|kakao|hanmail|nate|hotmail|outlook|icloud)\./i.test(a) ? 1 : 0)).slice(0, 5) // 개인도메인 우선 정렬 + 플랫폼라벨 날조(insta@x.day) 제외
   // URL 형 + 키워드+@ 형을 합쳐 정규화(다양한 표기 흡수) — 예약어(p/reel/instagram…) 제외.
   const IG_BAD = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'instagram', 'insta', 'about', 'accounts']
-  // 라벨형("인스타:@x"=본인선언) 우선, URL형 후순위. 단 🛡️ 'official' 포함 핸들은 라벨형에서 제외(2026-07-23 —
-  //   "협업 브랜드 인스타 @oliveyoung_official" 류 브랜드 계정이 본인 계정으로 오수집되던 것; URL형엔 유지).
+  // 라벨형("인스타:@x"=본인선언) 우선, URL형 후순위. 🛡️ 'official' 핸들은 라벨형 제외(협업 브랜드 계정 오수집 방지).
   const atHandles = Array.from(t.matchAll(IG_AT_RE), m => m[1]).filter(h => !/official/i.test(h))
   const instagram = uniqLower([
     ...atHandles,
@@ -116,8 +112,7 @@ const NON_OWNER_EMAIL_RE = /^(no-?reply|noreply|support|help|admin|contact|info|
  *   점수: 비즈니스 문맥어(문의/business…) 근처(±40자) +3 · 개인메일 도메인(gmail/naver/daum/kakao/hanmail) +1
  *        · 서비스/자동응답 계정(support@ 등) −2. 동점이면 먼저 등장한 것. 후보 0개면 null.
  */
-// 🛡️ 당첨자 발표 언급 근처 이메일 = 시청자 메일(채널 주인 아님) — 영상 더보기란 흔한 노이즈(2026-07-23 전수조사 F-04).
-//   강한 신호만(당첨/추첨/사연/퀴즈 — '이벤트 참여'는 "이벤트 참여 문의" 류 정상 비즈니스 문맥에도 흔해 제외).
+// 🛡️ F-04: 당첨자 발표 근처 이메일=시청자 메일. 강신호만(당첨/추첨/사연/퀴즈 — '이벤트 참여'는 정상 문맥에도 흔해 제외).
 const WINNER_CONTEXT_RE = /(당첨|추첨|응모\s*하|사연\s*(보내|접수)|퀴즈\s*정답)/gi
 
 export function pickBusinessEmail(text: string, opts?: { requireContext?: boolean }): string | null {
@@ -125,21 +120,17 @@ export function pickBusinessEmail(text: string, opts?: { requireContext?: boolea
   const raw = uniqLower((t.match(EMAIL_RE) || []).filter(e => !NOT_EMAIL_SUFFIX.test(e) && !isPlatformLabelEmail(e))).slice(0, 12)
   if (!raw.length) return null
   const lower = t.toLowerCase()
-  // 당첨 문맥은 **가장 가까운 이메일 1개에만** 귀속(±40) — 창(window) 방식은 앞 이메일의 뒤쪽 창이 다음 문장
-  //   ("… · 이벤트 당첨 hong@…")까지 물어 비즈니스 메일이 억울하게 감점되는 오귀속이 있었음.
+  // 당첨 문맥은 **가장 가까운 이메일 1개에만** 귀속(±40) — 창 방식은 앞 이메일의 뒤창이 다음 문장까지 물어 오귀속.
   const emailPos = raw.map(e => ({ e, idx: lower.indexOf(e) })).filter(p => p.idx >= 0)
   const winnerPenalized = new Set<string>()
-  {
-    WINNER_CONTEXT_RE.lastIndex = 0
-    let wm: RegExpExecArray | null
-    while ((wm = WINNER_CONTEXT_RE.exec(t)) !== null) {
-      let bestE: string | null = null; let bestD = Infinity
-      for (const { e, idx } of emailPos) {
-        const d = wm.index < idx ? Math.max(0, idx - (wm.index + wm[0].length)) : Math.max(0, wm.index - (idx + e.length))
-        if (d < bestD) { bestD = d; bestE = e }
-      }
-      if (bestE && bestD <= 40) winnerPenalized.add(bestE)
+  WINNER_CONTEXT_RE.lastIndex = 0
+  for (let wm = WINNER_CONTEXT_RE.exec(t); wm !== null; wm = WINNER_CONTEXT_RE.exec(t)) {
+    let bestE: string | null = null; let bestD = Infinity
+    for (const { e, idx } of emailPos) {
+      const d = wm.index < idx ? Math.max(0, idx - (wm.index + wm[0].length)) : Math.max(0, wm.index - (idx + e.length))
+      if (d < bestD) { bestD = d; bestE = e }
     }
+    if (bestE && bestD <= 40) winnerPenalized.add(bestE)
   }
   let best: string | null = null; let bestScore = -Infinity; let bestIdx = Infinity; let bestHasCtx = false
   for (const { e: email, idx } of emailPos) {
@@ -329,8 +320,7 @@ export async function discoverYouTubeInfluencers(
       if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
       if (!l.links && c.links.length) l.links = c.links.join(' ')
     }
-    // 🏷️ 영상 제목을 카테고리 신호로(resolveCategory). 🛡️ F-09: 이미 500자인 소개글 뒤에 붙이고 다시 500 자르면
-    //   원본과 동일(무효)이던 버그 — 소개글을 360자로 양보해 제목 공간을 확보(제목이 분류 신호로 실제 반영되게).
+    // 🏷️ 영상 제목=카테고리 신호. F-09: 500자 소개글 뒤에 붙이고 재-500 자르면 무효이던 버그 — 소개글 360자로 양보.
     if (titleText) l.description = `${l.description.slice(0, 360)} | 영상: ${titleText}`.slice(0, 500)
   }
   // 내부 필드 제거(저장 스키마엔 없음).
@@ -394,16 +384,14 @@ export async function discoverNaverBloggers(
   for (const it of (data?.items || [])) {
     const home = ensureScheme(String(it.bloggerlink || '').trim()) // 🐛 Naver API 는 스킴 없이 반환 → 상대경로 404 방지
     if (!home) continue
-    // 🛡️ channel_id 정규화(2026-07-23 F-22): http→https + m. 제거 — 같은 블로거가 표기 변형으로 UNIQUE 를 뚫고
-    //   중복 행이 되던 경로 차단(4차 이름병합도 같은 플랫폼이라 못 잡던 영구 중복).
+    // 🛡️ F-22: channel_id 정규화(http→https·m. 제거) — 표기 변형이 UNIQUE 를 뚫어 영구 중복되던 것 차단.
     const key = home.replace(/\/$/, '').replace(/^http:\/\//i, 'https://').replace(/^https:\/\/m\./i, 'https://')
     const handle = key.replace(/^https?:\/\/(?:m\.)?blog\.naver\.com\//i, '').replace(/[/?#].*$/, '') || null
     const text = `${stripTag(it.title)} ${stripTag(it.description)}`
     const ex = existingOrNew(byBlog, key, String(it.bloggername || handle || '블로거'), key, handle)
     ex._matches += 1
-    // 첫 매칭의 설명에서 컨택 시도(누적). ⚖️ 스니펫=글 본문이라 제3자(가게/사연) 메일 위험 → 비즈니스 문맥 있는 것만(F-03).
     const c = extractContacts(text)
-    if (!ex.email) { const be = pickBusinessEmail(text, { requireContext: true }); if (be) ex.email = be }
+    if (!ex.email) { const be = pickBusinessEmail(text, { requireContext: true }); if (be) ex.email = be } // ⚖️ F-03: 스니펫=글 본문 — 문맥 있는 메일만
     if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
     if (!ex.tiktok && c.tiktok[0]) ex.tiktok = c.tiktok[0]
     if (!ex.links && c.links.length) ex.links = c.links.join(' ')
@@ -470,15 +458,13 @@ export async function discoverNaverCafes(
   for (const it of (data?.items || [])) {
     const home = ensureScheme(String(it.cafeurl || '').trim()) // 🐛 스킴 보장(상대경로 404 방지)
     if (!home) continue
-    // 🛡️ 정규화(F-22/23): http→https + m. 제거 — 'm.cafe.naver.com' 이 핸들로 오추출·중복 행 되던 것 차단.
-    const key = home.replace(/\/$/, '').replace(/^http:\/\//i, 'https://').replace(/^https:\/\/m\./i, 'https://')
+    const key = home.replace(/\/$/, '').replace(/^http:\/\//i, 'https://').replace(/^https:\/\/m\./i, 'https://') // F-22/23 정규화(m.cafe 핸들 오추출·중복 차단)
     const handle = key.replace(/^https?:\/\/(?:m\.)?cafe\.naver\.com\//i, '').replace(/^https?:\/\//i, '').replace(/[/?#].*$/, '') || null
     const text = `${stripTag(it.title)} ${stripTag(it.description)}`
     let ex = byCafe.get(key)
     if (!ex) { ex = { platform: 'naver_cafe', channel_id: key, handle, name: String(it.cafename || handle || '카페'), url: key, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }; byCafe.set(key, ex) }
     ex._matches += 1
-    // ⚖️ 카페 스니펫 이메일은 **저장 안 함**(2026-07-23 F-03) — 게시글 본문(중고거래/공구 글쓴이 등 제3자 개인 메일)이
-    //   "카페의 연락처"로 오수집되는 PIPA 위험이 카페 표면에서 특히 높음. 인스타/링크만 유지.
+    // ⚖️ F-03: 카페 스니펫 이메일 저장 안 함 — 게시글 제3자 개인 메일 PIPA 위험 최고 표면. 인스타/링크만.
     const c = extractContacts(text)
     if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
     if (!ex.links && c.links.length) ex.links = c.links.join(' ')
@@ -521,9 +507,8 @@ export async function discoverTistoryBloggers(
     let ex = byBlog.get(host)
     if (!ex) { ex = { platform: 'tistory', channel_id: home, handle, name: String(it.blogname || handle || '티스토리'), url: home, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: it.thumbnail || null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }; byBlog.set(host, ex) }
     ex._matches += 1
-    // ⚖️ 스니펫=글 본문 — 제3자 메일 위험이라 비즈니스 문맥 있는 것만(F-03, 네이버 블로그와 동일).
     const c = extractContacts(text)
-    if (!ex.email) { const be = pickBusinessEmail(text, { requireContext: true }); if (be) ex.email = be }
+    if (!ex.email) { const be = pickBusinessEmail(text, { requireContext: true }); if (be) ex.email = be } // ⚖️ F-03: 스니펫=글 본문 — 문맥 있는 메일만
     if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
     if (!ex.tiktok && c.tiktok[0]) ex.tiktok = c.tiktok[0]
     if (!ex.links && c.links.length) ex.links = c.links.join(' ')
@@ -608,8 +593,7 @@ export async function saveInfluencerLeads(
   const sourceKeyword = meta?.sourceKeyword ?? null
   let saved = 0
   for (const l of leads) {
-    // 🧹 노이즈 제외 + 🎯 유튜브 구독자 1000 미만 제외(대표 지시). 예외(F-25): 구독자 **비공개** 채널은 API 가 0 을
-    //   반환해 규모 무관 영구 배제되던 것 — 총조회 200만+ 면 사실상 대형 채널이므로 통과(진짜 0구독 채널은 그 조회수 불가).
+    // 🧹 노이즈 + YT 구독자 1000 미만 제외. 예외(F-25): 구독자 비공개(API 0)는 총조회 200만+ 면 대형으로 통과.
     const ytTooSmall = l.platform === 'youtube' && (l.subscriber_count || 0) < 1000 && !((l.subscriber_count || 0) === 0 && (l.view_count || 0) >= 2_000_000)
     if (isLikelyNoise(l.name, l.description) || ytTooSmall) continue
     // 🏷️ 콘텐츠(이름+소개글) 신호 우선 분류 — 키워드 상속의 오분류('자동'/교차 카테고리) 방지.
