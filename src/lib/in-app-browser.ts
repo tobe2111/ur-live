@@ -103,9 +103,11 @@ export function isAndroid(): boolean {
  *   ③ 이후 부팅/청크 자가복구가 견고해짐 → 원래 사유가 대부분 해소. 게다가 카카오 로그인은 카카오톡
  *   인앱 브라우저(자체 세션) 안에서가 오히려 제일 잘 됨.
  *
- * 정책: 카톡 포함 모든 인앱은 앱을 그대로 렌더 + 상단 InAppBrowserBanner 의 "외부 브라우저로 열기"
- *   (openInExternalBrowser)로 수동 이동. 이 함수는 no-op(항상 false) 으로 유지 — main.tsx 의
- *   `if (!_kakaoRedirected)` 마운트 게이트가 항상 통과하도록.
+ * 정책: 카톡 포함 모든 인앱은 앱을 그대로 렌더. 안내 배너(InAppBrowserBanner)도 2026-06-20 대표
+ *   요청으로 미마운트(노이즈) — 인앱에서 정말 막히는 기능(충전/결제 등)만 기능 단위 게이트
+ *   (IosTopupGate/InAppFeatureBlockedModal)가 그 시점에 openInExternalBrowser 로 안내.
+ *   이 함수는 no-op(항상 false) 으로 유지 — main.tsx 의 `if (!_kakaoRedirected)` 마운트 게이트가
+ *   항상 통과하도록.
  *
  * ⚠️ 회귀(카톡 인앱 흰화면) 발견 시 롤백: git 이력에서 kakao scheme 자동 이동 본문 복원 +
  *   index.html 인라인 스크립트의 카톡 scheme 복원(SSOT 쌍).

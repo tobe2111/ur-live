@@ -533,14 +533,16 @@
             return;
           }
 
-          // 🛡️ 2026-07-23 (대표 지시 "카톡도 그냥 열리게"): 인앱 브라우저에서 외부 브라우저로
+          // 🛡️ 2026-07-25 (대표 지시 "카톡도 그냥 열리게"): 인앱 브라우저에서 외부 브라우저로
           //   자동 이동/팝업("외부 앱을 열려고 합니다")을 더 이상 시도하지 않음. 카카오톡 포함 모든
-          //   인앱(카톡/인스타/페북/네이버/라인)은 앱을 그대로 렌더하고, 외부 브라우저가 필요한
-          //   사용자는 상단 InAppBrowserBanner 의 "외부 브라우저로 열기"(openInExternalBrowser)로 수동 이동.
+          //   인앱(카톡/인스타/페북/네이버/라인)은 앱을 그대로 렌더.
           //   React 쪽 autoRedirectKakaoToExternal 도 no-op 으로 정렬(SSOT).
           //   배경: 무한 reload 는 sessionStorage 가드로, 흰화면의 근본 원인이던 Service Worker 는
           //     2026-04-27 제거로 해소 + 부팅/청크 자가복구 견고화 → 강제 이동 불필요. 카카오 로그인은
-          //     카톡 인앱(자체 세션) 안에서가 오히려 제일 잘 됨.
+          //     카톡 인앱(자체 세션) 안에서가 오히려 제일 잘 됨(App.tsx 2026-06-20 배너 제거 주석 참조).
+          //   안내 배너(InAppBrowserBanner)도 2026-06-20 대표 요청으로 미마운트(노이즈) — 인앱에서 정말
+          //     막히는 기능(충전/결제 등)은 기능 단위 게이트(IosTopupGate/InAppFeatureBlockedModal)가
+          //     그 시점에만 외부 브라우저(openInExternalBrowser)를 안내.
           //   ⚠️ 회귀(카톡 흰화면) 시 롤백: git 이력에서 이 블록의 카톡 scheme 자동 이동 + REDIRECT_KEY
           //     가드 복원 + in-app-browser.ts autoRedirectKakaoToExternal 본문 복원(SSOT 쌍).
           //   (inApp 이면 위 8초 슬로우 힌트도 건너뜀 — 그대로 유지.)
