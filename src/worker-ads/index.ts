@@ -104,11 +104,13 @@ app.post('/__ads/scan-notices', async (c) => {
 })
 
 // 🏪 매장 후보(인허가) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+//   전일 변동분 + (백필 설정 시) 과거 1청크도 함께 진행 — 버튼 누를수록 축적 가속.
 app.post('/__ads/collect-localdata', async (c) => {
   try {
-    const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+    const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
     const stats = await runLocalDataCollect(c.env)
-    return c.json({ ok: true, stats })
+    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
+    return c.json({ ok: true, stats, backfill })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
@@ -210,11 +212,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 홈페이지 크롤/네이버 링크발견.
   //   게이트 ADS_LOCALDATA_ENABLED(매장 후보 트랙 켜면 보강도 자동). 이메일 백로그를 시간당 자동 소진.
+  //   📦 + 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 시간당 2일씩 역방향 소급 → 매장 DB 수량 확대.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       try {
         const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
         await enrichProspectContacts(env)
+      } catch { /* fail-soft */ }
+      try {
+        const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
+        await runLocalDataBackfill(env, 2)
       } catch { /* fail-soft */ }
     })())
   }

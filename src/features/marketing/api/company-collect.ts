@@ -193,28 +193,35 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   }
 
   // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
+  //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
+  //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
+  //     상호만으로는 동명 지점/타업체 전화 오귀속 위험(허위 방지). 그런 리드는 홈페이지 크롤이 담당.
+  const phoneCap = Math.floor(budget.left / 2)
+  let phoneSpent = 0
   for (const t of targets) {
-    if (outOfBudget(budget)) break
+    if (outOfBudget(budget) || phoneSpent >= phoneCap) break
     processed++
-    if (t.phone || !kakaoKey) continue
-    const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address || '', budget)
+    if (t.phone || !kakaoKey || !t.address) continue
+    phoneSpent++
+    const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
-  //   ★ 핵심 수정: 홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link 발견으로 구제 → 이메일/전화 확보.
+  //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   for (const t of targets) {
     if (budget.left <= 2) break
     if (t.email) continue // 이미 이메일 있음
     let site = realSite(t.website)
+    let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
-      if (nv.website) site = nv.website
-      if (!t.phone && nv.phone) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
-      // 지역검색에 홈페이지 없으면 웹/블로그 검색으로 발견(홈페이지 크롤 관문 대폭 확장 → 이메일↑)
-      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget)
+      if (nv.website) site = nv.website // 지역검색 등록 링크(업체가 등록) — 신뢰
+      if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
+      // 지역검색에 홈페이지 없으면 웹문서 검색으로 발견(크롤 관문 확장 → 이메일↑). 제3자 도메인 제외 + 상호가드.
+      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
-      const c = await crawlContact(site, budget)
+      const c = await crawlContact(site, budget, discovered ? t.company_name : undefined)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
     }
   }

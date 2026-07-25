@@ -86,8 +86,32 @@ async function fetchLicensePage(base: string, endpoint: string, key: string, day
   return { items: rows, count: rows.length, msg }
 }
 
-export interface LocalDataStats { last_run: string; day: string; found: number; saved: number; new_open: number; closed: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[] } }
+/** 원항목 → StoreProspect 매핑(SSOT — 일일 변동분·백필 공용). 소문자 우선 + 카멜 폴백. */
+function toProspect(it: RawLicense, endpoint: string, category: string): StoreProspect {
+  const road = g(it, 'rdnwhladdr', 'rdnWhlAddr', 'rdnWhladdr')
+  const lot = g(it, 'sitewhladdr', 'siteWhlAddr', 'siteWhladdr')
+  const trd = g(it, 'trdstategbn', 'trdStateGbn')
+  return {
+    opn_svc_id: g(it, 'opnsvcid', 'opnSvcId') || endpoint,
+    opn_sf_team_code: g(it, 'opnsfteamcode', 'opnSfTeamCode'),
+    mgt_no: g(it, 'mgtno', 'mgtNo'),
+    biz_name: g(it, 'bplcnm', 'bplcNm'),
+    category,
+    uptae: g(it, 'uptaenm', 'uptaeNm') || null,
+    addr_road: road || null, addr_lot: lot || null,
+    phone: g(it, 'sitetel', 'siteTel') || null,
+    local_code: g(it, 'opnsfteamcode', 'opnSfTeamCode', 'localcode', 'localCode') || null,
+    region: pickRegion(road || lot) || null,
+    trd_state: trd || null, trd_state_nm: g(it, 'trdstatenm', 'trdStateNm') || null,
+    apv_perm_ymd: g(it, 'apvpermymd', 'apvPermYmd').replace(/\D/g, '').slice(0, 8) || null,
+    last_mod_ts: g(it, 'lastmodts', 'lastModTs') || null,
+    lon: Number(g(it, 'x')) || null, lat: Number(g(it, 'y')) || null,
+  }
+}
+
+export interface LocalDataStats { last_run: string; day: string; found: number; saved: number; new_open: number; closed: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string } }
 const STATS_KEY = 'ads_localdata_stats'
+const BF_CURSOR_KEY = 'ads_localdata_backfill_ymd'
 
 /** env 병합 엔드포인트 맵: 코드 SSOT(LICENSE_UPJONG) + ADS_LOCALDATA_ENDPOINTS(JSON) — 무배포로 미용업·숙박업 추가. */
 function resolveEndpoints(env: Env): Record<string, string> {
@@ -127,28 +151,8 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       if (msg) lastMsg = msg
       if (!sample && items[0]) sample = items[0]
       if (!count) break
-      const rows: StoreProspect[] = items.map(it => {
-        const road = g(it, 'rdnwhladdr', 'rdnWhlAddr', 'rdnWhladdr')
-        const lot = g(it, 'sitewhladdr', 'siteWhlAddr', 'siteWhladdr')
-        const trd = g(it, 'trdstategbn', 'trdStateGbn')
-        if (trd && trd !== '01') closed++
-        return {
-          opn_svc_id: g(it, 'opnsvcid', 'opnSvcId') || endpoint,
-          opn_sf_team_code: g(it, 'opnsfteamcode', 'opnSfTeamCode'),
-          mgt_no: g(it, 'mgtno', 'mgtNo'),
-          biz_name: g(it, 'bplcnm', 'bplcNm'),
-          category,
-          uptae: g(it, 'uptaenm', 'uptaeNm') || null,
-          addr_road: road || null, addr_lot: lot || null,
-          phone: g(it, 'sitetel', 'siteTel') || null,
-          local_code: g(it, 'opnsfteamcode', 'opnSfTeamCode', 'localcode', 'localCode') || null,
-          region: pickRegion(road || lot) || null,
-          trd_state: trd || null, trd_state_nm: g(it, 'trdstatenm', 'trdStateNm') || null,
-          apv_perm_ymd: g(it, 'apvpermymd', 'apvPermYmd').replace(/\D/g, '').slice(0, 8) || null,
-          last_mod_ts: g(it, 'lastmodts', 'lastModTs') || null,
-          lon: Number(g(it, 'x')) || null, lat: Number(g(it, 'y')) || null,
-        }
-      }).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
+      const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
+      for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
       found += rows.length
       saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
       if (count < 500) break // 마지막 페이지
@@ -163,4 +167,47 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const s: LocalDataStats = { last_run: stamp, day: dayYmd, found, saved, new_open: newOpen, closed, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error: err, sample, endpoints: Object.keys(endpoints) } }
   await persist(s)
   return s
+}
+
+/**
+ * 📦 과거 인허가 **백필**(수집 수량 확대) — 전일 변동분만으로는 DB 가 느리게 쌓임 →
+ *   `ADS_LOCALDATA_BACKFILL_DAYS`(기본 0=OFF, 예: 180)일만큼 과거로 **하루씩 역방향** 소급 수집.
+ *   시간당 1청크(maxDaysPerRun일)씩 진행(ur-ads 매시간 크론 + 수동 수집 버튼에 부착) — 커서 영속이라 중단/재개 안전.
+ *   변동일 기준 조회라 과거로 갈수록 그날 변동된 매장이 계속 나옴 → 전국 매장이 점진 축적. 멱등 upsert 라 중복 0.
+ */
+export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise<{ enabled: boolean; done: boolean; days: string[]; found: number; saved: number }> {
+  const DB = env.DB
+  const windowDays = Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0)
+  if (!windowDays) return { enabled: false, done: true, days: [], found: 0, saved: 0 }
+  await ensureProspectSchema(DB)
+  const key = (env as unknown as { ADS_LOCALDATA_SERVICE_KEY?: string }).ADS_LOCALDATA_SERVICE_KEY || env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
+  if (!key) return { enabled: true, done: false, days: [], found: 0, saved: 0 }
+  const base = (env as unknown as { ADS_LOCALDATA_ENDPOINT?: string }).ADS_LOCALDATA_ENDPOINT || LOCALDATA_BASE
+  const endpoints = resolveEndpoints(env)
+  const now = new Date()
+  const todayYmd = ymd(now)
+  const floorYmd = ymd(new Date(now.getTime() - windowDays * 86400000))
+  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(BF_CURSOR_KEY).first<{ value: string }>().catch(() => null)
+  let cur = String(curRaw?.value || '').replace(/\D/g, '').slice(0, 8)
+  if (cur.length !== 8) cur = ymd(new Date(now.getTime() - 2 * 86400000)) // 전일은 일일 틱 담당 → 그 전날부터 역방향
+  const MAX_PAGES = Math.max(1, parseInt((env as unknown as { ADS_LOCALDATA_MAX_PAGES?: string }).ADS_LOCALDATA_MAX_PAGES || '', 10) || 6)
+  let found = 0, saved = 0
+  const days: string[] = []
+  for (let i = 0; i < maxDaysPerRun && cur >= floorYmd; i++) {
+    days.push(cur)
+    for (const [endpoint, category] of Object.entries(endpoints)) {
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        const { items, count } = await fetchLicensePage(base, endpoint, key, cur, page)
+        if (!count) break
+        const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
+        found += rows.length
+        saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
+        if (count < 500) break
+      }
+    }
+    const d = new Date(Date.UTC(+cur.slice(0, 4), +cur.slice(4, 6) - 1, +cur.slice(6, 8)) - 86400000)
+    cur = ymd(d)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_CURSOR_KEY, cur).run().catch(() => null)
+  }
+  return { enabled: true, done: cur < floorYmd, days, found, saved }
 }

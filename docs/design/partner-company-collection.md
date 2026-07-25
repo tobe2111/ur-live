@@ -245,6 +245,15 @@ data.go.kr 가입 → **상가(상권)정보 + 공정위 가맹정보 활용신�
 
 ## 10. 구현 로그
 
+- **2026-07-23 — 수집 전수조사(정확도·완성도·수량) 6결함 수리.** 대표 "가장 이상적인 형태로 수집 중인지 전수조사".
+  - **[수량/이메일] 보강 예산 독식**: enrichHeldLeads Phase1(카카오 전화)이 전체 예산을 소진하면 Phase2(이메일)가 0건 → 전화 조회를 예산 절반으로 캡(phoneCap) — 이메일 몫 상시 보장.
+  - **[정확도] anyEmail 마스킹 부분매칭**: `ab**cd@x.com` 에서 `cd@x.com`(잘린 가짜) 추출 가능 → `*` 포함 값 통째 스킵.
+  - **[정확도] 발견 사이트 오귀속(허위 위험)**: 웹/블로그 검색이 리뷰 블로그(제3자) 포스트를 반환 → 글쓴이 이메일이 매장에 붙을 위험 → ① `naverHomepageSearch` 를 webkr 전용 + 제3자/UGC 도메인(blog/cafe/post.naver·tistory·brunch·SNS) 제외 ② `crawlContact(requireName)` — 발견 사이트는 페이지에 상호가 있어야만 연락처 채택(2중 가드).
+  - **[정확도] 주소 없는 리드 전화 오귀속**: 프랜차이즈 본사 등 주소 없는 리드에 카카오 상호-단독 매칭 전화(동명 지점 위험) → 주소 있는 리드만 카카오/네이버 전화 채택(주소 없는 건 홈페이지 크롤 담당).
+  - **[수량/중복] 통신판매 2서비스 중복**: companyKey 가 사업자번호 무시 → 현황/상세가 같은 업체를 2행 생성 가능 → **`b:{사업자번호10}` 최우선 키** + 1회 마이그레이션(연락처 백필 병합 → 미큐레이션 중복 삭제 → 키 통일 → commerce 재분류 → 보류 승격, 플래그 `ads_company_key_v2`).
+  - **[정확도] commerce '대행사' tier1 오분류**: 통신판매업체는 대행사가 아님 + tier1 이 보강 우선순위 독식 → `온라인판매` tier4 + 기존행 마이그레이션 + COMPANY_CATEGORIES 등재.
+  - **[수량] 인허가 과거 백필 신설**: 전일 변동분만으론 축적 느림 → `runLocalDataBackfill`(`ADS_LOCALDATA_BACKFILL_DAYS`, 기본 0=OFF) — 시간당 2일씩 역방향 소급(커서 영속·멱등 upsert), 매시간 크론 + 수동 수집 버튼에 부착. 예: 180 설정 시 ~4일에 걸쳐 6개월치 변동 매장 축적.
+  - 오탐 기각: 배선(버튼→ur-ads→DB)·멱등키·마스킹 차단·KST·출처 태그·크론 예산 합산(<1000 서브요청) 전부 정상. 네이버 local display=5 는 API 제약(불변). tsc 0·sql(bind/column/table/not-null)/balance/pagination/file-size 가드 GREEN.
 - **2026-07-23 — 공정위 가맹(프랜차이즈) 실엔드포인트 교정 + 무료 이메일 확보 강화 종합.** 대표 "남은 것도 가장 이상적으로".
   - **프랜차이즈**(`franchise-collect.ts`): 실 엔드포인트 `FftcBrandRlsInfo2_Service/getBrandList`(웹 확인) 로 교체(이전 FftcIffInfoService/getIffInfo placeholder). 이 API 는 브랜드·법인·사업자번호·대표·업종까지만(연락처 직접 없음) → **discovery 리드**로 저장(requireContact:true, 보류) → **enrichHeldLeads 가 브랜드명으로 네이버 홈페이지 검색→크롤로 연락처 채움**(프랜차이즈 본사는 홈페이지 보유율 높아 이메일 수율 우수). 방어파싱(g/봉투)+header resultMsg 오류표시+probe. ADS_FRANCHISE_OP/YEAR env override. 파트너풀 '🏢 프랜차이즈' 상태줄.
   - **무료 이메일 최대 레버**(`naverHomepageSearch`): 네이버 웹(webkr)/블로그 검색으로 홈페이지 발견 — 지역검색에 없는 업체도 상호 매칭 시 크롤 관문 확보(enrichHeldLeads·prospect-enrich 배선). 기존 네이버 키 재사용(무료).

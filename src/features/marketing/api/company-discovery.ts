@@ -21,6 +21,7 @@ export const COMPANY_CATEGORIES: Record<string, string[]> = {
   '지역조직': ['상인회', '소상공인연합회', '협동조합', '청년몰', '상권활성화재단', '새마을금고·신협'],
   '미디어': ['지역신문·매거진', '아파트게시판', '체험단·플레이스마케팅'],
   '대행사': ['마케팅대행', '병원·뷰티마케팅'],
+  '온라인판매': ['통신판매'], // 공정위 통신판매사업자(이메일 소스) — 대행사 아님(2026-07-23 정합)
 }
 export const COMPANY_CATEGORY_KEYS = Object.keys(COMPANY_CATEGORIES)
 
@@ -101,10 +102,37 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)').run().catch(() => null)
+
+  // 🧹 키 v2 마이그레이션(1회, 플래그) — 사업자번호 보유 행을 b: 키로 통일 + 기존 중복(통신판매 현황/상세 2서비스) 병합.
+  const v2 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_key_v2'").first<{ value: string }>().catch(() => null)
+  if (!v2?.value) {
+    // ① 중복군(같은 사업자번호)의 대표행(MIN id)에 형제 행의 연락처 백필(정보 손실 0)
+    await DB.prepare(`UPDATE ad_company_leads SET
+        email = COALESCE(email, (SELECT d.email FROM ad_company_leads d WHERE d.business_no = ad_company_leads.business_no AND d.id != ad_company_leads.id AND d.email IS NOT NULL LIMIT 1)),
+        phone = COALESCE(phone, (SELECT d.phone FROM ad_company_leads d WHERE d.business_no = ad_company_leads.business_no AND d.id != ad_company_leads.id AND d.phone IS NOT NULL LIMIT 1)),
+        website = COALESCE(website, (SELECT d.website FROM ad_company_leads d WHERE d.business_no = ad_company_leads.business_no AND d.id != ad_company_leads.id AND d.website IS NOT NULL LIMIT 1))
+      WHERE business_no IS NOT NULL AND business_no != ''
+        AND id = (SELECT MIN(m.id) FROM ad_company_leads m WHERE m.business_no = ad_company_leads.business_no)`).run().catch(() => null)
+    // ② 대표행 외 **미큐레이션**(status=new·메모 없음) 중복만 삭제 — 대표가 손댄 행은 보존
+    await DB.prepare(`DELETE FROM ad_company_leads WHERE business_no IS NOT NULL AND business_no != ''
+        AND status = 'new' AND memo IS NULL
+        AND id != (SELECT MIN(m.id) FROM ad_company_leads m WHERE m.business_no = ad_company_leads.business_no)`).run().catch(() => null)
+    // ③ b: 키 통일(충돌 시 기존 유지 — OR IGNORE)
+    await DB.prepare(`UPDATE OR IGNORE ad_company_leads SET company_key = 'b:' || replace(replace(business_no, '-', ''), ' ', '')
+        WHERE business_no IS NOT NULL AND length(replace(replace(business_no, '-', ''), ' ', '')) = 10`).run().catch(() => null)
+    // ④ 통신판매 재분류('대행사' tier1 오분류 → '온라인판매' tier4 — 보강 우선순위 정합)
+    await DB.prepare("UPDATE ad_company_leads SET category = '온라인판매', tier = 4 WHERE source = 'commerce' AND category = '대행사'").run().catch(() => null)
+    // ⑤ 백필로 연락처 생긴 보류 행 승격(일관성)
+    await DB.prepare("UPDATE ad_company_leads SET active = 1 WHERE active = 0 AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))").run().catch(() => null)
+    await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_key_v2', '1')").run().catch(() => null)
+  }
 }
 
-/** 중복 차단 키 — 웹사이트(정규화) 우선, 없으면 회사명|지역(소문자). SQLite NULL-distinct 회피용 결정 키. */
-export function companyKey(lead: Pick<CompanyLead, 'company_name' | 'website' | 'region'>): string {
+/** 중복 차단 키 — **사업자등록번호(10자리) 최우선**(같은 업체가 여러 소스/서비스에서 와도 1행 —
+ *   통신판매 현황+상세 2서비스 중복 방지), 없으면 웹사이트(정규화), 없으면 회사명|지역. */
+export function companyKey(lead: Pick<CompanyLead, 'company_name' | 'website' | 'region' | 'business_no'>): string {
+  const digits = String(lead.business_no || '').replace(/\D/g, '')
+  if (digits.length === 10) return `b:${digits}`
   const web = (lead.website || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '')
   if (web.length >= 4) return `w:${web}`.slice(0, 200)
   const name = (lead.company_name || '').trim().toLowerCase().replace(/\s+/g, '')

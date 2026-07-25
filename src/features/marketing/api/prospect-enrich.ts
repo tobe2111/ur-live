@@ -64,10 +64,11 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       if (budget.left <= 4) break
       processed++
       const nv = await naverLocalLookup(nvId, nvSecret, p.biz_name, p.region, addr(p), budget)
-      let site = nv.website
-      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget) // 웹/블로그 검색으로 홈페이지 발견
+      let site = nv.website // 지역검색 등록 링크(업체가 직접 등록) — 신뢰
+      let discovered = false
+      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget); discovered = !!site } // 웹문서 검색 발견(제3자 도메인 제외)
       let email: string | null = null
-      if (site) { siteFound++; const c = await crawlContact(site, budget); email = c.email }
+      if (site) { siteFound++; const c = await crawlContact(site, budget, discovered ? p.biz_name : undefined); email = c.email } // 발견 사이트는 상호 존재 가드(오귀속 방지)
       // 전화가 없으면 네이버 → 카카오 순으로 보강(부가). 이메일이 주목적.
       let phone: string | null = p.phone ? null : nv.phone
       if (!p.phone && !phone && kakaoKey && budget.left > 1) { const k = await kakaoLocalLookup(kakaoKey, p.biz_name, p.region, addr(p), budget); phone = k.phone }
