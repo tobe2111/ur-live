@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-25 — 🗺️ 지도 스와이프/스크롤 전수조사 결함 전부 수정 (대표 "전부 수정" — H1~H4·M1~M7·L1~L4)
+브랜치 `claude/yourdeal-link-display-xjnrru` (PR #726 에 동승). 지도 표면 버벅임/불완전 스와이프 근본수리:
+- **바텀시트 드래그 재설계** (`restaurant-map/useSheetDrag.ts` 신설, RestaurantMapPage 에서 소비): [H1] 매 touchmove setState→전페이지 리렌더 → ref+rAF 로 DOM transform 직접 갱신(릴리즈 때만 snap state) · [H2] top 애니메이션+±200px 클램프 → top 은 full 고정, snap/드래그 전부 translateY(컴포지터)·클램프는 full~peek 실한계 · [H4] 리스트 위 스와이프 시트 라우팅(비-full 상향/scrollTop 0 하향 — 네이티브 non-passive) · [M1] 핸들 Pointer Events+캡처 · [M2] velocity(지수평활)+관성투영 스냅. 시각적 snap top 값(peek 100dvh-240px·mid 40dvh·full safe+104px)은 기존과 동일.
+- **오버레이 diff 재조정** (`useKakaoMap.ts` + 빌더 추출 `restaurant-map/map-overlays.ts`): [H3] 팬/줌/검색/즐겨찾기마다 핀 전량 파괴·재생성(핀 깜빡임·팬 종료 버벅) → [key→overlay] registry diff(같은 key 무접촉). [M3] mapLevel state+zoom_changed 리스너 제거(핀치 중 리렌더 0 — gridSize 는 initMap 내 getLevel() 직접). [M6][L4] 검색 타이핑·즐겨찾기 토글도 변한 핀만. [L1] SDK effect deps 에 enabled. [L3] centerOffsetForSheet full=104px 정합.
+- **기타 표면**: [M4] RestaurantMiniMap 터치기기 draggable=false(pan-y 충돌 지터 해소, PC 유지) · [M5] VoucherMap 지도 1회 생성+마커 레이어만 갱신(재초기화/뷰 리셋 제거)+공용 ensureKakaoMaps · [M7] 지도 컨테이너 ResizeObserver→relayout(중심 보존) · [L2] SelectedDealCard Pointer 단일화+축판별+감쇠 추적+캡처.
+- 가드: file-size(페이지 989→960)·mobile-viewport·theme·loader-continuity GREEN. ⚠️ npm 403 — tsc/build 는 CI. **배포 후 실기기 확인 권장**: 시트 드래그 추종/플릭, 리스트 위 스와이프 확장, 팬 후 핀 무깜빡, 핀치 부드러움, 상세 미니맵 세로 스크롤.
+
 ## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — **3레인 전부 구현 완료** ✅
 **완료**: ① 1단계 = `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·상태머신·tier·CSV) ② **레인 A** = 네이버 지역검색(`local.json`) 자동수집(ur-ads 홀수시 크론 게이트드 `ADS_COMPANY_COLLECT_ENABLED`, 방배/서초/강남×12업종 키워드, phone-first) + **이메일 홈페이지 크롤**(robots.txt 존중, `pickBusinessEmail`) + 수동 '지금 수집'(서비스바인딩 위임) ③ **레인 B·C** = 명부 붙여넣기 임포트(`parsePartnerPaste`, 공정위 정보공개서·상인회 CSV/TSV). 파일: `company-discovery.ts`·`company-collect.ts`·`partner-pool.routes.ts`·`AdminPartnerPoolPage.tsx`·`worker-ads/index.ts`. tsc 0·가드 GREEN. **후속(선택)**: 웹문서 `webkr.json` 보충·data.go.kr API 피드. **⚠️ 레인 A 활성**: `NAVER_SEARCH_CLIENT_ID/SECRET` + `ADS_COMPANY_COLLECT_ENABLED=true` → '지금 수집' 표본검증. 설계 SSOT: `docs/design/partner-company-collection.md`.
 
