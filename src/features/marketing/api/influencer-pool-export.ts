@@ -10,11 +10,19 @@ import { ensureInfluencerSchema } from './influencer-discovery'
  */
 export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string): Promise<Response> {
   await ensureInfluencerSchema(DB) // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
-  const rows = (await DB.prepare(`SELECT platform, name, handle, url, subscriber_count, video_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
-      recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo
-    FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, subscriber_count DESC, id DESC LIMIT 20000`)
-    .bind(poolId).all<{ platform: string; name: string; handle: string | null; url: string; subscriber_count: number; video_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null }>()
-    .catch(() => null))?.results || []
+  // 🛡️ 2026-07-23 전수조사: 단일 SELECT LIMIT 20000 하드캡 — 28k 풀에서 8천 명이 조용히 누락되던 것.
+  //   5천행 페이지 읽기(D1 응답크기 안전)로 전환 + 상한 60000(현 풀 2배 여유 — 초과 시에만 잘림).
+  type ExpRow = { platform: string; name: string; handle: string | null; url: string; subscriber_count: number; video_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null }
+  const rows: ExpRow[] = []
+  const PAGE = 5000, CAP = 60000
+  for (let off = 0; off < CAP; off += PAGE) {
+    const page = (await DB.prepare(`SELECT platform, name, handle, url, subscriber_count, video_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
+        recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo
+      FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(poolId, PAGE, off).all<ExpRow>().catch(() => null))?.results || []
+    rows.push(...page)
+    if (page.length < PAGE) break
+  }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
   // 📈 성과(평균조회/댓글/月포스팅)·컨택 이력·출처/동의·메모 — 구글시트/필터CSV 와 동일 22열 세계.

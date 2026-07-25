@@ -107,8 +107,17 @@ async function ensurePoolSheet(token: string, sheetId: string, needRows: number,
 
 /**
  * 인플루언서 공용 풀 전량 → 시트 미러. 반환 {ok, rows} — 실패는 error 문자열(fail-soft, 절대 throw 안 함).
+ *   🛡️ 결과를 platform_settings('ads_sheets_last_sync')에 항상 기록 — cron 실패가 무음으로 사라지지 않게(관측성).
  */
 export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolean; rows?: number; error?: string }> {
+  const r = await _syncCore(env)
+  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind('ads_sheets_last_sync', JSON.stringify({ at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null, error: (r.error || '').slice(0, 300) || null }))
+    .run().catch(() => null)
+  return r
+}
+
+async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?: string }> {
   if (!env.GSHEETS_SHEET_ID || !env.GSHEETS_SA_EMAIL || !env.GSHEETS_SA_KEY) {
     return { ok: false, error: 'NOT_CONFIGURED: GSHEETS_SA_EMAIL / GSHEETS_SA_KEY / GSHEETS_SHEET_ID (ur-ads Variables)' }
   }
@@ -117,12 +126,16 @@ export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolea
   const sheetId = env.GSHEETS_SHEET_ID
 
   // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
+  //   🛡️ 2026-07-23 전수조사: 페이지 읽기 **실패**(null)를 "마지막 페이지"로 오인하면 그 오프셋 이후 전량 누락된
+  //   잘린 미러가 되는데도 "성공 N행"으로 보고됐음 — 실패는 clear **이전**에 즉시 중단(시트 기존 데이터 보존).
   const rows: (string | number)[][] = [[...SHEET_HEADER]]
   for (let off = 0; ; off += PAGE) {
-    const page = (await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
+    const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
-      .bind(PAGE, off).all<SheetLead>().catch(() => null))?.results || []
+      .bind(PAGE, off).all<SheetLead>().catch(() => null)
+    if (!res) return { ok: false, error: `READ: D1 페이지 읽기 실패(offset ${off}) — 잘린 미러 방지 위해 중단(시트 기존 데이터 유지)` }
+    const page = res.results || []
     for (const l of page) rows.push(leadToRow(l))
     if (page.length < PAGE) break
   }

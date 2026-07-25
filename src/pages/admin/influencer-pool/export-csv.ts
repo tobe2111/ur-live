@@ -37,14 +37,17 @@ export function buildFilteredCsv(leads: CsvLead[]): string {
   return '﻿' + [HEAD.join(','), ...rows].join('\r\n')
 }
 
-/** 필터 전량 페치 → CSV 다운로드. 반환 = 내보낸 행수(0 이면 대상 없음 안내 후 미다운로드). */
-export async function exportFilteredCsv(fetchPage: (offset: number) => Promise<CsvLead[]>, cap = 20000): Promise<number> {
+/** 필터 전량 페치 → CSV 다운로드. 반환 = 내보낸 행수(0 이면 대상 없음 안내 후 미다운로드).
+ *  🛡️ 2026-07-23: 상한 20000→60000(28k 풀에서 조용히 잘리던 것) + 상한 도달 시 잘림 안내(무음 누락 금지). */
+export async function exportFilteredCsv(fetchPage: (offset: number) => Promise<CsvLead[]>, cap = 60000): Promise<number> {
   const all: CsvLead[] = []
+  let truncated = true // 루프가 '마지막 페이지'로 끝나면 false — cap 도달로 끝나면 true 유지
   for (let off = 0; off < cap; off += 500) {
     const page = await fetchPage(off)
     all.push(...page)
-    if (page.length < 500) break
+    if (page.length < 500) { truncated = false; break }
   }
+  if (truncated) toast.error(`⚠️ 상한 ${cap.toLocaleString()}건에서 잘렸습니다 — 필터를 좁혀 나눠 내보내세요`)
   if (!all.length) { toast.error('내보낼 리드가 없습니다 (현재 필터 0건)'); return 0 }
   const url = URL.createObjectURL(new Blob([buildFilteredCsv(all)], { type: 'text/csv;charset=utf-8' }))
   const a = document.createElement('a'); a.href = url; a.download = `influencer-pool-filtered-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url)
