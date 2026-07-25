@@ -106,31 +106,38 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
   return { phone: null, website: null }
 }
 
-/** ①-c 네이버 웹/블로그 검색으로 **홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
- *   웹/블로그에서 자기 사이트를 노출. 상호가 결과 제목/설명에 포함될 때만 채택(오매칭 방지). 크롤 관문 확장. */
+// ⚠️ 제3자/UGC 플랫폼 — 리뷰 블로그·카페 글이 상호를 제목에 달고 있어도 **그 페이지의 이메일은 글쓴이(제3자) 것**
+//   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상.
+const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com)$/i
+
+/** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
+ *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
+ *   crawlContact 의 requireName 가드(페이지에 상호 존재)로 2중 검증 — 오귀속(허위) 구조적 차단. */
 export async function naverHomepageSearch(clientId: string, clientSecret: string, name: string, region: string | null, budget?: FetchBudget): Promise<string | null> {
   if (!clientId || !clientSecret || !name || name.length < 2) return null
   const want = norm(name)
   const q = `${name} ${region || ''}`.trim()
-  for (const kind of ['webkr', 'blog']) {
-    if (outOfBudget(budget)) break
-    spendBudget(budget)
-    const url = `https://openapi.naver.com/v1/search/${kind}.json?query=${encodeURIComponent(q)}&display=5`
-    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
-    if (!res || !res.ok) continue
-    const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
-    for (const it of (data?.items || [])) {
-      const hay = norm(stripTag(it.title) + ' ' + stripTag(it.description))
-      if (!hay.includes(want)) continue // 상호가 제목/설명에 없으면 다른 사이트 → 스킵
-      const link = (it.link || '').trim()
-      if (link && /^https?:\/\//i.test(link)) return link
-    }
+  if (outOfBudget(budget)) return null
+  spendBudget(budget)
+  const url = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(q)}&display=8`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+  if (!res || !res.ok) return null
+  const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+  for (const it of (data?.items || [])) {
+    const hay = norm(stripTag(it.title) + ' ' + stripTag(it.description))
+    if (!hay.includes(want)) continue // 상호가 제목/설명에 없으면 다른 사이트 → 스킵
+    const link = (it.link || '').trim()
+    if (!link || !/^https?:\/\//i.test(link)) continue
+    try { if (THIRD_PARTY_HOST.test(new URL(link).hostname)) continue } catch { continue } // 리뷰블로그/SNS 제외
+    return link
   }
   return null
 }
 
-/** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음. */
-export async function crawlContact(website: string, budget?: FetchBudget): Promise<{ email: string | null; phone: string | null }> {
+/** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
+ *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
+ *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
+export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string): Promise<{ email: string | null; phone: string | null }> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null } }
   if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null }
@@ -141,7 +148,8 @@ export async function crawlContact(website: string, budget?: FetchBudget): Promi
     const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
     if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null }
   }
-  let email: string | null = null, phone: string | null = null
+  let email: string | null = null, phone: string | null = null, nameSeen = !requireName
+  const wantName = requireName ? norm(requireName) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
   for (const path of ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']) {
     if ((email && phone) || outOfBudget(budget)) break
@@ -150,8 +158,10 @@ export async function crawlContact(website: string, budget?: FetchBudget): Promi
       .then(r => r.ok ? r.text() : '').catch(() => '')
     if (!html) continue
     const slice = html.slice(0, 200000)
+    if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
     if (!email) email = extractEmailFromHtml(slice)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
   }
+  if (!nameSeen) return { email: null, phone: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   return { email, phone }
 }
