@@ -130,12 +130,26 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN contact_channel='other' THEN 1 ELSE 0 END) AS ch_other,
       SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
       SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
-      SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS today,
+      SUM(CASE WHEN collected_at >= datetime('now','+9 hours','start of day','-9 hours') THEN 1 ELSE 0 END) AS today, -- '오늘' = KST 자정 기준(롤링 24h 아님)
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
-  return c.json({ success: true, stats: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
+  // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
+  //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
+  //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
+  let gate = c.env.ADS_AUTO_COLLECT_ENABLED === 'true'
+  try {
+    if (c.env.ADS?.fetch) {
+      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
+      if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
+    }
+  } catch { /* 폴백 유지 */ }
+  // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화) — 있으면 그대로 노출.
+  const sheetRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
+  let sheets_sync: unknown = null; try { sheets_sync = sheetRow?.value ? JSON.parse(sheetRow.value) : null } catch { sheets_sync = null }
+  return c.json({ success: true, stats: agg || {}, run, gate, sheets_sync })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
@@ -265,8 +279,8 @@ app.get('/influencer-pool/classify-debug', async (c) => {
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (!q) return c.json({ success: false, error: 'q 파라미터 필요' }, 400)
   const rows = (await c.env.DB.prepare(`SELECT id, platform, name, handle, description, category, source_keyword FROM ad_influencer_leads
-      WHERE account_id = 0 AND (LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ?) LIMIT 20`)
-    .bind(`%${q}%`, `%${q}%`).all<{ id: number; platform: string; name: string | null; handle: string | null; description: string | null; category: string | null; source_keyword: string | null }>().catch(() => null))?.results || []
+      WHERE account_id = ? AND (LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ?) LIMIT 20`)
+    .bind(POOL, `%${q}%`, `%${q}%`).all<{ id: number; platform: string; name: string | null; handle: string | null; description: string | null; category: string | null; source_keyword: string | null }>().catch(() => null))?.results || []
   const results = rows.map(r => {
     const contentCat = classifyCategory(r.name || '', r.description)
     const why = contentCat
@@ -502,19 +516,8 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
 app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls'))
 
-// POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
-//   🔥 백그라운드 실행(2026-07-20): 수집은 외부 API 수십 건 순회라 수십 초 걸려 동기 대기 시 브라우저 타임아웃
-//   → "실패"로 오표시. waitUntil 로 넘겨 즉시 started 반환, 완료는 UI 가 stats(last_run) 폴링으로 따라잡음.
-//   main 의 waitUntil 이 서비스바인딩 subrequest(ur-ads 동기 수집)를 살려둠 — 매시간 cron 과 동일 지속성.
-app.post('/influencer-pool/collect', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  // 폴백(waitUntil 미지원 환경): 동기 실행(구 동작).
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// (2026-07-23 전수조사: 구 단발 수집 /influencer-pool/collect 엔드포인트 제거 — UI 는 collect-burst 만 호출,
+//  유지되던 두 번째 트리거 경로가 lease 도입 후에도 표면만 넓혀 삭제. 필요 시 collect-burst 가 완전 상위 호환.)
 
 // POST /api/admin/ads/influencer-pool/collect-burst — 🔥 오늘 YT 검색 예산 즉시 소진(버스트)
 //   대표 "YT 검색 예산 최대한 바로 다 쓰는 방향". 배경: YT 무료 상한 = 하루 10k units = 검색 100회.
@@ -529,25 +532,28 @@ app.post('/influencer-pool/collect-burst', async (c) => {
   const burn = async () => {
     const startedAt = Date.now()
     let prevUsed = -1
+    let reason = 'loop_cap' // 🔎 종료 사유 기록(전수조사 — "시작했어요" 이후 블랙박스이던 것 가시화)
     for (let i = 0; i < 40; i++) {
-      if (Date.now() - startedAt > 220_000) break // ⏱️ 시간 예산(안전) — waitUntil 과부하 방지. 남은 예산은 재클릭/cron 이 이어받음.
+      if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // ⏱️ 시간 예산 — 남은 건 재클릭/cron 이 이어받음
       let body: { chained?: boolean; stats?: BurstStats } | null = null
       try {
         // self-chain 엔드포인트 — ads 에 SELF 바인딩이 있으면 chained=true 로 백그라운드 자가전파(메인 루프 종료).
         const r = await ads.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${i}&pu=${prevUsed}`, { method: 'POST' }))
         body = (await r.json().catch(() => null)) as { chained?: boolean; stats?: BurstStats } | null
-      } catch { break }
-      if (!body) break
-      if (body.chained) break                                  // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
+      } catch { reason = 'fetch_error'; break }
+      if (!body) { reason = 'bad_response'; break }
+      if (body.chained) { reason = 'chained'; break }          // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
       const stats = body.stats
-      if (!stats) break
-      if (stats.youtube_quota_hit) break                       // 구글이 초과 선언 — 오늘 끝
+      if (!stats) { reason = 'no_stats'; break }
+      if (stats.youtube_quota_hit) { reason = 'quota_hit'; break } // 구글이 초과 선언 — 오늘 끝
       const yb = stats.yt_budget
-      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') break
-      if (yb.used >= yb.total) break                           // 오늘 예산(기본 100회) 소진 — 완료
-      if (yb.used <= prevUsed) break                           // 진전 없음(YT 키워드 소진/YT 불가) — 무한루프 방지
+      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') { reason = 'busy_or_no_budget'; break } // lease busy 포함
+      if (yb.used >= yb.total) { reason = 'budget_done'; break }   // 오늘 예산(기본 100회) 소진 — 완료
+      if (yb.used <= prevUsed) { reason = 'no_progress'; break }   // 진전 없음(YT 키워드 소진/YT 불가)
       prevUsed = yb.used
     }
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_burst_last', JSON.stringify({ at: new Date().toISOString(), reason, lastUsed: prevUsed })).run().catch(() => null)
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
   await burn().catch(() => null) // 폴백(waitUntil 미지원): 동기 소진

@@ -78,6 +78,7 @@ export interface DiscoveryKeyword { id: number; keyword: string; category: strin
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
+  pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
   promoted?: string[]; youtube_quota_hit?: boolean
   bio_enriched?: number // 🔗 이번 실행에서 링크인바이오 페이지로 이메일/인스타를 새로 채운 리드 수
   perf_enriched?: number // 📈 이번 실행에서 성과 지표(YT 평균조회/네이버 활동성)를 채운 리드 수
@@ -86,6 +87,7 @@ export interface AutoCollectStats {
   diag?: {
     yt: { configured: boolean; found: number; saved: number; error?: string }
     naver: { configured: boolean; found: number; saved: number; error?: string }
+    tistory?: { configured: boolean; found: number; saved: number; error?: string }
   }
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
@@ -97,7 +99,7 @@ const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
 
-type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string } }
+type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string }; tistory?: { configured: boolean; found: number; saved: number; error?: string } }
 
 /**
  * 🔔 조용한 실패 방어(2026-07-20) — 수집이 켜져 있는데 **키 소실/전 플랫폼 0건**이면 Discord 경보.
@@ -112,7 +114,10 @@ async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: Co
   if (!webhook) return
   const { diag, saved, quotaHit } = run
   const keyMissing = !diag.yt.configured || !diag.naver.configured
-  const unhealthy = keyMissing || saved === 0
+  // 🛡️ 2026-07-23: 풀 포화(발굴은 되는데 전부 중복 → saved=0)는 정상인데 6시간마다 오경보 → found 까지 0 일 때만
+  //   불건강(진짜 죽음 = 발굴 자체가 0). 중복-only 상태는 무경보.
+  const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
+  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
   const prevAt = await readSetting(DB, ALERT_KEY)
   const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
   if (!unhealthy) {
@@ -130,6 +135,7 @@ async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: Co
     keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
     `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
     `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
+    diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
     quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
     '어드민 인플루언서 풀에서 상세 확인.',
   ].filter(Boolean)
@@ -383,7 +389,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
-  // ⭐ 우선 카테고리 절반 배정 — 배치의 ceil(1/2)은 우선 풀(맛집·푸드·숙소·네일·뷰티, 별도 커서),
+  // ⭐ 우선 카테고리 배정 — 배치의 ceil(3/4)은 우선 풀(맛집·푸드·외식창업·숙소·네일·뷰티, 별도 커서),
   //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
   const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
   const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
@@ -438,7 +444,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const tistorySort: 'accuracy' | 'recency' = ((prev?.total_runs || 0) % 2 === 0) ? 'accuracy' : 'recency'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
-  //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
+  //   기본 300 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
   const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300) }
 
   let saved = 0
@@ -458,11 +464,13 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const diag = {
     yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
     naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
+    tistory: { configured: hasTistory, found: 0, saved: 0, error: undefined as string | undefined }, // 🔎 2026-07-23: 카카오 키 소실이 무음이던 것 — 별도 트랙
   }
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
+  if (!hasTistory) diag.tistory.error = 'NOT_CONFIGURED: ur-ads 워커에 KAKAO_REST_API_KEY 미설정'
 
-  // YT 검색 페이지 수(키워드당 깊이) — 기본 2(page1=1~50위, page2=51~100위…). 쿼터는 quotaHit 가드가 관리.
+  // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
   // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
   //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
   const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
@@ -516,8 +524,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (hasTistory) {
       try {
         const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget, sort: tistorySort })
-        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
-      } catch { /* fail-soft */ }
+        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.found += r.leads.length; diag.tistory.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
+        else if (!r.ok && !diag.tistory.error) diag.tistory.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
+      } catch (e) { if (!diag.tistory.error) diag.tistory.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
@@ -575,7 +584,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)

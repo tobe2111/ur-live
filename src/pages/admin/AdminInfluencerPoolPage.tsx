@@ -35,7 +35,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -47,7 +47,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
+interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 
 export default function AdminInfluencerPoolPage() {
@@ -55,6 +55,7 @@ export default function AdminInfluencerPoolPage() {
   const [stats, setStats] = useState<PoolStats>({})
   const [run, setRun] = useState<RunStats | null>(null)
   const [gate, setGate] = useState(false)
+  const [sheetsSync, setSheetsSync] = useState<{ ok: boolean; at?: string; error?: string | null } | null>(null) // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화)
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
   const [hasContact, setHasContact] = useState(false)
@@ -116,7 +117,7 @@ export default function AdminInfluencerPoolPage() {
         api.get('/api/admin/ads/influencer-pool/stats'),
         api.get('/api/admin/ads/influencer-pool/keywords'),
       ])
-      if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate) }
+      if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null) }
       if (k.data?.success) setKeywords(k.data.keywords || [])
     } catch { /* soft */ }
   }, [])
@@ -141,7 +142,7 @@ export default function AdminInfluencerPoolPage() {
         try {
           const s = await api.get('/api/admin/ads/influencer-pool/stats')
           if (s.data?.success) {
-            setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate)
+            setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
             const yb = s.data.run?.yt_budget
             if (yb && typeof yb.used === 'number' && typeof yb.total === 'number' && yb.used >= yb.total) { toast.success(`오늘 YouTube 예산 소진 완료 (${yb.used}/${yb.total}) — 수집 마감`); break }
           }
@@ -287,7 +288,7 @@ export default function AdminInfluencerPoolPage() {
         {/* 상태 배너 */}
         {!gate && (
           <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            자동 수집이 <b>꺼져 있음</b>. Cloudflare(ur-live) → Settings → Variables 에 <code className="font-mono">ADS_AUTO_COLLECT_ENABLED=true</code> 설정 후 재배포하면 매일 자동 수집됩니다. (아래 "지금 수집"은 즉시 1회 실행)
+            자동 수집이 <b>꺼져 있음</b>. Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables 에 <code className="font-mono">ADS_AUTO_COLLECT_ENABLED=true</code> 설정하면 매시간 자동 수집됩니다. (아래 "🔄 통합 수집"은 수동 즉시 실행 — YT 예산 소진까지)
           </div>
         )}
 
@@ -337,7 +338,13 @@ export default function AdminInfluencerPoolPage() {
             📧 유튜브 이메일 확보 {formatNumber(stats.yt_with_email)}/{formatNumber(stats.youtube)} ({Math.round((Number(stats.yt_with_email) || 0) / Math.max(1, Number(stats.youtube)) * 100)}%)
             {stats.yt_with_email ? ` · 개인메일 ${formatNumber(stats.yt_email_personal)} · 대행사·기타 ${formatNumber((Number(stats.yt_with_email) || 0) - (Number(stats.yt_email_personal) || 0))}` : ''}
             <span className="text-gray-400"> — 나머지는 유튜브가 이메일을 CAPTCHA로 가려 API로 불가</span>
+            {(Number(stats.opened) || 0) + (Number(stats.bounced) || 0) > 0 ? <span> · 📬 개봉 {formatNumber(stats.opened)} · 반송/신고 <span className={Number(stats.bounced) ? 'text-red-500' : ''}>{formatNumber(stats.bounced)}</span></span> : null}
           </div>
+        ) : null}
+
+        {/* 📊 구글시트 마지막 동기화 상태 — 무음 실패 가시화(2026-07-23 전수조사). 실패 시에만 표시. */}
+        {sheetsSync && !sheetsSync.ok ? (
+          <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
         ) : null}
 
         {run && (
@@ -354,8 +361,9 @@ export default function AdminInfluencerPoolPage() {
           // 플랫폼 상태: 키없음 or (에러 & 저장0)=hard, (에러 & 저장>0)=일시부분실패, 그 외 정상.
           const cls = (p: PlatformDiag) => !p.configured ? 'missing' : (p.error && p.saved === 0) ? 'failed' : (p.error && p.saved > 0) ? 'partial' : 'ok'
           const yt = cls(run.diag.yt), nv = cls(run.diag.naver)
-          const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed'
-          const soft = yt === 'partial' || nv === 'partial'
+          const ts = run.diag.tistory ? cls(run.diag.tistory) : 'ok'
+          const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed' || ts === 'missing' || ts === 'failed'
+          const soft = yt === 'partial' || nv === 'partial' || ts === 'partial'
           if (!hard && !soft) return null // 완전 정상이면 배너 숨김
           const line = (label: string, p: PlatformDiag, st: string) => (
             <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
@@ -366,6 +374,7 @@ export default function AdminInfluencerPoolPage() {
               <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
               {line('유튜브', run.diag.yt, yt)}
               {line('네이버', run.diag.naver, nv)}
+              {run.diag.tistory ? line('티스토리', run.diag.tistory, ts) : null}
               {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
             </div>
           )
@@ -582,7 +591,8 @@ export default function AdminInfluencerPoolPage() {
           />
         )}
         {/* 🚀 발송 모드 — 한 명씩 원클릭(Enter) 발송 큐. 선택 있으면 선택만. */}
-        {queueOpen && <SendQueueModal leads={selected.size ? leads.filter(l => selected.has(l.id)) : leads} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
+        {/* ⚖️ 발송 큐에서 rejected(수신거부/스팸신고 자동 강등 포함)는 코드로 제외 — 안내문만으로 재컨택되던 것 차단(명시 선택도 예외 없음). */}
+        {queueOpen && <SendQueueModal leads={(selected.size ? leads.filter(l => selected.has(l.id)) : leads).filter(l => l.status !== 'rejected')} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
       </div>
     </AdminLayout>
   )

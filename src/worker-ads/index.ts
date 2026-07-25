@@ -28,8 +28,12 @@ app.use('*', async (c, next) => {
   try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
 })
 
-// 헬스체크 — 배포/서비스바인딩 검증용.
-app.get('/__ads/health', (c) => c.json({ ok: true, service: 'ur-ads' }))
+// 헬스체크 — 배포/서비스바인딩 검증용. gates: 자동수집/시트동기화가 **이 워커(ur-ads) env** 기준으로 켜졌는지
+//   (2026-07-23 전수조사: 어드민 배너가 메인 워커 env 를 읽어 실제 cron 게이트와 어긋나던 것 — 메인이 이걸 물어 표시).
+app.get('/__ads/health', (c) => c.json({
+  ok: true, service: 'ur-ads',
+  gates: { auto_collect: c.env.ADS_AUTO_COLLECT_ENABLED === 'true', sheets_sync: c.env.ADS_SHEETS_SYNC_ENABLED === 'true' },
+}))
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
 //   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
@@ -164,10 +168,18 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch { /* fail-soft */ }
     }
     // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
+    //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
+    //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).
     if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
       try {
+        const prevRaw = await env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
+        const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
         const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-        await syncInfluencerPoolToSheets(env)
+        const r = await syncInfluencerPoolToSheets(env)
+        if (!r.ok && env.DISCORD_WEBHOOK_URL && (r.error || '') !== (prevErr || '')) {
+          const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
+          await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, '유어애즈 구글시트 동기화 실패', `${r.error || 'unknown'}\n(해결 전까지 시트 미러 정지 — 어드민 정비 도구에서 수동 재시도 가능)`, 'warn').catch(() => null)
+        }
       } catch { /* fail-soft */ }
     }
   })())
