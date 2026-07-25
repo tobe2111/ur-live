@@ -162,6 +162,8 @@ app.get('/stats', async (c) => {
       SUM(CASE WHEN status NOT IN ('lead','lost') THEN 1 ELSE 0 END) AS active_pipeline,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM overseas_buyer_leads`).first<Record<string, number>>().catch(() => null)
+  // 집계는 COUNT 라 정상이면 항상 1행 반환 → null 이면 조회 실패 확정. 0건으로 위장하지 말고 오류로 알림.
+  if (!t) return c.json({ success: false, error: '통계 조회에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500)
   const byIntent = (await c.env.DB.prepare("SELECT COALESCE(intent_signal,'directory') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY intent_signal ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
   const byCountry = (await c.env.DB.prepare("SELECT COALESCE(country,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY country ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
   const byCategory = (await c.env.DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
