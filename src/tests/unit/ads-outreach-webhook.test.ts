@@ -100,3 +100,38 @@ describe('runFollowupReminder — 0건 무발송', () => {
     expect(r.sent).toBe(false) // URL 미설정 → 무발송
   })
 })
+
+// ⚖️ 2026-07-23 전수조사 — 수신거부 회신이 '관심'으로 승격되던 결함 수리(거부 감지 → rejected + 억제).
+import { isOptOutMessage } from '@/features/marketing/api/outreach-webhook'
+
+describe('isOptOutMessage — 수신거부 표현 감지', () => {
+  it('명확한 거부 표현 감지', () => {
+    expect(isOptOutMessage('수신거부합니다')).toBe(true)
+    expect(isOptOutMessage('메일 보내지 마세요')).toBe(true)
+    expect(isOptOutMessage('unsubscribe please')).toBe(true)
+  })
+  it('일반 회신은 오탐 없음', () => {
+    expect(isOptOutMessage('제안 감사합니다, 조건이 궁금해요')).toBe(false)
+    expect(isOptOutMessage('')).toBe(false)
+  })
+})
+describe('applyInboundReplyToPool — 거부 회신 → rejected', () => {
+  it('거부 내용이면 status=rejected + opt_out (interested 승격 안 함)', async () => {
+    const db = mockDB()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const n = await applyInboundReplyToPool(db as any, 'Lead@Example.com', '광고 메일 수신거부합니다')
+    expect(n).toBe(1)
+    const u = db._updates()[0]
+    expect(u.sql).toMatch(/email_status='opt_out'/)
+    expect(u.sql).toMatch(/ELSE 'rejected'/)
+    expect(u.sql).not.toMatch(/'interested'/)
+    expect(u.binds).toEqual([0, 'lead@example.com'])
+  })
+  it('일반 회신은 기존대로 interested 승격', async () => {
+    const db = mockDB()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const n = await applyInboundReplyToPool(db as any, 'a@b.com', '네 관심 있습니다')
+    expect(n).toBe(1)
+    expect(db._updates()[0].sql).toMatch(/'interested'/)
+  })
+})

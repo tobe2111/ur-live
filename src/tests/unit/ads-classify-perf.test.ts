@@ -94,3 +94,35 @@ describe('countRecentPosts + extractPubDates — 네이버 RSS 활동성', () =>
     expect(extractPubDates(xml)).toHaveLength(2)
   })
 })
+
+// 🛡️ 2026-07-23 전수조사 — 부분문자열 오분류 수리(재현됐던 실패 케이스들이 더는 오분류되지 않아야 함).
+describe('classifyCategory — 오탐 제외(전수조사 수리)', () => {
+  it('아기자기 → 육아 아님(리빙 신호로 정상 분류)', () => {
+    expect(classifyCategory('자취방 브이로그', '아기자기한 소품으로 꾸민 자취방 인테리어')).toBe('리빙')
+  })
+  it('러닝타임/이러닝 → 운동 아님', () => {
+    expect(classifyCategory('영화 리뷰', '러닝타임 120분 영화 해석')).toBeNull()
+    expect(classifyCategory('공부 채널', '이러닝 인강 공부법')).toBeNull()
+    expect(classifyCategory('러닝 크루', '한강 러닝 기록')).toBe('운동') // 진짜 러닝은 유지
+  })
+  it('주식회사(사업자 정보 관용구) → IT/재테크 아님', () => {
+    expect(classifyCategory('오늘의집', '주식회사 버킷플레이스 공식 채널')).toBeNull()
+    expect(classifyCategory('재테크 노트', '주식 투자 기록')).toBe('IT/재테크') // 진짜 주식은 유지
+  })
+  it('스테이지 → 숙소 아님 · 헤어질 → 뷰티 아님 · 카페24 → 카페 아님', () => {
+    expect(classifyCategory('댄스 채널', '커버댄스 스테이지 영상')).toBeNull()
+    expect(classifyCategory('영화 채널', '헤어질 결심 해석')).toBeNull()
+    expect(classifyCategory('쇼핑몰 만들기', '카페24로 쇼핑몰 창업하기')).toBeNull()
+  })
+})
+
+// 🛡️ 취미(Hobby)는 유튜브가 광범위하게 붙이는 토픽 — 교정 권한 없음(채움 전용). 맛집→취미 대량 전환 차단.
+describe('reconcileCategory — 취미 topic 은 채움 전용', () => {
+  it('저장값 있으면 취미로 안 덮음', () => {
+    expect(reconcileCategory('맛집', null, '취미')).toBe('맛집')
+    expect(reconcileCategory('뷰티', null, '취미')).toBe('뷰티')
+  })
+  it('미분류는 취미로 채움 OK', () => {
+    expect(reconcileCategory(null, null, '취미')).toBe('취미')
+  })
+})

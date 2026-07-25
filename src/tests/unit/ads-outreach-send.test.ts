@@ -46,3 +46,28 @@ describe('welcomeEmail — 인바운드 접수확인', () => {
 it('발송 회당 상한 50 (워커 subrequest 여유)', () => {
   expect(CONSENTED_SEND_MAX).toBe(50)
 })
+
+// ⚖️ 2026-07-23 전수조사 — 광고 표기·야간 제한·전송자 정보(정보통신망법 표기 의무).
+import { withAdLabel, isNightKST, withSenderInfo, SENDER_INFO_LINE } from '@/features/marketing/api/outreach-send'
+
+describe('withAdLabel — "(광고)" 표기 강제', () => {
+  it('없으면 앞에 붙임, 있으면 중복 안 붙임', () => {
+    expect(withAdLabel('제휴 제안')).toBe('(광고) 제휴 제안')
+    expect(withAdLabel('(광고) 제휴 제안')).toBe('(광고) 제휴 제안')
+  })
+})
+describe('isNightKST — 야간(21~08시 KST) 판정', () => {
+  it('KST 22시=야간, 10시=주간, 경계(21시=야간, 8시=주간)', () => {
+    const kst = (h: number) => Date.UTC(2026, 6, 23, h - 9, 0, 0) // KST h시 = UTC h-9시
+    expect(isNightKST(kst(22))).toBe(true)
+    expect(isNightKST(kst(10))).toBe(false)
+    expect(isNightKST(kst(21))).toBe(true)
+    expect(isNightKST(kst(8))).toBe(false)
+  })
+})
+describe('withSenderInfo — 전송자 정보 강제', () => {
+  it('buildCampaignBody 산출물에 전송자 정보 포함', () => {
+    expect(withSenderInfo('본문')).toContain(SENDER_INFO_LINE)
+    expect(buildCampaignBody('안녕 {name}님', '지원')).toContain(SENDER_INFO_LINE)
+  })
+})

@@ -154,6 +154,9 @@ export async function enrichYouTubePerformance(
   const chRes = await fetch(`${YT_BASE}/channels?part=contentDetails,snippet,topicDetails&id=${rows.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
     { signal: AbortSignal.timeout(10000) }).catch(() => null)
   const chJson = chRes?.ok ? await chRes.json().catch(() => null) as { items?: { id?: string; snippet?: { publishedAt?: string; description?: string }; contentDetails?: { relatedPlaylists?: { uploads?: string } }; topicDetails?: { topicCategories?: string[] } }[] } | null : null
+  // 🛡️ 2026-07-23 전수조사: channels.list 자체가 실패(네트워크/403/쿼터)하면 uploads 맵이 비어 이 배치 전원이
+  //   "영상 0개가 정답" 분기로 avg 0 + 스탬프 → **영구 0 각인**(재선택 제외). 실패 시 아무것도 쓰지 않고 보류(다음 틱 재시도).
+  if (!chJson) return 0
   const uploads = new Map<string, string>() // channel_id → uploads playlist
   const publishedAt = new Map<string, string>() // channel_id → 개설일(계정 나이 신호)
   const aboutDesc = new Map<string, string>() // channel_id → 최신 About 소개글(이메일 재교정용 — 이미 받는 snippet)
@@ -176,7 +179,9 @@ export async function enrichYouTubePerformance(
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
     const pi = piRes?.ok ? await piRes.json().catch(() => null) as { items?: { contentDetails?: { videoId?: string } }[] } | null : null
-    videoIdsByLead.set(r.id, (pi?.items || []).map(i => i.contentDetails?.videoId).filter((v): v is string => !!v))
+    // 🛡️ 호출 실패("측정 실패")는 빈 목록("진짜 영상 0")과 구분 — 실패면 스탬프 없이 보류(0 각인 방지).
+    if (!pi) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue }
+    videoIdsByLead.set(r.id, (pi.items || []).map(i => i.contentDetails?.videoId).filter((v): v is string => !!v))
   }
 
   // ③ 영상 통계 — 전 채널 영상을 50개씩 묶어 배치 콜.
@@ -202,10 +207,13 @@ export async function enrichYouTubePerformance(
     const catToWrite = refresh
       ? reconcileCategory(r.category, liveCat, topicCat.get(r.channel_id) || null)
       : (r.category || liveCat || topicCat.get(r.channel_id) || null)
-    if (budgetSkipped.has(r.id)) // 예산으로 perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
+    const leadVideoIds = videoIdsByLead.get(r.id) || []
+    const vids = leadVideoIds.map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
+    // 🛡️ videos.list 실패(영상 id 는 있는데 통계 0건 매칭 = 측정 실패)도 0 각인 대신 보류 — 진짜 영상 0(id 없음)과 구분.
+    const measureFailed = leadVideoIds.length > 0 && vids.length === 0
+    if (budgetSkipped.has(r.id) || measureFailed) // perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
       return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ? WHERE id = ?`)
         .bind(pub, fixEmail, catToWrite, r.id)
-    const vids = (videoIdsByLead.get(r.id) || []).map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
     const { avgViews, avgComments } = avgStats(vids)
     return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
       .bind(avgViews, avgComments, pub, fixEmail, catToWrite, r.id)
@@ -282,19 +290,28 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
   if (!apiKey) return { scanned: 0, changed: 0 }
   const DB = env.DB
   await ensurePerfExtraColumns(DB)
-  const CAP = Math.max(1, Math.min(opts?.maxChannels ?? 12000, 20000)) // 안전 상한(≈400콜) — 넘으면 다음 실행/커서가 이어받음(현재 풀은 1콜 세션 내 완료)
-  let scanned = 0, changed = 0
-  for (let off = 0; scanned < CAP; off += 1000) {
+  // 🛡️ 2026-07-23 전수조사: 이 함수만 fetch 예산·진행 커서가 없어 20k 풀에서 무제한 fetch → 인보케이션 중도 사망 시
+  //   조용히 앞부분만 처리되고, OFFSET 재시작이라 **재클릭해도 항상 같은 앞부분만** 도달하던 결함 수리:
+  //   ① 호출 상한(MAX_CALLS — 서브리퀘스트 한도 내 안전) ② platform_settings 영속 id-커서(중단 지점 이어받기, 끝 도달 시 0 리셋).
+  const CAP = Math.max(1, Math.min(opts?.maxChannels ?? 12000, 20000))
+  const MAX_CALLS = 220 // channels.list 호출 상한/실행 — 50개 배치라 실행당 최대 1.1만 채널(부족분은 커서가 이어받음)
+  const CURSOR_KEY = 'ads_catrescan_cursor'
+  const { readSetting, writeSetting } = await import('./influencer-auto-collect')
+  let afterId = Math.max(0, parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10) || 0)
+  let scanned = 0, changed = 0, calls = 0, reachedEnd = false
+  while (scanned < CAP && calls < MAX_CALLS) {
     const rows = (await DB.prepare(`SELECT id, channel_id, name, category FROM ad_influencer_leads
-        WHERE account_id = 0 AND platform = 'youtube' AND channel_id IS NOT NULL
-        ORDER BY id ASC LIMIT 1000 OFFSET ?`).bind(off)
+        WHERE account_id = 0 AND platform = 'youtube' AND channel_id IS NOT NULL AND id > ?
+        ORDER BY id ASC LIMIT 1000`).bind(afterId)
       .all<{ id: number; channel_id: string; name: string | null; category: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
-    for (let i = 0; i < rows.length && scanned < CAP; i += 50) {
+    if (!rows.length) { reachedEnd = true; break }
+    for (let i = 0; i < rows.length && scanned < CAP && calls < MAX_CALLS; i += 50) {
       const batch = rows.slice(i, i + 50)
+      calls++
       const res = await fetch(`${YT_BASE}/channels?part=snippet,topicDetails&id=${batch.map(r => r.channel_id).join(',')}&maxResults=50&key=${apiKey}`,
         { signal: AbortSignal.timeout(10000) }).catch(() => null)
       const json = res?.ok ? await res.json().catch(() => null) as { items?: { id?: string; snippet?: { description?: string }; topicDetails?: { topicCategories?: string[] } }[] } | null : null
+      // 호출 실패 배치는 About/topic 맵이 비어 reconcile 이 저장값 그대로 반환 → write 0 (자연 no-op, 다음 순회 때 재시도).
       const aboutById = new Map<string, string>(), topicById = new Map<string, string>()
       for (const it of json?.items || []) {
         if (it.id && it.snippet?.description) aboutById.set(it.id, it.snippet.description)
@@ -308,9 +325,12 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
         changed += ups.length
       }
       scanned += batch.length
+      afterId = batch[batch.length - 1].id
+      await writeSetting(DB, CURSOR_KEY, String(afterId)) // 배치마다 전진 — 중도 사망해도 다음 실행이 정확히 이어받음
     }
-    if (rows.length < 1000) break
+    if (rows.length < 1000 && scanned >= 0 && calls < MAX_CALLS) { reachedEnd = true; break }
   }
+  if (reachedEnd) await writeSetting(DB, CURSOR_KEY, '0') // 한 바퀴 완료 — 다음 클릭은 처음부터(멱등 재보정)
   return { scanned, changed }
 }
 

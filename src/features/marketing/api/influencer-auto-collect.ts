@@ -219,12 +219,12 @@ export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudge
   return enriched
 }
 
-async function readSetting(DB: D1Database, key: string): Promise<string | null> {
+export async function readSetting(DB: D1Database, key: string): Promise<string | null> {
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
   const v = row?.value
   return v === undefined || v === null || v === '' ? null : String(v)
 }
-async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
+export async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run().catch(() => null)
 }
 

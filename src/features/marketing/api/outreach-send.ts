@@ -20,6 +20,23 @@ export function withOptOut(body: string): string {
   return body.includes(OPT_OUT_LINE) ? body : `${body}\n\n${OPT_OUT_LINE}`
 }
 
+/** ⚖️ 전송자 정보 표기(정보통신망법 — 영리 광고 전송 시 전송자 명칭·연락처 명시 의무). 본문 하단에 코드로 강제. */
+export const SENDER_INFO_LINE = '보낸 곳: 유어딜(UR Team) · https://urdeal.kr · 문의: urteam.corp@gmail.com'
+export function withSenderInfo(body: string): string {
+  return body.includes(SENDER_INFO_LINE) ? body : `${body}\n${SENDER_INFO_LINE}`
+}
+
+/** ⚖️ 광고 메일 제목 "(광고)" 표기 강제(정보통신망법 표기 의무 — 사람이 빠뜨려도 코드가 붙임). */
+export function withAdLabel(subject: string): string {
+  return /^\s*\(광고\)/.test(subject) ? subject : `(광고) ${subject}`
+}
+
+/** ⚖️ 야간 광고 전송 제한(KST 21:00~익일 08:00 — 야간 전송은 별도 동의 필요, 우리는 야간 동의를 안 받음) 판정. */
+export function isNightKST(nowMs: number): boolean {
+  const kstHour = new Date(nowMs + 9 * 3600_000).getUTCHours()
+  return kstHour >= 21 || kstHour < 8
+}
+
 /** plain text → 안전한 HTML(이스케이프 + 줄바꿈) — Resend 는 html 필드를 받음. */
 export function textToHtml(text: string): string {
   const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -34,7 +51,7 @@ export function welcomeEmail(name: string): { subject: string; body: string } {
   }
 }
 
-/** 캠페인 발송용 최종 본문 조립 — 개인화 + 수신거부 강제(순서 보장: 치환 후 강제). */
+/** 캠페인 발송용 최종 본문 조립 — 개인화 + 수신거부 + 전송자 정보 강제(순서 보장: 치환 후 강제). */
 export function buildCampaignBody(template: string, name: string): string {
-  return withOptOut(personalize(template, name))
+  return withSenderInfo(withOptOut(personalize(template, name)))
 }
