@@ -62,7 +62,7 @@ export function deobfuscateEmail(text: string): string {
 const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s.trim().toLowerCase()))).filter(Boolean)
 
 const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|인스타그램|youtube|yt|facebook|fb|twitter|threads|telegram|텔레그램|kakao|kakaotalk|카톡|x)$/i // 🛡️ F-01: "insta @sunny.day"→insta@sunny.day 가짜 이메일 날조 차단(로컬파트=플랫폼 라벨이면 "라벨+@핸들" 표기)
-const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
+export const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
 
 /** 🏷️ 영상 제목 세그먼트(" | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지(제목=분류 전용). */
 export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s영상:[\s\S]*$/, '')

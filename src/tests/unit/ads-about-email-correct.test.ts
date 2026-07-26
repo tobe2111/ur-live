@@ -61,3 +61,16 @@ describe('topicToCategory — YouTube topicDetails 매핑', () => {
     expect(topicToCategory(undefined)).toBeNull()
   })
 })
+
+// 🛡️ 2026-07-25 소급 정리 — 과거 저장된 플랫폼라벨 날조 이메일(insta@sunny.day 류) 제거/교체.
+describe('reextractEmail — 플랫폼라벨 날조 저장분 소급 제거', () => {
+  it('저장값이 라벨 이메일이면 비움(재도출 없을 때)', () => {
+    expect(reextractEmail('insta @sunny.day 놀러오세요', 'insta@sunny.day')).toBeNull()
+  })
+  it('진짜 메일이 소개글에 있으면 그것으로 교체', () => {
+    expect(reextractEmail('문의 real@gmail.com · insta @sunny.day', 'insta@sunny.day')).toBe('real@gmail.com')
+  })
+  it('정상 저장값은 유지(undefined)', () => {
+    expect(reextractEmail('문의 me@gmail.com', 'me@gmail.com')).toBeUndefined()
+  })
+})
