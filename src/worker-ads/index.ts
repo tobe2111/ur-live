@@ -136,6 +136,22 @@ app.post('/__ads/sheets-sync', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🌙 야간 자동 정비 — cron(SELF.fetch)이 새 invocation 예산으로 호출. 어드민 버튼과 동일 SSOT 모듈.
+app.post('/__ads/maintenance', async (c) => {
+  try {
+    const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance')
+    const r = await runNightlyMaintenance(c.env)
+    return c.json({ ok: true, ...r })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+app.post('/__ads/maintenance-rescan', async (c) => {
+  try {
+    const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
+    const r = await runNightlyRescan(c.env)
+    return c.json({ ok: true, ...r })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 메인 Worker 의 마운트와 동일 경로 — Service Binding 위임 시 URL 이 그대로 전달되므로 경로 일치가 중요.
 app.route('/', shortLinkRedirectRoutes)      // /l/:code (공개 리다이렉트)
 app.route('/api/ads', marketingRoutes)        // 유어애즈 데이터/인증 API
@@ -267,6 +283,21 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history'); await snapshotAllAccounts(env) } catch { /* fail-soft */ }
       try { const { runAlertsAll } = await import('@/features/marketing/api/alerts'); await runAlertsAll(env) } catch { /* fail-soft */ }
       try { const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid'); await runAutobidShadowAll(env) } catch { /* fail-soft */ }
+    })())
+  }
+
+  // ── 🌙 매일 18:00 UTC(=KST 03시) 자동 정비 + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
+  //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류 / 🧭재보정→🔄재조회)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
+  //   SELF 바인딩으로 **자체 인보케이션**에서 실행(fresh 서브리퀘스트 예산 — 같은 틱의 일일배치와 예산 미공유). 미바인딩 시 직접 실행 폴백.
+  //   기본 ON(대표 지시) — 끄려면 ur-ads env ADS_AUTO_MAINTENANCE_ENABLED='false'. 결과는 platform_settings 에 기록(무음 실패 방지).
+  if ((hourUTC === 18 || hourUTC === 19) && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+    const path = hourUTC === 18 ? '/__ads/maintenance' : '/__ads/maintenance-rescan'
+    ctx.waitUntil((async () => {
+      try {
+        if (env.SELF?.fetch) { await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' })) }
+        else if (hourUTC === 18) { const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyMaintenance(env) }
+        else { const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyRescan(env) }
+      } catch { /* fail-soft */ }
     })())
   }
 
