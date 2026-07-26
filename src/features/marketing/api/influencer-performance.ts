@@ -7,7 +7,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { pickBusinessEmail, extractContacts, stripVideoTitles, type FetchBudget } from './influencer-discovery'
+import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -22,6 +22,9 @@ export function reextractEmail(description: string | null | undefined, stored: s
   const desc = stripVideoTitles(description || '') // 🏷️ 영상 제목 세그먼트(분류 전용 신호)의 타인 메일 오추출 방지
   const derived = pickBusinessEmail(desc) || extractContacts(desc).emails[0] || null // 개선된(수정된) 추출기
   if (!stored) return derived || undefined // 빈칸 채움
+  // 🛡️ 소급 정리(2026-07-25): 과거 날조 저장분(insta@sunny.day 류 — 로컬파트=플랫폼 라벨)은 진짜 메일로 교체 or 비움.
+  //   신규 추출기는 이 클래스를 차단하지만 재추출의 '유지' 판정이 기존 오염을 못 지우던 것 — 발송하면 전량 반송되는 값.
+  if (isPlatformLabelEmail(stored)) return derived && derived !== stored ? derived : null
   const s = stored.toLowerCase(); const [local, domain] = s.split('@'); const label = (domain || '').split('.')[0]
   const fabricated = !desc.toLowerCase().includes(s) && !!local && !!label
     && new RegExp(`${_reEsc(local)}\\s+at\\s+${_reEsc(label)}`, 'i').test(desc) // "out at naver" 류 날조 흔적
