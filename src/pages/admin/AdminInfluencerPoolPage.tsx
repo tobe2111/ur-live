@@ -16,6 +16,7 @@ import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
+import RecruitButton from './influencer-pool/RecruitButton'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -42,7 +43,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
@@ -195,7 +196,6 @@ export default function AdminInfluencerPoolPage() {
     try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)); toast.success(val ? `✅ 팔로업 저장 — ${val}` : '팔로업 해제됨') }
     catch { toast.error('저장 실패') }
   }
-  // 🧰 유지보수(중복통합·시트·재분류·재추출)는 MaintenanceButtons 컴포넌트로 추출(600줄 캡).
   const reloadAll = useCallback(async () => { await Promise.all([loadLeads(), loadMeta()]) }, [loadLeads, loadMeta])
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
   // 🕐 서버 저장 시각은 UTC(datetime('now')/toISOString) — 한국시간(KST)으로 표시.
@@ -355,9 +355,9 @@ export default function AdminInfluencerPoolPage() {
             {stats.yt_with_email ? ` · 개인메일 ${formatNumber(stats.yt_email_personal)} · 대행사·기타 ${formatNumber((Number(stats.yt_with_email) || 0) - (Number(stats.yt_email_personal) || 0))}` : ''}
             <span className="text-gray-400"> — 나머지는 유튜브가 이메일을 CAPTCHA로 가려 API로 불가</span>
             {(Number(stats.opened) || 0) + (Number(stats.bounced) || 0) > 0 ? <span> · 📬 개봉 {formatNumber(stats.opened)} · 반송/신고 <span className={Number(stats.bounced) ? 'text-red-500' : ''}>{formatNumber(stats.bounced)}</span></span> : null}
+            {Number(stats.recruited) > 0 ? <span> · 📣 모집 안내 {formatNumber(stats.recruited)} → 신청 전환 <b className="text-rose-600">{formatNumber(stats.recruit_converted)}</b> ({Math.round((Number(stats.recruit_converted) || 0) / Math.max(1, Number(stats.recruited)) * 100)}%)</span> : null}
           </div>
         ) : null}
-        {/* 🏷️ 카테고리 분류 신뢰도 — content/topic=검증됨, 키워드상속=야간 재보정이 재검증 중. */}
         {Number(stats.categorized) > 0 ? (() => {
           const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0, ver = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0), inh = Number(stats.cat_keyword) || 0
           return <div className="text-[11px] text-gray-500 mt-0.5">🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%) · 근거 검증됨 {formatNumber(ver)} ({Math.round(ver / Math.max(1, cat) * 100)}%){inh > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inh)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}</div>
@@ -558,7 +558,7 @@ export default function AdminInfluencerPoolPage() {
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       {(() => { const d = parseDraft(l.outreach_draft); return d ? <button onClick={() => setDraftView({ lead: l, draft: d })} className="text-xs text-violet-600 hover:underline mr-2" title="AI 개인화 초안 검토(발송은 직접)">✍ 초안</button> : null })()}
                       <button onClick={() => reachOut(l)} className="text-xs text-emerald-600 hover:underline mr-2" title={l.email ? '메일 초안 열기(직접 발송)' : '인스타 DM·블로그 열기 + 초안 복사(직접 발송)'}>{l.email ? '✉ 메일' : '💬 연락'}</button>
-                      <span className="mr-2"><TrackLinkButton leadId={l.id} /></span><button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
+                      {!l.consented_at && <span className="mr-2"><RecruitButton leadId={l.id} name={l.name} hasEmail={!!l.email} /></span>}<span className="mr-2"><TrackLinkButton leadId={l.id} /></span><button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
                       <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
                       <button onClick={() => del(l.id)} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
                     </td>

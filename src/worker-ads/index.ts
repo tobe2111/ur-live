@@ -213,6 +213,14 @@ app.post('/__ads/maintenance-rescan', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🎓 신청자 온보딩 안내(신청 익일 1회) — 기본 ON(약속 이행). 킬스위치 ADS_ONBOARDING_DISABLED.
+app.post('/__ads/inbound-onboarding', async (c) => {
+  try {
+    const { runInboundOnboarding } = await import('@/features/marketing/api/inbound-onboarding')
+    return c.json({ ok: true, ...(await runInboundOnboarding(c.env)) })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🔁 동의 리드 리마인드(1회 시퀀스) — 게이트 ADS_REMINDER_ENABLED(기본 OFF)·야간 스킵은 러너 내부에서.
 app.post('/__ads/consented-reminder', async (c) => {
   try {
@@ -290,6 +298,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🔁 동의 리드 리마인드 — 매시간 시도(러너가 게이트 OFF/야간/무대상이면 no-op). 1인 1회(reminded_at CAS).
   if (env.ADS_REMINDER_ENABLED === 'true') {
     kick('/__ads/consented-reminder', async () => { const { runConsentedReminder } = await import('@/features/marketing/api/consented-reminder'); return runConsentedReminder(env) })
+  }
+  // 🎓 신청자 온보딩 안내 — 기본 ON(환영메일이 약속한 안내를 실제로 이행). 킬스위치만 끔. 무대상이면 no-op.
+  if ((env as unknown as { ADS_ONBOARDING_DISABLED?: string }).ADS_ONBOARDING_DISABLED !== 'true') {
+    kick('/__ads/inbound-onboarding', async () => { const { runInboundOnboarding } = await import('@/features/marketing/api/inbound-onboarding'); return runInboundOnboarding(env) })
   }
   // 🤝 파트너(업체) 자동수집 — 홀수시만(인플루언서는 매시간 유지 → 반토막 방지, 겹침 최소). 네이버 지역검색(local.json).
   //   게이트 ADS_COMPANY_COLLECT_ENABLED(기본 OFF). 별도 FetchBudget/커서/키워드 → 인플루언서 트랙 무영향.

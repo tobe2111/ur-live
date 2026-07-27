@@ -26,6 +26,14 @@ app.use('*', requireAdmin())
 //   ⚠️ 메인 번들 경량 유지 위해 수집/발굴 코드는 import 안 하고 전부 inline SQL(공용 풀 = account_id 0).
 const POOL = 0
 
+// 📣 모집 캠페인 — 수집 리드에게 신청(동의)을 안내한 시점. 전환율 분모(recruited) / 분자(consented) 산출용.
+const _recruitColDone = new WeakSet<object>()
+async function ensureRecruitColumn(DB: D1Database) {
+  if (_recruitColDone.has(DB)) return
+  _recruitColDone.add(DB)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
+}
+
 async function ensureKeywordTable(DB: D1Database) {
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
     id INTEGER PRIMARY KEY AUTOINCREMENT, keyword TEXT NOT NULL UNIQUE, category TEXT,
@@ -117,6 +125,7 @@ app.get('/influencer-pool/stats', async (c) => {
   await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   await ensureOutreachColumns(c.env.DB)  // opened/bounced 집계 컬럼 선보강
   await ensureQualityColumns(c.env.DB)   // is_brand/lead_score 집계 선보강
+  await ensureRecruitColumn(c.env.DB)    // 📣 recruited_at(모집 전환 분모) — 아래 집계가 참조
   const agg = await c.env.DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
@@ -158,7 +167,10 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) AS categorized,
       SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
       SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
-      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword
+      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword,
+      -- 📣 모집 전환: 안내한 리드(분모) 대비 실제 신청(동의)한 리드(분자) — 풀이 '쓸 수 있는 재고'로 바뀌는 비율.
+      SUM(CASE WHEN recruited_at IS NOT NULL THEN 1 ELSE 0 END) AS recruited,
+      SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
   //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
@@ -296,6 +308,29 @@ app.post('/influencer-pool/:id/track-link', async (c) => {
   const r = await getOrCreateLeadTrackLink(c.env.DB, id, String(b.target_url || ''), `협찬추적: ${lead.name}`)
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, code: r.code, click_count: r.click_count, created: r.created, name: lead.name })
+})
+
+// POST /api/admin/ads/influencer-pool/:id/recruit — 📣 모집 전환(수집 리드 → 신청자) 안내 준비
+//   수집만 된 리드는 대행 상품의 재고로 못 쓴다(동의 리드가 아웃리치 자동화의 전제) → 모집 페이지로
+//   유도해 **스스로 신청**하게 만드는 것이 풀의 실질 가치를 만드는 단계.
+//   여기서는 ① 리드 전용 추적링크(→ /creators/apply) 발급 ② recruited_at 기록(전환율 측정 모수)만 하고,
+//   실제 전달은 사람이 공개 채널(인스타 DM·블로그 댓글)로 한다(플랫폼 제재·수신자 선택권 존중).
+app.post('/influencer-pool/:id/recruit', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  await ensureRecruitColumn(c.env.DB)
+  const lead = await c.env.DB.prepare('SELECT name, consented_at FROM ad_influencer_leads WHERE id = ? AND account_id = ?')
+    .bind(id, POOL).first<{ name: string; consented_at: string | null }>().catch(() => null)
+  if (!lead) return c.json({ success: false, error: '리드를 찾을 수 없습니다' }, 404)
+  if (lead.consented_at) return c.json({ success: false, already_consented: true, error: '이미 신청(동의)한 리드입니다 — 모집 대상이 아닙니다' }, 400)
+  const origin = new URL(c.req.url).origin
+  const { getOrCreateLeadTrackLink } = await import('./short-links')
+  // 추적링크는 리드당 1개(멱등) — 이미 협찬 추적용으로 발급됐다면 그 코드를 그대로 재사용한다.
+  const r = await getOrCreateLeadTrackLink(c.env.DB, id, `${origin}/creators/apply`, `모집: ${lead.name}`)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  await c.env.DB.prepare("UPDATE ad_influencer_leads SET recruited_at = COALESCE(recruited_at, datetime('now')) WHERE id = ? AND account_id = ?")
+    .bind(id, POOL).run().catch(() => null)
+  return c.json({ success: true, code: r.code, click_count: r.click_count, name: lead.name })
 })
 
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
