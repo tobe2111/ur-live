@@ -353,18 +353,10 @@ export default function AdminInfluencerPoolPage() {
             {(Number(stats.opened) || 0) + (Number(stats.bounced) || 0) > 0 ? <span> · 📬 개봉 {formatNumber(stats.opened)} · 반송/신고 <span className={Number(stats.bounced) ? 'text-red-500' : ''}>{formatNumber(stats.bounced)}</span></span> : null}
           </div>
         ) : null}
-        {/* 🏷️ 카테고리 분류 신뢰도 — 근거별 분해(콘텐츠·유튜브분류=검증됨 / 키워드상속=야간 재보정이 재검증 중). */}
+        {/* 🏷️ 카테고리 분류 신뢰도 — content/topic=검증됨, 키워드상속=야간 재보정이 재검증 중. */}
         {Number(stats.categorized) > 0 ? (() => {
-          const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0
-          const verified = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0)
-          const inherited = Number(stats.cat_keyword) || 0
-          return (
-            <div className="text-[11px] text-gray-500 mt-0.5">
-              🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%)
-              {' · '}근거 검증됨 {formatNumber(verified)} ({Math.round(verified / Math.max(1, cat) * 100)}%)
-              {inherited > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inherited)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}
-            </div>
-          )
+          const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0, ver = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0), inh = Number(stats.cat_keyword) || 0
+          return <div className="text-[11px] text-gray-500 mt-0.5">🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%) · 근거 검증됨 {formatNumber(ver)} ({Math.round(ver / Math.max(1, cat) * 100)}%){inh > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inh)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}</div>
         })() : null}
 
         <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
