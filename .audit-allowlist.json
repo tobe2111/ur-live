@@ -98,6 +98,22 @@
       "review": "npm 설치 가능 환경에서 axios 패치 버전(GHSA-gcfj 수정본) 상향 후 제거 — 근본 해결 우선."
     },
     {
+      "ghsa": "GHSA-mh99-v99m-4gvg",
+      "pkg": "brace-expansion",
+      "reason": "dev/빌드툴 전용 transitive(glob/minimatch 경유 unbounded expansion DoS). 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함, 런타임 도달 불가. 동일 패키지 기존 등재(GHSA-3jxr-9vmj-r5cp)와 같은 근거 — 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일), 2026-07-27 배포 진행 지시",
+      "date": "2026-07-27",
+      "review": "minimatch/glob 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-r28c-9q8g-f849",
+      "pkg": "postcss",
+      "reason": "dev/빌드툴 전용(PostCSS sourceMappingURL 경유 .map 파일 경로 순회 → 파일 공개). postcss 는 vite/tailwind 빌드 파이프라인에서 **신뢰된 자체 CSS 소스만** 처리 — 외부 공격자 제어 입력 없음 + production Workers/브라우저 번들 미포함 → 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일), 2026-07-27 배포 진행 지시",
+      "date": "2026-07-27",
+      "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거."
+    },
+    {
       "ghsa": "GHSA-f88m-g3jw-g9cj",
       "pkg": "sharp",
       "reason": "dev/빌드툴 전용 transitive(libvips 상속 취약점 — CVE-2026-33327/33328/35590/35591). package.json 직접 의존 아님 + src/ 미참조. sharp 는 Node 네이티브 모듈이라 Cloudflare Workers/Pages 런타임에서 실행 불가 → production 번들 미포함, 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재(undici/tar/ws 등과 동일 도달불가 클래스).",
