@@ -62,9 +62,11 @@ export function mapDemandItem(raw: Record<string, unknown>, source: string): Tra
   // 품목 — 품목별 API 사용 시. 없으면 국가 단위 집계(item_name=null).
   const itemName = g('hsCdNm', 'itemNm', 'prnm', 'itemName', 'hsNm', 'statItemNm') || null
   const hsCode = g('hsCd', 'hsSgn', 'hsCode', 'itemCd') || null
-  // 금액(USD) — 관세청: expDlr/impDlr(달러). 타 표기: expUsd/expAmt/exportAmount.
-  const exportUsd = gn('expDlr', 'expUsd', 'expAmt', 'exportAmount', 'expUsdAmt', 'expDlrAmt')
-  const importUsd = gn('impDlr', 'impUsd', 'impAmt', 'importAmount', 'impUsdAmt', 'impDlrAmt')
+  // 💵 금액 — ⚠️ 관세청 GW API 의 expDlr/impDlr 단위는 **미화 천불(US$1,000)** 이다(공식 명세).
+  //    그대로 쓰면 규모를 1000배 작게 읽는다 → 여기서 USD 로 정규화(×1000). 다른 소스의 일반 USD 필드는 그대로.
+  const expThousand = gn('expDlr', 'expDlrAmt'), impThousand = gn('impDlr', 'impDlrAmt')
+  const exportUsd = expThousand ? expThousand * 1000 : gn('expUsd', 'expAmt', 'exportAmount', 'expUsdAmt')
+  const importUsd = impThousand ? impThousand * 1000 : gn('impUsd', 'impAmt', 'importAmount', 'impUsdAmt')
   // 기간 — year+month 조합 또는 단일 필드.
   const y = g('year', 'baseYear', 'statYear', 'yy'), m = g('month', 'baseMonth', 'statMonth', 'mm')
   const period = g('period', 'statPeriod', 'baseDt', 'stdDt') || (y && m ? `${y}${String(m).padStart(2, '0')}` : y) || ''

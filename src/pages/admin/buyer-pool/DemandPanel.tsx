@@ -78,6 +78,14 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
             <div className="text-xs text-gray-500 bg-white rounded-lg border border-emerald-100 p-3 leading-relaxed">
               아직 데이터가 없습니다. Cloudflare 환경변수 <code className="bg-gray-100 px-1 rounded">TRADE_STATS_URLS</code> 에
               관세청 오픈API URL(serviceKey 포함)을 넣고 「관세청 통계 수집」을 누르세요.
+              <div className="mt-2 pt-2 border-t border-gray-100 text-gray-600">
+                <b className="text-gray-800">✅ 등록 권장 (관세청 오픈API 중 이 2~3개면 충분)</b>
+                <div className="mt-1">· <b>품목별 국가별 수출입실적</b> — 가장 중요(HS품목 × 국가 = &quot;어느 나라가 뭘 사는가&quot;)</div>
+                <div>· <b>국가별 수출입실적</b> — 국가 단위 규모·순위</div>
+                <div>· <b>품목별 수출입실적</b> — 품목 단위 추세</div>
+                <div className="mt-1 text-gray-500">❌ 세관별·항구/공항별·시도별 계열은 <b>국내 어디서 나갔나</b>라 해외 수요와 무관 — 넣지 마세요.</div>
+                <div className="mt-1 text-gray-500">💵 금액 단위는 <b>천불(US$1,000)</b> 이라 저장 시 USD 로 자동 환산합니다.</div>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg border border-emerald-100 overflow-x-auto">
