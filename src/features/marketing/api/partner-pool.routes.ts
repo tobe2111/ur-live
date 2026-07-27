@@ -202,6 +202,46 @@ app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신�
 app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
 app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
 
+// POST /api/admin/partner-pool/enrich-burst — 🚀 이메일 보강 풀가동(대표 "하루 1만콜 다 쓰기").
+//   워커 1회 실행은 시간·서브요청 한도가 있어 한 번에 못 태움 → influencer collect-burst 와 동일 패턴:
+//   ur-ads 를 **연달아 호출**(호출마다 fresh 인보케이션 = fresh 예산). 시간캡/무진전/백로그 소진 가드.
+//   클릭 1회로 못 태운 잔여는 매시간 cron 이 이어받음(ADS_ENRICH_BUDGET × 24 가 일일 총량의 본체).
+app.post('/enrich-burst', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  // 이중 실행 잠금(4분 하트비트) — 병렬 버스트는 같은 타깃(email IS NULL 상위 200)을 중복 크롤 → 쿼터 낭비.
+  const lockRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").first<{ value: string }>().catch(() => null)
+  try {
+    const lock = lockRow?.value ? JSON.parse(lockRow.value) as { at?: string } : null
+    if (lock?.at && Date.now() - Date.parse(lock.at) < 240_000) return c.json({ success: false, error: '보강 풀가동이 이미 진행 중입니다 — 잠시 후 상태줄 확인' }, 409)
+  } catch { /* 손상 잠금은 무시 */ }
+  const heartbeat = () => c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind('ads_enrich_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
+  const burn = async () => {
+    const startedAt = Date.now()
+    let rounds = 0, lastEnriched = 0, reason = 'loop_cap'
+    for (let i = 0; i < 12; i++) {
+      if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // 잔여는 cron/재클릭이 이어받음
+      await heartbeat()
+      let body: { ok?: boolean; stats?: { processed?: number; enriched?: number; remaining?: number } } | null = null
+      try {
+        const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+        body = (await r.json().catch(() => null)) as typeof body
+      } catch { reason = 'fetch_error'; break }
+      if (!body?.ok || !body.stats) { reason = 'bad_response'; break }
+      rounds++
+      lastEnriched = body.stats.enriched ?? 0
+      if ((body.stats.processed ?? 0) === 0) { reason = 'backlog_done'; break } // 보강 대상 소진
+    }
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, lastEnriched, reason })).run().catch(() => null)
+    await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").run().catch(() => null)
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
+  await burn().catch(() => null)
+  return c.json({ success: true, started: false })
+})
+
 // POST /api/admin/partner-pool — 수동 업체 추가(대표 방배 리드 손입력). 멱등 저장(website/회사명|지역 키).
 app.post('/', async (c) => {
   const b = await c.req.json().catch(() => ({})) as Record<string, unknown>

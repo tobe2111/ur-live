@@ -265,8 +265,9 @@ export default function AdminPartnerPoolPage() {
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
           ]} />
-          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
+          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
+            { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 4) },
             { label: '🧭 분류 정리', desc: '공고·정부페이지 제거 + 업종을 근거 기반으로 재분류', onClick: runReclassify },
             { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕', 2) },
             { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증', 0) },
