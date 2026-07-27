@@ -1552,8 +1552,7 @@ app.route('/api/creator-apply', influencerApplyRoutes);
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);
 app.route('/api/admin/ads-pay', adminAdsPayRoutes);
-// 🟡 유어애즈 카카오 로그인 — 메인 워커 전용(/api/ads/* 위임과 별개, KAKAO_REST_API_KEY 가 여기 있음).
-//   소비자 카카오(kakao.routes — 잠금)와 완전 분리. 콘솔 Redirect URI 등록 필요(파일 헤더 참조).
+// 🟡 유어애즈 카카오 로그인(+유어딜 세션 브리지) — 메인 전용(KAKAO 키·ur_session 이 여기). 소비자 카카오(잠금) 무접촉.
 app.route('/api/ads-auth', adsKakaoAuthRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
