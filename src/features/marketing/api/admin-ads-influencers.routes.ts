@@ -11,6 +11,7 @@ import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } fr
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, personalEmailSqlClause, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
+import { ensureQualityColumns, runQualityPass } from './influencer-quality'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
@@ -41,7 +42,8 @@ async function ensureKeywordTable(DB: D1Database) {
 app.get('/influencer-pool', async (c) => {
   await ensureInfluencerSchema(c.env.DB) // SELECT 가 최신 컬럼(source/consented_at 등) 참조 — 미보강 DB 면 'no such column' 로 빈 목록 → 스키마 선보강(멱등·memoized)
   await ensureOutreachColumns(c.env.DB)  // 아웃리치 자동감지 컬럼(email_status/opened_at/replied_at) — 동일 이유 선보강
-  await ensurePerfExtraColumns(c.env.DB) // channel_published_at(계정 나이) 컬럼 선보강 — 빈목록 레이스 방지
+  await ensurePerfExtraColumns(c.env.DB) // channel_published_at(계정 나이)·롱폼중앙값 컬럼 선보강 — 빈목록 레이스 방지
+  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score — SELECT·필터가 참조
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
@@ -71,7 +73,10 @@ app.get('/influencer-pool', async (c) => {
     for (const w of ['뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단', '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청']) {
       where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
     }
+    where.push('COALESCE(is_brand, 0) = 0') // 🏢 브랜드 공식 채널(기업 계정)도 함께 숨김 — 태깅만, 삭제 아님
   }
+  // 🏢 브랜드 공식 채널만 — 태깅 결과 검수용(오탐 확인 후 memo/status 로 큐레이션).
+  if (c.req.query('brandOnly') === '1') where.push('is_brand = 1')
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
@@ -79,7 +84,8 @@ app.get('/influencer-pool', async (c) => {
   const sort = (c.req.query('sort') || 'fit').trim()
   const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
     : sort === 'recent' ? 'id DESC'
-    : sort === 'perf' ? '(recent_avg_views IS NULL) ASC, recent_avg_views DESC, subscriber_count DESC, id DESC' // 📈 최근 평균조회수순(미수집 후순위)
+    : sort === 'perf' ? '(COALESCE(median_long_views, recent_avg_views) IS NULL) ASC, COALESCE(median_long_views, recent_avg_views) DESC, subscriber_count DESC, id DESC' // 📈 롱폼 중앙값(없으면 평균)순
+    : sort === 'score' ? '(lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC' // 🏅 리드 점수순(미채점 후순위)
     : `CASE
          WHEN platform IN ('naver_blog','naver_cafe','tistory') THEN 0
          WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
@@ -91,7 +97,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -101,6 +107,7 @@ app.get('/influencer-pool', async (c) => {
 app.get('/influencer-pool/stats', async (c) => {
   await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   await ensureOutreachColumns(c.env.DB)  // opened/bounced 집계 컬럼 선보강
+  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score 집계 선보강
   const agg = await c.env.DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
@@ -132,8 +139,24 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
       SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
       SUM(CASE WHEN collected_at >= datetime('now','+9 hours','start of day','-9 hours') THEN 1 ELSE 0 END) AS today, -- '오늘' = KST 자정 기준(롤링 24h 아님)
-      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
+      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
+      -- 📥 사전동의(자동발송 가능 모수) + 🏢 브랜드 공식 채널 태깅 수 + 🏅 채점 완료 수
+      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
+      SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
+      SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
+      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
+  // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
+  //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
+  const catFunnel = await c.env.DB.prepare(`SELECT COALESCE(category, '미분류') AS category,
+      COUNT(*) AS total,
+      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
+      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
+      SUM(CASE WHEN status = 'contracted' THEN 1 ELSE 0 END) AS contracted,
+      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented
+    FROM ad_influencer_leads WHERE account_id = ?
+    GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
+    .bind(POOL).all().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
@@ -150,7 +173,13 @@ app.get('/influencer-pool/stats', async (c) => {
   // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화) — 있으면 그대로 노출.
   const sheetRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
   let sheets_sync: unknown = null; try { sheets_sync = sheetRow?.value ? JSON.parse(sheetRow.value) : null } catch { sheets_sync = null }
-  return c.json({ success: true, stats: agg || {}, run, gate, sheets_sync })
+  // 🌙 야간 자동 정비 결과(무음 실패 가시화 — 대표가 어드민에서 "어젯밤 뭐 돌았나"를 바로 확인).
+  const mRows = await c.env.DB.prepare("SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last')")
+    .all<{ key: string; value: string }>().catch(() => null)
+  const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
+  const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
+  const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
+  return c.json({ success: true, stats: agg || {}, run, gate, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
@@ -271,6 +300,16 @@ app.get('/influencer-pool/classify-debug', async (c) => {
 app.post('/influencer-pool/reclassify', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   const r = await runReclassifyPool(c.env.DB)
+  return c.json({ success: true, ...r })
+})
+
+// POST /api/admin/ads/influencer-pool/quality-pass — 🏅 브랜드 태깅 + 리드 점수 재계산(즉시 실행)
+//   야간 정비가 매일 자동으로 도는 것과 **같은 함수**(SSOT). 배포 직후처럼 즉시 반영이 필요할 때만 수동 클릭.
+//   커서 순환이라 여러 번 눌러도 안전(멱등) — 풀이 크면 몇 번에 걸쳐 전체 수렴.
+app.post('/influencer-pool/quality-pass', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runQualityPass(c.env.DB).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await runQualityPass(c.env.DB)
   return c.json({ success: true, ...r })
 })
 

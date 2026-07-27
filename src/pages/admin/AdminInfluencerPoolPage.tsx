@@ -5,7 +5,8 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
-import FunnelCard from './influencer-pool/FunnelCard'
+import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
+import CollectDiagPanel, { type RunStats, type MaintenanceRecord } from './influencer-pool/CollectDiagPanel'
 import { pickReach } from './influencer-pool/reach'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
@@ -28,6 +29,8 @@ interface Lead {
   outreach_draft?: string | null // JSON {subject,body,dm,generated_at} — ✍ 개인화 초안(생성만, 발송 없음)
   source?: string | null; consented_at?: string | null // 📥 inbound=신청(사전동의)
   recent_avg_views?: number | null; recent_avg_comments?: number | null; recent_posts_30d?: number | null // 📈 성과(YT 최근평균/네이버 30일 포스팅)
+  median_long_views?: number | null; shorts_ratio?: number | null // 📈 롱폼 중앙값 + 쇼츠 비중(%) — 쇼츠 착시 배제 지표
+  is_brand?: number | null; lead_score?: number | null            // 🏢 브랜드 공식 채널 추정 · 🏅 리드 점수(0~100)
 }
 // 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
@@ -35,7 +38,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -46,8 +49,6 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   rejected: { label: '거절', cls: 'bg-gray-100 text-gray-400' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
-interface PlatformDiag { configured: boolean; found: number; saved: number; error?: string }
-interface RunStats { last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]; youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number; diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag }; yt_budget?: { used: number; total: number; day?: string } }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 
 export default function AdminInfluencerPoolPage() {
@@ -56,6 +57,9 @@ export default function AdminInfluencerPoolPage() {
   const [run, setRun] = useState<RunStats | null>(null)
   const [gate, setGate] = useState(false)
   const [sheetsSync, setSheetsSync] = useState<{ ok: boolean; at?: string; error?: string | null } | null>(null) // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화)
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
+  const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
+  const [catFunnel, setCatFunnel] = useState<CategoryFunnelRow[]>([])                     // 📊 카테고리별 전환
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
   const [hasContact, setHasContact] = useState(false)
@@ -67,6 +71,7 @@ export default function AdminInfluencerPoolPage() {
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
   const [needFollowup, setNeedFollowup] = useState(false)
   const [hideNoise, setHideNoise] = useState(false)
+  const [brandOnly, setBrandOnly] = useState(false) // 🏢 브랜드 공식 채널 태깅 검수용
   const [inboundOnly, setInboundOnly] = useState(false)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
@@ -88,11 +93,12 @@ export default function AdminInfluencerPoolPage() {
     if (statusFilter) params.set('status', statusFilter)
     if (needFollowup) params.set('needFollowup', '1')
     if (hideNoise) params.set('hideNoise', '1')
+    if (brandOnly) params.set('brandOnly', '1')
     if (inboundOnly) params.set('source', 'inbound')
     if (q.trim()) params.set('q', q.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, inboundOnly, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, q])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -117,7 +123,10 @@ export default function AdminInfluencerPoolPage() {
         api.get('/api/admin/ads/influencer-pool/stats'),
         api.get('/api/admin/ads/influencer-pool/keywords'),
       ])
-      if (s.data?.success) { setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null) }
+      if (s.data?.success) {
+        setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
+        setMaintenance(s.data.maintenance || null); setMaintenanceRescan(s.data.maintenance_rescan || null); setCatFunnel(s.data.category_funnel || [])
+      }
       if (k.data?.success) setKeywords(k.data.keywords || [])
     } catch { /* soft */ }
   }, [])
@@ -310,7 +319,7 @@ export default function AdminInfluencerPoolPage() {
         </div>
 
         {/* 📊 아웃리치 전환 퍼널 — '모은 게 성과로 이어지나' 측정(컨택 이력 있을 때만). */}
-        <FunnelCard stats={stats} />
+        <FunnelCard stats={stats} categories={catFunnel} />
 
         {/* 아웃리치 파이프라인 — 상태별 카운트(클릭 시 필터). 발송 자동화 없음(메일은 리드별 직접 발송). */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -342,43 +351,7 @@ export default function AdminInfluencerPoolPage() {
           </div>
         ) : null}
 
-        {/* 📊 구글시트 마지막 동기화 상태 — 무음 실패 가시화(2026-07-23 전수조사). 실패 시에만 표시. */}
-        {sheetsSync && !sheetsSync.ok ? (
-          <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
-        ) : null}
-
-        {run && (
-          <div className="mb-4 text-xs text-gray-500">
-            마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
-            {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-amber-600 font-medium' : ''}>{` · 🎯 YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
-            {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
-            {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
-          </div>
-        )}
-
-        {/* 🔎 플랫폼별 진단 — 실제 문제(키없음/전건실패)면 빨강, 일시 부분실패(저장>0)면 앰버 참고, 완전정상이면 숨김 */}
-        {run?.diag && (() => {
-          // 플랫폼 상태: 키없음 or (에러 & 저장0)=hard, (에러 & 저장>0)=일시부분실패, 그 외 정상.
-          const cls = (p: PlatformDiag) => !p.configured ? 'missing' : (p.error && p.saved === 0) ? 'failed' : (p.error && p.saved > 0) ? 'partial' : 'ok'
-          const yt = cls(run.diag.yt), nv = cls(run.diag.naver)
-          const ts = run.diag.tistory ? cls(run.diag.tistory) : 'ok'
-          const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed' || ts === 'missing' || ts === 'failed'
-          const soft = yt === 'partial' || nv === 'partial' || ts === 'partial'
-          if (!hard && !soft) return null // 완전 정상이면 배너 숨김
-          const line = (label: string, p: PlatformDiag, st: string) => (
-            <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
-              {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ⚠️ ${p.error}` : ''}</div>
-          )
-          return (
-            <div className={`mb-4 rounded-lg border px-4 py-3 text-xs space-y-1 ${hard ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-              <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
-              {line('유튜브', run.diag.yt, yt)}
-              {line('네이버', run.diag.naver, nv)}
-              {run.diag.tistory ? line('티스토리', run.diag.tistory, ts) : null}
-              {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers & Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
-            </div>
-          )
-        })()}
+        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -438,7 +411,8 @@ export default function AdminInfluencerPoolPage() {
           </select>
           <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="fit">유어딜 핏순</option>
-            <option value="perf">📈 평균조회수순</option>
+            <option value="score">🏅 리드 점수순</option>
+            <option value="perf">📈 조회수순(롱폼 중앙값)</option>
             <option value="subscribers">구독자순</option>
             <option value="recent">최근 수집순</option>
           </select>
@@ -451,8 +425,11 @@ export default function AdminInfluencerPoolPage() {
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
             <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
           </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer" title="뉴스·방송·기관·체험단모집·대행 등 노이즈 숨김">
-            <input type="checkbox" checked={hideNoise} onChange={e => setHideNoise(e.target.checked)} /> 🧹 노이즈 숨김
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer" title="뉴스·방송·기관·체험단모집·대행 + 브랜드 공식 채널 숨김(삭제 아님)">
+            <input type="checkbox" checked={hideNoise} onChange={e => { setHideNoise(e.target.checked); if (e.target.checked) setBrandOnly(false) }} /> 🧹 노이즈 숨김
+          </label>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 bg-white cursor-pointer" title="브랜드/기업 공식 채널로 태깅된 리드만 — 오탐 검수용">
+            <input type="checkbox" checked={brandOnly} onChange={e => { setBrandOnly(e.target.checked); if (e.target.checked) setHideNoise(false) }} /> 🏢 브랜드만
           </label>
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
             <input type="checkbox" checked={inboundOnly} onChange={e => setInboundOnly(e.target.checked)} /> 📥 신청·동의
@@ -515,6 +492,8 @@ export default function AdminInfluencerPoolPage() {
                         {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
                         <span>
                           <span className="font-medium">{l.name}</span>
+                          {l.lead_score != null && <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle ${l.lead_score >= 70 ? 'bg-emerald-100 text-emerald-700' : l.lead_score >= 45 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`} title="리드 점수 0~100 — 연락가능성·규모적합도·활동성·카테고리핏 합산(야간 자동 채점)">🏅{l.lead_score}</span>}
+                          {l.is_brand ? <span className="ml-1.5 px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium align-middle" title="브랜드/기업 공식 채널 추정 — 인플루언서가 아닐 수 있음(노이즈 숨김에 포함)">🏢 브랜드</span> : null}
                           {l.source === 'inbound' && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[10px] font-medium align-middle" title="스스로 신청 · 사전동의">📥 신청</span>}
                           <span className="ml-1.5 text-xs text-gray-400">{PLATFORM_LABEL[l.platform] || l.platform}{l.handle ? ` · ${l.handle}` : ''}</span>
                         </span>
@@ -527,7 +506,11 @@ export default function AdminInfluencerPoolPage() {
                             {formatNumber(l.subscriber_count)}
                             {(() => { const s = l.subscriber_count; const b = s >= 500000 ? { t: '대형', c: 'bg-gray-100 text-gray-500' } : s >= 100000 ? { t: '중형', c: 'bg-emerald-100 text-emerald-700' } : s >= 10000 ? { t: '마이크로', c: 'bg-emerald-100 text-emerald-700' } : s > 0 ? { t: '나노', c: 'bg-gray-100 text-gray-500' } : null; return b ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${b.c}`}>{b.t}</span> : null })()}
                           </span>
-                          {l.recent_avg_views != null && <span className="text-[11px] text-gray-400" title="최근 영상 ≤10개 평균(구독자수보다 정직한 협업 지표)">📈 평균 {formatNumber(l.recent_avg_views)}회{l.recent_avg_comments ? ` · 💬${formatNumber(l.recent_avg_comments)}` : ''}</span>}
+                          {l.median_long_views ? (
+                            <span className="text-[11px] text-gray-400" title="최근 영상 중 롱폼(3분 초과)만의 중앙값 — 쇼츠 조회수 착시를 배제한 실제 도달력(협찬 단가 판단용)">📈 롱폼중앙 {formatNumber(l.median_long_views)}회{l.shorts_ratio ? <span className="text-gray-300"> · 쇼츠 {l.shorts_ratio}%</span> : null}</span>
+                          ) : l.recent_avg_views != null ? (
+                            <span className="text-[11px] text-gray-400" title="최근 영상 ≤10개 평균(쇼츠 포함 — 롱폼 중앙값은 다음 성과 측정에서 채워짐)">📈 평균 {formatNumber(l.recent_avg_views)}회{l.recent_avg_comments ? ` · 💬${formatNumber(l.recent_avg_comments)}` : ''}</span>
+                          ) : null}
                         </span>
                       )}
                     </td>

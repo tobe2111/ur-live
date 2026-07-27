@@ -39,6 +39,8 @@ export const PERSONAL_EMAIL_DOMAINS = ['gmail', 'naver', 'daum', 'kakao', 'hanma
 const PERSONAL_EMAIL_RE = new RegExp(`@(${PERSONAL_EMAIL_DOMAINS.join('|')})\\.`, 'i')
 /** 통계용 SQL 조건 — 주어진 컬럼이 개인도메인 메일인지(위 SSOT 와 동일 집합). 도메인 리터럴만이라 인젝션 무관. */
 export const personalEmailSqlClause = (col = 'email'): string => PERSONAL_EMAIL_DOMAINS.map(d => `${col} LIKE '%@${d}.%'`).join(' OR ')
+/** 개인(창작자 본인) 메일인가 — 위 SSOT 와 동일 판정(스코어링 등 JS 소비자용). */
+export const isPersonalEmail = (email?: string | null): boolean => !!email && PERSONAL_EMAIL_RE.test(email)
 /** 저장된 이메일을 최신 About 이메일로 교정할지 판단(보수적 — 값을 나쁘게 만들지 않음).
  *  대상: 저장값이 없거나(NULL) 개인도메인이 아닌 경우(대행사 co.kr 등) + About 에 개인도메인 비즈니스 메일이 있을 때만.
  *  → 채널 주인이 나중에 About 에 본인 메일을 추가한 케이스(수집 당시엔 영상설명의 대행사 메일만 잡힘)를 자동 정정. */
@@ -55,6 +57,47 @@ export function avgStats(videos: { views: number; comments: number }[]): { avgVi
   if (!videos.length) return { avgViews: 0, avgComments: 0 }
   const s = videos.reduce((a, v) => ({ v: a.v + (v.views || 0), c: a.c + (v.comments || 0) }), { v: 0, c: 0 })
   return { avgViews: Math.round(s.v / videos.length), avgComments: Math.round(s.c / videos.length) }
+}
+
+/** ISO-8601 duration(PT#H#M#S) → 초. 파싱 불가/빈값은 0(=길이 미상 → 롱폼 판정에서 제외). */
+export function parseIsoDurationSec(iso?: string | null): number {
+  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/i.exec(String(iso || '').trim())
+  if (!m) return 0
+  const [, d, h, mi, s] = m
+  const sec = (parseInt(d || '0', 10) * 86400) + (parseInt(h || '0', 10) * 3600) + (parseInt(mi || '0', 10) * 60) + Math.round(parseFloat(s || '0'))
+  return Number.isFinite(sec) ? sec : 0
+}
+
+/** 쇼츠 판정 임계(초) — 유튜브 쇼츠 최대 길이(3분) 기준. 이보다 길면 롱폼으로 본다. */
+export const SHORTS_MAX_SEC = 180
+
+/** 숫자 배열의 중앙값(정수 반올림). 빈 배열은 0. */
+export function medianOf(nums: number[]): number {
+  if (!nums.length) return 0
+  const a = [...nums].sort((x, y) => x - y)
+  const mid = a.length >> 1
+  return Math.round(a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2)
+}
+
+/**
+ * 📈 채널 성과 지표(2026-07-27 개선) — 기존 '전체 평균 조회수'는 **쇼츠/롱폼 혼합 + 산술평균**이라
+ *   쇼츠 몇 개가 터진 채널이 과대평가됐다(협찬 단가 오판). 롱폼만의 **중앙값**을 별도로 계산해
+ *   실제 콘텐츠 도달력을 보수적으로 추정하고, 쇼츠 비중도 함께 노출한다.
+ *   ⚠️ avgViews/avgComments 는 기존 표시·정렬 호환을 위해 그대로 유지(제거 아님).
+ */
+export function videoMetrics(videos: { views: number; comments: number; durationSec?: number }[]): {
+  avgViews: number; avgComments: number; medianLongViews: number; shortsRatio: number
+} {
+  const { avgViews, avgComments } = avgStats(videos)
+  const withLen = videos.filter(v => (v.durationSec || 0) > 0)
+  const longs = withLen.filter(v => (v.durationSec || 0) > SHORTS_MAX_SEC)
+  const shorts = withLen.length - longs.length
+  return {
+    avgViews, avgComments,
+    // 길이를 못 잰 경우(전부 0초)엔 롱폼 중앙값을 0 으로 두고 호출부가 avg 로 폴백하게 한다.
+    medianLongViews: medianOf(longs.map(v => v.views || 0)),
+    shortsRatio: withLen.length ? Math.round((shorts / withLen.length) * 100) : 0,
+  }
 }
 
 /** RSS pubDate 목록 → 최근 N일 내 포스팅 수. 파싱 불가 날짜는 무시. */
@@ -100,6 +143,9 @@ export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
   const p = (async () => {
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().catch(() => null)
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME').run().catch(() => null)
+    // 📈 2026-07-27 지표 개선 — 롱폼 중앙값(쇼츠 착시 배제) + 쇼츠 비중(%).
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER').run().catch(() => null)
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER').run().catch(() => null)
   })()
   _perfColPromise.set(DB, p); return p
 }
@@ -188,14 +234,19 @@ export async function enrichYouTubePerformance(
   }
 
   // ③ 영상 통계 — 전 채널 영상을 50개씩 묶어 배치 콜.
+  //   📈 part 에 contentDetails 추가(=영상 길이) — 같은 1 unit 이라 쿼터 비용 증가 0. 쇼츠/롱폼 구분에 사용.
   const allIds = Array.from(videoIdsByLead.values()).flat()
-  const stats = new Map<string, { views: number; comments: number }>()
+  const stats = new Map<string, { views: number; comments: number; durationSec: number }>()
   for (let i = 0; i < allIds.length && budget.left > 0; i += 50) {
     budget.left--
-    const vRes = await fetch(`${YT_BASE}/videos?part=statistics&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
+    const vRes = await fetch(`${YT_BASE}/videos?part=statistics,contentDetails&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
-    const vj = vRes?.ok ? await vRes.json().catch(() => null) as { items?: { id?: string; statistics?: { viewCount?: string; commentCount?: string } }[] } | null : null
-    for (const it of vj?.items || []) if (it.id) stats.set(it.id, { views: parseInt(it.statistics?.viewCount || '0', 10) || 0, comments: parseInt(it.statistics?.commentCount || '0', 10) || 0 })
+    const vj = vRes?.ok ? await vRes.json().catch(() => null) as { items?: { id?: string; statistics?: { viewCount?: string; commentCount?: string }; contentDetails?: { duration?: string } }[] } | null : null
+    for (const it of vj?.items || []) if (it.id) stats.set(it.id, {
+      views: parseInt(it.statistics?.viewCount || '0', 10) || 0,
+      comments: parseInt(it.statistics?.commentCount || '0', 10) || 0,
+      durationSec: parseIsoDurationSec(it.contentDetails?.duration),
+    })
   }
 
   // ④ 평균 계산 + 저장(1 batch). 영상없음(!pl)/실패는 스탬프(재시도 폭주 방지)하되, **예산 소진으로 못 잰 채널**은
@@ -211,15 +262,16 @@ export async function enrichYouTubePerformance(
       ? reconcileCategory(r.category, liveCat, topicCat.get(r.channel_id) || null)
       : (r.category || liveCat || topicCat.get(r.channel_id) || null)
     const leadVideoIds = videoIdsByLead.get(r.id) || []
-    const vids = leadVideoIds.map(id => stats.get(id)).filter((v): v is { views: number; comments: number } => !!v)
+    const vids = leadVideoIds.map(id => stats.get(id)).filter((v): v is { views: number; comments: number; durationSec: number } => !!v)
     // 🛡️ videos.list 실패(영상 id 는 있는데 통계 0건 매칭 = 측정 실패)도 0 각인 대신 보류 — 진짜 영상 0(id 없음)과 구분.
     const measureFailed = leadVideoIds.length > 0 && vids.length === 0
     if (budgetSkipped.has(r.id) || measureFailed) // perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
       return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ? WHERE id = ?`)
         .bind(pub, fixEmail, catToWrite, r.id)
-    const { avgViews, avgComments } = avgStats(vids)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, pub, fixEmail, catToWrite, r.id)
+    // 📈 롱폼 중앙값 + 쇼츠 비중 동시 기록(쇼츠 착시 배제 — 협찬 단가 판단용). 길이를 못 잰 배치는 중앙값 0 → 표시는 avg 폴백.
+    const { avgViews, avgComments, medianLongViews, shortsRatio } = videoMetrics(vids)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, median_long_views = ?, shorts_ratio = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, medianLongViews, shortsRatio, pub, fixEmail, catToWrite, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
@@ -230,9 +282,12 @@ export async function enrichYouTubePerformance(
  */
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
   if (max <= 0 || budget.left <= 1) return 0
+  // 🛡️ 2026-07-27 공정화: 기존 `ORDER BY id DESC`(최신 우선)는 신규 수집이 시간당 처리량(15)보다 빠르면
+  //   **오래된 리드가 영원히 보강 안 되는 기아(LIFO starvation)**. 미보강만 고르는 필터라 FIFO(id ASC)로
+  //   바꾸면 백로그가 순서대로 완전히 배수된다(커버리지 손실 0, 총량 동일).
   const rows = (await DB.prepare(`SELECT id, handle FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'naver_blog' AND perf_checked_at IS NULL AND handle IS NOT NULL
-      ORDER BY id DESC LIMIT ?`).bind(Math.min(max, 15))
+      ORDER BY id ASC LIMIT ?`).bind(Math.min(max, 15))
     .all<{ id: number; handle: string }>().catch(() => null))?.results || []
   if (!rows.length) return 0
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'

@@ -15,6 +15,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
 import { resolveCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity } from './influencer-performance'
 
@@ -161,8 +162,8 @@ async function saveLeadsBatch(
   //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
   //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
   //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
   //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
@@ -181,6 +182,7 @@ async function saveLeadsBatch(
       l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
       l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
       resolveCategory(l.name, l.description, meta.category), meta.sourceKeyword ?? null, // 🏷️ 콘텐츠 신호 우선 분류
+      looksLikeBrandChannel(l.name, l.description) ? 1 : 0, // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
     ))
     const rs = await DB.batch(insStmts).catch(() => null)
     const existing: typeof slice = []
@@ -369,6 +371,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   }
   const releaseLease = async () => { await DB.prepare(`UPDATE platform_settings SET value = '0' WHERE key = '${LEASE_KEY}'`).run().catch(() => null) }
   await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
+  await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensureDiscoveryKeywords(DB)
   // 💤 자동확장 키워드 회수(F-30) — 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
   await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')").run().catch(() => null)

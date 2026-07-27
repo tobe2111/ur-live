@@ -8,6 +8,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch } from './influencer-performance'
+import { runQualityPass } from './influencer-quality'
 
 const POOL = 0
 
@@ -161,6 +162,8 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
   try { out.merge = await mergeDuplicatePool(DB, { groupCap: 150 }) } catch (e) { out.merge_error = (e as Error)?.message || 'fail' }
   try { out.reextract = await reextractPoolContacts(DB) } catch (e) { out.reextract_error = (e as Error)?.message || 'fail' }
   try { out.reclassify = await runReclassifyPool(DB) } catch (e) { out.reclassify_error = (e as Error)?.message || 'fail' }
+  // 🏅 품질 패스 — 브랜드 공식 채널 태깅 + 리드 스코어 재계산(커서 순환, 회차당 상한 있음).
+  try { out.quality = await runQualityPass(DB) } catch (e) { out.quality_error = (e as Error)?.message || 'fail' }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_maintenance_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   return out
