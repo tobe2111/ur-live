@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
@@ -75,6 +76,7 @@ export default function AdminInfluencerPoolPage() {
   const [brandOnly, setBrandOnly] = useState(false) // 🏢 브랜드 공식 채널 태깅 검수용
   const [inboundOnly, setInboundOnly] = useState(false)
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
@@ -96,10 +98,10 @@ export default function AdminInfluencerPoolPage() {
     if (hideNoise) params.set('hideNoise', '1')
     if (brandOnly) params.set('brandOnly', '1')
     if (inboundOnly) params.set('source', 'inbound')
-    if (q.trim()) params.set('q', q.trim())
+    if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
