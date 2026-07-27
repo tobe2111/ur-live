@@ -168,6 +168,8 @@ export interface Env {
   ADS_AUTO_MAINTENANCE_ENABLED?: string;
   // 🔁 동의 리드 리마인드 시퀀스(1차 발송 N일 후 무회신 시 1회) — 기본 OFF. ⚖️ 동의 리드 한정·야간 금지.
   ADS_REMINDER_ENABLED?: string;
+  // 🎓 신청자 온보딩 안내(신청 익일 1회) — 기본 ON(접수 메일이 약속한 안내 이행). 'true' 로만 끔.
+  ADS_ONBOARDING_DISABLED?: string;
   // 💳 유어애즈 서비스몰 토스 결제 게이트(기본 OFF) — ⚠️ staging 실결제 검증 후에만 'true'.
   //   OFF = 계좌이체 흐름 그대로(버튼 미노출). 메인 워커 전용(/api/ads-pay — TOSS 키가 메인에 있음).
   ADS_TOSS_ENABLED?: string;
