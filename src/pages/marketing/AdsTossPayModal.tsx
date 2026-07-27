@@ -56,8 +56,8 @@ export default function AdsTossPayModal({ order, authHeader, onClose }: {
       await w.requestPayment({
         orderId: init.toss_order_id,
         orderName: init.order_name,
-        successUrl: `${base}?adsPaySvc=${order.id}`,
-        failUrl: `${base}?adsPayFail=1`,
+        successUrl: `${base}?tab=services&adsPaySvc=${order.id}`,
+        failUrl: `${base}?tab=services&adsPayFail=1`,
       })
     } catch (e) {
       const msg = (e as { message?: string })?.message || ''
