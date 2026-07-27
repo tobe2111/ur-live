@@ -71,6 +71,26 @@ export default function MarketingSignupPage() {
     } finally { setBusy(false) }
   }
 
+  // 🟡 카카오: 유어딜 세션 브리지 우선(로그인 페이지와 동일) — 계정 없으면 자동 생성.
+  async function kakaoStart() {
+    setBusy(true); setErr(null)
+    try {
+      const r = await api.post('/api/ads-auth/kakao/bridge', {})
+      if (r.data?.success && r.data.token) {
+        localStorage.setItem('ads_token', r.data.token)
+        localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
+        localStorage.setItem('ads_company', r.data.account?.company_name || '')
+        if (r.data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
+        else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
+        return
+      }
+    } catch (e2: unknown) {
+      const ax = e2 as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status !== 401) { setErr(ax.response?.data?.error || '카카오 가입에 실패했습니다'); setBusy(false); return }
+    }
+    window.location.href = `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`
+  }
+
   const loginHref = `/ads/login${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
 
   return (
@@ -96,11 +116,11 @@ export default function MarketingSignupPage() {
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
 
-        {/* 🟡 카카오로 가입/로그인 — 계정 없으면 자동 생성(/api/ads-auth/kakao/*) */}
-        <a href="/api/ads-auth/kakao/start" className="ua-kakao-btn" style={{ marginTop: 10 }}>
+        {/* 🟡 카카오로 가입/로그인 — 유어딜 로그인 공유(브리지), 계정 없으면 자동 생성 */}
+        <button type="button" onClick={kakaoStart} disabled={busy} className="ua-kakao-btn" style={{ marginTop: 10, border: 'none', cursor: 'pointer' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
-          카카오로 시작하기
-        </a>
+          카카오로 시작하기 (유어딜 계정)
+        </button>
 
         <p style={{ marginTop: 12, textAlign: 'center', fontSize: 11.5, lineHeight: 1.6, color: '#8A93A3' }}>
           가입 시 <Link to="/ads/terms" style={{ color: '#2A56D4' }}>이용약관</Link> 및 <Link to="/ads/privacy" style={{ color: '#2A56D4' }}>개인정보처리방침</Link>에 동의하게 됩니다.

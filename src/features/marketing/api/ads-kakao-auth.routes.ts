@@ -17,6 +17,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { kakaoLoginAdsAccount, signAdsToken } from './ads-account'
+import { parseSessionCookie } from '../../../worker/utils/session'
 
 const STATE_COOKIE = 'ads_kakao_state'
 
@@ -88,6 +89,32 @@ adsKakaoAuthRoutes.get('/kakao/callback', rateLimit({ action: 'ads-kakao-cb', ma
   } catch {
     return fail('kakao_error')
   }
+})
+
+// POST /api/ads-auth/kakao/bridge — 🌉 유어딜(소비자) 세션으로 유어애즈 로그인 (2026-07-27 대표
+//   "유어딜꺼 같이 쓸 수 있게 + 2차 인증으로 업체 게이트").
+//   이미 urdeal.kr 에 카카오 로그인된 유저는 **카카오 콘솔 등록·OAuth 왕복 없이** 즉시 유어애즈 진입:
+//   ur_session(httpOnly) → users 행 → kakaoLoginAdsAccount(동일 매칭 SSOT — 직접 OAuth 와 같은
+//   kakao_id 키라 어느 경로로 와도 같은 ads 계정). 2차 게이트 = 기존 베타 액세스 코드(access_unlocked).
+//   미로그인이면 401 need_login → 클라가 기존 소비자 카카오 시작(/auth/kakao/start, 콜백 기등록)으로
+//   보낸 뒤 /ads/kakao 착지에서 재시도. ⚖️ 소비자 쪽은 세션 **읽기만**(쿠키/유어딜 데이터 무변경).
+adsKakaoAuthRoutes.post('/kakao/bridge', rateLimit({ action: 'ads-kakao-bridge', max: 20, windowSec: 300 }), async (c) => {
+  if (!c.env.JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류(JWT_SECRET)' }, 500)
+  const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user'])
+  if (!sess?.userId) return c.json({ success: false, need_login: true, error: '유어딜 로그인이 필요합니다' }, 401)
+  const u = await c.env.DB.prepare('SELECT id, kakao_id, name, email, COALESCE(email_verified, 0) AS ev FROM users WHERE id = ?')
+    .bind(Number(sess.userId)).first<{ id: number; kakao_id: string | number | null; name: string | null; email: string | null; ev: number }>().catch(() => null)
+  if (!u) return c.json({ success: false, need_login: true, error: '유어딜 계정을 찾을 수 없습니다' }, 401)
+  const r = await kakaoLoginAdsAccount(c.env.DB, {
+    // 카카오 유저는 실제 kakao_id(직접 OAuth 경로와 동일 키 → 같은 ads 계정), 비카카오 유저는 유어딜 id 기반 안정 키.
+    kakaoId: u.kakao_id ? String(u.kakao_id) : `urdeal:u${u.id}`,
+    email: u.email || null,
+    emailVerified: u.ev === 1,
+    nickname: u.name || null,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 403 | 409 | 500)
+  const token = await signAdsToken(r.account.id, c.env.JWT_SECRET)
+  return c.json({ success: true, token, account: r.account, created: r.created })
 })
 
 export { adsKakaoAuthRoutes }

@@ -168,7 +168,7 @@ export default function AdminInfluencerPoolPage() {
   }
 
   async function setStatus(id: number, status: string) {
-    try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
+    try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)); toast.success(`✅ 상태 변경 → ${STATUS_META[status]?.label || status}`) }
     catch { toast.error('변경 실패') }
   }
   // 컨택 채널 기록(이메일/DM/쪽지…) — 값 있으면 첫 접촉으로 보고 신규→컨택함 동반 승격.
@@ -177,12 +177,13 @@ export default function AdminInfluencerPoolPage() {
       const promote = channel && l.status === 'new'
       await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) })
       setLeads(prev => prev.map(x => x.id === l.id ? { ...x, contact_channel: channel || null, ...(promote ? { status: 'contacted' } : {}) } : x))
+      toast.success(channel ? `✅ 컨택 채널 기록됨${promote ? ' + 상태 → 컨택함' : ''}` : '컨택 채널 해제됨')
     } catch { toast.error('변경 실패') }
   }
   async function editMemo(l: Lead) {
     const memo = window.prompt('메모(내부 관리용)', l.memo || '')
     if (memo === null) return
-    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { memo }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, memo } : x)) }
+    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { memo }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, memo } : x)); toast.success('✅ 메모 저장 완료') }
     catch { toast.error('메모 저장 실패') }
   }
   async function setFollowUp(l: Lead) {
@@ -191,7 +192,7 @@ export default function AdminInfluencerPoolPage() {
     if (v === null) return
     const val = v.trim()
     if (val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) { toast.error('YYYY-MM-DD 형식으로 입력'); return }
-    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)) }
+    try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { follow_up_at: val || null }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, follow_up_at: val || null } : x)); toast.success(val ? `✅ 팔로업 저장 — ${val}` : '팔로업 해제됨') }
     catch { toast.error('저장 실패') }
   }
   // 🧰 유지보수(중복통합·시트·재분류·재추출)는 MaintenanceButtons 컴포넌트로 추출(600줄 캡).
@@ -209,7 +210,7 @@ export default function AdminInfluencerPoolPage() {
     try {
       const rq = matchRegion.trim() ? `&region=${encodeURIComponent(matchRegion.trim())}` : ''
       const r = await api.get(`/api/admin/ads/seller-match?category=${encodeURIComponent(category)}${rq}`)
-      if (r.data?.success) { setMatchSellers(r.data.sellers || []); if (!r.data.voucher_category) toast.info('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
+      if (r.data?.success) { setMatchSellers(r.data.sellers || []); toast.success(`🔗 매칭 매장 ${formatNumber((r.data.sellers || []).length)}곳 조회 완료`); if (!r.data.voucher_category) toast.info('이 카테고리는 유어딜 이용권과 직접 매칭되지 않아요') }
     } catch { toast.error('매칭 조회 실패') } finally { setMatchLoading(false) }
   }
   // 📨 "지금 연락" — 최적 채널(이메일→인스타DM→블로그 쪽지/댓글)을 열고, 이메일이 아니면 DM 초안을
@@ -263,7 +264,7 @@ export default function AdminInfluencerPoolPage() {
   }
   async function del(id: number) {
     if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
-    try { await api.delete(`/api/admin/ads/influencer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)) }
+    try { await api.delete(`/api/admin/ads/influencer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); toast.success('🗑️ 풀에서 삭제 완료') }
     catch { toast.error('삭제 실패') }
   }
 
@@ -276,7 +277,7 @@ export default function AdminInfluencerPoolPage() {
       //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
       const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob', timeout: 120000 })
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
-      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url)
+      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url); toast.success(`📊 엑셀 다운로드 완료 (${(r.data as Blob).size > 1048576 ? `${(((r.data as Blob).size) / 1048576).toFixed(1)}MB` : `${Math.round(((r.data as Blob).size) / 1024)}KB`} · 카테고리별 시트)`)
     } catch (e) {
       const ax = e as { code?: string; response?: { status?: number } }
       if (ax.code === 'ECONNABORTED') toast.error('엑셀 내보내기 시간 초과 — 데이터가 많습니다. 잠시 후 다시 시도하거나 CSV를 이용하세요')

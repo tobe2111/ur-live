@@ -61,23 +61,40 @@ export default function MarketingLoginPage() {
     if (typeof window !== 'undefined' && localStorage.getItem('ads_token')) navigate(dest, { replace: true })
   }, [navigate, dest])
 
+  // 로그인 성공 공통 후처리 — 이메일/카카오(브리지) 동일: 토큰 저장 + 베타 액세스 게이트 분기.
+  function finishLogin(data: { token: string; account?: { id?: number; company_name?: string | null; access_unlocked?: number } }) {
+    localStorage.setItem('ads_token', data.token)
+    localStorage.setItem('ads_account_id', String(data.account?.id ?? ''))
+    localStorage.setItem('ads_company', data.account?.company_name || '')
+    if (data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
+    else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password) { setErr('이메일과 비밀번호를 입력해주세요'); return }
     setBusy(true); setErr(null)
     try {
       const r = await api.post('/api/ads/auth/login', { email: email.trim(), password })
-      if (r.data?.success && r.data.token) {
-        localStorage.setItem('ads_token', r.data.token)
-        localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
-        localStorage.setItem('ads_company', r.data.account?.company_name || '')
-        // 베타 액세스 코드 게이트: 해제된 계정만 대시보드로, 아니면 코드 입력 화면.
-        if (r.data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
-        else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
-      } else setErr(r.data?.error || '로그인에 실패했습니다')
+      if (r.data?.success && r.data.token) finishLogin(r.data)
+      else setErr(r.data?.error || '로그인에 실패했습니다')
     } catch (e2: unknown) {
       setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '로그인에 실패했습니다')
     } finally { setBusy(false) }
+  }
+
+  // 🟡 카카오: 유어딜 세션 브리지 우선(이미 urdeal.kr 카카오 로그인이면 왕복 0으로 즉시) →
+  //   미로그인(401)일 때만 기존 소비자 카카오 시작(콜백 기등록 — 콘솔 추가 불필요) 후 /ads/kakao 재시도.
+  async function kakaoStart() {
+    setBusy(true); setErr(null)
+    try {
+      const r = await api.post('/api/ads-auth/kakao/bridge', {})
+      if (r.data?.success && r.data.token) { finishLogin(r.data); return }
+    } catch (e2: unknown) {
+      const ax = e2 as { response?: { status?: number; data?: { need_login?: boolean; error?: string } } }
+      if (ax.response?.status !== 401) { setErr(ax.response?.data?.error || '카카오 로그인에 실패했습니다'); setBusy(false); return }
+    }
+    window.location.href = `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`
   }
 
   const signupHref = `/ads/signup${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
@@ -102,11 +119,11 @@ export default function MarketingLoginPage() {
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
 
-        {/* 🟡 카카오 로그인 — /api/ads-auth/kakao/start (서버 302 → 카카오 인가 → 콜백 → /ads/kakao) */}
-        <a href="/api/ads-auth/kakao/start" className="ua-kakao-btn" style={{ marginTop: 10 }}>
+        {/* 🟡 카카오 — 유어딜 로그인 공유(브리지 우선, 미로그인 시 기존 소비자 카카오 플로우) */}
+        <button type="button" onClick={kakaoStart} disabled={busy} className="ua-kakao-btn" style={{ marginTop: 10, border: 'none', cursor: 'pointer' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
-          카카오로 시작하기
-        </a>
+          카카오로 시작하기 (유어딜 계정)
+        </button>
 
         <div style={{ marginTop: 12, textAlign: 'center' }}>
           <Link to="/ads/forgot" style={{ fontSize: 12.5, color: '#8A93A3' }}>비밀번호를 잊으셨나요?</Link>

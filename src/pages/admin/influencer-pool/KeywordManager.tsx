@@ -56,7 +56,7 @@ export default function KeywordManager({ keywords, onChanged }: { keywords: Keyw
     } catch { toast.error('추가 실패') }
   }
   async function toggleKeyword(k: Keyword) {
-    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await onChanged() }
+    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await onChanged(); toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶️ '${k.keyword}' 수집 재개`) }
     catch { toast.error('변경 실패') }
   }
 

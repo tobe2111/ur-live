@@ -9,6 +9,8 @@ import {
 } from '@/features/marketing/api/ads-account'
 import { saveAlertSettings, getAlertSettings } from '@/features/marketing/api/alerts'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
+import { adsKakaoAuthRoutes } from '@/features/marketing/api/ads-kakao-auth.routes'
+import { createSessionCookie } from '@/worker/utils/session'
 
 /**
  * 🆕 2026-06-28 유어애즈 독립 계정 — 실제 SQLite(node:sqlite) 통합 테스트.
@@ -219,6 +221,37 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     // ⑥ 발급 토큰은 기존 ads_token 파이프라인과 동일하게 검증됨
     const token = await signAdsToken(r1.account.id, JWT)
     expect(await adsAccountIdFrom('Bearer ' + token, JWT)).toBe(r1.account.id)
+  })
+
+  it('🌉 유어딜 세션 브리지: ur_session → ads 계정 생성/재로그인 · 미로그인 401 need_login', async () => {
+    const DB2 = makeD1()
+    await DB2.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY, kakao_id TEXT, name TEXT, email TEXT, email_verified INTEGER)').run()
+    await DB2.prepare("INSERT INTO users (id, kakao_id, name, email, email_verified) VALUES (1, '77700', '방배사장', 'boss@x.com', 1), (2, NULL, '비카카오', 'nk@x.com', 0)").run()
+    const env = { DB: DB2, JWT_SECRET: JWT } as unknown as Parameters<typeof adsKakaoAuthRoutes.request>[2]
+    const cookie = (await createSessionCookie(1, '방배사장', 'boss@x.com', null, JWT, 'user')).split(';')[0]
+    // ① 유어딜 세션 → ads 계정 자동 생성(회사명=유저 이름, 잠금 게이트 유지)
+    const r1 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie } }, env)
+    expect(r1.status).toBe(200)
+    const j1 = await r1.json() as { success: boolean; token: string; created: boolean; account: { id: number; company_name: string; access_unlocked: number } }
+    expect(j1.success && !!j1.token && j1.created).toBe(true)
+    expect(j1.account.company_name).toBe('방배사장')
+    expect(j1.account.access_unlocked).toBe(0) // 2차 게이트(액세스 코드) 유지
+    // ② 재호출 → 같은 계정 재로그인(중복 생성 0)
+    const r2 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie } }, env)
+    const j2 = await r2.json() as { created: boolean; account: { id: number } }
+    expect(!j2.created && j2.account.id === j1.account.id).toBe(true)
+    // ③ 직접 OAuth 경로(kakao_id 77700)로 와도 같은 ads 계정(매칭 SSOT 일치)
+    const direct = await kakaoLoginAdsAccount(DB2, { kakaoId: '77700', email: 'boss@x.com', emailVerified: true, nickname: '방배사장' })
+    expect(direct.ok && !direct.created && direct.account.id === j1.account.id).toBe(true)
+    // ④ 비카카오 유어딜 유저도 안정 키(urdeal:u{id})로 브리지 가능
+    const cookie2 = (await createSessionCookie(2, '비카카오', 'nk@x.com', null, JWT, 'user')).split(';')[0]
+    const r3 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie2 } }, env)
+    const j3 = await r3.json() as { success: boolean; created: boolean; account: { id: number } }
+    expect(j3.success && j3.created && j3.account.id !== j1.account.id).toBe(true)
+    // ⑤ 세션 없음 → 401 need_login
+    const un = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST' }, env)
+    expect(un.status).toBe(401)
+    expect((await un.json() as { need_login?: boolean }).need_login).toBe(true)
   })
 
   it('미인증 요청은 401', async () => {
