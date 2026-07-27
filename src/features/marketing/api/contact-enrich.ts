@@ -19,6 +19,11 @@ const JUNK_EMAIL = /@(?:sentry\.|wixpress\.com|example\.|your-?domain|yourdomain
 export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|reporter|editor|jebo|bodo)[\d._-]*@/i
 /** 📰 언론사성 호스트(수집 제외 + 크롤 거부 공용) — 뉴스 포털 루트에서 webmaster@ 류가 긁히는 것 차단. */
 export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
+/** 🔢 크롤/추출 규칙 버전 (2026-07-28 실측 — 개선한 크롤러가 7일 쿨다운에 막혀 기존 백로그를 못 만나던 문제).
+ *  보강 대상 쿼리가 `COALESCE(enrich_v,0) < CRAWL_RULES_VERSION` 인 행도 포함하므로, **크롤 경로·추출기를
+ *  개선하면 이 값을 +1** → 이전 크롤러로 실패한 전량이 즉시 재시도 대상이 된다(분류 규칙 버전과 동일 철학).
+ *  v2 = 엔티티/태그분할 복원 · JSON-LD · 사이트맵 발견 · 호스트 변형 폴백 · 국내 CMS 경로 12종. */
+export const CRAWL_RULES_VERSION = 2
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */

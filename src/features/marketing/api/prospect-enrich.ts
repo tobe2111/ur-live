@@ -20,7 +20,7 @@ export interface ProspectEnrichResult { processed: number; email_found: number; 
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
   const DB = env.DB
   await ensureProspectSchema(DB)
-  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup } = await import('./contact-enrich')
+  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
@@ -46,8 +46,9 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   }
   const addr = (r: { addr_road: string | null; addr_lot: string | null }) => r.addr_road || r.addr_lot || ''
   // 시도 스탬프(성공/실패 무관) — 예산이 백로그 전체를 순회하게(회사 풀과 동일 처방, 7일 쿨다운).
-  const stamp = async (id: number) => { await DB.prepare("UPDATE store_prospects SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
-  const COOL = "AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))"
+  const stamp = async (id: number) => { await DB.prepare(`UPDATE store_prospects SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run().catch(() => null) }
+  // 쿨다운 + 크롤러 버전 — 크롤 개선 시 이전 실패분 전량 즉시 재시도(회사 풀과 동일 처방).
+  const COOL = `AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})`
 
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
   //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).

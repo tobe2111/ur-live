@@ -252,16 +252,26 @@ app.get('/stats', async (c) => {
   //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
   const fresh = (v: unknown): boolean => { const at = (v as { at?: string } | null)?.at; return !!at && Date.now() - Date.parse(at) < 240_000 }
   const running = { runAll: fresh(lkAll), enrich: fresh(lkEnrich), reclassify: fresh(lkReclassify) }
+  // 🚦 게이트는 **ur-ads 워커 env** 가 진실(cron 이 거기서 돔) — 메인 env 를 읽어 표시하면 실제와 어긋난다
+  //   (2026-07-28 실측: 어드민 전부 OFF 표시). health 로 실값을 물어보고, 실패 시 메인 env 로 폴백.
+  let g: Record<string, boolean> | null = null
+  if (c.env.ADS?.fetch) {
+    try {
+      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+      g = ((await hr.json().catch(() => null)) as { gates?: Record<string, boolean> } | null)?.gates ?? null
+    } catch { g = null }
+  }
+  const gate = (k: string, fallback: boolean): boolean => (g && typeof g[k] === 'boolean') ? g[k] : fallback
   return c.json({
     success: true, ...s,
-    collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
-    storeinfo: { gate: c.env.ADS_STOREINFO_ENABLED === 'true', run: storeinfoRun },
-    commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
-    franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
+    collect: { gate: gate('company_collect', c.env.ADS_COMPANY_COLLECT_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
+    storeinfo: { gate: gate('storeinfo', c.env.ADS_STOREINFO_ENABLED === 'true'), run: storeinfoRun },
+    commerce: { gate: gate('commerce', (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true'), run: commerceRun, probe: commerceProbe },
+    franchise: { gate: gate('franchise', (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true'), run: franchiseRun },
     nts: { run: ntsRun },
-    nps: { gate: (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true', run: npsRun },
+    nps: { gate: gate('nps', (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true'), run: npsRun },
     reclassify: { run: rcRun },
-    work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
+    work24: { gate: gate('work24', (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true'), run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
     enrichLast, enrichBurst, reclassifyBurst, runAll, running,
