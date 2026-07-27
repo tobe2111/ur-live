@@ -136,6 +136,8 @@ export async function naverHomepageSearch(clientId: string, clientSecret: string
 
 // 잘 알려진 메일 도메인(MX 확실) — DoH 조회 생략(예산 절약).
 const KNOWN_MAIL_DOMAIN = /(?:^|\.)(naver\.com|gmail\.com|daum\.net|hanmail\.net|kakao\.com|nate\.com|hotmail\.com|outlook\.com|icloud\.com|yahoo\.com)$/i
+/** 유명 메일 도메인 여부(DoH 생략 가능) — 재검증 스윕이 예산 계산에 사용. */
+export const isKnownMailDomain = (email: string): boolean => KNOWN_MAIL_DOMAIN.test(String(email || '').split('@')[1] || '')
 
 /** 📮 이메일 도메인 실존 검증(무료 Cloudflare DoH) — **죽은 도메인 이메일(반송 확정)** 저장 방지.
  *   NXDOMAIN(도메인 자체 없음)만 false — MX 부재는 A 레코드 수신 가능(RFC 5321)이라 과차단 안 함.

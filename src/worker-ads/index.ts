@@ -140,6 +140,11 @@ app.post('/__ads/collect-hira', async (c) => {
   try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return c.json({ ok: true, stats: await runHiraHospitalCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 📮 이메일 재검증 스윕 수동 트리거 — 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
+app.post('/__ads/sweep-mx', async (c) => {
+  try { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return c.json({ ok: true, stats: await sweepEmailMx(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🏛️ 사업자 폐업 스윕 수동 트리거 — 국세청 상태조회 활용신청 검증 겸(메인 어드민이 env.ADS 로만 호출).
 app.post('/__ads/sweep-nts', async (c) => {
   try {
@@ -253,6 +258,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
     kick('/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
+  }
+  // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
+  if (hourUTC === 17 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); await sweepEmailMx(env) } catch { /* fail-soft */ }
+    })())
   }
   // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
   if (hourUTC === 23 && (env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {

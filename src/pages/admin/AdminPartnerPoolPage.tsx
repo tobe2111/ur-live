@@ -170,6 +170,27 @@ export default function AdminPartnerPoolPage() {
   }
 
   const [enriching, setEnriching] = useState(false)
+  // ⬇ CSV — <a href> 직링크는 관리자 토큰이 안 실려 FORBIDDEN(2026-07-27 대표 신고) → 인증 axios blob 다운로드.
+  async function downloadCsv(url: string, filename: string) {
+    try {
+      const r = await api.get(url, { responseType: 'blob' })
+      const blobUrl = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' }))
+      const a = document.createElement('a')
+      a.href = blobUrl; a.download = filename; a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch { toast.error('내보내기 실패 — 관리자 세션 만료면 재로그인 후 시도') }
+  }
+
+  async function runSweepMx() {
+    if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정'); return }
+    setSweeping(true)
+    try {
+      const r = await api.post('/api/admin/partner-pool/sweep-mx', {})
+      if (r.data?.success) toast.success('이메일 재검증 시작 — 죽은 도메인(반송 확정)만 정리, 매일 자동으로도 순회')
+      else toast.error(r.data?.error || '재검증 위임 실패')
+    } catch { toast.error('재검증 위임 실패') } finally { setSweeping(false) }
+  }
+
   async function runSweepNts() {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정'); return }
     setSweeping(true)
@@ -243,7 +264,8 @@ export default function AdminPartnerPoolPage() {
           <button onClick={() => runCollectSrc('collect-nara', '나라장터 조달업체')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나라장터 등록업체 중 광고·마케팅 계열만 — 정부 용역 수주 대행사(전화 등록, 이메일은 보강)">{busySrc === 'collect-nara' ? '수집 중…' : '📑 조달업체'}</button>
           <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="기존 리드 포함 — 이메일 없는 리드의 홈페이지를 크롤(없으면 네이버로 발견)해 이메일을 소급 보강. 매시간 자동으로도 진행(허위 0)">{enriching ? '보강 중…' : '📧 연락처 보강'}</button>
           <button onClick={runSweepNts} disabled={sweeping || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="국세청 상태조회로 폐업 리드 100건/회 정리(일 1회 자동 + 수동). 활용신청 검증 겸 — 오류 시 상태줄에 표시">{sweeping ? '정리 중…' : '🏛 폐업 정리'}</button>
-          <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>
+          <button onClick={() => downloadCsv('/api/admin/partner-pool/export?format=csv', `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="전체(보류 포함) 리드를 엑셀 호환 CSV 로 — 한글 깨짐 없음(BOM), 엑셀에서 바로 열림">⬇ CSV 내보내기</button>
+          <button onClick={runSweepMx} disabled={sweeping || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="기존 저장 이메일의 도메인 실존 재검증 — 죽은 도메인(반송 확정)만 정리. 매일 새벽 자동 + 수동">{sweeping ? '검증 중…' : '📮 메일 재검증'}</button>
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
           )}
