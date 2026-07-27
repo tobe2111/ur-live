@@ -14,9 +14,10 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { formatNumber, kstShort } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info } from './partner-pool/StatusLines'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -35,14 +36,6 @@ const TYPE_META: Record<string, { label: string; cls: string }> = {
 }
 interface Stats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number }
 interface Meta { categories: Record<string, string[]>; statuses: string[]; channels: string[]; tier: { min: number; max: number }; leadTypes?: Array<{ k: string; label: string }> }
-interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
-interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
-interface StoreInfo { gate: boolean; run: RunInfo | null }
-interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
-interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
-interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
-interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
-interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -72,6 +65,8 @@ export default function AdminPartnerPoolPage() {
   const [nts, setNts] = useState<NtsSweep | null>(null)
   const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
+  const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
+  const [work24Info, setWork24Info] = useState<Work24Info | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -96,7 +91,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -156,6 +151,15 @@ export default function AdminPartnerPoolPage() {
       else toast.error('삭제 실패')
     } catch { toast.error('삭제 실패') }
   }, [loadStats])
+
+  const bounceLead = useCallback(async (id: number, email: string) => {
+    if (!confirm(`${email}\n반송된 주소로 기록할까요? 억제 목록에 올라가 재수집으로도 되살아나지 않습니다.`)) return
+    try {
+      const r = await api.post(`/api/admin/partner-pool/${id}/bounce`, {})
+      if (r.data?.success) { toast.success('반송 기록됨 — 이 주소는 다시 수집되지 않습니다'); setLeads(prev => prev.map(l => l.id === id ? { ...l, email: null } : l)) }
+      else toast.error(r.data?.error || '반송 기록 실패')
+    } catch { toast.error('반송 기록 실패') }
+  }, [])
 
   const toggleOne = useCallback((id: number, on: boolean) => {
     setSelected(s => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n })
@@ -269,6 +273,7 @@ export default function AdminPartnerPoolPage() {
             { label: '통신판매사업자', desc: '공정위 — 대표자 이메일이 붙어 옴', onClick: () => runAction('collect-commerce', '통신판매 수집') },
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
+            { label: '💼 채용기업(고용24)', desc: '채용 중 = 성장 신호 — 광고·판촉·인쇄 계열만', onClick: () => runAction('collect-work24', '고용24 채용기업 수집') },
           ]} />
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
@@ -287,74 +292,8 @@ export default function AdminPartnerPoolPage() {
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 업체만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
         </div>
 
-        {/* 레인 A(네이버 지역검색) 자동수집 상태 */}
-        {collect && (
-          <div className="mb-3 text-xs text-gray-500">
-            레인 A 자동수집 <span className={collect.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 홀수시' : 'OFF'}</span>
-            {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
-              : collect.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
-                : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
-            <span className="mx-2 text-gray-300">|</span>
-            🏪 상가정보 <span className={storeinfo?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{storeinfo?.gate ? 'ON · 짝수시' : 'OFF'}</span>
-            {storeinfo?.run?.diag?.error ? <span className="text-amber-600"> · {storeinfo.run.diag.error}</span>
-              : storeinfo?.run?.last_run ? <span> · 최근 {kstShort(storeinfo.run.last_run)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
-                : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
-            {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
-          </div>
-        )}
-
-        {/* 📧 대행사 이메일 퍼널 — 미보유를 원인별로 분해(보강 대기 vs 구조적 한계) */}
-        {agencyFunnel && agencyFunnel.total > 0 && (
-          <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-gray-500">
-            <span className="font-semibold text-gray-700">📧 대행사 이메일 퍼널</span>
-            <span> · 전체 {formatNumber(agencyFunnel.total)}</span>
-            <span> · <span className="text-indigo-600 font-semibold">이메일 보유 {formatNumber(agencyFunnel.with_email)}</span></span>
-            <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음 — 매시간 보강 크롤이 채우는 중이거나, 문의폼·카톡채널만 쓰는 업체(공개 이메일 자체가 없어 공란이 정답)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}</span>
-            <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
-          </div>
-        )}
-
-        {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
-        {commerce?.run && (
-          <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-            <span className="font-semibold text-gray-700">🛒 통신판매</span>
-            {commerce.run.diag?.error ? <span className="text-amber-600"> · {commerce.run.diag.error}</span>
-              : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {commerce.run.found ?? 0} / 저장 {commerce.run.saved ?? 0}</span>}
-            {commerce.probe && (
-              <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? `있음 ✅${commerce.probe.emailField ? ` (${commerce.probe.emailField}, 선택입력이라 일부만 채워짐)` : ''}` : '없음 ❌'}</span></span>
-            )}
-            {commerce.probe?.keys?.length ? (
-              <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>
-            ) : null}
-          </div>
-        )}
-
-        {/* 🏢 공정위 가맹(프랜차이즈) 수집 상태 */}
-        {franchise?.run && (
-          <div className="mb-3 text-xs text-gray-500">
-            🏢 프랜차이즈 <span className={franchise.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{franchise.gate ? 'ON · 22시' : 'OFF'}</span>
-            {franchise.run.diag?.error ? <span className="text-amber-600"> · {franchise.run.diag.error}</span>
-              : <span> · 최근 {kstShort(franchise.run.last_run)} · 발굴 {franchise.run.found ?? 0} / 저장 {franchise.run.saved ?? 0}</span>}
-            <span className="text-gray-400"> · 연락처는 보강(홈페이지 검색)으로 채워짐</span>
-          </div>
-        )}
-
-        {/* 🏛️ 국세청 폐업 스윕 상태 — note 에 활용신청/키 오류가 그대로 표시됨(검증용) */}
-        {nts?.run && (
-          <div className="mb-3 text-xs text-gray-500">
-            🏛 폐업 정리 <span> · 최근 {kstShort(nts.run.last_run)} · 조회 {nts.run.checked ?? 0} / 폐업처리 {nts.run.closed ?? 0} (누적 {nts.run.total_closed ?? 0})</span>
-            {nts.run.note && <span className="text-amber-600"> · ⚠️ {nts.run.note}</span>}
-          </div>
-        )}
-
-        {/* 👥 국민연금 규모 검증 상태 */}
-        {npsInfo?.run && (
-          <div className="mb-3 text-xs text-gray-500">
-            👥 규모 조회(국민연금) <span className={npsInfo.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{npsInfo.gate ? 'ON · 01시' : 'OFF'}</span>
-            <span> · 최근 {kstShort(npsInfo.run.last_run)} · 조회 {npsInfo.run.checked ?? 0} / 매칭 {npsInfo.run.matched ?? 0} (누적 {npsInfo.run.total_matched ?? 0})</span>
-            {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
-          </div>
-        )}
+        {/* 수집·정리 상태줄 묶음(레인A/정리진행률/퍼널/통신판매/프랜차이즈/폐업/국민연금) */}
+        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} />
 
         {/* 명부 붙여넣기(레인 B·C) */}
         {showImport && (
@@ -461,7 +400,7 @@ export default function AdminPartnerPoolPage() {
                   )}
                 </td></tr>
               ) : leads.map(l => (
-                <LeadRow key={l.id} lead={l} checked={selected.has(l.id)} onToggle={toggleOne} onPatch={patchLead} onRemove={removeLead} />
+                <LeadRow key={l.id} lead={l} checked={selected.has(l.id)} onToggle={toggleOne} onPatch={patchLead} onRemove={removeLead} onBounce={bounceLead} />
               ))}
             </tbody>
           </table>
@@ -524,11 +463,12 @@ function ActionMenu({ label, items, busy }: { label: string; busy?: boolean; ite
 }
 
 /** 행 — memo. 한 행만 바뀔 때 나머지 99행이 재조정되지 않도록(대표 신고 "렉 걸림"). */
-const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onRemove }: {
+const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onRemove, onBounce }: {
   lead: Lead; checked: boolean
   onToggle: (id: number, on: boolean) => void
   onPatch: (id: number, patch: Record<string, unknown>) => void
   onRemove: (id: number) => void
+  onBounce: (id: number, email: string) => void
 }) {
   const type = TYPE_META[l.lead_type || 'unknown'] || TYPE_META.unknown
   return (
@@ -558,7 +498,7 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
       <td className="px-3 py-2 text-gray-700">{l.region || '—'}</td>
       <td className="px-3 py-2 text-gray-700">
         {l.phone ? <div>📞 {l.phone}</div> : null}
-        {l.email ? <div className="text-xs text-gray-500">✉ {l.email}</div> : null}
+        {l.email ? <div className="text-xs text-gray-500">✉ {l.email} <button onClick={() => onBounce(l.id, l.email!)} className="ml-1 text-[10px] text-gray-300 hover:text-red-500" title="반송된 주소로 기록(억제 목록 — 재수집 차단)">반송</button></div> : null}
         {!l.phone && !l.email && <span className="text-gray-300">—</span>}
         {(l.phone || l.email) && l.contact_source && <div className="text-[10px] text-gray-400 mt-0.5" title="연락처 출처">출처: {SRC_LABEL[l.contact_source] || l.contact_source}</div>}
       </td>

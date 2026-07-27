@@ -87,6 +87,14 @@ app.post('/__ads/enrich-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
+app.post('/__ads/collect-work24', async (c) => {
+  try {
+    const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect')
+    return c.json({ ok: true, stats: await runWork24JobsCollect(c.env) })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 👥 국민연금 규모 검증 — 기존 리드(대행사 우선)의 직원수(가입자수) 조회(엄격 매칭, 허위 0).
 app.post('/__ads/collect-nps', async (c) => {
   try {
@@ -280,6 +288,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
     kick('/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
+  // 💼 고용24 채용기업 — 일 1회(hourUTC===15 = KST 00시). 게이트 ADS_WORK24_ENABLED(기본 OFF).
+  if (hourUTC === 15 && (env as unknown as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true') {
+    kick('/__ads/collect-work24', async () => { const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect'); return runWork24JobsCollect(env) })
+  }
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
   if (hourUTC === 16 && (env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
     kick('/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 40) })
@@ -326,11 +338,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); await runHiraHospitalCollect(env, 3) } catch { /* fail-soft */ }
     })())
   }
-  // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 홈페이지 크롤/네이버 링크발견.
-  //   게이트 ADS_LOCALDATA_ENABLED(매장 후보 트랙 켜면 보강도 자동). 이메일 백로그를 시간당 자동 소진.
-  //   📦 + 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 시간당 2일씩 역방향 소급 → 매장 DB 수량 확대.
-  if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
+  // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
+  //   동일 병목: 인허가 게이트 OFF 면 보강도 0회이던 결합 해소). 킬스위치 ADS_ENRICH_DISABLED 만 끔.
+  if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
     kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
+  }
+  // 📦 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 인허가 트랙 게이트 유지(수집 예산 소비).
+  if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     ctx.waitUntil((async () => {
       try {
         const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')

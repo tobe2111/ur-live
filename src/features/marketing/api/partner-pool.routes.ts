@@ -49,6 +49,20 @@ app.get('/', async (c) => {
   return c.json({ success: true, leads, total, limit, offset })
 })
 
+// POST /api/admin/partner-pool/:id/bounce — 📵 반송 마킹: 이메일을 억제 목록에 등록 + 행에서 제거.
+//   수동 발송(mailto) 체계라 반송은 대표 메일함에서 사람이 확인 → 이 버튼이 유일한 억제 쓰기 경로.
+app.post('/:id/bounce', async (c) => {
+  const id = intParam(c.req.param('id'), 0)
+  if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
+  await ensureCompanySchema(c.env.DB)
+  const row = await c.env.DB.prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
+  const email = (row?.email || '').trim().toLowerCase()
+  if (!email) return c.json({ success: false, error: '이 리드에 이메일이 없습니다' }, 400)
+  await c.env.DB.prepare("INSERT OR IGNORE INTO ad_email_suppress (email, reason) VALUES (?, 'bounce')").bind(email).run().catch(() => null)
+  await c.env.DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(id).run().catch(() => null)
+  return c.json({ success: true })
+})
+
 // POST /api/admin/partner-pool/reclassify — 기존 리드 소급 재분류(공고/정부페이지 제거 + 업종 근거 재적용).
 app.post('/reclassify', async (c) => {
   const r = await reclassifyCompanyLeads(c.env.DB, 500)
@@ -97,6 +111,12 @@ app.get('/stats', async (c) => {
   // 👥 국민연금 규모 검증 상태(ads_nps_stats) — diag.sample 로 실응답 필드 검증(추측 대신 실제 확인).
   const npsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_nps_stats'").first<{ value: string }>().catch(() => null)
   let npsRun: unknown = null; try { npsRun = npsRow?.value ? JSON.parse(npsRow.value) : null } catch { npsRun = null }
+  // 💼 고용24 채용기업 수집 상태(ads_work24_stats) — diag.sample 로 실응답 필드 검증.
+  const w24Row = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_work24_stats'").first<{ value: string }>().catch(() => null)
+  let w24Run: unknown = null; try { w24Run = w24Row?.value ? JSON.parse(w24Row.value) : null } catch { w24Run = null }
+  // 🧭 소급 정리(재분류) 진행률(ads_reclassify_stats) — 6만 행 청소가 며칠 걸려 가시화 필수.
+  const rcRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
+  let rcRun: unknown = null; try { rcRun = rcRow?.value ? JSON.parse(rcRow.value) : null } catch { rcRun = null }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
@@ -105,6 +125,8 @@ app.get('/stats', async (c) => {
     franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
     nts: { run: ntsRun },
     nps: { gate: (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true', run: npsRun },
+    reclassify: { run: rcRun },
+    work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
   })
 })
 
@@ -201,6 +223,7 @@ app.post('/collect-storeinfo', delegateCollect('collect-storeinfo')) // 소스�
 app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신판매사업자(전화+이메일)
 app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
 app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
+app.post('/collect-work24', delegateCollect('collect-work24'))       // 💼 고용24 채용기업(성장 신호)
 
 // ── 🤝 파트너 매장 소개(리퍼럴) 접수·추적 — 머니 무접촉(지급 배선은 별도 세션, partner-referrals.ts 주석) ──
 app.get('/referrals', async (c) => {
