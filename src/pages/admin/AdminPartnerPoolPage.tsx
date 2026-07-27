@@ -17,7 +17,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
-import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info } from './partner-pool/StatusLines'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info, type LocalDataInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
 
 interface Lead {
@@ -68,6 +68,7 @@ export default function AdminPartnerPoolPage() {
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
   const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
   const [work24Info, setWork24Info] = useState<Work24Info | null>(null)
+  const [localdata, setLocaldata] = useState<LocalDataInfo | null>(null) // 🏪 매장 후보(인허가) — 공개면 데이터원
   // ⏳ 서버 백그라운드 실행 상태(2026-07-27 대표 "실행 중 다른 페이지로 이동하면?") — 페이지를 떠났다
   //   돌아와도 무엇이 돌고 있는지 보이게(잠금 하트비트 기반). 작업은 서버에서 계속되므로 표시만 복원.
   const [running, setRunning] = useState<{ runAll?: boolean; enrich?: boolean; reclassify?: boolean } | null>(null)
@@ -97,7 +98,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setRunning(r.data.running || null) }
+      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setRunning(r.data.running || null) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -354,7 +355,7 @@ export default function AdminPartnerPoolPage() {
             <span className="text-emerald-600"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
           </div>
         )}
-        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} />
+        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} />
 
         {/* 명부 붙여넣기(레인 B·C) */}
         {showImport && (
