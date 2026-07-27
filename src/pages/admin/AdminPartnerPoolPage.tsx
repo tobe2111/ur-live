@@ -16,6 +16,7 @@ import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
+import ReferralPanel from './partner-pool/ReferralPanel'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -244,6 +245,9 @@ export default function AdminPartnerPoolPage() {
 
         {/* 📬 오늘의 컨택 — 이메일 우선(대표 지시), 미접촉만 */}
         <ContactListPanel />
+
+        {/* 🤝 파트너 매장 소개 접수함(리퍼럴 — 지급 배선은 별도 세션) */}
+        <ReferralPanel />
 
         {/* 통계 스트립 — 카드 클릭 = 필터 */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">

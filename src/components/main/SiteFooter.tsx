@@ -36,6 +36,7 @@ export default function SiteFooter() {
             <a href="/about" className={colLink}>서비스 소개</a>
             <a href="/vouchers" className={colLink}>교환권</a>
             <a href="/map" className={colLink}>동네딜 지도</a>
+            <a href="/new-openings" className={colLink}>우리 동네 새 가게</a>
             <a href="/stays" className={colLink}>숙소</a>
             <a href="/experience" className={colLink}>체험단 모집</a>
             <a href="/blog" className={colLink}>블로그</a>

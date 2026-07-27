@@ -182,6 +182,7 @@ const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
@@ -1000,6 +1001,7 @@ function AppContent() {
 
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/new-openings" element={<NewOpeningsPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
 
             {/* Terms Pages */}
