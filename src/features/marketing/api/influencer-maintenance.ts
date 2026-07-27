@@ -176,7 +176,8 @@ export async function runNightlyRescan(env: Env): Promise<Record<string, unknown
   const DB = env.DB
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
-  try { out.refetch = await runYtLiveRefetch(env, 2) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
+  // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
+  try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
   try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
