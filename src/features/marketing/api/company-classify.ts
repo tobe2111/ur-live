@@ -191,6 +191,7 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 export function suspectCompanyName(name: string, sourceKeyword?: string | null): boolean {
   const n = String(name || '').replace(/\s+/g, ' ').trim()
   if (n.length < 2) return true
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
   if (/["“”‘’',?？]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true

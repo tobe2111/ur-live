@@ -27,7 +27,8 @@ const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
  *   ① `mailto:` href(업체가 명시적으로 건 연락 링크 = 최고 신뢰) 우선 → ② 본문 pickBusinessEmail(난독복원+문맥점수).
  *   플랫폼 기본값/플레이스홀더(JUNK_EMAIL)는 제외. 못 찾으면 null.
  */
-export function extractEmailFromHtml(html: string): string | null {
+export function extractEmailFromHtml(html: string, allowNewsroom = false): string | null {
+  const newsy = (e: string) => !allowNewsroom && NEWSROOM_EMAIL_LOCAL.test(e) // 미디어 리드는 뉴스룸 계정도 유효 연락처
   const mailtos: string[] = []
   const re = new RegExp(MAILTO_RE)
   let m: RegExpExecArray | null
@@ -35,15 +36,15 @@ export function extractEmailFromHtml(html: string): string | null {
     let e = m[1]
     try { e = decodeURIComponent(e) } catch { /* 원문 유지 */ }
     e = e.trim().toLowerCase()
-    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !NEWSROOM_EMAIL_LOCAL.test(e)) mailtos.push(e)
+    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !newsy(e)) mailtos.push(e)
   }
   if (mailtos.length) {
     // mailto 다수면 비즈니스 문맥(문의/contact)으로 선별, 아니면 첫 번째.
     const biz = pickBusinessEmail(mailtos.map(e => `문의 ${e}`).join(' '))
-    return (biz && !JUNK_EMAIL.test(biz) && !NEWSROOM_EMAIL_LOCAL.test(biz)) ? biz : mailtos[0]
+    return (biz && !JUNK_EMAIL.test(biz) && !newsy(biz)) ? biz : mailtos[0]
   }
   const body = pickBusinessEmail(html)
-  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !NEWSROOM_EMAIL_LOCAL.test(body) ? body : null
+  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !newsy(body) ? body : null
 }
 /** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
  *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
@@ -175,12 +176,12 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
-export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string): Promise<{ email: string | null; phone: string | null; siteName: string | null }> {
+export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<{ email: string | null; phone: string | null; siteName: string | null }> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null } }
   if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null }
-  // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 수집단 필터를 우회한 레거시/외부입력 website 도 여기서 차단.
-  if (NEWS_MEDIA_HOST.test(url.hostname) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null }
+  // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
+  if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null }
   if (outOfBudget(budget)) return { email: null, phone: null, siteName: null }
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
@@ -223,7 +224,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
       const cand = stripTag(og || (slice.match(/<title[^>]*>([^<]{2,80})</i)?.[1] || '').split(/[|\-–—:·]/)[0]).trim()
       if (cand.length >= 2 && cand.length <= 30 && !/["“”‘’',?？]|공지|로그인|메인|홈페이지$/.test(cand)) siteName = cand
     }
-    if (!email) email = extractEmailFromHtml(slice)   // mailto: 우선 → 본문 문맥선별
+    if (!email) email = extractEmailFromHtml(slice, allowNewsHost)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
     // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
     if (path === '' && !email) {
