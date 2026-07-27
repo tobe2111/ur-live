@@ -262,7 +262,8 @@ marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', m
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await resolveSearchAdCreds(c, sellerId)
-  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  // 키 미설정 = 정상 상태(기능 비활성) → 200(콘솔 5xx 소음 제거) — 클라는 unavailable 로 섹션 숨김.
+  if (!creds) return c.json({ success: false, unavailable: true, error: 'NOT_CONFIGURED' })
   const seeds = (c.req.query('seed') || c.req.query('keywords') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
   if (!seeds.length) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
   const r = await relatedKeywords(creds, seeds)
