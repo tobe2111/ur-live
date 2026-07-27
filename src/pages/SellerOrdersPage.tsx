@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatKST } from '@/utils/date'
+import { formatKST, parseUTCDate, kstDayStartMs, kstDayEndMs } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
@@ -125,14 +125,15 @@ export default function SellerOrdersPage() {
     }
 
     // Date filter
+    // 🛡️ 2026-07-27: KST 경계로 교정 — 이전엔 UTC 자정(date input)과 로컬 오해석(created_at)을
+    //   섞어 비교해 경계 주문이 9시간만큼 누락됐다. 서버 `DATE(created_at,'+9 hours')` 와 동일 규약.
     if (dateFilter.start) {
-      const startDate = new Date(dateFilter.start)
-      result = result.filter(order => new Date(order.created_at) >= startDate)
+      const startMs = kstDayStartMs(dateFilter.start)
+      result = result.filter(order => parseUTCDate(order.created_at).getTime() >= startMs)
     }
     if (dateFilter.end) {
-      const endDate = new Date(dateFilter.end)
-      endDate.setHours(23, 59, 59, 999) // End of day
-      result = result.filter(order => new Date(order.created_at) <= endDate)
+      const endMs = kstDayEndMs(dateFilter.end)
+      result = result.filter(order => parseUTCDate(order.created_at).getTime() <= endMs)
     }
 
     setFilteredOrders(result)
