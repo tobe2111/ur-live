@@ -21,6 +21,12 @@ export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|repor
 export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
+/** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
+const publishableEmail = (e: string, allowNewsroom = false): boolean =>
+  EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && (allowNewsroom || !NEWSROOM_EMAIL_LOCAL.test(e))
+/** HTML 엔티티형 이메일 난독 복원(&#64;→@ 등) — 국내 CMS 안티봇 출력에 흔함(2026-07-27 크롤 고도화). */
+const decodeEmailEntities = (s: string): string =>
+  s.replace(/&#0*64;|&commat;/gi, '@').replace(/&#0*46;|&period;/gi, '.').replace(/&#0*45;/g, '-')
 
 /**
  * 📧 HTML 에서 **게시된** 이메일 1개 추출 — 추측·조합 절대 없음.
@@ -28,23 +34,26 @@ const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
  *   플랫폼 기본값/플레이스홀더(JUNK_EMAIL)는 제외. 못 찾으면 null.
  */
 export function extractEmailFromHtml(html: string, allowNewsroom = false): string | null {
-  const newsy = (e: string) => !allowNewsroom && NEWSROOM_EMAIL_LOCAL.test(e) // 미디어 리드는 뉴스룸 계정도 유효 연락처
+  const src = decodeEmailEntities(String(html || '')) // &#64; 류 엔티티 난독 복원 후 스캔
   const mailtos: string[] = []
   const re = new RegExp(MAILTO_RE)
   let m: RegExpExecArray | null
-  while ((m = re.exec(html))) {
+  while ((m = re.exec(src))) {
     let e = m[1]
     try { e = decodeURIComponent(e) } catch { /* 원문 유지 */ }
     e = e.trim().toLowerCase()
-    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !newsy(e)) mailtos.push(e)
+    if (publishableEmail(e, allowNewsroom)) mailtos.push(e)
   }
   if (mailtos.length) {
     // mailto 다수면 비즈니스 문맥(문의/contact)으로 선별, 아니면 첫 번째.
     const biz = pickBusinessEmail(mailtos.map(e => `문의 ${e}`).join(' '))
-    return (biz && !JUNK_EMAIL.test(biz) && !newsy(biz)) ? biz : mailtos[0]
+    return (biz && publishableEmail(biz, allowNewsroom)) ? biz : mailtos[0]
   }
-  const body = pickBusinessEmail(html)
-  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !newsy(body) ? body : null
+  const body = pickBusinessEmail(src)
+  if (body && publishableEmail(body, allowNewsroom)) return body
+  // 태그로 쪼갠 이메일("info<span>@</span>domain.com") — 태그 제거본 재스캔(2026-07-27 크롤 고도화).
+  const stripped = pickBusinessEmail(src.replace(/<[^>]+>/g, ' '))
+  return stripped && publishableEmail(stripped, allowNewsroom) ? stripped : null
 }
 /** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
  *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
@@ -176,46 +185,61 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
-export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<{ email: string | null; phone: string | null; siteName: string | null }> {
+/** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
+export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail'
+export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason }
+export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
-  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null } }
-  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null }
+  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
+  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null, reason: 'bad_url' }
   // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
-  if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null }
-  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null }
+  if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null, reason: 'blocked_host' }
+  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: 'budget' }
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
   if (robots) {
     const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
-    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null }
+    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null, reason: 'robots' }
   }
-  let email: string | null = null, phone: string | null = null, nameSeen = !requireName
+  let email: string | null = null, phone: string | null = null, nameSeen = !requireName, anyPage = false
   let siteName: string | null = null // 🏷️ 사이트 자기 이름(og:site_name→title 첫 구획) — webkr 헤드라인 상호 치유용
   const wantName = requireName ? norm(requireName) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
-  //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤2)** (2026-07-27 최종 점검): 국내 대행사/SME 는
-  //   그누보드·자체 경로(`/bbs/content.php?co_id=contact`, `/sub/contact.html`)가 흔해 고정 경로만으론 놓침.
-  //   same-origin 만 + 파일(.jpg/.pdf…) 제외 — 크롤 범위는 여전히 그 업체 사이트 안(허위 0 무관).
-  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']
+  //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤3)** + 사이트맵 기반 연락처 페이지 발견(2026-07-27 고도화).
+  //   국내 대행사/SME 는 그누보드·cafe24·아임웹 자체 경로가 흔해 고정 경로만으론 놓침. same-origin 만 + 파일 제외.
+  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact',
+    '/sub/contact.html', '/bbs/content.php?co_id=contact', '/html/contact.html', '/kor/contact', '/introduce', '/company/info']
   const visited = new Set<string>()
   let discoveredLinks = 0
+  const BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
+  }
+  const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS }).then(r => r.ok ? r.text() : '').catch(() => '')
+  // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
+  //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
+  let originResolved = false
   for (let i = 0; i < queue.length; i++) {
     const path = queue[i]
     if (visited.has(path)) continue
     visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
-    // UA: 브라우저형(2026-07-27 — 아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터에 이메일이 있어도 수집 0 이던 갭).
-    //   robots.txt 존중은 위에서 그대로(공개 페이지만 읽음) — 식별 문자열만 표준 브라우저 형태로.
-    const html = await fetch(url.origin + path, {
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
-      },
-    }).then(r => r.ok ? r.text() : '').catch(() => '')
+    // UA: 브라우저형(아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터 이메일 수집 0 이던 갭). robots 존중은 위에서 그대로.
+    let html = await fetchHtml(url.origin + path)
+    if (!html && path === '' && !originResolved && budget && budget.left > 3) {
+      originResolved = true
+      const altHost = url.hostname.startsWith('www.') ? url.hostname.slice(4) : `www.${url.hostname}`
+      for (const alt of [`https://${altHost}`, `http://${url.hostname}`]) {
+        if (outOfBudget(budget)) break
+        spendBudget(budget)
+        const h = await fetchHtml(alt + path)
+        if (h) { html = h; try { url = new URL(alt) } catch { /* keep */ } break } // 살아있는 오리진으로 전환
+      }
+    }
     if (!html) continue
+    anyPage = true
     const slice = html.slice(0, 200000)
     if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
     if (path === '' && !siteName) {
@@ -226,12 +250,20 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     }
     if (!email) email = extractEmailFromHtml(slice, allowNewsHost)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
-    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
+    // 🧾 JSON-LD(구조화 데이터) email/telephone — 사이트가 스스로 선언한 값이라 정밀도 최상(2026-07-27 고도화).
+    if (!email || !phone) {
+      for (const ld of slice.matchAll(/"email"\s*:\s*"([^"<>{}]{5,120})"/gi)) {
+        const e = decodeEmailEntities(ld[1]).replace(/^mailto:/i, '').trim().toLowerCase()
+        if (publishableEmail(e, allowNewsHost)) { email = email || e; break }
+      }
+      if (!phone) { const tm = slice.match(/"telephone"\s*:\s*"([^"<>{}]{8,25})"/i); if (tm) phone = pickPhone(tm[1]) }
+    }
+    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 3개 추가, 어휘 확장 2026-07-27).
     if (path === '' && !email) {
       for (const m of slice.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
-        if (discoveredLinks >= 2) break
+        if (discoveredLinks >= 3) break
         const href = m[1].replace(/&amp;/g, '&').trim()
-        if (!/(contact|inquiry|contactus|문의|오시는|co_id=)/i.test(href)) continue
+        if (!/(contact|inquiry|contactus|문의|오시는|co_id=|about|company|intro|(?:회사|기업)\s*소개|고객\s*센터|customer|support)/i.test(href)) continue
         if (/\.(?:jpe?g|png|gif|webp|svg|pdf|zip|hwp|docx?|xlsx?)(?:$|\?)/i.test(href)) continue
         let u2: URL
         try { u2 = new URL(href, url.origin + '/') } catch { continue }
@@ -239,9 +271,24 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
         const p2 = u2.pathname + u2.search
         if (!visited.has(p2) && !queue.includes(p2)) { queue.push(p2); discoveredLinks++ }
       }
+      // 🗺️ 사이트맵 기반 연락처 페이지 발견 — 네비에 링크가 없어도 sitemap.xml 에 등재된 contact/about URL 을
+      //   찾아 큐에 추가(그누보드/워드프레스 등 자동 사이트맵 흔함). 홈에서 이메일 못 찾았을 때만(예산 절약).
+      if (!email && discoveredLinks < 3 && budget && budget.left > 3) {
+        spendBudget(budget)
+        const sm = await fetch(`${url.origin}/sitemap.xml`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
+        for (const loc of sm.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
+          if (discoveredLinks >= 3) break
+          if (!/(contact|inquiry|about|company|intro|문의|소개)/i.test(loc[1])) continue
+          try { const su = new URL(loc[1]); if (su.hostname !== url.hostname) continue
+            const sp = su.pathname + su.search
+            if (!visited.has(sp) && !queue.includes(sp)) { queue.push(sp); discoveredLinks++ }
+          } catch { /* skip */ }
+        }
+      }
     }
   }
-  if (!nameSeen) return { email: null, phone: null, siteName: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
-  if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제
-  return { email, phone, siteName }
+  if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (email && !(await domainAcceptsMail(email, budget))) { email = null; return { email: null, phone, siteName, reason: 'dead_domain' } } // 죽은 도메인(반송 확정) 배제
+  const reason: CrawlReason = email ? 'ok' : (!anyPage ? 'fetch_fail' : 'no_contact')
+  return { email, phone, siteName, reason }
 }

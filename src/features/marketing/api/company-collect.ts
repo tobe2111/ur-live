@@ -266,6 +266,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
+  const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/dead_domain/no_name…) — 적중률 계측
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
   const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
@@ -290,7 +291,9 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
   //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
   //     상호만으로는 동명 지점/타업체 전화 오귀속 위험(허위 방지). 그런 리드는 홈페이지 크롤이 담당.
-  const phoneCap = Math.floor(budget.left / 3) // 전화는 예산 1/3까지만 — 2/3 는 이메일(크롤/발견)에(대표 "이메일 우선")
+  // 전화는 예산 1/6 로 축소(2026-07-27 대표 "전화보단 이메일 우선" 재확인) — 전화 백필은 카카오 전용
+  //   스윕 레인(runKakaoPhoneSweep, 시간당 600건)이 전담하게 되어 여기선 이메일(크롤/발견)에 5/6 집중.
+  const phoneCap = Math.floor(budget.left / 6)
   let phoneSpent = 0
   for (const t of targets) {
     if (outOfBudget(budget) || phoneSpent >= phoneCap) break
@@ -316,6 +319,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     }
     if (site && budget.left > 2) {
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
+      crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
       // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
       //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
@@ -361,10 +365,12 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
-  const result = { processed, enriched, remaining: Number(rem?.n) || 0 }
-  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 버튼 완료 감지·상태줄 공용.
+  const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
+  const hitRate = crawls ? Math.round(((crawlReason.ok || 0) / crawls) * 100) : 0
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
+  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지") + 🎯 크롤 적중률 사유(다음 개선을 데이터로 고름).
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result })).run().catch(() => null)
+    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason })).run().catch(() => null)
   return result
 }
 
@@ -461,4 +467,44 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(nextCursor)).run().catch(() => null)
   return s
+}
+
+/* ── ☎️ 카카오 전용 전화 스윕(2026-07-27 대표 "더 빠르고 정확히는?") ──────────────────
+ *   보류 10만+ 의 대부분은 오프라인 업체 = 목표가 **전화**인데, 통합 보강은 예산 1/3 만 전화에 써서
+ *   카카오 무료 쿼터(10만/일)가 크게 놀았음. 이 레인은 카카오만(1건=1콜, 네이버·크롤 무접촉) 대량 순회:
+ *   시간당 기본 600건 → 일 1.4만+ — 보류 전화 1차 순회를 단독으로 ~일주일에 끝냄.
+ *   id 커서 랩(한 바퀴 돌면 0 리셋) — enrich_checked_at 무접촉(이메일 보강 흐름과 독립).
+ *   허위 0: kakaoLocalLookup 은 상호+주소 매칭 실패 시 null(기존 SSOT 그대로). */
+export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean }> {
+  const DB = env.DB
+  await ensureCompanySchema(DB)
+  const { kakaoLocalLookup } = await import('./contact-enrich')
+  const key = env.KAKAO_REST_API_KEY || ''
+  const CUR = 'ads_kakao_sweep_cursor'
+  if (!key) return { scanned: 0, found: 0, cursor: 0, done: false }
+  const cap = Math.min(600, Math.max(50, parseInt((env as unknown as { ADS_KAKAO_SWEEP_CAP?: string }).ADS_KAKAO_SWEEP_CAP || '', 10) || 600))
+  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CUR).first<{ value: string }>().catch(() => null)
+  let cursor = parseInt(curRaw?.value || '0', 10); if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
+  const rows = (await DB.prepare(
+    `SELECT id, company_name, region, address FROM ad_company_leads
+     WHERE id > ? AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
+    .bind(cursor, cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
+  if (!rows.length) { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, '0').run().catch(() => null); return { scanned: 0, found: 0, cursor: 0, done: true } }
+  let found = 0
+  for (const r of rows) {
+    const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address)
+    if (k.phone) {
+      found++
+      await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?")
+        .bind(k.phone, r.id).run().catch(() => null)
+    }
+  }
+  const nextCursor = rows[rows.length - 1].id
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
+  const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
+  let totalFound = 0; try { totalFound = Number((prevRaw?.value ? JSON.parse(prevRaw.value) : {}).total_found) || 0 } catch { /* 초기 */ }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
+    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, cursor: nextCursor, total_found: totalFound + found,
+  })).run().catch(() => null)
+  return { scanned: rows.length, found, cursor: nextCursor, done: false }
 }
