@@ -506,6 +506,24 @@ function parseXmlItems(xml: string): Record<string, unknown>[] {
   return out
 }
 
+/**
+ * 응답 본문(JSON 배열/객체 · data.go.kr XML · NDJSON) → 항목 배열. 형식 자동판별.
+ *   fetchFeeds 와 수요통계(trade-demand) 가 공유하는 SSOT — 파싱 구현 중복 방지.
+ */
+export function parseFeedItems(text: string): Record<string, unknown>[] {
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return []
+  try {
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) return digArray(JSON.parse(trimmed))
+    // data.go.kr 오픈API 는 dataType 미지정 시 XML 반환 — <item> 블록을 평면 객체로 추출.
+    if (trimmed.startsWith('<')) return parseXmlItems(trimmed)
+    // NDJSON — 줄별 개별 파싱(한 줄 깨져도 나머지 유지).
+    return trimmed.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(l => { try { return JSON.parse(l) } catch { return null } })
+      .filter(Boolean) as Record<string, unknown>[]
+  } catch { return [] }
+}
+
 function digArray(root: unknown): Record<string, unknown>[] {
   if (Array.isArray(root)) return root as Record<string, unknown>[]
   if (root && typeof root === 'object') {
@@ -543,15 +561,7 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
     const text = await fetch(url, { headers })
       .then(r => (r.ok ? r.text() : '')).catch(() => '')
     if (!text) continue
-    let items: Record<string, unknown>[] = []
-    const trimmed = text.trim()
-    try {
-      if (trimmed.startsWith('[') || trimmed.startsWith('{')) items = digArray(JSON.parse(trimmed))
-      // data.go.kr 오픈API 는 dataType 미지정 시 XML 반환 — <item> 블록을 평면 객체로 추출(JSON 파라미터 몰라도 동작).
-      else if (trimmed.startsWith('<')) items = parseXmlItems(trimmed)
-      // NDJSON — 줄별 개별 파싱(한 줄 깨져도 나머지 유지; 통째 파싱하면 한 줄 오류로 전체 폐기).
-      else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) as Record<string, unknown>[]
-    } catch { items = [] }
+    const items = parseFeedItems(text) // JSON/XML(data.go.kr)/NDJSON 자동판별 — 공용 SSOT
     for (const it of items.slice(0, 500)) {
       // 첫 비어있지 않은 필드값 선택(피드/ITA/data.go.kr 필드명 편차 흡수). data.go.kr 은 camelCase 한글약어(corpNm/telNo/emlAddr…).
       const g = (...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return String(v).trim() } return '' }

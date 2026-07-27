@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import DemandPanel from './buyer-pool/DemandPanel'
 
 /**
  * 🌐 2026-07-20 유통스타트 해외 수출 바이어 파이프라인 (/admin/buyer-pool).
@@ -369,6 +370,9 @@ export default function AdminBuyerPoolPage() {
     } catch (e) { setDiagResult('진단 호출 실패: ' + String(e)) } finally { setDiagLoading(false) }
   }
 
+  // 📊 수요 인텔리전스 — 패널은 DemandPanel 컴포넌트로 분리(god 파일 방지). 여기선 표시 여부만.
+  const [showDemand, setShowDemand] = useState(false)
+
   // window.open 은 쿠키만 보내 Bearer(localStorage) 인증 어드민에선 401 → 에러 JSON 다운로드됨.
   //   axios(Bearer 첨부)로 blob 받아 저장.
   const exportCsv = async () => {
@@ -383,17 +387,22 @@ export default function AdminBuyerPoolPage() {
   return (
     <AdminLayout title="해외 바이어 풀">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-        <DashboardPageHeader title="🌐 해외 바이어 파이프라인" subtitle="유통스타트 수출 — 의도 자격심사 · 매칭 스코어 · 회사→담당자" />
+        <DashboardPageHeader title="🌐 해외 수요 · 바이어 파이프라인" subtitle="유통스타트 수출 — 국가·품목 수요 인텔리전스 + 바이어 리드" />
 
-        {/* 3단계 안내 — 대표가 실제로 하는 일 */}
+        {/* 전략 안내 — 연락처 수집이 아니라 '수요 읽기 → 인바운드' 가 본선 */}
         <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700">
             <span className="font-semibold text-indigo-700">이렇게 쓰세요:</span>
-            <span><b>①</b> 「📋 수집 방법 · 북마클릿」 열어 즐겨찾기 등록 → buyKorea에서 클릭</span>
+            <span><b>①</b> 「📊 수요 인텔리전스」로 <b>어느 나라가 뭘 사는지</b> 확인</span>
             <span className="text-gray-300">→</span>
-            <span><b>②</b> 「🌐 이메일 찾기」로 연락처 보강</span>
+            <span><b>②</b> 그 품목을 <b>buyKorea 판매자센터에 상품 등록</b>(무료·인바운드 문의)</span>
             <span className="text-gray-300">→</span>
-            <span><b>③</b> 「CSV 내보내기」로 저장</span>
+            <span><b>③</b> <b>tradeKorea 바이어DB</b>에서 거래제안서 발송</span>
+          </div>
+          <div className="mt-2 text-xs text-gray-600 leading-relaxed">
+            ⚠️ <b>바이어 이메일은 플랫폼이 원천 마스킹</b>합니다(그게 그들의 사업모델) — 긁어서 확보하는 건 구조적으로 막혀 있고,
+            긁은 주소로의 콜드메일은 GDPR·CAN-SPAM 이슈도 있습니다. <b>국가·품목·수량은 항상 보이므로</b> 그 수요 신호를 읽어
+            <b> 바이어가 찾아오게 만드는 것</b>이 실제로 작동하는 경로입니다. (「🌐 이메일 찾기」는 공개 홈페이지가 있는 일부 리드용 보조 기능입니다.)
           </div>
         </div>
 
@@ -460,7 +469,8 @@ export default function AdminBuyerPoolPage() {
         {/* 액션 바 — 자주 쓰는 3개만 크게, 나머지는 「고급」에 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button onClick={() => setShowGuide(v => !v)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">📋 수집 방법 · 북마클릿 {showGuide ? '숨기기' : ''}</button>
-          <button onClick={enrichWebsites} disabled={enriching} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium disabled:opacity-50" title="연락처 없는 리드의 웹사이트를 방문해 이메일·주소를 채웁니다">{enriching ? '이메일 찾는 중…' : '🌐 이메일 찾기'}</button>
+          <button onClick={() => setShowDemand(v => !v)} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold" title="어느 나라가 무엇을 사는지 — 연락처 마스킹과 무관한 수요 신호">📊 수요 인텔리전스 {showDemand ? '숨기기' : ''}</button>
+          <button onClick={enrichWebsites} disabled={enriching} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 disabled:opacity-50" title="연락처 없는 리드의 웹사이트를 방문해 이메일·주소를 채웁니다(플랫폼이 마스킹한 건 못 가져옵니다)">{enriching ? '이메일 찾는 중…' : '🌐 이메일 찾기(보조)'}</button>
           <button onClick={exportCsv} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 font-medium">CSV 내보내기</button>
           <button onClick={() => setShowAdvanced(v => !v)} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-500">고급 {showAdvanced ? '▲' : '▼'}</button>
           {showAdvanced && <>
@@ -484,6 +494,8 @@ export default function AdminBuyerPoolPage() {
           <label className="flex items-center gap-1 text-sm text-gray-600"><input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 컨택만</label>
           {(country || intent) && <button onClick={() => { setCountry(''); setIntent('') }} className="text-xs text-gray-500 underline">필터 해제</button>}
         </div>
+
+        {showDemand && <DemandPanel onClose={() => setShowDemand(false)} onRaw={setDiagResult} />}
 
         {/* 🔍 진단 결과 — 이메일이 안 나오는 원인 실측(verdict 를 캡션으로) */}
         {diagResult && (
