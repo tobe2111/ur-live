@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
-import { ensureAdsAccountSchema, adminSetPassword } from './ads-account'
+import { ensureAdsAccountSchema, adminSetPassword, ensureAccessRequestSchema } from './ads-account'
 import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlements'
 import { mediaStatus } from './media-gateway'
 import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } from './ad-services'
@@ -47,6 +47,44 @@ app.get('/accounts', async (c) => {
   const planMap = new Map(((await c.env.DB.prepare('SELECT account_id, plan FROM ad_entitlements').all<{ account_id: number; plan: string }>().catch(() => null))?.results || []).map(r => [r.account_id, r.plan]))
   const accounts = rows.map(r => ({ ...r, connected: connSet.has(r.id), alert_on: alertSet.has(r.id), plan: planMap.get(r.id) || 'free' }))
   return c.json({ success: true, accounts })
+})
+
+// GET /api/admin/ads/access-requests — 📥 입장 요청 대기열(계정 정보 조인, pending 우선)
+app.get('/access-requests', async (c) => {
+  await ensureAdsAccountSchema(c.env.DB); await ensureAccessRequestSchema(c.env.DB)
+  const rows = (await c.env.DB.prepare(`SELECT r.id, r.account_id, r.note, r.status, r.created_at, a.email, a.company_name, a.phone
+    FROM ad_access_requests r JOIN ad_accounts a ON a.id = r.account_id
+    ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.id DESC LIMIT 100`).all().catch(() => null))?.results || []
+  return c.json({ success: true, requests: rows })
+})
+
+// POST /api/admin/ads/access-requests/:id/decide {approve} — 승인=access_unlocked 1 + 안내 메일(best-effort)
+app.post('/access-requests/:id/decide', async (c) => {
+  await ensureAdsAccountSchema(c.env.DB); await ensureAccessRequestSchema(c.env.DB)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const approve = !!body.approve
+  // pending 만 결정 가능(CAS — 중복 클릭/동시 결정 멱등)
+  const upd = await c.env.DB.prepare("UPDATE ad_access_requests SET status = ?, decided_at = datetime('now') WHERE id = ? AND status='pending'")
+    .bind(approve ? 'approved' : 'rejected', id).run().catch(() => null)
+  if (upd?.meta?.changes !== 1) return c.json({ success: false, error: '이미 처리된 요청입니다' }, 409)
+  const req = await c.env.DB.prepare('SELECT account_id FROM ad_access_requests WHERE id = ?').bind(id).first<{ account_id: number }>().catch(() => null)
+  if (approve && req) {
+    await c.env.DB.prepare('UPDATE ad_accounts SET access_unlocked = 1 WHERE id = ?').bind(req.account_id).run().catch(() => null)
+    // 승인 안내 메일 — Resend 키 있을 때만(best-effort, 실패해도 승인은 유효 — 재로그인 시 자동 입장).
+    if (c.env.RESEND_API_KEY && c.env.RESEND_FROM) {
+      const acc = await c.env.DB.prepare('SELECT email, company_name FROM ad_accounts WHERE id = ?').bind(req.account_id).first<{ email: string; company_name: string | null }>().catch(() => null)
+      if (acc?.email && !acc.email.endsWith('@kakao.local')) {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${c.env.RESEND_API_KEY}` },
+          body: JSON.stringify({ from: c.env.RESEND_FROM, to: acc.email, subject: '[유어애즈] 입장이 승인되었습니다',
+            text: `${acc.company_name || ''}님, 유어애즈 이용이 승인되었습니다.\n\n로그인하면 바로 대시보드로 들어갑니다: https://urdeal.kr/ads/login\n\n— 유어애즈 UR Ads` }),
+        }).catch(() => null)
+      }
+    }
+  }
+  return c.json({ success: true, status: approve ? 'approved' : 'rejected' })
 })
 
 // PATCH /api/admin/ads/accounts/:id — 잠금해제(access_unlocked) / 정지(status) 변경
@@ -109,6 +147,27 @@ app.post('/services', async (c) => {
 app.get('/service-orders', async (c) => {
   const status = (c.req.query('status') || '').trim() || undefined
   return c.json({ success: true, orders: await adminListOrders(c.env.DB, status) })
+})
+
+// GET /api/admin/ads/service-orders/:id/outreach-stats — 📈 주문-회신 어트리뷰션(근사)
+//   주문 생성 이후 풀 전체의 이메일 아웃리치 성과(발송=contacted · 개봉=opened_at · 회신=replied_at).
+//   ⚠️ 리드-주문 직접 연결이 아닌 기간 기반 근사(현재 발송은 사람이 수동 실행) — 라벨에 명시하고 노출.
+//   주문별 발송분만 따로 돌리는 운영(이행 딥링크 → 발송 모드)에선 사실상 그 주문의 성과와 일치.
+app.get('/service-orders/:id/outreach-stats', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const order = await c.env.DB.prepare('SELECT id, created_at, service_name FROM ad_service_orders WHERE id = ?')
+    .bind(id).first<{ id: number; created_at: string; service_name: string }>().catch(() => null)
+  if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+  const s = await c.env.DB.prepare(`SELECT
+      COUNT(*) AS sent,
+      SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) AS opened,
+      SUM(CASE WHEN replied_at IS NOT NULL THEN 1 ELSE 0 END) AS replied,
+      SUM(CASE WHEN email_status IN ('bounced','complained') THEN 1 ELSE 0 END) AS bounced
+    FROM ad_influencer_leads
+    WHERE account_id = 0 AND contact_channel = 'email' AND contacted_at IS NOT NULL AND contacted_at >= ?`)
+    .bind(order.created_at).first<{ sent: number; opened: number; replied: number; bounced: number }>().catch(() => null)
+  return c.json({ success: true, order_id: order.id, since: order.created_at, stats: s || { sent: 0, opened: 0, replied: 0, bounced: 0 } })
 })
 
 // PATCH /api/admin/ads/service-orders/:id — 상태/이행방식/메모

@@ -58,6 +58,19 @@ export default function AdminAdsServicesPage() {
     catch { toast.error('변경 실패') } finally { setBusy(null) }
   }
 
+  // 📈 주문-회신 어트리뷰션(근사) — 주문 생성 이후 풀 전체 이메일 아웃리치 성과를 결과값 토스트로.
+  async function outreachStats(orderId: number) {
+    setBusy(orderId)
+    try {
+      const r = await api.get(`/api/admin/ads/service-orders/${orderId}/outreach-stats`)
+      if (r.data?.success) {
+        const s = r.data.stats || {}
+        const pct = (n: number, d: number) => d > 0 ? ` (${Math.round(n / d * 100)}%)` : ''
+        toast.success(`📈 주문 이후 이메일 아웃리치 — 발송 ${s.sent ?? 0} · 개봉 ${s.opened ?? 0}${pct(s.opened, s.sent)} · 회신 ${s.replied ?? 0}${pct(s.replied, s.sent)}${s.bounced ? ` · 반송 ${s.bounced}` : ''} (풀 전체 기간 근사)`)
+      } else toast.error(r.data?.error || '성과 조회 실패')
+    } catch { toast.error('성과 조회 실패') } finally { setBusy(null) }
+  }
+
   // 💳 토스 결제 주문 환불 — 서버가 cancelTossPayment(SSOT) 실행 후 refunded 마킹(원자적). 실패 시 paid 유지.
   async function tossRefund(orderId: number) {
     if (!window.confirm('토스 결제를 전액 취소하고 환불 처리할까요? (실제 카드 취소가 실행됩니다)')) return
@@ -127,6 +140,8 @@ export default function AdminAdsServicesPage() {
                             {isOutreach && <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>}
                             <button onClick={() => { navigator.clipboard?.writeText(upsell).then(() => toast.success('유어딜 업셀 문구 복사됨 — 이행 완료 안내에 붙여 보내세요')) }}
                               className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11.5px] font-semibold" title="이행 완료 시 사장님께: 협찬→유어딜 입점 깔때기">🔁 유어딜 업셀 문구</button>
+                            <button onClick={() => outreachStats(o.id)} disabled={busy === o.id}
+                              className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold disabled:opacity-50" title="주문 생성 이후 이메일 아웃리치 발송/개봉/회신(풀 전체 기간 근사)">📈 발송 성과</button>
                           </div>
                         )
                       })()}

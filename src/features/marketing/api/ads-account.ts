@@ -142,6 +142,44 @@ export async function unlockAdsAccount(DB: D1Database, id: number, code: string,
   return { ok: true }
 }
 
+// ── 📥 액세스 코드 요청 큐 (2026-07-27 — 가입→코드 대기 데드엔드 해소) ──────────
+//   신규 가입자가 코드를 받을 방법이 '연락처 문의'뿐이던 이탈 지점 → 원클릭 입장 요청 →
+//   어드민 승인 큐(/admin/ads-accounts)에서 승인하면 access_unlocked=1 (코드 입력 불필요).
+const _accessReqSchemaDone = new WeakSet<object>()
+export async function ensureAccessRequestSchema(DB: D1Database): Promise<void> {
+  if (_accessReqSchemaDone.has(DB)) return
+  _accessReqSchemaDone.add(DB)
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_access_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL UNIQUE,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT (datetime('now')),
+    decided_at DATETIME
+  )`).run().catch(() => null)
+}
+
+/** 입장 요청 등록(멱등) — 반환: unlocked(이미 해제) | created(신규 접수) | pending(이미 대기) | rejected(거절 이력 → 재요청 대기로 전환). */
+export async function requestAdsAccess(DB: D1Database, accountId: number, note?: string): Promise<'unlocked' | 'created' | 'pending'> {
+  await ensureAdsAccountSchema(DB); await ensureAccessRequestSchema(DB)
+  const acc = await getAdsAccount(DB, accountId)
+  if (acc && Number(acc.access_unlocked) === 1) return 'unlocked'
+  const ins = await DB.prepare('INSERT OR IGNORE INTO ad_access_requests (account_id, note) VALUES (?, ?)')
+    .bind(accountId, (note || '').slice(0, 300) || null).run().catch(() => null)
+  if (ins?.meta?.changes === 1) return 'created'
+  // 거절 이력이 있으면 재요청으로 되살림(대기중이면 no-op — status CAS).
+  const revived = await DB.prepare("UPDATE ad_access_requests SET status='pending', decided_at=NULL, created_at=datetime('now') WHERE account_id = ? AND status='rejected'")
+    .bind(accountId).run().catch(() => null)
+  return revived?.meta?.changes === 1 ? 'created' : 'pending'
+}
+
+/** 요청 상태 조회 — 없으면 null. */
+export async function getAdsAccessRequest(DB: D1Database, accountId: number): Promise<{ status: string; created_at: string } | null> {
+  await ensureAccessRequestSchema(DB)
+  return DB.prepare('SELECT status, created_at FROM ad_access_requests WHERE account_id = ?')
+    .bind(accountId).first<{ status: string; created_at: string }>().catch(() => null)
+}
+
 // ── 비밀번호 재설정(이메일 토큰) ─────────────────────────────────────────────
 const _resetSchemaDone = new WeakSet<object>()
 async function ensureResetSchema(DB: D1Database): Promise<void> {
