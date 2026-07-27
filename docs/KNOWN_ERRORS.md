@@ -44,6 +44,7 @@
 | 글로벌 CSS invert 적용 후 UI 깨짐 | 다크모드 invert hack | 사용 금지 (`docs/INCIDENTS.md`) |
 | CSP nonce 적용 후 화면 깨짐 | `style-src` 에 `'nonce-XXX'` | 사용 금지. `'unsafe-inline'` 유지 |
 | 특정 브라우저에서만 페이지 무한로딩/"응답 없는 페이지"/흰화면 + 콘솔 무에러 (특히 /admin 등 저빈도 대시보드) | 그 브라우저에 잔존한 캐시(낡은 index.html)·캐시형 서비스워커·만료 토큰 상태 — 서버는 정상인데 원격에서 원인 특정 불가 | **사용자에게 `live.ur-team.com/recover` 열게 하기** — SW/캐시/HTML 신선도/청크/토큰/어드민 API 를 자동 진단 + 원클릭 완전복구 버튼. 결과는 `frontend_errors`(type='admin-diag') 에 자동 기록 (2026-07-04, killer-sw.routes.ts) |
+| PC F12(DevTools) 모바일 에뮬레이션에서 **카카오 지도 스와이프/팬이 아예 안 됨** (시트/버튼은 정상, 콘솔 무에러) — Windows 터치 노트북 실기기도 동일 | 카카오맵 코어(4.5.13)가 로드 시 입력 모드를 1회 판정: `H = ontouchstart && (!Chrome UA \|\| Android UA)` — H=false 면 **마우스 핸들러만** 바인딩. DevTools 기본 "Responsive"(UA 스푸핑 없음)·터치스크린 데스크톱 Chrome/Edge 는 "데스크톱 Chrome UA+터치" 라 카카오는 마우스만 듣는데 브라우저는 터치만 보냄 | `src/lib/kakao-touch-shim.ts` `attachKakaoTouchShim(el)` — 해당 환경에서만 터치→마우스 합성(탭은 호환 click 위임 → 핀 클릭 보존). useKakaoMap·VoucherMap 배선 완료(2026-07-27, CDP 3시나리오 검증). 새 지도 표면 추가 시 이 헬퍼 부착. 참고: Pixel/iPhone **프리셋** 선택 시엔 UA 스푸핑으로 원래 정상 |
 
 ## 환경변수 / 배포
 

@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { distanceKm } from './utils'
+import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent } from './map-overlays'
 import type { Restaurant, KakaoPlace } from './types'
 
@@ -91,6 +92,8 @@ export function useKakaoMap({
 
   const [sdkLoaded, setSdkLoaded] = useState(false)
   const [sdkError, setSdkError] = useState(false)
+  // 터치→마우스 어댑터 해제 함수(부착 환경에서만 non-noop) — kakao-touch-shim.ts 참조.
+  const shimCleanupRef = useRef<(() => void) | null>(null)
   // 🗺️ 2026-07-25 (전수조사 M3): mapLevel state + zoom_changed 리스너 제거 — 핀치 중 zoom_changed 가
   //   여러 번 발화해 매번 페이지 전체 리렌더를 일으켰음. 클러스터 gridSize 는 initMap 안에서
   //   map.getLevel() 로 직접 계산(idle → viewportRev 가 이미 initMap 을 재실행하므로 상태 불필요).
@@ -165,6 +168,10 @@ export function useKakaoMap({
       window.kakao.maps.event.addListener(mapInstance.current, 'idle', () => {
         setViewportRev(v => v + 1)
       })
+      // 🗺️ 2026-07-27 (대표 신고 "F12 모바일 에뮬레이션에서 지도 스와이프 아예 안 됨"): 카카오 SDK 는
+      //   "데스크톱 Chrome UA + 터치"(DevTools Responsive 에뮬·Windows 터치 노트북) 환경에서 마우스
+      //   핸들러만 바인딩해 터치 팬이 완전 불능 — 그 환경에서만 터치→마우스 어댑터 부착(그 외 no-op).
+      shimCleanupRef.current = attachKakaoTouchShim(mapRef.current)
       // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
@@ -388,6 +395,8 @@ export function useKakaoMap({
   useEffect(() => {
     return () => {
       try {
+        shimCleanupRef.current?.()
+        shimCleanupRef.current = null
         overlayRegistryRef.current.forEach(o => o.setMap?.(null))
         overlayRegistryRef.current.clear()
         pinElsRef.current.clear()

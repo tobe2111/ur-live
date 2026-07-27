@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
+import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 
 interface VoucherMapItem {
   id: number | string
@@ -35,6 +36,8 @@ export default function VoucherMap<T extends VoucherMapItem>({
   //   리스너 미정리 누적. → 지도는 1회만 생성, 변경 시 마커 레이어만 갈아끼우고 뷰포트는 보존.
   const layerRef = useRef<any[]>([])
   const fittedKeyRef = useRef('')
+  const shimCleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => { shimCleanupRef.current?.(); shimCleanupRef.current = null }, [])
 
   useEffect(() => {
     if (!containerRef.current || vouchers.length === 0) return
@@ -61,6 +64,9 @@ export default function VoucherMap<T extends VoucherMapItem>({
           center: new w.kakao.maps.LatLng(centerLat, centerLng),
           level: 7,
         })
+        // 🗺️ 2026-07-27: 데스크톱 Chrome UA+터치(DevTools Responsive 에뮬·터치 노트북)에선 카카오가
+        //   마우스 모드로 바인딩돼 터치 팬 불능 — 해당 환경에서만 터치→마우스 어댑터(그 외 no-op).
+        shimCleanupRef.current = attachKakaoTouchShim(containerRef.current)
       }
       const map = mapRef.current
 
