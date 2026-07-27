@@ -202,6 +202,31 @@ app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신�
 app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
 app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
 
+// ── 🤝 파트너 매장 소개(리퍼럴) 접수·추적 — 머니 무접촉(지급 배선은 별도 세션, partner-referrals.ts 주석) ──
+app.get('/referrals', async (c) => {
+  const { listReferrals } = await import('./partner-referrals')
+  return c.json({ success: true, referrals: await listReferrals(c.env.DB) })
+})
+app.post('/referrals', async (c) => {
+  const { addReferral } = await import('./partner-referrals')
+  const b = await c.req.json().catch(() => ({})) as Record<string, unknown>
+  const r = await addReferral(c.env.DB, {
+    partner_lead_id: b.partner_lead_id != null ? Number(b.partner_lead_id) : null,
+    partner_name: String(b.partner_name || ''), store_name: String(b.store_name || ''),
+    region: b.region != null ? String(b.region) : null, phone: b.phone != null ? String(b.phone) : null,
+    memo: b.memo != null ? String(b.memo) : null,
+  })
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+app.patch('/referrals/:id', async (c) => {
+  const { updateReferralStatus } = await import('./partner-referrals')
+  const id = intParam(c.req.param('id'), 0)
+  if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
+  const b = await c.req.json().catch(() => ({})) as { status?: string }
+  const r = await updateReferralStatus(c.env.DB, id, String(b.status || ''))
+  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+})
+
 // POST /api/admin/partner-pool/enrich-burst — 🚀 이메일 보강 풀가동(대표 "하루 1만콜 다 쓰기").
 //   워커 1회 실행은 시간·서브요청 한도가 있어 한 번에 못 태움 → influencer collect-burst 와 동일 패턴:
 //   ur-ads 를 **연달아 호출**(호출마다 fresh 인보케이션 = fresh 예산). 시간캡/무진전/백로그 소진 가드.

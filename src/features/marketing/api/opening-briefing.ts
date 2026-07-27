@@ -44,19 +44,21 @@ export async function newOpenDigest(DB: D1Database, days = 14, limit = 30): Prom
 }
 
 export interface OpeningBriefing {
-  store: { id: number; biz_name: string; category: string | null; region: string | null; addr_road: string | null; phone: string | null; apv_perm_ymd: string | null }
+  store: { id: number; biz_name: string; category: string | null; region: string | null; addr_road: string | null; phone: string | null; email: string | null; apv_perm_ymd: string | null }
   competitors_active: number       // 같은 지역 · 같은 업종 · 영업중(경쟁 밀도)
   opened_90d: number               // 같은 지역 · 같은 업종 최근 90일 개업
   closed_90d: number               // 같은 지역 · 같은 업종 최근 90일 폐업(인허가 변동 감지 기준)
   recent_openings: Array<{ biz_name: string; apv_perm_ymd: string | null }>  // 인근 동종 최근 개업 5
   script: string                   // 전화 멘트 초안 — 실측 수치만 삽입(없으면 해당 문장 생략)
+  email_subject: string            // ✉ 이메일 초안(대표 "전화보단 이메일") — mailto 는 어드민 수동 발송(수집 ≠ 발송)
+  email_body: string
 }
 
 /** 매장 1곳의 상권 브리핑 — 같은 region×category 집계(전부 우리 수집분, 외부 호출 0). */
 export async function openingBriefing(DB: D1Database, id: number): Promise<OpeningBriefing | null> {
   await ensureProspectSchema(DB)
   const store = await DB.prepare(
-    'SELECT id, biz_name, category, region, addr_road, phone, apv_perm_ymd FROM store_prospects WHERE id = ?')
+    'SELECT id, biz_name, category, region, addr_road, phone, email, apv_perm_ymd FROM store_prospects WHERE id = ?')
     .bind(id).first<OpeningBriefing['store']>().catch(() => null)
   if (!store) return null
   const region = store.region || ''
@@ -88,5 +90,28 @@ export async function openingBriefing(DB: D1Database, id: number): Promise<Openi
   lines.push('개업 초기 3개월이 단골이 만들어지는 골든타임이라, 동네 주민에게 바로 노출되는 유어딜 동네딜에 첫 이용권을 걸어보시는 걸 제안드리고 싶어서 연락드렸습니다.')
   lines.push('입점비·고정비는 없고 판매될 때만 수수료가 나가는 구조라 개업 초기 부담이 없습니다. 5분만 설명드려도 될까요?')
 
-  return { store, competitors_active: competitors, opened_90d: opened90, closed_90d: closed90, recent_openings: recent, script: lines.join('\n') }
+  // ✉ 이메일 초안(대표 "전화보단 이메일") — 같은 실측 수치 + 공개 상권 리포트 링크(lead magnet).
+  //   발송은 어드민 mailto 수동(수집 ≠ 발송). 수치 없는 문장은 생략(허위 0).
+  const reportUrl = region ? `https://urdeal.kr/area-report/${encodeURIComponent(region)}` : 'https://urdeal.kr/area-report'
+  const emailSubject = `[유어딜] ${store.biz_name} 개업 축하드립니다 — ${region ? `${region} ` : ''}상권 데이터 브리핑`
+  const eb: string[] = []
+  eb.push(`${store.biz_name} 사장님, 안녕하세요. 동네 할인 플랫폼 유어딜입니다.`)
+  eb.push(`${store.apv_perm_ymd ? `${fmtYmd(store.apv_perm_ymd)} ` : ''}개업 진심으로 축하드립니다.`)
+  eb.push('')
+  if (scoped && (competitors > 0 || opened90 > 0)) {
+    eb.push(`공공 인허가 데이터로 본 ${region} ${category} 현황을 간단히 공유드립니다:`)
+    if (competitors > 0) eb.push(`· 현재 같은 업종 ${competitors}곳 영업 중`)
+    if (opened90 > 0) eb.push(`· 최근 90일 신규 개업 ${opened90}곳${closed90 > 0 ? ` / 폐업 ${closed90}곳` : ''}`)
+    eb.push(`· 상세 리포트(무료): ${reportUrl}`)
+    eb.push('')
+  }
+  eb.push('개업 초기 3개월이 단골이 만들어지는 골든타임입니다. 유어딜 동네딜에 첫 이용권을 걸면 동네 주민에게 바로 노출됩니다 — 입점비·고정비 없이 판매될 때만 수수료.')
+  eb.push('')
+  eb.push('편하신 시간 알려주시면 5분 통화로 설명드리겠습니다.')
+  eb.push('유어딜 드림 · urdeal.kr')
+
+  return {
+    store, competitors_active: competitors, opened_90d: opened90, closed_90d: closed90, recent_openings: recent,
+    script: lines.join('\n'), email_subject: emailSubject, email_body: eb.join('\n'),
+  }
 }

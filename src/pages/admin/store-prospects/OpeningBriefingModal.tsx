@@ -8,12 +8,14 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 
 interface Briefing {
-  store: { id: number; biz_name: string; category: string | null; region: string | null; addr_road: string | null; phone: string | null; apv_perm_ymd: string | null }
+  store: { id: number; biz_name: string; category: string | null; region: string | null; addr_road: string | null; phone: string | null; email: string | null; apv_perm_ymd: string | null }
   competitors_active: number
   opened_90d: number
   closed_90d: number
   recent_openings: Array<{ biz_name: string; apv_perm_ymd: string | null }>
   script: string
+  email_subject: string
+  email_body: string
 }
 
 const fmtYmd = (y: string | null) => y && y.length === 8 ? `${y.slice(0, 4)}.${y.slice(4, 6)}.${y.slice(6, 8)}` : '—'
@@ -86,12 +88,29 @@ export default function OpeningBriefingModal({ prospectId, onClose }: { prospect
               </div>
             )}
 
+            {/* ✉ 이메일 우선(대표 지시) — mailto 수동 발송(수집 ≠ 발송). 리포트 링크 포함. */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs font-semibold text-gray-700">✉ 이메일 초안 <span className="font-normal text-gray-400">(상권 리포트 링크 포함)</span></div>
+                <div className="flex gap-1.5">
+                  <button onClick={async () => { try { await navigator.clipboard.writeText(`${b.email_subject}\n\n${b.email_body}`); toast.success('이메일 초안 복사됨') } catch { toast.error('복사 실패') } }}
+                    className="px-2.5 py-1 rounded-lg border border-gray-300 bg-white text-gray-600 text-xs">복사</button>
+                  {b.store.email && (
+                    <a href={`mailto:${b.store.email}?subject=${encodeURIComponent(b.email_subject)}&body=${encodeURIComponent(b.email_body)}`}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs">✉ 메일 열기</a>
+                  )}
+                </div>
+              </div>
+              <textarea readOnly value={b.email_body} rows={8} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs leading-relaxed" />
+              {!b.store.email && <p className="mt-1 text-[10px] text-amber-600">이 매장은 이메일 미확보 — 초안 복사 후 다른 채널로, 또는 전화 멘트 사용.</p>}
+            </div>
+
             <div className="mt-4">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-xs font-semibold text-gray-700">📞 전화 멘트 초안 <span className="font-normal text-gray-400">(실측 수치만 삽입 — 다듬어 쓰세요)</span></div>
                 <button onClick={copyScript} className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-xs">복사</button>
               </div>
-              <textarea readOnly value={b.script} rows={8} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs leading-relaxed" />
+              <textarea readOnly value={b.script} rows={6} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs leading-relaxed" />
             </div>
           </>
         )}
