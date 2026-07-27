@@ -25,6 +25,7 @@ import { MATCHING_ENABLED } from '@/shared/feature-flags'
 import LazyMount from './LazyMount'
 import { DASH_TABS, SEC_TO_TAB } from './dashboard-tabs'
 import HomeTab from './dashboard/HomeTab'
+import { warmServices } from './services-warm'
 import KeywordToolsSection from './dashboard/KeywordToolsSection'
 import StoreOrdersSection from './dashboard/StoreOrdersSection'
 import AiMarketerSection from './dashboard/AiMarketerSection'
@@ -49,6 +50,10 @@ export default function MarketingDashboardPage() {
 
   const rawTab = sp.get('tab') || 'home'
   const tab = DASH_TABS.some((t) => t.id === rawTab) ? rawTab : 'home'
+
+  // ⚡ 서비스몰 선워밍 — 대시보드 진입 시 서비스 목록을 미리 요청(콜드 ur-ads 워커 웜업 겸).
+  //   탭 클릭 시 패널이 같은 in-flight 를 이어받아 즉시 표시(대표 "서비스몰이 늦게 떠" 수리).
+  useEffect(() => { if (hasToken) warmServices() }, [hasToken])
 
   // 베타 액세스 코드 게이트: 로그인했지만 미해제면 코드 입력 화면으로(직접/북마크 진입 방어).
   //   캐시('ads_unlocked'==='1')면 즉시 통과, 아니면 서버 확인 후 분기.
@@ -96,8 +101,8 @@ export default function MarketingDashboardPage() {
   return (
     <MarketingDashboardShell title={tabMeta?.label === '홈' ? '대시보드' : (tabMeta?.label || '대시보드')} showNav={hasToken}>
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
-      <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>{tab.toUpperCase()}</p>
-      <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>{tabMeta?.desc || ''}</p>
+      {/* 2026-07-27 de-AI: 영문 대문자 mono 오버라인 제거 — 탭 설명만 간결히 */}
+      {tab !== 'home' && <p className="text-[13px]" style={{ color: 'var(--ink2)' }}>{tabMeta?.desc || ''}</p>}
 
       {!hasToken && (
         <div className="mt-5 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4">

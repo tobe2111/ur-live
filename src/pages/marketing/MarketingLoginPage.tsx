@@ -14,9 +14,10 @@ import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 const DEFAULT_DEST = '/ads/dashboard'
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
 .ua-auth{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 100% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
+  font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
 .ua-auth a{text-decoration:none;}
 .ua-auth-card{width:100%;max-width:400px;background:#FFFFFF;border:1px solid #ECEDF1;border-radius:20px;
   padding:34px 28px;box-shadow:0 20px 54px -26px rgba(20,30,60,.28);}
@@ -28,7 +29,7 @@ const SCOPED_CSS = `
   transition:filter .15s,transform .05s;}
 .ua-auth-btn:hover{filter:brightness(1.06);} .ua-auth-btn:active{transform:translateY(1px);}
 .ua-auth-btn:disabled{opacity:.55;}
-.ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-auth-mono{font-size:11px;letter-spacing:.18em;color:#8A93A3;}
 .ua-kakao-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:13px;
   background:#FEE500;color:#191919 !important;font-size:15px;font-weight:800;transition:filter .15s,transform .05s;}
 .ua-kakao-btn:hover{filter:brightness(.97);} .ua-kakao-btn:active{transform:translateY(1px);}
