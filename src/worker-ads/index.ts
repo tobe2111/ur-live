@@ -127,6 +127,15 @@ app.post('/__ads/enrich-prospects', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🏛️ 사업자 폐업 스윕 수동 트리거 — 국세청 상태조회 활용신청 검증 겸(메인 어드민이 env.ADS 로만 호출).
+app.post('/__ads/sweep-nts', async (c) => {
+  try {
+    const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
+    const stats = await sweepBusinessStatus(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
