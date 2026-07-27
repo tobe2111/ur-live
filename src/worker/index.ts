@@ -199,12 +199,12 @@ import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-
 import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
 import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
+import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
-// 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
-import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
+import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes'; // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -1547,7 +1547,7 @@ app.route('/api/products', featureProductsRoutes);
 // 🎯 [urads-split Phase D] /api/ads 로컬 폴백 제거 — Service Binding 프록시(env.ADS→ur-ads)가 전담. 재도입=원복.
 // app.route('/api/ads', marketingRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
-app.route('/api/creator-apply', influencerApplyRoutes);
+app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
 // 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);

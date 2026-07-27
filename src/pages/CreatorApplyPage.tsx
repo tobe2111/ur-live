@@ -19,6 +19,7 @@ export default function CreatorApplyPage() {
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [claimCode, setClaimCode] = useState<string | null>(null) // 신청 응답의 가입 추적 코드(없으면 일반 로그인)
   const [err, setErr] = useState('')
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF(p => ({ ...p, [k]: e.target.value }))
 
@@ -28,7 +29,7 @@ export default function CreatorApplyPage() {
     setBusy(true)
     try {
       const r = await api.post('/api/creator-apply', { ...f, agree })
-      if (r.data?.success) setDone(true)
+      if (r.data?.success) { setClaimCode(typeof r.data.claim_code === 'string' ? r.data.claim_code : null); setDone(true) }
       else setErr(r.data?.error || '신청에 실패했습니다. 잠시 후 다시 시도해주세요.')
     } catch (e) {
       const ax = e as { response?: { data?: { error?: string } } }
@@ -52,6 +53,12 @@ export default function CreatorApplyPage() {
             <div className="text-4xl mb-3">✅</div>
             <div className="text-lg font-semibold text-gray-900">신청이 접수되었습니다</div>
             <p className="mt-2 text-sm text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
+            {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}
+            <a href={claimCode ? `/creators/start?ic=${claimCode}` : '/login'}
+              className="mt-5 inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white">
+              지금 바로 시작하기 (카카오 1분)
+            </a>
+            <p className="mt-2 text-xs text-gray-500">가입하면 내 링크샵이 자동으로 생기고, 딜을 담아 링크만 공유하면 됩니다.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">

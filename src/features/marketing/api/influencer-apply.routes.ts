@@ -9,6 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { welcomeEmail, textToHtml } from './outreach-send'
+import { getOrCreateClaimCode } from './lead-claim'
 import { sendEmail } from '@/services/email'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -61,6 +62,11 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
       memo = COALESCE(excluded.memo, ad_influencer_leads.memo),
       consented_at = COALESCE(ad_influencer_leads.consented_at, excluded.consented_at)`)
     .bind(POOL, platform, channelId, name, url, email || null, category, memo, selfProfile).run().catch(() => null)
+  // 🔗 가입 추적 코드 — 신청 직후 바로 시작하려는 사람을 위해 응답에 실어준다(온보딩 메일과 같은 코드).
+  //   실패해도 접수는 유효(코드 없으면 프론트가 일반 가입 링크로 폴백).
+  const leadRow = await c.env.DB.prepare('SELECT id FROM ad_influencer_leads WHERE account_id = ? AND platform = ? AND channel_id = ?')
+    .bind(POOL, platform, channelId).first<{ id: number }>().catch(() => null)
+  const claimCode = leadRow ? await getOrCreateClaimCode(c.env.DB, leadRow.id).catch(() => null) : null
   // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
   if (email && c.env.RESEND_API_KEY) {
     const send = async () => {
@@ -69,7 +75,7 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
     }
     if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(send()); else await send().catch(() => null)
   }
-  return c.json({ success: true, message: '신청이 접수되었습니다. 검토 후 제휴 담당자가 연락드립니다.' })
+  return c.json({ success: true, message: '신청이 접수되었습니다. 검토 후 제휴 담당자가 연락드립니다.', claim_code: claimCode })
 })
 
 export { app as influencerApplyRoutes }

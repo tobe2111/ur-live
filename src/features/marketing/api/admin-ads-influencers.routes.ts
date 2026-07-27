@@ -17,6 +17,7 @@ import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
+import { getFunnelTailStats, getOrCreateClaimCode } from './lead-claim'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -183,6 +184,8 @@ app.get('/influencer-pool/stats', async (c) => {
     FROM ad_influencer_leads WHERE account_id = ?
     GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
     .bind(POOL).all().catch(() => null)
+  // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
+  const tail = await getFunnelTailStats(c.env.DB).catch(() => ({ joined: 0, first_sale: 0 }))
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
@@ -205,7 +208,7 @@ app.get('/influencer-pool/stats', async (c) => {
   const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
   const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
   const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
-  return c.json({ success: true, stats: agg || {}, run, gate, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
+  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, run, gate, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
@@ -315,6 +318,8 @@ app.post('/influencer-pool/:id/track-link', async (c) => {
 //   유도해 **스스로 신청**하게 만드는 것이 풀의 실질 가치를 만드는 단계.
 //   여기서는 ① 리드 전용 추적링크(→ /creators/apply) 발급 ② recruited_at 기록(전환율 측정 모수)만 하고,
 //   실제 전달은 사람이 공개 채널(인스타 DM·블로그 댓글)로 한다(플랫폼 제재·수신자 선택권 존중).
+//   🔗 2026-07-27: 리드의 **현재 퍼널 단계에 맞는 링크**를 준다 — 미신청=신청 링크 / 신청완료=가입 링크
+//   (`/creators/start?ic=`, lead-claim) / 가입완료=안내 불필요. 예전엔 신청자에게 400 만 돌려줘 다음 단계가 없었다.
 app.post('/influencer-pool/:id/recruit', async (c) => {
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
@@ -322,15 +327,23 @@ app.post('/influencer-pool/:id/recruit', async (c) => {
   const lead = await c.env.DB.prepare('SELECT name, consented_at FROM ad_influencer_leads WHERE id = ? AND account_id = ?')
     .bind(id, POOL).first<{ name: string; consented_at: string | null }>().catch(() => null)
   if (!lead) return c.json({ success: false, error: '리드를 찾을 수 없습니다' }, 404)
-  if (lead.consented_at) return c.json({ success: false, already_consented: true, error: '이미 신청(동의)한 리드입니다 — 모집 대상이 아닙니다' }, 400)
   const origin = new URL(c.req.url).origin
+  if (lead.consented_at) {
+    // 이미 신청함 → 다음 단계는 '가입'. 추적 코드가 붙은 시작 링크를 준다(온보딩 메일과 동일 코드 = 이중 집계 없음).
+    const linked = await c.env.DB.prepare('SELECT linked_user_id FROM ad_influencer_leads WHERE id = ? AND account_id = ?')
+      .bind(id, POOL).first<{ linked_user_id: number | null }>().catch(() => null)
+    if (linked?.linked_user_id) return c.json({ success: false, already_joined: true, error: '이미 가입까지 완료한 리드입니다' }, 400)
+    const code = await getOrCreateClaimCode(c.env.DB, id).catch(() => null)
+    if (!code) return c.json({ success: false, error: '가입 링크 생성 실패' }, 500)
+    return c.json({ success: true, mode: 'join', url: `${origin}/creators/start?ic=${code}`, name: lead.name })
+  }
   const { getOrCreateLeadTrackLink } = await import('./short-links')
   // 추적링크는 리드당 1개(멱등) — 이미 협찬 추적용으로 발급됐다면 그 코드를 그대로 재사용한다.
   const r = await getOrCreateLeadTrackLink(c.env.DB, id, `${origin}/creators/apply`, `모집: ${lead.name}`)
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   await c.env.DB.prepare("UPDATE ad_influencer_leads SET recruited_at = COALESCE(recruited_at, datetime('now')) WHERE id = ? AND account_id = ?")
     .bind(id, POOL).run().catch(() => null)
-  return c.json({ success: true, code: r.code, click_count: r.click_count, name: lead.name })
+  return c.json({ success: true, mode: 'apply', code: r.code, url: `${origin}/l/${r.code}`, click_count: r.click_count, name: lead.name })
 })
 
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)

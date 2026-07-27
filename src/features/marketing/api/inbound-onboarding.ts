@@ -17,6 +17,7 @@ import { sendEmail } from '@/services/email'
 import { textToHtml, isNightKST, withOptOut, withSenderInfo } from './outreach-send'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
+import { getOrCreateClaimCode } from './lead-claim'
 
 const POOL = 0
 const DELAY_HOURS = 20 // 신청 후 대기(익일 도착 — 약속한 '2~3일 내'보다 빠르게)
@@ -29,8 +30,12 @@ async function ensureOnboardColumn(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN onboarded_at TEXT').run().catch(() => null)
 }
 
-/** 온보딩 안내 본문 — /creators 의 실제 절차와 1:1(수익률 등 변동 수치는 페이지 링크로 위임). */
-export function onboardingEmail(name: string): { subject: string; body: string } {
+/**
+ * 온보딩 안내 본문 — /creators 의 실제 절차와 1:1(수익률 등 변동 수치는 페이지 링크로 위임).
+ * `claimCode` 가 있으면 가입 링크에 실어 **신청 → 가입 → 첫 판매**를 이어서 측정한다(lead-claim.ts).
+ */
+export function onboardingEmail(name: string, claimCode?: string | null): { subject: string; body: string } {
+  const joinUrl = claimCode ? `https://urdeal.kr/creators/start?ic=${claimCode}` : 'https://urdeal.kr/login'
   const body = withSenderInfo(withOptOut(
 `안녕하세요, ${name}님. 유어딜 제휴 담당자입니다.
 
@@ -38,7 +43,7 @@ export function onboardingEmail(name: string): { subject: string; body: string }
 
 ■ 시작은 3단계
 1) 가입 — 카카오 로그인 1분이면 내 링크샵이 자동으로 생깁니다.
-   https://urdeal.kr/login
+   ${joinUrl}
 2) 딜 선택 — 동네 맛집·뷰티·숙소 딜 중 소개하고 싶은 것을 내 링크샵에 담습니다.
    https://urdeal.kr/group-buy
 3) 링크 공유 — 인스타·블로그·카톡에 내 링크샵 주소 하나만 올리면 끝입니다.
@@ -78,7 +83,9 @@ export async function runInboundOnboarding(env: Env): Promise<OnboardingResult> 
     const claim = await env.DB.prepare("UPDATE ad_influencer_leads SET onboarded_at = datetime('now') WHERE id = ? AND account_id = ? AND onboarded_at IS NULL")
       .bind(r.id, POOL).run().catch(() => null)
     if (claim?.meta?.changes !== 1) continue
-    const m = onboardingEmail(r.name)
+    // 🔗 가입 추적 코드(없으면 맨 링크로 폴백 — 발급 실패가 안내 자체를 막지 않는다).
+    const code = await getOrCreateClaimCode(env.DB, r.id).catch(() => null)
+    const m = onboardingEmail(r.name, code)
     const res = await sendEmail({ to: r.email, subject: m.subject, html: textToHtml(m.body) }, env.RESEND_API_KEY, env.RESEND_FROM, env.DB)
       .catch(() => ({ success: false as const }))
     if (res.success) sent++; else failed++ // 실패해도 재시도 안 함(중복 안내 방지 — 수동 팔로업이 안전)
