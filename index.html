@@ -78,8 +78,8 @@
             var bg = dark ? '#0F151D' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
             var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
             var desc = hard
-              ? '앱이 업데이트되어 저장된 옛 버전이 남아 있을 수 있어요. 아래 버튼을 누르면 캐시를 비우고 최신 화면으로 복구합니다.'
-              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 아래 버튼으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
+              ? '앱이 업데이트되는 중이에요. 잠시 뒤 자동으로 다시 시도합니다 — 바로 시도하려면 아래 버튼을 눌러주세요.'
+              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 잠시 뒤 자동으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
             var primaryLabel = hard ? '최신 화면으로 새로고침' : '다시 시도';
             var d = document.createElement('div');
             d.id = 'ur-stuck-recover';
@@ -96,6 +96,11 @@
             if (pb) pb.addEventListener('click', function () { if (hard) hardRecover(); else bustReload(); });
             var hb = document.getElementById('ur-stuck-hard');
             if (hb) hb.addEventListener('click', function () { hardRecover(); });
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 오버레이 자동 재시도 — 배포 전파 창
+            //   클래스는 시간이 지나면 저절로 낫는다(대표 실측 "시간 지나니까 정상"). 사용자가 버튼을 안 눌러도
+            //   30초 뒤 __cb reload 로 스스로 복구 시도(전파 완료 시점에 자동 정상화). 실패해도 다음 문서의
+            //   오버레이가 다시 30초 타이머를 재장전 → 주기적 자동 치유(무한 고속 루프 아님 — 30s 간격).
+            setTimeout(bustReload, 30000);
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
@@ -124,16 +129,18 @@
           try {
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
-            var within = now - st.t < 90000;
-            if (within && st.n >= 3) { showStuckUI('chunk'); return; } // 90초 내 3회 — stale 고착 → 무한 reload 대신 복구 UI
+            var within = now - st.t < 300000;
+            if (within && st.n >= 8) { showStuckUI('chunk'); return; } // 5분 내 8회 — stale 고착 → 무한 reload 대신 복구 UI
             var attempt = within ? st.n + 1 : 1;
             sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
-            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기). 배포 직후 새 index.html 은
-            //   서빙되나 새 청크가 엣지에 아직 안 퍼진 수초의 창에서 *즉시* reload 하면 또 404 → 연속 실패 → 수동 UI.
-            //   짧게(시도마다 0.7~2.5s) 기다렸다 __cb reload 하면 전파 완료 후 통과 → 사용자는 수동 복구 화면을 거의
-            //   안 본다. 유예 중엔 워커가 심은 URDEAL 로더가 계속 회전(무해). 무한루프는 3회 캡이 여전히 차단.
+            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창이 '수초' 가정(0.7~2.5s×3회/90s)
+            //   보다 실제(수십 초~수분)로 길어, 창 안에서 재시도 소진 → 오버레이 + 버튼도 창 안이라 무효 →
+            //   시간 지나면 저절로 정상(= /admin/influencer-pool 실사례). **지수 백오프 8회/5분 창**(0.7→30s,
+            //   누적 ~104s)으로 전파 창을 URDEAL 로더 상태로 통과 — 고객은 오버레이를 거의 못 봄.
+            //   무한루프는 8회 캡이 여전히 차단. chunk-error.ts recoverFromChunkError 와 SSOT 미러(함께 갱신).
             reloadPending = true;
-            var grace = Math.min(700 * attempt, 2500);
+            var grace = Math.min(700 * Math.pow(2, attempt - 1), 30000);
             setTimeout(function () {
               try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
               catch (e) { try { location.reload(); } catch (_) {} }
@@ -192,6 +199,9 @@
         setTimeout(function () {
           try {
             if (window.__urMounted) return;
+            // 🛡️ 2026-07-27: 재시도 유예(지수 백오프) 중이면 오버레이 억제 — 예약된 __cb reload 가 곧 실행됨.
+            //   유예가 12s 를 넘는 후반 시도에서 워치독이 끼어들어 '고객용 복구 화면'을 띄우던 것 차단(로더 유지).
+            if (reloadPending) return;
             // reason 3분류로 진단 정밀화: chunk(확증된 404/MIME) / entry-stalled(엔트리 미실행 = 다운로드/차단/
             //   네트워크) / mount-slow(엔트리는 돌았는데 마운트 미완 = 무거운 렌더·행·렌더에러). 셋 다 gentle 1단계
             //   부터(=캐시 안 지움) — 청크 확증이나 세션 내 재발 시에만 showStuckUI 가 완전복구로 승격.
