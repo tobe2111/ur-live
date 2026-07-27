@@ -256,10 +256,13 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
   //   재크롤(실패해도 email NULL 이라 또 선두) → 예산이 앞줄에서 공회전하고 **뒷줄(대행사 포함)은 영영 미도달**.
   //   → 시도 즉시 스탬프 + 7일 쿨다운 → 예산이 백로그 전체를 흐르며 순회(이메일 보유 대행사 13개의 한 원인).
+  // 🚰 대상 상한 = 예산 비례(2026-07-27 대표 "언제 완전해지나" — 예산 800 인데 상한 200 고정이라 병목).
+  //   실소비는 루프의 budget break 가 통제 — 상한은 "예산이 허락하면 몇 행까지 볼 수 있나"만 정함.
+  const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
   const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
       WHERE (active = 0 OR email IS NULL OR email = '')
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
-      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 200`)
+      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0

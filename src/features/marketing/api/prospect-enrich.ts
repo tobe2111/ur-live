@@ -50,8 +50,10 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const COOL = "AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))"
 
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
+  //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).
+  const cap1 = Math.min(120, Math.max(40, Math.floor(budget.left / 6)))
   const withSite = (await DB.prepare(
-    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT 40`
+    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap1}`
   ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   for (const p of withSite) {
     if (budget.left <= 2) break
@@ -66,8 +68,9 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
 
   // ── Pass 2: 홈페이지 없음 → 네이버 지역검색으로 link 발견 → 크롤. 예산 남을 때만(1건당 비쌈). ──
   if (budget.left > 4 && (nvId && nvSecret)) {
+    const cap2 = Math.min(60, Math.max(25, Math.floor(budget.left / 12)))
     const noSite = (await DB.prepare(
-      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT 25`
+      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap2}`
     ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; phone: string | null }>().catch(() => null))?.results || []
     for (const p of noSite) {
       if (budget.left <= 4) break
