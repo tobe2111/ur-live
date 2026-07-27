@@ -127,14 +127,10 @@ export default function SellerOrdersPage() {
     // Date filter
     // 🛡️ 2026-07-27: KST 경계로 교정 — 이전엔 UTC 자정(date input)과 로컬 오해석(created_at)을
     //   섞어 비교해 경계 주문이 9시간만큼 누락됐다. 서버 `DATE(created_at,'+9 hours')` 와 동일 규약.
-    if (dateFilter.start) {
-      const startMs = kstDayStartMs(dateFilter.start)
-      result = result.filter(order => parseUTCDate(order.created_at).getTime() >= startMs)
-    }
-    if (dateFilter.end) {
-      const endMs = kstDayEndMs(dateFilter.end)
-      result = result.filter(order => parseUTCDate(order.created_at).getTime() <= endMs)
-    }
+    const startMs = kstDayStartMs(dateFilter.start)
+    if (Number.isFinite(startMs)) result = result.filter(o => parseUTCDate(o.created_at).getTime() >= startMs)
+    const endMs = kstDayEndMs(dateFilter.end)
+    if (Number.isFinite(endMs)) result = result.filter(o => parseUTCDate(o.created_at).getTime() <= endMs)
 
     setFilteredOrders(result)
     setCurrentPage(1) // Reset to first page when filters change
