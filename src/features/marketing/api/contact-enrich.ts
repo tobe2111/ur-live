@@ -14,6 +14,11 @@ const norm = (s: string) => s.replace(/\s+/g, '')
 
 // 템플릿/플랫폼 기본값·플레이스홀더 — 업체 실이메일이 아님(게시돼 있어도 스킵, 허위 방지).
 const JUNK_EMAIL = /@(?:sentry\.|wixpress\.com|example\.|your-?domain|yourdomain|domain\.com|email\.com|test\.com|sample\.|godaddy|cloudflare|w3\.org|schema\.org|sentry\.io|abc\.com|company\.com)|^(?:example|test|sample|your-?email|yourname|user|name|id)@/i
+/** 📰 뉴스룸 계정 로컬파트(press11@·jebo@·desk@…) — 언론사/보도자료 페이지에서 긁힌 이메일은 B2B 영업에
+ *  무의미한 오염(2026-07-27 대표 스크린샷: press11@daum.net·pcoop@pressian.com). 크롤 채택 거부 + 소급 스윕 공용. */
+export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|reporter|editor|jebo|bodo)[\d._-]*@/i
+/** 📰 언론사성 호스트(수집 제외 + 크롤 거부 공용) — 뉴스 포털 루트에서 webmaster@ 류가 긁히는 것 차단. */
+export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 
@@ -22,7 +27,8 @@ const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
  *   ① `mailto:` href(업체가 명시적으로 건 연락 링크 = 최고 신뢰) 우선 → ② 본문 pickBusinessEmail(난독복원+문맥점수).
  *   플랫폼 기본값/플레이스홀더(JUNK_EMAIL)는 제외. 못 찾으면 null.
  */
-export function extractEmailFromHtml(html: string): string | null {
+export function extractEmailFromHtml(html: string, allowNewsroom = false): string | null {
+  const newsy = (e: string) => !allowNewsroom && NEWSROOM_EMAIL_LOCAL.test(e) // 미디어 리드는 뉴스룸 계정도 유효 연락처
   const mailtos: string[] = []
   const re = new RegExp(MAILTO_RE)
   let m: RegExpExecArray | null
@@ -30,22 +36,35 @@ export function extractEmailFromHtml(html: string): string | null {
     let e = m[1]
     try { e = decodeURIComponent(e) } catch { /* 원문 유지 */ }
     e = e.trim().toLowerCase()
-    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e)) mailtos.push(e)
+    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !newsy(e)) mailtos.push(e)
   }
   if (mailtos.length) {
     // mailto 다수면 비즈니스 문맥(문의/contact)으로 선별, 아니면 첫 번째.
     const biz = pickBusinessEmail(mailtos.map(e => `문의 ${e}`).join(' '))
-    return (biz && !JUNK_EMAIL.test(biz)) ? biz : mailtos[0]
+    return (biz && !JUNK_EMAIL.test(biz) && !newsy(biz)) ? biz : mailtos[0]
   }
   const body = pickBusinessEmail(html)
-  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) ? body : null
+  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !newsy(body) ? body : null
 }
-// 한국 전화번호(지역/휴대/대표번호) 추출 — 형식 검증(자릿수), 팩스/사업자번호 오탐 회피용 최소검증.
-const PHONE_RE = /(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})|(1[5-9]\d{2})[-.\s]?(\d{4})/g
+/** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
+ *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
+export function isValidKrPhone(phone: string | null | undefined): boolean {
+  const d = String(phone || '').replace(/\D/g, '')
+  if (/^(15|16|18)\d{2}\d{4}$/.test(d)) return true            // 대표번호 8자리
+  if (/^02\d{7,8}$/.test(d)) return true                        // 서울 9~10자리
+  if (/^0(3[1-3]|4[1-4]|5[1-5]|6[1-4])\d{7,8}$/.test(d)) return true // 지역 10~11자리
+  if (/^01[016789]\d{7,8}$/.test(d)) return true                // 휴대 10~11자리
+  if (/^070\d{7,8}$/.test(d)) return true                       // 인터넷전화
+  if (/^050\d{8,9}$/.test(d)) return true                       // 안심번호
+  return false
+}
+
+// 한국 전화번호 추출 — 국번 화이트리스트(isValidKrPhone) + 숫자 경계((?<!\d)/(?!\d)) 로 긴 숫자열 조각 오탐 차단.
+const PHONE_RE = /(?<!\d)(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})(?!\d)|(?<!\d)(1[568]\d{2})[-.\s]?(\d{4})(?!\d)/g
 function pickPhone(text: string): string | null {
   const m = String(text || '').match(PHONE_RE)
   if (!m) return null
-  const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => d.length >= 8 && d.length <= 11)
+  const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => isValidKrPhone(d))
   return clean[0] ? clean[0].replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3') : null
 }
 
@@ -106,52 +125,123 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
   return { phone: null, website: null }
 }
 
-/** ①-c 네이버 웹/블로그 검색으로 **홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
- *   웹/블로그에서 자기 사이트를 노출. 상호가 결과 제목/설명에 포함될 때만 채택(오매칭 방지). 크롤 관문 확장. */
+// ⚠️ 제3자/UGC 플랫폼 — 리뷰 블로그·카페 글이 상호를 제목에 달고 있어도 **그 페이지의 이메일은 글쓴이(제3자) 것**
+//   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
+export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
+
+/** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
+ *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
+ *   crawlContact 의 requireName 가드(페이지에 상호 존재)로 2중 검증 — 오귀속(허위) 구조적 차단. */
 export async function naverHomepageSearch(clientId: string, clientSecret: string, name: string, region: string | null, budget?: FetchBudget): Promise<string | null> {
   if (!clientId || !clientSecret || !name || name.length < 2) return null
   const want = norm(name)
   const q = `${name} ${region || ''}`.trim()
-  for (const kind of ['webkr', 'blog']) {
-    if (outOfBudget(budget)) break
-    spendBudget(budget)
-    const url = `https://openapi.naver.com/v1/search/${kind}.json?query=${encodeURIComponent(q)}&display=5`
-    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
-    if (!res || !res.ok) continue
-    const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
-    for (const it of (data?.items || [])) {
-      const hay = norm(stripTag(it.title) + ' ' + stripTag(it.description))
-      if (!hay.includes(want)) continue // 상호가 제목/설명에 없으면 다른 사이트 → 스킵
-      const link = (it.link || '').trim()
-      if (link && /^https?:\/\//i.test(link)) return link
-    }
+  if (outOfBudget(budget)) return null
+  spendBudget(budget)
+  const url = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(q)}&display=8`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+  if (!res || !res.ok) return null
+  const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+  for (const it of (data?.items || [])) {
+    const hay = norm(stripTag(it.title) + ' ' + stripTag(it.description))
+    if (!hay.includes(want)) continue // 상호가 제목/설명에 없으면 다른 사이트 → 스킵
+    const link = (it.link || '').trim()
+    if (!link || !/^https?:\/\//i.test(link)) continue
+    try { if (THIRD_PARTY_HOST.test(new URL(link).hostname)) continue } catch { continue } // 리뷰블로그/SNS 제외
+    return link
   }
   return null
 }
 
-/** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음. */
-export async function crawlContact(website: string, budget?: FetchBudget): Promise<{ email: string | null; phone: string | null }> {
+// 잘 알려진 메일 도메인(MX 확실) — DoH 조회 생략(예산 절약).
+const KNOWN_MAIL_DOMAIN = /(?:^|\.)(naver\.com|gmail\.com|daum\.net|hanmail\.net|kakao\.com|nate\.com|hotmail\.com|outlook\.com|icloud\.com|yahoo\.com)$/i
+/** 유명 메일 도메인 여부(DoH 생략 가능) — 재검증 스윕이 예산 계산에 사용. */
+export const isKnownMailDomain = (email: string): boolean => KNOWN_MAIL_DOMAIN.test(String(email || '').split('@')[1] || '')
+
+/** 📮 이메일 도메인 실존 검증(무료 Cloudflare DoH) — **죽은 도메인 이메일(반송 확정)** 저장 방지.
+ *   NXDOMAIN(도메인 자체 없음)만 false — MX 부재는 A 레코드 수신 가능(RFC 5321)이라 과차단 안 함.
+ *   DoH 장애/예산 소진 시 true(fail-open — 수집 우선, 검증은 보수적으로). */
+export async function domainAcceptsMail(email: string, budget?: FetchBudget): Promise<boolean> {
+  const domain = String(email || '').split('@')[1]?.toLowerCase() || ''
+  if (!domain) return false
+  if (KNOWN_MAIL_DOMAIN.test(domain)) return true
+  if (outOfBudget(budget)) return true
+  spendBudget(budget)
+  const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(6000) }).catch(() => null)
+  if (!res || !res.ok) return true
+  const j = await res.json().catch(() => null) as { Status?: number } | null
+  return !(j && j.Status === 3) // 3 = NXDOMAIN — 도메인 소멸 → 반송 확정이라 버림
+}
+
+/** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
+ *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
+ *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
+export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<{ email: string | null; phone: string | null; siteName: string | null }> {
   let url: URL
-  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null } }
-  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null }
-  if (outOfBudget(budget)) return { email: null, phone: null }
+  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null } }
+  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null }
+  // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
+  if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null }
+  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null }
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
   if (robots) {
     const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
-    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null }
+    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null }
   }
-  let email: string | null = null, phone: string | null = null
+  let email: string | null = null, phone: string | null = null, nameSeen = !requireName
+  let siteName: string | null = null // 🏷️ 사이트 자기 이름(og:site_name→title 첫 구획) — webkr 헤드라인 상호 치유용
+  const wantName = requireName ? norm(requireName) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
-  for (const path of ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']) {
+  //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤2)** (2026-07-27 최종 점검): 국내 대행사/SME 는
+  //   그누보드·자체 경로(`/bbs/content.php?co_id=contact`, `/sub/contact.html`)가 흔해 고정 경로만으론 놓침.
+  //   same-origin 만 + 파일(.jpg/.pdf…) 제외 — 크롤 범위는 여전히 그 업체 사이트 안(허위 0 무관).
+  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']
+  const visited = new Set<string>()
+  let discoveredLinks = 0
+  for (let i = 0; i < queue.length; i++) {
+    const path = queue[i]
+    if (visited.has(path)) continue
+    visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
-    const html = await fetch(url.origin + path, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
-      .then(r => r.ok ? r.text() : '').catch(() => '')
+    // UA: 브라우저형(2026-07-27 — 아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터에 이메일이 있어도 수집 0 이던 갭).
+    //   robots.txt 존중은 위에서 그대로(공개 페이지만 읽음) — 식별 문자열만 표준 브라우저 형태로.
+    const html = await fetch(url.origin + path, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
+      },
+    }).then(r => r.ok ? r.text() : '').catch(() => '')
     if (!html) continue
     const slice = html.slice(0, 200000)
-    if (!email) email = extractEmailFromHtml(slice)   // mailto: 우선 → 본문 문맥선별
+    if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
+    if (path === '' && !siteName) {
+      const og = slice.match(/property=["']og:site_name["'][^>]*content=["']([^"'<>]{2,40})["']/i)?.[1]
+        || slice.match(/content=["']([^"'<>]{2,40})["'][^>]*property=["']og:site_name["']/i)?.[1]
+      const cand = stripTag(og || (slice.match(/<title[^>]*>([^<]{2,80})</i)?.[1] || '').split(/[|\-–—:·]/)[0]).trim()
+      if (cand.length >= 2 && cand.length <= 30 && !/["“”‘’',?？]|공지|로그인|메인|홈페이지$/.test(cand)) siteName = cand
+    }
+    if (!email) email = extractEmailFromHtml(slice, allowNewsHost)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
+    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
+    if (path === '' && !email) {
+      for (const m of slice.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
+        if (discoveredLinks >= 2) break
+        const href = m[1].replace(/&amp;/g, '&').trim()
+        if (!/(contact|inquiry|contactus|문의|오시는|co_id=)/i.test(href)) continue
+        if (/\.(?:jpe?g|png|gif|webp|svg|pdf|zip|hwp|docx?|xlsx?)(?:$|\?)/i.test(href)) continue
+        let u2: URL
+        try { u2 = new URL(href, url.origin + '/') } catch { continue }
+        if (u2.hostname !== url.hostname) continue // 남의 사이트로 안 나감(오귀속 방지)
+        const p2 = u2.pathname + u2.search
+        if (!visited.has(p2) && !queue.includes(p2)) { queue.push(p2); discoveredLinks++ }
+      }
+    }
   }
-  return { email, phone }
+  if (!nameSeen) return { email: null, phone: null, siteName: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제
+  return { email, phone, siteName }
 }

@@ -11,6 +11,9 @@
 
 name = "ur-ads"
 main = "dist-ads/index.js"
+# 🔒 2026-07-23 전수조사: workers.dev 라우트 비활성 — /__ads/*(무인증 수집 트리거·self-chain·시트 rewrite)가
+#   공개 도달 가능하던 표면 봉인. 접근은 Service Binding(메인 env.ADS·자기 SELF)으로만(바인딩은 라우트 불필요).
+workers_dev = false
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 

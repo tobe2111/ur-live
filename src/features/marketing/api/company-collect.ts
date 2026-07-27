@@ -12,7 +12,6 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { extractEmailFromHtml } from './contact-enrich'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -29,22 +28,22 @@ type Trade = { kw: string; category: string; subcategory: string; tier: number }
 // 1단계 — 지역 {서초·방배·강남·동작} × tier 2~5 업종.
 const S1_REGIONS = ['서초', '방배', '강남', '동작']
 const S1_TRADES: Trade[] = [
-  { kw: '주류 도매', category: '정기납품', subcategory: '주류 도매', tier: 2 },
-  { kw: '주류도매상', category: '정기납품', subcategory: '주류도매상', tier: 2 },
-  { kw: '식자재 유통', category: '정기납품', subcategory: '식자재 유통', tier: 2 },
-  { kw: '업소용 식자재', category: '정기납품', subcategory: '업소용 식자재', tier: 2 },
-  { kw: '식자재 마트', category: '정기납품', subcategory: '식자재 마트', tier: 2 },
-  { kw: '커피 원두 납품', category: '정기납품', subcategory: '커피 원두 납품', tier: 2 },
-  { kw: '상가 전문 부동산', category: '전문서비스', subcategory: '상가 전문 부동산', tier: 3 },
-  { kw: '상가 임대', category: '전문서비스', subcategory: '상가 임대', tier: 3 },
-  { kw: '간판 제작', category: '매장인프라', subcategory: '간판 제작', tier: 3 },
-  { kw: '상업 인테리어', category: '매장인프라', subcategory: '상업 인테리어', tier: 3 },
-  { kw: '주방설비', category: '매장인프라', subcategory: '주방설비', tier: 3 },
-  { kw: '포스 대리점', category: '매장인프라', subcategory: '포스 대리점', tier: 4 },
-  { kw: '카드단말기', category: '매장인프라', subcategory: '카드단말기', tier: 4 },
-  { kw: 'VAN 대리점', category: '매장인프라', subcategory: 'VAN 대리점', tier: 4 },
-  { kw: '키오스크 설치', category: '매장인프라', subcategory: '키오스크 설치', tier: 4 },
-  { kw: '테이블오더', category: '매장인프라', subcategory: '테이블오더', tier: 4 },
+  { kw: '주류 도매', category: '식자재·납품', subcategory: '주류 도매', tier: 2 },
+  { kw: '주류도매상', category: '식자재·납품', subcategory: '주류도매상', tier: 2 },
+  { kw: '식자재 유통', category: '식자재·납품', subcategory: '식자재 유통', tier: 2 },
+  { kw: '업소용 식자재', category: '식자재·납품', subcategory: '업소용 식자재', tier: 2 },
+  { kw: '식자재 마트', category: '식자재·납품', subcategory: '식자재 마트', tier: 2 },
+  { kw: '커피 원두 납품', category: '식자재·납품', subcategory: '커피 원두 납품', tier: 2 },
+  { kw: '상가 전문 부동산', category: '부동산', subcategory: '상가부동산', tier: 3 },
+  { kw: '상가 임대', category: '부동산', subcategory: '상가부동산', tier: 3 },
+  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
+  { kw: '상업 인테리어', category: '인테리어', subcategory: '인테리어·시공', tier: 3 },
+  { kw: '주방설비', category: '인테리어', subcategory: '주방설비', tier: 3 },
+  { kw: '포스 대리점', category: 'POS·단말기', subcategory: '포스 대리점', tier: 4 },
+  { kw: '카드단말기', category: 'POS·단말기', subcategory: '카드단말기', tier: 4 },
+  { kw: 'VAN 대리점', category: 'POS·단말기', subcategory: 'VAN 대리점', tier: 4 },
+  { kw: '키오스크 설치', category: 'POS·단말기', subcategory: '키오스크 설치', tier: 4 },
+  { kw: '테이블오더', category: 'POS·단말기', subcategory: '테이블오더', tier: 4 },
   { kw: '세무사무소', category: '전문서비스', subcategory: '세무사무소', tier: 5 },
   { kw: '기장 세무사', category: '전문서비스', subcategory: '기장 세무사', tier: 5 },
   { kw: '노무사 사무소', category: '전문서비스', subcategory: '노무사 사무소', tier: 5 },
@@ -56,9 +55,53 @@ const S2_TRADES: Trade[] = [
   { kw: '퍼포먼스 마케팅 대행사', category: '대행사', subcategory: '퍼포먼스 마케팅 대행사', tier: 1 },
   { kw: '바이럴 마케팅 대행사', category: '대행사', subcategory: '바이럴 마케팅 대행사', tier: 1 },
   { kw: '소상공인 마케팅', category: '대행사', subcategory: '소상공인 마케팅', tier: 1 },
-  { kw: '창업 컨설팅', category: '창업생태계', subcategory: '창업 컨설팅', tier: 1 },
-  { kw: '상권분석', category: '창업생태계', subcategory: '상권분석', tier: 1 },
+  { kw: '창업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
+  { kw: '상권분석', category: '창업', subcategory: '상권분석', tier: 1 },
+  // 🎯 2026-07-27 대표 "아인종합기획과 유사한 업체" — 지역 **종합광고기획사** 어휘(광고기획·판촉·인쇄·행사).
+  //   소상공인을 실제로 상대하는 오프라인 대행 생태계 — 온라인 마케팅 어휘만으론 못 긁던 본류.
+  { kw: '종합광고기획', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고기획사', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '이벤트 대행사', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '행사 대행', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '판촉물 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '옥외광고', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '인쇄기획', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  // 간판·현수막을 전국 그리드로 승격(기존 S1 4개 지역 한정 → 아인종합기획형이 그 밖이면 미발굴이던 갭)
+  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
+
+/** 🟡 카카오 로컬 수집 레인(2026-07-27) — 네이버 지역검색은 키워드당 5건 한도인데 카카오는 **15건×3페이지=45건**
+ *   + 전화·주소가 응답에 직접 실림(무료 일 10만 쿼터, 네이버와 별도). 아인종합기획형(지도 등록 오프라인 업체)
+ *   발굴량의 주력 레버. place_url 은 지도페이지라 website 로 저장하지 않음(크롤 불가 — realSite 규칙과 일치). */
+async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
+  if (!kakaoKey) return []
+  const out: CompanyLead[] = []
+  for (let page = 1; page <= 3; page++) {
+    if (outOfBudget(budget)) break
+    spendBudget(budget)
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw.keyword)}&size=15&page=${page}`
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    if (!res || !res.ok) break
+    const data = await res.json().catch(() => null) as { documents?: Array<{ place_name?: string; phone?: string; road_address_name?: string; address_name?: string; category_name?: string }>; meta?: { is_end?: boolean } } | null
+    for (const d of (data?.documents || [])) {
+      const name = stripTag(d.place_name)
+      if (name.length < 2) continue
+      out.push({
+        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+        phone: (d.phone || '').trim() || null,
+        address: stripTag(d.road_address_name || d.address_name) || null,
+        description: stripTag(d.category_name) || null, // 카카오 업종 경로("서비스,산업 > 광고,인쇄 > …") — 분류 근거로 활용
+        contact_source: (d.phone || '').trim() ? 'kakao' : null,
+        source: 'local', source_keyword: kw.keyword,
+      })
+    }
+    if (data?.meta?.is_end) break
+  }
+  return out
+}
+
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
 const _kwDone = new WeakSet<object>()
@@ -138,28 +181,61 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
   return out
 }
 
-/** 📧 홈페이지 이메일 크롤(레인 A 보충 — 옵션 a) — robots.txt 존중, 홈 1페이지 1회(재시도 없음), 예산 합산.
- *   website 는 네이버 지역검색이 준 업체 등록 홈페이지(사용자 입력 아님) — http(s) 만, pickBusinessEmail 재사용. */
-export async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
-  let url: URL
-  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return null }
-  if (!/^https?:$/.test(url.protocol)) return null
-  // robots.txt 존중(간이) — User-agent:* 에 Disallow:/ (전면차단)면 크롤 안 함.
-  if (outOfBudget(budget)) return null
+/** 🌐 레인 A-웹: 네이버 **웹문서 검색**으로 대행사 자체 사이트 발굴 (2026-07-27 — 대표 "대행사 많이 모집").
+ *   대행사는 사무실업이라 지도(지역검색) 미등록이 많고 display=5 제약도 큼 — 반면 **웹엔 자기 사이트가 반드시 있음**.
+ *   사이트 자체가 리드(도메인이 dedup 키) → 보강 크롤이 그 사이트에서 이메일/전화 확보(대행사 이메일 수율 최고 경로).
+ *   제3자/UGC/구인 플랫폼 도메인 제외. 상호는 페이지 제목에서 유도(표시 라벨용 — 정체성 키는 도메인). */
+async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
+  if (outOfBudget(budget)) return []
   spendBudget(budget)
-  const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
-  if (robots) {
-    const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
-    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return null
+  const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
+  const { NON_BUSINESS_HOST } = await import('./company-classify')
+  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  if (!res || !res.ok) return []
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+  const out: CompanyLead[] = []
+  const seen = new Set<string>()
+  for (const it of (data?.items || [])) {
+    const link = (it.link || '').trim()
+    if (!/^https?:\/\//i.test(link)) continue
+    let u: URL
+    try { u = new URL(link) } catch { continue }
+    const host = u.hostname.replace(/^www\./, '')
+    // 제3자/UGC + **정부·학교 도메인** 제외 — 구청 공고 페이지가 '대행사' 리드로 저장되던 오염원(2026-07-27 대표 신고).
+    if (THIRD_PARTY_HOST.test(u.hostname) || NON_BUSINESS_HOST.test(u.hostname) || seen.has(host)) continue
+    // 📰 언론사 = 기사제목 리드로 버리지 않고 **'미디어' 카테고리로 별도 수집**(2026-07-27 대표
+    //   "언론사도 따로 수집을 하던가" — 지역 언론은 소상공인 접점 큰 잠재 광고제휴 파트너).
+    //   이름은 도메인 placeholder(기사제목 오염 방지) → 보강 크롤 og:site_name 치유가 실명으로 교체.
+    if (NEWS_MEDIA_HOST.test(u.hostname)) {
+      seen.add(host)
+      out.push({
+        company_name: host, category: '미디어', subcategory: '지역신문·매거진', tier: 3, region: kw.region,
+        website: u.origin, phone: null, email: null, address: null,
+        description: stripTag(it.description).slice(0, 200) || null,
+        source: 'webkr', source_keyword: kw.keyword,
+      })
+      continue
+    }
+    // 뉴스 기사 URL 제외(비언론 호스트의 기사 CMS 경로 — 보도자료/미디어 섹션 페이지는 업체 홈이 아님).
+    if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
+    seen.add(host)
+    // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
+    const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
+    if (name.length < 2) continue
+    out.push({
+      company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+      website: u.origin, // origin 만 저장 — 도메인 dedup + 크롤 진입점
+      phone: null, email: null, address: null,
+      description: stripTag(it.description).slice(0, 200) || null,
+      source: 'webkr', source_keyword: kw.keyword,
+    })
   }
-  if (outOfBudget(budget)) return null
-  spendBudget(budget)
-  const html = await fetch(url.origin, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
-    .then(r => r.ok ? r.text() : '').catch(() => '')
-  if (!html) return null
-  return extractEmailFromHtml(html.slice(0, 200000)) // mailto: 우선 → 본문 문맥선별
-
+  return out
 }
+
+// (구 crawlCompanyEmail 삭제 — 홈 1페이지만 보던 약한 크롤. 이제 전 경로가 crawlContact(contact-enrich SSOT,
+//  root + /contact,/about + 홈 내 문의링크 추적) 하나로 통일 — 같은 업체를 두 함수가 다르게 크롤하던 드리프트 제거.)
 
 /** 📇 연락처 보강 폭포수 — 보류(active=0) 리드에 [카카오 로컬 전화 → 홈페이지 이메일/전화] 순차 시도.
  *   카카오 로컬 API 는 상호+주소로 **전화를 준다**(네이버는 빈값) → 홈페이지 없는 보류도 전화 확보 가능.
@@ -173,16 +249,31 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 100) }
-  // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급). 보류 우선(active ASC).
-  const targets = (await DB.prepare("SELECT id, company_name, region, address, website, phone, email FROM ad_company_leads WHERE active = 0 OR email IS NULL OR email = '' ORDER BY active ASC, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")
-    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null }>().catch(() => null))?.results || []
+  // 기본 300(대표 "쿼터 최대한" — 네이버 무료 25K/day 대비 한참 여유), 상한 800(Workers 호출당 서브요청 1,000 한도 안전마진).
+  const budget: FetchBudget = { left: Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)) }
+  // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
+  //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
+  //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
+  //   재크롤(실패해도 email NULL 이라 또 선두) → 예산이 앞줄에서 공회전하고 **뒷줄(대행사 포함)은 영영 미도달**.
+  //   → 시도 즉시 스탬프 + 7일 쿨다운 → 예산이 백로그 전체를 흐르며 순회(이메일 보유 대행사 13개의 한 원인).
+  const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
+      WHERE (active = 0 OR email IS NULL OR email = '')
+        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
+      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 200`)
+    .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
+  const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
   const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
     if (!phone && !email && !website) return
+    // 📵 반송 억제 — 반송 확인된 이메일은 재크롤로 되살리지 않음(수동 발송 체계의 품질 루프).
+    if (email) {
+      const sup = await DB.prepare('SELECT 1 AS x FROM ad_email_suppress WHERE email = ?').bind(email.toLowerCase()).first<{ x: number }>().catch(() => null)
+      if (sup) email = null
+      if (!phone && !email && !website) return
+    }
     const r = await DB.prepare(
       `UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?),
          contact_source = COALESCE(contact_source, ?),
@@ -193,34 +284,85 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   }
 
   // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
+  //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
+  //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
+  //     상호만으로는 동명 지점/타업체 전화 오귀속 위험(허위 방지). 그런 리드는 홈페이지 크롤이 담당.
+  const phoneCap = Math.floor(budget.left / 3) // 전화는 예산 1/3까지만 — 2/3 는 이메일(크롤/발견)에(대표 "이메일 우선")
+  let phoneSpent = 0
   for (const t of targets) {
-    if (outOfBudget(budget)) break
+    if (outOfBudget(budget) || phoneSpent >= phoneCap) break
     processed++
-    if (t.phone || !kakaoKey) continue
-    const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address || '', budget)
+    if (t.phone || !kakaoKey || !t.address) continue
+    phoneSpent++
+    const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
-  //   ★ 핵심 수정: 홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link 발견으로 구제 → 이메일/전화 확보.
+  //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   for (const t of targets) {
     if (budget.left <= 2) break
     if (t.email) continue // 이미 이메일 있음
     let site = realSite(t.website)
+    let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
-      if (nv.website) site = nv.website
-      if (!t.phone && nv.phone) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
-      // 지역검색에 홈페이지 없으면 웹/블로그 검색으로 발견(홈페이지 크롤 관문 대폭 확장 → 이메일↑)
-      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget)
+      if (nv.website) site = nv.website // 지역검색 등록 링크(업체가 등록) — 신뢰
+      if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
+      // 지역검색에 홈페이지 없으면 웹문서 검색으로 발견(크롤 관문 확장 → 이메일↑). 제3자 도메인 제외 + 상호가드.
+      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
-      const c = await crawlContact(site, budget)
+      const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
+      // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
+      //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
+      //   미큐레이션(status=new)만 + 이름이 수상할 때만(정상 상호는 무접촉).
+      if (t.source === 'webkr' && c.siteName && t.status === 'new') {
+        const { suspectCompanyName } = await import('./company-classify')
+        if (suspectCompanyName(t.company_name, t.source_keyword)) {
+          await DB.prepare("UPDATE ad_company_leads SET company_name = ? WHERE id = ? AND status = 'new'").bind(c.siteName.slice(0, 120), t.id).run().catch(() => null)
+        }
+      }
+    }
+    await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
+  }
+
+  // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
+  //   이름만 제목-파편**("데이터 토론"·"insight")인 webkr 행. Phase 2 는 연락처-없는 행만 돌아 이 행들이
+  //   영영 미치유 → 분류 확인 카드에 계속 쌓임. 홈페이지 og:site_name 으로 실명 교체 + 실명 기준 재분류.
+  //   회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운) — 허위 0(이름은 그 사이트 자기 선언).
+  if (budget.left > 4) {
+    const { suspectCompanyName, classifyLead } = await import('./company-classify')
+    const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
+        WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
+          AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+          AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
+        ORDER BY id DESC LIMIT 8`)
+      .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
+    for (const t of healTargets) {
+      if (budget.left <= 2) break
+      if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
+      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
+      if (c.siteName && c.siteName !== t.company_name) {
+        // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).
+        const cls = classifyLead({ company_name: c.siteName, category: t.category, source: 'webkr', source_keyword: t.source_keyword })
+        if (cls.ok) {
+          await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, category = COALESCE(?, category), subcategory = COALESCE(?, subcategory),
+              lead_type = ?, classify_confidence = ? WHERE id = ? AND status = 'new'`)
+            .bind(c.siteName.slice(0, 120), cls.confidence === 'evidence' ? cls.category : null, cls.confidence === 'evidence' ? cls.subcategory : null,
+              cls.lead_type, cls.confidence === 'none' ? 'keyword' : cls.confidence, t.id).run().catch(() => null)
+        }
+      }
+      await stamp(t.id)
     }
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
-  return { processed, enriched, remaining: Number(rem?.n) || 0 }
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0 }
+  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 버튼 완료 감지·상태줄 공용.
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result })).run().catch(() => null)
+  return result
 }
 
 export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
@@ -253,11 +395,11 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     return s
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 8))
+  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12))
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
+  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) } // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
 
   let found = 0, saved = 0
   const used: string[] = []
@@ -266,6 +408,18 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     const kw = kws[(cursor + i) % kws.length]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
+    // 🟡 카카오 로컬 병행(45건/키워드 — 네이버 5건의 9배, 전화 직접) — 지도 등록 업체 발굴 주력.
+    const kakaoKeyLane = env.KAKAO_REST_API_KEY || ''
+    if (kakaoKeyLane && !outOfBudget(budget)) {
+      const kkLeads = await searchKakaoLocal(kakaoKeyLane, kw, budget)
+      leads.push(...kkLeads)
+    }
+    // 🌐 tier1(대행사·창업생태계) 키워드는 **웹문서 검색 병행** — 지도 미등록 대행사를 자체 사이트로 발굴
+    //   (대표 "대행사 많이 모집" — 대행사는 웹이 주 서식지, 사이트 크롤로 이메일 수율 최고).
+    if (kw.tier === 1 && !outOfBudget(budget)) {
+      const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget)
+      leads.push(...webLeads)
+    }
     found += leads.length
     // 연락처 필수(기본 ON): 전화·이메일 없는 리드는 active=0(보류) 로 저장 → 보강이 채우면 승격.
     const n = await saveCompanyLeads(DB, leads, { requireContact }).catch(() => 0)
@@ -275,18 +429,22 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   }
 
   // 📧 이메일 보충(옵션 a) — 홈페이지 있고 이메일 없는 최근 리드를 예산 내에서 크롤. phone-first 위 additive.
+  //   2026-07-27 최종 점검: ① source='local' 한정 → **webkr(웹검색 발굴 대행사 — 주력 레인) 포함**
+  //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
   if (!outOfBudget(budget)) {
+    const { crawlContact } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
-    const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE source = 'local' AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
-      .all<{ id: number; website: string }>().catch(() => null))?.results || []
+    const targets = (await DB.prepare("SELECT id, website, phone, category FROM ad_company_leads WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
+      .all<{ id: number; website: string; phone: string | null; category: string | null }>().catch(() => null))?.results || []
     for (const t of targets) {
       if (outOfBudget(budget)) break
-      const email = await crawlCompanyEmail(t.website, budget)
-      if (email) {
-        // 이메일 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책).
-        const r = await DB.prepare("UPDATE ad_company_leads SET email = ?, active = 1 WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
-        if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
+      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
+      if (c.email || (c.phone && !t.phone)) {
+        // 이메일(또는 없던 전화) 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책). 기존값 보존 COALESCE.
+        const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = 1 WHERE id = ?")
+          .bind(c.email, c.phone, t.id).run().catch(() => null)
+        if (c.email && ((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
       }
     }
   }

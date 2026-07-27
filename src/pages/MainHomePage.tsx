@@ -25,6 +25,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import HomeTopHeader from '@/components/main/HomeTopHeader'
 import DealEarnStrip from '@/components/main/DealEarnStrip'
+import NewOpeningsStrip from '@/components/main/NewOpeningsStrip'
 import HomeProductsRail from '@/components/main/HomeProductsRail'
 import GroupBuyFeed from './main-home/GroupBuyFeed'
 
@@ -53,6 +54,9 @@ export default function MainHomePage() {
 
       {/* ═══ 🛍️ 일반 상품 레일 — 실제 상품 미리보기 */}
       <HomeProductsRail />
+
+      {/* ═══ 🎉 우리 동네 새 가게 — 공공 인허가 개업 감지(데이터 없으면 자동 미표시, additive) */}
+      <NewOpeningsStrip />
 
       {/* ═══ 📱 교환권(기프티콘) — 홈에서 강등: 딜 소진 옵션 entry → /vouchers ═══ */}
       <div className="ur-content-wide px-4 lg:px-8 mt-5">

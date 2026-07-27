@@ -57,6 +57,7 @@ describe('ytQuotaDayKey — 구글 쿼터 하루(태평양 자정 = 한국 오�
   })
 })
 
-it('기본 예산 = 100 (실측 병목 Search Queries per day)', () => {
-  expect(YT_SEARCH_BUDGET_DEFAULT).toBe(100)
+it('기본 예산 = 90 — 검색 1회=100 units 라 100회면 일일 쿼터(10,000) 전부 소진 → 성과측정이 굶음(2026-07-27 실사고). 90회로 ~1,000 units 측정 예약', () => {
+  expect(YT_SEARCH_BUDGET_DEFAULT).toBe(90)
+  expect(YT_SEARCH_BUDGET_DEFAULT * 100).toBeLessThan(10_000) // 검색 units 합이 일일 쿼터 미만 = 측정 여력 존재(불변식)
 })

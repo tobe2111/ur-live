@@ -28,6 +28,11 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
 
   let processed = 0, emailFound = 0, phoneFound = 0, siteFound = 0
   const upd = async (id: number, patch: { email?: string | null; website?: string | null; phone?: string | null; source?: string | null }) => {
+    // 📵 반송 억제 — 반송 확인 이메일 재부착 방지(회사 풀과 동일 루프).
+    if (patch.email) {
+      const sup = await DB.prepare('SELECT 1 AS x FROM ad_email_suppress WHERE email = ?').bind(patch.email.toLowerCase()).first<{ x: number }>().catch(() => null)
+      if (sup) patch.email = null
+    }
     const r = await DB.prepare(
       `UPDATE store_prospects SET
          email = COALESCE(email, ?),
@@ -40,10 +45,13 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     return ((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0
   }
   const addr = (r: { addr_road: string | null; addr_lot: string | null }) => r.addr_road || r.addr_lot || ''
+  // 시도 스탬프(성공/실패 무관) — 예산이 백로그 전체를 순회하게(회사 풀과 동일 처방, 7일 쿨다운).
+  const stamp = async (id: number) => { await DB.prepare("UPDATE store_prospects SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
+  const COOL = "AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))"
 
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
   const withSite = (await DB.prepare(
-    "SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY is_new_open DESC, id DESC LIMIT 40"
+    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT 40`
   ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   for (const p of withSite) {
     if (budget.left <= 2) break
@@ -53,21 +61,23 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       const ok = await upd(p.id, { email: c.email, phone: p.phone ? null : c.phone, source: c.email ? 'homepage' : null })
       if (ok) { if (c.email) emailFound++; if (c.phone && !p.phone) phoneFound++ }
     }
+    await stamp(p.id)
   }
 
   // ── Pass 2: 홈페이지 없음 → 네이버 지역검색으로 link 발견 → 크롤. 예산 남을 때만(1건당 비쌈). ──
   if (budget.left > 4 && (nvId && nvSecret)) {
     const noSite = (await DB.prepare(
-      "SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ORDER BY is_new_open DESC, id DESC LIMIT 25"
+      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT 25`
     ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; phone: string | null }>().catch(() => null))?.results || []
     for (const p of noSite) {
       if (budget.left <= 4) break
       processed++
       const nv = await naverLocalLookup(nvId, nvSecret, p.biz_name, p.region, addr(p), budget)
-      let site = nv.website
-      if (!site && budget.left > 3) site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget) // 웹/블로그 검색으로 홈페이지 발견
+      let site = nv.website // 지역검색 등록 링크(업체가 직접 등록) — 신뢰
+      let discovered = false
+      if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, p.biz_name, p.region, budget); discovered = !!site } // 웹문서 검색 발견(제3자 도메인 제외)
       let email: string | null = null
-      if (site) { siteFound++; const c = await crawlContact(site, budget); email = c.email }
+      if (site) { siteFound++; const c = await crawlContact(site, budget, discovered ? p.biz_name : undefined); email = c.email } // 발견 사이트는 상호 존재 가드(오귀속 방지)
       // 전화가 없으면 네이버 → 카카오 순으로 보강(부가). 이메일이 주목적.
       let phone: string | null = p.phone ? null : nv.phone
       if (!p.phone && !phone && kakaoKey && budget.left > 1) { const k = await kakaoLocalLookup(kakaoKey, p.biz_name, p.region, addr(p), budget); phone = k.phone }
@@ -76,6 +86,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
         const ok = await upd(p.id, { email, website: site, phone, source })
         if (ok) { if (email) emailFound++; if (phone) phoneFound++ }
       }
+      await stamp(p.id)
     }
   }
 

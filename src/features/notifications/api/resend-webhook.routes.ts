@@ -138,9 +138,12 @@ resendWebhookRoutes.post('/', async (c) => {
       if (email) await applyResendEventToPool(c.env.DB, t, email)
     } else if (/inbound|received|reply/i.test(t)) {
       // Resend Inbound(MX) 설정 시 도달 — 보낸사람(from) 기준으로 관심 리드 승격.
+      //   ⚖️ 제목+본문을 함께 넘겨 수신거부 표현("보내지 마세요" 등) 감지 → rejected+억제(내용 무관 interested 승격 방지).
       const from = (body.data?.from as string | { email?: string } | undefined)
       const fromEmail = typeof from === 'string' ? from : (from?.email || '')
-      if (fromEmail) await applyInboundReplyToPool(c.env.DB, fromEmail)
+      const subj = typeof body.data?.subject === 'string' ? body.data.subject : ''
+      const text = typeof body.data?.text === 'string' ? body.data.text : (typeof body.data?.html === 'string' ? body.data.html : '')
+      if (fromEmail) await applyInboundReplyToPool(c.env.DB, fromEmail, `${subj}\n${String(text).slice(0, 4000)}`)
     }
   } catch (err) {
     console.error('[ResendWebhook] pool sync error:', err)

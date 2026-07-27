@@ -190,9 +190,13 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { adsPayRoutes, adminAdsPayRoutes } from '../features/marketing/api/ads-pay.routes'; // 💳 서비스몰 토스(게이트 OFF 기본)
+import { adsKakaoAuthRoutes } from '../features/marketing/api/ads-kakao-auth.routes'; // 🟡 유어애즈 카카오 로그인
 // 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
 import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
 import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
+import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-public.routes';
+import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
 import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
@@ -377,10 +381,11 @@ app.use('*', logger());
 // 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
 //    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
 const _bodyLimit1m = bodyLimit(1_000_000);
-// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 8MB 는 무인증 파싱 증폭(DoS) 표면 → 3MB 로 축소.
-//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 3MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
-const _bodyLimit3m = bodyLimit(3_000_000);
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit3m(c, next) : _bodyLimit1m(c, next));
+// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 큰 캡은 무인증 파싱 증폭(DoS) 표면 → 1.5MB 로 축소.
+//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 1.5MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
+//   토큰 검사가 바디 파싱 이후라, 캡이 낮을수록 무토큰 공격자의 사전-파싱 비용이 작아짐.
+const _bodyLimitIngest = bodyLimit(1_500_000);
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
 // 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
 app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
@@ -1543,6 +1548,12 @@ app.route('/api/products', featureProductsRoutes);
 // app.route('/api/ads', marketingRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
 app.route('/api/creator-apply', influencerApplyRoutes);
+// 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
+//   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
+app.route('/api/ads-pay', adsPayRoutes);
+app.route('/api/admin/ads-pay', adminAdsPayRoutes);
+// 🟡 유어애즈 카카오 로그인(+유어딜 세션 브리지) — 메인 전용(KAKAO 키·ur_session 이 여기). 소비자 카카오(잠금) 무접촉.
+app.route('/api/ads-auth', adsKakaoAuthRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
@@ -1618,6 +1629,8 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
 app.route('/api/admin/partner-pool', partnerPoolRoutes); // 🤝 B2B 파트너(업체) 풀 — 메인 어드민 JWT(프록시 비위임), ad_company_leads 격리
 app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 후보 — 인허가 발굴(store_prospects 격리), 메인 어드민 JWT
+app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
+app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
 app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
 // 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
 // ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스

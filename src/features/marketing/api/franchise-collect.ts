@@ -77,7 +77,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
       const rep = g(it, 'jnghdRprsntvNm', 'rprsntvNm', 'prsdntNm', 'rprsvNm', 'ceoNm')
       const prod = g(it, 'mnProductNm', 'prductNm', 'mnProduct')
       return {
-        company_name: brand || corp, category: '창업생태계', subcategory: '프랜차이즈본사', tier: 5,
+        company_name: brand || corp, category: '창업', subcategory: '프랜차이즈본사', tier: 5,
         region: null, address: null, phone: null, email: null, website: null,
         business_no: g(it, 'brno', 'bizrno', 'bzmnRegNo') || null,
         description: [corp && brand && corp !== brand ? `법인 ${corp}` : '', rep ? `대표 ${rep}` : '', induty, prod ? `상품 ${prod}` : ''].filter(Boolean).join(' · ') || null,

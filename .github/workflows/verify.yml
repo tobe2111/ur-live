@@ -35,6 +35,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 🛡️ 2026-07-25: 유닛테스트를 PR 단계에서 실행 — 그간 main.yml(배포)에서만 돌아 PR CI 는 green 인데
+      #   병합 후 배포가 테스트 실패로 죽는 사고 실발생(전수조사 #729 → #730 복구). PR 에서 먼저 발각되게.
+      - name: Run unit tests
+        run: npm test -- --run
+
       # ── 1. 영구 안티패턴 검사 (사고 재발 방지) ──
       - name: Hono v4 라우터 안티패턴 (wildcard cors)
         run: |

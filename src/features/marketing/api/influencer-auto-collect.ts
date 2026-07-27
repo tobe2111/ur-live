@@ -14,25 +14,22 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { resolveCategory } from './influencer-classify'
-import { enrichYouTubePerformance, enrichNaverActivity } from './influencer-performance'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
+import { resolveCategory, classifyCategory } from './influencer-classify'
+import { enrichYouTubePerformance, enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
 
 /** 자동확장 활성 키워드 상한(런어웨이 방지) + 후보 자동승격 임계(반복 등장 횟수). */
 const MAX_ACTIVE_KEYWORDS = 200
-const AUTO_PROMOTE_HITS = 3
+const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
 /** 🎯 유튜브 최소 구독자(대표 지시 2026-07-21) — 미만 채널은 수집 안 함(소형 노이즈 컷). 네이버/카페/티스토리는 지표 없어 무관. */
 export const MIN_YT_SUBSCRIBERS = 1000
 
-/**
- * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
- * 절반을 항상 이 카테고리 키워드에 배정(별도 커서로 순환), 나머지 절반이 전체 일반 순환.
- */
-// ⭐ 유어딜 연관 최우선 카테고리 — 동네 맛집·카페·뷰티·네일·숙소 딜 + 외식/자영업(매장 사장·창업).
-//   예: 홍석천·이원일 유튜브(맛집/외식업) 결. 매 배치의 3/4 를 이 풀에 배정.
+// ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
+//   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 export const PRIORITY_CATEGORIES = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
@@ -78,6 +75,7 @@ export interface DiscoveryKeyword { id: number; keyword: string; category: strin
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
+  pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
   promoted?: string[]; youtube_quota_hit?: boolean
   bio_enriched?: number // 🔗 이번 실행에서 링크인바이오 페이지로 이메일/인스타를 새로 채운 리드 수
   perf_enriched?: number // 📈 이번 실행에서 성과 지표(YT 평균조회/네이버 활동성)를 채운 리드 수
@@ -86,31 +84,33 @@ export interface AutoCollectStats {
   diag?: {
     yt: { configured: boolean; found: number; saved: number; error?: string }
     naver: { configured: boolean; found: number; saved: number; error?: string }
+    tistory?: { configured: boolean; found: number; saved: number; error?: string }
+    naver_enrich?: NaverEnrichDiag // 📝 블로거 활동성/연락처 보강 결과(측정 성공 0 반복 = 차단/형식변경 신호)
   }
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
+  /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
+  busy?: boolean
 }
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
 
-type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string } }
+type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string }; tistory?: { configured: boolean; found: number; saved: number; error?: string } }
 
-/**
- * 🔔 조용한 실패 방어(2026-07-20) — 수집이 켜져 있는데 **키 소실/전 플랫폼 0건**이면 Discord 경보.
- *   배경: 시크릿이 `wrangler deploy`(plaintext var wipe)로 지워져 "신규 0건"이 조용히 며칠 지속되던 사고
- *   클래스(2026-07-20 실발생) — diag 는 저장만 되고 push 가 없어 대시보드를 열기 전까지 아무도 모름.
- *   판정: 키 미설정(configured=false, =시크릿 소실 신호) 또는 saved===0(quota 소진이어도 naver 까지 0이면 문제).
- *   throttle: settings alert_at 로 6h 1회(24알림/day 방지) + 회복 시 즉시 해제(다음 실패는 지연 없이 알림).
- *   전부 fail-soft — 알림 실패가 수집을 막지 않는다. DISCORD_WEBHOOK_URL 미설정이면 no-op(회귀 0).
- */
+/** 🔔 조용한 실패 방어(2026-07-20 실사고 — wrangler deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음) —
+ *  키 소실(configured=false) 또는 전 플랫폼 발굴 0 이면 Discord 경보. 6h throttle + 회복 시 즉시 해제.
+ *  전부 fail-soft(알림 실패가 수집을 안 막음), DISCORD_WEBHOOK_URL 미설정=no-op. */
 async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
   const webhook = env.DISCORD_WEBHOOK_URL
   if (!webhook) return
   const { diag, saved, quotaHit } = run
   const keyMissing = !diag.yt.configured || !diag.naver.configured
-  const unhealthy = keyMissing || saved === 0
+  // 🛡️ 2026-07-23: 풀 포화(발굴은 되는데 전부 중복 → saved=0)는 정상인데 6시간마다 오경보 → found 까지 0 일 때만
+  //   불건강(진짜 죽음 = 발굴 자체가 0). 중복-only 상태는 무경보.
+  const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
+  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
   const prevAt = await readSetting(DB, ALERT_KEY)
   const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
   if (!unhealthy) {
@@ -128,6 +128,7 @@ async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: Co
     keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
     `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
     `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
+    diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
     quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
     '어드민 인플루언서 풀에서 상세 확인.',
   ].filter(Boolean)
@@ -145,37 +146,56 @@ async function saveLeadsBatch(
   meta: { category?: string | null; sourceKeyword?: string | null },
 ): Promise<number> {
   // 🧹 노이즈(뉴스·방송·기관·대행) 제외 + 🎯 유튜브는 구독자 1000 이상만 수집(대표 지시 — 소형 노이즈 컷).
-  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description) && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS))
+  //   예외(F-25): 구독자 비공개 채널(API 가 0 반환)은 총조회 200만+ 면 대형으로 보고 통과(discovery 저장 필터와 정합).
+  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description)
+    && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS && !((l.subscriber_count || 0) === 0 && (l.view_count || 0) >= 2_000_000)))
   if (!leads.length) return 0
   // 2-패스: ① INSERT OR IGNORE — changes=1 ⟺ **진짜 신규**(백필 UPDATE 를 신규로 오집계하던 버그 방지:
   //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
   //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
+  //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
+  //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
   const backfillSql = `UPDATE ad_influencer_leads SET
       email = COALESCE(email, ?), instagram = COALESCE(instagram, ?), tiktok = COALESCE(tiktok, ?), links = COALESCE(links, ?),
-      subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END
-    WHERE account_id = ? AND platform = ? AND channel_id = ?
-      AND ((email IS NULL AND ? IS NOT NULL) OR (instagram IS NULL AND ? IS NOT NULL) OR (tiktok IS NULL AND ? IS NOT NULL) OR (links IS NULL AND ? IS NOT NULL))`
+      subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END,
+      view_count = CASE WHEN ? > 0 THEN ? ELSE view_count END,
+      description = CASE WHEN ? != '' THEN ? ELSE description END,
+      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END
+    WHERE account_id = ? AND platform = ? AND channel_id = ?`
   let saved = 0
   const CHUNK = 50
   for (let i = 0; i < leads.length; i += CHUNK) {
     const slice = leads.slice(i, i + CHUNK)
-    const insStmts = slice.map(l => DB.prepare(insSql).bind(
-      accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
-      l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
-      l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
-      resolveCategory(l.name, l.description, meta.category), meta.sourceKeyword ?? null, // 🏷️ 콘텐츠 신호 우선 분류
-    ))
+    const insStmts = slice.map(l => {
+      const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
+      const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
+      return DB.prepare(insSql).bind(
+        accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
+        l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
+        l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
+        cat, meta.sourceKeyword ?? null,
+        looksLikeBrandChannel(l.name, l.description) ? 1 : 0, // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+        l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
+        catSrc,
+      )
+    })
     const rs = await DB.batch(insStmts).catch(() => null)
     const existing: typeof slice = []
     slice.forEach((l, idx) => { if (rs?.[idx]?.meta?.changes === 1) saved++; else existing.push(l) }) // 신규만 카운트
-    if (existing.length) { // 기존 행 연락처 백필(신규 아님)
-      await DB.batch(existing.map(l => DB.prepare(backfillSql).bind(
-        l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
-        accountId, l.platform, l.channel_id, l.email, l.instagram, l.tiktok, l.links,
-      ))).catch(() => null)
+    if (existing.length) { // 기존 행 백필(신규 아님) — 컨택 빈칸 채움 + 규모/소개글 최신화
+      await DB.batch(existing.map(l => {
+        const d = l.description.slice(0, 500)
+        const lp = l.last_post_at ?? null
+        return DB.prepare(backfillSql).bind(
+          l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
+          l.view_count, l.view_count, d, d, lp, lp, lp,
+          accountId, l.platform, l.channel_id,
+        )
+      })).catch(() => null)
     }
   }
   return saved
@@ -219,12 +239,12 @@ export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudge
   return enriched
 }
 
-async function readSetting(DB: D1Database, key: string): Promise<string | null> {
+export async function readSetting(DB: D1Database, key: string): Promise<string | null> {
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
   const v = row?.value
   return v === undefined || v === null || v === '' ? null : String(v)
 }
-async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
+export async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run().catch(() => null)
 }
 
@@ -280,6 +300,9 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 
 // 공개 소개글에서 해시태그 후보 추출(자가성장 신호 — 명시적 토픽 마커라 품질 양호).
 const HASHTAG_RE = /#([\p{L}\p{N}_]{2,20})/gu
+// 🛡️ 2026-07-23 전수조사(F-29/30): 범용/참여유도/캠페인 태그는 검색 키워드로 무의미한데 승격되면 하루 100회뿐인
+//   YT 검색 슬롯(신규 키워드 탐색 보장)을 확정 소모 — 스톱리스트로 후보 진입 자체를 차단.
+const HASHTAG_STOP = new Set(['shorts', 'shortsvideo', '쇼츠', '구독', '구독자', '좋아요', '일상', '브이로그', 'vlog', '맞팔', '맞팔환영', '소통', '팔로우', '팔로워', 'follow', 'followme', 'fyp', 'viral', '추천', '추천영상', '광고', '협찬', '내돈내산', '이벤트', '유튜브', 'youtube', '유튜버', '인스타', '인스타그램', 'instagram', '데일리', 'daily', '선팔', '좋테', '구취', '알고리즘', 'subscribe', 'like'])
 function mineHashtags(text: string): string[] {
   const out: string[] = []
   let m: RegExpExecArray | null
@@ -287,6 +310,7 @@ function mineHashtags(text: string): string[] {
   while ((m = HASHTAG_RE.exec(text)) !== null) {
     const t = m[1]
     if (/^\d+$/.test(t)) continue // 순수 숫자 제외
+    if (HASHTAG_STOP.has(t.toLowerCase())) continue // 범용/참여유도 태그 제외
     out.push(t)
   }
   return out
@@ -315,7 +339,10 @@ export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, p
 }
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
-export const YT_SEARCH_BUDGET_DEFAULT = 100 // 실측 병목(Search Queries per day) 기본값 — env ADS_YT_SEARCH_BUDGET
+// ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
+//   → 성과측정(각 1 unit)이 하루 종일 403. 검색 90회로 낮춰 측정용 ~1,000 units/day 예약(~750채널/일 측정 여력).
+//   env ADS_YT_SEARCH_BUDGET 로 조정(100 으로 되돌리면 측정 굶음 — ads-yt-scheduling.test 불변식이 차단).
+export const YT_SEARCH_BUDGET_DEFAULT = 90
 export function ytQuotaDayKey(nowMs: number): string {
   return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
 }
@@ -326,10 +353,32 @@ const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — �
  *   활성 키워드를 커서로 batch 개 순환 → YouTube+네이버 발굴 → 공용 풀 저장(카테고리 태그).
  *   수집물의 #해시태그를 후보 적립 → 반복 등장 시 자동 활성화(자가성장). 전부 fail-soft.
  */
+const LEASE_KEY = 'ads_collect_lease' // 값 = 만료시각(ms). CAS 조건부 UPDATE 로 원자 획득.
+const LEASE_TTL_MS = 5 * 60_000       // 한 실행 최장 예상(수십 초) 대비 여유 — 크래시 시 5분 후 자동 해제.
+
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
   const DB = env.DB
+  // 🔒 실행 단일화 lease(2026-07-23 전수조사 #1~#3·#11) — 매시간 cron·수동 버튼·self-chain 이 **동시에** 돌면
+  //   YT 예산 카운터(ads_yt_search_used)·키워드 커서가 read-modify-write 레이스로 소실 갱신 → 같은 키워드 중복
+  //   검색으로 하루 예산(100회)의 절반까지 낭비 + QUOTA 소진 마커가 늦은 쓰기에 덮여 실패 호출 반복.
+  //   platform_settings 의 만료시각 CAS(단일 UPDATE = D1 원자)로 한 번에 하나만 실행 — busy 면 아무것도 안 만지고
+  //   반환(체인은 yt_budget 부재 → done, cron 은 다음 틱, 수동은 진행 중인 실행이 대신 수집).
+  await DB.prepare('CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)').run().catch(() => null)
+  await DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value) VALUES ('${LEASE_KEY}', '0')`).run().catch(() => null)
+  const nowMs = Date.now()
+  const leaseR = await DB.prepare(`UPDATE platform_settings SET value = ? WHERE key = '${LEASE_KEY}' AND CAST(value AS INTEGER) < ?`)
+    .bind(String(nowMs + LEASE_TTL_MS), nowMs).run().catch(() => null)
+  if (!leaseR?.meta?.changes) {
+    const prevStats = await getAutoCollectStats(DB)
+    return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
+  }
+  const releaseLease = async () => { await DB.prepare(`UPDATE platform_settings SET value = '0' WHERE key = '${LEASE_KEY}'`).run().catch(() => null) }
   await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
+  await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
+  await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
+  // 💤 자동확장 키워드 회수(F-30) — 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
+  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')").run().catch(() => null)
   const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
@@ -338,6 +387,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!kws.length) {
     const empty: AutoCollectStats = { last_run: stamp, last_saved: 0, last_keywords: [], total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, cursor: 0 }
     await writeSetting(DB, STATS_KEY, JSON.stringify(empty))
+    await releaseLease()
     return empty
   }
 
@@ -346,7 +396,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   //   커서 순환이라 커버리지는 며칠에 걸쳐 동일 — 1회 부하만 낮춤(매시간 cron 이라 총량은 큼).
   const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_AUTOCOLLECT_BATCH || '', 10) || 4))
 
-  // ⭐ 우선 카테고리 절반 배정 — 배치의 ceil(1/2)은 우선 풀(맛집·푸드·숙소·네일·뷰티, 별도 커서),
+  // ⭐ 우선 카테고리 배정 — 배치의 ceil(3/4)은 우선 풀(맛집·푸드·외식창업·숙소·네일·뷰티, 별도 커서),
   //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
   const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
   const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
@@ -384,8 +434,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
-  const kakaoKey = env.KAKAO_REST_API_KEY
-  const hasTistory = !!kakaoKey
+  // 🗑️ 티스토리 트랙 제거(2026-07-27 대표 "티스토리는 안할거야") — 기수집 리드는 보존, 신규 수집만 중단.
   // 🎥 YT 검색 각도 교대 — (검색타입 × 정렬)을 매 실행 순환. 같은 키워드도 각도가 다르면 다른 채널이 나옴
   //   → top-N 재탕이 아니라 커버리지가 계속 확장(수렴). date=신생/소형, viewCount=인기, relevance=관련.
   const YT_ANGLES: { searchType: 'channel' | 'video'; order: 'relevance' | 'date' | 'viewCount' }[] = [
@@ -398,10 +447,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
-  const tistorySort: 'accuracy' | 'recency' = ((prev?.total_runs || 0) % 2 === 0) ? 'accuracy' : 'recency'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
-  //   기본 180 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
+  //   기본 300 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
   const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300) }
 
   let saved = 0
@@ -410,7 +458,12 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const kwStats = new Map<number, { found: number; saved: number }>() // 📊 키워드별 발굴/저장(성과 관측)
   const hashtagFreq = new Map<string, number>()
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
-    for (const l of leads) for (const t of mineHashtags(`${l.description} ${l.links || ''} ${l.name}`)) hashtagFreq.set(t, (hashtagFreq.get(t) || 0) + 1)
+    // 🛡️ F-29: 출현 횟수가 아니라 **채널(리드) 단위**로 카운트(같은 소개글의 #맛집 #맛집 #맛집 이 3히트가 되던 것 차단)
+    //   + 영상 제목 세그먼트 제거(제목 속 캠페인 태그가 키워드 후보로 새는 것 차단 — F-10).
+    for (const l of leads) {
+      const uniq = new Set(mineHashtags(`${stripVideoTitles(l.description)} ${l.links || ''} ${l.name}`))
+      for (const t of uniq) hashtagFreq.set(t, (hashtagFreq.get(t) || 0) + 1)
+    }
   }
   // 🔎 플랫폼별 진단 누적 — fail-soft 로 삼키더라도 *사유는 기록*해 어드민에서 0건 원인 확인 가능.
   const diag = {
@@ -420,7 +473,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
 
-  // YT 검색 페이지 수(키워드당 깊이) — 기본 2(page1=1~50위, page2=51~100위…). 쿼터는 quotaHit 가드가 관리.
+  // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
   // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
   //   깊이가 더 필요하면 env ADS_YT_PAGES=2~5 로 상향(쿼터 여유/증액 시).
   const ytPages = Math.max(1, Math.min(5, parseInt(env.ADS_YT_PAGES || '', 10) || 1))
@@ -470,13 +523,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
-    // 티스토리(카카오 Daum 블로그 검색 — 무료 3만/일, 새 소스). 네이버 블로그와 무관한 별도 풀.
-    if (hasTistory) {
-      try {
-        const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget, sort: tistorySort })
-        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
-      } catch { /* fail-soft */ }
-    }
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
@@ -515,10 +561,13 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
   let bioEnriched = 0
   try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
-  // 📈 성과 지표 백필 — YT 최근 영상 평균 조회/댓글(units 유휴분 — 검색 예산과 무관) + 네이버 RSS 활동성.
+  // 📈 성과 지표 백필 — YT units 는 검색과 같은 쿼터: 검색 90회로 확보한 ~1,000 units/day 예약분 사용.
+  //   progress(신규) + refresh(평균0·무메일·미분류 우선 순환 — 0 각인 백로그 시간당 20 자동 치유).
   let perfEnriched = 0
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
-  try { perfEnriched += await enrichNaverActivity(DB, budget, 12) } catch { /* fail-soft */ }
+  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') } catch { /* fail-soft */ }
+  let naverEnrich: NaverEnrichDiag | null = null
+  try { naverEnrich = await enrichNaverActivity(DB, budget, 20); perfEnriched += naverEnrich.measured } catch { /* fail-soft */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
@@ -533,13 +582,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag: { ...diag, naver_enrich: naverEnrich || undefined },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
   await writeSetting(DB, CURSOR_KEY, String(nextCursor))
   await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
+  await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
 }

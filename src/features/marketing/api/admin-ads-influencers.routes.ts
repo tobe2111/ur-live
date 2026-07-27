@@ -8,13 +8,15 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { ensureInfluencerSchema, extractContacts } from './influencer-discovery'
+import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns, personalEmailSqlClause, reextractEmail, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
-import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX } from './outreach-send'
+import { ensurePerfExtraColumns, personalEmailSqlClause, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
+import { ensureQualityColumns, runQualityPass } from './influencer-quality'
+import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
+import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -40,7 +42,8 @@ async function ensureKeywordTable(DB: D1Database) {
 app.get('/influencer-pool', async (c) => {
   await ensureInfluencerSchema(c.env.DB) // SELECT 가 최신 컬럼(source/consented_at 등) 참조 — 미보강 DB 면 'no such column' 로 빈 목록 → 스키마 선보강(멱등·memoized)
   await ensureOutreachColumns(c.env.DB)  // 아웃리치 자동감지 컬럼(email_status/opened_at/replied_at) — 동일 이유 선보강
-  await ensurePerfExtraColumns(c.env.DB) // channel_published_at(계정 나이) 컬럼 선보강 — 빈목록 레이스 방지
+  await ensurePerfExtraColumns(c.env.DB) // channel_published_at(계정 나이)·롱폼중앙값 컬럼 선보강 — 빈목록 레이스 방지
+  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score — SELECT·필터가 참조
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
@@ -58,9 +61,18 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
   else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe','tistory') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
-  // 이름/핸들 + source_keyword(수집 키워드) 매칭 — "방배" 검색 시 '방배 맛집'으로 찾은 리드도 걸림(지역 시딩 거르기).
-  const q = (c.req.query('q') || '').trim().toLowerCase()
-  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+  // 🔎 검색 — 이름/핸들/수집키워드 + **이메일·카테고리·채널소개**(2026-07-27 대표 "인플루언서 검색도 되게").
+  //   소개(description)에 지역·업종이 적힌 채널이 많아, 이걸 빼면 "강남"·"카페" 로 찾아도 0건이 나온다.
+  //   여러 단어를 넣으면 **AND**(각 토큰이 어딘가엔 있어야 함) — "강남 카페" 가 둘 다 만족하는 채널만 나오게.
+  const qRaw = (c.req.query('q') || '').trim().toLowerCase()
+  if (qRaw) {
+    for (const tok of qRaw.split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ? OR LOWER(COALESCE(source_keyword,'')) LIKE ?
+                   OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(category,'')) LIKE ? OR LOWER(COALESCE(description,'')) LIKE ?)`)
+      const like = `%${tok}%`
+      binds.push(like, like, like, like, like, like)
+    }
+  }
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   // 📥 인바운드 신청만 — 스스로 신청(사전동의)한 리드. 자유 연락 가능.
@@ -70,7 +82,10 @@ app.get('/influencer-pool', async (c) => {
     for (const w of ['뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단', '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청']) {
       where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
     }
+    where.push('COALESCE(is_brand, 0) = 0') // 🏢 브랜드 공식 채널(기업 계정)도 함께 숨김 — 태깅만, 삭제 아님
   }
+  // 🏢 브랜드 공식 채널만 — 태깅 결과 검수용(오탐 확인 후 memo/status 로 큐레이션).
+  if (c.req.query('brandOnly') === '1') where.push('is_brand = 1')
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
@@ -78,7 +93,8 @@ app.get('/influencer-pool', async (c) => {
   const sort = (c.req.query('sort') || 'fit').trim()
   const orderBy = sort === 'subscribers' ? 'subscriber_count DESC, id DESC'
     : sort === 'recent' ? 'id DESC'
-    : sort === 'perf' ? '(recent_avg_views IS NULL) ASC, recent_avg_views DESC, subscriber_count DESC, id DESC' // 📈 최근 평균조회수순(미수집 후순위)
+    : sort === 'perf' ? '(COALESCE(median_long_views, recent_avg_views) IS NULL) ASC, COALESCE(median_long_views, recent_avg_views) DESC, subscriber_count DESC, id DESC' // 📈 롱폼 중앙값(없으면 평균)순
+    : sort === 'score' ? '(lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC' // 🏅 리드 점수순(미채점 후순위)
     : `CASE
          WHEN platform IN ('naver_blog','naver_cafe','tistory') THEN 0
          WHEN subscriber_count >= 10000 AND subscriber_count < 500000 THEN 0
@@ -90,7 +106,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -100,6 +116,7 @@ app.get('/influencer-pool', async (c) => {
 app.get('/influencer-pool/stats', async (c) => {
   await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   await ensureOutreachColumns(c.env.DB)  // opened/bounced 집계 컬럼 선보강
+  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score 집계 선보강
   const agg = await c.env.DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
@@ -130,12 +147,53 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN contact_channel='other' THEN 1 ELSE 0 END) AS ch_other,
       SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
       SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
-      SUM(CASE WHEN collected_at >= datetime('now','-1 day') THEN 1 ELSE 0 END) AS today,
-      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
+      SUM(CASE WHEN collected_at >= datetime('now','+9 hours','start of day','-9 hours') THEN 1 ELSE 0 END) AS today, -- '오늘' = KST 자정 기준(롤링 24h 아님)
+      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
+      -- 📥 사전동의(자동발송 가능 모수) + 🏢 브랜드 공식 채널 태깅 수 + 🏅 채점 완료 수
+      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
+      SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
+      SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
+      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot,
+      -- 🏷️ 분류 근거(정확도 가시화): content=이름·소개글 규칙 / topic=유튜브 자체분류 / keyword=수집 키워드 상속(재검증 대상)
+      SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) AS categorized,
+      SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
+      SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
+      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
+  // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
+  //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
+  const catFunnel = await c.env.DB.prepare(`SELECT COALESCE(category, '미분류') AS category,
+      COUNT(*) AS total,
+      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
+      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
+      SUM(CASE WHEN status = 'contracted' THEN 1 ELSE 0 END) AS contracted,
+      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented
+    FROM ad_influencer_leads WHERE account_id = ?
+    GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
+    .bind(POOL).all().catch(() => null)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
-  return c.json({ success: true, stats: agg || {}, run, gate: c.env.ADS_AUTO_COLLECT_ENABLED === 'true' })
+  // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
+  //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
+  //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
+  let gate = c.env.ADS_AUTO_COLLECT_ENABLED === 'true'
+  try {
+    if (c.env.ADS?.fetch) {
+      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
+      if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
+    }
+  } catch { /* 폴백 유지 */ }
+  // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화) — 있으면 그대로 노출.
+  const sheetRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
+  let sheets_sync: unknown = null; try { sheets_sync = sheetRow?.value ? JSON.parse(sheetRow.value) : null } catch { sheets_sync = null }
+  // 🌙 야간 자동 정비 결과(무음 실패 가시화 — 대표가 어드민에서 "어젯밤 뭐 돌았나"를 바로 확인).
+  const mRows = await c.env.DB.prepare("SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last')")
+    .all<{ key: string; value: string }>().catch(() => null)
+  const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
+  const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
+  const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
+  return c.json({ success: true, stats: agg || {}, run, gate, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
@@ -197,28 +255,31 @@ app.post('/influencer-pool/send-consented', async (c) => {
   if (!c.env.RESEND_API_KEY) return c.json({ success: false, error: '발송은 RESEND_API_KEY 설정 후 사용할 수 있습니다 (Cloudflare → ur-live → Variables)' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const ids: number[] = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, CONSENTED_SEND_MAX)
-  const subject = String(b.subject || '').trim().slice(0, 150)
+  // ⚖️ 야간 광고 전송 제한(KST 21~08시 — 야간 전송은 별도 동의 필요, 인바운드 동의는 야간 동의를 포함하지 않음).
+  if (isNightKST(Date.now())) return c.json({ success: false, error: '야간(21시~익일 8시)에는 광고성 메일을 발송할 수 없습니다(정보통신망법 — 야간 전송은 별도 동의 필요). 오전 8시 이후 다시 시도해주세요' }, 400)
+  const subject = withAdLabel(String(b.subject || '').trim().slice(0, 140)) // ⚖️ "(광고)" 표기 강제
   const template = String(b.body || '').trim().slice(0, 5000)
   if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
-  if (!subject || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+  if (!String(b.subject || '').trim() || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
   // ⚖️ 동의 강제: consented_at + email 있는 행만 — 미동의/이메일 없는 id 는 조용히 제외(응답에 skipped 로 보고).
   const ph = ids.map(() => '?').join(',')
   const rows = (await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
     WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL`)
     .bind(POOL, ...ids).all<{ id: number; name: string; email: string }>().catch(() => null))?.results || []
   if (!rows.length) return c.json({ success: false, error: '선택한 리드 중 발송 가능한(사전동의 + 이메일 보유) 리드가 없습니다' }, 400)
-  let sent = 0; const failedIds: number[] = []
+  let sent = 0; const failedIds: number[] = []; const suppressedIds: number[] = []
   for (const r of rows) {
-    const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부 강제
-    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, c.env.RESEND_API_KEY, c.env.RESEND_FROM, c.env.DB).catch(() => ({ success: false }))
+    const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부·전송자정보 강제
+    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, c.env.RESEND_API_KEY, c.env.RESEND_FROM, c.env.DB).catch(() => ({ success: false as const, error: 'throw' }))
     if (res.success) {
       sent++
       await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
-    } else failedIds.push(r.id)
+    } else if ((res as { error?: string }).error === 'suppressed') suppressedIds.push(r.id) // 반송/스팸신고/수신거부 억제 — 재시도 무의미(실패와 구분)
+    else failedIds.push(r.id)
   }
   const eligible = new Set(rows.map(r => r.id))
-  return c.json({ success: true, sent, failed: failedIds, skipped: ids.filter(id => !eligible.has(id)) })
+  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped: ids.filter(id => !eligible.has(id)) })
 })
 
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
@@ -226,33 +287,8 @@ app.post('/influencer-pool/send-consented', async (c) => {
 //   ⚠️ instagram/tiktok 는 비어있을 때만 채움. email 은 비어있으면 채우고, **대행사(비-개인도메인) 저장값은
 //   소개글의 개인도메인 메일로 교정**(협찬/MCN 메일 오수집 정정 — 전 플랫폼). links 는 합집합(기존 보존).
 app.post('/influencer-pool/reextract', async (c) => {
-  await ensureInfluencerSchema(c.env.DB)
-  let scanned = 0, filled = 0
-  for (let off = 0; ; off += 2000) {
-    const rows = (await c.env.DB.prepare(`SELECT id, description, email, instagram, tiktok, links FROM ad_influencer_leads
-        WHERE account_id = ? AND description IS NOT NULL AND description != '' ORDER BY id ASC LIMIT 2000 OFFSET ?`).bind(POOL, off)
-      .all<{ id: number; description: string | null; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
-    scanned += rows.length
-    const ups: ReturnType<typeof c.env.DB.prepare>[] = []
-    for (const r of rows) {
-      const ex = extractContacts(r.description || '')
-      const sets: string[] = []; const binds: (string | number | null)[] = []
-      const emFix = reextractEmail(r.description, r.email) // 빈칸 채움 + 대행사→개인 교정 + 가짜메일(전치사 at) 제거
-      if (emFix !== undefined) { sets.push('email = ?'); binds.push(emFix) }
-      if (!r.instagram && ex.instagram[0]) { sets.push('instagram = ?'); binds.push(ex.instagram[0]) }
-      if (!r.tiktok && ex.tiktok[0]) { sets.push('tiktok = ?'); binds.push(ex.tiktok[0]) }
-      // links 합집합(공백 조인, dedup, 최대 8) — 기존 링크인바이오 보존 + 신규 유튜브/블로그 추가.
-      const existing = (r.links || '').split(/\s+/).filter(Boolean)
-      const merged = Array.from(new Set([...existing, ...ex.links])).slice(0, 8).join(' ')
-      if (merged && merged !== (r.links || '')) { sets.push('links = ?'); binds.push(merged) }
-      if (sets.length) ups.push(c.env.DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ? AND account_id = ?`).bind(...binds, r.id, POOL))
-    }
-    for (let i = 0; i < ups.length; i += 100) await c.env.DB.batch(ups.slice(i, i + 100)).catch(() => null)
-    filled += ups.length
-    if (rows.length < 2000) break
-  }
-  return c.json({ success: true, scanned, filled })
+  const r = await reextractPoolContacts(c.env.DB) // SSOT: influencer-maintenance(야간 cron 과 동일 로직)
+  return c.json({ success: true, ...r })
 })
 
 // GET /api/admin/ads/influencer-pool/classify-debug?q=세븐일레븐 — 🔎 분류 진단(왜 이 카테고리인가)
@@ -262,8 +298,8 @@ app.get('/influencer-pool/classify-debug', async (c) => {
   const q = (c.req.query('q') || '').trim().toLowerCase()
   if (!q) return c.json({ success: false, error: 'q 파라미터 필요' }, 400)
   const rows = (await c.env.DB.prepare(`SELECT id, platform, name, handle, description, category, source_keyword FROM ad_influencer_leads
-      WHERE account_id = 0 AND (LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ?) LIMIT 20`)
-    .bind(`%${q}%`, `%${q}%`).all<{ id: number; platform: string; name: string | null; handle: string | null; description: string | null; category: string | null; source_keyword: string | null }>().catch(() => null))?.results || []
+      WHERE account_id = ? AND (LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ?) LIMIT 20`)
+    .bind(POOL, `%${q}%`, `%${q}%`).all<{ id: number; platform: string; name: string | null; handle: string | null; description: string | null; category: string | null; source_keyword: string | null }>().catch(() => null))?.results || []
   const results = rows.map(r => {
     const contentCat = classifyCategory(r.name || '', r.description)
     const why = contentCat
@@ -278,6 +314,16 @@ app.get('/influencer-pool/classify-debug', async (c) => {
 app.post('/influencer-pool/reclassify', async (c) => {
   await ensureInfluencerSchema(c.env.DB)
   const r = await runReclassifyPool(c.env.DB)
+  return c.json({ success: true, ...r })
+})
+
+// POST /api/admin/ads/influencer-pool/quality-pass — 🏅 브랜드 태깅 + 리드 점수 재계산(즉시 실행)
+//   야간 정비가 매일 자동으로 도는 것과 **같은 함수**(SSOT). 배포 직후처럼 즉시 반영이 필요할 때만 수동 클릭.
+//   커서 순환이라 여러 번 눌러도 안전(멱등) — 풀이 크면 몇 번에 걸쳐 전체 수렴.
+app.post('/influencer-pool/quality-pass', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(runQualityPass(c.env.DB).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await runQualityPass(c.env.DB)
   return c.json({ success: true, ...r })
 })
 
@@ -314,105 +360,9 @@ app.post('/influencer-pool/refetch-live', async (c) => {
 //   상태 진전(계약>관심>컨택함>신규)·정보 많은 순으로 대표 1건을 남기고 나머지 삭제(대표에 없는 컨택은 보존 백필).
 app.post('/influencer-pool/merge-duplicates', async (c) => {
   const DB = c.env.DB
-  // 🔥 백그라운드(waitUntil): 4패스 × 그룹별 순차 SELECT/UPDATE/DELETE 라 20k+ 풀에선 수천 쿼리 → 동기 대기 시
-  //   요청 타임아웃 "실패"(/collect 동일 클래스). 즉시 started 반환, 완료는 UI 통계 재조회로 따라잡음(멱등 — 재클릭 수렴).
-  const doMerge = async () => {
-  const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
-  type MRow = { id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; status: string | null; consented_at: string | null; source: string | null; memo: string | null; contacted_at: string | null; follow_up_at: string | null }
-  const MERGE_COLS = 'id, email, instagram, tiktok, links, status, consented_at, source, memo, contacted_at, follow_up_at'
-  const rankOf = (s: string | null) => (({ contracted: 4, interested: 3, contacted: 2, hold: 1 }) as Record<string, number>)[s || ''] || 0
-  // 한 그룹(같은 키의 리드들)을 대표 1건으로 통합 — 삭제되는 행의 정보를 대표에 **보존 백필**(소실 방지).
-  //   ⚠️ 동의증빙(consented_at)·수신동의는 병합으로 소실되면 합법 발송 대상이 사라짐(정보통신망법) → 그룹 전체에서 보존.
-  const mergeRows = async (rows: MRow[], opts?: { guardDistinctEmail?: boolean }): Promise<number> => {
-    if (rows.length < 2) return 0
-    // 🛡️ 인스타 병합 오탐 방지 — 서로 다른 이메일이 2개↑면 다른 사람이 같은 핸들(대행사/협업 @)을 참조한 것 → 병합 안 함.
-    if (opts?.guardDistinctEmail) {
-      const emails = new Set(rows.map(r => (r.email || '').toLowerCase().trim()).filter(Boolean))
-      if (emails.size > 1) return 0
-    }
-    const keep = rows[0]; const drop = rows.slice(1)
-    const firstNonEmpty = (k: keyof MRow) => (rows.find(r => r[k] != null && r[k] !== '')?.[k] ?? null)
-    const em = firstNonEmpty('email'), ig = firstNonEmpty('instagram'), tt = firstNonEmpty('tiktok'), lk = firstNonEmpty('links'), memo = firstNonEmpty('memo')
-    const status = rows.reduce<string | null>((a, r) => rankOf(r.status) > rankOf(a) ? r.status : a, keep.status) // 그룹 최고 상태
-    const src = rows.find(r => r.source === 'inbound')?.source ?? keep.source ?? null                            // inbound(동의출처) 우선
-    const consent = rows.map(r => r.consented_at).filter((v): v is string => !!v).sort()[0] ?? null              // 최초 동의시각
-    const contacted = rows.map(r => r.contacted_at).filter((v): v is string => !!v).sort()[0] ?? null
-    const followUp = rows.map(r => r.follow_up_at).filter((v): v is string => !!v).sort()[0] ?? null
-    await DB.prepare('UPDATE ad_influencer_leads SET email=?, instagram=?, tiktok=?, links=?, status=?, consented_at=?, source=?, memo=?, contacted_at=?, follow_up_at=? WHERE id=?')
-      .bind(em, ig, tt, lk, status, consent, src, memo, contacted, followUp, keep.id).run().catch(() => null)
-    await DB.batch(drop.map(r => DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
-    return drop.length
-  }
-  // ⚖️ 동의(consented_at)·inbound 리드를 최우선 대표로 — 병합 시 삭제되면 수신동의·동의증빙이 소실돼
-  //   합법 발송 대상(정보통신망법)이 사라짐. 그 다음 상태 랭크·정보량 순으로 대표 선정.
-  const orderBy = `(consented_at IS NOT NULL) DESC, (CASE WHEN source = 'inbound' THEN 1 ELSE 0 END) DESC, ${rank} DESC, (CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN instagram IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN links IS NOT NULL THEN 1 ELSE 0 END) DESC, subscriber_count DESC, id ASC`
-  let mergedEmail = 0, mergedInsta = 0
-  // 1차 — 이메일.
-  const emailGroups = (await DB.prepare(`SELECT email, COUNT(*) AS n FROM ad_influencer_leads
-    WHERE account_id = ? AND email IS NOT NULL AND email != '' GROUP BY LOWER(email) HAVING n > 1`).bind(POOL)
-    .all<{ email: string; n: number }>().catch(() => null))?.results || []
-  for (const g of emailGroups) {
-    const rows = (await DB.prepare(`SELECT ${MERGE_COLS} FROM ad_influencer_leads
-      WHERE account_id = ? AND LOWER(email) = LOWER(?) ORDER BY ${orderBy}`).bind(POOL, g.email)
-      .all<MRow>().catch(() => null))?.results || []
-    mergedEmail += await mergeRows(rows)
-  }
-  // 2차 — 인스타 핸들(이메일 병합 후 남은 상태 기준). 크로스플랫폼 동일인 자동 병합.
-  const igGroups = (await DB.prepare(`SELECT LOWER(instagram) AS ig, COUNT(*) AS n FROM ad_influencer_leads
-    WHERE account_id = ? AND instagram IS NOT NULL AND instagram != '' GROUP BY LOWER(instagram) HAVING n > 1`).bind(POOL)
-    .all<{ ig: string; n: number }>().catch(() => null))?.results || []
-  for (const g of igGroups) {
-    const rows = (await DB.prepare(`SELECT ${MERGE_COLS} FROM ad_influencer_leads
-      WHERE account_id = ? AND LOWER(instagram) = ? ORDER BY ${orderBy}`).bind(POOL, g.ig)
-      .all<MRow>().catch(() => null))?.results || []
-    mergedInsta += await mergeRows(rows, { guardDistinctEmail: true }) // 인스타 병합은 서로 다른 이메일이면 다른 사람 → 스킵
-  }
-  // 3차 — 공유 링크(links: linktr.ee/블로그/유튜브 교차링크, 소문자 공백결합 — 사람마다 고유라 고정밀). 인메모리 그룹핑(멀티값 컬럼).
-  let mergedLink = 0
-  const richness = (r: MRow) => (r.email ? 1 : 0) + (r.instagram ? 1 : 0) + (r.links ? 1 : 0)
-  type MRowSub = MRow & { subscriber_count: number | null }
-  const cmpMR = (a: MRowSub, b: MRowSub) =>
-    ((b.consented_at ? 1 : 0) - (a.consented_at ? 1 : 0)) ||
-    (((b.source === 'inbound') ? 1 : 0) - ((a.source === 'inbound') ? 1 : 0)) ||
-    (rankOf(b.status) - rankOf(a.status)) ||
-    (richness(b) - richness(a)) ||
-    ((Number(b.subscriber_count) || 0) - (Number(a.subscriber_count) || 0)) ||
-    (a.id - b.id)
-  const linkRows = (await DB.prepare(`SELECT ${MERGE_COLS}, subscriber_count FROM ad_influencer_leads WHERE account_id = ? AND links IS NOT NULL AND links != ''`).bind(POOL)
-    .all<MRowSub>().catch(() => null))?.results || []
-  const byLink = new Map<string, MRowSub[]>()
-  for (const r of linkRows) for (const tok of String(r.links || '').split(/\s+/).filter(t => t.length >= 8)) {
-    const arr = byLink.get(tok) || []; arr.push(r); byLink.set(tok, arr)
-  }
-  const doneLink = new Set<number>()
-  for (const [, group] of byLink) {
-    const rows = group.filter(r => !doneLink.has(r.id))
-    if (rows.length < 2) continue
-    rows.sort(cmpMR)
-    const n = await mergeRows(rows)
-    if (n) { mergedLink += n; rows.forEach(r => doneLink.add(r.id)) }
-  }
-  // 4차 — 이름+카테고리 코로보레이션(동명이인 방지: 이메일·인스타 둘 다 없는 잔여 + 같은 카테고리 + 2개+ 플랫폼 + 이름 3자↑).
-  let mergedName = 0
-  const NAME_STOP = new Set(['영상', '채널', '유튜브', '블로그', '공식', 'official', 'daily', 'vlog', 'tv'])
-  const nameGroups = (await DB.prepare(`SELECT LOWER(TRIM(name)) AS nm, LOWER(COALESCE(category,'')) AS cat, COUNT(*) AS n, COUNT(DISTINCT platform) AS plats
-    FROM ad_influencer_leads WHERE account_id = ? AND name IS NOT NULL AND LENGTH(TRIM(name)) >= 3
-      AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '')
-    GROUP BY LOWER(TRIM(name)), LOWER(COALESCE(category,'')) HAVING n > 1 AND plats > 1`).bind(POOL)
-    .all<{ nm: string; cat: string; n: number; plats: number }>().catch(() => null))?.results || []
-  for (const g of nameGroups) {
-    if (!g.nm || NAME_STOP.has(g.nm)) continue
-    const rows = (await DB.prepare(`SELECT ${MERGE_COLS} FROM ad_influencer_leads
-      WHERE account_id = ? AND LOWER(TRIM(name)) = ? AND LOWER(COALESCE(category,'')) = ?
-        AND (email IS NULL OR email = '') AND (instagram IS NULL OR instagram = '') ORDER BY ${orderBy}`).bind(POOL, g.nm, g.cat)
-      .all<MRow>().catch(() => null))?.results || []
-    mergedName += await mergeRows(rows)
-  }
-  return { merged: mergedEmail + mergedInsta + mergedLink + mergedName, mergedEmail, mergedInsta, mergedLink, mergedName, groups: emailGroups.length + igGroups.length }
-  }
-  // waitUntil 지원 시 즉시 started 반환(20k+ 풀에서 동기 대기하면 타임아웃). 미지원 폴백은 동기 실행.
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(doMerge().catch(() => null)); return c.json({ success: true, started: true }) }
-  const r = await doMerge()
+  // 🔥 백그라운드(waitUntil): 4패스 순차 D1 이라 20k+ 풀에선 동기 대기 시 타임아웃. SSOT: influencer-maintenance.
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(mergeDuplicatePool(DB).catch(() => null)); return c.json({ success: true, started: true }) }
+  const r = await mergeDuplicatePool(DB)
   return c.json({ success: true, started: false, ...r })
 })
 
@@ -490,19 +440,8 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
 app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls'))
 
-// POST /api/admin/ads/influencer-pool/collect — 수동 수집(ur-ads 워커에 서비스바인딩으로 위임 → 메인 번들 무영향)
-//   🔥 백그라운드 실행(2026-07-20): 수집은 외부 API 수십 건 순회라 수십 초 걸려 동기 대기 시 브라우저 타임아웃
-//   → "실패"로 오표시. waitUntil 로 넘겨 즉시 started 반환, 완료는 UI 가 stats(last_run) 폴링으로 따라잡음.
-//   main 의 waitUntil 이 서비스바인딩 subrequest(ur-ads 동기 수집)를 살려둠 — 매시간 cron 과 동일 지속성.
-app.post('/influencer-pool/collect', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  // 폴백(waitUntil 미지원 환경): 동기 실행(구 동작).
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// (2026-07-23 전수조사: 구 단발 수집 /influencer-pool/collect 엔드포인트 제거 — UI 는 collect-burst 만 호출,
+//  유지되던 두 번째 트리거 경로가 lease 도입 후에도 표면만 넓혀 삭제. 필요 시 collect-burst 가 완전 상위 호환.)
 
 // POST /api/admin/ads/influencer-pool/collect-burst — 🔥 오늘 YT 검색 예산 즉시 소진(버스트)
 //   대표 "YT 검색 예산 최대한 바로 다 쓰는 방향". 배경: YT 무료 상한 = 하루 10k units = 검색 100회.
@@ -517,25 +456,28 @@ app.post('/influencer-pool/collect-burst', async (c) => {
   const burn = async () => {
     const startedAt = Date.now()
     let prevUsed = -1
+    let reason = 'loop_cap' // 🔎 종료 사유 기록(전수조사 — "시작했어요" 이후 블랙박스이던 것 가시화)
     for (let i = 0; i < 40; i++) {
-      if (Date.now() - startedAt > 220_000) break // ⏱️ 시간 예산(안전) — waitUntil 과부하 방지. 남은 예산은 재클릭/cron 이 이어받음.
+      if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // ⏱️ 시간 예산 — 남은 건 재클릭/cron 이 이어받음
       let body: { chained?: boolean; stats?: BurstStats } | null = null
       try {
         // self-chain 엔드포인트 — ads 에 SELF 바인딩이 있으면 chained=true 로 백그라운드 자가전파(메인 루프 종료).
         const r = await ads.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${i}&pu=${prevUsed}`, { method: 'POST' }))
         body = (await r.json().catch(() => null)) as { chained?: boolean; stats?: BurstStats } | null
-      } catch { break }
-      if (!body) break
-      if (body.chained) break                                  // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
+      } catch { reason = 'fetch_error'; break }
+      if (!body) { reason = 'bad_response'; break }
+      if (body.chained) { reason = 'chained'; break }          // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
       const stats = body.stats
-      if (!stats) break
-      if (stats.youtube_quota_hit) break                       // 구글이 초과 선언 — 오늘 끝
+      if (!stats) { reason = 'no_stats'; break }
+      if (stats.youtube_quota_hit) { reason = 'quota_hit'; break } // 구글이 초과 선언 — 오늘 끝
       const yb = stats.yt_budget
-      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') break
-      if (yb.used >= yb.total) break                           // 오늘 예산(기본 100회) 소진 — 완료
-      if (yb.used <= prevUsed) break                           // 진전 없음(YT 키워드 소진/YT 불가) — 무한루프 방지
+      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') { reason = 'busy_or_no_budget'; break } // lease busy 포함
+      if (yb.used >= yb.total) { reason = 'budget_done'; break }   // 오늘 예산(기본 100회) 소진 — 완료
+      if (yb.used <= prevUsed) { reason = 'no_progress'; break }   // 진전 없음(YT 키워드 소진/YT 불가)
       prevUsed = yb.used
     }
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_burst_last', JSON.stringify({ at: new Date().toISOString(), reason, lastUsed: prevUsed })).run().catch(() => null)
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
   await burn().catch(() => null) // 폴백(waitUntil 미지원): 동기 소진

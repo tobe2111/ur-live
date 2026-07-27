@@ -14,7 +14,7 @@ interface Order {
   unit_price: number; discount_pct: number; options_total: number; total_amount: number
   contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null
   status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
-  supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number
+  supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number; toss_payment_key?: string | null
 }
 const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
@@ -56,6 +56,17 @@ export default function AdminAdsServicesPage() {
     setBusy(id)
     try { const r = await api.patch(`/api/admin/ads/service-orders/${id}`, body); if (r.data?.success) { toast.success(`${label} 완료`); await load(filter) } else toast.error(r.data?.error || '변경 실패') }
     catch { toast.error('변경 실패') } finally { setBusy(null) }
+  }
+
+  // 💳 토스 결제 주문 환불 — 서버가 cancelTossPayment(SSOT) 실행 후 refunded 마킹(원자적). 실패 시 paid 유지.
+  async function tossRefund(orderId: number) {
+    if (!window.confirm('토스 결제를 전액 취소하고 환불 처리할까요? (실제 카드 취소가 실행됩니다)')) return
+    setBusy(orderId)
+    try {
+      const r = await api.post('/api/admin/ads-pay/refund', { order_id: orderId })
+      if (r.data?.success) { toast.success('환불(결제 취소) 완료'); await load() }
+      else toast.error(r.data?.error || '환불 실패')
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '환불 실패') } finally { setBusy(null) }
   }
   async function setReviewStatus(id: number, status: 'visible' | 'hidden') {
     setBusy(id)
@@ -100,16 +111,41 @@ export default function AdminAdsServicesPage() {
                       <div className="text-[12px] text-gray-500 mt-0.5">{o.quantity}개 · {formatNumber(o.total_amount)}원 (단가 {formatNumber(o.unit_price)} · 할인 {o.discount_pct}% · 옵션 {formatNumber(o.options_total)}) · 계정 #{o.account_id} · {(o.created_at || '').slice(0, 16)}</div>
                       <div className="text-[12px] text-gray-600 mt-0.5">연락처: {o.contact_kakao ? `카톡 ${o.contact_kakao}` : ''}{o.contact_phone ? ` · ${o.contact_phone}` : ''}{o.target_url ? ` · ${o.target_url}` : ''}</div>
                       {o.memo && <div className="text-[12px] text-gray-500 mt-0.5">요청: {o.memo}</div>}
+                      {/* 🎯 매칭/아웃리치 주문 이행 도우미 — 메모의 [지역:][업종:] 를 파싱해 풀을 필터 프리필로 오픈 */}
+                      {(() => {
+                        const region = /\[지역:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        const cat = /\[업종:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        const store = /\[매장:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        const isMatch = o.service_name.includes('인플루언서') && o.service_name.includes('매칭')
+                        const isOutreach = o.service_name.includes('아웃리치')
+                        if (!isMatch && !isOutreach) return null
+                        // 🔁 유어딜 깔때기(대표 운영수칙 ③) — 이행 완료 시 사장님께 보낼 업셀 한 줄(복사).
+                        const upsell = `협찬 게시물에 판매 링크까지 붙이고 싶으시면 유어딜을 연결해 드려요 — 등록은 무료이고, 판매될 때만 비용이 나갑니다. 원하시면 바로 셋업 도와드릴게요!`
+                        return (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {isMatch && <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}&store=${encodeURIComponent(store)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 인플루언서 풀에서 이행 →</a>}
+                            {isOutreach && <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>}
+                            <button onClick={() => { navigator.clipboard?.writeText(upsell).then(() => toast.success('유어딜 업셀 문구 복사됨 — 이행 완료 안내에 붙여 보내세요')) }}
+                              className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11.5px] font-semibold" title="이행 완료 시 사장님께: 협찬→유어딜 입점 깔때기">🔁 유어딜 업셀 문구</button>
+                          </div>
+                        )
+                      })()}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <div className="flex items-center gap-1.5">
+                        {o.toss_payment_key ? <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10.5px] font-bold" title="토스 카드/간편결제 완료 주문">💳 카드</span> : null}
                         <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
                           className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
                           {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
                         </button>
                         {o.payment_status === 'paid' && (
-                          <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
-                            className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                          o.toss_payment_key ? (
+                            <button disabled={busy === o.id} onClick={() => tossRefund(o.id)}
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40" title="토스 결제 주문 — 실제 결제 취소(전액)까지 함께 실행됩니다">💳 환불</button>
+                          ) : (
+                            <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                          )
                         )}
                       </div>
                       <select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">

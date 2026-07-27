@@ -5,10 +5,12 @@ import {
   createAdsAccount, loginAdsAccount, adsAccountIdFrom, signAdsToken,
   updateAdsAccount, changeAdsPassword, adminSetPassword,
   requestPasswordReset, resetPasswordWithToken,
-  unlockAdsAccount, getAdsAccount, ensureAdsAccountSchema,
+  unlockAdsAccount, getAdsAccount, ensureAdsAccountSchema, kakaoLoginAdsAccount,
 } from '@/features/marketing/api/ads-account'
 import { saveAlertSettings, getAlertSettings } from '@/features/marketing/api/alerts'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
+import { adsKakaoAuthRoutes } from '@/features/marketing/api/ads-kakao-auth.routes'
+import { createSessionCookie } from '@/worker/utils/session'
 
 /**
  * 🆕 2026-06-28 유어애즈 독립 계정 — 실제 SQLite(node:sqlite) 통합 테스트.
@@ -186,6 +188,70 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     const ok = await marketingRoutes.request('/auth/unlock', { method: 'POST', headers, body: JSON.stringify({ code: '358533' }) }, env)
     expect(ok.status).toBe(200)
     expect((await getAdsAccount((env as unknown as { DB: D1Database }).DB, acc.account.id))?.access_unlocked).toBe(1)
+  })
+
+  it('🟡 카카오 로그인: 신규 생성 → 재로그인 → verified 이메일 연결 → 미verified takeover 차단', async () => {
+    // ① 신규 생성 — kakao_id 로 계정 생성(닉네임=회사명, 잠금 상태)
+    const r1 = await kakaoLoginAdsAccount(DB, { kakaoId: '777', email: 'k@x.com', emailVerified: true, nickname: '방배카페' })
+    expect(r1.ok).toBe(true)
+    if (!r1.ok) return
+    expect(r1.created).toBe(true)
+    expect(r1.account.company_name).toBe('방배카페')
+    expect(r1.account.access_unlocked).toBe(0) // 베타 게이트 유지
+    // ② 재로그인 — 같은 kakao_id 는 같은 계정(중복 생성 0)
+    const r2 = await kakaoLoginAdsAccount(DB, { kakaoId: '777', email: 'k@x.com', emailVerified: true, nickname: '방배카페' })
+    expect(r2.ok && !r2.created && r2.account.id === r1.account.id).toBe(true)
+    // ③ 기존 이메일 계정에 카카오 연결(verified 일 때만)
+    const em = await createAdsAccount(DB, { email: 'link@x.com', password: PW, company_name: '기존회사' })
+    if (!em.ok) throw new Error('setup')
+    const r3 = await kakaoLoginAdsAccount(DB, { kakaoId: '888', email: 'Link@X.com', emailVerified: true, nickname: '무시됨' })
+    expect(r3.ok && !r3.created && r3.account.id === em.account.id).toBe(true) // 대소문자 무시 연결
+    // ④ 미verified 이메일은 기존 계정 takeover 불가 — 별도 신규 계정(플레이스홀더 이메일)
+    const em2 = await createAdsAccount(DB, { email: 'victim@x.com', password: PW, company_name: '피해자' })
+    if (!em2.ok) throw new Error('setup')
+    const r4 = await kakaoLoginAdsAccount(DB, { kakaoId: '999', email: 'victim@x.com', emailVerified: false, nickname: '공격자' })
+    expect(r4.ok && r4.created && r4.account.id !== em2.account.id).toBe(true)
+    expect(r4.ok && r4.account.email.includes('kakao999')).toBe(true) // 플레이스홀더로 격리
+    // ⑤ 이미 다른 카카오가 연결된 이메일은 409 거부(탈취 여지 0) + 원 카카오는 계속 로그인 가능
+    const dbl = await kakaoLoginAdsAccount(DB, { kakaoId: '111', email: 'link@x.com', emailVerified: true, nickname: 'X' })
+    expect(dbl.ok).toBe(false)
+    if (!dbl.ok) expect(dbl.status).toBe(409)
+    const orig = await kakaoLoginAdsAccount(DB, { kakaoId: '888', email: 'link@x.com', emailVerified: true, nickname: 'X' })
+    expect(orig.ok && !orig.created && orig.account.id === em.account.id).toBe(true)
+    // ⑥ 발급 토큰은 기존 ads_token 파이프라인과 동일하게 검증됨
+    const token = await signAdsToken(r1.account.id, JWT)
+    expect(await adsAccountIdFrom('Bearer ' + token, JWT)).toBe(r1.account.id)
+  })
+
+  it('🌉 유어딜 세션 브리지: ur_session → ads 계정 생성/재로그인 · 미로그인 401 need_login', async () => {
+    const DB2 = makeD1()
+    await DB2.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY, kakao_id TEXT, name TEXT, email TEXT, email_verified INTEGER)').run()
+    await DB2.prepare("INSERT INTO users (id, kakao_id, name, email, email_verified) VALUES (1, '77700', '방배사장', 'boss@x.com', 1), (2, NULL, '비카카오', 'nk@x.com', 0)").run()
+    const env = { DB: DB2, JWT_SECRET: JWT } as unknown as Parameters<typeof adsKakaoAuthRoutes.request>[2]
+    const cookie = (await createSessionCookie(1, '방배사장', 'boss@x.com', null, JWT, 'user')).split(';')[0]
+    // ① 유어딜 세션 → ads 계정 자동 생성(회사명=유저 이름, 잠금 게이트 유지)
+    const r1 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie } }, env)
+    expect(r1.status).toBe(200)
+    const j1 = await r1.json() as { success: boolean; token: string; created: boolean; account: { id: number; company_name: string; access_unlocked: number } }
+    expect(j1.success && !!j1.token && j1.created).toBe(true)
+    expect(j1.account.company_name).toBe('방배사장')
+    expect(j1.account.access_unlocked).toBe(0) // 2차 게이트(액세스 코드) 유지
+    // ② 재호출 → 같은 계정 재로그인(중복 생성 0)
+    const r2 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie } }, env)
+    const j2 = await r2.json() as { created: boolean; account: { id: number } }
+    expect(!j2.created && j2.account.id === j1.account.id).toBe(true)
+    // ③ 직접 OAuth 경로(kakao_id 77700)로 와도 같은 ads 계정(매칭 SSOT 일치)
+    const direct = await kakaoLoginAdsAccount(DB2, { kakaoId: '77700', email: 'boss@x.com', emailVerified: true, nickname: '방배사장' })
+    expect(direct.ok && !direct.created && direct.account.id === j1.account.id).toBe(true)
+    // ④ 비카카오 유어딜 유저도 안정 키(urdeal:u{id})로 브리지 가능
+    const cookie2 = (await createSessionCookie(2, '비카카오', 'nk@x.com', null, JWT, 'user')).split(';')[0]
+    const r3 = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST', headers: { Cookie: cookie2 } }, env)
+    const j3 = await r3.json() as { success: boolean; created: boolean; account: { id: number } }
+    expect(j3.success && j3.created && j3.account.id !== j1.account.id).toBe(true)
+    // ⑤ 세션 없음 → 401 need_login
+    const un = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST' }, env)
+    expect(un.status).toBe(401)
+    expect((await un.json() as { need_login?: boolean }).need_login).toBe(true)
   })
 
   it('미인증 요청은 401', async () => {

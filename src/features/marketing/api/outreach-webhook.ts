@@ -68,11 +68,31 @@ export async function applyResendEventToPool(
   return r?.meta?.changes || 0
 }
 
-/** 인바운드 회신(리드가 답장) → 관심 리드로 승격. fromEmail = 보낸사람. ※ Resend Inbound(MX) 설정 시 도달. */
-export async function applyInboundReplyToPool(DB: D1Database, fromEmail: string): Promise<number> {
+/** ⚖️ 수신거부 의사 감지 — 우리가 안내하는 수신거부 수단이 '회신'(OPT_OUT_LINE)이라, 회신 본문에서 거부를 감지해야
+ *  법적 의무가 완성됨. 이전엔 내용 무관 전부 interested 로 승격돼 "보내지 마세요" 회신이 '관심 리드 + 즉시 대응 필요'
+ *  Discord 알림으로 뒤집혔음(2026-07-23 전수조사). 보수적 패턴 — 명확한 거부 표현만. */
+export function isOptOutMessage(text: string): boolean {
+  return /수신\s*거부|거부\s*합니다|보내지\s*마|그만\s*보내|발송\s*중단|중단해\s*주|삭제해\s*주|명단에서\s*(빼|제외)|unsubscribe|opt[\s-]?out|remove\s+me|stop\s+(sending|emailing|contacting)/i.test(text || '')
+}
+
+/** 인바운드 회신(리드가 답장) → 관심 리드로 승격. fromEmail = 보낸사람. ※ Resend Inbound(MX) 설정 시 도달.
+ *  content(제목+본문, 있으면)에 거부 표현이 감지되면 **rejected + 발송 억제**로 처리(재컨택 차단 — 계약 완료건만 예외). */
+export async function applyInboundReplyToPool(DB: D1Database, fromEmail: string, content?: string): Promise<number> {
   const addr = String(fromEmail || '').trim().toLowerCase()
   if (!addr || !addr.includes('@')) return 0
   await ensureOutreachColumns(DB)
+  if (isOptOutMessage(content || '')) {
+    // ⚖️ 명시적 수신거부 — status=rejected + email_status=opt_out + 자동발송 억제 목록 등재(sendEmail 이 발송 전 조회).
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS email_suppressions (email TEXT PRIMARY KEY, reason TEXT, suppressed_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => null)
+    await DB.prepare('INSERT OR IGNORE INTO email_suppressions (email, reason) VALUES (?, ?)').bind(addr, 'opt_out_reply').run().catch(() => null)
+    const r = await DB.prepare(
+      `UPDATE ad_influencer_leads SET replied_at=COALESCE(replied_at, datetime('now')), last_event_at=datetime('now'),
+         email_status='opt_out',
+         status=CASE WHEN status='contracted' THEN status ELSE 'rejected' END
+       WHERE account_id=? AND email IS NOT NULL AND LOWER(email)=?`,
+    ).bind(POOL, addr).run().catch(() => null)
+    return r?.meta?.changes || 0
+  }
   const r = await DB.prepare(
     `UPDATE ad_influencer_leads SET replied_at=COALESCE(replied_at, datetime('now')), last_event_at=datetime('now'),
        contacted_at=COALESCE(contacted_at, datetime('now')),

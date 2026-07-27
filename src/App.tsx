@@ -139,6 +139,7 @@ const MarketingResetPage = lazy(() => import('./pages/marketing/MarketingResetPa
 const MarketingLegalPage = lazy(() => import('./pages/marketing/MarketingLegalPage'))
 const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlockPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
+const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 // 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
@@ -182,6 +183,8 @@ const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
+const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
@@ -716,6 +719,7 @@ function AppContent() {
             <Route path="/ads/terms" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/privacy" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/unlock" element={<ErrorBoundary><MarketingUnlockPage /></ErrorBoundary>} />
+            <Route path="/ads/kakao" element={<ErrorBoundary><MarketingKakaoCallbackPage /></ErrorBoundary>} />
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
@@ -1002,6 +1006,9 @@ function AppContent() {
 
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/new-openings" element={<NewOpeningsPage />} />
+            <Route path="/area-report" element={<AreaReportPage />} />
+            <Route path="/area-report/:region" element={<AreaReportPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
 
             {/* Terms Pages */}

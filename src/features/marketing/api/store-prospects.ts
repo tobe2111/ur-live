@@ -23,9 +23,20 @@ export const LICENSE_UPJONG: Record<string, string> = {
   beauty_salons: '미용업',                 // 행정안전부_생활_미용업 조회서비스 (승인)
   tourist_accommodations: '숙박업',        // 행정안전부_문화_관광숙박업 조회서비스 (승인)
   pet_grooming: '동물미용업',              // 행정안전부_동물_동물미용업 조회서비스 (승인)
+  pharmacies: '약국',                      // 행정안전부_건강_약국 조회서비스 (승인 2026-07-27)
+  hospitals: '병원',                       // 행정안전부_건강_병원 조회서비스 (승인 2026-07-27)
+  barber_shops: '이용업',                  // 행정안전부_생활_이용업 조회서비스 (승인 2026-07-27)
+  public_baths: '목욕장업',                // 행정안전부_생활_목욕장업 조회서비스 (승인 2026-07-27)
+  animal_hospitals: '동물병원',            // 행정안전부_동물_동물병원 조회서비스 (승인 2026-07-27)
+  animal_pharmacies: '동물약국',           // 행정안전부_동물_동물약국 조회서비스 (승인 2026-07-27)
+  fitness_centers: '체력단련장',           // 행정안전부_생활_체력단련장업 조회서비스 (승인 2026-07-27) — 헬스장
+  martial_arts_dojo: '체육도장',           // 행정안전부_생활_체육도장업 조회서비스 (승인 2026-07-27)
+  billiard_halls: '당구장',                // 행정안전부_생활_당구장업 조회서비스 (승인 2026-07-27)
+  golf_practice_ranges: '골프연습장',      // 행정안전부_생활_골프연습장업 조회서비스 (승인 2026-07-27)
+  karaoke_rooms: '노래연습장',             // 행정안전부_문화_노래연습장업 조회서비스 (승인 2026-07-27)
 }
-/** 필터 드롭다운 표시용 카테고리(수집 업종). */
-export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업']
+/** 필터 드롭다운 표시용 카테고리(수집 업종). 학원=NEIS(neis-academy-collect) · 병원=인허가+심평원(hira-hospital-collect). */
+export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국', '체력단련장', '체육도장', '당구장', '골프연습장', '노래연습장', '학원']
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
@@ -94,6 +105,8 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
   )`).run().catch(() => null)
   // 기존 테이블 보강(연락처 확장 — 인허가엔 없어 크롤로만 채움).
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN email TEXT').run().catch(() => null)
+  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프 없이는 같은 상위 40행만 매시간 공회전(뒷줄 미도달).
+  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN website TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN contact_source TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)
@@ -130,13 +143,14 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
       const newOpen = active && isNewOpen(r.apv_perm_ymd, todayYmd) ? 1 : 0
       const phone = clamp(r.phone, 40)
       return DB.prepare(
-        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, website, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(opn_svc_id, opn_sf_team_code, mgt_no) DO UPDATE SET
            biz_name = excluded.biz_name,
            addr_road = COALESCE(excluded.addr_road, store_prospects.addr_road),
            addr_lot = COALESCE(excluded.addr_lot, store_prospects.addr_lot),
            phone = COALESCE(excluded.phone, store_prospects.phone),
+           website = COALESCE(store_prospects.website, excluded.website),
            contact_source = COALESCE(store_prospects.contact_source, excluded.contact_source),
            region = COALESCE(excluded.region, store_prospects.region),
            trd_state = excluded.trd_state,
@@ -147,7 +161,7 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
            last_verified_at = datetime('now')`
       ).bind(
         clamp(r.opn_svc_id, 40), clamp(r.opn_sf_team_code, 40), clamp(r.mgt_no, 60), (r.biz_name || '').slice(0, 120),
-        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, phone ? 'govreg' : null,
+        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, clamp(r.website, 200), phone ? 'govreg' : null,
         clamp(r.local_code, 20), clamp(r.region, 60), clamp(r.trd_state, 4), clamp(r.trd_state_nm, 40),
         clamp(r.apv_perm_ymd, 8), clamp(r.last_mod_ts, 20), num(r.lon), num(r.lat), active, newOpen,
       )
@@ -159,10 +173,12 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
 }
 
 /* ── 목록/통계/큐레이션 ─────────────────────────────────────────────────────── */
-export async function listProspects(DB: D1Database, filter: {
-  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean; hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number
-} = {}): Promise<StoreProspectRow[]> {
-  await ensureProspectSchema(DB)
+export interface ProspectFilter {
+  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean
+  hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number; offset?: number
+}
+/** WHERE 빌더 — 목록/카운트 공용(페이지네이션 총건수 정합). */
+function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (string | number)[] } {
   const where: string[] = ['1=1']; const binds: (string | number)[] = []
   if (!filter.includeClosed) where.push('active = 1')            // 기본: 영업중만(폐업 숨김)
   if (filter.newOpenOnly) where.push('is_new_open = 1')
@@ -171,11 +187,33 @@ export async function listProspects(DB: D1Database, filter: {
   if (filter.status && PROSPECT_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
-  if (filter.q) { where.push('(LOWER(biz_name) LIKE ? OR COALESCE(region,\'\') LIKE ? OR COALESCE(phone,\'\') LIKE ?)'); const l = `%${filter.q.toLowerCase()}%`; binds.push(l, `%${filter.q}%`, `%${filter.q}%`) }
+  // 🔎 검색 — 상호/지역/전화 + **이메일·도로명주소**(2026-07-27). 여러 단어는 AND(모두 포함).
+  if (filter.q) {
+    for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(biz_name) LIKE ? OR LOWER(COALESCE(region,'')) LIKE ? OR COALESCE(phone,'') LIKE ?
+                   OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(addr_road,'')) LIKE ?)`)
+      const l = `%${tok}%`; binds.push(l, l, l, l, l)
+    }
+  }
+  return { sql: where.join(' AND '), binds }
+}
+
+export async function listProspects(DB: D1Database, filter: ProspectFilter = {}): Promise<StoreProspectRow[]> {
+  await ensureProspectSchema(DB)
+  const { sql, binds } = buildProspectWhere(filter)
   const limit = Math.min(2000, Math.max(1, filter.limit || 500))
-  const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM store_prospects WHERE ${where.join(' AND ')}
-     ORDER BY is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ?`).bind(...binds, limit).all<StoreProspectRow>().catch(() => null)
+  const offset = Math.max(0, Math.round(filter.offset || 0))
+  const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM store_prospects WHERE ${sql}
+     ORDER BY is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ? OFFSET ?`).bind(...binds, limit, offset).all<StoreProspectRow>().catch(() => null)
   return r?.results || []
+}
+
+/** 같은 필터의 총건수 — 페이지네이션용(끝까지 넘겨보기). */
+export async function countProspects(DB: D1Database, filter: ProspectFilter = {}): Promise<number> {
+  await ensureProspectSchema(DB)
+  const { sql, binds } = buildProspectWhere(filter)
+  const r = await DB.prepare(`SELECT COUNT(*) AS n FROM store_prospects WHERE ${sql}`).bind(...binds).first<{ n: number }>().catch(() => null)
+  return Number(r?.n) || 0
 }
 
 export interface ProspectStats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
