@@ -9,6 +9,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, kstShort } from '@/utils/format'
+import ContactListPanel from './partner-pool/ContactListPanel'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -218,6 +219,9 @@ export default function AdminPartnerPoolPage() {
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🤝 파트너 풀" subtitle="유어딜 매장 입점을 대신 데려올 업체 DB — 수동입력·아웃리치 관리 (수집 ≠ 발송)" />
 
+        {/* 📬 오늘의 컨택 — 이메일 우선(대표 지시), 미접촉만 */}
+        <ContactListPanel />
+
         {/* 통계 스트립 */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}
@@ -236,6 +240,7 @@ export default function AdminPartnerPoolPage() {
           <button onClick={runCollectStoreinfo} disabled={collectingSI || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공공 상가정보(data.go.kr)로 tier 2~5 업종 통째 수집 + 네이버 전화 역조회 보강 (소스 ①)">{collectingSI ? '수집 중…' : '🏪 상가정보 수집'}</button>
           <button onClick={() => runCollectSrc('collect-commerce', '통신판매사업자')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공정위 통신판매사업자 — 전화+이메일이 데이터에 붙어 옵니다">{busySrc === 'collect-commerce' ? '수집 중…' : '🛒 통신판매'}</button>
           <button onClick={() => runCollectSrc('collect-franchise', '공정위 가맹정보')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="공정위 가맹사업 정보공개서 — 프랜차이즈 본사(대표전화)">{busySrc === 'collect-franchise' ? '수집 중…' : '🏢 프랜차이즈'}</button>
+          <button onClick={() => runCollectSrc('collect-nara', '나라장터 조달업체')} disabled={busySrc !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나라장터 등록업체 중 광고·마케팅 계열만 — 정부 용역 수주 대행사(전화 등록, 이메일은 보강)">{busySrc === 'collect-nara' ? '수집 중…' : '📑 조달업체'}</button>
           <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="기존 리드 포함 — 이메일 없는 리드의 홈페이지를 크롤(없으면 네이버로 발견)해 이메일을 소급 보강. 매시간 자동으로도 진행(허위 0)">{enriching ? '보강 중…' : '📧 연락처 보강'}</button>
           <button onClick={runSweepNts} disabled={sweeping || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="국세청 상태조회로 폐업 리드 100건/회 정리(일 1회 자동 + 수동). 활용신청 검증 겸 — 오류 시 상태줄에 표시">{sweeping ? '정리 중…' : '🏛 폐업 정리'}</button>
           <a href="/api/admin/partner-pool/export?format=csv" className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium">⬇ CSV 내보내기</a>

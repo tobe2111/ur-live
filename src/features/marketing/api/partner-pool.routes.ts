@@ -86,6 +86,33 @@ app.get('/stats', async (c) => {
   })
 })
 
+// GET /api/admin/partner-pool/contact-list — 📬 오늘의 컨택(이메일 최우선). 업체+매장 후보를
+//   [이메일 보유 → 전화만] 순으로 미접촉(new)만 추려 반환 — "누구부터 접촉?"의 원버튼 답.
+app.get('/contact-list', async (c) => {
+  const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
+  const companies = (await c.env.DB.prepare(
+    `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
+     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+     ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
+  ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
+  const stores = (await c.env.DB.prepare(
+    `SELECT id, biz_name, category, region, email, phone, website, is_new_open FROM store_prospects
+     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+     ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ?`
+  ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
+  return c.json({ success: true, companies, stores })
+})
+
+// POST /api/admin/partner-pool/collect-nara — 📑 나라장터 조달업체(대행사 계열) 수동 수집(ur-ads 위임).
+app.post('/collect-nara', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
 // POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
 app.post('/sweep-nts', async (c) => {
   const ads = c.env.ADS
