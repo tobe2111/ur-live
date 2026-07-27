@@ -120,14 +120,40 @@ const SERVICE_SEED: Array<Omit<ServiceRow, 'id' | 'active' | 'sort_order'> & { s
   },
 ]
 
+// 🆕 2026-07-27 서비스화(대표 "모두 개발하자") — 인플루언서 풀·업체 리드 엔진을 상품으로.
+//   테이블이 비어있지 않아도 **이름 기준 업서트**로 자동 등록(기존 시드는 빈 테이블 1회 정책 유지).
+//   ⚠️ 가격은 시드 기본값 — 어드민 상품 관리에서 조정 전제. 이행은 사람이(풀 매칭+발송 모드), DB 판매 아님.
+const NAMED_SERVICE_SEED: typeof SERVICE_SEED = [
+  {
+    category: '매칭', name: '동네 인플루언서 협찬 매칭', subtitle: '지역·업종 맞춤 인플루언서에게 협찬 제안 대행',
+    description: '## 서비스 소개\n유어딜이 보유한 **지역·업종별 인플루언서 데이터**(유튜브·네이버 블로그)에서 우리 매장에 맞는 인플루언서를 골라, **개인화된 협찬 제안을 대신 보내고 회신을 연결**해 드립니다.\n\n## 진행 방식\n- 매장 지역·업종 기준 인플루언서 선별(활동성·적합도 점수 기반)\n- 제안 메시지 개인화 작성 → 발송 → 회신 시 연결\n- 발송/개봉/회신 결과 리포트\n\n## 주의\n- **주문 시 매장 지역·업종을 입력**해주세요(선별 기준).\n- 회신·계약을 보장하지 않습니다(제안 대행). 협찬비는 인플루언서와 직접 협의(별도)입니다.\n- 수신 동의·광고 표기 등 법규를 준수해 발송합니다.',
+    pricing: { unit: '명', unitPrice: 15000, minQty: 5, maxQty: 100, presets: [{ label: '10명 제안', qty: 10 }, { label: '30명 제안', qty: 30 }, { label: '50명 제안', qty: 50 }], qtyDiscounts: [{ min: 5, pct: 0 }, { min: 30, pct: 10 }, { min: 50, pct: 15 }], options: [{ key: 'draft', label: '제안 문구 맞춤 작성', price: 50000 }, { key: 'nego', label: '조건 조율 대행', price: 100000 }] },
+    sort_order: 5,
+  },
+  {
+    category: '아웃리치', name: '지역 업체 타겟 아웃리치 대행', subtitle: '타겟 업체 발굴부터 제안·응대까지 대행',
+    description: '## 서비스 소개\n공공데이터·지역검색 기반 **업체 데이터베이스**에서 타겟(지역·업종)을 발굴해, 제휴/입점/영업 제안을 **대신 발송하고 응대까지** 진행합니다.\n\n## 진행 방식\n- 타겟 정의(지역·업종·규모) → 리스트 선별\n- 제안 발송(전화·서면 중심) 및 회신 응대\n- 주간 진행 리포트\n\n## 주의\n- **주문 시 타겟 지역·업종을 입력**해주세요.\n- 리스트(연락처 DB) 자체는 제공하지 않습니다 — 발송·응대를 대행하는 서비스입니다(개인정보보호법 준수).\n- 성사(계약)를 보장하지 않습니다.',
+    pricing: { unit: '주', unitPrice: 150000, minQty: 2, maxQty: 52, presets: [{ label: '1개월', qty: 4 }, { label: '3개월', qty: 12 }], qtyDiscounts: [{ min: 2, pct: 0 }, { min: 8, pct: 10 }, { min: 24, pct: 18 }], options: [{ key: 'report', label: '주간 상세 리포트', price: 30000 }] },
+    sort_order: 6,
+  },
+]
+
 let _seedChecked = new WeakSet<object>()
 export async function maybeSeedServices(DB: D1Database): Promise<void> {
   await ensureServicesSchema(DB)
   if (_seedChecked.has(DB)) return
   _seedChecked.add(DB)
   const cnt = await DB.prepare('SELECT COUNT(*) AS c FROM ad_services').first<{ c: number }>().catch(() => null)
-  if ((Number(cnt?.c) || 0) > 0) return
-  for (const s of SERVICE_SEED) {
+  if ((Number(cnt?.c) || 0) === 0) {
+    for (const s of SERVICE_SEED) {
+      await DB.prepare('INSERT INTO ad_services (category, name, subtitle, description, pricing_json, active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)')
+        .bind(s.category, s.name, s.subtitle, s.description, JSON.stringify(s.pricing), s.sort_order).run().catch(() => null)
+    }
+  }
+  // 네임드 업서트 — 없을 때만 INSERT(멱등). 어드민이 이름 그대로 두고 가격/설명을 수정하면 보존됨(재INSERT 없음).
+  for (const s of NAMED_SERVICE_SEED) {
+    const ex = await DB.prepare('SELECT id FROM ad_services WHERE name = ?').bind(s.name).first<{ id: number }>().catch(() => null)
+    if (ex?.id) continue
     await DB.prepare('INSERT INTO ad_services (category, name, subtitle, description, pricing_json, active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)')
       .bind(s.category, s.name, s.subtitle, s.description, JSON.stringify(s.pricing), s.sort_order).run().catch(() => null)
   }

@@ -83,7 +83,8 @@ export default function AdminPartnerPoolPage() {
   const [fStatus, setFStatus] = useState('')
   const [fType, setFType] = useState('')
   const [quick, setQuick] = useState<Quick>('')
-  const [q, setQ] = useState('')
+  // 🎯 서비스몰 주문 이행 딥링크(?q=지역) — 접수함 버튼이 프리필로 오픈(검색이 업체명·지역·키워드 커버).
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadMeta = useCallback(async () => {
