@@ -104,6 +104,22 @@
       "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
       "date": "2026-07-22",
       "review": "sharp/libvips 제공 패키지 업그레이드(npm 설치 가능 시) 후 재확인 → 제거."
+    },
+    {
+      "ghsa": "GHSA-mh99-v99m-4gvg",
+      "pkg": "brace-expansion",
+      "reason": "dev/빌드툴 전용 transitive(glob/minimatch 경유 unbounded expansion DoS). 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함, 런타임 도달 불가. 동일 패키지 GHSA-3jxr-9vmj-r5cp(이미 등재)와 같은 도달불가 클래스 — 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(brace-expansion GHSA-3jxr 선례와 동일 패키지)",
+      "date": "2026-07-25",
+      "review": "minimatch/glob 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-r28c-9q8g-f849",
+      "pkg": "postcss",
+      "reason": "빌드시 CSS 처리 도구(vite/tailwind 경유). 취약 경로 = postcss 가 sourceMappingURL 로 이전 소스맵을 자동 로드할 때의 경로 traversal → **빌드 시점**에만 실행되고 신뢰된 자체 CSS 입력만 처리. production Workers/브라우저 번들에는 postcss 미포함(CSS 는 정적 산출물) → 런타임 도달 불가. vite(GHSA-fx2h) 와 동일 빌드툴 클래스.",
+      "accepted_by": "대표(urteam.corp) 승인 — 빌드툴 도달불가 클래스(vite GHSA-fx2h 선례와 동일)",
+      "date": "2026-07-25",
+      "review": "postcss 패치 버전(GHSA-r28c 수정본) 상향(npm 설치 가능 시) 후 제거."
     }
   ]
 }
