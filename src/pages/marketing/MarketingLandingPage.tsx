@@ -4,13 +4,14 @@
  *   디자인 SSOT: `docs/design/urads/UR Ads Landing Light.dc.html` (+ Handoff Spec 토큰).
  *   유어팀의 3번째 서비스(유어딜=소비자 / 유통스타트=도매 / 유어애즈=마케팅)의 공개 세일즈 표면.
  *
- *   브랜드 정체성: 코스믹 네이비 — 단색 #3B6EF5 + 그라데이션(#3B6EF5→#8B5CF6→#EC4899).
+ *   브랜드 정체성: 단색 #3B6EF5 (2026-07-27 대표 "AI 느낌" 지시로 그라디언트 텍스트 폐기 — .grad=단색).
  *   surface 분리: /ads (worker isMarketingSurface, App.tsx isMarketingSurface) — 소비자/도매 chrome 비노출.
  *
  *   ⚠️ 디자인 시안을 픽셀 충실히 옮기기 위해 인라인 스타일 + 스코프드 CSS 사용(.ua-landing).
  *   양모드: CSS 변수(--bg/--ink/--panel…)를 `.ua-landing`(라이트 기본)·`[data-theme="dark"]`
  *   (코스믹 네이비=Landing v2)에서 오버라이드, 컴포넌트 마크업 불변(Handoff Spec 규칙). 네비 토글.
- *   본문/수치/CTA 카피는 시안과 동일(절감액·ROAS 등은 더미 예시 — 실데이터 연동 시 교체).
+ *   ⚖️ 카피 원칙(2026-07-27): 검증 못 하는 수치·가공 고객사/후기/요금제 금지. 기능 목업 안의
+ *   예시 숫자만 허용하고 그 사실을 화면에 명시한다.
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -102,7 +103,7 @@ export default function MarketingLandingPage() {
       <style>{SCOPED_CSS}</style>
       <SEO
         title="유어애즈 UR Ads — 광고 입찰부터 발주까지, 하나로 자동화"
-        description="네이버 검색광고·커머스를 한곳에서 자동화하는 B2B 종합 마케팅 솔루션. 자동입찰으로 평균 CPC 15% 절감, 부정클릭 방어, 키워드 확장, 통합 실적(ROAS), AI 마케터, 발주 수집. 네이버 공식 API 기반 · 크롤링 아님."
+        description="네이버 검색광고를 자동화하는 B2B 마케팅 도구. 목표순위 자동입찰, 부정클릭 방어, 키워드 확장, 통합 실적(ROAS), AI 마케터. 유어딜 운영사가 직접 만들어 매일 씁니다. 네이버 공식 API 기반 · 크롤링 아님. 베타 기간 무료(승인제)."
         image="https://urdeal.kr/og-urads.png"
         url="/ads"
         type="website"
@@ -114,7 +115,7 @@ export default function MarketingLandingPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 38 }}>
             <Link to="/ads"><UrAdsLogo size={26} /></Link>
             <nav className="ua-navlinks" style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              <a href="#features">기능</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href="#faq">FAQ</a>
+              <a href="#features">기능</a><a href="#pricing">요금제</a><a href="#proof">왜 유어애즈</a><a href="#faq">FAQ</a>
             </nav>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -494,7 +495,7 @@ export default function MarketingLandingPage() {
               <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '16px 0 0', maxWidth: 260 }}>네이버 광고·커머스를 한 곳에서 자동화하는 종합 마케팅 솔루션. 유어팀 그룹.</p>
             </div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>제품</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">자동입찰</a><a href="#features">부정클릭 방어</a><a href="#features">통합 실적</a><a href="#features">AI 마케터</a></div></div>
-            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>회사</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">소개</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href={CONTACT}>문의</a></div></div>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>회사</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">소개</a><a href="#pricing">요금제</a><a href="#proof">왜 유어애즈</a><a href={CONTACT}>문의</a></div></div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>지원</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href={CONTACT}>도움말</a><a href={CONTACT}>문의하기</a><Link to={loginHref}>대시보드</Link></div></div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 44, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
