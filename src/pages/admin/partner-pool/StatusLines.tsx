@@ -1,0 +1,102 @@
+/**
+ * 📊 파트너 풀 상태줄 묶음 — 수집 레인/정리 진행률/이메일 퍼널/소스별 진단(부모 600줄 캡 준수 추출).
+ *   데이터는 부모의 /stats 응답 그대로 — 표시 전용(로직 무).
+ */
+import { formatNumber, kstShort } from '@/utils/format'
+
+export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
+export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
+export interface StoreInfo { gate: boolean; run: RunInfo | null }
+export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
+export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
+export interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
+export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
+export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
+
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel }: {
+  collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
+  nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
+}) {
+  return (
+    <>
+    {/* 레인 A(네이버 지역검색) 자동수집 상태 */}
+    {collect && (
+      <div className="mb-3 text-xs text-gray-500">
+        레인 A 자동수집 <span className={collect.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 홀수시' : 'OFF'}</span>
+        {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
+          : collect.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
+            : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+        <span className="mx-2 text-gray-300">|</span>
+        🏪 상가정보 <span className={storeinfo?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{storeinfo?.gate ? 'ON · 짝수시' : 'OFF'}</span>
+        {storeinfo?.run?.diag?.error ? <span className="text-amber-600"> · {storeinfo.run.diag.error}</span>
+          : storeinfo?.run?.last_run ? <span> · 최근 {kstShort(storeinfo.run.last_run)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
+            : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+        {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
+      </div>
+    )}
+
+    {/* 📧 대행사 이메일 퍼널 — 미보유를 원인별로 분해(보강 대기 vs 구조적 한계) */}
+    {agencyFunnel && agencyFunnel.total > 0 && (
+      <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-gray-500">
+        <span className="font-semibold text-gray-700">📧 대행사 이메일 퍼널</span>
+        <span> · 전체 {formatNumber(agencyFunnel.total)}</span>
+        <span> · <span className="text-indigo-600 font-semibold">이메일 보유 {formatNumber(agencyFunnel.with_email)}</span></span>
+        <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음 — 매시간 보강 크롤이 채우는 중이거나, 문의폼·카톡채널만 쓰는 업체(공개 이메일 자체가 없어 공란이 정답)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}</span>
+        <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
+      </div>
+    )}
+
+    {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
+    {commerce?.run && (
+      <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+        <span className="font-semibold text-gray-700">🛒 통신판매</span>
+        {commerce.run.diag?.error ? <span className="text-amber-600"> · {commerce.run.diag.error}</span>
+          : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {commerce.run.found ?? 0} / 저장 {commerce.run.saved ?? 0}</span>}
+        {commerce.probe && (
+          <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? `있음 ✅${commerce.probe.emailField ? ` (${commerce.probe.emailField}, 선택입력이라 일부만 채워짐)` : ''}` : '없음 ❌'}</span></span>
+        )}
+        {commerce.probe?.keys?.length ? (
+          <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>
+        ) : null}
+      </div>
+    )}
+
+    {/* 🏢 공정위 가맹(프랜차이즈) 수집 상태 */}
+    {franchise?.run && (
+      <div className="mb-3 text-xs text-gray-500">
+        🏢 프랜차이즈 <span className={franchise.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{franchise.gate ? 'ON · 22시' : 'OFF'}</span>
+        {franchise.run.diag?.error ? <span className="text-amber-600"> · {franchise.run.diag.error}</span>
+          : <span> · 최근 {kstShort(franchise.run.last_run)} · 발굴 {franchise.run.found ?? 0} / 저장 {franchise.run.saved ?? 0}</span>}
+        <span className="text-gray-400"> · 연락처는 보강(홈페이지 검색)으로 채워짐</span>
+      </div>
+    )}
+
+    {/* 🏛️ 국세청 폐업 스윕 상태 — note 에 활용신청/키 오류가 그대로 표시됨(검증용) */}
+    {nts?.run && (
+      <div className="mb-3 text-xs text-gray-500">
+        🏛 폐업 정리 <span> · 최근 {kstShort(nts.run.last_run)} · 조회 {nts.run.checked ?? 0} / 폐업처리 {nts.run.closed ?? 0} (누적 {nts.run.total_closed ?? 0})</span>
+        {nts.run.note && <span className="text-amber-600"> · ⚠️ {nts.run.note}</span>}
+      </div>
+    )}
+
+    {/* 🧭 소급 정리(재분류) 진행률 — 62K 청소 며칠 걸림, 남은 미분류가 0 에 수렴하는지 관찰 */}
+    {reclassifyInfo?.run && (
+      <div className="mb-3 text-xs text-gray-500">
+        🧭 데이터 정리 <span> · 최근 {kstShort(reclassifyInfo.run.last_run)} · 이번 {reclassifyInfo.run.scanned ?? 0}건(제거 {reclassifyInfo.run.removed ?? 0})</span>
+        <span> · <b className="text-gray-700">미분류 잔여 {formatNumber(reclassifyInfo.run.remaining_unclassified ?? 0)}</b></span>
+        <span className="text-gray-400"> · 누적 정리 {formatNumber(reclassifyInfo.run.total_removed ?? 0)} 제거 / {formatNumber(reclassifyInfo.run.total_updated ?? 0)} 재분류</span>
+      </div>
+    )}
+
+    {/* 👥 국민연금 규모 검증 상태 */}
+    {npsInfo?.run && (
+      <div className="mb-3 text-xs text-gray-500">
+        👥 규모 조회(국민연금) <span className={npsInfo.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{npsInfo.gate ? 'ON · 01시' : 'OFF'}</span>
+        <span> · 최근 {kstShort(npsInfo.run.last_run)} · 조회 {npsInfo.run.checked ?? 0} / 매칭 {npsInfo.run.matched ?? 0} (누적 {npsInfo.run.total_matched ?? 0})</span>
+        {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
+      </div>
+    )}
+    </>
+  )
+}

@@ -28,6 +28,11 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
 
   let processed = 0, emailFound = 0, phoneFound = 0, siteFound = 0
   const upd = async (id: number, patch: { email?: string | null; website?: string | null; phone?: string | null; source?: string | null }) => {
+    // 📵 반송 억제 — 반송 확인 이메일 재부착 방지(회사 풀과 동일 루프).
+    if (patch.email) {
+      const sup = await DB.prepare('SELECT 1 AS x FROM ad_email_suppress WHERE email = ?').bind(patch.email.toLowerCase()).first<{ x: number }>().catch(() => null)
+      if (sup) patch.email = null
+    }
     const r = await DB.prepare(
       `UPDATE store_prospects SET
          email = COALESCE(email, ?),

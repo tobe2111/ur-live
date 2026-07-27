@@ -257,6 +257,12 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
     if (!phone && !email && !website) return
+    // 📵 반송 억제 — 반송 확인된 이메일은 재크롤로 되살리지 않음(수동 발송 체계의 품질 루프).
+    if (email) {
+      const sup = await DB.prepare('SELECT 1 AS x FROM ad_email_suppress WHERE email = ?').bind(email.toLowerCase()).first<{ x: number }>().catch(() => null)
+      if (sup) email = null
+      if (!phone && !email && !website) return
+    }
     const r = await DB.prepare(
       `UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?),
          contact_source = COALESCE(contact_source, ?),
