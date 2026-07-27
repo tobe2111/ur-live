@@ -21,6 +21,12 @@ export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|repor
 export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
+/** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
+const publishableEmail = (e: string, allowNewsroom = false): boolean =>
+  EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && (allowNewsroom || !NEWSROOM_EMAIL_LOCAL.test(e))
+/** HTML 엔티티형 이메일 난독 복원(&#64;→@ 등) — 국내 CMS 안티봇 출력에 흔함(2026-07-27 크롤 고도화). */
+const decodeEmailEntities = (s: string): string =>
+  s.replace(/&#0*64;|&commat;/gi, '@').replace(/&#0*46;|&period;/gi, '.').replace(/&#0*45;/g, '-')
 
 /**
  * 📧 HTML 에서 **게시된** 이메일 1개 추출 — 추측·조합 절대 없음.
@@ -28,23 +34,26 @@ const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
  *   플랫폼 기본값/플레이스홀더(JUNK_EMAIL)는 제외. 못 찾으면 null.
  */
 export function extractEmailFromHtml(html: string, allowNewsroom = false): string | null {
-  const newsy = (e: string) => !allowNewsroom && NEWSROOM_EMAIL_LOCAL.test(e) // 미디어 리드는 뉴스룸 계정도 유효 연락처
+  const src = decodeEmailEntities(String(html || '')) // &#64; 류 엔티티 난독 복원 후 스캔
   const mailtos: string[] = []
   const re = new RegExp(MAILTO_RE)
   let m: RegExpExecArray | null
-  while ((m = re.exec(html))) {
+  while ((m = re.exec(src))) {
     let e = m[1]
     try { e = decodeURIComponent(e) } catch { /* 원문 유지 */ }
     e = e.trim().toLowerCase()
-    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !newsy(e)) mailtos.push(e)
+    if (publishableEmail(e, allowNewsroom)) mailtos.push(e)
   }
   if (mailtos.length) {
     // mailto 다수면 비즈니스 문맥(문의/contact)으로 선별, 아니면 첫 번째.
     const biz = pickBusinessEmail(mailtos.map(e => `문의 ${e}`).join(' '))
-    return (biz && !JUNK_EMAIL.test(biz) && !newsy(biz)) ? biz : mailtos[0]
+    return (biz && publishableEmail(biz, allowNewsroom)) ? biz : mailtos[0]
   }
-  const body = pickBusinessEmail(html)
-  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !newsy(body) ? body : null
+  const body = pickBusinessEmail(src)
+  if (body && publishableEmail(body, allowNewsroom)) return body
+  // 태그로 쪼갠 이메일("info<span>@</span>domain.com") — 태그 제거본 재스캔(2026-07-27 크롤 고도화).
+  const stripped = pickBusinessEmail(src.replace(/<[^>]+>/g, ' '))
+  return stripped && publishableEmail(stripped, allowNewsroom) ? stripped : null
 }
 /** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
  *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
@@ -226,12 +235,20 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     }
     if (!email) email = extractEmailFromHtml(slice, allowNewsHost)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
-    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
+    // 🧾 JSON-LD(구조화 데이터) email/telephone — 사이트가 스스로 선언한 값이라 정밀도 최상(2026-07-27 고도화).
+    if (!email || !phone) {
+      for (const ld of slice.matchAll(/"email"\s*:\s*"([^"<>{}]{5,120})"/gi)) {
+        const e = decodeEmailEntities(ld[1]).replace(/^mailto:/i, '').trim().toLowerCase()
+        if (publishableEmail(e, allowNewsHost)) { email = email || e; break }
+      }
+      if (!phone) { const tm = slice.match(/"telephone"\s*:\s*"([^"<>{}]{8,25})"/i); if (tm) phone = pickPhone(tm[1]) }
+    }
+    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 3개 추가, 어휘 확장 2026-07-27).
     if (path === '' && !email) {
       for (const m of slice.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
-        if (discoveredLinks >= 2) break
+        if (discoveredLinks >= 3) break
         const href = m[1].replace(/&amp;/g, '&').trim()
-        if (!/(contact|inquiry|contactus|문의|오시는|co_id=)/i.test(href)) continue
+        if (!/(contact|inquiry|contactus|문의|오시는|co_id=|about|company|intro|(?:회사|기업)\s*소개|고객\s*센터|customer|support)/i.test(href)) continue
         if (/\.(?:jpe?g|png|gif|webp|svg|pdf|zip|hwp|docx?|xlsx?)(?:$|\?)/i.test(href)) continue
         let u2: URL
         try { u2 = new URL(href, url.origin + '/') } catch { continue }
