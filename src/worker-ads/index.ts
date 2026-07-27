@@ -108,7 +108,7 @@ app.post('/__ads/collect-nps', async (c) => {
 app.post('/__ads/reclassify-company', async (c) => {
   try {
     const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-    const stats = await reclassifyCompanyLeads(c.env.DB, 1000)
+    const stats = await reclassifyCompanyLeads(c.env.DB, 1000, c.req.query('light') !== '1') // light=억제스윕 생략(버스트 후속 패스)
     return c.json({ ok: true, stats })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -284,8 +284,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
     kick('/__ads/reclassify-company', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-      let last = await reclassifyCompanyLeads(env.DB, 1000)
-      for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000)
+      let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
+      for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
       return last
     })
   }

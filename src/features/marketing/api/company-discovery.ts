@@ -382,7 +382,7 @@ export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilte
  *     · webkr 의심 이름(검색결과 제목 파편) → confidence='none'(분류 확인 카드로 노출 — 수동 검토 유도)
  *   커서(platform_settings)로 매 실행 이어서. 허위 0(연락처 무접촉). */
 const RECLASSIFY_CURSOR = 'ads_company_reclassify_cursor'
-export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean }> {
+export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housekeeping = true): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean }> {
   await ensureCompanySchema(DB)
   const curRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RECLASSIFY_CURSOR).first<{ value: string }>().catch(() => null)
   let cursor = parseInt(curRow?.value || '0', 10)
@@ -435,10 +435,13 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
     updated++
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
-  // 📵 반송 억제 스윕(시간당 1회, 이 DB-only 패스에 동승) — 레지스트리 재수집(COALESCE 백필)으로
-  //   되살아난 억제 이메일을 다시 비움. 억제 테이블이 작아 IN-서브쿼리 1방씩.
-  await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
-  await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+  // 📵 반송 억제 스윕 — 레지스트리 재수집(COALESCE 백필)으로 되살아난 억제 이메일을 다시 비움.
+  //   ⚡ housekeeping 패스에서만(2026-07-27 실측 — 대형 테이블 2개 풀스캔 UPDATE 를 버스트가 패스마다
+  //   반복해 회당 처리량이 계획(2.5만)의 1/3 로 떨어졌음 → 버스트는 첫 패스만, cron 은 시간당 1회면 충분).
+  if (housekeeping) {
+    await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+    await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+  }
   const nextCursor = rows[rows.length - 1].id
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.

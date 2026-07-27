@@ -13,7 +13,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string } } | null }
+export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
 export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24 }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
@@ -105,6 +105,10 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
           💼 채용기업(고용24) <span className={work24.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{work24.gate ? 'ON · 00시' : 'OFF'}</span>
           <span> · 최근 {kstShort(work24.run.last_run)} · '{work24.run.keyword}' 발굴 {work24.run.found ?? 0} / 적합 {work24.run.matched ?? 0} / 저장 {work24.run.saved ?? 0} (누적 {work24.run.total_saved ?? 0})</span>
           {work24.run.diag?.error && <span className="text-amber-600"> · ⚠️ {work24.run.diag.error}</span>}
+          {/* 발굴 0 진단 — 응답 원문 앞부분(엔드포인트/파라미터/인증 오류가 그대로 보임) */}
+          {(work24.run.found ?? 0) === 0 && work24.run.diag?.sample != null && (
+            <span className="text-amber-600"> · 응답: {String(typeof work24.run.diag.sample === 'string' ? work24.run.diag.sample : JSON.stringify(work24.run.diag.sample)).slice(0, 200)}</span>
+          )}
         </div>
       )}
     </>
