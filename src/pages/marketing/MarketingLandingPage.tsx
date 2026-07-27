@@ -22,14 +22,15 @@ const APP = '/ads/dashboard'
 const CONTACT = 'mailto:jiwon@ur-team.com'
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
 .ua-landing{
   --bg:#FFFFFF;--ink:#0B0E14;--ink-strong:#2A303B;--ink2:#565E6C;--muted:#8A93A3;
   --panel:#FFFFFF;--panel2:#FAFBFD;--line:#ECEDF1;--hair:#EEF0F3;--chip:#F2F3F6;
   --brand:#3B6EF5;--soft-bg:#EAF0FF;--soft-bd:#C9D8FF;--soft-tx:#2A56D4;--up:#16A36B;--btn-bd:#DADCE2;
   --nav-bg:rgba(255,255,255,.82);--nav-bd:#ECEDF1;
   --hero-bg:radial-gradient(120% 90% at 82% -10%,#E9EFFF 0%,#F4F7FF 36%,#FFFFFF 68%);
-  --tint-bg:linear-gradient(120deg,#EEF2FF,#F6F0FF);--tint-bd:#DCE3FB;
-  font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  --tint-bg:#F2F6FF;--tint-bd:#DCE3FB;
+  font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
   background:var(--bg);color:var(--ink);min-height:100dvh
 }
 .ua-landing[data-theme="dark"]{
@@ -41,7 +42,8 @@ const SCOPED_CSS = `
   --tint-bg:linear-gradient(120deg,#0E1430,#160E2A);--tint-bd:rgba(255,255,255,.10)
 }
 .ua-landing a{text-decoration:none;color:inherit}
-.ua-landing .grad{background:linear-gradient(96deg,#3B6EF5 0%,#8B5CF6 52%,#EC4899 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* 2026-07-27 de-AI: 파랑→보라→핑크 그라디언트 텍스트(생성형 템플릿 대표 패턴) → 단색 브랜드 강조 */
+.ua-landing .grad{color:var(--brand)}
 .ua-landing .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 .ua-landing details>summary{list-style:none;cursor:pointer}
 .ua-landing details>summary::-webkit-details-marker{display:none}
@@ -49,7 +51,7 @@ const SCOPED_CSS = `
 .ua-landing .ua-nav{background:var(--nav-bg);border-bottom:1px solid var(--nav-bd)}
 .ua-landing .ua-hero{background:var(--hero-bg)}
 .ua-landing .ua-tint{background:var(--tint-bg);border:1px solid var(--tint-bd)}
-.ua-landing .ua-hero-dots{position:absolute;inset:0;pointer-events:none;opacity:.6;background-image:radial-gradient(#D6DEF2 1px,transparent 1px);background-size:24px 24px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%)}
+.ua-landing .ua-hero-dots{position:absolute;inset:0;pointer-events:none;opacity:.28;background-image:radial-gradient(#D6DEF2 1px,transparent 1px);background-size:24px 24px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%)}
 .ua-landing[data-theme="dark"] .ua-hero-dots{opacity:.5;background-size:auto;-webkit-mask-image:none;mask-image:none;background-image:radial-gradient(1px 1px at 18% 30%,#fff,transparent),radial-gradient(1px 1px at 42% 68%,#cdd6ff,transparent),radial-gradient(1px 1px at 64% 22%,#fff,transparent),radial-gradient(1.4px 1.4px at 80% 50%,#bcd,transparent),radial-gradient(1px 1px at 30% 82%,#fff,transparent)}
 .ua-landing .ua-tglbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--btn-bd);background:var(--panel);color:var(--ink2);cursor:pointer;font-size:15px}
 .ua-landing .ua-navlinks{display:flex;gap:26px}
@@ -189,7 +191,7 @@ export default function MarketingLandingPage() {
 
       {/* ── VALUE BAND ── */}
       <section style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 28px 20px' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>WHY UR ADS</div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>왜 유어애즈인가</div>
         <h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0', maxWidth: 720 }}>광고대행사 한 명이 하던 일을,<br />UR Ads가 <span className="grad">24시간 대신</span>합니다.</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(220px,100%),1fr))', marginTop: 44, border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
           {[
@@ -213,7 +215,7 @@ export default function MarketingLandingPage() {
         {/* 01 자동입찰 */}
         <div style={featRow}>
           <div>
-            <div style={eyebrow}>POINT 01 — 자동입찰</div>
+            <div style={eyebrow}>자동입찰</div>
             <h3 style={h3}>목표순위·최대입찰가만,<br /><span className="grad">최저 CPC는 자동으로.</span></h3>
             <p style={lead}>원하는 노출 순위와 상한가만 설정하면, 경쟁 상황을 읽어 가장 낮은 비용으로 그 자리를 지킵니다. 시간대·요일 전략과 CSV 대량 설정까지, 상한가를 절대 넘지 않는 안전장치와 함께.</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '22px 0 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -267,7 +269,7 @@ export default function MarketingLandingPage() {
             </div>
           </div>
           <div style={{ order: 1 }}>
-            <div style={eyebrow}>POINT 02 — 부정클릭 방어</div>
+            <div style={eyebrow}>부정클릭 방어</div>
             <h3 style={h3}>새는 광고비를<br /><span className="grad">실시간으로 막습니다.</span></h3>
             <p style={lead}>반복·비정상 클릭 패턴을 탐지해 의심 IP를 가려냅니다. 네이버 검색광고에 바로 등록할 차단 목록을 자동으로 만들어 드리고, 막은 만큼의 절감액을 투명하게 보여줍니다.</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '22px 0 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -280,7 +282,7 @@ export default function MarketingLandingPage() {
         {/* 03 키워드 확장 */}
         <div style={{ ...featRow, borderTop: '1px solid var(--line)' }}>
           <div>
-            <div style={eyebrow}>POINT 03 — 키워드 확장</div>
+            <div style={eyebrow}>키워드 확장</div>
             <h3 style={h3}>팔리는 키워드를<br /><span className="grad">대신 찾아드립니다.</span></h3>
             <p style={lead}>상품과 맞닿은 고매출 연관 키워드를 검색량·경쟁도와 함께 자동 발굴합니다. 트렌드를 읽어 지금 떠오르는 키워드를 한발 먼저 잡으세요.</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '22px 0 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -311,7 +313,7 @@ export default function MarketingLandingPage() {
         <div className="ua-tint" style={{ margin: '46px 0', borderRadius: 20, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(360px,100%),1fr))', gap: 52, alignItems: 'center', padding: '50px 44px' }}>
             <div>
-              <div style={eyebrow}>POINT 04 — 통합 실적</div>
+              <div style={eyebrow}>통합 실적</div>
               <h3 style={h3}>광고비부터 매출까지,<br /><span className="grad">하나의 퍼널로.</span></h3>
               <p style={lead}>광고비 → 클릭 → 주문 → 매출(ROAS)을 한 화면에서. 기간을 비교하고 캠페인별 기여를 분석해, 어디에 더 투자할지 한눈에 판단합니다.</p>
             </div>
@@ -338,7 +340,7 @@ export default function MarketingLandingPage() {
         {/* 05 AI 마케터 */}
         <div style={featRow}>
           <div>
-            <div style={eyebrow}>POINT 05 — AI 마케터</div>
+            <div style={eyebrow}>AI 마케터</div>
             <h3 style={h3}>데이터를 읽고,<br /><span className="grad">다음 액션을 제안합니다.</span></h3>
             <p style={lead}>AI가 실적을 분석해 "이 키워드는 입찰을 올리세요" 같은 구체적 액션을 제안합니다. 매주 자동 리포트로 한 주를 정리해 드리고, 연동 전에도 읽기 진단부터 시작할 수 있습니다.</p>
           </div>
@@ -374,7 +376,7 @@ export default function MarketingLandingPage() {
           </div>
           <div style={{ order: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={eyebrow}>POINT 06 — 발주 수집</div>
+              <div style={eyebrow}>발주 수집</div>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#9A6700', background: '#FCF3E1', padding: '3px 9px', borderRadius: 999 }}>준비 중</span>
             </div>
             <h3 style={h3}>여러 스토어 주문을,<br /><span className="grad">한 곳에서 처리.</span></h3>
@@ -386,7 +388,7 @@ export default function MarketingLandingPage() {
       {/* ── PROOF — 가공 후기 대신 실사용(도그푸딩) 사실만 ── */}
       <section id="proof" style={{ borderTop: '1px solid var(--line)', background: 'var(--panel2)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 28px' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>BUILT & USED IN-HOUSE</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>직접 만들고, 직접 씁니다</div>
           <h2 style={{ fontSize: 'clamp(26px,3.2vw,36px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>우리가 첫 번째 고객입니다</h2>
           <p style={{ fontSize: 15, color: 'var(--ink2)', margin: '12px 0 0', maxWidth: 640, lineHeight: 1.6 }}>유어애즈는 지역 커머스 유어딜(urdeal.kr)을 운영하는 유어팀이 자기 사업에 쓰려고 만든 도구입니다. 팔기 전에 우리가 먼저 매일 검증합니다.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))', gap: 20, marginTop: 36 }}>
@@ -407,7 +409,7 @@ export default function MarketingLandingPage() {
 
       {/* ── PRICING — 정직한 베타 구조(구매 불가능한 가상 요금 카드 금지) ── */}
       <section id="pricing" style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 28px' }}>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>PRICING</div><h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>지금은 베타 — 도구는 무료입니다</h2><p style={{ fontSize: 16, color: 'var(--ink2)', margin: '14px 0 0' }}>승인제로 운영합니다. 카드 등록 없이 전 기능을 쓰고, 정식 출시 시 베타 참여 계정에 우선 혜택을 드립니다.</p></div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>요금</div><h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>지금은 베타 — 도구는 무료입니다</h2><p style={{ fontSize: 16, color: 'var(--ink2)', margin: '14px 0 0' }}>승인제로 운영합니다. 카드 등록 없이 전 기능을 쓰고, 정식 출시 시 베타 참여 계정에 우선 혜택을 드립니다.</p></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 20, marginTop: 44, alignItems: 'start' }}>
           {/* 베타(도구) */}
           <div style={{ border: '1.5px solid #3B6EF5', borderRadius: 16, padding: 30, background: 'var(--panel)', position: 'relative', boxShadow: '0 24px 60px -30px rgba(59,110,245,.55)' }}>
@@ -450,7 +452,7 @@ export default function MarketingLandingPage() {
       {/* ── FAQ ── */}
       <section id="faq" style={{ borderTop: '1px solid var(--line)', background: 'var(--panel2)' }}>
         <div style={{ maxWidth: 820, margin: '0 auto', padding: '80px 28px' }}>
-          <div style={{ textAlign: 'center', marginBottom: 40 }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>FAQ</div><h2 style={{ fontSize: 'clamp(26px,3.2vw,34px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>자주 묻는 질문</h2></div>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>자주 묻는 질문</div><h2 style={{ fontSize: 'clamp(26px,3.2vw,34px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>자주 묻는 질문</h2></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
               { open: true, q: '네이버 약관에 위배되지 않나요?', a: 'UR Ads는 네이버가 공식 제공하는 검색광고 API를 통해 동작합니다. 화면을 긁어오는 크롤링 방식이 아니므로 안심하고 사용하실 수 있습니다. 순위는 공식 API 기반 추정치로 제공됩니다.' },
@@ -471,8 +473,7 @@ export default function MarketingLandingPage() {
       {/* ── CTA (dark) ── */}
       <section style={{ maxWidth: 1200, margin: '0 auto', padding: '90px 28px' }}>
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, background: 'radial-gradient(90% 140% at 50% -20%,#1c2a78 0%,#0e1430 48%,#0a0e1f 80%)', padding: '70px 48px', textAlign: 'center' }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(1px 1px at 25% 40%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#cdd6ff,transparent),radial-gradient(1px 1px at 50% 25%,#fff,transparent)', opacity: .4, pointerEvents: 'none' }} />
-          <h2 style={{ position: 'relative', fontSize: 'clamp(30px,4vw,46px)', lineHeight: 1.14, fontWeight: 800, letterSpacing: '-.04em', margin: 0, color: '#fff' }}>광고비 낭비를 멈추는 가장<br /><span className="grad">빠른 시작.</span></h2>
+                    <h2 style={{ position: 'relative', fontSize: 'clamp(30px,4vw,46px)', lineHeight: 1.14, fontWeight: 800, letterSpacing: '-.04em', margin: 0, color: '#fff' }}>광고비 낭비를 멈추는 가장<br /><span className="grad">빠른 시작.</span></h2>
           <p style={{ position: 'relative', fontSize: 17, color: '#AEB7D0', margin: '18px auto 0', maxWidth: 460 }}>목표 순위만 정하세요. 나머지는 UR Ads가 자동으로. 베타 기간 무료, 카드 등록 없이 시작합니다.</p>
           <div style={{ position: 'relative', display: 'flex', gap: 13, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
             <a href={loggedIn ? APP : `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: '#191919', background: '#FEE500', padding: '15px 28px', borderRadius: 10 }}>

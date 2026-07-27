@@ -48,8 +48,9 @@ export default function KeywordToolsSection() {
       ])
       if (t.status === 'fulfilled' && t.value.data?.success) setKwTrend(t.value.data.results || [])
       if (s.status === 'fulfilled' && s.value.data?.success) setKwShop(s.value.data.data || null)
-      // 연관키워드: 검색광고 키 설정 시만(503 이면 섹션 숨김).
+      // 연관키워드: 검색광고 키 설정 시만 — 미설정은 200 { unavailable } (구 503 도 하위호환 처리).
       if (rel.status === 'fulfilled' && rel.value.data?.success) { setKwRelated(rel.value.data.results || []); setRelatedOff(false) }
+      else if (rel.status === 'fulfilled' && rel.value.data?.unavailable) setRelatedOff(true)
       else if (rel.status === 'rejected' && (rel.reason as { response?: { status?: number } })?.response?.status === 503) setRelatedOff(true)
       if (auto.status === 'fulfilled' && auto.value.data?.success) setKwAuto(auto.value.data.suggestions || [])
       if (rep.status === 'fulfilled' && rep.value.data?.success) setKwRep(rep.value.data.data || null)

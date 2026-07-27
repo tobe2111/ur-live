@@ -78,6 +78,8 @@ adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, wi
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  // env 코드 미설정 = 코드 입력 경로 자체가 닫힘(어떤 코드도 실패) → 승인제 안내로 명확화(무한 재시도 방지).
+  if (!adsAccessCode(c.env)) return c.json({ success: false, error: '지금은 승인제로만 운영됩니다 — 아래 "입장 요청하기"를 눌러주세요. 승인되면 자동 입장됩니다.' }, 400)
   const r = await unlockAdsAccount(c.env.DB, id, String(body.code || ''), adsAccessCode(c.env))
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, unlocked: true })

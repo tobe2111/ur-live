@@ -10,9 +10,10 @@ import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
 .ua-auth{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 100% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
+  font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
 .ua-auth a{text-decoration:none;}
 .ua-auth-card{width:100%;max-width:400px;background:#FFFFFF;border:1px solid #ECEDF1;border-radius:20px;
   padding:34px 28px;box-shadow:0 20px 54px -26px rgba(20,30,60,.28);}
@@ -21,7 +22,7 @@ const SCOPED_CSS = `
 .ua-auth-input:focus{border-color:#3B6EF5;} .ua-auth-input::placeholder{color:#9AA3B5;}
 .ua-auth-btn{width:100%;height:48px;border-radius:13px;background:#3B6EF5;color:#fff;font-size:15px;font-weight:800;}
 .ua-auth-btn:disabled{opacity:.55;}
-.ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-auth-mono{font-size:11px;letter-spacing:.18em;color:#8A93A3;}
 `
 
 export default function MarketingForgotPage() {

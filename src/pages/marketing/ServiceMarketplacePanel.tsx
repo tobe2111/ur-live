@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from './PanelError'
+import { readServicesCache, warmServices } from './services-warm'
 const AdsTossPayModal = lazy(() => import('./AdsTossPayModal')) // 💳 열 때만 SDK 청크 로드
 
 /**
@@ -28,7 +29,8 @@ const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '
 const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400' }
 
 export default function ServiceMarketplacePanel() {
-  const [services, setServices] = useState<Service[]>([])
+  // ⚡ 세션 캐시 즉시 페인트(services-warm) — 탭 열자마자 카드 표시, 신선분은 load()가 교체.
+  const [services, setServices] = useState<Service[]>(() => (readServicesCache() as Service[] | null) || [])
   const [orders, setOrders] = useState<Order[]>([])
   const [bankInfo, setBankInfo] = useState<string | null>(null)
   const [tossEnabled, setTossEnabled] = useState(false) // 💳 서버 게이트(ADS_TOSS_ENABLED) — OFF 면 버튼 미노출
@@ -58,13 +60,14 @@ export default function ServiceMarketplacePanel() {
   const load = useCallback(async () => {
     setErr(false)
     try {
+      // ⚡ 서비스 목록은 워밍 in-flight 이어받기(대시보드 진입 시 선요청) — 탭 클릭 시 왕복 0에 수렴.
       const [s, o, pc] = await Promise.all([
-        api.get('/api/ads/services', { headers: authHeader() }),
+        warmServices(),
         api.get('/api/ads/services/order-history', { headers: authHeader() }),
         api.get('/api/ads-pay/config', { headers: authHeader() }).catch(() => null),
       ])
       if (pc?.data?.success) setTossEnabled(!!pc.data.enabled)
-      if (s.data?.success) setServices(s.data.services || []); else setErr(true)
+      if (s) setServices(s as Service[]); else if (!readServicesCache()) setErr(true)
       if (o.data?.success) { setOrders(o.data.orders || []); setBankInfo(o.data.bank_info || null) }
     } catch { setErr(true) }
   }, [])

@@ -23,9 +23,12 @@ const authHeader = () => {
  */
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
+.uad{font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif}
 .uad{--bg:#F4F5F7;--surface:#FFFFFF;--panel:#FFFFFF;--ink:#0B0E14;--ink2:#565E6C;--ink3:#8A93A3;--border:#ECEDF1;--border2:#E2E6F2;--brand:#3B6EF5;--brand-soft:#EAF0FF;--brand-ink:#2A56D4;--sidebar:#FFFFFF;--topbar:rgba(255,255,255,.85);--scroll:#C7CDD9}
 .uad.dark{--bg:#06080F;--surface:#0A0E1A;--panel:#0E1322;--ink:#F5F7FA;--ink2:#9AA6BE;--ink3:#6E7A95;--border:#1B2233;--border2:#26304A;--brand:#3B6EF5;--brand-soft:#16224A;--brand-ink:#9BB0FF;--sidebar:#090C16;--topbar:rgba(6,8,15,.72);--scroll:#2A3450}
-.uad .mono{font-family:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace}
+/* 2026-07-27 폰트 통일: mono(IBM Plex — 미로드라 임의 시스템 mono 렌더)도 Pretendard 상속 */
+.uad .mono{font-family:inherit;font-weight:700}
 .uad .uad-nav{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink2);cursor:pointer;transition:background .12s,color .12s;background:transparent;border:none;text-align:left;width:100%}
 .uad .uad-nav:hover{background:var(--surface);color:var(--ink)}
 .uad.dark .uad-nav:hover{background:var(--surface)}
@@ -147,7 +150,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         )}
 
         <nav style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto' }}>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>MENU</div>
+          <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.1em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>메뉴</div>
           {showNav ? DASH_TABS.map((n) => (
             <button key={n.id} type="button" onClick={() => go(n.id)} title={n.desc} className={`uad-nav${active === n.id ? ' active' : ''}`}>
               <NavIcon>{n.icon}</NavIcon>{n.label}
