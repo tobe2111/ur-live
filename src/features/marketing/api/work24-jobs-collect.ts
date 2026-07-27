@@ -40,7 +40,8 @@ function parseJobs(text: string): { items: Raw[]; msg?: string } {
     }
     if (items.length) break
   }
-  const msg = !items.length ? (t.match(/<message>([^<]*)<\/message>/)?.[1] || t.match(/<returnAuthMsg>([^<]*)<\/returnAuthMsg>/)?.[1] || undefined) : undefined
+  // <GO24><error>…</error> 형식도 회수(실측 2026-07-27 — "개인회원은 사용할 수 없는 OPEN-API입니다").
+  const msg = !items.length ? (t.match(/<message>([^<]*)<\/message>/)?.[1] || t.match(/<returnAuthMsg>([^<]*)<\/returnAuthMsg>/)?.[1] || t.match(/<error>([^<]*)<\/error>/)?.[1] || undefined) : undefined
   return { items, msg }
 }
 
