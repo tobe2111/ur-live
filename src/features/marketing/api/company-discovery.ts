@@ -10,7 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개된 *비즈니스* 연락처만. 자동 발송 경로 부존재(✉는 mailto 초안만).
  */
 import type { Env } from '@/worker/types/env'
-import { classifyLead } from './company-classify'
+import { classifyLead, REGISTRY_CATEGORY_SOURCES } from './company-classify'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 소상공인을 반복·신뢰로 만나는 업체) ───────────── */
 //   category(접점 성격) × subcategory(구체 업종). UI 가 이 맵으로 셀렉트를 구성.
@@ -57,7 +57,7 @@ export interface CompanyLeadRow {
   website: string | null; email: string | null; phone: string | null; address: string | null
   description: string | null; business_no: string | null; source: string; source_keyword: string | null
   status: string; active: number; contact_source: string | null
-  lead_type: string | null; classify_confidence: string | null
+  lead_type: string | null; classify_confidence: string | null; nps_members: number | null
   memo: string | null; contact_channel: string | null
   contacted_at: string | null; follow_up_at: string | null; last_verified_at: string | null; collected_at: string
 }
@@ -66,7 +66,7 @@ export interface CompanyLeadRow {
 export const hasContact = (l: Pick<CompanyLead, 'phone' | 'email'>): boolean =>
   !!(l.phone && String(l.phone).trim()) || !!(l.email && String(l.email).trim())
 
-const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, contact_source, lead_type, classify_confidence, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
+const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, contact_source, lead_type, classify_confidence, nps_members, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
 
 /* ── 스키마 (런타임 보장 — ur-ads 는 CI 마이그레이션 미작동, repair-schema 패턴) ─────── */
 const _schemaDone = new WeakSet<object>()
@@ -104,6 +104,9 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   // 분류 3축 분리(2026-07-27) — lead_type=접촉 가치(partner/store/org/unknown), classify_confidence=분류 근거(evidence/keyword/none).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN lead_type TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classify_confidence TEXT').run().catch(() => null)
+  // 👥 국민연금 규모 검증(2026-07-27) — nps_members=가입자수(직원 규모), nps_checked_at=조회 시각(미매칭도 기록해 재조회 방지).
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_members INTEGER').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
@@ -138,7 +141,8 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   //   ⚠️ **미큐레이션 행만**(status='new' AND memo IS NULL) 삭제 — 대표가 손댄 행은 절대 안 건드림.
   const j1 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_junk_v1'").first<{ value: string }>().catch(() => null)
   if (!j1?.value) {
-    const junkLike = ['%모집%', '%공고%', '%지원사업%', '%수행기관%', '%보도자료%', '%공지사항%', '%선정결과%', '%선정 결과%', '%합니다%', '%습니다%']
+    const junkLike = ['%모집%', '%공고%', '%지원사업%', '%수행기관%', '%보도자료%', '%공지사항%', '%선정결과%', '%선정 결과%', '%합니다%', '%습니다%',
+      '%"%', '%“%', '%”%', "%'%", '%‘%', '%’%'] // 기사 헤드라인(인용부호) — 상호에 따옴표 없음(2026-07-27 2차 신고)
     const nameOr = junkLike.map(() => 'company_name LIKE ?').join(' OR ')
     await DB.prepare(`DELETE FROM ad_company_leads WHERE status = 'new' AND memo IS NULL AND (${nameOr})`)
       .bind(...junkLike).run().catch(() => null)
@@ -169,14 +173,22 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
   const tierOf = (v: unknown): number | null => { const t = Math.round(Number(v)); return Number.isFinite(t) && t >= COMPANY_TIER_MIN && t <= COMPANY_TIER_MAX ? t : null }
   // 🧭 저장 전 판별·분류(SSOT company-classify) — 모든 소스(네이버/webkr/상가정보/통신판매/나라장터…)가 이 관문을 통과.
-  //   ① 업체가 아닌 것(공고·모집글·정부 도메인)은 여기서 **탈락**(저장 안 함) → 오수집 구조적 차단.
-  //   ② 분류는 검색 키워드가 아니라 **리드 자신의 텍스트**를 근거로(근거 없으면 confidence='keyword' 로 표시).
+  //   ① 업체가 아닌 것(공고·모집글·기사제목·정부 도메인)은 여기서 **탈락**(저장 안 함) → 오수집 구조적 차단.
+  //   ② 카테고리 권위 위계(2026-07-27 대표 "카테고리 분류 정확한가"): **정부 등록부 공식 업종(registry)
+  //      > 리드 텍스트 근거(evidence) > 검색 키워드(keyword)**. 상가정보 업종코드·통신판매 신고업태·공정위
+  //      가맹·나라장터 소스의 category 는 공식 업종이라 정규식이 못 덮어씀 — 발굴 소스(local/webkr)만 재분류.
   const rows = leads
     .map(l => ({ ...l, company_name: (l.company_name || '').trim() }))
     .filter(l => l.company_name.length >= 2)
     .map(l => {
       const c = classifyLead(l)
-      return c.ok ? { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence } : null
+      if (!c.ok) return null
+      const registry = REGISTRY_CATEGORY_SOURCES.has(String(l.source || '')) && !!l.category
+      if (registry) {
+        // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
+        return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
+      }
+      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return 0
@@ -349,8 +361,13 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
       else { stmts.push(DB.prepare('DELETE FROM ad_company_leads WHERE id = ?').bind(r.id)); removed++ }
       continue
     }
-    // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
-    if (c.confidence === 'evidence') {
+    // 카테고리 권위 위계: registry(공식 업종) 소스는 category 불가침 — lead_type/confidence 만 스탬프.
+    const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
+    if (registry) {
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry' WHERE id = ?")
+        .bind(c.lead_type === 'unknown' ? 'partner' : c.lead_type, r.id))
+    } else if (c.confidence === 'evidence') {
+      // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ? WHERE id = ?')
         .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, r.id))
     } else {

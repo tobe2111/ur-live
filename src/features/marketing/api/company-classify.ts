@@ -33,7 +33,13 @@ const SENTENCE_WORD = /(합니다|습니다|하세요|드립니다|바랍니다|
 const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|공단|공사|진흥원|진흥공단|재단|협회|연합회|조합|상인회|위원회|의회|교육청|보건소|센터장|정부|부처|청사)/
 
 export type LeadType = 'partner' | 'store' | 'org' | 'unknown'
-export type ClassifyConfidence = 'evidence' | 'keyword' | 'none'
+/** registry = 정부 등록부의 공식 업종(최고 신뢰) · evidence = 리드 텍스트 근거 · keyword = 검색어 추정 · none */
+export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
+
+/** 카테고리 권위 소스 — 이 소스들의 category 는 **정부 등록부의 공식 업종**(상가정보 업종코드·통신판매
+ *  신고업태·공정위 가맹·나라장터 업종)이라 텍스트 정규식(BIZ_RULES)이 덮어쓰면 안 된다(권위 역전 금지).
+ *  판별(공고/정부페이지 차단)과 lead_type 부여는 이 소스들에도 그대로 적용. */
+export const REGISTRY_CATEGORY_SOURCES = new Set(['storeinfo', 'commerce', 'franchise', 'nara', 'registry'])
 
 export interface ClassifyInput {
   company_name?: string | null
@@ -115,6 +121,12 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   // ② 공고/모집/기사 제목 → 업체명이 아님. ("…수행기관 모집" 사례)
   if (NOTICE_WORD.test(name)) return reject('NOTICE_TITLE')
   if (SENTENCE_WORD.test(name)) return reject('SENTENCE_TITLE')
+  // ②-b 뉴스 헤드라인 문형(2026-07-27 대표 신고 — "'이대 상권 살리기'에 진심인 서대문구…" 기사제목 수집).
+  //   상호에는 없는 신호들: 인용부호("" '' ") · 「쉼표+공백」 제목체 · 어절 5개+ 장문 · 서술 종결(…다/높여).
+  if (/["“”‘’']/.test(name)) return reject('HEADLINE_TITLE')
+  if (/,\s/.test(name) && name.length >= 12) return reject('HEADLINE_TITLE')
+  if (name.length >= 18 && name.split(/\s+/).length >= 5) return reject('HEADLINE_TITLE')
+  if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(name)) return reject('HEADLINE_TITLE')
   // 문장형: 아주 긴 제목 + 쉼표/연도 — 상호는 이런 모양이 아니다.
   if (name.length > 34 && /[,·]/.test(name) && /\d{4}년|\d{4}\s*년도/.test(name)) return reject('SENTENCE_TITLE')
   if (!/[가-힣A-Za-z0-9]/.test(name)) return reject('NAME_NOT_TEXT')

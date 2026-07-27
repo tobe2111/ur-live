@@ -94,6 +94,9 @@ app.get('/stats', async (c) => {
   // 🏛️ 국세청 폐업 스윕 상태(ads_ntsstatus_stats) — 활용신청 검증(note 에 오류 노출).
   const ntsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_ntsstatus_stats'").first<{ value: string }>().catch(() => null)
   let ntsRun: unknown = null; try { ntsRun = ntsRow?.value ? JSON.parse(ntsRow.value) : null } catch { ntsRun = null }
+  // 👥 국민연금 규모 검증 상태(ads_nps_stats) — diag.sample 로 실응답 필드 검증(추측 대신 실제 확인).
+  const npsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_nps_stats'").first<{ value: string }>().catch(() => null)
+  let npsRun: unknown = null; try { npsRun = npsRow?.value ? JSON.parse(npsRow.value) : null } catch { npsRun = null }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
@@ -101,6 +104,7 @@ app.get('/stats', async (c) => {
     commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
     franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
     nts: { run: ntsRun },
+    nps: { gate: (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true', run: npsRun },
   })
 })
 
@@ -196,6 +200,7 @@ function delegateCollect(path: string) {
 app.post('/collect-storeinfo', delegateCollect('collect-storeinfo')) // 소스① 상가정보
 app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신판매사업자(전화+이메일)
 app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
+app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
 
 // POST /api/admin/partner-pool — 수동 업체 추가(대표 방배 리드 손입력). 멱등 저장(website/회사명|지역 키).
 app.post('/', async (c) => {

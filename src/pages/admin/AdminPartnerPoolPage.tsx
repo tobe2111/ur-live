@@ -21,7 +21,7 @@ interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
   tier: number | null; region: string | null; website: string | null; email: string | null; phone: string | null
   address: string | null; status: string; active: number; contact_source: string | null; memo: string | null; contact_channel: string | null
-  lead_type: string | null; classify_confidence: string | null
+  lead_type: string | null; classify_confidence: string | null; nps_members: number | null
   follow_up_at: string | null; source: string; source_keyword: string | null; collected_at: string
 }
 const SRC_LABEL: Record<string, string> = { govreg: '정부등록', kakao: '카카오', homepage: '홈페이지', naver: '네이버', commerce: '통신판매', franchise: '공정위', registry: '명부' }
@@ -41,6 +41,7 @@ interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; s
 interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
 interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
 interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -69,6 +70,7 @@ export default function AdminPartnerPoolPage() {
   const [franchise, setFranchise] = useState<Franchise | null>(null)
   const [nts, setNts] = useState<NtsSweep | null>(null)
   const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
+  const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -92,7 +94,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -217,8 +219,10 @@ export default function AdminPartnerPoolPage() {
   const subcats = meta && add.category ? (meta.categories[add.category] || []) : []
   const statCard = (key: Quick, label: string, val: number, hint?: string) => {
     const on = quick === key
+    // 카드 클릭 시 **검색어를 비움** — 카드 숫자는 전체 기준이라, 검색어가 남아 AND 로 걸리면
+    // "진행 중 1인데 목록 0" 처럼 보임(2026-07-27 대표 신고 2회). 카드 = 그 숫자 그대로 보여주기.
     return (
-      <button type="button" onClick={() => setQuick(on && key !== '' ? '' : key)}
+      <button type="button" onClick={() => { setQ(''); setQuick(on && key !== '' ? '' : key) }}
         className={`text-left rounded-xl border p-4 transition ${on ? 'border-gray-900 bg-gray-900 text-white shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}`}
         title={`클릭하면 이 조건으로 목록을 거릅니다${hint ? ` (${hint})` : ''}`}>
         <div className={`text-xs ${on ? 'text-gray-300' : 'text-gray-500'}`}>{label}</div>
@@ -261,11 +265,12 @@ export default function AdminPartnerPoolPage() {
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
           ]} />
-          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'reclassify', 'sweep-nts', 'sweep-mx'].includes(busy)} items={[
+          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
             { label: '🧭 분류 정리', desc: '공고·정부페이지 제거 + 업종을 근거 기반으로 재분류', onClick: runReclassify },
             { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕', 2) },
             { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증', 0) },
+            { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회', 2) },
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
           <button onClick={() => downloadCsv('/api/admin/partner-pool/export?format=csv', `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="전체(보류 포함) 리드를 엑셀 호환 CSV 로 — 한글 깨짐 없음(BOM), 엑셀에서 바로 열림">⬇ CSV</button>
@@ -336,6 +341,15 @@ export default function AdminPartnerPoolPage() {
           </div>
         )}
 
+        {/* 👥 국민연금 규모 검증 상태 */}
+        {npsInfo?.run && (
+          <div className="mb-3 text-xs text-gray-500">
+            👥 규모 조회(국민연금) <span className={npsInfo.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{npsInfo.gate ? 'ON · 01시' : 'OFF'}</span>
+            <span> · 최근 {kstShort(npsInfo.run.last_run)} · 조회 {npsInfo.run.checked ?? 0} / 매칭 {npsInfo.run.matched ?? 0} (누적 {npsInfo.run.total_matched ?? 0})</span>
+            {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
+          </div>
+        )}
+
         {/* 명부 붙여넣기(레인 B·C) */}
         {showImport && (
           <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
@@ -397,6 +411,20 @@ export default function AdminPartnerPoolPage() {
           )}
         </div>
 
+        {/* 🏷️ 활성 필터 칩 — 카드+검색어가 **함께** 걸린 걸 안 보여줘서 "진행 중 1인데 목록 0" 혼란(2026-07-27 대표 신고).
+            지금 목록에 적용 중인 모든 조건을 칩으로 노출 + ×로 개별 해제 → 카드 수치와 목록이 왜 다른지 즉시 보임. */}
+        {(quick || fType || fCategory || fTier || fStatus || q.trim()) && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+            <span className="text-gray-400">적용 중:</span>
+            {quick && <FilterChip label={{ contact: '연락처 보유', email: '이메일 보유', held: '연락처 보류', pipeline: '진행 중', recent7: '최근 7일', review: '분류 확인 필요' }[quick] || quick} onClear={() => setQuick('')} />}
+            {fType && <FilterChip label={`유형: ${(meta?.leadTypes || []).find(t => t.k === fType)?.label || fType}`} onClear={() => setFType('')} />}
+            {fCategory && <FilterChip label={`업종: ${fCategory}`} onClear={() => setFCategory('')} />}
+            {fTier && <FilterChip label={`${fTier}순위`} onClear={() => setFTier('')} />}
+            {fStatus && <FilterChip label={`상태: ${STATUS_META[fStatus]?.label || fStatus}`} onClear={() => setFStatus('')} />}
+            {q.trim() && <FilterChip label={`검색: "${q.trim()}"`} onClear={() => setQ('')} />}
+          </div>
+        )}
+
         {/* 목록 */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -420,7 +448,12 @@ export default function AdminPartnerPoolPage() {
               {loading ? (
                 <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">불러오는 중…</td></tr>
               ) : leads.length === 0 ? (
-                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">조건에 맞는 업체가 없습니다.</td></tr>
+                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">
+                  조건에 맞는 업체가 없습니다.
+                  {(quick || fType || fCategory || fTier || fStatus || q.trim()) && (
+                    <span> 위 &lsquo;적용 중&rsquo; 칩의 조건이 <b>모두 동시에</b> 걸려 있습니다 — <button onClick={() => { setQuick(''); setFType(''); setFCategory(''); setFTier(''); setFStatus(''); setQ('') }} className="text-blue-600 underline">전체 해제</button></span>
+                  )}
+                </td></tr>
               ) : leads.map(l => (
                 <LeadRow key={l.id} lead={l} checked={selected.has(l.id)} onToggle={toggleOne} onPatch={patchLead} onRemove={removeLead} />
               ))}
@@ -440,6 +473,16 @@ export default function AdminPartnerPoolPage() {
         <div className="mt-1 text-xs text-gray-400">이 페이지 순위 분포 · <TierBreakdown leads={leads} /></div>
       </div>
     </AdminLayout>
+  )
+}
+
+/** 활성 필터 칩 — 목록에 지금 적용 중인 조건 1개(× 로 개별 해제). */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-900 text-white">
+      {label}
+      <button onClick={onClear} aria-label={`${label} 해제`} className="text-gray-300 hover:text-white">×</button>
+    </span>
   )
 }
 
@@ -499,8 +542,9 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
           {l.company_name}
         </div>
         <div className="text-xs text-gray-400">
-          <span className={`mr-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${type.cls}`} title={l.classify_confidence === 'evidence' ? '업체 정보에 근거한 분류' : '검색 키워드로 추정한 분류 — 확인 필요'}>{type.label}</span>
+          <span className={`mr-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${type.cls}`} title={l.classify_confidence === 'registry' ? '정부 등록부 공식 업종' : l.classify_confidence === 'evidence' ? '업체 정보에 근거한 분류' : '검색 키워드로 추정한 분류 — 확인 필요'}>{type.label}</span>
           {[l.category, l.subcategory].filter(Boolean).join(' · ') || '—'}
+          {l.nps_members != null && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-teal-50 text-teal-700 font-semibold" title="국민연금 가입자수(직원 규모) — 공개 가입내역 기반">👥 {l.nps_members}명</span>}
           {l.website && <> · <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600">홈</a></>}
         </div>
         {l.memo && <div className="text-xs text-gray-500 mt-0.5">📝 {l.memo}</div>}

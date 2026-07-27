@@ -160,6 +160,10 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     const host = u.hostname.replace(/^www\./, '')
     // 제3자/UGC + **정부·학교 도메인** 제외 — 구청 공고 페이지가 '대행사' 리드로 저장되던 오염원(2026-07-27 대표 신고).
     if (THIRD_PARTY_HOST.test(u.hostname) || NON_BUSINESS_HOST.test(u.hostname) || seen.has(host)) continue
+    // 📰 뉴스 기사 URL 제외(같은 날 2차 신고 — 매일일보 기사제목이 리드로) — 기사 CMS 경로 + 언론사성 호스트.
+    //   업체 자체 사이트의 홈/소개 페이지는 이 경로 패턴을 안 씀. 제목 문형 차단(classifyLead)과 2중 방어.
+    if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
+    if (/(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i.test(u.hostname)) continue
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
     const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
@@ -190,7 +194,8 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 100) }
+  // 기본 300(대표 "쿼터 최대한" — 네이버 무료 25K/day 대비 한참 여유), 상한 800(Workers 호출당 서브요청 1,000 한도 안전마진).
+  const budget: FetchBudget = { left: Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)) }
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
   const targets = (await DB.prepare("SELECT id, company_name, region, address, website, phone, email FROM ad_company_leads WHERE active = 0 OR email IS NULL OR email = '' ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), active ASC, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")

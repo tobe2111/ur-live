@@ -17,8 +17,9 @@ const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '')
 type RawH = Record<string, string>
 const fnv = (s: string): string => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 } return h.toString(16) }
 
-/** XML `<item>…</item>` 경량 파싱(Workers 에 DOMParser 없음) — `<tag>값</tag>` 쌍 추출. JSON 응답이면 그대로. */
-function parseItems(text: string): { items: RawH[]; msg?: string } {
+/** XML `<item>…</item>` 경량 파싱(Workers 에 DOMParser 없음) — `<tag>값</tag>` 쌍 추출. JSON 응답이면 그대로.
+ *  data.go.kr 표준 봉투 공용 — 국민연금(nps-workplace-enrich)도 재사용(export). */
+export function parseItems(text: string): { items: RawH[]; msg?: string } {
   const t = text.trim()
   if (t.startsWith('{')) {
     try {
