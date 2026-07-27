@@ -100,6 +100,16 @@ export default function AdminAdsServicesPage() {
                       <div className="text-[12px] text-gray-500 mt-0.5">{o.quantity}개 · {formatNumber(o.total_amount)}원 (단가 {formatNumber(o.unit_price)} · 할인 {o.discount_pct}% · 옵션 {formatNumber(o.options_total)}) · 계정 #{o.account_id} · {(o.created_at || '').slice(0, 16)}</div>
                       <div className="text-[12px] text-gray-600 mt-0.5">연락처: {o.contact_kakao ? `카톡 ${o.contact_kakao}` : ''}{o.contact_phone ? ` · ${o.contact_phone}` : ''}{o.target_url ? ` · ${o.target_url}` : ''}</div>
                       {o.memo && <div className="text-[12px] text-gray-500 mt-0.5">요청: {o.memo}</div>}
+                      {/* 🎯 매칭/아웃리치 주문 이행 도우미 — 메모의 [지역:][업종:] 를 파싱해 풀을 필터 프리필로 오픈 */}
+                      {(() => {
+                        const region = /\[지역:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        const cat = /\[업종:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        if (o.service_name.includes('인플루언서') && o.service_name.includes('매칭'))
+                          return <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}`} target="_blank" rel="noreferrer" className="inline-block mt-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 인플루언서 풀에서 이행 →</a>
+                        if (o.service_name.includes('아웃리치'))
+                          return <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="inline-block mt-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>
+                        return null
+                      })()}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <div className="flex items-center gap-1.5">

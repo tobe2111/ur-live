@@ -52,6 +52,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
+const POOL_CATEGORIES = ['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -67,7 +68,11 @@ export default function AdminInfluencerPoolPage() {
   const [hasContact, setHasContact] = useState(false)
   const [hasEmail, setHasEmail] = useState(false)
   const [hasInstagram, setHasInstagram] = useState(false)
-  const [category, setCategory] = useState('')
+  // 🎯 서비스몰 주문 이행 딥링크(?q=지역&category=업종) — 접수함 "풀에서 이행" 버튼이 프리필로 오픈.
+  const [category, setCategory] = useState(() => {
+    const raw = new URLSearchParams(window.location.search).get('category') || ''
+    return POOL_CATEGORIES.includes(raw) ? raw : (POOL_CATEGORIES.find(c => raw.includes(c)) || '')
+  })
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
@@ -75,7 +80,7 @@ export default function AdminInfluencerPoolPage() {
   const [hideNoise, setHideNoise] = useState(false)
   const [brandOnly, setBrandOnly] = useState(false) // 🏢 브랜드 공식 채널 태깅 검수용
   const [inboundOnly, setInboundOnly] = useState(false)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '')
   const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -407,7 +412,7 @@ export default function AdminInfluencerPoolPage() {
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
             <option value="">전체 카테고리</option>
-            {['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동'].map(c => <option key={c} value={c}>{c}</option>)}
+            {POOL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select value={tier} onChange={e => setTier(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
             <option value="">전체 규모</option>
