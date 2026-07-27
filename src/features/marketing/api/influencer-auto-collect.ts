@@ -343,10 +343,9 @@ export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, p
 }
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
-// ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): YT 일일 쿼터 10,000 units 에서 **search.list 1회 = 100 units**
-//   → 검색 100회 = 10,000 = 전부 소진 → 성과측정(channels/playlistItems/videos.list, 각 1 unit)이 하루 종일 403
-//   → 채널 대부분이 "평균 0회/미측정"으로 남음. 검색 90회(9,000)로 낮춰 **측정용 ~1,000 units/day 를 구조적으로 예약**
-//   (측정 채널당 ~1.3 units — 하루 ~750채널 측정 여력). env ADS_YT_SEARCH_BUDGET 로 조정 가능(100 으로 되돌리면 측정 굶음).
+// ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
+//   → 성과측정(각 1 unit)이 하루 종일 403. 검색 90회로 낮춰 측정용 ~1,000 units/day 예약(~750채널/일 측정 여력).
+//   env ADS_YT_SEARCH_BUDGET 로 조정(100 으로 되돌리면 측정 굶음 — ads-yt-scheduling.test 불변식이 차단).
 export const YT_SEARCH_BUDGET_DEFAULT = 90
 export function ytQuotaDayKey(nowMs: number): string {
   return new Date(nowMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) // YYYY-MM-DD
@@ -566,9 +565,8 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
   let bioEnriched = 0
   try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
-  // 📈 성과 지표 백필 — ⚠️ YT units 는 검색과 **같은 쿼터**(검색 1회=100 units): 검색 예산을 90으로 낮춰 확보한
-  //   ~1,000 units/day 예약분을 여기서 사용. progress(신규 미측정) + refresh(평균0·무메일·미분류 우선 순환 —
-  //   과거 예산소진기에 0 으로 각인된 백로그를 시간당 20씩 자동 치유, 수동 리셋 불필요).
+  // 📈 성과 지표 백필 — YT units 는 검색과 같은 쿼터: 검색 90회로 확보한 ~1,000 units/day 예약분 사용.
+  //   progress(신규) + refresh(평균0·무메일·미분류 우선 순환 — 0 각인 백로그 시간당 20 자동 치유).
   let perfEnriched = 0
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
   try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') } catch { /* fail-soft */ }
