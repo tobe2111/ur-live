@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 import { resolveCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity } from './influencer-performance'
 
@@ -427,8 +427,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const naverSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   const hasNaver = !!(naverId && naverSecret)
-  const kakaoKey = env.KAKAO_REST_API_KEY
-  const hasTistory = !!kakaoKey
+  // 🗑️ 티스토리 트랙 제거(2026-07-27 대표 "티스토리는 안할거야") — 기수집 리드는 보존, 신규 수집만 중단.
   // 🎥 YT 검색 각도 교대 — (검색타입 × 정렬)을 매 실행 순환. 같은 키워드도 각도가 다르면 다른 채널이 나옴
   //   → top-N 재탕이 아니라 커버리지가 계속 확장(수렴). date=신생/소형, viewCount=인기, relevance=관련.
   const YT_ANGLES: { searchType: 'channel' | 'video'; order: 'relevance' | 'date' | 'viewCount' }[] = [
@@ -441,7 +440,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
-  const tistorySort: 'accuracy' | 'recency' = ((prev?.total_runs || 0) % 2 === 0) ? 'accuracy' : 'recency'
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
   //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
   //   기본 300 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
@@ -464,11 +462,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const diag = {
     yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
     naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
-    tistory: { configured: hasTistory, found: 0, saved: 0, error: undefined as string | undefined }, // 🔎 2026-07-23: 카카오 키 소실이 무음이던 것 — 별도 트랙
   }
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
-  if (!hasTistory) diag.tistory.error = 'NOT_CONFIGURED: ur-ads 워커에 KAKAO_REST_API_KEY 미설정'
 
   // YT 검색 페이지 수(키워드당 깊이). 쿼터는 quotaHit 가드가 관리.
   // 기본 1페이지(1~50위) — YT 일일 쿼터(기본 10k) 안에서 더 많은 키워드·지역 커버(시드 소싱은 깊이<폭).
@@ -519,14 +515,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
-    }
-    // 티스토리(카카오 Daum 블로그 검색 — 무료 3만/일, 새 소스). 네이버 블로그와 무관한 별도 풀.
-    if (hasTistory) {
-      try {
-        const r = await discoverTistoryBloggers(kakaoKey, k.keyword, { size: 50, budget, sort: tistorySort })
-        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.found += r.leads.length; diag.tistory.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
-        else if (!r.ok && !diag.tistory.error) diag.tistory.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
-      } catch (e) { if (!diag.tistory.error) diag.tistory.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     }
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
