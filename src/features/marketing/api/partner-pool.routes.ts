@@ -21,6 +21,23 @@ import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
 
+/* 🔔 작업 완료 알림벨 공용(2026-07-27) — 백그라운드(waitUntil) 작업은 페이지를 떠나도 계속되지만
+ *   완료 토스트는 페이지와 함께 사라진다 → 결과를 알림벨에 남겨 어디서든/나중에 확인 가능하게. */
+const JOB_NUM_LABEL: Record<string, string> = {
+  found: '발견', saved: '저장', matched: '적합', enriched: '연락처 확보', processed: '처리', emailed: '이메일',
+  checked: '검증', cleared: '정리', crawls: '크롤', removed: '제거', updated: '갱신', scanned: '검사',
+}
+async function notifyJobDone(DB: D1Database, label: string, stats: Record<string, unknown> | null): Promise<void> {
+  try {
+    const nums = stats ? Object.entries(stats).filter(([k, v]) => typeof v === 'number' && JOB_NUM_LABEL[k])
+      .map(([k, v]) => `${JOB_NUM_LABEL[k]} ${(v as number).toLocaleString()}`).join(' · ') : ''
+    const err = (stats?.diag as { error?: string } | undefined)?.error
+    const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+    await createDashboardNotification(DB, 'admin', null, 'partner_pool_job', `${label} 완료`,
+      err ? `⚠️ ${err}` : (nums || '결과 없음'), '/admin/partner-pool')
+  } catch { /* 알림 실패가 작업 자체를 막지 않음 */ }
+}
+
 // GET /api/admin/partner-pool?category=&subcategory=&region=&tier=&status=&hasContact=1&hasEmail=1&q=&limit=
 app.get('/', async (c) => {
   const tierRaw = c.req.query('tier')
@@ -227,9 +244,14 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll] = await Promise.all([
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, lkAll, lkEnrich, lkReclassify] = await Promise.all([
     readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'),
+    readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'),
   ])
+  // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
+  //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
+  const fresh = (v: unknown): boolean => { const at = (v as { at?: string } | null)?.at; return !!at && Date.now() - Date.parse(at) < 240_000 }
+  const running = { runAll: fresh(lkAll), enrich: fresh(lkEnrich), reclassify: fresh(lkReclassify) }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
@@ -242,7 +264,7 @@ app.get('/stats', async (c) => {
     work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
-    enrichLast, enrichBurst, reclassifyBurst, runAll,
+    enrichLast, enrichBurst, reclassifyBurst, runAll, running,
   })
 })
 
@@ -267,7 +289,11 @@ app.get('/contact-list', async (c) => {
 app.post('/collect-nara', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '📑 조달업체 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
@@ -277,7 +303,11 @@ app.post('/collect-nara', async (c) => {
 app.post('/sweep-mx', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '📮 이메일 재검증', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
@@ -287,7 +317,11 @@ app.post('/sweep-mx', async (c) => {
 app.post('/sweep-nts', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '🏛 폐업 정리', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
@@ -308,7 +342,11 @@ app.post('/keywords', async (c) => {
 app.post('/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '🔍 레인 A 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
@@ -318,28 +356,40 @@ app.post('/collect', async (c) => {
 app.post('/enrich', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '📧 연락처 보강', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 // 소스별 수동 수집 위임(ur-ads). 게이트 무관(수동=의도). storeinfo/commerce/franchise.
-function delegateCollect(path: string) {
+function delegateCollect(path: string, label: string) {
   return async (c: import('hono').Context<{ Bindings: Env }>) => {
     const ads = c.env.ADS
     if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-    const kick = async () => { try { await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' })) } catch { /* fail-soft */ } }
+    // 🔔 완료 알림벨(2026-07-27 대표 "실행 중 다른 페이지로 이동하면?") — 서버 작업은 waitUntil 로 계속되지만
+    //   페이지를 떠나면 완료 토스트를 못 봄 → 결과를 알림벨에 남겨 돌아와서도 확인 가능하게(풀가동 3종과 동일).
+    const kick = async () => {
+      try {
+        const r = await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' }))
+        const body = (await r.json().catch(() => null)) as { ok?: boolean; stats?: Record<string, unknown> } | null
+        await notifyJobDone(c.env.DB, label, body?.stats ?? null)
+      } catch { /* fail-soft */ }
+    }
     if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
     try { await kick(); return c.json({ success: true, started: false }) }
     catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
   }
 }
-app.post('/collect-storeinfo', delegateCollect('collect-storeinfo')) // 소스① 상가정보
-app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신판매사업자(전화+이메일)
-app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
-app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
-app.post('/collect-work24', delegateCollect('collect-work24'))       // 💼 고용24 채용기업(성장 신호)
+app.post('/collect-storeinfo', delegateCollect('collect-storeinfo', '🏪 상가정보 수집')) // 소스① 상가정보
+app.post('/collect-commerce', delegateCollect('collect-commerce', '🛒 통신판매 수집'))   // 통신판매사업자(전화+이메일)
+app.post('/collect-franchise', delegateCollect('collect-franchise', '🏢 프랜차이즈 수집')) // 공정위 가맹정보(프랜차이즈 본사)
+app.post('/collect-nps', delegateCollect('collect-nps', '👥 국민연금 규모 조회'))         // 👥 국민연금 규모 검증(직원수)
+app.post('/collect-work24', delegateCollect('collect-work24', '💼 채용기업(고용24) 수집')) // 💼 고용24 채용기업(성장 신호)
 
 // ── 🤝 파트너 매장 소개(리퍼럴) 접수·추적 — 머니 무접촉(지급 배선은 별도 세션, partner-referrals.ts 주석) ──
 app.get('/referrals', async (c) => {
