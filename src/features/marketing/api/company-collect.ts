@@ -71,6 +71,37 @@ const S2_TRADES: Trade[] = [
   { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
   { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
+
+/** 🟡 카카오 로컬 수집 레인(2026-07-27) — 네이버 지역검색은 키워드당 5건 한도인데 카카오는 **15건×3페이지=45건**
+ *   + 전화·주소가 응답에 직접 실림(무료 일 10만 쿼터, 네이버와 별도). 아인종합기획형(지도 등록 오프라인 업체)
+ *   발굴량의 주력 레버. place_url 은 지도페이지라 website 로 저장하지 않음(크롤 불가 — realSite 규칙과 일치). */
+async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
+  if (!kakaoKey) return []
+  const out: CompanyLead[] = []
+  for (let page = 1; page <= 3; page++) {
+    if (outOfBudget(budget)) break
+    spendBudget(budget)
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw.keyword)}&size=15&page=${page}`
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    if (!res || !res.ok) break
+    const data = await res.json().catch(() => null) as { documents?: Array<{ place_name?: string; phone?: string; road_address_name?: string; address_name?: string; category_name?: string }>; meta?: { is_end?: boolean } } | null
+    for (const d of (data?.documents || [])) {
+      const name = stripTag(d.place_name)
+      if (name.length < 2) continue
+      out.push({
+        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+        phone: (d.phone || '').trim() || null,
+        address: stripTag(d.road_address_name || d.address_name) || null,
+        description: stripTag(d.category_name) || null, // 카카오 업종 경로("서비스,산업 > 광고,인쇄 > …") — 분류 근거로 활용
+        contact_source: (d.phone || '').trim() ? 'kakao' : null,
+        source: 'local', source_keyword: kw.keyword,
+      })
+    }
+    if (data?.meta?.is_end) break
+  }
+  return out
+}
+
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
 const _kwDone = new WeakSet<object>()
@@ -317,7 +348,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
+  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) } // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
 
   let found = 0, saved = 0
   const used: string[] = []
@@ -326,6 +357,12 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     const kw = kws[(cursor + i) % kws.length]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
+    // 🟡 카카오 로컬 병행(45건/키워드 — 네이버 5건의 9배, 전화 직접) — 지도 등록 업체 발굴 주력.
+    const kakaoKeyLane = env.KAKAO_REST_API_KEY || ''
+    if (kakaoKeyLane && !outOfBudget(budget)) {
+      const kkLeads = await searchKakaoLocal(kakaoKeyLane, kw, budget)
+      leads.push(...kkLeads)
+    }
     // 🌐 tier1(대행사·창업생태계) 키워드는 **웹문서 검색 병행** — 지도 미등록 대행사를 자체 사이트로 발굴
     //   (대표 "대행사 많이 모집" — 대행사는 웹이 주 서식지, 사이트 크롤로 이메일 수율 최고).
     if (kw.tier === 1 && !outOfBudget(budget)) {

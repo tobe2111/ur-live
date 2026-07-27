@@ -415,6 +415,15 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
   const nextCursor = rows[rows.length - 1].id
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
+  // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
+  const remRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE lead_type IS NULL OR lead_type = ''").first<{ n: number }>().catch(() => null)
+  const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
+  let tot = { removed: 0, updated: 0 }
+  try { const p = prevStat?.value ? JSON.parse(prevStat.value) : null; if (p) tot = { removed: p.total_removed || 0, updated: p.total_updated || 0 } } catch { /* 초기 */ }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_reclassify_stats', JSON.stringify({
+    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, updated, removed, held,
+    remaining_unclassified: Number(remRow?.n) || 0, total_removed: tot.removed + removed, total_updated: tot.updated + updated,
+  })).run().catch(() => null)
   return { scanned: rows.length, updated, removed, held, cursor: nextCursor, done: false }
 }
 

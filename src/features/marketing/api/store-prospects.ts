@@ -105,6 +105,8 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
   )`).run().catch(() => null)
   // 기존 테이블 보강(연락처 확장 — 인허가엔 없어 크롤로만 채움).
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN email TEXT').run().catch(() => null)
+  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프 없이는 같은 상위 40행만 매시간 공회전(뒷줄 미도달).
+  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN website TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE store_prospects ADD COLUMN contact_source TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)

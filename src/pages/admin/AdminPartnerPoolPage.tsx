@@ -43,6 +43,7 @@ interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string }
 interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
 interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
 interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
+interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -72,6 +73,7 @@ export default function AdminPartnerPoolPage() {
   const [nts, setNts] = useState<NtsSweep | null>(null)
   const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
+  const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -96,7 +98,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -344,6 +346,15 @@ export default function AdminPartnerPoolPage() {
           <div className="mb-3 text-xs text-gray-500">
             🏛 폐업 정리 <span> · 최근 {kstShort(nts.run.last_run)} · 조회 {nts.run.checked ?? 0} / 폐업처리 {nts.run.closed ?? 0} (누적 {nts.run.total_closed ?? 0})</span>
             {nts.run.note && <span className="text-amber-600"> · ⚠️ {nts.run.note}</span>}
+          </div>
+        )}
+
+        {/* 🧭 소급 정리(재분류) 진행률 — 62K 청소 며칠 걸림, 남은 미분류가 0 에 수렴하는지 관찰 */}
+        {reclassifyInfo?.run && (
+          <div className="mb-3 text-xs text-gray-500">
+            🧭 데이터 정리 <span> · 최근 {kstShort(reclassifyInfo.run.last_run)} · 이번 {reclassifyInfo.run.scanned ?? 0}건(제거 {reclassifyInfo.run.removed ?? 0})</span>
+            <span> · <b className="text-gray-700">미분류 잔여 {formatNumber(reclassifyInfo.run.remaining_unclassified ?? 0)}</b></span>
+            <span className="text-gray-400"> · 누적 정리 {formatNumber(reclassifyInfo.run.total_removed ?? 0)} 제거 / {formatNumber(reclassifyInfo.run.total_updated ?? 0)} 재분류</span>
           </div>
         )}
 
