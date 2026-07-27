@@ -300,7 +300,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   보강이 ADS_COMPANY_COLLECT_ENABLED 에 묶여, 수집 OFF 면 ADS_ENRICH_BUDGET 을 올려도 한 번도 안 돌았음).
   //   킬스위치 ADS_ENRICH_DISABLED='true' 만 끔. 키 없으면 내부에서 해당 단계 자연 스킵(fail-soft).
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
-    kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
+    // 📧 이메일 보강 시간당 **2라운드 순차**(2026-07-27 대표 "전화보단 이메일 우선") — 각 라운드가 SELF
+    //   독립 인보케이션(fresh 서브요청 예산)이고, 1라운드가 enrich_checked_at 도장을 찍어 2라운드는
+    //   다음 백로그 구간을 이어 순회(중복 크롤 0). 네이버 무료 25K/day 안(라운드당 네이버 비중은 일부).
+    ctx.waitUntil((async () => {
+      try {
+        if (env.SELF?.fetch) {
+          await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+          await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+        } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
+      } catch { /* fail-soft — 다음 틱 재시도 */ }
+    })())
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
     kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량

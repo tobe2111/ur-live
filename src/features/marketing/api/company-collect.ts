@@ -290,7 +290,9 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
   //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
   //     상호만으로는 동명 지점/타업체 전화 오귀속 위험(허위 방지). 그런 리드는 홈페이지 크롤이 담당.
-  const phoneCap = Math.floor(budget.left / 3) // 전화는 예산 1/3까지만 — 2/3 는 이메일(크롤/발견)에(대표 "이메일 우선")
+  // 전화는 예산 1/6 로 축소(2026-07-27 대표 "전화보단 이메일 우선" 재확인) — 전화 백필은 카카오 전용
+  //   스윕 레인(runKakaoPhoneSweep, 시간당 600건)이 전담하게 되어 여기선 이메일(크롤/발견)에 5/6 집중.
+  const phoneCap = Math.floor(budget.left / 6)
   let phoneSpent = 0
   for (const t of targets) {
     if (outOfBudget(budget) || phoneSpent >= phoneCap) break
