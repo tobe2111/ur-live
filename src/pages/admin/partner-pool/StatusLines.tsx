@@ -13,12 +13,13 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
+export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24 }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null
 }) {
   return (
     <>
@@ -99,6 +100,15 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
       </div>
     )}
+      {/* 🏪 매장 후보(인허가) — 소비자 공개면(/new-openings·상권 리포트)·개업 웰컴 큐의 유일한 데이터원.
+          2026-07-28 실측: 이 라인이 없어 "0건"인 걸 아무도 몰랐음(전체 실행 목록에서도 누락돼 있었음). */}
+      <div className="mb-3 text-xs text-gray-500">
+        🏪 매장 후보(인허가) <span className={localdata?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{localdata?.gate ? 'ON · 05시' : 'OFF'}</span>
+        {localdata?.run?.last_run
+          ? <span> · 최근 {kstShort(localdata.run.last_run)} · 저장 {localdata.run.saved ?? 0} / 갱신 {localdata.run.updated ?? 0}{typeof localdata.run.closed === 'number' ? ` / 폐업 ${localdata.run.closed}` : ''}</span>
+          : <span className="text-amber-600"> · 아직 실행 안 됨 — 개업/상권 리포트 공개면이 빈 상태(전체 실행 1회로 채워짐)</span>}
+        {localdata?.run?.diag?.error && <span className="text-amber-600"> · ⚠️ {localdata.run.diag.error}</span>}
+      </div>
       {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
       {work24?.run && (
         <div className="mb-3 text-xs text-gray-500">

@@ -149,7 +149,9 @@ app.post('/run-all', async (c) => {
       } catch { return null }
     }
     // ① 수집 전 레인 병렬(각 호출 = ur-ads 의 독립 인보케이션 = 독립 예산 — 서로 안 갉아먹음).
-    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx']
+    // ⚠️ 2026-07-28 실측 수리: **매장 후보(인허가) 수집·보강이 목록에서 빠져** 있어 전체 실행을 눌러도
+    //   store_prospects 가 0건 → 소비자 공개면(/new-openings·/area-report)과 개업 웰컴 큐가 영구 빈 상태였음.
+    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
     const collected = await Promise.all(COLLECTORS.map(p => call(p)))
     const collectSaved = collected.reduce((s: number, r) => s + num(r, 'saved'), 0)
     const collectFound = collected.reduce((s: number, r) => s + num(r, 'found'), 0)
@@ -244,9 +246,9 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, lkAll, lkEnrich, lkReclassify] = await Promise.all([
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, lkAll, lkEnrich, lkReclassify, localdataRun] = await Promise.all([
     readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'),
-    readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'),
+    readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
   ])
   // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
   //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
@@ -275,6 +277,8 @@ app.get('/stats', async (c) => {
     nara: { run: naraRun },
     mx: { run: mxRun },
     enrichLast, enrichBurst, reclassifyBurst, runAll, running,
+    // 🏪 매장 후보(인허가) — 소비자 공개면/개업 웰컴의 데이터원. 상태줄에 없어 0건인 걸 아무도 몰랐음(2026-07-28).
+    localdata: { gate: gate('localdata', false), run: localdataRun },
   })
 })
 
