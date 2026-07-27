@@ -40,6 +40,7 @@ interface StoreInfo { gate: boolean; run: RunInfo | null }
 interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
 interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
+interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -67,6 +68,7 @@ export default function AdminPartnerPoolPage() {
   const [commerce, setCommerce] = useState<Commerce | null>(null)
   const [franchise, setFranchise] = useState<Franchise | null>(null)
   const [nts, setNts] = useState<NtsSweep | null>(null)
+  const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -90,7 +92,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -287,6 +289,17 @@ export default function AdminPartnerPoolPage() {
               : storeinfo?.run?.last_run ? <span> · 최근 {kstShort(storeinfo.run.last_run)} · 저장 {storeinfo.run.saved ?? 0} / 연락처보강 {storeinfo.run.enriched ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
             {storeinfo?.run?.diag?.enrich_note && <span className="text-amber-600"> · ⚠️ {storeinfo.run.diag.enrich_note}</span>}
+          </div>
+        )}
+
+        {/* 📧 대행사 이메일 퍼널 — 미보유를 원인별로 분해(보강 대기 vs 구조적 한계) */}
+        {agencyFunnel && agencyFunnel.total > 0 && (
+          <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-gray-500">
+            <span className="font-semibold text-gray-700">📧 대행사 이메일 퍼널</span>
+            <span> · 전체 {formatNumber(agencyFunnel.total)}</span>
+            <span> · <span className="text-indigo-600 font-semibold">이메일 보유 {formatNumber(agencyFunnel.with_email)}</span></span>
+            <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음 — 매시간 보강 크롤이 채우는 중이거나, 문의폼·카톡채널만 쓰는 업체(공개 이메일 자체가 없어 공란이 정답)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}</span>
+            <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
           </div>
         )}
 

@@ -12,7 +12,6 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { extractEmailFromHtml } from './contact-enrich'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -176,28 +175,8 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
   return out
 }
 
-/** 📧 홈페이지 이메일 크롤(레인 A 보충 — 옵션 a) — robots.txt 존중, 홈 1페이지 1회(재시도 없음), 예산 합산.
- *   website 는 네이버 지역검색이 준 업체 등록 홈페이지(사용자 입력 아님) — http(s) 만, pickBusinessEmail 재사용. */
-export async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
-  let url: URL
-  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return null }
-  if (!/^https?:$/.test(url.protocol)) return null
-  // robots.txt 존중(간이) — User-agent:* 에 Disallow:/ (전면차단)면 크롤 안 함.
-  if (outOfBudget(budget)) return null
-  spendBudget(budget)
-  const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
-  if (robots) {
-    const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
-    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return null
-  }
-  if (outOfBudget(budget)) return null
-  spendBudget(budget)
-  const html = await fetch(url.origin, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
-    .then(r => r.ok ? r.text() : '').catch(() => '')
-  if (!html) return null
-  return extractEmailFromHtml(html.slice(0, 200000)) // mailto: 우선 → 본문 문맥선별
-
-}
+// (구 crawlCompanyEmail 삭제 — 홈 1페이지만 보던 약한 크롤. 이제 전 경로가 crawlContact(contact-enrich SSOT,
+//  root + /contact,/about + 홈 내 문의링크 추적) 하나로 통일 — 같은 업체를 두 함수가 다르게 크롤하던 드리프트 제거.)
 
 /** 📇 연락처 보강 폭포수 — 보류(active=0) 리드에 [카카오 로컬 전화 → 홈페이지 이메일/전화] 순차 시도.
  *   카카오 로컬 API 는 상호+주소로 **전화를 준다**(네이버는 빈값) → 홈페이지 없는 보류도 전화 확보 가능.
@@ -327,18 +306,22 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   }
 
   // 📧 이메일 보충(옵션 a) — 홈페이지 있고 이메일 없는 최근 리드를 예산 내에서 크롤. phone-first 위 additive.
+  //   2026-07-27 최종 점검: ① source='local' 한정 → **webkr(웹검색 발굴 대행사 — 주력 레인) 포함**
+  //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
   if (!outOfBudget(budget)) {
+    const { crawlContact } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
-    const targets = (await DB.prepare("SELECT id, website FROM ad_company_leads WHERE source = 'local' AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
-      .all<{ id: number; website: string }>().catch(() => null))?.results || []
+    const targets = (await DB.prepare("SELECT id, website, phone FROM ad_company_leads WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
+      .all<{ id: number; website: string; phone: string | null }>().catch(() => null))?.results || []
     for (const t of targets) {
       if (outOfBudget(budget)) break
-      const email = await crawlCompanyEmail(t.website, budget)
-      if (email) {
-        // 이메일 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책).
-        const r = await DB.prepare("UPDATE ad_company_leads SET email = ?, active = 1 WHERE id = ? AND (email IS NULL OR email = '')").bind(email, t.id).run().catch(() => null)
-        if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
+      const c = await crawlContact(t.website, budget) // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
+      if (c.email || (c.phone && !t.phone)) {
+        // 이메일(또는 없던 전화) 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책). 기존값 보존 COALESCE.
+        const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = 1 WHERE id = ?")
+          .bind(c.email, c.phone, t.id).run().catch(() => null)
+        if (c.email && ((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
       }
     }
   }
