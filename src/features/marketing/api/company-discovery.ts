@@ -10,7 +10,8 @@
  *   ⚠️ 수집 ≠ 발송 — 공개된 *비즈니스* 연락처만. 자동 발송 경로 부존재(✉는 mailto 초안만).
  */
 import type { Env } from '@/worker/types/env'
-import { classifyLead, REGISTRY_CATEGORY_SOURCES } from './company-classify'
+import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
@@ -114,6 +115,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
   // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER').run().catch(() => null) // 어느 버전 규칙으로 검사받았나(< CLASSIFY_RULES_VERSION 이면 재검사 대상)
   // 📵 반송 억제 목록(2026-07-27) — 반송 확인된 이메일은 재수집(크롤/레지스트리 재유입)으로 되살아나지 않게.
   //   어드민 '반송' 마킹이 유일한 쓰기 경로 — 시스템이 임의로 넣지 않음(수동 발송 체계라 반송은 사람이 확인).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_email_suppress (
@@ -227,7 +229,9 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
         // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
         return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
       }
-      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence }
+      // webkr 제목-파편 의심 이름은 저장 시점부터 '분류 확인'(none) — 재분류에만 있던 강등을 입구에도 동일 적용.
+      const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(l.company_name, l.source_keyword) ? 'none' : c.confidence
+      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: conf }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return 0
@@ -238,8 +242,8 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
     const stmts = slice.map(l => {
       const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
       return DB.prepare(
-      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active, lead_type, classify_confidence)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active, lead_type, classify_confidence, classified_v)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(company_key) DO UPDATE SET
          lead_type = COALESCE(ad_company_leads.lead_type, excluded.lead_type),
          classify_confidence = COALESCE(ad_company_leads.classify_confidence, excluded.classify_confidence),
@@ -257,7 +261,8 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
       clamp(l.category, 40), clamp(l.subcategory, 40), tierOf(l.tier), clamp(l.region, 60),
       clamp(l.website, 200), clamp(l.email, 120), clamp(l.phone, 40), clamp(l.address, 300),
       clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.contact_source, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
-      l._type, l._conf,
+      // 신규 행은 현행 규칙 버전으로 태어남(재검사 불필요). 기존 행(conflict)은 미스탬프 유지 → 소급 정리가 잡음.
+      l._type, l._conf, CLASSIFY_RULES_VERSION
     )
     })
     const res = await DB.batch(stmts).catch(() => null)
@@ -369,10 +374,13 @@ export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilte
 
 /* ── 기존 리드 재분류(소급) ────────────────────────────────────────────────────
  *   이미 저장된 리드는 "검색 키워드 = 분류" 시절 값이라 실제 업종과 다를 수 있고, 공고/모집글도 섞여 있다.
- *   lead_type 이 비어 있는 행을 배치로 훑어 classifyLead 재적용:
+ *   🔢 2026-07-27 재검사 스캔을 lead_type-빈 행 → **classified_v < CLASSIFY_RULES_VERSION** 으로 교체
+ *   (대표 신고: "인천교통공사…특강"/"…무엇이 다를까요?" 같은 행이 옛 규칙 시절 lead_type 스탬프를 받아
+ *   영구 재검사 제외 — 규칙을 고쳐도 소급이 안 되던 구조적 구멍). 이제 규칙 버전 bump = 전량 재검사.
  *     · ok=false(공고·정부페이지) → **미큐레이션 행만 삭제**(대표가 손댄 행은 보류 처리만)
  *     · ok=true → category/subcategory/lead_type/classify_confidence 갱신(근거 있을 때만 업종 덮어씀)
- *   커서(platform_settings)로 매 실행 이어서 — 5만+ 행도 며칠이면 전수 정리. 허위 0(연락처 무접촉). */
+ *     · webkr 의심 이름(검색결과 제목 파편) → confidence='none'(분류 확인 카드로 노출 — 수동 검토 유도)
+ *   커서(platform_settings)로 매 실행 이어서. 허위 0(연락처 무접촉). */
 const RECLASSIFY_CURSOR = 'ads_company_reclassify_cursor'
 export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promise<{ scanned: number; updated: number; removed: number; held: number; cursor: number; done: boolean }> {
   await ensureCompanySchema(DB)
@@ -382,8 +390,8 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
   const n = Math.min(1000, Math.max(1, limit))
   const rows = (await DB.prepare(
     `SELECT id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source
-     FROM ad_company_leads WHERE id > ? AND (lead_type IS NULL OR lead_type = '') ORDER BY id ASC LIMIT ?`)
-    .bind(cursor, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }>()
+     FROM ad_company_leads WHERE id > ? AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
+    .bind(cursor, CLASSIFY_RULES_VERSION, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }>()
     .catch(() => null))?.results || []
   if (!rows.length) {
     // 한 바퀴 완료 — 커서 리셋(다음 실행은 처음부터, 새로 들어온 미분류 행을 잡음).
@@ -396,26 +404,33 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
     const c = classifyLead(r)
     if (!c.ok) {
       const curated = r.status !== 'new' || !!r.memo
-      if (curated) { stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'org', classify_confidence = 'evidence' WHERE id = ?").bind(r.id)); held++ }
+      if (curated) { stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'org', classify_confidence = 'evidence', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++ }
       else { stmts.push(DB.prepare('DELETE FROM ad_company_leads WHERE id = ?').bind(r.id)); removed++ }
       continue
     }
+    // webkr 이름이 검색결과 제목 파편으로 의심되면("데이터 토론"/"insight") 분류 확인 카드로 노출.
+    const conf = r.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(r.company_name, r.source_keyword) ? 'none' : c.confidence
     // 카테고리 권위 위계: registry(공식 업종) 소스는 category 불가침 — lead_type/confidence 만 스탬프.
     const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
     if (registry) {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry' WHERE id = ?")
-        .bind(c.lead_type === 'unknown' ? 'partner' : c.lead_type, r.id))
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
+        .bind(c.lead_type === 'unknown' ? 'partner' : c.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
       // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
-      stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ? WHERE id = ?')
-        .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, r.id))
+      stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
+        .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, CLASSIFY_RULES_VERSION, r.id))
     } else {
-      stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ? WHERE id = ?').bind(c.lead_type, c.confidence, r.id))
+      stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(c.lead_type, conf, CLASSIFY_RULES_VERSION, r.id))
     }
     // ☎️ 쓰레기 전화 소급 정리(2026-07-27 대표 신고 "0405-120-0000") — 홈페이지 크롤 출처만(정부등록/카카오 번호는 신뢰).
     //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
     if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
+    }
+    // 📰 뉴스룸 계정 이메일 소급 제거(press11@·pcoop@… — 기사/보도자료 페이지에서 긁힌 오염, B2B 영업 무의미).
+    //   '미디어' 카테고리(언론사 별도 수집 레인)는 뉴스룸 계정이 유효 연락처라 보존.
+    if (r.email && NEWSROOM_EMAIL_LOCAL.test(r.email) && r.category !== '미디어') {
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
     }
     updated++
   }
@@ -427,7 +442,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
   const nextCursor = rows[rows.length - 1].id
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
-  const remRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE lead_type IS NULL OR lead_type = ''").first<{ n: number }>().catch(() => null)
+  const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE classified_v IS NULL OR classified_v < ?').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
   const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
   let tot = { removed: 0, updated: 0 }
   try { const p = prevStat?.value ? JSON.parse(prevStat.value) : null; if (p) tot = { removed: p.total_removed || 0, updated: p.total_updated || 0 } } catch { /* 초기 */ }

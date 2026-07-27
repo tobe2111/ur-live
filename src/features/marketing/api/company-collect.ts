@@ -188,7 +188,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
 async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
   spendBudget(budget)
-  const { THIRD_PARTY_HOST } = await import('./contact-enrich')
+  const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST } = await import('./company-classify')
   const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
@@ -204,10 +204,21 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     const host = u.hostname.replace(/^www\./, '')
     // 제3자/UGC + **정부·학교 도메인** 제외 — 구청 공고 페이지가 '대행사' 리드로 저장되던 오염원(2026-07-27 대표 신고).
     if (THIRD_PARTY_HOST.test(u.hostname) || NON_BUSINESS_HOST.test(u.hostname) || seen.has(host)) continue
-    // 📰 뉴스 기사 URL 제외(같은 날 2차 신고 — 매일일보 기사제목이 리드로) — 기사 CMS 경로 + 언론사성 호스트.
-    //   업체 자체 사이트의 홈/소개 페이지는 이 경로 패턴을 안 씀. 제목 문형 차단(classifyLead)과 2중 방어.
+    // 📰 언론사 = 기사제목 리드로 버리지 않고 **'미디어' 카테고리로 별도 수집**(2026-07-27 대표
+    //   "언론사도 따로 수집을 하던가" — 지역 언론은 소상공인 접점 큰 잠재 광고제휴 파트너).
+    //   이름은 도메인 placeholder(기사제목 오염 방지) → 보강 크롤 og:site_name 치유가 실명으로 교체.
+    if (NEWS_MEDIA_HOST.test(u.hostname)) {
+      seen.add(host)
+      out.push({
+        company_name: host, category: '미디어', subcategory: '지역신문·매거진', tier: 3, region: kw.region,
+        website: u.origin, phone: null, email: null, address: null,
+        description: stripTag(it.description).slice(0, 200) || null,
+        source: 'webkr', source_keyword: kw.keyword,
+      })
+      continue
+    }
+    // 뉴스 기사 URL 제외(비언론 호스트의 기사 CMS 경로 — 보도자료/미디어 섹션 페이지는 업체 홈이 아님).
     if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
-    if (/(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i.test(u.hostname)) continue
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
     const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
@@ -245,11 +256,11 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
   //   재크롤(실패해도 email NULL 이라 또 선두) → 예산이 앞줄에서 공회전하고 **뒷줄(대행사 포함)은 영영 미도달**.
   //   → 시도 즉시 스탬프 + 7일 쿨다운 → 예산이 백로그 전체를 흐르며 순회(이메일 보유 대행사 13개의 한 원인).
-  const targets = (await DB.prepare(`SELECT id, company_name, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
+  const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
       WHERE (active = 0 OR email IS NULL OR email = '')
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 200`)
-    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
+    .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
@@ -301,7 +312,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
-      const c = await crawlContact(site, budget, discovered ? t.company_name : undefined)
+      const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
       // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
       //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
@@ -390,11 +401,11 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   if (!outOfBudget(budget)) {
     const { crawlContact } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
-    const targets = (await DB.prepare("SELECT id, website, phone FROM ad_company_leads WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
-      .all<{ id: number; website: string; phone: string | null }>().catch(() => null))?.results || []
+    const targets = (await DB.prepare("SELECT id, website, phone, category FROM ad_company_leads WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
+      .all<{ id: number; website: string; phone: string | null; category: string | null }>().catch(() => null))?.results || []
     for (const t of targets) {
       if (outOfBudget(budget)) break
-      const c = await crawlContact(t.website, budget) // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
+      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
       if (c.email || (c.phone && !t.phone)) {
         // 이메일(또는 없던 전화) 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책). 기존값 보존 COALESCE.
         const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = 1 WHERE id = ?")

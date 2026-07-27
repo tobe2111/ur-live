@@ -108,7 +108,7 @@ app.post('/__ads/collect-nps', async (c) => {
 app.post('/__ads/reclassify-company', async (c) => {
   try {
     const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-    const stats = await reclassifyCompanyLeads(c.env.DB, 500)
+    const stats = await reclassifyCompanyLeads(c.env.DB, 1000)
     return c.json({ ok: true, stats })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -280,8 +280,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   킬스위치 ADS_ENRICH_DISABLED='true' 만 끔. 키 없으면 내부에서 해당 단계 자연 스킵(fail-soft).
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
     kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
-    // 🧭 소급 재분류 — 매시간 500건씩 커서 순회(DB-only, 외부 API 0·예산 무소모). 기사제목/키워드메아리/쓰레기전화 자동 청소.
-    kick('/__ads/reclassify-company', async () => { const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery'); return reclassifyCompanyLeads(env.DB, 500) })
+    // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
+    //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
+    kick('/__ads/reclassify-company', async () => {
+      const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
+      let last = await reclassifyCompanyLeads(env.DB, 1000)
+      for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000)
+      return last
+    })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.

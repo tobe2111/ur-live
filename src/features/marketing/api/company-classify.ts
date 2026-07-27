@@ -26,7 +26,7 @@ export const NON_BUSINESS_HOST = /(?:^|\.)(?:go\.kr|gov\.kr|ac\.kr|ed\.kr|es\.kr
 
 /** 공고·모집글·기사 제목에만 나타나는 어휘 — 상호에는 사실상 등장하지 않는다.
  *  (예: "…수행기관 모집", "2026년 … 지원사업 공고", "보도자료", "채용공고") */
-const NOTICE_WORD = /(모집|공고|공지사항|접수\s*안내|신청\s*안내|지원사업|보조사업|위탁사업|수행기관|선정\s*결과|결과\s*발표|보도자료|채용|구인|입찰|낙찰|공모전|공모\s*안내|설명회|간담회|기자회견|알림마당|열린마당|새소식)/
+const NOTICE_WORD = /(모집|공고|공지사항|접수\s*안내|신청\s*안내|지원사업|보조사업|위탁사업|수행기관|선정\s*결과|결과\s*발표|보도자료|채용|구인|입찰|낙찰|공모전|공모\s*안내|설명회|간담회|기자회견|알림마당|열린마당|새소식|특강|세미나|워크숍|워크샵|교육\s*과정|아카데미\s*모집)/
 /** 문장형 제목(업체명이 아님) — 종결어미/안내문투. */
 const SENTENCE_WORD = /(합니다|습니다|하세요|드립니다|바랍니다|입니다\b)/
 /** 기관·비영리 접미 — 차단하진 않고 lead_type=org 로 분류(지역조직 파트너 가치 있음). */
@@ -35,6 +35,13 @@ const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민�
 export type LeadType = 'partner' | 'store' | 'org' | 'unknown'
 /** registry = 정부 등록부의 공식 업종(최고 신뢰) · evidence = 리드 텍스트 근거 · keyword = 검색어 추정 · none */
 export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
+
+/** 🔢 분류 규칙 버전 (2026-07-27 대표 "이런 것들 어떻게 정리할거냐" — 소급 재검사 가능 구조).
+ *  각 행은 `classified_v` 에 "어느 버전 규칙으로 검사받았나"를 기록하고, 소급 정리는
+ *  `classified_v < CLASSIFY_RULES_VERSION` 행만 훑는다. **판별/분류 규칙(NOTICE/SENTENCE/헤드라인/
+ *  BIZ_RULES/lead_type)을 바꾸면 반드시 이 값을 +1** — 그래야 옛 규칙으로 통과했던 전체 풀이
+ *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인). */
+export const CLASSIFY_RULES_VERSION = 2
 
 /** 카테고리 권위 소스 — 이 소스들의 category 는 **정부 등록부의 공식 업종**(상가정보 업종코드·통신판매
  *  신고업태·공정위 가맹·나라장터 업종)이라 텍스트 정규식(BIZ_RULES)이 덮어쓰면 안 된다(권위 역전 금지).
@@ -140,6 +147,9 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   // ②-c 블로그 SEO 의문문 제목(2차 신고 — "…마케팅위드는 무엇이 다를까요?") + 키워드 메아리("상권분석").
   if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(name)) return reject('HEADLINE_TITLE')
   if (input.source_keyword) {
+    const kwSquash = String(input.source_keyword).toLowerCase().replace(/\s+/g, '')
+    // 띄어쓰기 무시 완전 일치("상권 분석" 검색 → 이름 "상권분석") — 어절 비교가 못 잡는 변형.
+    if (kwSquash && name.toLowerCase().replace(/\s+/g, '') === kwSquash) return reject('KEYWORD_ECHO')
     const kwTok = new Set(String(input.source_keyword).toLowerCase().split(/\s+/).map(t => t.replace(/\s+/g, '')).filter(Boolean))
     const nameTok = name.toLowerCase().split(/\s+/).filter(Boolean)
     // 이름의 모든 어절이 검색어 어절 안에 있으면 = 검색어를 그대로 이름으로 오인한 것(실상호는 검색어에 없는 토큰을 가짐)
@@ -181,11 +191,14 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 export function suspectCompanyName(name: string, sourceKeyword?: string | null): boolean {
   const n = String(name || '').replace(/\s+/g, ' ').trim()
   if (n.length < 2) return true
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(n)) return true // 도메인 그대로인 placeholder(미디어 레인 등) — 실명 치유 대상
   if (/["“”‘’',?？]/.test(n)) return true
   if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
   if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(n)) return true
   if (sourceKeyword) {
+    const kwSquash = String(sourceKeyword).toLowerCase().replace(/\s+/g, '')
+    if (kwSquash && n.toLowerCase().replace(/\s+/g, '') === kwSquash) return true
     const kwTok = new Set(String(sourceKeyword).toLowerCase().split(/\s+/).filter(Boolean))
     const nameTok = n.toLowerCase().split(/\s+/).filter(Boolean)
     if (nameTok.length > 0 && nameTok.every(t => kwTok.has(t))) return true

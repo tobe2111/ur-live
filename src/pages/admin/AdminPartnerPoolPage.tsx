@@ -188,15 +188,15 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error(`${label} 위임 실패`) } finally { setBusy('') }
   }, [collect?.adsBinding, loadLeads, loadStats])
 
-  /** 🧭 분류 정리 — 메인 워커에서 직접(DB-only) 실행. 공고/정부페이지 제거 + 업종 근거 재적용. */
+  /** 🧭 분류 정리 풀가동 — 백그라운드로 최대 2.5만 행/클릭 소진(응답 즉시). 진행률은 상태줄 갱신으로 확인. */
   const runReclassify = useCallback(async () => {
     setBusy('reclassify')
     try {
       const r = await api.post('/api/admin/partner-pool/reclassify', {})
       if (r.data?.success) {
-        toast.success(`분류 정리 ${r.data.scanned}건 검사 · 갱신 ${r.data.updated} · 제거 ${r.data.removed}${r.data.done ? ' (한 바퀴 완료)' : ''}`)
-        await Promise.all([loadStats(), loadLeads()])
-      } else toast.error('분류 정리 실패')
+        toast.success('분류 정리 풀가동 시작 — 클릭 1회당 최대 2.5만 행. 진행률은 아래 상태줄에서 갱신됩니다')
+        setTimeout(() => { void loadStats(); void loadLeads() }, 8000) // 첫 패스 반영 후 새로고침
+      } else toast.error(r.data?.error || '분류 정리 실패')
     } catch { toast.error('분류 정리 실패') } finally { setBusy('') }
   }, [loadLeads, loadStats])
 
@@ -278,7 +278,7 @@ export default function AdminPartnerPoolPage() {
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
             { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 4) },
-            { label: '🧭 분류 정리', desc: '공고·정부페이지 제거 + 업종을 근거 기반으로 재분류', onClick: runReclassify },
+            { label: '🧭 분류 정리 풀가동', desc: '공고·기사제목·정부기관 제거 + 업종 재분류 — 클릭당 최대 2.5만 행 소진', onClick: runReclassify },
             { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕', 2) },
             { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증', 0) },
             { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회', 2) },
