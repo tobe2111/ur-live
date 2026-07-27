@@ -211,22 +211,33 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     '/sub/contact.html', '/bbs/content.php?co_id=contact', '/html/contact.html', '/kor/contact', '/introduce', '/company/info']
   const visited = new Set<string>()
   let discoveredLinks = 0
+  const BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
+  }
+  const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS }).then(r => r.ok ? r.text() : '').catch(() => '')
+  // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
+  //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
+  let originResolved = false
   for (let i = 0; i < queue.length; i++) {
     const path = queue[i]
     if (visited.has(path)) continue
     visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
-    // UA: 브라우저형(2026-07-27 — 아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터에 이메일이 있어도 수집 0 이던 갭).
-    //   robots.txt 존중은 위에서 그대로(공개 페이지만 읽음) — 식별 문자열만 표준 브라우저 형태로.
-    const html = await fetch(url.origin + path, {
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
-      },
-    }).then(r => r.ok ? r.text() : '').catch(() => '')
+    // UA: 브라우저형(아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터 이메일 수집 0 이던 갭). robots 존중은 위에서 그대로.
+    let html = await fetchHtml(url.origin + path)
+    if (!html && path === '' && !originResolved && budget && budget.left > 3) {
+      originResolved = true
+      const altHost = url.hostname.startsWith('www.') ? url.hostname.slice(4) : `www.${url.hostname}`
+      for (const alt of [`https://${altHost}`, `http://${url.hostname}`]) {
+        if (outOfBudget(budget)) break
+        spendBudget(budget)
+        const h = await fetchHtml(alt + path)
+        if (h) { html = h; try { url = new URL(alt) } catch { /* keep */ } break } // 살아있는 오리진으로 전환
+      }
+    }
     if (!html) continue
     anyPage = true
     const slice = html.slice(0, 200000)
