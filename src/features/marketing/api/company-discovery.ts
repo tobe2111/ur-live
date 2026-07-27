@@ -116,6 +116,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER').run().catch(() => null) // 어느 버전 규칙으로 검사받았나(< CLASSIFY_RULES_VERSION 이면 재검사 대상)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 어느 버전 크롤러로 시도했나(< CRAWL_RULES_VERSION 이면 재시도 대상)
   // 📵 반송 억제 목록(2026-07-27) — 반송 확인된 이메일은 재수집(크롤/레지스트리 재유입)으로 되살아나지 않게.
   //   어드민 '반송' 마킹이 유일한 쓰기 경로 — 시스템이 임의로 넣지 않음(수동 발송 체계라 반송은 사람이 확인).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_email_suppress (

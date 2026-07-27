@@ -30,10 +30,22 @@ app.use('*', async (c, next) => {
 
 // 헬스체크 — 배포/서비스바인딩 검증용. gates: 자동수집/시트동기화가 **이 워커(ur-ads) env** 기준으로 켜졌는지
 //   (2026-07-23 전수조사: 어드민 배너가 메인 워커 env 를 읽어 실제 cron 게이트와 어긋나던 것 — 메인이 이걸 물어 표시).
-app.get('/__ads/health', (c) => c.json({
-  ok: true, service: 'ur-ads',
-  gates: { auto_collect: c.env.ADS_AUTO_COLLECT_ENABLED === 'true', sheets_sync: c.env.ADS_SHEETS_SYNC_ENABLED === 'true' },
-}))
+app.get('/__ads/health', (c) => {
+  const e = c.env as unknown as Record<string, string | undefined>
+  const on = (k: string) => e[k] === 'true'
+  return c.json({
+    ok: true, service: 'ur-ads',
+    // ⚠️ 게이트는 **이 워커 env** 가 진실 — 메인(어드민)이 자기 env 를 읽어 표시하면 실제 cron 과 어긋난다
+    //   (2026-07-28 실측: 어드민이 전부 OFF 로 보였는데 실제 가동 여부 불명). 파트너 트랙 게이트 전부 노출.
+    gates: {
+      auto_collect: on('ADS_AUTO_COLLECT_ENABLED'), sheets_sync: on('ADS_SHEETS_SYNC_ENABLED'),
+      company_collect: on('ADS_COMPANY_COLLECT_ENABLED'), storeinfo: on('ADS_STOREINFO_ENABLED'),
+      commerce: on('ADS_COMMERCE_ENABLED'), franchise: on('ADS_FRANCHISE_ENABLED'),
+      nps: on('ADS_NPS_ENABLED'), work24: on('ADS_WORK24_ENABLED'), localdata: on('ADS_LOCALDATA_ENABLED'),
+      enrich_disabled: on('ADS_ENRICH_DISABLED'),
+    },
+  })
+})
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
 //   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
@@ -116,8 +128,13 @@ app.post('/__ads/sweep-kakao-phone', async (c) => {
 app.post('/__ads/reclassify-company', async (c) => {
   try {
     const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
-    const stats = await reclassifyCompanyLeads(c.env.DB, 1000, c.req.query('light') !== '1') // light=억제스윕 생략(버스트 후속 패스)
-    return c.json({ ok: true, stats })
+    // passes: 한 인보케이션에서 N패스(기본 1) — cron 이 5패스로 호출(2026-07-28 실측: SELF 바인딩이면
+    //   엔드포인트가 1패스만 돌아 시간당 1,000행에 그쳤음. 잔여 10.9만 → 4.5일 소요되던 병목).
+    const passes = Math.min(8, Math.max(1, parseInt(c.req.query('passes') || '1', 10) || 1))
+    let stats = await reclassifyCompanyLeads(c.env.DB, 1000, c.req.query('light') !== '1') // light=억제스윕 생략
+    let total = stats.scanned
+    for (let i = 1; i < passes && !stats.done; i++) { stats = await reclassifyCompanyLeads(c.env.DB, 1000, false); total += stats.scanned }
+    return c.json({ ok: true, stats: { ...stats, scanned: total } })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
@@ -327,7 +344,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
-    kick('/__ads/reclassify-company', async () => {
+    kick('/__ads/reclassify-company?passes=5', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
       let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
       for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000, false)

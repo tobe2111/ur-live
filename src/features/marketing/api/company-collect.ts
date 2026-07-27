@@ -243,7 +243,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -261,10 +261,11 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
   const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
       WHERE (active = 0 OR email IS NULL OR email = '')
-        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
+        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
-  const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
+  // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
+  const stamp = async (id: number) => { await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/dead_domain/no_name…) — 적중률 계측
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
