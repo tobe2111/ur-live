@@ -39,6 +39,8 @@ export default function ServiceMarketplacePanel() {
   const [phone, setPhone] = useState('')
   const [target, setTarget] = useState('')
   const [memo, setMemo] = useState('')
+  const [bizRegion, setBizRegion] = useState('') // 🎯 매칭/아웃리치 상품 — 타겟 지역(선별 기준)
+  const [bizCategory, setBizCategory] = useState('') // 🎯 타겟 업종
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
   // 리뷰
@@ -89,13 +91,17 @@ export default function ServiceMarketplacePanel() {
     return () => { cancelled = true }
   }, [sel, qty, opts])
 
+  // 🎯 매칭/아웃리치 상품 — 지역·업종이 선별 기준이라 필수 입력. 메모에 [지역:][업종:] 로 구조화(어드민 이행 버튼이 파싱).
+  const isTargeted = !!sel && (sel.category === '매칭' || sel.category === '아웃리치')
   async function submit() {
     if (!sel) return
     if (!kakao.trim() && !phone.trim()) { toast.error('연락처(카카오 ID 또는 전화)를 입력해주세요'); return }
+    if (isTargeted && (!bizRegion.trim() || !bizCategory.trim())) { toast.error('타겟 지역과 업종을 입력해주세요 (선별 기준)'); return }
     setBusy(true)
     try {
-      const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo }, { headers: authHeader() })
-      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); await load() }
+      const memoOut = isTargeted ? `[지역:${bizRegion.trim()}] [업종:${bizCategory.trim()}]${memo.trim() ? ' ' + memo.trim() : ''}` : memo
+      const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo: memoOut }, { headers: authHeader() })
+      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); setBizRegion(''); setBizCategory(''); await load() }
       else toast.error(r.data?.error || '접수 실패')
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '접수 실패') } finally { setBusy(false) }
   }
@@ -189,6 +195,12 @@ export default function ServiceMarketplacePanel() {
             <input className={input} placeholder="전화번호" value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
           <input className={`${input} mt-2`} placeholder="대상 URL/계정 (선택, 예: 인스타 주소)" value={target} onChange={e => setTarget(e.target.value)} />
+          {isTargeted && (
+            <div className="mt-2 flex gap-2">
+              <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
+              <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
+            </div>
+          )}
           <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
           <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
 
