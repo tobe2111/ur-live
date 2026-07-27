@@ -250,7 +250,7 @@ export default function MarketingLandingPage() {
             <div style={{ padding: 16 }}>
               <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}><div style={{ fontSize: 11.5, color: 'var(--ink2)' }}>오늘 차단</div><div className="num" style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>312<span style={{ fontSize: 13, color: 'var(--muted)' }}>건</span></div></div>
-                <div style={{ flex: 1 }}><div style={{ fontSize: 11.5, color: 'var(--ink2)' }}>절감 추정</div><div className="num" style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--up)' }}>₩78K</div></div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 11.5, color: 'var(--ink2)' }}>차단 목록</div><div className="num" style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>12<span style={{ fontSize: 13, color: 'var(--muted)' }}>개 IP</span></div></div>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 8, letterSpacing: '.06em' }}>SUSPICIOUS CLICK TIMELINE</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -272,10 +272,10 @@ export default function MarketingLandingPage() {
           <div style={{ order: 1 }}>
             <div style={eyebrow}>부정클릭 방어</div>
             <h3 style={h3}>새는 광고비를<br /><span className="grad">실시간으로 막습니다.</span></h3>
-            <p style={lead}>반복·비정상 클릭 패턴을 탐지해 의심 IP를 가려냅니다. 네이버 검색광고에 바로 등록할 차단 목록을 자동으로 만들어 드리고, 막은 만큼의 절감액을 투명하게 보여줍니다.</p>
+            <p style={lead}>반복·비정상 클릭 패턴을 탐지해 의심 IP를 가려냅니다. 검색광고센터 '노출제한 IP'에 그대로 복사해 넣을 수 있는 차단 목록을 자동으로 만들어 드립니다. (네이버가 공식 API 를 열면 자동 등록으로 전환 예정)</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '22px 0 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
               <Bullet>의심 클릭 패턴 자동 탐지 · 차단 목록 자동 생성</Bullet>
-              <Bullet>차단 내역·절감 추정액 리포트</Bullet>
+              <Bullet>의심 클릭 타임라인 · 차단 목록 관리(최대 600개)</Bullet>
             </ul>
           </div>
         </div>
@@ -457,7 +457,7 @@ export default function MarketingLandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
               { open: true, q: '네이버 약관에 위배되지 않나요?', a: 'UR Ads는 네이버가 공식 제공하는 검색광고 API를 통해 동작합니다. 화면을 긁어오는 크롤링 방식이 아니므로 안심하고 사용하실 수 있습니다. 순위는 공식 API 기반 추정치로 제공됩니다.' },
-              { open: false, q: '자동입찰로 광고비가 갑자기 늘 수 있나요?', a: '아니요. 키워드별 최대 입찰가(상한가)를 직접 정하므로, 어떤 경우에도 설정한 금액을 넘지 않습니다. 일/월 예산 한도도 함께 설정할 수 있습니다.' },
+              { open: false, q: '자동입찰로 광고비가 갑자기 늘 수 있나요?', a: '아니요. 키워드별 최대 입찰가(상한가)를 직접 정하면 엔진이 어떤 경우에도 그 금액을 넘겨 입찰하지 않습니다(하드 클램프). 시간대·요일별로 공격성을 낮추거나 특정 시간 일시정지도 가능하고, 캠페인 예산 소진 속도는 모니터링 탭에서 확인합니다. (예산 한도 자체는 네이버 검색광고 캠페인 설정을 따릅니다.)' },
               { open: false, q: '광고 계정 연동은 얼마나 걸리나요?', a: '검색광고 API 인증 정보를 한 번 입력하면 연동이 완료됩니다. 보통 1분이면 캠페인·키워드·실적이 모두 동기화됩니다. (스토어 발주 수집 연동은 준비 중입니다.)' },
               { open: false, q: '승인제는 어떻게 진행되나요?', a: '가입(카카오 3초 또는 이메일) 후 "입장 요청" 버튼을 누르면 접수됩니다. 운영팀이 확인 후 승인하며, 승인되면 다시 로그인할 때 자동으로 대시보드에 입장됩니다. 베타 기간 도구 이용은 무료입니다.' },
               { open: false, q: '대행사인데 여러 고객사를 관리할 수 있나요?', a: '멀티테넌트를 지원합니다. 고객사를 추가하고 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 도입 조건은 영업팀 문의로 안내드립니다.' },

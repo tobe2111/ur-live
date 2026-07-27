@@ -25,6 +25,7 @@ import { MATCHING_ENABLED } from '@/shared/feature-flags'
 import LazyMount from './LazyMount'
 import { DASH_TABS, SEC_TO_TAB } from './dashboard-tabs'
 import HomeTab from './dashboard/HomeTab'
+import DemoPreview from './dashboard/DemoPreview'
 import { warmServices } from './services-warm'
 import KeywordToolsSection from './dashboard/KeywordToolsSection'
 import StoreOrdersSection from './dashboard/StoreOrdersSection'
@@ -134,6 +135,8 @@ export default function MarketingDashboardPage() {
       {/* ── 📊 광고 성과: 연동 → 추세 → 효율 → 자동입찰 → 리포트 ─────────── */}
       {hasToken && tab === 'performance' && (
         <div className="mt-4">
+          {/* 🎬 미연동일 때만 — 연동 후엔 스스로 사라짐(실데이터가 대체) */}
+          <DemoPreview />
           <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>
           <section id="sec-trend" style={{ scrollMarginTop: 76 }}><TrendPanel /></section>
           <LazyMount id="sec-efficiency"><EfficiencyPanel /></LazyMount>

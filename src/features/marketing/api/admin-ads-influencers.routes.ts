@@ -282,6 +282,22 @@ app.post('/influencer-pool/send-consented', async (c) => {
   return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped: ids.filter(id => !eligible.has(id)) })
 })
 
+// POST /api/admin/ads/influencer-pool/:id/track-link { target_url } — 🔗 리드별 협찬 추적링크(생성/조회)
+//   인플루언서에게 보내는 제안에 이 링크를 넣으면 그 사람이 만든 유입을 클릭수로 확인 가능(성과 기반 매칭의 데이터).
+//   멱등: 이미 발급된 리드는 같은 코드를 반환(이미 보낸 링크 불변) + 현재 클릭수 동봉.
+app.post('/influencer-pool/:id/track-link', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const lead = await c.env.DB.prepare('SELECT name FROM ad_influencer_leads WHERE id = ? AND account_id = ?')
+    .bind(id, POOL).first<{ name: string }>().catch(() => null)
+  if (!lead) return c.json({ success: false, error: '리드를 찾을 수 없습니다' }, 404)
+  const { getOrCreateLeadTrackLink } = await import('./short-links')
+  const r = await getOrCreateLeadTrackLink(c.env.DB, id, String(b.target_url || ''), `협찬추적: ${lead.name}`)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, code: r.code, click_count: r.click_count, created: r.created, name: lead.name })
+})
+
 // POST /api/admin/ads/influencer-pool/reextract — 🔗 기존 풀 소개글 재추출(백필, 멱등)
 //   신규 추출기(@핸들·키워드형 인스타/틱톡·유튜브/블로그 링크)를 저장된 description 에 재적용 → API 재호출 0.
 //   ⚠️ instagram/tiktok 는 비어있을 때만 채움. email 은 비어있으면 채우고, **대행사(비-개인도메인) 저장값은
