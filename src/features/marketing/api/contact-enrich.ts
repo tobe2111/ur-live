@@ -134,6 +134,24 @@ export async function naverHomepageSearch(clientId: string, clientSecret: string
   return null
 }
 
+// 잘 알려진 메일 도메인(MX 확실) — DoH 조회 생략(예산 절약).
+const KNOWN_MAIL_DOMAIN = /(?:^|\.)(naver\.com|gmail\.com|daum\.net|hanmail\.net|kakao\.com|nate\.com|hotmail\.com|outlook\.com|icloud\.com|yahoo\.com)$/i
+
+/** 📮 이메일 도메인 실존 검증(무료 Cloudflare DoH) — **죽은 도메인 이메일(반송 확정)** 저장 방지.
+ *   NXDOMAIN(도메인 자체 없음)만 false — MX 부재는 A 레코드 수신 가능(RFC 5321)이라 과차단 안 함.
+ *   DoH 장애/예산 소진 시 true(fail-open — 수집 우선, 검증은 보수적으로). */
+export async function domainAcceptsMail(email: string, budget?: FetchBudget): Promise<boolean> {
+  const domain = String(email || '').split('@')[1]?.toLowerCase() || ''
+  if (!domain) return false
+  if (KNOWN_MAIL_DOMAIN.test(domain)) return true
+  if (outOfBudget(budget)) return true
+  spendBudget(budget)
+  const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(6000) }).catch(() => null)
+  if (!res || !res.ok) return true
+  const j = await res.json().catch(() => null) as { Status?: number } | null
+  return !(j && j.Status === 3) // 3 = NXDOMAIN — 도메인 소멸 → 반송 확정이라 버림
+}
+
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
@@ -163,5 +181,6 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
   }
   if (!nameSeen) return { email: null, phone: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제
   return { email, phone }
 }

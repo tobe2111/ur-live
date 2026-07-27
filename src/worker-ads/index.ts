@@ -201,6 +201,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch { /* fail-soft */ }
     })())
   }
+  // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
+  //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
+  if (hourUTC === 19 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try {
+        const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
+        await sweepBusinessStatus(env)
+      } catch { /* fail-soft */ }
+    })())
+  }
   // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
   if (hourUTC === 20 && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     ctx.waitUntil((async () => {
