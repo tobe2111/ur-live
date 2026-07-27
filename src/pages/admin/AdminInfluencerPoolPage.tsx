@@ -365,15 +365,14 @@ export default function AdminInfluencerPoolPage() {
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
         <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
 
-        {/* 핵심 액션 — 항상 보임(수집 + 내보내기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
+        {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
-          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페·티스토리 전 매체를 한 번에 수집 — YouTube 검색 예산(하루 100회) 소진할 때까지 백그라운드로 연속 실행">
-            {collecting ? '수집 중…' : '🔄 통합 수집'}
-          </button>
-          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50">
-            {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}
-          </button>
-          <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 22열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
+          <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페 전 매체를 한 번에 수집 — YouTube 검색 예산 소진할 때까지 백그라운드로 연속 실행">{collecting ? '수집 중…' : '🔄 통합 수집'}</button>
+          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">{exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}</button>
+          <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 29열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
+          {/* 🛍️ 최근 구현한 서비스 표면 바로가기 — 이 풀이 이행 재고인 서비스몰(광고주 주문 화면)과 주문 접수함 */}
+          <a href="/ads/dashboard" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium" title="광고주가 보는 유어애즈 대시보드(서비스몰 주문 화면) — 새 탭">🛍️ 서비스몰 (광고주 화면)</a>
+          <a href="/admin/ads-services" className="px-4 py-2 rounded-lg border border-indigo-300 bg-white text-indigo-700 text-sm font-medium" title="서비스몰 주문 접수함 — 결제 확인 · 풀에서 이행 · 환불">📥 주문 접수함</a>
         </div>
 
         {/* 🛠️ 정비 도구 — 자주 안 쓰는 관리 작업. 접이식으로 감춰 기본 화면 단순화. */}

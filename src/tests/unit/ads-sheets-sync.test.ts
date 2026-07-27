@@ -36,6 +36,20 @@ describe('leadToRow ↔ SHEET_HEADER 정렬', () => {
     expect(row[SHEET_HEADER.indexOf('평균조회수')]).toBe(3400)
     expect(row[SHEET_HEADER.indexOf('평균댓글')]).toBe(21)
   })
+  it('🏅 2026-07-27 확장 열 — 점수/롱폼중앙값/메일상태/분류근거/브랜드 (기계값 미러)', () => {
+    const row = leadToRow({ ...lead, lead_score: 72, median_long_views: 2100, shorts_ratio: 40, is_brand: 1, email_status: 'bounced', last_post_at: '2026-07-19', category_source: 'content' })
+    expect(row.length).toBe(SHEET_HEADER.length)
+    expect(row[SHEET_HEADER.indexOf('점수')]).toBe(72)
+    expect(row[SHEET_HEADER.indexOf('롱폼중앙값')]).toBe(2100)
+    expect(row[SHEET_HEADER.indexOf('메일상태')]).toBe('bounced')
+    expect(row[SHEET_HEADER.indexOf('분류근거')]).toBe('content')
+    expect(row[SHEET_HEADER.indexOf('브랜드')]).toBe(1)
+    // 미채점 리드는 전부 빈칸 + 분류근거는 category 있으면 NULL≈keyword
+    const bare = leadToRow(lead)
+    expect(bare[SHEET_HEADER.indexOf('점수')]).toBe('')
+    expect(bare[SHEET_HEADER.indexOf('브랜드')]).toBe('')
+    expect(bare[SHEET_HEADER.indexOf('분류근거')]).toBe('keyword')
+  })
 })
 
 describe('b64url — JWT 인코딩', () => {
