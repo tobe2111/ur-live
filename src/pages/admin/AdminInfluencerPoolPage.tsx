@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
@@ -39,7 +40,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -75,6 +76,7 @@ export default function AdminInfluencerPoolPage() {
   const [brandOnly, setBrandOnly] = useState(false) // 🏢 브랜드 공식 채널 태깅 검수용
   const [inboundOnly, setInboundOnly] = useState(false)
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
@@ -96,10 +98,10 @@ export default function AdminInfluencerPoolPage() {
     if (hideNoise) params.set('hideNoise', '1')
     if (brandOnly) params.set('brandOnly', '1')
     if (inboundOnly) params.set('source', 'inbound')
-    if (q.trim()) params.set('q', q.trim())
+    if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, q])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -351,6 +353,11 @@ export default function AdminInfluencerPoolPage() {
             {(Number(stats.opened) || 0) + (Number(stats.bounced) || 0) > 0 ? <span> · 📬 개봉 {formatNumber(stats.opened)} · 반송/신고 <span className={Number(stats.bounced) ? 'text-red-500' : ''}>{formatNumber(stats.bounced)}</span></span> : null}
           </div>
         ) : null}
+        {/* 🏷️ 카테고리 분류 신뢰도 — content/topic=검증됨, 키워드상속=야간 재보정이 재검증 중. */}
+        {Number(stats.categorized) > 0 ? (() => {
+          const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0, ver = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0), inh = Number(stats.cat_keyword) || 0
+          return <div className="text-[11px] text-gray-500 mt-0.5">🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%) · 근거 검증됨 {formatNumber(ver)} ({Math.round(ver / Math.max(1, cat) * 100)}%){inh > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inh)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}</div>
+        })() : null}
 
         <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
 

@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 
@@ -83,6 +84,7 @@ export default function AdminPartnerPoolPage() {
   const [fType, setFType] = useState('')
   const [quick, setQuick] = useState<Quick>('')
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadMeta = useCallback(async () => {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
@@ -107,13 +109,13 @@ export default function AdminPartnerPoolPage() {
       else if (quick === 'recent7') p.set('recentDays', '7')
       else if (quick === 'review') p.set('leadType', 'unknown')
       if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
-      if (q.trim()) p.set('q', q.trim())
+      if (dq.trim()) p.set('q', dq.trim())
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/partner-pool?${p.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fTier, fStatus, fType, quick, q, page])
+  }, [fCategory, fTier, fStatus, fType, quick, dq, page])
 
   useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])
   useEffect(() => { loadLeads() }, [loadLeads])

@@ -144,7 +144,12 @@ app.get('/influencer-pool/stats', async (c) => {
       SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
       SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
       SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
-      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot
+      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot,
+      -- 🏷️ 분류 근거(정확도 가시화): content=이름·소개글 규칙 / topic=유튜브 자체분류 / keyword=수집 키워드 상속(재검증 대상)
+      SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) AS categorized,
+      SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
+      SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
+      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword
     FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
   // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
   //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.

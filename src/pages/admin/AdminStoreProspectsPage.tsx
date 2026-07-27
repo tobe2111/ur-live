@@ -3,6 +3,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 
 interface Prospect {
@@ -46,6 +47,7 @@ export default function AdminStoreProspectsPage() {
   const [fRegion, setFRegion] = useState('')
   const [fView, setFView] = useState('') // '' | 'newOpen' | 'closed' | 'phone'
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
     try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null) } } catch { /* noop */ }
@@ -60,13 +62,13 @@ export default function AdminStoreProspectsPage() {
       if (fView === 'closed') p.set('includeClosed', '1')
       if (fView === 'phone') p.set('hasPhone', '1')
       if (fView === 'email') p.set('hasEmail', '1')
-      if (q.trim()) p.set('q', q.trim())
+      if (dq.trim()) p.set('q', dq.trim())
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
       if (r.data?.success) { setRows(r.data.prospects || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fRegion, fView, q, page])
+  }, [fCategory, fRegion, fView, dq, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadRows() }, [loadRows])

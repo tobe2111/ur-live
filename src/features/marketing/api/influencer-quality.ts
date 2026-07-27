@@ -131,6 +131,9 @@ export function ensureQualityColumns(DB: D1Database): Promise<void> {
   const p = (async () => {
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN is_brand INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN lead_score INTEGER').run().catch(() => null)
+    // 🏷️ 분류 근거(2026-07-27 대표 "정확하게 분류되고 있어?") — content(이름·소개글 규칙)/topic(유튜브
+    //   자체분류)/keyword(수집 키워드 상속 = 재검증 대상). NULL(구데이터)은 keyword 로 간주해 집계.
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN category_source TEXT').run().catch(() => null)
   })()
   _qualityColPromise.set(DB, p); return p
 }
