@@ -63,10 +63,36 @@ app.post('/:id/bounce', async (c) => {
   return c.json({ success: true })
 })
 
-// POST /api/admin/partner-pool/reclassify — 기존 리드 소급 재분류(공고/정부페이지 제거 + 업종 근거 재적용).
+// POST /api/admin/partner-pool/reclassify — 기존 리드 소급 재분류 **풀가동**(2026-07-27 대표
+//   "이런 것들 어떻게 정리할거냐" — 시간당 500행이면 전량 8일. DB-only 라 한 요청 안에서 루프 가능:
+//   응답은 즉시 반환하고 waitUntil 로 최대 25패스×1000행(≈2.5만 행/클릭)을 소진. 남으면 재클릭/시간당
+//   cron 이 이어받음. 이중 실행 잠금(4분 하트비트). 진행률은 상태줄(ads_reclassify_stats)이 매 패스 갱신.
 app.post('/reclassify', async (c) => {
-  const r = await reclassifyCompanyLeads(c.env.DB, 500)
-  return c.json({ success: true, ...r })
+  const lockRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").first<{ value: string }>().catch(() => null)
+  try {
+    const lock = lockRow?.value ? JSON.parse(lockRow.value) as { at?: string } : null
+    if (lock?.at && Date.now() - Date.parse(lock.at) < 240_000) return c.json({ success: false, error: '분류 정리가 이미 진행 중입니다 — 상태줄 확인' }, 409)
+  } catch { /* 손상 잠금은 무시 */ }
+  const heartbeat = () => c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind('ads_reclassify_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
+  const burn = async () => {
+    const startedAt = Date.now()
+    let passes = 0, scanned = 0, updated = 0, removed = 0, done = false
+    for (let i = 0; i < 25; i++) {
+      if (Date.now() - startedAt > 200_000) break // 잔여는 cron/재클릭이 이어받음
+      await heartbeat()
+      const r = await reclassifyCompanyLeads(c.env.DB, 1000).catch(() => null)
+      if (!r) break
+      passes++; scanned += r.scanned; updated += r.updated; removed += r.removed
+      if (r.done) { done = true; break } // 재검사 대상 소진(전량 현행 규칙 통과)
+    }
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_reclassify_burst_last', JSON.stringify({ at: new Date().toISOString(), passes, scanned, updated, removed, done })).run().catch(() => null)
+    await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").run().catch(() => null)
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
+  await burn().catch(() => null)
+  return c.json({ success: true, started: false })
 })
 
 // GET /api/admin/partner-pool/meta — UI 셀렉트용 분류/상태/채널/티어 어휘.
