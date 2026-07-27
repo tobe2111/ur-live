@@ -284,9 +284,13 @@ function buildLeadWhere(filter: CompanyLeadFilter): { sql: string; binds: (strin
     if (filter.leadType === 'unknown') where.push("(lead_type IS NULL OR lead_type = 'unknown')")
     else { where.push('lead_type = ?'); binds.push(filter.leadType) }
   }
+  // 🔎 검색 — 상호/수집키워드/지역/전화 + **이메일·주소**(2026-07-27). 여러 단어는 AND(모두 포함).
   if (filter.q) {
-    where.push('(LOWER(company_name) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ? OR LOWER(COALESCE(region,\'\')) LIKE ? OR COALESCE(phone,\'\') LIKE ?)')
-    const like = `%${filter.q.toLowerCase()}%`; binds.push(like, like, like, `%${filter.q}%`)
+    for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(company_name) LIKE ? OR LOWER(COALESCE(source_keyword,'')) LIKE ? OR LOWER(COALESCE(region,'')) LIKE ?
+                   OR COALESCE(phone,'') LIKE ? OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(address,'')) LIKE ?)`)
+      const like = `%${tok}%`; binds.push(like, like, like, like, like, like)
+    }
   }
   return { sql: where.join(' AND '), binds }
 }

@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 
@@ -83,6 +84,7 @@ export default function AdminPartnerPoolPage() {
   const [fType, setFType] = useState('')
   const [quick, setQuick] = useState<Quick>('')
   const [q, setQ] = useState('')
+  const qd = useDebouncedValue(q, 350) // 타이핑마다 조회 금지(한글 IME 조합 중 요청 폭주 + 응답 역전 방지)
 
   const loadMeta = useCallback(async () => {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
@@ -107,18 +109,18 @@ export default function AdminPartnerPoolPage() {
       else if (quick === 'recent7') p.set('recentDays', '7')
       else if (quick === 'review') p.set('leadType', 'unknown')
       if (quick !== 'held') p.set('includeHeld', '1') // 기본: 보류 포함 전체
-      if (q.trim()) p.set('q', q.trim())
+      if (qd.trim()) p.set('q', qd.trim())
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/partner-pool?${p.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fTier, fStatus, fType, quick, q, page])
+  }, [fCategory, fTier, fStatus, fType, quick, qd, page])
 
   useEffect(() => { loadMeta(); loadStats() }, [loadMeta, loadStats])
   useEffect(() => { loadLeads() }, [loadLeads])
   // 필터가 바뀌면 1페이지로(현재 페이지가 범위를 벗어나 빈 목록이 되는 것 방지).
-  useEffect(() => { setPage(0) }, [fCategory, fTier, fStatus, fType, quick, q])
+  useEffect(() => { setPage(0) }, [fCategory, fTier, fStatus, fType, quick, qd])
 
   async function submitAdd() {
     if (add.company_name.trim().length < 2) { toast.error('업체명을 입력하세요'); return }
@@ -269,7 +271,7 @@ export default function AdminPartnerPoolPage() {
             <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
           )}
           <div className="grow" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·수집키워드 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 업체만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
         </div>
 
         {/* 레인 A(네이버 지역검색) 자동수집 상태 */}

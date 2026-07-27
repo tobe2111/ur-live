@@ -3,6 +3,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 
 interface Prospect {
@@ -46,6 +47,7 @@ export default function AdminStoreProspectsPage() {
   const [fRegion, setFRegion] = useState('')
   const [fView, setFView] = useState('') // '' | 'newOpen' | 'closed' | 'phone'
   const [q, setQ] = useState('')
+  const qd = useDebouncedValue(q, 350) // 타이핑마다 조회 금지(한글 IME 조합 중 요청 폭주 + 응답 역전 방지)
 
   const loadStats = useCallback(async () => {
     try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null) } } catch { /* noop */ }
@@ -60,17 +62,17 @@ export default function AdminStoreProspectsPage() {
       if (fView === 'closed') p.set('includeClosed', '1')
       if (fView === 'phone') p.set('hasPhone', '1')
       if (fView === 'email') p.set('hasEmail', '1')
-      if (q.trim()) p.set('q', q.trim())
+      if (qd.trim()) p.set('q', qd.trim())
       p.set('limit', String(PAGE_SIZE))
       p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
       if (r.data?.success) { setRows(r.data.prospects || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fRegion, fView, q, page])
+  }, [fCategory, fRegion, fView, qd, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadRows() }, [loadRows])
-  useEffect(() => { setPage(0) }, [fCategory, fRegion, fView, q]) // 필터 변경 시 1페이지로
+  useEffect(() => { setPage(0) }, [fCategory, fRegion, fView, qd]) // 필터 변경 시 1페이지로
 
   async function runCollect() {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
@@ -146,7 +148,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '🏥 병원 수집'}</button>
           <button onClick={async () => { try { const r = await api.get('/api/admin/store-prospects/export', { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="영업중 매장 후보를 엑셀 호환 CSV 로(한글 BOM) — 인증 다운로드">⬇ CSV</button>
           <div className="grow" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>
 
         {collect && (
