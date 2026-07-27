@@ -138,6 +138,42 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
   return out
 }
 
+/** 🌐 레인 A-웹: 네이버 **웹문서 검색**으로 대행사 자체 사이트 발굴 (2026-07-27 — 대표 "대행사 많이 모집").
+ *   대행사는 사무실업이라 지도(지역검색) 미등록이 많고 display=5 제약도 큼 — 반면 **웹엔 자기 사이트가 반드시 있음**.
+ *   사이트 자체가 리드(도메인이 dedup 키) → 보강 크롤이 그 사이트에서 이메일/전화 확보(대행사 이메일 수율 최고 경로).
+ *   제3자/UGC/구인 플랫폼 도메인 제외. 상호는 페이지 제목에서 유도(표시 라벨용 — 정체성 키는 도메인). */
+async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
+  if (outOfBudget(budget)) return []
+  spendBudget(budget)
+  const { THIRD_PARTY_HOST } = await import('./contact-enrich')
+  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=10`
+  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  if (!res || !res.ok) return []
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+  const out: CompanyLead[] = []
+  const seen = new Set<string>()
+  for (const it of (data?.items || [])) {
+    const link = (it.link || '').trim()
+    if (!/^https?:\/\//i.test(link)) continue
+    let u: URL
+    try { u = new URL(link) } catch { continue }
+    const host = u.hostname.replace(/^www\./, '')
+    if (THIRD_PARTY_HOST.test(u.hostname) || seen.has(host)) continue
+    seen.add(host)
+    // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
+    const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
+    if (name.length < 2) continue
+    out.push({
+      company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+      website: u.origin, // origin 만 저장 — 도메인 dedup + 크롤 진입점
+      phone: null, email: null, address: null,
+      description: stripTag(it.description).slice(0, 200) || null,
+      source: 'webkr', source_keyword: kw.keyword,
+    })
+  }
+  return out
+}
+
 /** 📧 홈페이지 이메일 크롤(레인 A 보충 — 옵션 a) — robots.txt 존중, 홈 1페이지 1회(재시도 없음), 예산 합산.
  *   website 는 네이버 지역검색이 준 업체 등록 홈페이지(사용자 입력 아님) — http(s) 만, pickBusinessEmail 재사용. */
 export async function crawlCompanyEmail(website: string, budget?: FetchBudget): Promise<string | null> {
@@ -273,6 +309,12 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     const kw = kws[(cursor + i) % kws.length]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
+    // 🌐 tier1(대행사·창업생태계) 키워드는 **웹문서 검색 병행** — 지도 미등록 대행사를 자체 사이트로 발굴
+    //   (대표 "대행사 많이 모집" — 대행사는 웹이 주 서식지, 사이트 크롤로 이메일 수율 최고).
+    if (kw.tier === 1 && !outOfBudget(budget)) {
+      const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget)
+      leads.push(...webLeads)
+    }
     found += leads.length
     // 연락처 필수(기본 ON): 전화·이메일 없는 리드는 active=0(보류) 로 저장 → 보강이 채우면 승격.
     const n = await saveCompanyLeads(DB, leads, { requireContact }).catch(() => 0)

@@ -141,6 +141,12 @@ export default function AdminStoreProspectsPage() {
             <option value="미용업">미용업</option>
             <option value="숙박업">숙박업</option>
             <option value="동물미용업">동물미용업</option>
+            <option value="약국">약국</option>
+            <option value="병원">병원</option>
+            <option value="이용업">이용업</option>
+            <option value="목욕장업">목욕장업</option>
+            <option value="동물병원">동물병원</option>
+            <option value="동물약국">동물약국</option>
           </select>
           <input value={fRegion} onChange={e => setFRegion(e.target.value)} placeholder="지역(예: 서초)" className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 w-32" />
           <select value={fView} onChange={e => setFView(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
