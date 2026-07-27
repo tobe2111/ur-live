@@ -227,7 +227,12 @@ export default function AdminPartnerPoolPage() {
       }
       toast.info(`⏳ ${label} 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
       await Promise.all([loadStats(), loadLeads()])
-    } catch { toast.error(`${label} 위임 실패`) } finally { setBusy('') }
+    } catch (e) {
+      // 409(이중 실행 잠금) = 실패가 아니라 "이미 돌고 있음" — 서버 메시지 그대로 안내(2026-07-27 대표 신고).
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 409) toast.info(ax.response.data?.error || `${label}이(가) 이미 진행 중입니다 — 완료되면 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
+      else toast.error(ax.response?.data?.error || `${label} 위임 실패`)
+    } finally { setBusy('') }
   }, [collect?.adsBinding, loadLeads, loadStats])
 
   /** 🧭 분류 정리 풀가동 — 메인 워커 백그라운드 루프(최대 2.5만 행/클릭). 완료 감지 + 결과 토스트 동일. */
@@ -251,7 +256,12 @@ export default function AdminPartnerPoolPage() {
       }
       toast.info('⏳ 분류 정리 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다', { duration: 8000 })
       await Promise.all([loadStats(), loadLeads()])
-    } catch { toast.error('분류 정리 실패') } finally { setBusy('') }
+    } catch (e) {
+      // 409(이중 실행 잠금) = 이전 클릭이 이미 돌고 있음 — 실패 아님(2026-07-27 대표 "분류 실패도 뜨네?").
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 409) toast.info(ax.response.data?.error || '분류 정리가 이미 진행 중입니다 — 완료되면 알림벨에 결과가 남습니다', { duration: 8000 })
+      else toast.error(ax.response?.data?.error || '분류 정리 실패')
+    } finally { setBusy('') }
   }, [loadLeads, loadStats])
 
   // ⬇ CSV — <a href> 직링크는 관리자 토큰이 안 실려 FORBIDDEN(2026-07-27 대표 신고) → 인증 axios blob 다운로드.
