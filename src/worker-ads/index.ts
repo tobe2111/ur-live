@@ -127,6 +127,11 @@ app.post('/__ads/enrich-prospects', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 📑 나라장터 조달업체(대행사 계열) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+app.post('/__ads/collect-nara-vendor', async (c) => {
+  try { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return c.json({ ok: true, stats: await runNaraVendorCollect(c.env, 5) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🎓 나이스 학원·교습소 · 🏥 심평원 병원 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
 app.post('/__ads/collect-neis', async (c) => {
   try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return c.json({ ok: true, stats: await runNeisAcademyCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
@@ -248,6 +253,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
     kick('/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
+  }
+  // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
+  if (hourUTC === 23 && (env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); await runNaraVendorCollect(env, 5) } catch { /* fail-soft */ }
+    })())
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
