@@ -18,6 +18,7 @@ import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, 
 import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -353,8 +354,10 @@ const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — �
  *   활성 키워드를 커서로 batch 개 순환 → YouTube+네이버 발굴 → 공용 풀 저장(카테고리 태그).
  *   수집물의 #해시태그를 후보 적립 → 반복 등장 시 자동 활성화(자가성장). 전부 fail-soft.
  */
-const LEASE_KEY = 'ads_collect_lease' // 값 = 만료시각(ms). CAS 조건부 UPDATE 로 원자 획득.
-const LEASE_TTL_MS = 5 * 60_000       // 한 실행 최장 예상(수십 초) 대비 여유 — 크래시 시 5분 후 자동 해제.
+// 🔒 lease 키/TTL 은 collect-lease.ts 가 SSOT — 메인 워커 어드민도 같은 키로 '진행 중'을 읽는다
+//   (그쪽이 이 파일을 import 하면 수집 엔진이 메인 번들에 통째로 실림 → 키만 분리).
+const LEASE_KEY = COLLECT_LEASE_KEY
+const LEASE_TTL_MS = COLLECT_LEASE_TTL_MS
 
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
   const DB = env.DB

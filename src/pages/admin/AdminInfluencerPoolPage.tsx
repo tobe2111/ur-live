@@ -10,6 +10,7 @@ import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard
 import CollectDiagPanel, { type RunStats, type MaintenanceRecord } from './influencer-pool/CollectDiagPanel'
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
+import { useCollectRun } from './influencer-pool/useCollectRun'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
@@ -86,7 +87,7 @@ export default function AdminInfluencerPoolPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
-  const [collecting, setCollecting] = useState(false)
+  const [serverRunning, setServerRunning] = useState(false) // 🔒 서버 수집 lease(진행 중) — 화면 로컬 state 아님
 
   const PAGE = 200
   const buildParams = useCallback((offset: number) => { // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름)
@@ -124,49 +125,32 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('더 불러오지 못했습니다') } finally { setLoadingMore(false) }
   }, [buildParams, leads.length])
 
+  // stats 응답 반영 SSOT — 최초 로드와 수집 폴링(useCollectRun)이 같은 함수를 쓴다(둘이 갈라지면 화면 불일치).
+  const applyMeta = useCallback((d: Record<string, unknown>) => {
+    const g = <T,>(k: string) => d[k] as T
+    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheetsSync(g<typeof sheetsSync>('sheets_sync') || null)
+    setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
+    setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
+  }, [])
+
   const loadMeta = useCallback(async () => {
     try {
       const [s, k] = await Promise.all([
         api.get('/api/admin/ads/influencer-pool/stats'),
         api.get('/api/admin/ads/influencer-pool/keywords'),
       ])
-      if (s.data?.success) {
-        setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
-        setMaintenance(s.data.maintenance || null); setMaintenanceRescan(s.data.maintenance_rescan || null); setCatFunnel(s.data.category_funnel || [])
-      }
+      if (s.data?.success) applyMeta(s.data)
       if (k.data?.success) setKeywords(k.data.keywords || [])
     } catch { /* soft */ }
-  }, [])
+  }, [applyMeta])
 
   useEffect(() => { loadMeta() }, [loadMeta])
   useEffect(() => { loadLeads() }, [loadLeads])
 
-  // 수동 수집 — 백그라운드 실행(수십 초)이라 즉시 '시작됨' 안내 후 stats(last_run) 폴링으로 완료를 따라잡음.
-  //   구 동기 대기는 브라우저 타임아웃→"실패" 오표시였음. started=false(폴백 동기)면 기존처럼 즉시 결과 반영.
-  // 🔥 지금 수집 = 오늘 YouTube 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집(self-chain).
-  //   한 번 실행 = 예산 전부 소진(대표 요청 단순화 — 별도 버스트 버튼 통합). 진행은 통계 자동 갱신으로 따라잡음.
-  async function collectNow() {
-    setCollecting(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
-      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); return }
-      toast.success('통합 수집을 시작했어요 — 유튜브·네이버·티스토리 전 매체, YouTube 예산 소진까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
-      // 예산 소진(used>=total)까지 버튼 잠금 유지(최대 5분) — 조기 재클릭이 진행 중 체인과 경합하던 것 방지
-      //   (서버도 실행 lease 로 병렬 차단하지만, UI 도 완료 전 재클릭을 유도하지 않게).
-      for (let i = 0; i < 25; i++) {
-        await new Promise(res => setTimeout(res, 12000))
-        try {
-          const s = await api.get('/api/admin/ads/influencer-pool/stats')
-          if (s.data?.success) {
-            setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
-            const yb = s.data.run?.yt_budget
-            if (yb && typeof yb.used === 'number' && typeof yb.total === 'number' && yb.used >= yb.total) { toast.success(`오늘 YouTube 예산 소진 완료 (${yb.used}/${yb.total}) — 수집 마감`); break }
-          }
-        } catch { /* 폴링 지속 */ }
-      }
-      await loadLeads()
-    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
-  }
+  // 🔥 통합 수집 = 오늘 YouTube 예산(하루 100회) 소진까지 백그라운드 연속 수집(self-chain).
+  //   실행/폴링/이탈 처리는 useCollectRun 이 소유 — 페이지를 떠나면 폴링만 멈추고 서버 작업은 계속된다.
+  const { starting, collectNow } = useCollectRun(applyMeta, loadLeads)
+  const collecting = starting || serverRunning // 재진입해도 진행 중이면 잠금(서버 lease 가 진실)
 
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)); toast.success(`✅ 상태 변경 → ${STATUS_META[status]?.label || status}`) }
@@ -369,6 +353,7 @@ export default function AdminInfluencerPoolPage() {
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페 전 매체를 한 번에 수집 — YouTube 검색 예산 소진할 때까지 백그라운드로 연속 실행">{collecting ? '수집 중…' : '🔄 통합 수집'}</button>
+          {collecting ? <span className="text-[11px] text-gray-500 self-center">백그라운드로 진행 중 — 페이지를 떠나도 계속됩니다</span> : null}
           <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">{exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}</button>
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 29열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
           {/* 🛍️ 최근 구현한 서비스 표면 바로가기 — 이 풀이 이행 재고인 서비스몰(광고주 주문 화면)과 주문 접수함 */}

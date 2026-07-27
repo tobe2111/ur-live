@@ -14,6 +14,7 @@ import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 import { adminAdsInfluencerRoutes } from './admin-ads-influencers.routes'
+import { adminAdsPoolOpsRoutes } from './admin-ads-pool-ops.routes' // 수집 버스트·전체 정비·시트 동기화(실행 계열)
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -215,5 +216,6 @@ app.patch('/short-links/:id', async (c) => {
 
 // 🎯 인플루언서 공용 풀 어드민 — 별도 파일로 분리(파일크기 상한). 같은 /api/admin/ads 경로로 마운트.
 app.route('/', adminAdsInfluencerRoutes)
+app.route('/', adminAdsPoolOpsRoutes)
 
 export { app as adminAdsRoutes }

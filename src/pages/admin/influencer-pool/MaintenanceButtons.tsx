@@ -16,6 +16,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [refetching, setRefetching] = useState(false)
   const [recategorizing, setRecategorizing] = useState(false)
   const [scoring, setScoring] = useState(false)
+  const [maintaining, setMaintaining] = useState(false)
 
   async function mergeDuplicates() {
     if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(⚠️동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
@@ -108,9 +109,26 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } catch { toast.error('채점 실패') } finally { setScoring(false) }
   }
 
+  // 🧰 전체 정비 — 개별 버튼을 순서 맞춰 누르는 대신 야간 cron 과 **같은 파이프라인**을 그대로 실행.
+  //   순서(병합 → 재추출 → 재분류 → 점수 → 라이브 재보정)가 정해져 있고 틀리면 낭비라 사람 손에 맡기지 않는다.
+  async function maintainAll() {
+    if (!window.confirm('전체 정비를 실행할까요?\n야간 자동 정비와 같은 순서로 한 번에 돕니다 — 중복 통합 → 연락처 재추출 → 카테고리 재분류 → 리드 점수 → 라이브 재보정.\n백그라운드로 진행되며 페이지를 떠나도 계속됩니다.')) return
+    setMaintaining(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/maintain-all', {})
+      if (!r.data?.success) { toast.error(r.data?.error || '정비 시작 실패'); return }
+      toast.success(r.data.skipped_rescan
+        // 라이브 재보정은 수집과 같은 하루 YouTube 예산을 쓴다 → 수집 중이면 신규 발굴에 양보(정직하게 알림).
+        ? '🧰 전체 정비를 시작했어요 — 수집이 진행 중이라 라이브 재보정만 건너뜁니다(같은 YouTube 예산)'
+        : '🧰 전체 정비를 시작했어요 — 백그라운드로 진행되며 페이지를 떠나도 계속됩니다')
+      await onChanged()
+    } catch { toast.error('정비 시작 실패') } finally { setMaintaining(false) }
+  }
+
   const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
   return (
     <>
+      <button onClick={maintainAll} disabled={maintaining} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="야간 자동 정비와 동일한 순서로 한 번에 실행 — 중복 통합 → 연락처 재추출 → 카테고리 재분류 → 리드 점수 → 라이브 재보정. 아래 개별 버튼은 특정 단계만 다시 돌릴 때만 쓰세요.">{maintaining ? '정비 시작 중…' : '🧰 전체 정비'}</button>
       <button onClick={mergeDuplicates} disabled={merging || !canMerge} className={cls} title="같은 이메일 중복 리드 통합">{merging ? '통합 중…' : '🧬 중복 통합'}</button>
       <button onClick={sheetsSync} disabled={sheetsSyncing} className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 구글 스프레드시트 pool 탭에 미러(서비스계정 설정 필요 — 매시간 자동 + 이 버튼 즉시)">{sheetsSyncing ? '시트 동기화 중…' : '📊 구글시트 동기화'}</button>
       <button onClick={recategorize} disabled={recategorizing} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="유튜브 전 풀의 카테고리를 라이브(channels.list 배치)로 한 번에 재보정 — 규칙+YouTube 신호, 버튼 한 번">{recategorizing ? '재보정 중…' : '🧭 카테고리 전체 재보정'}</button>
