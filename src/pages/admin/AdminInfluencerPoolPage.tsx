@@ -8,6 +8,7 @@ import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
 import CollectDiagPanel, { type RunStats, type MaintenanceRecord } from './influencer-pool/CollectDiagPanel'
+import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
@@ -33,8 +34,8 @@ interface Lead {
   median_long_views?: number | null; shorts_ratio?: number | null // 📈 롱폼 중앙값 + 쇼츠 비중(%) — 쇼츠 착시 배제 지표
   is_brand?: number | null; lead_score?: number | null            // 🏢 브랜드 공식 채널 추정 · 🏅 리드 점수(0~100)
   last_post_at?: string | null // 📝 블로거 마지막 글 날짜(검색 postdate/RSS — 활동 신호)
+  email_status?: string | null // 📬 Resend 웹훅(bounced/complained/opened) — 발송 큐 하드 필터에 사용
 }
-// 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
 function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
@@ -42,7 +43,6 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
 }
 interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number }
 
-// 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
   contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
@@ -88,8 +88,7 @@ export default function AdminInfluencerPoolPage() {
   const [collecting, setCollecting] = useState(false)
 
   const PAGE = 200
-  // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름).
-  const buildParams = useCallback((offset: number) => {
+  const buildParams = useCallback((offset: number) => { // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름)
     const params = new URLSearchParams()
     if (platform) params.set('platform', platform)
     if (hasContact) params.set('hasContact', '1')
@@ -116,8 +115,7 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
   }, [buildParams])
 
-  // 더 보기 — 현재 로드된 개수를 offset 으로 다음 페이지 append(필터 유지).
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(async () => { // 더 보기 — 로드된 개수를 offset 으로 append(필터 유지)
     setLoadingMore(true)
     try {
       const r = await api.get(`/api/admin/ads/influencer-pool?${buildParams(leads.length).toString()}`)
@@ -364,6 +362,7 @@ export default function AdminInfluencerPoolPage() {
           return <div className="text-[11px] text-gray-500 mt-0.5">🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%) · 근거 검증됨 {formatNumber(ver)} ({Math.round(ver / Math.max(1, cat) * 100)}%){inh > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inh)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}</div>
         })() : null}
 
+        <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
         <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
@@ -388,6 +387,7 @@ export default function AdminInfluencerPoolPage() {
         {/* 📨 발송 — 사람이 직접 검토·발송(정보통신망법: 동의 리드만 자동발송). 접이식. */}
         <details className="mb-4 rounded-lg border border-gray-200 bg-white">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">📨 발송 (초안 생성 · 발송 모드 · 동의 리드 일괄발송)</summary>
+          <div className="px-4 pb-1 text-[11px] text-gray-400">운영 기준: 이메일·네이버 쪽지 우선 · 인스타 DM은 보조(단일 계정 대량 DM = 제재 리스크) · 명의는 유어애즈 + 의뢰 매장 병기</div>
           <div className="px-4 pb-4 flex flex-wrap gap-2">
             <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
               {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
@@ -592,8 +592,8 @@ export default function AdminInfluencerPoolPage() {
           />
         )}
         {/* 🚀 발송 모드 — 한 명씩 원클릭(Enter) 발송 큐. 선택 있으면 선택만. */}
-        {/* ⚖️ 발송 큐에서 rejected(수신거부/스팸신고 자동 강등 포함)는 코드로 제외 — 안내문만으로 재컨택되던 것 차단(명시 선택도 예외 없음). */}
-        {queueOpen && <SendQueueModal leads={(selected.size ? leads.filter(l => selected.has(l.id)) : leads).filter(l => l.status !== 'rejected')} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
+        {/* ⚖️ 발송 큐 제외(코드 강제): rejected(수신거부) + 반송/스팸신고 주소(email_status) — 안내문 아닌 하드 필터. */}
+        {queueOpen && <SendQueueModal leads={(selected.size ? leads.filter(l => selected.has(l.id)) : leads).filter(l => l.status !== 'rejected' && l.email_status !== 'bounced' && l.email_status !== 'complained')} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
       </div>
     </AdminLayout>
   )
