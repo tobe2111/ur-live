@@ -190,6 +190,7 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { adsPayRoutes, adminAdsPayRoutes } from '../features/marketing/api/ads-pay.routes'; // 💳 서비스몰 토스(게이트 OFF 기본)
 // 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
 import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
 import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
@@ -1544,6 +1545,10 @@ app.route('/api/products', featureProductsRoutes);
 // app.route('/api/ads', marketingRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
 app.route('/api/creator-apply', influencerApplyRoutes);
+// 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
+//   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
+app.route('/api/ads-pay', adsPayRoutes);
+app.route('/api/admin/ads-pay', adminAdsPayRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)

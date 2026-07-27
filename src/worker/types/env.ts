@@ -166,6 +166,9 @@ export interface Env {
   ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
   // 🌙 야간 자동 정비(중복통합→연락처 재추출→재분류 / 재보정→재조회) — 기본 ON. 'false' 로만 끔.
   ADS_AUTO_MAINTENANCE_ENABLED?: string;
+  // 💳 유어애즈 서비스몰 토스 결제 게이트(기본 OFF) — ⚠️ staging 실결제 검증 후에만 'true'.
+  //   OFF = 계좌이체 흐름 그대로(버튼 미노출). 메인 워커 전용(/api/ads-pay — TOSS 키가 메인에 있음).
+  ADS_TOSS_ENABLED?: string;
   // ---- 🤝 B2B 파트너(업체) 자동 수집 (레인 A 네이버 지역검색, 2026-07-21) ----
   ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
   ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
