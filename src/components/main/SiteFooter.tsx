@@ -47,6 +47,7 @@ export default function SiteFooter() {
           <nav aria-label="파트너">
             <h3 className={colTitle}>파트너</h3>
             <a href="/partners" className={colLink}>사장님 가게 입점</a>
+            <a href="/area-report" className={colLink}>우리 동네 상권 리포트</a>
             <a href="/creators" className={colLink}>크리에이터 모집</a>
             <a href="/agency/register/business" className={colLink}>에이전시 시작</a>
             {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
