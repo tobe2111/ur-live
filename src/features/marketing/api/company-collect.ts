@@ -266,6 +266,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
+  const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/dead_domain/no_name…) — 적중률 계측
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
   const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
@@ -318,6 +319,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     }
     if (site && budget.left > 2) {
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
+      crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
       // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
       //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
@@ -363,10 +365,12 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
-  const result = { processed, enriched, remaining: Number(rem?.n) || 0 }
-  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 버튼 완료 감지·상태줄 공용.
+  const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
+  const hitRate = crawls ? Math.round(((crawlReason.ok || 0) / crawls) * 100) : 0
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
+  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지") + 🎯 크롤 적중률 사유(다음 개선을 데이터로 고름).
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result })).run().catch(() => null)
+    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason })).run().catch(() => null)
   return result
 }
 

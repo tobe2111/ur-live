@@ -390,11 +390,11 @@ app.post('/enrich-burst', async (c) => {
     .bind('ads_enrich_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
   const burn = async () => {
     const startedAt = Date.now()
-    let rounds = 0, lastEnriched = 0, enriched = 0, processed = 0, reason = 'loop_cap'
+    let rounds = 0, lastEnriched = 0, enriched = 0, processed = 0, crawls = 0, hits = 0, reason = 'loop_cap'
     for (let i = 0; i < 12; i++) {
       if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // 잔여는 cron/재클릭이 이어받음
       await heartbeat()
-      type BurstResp = { ok?: boolean; stats?: { processed?: number; enriched?: number; remaining?: number } } | null
+      type BurstResp = { ok?: boolean; stats?: { processed?: number; enriched?: number; remaining?: number; crawls?: number; hit_rate?: number } } | null
       let body: BurstResp = null
       try {
         const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
@@ -405,17 +405,20 @@ app.post('/enrich-burst', async (c) => {
       lastEnriched = body.stats.enriched ?? 0
       enriched += body.stats.enriched ?? 0
       processed += body.stats.processed ?? 0
+      crawls += body.stats.crawls ?? 0
+      hits += Math.round(((body.stats.crawls ?? 0) * (body.stats.hit_rate ?? 0)) / 100) // 라운드 크롤×적중률 → 적중수 누적
       if ((body.stats.processed ?? 0) === 0) { reason = 'backlog_done'; break } // 보강 대상 소진
     }
+    const hitRate = crawls ? Math.round((hits / crawls) * 100) : 0
     await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, processed, enriched, lastEnriched, reason })).run().catch(() => null)
+      .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, processed, enriched, lastEnriched, crawls, hit_rate: hitRate, reason })).run().catch(() => null)
     await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").run().catch(() => null)
-    // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다.
+    // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다. 크롤 적중률로 다음 개선 방향(시도량 vs 추출력) 판단.
     try {
       const reasonLabel = reason === 'backlog_done' ? '백로그 소진 ✅' : reason === 'time_cap' ? '시간 상한 — 잔여는 자동/재클릭' : reason === 'loop_cap' ? '라운드 상한 — 잔여는 자동/재클릭' : '중단(응답 오류)'
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
       await createDashboardNotification(c.env.DB, 'admin', null, 'partner_pool_job', '🚀 보강 풀가동 완료',
-        `${rounds}라운드 · 처리 ${processed.toLocaleString()} · 연락처 확보 ${enriched.toLocaleString()} (${reasonLabel})`, '/admin/partner-pool')
+        `${rounds}라운드 · 처리 ${processed.toLocaleString()} · 연락처 확보 ${enriched.toLocaleString()} · 크롤 ${crawls.toLocaleString()}(이메일 적중 ${hitRate}%) · ${reasonLabel}`, '/admin/partner-pool')
     } catch { /* 알림 실패가 보강 자체를 막지 않음 */ }
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
