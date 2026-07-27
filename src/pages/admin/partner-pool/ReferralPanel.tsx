@@ -11,6 +11,7 @@ interface Referral {
   id: number; partner_lead_id: number | null; partner_name: string
   store_name: string; region: string | null; phone: string | null; memo: string | null
   status: string; created_at: string
+  reward_amount: number | null; reward_status: string; reward_paid_at: string | null; reward_memo: string | null
 }
 const ST: Record<string, { label: string; cls: string }> = {
   new: { label: '접수', cls: 'bg-gray-100 text-gray-700' },
@@ -44,8 +45,29 @@ export default function ReferralPanel() {
 
   async function setStatus(id: number, status: string) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    try { const r = await api.patch(`/api/admin/partner-pool/referrals/${id}`, { status }); if (!r.data?.success) { toast.error(r.data?.error || '변경 실패'); await load() } }
-    catch { toast.error('변경 실패'); await load() }
+    try {
+      const r = await api.patch(`/api/admin/partner-pool/referrals/${id}`, { status })
+      if (!r.data?.success) { toast.error(r.data?.error || '변경 실패') }
+      await load() // 입점 확정 시 서버가 보상 '지급대기'로 자동 전환 — 재조회로 반영
+    } catch { toast.error('변경 실패'); await load() }
+  }
+
+  async function saveReward(id: number, amount: string) {
+    const a = amount.trim() === '' ? null : Math.round(Number(amount.replace(/[^\d]/g, '')))
+    try {
+      const r = await api.patch(`/api/admin/partner-pool/referrals/${id}`, { reward_amount: a })
+      if (!r.data?.success) toast.error(r.data?.error || '보상액 저장 실패')
+      else setRows(prev => prev.map(x => x.id === id ? { ...x, reward_amount: a } : x))
+    } catch { toast.error('보상액 저장 실패') }
+  }
+
+  async function markPaid(id: number, partner: string, amount: number | null) {
+    if (!confirm(`${partner} 소개 보상 ${amount ? `${amount.toLocaleString()}원 ` : ''}지급완료로 기록할까요?\n(실제 이체는 은행에서 별도 — 여기는 회계 기록입니다)`)) return
+    try {
+      const r = await api.patch(`/api/admin/partner-pool/referrals/${id}`, { mark_paid: true })
+      if (r.data?.success) { toast.success('지급완료 기록됨'); await load() }
+      else toast.error(r.data?.error || '기록 실패')
+    } catch { toast.error('기록 실패') }
   }
 
   const newCount = rows.filter(r => r.status === 'new').length
@@ -85,6 +107,18 @@ export default function ReferralPanel() {
                   {r.phone && <span className="text-gray-500">📞 {r.phone}</span>}
                   <span className="text-gray-300">{kstShort(r.created_at)}</span>
                   <div className="grow" />
+                  {/* 💰 보상 원장 — 입점 확정 시 자동 '지급대기', 이체는 수동(기록만) */}
+                  {r.reward_status === 'paid' ? (
+                    <span className="text-[11px] px-2 py-1 rounded bg-green-100 text-green-700 font-medium" title={`지급 기록 ${kstShort(r.reward_paid_at || '')}`}>
+                      ✓ 지급완료{r.reward_amount ? ` ${r.reward_amount.toLocaleString()}원` : ''}
+                    </span>
+                  ) : r.reward_status === 'pending' ? (
+                    <span className="inline-flex items-center gap-1">
+                      <input defaultValue={r.reward_amount ?? ''} onBlur={e => saveReward(r.id, e.target.value)} placeholder="보상액"
+                        className="w-20 px-2 py-1 rounded border border-amber-300 bg-amber-50 text-gray-900 text-[11px] text-right" inputMode="numeric" />
+                      <button onClick={() => markPaid(r.id, r.partner_name, r.reward_amount)} className="px-2 py-1 rounded bg-amber-500 text-white text-[11px] font-medium">지급완료</button>
+                    </span>
+                  ) : null}
                   <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`rounded px-2 py-1 text-[11px] font-medium border-0 ${ST[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                     {Object.entries(ST).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
@@ -92,7 +126,7 @@ export default function ReferralPanel() {
               ))}
             </div>
           )}
-          <p className="mt-2 text-[10px] text-gray-400">💰 소개 보상(커미션) 지급은 정산 규칙 검증 후 별도 배선 예정 — 현재는 기록·추적만.</p>
+          <p className="mt-2 text-[10px] text-gray-400">💰 입점 확정 시 자동으로 '지급대기'가 됩니다. 보상액 기입 → 은행 이체 → '지급완료' 클릭(회계 기록). 플랫폼 원장과 분리된 수동 지급 원장입니다.</p>
         </div>
       )}
     </div>
