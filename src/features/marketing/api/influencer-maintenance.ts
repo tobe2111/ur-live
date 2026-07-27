@@ -7,7 +7,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
-import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch } from './influencer-performance'
+import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
 import { runQualityPass } from './influencer-quality'
 
 const POOL = 0
@@ -170,12 +170,15 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
 }
 
 /** 🌙 야간 라이브 재보정(별도 시간대 KST 04시 — fetch-heavy 라 자체 인보케이션 예산 사용):
- *   🧭 카테고리 전체 재보정(커서 이어받기) + 🔄 라이브 재조회 2패스(0회·무메일·미분류 우선). */
+ *   🧭 카테고리 전체 재보정(커서 이어받기) + 🔄 라이브 재조회 2패스(0회·무메일·미분류 우선)
+ *   + 📝 블로거 스윕(활동성·이웃수·프로필 연락처 — 시간당 20 개로는 백로그가 느려 밤에 60 개 추가). */
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
-  try { out.refetch = await runYtLiveRefetch(env, 2) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
+  // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
+  try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
+  try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
   return out

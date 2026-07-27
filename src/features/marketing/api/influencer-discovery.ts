@@ -65,7 +65,7 @@ const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|�
 export const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
 
 /** 🏷️ 영상 제목 세그먼트(" | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지(제목=분류 전용). */
-export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s영상:[\s\S]*$/, '')
+export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s(?:영상|글):[\s\S]*$/, '')
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
 //   보수적(오탐 최소) — bare 체험단/서포터즈/대행사 는 정상 창작자(협찬 환영·"대행사 아님") 오제외라 '…모집'·부정문만 노이즈.
@@ -154,6 +154,7 @@ export interface InfluencerLead {
   country: string | null; thumbnail: string | null
   email: string | null; instagram: string | null; tiktok: string | null; links: string | null
   description: string
+  last_post_at?: string | null // 📝 블로거 마지막 글 날짜(YYYY-MM-DD, 검색 API postdate) — RSS 차단 무관 활동 신호
 }
 
 interface YTSearchResp { items?: Array<{ id?: { channelId?: string }; snippet?: { channelId?: string } }>; nextPageToken?: string; error?: { message?: string; errors?: Array<{ reason?: string }> } }
@@ -377,10 +378,10 @@ export async function discoverNaverBloggers(
   const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
-  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string }>; errorMessage?: string } | null
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `블로그 검색 오류 (HTTP ${res.status})` }
   // 고유 블로거로 집계(블로그홈 링크 기준).
-  const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
+  const byBlog = new Map<string, InfluencerLead & { _matches: number; _titles: string[] }>()
   for (const it of (data?.items || [])) {
     const home = ensureScheme(String(it.bloggerlink || '').trim()) // 🐛 Naver API 는 스킴 없이 반환 → 상대경로 404 방지
     if (!home) continue
@@ -390,6 +391,11 @@ export async function discoverNaverBloggers(
     const text = `${stripTag(it.title)} ${stripTag(it.description)}`
     const ex = existingOrNew(byBlog, key, String(it.bloggername || handle || '블로거'), key, handle)
     ex._matches += 1
+    // 📝 마지막 글 날짜(postdate YYYYMMDD → YYYY-MM-DD, 매칭 글 중 최신) — RSS 차단과 무관한 활동 신호.
+    const pd = /^(\d{4})(\d{2})(\d{2})$/.exec(String(it.postdate || '').trim())
+    if (pd) { const iso = `${pd[1]}-${pd[2]}-${pd[3]}`; if (!ex.last_post_at || ex.last_post_at < iso) ex.last_post_at = iso }
+    const title = stripTag(it.title).slice(0, 80)
+    if (title && ex._titles.length < 4 && !ex._titles.includes(title)) ex._titles.push(title) // 🏷️ 글 제목 = 분류 신호
     const c = extractContacts(text)
     if (!ex.email) { const be = pickBusinessEmail(text, { requireContext: true }); if (be) ex.email = be } // ⚖️ F-03: 스니펫=글 본문 — 문맥 있는 메일만
     if (!ex.instagram && c.instagram[0]) ex.instagram = c.instagram[0]
@@ -397,8 +403,10 @@ export async function discoverNaverBloggers(
     if (!ex.links && c.links.length) ex.links = c.links.join(' ')
     if (!ex.description) ex.description = text.slice(0, 300)
   }
+  // 글 제목 묶음을 description 꼬리에 부착(` | 글: ` — stripVideoTitles 가 인지하는 마커) → 카테고리 분류 정확도 ↑.
+  for (const ex of byBlog.values()) if (ex._titles.length) ex.description = `${stripVideoTitles(ex.description).slice(0, 300)} | 글: ${ex._titles.join(' · ')}`.slice(0, 500)
   const leads = Array.from(byBlog.values())
-    .map(({ _matches, ...l }) => ({ ...l, video_count: _matches })) // video_count = 매칭 글 수(활동 프록시)
+    .map(({ _matches, _titles, ...l }) => ({ ...l, video_count: _matches })) // video_count = 매칭 글 수(활동 프록시)
     .sort((a, b) => b.video_count - a.video_count)
 
   // 📧 컨택 보충 — 이메일 **또는 인스타/링크** 아무 컨택도 없는 블로거를 보강(활동 많은 순 상한 enrichMax).
@@ -427,10 +435,10 @@ export async function discoverNaverBloggers(
   return { ok: true, leads }
 }
 
-function existingOrNew(m: Map<string, InfluencerLead & { _matches: number }>, key: string, name: string, url: string, handle: string | null): InfluencerLead & { _matches: number } {
+function existingOrNew(m: Map<string, InfluencerLead & { _matches: number; _titles: string[] }>, key: string, name: string, url: string, handle: string | null): InfluencerLead & { _matches: number; _titles: string[] } {
   let ex = m.get(key)
   if (!ex) {
-    ex = { platform: 'naver_blog', channel_id: key, handle, name, url, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0 }
+    ex = { platform: 'naver_blog', channel_id: key, handle, name, url, subscriber_count: 0, view_count: 0, video_count: 0, country: 'KR', thumbnail: null, email: null, instagram: null, tiktok: null, links: null, description: '', _matches: 0, _titles: [] }
     m.set(key, ex)
   }
   return ex

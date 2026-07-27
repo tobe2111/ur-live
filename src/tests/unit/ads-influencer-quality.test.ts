@@ -130,3 +130,25 @@ describe('성과 지표 — 쇼츠 배제 롱폼 중앙값', () => {
     expect(videoMetrics([])).toEqual({ avgViews: 0, avgComments: 0, medianLongViews: 0, shortsRatio: 0 })
   })
 })
+
+describe('블로거 정보 보강 순수부 (2026-07-27 — "블로그 부정확" 수리)', () => {
+  it('naverPostdateToIso — YYYYMMDD → YYYY-MM-DD, 불량은 null', async () => {
+    const { naverPostdateToIso } = await import('@/features/marketing/api/influencer-performance')
+    expect(naverPostdateToIso('20260725')).toBe('2026-07-25')
+    expect(naverPostdateToIso('2026-07-25')).toBeNull()
+    expect(naverPostdateToIso('')).toBeNull()
+    expect(naverPostdateToIso(null)).toBeNull()
+  })
+  it('extractRssTitles — <item> 안의 제목만(채널 title 제외), CDATA 지원, max 제한', async () => {
+    const { extractRssTitles } = await import('@/features/marketing/api/influencer-performance')
+    const xml = `<rss><channel><title>셀리의 요리노트</title>
+      <item><title><![CDATA[전주 맛집 베스트 5]]></title></item>
+      <item><title>홈베이킹 스콘 레시피</title></item>
+      <item><title></title></item>
+      <item><title>이수역 카페 추천</title></item></channel></rss>`
+    const t = extractRssTitles(xml)
+    expect(t).toEqual(['전주 맛집 베스트 5', '홈베이킹 스콘 레시피', '이수역 카페 추천'])
+    expect(extractRssTitles(xml, 2)).toHaveLength(2)
+    expect(extractRssTitles('')).toEqual([])
+  })
+})
