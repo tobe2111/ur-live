@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
@@ -228,7 +229,9 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
         // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
         return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
       }
-      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence }
+      // webkr 제목-파편 의심 이름은 저장 시점부터 '분류 확인'(none) — 재분류에만 있던 강등을 입구에도 동일 적용.
+      const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(l.company_name, l.source_keyword) ? 'none' : c.confidence
+      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: conf }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return 0
@@ -423,6 +426,10 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
     //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
     if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
+    }
+    // 📰 뉴스룸 계정 이메일 소급 제거(press11@·pcoop@… — 기사/보도자료 페이지에서 긁힌 오염, B2B 영업 무의미).
+    if (r.email && NEWSROOM_EMAIL_LOCAL.test(r.email)) {
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
     }
     updated++
   }

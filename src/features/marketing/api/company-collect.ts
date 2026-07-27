@@ -188,7 +188,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
 async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
   spendBudget(budget)
-  const { THIRD_PARTY_HOST } = await import('./contact-enrich')
+  const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST } = await import('./company-classify')
   const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
@@ -207,7 +207,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     // 📰 뉴스 기사 URL 제외(같은 날 2차 신고 — 매일일보 기사제목이 리드로) — 기사 CMS 경로 + 언론사성 호스트.
     //   업체 자체 사이트의 홈/소개 페이지는 이 경로 패턴을 안 씀. 제목 문형 차단(classifyLead)과 2중 방어.
     if (/(\/news|\/article|articleview|newsview|\/press\/|\/media\/)/i.test((u.pathname + u.search).toLowerCase())) continue
-    if (/(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i.test(u.hostname)) continue
+    if (NEWS_MEDIA_HOST.test(u.hostname)) continue // SSOT: contact-enrich.NEWS_MEDIA_HOST(크롤 거부와 동일 목록)
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
     const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host

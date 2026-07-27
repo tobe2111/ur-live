@@ -14,6 +14,11 @@ const norm = (s: string) => s.replace(/\s+/g, '')
 
 // 템플릿/플랫폼 기본값·플레이스홀더 — 업체 실이메일이 아님(게시돼 있어도 스킵, 허위 방지).
 const JUNK_EMAIL = /@(?:sentry\.|wixpress\.com|example\.|your-?domain|yourdomain|domain\.com|email\.com|test\.com|sample\.|godaddy|cloudflare|w3\.org|schema\.org|sentry\.io|abc\.com|company\.com)|^(?:example|test|sample|your-?email|yourname|user|name|id)@/i
+/** 📰 뉴스룸 계정 로컬파트(press11@·jebo@·desk@…) — 언론사/보도자료 페이지에서 긁힌 이메일은 B2B 영업에
+ *  무의미한 오염(2026-07-27 대표 스크린샷: press11@daum.net·pcoop@pressian.com). 크롤 채택 거부 + 소급 스윕 공용. */
+export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|reporter|editor|jebo|bodo)[\d._-]*@/i
+/** 📰 언론사성 호스트(수집 제외 + 크롤 거부 공용) — 뉴스 포털 루트에서 webmaster@ 류가 긁히는 것 차단. */
+export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 
@@ -30,15 +35,15 @@ export function extractEmailFromHtml(html: string): string | null {
     let e = m[1]
     try { e = decodeURIComponent(e) } catch { /* 원문 유지 */ }
     e = e.trim().toLowerCase()
-    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e)) mailtos.push(e)
+    if (EMAIL_STRICT.test(e) && !JUNK_EMAIL.test(e) && !NEWSROOM_EMAIL_LOCAL.test(e)) mailtos.push(e)
   }
   if (mailtos.length) {
     // mailto 다수면 비즈니스 문맥(문의/contact)으로 선별, 아니면 첫 번째.
     const biz = pickBusinessEmail(mailtos.map(e => `문의 ${e}`).join(' '))
-    return (biz && !JUNK_EMAIL.test(biz)) ? biz : mailtos[0]
+    return (biz && !JUNK_EMAIL.test(biz) && !NEWSROOM_EMAIL_LOCAL.test(biz)) ? biz : mailtos[0]
   }
   const body = pickBusinessEmail(html)
-  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) ? body : null
+  return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) && !NEWSROOM_EMAIL_LOCAL.test(body) ? body : null
 }
 /** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
  *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
@@ -174,6 +179,8 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null } }
   if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null }
+  // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 수집단 필터를 우회한 레거시/외부입력 website 도 여기서 차단.
+  if (NEWS_MEDIA_HOST.test(url.hostname) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null }
   if (outOfBudget(budget)) return { email: null, phone: null, siteName: null }
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
