@@ -8,6 +8,8 @@
  * 🎨 2026-06-20 흑백 리디자인 화면2: 핀 라벨("가게 · D-N") + 현위치 마커 + 현위치 재중심 버튼.
  */
 import { useEffect, useRef } from 'react'
+import { ensureKakaoMaps } from '@/lib/kakao-sdk'
+import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 
 interface VoucherMapItem {
   id: number | string
@@ -28,33 +30,17 @@ export default function VoucherMap<T extends VoucherMapItem>({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
+  // 🗺️ 2026-07-25 (전수조사 M5): 마커/오버레이 레이어 registry + bounds-fit 이력.
+  //   기존엔 deps(vouchers 배열 identity/userLocation GPS 도착) 변경마다 같은 컨테이너에
+  //   `new kakao.maps.Map` 을 다시 생성 — 지도 조작 중 전체 재초기화(뷰 리셋·깜빡임) + 이전 인스턴스/
+  //   리스너 미정리 누적. → 지도는 1회만 생성, 변경 시 마커 레이어만 갈아끼우고 뷰포트는 보존.
+  const layerRef = useRef<any[]>([])
+  const fittedKeyRef = useRef('')
+  const shimCleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => { shimCleanupRef.current?.(); shimCleanupRef.current = null }, [])
 
   useEffect(() => {
     if (!containerRef.current || vouchers.length === 0) return
-    const KAKAO_KEY = (import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || '') as string
-    if (!KAKAO_KEY) {
-      if (import.meta.env.DEV) console.warn('[VoucherMap] Kakao JS key missing')
-      return
-    }
-
-    function ensureSdkLoaded(): Promise<void> {
-      return new Promise((resolve, reject) => {
-        const w = window as any
-        if (w.kakao && w.kakao.maps) { resolve(); return }
-        const existingScript = document.querySelector(`script[src*="dapi.kakao.com"]`)
-        if (existingScript) {
-          existingScript.addEventListener('load', () => w.kakao?.maps?.load(() => resolve()))
-          existingScript.addEventListener('error', () => reject(new Error('kakao sdk load failed')))
-          return
-        }
-        const s = document.createElement('script')
-        s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&autoload=false`
-        s.async = true
-        s.onload = () => w.kakao.maps.load(() => resolve())
-        s.onerror = () => reject(new Error('kakao sdk load failed'))
-        document.head.appendChild(s)
-      })
-    }
 
     // D-N 라벨용 남은 일수
     const daysLeft = (iso?: string): number | null => {
@@ -64,22 +50,32 @@ export default function VoucherMap<T extends VoucherMapItem>({
     }
 
     let cancelled = false
-    ensureSdkLoaded().then(() => {
+    // 🗺️ M5 동반: 자체 로더 제거 → 공용 ensureKakaoMaps(kakao-sdk.ts) — 기존 로더는 `w.kakao.maps`
+    //   존재만 보고 maps.load() 완료 전 resolve 될 수 있는 레이스 보유(공용 로더가 load 완료 보장).
+    ensureKakaoMaps().then(() => {
       if (cancelled || !containerRef.current) return
       const w = window as any
-      const lats = vouchers.map(v => Number(v.restaurant_lat))
-      const lngs = vouchers.map(v => Number(v.restaurant_lng))
-      const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length
-      const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length
-      const map = new w.kakao.maps.Map(containerRef.current, {
-        center: new w.kakao.maps.LatLng(centerLat, centerLng),
-        level: 7,
-      })
-      mapRef.current = map
+      const pts = vouchers.filter(v => Number.isFinite(Number(v.restaurant_lat)) && Number.isFinite(Number(v.restaurant_lng)) && v.restaurant_lat && v.restaurant_lng)
+      if (pts.length === 0) return
+      if (!mapRef.current) {
+        const centerLat = pts.reduce((a, v) => a + Number(v.restaurant_lat), 0) / pts.length
+        const centerLng = pts.reduce((a, v) => a + Number(v.restaurant_lng), 0) / pts.length
+        mapRef.current = new w.kakao.maps.Map(containerRef.current, {
+          center: new w.kakao.maps.LatLng(centerLat, centerLng),
+          level: 7,
+        })
+        // 🗺️ 2026-07-27: 데스크톱 Chrome UA+터치(DevTools Responsive 에뮬·터치 노트북)에선 카카오가
+        //   마우스 모드로 바인딩돼 터치 팬 불능 — 해당 환경에서만 터치→마우스 어댑터(그 외 no-op).
+        shimCleanupRef.current = attachKakaoTouchShim(containerRef.current)
+      }
+      const map = mapRef.current
+
+      // 이전 마커 레이어만 제거(지도 인스턴스/뷰포트는 유지)
+      layerRef.current.forEach(o => { try { o.setMap?.(null) } catch { /* silent */ } })
+      layerRef.current = []
 
       const bounds = new w.kakao.maps.LatLngBounds()
-      vouchers.forEach((v) => {
-        if (!v.restaurant_lat || !v.restaurant_lng) return
+      pts.forEach((v) => {
         const pos = new w.kakao.maps.LatLng(v.restaurant_lat, v.restaurant_lng)
         bounds.extend(pos)
         const marker = new w.kakao.maps.Marker({ position: pos, map })
@@ -90,17 +86,25 @@ export default function VoucherMap<T extends VoucherMapItem>({
         const overlay = new w.kakao.maps.CustomOverlay({ position: pos, content: labelHtml, yAnchor: 1, zIndex: 3 })
         overlay.setMap(map)
         w.kakao.maps.event.addListener(marker, 'click', () => onMarkerClick(v))
+        layerRef.current.push(marker, overlay)
       })
 
-      // 🎨 현위치 마커 + bounds 포함
+      // 🎨 현위치 마커 — GPS 도착 시 점만 추가(뷰포트 리셋 없음)
       if (userLocation) {
         const upos = new w.kakao.maps.LatLng(userLocation.lat, userLocation.lng)
-        bounds.extend(upos)
         const dotHtml = `<div style="width:16px;height:16px;border-radius:50%;background:#2563EB;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.25)"></div>`
-        new w.kakao.maps.CustomOverlay({ position: upos, content: dotHtml, zIndex: 5 }).setMap(map)
+        const dot = new w.kakao.maps.CustomOverlay({ position: upos, content: dotHtml, zIndex: 5 })
+        dot.setMap(map)
+        layerRef.current.push(dot)
       }
 
-      if (vouchers.length > 1 || userLocation) map.setBounds(bounds, 56, 40, 100, 40)
+      // bounds fit 은 '이용권 구성이 실제로 바뀐 첫 렌더'만 — 조작 중 refetch(동일 목록)로 뷰가 튀지 않게.
+      const idsKey = pts.map(v => v.id).join(',')
+      if (fittedKeyRef.current !== idsKey) {
+        fittedKeyRef.current = idsKey
+        if (userLocation) bounds.extend(new w.kakao.maps.LatLng(userLocation.lat, userLocation.lng))
+        if (pts.length > 1 || userLocation) map.setBounds(bounds, 56, 40, 100, 40)
+      }
     }).catch((err) => {
       if (import.meta.env.DEV) console.error('[VoucherMap]', err)
     })

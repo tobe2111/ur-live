@@ -44,6 +44,8 @@
 | 글로벌 CSS invert 적용 후 UI 깨짐 | 다크모드 invert hack | 사용 금지 (`docs/INCIDENTS.md`) |
 | CSP nonce 적용 후 화면 깨짐 | `style-src` 에 `'nonce-XXX'` | 사용 금지. `'unsafe-inline'` 유지 |
 | 특정 브라우저에서만 페이지 무한로딩/"응답 없는 페이지"/흰화면 + 콘솔 무에러 (특히 /admin 등 저빈도 대시보드) | 그 브라우저에 잔존한 캐시(낡은 index.html)·캐시형 서비스워커·만료 토큰 상태 — 서버는 정상인데 원격에서 원인 특정 불가 | **사용자에게 `live.ur-team.com/recover` 열게 하기** — SW/캐시/HTML 신선도/청크/토큰/어드민 API 를 자동 진단 + 원클릭 완전복구 버튼. 결과는 `frontend_errors`(type='admin-diag') 에 자동 기록 (2026-07-04, killer-sw.routes.ts) |
+| "화면을 새로 불러올게요" 복구 오버레이가 **가끔** 뜨고(주로 배포 직후, `?__cb=` 붙은 URL) 버튼도 무효, **시간 지나면 저절로 정상** | 배포 전파 창 — 새 index.html 은 서빙되는데 새 청크가 엣지에 퍼지기 전(실제 수십 초~수분) 청크 404 반복. 옛 재시도(0.7~2.5s×3회/90s)는 '수초 창' 가정이라 창 안에서 소진 → 오버레이, 버튼 reload 도 창 안이라 또 실패 | 2026-07-27 수리: 지수 백오프 8회/5분(0.7→30s, 로더 상태로 창 통과) + 워치독 유예 억제 + 오버레이 30s 자동 재시도(index.html 부트가드 ↔ chunk-error.ts SSOT 쌍). 재발 시 어드민 `/api/_errors/recent` 의 `[boot-stuck]` beacon(reason/chunkSeen/lastErr)으로 원인 확증 |
+| PC F12(DevTools) 모바일 에뮬레이션에서 **카카오 지도 스와이프/팬이 아예 안 됨** (시트/버튼은 정상, 콘솔 무에러) — Windows 터치 노트북 실기기도 동일 | 카카오맵 코어(4.5.13)가 로드 시 입력 모드를 1회 판정: `H = ontouchstart && (!Chrome UA \|\| Android UA)` — H=false 면 **마우스 핸들러만** 바인딩. DevTools 기본 "Responsive"(UA 스푸핑 없음)·터치스크린 데스크톱 Chrome/Edge 는 "데스크톱 Chrome UA+터치" 라 카카오는 마우스만 듣는데 브라우저는 터치만 보냄 | `src/lib/kakao-touch-shim.ts` `attachKakaoTouchShim(el)` — 해당 환경에서만 터치→마우스 합성(탭은 호환 click 위임 → 핀 클릭 보존). useKakaoMap·VoucherMap 배선 완료(2026-07-27, CDP 3시나리오 검증). 새 지도 표면 추가 시 이 헬퍼 부착. 참고: Pixel/iPhone **프리셋** 선택 시엔 UA 스푸핑으로 원래 정상 |
 
 ## 환경변수 / 배포
 

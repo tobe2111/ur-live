@@ -136,22 +136,26 @@ export default function MarketingLandingPage() {
               <h1 style={{ fontSize: 'clamp(38px,5vw,56px)', lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.045em', margin: '22px 0 0' }}>광고 입찰부터 발주까지,<br /><span className="grad">하나로 자동화.</span></h1>
               <p style={{ fontSize: 17, lineHeight: 1.62, color: 'var(--ink2)', margin: '20px 0 0', maxWidth: 460 }}>목표 순위와 최대 입찰가만 정하세요. 최저 CPC를 24/365 자동으로 찾고, 부정클릭을 가려내고, 흩어진 성과를 ROAS 한 화면에 모읍니다.</p>
               <div style={{ display: 'flex', gap: 13, alignItems: 'center', marginTop: 30, flexWrap: 'wrap' }}>
-                <Link to={loginHref} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '14px 26px', borderRadius: 9, whiteSpace: 'nowrap' }}>30일 무료로 시작</Link>
-                <a href="#features" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)', border: '1px solid var(--btn-bd)', padding: '14px 24px', borderRadius: 9, whiteSpace: 'nowrap' }}>기능 둘러보기</a>
+                {/* 🟡 유어딜 카카오 계정으로 즉시 시작(브리지) — 별도 가입 폼 없이 3초 */}
+                <a href={loggedIn ? APP : `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: '#191919', background: '#FEE500', padding: '14px 26px', borderRadius: 9, whiteSpace: 'nowrap' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
+                  {loggedIn ? '대시보드 열기' : '카카오로 3초 시작'}
+                </a>
+                <Link to={loginHref} style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)', border: '1px solid var(--btn-bd)', padding: '14px 24px', borderRadius: 9, whiteSpace: 'nowrap' }}>{loggedIn ? '대시보드' : '이메일로 시작'}</Link>
               </div>
               <div style={{ display: 'flex', gap: 30, marginTop: 36 }}>
-                <div><div className="num grad" style={{ fontSize: 26, fontWeight: 800 }}>15%↓</div><div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>평균 CPC 절감</div></div>
-                <div style={{ width: 1, background: 'var(--line)' }} />
                 <div><div className="num grad" style={{ fontSize: 26, fontWeight: 800 }}>24/365</div><div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>무중단 자동 입찰</div></div>
                 <div style={{ width: 1, background: 'var(--line)' }} />
-                <div><div className="num grad" style={{ fontSize: 26, fontWeight: 800 }}>6개</div><div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>통합 자동화 기능</div></div>
+                <div><div className="num grad" style={{ fontSize: 26, fontWeight: 800 }}>41,000+</div><div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>자체 인플루언서 풀</div></div>
+                <div style={{ width: 1, background: 'var(--line)' }} />
+                <div><div className="num grad" style={{ fontSize: 26, fontWeight: 800 }}>공식 API</div><div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>네이버 · 크롤링 아님</div></div>
               </div>
             </div>
             {/* product window */}
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 30px 80px -36px rgba(59,110,245,.45)', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--hair)', background: 'var(--panel2)' }}>
                 <div style={{ display: 'flex', gap: 6 }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: '#E0E2E8' }} />)}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>app.urads.kr/dashboard</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>urdeal.kr/ads/dashboard</div>
                 <div style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 'auto', opacity: .8 }}>예시 화면</div>
               </div>
               <div style={{ padding: 18 }}>
@@ -171,16 +175,14 @@ export default function MarketingLandingPage() {
         </div>
       </section>
 
-      {/* ── TRUST ── */}
+      {/* ── TRUST — 실제 근거만(가공 고객사 로고 금지): 운영사 도그푸딩 + 실 인프라 ── */}
       <section style={{ borderBottom: '1px solid var(--line)', background: 'var(--panel2)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>성장하는 브랜드들이 신뢰합니다</span>
-          <div style={{ display: 'flex', gap: 38, alignItems: 'center', flexWrap: 'wrap', opacity: .62, color: '#3A414C' }}>
-            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.02em' }}>루미스토어</span>
-            <span style={{ fontSize: 18, fontWeight: 700, fontStyle: 'italic' }}>Nova Living</span>
-            <span style={{ fontSize: 18, fontWeight: 800 }}>데일리핏</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>감성그릇</span>
-            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.04em' }}>TENON</span>
+          <span style={{ fontSize: 13, color: 'var(--ink2)', whiteSpace: 'nowrap' }}><b style={{ color: 'var(--ink)' }}>유어딜(urdeal.kr) 운영사가 직접 만들고, 매일 씁니다.</b></span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {['네이버 공식 API', '카카오 로그인', '토스페이먼츠 결제', 'Cloudflare 인프라'].map(t => (
+              <span key={t} style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', border: '1px solid var(--line)', background: 'var(--panel)', padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>{t}</span>
+            ))}
           </div>
         </div>
       </section>
@@ -191,10 +193,10 @@ export default function MarketingLandingPage() {
         <h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0', maxWidth: 720 }}>광고대행사 한 명이 하던 일을,<br />UR Ads가 <span className="grad">24시간 대신</span>합니다.</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(220px,100%),1fr))', marginTop: 44, border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
           {[
-            { v: <>15%<span style={{ color: 'var(--up)', fontSize: 24 }}>↓</span></>, t: <>평균 CPC 절감<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>동일 순위 유지 기준</span></> },
             { v: '24/365', t: <>무중단 자동 입찰<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>새벽 경쟁 입찰까지 대응</span></> },
-            { v: '₩8.4억', t: <>누적 광고비 절감액<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>2025년 전체 고객 합산</span></> },
-            { v: '1클릭', t: <>스토어 연동<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>공식 API · 크롤링 아님</span></> },
+            { v: '₩0', t: <>베타 기간 도구 무료<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>승인제 · 카드 등록 없음</span></> },
+            { v: '41,000+', t: <>자체 인플루언서 풀<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>유튜브·블로그 자동 수집·정비</span></> },
+            { v: '1분', t: <>검색광고 연동<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>공식 API · 크롤링 아님</span></> },
           ].map((s, i, arr) => (
             <div key={i} style={{ padding: '28px 26px', borderRight: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
               <div className="num" style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-.03em' }}>{s.v}</div>
@@ -202,7 +204,7 @@ export default function MarketingLandingPage() {
             </div>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>* 위 수치·화면은 서비스 소개용 예시입니다. 실제 성과는 계정·업종·예산에 따라 다릅니다.</p>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>* 기능 소개 화면의 수치는 이해를 돕기 위한 예시입니다. 실제 성과는 계정·업종·예산에 따라 다릅니다.</p>
       </section>
 
       {/* ── FEATURES ── */}
@@ -357,9 +359,9 @@ export default function MarketingLandingPage() {
             <div style={{ padding: '8px 16px 16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr .8fr', padding: '10px 0', ...thRow }}><div>주문</div><div>스토어</div><div style={{ textAlign: 'right' }}>상태</div></div>
               {[
-                { p: '무선 이어폰 ×2', id: '#A-20614', s: '루미스토어', st: '발송완료', stc: '#0E8C5A', stb: '#E3F6EE' },
-                { p: '가습기 ×1', id: '#N-88231', s: 'Nova Living', st: '신규', stc: '#9A6700', stb: '#FCF3E1' },
-                { p: '스피커 ×1', id: '#D-10925', s: '데일리핏', st: '처리중', stc: 'var(--soft-tx)', stb: 'var(--soft-bg)' },
+                { p: '무선 이어폰 ×2', id: '#A-20614', s: '스토어 A', st: '발송완료', stc: '#0E8C5A', stb: '#E3F6EE' },
+                { p: '가습기 ×1', id: '#N-88231', s: '스토어 B', st: '신규', stc: '#9A6700', stb: '#FCF3E1' },
+                { p: '스피커 ×1', id: '#D-10925', s: '스토어 C', st: '처리중', stc: 'var(--soft-tx)', stb: 'var(--soft-bg)' },
               ].map((r) => (
                 <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr .8fr', padding: '12px 0', fontSize: 13, borderTop: '1px solid var(--hair)', alignItems: 'center' }}>
                   <div><div style={{ fontWeight: 600 }}>{r.p}</div><div className="num" style={{ fontSize: 11, color: 'var(--muted)' }}>{r.id}</div></div>
@@ -381,54 +383,54 @@ export default function MarketingLandingPage() {
         </div>
       </section>
 
-      {/* ── PROOF ── */}
+      {/* ── PROOF — 가공 후기 대신 실사용(도그푸딩) 사실만 ── */}
       <section id="proof" style={{ borderTop: '1px solid var(--line)', background: 'var(--panel2)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 28px' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>CUSTOMER STORIES</div>
-          <h2 style={{ fontSize: 'clamp(26px,3.2vw,36px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>숫자로 증명된 변화</h2>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>BUILT & USED IN-HOUSE</div>
+          <h2 style={{ fontSize: 'clamp(26px,3.2vw,36px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>우리가 첫 번째 고객입니다</h2>
+          <p style={{ fontSize: 15, color: 'var(--ink2)', margin: '12px 0 0', maxWidth: 640, lineHeight: 1.6 }}>유어애즈는 지역 커머스 유어딜(urdeal.kr)을 운영하는 유어팀이 자기 사업에 쓰려고 만든 도구입니다. 팔기 전에 우리가 먼저 매일 검증합니다.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))', gap: 20, marginTop: 36 }}>
             {[
-              { m: '−21%', q: '"입찰 관리에 쓰던 시간이 사라졌어요. CPC는 내려가고 순위는 그대로라 마진이 눈에 띄게 좋아졌습니다."', n: '김도현', r: '루미스토어 대표', av: '#D9D4F8' },
-              { m: '12개 →1', q: '"12개 스토어 주문을 매일 옮겨 적었는데, 이제 한 화면에서 끝나요. 발주 누락이 사라졌습니다."', n: '이서연', r: '데일리핏 운영팀', av: '#C3DCEF' },
-              { m: '₩1.4M', q: '"부정클릭으로 새던 광고비를 한 달에 140만원 넘게 막았어요. 절감 리포트가 가장 만족스럽습니다."', n: '박준영', r: 'TENON 마케팅 대행', av: '#E7D2B8' },
+              { m: '41,000+', h: '인플루언서 풀 자체 구축', q: '유튜브·네이버 블로그의 지역 크리에이터를 매시간 자동 수집합니다. 유어애즈 협찬 매칭 대행이 파는 건 이 실제 재고입니다.' },
+              { m: '매일 밤', h: '사람 없이 도는 데이터 정비', q: '중복 통합, 브랜드 계정 걸러내기, 활동성 재측정, 리드 점수화(0~100)가 매일 밤 자동으로 돌아 풀이 스스로 깨끗해집니다.' },
+              { m: '유어딜 실사용', h: '매장 협찬 영업에 매일 사용', q: '유어딜 입점 매장의 지역 인플루언서 협찬 제안을 유어애즈로 직접 돌립니다. 도구가 멈추면 우리 영업이 멈추는 구조라, 안 돌아가는 기능이 없습니다.' },
             ].map((c) => (
-              <div key={c.n} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: 26 }}>
-                <div className="num grad" style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-.03em' }}>{c.m}</div>
-                <p style={{ fontSize: 14.5, lineHeight: 1.6, color: 'var(--ink-strong)', margin: '14px 0 0' }}>{c.q}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}><span style={{ width: 34, height: 34, borderRadius: '50%', background: c.av }} /><div style={{ fontSize: 12.5 }}><div style={{ fontWeight: 700 }}>{c.n}</div><div style={{ color: 'var(--muted)' }}>{c.r}</div></div></div>
+              <div key={c.h} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: 26 }}>
+                <div className="num grad" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-.03em' }}>{c.m}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, margin: '12px 0 0' }}>{c.h}</div>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--ink2)', margin: '8px 0 0' }}>{c.q}</p>
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 14 }}>* 서비스 소개용 예시 사례입니다.</p>
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* ── PRICING — 정직한 베타 구조(구매 불가능한 가상 요금 카드 금지) ── */}
       <section id="pricing" style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 28px' }}>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>PRICING</div><h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>규모에 맞게 시작하세요</h2><p style={{ fontSize: 16, color: 'var(--ink2)', margin: '14px 0 0' }}>30일 무료. 카드 등록 없이 모든 기능을 체험할 수 있습니다.</p></div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>PRICING</div><h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>지금은 베타 — 도구는 무료입니다</h2><p style={{ fontSize: 16, color: 'var(--ink2)', margin: '14px 0 0' }}>승인제로 운영합니다. 카드 등록 없이 전 기능을 쓰고, 정식 출시 시 베타 참여 계정에 우선 혜택을 드립니다.</p></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 20, marginTop: 44, alignItems: 'start' }}>
-          {/* 스타터 */}
-          <div style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 30, background: 'var(--panel)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>스타터</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>이제 막 광고를 시작한 1인 셀러</div>
-            <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩39,000</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/월</span></div>
-            <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
+          {/* 베타(도구) */}
+          <div style={{ border: '1.5px solid #3B6EF5', borderRadius: 16, padding: 30, background: 'var(--panel)', position: 'relative', boxShadow: '0 24px 60px -30px rgba(59,110,245,.55)' }}>
+            <span style={{ position: 'absolute', top: -12, left: 30, fontSize: 11, fontWeight: 700, color: '#fff', background: 'linear-gradient(96deg,#3B6EF5,#8B5CF6)', padding: '5px 11px', borderRadius: 999 }}>지금 이용 가능</span>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>베타 · 도구 전 기능</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>자동입찰 · 키워드 · 모니터링 · AI</div>
+            <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩0</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/베타 기간</span></div>
+            <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: 12, borderRadius: 9 }}>가입하고 입장 요청</Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 키워드 100개</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />부정클릭 방어</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />스토어 1곳 연동</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 · 키워드 확장 · 통합 실적</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />순위·가격 모니터링 · 부정클릭 방어</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />AI 마케터 · 주간 리포트</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />승인제 입장 — 가입 후 원클릭 요청</li>
             </ul>
           </div>
-          {/* 프로 (popular) */}
-          <div style={{ border: '1.5px solid #3B6EF5', borderRadius: 16, padding: 30, background: 'var(--panel)', position: 'relative', boxShadow: '0 24px 60px -30px rgba(59,110,245,.55)' }}>
-            <span style={{ position: 'absolute', top: -12, left: 30, fontSize: 11, fontWeight: 700, color: '#fff', background: 'linear-gradient(96deg,#3B6EF5,#8B5CF6)', padding: '5px 11px', borderRadius: 999 }}>MOST POPULAR</span>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>프로</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>본격 성장 중인 스토어</div>
-            <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩99,000</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/월</span></div>
-            <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
+          {/* 대행 서비스(서비스몰) */}
+          <div style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 30, background: 'var(--panel)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>대행 서비스</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>직접 돌릴 시간이 없는 사장님</div>
+            <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="num" style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.03em' }}>건당</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>서비스몰 주문</span></div>
+            <Link to="/ads/dashboard?tab=services" style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>서비스몰 보기</Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 키워드 <b>무제한</b></li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />키워드 확장 + AI 마케터</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />스토어 5곳 연동 <span style={{ color: '#9A6700', fontWeight: 600 }}>(발주 수집 준비 중)</span></li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동 주간 리포트</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />지역 인플루언서 리스트업</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />협찬 제안 발송 대행(회신 1차 응대)</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />카드 결제(토스) 지원</li>
             </ul>
           </div>
           {/* 에이전시 */}
@@ -437,9 +439,9 @@ export default function MarketingLandingPage() {
             <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="num" style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.03em' }}>문의</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>맞춤 견적</span></div>
             <a href={CONTACT} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>영업팀 문의</a>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />프로의 모든 기능</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />멀티테넌트 · 고객사 무제한</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />전담 매니저 · API 액세스</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />멀티테넌트 · 고객사 전환</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />고객사별 실적·자동입찰 분리</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />도입 상담 · 맞춤 조건</li>
             </ul>
           </div>
         </div>
@@ -454,7 +456,8 @@ export default function MarketingLandingPage() {
               { open: true, q: '네이버 약관에 위배되지 않나요?', a: 'UR Ads는 네이버가 공식 제공하는 검색광고 API를 통해 동작합니다. 화면을 긁어오는 크롤링 방식이 아니므로 안심하고 사용하실 수 있습니다. 순위는 공식 API 기반 추정치로 제공됩니다.' },
               { open: false, q: '자동입찰로 광고비가 갑자기 늘 수 있나요?', a: '아니요. 키워드별 최대 입찰가(상한가)를 직접 정하므로, 어떤 경우에도 설정한 금액을 넘지 않습니다. 일/월 예산 한도도 함께 설정할 수 있습니다.' },
               { open: false, q: '광고 계정 연동은 얼마나 걸리나요?', a: '검색광고 API 인증 정보를 한 번 입력하면 연동이 완료됩니다. 보통 1분이면 캠페인·키워드·실적이 모두 동기화됩니다. (스토어 발주 수집 연동은 준비 중입니다.)' },
-              { open: false, q: '대행사인데 여러 고객사를 관리할 수 있나요?', a: '에이전시 플랜에서 고객사를 무제한으로 추가하고, 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 고객사별 권한 분리도 지원합니다.' },
+              { open: false, q: '승인제는 어떻게 진행되나요?', a: '가입(카카오 3초 또는 이메일) 후 "입장 요청" 버튼을 누르면 접수됩니다. 운영팀이 확인 후 승인하며, 승인되면 다시 로그인할 때 자동으로 대시보드에 입장됩니다. 베타 기간 도구 이용은 무료입니다.' },
+              { open: false, q: '대행사인데 여러 고객사를 관리할 수 있나요?', a: '멀티테넌트를 지원합니다. 고객사를 추가하고 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 도입 조건은 영업팀 문의로 안내드립니다.' },
             ].map((f) => (
               <details key={f.q} open={f.open} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, padding: '4px 20px' }}>
                 <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', fontSize: 15.5, fontWeight: 600 }}>{f.q}<span className="fp" style={{ fontSize: 20, color: '#3B6EF5', transition: 'transform .2s', lineHeight: 1 }}>+</span></summary>
@@ -469,10 +472,13 @@ export default function MarketingLandingPage() {
       <section style={{ maxWidth: 1200, margin: '0 auto', padding: '90px 28px' }}>
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, background: 'radial-gradient(90% 140% at 50% -20%,#1c2a78 0%,#0e1430 48%,#0a0e1f 80%)', padding: '70px 48px', textAlign: 'center' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(1px 1px at 25% 40%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#cdd6ff,transparent),radial-gradient(1px 1px at 50% 25%,#fff,transparent)', opacity: .4, pointerEvents: 'none' }} />
-          <h2 style={{ position: 'relative', fontSize: 'clamp(30px,4vw,46px)', lineHeight: 1.14, fontWeight: 800, letterSpacing: '-.04em', margin: 0, color: '#fff' }}>월 광고비 낭비에서<br /><span className="grad">ROAS 412%</span>로.</h2>
-          <p style={{ position: 'relative', fontSize: 17, color: '#AEB7D0', margin: '18px auto 0', maxWidth: 460 }}>목표 순위만 정하세요. 나머지는 UR Ads가 자동으로. 30일 무료, 카드 등록 없이 시작합니다.</p>
+          <h2 style={{ position: 'relative', fontSize: 'clamp(30px,4vw,46px)', lineHeight: 1.14, fontWeight: 800, letterSpacing: '-.04em', margin: 0, color: '#fff' }}>광고비 낭비를 멈추는 가장<br /><span className="grad">빠른 시작.</span></h2>
+          <p style={{ position: 'relative', fontSize: 17, color: '#AEB7D0', margin: '18px auto 0', maxWidth: 460 }}>목표 순위만 정하세요. 나머지는 UR Ads가 자동으로. 베타 기간 무료, 카드 등록 없이 시작합니다.</p>
           <div style={{ position: 'relative', display: 'flex', gap: 13, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
-            <Link to={loginHref} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '15px 28px', borderRadius: 10 }}>무료로 시작하기 →</Link>
+            <a href={loggedIn ? APP : `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, color: '#191919', background: '#FEE500', padding: '15px 28px', borderRadius: 10 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
+              {loggedIn ? '대시보드 열기' : '카카오로 3초 시작'}
+            </a>
             <a href={CONTACT} style={{ fontSize: 15, fontWeight: 600, color: '#DCE3F2', border: '1px solid rgba(255,255,255,.18)', padding: '15px 26px', borderRadius: 10 }}>영업팀 문의</a>
           </div>
         </div>

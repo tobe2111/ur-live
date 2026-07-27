@@ -36,13 +36,39 @@ export default function MarketingUnlockPage() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // 📥 입장 요청 상태 — null(미요청)/pending/approved/rejected
+  const [reqStatus, setReqStatus] = useState<string | null>(null)
+  const [reqBusy, setReqBusy] = useState(false)
+  const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('ads_token')}` })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (!localStorage.getItem('ads_token')) { navigate('/ads/login', { replace: true }); return }
-      if (localStorage.getItem('ads_unlocked') === '1') navigate(dest, { replace: true })
+      if (localStorage.getItem('ads_unlocked') === '1') { navigate(dest, { replace: true }); return }
     }
+    // 어드민이 승인해 둔 경우 자동 입장(서버 플래그가 SSOT — 코드 입력 불필요) + 기존 요청 상태 표시.
+    let cancelled = false
+    ;(async () => {
+      try {
+        const me = await api.get('/api/ads/auth/me', { headers: authH() })
+        if (cancelled) return
+        if (me.data?.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }); return }
+        const rq = await api.get('/api/ads/auth/request-access', { headers: authH() })
+        if (!cancelled && rq.data?.success) setReqStatus(rq.data.request?.status || null)
+      } catch { /* 상태 조회 실패는 무해 — 기본 UI 유지 */ }
+    })()
+    return () => { cancelled = true }
   }, [navigate, dest])
+
+  async function requestAccess() {
+    setReqBusy(true)
+    try {
+      const r = await api.post('/api/ads/auth/request-access', {}, { headers: authH() })
+      if (r.data?.unlocked) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }); return }
+      if (r.data?.success) setReqStatus('pending')
+      else setErr(r.data?.error || '요청에 실패했습니다')
+    } catch { setErr('요청에 실패했습니다 — 잠시 후 다시 시도해주세요') } finally { setReqBusy(false) }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -79,7 +105,23 @@ export default function MarketingUnlockPage() {
         {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626', textAlign: 'center' }}>{err}</p>}
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '확인 중…' : '입장하기'}</button>
 
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
+        {/* 📥 코드가 없는 가입자 — 원클릭 입장 요청(어드민 승인 큐). 승인되면 재방문 시 자동 입장. */}
+        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
+          {reqStatus === 'pending' ? (
+            <p style={{ fontSize: 12.5, lineHeight: 1.6, color: '#0E8C5A', margin: 0 }}>✅ 입장 요청이 접수되었습니다.<br />승인되면 다시 로그인할 때 자동으로 입장됩니다.</p>
+          ) : reqStatus === 'rejected' ? (
+            <>
+              <p style={{ fontSize: 12.5, color: '#8A93A3', margin: '0 0 8px' }}>이전 요청이 승인되지 않았습니다. 다시 요청할 수 있어요.</p>
+              <button type="button" onClick={requestAccess} disabled={reqBusy} style={{ fontSize: 13, fontWeight: 700, color: '#2A56D4', background: 'none', border: '1px solid #D9DEEA', borderRadius: 10, padding: '9px 16px', cursor: 'pointer' }}>{reqBusy ? '요청 중…' : '다시 입장 요청하기'}</button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 12.5, color: '#8A93A3', margin: '0 0 8px' }}>액세스 코드가 없으신가요?</p>
+              <button type="button" onClick={requestAccess} disabled={reqBusy} style={{ fontSize: 13, fontWeight: 700, color: '#2A56D4', background: 'none', border: '1px solid #D9DEEA', borderRadius: 10, padding: '9px 16px', cursor: 'pointer' }}>{reqBusy ? '요청 중…' : '🔑 입장 요청하기 (승인제)'}</button>
+            </>
+          )}
+        </div>
+        <div style={{ marginTop: 14, textAlign: 'center' }}>
           <button type="button" onClick={logout} style={{ fontSize: 12.5, color: '#8A93A3', background: 'none', border: 'none', cursor: 'pointer' }}>다른 계정으로 로그인</button>
         </div>
       </form>

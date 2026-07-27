@@ -6,6 +6,7 @@ import {
   updateAdsAccount, changeAdsPassword, adminSetPassword,
   requestPasswordReset, resetPasswordWithToken,
   unlockAdsAccount, getAdsAccount, ensureAdsAccountSchema, kakaoLoginAdsAccount,
+  requestAdsAccess, getAdsAccessRequest,
 } from '@/features/marketing/api/ads-account'
 import { saveAlertSettings, getAlertSettings } from '@/features/marketing/api/alerts'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
@@ -252,6 +253,22 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     const un = await adsKakaoAuthRoutes.request('/kakao/bridge', { method: 'POST' }, env)
     expect(un.status).toBe(401)
     expect((await un.json() as { need_login?: boolean }).need_login).toBe(true)
+  })
+
+  it('📥 입장 요청 큐: 접수(멱등) → 거절 후 재요청 → 해제 계정은 unlocked', async () => {
+    const r = await createAdsAccount(DB, { email: 'req@x.com', password: PW, company_name: '요청사' })
+    if (!r.ok) throw new Error('setup')
+    const id = r.account.id
+    expect(await requestAdsAccess(DB, id)).toBe('created')       // 신규 접수
+    expect(await requestAdsAccess(DB, id)).toBe('pending')       // 중복 요청 멱등
+    expect((await getAdsAccessRequest(DB, id))?.status).toBe('pending')
+    // 거절 → 재요청 가능
+    await DB.prepare("UPDATE ad_access_requests SET status='rejected' WHERE account_id = ?").bind(id).run()
+    expect(await requestAdsAccess(DB, id)).toBe('created')       // 거절 이력 되살림
+    expect((await getAdsAccessRequest(DB, id))?.status).toBe('pending')
+    // 승인(해제) 후엔 요청 자체가 unlocked 단락
+    await DB.prepare('UPDATE ad_accounts SET access_unlocked = 1 WHERE id = ?').bind(id).run()
+    expect(await requestAdsAccess(DB, id)).toBe('unlocked')
   })
 
   it('미인증 요청은 401', async () => {

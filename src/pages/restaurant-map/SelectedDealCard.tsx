@@ -35,11 +35,14 @@ export default function SelectedDealCard({
   total: number
 }) {
   const navigate = useNavigate()
-  const touchX = useRef<number | null>(null)
-  // 🖥️ 2026-07-15 (대표 — "PC 좌우 스와이프 안 됨"): 마우스 드래그도 스와이프로. 드래그 발생 시
-  //   뒤이어 발화되는 카드 click(상세 이동)을 삼킨다(draggedRef).
-  const pointerX = useRef<number | null>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
   const draggedRef = useRef(false)
+  // 🗺️ 2026-07-25 (전수조사 L2): 터치/마우스를 Pointer Events 로 단일화 + move 추적.
+  //   기존: 터치는 start/end 만(카드가 손가락을 안 따라옴 = 뻑뻑), 마우스는 카드 밖 릴리즈 시 up 유실,
+  //   세로 제스처와의 축 구분 없음. → 축 판별(|dx|>|dy|×1.2) 후 수평이면 캡처 + rAF 로 카드가
+  //   손가락을 감쇠(×0.35) 추적, 릴리즈 시 원위치 스프링 + 스와이프 판정. 캡처는 수평 확정 후에만 —
+  //   단순 탭의 click(상세/‹›/X 버튼)을 재타겟팅으로 깨지 않기 위함.
+  const drag = useRef<{ id: number; x0: number; y0: number; dx: number; axis: 'h' | 'v' | null; raf: number } | null>(null)
 
   const discount = selected.original_price > selected.price
     ? Math.round((1 - selected.price / selected.original_price) * 100)
@@ -54,24 +57,54 @@ export default function SelectedDealCard({
     if (dx < 0 && hasNext) onNext()      // 왼쪽으로 스와이프 → 다음
     else if (dx > 0 && hasPrev) onPrev() // 오른쪽으로 스와이프 → 이전
   }
-  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX }
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current == null) return
-    const dx = e.changedTouches[0].clientX - touchX.current
-    touchX.current = null
-    applySwipe(dx)
+  const settleBack = () => {
+    const el = cardRef.current
+    if (!el) return
+    el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+    el.style.transform = 'translateX(0px)'
   }
-  // 🖥️ 마우스 드래그(PC) — pointer 이벤트로 터치와 동일하게 좌우 스와이프.
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return // 터치는 위 onTouch* 가 처리(중복 방지)
-    pointerX.current = e.clientX
+    drag.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, axis: null, raf: 0 }
     draggedRef.current = false
   }
+  const onPointerMove = (e: React.PointerEvent) => {
+    const s = drag.current
+    if (!s || e.pointerId !== s.id) return
+    const dx = e.clientX - s.x0
+    const dy = e.clientY - s.y0
+    if (!s.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      s.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v'
+      if (s.axis === 'h') {
+        draggedRef.current = true
+        try { cardRef.current?.setPointerCapture?.(e.pointerId) } catch { /* 미지원 무해 */ }
+      }
+    }
+    if (s.axis !== 'h') return
+    s.dx = dx
+    if (!s.raf) {
+      s.raf = requestAnimationFrame(() => {
+        const cur = drag.current
+        if (!cur) return
+        cur.raf = 0
+        const el = cardRef.current
+        if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${cur.dx * 0.35}px)` }
+      })
+    }
+  }
   const onPointerUp = (e: React.PointerEvent) => {
-    if (pointerX.current == null) return
-    const dx = e.clientX - pointerX.current
-    pointerX.current = null
-    if (Math.abs(dx) >= 50) { draggedRef.current = true; applySwipe(dx) }
+    const s = drag.current
+    if (!s || e.pointerId !== s.id) return
+    drag.current = null
+    if (s.raf) cancelAnimationFrame(s.raf)
+    if (s.axis === 'h') { settleBack(); applySwipe(s.dx) }
+  }
+  const onPointerCancel = (e: React.PointerEvent) => {
+    const s = drag.current
+    if (!s || e.pointerId !== s.id) return
+    drag.current = null
+    if (s.raf) cancelAnimationFrame(s.raf)
+    if (s.axis === 'h') settleBack()
   }
   // 드래그 후 뒤이어 오는 카드 click(상세 이동)을 삼킨다.
   const onCardClick = () => {
@@ -90,11 +123,13 @@ export default function SelectedDealCard({
       style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 10px)' }}
     >
       <div
+        ref={cardRef}
         className="ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+        style={{ touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onKeyDown={onKeyDown}
         tabIndex={0}
         role="group"
