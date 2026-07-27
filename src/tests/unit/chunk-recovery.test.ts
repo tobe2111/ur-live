@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 
 /**
  * 🛡️ 2026-07-21 청크 자가복구 관용/유예 잠금 — 배포 전파 창에서 수동 UI 노출 급감.
- *   90초 내 3회까지 자동 재시도(유예 후), 초과 시 false(수동 복구 UI). 인라인 부트가드와 SSOT 미러.
+ * 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창 실측(수십 초~수분)에 맞춰
+ *   5분 내 8회 지수 백오프(0.7s→30s)로 확장 — 초과 시 false(수동 복구 UI). 인라인 부트가드와 SSOT 미러.
  *   ⚠️ 모듈 레벨 재진입 플래그(_reloadPending) 때문에 테스트마다 모듈을 새로 import 한다.
  */
 async function freshModule() {
@@ -22,7 +23,7 @@ describe('isChunkLoadError — MIME 변종 감지', () => {
   })
 })
 
-describe('recoverFromChunkError — 90초 3회 관용 + 유예 재시도', () => {
+describe('recoverFromChunkError — 5분 8회 관용 + 지수 백오프 유예 재시도', () => {
   let store: Record<string, string>
   let replace: ReturnType<typeof vi.fn>
   beforeEach(() => {
@@ -47,11 +48,28 @@ describe('recoverFromChunkError — 90초 3회 관용 + 유예 재시도', () =>
     expect(String(replace.mock.calls[0][0])).toContain('__cb=')
   })
 
-  it('90초 내 4번째 = false (수동 복구 UI)', async () => {
+  it('5분 내 9번째 = false (수동 복구 UI)', async () => {
     const { recoverFromChunkError } = await freshModule()
-    store['__ur_chunk_reload__'] = JSON.stringify({ n: 3, t: Date.now() }) // 이미 3회 시도
+    store['__ur_chunk_reload__'] = JSON.stringify({ n: 8, t: Date.now() }) // 이미 8회 시도
     expect(recoverFromChunkError()).toBe(false)
     expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('창 내 재시도는 지수 백오프 유예(2번째 시도 = 1.4s 뒤 reload)', async () => {
+    const { recoverFromChunkError } = await freshModule()
+    store['__ur_chunk_reload__'] = JSON.stringify({ n: 1, t: Date.now() }) // 1회 시도 이력 → 이번이 2번째
+    expect(recoverFromChunkError()).toBe(true)
+    vi.advanceTimersByTime(1399)
+    expect(replace).not.toHaveBeenCalled()   // 700 * 2^(2-1) = 1400ms 전엔 reload 안 함
+    vi.advanceTimersByTime(1)
+    expect(replace).toHaveBeenCalledTimes(1)
+  })
+
+  it('5분 창이 지나면 카운트 리셋 — 다시 자동 재시도(true)', async () => {
+    const { recoverFromChunkError } = await freshModule()
+    store['__ur_chunk_reload__'] = JSON.stringify({ n: 8, t: Date.now() - 300_001 }) // 창 만료
+    expect(recoverFromChunkError()).toBe(true)
+    expect(JSON.parse(store['__ur_chunk_reload__']).n).toBe(1) // 새 창의 1회차로 리셋
   })
 
   it('재진입 가드 — 유예 중 추가 호출은 카운트 1회만', async () => {
