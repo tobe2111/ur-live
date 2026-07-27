@@ -93,10 +93,20 @@ adsAuthRoutes.post('/auth/request-access', rateLimit({ action: 'ads-access-req',
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await requestAdsAccess(c.env.DB, id, body.note ? String(body.note) : undefined)
   if (r === 'unlocked') return c.json({ success: true, unlocked: true })
-  if (r === 'created' && c.env.DISCORD_WEBHOOK_URL) {
+  if (r === 'created') {
     const acc = await getAdsAccount(c.env.DB, id)
-    await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, '🔑 유어애즈 입장 요청',
-      `${acc?.company_name || '?'} (${acc?.email || `#${id}`}) — /admin/ads-accounts 에서 승인/거절`, 'warn').catch(() => null)
+    const who = `${acc?.company_name || '?'} (${acc?.email || `#${id}`})`
+    // 🔔 어드민 벨 — Discord 미설정/미확인이어도 요청이 조용히 묻히지 않게(승인 큐의 존재 이유).
+    //    partner-pool.routes 와 동일 패턴(같은 D1 공유 — ads 워커에서도 호출 가능).
+    await import('../../../notifications/api/dashboard-notifications.routes')
+      .then(({ createDashboardNotification }) => createDashboardNotification(
+        c.env.DB, 'admin', null, 'ads_access_request', '🔑 유어애즈 입장 요청',
+        `${who} — 승인 대기 중`, '/admin/ads-accounts'))
+      .catch(() => null)
+    if (c.env.DISCORD_WEBHOOK_URL) {
+      await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, '🔑 유어애즈 입장 요청',
+        `${who} — /admin/ads-accounts 에서 승인/거절`, 'warn').catch(() => null)
+    }
   }
   return c.json({ success: true, requested: true })
 })
