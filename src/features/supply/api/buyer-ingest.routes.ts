@@ -23,7 +23,9 @@ app.post('/', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { token?: string; htmls?: string[]; refs?: string[]; text?: string }
   const ok = await verifyIngestToken(c.env, String(b.token || '')).catch(() => false)
   if (!ok) return c.json({ success: false, error: 'INVALID_TOKEN' }, 401, CORS)
-  const htmls = Array.isArray(b.htmls) ? b.htmls.filter(h => typeof h === "string").slice(0, 200) : (b.text ? [String(b.text)] : [])
+  // ⚠️ htmls 를 여기서 filter 하면 refs[i] 정렬이 깨짐(비문자 제거 시 인덱스 시프트 → 엉뚱한 ref 태깅).
+  //   ingestHtmls 가 비문자를 continue 로 in-place 스킵(인덱스 보존)하므로 slice 만 하고 정렬은 유지.
+  const htmls = Array.isArray(b.htmls) ? b.htmls.slice(0, 200) : (b.text ? [String(b.text)] : [])
   if (!htmls.length) return c.json({ success: false, error: 'NO_HTML' }, 400, CORS)
   // refs[i] = htmls[i] 의 소스 상세 참조(재수집 건너뛰기 태깅). 없으면 무시.
   const refs = Array.isArray(b.refs) ? b.refs.map(r => String(r || '').slice(0, 200)).slice(0, 200) : undefined

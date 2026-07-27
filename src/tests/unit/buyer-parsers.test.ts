@@ -134,6 +134,12 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const l = parseBuyKoreaInquiries(mk)[0]
     expect(/hongseungkyun|후보이메일/.test((l.email || '') + (l.description || ''))).toBe(false)
   })
+  // 감사 발견(2026-07-25): 마스킹 페이지에서 *라벨*로 들어온 언마스킹 이메일도 판매자 본인 크롬 이메일일 수 있어 차단.
+  it('마스킹 상세에서 라벨 이메일도 저장 안 함(판매자 본인 이메일 차단)', () => {
+    const mk = ['회사명 : Al Dayagem', '국가 : JORDAN', '현재수입 : mu*****', '이메일 : seller-self@mycorp.com'].join('\n')
+    const l = parseBuyKoreaInquiries(mk)[0]
+    expect(l != null && (l.email == null || l.email === '')).toBe(true)
+  })
   // UI 아코디언 토글 라벨("레이어 열기/닫기")이 회사명으로 잡히던 것 차단(대표 신고).
   it('회사명 라벨이 있으면 UI 토글 라벨이 아니라 라벨값이 회사명', () => {
     const withCo = ['레이어 열기/닫기', '회사명 : Poly-ion engineering services', '국가 : Ecuador', '웹사이트 : https://www.poly-ion.org'].join('\n')
@@ -251,6 +257,11 @@ describe('buyer-pool — 전수조사 감사 수정 회귀', () => {
     expect(normalizeCompanyKey('GAMZEN INFRASTRUCTURE', 'India')).toBe(normalizeCompanyKey('GAMZEN INFRASTRUCTURE PVT LTD', 'India'))
     // 서로 다른 회사는 여전히 구분(과잉 병합 금지).
     expect(normalizeCompanyKey('Global Corp', 'US')).not.toBe(normalizeCompanyKey('Global Trading', 'US'))
+  })
+  // 감사 발견(2026-07-25): 'spa'/'sas'/'aps' 를 접미어로 떼면 실단어/브랜드가 오병합 → 접미어 목록에서 제외.
+  it('과잉병합 방지 — "Bliss Spa"(미용업)는 "Bliss"와 다른 키(spa 미제거)', () => {
+    expect(normalizeCompanyKey('Bliss Spa', 'US')).not.toBe(normalizeCompanyKey('Bliss', 'US'))
+    expect(normalizeCompanyKey('Sunny SAS', 'France')).not.toBe(normalizeCompanyKey('Sunny', 'France'))
   })
   it('E1: SSRF — 내부/사설 호스트 차단, 공개 호스트 허용', () => {
     for (const u of ['http://127.0.0.1/', 'http://[fd00::1]/', 'http://[::ffff:127.0.0.1]/', 'http://169.254.169.254/', 'http://100.64.0.1/', 'http://foo.localhost/', 'http://2130706433/'])

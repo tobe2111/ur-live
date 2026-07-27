@@ -138,7 +138,10 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 // 회사명 키 — 구두점/공백만 제거하고 **단어는 보존**(Trading/Import/Ltd 를 떼면 서로 다른 회사가 병합됨).
 //   비면(구두점만) 붕괴 방지 폴백. 유니코드 문자/숫자 보존(아랍/키릴 회사명도 키 생성).
 // 법인격 접미어(같은 회사의 다른 표기를 유발) — 정규화 시 제거해 "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 통합.
-const LEGAL_SUFFIX_RE = /\b(private|pvt|limited|ltd|inc|incorporated|llc|co|corp|corporation|company|gmbh|srl|plc|llp|pte|pty|sdn|bhd|spa|sarl|sas|aps)\b/g
+// ⚠️ 'spa'/'sas'/'aps' 제외 — 실단어/브랜드와 충돌해 서로 다른 회사를 오병합함:
+//   'spa'=미용 업종(대상 카테고리!) 실명("Bliss Spa"≠"Bliss"), 'sas'=항공/브랜드, 'aps'=희귀 덴마크 법인격.
+//   명확한 법인격 접미어만 유지(오병합보다 미병합이 안전 — 미병합은 손실 0, 오병합은 리드 유실).
+const LEGAL_SUFFIX_RE = /\b(private|pvt|limited|ltd|inc|incorporated|llc|co|corp|corporation|company|gmbh|srl|plc|llp|pte|pty|sdn|bhd|sarl)\b/g
 export function normalizeCompanyKey(company: string, country?: string | null): string {
   const raw = String(company || '')
   // 법인격 접미어 제거 후 영숫자만 — 표기 차이(Pvt. Ltd. / , / .)에 강건한 dedup 키.
@@ -396,9 +399,11 @@ export async function listBuyerLeads(DB: D1Database, filter: { status?: string; 
   if (filter.hasContact) where.push('(email IS NOT NULL OR decision_maker_email IS NOT NULL OR phone IS NOT NULL)')
   if (filter.q) { where.push('(LOWER(company) LIKE ? OR LOWER(email) LIKE ? OR LOWER(decision_maker) LIKE ?)'); const like = `%${filter.q.toLowerCase()}%`; binds.push(like, like, like) }
   const limit = Math.min(1000, Math.max(1, filter.limit || 500))
+  // ⚠️ DB 에러를 []로 삼키지 않음 — 삼키면 '조회 실패'가 '바이어 0건'으로 오표시돼 대표가 데이터 유실로 오해.
+  //   throw → 라우트 500 → 프런트 오류 배너(빈 상태 아님). (UI isError 불변식 준수.)
   const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM overseas_buyer_leads WHERE ${where.join(' AND ')} ORDER BY COALESCE(match_score,0) DESC, collected_at DESC, id DESC LIMIT ?`)
-    .bind(...binds, limit).all<BuyerLeadRow>().catch(() => null)
-  return r?.results || []
+    .bind(...binds, limit).all<BuyerLeadRow>()
+  return r.results || []
 }
 
 export async function updateBuyerLead(DB: D1Database, id: number, patch: { status?: string; memo?: string; follow_up_at?: string | null }): Promise<{ ok: boolean; error?: string }> {

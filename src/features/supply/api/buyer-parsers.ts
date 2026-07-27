@@ -271,6 +271,11 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   const rawLines = chunk.split(/\r?\n/).map(l => l.replace(/^[\s>*\-•·]+/, '').trim())
   const row: Record<string, string> = {}
   let title = ''
+  // 마스킹 흔적이 있으면(바이어 연락처를 사이트가 가림) 페이지의 언마스킹 이메일은 *로그인 판매자 본인*의
+  //   크롬 이메일(헤더/마이페이지 위젯)일 가능성 → 라벨 경로로 들어온 이메일도 마스킹 페이지에선 신뢰 X.
+  //   (폴백 경로만 막던 것을 라벨 경로까지 확장 — hongseungkyun@naver.com 오인 클래스의 잔여 구멍.)
+  const hasMask = /\*{3,}|[A-Za-z0-9]\*{2,}|\*{2,}@|@\*{2,}/.test(chunk)
+  const emailBlockedByMask = (f: string) => f === 'email' && hasMask
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]
     if (!line) continue
@@ -278,13 +283,13 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
     const m = line.match(/^([^:：→▶»►·|\t]{1,24})\s*[:：→▶»►·|\t]\s*(.+)$/)
     if (m && looksLabel(m[1])) {
       const f = labelField(m[1]); const v = m[2].trim()
-      if (f && v && !v.includes('*') && !row[f]) row[f] = v
+      if (f && v && !v.includes('*') && !row[f] && !emailBlockedByMask(f)) row[f] = v
       continue
     }
     // "라벨"(줄) → 다음 줄 값
     if (looksLabel(line)) {
       const f = labelField(line); const v = (rawLines[i + 1] || '').trim()
-      if (f && v && !looksLabel(v) && !v.includes('*') && !row[f]) { row[f] = v; i++ }
+      if (f && v && !looksLabel(v) && !v.includes('*') && !row[f] && !emailBlockedByMask(f)) { row[f] = v; i++ }
       continue
     }
     // 제목 후보 — 마스킹(*)·이메일(@)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
@@ -315,7 +320,6 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   //   (헤더/마이페이지)이다 → 절대 바이어로 채우지 않는다. 마스킹이 없을 때도, 폴백 이메일은 바이어 웹사이트
   //   도메인과 일치할 때만 신뢰(프리메일 크롬 이메일 hongseungkyun@naver.com 오인 방지). 실제 바이어 이메일은
   //   라벨·JSON-LD(Organization) 또는 웹사이트 보강으로만 채운다.
-  const hasMask = /\*{3,}|[A-Za-z0-9]\*{2,}|\*{2,}@|@\*{2,}/.test(chunk)
   let candidateEmail = '' // corroboration 실패분 — 버리지 않고 '확인필요'로 남겨 재현율 보전(대표 판단).
   if (!row.email && !hasMask) {
     const e = pickBusinessEmail(chunk)

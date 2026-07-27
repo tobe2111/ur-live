@@ -97,19 +97,38 @@ export interface WebEnrichResult { ran: boolean; reason?: string; scanned: numbe
 //   ⚠️ 구글 자동검색은 차단/약관 위반이라 미사용. DDG 도 CF 워커 IP 를 막을 수 있음(수율 변동, 실측 필요).
 const LEGAL_SFX = /\b(inc|llc|ltd|limited|corp|co|company|gmbh|srl|sa|plc|pvt|group|holdings?|services?|trading|import|export|international|intl)\b/gi
 function companySlug(company: string): string {
-  return String(company || '').toLowerCase().replace(/&/g, ' ').replace(/[.,'’]/g, ' ')
+  // ⚠️ 악센트는 *제거*가 아니라 *폴딩* — "Estée Lauder"→"estee..."(제거 시 "este"라 estelauder.com 오추정).
+  return String(company || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' ').replace(/[.,'’]/g, ' ')
     .replace(LEGAL_SFX, ' ').replace(/[^a-z0-9]/g, '').slice(0, 40)
 }
-const BAD_HOST = /(facebook|linkedin|instagram|twitter|x\.com|youtube|youtu\.be|pinterest|tiktok|wikipedia|tradekorea|kompass|bloomberg|crunchbase|zoominfo|dnb\.com|opencorporates|amazon\.|alibaba|made-in-china|indeed|glassdoor|yelp|yellowpages|google\.|bing\.|duckduckgo|reddit)/i
+const BAD_HOST = /(facebook|linkedin|instagram|twitter|x\.com|youtube|youtu\.be|pinterest|tiktok|wikipedia|tradekorea|kompass|bloomberg|crunchbase|zoominfo|dnb\.com|opencorporates|amazon\.|alibaba|made-in-china|indeed|glassdoor|yelp|yellowpages|google\.|bing\.|duckduckgo|reddit|prnewswire|businesswire|globenewswire|ebay|etsy|shopify|blogspot|wordpress|medium\.com|quora|slideshare)/i
+// 국가 → ccTLD (비미국 바이어는 .com 이 아니라 ccTLD 인 경우多 — 1개 country-TLD 추정 추가로 수율↑).
+const COUNTRY_TLD: Record<string, string> = {
+  india: 'in', brazil: 'com.br', germany: 'de', 'united kingdom': 'co.uk', uk: 'co.uk', england: 'co.uk',
+  turkey: 'com.tr', 'united arab emirates': 'ae', uae: 'ae', japan: 'co.jp', china: 'com.cn',
+  france: 'fr', italy: 'it', spain: 'es', mexico: 'com.mx', vietnam: 'com.vn', indonesia: 'co.id',
+  thailand: 'co.th', australia: 'com.au', canada: 'ca', russia: 'ru', netherlands: 'nl', poland: 'pl',
+  'saudi arabia': 'com.sa', malaysia: 'com.my', philippines: 'com.ph', 'south africa': 'co.za',
+}
 
-/** DuckDuckGo HTML 결과에서 첫 유효 외부 도메인 origin 반환(소셜/디렉토리 제외). */
-async function ddgFirstDomain(query: string, headers: Record<string, string>): Promise<string> {
+/** 도메인이 회사 slug 를 포함하는지(오추정 방지 핵심 게이트). host 의 영숫자화 후 slug 포함 검사. */
+function hostMatchesSlug(host: string, slug: string): boolean {
+  if (!slug || slug.length < 4) return false
+  return host.replace(/^www\./, '').replace(/[^a-z0-9]/g, '').includes(slug)
+}
+
+/** DuckDuckGo HTML 결과에서 회사 slug 와 도메인이 일치하는 첫 결과만 반환(엉뚱한 뉴스/유통사 도메인 채택 방지). */
+async function ddgFirstDomain(query: string, headers: Record<string, string>, slug = ''): Promise<string> {
   const html = await fetchText('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), headers)
   if (!html) return ''
   for (const m of html.matchAll(/uddg=([^"&]+)/g)) {
     try {
       const u = new URL(decodeURIComponent(m[1]))
-      if (/^https?:$/.test(u.protocol) && !BAD_HOST.test(u.host) && isPublicHttpUrl(u.origin)) return u.origin
+      if (!/^https?:$/.test(u.protocol) || BAD_HOST.test(u.host) || !isPublicHttpUrl(u.origin)) continue
+      // ⚠️ 첫 결과 무조건 채택 금지 — 도메인이 회사명(slug)을 포함할 때만(오회사 이메일 저장 방지).
+      if (hostMatchesSlug(u.host, slug)) return u.origin
     } catch { /* skip */ }
   }
   return ''
@@ -118,17 +137,22 @@ async function ddgFirstDomain(query: string, headers: Record<string, string>): P
 /** 회사명(+국가) → 웹사이트 origin. spend() 는 예산 소모(true=진행 가능). 못 찾으면 ''. */
 async function resolveWebsiteForCompany(company: string, country: string, headers: Record<string, string>, spend: () => boolean): Promise<string> {
   const slug = companySlug(company)
-  if (slug.length >= 3) {
-    for (const guess of [`https://www.${slug}.com`, `https://${slug}.com`]) {
+  // ① 도메인 추정 — slug 가 충분히 특정적일 때만(짧은/제네릭 단어는 오추정 위험 → DDG 로). .com + 국가 ccTLD.
+  if (slug.length >= 6) {
+    const tld = COUNTRY_TLD[String(country || '').trim().toLowerCase()]
+    const guesses = [`https://www.${slug}.com`, `https://${slug}.com`]
+    if (tld) guesses.push(`https://www.${slug}.${tld}`)
+    for (const guess of guesses) {
       if (!spend()) return ''
       const html = await fetchText(guess, headers)
-      // 회사명 토큰이 실제로 그 페이지에 있어야 채택(우연히 존재하는 무관 도메인 배제).
-      if (html && html.toLowerCase().includes(slug.slice(0, Math.min(slug.length, 8)))) { try { return new URL(guess).origin } catch { /* skip */ } }
+      // 회사 slug 전체가 실제 그 페이지에 있어야 채택(부분매칭 제거 — 우연 도메인 배제).
+      if (html && html.toLowerCase().includes(slug)) { try { return new URL(guess).origin } catch { /* skip */ } }
       await delay(200)
     }
   }
+  // ② DDG 폴백 — 도메인이 회사 slug 를 포함하는 결과만 채택(못 찾으면 '' — 오회사보다 미발견이 안전).
   if (!spend()) return ''
-  const dom = await ddgFirstDomain(`${company} ${country || ''} official website`.trim(), headers)
+  const dom = await ddgFirstDomain(`${company} ${country || ''} official website`.trim(), headers, slug)
   await delay(300)
   return dom
 }
@@ -152,7 +176,9 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; bu
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'accept': 'text/html,application/xhtml+xml', 'accept-language': 'en;q=0.9,ko;q=0.8',
   }
-  const budget = opts.budget != null ? Math.max(4, Math.min(30, opts.budget)) : Math.min(25, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '25', 10) || 25)) // Cloudflare subrequest 한도 보호(크론은 명시 budget 로 합산 상한)
+  // ⚠️ fetchText 는 리다이렉트로 호출당 최대 3 subrequest → 예산 1단위 = 실제 최대 3회. CF 무료 한도(~50) 보호를
+  //   위해 상한 16(×3=48<50). (기존 25/30 은 리다이렉트 다발 시 한도 초과 → 이후 리드 전부 무수익 위험.)
+  const budget = opts.budget != null ? Math.max(4, Math.min(16, opts.budget)) : Math.min(16, Math.max(8, parseInt(env.BUYER_SUBREQUEST_BUDGET || '16', 10) || 16)) // Cloudflare subrequest 한도 보호(크론은 명시 budget 로 합산 상한)
   let fetches = 0, enriched = 0, resolvedSites = 0
   const sample: string[] = []
   const SITE_CAP = 5 // 사이트당 최대 방문(홈 + 연락 페이지 몇 개) — 예산을 여러 리드에 분산.
@@ -187,11 +213,14 @@ export async function enrichLeadsFromWebsites(env: Env, opts: { max?: number; bu
         if (html) {
           if (!res.email) {
             const es = emailsFromHtml(html) // 이미 정크/이미지 필터됨
-            // mailto: 최우선 → 전체 HTML 문맥 스코어(pickBusinessEmail, 구매담당 local-part 우선) → 첫 후보.
+            // 사이트 도메인과 같은 도메인의 이메일 최우선 — 푸터의 개발사/파트너/@gmail 을 바이어로 오채택 방지.
+            const originHost = origin.replace(/^https?:\/\//, '').replace(/^www\./, '')
+            const sameDomain = es.find(e => { const d = (e.split('@')[1] || '').replace(/^www\./, ''); return d && originHost.includes(d) })
+            // 그다음 mailto: → 문맥 스코어(pickBusinessEmail, 구매담당 local-part 우선) → 첫 후보.
             const mail = es.find(e => new RegExp('mailto:' + e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(html))
             const ctx = pickBusinessEmail(html)
             const ctxOk = ctx && !IMG_EMAIL.test(ctx) && !JUNK_EMAIL.test(ctx) ? ctx : null
-            res.email = mail || ctxOk || es[0] || null
+            res.email = sameDomain || mail || ctxOk || es[0] || null
           }
           if (!res.phone) { const p = pickPhone(html); if (p && /^\s*\+/.test(p)) res.phone = p }
           if (!res.address) { const a = addressFromHtml(html); if (a) res.address = a }
@@ -242,31 +271,37 @@ export async function diagnoseWebEnrich(env: Env): Promise<Record<string, unknow
      WHERE (email IS NULL OR email='') AND (decision_maker_email IS NULL OR decision_maker_email='')
        AND ((website IS NOT NULL AND website!='') OR (company IS NOT NULL AND company!=''))
      ORDER BY id DESC LIMIT 3`).all<{ id: number; company: string | null; country: string | null; website: string | null }>().catch(() => null))?.results || []
-  // ② DDG 프로브 — 워커에서 DuckDuckGo 가 실제로 HTML 을 주는지(=차단 여부의 결정적 신호).
+  // ② DDG 프로브 — 워커에서 DuckDuckGo 가 실제로 HTML 을 주는지(=차단 여부의 결정적 신호). responded=html 유무.
+  const sampleSlug = sample[0]?.company ? companySlug(sample[0].company) : ''
   const ddgQuery = (sample[0]?.company ? `${sample[0].company} ${sample[0].country || ''}` : 'Estée Lauder USA') + ' official website'
   const ddgHtml = await fetchText('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(ddgQuery.trim()), headers)
-  const ddgFirst = ddgHtml ? await ddgFirstDomain(ddgQuery.trim(), headers) : ''
-  const ddgBlocked = !ddgHtml || /anomaly|blocked|captcha|unusual traffic|rate limit/i.test(ddgHtml.slice(0, 4000))
-  // ③ 도메인 추정 프로브 — 샘플 회사명 slug 로 www.slug.com 이 열리고 회사명이 그 페이지에 있는지.
+  const ddgFirst = ddgHtml ? await ddgFirstDomain(ddgQuery.trim(), headers, sampleSlug) : ''
+  // HTML 자체가 없으면 차단, 있는데 결과 0/캡차어면 soft-blocked(응답은 하나 쓸모없음).
+  const ddgHardBlocked = !ddgHtml
+  const ddgSoftBlocked = !!ddgHtml && (/anomaly|blocked|captcha|unusual traffic|rate limit/i.test(ddgHtml.slice(0, 4000)) || !/uddg=/.test(ddgHtml))
+  const ddgBlocked = ddgHardBlocked || ddgSoftBlocked
+  // ③ 도메인 추정 프로브 — 실제 resolver 와 동일 규칙(slug≥6, 전체 slug 페이지 포함)으로 실측.
   let guess: Record<string, unknown> = { tried: false }
   if (sample[0]?.company) {
-    const slug = companySlug(sample[0].company)
-    let hit = ''
-    if (slug.length >= 3) {
-      const url = `https://www.${slug}.com`
+    if (sampleSlug.length >= 6) {
+      const url = `https://www.${sampleSlug}.com`
       const html = await fetchText(url, headers)
-      if (html && html.toLowerCase().includes(slug.slice(0, Math.min(slug.length, 8)))) hit = url
-      guess = { tried: true, company: sample[0].company, slug, guessedUrl: url, htmlLen: html.length, matched: !!hit }
-    } else guess = { tried: false, company: sample[0].company, slug, reason: 'slug<3' }
+      const matched = !!html && html.toLowerCase().includes(sampleSlug)
+      guess = { tried: true, company: sample[0].company, slug: sampleSlug, guessedUrl: url, htmlLen: html.length, matched }
+    } else guess = { tried: false, company: sample[0].company, slug: sampleSlug, reason: 'slug<6(제네릭/짧음 — 추정 생략, DDG 의존)' }
   }
+  const eligible = counts && !(counts as Record<string, unknown>).error ? (counts as Record<string, number>).eligible : undefined
+  const guessTried = guess.tried === true, guessMatched = guess.matched === true
   return {
     counts, sampleEligible: sample,
-    ddg: { query: ddgQuery.trim(), responded: !!ddgHtml, htmlLen: ddgHtml.length, firstDomain: ddgFirst, likelyBlocked: ddgBlocked },
+    ddg: { query: ddgQuery.trim(), responded: !!ddgHtml, htmlLen: ddgHtml.length, firstDomain: ddgFirst, likelyBlocked: ddgBlocked, hardBlocked: ddgHardBlocked },
     domainGuess: guess,
-    verdict: (!counts || (counts as Record<string, number>).eligible === 0)
-      ? '대상 리드 0 — 회사명/웹사이트 없는 리드뿐이거나 이미 이메일 보유'
-      : ddgBlocked && !guess.matched
-        ? 'DDG 차단 + 도메인추정 실패 — 무료 웹검색 경로가 CF 워커에서 막힘(예상 시나리오)'
-        : 'DDG 또는 도메인추정 작동 — 이메일 미확보는 사이트가 이메일을 안 올린 것일 가능성',
+    verdict: (eligible === 0)
+      ? '대상 리드 0 — 회사명/웹사이트 없는 리드뿐이거나 이미 이메일 보유(수집을 더 하세요)'
+      : (ddgFirst || guessMatched)
+        ? 'DDG 또는 도메인추정 작동 — 웹사이트는 찾힘. 이메일 미확보는 사이트가 이메일을 안 올린 것(대기업일수록 흔함)'
+        : ddgBlocked && (!guessTried || !guessMatched)
+          ? 'DDG 차단' + (guessTried ? ' + 도메인추정 실패' : '(도메인추정은 샘플 slug 짧아 미시도)') + ' — 무료 웹검색 경로가 CF 워커에서 막힘'
+          : '판정 보류 — DDG 응답은 하나 회사도메인 미일치, 도메인추정도 미일치(대상 회사명이 도메인과 다를 수 있음)',
   }
 }
