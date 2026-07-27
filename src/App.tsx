@@ -619,12 +619,10 @@ function AppContent() {
           {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
-          {/* 🗑️ 2026-06-20 (대표 요청): 인앱 브라우저 경고 배너(InAppBrowserBanner) 제거 —
-              "카카오톡 인앱 브라우저에서는 일부 기능이 제한될 수 있어요" 노이즈. 카카오 로그인은
-              카톡 인앱 안에서도 정상 동작. (2026-07-23 갱신: 카톡 자동 외부-redirect 도 제거됨 —
-              autoRedirectKakaoToExternal 는 no-op. 이제 모든 인앱은 배너/팝업/강제이동 없이 그대로 렌더.
-              기능별 제한(카메라 등)은 InAppFeatureBlockedModal 이 해당 기능 사용 시점에만 안내.
-              복원하려면 `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 다시 렌더.) */}
+          {/* 🗑️ 2026-06-20 (대표 요청): InAppBrowserBanner 미마운트(노이즈) — 카카오 로그인은 카톡 인앱에서도
+              정상. 2026-07-23: 카톡 자동 외부-redirect 도 제거(autoRedirectKakaoToExternal=no-op) → 모든 인앱은
+              배너/팝업/강제이동 없이 렌더, 기능별 제한(카메라 등)만 InAppFeatureBlockedModal 이 사용 시점 안내.
+              복원: `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
