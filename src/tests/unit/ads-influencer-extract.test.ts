@@ -194,6 +194,7 @@ describe('F-03 — requireContext(스니펫 제3자 메일 차단)', () => {
 describe('stripVideoTitles — 제목 세그먼트 분리', () => {
   it('" | 영상: …" 이후 제거(컨택 재추출 오염 방지)', () => {
     expect(stripVideoTitles('맛집 채널 소개 | 영상: 제니 인스타 @jennierubyjane 공개')).toBe('맛집 채널 소개')
+    expect(stripVideoTitles('블로그 소개 | 글: 방배 맛집 후기 · 이수역 카페 추천')).toBe('블로그 소개') // 📝 블로그 글 제목 꼬리도 동일 마커
     expect(stripVideoTitles('세그먼트 없음')).toBe('세그먼트 없음')
   })
 })

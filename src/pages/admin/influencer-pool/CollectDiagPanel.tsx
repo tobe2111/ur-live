@@ -8,7 +8,7 @@ export interface PlatformDiag { configured: boolean; found: number; saved: numbe
 export interface RunStats {
   last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]
   youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number
-  diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag }
+  diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
 }
 /** 야간 정비 기록(platform_settings) — 실행된 단계만 키가 존재. *_error 는 그 단계 실패. */
@@ -17,6 +17,7 @@ export interface MaintenanceRecord {
   merge?: { merged?: number }; reextract?: { filled?: number }; reclassify?: { changed?: number }
   quality?: { scanned?: number; branded?: number; done?: boolean }
   rescan?: { changed?: number }; refetch?: { processed?: number }
+  naver?: { measured?: number; contacts?: number } // 📝 야간 블로거 스윕(활동성·프로필 연락처)
   [k: string]: unknown
 }
 
@@ -35,6 +36,7 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   add('중복통합', m.merge?.merged); add('연락처보강', m.reextract?.filled); add('재분류', m.reclassify?.changed)
   if (m.quality) parts.push(`품질채점 ${formatNumber(m.quality.scanned || 0)}${m.quality.branded ? ` · 브랜드태깅 +${formatNumber(m.quality.branded)}` : ''}`)
   add('카테고리재보정', m.rescan?.changed); add('라이브재조회', m.refetch?.processed)
+  if (m.naver?.measured) parts.push(`블로거측정 ${formatNumber(m.naver.measured)}${m.naver.contacts ? `(연락처 +${formatNumber(m.naver.contacts)})` : ''}`)
   for (const k of Object.keys(m)) if (k.endsWith('_error')) err.push(k.replace('_error', ''))
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
@@ -65,9 +67,12 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
         <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
       ) : null}
 
+      {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
+        <div className="mb-2 mt-1 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
       {run && (
         <div className="mb-1 text-xs text-gray-500">
-          마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}
+          마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}{run.diag?.naver_enrich?.measured ? ` · 📝 블로거 측정 ${formatNumber(run.diag.naver_enrich.measured)}${run.diag.naver_enrich.contacts ? `(연락처 +${formatNumber(run.diag.naver_enrich.contacts)})` : ''}` : ''}
           {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-amber-600 font-medium' : ''}>{` · 🎯 YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
           {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
           {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}

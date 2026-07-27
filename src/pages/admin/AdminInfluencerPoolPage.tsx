@@ -31,6 +31,7 @@ interface Lead {
   recent_avg_views?: number | null; recent_avg_comments?: number | null; recent_posts_30d?: number | null // 📈 성과(YT 최근평균/네이버 30일 포스팅)
   median_long_views?: number | null; shorts_ratio?: number | null // 📈 롱폼 중앙값 + 쇼츠 비중(%) — 쇼츠 착시 배제 지표
   is_brand?: number | null; lead_score?: number | null            // 🏢 브랜드 공식 채널 추정 · 🏅 리드 점수(0~100)
+  last_post_at?: string | null // 📝 블로거 마지막 글 날짜(검색 postdate/RSS — 활동 신호)
 }
 // 컨택 채널 — 서버 enum ↔ 한글 라벨.
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
@@ -500,7 +501,12 @@ export default function AdminInfluencerPoolPage() {
                       </a>
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">
-                      {l.platform === 'naver_blog' ? <span className="text-gray-400">블로그{l.recent_posts_30d != null ? ` · 月${l.recent_posts_30d}글` : ''}</span> : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
+                      {l.platform === 'naver_blog' ? (
+                        <span className="inline-flex flex-col items-end text-gray-400">
+                          <span>{l.subscriber_count > 0 ? `이웃 ${formatNumber(l.subscriber_count)}` : '블로그'}{l.recent_posts_30d != null ? ` · 月${l.recent_posts_30d}글` : ''}</span>
+                          {(() => { if (!l.last_post_at) return null; const d = Math.floor((Date.now() - new Date(l.last_post_at).getTime()) / 86400000); if (!Number.isFinite(d) || d < 0) return null; return <span className={`text-[11px] ${d <= 7 ? 'text-emerald-600' : d <= 30 ? 'text-gray-400' : 'text-gray-300'}`} title="마지막 글 날짜(검색/RSS 기준)">✍ {d === 0 ? '오늘' : `${d}일 전`} 글</span> })()}
+                        </span>
+                      ) : l.platform === 'tistory' ? <span className="text-gray-400">티스토리 · 글{formatNumber(l.video_count)}</span> : l.platform === 'naver_cafe' ? <span className="text-gray-400">카페 · 글{formatNumber(l.video_count)}</span> : (
                         <span className="inline-flex flex-col items-end">
                           <span className="inline-flex items-center gap-1.5 justify-end">
                             {formatNumber(l.subscriber_count)}

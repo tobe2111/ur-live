@@ -117,6 +117,26 @@ export function extractPubDates(xml: string): string[] {
   return out
 }
 
+/** RSS XML 에서 글 제목 추출(채널 자체 title 은 제외 — <item> 안의 것만). CDATA/일반 둘 다.
+ *  블로그 카테고리 분류의 핵심 신호 — 검색 스니펫 1건보다 최근 글 제목 묶음이 훨씬 정확. */
+export function extractRssTitles(xml: string, max = 6): string[] {
+  const out: string[] = []
+  const itemRe = /<item>([\s\S]*?)<\/item>/gi
+  let m: RegExpExecArray | null
+  while ((m = itemRe.exec(xml)) !== null && out.length < max) {
+    const t = /<title>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]{1,120}))<\/title>/i.exec(m[1])
+    const title = (t?.[1] || t?.[2] || '').trim()
+    if (title) out.push(title.slice(0, 80))
+  }
+  return out
+}
+
+/** 네이버 검색 API postdate(YYYYMMDD) → 'YYYY-MM-DD'. 형식 불일치는 null. */
+export function naverPostdateToIso(postdate?: string | null): string | null {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(postdate || '').trim())
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null
+}
+
 /** 네이버 블로그 홈 HTML 에서 이웃수(규모 프록시) 파싱 — best-effort. 네이버 오픈API 는 구독/이웃수를
  *  안 줘서(비공개) 이미 받는 홈 HTML 에서 긁는 게 무료 최선. 여러 레이아웃 대비 다중 패턴, 못 찾으면 0. */
 export function parseNaverNeighborCount(html: string): number {
@@ -146,6 +166,8 @@ export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
     // 📈 2026-07-27 지표 개선 — 롱폼 중앙값(쇼츠 착시 배제) + 쇼츠 비중(%).
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER').run().catch(() => null)
     await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER').run().catch(() => null)
+    // 📝 블로거 마지막 글 날짜(YYYY-MM-DD) — 검색 API postdate 로 채움(RSS 차단과 무관하게 항상 동작).
+    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT').run().catch(() => null)
   })()
   _perfColPromise.set(DB, p); return p
 }
@@ -277,45 +299,88 @@ export async function enrichYouTubePerformance(
   return rows.length
 }
 
+/** 네이버 블로거 보강 결과 — 어드민 진단용(측정 성공 0 이 반복되면 차단/형식변경 신호). */
+export interface NaverEnrichDiag { tried: number; measured: number; contacts: number; failed: number }
+
 /**
- * 네이버 블로거 활동성 보강 — RSS 최근 30일 포스팅 수(조회수/댓글은 공식 API 부재 — 비공개 지표).
+ * 네이버 블로거 활동성+정보 보강 — RSS(30일 포스팅 수·최근 글 제목) + 홈 HTML(이웃수·프로필 연락처).
+ *   🛡️ 2026-07-27 재작성(대표 "블로그 부정확 — 정보 더 수집"):
+ *   ① **실패≠0글**: 기존엔 fetch 실패도 `recent_posts_30d=0`+스탬프 → 활발한 블로거가 "月0글"로 영구 각인
+ *      (스크린샷 실사고 — 검색에 방금 글이 잡힌 블로거들이 전부 0글). 이제 RSS 성공 시에만 포스팅 수 기록.
+ *   ② **순환 재측정**: 선택을 '미측정만'→'가장 오래전에 시도한 순'(라운드로빈)으로 — 과거 0-각인 행이
+ *      가장 오래된 스탬프라 자동으로 맨 앞에서 재측정(별도 힐 불필요) + 활동성이 주기적으로 신선해짐.
+ *   ③ **프로필 연락처**: 이미 받는 홈 HTML 에서 이웃수뿐 아니라 이메일/인스타/링크도 추출(추가 fetch 0,
+ *      빈칸만 COALESCE — 프로필은 블로거 본인 페이지라 본인 연락처).
+ *   ④ **글 제목 → 카테고리 신호**: RSS 최근 글 제목을 description 꼬리(` | 글: …`)에 갱신 —
+ *      야간 재분류가 실제 콘텐츠로 판정(검색 스니펫 1건 상속보다 정확).
  */
-export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
-  if (max <= 0 || budget.left <= 1) return 0
-  // 🛡️ 2026-07-27 공정화: 기존 `ORDER BY id DESC`(최신 우선)는 신규 수집이 시간당 처리량(15)보다 빠르면
-  //   **오래된 리드가 영원히 보강 안 되는 기아(LIFO starvation)**. 미보강만 고르는 필터라 FIFO(id ASC)로
-  //   바꾸면 백로그가 순서대로 완전히 배수된다(커버리지 손실 0, 총량 동일).
-  const rows = (await DB.prepare(`SELECT id, handle FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'naver_blog' AND perf_checked_at IS NULL AND handle IS NOT NULL
-      ORDER BY id ASC LIMIT ?`).bind(Math.min(max, 15))
-    .all<{ id: number; handle: string }>().catch(() => null))?.results || []
-  if (!rows.length) return 0
+export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
+  const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
+  if (max <= 0 || budget.left <= 1) return diag
+  const rows = (await DB.prepare(`SELECT id, handle, email, instagram, links, description FROM ad_influencer_leads
+      WHERE account_id = 0 AND platform = 'naver_blog' AND handle IS NOT NULL
+      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30))
+    .all<{ id: number; handle: string; email: string | null; instagram: string | null; links: string | null; description: string | null }>().catch(() => null))?.results || []
+  if (!rows.length) return diag
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
-    if (budget.left <= 0) break
+    if (budget.left <= 1) break
+    if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
+      stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
+      continue
+    }
+    diag.tried++
+    // ① RSS — 포스팅 수 + 글 제목 + 마지막 글 날짜. 실패(null)와 "진짜 글 0"(성공·항목 0)을 구분.
     budget.left--
-    let posts30 = 0
+    let rssXml: string | null = null
     try {
       const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(r.handle)}.xml`, { signal: AbortSignal.timeout(8000) })
-      if (res.ok) posts30 = countRecentPosts(extractPubDates((await res.text()).slice(0, 120_000)), Date.now())
-    } catch { /* fail-soft — 스탬프만 */ }
-    // 🏠 이웃수(규모 프록시) — 홈 HTML 파싱(best-effort). 네이버 오픈API 미제공이라 blog 리드는 지금 전부 0.
-    //   예산 남을 때만 홈 1콜 추가 시도(fail-soft). 찾으면 subscriber_count 채움(0>0 일 때만 — 수동값 보존).
-    let neighbors = 0
-    if (budget.left > 0 && /^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) {
+      if (res.ok) rssXml = (await res.text()).slice(0, 120_000)
+      else if (res.status === 404 || res.status === 410) rssXml = '' // 블로그 삭제/비공개 — "측정 성공·글 0" 취급(터미널)
+    } catch { /* rssXml=null = 측정 실패 */ }
+    // ② 홈 HTML — 이웃수 + 프로필 연락처(같은 응답에서 둘 다).
+    let homeText: string | null = null
+    if (budget.left > 0) {
       budget.left--
       try {
         const hr = await fetch(`https://m.blog.naver.com/${r.handle}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
-        if (hr.ok) neighbors = parseNaverNeighborCount((await hr.text()).slice(0, 80_000))
+        if (hr.ok) homeText = (await hr.text()).slice(0, 80_000)
       } catch { /* fail-soft */ }
     }
-    stmts.push(neighbors > 0
-      ? DB.prepare(`UPDATE ad_influencer_leads SET recent_posts_30d = ?, subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END, perf_checked_at = datetime('now') WHERE id = ?`).bind(posts30, neighbors, r.id)
-      : DB.prepare(`UPDATE ad_influencer_leads SET recent_posts_30d = ?, perf_checked_at = datetime('now') WHERE id = ?`).bind(posts30, r.id))
+    if (rssXml === null && homeText === null) { // 둘 다 실패 — 아무것도 안 쓰고 스탬프만(다음 순환에 재시도, 0-각인 금지)
+      diag.failed++
+      stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
+      continue
+    }
+    const sets: string[] = [`perf_checked_at = datetime('now')`]
+    const binds: (string | number)[] = []
+    if (rssXml !== null) {
+      diag.measured++
+      const pubDates = extractPubDates(rssXml)
+      sets.push('recent_posts_30d = ?'); binds.push(countRecentPosts(pubDates, Date.now()))
+      const newest = pubDates.map(d => Date.parse(d)).filter(Number.isFinite).sort((a, b) => b - a)[0]
+      if (newest) { sets.push(`last_post_at = CASE WHEN last_post_at IS NULL OR last_post_at < ? THEN ? ELSE last_post_at END`); binds.push(...[new Date(newest).toISOString().slice(0, 10), new Date(newest).toISOString().slice(0, 10)]) }
+      const titles = extractRssTitles(rssXml)
+      if (titles.length) { // 글 제목 꼬리 갱신 — 기존 꼬리 제거 후 최신으로 교체(분류 신호 신선 유지)
+        const bare = stripVideoTitles(r.description || '').trim()
+        sets.push('description = ?'); binds.push(`${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500))
+      }
+    }
+    if (homeText !== null) {
+      const neighbors = parseNaverNeighborCount(homeText)
+      if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors) }
+      const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
+      const c = extractContacts(homeText)
+      if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
+      if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz) }
+      if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]) }
+      if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+    }
+    stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, r.id))
   }
   if (stmts.length) await DB.batch(stmts).catch(() => null)
-  return stmts.length
+  return diag
 }
 
 /**
