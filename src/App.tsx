@@ -1003,7 +1003,8 @@ function AppContent() {
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
             <Route path="/new-openings" element={<NewOpeningsPage />} />
-            <Route path="/area-report/:region?" element={<AreaReportPage />} />
+            <Route path="/area-report" element={<AreaReportPage />} />
+            <Route path="/area-report/:region" element={<AreaReportPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
 
             {/* Terms Pages */}
