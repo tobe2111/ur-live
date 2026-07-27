@@ -12,16 +12,20 @@
 import type { Env } from '@/worker/types/env'
 import { classifyLead, REGISTRY_CATEGORY_SOURCES } from './company-classify'
 
-/* ── 접점 분류 (수집 카테고리 SSOT — 소상공인을 반복·신뢰로 만나는 업체) ───────────── */
-//   category(접점 성격) × subcategory(구체 업종). UI 가 이 맵으로 셀렉트를 구성.
+/* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
+//   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
+//   (매장인프라/정기납품/창업생태계)를 폐기하고 부르는 이름 그대로. 기존 행은 cat_v3 1회 마이그레이션.
 export const COMPANY_CATEGORIES: Record<string, string[]> = {
-  '매장인프라': ['POS·카드단말기', '테이블오더', '키오스크', 'CCTV·보안', '간판', '인테리어', '주방설비'],
-  '정기납품': ['주류도매', '식자재유통', '원두납품', '유제품배송', '배달대행'],
-  '전문서비스': ['세무·기장', '노무', '정책자금컨설팅', '상가부동산'],
-  '창업생태계': ['창업컨설팅', '상권분석', '창업박람회', '프랜차이즈본사', '소상공인교육'],
+  '대행사': ['마케팅대행', '병원·뷰티마케팅', '체험단·플레이스', '조달등록'],
+  '전문서비스': ['법률', '세무·기장', '회계', '노무', '정책자금컨설팅'],
+  '간판': ['간판·광고물 제작'],
+  '인테리어': ['인테리어·시공', '주방설비'],
+  'POS·단말기': ['POS·카드단말기', 'VAN', '키오스크', '테이블오더', 'CCTV·보안'],
+  '식자재·납품': ['주류도매', '식자재유통', '원두납품', '유제품배송', '배달대행'],
+  '부동산': ['상가부동산'],
+  '창업': ['창업컨설팅', '상권분석', '창업박람회', '프랜차이즈본사', '소상공인교육'],
   '지역조직': ['상인회', '소상공인연합회', '협동조합', '청년몰', '상권활성화재단', '새마을금고·신협'],
-  '미디어': ['지역신문·매거진', '아파트게시판', '체험단·플레이스마케팅'],
-  '대행사': ['마케팅대행', '병원·뷰티마케팅'],
+  '미디어': ['지역신문·매거진', '아파트게시판'],
   '온라인판매': ['통신판매'], // 공정위 통신판매사업자(이메일 소스) — 대행사 아님(2026-07-23 정합)
 }
 export const COMPANY_CATEGORY_KEYS = Object.keys(COMPANY_CATEGORIES)
@@ -149,6 +153,31 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
     // 정부/학교 도메인에서 발굴된 행(webkr 오염) — 같은 보수 조건.
     await DB.prepare("DELETE FROM ad_company_leads WHERE status = 'new' AND memo IS NULL AND (website LIKE '%.go.kr%' OR website LIKE '%.gov%' OR website LIKE '%.ac.kr%' OR website LIKE '%korea.kr%')").run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_junk_v1', '1')").run().catch(() => null)
+  }
+
+  // 🏷️ 카테고리 v3 마이그레이션(1회, 플래그) — 우산어 → 실무 업종명(2026-07-27 대표 "간판·인테리어처럼").
+  //   순수 리라벨(삭제/연락처 무접촉) — 큐레이션 행도 새 어휘로 통일(택소노미 전환은 전량 적용이 정합).
+  const v3 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_cat_v3'").first<{ value: string }>().catch(() => null)
+  if (!v3?.value) {
+    const remap: Array<[string, (string | number)[]]> = [
+      // 매장인프라 분해 — 구체 업종 우선 매핑 후 잔여는 POS·단말기
+      ["UPDATE ad_company_leads SET category = '간판', subcategory = '간판·광고물 제작' WHERE category = '매장인프라' AND (subcategory LIKE '%간판%' OR subcategory LIKE '%광고물%')", []],
+      ["UPDATE ad_company_leads SET category = '인테리어' WHERE category = '매장인프라' AND (subcategory LIKE '%인테리어%' OR subcategory LIKE '%주방%')", []],
+      ["UPDATE ad_company_leads SET category = 'POS·단말기' WHERE category = '매장인프라'", []],
+      ["UPDATE ad_company_leads SET category = '식자재·납품' WHERE category = '정기납품'", []],
+      ["UPDATE ad_company_leads SET category = '부동산', subcategory = '상가부동산' WHERE subcategory LIKE '%부동산%' OR subcategory LIKE '%상가 임대%'", []],
+      ["UPDATE ad_company_leads SET category = '창업' WHERE category = '창업생태계'", []],
+      ["UPDATE ad_company_leads SET category = '대행사', subcategory = '체험단·플레이스' WHERE subcategory LIKE '%체험단%' OR subcategory LIKE '%플레이스%'", []],
+      // 키워드 시드 테이블도 동일 어휘(수집이 새 카테고리로 저장하게)
+      ["UPDATE ad_company_keywords SET category = '간판' WHERE category = '매장인프라' AND (subcategory LIKE '%간판%' OR subcategory LIKE '%광고물%')", []],
+      ["UPDATE ad_company_keywords SET category = '인테리어' WHERE category = '매장인프라' AND (subcategory LIKE '%인테리어%' OR subcategory LIKE '%주방%')", []],
+      ["UPDATE ad_company_keywords SET category = 'POS·단말기' WHERE category = '매장인프라'", []],
+      ["UPDATE ad_company_keywords SET category = '식자재·납품' WHERE category = '정기납품'", []],
+      ["UPDATE ad_company_keywords SET category = '부동산' WHERE subcategory LIKE '%부동산%' OR subcategory LIKE '%상가 임대%'", []],
+      ["UPDATE ad_company_keywords SET category = '창업' WHERE category = '창업생태계'", []],
+    ]
+    for (const [sql, binds] of remap) await DB.prepare(sql).bind(...binds).run().catch(() => null)
+    await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_cat_v3', '1')").run().catch(() => null)
   }
 }
 

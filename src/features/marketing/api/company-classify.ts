@@ -68,28 +68,32 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   // 대행사(최우선 — 매장을 통째로 데려올 수 있는 접점)
   { re: /(광고\s*대행|마케팅\s*대행|퍼포먼스\s*마케팅|바이럴|검색광고|SNS\s*마케팅|온라인\s*마케팅|디지털\s*마케팅|미디어\s*렙|애드\b|ADS?\b)/i, category: '대행사', subcategory: '마케팅대행', tier: 1, type: 'partner' },
   { re: /(병원\s*마케팅|의료\s*마케팅|뷰티\s*마케팅|성형\s*마케팅)/, category: '대행사', subcategory: '병원·뷰티마케팅', tier: 1, type: 'partner' },
-  { re: /(체험단|플레이스\s*마케팅|블로그\s*마케팅|리뷰\s*마케팅)/, category: '미디어', subcategory: '체험단·플레이스마케팅', tier: 1, type: 'partner' },
-  // 창업 생태계
-  { re: /(창업\s*컨설팅|창업\s*지원|점포\s*개발|프랜차이즈\s*컨설팅)/, category: '창업생태계', subcategory: '창업컨설팅', tier: 1, type: 'partner' },
-  { re: /(상권\s*분석|입지\s*분석)/, category: '창업생태계', subcategory: '상권분석', tier: 1, type: 'partner' },
-  // 정기납품(매장에 매주 들어가는 접점)
-  { re: /(주류\s*도매|주류도매|주류\s*유통)/, category: '정기납품', subcategory: '주류도매', tier: 2, type: 'partner' },
-  { re: /(식자재|식재료\s*유통|업소용|농수산물\s*유통)/, category: '정기납품', subcategory: '식자재유통', tier: 2, type: 'partner' },
-  { re: /(원두|커피\s*납품|로스터리\s*납품)/, category: '정기납품', subcategory: '원두납품', tier: 2, type: 'partner' },
-  { re: /(배달\s*대행|배달대행)/, category: '정기납품', subcategory: '배달대행', tier: 2, type: 'partner' },
-  // 매장 인프라
-  { re: /(포스\b|POS\b|카드\s*단말기|카드단말기|VAN\s*대리점|밴\s*대리점)/i, category: '매장인프라', subcategory: 'POS·카드단말기', tier: 4, type: 'partner' },
-  { re: /(키오스크)/, category: '매장인프라', subcategory: '키오스크', tier: 4, type: 'partner' },
-  { re: /(테이블\s*오더|테이블오더)/, category: '매장인프라', subcategory: '테이블오더', tier: 4, type: 'partner' },
-  { re: /(CCTV|씨씨티비|보안\s*시스템)/i, category: '매장인프라', subcategory: 'CCTV·보안', tier: 4, type: 'partner' },
-  { re: /(간판|사인\s*제작|현수막|실사출력)/, category: '매장인프라', subcategory: '간판', tier: 3, type: 'partner' },
-  { re: /(인테리어|리모델링|시공)/, category: '매장인프라', subcategory: '인테리어', tier: 3, type: 'partner' },
-  { re: /(주방\s*설비|주방설비|주방\s*기구|업소용\s*주방)/, category: '매장인프라', subcategory: '주방설비', tier: 3, type: 'partner' },
-  // 전문 서비스
-  { re: /(세무사|세무\s*회계|회계법인|기장)/, category: '전문서비스', subcategory: '세무·기장', tier: 5, type: 'partner' },
+  { re: /(체험단|플레이스\s*마케팅|블로그\s*마케팅|리뷰\s*마케팅)/, category: '대행사', subcategory: '체험단·플레이스', tier: 1, type: 'partner' },
+  // 창업
+  { re: /(창업\s*컨설팅|창업\s*지원|점포\s*개발|프랜차이즈\s*컨설팅)/, category: '창업', subcategory: '창업컨설팅', tier: 1, type: 'partner' },
+  { re: /(상권\s*분석|입지\s*분석)/, category: '창업', subcategory: '상권분석', tier: 1, type: 'partner' },
+  // 식자재·납품(매장에 매주 들어가는 접점)
+  { re: /(주류\s*도매|주류도매|주류\s*유통)/, category: '식자재·납품', subcategory: '주류도매', tier: 2, type: 'partner' },
+  { re: /(식자재|식재료\s*유통|업소용|농수산물\s*유통)/, category: '식자재·납품', subcategory: '식자재유통', tier: 2, type: 'partner' },
+  { re: /(원두|커피\s*납품|로스터리\s*납품)/, category: '식자재·납품', subcategory: '원두납품', tier: 2, type: 'partner' },
+  { re: /(배달\s*대행|배달대행)/, category: '식자재·납품', subcategory: '배달대행', tier: 2, type: 'partner' },
+  // POS·단말기
+  { re: /(포스\b|POS\b|카드\s*단말기|카드단말기|VAN\s*대리점|밴\s*대리점)/i, category: 'POS·단말기', subcategory: 'POS·카드단말기', tier: 4, type: 'partner' },
+  { re: /(키오스크)/, category: 'POS·단말기', subcategory: '키오스크', tier: 4, type: 'partner' },
+  { re: /(테이블\s*오더|테이블오더)/, category: 'POS·단말기', subcategory: '테이블오더', tier: 4, type: 'partner' },
+  { re: /(CCTV|씨씨티비|보안\s*시스템)/i, category: 'POS·단말기', subcategory: 'CCTV·보안', tier: 4, type: 'partner' },
+  // 간판 / 인테리어(대표 v3 — 독립 카테고리)
+  { re: /(간판|사인\s*제작|현수막|실사출력)/, category: '간판', subcategory: '간판·광고물 제작', tier: 3, type: 'partner' },
+  { re: /(인테리어|리모델링|시공)/, category: '인테리어', subcategory: '인테리어·시공', tier: 3, type: 'partner' },
+  { re: /(주방\s*설비|주방설비|주방\s*기구|업소용\s*주방)/, category: '인테리어', subcategory: '주방설비', tier: 3, type: 'partner' },
+  // 전문 서비스(법률·세무·기장 등)
+  { re: /(법무법인|변호사|법률\s*사무소)/, category: '전문서비스', subcategory: '법률', tier: 5, type: 'partner' },
+  { re: /(세무사|세무\s*회계|기장)/, category: '전문서비스', subcategory: '세무·기장', tier: 5, type: 'partner' },
+  { re: /(회계법인|공인회계사)/, category: '전문서비스', subcategory: '회계', tier: 5, type: 'partner' },
   { re: /(노무사|노무\s*법인)/, category: '전문서비스', subcategory: '노무', tier: 5, type: 'partner' },
   { re: /(정책\s*자금|정책자금)/, category: '전문서비스', subcategory: '정책자금컨설팅', tier: 5, type: 'partner' },
-  { re: /(상가\s*전문|상가\s*임대|점포\s*부동산|공인중개사|부동산\s*중개)/, category: '전문서비스', subcategory: '상가부동산', tier: 3, type: 'partner' },
+  // 부동산(독립 카테고리)
+  { re: /(상가\s*전문|상가\s*임대|점포\s*부동산|공인중개사|부동산\s*중개)/, category: '부동산', subcategory: '상가부동산', tier: 3, type: 'partner' },
   // 지역조직(기관성 — 제휴 가치는 있으나 영업 대상 아님)
   { re: /(상인회|번영회|소상공인연합|협동조합|상권활성화|청년몰|새마을금고|신협)/, category: '지역조직', subcategory: '상인회', tier: 3, type: 'org' },
   // 미디어

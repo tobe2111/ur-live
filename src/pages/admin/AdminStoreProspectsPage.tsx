@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
+import OpeningWelcomePanel from './store-prospects/OpeningWelcomePanel'
 
 interface Prospect {
   id: number; biz_name: string; category: string | null; uptae: string | null
@@ -130,6 +131,9 @@ export default function AdminStoreProspectsPage() {
     <AdminLayout title="매장 후보">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🏪 매장 후보" subtitle="지방행정 인허가로 발굴한 유어딜 입점 대상 매장 — 발굴·개업감지·폐업정리 (수집 ≠ 발송)" />
+
+        {/* 🎉 개업 웰컴 — 최근 개업 큐 + 개업 컨설팅 브리핑(상권 수치·멘트) */}
+        <OpeningWelcomePanel onStatusChange={(id, status) => patchStatus(id, status)} />
 
         <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}
