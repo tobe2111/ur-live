@@ -23,9 +23,15 @@ export const LICENSE_UPJONG: Record<string, string> = {
   beauty_salons: '미용업',                 // 행정안전부_생활_미용업 조회서비스 (승인)
   tourist_accommodations: '숙박업',        // 행정안전부_문화_관광숙박업 조회서비스 (승인)
   pet_grooming: '동물미용업',              // 행정안전부_동물_동물미용업 조회서비스 (승인)
+  pharmacies: '약국',                      // 행정안전부_건강_약국 조회서비스 (승인 2026-07-27)
+  hospitals: '병원',                       // 행정안전부_건강_병원 조회서비스 (승인 2026-07-27)
+  barber_shops: '이용업',                  // 행정안전부_생활_이용업 조회서비스 (승인 2026-07-27)
+  public_baths: '목욕장업',                // 행정안전부_생활_목욕장업 조회서비스 (승인 2026-07-27)
+  animal_hospitals: '동물병원',            // 행정안전부_동물_동물병원 조회서비스 (승인 2026-07-27)
+  animal_pharmacies: '동물약국',           // 행정안전부_동물_동물약국 조회서비스 (승인 2026-07-27)
 }
 /** 필터 드롭다운 표시용 카테고리(수집 업종). */
-export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업']
+export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국']
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 

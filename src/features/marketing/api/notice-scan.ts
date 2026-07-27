@@ -8,10 +8,15 @@
 import type { Env } from '@/worker/types/env'
 import { ensureNoticeSchema, saveNotices, type GovNotice } from './gov-notices'
 
-const NARA_BASE = 'https://apis.data.go.kr/1230000/BidPublicInfoService'   // 조달청 나라장터
+// ✅ 실 엔드포인트(대표 활용신청 승인 화면 확인 2026-07-27): 조달청_나라장터 **공공데이터개방표준서비스**
+//   /1230000/ao/PubDataOpnStdService — 입찰공고는 날짜구간 조회(getDataSetOpnStdBidPblancInfo) 후 키워드를
+//   우리 쪽에서 필터(개방표준은 구간 조회가 표준 — 검색 파라미터 미보장). 이전 BidPublicInfoService 는 placeholder.
+//   (같이 승인된 사용자정보서비스 UsrInfoService02 는 조달업체 명부 — 공고 스캔과 무관, 미배선.)
+const NARA_BASE = 'https://apis.data.go.kr/1230000/ao/PubDataOpnStdService'
 const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'   // 기업마당(중기부) — 확정 대상
 const KEYWORDS = ['상권활성화', '소상공인', '마케팅', '창업', '상권']
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
+const g = (it: Record<string, unknown>, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
 
 function pickArray(data: Record<string, unknown> | null): Record<string, unknown>[] {
   if (!data) return []
@@ -49,19 +54,26 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
   let bid = 0, grant = 0, sampleBid: unknown, sampleGrant: unknown
   const all: GovNotice[] = []
 
-  // ── 나라장터 입찰(용역 업무구분) — 키워드별 공고명 검색 ──
-  for (const kw of KEYWORDS) {
-    if (budget.left <= 0) break
-    const url = `${naraBase}/getBidPblancListInfoServc?serviceKey=${encodeURIComponent(key)}&numOfRows=30&pageNo=1&type=json&inqryDiv=1&bidNtceNm=${encodeURIComponent(kw)}`
+  // ── 나라장터 입찰(개방표준) — 최근 3일 구간 일괄 조회 후 키워드는 우리 쪽 필터(호출 1회로 전 키워드 커버) ──
+  {
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    const ymdhm = (d: Date, hm: string) => `${d.getUTCFullYear()}${p2(d.getUTCMonth() + 1)}${p2(d.getUTCDate())}${hm}`
+    const now = new Date()
+    const bgn = ymdhm(new Date(now.getTime() - 3 * 86400000), '0000')
+    const end = ymdhm(now, '2359')
+    const url = `${naraBase}/getDataSetOpnStdBidPblancInfo?serviceKey=${encodeURIComponent(key)}&pageNo=1&numOfRows=300&type=json&bidNtceBgnDt=${bgn}&bidNtceEndDt=${end}`
     const items = pickArray(await fetchJson(url, budget))
     if (!sampleBid && items[0]) sampleBid = items[0]
     for (const it of items) {
-      const no = stripTag(it.bidNtceNo)
+      const title = g(it, 'bidNtceNm', 'ntceNm')
+      const kw = KEYWORDS.find(k => title.includes(k))
+      if (!kw) continue // 상권/소상공인/마케팅 관련 공고만
+      const no = g(it, 'bidNtceNo', 'ntceNo')
       if (!no) continue
       all.push({
-        source: 'bid', notice_no: no, title: stripTag(it.bidNtceNm), org: stripTag(it.ntceInsttNm) || null,
-        biz_field: '용역', url: stripTag(it.bidNtceDtlUrl) || null, amount: stripTag(it.presmptPrce) || null,
-        posted_date: stripTag(it.bidNtceDt).slice(0, 10) || null, end_date: stripTag(it.bidClseDt).slice(0, 10) || null, keyword: kw,
+        source: 'bid', notice_no: no, title, org: g(it, 'ntceInsttNm', 'dminsttNm') || null,
+        biz_field: g(it, 'bsnsDivNm') || '입찰', url: g(it, 'bidNtceUrl', 'bidNtceDtlUrl') || null, amount: g(it, 'presmptPrce', 'asignBdgtAmt') || null,
+        posted_date: g(it, 'bidNtceDt', 'bidNtceDate').slice(0, 10) || null, end_date: g(it, 'bidClseDt', 'bidClseDate', 'opengDt').slice(0, 10) || null, keyword: kw,
       })
       bid++
     }

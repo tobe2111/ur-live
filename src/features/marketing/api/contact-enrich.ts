@@ -107,8 +107,8 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 }
 
 // ⚠️ 제3자/UGC 플랫폼 — 리뷰 블로그·카페 글이 상호를 제목에 달고 있어도 **그 페이지의 이메일은 글쓴이(제3자) 것**
-//   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상.
-const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com)$/i
+//   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
+export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
 
 /** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
  *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
@@ -132,6 +132,24 @@ export async function naverHomepageSearch(clientId: string, clientSecret: string
     return link
   }
   return null
+}
+
+// 잘 알려진 메일 도메인(MX 확실) — DoH 조회 생략(예산 절약).
+const KNOWN_MAIL_DOMAIN = /(?:^|\.)(naver\.com|gmail\.com|daum\.net|hanmail\.net|kakao\.com|nate\.com|hotmail\.com|outlook\.com|icloud\.com|yahoo\.com)$/i
+
+/** 📮 이메일 도메인 실존 검증(무료 Cloudflare DoH) — **죽은 도메인 이메일(반송 확정)** 저장 방지.
+ *   NXDOMAIN(도메인 자체 없음)만 false — MX 부재는 A 레코드 수신 가능(RFC 5321)이라 과차단 안 함.
+ *   DoH 장애/예산 소진 시 true(fail-open — 수집 우선, 검증은 보수적으로). */
+export async function domainAcceptsMail(email: string, budget?: FetchBudget): Promise<boolean> {
+  const domain = String(email || '').split('@')[1]?.toLowerCase() || ''
+  if (!domain) return false
+  if (KNOWN_MAIL_DOMAIN.test(domain)) return true
+  if (outOfBudget(budget)) return true
+  spendBudget(budget)
+  const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(6000) }).catch(() => null)
+  if (!res || !res.ok) return true
+  const j = await res.json().catch(() => null) as { Status?: number } | null
+  return !(j && j.Status === 3) // 3 = NXDOMAIN — 도메인 소멸 → 반송 확정이라 버림
 }
 
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
@@ -163,5 +181,6 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
   }
   if (!nameSeen) return { email: null, phone: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제
   return { email, phone }
 }
