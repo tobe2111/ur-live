@@ -15,6 +15,7 @@ import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
+import TrackLinkButton from './influencer-pool/TrackLinkButton'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -68,8 +69,7 @@ export default function AdminInfluencerPoolPage() {
   const [hasContact, setHasContact] = useState(false)
   const [hasEmail, setHasEmail] = useState(false)
   const [hasInstagram, setHasInstagram] = useState(false)
-  // 🎯 서비스몰 주문 이행 딥링크(?q=지역&category=업종) — 접수함 "풀에서 이행" 버튼이 프리필로 오픈.
-  const [category, setCategory] = useState(() => {
+  const [category, setCategory] = useState(() => { // 🎯 서비스몰 이행 딥링크(?q=지역&category=업종) 프리필
     const raw = new URLSearchParams(window.location.search).get('category') || ''
     return POOL_CATEGORIES.includes(raw) ? raw : (POOL_CATEGORIES.find(c => raw.includes(c)) || '')
   })
@@ -558,7 +558,7 @@ export default function AdminInfluencerPoolPage() {
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       {(() => { const d = parseDraft(l.outreach_draft); return d ? <button onClick={() => setDraftView({ lead: l, draft: d })} className="text-xs text-violet-600 hover:underline mr-2" title="AI 개인화 초안 검토(발송은 직접)">✍ 초안</button> : null })()}
                       <button onClick={() => reachOut(l)} className="text-xs text-emerald-600 hover:underline mr-2" title={l.email ? '메일 초안 열기(직접 발송)' : '인스타 DM·블로그 열기 + 초안 복사(직접 발송)'}>{l.email ? '✉ 메일' : '💬 연락'}</button>
-                      <button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
+                      <span className="mr-2"><TrackLinkButton leadId={l.id} /></span><button onClick={() => setFollowUp(l)} className="text-xs text-gray-400 hover:text-amber-600 mr-2" title="팔로업 예정일">⏰</button>
                       <button onClick={() => editMemo(l)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">메모</button>
                       <button onClick={() => del(l.id)} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
                     </td>
