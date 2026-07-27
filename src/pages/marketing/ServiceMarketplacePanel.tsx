@@ -73,7 +73,8 @@ export default function ServiceMarketplacePanel() {
   // 💳 토스 리다이렉트 복귀 — 서버 confirm(금액은 서버 DB 권위) 후 쿼리 청소. 실패 복귀는 안내만.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
-    const clean = () => window.history.replaceState({}, '', window.location.pathname)
+    // 탭 재편(2026-07-27): 결제 파라미터만 청소하고 서비스몰 탭 유지(?tab=services) — 홈으로 튕김 방지.
+    const clean = () => window.history.replaceState({}, '', `${window.location.pathname}?tab=services`)
     if (sp.get('adsPayFail')) { toast.error(sp.get('message') || '결제가 취소되었거나 실패했습니다'); clean(); return }
     const svcOrder = sp.get('adsPaySvc')
     if (!svcOrder) return

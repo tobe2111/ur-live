@@ -194,6 +194,69 @@ export async function resetPasswordWithToken(DB: D1Database, token: string, newP
   return { ok: true }
 }
 
+// ── 🟡 카카오 로그인 (2026-07-27 대표 "/ads 도 카카오 로그인 가능하게") ────────
+//   유어애즈 독립 계정 유지 — 카카오는 *로그인 수단*일 뿐(유어딜 소비자 카카오 세션과 무관).
+//   매칭 규칙(플랫폼 관례 미러): ① kakao_id 일치 → 로그인 ② verified 이메일 일치 → 기존 계정에
+//   kakao_id 연결(미verified 이메일 takeover 차단 — 2026-05-31 감사 룰) ③ 없으면 신규 생성.
+const _kakaoColDone = new WeakSet<object>()
+async function ensureKakaoColumn(DB: D1Database): Promise<void> {
+  if (_kakaoColDone.has(DB)) return
+  _kakaoColDone.add(DB)
+  await DB.prepare('ALTER TABLE ad_accounts ADD COLUMN kakao_id TEXT').run().catch(() => null)
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_accounts_kakao ON ad_accounts(kakao_id) WHERE kakao_id IS NOT NULL').run().catch(() => null)
+}
+
+export interface KakaoAdsProfile { kakaoId: string; email: string | null; emailVerified: boolean; nickname: string | null }
+
+/** 카카오 프로필 → 유어애즈 계정 로그인/연결/생성. 반환 {account, created}. */
+export async function kakaoLoginAdsAccount(DB: D1Database, k: KakaoAdsProfile): Promise<{ ok: true; account: AdsAccount; created: boolean } | { ok: false; status: number; error: string }> {
+  await ensureAdsAccountSchema(DB)
+  await ensureKakaoColumn(DB)
+  const kid = String(k.kakaoId || '').trim()
+  if (!kid) return { ok: false, status: 400, error: '카카오 프로필을 확인하지 못했습니다' }
+  const cols = 'id, email, company_name, phone, status, access_unlocked'
+  // ① kakao_id 재로그인
+  let row = await DB.prepare(`SELECT ${cols} FROM ad_accounts WHERE kakao_id = ?`).bind(kid).first<AdsAccount>().catch(() => null)
+  // ② verified 같은 이메일 → 기존 이메일 계정에 카카오 연결. 이미 **다른** 카카오가 연결된 계정이면
+  //    로그인/연결/신규생성 전부 거부(그 이메일로 복구경로 진입도 차단 — 계정 탈취 여지 0).
+  if (!row && k.email && k.emailVerified) {
+    const byEmail = await DB.prepare(`SELECT ${cols}, kakao_id FROM ad_accounts WHERE LOWER(email) = ?`)
+      .bind(k.email.trim().toLowerCase()).first<AdsAccount & { kakao_id: string | null }>().catch(() => null)
+    if (byEmail?.kakao_id && byEmail.kakao_id !== kid) {
+      return { ok: false, status: 409, error: '이 이메일은 이미 다른 카카오 계정과 연결돼 있습니다 — 이메일 로그인을 이용해주세요' }
+    }
+    if (byEmail) {
+      await DB.prepare('UPDATE ad_accounts SET kakao_id = ? WHERE id = ? AND kakao_id IS NULL').bind(kid, byEmail.id).run().catch(() => null)
+      row = byEmail
+    }
+  }
+  // ③ 신규 생성 — 비번 없는 카카오 계정(무작위 해시 = 비번 로그인 불가, 카카오로만).
+  let created = false
+  if (!row) {
+    const email = k.email && k.emailVerified ? k.email.trim().toLowerCase() : `kakao${kid}@kakao.local`
+    const company = (k.nickname || '').trim().slice(0, 80) || '카카오 회원'
+    const randomPw = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hash = await hashPassword(randomPw)
+    try {
+      const r = await DB.prepare('INSERT INTO ad_accounts (email, password_hash, company_name, kakao_id) VALUES (?, ?, ?, ?)')
+        .bind(email, hash, company, kid).run()
+      const id = Number(r.meta?.last_row_id)
+      if (!id) return { ok: false, status: 500, error: '가입 처리 중 오류가 발생했습니다' }
+      row = { id, email, company_name: company, phone: null, status: 'active', access_unlocked: 0 }
+      created = true
+    } catch {
+      // UNIQUE 충돌(동시 요청 경쟁) — **내 kakao_id 로만** 재조회 자기치유(이메일 재조회는
+      //   다른 카카오가 연결된 계정으로 새는 탈취 경로라 금지).
+      row = await DB.prepare(`SELECT ${cols} FROM ad_accounts WHERE kakao_id = ?`)
+        .bind(kid).first<AdsAccount>().catch(() => null)
+      if (!row) return { ok: false, status: 409, error: '가입 처리 중 충돌이 발생했습니다 — 다시 시도해주세요' }
+    }
+  }
+  if (row.status && row.status !== 'active') return { ok: false, status: 403, error: '이용이 제한된 계정입니다' }
+  await DB.prepare("UPDATE ad_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => null)
+  return { ok: true, account: { ...row, access_unlocked: Number(row.access_unlocked) || 0 }, created }
+}
+
 export type MutateResult =
   | { ok: true; account: AdsAccount }
   | { ok: false; status: number; error: string }
