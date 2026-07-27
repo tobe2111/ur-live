@@ -17,7 +17,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
-import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo } from './partner-pool/StatusLines'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info } from './partner-pool/StatusLines'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -66,6 +66,7 @@ export default function AdminPartnerPoolPage() {
   const [agencyFunnel, setAgencyFunnel] = useState<AgencyFunnel | null>(null)
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
   const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
+  const [work24Info, setWork24Info] = useState<Work24Info | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -90,7 +91,7 @@ export default function AdminPartnerPoolPage() {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null) } } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -272,6 +273,7 @@ export default function AdminPartnerPoolPage() {
             { label: '통신판매사업자', desc: '공정위 — 대표자 이메일이 붙어 옴', onClick: () => runAction('collect-commerce', '통신판매 수집') },
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
+            { label: '💼 채용기업(고용24)', desc: '채용 중 = 성장 신호 — 광고·판촉·인쇄 계열만', onClick: () => runAction('collect-work24', '고용24 채용기업 수집') },
           ]} />
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
@@ -291,7 +293,7 @@ export default function AdminPartnerPoolPage() {
         </div>
 
         {/* 수집·정리 상태줄 묶음(레인A/정리진행률/퍼널/통신판매/프랜차이즈/폐업/국민연금) */}
-        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} />
+        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} />
 
         {/* 명부 붙여넣기(레인 B·C) */}
         {showImport && (

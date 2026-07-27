@@ -13,10 +13,12 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
+export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24 }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
+  work24: Work24Info | null
 }) {
   return (
     <>
@@ -97,6 +99,14 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
       </div>
     )}
+      {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
+      {work24?.run && (
+        <div className="mb-3 text-xs text-gray-500">
+          💼 채용기업(고용24) <span className={work24.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{work24.gate ? 'ON · 00시' : 'OFF'}</span>
+          <span> · 최근 {kstShort(work24.run.last_run)} · '{work24.run.keyword}' 발굴 {work24.run.found ?? 0} / 적합 {work24.run.matched ?? 0} / 저장 {work24.run.saved ?? 0} (누적 {work24.run.total_saved ?? 0})</span>
+          {work24.run.diag?.error && <span className="text-amber-600"> · ⚠️ {work24.run.diag.error}</span>}
+        </div>
+      )}
     </>
   )
 }

@@ -192,6 +192,9 @@ export interface Env {
   ADS_NARA_VENDOR_ENABLED?: string;       // 📑 나라장터 조달업체(대행사 계열) 일1회 게이트(기본 OFF).
   ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
+  WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
+  ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_WORK24_LIST_URL?: string;           // 💼 고용24 채용목록 URL 오버라이드(통합 후 표기 흔들림 대비).
   ADS_NARA_VENDOR_OP?: string;            // 오퍼레이션 override(기본 getPrcrmntCorpBasicInfo — 오류 시 무배포 교정).
   ADS_NARA_VENDOR_DAYS?: string;          // 조회 구간 일수(기본 90) — 최근 등록/변경 업체.
   // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.

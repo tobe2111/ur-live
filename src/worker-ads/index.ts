@@ -87,6 +87,14 @@ app.post('/__ads/enrich-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
+app.post('/__ads/collect-work24', async (c) => {
+  try {
+    const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect')
+    return c.json({ ok: true, stats: await runWork24JobsCollect(c.env) })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 👥 국민연금 규모 검증 — 기존 리드(대행사 우선)의 직원수(가입자수) 조회(엄격 매칭, 허위 0).
 app.post('/__ads/collect-nps', async (c) => {
   try {
@@ -279,6 +287,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
     kick('/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
+  }
+  // 💼 고용24 채용기업 — 일 1회(hourUTC===15 = KST 00시). 게이트 ADS_WORK24_ENABLED(기본 OFF).
+  if (hourUTC === 15 && (env as unknown as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true') {
+    kick('/__ads/collect-work24', async () => { const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect'); return runWork24JobsCollect(env) })
   }
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
   if (hourUTC === 16 && (env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
