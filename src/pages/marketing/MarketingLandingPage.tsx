@@ -88,8 +88,13 @@ export default function MarketingLandingPage() {
   const [dark, setDark] = useState(false) // 기본 라이트(Landing Light). 토글 시 코스믹 네이비(v2).
   useUrAdsFavicon()
   // 로그인 상태면 대시보드로, 아니면 유어애즈 코스믹 로그인(/ads/login → 카카오 → /ads/dashboard 복귀).
-  const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
+  //   2026-07-27 대표 "로그인/로그아웃 버튼이 잘 안 보임" — 텍스트 링크 → 명시적 버튼 + 로그아웃 노출.
+  const [loggedIn, setLoggedIn] = useState(() => typeof window !== 'undefined' && !!localStorage.getItem('ads_token'))
   const loginHref = loggedIn ? APP : '/ads/login'
+  function logout() {
+    for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
+    setLoggedIn(false)
+  }
   return (
     <div className="ua-landing" data-theme={dark ? 'dark' : undefined}>
       <style>{SCOPED_CSS}</style>
@@ -110,10 +115,13 @@ export default function MarketingLandingPage() {
               <a href="#features">기능</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href="#faq">FAQ</a>
             </nav>
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button type="button" className="ua-tglbtn" onClick={() => setDark(v => !v)} aria-label={dark ? '라이트 모드' : '다크 모드'} title={dark ? '라이트 모드' : '다크 모드'}>{dark ? '☀️' : '🌙'}</button>
-            <Link to={loginHref} style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>{loggedIn ? '대시보드' : '로그인'}</Link>
-            <a href={CONTACT} style={{ fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '9px 18px', borderRadius: 8, whiteSpace: 'nowrap' }}>Contact Us</a>
+            <a className="ua-navlinks" href={CONTACT} style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>Contact Us</a>
+            {loggedIn && (
+              <button type="button" onClick={logout} style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink2)', background: 'transparent', border: '1px solid var(--btn-bd)', padding: '8px 14px', borderRadius: 8, whiteSpace: 'nowrap', cursor: 'pointer' }}>로그아웃</button>
+            )}
+            <Link to={loginHref} style={{ fontSize: 14, fontWeight: 700, color: '#fff', background: '#3B6EF5', padding: '9px 18px', borderRadius: 8, whiteSpace: 'nowrap' }}>{loggedIn ? '대시보드 →' : '로그인 / 시작하기'}</Link>
           </div>
         </div>
       </header>
