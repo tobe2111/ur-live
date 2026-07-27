@@ -166,6 +166,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const now = new Date(event.scheduledTime)
   const hourUTC = now.getUTCHours()
   const dowUTC = now.getUTCDay() // 0=일 … 1=월
+  // 🚧 서브리퀘스트 격리(2026-07-27 실사고 "Too many subrequests by single Worker invocation") — 한 cron
+  //   인보케이션에 트랙이 겹치면(인플루언서 수집 ~수백 fetch + 시트 미러 + 업체 보강/상가정보 …) 합산이
+  //   인보케이션 한도를 넘어 늦게 실행되는 트랙(YT 검색·저장)이 중간에 죽음. 각 트랙을 SELF 서비스바인딩으로
+  //   **자체 인보케이션**(fresh 한도)에 격리 — 야간 정비(18/19시)와 동일 패턴. SELF 미바인딩이면 직접 실행
+  //   폴백(로컬 안전). 실패는 fail-soft(매시간 cron 이라 다음 틱 재시도).
+  const kick = (path: string, fallback: () => Promise<unknown>): void => {
+    ctx.waitUntil((async () => {
+      try {
+        if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
+        else await fallback()
+      } catch { /* fail-soft */ }
+    })())
+  }
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
@@ -176,58 +189,48 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
-  ctx.waitUntil((async () => {
-    if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-      try {
-        const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
-        await runInfluencerAutoCollect(env)
-      } catch { /* fail-soft */ }
-    }
-    // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
-    //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
-    //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).
-    if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
+  if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
+    kick('/__ads/collect', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) })
+  }
+  // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
+  //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
+  //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).
+  //   동기화 자체는 SELF 인보케이션에서(풀 성장에 비례하는 D1 페이지 읽기+Sheets 쓰기를 수집과 격리),
+  //   경보 판단만 여기서(응답 JSON 파싱 — 1 fetch + D1 1읽기라 가벼움).
+  if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
       try {
         const prevRaw = await env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
         const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
-        const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-        const r = await syncInfluencerPoolToSheets(env)
+        let r: { ok: boolean; error?: string | null }
+        if (env.SELF?.fetch) {
+          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync', { method: 'POST' }))
+          r = await resp.json().then(j => j as { ok: boolean; error?: string | null }).catch(() => ({ ok: false, error: 'SELF_RESPONSE_PARSE' }))
+        } else {
+          const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
+          r = await syncInfluencerPoolToSheets(env)
+        }
         if (!r.ok && env.DISCORD_WEBHOOK_URL && (r.error || '') !== (prevErr || '')) {
           const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
           await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, '유어애즈 구글시트 동기화 실패', `${r.error || 'unknown'}\n(해결 전까지 시트 미러 정지 — 어드민 정비 도구에서 수동 재시도 가능)`, 'warn').catch(() => null)
         }
       } catch { /* fail-soft */ }
-    }
-  })())
+    })())
+  }
   // 🤝 파트너(업체) 자동수집 — 홀수시만(인플루언서는 매시간 유지 → 반토막 방지, 겹침 최소). 네이버 지역검색(local.json).
   //   게이트 ADS_COMPANY_COLLECT_ENABLED(기본 OFF). 별도 FetchBudget/커서/키워드 → 인플루언서 트랙 무영향.
   if (hourUTC % 2 === 1 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect')
-        await runCompanyAutoCollect(env)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-company', async () => { const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect'); return runCompanyAutoCollect(env) })
   }
   // 📇 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 보류(연락처 없는) 리드에 카카오 전화+홈페이지 크롤.
   //   게이트 ADS_COMPANY_COLLECT_ENABLED(수집 켜면 보강도 자동). 백로그를 시간당 ~45건씩 자동 소진 → 수동 클릭 불필요.
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
-        await enrichHeldLeads(env)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
-        await runStoreInfoCollect(env)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
@@ -252,11 +255,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   게이트 ADS_LOCALDATA_ENABLED(매장 후보 트랙 켜면 보강도 자동). 이메일 백로그를 시간당 자동 소진.
   //   📦 + 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 시간당 2일씩 역방향 소급 → 매장 DB 수량 확대.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
+    kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
     ctx.waitUntil((async () => {
-      try {
-        const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
-        await enrichProspectContacts(env)
-      } catch { /* fail-soft */ }
       try {
         const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
         await runLocalDataBackfill(env, 2)
@@ -266,14 +266,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).
   if (hourUTC % 2 === 0 && envx.ADS_COMMERCE_ENABLED === 'true') {
-    ctx.waitUntil((async () => { try { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); await runCommerceCollect(env) } catch { /* fail-soft */ } })())
+    kick('/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
   }
   if (hourUTC === 22 && envx.ADS_FRANCHISE_ENABLED === 'true') {
-    ctx.waitUntil((async () => { try { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); await runFranchiseCollect(env) } catch { /* fail-soft */ } })())
+    kick('/__ads/collect-franchise', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) })
   }
   // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시). 게이트 ADS_NOTICE_ENABLED.
   if (hourUTC === 21 && envx.ADS_NOTICE_ENABLED === 'true') {
-    ctx.waitUntil((async () => { try { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); await runNoticeScan(env) } catch { /* fail-soft */ } })())
+    kick('/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
   }
   // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
   if (env.ADS_AUTOBID_ENABLED === 'true') {
