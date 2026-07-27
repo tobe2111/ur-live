@@ -99,8 +99,16 @@ app.post('/__ads/collect-work24', async (c) => {
 app.post('/__ads/collect-nps', async (c) => {
   try {
     const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
-    const stats = await runNpsWorkplaceEnrich(c.env, 40)
+    const stats = await runNpsWorkplaceEnrich(c.env, 100) // 40→100(2026-07-27 대표 "더 정확히" — data.go.kr 쿼터 여유)
     return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
+// ☎️ 카카오 전용 전화 스윕 — 보류 리드 전화 대량 채움(시간당 기본 600건, 카카오만 — 네이버 쿼터 무접촉).
+app.post('/__ads/sweep-kakao-phone', async (c) => {
+  try {
+    const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')
+    return c.json({ ok: true, stats: await runKakaoPhoneSweep(c.env) })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
@@ -293,6 +301,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   킬스위치 ADS_ENRICH_DISABLED='true' 만 끔. 키 없으면 내부에서 해당 단계 자연 스킵(fail-soft).
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
     kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
+    // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
+    kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
     kick('/__ads/reclassify-company', async () => {
@@ -313,7 +323,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
   if (hourUTC === 16 && (env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
-    kick('/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 40) })
+    kick('/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 100) })
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
   if (hourUTC === 17 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
