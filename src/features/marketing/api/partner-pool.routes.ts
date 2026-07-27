@@ -104,6 +104,76 @@ app.post('/reclassify', async (c) => {
   return c.json({ success: true, started: false })
 })
 
+// POST /api/admin/partner-pool/run-all — 🚀 **원클릭 전체 실행** (2026-07-27 대표 "버튼이 너무 많달까?
+//   원클릭으로 모든 게 다 되게"). 수집 전 레인(병렬, 각자 ur-ads fresh 인보케이션) → 보강 버스트 +
+//   정리 버스트(병렬 — 보강=외부크롤, 정리=DB-only 라 서로 무간섭) 순서로 한 사이클을 알아서 돌리고,
+//   끝나면 **통합 결과 1개**를 알림벨+완료 토스트로. 개별 버튼은 특정 레인 재실행용으로 존치.
+//   기존 버스트 잠금(enrich/reclassify)을 공유해 개별 버튼과의 동시 실행도 안전.
+app.post('/run-all', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const DB = c.env.DB
+  const getLock = async (k: string) => {
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    try { const l = row?.value ? JSON.parse(row.value) as { at?: string } : null; return !!(l?.at && Date.now() - Date.parse(l.at) < 240_000) } catch { return false }
+  }
+  if (await getLock('ads_runall_lock')) return c.json({ success: false, error: '원클릭 전체 실행이 이미 진행 중입니다 — 완료되면 알림벨에 결과가 남습니다' }, 409)
+  const beat = (k: string) => DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(k, JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
+  const unlock = (k: string) => DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(k).run().catch(() => null)
+  const burn = async () => {
+    const deadline = Date.now() + 230_000
+    await beat('ads_runall_lock')
+    const num = (o: unknown, k: string): number => { const v = (o as Record<string, unknown> | null)?.[k]; return typeof v === 'number' ? v : 0 }
+    const call = async (path: string): Promise<unknown> => {
+      try {
+        const r = await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST', signal: AbortSignal.timeout(90_000) }))
+        const j = await r.json().catch(() => null) as { stats?: unknown } | null
+        return j?.stats ?? j
+      } catch { return null }
+    }
+    // ① 수집 전 레인 병렬(각 호출 = ur-ads 의 독립 인보케이션 = 독립 예산 — 서로 안 갉아먹음).
+    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx']
+    const collected = await Promise.all(COLLECTORS.map(p => call(p)))
+    const collectSaved = collected.reduce((s: number, r) => s + num(r, 'saved'), 0)
+    const collectFound = collected.reduce((s: number, r) => s + num(r, 'found'), 0)
+    await beat('ads_runall_lock')
+    // ② 보강 버스트 ∥ 정리 버스트 — 각자 기존 잠금 키를 잡아 개별 버튼과 이중 실행 방지.
+    let enriched = 0, scanned = 0, removed = 0
+    const enrichLoop = (async () => {
+      if (await getLock('ads_enrich_burst_lock')) return // 개별 보강 풀가동이 이미 도는 중 — 양보
+      for (let i = 0; i < 12 && Date.now() < deadline; i++) {
+        await beat('ads_enrich_burst_lock')
+        const r = await call('enrich-company')
+        enriched += num(r, 'enriched')
+        if (num(r, 'processed') === 0) break
+      }
+      await unlock('ads_enrich_burst_lock')
+    })()
+    const reclassifyLoop = (async () => {
+      if (await getLock('ads_reclassify_burst_lock')) return
+      for (let i = 0; i < 30 && Date.now() < deadline; i++) {
+        await beat('ads_reclassify_burst_lock')
+        const r = await call('reclassify-company')
+        scanned += num(r, 'scanned'); removed += num(r, 'removed')
+        if ((r as { done?: boolean } | null)?.done) break
+      }
+      await unlock('ads_reclassify_burst_lock')
+    })()
+    await Promise.all([enrichLoop.catch(() => null), reclassifyLoop.catch(() => null)])
+    const summary = `수집 발견 ${collectFound.toLocaleString()} · 저장 ${collectSaved.toLocaleString()} · 연락처 확보 ${enriched.toLocaleString()} · 정리 검사 ${scanned.toLocaleString()} · 제거 ${removed.toLocaleString()}`
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_runall_last', JSON.stringify({ at: new Date().toISOString(), found: collectFound, saved: collectSaved, enriched, scanned, removed })).run().catch(() => null)
+    await unlock('ads_runall_lock')
+    try {
+      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+      await createDashboardNotification(DB, 'admin', null, 'partner_pool_job', '🚀 원클릭 전체 실행 완료', summary, '/admin/partner-pool')
+    } catch { /* 알림 실패가 실행 자체를 막지 않음 */ }
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
+  await burn().catch(() => null)
+  return c.json({ success: true, started: false })
+})
+
 // GET /api/admin/partner-pool/meta — UI 셀렉트용 분류/상태/채널/티어 어휘.
 app.get('/meta', (c) => c.json({
   success: true,
@@ -157,8 +227,8 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst] = await Promise.all([
-    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'),
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll] = await Promise.all([
+    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'),
   ])
   return c.json({
     success: true, ...s,
@@ -172,7 +242,7 @@ app.get('/stats', async (c) => {
     work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
-    enrichLast, enrichBurst, reclassifyBurst,
+    enrichLast, enrichBurst, reclassifyBurst, runAll,
   })
 })
 
