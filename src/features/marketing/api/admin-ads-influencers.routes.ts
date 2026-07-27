@@ -61,9 +61,18 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
   else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe','tistory') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
-  // 이름/핸들 + source_keyword(수집 키워드) 매칭 — "방배" 검색 시 '방배 맛집'으로 찾은 리드도 걸림(지역 시딩 거르기).
-  const q = (c.req.query('q') || '').trim().toLowerCase()
-  if (q) { where.push('(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,\'\')) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ?)'); binds.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+  // 🔎 검색 — 이름/핸들/수집키워드 + **이메일·카테고리·채널소개**(2026-07-27 대표 "인플루언서 검색도 되게").
+  //   소개(description)에 지역·업종이 적힌 채널이 많아, 이걸 빼면 "강남"·"카페" 로 찾아도 0건이 나온다.
+  //   여러 단어를 넣으면 **AND**(각 토큰이 어딘가엔 있어야 함) — "강남 카페" 가 둘 다 만족하는 채널만 나오게.
+  const qRaw = (c.req.query('q') || '').trim().toLowerCase()
+  if (qRaw) {
+    for (const tok of qRaw.split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(name) LIKE ? OR LOWER(COALESCE(handle,'')) LIKE ? OR LOWER(COALESCE(source_keyword,'')) LIKE ?
+                   OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(category,'')) LIKE ? OR LOWER(COALESCE(description,'')) LIKE ?)`)
+      const like = `%${tok}%`
+      binds.push(like, like, like, like, like, like)
+    }
+  }
   // 팔로업 필요 — 팔로업 예정일이 지났거나, 컨택함 상태로 5일+ 무진전(회신/계약 전).
   if (c.req.query('needFollowup') === '1') where.push("((follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at IS NOT NULL AND contacted_at <= datetime('now','-5 days')))")
   // 📥 인바운드 신청만 — 스스로 신청(사전동의)한 리드. 자유 연락 가능.

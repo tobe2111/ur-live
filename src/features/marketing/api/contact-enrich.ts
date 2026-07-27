@@ -171,7 +171,16 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   let email: string | null = null, phone: string | null = null, nameSeen = !requireName
   const wantName = requireName ? norm(requireName) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
-  for (const path of ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']) {
+  //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤2)** (2026-07-27 최종 점검): 국내 대행사/SME 는
+  //   그누보드·자체 경로(`/bbs/content.php?co_id=contact`, `/sub/contact.html`)가 흔해 고정 경로만으론 놓침.
+  //   same-origin 만 + 파일(.jpg/.pdf…) 제외 — 크롤 범위는 여전히 그 업체 사이트 안(허위 0 무관).
+  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact']
+  const visited = new Set<string>()
+  let discoveredLinks = 0
+  for (let i = 0; i < queue.length; i++) {
+    const path = queue[i]
+    if (visited.has(path)) continue
+    visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
     const html = await fetch(url.origin + path, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
@@ -181,6 +190,20 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
     if (!email) email = extractEmailFromHtml(slice)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
+    // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
+    if (path === '' && !email) {
+      for (const m of slice.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
+        if (discoveredLinks >= 2) break
+        const href = m[1].replace(/&amp;/g, '&').trim()
+        if (!/(contact|inquiry|contactus|문의|오시는|co_id=)/i.test(href)) continue
+        if (/\.(?:jpe?g|png|gif|webp|svg|pdf|zip|hwp|docx?|xlsx?)(?:$|\?)/i.test(href)) continue
+        let u2: URL
+        try { u2 = new URL(href, url.origin + '/') } catch { continue }
+        if (u2.hostname !== url.hostname) continue // 남의 사이트로 안 나감(오귀속 방지)
+        const p2 = u2.pathname + u2.search
+        if (!visited.has(p2) && !queue.includes(p2)) { queue.push(p2); discoveredLinks++ }
+      }
+    }
   }
   if (!nameSeen) return { email: null, phone: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제

@@ -109,6 +109,24 @@ app.post('/enrich-contacts', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
+// GET /api/admin/store-prospects/new-open-digest — 🎉 개업 웰컴 큐(최근 개업 + 지역 집계).
+app.get('/new-open-digest', async (c) => {
+  const { newOpenDigest } = await import('./opening-briefing')
+  const days = Math.min(90, Math.max(1, intParam(c.req.query('days'), 14)))
+  const d = await newOpenDigest(c.env.DB, days, 30)
+  return c.json({ success: true, ...d })
+})
+
+// GET /api/admin/store-prospects/:id/briefing — 📊 개업 컨설팅 브리핑(상권 수치 + 멘트 초안, 전부 자체 집계).
+app.get('/:id/briefing', async (c) => {
+  const id = intParam(c.req.param('id'), 0)
+  if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
+  const { openingBriefing } = await import('./opening-briefing')
+  const b = await openingBriefing(c.env.DB, id)
+  if (!b) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
+  return c.json({ success: true, ...b })
+})
+
 // GET /api/admin/store-prospects/export — 엑셀 호환 CSV(BOM + 수식 인젝션 방어). 인증 blob 다운로드용.
 app.get('/export', async (c) => {
   const rows = await listProspects(c.env.DB, { includeClosed: false, limit: 2000 })

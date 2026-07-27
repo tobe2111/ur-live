@@ -185,7 +185,14 @@ function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (stri
   if (filter.status && PROSPECT_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
-  if (filter.q) { where.push('(LOWER(biz_name) LIKE ? OR COALESCE(region,\'\') LIKE ? OR COALESCE(phone,\'\') LIKE ?)'); const l = `%${filter.q.toLowerCase()}%`; binds.push(l, `%${filter.q}%`, `%${filter.q}%`) }
+  // 🔎 검색 — 상호/지역/전화 + **이메일·도로명주소**(2026-07-27). 여러 단어는 AND(모두 포함).
+  if (filter.q) {
+    for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(biz_name) LIKE ? OR LOWER(COALESCE(region,'')) LIKE ? OR COALESCE(phone,'') LIKE ?
+                   OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(addr_road,'')) LIKE ?)`)
+      const l = `%${tok}%`; binds.push(l, l, l, l, l)
+    }
+  }
   return { sql: where.join(' AND '), binds }
 }
 

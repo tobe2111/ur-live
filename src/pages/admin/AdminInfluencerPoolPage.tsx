@@ -447,7 +447,7 @@ export default function AdminInfluencerPoolPage() {
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
             <input type="checkbox" checked={inboundOnly} onChange={e => setInboundOnly(e.target.checked)} /> 📥 신청·동의
           </label>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·수집키워드 검색 (예: 방배)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·이메일·카테고리·소개 검색 (예: 강남 카페)" title="여러 단어를 넣으면 모두 포함된 채널만 나옵니다. 채널 소개글까지 검색합니다." className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
           <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
           <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
             {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}

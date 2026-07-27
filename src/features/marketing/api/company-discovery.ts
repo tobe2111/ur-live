@@ -10,18 +10,22 @@
  *   ⚠️ 수집 ≠ 발송 — 공개된 *비즈니스* 연락처만. 자동 발송 경로 부존재(✉는 mailto 초안만).
  */
 import type { Env } from '@/worker/types/env'
-import { classifyLead } from './company-classify'
+import { classifyLead, REGISTRY_CATEGORY_SOURCES } from './company-classify'
 
-/* ── 접점 분류 (수집 카테고리 SSOT — 소상공인을 반복·신뢰로 만나는 업체) ───────────── */
-//   category(접점 성격) × subcategory(구체 업종). UI 가 이 맵으로 셀렉트를 구성.
+/* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
+//   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
+//   (매장인프라/정기납품/창업생태계)를 폐기하고 부르는 이름 그대로. 기존 행은 cat_v3 1회 마이그레이션.
 export const COMPANY_CATEGORIES: Record<string, string[]> = {
-  '매장인프라': ['POS·카드단말기', '테이블오더', '키오스크', 'CCTV·보안', '간판', '인테리어', '주방설비'],
-  '정기납품': ['주류도매', '식자재유통', '원두납품', '유제품배송', '배달대행'],
-  '전문서비스': ['세무·기장', '노무', '정책자금컨설팅', '상가부동산'],
-  '창업생태계': ['창업컨설팅', '상권분석', '창업박람회', '프랜차이즈본사', '소상공인교육'],
+  '대행사': ['마케팅대행', '병원·뷰티마케팅', '체험단·플레이스', '조달등록'],
+  '전문서비스': ['법률', '세무·기장', '회계', '노무', '정책자금컨설팅'],
+  '간판': ['간판·광고물 제작'],
+  '인테리어': ['인테리어·시공', '주방설비'],
+  'POS·단말기': ['POS·카드단말기', 'VAN', '키오스크', '테이블오더', 'CCTV·보안'],
+  '식자재·납품': ['주류도매', '식자재유통', '원두납품', '유제품배송', '배달대행'],
+  '부동산': ['상가부동산'],
+  '창업': ['창업컨설팅', '상권분석', '창업박람회', '프랜차이즈본사', '소상공인교육'],
   '지역조직': ['상인회', '소상공인연합회', '협동조합', '청년몰', '상권활성화재단', '새마을금고·신협'],
-  '미디어': ['지역신문·매거진', '아파트게시판', '체험단·플레이스마케팅'],
-  '대행사': ['마케팅대행', '병원·뷰티마케팅'],
+  '미디어': ['지역신문·매거진', '아파트게시판'],
   '온라인판매': ['통신판매'], // 공정위 통신판매사업자(이메일 소스) — 대행사 아님(2026-07-23 정합)
 }
 export const COMPANY_CATEGORY_KEYS = Object.keys(COMPANY_CATEGORIES)
@@ -57,7 +61,7 @@ export interface CompanyLeadRow {
   website: string | null; email: string | null; phone: string | null; address: string | null
   description: string | null; business_no: string | null; source: string; source_keyword: string | null
   status: string; active: number; contact_source: string | null
-  lead_type: string | null; classify_confidence: string | null
+  lead_type: string | null; classify_confidence: string | null; nps_members: number | null
   memo: string | null; contact_channel: string | null
   contacted_at: string | null; follow_up_at: string | null; last_verified_at: string | null; collected_at: string
 }
@@ -66,7 +70,7 @@ export interface CompanyLeadRow {
 export const hasContact = (l: Pick<CompanyLead, 'phone' | 'email'>): boolean =>
   !!(l.phone && String(l.phone).trim()) || !!(l.email && String(l.email).trim())
 
-const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, contact_source, lead_type, classify_confidence, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
+const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, source, source_keyword, status, active, contact_source, lead_type, classify_confidence, nps_members, memo, contact_channel, contacted_at, follow_up_at, last_verified_at, collected_at'
 
 /* ── 스키마 (런타임 보장 — ur-ads 는 CI 마이그레이션 미작동, repair-schema 패턴) ─────── */
 const _schemaDone = new WeakSet<object>()
@@ -104,6 +108,9 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   // 분류 3축 분리(2026-07-27) — lead_type=접촉 가치(partner/store/org/unknown), classify_confidence=분류 근거(evidence/keyword/none).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN lead_type TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classify_confidence TEXT').run().catch(() => null)
+  // 👥 국민연금 규모 검증(2026-07-27) — nps_members=가입자수(직원 규모), nps_checked_at=조회 시각(미매칭도 기록해 재조회 방지).
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_members INTEGER').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
@@ -138,13 +145,39 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   //   ⚠️ **미큐레이션 행만**(status='new' AND memo IS NULL) 삭제 — 대표가 손댄 행은 절대 안 건드림.
   const j1 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_junk_v1'").first<{ value: string }>().catch(() => null)
   if (!j1?.value) {
-    const junkLike = ['%모집%', '%공고%', '%지원사업%', '%수행기관%', '%보도자료%', '%공지사항%', '%선정결과%', '%선정 결과%', '%합니다%', '%습니다%']
+    const junkLike = ['%모집%', '%공고%', '%지원사업%', '%수행기관%', '%보도자료%', '%공지사항%', '%선정결과%', '%선정 결과%', '%합니다%', '%습니다%',
+      '%"%', '%“%', '%”%', "%'%", '%‘%', '%’%'] // 기사 헤드라인(인용부호) — 상호에 따옴표 없음(2026-07-27 2차 신고)
     const nameOr = junkLike.map(() => 'company_name LIKE ?').join(' OR ')
     await DB.prepare(`DELETE FROM ad_company_leads WHERE status = 'new' AND memo IS NULL AND (${nameOr})`)
       .bind(...junkLike).run().catch(() => null)
     // 정부/학교 도메인에서 발굴된 행(webkr 오염) — 같은 보수 조건.
     await DB.prepare("DELETE FROM ad_company_leads WHERE status = 'new' AND memo IS NULL AND (website LIKE '%.go.kr%' OR website LIKE '%.gov%' OR website LIKE '%.ac.kr%' OR website LIKE '%korea.kr%')").run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_junk_v1', '1')").run().catch(() => null)
+  }
+
+  // 🏷️ 카테고리 v3 마이그레이션(1회, 플래그) — 우산어 → 실무 업종명(2026-07-27 대표 "간판·인테리어처럼").
+  //   순수 리라벨(삭제/연락처 무접촉) — 큐레이션 행도 새 어휘로 통일(택소노미 전환은 전량 적용이 정합).
+  const v3 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_cat_v3'").first<{ value: string }>().catch(() => null)
+  if (!v3?.value) {
+    const remap: Array<[string, (string | number)[]]> = [
+      // 매장인프라 분해 — 구체 업종 우선 매핑 후 잔여는 POS·단말기
+      ["UPDATE ad_company_leads SET category = '간판', subcategory = '간판·광고물 제작' WHERE category = '매장인프라' AND (subcategory LIKE '%간판%' OR subcategory LIKE '%광고물%')", []],
+      ["UPDATE ad_company_leads SET category = '인테리어' WHERE category = '매장인프라' AND (subcategory LIKE '%인테리어%' OR subcategory LIKE '%주방%')", []],
+      ["UPDATE ad_company_leads SET category = 'POS·단말기' WHERE category = '매장인프라'", []],
+      ["UPDATE ad_company_leads SET category = '식자재·납품' WHERE category = '정기납품'", []],
+      ["UPDATE ad_company_leads SET category = '부동산', subcategory = '상가부동산' WHERE subcategory LIKE '%부동산%' OR subcategory LIKE '%상가 임대%'", []],
+      ["UPDATE ad_company_leads SET category = '창업' WHERE category = '창업생태계'", []],
+      ["UPDATE ad_company_leads SET category = '대행사', subcategory = '체험단·플레이스' WHERE subcategory LIKE '%체험단%' OR subcategory LIKE '%플레이스%'", []],
+      // 키워드 시드 테이블도 동일 어휘(수집이 새 카테고리로 저장하게)
+      ["UPDATE ad_company_keywords SET category = '간판' WHERE category = '매장인프라' AND (subcategory LIKE '%간판%' OR subcategory LIKE '%광고물%')", []],
+      ["UPDATE ad_company_keywords SET category = '인테리어' WHERE category = '매장인프라' AND (subcategory LIKE '%인테리어%' OR subcategory LIKE '%주방%')", []],
+      ["UPDATE ad_company_keywords SET category = 'POS·단말기' WHERE category = '매장인프라'", []],
+      ["UPDATE ad_company_keywords SET category = '식자재·납품' WHERE category = '정기납품'", []],
+      ["UPDATE ad_company_keywords SET category = '부동산' WHERE subcategory LIKE '%부동산%' OR subcategory LIKE '%상가 임대%'", []],
+      ["UPDATE ad_company_keywords SET category = '창업' WHERE category = '창업생태계'", []],
+    ]
+    for (const [sql, binds] of remap) await DB.prepare(sql).bind(...binds).run().catch(() => null)
+    await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_cat_v3', '1')").run().catch(() => null)
   }
 }
 
@@ -169,14 +202,22 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
   const tierOf = (v: unknown): number | null => { const t = Math.round(Number(v)); return Number.isFinite(t) && t >= COMPANY_TIER_MIN && t <= COMPANY_TIER_MAX ? t : null }
   // 🧭 저장 전 판별·분류(SSOT company-classify) — 모든 소스(네이버/webkr/상가정보/통신판매/나라장터…)가 이 관문을 통과.
-  //   ① 업체가 아닌 것(공고·모집글·정부 도메인)은 여기서 **탈락**(저장 안 함) → 오수집 구조적 차단.
-  //   ② 분류는 검색 키워드가 아니라 **리드 자신의 텍스트**를 근거로(근거 없으면 confidence='keyword' 로 표시).
+  //   ① 업체가 아닌 것(공고·모집글·기사제목·정부 도메인)은 여기서 **탈락**(저장 안 함) → 오수집 구조적 차단.
+  //   ② 카테고리 권위 위계(2026-07-27 대표 "카테고리 분류 정확한가"): **정부 등록부 공식 업종(registry)
+  //      > 리드 텍스트 근거(evidence) > 검색 키워드(keyword)**. 상가정보 업종코드·통신판매 신고업태·공정위
+  //      가맹·나라장터 소스의 category 는 공식 업종이라 정규식이 못 덮어씀 — 발굴 소스(local/webkr)만 재분류.
   const rows = leads
     .map(l => ({ ...l, company_name: (l.company_name || '').trim() }))
     .filter(l => l.company_name.length >= 2)
     .map(l => {
       const c = classifyLead(l)
-      return c.ok ? { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence } : null
+      if (!c.ok) return null
+      const registry = REGISTRY_CATEGORY_SOURCES.has(String(l.source || '')) && !!l.category
+      if (registry) {
+        // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
+        return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
+      }
+      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: c.confidence }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
   if (!rows.length) return 0
@@ -284,9 +325,13 @@ function buildLeadWhere(filter: CompanyLeadFilter): { sql: string; binds: (strin
     if (filter.leadType === 'unknown') where.push("(lead_type IS NULL OR lead_type = 'unknown')")
     else { where.push('lead_type = ?'); binds.push(filter.leadType) }
   }
+  // 🔎 검색 — 상호/수집키워드/지역/전화 + **이메일·주소**(2026-07-27). 여러 단어는 AND(모두 포함).
   if (filter.q) {
-    where.push('(LOWER(company_name) LIKE ? OR LOWER(COALESCE(source_keyword,\'\')) LIKE ? OR LOWER(COALESCE(region,\'\')) LIKE ? OR COALESCE(phone,\'\') LIKE ?)')
-    const like = `%${filter.q.toLowerCase()}%`; binds.push(like, like, like, `%${filter.q}%`)
+    for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {
+      where.push(`(LOWER(company_name) LIKE ? OR LOWER(COALESCE(source_keyword,'')) LIKE ? OR LOWER(COALESCE(region,'')) LIKE ?
+                   OR COALESCE(phone,'') LIKE ? OR LOWER(COALESCE(email,'')) LIKE ? OR LOWER(COALESCE(address,'')) LIKE ?)`)
+      const like = `%${tok}%`; binds.push(like, like, like, like, like, like)
+    }
   }
   return { sql: where.join(' AND '), binds }
 }
@@ -345,8 +390,13 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
       else { stmts.push(DB.prepare('DELETE FROM ad_company_leads WHERE id = ?').bind(r.id)); removed++ }
       continue
     }
-    // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
-    if (c.confidence === 'evidence') {
+    // 카테고리 권위 위계: registry(공식 업종) 소스는 category 불가침 — lead_type/confidence 만 스탬프.
+    const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
+    if (registry) {
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry' WHERE id = ?")
+        .bind(c.lead_type === 'unknown' ? 'partner' : c.lead_type, r.id))
+    } else if (c.confidence === 'evidence') {
+      // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ? WHERE id = ?')
         .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, r.id))
     } else {
@@ -424,7 +474,8 @@ export async function deleteCompanyLeads(DB: D1Database, ids: number[]): Promise
 
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
 export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number }
-export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }> }> {
+export interface AgencyEmailFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
       COUNT(*) AS total,
@@ -438,6 +489,14 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
   const byCategory = (await DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
   const byTier = (await DB.prepare('SELECT tier AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY tier ORDER BY (tier IS NULL) ASC, tier ASC').all<{ k: number | null; n: number }>().catch(() => null))?.results || []
   const byLeadType = (await DB.prepare("SELECT COALESCE(NULLIF(lead_type,''),'unknown') AS k, COUNT(*) AS n FROM ad_company_leads GROUP BY 1 ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
+  // 📧 대행사 이메일 퍼널(2026-07-27 대표 "대행사인데도 이메일 수집 안 되는 경우 있는지") — 미보유를 원인별로 분해:
+  //   site_no_email = 사이트는 있는데 이메일 미게시/크롤 대기(보강이 채울 수 있는 몫 + 폼·카톡만 쓰는 구조적 몫)
+  //   no_site      = 자체 사이트 미발견(지도·웹 어디에도 없음 — 공개된 이메일 자체가 없어 허위 0 원칙상 공란이 정답)
+  const af = await DB.prepare(`SELECT COUNT(*) AS total,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
+      SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS site_no_email,
+      SUM(CASE WHEN (email IS NULL OR email = '') AND (website IS NULL OR website = '') THEN 1 ELSE 0 END) AS no_site
+    FROM ad_company_leads WHERE category = '대행사'`).first<Record<string, number>>().catch(() => null)
   return {
     stats: {
       total: Number(t?.total) || 0, with_contact: Number(t?.with_contact) || 0, with_email: Number(t?.with_email) || 0,
@@ -446,5 +505,9 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       needs_review: Number(t?.needs_review) || 0,
     },
     byCategory, byTier, byLeadType,
+    agencyEmailFunnel: {
+      total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,
+      site_no_email: Number(af?.site_no_email) || 0, no_site: Number(af?.no_site) || 0,
+    },
   }
 }
