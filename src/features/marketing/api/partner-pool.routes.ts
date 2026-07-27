@@ -73,13 +73,27 @@ app.get('/stats', async (c) => {
   // 🏢 공정위 가맹(프랜차이즈) 수집 상태(ads_franchise_stats).
   const frRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
   let franchiseRun: unknown = null; try { franchiseRun = frRow?.value ? JSON.parse(frRow.value) : null } catch { franchiseRun = null }
+  // 🏛️ 국세청 폐업 스윕 상태(ads_ntsstatus_stats) — 활용신청 검증(note 에 오류 노출).
+  const ntsRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_ntsstatus_stats'").first<{ value: string }>().catch(() => null)
+  let ntsRun: unknown = null; try { ntsRun = ntsRow?.value ? JSON.parse(ntsRow.value) : null } catch { ntsRun = null }
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
     storeinfo: { gate: c.env.ADS_STOREINFO_ENABLED === 'true', run: storeinfoRun },
     commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
     franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
+    nts: { run: ntsRun },
   })
+})
+
+// POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
+app.post('/sweep-nts', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 // GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
