@@ -57,6 +57,16 @@ const S2_TRADES: Trade[] = [
   { kw: '소상공인 마케팅', category: '대행사', subcategory: '소상공인 마케팅', tier: 1 },
   { kw: '창업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
   { kw: '상권분석', category: '창업', subcategory: '상권분석', tier: 1 },
+  // 🎯 2026-07-27 대표 "아인종합기획과 유사한 업체" — 지역 **종합광고기획사** 어휘(광고기획·판촉·인쇄·행사).
+  //   소상공인을 실제로 상대하는 오프라인 대행 생태계 — 온라인 마케팅 어휘만으론 못 긁던 본류.
+  { kw: '종합광고기획', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고기획사', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '이벤트 대행사', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '행사 대행', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '판촉물 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '옥외광고', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '인쇄기획', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
@@ -146,7 +156,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
   spendBudget(budget)
   const { THIRD_PARTY_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST } = await import('./company-classify')
-  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=10`
+  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res || !res.ok) return []
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
@@ -300,7 +310,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     return s
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 8))
+  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12))
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0

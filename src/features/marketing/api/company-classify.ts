@@ -71,6 +71,10 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   { re: /(광고\s*대행|마케팅\s*대행|퍼포먼스\s*마케팅|바이럴|검색광고|SNS\s*마케팅|온라인\s*마케팅|디지털\s*마케팅|미디어\s*렙|애드\b|ADS?\b)/i, category: '대행사', subcategory: '마케팅대행', tier: 1, type: 'partner' },
   { re: /(병원\s*마케팅|의료\s*마케팅|뷰티\s*마케팅|성형\s*마케팅)/, category: '대행사', subcategory: '병원·뷰티마케팅', tier: 1, type: 'partner' },
   { re: /(체험단|플레이스\s*마케팅|블로그\s*마케팅|리뷰\s*마케팅)/, category: '대행사', subcategory: '체험단·플레이스', tier: 1, type: 'partner' },
+  // 아인종합기획형 — 지역 종합광고기획사(2026-07-27 대표 타겟 지정). '기획' 단독은 과광범위라 광고/종합 결합만.
+  { re: /(종합\s*광고|종합\s*기획|광고\s*기획|광고\s*대행|홍보\s*기획|홍보\s*대행)/, category: '대행사', subcategory: '종합광고기획', tier: 1, type: 'partner' },
+  { re: /(이벤트\s*(?:기획|대행)|행사\s*(?:기획|대행)|프로모션\s*대행)/, category: '대행사', subcategory: '행사·이벤트', tier: 1, type: 'partner' },
+  { re: /(판촉물|홍보물\s*제작|전단지?\s*제작|옥외\s*광고|인쇄\s*기획|기념품\s*제작)/, category: '간판', subcategory: '간판·광고물 제작', tier: 2, type: 'partner' },
   // 창업
   { re: /(창업\s*컨설팅|창업\s*지원|점포\s*개발|프랜차이즈\s*컨설팅)/, category: '창업', subcategory: '창업컨설팅', tier: 1, type: 'partner' },
   { re: /(상권\s*분석|입지\s*분석)/, category: '창업', subcategory: '상권분석', tier: 1, type: 'partner' },

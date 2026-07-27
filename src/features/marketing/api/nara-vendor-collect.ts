@@ -15,7 +15,7 @@ import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './compa
 const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
 // 대행사/마케팅 계열 판별 — 업종명·업체명 어느 필드든 매칭(필드명 불확실 대비 전 값 스캔).
-const AGENCY_RE = /광고|마케팅|홍보|커뮤니케이션|미디어|디자인|이벤트|프로모션|콘텐츠|브랜딩|퍼포먼스/
+const AGENCY_RE = /광고|마케팅|홍보|커뮤니케이션|미디어|디자인|이벤트|프로모션|콘텐츠|브랜딩|퍼포먼스|기획|판촉|인쇄/ // 2026-07-27 종합기획사 포집(아인종합기획형)
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawV = Record<string, unknown>
 const g = (it: RawV, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
