@@ -16,7 +16,7 @@ import {
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
 import { enrichLeadsFromWebsites, diagnoseWebEnrich } from './buyer-web-enrich'
-import { collectTradeDemand, listTradeDemand, aggregateInquiryDemand, diagnoseTradeFeed } from './trade-demand'
+import { collectTradeDemand, listTradeDemand, aggregateInquiryDemand, diagnoseTradeFeed, demandDimSummary, listTradeReference } from './trade-demand'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -158,11 +158,22 @@ app.post('/demand/collect', async (c) => {
   return c.json({ success: true, result })
 })
 
-// GET /api/admin/buyer-pool/demand — 국가별 한국산 수요(수출액) 상위. ?country= 면 그 나라 품목별.
+// GET /api/admin/buyer-pool/demand — 국가별 한국산 수요 상위. ?country= 면 그 나라 품목별, ?dim= 면 축별.
 app.get('/demand', async (c) => {
   const country = (c.req.query('country') || '').trim() || undefined
+  const dim = (c.req.query('dim') || '').trim() || undefined
   const limit = intParam(c.req.query('limit'), 50)
-  const rows = await listTradeDemand(c.env.DB, { country, limit })
+  const [rows, dims] = await Promise.all([
+    listTradeDemand(c.env.DB, { country, dim, limit }),
+    demandDimSummary(c.env.DB),
+  ])
+  return c.json({ success: true, rows, dims })
+})
+
+// GET /api/admin/buyer-pool/demand/reference?kind=fx|restriction — 관세환율·규제품목(참조 데이터).
+app.get('/demand/reference', async (c) => {
+  const kind = (c.req.query('kind') || 'fx').trim()
+  const rows = await listTradeReference(c.env.DB, kind, intParam(c.req.query('limit'), 50))
   return c.json({ success: true, rows })
 })
 

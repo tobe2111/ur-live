@@ -10,11 +10,21 @@ import { toast } from '@/hooks/useToast'
 
 type Row = Record<string, unknown>
 
+/** 축 라벨 — 관세청 16종을 축별로 묶어 보여줄 때의 한글명. */
+const DIM_LABEL: Record<string, string> = {
+  country: '국가', item_country: '품목×국가', item: '품목', continent: '대륙', economy: '경제권',
+  nature: '성질', region: '시도(국내)', region_item: '시도×품목(국내)', customs: '세관(국내)',
+  port: '항구·공항(국내)', total: '총괄', unknown: '미분류',
+}
+
 /** 숫자 → USD 표기. null/NaN 안전(대시보드 ₩NaN 룰). */
 const usd = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? '$' + Math.round(n).toLocaleString() : '$0' }
 
 export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; onRaw?: (json: string) => void }) {
   const [rows, setRows] = useState<Row[]>([])
+  const [dims, setDims] = useState<Row[]>([])
+  const [dim, setDim] = useState('')          // '' = 국가 계열 기본
+  const [drill, setDrill] = useState('')      // 국가 클릭 → 그 나라 품목 순위
   const [inq, setInq] = useState<{ byCountry: Row[]; byCategory: Row[]; recent: Row[] }>({ byCountry: [], byCategory: [], recent: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
@@ -22,14 +32,15 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
   const load = useCallback(async () => {
     setBusy(true); setErr(false)
     try {
+      const qs = drill ? `country=${encodeURIComponent(drill)}` : (dim ? `dim=${encodeURIComponent(dim)}` : '')
       const [d, q] = await Promise.all([
-        api.get('/api/admin/buyer-pool/demand?limit=30'),
+        api.get(`/api/admin/buyer-pool/demand?limit=30${qs ? '&' + qs : ''}`),
         api.get('/api/admin/buyer-pool/demand/inquiries?limit=30'),
       ])
-      setRows(d.data?.rows || [])
+      setRows(d.data?.rows || []); setDims(d.data?.dims || [])
       setInq({ byCountry: q.data?.byCountry || [], byCategory: q.data?.byCategory || [], recent: q.data?.recent || [] })
     } catch { setErr(true) } finally { setBusy(false) }
-  }, [])
+  }, [dim, drill])
   useEffect(() => { load() }, [load])
 
   const collect = async () => {
@@ -71,34 +82,59 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ① 관세청 무역통계 */}
+        {/* ① 관세청 무역통계 — 축(dimension) 탭 + 드릴다운 */}
         <div>
-          <div className="text-xs font-semibold text-gray-700 mb-1">① 관세청 무역통계 — 국가별 한국산 수요</div>
+          <div className="text-xs font-semibold text-gray-700 mb-1">
+            ① 관세청 무역통계 — {drill ? <>{drill} 가 사가는 품목</> : dim ? DIM_LABEL[dim] || dim : '국가별 한국산 수요'}
+            {drill && <button onClick={() => setDrill('')} className="ml-2 text-emerald-700 underline font-normal">← 전체</button>}
+          </div>
+          {dims.length > 0 && !drill && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              <button onClick={() => setDim('')} className={`px-2 py-0.5 rounded-full text-xs border ${!dim ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-emerald-200'}`}>국가</button>
+              {dims.filter(d => String(d.dim_type) !== 'country' && String(d.dim_type) !== 'item_country').map((d, i) => (
+                <button key={i} onClick={() => setDim(String(d.dim_type))}
+                  className={`px-2 py-0.5 rounded-full text-xs border ${dim === String(d.dim_type) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-emerald-200'}`}>
+                  {DIM_LABEL[String(d.dim_type)] || String(d.dim_type)} <b>{String(d.values_n ?? 0)}</b>
+                </button>
+              ))}
+            </div>
+          )}
           {rows.length === 0 ? (
             <div className="text-xs text-gray-500 bg-white rounded-lg border border-emerald-100 p-3 leading-relaxed">
               아직 데이터가 없습니다. Cloudflare 환경변수 <code className="bg-gray-100 px-1 rounded">TRADE_STATS_URLS</code> 에
               관세청 오픈API URL(serviceKey 포함)을 넣고 「관세청 통계 수집」을 누르세요.
               <div className="mt-2 pt-2 border-t border-gray-100 text-gray-600">
-                <b className="text-gray-800">✅ 등록 권장 (관세청 오픈API 중 이 2~3개면 충분)</b>
-                <div className="mt-1">· <b>품목별 국가별 수출입실적</b> — 가장 중요(HS품목 × 국가 = &quot;어느 나라가 뭘 사는가&quot;)</div>
-                <div>· <b>국가별 수출입실적</b> — 국가 단위 규모·순위</div>
-                <div>· <b>품목별 수출입실적</b> — 품목 단위 추세</div>
-                <div className="mt-1 text-gray-500">❌ 세관별·항구/공항별·시도별 계열은 <b>국내 어디서 나갔나</b>라 해외 수요와 무관 — 넣지 마세요.</div>
-                <div className="mt-1 text-gray-500">💵 금액 단위는 <b>천불(US$1,000)</b> 이라 저장 시 USD 로 자동 환산합니다.</div>
+                <b className="text-gray-800">등록 형식 — 관세청 16종을 전부 넣어도 됩니다(최대 20개)</b>
+                <div className="mt-1">축을 앞에 붙이면 자동판별 오류가 없습니다: <code className="bg-gray-100 px-1 rounded">축|URL</code></div>
+                <div className="mt-1 font-mono text-[11px] bg-gray-50 rounded p-1.5 break-all">
+                  item_country|https://apis.data.go.kr/1220000/nitemtrade/…,country|https://…/nationtrade/…,fx|https://…
+                </div>
+                <div className="mt-1"><b className="text-gray-800">축 태그</b>: item_country · country · item · continent · economy · nature · region · customs · port · total · <b>fx</b>(관세환율) · <b>restriction</b>(세관장확인물품)</div>
+                <div className="mt-1 text-emerald-700">⭐ 우선순위: <b>품목별 국가별</b> → 국가별 → 품목별 (나머지는 보조 인사이트)</div>
+                <div className="mt-1 text-gray-500">💵 금액 단위 <b>천불(US$1,000)</b> → USD 자동 환산. 🔎 데이터셋마다 <b>활용신청 승인</b>이 개별로 필요합니다.</div>
               </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg border border-emerald-100 overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-gray-50 text-gray-600"><tr><th className="text-left px-2 py-1.5">국가</th><th className="text-right px-2 py-1.5">한국→수출(USD)</th><th className="text-right px-2 py-1.5">기간</th></tr></thead>
+                <thead className="bg-gray-50 text-gray-600"><tr><th className="text-left px-2 py-1.5">{drill ? '품목' : '구분'}</th><th className="text-right px-2 py-1.5">한국→수출(USD)</th><th className="text-right px-2 py-1.5">기간</th></tr></thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {rows.map((r, i) => {
+                    const label = String(r.dim_value ?? r.country ?? '?')
+                    const canDrill = !drill && (String(r.dim_type ?? '') === 'country' || String(r.dim_type ?? '') === 'item_country')
+                    return (
                     <tr key={i} className="border-t border-gray-100">
-                      <td className="px-2 py-1.5 text-gray-900">{String(r.country ?? '?')}{r.item_name ? <span className="text-gray-500"> · {String(r.item_name)}</span> : null}</td>
+                      <td className="px-2 py-1.5 text-gray-900">
+                        {canDrill
+                          ? <button onClick={() => setDrill(String(r.country ?? label))} className="text-emerald-700 hover:underline">{label}</button>
+                          : label}
+                        {r.item_name ? <span className="text-gray-500"> · {String(r.item_name)}</span> : null}
+                        {r.hs_code ? <span className="text-gray-400"> ({String(r.hs_code)})</span> : null}
+                      </td>
                       <td className="px-2 py-1.5 text-right text-gray-900 font-medium">{usd(r.export_usd)}</td>
                       <td className="px-2 py-1.5 text-right text-gray-500">{String(r.latest_period ?? r.period ?? '-')}</td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
