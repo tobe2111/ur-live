@@ -89,6 +89,15 @@ app.post('/reclassify', async (c) => {
     await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind('ads_reclassify_burst_last', JSON.stringify({ at: new Date().toISOString(), passes, scanned, updated, removed, done })).run().catch(() => null)
     await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_reclassify_burst_lock'").run().catch(() => null)
+    // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다(대표 "완료되었다고 알람 + 결과값").
+    try {
+      const remRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>()
+      let rem = -1; try { rem = Number((remRow?.value ? JSON.parse(remRow.value) : {}).remaining_unclassified ?? -1) } catch { /* 표시 생략 */ }
+      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+      await createDashboardNotification(c.env.DB, 'admin', null, 'partner_pool_job', '🧭 분류 정리 풀가동 완료',
+        `검사 ${scanned.toLocaleString()} · 갱신 ${updated.toLocaleString()} · 제거 ${removed.toLocaleString()}${done ? ' · 재검사 전량 소진 ✅' : rem >= 0 ? ` · 잔여 ${rem.toLocaleString()}건(재클릭 또는 시간당 자동)` : ''}`,
+        '/admin/partner-pool')
+    } catch { /* 알림 실패가 정리 자체를 막지 않음 */ }
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
   await burn().catch(() => null)
@@ -143,6 +152,14 @@ app.get('/stats', async (c) => {
   // 🧭 소급 정리(재분류) 진행률(ads_reclassify_stats) — 6만 행 청소가 며칠 걸려 가시화 필수.
   const rcRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
   let rcRun: unknown = null; try { rcRun = rcRow?.value ? JSON.parse(rcRow.value) : null } catch { rcRun = null }
+  // 🔔 버튼 완료 감지용(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 나라장터/MX/보강/버스트 결과 스탬프.
+  const readKey = async (k: string): Promise<unknown> => {
+    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
+  }
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst] = await Promise.all([
+    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'),
+  ])
   return c.json({
     success: true, ...s,
     collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
@@ -153,6 +170,9 @@ app.get('/stats', async (c) => {
     nps: { gate: (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true', run: npsRun },
     reclassify: { run: rcRun },
     work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
+    nara: { run: naraRun },
+    mx: { run: mxRun },
+    enrichLast, enrichBurst, reclassifyBurst,
   })
 })
 
@@ -300,7 +320,7 @@ app.post('/enrich-burst', async (c) => {
     .bind('ads_enrich_burst_lock', JSON.stringify({ at: new Date().toISOString() })).run().catch(() => null)
   const burn = async () => {
     const startedAt = Date.now()
-    let rounds = 0, lastEnriched = 0, reason = 'loop_cap'
+    let rounds = 0, lastEnriched = 0, enriched = 0, processed = 0, reason = 'loop_cap'
     for (let i = 0; i < 12; i++) {
       if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // 잔여는 cron/재클릭이 이어받음
       await heartbeat()
@@ -313,11 +333,20 @@ app.post('/enrich-burst', async (c) => {
       if (!body?.ok || !body.stats) { reason = 'bad_response'; break }
       rounds++
       lastEnriched = body.stats.enriched ?? 0
+      enriched += body.stats.enriched ?? 0
+      processed += body.stats.processed ?? 0
       if ((body.stats.processed ?? 0) === 0) { reason = 'backlog_done'; break } // 보강 대상 소진
     }
     await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, lastEnriched, reason })).run().catch(() => null)
+      .bind('ads_enrich_burst_last', JSON.stringify({ at: new Date().toISOString(), rounds, processed, enriched, lastEnriched, reason })).run().catch(() => null)
     await c.env.DB.prepare("DELETE FROM platform_settings WHERE key = 'ads_enrich_burst_lock'").run().catch(() => null)
+    // 🔔 완료 알림벨(결과 포함) — 페이지를 닫아도 결과가 남는다.
+    try {
+      const reasonLabel = reason === 'backlog_done' ? '백로그 소진 ✅' : reason === 'time_cap' ? '시간 상한 — 잔여는 자동/재클릭' : reason === 'loop_cap' ? '라운드 상한 — 잔여는 자동/재클릭' : '중단(응답 오류)'
+      const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+      await createDashboardNotification(c.env.DB, 'admin', null, 'partner_pool_job', '🚀 보강 풀가동 완료',
+        `${rounds}라운드 · 처리 ${processed.toLocaleString()} · 연락처 확보 ${enriched.toLocaleString()} (${reasonLabel})`, '/admin/partner-pool')
+    } catch { /* 알림 실패가 보강 자체를 막지 않음 */ }
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
   await burn().catch(() => null)

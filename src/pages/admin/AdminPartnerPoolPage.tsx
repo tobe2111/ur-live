@@ -50,6 +50,27 @@ const TIER_LABEL = (t: number | null) => t == null ? '—' : `${t}순위`
 const EMPTY_ADD = { company_name: '', category: '', subcategory: '', tier: '', region: '', phone: '', email: '', website: '', address: '' }
 const PAGE_SIZE = 100
 
+/* 🔔 버튼 완료 감지(2026-07-27 대표 "완료되었다고 알람 + 결과값") — 각 작업이 platform_settings 에
+ *   남기는 결과 스탬프를 /stats 에서 골라, 클릭 이후로 갱신되면 완료로 판정해 숫자를 토스트. */
+type RunObj = Record<string, unknown> & { last_run?: string; at?: string; diag?: { error?: string } }
+const pick = (path: string) => (d: Record<string, unknown>): RunObj | null =>
+  ((d?.[path] as { run?: RunObj } | undefined)?.run) || null
+const STAT_PICK: Record<string, (d: Record<string, unknown>) => RunObj | null> = {
+  'collect': pick('collect'), 'collect-storeinfo': pick('storeinfo'), 'collect-commerce': pick('commerce'),
+  'collect-franchise': pick('franchise'), 'collect-nara': pick('nara'), 'collect-work24': pick('work24'),
+  'collect-nps': pick('nps'), 'sweep-nts': pick('nts'), 'sweep-mx': pick('mx'),
+  'enrich': d => (d?.enrichLast as RunObj) || null, 'enrich-burst': d => (d?.enrichBurst as RunObj) || null,
+}
+const NUM_LABEL: Record<string, string> = {
+  found: '발견', saved: '저장', matched: '적합', enriched: '연락처 확보', processed: '처리', removed: '제거',
+  updated: '갱신', scanned: '검사', held: '보류', checked: '검증', cleared: '정리', rounds: '라운드', passes: '패스', emailed: '이메일',
+}
+const fmtRun = (run: RunObj): string => Object.entries(run)
+  .filter(([k, v]) => typeof v === 'number' && NUM_LABEL[k])
+  .map(([k, v]) => `${NUM_LABEL[k]} ${(v as number).toLocaleString()}`).join(' · ')
+const runStamp = (run: RunObj): string => String(run.last_run || run.at || '')
+const parseStamp = (s: string): number => { const t = Date.parse(s.includes('T') ? s : `${s.replace(' ', 'T')}Z`); return Number.isFinite(t) ? t : 0 }
+
 /** 통계 카드 클릭 = 목록 필터(카드 = 필터 SSOT — 별도 '연락처' 셀렉트를 없애 중복 제거). */
 type Quick = '' | 'contact' | 'email' | 'held' | 'pipeline' | 'recent7' | 'review'
 
@@ -90,8 +111,12 @@ export default function AdminPartnerPoolPage() {
   const loadMeta = useCallback(async () => {
     try { const r = await api.get('/api/admin/partner-pool/meta'); if (r.data?.success) setMeta(r.data) } catch { /* noop */ }
   }, [])
-  const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/partner-pool/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null) } } catch { /* noop */ }
+  const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
+    try {
+      const r = await api.get('/api/admin/partner-pool/stats')
+      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null) }
+      return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
+    } catch { return null }
   }, [])
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -175,29 +200,68 @@ export default function AdminPartnerPoolPage() {
     } catch { toast.error('임포트 실패') } finally { setImporting(false) }
   }
 
-  /** 수집/보강/정리 공통 실행기 — 위임 후 몇 초 간격으로 재조회(백그라운드 반영 확인). */
-  const runAction = useCallback(async (path: string, label: string, polls = 3) => {
+  /** 수집/보강/정리 공통 실행기 — 위임 후 **완료를 감지해 결과값과 함께 알림**(2026-07-27 대표
+   *  "버튼 누르면 완료되었다고 알람 + 결과값"). 각 작업이 platform_settings 에 남기는 결과 스탬프
+   *  (last_run/at)가 클릭 시각 이후로 갱신되면 = 완료 → 결과 숫자를 토스트로. 페이지를 닫아도
+   *  풀가동류는 어드민 알림벨에 결과가 남는다(서버측 배선). */
+  const runAction = useCallback(async (path: string, label: string, maxPolls = 36) => {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
     setBusy(path)
+    const clickedAt = Date.now()
     try {
       const r = await api.post(`/api/admin/partner-pool/${path}`, {})
-      if (r.data?.success) {
-        toast.success(`${label} 시작 — 잠시 후 반영됩니다`)
-        for (let i = 0; i < polls; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadLeads()]) }
-      } else toast.error(r.data?.error || `${label} 위임 실패`)
-    } catch { toast.error(`${label} 위임 실패`) } finally { setBusy('') }
+      if (!r.data?.success) { toast.error(r.data?.error || `${label} 위임 실패`); return }
+      toast.success(`${label} 시작 — 완료되면 결과를 알려드립니다`, { duration: 3000 })
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise(res => setTimeout(res, 5000))
+        const d = await loadStats()
+        const run = d ? STAT_PICK[path]?.(d) : null
+        if (run && parseStamp(runStamp(run)) >= clickedAt - 20_000) {
+          const summary = fmtRun(run)
+          const err = (run as { diag?: { error?: string } }).diag?.error
+          if (err) toast.error(`${label} 완료 — ⚠️ ${err}`, { duration: 12000 })
+          else toast.success(`✅ ${label} 완료${summary ? ` — ${summary}` : ''}`, { duration: 10000 })
+          await loadLeads()
+          return
+        }
+      }
+      toast.info(`⏳ ${label} 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
+      await Promise.all([loadStats(), loadLeads()])
+    } catch (e) {
+      // 409(이중 실행 잠금) = 실패가 아니라 "이미 돌고 있음" — 서버 메시지 그대로 안내(2026-07-27 대표 신고).
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 409) toast.info(ax.response.data?.error || `${label}이(가) 이미 진행 중입니다 — 완료되면 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
+      else toast.error(ax.response?.data?.error || `${label} 위임 실패`)
+    } finally { setBusy('') }
   }, [collect?.adsBinding, loadLeads, loadStats])
 
-  /** 🧭 분류 정리 풀가동 — 백그라운드로 최대 2.5만 행/클릭 소진(응답 즉시). 진행률은 상태줄 갱신으로 확인. */
+  /** 🧭 분류 정리 풀가동 — 메인 워커 백그라운드 루프(최대 2.5만 행/클릭). 완료 감지 + 결과 토스트 동일. */
   const runReclassify = useCallback(async () => {
     setBusy('reclassify')
+    const clickedAt = Date.now()
     try {
       const r = await api.post('/api/admin/partner-pool/reclassify', {})
-      if (r.data?.success) {
-        toast.success('분류 정리 풀가동 시작 — 클릭 1회당 최대 2.5만 행. 진행률은 아래 상태줄에서 갱신됩니다')
-        setTimeout(() => { void loadStats(); void loadLeads() }, 8000) // 첫 패스 반영 후 새로고침
-      } else toast.error(r.data?.error || '분류 정리 실패')
-    } catch { toast.error('분류 정리 실패') } finally { setBusy('') }
+      if (!r.data?.success) { toast.error(r.data?.error || '분류 정리 실패'); return }
+      toast.success('분류 정리 풀가동 시작 — 완료되면 결과를 알려드립니다 (최대 2.5만 행, 수 분 소요)', { duration: 4000 })
+      for (let i = 0; i < 60; i++) { // ≤5분(루프 자체가 200s 캡)
+        await new Promise(res => setTimeout(res, 5000))
+        const d = await loadStats()
+        const run = d ? (d as { reclassifyBurst?: { at?: string; scanned?: number; done?: boolean } }).reclassifyBurst : null
+        if (run?.at && parseStamp(run.at) >= clickedAt - 20_000) {
+          const done = !!run.done
+          toast.success(`✅ 분류 정리 완료 — ${fmtRun(run)}${done ? ' · 재검사 전량 소진' : ' · 잔여 있음(재클릭 또는 시간당 자동)'}`, { duration: 12000 })
+          await loadLeads()
+          return
+        }
+      }
+      toast.info('⏳ 분류 정리 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다', { duration: 8000 })
+      await Promise.all([loadStats(), loadLeads()])
+    } catch (e) {
+      // 409(이중 실행 잠금) = 이전 클릭이 이미 돌고 있음 — 실패 아님(2026-07-27 대표 "분류 실패도 뜨네?").
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 409) toast.info(ax.response.data?.error || '분류 정리가 이미 진행 중입니다 — 완료되면 알림벨에 결과가 남습니다', { duration: 8000 })
+      else toast.error(ax.response?.data?.error || '분류 정리 실패')
+    } finally { setBusy('') }
   }, [loadLeads, loadStats])
 
   // ⬇ CSV — <a href> 직링크는 관리자 토큰이 안 실려 FORBIDDEN(2026-07-27 대표 신고) → 인증 axios blob 다운로드.
@@ -277,11 +341,11 @@ export default function AdminPartnerPoolPage() {
           ]} />
           <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
-            { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 4) },
+            { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 60) },
             { label: '🧭 분류 정리 풀가동', desc: '공고·기사제목·정부기관 제거 + 업종 재분류 — 클릭당 최대 2.5만 행 소진', onClick: runReclassify },
-            { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕', 2) },
-            { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증', 0) },
-            { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회', 2) },
+            { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕') },
+            { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증') },
+            { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
           <button onClick={() => downloadCsv('/api/admin/partner-pool/export?format=csv', `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="전체(보류 포함) 리드를 엑셀 호환 CSV 로 — 한글 깨짐 없음(BOM), 엑셀에서 바로 열림">⬇ CSV</button>

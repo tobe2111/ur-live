@@ -328,7 +328,11 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
-  return { processed, enriched, remaining: Number(rem?.n) || 0 }
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0 }
+  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 버튼 완료 감지·상태줄 공용.
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result })).run().catch(() => null)
+  return result
 }
 
 export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
