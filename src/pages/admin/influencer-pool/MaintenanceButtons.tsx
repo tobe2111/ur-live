@@ -15,6 +15,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [reextracting, setReextracting] = useState(false)
   const [refetching, setRefetching] = useState(false)
   const [recategorizing, setRecategorizing] = useState(false)
+  const [scoring, setScoring] = useState(false)
 
   async function mergeDuplicates() {
     if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(⚠️동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
@@ -93,6 +94,20 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } finally { setRecategorizing(false) }
   }
 
+  // 🏅 품질 패스 — 야간 자동 정비와 **같은 함수**(SSOT). 평소엔 매일 밤 자동 실행이라 누를 필요 없고,
+  //   배포 직후처럼 즉시 반영이 필요할 때만 사용. 커서 순환이라 반복 클릭 안전(멱등).
+  async function qualityPass() {
+    setScoring(true)
+    try {
+      const r = await api.post('/api/admin/ads/influencer-pool/quality-pass', {})
+      if (r.data?.success) {
+        if (r.data.started) toast.success('🏅 브랜드 태깅 + 리드 점수 계산을 시작했어요 — 잠시 후 새로고침하면 반영됩니다')
+        else toast.success(`🏅 ${formatNumber(r.data.scanned)}명 채점${r.data.branded ? ` · 브랜드 태깅 +${formatNumber(r.data.branded)}` : ''}${r.data.done ? ' (전체 완료)' : ' (다음 회차에 이어서)'}`)
+        await onChanged()
+      } else toast.error('채점 실패')
+    } catch { toast.error('채점 실패') } finally { setScoring(false) }
+  }
+
   const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
   return (
     <>
@@ -101,6 +116,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
       <button onClick={recategorize} disabled={recategorizing} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="유튜브 전 풀의 카테고리를 라이브(channels.list 배치)로 한 번에 재보정 — 규칙+YouTube 신호, 버튼 한 번">{recategorizing ? '재보정 중…' : '🧭 카테고리 전체 재보정'}</button>
       <button onClick={reclassify} disabled={reclassifying} className={cls} title="채널 이름·소개글 신호로 카테고리 재분류(저장 소개글 기반 — 라이브 재보정으로 안 되는 네이버/티스토리 보조, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류(저장)'}</button>
       <button onClick={reextract} disabled={reextracting} className={cls} title="기존 리드의 저장된 소개글에서 연락처 재추출(신규 @핸들·유튜브/블로그 포착 — 비어있는 것만 채움, API 재호출 0)">{reextracting ? '재추출 중…' : '🔗 연락처 재추출'}</button>
+      <button onClick={qualityPass} disabled={scoring} className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium disabled:opacity-50" title="브랜드 공식 채널 태깅 + 리드 점수(0~100) 재계산 — 매일 밤 자동 실행되므로 평소엔 불필요, 즉시 반영이 필요할 때만">{scoring ? '채점 중…' : '🏅 리드 점수·브랜드 태깅'}</button>
       <button onClick={refetchLive} disabled={refetching} className="px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-sm font-medium disabled:opacity-50" title="유튜브 채널의 현재 라이브 About을 다시 불러 이메일·카테고리 교정(재추출로 안 되는 케이스 — 현재 About에만 개인메일. YouTube API 사용)">{refetching ? '라이브 재조회 중…' : '🔄 유튜브 라이브 재조회'}</button>
     </>
   )
