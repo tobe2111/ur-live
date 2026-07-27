@@ -16,6 +16,7 @@ import {
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
 import { enrichLeadsFromWebsites, diagnoseWebEnrich } from './buyer-web-enrich'
+import { collectTradeDemand, listTradeDemand, aggregateInquiryDemand, diagnoseTradeFeed } from './trade-demand'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -147,6 +148,33 @@ app.post('/enrich-websites', async (c) => {
 // GET /api/admin/buyer-pool/enrich-diag — 이메일 보강 진단(왜 안 나오나 ground truth). 추측 대신 실측.
 app.get('/enrich-diag', async (c) => {
   const diag = await diagnoseWebEnrich(c.env).catch((e) => ({ error: '진단 실행 오류', detail: String(e) }))
+  return c.json({ success: true, diag })
+})
+
+// ── 📊 수요 인텔리전스 — "어느 나라가 무엇을 사는가"(연락처 무관, 공개 통계) ─────────────
+// POST /api/admin/buyer-pool/demand/collect — 관세청 무역통계(TRADE_STATS_URLS) 수집.
+app.post('/demand/collect', async (c) => {
+  const result = await collectTradeDemand(c.env).catch(() => ({ ran: false, reason: '수집 중 오류가 발생했습니다', fetched: 0, mapped: 0, saved: 0, perUrl: [] }))
+  return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/demand — 국가별 한국산 수요(수출액) 상위. ?country= 면 그 나라 품목별.
+app.get('/demand', async (c) => {
+  const country = (c.req.query('country') || '').trim() || undefined
+  const limit = intParam(c.req.query('limit'), 50)
+  const rows = await listTradeDemand(c.env.DB, { country, limit })
+  return c.json({ success: true, rows })
+})
+
+// GET /api/admin/buyer-pool/demand/inquiries — 수집된 인콰이어리의 수요 집계(품목·국가, 연락처 무관).
+app.get('/demand/inquiries', async (c) => {
+  const agg = await aggregateInquiryDemand(c.env.DB, intParam(c.req.query('limit'), 50))
+  return c.json({ success: true, ...agg })
+})
+
+// GET /api/admin/buyer-pool/demand/diag — 무역통계 원본 응답의 실제 필드명 확인(매핑 교정용).
+app.get('/demand/diag', async (c) => {
+  const diag = await diagnoseTradeFeed(c.env).catch((e) => ({ ok: false, error: '진단 실행 오류', detail: String(e) }))
   return c.json({ success: true, diag })
 })
 
