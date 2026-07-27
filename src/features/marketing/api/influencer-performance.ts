@@ -287,13 +287,15 @@ export async function enrichYouTubePerformance(
     const vids = leadVideoIds.map(id => stats.get(id)).filter((v): v is { views: number; comments: number; durationSec: number } => !!v)
     // 🛡️ videos.list 실패(영상 id 는 있는데 통계 0건 매칭 = 측정 실패)도 0 각인 대신 보류 — 진짜 영상 0(id 없음)과 구분.
     const measureFailed = leadVideoIds.length > 0 && vids.length === 0
+    // 🏷️ 분류 근거 — 라이브 About 규칙=content / 유튜브 자체분류=topic / 그 외(유지)=기존 근거 보존(COALESCE).
+    const catSrc = catToWrite == null ? null : catToWrite === liveCat ? 'content' : catToWrite === topicCat.get(r.channel_id) ? 'topic' : null
     if (budgetSkipped.has(r.id) || measureFailed) // perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
-      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ? WHERE id = ?`)
-        .bind(pub, fixEmail, catToWrite, r.id)
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source) WHERE id = ?`)
+        .bind(pub, fixEmail, catToWrite, catSrc, r.id)
     // 📈 롱폼 중앙값 + 쇼츠 비중 동시 기록(쇼츠 착시 배제 — 협찬 단가 판단용). 길이를 못 잰 배치는 중앙값 0 → 표시는 avg 폴백.
     const { avgViews, avgComments, medianLongViews, shortsRatio } = videoMetrics(vids)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, median_long_views = ?, shorts_ratio = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, medianLongViews, shortsRatio, pub, fixEmail, catToWrite, r.id)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, median_long_views = ?, shorts_ratio = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source), perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, medianLongViews, shortsRatio, pub, fixEmail, catToWrite, catSrc, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
@@ -441,10 +443,19 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
         if (it.id) { const tc = topicToCategory(it.topicDetails?.topicCategories); if (tc) topicById.set(it.id, tc) }
       }
       const ups = batch
-        .map(r => ({ id: r.id, finalCat: reconcileCategory(r.category, classifyCategory(r.name || '', aboutById.get(r.channel_id) || ''), topicById.get(r.channel_id) || null), prev: r.category }))
+        .map(r => {
+          const live = classifyCategory(r.name || '', aboutById.get(r.channel_id) || '')
+          const topic = topicById.get(r.channel_id) || null
+          const finalCat = reconcileCategory(r.category, live, topic)
+          // 🏷️ 채택 근거 — 라이브 About 규칙이면 content, 유튜브 자체분류면 topic, 유지/기타는 기존 근거 보존(null=미기록).
+          const src = finalCat == null ? null : finalCat === live ? 'content' : finalCat === topic ? 'topic' : undefined
+          return { id: r.id, finalCat, prev: r.category, src }
+        })
         .filter(x => x.finalCat !== x.prev) // 변경분만 write
       if (ups.length) {
-        await DB.batch(ups.map(x => DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id))).catch(() => null)
+        await DB.batch(ups.map(x => x.src === undefined
+          ? DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id)
+          : DB.prepare('UPDATE ad_influencer_leads SET category = ?, category_source = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.src, x.id))).catch(() => null)
         changed += ups.length
       }
       scanned += batch.length
@@ -469,7 +480,7 @@ export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: numb
     const ups: ReturnType<D1Database['prepare']>[] = []
     for (const r of rows) {
       const byContent = classifyCategory(r.name, r.description)
-      if (byContent && byContent !== r.category) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(byContent, r.id))
+      if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
       else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)

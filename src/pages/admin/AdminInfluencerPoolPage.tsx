@@ -40,7 +40,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number }
 
 // 아웃리치 파이프라인 상태 — 라벨 + 색.
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -353,6 +353,19 @@ export default function AdminInfluencerPoolPage() {
             {(Number(stats.opened) || 0) + (Number(stats.bounced) || 0) > 0 ? <span> · 📬 개봉 {formatNumber(stats.opened)} · 반송/신고 <span className={Number(stats.bounced) ? 'text-red-500' : ''}>{formatNumber(stats.bounced)}</span></span> : null}
           </div>
         ) : null}
+        {/* 🏷️ 카테고리 분류 신뢰도 — 근거별 분해(콘텐츠·유튜브분류=검증됨 / 키워드상속=야간 재보정이 재검증 중). */}
+        {Number(stats.categorized) > 0 ? (() => {
+          const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0
+          const verified = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0)
+          const inherited = Number(stats.cat_keyword) || 0
+          return (
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%)
+              {' · '}근거 검증됨 {formatNumber(verified)} ({Math.round(verified / Math.max(1, cat) * 100)}%)
+              {inherited > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inherited)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}
+            </div>
+          )
+        })() : null}
 
         <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
 
