@@ -29,7 +29,19 @@ const SCOPED_CSS = `
 .ua-auth-btn:hover{filter:brightness(1.06);} .ua-auth-btn:active{transform:translateY(1px);}
 .ua-auth-btn:disabled{opacity:.55;}
 .ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-kakao-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:13px;
+  background:#FEE500;color:#191919 !important;font-size:15px;font-weight:800;transition:filter .15s,transform .05s;}
+.ua-kakao-btn:hover{filter:brightness(.97);} .ua-kakao-btn:active{transform:translateY(1px);}
 `
+
+// 카카오 콜백 실패 사유(→ /ads/login?error=) 한국어화 — 미지정 코드는 일반 메시지.
+const KAKAO_ERR: Record<string, string> = {
+  kakao_denied: '카카오 로그인이 취소되었습니다',
+  state_mismatch: '보안 검증에 실패했습니다 — 다시 시도해주세요',
+  kakao_env: '카카오 로그인이 아직 설정되지 않았습니다',
+  kakao_token: '카카오 인증에 실패했습니다 — 다시 시도해주세요',
+  kakao_profile: '카카오 프로필을 불러오지 못했습니다',
+}
 
 export default function MarketingLoginPage() {
   useUrAdsFavicon()
@@ -41,7 +53,9 @@ export default function MarketingLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  // 카카오 콜백 실패(?error=)는 초기 에러로 표시 — 이후 입력 시도가 지움.
+  const kakaoErr = params.get('error')
+  const [err, setErr] = useState<string | null>(kakaoErr ? (KAKAO_ERR[kakaoErr] || '카카오 로그인에 실패했습니다') : null)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('ads_token')) navigate(dest, { replace: true })
@@ -87,6 +101,12 @@ export default function MarketingLoginPage() {
         {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626' }}>{err}</p>}
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
+
+        {/* 🟡 카카오 로그인 — /api/ads-auth/kakao/start (서버 302 → 카카오 인가 → 콜백 → /ads/kakao) */}
+        <a href="/api/ads-auth/kakao/start" className="ua-kakao-btn" style={{ marginTop: 10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
+          카카오로 시작하기
+        </a>
 
         <div style={{ marginTop: 12, textAlign: 'center' }}>
           <Link to="/ads/forgot" style={{ fontSize: 12.5, color: '#8A93A3' }}>비밀번호를 잊으셨나요?</Link>

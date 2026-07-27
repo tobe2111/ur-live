@@ -139,6 +139,7 @@ const MarketingResetPage = lazy(() => import('./pages/marketing/MarketingResetPa
 const MarketingLegalPage = lazy(() => import('./pages/marketing/MarketingLegalPage'))
 const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlockPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
+const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 // 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
@@ -716,6 +717,7 @@ function AppContent() {
             <Route path="/ads/terms" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/privacy" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/unlock" element={<ErrorBoundary><MarketingUnlockPage /></ErrorBoundary>} />
+            <Route path="/ads/kakao" element={<ErrorBoundary><MarketingKakaoCallbackPage /></ErrorBoundary>} />
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />

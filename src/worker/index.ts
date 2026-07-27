@@ -191,6 +191,7 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { adsPayRoutes, adminAdsPayRoutes } from '../features/marketing/api/ads-pay.routes'; // 💳 서비스몰 토스(게이트 OFF 기본)
+import { adsKakaoAuthRoutes } from '../features/marketing/api/ads-kakao-auth.routes'; // 🟡 유어애즈 카카오 로그인
 // 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
 import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
 import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
@@ -1551,6 +1552,9 @@ app.route('/api/creator-apply', influencerApplyRoutes);
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);
 app.route('/api/admin/ads-pay', adminAdsPayRoutes);
+// 🟡 유어애즈 카카오 로그인 — 메인 워커 전용(/api/ads/* 위임과 별개, KAKAO_REST_API_KEY 가 여기 있음).
+//   소비자 카카오(kakao.routes — 잠금)와 완전 분리. 콘솔 Redirect URI 등록 필요(파일 헤더 참조).
+app.route('/api/ads-auth', adsKakaoAuthRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
