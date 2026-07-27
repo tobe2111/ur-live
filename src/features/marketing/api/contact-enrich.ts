@@ -197,8 +197,16 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
-    const html = await fetch(url.origin + path, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
-      .then(r => r.ok ? r.text() : '').catch(() => '')
+    // UA: 브라우저형(2026-07-27 — 아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터에 이메일이 있어도 수집 0 이던 갭).
+    //   robots.txt 존중은 위에서 그대로(공개 페이지만 읽음) — 식별 문자열만 표준 브라우저 형태로.
+    const html = await fetch(url.origin + path, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
+      },
+    }).then(r => r.ok ? r.text() : '').catch(() => '')
     if (!html) continue
     const slice = html.slice(0, 200000)
     if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true

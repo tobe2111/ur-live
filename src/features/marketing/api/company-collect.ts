@@ -67,6 +67,9 @@ const S2_TRADES: Trade[] = [
   { kw: '판촉물 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
   { kw: '옥외광고', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
   { kw: '인쇄기획', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  // 간판·현수막을 전국 그리드로 승격(기존 S1 4개 지역 한정 → 아인종합기획형이 그 밖이면 미발굴이던 갭)
+  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
