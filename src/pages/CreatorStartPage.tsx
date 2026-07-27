@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -25,8 +25,11 @@ export default function CreatorStartPage() {
   const [sp] = useSearchParams()
   const [phase, setPhase] = useState<Phase>('checking')
   const [msg, setMsg] = useState('')
+  const fired = useRef(false) // 1회만 — 재렌더/StrictMode 이중실행이 rate-limit 을 갉아먹지 않게
 
   useEffect(() => {
+    if (fired.current) return
+    fired.current = true
     const raw = (sp.get('ic') || '').trim().toUpperCase()
     if (CODE_RE.test(raw)) { try { localStorage.setItem(LS_KEY, raw) } catch { /* 사파리 프라이빗 등 — 쿼리값으로 진행 */ } }
     const code = CODE_RE.test(raw) ? raw : (() => { try { return localStorage.getItem(LS_KEY) || '' } catch { return '' } })()
