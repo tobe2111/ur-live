@@ -327,6 +327,36 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
   }
 
+  // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
+  //   이름만 제목-파편**("데이터 토론"·"insight")인 webkr 행. Phase 2 는 연락처-없는 행만 돌아 이 행들이
+  //   영영 미치유 → 분류 확인 카드에 계속 쌓임. 홈페이지 og:site_name 으로 실명 교체 + 실명 기준 재분류.
+  //   회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운) — 허위 0(이름은 그 사이트 자기 선언).
+  if (budget.left > 4) {
+    const { suspectCompanyName, classifyLead } = await import('./company-classify')
+    const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
+        WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
+          AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+          AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
+        ORDER BY id DESC LIMIT 8`)
+      .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
+    for (const t of healTargets) {
+      if (budget.left <= 2) break
+      if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
+      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
+      if (c.siteName && c.siteName !== t.company_name) {
+        // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).
+        const cls = classifyLead({ company_name: c.siteName, category: t.category, source: 'webkr', source_keyword: t.source_keyword })
+        if (cls.ok) {
+          await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, category = COALESCE(?, category), subcategory = COALESCE(?, subcategory),
+              lead_type = ?, classify_confidence = ? WHERE id = ? AND status = 'new'`)
+            .bind(c.siteName.slice(0, 120), cls.confidence === 'evidence' ? cls.category : null, cls.confidence === 'evidence' ? cls.subcategory : null,
+              cls.lead_type, cls.confidence === 'none' ? 'keyword' : cls.confidence, t.id).run().catch(() => null)
+        }
+      }
+      await stamp(t.id)
+    }
+  }
+
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const result = { processed, enriched, remaining: Number(rem?.n) || 0 }
   // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지 알 수가 없어") — 버튼 완료 감지·상태줄 공용.

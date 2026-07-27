@@ -18,6 +18,7 @@ import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
 import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info } from './partner-pool/StatusLines'
+import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -49,27 +50,6 @@ const CHANNEL_LABEL: Record<string, string> = { call: '전화', email: '이메�
 const TIER_LABEL = (t: number | null) => t == null ? '—' : `${t}순위`
 const EMPTY_ADD = { company_name: '', category: '', subcategory: '', tier: '', region: '', phone: '', email: '', website: '', address: '' }
 const PAGE_SIZE = 100
-
-/* 🔔 버튼 완료 감지(2026-07-27 대표 "완료되었다고 알람 + 결과값") — 각 작업이 platform_settings 에
- *   남기는 결과 스탬프를 /stats 에서 골라, 클릭 이후로 갱신되면 완료로 판정해 숫자를 토스트. */
-type RunObj = Record<string, unknown> & { last_run?: string; at?: string; diag?: { error?: string } }
-const pick = (path: string) => (d: Record<string, unknown>): RunObj | null =>
-  ((d?.[path] as { run?: RunObj } | undefined)?.run) || null
-const STAT_PICK: Record<string, (d: Record<string, unknown>) => RunObj | null> = {
-  'collect': pick('collect'), 'collect-storeinfo': pick('storeinfo'), 'collect-commerce': pick('commerce'),
-  'collect-franchise': pick('franchise'), 'collect-nara': pick('nara'), 'collect-work24': pick('work24'),
-  'collect-nps': pick('nps'), 'sweep-nts': pick('nts'), 'sweep-mx': pick('mx'),
-  'enrich': d => (d?.enrichLast as RunObj) || null, 'enrich-burst': d => (d?.enrichBurst as RunObj) || null,
-}
-const NUM_LABEL: Record<string, string> = {
-  found: '발견', saved: '저장', matched: '적합', enriched: '연락처 확보', processed: '처리', removed: '제거',
-  updated: '갱신', scanned: '검사', held: '보류', checked: '검증', cleared: '정리', rounds: '라운드', passes: '패스', emailed: '이메일',
-}
-const fmtRun = (run: RunObj): string => Object.entries(run)
-  .filter(([k, v]) => typeof v === 'number' && NUM_LABEL[k])
-  .map(([k, v]) => `${NUM_LABEL[k]} ${(v as number).toLocaleString()}`).join(' · ')
-const runStamp = (run: RunObj): string => String(run.last_run || run.at || '')
-const parseStamp = (s: string): number => { const t = Date.parse(s.includes('T') ? s : `${s.replace(' ', 'T')}Z`); return Number.isFinite(t) ? t : 0 }
 
 /** 통계 카드 클릭 = 목록 필터(카드 = 필터 SSOT — 별도 '연락처' 셀렉트를 없애 중복 제거). */
 type Quick = '' | 'contact' | 'email' | 'held' | 'pipeline' | 'recent7' | 'review'
@@ -331,6 +311,13 @@ export default function AdminPartnerPoolPage() {
         {/* 액션 바 — 수집 5종 / 정리·보강 4종을 드롭다운으로 묶음(상시 노출 축소) */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={() => setShowAdd(v => !v)} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium">{showAdd ? '입력 닫기' : '＋ 업체 추가'}</button>
+          {/* 🚀 원클릭 전체 실행(2026-07-27 대표 "버튼이 너무 많달까?") — 수집 전 레인→보강→정리 한 사이클.
+              개별 버튼(드롭다운)은 특정 레인 재실행/디버깅용으로 존치. */}
+          <button onClick={() => runAction('run-all', '원클릭 전체 실행', 60)} disabled={busy !== ''}
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            title="수집 전 레인(네이버·카카오·상가정보·통신판매·프랜차이즈·나라장터·고용24·국민연금·폐업·메일검증) → 연락처 보강 → 분류 정리를 순서대로 전부 실행 — 완료되면 통합 결과를 알림">
+            {busy === 'run-all' ? '⏳ 전체 실행 중…' : '🚀 전체 실행'}
+          </button>
           <ActionMenu label="🔍 수집" busy={busy.startsWith('collect')} items={[
             { label: '네이버 지역·웹 검색', desc: '대행사 등 tier1 — 지도 + 자체 사이트', onClick: () => runAction('collect', '레인 A 수집') },
             { label: '공공 상가정보', desc: 'tier 2~5 업종 통째 + 전화 역조회', onClick: () => runAction('collect-storeinfo', '상가정보 수집') },
