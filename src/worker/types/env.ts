@@ -183,6 +183,9 @@ export interface Env {
   ADS_LOCALDATA_ENDPOINTS?: string;       // 업종 슬러그→카테고리 JSON 병합(무배포 추가). 예: {"beauty_shops":"미용업","lodging":"숙박업"}
   ADS_LOCALDATA_MAX_PAGES?: string;       // 업종당 페이지 상한(기본 6, 페이지당 500).
   ADS_LOCALDATA_BACKFILL_DAYS?: string;   // 과거 백필 일수(기본 0=OFF, 예: 180) — 시간당 2일씩 역방향 소급 수집(수량 확대).
+  NEIS_API_KEY?: string;                  // 🎓 나이스(open.neis.go.kr) 학원·교습소 인증키 — 인허가에 없는 학원 갭 커버.
+  ADS_NEIS_ENABLED?: string;              // 학원 매시간 소량 수집 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_HIRA_ENABLED?: string;              // 🏥 심평원 병원정보 매시간 소량 수집 게이트(기본 OFF) — 전화+홈페이지 직접.
   // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.
   ADS_COMMERCE_OP?: string;               // 통신판매 operation override(기본 getMllBsInfoDetail_3 = MllBsDtl_3Service).
   ADS_COMMERCE_ENABLED?: string;          // 통신판매사업자 크론 게이트. ADS_COMMERCE_ENDPOINT override.

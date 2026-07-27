@@ -35,8 +35,8 @@ export const LICENSE_UPJONG: Record<string, string> = {
   golf_practice_ranges: '골프연습장',      // 행정안전부_생활_골프연습장업 조회서비스 (승인 2026-07-27)
   karaoke_rooms: '노래연습장',             // 행정안전부_문화_노래연습장업 조회서비스 (승인 2026-07-27)
 }
-/** 필터 드롭다운 표시용 카테고리(수집 업종). */
-export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국', '체력단련장', '체육도장', '당구장', '골프연습장', '노래연습장']
+/** 필터 드롭다운 표시용 카테고리(수집 업종). 학원=NEIS(neis-academy-collect) · 병원=인허가+심평원(hira-hospital-collect). */
+export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국', '체력단련장', '체육도장', '당구장', '골프연습장', '노래연습장', '학원']
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
@@ -141,13 +141,14 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
       const newOpen = active && isNewOpen(r.apv_perm_ymd, todayYmd) ? 1 : 0
       const phone = clamp(r.phone, 40)
       return DB.prepare(
-        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `INSERT INTO store_prospects (opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, website, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, active, is_new_open, last_verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(opn_svc_id, opn_sf_team_code, mgt_no) DO UPDATE SET
            biz_name = excluded.biz_name,
            addr_road = COALESCE(excluded.addr_road, store_prospects.addr_road),
            addr_lot = COALESCE(excluded.addr_lot, store_prospects.addr_lot),
            phone = COALESCE(excluded.phone, store_prospects.phone),
+           website = COALESCE(store_prospects.website, excluded.website),
            contact_source = COALESCE(store_prospects.contact_source, excluded.contact_source),
            region = COALESCE(excluded.region, store_prospects.region),
            trd_state = excluded.trd_state,
@@ -158,7 +159,7 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
            last_verified_at = datetime('now')`
       ).bind(
         clamp(r.opn_svc_id, 40), clamp(r.opn_sf_team_code, 40), clamp(r.mgt_no, 60), (r.biz_name || '').slice(0, 120),
-        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, phone ? 'govreg' : null,
+        clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, clamp(r.website, 200), phone ? 'govreg' : null,
         clamp(r.local_code, 20), clamp(r.region, 60), clamp(r.trd_state, 4), clamp(r.trd_state_nm, 40),
         clamp(r.apv_perm_ymd, 8), clamp(r.last_mod_ts, 20), num(r.lon), num(r.lat), active, newOpen,
       )

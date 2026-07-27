@@ -15,8 +15,9 @@ interface Prospect {
 }
 interface Stats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
 const SRC_LABEL: Record<string, string> = { govreg: '인허가', kakao: '카카오', naver: '네이버', homepage: '홈페이지' }
-interface RunInfo { last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; diag?: { error?: string } }
+interface RunInfo { last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number; diag?: { error?: string } }
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
+interface SubSource { gate: boolean; run: RunInfo | null }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
@@ -34,6 +35,9 @@ export default function AdminStoreProspectsPage() {
   const [collect, setCollect] = useState<Collect | null>(null)
   const [collecting, setCollecting] = useState(false)
   const [enriching, setEnriching] = useState(false)
+  const [busySub, setBusySub] = useState('') // 'neis' | 'hira' | ''
+  const [neis, setNeis] = useState<SubSource | null>(null)
+  const [hira, setHira] = useState<SubSource | null>(null)
   const [loading, setLoading] = useState(true)
   const [fCategory, setFCategory] = useState('')
   const [fRegion, setFRegion] = useState('')
@@ -41,7 +45,7 @@ export default function AdminStoreProspectsPage() {
   const [q, setQ] = useState('')
 
   const loadStats = useCallback(async () => {
-    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null) } } catch { /* noop */ }
+    try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null) } } catch { /* noop */ }
   }, [])
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -72,6 +76,18 @@ export default function AdminStoreProspectsPage() {
         for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 5000)); await Promise.all([loadStats(), loadRows()]) }
       } else toast.error(r.data?.error || '수집 위임 실패')
     } catch { toast.error('수집 위임 실패') } finally { setCollecting(false) }
+  }
+
+  async function runCollectSub(kind: 'neis' | 'hira') {
+    if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
+    setBusySub(kind)
+    try {
+      const r = await api.post(`/api/admin/store-prospects/collect-${kind}`, {})
+      if (r.data?.success) {
+        toast.success(kind === 'neis' ? '학원 수집 시작(교육청 순환) — 잠시 후 반영' : '병원 수집 시작(전화+홈페이지) — 잠시 후 반영')
+        for (let i = 0; i < 3; i++) { await new Promise(res => setTimeout(res, 6000)); await Promise.all([loadStats(), loadRows()]) }
+      } else toast.error(r.data?.error || '수집 위임 실패')
+    } catch { toast.error('수집 위임 실패') } finally { setBusySub('') }
   }
 
   async function runEnrich() {
@@ -120,6 +136,8 @@ export default function AdminStoreProspectsPage() {
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="지방행정 인허가 전일 변동분 1회 수집(일반음식점·휴게음식점·미용업·숙박업·동물미용업)">{collecting ? '수집 중…' : '🏪 인허가 수집'}</button>
           <button onClick={runEnrich} disabled={enriching || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-50" title="이메일 우선 연락처 보강 — 홈페이지 크롤 + 네이버 링크발견(게시된 것만, 추측 0)">{enriching ? '보강 중…' : '📧 이메일 보강'}</button>
+          <button onClick={() => runCollectSub('neis')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나이스(NEIS) 학원·교습소 — 인허가에 없는 학원 갭 커버(교육청 17곳 순환). NEIS_API_KEY 필요">{busySub === 'neis' ? '수집 중…' : '🎓 학원 수집'}</button>
+          <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '🏥 병원 수집'}</button>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>
@@ -130,6 +148,16 @@ export default function AdminStoreProspectsPage() {
             {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
               : collect.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · {collect.run.day} 변동분 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+            {neis?.run && (
+              <><span className="mx-2 text-gray-300">|</span>🎓 학원 <span className={neis.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{neis.gate ? 'ON' : 'OFF'}</span>
+                {neis.run.diag?.error ? <span className="text-amber-600"> · {neis.run.diag.error}</span>
+                  : <span> · 최근 {kstShort(neis.run.last_run)} · {neis.run.office || ''} 저장 {neis.run.saved ?? 0} (누적 {neis.run.total_saved ?? 0})</span>}</>
+            )}
+            {hira?.run && (
+              <><span className="mx-2 text-gray-300">|</span>🏥 병원 <span className={hira.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{hira.gate ? 'ON' : 'OFF'}</span>
+                {hira.run.diag?.error ? <span className="text-amber-600"> · {hira.run.diag.error}</span>
+                  : <span> · 최근 {kstShort(hira.run.last_run)} · 저장 {hira.run.saved ?? 0} (누적 {hira.run.total_saved ?? 0})</span>}</>
+            )}
           </div>
         )}
 
@@ -152,6 +180,7 @@ export default function AdminStoreProspectsPage() {
             <option value="당구장">당구장</option>
             <option value="골프연습장">골프연습장</option>
             <option value="노래연습장">노래연습장</option>
+            <option value="학원">학원</option>
           </select>
           <input value={fRegion} onChange={e => setFRegion(e.target.value)} placeholder="지역(예: 서초)" className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 w-32" />
           <select value={fView} onChange={e => setFView(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
