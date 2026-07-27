@@ -90,9 +90,23 @@ jobs:
             FAIL=1
           fi
 
+          echo "##### 6) 유어애즈(/ads) 표면 — 2026-07-27 신설(그간 회귀 자동감지 사각) #####"
+          # 랜딩 HTML(SPA 셸) 200
+          check "유어애즈 랜딩"              "/ads"                                ''
+          # ur-ads 워커 위임 살아있음 — 무토큰 /auth/me 는 401 JSON 이 정상(200/404/500 이면 위임/워커 죽음).
+          ADSME=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 "$BASE/api/ads/auth/me" || echo "000")
+          if [ "$ADSME" = "401" ]; then
+            echo "✅ PASS  ur-ads 워커 위임 (/api/ads/auth/me → 401)"
+          else
+            echo "❌ FAIL  ur-ads 워커 위임 이상 (/api/ads/auth/me → HTTP $ADSME, 기대 401)"
+            FAIL=1
+          fi
+          # 메인 워커 ads-pay 설정(공개) — 게이트 상태 무관 200 JSON
+          check "유어애즈 결제 설정"          "/api/ads-pay/config"                 ''
+
           echo
           if [ "$FAIL" = "1" ]; then
             echo "::error::PROD SMOKE 실패 — 위 ❌ 항목 확인. 도매몰 핵심 플로우 회귀 가능."
             exit 1
           fi
-          echo "🎉 모든 핵심 불변식 PASS — 도매몰/소비자 핵심 플로우 정상."
+          echo "🎉 모든 핵심 불변식 PASS — 도매몰/소비자/유어애즈 핵심 플로우 정상."

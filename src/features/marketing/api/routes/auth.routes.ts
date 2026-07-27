@@ -5,7 +5,8 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount } from '../ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount, requestAdsAccess, getAdsAccessRequest } from '../ads-account'
+import { sendDiscordAlert } from '@/worker/utils/discord-alert'
 import { adsAccessCode } from './helpers'
 
 const adsAuthRoutes = new Hono<{ Bindings: Env }>()
@@ -80,6 +81,30 @@ adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, wi
   const r = await unlockAdsAccount(c.env.DB, id, String(body.code || ''), adsAccessCode(c.env))
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, unlocked: true })
+})
+
+// POST /api/ads/auth/request-access — 📥 액세스 입장 요청(코드 없는 가입자 데드엔드 해소).
+//   어드민 승인 큐(/admin/ads-accounts)로 접수 + 디스코드 알림(best-effort). 멱등 — 중복 요청 무해.
+adsAuthRoutes.post('/auth/request-access', rateLimit({ action: 'ads-access-req', max: 5, windowSec: 600 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await requestAdsAccess(c.env.DB, id, body.note ? String(body.note) : undefined)
+  if (r === 'unlocked') return c.json({ success: true, unlocked: true })
+  if (r === 'created' && c.env.DISCORD_WEBHOOK_URL) {
+    const acc = await getAdsAccount(c.env.DB, id)
+    await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, '🔑 유어애즈 입장 요청',
+      `${acc?.company_name || '?'} (${acc?.email || `#${id}`}) — /admin/ads-accounts 에서 승인/거절`, 'warn').catch(() => null)
+  }
+  return c.json({ success: true, requested: true })
+})
+
+// GET /api/ads/auth/request-access — 내 요청 상태(pending/approved/rejected 또는 없음)
+adsAuthRoutes.get('/auth/request-access', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const req = await getAdsAccessRequest(c.env.DB, id)
+  return c.json({ success: true, request: req })
 })
 
 // POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.
