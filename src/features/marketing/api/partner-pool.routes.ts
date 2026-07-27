@@ -219,12 +219,19 @@ app.post('/referrals', async (c) => {
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 app.patch('/referrals/:id', async (c) => {
-  const { updateReferralStatus } = await import('./partner-referrals')
+  const { updateReferralStatus, updateReferralReward } = await import('./partner-referrals')
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
-  const b = await c.req.json().catch(() => ({})) as { status?: string }
-  const r = await updateReferralStatus(c.env.DB, id, String(b.status || ''))
-  return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
+  const b = await c.req.json().catch(() => ({})) as { status?: string; reward_amount?: number | null; reward_memo?: string | null; mark_paid?: boolean }
+  if (b.status !== undefined) {
+    const r = await updateReferralStatus(c.env.DB, id, String(b.status || ''))
+    if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  }
+  if (b.reward_amount !== undefined || b.reward_memo !== undefined || b.mark_paid) {
+    const r = await updateReferralReward(c.env.DB, id, { amount: b.reward_amount, memo: b.reward_memo, markPaid: !!b.mark_paid })
+    if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  }
+  return c.json({ success: true })
 })
 
 // POST /api/admin/partner-pool/enrich-burst — 🚀 이메일 보강 풀가동(대표 "하루 1만콜 다 쓰기").
