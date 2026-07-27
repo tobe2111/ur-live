@@ -40,12 +40,25 @@ export function extractEmailFromHtml(html: string): string | null {
   const body = pickBusinessEmail(html)
   return body && EMAIL_STRICT.test(body) && !JUNK_EMAIL.test(body) ? body : null
 }
-// 한국 전화번호(지역/휴대/대표번호) 추출 — 형식 검증(자릿수), 팩스/사업자번호 오탐 회피용 최소검증.
-const PHONE_RE = /(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})|(1[5-9]\d{2})[-.\s]?(\d{4})/g
+/** ☎️ 실존 국번 검증 — 2026-07-27 대표 신고 "0405-120-0000 같은 번호" (페이지의 날짜/ID 숫자열 오인).
+ *   한국에 존재하는 국번만 통과: 02 / 지역(031~033·041~044·051~055·061~064) / 휴대(01X) / 070 / 050X / 15·16·18XX. */
+export function isValidKrPhone(phone: string | null | undefined): boolean {
+  const d = String(phone || '').replace(/\D/g, '')
+  if (/^(15|16|18)\d{2}\d{4}$/.test(d)) return true            // 대표번호 8자리
+  if (/^02\d{7,8}$/.test(d)) return true                        // 서울 9~10자리
+  if (/^0(3[1-3]|4[1-4]|5[1-5]|6[1-4])\d{7,8}$/.test(d)) return true // 지역 10~11자리
+  if (/^01[016789]\d{7,8}$/.test(d)) return true                // 휴대 10~11자리
+  if (/^070\d{7,8}$/.test(d)) return true                       // 인터넷전화
+  if (/^050\d{8,9}$/.test(d)) return true                       // 안심번호
+  return false
+}
+
+// 한국 전화번호 추출 — 국번 화이트리스트(isValidKrPhone) + 숫자 경계((?<!\d)/(?!\d)) 로 긴 숫자열 조각 오탐 차단.
+const PHONE_RE = /(?<!\d)(0\d{1,2})[-.\s]?(\d{3,4})[-.\s]?(\d{4})(?!\d)|(?<!\d)(1[568]\d{2})[-.\s]?(\d{4})(?!\d)/g
 function pickPhone(text: string): string | null {
   const m = String(text || '').match(PHONE_RE)
   if (!m) return null
-  const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => d.length >= 8 && d.length <= 11)
+  const clean = m.map(x => x.replace(/[^\d]/g, '')).filter(d => isValidKrPhone(d))
   return clean[0] ? clean[0].replace(/(\d{2,4})(\d{3,4})(\d{4})$/, '$1-$2-$3') : null
 }
 
@@ -157,18 +170,19 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
 /** ② 홈페이지 크롤 — 게시된 **이메일 + 전화**를 root + /contact,/about 에서 추출(robots.txt 준수). 추측 없음.
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
-export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string): Promise<{ email: string | null; phone: string | null }> {
+export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string): Promise<{ email: string | null; phone: string | null; siteName: string | null }> {
   let url: URL
-  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null } }
-  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null }
-  if (outOfBudget(budget)) return { email: null, phone: null }
+  try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null } }
+  if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null }
+  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null }
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
   if (robots) {
     const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
-    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null }
+    if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null }
   }
   let email: string | null = null, phone: string | null = null, nameSeen = !requireName
+  let siteName: string | null = null // 🏷️ 사이트 자기 이름(og:site_name→title 첫 구획) — webkr 헤드라인 상호 치유용
   const wantName = requireName ? norm(requireName) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
   //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤2)** (2026-07-27 최종 점검): 국내 대행사/SME 는
@@ -183,11 +197,25 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     visited.add(path)
     if ((email && phone) || outOfBudget(budget)) break
     spendBudget(budget)
-    const html = await fetch(url.origin + path, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'urdeal-partner-bot (+https://urdeal.kr)' } })
-      .then(r => r.ok ? r.text() : '').catch(() => '')
+    // UA: 브라우저형(2026-07-27 — 아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터에 이메일이 있어도 수집 0 이던 갭).
+    //   robots.txt 존중은 위에서 그대로(공개 페이지만 읽음) — 식별 문자열만 표준 브라우저 형태로.
+    const html = await fetch(url.origin + path, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
+      },
+    }).then(r => r.ok ? r.text() : '').catch(() => '')
     if (!html) continue
     const slice = html.slice(0, 200000)
     if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
+    if (path === '' && !siteName) {
+      const og = slice.match(/property=["']og:site_name["'][^>]*content=["']([^"'<>]{2,40})["']/i)?.[1]
+        || slice.match(/content=["']([^"'<>]{2,40})["'][^>]*property=["']og:site_name["']/i)?.[1]
+      const cand = stripTag(og || (slice.match(/<title[^>]*>([^<]{2,80})</i)?.[1] || '').split(/[|\-–—:·]/)[0]).trim()
+      if (cand.length >= 2 && cand.length <= 30 && !/["“”‘’',?？]|공지|로그인|메인|홈페이지$/.test(cand)) siteName = cand
+    }
     if (!email) email = extractEmailFromHtml(slice)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }
     // 홈(root) HTML 에서 연락처성 링크 추출 — 커스텀 경로 커버(최대 2개 추가).
@@ -205,7 +233,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
       }
     }
   }
-  if (!nameSeen) return { email: null, phone: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (!nameSeen) return { email: null, phone: null, siteName: null } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) email = null // 죽은 도메인(반송 확정) 배제
-  return { email, phone }
+  return { email, phone, siteName }
 }

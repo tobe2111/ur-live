@@ -57,6 +57,19 @@ const S2_TRADES: Trade[] = [
   { kw: '소상공인 마케팅', category: '대행사', subcategory: '소상공인 마케팅', tier: 1 },
   { kw: '창업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
   { kw: '상권분석', category: '창업', subcategory: '상권분석', tier: 1 },
+  // 🎯 2026-07-27 대표 "아인종합기획과 유사한 업체" — 지역 **종합광고기획사** 어휘(광고기획·판촉·인쇄·행사).
+  //   소상공인을 실제로 상대하는 오프라인 대행 생태계 — 온라인 마케팅 어휘만으론 못 긁던 본류.
+  { kw: '종합광고기획', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고기획사', category: '대행사', subcategory: '종합광고기획', tier: 1 },
+  { kw: '광고대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
+  { kw: '이벤트 대행사', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '행사 대행', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
+  { kw: '판촉물 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '옥외광고', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '인쇄기획', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  // 간판·현수막을 전국 그리드로 승격(기존 S1 4개 지역 한정 → 아인종합기획형이 그 밖이면 미발굴이던 갭)
+  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
+  { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
@@ -146,7 +159,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
   spendBudget(budget)
   const { THIRD_PARTY_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST } = await import('./company-classify')
-  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=10`
+  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res || !res.ok) return []
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
@@ -198,8 +211,15 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const budget: FetchBudget = { left: Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)) }
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
-  const targets = (await DB.prepare("SELECT id, company_name, region, address, website, phone, email FROM ad_company_leads WHERE active = 0 OR email IS NULL OR email = '' ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), active ASC, (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 200")
-    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null }>().catch(() => null))?.results || []
+  //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
+  //   재크롤(실패해도 email NULL 이라 또 선두) → 예산이 앞줄에서 공회전하고 **뒷줄(대행사 포함)은 영영 미도달**.
+  //   → 시도 즉시 스탬프 + 7일 쿨다운 → 예산이 백로그 전체를 흐르며 순회(이메일 보유 대행사 13개의 한 원인).
+  const targets = (await DB.prepare(`SELECT id, company_name, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
+      WHERE (active = 0 OR email IS NULL OR email = '')
+        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
+      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 200`)
+    .all<{ id: number; company_name: string; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
+  const stamp = async (id: number) => { await DB.prepare("UPDATE ad_company_leads SET enrich_checked_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => null) }
   let enriched = 0, processed = 0
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
   const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
@@ -246,7 +266,17 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     if (site && budget.left > 2) {
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
+      // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
+      //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
+      //   미큐레이션(status=new)만 + 이름이 수상할 때만(정상 상호는 무접촉).
+      if (t.source === 'webkr' && c.siteName && t.status === 'new') {
+        const { suspectCompanyName } = await import('./company-classify')
+        if (suspectCompanyName(t.company_name, t.source_keyword)) {
+          await DB.prepare("UPDATE ad_company_leads SET company_name = ? WHERE id = ? AND status = 'new'").bind(c.siteName.slice(0, 120), t.id).run().catch(() => null)
+        }
+      }
     }
+    await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
@@ -283,7 +313,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     return s
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 8))
+  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12))
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   let cursor = prev?.cursor || 0
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0

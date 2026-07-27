@@ -191,6 +191,7 @@ export interface Env {
   ADS_HIRA_ENABLED?: string;              // 🏥 심평원 병원정보 매시간 소량 수집 게이트(기본 OFF) — 전화+홈페이지 직접.
   ADS_NARA_VENDOR_ENABLED?: string;       // 📑 나라장터 조달업체(대행사 계열) 일1회 게이트(기본 OFF).
   ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
   ADS_NARA_VENDOR_OP?: string;            // 오퍼레이션 override(기본 getPrcrmntCorpBasicInfo — 오류 시 무배포 교정).
   ADS_NARA_VENDOR_DAYS?: string;          // 조회 구간 일수(기본 90) — 최근 등록/변경 업체.
   // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.

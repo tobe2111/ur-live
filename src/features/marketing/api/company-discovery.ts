@@ -11,12 +11,13 @@
  */
 import type { Env } from '@/worker/types/env'
 import { classifyLead, REGISTRY_CATEGORY_SOURCES } from './company-classify'
+import { isValidKrPhone } from './contact-enrich'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
 //   (매장인프라/정기납품/창업생태계)를 폐기하고 부르는 이름 그대로. 기존 행은 cat_v3 1회 마이그레이션.
 export const COMPANY_CATEGORIES: Record<string, string[]> = {
-  '대행사': ['마케팅대행', '병원·뷰티마케팅', '체험단·플레이스', '조달등록'],
+  '대행사': ['마케팅대행', '종합광고기획', '행사·이벤트', '병원·뷰티마케팅', '체험단·플레이스', '조달등록'],
   '전문서비스': ['법률', '세무·기장', '회계', '노무', '정책자금컨설팅'],
   '간판': ['간판·광고물 제작'],
   '인테리어': ['인테리어·시공', '주방설비'],
@@ -111,6 +112,8 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   // 👥 국민연금 규모 검증(2026-07-27) — nps_members=가입자수(직원 규모), nps_checked_at=조회 시각(미매칭도 기록해 재조회 방지).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_members INTEGER').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
+  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
@@ -371,9 +374,9 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const n = Math.min(1000, Math.max(1, limit))
   const rows = (await DB.prepare(
-    `SELECT id, company_name, description, website, category, subcategory, tier, source, status, memo
+    `SELECT id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source
      FROM ad_company_leads WHERE id > ? AND (lead_type IS NULL OR lead_type = '') ORDER BY id ASC LIMIT ?`)
-    .bind(cursor, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; status: string; memo: string | null }>()
+    .bind(cursor, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }>()
     .catch(() => null))?.results || []
   if (!rows.length) {
     // 한 바퀴 완료 — 커서 리셋(다음 실행은 처음부터, 새로 들어온 미분류 행을 잡음).
@@ -401,6 +404,11 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500): Promi
         .bind(c.category, c.subcategory, c.tier, c.lead_type, c.confidence, r.id))
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ? WHERE id = ?').bind(c.lead_type, c.confidence, r.id))
+    }
+    // ☎️ 쓰레기 전화 소급 정리(2026-07-27 대표 신고 "0405-120-0000") — 홈페이지 크롤 출처만(정부등록/카카오 번호는 신뢰).
+    //   실존 국번 검증 실패 → NULL + 이메일도 없으면 보류(active=0, "연락처 필수" 정책 복원).
+    if (r.contact_source === 'homepage' && r.phone && !isValidKrPhone(r.phone)) {
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET phone = NULL, contact_source = CASE WHEN email IS NOT NULL AND email != '' THEN contact_source ELSE NULL END, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
     }
     updated++
   }
