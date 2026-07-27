@@ -113,6 +113,16 @@ app.post('/collect-nara', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
+// POST /api/admin/partner-pool/sweep-mx — 📮 기존 이메일 재검증(죽은 도메인 정리, ur-ads 위임).
+app.post('/sweep-mx', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' })) } catch { /* fail-soft */ } }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+  try { await kick(); return c.json({ success: true, started: false }) }
+  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
 // POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
 app.post('/sweep-nts', async (c) => {
   const ads = c.env.ADS
@@ -233,7 +243,7 @@ app.post('/delete-bulk', async (c) => {
 // GET /api/admin/partner-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어). 대표 동선표용.
 app.get('/export', async (c) => {
   await ensureCompanySchema(c.env.DB)
-  const rows = await listCompanyLeads(c.env.DB, { limit: 5000 })
+  const rows = await listCompanyLeads(c.env.DB, { limit: 5000, includeHeld: true }) // 전체(보류 포함) — 엑셀 원본용
   const esc = (v: unknown): string => {
     let s = v == null ? '' : String(v)
     if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`

@@ -103,4 +103,23 @@ app.post('/enrich-contacts', async (c) => {
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
+// GET /api/admin/store-prospects/export — 엑셀 호환 CSV(BOM + 수식 인젝션 방어). 인증 blob 다운로드용.
+app.get('/export', async (c) => {
+  const rows = await listProspects(c.env.DB, { includeClosed: false, limit: 2000 })
+  const esc = (v: unknown): string => {
+    let s = v == null ? '' : String(v)
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+  const header = ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at']
+  const lines = [header.join(',')]
+  for (const r of rows) {
+    lines.push([r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)].map(esc).join(','))
+  }
+  return new Response('﻿' + lines.join('\n'), {
+    headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': 'attachment; filename="store-prospects.csv"' },
+  })
+})
+
 export const storeProspectsRoutes = app
