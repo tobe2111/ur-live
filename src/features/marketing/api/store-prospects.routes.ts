@@ -42,9 +42,19 @@ app.get('/meta', (c) => c.json({
 // GET /api/admin/store-prospects/stats — 통계 + 수집 게이트/최근실행.
 app.get('/stats', async (c) => {
   const s = await prospectStats(c.env.DB)
-  const runRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_localdata_stats'").first<{ value: string }>().catch(() => null)
-  let run: unknown = null; try { run = runRow?.value ? JSON.parse(runRow.value) : null } catch { run = null }
-  return c.json({ success: true, ...s, collect: { gate: (c.env as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run } })
+  const readJson = async (k: string): Promise<unknown> => {
+    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
+    try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
+  }
+  const run = await readJson('ads_localdata_stats')
+  const neisRun = await readJson('ads_neis_stats')
+  const hiraRun = await readJson('ads_hira_stats')
+  return c.json({
+    success: true, ...s,
+    collect: { gate: (c.env as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
+    neis: { gate: (c.env as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true', run: neisRun },
+    hira: { gate: (c.env as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true', run: hiraRun },
+  })
 })
 
 // PATCH /api/admin/store-prospects/:id — 큐레이션(상태/메모/채널/팔로업).
@@ -70,6 +80,18 @@ app.post('/collect', async (c) => {
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
+
+// POST /api/admin/store-prospects/collect-neis · /collect-hira — 학원(NEIS)·병원(심평원) 수동 수집(ur-ads 위임).
+for (const [path, target] of [['/collect-neis', 'collect-neis'], ['/collect-hira', 'collect-hira']] as const) {
+  app.post(path, async (c) => {
+    const ads = c.env.ADS
+    if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
+    const kick = async () => { try { await ads.fetch(new Request(`https://ur-ads/__ads/${target}`, { method: 'POST' })) } catch { /* fail-soft */ } }
+    if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
+    try { await kick(); return c.json({ success: true, started: false }) }
+    catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+  })
+}
 
 // POST /api/admin/store-prospects/enrich-contacts — 이메일 우선 연락처 보강(ur-ads 위임). 게이트 무관(수동).
 app.post('/enrich-contacts', async (c) => {

@@ -127,6 +127,14 @@ app.post('/__ads/enrich-prospects', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🎓 나이스 학원·교습소 · 🏥 심평원 병원 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
+app.post('/__ads/collect-neis', async (c) => {
+  try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return c.json({ ok: true, stats: await runNeisAcademyCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+app.post('/__ads/collect-hira', async (c) => {
+  try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return c.json({ ok: true, stats: await runHiraHospitalCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🏛️ 사업자 폐업 스윕 수동 트리거 — 국세청 상태조회 활용신청 검증 겸(메인 어드민이 env.ADS 로만 호출).
 app.post('/__ads/sweep-nts', async (c) => {
   try {
@@ -258,6 +266,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
         await runLocalDataCollect(env)
       } catch { /* fail-soft */ }
+    })())
+  }
+  // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
+  if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); await runNeisAcademyCollect(env, 3) } catch { /* fail-soft */ }
+    })())
+  }
+  if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
+    ctx.waitUntil((async () => {
+      try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); await runHiraHospitalCollect(env, 3) } catch { /* fail-soft */ }
     })())
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 홈페이지 크롤/네이버 링크발견.
