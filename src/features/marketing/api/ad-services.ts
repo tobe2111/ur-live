@@ -94,6 +94,10 @@ export async function ensureServicesSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_cost INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   // 수기 결제(계좌이체) 상태 — unpaid(입금 대기) / paid(입금 확인) / refunded(환불). PG 미연동, 어드민이 확인 후 마킹.
   await DB.prepare("ALTER TABLE ad_service_orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'").run().catch(() => null)
+  // 💳 토스 결제 배선(2026-07-27) — 결제 주문 식별/환불용. 계좌이체 주문은 NULL 유지.
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN toss_order_id TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN toss_payment_key TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN paid_at DATETIME').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_acct ON ad_service_orders(account_id, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_status ON ad_service_orders(status, id)').run().catch(() => null)
 }
@@ -215,11 +219,11 @@ export async function listMyOrders(DB: D1Database, accountId: number): Promise<O
 }
 
 // ── 어드민 ───────────────────────────────────────────────────────────────────
-export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number; supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number }
+export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number; supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number; toss_payment_key: string | null }
 export async function adminListOrders(DB: D1Database, status?: string, limit = 200): Promise<AdminOrderRow[]> {
   await ensureServicesSchema(DB)
   const valid = status && SERVICE_ORDER_STATUSES.includes(status as ServiceOrderStatus)
-  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, payment_status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, created_at'
+  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, payment_status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, toss_payment_key, created_at'
   const stmt = valid
     ? DB.prepare(`SELECT ${cols} FROM ad_service_orders WHERE status = ? ORDER BY id DESC LIMIT ?`).bind(status, Math.min(500, limit))
     : DB.prepare(`SELECT ${cols} FROM ad_service_orders ORDER BY id DESC LIMIT ?`).bind(Math.min(500, limit))

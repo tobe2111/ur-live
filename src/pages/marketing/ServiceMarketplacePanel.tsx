@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from './PanelError'
+const AdsTossPayModal = lazy(() => import('./AdsTossPayModal')) // 💳 열 때만 SDK 청크 로드
 
 /**
  * 🆕 2026-07-02 유어애즈 — 마케팅 서비스몰(카탈로그 + 주문요청, 무결제).
@@ -30,6 +31,8 @@ export default function ServiceMarketplacePanel() {
   const [services, setServices] = useState<Service[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [bankInfo, setBankInfo] = useState<string | null>(null)
+  const [tossEnabled, setTossEnabled] = useState(false) // 💳 서버 게이트(ADS_TOSS_ENABLED) — OFF 면 버튼 미노출
+  const [payOrder, setPayOrder] = useState<Order | null>(null) // 결제 모달 대상
   const [sel, setSel] = useState<Service | null>(null)
   const [qty, setQty] = useState(1)
   const [preset, setPreset] = useState<string | null>(null)
@@ -54,12 +57,36 @@ export default function ServiceMarketplacePanel() {
   const load = useCallback(async () => {
     setErr(false)
     try {
-      const [s, o] = await Promise.all([api.get('/api/ads/services', { headers: authHeader() }), api.get('/api/ads/services/order-history', { headers: authHeader() })])
+      const [s, o, pc] = await Promise.all([
+        api.get('/api/ads/services', { headers: authHeader() }),
+        api.get('/api/ads/services/order-history', { headers: authHeader() }),
+        api.get('/api/ads-pay/config', { headers: authHeader() }).catch(() => null),
+      ])
+      if (pc?.data?.success) setTossEnabled(!!pc.data.enabled)
       if (s.data?.success) setServices(s.data.services || []); else setErr(true)
       if (o.data?.success) { setOrders(o.data.orders || []); setBankInfo(o.data.bank_info || null) }
     } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
+
+  // 💳 토스 리다이렉트 복귀 — 서버 confirm(금액은 서버 DB 권위) 후 쿼리 청소. 실패 복귀는 안내만.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    const clean = () => window.history.replaceState({}, '', window.location.pathname)
+    if (sp.get('adsPayFail')) { toast.error(sp.get('message') || '결제가 취소되었거나 실패했습니다'); clean(); return }
+    const svcOrder = sp.get('adsPaySvc')
+    if (!svcOrder) return
+    const paymentKey = sp.get('paymentKey'), tossOrderId = sp.get('orderId')
+    clean()
+    if (!paymentKey || !tossOrderId) return
+    ;(async () => {
+      try {
+        const r = await api.post('/api/ads-pay/confirm', { order_id: Number(svcOrder), payment_key: paymentKey, toss_order_id: tossOrderId }, { headers: authHeader() })
+        if (r.data?.success) { toast.success('결제가 완료되었습니다. 담당자가 확인 후 진행합니다!'); await load() }
+        else toast.error(r.data?.error || '결제 확인에 실패했습니다')
+      } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '결제 확인에 실패했습니다') }
+    })()
+  }, [load])
 
   const loadReviews = useCallback(async (serviceId: number, page = 1) => {
     try {
@@ -108,8 +135,15 @@ export default function ServiceMarketplacePanel() {
 
   const toggleOpt = (k: string) => setOpts(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })
 
+  const payModal = payOrder ? (
+    <Suspense fallback={null}>
+      <AdsTossPayModal order={payOrder} authHeader={() => authHeader() || {}} onClose={() => setPayOrder(null)} />
+    </Suspense>
+  ) : null
+
   return (
     <div className={`mt-3 ${card}`}>
+      {payModal}
       <div className="text-[14px] font-bold text-gray-900 dark:text-white">마케팅 서비스몰</div>
       <p className="mt-0.5 text-[11.5px] text-gray-400 dark:text-gray-500">SNS 성장·상위노출·체험단 등 마케팅 실행을 패키지로 주문하세요. 봇/가짜 없이 실제 광고·콘텐츠로 진행합니다. (결제 없이 요청 접수 → 담당자 확인)</p>
 
@@ -131,7 +165,7 @@ export default function ServiceMarketplacePanel() {
               <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1.5">내 주문</div>
               {bankInfo && orders.some(o => o.payment_status === 'unpaid' && o.status !== 'cancelled') && (
                 <div className="mb-2 rounded-lg border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/5 p-2.5 text-[12px] text-amber-700 dark:text-amber-400">
-                  <b>입금 안내</b> · {bankInfo} — 주문 금액을 입금해주시면 확인 후 진행됩니다.
+                  <b>입금 안내</b> · {bankInfo} — 주문 금액을 입금해주시면 확인 후 진행됩니다.{tossEnabled ? ' 카드 결제도 가능합니다(주문의 💳 버튼).' : ''}
                 </div>
               )}
               <div className="space-y-1.5">
@@ -141,6 +175,9 @@ export default function ServiceMarketplacePanel() {
                     <div className="shrink-0 flex flex-col items-end gap-1">
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${PAY_CLS[o.payment_status] || PAY_CLS.unpaid}`}>{PAY_KO[o.payment_status] || o.payment_status}</span>
+                      {tossEnabled && o.payment_status === 'unpaid' && o.status !== 'cancelled' && (
+                        <button onClick={() => setPayOrder(o)} className="px-1.5 py-0.5 rounded bg-gray-900 dark:bg-white text-[10.5px] font-bold text-white dark:text-[#0F151D]">💳 카드 결제</button>
+                      )}
                     </div>
                   </div>
                 ))}

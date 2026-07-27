@@ -14,7 +14,7 @@ interface Order {
   unit_price: number; discount_pct: number; options_total: number; total_amount: number
   contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null
   status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
-  supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number
+  supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number; toss_payment_key?: string | null
 }
 const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
@@ -56,6 +56,17 @@ export default function AdminAdsServicesPage() {
     setBusy(id)
     try { const r = await api.patch(`/api/admin/ads/service-orders/${id}`, body); if (r.data?.success) { toast.success(`${label} 완료`); await load(filter) } else toast.error(r.data?.error || '변경 실패') }
     catch { toast.error('변경 실패') } finally { setBusy(null) }
+  }
+
+  // 💳 토스 결제 주문 환불 — 서버가 cancelTossPayment(SSOT) 실행 후 refunded 마킹(원자적). 실패 시 paid 유지.
+  async function tossRefund(orderId: number) {
+    if (!window.confirm('토스 결제를 전액 취소하고 환불 처리할까요? (실제 카드 취소가 실행됩니다)')) return
+    setBusy(orderId)
+    try {
+      const r = await api.post('/api/admin/ads-pay/refund', { order_id: orderId })
+      if (r.data?.success) { toast.success('환불(결제 취소) 완료'); await load() }
+      else toast.error(r.data?.error || '환불 실패')
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '환불 실패') } finally { setBusy(null) }
   }
   async function setReviewStatus(id: number, status: 'visible' | 'hidden') {
     setBusy(id)
@@ -113,13 +124,19 @@ export default function AdminAdsServicesPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <div className="flex items-center gap-1.5">
+                        {o.toss_payment_key ? <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10.5px] font-bold" title="토스 카드/간편결제 완료 주문">💳 카드</span> : null}
                         <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
                           className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
                           {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
                         </button>
                         {o.payment_status === 'paid' && (
-                          <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
-                            className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                          o.toss_payment_key ? (
+                            <button disabled={busy === o.id} onClick={() => tossRefund(o.id)}
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40" title="토스 결제 주문 — 실제 결제 취소(전액)까지 함께 실행됩니다">💳 환불</button>
+                          ) : (
+                            <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                          )
                         )}
                       </div>
                       <select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">
