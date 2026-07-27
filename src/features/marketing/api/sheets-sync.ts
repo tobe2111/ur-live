@@ -10,6 +10,9 @@
  *     ADS_SHEETS_SYNC_ENABLED = 'true' 면 매시간 cron 동기화(수동 버튼은 게이트 무관)
  */
 import type { Env } from '@/worker/types/env'
+import { ensureQualityColumns } from './influencer-quality'
+import { ensurePerfExtraColumns } from './influencer-performance'
+import { ensureOutreachColumns } from './outreach-webhook'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
 const PAGE = 5000  // D1 페이지 크기
@@ -60,7 +63,10 @@ async function getToken(env: Env): Promise<string | null> {
 }
 
 // ── 행 매핑(순수 — 테스트 가능): 헤더와 leadToRow 는 항상 같은 순서 유지 ──────
-export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '구독자수', '평균조회수', '평균댓글', '月포스팅', '이메일', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
+//   2026-07-27 엑셀 다운로드(influencer-pool-export)와 "같은 열 세계"로 확장 — 🏅점수·롱폼중앙값·쇼츠%·
+//   마지막글·메일상태·분류근거·브랜드. 시트는 **기계값 미러**(status='new' 등 raw — 필터/재활용용,
+//   한국어 라벨은 엑셀 다운로드 담당).
+export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '점수', '구독자수', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
 export interface SheetLead {
   id: number; platform: string; name: string; handle: string | null; url: string
   subscriber_count: number; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null
@@ -68,10 +74,12 @@ export interface SheetLead {
   category: string | null; source_keyword: string | null; status: string; contact_channel: string | null
   contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null
   memo: string | null; collected_at: string
+  lead_score?: number | null; median_long_views?: number | null; shorts_ratio?: number | null
+  is_brand?: number | null; email_status?: string | null; last_post_at?: string | null; category_source?: string | null
 }
 export function leadToRow(l: SheetLead): (string | number)[] {
-  return [l.id, l.platform, l.name, l.handle || '', l.url, l.subscriber_count || 0, l.recent_avg_views ?? '', l.recent_avg_comments ?? '', l.recent_posts_30d ?? '', l.email || '', l.instagram || '',
-    l.tiktok || '', l.links || '', l.category || '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
+  return [l.id, l.platform, l.name, l.handle || '', l.url, l.lead_score ?? '', l.subscriber_count || 0, l.recent_avg_views ?? '', l.median_long_views ?? '', l.shorts_ratio ?? '', l.recent_avg_comments ?? '', l.recent_posts_30d ?? '', l.last_post_at || '', l.email || '', l.email_status || '', l.instagram || '',
+    l.tiktok || '', l.links || '', l.category || '', l.category ? (l.category_source || 'keyword') : '', l.is_brand ? 1 : '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
     l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at]
 }
 
@@ -124,6 +132,8 @@ async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?
   const token = await getToken(env)
   if (!token) return { ok: false, error: 'AUTH: 서비스계정 토큰 발급 실패 — SA 키/이메일 확인' }
   const sheetId = env.GSHEETS_SHEET_ID
+  // 확장 열(점수/성과/메일상태/분류근거) 보장 — 미보강 DB 에서 'no such column' READ 실패 방지.
+  await ensureQualityColumns(env.DB); await ensurePerfExtraColumns(env.DB); await ensureOutreachColumns(env.DB)
 
   // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
   //   🛡️ 2026-07-23 전수조사: 페이지 읽기 **실패**(null)를 "마지막 페이지"로 오인하면 그 오프셋 이후 전량 누락된
@@ -131,7 +141,8 @@ async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?
   const rows: (string | number)[][] = [[...SHEET_HEADER]]
   for (let off = 0; ; off += PAGE) {
     const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
-        category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at
+        category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
+        lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
       .bind(PAGE, off).all<SheetLead>().catch(() => null)
     if (!res) return { ok: false, error: `READ: D1 페이지 읽기 실패(offset ${off}) — 잘린 미러 방지 위해 중단(시트 기존 데이터 유지)` }
