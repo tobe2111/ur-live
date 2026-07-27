@@ -88,9 +88,13 @@ export async function runWork24JobsCollect(env: Env): Promise<Work24Stats> {
     const params = new URLSearchParams({ authKey: key, callTp: 'L', returnType: 'XML', startPage: String(page), display: '100', keyword: kw })
     const res = await fetch(`${listUrl}?${params.toString()}`, { signal: AbortSignal.timeout(20000) }).catch(() => null)
     if (!res || !res.ok) { lastMsg = res ? `HTTP ${res.status}` : '네트워크 오류'; break }
-    const { items, msg } = parseJobs(await res.text().catch(() => ''))
+    const rawText = await res.text().catch(() => '')
+    const { items, msg } = parseJobs(rawText)
     if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]
+    // 🔎 발굴 0 이면 응답 **원문 앞부분**을 diag 로 — "왜 0인지"를 어드민 상태줄에서 바로 봄
+    //   (엔드포인트 slug/파라미터명 오류·인증 거부·HTML 에러페이지가 전부 여기 드러남 → 추측 대신 실확인).
+    if (!sample && !items.length) sample = rawText.slice(0, 400) || '(빈 응답)'
     if (!items.length) { ki = (ki + 1) % KEYWORDS.length; page = 1; break } // 키워드 소진 → 다음 키워드
     found += items.length
     const leads: CompanyLead[] = []

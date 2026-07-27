@@ -81,7 +81,7 @@ app.post('/reclassify', async (c) => {
     for (let i = 0; i < 25; i++) {
       if (Date.now() - startedAt > 200_000) break // 잔여는 cron/재클릭이 이어받음
       await heartbeat()
-      const r = await reclassifyCompanyLeads(c.env.DB, 1000).catch(() => null)
+      const r = await reclassifyCompanyLeads(c.env.DB, 1000, i === 0).catch(() => null) // 억제 스윕은 첫 패스만(처리량 3×)
       if (!r) break
       passes++; scanned += r.scanned; updated += r.updated; removed += r.removed
       if (r.done) { done = true; break } // 재검사 대상 소진(전량 현행 규칙 통과)
@@ -153,7 +153,7 @@ app.post('/run-all', async (c) => {
       if (await getLock('ads_reclassify_burst_lock')) return
       for (let i = 0; i < 30 && Date.now() < deadline; i++) {
         await beat('ads_reclassify_burst_lock')
-        const r = await call('reclassify-company')
+        const r = await call(i === 0 ? 'reclassify-company' : 'reclassify-company?light=1')
         scanned += num(r, 'scanned'); removed += num(r, 'removed')
         if ((r as { done?: boolean } | null)?.done) break
       }
