@@ -8,8 +8,9 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  listProspects, prospectStats, updateProspect,
+  listProspects, countProspects, prospectStats, updateProspect,
   LICENSE_CATEGORIES, PROSPECT_STATUSES, PROSPECT_CONTACT_CHANNELS,
+  type ProspectFilter,
 } from './store-prospects'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -17,7 +18,9 @@ app.use('*', requireAdmin())
 
 // GET /api/admin/store-prospects?category=&region=&status=&newOpen=1&includeClosed=1&hasPhone=1&q=&limit=
 app.get('/', async (c) => {
-  const prospects = await listProspects(c.env.DB, {
+  const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)))
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0))
+  const filter: ProspectFilter = {
     category: c.req.query('category') || undefined,
     region: (c.req.query('region') || '').trim() || undefined,
     status: c.req.query('status') || undefined,
@@ -26,9 +29,12 @@ app.get('/', async (c) => {
     hasPhone: c.req.query('hasPhone') === '1',
     hasEmail: c.req.query('hasEmail') === '1',
     q: (c.req.query('q') || '').trim() || undefined,
-    limit: Math.min(2000, Math.max(1, intParam(c.req.query('limit'), 500))),
-  })
-  return c.json({ success: true, prospects })
+  }
+  const [prospects, total] = await Promise.all([
+    listProspects(c.env.DB, { ...filter, limit, offset }),
+    countProspects(c.env.DB, filter),
+  ])
+  return c.json({ success: true, prospects, total, limit, offset })
 })
 
 // GET /api/admin/store-prospects/meta

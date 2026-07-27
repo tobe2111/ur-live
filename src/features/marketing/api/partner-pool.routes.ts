@@ -10,10 +10,12 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  ensureCompanySchema, listCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, companyStats,
+  ensureCompanySchema, listCompanyLeads, countCompanyLeads, saveCompanyLeads, updateCompanyLead, deleteCompanyLead, deleteCompanyLeads, companyStats,
+  reclassifyCompanyLeads,
   parsePartnerPaste, COMPANY_CATEGORIES, COMPANY_STATUSES, COMPANY_CONTACT_CHANNELS, COMPANY_TIER_MIN, COMPANY_TIER_MAX,
-  type CompanyLead,
+  type CompanyLead, type CompanyLeadFilter,
 } from './company-discovery'
+import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -22,7 +24,10 @@ app.use('*', requireAdmin())
 // GET /api/admin/partner-pool?category=&subcategory=&region=&tier=&status=&hasContact=1&hasEmail=1&q=&limit=
 app.get('/', async (c) => {
   const tierRaw = c.req.query('tier')
-  const leads = await listCompanyLeads(c.env.DB, {
+  // 페이지네이션: limit/offset + 같은 필터의 총건수(total) → 어드민이 **끝까지** 넘겨볼 수 있게(대표 2026-07-27).
+  const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)))
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0))
+  const filter: CompanyLeadFilter = {
     category: c.req.query('category') || undefined,
     subcategory: c.req.query('subcategory') || undefined,
     region: (c.req.query('region') || '').trim() || undefined,
@@ -32,10 +37,22 @@ app.get('/', async (c) => {
     hasEmail: c.req.query('hasEmail') === '1',
     includeHeld: c.req.query('includeHeld') === '1', // 연락처 없어 보류(active=0)된 리드까지 노출.
     heldOnly: c.req.query('heldOnly') === '1',        // 보류(active=0)만.
+    pipeline: c.req.query('pipeline') === '1',        // 통계 '진행 중' 카드와 동일 조건.
+    recentDays: c.req.query('recentDays') ? intParam(c.req.query('recentDays'), 0) : undefined,
+    leadType: c.req.query('leadType') || undefined,   // partner/store/org/unknown
     q: (c.req.query('q') || '').trim() || undefined,
-    limit: Math.min(2000, Math.max(1, intParam(c.req.query('limit'), 500))),
-  })
-  return c.json({ success: true, leads })
+  }
+  const [leads, total] = await Promise.all([
+    listCompanyLeads(c.env.DB, { ...filter, limit, offset }),
+    countCompanyLeads(c.env.DB, filter),
+  ])
+  return c.json({ success: true, leads, total, limit, offset })
+})
+
+// POST /api/admin/partner-pool/reclassify — 기존 리드 소급 재분류(공고/정부페이지 제거 + 업종 근거 재적용).
+app.post('/reclassify', async (c) => {
+  const r = await reclassifyCompanyLeads(c.env.DB, 500)
+  return c.json({ success: true, ...r })
 })
 
 // GET /api/admin/partner-pool/meta — UI 셀렉트용 분류/상태/채널/티어 어휘.
@@ -45,6 +62,7 @@ app.get('/meta', (c) => c.json({
   statuses: COMPANY_STATUSES,
   channels: COMPANY_CONTACT_CHANNELS,
   tier: { min: COMPANY_TIER_MIN, max: COMPANY_TIER_MAX },
+  leadTypes: LEAD_TYPES.map(k => ({ k, label: LEAD_TYPE_LABEL[k] })),
 }))
 
 // GET /api/admin/partner-pool/stats

@@ -28,9 +28,12 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
+const PAGE_SIZE = 100
 
 export default function AdminStoreProspectsPage() {
   const [rows, setRows] = useState<Prospect[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<Collect | null>(null)
   const [collecting, setCollecting] = useState(false)
@@ -58,13 +61,16 @@ export default function AdminStoreProspectsPage() {
       if (fView === 'phone') p.set('hasPhone', '1')
       if (fView === 'email') p.set('hasEmail', '1')
       if (q.trim()) p.set('q', q.trim())
+      p.set('limit', String(PAGE_SIZE))
+      p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
-      if (r.data?.success) setRows(r.data.prospects || [])
+      if (r.data?.success) { setRows(r.data.prospects || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fRegion, fView, q])
+  }, [fCategory, fRegion, fView, q, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadRows() }, [loadRows])
+  useEffect(() => { setPage(0) }, [fCategory, fRegion, fView, q]) // 필터 변경 시 1페이지로
 
   async function runCollect() {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
@@ -241,6 +247,16 @@ export default function AdminStoreProspectsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* 페이지네이션 — 총건수 기준으로 끝까지 이동(대표 "목록이 끝까지 안 나와") */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <span>{total.toLocaleString()}건 중 {(total === 0 ? 0 : page * PAGE_SIZE + 1).toLocaleString()}–{Math.min(total, (page + 1) * PAGE_SIZE).toLocaleString()} · {page + 1}/{Math.max(1, Math.ceil(total / PAGE_SIZE)).toLocaleString()} 페이지</span>
+          <div className="grow" />
+          <button onClick={() => setPage(0)} disabled={page === 0} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">« 처음</button>
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">‹ 이전</button>
+          <button onClick={() => setPage(p => Math.min(Math.ceil(total / PAGE_SIZE) - 1, p + 1))} disabled={(page + 1) * PAGE_SIZE >= total} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">다음 ›</button>
+          <button onClick={() => setPage(Math.max(0, Math.ceil(total / PAGE_SIZE) - 1))} disabled={(page + 1) * PAGE_SIZE >= total} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">끝 »</button>
         </div>
       </div>
     </AdminLayout>
