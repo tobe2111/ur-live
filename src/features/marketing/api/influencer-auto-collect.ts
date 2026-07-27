@@ -28,12 +28,8 @@ const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입�
 /** 🎯 유튜브 최소 구독자(대표 지시 2026-07-21) — 미만 채널은 수집 안 함(소형 노이즈 컷). 네이버/카페/티스토리는 지표 없어 무관. */
 export const MIN_YT_SUBSCRIBERS = 1000
 
-/**
- * ⭐ 우선 카테고리 (대표 지시 2026-07-20 "맛집·숙소·네일·뷰티가 가장 중요") — 매 실행 배치의
- * 절반을 항상 이 카테고리 키워드에 배정(별도 커서로 순환), 나머지 절반이 전체 일반 순환.
- */
-// ⭐ 유어딜 연관 최우선 카테고리 — 동네 맛집·카페·뷰티·네일·숙소 딜 + 외식/자영업(매장 사장·창업).
-//   예: 홍석천·이원일 유튜브(맛집/외식업) 결. 매 배치의 3/4 를 이 풀에 배정.
+// ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
+//   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 export const PRIORITY_CATEGORIES = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
@@ -103,14 +99,9 @@ const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 thr
 
 type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string }; tistory?: { configured: boolean; found: number; saved: number; error?: string } }
 
-/**
- * 🔔 조용한 실패 방어(2026-07-20) — 수집이 켜져 있는데 **키 소실/전 플랫폼 0건**이면 Discord 경보.
- *   배경: 시크릿이 `wrangler deploy`(plaintext var wipe)로 지워져 "신규 0건"이 조용히 며칠 지속되던 사고
- *   클래스(2026-07-20 실발생) — diag 는 저장만 되고 push 가 없어 대시보드를 열기 전까지 아무도 모름.
- *   판정: 키 미설정(configured=false, =시크릿 소실 신호) 또는 saved===0(quota 소진이어도 naver 까지 0이면 문제).
- *   throttle: settings alert_at 로 6h 1회(24알림/day 방지) + 회복 시 즉시 해제(다음 실패는 지연 없이 알림).
- *   전부 fail-soft — 알림 실패가 수집을 막지 않는다. DISCORD_WEBHOOK_URL 미설정이면 no-op(회귀 0).
- */
+/** 🔔 조용한 실패 방어(2026-07-20 실사고 — wrangler deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음) —
+ *  키 소실(configured=false) 또는 전 플랫폼 발굴 0 이면 Discord 경보. 6h throttle + 회복 시 즉시 해제.
+ *  전부 fail-soft(알림 실패가 수집을 안 막음), DISCORD_WEBHOOK_URL 미설정=no-op. */
 async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
   const webhook = env.DISCORD_WEBHOOK_URL
   if (!webhook) return
