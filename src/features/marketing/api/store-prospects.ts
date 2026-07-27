@@ -171,10 +171,12 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
 }
 
 /* ── 목록/통계/큐레이션 ─────────────────────────────────────────────────────── */
-export async function listProspects(DB: D1Database, filter: {
-  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean; hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number
-} = {}): Promise<StoreProspectRow[]> {
-  await ensureProspectSchema(DB)
+export interface ProspectFilter {
+  category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean
+  hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number; offset?: number
+}
+/** WHERE 빌더 — 목록/카운트 공용(페이지네이션 총건수 정합). */
+function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (string | number)[] } {
   const where: string[] = ['1=1']; const binds: (string | number)[] = []
   if (!filter.includeClosed) where.push('active = 1')            // 기본: 영업중만(폐업 숨김)
   if (filter.newOpenOnly) where.push('is_new_open = 1')
@@ -184,10 +186,25 @@ export async function listProspects(DB: D1Database, filter: {
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
   if (filter.q) { where.push('(LOWER(biz_name) LIKE ? OR COALESCE(region,\'\') LIKE ? OR COALESCE(phone,\'\') LIKE ?)'); const l = `%${filter.q.toLowerCase()}%`; binds.push(l, `%${filter.q}%`, `%${filter.q}%`) }
+  return { sql: where.join(' AND '), binds }
+}
+
+export async function listProspects(DB: D1Database, filter: ProspectFilter = {}): Promise<StoreProspectRow[]> {
+  await ensureProspectSchema(DB)
+  const { sql, binds } = buildProspectWhere(filter)
   const limit = Math.min(2000, Math.max(1, filter.limit || 500))
-  const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM store_prospects WHERE ${where.join(' AND ')}
-     ORDER BY is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ?`).bind(...binds, limit).all<StoreProspectRow>().catch(() => null)
+  const offset = Math.max(0, Math.round(filter.offset || 0))
+  const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM store_prospects WHERE ${sql}
+     ORDER BY is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ? OFFSET ?`).bind(...binds, limit, offset).all<StoreProspectRow>().catch(() => null)
   return r?.results || []
+}
+
+/** 같은 필터의 총건수 — 페이지네이션용(끝까지 넘겨보기). */
+export async function countProspects(DB: D1Database, filter: ProspectFilter = {}): Promise<number> {
+  await ensureProspectSchema(DB)
+  const { sql, binds } = buildProspectWhere(filter)
+  const r = await DB.prepare(`SELECT COUNT(*) AS n FROM store_prospects WHERE ${sql}`).bind(...binds).first<{ n: number }>().catch(() => null)
+  return Number(r?.n) || 0
 }
 
 export interface ProspectStats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }

@@ -87,6 +87,15 @@ app.post('/__ads/enrich-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🧭 파트너 리드 소급 재분류 — 공고/정부페이지 제거 + 업종을 리드 자신의 텍스트 근거로 재적용(배치 커서).
+app.post('/__ads/reclassify-company', async (c) => {
+  try {
+    const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
+    const stats = await reclassifyCompanyLeads(c.env.DB, 500)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🏪 상가정보(공공데이터) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
 app.post('/__ads/collect-storeinfo', async (c) => {
   try {
@@ -253,6 +262,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   게이트 ADS_COMPANY_COLLECT_ENABLED(수집 켜면 보강도 자동). 백로그를 시간당 ~45건씩 자동 소진 → 수동 클릭 불필요.
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
+    // 🧭 소급 재분류 — 매시간 500건씩 커서 순회. 이미 쌓인 리드의 공고/정부페이지 제거 + 업종 근거 재적용.
+    //   DB-only(외부 API 0) 라 예산 무소모. 한 바퀴 돌면 커서 리셋되어 새로 들어온 미분류 행만 다시 잡음.
+    kick('/__ads/reclassify-company', async () => { const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery'); return reclassifyCompanyLeads(env.DB, 500) })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.

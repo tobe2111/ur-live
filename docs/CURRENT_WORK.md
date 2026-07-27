@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🔷 2026-07-27 — 🧭 파트너 리드 **판별·분류 SSOT** + 어드민 목록 전면 정리 (대표 신고 3건)
+**신고**: ① "은평구, 2026년 … 수행기관 모집" 이 **대행사 리드로 수집됨** → "이렇게 수집하면 어떡해" ② "분류도 이상적이지 않은 것 같은데 어떻게 분류하는게 좋을까" ③ "페이지 렉 + 목록이 끝까지 안 나와".
+**원인**: (a) tier1 키워드의 네이버 **웹문서(webkr) 발굴**이 페이지 *제목*을 상호로 삼는데 구청 공고 페이지(go.kr)가 걸림 — THIRD_PARTY_HOST 가 블로그/SNS 만 막고 정부 도메인은 통과. (b) **분류가 "검색 키워드"로 결정** — '소상공인 마케팅' 으로 찾으면 무엇이든 category=대행사(세무사도 구청도). (c) 목록이 **500행 통째 렌더 + 서버 cap** — 총건수/페이지 개념 자체가 없었음.
+**수정**: 신규 `company-classify.ts`(SSOT) — `classifyLead()` 가 저장 전 관문에서 **① 업체 아님 차단**(정부·학교 도메인 `NON_BUSINESS_HOST` / 공고·모집·문장형 제목) **② 리드 자신의 텍스트(상호+설명) 근거로 업종 재분류**(근거 없으면 `classify_confidence='keyword'` 로 표시). **분류 3축 분리**: `lead_type`(파트너/매장/기관/확인필요 = 접촉 가치) × `category`(업종) × `tier`(대표 우선순위) — 섞여 있던 축을 나눠 "대행사인데 사실 구청" 이 구조적으로 불가능. `saveCompanyLeads` 가 유일 관문이라 **모든 소스(네이버/webkr/상가정보/통신판매/프랜차이즈/나라장터) 자동 적용**. 기존 5만+ 행은 `reclassifyCompanyLeads`(커서 배치 500/시간, ur-ads 크론 + 어드민 '분류 정리') 로 소급 — **미큐레이션 행만 제거**(대표가 손댄 행은 보류 처리만). 어드민: 통계 카드 = 클릭 필터(카드 조건식 = 목록 WHERE 동일 SSOT) · 버튼 11개 → 5개(수집/정리·보강 드롭다운) · **서버 offset+total 페이지네이션**(100/page, 파트너풀+매장후보 양쪽) · 행 `memo` 로 렉 제거.
+**허위 0 불변**: 분류/차단만 — 연락처를 만들어내지 않음. 게이트·머니 경로 무접촉.
+
+
 ## 🔷 2026-07-21 — 🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — **3레인 전부 구현 완료** ✅
 **완료**: ① 1단계 = `ad_company_leads` 격리 테이블 + `/admin/partner-pool` 어드민(수동입력·상태머신·tier·CSV) ② **레인 A** = 네이버 지역검색(`local.json`) 자동수집(ur-ads 홀수시 크론 게이트드 `ADS_COMPANY_COLLECT_ENABLED`, 방배/서초/강남×12업종 키워드, phone-first) + **이메일 홈페이지 크롤**(robots.txt 존중, `pickBusinessEmail`) + 수동 '지금 수집'(서비스바인딩 위임) ③ **레인 B·C** = 명부 붙여넣기 임포트(`parsePartnerPaste`, 공정위 정보공개서·상인회 CSV/TSV). 파일: `company-discovery.ts`·`company-collect.ts`·`partner-pool.routes.ts`·`AdminPartnerPoolPage.tsx`·`worker-ads/index.ts`. tsc 0·가드 GREEN. **후속(선택)**: 웹문서 `webkr.json` 보충·data.go.kr API 피드. **⚠️ 레인 A 활성**: `NAVER_SEARCH_CLIENT_ID/SECRET` + `ADS_COMPANY_COLLECT_ENABLED=true` → '지금 수집' 표본검증. 설계 SSOT: `docs/design/partner-company-collection.md`.
 

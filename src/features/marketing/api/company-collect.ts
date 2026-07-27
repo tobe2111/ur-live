@@ -146,6 +146,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
   if (outOfBudget(budget)) return []
   spendBudget(budget)
   const { THIRD_PARTY_HOST } = await import('./contact-enrich')
+  const { NON_BUSINESS_HOST } = await import('./company-classify')
   const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=10`
   const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
   if (!res || !res.ok) return []
@@ -158,7 +159,8 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     let u: URL
     try { u = new URL(link) } catch { continue }
     const host = u.hostname.replace(/^www\./, '')
-    if (THIRD_PARTY_HOST.test(u.hostname) || seen.has(host)) continue
+    // 제3자/UGC + **정부·학교 도메인** 제외 — 구청 공고 페이지가 '대행사' 리드로 저장되던 오염원(2026-07-27 대표 신고).
+    if (THIRD_PARTY_HOST.test(u.hostname) || NON_BUSINESS_HOST.test(u.hostname) || seen.has(host)) continue
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
     const name = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60) || host
