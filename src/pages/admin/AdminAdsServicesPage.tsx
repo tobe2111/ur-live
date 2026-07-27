@@ -115,11 +115,20 @@ export default function AdminAdsServicesPage() {
                       {(() => {
                         const region = /\[지역:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
                         const cat = /\[업종:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
-                        if (o.service_name.includes('인플루언서') && o.service_name.includes('매칭'))
-                          return <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}`} target="_blank" rel="noreferrer" className="inline-block mt-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 인플루언서 풀에서 이행 →</a>
-                        if (o.service_name.includes('아웃리치'))
-                          return <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="inline-block mt-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>
-                        return null
+                        const store = /\[매장:([^\]]+)\]/.exec(o.memo || '')?.[1]?.trim() || ''
+                        const isMatch = o.service_name.includes('인플루언서') && o.service_name.includes('매칭')
+                        const isOutreach = o.service_name.includes('아웃리치')
+                        if (!isMatch && !isOutreach) return null
+                        // 🔁 유어딜 깔때기(대표 운영수칙 ③) — 이행 완료 시 사장님께 보낼 업셀 한 줄(복사).
+                        const upsell = `협찬 게시물에 판매 링크까지 붙이고 싶으시면 유어딜을 연결해 드려요 — 등록은 무료이고, 판매될 때만 비용이 나갑니다. 원하시면 바로 셋업 도와드릴게요!`
+                        return (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {isMatch && <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}&store=${encodeURIComponent(store)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 인플루언서 풀에서 이행 →</a>}
+                            {isOutreach && <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>}
+                            <button onClick={() => { navigator.clipboard?.writeText(upsell).then(() => toast.success('유어딜 업셀 문구 복사됨 — 이행 완료 안내에 붙여 보내세요')) }}
+                              className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11.5px] font-semibold" title="이행 완료 시 사장님께: 협찬→유어딜 입점 깔때기">🔁 유어딜 업셀 문구</button>
+                          </div>
+                        )
                       })()}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">

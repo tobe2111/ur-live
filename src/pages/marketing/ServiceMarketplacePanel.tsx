@@ -44,6 +44,7 @@ export default function ServiceMarketplacePanel() {
   const [memo, setMemo] = useState('')
   const [bizRegion, setBizRegion] = useState('') // 🎯 매칭/아웃리치 상품 — 타겟 지역(선별 기준)
   const [bizCategory, setBizCategory] = useState('') // 🎯 타겟 업종
+  const [bizStore, setBizStore] = useState('') // 🎯 매장/회사명 — 발송 시 "의뢰: ○○" 병기(명의 규칙)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
   // 리뷰
@@ -123,12 +124,12 @@ export default function ServiceMarketplacePanel() {
   async function submit() {
     if (!sel) return
     if (!kakao.trim() && !phone.trim()) { toast.error('연락처(카카오 ID 또는 전화)를 입력해주세요'); return }
-    if (isTargeted && (!bizRegion.trim() || !bizCategory.trim())) { toast.error('타겟 지역과 업종을 입력해주세요 (선별 기준)'); return }
+    if (isTargeted && (!bizRegion.trim() || !bizCategory.trim() || !bizStore.trim())) { toast.error('매장/회사명·타겟 지역·업종을 입력해주세요 (선별·발송 명의 기준)'); return }
     setBusy(true)
     try {
-      const memoOut = isTargeted ? `[지역:${bizRegion.trim()}] [업종:${bizCategory.trim()}]${memo.trim() ? ' ' + memo.trim() : ''}` : memo
+      const memoOut = isTargeted ? `[매장:${bizStore.trim()}] [지역:${bizRegion.trim()}] [업종:${bizCategory.trim()}]${memo.trim() ? ' ' + memo.trim() : ''}` : memo
       const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo: memoOut }, { headers: authHeader() })
-      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); setBizRegion(''); setBizCategory(''); await load() }
+      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); setBizRegion(''); setBizCategory(''); setBizStore(''); await load() }
       else toast.error(r.data?.error || '접수 실패')
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '접수 실패') } finally { setBusy(false) }
   }
@@ -233,10 +234,20 @@ export default function ServiceMarketplacePanel() {
           </div>
           <input className={`${input} mt-2`} placeholder="대상 URL/계정 (선택, 예: 인스타 주소)" value={target} onChange={e => setTarget(e.target.value)} />
           {isTargeted && (
-            <div className="mt-2 flex gap-2">
-              <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
-              <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
-            </div>
+            <>
+              <div className="mt-2 flex gap-2">
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="매장/회사명 * (제안서에 '의뢰: ○○' 로 표기)" value={bizStore} onChange={e => setBizStore(e.target.value)} />
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
+              </div>
+              {/* ⚖️ 기대 관리(대표 운영수칙 ②) — 과금 기준·비보장·보정을 주문 시점에 명시(환불 분쟁 예방). */}
+              <div className="mt-2 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-2.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                <b className="text-gray-700 dark:text-gray-300">진행 조건</b> · 본 서비스는 <b>제안 발송 대행</b>이며 발송 완료 기준으로 과금됩니다. 회신·성사는 보장되지 않습니다.
+                단, <b>회신이 1건도 없으면 동일 규모로 1회 무상 재발송</b>해 드립니다. 발송은 유어애즈 명의(+의뢰 매장 병기)로 나가며, 수신거부 요청자는 즉시 제외됩니다.
+              </div>
+            </>
           )}
           <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
           <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
