@@ -50,6 +50,8 @@ export interface ClassifyInput {
   subcategory?: string | null
   tier?: number | null
   source?: string | null
+  /** 수집 검색어 — "키워드 메아리"(이름이 검색어 그대로인 가짜 상호) 판별용(2026-07-27 대표 신고 '상권분석' 행) */
+  source_keyword?: string | null
 }
 export interface ClassifyResult {
   /** false 면 리드가 아님 — 저장하지 않는다. */
@@ -131,6 +133,14 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   if (/,\s/.test(name) && name.length >= 12) return reject('HEADLINE_TITLE')
   if (name.length >= 18 && name.split(/\s+/).length >= 5) return reject('HEADLINE_TITLE')
   if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(name)) return reject('HEADLINE_TITLE')
+  // ②-c 블로그 SEO 의문문 제목(2차 신고 — "…마케팅위드는 무엇이 다를까요?") + 키워드 메아리("상권분석").
+  if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(name)) return reject('HEADLINE_TITLE')
+  if (input.source_keyword) {
+    const kwTok = new Set(String(input.source_keyword).toLowerCase().split(/\s+/).map(t => t.replace(/\s+/g, '')).filter(Boolean))
+    const nameTok = name.toLowerCase().split(/\s+/).filter(Boolean)
+    // 이름의 모든 어절이 검색어 어절 안에 있으면 = 검색어를 그대로 이름으로 오인한 것(실상호는 검색어에 없는 토큰을 가짐)
+    if (nameTok.length > 0 && nameTok.every(t => kwTok.has(t))) return reject('KEYWORD_ECHO')
+  }
   // 문장형: 아주 긴 제목 + 쉼표/연도 — 상호는 이런 모양이 아니다.
   if (name.length > 34 && /[,·]/.test(name) && /\d{4}년|\d{4}\s*년도/.test(name)) return reject('SENTENCE_TITLE')
   if (!/[가-힣A-Za-z0-9]/.test(name)) return reject('NAME_NOT_TEXT')
@@ -160,6 +170,23 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
     lead_type: 'unknown',
     confidence: hasKeyword ? 'keyword' : 'none',
   }
+}
+
+/** 이름이 상호로 의심스러운가(헤드라인/키워드 메아리) — 크롤 시 사이트 자기이름(og:site_name)으로 치유할지 판정.
+ *  classifyLead 와 동일 신호 재사용: ok=false(전면 거부)까진 아니어도 이름만 수상한 webkr 행의 리라벨 트리거. */
+export function suspectCompanyName(name: string, sourceKeyword?: string | null): boolean {
+  const n = String(name || '').replace(/\s+/g, ' ').trim()
+  if (n.length < 2) return true
+  if (/["“”‘’',?？]/.test(n)) return true
+  if (n.length >= 18 && n.split(/\s+/).length >= 5) return true
+  if (/(?:된다|한다|않는다|안된다|났다|높여|커져|줄어|늘어)$/.test(n)) return true
+  if (/[?？]|(?:무엇이|어떻게|왜)\s|까요\b|나요\b|인가요/.test(n)) return true
+  if (sourceKeyword) {
+    const kwTok = new Set(String(sourceKeyword).toLowerCase().split(/\s+/).filter(Boolean))
+    const nameTok = n.toLowerCase().split(/\s+/).filter(Boolean)
+    if (nameTok.length > 0 && nameTok.every(t => kwTok.has(t))) return true
+  }
+  return false
 }
 
 /** 접촉 가치 축 라벨(어드민 표시 SSOT). */

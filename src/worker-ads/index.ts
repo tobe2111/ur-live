@@ -267,12 +267,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   if (hourUTC % 2 === 1 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect-company', async () => { const { runCompanyAutoCollect } = await import('@/features/marketing/api/company-collect'); return runCompanyAutoCollect(env) })
   }
-  // 📇 연락처 보강 자동 드레인 — **매시간**(수집과 별개 예산). 보류(연락처 없는) 리드에 카카오 전화+홈페이지 크롤.
-  //   게이트 ADS_COMPANY_COLLECT_ENABLED(수집 켜면 보강도 자동). 백로그를 시간당 ~45건씩 자동 소진 → 수동 클릭 불필요.
-  if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
+  // 📇 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 대표 "이메일 보유 대행사 13개" 원인:
+  //   보강이 ADS_COMPANY_COLLECT_ENABLED 에 묶여, 수집 OFF 면 ADS_ENRICH_BUDGET 을 올려도 한 번도 안 돌았음).
+  //   킬스위치 ADS_ENRICH_DISABLED='true' 만 끔. 키 없으면 내부에서 해당 단계 자연 스킵(fail-soft).
+  if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
     kick('/__ads/enrich-company', async () => { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); return enrichHeldLeads(env) })
-    // 🧭 소급 재분류 — 매시간 500건씩 커서 순회. 이미 쌓인 리드의 공고/정부페이지 제거 + 업종 근거 재적용.
-    //   DB-only(외부 API 0) 라 예산 무소모. 한 바퀴 돌면 커서 리셋되어 새로 들어온 미분류 행만 다시 잡음.
+    // 🧭 소급 재분류 — 매시간 500건씩 커서 순회(DB-only, 외부 API 0·예산 무소모). 기사제목/키워드메아리/쓰레기전화 자동 청소.
     kick('/__ads/reclassify-company', async () => { const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery'); return reclassifyCompanyLeads(env.DB, 500) })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
