@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🔷 2026-07-27 (심야 세션) — 🧭 파트너 풀 **소급 재검사 구조 + 원클릭 운영** 완성 (PR #744~#761 전부 머지·배포)
+**핵심 구조 2개 (다음 세션 필독)**:
+- **분류 규칙 버전 스탬프**: `CLASSIFY_RULES_VERSION`(company-classify.ts, 현재 v3) × `ad_company_leads.classified_v` — 소급 정리(`reclassifyCompanyLeads`)가 `classified_v < VERSION` 행만 훑음. **판별/분류 규칙을 바꾸면 반드시 버전 +1**(안 올리면 기존 행 영구 방치 — 오늘 사고의 원인이었음). v2=헤드라인·키워드메아리·행사어휘, v3=안내페이지 어휘(위치안내/지정 게시대).
+- **작업 버튼 완료 감지 체계**: 각 작업이 platform_settings 결과 스탬프(last_run/at) → `/stats` 노출 → 어드민이 폴링으로 완료 감지해 결과 토스트(`partner-pool/job-completion.ts` STAT_PICK/fmtRun). 장시간 버스트(정리/보강/run-all)는 완료 시 어드민 알림벨에도 결과. **새 작업 버튼을 추가하면 결과 스탬프 저장 + /stats 노출 + STAT_PICK 등록 3종 세트.**
+
+**오늘 배포된 것**: 카카오 수집 레인(키워드당 45건) · 보강 공회전 수리(enrich_checked_at 7일 쿨다운 양 풀) · 반송 억제 목록(ad_email_suppress) · 고용24 채용기업 어댑터(work24-jobs-collect.ts — ⚠️ **개인회원 차단 확정**(diag 실측 "개인회원은 사용할 수 없는 OPEN-API") → 대표가 기업회원 전환+키 재발급해야 동작, WORK24_API_KEY 교체만 하면 됨) · 분류 정리 풀가동(25패스×1000/클릭, 시간당 cron 5패스, 억제 스윕은 housekeeping 패스만 — 처리량 3×) · 뉴스룸 이메일 차단(NEWSROOM_EMAIL_LOCAL)+언론사 호스트 크롤 거부(NEWS_MEDIA_HOST) · **언론사 '미디어' 별도 수집 레인**(webkr 언론 호스트→category 미디어, 도메인 placeholder 이름→og:site_name 치유, 뉴스룸 이메일 허용) · webkr 의심이름 저장 강등(분류 확인 카드) · Phase3 이름 치유 소급(연락처 보유+제목파편 이름 8건/회) · 🚀 원클릭 전체 실행(/run-all — 수집 9레인 병렬→보강∥정리, 통합 결과 알림) · 409=이미 진행 중 안내 · 번들 예산 8.6→8.7MB.
+**환경**: ADS_ENRICH_BUDGET=800(대표 설정) · 프랜차이즈 API 404(공정위 이관 추정 — 대표가 data.go.kr 15125467 활용신청+요청주소 확인 시 ADS_FRANCHISE_ENDPOINT/OP 오버라이드로 복구).
+**내일 오전 10시(KST) 자동 점검**(send_later trig_01TzhK1tnWtXXpJ4W7bs45Fi): 대행사 이메일 15→? · 미분류 잔여(v3 재검사) · 카카오 레인 유입 · 공개 페이지(/new-openings, /area-report) 채워짐 — 기준 미달 축이 다음 작업.
+
 ## ✅ 2026-07-25 — 🗺️ 지도 스와이프/스크롤 전수조사 결함 전부 수정 (대표 "전부 수정" — H1~H4·M1~M7·L1~L4)
 브랜치 `claude/yourdeal-link-display-xjnrru` (PR #726 에 동승). 지도 표면 버벅임/불완전 스와이프 근본수리:
 - **바텀시트 드래그 재설계** (`restaurant-map/useSheetDrag.ts` 신설, RestaurantMapPage 에서 소비): [H1] 매 touchmove setState→전페이지 리렌더 → ref+rAF 로 DOM transform 직접 갱신(릴리즈 때만 snap state) · [H2] top 애니메이션+±200px 클램프 → top 은 full 고정, snap/드래그 전부 translateY(컴포지터)·클램프는 full~peek 실한계 · [H4] 리스트 위 스와이프 시트 라우팅(비-full 상향/scrollTop 0 하향 — 네이티브 non-passive) · [M1] 핸들 Pointer Events+캡처 · [M2] velocity(지수평활)+관성투영 스냅. 시각적 snap top 값(peek 100dvh-240px·mid 40dvh·full safe+104px)은 기존과 동일.
