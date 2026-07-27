@@ -223,10 +223,11 @@ app.post('/enrich-burst', async (c) => {
     for (let i = 0; i < 12; i++) {
       if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // 잔여는 cron/재클릭이 이어받음
       await heartbeat()
-      let body: { ok?: boolean; stats?: { processed?: number; enriched?: number; remaining?: number } } | null = null
+      type BurstResp = { ok?: boolean; stats?: { processed?: number; enriched?: number; remaining?: number } } | null
+      let body: BurstResp = null
       try {
         const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
-        body = (await r.json().catch(() => null)) as typeof body
+        body = (await r.json().catch(() => null)) as BurstResp
       } catch { reason = 'fetch_error'; break }
       if (!body?.ok || !body.stats) { reason = 'bad_response'; break }
       rounds++
