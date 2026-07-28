@@ -19,7 +19,7 @@ import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 import { getFunnelTailStats, getOrCreateClaimCode } from './lead-claim'
-import { isCollectRunning, isMaintainRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { getAdsPoolDiag } from './ads-pool-diag' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -197,14 +197,8 @@ app.get('/influencer-pool/stats', async (c) => {
     .bind(POOL).all().catch(() => null)
   // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
   const tail = await getFunnelTailStats(c.env.DB).catch(() => ({ joined: 0, first_sale: 0 }))
-  // 🔒 수집 진행 여부 — lease(만료시각 ms)가 미래면 지금 돌고 있는 것. 화면 로컬 state 로는
-  //   페이지를 나갔다 오면 알 수 없어 "다시 눌러도 되나?" 를 판단 못 했다(재클릭은 lease 가 막고 아무 일도 안 함).
-  const collectRunning = await isCollectRunning(c.env.DB).catch(() => false)
-  // 🔧 2026-07-28: 정비도 '지금 돌고 있는지'를 노출한다. 수집(collect_running)엔 있었는데 정비엔 없어서
-  //   '전체 정비' 를 눌러도 진행 중인지 끝났는지 화면에서 알 수 없었다(대표 신고).
-  const maintainRunning = await isMaintainRunning(c.env.DB).catch(() => false)
-  const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
-  let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
+  // 📊 진단 스탬프·lease 는 ads-pool-diag.ts 로 추출(2026-07-28, 600줄 캡). 전부 fail-soft.
+  const diag = await getAdsPoolDiag(c.env.DB)
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
   //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
   //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
@@ -216,16 +210,7 @@ app.get('/influencer-pool/stats', async (c) => {
       if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
     }
   } catch { /* 폴백 유지 */ }
-  // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화) — 있으면 그대로 노출.
-  const sheetRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
-  let sheets_sync: unknown = null; try { sheets_sync = sheetRow?.value ? JSON.parse(sheetRow.value) : null } catch { sheets_sync = null }
-  // 🌙 야간 자동 정비 결과(무음 실패 가시화 — 대표가 어드민에서 "어젯밤 뭐 돌았나"를 바로 확인).
-  const mRows = await c.env.DB.prepare("SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last')")
-    .all<{ key: string; value: string }>().catch(() => null)
-  const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
-  const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
-  const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
-  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, run, gate, collect_running: collectRunning, maintain_running: maintainRunning, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
+  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, gate, ...diag, category_funnel: catFunnel?.results || [] })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
