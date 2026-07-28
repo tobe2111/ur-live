@@ -47,11 +47,13 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan }: {
+export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning }: {
   run: RunStats | null
   sheetsSync: { ok: boolean; at?: string; error?: string | null } | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
+  /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
+  maintainRunning?: boolean
 }) {
   const mSum = summarize(maintenance)
   const rSum = summarize(maintenanceRescan)
@@ -86,9 +88,13 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
       )}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}
-      {(mSum || rSum) && (
+      {(mSum || rSum || maintainRunning) && (
         <div className="mb-4 text-xs text-gray-500">
-          🌙 자동 정비
+          {maintainRunning
+            ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />정비 진행 중…
+              </span>
+            : '🌙 자동 정비'}
           {mSum && <span className={mSum.hasError ? 'text-amber-600' : ''}> {fmtKST(maintenance?.at)} — {mSum.text}{mSum.hasError ? ' ⚠️일부 단계 실패' : ''}</span>}
           {mSum && rSum ? <span className="text-gray-300"> | </span> : null}
           {rSum && <span className={rSum.hasError ? 'text-amber-600' : ''}>재보정 {fmtKST(maintenanceRescan?.at)} — {rSum.text}{rSum.hasError ? ' ⚠️일부 단계 실패' : ''}</span>}

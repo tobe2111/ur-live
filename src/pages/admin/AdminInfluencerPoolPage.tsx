@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -91,6 +91,9 @@ export default function AdminInfluencerPoolPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
   const [serverRunning, setServerRunning] = useState(false) // 🔒 서버 수집 lease(진행 중) — 화면 로컬 state 아님
+  // 🔧 2026-07-28: 정비 lease — '전체 정비' 를 눌러도 진행 중인지 끝났는지 화면에서 알 수 없었다(대표 신고).
+  //   수집과 달리 정비엔 진행 표시가 아예 없었다. 서버 lease 가 진실이라 새로고침·재진입해도 정확하다.
+  const [maintainRunning, setMaintainRunning] = useState(false)
 
   const PAGE = 200
   const buildParams = useCallback((offset: number) => { // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름)
@@ -133,8 +136,27 @@ export default function AdminInfluencerPoolPage() {
     const g = <T,>(k: string) => d[k] as T
     setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheetsSync(g<typeof sheetsSync>('sheets_sync') || null)
     setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
+    setMaintainRunning(!!d.maintain_running)
     setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
   }, [])
+
+  // 🔁 2026-07-28: 정비가 도는 동안만 10초 폴링 — 끝나면 스스로 멈추고 완료를 알린다.
+  //   이게 없으면 '전체 정비' 를 눌러도 사용자가 수동 새로고침으로만 완료를 알 수 있었다(대표 신고).
+  //   상시 폴링이 아니라 lease 가 잡힌 동안만이라 평소 부하 0.
+  const wasMaintaining = useRef(false)
+  useEffect(() => {
+    if (!maintainRunning) {
+      if (wasMaintaining.current) {
+        wasMaintaining.current = false
+        toast.success('🧰 정비가 끝났습니다 — 결과가 아래 「자동 정비」 줄에 반영됐어요')
+      }
+      return
+    }
+    wasMaintaining.current = true
+    const t = setInterval(() => { void loadMeta() }, 10_000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maintainRunning])
 
   const loadMeta = useCallback(async () => {
     try {
@@ -334,7 +356,7 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
-        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
+        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
