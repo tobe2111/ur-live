@@ -22,8 +22,10 @@ export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|jo
 /** 🔢 크롤/추출 규칙 버전 (2026-07-28 실측 — 개선한 크롤러가 7일 쿨다운에 막혀 기존 백로그를 못 만나던 문제).
  *  보강 대상 쿼리가 `COALESCE(enrich_v,0) < CRAWL_RULES_VERSION` 인 행도 포함하므로, **크롤 경로·추출기를
  *  개선하면 이 값을 +1** → 이전 크롤러로 실패한 전량이 즉시 재시도 대상이 된다(분류 규칙 버전과 동일 철학).
- *  v2 = 엔티티/태그분할 복원 · JSON-LD · 사이트맵 발견 · 호스트 변형 폴백 · 국내 CMS 경로 12종. */
-export const CRAWL_RULES_VERSION = 2
+ *  v2 = 엔티티/태그분할 복원 · JSON-LD · 사이트맵 발견 · 호스트 변형 폴백.
+ *  v3 (2026-07-28) = 사이트당 fetch 캡(5경로 + MAX_PAGES) — v2 의 12경로가 예산을 2배 먹어 크롤 사이트 수가
+ *  반토막나던 회귀 수리. 이전 v2 시도분(적중 0%)을 전량 재시도해야 하므로 버전 bump. */
+export const CRAWL_RULES_VERSION = 3
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
@@ -212,8 +214,11 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
   //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤3)** + 사이트맵 기반 연락처 페이지 발견(2026-07-27 고도화).
   //   국내 대행사/SME 는 그누보드·cafe24·아임웹 자체 경로가 흔해 고정 경로만으론 놓침. same-origin 만 + 파일 제외.
-  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact',
-    '/sub/contact.html', '/bbs/content.php?co_id=contact', '/html/contact.html', '/kor/contact', '/introduce', '/company/info']
+  //   ⚠️ 2026-07-28 실측 회귀 수리: 경로를 12개로 늘렸더니 **사이트당 서브요청이 2배**가 되어 같은 예산으로
+  //   크롤 가능한 사이트 수가 반토막(처리 344 중 크롤 54회). 고수율 5경로로 축소 + 사이트당 fetch 캡(MAX_PAGES).
+  //   커스텀 경로는 홈에서 발견한 문의링크·사이트맵이 커버(그쪽이 정확도도 높음).
+  const queue = ['', '/contact', '/about', '/company', '/sub/contact.html']
+  const MAX_PAGES = 5
   const visited = new Set<string>()
   let discoveredLinks = 0
   const BROWSER_HEADERS = {
@@ -229,7 +234,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     const path = queue[i]
     if (visited.has(path)) continue
     visited.add(path)
-    if ((email && phone) || outOfBudget(budget)) break
+    if (email || outOfBudget(budget) || visited.size > MAX_PAGES) break // 이메일 확보 시 즉시 종료(전화는 부가 — 카카오 레인이 전담)
     spendBudget(budget)
     // UA: 브라우저형(아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터 이메일 수집 0 이던 갭). robots 존중은 위에서 그대로.
     let html = await fetchHtml(url.origin + path)

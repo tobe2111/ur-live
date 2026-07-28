@@ -4,6 +4,12 @@
  */
 import { formatNumber, kstShort } from '@/utils/format'
 
+/** 크롤 실패 사유 라벨(contact-enrich CrawlReason SSOT 미러) — 적중률 저하의 원인 진단용. */
+const CRAWL_REASON_LABEL: Record<string, string> = {
+  ok: '성공', no_contact: '이메일 미게시', fetch_fail: '페이지 못가져옴', robots: 'robots 차단',
+  dead_domain: '죽은 도메인', no_name: '상호 불일치', blocked_host: '제외 호스트', bad_url: '잘못된 주소', budget: '예산 소진',
+}
+
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
@@ -13,7 +19,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
@@ -62,6 +68,11 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
               ? <span> · 크롤 {formatNumber(enrichLast.crawls)}(이메일 적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
               : <span className="text-amber-600"> · 크롤 0회 — 크롤까지 못 감(예산·대상 선정 확인 필요)</span>}
             {typeof enrichLast.remaining === 'number' ? <span className="text-gray-400"> · 보류 잔여 {formatNumber(enrichLast.remaining)}</span> : null}
+            {/* 실패 사유 분포 — 적중률이 낮을 때 '사이트에 이메일이 없음(no_contact)' vs '페이지를 못 가져옴
+                (fetch_fail)' vs 'robots 차단' 을 구분해 다음 개선을 데이터가 고르게(2026-07-28 적중 0% 진단). */}
+            {enrichLast.crawl_reason && Object.keys(enrichLast.crawl_reason).length > 0 && (
+              <span className="text-gray-400"> · 사유 {Object.entries(enrichLast.crawl_reason).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CRAWL_REASON_LABEL[k] || k} ${v}`).join(' / ')}</span>
+            )}
           </span>
         : <span className="text-amber-600"> · 아직 실행 기록 없음 — 매시간 자동이 안 돌고 있을 수 있음</span>}
     </div>
