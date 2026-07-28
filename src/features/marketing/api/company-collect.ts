@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
@@ -265,7 +265,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   아니라 **한도 초과 후 전 fetch throw**. 인플루언서 레인이 이미 쓰던 관측 학습 상한(collect-budget)을
   //   이 레인에도 적용 — 부딪히면 다음 실행부터 그 아래만 쓰고, 무사히 다 쓰면 조금씩 회복한다.
   const envBudget = Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300))
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('company_enrich'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
@@ -329,11 +329,11 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   중도 종료(CPU/wall/서브리퀘스트 한도)될 때 그 실행은 **영원히 계측되지 않는다**. 실측에서 실제로
   //   이메일은 붙었는데 `ads_enrich_last` 가 갱신되지 않는 상태가 관측됐다(원인 규명이 늦어진 한 원인).
   //   → 한도 감지 즉시 + 주기적으로 부분 저장하고, 정상 종료 때 최종본으로 덮는다. `partial` 로 구분.
-  //   비용: 저장 1회 = D1 1쿼리. 25건마다이므로 예산 대비 무시 가능.
+  //   비용: 저장 1회 = D1 1쿼리. Phase 2 첫 3바퀴 + 이후 10건마다이므로 예산 대비 무시 가능.
   let capForStamp = learnedCap // 최종 저장 직전에 새 학습값으로 갱신 — 상태줄의 '다음 실행 상한'
   // 📍 어디까지 갔나 — `partial:true` 만으로는 "Phase 1 직후 죽었다"와 "Phase 2 중 죽었다"를 구분할 수 없어
   //   2026-07-28 원인 규명이 정적 추론에서 막혔다. 단계 표식 + Phase 2 스킵 사유 계수를 남긴다(비용: 문자열 1개).
-  let phase = 'start'
+  let phase = 'start'; let at = ''; const t0 = Date.now() // at=마지막으로 손댄 지점 · t0=경과(무증거 종료가 시간 한도인지 판별)
   const p2: Record<string, number> = {} // examined/skip_email/no_site/naver_try/crawl_try/stamped
   const bump = (k: string) => { p2[k] = (p2[k] || 0) + 1 }
   const snapshot = async (partial: boolean, remaining?: number) => {
@@ -346,7 +346,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       crawl_reason: crawlReason, fail_samples: failSamples,
       fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
       limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
-      phase, p2, targets: targets.length,
+      phase, p2, at, elapsed_ms: Date.now() - t0, targets: targets.length,
       diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
     })
   }
@@ -375,13 +375,13 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   let sinceSnapshot = 0
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit) break
-    bump('examined')
+    bump('examined'); at = `#${p2.examined} ${(t.company_name || '').slice(0, 24)}`
     if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
     let site = realSite(t.website)
     if (!site) bump('no_site')
     let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
-      bump('naver_try')
+      bump('naver_try'); at = `nv:${(t.company_name || '').slice(0, 24)}`
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
       if (nv.website) site = nv.website // 지역검색 등록 링크(업체가 등록) — 신뢰
       if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
@@ -389,7 +389,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
-      bump('crawl_try')
+      bump('crawl_try'); at = `cr:${site.slice(0, 60)}`
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       // 실패 URL 샘플(최대 4) — '왜 못 가져왔나'를 실제 주소로 특정(2026-07-28 fetch 실패 45/45 진단).
@@ -413,7 +413,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
     bump('stamped')
     if (budget.limitHit) { await snapshot(true); break } // 도장이 한도를 밝혀낸 경우도 즉시 중단(위 stamp 참조)
-    if (++sinceSnapshot >= 10) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
+    // 중도 종료돼도 여기까지는 남는다. ⚠️ 첫 3바퀴는 **매번** — 10건 주기만 두면 Phase 2 초반 사망이 영구 미계측이
+    //   된다(2026-07-28 실측: `phase:'p1_done'` · `p2:{}` 고정 = 1~9건 구간에서 죽었는데 신호가 0).
+    if (++sinceSnapshot <= 3 || sinceSnapshot % 10 === 0) await snapshot(true)
   }
 
   // ── Phase 3: 이름 치유 소급 — 별 모듈(enrich-name-heal)로 분리(2026-07-28). 왜 필요한지는 그 파일 상단 참조.
@@ -429,7 +431,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
   const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
   if (nextCap != null) {
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(subreqCapKey('company_enrich'), String(nextCap)).run().catch(() => null)
     capForStamp = nextCap // 상태줄이 '다음 실행 상한'을 새 값으로 보여주도록
   }
   await snapshot(false, Number(rem?.n) || 0) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
@@ -558,7 +560,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   (`id > cursor` 라 커서가 한 바퀴 돌 때까지 영구 방치 — 백로그 규모상 8일+). 스윕이 '지나갔지만
   //   실제로는 조회한 적 없는' 행이 계속 쌓인 이유. → ① 학습 상한 안에서만 쏘고 ② **실제 처리한 행까지만
   //   커서를 전진**시킨다(시도 못 한 행은 다음 라운드에 다시 잡히게).
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('kakao_sweep'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   const budget: FetchBudget = { left: resolveSubreqBudget(cap, learnedCap) }
   let found = 0, lastDone = cursor
@@ -575,7 +577,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   }
   const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const nextCursor = lastDone
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)

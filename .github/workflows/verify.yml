@@ -245,6 +245,13 @@ jobs:
         run: node scripts/check-commission-budget.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-28: 서브리퀘스트 학습 상한 키를 레인끼리 공유 금지 — 건당 비용이 다른 레인이 한 키를
+      #   같이 쓰면 서로의 관측을 덮어써 어느 레인도 자기 한도를 학습 못 한다(보강 레인이 남의 백오프로
+      #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.
+      - name: Subrequest cap lane-isolation guard (strict)
+        run: node scripts/check-subreq-cap-lane.mjs -s
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.
