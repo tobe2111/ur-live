@@ -326,6 +326,38 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
 > ⚠️ 이 접근이 없으면: 라이브 원인 규명이 "대표가 상태줄 복사 → 붙여넣기" 왕복에 묶여 한 사이클에 수십 분씩 소모된다
 > (2026-07-28 크롤 전멸 규명이 실제로 그랬고, 직접 조회로 전환하자 예외 원문 확보에 1분 걸렸다).
 
+## ☁️ Cloudflare API 접근 (2026-07-28 대표 지시 — "영구적으로, 다른 세션에서도")
+
+라이브 인프라(환경변수·배포·빌드로그·D1·KV)를 **대시보드 왕복 없이 직접** 확인·조정한다.
+
+**자격증명**: Claude Code **환경변수** `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`.
+⚠️ 컨테이너 시작 시 주입 → 등록 직후 세션엔 안 보인다(다음 세션부터). 미주입이면 대표에게 값을 묻지 말고
+그 작업을 대표에게 요청하거나 다음 세션으로 미룬다. **레포에 절대 커밋 금지**(공개 레포).
+
+**⚠️ 프록시**: `dash.cloudflare.com` 은 이 환경에서 차단(000). **`api.cloudflare.com` 은 통과** — API 만 쓴다.
+
+```bash
+CF=https://api.cloudflare.com/client/v4
+AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+curl -sS "$CF/user/tokens/verify" -H "$AUTH"                                    # 토큰 유효성
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" -H "$AUTH"       # 워커 목록
+# 워커 환경변수(시크릿 아님) 조회/설정은 settings 엔드포인트 — 값 교체 시 기존 바인딩 전체를 함께 보내야
+# 덮어써지지 않는다(부분 PATCH 아님). 반드시 조회 → 병합 → 전송 순서.
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -H "$AUTH"
+```
+
+**🚫 자율 규율 (대표가 넓은 권한을 줬어도 지킨다)**:
+1. **코드 배포는 이 토큰으로 하지 않는다.** 반드시 PR → CI(46 불변식) → 대표 승인 → 머지 경유.
+   토큰으로 직접 배포하면 오늘 실제로 실수를 잡아낸 게이트(파일크기 래칫·타입체크)를 통째로 우회하게 된다.
+2. 토큰 용도는 **① 진단(빌드로그·배포상태·플랜/한도 확인) ② 게이트 env 토글 ③ D1/KV 읽기** 로 한정.
+3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
+4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
+
+> 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
+> 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · 서브리퀘스트 실효 상한이 50인지 1000인지
+> **플랜을 못 봐서** 관측 학습에만 의존했다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를 못 켜 제조사 풀이
+> 수동 실행분(85건)에 머물렀다.
+
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:
