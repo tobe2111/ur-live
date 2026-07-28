@@ -19,7 +19,7 @@ import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 import { getFunnelTailStats, getOrCreateClaimCode } from './lead-claim'
-import { isCollectRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { isCollectRunning, isMaintainRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -200,6 +200,9 @@ app.get('/influencer-pool/stats', async (c) => {
   // 🔒 수집 진행 여부 — lease(만료시각 ms)가 미래면 지금 돌고 있는 것. 화면 로컬 state 로는
   //   페이지를 나갔다 오면 알 수 없어 "다시 눌러도 되나?" 를 판단 못 했다(재클릭은 lease 가 막고 아무 일도 안 함).
   const collectRunning = await isCollectRunning(c.env.DB).catch(() => false)
+  // 🔧 2026-07-28: 정비도 '지금 돌고 있는지'를 노출한다. 수집(collect_running)엔 있었는데 정비엔 없어서
+  //   '전체 정비' 를 눌러도 진행 중인지 끝났는지 화면에서 알 수 없었다(대표 신고).
+  const maintainRunning = await isMaintainRunning(c.env.DB).catch(() => false)
   const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
   let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
@@ -222,7 +225,7 @@ app.get('/influencer-pool/stats', async (c) => {
   const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
   const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
   const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
-  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, run, gate, collect_running: collectRunning, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
+  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, run, gate, collect_running: collectRunning, maintain_running: maintainRunning, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
