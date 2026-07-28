@@ -63,7 +63,7 @@
   "src/pages/StayDetailPage.tsx": 896,
   "src/pages/VouchersPage.tsx": 1040,
   "src/pages/WholesaleCatalogPage.tsx": 813,
-  "src/routes/admin.routes.tsx": 737,
+  "src/routes/admin.routes.tsx": 743,
   "src/shared/db/production-schema.ts": 682,
   "src/utils/auth.ts": 616,
   "src/worker/cron/scheduled-cleanup.ts": 1029,

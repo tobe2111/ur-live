@@ -67,6 +67,7 @@ const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPa
 const AdminAdsServicesPage = lazy(() => import('@/pages/admin/AdminAdsServicesPage'))
 const AdminInfluencerPoolPage = lazy(() => import('@/pages/admin/AdminInfluencerPoolPage'))
 const AdminBuyerPoolPage = lazy(() => import('@/pages/admin/AdminBuyerPoolPage'))
+const AdminMakerPoolPage = lazy(() => import('@/pages/admin/AdminMakerPoolPage'))
 const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPage'))
 const AdminStoreProspectsPage = lazy(() => import('@/pages/admin/AdminStoreProspectsPage'))
 const AdminGovNoticesPage = lazy(() => import('@/pages/admin/AdminGovNoticesPage'))
@@ -189,6 +190,11 @@ export function AdminRoutes() {
       <Route path="/admin/buyer-pool" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBuyerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/maker-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminMakerPoolPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/partner-pool" element={
