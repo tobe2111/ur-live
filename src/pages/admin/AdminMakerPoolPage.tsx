@@ -129,7 +129,7 @@ export default function AdminMakerPoolPage() {
   return (
     <AdminLayout>
       <div className="p-4 lg:p-6">
-        <DashboardPageHeader title="🏭 제조사·판매사 후보 풀" description="도매몰(유통스타트) 전용 — 제조사(브랜드사) 공급자 + 판매사 후보. 소비자 파트너 풀과 별개 DB." />
+        <DashboardPageHeader title="🏭 제조사·판매사 후보 풀" subtitle="도매몰(유통스타트) 전용 — 제조사(브랜드사) 공급자 + 판매사 후보. 소비자 파트너 풀과 별개 DB." />
 
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 mb-3">
           {card('전체', stats?.total || 0)}
