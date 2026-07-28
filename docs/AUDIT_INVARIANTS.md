@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (41개 불변식)
+bash scripts/audit-gate.sh           # 전체 (49개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -27,6 +27,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **커미션 예산 [INV-CB]** | 플랫폼 부담 성장 커미션(어필리에이트·멀티티어·영입자·에이전시)의 적립은 오케스트레이터(`creditOrderCommissions`) 경유만 — 3P 주문당 예산(수수료−PG준비금) 캡 우회 호출/신규 적립 INSERT 0. 수학(비례배분·합≤예산)은 `commission-budget.test.ts` 유닛이 보장. ⚠️ 이 불변식은 오늘의 **"platform net ≥ 0"**(커미션이 5% 를 PG준비금 바닥까지 잠식 허용)이다 — 2026-07-08 확정 원칙의 더 강한 **"platform net == 5%"** 는 아래 #44(8월 flip 시 신설) | `check-commission-budget` | 2026-07-04 (재원 구조 개편 — `commission-funding-restructure.md`) |
 | **커미션 재원=promo·5%불가침 [#44 — flip 시 신설, 미구현]** | (2026-07-08 확정 원칙) **모든** 성장 커미션(어필리에이트·멀티티어·인플 영입·인플 share·**에이전시 1%·30% share 포함**)은 매장 promo(5% 밖, `promo_funding_source=owner`) 재원 → **원장 `platform:revenue` = 결제액 5% 전액 불변(성장 커미션 debit 0, 예외 없음)**. 에이전시도 조율 마진(promo)에서 먹으므로 5% 무관(= 쇼핑 벤더 모델). **PG 는 이 5% 안에서 흡수(원장 밖 비용)** — 실현마진 5%−PG 와 구분. 오늘 owner 스위치는 어필리에이트만 커버 → flip 이 나머지 전 축 확장. 가드: `commission-budget.ts` flip 플래그로 플랫폼 예산 0 강제 + `commission-budget.test.ts` `platformNet==fee` 단언 + `check-commission-budget` R4(어떤 성장 커미션도 `platform:revenue` debit 0, 예외 없음) | `check-commission-budget`(R4 예정) | **미구현** — 8월 promo flip. 설계: `commission-funding-restructure.md` §확정 원칙 |
 | **수집 예산 학습 레인격리** | 서브리퀘스트 학습 상한(`ads_subreq_cap_*`)은 **레인마다 다른 키** — 건당 비용이 다른 레인(전화 스윕·인플루언서 = fetch 1 / 보강 = fetch 4~6 + D1)이 한 키를 공유하면 서로의 관측을 덮어써 **어느 레인도 자기 한도를 학습 못 함**(보강 레인이 남의 백오프로 env 300 → 실제 37 로 굶음). 유어애즈는 `subreqCapKey(lane)` 경유 + 키 값 파일간 중복 0 | `check-subreq-cap-lane` | 2026-07-28 (파트너풀 보강 "무증거 종료" 진단 — 공유 캡 키 분리 후 신설) |
+| **세션 인계** | 브랜치가 `src/` 를 바꿨으면 `docs/CURRENT_WORK.md` 가 **한 번은** 갱신돼 있음 — 다음 세션이 옛 상태로 오판해 이미 고친 것을 또 파는 사고 방지. 문서/테스트만 바꾼 브랜치는 대상 아님(소음 억제). 남길 4가지: ①다음 세션 첫 액션 ②완료분+해시 ③**이번에 틀렸던 판단** ④대기 결정 | `check-current-work-sync` | 2026-07-28 (실사고 후 신설 — 보강 레인 5건 머지 중 인계 0회, 룰만 있고 강제가 없어 놓침) |
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |
 | **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — 정수 파싱은 `intParam(raw, def)`(`@/shared/pagination`) 경유 강제(0/음수 클램프 보존). ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 100+ 라인 intParam 전환 후 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
