@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { ADS_AI_HIDDEN } from '@/shared/feature-flags'
 
 const DEFAULT_DEST = '/ads/dashboard'
 
@@ -102,7 +103,7 @@ export default function MarketingLoginPage() {
 
   return (
     <div className="ua-auth force-light-theme">
-      <SEO title="유어애즈 로그인 - UR Ads" description="유어애즈에 로그인하세요. 네이버 검색광고 자동입찰·통합 실적·AI 마케터." url="/ads/login" />
+      <SEO title="유어애즈 로그인 - UR Ads" description={`유어애즈에 로그인하세요. 네이버 검색광고 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}.`} url="/ads/login" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <form className="ua-auth-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>

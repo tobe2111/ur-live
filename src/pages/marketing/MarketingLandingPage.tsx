@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { ADS_AI_HIDDEN } from '@/shared/feature-flags'
 
 const APP = '/ads/dashboard'
 const CONTACT = 'mailto:jiwon@ur-team.com'
@@ -103,7 +104,7 @@ export default function MarketingLandingPage() {
       <style>{SCOPED_CSS}</style>
       <SEO
         title="유어애즈 UR Ads — 광고 입찰부터 발주까지, 하나로 자동화"
-        description="네이버 검색광고를 자동화하는 B2B 마케팅 도구. 목표순위 자동입찰, 부정클릭 방어, 키워드 확장, 통합 실적(ROAS), AI 마케터. 유어딜 운영사가 직접 만들어 매일 씁니다. 네이버 공식 API 기반 · 크롤링 아님. 베타 기간 무료(승인제)."
+        description="네이버 검색광고를 자동화하는 B2B 마케팅 도구. 목표순위 자동입찰, 부정클릭 방어, 키워드 확장, 통합 실적(ROAS), 순위·가격 모니터링. 유어딜 운영사가 직접 만들어 매일 씁니다. 네이버 공식 API 기반 · 크롤링 아님. 베타 기간 무료(승인제)."
         image="https://urdeal.kr/og-urads.png"
         url="/ads"
         type="website"
@@ -338,7 +339,8 @@ export default function MarketingLandingPage() {
           </div>
         </div>
 
-        {/* 05 AI 마케터 */}
+        {/* 05 AI 마케터 — 🚫 ADS_AI_HIDDEN(2026-07-28 대표 "AI 안 씀"): 홍보 섹션 미노출. 마크업은 보존(플래그 false 면 복원). */}
+        {!ADS_AI_HIDDEN && (
         <div style={featRow}>
           <div>
             <div style={eyebrow}>AI 마케터</div>
@@ -354,6 +356,7 @@ export default function MarketingLandingPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* 06 발주 수집 (이미지 좌 / 텍스트 우) */}
         <div style={{ ...featRow, borderTop: '1px solid var(--line)' }}>
@@ -415,13 +418,13 @@ export default function MarketingLandingPage() {
           {/* 베타(도구) */}
           <div style={{ border: '1.5px solid #3B6EF5', borderRadius: 16, padding: 30, background: 'var(--panel)', position: 'relative', boxShadow: '0 24px 60px -30px rgba(59,110,245,.55)' }}>
             <span style={{ position: 'absolute', top: -12, left: 30, fontSize: 11, fontWeight: 700, color: '#fff', background: 'linear-gradient(96deg,#3B6EF5,#8B5CF6)', padding: '5px 11px', borderRadius: 999 }}>지금 이용 가능</span>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>베타 · 도구 전 기능</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>자동입찰 · 키워드 · 모니터링 · AI</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>베타 · 도구 전 기능</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>{ADS_AI_HIDDEN ? '자동입찰 · 키워드 · 모니터링 · 리포트' : '자동입찰 · 키워드 · 모니터링 · AI'}</div>
             <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩0</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/베타 기간</span></div>
             <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: 12, borderRadius: 9 }}>가입하고 입장 요청</Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 · 키워드 확장 · 통합 실적</li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />순위·가격 모니터링 · 부정클릭 방어</li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />AI 마케터 · 주간 리포트</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />{ADS_AI_HIDDEN ? '주간 실적 리포트' : 'AI 마케터 · 주간 리포트'}</li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />승인제 입장 — 가입 후 원클릭 요청</li>
             </ul>
           </div>
@@ -494,7 +497,7 @@ export default function MarketingLandingPage() {
               <UrAdsLogo size={26} />
               <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '16px 0 0', maxWidth: 260 }}>네이버 광고·커머스를 한 곳에서 자동화하는 종합 마케팅 솔루션. 유어팀 그룹.</p>
             </div>
-            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>제품</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">자동입찰</a><a href="#features">부정클릭 방어</a><a href="#features">통합 실적</a><a href="#features">AI 마케터</a></div></div>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>제품</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">자동입찰</a><a href="#features">부정클릭 방어</a><a href="#features">통합 실적</a>{!ADS_AI_HIDDEN && <a href="#features">AI 마케터</a>}</div></div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>회사</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">소개</a><a href="#pricing">요금제</a><a href="#proof">왜 유어애즈</a><a href={CONTACT}>문의</a></div></div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>지원</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href={CONTACT}>도움말</a><a href={CONTACT}>문의하기</a><Link to={loginHref}>대시보드</Link></div></div>
           </div>

@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🔷 2026-07-28 — 🚫 유어애즈 **AI 기능 노출 숨김** (`ADS_AI_HIDDEN`) — 대표 확정 "AI 기능 안 쓸 거야"
+**발단**: 세션에서 유어애즈에 광고주 계정(`claude-test@ur-team.com`, id 6 — 대표가 어드민에서 입장 승인)으로 **직접 접속해 전 기능 실측**. `POST /api/ads/ai-marketer`·`/content/generate` 가 **전 계정 503 `NOT_CONFIGURED`** — ur-ads 워커에 `ANTHROPIC_API_KEY` 미설정(2026-07-20 plaintext var wipe 사고와 동일 계열 정황). 대표가 **키를 넣지 않기로 확정** → 화면에만 남은 AI 메뉴가 광고주에겐 죽은 버튼 + 내부 문구("Anthropic API 키 설정 후 사용") 노출이라 노출만 정리.
+- **플래그 1개(`src/shared/feature-flags.ts` `ADS_AI_HIDDEN=true`, 가역)**: 대시보드 'AI 스튜디오' 탭 제거(`dashboard-tabs.tsx` — 정의는 `ALL_DASH_TABS` 에 보존) · 패널 렌더 가드(`MarketingDashboardPage`) · 옛 딥링크(`?tab=ai`·`#sec-ai`·`#sec-content`)는 홈 탭 폴백 · 랜딩(`/ads`) AI 홍보 섹션 05·요금제 문구 2곳·푸터 링크·메타 description · 로그인/가입 안내 문구.
+- **서버·컴포넌트 전부 보존** — `/api/ads/ai-marketer`·`/content/*` 라우트, `AiMarketerSection`·`ContentStudioPanel`, 엔타이틀먼트 무접촉. 키 넣고 플래그만 false 로 되돌리면 즉시 복원.
+- **미변경(의도)**: ① `MarketingLegalPage` 처리위탁 'Anthropic' 항목 — 기능이 되살아날 수 있으므로 **과소 고지보다 유지가 안전**(대표 판단 대기) ② 어드민 전용 `InfluencerMatchingPanel` 의 '🤝 AI 매칭 근거' 버튼 — 광고주 비노출·어드민 내부 도구라 범위 밖(누르면 동일 503).
+- **같은 점검에서 나온 미결 2건**: ⓐ 연관키워드/기회키워드/입찰추정 = 검색광고 자격증명 부재(광고주 개별 연결 설계 + 전역 폴백도 없음) → 신규 가입자는 키워드 탭 핵심 섹션이 빈 채 시작 ⓑ 인플루언서 수집 레인 오류 2건(YT `Too many subrequests`, 네이버 `블로그 검색 호출 실패`) — 학습형 캡 수렴 여부는 `platform_settings` 확인 필요(어드민 권한). 풀 자체는 정상 성장(36,425명, 24h +2,996).
+- ⚠️ 이 환경 npm 403 → tsc/build 는 CI. 가드 theme·file-size·light-input GREEN.
+
 ## 🔷 2026-07-27 (심야 세션) — 🧭 파트너 풀 **소급 재검사 구조 + 원클릭 운영** 완성 (PR #744~#761 전부 머지·배포)
 **핵심 구조 2개 (다음 세션 필독)**:
 - **분류 규칙 버전 스탬프**: `CLASSIFY_RULES_VERSION`(company-classify.ts, 현재 v3) × `ad_company_leads.classified_v` — 소급 정리(`reclassifyCompanyLeads`)가 `classified_v < VERSION` 행만 훑음. **판별/분류 규칙을 바꾸면 반드시 버전 +1**(안 올리면 기존 행 영구 방치 — 오늘 사고의 원인이었음). v2=헤드라인·키워드메아리·행사어휘, v3=안내페이지 어휘(위치안내/지정 게시대).
