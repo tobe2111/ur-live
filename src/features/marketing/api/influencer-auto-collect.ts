@@ -420,6 +420,11 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, SUBREQ_CAP_KEY)) || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
+  // 🍽️ 2026-07-28 보강 레인 기아 수리(라이브 실측: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0` 고착).
+  //   발굴 루프가 예산을 **0 까지** 먹어치워, 그 뒤에 도는 보강 4종(링크인바이오·YT성과·YT갱신·네이버활동)이
+  //   매 실행 예산 0 으로 즉시 반환했다 → 풀은 커지는데 연락처 확보율이 8.8% 에 고정.
+  //   발굴은 이 몫을 남기고 멈춘다. 발굴이 못 돈 키워드는 커서가 다음 틱에 이어받으므로 **수확 손실 0**(지연뿐).
+  const enrichReserve = Math.max(8, Math.min(40, Math.floor(budgetTotal * 0.3)))
 
   let saved = 0
   let quotaHit = false
@@ -459,7 +464,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   let ytBudgetBlocked = false
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   for (const k of finalPicks) {
-    if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
+    if (budget.left <= enrichReserve) break // 🔒 예산 소진(보강 예약분 제외) — 이번 틱 종료(다음 틱 커서 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
@@ -497,7 +502,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   }
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, budget.left <= 0, learnedCap, envBudget)
+  //   ⚠️ exhausted 는 '발굴이 **자기 몫**을 다 썼나' — 예약분을 남기고 멈추므로 0 이 아니라 예약분과 비교한다.
+  //      (0 과 비교하면 항상 false → 학습 상한이 영영 상향 회복되지 않는다.)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, budget.left <= enrichReserve, learnedCap, envBudget)
   if (nextCap != null) await writeSetting(DB, SUBREQ_CAP_KEY, String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
@@ -531,16 +538,25 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
   }
 
-  // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
+  // 🔁 보강 레인 라운드로빈(2026-07-28) — 순서를 고정하면 **뒤쪽 레인이 영구히 굶는다**.
+  //   예약분(enrichReserve)을 둬도 앞 레인이 먼저 다 쓰면 마지막 레인은 여전히 0 이라, 틱마다 시작 레인을
+  //   한 칸씩 돌려 4틱에 한 번은 각 레인이 1순위를 갖는다. 레인 내부는 각자 budget.left 를 보고 알아서 멈춤.
+  //   · 링크인바이오: 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12)
+  //   · YT 성과 progress/refresh: 검색과 같은 쿼터의 예약분 사용(0 각인 백로그 자동 치유)
+  //   · 네이버 활동: 블로거 RSS+홈 — **연락처가 여기서 나온다**(풀의 74% 가 블로거인데 확보율이 낮던 원인)
   let bioEnriched = 0
-  try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
-  // 📈 성과 지표 백필 — YT units 는 검색과 같은 쿼터: 검색 90회로 확보한 ~1,000 units/day 예약분 사용.
-  //   progress(신규) + refresh(평균0·무메일·미분류 우선 순환 — 0 각인 백로그 시간당 20 자동 치유).
   let perfEnriched = 0
-  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
-  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') } catch { /* fail-soft */ }
   let naverEnrich: NaverEnrichDiag | null = null
-  try { naverEnrich = await enrichNaverActivity(DB, budget, 20); perfEnriched += naverEnrich.measured } catch { /* fail-soft */ }
+  const enrichLanes: Array<() => Promise<void>> = [
+    async () => { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) },
+    async () => { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) },
+    async () => { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') },
+    async () => { const d = await enrichNaverActivity(DB, budget, 20); naverEnrich = d; perfEnriched += d.measured },
+  ]
+  const laneStart = (prev?.total_runs || 0) % enrichLanes.length
+  for (let i = 0; i < enrichLanes.length; i++) {
+    try { await enrichLanes[(laneStart + i) % enrichLanes.length]() } catch { /* fail-soft — 한 레인 실패가 나머지를 막지 않음 */ }
+  }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
