@@ -24,10 +24,11 @@
  *   ⚠️ 새 레인을 추가하면 `SubreqLane` 에 이름을 넣어라 — 남의 키를 재사용하면 이 사고가 재발한다.
  */
 export type SubreqLane =
-  | 'influencer'      // 인플루언서 자동수집 — 건당 fetch 1
-  | 'company_enrich'  // 파트너풀 연락처 보강 — 건당 fetch 4~6 + D1 다수(가장 비쌈)
-  | 'kakao_sweep'     // 카카오 전화 스윕 — 건당 fetch 1
-  | 'maintenance'     // 야간 풀 자동 정비 — D1 중심(통합/재추출/재분류) + 일부 재조회 fetch
+  | 'influencer'        // 인플루언서 자동수집 — 건당 fetch 1
+  | 'influencer_enrich' // 인플루언서 풀 보강(블로거 활동성·링크인바이오) — 건당 fetch 2 + D1 소수
+  | 'company_enrich'    // 파트너풀 연락처 보강 — 건당 fetch 4~6 + D1 다수(가장 비쌈)
+  | 'kakao_sweep'       // 카카오 전화 스윕 — 건당 fetch 1
+  | 'maintenance'       // 야간 풀 자동 정비 — D1 중심(통합/재추출/재분류) + 일부 재조회 fetch
 /** 레인별 학습 상한 저장 키(platform_settings). */
 export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane}`
 /** 이 아래로는 안 내린다 — 수확이 0 이 되면 학습 자체가 무의미. */
@@ -37,9 +38,16 @@ const RECOVER_RATIO = 1.25
 /** 한도 관측 시 하향 배율(부딪힌 지점보다 확실히 아래로). */
 const BACKOFF_RATIO = 0.8
 
-/** 응답/에러 메시지에 플랫폼 서브리퀘스트 한도 신호가 있는가. */
+/**
+ * 응답/에러 메시지에 플랫폼 한도 신호가 있는가.
+ *
+ * ⚠️ 2026-07-28: `too many subrequests` **하나만** 보던 것을 넓혔다. Cloudflare 는 같은 성격의 초과를
+ *   문구가 다른 예외로도 던진다 — 특히 **"Too many API requests by single worker invocation"**(D1 등
+ *   바인딩 호출 소진). 좁게 보면 그 경우가 *한도가 아닌 일반 오류*로 분류돼 **학습 상한이 안 내려가고**
+ *   매 실행 같은 지점에서 죽는 영구 루프가 된다(라이브에서 실제로 인플루언서 수집이 이 상태였다).
+ */
 export const isSubrequestLimitError = (msg?: string | null): boolean =>
-  /too many subrequests/i.test(String(msg || ''))
+  /too many (subrequests|api requests)/i.test(String(msg || ''))
 
 /** 이번 실행에 쓸 예산 — 학습값이 있으면 env/기본값과 함께 더 작은 쪽. */
 export function resolveSubreqBudget(envBudget: number, learnedCap: number): number {

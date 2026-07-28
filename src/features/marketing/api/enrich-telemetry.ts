@@ -14,6 +14,10 @@ import type { Env } from '@/worker/types/env'
 
 /** 보강 스냅샷 키 — 어드민 상태줄(`/api/admin/partner-pool/stats` → `enrichLast`)이 그대로 읽는다. */
 export const ENRICH_SNAPSHOT_KEY = 'ads_enrich_last'
+/** 📝 인플루언서 풀 보강 레인 스냅샷 키(2026-07-28 신설 — `influencer-enrich-lane.ts`).
+ *  ⚠️ 키만 여기 두는 이유: 어드민 통계 모듈이 **수집 엔진을 import 하지 않고** 이 값을 읽어야 한다
+ *  (메인 번들 경량 유지 — `admin-ads-influencers.routes.ts` 헤더 규칙). */
+export const INFLUENCER_ENRICH_SNAPSHOT_KEY = 'ads_influencer_enrich_last'
 
 const nowStamp = () => new Date().toISOString().slice(0, 19).replace('T', ' ')
 

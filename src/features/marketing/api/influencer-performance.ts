@@ -10,6 +10,7 @@ import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { runDdlOnce } from './ads-schema-guard'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -157,19 +158,21 @@ export function parseNaverNeighborCount(html: string): number {
 }
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
+//   channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지)
+//   + 📈 롱폼 중앙값(쇼츠 착시 배제)·쇼츠 비중 + 📝 블로거 마지막 글 날짜(검색 API postdate — RSS 차단 무관).
+export const AD_PERF_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT',
+]
 const _perfColPromise = new WeakMap<object, Promise<void>>()
+/** 🧱 2026-07-28: 매 인보케이션 5 ALTER → 체크섬 1회 조회(무료 플랜 예산 회수 — D1 도 서브리퀘스트다).
+ *  목록이 바뀌면 체크섬이 달라져 자동 재적용되므로 "버전 올리는 걸 잊어 컬럼이 안 생기는" footgun 이 없다. */
 export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
   const c = _perfColPromise.get(DB); if (c) return c
-  // channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지).
-  const p = (async () => {
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME').run().catch(() => null)
-    // 📈 2026-07-27 지표 개선 — 롱폼 중앙값(쇼츠 착시 배제) + 쇼츠 비중(%).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER').run().catch(() => null)
-    // 📝 블로거 마지막 글 날짜(YYYY-MM-DD) — 검색 API postdate 로 채움(RSS 차단과 무관하게 항상 동작).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT').run().catch(() => null)
-  })()
+  const p = runDdlOnce(DB, 'ads_ddl_influencer_perf', AD_PERF_DDL).then(() => undefined)
   _perfColPromise.set(DB, p); return p
 }
 
@@ -328,7 +331,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
-    if (budget.left <= 1) break
+    // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
+    //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
+    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
     if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
