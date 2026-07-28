@@ -17,11 +17,12 @@ type Row = Record<string, unknown>
 
 /** D1 최소 스텁 — SQL 모양으로 응답을 고르고, 원부 조회 횟수/최대 바인딩 수를 기록한다. */
 function fakeEnv(targets: Row[], registry: Row[]) {
-  const counters = { registryQueries: 0, maxBinds: 0, batches: 0 }
+  const counters = { registryQueries: 0, maxBinds: 0, batches: 0, updateSql: [] as string[] }
   const DB = {
     prepare(sql: string) {
       const st = { sql, binds: [] as unknown[] }
       const api = {
+        sql,
         bind(...b: unknown[]) { st.binds = b; counters.maxBinds = Math.max(counters.maxBinds, b.length); return api },
         async run() { return { meta: { changes: 1 } } },
         async first() { return null }, // stats/cursor 없음 → 첫 실행
@@ -39,7 +40,11 @@ function fakeEnv(targets: Row[], registry: Row[]) {
       }
       return api as unknown as ReturnType<D1Database['prepare']>
     },
-    async batch(stmts: unknown[]) { counters.batches++; return stmts.map(() => ({ meta: { changes: 1 } })) },
+    async batch(stmts: unknown[]) {
+      counters.batches++
+      for (const st of stmts as Array<{ sql?: string }>) if (st?.sql) counters.updateSql.push(st.sql)
+      return stmts.map(() => ({ meta: { changes: 1 } }))
+    },
   }
   return { env: { DB } as unknown as Env, counters }
 }
@@ -84,6 +89,16 @@ describe('matchRegistryEmails — 묶음 조회 불변식', () => {
     const r = await matchRegistryEmails(env, 400)
     expect(r.matched).toBe(0)
     expect(r.skip_reason.ambiguous).toBe(1)
+  })
+
+  it('🔒 UPDATE 는 "줄 값이 있고 그 칸이 빈" 행만 건드린다 — 카운터 부풀리기 방지', async () => {
+    // 실사고: 예전 WHERE 가 "이메일 또는 홈페이지가 비었으면" 이라 원부에 줄 값이 없어도 changes=1 이
+    //   찍혔다. 커서 재순회 중 total_matched 26 → 63 인데 with_email 은 한 자리도 안 움직였다(라이브 대조).
+    const { env, counters } = fakeEnv([target(1, '한울커넥티드')], [reg('한울커넥티드', 'h@x.com')])
+    await matchRegistryEmails(env, 400)
+    const sql = counters.updateSql.join(' ')
+    expect(sql).toMatch(/\? IS NOT NULL AND \(email IS NULL/)     // 이메일은 줄 값이 있을 때만
+    expect(sql).toMatch(/\? IS NOT NULL AND \(website IS NULL/)   // 홈페이지도 마찬가지
   })
 
   it('🔒 예산을 다 쓰면 조용히 0건이 아니라 사유를 남긴다', async () => {

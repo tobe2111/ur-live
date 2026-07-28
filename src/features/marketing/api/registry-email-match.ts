@@ -194,6 +194,12 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
   let matched = 0
   if (updates.length) {
     // 이메일은 반송 억제 목록에 걸리면 이식하지 않는다(품질 루프 존중). 홈페이지는 그와 무관하게 이식.
+    // 📏 **실제로 채워질 행만** 매칭한다(2026-07-28 라이브 실측 수리). 예전 WHERE 는
+    //   "이메일 또는 홈페이지가 비었으면" 이라, 원부에 줄 값이 **없는데도** 조건이 참이 돼 `changes=1` 이
+    //   찍혔다. 커서가 한 바퀴 돌고 재순회에 들어가자 `total_matched` 가 26 → 63 으로 오르는 동안
+    //   `with_email` 은 **한 자리도 안 움직였다**(라이브 대조). 상태줄이 낙관 방향으로 거짓말한 것 —
+    //   이번 세션 내내 고쳐온 '조용히 틀리는 코드'의 거울상(조용히 잘한 척)이다.
+    //   ⇒ "줄 값이 있고(? IS NOT NULL) 그 칸이 비어 있을 때"만 UPDATE 가 걸리게 한다.
     const rows = await DB.batch(updates.map(u => DB.prepare(
       `UPDATE ad_company_leads
          SET email = CASE WHEN ? IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ad_email_suppress s WHERE s.email = ?)
@@ -201,8 +207,10 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
              website = COALESCE(website, ?),
              contact_source = COALESCE(contact_source, 'registry'),
              active = CASE WHEN COALESCE(email, ?) IS NOT NULL OR phone IS NOT NULL THEN 1 ELSE active END
-       WHERE id = ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = ''))`
-    ).bind(u.email, u.email, u.email, u.website, u.email, u.id))).catch(() => null)
+       WHERE id = ?
+         AND ((? IS NOT NULL AND (email IS NULL OR email = ''))
+           OR (? IS NOT NULL AND (website IS NULL OR website = '')))`
+    ).bind(u.email, u.email, u.email, u.website, u.email, u.id, u.email, u.website))).catch(() => null)
     spend(budget)
     if (!rows) skip.update_batch_failed = (skip.update_batch_failed || 0) + 1 // 조용한 0건 금지
     matched = (rows || []).reduce((s, r) => s + ((r as { meta?: { changes?: number } })?.meta?.changes || 0), 0)
