@@ -30,7 +30,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
 async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, THIRD_PARTY_HOST } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, realSite } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -103,11 +103,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   **제3자 도메인**이라 크롤이 무조건 거부되는데도 대상 슬롯을 먹고 7일 쿨다운 도장까지 받아 왔다.
   //   → 여기서 미리 걸러 `site=null` 로 만들면 아래 네이버 지역검색/웹문서 **발견 경로로 넘어가** 진짜 홈페이지를
   //   찾을 기회를 얻는다(슬롯 회수 + 수율 상승). website 컬럼 자체는 보존 — 사람이 수동 접촉할 땐 유용하다.
-  const realSite = (w: string | null): string | null => {
-    if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
-    try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
-    return w
-  }
+  // realSite 는 contact-enrich SSOT (수집 레인과 같은 판정을 쓰기 위해 2026-07-28 승격).
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
     if (!phone && !email && !website) return

@@ -186,6 +186,28 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 //   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
 export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
 
+/**
+ * 🔎 크롤 가능한 **자체 사이트**인가 — 지도/SNS/UGC/구인 플랫폼 URL 은 크롤해도 업체 이메일이 안 나온다.
+ *   (2026-07-28 실측: 사이트 보유 행의 **22.9%** 가 instagram·blog.naver·cafe.naver·youtube·facebook·
+ *    pf.kakao·soomgo 같은 플랫폼 URL — 크롤 예산을 여기에 태우고 있었다.)
+ *   ⚠️ 예전엔 enrich-lane 내부 클로저라 **수집 레인이 같은 판정을 못 썼다** → SSOT 로 승격.
+ *   website 컬럼 자체는 보존한다(사람이 수동 접촉할 땐 유용) — '크롤 대상이냐'만 판정.
+ */
+export function realSite(w: string | null | undefined): string | null {
+  if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
+  try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
+  return w
+}
+
+/** SQL 선정 단계에서 쓰는 플랫폼 호스트 제외 목록 — `LIMIT n` 슬롯을 크롤 불가 URL 이 차지하지 않게 한다.
+ *  (JS `realSite` 가 최종 판정 — 여기서는 인덱스 없이도 값싸게 대부분을 걷어내는 1차 필터.) */
+export const PLATFORM_URL_SQL_EXCLUDE = [
+  '%instagram.com%', '%facebook.com%', '%youtube.com%', '%youtu.be%', '%blog.naver.com%', '%cafe.naver.com%',
+  '%post.naver.com%', '%naver.me%', '%place.map%', '%map.naver%', '%pf.kakao.com%', '%kakao.com%',
+  '%tistory.com%', '%brunch.co.kr%', '%band.us%', '%soomgo.com%', '%getmiso.com%', '%kmong.com%',
+  '%saramin.co.kr%', '%jobkorea.co.kr%', '%wanted.co.kr%', '%albamon.com%',
+]
+
 /** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
  *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
  *   crawlContact 의 requireName 가드(페이지에 상호 존재)로 2중 검증 — 오귀속(허위) 구조적 차단. */
