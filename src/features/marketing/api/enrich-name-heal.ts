@@ -17,11 +17,14 @@ interface HealDeps {
   budget: FetchBudget
   stamp: (id: number) => Promise<void>
   crawlContact: typeof import('./contact-enrich')['crawlContact']
+  /** D1 도 서브리퀘스트 — 호출부(company-collect)의 지갑에서 함께 지불해야 학습 분모가 진실이 된다. */
+  spendD1: (n?: number) => void
 }
 
 /** Phase 3 실행 — 예산이 남아 있고 한도에 안 부딪혔을 때만 호출된다. */
-export async function healSuspectNames({ DB, budget, stamp, crawlContact }: HealDeps): Promise<void> {
+export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD1 }: HealDeps): Promise<void> {
   const { suspectCompanyName, classifyLead } = await import('./company-classify')
+  spendD1()
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
       WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
         AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
@@ -29,13 +32,15 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact }: Heal
       ORDER BY id DESC LIMIT 8`)
     .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
   for (const t of healTargets) {
-    if (budget.left <= 2 || budget.limitHit) break
+    // 벽시계도 함께 본다 — 시간이 끝났는데 D1 치유만 계속 돌면 라운드 종료(스냅샷·학습)를 못 마친다.
+    if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
     if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
     const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
     if (c.siteName && c.siteName !== t.company_name) {
       // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).
       const cls = classifyLead({ company_name: c.siteName, category: t.category, source: 'webkr', source_keyword: t.source_keyword })
       if (cls.ok) {
+        spendD1()
         await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, category = COALESCE(?, category), subcategory = COALESCE(?, subcategory),
             lead_type = ?, classify_confidence = ? WHERE id = ? AND status = 'new'`)
           .bind(c.siteName.slice(0, 120), cls.confidence === 'evidence' ? cls.category : null, cls.confidence === 'evidence' ? cls.subcategory : null,
