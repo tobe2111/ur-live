@@ -8,8 +8,8 @@ import { formatNumber, kstShort } from '@/utils/format'
 const CRAWL_REASON_LABEL: Record<string, string> = {
   ok: '성공', no_contact: '이메일 미게시', fetch_fail: '페이지 못가져옴', robots: 'robots 차단',
   dead_domain: '죽은 도메인', no_name: '상호 불일치', blocked_host: '제외 호스트', bad_url: '잘못된 주소', budget: '예산 소진',
-  http_403: '봇차단(403)', http_404: '경로없음(404)', http_5xx: '서버오류(5xx)', network: '접속불가/타임아웃',
-  subreq_limit: '⛔ 플랫폼 요청한도',
+  http_403: '봇차단(403)', http_404: '경로없음(404)', http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)',
+  subreq_limit: '⛔ 플랫폼 요청한도', timeout: '⏱ 응답 시간초과(상대 서버)',
 }
 
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }

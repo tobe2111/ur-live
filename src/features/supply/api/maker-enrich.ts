@@ -41,12 +41,15 @@ const spend = (b: Budget) => { b.left -= 1 }
  * 외부 fetch 공용 래퍼 — 실패를 삼키지 않고 **한도 신호를 예산 객체에 남긴다**.
  * 한 번 한도에 부딪히면 그 인보케이션의 이후 fetch 는 전부 throw 하므로 남은 작업은 의미가 없다.
  */
-async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget: Budget): Promise<Response | null> {
+async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget: Budget, errSink?: { msg: string }): Promise<Response | null> {
   const { timeoutMs = 8000, ...rest } = init
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err || '')
+    const e = err as { name?: string; message?: string } | null
+    const msg = String(e?.message || '')
+    // 예외 이름을 그대로 남긴다(추측 금지) — AbortError=상대 무응답 / TypeError "Too many subrequests"=워커 한도.
+    if (errSink) errSink.msg = `${e?.name || 'Error'}: ${msg.slice(0, 70)}`
     if (isSubrequestLimitError(msg)) budget.limitHit = true
     return null
   }
@@ -116,8 +119,9 @@ export function extractEmail(html: string): string | null {
   return stripped && publishableEmail(stripped) ? stripped : null
 }
 
+// 'network'(예외)는 처방이 갈리므로 쪼갠다 — subreq_limit(워커 한도) / timeout(상대 무응답) / network(DNS·TLS).
 export type MakerCrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'robots' | 'no_name' | 'no_contact'
-  | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit'
+  | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout'
 
 /**
  * 홈페이지에서 게시 이메일 크롤(robots.txt 준수) — 홈 + 고수율 연락처 경로.
@@ -144,8 +148,9 @@ async function crawlEmail(website: string, budget: Budget, requireName?: string)
     'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
   }
   let lastStatus = 0
+  const errSink = { msg: '' }
   const fetchHtml = async (u: string): Promise<string> => {
-    const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget)
+    const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget, errSink)
     if (!r) { lastStatus = -1; return '' }
     lastStatus = r.status
     return r.ok ? await r.text().catch(() => '') : ''
@@ -204,7 +209,8 @@ async function crawlEmail(website: string, budget: Budget, requireName?: string)
   if (budget.limitHit) return { email: null, reason: 'subreq_limit' }
   if (email && !nameSeen) return { email: null, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 회사일 수 있음
   if (email) return { email, reason: 'ok' }
-  const httpReason = (): MakerCrawlReason => lastStatus === 403 || lastStatus === 401 ? 'http_403'
+  const httpReason = (): MakerCrawlReason => /^AbortError|TimeoutError/.test(errSink.msg) ? 'timeout'
+    : lastStatus === 403 || lastStatus === 401 ? 'http_403'
     : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : 'network'
   return { email: null, reason: anyPage ? 'no_contact' : httpReason(), failUrl: url.origin }
 }

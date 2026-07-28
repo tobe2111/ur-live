@@ -222,7 +222,10 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
 /** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
-export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit'
+// ⚠️ 'network'(예외 발생)는 원인이 갈린다 — 표본 4건이 아니라 **분포 자체가 답하도록** 쪼갠다:
+//   subreq_limit(워커 한도 소진) / timeout(상대 서버 무응답 8s) / network(DNS·TLS·연결거부).
+//   셋은 처방이 전혀 다르다: 한도=예산 축소, 타임아웃=대기시간·동시성 조정, DNS=대상 URL 품질.
+export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout'
 export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
@@ -347,7 +350,9 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) { email = null; return { email: null, phone, siteName, reason: 'dead_domain' } } // 죽은 도메인(반송 확정) 배제
   // 한도 도달은 **사이트의 문제가 아니다** — 별도 사유로 분리해야 호출부가 '실패 도장' 대신 '중단'을 고른다.
+  //   타임아웃(AbortError)도 분리 — 우리 인프라(한도) vs 상대 서버(무응답) vs 주소 품질(DNS)을 분포로 판별.
   const httpReason = (): CrawlReason => budget?.limitHit ? 'subreq_limit'
+    : lastStatus === -1 && /^AbortError|TimeoutError/.test(errSink.msg) ? 'timeout'
     : lastStatus === 403 || lastStatus === 401 ? 'http_403'
     : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
   const reason: CrawlReason = email ? 'ok' : (!anyPage ? httpReason() : 'no_contact')

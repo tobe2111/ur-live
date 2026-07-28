@@ -29,7 +29,8 @@ interface EnrichInfo {
 const CRAWL_REASON_LABEL: Record<string, string> = {
   ok: '성공', no_contact: '이메일 미게시', robots: 'robots 차단', no_name: '상호 불일치',
   blocked_host: '제외 호스트', bad_url: '잘못된 주소', http_403: '봇차단(403)', http_404: '경로없음(404)',
-  http_5xx: '서버오류(5xx)', network: '접속불가/타임아웃', subreq_limit: '⛔ 플랫폼 요청한도',
+  http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)', subreq_limit: '⛔ 플랫폼 요청한도',
+  timeout: '⏱ 응답 시간초과(상대 서버)',
 }
 
 const KIND_META: Record<string, { label: string; cls: string }> = {
