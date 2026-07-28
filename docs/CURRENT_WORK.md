@@ -63,6 +63,22 @@ stats 에 `merged_away` 를 새로 노출해 접힌 수가 **보이게** 했다.
 **병합 진행 상태**: 500그룹 / 1,523행 접음(`done:false` — 더 있음). **나머지는 이 수정이 배포된 뒤에 이어서.**
 `maxGroups` 는 500이 상한이라 `done:true` 될 때까지 반복 호출.
 
+### ⏰ 자동수집 전수 확인 — "러너는 있는데 크론이 없다"
+
+대표 지시 "자동수집도 영구적으로" 에 대한 **전수 대조**를 했다. `features/marketing/api` +
+`features/supply/api` 의 수집·스윕 진입점 27개를 ur-ads `scheduled()` 블록과 맞춰본 결과 —
+`matchRegistryEmails` 하나만 스케줄이 없었고(위에서 배선), **나머지는 전부 물려 있다.**
+`enrichNaverActivity`·`enrichPoolFromLinkInBio`·`enrichYouTubePerformance` 는 `runInfluencerEnrich`
+(스케줄됨) 안에서 호출되는 보조 헬퍼라 정상.
+
+**영구 가드**: `check-collector-cron.mjs`(audit-gate 53번째). 이 사고는 오늘만 **두 번**이었다 —
+`runMakerCollect`(제조사 풀이 수동 85건에 고착) · `matchRegistryEmails`. 둘 다 **코드는 정상이고 테스트도
+통과**했다. 빠진 건 "언제 도는가" 하나였고 그건 어떤 가드도 안 보던 자리였다.
+
+> ⚠️ 이 가드 첫 판이 **헛돌았다** — 이름 매칭이 부분문자열이라 `matchRegistryEmailsX` 가 통과했다.
+> 되돌려-검증(스케줄을 일부러 끊고 잡히는지 확인)에서 발견해 경계 매칭으로 고쳤다.
+> **가드를 만들면 반드시 깨뜨려서 잡히는지 확인할 것** — 오늘 이걸로 두 번 살았다.
+
 ## 🟢 2026-07-28 (7차) — **인플루언서 풀: 안 돌던 보강 3종 + 34시간 멈춘 시트 미러**
 
 ### ➡️ 다음 세션 첫 액션 (숫자 3개면 판정된다)
