@@ -1,5 +1,65 @@
 # 🚧 진행 중 작업
 
+## 🔑 2026-07-28 — 🚨 **CF API 토큰 public 레포 유출**(대표 조치 필요) + 🌙 자동 정비 무음 정지 근본수리 + ur-live-global 진단
+
+### 🚨 ① 보안 — `.env.deploy` 에 **살아있는 CLOUDFLARE_API_TOKEN** 이 커밋돼 있었다 (public 레포)
+`1a835daec`(#737)에 들어갔고, 이 세션이 **그 토큰으로 실제 계정 워커 설정을 읽는 데 성공**했다(= 유효·활성).
+그 토큰이면 ur-ads 의 **모든 환경변수가 평문으로 읽힌다**(전부 `plain_text` 타입): `JWT_SECRET`(세션·광고주·어드민
+토큰 위조 가능) · `KAKAO_REST_API_KEY` · `GSHEETS_SA_KEY`(구글 서비스계정 개인키) · `NAVER_SEARCHAD_SECRET_KEY` ·
+`YOUTUBE_API_KEY` · `NEIS_API_KEY` · `PUBLIC_DATA_SERVICE_KEY` · `WORK24_API_KEY`.
+- **코드 조치(이 커밋)**: 파일 tracking 제거 + `.gitignore` 명시 예외 + **가드 2건 수리** —
+  ⓐ `check-no-secrets.sh` 의 CF/JWT 패턴이 **따옴표를 필수**로 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다
+  ⓑ 같은 패턴의 `grep -v "…\$\{"` 가 BRE 문법 오류(`Unmatched \{`)라 **grep 이 실패 → 패턴 3·4 가 무음으로 죽어 있었다**
+  → 따옴표 선택 + `-E` 전환 + **dotenv 파일 자체를 커밋 금지**(패턴 0) 신설. 재현 테스트로 검출 확인.
+- **⏳ 대표 조치(코드로 해결 불가)**: ① CF 토큰 폐기·재발급 ② `JWT_SECRET` 회전 ③ 나머지 키 회전
+  ④ ur-ads 변수들을 plaintext → **Secret 타입** 전환(현재는 대시보드/API 로 전부 열람 가능).
+  ⚠️ git history 에 남아 있으므로 **회전 전까지는 계속 유출 상태**다.
+
+### ✅ ② 검색광고 고객ID — 이미 정상(바꿀 것 없었음)
+대표가 08:50 UTC 대시보드에서 이미 `3228755` 로 바꿔 배포한 상태였다(코드 아님 — 워커 바인딩).
+3중 실측 확인: 바인딩 값 `3228755` · 네이버 API 직접 HMAC 호출 `/keywordstool` **200**·`/ncc/campaigns` **200** ·
+라이브 `/api/ads/keywords/related?seed=커피` **200 success**. 연관키워드·기회키워드 둘 다 살아났다.
+(`/searchad/campaigns` 의 `NOT_CONNECTED` 는 정상 — 광고주별 개별 연결 요구 설계. 전역 폴백 허용 여부는 별도 결정.)
+
+### 🌙 ③ 자동 정비가 07-26 이후 멈춘 이유 — **한 인보케이션에 수백~수천 D1 연산** (근본수리)
+**배제 완료(실측)**: cron 등록 ✅(`0 * * * *`) · 게이트 ✅(`ADS_AUTO_MAINTENANCE_ENABLED` 미설정=ON) ·
+`SELF` 바인딩 ✅ · 코드 배포 ✅(`1a835dae` 07-27 04:10 UTC + deploy-ads 전부 success) · `/__ads/maintenance` 가드 없음 ✅.
+**남은 원인 = 예산**. `runNightlyMaintenance` 는 4단계를 한 인보케이션에서 돌리는데:
+중복통합 그룹당 3쿼리 × 150그룹 × 4패스 + 재추출/재분류 3.6만 행 전수 페이징 = **수백~수천 D1 연산**.
+Cloudflare 는 **D1 쿼리도 서브리퀘스트 한도에 넣고**(#784 확증) 이 계정 실효 상한은 학습값 **29**.
+게다가 모든 D1 호출이 `.catch(() => null)` 이고 **결과 스탬프 쓰기가 맨 마지막**이라, 한도에서 죽으면
+**기록조차 안 남는다** → 어드민엔 "07-26 이후 아무것도 안 돎". (스탬프가 0으로라도 찍혔어야 정상.)
+**추가 발견(더 큰 낭비)**: `ensureInfluencerSchema` 가 매 인보케이션 **16 DDL**(+품질 3) 을 던진다 —
+컬럼이 다 있는 지금은 전부 no-op 인데 **예산 29 중 19를 먹었다**. 정비·수집 모든 레인이 같이 손해였다.
+**수리**:
+- 🧱 `ads-schema-guard.ts` — DDL **체크섬 1회 조회**로 16+3 쿼리 생략(목록이 바뀌면 값이 바뀌어 자동 재적용 → 버전 bump footgun 없음)
+- 🧮 `maintenance-budget.ts` — 예산 래퍼(소진 시 **DB 무접촉 no-op** + `exhausted`/`limitHit` 관측). throw 안 하는 이유는
+  기존 호출부가 예외를 전부 삼켜 신호가 못 되기 때문.
+- 단계당 **1 인보케이션**(fresh 예산) + **매시간 1단계 순환**(`hourUTC % 4`) — 하루 24회(단계별 6회). **새 cron 0개**
+  (무료 계정 cron **5/5 소진** 상태라 추가 불가: ur-ads 1 · ur-live 3 · ur-live-cleanup-cron 1).
+- 커서 신설/보존: 재추출·재분류에 id 커서 추가(둘 다 OFFSET 전수스캔이라 예산 안에선 **영원히 앞부분만** 돌았다) +
+  품질 패스 포함 **"예산 소진"을 "완료"로 오판해 커서를 0 으로 리셋하던 버그** 차단(전화 스윕 커서 버그와 동일 클래스).
+- ⭐ 결과 스탬프를 **예산 밖에서 항상** 기록(`ops/cap/paused/limit_hit`) + 어드민 패널 노출 → 무음 정지 구조적 불가.
+- 유닛 `ads-maintenance-budget.test.ts` — 소진 후 DB 무접촉·batch 1연산·exhausted 관측·한도예외 학습·체크섬 민감도 고정.
+
+### 🌐 ④ ur-live-global 빌드 0초 실패 — **빌드 로그는 못 봤다**(토큰 스코프 없음)
+`/accounts/{acc}/builds/*` **403**(존재하지 않는 경로는 400/7003 이므로 경로가 아니라 권한). ur-ads 는 Workers Logs 도
+`observability: null` 로 꺼져 있어 남은 로그도 없다. **대신 실측으로 더 중요한 걸 찾았다**:
+- `ur-live-global` 은 **Pages 가 아니라 Worker**(Pages 프로젝트 목록에 없음), 2026-03-03 생성, `last_deployed_from: "dash"`,
+  내용은 **대시보드 Hello World 템플릿 그대로** — 빌드가 한 번도 성공한 적 없다.
+- 그런데 **Custom Domain `world.ur-team.com` 이 이 워커에 붙어 있고**(enabled), 실제로 지금 `"Hello world"` 를 서빙 중이다(실측).
+- **0초 실패의 유력 원인(미확증)**: `wrangler.global.toml` 은 **Pages 설정**이다 — `pages_build_output_dir` 가 있고
+  Workers 필수인 `main` 이 없다 → wrangler 가 설정 검증에서 즉시 거부(빌드 명령 시작 전 = 0초). 루트 `wrangler.toml` 을
+  읽는 경우엔 `name = "ur-live"` 라 이름 불일치로 역시 즉시 실패 — **이쪽은 실패하는 게 다행**(성공했으면 2026-04-22
+  "Workers 가 Custom Domain 가로채기" 사고 재현).
+- **⏳ 대표 결정 필요**: 글로벌 버전을 띄울 계획이 없으면 → Git 연결 해제 + Custom Domain 회수(또는 워커 삭제)가 정답.
+  띄울 거면 → `wrangler.global.toml` 을 Workers 용으로 재작성하거나 Pages 프로젝트로 재생성. **둘 다 대시보드 작업**이다.
+
+### 💡 무료 플랜 유지 시 알아둘 천장 (대표 확정 "일단 무료")
+- 인보케이션당 서브리퀘스트 **50**(학습 실효 29) — D1 쿼리 포함. Paid 는 1,000(20배).
+- 계정 전체 cron **5개**(현재 5/5 — 하나도 못 늘린다). Paid 250. → 새 주기 작업은 **매시간 틱 안에서 순환**으로만 가능.
+- `ur-live-cleanup-cron`(`*/5`)이 슬롯 1개를 쓰고 있다 — 아직 필요한지 점검하면 슬롯 1개 회수 가능.
+
 ## 🟢 2026-07-28 (3차) — **계측 배포 완료. 다음 세션은 조회 1회로 사인 확정한다**
 
 **상태**: PR #791 머지(`8571ec2`) → main 배포. 아래 2차 항목이 설계한 계측이 **이제 라이브**다.

@@ -178,6 +178,8 @@ export interface Env {
   ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
   ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
   ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
+  ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
+                                          //   ⚠️ D1 쿼리도 서브리퀘스트 한도를 쓴다(2026-07-28 확증) → 이 값이 실효 상한을 넘으면 학습이 자동으로 내린다.
                                           //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
                                           //   두면 한도 초과 후 전 fetch 가 throw → 크롤 전멸). 실효 상한은 관측 학습값(platform_settings
                                           //   `ads_subreq_cap`, collect-budget.ts)과 min 으로 결정되므로 올려도 안전하지만 효과는 학습값이 정한다.
