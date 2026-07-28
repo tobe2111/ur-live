@@ -329,14 +329,20 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   보강이 ADS_COMPANY_COLLECT_ENABLED 에 묶여, 수집 OFF 면 ADS_ENRICH_BUDGET 을 올려도 한 번도 안 돌았음).
   //   킬스위치 ADS_ENRICH_DISABLED='true' 만 끔. 키 없으면 내부에서 해당 단계 자연 스킵(fail-soft).
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
-    // 📧 이메일 보강 시간당 **2라운드 순차**(2026-07-27 대표 "전화보단 이메일 우선") — 각 라운드가 SELF
-    //   독립 인보케이션(fresh 서브요청 예산)이고, 1라운드가 enrich_checked_at 도장을 찍어 2라운드는
-    //   다음 백로그 구간을 이어 순회(중복 크롤 0). 네이버 무료 25K/day 안(라운드당 네이버 비중은 일부).
+    // 📧 이메일 보강 시간당 **N라운드 순차** — 각 라운드가 SELF **독립 인보케이션(fresh 서브요청 예산)** 이고,
+    //   1라운드가 enrich_checked_at 도장을 찍어 다음 라운드는 다음 백로그 구간을 이어 순회(중복 크롤 0).
+    //   ⚠️ 2026-07-28 실측으로 라운드 수가 **유일한 처리량 레버**임이 확정됐다: 서브리퀘스트 수리 후 크롤이
+    //   실제로 작동해 적중률 0%→45%(ok 5/11)가 됐지만, 학습된 실효 상한이 **29**(= 워커 호출당 한도가
+    //   명목 1,000이 아니라 훨씬 낮고 D1 쿼리까지 나눠 씀) → **라운드당 11건**이 천장. 2라운드면 22건/시간인데
+    //   백로그가 12만+ 이라 의미 있는 속도가 안 나온다. 라운드를 늘리는 것만이 정직한 증속(각 라운드가
+    //   새 예산을 받으므로). SELF fetch 자체는 이 cron 인보케이션의 서브요청 1개씩이라 20라운드도 안전.
+    const enrichRounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS || '', 10) || 8))
     ctx.waitUntil((async () => {
       try {
         if (env.SELF?.fetch) {
-          await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
-          await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+          for (let i = 0; i < enrichRounds; i++) {
+            await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+          }
         } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
       } catch { /* fail-soft — 다음 틱 재시도 */ }
     })())
