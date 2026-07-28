@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
+import { normalizeCompanyName } from './registry-email-match'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -102,6 +103,13 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
+  // 🔤 상호 지문(name_norm) — **원부 매칭 SSOT**. 예전엔 SQL 프리필터가 `공백·(주)·주식회사` 만 지우고
+  //   LIKE 패턴은 JS `normalizeCompanyName`(구두점·㈜·(유)·유한회사까지 제거) 결과를 써서 **양쪽 정규화가
+  //   어긋나 있었다**(그 함수 주석이 "같은 함수를 써야 매칭이 성립한다" 고 못박은 불변식이 깨진 상태).
+  //   → 저장 시 **JS 함수로 한 번** 계산해 컬럼에 넣는다. 이제 분기 자체가 불가능하고, LIKE 풀스캔도
+  //   인덱스 동등비교로 바뀐다(타깃 400개 × 원부 10만행 풀스캔이 사라진다).
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN name_norm TEXT').run().catch(() => null)
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_name_norm ON ad_company_leads(name_norm)').run().catch(() => null)
   // additive 컬럼(공공데이터 전환 §11) — 기존 행 무영향. active=1(액션풀), 연락처 없거나 폐업이면 0.
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME').run().catch(() => null)
@@ -243,9 +251,10 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
     const stmts = slice.map(l => {
       const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
       return DB.prepare(
-      `INSERT INTO ad_company_leads (company_key, company_name, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active, lead_type, classify_confidence, classified_v)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO ad_company_leads (company_key, company_name, name_norm, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active, lead_type, classify_confidence, classified_v)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(company_key) DO UPDATE SET
+         name_norm = COALESCE(ad_company_leads.name_norm, excluded.name_norm),
          lead_type = COALESCE(ad_company_leads.lead_type, excluded.lead_type),
          classify_confidence = COALESCE(ad_company_leads.classify_confidence, excluded.classify_confidence),
          email = COALESCE(ad_company_leads.email, excluded.email),
@@ -258,7 +267,7 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
                          OR COALESCE(ad_company_leads.phone, excluded.phone) IS NOT NULL
                        THEN 1 ELSE ad_company_leads.active END`
     ).bind(
-      companyKey(l), l.company_name.slice(0, 120),
+      companyKey(l), l.company_name.slice(0, 120), normalizeCompanyName(l.company_name),
       clamp(l.category, 40), clamp(l.subcategory, 40), tierOf(l.tier), clamp(l.region, 60),
       clamp(l.website, 200), clamp(l.email, 120), clamp(l.phone, 40), clamp(l.address, 300),
       clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.contact_source, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
