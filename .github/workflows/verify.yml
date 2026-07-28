@@ -281,6 +281,14 @@ jobs:
         run: node scripts/check-subreq-cap-lane.mjs -s
         continue-on-error: false
 
+      # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
+      #   없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 다음 회차에도 또 선두 → 매시간 같은 앞줄만
+      #   재크롤하고 백로그는 영영 미도달(에러도 로그도 안 남는다). 같은 사고가 보강 레인·수집 레인에서
+      #   두 번 났다 — 세 번째를 막는다.
+      - name: Crawl retry-cooldown guard (strict)
+        run: node scripts/check-crawl-cooldown.mjs -s
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.

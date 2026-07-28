@@ -304,10 +304,23 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
   if (!outOfBudget(budget)) {
-    const { crawlContact } = await import('./contact-enrich')
+    const { crawlContact, CRAWL_RULES_VERSION } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
-    const targets = (await DB.prepare("SELECT id, website, phone, category FROM ad_company_leads WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15")
+    // 🔁 2026-07-28 재시도 쿨다운 추가 — 보강 레인(enrich-lane:75)이 이미 쓰는 패턴인데 이 블록만 빠져 있었다.
+    //   쿨다운이 없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 **다음 회차에도 또 선두**에 온다 →
+    //   매시간 같은 15건을 다시 크롤(회당 최대 ~45 서브리퀘스트를 통째로 낭비)하고, 그 아래로 밀린 백로그는
+    //   **영영 도달하지 못한다**. 시도 즉시 도장(성공·실패 무관) + 7일 쿨다운으로 예산이 백로그를 흐르게 한다.
+    //   ⚠️ 전국 확장으로 사이트 보유 리드가 급증하면 이 낭비가 그대로 커진다(그래서 지금 고친다).
+    const targets = (await DB.prepare(`SELECT id, website, phone, category FROM ad_company_leads
+        WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
+          AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
+        ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15`)
       .all<{ id: number; website: string; phone: string | null; category: string | null }>().catch(() => null))?.results || []
+    // 도장은 크롤 **전에** 배치 1회 — 중간에 예산이 끊겨도 시도분이 앞줄에 다시 눌러앉지 않는다.
+    if (targets.length) {
+      const ids = targets.map(t => t.id).filter(n => Number.isFinite(n)).join(',')
+      if (ids) await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id IN (${ids})`).run().catch(() => null)
+    }
     for (const t of targets) {
       if (outOfBudget(budget)) break
       const c = await crawlContact(t.website, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
