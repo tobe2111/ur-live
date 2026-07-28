@@ -19,6 +19,8 @@ import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-qualit
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
+import { SUBREQ_CAP_KEY, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -96,45 +98,7 @@ export interface AutoCollectStats {
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
-const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
 
-type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string }; tistory?: { configured: boolean; found: number; saved: number; error?: string } }
-
-/** 🔔 조용한 실패 방어(2026-07-20 실사고 — wrangler deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음) —
- *  키 소실(configured=false) 또는 전 플랫폼 발굴 0 이면 Discord 경보. 6h throttle + 회복 시 즉시 해제.
- *  전부 fail-soft(알림 실패가 수집을 안 막음), DISCORD_WEBHOOK_URL 미설정=no-op. */
-async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
-  const webhook = env.DISCORD_WEBHOOK_URL
-  if (!webhook) return
-  const { diag, saved, quotaHit } = run
-  const keyMissing = !diag.yt.configured || !diag.naver.configured
-  // 🛡️ 2026-07-23: 풀 포화(발굴은 되는데 전부 중복 → saved=0)는 정상인데 6시간마다 오경보 → found 까지 0 일 때만
-  //   불건강(진짜 죽음 = 발굴 자체가 0). 중복-only 상태는 무경보.
-  const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
-  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
-  const prevAt = await readSetting(DB, ALERT_KEY)
-  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
-  if (!unhealthy) {
-    if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
-      await writeSetting(DB, ALERT_KEY, '')
-      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
-    }
-    return
-  }
-  const last = prevAt ? Date.parse(prevAt) : 0
-  const now = Date.now()
-  if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
-  await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
-  const lines = [
-    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
-    `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
-    `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
-    diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
-    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
-    '어드민 인플루언서 풀에서 상세 확인.',
-  ].filter(Boolean)
-  await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
-}
 
 /**
  * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
@@ -450,10 +414,12 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
-  // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
-  //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
-  //   기본 300 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300) }
+  // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
+  //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
+  const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
+  const learnedCap = Math.max(0, parseInt((await readSetting(DB, SUBREQ_CAP_KEY)) || '', 10) || 0)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  const budget: FetchBudget = { left: budgetTotal }
 
   let saved = 0
   let quotaHit = false
@@ -529,6 +495,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
+  // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
+  const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, budget.left <= 0, learnedCap, envBudget)
+  if (nextCap != null) await writeSetting(DB, SUBREQ_CAP_KEY, String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>

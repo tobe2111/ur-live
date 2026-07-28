@@ -56,6 +56,8 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 const POOL_CATEGORIES = ['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
+// 📊 매체별 엑셀 분리 다운로드 — 서버 EXPORT_PLATFORMS 화이트리스트와 같은 키(추가 시 양쪽 갱신).
+const EXPORT_PLATS = [{ v: 'youtube', label: '유튜브' }, { v: 'naver_blog', label: '네이버블로그' }, { v: 'naver_cafe', label: '네이버카페' }, { v: 'tistory', label: '티스토리' }]
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -253,15 +255,17 @@ export default function AdminInfluencerPoolPage() {
   }
 
   const [exporting, setExporting] = useState(false)
-  async function exportExcel() {
+  // 📊 엑셀 — plat 없으면 풀 전체, 있으면 그 매체만(유튜브/블로그/카페 분리 다운로드).
+  async function exportExcel(plat?: string) {
     setExporting(true)
     try {
       // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls).
       //   ⚠️ 20k행이면 전체+카테고리별 시트로 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
       //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
-      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob', timeout: 120000 })
+      const r = await api.get(`/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}`, { responseType: 'blob', timeout: 120000 })
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
-      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url); toast.success(`📊 엑셀 다운로드 완료 (${(r.data as Blob).size > 1048576 ? `${(((r.data as Blob).size) / 1048576).toFixed(1)}MB` : `${Math.round(((r.data as Blob).size) / 1024)}KB`} · 카테고리별 시트)`)
+      const label = plat ? (EXPORT_PLATS.find(p => p.v === plat)?.label || plat) : '전체'
+      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-${label}-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url); toast.success(`📊 ${label} 엑셀 다운로드 완료 (${(r.data as Blob).size > 1048576 ? `${(((r.data as Blob).size) / 1048576).toFixed(1)}MB` : `${Math.round(((r.data as Blob).size) / 1024)}KB`} · 카테고리별 시트)`)
     } catch (e) {
       const ax = e as { code?: string; response?: { status?: number } }
       if (ax.code === 'ECONNABORTED') toast.error('엑셀 내보내기 시간 초과 — 데이터가 많습니다. 잠시 후 다시 시도하거나 CSV를 이용하세요')
@@ -354,7 +358,11 @@ export default function AdminInfluencerPoolPage() {
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페 전 매체를 한 번에 수집 — YouTube 검색 예산 소진할 때까지 백그라운드로 연속 실행">{collecting ? '수집 중…' : '🔄 통합 수집'}</button>
           {collecting ? <span className="text-[11px] text-gray-500 self-center">백그라운드로 진행 중 — 페이지를 떠나도 계속됩니다</span> : null}
-          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">{exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}</button>
+          <button onClick={() => exportExcel()} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">{exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (전체)'}</button>
+          {/* 🎯 매체별 분리 다운로드 — 같은 양식(29열·카테고리별 시트), 그 매체 행만. 파일명으로 구분됨. */}
+          {EXPORT_PLATS.map(p => (
+            <button key={p.v} onClick={() => exportExcel(p.v)} disabled={exporting} className="px-3 py-2 rounded-lg border border-emerald-200 bg-white text-emerald-700 text-sm disabled:opacity-50" title={`${p.label} 리드만 엑셀로 — 전체와 같은 양식(카테고리별 시트)`}>📊 {p.label}</button>
+          ))}
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 29열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
           {/* 🛍️ 최근 구현한 서비스 표면 바로가기 — 이 풀이 이행 재고인 서비스몰(광고주 주문 화면)과 주문 접수함 */}
           <a href="/ads/dashboard?tab=services" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium" title="광고주가 보는 유어애즈 대시보드(서비스몰 주문 화면) — 새 탭">🛍️ 서비스몰 (광고주 화면)</a>

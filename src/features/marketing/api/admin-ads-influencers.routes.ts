@@ -523,7 +523,8 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
-app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls'))
+//   ?platform=youtube|naver_blog|naver_cafe|… → 매체별 분리 파일(2026-07-28 대표 요청). 없으면 전체(기존).
+app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls', c.req.query('platform') || ''))
 
 
 export { app as adminAdsInfluencerRoutes }
