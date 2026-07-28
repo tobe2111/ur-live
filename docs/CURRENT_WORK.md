@@ -26,6 +26,14 @@ Phase 2 가 25건을 돌기 전에 죽는다. **Phase 2 는 fetch 를 0회 쓴�
 방치 프로젝트**(`modified_on: 2026-03-03`, 매번 `started_at == completed_at` 즉시 실패). 코드 문제 아님 —
 **Git 연동 해제 권장**. 빌드 로그 조회는 토큰에 `Workers Builds: Read` 추가 필요(현재 403).
 
+**🏭 부수 발견 — 제조사 자동수집 cron 이 애초에 없었다(수리함)**: 대표 질문("게이트를 ur-live 에? ur-ads 에?")
+추적 중 확인 — `SUPPLY_MAKER_COLLECT_ENABLED` 는 `maker-pool.routes.ts` 에서 **상태 배지 표시용으로만** 읽히고,
+`runMakerCollect` 를 부르는 **cron 이 어디에도 없었다**(실호출부 = 어드민 수동 버튼뿐).
+⇒ 제조사 82건 고착은 "게이트 OFF" 때문이 **아니라 자동 수집 미배선** 때문. 플래그를 어디 넣어도 무의미했다.
+→ 메인 워커 hourly cron 에 `supply-maker-collect` 추가(게이트가 이제 실제로 동작).
+배치 근거: 도매몰 레인이라 ur-ads(마케팅)에 넣으면 서비스 경계 위반 + 메인 워커면 보강 레인과 다른
+인보케이션이라 서브리퀘스트 예산이 서로를 안 깎는다.
+
 **🔑 Cloudflare 영구 접근(대표 지시 "영구적으로, 다른 세션에서도")**: 토큰을 공개 레포 대신
 **D1 `platform_settings.cf_api_token` / `cf_account_id`** 에 보관 → 어드민 자격만으로 모든 세션이 자동 취득.
 경로 3단계(어드민 로그인 → D1 취득 → CF 호출 `success:true`) 실검증 완료. 절차는 CLAUDE.md.
