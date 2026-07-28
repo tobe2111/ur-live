@@ -8,6 +8,7 @@
  *   전부 platform_settings 스탬프 + lease 조회라 성격이 같고, 실패해도 화면이 죽지 않게 전부 fail-soft.
  */
 import { isCollectRunning, isMaintainRunning } from './collect-lease'
+import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry' // 키만(레인 코드 import 금지 — 메인 번들 경량)
 
 const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
 
@@ -27,6 +28,12 @@ export interface AdsPoolDiag {
   maintenance: unknown
   /** 🌙 라이브 재보정 결과(`ads_maintenance_rescan_last`) */
   maintenance_rescan: unknown
+  /**
+   * 📝 인플루언서 풀 보강 레인 결과(`ads_influencer_enrich_last`). 2026-07-28 신설 —
+   * 보강이 수집과 같은 인보케이션에 얹혀 **한 건도 못 돌던** 것을 전용 레인으로 분리하면서,
+   * "이번 시간에 블로거를 몇 명 실제로 측정했나"가 화면에 없으면 또 무음으로 죽는다.
+   */
+  enrich_lane: unknown
 }
 
 /** 진단용 스탬프·lease 를 한 번에 조회. 개별 실패는 null/false 로 떨어지고 throw 하지 않는다. */
@@ -38,7 +45,7 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
       .first<{ value: string }>().catch(() => null),
     DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'")
       .first<{ value: string }>().catch(() => null),
-    DB.prepare("SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last')")
+    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
       .all<{ key: string; value: string }>().catch(() => null),
   ])
   const find = (k: string) => mRows?.results?.find(r => r.key === k)?.value
@@ -49,5 +56,6 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
     sheets_sync: parseJson(sheetRow?.value),
     maintenance: parseJson(find('ads_maintenance_last')),
     maintenance_rescan: parseJson(find('ads_maintenance_rescan_last')),
+    enrich_lane: parseJson(find(INFLUENCER_ENRICH_SNAPSHOT_KEY)),
   }
 }

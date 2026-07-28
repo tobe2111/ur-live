@@ -17,6 +17,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [recategorizing, setRecategorizing] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [maintaining, setMaintaining] = useState(false)
+  const [routingBiz, setRoutingBiz] = useState(false)
 
   async function mergeDuplicates() {
     if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(⚠️동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
@@ -128,6 +129,37 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   const cls = 'px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50'
+  /**
+   * 🔀 업체형 블로그/카페 → B2B 파트너풀 이관. **먼저 dry-run 으로 표본을 보여주고**, 사람이 확인한 뒤에만 실제 저장.
+   *   (인플루언서 풀은 숨김 태깅만 — 삭제 아님. 오탐이어도 되돌릴 수 있다.)
+   */
+  async function routeBizBlogs() {
+    setRoutingBiz(true)
+    try {
+      const dry = await api.post('/api/admin/ads/influencer-pool/route-biz', {})
+      const st = dry.data?.stats as { scanned?: number; matched?: number; withPhone?: number; samples?: string[]; done?: boolean } | undefined
+      if (!dry.data?.success || !st) { toast.error(dry.data?.error || '검사 실패'); return }
+      if (!st.matched) { toast.success(`업체형 블로그 없음 (${formatNumber(st.scanned || 0)}건 검사${st.done ? ' · 전체 완료' : ''})`); return }
+      const ok = window.confirm(
+        `업체형 블로그/카페 ${formatNumber(st.matched)}건을 찾았습니다 (${formatNumber(st.scanned || 0)}건 검사 · 이름/소개글에서 전화 확보 ${formatNumber(st.withPhone || 0)}건).\n\n`
+        + `표본:\n${(st.samples || []).slice(0, 10).map(x => `· ${x}`).join('\n')}\n\n`
+        + '이들을 B2B 파트너풀로 넘길까요?\n'
+        + '· 저장은 파트너풀에만 — 전화/이메일은 파트너풀 보강 레인이 이어서 채웁니다\n'
+        + '· 인플루언서 풀에서는 숨김 처리만(삭제 아님)',
+      )
+      if (!ok) return
+      const r = await api.post('/api/admin/ads/influencer-pool/route-biz?apply=1', {})
+      const a2 = r.data?.stats as { routed?: number; tagged?: number; done?: boolean } | undefined
+      if (r.data?.success && a2) {
+        toast.success(`🔀 파트너풀로 ${formatNumber(a2.routed || 0)}건 이관 · 인플루언서 풀에서 ${formatNumber(a2.tagged || 0)}건 숨김${a2.done ? ' · 전체 완료' : ' — 이어서 하려면 다시 누르세요'}`)
+        await onChanged()
+      } else toast.error(r.data?.error || '이관 실패')
+    } catch (e) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '이관 실패')
+    } finally { setRoutingBiz(false) }
+  }
+
   return (
     <>
       <button onClick={maintainAll} disabled={maintaining} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="야간 자동 정비와 동일한 순서로 한 번에 실행 — 중복 통합 → 연락처 재추출 → 카테고리 재분류 → 리드 점수 → 라이브 재보정. 아래 개별 버튼은 특정 단계만 다시 돌릴 때만 쓰세요.">{maintaining ? '정비 시작 중…' : '🧰 전체 정비'}</button>
@@ -137,6 +169,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
       <button onClick={reclassify} disabled={reclassifying} className={cls} title="채널 이름·소개글 신호로 카테고리 재분류(저장 소개글 기반 — 라이브 재보정으로 안 되는 네이버/티스토리 보조, 멱등)">{reclassifying ? '재분류 중…' : '🏷️ 카테고리 재분류(저장)'}</button>
       <button onClick={reextract} disabled={reextracting} className={cls} title="기존 리드의 저장된 소개글에서 연락처 재추출(신규 @핸들·유튜브/블로그 포착 — 비어있는 것만 채움, API 재호출 0)">{reextracting ? '재추출 중…' : '🔗 연락처 재추출'}</button>
       <button onClick={qualityPass} disabled={scoring} className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium disabled:opacity-50" title="브랜드 공식 채널 태깅 + 리드 점수(0~100) 재계산 — 매일 밤 자동 실행되므로 평소엔 불필요, 즉시 반영이 필요할 때만">{scoring ? '채점 중…' : '🏅 리드 점수·브랜드 태깅'}</button>
+      <button onClick={routeBizBlogs} disabled={routingBiz} className="px-4 py-2 rounded-lg border border-purple-300 bg-purple-50 text-purple-700 text-sm font-medium disabled:opacity-50" title="블로그/카페 중 업체(사업자) 계정을 찾아 B2B 파트너풀(광고주 리드)로 넘깁니다 — 먼저 표본을 보여주고 확인 후 실행. 인플루언서 풀에서는 숨김 처리만(삭제 아님)">{routingBiz ? '검사 중…' : '🔀 업체 블로그 → 파트너풀'}</button>
       <button onClick={refetchLive} disabled={refetching} className="px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-sm font-medium disabled:opacity-50" title="유튜브 채널의 현재 라이브 About을 다시 불러 이메일·카테고리 교정(재추출로 안 되는 케이스 — 현재 About에만 개인메일. YouTube API 사용)">{refetching ? '라이브 재조회 중…' : '🔄 유튜브 라이브 재조회'}</button>
     </>
   )

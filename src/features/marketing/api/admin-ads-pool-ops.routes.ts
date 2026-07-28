@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
+import { intParam } from '@/shared/pagination'
 import { isCollectRunning, isMaintainRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
@@ -105,6 +106,25 @@ app.post('/influencer-pool/sheets-sync', async (c) => {
     const j = await r.json().catch(() => null) as { ok?: boolean; rows?: number; error?: string } | null
     if (j?.ok) return c.json({ success: true, rows: j.rows || 0 })
     return c.json({ success: false, error: j?.error || '동기화 실패' }, 400)
+  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// POST /api/admin/ads/influencer-pool/route-biz?apply=1 — 🔀 업체형 블로그/카페를 B2B 파트너풀로 라우팅.
+//   **기본 dry-run**(저장 없이 표본만) — 대표가 표본을 확인한 뒤 apply=1 로 실제 이관.
+//   ⚠️ 저장은 파트너풀(`ad_company_leads`)에만. 인플루언서 풀은 is_brand=1 숨김 태깅만(삭제 아님).
+app.post('/influencer-pool/route-biz', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
+  const qs = new URLSearchParams()
+  if (c.req.query('apply') === '1') qs.set('apply', '1')
+  if (c.req.query('reset') === '1') qs.set('reset', '1')
+  const max = intParam(c.req.query('max'), 3000)
+  qs.set('max', String(Math.max(100, Math.min(20_000, max))))
+  try {
+    const r = await ads.fetch(new Request(`https://ur-ads/__ads/route-biz-blogs?${qs.toString()}`, { method: 'POST' }))
+    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string } | null
+    if (j?.ok) return c.json({ success: true, stats: j.stats })
+    return c.json({ success: false, error: j?.error || '라우팅 실패' }, 400)
   } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
