@@ -234,10 +234,14 @@ app.post('/__ads/sheets-sync', async (c) => {
 })
 
 // 🌙 야간 자동 정비 — cron(SELF.fetch)이 새 invocation 예산으로 호출. 어드민 버튼과 동일 SSOT 모듈.
+//   ?phase=merge|reextract|reclassify|quality — 2026-07-28: 단계별 **자체 인보케이션**(fresh 예산). 무료 플랜의
+//   실효 상한(인보케이션당 ~29 D1 연산)에선 4단계를 한 번에 돌 수 없다(= 07-27 이후 무음 정지의 원인).
+//   phase 없으면 4단계 순차(🧰 전체 정비 버튼 폴백 — 각 단계가 내부적으로 자기 예산을 쓴다).
 app.post('/__ads/maintenance', async (c) => {
   try {
-    const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance')
-    const r = await runNightlyMaintenance(c.env)
+    const m = await import('@/features/marketing/api/influencer-maintenance')
+    const p = c.req.query('phase')
+    const r = m.isMaintPhase(p) ? await m.runMaintenancePhase(c.env, p) : await m.runNightlyMaintenance(c.env)
     return c.json({ ok: true, ...r })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -491,19 +495,29 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })())
   }
 
-  // ── 🌙 매일 18:00 UTC(=KST 03시) 자동 정비 + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
-  //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류 / 🧭재보정→🔄재조회)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
-  //   SELF 바인딩으로 **자체 인보케이션**에서 실행(fresh 서브리퀘스트 예산 — 같은 틱의 일일배치와 예산 미공유). 미바인딩 시 직접 실행 폴백.
+  // ── 🌙 자동 정비 = **매시간 1단계 순환** + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
+  //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류→🏅품질)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
+  //   SELF 바인딩으로 **자체 인보케이션**에서 실행(fresh 서브리퀘스트 예산 — 같은 틱의 다른 레인과 예산 미공유). 미바인딩 시 직접 실행 폴백.
   //   기본 ON(대표 지시) — 끄려면 ur-ads env ADS_AUTO_MAINTENANCE_ENABLED='false'. 결과는 platform_settings 에 기록(무음 실패 방지).
-  if ((hourUTC === 18 || hourUTC === 19) && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    const path = hourUTC === 18 ? '/__ads/maintenance' : '/__ads/maintenance-rescan'
-    ctx.waitUntil((async () => {
-      try {
-        if (env.SELF?.fetch) { await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' })) }
-        else if (hourUTC === 18) { const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyMaintenance(env) }
-        else { const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyRescan(env) }
-      } catch { /* fail-soft */ }
-    })())
+  //   🩹 2026-07-28 근본수리: 기존엔 18시에 **4단계를 한 인보케이션**으로 몰아 돌렸다. 무료 플랜의 실효
+  //   서브리퀘스트 상한은 ~29(학습값)인데 정비 1회는 수백~수천 D1 연산이 필요해 **매번 첫 단계 도중 죽었고**,
+  //   모든 D1 호출이 `.catch(()=>null)` 이라 결과 스탬프조차 못 남겨 "07-26 이후 멈춤"으로 보였다.
+  //   ⇒ ① 매시간 **한 단계씩 순환**(단계당 fresh 인보케이션 예산 — 하루 24회 ≈ 단계별 6회) ② 각 단계는 커서로
+  //      다음 회차에 이어받는다 ③ 결과는 예산 밖에서 항상 기록. **새 cron 추가 없음**(무료 계정 cron 5/5 소진).
+  if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+    const PHASES = ['merge', 'reextract', 'reclassify', 'quality'] as const
+    const phase = PHASES[hourUTC % PHASES.length]
+    kick(`/__ads/maintenance?phase=${phase}`, async () => {
+      const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
+      return runMaintenancePhase(env, phase)
+    })
+  }
+  // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
+  if (hourUTC === 19 && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+    kick('/__ads/maintenance-rescan', async () => {
+      const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
+      return runNightlyRescan(env)
+    })
   }
 
   // ── 매일 23:00 UTC(=08:00 KST) — 유어애즈 아웃리치 팔로업 리마인더(무응답·회신도착 다이제스트) ──

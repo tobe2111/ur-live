@@ -39,7 +39,93 @@ UI 미렌더.
 `phoneCap`(= `floor(예산/6)`)에 얼어붙는다 — 예산 37이면 6, 55면 9로 **보고된 6~9와 정확히 일치**. 사인을
 가르는 건 `crawls` 가 아니라 **`phase` 와 `p2.crawl_try`**.
 
-## 🟢 2026-07-28 (3차) — **계측 배포 완료. 조회 1회로 사인 확정한다 (판독표 유효)**
+## 🔑 2026-07-28 — 🚨 **CF API 토큰 public 레포 유출**(대표 조치 필요) + 🌙 자동 정비 무음 정지 근본수리 + ur-live-global 진단
+
+### 🚨 ① 보안 — `.env.deploy` 에 **살아있는 CLOUDFLARE_API_TOKEN** 이 커밋돼 있었다 (public 레포)
+`1a835daec`(#737)에 들어갔고, 이 세션이 **그 토큰으로 실제 계정 워커 설정을 읽는 데 성공**했다(= 유효·활성).
+그 토큰이면 ur-ads 의 **모든 환경변수가 평문으로 읽힌다**(전부 `plain_text` 타입): `JWT_SECRET`(세션·광고주·어드민
+토큰 위조 가능) · `KAKAO_REST_API_KEY` · `GSHEETS_SA_KEY`(구글 서비스계정 개인키) · `NAVER_SEARCHAD_SECRET_KEY` ·
+`YOUTUBE_API_KEY` · `NEIS_API_KEY` · `PUBLIC_DATA_SERVICE_KEY` · `WORK24_API_KEY`.
+- **코드 조치(이 커밋)**: 파일 tracking 제거 + `.gitignore` 명시 예외 + **가드 2건 수리** —
+  ⓐ `check-no-secrets.sh` 의 CF/JWT 패턴이 **따옴표를 필수**로 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다
+  ⓑ 같은 패턴의 `grep -v "…\$\{"` 가 BRE 문법 오류(`Unmatched \{`)라 **grep 이 실패 → 패턴 3·4 가 무음으로 죽어 있었다**
+  → 따옴표 선택 + `-E` 전환 + **dotenv 파일 자체를 커밋 금지**(패턴 0) 신설. 재현 테스트로 검출 확인.
+- **⏳ 대표 조치(코드로 해결 불가)**: ① CF 토큰 폐기·재발급 ② `JWT_SECRET` 회전 ③ 나머지 키 회전
+  ④ ur-ads 변수들을 plaintext → **Secret 타입** 전환(현재는 대시보드/API 로 전부 열람 가능).
+  ⚠️ git history 에 남아 있으므로 **회전 전까지는 계속 유출 상태**다.
+
+#### 🔐 후속 처리 (2026-07-28 10:29 UTC — 대표 지시로 실행/보류 확정)
+- ✅ **④ Secret 타입 전환 완료** — 대표 승인("보안 부분은 내가 책임진다") 하에 **CF API replace-all** 로 실행.
+  `plain_text` 11개(`JWT_SECRET`·`GSHEETS_SA_KEY`·`KAKAO_REST_API_KEY`·`NAVER_SEARCHAD_ACCESS_LICENSE`·
+  `NAVER_SEARCHAD_SECRET_KEY`·`NAVER_SEARCH_CLIENT_ID`·`NAVER_SEARCH_CLIENT_SECRET`·`NEIS_API_KEY`·
+  `PUBLIC_DATA_SERVICE_KEY`·`WORK24_API_KEY`·`YOUTUBE_API_KEY`) → `secret_text`. **API 로 값 열람 불가 확인**.
+  평문 유지 19개(ADS_* 게이트·`ADS_ENRICH_BUDGET`·`NAVER_SEARCHAD_CUSTOMER_ID`·`GSHEETS_SHEET_ID`/`SA_EMAIL`·
+  `SUPPLY_MAKER_COLLECT_ENABLED`) — 운영 중 눈으로 봐야 하는 값들.
+  - ⚠️ **replace-all 은 바인딩 전체를 다시 쓰는 방식**(필드 1개만 틀려도 D1/SELF 소실 → 유어애즈 전면 중단).
+    안전 절차: **① 스냅샷 GET → ② 아무것도 안 바꾸는 no-op PATCH(카나리) → ③ GET 재조회로 32/32·D1·SELF
+    byte-동일 확인 → ④ 그 다음에만 실제 변경 → ⑤ 재검증 + 라이브 스모크.** 카나리 없이 바로 쏘지 말 것.
+  - 검증: 바인딩 32→32(이름집합 동일) · `d1:DB`(`d9530ba6…`)·`service:SELF` 무변경 · 비대상 19개 무변경 ·
+    라이브 `x-served-by: ur-ads` 응답 정상 · `/l/*`(D1 경로) 301 · 메인 `/api/version` 200.
+  - 🚫 **개별 변수만 Secret 으로 바꾸는 API 는 없다** — `PUT /secrets` 는 같은 이름이 평문으로 있으면
+    `code 10053: Binding name already in use`. 대시보드 토글 또는 위 replace-all 뿐.
+- 🚫 **② `JWT_SECRET` 회전 — 대표 결정 "회전 안 함"**(2026-07-28). 악용 징후 0·노출 창 ~1일 판단.
+  ⚠️ 따라서 **유출된 시크릿 값은 여전히 유효**하다(암호화는 *추가* 열람만 막을 뿐 기존 유출을 무효화 못 함).
+  재고 시 **ur-ads·ur-live(Pages) 두 곳을 반드시 동시 교체**(한쪽만 바꾸면 유어애즈 로그인 즉시 파손) + 전원 재로그인.
+- ⏳ **① CF 토큰 회전은 대표 진행 예정** — 재발급 후 **어드민 → 도구 → 설정의 `cf_api_token` 값도 함께 교체**할 것.
+  모든 세션이 그 D1 값에서 토큰을 꺼내 쓰므로(CLAUDE.md), 갱신 누락 시 다음 세션부터 인프라 진단이 전부 막힌다.
+  GitHub Actions 시크릿(`CLOUDFLARE_API_TOKEN`, 별개면 `CLOUDFLARE_D1_BACKUP_TOKEN`)도 함께 교체해야 배포가 안 깨진다.
+- ⏸️ **④ `ur-live-global`/`world.ur-team.com` — 보류**(대표 지시). 레포·`wrangler.global.toml` 무접촉 유지.
+  살리기로 정하면 Workers 용 재작성은 그때 진행(추가로 `VITE_REGION=GLOBAL` 등 GLOBAL 전용 변수 필요).
+
+### ✅ ② 검색광고 고객ID — 이미 정상(바꿀 것 없었음)
+대표가 08:50 UTC 대시보드에서 이미 `3228755` 로 바꿔 배포한 상태였다(코드 아님 — 워커 바인딩).
+3중 실측 확인: 바인딩 값 `3228755` · 네이버 API 직접 HMAC 호출 `/keywordstool` **200**·`/ncc/campaigns` **200** ·
+라이브 `/api/ads/keywords/related?seed=커피` **200 success**. 연관키워드·기회키워드 둘 다 살아났다.
+(`/searchad/campaigns` 의 `NOT_CONNECTED` 는 정상 — 광고주별 개별 연결 요구 설계. 전역 폴백 허용 여부는 별도 결정.)
+
+### 🌙 ③ 자동 정비가 07-26 이후 멈춘 이유 — **한 인보케이션에 수백~수천 D1 연산** (근본수리)
+**배제 완료(실측)**: cron 등록 ✅(`0 * * * *`) · 게이트 ✅(`ADS_AUTO_MAINTENANCE_ENABLED` 미설정=ON) ·
+`SELF` 바인딩 ✅ · 코드 배포 ✅(`1a835dae` 07-27 04:10 UTC + deploy-ads 전부 success) · `/__ads/maintenance` 가드 없음 ✅.
+**남은 원인 = 예산**. `runNightlyMaintenance` 는 4단계를 한 인보케이션에서 돌리는데:
+중복통합 그룹당 3쿼리 × 150그룹 × 4패스 + 재추출/재분류 3.6만 행 전수 페이징 = **수백~수천 D1 연산**.
+Cloudflare 는 **D1 쿼리도 서브리퀘스트 한도에 넣고**(#784 확증) 이 계정 실효 상한은 학습값 **29**.
+게다가 모든 D1 호출이 `.catch(() => null)` 이고 **결과 스탬프 쓰기가 맨 마지막**이라, 한도에서 죽으면
+**기록조차 안 남는다** → 어드민엔 "07-26 이후 아무것도 안 돎". (스탬프가 0으로라도 찍혔어야 정상.)
+**추가 발견(더 큰 낭비)**: `ensureInfluencerSchema` 가 매 인보케이션 **16 DDL**(+품질 3) 을 던진다 —
+컬럼이 다 있는 지금은 전부 no-op 인데 **예산 29 중 19를 먹었다**. 정비·수집 모든 레인이 같이 손해였다.
+**수리**:
+- 🧱 `ads-schema-guard.ts` — DDL **체크섬 1회 조회**로 16+3 쿼리 생략(목록이 바뀌면 값이 바뀌어 자동 재적용 → 버전 bump footgun 없음)
+- 🧮 `maintenance-budget.ts` — 예산 래퍼(소진 시 **DB 무접촉 no-op** + `exhausted`/`limitHit` 관측). throw 안 하는 이유는
+  기존 호출부가 예외를 전부 삼켜 신호가 못 되기 때문.
+- 단계당 **1 인보케이션**(fresh 예산) + **매시간 1단계 순환**(`hourUTC % 4`) — 하루 24회(단계별 6회). **새 cron 0개**
+  (무료 계정 cron **5/5 소진** 상태라 추가 불가: ur-ads 1 · ur-live 3 · ur-live-cleanup-cron 1).
+- 커서 신설/보존: 재추출·재분류에 id 커서 추가(둘 다 OFFSET 전수스캔이라 예산 안에선 **영원히 앞부분만** 돌았다) +
+  품질 패스 포함 **"예산 소진"을 "완료"로 오판해 커서를 0 으로 리셋하던 버그** 차단(전화 스윕 커서 버그와 동일 클래스).
+- ⭐ 결과 스탬프를 **예산 밖에서 항상** 기록(`ops/cap/paused/limit_hit`) + 어드민 패널 노출 → 무음 정지 구조적 불가.
+- 유닛 `ads-maintenance-budget.test.ts` — 소진 후 DB 무접촉·batch 1연산·exhausted 관측·한도예외 학습·체크섬 민감도 고정.
+
+### 🌐 ④ ur-live-global 빌드 0초 실패 — **빌드 로그는 못 봤다**(토큰 스코프 없음)
+`/accounts/{acc}/builds/*` **403**(존재하지 않는 경로는 400/7003 이므로 경로가 아니라 권한). ur-ads 는 Workers Logs 도
+`observability: null` 로 꺼져 있어 남은 로그도 없다. **대신 실측으로 더 중요한 걸 찾았다**:
+- `ur-live-global` 은 **Pages 가 아니라 Worker**(Pages 프로젝트 목록에 없음), 2026-03-03 생성, `last_deployed_from: "dash"`,
+  내용은 **대시보드 Hello World 템플릿 그대로** — 빌드가 한 번도 성공한 적 없다.
+- 그런데 **Custom Domain `world.ur-team.com` 이 이 워커에 붙어 있고**(enabled), 실제로 지금 `"Hello world"` 를 서빙 중이다(실측).
+- **0초 실패의 유력 원인(미확증)**: `wrangler.global.toml` 은 **Pages 설정**이다 — `pages_build_output_dir` 가 있고
+  Workers 필수인 `main` 이 없다 → wrangler 가 설정 검증에서 즉시 거부(빌드 명령 시작 전 = 0초). 루트 `wrangler.toml` 을
+  읽는 경우엔 `name = "ur-live"` 라 이름 불일치로 역시 즉시 실패 — **이쪽은 실패하는 게 다행**(성공했으면 2026-04-22
+  "Workers 가 Custom Domain 가로채기" 사고 재현).
+- **⏳ 대표 결정 필요**: 글로벌 버전을 띄울 계획이 없으면 → Git 연결 해제 + Custom Domain 회수(또는 워커 삭제)가 정답.
+  띄울 거면 → `wrangler.global.toml` 을 Workers 용으로 재작성하거나 Pages 프로젝트로 재생성. **둘 다 대시보드 작업**이다.
+
+### 💡 무료 플랜 유지 시 알아둘 천장 (대표 확정 "일단 무료")
+- 인보케이션당 서브리퀘스트 **50**(학습 실효 29) — D1 쿼리 포함. Paid 는 1,000(20배).
+- 계정 전체 cron **5개**(현재 5/5 — 하나도 못 늘린다). Paid 250. → 새 주기 작업은 **매시간 틱 안에서 순환**으로만 가능.
+- `ur-live-cleanup-cron`(`*/5`)이 슬롯 1개를 쓰고 있다 — 아직 필요한지 점검하면 슬롯 1개 회수 가능.
+- ⚠️ **ur-ads 에 KV 바인딩이 0개**(실측 2026-07-28: 바인딩 32개 = plain_text 19 + secret 11 + d1 1 + service 1).
+  `RATE_LIMIT_KV` 미등록 = CLAUDE.md 규칙상 **레이트리밋 fail-OPEN(무제한 통과)** → `/api/ads/*` 가 현재 그 상태다.
+  필수는 아니나(트래픽 적음) 대시보드에서 메인과 같은 namespace 연결 3분이면 끝난다. `SESSION_KV`/`CACHE_KV` 도 동일.
+
+## 🟢 2026-07-28 (3차) — **계측 배포 완료. 다음 세션은 조회 1회로 사인 확정한다**
 
 **상태**: PR #791 머지(`8571ec2`) → main 배포. 아래 2차 항목이 설계한 계측이 **이제 라이브**다.
 직전 세션이 삭제됐으나 작업 손실 0(브랜치·PR·본 문서 전량 보존).
@@ -114,6 +200,31 @@ Phase 2 가 25건을 돌기 전에 죽는다. **Phase 2 는 fetch 를 0회 쓴�
 경로 3단계(어드민 로그인 → D1 취득 → CF 호출 `success:true`) 실검증 완료. 절차는 CLAUDE.md.
 ⚠️ `tail` wss 는 이 환경 프록시가 차단(non-101) → 라이브 규명은 **D1 스냅샷 계측**에 의존.
 
+## 🔴 2026-07-28 — 🎯 유어애즈/인플루언서 **다음 세션 인수인계** (이 세션에서 확인된 사실 + 남은 일)
+
+> 이 세션(claude/youraz-service-access-5193pp)은 **인플루언서·유어애즈 범위 한정**. 업체/파트너풀은 **다른 세션 담당** — 건드리지 말 것.
+
+### 🔑 대표 액션 대기 (코드로는 못 하는 것)
+1. **네이버 검색광고 키 — CUSTOMER_ID 값이 틀렸을 가능성이 큼**
+   · 대표가 ur-ads 에 3종을 넣은 뒤 상태가 `NOT_CONFIGURED`(키 없음) → **인증 실패**(키는 읽히는데 네이버가 거부)로 바뀜 = **이름은 정확, 값 문제**.
+   · 대표 확인: API 사용 관리 화면에 **"현재 접근 중인 광고계정 CUSTOMER_ID = 3228755"**. **47982 는 그 위의 관리 계정 ID**(코드 주석 `helpers.ts:43` 의 "관리계정 47982" 는 설계 당시 메모일 뿐).
+   · ⇒ **`NAVER_SEARCHAD_CUSTOMER_ID` 를 3228755 로** (라이선스를 발급한 계정과 헤더 계정이 일치해야 네이버가 인증). 그래도 실패면 **비밀키 재발급**(발급 시 1회만 표시 — 옛 값이면 영구 불일치).
+   · 배포 후에는 에러에 **HTTP 상태가 붙는다**(이 세션에서 추가) — `401`=서명·비밀키 / `403`=권한·고객ID 로 즉시 갈림. 판정은 `/api/ads/keywords/related?seed=커피` 호출로.
+2. **`RESEND_API_KEY` 는 넣지 않기로 함** — 대표가 **수기 발송**으로 결정(2026-07-28). 자동 발송 경로(`send-cold`)는 만들어뒀지만 **미사용 상태로 대기**(키 없으면 400). 대신 어드민 **「📇 연락 대상만 받기」** 로 목록을 받아 손으로 보낸다.
+3. **Cloudflare 접근** — 대표가 토큰을 환경에 등록(2026-07-28). **다음 세션부터** 사용 가능(환경변수는 컨테이너 시작 시 주입). 그 세션이 직접 ur-ads 시크릿 설정 + `ur-live-global` 빌드 실패 로그 확인 가능.
+
+### ✅ 이 세션에서 끝낸 것
+- **품질 점수 전량 부여** — `lead_score` 가 **36,682명 전원 0(미부여)** 이던 것을 어드민 `quality-pass` 5회로 전량 채움 → **우수(70+) 525명 · 브랜드 공식채널 527건 식별**(제휴 대상 아님, 자동 제외). 수기 발송은 **점수순 위에서부터**.
+- **보강 레인 기아 수리** — 발굴 루프가 서브리퀘스트 예산을 0까지 소진해 뒤따르는 보강 4종이 매 실행 `tried:0` 이던 것: 예산 30% 예약 + 4레인 라운드로빈. **연락처 확보율 8.8% 고착의 원인.**
+- **수집 레인 오류 2종 해소 확인** — YT `Too many subrequests` · 네이버 `블로그 검색 호출 실패` 가 07:00 사이클부터 사라짐(사이클 저장 15 → 228명).
+- **콜드 제휴 발송 경로 신설**(대표가 07-20·21 "만들지 않는다" 규칙을 명시적으로 뒤집음 — 근거·잔여 리스크는 `outreach-cold.ts` 헤더).
+- **키워드 도구 미연결 안내** — 재시도 대신 연결 CTA(`SearchAdRequiredNotice`).
+
+### ⏳ 남은 조사 (다음 세션 이어받을 것)
+- **자동 정비가 이틀째 멈춤** — `ads_maintenance_last` 가 **07-26** 에 멈춰 있고 그 기록에 **품질 단계가 아예 없음**(merge/reextract/reclassify 만). 시간당 cron 자체는 정상(수집이 매시간 돎) → **18:00 UTC 분기만** 기록을 안 남김. 후보: SELF 바인딩 fetch 실패 / 리스(`MAINTAIN_LEASE_KEY`) 미해제 / 그 시점 배포본에 품질 단계 부재. **이게 멈추면 품질·중복통합·재분류가 전부 멈춘다**(오늘은 손으로 돌렸을 뿐).
+- **`ur-live-global` 워커 빌드가 모든 커밋에서 실패**(0초 만에 종료 — 소스 컴파일 진입 전). 같은 커밋에서 Pages 는 성공. 로그가 CF 대시보드에만 있어 **Cloudflare 접근 생긴 세션이 확인할 것**.
+- **네이버 블로거 연락처 공백** — 블로거가 풀의 74%(27,232명)인데 연락처 확보가 거의 없음. 보강 레인 수리가 배포된 뒤 `naver_enrich.tried > 0` 이 되는지 **정시 사이클로 확인 필요**(미확인 상태로 인계).
+- **접촉 실적 0** — 36,682명 수집했으나 발송 0건. 수기 발송 시작 시 `contacted_at`/상태 갱신이 실제로 기록되는지 확인.
 ## 🔴 2026-07-28 — 📧 이메일 크롤 적중 0% — **원인 확증 완료(예외 원문 확보) + 수리(PR #784)**
 
 **✅ 확증(06:01 라이브 `ads_enrich_last` 직접 조회 — 대표가 발급한 super_admin 으로 어드민 API 접속)**:
@@ -319,6 +430,13 @@ NULL 이라 그 원부를 못 쓰고 있었다 → **상호(+주소) 확신 매�
 - **⏳ 대표 액션(변동 없음)**: ⓐ 고용24 기업회원 전환 → `WORK24_API_KEY` 교체 ⓑ data.go.kr 15125467 활용신청 →
   요청주소 확인 후 `ADS_FRANCHISE_ENDPOINT`/`ADS_FRANCHISE_OP` 오버라이드.
 
+## 🔷 2026-07-28 — 🔌 유어애즈 키워드 도구 **'미연결' 안내 통일** (대표 "첫 광고주가 와도 키워드 화면이 비어 있다")
+**발단**: 어드민 실측 — 유어애즈 가입 6계정이 **전부 내부/테스트, 검색광고 연동 0건**(실사용 광고주 0). 그 상태에서 키워드 탭을 열면 연관키워드는 회색 한 줄("검색광고 키 설정 후 표시됩니다" — 누가 뭘 해야 하는지 없음), 기회 발굴은 **빨간 에러 + 재시도 버튼**(눌러도 영원히 같은 에러)이 뜬다. 실제로는 **광고주가 본인 계정을 연결하면 켜지는** 상태인데 화면은 '고장'으로 읽힘 → 첫 손님이 첫 화면에서 이탈.
+- 신규 `SearchAdRequiredNotice.tsx` — 무엇이 왜 비었는지 + **어디서 무엇을 입력**하면 켜지는지 + `sec-searchad`(광고 성과 탭) 이동 CTA. **읽기 전용임을 명시**(광고주 최초 우려 = "키 주면 광고비 조작되나").
+- `KeywordToolsSection`(연관키워드 `relatedOff`) · `OpportunityPanel`(503/`SEARCHAD_REQUIRED`) 이 같은 안내 사용. 기회 발굴은 무의미한 재시도 버튼 대신 안내로 분기(`credsOff` 상태 분리 — 진짜 조회실패는 기존 `PanelError` 유지).
+- 서버(additive): `/keywords/related`·`/keywords/opportunities`·`/searchad/estimate` 의 자격증명 부재 응답에 `code:'SEARCHAD_REQUIRED'` 동봉 — 상태코드/기존 필드 불변.
+- ⚠️ **트렌드(`/keywords/trend`)는 제외** — 오픈API(`NAVER_SEARCH_*`) 자격증명이라 광고주가 검색광고를 연결해도 안 풀린다(작업 중 오패치 → 원복). 같은 'NOT_CONFIGURED' 라도 **누가 고칠 수 있는 문제인지**가 다름.
+- 🔑 **미해결(대표 액션)**: 플랫폼 전역 폴백 `NAVER_SEARCHAD_CUSTOMER_ID`/`_ACCESS_LICENSE`/`_SECRET_KEY` 가 ur-ads 워커에 비어 있음. 넣으면 **광고주 연결 없이도** 연관/기회/입찰추정이 전 계정에서 즉시 동작(코드는 이미 폴백 지원 — `resolveSearchAdCreds`).
 ## 🔷 2026-07-28 — 🚫 유어애즈 **AI 기능 노출 숨김** (`ADS_AI_HIDDEN`) — 대표 확정 "AI 기능 안 쓸 거야"
 **발단**: 세션에서 유어애즈에 광고주 계정(`claude-test@ur-team.com`, id 6 — 대표가 어드민에서 입장 승인)으로 **직접 접속해 전 기능 실측**. `POST /api/ads/ai-marketer`·`/content/generate` 가 **전 계정 503 `NOT_CONFIGURED`** — ur-ads 워커에 `ANTHROPIC_API_KEY` 미설정(2026-07-20 plaintext var wipe 사고와 동일 계열 정황). 대표가 **키를 넣지 않기로 확정** → 화면에만 남은 AI 메뉴가 광고주에겐 죽은 버튼 + 내부 문구("Anthropic API 키 설정 후 사용") 노출이라 노출만 정리.
 - **플래그 1개(`src/shared/feature-flags.ts` `ADS_AI_HIDDEN=true`, 가역)**: 대시보드 'AI 스튜디오' 탭 제거(`dashboard-tabs.tsx` — 정의는 `ALL_DASH_TABS` 에 보존) · 패널 렌더 가드(`MarketingDashboardPage`) · 옛 딥링크(`?tab=ai`·`#sec-ai`·`#sec-content`)는 홈 탭 폴백 · 랜딩(`/ads`) AI 홍보 섹션 05·요금제 문구 2곳·푸터 링크·메타 description · 로그인/가입 안내 문구.

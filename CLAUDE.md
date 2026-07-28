@@ -308,7 +308,9 @@
    도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
 2. **User-Agent**: `botProtection()`(`bot-detection.ts`)이 curl UA 를 차단하고 `{"success":false,"error":"Forbidden"}`
    (키 2개, `code` 없음)를 준다. **브라우저 UA 헤더 필수**. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트로 **다른 원인**.
-3. **토큰**: `POST /api/admin/login` {email,password} → `data.token`. 이후 `Authorization: Bearer <token>`.
+3. **토큰**: `POST /api/admin/login` {email,password} → 응답 토큰 필드가 **한 가지가 아니다** — 실측상
+   `data.accessToken` / `data.token` / 최상위 `token` 중 하나로 온다. **존재하는 것을 골라 쓸 것**
+   (`data['token']` 만 꺼내면 KeyError). 이후 `Authorization: Bearer <token>`. 계정은 `admins.id=10`.
 
 ```bash
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
@@ -319,6 +321,10 @@ TOK=$(curl -sS -X POST https://live.ur-team.com/api/admin/login -H 'Content-Type
 #    (SESSION_SUPERSEDED). 긴 작업 중 끊기면 재로그인 후 재시도.
 curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
 ```
+
+**⚠️ 유어애즈(`/api/ads/*`)는 별도 워커(ur-ads)** — env 가 메인 Pages(ur-live)와 **분리**돼 있다.
+메인 `/api/version` 의 시크릿 목록에 없다고 ur-ads 에도 없는 것이 아니고, 그 반대도 아니다.
+ur-ads 쪽 설정 확인은 기능 호출로 판정할 것(예: `/api/ads/keywords/related` → `NOT_CONFIGURED` = 키 없음).
 
 **사용 원칙**: 기본 **읽기 전용**(stats·목록·진단). 쓰기(큐레이션·수집 트리거·설정 변경)는 대표가 명시로 지시할 때만.
 토큰·응답 파일은 스크래치패드에만 두고 작업 후 삭제. 세션 종료 시 남기지 않는다.
@@ -376,7 +382,6 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
 > 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
 > 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
-
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:

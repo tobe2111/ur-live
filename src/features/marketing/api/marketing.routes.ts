@@ -263,7 +263,7 @@ marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', m
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await resolveSearchAdCreds(c, sellerId)
   // 키 미설정 = 정상 상태(기능 비활성) → 200(콘솔 5xx 소음 제거) — 클라는 unavailable 로 섹션 숨김.
-  if (!creds) return c.json({ success: false, unavailable: true, error: 'NOT_CONFIGURED' })
+  if (!creds) return c.json({ success: false, unavailable: true, error: 'NOT_CONFIGURED', code: 'SEARCHAD_REQUIRED' })
   const seeds = (c.req.query('seed') || c.req.query('keywords') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
   if (!seeds.length) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
   const r = await relatedKeywords(creds, seeds)
@@ -280,7 +280,8 @@ marketingRoutes.get('/keywords/opportunities', rateLimit({ action: 'ads-kw-opp',
   if (!seed) return c.json({ success: false, error: '기준 키워드를 입력해주세요' }, 400)
   const adgroupId = String(c.req.query('adgroup_id') || '').trim() || undefined
   const r = await findKeywordOpportunities(c.env, sellerId, seed, adgroupId)
-  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  // 검색광고 자격증명 부재는 '고장'이 아니라 '미연결' — 클라가 재시도 대신 연결 안내를 띄우도록 code 동봉.
+  if (!r.ok) return c.json({ success: false, error: r.error, ...(r.error === 'NOT_CONFIGURED' ? { code: 'SEARCHAD_REQUIRED' } : {}) }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, items: r.items })
 })
 

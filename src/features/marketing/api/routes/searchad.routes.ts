@@ -125,7 +125,7 @@ adsSearchadRoutes.get('/searchad/estimate', rateLimit({ action: 'ads-sa-estimate
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await resolveSearchAdCreds(c, sellerId)
-  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED', code: 'SEARCHAD_REQUIRED' }, 503)
   const keyword = String(c.req.query('keyword') || '').trim()
   if (!keyword) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
   const device = c.req.query('device') === 'MOBILE' ? 'MOBILE' : 'PC'

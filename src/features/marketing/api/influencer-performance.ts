@@ -6,6 +6,7 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
@@ -476,23 +477,38 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
-export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: number; changed: number }> {
-  let scanned = 0, changed = 0
-  for (let off = 0; ; off += 3000) {
+export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
+  // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
+  //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
+  //   (품질 패스가 이미 쓰는 패턴과 동일: 끝까지 돌면 0 으로 리셋해 순환 재검증).
+  const CURSOR_KEY = 'ads_reclassify_cursor'
+  const PAGE = 3000
+  let cursor = 0
+  const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
+
+  let scanned = 0, changed = 0, done = false
+  for (;;) {
     const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
-        WHERE account_id = 0 ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(off)
+        WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
       .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    const pageStart = cursor
     scanned += rows.length
     const ups: ReturnType<D1Database['prepare']>[] = []
     for (const r of rows) {
+      cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
       else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length
-    if (rows.length < 3000) break
+    if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
+    if (rows.length < PAGE) { done = true; break }
   }
-  return { scanned, changed }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
+  return { scanned, changed, done }
 }
