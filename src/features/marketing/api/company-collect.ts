@@ -278,8 +278,16 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     }
     // 🌐 tier1(대행사·창업생태계) 키워드는 **웹문서 검색 병행** — 지도 미등록 대행사를 자체 사이트로 발굴
     //   (대표 "대행사 많이 모집" — 대행사는 웹이 주 서식지, 사이트 크롤로 이메일 수율 최고).
-    if (kw.tier === 1 && !outOfBudget(budget)) {
-      const webPages = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_PAGES || '', 10) || 2))
+    //   ⚠️ 2026-07-28: 이 조건이 `kw.tier === 1` 이라 **대행사만 웹을 봤다** → 나머지 카테고리는 전량 지도
+    //   전용 = 사이트 미보유 = 이메일 구조적 0. 라이브 실측이 정확히 그 모양이었다:
+    //   간판 2,448행 중 이메일 **2건(0.1%)** · 부동산/POS 0% · 전문서비스 3.9%.
+    //   (반면 온라인판매 99.6% 는 크롤 성과가 아니라 통신판매 등록부가 대표이메일을 직접 주기 때문.)
+    //   간판·판촉물·인쇄·현수막(tier2)은 대행사와 같은 생태계라 자체 사이트 보유율이 높다 → tier2 까지 확장.
+    //   깊이는 tier1 만 여러 페이지(수율 최고 레인), tier2 는 1페이지로 예산을 아낀다.
+    const webTierMax = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_TIER_MAX || '', 10) || 2))
+    if ((kw.tier ?? 9) <= webTierMax && !outOfBudget(budget)) {
+      const deepPages = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_PAGES || '', 10) || 2))
+      const webPages = kw.tier === 1 ? deepPages : 1
       const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget, webPages)
       leads.push(...webLeads)
     }
