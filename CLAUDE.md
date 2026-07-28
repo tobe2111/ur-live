@@ -331,6 +331,57 @@ ur-ads 쪽 설정 확인은 기능 호출로 판정할 것(예: `/api/ads/keywor
 
 > ⚠️ 이 접근이 없으면: 라이브 원인 규명이 "대표가 상태줄 복사 → 붙여넣기" 왕복에 묶여 한 사이클에 수십 분씩 소모된다
 > (2026-07-28 크롤 전멸 규명이 실제로 그랬고, 직접 조회로 전환하자 예외 원문 확보에 1분 걸렸다).
+
+## ☁️ Cloudflare API 접근 (2026-07-28 대표 지시 — "영구적으로, 다른 세션에서도")
+
+라이브 인프라(환경변수·배포·빌드로그·D1·KV)를 **대시보드 왕복 없이 직접** 확인·조정한다.
+
+**자격증명 — 2026-07-28 대표 지시로 D1 보관이 SSOT**: 토큰은 **`platform_settings` 의 `cf_api_token` /
+`cf_account_id`** 에 저장돼 있다. 어드민 자격(위 섹션)만 있으면 **모든 세션이 자동으로** 꺼내 쓴다 —
+대표가 세션마다 환경변수를 만질 필요가 없다(그게 이 방식을 택한 이유).
+
+```bash
+# 표준 취득 절차 — 어드민 토큰($TOK) 확보 후
+CFJSON=$(curl -sS "https://live.ur-team.com/api/admin/tools/settings" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA")
+export CLOUDFLARE_API_TOKEN=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_api_token',''))")
+export CLOUDFLARE_ACCOUNT_ID=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_account_id',''))")
+```
+
+환경변수 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 가 이미 주입돼 있으면 그걸 우선 쓰고, 없으면 위 절차로 D1 에서 취득한다.
+**🚫 레포에 값 커밋 절대 금지**(공개 레포 — `visibility: public` 확인됨. 커밋하면 git 히스토리에 영구 잔존 + 스캐너가 수분 내 수집).
+값이 아니라 **키 이름만** 문서에 남긴다.
+
+**⚠️ 프록시**: `dash.cloudflare.com` 은 이 환경에서 차단(000). **`api.cloudflare.com` 은 통과** — API 만 쓴다.
+
+```bash
+CF=https://api.cloudflare.com/client/v4
+AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+curl -sS "$CF/user/tokens/verify" -H "$AUTH"                                    # 토큰 유효성
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" -H "$AUTH"       # 워커 목록
+# 워커 환경변수(시크릿 아님) 조회/설정은 settings 엔드포인트 — 값 교체 시 기존 바인딩 전체를 함께 보내야
+# 덮어써지지 않는다(부분 PATCH 아님). 반드시 조회 → 병합 → 전송 순서.
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -H "$AUTH"
+```
+
+**🚫 자율 규율 (대표가 넓은 권한을 줬어도 지킨다)**:
+1. **코드 배포는 이 토큰으로 하지 않는다.** 반드시 PR → CI(46 불변식) → 대표 승인 → 머지 경유.
+   토큰으로 직접 배포하면 오늘 실제로 실수를 잡아낸 게이트(파일크기 래칫·타입체크)를 통째로 우회하게 된다.
+2. 토큰 용도는 **① 진단(빌드로그·배포상태·플랜/한도 확인) ② 게이트 env 토글 ③ D1/KV 읽기** 로 한정.
+3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
+4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
+
+**확인된 사실(2026-07-28 실측 — 추측 대체)**:
+- 계정 `usage_model: standard` = **Workers 유료** → 서브리퀘스트 한도 **1,000**(50 아님).
+  ⇒ 보강 레인이 학습 상한 29~55 에서 맴돌던 건 플랜 탓이 **아니다**. 다른 원인(진단 배선 중).
+- `ur-ads` 바인딩 31개에 `NAVER_SEARCH_CLIENT_ID/SECRET`·`KAKAO_REST_API_KEY` **모두 존재** —
+  "크롤이 0인 건 네이버 키 부재" 가설도 **기각**.
+- `tail` 세션 생성은 되지만 **wss 업그레이드를 이 환경 프록시가 막는다**(non-101) → 실시간 로그는 불가.
+  ⇒ 라이브 원인 규명은 **D1 스냅샷 계측**에 의존해야 한다(그래서 `ads_enrich_last` 에 phase/p2/crash 추가).
+- Observability(telemetry) API 는 현재 토큰 권한 밖(`Authentication error`) — 필요해지면 권한 추가 요청.
+
+> 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
+> 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
+> 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:

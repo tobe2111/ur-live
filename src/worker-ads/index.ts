@@ -96,7 +96,12 @@ app.post('/__ads/enrich-company', async (c) => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     const stats = await enrichHeldLeads(c.env)
     return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+    // 💥 원문 릴레이(2026-07-28) — 'FAILED' 로 뭉개면 라이브에서 라운드가 왜 안 끝나는지 알 길이 없다.
+    //   내부 진단 엔드포인트(어드민 위임 전용)라 원문 노출 대상이 관리자로 한정된다.
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
 })
 
 // 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
@@ -114,6 +119,20 @@ app.post('/__ads/collect-nps', async (c) => {
     const stats = await runNpsWorkplaceEnrich(c.env, 100) // 40→100(2026-07-27 대표 "더 정확히" — data.go.kr 쿼터 여유)
     return c.json({ ok: true, stats })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
+// 🏭 도매몰 제조사·판매사 후보 수집 — 게이트 `SUPPLY_MAKER_COLLECT_ENABLED`(cron 측에서 검사, 수동은 무관).
+//   ⚠️ 서비스 분리: 이 워커에 두는 이유는 **매시간 트리거(`0 * * * *`)가 여기에만 있기 때문**이다
+//   (배포된 ur-live 워커의 트리거는 `*/5`·`0 18`·`0 19` 뿐 — 2026-07-28 Cloudflare API 실측).
+//   이 잡은 도매(supply) 테이블만 건드리고 소비자/마케팅 데이터에 쓰지 않는다.
+app.post('/__ads/collect-maker', async (c) => {
+  try {
+    const { runMakerCollect } = await import('@/features/supply/api/maker-collect')
+    return c.json({ ok: true, stats: await runMakerCollect(c.env) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
 })
 
 // ☎️ 카카오 전용 전화 스윕 — 보류 리드 전화 대량 채움(시간당 기본 600건, 카카오만 — 네이버 쿼터 무접촉).
@@ -355,6 +374,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
       for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
       return last
+    })
+  }
+  // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").
+  //   `runMakerCollect` 는 어드민 수동 버튼에만 연결돼 있었고 **cron 이 어디에도 없어서** 제조사 풀이
+  //   수동 실행분(82건)에 고착했다. 게이트 `SUPPLY_MAKER_COLLECT_ENABLED` 도 상태 배지 표시에만 쓰여
+  //   "켜도 아무 일이 없는" 상태였다 → 여기서 실제 스케줄에 연결한다.
+  //   ⚠️ 이 워커에 두는 이유: **매시간 트리거가 여기에만 존재**(배포된 ur-live 워커는 `*/5`·`0 18`·`0 19`
+  //   뿐 — 2026-07-28 Cloudflare API 실측). kick = SELF 독립 인보케이션이라 보강 레인과 서브리퀘스트 예산을
+  //   나눠 쓰지 않는다. 도매(supply) 테이블만 건드리므로 서비스 분리 위반 아님.
+  if (env.SUPPLY_MAKER_COLLECT_ENABLED === 'true') {
+    kick('/__ads/collect-maker', async () => {
+      const { runMakerCollect } = await import('@/features/supply/api/maker-collect')
+      return runMakerCollect(env)
     })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
