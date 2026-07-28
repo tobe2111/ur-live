@@ -297,7 +297,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 계정 | 환경변수 `URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD` (Claude Code 환경 설정에 등록 — 없으면 대표에게 요청) |
+| 계정 | **`claude@ur-team.com`** (에이전트 전용 super_admin, admins.id=10 — 이메일은 비밀이 아니라 여기 명시). 비밀번호는 **환경변수 `URDEAL_ADMIN_PASSWORD`** 에서만 읽는다(2026-07-28 대표 등록). 미주입 세션이면 대표에게 요청 |
 | 도메인 | **`https://live.ur-team.com`** — ⚠️ `urdeal.kr` 은 이 실행환경 네트워크 정책에서 **CONNECT 403 차단**. 구 도메인은 HTML 만 301 이고 **`/api/*` 는 그대로 응답**한다 |
 | 봇 차단 | `botProtection()` 이 curl UA 를 403 → **브라우저 User-Agent 헤더 필수** |
 | 로그인 | `POST /api/admin/login` → 토큰은 응답의 **`data.accessToken`**(구 `token` 폴백). 유효 24h |
