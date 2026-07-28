@@ -929,7 +929,8 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 타입 에러 라이브 유출 (배포 타입체크 게이트) | - | `main.yml` "Typecheck gate"(배포 차단) + `verify.yml` frontend tsc strict | 2026-07-12 BrandLoader import 누락(타입 에러)이 그대로 배포 → 블로그 상세 전면 크래시. vite build 는 타입검사 안 함 + verify tsc 가 warn-only + 배포는 Verify 와 독립이라 어디서도 못 막았음. **main.yml 의 Typecheck gate·verify 의 `continue-on-error: false` 제거/약화 금지**(제거하면 이 사고 재발). worker 전용 tsconfig 체크는 선재 에러 정리 후 strict 승격 예정(현재 warn) |
 | `vite build` 단독 사용 | `check-build-command.sh` | `verify.yml` | 2026-05-12 _worker.js 미갱신 |
 | `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
-| Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험 |
+| Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험. 2026-07-28 보강: **dotenv/`.dev.vars` 파일 자체를 커밋 금지**(패턴 0) — `.env.deploy` 가 살아있는 CF 토큰을 담은 채 커밋돼 있었고(#737), 기존 값 패턴들이 전부 따옴표를 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다 |
+| 시크릿 자재(키 본문) 유입 | `check-secret-material.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `archive/` **19개 `.md`/`.txt`** 에 Google 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출(#798). 기존 가드가 둘 다 통과시켰다: `verify.yml` 의 검사는 **`src/` 의 `.ts/.tsx` 만** 보고, `check-no-secrets.sh` 는 **키 이름 패턴** 위주라 문서 안의 *키 본문*이 사각지대였다. 폴더명이 `secrets-redacted/` 라 처리된 것처럼 보였으나 원문 그대로였다. **확장자·경로 무관 전수 스캔**(PEM 실본문·Toss live·Stripe·AWS·Slack·Anthropic·OpenAI·GitHub PAT), 자리표시자는 오탐 제외, 예외는 `secret-material-ok` 주석. ⚠️ **작업트리만 본다 — history 유출은 스캔이 아니라 *회전*으로만 해결된다** |
 | Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
 | API 인증 누락 | `check-api-auth.sh` | `verify.yml` | IDOR |
 | 대시보드 dark variant | `check-dashboard-theme.sh` | `verify.yml` | 사용자 룰 |

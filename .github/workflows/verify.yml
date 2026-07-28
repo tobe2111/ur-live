@@ -5,12 +5,26 @@ name: PR Verification
 #
 # 🛡️ 2026-05-13: push trigger 복원 (public repo 라 Actions 무제한 무료).
 #   pre-commit hook 우회 (-n) 해도 PR 에서 반드시 통과해야 main 머지 가능.
+#
+# 🛡️ 2026-07-28: 같은 커밋에 pull_request + push 두 이벤트가 각각 run 을 만들어 **Verify 가 매번 2번**
+#   돌고 있었다(실측: 커밋 f5c2093f7 에 run 30351104564 / 30351136667 두 개, 각 ~7분). 아래 concurrency 가
+#   두 이벤트를 **같은 group** 으로 묶어 나중 것이 앞 것을 취소 → 커밋당 1회로 수렴(연속 푸시도 최신만).
+#   ⚠️ group 키는 반드시 양쪽 이벤트에서 같은 값이어야 한다: push=ref_name, pull_request=head_ref
+#   (둘 다 브랜치명). `github.event.pull_request.number || github.ref` 로 쓰면 이벤트별로 갈려 dedup 안 됨.
 on:
   pull_request:
     branches: [main]
+    # 문서/마크다운만 바뀐 커밋은 검증 생략 — 이 레포는 필수 상태체크 강제가 없어 skip 이 머지를 막지 않는다.
+    #   (코드가 한 파일이라도 섞이면 paths-ignore 는 적용되지 않고 정상 실행된다.)
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches-ignore: [main]   # main push 는 main.yml 이 처리
+    paths-ignore: ['docs/**', '**/*.md']
   workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -113,6 +127,14 @@ jobs:
             exit 1
           fi
           echo "✅ Secret 없음"
+
+      # 🛡️ 2026-07-28: 위 검사는 **src/ 아래 .ts/.tsx 만** 본다. 실제로는 archive/ 의 **19개 .md/.txt**
+      #   에 Google 서비스계정 개인키·Toss live 시크릿·Stripe 시크릿이 **추적된 채** 남아 있었고
+      #   (public 레포 · 3월부터) 이 검사도 check-no-secrets.sh 도 통과시켰다.
+      #   → 확장자·경로 무관 전수 스캔. 작업트리만 보고 history 는 안 본다(과거분은 *회전*으로만 해결).
+      - name: 시크릿 자재 전수 스캔 (strict)
+        run: node scripts/check-secret-material.mjs
+        continue-on-error: false
 
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
