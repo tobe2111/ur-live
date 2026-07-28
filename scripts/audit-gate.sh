@@ -109,6 +109,7 @@ if domain deploy; then
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
+  run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

@@ -136,6 +136,13 @@ jobs:
         run: node scripts/check-secret-material.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-28: Firebase 토큰 인증 수용 금지. 유출된 서비스계정 개인키로
+      #   [커스텀 토큰 → ID 토큰 교환 → Bearer 제출] 하면 임의 uid 로그인이 됐다(#798 후속).
+      #   키 폐기와 별개로 '수용 경로' 자체를 닫았고, 이 가드가 재개방을 막는다.
+      - name: Firebase 인증 수용 경로 금지 (strict)
+        run: node scripts/check-no-firebase-auth.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
