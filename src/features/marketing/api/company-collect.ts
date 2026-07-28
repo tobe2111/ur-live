@@ -547,21 +547,37 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
      WHERE id > ? AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
     .bind(cursor, cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
   if (!rows.length) { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, '0').run().catch(() => null); return { scanned: 0, found: 0, cursor: 0, done: true } }
-  let found = 0
+  // 🩹 2026-07-28 근본수리(실측: "주소는 있는데 전화가 없는" 리드 1만+): 이 스윕은 예산 객체를 안 넘겨
+  //   회당 600 fetch 를 무통제로 쏘았고, 서브리퀘스트 한도를 넘으면 이후 조회가 전부 조용히 실패했다.
+  //   그런데 커서는 **무조건 마지막 행까지 전진**해서, 한 건도 못 받은 라운드의 600건이 통째로 건너뛰어졌다
+  //   (`id > cursor` 라 커서가 한 바퀴 돌 때까지 영구 방치 — 백로그 규모상 8일+). 스윕이 '지나갔지만
+  //   실제로는 조회한 적 없는' 행이 계속 쌓인 이유. → ① 학습 상한 안에서만 쏘고 ② **실제 처리한 행까지만
+  //   커서를 전진**시킨다(시도 못 한 행은 다음 라운드에 다시 잡히게).
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
+  const budget: FetchBudget = { left: resolveSubreqBudget(cap, learnedCap) }
+  let found = 0, lastDone = cursor
   for (const r of rows) {
-    const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address)
+    if (budget.left <= 0 || budget.limitHit) break // 여기서 멈추면 남은 행은 커서가 안 넘어가 다음 라운드 대상
+    const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
+    if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 커서를 전진시키지 않는다
+    lastDone = r.id
     if (k.phone) {
       found++
       await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?")
         .bind(k.phone, r.id).run().catch(() => null)
     }
   }
-  const nextCursor = rows[rows.length - 1].id
+  const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
+  if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+  const nextCursor = lastDone
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
   let totalFound = 0; try { totalFound = Number((prevRaw?.value ? JSON.parse(prevRaw.value) : {}).total_found) || 0 } catch { /* 초기 */ }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, cursor: nextCursor, total_found: totalFound + found,
+    limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
   })).run().catch(() => null)
   return { scanned: rows.length, found, cursor: nextCursor, done: false }
 }
