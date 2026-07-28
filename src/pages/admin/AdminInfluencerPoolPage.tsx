@@ -14,6 +14,7 @@ import { useCollectRun } from './influencer-pool/useCollectRun'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
+import ColdSendPanel from './influencer-pool/ColdSendPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
@@ -389,6 +390,7 @@ export default function AdminInfluencerPoolPage() {
               🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
             </button>
             <ConsentedSendPanel />
+            <ColdSendPanel />
           </div>
         </details>
 

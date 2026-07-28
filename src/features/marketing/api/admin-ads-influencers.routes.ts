@@ -13,6 +13,7 @@ import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, personalEmailSqlClause, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { ensureQualityColumns, runQualityPass } from './influencer-quality'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
+import { COLD_SEND_MAX, COLD_COOLDOWN_DAYS, coldDailyKey, evaluateColdGuards } from './outreach-cold'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
@@ -316,6 +317,69 @@ app.post('/influencer-pool/send-consented', async (c) => {
   const eligible = new Set(rows.map(r => r.id))
   const skipped = ids.filter(id => !eligible.has(id))
   return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped, recent_skipped: force ? 0 : skipped.length })
+})
+
+// POST /api/admin/ads/influencer-pool/send-cold { ids, subject, body } — 📨 **콜드(미동의) 제휴 제안** 발송
+//   ⚖️ 2026-07-28 대표 결정으로 신설(그 전까지 "만들지 않는다"였다 — 경위·근거·잔여 리스크는 outreach-cold.ts 헤더).
+//   동의 경로(send-consented)와 **분리**한다: 저쪽은 consented_at 강제, 이쪽은 consented_at IS NULL 대상.
+//   법정 표시·차단은 동의 경로와 동일하게 코드가 강제((광고) 제목 · 수신거부 · 전송자정보 · 야간금지) +
+//   콜드 전용 제동(1일 상한 · 반송 회로차단 · 30일 쿨다운 · force 없음).
+app.post('/influencer-pool/send-cold', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  await ensureOutreachColumns(c.env.DB)
+  await ensureCampaignColumn(c.env.DB)
+  if (!c.env.RESEND_API_KEY) return c.json({ success: false, error: '발송은 RESEND_API_KEY 설정 후 사용할 수 있습니다 (Cloudflare → ur-live → Variables)' }, 400)
+  if (isNightKST(Date.now())) return c.json({ success: false, error: '야간(21시~익일 8시)에는 광고성 메일을 발송할 수 없습니다(정보통신망법). 오전 8시 이후 다시 시도해주세요' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const ids: number[] = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, COLD_SEND_MAX)
+  const subject = withAdLabel(String(b.subject || '').trim().slice(0, 140))
+  const template = String(b.body || '').trim().slice(0, 5000)
+  if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
+  if (!String(b.subject || '').trim() || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+
+  // 🚦 콜드 전용 게이트 — 1일 상한 + 반송 회로차단(둘 다 발송 시도 전에 판단).
+  const dayKey = coldDailyKey(Date.now())
+  const usedRow = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(dayKey).first<{ value: string }>().catch(() => null)
+  const used = Math.max(0, parseInt(usedRow?.value || '0', 10) || 0)
+  const sampleRow = await c.env.DB.prepare(`SELECT COUNT(*) AS sent,
+      SUM(CASE WHEN email_status IN ('bounced','complained') THEN 1 ELSE 0 END) AS bad
+    FROM ad_influencer_leads
+    WHERE account_id = ? AND consented_at IS NULL AND campaign_sent_at IS NOT NULL
+      AND campaign_sent_at > datetime('now', '-14 days')`).bind(POOL).first<{ sent: number; bad: number }>().catch(() => null)
+  const guard = evaluateColdGuards(used, { sent: Number(sampleRow?.sent) || 0, bad: Number(sampleRow?.bad) || 0 })
+  if (!guard.ok) return c.json({ success: false, error: guard.error }, 400)
+
+  // ⚖️ 대상 강제(클라 값 신뢰 X): 미동의 + 이메일 보유 + 반송/신고 이력 없음 + 쿨다운 경과. force 스위치 없음.
+  const ph = ids.map(() => '?').join(',')
+  const rows = ((await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NULL
+      AND email IS NOT NULL AND email != ''
+      AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))
+      AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${COLD_COOLDOWN_DAYS} days'))
+    LIMIT ?`).bind(POOL, ...ids, Math.min(ids.length, guard.remaining || 0))
+    .all<{ id: number; name: string; email: string }>().catch(() => null))?.results) || []
+  if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, remaining_today: guard.remaining,
+    note: `선택한 리드가 모두 발송 조건(이메일 보유 · 미동의 · 반송이력 없음 · 최근 ${COLD_COOLDOWN_DAYS}일 내 미발송)을 만족하지 않습니다` })
+
+  let sent = 0; const failedIds: number[] = []; const suppressedIds: number[] = []
+  for (const r of rows) {
+    const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부·전송자정보 강제
+    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, c.env.RESEND_API_KEY, c.env.RESEND_FROM, c.env.DB).catch(() => ({ success: false as const, error: 'throw' }))
+    if (res.success) {
+      sent++
+      await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
+        campaign_sent_at = datetime('now'), status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
+    } else if ((res as { error?: string }).error === 'suppressed') suppressedIds.push(r.id)
+    else failedIds.push(r.id)
+  }
+  // 1일 카운터는 **실제 발송분만** 누적(실패·억제는 안 셈) — 상한이 '보낸 양'을 뜻하도록.
+  if (sent > 0) {
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(dayKey, String(used + sent)).run().catch(() => null)
+  }
+  const eligible = new Set(rows.map(r => r.id))
+  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds,
+    skipped: ids.filter(id => !eligible.has(id)), remaining_today: Math.max(0, (guard.remaining || 0) - sent) })
 })
 
 // POST /api/admin/ads/influencer-pool/:id/track-link { target_url } — 🔗 리드별 협찬 추적링크(생성/조회)
