@@ -48,14 +48,24 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number): numb
 
 /**
  * 다음 실행의 상한 — 바꿀 필요가 없으면 null(쓰기 생략).
+ *
+ * ⚠️ 2026-07-28 데드락 수리: 예전엔 회복 조건에 `exhausted`(= 예산을 0까지 다 씀)를 요구했다.
+ *   의도는 "상한을 시험해보지 않았으면 올릴 근거도 없다" 였지만, **예산을 남긴 채 정상 종료하는 레인은
+ *   그 조건에 영영 도달하지 못해 상한이 고착**됐다. 실측(보강 레인): 예산 63 중 29만 쓰고 `partial:false`
+ *   로 완주 → `exhausted=false` → 상한이 63에 못박힘 → 다음 회차도 63 → 또 남김. 닫힌 고리.
+ *   (4차 세션이 레인별 키를 분리하며 "이제 300부터 시작" 이라 적었지만 실현되지 않았던 이유가 이것이다.)
+ *
+ *   ⇒ 회복 조건을 **"한도 오류를 안 봤다"** 하나로 바꾼다. 상한은 *목표치*가 아니라 *천장*이고, 실제 소비는
+ *   할 일의 양이 정한다 — 구속하지 않는 천장을 낮게 유지할 이유가 없다. 너무 높이 올라가면 그 다음 무거운
+ *   라운드가 한도 오류를 보고 `hitLimit` 분기로 즉시 되내려온다(그게 이 피드백 루프의 안전판).
+ *
  * @param spent      이번 실행이 실제로 쓴 fetch 수
  * @param hitLimit   이번 실행에서 한도 오류를 관측했나
- * @param exhausted  예산을 끝까지 다 썼나(안 썼으면 한도 판단 근거가 없다)
  */
 export function nextSubreqCap(
-  spent: number, hitLimit: boolean, exhausted: boolean, learnedCap: number, envBudget: number,
+  spent: number, hitLimit: boolean, learnedCap: number, envBudget: number,
 ): number | null {
   if (hitLimit) return Math.max(SUBREQ_CAP_MIN, Math.floor(spent * BACKOFF_RATIO))
-  if (learnedCap > 0 && exhausted && learnedCap < envBudget) return Math.min(envBudget, Math.ceil(learnedCap * RECOVER_RATIO))
+  if (learnedCap > 0 && learnedCap < envBudget) return Math.min(envBudget, Math.ceil(learnedCap * RECOVER_RATIO))
   return null
 }

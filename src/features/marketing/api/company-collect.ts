@@ -374,7 +374,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
         .bind(k.phone, r.id).run().catch(() => null)
     }
   }
-  const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
+  const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, learnedCap, cap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const nextCursor = lastDone
