@@ -161,6 +161,8 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
+import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
+import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
@@ -1025,9 +1027,12 @@ app.use('*', async (c, next) => {
         },
       });
     } else if (isBlogSurface) {
-      // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+      // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
+      //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
+      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
+        : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent('', { html: true }); },
+        element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
@@ -2550,6 +2555,11 @@ export default {
         !url.pathname.startsWith('/.well-known/')
       ) {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
+      }
+      // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const renamed = resolveRenamedBlogPath(url.pathname);
+        if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
