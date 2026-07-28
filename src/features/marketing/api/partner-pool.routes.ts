@@ -371,6 +371,25 @@ app.post('/collect', async (c) => {
 // POST /api/admin/partner-pool/match-registry — 🔗 원부 이메일 이식(크롤 0회·서브리퀘스트 0).
 //   전수조사 결과 이메일의 99.8%가 원부 직행분인데 타깃 카테고리는 조인 키(business_no)가 없어 못 쓰고 있었다.
 //   상호(+주소) 확신 매칭만 이식 — 판단이 안 서면 비워둔다(허위 0). 여러 패스로 백로그를 순회.
+// 🧬 POST /api/admin/partner-pool/dedupe { dryRun?, maxGroups? } — 중복 행 병합(삭제 0, 되돌리기 가능).
+//   전화 + 정규화 상호가 둘 다 같은 그룹만 접는다. 큐레이션 행은 승자 우선이고 둘 이상이면 그룹째 보류.
+//   패자는 active=0 + merged_into=<승자> 로 표시만 — undo 가능. 기본 dryRun=true(세어보고 실행).
+app.post('/dedupe', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { dryRun?: boolean; maxGroups?: number }
+  const { dedupeCompanyLeads } = await import('./company-dedupe')
+  const r = await dedupeCompanyLeads(c.env.DB, { dryRun: b.dryRun !== false, maxGroups: b.maxGroups })
+  return c.json({ success: true, data: r })
+})
+
+// ↩️ POST /api/admin/partner-pool/dedupe-undo { survivorId } — 특정 승자로 접힌 행 전량 복원.
+app.post('/dedupe-undo', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { survivorId?: number }
+  const id = Number(b.survivorId)
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'survivorId 필요' }, 400)
+  const { undoDedupe } = await import('./company-dedupe')
+  return c.json({ success: true, restored: await undoDedupe(c.env.DB, id) })
+})
+
 app.post('/match-registry', async (c) => {
   const passes = Math.min(20, Math.max(1, intParam(c.req.query('passes'), 5)))
   const run = async () => {
