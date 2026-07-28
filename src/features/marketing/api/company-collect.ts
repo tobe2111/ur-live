@@ -14,6 +14,8 @@ import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+// 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
+import { buildKeywordRows, rotationWindow } from './company-keyword-grid'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -21,57 +23,6 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
-
-/** 🗺️ 파트너 키워드 그리드(대표 플레이북 8종 — 2026-07-22). subcategory=업종명, tier=플레이북 순위
- *   (대행사1·주류식자재2·부동산간판3·POS4·세무5 — 어드민 수동 조정 가능). 1단계(방배 실전) 먼저 시드
- *   → 낮은 id = 커서 우선. ⚠️ 향후 공공데이터 API(상가정보) 전환 대상 = tier 2~5(설계 §5). 대행사(tier1)만 네이버 유지. */
-type Trade = { kw: string; category: string; subcategory: string; tier: number }
-// 1단계 — 지역 {서초·방배·강남·동작} × tier 2~5 업종.
-const S1_REGIONS = ['서초', '방배', '강남', '동작']
-const S1_TRADES: Trade[] = [
-  { kw: '주류 도매', category: '식자재·납품', subcategory: '주류 도매', tier: 2 },
-  { kw: '주류도매상', category: '식자재·납품', subcategory: '주류도매상', tier: 2 },
-  { kw: '식자재 유통', category: '식자재·납품', subcategory: '식자재 유통', tier: 2 },
-  { kw: '업소용 식자재', category: '식자재·납품', subcategory: '업소용 식자재', tier: 2 },
-  { kw: '식자재 마트', category: '식자재·납품', subcategory: '식자재 마트', tier: 2 },
-  { kw: '커피 원두 납품', category: '식자재·납품', subcategory: '커피 원두 납품', tier: 2 },
-  { kw: '상가 전문 부동산', category: '부동산', subcategory: '상가부동산', tier: 3 },
-  { kw: '상가 임대', category: '부동산', subcategory: '상가부동산', tier: 3 },
-  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
-  { kw: '상업 인테리어', category: '인테리어', subcategory: '인테리어·시공', tier: 3 },
-  { kw: '주방설비', category: '인테리어', subcategory: '주방설비', tier: 3 },
-  { kw: '포스 대리점', category: 'POS·단말기', subcategory: '포스 대리점', tier: 4 },
-  { kw: '카드단말기', category: 'POS·단말기', subcategory: '카드단말기', tier: 4 },
-  { kw: 'VAN 대리점', category: 'POS·단말기', subcategory: 'VAN 대리점', tier: 4 },
-  { kw: '키오스크 설치', category: 'POS·단말기', subcategory: '키오스크 설치', tier: 4 },
-  { kw: '테이블오더', category: 'POS·단말기', subcategory: '테이블오더', tier: 4 },
-  { kw: '세무사무소', category: '전문서비스', subcategory: '세무사무소', tier: 5 },
-  { kw: '기장 세무사', category: '전문서비스', subcategory: '기장 세무사', tier: 5 },
-  { kw: '노무사 사무소', category: '전문서비스', subcategory: '노무사 사무소', tier: 5 },
-]
-// 2단계 — 대행사 전국(tier 1, 이메일 크롤 우선). 서울 25구 + 6 광역시.
-const S2_REGIONS = ['강남', '서초', '송파', '강동', '마포', '용산', '성동', '광진', '영등포', '동작', '관악', '강서', '양천', '구로', '금천', '종로', '중구', '성북', '동대문', '중랑', '노원', '도봉', '강북', '은평', '서대문', '부산', '대구', '인천', '광주', '대전', '울산']
-const S2_TRADES: Trade[] = [
-  { kw: '마케팅 대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
-  { kw: '퍼포먼스 마케팅 대행사', category: '대행사', subcategory: '퍼포먼스 마케팅 대행사', tier: 1 },
-  { kw: '바이럴 마케팅 대행사', category: '대행사', subcategory: '바이럴 마케팅 대행사', tier: 1 },
-  { kw: '소상공인 마케팅', category: '대행사', subcategory: '소상공인 마케팅', tier: 1 },
-  { kw: '창업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
-  { kw: '상권분석', category: '창업', subcategory: '상권분석', tier: 1 },
-  // 🎯 2026-07-27 대표 "아인종합기획과 유사한 업체" — 지역 **종합광고기획사** 어휘(광고기획·판촉·인쇄·행사).
-  //   소상공인을 실제로 상대하는 오프라인 대행 생태계 — 온라인 마케팅 어휘만으론 못 긁던 본류.
-  { kw: '종합광고기획', category: '대행사', subcategory: '종합광고기획', tier: 1 },
-  { kw: '광고기획사', category: '대행사', subcategory: '종합광고기획', tier: 1 },
-  { kw: '광고대행사', category: '대행사', subcategory: '마케팅 대행사', tier: 1 },
-  { kw: '이벤트 대행사', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
-  { kw: '행사 대행', category: '대행사', subcategory: '행사·이벤트', tier: 1 },
-  { kw: '판촉물 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
-  { kw: '옥외광고', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
-  { kw: '인쇄기획', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
-  // 간판·현수막을 전국 그리드로 승격(기존 S1 4개 지역 한정 → 아인종합기획형이 그 밖이면 미발굴이던 갭)
-  { kw: '간판 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
-  { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
-]
 
 /** 🟡 카카오 로컬 수집 레인(2026-07-27) — 네이버 지역검색은 키워드당 5건 한도인데 카카오는 **15건×3페이지=45건**
  *   + 전화·주소가 응답에 직접 실림(무료 일 10만 쿼터, 네이버와 별도). 아인종합기획형(지도 등록 오프라인 업체)
@@ -105,6 +56,11 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
 
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
+/** 키워드 시드 버전 — 그리드(지역/업종)를 늘렸으면 +1 해야 기존 배포에 새 키워드가 들어간다. */
+const KEYWORD_SEED_VERSION = 2 // 2026-07-28: 전국 시군구 전면(31→235 지역)
+const KEYWORD_SEED_KEY = 'ads_company_kw_seed'
+const KEYWORD_SEED_CHUNK = 500 // 1회 실행당 시드 상한(=5 batch) — 첫 시드가 수집 예산을 잡아먹지 않게
+
 const _kwDone = new WeakSet<object>()
 export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
   if (_kwDone.has(DB)) return
@@ -124,21 +80,30 @@ export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_keywords ADD COLUMN tier INTEGER').run().catch(() => null)
-  // 1단계 먼저(낮은 id = 커서 우선) → 2단계. 262행이라 100씩 청크 batch.
-  const rows: { keyword: string; category: string; subcategory: string; region: string; tier: number }[] = [
-    ...S1_REGIONS.flatMap(r => S1_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
-    ...S2_REGIONS.flatMap(r => S2_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
-  ]
-  for (let i = 0; i < rows.length; i += 100) {
-    const stmts = rows.slice(i, i + 100).map(r => DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'seed')")
+  // ⚠️ 2026-07-28 전국 시군구 전면 확장(31→235 지역, 시드 3,800행+) — 예전처럼 **매 실행마다 전량 재시드**하면
+  //   실행당 39 batch 가 되어 서브리퀘스트를 통째로 잡아먹는다(수집할 예산이 안 남음). 그래서
+  //   ① 버전 게이트로 완료 후엔 platform_settings 조회 1회로 끝내고 ② 첫 시드는 회당 SEED_CHUNK 행씩 나눠 넣는다.
+  //   진행값 형식 `"<version>:<seededCount>"` — 중단/재개 안전(INSERT OR IGNORE 라 재실행 무해).
+  const rows = buildKeywordRows()
+  const cur = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(KEYWORD_SEED_KEY).first<{ value: string }>().catch(() => null)
+  const [ver, seeded] = String(cur?.value || '').split(':')
+  let done = ver === String(KEYWORD_SEED_VERSION) ? Math.max(0, parseInt(seeded || '0', 10) || 0) : 0
+  if (done >= rows.length) return
+  const end = Math.min(rows.length, done + KEYWORD_SEED_CHUNK)
+  for (let i = done; i < end; i += 100) {
+    const stmts = rows.slice(i, Math.min(end, i + 100)).map(r => DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'seed')")
       .bind(r.keyword, r.category, r.subcategory, r.region, r.tier))
     await DB.batch(stmts).catch(() => null)
   }
+  done = end
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(KEYWORD_SEED_KEY, `${KEYWORD_SEED_VERSION}:${done}`).run().catch(() => null)
 }
 
 export async function listCompanyKeywords(DB: D1Database): Promise<Array<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>> {
   await ensureCompanyKeywords(DB)
-  const r = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier, active, found_total, saved_total, last_run_at FROM ad_company_keywords ORDER BY active DESC, (tier IS NULL) ASC, tier ASC, saved_total DESC, id ASC LIMIT 1000')
+  // ⚠️ 전국 확장(3,800개+) 후 LIMIT 1000 이면 어드민 화면에서 뒤쪽 키워드가 조용히 안 보인다.
+  //   (수집 회전은 별도 쿼리라 영향 없음 — 이건 표시 전용.)
+  const r = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier, active, found_total, saved_total, last_run_at FROM ad_company_keywords ORDER BY active DESC, (tier IS NULL) ASC, tier ASC, saved_total DESC, id ASC LIMIT 5000')
     .all<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>().catch(() => null)
   return r?.results || []
 }
@@ -186,18 +151,27 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
  *   대행사는 사무실업이라 지도(지역검색) 미등록이 많고 display=5 제약도 큼 — 반면 **웹엔 자기 사이트가 반드시 있음**.
  *   사이트 자체가 리드(도메인이 dedup 키) → 보강 크롤이 그 사이트에서 이메일/전화 확보(대행사 이메일 수율 최고 경로).
  *   제3자/UGC/구인 플랫폼 도메인 제외. 상호는 페이지 제목에서 유도(표시 라벨용 — 정체성 키는 도메인). */
-async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget): Promise<CompanyLead[]> {
+async function searchNaverWeb(clientId: string, clientSecret: string, kw: CompanyKeyword, budget?: FetchBudget, pages = 1): Promise<CompanyLead[]> {
   if (outOfBudget(budget)) return []
-  spendBudget(budget)
   const { THIRD_PARTY_HOST, NEWS_MEDIA_HOST } = await import('./contact-enrich')
   const { NON_BUSINESS_HOST } = await import('./company-classify')
-  const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res || !res.ok) return []
-  const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+  // 📄 2026-07-28: 이 레인이 **이메일 수율 최고**(라이브 실측 webkr 75% vs 지도 2%)인데 1페이지(30건)만 봤다.
+  //   start=1,31,61… 로 더 깊게 판다. dedup(seen)이 페이지 간에도 유지돼 중복 도메인은 1건으로 접힌다.
+  const items: Array<{ title?: string; link?: string; description?: string }> = []
+  for (let p = 0; p < Math.max(1, pages); p++) {
+    if (outOfBudget(budget)) break
+    spendBudget(budget)
+    const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30&start=${p * 30 + 1}`
+    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    if (!res || !res.ok) break
+    const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
+    const got = data?.items || []
+    items.push(...got)
+    if (got.length < 30) break // 마지막 페이지
+  }
   const out: CompanyLead[] = []
   const seen = new Set<string>()
-  for (const it of (data?.items || [])) {
+  for (const it of items) {
     const link = (it.link || '').trim()
     if (!/^https?:\/\//i.test(link)) continue
     let u: URL
@@ -263,25 +237,37 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     return s
   }
 
-  const active = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier FROM ad_company_keywords WHERE active = 1 ORDER BY id ASC').all<CompanyKeyword>().catch(() => null)
-  const kws = active?.results || []
+  // 🔁 커서 회전 — 전국 확장으로 키워드가 수천 개라 **전량 로드 대신 OFFSET 창**만 읽는다.
+  //   정렬은 `tier ASC, id ASC`(둘 다 불변) — 안정 정렬이라야 OFFSET 창에 건너뜀/중복이 없다.
+  //   ⚠️ tier 우선인 이유: 새로 추가된 전국 지역의 tier1(대행사) 키워드가 id 기준으로는 전부 뒤에 붙어
+  //   한 바퀴(수천 개)를 다 돈 뒤에야 도달한다 — 대행사가 목표인데 2주를 기다리게 된다.
+  const totalRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_keywords WHERE active = 1').first<{ n: number }>().catch(() => null)
+  const total = Number(totalRow?.n) || 0
+  let cursor = prev?.cursor || 0
+  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
+  const batchSize = Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12)
+  const kws: CompanyKeyword[] = []
+  for (const w of rotationWindow(total, cursor, batchSize)) {
+    const rs = await DB.prepare('SELECT id, keyword, category, subcategory, region, tier FROM ad_company_keywords WHERE active = 1 ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ? OFFSET ?')
+      .bind(w.limit, w.offset).all<CompanyKeyword>().catch(() => null)
+    kws.push(...(rs?.results || []))
+  }
   if (!kws.length) {
-    const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true } }
+    // ⚠️ 커서를 0 으로 되감지 않는다 — D1 일시 실패로 창이 비었을 뿐인데 리셋하면 진행분(수천 키워드)을 잃는다.
+    const s: CompanyCollectStats = { last_run: stamp, found: 0, saved: 0, keywords: [], cursor, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true } }
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
     return s
   }
 
-  const batch = Math.min(kws.length, Math.max(1, parseInt(env.ADS_COMPANY_BATCH || '', 10) || 12))
+  const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
-  let cursor = prev?.cursor || 0
-  if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) } // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
 
   let found = 0, saved = 0
   const used: string[] = []
   for (let i = 0; i < batch; i++) {
     if (outOfBudget(budget)) break
-    const kw = kws[(cursor + i) % kws.length]
+    const kw = kws[i]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
     // 🟡 카카오 로컬 병행(45건/키워드 — 네이버 5건의 9배, 전화 직접) — 지도 등록 업체 발굴 주력.
@@ -293,7 +279,8 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     // 🌐 tier1(대행사·창업생태계) 키워드는 **웹문서 검색 병행** — 지도 미등록 대행사를 자체 사이트로 발굴
     //   (대표 "대행사 많이 모집" — 대행사는 웹이 주 서식지, 사이트 크롤로 이메일 수율 최고).
     if (kw.tier === 1 && !outOfBudget(budget)) {
-      const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget)
+      const webPages = Math.min(5, Math.max(1, parseInt(env.ADS_COMPANY_WEB_PAGES || '', 10) || 2))
+      const webLeads = await searchNaverWeb(clientId, clientSecret, kw, budget, webPages)
       leads.push(...webLeads)
     }
     found += leads.length
@@ -324,7 +311,8 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
       }
     }
   }
-  const nextCursor = (cursor + batch) % kws.length
+  // 커서는 **전체 키워드 수** 기준으로 감는다(창 크기가 아니라) — total 이 0 이면 0.
+  const nextCursor = total > 0 ? (cursor + batch) % total : 0
 
   const s: CompanyCollectStats = {
     last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,

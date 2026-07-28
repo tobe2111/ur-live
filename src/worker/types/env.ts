@@ -177,6 +177,8 @@ export interface Env {
   ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
   ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
   ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
+  ADS_COMPANY_WEB_PAGES?: string;       // tier1(대행사) 웹문서 검색 페이지 수(기본 2, 최대 5) — 30건/페이지.
+                                        //   이메일 수율이 가장 높은 레인이라 깊이가 곧 이메일 보유 대행사 수.
   ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
   ADS_ENRICH_DEADLINE_MS?: string;        // 보강 1라운드 벽시계 상한(기본 20000, 5000~120000). 가드가 너무 일찍/늦게 끊으면 무배포 재조정.
   ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
