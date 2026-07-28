@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { looksLikeBusinessBlog, extractBlogBizContact } from '@/features/marketing/api/biz-blog-router'
+import { looksLikeBusinessBlog, extractBlogBizContact, normalizeKrPhone } from '@/features/marketing/api/biz-blog-router'
 
 /**
  * 🔀 2026-07-28 업체형 블로그 → B2B 파트너풀 라우팅의 불변식 잠금.
@@ -61,6 +61,22 @@ describe('extractBlogBizContact — 저장된 텍스트에서 연락처(외부 �
 
   it('④ 없으면 null — 허위로 채우지 않는다', () => {
     expect(extractBlogBizContact('범상우맘', '아이와 보낸 하루')).toEqual({ phone: null, email: null })
+  })
+
+  it('④-2 붙여쓴 번호도 한 형식으로 모은다 (라이브 실버그: 01050598228 이 그대로 저장됐다)', () => {
+    // 전화는 파트너풀에서 **중복 판정·발신에 쓰는 키** — 형식이 갈리면 같은 업체가 둘로 보인다.
+    expect(extractBlogBizContact('편의점/마트/정육냉장고수리 01050598228').phone).toBe('010-5059-8228')
+    expect(normalizeKrPhone('01050598228')).toBe('010-5059-8228')
+    expect(normalizeKrPhone('021234567')).toBe('02-123-4567')
+    expect(normalizeKrPhone('0212345678')).toBe('02-1234-5678')
+    expect(normalizeKrPhone('0311234567')).toBe('031-123-4567')
+    expect(normalizeKrPhone('15443542')).toBe('1544-3542')
+  })
+
+  it('④-3 자리수가 안 맞으면 버린다 — 잘린 번호는 없느니만 못하다', () => {
+    expect(normalizeKrPhone('010-3005-')).toBeNull()
+    expect(normalizeKrPhone('123')).toBeNull()
+    expect(normalizeKrPhone('')).toBeNull()
   })
 
   it('⑤ 이메일은 뽑되 플랫폼/이미지 오탐은 거른다', () => {

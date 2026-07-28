@@ -67,11 +67,31 @@ export function looksLikeBusinessBlog(name?: string | null, description?: string
   return false
 }
 
+/**
+ * 📞 한국 전화번호 정규화 — 숫자만 남긴 뒤 자리수로 하이픈을 넣는다.
+ *   ⚠️ 실측에서 나온 실버그: 블로그 이름의 `01050598228`(붙여쓴 11자리)이 그대로 저장돼
+ *   파트너풀의 다른 전화(`010-5059-8228`)와 **형식이 갈렸다** — 전화는 중복 판정·발신에 쓰이는 키라
+ *   형식이 갈리면 같은 업체가 둘로 보인다. 표기 방식과 무관하게 한 형태로 모은다.
+ */
+export function normalizeKrPhone(raw?: string | null): string | null {
+  const d = String(raw || '').replace(/\D/g, '')
+  if (!d) return null
+  if (/^1[5-9]\d{2}\d{4}$/.test(d)) return `${d.slice(0, 4)}-${d.slice(4)}`            // 대표번호 1544-3542
+  if (d.startsWith('02')) {                                                             // 서울 02
+    if (d.length === 9) return `02-${d.slice(2, 5)}-${d.slice(5)}`
+    if (d.length === 10) return `02-${d.slice(2, 6)}-${d.slice(6)}`
+    return null
+  }
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`          // 031-123-4567
+  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`          // 010-1234-5678
+  return null // 자리수가 안 맞으면 **버린다** — 잘린 번호를 저장하면 없느니만 못하다
+}
+
 /** 이미 저장된 텍스트(이름+소개글)에서 전화/이메일 추출 — 외부 요청 0. 못 찾으면 null(허위 금지). */
 export function extractBlogBizContact(name?: string | null, description?: string | null): { phone: string | null; email: string | null } {
   const text = `${name || ''} ${description || ''}`
   const phoneRaw = text.match(/(1[5-9]\d{2}[-. ]?\d{4}|0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4})/)?.[0] || null
-  const phone = phoneRaw ? phoneRaw.replace(/[.\s]/g, '-').replace(/-+/g, '-') : null
+  const phone = normalizeKrPhone(phoneRaw)
   const emailRaw = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0] || null
   // 네이버 플랫폼 자체 주소·이미지 파일명 오탐 제거.
   const email = emailRaw && !/@(naver\.com\/|blog\.|example\.)|\.(png|jpg|jpeg|gif)$/i.test(emailRaw) ? emailRaw : null
