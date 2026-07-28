@@ -162,6 +162,7 @@ import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
+import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
@@ -1025,17 +1026,10 @@ app.use('*', async (c, next) => {
         },
       });
     } else if (isBlogSurface) {
-      // 📝 2026-07-28 (대표 "네이버에 유어딜 검색해도 안 나옴" 근본원인): 블로그 #root 를 **본문 HTML** 로.
-      //   기존엔 홈 shell 잔상 제거를 위해 빈 문자열로 비웠는데, 그 결과 **JS 를 실행하지 않는 크롤러**
-      //   (네이버 Yeti · AI 개요/LLM 크롤러)가 받는 HTML 에 본문 텍스트가 0 → 22편이 통째로 색인·인용
-      //   후보에서 제외됐다(서치어드바이저 실측: 7/22 이후 수집 0, 색인 1). React 는 createRoot(비-hydrate)
-      //   라 마운트 시 이 내용을 그대로 덮어쓴다 → 하이드레이션 위험 0 + 첫 페인트에 본문 노출(LCP 이득).
-      //   payload 없거나(콜드 timeout) 파싱 실패면 '' → 기존 '빈 #root' 동작 그대로(무회귀).
-      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload
-        ? buildBlogPostBody(ssrPayload)
-        : ssrSlot === 'BLOG'
-        ? buildBlogListBody(ssrPayload)
-        : '';
+      // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
+      //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
+      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
+        : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
         element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
@@ -2559,15 +2553,10 @@ export default {
       ) {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
       }
-      // 🔗 2026-07-28 (대표 "yourdeal 이 아니라 urdeal 이 되어야" — 브랜드/도메인 정합): 블로그 슬러그
-      //   리네임 301. urdeal.kr 도메인인데 슬러그만 'yourdeal' 이던 불일치를 바로잡되, 이미 색인·공유된
-      //   구 URL 이 404 나지 않도록 영구 리다이렉트로 링크 자산을 새 슬러그로 승계한다.
-      //   (슬러그 추가 리네임 시 이 맵에 한 줄씩 — 구 URL 은 영구 보존이 원칙.)
-      const RENAMED_BLOG_SLUGS: Record<string, string> = { 'what-is-yourdeal': 'what-is-urdeal' };
-      if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname.startsWith('/blog/')) {
-        const oldSlug = url.pathname.slice('/blog/'.length).replace(/\/+$/, '');
-        const newSlug = RENAMED_BLOG_SLUGS[oldSlug];
-        if (newSlug) return Response.redirect(`${url.origin}/blog/${newSlug}${url.search || ''}`, 301);
+      // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const renamed = resolveRenamedBlogPath(url.pathname);
+        if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
