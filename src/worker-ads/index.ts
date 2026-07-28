@@ -81,6 +81,32 @@ app.post('/__ads/collect-chain', async (c) => {
   return c.json({ ok: true, stats, chained })
 })
 
+// 📝 인플루언서 풀 보강 1라운드(블로거 활동성·연락처 + 링크인바이오) — 수집과 **분리된 인보케이션**.
+//   왜 분리했는지는 `influencer-enrich-lane.ts` 헤더(라이브 실측: 수집에 얹혀 있어 한 건도 못 돌았음).
+//   💥 원문 릴레이 — 'FAILED' 로 뭉개면 라운드가 왜 안 도는지 라이브에서 알 길이 없다(파트너풀 레인과 동일).
+app.post('/__ads/enrich-influencer', async (c) => {
+  try {
+    const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+    return c.json({ ok: true, stats: await runInfluencerEnrich(c.env) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
+// 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
+//   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
+app.post('/__ads/route-biz-blogs', async (c) => {
+  try {
+    const { routeBusinessBlogsToPartnerPool } = await import('@/features/marketing/api/biz-blog-router')
+    const max = Math.max(100, Math.min(20000, parseInt(c.req.query('max') || '', 10) || 3000))
+    return c.json({ ok: true, stats: await routeBusinessBlogsToPartnerPool(c.env, { dryRun: c.req.query('apply') !== '1', max, reset: c.req.query('reset') === '1' }) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
 // 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
 app.post('/__ads/collect-company', async (c) => {
   try {
@@ -309,6 +335,28 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
   if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) })
+  }
+  // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
+  //   배경(라이브 실측): 보강 4종이 수집과 같은 인보케이션에 얹혀 있어 발굴이 서브리퀘스트를 다 쓰고 나면
+  //   전부 0 으로 즉시 반환했다(`naver_enrich.tried:0` · `bio_enriched:0` 고착 · 표본 1,000행 중
+  //   `perf_checked_at` 채워진 행 0). 그 결과 풀 37,414명 중 연락처 보유가 8.8% 에 고정 —
+  //   특히 74%를 차지하는 네이버 블로거는 활동성조차 한 번도 측정된 적이 없다.
+  //   ⇒ 파트너풀 이메일 보강과 동일한 처방: **라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산**.
+  //   각 라운드가 perf_checked_at/bio_checked_at 도장을 찍어 다음 라운드는 다음 구간을 이어 순회(중복 0).
+  //   기본 ON(킬스위치 ADS_INFLUENCER_ENRICH_DISABLED='true' 만 끔) — 켜야 도는 구조로 두면
+  //   "켠 줄 알았는데 안 돌던" 사고(제조사 수집 cron 누락)를 반복한다.
+  if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
+    const rounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 6))
+    ctx.waitUntil((async () => {
+      try {
+        if (env.SELF?.fetch) {
+          for (let i = 0; i < rounds; i++) await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-influencer', { method: 'POST' }))
+        } else {
+          const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+          await runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
+        }
+      } catch { /* fail-soft — 다음 틱 재시도 */ }
+    })())
   }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
   //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,

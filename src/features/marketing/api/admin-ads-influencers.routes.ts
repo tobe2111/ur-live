@@ -10,7 +10,7 @@ import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns, personalEmailSqlClause, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
+import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { ensureQualityColumns, runQualityPass } from './influencer-quality'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
 import { COLD_SEND_MAX, COLD_COOLDOWN_DAYS, coldDailyKey, evaluateColdGuards } from './outreach-cold'
@@ -18,8 +18,8 @@ import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
-import { getFunnelTailStats, getOrCreateClaimCode } from './lead-claim'
-import { getAdsPoolDiag } from './ads-pool-diag' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { getOrCreateClaimCode } from './lead-claim'
+import { buildInfluencerPoolStats, ensureRecruitColumn } from './influencer-pool-stats' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -36,14 +36,6 @@ async function ensureCampaignColumn(DB: D1Database) {
   if (_campaignColDone.has(DB)) return
   _campaignColDone.add(DB)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN campaign_sent_at TEXT').run().catch(() => null)
-}
-
-// 📣 모집 캠페인 — 수집 리드에게 신청(동의)을 안내한 시점. 전환율 분모(recruited) / 분자(consented) 산출용.
-const _recruitColDone = new WeakSet<object>()
-async function ensureRecruitColumn(DB: D1Database) {
-  if (_recruitColDone.has(DB)) return
-  _recruitColDone.add(DB)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
 }
 
 async function ensureKeywordTable(DB: D1Database) {
@@ -67,6 +59,12 @@ app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  // 🏘️ 2026-07-28 대표 지시 "별도 매체로 분리" — 네이버 카페는 **인플루언서가 아니라 커뮤니티**다
+  //   (표본: 맘카페·창업카페·여행카페·아파트카페·팬카페. "강남 맛집" 키워드로 보험·렌탈 카페가 들어온다).
+  //   개인 크리에이터 목록에 섞이면 리스트 신뢰도를 갉아먹으므로 **기본 목록에서 제외**하고,
+  //   `platform=naver_cafe` 로 **명시 조회할 때만** 보이게 한다(수집·데이터는 그대로 보존 — 지역 맘카페는
+  //   동네딜 홍보 채널로 가치가 있어 버리지 않는다). 다른 필터/검색은 전부 그대로 동작한다.
+  else where.push("platform != 'naver_cafe'")
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
@@ -133,85 +131,8 @@ app.get('/influencer-pool', async (c) => {
 })
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
-app.get('/influencer-pool/stats', async (c) => {
-  await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
-  await ensureOutreachColumns(c.env.DB)  // opened/bounced 집계 컬럼 선보강
-  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score 집계 선보강
-  await ensureRecruitColumn(c.env.DB)    // 📣 recruited_at(모집 전환 분모) — 아래 집계가 참조
-  const agg = await c.env.DB.prepare(`SELECT
-      COUNT(*) AS total,
-      SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
-      SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
-      SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
-      SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL THEN 1 ELSE 0 END) AS yt_with_email,
-      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL AND (${personalEmailSqlClause()}) THEN 1 ELSE 0 END) AS yt_email_personal,
-      SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
-      SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
-      SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
-      SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
-      SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
-      SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) AS st_rejected,
-      SUM(CASE WHEN status='hold' THEN 1 ELSE 0 END) AS st_hold,
-      -- 📊 아웃리치 퍼널: 한 번이라도 컨택한 리드(컨택/관심/계약) = 실제 아웃리치 모수
-      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
-      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
-      -- 📬 이메일 자동감지(Resend 웹훅): 개봉(engagement)·반송(죽은 주소)
-      SUM(CASE WHEN email_status='opened' THEN 1 ELSE 0 END) AS opened,
-      SUM(CASE WHEN email_status IN ('bounced','complained') THEN 1 ELSE 0 END) AS bounced,
-      -- 컨택 채널 분해(어느 채널이 먹히는지)
-      SUM(CASE WHEN contact_channel='email' THEN 1 ELSE 0 END) AS ch_email,
-      SUM(CASE WHEN contact_channel='dm' THEN 1 ELSE 0 END) AS ch_dm,
-      SUM(CASE WHEN contact_channel='note' THEN 1 ELSE 0 END) AS ch_note,
-      SUM(CASE WHEN contact_channel='kakao' THEN 1 ELSE 0 END) AS ch_kakao,
-      SUM(CASE WHEN contact_channel='call' THEN 1 ELSE 0 END) AS ch_call,
-      SUM(CASE WHEN contact_channel='other' THEN 1 ELSE 0 END) AS ch_other,
-      SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
-      SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
-      SUM(CASE WHEN collected_at >= datetime('now','+9 hours','start of day','-9 hours') THEN 1 ELSE 0 END) AS today, -- '오늘' = KST 자정 기준(롤링 24h 아님)
-      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
-      -- 📥 사전동의(자동발송 가능 모수) + 🏢 브랜드 공식 채널 태깅 수 + 🏅 채점 완료 수
-      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
-      SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
-      SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
-      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot,
-      -- 🏷️ 분류 근거(정확도 가시화): content=이름·소개글 규칙 / topic=유튜브 자체분류 / keyword=수집 키워드 상속(재검증 대상)
-      SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) AS categorized,
-      SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
-      SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
-      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword,
-      -- 📣 모집 전환: 안내한 리드(분모) 대비 실제 신청(동의)한 리드(분자) — 풀이 '쓸 수 있는 재고'로 바뀌는 비율.
-      SUM(CASE WHEN recruited_at IS NOT NULL THEN 1 ELSE 0 END) AS recruited,
-      SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted
-    FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
-  // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
-  //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
-  const catFunnel = await c.env.DB.prepare(`SELECT COALESCE(category, '미분류') AS category,
-      COUNT(*) AS total,
-      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
-      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
-      SUM(CASE WHEN status = 'contracted' THEN 1 ELSE 0 END) AS contracted,
-      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented
-    FROM ad_influencer_leads WHERE account_id = ?
-    GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
-    .bind(POOL).all().catch(() => null)
-  // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
-  const tail = await getFunnelTailStats(c.env.DB).catch(() => ({ joined: 0, first_sale: 0 }))
-  // 📊 진단 스탬프·lease 는 ads-pool-diag.ts 로 추출(2026-07-28, 600줄 캡). 전부 fail-soft.
-  const diag = await getAdsPoolDiag(c.env.DB)
-  // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
-  //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
-  //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
-  let gate = c.env.ADS_AUTO_COLLECT_ENABLED === 'true'
-  try {
-    if (c.env.ADS?.fetch) {
-      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
-      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
-      if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
-    }
-  } catch { /* 폴백 유지 */ }
-  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, gate, ...diag, category_funnel: catFunnel?.results || [] })
-})
+//   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
+app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
 app.patch('/influencer-pool/:id', async (c) => {

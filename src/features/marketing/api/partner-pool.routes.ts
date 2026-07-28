@@ -17,9 +17,14 @@ import {
 } from './company-discovery'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
+import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 
 const app = new Hono<{ Bindings: Env }>()
+
 app.use('*', requireAdmin())
+// 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
+//   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
+app.route('/', partnerPoolDedupeRoutes)
 
 /* 🔔 작업 완료 알림벨 공용(2026-07-27) — 백그라운드(waitUntil) 작업은 페이지를 떠나도 계속되지만
  *   완료 토스트는 페이지와 함께 사라진다 → 결과를 알림벨에 남겨 어디서든/나중에 확인 가능하게. */

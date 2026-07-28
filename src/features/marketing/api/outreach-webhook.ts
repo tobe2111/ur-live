@@ -16,21 +16,24 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
 import { sendDiscordAlert } from '@/worker/utils/discord-alert'
+import { runDdlOnce } from './ads-schema-guard'
 
 const POOL = 0 // 공용 풀 sentinel(자동수집·인바운드 전부 account_id=0)
 
 // 스키마 보강 — influencer-discovery.ts(베이스라인 동결)를 안 건드리려고 아웃리치 추적 컬럼은 여기서 소유.
-//   전부 멱등(ALTER 실패=이미 존재 → catch). 인-플라이트 Promise 캐시로 동시성 안전(ensureInfluencerSchema 패턴).
+//   🧱 2026-07-28: 매 인보케이션 4 ALTER → 체크섬 1회 조회(무료 플랜은 **D1 쿼리도 서브리퀘스트**라,
+//   아무 일도 안 하는 DDL 이 예산을 먹는다). 목록이 바뀌면 체크섬이 달라져 자동 재적용.
+export const AD_OUTREACH_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN email_status TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN opened_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN replied_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN last_event_at DATETIME',
+]
 const _colPromise = new WeakMap<object, Promise<void>>()
 export function ensureOutreachColumns(DB: D1Database): Promise<void> {
   const cached = _colPromise.get(DB)
   if (cached) return cached
-  const p = (async () => {
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN email_status TEXT').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN opened_at DATETIME').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN replied_at DATETIME').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN last_event_at DATETIME').run().catch(() => null)
-  })()
+  const p = runDdlOnce(DB, 'ads_ddl_influencer_outreach', AD_OUTREACH_DDL).then(() => undefined)
   _colPromise.set(DB, p)
   return p
 }

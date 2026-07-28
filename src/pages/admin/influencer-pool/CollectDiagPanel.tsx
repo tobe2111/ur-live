@@ -8,6 +8,7 @@ export interface PlatformDiag { configured: boolean; found: number; saved: numbe
 export interface RunStats {
   last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]
   youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number
+  crash?: string; crash_at?: string; crash_spent?: number; crash_budget?: number
   diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
 }
@@ -47,13 +48,29 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning }: {
+/** 📝 보강 전용 레인 스냅샷(`ads_influencer_enrich_last`) — 마지막 라운드 결과. 서버 타입과 1:1. */
+export interface EnrichLaneRecord {
+  last_run?: string
+  bio?: number
+  yt?: number
+  yt_units?: { used?: number; total?: number; day?: string }
+  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number }
+  spent?: number; budget_total?: number
+  limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
+  total_measured?: number; total_contacts?: number
+  crash?: string; crash_at?: string
+}
+
+export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
-  sheetsSync: { ok: boolean; at?: string; error?: string | null } | null
+  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
   /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
   maintainRunning?: boolean
+  enrichLane?: EnrichLaneRecord | null
+  nbUnmeasured?: number      // 📝 활동성 미측정 블로거 수(보강 백로그) — 줄어들어야 레인이 도는 것
+  naverBlogTotal?: number
 }) {
   const mSum = summarize(maintenance)
   const rSum = summarize(maintenanceRescan)
@@ -70,13 +87,33 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
 
   return (
     <>
-      {/* 📊 구글시트 마지막 동기화 상태 — 무음 실패 가시화. 실패 시에만 표시. */}
+      {/* 📊 구글시트 마지막 동기화 — 실패뿐 아니라 **멈춤**도 보여야 한다.
+          2026-07-28 실사고: 미러가 34시간 정지했는데 스탬프는 `ok:true` 인 옛 값이라(예외로 죽어 갱신조차 못 함)
+          화면에도 경보에도 아무 신호가 없었다. 매시간 도는 잡이므로 3시간 넘게 조용하면 그 자체가 이상 신호다. */}
       {sheetsSync && !sheetsSync.ok ? (
         <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
+      ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
+        <div className="mb-2 mt-1 text-[11px] text-amber-600">
+          📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
+          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}) — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.
+        </div>
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
         <div className="mb-2 mt-1 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
+      {/* 💥 수집이 예외로 끝났다 / ⏸️ 매시간 도는데 오래 조용하다 — 2026-07-28 실사고: 수집이 2시간 넘게
+          죽어 있었는데(다른 레인은 정상) 화면엔 옛 성공 시각만 있어 아무도 몰랐다. */}
+      {run?.crash ? (
+        <div className="mb-2 mt-1 text-[11px] text-red-600">
+          💥 수집 실패({fmtKST(run.crash_at)}): {run.crash}
+          {run.crash_budget ? ` · 예산 ${formatNumber(run.crash_spent || 0)}/${formatNumber(run.crash_budget)}` : ''}
+          {' '}— 한도 신호면 상한을 자동으로 낮춰 다음 시간에 재시도합니다.
+        </div>
+      ) : run?.last_run && Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z') > 3 * 3600_000 ? (
+        <div className="mb-2 mt-1 text-[11px] text-amber-600">
+          ⏸️ 자동 수집이 {Math.floor((Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z')) / 3600_000)}시간째 조용합니다(매시간 실행) — 게이트가 켜져 있는데도 이러면 실행이 중간에 죽고 있는 것입니다.
+        </div>
       ) : null}
       {run && (
         <div className="mb-1 text-xs text-gray-500">
@@ -86,6 +123,29 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
           {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
         </div>
       )}
+
+      {/* 📝 보강 전용 레인(시간당 N라운드, 수집과 분리) — 블로거 활동성·연락처 백로그를 실제로 줄이고 있는지.
+          측정 시도는 했는데 성공이 0 이면 네이버 차단 신호(값이 0/0 이면 원인 판별이 안 되므로 tried 를 같이 본다). */}
+      {enrichLane?.last_run ? (
+        <div className="mb-1 text-xs text-gray-500">
+          📝 풀 보강 {fmtKST(enrichLane.last_run)} — 블로거 측정 {formatNumber(enrichLane.naver?.measured || 0)}/{formatNumber(enrichLane.naver?.tried || 0)}
+          {enrichLane.naver?.contacts ? ` (연락처 +${formatNumber(enrichLane.naver.contacts)})` : ''}
+          {enrichLane.yt ? ` · 📈 유튜브 성과 ${formatNumber(enrichLane.yt)}` : ''}
+          {enrichLane.bio ? ` · 🔗 링크 컨택보강 ${formatNumber(enrichLane.bio)}` : ''}
+          {` · 예산 ${formatNumber(enrichLane.spent || 0)}/${formatNumber(enrichLane.budget_total || 0)}`}
+          {enrichLane.deadline_hit ? ' · ⏱️ 시간상한' : ''}
+          {enrichLane.limit_hit ? ' · ⚠️ 플랫폼 한도(상한 자동 하향)' : ''}
+          {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
+          {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
+          {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
+        </div>
+      ) : null}
+      {enrichLane?.crash ? (
+        <div className="mb-2 text-[11px] text-red-600">📝 보강 레인 오류({fmtKST(enrichLane.crash_at)}): {enrichLane.crash}</div>
+      ) : null}
+      {enrichLane && (enrichLane.naver?.tried || 0) >= 5 && !enrichLane.naver?.measured ? (
+        <div className="mb-2 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}
       {(mSum || rSum || maintainRunning) && (

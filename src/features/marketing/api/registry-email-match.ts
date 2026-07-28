@@ -29,6 +29,23 @@ export function normalizeCompanyName(raw: string | null | undefined): string {
     .toLowerCase()
 }
 
+/** 🔤 name_norm 백필 — 기존 행에 상호 지문을 채운다(신규 행은 저장 시 채워짐).
+ *   ⚠️ 정규화를 SQL 로 흉내내지 않는다 — 그게 애초에 어긋남의 원인이었다. **JS 함수 하나**로만 계산한다.
+ *   서브리퀘스트 2회(SELECT + batch 1회). 원부(commerce) 를 먼저 채워야 매칭이 살아난다 → 우선 정렬.
+ *   @returns 남은 미처리 행이 더 있으면 false
+ */
+export async function backfillNameNorm(DB: D1Database, limit = 500): Promise<{ done: boolean; filled: number }> {
+  const rows = (await DB.prepare(
+    `SELECT id, company_name FROM ad_company_leads
+      WHERE name_norm IS NULL AND company_name IS NOT NULL AND company_name != ''
+      ORDER BY (CASE WHEN source = 'commerce' THEN 0 ELSE 1 END), id ASC LIMIT ?`,
+  ).bind(Math.max(1, Math.min(2000, limit))).all<{ id: number; company_name: string }>().catch(() => null))?.results || []
+  if (!rows.length) return { done: true, filled: 0 }
+  await DB.batch(rows.map(r => DB.prepare('UPDATE ad_company_leads SET name_norm = ? WHERE id = ?')
+    .bind(normalizeCompanyName(r.company_name), r.id))).catch(() => null)
+  return { done: rows.length < limit, filled: rows.length }
+}
+
 /** 일반명사 단독 상호 — 유일 매칭이어도 동일 업체라 볼 수 없다(식별력 부족). */
 const GENERIC_NAME = /^(스튜디오|컨설팅|마케팅|디자인|기획|광고|미디어|커뮤니케이션|파트너스|그룹|컴퍼니|코리아|서비스|시스템|솔루션|테크|랩|랩스|하우스|센터|플러스|월드)$/
 
@@ -83,6 +100,9 @@ const CURSOR_KEY = 'ads_registry_match_cursor'
  *   서브리퀘스트 0(전부 D1). 커서로 대량 백로그를 나눠 순회한다.
  */
 export async function matchRegistryEmails(env: Env, batch = 400): Promise<RegistryMatchStats> {
+  // 🔤 매칭 전에 상호 지문을 조금씩 채운다 — 원부(commerce) 우선이라 매칭 정확도가 회차마다 올라간다.
+  //   서브리퀘스트 2회. 다 채워지면 no-op(SELECT 1회)이 되어 비용이 사라진다.
+  await backfillNameNorm(env.DB, 500).catch(() => null)
   const DB = env.DB
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
@@ -108,12 +128,24 @@ export async function matchRegistryEmails(env: Env, batch = 400): Promise<Regist
     //   최대 5건만 보고, 정규화 일치가 2건 이상이면 ambiguous 로 건너뛴다(오귀속 방지).
     // 이메일뿐 아니라 **홈페이지도 이식 대상** — 타깃의 73%가 사이트 미발견이라 크롤 자체가 불가능했다.
     //   원부가 알려준 도메인을 옮기면 그 리드가 크롤 가능해져 이메일 확보 경로가 새로 열린다(추측 아님, 원부 값).
-    const cands = (await DB.prepare(
+    // 🔤 1차: name_norm **동등비교**(인덱스) — 저장 시 같은 JS 함수로 계산했으므로 정규화가 어긋날 수 없다.
+    //   (예전엔 SQL 이 `공백·(주)·주식회사` 만 지우는데 LIKE 패턴은 JS 전체 정규화 결과를 써서 조용히 미스했다.)
+    let cands = (await DB.prepare(
       `SELECT company_name, address, email, website FROM ad_company_leads
-        WHERE source = 'commerce' AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
-          AND REPLACE(REPLACE(REPLACE(LOWER(company_name),' ',''),'(주)',''),'주식회사','') LIKE ?
+        WHERE source = 'commerce' AND name_norm = ?
+          AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
         LIMIT 5`
-    ).bind(`%${n.slice(0, 12)}%`).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
+    ).bind(n).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
+    // 2차 폴백: 백필이 아직 안 닿은 원부 행(name_norm IS NULL)만 기존 LIKE 로 훑는다 — 백필 완료 후 자연 소멸.
+    if (!cands.length) {
+      cands = (await DB.prepare(
+        `SELECT company_name, address, email, website FROM ad_company_leads
+          WHERE source = 'commerce' AND name_norm IS NULL
+            AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
+            AND REPLACE(REPLACE(REPLACE(LOWER(company_name),' ',''),'(주)',''),'주식회사','') LIKE ?
+          LIMIT 5`
+      ).bind(`%${n.slice(0, 12)}%`).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
+    }
     const exact = cands.filter(c => normalizeCompanyName(c.company_name) === n)
     if (!exact.length) { skip.no_registry_row = (skip.no_registry_row || 0) + 1; continue }
     const verdict = isConfidentMatch({ name: t.company_name, address: t.address, region: t.region }, { name: exact[0].company_name, address: exact[0].address }, exact.length === 1)
