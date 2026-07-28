@@ -98,6 +98,11 @@ export interface AutoCollectStats {
   yt_budget?: { used: number; total: number; day: string }
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
+  /** 💥 이번 실행이 예외로 끝났다 — 원문/시각/그 시점 사용량. 성공하면 다음 스냅샷에서 사라진다. */
+  crash?: string
+  crash_at?: string
+  crash_spent?: number
+  crash_budget?: number
 }
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
@@ -293,7 +298,45 @@ const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — �
 const LEASE_KEY = COLLECT_LEASE_KEY
 const LEASE_TTL_MS = COLLECT_LEASE_TTL_MS
 
+/** 크래시 경로에서도 필요한 값들(래퍼가 catch 에서 읽는다) — 정해지는 즉시 채운다. */
+interface CollectCtx { budgetTotal: number; learnedCap: number; envBudget: number; budget?: FetchBudget; release?: () => Promise<void> }
+
+/**
+ * 🛡️ 2026-07-28 **자가 회복 래퍼** — 라이브에서 인플루언서 수집이 15:01 이후 매시간 조용히 죽고 있었다
+ *   (다른 레인은 17:01 정상 실행 = cron 은 살아 있었다). 죽으면 아무 기록도 안 남아 원인을 알 수 없었고,
+ *   더 나쁜 건 **학습 상한을 낮추는 코드(`nextSubreqCap` 쓰기)가 발굴 루프 *뒤*에 있어** 도중에 죽으면
+ *   상한이 그대로 → 다음 틱도 같은 지점에서 죽는 **영구 루프**였다는 것이다.
+ *
+ *   ⇒ ① 예외를 잡아 **crash 원문을 스냅샷에 남긴다**(옛 성공 스냅샷은 보존 — 마지막 성공 시각도 필요하다)
+ *     ② 한도 신호면 **그 자리에서 학습 상한을 낮춘다**(다음 틱은 적게 쓰고 통과 = 자가 회복)
+ *     ③ lease 를 즉시 해제한다(TTL 5분 백스톱에 의존하지 않음).
+ *   파트너풀 보강 레인(`recordEnrichCrash`)과 같은 철학 — 무증거 종료 금지.
+ */
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
+  const ctx: CollectCtx = { budgetTotal: 0, learnedCap: 0, envBudget: 0 }
+  try {
+    return await _runAutoCollect(env, ctx)
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    const crash = `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}`
+    const spent = ctx.budget ? Math.max(0, ctx.budgetTotal - ctx.budget.left) : 0
+    // ② 한도 신호 → 상한 하향(이번에 쓴 양보다 확실히 아래로). 여기서 안 낮추면 다음 틱도 같은 곳에서 죽는다.
+    if (isSubrequestLimitError(crash) && spent > 0) {
+      const next = nextSubreqCap(spent, true, false, ctx.learnedCap, ctx.envBudget)
+      if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
+    }
+    // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
+    const prev = await getAutoCollectStats(env.DB).catch(() => null)
+    const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0, cursor: 0 }),
+      crash, crash_at: stamp, crash_spent: spent, crash_budget: ctx.budgetTotal } as AutoCollectStats
+    await writeSetting(env.DB, STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
+    await ctx.release?.().catch(() => undefined) // ③ 즉시 해제
+    return snap
+  }
+}
+
+async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectStats> {
   const DB = env.DB
   // 🔒 실행 단일화 lease(2026-07-23 전수조사 #1~#3·#11) — 매시간 cron·수동 버튼·self-chain 이 **동시에** 돌면
   //   YT 예산 카운터(ads_yt_search_used)·키워드 커서가 read-modify-write 레이스로 소실 갱신 → 같은 키워드 중복
@@ -310,6 +353,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
   }
   const releaseLease = async () => { await DB.prepare(`UPDATE platform_settings SET value = '0' WHERE key = '${LEASE_KEY}'`).run().catch(() => null) }
+  ctx.release = releaseLease
   await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
@@ -390,6 +434,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
+  ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
   //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
   //
@@ -524,6 +569,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
+    // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))

@@ -38,9 +38,16 @@ const RECOVER_RATIO = 1.25
 /** 한도 관측 시 하향 배율(부딪힌 지점보다 확실히 아래로). */
 const BACKOFF_RATIO = 0.8
 
-/** 응답/에러 메시지에 플랫폼 서브리퀘스트 한도 신호가 있는가. */
+/**
+ * 응답/에러 메시지에 플랫폼 한도 신호가 있는가.
+ *
+ * ⚠️ 2026-07-28: `too many subrequests` **하나만** 보던 것을 넓혔다. Cloudflare 는 같은 성격의 초과를
+ *   문구가 다른 예외로도 던진다 — 특히 **"Too many API requests by single worker invocation"**(D1 등
+ *   바인딩 호출 소진). 좁게 보면 그 경우가 *한도가 아닌 일반 오류*로 분류돼 **학습 상한이 안 내려가고**
+ *   매 실행 같은 지점에서 죽는 영구 루프가 된다(라이브에서 실제로 인플루언서 수집이 이 상태였다).
+ */
 export const isSubrequestLimitError = (msg?: string | null): boolean =>
-  /too many subrequests/i.test(String(msg || ''))
+  /too many (subrequests|api requests)/i.test(String(msg || ''))
 
 /** 이번 실행에 쓸 예산 — 학습값이 있으면 env/기본값과 함께 더 작은 쪽. */
 export function resolveSubreqBudget(envBudget: number, learnedCap: number): number {

@@ -8,6 +8,7 @@ export interface PlatformDiag { configured: boolean; found: number; saved: numbe
 export interface RunStats {
   last_run?: string; last_saved?: number; total_saved?: number; total_runs?: number; promoted?: string[]
   youtube_quota_hit?: boolean; bio_enriched?: number; perf_enriched?: number
+  crash?: string; crash_at?: string; crash_spent?: number; crash_budget?: number
   diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
 }
@@ -100,6 +101,19 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
         <div className="mb-2 mt-1 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
+      {/* 💥 수집이 예외로 끝났다 / ⏸️ 매시간 도는데 오래 조용하다 — 2026-07-28 실사고: 수집이 2시간 넘게
+          죽어 있었는데(다른 레인은 정상) 화면엔 옛 성공 시각만 있어 아무도 몰랐다. */}
+      {run?.crash ? (
+        <div className="mb-2 mt-1 text-[11px] text-red-600">
+          💥 수집 실패({fmtKST(run.crash_at)}): {run.crash}
+          {run.crash_budget ? ` · 예산 ${formatNumber(run.crash_spent || 0)}/${formatNumber(run.crash_budget)}` : ''}
+          {' '}— 한도 신호면 상한을 자동으로 낮춰 다음 시간에 재시도합니다.
+        </div>
+      ) : run?.last_run && Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z') > 3 * 3600_000 ? (
+        <div className="mb-2 mt-1 text-[11px] text-amber-600">
+          ⏸️ 자동 수집이 {Math.floor((Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z')) / 3600_000)}시간째 조용합니다(매시간 실행) — 게이트가 켜져 있는데도 이러면 실행이 중간에 죽고 있는 것입니다.
+        </div>
       ) : null}
       {run && (
         <div className="mb-1 text-xs text-gray-500">
