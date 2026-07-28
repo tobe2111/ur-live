@@ -64,9 +64,11 @@ export interface EnrichLaneRecord {
   crash?: string; crash_at?: string
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
+export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
   sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
+  /** 🚦 ur-ads env 의 시트 동기화 게이트 실값. null=알 수 없음 — 모를 때는 단정하지 않는다. */
+  sheetsGate?: boolean | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
   /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
@@ -96,10 +98,21 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
       {sheetsSync && !sheetsSync.ok ? (
         <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
       ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
-        <div className="mb-2 mt-1 text-[11px] text-amber-600">
-          📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
-          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}) — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.
-        </div>
+        // 🚦 '꺼짐'과 '고장'을 나눠 말한다 — 다음 행동이 정반대다(env 를 켠다 vs 원인을 캔다).
+        //    2026-07-28: 게이트를 모른 채 "매시간 도는 작업입니다"라고 단정해, 꺼져 있을 때도 고장으로 읽혔다.
+        sheetsGate === false ? (
+          <div className="mb-2 mt-1 text-[11px] text-gray-500">
+            📊 구글시트 동기화가 <b>꺼져 있습니다</b>(ur-ads <code>ADS_SHEETS_SYNC_ENABLED</code>) — 마지막 {fmtKST(sheetsSync.at)}
+            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}. 고장이 아니라 설정입니다. 필요하면 정비 도구에서 수동 동기화하세요.
+          </div>
+        ) : (
+          <div className="mb-2 mt-1 text-[11px] text-amber-600">
+            📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
+            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''})
+            {sheetsGate === true ? ' — 게이트는 켜져 있는데 실행이 중간에 죽고 있는 것입니다.' : ' — 매시간 도는 작업입니다(게이트 상태 확인 불가).'}
+            {' '}정비 도구에서 수동 동기화로 원인이 기록됩니다.
+          </div>
+        )
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (

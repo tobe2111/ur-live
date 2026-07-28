@@ -65,7 +65,8 @@ export default function AdminInfluencerPoolPage() {
   const [stats, setStats] = useState<PoolStats>({})
   const [run, setRun] = useState<RunStats | null>(null)
   const [gate, setGate] = useState(false)
-  const [sheetsSync, setSheetsSync] = useState<{ ok: boolean; at?: string; error?: string | null } | null>(null) // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화)
+  // 📊 시트 동기화 상태(무음 실패 가시화) + 🚦 게이트 실값 — gate 가 '고장'과 '꺼짐'을 가른다(null=알 수 없음).
+  const [sheets, setSheets] = useState<{ sync: { ok: boolean; at?: string; error?: string | null } | null; gate: boolean | null }>({ sync: null, gate: null })
   const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
   const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
@@ -135,7 +136,7 @@ export default function AdminInfluencerPoolPage() {
   // stats 응답 반영 SSOT — 최초 로드와 수집 폴링(useCollectRun)이 같은 함수를 쓴다(둘이 갈라지면 화면 불일치).
   const applyMeta = useCallback((d: Record<string, unknown>) => {
     const g = <T,>(k: string) => d[k] as T
-    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheetsSync(g<typeof sheetsSync>('sheets_sync') || null)
+    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheets({ sync: g<{ ok: boolean; at?: string; error?: string | null }>('sheets_sync') || null, gate: typeof d.sheets_gate === 'boolean' ? d.sheets_gate : null })
     setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
     setMaintainRunning(!!d.maintain_running)
     setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
@@ -358,7 +359,7 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
-        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
+        <CollectDiagPanel run={run} sheetsSync={sheets.sync} sheetsGate={sheets.gate} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
           enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
