@@ -9,7 +9,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
-import { isCollectRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
+import { isCollectRunning, isMaintainRunning } from './collect-lease' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -72,6 +72,9 @@ app.post('/influencer-pool/collect-burst', async (c) => {
 app.post('/influencer-pool/maintain-all', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 야간 cron 만 동작' }, 503)
+  // 🔒 이미 정비가 돌고 있으면 새로 시작하지 않는다 — 버튼이 waitUntil 이라 즉시 다시 활성화되므로
+  //   연타하면 파이프라인이 겹쳐 병합 레이스 + YouTube 쿼터 중복 소모가 난다(진짜 가드는 파이프라인 내부 lease).
+  if (await isMaintainRunning(c.env.DB).catch(() => false)) return c.json({ success: true, busy: true, started: false })
   const collecting = await isCollectRunning(c.env.DB).catch(() => false)
   const hop = async (path: string) => {
     try {
