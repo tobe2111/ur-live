@@ -204,8 +204,8 @@ export type DiscoverResult =
  *   여러 키워드 발굴이 한 cron 실행에 누적돼 "Too many subrequests" 로 중도 실패하던 사고 방지.
  *   호출자가 공유 객체를 넘기면 각 외부 fetch 전에 소진 → 0 이 되면 발굴을 우아하게 조기 종료(에러 아님).
  *   미전달이면 무제한(단건 수동 발굴 등 기존 동작 불변). `limitHit`(2026-07-28) = 이번 실행에서 **플랫폼 한도 오류를 실제로 관측**했나 — 예산(left)은 우리가 세는 숫자일 뿐 실제 한도가 아니라, 한도에 부딪힌 사실은 fetch 실패 메시지로만 알 수 있다. 각 레인이 이 플래그를 세우고 호출부가 즉시 중단 + 학습 상한 하향(collect-budget.ts)에 쓴다. */
-export type FetchBudget = { left: number; limitHit?: boolean }
-const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+export type FetchBudget = { left: number; limitHit?: boolean; deadline?: number } // deadline(2026-07-28, epoch ms)=이후 새 fetch 금지(벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다). 미설정=무제한, 기존 레인 동작 불변
+const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
