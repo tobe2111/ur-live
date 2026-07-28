@@ -27,10 +27,14 @@
 > ⚠️ **다시 만들지 말 것.** 글로벌을 켤 때도 새 배포를 만들지 않는다. §2 의 구조를 쓴다.
 > 대표 결정(2026-07-28): **무료 플랜 유지 · `ur-live-global` 삭제**.
 
-### 남은 레포 잔재 (삭제 시 함께 정리 가능)
-- `wrangler.global.toml` — Pages 설정으로 잘못 쓰인 파일. **글로벌을 §2 방식으로 하면 영구 불필요**
-- `scripts/deploy-global.sh` · `scripts/deploy-dual-sites.sh` — 두 번째 배포 전제의 스크립트
-- ⚠️ **`src/shared/config/region.ts` 는 지우면 안 된다** — 이게 §2 의 핵심 자산이다
+### 레포 잔재 — ✅ 2026-07-28 삭제 완료
+`wrangler.global.toml` · `scripts/deploy-global.sh` · `scripts/deploy-dual-sites.sh` 삭제.
+삭제 전 전수조사: `package.json`·CI 워크플로(`.github/workflows`)·git hooks·가드 스크립트 참조 **0건**
+(문서/`archive/` 의 역사 기록 언급뿐). `deploy-dual-sites.sh` 는 이름과 달리 도매몰이 아니라
+**KR+GLOBAL** 용이었고, 존재하지 않는 프로젝트명(`ur-live-kr`)을 참조하는 이중 스테일 상태였다.
+
+⚠️ **`src/shared/config/region.ts` 는 지우면 안 된다** — 이게 §2 의 핵심 자산이다(런타임 hostname 판정).
+글로벌을 다시 켤 때 필요한 것은 이 파일이지 위 배포 스크립트가 아니다.
 
 ---
 
