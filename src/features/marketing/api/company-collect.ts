@@ -18,7 +18,7 @@ import { healSuspectNames } from './enrich-name-heal'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
-const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 const NAVER_OPENAPI = 'https://openapi.naver.com'
@@ -268,7 +268,10 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('company_enrich'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
-  const budget: FetchBudget = { left: budgetTotal }
+  // ⏱️ 벽시계 가드(2026-07-28) — 서브리퀘스트가 남아도 **시간**이 인보케이션을 끝낼 수 있다(느린 사이트 1곳이
+  //   8s 타임아웃을 여러 번 먹는 경우). 20s 이후엔 새 fetch 를 시작하지 않고 Phase 3 → 정상 종료로 빠진다:
+  //   죽는 대신 깨끗이 넘기면 스냅샷·학습·도장이 전부 정상 작동하고 남은 백로그는 다음 라운드가 이어받는다.
+  const budget: FetchBudget = { left: budgetTotal, deadline: Date.now() + 20_000 }
   const budgetStart = budget.left // 실사용 서브요청 계측 — 한도 근접 여부를 숫자로 판정(상태줄 '서브요청')
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
@@ -346,7 +349,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       crawl_reason: crawlReason, fail_samples: failSamples,
       fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
       limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
-      phase, p2, at, elapsed_ms: Date.now() - t0, targets: targets.length,
+      phase, p2, at, elapsed_ms: Date.now() - t0, deadline_hit: outOfBudget(budget) && budget.left > 0, targets: targets.length,
       diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
     })
   }
@@ -374,7 +377,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   let sinceSnapshot = 0
   for (const t of targets) {
-    if (budget.left <= 2 || budget.limitHit) break
+    if (budget.left <= 2 || budget.limitHit || outOfBudget(budget)) break // 예산·한도·시간 중 하나라도 소진
     bump('examined'); at = `#${p2.examined} ${(t.company_name || '').slice(0, 24)}`
     if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
     let site = realSite(t.website)
