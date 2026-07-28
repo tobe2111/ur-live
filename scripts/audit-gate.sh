@@ -65,6 +65,7 @@ if domain money; then
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
+  run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
 fi
 
 if domain schema; then
