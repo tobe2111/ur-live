@@ -288,6 +288,18 @@
 3. 사용자가 새 요구 추가 시 → 즉시 표에 반영
 4. 매 commit 의 변경 파일에 코어 기능 (송출/결제/인증) 포함 시 → 같은 commit 에 `docs/CURRENT_WORK.md` 갱신 함께 staged
 
+**세션을 끝낼 때(또는 PR 을 머지할 때) 반드시 남길 4가지** — 다음 세션이 이것만 읽고 이어갈 수 있어야 한다:
+1. **다음 세션의 첫 액션** — 명령/쿼리까지 구체적으로. "무엇을 보면 무엇이 판정되는가"까지.
+2. **완료분 + commit/PR 해시** — 이미 된 것을 또 파지 않게.
+3. **이번에 틀렸던 판단** — 같은 오진 반복 방지. **이게 제일 값지다**(문서의 오기를 믿고 오진한 사례가 실제로 있었다).
+4. **남은 결정/대기 항목** — 대표 판단이 필요한 것.
+
+🛡️ **자동 강제 (2026-07-28 신설)**: `scripts/check-current-work-sync.mjs` — 브랜치가 `src/` 를 바꿨는데
+`docs/CURRENT_WORK.md` 를 **한 번도** 안 건드렸으면 경고(pre-commit + audit-gate). 문서/테스트만 바꾼 브랜치는
+검사 대상 아님(소음 억제). 차단: `STRICT_HANDOFF=1` · 우회: 커밋 메시지 `[SKIP_HANDOFF]`.
+> 이 가드는 **실제 사고 후** 만들어졌다 — 2026-07-28 세션이 보강 레인 수리 5건을 머지하는 동안 인계를 한 번도
+> 갱신하지 않아, 문서가 이전 세션에 멈춰 있었다. 룰만 있고 강제가 없으면 결국 놓친다.
+
 > ⚠️ 이 룰 안 지키면: 다음 세션이 진행 상태 모름 → 중복 구현 / 누락 / 사용자 "왜 이거 안 됐어?" 반복.
 
 ## 🔑 어드민 진단 접근 (2026-07-28 대표 지시 — "모든 세션에서 자동으로")
@@ -957,6 +969,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | `vite build` 단독 사용 | `check-build-command.sh` | `verify.yml` | 2026-05-12 _worker.js 미갱신 |
 | `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
 | Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험. 2026-07-28 보강: **dotenv/`.dev.vars` 파일 자체를 커밋 금지**(패턴 0) — `.env.deploy` 가 살아있는 CF 토큰을 담은 채 커밋돼 있었고(#737), 기존 값 패턴들이 전부 따옴표를 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다 |
+| Firebase 토큰 인증 수용 | `check-no-firebase-auth.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — Firebase 서비스계정 개인키가 `archive/` 문서에 3개월간 public 노출(#798). 그 키로 **커스텀 토큰 발급 → Firebase 공개 REST 로 ID 토큰 교환 → Bearer 제출** 하면 서명이 Google 공개키로 정상 검증돼 **임의 uid 로 로그인**이 됐다. **키 폐기만으로는 부족** — 수용 경로가 남으면 새 키가 또 유출될 때 재발한다. `requireAuth`/`optionalAuth`/`auth-token.routes` 의 Firebase 분기 제거 + `googleRoutes` 마운트 해제. KR=카카오 세션·셀러/어드민=JWT·GLOBAL 미런칭(#804)이라 실사용자 0(대표 확인). 되살리려면 `firebase-auth-ok` 주석 + 새 키 발급 |
 | 시크릿 자재(키 본문) 유입 | `check-secret-material.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `archive/` **19개 `.md`/`.txt`** 에 Google 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출(#798). 기존 가드가 둘 다 통과시켰다: `verify.yml` 의 검사는 **`src/` 의 `.ts/.tsx` 만** 보고, `check-no-secrets.sh` 는 **키 이름 패턴** 위주라 문서 안의 *키 본문*이 사각지대였다. 폴더명이 `secrets-redacted/` 라 처리된 것처럼 보였으나 원문 그대로였다. **확장자·경로 무관 전수 스캔**(PEM 실본문·Toss live·Stripe·AWS·Slack·Anthropic·OpenAI·GitHub PAT), 자리표시자는 오탐 제외, 예외는 `secret-material-ok` 주석. ⚠️ **작업트리만 본다 — history 유출은 스캔이 아니라 *회전*으로만 해결된다** |
 | Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
 | API 인증 누락 | `check-api-auth.sh` | `verify.yml` | IDOR |

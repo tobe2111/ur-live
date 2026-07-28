@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (41개 불변식)
+bash scripts/audit-gate.sh           # 전체 (49개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -27,6 +27,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **커미션 예산 [INV-CB]** | 플랫폼 부담 성장 커미션(어필리에이트·멀티티어·영입자·에이전시)의 적립은 오케스트레이터(`creditOrderCommissions`) 경유만 — 3P 주문당 예산(수수료−PG준비금) 캡 우회 호출/신규 적립 INSERT 0. 수학(비례배분·합≤예산)은 `commission-budget.test.ts` 유닛이 보장. ⚠️ 이 불변식은 오늘의 **"platform net ≥ 0"**(커미션이 5% 를 PG준비금 바닥까지 잠식 허용)이다 — 2026-07-08 확정 원칙의 더 강한 **"platform net == 5%"** 는 아래 #44(8월 flip 시 신설) | `check-commission-budget` | 2026-07-04 (재원 구조 개편 — `commission-funding-restructure.md`) |
 | **커미션 재원=promo·5%불가침 [#44 — flip 시 신설, 미구현]** | (2026-07-08 확정 원칙) **모든** 성장 커미션(어필리에이트·멀티티어·인플 영입·인플 share·**에이전시 1%·30% share 포함**)은 매장 promo(5% 밖, `promo_funding_source=owner`) 재원 → **원장 `platform:revenue` = 결제액 5% 전액 불변(성장 커미션 debit 0, 예외 없음)**. 에이전시도 조율 마진(promo)에서 먹으므로 5% 무관(= 쇼핑 벤더 모델). **PG 는 이 5% 안에서 흡수(원장 밖 비용)** — 실현마진 5%−PG 와 구분. 오늘 owner 스위치는 어필리에이트만 커버 → flip 이 나머지 전 축 확장. 가드: `commission-budget.ts` flip 플래그로 플랫폼 예산 0 강제 + `commission-budget.test.ts` `platformNet==fee` 단언 + `check-commission-budget` R4(어떤 성장 커미션도 `platform:revenue` debit 0, 예외 없음) | `check-commission-budget`(R4 예정) | **미구현** — 8월 promo flip. 설계: `commission-funding-restructure.md` §확정 원칙 |
 | **수집 예산 학습 레인격리** | 서브리퀘스트 학습 상한(`ads_subreq_cap_*`)은 **레인마다 다른 키** — 건당 비용이 다른 레인(전화 스윕·인플루언서 = fetch 1 / 보강 = fetch 4~6 + D1)이 한 키를 공유하면 서로의 관측을 덮어써 **어느 레인도 자기 한도를 학습 못 함**(보강 레인이 남의 백오프로 env 300 → 실제 37 로 굶음). 유어애즈는 `subreqCapKey(lane)` 경유 + 키 값 파일간 중복 0 | `check-subreq-cap-lane` | 2026-07-28 (파트너풀 보강 "무증거 종료" 진단 — 공유 캡 키 분리 후 신설) |
+| **세션 인계** | 브랜치가 `src/` 를 바꿨으면 `docs/CURRENT_WORK.md` 가 **한 번은** 갱신돼 있음 — 다음 세션이 옛 상태로 오판해 이미 고친 것을 또 파는 사고 방지. 문서/테스트만 바꾼 브랜치는 대상 아님(소음 억제). 남길 4가지: ①다음 세션 첫 액션 ②완료분+해시 ③**이번에 틀렸던 판단** ④대기 결정 | `check-current-work-sync` | 2026-07-28 (실사고 후 신설 — 보강 레인 5건 머지 중 인계 0회, 룰만 있고 강제가 없어 놓침) |
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |
 | **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — 정수 파싱은 `intParam(raw, def)`(`@/shared/pagination`) 경유 강제(0/음수 클램프 보존). ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 100+ 라인 intParam 전환 후 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
@@ -35,6 +36,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
 | **코드 구조(god 파일 방지)** | 신규 파일 600줄 초과 차단 + 기존 대형 파일이 `file-size-baseline.json`(82개 동결)보다 성장 시 차단(줄이는 건 OK) → god 파일 재발 0 | `check-file-size` (래칫, `--rebaseline` 로 동결값 갱신) | 2026-06-29 (대표 "리팩토링 반복 말고 애초에 막아라" — MyVouchersPage 1296→386·GroupBuyListPage 1309→827 분해 후 동결). 2026-07-11: PR CI(verify.yml)는 `--changed-only`(merge-base vs origin/main 변경 파일만 판정 — main 드리프트가 무관한 PR 을 실패시키던 문제 차단, 당일 3회 재발); 게이트/rebaseline 은 전수 `-a` 유지 |
 | **빌드·배포 안전** | vite 단독빌드/405 라우터/SW등록/하드코딩 시크릿 금지 | `check-build-command` · `check-router-patterns` · `check-no-sw-register` · `check-no-secrets` | (상시 가드) |
+| **Firebase 토큰 인증 수용 금지** | `requireAuth`/`optionalAuth`/토큰발급 엔드포인트가 Firebase ID token 을 인증 수단으로 받지 않을 것 + `googleRoutes` 미마운트 | `check-no-firebase-auth` (strict: verify.yml + audit-gate) | 2026-07-28 — Firebase 서비스계정 개인키가 `archive/` 문서에 3개월 public 노출(#798). 그 키로 [커스텀 토큰 발급 → Firebase 공개 REST 로 ID 토큰 교환 → Bearer 제출] 하면 **임의 uid 로 로그인**이 됐다(서명은 Google 공개키로 정상 검증되므로 통과). **키를 폐기해도 수용 경로가 남으면 새 키 유출 시 재발**하므로 문 자체를 닫음. KR=카카오 세션 전용·셀러/어드민=JWT·GLOBAL 미런칭(#804)이라 실사용자 0(대표 확인). 되살리려면 `firebase-auth-ok` 주석 + 새 키 발급 + 본 표 갱신 |
 | **시크릿 자재 유입 차단** | 추적 파일 어디에도 실제 키 본문(PEM 개인키·Toss live·Stripe·AWS·PAT 등)이 없을 것 — 확장자/경로 무관 | `check-secret-material` (strict: verify.yml + audit-gate + pre-commit) | 2026-07-28 — `archive/` 19개 `.md`/`.txt` 에 Firebase 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출. 기존 두 가드가 모두 통과시킴(`verify.yml` 의 검사는 `src/**` 의 `.ts/.tsx` 만, `check-no-secrets.sh` 는 키 이름 패턴 위주). ⚠️ 이 가드는 **작업트리만** 본다 — history 유출은 스캔이 아니라 **회전**으로만 해결된다 |
 
 > "마지막 수동 전수감사 = 2026-06-26" 인 도메인은 그날 5개 병렬 에이전트 + 코드 재검증으로 전수조사 완료.

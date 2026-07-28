@@ -65,6 +65,7 @@ if domain money; then
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
+  run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
 fi
 
 if domain schema; then
@@ -109,6 +110,7 @@ if domain deploy; then
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
+  run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

@@ -283,6 +283,10 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
+# 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
+#   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
+node scripts/check-current-work-sync.mjs || true
+
 # 🛡️ 마이그레이션 ↔ repair-schema drift (warn-only) — prod D1 은 .sql 자동적용 X, repair-schema 가 SSOT.
 echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."
 node scripts/check-migration-repair-drift.mjs || true
