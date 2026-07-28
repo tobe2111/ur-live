@@ -13,7 +13,7 @@
  *     정상 종료 조건으로 다루기 때문이다. 대신 `exhausted` 플래그로 호출부가 **"끝난 것"과
  *     "예산이 떨어진 것"을 구분**할 수 있게 한다(이 구분이 없으면 커서가 0 으로 리셋돼 영원히 제자리).
  */
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types'
+import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types'
 import { isSubrequestLimitError } from './collect-budget'
 
 /** 한 인보케이션의 D1 연산 예산. `used` 는 실제 소비량(학습 상한 갱신 입력). */
@@ -29,10 +29,18 @@ export interface OpBudget {
 /** 예산 객체 생성. */
 export const newOpBudget = (left: number): OpBudget => ({ left: Math.max(0, left), used: 0 })
 
-// ⚠️ `success` 는 D1Response 에서 리터럴 `true` 타입이다 — `as const` 없이 쓰면 boolean 으로 넓어져 타입 불일치.
-const EMPTY_META = { changes: 0, duration: 0, last_row_id: 0, rows_read: 0, rows_written: 0, changed_db: false }
-const EMPTY_RUN = { success: true as const, results: [], meta: EMPTY_META }
-const EMPTY_ALL = { success: true as const, results: [], meta: EMPTY_META }
+/**
+ * 예산 소진 시 돌려줄 빈 결과 센티널.
+ *   ⚠️ 구조를 손으로 흉내 내지 않고 **캐스트**한다 — `D1Result`/`D1Meta` 의 필수 필드는
+ *   `@cloudflare/workers-types` 버전마다 늘어나서(`success` 리터럴 true → `meta.size_after` → …)
+ *   구조 리터럴로 맞추면 타입 오류 whack-a-mole 이 된다. 호출부가 실제로 읽는 건 `results`/`meta.changes` 뿐이고,
+ *   이 값은 "DB 를 건드리지 않았다"는 신호일 뿐이라 캐스트가 정직한 표현이다.
+ */
+const EMPTY_RESULT = {
+  success: true,
+  results: [],
+  meta: { changes: 0, duration: 0, last_row_id: 0, rows_read: 0, rows_written: 0, size_after: 0, changed_db: false, served_by: '' },
+} as unknown as D1Result<Record<string, unknown>>
 
 /** 래퍼 statement → 실제 statement (batch 언랩용). */
 const REAL = new WeakMap<object, D1PreparedStatement>()
@@ -66,8 +74,8 @@ export function budgetedDb(DB: D1Database, budget: OpBudget): D1Database {
     const w = {
       bind: (...values: unknown[]) => wrap((real.bind as (...v: unknown[]) => D1PreparedStatement)(...values)),
       first: (col?: string) => guard(() => (col === undefined ? real.first() : real.first(col)), null),
-      run: () => guard(() => real.run(), EMPTY_RUN),
-      all: () => guard(() => real.all(), EMPTY_ALL),
+      run: () => guard(() => real.run(), EMPTY_RESULT),
+      all: () => guard(() => real.all(), EMPTY_RESULT),
       raw: () => guard(() => real.raw(), [] as unknown[]),
     } as unknown as D1PreparedStatement
     REAL.set(w as unknown as object, real)
