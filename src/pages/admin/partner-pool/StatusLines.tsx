@@ -8,7 +8,8 @@ import { formatNumber, kstShort } from '@/utils/format'
 const CRAWL_REASON_LABEL: Record<string, string> = {
   ok: '성공', no_contact: '이메일 미게시', fetch_fail: '페이지 못가져옴', robots: 'robots 차단',
   dead_domain: '죽은 도메인', no_name: '상호 불일치', blocked_host: '제외 호스트', bad_url: '잘못된 주소', budget: '예산 소진',
-  http_403: '봇차단(403)', http_404: '경로없음(404)', http_5xx: '서버오류(5xx)', network: '접속불가/타임아웃',
+  http_403: '봇차단(403)', http_404: '경로없음(404)', http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)',
+  subreq_limit: '⛔ 플랫폼 요청한도', timeout: '⏱ 응답 시간초과(상대 서버)',
 }
 
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
@@ -20,7 +21,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
@@ -78,6 +79,16 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
             )}
           </span>
         : <span className="text-amber-600"> · 아직 실행 기록 없음 — 매시간 자동이 안 돌고 있을 수 있음</span>}
+      {/* 🩹 예산 실측 — "왜 조금밖에 못 돌았나"의 답. 한도에 부딪히면 그 뒤 fetch 는 전부 죽으므로
+          라운드를 중단하고 상한을 낮춰 학습한다(다음 실행부터 그 아래만 사용). */}
+      {typeof enrichLast?.spent === 'number' && (
+        <div className="mt-1 text-[11px] text-gray-400">
+          예산 {formatNumber(enrichLast.spent)}/{formatNumber(enrichLast.budget_total ?? 0)} 사용
+          {enrichLast.limit_hit
+            ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 이번 라운드 중단(실패 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
+            : <span> · 한도 여유</span>}
+        </div>
+      )}
       {/* 실패 URL 샘플 — 호스트 형태/상태코드로 '왜 못 가져왔나'를 눈으로 특정 */}
       {enrichLast?.fail_samples?.length ? (
         <div className="mt-1 text-[11px] text-gray-400 break-all">실패 샘플: {enrichLast.fail_samples.join(' · ')}</div>

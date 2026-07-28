@@ -177,7 +177,10 @@ export interface Env {
   ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
   ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
   ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
-  ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 100) — 수집과 분리, 백로그 대량 소진용. 크론 서브요청 1000 한도 내에서 상향 가능.
+  ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
+                                          //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
+                                          //   두면 한도 초과 후 전 fetch 가 throw → 크롤 전멸). 실효 상한은 관측 학습값(platform_settings
+                                          //   `ads_subreq_cap`, collect-budget.ts)과 min 으로 결정되므로 올려도 안전하지만 효과는 학습값이 정한다.
   ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
   // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
@@ -198,9 +201,13 @@ export interface Env {
   ADS_KAKAO_SWEEP_CAP?: string;           // ☎️ 카카오 전화 스윕 시간당 건수(기본 600, 상한 600 클램프 — 무료 10만/일 대비 여유).
   // 🏭 도매몰 제조사(브랜드사)·판매사 후보 수집 게이트(기본 OFF). 수동 버튼은 게이트 무관.
   SUPPLY_MAKER_COLLECT_ENABLED?: string;
+  SUPPLY_ENRICH_BUDGET?: string;          // 📧 도매 이메일 보강 1라운드 fetch 상한(기본 120, 상한 400). 실효 상한은
+                                          //   관측 학습값(platform_settings `supply_subreq_cap`)과 min — 유어애즈와 별개 워커라 별도 학습.
   ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
   WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
   ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
+                                          //   ⚠️ 이전엔 ADS_ENRICH_BUDGET(800)을 빌려 써 서브리퀘스트 한도에 부딪히는 구조였음(2026-07-28 수리).
   ADS_WORK24_LIST_URL?: string;           // 💼 고용24 채용목록 URL 오버라이드(통합 후 표기 흔들림 대비).
   ADS_NARA_VENDOR_OP?: string;            // 오퍼레이션 override(기본 getPrcrmntCorpBasicInfo — 오류 시 무배포 교정).
   ADS_NARA_VENDOR_DAYS?: string;          // 조회 구간 일수(기본 90) — 최근 등록/변경 업체.
