@@ -588,7 +588,12 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
 //   ?platform=youtube|naver_blog|naver_cafe|… → 매체별 분리 파일(2026-07-28 대표 요청). 없으면 전체(기존).
-app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls', c.req.query('platform') || ''))
+// GET /influencer-pool/export?format=&platform=&contactable=1&minScore=70 — 📇 내보내기
+//   contactable=1: 수기 제휴 제안용 "지금 연락할 사람"만(이메일 보유·브랜드 제외·미접촉·반송이력 없음).
+app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(
+  c.env.DB, POOL, c.req.query('format') || 'xls', c.req.query('platform') || '',
+  { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')) },
+))
 
 
 export { app as adminAdsInfluencerRoutes }

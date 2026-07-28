@@ -257,15 +257,16 @@ export default function AdminInfluencerPoolPage() {
 
   const [exporting, setExporting] = useState(false)
   // 📊 엑셀 — plat 없으면 풀 전체, 있으면 그 매체만(유튜브/블로그/카페 분리 다운로드).
-  async function exportExcel(plat?: string) {
+  //   📇 contactable: 수기 제휴 제안용 — 이메일 보유·브랜드 제외·미접촉·반송이력 없음만, 점수순.
+  async function exportExcel(plat?: string, contactable?: boolean) {
     setExporting(true)
     try {
       // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls).
       //   ⚠️ 20k행이면 전체+카테고리별 시트로 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
       //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
-      const r = await api.get(`/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}`, { responseType: 'blob', timeout: 120000 })
+      const r = await api.get(`/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}${contactable ? '&contactable=1' : ''}`, { responseType: 'blob', timeout: 120000 })
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
-      const label = plat ? (EXPORT_PLATS.find(p => p.v === plat)?.label || plat) : '전체'
+      const label = (plat ? (EXPORT_PLATS.find(p => p.v === plat)?.label || plat) : '전체') + (contactable ? '-연락대상' : '')
       const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-${label}-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url); toast.success(`📊 ${label} 엑셀 다운로드 완료 (${(r.data as Blob).size > 1048576 ? `${(((r.data as Blob).size) / 1048576).toFixed(1)}MB` : `${Math.round(((r.data as Blob).size) / 1024)}KB`} · 카테고리별 시트)`)
     } catch (e) {
       const ax = e as { code?: string; response?: { status?: number } }
@@ -391,6 +392,11 @@ export default function AdminInfluencerPoolPage() {
             </button>
             <ConsentedSendPanel />
             <ColdSendPanel />
+            <button onClick={() => exportExcel(undefined, true)} disabled={exporting}
+              className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-40"
+              title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음만, 점수 높은 순">
+              📇 연락 대상만 받기
+            </button>
           </div>
         </details>
 
