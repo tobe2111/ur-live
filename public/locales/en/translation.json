@@ -5248,6 +5248,7 @@
     "catExchange": "[TODO:en] 교환/환불",
     "catMember": "[TODO:en] 회원",
     "catLive": "[TODO:en] 라이브",
+    "catService": "Service",
     "q1": "[TODO:en] 주문을 취소하고 싶어요",
     "a1": "[TODO:en] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "[TODO:en] 결제가 완료되지 않았어요",
@@ -5264,10 +5265,10 @@
     "a7": "[TODO:en] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "[TODO:en] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:en] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "[TODO:en] 라이브 방송은 어떻게 시청하나요?",
-    "a9": "[TODO:en] 메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "[TODO:en] 라이브 중 상품을 구매하려면?",
-    "a10": "[TODO:en] 라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다."
+    "q9": "What is UrDeal?",
+    "a9": "UrDeal (urdeal.kr) is a local commerce platform where you buy neighborhood store vouchers at a discount and redeem them in-store with a QR code. It offers dining, beauty and stay vouchers, gifticon exchange coupons, a nearby deals map, and your own link shop.",
+    "q10": "How do I use a voucher?",
+    "a10": "Purchased vouchers appear in My Page > My Vouchers; show the QR or PIN at the store to redeem. Gifticon exchange coupons are issued right after payment."
   },
   "introduce": {
     "navStart": "Get Started",

@@ -5248,6 +5248,7 @@
     "catExchange": "[TODO:es] 교환/환불",
     "catMember": "[TODO:es] 회원",
     "catLive": "[TODO:es] 라이브",
+    "catService": "Servicio",
     "q1": "[TODO:es] 주문을 취소하고 싶어요",
     "a1": "[TODO:es] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "[TODO:es] 결제가 완료되지 않았어요",
@@ -5264,10 +5265,10 @@
     "a7": "[TODO:es] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "[TODO:es] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:es] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "[TODO:es] 라이브 방송은 어떻게 시청하나요?",
-    "a9": "[TODO:es] 메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "[TODO:es] 라이브 중 상품을 구매하려면?",
-    "a10": "[TODO:es] 라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다."
+    "q9": "¿Qué es UrDeal?",
+    "a9": "UrDeal (urdeal.kr) es una plataforma de comercio local: compra vales de tiendas de tu barrio con descuento y úsalos en la tienda con un código QR. Ofrece vales de comida, belleza y alojamiento, cupones de intercambio (gifticon), un mapa de ofertas cercanas y tu propia tienda de enlaces.",
+    "q10": "¿Cómo uso un vale?",
+    "a10": "Los vales comprados aparecen en Mi página > Mis vales; muestra el QR o el PIN en la tienda para usarlos. Los cupones de intercambio se emiten justo después del pago."
   },
   "introduce": {
     "navStart": "Comenzar",

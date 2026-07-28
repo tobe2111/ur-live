@@ -380,6 +380,47 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://urdeal.kr" />
     <meta property="og:site_name" content="유어딜" />
+
+    <!-- 🧠 2026-07-27 GEO/엔티티 SEO (대표 — "구글 AI 개요에 우리 서비스가 나와야"): 브랜드 엔티티
+         구조화 데이터. 상품/블로그엔 JSON-LD 가 있었지만 '유어딜 = 무엇' 을 선언하는 Organization/
+         WebSite 스키마가 사이트 전체에 없어, 검색 AI 가 동음이의(유어딜라잇 등)로 흘러가던 갭을 마감.
+         프리렌더 정적 삽입 — JS 렌더 없이 모든 크롤러/AI 봇에 전달. 사실만 기재(푸터 법적 고지와 동일 SSOT).
+         ⚠️ 도메인 이전(2026-07-20) 직후라 AI 개요 반영은 수주 소요 — 오프사이트 신호(공식 SNS sameAs·
+         뉴스 보도·비즈니스 프로필)는 별도 대표 액션(사이트 밖). 공식 프로필 확정 시 sameAs 배열 추가할 것. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://urdeal.kr/#organization",
+          "name": "유어딜",
+          "alternateName": ["urdeal", "UrDeal", "유어딜 urdeal.kr"],
+          "url": "https://urdeal.kr/",
+          "logo": "https://urdeal.kr/icon-512.png",
+          "description": "유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권, 기프티콘 교환권, 내 주변 동네딜 지도, 누구나 만드는 링크샵을 제공합니다.",
+          "email": "jiwon@ur-team.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "남부순환로359길 14, 3층(도곡동)",
+            "addressLocality": "강남구",
+            "addressRegion": "서울특별시",
+            "addressCountry": "KR"
+          },
+          "parentOrganization": { "@type": "Organization", "name": "리스터코퍼레이션" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://urdeal.kr/#website",
+          "url": "https://urdeal.kr/",
+          "name": "유어딜",
+          "alternateName": "urdeal",
+          "inLanguage": "ko",
+          "publisher": { "@id": "https://urdeal.kr/#organization" }
+        }
+      ]
+    }
+    </script>
     <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
