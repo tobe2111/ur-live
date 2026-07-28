@@ -51,6 +51,8 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
 export interface EnrichLaneRecord {
   last_run?: string
   bio?: number
+  yt?: number
+  yt_units?: { used?: number; total?: number; day?: string }
   naver?: { tried?: number; measured?: number; contacts?: number; failed?: number }
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
@@ -58,9 +60,9 @@ export interface EnrichLaneRecord {
   crash?: string; crash_at?: string
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal, sendReady }: {
+export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
-  sheetsSync: { ok: boolean; at?: string; error?: string | null } | null
+  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
   /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
@@ -68,7 +70,6 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
   enrichLane?: EnrichLaneRecord | null
   nbUnmeasured?: number      // 📝 활동성 미측정 블로거 수(보강 백로그) — 줄어들어야 레인이 도는 것
   naverBlogTotal?: number
-  sendReady?: boolean        // 📨 RESEND_API_KEY 유무 — false 면 발송 버튼이 눌러야만 알 수 있는 400 으로 실패
 }) {
   const mSum = summarize(maintenance)
   const rSum = summarize(maintenanceRescan)
@@ -85,9 +86,16 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
 
   return (
     <>
-      {/* 📊 구글시트 마지막 동기화 상태 — 무음 실패 가시화. 실패 시에만 표시. */}
+      {/* 📊 구글시트 마지막 동기화 — 실패뿐 아니라 **멈춤**도 보여야 한다.
+          2026-07-28 실사고: 미러가 34시간 정지했는데 스탬프는 `ok:true` 인 옛 값이라(예외로 죽어 갱신조차 못 함)
+          화면에도 경보에도 아무 신호가 없었다. 매시간 도는 잡이므로 3시간 넘게 조용하면 그 자체가 이상 신호다. */}
       {sheetsSync && !sheetsSync.ok ? (
         <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
+      ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
+        <div className="mb-2 mt-1 text-[11px] text-amber-600">
+          📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
+          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}) — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.
+        </div>
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
@@ -102,26 +110,19 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
         </div>
       )}
 
-      {/* 📨 발송 준비 — 키가 없으면 "보낼 수 있는 리드"가 아무리 많아도 한 통도 못 나간다(원인이 화면에 없어
-          풀 37,414명에 컨택 이력 1건이던 2026-07-28 상태의 실제 원인). 준비되면 표시 안 함. */}
-      {sendReady === false ? (
-        <div className="mb-2 mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-          📨 <b>메일 발송 불가</b> — RESEND_API_KEY 미설정. Cloudflare → Workers &amp; Pages → <b>ur-live</b> → Settings →
-          Variables and Secrets 에 추가하면 제휴 제안/동의 발송이 열립니다(수집·보강은 영향 없음).
-        </div>
-      ) : null}
-
       {/* 📝 보강 전용 레인(시간당 N라운드, 수집과 분리) — 블로거 활동성·연락처 백로그를 실제로 줄이고 있는지.
           측정 시도는 했는데 성공이 0 이면 네이버 차단 신호(값이 0/0 이면 원인 판별이 안 되므로 tried 를 같이 본다). */}
       {enrichLane?.last_run ? (
         <div className="mb-1 text-xs text-gray-500">
           📝 풀 보강 {fmtKST(enrichLane.last_run)} — 블로거 측정 {formatNumber(enrichLane.naver?.measured || 0)}/{formatNumber(enrichLane.naver?.tried || 0)}
           {enrichLane.naver?.contacts ? ` (연락처 +${formatNumber(enrichLane.naver.contacts)})` : ''}
+          {enrichLane.yt ? ` · 📈 유튜브 성과 ${formatNumber(enrichLane.yt)}` : ''}
           {enrichLane.bio ? ` · 🔗 링크 컨택보강 ${formatNumber(enrichLane.bio)}` : ''}
           {` · 예산 ${formatNumber(enrichLane.spent || 0)}/${formatNumber(enrichLane.budget_total || 0)}`}
           {enrichLane.deadline_hit ? ' · ⏱️ 시간상한' : ''}
           {enrichLane.limit_hit ? ' · ⚠️ 플랫폼 한도(상한 자동 하향)' : ''}
           {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
+          {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
         </div>
       ) : null}

@@ -15,8 +15,22 @@ import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
-const PAGE = 5000  // D1 페이지 크기
-const CHUNK = 2000 // Sheets 1회 기록 행수
+/**
+ * 🧮 2026-07-28 무음 정지 근본수리 — 페이지/청크 크기는 **서브리퀘스트 예산 문제**다.
+ *
+ *   실사고: 시트 미러가 07-27 06:49 이후 **34시간 정지**했는데 스탬프는 `ok:true` 인 옛 값 그대로라
+ *   화면에도 경보에도 아무 신호가 없었다. 원인은 이 함수가 **풀 크기에 선형으로** 서브리퀘스트를 쓴다는 것:
+ *     D1 페이지 ⌈N/PAGE⌉ + 시트 PUT ⌈N/CHUNK⌉ + DDL + 토큰/메타/clear/스탬프.
+ *   구 상수(5000/2000)로 33,730명일 때 38, 37,414명일 때 **41** — 무료 플랜 인보케이션 한도(≈50, D1 포함)에
+ *   풀 성장만으로 닿는다. 넘으면 예외 → **스탬프 기록도 못 하고 죽는다**(그래서 옛 ok:true 가 남았다).
+ *
+ *   ⇒ ① 한 번에 더 많이 읽고/쓴다(요청 수를 1/4로) ② 예외를 잡아 **crash 를 스탬프에 남긴다**
+ *     ③ 이번 회차가 쓴 요청 수를 스탬프에 적어, 다시 임계에 닿기 **전에** 화면에서 보이게 한다.
+ *   크기 상한 근거: Sheets values.update 는 요청 본문 크기가 실질 한계 — 8,000행 × 30열 ≈ 5MB 로 안전권.
+ *   D1 은 10,000행 × 30열 페이지가 결과 크기 한계 안(실측 페이지 8→4).
+ */
+const PAGE = 10_000 // D1 페이지 크기
+const CHUNK = 8_000 // Sheets 1회 기록 행수
 
 // ── base64url (JWT 용, 순수 — 테스트 가능) ──────────────────────────────────
 export function b64url(data: Uint8Array | string): string {
@@ -118,22 +132,36 @@ async function ensurePoolSheet(token: string, sheetId: string, needRows: number,
  *   🛡️ 결과를 platform_settings('ads_sheets_last_sync')에 항상 기록 — cron 실패가 무음으로 사라지지 않게(관측성).
  */
 export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolean; rows?: number; error?: string }> {
-  const r = await _syncCore(env)
+  // 💥 예외도 **결과로 기록**한다 — 2026-07-28 실사고: `_syncCore` 가 throw 하면(서브리퀘스트 한도 등)
+  //   아래 스탬프 쓰기에 도달하지 못해 **옛 `ok:true` 스탬프가 그대로 남아** 34시간 정지가 성공처럼 보였다.
+  //   (파트너풀 보강 레인의 `recordEnrichCrash` 와 같은 철학 — 무증거 종료 금지.)
+  const cost = { subreq: 0 } // 이번 회차가 쓴 요청 수(추정) — 임계에 닿기 전에 보이게
+  let r: { ok: boolean; rows?: number; error?: string }
+  try {
+    r = await _syncCore(env, cost)
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    r = { ok: false, error: `CRASH ${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }
+  }
   await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_sheets_last_sync', JSON.stringify({ at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null, error: (r.error || '').slice(0, 300) || null }))
-    .run().catch(() => null)
+    .bind('ads_sheets_last_sync', JSON.stringify({
+      at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null,
+      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq,
+    })).run().catch(() => null)
   return r
 }
 
-async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?: string }> {
+async function _syncCore(env: Env, cost: { subreq: number }): Promise<{ ok: boolean; rows?: number; error?: string }> {
   if (!env.GSHEETS_SHEET_ID || !env.GSHEETS_SA_EMAIL || !env.GSHEETS_SA_KEY) {
     return { ok: false, error: 'NOT_CONFIGURED: GSHEETS_SA_EMAIL / GSHEETS_SA_KEY / GSHEETS_SHEET_ID (ur-ads Variables)' }
   }
+  cost.subreq += 1 // 토큰 발급(캐시 미스 시 1 fetch)
   const token = await getToken(env)
   if (!token) return { ok: false, error: 'AUTH: 서비스계정 토큰 발급 실패 — SA 키/이메일 확인' }
   const sheetId = env.GSHEETS_SHEET_ID
   // 확장 열(점수/성과/메일상태/분류근거) 보장 — 미보강 DB 에서 'no such column' READ 실패 방지.
   await ensureQualityColumns(env.DB); await ensurePerfExtraColumns(env.DB); await ensureOutreachColumns(env.DB)
+  cost.subreq += 3 // DDL 3종 — 전부 runDdlOnce(체크섬 1회 조회). 2026-07-28 이전엔 ALTER 10회였다.
 
   // D1 페이지 읽기(전량) — 공용 풀만(account_id=0).
   //   🛡️ 2026-07-23 전수조사: 페이지 읽기 **실패**(null)를 "마지막 페이지"로 오인하면 그 오프셋 이후 전량 누락된
@@ -145,6 +173,7 @@ async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
       .bind(PAGE, off).all<SheetLead>().catch(() => null)
+    cost.subreq += 1
     if (!res) return { ok: false, error: `READ: D1 페이지 읽기 실패(offset ${off}) — 잘린 미러 방지 위해 중단(시트 기존 데이터 유지)` }
     const page = res.results || []
     for (const l of page) rows.push(leadToRow(l))
@@ -152,13 +181,16 @@ async function _syncCore(env: Env): Promise<{ ok: boolean; rows?: number; error?
   }
 
   // 탭 보장 + 그리드를 데이터 전량 크기로 확장(1000행 기본 한계 → 2001행+ 400 방지) 후 clear → 청크 기록.
+  cost.subreq += 1 // 시트 메타 조회(+ 확장 필요 시 1)
   await ensurePoolSheet(token, sheetId, rows.length + 1, SHEET_HEADER.length)
   // clear → 청크 기록(멱등 미러). RAW 입력(수식 해석 없음 — 시트측 수식 인젝션 원천 차단).
+  cost.subreq += 1
   const clear = await sheetsFetch(token, sheetId, `/values/${TAB}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
   if (!clear?.ok) return { ok: false, error: `CLEAR: 시트 접근 실패(${clear?.status || 'net'}) — 시트를 SA 이메일에 편집자 공유했는지 확인` }
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK)
     const range = `${TAB}!A${i + 1}`
+    cost.subreq += 1
     const w = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(range)}?valueInputOption=RAW`, {
       method: 'PUT', body: JSON.stringify({ range, majorDimension: 'ROWS', values: chunk }),
     }).catch(() => null)

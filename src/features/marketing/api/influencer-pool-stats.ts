@@ -109,9 +109,6 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
     stats: { ...(agg || {}), ...tail },
     gate,
     ...diag,
-    // 📨 발송 준비 상태 — 키가 없으면 발송 버튼이 **눌러야만** 알 수 있는 400 으로 실패한다(2026-07-28 실측:
-    //   풀 37,414명에 컨택 이력 1건 = 사실상 0. 원인이 키 부재인데 화면 어디에도 그 말이 없었다).
-    send_ready: !!env.RESEND_API_KEY,
     category_funnel: catFunnel?.results || [],
   }
 }

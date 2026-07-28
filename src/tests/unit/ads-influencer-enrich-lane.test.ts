@@ -23,23 +23,27 @@ import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
 describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
   it('① 배분한 대상의 총 fetch 비용이 예산을 넘지 않는다', () => {
     for (const budget of [10, 20, 30, 45, 60, 100, 300, 400]) {
-      const { bioMax, naverMax } = planInfluencerEnrich(budget)
-      const cost = bioMax * 1 + naverMax * 2 // 링크인바이오 1 · 블로거 2(RSS+홈)
+      const { bioMax, naverMax, ytMax } = planInfluencerEnrich(budget)
+      const cost = bioMax * 1 + ytMax * 1 + naverMax * 2 // 링크인바이오 1 · YT 1 · 블로거 2(RSS+홈)
       expect(cost).toBeLessThanOrEqual(budget)
     }
   })
 
   it('② 예산이 바닥이어도 음수/NaN 없이 0 이상으로 수렴한다', () => {
     for (const budget of [0, 1, 4, 5, -10, Number.NaN]) {
-      const { bioMax, naverMax } = planInfluencerEnrich(Number.isFinite(budget) ? budget : 0)
-      expect(bioMax).toBeGreaterThanOrEqual(0)
-      expect(naverMax).toBeGreaterThanOrEqual(0)
-      expect(Number.isFinite(bioMax) && Number.isFinite(naverMax)).toBe(true)
+      const p = planInfluencerEnrich(Number.isFinite(budget) ? budget : 0)
+      for (const v of [p.bioMax, p.naverMax, p.ytMax]) {
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(Number.isFinite(v)).toBe(true)
+      }
     }
   })
 
-  it('②-2 정상 예산에서는 블로거가 실제로 배정된다(0 이면 백로그가 영원히 안 준다)', () => {
-    expect(planInfluencerEnrich(45).naverMax).toBeGreaterThan(5)
+  it('②-2 정상 예산에서는 세 레인 모두 실제로 배정된다(0 이면 그 백로그는 영원히 안 준다)', () => {
+    const p = planInfluencerEnrich(45)
+    expect(p.naverMax).toBeGreaterThan(3)
+    expect(p.ytMax).toBeGreaterThan(3)   // 📈 YT 800개 표본의 94%가 성과 미측정 — 여기가 0 이면 그대로 굳는다
+    expect(p.bioMax).toBeGreaterThan(0)
   })
 
   it('③ 학습 상한 키가 수집 레인과 분리돼 있다', () => {

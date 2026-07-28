@@ -17,7 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
-import { enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { maybeAlertCollectHealth } from './collect-health-alert'
@@ -83,7 +83,8 @@ export interface AutoCollectStats {
   /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
    *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
   bio_enriched?: number
-  perf_enriched?: number // 📈 이번 실행에서 YT 성과 지표(평균조회/롱폼중앙값)를 채운 리드 수
+  /** @deprecated 2026-07-28 — 성과 보강도 `influencer-enrich-lane.ts` 로 이전. 옛 스냅샷 호환용. */
+  perf_enriched?: number
   /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
    *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
   diag?: {
@@ -389,21 +390,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
-  // 🍽️ 2026-07-28 보강 레인 기아 수리(라이브 실측: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0` 고착).
-  //   발굴 루프가 예산을 **0 까지** 먹어치워, 그 뒤에 도는 보강 레인이 매 실행 예산 0 으로 즉시 반환했다
-  //   → 풀은 커지는데 연락처 확보율이 8.8% 에 고정.
+  // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
+  //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
   //
-  //   ⚠️ 1차 수리(예약분 `enrichReserve`)는 **키워드 경계에서만** 검사해 실효가 없었다 — 한 키워드가
-  //   [YT검색+보충 9 · 블로그 6 · 카페 1] 로 최대 16 을 쓰므로, 예약분 15 를 남기고 진입한 마지막 키워드가
-  //   그대로 0 까지 파고든다. ⇒ **예약분을 발굴에게 아예 안 보여준다**(별도 FetchBudget). 이제 구조적으로
-  //   샐 수 없다. 발굴이 못 돈 키워드는 커서가 다음 틱에 이어받으므로 **수확 손실 0**(지연뿐).
-  //
-  //   남은 보강은 **YouTube 성과 2종뿐**이다(블로거·링크인바이오는 `influencer-enrich-lane.ts` 독립 레인으로
-  //   이전 — 그쪽은 YT 쿼터를 안 써서 시간당 N라운드로 돌릴 수 있다). YT 성과는 발굴 검색과 **같은 일일
-  //   쿼터**를 나눠 쓰므로 라운드를 늘리면 발굴이 굶는다 → 여기 예약분으로 두는 것이 맞다.
-  //   YT 키가 없으면 예약분 0(쓸 레인이 없는데 예산을 묶어두면 발굴만 손해).
-  const enrichReserve = env.YOUTUBE_API_KEY ? Math.max(8, Math.min(40, Math.floor(budgetTotal * 0.3))) : 0
-  const discoveryBudget: FetchBudget = { left: Math.max(0, budgetTotal - enrichReserve) }
+  //   경위: 보강이 여기 얹혀 있던 동안 발굴 루프가 예산을 **0 까지** 먹어 보강 4종이 매 실행 즉시 반환했고
+  //   (라이브: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0`), 예약분(`enrichReserve`)을 둬도
+  //   **키워드 경계에서만** 검사해 한 키워드(최대 16)가 예약분을 뚫고 0 까지 파고들었다.
+  //   ⇒ 예약분으로 지분을 나누는 대신 **레인을 분리**했다. 발굴은 예산 전부를 쓰고(처리량 원복),
+  //   보강은 자기 인보케이션에서 자기 예산을 쓴다. 서로 굶기지 않는 유일한 구조.
 
   let saved = 0
   let quotaHit = false
@@ -443,7 +437,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   let ytBudgetBlocked = false
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   for (const k of finalPicks) {
-    if (discoveryBudget.left <= 0) break // 🔒 발굴 몫 소진 — 이번 틱 종료(다음 틱 커서 이어받음). 예약분은 애초에 안 보인다.
+    if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
@@ -452,7 +446,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       ytUsed++
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget: discoveryBudget, searchType: ytAngle.searchType, order: ytAngle.order })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
@@ -464,7 +458,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget: discoveryBudget, sort: naverSort })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
@@ -472,7 +466,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
       try {
-        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget: discoveryBudget, sort: naverSort })
+        const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
@@ -481,7 +475,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   }
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
-  budget.left = enrichReserve + discoveryBudget.left // 🔁 예약분 + 발굴이 안 쓴 잔여 = 보강 레인이 쓸 몫
   const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget)
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
@@ -516,22 +509,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
   }
 
-  // 🔁 YT 성과 보강 라운드로빈(2026-07-28 축소) — 순서를 고정하면 **뒤쪽 레인이 영구히 굶는다**.
-  //   틱마다 시작 레인을 한 칸 돌려 2틱에 한 번은 각 레인이 1순위를 갖는다(내부는 budget.left 로 알아서 멈춤).
-  //   · progress: perf 미수집 채널을 구독자 많은 순(0 각인 백로그 자동 치유)
-  //   · refresh: 이미 수집됐어도 개인메일/카테고리가 비었거나 낡은 채널 재검증
-  //   블로거 활동성·링크인바이오는 여기 없다 — `influencer-enrich-lane.ts`(시간당 N라운드 독립 인보케이션)로
-  //   이전했다. YT 쿼터를 쓰는 이 둘만 검색과 예산을 나눠 갖는 것이 맞다(그쪽은 쿼터 무관 → 라운드로 증속).
-  let perfEnriched = 0
-  const enrichLanes: Array<() => Promise<void>> = [
-    async () => { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) },
-    async () => { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') },
-  ]
-  const laneStart = (prev?.total_runs || 0) % enrichLanes.length
-  for (let i = 0; i < enrichLanes.length; i++) {
-    try { await enrichLanes[(laneStart + i) % enrichLanes.length]() } catch { /* fail-soft — 한 레인 실패가 나머지를 막지 않음 */ }
-  }
-
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
   //   (leapfrog). prefix 방식은 앞에서 처리 안 된 키워드가 나오면 멈춰, 못 돈 키워드를 다음 틱이 정확히 이어받음.
@@ -545,7 +522,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, perf_enriched: perfEnriched, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)

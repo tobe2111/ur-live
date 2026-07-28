@@ -15,12 +15,16 @@
  *   ⇒ 파트너풀이 이미 검증한 패턴을 그대로 쓴다: **레인을 독립 인보케이션으로 분리**하고
  *     cron 이 시간당 N라운드 호출(각 라운드 = 새 서브리퀘스트 예산). `enrich-lane.ts`(파트너풀) 형제.
  *
- *   ## 이 레인이 하는 일 (유튜브 쿼터를 **안 쓰는** 것만)
+ *   ## 이 레인이 하는 일
  *     ① 📝 네이버 블로거 활동성/프로필 연락처 — RSS + 모바일 홈 (건당 fetch 2). 백로그 27,864.
  *     ② 🔗 링크인바이오(linktr.ee 등) 체인 추출 — 이메일/인스타 (건당 fetch 1).
- *   유튜브 성과 보강(`enrichYouTubePerformance`)은 **여기 없다** — 그쪽은 YouTube Data API 쿼터를
- *   발굴 검색(search=100units/회)과 공유하므로, 라운드를 늘리면 발굴이 굶는다. 수집 인보케이션에 남겨
- *   예약분(이제는 새지 않는 진짜 예약분)으로 돌린다.
+ *     ③ 📈 유튜브 성과(최근 조회수·롱폼 중앙값·개설일) — 건당 ~1 fetch(= 1 unit).
+ *
+ *   ③ 을 여기 두는 근거(실측): YT 채널 800개 표본에서 **94% 가 성과 미측정**, 롱폼 중앙값은 **100% 미측정**
+ *   → `lead_score` 의 활동성 25점 축이 통째로 0 인 채 순위가 매겨지고 있었다. "발굴 검색과 쿼터를 공유하니
+ *   수집에 남겨야 한다"는 처음 판단은 **실측으로 뒤집혔다**: 오늘 검색은 일일 예산 90 중 **22회(2,200 units)**
+ *   만 썼고 10,000 units 중 대부분이 남는다. 병목은 쿼터가 아니라 **인보케이션당 서브리퀘스트**였다.
+ *   그래서 쿼터는 일일 카운터(`ads_yt_perf_units`)로 따로 막고, 처리량은 라운드로 낸다.
  *
  *   ⚠️ [LEGAL/PIPA] 공개 프로필/RSS 의 공개 연락처만 저장(수집과 동일 기준). 발송은 별도 동의 절차.
  *   ⚠️ 서비스 분리: `ad_influencer_leads` + `platform_settings` 만 접촉(소비자/도매 무관).
@@ -30,8 +34,8 @@ import type { Env } from '@/worker/types/env'
 import {
   ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type FetchBudget,
 } from './influencer-discovery'
-import { enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
-import { POOL_ACCOUNT_ID, readSetting, writeSetting } from './influencer-auto-collect'
+import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
@@ -42,7 +46,10 @@ const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|tap
 export interface InfluencerEnrichSnapshot {
   last_run?: string
   bio: number                 // 🔗 링크인바이오로 연락처를 새로 채운 리드 수
+  yt?: number                 // 📈 유튜브 성과(조회수·롱폼중앙값·개설일)를 채운 채널 수
   naver: NaverEnrichDiag      // 📝 블로거 tried/measured/contacts/failed
+  /** 📈 유튜브 일일 units — 발굴 검색과 같은 10,000 풀을 나눠 쓰므로 소진 여부가 보여야 한다. */
+  yt_units?: { used: number; total: number; day: string }
   spent: number               // 이번 라운드가 실제로 쓴 서브리퀘스트(외부 fetch)
   budget_total: number
   limit_hit: boolean          // 플랫폼 서브리퀘스트 한도 관측(학습 상한 자동 하향)
@@ -60,11 +67,27 @@ export interface InfluencerEnrichSnapshot {
  *   소모하므로 예약 오버헤드 4 를 빼고 나눈다. 실제 중단은 각 함수가 `budget.left` 로 하고,
  *   여기서는 SELECT LIMIT 이 헛되이 커지지 않게만 잡는다.
  */
-export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; naverMax: number } {
+export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; naverMax: number; ytMax: number } {
   const usable = Math.max(0, budgetTotal - 4)
   const bioMax = Math.max(0, Math.min(6, Math.floor(usable * 0.15)))
-  const naverMax = Math.max(0, Math.min(30, Math.floor((usable - bioMax) / 2)))
-  return { bioMax, naverMax }
+  // 📈 YT 는 건당 ~1 fetch 라 싸다 — 전체의 1/3 을 배정해도 블로거 몫이 크게 줄지 않는다.
+  const ytMax = Math.max(0, Math.min(20, Math.floor(usable * 0.35)))
+  const naverMax = Math.max(0, Math.min(30, Math.floor((usable - bioMax - ytMax) / 2)))
+  return { bioMax, naverMax, ytMax }
+}
+
+/** 유튜브 성과 보강의 **일일 units 카운터**(검색과 같은 10,000 풀을 나눠 쓴다). "YYYY-MM-DD:count". */
+const YT_PERF_UNITS_KEY = 'ads_yt_perf_units'
+/** 기본 일일 상한 — 실측(검색 22회=2,200 units)에 비춰 넉넉하되, 검색이 자기 예산을 다 써도 여유가 남는 값.
+ *  검색 예산(`ADS_YT_SEARCH_BUDGET`, 기본 90회=9,000 units)을 크게 올릴 때는 이 값을 함께 낮출 것. */
+const YT_PERF_UNITS_DEFAULT = 2000
+
+/** 오늘 남은 perf units — 날짜가 바뀌면 자동으로 0부터(문자열 앞의 날짜가 키). */
+async function readPerfUnitsUsed(DB: D1Database, day: string): Promise<number> {
+  const raw = await readSetting(DB, YT_PERF_UNITS_KEY)
+  if (!raw) return 0
+  const i = raw.indexOf(':')
+  return i > 0 && raw.slice(0, i) === day ? Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) : 0
 }
 
 /**
@@ -129,9 +152,15 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
   //   파트너풀 레인과 같은 env 를 공유(둘 다 "보강 1라운드 상한"이라 의미가 같다).
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt(env.ADS_ENRICH_DEADLINE_MS || '', 10) || 20_000))
   const budget: FetchBudget = { left: budgetTotal, deadline: started + deadlineMs }
-  const { bioMax, naverMax } = planInfluencerEnrich(budgetTotal)
+  const { bioMax, naverMax, ytMax } = planInfluencerEnrich(budgetTotal)
+  // 📈 유튜브 성과 — 서브리퀘스트(위 예산)와 **일일 units**(검색과 공유하는 10,000 풀) 둘 다 통과해야 돈다.
+  const ytDay = ytQuotaDayKey(started)
+  const ytUnitCap = Math.min(9000, Math.max(0, parseInt(env.ADS_YT_PERF_UNITS || '', 10) || YT_PERF_UNITS_DEFAULT))
+  const ytUnitsUsed = await readPerfUnitsUsed(DB, ytDay)
+  const ytRoom = Math.max(0, ytUnitCap - ytUnitsUsed)
 
   let bio = 0
+  let yt = 0
   let naver: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
   let limitHit = false
   let crash: string | undefined
@@ -143,7 +172,14 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
   }
   // 🔗 링크인바이오 먼저(백로그가 작고 건당 1 fetch — 블로거 백로그에 영원히 밀리지 않게).
   try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }
-  // 📝 블로거 — 이 레인의 본 목적(풀의 74%가 여기, 활동성·연락처 둘 다 이 응답에서 나온다).
+  // 📈 유튜브 성과 — 남은 일일 units 안에서만. 소모 units 는 실제 쓴 fetch 수로 계산(list 호출 1회 = 1 unit).
+  const beforeYt = budget.left
+  if (ytMax > 0 && ytRoom > 0 && env.YOUTUBE_API_KEY) {
+    try { yt = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, Math.min(ytMax, ytRoom)) } catch (err) { note(err) }
+  }
+  const ytUnits = Math.max(0, beforeYt - budget.left)
+  if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
+  // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 앞 레인이 남긴 예산 전부를 쓴다.
   try { naver = await enrichNaverActivity(DB, budget, naverMax) } catch (err) { note(err) }
 
   const spent = budgetTotal - budget.left
@@ -155,9 +191,10 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
 
   const prev = await readSnapshot(DB)
   const snap: InfluencerEnrichSnapshot = {
-    last_run: nowStamp(), bio, naver, spent, budget_total: budgetTotal,
+    last_run: nowStamp(), bio, yt, naver, spent, budget_total: budgetTotal,
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,
-    total_measured: (prev?.total_measured || 0) + naver.measured,
+    yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
+    total_measured: (prev?.total_measured || 0) + naver.measured + yt,
     total_contacts: (prev?.total_contacts || 0) + naver.contacts + bio,
     ...(crash ? { crash, crash_at: nowStamp() } : {}),
   }
