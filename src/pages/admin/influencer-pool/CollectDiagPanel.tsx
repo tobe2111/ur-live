@@ -47,13 +47,28 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning }: {
+/** 📝 보강 전용 레인 스냅샷(`ads_influencer_enrich_last`) — 마지막 라운드 결과. 서버 타입과 1:1. */
+export interface EnrichLaneRecord {
+  last_run?: string
+  bio?: number
+  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number }
+  spent?: number; budget_total?: number
+  limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
+  total_measured?: number; total_contacts?: number
+  crash?: string; crash_at?: string
+}
+
+export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal, sendReady }: {
   run: RunStats | null
   sheetsSync: { ok: boolean; at?: string; error?: string | null } | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
   /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
   maintainRunning?: boolean
+  enrichLane?: EnrichLaneRecord | null
+  nbUnmeasured?: number      // 📝 활동성 미측정 블로거 수(보강 백로그) — 줄어들어야 레인이 도는 것
+  naverBlogTotal?: number
+  sendReady?: boolean        // 📨 RESEND_API_KEY 유무 — false 면 발송 버튼이 눌러야만 알 수 있는 400 으로 실패
 }) {
   const mSum = summarize(maintenance)
   const rSum = summarize(maintenanceRescan)
@@ -86,6 +101,36 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
           {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
         </div>
       )}
+
+      {/* 📨 발송 준비 — 키가 없으면 "보낼 수 있는 리드"가 아무리 많아도 한 통도 못 나간다(원인이 화면에 없어
+          풀 37,414명에 컨택 이력 1건이던 2026-07-28 상태의 실제 원인). 준비되면 표시 안 함. */}
+      {sendReady === false ? (
+        <div className="mb-2 mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+          📨 <b>메일 발송 불가</b> — RESEND_API_KEY 미설정. Cloudflare → Workers &amp; Pages → <b>ur-live</b> → Settings →
+          Variables and Secrets 에 추가하면 제휴 제안/동의 발송이 열립니다(수집·보강은 영향 없음).
+        </div>
+      ) : null}
+
+      {/* 📝 보강 전용 레인(시간당 N라운드, 수집과 분리) — 블로거 활동성·연락처 백로그를 실제로 줄이고 있는지.
+          측정 시도는 했는데 성공이 0 이면 네이버 차단 신호(값이 0/0 이면 원인 판별이 안 되므로 tried 를 같이 본다). */}
+      {enrichLane?.last_run ? (
+        <div className="mb-1 text-xs text-gray-500">
+          📝 풀 보강 {fmtKST(enrichLane.last_run)} — 블로거 측정 {formatNumber(enrichLane.naver?.measured || 0)}/{formatNumber(enrichLane.naver?.tried || 0)}
+          {enrichLane.naver?.contacts ? ` (연락처 +${formatNumber(enrichLane.naver.contacts)})` : ''}
+          {enrichLane.bio ? ` · 🔗 링크 컨택보강 ${formatNumber(enrichLane.bio)}` : ''}
+          {` · 예산 ${formatNumber(enrichLane.spent || 0)}/${formatNumber(enrichLane.budget_total || 0)}`}
+          {enrichLane.deadline_hit ? ' · ⏱️ 시간상한' : ''}
+          {enrichLane.limit_hit ? ' · ⚠️ 플랫폼 한도(상한 자동 하향)' : ''}
+          {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
+          {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
+        </div>
+      ) : null}
+      {enrichLane?.crash ? (
+        <div className="mb-2 text-[11px] text-red-600">📝 보강 레인 오류({fmtKST(enrichLane.crash_at)}): {enrichLane.crash}</div>
+      ) : null}
+      {enrichLane && (enrichLane.naver?.tried || 0) >= 5 && !enrichLane.naver?.measured ? (
+        <div className="mb-2 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}
       {(mSum || rSum || maintainRunning) && (

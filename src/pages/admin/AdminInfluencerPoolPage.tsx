@@ -7,7 +7,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
-import CollectDiagPanel, { type RunStats, type MaintenanceRecord } from './influencer-pool/CollectDiagPanel'
+import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLaneRecord } from './influencer-pool/CollectDiagPanel'
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
@@ -46,7 +46,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
@@ -68,6 +68,8 @@ export default function AdminInfluencerPoolPage() {
   const [sheetsSync, setSheetsSync] = useState<{ ok: boolean; at?: string; error?: string | null } | null>(null) // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화)
   const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
+  const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
+  const [sendReady, setSendReady] = useState<boolean | undefined>(undefined)             // 📨 RESEND_API_KEY 유무(미설정이면 발송 전량 차단)
   const [catFunnel, setCatFunnel] = useState<CategoryFunnelRow[]>([])                     // 📊 카테고리별 전환
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
@@ -138,6 +140,7 @@ export default function AdminInfluencerPoolPage() {
     setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
     setMaintainRunning(!!d.maintain_running)
     setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
+    setEnrichLane(g<EnrichLaneRecord>('enrich_lane') || null); setSendReady(typeof d.send_ready === 'boolean' ? d.send_ready : undefined)
   }, [])
 
   // 🔁 2026-07-28: 정비가 도는 동안만 10초 폴링 — 끝나면 스스로 멈추고 완료를 알린다.
@@ -356,7 +359,8 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
-        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning} />
+        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
+          enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} sendReady={sendReady} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">

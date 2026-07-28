@@ -215,6 +215,11 @@ export interface Env {
                                           //   새 서브리퀘스트 예산. 2026-07-28 실측: 실효 상한 29 → 라운드당 11건이 천장이라
                                           //   **라운드 수가 처리량의 유일한 정직한 레버**(백로그 12만+).
   ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
+  ADS_INFLUENCER_ENRICH_ROUNDS?: string;  // 📝 인플루언서 풀 보강(블로거 활동성·링크인바이오) 시간당 라운드(기본 6, 상한 20).
+                                          //   라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산 → 처리량의 정직한 레버.
+  ADS_INFLUENCER_ENRICH_DISABLED?: string; // 📝 같은 레인 킬스위치('true'=끔). 기본 ON — 수집 게이트와 무관.
+  ADS_INFLUENCER_ENRICH_BUDGET?: string;  // 📝 그 레인 1라운드 fetch 상한(기본 45, 10~400). 실효값은 학습 상한
+                                          //   (`ads_subreq_cap_influencer_enrich`)과 min. 블로거 1건=fetch 2.
   WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
   ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
