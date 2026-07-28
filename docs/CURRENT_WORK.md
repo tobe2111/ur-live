@@ -15,6 +15,29 @@
   ④ ur-ads 변수들을 plaintext → **Secret 타입** 전환(현재는 대시보드/API 로 전부 열람 가능).
   ⚠️ git history 에 남아 있으므로 **회전 전까지는 계속 유출 상태**다.
 
+#### 🔐 후속 처리 (2026-07-28 10:29 UTC — 대표 지시로 실행/보류 확정)
+- ✅ **④ Secret 타입 전환 완료** — 대표 승인("보안 부분은 내가 책임진다") 하에 **CF API replace-all** 로 실행.
+  `plain_text` 11개(`JWT_SECRET`·`GSHEETS_SA_KEY`·`KAKAO_REST_API_KEY`·`NAVER_SEARCHAD_ACCESS_LICENSE`·
+  `NAVER_SEARCHAD_SECRET_KEY`·`NAVER_SEARCH_CLIENT_ID`·`NAVER_SEARCH_CLIENT_SECRET`·`NEIS_API_KEY`·
+  `PUBLIC_DATA_SERVICE_KEY`·`WORK24_API_KEY`·`YOUTUBE_API_KEY`) → `secret_text`. **API 로 값 열람 불가 확인**.
+  평문 유지 19개(ADS_* 게이트·`ADS_ENRICH_BUDGET`·`NAVER_SEARCHAD_CUSTOMER_ID`·`GSHEETS_SHEET_ID`/`SA_EMAIL`·
+  `SUPPLY_MAKER_COLLECT_ENABLED`) — 운영 중 눈으로 봐야 하는 값들.
+  - ⚠️ **replace-all 은 바인딩 전체를 다시 쓰는 방식**(필드 1개만 틀려도 D1/SELF 소실 → 유어애즈 전면 중단).
+    안전 절차: **① 스냅샷 GET → ② 아무것도 안 바꾸는 no-op PATCH(카나리) → ③ GET 재조회로 32/32·D1·SELF
+    byte-동일 확인 → ④ 그 다음에만 실제 변경 → ⑤ 재검증 + 라이브 스모크.** 카나리 없이 바로 쏘지 말 것.
+  - 검증: 바인딩 32→32(이름집합 동일) · `d1:DB`(`d9530ba6…`)·`service:SELF` 무변경 · 비대상 19개 무변경 ·
+    라이브 `x-served-by: ur-ads` 응답 정상 · `/l/*`(D1 경로) 301 · 메인 `/api/version` 200.
+  - 🚫 **개별 변수만 Secret 으로 바꾸는 API 는 없다** — `PUT /secrets` 는 같은 이름이 평문으로 있으면
+    `code 10053: Binding name already in use`. 대시보드 토글 또는 위 replace-all 뿐.
+- 🚫 **② `JWT_SECRET` 회전 — 대표 결정 "회전 안 함"**(2026-07-28). 악용 징후 0·노출 창 ~1일 판단.
+  ⚠️ 따라서 **유출된 시크릿 값은 여전히 유효**하다(암호화는 *추가* 열람만 막을 뿐 기존 유출을 무효화 못 함).
+  재고 시 **ur-ads·ur-live(Pages) 두 곳을 반드시 동시 교체**(한쪽만 바꾸면 유어애즈 로그인 즉시 파손) + 전원 재로그인.
+- ⏳ **① CF 토큰 회전은 대표 진행 예정** — 재발급 후 **어드민 → 도구 → 설정의 `cf_api_token` 값도 함께 교체**할 것.
+  모든 세션이 그 D1 값에서 토큰을 꺼내 쓰므로(CLAUDE.md), 갱신 누락 시 다음 세션부터 인프라 진단이 전부 막힌다.
+  GitHub Actions 시크릿(`CLOUDFLARE_API_TOKEN`, 별개면 `CLOUDFLARE_D1_BACKUP_TOKEN`)도 함께 교체해야 배포가 안 깨진다.
+- ⏸️ **④ `ur-live-global`/`world.ur-team.com` — 보류**(대표 지시). 레포·`wrangler.global.toml` 무접촉 유지.
+  살리기로 정하면 Workers 용 재작성은 그때 진행(추가로 `VITE_REGION=GLOBAL` 등 GLOBAL 전용 변수 필요).
+
 ### ✅ ② 검색광고 고객ID — 이미 정상(바꿀 것 없었음)
 대표가 08:50 UTC 대시보드에서 이미 `3228755` 로 바꿔 배포한 상태였다(코드 아님 — 워커 바인딩).
 3중 실측 확인: 바인딩 값 `3228755` · 네이버 API 직접 HMAC 호출 `/keywordstool` **200**·`/ncc/campaigns` **200** ·
@@ -59,6 +82,9 @@ Cloudflare 는 **D1 쿼리도 서브리퀘스트 한도에 넣고**(#784 확증)
 - 인보케이션당 서브리퀘스트 **50**(학습 실효 29) — D1 쿼리 포함. Paid 는 1,000(20배).
 - 계정 전체 cron **5개**(현재 5/5 — 하나도 못 늘린다). Paid 250. → 새 주기 작업은 **매시간 틱 안에서 순환**으로만 가능.
 - `ur-live-cleanup-cron`(`*/5`)이 슬롯 1개를 쓰고 있다 — 아직 필요한지 점검하면 슬롯 1개 회수 가능.
+- ⚠️ **ur-ads 에 KV 바인딩이 0개**(실측 2026-07-28: 바인딩 32개 = plain_text 19 + secret 11 + d1 1 + service 1).
+  `RATE_LIMIT_KV` 미등록 = CLAUDE.md 규칙상 **레이트리밋 fail-OPEN(무제한 통과)** → `/api/ads/*` 가 현재 그 상태다.
+  필수는 아니나(트래픽 적음) 대시보드에서 메인과 같은 namespace 연결 3분이면 끝난다. `SESSION_KV`/`CACHE_KV` 도 동일.
 
 ## 🟢 2026-07-28 (3차) — **계측 배포 완료. 다음 세션은 조회 1회로 사인 확정한다**
 
