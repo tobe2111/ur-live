@@ -79,10 +79,18 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,
   //   한도 초과 시 `.catch(() => null)` 가 그 오류를 삼켜 **budget.limitHit 이 영영 false** 로 남았다
   //   (스냅샷이 limit_hit:false 인데도 학습 상한은 계속 내려가던 모순의 정체). 여기서 신호를 살린다.
-  const stamp = async (id: number) => {
+  //   🧺 2026-07-28 배치화: 무료 플랜은 **인보케이션당 서브리퀘스트 50**(D1 포함)이라 도장 1건이 라운드의 2% 다.
+  //   건건이 쓰면 대상 10건에 도장만 10 = 예산 20% 를 크롤이 아닌 부기(簿記)에 쓴다. 모아서 한 번에 쓰면 1 이다.
+  //   ⚠️ 지연 flush 의 실패 모드는 **안전한 쪽**이다 — 라운드가 flush 전에 죽으면 도장이 안 남아 그 리드를 다음
+  //   라운드가 다시 집는다(= 원하는 동작). 반대(안 해보고 도장)가 백로그를 막던 실제 사고였다.
+  const pendingStamps: number[] = []
+  const stamp = async (id: number) => { pendingStamps.push(id) } // 즉시 쓰지 않고 모은다(flushStamps 가 1회로 반영)
+  const flushStamps = async () => {
+    if (!pendingStamps.length) return
+    const ids = pendingStamps.splice(0).join(',') // 숫자 id 만 — 문자열 보간 안전(바인딩 개수 가변 회피)
     spendD1()
     try {
-      await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run()
+      await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id IN (${ids})`).run()
     } catch (err) {
       if (isSubrequestLimitError((err as { message?: string } | null)?.message)) budget.limitHit = true
     }
@@ -154,24 +162,32 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //     상호만으로는 동명 지점/타업체 전화 오귀속 위험(허위 방지). 그런 리드는 홈페이지 크롤이 담당.
   // 전화는 예산 1/6 로 축소(2026-07-27 대표 "전화보단 이메일 우선" 재확인) — 전화 백필은 카카오 전용
   //   스윕 레인(runKakaoPhoneSweep, 시간당 600건)이 전담하게 되어 여기선 이메일(크롤/발견)에 5/6 집중.
-  const phoneCap = Math.floor(budget.left / 6)
+  // 🚫 2026-07-28 — 예산이 빠듯하면 Phase 1 을 **아예 건너뛴다**. 전화는 같은 크론에서 도는 전용 스윕
+  //   (`sweep-kakao-phone`, 시간당 600건)이 이미 전담하므로 여기서의 전화 조회는 **중복**이다. 무료 플랜의
+  //   인보케이션당 50 서브리퀘스트에서 1/6(≈8)을 중복 작업에 쓰면 크롤 2사이트를 통째로 잃는다
+  //   (이 레인의 존재 이유는 이메일이다). 예산이 넉넉할 때만 보조로 수행.
+  const PHONE_MIN_BUDGET = 120 // 이 아래면 전 예산을 이메일에 — 전화는 전용 레인이 커버
+  const phoneCap = budget.left >= PHONE_MIN_BUDGET ? Math.floor(budget.left / 6) : 0
   let phoneSpent = 0
   for (const t of targets) {
     if (outOfBudget(budget) || budget.limitHit || phoneSpent >= phoneCap) break
-    processed++
     if (t.phone || !kakaoKey || !t.address) continue
     phoneSpent++
     const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
   phase = 'p1_done'
-  await snapshot(true) // Phase 1 종료 시점 스냅샷 — 여기서 죽어도 전화 확보분은 계측에 남는다
+  // Phase 1 이 아무것도 안 했으면 스냅샷도 생략 — 빠듯한 예산에서 부기 1회가 크롤 기회 하나다.
+  if (phoneSpent > 0) await snapshot(true) // 여기서 죽어도 전화 확보분은 계측에 남는다
   phase = 'p2'
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   let sinceSnapshot = 0
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit || outOfBudget(budget)) break // 예산·한도·시간 중 하나라도 소진
+    // 📊 `처리` = **이메일을 위해 실제로 들여다본 리드 수**(2026-07-28 정정). 예전엔 Phase 1 의 순회 횟수를
+    //   세어, 전화가 이미 있는 리드를 건너뛰어도 숫자가 올라가 실제 작업량과 무관했다(전화 스킵 시 0 이 되는 문제도 함께 해소).
+    processed++
     bump('examined'); at = `#${p2.examined} ${(t.company_name || '').slice(0, 24)}`
     if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
     let site = realSite(t.website)
@@ -208,17 +224,19 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     //    재시도 풀에서 이탈 → 백로그가 흐르지 않고 이메일 수확이 0 에 고착.)
     //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
     if (budget.limitHit) { await snapshot(true); break }
-    await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
+    await stamp(t.id) // 성공/실패 무관 시도 기록(모았다가 flushStamps 가 1회로) — 다음 시간엔 다음 백로그로
     bump('stamped')
-    if (budget.limitHit) { await snapshot(true); break } // 도장이 한도를 밝혀낸 경우도 즉시 중단(위 stamp 참조)
     // 중도 종료돼도 여기까지는 남는다. ⚠️ 첫 3바퀴는 **매번** — 10건 주기만 두면 Phase 2 초반 사망이 영구 미계측이
     //   된다(2026-07-28 실측: `phase:'p1_done'` · `p2:{}` 고정 = 1~9건 구간에서 죽었는데 신호가 0).
     if (++sinceSnapshot <= 3 || sinceSnapshot % 10 === 0) await snapshot(true)
   }
+  // 실제로 시도한 리드의 도장을 한 번에 반영 — 한도로 끊겼어도 '해본 것'은 기록해야 다음 라운드가 앞으로 나간다.
+  await flushStamps()
 
   // ── Phase 3: 이름 치유 소급 — 별 모듈(enrich-name-heal)로 분리(2026-07-28). 왜 필요한지는 그 파일 상단 참조.
   if (budget.left > 4 && !budget.limitHit) {
     await healSuspectNames({ DB, budget, stamp, crawlContact, spendD1 })
+    await flushStamps()
   }
 
   phase = 'p3_done'
