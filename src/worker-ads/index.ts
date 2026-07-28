@@ -15,6 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
+import { publicDataRoutes } from './public-data.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
@@ -130,6 +131,24 @@ app.post('/__ads/enrich-company', async (c) => {
   }
 })
 
+// 🔗 원부 이메일 이식 — **D1 전용**(외부 API 0). 크론 배선이 없어 어드민 버튼으로만 돌던 것을 정규 레인으로.
+//   한 인보케이션 = 한 예산. 커서가 백로그를 이어 순회하므로 매시간 조금씩 전량을 훑는다.
+app.post('/__ads/match-registry', async (c) => {
+  try {
+    const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
+    const budget = { left: 45 } // 플랫폼 서브리퀘스트 한도(≈50) 안쪽 — D1 쿼리도 여기서 지불한다
+    let last = null as Awaited<ReturnType<typeof matchRegistryEmails>> | null
+    for (let i = 0; i < 5; i++) {
+      last = await matchRegistryEmails(c.env, 400, budget)
+      if (last.done || budget.left <= 8) break
+    }
+    return c.json({ ok: true, stats: last })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
 // 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
 app.post('/__ads/collect-work24', async (c) => {
   try {
@@ -183,72 +202,8 @@ app.post('/__ads/reclassify-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
-// 🏪 상가정보(공공데이터) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-storeinfo', async (c) => {
-  try {
-    const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
-    const stats = await runStoreInfoCollect(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너 수동 트리거 — 메인 어드민이 env.ADS 로만 호출.
-app.post('/__ads/collect-commerce', async (c) => {
-  try { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return c.json({ ok: true, stats: await runCommerceCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/collect-franchise', async (c) => {
-  try { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return c.json({ ok: true, stats: await runFranchiseCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/scan-notices', async (c) => {
-  try { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return c.json({ ok: true, stats: await runNoticeScan(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🏪 매장 후보(인허가) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-//   전일 변동분 + (백필 설정 시) 과거 1청크도 함께 진행 — 버튼 누를수록 축적 가속.
-app.post('/__ads/collect-localdata', async (c) => {
-  try {
-    const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-    const stats = await runLocalDataCollect(c.env)
-    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
-    return c.json({ ok: true, stats, backfill })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📧 매장 후보(인허가) 이메일 우선 연락처 보강 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/enrich-prospects', async (c) => {
-  try {
-    const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
-    const stats = await enrichProspectContacts(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📑 나라장터 조달업체(대행사 계열) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-nara-vendor', async (c) => {
-  try { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return c.json({ ok: true, stats: await runNaraVendorCollect(c.env, 5) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🎓 나이스 학원·교습소 · 🏥 심평원 병원 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-neis', async (c) => {
-  try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return c.json({ ok: true, stats: await runNeisAcademyCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/collect-hira', async (c) => {
-  try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return c.json({ ok: true, stats: await runHiraHospitalCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📮 이메일 재검증 스윕 수동 트리거 — 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
-app.post('/__ads/sweep-mx', async (c) => {
-  try { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return c.json({ ok: true, stats: await sweepEmailMx(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🏛️ 사업자 폐업 스윕 수동 트리거 — 국세청 상태조회 활용신청 검증 겸(메인 어드민이 env.ADS 로만 호출).
-app.post('/__ads/sweep-nts', async (c) => {
-  try {
-    const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
-    const stats = await sweepBusinessStatus(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
+// 🏛️ 공공데이터 수집·스윕 수동 트리거 — 별 모듈로 추출(2026-07-28, god 파일 래칫). 경로/동작 불변.
+app.route('/', publicDataRoutes)
 
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
@@ -417,6 +372,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
       } catch { /* fail-soft — 다음 틱 재시도 */ }
     })())
+    // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
+    //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
+    //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
+    kick('/__ads/match-registry', async () => {
+      const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
+      return matchRegistryEmails(env, 400, { left: 45 })
+    })
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
     kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량

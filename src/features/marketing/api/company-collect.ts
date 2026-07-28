@@ -359,7 +359,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     //   LIMIT 15 라 이런 URL 이 슬롯을 차지하면 **진짜 사이트가 영영 안 뽑힌다**(예산과 슬롯 이중 낭비).
     const platformNot = PLATFORM_URL_SQL_EXCLUDE.map(() => 'website NOT LIKE ?').join(' AND ')
     const targets = (await DB.prepare(`SELECT id, website, phone, category FROM ad_company_leads
-        WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
+        WHERE source IN ('local','webkr') AND merged_into IS NULL AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
           AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
           AND ${platformNot}
         ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15`)
@@ -417,7 +417,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   let cursor = parseInt(curRaw?.value || '0', 10); if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   const rows = (await DB.prepare(
     `SELECT id, company_name, region, address FROM ad_company_leads
-     WHERE id > ? AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
+     WHERE id > ? AND merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
     .bind(cursor, cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
   if (!rows.length) { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, '0').run().catch(() => null); return { scanned: 0, found: 0, cursor: 0, done: true } }
   // 🩹 2026-07-28 근본수리(실측: "주소는 있는데 전화가 없는" 리드 1만+): 이 스윕은 예산 객체를 안 넘겨

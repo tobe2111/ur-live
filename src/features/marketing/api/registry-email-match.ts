@@ -20,6 +20,13 @@
  */
 import type { Env } from '@/worker/types/env'
 
+/**
+ * 🪙 D1 예산 — **D1 쿼리도 서브리퀘스트다**. 이 레인은 "외부 API 0회" 라 무한정 쓸 수 있다고 적혀 있었는데,
+ *   그게 `matched: 0` 이 몇 달 이어진 진짜 원인이었다(아래 matchRegistryEmails 주석 참조). 이제 세고, 다 쓰면 멈춘다.
+ */
+export interface D1Budget { left: number; exhausted?: boolean }
+const spend = (b: D1Budget | undefined, n = 1): void => { if (b) { b.left -= n; if (b.left <= 0) b.exhausted = true } }
+
 /** 법인격 표기·공백·괄호·기호를 털어낸 상호 지문. 양쪽(원부/타깃)에 **같은 함수**를 적용해야 매칭이 성립한다. */
 export function normalizeCompanyName(raw: string | null | undefined): string {
   return String(raw || '')
@@ -34,7 +41,9 @@ export function normalizeCompanyName(raw: string | null | undefined): string {
  *   서브리퀘스트 2회(SELECT + batch 1회). 원부(commerce) 를 먼저 채워야 매칭이 살아난다 → 우선 정렬.
  *   @returns 남은 미처리 행이 더 있으면 false
  */
-export async function backfillNameNorm(DB: D1Database, limit = 500): Promise<{ done: boolean; filled: number }> {
+export async function backfillNameNorm(DB: D1Database, limit = 500, budget?: D1Budget): Promise<{ done: boolean; filled: number }> {
+  spend(budget, 2)
+  // merged-filter-ok — 지문 백필은 접힌 행도 채워둔다(되돌리면 바로 매칭 대상이 되도록).
   const rows = (await DB.prepare(
     `SELECT id, company_name FROM ad_company_leads
       WHERE name_norm IS NULL AND company_name IS NOT NULL AND company_name != ''
@@ -89,6 +98,10 @@ export function isConfidentMatch(
 export interface RegistryMatchStats {
   last_run: string; scanned: number; matched: number; total_matched: number
   skip_reason: Record<string, number>; done: boolean
+  /** 남은 지문 백필 여부 — true 면 아직 원부 일부가 매칭 대상에 안 들어와 있다(다음 패스가 이어받음). */
+  backfilling?: boolean
+  /** 이 패스가 쓴 D1 쿼리 수 / 예산 — 한도에 눌려 조기 종료했는지 판정(무증거 0건 금지). */
+  d1?: number; d1_budget?: number; budget_exhausted?: boolean
 }
 const STATS_KEY = 'ads_registry_match_stats'
 const CURSOR_KEY = 'ads_registry_match_cursor'
@@ -99,12 +112,21 @@ const CURSOR_KEY = 'ads_registry_match_cursor'
  *   (타깃의 73%가 사이트 미발견이라 크롤 자체가 불가능했던 병목의 정면 공략).
  *   서브리퀘스트 0(전부 D1). 커서로 대량 백로그를 나눠 순회한다.
  */
-export async function matchRegistryEmails(env: Env, batch = 400): Promise<RegistryMatchStats> {
-  // 🔤 매칭 전에 상호 지문을 조금씩 채운다 — 원부(commerce) 우선이라 매칭 정확도가 회차마다 올라간다.
-  //   서브리퀘스트 2회. 다 채워지면 no-op(SELECT 1회)이 되어 비용이 사라진다.
-  await backfillNameNorm(env.DB, 500).catch(() => null)
+export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budget): Promise<RegistryMatchStats> {
+  // 🔤 매칭 전에 상호 지문을 채운다 — 원부(commerce) 우선이라 매칭 정확도가 회차마다 올라간다.
+  //   예산이 허락하는 만큼 여러 번 돌린다(원부 10만행 → 500씩이면 200패스라 버튼 한 번으로는 영영 안 끝났다).
+  const budgetStart = budget ? budget.left : 0
+  let backfilling = false
+  for (let i = 0; i < 20; i++) {
+    if (budget && budget.left <= 12) { backfilling = true; break } // 매칭 몫은 남겨둔다
+    const r = await backfillNameNorm(env.DB, 500, budget).catch(() => null)
+    if (!r) { backfilling = true; break }
+    if (r.done) break
+    backfilling = true
+  }
   const DB = env.DB
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  spend(budget, 2) // 아래 stats/cursor SELECT 2회
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: RegistryMatchStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as RegistryMatchStats : null } catch { prev = null }
@@ -112,41 +134,53 @@ export async function matchRegistryEmails(env: Env, batch = 400): Promise<Regist
   let cursor = parseInt(curRaw?.value || '0', 10); if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
 
   // 대상 = 이메일 없는 **비-원부** 리드(원부끼리 매칭은 의미 없음). 커서 순회로 전량 커버.
+  spend(budget)
   const targets = (await DB.prepare(
     `SELECT id, company_name, address, region, website FROM ad_company_leads
-      WHERE id > ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
+      WHERE id > ? AND merged_into IS NULL AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
       ORDER BY id ASC LIMIT ?`
   ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null; website: string | null }>().catch(() => null))?.results || []
 
   const skip: Record<string, number> = {}
   const updates: { id: number; email: string | null; website: string | null }[] = []
 
+  // 🧮 원부 후보를 **한꺼번에** 가져온다 (2026-07-28 근본수리).
+  //   예전엔 대상 1건마다 SELECT 를 1~2회 날렸다 — batch=400 이면 최대 **800 쿼리**. D1 쿼리도 서브리퀘스트라
+  //   40여 번째부터 전부 throw 했고, 그 throw 를 `.catch(() => null)` 가 삼켜 `cands=[]` → 전부
+  //   **`no_registry_row` 로 기록**됐다. 라이브 실측이 정확히 그 모양이었다: `scanned:400 · matched:0 ·
+  //   no_registry_row:395`. "원부에 그 회사가 없다"가 아니라 **조회를 못 한 것**이었는데 통계는 전자로 읽혔다.
+  //   (헤더가 경고한 국민연금 레인의 '누적 매칭 0' 도 같은 모양일 가능성이 높다 — 별건으로 확인 필요.)
+  //   ⇒ 이름 지문을 모아 `IN (…)` 으로 조회한다. D1 은 문장당 바인딩 100개까지라 90개씩 끊는다.
+  //   비용: 400건에 5~6 쿼리(이전 800). 이제 한 패스가 예산 안에서 확실히 끝난다.
+  const wanted: Array<{ t: typeof targets[number]; n: string }> = []
   for (const t of targets) {
     const n = normalizeCompanyName(t.company_name)
-    if (n.length < 4 || GENERIC_NAME.test(n)) { skip[n.length < 4 ? 'name_too_short' : 'generic_name'] = (skip[n.length < 4 ? 'name_too_short' : 'generic_name'] || 0) + 1; continue }
-    // 원부 후보 — 상호 앞부분으로 좁힌 뒤(인덱스 활용 불가하므로 LIKE 로 1차 축소) JS 정규화로 확정.
-    //   최대 5건만 보고, 정규화 일치가 2건 이상이면 ambiguous 로 건너뛴다(오귀속 방지).
-    // 이메일뿐 아니라 **홈페이지도 이식 대상** — 타깃의 73%가 사이트 미발견이라 크롤 자체가 불가능했다.
-    //   원부가 알려준 도메인을 옮기면 그 리드가 크롤 가능해져 이메일 확보 경로가 새로 열린다(추측 아님, 원부 값).
-    // 🔤 1차: name_norm **동등비교**(인덱스) — 저장 시 같은 JS 함수로 계산했으므로 정규화가 어긋날 수 없다.
-    //   (예전엔 SQL 이 `공백·(주)·주식회사` 만 지우는데 LIKE 패턴은 JS 전체 정규화 결과를 써서 조용히 미스했다.)
-    let cands = (await DB.prepare(
-      `SELECT company_name, address, email, website FROM ad_company_leads
-        WHERE source = 'commerce' AND name_norm = ?
-          AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
-        LIMIT 5`
-    ).bind(n).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
-    // 2차 폴백: 백필이 아직 안 닿은 원부 행(name_norm IS NULL)만 기존 LIKE 로 훑는다 — 백필 완료 후 자연 소멸.
-    if (!cands.length) {
-      cands = (await DB.prepare(
-        `SELECT company_name, address, email, website FROM ad_company_leads
-          WHERE source = 'commerce' AND name_norm IS NULL
-            AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
-            AND REPLACE(REPLACE(REPLACE(LOWER(company_name),' ',''),'(주)',''),'주식회사','') LIKE ?
-          LIMIT 5`
-      ).bind(`%${n.slice(0, 12)}%`).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
+    if (n.length < 4 || GENERIC_NAME.test(n)) { const k = n.length < 4 ? 'name_too_short' : 'generic_name'; skip[k] = (skip[k] || 0) + 1; continue }
+    wanted.push({ t, n })
+  }
+  type Cand = { company_name: string; address: string | null; email: string | null; website: string | null; name_norm: string }
+  const byNorm = new Map<string, Cand[]>()
+  const names = [...new Set(wanted.map(w => w.n))]
+  for (let i = 0; i < names.length; i += 90) {
+    if (budget?.exhausted) { skip.budget_exhausted = (skip.budget_exhausted || 0) + 1; break }
+    const chunk = names.slice(i, i + 90)
+    spend(budget)
+    const rows = (await DB.prepare(
+      `SELECT company_name, address, email, website, name_norm FROM ad_company_leads
+        WHERE source = 'commerce' AND merged_into IS NULL AND name_norm IN (${chunk.map(() => '?').join(',')})
+          AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))`
+    ).bind(...chunk).all<Cand>().catch(() => null))
+    if (!rows) { skip.registry_query_failed = (skip.registry_query_failed || 0) + 1; continue } // 조용한 0건 금지
+    for (const r of rows.results || []) {
+      const arr = byNorm.get(r.name_norm)
+      // 이름당 6건까지만 — 예전 쿼리의 `LIMIT 5` 와 같은 의미(2건 이상이면 어차피 ambiguous 로 버린다)이고,
+      //   흔한 상호가 수천 행을 물고 와 메모리를 먹는 것도 막는다.
+      if (arr) { if (arr.length < 6) arr.push(r) } else byNorm.set(r.name_norm, [r])
     }
-    const exact = cands.filter(c => normalizeCompanyName(c.company_name) === n)
+  }
+
+  for (const { t, n } of wanted) {
+    const exact = (byNorm.get(n) || []).filter(c => normalizeCompanyName(c.company_name) === n)
     if (!exact.length) { skip.no_registry_row = (skip.no_registry_row || 0) + 1; continue }
     const verdict = isConfidentMatch({ name: t.company_name, address: t.address, region: t.region }, { name: exact[0].company_name, address: exact[0].address }, exact.length === 1)
     if (!verdict.ok) { skip[verdict.reason] = (skip[verdict.reason] || 0) + 1; continue }
@@ -160,6 +194,12 @@ export async function matchRegistryEmails(env: Env, batch = 400): Promise<Regist
   let matched = 0
   if (updates.length) {
     // 이메일은 반송 억제 목록에 걸리면 이식하지 않는다(품질 루프 존중). 홈페이지는 그와 무관하게 이식.
+    // 📏 **실제로 채워질 행만** 매칭한다(2026-07-28 라이브 실측 수리). 예전 WHERE 는
+    //   "이메일 또는 홈페이지가 비었으면" 이라, 원부에 줄 값이 **없는데도** 조건이 참이 돼 `changes=1` 이
+    //   찍혔다. 커서가 한 바퀴 돌고 재순회에 들어가자 `total_matched` 가 26 → 63 으로 오르는 동안
+    //   `with_email` 은 **한 자리도 안 움직였다**(라이브 대조). 상태줄이 낙관 방향으로 거짓말한 것 —
+    //   이번 세션 내내 고쳐온 '조용히 틀리는 코드'의 거울상(조용히 잘한 척)이다.
+    //   ⇒ "줄 값이 있고(? IS NOT NULL) 그 칸이 비어 있을 때"만 UPDATE 가 걸리게 한다.
     const rows = await DB.batch(updates.map(u => DB.prepare(
       `UPDATE ad_company_leads
          SET email = CASE WHEN ? IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ad_email_suppress s WHERE s.email = ?)
@@ -167,16 +207,22 @@ export async function matchRegistryEmails(env: Env, batch = 400): Promise<Regist
              website = COALESCE(website, ?),
              contact_source = COALESCE(contact_source, 'registry'),
              active = CASE WHEN COALESCE(email, ?) IS NOT NULL OR phone IS NOT NULL THEN 1 ELSE active END
-       WHERE id = ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = ''))`
-    ).bind(u.email, u.email, u.email, u.website, u.email, u.id))).catch(() => null)
+       WHERE id = ?
+         AND ((? IS NOT NULL AND (email IS NULL OR email = ''))
+           OR (? IS NOT NULL AND (website IS NULL OR website = '')))`
+    ).bind(u.email, u.email, u.email, u.website, u.email, u.id, u.email, u.website))).catch(() => null)
+    spend(budget)
+    if (!rows) skip.update_batch_failed = (skip.update_batch_failed || 0) + 1 // 조용한 0건 금지
     matched = (rows || []).reduce((s, r) => s + ((r as { meta?: { changes?: number } })?.meta?.changes || 0), 0)
   }
 
   const nextCursor = targets.length ? targets[targets.length - 1].id : 0 // 소진하면 0 으로 되돌려 다음 라운드 재순회
+  spend(budget, 2)
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(nextCursor)).run().catch(() => null)
   const stats: RegistryMatchStats = {
     last_run: stamp, scanned: targets.length, matched,
     total_matched: (prev?.total_matched || 0) + matched, skip_reason: skip, done: targets.length < batch,
+    backfilling, ...(budget ? { d1: Math.max(0, budgetStart - budget.left), d1_budget: budgetStart, budget_exhausted: !!budget.exhausted } : {}),
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(stats)).run().catch(() => null)
   return stats

@@ -26,7 +26,7 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   const { suspectCompanyName, classifyLead } = await import('./company-classify')
   spendD1()
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
-      WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
+      WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new' AND classify_confidence = 'none'
         AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
       ORDER BY id DESC LIMIT 8`)
