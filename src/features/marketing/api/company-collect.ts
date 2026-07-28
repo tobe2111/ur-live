@@ -244,7 +244,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, THIRD_PARTY_HOST } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -281,7 +281,15 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/http_403/network…) — 적중률 계측
   const failSamples: string[] = []                // 실패 URL 샘플 — 원인 특정용(호스트 형태·상태코드)
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
-  const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
+  // 🩹 2026-07-28 실측 수리: 크롤 133건 중 `blocked_host` 가 **59건(44%)** — 저장된 website 가 블로그·SNS 같은
+  //   **제3자 도메인**이라 크롤이 무조건 거부되는데도 대상 슬롯을 먹고 7일 쿨다운 도장까지 받아 왔다.
+  //   → 여기서 미리 걸러 `site=null` 로 만들면 아래 네이버 지역검색/웹문서 **발견 경로로 넘어가** 진짜 홈페이지를
+  //   찾을 기회를 얻는다(슬롯 회수 + 수율 상승). website 컬럼 자체는 보존 — 사람이 수동 접촉할 땐 유용하다.
+  const realSite = (w: string | null): string | null => {
+    if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
+    try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
+    return w
+  }
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
     if (!phone && !email && !website) return
@@ -386,7 +394,10 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
-  const hitRate = crawls ? Math.round(((crawlReason.ok || 0) / crawls) * 100) : 0
+  // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 나가지도 않으므로
+  //   분모에 넣으면 추출력이 실제보다 나쁘게 보인다(2026-07-28: 133 중 59가 blocked_host 였음).
+  const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
+  const hitRate = attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
   const spent = budgetTotal - budget.left
