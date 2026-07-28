@@ -42,6 +42,14 @@
 
 **저조 레인(크롤 문제 다음 순번)**: 👥 국민연금 조회 40 / **매칭 누적 0**(상호 정규화 불일치 추정 — 현재 순수 낭비) · 🏪 매장 후보(인허가) **저장 0**(→ `/new-openings`·`/area-report` 공개 페이지가 비는 직접 원인).
 
+## 🔷 2026-07-28 — 🔌 유어애즈 키워드 도구 **'미연결' 안내 통일** (대표 "첫 광고주가 와도 키워드 화면이 비어 있다")
+**발단**: 어드민 실측 — 유어애즈 가입 6계정이 **전부 내부/테스트, 검색광고 연동 0건**(실사용 광고주 0). 그 상태에서 키워드 탭을 열면 연관키워드는 회색 한 줄("검색광고 키 설정 후 표시됩니다" — 누가 뭘 해야 하는지 없음), 기회 발굴은 **빨간 에러 + 재시도 버튼**(눌러도 영원히 같은 에러)이 뜬다. 실제로는 **광고주가 본인 계정을 연결하면 켜지는** 상태인데 화면은 '고장'으로 읽힘 → 첫 손님이 첫 화면에서 이탈.
+- 신규 `SearchAdRequiredNotice.tsx` — 무엇이 왜 비었는지 + **어디서 무엇을 입력**하면 켜지는지 + `sec-searchad`(광고 성과 탭) 이동 CTA. **읽기 전용임을 명시**(광고주 최초 우려 = "키 주면 광고비 조작되나").
+- `KeywordToolsSection`(연관키워드 `relatedOff`) · `OpportunityPanel`(503/`SEARCHAD_REQUIRED`) 이 같은 안내 사용. 기회 발굴은 무의미한 재시도 버튼 대신 안내로 분기(`credsOff` 상태 분리 — 진짜 조회실패는 기존 `PanelError` 유지).
+- 서버(additive): `/keywords/related`·`/keywords/opportunities`·`/searchad/estimate` 의 자격증명 부재 응답에 `code:'SEARCHAD_REQUIRED'` 동봉 — 상태코드/기존 필드 불변.
+- ⚠️ **트렌드(`/keywords/trend`)는 제외** — 오픈API(`NAVER_SEARCH_*`) 자격증명이라 광고주가 검색광고를 연결해도 안 풀린다(작업 중 오패치 → 원복). 같은 'NOT_CONFIGURED' 라도 **누가 고칠 수 있는 문제인지**가 다름.
+- 🔑 **미해결(대표 액션)**: 플랫폼 전역 폴백 `NAVER_SEARCHAD_CUSTOMER_ID`/`_ACCESS_LICENSE`/`_SECRET_KEY` 가 ur-ads 워커에 비어 있음. 넣으면 **광고주 연결 없이도** 연관/기회/입찰추정이 전 계정에서 즉시 동작(코드는 이미 폴백 지원 — `resolveSearchAdCreds`).
+
 ## 🔷 2026-07-28 — 🚫 유어애즈 **AI 기능 노출 숨김** (`ADS_AI_HIDDEN`) — 대표 확정 "AI 기능 안 쓸 거야"
 **발단**: 세션에서 유어애즈에 광고주 계정(`claude-test@ur-team.com`, id 6 — 대표가 어드민에서 입장 승인)으로 **직접 접속해 전 기능 실측**. `POST /api/ads/ai-marketer`·`/content/generate` 가 **전 계정 503 `NOT_CONFIGURED`** — ur-ads 워커에 `ANTHROPIC_API_KEY` 미설정(2026-07-20 plaintext var wipe 사고와 동일 계열 정황). 대표가 **키를 넣지 않기로 확정** → 화면에만 남은 AI 메뉴가 광고주에겐 죽은 버튼 + 내부 문구("Anthropic API 키 설정 후 사용") 노출이라 노출만 정리.
 - **플래그 1개(`src/shared/feature-flags.ts` `ADS_AI_HIDDEN=true`, 가역)**: 대시보드 'AI 스튜디오' 탭 제거(`dashboard-tabs.tsx` — 정의는 `ALL_DASH_TABS` 에 보존) · 패널 렌더 가드(`MarketingDashboardPage`) · 옛 딥링크(`?tab=ai`·`#sec-ai`·`#sec-content`)는 홈 탭 폴백 · 랜딩(`/ads`) AI 홍보 섹션 05·요금제 문구 2곳·푸터 링크·메타 description · 로그인/가입 안내 문구.

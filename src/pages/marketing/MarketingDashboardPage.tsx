@@ -126,8 +126,8 @@ export default function MarketingDashboardPage() {
       {/* ── 🔎 키워드: 도구/연관/평판 + 기회 발굴 + 포트폴리오 ────────────── */}
       {hasToken && tab === 'keywords' && (
         <div className="mt-4">
-          <KeywordToolsSection />
-          <LazyMount id="sec-opportunity"><OpportunityPanel /></LazyMount>
+          <KeywordToolsSection onGo={goTab} />
+          <LazyMount id="sec-opportunity"><OpportunityPanel onGo={goTab} /></LazyMount>
           <LazyMount id="sec-portfolio"><SavedKeywordsPanel /></LazyMount>
         </div>
       )}

@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from './PanelError'
+import SearchAdRequiredNotice from './SearchAdRequiredNotice'
 
 /**
  * 🆕 2026-07-01 유어애즈 — 키워드 기회 발굴기.
@@ -21,24 +22,28 @@ const COMP_BADGE: Record<string, string> = {
   높음: 'bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400',
 }
 
-export default function OpportunityPanel() {
+export default function OpportunityPanel({ onGo }: { onGo?: (anchor: string) => void }) {
   const [seed, setSeed] = useState('')
   const [items, setItems] = useState<Opportunity[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // 검색광고 자격증명 부재(503/SEARCHAD_REQUIRED) — '재시도'가 무의미한 상태라 안내+연결 CTA 로 분리.
+  const [credsOff, setCredsOff] = useState(false)
   const [saved, setSaved] = useState<Set<string>>(new Set())
 
   async function search() {
     const s = seed.trim()
     if (!s) { toast.error('기준 키워드를 입력해주세요'); return }
-    setLoading(true); setErr(null)
+    setLoading(true); setErr(null); setCredsOff(false)
     try {
       const r = await api.get(`/api/ads/keywords/opportunities?seed=${encodeURIComponent(s)}`, { headers: authHeader() })
       if (r.data?.success) { setItems(r.data.items || []); setSaved(new Set()) }
+      else if (r.data?.code === 'SEARCHAD_REQUIRED') setCredsOff(true)
       else setErr(r.data?.error || '조회 실패')
     } catch (e) {
-      const msg = (e as { response?: { data?: { error?: string }; status?: number } })?.response
-      setErr(msg?.status === 503 ? '검색광고 키가 설정되지 않았습니다' : (msg?.data?.error || '조회 실패'))
+      const msg = (e as { response?: { data?: { error?: string; code?: string }; status?: number } })?.response
+      if (msg?.status === 503 || msg?.data?.code === 'SEARCHAD_REQUIRED') setCredsOff(true)
+      else setErr(msg?.data?.error || '조회 실패')
     } finally { setLoading(false) }
   }
 
@@ -67,7 +72,8 @@ export default function OpportunityPanel() {
         </button>
       </div>
 
-      {err && <PanelError onRetry={search} busy={loading} label={err} />}
+      {credsOff && <SearchAdRequiredNotice feature="기회 키워드 발굴" onGo={onGo} />}
+      {err && !credsOff && <PanelError onRetry={search} busy={loading} label={err} />}
       {items && !err && (
         items.length === 0 ? (
           <p className="mt-3 text-[12px] text-gray-400 dark:text-gray-500">조건(검색량 100+ · 미보유)에 맞는 기회 키워드가 없습니다. 다른 기준 키워드로 시도해보세요.</p>
