@@ -161,6 +161,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
+import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
@@ -1024,9 +1025,19 @@ app.use('*', async (c, next) => {
         },
       });
     } else if (isBlogSurface) {
-      // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+      // 📝 2026-07-28 (대표 "네이버에 유어딜 검색해도 안 나옴" 근본원인): 블로그 #root 를 **본문 HTML** 로.
+      //   기존엔 홈 shell 잔상 제거를 위해 빈 문자열로 비웠는데, 그 결과 **JS 를 실행하지 않는 크롤러**
+      //   (네이버 Yeti · AI 개요/LLM 크롤러)가 받는 HTML 에 본문 텍스트가 0 → 22편이 통째로 색인·인용
+      //   후보에서 제외됐다(서치어드바이저 실측: 7/22 이후 수집 0, 색인 1). React 는 createRoot(비-hydrate)
+      //   라 마운트 시 이 내용을 그대로 덮어쓴다 → 하이드레이션 위험 0 + 첫 페인트에 본문 노출(LCP 이득).
+      //   payload 없거나(콜드 timeout) 파싱 실패면 '' → 기존 '빈 #root' 동작 그대로(무회귀).
+      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload
+        ? buildBlogPostBody(ssrPayload)
+        : ssrSlot === 'BLOG'
+        ? buildBlogListBody(ssrPayload)
+        : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent('', { html: true }); },
+        element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
