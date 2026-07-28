@@ -10,7 +10,7 @@
 export function blogSeedPosts(): Array<{ slug: string; title: string; summary: string; tags: string; content: string }> {
   return [
     {
-      slug: 'what-is-yourdeal',
+      slug: 'what-is-urdeal',
       title: '유어딜(urdeal.kr)이란? — 이용권·교환권·동네딜을 한곳에',
       summary: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 사서 매장에서 QR로 바로 쓰는 로컬 커머스 플랫폼입니다. 이용권·교환권·동네딜과 나만의 링크샵까지, 유어딜의 모든 것을 소개합니다.',
       tags: '["유어딜", "이용권", "교환권", "동네딜"]',

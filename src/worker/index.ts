@@ -2548,6 +2548,16 @@ export default {
       ) {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
       }
+      // 🔗 2026-07-28 (대표 "yourdeal 이 아니라 urdeal 이 되어야" — 브랜드/도메인 정합): 블로그 슬러그
+      //   리네임 301. urdeal.kr 도메인인데 슬러그만 'yourdeal' 이던 불일치를 바로잡되, 이미 색인·공유된
+      //   구 URL 이 404 나지 않도록 영구 리다이렉트로 링크 자산을 새 슬러그로 승계한다.
+      //   (슬러그 추가 리네임 시 이 맵에 한 줄씩 — 구 URL 은 영구 보존이 원칙.)
+      const RENAMED_BLOG_SLUGS: Record<string, string> = { 'what-is-yourdeal': 'what-is-urdeal' };
+      if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname.startsWith('/blog/')) {
+        const oldSlug = url.pathname.slice('/blog/'.length).replace(/\/+$/, '');
+        const newSlug = RENAMED_BLOG_SLUGS[oldSlug];
+        if (newSlug) return Response.redirect(`${url.origin}/blog/${newSlug}${url.search || ''}`, 301);
+      }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
       if (!isWhHost && !CONSUMER_FAST_PATH.has(host)) {
