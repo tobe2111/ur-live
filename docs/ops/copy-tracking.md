@@ -62,6 +62,10 @@ LICENSE 는 fork 자체를 막지 못하고(GitHub 약관상 public 저장소의
 | Cloudflare 트래픽 이상치 | ❌ | 대시보드 수동 확인(§3) |
 
 **발견될 때만 이슈**를 만든다(라벨 `copy-watch`, 열려 있으면 코멘트로 누적). 조용한 주엔 아무 것도 안 남긴다.
+
+🔔 **토큰이 죽으면 알린다** — 코드검색이 **한 건도 성공 못 하고 인증 오류(401/403)** 면 "토큰 교체 필요" 이슈를 만든다.
+안 그러면 코드검색만 조용히 멈추고 fork 감시는 계속 성공해서 **아무도 모른다**(유어애즈 자동정비 무음 정지 #793 과 같은 클래스).
+rate limit(429·secondary)은 일시적이라 알리지 않는다 — 오탐이 쌓이면 알림 자체를 무시하게 된다.
 비용 월 4분. 수동 실행은 Actions 탭 → `Copy Watch` → Run workflow.
 
 > 코드검색을 켜려면: GitHub → Settings → Developer settings → Personal access tokens 에서
