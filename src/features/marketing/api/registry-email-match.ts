@@ -5,7 +5,7 @@
  *   그냥 받아온 것**이고 크롤이 만든 건 ~38건(0.2%)뿐이다. 반면 영업 타깃(대행사·전문서비스·간판)은
  *   `source='local'`(카카오·네이버)이라 **`business_no` 가 NULL** → 원부와 조인 키가 없어 그 이메일을 못 쓴다.
  *
- *   ⇒ **상호(+주소) 매칭으로 원부 이메일을 타깃에 이식**한다. 외부 API·서브리퀘스트 **0** — 순수 DB 내부 작업이라
+ *   ⇒ **상호(+주소) 매칭으로 원부의 이메일·홈페이지를 타깃에 이식**한다. 외부 API·서브리퀘스트 **0** — 순수 DB 내부 작업이라
  *   크롤 한도 문제와 무관하고 즉시 대량 처리된다. 같은 사업자가 통신판매업도 신고했다면 그 이메일이 곧 그 업체 것이다.
  *
  *   ⚠️ **허위 0 — 오귀속(엉뚱한 회사 이메일 부착)이 이 기능의 유일한 리스크**라 게이트를 세 겹으로 둔다:
@@ -77,8 +77,10 @@ const STATS_KEY = 'ads_registry_match_stats'
 const CURSOR_KEY = 'ads_registry_match_cursor'
 
 /**
- * 1 패스 — 이메일 없는 타깃 리드를 원부(이메일 보유)와 대조해 확신 매칭만 이식.
- * 서브리퀘스트 0(전부 D1). 커서로 대량 백로그를 나눠 순회한다.
+ * 1 패스 — 이메일/홈페이지가 없는 타깃 리드를 원부와 대조해 **확신 매칭만** 이식.
+ *   이메일은 즉시 자산이 되고, **홈페이지는 크롤 대상을 늘려 이메일 확보 경로를 새로 연다**
+ *   (타깃의 73%가 사이트 미발견이라 크롤 자체가 불가능했던 병목의 정면 공략).
+ *   서브리퀘스트 0(전부 D1). 커서로 대량 백로그를 나눠 순회한다.
  */
 export async function matchRegistryEmails(env: Env, batch = 400): Promise<RegistryMatchStats> {
   const DB = env.DB
@@ -91,41 +93,50 @@ export async function matchRegistryEmails(env: Env, batch = 400): Promise<Regist
 
   // 대상 = 이메일 없는 **비-원부** 리드(원부끼리 매칭은 의미 없음). 커서 순회로 전량 커버.
   const targets = (await DB.prepare(
-    `SELECT id, company_name, address, region FROM ad_company_leads
-      WHERE id > ? AND (email IS NULL OR email = '') AND COALESCE(source,'') != 'commerce'
+    `SELECT id, company_name, address, region, website FROM ad_company_leads
+      WHERE id > ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
       ORDER BY id ASC LIMIT ?`
-  ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null }>().catch(() => null))?.results || []
+  ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null; website: string | null }>().catch(() => null))?.results || []
 
   const skip: Record<string, number> = {}
-  const updates: { id: number; email: string }[] = []
+  const updates: { id: number; email: string | null; website: string | null }[] = []
 
   for (const t of targets) {
     const n = normalizeCompanyName(t.company_name)
     if (n.length < 4 || GENERIC_NAME.test(n)) { skip[n.length < 4 ? 'name_too_short' : 'generic_name'] = (skip[n.length < 4 ? 'name_too_short' : 'generic_name'] || 0) + 1; continue }
     // 원부 후보 — 상호 앞부분으로 좁힌 뒤(인덱스 활용 불가하므로 LIKE 로 1차 축소) JS 정규화로 확정.
     //   최대 5건만 보고, 정규화 일치가 2건 이상이면 ambiguous 로 건너뛴다(오귀속 방지).
+    // 이메일뿐 아니라 **홈페이지도 이식 대상** — 타깃의 73%가 사이트 미발견이라 크롤 자체가 불가능했다.
+    //   원부가 알려준 도메인을 옮기면 그 리드가 크롤 가능해져 이메일 확보 경로가 새로 열린다(추측 아님, 원부 값).
     const cands = (await DB.prepare(
-      `SELECT company_name, address, email FROM ad_company_leads
-        WHERE source = 'commerce' AND email IS NOT NULL AND email != ''
+      `SELECT company_name, address, email, website FROM ad_company_leads
+        WHERE source = 'commerce' AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))
           AND REPLACE(REPLACE(REPLACE(LOWER(company_name),' ',''),'(주)',''),'주식회사','') LIKE ?
         LIMIT 5`
-    ).bind(`%${n.slice(0, 12)}%`).all<{ company_name: string; address: string | null; email: string }>().catch(() => null))?.results || []
+    ).bind(`%${n.slice(0, 12)}%`).all<{ company_name: string; address: string | null; email: string | null; website: string | null }>().catch(() => null))?.results || []
     const exact = cands.filter(c => normalizeCompanyName(c.company_name) === n)
     if (!exact.length) { skip.no_registry_row = (skip.no_registry_row || 0) + 1; continue }
     const verdict = isConfidentMatch({ name: t.company_name, address: t.address, region: t.region }, { name: exact[0].company_name, address: exact[0].address }, exact.length === 1)
     if (!verdict.ok) { skip[verdict.reason] = (skip[verdict.reason] || 0) + 1; continue }
-    updates.push({ id: t.id, email: exact[0].email.toLowerCase() })
+    const email = (exact[0].email || '').trim().toLowerCase() || null
+    const website = (exact[0].website || '').trim() || null
+    if (!email && !website) { skip.registry_row_empty = (skip.registry_row_empty || 0) + 1; continue }
+    updates.push({ id: t.id, email, website })
   }
 
   // 반송 억제 목록에 있는 주소는 이식하지 않는다(품질 루프 존중).
   let matched = 0
   if (updates.length) {
+    // 이메일은 반송 억제 목록에 걸리면 이식하지 않는다(품질 루프 존중). 홈페이지는 그와 무관하게 이식.
     const rows = await DB.batch(updates.map(u => DB.prepare(
-      `UPDATE ad_company_leads SET email = COALESCE(email, ?), contact_source = COALESCE(contact_source, 'registry'),
-         active = 1
-       WHERE id = ? AND (email IS NULL OR email = '')
-         AND NOT EXISTS (SELECT 1 FROM ad_email_suppress s WHERE s.email = ?)`
-    ).bind(u.email, u.id, u.email))).catch(() => null)
+      `UPDATE ad_company_leads
+         SET email = CASE WHEN ? IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ad_email_suppress s WHERE s.email = ?)
+                          THEN COALESCE(email, ?) ELSE email END,
+             website = COALESCE(website, ?),
+             contact_source = COALESCE(contact_source, 'registry'),
+             active = CASE WHEN COALESCE(email, ?) IS NOT NULL OR phone IS NOT NULL THEN 1 ELSE active END
+       WHERE id = ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = ''))`
+    ).bind(u.email, u.email, u.email, u.website, u.email, u.id))).catch(() => null)
     matched = (rows || []).reduce((s, r) => s + ((r as { meta?: { changes?: number } })?.meta?.changes || 0), 0)
   }
 
