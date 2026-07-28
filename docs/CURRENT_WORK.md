@@ -120,6 +120,33 @@ curl -sS "https://live.ur-team.com/api/admin/ads/influencer-pool/stats" -H "Auth
   활동성·최신 글 제목(죽은 블로그 배제 + `lead_score` 정상화)이다. 기대치를 그렇게 잡을 것.
 
 ---
+## 🔴 2026-07-28 (6차-k) — **중복 병합이 조용히 0건이던 버그 — 내가 만든 것, 라이브가 잡아줬다**
+
+머지(#818) 직후 라이브 dry-run 이 **`groups_found: 200 / rows_folded: 0 / skipped: {}`** 를 냈다.
+그룹은 200개 찾았는데 접을 게 0인데 **건너뛴 이유도 0** — 산술적으로 불가능한 응답이다.
+
+**이분 탐색(라이브 실측)**: `maxGroups` 1→7행 · 20→125 · 50→283 · 80→415 · **100→495 · 120→0**.
+경계가 정확히 100. ⇒ **D1 은 문장당 바인딩 파라미터가 100개까지**다. 전화번호 전부를 한 `IN (…)`
+절에 넣었고, D1 이 거절한 것을 내가 붙인 **`.catch(() => null)` 가 삼켰다**.
+오늘 하루 종일 고친 '조용히 틀리는 코드' 그 클래스를, 고치는 코드 안에서 내가 재생산했다.
+
+**수정**: 전화 90개씩 청크로 조회 + 실패를 삼키지 않고 `skipped['행_조회_실패']` 로 노출.
+`DB.batch` 실패도 마찬가지로 `skipped['배치_실패']` + 카운터 0 리셋(성공한 척 금지).
+소스에 raw NUL 바이트(그룹 키 구분자)가 박혀 있어 `git`/`grep` 이 바이너리로 보던 것도 `\x00` 이스케이프로 교정.
+
+**불변식 고정**: `company-dedupe.test.ts` 의 D1 스텁이 이제 **바인딩 101개부터 거절**한다(실제 D1 과 동일).
+150그룹 테스트를 추가했고, 청크를 되돌리면 실제로 **실패한다**(가드 무효화 여부를 되돌려서 확인함 —
+오늘 `check-crawl-cooldown` 이 정규식 때문에 헛돌던 전례가 있어 이제는 항상 이 확인을 한다).
+
+**다음 세션 첫 액션**: 배포 후 dry-run → `rows_folded` 가 수백 단위인지 확인 →
+`dryRun:false` 로 `done:true` 될 때까지 반복. 되돌리기는 `POST /api/admin/partner-pool/dedupe-undo {survivorId}`.
+
+```bash
+curl -sS -X POST "https://live.ur-team.com/api/admin/partner-pool/dedupe" \
+  -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" -H 'Content-Type: application/json' \
+  --data '{"dryRun":true,"maxGroups":500}'
+```
+
 ## 🟢 2026-07-28 (6차-j) — **기관(재단·협회)이 '대행사 tier1' 영업풀에 섞이던 것 제거**
 
 대표 "더 개선점". 전수조사 표본에서 **기관성 상호 1.4%** 가 대행사로 분류돼 있었다.
