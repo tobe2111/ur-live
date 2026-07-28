@@ -24,8 +24,9 @@ export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|jo
  *  개선하면 이 값을 +1** → 이전 크롤러로 실패한 전량이 즉시 재시도 대상이 된다(분류 규칙 버전과 동일 철학).
  *  v2 = 엔티티/태그분할 복원 · JSON-LD · 사이트맵 발견 · 호스트 변형 폴백.
  *  v3 (2026-07-28) = 사이트당 fetch 캡(5경로 + MAX_PAGES) — v2 의 12경로가 예산을 2배 먹어 크롤 사이트 수가
- *  반토막나던 회귀 수리. 이전 v2 시도분(적중 0%)을 전량 재시도해야 하므로 버전 bump. */
-export const CRAWL_RULES_VERSION = 3
+ *  반토막나던 회귀 수리. 이전 v2 시도분(적중 0%)을 전량 재시도해야 하므로 버전 bump.
+ *  v4 (2026-07-28) = fetch 실패 상태코드 분류(403/404/5xx/network) + 실패 URL 샘플 — 원인 특정용 재시도. */
+export const CRAWL_RULES_VERSION = 4
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
@@ -193,8 +194,8 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
 /** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
-export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail'
-export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason }
+export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network'
+export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
@@ -226,7 +227,11 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
   }
-  const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS }).then(r => r.ok ? r.text() : '').catch(() => '')
+  // 실패를 상태코드로 구분(403 봇차단 / 404 경로없음 / 5xx / network) — '왜 못 가져왔나'를 데이터로 판정.
+  let lastStatus = 0
+  const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS })
+    .then(r => { lastStatus = r.status; return r.ok ? r.text() : '' })
+    .catch(() => { lastStatus = -1; return '' })
   // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
   //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
   let originResolved = false
@@ -299,6 +304,8 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   }
   if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) { email = null; return { email: null, phone, siteName, reason: 'dead_domain' } } // 죽은 도메인(반송 확정) 배제
-  const reason: CrawlReason = email ? 'ok' : (!anyPage ? 'fetch_fail' : 'no_contact')
-  return { email, phone, siteName, reason }
+  const httpReason = (): CrawlReason => lastStatus === 403 || lastStatus === 401 ? 'http_403'
+    : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
+  const reason: CrawlReason = email ? 'ok' : (!anyPage ? httpReason() : 'no_contact')
+  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin }
 }
