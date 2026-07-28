@@ -52,7 +52,10 @@ for f in $staged; do
   #   을 담은 채 **public 레포**에 커밋돼 있었다(#737). 아래 값 패턴들은 전부 따옴표를 요구해서
   #   dotenv 형식(`KEY=value`, 따옴표 없음)을 통째로 놓쳤다 — 형식이 아니라 **파일 자체**를 막는다.
   #   예외: *.example / *.template(자리표시자) · .env.production(VITE_* 공개 클라이언트 값만).
-  if echo "$f" | grep -qE '(^|/)\.env($|\.)' \
+  #   🚨 2026-07-28 보강: `.dev.vars`(Cloudflare 로컬 시크릿 파일)도 포함 — **실제로 유출된 적 있는데**
+  #     (commit 96f502d, `1665681ae` 에서 untrack) 위 `.env` 정규식엔 안 걸려 재커밋을 못 막고 있었다.
+  #     `.dev.vars.production` 같은 변종도 같이 막는다.
+  if echo "$f" | grep -qE '(^|/)(\.env|\.dev\.vars)($|\.)' \
     && ! echo "$f" | grep -qE '\.(example|template)$|(^|/)\.env\.production$'; then
     violations="$violations\n[$f] dotenv 파일이 커밋됨 — 실제 자격증명 유출 위험(.gitignore 로 제외하고 값은 대시보드/Secret 으로):\n$(grep -nE '^[A-Z0-9_]+=.+' "$f" 2>/dev/null | sed -E 's/=.*/=<redacted>/' | head -5)"
   fi
