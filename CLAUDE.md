@@ -400,6 +400,27 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
 > 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
 > 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
+## 🧪 원격 세션 검증 능력 — **npm 정상화** (2026-07-28 실측 정정)
+
+**`npm` 은 이제 이 원격환경에서 정상 동작한다.** 과거 audit log 곳곳의 *"이 환경 npm 조직정책 403 으로
+`npm run build`·vitest 미실행 — CI 에서 검증"* 은 **더 이상 유효하지 않다**(그 항목들은 작성 당시
+historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹션이 SSOT).
+
+2026-07-28 실측: `npm ci` exit 0(895 packages/30s) · `npx tsc --noEmit --skipLibCheck` 에러 0 ·
+`npm run build` exit 0(client→worker→prepare 3단계, `_worker.js` 갱신 확인).
+
+> ⚠️ **그러므로 "CI 에서 확인하겠다" 로 미루지 말 것.** 잠금파일(Toss·로딩)을 건드렸으면 **이 세션에서**
+> tsc·build·vitest 를 돌려 회귀검증까지 끝내고 커밋한다. (staging 실결제 검증이 필요한 머니 경로는 그대로 별도 —
+> 빌드가 된다고 실결제 검증이 대체되지 않는다.)
+
+**빌드 산출물 주의**: `npm run build` 는 `src/worker/generated/route-chunk-map.ts` 를 **재생성**한다(로컬 청크 해시).
+이건 커밋 대상이 아니다 — 검증 후 `git checkout -- src/worker/generated/route-chunk-map.ts` 로 되돌릴 것.
+
+**여전히 막힌 것(프록시)**: `dash.cloudflare.com` · `urdeal.kr` · **한국 공공 API 도메인 전반**
+(`apis.data.go.kr` · `open.neis.go.kr` 등 CONNECT 403). 공공 API 스펙 검증은 이 환경에서 직접 호출로 못 한다 →
+**라이브 워커의 `diag.error` 원문**(어드민 stats)이 사실상 유일한 ground truth. `data.go.kr` 문서 페이지는
+WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필요하다.
+
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:
