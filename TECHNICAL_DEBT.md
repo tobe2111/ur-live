@@ -857,6 +857,15 @@ PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행
 
 ### TD-003 (Cloudflare 유령 프로젝트) 진단 — 미해결 사용자 액션
 
+> ## ✅ 2026-07-28 종결 — 대표가 `ur-live-global` **삭제**(대시보드). 이 부채는 해소됐다.
+> - 실측: `world.ur-team.com` 응답 없음(워커 제거 반영) · `live.ur-team.com` **HTTP 200 정상**(무영향 확인).
+> - 레포 잔재도 같은 날 삭제: `wrangler.global.toml` · `scripts/deploy-global.sh` · `scripts/deploy-dual-sites.sh`
+>   (전수조사 결과 package.json·CI 워크플로·git hooks·가드 스크립트 참조 **0건** — 문서/archive 언급뿐이라 안전).
+> - ⚠️ **해외판을 다시 만들 때 이 프로젝트를 부활시키지 말 것.** 지역 판정이 런타임 hostname 기반
+>   (`src/shared/config/region.ts`)이라 **배포 1개 + 도메인 추가**로 끝난다(도매몰 utongstart.com 과 동일).
+>   상세: `docs/design/global-launch-readiness.md`.
+> - 아래는 종결 전 기록(경위 보존용).
+
 **증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
 
 **📌 2026-06-22 재확인 (PR #398)** — 동일 증상 지속. 확인된 사실:
