@@ -20,6 +20,17 @@ interface Lead {
 interface Stats { total: number; makers: number; resellers: number; with_contact: number; with_email: number; pipeline: number }
 interface CollectInfo { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; saved?: number; total_saved?: number; diag?: { configured?: boolean; error?: string } } | null }
 interface ImportInfo { last_run?: string; scanned?: number; saved?: number; done?: boolean; total_saved?: number }
+interface EnrichInfo {
+  last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number
+  crawl_reason?: Record<string, number>; fail_samples?: string[]
+  budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number
+}
+/** 크롤 실패 사유 라벨(maker-enrich MakerCrawlReason SSOT 미러). */
+const CRAWL_REASON_LABEL: Record<string, string> = {
+  ok: '성공', no_contact: '이메일 미게시', robots: 'robots 차단', no_name: '상호 불일치',
+  blocked_host: '제외 호스트', bad_url: '잘못된 주소', http_403: '봇차단(403)', http_404: '경로없음(404)',
+  http_5xx: '서버오류(5xx)', network: '접속불가/타임아웃', subreq_limit: '⛔ 플랫폼 요청한도',
+}
 
 const KIND_META: Record<string, { label: string; cls: string }> = {
   maker: { label: '제조·브랜드', cls: 'bg-emerald-100 text-emerald-700' },
@@ -71,6 +82,7 @@ export default function AdminMakerPoolPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<CollectInfo | null>(null)
   const [importRun, setImportRun] = useState<ImportInfo | null>(null)
+  const [enrichLast, setEnrichLast] = useState<EnrichInfo | null>(null)
   const [kind, setKind] = useState('')
   const [q, setQ] = useState('')
   const qd = useDebouncedValue(q, 350)
@@ -80,7 +92,7 @@ export default function AdminMakerPoolPage() {
   const loadStats = useCallback(async () => {
     try {
       const r = await api.get('/api/admin/maker-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setImportRun(r.data.importRun || null) }
+      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setImportRun(r.data.importRun || null); setEnrichLast(r.data.enrichLast || null) }
     } catch { /* noop */ }
   }, [])
   const loadLeads = useCallback(async () => {
@@ -151,6 +163,11 @@ export default function AdminMakerPoolPage() {
             title="이미 수집된 통신판매사업자 원부(대표자 이메일 포함)를 판매사 후보로 복사 — 원본은 무접촉">
             {busy === 'import-resellers' ? '⏳ 임포트 중…' : '📥 판매사 후보 임포트'}
           </button>
+          <button onClick={() => run('enrich', '이메일 보강')} disabled={busy !== ''}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            title="홈페이지를 찾아 업체가 게시한 이메일만 수집(robots 준수). 못 찾으면 비워둠 — 추측·생성 없음">
+            {busy === 'enrich' ? '⏳ 보강 중…' : '📧 이메일 보강'}
+          </button>
           <select value={kind} onChange={e => setKind(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm">
             <option value="">종류 전체</option>
             <option value="maker">제조·브랜드</option>
@@ -173,6 +190,34 @@ export default function AdminMakerPoolPage() {
           {importRun?.last_run
             ? <span> · 최근 {kstShort(importRun.last_run)} · 이번 {formatNumber(importRun.saved ?? 0)} (누적 {formatNumber(importRun.total_saved ?? 0)}){importRun.done ? ' · 전량 완료 ✅' : ''}</span>
             : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+        </div>
+
+        {/* 📧 이메일 보강 레인 — 소비자 트랙의 실사고(한도 초과가 '사이트 문제'로 오진되고 재시도 쿨다운까지
+            오염)를 되풀이하지 않도록, 처음부터 예산 실측·한도 도달 여부를 화면에 드러낸다. */}
+        <div className="mb-3 text-xs text-gray-500">
+          📧 이메일 보강
+          {enrichLast?.last_run
+            ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-indigo-600">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
+                {(enrichLast.crawls ?? 0) > 0
+                  ? <span> · 크롤 {formatNumber(enrichLast.crawls ?? 0)}(적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
+                  : <span className="text-amber-600"> · 크롤 0회 — 홈페이지를 못 찾았거나 예산이 없음</span>}
+                <span className="text-gray-400"> · 이메일 미보유 잔여 {formatNumber(enrichLast.remaining ?? 0)}</span>
+                {enrichLast.crawl_reason && Object.keys(enrichLast.crawl_reason).length > 0 && (
+                  <span className="text-gray-400"> · 사유 {Object.entries(enrichLast.crawl_reason).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CRAWL_REASON_LABEL[k] || k} ${v}`).join(' / ')}</span>
+                )}
+              </span>
+            : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
+          {typeof enrichLast?.spent === 'number' && (
+            <div className="mt-1 text-[11px] text-gray-400">
+              예산 {formatNumber(enrichLast.spent)}/{formatNumber(enrichLast.budget_total ?? 0)} 사용
+              {enrichLast.limit_hit
+                ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 라운드 중단(재시도 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
+                : <span> · 한도 여유</span>}
+            </div>
+          )}
+          {enrichLast?.fail_samples?.length ? (
+            <div className="mt-1 text-[11px] text-gray-400 break-all">실패 샘플: {enrichLast.fail_samples.join(' · ')}</div>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">

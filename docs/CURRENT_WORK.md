@@ -25,6 +25,21 @@
 **다음 레버(측정 후)**: 실효 상한이 확정되면 시간당 보강 **라운드 수**(현재 2회 — 각 라운드가 독립 인보케이션 = 독립 예산)를
 올리는 것이 처리량의 유일한 정직한 레버. 라운드 소요시간 실측 후 조정.
 
+## 🔷 2026-07-28 — 📧 도매(제조사·판매사) 풀 **이메일 보강 레인 신설** (보류 해제)
+07-28 maker-pool 커밋이 "소비자 트랙 fetch 실패 **규명 후 이식**"으로 미뤄뒀던 레인. 위 항목에서 원인이 확정돼 착수.
+- **신규 `features/supply/api/maker-enrich.ts`** — [네이버 지역검색 등록링크 → 없으면 웹문서 발견 → robots 준수 크롤]
+  로 **게시된 이메일만** 확보. **이메일 전용**(전화는 카카오 레인이 이미 확보 — 소비자 트랙의 '날짜/ID 숫자열을 전화로
+  오인' 버그 클래스를 구조적으로 회피). 발견 사이트는 **상호 존재 가드**(오귀속=허위 차단), 이메일 못 얻어도 **발견한
+  홈페이지는 저장**(다음 라운드·수동 접촉 자산).
+- **결함 복제 0 — 처음부터 올바르게**: safeFetch(에러 미삼킴) · 한도 관측 시 즉시 중단 · **그 라운드는 도장 미기록** ·
+  실효 상한 학습. 학습 키는 `supply_subreq_cap`(**유어애즈와 다른 워커라 한도도 따로 학습**해야 정확).
+- **서비스 분리 준수**: features/supply 자립 — features/marketing import **0**(검사 확인). `buyer-discovery` 의 선별기도
+  안 씀(해외 바이어용이라 수입/수출 어휘 가점 = 국내 제조사엔 틀린 신호) → 국내 B2B 문맥으로 따로 튜닝해 인라인.
+- **배선**: `POST /api/admin/maker-pool/enrich?rounds=n`(기본 2, 상한 5 — 한도/대상소진이면 조기 종료) · `/stats` 에
+  `enrichLast` · 어드민 「📧 이메일 보강」 버튼 + 상태줄(적중률·사유분포·예산 실측·실패 샘플).
+  스키마 `enrich_checked_at`/`enrich_v` ALTER 보강(기존 표에도 적용) · env `SUPPLY_ENRICH_BUDGET`(기본 120·상한 400).
+- 검증: sql bind/column/table · theme · dashboard-theme · file-size · pagination · modal-zindex 가드 GREEN. npm 403 → tsc/build 는 CI.
+
 ## 🔷 2026-07-27 (심야 세션) — 🧭 파트너 풀 **소급 재검사 구조 + 원클릭 운영** 완성 (PR #744~#761 전부 머지·배포)
 **핵심 구조 2개 (다음 세션 필독)**:
 - **분류 규칙 버전 스탬프**: `CLASSIFY_RULES_VERSION`(company-classify.ts, 현재 v3) × `ad_company_leads.classified_v` — 소급 정리(`reclassifyCompanyLeads`)가 `classified_v < VERSION` 행만 훑음. **판별/분류 규칙을 바꾸면 반드시 버전 +1**(안 올리면 기존 행 영구 방치 — 오늘 사고의 원인이었음). v2=헤드라인·키워드메아리·행사어휘, v3=안내페이지 어휘(위치안내/지정 게시대).
