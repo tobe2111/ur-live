@@ -195,7 +195,7 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
 /** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
 export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network'
-export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string }
+export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
@@ -203,6 +203,9 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
   if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null, reason: 'blocked_host' }
   if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: 'budget' }
+  spendBudget(budget)
+  // ⚠️ robots.txt 도 **실제 서브요청**이다 — 예산에 안 세면 회계가 실사용을 과소평가해(사이트당 +1)
+  //   워커 서브요청 한도를 예산보다 먼저 소진할 수 있다. 2026-07-28 network 84/84 진단의 후보 원인.
   spendBudget(budget)
   const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
   if (robots) {
@@ -229,9 +232,17 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   }
   // 실패를 상태코드로 구분(403 봇차단 / 404 경로없음 / 5xx / network) — '왜 못 가져왔나'를 데이터로 판정.
   let lastStatus = 0
+  //   network 는 원인이 갈린다: AbortError=상대 서버 느림/무응답 · TypeError "Too many subrequests"=워커 한도 소진
+  //   · 그 외=DNS/TLS/연결거부. **예외 이름·메시지를 그대로 남겨** 상태줄 실패 샘플에서 판정한다(추측 금지).
+  let lastErr = ''
   const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS })
     .then(r => { lastStatus = r.status; return r.ok ? r.text() : '' })
-    .catch(() => { lastStatus = -1; return '' })
+    .catch((e: unknown) => {
+      lastStatus = -1
+      const err = e as { name?: string; message?: string } | null
+      lastErr = `${err?.name || 'Error'}: ${String(err?.message || '').slice(0, 70)}`
+      return ''
+    })
   // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
   //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
   let originResolved = false
@@ -307,5 +318,5 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   const httpReason = (): CrawlReason => lastStatus === 403 || lastStatus === 401 ? 'http_403'
     : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
   const reason: CrawlReason = email ? 'ok' : (!anyPage ? httpReason() : 'no_contact')
-  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin }
+  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin, failErr: email || !lastErr ? undefined : lastErr }
 }

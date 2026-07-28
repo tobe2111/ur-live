@@ -27,9 +27,22 @@ export default function FAQPage() {
     { id: 6, category: t('faq.catExchange', { defaultValue: '교환/환불' }), question: t('faq.q6', { defaultValue: '환불은 언제 되나요?' }), answer: t('faq.a6', { defaultValue: '상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.' }) },
     { id: 7, category: t('faq.catMember', { defaultValue: '회원' }), question: t('faq.q7', { defaultValue: '회원가입은 어떻게 하나요?' }), answer: t('faq.a7', { defaultValue: '카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.' }) },
     { id: 8, category: t('faq.catMember', { defaultValue: '회원' }), question: t('faq.q8', { defaultValue: '개인정보를 수정하고 싶어요' }), answer: t('faq.a8', { defaultValue: '마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.' }) },
-    { id: 9, category: t('faq.catLive', { defaultValue: '라이브' }), question: t('faq.q9', { defaultValue: '라이브 방송은 어떻게 시청하나요?' }), answer: t('faq.a9', { defaultValue: '메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.' }) },
-    { id: 10, category: t('faq.catLive', { defaultValue: '라이브' }), question: t('faq.q10', { defaultValue: '라이브 중 상품을 구매하려면?' }), answer: t('faq.a10', { defaultValue: '라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다.' }) },
+    // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): 영구중단된 라이브 FAQ 2건 → 서비스
+    //   정의 Q&A 로 교체. "유어딜 = 무엇" 을 사이트가 스스로 답해야 검색 AI 가 엔티티로 인용 가능.
+    { id: 9, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q9', { defaultValue: '유어딜은 어떤 서비스인가요?' }), answer: t('faq.a9', { defaultValue: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 링크샵을 제공합니다.' }) },
+    { id: 10, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q10', { defaultValue: '이용권은 어떻게 사용하나요?' }), answer: t('faq.a10', { defaultValue: '구매한 이용권은 마이페이지 > 내 이용권에서 확인할 수 있고, 매장에서 QR 또는 PIN을 제시하면 바로 사용됩니다. 교환권(기프티콘)은 결제 즉시 발급됩니다.' }) },
   ]
+
+  // FAQPage 구조화 데이터 — 리스트 실데이터에서 생성(내용-스키마 불일치 구조적 0).
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(f => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  }
 
   const catAll = t('faq.catAll', { defaultValue: '전체' })
   const categories = [catAll, ...Array.from(new Set(faqs.map(f => f.category)))]
@@ -44,7 +57,7 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D]">
-      <SEO title={t('faq.seoTitle', { defaultValue: '자주 묻는 질문 - 유어딜' })} description={t('faq.seoDesc', { defaultValue: '유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.' })} url="/faq" />
+      <SEO title={t('faq.seoTitle', { defaultValue: '자주 묻는 질문 - 유어딜' })} description={t('faq.seoDesc', { defaultValue: '유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.' })} url="/faq" jsonLd={faqJsonLd} />
 
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
