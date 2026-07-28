@@ -54,6 +54,38 @@ UI 미렌더.
   ④ ur-ads 변수들을 plaintext → **Secret 타입** 전환(현재는 대시보드/API 로 전부 열람 가능).
   ⚠️ git history 에 남아 있으므로 **회전 전까지는 계속 유출 상태**다.
 
+#### 🚨 2026-07-28 12:00 UTC — **유출은 CF 토큰 1건이 아니었다** (전수 스캔 결과)
+`.env.deploy` 를 계기로 **추적 파일 전수 스캔**을 돌린 결과, `archive/` 아래 **19개 `.md`/`.txt` 파일**에
+실제 시크릿 자재가 **지금(HEAD)까지 추적된 채** 남아 있었다. public 레포이고 **2026-03월부터** 그 상태였다.
+
+| 자재 | 파일 | 4/27 회전 목록에 있었나 | 판단 |
+|---|---|---|---|
+| **Google/Firebase 서비스계정 개인키** | `archive/secrets-redacted/*.txt` 4개 + `ACCOUNT_DATABASE_INFO`·`COMPLETE_ERROR_REPORT`·`COPY_TO_UR_LIVE_WORKING`·`ENV_VARIABLE_EXPLANATION`·`LOGIN_FUNCTIONALITY_STATUS`·`CART_401_DEBUG_FIX`·`ENV_VARS_INFINITE_LOOP_FIX`·`FIREBASE_CUSTOM_TOKEN_ERROR_FIX` | ❌ **없음** | 🔴 **아직 유효 가정 — 대표 조치 필요**(GCP 콘솔에서 해당 키 *삭제*. 한국 서비스는 카카오 전용이라 교체 없이 삭제로 끝날 가능성) |
+| **Toss live 시크릿키** | `archive/PAYMENT_IMPLEMENTATION_COMPLETE.md` | ✅ 있음(`Toss live sk/ck 재발급`) | 🟢 무효화됨 |
+| **Stripe 시크릿키** | `archive/MANUAL_ACTIONS_TODO.md`·`PROJECT_STATUS_2026-03-17.md`·`SECURITY_AUDIT_REPORT.md` | ❌ 없음 | 🟡 글로벌 미런칭이라 영향 낮으나 **대시보드에서 폐기 권장** |
+| `JWT_SECRET`·`REFRESH_TOKEN_SECRET` | `archive/SETUP_CLOUDFLARE_SECRETS.md` | ✅ 있음 | 🟢 **무효화 실측 확인** — 유출본 해시 ≠ 라이브 값 |
+
+**왜 안 잡혔나**: `verify.yml` 의 `Hardcoded secret 검출` 은 **`src/` 아래 `.ts/.tsx` 만** 스캔하고,
+`check-no-secrets.sh` 는 **키 이름 패턴** 위주다. `.md`/`.txt` 안의 **키 본문**은 둘 다 사각지대였다.
+게다가 폴더명이 `secrets-redacted/` 라 **레닥션된 것으로 보였지만 실제로는 원문 그대로**였다
+(`OPERATIONS_TODO.md` 에 2026-04-26 자로 "11개 파일 시크릿 평문" 이 이미 적혀 있었는데, 파일을 옮기기만 하고
+값은 지우지 않은 채 종결된 것으로 보인다).
+
+**조치(이 커밋)**: 19개 파일 제거 + **`scripts/check-secret-material.mjs` 신설**
+(확장자·경로 무관 전수 스캔 — PEM 개인키 실제 본문/Toss live/Stripe/AWS/Slack/Anthropic/OpenAI/GitHub PAT.
+자리표시자·스텁은 오탐 제외, `secret-material-ok` 주석으로 예외). **verify.yml strict + audit-gate + pre-commit** 3중 배선.
+검증: 삭제 후 3,804 파일 통과 · 자리표시자 오탐 0 · 합성 실키 탐지 1/1.
+
+⚠️ **파일 제거는 절반이다** — git history·포크·스캐너 캐시에 남는다. **Firebase 서비스계정 키 폐기**가 실제 조치.
+
+#### 🔓 ur-live(Pages) 환경변수 31개가 평문 (2026-07-28 실측)
+ur-ads 는 이번에 secret 전환했으나 **메인 Pages 프로젝트가 그대로**였다 — 63개 중 **평문 31개**:
+`JWT_SECRET`(현재 라이브 값) · `TURNSTILE_SECRET` · `INTERNAL_CRON_TOKEN` · `ALIGO_API_KEY` ·
+`NAVER_CLIENT_SECRET` · `NAVER_SEARCHAD_SECRET_KEY` · `KT_ALPHA_TOKEN_KEY` · `VAPID_PRIVATE_KEY` ·
+`NTS_API_KEY` · `UCANSIGN_API_KEY` 등.
+→ **유출된 CF 토큰 하나로 전부 열람 가능**(이 세션이 실제로 `JWT_SECRET` 을 읽어 위 대조에 사용했다).
+**CF 토큰 회전이 시급한 진짜 이유**가 이것이다(세션 위조 가능). Secret 전환은 대표 확인 후 진행 예정.
+
 #### 🔐 후속 처리 (2026-07-28 10:29 UTC — 대표 지시로 실행/보류 확정)
 - ✅ **④ Secret 타입 전환 완료** — 대표 승인("보안 부분은 내가 책임진다") 하에 **CF API replace-all** 로 실행.
   `plain_text` 11개(`JWT_SECRET`·`GSHEETS_SA_KEY`·`KAKAO_REST_API_KEY`·`NAVER_SEARCHAD_ACCESS_LICENSE`·
