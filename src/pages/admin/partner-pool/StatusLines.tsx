@@ -21,7 +21,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
@@ -70,6 +70,8 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
               ? <span> · 크롤 {formatNumber(enrichLast.crawls)}(이메일 적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
               : <span className="text-amber-600"> · 크롤 0회 — 크롤까지 못 감(예산·대상 선정 확인 필요)</span>}
             {typeof enrichLast.remaining === 'number' ? <span className="text-gray-400"> · 보류 잔여 {formatNumber(enrichLast.remaining)}</span> : null}
+            {/* 실사용 서브요청 — Workers 호출당 1,000 한도. 근접하면 이후 fetch 가 전부 즉시 throw(network) 로 보인다. */}
+            {typeof enrichLast.fetches === 'number' ? <span className="text-gray-400"> · 서브요청 {formatNumber(enrichLast.fetches)}</span> : null}
             {/* 실패 사유 분포 — 적중률이 낮을 때 '사이트에 이메일이 없음(no_contact)' vs '페이지를 못 가져옴
                 (fetch_fail)' vs 'robots 차단' 을 구분해 다음 개선을 데이터가 고르게(2026-07-28 적중 0% 진단). */}
             {enrichLast.crawl_reason && Object.keys(enrichLast.crawl_reason).length > 0 && (

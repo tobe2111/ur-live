@@ -20,12 +20,16 @@ const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
  *   throw 하므로, 한 번 관측되면 남은 작업은 의미가 없다 → 예산 객체에 표식을 남겨 호출부가 즉시 중단한다.
  *   (한도 자체는 코드가 알 수 없어 관측 학습 — collect-budget.ts)
  */
-async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
+async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget, errSink?: { msg: string }): Promise<Response | null> {
   const { timeoutMs = 8000, ...rest } = init
   try {
     return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err || '')
+    const e = err as { name?: string; message?: string } | null
+    const msg = String(e?.message || '')
+    // 예외 이름·메시지를 그대로 남긴다(추측 금지) — AbortError=상대 서버 무응답 · TypeError "Too many
+    //   subrequests"=워커 한도 소진 · 그 외=DNS/TLS/연결거부. 상태줄 실패 샘플에서 이 문자열로 판정한다.
+    if (errSink) errSink.msg = `${e?.name || 'Error'}: ${msg.slice(0, 70)}`
     if (isSubrequestLimitError(msg) && budget) budget.limitHit = true
     return null
   }
@@ -219,7 +223,7 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
 /** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
 export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit'
-export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string }
+export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
@@ -228,6 +232,9 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null, reason: 'blocked_host' }
   if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: 'budget' }
   spendBudget(budget)
+  // ⚠️ 예산 회계는 **fetch 1회 = spend 1회**를 지킨다(과소평가하면 한도를 예산보다 먼저 치고, 과대평가하면
+  //   학습 상한이 실제보다 낮게 굳는다). 이 robots 요청은 바로 위 spendBudget 이 이미 계상한 몫이다 —
+  //   실사용과 회계가 어긋나는지는 company-collect 의 독립 카운터(fetches)와 대조해 화면에서 확인한다.
   const robotsRes = await safeFetch(`${url.origin}/robots.txt`, { timeoutMs: 6000 }, budget)
   // 한도에 부딪혔으면 이 사이트는 시도조차 못 한 것 — 실패로 기록해 도장 찍으면 7일간 재시도 못 한다.
   if (budget?.limitHit) return { email: null, phone: null, siteName: null, reason: 'subreq_limit' }
@@ -256,8 +263,11 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   }
   // 실패를 상태코드로 구분(403 봇차단 / 404 경로없음 / 5xx / network) — '왜 못 가져왔나'를 데이터로 판정.
   let lastStatus = 0
+  //   network 는 원인이 갈린다: AbortError=상대 서버 느림/무응답 · TypeError "Too many subrequests"=워커 한도 소진
+  //   · 그 외=DNS/TLS/연결거부. safeFetch 가 예외 이름·메시지를 errSink 에 그대로 남겨 상태줄에서 판정한다.
+  const errSink = { msg: '' }
   const fetchHtml = async (u: string): Promise<string> => {
-    const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget)
+    const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget, errSink)
     if (!r) { lastStatus = -1; return '' }
     lastStatus = r.status
     return r.ok ? await r.text().catch(() => '') : ''
@@ -341,5 +351,5 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     : lastStatus === 403 || lastStatus === 401 ? 'http_403'
     : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
   const reason: CrawlReason = email ? 'ok' : (!anyPage ? httpReason() : 'no_contact')
-  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin }
+  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin, failErr: email || !errSink.msg ? undefined : errSink.msg }
 }
