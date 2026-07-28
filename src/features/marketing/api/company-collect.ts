@@ -12,7 +12,9 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { writeEnrichSnapshot, recordEnrichCrash } from './enrich-telemetry'
+import { healSuspectNames } from './enrich-name-heal'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -242,6 +244,12 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
  *   카카오 로컬 API 는 상호+주소로 **전화를 준다**(네이버는 빈값) → 홈페이지 없는 보류도 전화 확보 가능.
  *   전부 업체 공개 데이터만, 출처(contact_source) 기록. 못 찾으면 비워둠(허위 0). tier1 우선. */
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
+  // 💥 예외를 증거로 남기고 rethrow — 기록 책임은 enrich-telemetry 가 전담(왜 필요한지는 그 파일 상단 참조).
+  try { return await enrichHeldLeadsInner(env) }
+  catch (err) { await recordEnrichCrash(env.DB, err); throw err }
+}
+
+async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
   const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, THIRD_PARTY_HOST } = await import('./contact-enrich')
@@ -276,7 +284,16 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
-  const stamp = async (id: number) => { await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run().catch(() => null) }
+  //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,
+  //   한도 초과 시 `.catch(() => null)` 가 그 오류를 삼켜 **budget.limitHit 이 영영 false** 로 남았다
+  //   (스냅샷이 limit_hit:false 인데도 학습 상한은 계속 내려가던 모순의 정체). 여기서 신호를 살린다.
+  const stamp = async (id: number) => {
+    try {
+      await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run()
+    } catch (err) {
+      if (isSubrequestLimitError((err as { message?: string } | null)?.message)) budget.limitHit = true
+    }
+  }
   let enriched = 0, processed = 0
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/http_403/network…) — 적중률 계측
   const failSamples: string[] = []                // 실패 URL 샘플 — 원인 특정용(호스트 형태·상태코드)
@@ -314,19 +331,24 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   → 한도 감지 즉시 + 주기적으로 부분 저장하고, 정상 종료 때 최종본으로 덮는다. `partial` 로 구분.
   //   비용: 저장 1회 = D1 1쿼리. 25건마다이므로 예산 대비 무시 가능.
   let capForStamp = learnedCap // 최종 저장 직전에 새 학습값으로 갱신 — 상태줄의 '다음 실행 상한'
+  // 📍 어디까지 갔나 — `partial:true` 만으로는 "Phase 1 직후 죽었다"와 "Phase 2 중 죽었다"를 구분할 수 없어
+  //   2026-07-28 원인 규명이 정적 추론에서 막혔다. 단계 표식 + Phase 2 스킵 사유 계수를 남긴다(비용: 문자열 1개).
+  let phase = 'start'
+  const p2: Record<string, number> = {} // examined/skip_email/no_site/naver_try/crawl_try/stamped
+  const bump = (k: string) => { p2[k] = (p2[k] || 0) + 1 }
   const snapshot = async (partial: boolean, remaining?: number) => {
     const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
     // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 안 나간다.
     const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_enrich_last', JSON.stringify({
-        last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
-        ...(typeof remaining === 'number' ? { remaining } : {}),
-        crawl_reason: crawlReason, fail_samples: failSamples,
-        fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
-        limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
-      })).run().catch(() => null)
+    await writeEnrichSnapshot(DB, {
+      processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
+      ...(typeof remaining === 'number' ? { remaining } : {}),
+      crawl_reason: crawlReason, fail_samples: failSamples,
+      fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
+      limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
+      phase, p2, targets: targets.length,
+      diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
+    })
   }
 
   // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
@@ -345,16 +367,21 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
+  phase = 'p1_done'
   await snapshot(true) // Phase 1 종료 시점 스냅샷 — 여기서 죽어도 전화 확보분은 계측에 남는다
+  phase = 'p2'
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   let sinceSnapshot = 0
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit) break
-    if (t.email) continue // 이미 이메일 있음
+    bump('examined')
+    if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
     let site = realSite(t.website)
+    if (!site) bump('no_site')
     let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
+      bump('naver_try')
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
       if (nv.website) site = nv.website // 지역검색 등록 링크(업체가 등록) — 신뢰
       if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
@@ -362,6 +389,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
+      bump('crawl_try')
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       // 실패 URL 샘플(최대 4) — '왜 못 가져왔나'를 실제 주소로 특정(2026-07-28 fetch 실패 45/45 진단).
@@ -383,40 +411,17 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
     if (budget.limitHit) { await snapshot(true); break }
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
-    if (++sinceSnapshot >= 25) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
+    bump('stamped')
+    if (budget.limitHit) { await snapshot(true); break } // 도장이 한도를 밝혀낸 경우도 즉시 중단(위 stamp 참조)
+    if (++sinceSnapshot >= 10) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
   }
 
-  // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
-  //   이름만 제목-파편**("데이터 토론"·"insight")인 webkr 행. Phase 2 는 연락처-없는 행만 돌아 이 행들이
-  //   영영 미치유 → 분류 확인 카드에 계속 쌓임. 홈페이지 og:site_name 으로 실명 교체 + 실명 기준 재분류.
-  //   회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운) — 허위 0(이름은 그 사이트 자기 선언).
+  // ── Phase 3: 이름 치유 소급 — 별 모듈(enrich-name-heal)로 분리(2026-07-28). 왜 필요한지는 그 파일 상단 참조.
   if (budget.left > 4 && !budget.limitHit) {
-    const { suspectCompanyName, classifyLead } = await import('./company-classify')
-    const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
-        WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
-          AND website IS NOT NULL AND website != '' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
-          AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days'))
-        ORDER BY id DESC LIMIT 8`)
-      .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
-    for (const t of healTargets) {
-      if (budget.left <= 2 || budget.limitHit) break
-      if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
-      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
-      if (c.siteName && c.siteName !== t.company_name) {
-        // 실명 기준 재분류 — 근거 생기면 업종까지 교정, 아니면 keyword 로 승급(분류 확인 카드에서 탈출).
-        const cls = classifyLead({ company_name: c.siteName, category: t.category, source: 'webkr', source_keyword: t.source_keyword })
-        if (cls.ok) {
-          await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, category = COALESCE(?, category), subcategory = COALESCE(?, subcategory),
-              lead_type = ?, classify_confidence = ? WHERE id = ? AND status = 'new'`)
-            .bind(c.siteName.slice(0, 120), cls.confidence === 'evidence' ? cls.category : null, cls.confidence === 'evidence' ? cls.subcategory : null,
-              cls.lead_type, cls.confidence === 'none' ? 'keyword' : cls.confidence, t.id).run().catch(() => null)
-        }
-      }
-      if (budget.limitHit) break // 도장 없이 중단(위와 동일 이유)
-      await stamp(t.id)
-    }
+    await healSuspectNames({ DB, budget, stamp, crawlContact })
   }
 
+  phase = 'p3_done'
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
