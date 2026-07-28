@@ -21,6 +21,45 @@ import { buildKeywordRows, rotationWindow } from './company-keyword-grid'
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
+/**
+ * 🚨 2026-07-28: 이 레인의 검색 fetch 3종이 전부 `.catch(() => null)` 로 **플랫폼 한도 오류를 삼켰다**.
+ *   "Too many subrequests" 가 나도 그냥 빈 결과로 보여서, 라운드 중간에 한도를 넘으면 **남은 키워드가
+ *   조용히 0건**이 되고 아무 신호도 안 남는다(집계만 보면 "그 키워드는 결과가 없었나 보다" 로 읽힌다).
+ *   → 한도 신호를 잡아 `budget.limitHit` 을 세우고, 상태줄(diag)에 노출해 판독 가능하게 한다.
+ *   ⚠️ 이 레인은 학습 상한을 쓰지 않지만(고정 예산), limitHit 이 서면 루프가 즉시 멈춰 헛돈을 막는다.
+ */
+async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
+  const { timeoutMs = 12000, ...rest } = init
+  try {
+    return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
+  } catch (err) {
+    const msg = String((err as { message?: string } | null)?.message || '')
+    if (/too many subrequests/i.test(msg) && budget) budget.limitHit = true
+    return null
+  }
+}
+
+/**
+ * 📍 실제 소재지에서 지역을 뽑는다 — **키워드 지역을 그대로 박으면 안 된다**.
+ *
+ *   실사고(2026-07-28 실측): 카카오 지도는 "중랑 행사 대행" 검색에 중랑에 없는 업체도 반환한다.
+ *   그런데 `region: kw.region` 으로 키워드 지역을 박아 넣어, **같은 업체(전화번호까지 동일)가
+ *   8개 구 키워드에서 각각 저장**됐다 — dedup 키가 `n:이름|지역` 이라 지역이 갈리면 별개 행이 된다.
+ *   표본 2,000행에서 **회사명 중복 38.4%**(326개 업체가 768행), 중복군의 85%가 region 차이였다.
+ *   ⚠️ 지역이 31→235 로 늘어난 지금 그대로 두면 중복이 배수로 폭증한다.
+ *   → 주소가 있으면 주소에서 도출(진실), 없을 때만 키워드 지역으로 폴백.
+ */
+function regionFromAddress(addr: string | null | undefined, fallback: string | null): string | null {
+  const hits = [...String(addr || '').matchAll(/([가-힣]{2,10}?)(시|군|구)(?:\s|$)/g)]
+    .map(m => m[1].replace(/특별|광역|자치/g, '').slice(0, 20))
+    .filter(Boolean)
+  if (!hits.length) return fallback
+  // 서울은 **구 단위**가 키워드 어휘라 '서울'로 뭉개면 granularity 를 잃는다(강북/성북/…).
+  //   그 외(광역시·도)는 첫 매치가 곧 시 이름이고 그게 키워드 어휘와 맞는다(부산/성남/춘천…).
+  if (hits[0] === '서울' && hits.length > 1) return hits[1]
+  return hits[0]
+}
+
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
@@ -34,16 +73,18 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
     if (outOfBudget(budget)) break
     spendBudget(budget)
     const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw.keyword)}&size=15&page=${page}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    const res = await laneFetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` } }, budget)
     if (!res || !res.ok) break
     const data = await res.json().catch(() => null) as { documents?: Array<{ place_name?: string; phone?: string; road_address_name?: string; address_name?: string; category_name?: string }>; meta?: { is_end?: boolean } } | null
     for (const d of (data?.documents || [])) {
       const name = stripTag(d.place_name)
       if (name.length < 2) continue
+      const addr = stripTag(d.road_address_name || d.address_name) || null
       out.push({
-        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier,
+        region: regionFromAddress(addr, kw.region), // 키워드 지역이 아니라 실제 소재지 — 중복 폭증 방지
         phone: (d.phone || '').trim() || null,
-        address: stripTag(d.road_address_name || d.address_name) || null,
+        address: addr,
         description: stripTag(d.category_name) || null, // 카카오 업종 경로("서비스,산업 > 광고,인쇄 > …") — 분류 근거로 활용
         contact_source: (d.phone || '').trim() ? 'kakao' : null,
         source: 'local', source_keyword: kw.keyword,
@@ -123,7 +164,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
   if (outOfBudget(budget)) return []
   spendBudget(budget)
   const url = `${NAVER_OPENAPI}/v1/search/local.json?query=${encodeURIComponent(kw.keyword)}&display=5&sort=random`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
   if (!res || !res.ok) return []
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; category?: string; telephone?: string; address?: string; roadAddress?: string; link?: string; description?: string }> } | null
   const out: CompanyLead[] = []
@@ -135,7 +176,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
       category: kw.category,
       subcategory: kw.subcategory,
       tier: kw.tier,
-      region: kw.region,
+      region: regionFromAddress(it.roadAddress || it.address, kw.region), // 실제 소재지 우선(중복 방지)
       website: (it.link || '').trim() || null,
       phone: (it.telephone || '').trim() || null,
       address: (it.roadAddress || it.address || '').trim() || null,
@@ -162,7 +203,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     if (outOfBudget(budget)) break
     spendBudget(budget)
     const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30&start=${p * 30 + 1}`
-    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
     if (!res || !res.ok) break
     const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
     const got = data?.items || []
@@ -215,7 +256,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 // 📇 연락처 보강 레인은 `enrich-lane.ts` 로 분리(2026-07-28, 600줄 한도) — 기존 import 경로 유지용 re-export.
 export { enrichHeldLeads } from './enrich-lane'
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 
@@ -261,12 +302,14 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) } // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  // 시작값을 상수로 고정 — 소비량을 다른 기준으로 재면 백오프/관측이 통째로 틀어진다(2026-07-28 kakao_sweep 실사고).
+  const budgetTotal = Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  const budget: FetchBudget = { left: budgetTotal }
 
   let found = 0, saved = 0
   const used: string[] = []
   for (let i = 0; i < batch; i++) {
-    if (outOfBudget(budget)) break
+    if (outOfBudget(budget) || budget.limitHit) break // 한도 도달 시 즉시 중단 — 남은 키워드를 헛돌지 않는다
     const kw = kws[i]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
@@ -304,17 +347,23 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   //   ② 홈 1페이지 크롤(crawlCompanyEmail) → **crawlContact**(root+/contact+홈 문의링크 추적)로 통일.
   let emailed = 0
   if (!outOfBudget(budget)) {
-    const { crawlContact, CRAWL_RULES_VERSION } = await import('./contact-enrich')
+    const { crawlContact, CRAWL_RULES_VERSION, realSite, PLATFORM_URL_SQL_EXCLUDE } = await import('./contact-enrich')
     // 대행사(tier 1)는 phone 보다 이메일 접촉이 핵심 → 이메일 크롤 우선(대표 "2단계 이메일 크롤 우선").
     // 🔁 2026-07-28 재시도 쿨다운 추가 — 보강 레인(enrich-lane:75)이 이미 쓰는 패턴인데 이 블록만 빠져 있었다.
     //   쿨다운이 없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 **다음 회차에도 또 선두**에 온다 →
     //   매시간 같은 15건을 다시 크롤(회당 최대 ~45 서브리퀘스트를 통째로 낭비)하고, 그 아래로 밀린 백로그는
     //   **영영 도달하지 못한다**. 시도 즉시 도장(성공·실패 무관) + 7일 쿨다운으로 예산이 백로그를 흐르게 한다.
     //   ⚠️ 전국 확장으로 사이트 보유 리드가 급증하면 이 낭비가 그대로 커진다(그래서 지금 고친다).
+    // 🚮 크롤 불가 URL(인스타·블로그·카페·유튜브·구인 플랫폼)을 **선정 단계에서** 제외한다.
+    //   실측(2026-07-28): 사이트 보유 행의 22.9% 가 이런 플랫폼 URL — 크롤해도 업체 이메일이 안 나온다.
+    //   LIMIT 15 라 이런 URL 이 슬롯을 차지하면 **진짜 사이트가 영영 안 뽑힌다**(예산과 슬롯 이중 낭비).
+    const platformNot = PLATFORM_URL_SQL_EXCLUDE.map(() => 'website NOT LIKE ?').join(' AND ')
     const targets = (await DB.prepare(`SELECT id, website, phone, category FROM ad_company_leads
         WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
           AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
+          AND ${platformNot}
         ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15`)
+      .bind(...PLATFORM_URL_SQL_EXCLUDE)
       .all<{ id: number; website: string; phone: string | null; category: string | null }>().catch(() => null))?.results || []
     // 도장은 크롤 **전에** 배치 1회 — 중간에 예산이 끊겨도 시도분이 앞줄에 다시 눌러앉지 않는다.
     if (targets.length) {
@@ -322,8 +371,10 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
       if (ids) await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id IN (${ids})`).run().catch(() => null)
     }
     for (const t of targets) {
-      if (outOfBudget(budget)) break
-      const c = await crawlContact(t.website, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
+      if (outOfBudget(budget) || budget.limitHit) break
+      const site = realSite(t.website) // 최종 판정 — SQL LIKE 를 빠져나간 변종(서브도메인 등) 차단
+      if (!site) continue
+      const c = await crawlContact(site, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
       if (c.email || (c.phone && !t.phone)) {
         // 이메일(또는 없던 전화) 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책). 기존값 보존 COALESCE.
         const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = 1 WHERE id = ?")
@@ -338,6 +389,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const s: CompanyCollectStats = {
     last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
+    // 📊 관측 필드 — 예산이 실제로 얼마나 쓰였고 한도에 닿았는지, 전국 확장 후 한 바퀴가 얼마나 되는지.
+    //   (전국 확장 + webkr 페이지네이션으로 키워드당 비용이 올라 예산이 먼저 마를 수 있다 → 눈에 보이게.)
+    total_keywords: total, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
     diag: { configured: true },
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
