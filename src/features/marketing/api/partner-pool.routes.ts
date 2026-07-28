@@ -380,9 +380,12 @@ app.post('/match-registry', async (c) => {
   const passes = Math.min(20, Math.max(1, intParam(c.req.query('passes'), 5)))
   const run = async () => {
     const { matchRegistryEmails } = await import('./registry-email-match')
+    // 🪙 패스들이 **한 인보케이션을 공유**한다 — 예산도 공유해야 한다. 예전엔 패스마다 수백 쿼리를 날려
+    //   서브리퀘스트 한도에 눌렸고, 그 실패를 `.catch(() => null)` 가 삼켜 통계엔 '원부에 없음' 으로 남았다.
+    const budget = { left: 45 } // 플랫폼 한도(≈50) 안쪽. 부족하면 다음 호출/크론이 커서로 이어받는다.
     for (let i = 0; i < passes; i++) {
-      const r = await matchRegistryEmails(c.env, 400).catch(() => null)
-      if (!r || r.done) break
+      const r = await matchRegistryEmails(c.env, 400, budget).catch(() => null)
+      if (!r || r.done || budget.left <= 8) break
     }
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }
