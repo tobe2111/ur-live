@@ -22,13 +22,14 @@ export interface AgencyFunnel { total: number; with_email: number; site_no_email
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
 export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number }
+export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -57,6 +58,17 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음. 괄호=크롤 시도 완료분(시도했는데 이메일이 없으면 구조적 한계 — 문의폼·카톡채널만 쓰는 업체)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}
           <span className="text-gray-400">(시도 {formatNumber(agencyFunnel.site_tried ?? 0)} / 대기 {formatNumber(Math.max(0, (agencyFunnel.site_no_email || 0) - (agencyFunnel.site_tried || 0)))})</span></span>
         <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
+      </div>
+    )}
+
+    {/* 🔗 원부 이메일 이식 — 크롤 0회 레인(전수조사: 이메일의 99.8%가 원부 직행분인데 타깃엔 미적용이었음) */}
+    {registryMatch?.last_run && (
+      <div className="mb-3 text-xs text-gray-500">
+        🔗 원부 이메일 이식 <span className="text-gray-400">(크롤 0회)</span>
+        <span> · 최근 {kstShort(registryMatch.last_run)} · 대조 {formatNumber(registryMatch.scanned ?? 0)} · <b className="text-indigo-600">이식 {formatNumber(registryMatch.matched ?? 0)}</b> (누적 {formatNumber(registryMatch.total_matched ?? 0)})</span>
+        {registryMatch.skip_reason && Object.keys(registryMatch.skip_reason).length > 0 && (
+          <span className="text-gray-400" title="확신이 없으면 비워둔다(허위 0) — 건너뛴 사유 분포"> · 보류 {Object.entries(registryMatch.skip_reason).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${v}`).join(' / ')}</span>
+        )}
       </div>
     )}
 

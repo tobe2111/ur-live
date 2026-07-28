@@ -298,8 +298,10 @@
 **🚫 절대 룰**: **비밀번호를 레포에 커밋하지 말 것**(공개 레포 — 영구 노출). 코드·문서·커밋 메시지·주석 어디에도 금지.
 `check-no-secrets.sh` 가 일부 패턴만 잡으므로 최종 방어는 이 룰이다.
 
-**자격증명 위치**: Claude Code 환경변수 **`ADMIN_DIAG_PASSWORD`**(Cloudflare env 아님 — 세션 환경변수).
-대표가 환경 설정에 1회 등록하면 **모든 세션이 자동 사용** 가능. 미등록이면 그 세션은 접근 불가(대표에게 요청).
+**자격증명 위치**: Claude Code **환경변수**(Cloudflare env 아님 — 세션 환경변수) — 대표가 2026-07-28 등록 완료.
+`URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD`. **모든 세션이 자동 사용**한다.
+⚠️ 환경변수는 **컨테이너 시작 시점에 주입**되므로 등록 직후 실행 중이던 세션엔 안 보인다(다음 세션부터 적용).
+미주입 세션이면 대표에게 값을 요청하지 말고 **다음 세션에서 수행**하거나 대표에게 상태줄을 요청한다.
 
 **접속 절차(3가지 함정 주의)**:
 1. **도메인**: 이 환경의 에이전트 프록시는 `urdeal.kr` 을 차단(CONNECT 403)한다. **`live.ur-team.com` 을 쓸 것** —
@@ -310,9 +312,11 @@
 
 ```bash
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-BODY=$(python3 -c "import json,os;print(json.dumps({'email':'claude@ur-team.com','password':os.environ['ADMIN_DIAG_PASSWORD']}))")
+BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
 TOK=$(curl -sS -X POST https://live.ur-team.com/api/admin/login -H 'Content-Type: application/json' -H "User-Agent: $UA" \
   --data-binary "$BODY" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['token'])")
+# ⚠️ 단일 세션 정책: 같은 계정으로 다른 곳(대표 브라우저 등)에서 로그인하면 이 토큰이 무효화된다
+#    (SESSION_SUPERSEDED). 긴 작업 중 끊기면 재로그인 후 재시도.
 curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
 ```
 
