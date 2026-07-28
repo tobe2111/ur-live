@@ -96,7 +96,12 @@ app.post('/__ads/enrich-company', async (c) => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     const stats = await enrichHeldLeads(c.env)
     return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+    // 💥 원문 릴레이(2026-07-28) — 'FAILED' 로 뭉개면 라이브에서 라운드가 왜 안 끝나는지 알 길이 없다.
+    //   내부 진단 엔드포인트(어드민 위임 전용)라 원문 노출 대상이 관리자로 한정된다.
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
 })
 
 // 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.

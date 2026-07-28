@@ -330,9 +330,20 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
 
 라이브 인프라(환경변수·배포·빌드로그·D1·KV)를 **대시보드 왕복 없이 직접** 확인·조정한다.
 
-**자격증명**: Claude Code **환경변수** `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`.
-⚠️ 컨테이너 시작 시 주입 → 등록 직후 세션엔 안 보인다(다음 세션부터). 미주입이면 대표에게 값을 묻지 말고
-그 작업을 대표에게 요청하거나 다음 세션으로 미룬다. **레포에 절대 커밋 금지**(공개 레포).
+**자격증명 — 2026-07-28 대표 지시로 D1 보관이 SSOT**: 토큰은 **`platform_settings` 의 `cf_api_token` /
+`cf_account_id`** 에 저장돼 있다. 어드민 자격(위 섹션)만 있으면 **모든 세션이 자동으로** 꺼내 쓴다 —
+대표가 세션마다 환경변수를 만질 필요가 없다(그게 이 방식을 택한 이유).
+
+```bash
+# 표준 취득 절차 — 어드민 토큰($TOK) 확보 후
+CFJSON=$(curl -sS "https://live.ur-team.com/api/admin/tools/settings" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA")
+export CLOUDFLARE_API_TOKEN=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_api_token',''))")
+export CLOUDFLARE_ACCOUNT_ID=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_account_id',''))")
+```
+
+환경변수 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 가 이미 주입돼 있으면 그걸 우선 쓰고, 없으면 위 절차로 D1 에서 취득한다.
+**🚫 레포에 값 커밋 절대 금지**(공개 레포 — `visibility: public` 확인됨. 커밋하면 git 히스토리에 영구 잔존 + 스캐너가 수분 내 수집).
+값이 아니라 **키 이름만** 문서에 남긴다.
 
 **⚠️ 프록시**: `dash.cloudflare.com` 은 이 환경에서 차단(000). **`api.cloudflare.com` 은 통과** — API 만 쓴다.
 
@@ -353,10 +364,18 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
+**확인된 사실(2026-07-28 실측 — 추측 대체)**:
+- 계정 `usage_model: standard` = **Workers 유료** → 서브리퀘스트 한도 **1,000**(50 아님).
+  ⇒ 보강 레인이 학습 상한 29~55 에서 맴돌던 건 플랜 탓이 **아니다**. 다른 원인(진단 배선 중).
+- `ur-ads` 바인딩 31개에 `NAVER_SEARCH_CLIENT_ID/SECRET`·`KAKAO_REST_API_KEY` **모두 존재** —
+  "크롤이 0인 건 네이버 키 부재" 가설도 **기각**.
+- `tail` 세션 생성은 되지만 **wss 업그레이드를 이 환경 프록시가 막는다**(non-101) → 실시간 로그는 불가.
+  ⇒ 라이브 원인 규명은 **D1 스냅샷 계측**에 의존해야 한다(그래서 `ads_enrich_last` 에 phase/p2/crash 추가).
+- Observability(telemetry) API 는 현재 토큰 권한 밖(`Authentication error`) — 필요해지면 권한 추가 요청.
+
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
-> 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · 서브리퀘스트 실효 상한이 50인지 1000인지
-> **플랜을 못 봐서** 관측 학습에만 의존했다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를 못 켜 제조사 풀이
-> 수동 실행분(85건)에 머물렀다.
+> 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
+> 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
 
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 

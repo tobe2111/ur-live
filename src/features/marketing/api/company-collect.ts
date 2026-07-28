@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -242,6 +242,26 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
  *   카카오 로컬 API 는 상호+주소로 **전화를 준다**(네이버는 빈값) → 홈페이지 없는 보류도 전화 확보 가능.
  *   전부 업체 공개 데이터만, 출처(contact_source) 기록. 못 찾으면 비워둠(허위 0). tier1 우선. */
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
+  try {
+    return await enrichHeldLeadsInner(env)
+  } catch (err) {
+    // 💥 예외를 **증거로 남긴다** — 2026-07-28 실측에서 `ads_enrich_last` 가 영원히 `partial:true` 인데
+    //   `limit_hit:false` 였다. 호출부(ur-ads)는 `catch { 'FAILED' }` 로 원문을 버려서, 라이브에서
+    //   "왜 라운드가 끝나지 않는가"를 알 방법이 **어디에도 없었다**(원인 규명이 정적 추론에서 막힌 이유).
+    //   마지막 부분 스냅샷에 crash 원문을 덧붙여, 다음 조회 한 번으로 사인이 드러나게 한다.
+    const e = err as { name?: string; message?: string } | null
+    const crash = `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}`
+    try {
+      const row = await env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_enrich_last'").first<{ value: string }>()
+      const prev = row?.value ? JSON.parse(row.value) as Record<string, unknown> : {}
+      await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+        .bind('ads_enrich_last', JSON.stringify({ ...prev, crash, crash_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })).run()
+    } catch { /* 기록 실패가 원래 예외를 가리지 않게 */ }
+    throw err
+  }
+}
+
+async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
   const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, THIRD_PARTY_HOST } = await import('./contact-enrich')
@@ -276,7 +296,16 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
-  const stamp = async (id: number) => { await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run().catch(() => null) }
+  //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,
+  //   한도 초과 시 `.catch(() => null)` 가 그 오류를 삼켜 **budget.limitHit 이 영영 false** 로 남았다
+  //   (스냅샷이 limit_hit:false 인데도 학습 상한은 계속 내려가던 모순의 정체). 여기서 신호를 살린다.
+  const stamp = async (id: number) => {
+    try {
+      await DB.prepare(`UPDATE ad_company_leads SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run()
+    } catch (err) {
+      if (isSubrequestLimitError((err as { message?: string } | null)?.message)) budget.limitHit = true
+    }
+  }
   let enriched = 0, processed = 0
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/http_403/network…) — 적중률 계측
   const failSamples: string[] = []                // 실패 URL 샘플 — 원인 특정용(호스트 형태·상태코드)
@@ -314,6 +343,11 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   → 한도 감지 즉시 + 주기적으로 부분 저장하고, 정상 종료 때 최종본으로 덮는다. `partial` 로 구분.
   //   비용: 저장 1회 = D1 1쿼리. 25건마다이므로 예산 대비 무시 가능.
   let capForStamp = learnedCap // 최종 저장 직전에 새 학습값으로 갱신 — 상태줄의 '다음 실행 상한'
+  // 📍 어디까지 갔나 — `partial:true` 만으로는 "Phase 1 직후 죽었다"와 "Phase 2 중 죽었다"를 구분할 수 없어
+  //   2026-07-28 원인 규명이 정적 추론에서 막혔다. 단계 표식 + Phase 2 스킵 사유 계수를 남긴다(비용: 문자열 1개).
+  let phase = 'start'
+  const p2: Record<string, number> = {} // examined/skip_email/no_site/naver_try/crawl_try/stamped
+  const bump = (k: string) => { p2[k] = (p2[k] || 0) + 1 }
   const snapshot = async (partial: boolean, remaining?: number) => {
     const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
     // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 안 나간다.
@@ -326,6 +360,8 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
         crawl_reason: crawlReason, fail_samples: failSamples,
         fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
         limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
+        phase, p2, targets: targets.length,
+        diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
       })).run().catch(() => null)
   }
 
@@ -345,16 +381,21 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
+  phase = 'p1_done'
   await snapshot(true) // Phase 1 종료 시점 스냅샷 — 여기서 죽어도 전화 확보분은 계측에 남는다
+  phase = 'p2'
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
   let sinceSnapshot = 0
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit) break
-    if (t.email) continue // 이미 이메일 있음
+    bump('examined')
+    if (t.email) { bump('skip_email'); continue } // 이미 이메일 있음
     let site = realSite(t.website)
+    if (!site) bump('no_site')
     let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
     if (!site && nvId && nvSecret && budget.left > 3) {
+      bump('naver_try')
       const nv = await naverLocalLookup(nvId, nvSecret, t.company_name, t.region, t.address || '', budget)
       if (nv.website) site = nv.website // 지역검색 등록 링크(업체가 등록) — 신뢰
       if (!t.phone && nv.phone && t.address) { await save(t.id, nv.phone, null, nv.website, 'naver'); t.phone = nv.phone }
@@ -362,6 +403,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       if (!site && budget.left > 3) { site = await naverHomepageSearch(nvId, nvSecret, t.company_name, t.region, budget); discovered = !!site }
     }
     if (site && budget.left > 2) {
+      bump('crawl_try')
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       // 실패 URL 샘플(최대 4) — '왜 못 가져왔나'를 실제 주소로 특정(2026-07-28 fetch 실패 45/45 진단).
@@ -383,7 +425,9 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
     if (budget.limitHit) { await snapshot(true); break }
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
-    if (++sinceSnapshot >= 25) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
+    bump('stamped')
+    if (budget.limitHit) { await snapshot(true); break } // 도장이 한도를 밝혀낸 경우도 즉시 중단(위 stamp 참조)
+    if (++sinceSnapshot >= 10) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
   }
 
   // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
@@ -417,6 +461,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     }
   }
 
+  phase = 'p3_done'
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
