@@ -324,6 +324,20 @@
    `data.accessToken` / `data.token` / 최상위 `token` 중 하나로 온다. **존재하는 것을 골라 쓸 것**
    (`data['token']` 만 꺼내면 KeyError). 이후 `Authorization: Bearer <token>`. 계정은 `admins.id=10`.
 
+**🤝 동시 로그인(2026-07-28 대표 지시 "동시 로그인되게 하고")**: 대시보드는 시트별 **단일 세션**이라 같은
+계정으로 다른 곳에서 로그인하면 기존 세션이 즉시 `SESSION_SUPERSEDED` 로 끊긴다. 자동화 계정은 **여러 세션이
+동시에** 쓰므로(이 문서가 "모든 세션이 자동 사용"이라 규정) 서로를 계속 밀어냈고, 대표가 브라우저로 들어오면
+자동화가 끊겼다. → `dashboard_sessions.multi_session=1` 인 시트는 **세션 경계를 올리지 않아 동시 접속 유지**.
+
+```bash
+# super_admin 토큰으로 1회만 켜면 영구 적용(계정별 opt-in, 기본 OFF)
+curl -sS -X PATCH "https://live.ur-team.com/api/admin/admins/10/multi-session" \
+  -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" -H 'Content-Type: application/json' \
+  --data '{"enabled":true}'
+```
+> ⚠️ **자동화 계정에만 켤 것.** 단일 세션은 계정 공유·도용의 *탐지 신호*이기도 하다(남이 쓰면 내가 튕겨서
+> 알게 된다). 사람이 쓰는 운영 계정에 켜면 그 신호를 잃는다.
+
 ```bash
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
