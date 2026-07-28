@@ -42,7 +42,7 @@ export function normalizeCompanyName(raw: string | null | undefined): string {
  *   @returns 남은 미처리 행이 더 있으면 false
  */
 export async function backfillNameNorm(DB: D1Database, limit = 500, budget?: D1Budget): Promise<{ done: boolean; filled: number }> {
-  spend(budget, 2)
+  spend(budget) // SELECT 1회 — 채울 행이 있을 때만 아래에서 batch 1회를 더 계상한다(빈 확인은 싸다).
   // merged-filter-ok — 지문 백필은 접힌 행도 채워둔다(되돌리면 바로 매칭 대상이 되도록).
   const rows = (await DB.prepare(
     `SELECT id, company_name FROM ad_company_leads
@@ -50,6 +50,7 @@ export async function backfillNameNorm(DB: D1Database, limit = 500, budget?: D1B
       ORDER BY (CASE WHEN source = 'commerce' THEN 0 ELSE 1 END), id ASC LIMIT ?`,
   ).bind(Math.max(1, Math.min(2000, limit))).all<{ id: number; company_name: string }>().catch(() => null))?.results || []
   if (!rows.length) return { done: true, filled: 0 }
+  spend(budget) // batch 1회
   await DB.batch(rows.map(r => DB.prepare('UPDATE ad_company_leads SET name_norm = ? WHERE id = ?')
     .bind(normalizeCompanyName(r.company_name), r.id))).catch(() => null)
   return { done: rows.length < limit, filled: rows.length }
@@ -118,11 +119,15 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
   const budgetStart = budget ? budget.left : 0
   let backfilling = false
   for (let i = 0; i < 20; i++) {
-    if (budget && budget.left <= 12) { backfilling = true; break } // 매칭 몫은 남겨둔다
+    // ⚠️ 예산이 없어 **확인을 못 한 것**은 `backfilling` 이 아니다(2026-07-28 수리).
+    //   예전엔 여기서 true 를 세워, 한 인보케이션의 마지막 패스(예산 고갈 상태)가 통계를 덮어쓰며
+    //   백필이 끝났는데도 상태줄이 영영 `backfilling:true` 를 보여줬다 — "모르는 것"을 "남았다"로
+    //   적는 것도 거짓 보고다. 남은 것은 아래 두 줄(실패=미지 / 실제 잔여)에서만 참이 된다.
+    if (budget && budget.left <= 12) break // 매칭 몫은 남겨둔다
     const r = await backfillNameNorm(env.DB, 500, budget).catch(() => null)
-    if (!r) { backfilling = true; break }
-    if (r.done) break
-    backfilling = true
+    if (!r) { backfilling = true; break } // 실패 = 미지 → 보수적으로 '남음'
+    if (r.done) break                     // 실제로 다 채워졌다
+    backfilling = true                    // 아직 남았다(다음 패스/틱이 이어받는다)
   }
   const DB = env.DB
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
