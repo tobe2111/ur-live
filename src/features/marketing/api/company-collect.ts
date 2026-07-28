@@ -308,6 +308,27 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++
   }
 
+  // 📝 진행 스냅샷 저장(2026-07-28 계측 공백 수리) — 결과를 **맨 끝에서 한 번만** 쓰면, 인보케이션이
+  //   중도 종료(CPU/wall/서브리퀘스트 한도)될 때 그 실행은 **영원히 계측되지 않는다**. 실측에서 실제로
+  //   이메일은 붙었는데 `ads_enrich_last` 가 갱신되지 않는 상태가 관측됐다(원인 규명이 늦어진 한 원인).
+  //   → 한도 감지 즉시 + 주기적으로 부분 저장하고, 정상 종료 때 최종본으로 덮는다. `partial` 로 구분.
+  //   비용: 저장 1회 = D1 1쿼리. 25건마다이므로 예산 대비 무시 가능.
+  let capForStamp = learnedCap // 최종 저장 직전에 새 학습값으로 갱신 — 상태줄의 '다음 실행 상한'
+  const snapshot = async (partial: boolean, remaining?: number) => {
+    const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
+    // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 안 나간다.
+    const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_enrich_last', JSON.stringify({
+        last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
+        ...(typeof remaining === 'number' ? { remaining } : {}),
+        crawl_reason: crawlReason, fail_samples: failSamples,
+        fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
+        limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
+      })).run().catch(() => null)
+  }
+
   // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
   //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
   //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
@@ -324,8 +345,10 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
+  await snapshot(true) // Phase 1 종료 시점 스냅샷 — 여기서 죽어도 전화 확보분은 계측에 남는다
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
+  let sinceSnapshot = 0
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit) break
     if (t.email) continue // 이미 이메일 있음
@@ -357,8 +380,10 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     // ⛔ 한도 도달이면 **도장 없이** 중단 — 이 행은 '시도된 적 없음'으로 남겨야 다음 실행이 다시 집는다.
     //   (2026-07-28 정체의 진짜 원인: 한도 뒤 무의미하게 실패한 수백 행이 매 라운드 7일 쿨다운을 받아
     //    재시도 풀에서 이탈 → 백로그가 흐르지 않고 이메일 수확이 0 에 고착.)
-    if (budget.limitHit) break
+    //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
+    if (budget.limitHit) { await snapshot(true); break }
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
+    if (++sinceSnapshot >= 25) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
   }
 
   // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
@@ -394,23 +419,15 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
-  // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 나가지도 않으므로
-  //   분모에 넣으면 추출력이 실제보다 나쁘게 보인다(2026-07-28: 133 중 59가 blocked_host 였음).
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
-  const hitRate = attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0
-  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
-  const spent = budgetTotal - budget.left
-  const nextCap = nextSubreqCap(spent, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
-  if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
-  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지") + 🎯 크롤 적중률 사유(다음 개선을 데이터로 고름).
-  //   예산 실측(budget_total/spent/limit_hit/learned_cap)까지 남긴다 — "왜 조금밖에 못 돌았나"가 상태줄에서 바로 보이게.
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_enrich_last', JSON.stringify({
-      last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason, fail_samples: failSamples,
-      fetches: budgetStart - budget.left, budget_total: budgetTotal, spent, limit_hit: !!budget.limitHit, learned_cap: nextCap ?? learnedCap,
-    })).run().catch(() => null)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
+  if (nextCap != null) {
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    capForStamp = nextCap // 상태줄이 '다음 실행 상한'을 새 값으로 보여주도록
+  }
+  await snapshot(false, Number(rem?.n) || 0) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
   return result
 }
 

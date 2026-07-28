@@ -21,7 +21,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
@@ -76,6 +76,7 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         판별 불가였던 원인). 처리/확보/크롤 적중률로 '시도량 부족' vs '추출력 부족'을 즉시 구분. */}
     <div className="mb-3 text-xs text-gray-500">
       📧 이메일 보강 레인
+      {enrichLast?.partial && <span className="ml-1 text-amber-600 font-semibold" title="실행 도중 저장된 스냅샷 — 인보케이션이 끝나기 전 상태(중도 종료 시에도 계측이 남도록 25건마다 저장)">⏳ 진행 중/중단 스냅샷</span>}
       {enrichLast?.last_run
         ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-indigo-600">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
             {typeof enrichLast.crawls === 'number' && enrichLast.crawls > 0

@@ -255,7 +255,7 @@ async function findSiteByWeb(id: string, secret: string, name: string, region: s
 export interface MakerEnrichStats {
   last_run: string; processed: number; enriched: number; crawls: number; hit_rate: number
   remaining: number; crawl_reason: Record<string, number>; fail_samples: string[]
-  budget_total: number; spent: number; limit_hit: boolean; learned_cap: number
+  budget_total: number; spent: number; limit_hit: boolean; learned_cap: number; partial?: boolean
 }
 const STATS_KEY = 'supply_maker_enrich_last'
 
@@ -291,6 +291,22 @@ export async function enrichMakerLeads(env: Env): Promise<MakerEnrichStats> {
   const crawlReason: Record<string, number> = {}
   const failSamples: string[] = []
   let processed = 0, enriched = 0
+  // 📝 진행 스냅샷 — 소비자 트랙과 동일한 계측 공백 수리(2026-07-28). 결과를 맨 끝에서 한 번만 쓰면
+  //   인보케이션 중도 종료 시 그 실행이 **영원히 계측되지 않는다**. 한도 감지 즉시 + 25건마다 부분 저장.
+  let sinceSnapshot = 0
+  const snapshot = async (partial: boolean, remaining?: number) => {
+    const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
+    const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(STATS_KEY, JSON.stringify({
+        last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
+        ...(typeof remaining === 'number' ? { remaining } : {}),
+        crawl_reason: crawlReason, fail_samples: failSamples,
+        budget_total: budgetTotal, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
+        learned_cap: learnedCap, partial,
+      })).run().catch(() => null)
+  }
 
   for (const t of targets) {
     if (budget.left <= 2 || budget.limitHit) break
@@ -315,8 +331,10 @@ export async function enrichMakerLeads(env: Env): Promise<MakerEnrichStats> {
       }
     }
     // ⛔ 한도 도달이면 도장 없이 중단 — 인프라 실패가 이 행을 7일간 재시도 불가로 만들면 안 된다.
-    if (budget.limitHit) break
+    //   중단 **전에** 스냅샷을 남겨 이 신호가 유실되지 않게 한다.
+    if (budget.limitHit) { await snapshot(true); break }
     await stamp(t.id)
+    if (++sinceSnapshot >= 25) { sinceSnapshot = 0; await snapshot(true) }
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM supply_maker_leads WHERE email IS NULL OR email = ''").first<{ n: number }>().catch(() => null)
@@ -336,6 +354,6 @@ export async function enrichMakerLeads(env: Env): Promise<MakerEnrichStats> {
     budget_total: budgetTotal, spent, limit_hit: !!budget.limitHit, learned_cap: nextCap ?? learnedCap,
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(STATS_KEY, JSON.stringify(stats)).run().catch(() => null)
+    .bind(STATS_KEY, JSON.stringify({ ...stats, partial: false })).run().catch(() => null)
   return stats
 }
