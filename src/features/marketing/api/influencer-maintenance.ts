@@ -233,7 +233,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     out.paused = !!budget.exhausted   // 예산 소진으로 중단 — 다음 회차가 커서로 이어받는다(정상 동작)
     out.limit_hit = !!budget.limitHit // 플랫폼 한도 예외 관측 — 학습 상한을 내린다
     // 📉 학습 상한 갱신 — 수집 레인과 **같은 SSOT·같은 키**(한도는 워커 단위라 레인별로 다르지 않다).
-    const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
+    const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, learnedCap, envBudget)
     if (nextCap != null) {
       await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
         .bind(subreqCapKey('maintenance'), String(nextCap)).run().catch(() => null)

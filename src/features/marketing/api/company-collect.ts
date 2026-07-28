@@ -361,7 +361,12 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   커서를 전진**시킨다(시도 못 한 행은 다음 라운드에 다시 잡히게).
   const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('kakao_sweep'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
-  const budget: FetchBudget = { left: resolveSubreqBudget(cap, learnedCap) }
+  // ⚠️ 2026-07-28: 예산은 `cap`(env 천장 600)이 아니라 **학습 상한과의 더 작은 쪽**에서 시작한다.
+  //   소비량을 `cap - budget.left` 로 계산하면(예전 코드) 학습값 63 으로 시작했는데 600 기준으로 재서
+  //   실제의 ~10배가 나온다 → 한도 오류 시 백오프가 `floor(590*0.8)=472` 로 **상한을 오히려 폭등**시켰다
+  //   (되내려와야 할 안전판이 거꾸로 작동). 시작값을 명시 상수로 잡아 두 곳이 어긋날 수 없게 한다.
+  const budgetTotal = resolveSubreqBudget(cap, learnedCap)
+  const budget: FetchBudget = { left: budgetTotal }
   let found = 0, lastDone = cursor
   for (const r of rows) {
     if (budget.left <= 0 || budget.limitHit) break // 여기서 멈추면 남은 행은 커서가 안 넘어가 다음 라운드 대상
@@ -374,7 +379,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
         .bind(k.phone, r.id).run().catch(() => null)
     }
   }
-  const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, cap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const nextCursor = lastDone

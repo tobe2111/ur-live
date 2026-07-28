@@ -504,7 +504,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
   //   ⚠️ exhausted 는 '발굴이 **자기 몫**을 다 썼나' — 예약분을 남기고 멈추므로 0 이 아니라 예약분과 비교한다.
   //      (0 과 비교하면 항상 false → 학습 상한이 영영 상향 회복되지 않는다.)
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, budget.left <= enrichReserve, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget)
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {

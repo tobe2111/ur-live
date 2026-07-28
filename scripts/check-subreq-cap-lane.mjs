@@ -95,6 +95,39 @@ for (const [key, files] of keyOwners) {
   }
 }
 
+/* ── ② 소비량 인자 검사 (2026-07-28 신설) ─────────────────────────────────────────
+ * `nextSubreqCap(spent, …)` 의 첫 인자는 **이번 라운드가 실제로 쓴 양**이어야 한다.
+ * 실사고: kakao_sweep 레인이 예산을 `resolveSubreqBudget(cap, learnedCap)`(=63)에서 시작해놓고
+ *   소비량은 `cap - budget.left`(=600-left) 로 재, 실제의 ~10배를 보고했다. 그 결과 한도 오류 시
+ *   백오프가 `floor(590*0.8)=472` 로 **상한을 되내리는 대신 폭등**시켜 안전판이 거꾸로 작동했다.
+ *   조용한 산술 오류라 테스트도 로그도 못 잡았다(값이 그럴듯해서 눈으로도 안 보인다).
+ * 규칙: 첫 인자는 `<시작값> - budget.left` 또는 `budget.used` 형태. 시작값 식별자는
+ *   `resolveSubreqBudget(...)` 을 담은 변수여야 한다(env 천장 변수를 그대로 빼면 위반).
+ */
+const CALL_RE = /nextSubreqCap\(\s*([^,]+),/g
+for (const file of walk(path.join(ROOT, 'src'))) {
+  const rel = path.relative(ROOT, file).replace(/\\/g, '/')
+  if (rel === DEF_FILE || rel.includes('/tests/') || rel.includes('.test.')) continue
+  const raw = fs.readFileSync(file, 'utf8')
+  if (!raw.includes('nextSubreqCap(')) continue
+  const src = stripComments(raw)
+  // 이 파일에서 resolveSubreqBudget 결과를 담은 변수명들(= 정당한 시작값).
+  const totals = [...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*resolveSubreqBudget\(/g)].map(m => m[1])
+  for (const m of src.matchAll(CALL_RE)) {
+    const arg = m[1].trim()
+    const line = src.slice(0, m.index).split('\n').length
+    if (raw.split('\n')[line - 1]?.includes('subreq-cap-lane-ok')) continue
+    const okUsed = /^budget\.used$/.test(arg)
+    const okDiff = totals.some(t => new RegExp(`^${t}\\s*-\\s*budget\\.left$`).test(arg))
+    if (okUsed || okDiff) continue
+    violations.push({
+      file: rel, line, key: 'spent',
+      why: `nextSubreqCap 의 소비량 인자가 '${arg}' — 실제 시작값 기준이 아니면 백오프가 거꾸로 작동합니다. `
+        + `\`${totals[0] || 'budgetTotal'} - budget.left\` 또는 \`budget.used\` 를 쓰세요`,
+    })
+  }
+}
+
 if (!violations.length) {
   console.log('✅ 서브리퀘스트 학습 상한 키 레인별 분리 OK (공유 없음).')
   process.exit(0)
