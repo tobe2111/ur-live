@@ -21,7 +21,7 @@ export interface NtsSweep { run: { last_run?: string; checked?: number; closed?:
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
@@ -97,9 +97,23 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
       {typeof enrichLast?.spent === 'number' && (
         <div className="mt-1 text-[11px] text-gray-400">
           예산 {formatNumber(enrichLast.spent)}/{formatNumber(enrichLast.budget_total ?? 0)} 사용
+          {/* 🧮 내역 분해(2026-07-28) — D1 도 서브리퀘스트라 예산에서 함께 지불한다. 이 둘을 안 나누면
+              '예산 사용'과 '외부요청' 숫자가 어긋나 보여 읽는 사람이 오해한다. 어느 쪽이 예산을 먹는지가
+              곧 처방(크롤 축소 vs 대상 수 축소)을 가르므로 화면에 드러낸다. */}
+          {typeof enrichLast.d1 === 'number' && (
+            <span> (외부요청 {formatNumber(enrichLast.fetches ?? 0)} + DB쓰기 <b className={enrichLast.d1 > (enrichLast.fetches ?? 0) ? 'text-amber-600' : ''}>{formatNumber(enrichLast.d1)}</b>)</span>
+          )}
           {enrichLast.limit_hit
             ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 이번 라운드 중단(실패 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
             : <span> · 한도 여유</span>}
+          {/* ⏱️ 벽시계 상한 도달 — 예산이 남아도 시간이 라운드를 끝냈다는 뜻(처방이 다르다: 캡 조정이 아니라
+              동시성·타임아웃). ADS_ENRICH_DEADLINE_MS 로 무배포 조정 가능. */}
+          {enrichLast.deadline_hit && (
+            <span className="text-amber-600 font-semibold"> · ⏱ 시간 상한 도달 → 정상 종료(남은 백로그는 다음 라운드)</span>
+          )}
+          {typeof enrichLast.elapsed_ms === 'number' && (
+            <span> · 소요 {(enrichLast.elapsed_ms / 1000).toFixed(1)}s</span>
+          )}
         </div>
       )}
       {/* 실패 URL 샘플 — 호스트 형태/상태코드로 '왜 못 가져왔나'를 눈으로 특정 */}
