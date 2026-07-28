@@ -176,8 +176,12 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'maintenance' }
   for (const phase of MAINT_PHASES) {
     const r = await runMaintenancePhase(env, phase)
-    Object.assign(out, { [phase]: r[phase] })
     if (r.busy) { out.busy = true; break }
+    // 결과 + 실패사유 + 예산상태를 모두 승계 — 버튼 응답에서 "왜 조금만 됐는지"가 보여야 한다.
+    if (r[phase] !== undefined) out[phase] = r[phase]
+    if (r[`${phase}_error`] !== undefined) out[`${phase}_error`] = r[`${phase}_error`]
+    if (r.paused) out.paused = true
+    if (r.limit_hit) out.limit_hit = true
   }
   return out
 }
