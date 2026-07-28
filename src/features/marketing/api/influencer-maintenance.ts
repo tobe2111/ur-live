@@ -10,7 +10,7 @@ import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './inf
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
-import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 
 const POOL = 0
@@ -212,7 +212,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
 
   const envBudget = Math.max(10, Math.min(800, parseInt(String(env.ADS_MAINT_OPS_BUDGET || ''), 10) || 60))
-  const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+  const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
     .first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
   const total = resolveSubreqBudget(envBudget, learnedCap)
@@ -236,7 +236,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
     if (nextCap != null) {
       await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-        .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+        .bind(subreqCapKey('maintenance'), String(nextCap)).run().catch(() => null)
       out.next_cap = nextCap
     }
     // ⭐ 결과 기록 — **예산 밖(실제 DB)에서, 항상**. 이전 단계 기록과 병합해 어드민 한 줄 요약을 유지.

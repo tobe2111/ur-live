@@ -62,6 +62,15 @@ for (const f of walk(path.join(ROOT, 'src'))) {
     if (!keyOwners.get(key).includes(rel)) keyOwners.get(key).push(rel)
   }
 
+  // 🚨 새 레인이 자기 레인을 선언 안 하고 남의 키를 쓰는 경우 — 2026-07-28 실제 발생(influencer-maintenance).
+  //   예산 API(resolveSubreqBudget/nextSubreqCap)를 쓰면서 subreqCapKey(lane) 호출이 하나도 없으면,
+  //   그 파일은 상한을 어딘가에서 빌려오고 있다는 뜻 = 레인 격리 위반.
+  if (rel.startsWith('src/features/marketing/') && rel !== DEF_FILE
+      && /\b(resolveSubreqBudget|nextSubreqCap)\s*\(/.test(src) && !/subreqCapKey\s*\(/.test(src)) {
+    const line = src.slice(0, src.search(/\b(resolveSubreqBudget|nextSubreqCap)\s*\(/)).split('\n').length
+    violations.push({ file: rel, line, key: '(레인 미선언)', why: '예산 API 를 쓰면서 subreqCapKey(lane) 선언이 없습니다 — 이 레인의 키를 SubreqLane 에 추가하세요' })
+  }
+
   CAP_LITERAL.lastIndex = 0
   let m
   while ((m = CAP_LITERAL.exec(src))) {

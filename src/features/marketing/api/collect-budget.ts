@@ -27,6 +27,7 @@ export type SubreqLane =
   | 'influencer'      // 인플루언서 자동수집 — 건당 fetch 1
   | 'company_enrich'  // 파트너풀 연락처 보강 — 건당 fetch 4~6 + D1 다수(가장 비쌈)
   | 'kakao_sweep'     // 카카오 전화 스윕 — 건당 fetch 1
+  | 'maintenance'     // 야간 풀 자동 정비 — D1 중심(통합/재추출/재분류) + 일부 재조회 fetch
 /** 레인별 학습 상한 저장 키(platform_settings). */
 export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane}`
 /** 이 아래로는 안 내린다 — 수확이 0 이 되면 학습 자체가 무의미. */
