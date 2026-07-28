@@ -53,8 +53,10 @@ export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|jo
  *  v4 (2026-07-28) = fetch 실패 상태코드 분류(403/404/5xx/network) + 실패 URL 샘플 — 원인 특정용 재시도.
  *  v5 (2026-07-28) = 서브리퀘스트 한도 관측·중단(safeFetch). v4 까지의 '실패' 대다수는 사이트 문제가 아니라
  *    **한도 초과 뒤 무의미하게 시도된 것**이고, 그 행들이 실패 도장(7일 쿨다운)까지 받아 재시도 풀에서
- *    이탈해 있었다 → 버전 bump 로 그 오염분을 전량 즉시 재시도 대상으로 되돌린다. */
-export const CRAWL_RULES_VERSION = 5
+ *    이탈해 있었다 → 버전 bump 로 그 오염분을 전량 즉시 재시도 대상으로 되돌린다.
+ *  v6 (2026-07-28) = 국내 수기 난독화 복원(골뱅이/(at)/[dot]) — `no_contact` 로 집계된 사이트 중 **실제로는
+ *    이메일이 있는데 못 읽은 것**을 회수. 추출기 개선이므로 이전 no_contact 판정분을 전량 재시도해야 한다. */
+export const CRAWL_RULES_VERSION = 6
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
@@ -63,6 +65,15 @@ const publishableEmail = (e: string, allowNewsroom = false): boolean =>
 /** HTML 엔티티형 이메일 난독 복원(&#64;→@ 등) — 국내 CMS 안티봇 출력에 흔함(2026-07-27 크롤 고도화). */
 const decodeEmailEntities = (s: string): string =>
   s.replace(/&#0*64;|&commat;/gi, '@').replace(/&#0*46;|&period;/gi, '.').replace(/&#0*45;/g, '-')
+    // 🇰🇷 국내 사이트 흔한 수기 난독화 — 스팸봇 회피용으로 @ 를 '골뱅이'·(at)·[@] 로 쓴다.
+    //   2026-07-28 실측: 크롤 적중률의 남은 손실이 `no_contact`(사이트에 이메일이 없음)인데, 그중 일부는
+    //   **실제로는 있는데 우리가 못 읽은 것**이다. 복원은 fetch 추가 0(문자열 처리)이라 예산 무관하게 순이득.
+    //   ⚠️ 조합·추측이 아니라 **표기 복원**만 — 없는 주소를 만들지 않는다(허위 0).
+    .replace(/\s*(?:골뱅이|앳)\s*/g, '@')
+    .replace(/\s*[[(<{]\s*(?:at|@)\s*[\])>}]\s*/gi, '@')
+    .replace(/\s+(?:at)\s+(?=[A-Za-z0-9.-]+\.[A-Za-z]{2,})/gi, '@')
+    .replace(/\s*[[(<{]\s*(?:dot|점)\s*[\])>}]\s*/gi, '.')
+    .replace(/(?<=@[A-Za-z0-9-]{2,})\s+dot\s+(?=[A-Za-z]{2,})/gi, '.')
 
 /**
  * 📧 HTML 에서 **게시된** 이메일 1개 추출 — 추측·조합 절대 없음.
