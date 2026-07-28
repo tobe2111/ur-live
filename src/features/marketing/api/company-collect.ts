@@ -251,6 +251,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
   // 기본 300(대표 "쿼터 최대한" — 네이버 무료 25K/day 대비 한참 여유), 상한 800(Workers 호출당 서브요청 1,000 한도 안전마진).
   const budget: FetchBudget = { left: Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)) }
+  const budgetStart = budget.left // 실사용 서브요청 계측 — 한도(1,000) 근접 여부를 숫자로 판정
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
@@ -323,7 +324,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
       const c = await crawlContact(site, budget, discovered ? t.company_name : undefined, t.category === '미디어')
       crawlReason[c.reason] = (crawlReason[c.reason] || 0) + 1 // 적중률 계측(사이트 방문 대비 결과 사유)
       // 실패 URL 샘플(최대 4) — '왜 못 가져왔나'를 실제 주소로 특정(2026-07-28 fetch 실패 45/45 진단).
-      if (c.reason !== 'ok' && c.failUrl && failSamples.length < 4) failSamples.push(`${c.failUrl} (${c.reason})`)
+      if (c.reason !== 'ok' && c.failUrl && failSamples.length < 4) failSamples.push(`${c.failUrl} (${c.reason}${c.failErr ? ` | ${c.failErr}` : ''})`)
       if (c.email || (c.phone && !t.phone)) await save(t.id, t.phone ? null : c.phone, c.email, site, 'homepage')
       // 🏷️ webkr 상호 치유(대표 신고 "회사명으로 수집 안 된 것들") — 페이지 제목을 상호로 삼은 행을
       //   사이트 **자기 이름**(og:site_name/title)으로 교정. 어차피 연 사이트라 추가 비용 0.
@@ -374,7 +375,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
   // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지") + 🎯 크롤 적중률 사유(다음 개선을 데이터로 고름).
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason, fail_samples: failSamples })).run().catch(() => null)
+    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason, fail_samples: failSamples, fetches: budgetStart - budget.left })).run().catch(() => null)
   return result
 }
 
