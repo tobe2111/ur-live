@@ -27,7 +27,8 @@ function fakeEnv(targets: Row[], registry: Row[]) {
         async first() { return null }, // stats/cursor 없음 → 첫 실행
         async all() {
           if (/name_norm IS NULL/.test(sql)) return { results: [] }        // 백필 완료 상태
-          if (/source = 'commerce' AND name_norm IN/.test(sql)) {
+          // 묶음 조회 식별은 `name_norm IN (` 하나로 — 다른 조건(merged_into 등)이 붙어도 안 깨지게.
+          if (/name_norm IN \(/.test(sql)) {
             counters.registryQueries++
             const want = new Set(st.binds as string[])
             return { results: registry.filter(r => want.has(String(r.name_norm))) }

@@ -77,6 +77,7 @@ app.post('/:id/bounce', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   await ensureCompanySchema(c.env.DB)
+  // merged-filter-ok — id 지정 단건 조회(어드민이 명시한 행).
   const row = await c.env.DB.prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
   const email = (row?.email || '').trim().toLowerCase()
   if (!email) return c.json({ success: false, error: '이 리드에 이메일이 없습니다' }, 400)
@@ -294,7 +295,7 @@ app.get('/contact-list', async (c) => {
   const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
   const companies = (await c.env.DB.prepare(
     `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
-     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+     WHERE active = 1 AND merged_into IS NULL AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
      ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
   ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
   const stores = (await c.env.DB.prepare(
@@ -305,47 +306,11 @@ app.get('/contact-list', async (c) => {
   return c.json({ success: true, companies, stores })
 })
 
-// POST /api/admin/partner-pool/collect-nara — 📑 나라장터 조달업체(대행사 계열) 수동 수집(ur-ads 위임).
-app.post('/collect-nara', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '📑 조달업체 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-mx — 📮 기존 이메일 재검증(죽은 도메인 정리, ur-ads 위임).
-app.post('/sweep-mx', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '📮 이메일 재검증', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
-app.post('/sweep-nts', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '🏛 폐업 정리', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// 위임 3종(나라장터 수집 · 이메일 재검증 · 폐업 정리) — 아래 delegateCollect 하나로 통일(같은 보일러플레이트였다).
+//   ⚠️ 함수 선언은 호이스팅되므로 정의(아래)보다 위에서 호출해도 안전하다.
+app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업체 수집'))
+app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
+app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
 
 // GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
 app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))

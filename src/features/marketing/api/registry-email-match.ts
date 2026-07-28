@@ -43,6 +43,7 @@ export function normalizeCompanyName(raw: string | null | undefined): string {
  */
 export async function backfillNameNorm(DB: D1Database, limit = 500, budget?: D1Budget): Promise<{ done: boolean; filled: number }> {
   spend(budget, 2)
+  // merged-filter-ok — 지문 백필은 접힌 행도 채워둔다(되돌리면 바로 매칭 대상이 되도록).
   const rows = (await DB.prepare(
     `SELECT id, company_name FROM ad_company_leads
       WHERE name_norm IS NULL AND company_name IS NOT NULL AND company_name != ''
@@ -136,7 +137,7 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
   spend(budget)
   const targets = (await DB.prepare(
     `SELECT id, company_name, address, region, website FROM ad_company_leads
-      WHERE id > ? AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
+      WHERE id > ? AND merged_into IS NULL AND ((email IS NULL OR email = '') OR (website IS NULL OR website = '')) AND COALESCE(source,'') != 'commerce'
       ORDER BY id ASC LIMIT ?`
   ).bind(cursor, batch).all<{ id: number; company_name: string; address: string | null; region: string | null; website: string | null }>().catch(() => null))?.results || []
 
@@ -166,7 +167,7 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
     spend(budget)
     const rows = (await DB.prepare(
       `SELECT company_name, address, email, website, name_norm FROM ad_company_leads
-        WHERE source = 'commerce' AND name_norm IN (${chunk.map(() => '?').join(',')})
+        WHERE source = 'commerce' AND merged_into IS NULL AND name_norm IN (${chunk.map(() => '?').join(',')})
           AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))`
     ).bind(...chunk).all<Cand>().catch(() => null))
     if (!rows) { skip.registry_query_failed = (skip.registry_query_failed || 0) + 1; continue } // 조용한 0건 금지

@@ -63,6 +63,7 @@ if domain money; then
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
   run "크롤 재시도 쿨다운"                node scripts/check-crawl-cooldown.mjs -s
+  run "접힌 리드(중복병합) 누수"          node scripts/check-merged-lead-filter.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
