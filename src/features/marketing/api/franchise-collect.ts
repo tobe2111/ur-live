@@ -101,7 +101,10 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  // 404 는 키 문제가 아니라 **경로/오퍼레이션명 문제**다 — 그 사실과 무배포 교정 방법을 오류에 박아둔다
+  //   (2026-07-28: 11회 연속 `API: HTTP 404` 만 뜨는데 무엇을 고쳐야 하는지 화면에 안 나와 방치됐다).
+  const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치. 공공데이터포털의 '가맹정보 브랜드 목록' 스펙 확인 후 ADS_FRANCHISE_ENDPOINT/ADS_FRANCHISE_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
+  const error = found === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
   const s: FranchiseStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s

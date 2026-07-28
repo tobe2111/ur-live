@@ -98,7 +98,10 @@ export async function runNaraVendorCollect(env: Env, maxPages = 5): Promise<Nara
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  const error = saved === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  // 404 = 경로/오퍼레이션명 문제(키 문제 아님). 오퍼레이션명은 애초에 문서 추정값이라 특히 의심 대상 —
+  //   무엇을 고쳐야 하는지 화면에 박아둔다(2026-07-28: 8회 연속 `API: HTTP 404` 만 뜨고 방치됨).
+  const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치(현재 op 는 문서 추정값). 나라장터 사용자정보 서비스 스펙 확인 후 ADS_NARA_VENDOR_ENDPOINT/ADS_NARA_VENDOR_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
+  const error = saved === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
   const s: NaraVendorStats = { last_run: stamp, page, scanned, matched, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s
