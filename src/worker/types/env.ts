@@ -196,6 +196,8 @@ export interface Env {
   ADS_NARA_VENDOR_ENABLED?: string;       // 📑 나라장터 조달업체(대행사 계열) 일1회 게이트(기본 OFF).
   ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
   ADS_KAKAO_SWEEP_CAP?: string;           // ☎️ 카카오 전화 스윕 시간당 건수(기본 600, 상한 600 클램프 — 무료 10만/일 대비 여유).
+  // 🏭 도매몰 제조사(브랜드사)·판매사 후보 수집 게이트(기본 OFF). 수동 버튼은 게이트 무관.
+  SUPPLY_MAKER_COLLECT_ENABLED?: string;
   ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
   WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
   ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
