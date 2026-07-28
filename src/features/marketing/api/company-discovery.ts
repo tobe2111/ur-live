@@ -521,7 +521,7 @@ export async function deleteCompanyLeads(DB: D1Database, ids: number[]): Promise
 
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
 export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number }
-export interface AgencyEmailFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+export interface AgencyEmailFunnel { total: number; with_email: number; site_no_email: number; site_tried: number; no_site: number }
 export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel }> {
   await ensureCompanySchema(DB)
   const t = await DB.prepare(`SELECT
@@ -539,9 +539,12 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
   // 📧 대행사 이메일 퍼널(2026-07-27 대표 "대행사인데도 이메일 수집 안 되는 경우 있는지") — 미보유를 원인별로 분해:
   //   site_no_email = 사이트는 있는데 이메일 미게시/크롤 대기(보강이 채울 수 있는 몫 + 폼·카톡만 쓰는 구조적 몫)
   //   no_site      = 자체 사이트 미발견(지도·웹 어디에도 없음 — 공개된 이메일 자체가 없어 허위 0 원칙상 공란이 정답)
+  //   🔎 2026-07-28: '사이트만'을 **크롤 시도 여부**로 한 번 더 쪼갠다 — 이메일이 안 느는 원인이
+  //   "아직 시도 못 함(대기열)"인지 "시도했는데 이메일이 없음(구조적 한계)"인지 화면에서 즉시 구분.
   const af = await DB.prepare(`SELECT COUNT(*) AS total,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
       SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS site_no_email,
+      SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' AND enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS site_tried,
       SUM(CASE WHEN (email IS NULL OR email = '') AND (website IS NULL OR website = '') THEN 1 ELSE 0 END) AS no_site
     FROM ad_company_leads WHERE category = '대행사'`).first<Record<string, number>>().catch(() => null)
   return {
@@ -554,7 +557,7 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
     byCategory, byTier, byLeadType,
     agencyEmailFunnel: {
       total: Number(af?.total) || 0, with_email: Number(af?.with_email) || 0,
-      site_no_email: Number(af?.site_no_email) || 0, no_site: Number(af?.no_site) || 0,
+      site_no_email: Number(af?.site_no_email) || 0, site_tried: Number(af?.site_tried) || 0, no_site: Number(af?.no_site) || 0,
     },
   }
 }
