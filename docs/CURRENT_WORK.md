@@ -60,6 +60,80 @@ Cloudflare 는 **D1 쿼리도 서브리퀘스트 한도에 넣고**(#784 확증)
 - 계정 전체 cron **5개**(현재 5/5 — 하나도 못 늘린다). Paid 250. → 새 주기 작업은 **매시간 틱 안에서 순환**으로만 가능.
 - `ur-live-cleanup-cron`(`*/5`)이 슬롯 1개를 쓰고 있다 — 아직 필요한지 점검하면 슬롯 1개 회수 가능.
 
+## 🟢 2026-07-28 (3차) — **계측 배포 완료. 다음 세션은 조회 1회로 사인 확정한다**
+
+**상태**: PR #791 머지(`8571ec2`) → main 배포. 아래 2차 항목이 설계한 계측이 **이제 라이브**다.
+직전 세션이 삭제됐으나 작업 손실 0(브랜치·PR·본 문서 전량 보존).
+
+**➡️ 다음 세션 첫 액션 — 이것만 하면 된다**:
+```bash
+# 어드민 토큰($TOK) 확보 후 (CLAUDE.md '어드민 진단 접근' 절차)
+curl -sS "https://live.ur-team.com/api/admin/tools/settings" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
+#   → ads_enrich_last 를 본다. 배포 후 hourly 라운드가 최소 1회 돈 뒤에 조회할 것.
+```
+
+**🔑 판독표 — `phase` + `p2` 조합이 곧 사인이다** (이 표가 있어서 추측이 필요 없다):
+
+| `phase` | `p2` 양상 | 확정되는 사인 |
+|---|---|---|
+| `start` | — | Phase 1(카카오)에서 죽음. `crash` 원문이 곧 답 |
+| `p1_done` | 없음 | Phase 1 스냅샷 직후 ~ Phase 2 진입 전 사망. `crash` 확인 |
+| `p2` | `examined` 없음/0 | `targets` 확인 — 0이면 **대상 쿼리가 빈 결과**(보강할 리드가 없음 = 증상의 정체) |
+| `p2` | `examined`>0, `crawl_try`=0 | 전량 스킵. `skip_email`(이미 이메일) vs `no_site`(홈페이지 없고 네이버도 못 찾음) 비율이 답 |
+| `p2` | `crawl_try`>0, `crawls`=0 | `crawlContact` 자체가 예외 → `crash` 원문 |
+| `p3_done` | `partial:false` | **정상 종료** — 계측 배선만으로 해소된 것(그동안 한 번도 못 본 상태) |
+
+보조 필드: `crash`(예외 원문·최우선) · `diag{kakao,naver}`(키 유무 — 둘 다 true 여야 정상) ·
+`limit_hit`(이제 `stamp()` 의 D1 한도까지 잡힌다 — 예전 false 는 **거짓 음성**이었다).
+
+**⚠️ 이번에 확인된 것 / 남은 것**:
+- 대표가 CF 토큰에 **권한 2개 추가 부여 완료**(2026-07-28) → `Workers Builds: Read` 로 `ur-live-global`
+  빌드 로그 조회가 이제 가능할 것. 단 **그 프로젝트는 2026-03-03 이후 미배포 방치분**이라 결론은 안 바뀔
+  전망(권장 조치 = Git 연동 해제). 확인만 하고 시간 쓰지 말 것.
+- ⚠️ **자격증명은 컨테이너 시작 시점에 주입**된다. 3차 세션 컨테이너엔 `URDEAL_ADMIN_EMAIL/PASSWORD` 가
+  없어 라이브 조회를 못 했다(그래서 진단을 다음 세션으로 넘긴다). 새 세션이면 자동 해결.
+- 🏭 cron 배치 **최종본은 ur-ads**(2차 항목의 "메인 워커 hourly" 서술은 커밋 `c12cd21` 에서 번복됨).
+  사유: 배포된 ur-live 워커에 매시간 트리거가 **없다**(`*/5`·`0 18`·`0 19` 뿐 — CF API 실측).
+  게이트 `SUPPLY_MAKER_COLLECT_ENABLED` 는 **기본 OFF** — 제조사 자동수집을 실제로 돌리려면 켜야 한다.
+
+## 🔴 2026-07-28 (2차) — 보강 라운드가 **한 번도 정상 종료된 적 없음** + Cloudflare 직접 접근 확보
+
+**증상(라이브 반복 재현 — 수동 `/enrich` 3회 + burst 1회 전부 동일)**:
+```
+partial:true · crawls:0 · limit_hit:false · spent 6~9 / budget 37~55 · learned_cap 37
+ads_enrich_burst_lock 08:25:32 잔존(=burn() 이 끝의 lock 삭제까지 못 감) · ads_enrich_burst_last 미기록
+```
+예산이 남았는데(6/37) 크롤 0이고 **최종 스냅샷(`partial:false`)이 한 번도 안 찍힌다** → Phase 1 스냅샷 직후,
+Phase 2 가 25건을 돌기 전에 죽는다. **Phase 2 는 fetch 를 0회 쓴다**(spent = Phase 1 몫과 정확히 일치).
+
+**❌ 실측으로 기각된 가설 2개** (Cloudflare API 직접 조회 — 오늘 확보한 접근):
+- "무료 플랜이라 서브리퀘스트 50" → **기각**. 계정 `usage_model: standard` = 유료(한도 1,000).
+- "ur-ads 에 네이버 키가 없다" → **기각**. 바인딩 31개에 `NAVER_SEARCH_CLIENT_ID/SECRET`·`KAKAO_REST_API_KEY` 존재.
+- 배포 지연 가설도 기각: `ur-ads` modified `2026-07-28T08:05` = #790 반영본이 라이브(현재 코드에서 나는 증상).
+
+**🩹 조치(PR #791) — 원인 규명이 막힌 진짜 이유는 "신호 부재"였다**:
+`ur-ads` 가 예외를 `catch { 'FAILED' }` 로 폐기 + 스냅샷에 단계 표식 없음 + `stamp()` 의 D1 오류를
+`.catch(() => null)` 이 삼킴(**D1 도 서브리퀘스트 소모** → 한도 신호가 `budget.limitHit` 에 영영 안 잡힘.
+스냅샷 `limit_hit:false` 인데 학습 상한은 계속 내려가던 모순의 정체). → `ads_enrich_last` 에
+`crash`(예외 원문)·`phase`·`p2`(examined/skip_email/no_site/naver_try/crawl_try/stamped)·`diag` 추가.
+**다음 라운드 1회 조회로 사인 확정 가능.**
+
+**🧹 부수 확정**: 매 PR 빨간 `Workers Builds: ur-live-global` 은 **2026-03-03 이후 한 번도 배포된 적 없는
+방치 프로젝트**(`modified_on: 2026-03-03`, 매번 `started_at == completed_at` 즉시 실패). 코드 문제 아님 —
+**Git 연동 해제 권장**. 빌드 로그 조회는 토큰에 `Workers Builds: Read` 추가 필요(현재 403).
+
+**🏭 부수 발견 — 제조사 자동수집 cron 이 애초에 없었다(수리함)**: 대표 질문("게이트를 ur-live 에? ur-ads 에?")
+추적 중 확인 — `SUPPLY_MAKER_COLLECT_ENABLED` 는 `maker-pool.routes.ts` 에서 **상태 배지 표시용으로만** 읽히고,
+`runMakerCollect` 를 부르는 **cron 이 어디에도 없었다**(실호출부 = 어드민 수동 버튼뿐).
+⇒ 제조사 82건 고착은 "게이트 OFF" 때문이 **아니라 자동 수집 미배선** 때문. 플래그를 어디 넣어도 무의미했다.
+→ 메인 워커 hourly cron 에 `supply-maker-collect` 추가(게이트가 이제 실제로 동작).
+배치 근거: 도매몰 레인이라 ur-ads(마케팅)에 넣으면 서비스 경계 위반 + 메인 워커면 보강 레인과 다른
+인보케이션이라 서브리퀘스트 예산이 서로를 안 깎는다.
+
+**🔑 Cloudflare 영구 접근(대표 지시 "영구적으로, 다른 세션에서도")**: 토큰을 공개 레포 대신
+**D1 `platform_settings.cf_api_token` / `cf_account_id`** 에 보관 → 어드민 자격만으로 모든 세션이 자동 취득.
+경로 3단계(어드민 로그인 → D1 취득 → CF 호출 `success:true`) 실검증 완료. 절차는 CLAUDE.md.
+⚠️ `tail` wss 는 이 환경 프록시가 차단(non-101) → 라이브 규명은 **D1 스냅샷 계측**에 의존.
 
 ## 🔴 2026-07-28 — 📧 이메일 크롤 적중 0% — **원인 확증 완료(예외 원문 확보) + 수리(PR #784)**
 
