@@ -203,6 +203,9 @@ export interface Env {
   SUPPLY_MAKER_COLLECT_ENABLED?: string;
   SUPPLY_ENRICH_BUDGET?: string;          // 📧 도매 이메일 보강 1라운드 fetch 상한(기본 120, 상한 400). 실효 상한은
                                           //   관측 학습값(platform_settings `supply_subreq_cap`)과 min — 유어애즈와 별개 워커라 별도 학습.
+  ADS_ENRICH_ROUNDS?: string;             // 📧 이메일 보강 시간당 라운드 수(기본 8, 상한 20). 각 라운드 = 독립 인보케이션 =
+                                          //   새 서브리퀘스트 예산. 2026-07-28 실측: 실효 상한 29 → 라운드당 11건이 천장이라
+                                          //   **라운드 수가 처리량의 유일한 정직한 레버**(백로그 12만+).
   ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
   WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
   ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
