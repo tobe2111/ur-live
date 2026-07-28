@@ -180,7 +180,8 @@ export interface Env {
   ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
                                           //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
                                           //   두면 한도 초과 후 전 fetch 가 throw → 크롤 전멸). 실효 상한은 관측 학습값(platform_settings
-                                          //   `ads_subreq_cap`, collect-budget.ts)과 min 으로 결정되므로 올려도 안전하지만 효과는 학습값이 정한다.
+                                          //   `ads_subreq_cap_company_enrich` — 레인별 키, collect-budget.ts)과 min 으로 결정되므로
+                                          //   올려도 안전하지만 효과는 학습값이 정한다.
   ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
   // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.

@@ -11,8 +11,24 @@
  *     수확 총량은 self-chain/매시간 cron 이 이어받아 유지된다 — 한 번에 덜 쓰고 여러 번 도는 것뿐.
  */
 
-/** 학습된 상한 저장 키(platform_settings). */
-export const SUBREQ_CAP_KEY = 'ads_subreq_cap'
+/**
+ * 🚦 학습 상한은 **레인마다 따로** 저장한다(2026-07-28 근본수리).
+ *
+ *   그 전엔 세 레인이 `ads_subreq_cap` **한 키를 같이 읽고 썼다**. 건당 비용이 전혀 다른데
+ *   (전화 스윕·인플루언서 = fetch 1 / 보강 = fetch 4~6 + D1 다수) 학습값을 공유하면 서로의 관측을
+ *   덮어써 **어느 레인도 자기 진짜 한도를 학습하지 못한다**. 실제로 전화 스윕은 매시간 예산을 다 써서
+ *   ×1.25 로 올리고 인플루언서 레인은 한도에 부딪혀 ×0.8 로 내리며 서로를 밀어, 공유값이 29~55 대역에서
+ *   맴돌았다. 보강 레인은 그 값을 **읽기만** 하는 피해자였다(자기 env 예산 300 인데 실제 37 로 굶음).
+ *
+ *   ⇒ 레인별 키로 분리. 이미 도매 레인(`maker-enrich.ts`)이 같은 이유로 자기 키를 쓰고 있었다.
+ *   ⚠️ 새 레인을 추가하면 `SubreqLane` 에 이름을 넣어라 — 남의 키를 재사용하면 이 사고가 재발한다.
+ */
+export type SubreqLane =
+  | 'influencer'      // 인플루언서 자동수집 — 건당 fetch 1
+  | 'company_enrich'  // 파트너풀 연락처 보강 — 건당 fetch 4~6 + D1 다수(가장 비쌈)
+  | 'kakao_sweep'     // 카카오 전화 스윕 — 건당 fetch 1
+/** 레인별 학습 상한 저장 키(platform_settings). */
+export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane}`
 /** 이 아래로는 안 내린다 — 수확이 0 이 되면 학습 자체가 무의미. */
 export const SUBREQ_CAP_MIN = 25
 /** 회복 시 상향 배율(과학습 되돌리기). */

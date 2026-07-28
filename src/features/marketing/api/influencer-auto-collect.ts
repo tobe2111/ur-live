@@ -19,7 +19,7 @@ import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-qualit
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { enrichYouTubePerformance, enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
-import { SUBREQ_CAP_KEY, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
@@ -417,7 +417,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
-  const learnedCap = Math.max(0, parseInt((await readSetting(DB, SUBREQ_CAP_KEY)) || '', 10) || 0)
+  const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
 
@@ -498,7 +498,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
   const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, budget.left <= 0, learnedCap, envBudget)
-  if (nextCap != null) await writeSetting(DB, SUBREQ_CAP_KEY, String(nextCap))
+  if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>

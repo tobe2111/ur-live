@@ -1,0 +1,96 @@
+#!/usr/bin/env node
+/**
+ * 🛡️ 2026-07-28: 서브리퀘스트 학습 상한 키의 **레인 공유** 방지.
+ *
+ * 배경(파트너풀 보강 "무증거 종료" 진단): 유어애즈 3개 레인이 `ads_subreq_cap` **한 키를 같이 읽고 썼다**.
+ *   건당 비용이 전혀 다른데(전화 스윕·인플루언서 = fetch 1 / 보강 = fetch 4~6 + D1 다수) 학습값을 공유하면
+ *   서로의 관측을 덮어써 **어느 레인도 자기 진짜 한도를 학습하지 못한다**. 실제로 전화 스윕이 ×1.25 로 올리고
+ *   인플루언서 레인이 ×0.8 로 내리며 공유값이 29~55 대역에서 맴돌았고, 보강 레인은 그 값을 읽기만 하는
+ *   피해자였다(자기 env 예산 300 인데 실제 37 로 굶음 → 라운드당 크롤 한 자릿수).
+ *
+ * 규칙: 학습 상한 키는 **레인마다 다른 문자열**이어야 한다.
+ *   ① 유어애즈 레인은 `subreqCapKey(lane)`(collect-budget.ts) 경유 — 키 리터럴 직접 사용 금지.
+ *   ② 다른 워커/서비스(도매 `maker-enrich.ts` 등)가 자기 상수를 쓰는 건 OK — 단 **값이 겹치면 위반**.
+ *
+ * 예외: 정의부(collect-budget.ts), 테스트, `subreq-cap-lane-ok` 주석.
+ *
+ * 사용: node scripts/check-subreq-cap-lane.mjs [-s]
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
+const DEF_FILE = 'src/features/marketing/api/collect-budget.ts'
+
+function walk(dir, acc = []) {
+  if (!fs.existsSync(dir)) return acc
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (['node_modules', '.git', 'dist'].includes(e.name)) continue
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) walk(p, acc)
+    else if (/\.(ts|tsx)$/.test(e.name)) acc.push(p)
+  }
+  return acc
+}
+
+// 학습 상한 키로 보이는 문자열 리터럴: *subreq_cap* 을 포함하는 따옴표/백틱 리터럴.
+const CAP_LITERAL = /['"`]([A-Za-z0-9_:.-]*subreq_cap[A-Za-z0-9_:.${}-]*)['"`]/g
+
+/** 주석 제거(설명문 속 키 언급은 사용이 아니다) — 길이 보존 치환이라 줄번호가 어긋나지 않는다. */
+const stripComments = (src) => src
+  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+  .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length))
+
+const violations = []   // 정의부 밖에서 키 리터럴 직접 사용
+const keyOwners = new Map() // 키 값 → [파일…]  (같은 값을 2개 파일이 쓰면 공유 = 위반)
+
+for (const f of walk(path.join(ROOT, 'src'))) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/')
+  if (/\.test\.|(^|\/)tests\//.test(rel)) continue
+  const raw = fs.readFileSync(f, 'utf8')
+  if (!/subreq_?cap/i.test(raw)) continue
+  if (raw.includes('subreq-cap-lane-ok')) continue
+  const src = stripComments(raw)
+  if (!/subreq_?cap/i.test(src)) continue // 주석에서만 언급 — 사용 아님
+
+  // 헬퍼가 만들어내는 레인 키도 소유자로 등록 — 다른 워커가 그 값을 리터럴로 재사용하면 충돌로 잡힌다.
+  for (const c of src.matchAll(/subreqCapKey\(\s*['"]([a-z_]+)['"]\s*\)/g)) {
+    const key = `ads_subreq_cap_${c[1]}`
+    if (!keyOwners.has(key)) keyOwners.set(key, [])
+    if (!keyOwners.get(key).includes(rel)) keyOwners.get(key).push(rel)
+  }
+
+  CAP_LITERAL.lastIndex = 0
+  let m
+  while ((m = CAP_LITERAL.exec(src))) {
+    const key = m[1]
+    const line = src.slice(0, m.index).split('\n').length
+    if (rel === DEF_FILE) continue // 정의부 — 레인별 키를 만드는 곳
+    // 유어애즈 레인(features/marketing)은 헬퍼 경유가 규칙 — 리터럴 직접 사용 금지.
+    if (rel.startsWith('src/features/marketing/')) {
+      violations.push({ file: rel, line, key, why: 'subreqCapKey(lane) 헬퍼를 쓰세요 (키 리터럴 직접 사용 금지)' })
+      continue
+    }
+    // 그 밖(다른 워커/서비스)은 자기 상수 OK — 값 중복만 검사. 템플릿 보간은 레인별로 갈리므로 제외.
+    if (key.includes('${')) continue
+    if (!keyOwners.has(key)) keyOwners.set(key, [])
+    if (!keyOwners.get(key).includes(rel)) keyOwners.get(key).push(rel)
+  }
+}
+
+for (const [key, files] of keyOwners) {
+  if (files.length > 1) {
+    violations.push({ file: files.join(' , '), line: 0, key, why: `같은 학습 상한 키를 ${files.length}개 파일이 공유 — 레인별로 분리하세요` })
+  }
+}
+
+if (!violations.length) {
+  console.log('✅ 서브리퀘스트 학습 상한 키 레인별 분리 OK (공유 없음).')
+  process.exit(0)
+}
+console.log(`\n${STRICT ? '❌' : '⚠️ '} 학습 상한 키 공유/직접사용 ${violations.length}건 — 레인마다 다른 키여야 합니다:`)
+for (const v of violations) console.log(`   ${v.file}${v.line ? `:${v.line}` : ''} [${v.key}]\n      ${v.why}`)
+console.log('\n   (정의부 collect-budget.ts·테스트·`subreq-cap-lane-ok` 주석은 예외)')
+process.exit(STRICT ? 1 : 0)

@@ -12,7 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
@@ -265,7 +265,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   아니라 **한도 초과 후 전 fetch throw**. 인플루언서 레인이 이미 쓰던 관측 학습 상한(collect-budget)을
   //   이 레인에도 적용 — 부딪히면 다음 실행부터 그 아래만 쓰고, 무사히 다 쓰면 조금씩 회복한다.
   const envBudget = Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300))
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('company_enrich'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
@@ -429,7 +429,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
   const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
   if (nextCap != null) {
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(subreqCapKey('company_enrich'), String(nextCap)).run().catch(() => null)
     capForStamp = nextCap // 상태줄이 '다음 실행 상한'을 새 값으로 보여주도록
   }
   await snapshot(false, Number(rem?.n) || 0) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
@@ -558,7 +558,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   (`id > cursor` 라 커서가 한 바퀴 돌 때까지 영구 방치 — 백로그 규모상 8일+). 스윕이 '지나갔지만
   //   실제로는 조회한 적 없는' 행이 계속 쌓인 이유. → ① 학습 상한 안에서만 쏘고 ② **실제 처리한 행까지만
   //   커서를 전진**시킨다(시도 못 한 행은 다음 라운드에 다시 잡히게).
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('kakao_sweep'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
   const budget: FetchBudget = { left: resolveSubreqBudget(cap, learnedCap) }
   let found = 0, lastDone = cursor
@@ -575,7 +575,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   }
   const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const nextCursor = lastDone
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
