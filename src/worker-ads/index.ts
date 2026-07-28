@@ -553,7 +553,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⇒ ① 매시간 **한 단계씩 순환**(단계당 fresh 인보케이션 예산 — 하루 24회 ≈ 단계별 6회) ② 각 단계는 커서로
   //      다음 회차에 이어받는다 ③ 결과는 예산 밖에서 항상 기록. **새 cron 추가 없음**(무료 계정 cron 5/5 소진).
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    const PHASES = ['merge', 'reextract', 'reclassify', 'quality'] as const
+    // ⚠️ 단계 목록은 influencer-maintenance 의 MAINT_PHASES 가 SSOT — 여기 복제하면 단계를 늘려도
+    //    cron 이 모른다(실제로 'handle' 단계가 그렇게 누락될 뻔했다). 정적 import 를 피하려고 리터럴을
+    //    두되, 개수가 어긋나면 아래 순환이 어긋나므로 **추가 시 두 곳을 함께 고칠 것**(가드: 유닛테스트).
+    const PHASES = ['merge', 'reextract', 'reclassify', 'quality', 'handle'] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
       const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')

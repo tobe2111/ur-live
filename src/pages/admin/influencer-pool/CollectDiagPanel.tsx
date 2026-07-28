@@ -22,6 +22,8 @@ export interface MaintenanceRecord {
   //   paused=true 는 **정상**(커서로 다음 회차가 이어받음) — 이게 안 보이면 "왜 조금만 처리됐지?"를 오진하게 된다.
   phase?: string; ops?: number; cap?: number; paused?: boolean; limit_hit?: boolean
   naver?: { measured?: number; contacts?: number } // 📝 야간 블로거 스윕(활동성·프로필 연락처)
+  // 🩹 손상 핸들 복구 — 이 단계가 끝나기 전엔 블로거 보강 큐 앞머리가 측정 불가 행으로 막힌다.
+  handle?: { scanned?: number; fixed?: number; unfixable?: number; reopened?: number; done?: boolean }
   [k: string]: unknown
 }
 
@@ -41,6 +43,7 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   if (m.quality) parts.push(`품질채점 ${formatNumber(m.quality.scanned || 0)}${m.quality.branded ? ` · 브랜드태깅 +${formatNumber(m.quality.branded)}` : ''}`)
   add('카테고리재보정', m.rescan?.changed); add('라이브재조회', m.refetch?.processed)
   if (m.naver?.measured) parts.push(`블로거측정 ${formatNumber(m.naver.measured)}${m.naver.contacts ? `(연락처 +${formatNumber(m.naver.contacts)})` : ''}`)
+  if (m.handle?.fixed) parts.push(`🩹 핸들복구 ${formatNumber(m.handle.fixed)}${m.handle.reopened ? `(재측정 대기로 ${formatNumber(m.handle.reopened)} 복귀)` : ''}`)
   for (const k of Object.keys(m)) if (k.endsWith('_error')) err.push(k.replace('_error', ''))
   // 🧮 예산 상태 — 매시간 한 단계씩 순환하므로 "이번 회차에 얼마나 썼고 왜 멈췄는지"가 보여야 한다.
   if (typeof m.ops === 'number' && m.cap) parts.push(`연산 ${m.ops}/${m.cap}${m.paused ? ' · 예산소진(다음 회차 이어서)' : ''}`)
@@ -54,7 +57,7 @@ export interface EnrichLaneRecord {
   bio?: number
   yt?: number
   yt_units?: { used?: number; total?: number; day?: string }
-  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number }
+  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number; selected?: number; skipped?: number; healed?: number }
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
   total_measured?: number; total_contacts?: number
@@ -145,6 +148,11 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
       ) : null}
       {enrichLane && (enrichLane.naver?.tried || 0) >= 5 && !enrichLane.naver?.measured ? (
         <div className="mb-2 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
+      {/* 🩹 "뽑았는데 한 건도 시도 안 함" — 2026-07-28 에 실제로 이 상태로 멈춰 있었고, 스냅샷에 이 구분이
+          없어서 원인을 찾는 데 라이브 행을 직접 조회해야 했다. 이제 한 줄로 보인다. */}
+      {enrichLane && (enrichLane.naver?.selected || 0) > 0 && !(enrichLane.naver?.tried || 0) ? (
+        <div className="mb-2 text-[11px] text-amber-600">🩹 블로거 후보 {enrichLane.naver?.selected}건을 뽑았지만 전부 건너뜀(핸들 복구 불가 {enrichLane.naver?.skipped || 0}건) — 정비의 &apos;핸들복구&apos; 단계가 도는지 확인하세요.</div>
       ) : null}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}
