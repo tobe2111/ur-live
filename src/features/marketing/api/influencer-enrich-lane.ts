@@ -186,7 +186,7 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
   const deadlineHit = Date.now() >= (budget.deadline || Infinity)
   // 🩹 학습 상한 자가 교정 — **항상 이 지점에 도달한다**(레인 예외를 위에서 삼켰으므로).
   //   파트너풀 레인이 "쓰기가 마지막 단계 뒤에 갇혀 학습을 한 번도 못 하던" 사고를 여기서 반복하지 않는다.
-  const cap = nextSubreqCap(spent, limitHit, budget.left <= 1, learnedCap, envBudget)
+  const cap = nextSubreqCap(budgetTotal - budget.left, limitHit, learnedCap, envBudget)
   if (cap != null) await writeSetting(DB, subreqCapKey('influencer_enrich'), String(cap)).catch(() => undefined)
 
   const prev = await readSnapshot(DB)

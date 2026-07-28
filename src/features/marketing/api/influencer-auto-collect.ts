@@ -322,7 +322,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     const spent = ctx.budget ? Math.max(0, ctx.budgetTotal - ctx.budget.left) : 0
     // ② 한도 신호 → 상한 하향(이번에 쓴 양보다 확실히 아래로). 여기서 안 낮추면 다음 틱도 같은 곳에서 죽는다.
     if (isSubrequestLimitError(crash) && spent > 0) {
-      const next = nextSubreqCap(spent, true, false, ctx.learnedCap, ctx.envBudget)
+      // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
+      //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
+      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget) // subreq-cap-lane-ok
       if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
