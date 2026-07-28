@@ -81,6 +81,9 @@ export async function ensureMakerSchema(DB: D1Database): Promise<void> {
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
+  // 기존 테이블 보강(CREATE IF NOT EXISTS 는 이미 있는 표를 안 고침) — 실패는 '이미 있음'이라 무시.
+  await DB.prepare('ALTER TABLE supply_maker_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
+  await DB.prepare('ALTER TABLE supply_maker_leads ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 어느 버전 크롤러로 시도했나(< MAKER_CRAWL_VERSION 이면 재시도 대상)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_maker_leads_kind ON supply_maker_leads(kind, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_maker_leads_cat ON supply_maker_leads(category, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_maker_leads_status ON supply_maker_leads(status, id)').run().catch(() => null)

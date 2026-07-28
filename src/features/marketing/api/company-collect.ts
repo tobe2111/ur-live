@@ -12,6 +12,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
+import { SUBREQ_CAP_KEY, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -243,15 +244,24 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 export async function enrichHeldLeads(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION } = await import('./contact-enrich')
+  const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, THIRD_PARTY_HOST } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   // 카카오 조회는 1건당 서브요청 1개(저렴) → 한 번에 많이. 크롤은 3~4개(비쌈) → 잔여 예산에서만.
   //   보강 전용 예산(ADS_ENRICH_BUDGET, 기본 100) — 수집 예산과 분리해 백로그를 시간당 대량 소진(대표 "보류없이 다 진행").
-  // 기본 300(대표 "쿼터 최대한" — 네이버 무료 25K/day 대비 한참 여유), 상한 800(Workers 호출당 서브요청 1,000 한도 안전마진).
-  const budget: FetchBudget = { left: Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300)) }
-  const budgetStart = budget.left // 실사용 서브요청 계측 — 한도(1,000) 근접 여부를 숫자로 판정
+  // 기본 300(대표 "쿼터 최대한" — 네이버 무료 25K/day 대비 한참 여유), env 상한 800.
+  //   ⚠️ 이 800 은 "Workers 1,000 한도의 안전마진"이라는 **틀린 전제**로 잡혀 있었다(아래 근본수리 참조).
+  // 🩹 2026-07-28 근본수리: env 예산은 **우리가 세는 숫자일 뿐 실제 플랫폼 한도가 아니다**. 실측(크롤 59건 중
+  //   HTML 수신 0건 = no_contact 0 · 네트워크가 필요 없는 blocked_host 만 정상)이 가리킨 것은 사이트별 봇차단이
+  //   아니라 **한도 초과 후 전 fetch throw**. 인플루언서 레인이 이미 쓰던 관측 학습 상한(collect-budget)을
+  //   이 레인에도 적용 — 부딪히면 다음 실행부터 그 아래만 쓰고, 무사히 다 쓰면 조금씩 회복한다.
+  const envBudget = Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300))
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  const budget: FetchBudget = { left: budgetTotal }
+  const budgetStart = budget.left // 실사용 서브요청 계측 — 한도 근접 여부를 숫자로 판정(상태줄 '서브요청')
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
@@ -271,7 +281,15 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const crawlReason: Record<string, number> = {} // 크롤 결과 사유 집계(ok/no_contact/http_403/network…) — 적중률 계측
   const failSamples: string[] = []                // 실패 URL 샘플 — 원인 특정용(호스트 형태·상태코드)
   // 카카오 place_url(지도페이지)은 홈페이지가 아니라 크롤 대상 아님 — 실제 홈페이지만 크롤.
-  const realSite = (w: string | null): string | null => (w && !/kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) ? w : null
+  // 🩹 2026-07-28 실측 수리: 크롤 133건 중 `blocked_host` 가 **59건(44%)** — 저장된 website 가 블로그·SNS 같은
+  //   **제3자 도메인**이라 크롤이 무조건 거부되는데도 대상 슬롯을 먹고 7일 쿨다운 도장까지 받아 왔다.
+  //   → 여기서 미리 걸러 `site=null` 로 만들면 아래 네이버 지역검색/웹문서 **발견 경로로 넘어가** 진짜 홈페이지를
+  //   찾을 기회를 얻는다(슬롯 회수 + 수율 상승). website 컬럼 자체는 보존 — 사람이 수동 접촉할 땐 유용하다.
+  const realSite = (w: string | null): string | null => {
+    if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
+    try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
+    return w
+  }
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
     if (!phone && !email && !website) return
@@ -290,6 +308,27 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
     if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++
   }
 
+  // 📝 진행 스냅샷 저장(2026-07-28 계측 공백 수리) — 결과를 **맨 끝에서 한 번만** 쓰면, 인보케이션이
+  //   중도 종료(CPU/wall/서브리퀘스트 한도)될 때 그 실행은 **영원히 계측되지 않는다**. 실측에서 실제로
+  //   이메일은 붙었는데 `ads_enrich_last` 가 갱신되지 않는 상태가 관측됐다(원인 규명이 늦어진 한 원인).
+  //   → 한도 감지 즉시 + 주기적으로 부분 저장하고, 정상 종료 때 최종본으로 덮는다. `partial` 로 구분.
+  //   비용: 저장 1회 = D1 1쿼리. 25건마다이므로 예산 대비 무시 가능.
+  let capForStamp = learnedCap // 최종 저장 직전에 새 학습값으로 갱신 — 상태줄의 '다음 실행 상한'
+  const snapshot = async (partial: boolean, remaining?: number) => {
+    const crawls = Object.values(crawlReason).reduce((a, n) => a + n, 0)
+    // 적중률 분모는 **실제로 fetch 를 시도한 크롤**만 — blocked_host/bad_url 은 네트워크에 안 나간다.
+    const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_enrich_last', JSON.stringify({
+        last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        processed, enriched, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0,
+        ...(typeof remaining === 'number' ? { remaining } : {}),
+        crawl_reason: crawlReason, fail_samples: failSamples,
+        fetches: budgetStart - budget.left, budget_total: budgetTotal, spent: budgetTotal - budget.left,
+        limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
+      })).run().catch(() => null)
+  }
+
   // ── Phase 1: 카카오 전화(1건 1요청, 저렴·광범위) — 전화 없는 리드만. place_url 무시 ──
   //   ⚠️ 예산 분할: Phase1 이 전체 예산을 독식하면 Phase2(이메일 — 대표 최우선)가 0건 처리되므로
   //     전화 조회는 예산의 절반까지만. ⚠️ 주소 없는 리드(프랜차이즈 본사 등)는 카카오 스킵 —
@@ -299,17 +338,19 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
   const phoneCap = Math.floor(budget.left / 6)
   let phoneSpent = 0
   for (const t of targets) {
-    if (outOfBudget(budget) || phoneSpent >= phoneCap) break
+    if (outOfBudget(budget) || budget.limitHit || phoneSpent >= phoneCap) break
     processed++
     if (t.phone || !kakaoKey || !t.address) continue
     phoneSpent++
     const k = await kakaoLocalLookup(kakaoKey, t.company_name, t.region, t.address, budget)
     if (k.phone) { await save(t.id, k.phone, null, null, 'kakao'); t.phone = k.phone }
   }
+  await snapshot(true) // Phase 1 종료 시점 스냅샷 — 여기서 죽어도 전화 확보분은 계측에 남는다
   // ── Phase 2: 이메일(비쌈, 좁게) — 실홈페이지 크롤 / 없으면 네이버로 홈페이지 발견 후 크롤 ──
   //   홈페이지 없는 보류 리드(상가정보 B2B 사무실 등)를 네이버 link/웹검색 발견으로 구제 → 이메일/전화 확보.
+  let sinceSnapshot = 0
   for (const t of targets) {
-    if (budget.left <= 2) break
+    if (budget.left <= 2 || budget.limitHit) break
     if (t.email) continue // 이미 이메일 있음
     let site = realSite(t.website)
     let discovered = false // 검색으로 발견한 사이트(등록 링크 아님) → 상호 존재 가드 필요
@@ -336,14 +377,20 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
         }
       }
     }
+    // ⛔ 한도 도달이면 **도장 없이** 중단 — 이 행은 '시도된 적 없음'으로 남겨야 다음 실행이 다시 집는다.
+    //   (2026-07-28 정체의 진짜 원인: 한도 뒤 무의미하게 실패한 수백 행이 매 라운드 7일 쿨다운을 받아
+    //    재시도 풀에서 이탈 → 백로그가 흐르지 않고 이메일 수확이 0 에 고착.)
+    //   ⚠️ 중단 **전에** 스냅샷을 남긴다 — 이 신호를 못 남기면 다음 세션이 또 원인부터 찾아야 한다.
+    if (budget.limitHit) { await snapshot(true); break }
     await stamp(t.id) // 성공/실패 무관 시도 기록 — 다음 시간엔 다음 백로그로
+    if (++sinceSnapshot >= 25) { sinceSnapshot = 0; await snapshot(true) } // 중도 종료돼도 여기까지는 남는다
   }
 
   // ── Phase 3: 이름 치유 소급(2026-07-27 대표 "분류 확인 카드 수동 부담") — **연락처는 이미 있는데
   //   이름만 제목-파편**("데이터 토론"·"insight")인 webkr 행. Phase 2 는 연락처-없는 행만 돌아 이 행들이
   //   영영 미치유 → 분류 확인 카드에 계속 쌓임. 홈페이지 og:site_name 으로 실명 교체 + 실명 기준 재분류.
   //   회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운) — 허위 0(이름은 그 사이트 자기 선언).
-  if (budget.left > 4) {
+  if (budget.left > 4 && !budget.limitHit) {
     const { suspectCompanyName, classifyLead } = await import('./company-classify')
     const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
         WHERE source = 'webkr' AND status = 'new' AND classify_confidence = 'none'
@@ -352,7 +399,7 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
         ORDER BY id DESC LIMIT 8`)
       .all<{ id: number; company_name: string; category: string | null; source_keyword: string | null; website: string }>().catch(() => null))?.results || []
     for (const t of healTargets) {
-      if (budget.left <= 2) break
+      if (budget.left <= 2 || budget.limitHit) break
       if (!suspectCompanyName(t.company_name, t.source_keyword)) { await stamp(t.id); continue } // SQL 근사 필터의 오탐 스킵
       const c = await crawlContact(t.website, budget, undefined, t.category === '미디어')
       if (c.siteName && c.siteName !== t.company_name) {
@@ -365,17 +412,22 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
               cls.lead_type, cls.confidence === 'none' ? 'keyword' : cls.confidence, t.id).run().catch(() => null)
         }
       }
+      if (budget.limitHit) break // 도장 없이 중단(위와 동일 이유)
       await stamp(t.id)
     }
   }
 
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
-  const hitRate = crawls ? Math.round(((crawlReason.ok || 0) / crawls) * 100) : 0
-  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: hitRate }
-  // 📊 실행 결과 영속(2026-07-27 대표 "된 건지 안 된 건지") + 🎯 크롤 적중률 사유(다음 개선을 데이터로 고름).
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_enrich_last', JSON.stringify({ last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), ...result, crawl_reason: crawlReason, fail_samples: failSamples, fetches: budgetStart - budget.left })).run().catch(() => null)
+  const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
+  const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }
+  // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, envBudget)
+  if (nextCap != null) {
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+    capForStamp = nextCap // 상태줄이 '다음 실행 상한'을 새 값으로 보여주도록
+  }
+  await snapshot(false, Number(rem?.n) || 0) // 정상 종료 — 부분 스냅샷을 최종본으로 덮는다(partial:false)
   return result
 }
 
@@ -495,21 +547,37 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
      WHERE id > ? AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
     .bind(cursor, cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
   if (!rows.length) { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, '0').run().catch(() => null); return { scanned: 0, found: 0, cursor: 0, done: true } }
-  let found = 0
+  // 🩹 2026-07-28 근본수리(실측: "주소는 있는데 전화가 없는" 리드 1만+): 이 스윕은 예산 객체를 안 넘겨
+  //   회당 600 fetch 를 무통제로 쏘았고, 서브리퀘스트 한도를 넘으면 이후 조회가 전부 조용히 실패했다.
+  //   그런데 커서는 **무조건 마지막 행까지 전진**해서, 한 건도 못 받은 라운드의 600건이 통째로 건너뛰어졌다
+  //   (`id > cursor` 라 커서가 한 바퀴 돌 때까지 영구 방치 — 백로그 규모상 8일+). 스윕이 '지나갔지만
+  //   실제로는 조회한 적 없는' 행이 계속 쌓인 이유. → ① 학습 상한 안에서만 쏘고 ② **실제 처리한 행까지만
+  //   커서를 전진**시킨다(시도 못 한 행은 다음 라운드에 다시 잡히게).
+  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SUBREQ_CAP_KEY)
+    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
+  const budget: FetchBudget = { left: resolveSubreqBudget(cap, learnedCap) }
+  let found = 0, lastDone = cursor
   for (const r of rows) {
-    const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address)
+    if (budget.left <= 0 || budget.limitHit) break // 여기서 멈추면 남은 행은 커서가 안 넘어가 다음 라운드 대상
+    const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
+    if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 커서를 전진시키지 않는다
+    lastDone = r.id
     if (k.phone) {
       found++
       await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?")
         .bind(k.phone, r.id).run().catch(() => null)
     }
   }
-  const nextCursor = rows[rows.length - 1].id
+  const nextCap = nextSubreqCap(budget.left <= 0 ? cap : cap - budget.left, !!budget.limitHit, budget.left <= 0, learnedCap, cap)
+  if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(SUBREQ_CAP_KEY, String(nextCap)).run().catch(() => null)
+  const nextCursor = lastDone
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
   let totalFound = 0; try { totalFound = Number((prevRaw?.value ? JSON.parse(prevRaw.value) : {}).total_found) || 0 } catch { /* 초기 */ }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, cursor: nextCursor, total_found: totalFound + found,
+    limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
   })).run().catch(() => null)
   return { scanned: rows.length, found, cursor: nextCursor, done: false }
 }

@@ -25,8 +25,15 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
   const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json${yr ? `&yr=${encodeURIComponent(yr)}` : ''}`
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
-  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
+  // 실패 원인을 삼키지 않는다 — 특히 플랫폼 서브리퀘스트 한도는 '네트워크 오류'로 뭉뚱그리면 영영 오진된다
+  //   (2026-07-28 보강 레인 실사고와 동일 클래스).
+  let res: Response | null = null
+  let netMsg = '네트워크 오류'
+  try { res = await fetch(url, { signal: AbortSignal.timeout(15000) }) } catch (err) {
+    const m = err instanceof Error ? err.message : String(err || '')
+    if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(한 번에 너무 많은 페이지) — 페이지 수를 줄여 여러 번 나눠 수집'
+  }
+  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : netMsg }
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
@@ -63,7 +70,11 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
 
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
-  const budget = { left: Math.max(3, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 10) }
+  // ⚠️ 2026-07-28 수리: 이 레인이 **보강 전용 예산(ADS_ENRICH_BUDGET, 대표 설정값 800)** 을 빌려 쓰고 있었다
+  //   → 한 인보케이션에 최대 800페이지 요청 = 플랫폼 서브리퀘스트 한도에 확실히 부딪히는 구조(보강 레인을
+  //   죽인 것과 같은 결함). 브랜드 원부는 총 1만 건대라 회당 소량씩 커서로 순회하면 충분하다.
+  const pagesPerRun = Math.min(30, Math.max(3, parseInt((env as unknown as { ADS_FRANCHISE_PAGES?: string }).ADS_FRANCHISE_PAGES || '', 10) || 8))
+  const budget = { left: pagesPerRun }
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < budget.left + 3 && budget.left > 0; i++) {
     const { items, count, msg } = await fetchBrandPage(base, op, key, page, yr, budget)

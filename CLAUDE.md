@@ -290,22 +290,47 @@
 
 > ⚠️ 이 룰 안 지키면: 다음 세션이 진행 상태 모름 → 중복 구현 / 누락 / 사용자 "왜 이거 안 됐어?" 반복.
 
-## 🔑 에이전트 라이브 점검 접근 (2026-07-28 대표 지시 "어드민 권한 영구적으로 주고픈데")
+## 🔑 어드민 진단 접근 (2026-07-28 대표 지시 — "모든 세션에서 자동으로")
 
-새 세션은 **이전 세션의 대화를 기억하지 못한다** — 계정은 DB에 남아도 자격증명은 매번 다시 받아야 한다.
-그래서 값은 **환경 변수**로 두고(레포엔 절대 커밋 금지), 절차만 여기에 기록한다.
+라이브 데이터를 **추측 대신 실측**으로 확인하기 위해 어드민 API 읽기 접근을 상시 사용한다.
+대표가 전용 계정 `claude@ur-team.com`(super_admin)을 발급했다.
 
-| 항목 | 값 |
-|---|---|
-| 계정 | **`claude@ur-team.com`** (에이전트 전용 super_admin, admins.id=10 — 이메일은 비밀이 아니라 여기 명시). 비밀번호는 **환경변수 `URDEAL_ADMIN_PASSWORD`** 에서만 읽는다(2026-07-28 대표 등록). 미주입 세션이면 대표에게 요청 |
-| 도메인 | **`https://live.ur-team.com`** — ⚠️ `urdeal.kr` 은 이 실행환경 네트워크 정책에서 **CONNECT 403 차단**. 구 도메인은 HTML 만 301 이고 **`/api/*` 는 그대로 응답**한다 |
-| 봇 차단 | `botProtection()` 이 curl UA 를 403 → **브라우저 User-Agent 헤더 필수** |
-| 로그인 | `POST /api/admin/login` → 토큰은 응답의 **`data.accessToken`**(구 `token` 폴백). 유효 24h |
-| ⚠️ 단일 세션 | 같은 계정으로 **동시 로그인 불가**(`SESSION_SUPERSEDED`) — 대표가 어드민 UI 에 로그인하면 에이전트 토큰이 즉시 무효화된다. **에이전트 전용 계정을 대표 계정과 분리**할 것 |
-| 유어애즈 | `/api/ads/*` 는 별도 **ur-ads 워커**(env 분리 — 메인 Pages 시크릿과 다름). 광고주 API 는 `POST /api/ads/auth/login` 의 ads 토큰 필요 |
+**🚫 절대 룰**: **비밀번호를 레포에 커밋하지 말 것**(공개 레포 — 영구 노출). 코드·문서·커밋 메시지·주석 어디에도 금지.
+`check-no-secrets.sh` 가 일부 패턴만 잡으므로 최종 방어는 이 룰이다.
 
-**금지**: 비밀번호·토큰을 레포/커밋/PR/이슈에 쓰지 말 것(공개 레포 — 영구 노출). 진단 출력에도 값 대신 boolean 만.
+**자격증명 위치**: Claude Code **환경변수**(Cloudflare env 아님 — 세션 환경변수) — 대표가 2026-07-28 등록 완료.
+`URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD`. **모든 세션이 자동 사용**한다.
+⚠️ 환경변수는 **컨테이너 시작 시점에 주입**되므로 등록 직후 실행 중이던 세션엔 안 보인다(다음 세션부터 적용).
+미주입 세션이면 대표에게 값을 요청하지 말고 **다음 세션에서 수행**하거나 대표에게 상태줄을 요청한다.
 
+**접속 절차(3가지 함정 주의)**:
+1. **도메인**: 이 환경의 에이전트 프록시는 `urdeal.kr` 을 차단(CONNECT 403)한다. **`live.ur-team.com` 을 쓸 것** —
+   도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+2. **User-Agent**: `botProtection()`(`bot-detection.ts`)이 curl UA 를 차단하고 `{"success":false,"error":"Forbidden"}`
+   (키 2개, `code` 없음)를 준다. **브라우저 UA 헤더 필수**. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트로 **다른 원인**.
+3. **토큰**: `POST /api/admin/login` {email,password} → 응답 토큰 필드가 **한 가지가 아니다** — 실측상
+   `data.accessToken` / `data.token` / 최상위 `token` 중 하나로 온다. **존재하는 것을 골라 쓸 것**
+   (`data['token']` 만 꺼내면 KeyError). 이후 `Authorization: Bearer <token>`. 계정은 `admins.id=10`.
+
+```bash
+UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
+TOK=$(curl -sS -X POST https://live.ur-team.com/api/admin/login -H 'Content-Type: application/json' -H "User-Agent: $UA" \
+  --data-binary "$BODY" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['token'])")
+# ⚠️ 단일 세션 정책: 같은 계정으로 다른 곳(대표 브라우저 등)에서 로그인하면 이 토큰이 무효화된다
+#    (SESSION_SUPERSEDED). 긴 작업 중 끊기면 재로그인 후 재시도.
+curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
+```
+
+**⚠️ 유어애즈(`/api/ads/*`)는 별도 워커(ur-ads)** — env 가 메인 Pages(ur-live)와 **분리**돼 있다.
+메인 `/api/version` 의 시크릿 목록에 없다고 ur-ads 에도 없는 것이 아니고, 그 반대도 아니다.
+ur-ads 쪽 설정 확인은 기능 호출로 판정할 것(예: `/api/ads/keywords/related` → `NOT_CONFIGURED` = 키 없음).
+
+**사용 원칙**: 기본 **읽기 전용**(stats·목록·진단). 쓰기(큐레이션·수집 트리거·설정 변경)는 대표가 명시로 지시할 때만.
+토큰·응답 파일은 스크래치패드에만 두고 작업 후 삭제. 세션 종료 시 남기지 않는다.
+
+> ⚠️ 이 접근이 없으면: 라이브 원인 규명이 "대표가 상태줄 복사 → 붙여넣기" 왕복에 묶여 한 사이클에 수십 분씩 소모된다
+> (2026-07-28 크롤 전멸 규명이 실제로 그랬고, 직접 조회로 전환하자 예외 원문 확보에 1분 걸렸다).
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:

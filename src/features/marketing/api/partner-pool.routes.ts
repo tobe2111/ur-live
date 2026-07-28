@@ -246,8 +246,8 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, lkAll, lkEnrich, lkReclassify, localdataRun] = await Promise.all([
-    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'),
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun] = await Promise.all([
+    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
     readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
   ])
   // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
@@ -273,6 +273,7 @@ app.get('/stats', async (c) => {
     nts: { run: ntsRun },
     nps: { gate: gate('nps', (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true'), run: npsRun },
     reclassify: { run: rcRun },
+    registryMatch,   // 🔗 원부 이메일 이식 결과(크롤 0회 레인)
     work24: { gate: gate('work24', (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true'), run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
@@ -367,6 +368,23 @@ app.post('/collect', async (c) => {
 })
 
 // POST /api/admin/partner-pool/enrich — 보류(연락처 없음) 리드 이메일 보강(ur-ads 위임). 홈페이지 있는 것만.
+// POST /api/admin/partner-pool/match-registry — 🔗 원부 이메일 이식(크롤 0회·서브리퀘스트 0).
+//   전수조사 결과 이메일의 99.8%가 원부 직행분인데 타깃 카테고리는 조인 키(business_no)가 없어 못 쓰고 있었다.
+//   상호(+주소) 확신 매칭만 이식 — 판단이 안 서면 비워둔다(허위 0). 여러 패스로 백로그를 순회.
+app.post('/match-registry', async (c) => {
+  const passes = Math.min(20, Math.max(1, intParam(c.req.query('passes'), 5)))
+  const run = async () => {
+    const { matchRegistryEmails } = await import('./registry-email-match')
+    for (let i = 0; i < passes; i++) {
+      const r = await matchRegistryEmails(c.env, 400).catch(() => null)
+      if (!r || r.done) break
+    }
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }
+  await run()
+  return c.json({ success: true, started: false })
+})
+
 app.post('/enrich', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)

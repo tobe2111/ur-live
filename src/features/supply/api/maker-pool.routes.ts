@@ -13,6 +13,7 @@ import {
   MAKER_CATEGORIES, MAKER_STATUSES, MAKER_KINDS, MAKER_KIND_LABEL, type MakerLead,
 } from './maker-leads'
 import { runMakerCollect, runResellerImport } from './maker-collect'
+import { enrichMakerLeads } from './maker-enrich'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -43,11 +44,13 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [collect, importRun] = await Promise.all([readKey('supply_maker_stats'), readKey('supply_reseller_import_stats')])
+  const [collect, importRun, enrichLast] = await Promise.all([
+    readKey('supply_maker_stats'), readKey('supply_reseller_import_stats'), readKey('supply_maker_enrich_last'),
+  ])
   return c.json({
     success: true, ...s,
     collect: { gate: (c.env as { SUPPLY_MAKER_COLLECT_ENABLED?: string }).SUPPLY_MAKER_COLLECT_ENABLED === 'true', run: collect },
-    importRun,
+    importRun, enrichLast,
   })
 })
 
@@ -60,6 +63,21 @@ app.get('/meta', (c) => c.json({
 // POST /api/admin/maker-pool/collect — 🏭 제조사 수집 1틱(수동 = 게이트 무관). 백그라운드.
 app.post('/collect', async (c) => {
   const run = async () => { await runMakerCollect(c.env).catch(() => null) }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }
+  await run()
+  return c.json({ success: true, started: false })
+})
+
+// POST /api/admin/maker-pool/enrich — 📧 이메일 보강(홈페이지 발견 → 게시 이메일 크롤). 백그라운드.
+//   라운드는 서브리퀘스트 한도 안에서 스스로 멈추고 실효 상한을 학습한다 → 여러 라운드로 백로그를 순회.
+app.post('/enrich', async (c) => {
+  const rounds = Math.min(5, Math.max(1, intParam(c.req.query('rounds'), 2)))
+  const run = async () => {
+    for (let i = 0; i < rounds; i++) {
+      const r = await enrichMakerLeads(c.env).catch(() => null)
+      if (!r || r.limit_hit || r.processed === 0) break // 한도 도달/대상 소진이면 더 돌 이유 없음
+    }
+  }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }
   await run()
   return c.json({ success: true, started: false })
