@@ -39,6 +39,27 @@ async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }
   }
 }
 
+/**
+ * 📍 실제 소재지에서 지역을 뽑는다 — **키워드 지역을 그대로 박으면 안 된다**.
+ *
+ *   실사고(2026-07-28 실측): 카카오 지도는 "중랑 행사 대행" 검색에 중랑에 없는 업체도 반환한다.
+ *   그런데 `region: kw.region` 으로 키워드 지역을 박아 넣어, **같은 업체(전화번호까지 동일)가
+ *   8개 구 키워드에서 각각 저장**됐다 — dedup 키가 `n:이름|지역` 이라 지역이 갈리면 별개 행이 된다.
+ *   표본 2,000행에서 **회사명 중복 38.4%**(326개 업체가 768행), 중복군의 85%가 region 차이였다.
+ *   ⚠️ 지역이 31→235 로 늘어난 지금 그대로 두면 중복이 배수로 폭증한다.
+ *   → 주소가 있으면 주소에서 도출(진실), 없을 때만 키워드 지역으로 폴백.
+ */
+function regionFromAddress(addr: string | null | undefined, fallback: string | null): string | null {
+  const hits = [...String(addr || '').matchAll(/([가-힣]{2,10}?)(시|군|구)(?:\s|$)/g)]
+    .map(m => m[1].replace(/특별|광역|자치/g, '').slice(0, 20))
+    .filter(Boolean)
+  if (!hits.length) return fallback
+  // 서울은 **구 단위**가 키워드 어휘라 '서울'로 뭉개면 granularity 를 잃는다(강북/성북/…).
+  //   그 외(광역시·도)는 첫 매치가 곧 시 이름이고 그게 키워드 어휘와 맞는다(부산/성남/춘천…).
+  if (hits[0] === '서울' && hits.length > 1) return hits[1]
+  return hits[0]
+}
+
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
@@ -58,10 +79,12 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
     for (const d of (data?.documents || [])) {
       const name = stripTag(d.place_name)
       if (name.length < 2) continue
+      const addr = stripTag(d.road_address_name || d.address_name) || null
       out.push({
-        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
+        company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier,
+        region: regionFromAddress(addr, kw.region), // 키워드 지역이 아니라 실제 소재지 — 중복 폭증 방지
         phone: (d.phone || '').trim() || null,
-        address: stripTag(d.road_address_name || d.address_name) || null,
+        address: addr,
         description: stripTag(d.category_name) || null, // 카카오 업종 경로("서비스,산업 > 광고,인쇄 > …") — 분류 근거로 활용
         contact_source: (d.phone || '').trim() ? 'kakao' : null,
         source: 'local', source_keyword: kw.keyword,
@@ -153,7 +176,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
       category: kw.category,
       subcategory: kw.subcategory,
       tier: kw.tier,
-      region: kw.region,
+      region: regionFromAddress(it.roadAddress || it.address, kw.region), // 실제 소재지 우선(중복 방지)
       website: (it.link || '').trim() || null,
       phone: (it.telephone || '').trim() || null,
       address: (it.roadAddress || it.address || '').trim() || null,
