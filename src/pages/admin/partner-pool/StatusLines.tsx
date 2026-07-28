@@ -10,16 +10,17 @@ export interface StoreInfo { gate: boolean; run: RunInfo | null }
 export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
 export interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
-export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null
 }) {
   return (
     <>
@@ -45,10 +46,25 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         <span className="font-semibold text-gray-700">📧 대행사 이메일 퍼널</span>
         <span> · 전체 {formatNumber(agencyFunnel.total)}</span>
         <span> · <span className="text-indigo-600 font-semibold">이메일 보유 {formatNumber(agencyFunnel.with_email)}</span></span>
-        <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음 — 매시간 보강 크롤이 채우는 중이거나, 문의폼·카톡채널만 쓰는 업체(공개 이메일 자체가 없어 공란이 정답)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}</span>
+        <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음. 괄호=크롤 시도 완료분(시도했는데 이메일이 없으면 구조적 한계 — 문의폼·카톡채널만 쓰는 업체)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}
+          <span className="text-gray-400">(시도 {formatNumber(agencyFunnel.site_tried ?? 0)} / 대기 {formatNumber(Math.max(0, (agencyFunnel.site_no_email || 0) - (agencyFunnel.site_tried || 0)))})</span></span>
         <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
       </div>
     )}
+
+    {/* 📧 이메일 보강 레인 — **가장 중요한 레인인데 화면에 없었음**(2026-07-28: 이메일이 왜 안 느는지
+        판별 불가였던 원인). 처리/확보/크롤 적중률로 '시도량 부족' vs '추출력 부족'을 즉시 구분. */}
+    <div className="mb-3 text-xs text-gray-500">
+      📧 이메일 보강 레인
+      {enrichLast?.last_run
+        ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-indigo-600">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
+            {typeof enrichLast.crawls === 'number' && enrichLast.crawls > 0
+              ? <span> · 크롤 {formatNumber(enrichLast.crawls)}(이메일 적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
+              : <span className="text-amber-600"> · 크롤 0회 — 크롤까지 못 감(예산·대상 선정 확인 필요)</span>}
+            {typeof enrichLast.remaining === 'number' ? <span className="text-gray-400"> · 보류 잔여 {formatNumber(enrichLast.remaining)}</span> : null}
+          </span>
+        : <span className="text-amber-600"> · 아직 실행 기록 없음 — 매시간 자동이 안 돌고 있을 수 있음</span>}
+    </div>
 
     {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
     {commerce?.run && (
