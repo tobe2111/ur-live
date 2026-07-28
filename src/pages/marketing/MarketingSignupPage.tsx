@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { ADS_AI_HIDDEN } from '@/shared/feature-flags'
 
 const DEFAULT_DEST = '/ads/dashboard'
 
@@ -96,7 +97,7 @@ export default function MarketingSignupPage() {
 
   return (
     <div className="ua-auth force-light-theme">
-      <SEO title="유어애즈 회원가입 - UR Ads" description="유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·AI 마케터를 시작하세요." url="/ads/signup" />
+      <SEO title="유어애즈 회원가입 - UR Ads" description={`유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}를 시작하세요.`} url="/ads/signup" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <form className="ua-auth-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -104,7 +105,7 @@ export default function MarketingSignupPage() {
         </div>
         <p className="ua-auth-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN UP</p>
         <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#0B0E14' }}>유어애즈 시작하기</h1>
-        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#565E6C' }}>광고 계정을 연동하면 자동입찰·통합 실적·AI 마케터를 바로 사용할 수 있어요.</p>
+        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#565E6C' }}>{`광고 계정을 연동하면 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}를 바로 사용할 수 있어요.`}</p>
 
         <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input className="ua-auth-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
