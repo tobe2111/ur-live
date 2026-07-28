@@ -128,6 +128,14 @@ jobs:
           fi
           echo "✅ Secret 없음"
 
+      # 🛡️ 2026-07-28: 위 검사는 **src/ 아래 .ts/.tsx 만** 본다. 실제로는 archive/ 의 **19개 .md/.txt**
+      #   에 Google 서비스계정 개인키·Toss live 시크릿·Stripe 시크릿이 **추적된 채** 남아 있었고
+      #   (public 레포 · 3월부터) 이 검사도 check-no-secrets.sh 도 통과시켰다.
+      #   → 확장자·경로 무관 전수 스캔. 작업트리만 보고 history 는 안 본다(과거분은 *회전*으로만 해결).
+      - name: 시크릿 자재 전수 스캔 (strict)
+        run: node scripts/check-secret-material.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

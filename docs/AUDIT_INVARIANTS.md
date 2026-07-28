@@ -35,6 +35,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
 | **코드 구조(god 파일 방지)** | 신규 파일 600줄 초과 차단 + 기존 대형 파일이 `file-size-baseline.json`(82개 동결)보다 성장 시 차단(줄이는 건 OK) → god 파일 재발 0 | `check-file-size` (래칫, `--rebaseline` 로 동결값 갱신) | 2026-06-29 (대표 "리팩토링 반복 말고 애초에 막아라" — MyVouchersPage 1296→386·GroupBuyListPage 1309→827 분해 후 동결). 2026-07-11: PR CI(verify.yml)는 `--changed-only`(merge-base vs origin/main 변경 파일만 판정 — main 드리프트가 무관한 PR 을 실패시키던 문제 차단, 당일 3회 재발); 게이트/rebaseline 은 전수 `-a` 유지 |
 | **빌드·배포 안전** | vite 단독빌드/405 라우터/SW등록/하드코딩 시크릿 금지 | `check-build-command` · `check-router-patterns` · `check-no-sw-register` · `check-no-secrets` | (상시 가드) |
+| **시크릿 자재 유입 차단** | 추적 파일 어디에도 실제 키 본문(PEM 개인키·Toss live·Stripe·AWS·PAT 등)이 없을 것 — 확장자/경로 무관 | `check-secret-material` (strict: verify.yml + audit-gate + pre-commit) | 2026-07-28 — `archive/` 19개 `.md`/`.txt` 에 Firebase 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출. 기존 두 가드가 모두 통과시킴(`verify.yml` 의 검사는 `src/**` 의 `.ts/.tsx` 만, `check-no-secrets.sh` 는 키 이름 패턴 위주). ⚠️ 이 가드는 **작업트리만** 본다 — history 유출은 스캔이 아니라 **회전**으로만 해결된다 |
 
 > "마지막 수동 전수감사 = 2026-06-26" 인 도메인은 그날 5개 병렬 에이전트 + 코드 재검증으로 전수조사 완료.
 > 그 결과를 위 가드로 박았으므로, **다음 세션은 가드 GREEN 이면 그 도메인을 다시 전수조사하지 말 것.**
