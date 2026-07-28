@@ -308,7 +308,7 @@ export default function AdminInfluencerPoolPage() {
             { label: '전체', value: stats.total },
             { label: '유튜브', value: stats.youtube },
             { label: '네이버블로그', value: stats.naver_blog },
-            { label: '네이버카페', value: stats.naver_cafe },
+            { label: '🏘️ 커뮤니티(카페)', value: stats.naver_cafe },
             { label: '이메일 보유', value: stats.with_email },
             { label: '오늘 수집', value: stats.today },
           ].map(s => (
@@ -402,10 +402,11 @@ export default function AdminInfluencerPoolPage() {
         {/* 필터 */}
         <div className="flex flex-wrap gap-2 mb-3">
           <select value={platform} onChange={e => setPlatform(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
-            <option value="">전체 플랫폼</option>
+            {/* 🏘️ 카페는 인플루언서가 아니라 커뮤니티라 기본 목록에서 빠진다(서버가 제외) — 여기서 골라야 보인다. */}
+            <option value="">전체(카페 제외)</option>
             <option value="youtube">유튜브</option>
             <option value="naver_blog">네이버 블로그</option>
-            <option value="naver_cafe">네이버 카페</option>
+            <option value="naver_cafe">🏘️ 지역·커뮤니티 매체(카페)</option>
             <option value="tistory">티스토리</option>
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">

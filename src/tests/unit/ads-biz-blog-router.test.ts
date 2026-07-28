@@ -68,3 +68,28 @@ describe('extractBlogBizContact — 저장된 텍스트에서 연락처(외부 �
     expect(extractBlogBizContact('블로그', 'thumb@2x.png 이미지').email).toBeNull()
   })
 })
+
+/**
+ * 🏘️ 카페 분리(2026-07-28 대표 "별도 매체로 분리")의 계약 고정.
+ *   어드민 목록은 platform 미지정 시 `platform != 'naver_cafe'` 를 WHERE 에 넣어 카페를 빼고,
+ *   `platform=naver_cafe` 로 명시하면 그것만 보여준다. 이 두 갈래가 뒤집히면
+ *   ① 커뮤니티가 인플루언서 목록을 다시 오염시키거나 ② 카페를 아예 볼 수 없게 된다.
+ *   (라우트 SQL 을 직접 부르지 않고 분기 규칙만 재현 — 서버 코드와 같은 조건식을 쓴다.)
+ */
+describe('카페 분리 — 기본 목록에서 제외, 명시 조회는 유지', () => {
+  const PLATFORMS = ['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok']
+  /** 라우트와 동일한 분기: 유효 platform 이면 그 값으로, 아니면 카페 제외. */
+  function whereFor(platform: string): string {
+    return PLATFORMS.includes(platform) ? `platform = '${platform}'` : "platform != 'naver_cafe'"
+  }
+  it('① 기본(미지정)은 카페를 제외한다', () => {
+    for (const q of ['', '  ', 'garbage']) expect(whereFor(q.trim())).toBe("platform != 'naver_cafe'")
+  })
+  it('② 카페를 명시하면 카페만 — 데이터는 보존되고 언제든 볼 수 있다', () => {
+    expect(whereFor('naver_cafe')).toBe("platform = 'naver_cafe'")
+  })
+  it('③ 다른 플랫폼 명시는 영향 없음', () => {
+    expect(whereFor('youtube')).toBe("platform = 'youtube'")
+    expect(whereFor('naver_blog')).toBe("platform = 'naver_blog'")
+  })
+})

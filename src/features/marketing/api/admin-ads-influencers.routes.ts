@@ -59,6 +59,12 @@ app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  // 🏘️ 2026-07-28 대표 지시 "별도 매체로 분리" — 네이버 카페는 **인플루언서가 아니라 커뮤니티**다
+  //   (표본: 맘카페·창업카페·여행카페·아파트카페·팬카페. "강남 맛집" 키워드로 보험·렌탈 카페가 들어온다).
+  //   개인 크리에이터 목록에 섞이면 리스트 신뢰도를 갉아먹으므로 **기본 목록에서 제외**하고,
+  //   `platform=naver_cafe` 로 **명시 조회할 때만** 보이게 한다(수집·데이터는 그대로 보존 — 지역 맘카페는
+  //   동네딜 홍보 채널로 가치가 있어 버리지 않는다). 다른 필터/검색은 전부 그대로 동작한다.
+  else where.push("platform != 'naver_cafe'")
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
