@@ -216,6 +216,17 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**.
+    //   `runMakerCollect` 는 어드민 수동 버튼에만 연결돼 있었고 **cron 이 어디에도 없었다**
+    //   → 제조사 풀이 수동 실행분(82건)에 고착. 게이트 `SUPPLY_MAKER_COLLECT_ENABLED`(기본 OFF)도
+    //   상태 배지 표시에만 쓰여 "켜도 아무 일이 없는" 상태였다. 여기서 실제 스케줄에 연결한다.
+    //   ⚠️ 도매몰(features/supply) 레인 — 소비자/마케팅 레인과 다른 인보케이션이라 서브리퀘스트 예산이 분리된다.
+    if (env.SUPPLY_MAKER_COLLECT_ENABLED === 'true') {
+      ctx.waitUntil(safeCron('supply-maker-collect', async () => {
+        const { runMakerCollect } = await import('../features/supply/api/maker-collect');
+        return runMakerCollect(env);
+      }));
+    }
     // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
     //   경보(cron_failures + 어드민 벨). VAPID 미설정으로 웹푸시가 조용히 죽어있던 사고 재발 방지.
     ctx.waitUntil(safeCron('channel-watchdog', async () => {
