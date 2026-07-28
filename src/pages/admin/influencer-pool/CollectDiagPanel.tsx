@@ -17,6 +17,9 @@ export interface MaintenanceRecord {
   merge?: { merged?: number }; reextract?: { filled?: number }; reclassify?: { changed?: number }
   quality?: { scanned?: number; branded?: number; done?: boolean }
   rescan?: { changed?: number }; refetch?: { processed?: number }
+  // 🧮 2026-07-28 예산 계측 — 무료 플랜은 인보케이션당 D1 연산 상한(~29)이 있어 한 회차가 백로그를 다 못 돈다.
+  //   paused=true 는 **정상**(커서로 다음 회차가 이어받음) — 이게 안 보이면 "왜 조금만 처리됐지?"를 오진하게 된다.
+  phase?: string; ops?: number; cap?: number; paused?: boolean; limit_hit?: boolean
   naver?: { measured?: number; contacts?: number } // 📝 야간 블로거 스윕(활동성·프로필 연락처)
   [k: string]: unknown
 }
@@ -38,6 +41,9 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   add('카테고리재보정', m.rescan?.changed); add('라이브재조회', m.refetch?.processed)
   if (m.naver?.measured) parts.push(`블로거측정 ${formatNumber(m.naver.measured)}${m.naver.contacts ? `(연락처 +${formatNumber(m.naver.contacts)})` : ''}`)
   for (const k of Object.keys(m)) if (k.endsWith('_error')) err.push(k.replace('_error', ''))
+  // 🧮 예산 상태 — 매시간 한 단계씩 순환하므로 "이번 회차에 얼마나 썼고 왜 멈췄는지"가 보여야 한다.
+  if (typeof m.ops === 'number' && m.cap) parts.push(`연산 ${m.ops}/${m.cap}${m.paused ? ' · 예산소진(다음 회차 이어서)' : ''}`)
+  if (m.limit_hit) parts.push('⚠️ 플랫폼 한도 도달(상한 자동 하향)')
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
 
