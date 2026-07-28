@@ -29,9 +29,10 @@ export interface OpBudget {
 /** 예산 객체 생성. */
 export const newOpBudget = (left: number): OpBudget => ({ left: Math.max(0, left), used: 0 })
 
+// ⚠️ `success` 는 D1Response 에서 리터럴 `true` 타입이다 — `as const` 없이 쓰면 boolean 으로 넓어져 타입 불일치.
 const EMPTY_META = { changes: 0, duration: 0, last_row_id: 0, rows_read: 0, rows_written: 0, changed_db: false }
-const EMPTY_RUN = { success: true, results: [], meta: EMPTY_META }
-const EMPTY_ALL = { success: true, results: [], meta: EMPTY_META }
+const EMPTY_RUN = { success: true as const, results: [], meta: EMPTY_META }
+const EMPTY_ALL = { success: true as const, results: [], meta: EMPTY_META }
 
 /** 래퍼 statement → 실제 statement (batch 언랩용). */
 const REAL = new WeakMap<object, D1PreparedStatement>()
