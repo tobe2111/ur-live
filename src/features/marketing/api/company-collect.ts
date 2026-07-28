@@ -21,6 +21,24 @@ import { buildKeywordRows, rotationWindow } from './company-keyword-grid'
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
+/**
+ * 🚨 2026-07-28: 이 레인의 검색 fetch 3종이 전부 `.catch(() => null)` 로 **플랫폼 한도 오류를 삼켰다**.
+ *   "Too many subrequests" 가 나도 그냥 빈 결과로 보여서, 라운드 중간에 한도를 넘으면 **남은 키워드가
+ *   조용히 0건**이 되고 아무 신호도 안 남는다(집계만 보면 "그 키워드는 결과가 없었나 보다" 로 읽힌다).
+ *   → 한도 신호를 잡아 `budget.limitHit` 을 세우고, 상태줄(diag)에 노출해 판독 가능하게 한다.
+ *   ⚠️ 이 레인은 학습 상한을 쓰지 않지만(고정 예산), limitHit 이 서면 루프가 즉시 멈춰 헛돈을 막는다.
+ */
+async function laneFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget): Promise<Response | null> {
+  const { timeoutMs = 12000, ...rest } = init
+  try {
+    return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
+  } catch (err) {
+    const msg = String((err as { message?: string } | null)?.message || '')
+    if (/too many subrequests/i.test(msg) && budget) budget.limitHit = true
+    return null
+  }
+}
+
 const NAVER_OPENAPI = 'https://openapi.naver.com'
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 
@@ -34,7 +52,7 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
     if (outOfBudget(budget)) break
     spendBudget(budget)
     const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw.keyword)}&size=15&page=${page}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    const res = await laneFetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` } }, budget)
     if (!res || !res.ok) break
     const data = await res.json().catch(() => null) as { documents?: Array<{ place_name?: string; phone?: string; road_address_name?: string; address_name?: string; category_name?: string }>; meta?: { is_end?: boolean } } | null
     for (const d of (data?.documents || [])) {
@@ -123,7 +141,7 @@ async function searchNaverLocal(clientId: string, clientSecret: string, kw: Comp
   if (outOfBudget(budget)) return []
   spendBudget(budget)
   const url = `${NAVER_OPENAPI}/v1/search/local.json?query=${encodeURIComponent(kw.keyword)}&display=5&sort=random`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+  const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
   if (!res || !res.ok) return []
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; category?: string; telephone?: string; address?: string; roadAddress?: string; link?: string; description?: string }> } | null
   const out: CompanyLead[] = []
@@ -162,7 +180,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
     if (outOfBudget(budget)) break
     spendBudget(budget)
     const url = `${NAVER_OPENAPI}/v1/search/webkr.json?query=${encodeURIComponent(kw.keyword)}&display=30&start=${p * 30 + 1}`
-    const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
+    const res = await laneFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret } }, budget)
     if (!res || !res.ok) break
     const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
     const got = data?.items || []
@@ -215,7 +233,7 @@ async function searchNaverWeb(clientId: string, clientSecret: string, kw: Compan
 // 📇 연락처 보강 레인은 `enrich-lane.ts` 로 분리(2026-07-28, 600줄 한도) — 기존 import 경로 유지용 re-export.
 export { enrichHeldLeads } from './enrich-lane'
 
-export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string } }
+export interface CompanyCollectStats { last_run: string; found: number; saved: number; emailed?: number; keywords: string[]; cursor: number; total_runs: number; total_saved: number; total_keywords?: number; spent?: number; limit_hit?: boolean; diag: { configured: boolean; error?: string } }
 const STATS_KEY = 'ads_company_stats'
 const CURSOR_KEY = 'ads_company_cursor'
 
@@ -261,12 +279,14 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 
   const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) } // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  // 시작값을 상수로 고정 — 소비량을 다른 기준으로 재면 백오프/관측이 통째로 틀어진다(2026-07-28 kakao_sweep 실사고).
+  const budgetTotal = Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  const budget: FetchBudget = { left: budgetTotal }
 
   let found = 0, saved = 0
   const used: string[] = []
   for (let i = 0; i < batch; i++) {
-    if (outOfBudget(budget)) break
+    if (outOfBudget(budget) || budget.limitHit) break // 한도 도달 시 즉시 중단 — 남은 키워드를 헛돌지 않는다
     const kw = kws[i]
     used.push(kw.keyword)
     const leads = await searchNaverLocal(clientId, clientSecret, kw, budget)
@@ -338,6 +358,9 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const s: CompanyCollectStats = {
     last_run: stamp, found, saved, emailed, keywords: used, cursor: nextCursor,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
+    // 📊 관측 필드 — 예산이 실제로 얼마나 쓰였고 한도에 닿았는지, 전국 확장 후 한 바퀴가 얼마나 되는지.
+    //   (전국 확장 + webkr 페이지네이션으로 키워드당 비용이 올라 예산이 먼저 마를 수 있다 → 눈에 보이게.)
+    total_keywords: total, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
     diag: { configured: true },
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null)
