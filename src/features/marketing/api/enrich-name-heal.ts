@@ -9,7 +9,8 @@
  *   비용: 회당 8건 캡(잔여 예산에서만) + 시도 도장 공유(7일 쿨다운).
  */
 import type { Env } from '@/worker/types/env'
-import type { FetchBudget } from './contact-enrich'
+// FetchBudget 의 선언처는 influencer-discovery(마케팅 레인 공용 타입) — contact-enrich 도 거기서 가져온다.
+import type { FetchBudget } from './influencer-discovery'
 
 interface HealDeps {
   DB: Env['DB']
