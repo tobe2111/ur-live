@@ -117,6 +117,8 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/maintain-all', {})
       if (!r.data?.success) { toast.error(r.data?.error || '정비 시작 실패'); return }
+      // 🔒 이미 돌고 있으면 새로 시작하지 않았다고 정직하게 알린다(연타해도 겹치지 않음).
+      if (r.data.busy) { toast.info('이미 정비가 진행 중입니다 — 새로 시작하지 않았어요. 끝나면 통계에 반영됩니다'); return }
       toast.success(r.data.skipped_rescan
         // 라이브 재보정은 수집과 같은 하루 YouTube 예산을 쓴다 → 수집 중이면 신규 발굴에 양보(정직하게 알림).
         ? '🧰 전체 정비를 시작했어요 — 수집이 진행 중이라 라이브 재보정만 건너뜁니다(같은 YouTube 예산)'

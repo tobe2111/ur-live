@@ -30,17 +30,19 @@ export default function ConsentedSendPanel() {
     if (!targets?.length) return
     if (!window.confirm(`동의한 신청자 ${targets.length}명에게 발송할까요?\n(수신거부 안내는 자동 첨부됩니다)`)) return
     setBusy(true)
-    let sent = 0, failed = 0, skipped = 0
+    let sent = 0, failed = 0, skipped = 0, recent = 0
     try {
       for (let i = 0; i < targets.length; i += 50) {
         const ids = targets.slice(i, i + 50).map(t => t.id)
         try {
           const r = await api.post('/api/admin/ads/influencer-pool/send-consented', { ids, subject, body })
-          if (r.data?.success) { sent += r.data.sent || 0; failed += (r.data.failed || []).length; skipped += (r.data.skipped || []).length }
+          if (r.data?.success) { sent += r.data.sent || 0; failed += (r.data.failed || []).length; skipped += (r.data.skipped || []).length; recent += r.data.recent_skipped || 0 }
           else { failed += ids.length; if (i === 0) { toast.error(r.data?.error || '발송 실패'); break } }
         } catch { failed += ids.length }
       }
-      if (sent) toast.success(`📨 ${formatNumber(sent)}건 발송 완료${failed ? ` · 실패 ${failed}` : ''}${skipped ? ` · 제외(미동의/이메일없음) ${skipped}` : ''}`)
+      // 🔁 최근 7일 내 이미 받은 사람은 서버가 자동 제외한다(중복 클릭·재실행이 같은 사람에게 또 보내지 않게).
+      if (!sent && recent) toast.info(`이미 최근 7일 내 발송한 리드라 ${formatNumber(recent)}명 전원 제외했어요 — 중복 발송을 막았습니다`)
+      else if (sent) toast.success(`📨 ${formatNumber(sent)}건 발송 완료${failed ? ` · 실패 ${failed}` : ''}${skipped ? ` · 제외 ${skipped}${recent ? `(최근 발송 ${recent} 포함)` : '(미동의/이메일없음)'}` : ''}`)
     } finally { setBusy(false); setOpen(false) }
   }
 

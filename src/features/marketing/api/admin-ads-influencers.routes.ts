@@ -28,6 +28,15 @@ app.use('*', requireAdmin())
 //   ⚠️ 메인 번들 경량 유지 위해 수집/발굴 코드는 import 안 하고 전부 inline SQL(공용 풀 = account_id 0).
 const POOL = 0
 
+// 📨 캠페인 발송 시각 — **중복 발송 차단의 키**. contacted_at 은 COALESCE(최초 1회)라 재발송 판정에 못 쓴다.
+const RESEND_COOLDOWN_DAYS = 7
+const _campaignColDone = new WeakSet<object>()
+async function ensureCampaignColumn(DB: D1Database) {
+  if (_campaignColDone.has(DB)) return
+  _campaignColDone.add(DB)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN campaign_sent_at TEXT').run().catch(() => null)
+}
+
 // 📣 모집 캠페인 — 수집 리드에게 신청(동의)을 안내한 시점. 전환율 분모(recruited) / 분자(consented) 산출용.
 const _recruitColDone = new WeakSet<object>()
 async function ensureRecruitColumn(DB: D1Database) {
@@ -280,12 +289,19 @@ app.post('/influencer-pool/send-consented', async (c) => {
   const template = String(b.body || '').trim().slice(0, 5000)
   if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
   if (!String(b.subject || '').trim() || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+  // 🔁 중복 발송 차단(2026-07-27) — 버튼을 다시 누르거나 청크 루프를 재실행하면 **같은 사람에게 같은 메일이
+  //   또 갔다**(외부에 직접 피해가 가는 유일한 중복 클릭). 최근 발송자는 조용히 제외하고 응답에 보고.
+  //   의도적 재발송(다른 내용)은 body.force 로 통과 — 사람이 명시할 때만.
+  await ensureCampaignColumn(c.env.DB)
+  const force = b.force === true
+  const dedupe = force ? '' : `AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${RESEND_COOLDOWN_DAYS} days'))`
   // ⚖️ 동의 강제: consented_at + email 있는 행만 — 미동의/이메일 없는 id 는 조용히 제외(응답에 skipped 로 보고).
   const ph = ids.map(() => '?').join(',')
   const rows = (await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
-    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL`)
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL ${dedupe}`)
     .bind(POOL, ...ids).all<{ id: number; name: string; email: string }>().catch(() => null))?.results || []
-  if (!rows.length) return c.json({ success: false, error: '선택한 리드 중 발송 가능한(사전동의 + 이메일 보유) 리드가 없습니다' }, 400)
+  if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, recent_skipped: ids.length,
+    note: force ? '발송 가능한 리드가 없습니다' : `선택한 리드가 모두 최근 ${RESEND_COOLDOWN_DAYS}일 내 발송 대상이거나 발송 조건(사전동의 + 이메일)을 만족하지 않습니다` })
   let sent = 0; const failedIds: number[] = []; const suppressedIds: number[] = []
   for (const r of rows) {
     const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부·전송자정보 강제
@@ -293,12 +309,13 @@ app.post('/influencer-pool/send-consented', async (c) => {
     if (res.success) {
       sent++
       await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
-        status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
+        campaign_sent_at = datetime('now'), status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
     } else if ((res as { error?: string }).error === 'suppressed') suppressedIds.push(r.id) // 반송/스팸신고/수신거부 억제 — 재시도 무의미(실패와 구분)
     else failedIds.push(r.id)
   }
   const eligible = new Set(rows.map(r => r.id))
-  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped: ids.filter(id => !eligible.has(id)) })
+  const skipped = ids.filter(id => !eligible.has(id))
+  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped, recent_skipped: force ? 0 : skipped.length })
 })
 
 // POST /api/admin/ads/influencer-pool/:id/track-link { target_url } — 🔗 리드별 협찬 추적링크(생성/조회)

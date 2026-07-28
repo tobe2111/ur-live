@@ -9,6 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
 import { runQualityPass } from './influencer-quality'
+import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
 
 const POOL = 0
 
@@ -158,14 +159,19 @@ export async function reextractPoolContacts(DB: D1Database): Promise<{ scanned: 
  */
 export async function runNightlyMaintenance(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
+  // 🔒 단일화 lease — 야간 cron · 🧰 전체 정비 버튼 · 연타가 겹치면 같은 그룹을 두 실행이 동시에 병합하고
+  //   (레이스) 아래 rescan 은 YouTube 쿼터까지 중복 소모한다. 수집 lease 와 같은 CAS 패턴, 별개 키.
+  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) return { at: new Date().toISOString(), kind: 'maintenance', busy: true }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'maintenance' }
-  try { out.merge = await mergeDuplicatePool(DB, { groupCap: 150 }) } catch (e) { out.merge_error = (e as Error)?.message || 'fail' }
-  try { out.reextract = await reextractPoolContacts(DB) } catch (e) { out.reextract_error = (e as Error)?.message || 'fail' }
-  try { out.reclassify = await runReclassifyPool(DB) } catch (e) { out.reclassify_error = (e as Error)?.message || 'fail' }
-  // 🏅 품질 패스 — 브랜드 공식 채널 태깅 + 리드 스코어 재계산(커서 순환, 회차당 상한 있음).
-  try { out.quality = await runQualityPass(DB) } catch (e) { out.quality_error = (e as Error)?.message || 'fail' }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_maintenance_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
+  try {
+    try { out.merge = await mergeDuplicatePool(DB, { groupCap: 150 }) } catch (e) { out.merge_error = (e as Error)?.message || 'fail' }
+    try { out.reextract = await reextractPoolContacts(DB) } catch (e) { out.reextract_error = (e as Error)?.message || 'fail' }
+    try { out.reclassify = await runReclassifyPool(DB) } catch (e) { out.reclassify_error = (e as Error)?.message || 'fail' }
+    // 🏅 품질 패스 — 브랜드 공식 채널 태깅 + 리드 스코어 재계산(커서 순환, 회차당 상한 있음).
+    try { out.quality = await runQualityPass(DB) } catch (e) { out.quality_error = (e as Error)?.message || 'fail' }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_maintenance_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
+  } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }
   return out
 }
 
@@ -174,12 +180,16 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
  *   + 📝 블로거 스윕(활동성·이웃수·프로필 연락처 — 시간당 20 개로는 백로그가 느려 밤에 60 개 추가). */
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
+  // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
+  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) return { at: new Date().toISOString(), kind: 'rescan', busy: true }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
-  try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
-  // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
-  try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
-  try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
+  try {
+    try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
+    // passes 4 = 80채널/밤 — 기존 측정행의 롱폼 중앙값 소급 가속(YT units ~100/밤 — 일일 쿼터 10k 대비 미미).
+    try { out.refetch = await runYtLiveRefetch(env, 4) } catch (e) { out.refetch_error = (e as Error)?.message || 'fail' }
+    try { out.naver = await enrichNaverActivity(DB, { left: 150 }, 60) } catch (e) { out.naver_error = (e as Error)?.message || 'fail' }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_maintenance_rescan_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
+  } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }
   return out
 }
