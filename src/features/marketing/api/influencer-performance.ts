@@ -410,9 +410,9 @@ export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processe
  *   전 YT 풀(수천)도 ≈ N/50 호출(4,200개 ≈ 85콜, 하루 쿼터 10k 의 <1%) → **버튼 한 번에 전 풀 재보정**(waitUntil 백그라운드).
  *   반복 클릭·수백 클릭 불필요. 멱등(같은 결과 재적용 무해). 0-views/perf 힐과 무관(그건 채널당 호출이라 별도).
  */
-export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number }> {
+export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number; confirmed: number }> {
   const apiKey = env.YOUTUBE_API_KEY
-  if (!apiKey) return { scanned: 0, changed: 0 }
+  if (!apiKey) return { scanned: 0, changed: 0, confirmed: 0 }
   const DB = env.DB
   await ensurePerfExtraColumns(DB)
   // 🛡️ 2026-07-23 전수조사: 이 함수만 fetch 예산·진행 커서가 없어 20k 풀에서 무제한 fetch → 인보케이션 중도 사망 시
@@ -423,12 +423,12 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
   const CURSOR_KEY = 'ads_catrescan_cursor'
   const { readSetting, writeSetting } = await import('./influencer-auto-collect')
   let afterId = Math.max(0, parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10) || 0)
-  let scanned = 0, changed = 0, calls = 0, reachedEnd = false
+  let scanned = 0, changed = 0, confirmed = 0, calls = 0, reachedEnd = false
   while (scanned < CAP && calls < MAX_CALLS) {
-    const rows = (await DB.prepare(`SELECT id, channel_id, name, category FROM ad_influencer_leads
+    const rows = (await DB.prepare(`SELECT id, channel_id, name, category, category_source FROM ad_influencer_leads
         WHERE account_id = 0 AND platform = 'youtube' AND channel_id IS NOT NULL AND id > ?
         ORDER BY id ASC LIMIT 1000`).bind(afterId)
-      .all<{ id: number; channel_id: string; name: string | null; category: string | null }>().catch(() => null))?.results || []
+      .all<{ id: number; channel_id: string; name: string | null; category: string | null; category_source: string | null }>().catch(() => null))?.results || []
     if (!rows.length) { reachedEnd = true; break }
     for (let i = 0; i < rows.length && scanned < CAP && calls < MAX_CALLS; i += 50) {
       const batch = rows.slice(i, i + 50)
@@ -449,14 +449,21 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
           const finalCat = reconcileCategory(r.category, live, topic)
           // 🏷️ 채택 근거 — 라이브 About 규칙이면 content, 유튜브 자체분류면 topic, 유지/기타는 기존 근거 보존(null=미기록).
           const src = finalCat == null ? null : finalCat === live ? 'content' : finalCat === topic ? 'topic' : undefined
-          return { id: r.id, finalCat, prev: r.category, src }
+          // ✅ 2026-07-28 확인분 — 카테고리는 그대로인데 **라이브 신호가 그 값을 확증**한 경우.
+          //   이전엔 변경분만 write 해서, 키워드 상속 카테고리가 *맞다고 확인돼도* category_source 가 'keyword' 로
+          //   남았다 → 어드민 "근거 검증됨 7%"가 재보정을 아무리 돌려도 안 움직임(재검증은 실제로 되는데 계측만 거짓).
+          //   이미 content/topic 으로 검증된 행은 제외 — 매 순회 같은 값 재기록 방지.
+          const alreadyVerified = r.category_source === 'content' || r.category_source === 'topic'
+          const confirmOnly = finalCat === r.category && !!src && !alreadyVerified
+          return { id: r.id, finalCat, prev: r.category, src, confirmOnly }
         })
-        .filter(x => x.finalCat !== x.prev) // 변경분만 write
+        .filter(x => x.finalCat !== x.prev || x.confirmOnly)
       if (ups.length) {
         await DB.batch(ups.map(x => x.src === undefined
           ? DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id)
           : DB.prepare('UPDATE ad_influencer_leads SET category = ?, category_source = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.src, x.id))).catch(() => null)
-        changed += ups.length
+        // 교정(changed)과 확증(confirmed)은 의미가 달라 따로 센다 — 리포트가 "몇 개 고쳤나"를 부풀리지 않게.
+        for (const x of ups) { if (x.confirmOnly) confirmed++; else changed++ }
       }
       scanned += batch.length
       afterId = batch[batch.length - 1].id
@@ -465,7 +472,7 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
     if (rows.length < 1000 && scanned >= 0 && calls < MAX_CALLS) { reachedEnd = true; break }
   }
   if (reachedEnd) await writeSetting(DB, CURSOR_KEY, '0') // 한 바퀴 완료 — 다음 클릭은 처음부터(멱등 재보정)
-  return { scanned, changed }
+  return { scanned, changed, confirmed }
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
