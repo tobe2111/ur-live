@@ -80,7 +80,8 @@ import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-g
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
-import { googleRoutes } from '../features/auth/api/google.routes';
+// 🔒 2026-07-28: 마운트 해제로 미사용 — import 도 함께 주석(복원 시 둘 다 되살릴 것)
+// import { googleRoutes } from '../features/auth/api/google.routes';
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
@@ -1440,8 +1441,11 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 
-// Feature: Google/Firebase auth
-app.route('/api/auth/google', googleRoutes);
+// 🔒 2026-07-28: Google/Firebase 로그인 라우트 마운트 해제.
+//   Firebase 서비스계정 개인키가 archive/ 문서에 3개월간 public 노출(#798) → 폐기하면 이 경로는
+//   어차피 동작 불가. KR 은 카카오 전용(LoginPage 의 구글 버튼은 `!isKR` 게이트라 렌더 안 됨)이고
+//   GLOBAL 은 미런칭·폐기(#804). 되살릴 땐 새 서비스계정 키 발급 + 이 줄 복원.
+// app.route('/api/auth/google', googleRoutes);
 
 // ============================================================
 // Users Routes  ← /api/users/role, /api/users/init
