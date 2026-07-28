@@ -25,6 +25,7 @@
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
 | **🌏 해외판(GLOBAL) 실행 준비 상태** — "켜려면 실제로 뭐가 필요한가" 실측 체크리스트 | 2026-07-28 | 🅿️ 파킹(결정 대기) — 배포구조는 이미 해결(런타임 hostname 판정, 배포 1개+도메인 N개). **현 상태로 켜면 사고**: Stripe 가 주문 확정만 하고 이행(재고·발급·정산·알림) 0. 대표 결정 3건(무엇을 팔까·통화정책·유료전환) 후 착수. `ur-live-global` 은 폐기 확정 — **다시 만들지 말 것** | [global-launch-readiness.md](./global-launch-readiness.md) |
+| **🏪 매장 상품 픽업 공구 — 설계 판정**(매장이 자기 물리 상품을 공구로 팔고 매장에서 픽업. 재사용 범위·gb_mode 파손 지점·픽업확인·정산 판정) | 2026-07-28 | 🟡 조사·판정 완료(코드 0) — **대표 결정 D1(미수령 손실 귀속) 대기 = 블로킹**. 결론: 쇼핑 재오픈 아님, **이용권 레일 위 하위종**(`stay_voucher` 선례). 5%·promo 레일은 무변경 성립 | [store-pickup-group-buy.md](./store-pickup-group-buy.md) |
 | **💸 벤더 커미션 Pass-through 분할**(소속 여부 자동분기 A/B + 딜단위 per-promo, order-commissions.ts 위에 얹기) | 2026-07-08 | 🅿️ 설계/구현 파킹 — 실벤더 1곳 이주 의사 시 그 벤더 분배방식에 맞춰 착수(단독 세션+staging). 규모 ≈10~14일 | [vendor-commission-passthrough.md](./vendor-commission-passthrough.md) |
 | **📝 블로그 상세 — 3단 레이아웃**(좌 목차 + 중앙 본문 + 우 추천글, 아싸뷰 스타일) | 2026-07-02 | ✅ 구현 완료 | [blog-detail-3col.md](./blog-detail-3col.md) |
 | **📝 블로그 UI — 토스 테크 스타일**(히어로 캐러셀 + 전체 아티클 리스트 + 페이지네이션) | 2026-07-01 | ✅ 구현 완료 (BlogListPage 전면 개편) | [blog-toss-style.md](./blog-toss-style.md) |
