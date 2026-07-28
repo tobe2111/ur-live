@@ -51,6 +51,23 @@ LICENSE 는 fork 자체를 막지 못하고(GitHub 약관상 public 저장소의
 > ⚠️ 코드로 Origin 로깅을 심는 것은 **권장하지 않는다** — 결제·API 핫패스에 부담과 위험을 더한다.
 > 대시보드 관측으로 충분하고, 그게 무료다.
 
+## 3.5 ✅ 자동화됨 — `.github/workflows/copy-watch.yml` (2026-07-28)
+
+위 §1·§2 중 기계가 할 수 있는 부분은 **주 1회 자동 실행**된다(월요일 09:20 KST).
+
+| 검사 | 자동 | 비고 |
+|---|---|---|
+| 새 fork 감지 | ✅ | 기본 `GITHUB_TOKEN` 으로 동작 — 추가 설정 불필요 |
+| 카나리 문자열 코드검색 | ⚠️ 조건부 | 저장소 시크릿 **`COPY_WATCH_TOKEN`**(public repo 읽기 PAT)이 있을 때만. 없으면 조용히 생략하고 fork 감시만 수행 |
+| Cloudflare 트래픽 이상치 | ❌ | 대시보드 수동 확인(§3) |
+
+**발견될 때만 이슈**를 만든다(라벨 `copy-watch`, 열려 있으면 코멘트로 누적). 조용한 주엔 아무 것도 안 남긴다.
+비용 월 4분. 수동 실행은 Actions 탭 → `Copy Watch` → Run workflow.
+
+> 코드검색을 켜려면: GitHub → Settings → Developer settings → Personal access tokens 에서
+> **public 저장소 읽기만** 가능한 fine-grained PAT 발급 → 레포 Secrets 에 `COPY_WATCH_TOKEN` 으로 등록.
+> ⚠️ 권한을 넓게 주지 말 것 — 이 토큰이 새면 그 권한 그대로 유출된다(2026-07-28 CF 토큰 사고와 같은 클래스).
+
 ## 4. 정기 점검 (분기 1회, 10분)
 
 1. §1 의 검색 쿼리 3~4개 실행
