@@ -32,6 +32,17 @@ dist/
 #   (배포 토큰은 GitHub Actions Secrets / Cloudflare 대시보드에만 둘 것 — 레포엔 어떤 형태로도 금지.)
 .env.deploy
 
+# 🚨 2026-07-28: 키 파일 자체를 확장자로 차단 — archive/ 에 Google 서비스계정 개인키가 3개월간
+#   추적된 채 public 노출됐다(#798). 파일로 받아 레포에 두는 습관 자체를 막는다.
+#   (서비스계정 JSON 은 GCP 콘솔에서 받자마자 Cloudflare Secret 으로 옮기고 로컬 파일은 지울 것.)
+*.pem
+*.p12
+*.pfx
+*.key
+*service-account*.json
+*serviceaccount*.json
+*-credentials.json
+
 
 # OS
 .DS_Store
