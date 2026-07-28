@@ -94,6 +94,19 @@ app.post('/__ads/enrich-influencer', async (c) => {
   }
 })
 
+// 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
+//   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
+app.post('/__ads/route-biz-blogs', async (c) => {
+  try {
+    const { routeBusinessBlogsToPartnerPool } = await import('@/features/marketing/api/biz-blog-router')
+    const max = Math.max(100, Math.min(20000, parseInt(c.req.query('max') || '', 10) || 3000))
+    return c.json({ ok: true, stats: await routeBusinessBlogsToPartnerPool(c.env, { dryRun: c.req.query('apply') !== '1', max, reset: c.req.query('reset') === '1' }) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
 // 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
 app.post('/__ads/collect-company', async (c) => {
   try {
