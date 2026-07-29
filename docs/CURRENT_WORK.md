@@ -99,6 +99,16 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 >
 > ⚠️ **CF 토큰 상태 정정**: CLAUDE.md "☁️ Cloudflare API 접근" 절차대로 D1 에서 꺼냈으나 **토큰이 죽어 있다.**
 > 그 절의 실측 기록(워커 목록 조회 성공 등)은 07-28 시점이고 **지금은 유효하지 않다.**
+## ✅ 2026-07-05 — 1인 운영 관측 보강: cron dead-man's switch + 게이트 현황판 + staging 체크리스트 SSOT (대표 "모두 이상적으로 진행")
+"에러를 대표가 먼저 발견"하는 마지막 축들을 자동 관측으로 전환. 결제/잠금 파일 무수정 — 전부 additive 관측 계층.
+- **🫀 Cron 침묵 감지(dead-man's switch)**: `scheduled.ts safeCron`(전 cron 단일 관문)이 실행당 `cron_heartbeats` 1 upsert(신규 util `cron-heartbeat.ts`, repair-schema 등록). 핵심 cron 13종(5분/시간/일/주간별 허용 간격) stale 판정 → ① 신규 공개 프로브 `GET /api/_healthcheck/cron`(비정상 503) ② `uptime.yml`(외부 GitHub Actions 10분)에 프로브 추가 → 침묵 시 이슈+이메일(**cron 내부 자가진단은 cron 전면 사망 시 같이 죽으므로 외부 관측이 진짜 스위치**) ③ daily-self-diagnostic 에 부분 침묵 섹션.
+- **🖥️ 프론트 에러 집계**: 수집(frontend_errors, 2026-05-23~)은 있었으나 진단이 안 봄 → daily-self-diagnostic 에 24h 건수/고유종 요약 + 30건 초과 시 상위 3종 Discord 경보(상세 /admin/errors).
+- **💾 백업 무결성 자동 검증**: `d1-backup` 이 dump 실패 테이블/테이블 수 하한 30/크기 하한 256KB/R2 head 존재·크기 일치 검사 → 경고 시 Discord warn 승격. 복구 리허설 절차 신설 `docs/BACKUP_RESTORE.md`(분기 1회, Time Travel 1순위 + R2 dump 2차).
+- **🚦 게이트 플래그 현황판**: 신규 `GET /api/admin/ops-status`(admin-system-monitoring.routes — 게이트 7종 env/platform_settings 값 + heartbeat 전체 + stale) + `/admin/system-monitoring` **"게이트·하트비트" 탭**(`admin-system-monitoring/OpsStatusTab.tsx`). 열람 전용 — staging 미검증 게이트 실수 활성 방지.
+- **🧪 STAGING_CHECKLIST.md 신설(SSOT)**: CLAUDE.md 곳곳의 "staging 실결제 검증 필수" 항목을 S1~S4(게이트)/P1~P8(경로 변경분)로 통합 — 시나리오·통과 기준·검증 데이 순서. 게이트 레지스트리(OPS_GATES)의 staging_ref 와 연동.
+- **훅 수리**: `.claude/hooks/session-start.sh` — npm 403 시 스크래퍼 서버 기동 스킵(매 세션 ERR_MODULE_NOT_FOUND 노이즈 제거).
+- ⏭️ **대표 액션 잔여**: ① 머지 후 `npx wrangler@3 deploy` 1회(cron 은 별도 Workers 프로젝트 — heartbeat 기록이 그때부터 시작, 그 전까지는 bootstrapping=오탐 0) ② 반나절 "검증 데이"로 STAGING_CHECKLIST S/P 항목 소화 ③ 분기 백업 복구 리허설 1회(BACKUP_RESTORE.md) ④ TD-001 D1 Migration CI 토큰 권한.
+- ⚠️ 이 원격환경 npm 403 으로 전체 tsc/build 미실행 — CI(verify.yml) 위임. 가드(sql-table/bind/theme/file-size 등) 통과 확인.
 ## 🟢 2026-07-29 (9차-b) — **유어애즈: 수집 레인 2개가 0건이던 진짜 이유 = 코드가 아니라 호출 방식**
 
 6차-m·7차가 남긴 "다음 세션 첫 액션" 4개를 라이브에서 전부 실측하고, 그중 하나의 근본원인을 고쳤다.

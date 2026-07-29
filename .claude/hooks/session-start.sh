@@ -7,7 +7,14 @@ fi
 
 echo "==> naver-ad-scraper 의존성 설치 중..."
 cd "$CLAUDE_PROJECT_DIR/naver-ad-scraper"
-npm install --silent
+npm install --silent || true
+
+# 🛡️ 2026-07-05: npm 레지스트리 정책(403 등)으로 설치가 실패하면 서버 기동을 건너뜀 —
+#   의존성 없이 node 를 띄우면 ERR_MODULE_NOT_FOUND 크래시가 매 세션 노이즈로 남음.
+if [ ! -d node_modules/p-queue ]; then
+  echo "==> 경고: 의존성 설치 실패(레지스트리 정책 403 가능) — 스크래퍼 서버 기동 스킵 (세션 작업엔 영향 없음)"
+  exit 0
+fi
 
 echo "==> 스크래퍼 서버 확인 중 (포트 3456)..."
 
