@@ -55,11 +55,24 @@ app.get('/stats', async (c) => {
   const run = await readJson('ads_localdata_stats')
   const neisRun = await readJson('ads_neis_stats')
   const hiraRun = await readJson('ads_hira_stats')
+  // 🚩 게이트는 **cron 이 도는 워커(ur-ads) env** 가 진실이다. 여기서 `c.env.*` 를 읽으면
+  //   **메인 워커** 값이라 실제와 어긋난다 — 라이브 실측(2026-07-28): 화면은 `gate:false` 인데
+  //   `run.last_run` 은 그날 크론 시각이었다(= 실제로는 켜져서 돌고 있었다). 파트너풀 상태줄은
+  //   이미 `/__ads/health` 로 실값을 묻는데 매장 쪽만 안 물어 **거짓 OFF** 를 보여줬다.
+  //   ⚠️ 대표가 이걸 보고 "안 켜져 있네" 로 오판하면 진짜 원인(=예산 고갈)을 영영 못 찾는다.
+  let g: Record<string, boolean> | null = null
+  if (c.env.ADS?.fetch) {
+    try {
+      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+      g = ((await hr.json().catch(() => null)) as { gates?: Record<string, boolean> } | null)?.gates ?? null
+    } catch { /* health 실패 시 메인 env 폴백 */ }
+  }
+  const gate = (k: string, fallback: boolean): boolean => (g && typeof g[k] === 'boolean') ? g[k] : fallback
   return c.json({
     success: true, ...s,
-    collect: { gate: (c.env as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
-    neis: { gate: (c.env as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true', run: neisRun },
-    hira: { gate: (c.env as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true', run: hiraRun },
+    collect: { gate: gate('localdata', (c.env as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
+    neis: { gate: gate('neis', (c.env as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true'), run: neisRun },
+    hira: { gate: gate('hira', (c.env as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true'), run: hiraRun },
   })
 })
 

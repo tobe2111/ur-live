@@ -43,6 +43,7 @@ app.get('/__ads/health', (c) => {
       company_collect: on('ADS_COMPANY_COLLECT_ENABLED'), storeinfo: on('ADS_STOREINFO_ENABLED'),
       commerce: on('ADS_COMMERCE_ENABLED'), franchise: on('ADS_FRANCHISE_ENABLED'),
       nps: on('ADS_NPS_ENABLED'), work24: on('ADS_WORK24_ENABLED'), localdata: on('ADS_LOCALDATA_ENABLED'),
+      neis: on('ADS_NEIS_ENABLED'), hira: on('ADS_HIRA_ENABLED'), store_kakao: on('ADS_STORE_KAKAO_ENABLED'),
       enrich_disabled: on('ADS_ENRICH_DISABLED'),
     },
   })
