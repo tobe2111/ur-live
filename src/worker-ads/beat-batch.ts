@@ -75,6 +75,13 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
     pending = []
     const p = write(batch).catch(() => undefined) // 관측 실패가 작업을 막지 않는다
     inflight.push(p)
+    // 🔒 **첫 flush 뒤로는 봉인** — 여기부터 오는 것은 '꼬리'다 (2026-07-29 라이브 실측 후 교정).
+    //   레인 완료는 초반에 몰렸다가(빠른 레인) 느린 레인이 한참 뒤에 하나씩 온다. 그 꼬리를 모으면
+    //   **뒤에 add 가 없어서 나이 상한이 발화하지 못하고**(상한은 add 시점에만 검사한다) 마지막 flush
+    //   까지 대기하는데, 부모가 그 전에 회수되면 사라진다. 라이브에서 두 틱 연속 그랬다:
+    //   `reclassify` 자기 스탬프 15:01:09 ↔ 하트비트 13:01(= 돌았는데 기록이 없다).
+    //   ⇒ 몰린 구간(=절약이 실제로 생기는 곳)만 묶고, 꼬리는 도착 즉시 쓴다.
+    sealed = true
     return p
   }
 
@@ -90,7 +97,7 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
     async flush(): Promise<void> {
       await flushNow()
       await Promise.allSettled(inflight)
-      sealed = true
+      sealed = true // (첫 flush 에서 이미 켜졌을 수 있다 — 아무것도 안 쓴 라운드를 위한 보장)
     },
     /** 테스트/진단용 — 아직 안 쓴 건수. */
     get size(): number { return pending.length },
