@@ -5510,6 +5510,7 @@ _총 65건 · 최신순 · 이 목록은 자동 생성된다._
 - [🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**](handoff/2026-07-29-cron-no-op-staging.md)
 - [🛡️ 2026-07-29 — "한 번도 안 뛴 cron" 탐지 가드 (실사고 후 환원)](handoff/2026-07-29-cron-never-fired-guard.md)
 - [수집량 계측 정정 + 유어딜 4대 업종 우선 (대표 지시 반영)](handoff/2026-07-29-collect-truth-and-priority.md)
+- [부모 cron 의 부기 비용을 절반으로 — 레인 굶주림의 *산수* (2026-07-29)](handoff/2026-07-29-beat-batch-subrequest.md)
 - [자동승격 적합성 게이트 + 골프 축 신설 (대표 승인 2건)](handoff/2026-07-29-ads-promote-gate-golf.md)
 - [유어애즈 정비 슬롯 재배분 — 균등 순환이 "일이 남은 곳"을 못 보고 있었다](handoff/2026-07-29-ads-maintenance-slots.md)
 - [✅ 2026-07-29 (9차-e) — **cron 경보가 매일 오탐을 울리고 있었다 (ur-ads 레인 주기 신고)**](handoff/2026-07-29-ads-lane-cadence.md)
