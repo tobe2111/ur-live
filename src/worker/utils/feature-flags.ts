@@ -83,18 +83,25 @@ export async function getFeatureFlags(KV?: KVNamespace, DB?: D1Database): Promis
   }
 
   // ── 1차: KV 조회 ─────────────────────────────────────
+  // 🛡️ 2026-07-08: KV 에 값이 "있을 때만" 그걸 사용. key 부재(null — 삭제/미생성)면 기본값으로
+  //   단정하지 말고 D1(지속 저장소)로 폴백. 이전엔 `stored || {}` 로 null 을 빈객체 취급해 D1 을
+  //   가렸고, KV 의 feature_flags 키가 지워지면(용량정리 등 실제 발생) 관리자 설정 플래그가 조용히
+  //   기본값으로 회귀했음. 이제 KV-miss → D1 권위 + D1 값으로 KV 자가복구.
   if (KV) {
     try {
       const stored = await KV.get('feature_flags', { type: 'json' });
-      const flags = { ...DEFAULT_FLAGS, ...((stored as Partial<FeatureFlags>) || {}) };
-      cached = { flags, loadedAt: now };
-      return flags;
+      if (stored) {
+        const flags = { ...DEFAULT_FLAGS, ...(stored as Partial<FeatureFlags>) };
+        cached = { flags, loadedAt: now };
+        return flags;
+      }
+      // stored == null (키 부재) → 아래 D1 폴백으로 진행 (기본값 단정 X)
     } catch {
       // fall through to D1
     }
   }
 
-  // ── 2차: D1 fallback (KV 미세팅 시 유일한 지속 저장소) ─
+  // ── 2차: D1 fallback (KV 미세팅/키부재 시 지속 저장소 — 진짜 원장) ─
   if (DB) {
     try {
       await ensureFlagsTable(DB);
@@ -104,6 +111,10 @@ export async function getFeatureFlags(KV?: KVNamespace, DB?: D1Database): Promis
       if (row?.value) {
         const parsed = JSON.parse(row.value) as Partial<FeatureFlags>;
         const flags = { ...DEFAULT_FLAGS, ...parsed };
+        // 🛡️ 자가복구: KV 키가 지워졌던 것이므로 D1 값으로 KV 재구성 → 다음 읽기부터 KV hit.
+        //   KV-miss 시에만 실행 + 30초 in-isolate 캐시 게이트라 write 는 propagation 창(≤60s) 동안
+        //   PoP 당 소수에 그침(무해). best-effort — 실패해도 D1 폴백은 유효.
+        if (KV) { try { await KV.put('feature_flags', JSON.stringify(parsed)); } catch { /* best-effort */ } }
         cached = { flags, loadedAt: now };
         return flags;
       }
