@@ -196,6 +196,15 @@ jobs:
         run: node scripts/check-lock-table-symbols.mjs -s
         continue-on-error: false
 
+      # 🔎 2026-07-29: sitemap 이 죽은 URL 을 검색엔진에 제출하는 것 차단(**네 번째 재발**).
+      #   실측: `/group-buy`(실제로는 <Navigate> 리다이렉트인데 priority 0.95·hourly) ·
+      #   `/vouchers?category=` 영문 슬러그 6개(필터는 한글 카테고리라 전부 0건 = soft-404) ·
+      #   `/live/{id}` ×100(라이브커머스 영구중단으로 라우트 자체가 없는데 hourly 로 발행).
+      #   ⚠️ catch-all(`*`) 라우트는 매칭에서 제외한다 — 포함하면 모든 URL 이 통과해 검사가 무의미해진다.
+      - name: sitemap 죽은 URL 차단 (strict)
+        run: node scripts/check-sitemap-routes.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
