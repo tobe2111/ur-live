@@ -36,42 +36,59 @@ export const EXPORT_PLATFORMS: Record<string, string> = {
  *     · 아직 연락 안 한 사람(contacted_at 없음)  · 반송·스팸신고 이력 제외(보내면 튕긴다)
  *   정렬은 기존과 동일(점수순) — 파일 위에서부터 순서대로 연락하면 된다. 미지정 시 기존 동작(전체) 불변.
  */
-export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number }): Promise<Response> {
+export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean }): Promise<Response> {
   await ensureInfluencerSchema(DB)  // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
   await ensureQualityColumns(DB)    // lead_score/is_brand/category_source — SELECT·정렬이 참조
   await ensurePerfExtraColumns(DB)  // median_long_views/shorts_ratio/last_post_at
   await ensureOutreachColumns(DB)   // email_status(반송·스팸신고 — 발송 안전 정보)
   // 🛡️ 2026-07-23 전수조사: 단일 SELECT LIMIT 20000 하드캡 — 28k 풀에서 8천 명이 조용히 누락되던 것.
   //   5천행 페이지 읽기(D1 응답크기 안전)로 전환 + 상한 60000(현 풀 2배 여유 — 초과 시에만 잘림).
-  type ExpRow = { platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null }
+  type ExpRow = { id: number; platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null }
   const rows: ExpRow[] = []
   // 🎯 매체별 분리 다운로드(2026-07-28 대표 요청) — 화이트리스트 밖 값은 무시하고 전체(기존 동작).
   const plat = platform && EXPORT_PLATFORMS[platform] ? platform : ''
   const platFilter = plat ? ' AND platform = ?' : ''
   // 값 바인딩 없는 정적 조건만(문자열 조립 안전) — 임의 입력이 SQL 에 닿지 않는다.
+  // 📇 수기 제휴 제안용 "지금 연락할 사람". 2026-07-29 **죽은 채널 제외** 추가 —
+  //   블로거 활동성 측정(`recent_posts_30d`)이 이제 실제로 쌓이기 시작했는데(핸들 복구 수리 이후),
+  //   목록은 여전히 이메일·브랜드·미접촉만 보고 있었다. 몇 년 전에 멈춘 블로그에 제안을 보내는 건
+  //   순수 낭비이고, 회신이 없으니 문안 성과 판단까지 흐린다.
+  //   ⚠️ **측정된 것 중 죽은 것만** 뺀다(`perf_checked_at IS NOT NULL AND recent_posts_30d = 0`).
+  //      미측정(대부분)은 남긴다 — 안 그러면 아직 측정 못 한 리드가 통째로 사라진다.
   const contactFilter = opts?.contactable
     ? " AND email IS NOT NULL AND email != '' AND COALESCE(is_brand,0) = 0 AND contacted_at IS NULL"
       + " AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))"
+      + " AND NOT (perf_checked_at IS NOT NULL AND COALESCE(recent_posts_30d, -1) = 0)"
     : ''
   const minScore = Number.isFinite(opts?.minScore) ? Math.max(0, Math.min(100, Number(opts?.minScore))) : null
   const scoreFilter = minScore != null ? ` AND COALESCE(lead_score,0) >= ${minScore}` : ''
+  // 🎯 유어딜 적합 카테고리 우선(2026-07-29) — 라이브 실측에서 **연락 대상 상위 20명이 전부 '기타'**였다
+  //   (인문학 채널·주식 단타·부업 노하우…). 점수 공식은 적합도에 100점 중 20점만 주므로 "구독자 많고
+  //   이메일 있는 채널"이 "구독자 적은 맛집 블로거"를 이긴다. 동네 매장 이용권을 파는 서비스에서
+  //   그 순서로 제안을 보내면 회신이 없을 뿐 아니라 브랜드 신뢰가 깎인다.
+  //   ⚠️ 점수 공식은 건드리지 않는다(전체 순위가 흔들린다) — **정렬 앞단에 카테고리 우선순위만** 얹는다.
+  //   목록 자체는 그대로라 밑으로 내려가면 나머지도 있다(잘라내지 않음).
+  const coreCats = ['맛집', '외식창업', '숙소', '뷰티', '네일', '여행', '푸드', '카페'] // 리터럴만 — 인젝션 무관
+  const coreFirst = opts?.coreFirst
+    ? `CASE WHEN category IN (${coreCats.map(c => `'${c}'`).join(',')}) THEN 0 ELSE 1 END, `
+    : ''
   const PAGE = 5000, CAP = 60000
   for (let off = 0; off < CAP; off += PAGE) {
     // 정렬: 카테고리별 시트 분리 유지 + 시트 안은 리드점수순(미채점 후순위) — "누구부터 컨택?"이 파일 순서로 답 됨.
-    const page = (await DB.prepare(`SELECT platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
+    const page = (await DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
-      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
       .bind(...(plat ? [poolId, plat, PAGE, off] : [poolId, PAGE, off])).all<ExpRow>().catch(() => null))?.results || []
     rows.push(...page)
     if (page.length < PAGE) break
   }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
-  const HEAD = ['플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
+  const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
   const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
   // 셀 값: number 는 숫자 그대로(xls Number 타입/csv 는 문자열화), 빈값은 '' — "null"/0 오염 없음.
-  const cells = (r: ExpRow): (string | number)[] => [PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url,
+  const cells = (r: ExpRow): (string | number)[] => [r.id, PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url,
     r.lead_score ?? '', noSub(r.platform) ? '' : (r.subscriber_count || 0),
     r.recent_avg_views ?? '', r.median_long_views ?? '', r.shorts_ratio ?? '', r.recent_avg_comments ?? '', r.recent_posts_30d ?? '', r.last_post_at || '',
     r.email || '', MAIL_KO[r.email_status || ''] || r.email_status || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '',
