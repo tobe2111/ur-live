@@ -9,9 +9,14 @@
  *   ② 수집 레인(company-collect)의 이메일 보충 블록 — ①과 **완전히 같은 모양인데 쿨다운만 빠져 있었다**.
  *      매시간 같은 15건을 재크롤(회당 ~45 서브리퀘스트 낭비)하고 백로그는 도달 불가. 2026-07-28 수리.
  *
- * 규칙: `ad_company_leads` 에서 **크롤 대상을 고르는 SELECT**(website 보유 + 이메일 없음 조건)는
- *   반드시 `enrich_checked_at` 쿨다운 조건을 함께 가져야 한다. 안 그러면 조용히 앞줄만 반복한다
- *   (에러도 로그도 안 남는다 — 그래서 두 번 다 오래 방치됐다).
+ *   ③ 카카오 전화 스윕(company-collect) — 2026-07-28 에 `id` 커서에서 **tier 우선순위** 정렬로 바꾸면서
+ *      커서가 성립하지 않게 됐다(정렬이 id 순일 때만 커서가 맞다). 도장 없이 우선순위로만 훑으면
+ *      **tier1 앞줄 몇백 건을 영원히 재조회**한다 — ①②와 같은 사고의 세 번째 얼굴.
+ *
+ * 규칙: `ad_company_leads` 에서 **외부 조회 대상을 고르는 SELECT** 는 반드시 시도 도장 쿨다운을 가져야 한다.
+ *   ⓐ 크롤 대상(website 보유 + 이메일 없음) → `enrich_checked_at`
+ *   ⓑ 전화 조회 대상(전화 없음 + 주소 보유) → `kakao_checked_at`
+ *   안 그러면 조용히 앞줄만 반복한다(에러도 로그도 안 남는다 — 그래서 세 번 다 오래 방치됐다).
  *
  * 예외: `crawl-cooldown-ok` 주석(같은 줄 또는 SELECT 시작 줄).
  *
@@ -58,28 +63,36 @@ for (const file of walk(path.join(ROOT, 'src'))) {
   for (const m of src.matchAll(LITERAL_RE)) {
     const sql = m[1] ?? m[2] ?? m[3] ?? ''
     if (!/FROM\s+ad_company_leads/i.test(sql) || !/\bSELECT\b/i.test(sql)) continue
-    // 크롤 대상 선정 = 홈페이지 보유 + 이메일 미보유를 **동시에** 거는 SELECT.
+    // ⓐ 크롤 대상 = 홈페이지 보유 + 이메일 미보유를 **동시에** 거는 SELECT.
     const picksCrawlTargets = /website\s+IS\s+NOT\s+NULL/i.test(sql) && /email\s+IS\s+NULL/i.test(sql)
-    if (!picksCrawlTargets) continue
-    if (/enrich_checked_at/i.test(sql)) continue // 쿨다운 보유 — OK
+    // ⓑ 전화 조회 대상 = 전화 미보유 + 주소 보유(카카오 로컬은 상호+주소로 조회한다).
+    const picksPhoneTargets = /phone\s+IS\s+NULL/i.test(sql) && /address\s+IS\s+NOT\s+NULL/i.test(sql)
+    if (!picksCrawlTargets && !picksPhoneTargets) continue
+    if (picksCrawlTargets && /enrich_checked_at/i.test(sql)) continue // 쿨다운 보유 — OK
+    if (!picksCrawlTargets && picksPhoneTargets && /kakao_checked_at/i.test(sql)) continue
     const line = src.slice(0, m.index).split('\n').length
     const lines = raw.split('\n')
     const window = lines.slice(Math.max(0, line - 3), line + 2).join('\n')
     if (window.includes('crawl-cooldown-ok')) continue
-    violations.push({ file: rel, line })
+    violations.push({ file: rel, line, kind: picksCrawlTargets ? 'crawl' : 'phone' })
   }
 }
 
 if (!violations.length) {
-  console.log('✅ 크롤 대상 SELECT 전부 재시도 쿨다운 보유(enrich_checked_at).')
+  console.log('✅ 외부 조회 대상 SELECT 전부 재시도 쿨다운 보유(크롤=enrich_checked_at · 전화=kakao_checked_at).')
   process.exit(0)
 }
-console.log(`\n${STRICT ? '❌' : '⚠️ '} 재시도 쿨다운 없는 크롤 대상 SELECT ${violations.length}건:`)
+console.log(`\n${STRICT ? '❌' : '⚠️ '} 재시도 쿨다운 없는 외부 조회 대상 SELECT ${violations.length}건:`)
 for (const v of violations) {
   console.log(`   ${v.file}:${v.line}`)
-  console.log('      website 보유 + 이메일 미보유로 크롤 대상을 고르는데 enrich_checked_at 쿨다운이 없습니다.')
-  console.log("      → `AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now','-7 days')")
-  console.log('           OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})` 추가 + 시도 즉시 도장.')
+  if (v.kind === 'crawl') {
+    console.log('      website 보유 + 이메일 미보유로 **크롤** 대상을 고르는데 enrich_checked_at 쿨다운이 없습니다.')
+    console.log("      → `AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now','-7 days')")
+    console.log('           OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})` 추가 + 시도 즉시 도장.')
+  } else {
+    console.log('      전화 미보유 + 주소 보유로 **전화 조회**(카카오) 대상을 고르는데 kakao_checked_at 쿨다운이 없습니다.')
+    console.log("      → `AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now','-30 days'))` 추가 + 시도 즉시 도장.")
+  }
 }
 console.log('\n   쿨다운이 없으면 실패한 리드가 계속 선두에 남아 앞줄만 반복하고 백로그는 영영 미도달합니다.')
 console.log('   (의도적 예외는 `crawl-cooldown-ok` 주석)')

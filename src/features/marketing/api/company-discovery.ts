@@ -127,6 +127,10 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
   // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
+  // ☎️ 카카오 전화 스윕 시도 도장(2026-07-28) — 스윕이 id 커서에서 **tier 우선순위**로 바뀌면서 필요해졌다.
+  //   id 커서는 정렬이 id 순일 때만 성립하는데, 우선순위 정렬과 함께 쓰면 커서가 tier1 을 지나쳐 버린다.
+  //   도장 + 30일 쿨다운이면 정렬을 자유롭게 바꿔도 같은 행을 무한 재시도하지 않는다.
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER').run().catch(() => null) // 어느 버전 규칙으로 검사받았나(< CLASSIFY_RULES_VERSION 이면 재검사 대상)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 어느 버전 크롤러로 시도했나(< CRAWL_RULES_VERSION 이면 재시도 대상)
   // 📵 반송 억제 목록(2026-07-27) — 반송 확인된 이메일은 재수집(크롤/레지스트리 재유입)으로 되살아나지 않게.
