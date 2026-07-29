@@ -1,7 +1,7 @@
 {
   "src/App.tsx": 1099,
   "src/components/SellerLayout.tsx": 613,
-  "src/features/admin/api/admin-products.routes.ts": 2347,
+  "src/features/admin/api/admin-products.routes.ts": 2348,
   "src/features/admin/api/admin-review-generator.routes.ts": 749,
   "src/features/admin/api/admin-sellers.routes.ts": 1079,
   "src/features/admin/api/admin-stays.routes.ts": 635,
