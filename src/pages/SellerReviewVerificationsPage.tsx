@@ -98,9 +98,9 @@ export default function SellerReviewVerificationsPage() {
   const ocrPassed = (r: Submission) => (r.admin_notes || '').startsWith('OCR 자동검증 통과')
 
   return (
-    <SellerLayout>
+    <SellerLayout title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}>
       <DashboardPageHeader
-        icon={Star}
+        icon={<Star className="w-5 h-5" />}
         title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}
         subtitle={t('seller.reviewVerify.subtitle', { defaultValue: '이용권을 쓴 손님이 남긴 카카오맵 후기를 확인해주세요. 확인 시 손님에게 보너스 딜 + 동네 리뷰어 점수가 지급됩니다.' })}
       />
