@@ -89,7 +89,11 @@ influencerRoutes.post('/__ads/enrich-influencer-chain', async (c) => {
     const e = err as { name?: string; message?: string } | null
     return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
   }
-  const rounds = Math.min(20, Math.max(1, parseInt((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 6))
+  // 기본 12 — 라운드를 6 으로 묶어 둔 이유가 **부모 인보케이션 비용**이었는데 체인화로 그 비용이 1 로 고정됐다.
+  //   쿼터 계산(2026-07-29): 라운드당 블로거 10명 × fetch 2 → 12라운드 = 5,760/일 = 네이버 일 쿼터(25,000)의 23%.
+  //   유튜브 성과는 이미 자기 일일 units 상한(2,000)에 걸려 가드가 스킵하므로 증분은 **사실상 네이버만** 늘린다 —
+  //   그게 정확히 병목이다(미측정 블로거 26,191명: 18일 → 9일). 더 세게는 env 로 20 까지.
+  const rounds = Math.min(20, Math.max(1, parseInt((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 12))
   const didWork = (stats?.bio || 0) + (stats?.yt || 0) + (stats?.naver?.tried || 0) > 0
   const done = !didWork || depth + 1 >= rounds || depth >= 40 // 무대상/라운드 소진/깊이 상한
   let chained = false
