@@ -36,10 +36,18 @@ publicDataRoutes.post('/__ads/scan-notices', lane(async (env) => {
 }))
 
 // 🏪 매장 후보(인허가) — 전일 변동분 + (백필 설정 시) 과거 1청크도 함께(버튼 누를수록 축적 가속).
+//
+//   🧮 2026-07-29 `mode` 추가: cron 은 **둘을 각자의 인보케이션에서** 돌려야 한다. 두 러너는 각각
+//   자기 서브리퀘스트 예산(collect-budget 학습 상한)을 잡으므로 한 인보케이션에서 둘 다 돌리면
+//   예산 2배 = 플랫폼 천장 초과 — 이 레인이 `total_saved: 0` 이던 원인을 그대로 재현하게 된다.
+//   기본(=파라미터 없음)은 **수동 버튼의 기존 동작 그대로**(collect+backfill) 유지.
 publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
   try {
+    const mode = c.req.query('mode') // 'collect' | 'backfill' | (없음)=둘 다
     const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
+    if (mode === 'backfill') return c.json({ ok: true, backfill: await runLocalDataBackfill(c.env, 2) })
     const stats = await runLocalDataCollect(c.env)
+    if (mode === 'collect') return c.json({ ok: true, stats })
     const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
     return c.json({ ok: true, stats, backfill })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
