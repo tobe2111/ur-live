@@ -21,6 +21,7 @@ import { sendBuyerVoucherUsedAlimtalk, sendSellerVoucherUsedAlimtalk } from './h
 import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-guard'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -40,6 +41,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       if (!pin || typeof pin !== 'string' || pin.length > 64) {
         return c.json({ success: false, error: '비밀번호를 입력해주세요' }, 400)
       }
+
+      // 🎟️ 2026-07-03 [부정사용 방어] 무인증 소각 갭 — 상품 PIN 이 없으면 제출 pin 이 무시돼
+      //   코드만 알면 누구나 소각됐다. 판정은 voucher-redeem-guard 로 분리(SSOT + 파일크기 룰).
+      const guard = await checkStoreCodeRequired(DB, code, pin)
+      if (guard) return c.json({ success: false, ...guard }, 403)
 
       // 만료된 바우처 선차단: 만료 기한이 지났다면 상태를 전이시킨 뒤 400 응답.
       // (CAS 조건에 만료 체크를 묶으면 만료 자체가 "PIN 오류"로 혼동될 수 있어 분리)

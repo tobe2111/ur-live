@@ -13,7 +13,7 @@
   "src/features/blog/api/blog-seed.ts": 1129,
   "src/features/community-group-buy/api/community-group-buy.routes.ts": 1198,
   "src/features/group-buy/api/group-buy-public.routes.ts": 1145,
-  "src/features/group-buy/api/group-buy-voucher.routes.ts": 790,
+  "src/features/group-buy/api/group-buy-voucher.routes.ts": 796,
   "src/features/group-buy/api/group-buy.routes.ts": 1431,
   "src/features/group-buy/api/helpers.ts": 740,
   "src/features/group-buy/api/marketing.routes.ts": 801,
