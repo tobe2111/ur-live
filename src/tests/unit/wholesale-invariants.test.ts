@@ -64,9 +64,15 @@ describe('도매 머니/데이터 훅 — 에러 삼킴 회귀 방지 (정적 �
  *   그 entry 는 `scheduled: handleCronScheduled` 를 export 하므로 **도매 번들도 cron 핸들러를 그대로 싣고 있다.**
  *   즉 도매 쪽에 cron trigger 가 걸리는 순간 `matureSupplierSettlements`·예치금/출금 reconcile 이 이중 실행된다.
  *
- * ⚠️ **이 테스트가 못 막는 것**: ur-wholesale 은 Pages 프로젝트라 cron 을 **Cloudflare 대시보드**에서 건다.
- *   레포가 볼 수 없다. 여기서 고정하는 것은 **레포 안에서 같은 사고를 만드는 경로**뿐이다.
- *   근본 차단은 번들 레벨 게이트(도매 번들에서 scheduled no-op)이며 머니 경로 코드 변경이라 별건이다.
+ * ✅ **2026-07-29 갱신 — 대시보드 경로는 무해해졌다.** 당초 이 주석은 *"ur-wholesale 은 Pages 라 cron 을
+ *   Cloudflare 대시보드에서 걸고 레포가 못 본다"* 를 못 막는 범위로 적었으나, **번들 레벨 게이트**가
+ *   들어가면서(대표 승인) 도매 번들의 `scheduled` 가 no-op 이 됐다 — **대시보드에 cron 이 걸려도 정산이
+ *   돌지 않는다**(로그만 남는다). 극성 가드는 `wholesale-cron-gate.test.ts`.
+ *   ⇒ 이 파일의 검사는 이제 **두 번째 방어선**이다(레포 안에서 같은 사고를 만드는 경로 차단).
+ *
+ * ⚠️ 남은 못 막는 범위: 누군가 게이트를 되돌리고 **동시에** 대시보드에 cron 을 걸면 이중성숙이 부활한다.
+ *   게이트 되돌림은 `wholesale-cron-gate.test.ts` 가 CI 에서 잡으므로, 실제로는 "CI 빨강을 무시하고 머지"
+ *   해야만 재현된다.
  */
 describe('정산 cron 은 소비자 워커에서만 — 이중성숙 차단', () => {
   const readRepo = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
