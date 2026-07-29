@@ -9,6 +9,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureCompanySchema } from './company-discovery'
+import { describePublicDataFailure } from './public-data-diag'
 
 export interface NtsSweepStats { last_run: string; checked: number; closed: number; cursor: number; total_closed: number; note?: string }
 const STATS_KEY = 'ads_ntsstatus_stats'
@@ -56,7 +57,10 @@ export async function sweepBusinessStatus(env: Env): Promise<NtsSweepStats> {
       body: JSON.stringify({ b_no: bnos }), signal: AbortSignal.timeout(15000),
     }).catch(() => null)
     if (!res || !res.ok) {
-      note = `API: ${res ? `HTTP ${res.status}` : '네트워크 오류'} — 국세청 상태조회 활용신청 필요 여부 확인`
+      // 🩺 본문을 남긴다 — 예전엔 `HTTP 503` 만 남기고 "활용신청 필요 여부 확인" 이라는 **추측**을 붙였다.
+      //   실제로는 활용신청이 2026-06-01 부터 승인돼 있었다(대표 화면 확인) → 추측이 오답을 가리키고 있었다.
+      //   odcloud 는 원인을 본문 JSON 으로 준다(키 불일치/인코딩/한도/점검). 그걸 그대로 노출한다.
+      note = `API: ${await describePublicDataFailure(res, '네트워크 오류')}`
     } else {
       const data = await res.json().catch(() => null) as { data?: Array<{ b_no?: string; b_stt_cd?: string }> } | null
       const closedIds: number[] = []
