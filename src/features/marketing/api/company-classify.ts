@@ -54,7 +54,6 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
 export const CLASSIFY_RULES_VERSION = 3
-const NEW_RULE = /테스트/
 
 /** 카테고리 권위 소스 — 이 소스들의 category 는 **정부 등록부의 공식 업종**(상가정보 업종코드·통신판매
  *  신고업태·공정위 가맹·나라장터 업종)이라 텍스트 정규식(BIZ_RULES)이 덮어쓰면 안 된다(권위 역전 금지).
