@@ -148,3 +148,118 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     return []
   }
 }
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🫀 외부 dead-man's switch — "cron 전체가 조용히 죽은 것"을 밖에서 잡는다
+ *
+ * `cron-stale-watch` 는 **cron 안에서** 도는 감시라, cron 시스템 자체가 멈추면 감시도 같이
+ * 멈춘다(watchdog 의 고전적 한계). 그래서 밖에서 때리는 프로브가 하나 더 필요하다:
+ *   `GET /api/_healthcheck/cron` → uptime.yml(GitHub Actions, 10분) → 실패 시 이슈+메일.
+ *
+ * 판정 두 가지:
+ *   ① **개별 침묵** — 어떤 작업이 자기 기대주기를 넘겼다.
+ *   ② **전면 침묵** — 가장 최근 하트비트조차 오래됐다(= cron 이 통째로 안 돈다).
+ *      ①만으로는 못 잡는다. 아예 안 돌면 새 기록이 없어 낡은 기록만 남고 판정이 굳는다.
+ *
+ * ⚠️ 손으로 관리하는 '핵심 cron 기대표'는 두지 않는다 — 69개짜리 표는 금방 낡아
+ * 오탐(이름 바뀜)과 누락(새 cron 미등록)을 **동시에** 만든다. 기록된 cron 식이 SSOT.
+ * 그래서 `label` 은 작업 이름 그대로다(없는 친절함을 지어내지 않는다).
+ *
+ * 오탐 방지: 첫 배포 직후엔 기록이 0이라 '전면 침묵'처럼 보인다 → 추적 시작 시각(sentinel)을
+ * 남겨, 유예 안에서는 `bootstrapping: true` 로 ok 를 유지한다.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 추적 시작 시각 — "한 번도 안 돈 것"과 "이제 막 배포된 것"을 가른다. */
+const TRACKING_KEY = 'cron_hb_tracking_since'
+/** 전면 침묵 판정 유예(분). 가장 빈번한 cron 이 2분 주기라 넉넉하다. */
+const TOTAL_SILENCE_MIN = 90
+
+export interface CronStaleEntry {
+  name: string
+  /** 사람이 읽는 이름. 수동 표를 두지 않으므로 작업 이름과 같다. */
+  label: string
+  max_gap_min: number
+  last_finished_at: string | null
+  age_min: number | null
+}
+
+export interface CronHealth {
+  ok: boolean
+  /** 추적 유예 안(기록 없음) — 첫 배포 오탐 방지용. true 면 ok 를 신뢰하지 말 것. */
+  bootstrapping: boolean
+  latest_heartbeat_at: string | null
+  latest_age_min: number | null
+  stale: CronStaleEntry[]
+  /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
+  missing: string[]
+}
+
+export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
+  const beats = await listCronHeartbeats(DB)
+
+  // 추적 시작 시각 (최초 1회만 기록 — 이후 갱신하지 않는다).
+  let trackingSinceMs = NaN
+  try {
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(TRACKING_KEY).first<{ value: string }>()
+    if (row?.value) trackingSinceMs = Date.parse(row.value)
+    else {
+      await DB.prepare('INSERT OR IGNORE INTO platform_settings (key, value) VALUES (?, ?)')
+        .bind(TRACKING_KEY, new Date().toISOString()).run()
+      trackingSinceMs = Date.now()
+    }
+  } catch { /* 관측용 — 실패해도 아래 판정은 계속한다 */ }
+  const trackedMin = Number.isFinite(trackingSinceMs) ? (Date.now() - trackingSinceMs) / 60000 : 0
+
+  const empty = (bootstrapping: boolean): CronHealth => ({
+    ok: bootstrapping, bootstrapping, latest_heartbeat_at: null, latest_age_min: null,
+    stale: bootstrapping ? [] : [{
+      name: '(전체)', label: 'cron 전체', max_gap_min: TOTAL_SILENCE_MIN,
+      last_finished_at: null, age_min: null,
+    }],
+    missing: [],
+  })
+  if (!beats.length) return empty(trackedMin < TOTAL_SILENCE_MIN)
+
+  // listCronHeartbeats 는 오래된 순 정렬 → 마지막이 가장 최근.
+  const withAge = beats.filter(b => b.age_minutes != null)
+  const newest = withAge.length ? withAge[withAge.length - 1]! : null
+  const latestAge = newest?.age_minutes ?? null
+
+  // ② 전면 침묵 — 가장 최근 기록조차 오래됐다.
+  if (latestAge != null && latestAge > TOTAL_SILENCE_MIN) {
+    return {
+      ok: false, bootstrapping: false,
+      latest_heartbeat_at: newest?.at ?? null, latest_age_min: latestAge,
+      stale: [{
+        name: '(전체)', label: 'cron 전체 — 아무 작업도 안 돌고 있음',
+        max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
+      }],
+      missing: [],
+    }
+  }
+
+  // ① 개별 침묵 — 기대주기(기록된 cron 식 기반)를 넘긴 작업.
+  const stale: CronStaleEntry[] = []
+  const missing: string[] = []
+  for (const b of beats) {
+    const limit = expectedMaxAgeMinutes(b.cron)
+    if (limit == null || b.age_minutes == null) { missing.push(b.name); continue }
+    if (b.age_minutes > limit) {
+      stale.push({
+        name: b.name, label: b.name, max_gap_min: limit,
+        last_finished_at: b.at, age_min: b.age_minutes,
+      })
+    }
+  }
+
+  return {
+    ok: stale.length === 0,
+    bootstrapping: false,
+    latest_heartbeat_at: newest?.at ?? null,
+    latest_age_min: latestAge,
+    stale,
+    missing,
+  }
+}
