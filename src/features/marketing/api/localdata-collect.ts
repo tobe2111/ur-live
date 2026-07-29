@@ -249,6 +249,8 @@ export interface LocalDataStats {
     fail_probe?: { url: string; endpoint: string; day: string; page: number; msg?: string }
     /** 🔬 형태 후보 시도 이력(라이브 판정 근거). */
     probe?: { at: string; winner: string | null; attempts: ProbeAttempt[] }
+    /** 마지막으로 확정된 형태 + 그때의 시도 기록 — 쿨다운 중에도 결론이 화면에 남는다. */
+    probe_last?: { id: string; at: string; attempts?: ProbeAttempt[] } | null
     /** 📊 원본 필드 채움률 + 형식 예시(가려짐) — 필드 이름을 추측으로 쓰지 않기 위한 근거. 추가 요청 0. */
     coverage?: FieldCoverage[]
     coverage_note?: string
@@ -364,6 +366,8 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
             if (pr.winner && pr.winner !== variantId) { variantId = pr.winner; page--; continue } // 승자로 이 페이지 재시도
           }
         }
+        // 🛑 백필과 동일 — 에러로 끝난 업종은 완료가 아니다(그날을 미완으로 남겨 다음 회차가 이어받는다).
+        if (msg && !count) { stoppedAt = ei; break }
         if (!count) break
         const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
@@ -406,6 +410,11 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       configured: true, error: err, sample, endpoints: Object.keys(endpoints),
       // 🔬 "무엇을 어떻게 보내고 있고, 무엇이 실패했는가" — 추측 없이 판정하기 위한 최소 증거 3종.
       variant: variantId, fail_probe: failProbe, probe: probeInfo,
+      // 🔭 **지난** 프로브 결론도 항상 노출한다(2026-07-29 실측 후 추가). `probe` 는 프로브를 *수행한*
+      //   그 실행의 스냅샷에만 실려서, 6시간 쿨다운 동안 화면엔 아무 결론도 안 남았다 —
+      //   "프로브가 뭐라고 답했나"를 물으면 **아무도 답할 수 없는** 상태였다(라이브에서 실제로 그랬다).
+      //   저장된 상태는 이 실행 시작 때 이미 읽어 뒀으므로 **추가 쿼리 0**.
+      probe_last: vState ? { id: vState.id, at: new Date(vState.probed_at || 0).toISOString().slice(0, 19).replace('T', ' '), attempts: vState.attempts } : null,
       coverage, coverage_note: coverageNote(coverage) || undefined,
     },
   }
@@ -482,6 +491,13 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
           })
           if (pr) { bfState = pr.state; if (pr.winner) { bfVariant = pr.winner; page--; continue } }
         }
+        // 🛑 **에러와 '그날 데이터 없음'을 구분한다** (2026-07-29 실측 근본수리).
+        //   그전엔 둘 다 `!count` 로 같이 처리돼, 500 이 나도 그 업종을 '완료'로 보고 **날짜 커서가 전진**했다.
+        //   결과: 백필 180일 창이 고장난 API 에 통째로 소모되고 누적 저장은 **0건**이었다
+        //   (라이브: `backfill_days:180 · pending_days:0 · total_saved:0`). 고쳐도 이미 지나간 날짜는
+        //   되돌아오지 않는다 — 그게 이 클래스가 위험한 이유다(도장은 성공을 확인하고 찍어야 한다).
+        //   ⚠️ `msg` 없이 `count===0` 은 **정상적으로 그날 변동이 없는 것**이므로 그대로 완료 처리한다.
+        if (msg && !count) { stoppedAt = ei; break }
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length
