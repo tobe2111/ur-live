@@ -49,9 +49,16 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const plat = platform && EXPORT_PLATFORMS[platform] ? platform : ''
   const platFilter = plat ? ' AND platform = ?' : ''
   // 값 바인딩 없는 정적 조건만(문자열 조립 안전) — 임의 입력이 SQL 에 닿지 않는다.
+  // 📇 수기 제휴 제안용 "지금 연락할 사람". 2026-07-29 **죽은 채널 제외** 추가 —
+  //   블로거 활동성 측정(`recent_posts_30d`)이 이제 실제로 쌓이기 시작했는데(핸들 복구 수리 이후),
+  //   목록은 여전히 이메일·브랜드·미접촉만 보고 있었다. 몇 년 전에 멈춘 블로그에 제안을 보내는 건
+  //   순수 낭비이고, 회신이 없으니 문안 성과 판단까지 흐린다.
+  //   ⚠️ **측정된 것 중 죽은 것만** 뺀다(`perf_checked_at IS NOT NULL AND recent_posts_30d = 0`).
+  //      미측정(대부분)은 남긴다 — 안 그러면 아직 측정 못 한 리드가 통째로 사라진다.
   const contactFilter = opts?.contactable
     ? " AND email IS NOT NULL AND email != '' AND COALESCE(is_brand,0) = 0 AND contacted_at IS NULL"
       + " AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))"
+      + " AND NOT (perf_checked_at IS NOT NULL AND COALESCE(recent_posts_30d, -1) = 0)"
     : ''
   const minScore = Number.isFinite(opts?.minScore) ? Math.max(0, Math.min(100, Number(opts?.minScore))) : null
   const scoreFilter = minScore != null ? ` AND COALESCE(lead_score,0) >= ${minScore}` : ''
