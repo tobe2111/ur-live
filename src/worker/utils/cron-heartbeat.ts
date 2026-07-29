@@ -21,8 +21,26 @@
  */
 import type { Env } from '../types/env'
 
+/**
+ * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
+ * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ */
+function summarizeResult(v: unknown): string | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const parts: string[] = []
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
+    else if (typeof val === 'string' && val.length <= 24) parts.push(`${k}=${val}`)
+    else if (Array.isArray(val)) parts.push(`${k}[${val.length}]`)
+    if (parts.join(' ').length > MAX_NOTE) break
+  }
+  return parts.length ? parts.join(' ').slice(0, MAX_NOTE) : null
+}
+
 /** 값 상한 — 이름이 길거나 이상값이 와도 platform_settings 를 오염시키지 않게. */
-const MAX_VALUE = 300
+const MAX_VALUE = 400
+/** 결과 요약 상한 — 하트비트는 '무엇을 했나' 한 줄이지 로그가 아니다. */
+const MAX_NOTE = 160
 
 /**
  * 한 cron 작업의 실행 사실을 기록한다. **절대 throw 하지 않는다** — 하트비트 실패가
@@ -39,6 +57,12 @@ export async function recordCronBeat(
    * 경보(cron-stale-watch)가 이 값으로 "얼마나 안 돌면 이상한가"를 스스로 계산한다.
    */
   cronExpr?: string,
+  /**
+   * 작업이 반환한 결과 요약(선택). "돌았다"와 "무엇을 했다"는 다르다 —
+   * 예: payouts-generate 가 0건으로 끝난 게 '할 일이 없어서'인지 '조용히 실패해서'인지 구분한다.
+   * 작은 평면 객체만 받는다(로그가 아니라 한 줄 요약).
+   */
+  result?: unknown,
 ): Promise<void> {
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
@@ -48,6 +72,7 @@ export async function recordCronBeat(
       ok,
       ms: Math.max(0, Math.round(ms)),
       ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
+      ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
     }).slice(0, MAX_VALUE)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(`cron_hb:${name.slice(0, 80)}`, value)
@@ -66,6 +91,8 @@ export interface CronHeartbeat {
   cron?: string | null
   /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
   stale?: boolean | null
+  /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
+  result?: string | null
 }
 
 /**
@@ -98,18 +125,18 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     ).all<{ key: string; value: string }>()
     const now = Date.now()
     const rows = (results || []).map((r) => {
-      let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null
+      let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
       try {
-        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string }
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string }
         at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
-        ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null
+        ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null; note = v.r ?? null
       } catch { /* 깨진 값은 null 로 */ }
       const t = at ? Date.parse(at) : NaN
       const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
       const limit = expectedMaxAgeMinutes(cron)
       return {
         name: r.key.slice('cron_hb:'.length),
-        at, ok, ms, cron,
+        at, ok, ms, cron, result: note,
         age_minutes: age,
         stale: (limit != null && age != null) ? age > limit : null,
       }
