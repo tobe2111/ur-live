@@ -289,7 +289,18 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
-# 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
+# 🗂️ 인계 목차 자동 생성(2026-07-29) — docs/handoff/ 가 staged 면 목차를 다시 만들어 함께 stage.
+#   사람이 목차를 손으로 고치지 않게 만드는 것이 요점이다(그래야 두 세션이 같은 줄을 다투지 않는다).
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; then
+  echo "==> Pre-commit: 인계 목차 재생성..."
+  node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
+  if ! git diff --quiet docs/CURRENT_WORK.md 2>/dev/null; then
+    git add docs/CURRENT_WORK.md
+    echo "   ✓ CURRENT_WORK.md 목차 재생성 + staged"
+  fi
+fi
+
+# 🔄 인계 문서 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
 #   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
 node scripts/check-current-work-sync.mjs || true
 
