@@ -23,13 +23,25 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { d
   const keyMissing = !diag.yt.configured || !diag.naver.configured
   // 🛡️ 2026-07-23: 풀 포화(발굴O·전부 중복 → saved=0)는 정상이라 오경보였음 → found 까지 0 일 때만 불건강.
   const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
-  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
+  // 🌵 2026-07-29 **순환 정체** 추가 — 위 두 조건은 "아무것도 못 건졌다"만 본다. 그런데 실제로 며칠을
+  //   잡아먹은 실패는 그 모양이 아니었다: 매시간 `Too many subrequests` 로 죽으면서도 13~139건은 저장했고
+  //   (saved>0·found>0), 그래서 이 경보는 **한 번도 울릴 수 없었다**. 정작 피해는 활성 키워드 210개 중
+  //   124개가 이틀째 순번을 못 받은 것 — 수확량이 아니라 **커버리지**가 무너진 것이다.
+  //   ⇒ 원인(한도/예산/버그)을 묻지 않고 **증상**을 직접 센다. 한도 탐침(AIMD)이 가끔 튀는 것으로는 안 울린다.
+  const stale = (await DB.prepare(`SELECT COUNT(*) AS n FROM ad_discovery_keywords
+    WHERE active = 1 AND (last_run_at IS NULL OR last_run_at <= datetime('now','-2 days'))`)
+    .first<{ n: number }>().catch(() => null))?.n || 0
+  const activeTotal = (await DB.prepare('SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1')
+    .first<{ n: number }>().catch(() => null))?.n || 0
+  //   임계: 활성의 30% 초과가 이틀째 미실행. 시드 210개 기준 63개 — 정상 순환(한 바퀴 ~10시간)에선 0 에 가깝다.
+  const rotationStalled = activeTotal >= 20 && stale > activeTotal * 0.3
+  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0) || rotationStalled
   const prevAt = await readSetting(DB, ALERT_KEY)
   const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
   if (!unhealthy) {
     if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
       await writeSetting(DB, ALERT_KEY, '')
-      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
+      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 · 활성 ${activeTotal}개 중 미실행 ${stale}개 — 정상 재개.`, 'info')
     }
     return
   }
@@ -38,11 +50,15 @@ export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { d
   if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
   await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
   const lines = [
-    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
+    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)'
+      : rotationStalled ? `⚠️ 키워드 순환 정체 — 활성 ${activeTotal}개 중 ${stale}개가 이틀째 미실행(수확은 나오지만 커버리지가 무너진 상태)`
+      : '⚠️ 전 플랫폼 신규 0건',
     `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
     `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
     diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
-    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '', '어드민 인플루언서 풀에서 상세 확인.',
+    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
+    rotationStalled ? '• 점검: run.spent/budget_total/limit_hit(예산 소진) · ADS_COLLECT_ROUNDS(라운드 수)' : '',
+    '어드민 인플루언서 풀에서 상세 확인.',
   ].filter(Boolean)
   await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
 }

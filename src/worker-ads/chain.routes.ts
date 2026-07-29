@@ -33,11 +33,34 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
   const yb = stats?.yt_budget
   const used = yb && typeof yb.used === 'number' ? yb.used : -1
   const total = yb && typeof yb.total === 'number' ? yb.total : 0
-  const done = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed || depth >= 40 // 소진/쿼터/진전없음/깊이 상한
+  const ytDone = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed // YT 소진/쿼터/진전없음
+  // 🔁 2026-07-29 **최소 라운드 바닥** — 위 중단조건은 전부 *YT* 기준이라, YT 일일 예산(기본 90)이 떨어진
+  //   뒤(하루의 대부분)엔 첫 호출이 즉시 done → 매시간 **1라운드**로 주저앉는다. 그런데 볼륨의 주력은
+  //   쿼터가 남아도는 네이버(25k/day, 실측 ~2% 사용)고, 네이버를 막는 건 쿼터가 아니라 **인보케이션당
+  //   서브리퀘스트 예산**이다. 실측(05:00): 키워드 16개 중 3개만 처리 → 활성 210개 한 바퀴 42시간.
+  //   ⇒ YT 와 무관하게 최소 N라운드는 잇는다(라운드 = 새 예산). 커서는 처리분만 전진하므로 중복 0.
+  //   ⛔ busy(다른 실행이 lease 보유)면 즉시 중단 — 더 이어도 전부 busy 로 튕긴다.
+  const rounds = Math.min(12, Math.max(1, parseInt((c.env as unknown as { ADS_COLLECT_ROUNDS?: string }).ADS_COLLECT_ROUNDS || '', 10) || 4))
+  const done = !!stats?.busy || depth >= 40 || (depth + 1 >= rounds && ytDone)
   let chained = false
   if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
     chained = true
     c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${depth + 1}&pu=${used}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  /**
+   * 🔔 **자기 인보케이션에서 직접** 하트비트(2026-07-29) — 부모의 기록에만 의존하지 않는다.
+   *   라이브 증거: 07:00 에 이 레인은 `ads:collect` 기록을 **아예 남기지 못했다**(06:00 은 FAIL 이라도 남았다).
+   *   부모 `kick` 의 하트비트는 부모 예산의 D1 쓰기라, 부모가 천장에 닿으면 *실패했다는 사실조차* 못 남긴다 —
+   *   그러면 메인 워커의 `cron-stale-watch` 는 "안 돈 것"과 "원래 없는 것"을 구분할 수 없다.
+   *   여기(첫 라운드)는 자기 예산이므로 쓰기가 성사된다. 부모가 살아 있으면 같은 이름으로 덮어써
+   *   최종 결과가 남고, 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 '이번 시간에 시작했다'는 남는다.**
+   *   depth 0 에서만 쓴다(체인 라운드마다 쓰면 같은 시간에 N번 덮어써 의미가 없다).
+   */
+  if (depth === 0) {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(c.env as never, 'ads:collect', true, 0, '0 * * * *', { started: true, chained })
+    } catch { /* 관측 실패가 수집을 막지 않는다 */ }
   }
   return c.json({ ok: true, stats, chained })
 })

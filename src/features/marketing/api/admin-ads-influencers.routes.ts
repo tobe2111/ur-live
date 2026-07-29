@@ -68,6 +68,11 @@ app.get('/influencer-pool', async (c) => {
   else where.push("platform != 'naver_cafe'")
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
+  // 📍 지역 필터(2026-07-29) — 서비스몰이 파는 것이 **지역×업종 맞춤 매칭**인데, 지역을 저장만 하고
+  //   쿼리할 수 없으면 이행이 통째로 수작업이 된다("강남 맛집 인플루언서 10명"을 못 고른다).
+  //   `''`(확인했지만 지역 없음)와 NULL(미확인)은 필터 대상 아님 — 실제 지역 토큰일 때만.
+  const region = (c.req.query('region') || '').trim()
+  if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
@@ -127,7 +132,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source, region
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
@@ -158,8 +163,14 @@ app.get('/influencer-pool/send-queue', async (c) => {
   const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)))
   // 🔗 선별 기준은 `outreach-queue.ts` SSOT — **초안 프리필 레인이 같은 술어를 써야** 사람이 실제로 보는
   //   큐와 미리 초안을 만들어 둔 대상이 일치한다(갈리면 프리필은 돌았는데 화면 상단은 계속 빈 초안).
-  const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'))
-  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, email_status
+  // 🎯 이행용 좁히기 — 서비스몰이 파는 건 「지역·업종 맞춤 매칭」인데 큐를 그 축으로 못 좁혔다
+  //   ("강남 맛집 10명" 주문이 오면 전체 점수순에서 눈으로 골라야 했다). 목록 API 와 같은 이름·의미.
+  //   📧 emailOnly — 대표 아웃리치 채널이 이메일이라, 인스타/URL 만 있는 리드는 '20명'을 채우고도 못 보낸다.
+  //   ⚠️ 셋 다 **옵션**이다. 기본 동작은 그대로 — 쪽지 등 다른 채널도 실제로 쓰인다(ch_note 기록 있음).
+  const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'), {
+    category: c.req.query('category'), region: c.req.query('region'), emailOnly: c.req.query('emailOnly') === '1',
+  })
+  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, region, email_status
     FROM ad_influencer_leads WHERE ${where}
     ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
@@ -506,7 +517,9 @@ app.delete('/influencer-pool/:id', async (c) => {
 app.get('/influencer-pool/keywords', async (c) => {
   await ensureKeywordTable(c.env.DB)
   // 성과순(saved_total) 정렬 — "잘 무는" 키워드가 위로. 지역 시딩 조정용.
-  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
+  // 🌵 barren_streak 노출(2026-07-29) — 이 값이 키워드를 **비활성**시키고(auto 8회+) 쿨다운을 최대 4일까지
+  //   벌리는데 정작 API 에 없어서, "이 키워드가 왜 안 도는가"를 밖에서 판정할 수 없었다(라이브에서 실제로 막혔다).
+  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at, COALESCE(barren_streak, 0) AS barren_streak FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
   return c.json({ success: true, keywords: r?.results || [] })
 })
 
