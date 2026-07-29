@@ -45,7 +45,11 @@ describe('🚧 배선 — 순수함수만 고치면 라이브는 그대로다', 
 
   it('루프가 상한을 실제로 적용한다(초과분은 건너뛰고 건수를 남긴다)', () => {
     expect(src).toMatch(/const noSiteCap = noSiteSlotCap\(targets\.length\)/)
-    expect(src).toMatch(/if \(noSiteUsed >= noSiteCap\) \{ bump\('no_site_capped'\); continue \}/)
+    // ⚠️ 루프 형태에 따라 중단 구문이 다르다 — for 루프면 `continue`, 동시 처리(`handleLead` 함수)면 `return`.
+    //    2026-07-29 에 실제로 for → 동시 처리로 바뀌면서 이 검사가 깨졌다. 고정할 것은 구문이 아니라
+    //    **"상한에 닿으면 그 리드를 건너뛰고 건수를 남긴다"** 는 의미다.
+    expect(src).toMatch(/if \(noSiteUsed >= noSiteCap\) \{ bump\('no_site_capped'\); (continue|return) \}/)
+    expect(src).toMatch(/noSiteUsed\+\+/)   // 세지 않으면 상한은 영원히 안 걸린다
   })
 
   it('출처별 발견 수율을 시도·성공 **양쪽** 센다 — 한쪽만 세면 비율을 못 만든다', () => {
