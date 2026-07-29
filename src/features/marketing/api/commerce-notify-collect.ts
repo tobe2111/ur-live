@@ -23,7 +23,7 @@ const COMMERCE_SERVICES = [
 ]
 
 /** 통신판매 원항목 → CompanyLead. 필드명이 서비스/버전마다 달라 g() 다중별칭 + anyEmail/anyDomain 폴백. */
-function mapCommerceLead(it: RawCommerce): CompanyLead {
+export function mapCommerceLead(it: RawCommerce): CompanyLead {
   // ✅ 실 필드(라이브 diag 확인 2026-07-23): 상호 bzmnNm · 대표 rprsvNm · 이메일 **rprsvEmladr**(대표자 이메일) ·
   //    주소 rnAddr(도로명)/lctnAddr(지번) · 사업자번호 brno · 신고번호 prmmiMnno.
   //  ⚠️ chrgDeptTelno = 처리부서(관공서) 전화 → **업체 전화 아님**(허위 방지, 매핑 금지). 업체 전화는 보강(카카오)로.
@@ -40,7 +40,11 @@ function mapCommerceLead(it: RawCommerce): CompanyLead {
     region: pickRegion(addr), address: addr || null,
     phone: null, // 통신판매 데이터엔 업체 전화 없음(chrgDeptTelno 는 관공서) → 보강 단계에서 카카오로 확보
     email: email || null,
-    website: (email ? null : domain) ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null,
+    // 🩹 2026-07-29: 예전엔 **이메일이 있으면 도메인을 버렸다**(`email ? null : domain`). 원래 의도는
+    //   "크롤 관문이 필요 없으면 저장 안 함" 이었는데, 두 크롤 선정 쿼리 모두 `email IS NULL` 을 요구하므로
+    //   도메인을 저장해도 **크롤 비용은 0** 이다. 반면 대표는 전화·메일로 직접 접촉하므로 회사 사이트는
+    //   그 자체로 값이다(신고 원부의 도메인 = 고품질). 정보를 공짜로 버리고 있었다 → 항상 저장.
+    website: domain ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null,
     business_no: g(it, 'brno', 'bizrno', 'bzmnRegNo') || null,
     description: [g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') && `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}`, g(it, 'operSttusCdNm', 'operSttus')].filter(Boolean).join(' · ') || null,
     contact_source: email ? 'commerce' : null, // 이메일 있을 때만 통신판매 출처(전화는 보강 출처가 기록)
@@ -50,7 +54,7 @@ function mapCommerceLead(it: RawCommerce): CompanyLead {
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
-type RawCommerce = Record<string, unknown>
+export type RawCommerce = Record<string, unknown>
 const EMAIL_RE = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i
 const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$/i
 
@@ -59,7 +63,7 @@ function g(it: RawCommerce, ...keys: string[]): string { for (const k of keys) {
 /** ⚠️ 필드명 불확실 대비 — **어떤 필드든 이메일 형태면** 회수(통신판매 신고본은 전자우편이 있음, 키 이름만 버전차).
  *   `*` 포함 값은 통째 스킵 — 마스킹("ab**cd@x.com")에서 부분매칭("cd@x.com")으로 **잘린 가짜 이메일**을 만들 위험 차단. */
 function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) { const s = stripTag(v); if (!s || s.includes('*')) continue; const m = s.match(EMAIL_RE); if (m && !/@(?:example|test|sample)\./i.test(m[0])) return m[0].toLowerCase() } return '' }
-/** 인터넷도메인 필드(있으면 이메일 없을 때 크롤 관문). 이메일 형태는 제외. */
+/** 인터넷도메인 필드(크롤 관문 겸 **수동 접촉용 회사 사이트**). 이메일 형태는 제외. */
 function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entries(it)) { if (!/dmn|domain|url|site|hmpg|hompage|homepage/i.test(k)) continue; const s = stripTag(v); if (s && !s.includes('@') && DOMAIN_RE.test(s)) return s } return '' }
 
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
