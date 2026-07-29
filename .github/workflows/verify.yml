@@ -230,6 +230,25 @@ jobs:
         run: node scripts/check-tsconfig-resolution.mjs -s
         continue-on-error: false
 
+      # 🌐 2026-07-29: 정본은 urdeal.kr(07-20 이전 완료). 구 도메인은 전 경로 301 이라
+      #   링크가 도착하고 에러도 안 나서, 사용자에게 보이는 낡은 문자열이 조용히 남는다
+      #   (실측: 결제 완료 넛지가 소비자에게 live.ur-team.com/u/{handle} 을 보여주고 있었다).
+      - name: 구 도메인 사용자 노출 차단 (strict)
+        run: node scripts/check-legacy-domain.mjs -s
+        continue-on-error: false
+
+      # 📋 2026-07-29: AUDIT_INVARIANTS.md 는 "무엇을 손으로 재감사하지 않아도 되는가" 의 목록이다.
+      #   빠진 가드는 이미 기계가 지키는 영역을 사람이 또 파게 만든다(실측: 문서 49 vs 실제 72).
+      - name: 감사 레지스트리 동기화 (strict)
+        run: node scripts/check-audit-registry-sync.mjs -s
+        continue-on-error: false
+
+      # 🔬 2026-07-29: 새 가드가 "대상이 비어도 초록" 인 채로 태어나는 것 차단(래칫).
+      #   오늘 실측 3건이 정확히 그 상태였다(번들 gzip 예산 · 도매 어드민 nav/api 가드).
+      - name: 가드 자기검증 — 측정 0 = 실패 (strict)
+        run: node scripts/check-guard-selfcheck.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

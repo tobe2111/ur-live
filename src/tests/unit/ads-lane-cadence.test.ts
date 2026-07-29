@@ -11,10 +11,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
-  maxPhaseGapHours, phaseGapMinutes, makeHourGates,
+  maxPhaseGapHours, phaseGapMinutes, maxScheduleGapHours, scheduleGapMinutes, makeHourGates,
   neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
+import { MAINT_PHASES, MAINT_SCHEDULE } from '../../features/marketing/api/influencer-maintenance'
 
 describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
   it('기대주기 × 2 + 30', () => {
@@ -33,6 +34,25 @@ describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
   it('0/음수는 최소 1분으로 클램프 — 0 을 넘겨도 즉시-stale 이 되지 않는다', () => {
     expect(staleGapMinutes(0)).toBe(32)
     expect(everyNHoursGapMinutes(0)).toBe(150)
+  })
+})
+
+describe('maxScheduleGapHours — 가중 배정표의 실제 간격', () => {
+  it('균등 배정은 maxPhaseGapHours 와 동치 — 공식을 두 벌 두지 않는다', () => {
+    for (const n of [1, 4, 5, 6, 7, 10]) {
+      expect(maxScheduleGapHours(Array.from({ length: n }, (_, i) => i))).toBe(maxPhaseGapHours(n))
+    }
+  })
+
+  it('같은 단계가 여러 슬롯을 차지하면 간격이 줄어든다 — 슬롯 수만으로는 못 보는 값', () => {
+    // 4슬롯 중 a 가 3자리: a 는 0·1·2시… 로 촘촘하고, b 는 3시마다 → 최대 간격은 b 의 4시간.
+    expect(maxScheduleGapHours(['a', 'a', 'a', 'b'])).toBe(4)
+    // 단계가 하나뿐이면 매시간.
+    expect(maxScheduleGapHours(['a', 'a'])).toBe(1)
+  })
+
+  it('빈 배정표는 24시간으로 폴백 — 0 을 넘겨 즉시-stale 이 되지 않게', () => {
+    expect(maxScheduleGapHours([])).toBe(24)
   })
 })
 
@@ -109,8 +129,63 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
     expect((src.match(/gates\.(dailyAt|everyNHours)\(/g) || []).length).toBeGreaterThanOrEqual(10)
   })
 
-  it('단계 순환 레인은 단계 수에서 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
-    expect(src).toMatch(/phaseGapMinutes\(PHASES\.length\)/)
+  it('단계 순환 레인은 **배정표에서** 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
+    // 슬롯 수(`PHASES.length`)로 유도하면 가중 배정표에서 과대추정 → stale 경보가 조용히 느슨해진다.
+    expect(src).toMatch(/scheduleGapMinutes\(PHASES\)/)
+    expect(src).not.toMatch(/phaseGapMinutes\(PHASES/)
+  })
+})
+
+/**
+ * 🗓️ 정비 **배정표**가 SSOT 와 어긋나지 않게 — 주석의 약속을 빨간불로 바꾼다.
+ *
+ *   그동안 이 관계를 지킨 건 worker-ads 의 주석 한 줄("추가 시 두 곳을 함께 고칠 것")뿐이었다.
+ *   이 레포가 반복해 만난 실패는 "검사가 실패한다"가 아니라 **"검사가 아예 없다"** 이고,
+ *   여기가 정확히 그 모양이었다 — 배정표에서 빠진 단계는 에러도 경보도 없이 **영원히 안 돈다**
+ *   (`cron-stale-watch` 는 기록이 아예 없는 이름을 판정 대상으로 잡지 못한다).
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 배정표의 **비중**이 타당한지는 못 본다(라이브 수율은 코드 밖 사실이다).
+ *   비중을 바꿀 땐 `MAINT_SCHEDULE` 주석의 실측 근거도 함께 갱신할 것.
+ */
+describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  /** worker-ads 의 `const PHASES = [...] as const` 리터럴을 그대로 읽는다(정적 import 불가라 복제돼 있다). */
+  const cronSchedule = (): string[] => {
+    const m = /const PHASES = \[([\s\S]*?)\] as const/.exec(src)
+    expect(m, 'worker-ads/index.ts 의 PHASES 리터럴을 못 찾음 — 형태가 바뀌었으면 이 정규식도 함께').toBeTruthy()
+    return [...m![1].matchAll(/'([a-z]+)'/g)].map(x => x[1])
+  }
+
+  it('🔒 두 리터럴이 순서까지 동일하다', () => {
+    expect(cronSchedule()).toEqual(MAINT_SCHEDULE)
+  })
+
+  it('🔒 모든 단계가 배정표에 최소 1번 — 빠진 단계는 조용히 영원히 안 돈다', () => {
+    const missing = MAINT_PHASES.filter(p => !MAINT_SCHEDULE.includes(p))
+    expect(missing, `배정표에서 누락된 단계: ${missing.join(', ')}`).toEqual([])
+  })
+
+  it('🔒 배정표에 정의 밖 단계가 섞이지 않는다(오타는 그 슬롯을 통째로 버린다)', () => {
+    expect(MAINT_SCHEDULE.filter(p => !MAINT_PHASES.includes(p))).toEqual([])
+  })
+
+  it('⏰ stale 기준은 배정표의 **실제** 최대 간격에서 나온다 — 슬롯 수 기준보다 촘촘하다', () => {
+    // 이 배정표의 실제 최대 간격은 merge·reextract 의 10시간(24 를 10 으로 나눈 자정 불연속 포함).
+    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(10)
+    // 슬롯 수만 보면 14시간 — 그대로 쓰면 경보 창이 28.5h 로 벌어진다(멈춤을 그만큼 늦게 안다).
+    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(14)
+    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThan(phaseGapMinutes(MAINT_SCHEDULE.length))
+  })
+
+  it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
+    const share = (p: string) => MAINT_SCHEDULE.filter(x => x === p).length
+    for (const busy of ['reclassify', 'handle']) {
+      for (const idle of ['reextract', 'merge']) {
+        expect(share(idle), `${idle} 가 ${busy} 보다 많이 받고 있다`).toBeLessThan(share(busy))
+      }
+    }
+    // 0 으로 만들지 않는다 — 지금 filled:0 은 '고장'이 아니라 '다 했다'라, 새 미추출 행이 생기면 다시 돌아야 한다.
+    for (const p of MAINT_PHASES) expect(share(p), `${p} 배정 0`).toBeGreaterThan(0)
   })
 })
 
