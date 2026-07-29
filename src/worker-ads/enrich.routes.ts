@@ -80,10 +80,14 @@ async function runRoundChain(
  *   ⚠️ 이 보강이 있어야 메인 워커의 `cron-stale-watch` 가 이 레인의 정지를 알릴 수 있다
  *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
  */
-async function driverBeat(env: unknown, name: string, ok: boolean, ms: number): Promise<void> {
+async function driverBeat(env: unknown, name: string, ms: number, r: { done: number; error?: string }, planned: number): Promise<void> {
   try {
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *')
+    // 🔎 **왜 멈췄는지**까지 남긴다(2026-07-29 실측 후 보강) — 09:00 에 20라운드를 계획했는데 3~4라운드에서
+    //   끝났고, 하트비트엔 ok/ms 만 있어 *중단 사유를 알 길이 없었다.* 라운드 수와 원문을 함께 남기면
+    //   다음 사이클에 어드민 하트비트 한 줄로 판정된다(라이브 로그는 이 환경에서 wss 가 막혀 못 본다).
+    await recordCronBeat(env as never, `ads:${name}`, !(!r.done && r.error), ms, '0 * * * *',
+      { rounds: r.done, planned, ...(r.error ? { error: r.error.slice(0, 120) } : {}) })
   } catch { /* 관측 실패가 작업을 막지 않는다 */ }
 }
 
@@ -128,7 +132,7 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
   })
-  await driverBeat(c.env, 'enrich-influencer-driver', !(!r.done && r.error), Date.now() - t0)
+  await driverBeat(c.env, 'enrich-influencer-driver', Date.now() - t0, r, rounds)
   return driverJson(c, r, rounds)
 })
 
@@ -155,6 +159,6 @@ enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
   })
-  await driverBeat(c.env, 'enrich-company', !(!r.done && r.error), Date.now() - t0)
+  await driverBeat(c.env, 'enrich-company', Date.now() - t0, r, rounds)
   return driverJson(c, r, rounds)
 })
