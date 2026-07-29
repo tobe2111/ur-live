@@ -33,6 +33,11 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
   const rawEml = g(it, 'rprsvEmladr', 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres')
   const email = (rawEml && !rawEml.includes('*') && EMAIL_RE.test(rawEml)) ? rawEml.toLowerCase() : anyEmail(it)
   const domain = anyDomain(it)
+  // 🪦 폐업 판정(2026-07-29 라이브 실측: 온라인판매 리드 표본 2,000건 중 **10.2% 가 폐업**이고
+  //   그중 35% 는 이메일까지 붙어 `active=1` 로 접촉 풀에 있었다 = 문 닫은 가게에 영업메일).
+  //   등록부가 말해준 상태만 본다 — 상호/주소로 추측하지 않는다.
+  const status = `${g(it, 'operSttusCdNm', 'operSttus')} ${g(it, 'bzmnRgsSttusSeNm', 'bzmnRgsSttusSe')}`
+  const closed = /폐업|말소|휴업|취소/.test(status)
   return {
     // 통신판매사업자 = 일반 온라인 판매업체(대행사 아님) → '온라인판매' tier 4. (이전 '대행사' tier1 오분류는
     //   보강 우선순위(tier1 우선)를 통신판매가 독식하게 만들어 실제 대행사 리드를 밀어냈음 — 정합 교정.)
@@ -49,6 +54,7 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
     description: [g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') && `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}`, g(it, 'operSttusCdNm', 'operSttus')].filter(Boolean).join(' · ') || null,
     contact_source: email ? 'commerce' : null, // 이메일 있을 때만 통신판매 출처(전화는 보강 출처가 기록)
     source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
+    closed,
   }
 }
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
@@ -92,6 +98,8 @@ export interface CommerceStats {
   last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number
   /** 재확인(이미 알던 업체를 다시 만난) 건수 — `saved`(신규)와 함께 봐야 '완주'와 '고장'이 갈린다(2026-07-29). */
   upserted?: number
+  /** 🪦 이번 회차에서 **폐업으로 판정돼 접촉 풀에서 빠진** 건수(2026-07-29). 저장은 되고 active=0 만 된다. */
+  closed?: number
   diag: { configured: boolean; error?: string; sample?: unknown }
 }
 const STATS_KEY = 'ads_commerce_stats'
@@ -111,6 +119,12 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   // 🧹 기존에 저장된 마스킹 이메일(발송 불가) 정리 — NULL 처리 + 전화 없으면 보류로 되돌려 재보강(홈페이지 크롤로 진짜 이메일).
   await DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN contact_source = 'commerce' THEN NULL ELSE contact_source END, active = CASE WHEN (phone IS NULL OR phone = '') THEN 0 ELSE active END WHERE email LIKE '%*%'").run().catch(() => null)
 
+  // 🪦 이미 저장된 폐업 업체를 접촉 풀에서 뺀다(위 마스킹 정리와 같은 성격의 자가 치유).
+  //   description 에 `대표 X · 폐업처리` 형태로 등록부 상태가 이미 들어가 있다 — 새 수집을 기다리지 않고
+  //   지금 있는 것부터 정리한다(원부 한 바퀴가 며칠 걸리므로 그때까지 계속 메일이 나간다).
+  //   ⚠️ 삭제가 아니라 `active=0` — 재개업하면 등록부가 '정상'으로 알려주고 upsert 가 되살린다.
+  await DB.prepare("UPDATE ad_company_leads SET active = 0 WHERE source = 'commerce' AND active = 1 AND (description LIKE '%폐업%' OR description LIKE '%말소%' OR description LIKE '%휴업%')").run().catch(() => null)
+
   // ①(현황)에 env override 적용. 두 서비스 각각 별도 커서 + 공유 예산.
   const services = COMMERCE_SERVICES.map((svc, idx) => idx === 0 ? {
     ...svc,
@@ -121,7 +135,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
-  let found = 0, saved = 0, upserted = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
+  let found = 0, saved = 0, upserted = 0, closed = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
   const msgs: string[] = []
   for (const svc of services) {
     const ck = `${CURSOR_KEY}_${svc.name}`
@@ -134,6 +148,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
+      closed += leads.filter(l => l.closed).length // 🪦 이번 회차에 걸러낸 폐업 — '수집량 하락'과 구분되게 보인다
       // 신규/재확인 분리(2026-07-29) — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다.
       const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 }))
       saved += c.inserted; upserted += c.upserted
@@ -144,7 +159,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s
 }

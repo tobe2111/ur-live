@@ -88,6 +88,14 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
       l._type, l._conf, CLASSIFY_RULES_VERSION
     )
     })
+    // 🪦 폐업/말소로 확인된 업체는 접촉 풀에서 뺀다(`active=0`). **같은 배치 뒤에** 실행해야 한다 —
+    //   위 ON CONFLICT 가 "이메일/전화가 있으면 active=1" 로 되살리기 때문(그 규칙 자체는 옳다,
+    //   폐업만 예외다). 삭제가 아니라 플래그라 재개업 시 등록부가 알려주는 대로 되살아난다.
+    //   ⚠️ 등록부가 '폐업'이라고 말한 경우에만 온다(`closed` 는 추측으로 세우지 않는다).
+    const closedKeys = slice.filter(l => l.closed).map(l => companyKey(l))
+    if (closedKeys.length) {
+      stmts.push(DB.prepare(`UPDATE ad_company_leads SET active = 0 WHERE company_key IN (${closedKeys.map(() => '?').join(',')})`).bind(...closedKeys))
+    }
     const res = await DB.batch(stmts).catch(() => null)
     if (res) saved += slice.length
   }

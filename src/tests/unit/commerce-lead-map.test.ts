@@ -44,4 +44,24 @@ describe('mapCommerceLead', () => {
     expect(mapCommerceLead({ ...base, rprsvEmladr: 'a@b.co.kr' }).contact_source).toBe('commerce')
     expect(mapCommerceLead({ ...base }).contact_source).toBeNull()
   })
+
+  // 🪦 폐업 — 라이브 표본 2,000건 중 10.2% 가 폐업이었고 그중 35% 는 이메일까지 붙어 접촉 풀에 있었다
+  //   (= 문 닫은 가게에 영업메일). 저장은 하되 `closed` 로 접촉 풀에서 뺀다.
+  it('등록부가 폐업이라고 하면 closed=true — 접촉 풀에서 뺀다', () => {
+    expect(mapCommerceLead({ ...base, operSttusCdNm: '폐업처리', bzmnRgsSttusSeNm: '폐업자' }).closed).toBe(true)
+    expect(mapCommerceLead({ ...base, bzmnRgsSttusSeNm: '직권말소' }).closed).toBe(true)
+    expect(mapCommerceLead({ ...base, operSttusCdNm: '휴업' }).closed).toBe(true)
+  })
+
+  it('정상 영업은 closed 가 서지 않는다(추측으로 죽이지 않는다)', () => {
+    expect(mapCommerceLead({ ...base, operSttusCdNm: '정상영업', bzmnRgsSttusSeNm: '계속사업자' }).closed).toBe(false)
+    expect(mapCommerceLead({ ...base }).closed).toBe(false) // 상태 필드가 아예 없으면 살아있다고 본다
+  })
+
+  it('폐업이어도 **버리지 않는다** — 재개업하면 등록부가 알려주고 되살아나야 한다', () => {
+    const l = mapCommerceLead({ ...base, operSttusCdNm: '폐업처리', rprsvEmladr: 'ceo@shop.co.kr' })
+    expect(l.closed).toBe(true)
+    expect(l.company_name).toBe('테스트상회')
+    expect(l.email).toBe('ceo@shop.co.kr')
+  })
 })
