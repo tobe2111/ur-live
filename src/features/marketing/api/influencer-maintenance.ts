@@ -227,11 +227,16 @@ export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includ
  */
 export const MAINT_SCHEDULE: MaintPhase[] = [
   'merge', 'reextract', 'reclassify', 'quality', 'handle',
-  'reclassify', 'handle', 'quality', 'reclassify', 'handle',
   // 🧹 자기링크 정리(2026-07-29 대표 승인) — 백로그가 작고(후보 ~1,029행) 끝나면 **스스로 싸진다**:
   //   비워진 행은 `links LIKE '%naver.com%'` 후보에서 빠져 다음 바퀴엔 즉시 done 이다.
   //   그래서 상시 슬롯으로 두어 **유입 필터가 놓친 새 오염의 자가치유**까지 겸하게 한다.
   'selflink',
+  'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+  // 🔢 10 → 12 슬롯. 단순히 selflink 를 덧붙이면(11슬롯) **실제 최대 간격이 10h → 13h 로 벌어진다**
+  //   (24 를 11 로 나눌 때의 자정 불연속 — 유닛이 이걸 잡아냈다). 12 는 24 의 약수라 각 슬롯이 하루
+  //   **정확히 2회** 고정 시각에 돌고 최대 간격이 12h 로 떨어진다. 남는 한 자리는 전수 한 바퀴가 가장 느린
+  //   `reclassify`(65시간)에 준다 — 경보 창을 지키면서 커버리지가 가장 급한 쪽을 채운다.
+  'reclassify',
 ]
 
 /** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
