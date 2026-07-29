@@ -7,7 +7,7 @@
  *   대표는 전화·메일로 직접 접촉하므로 회사 사이트는 그 자체로 값이다.
  */
 import { describe, it, expect } from 'vitest'
-import { mapCommerceLead, productBucket } from '@/features/marketing/api/commerce-notify-collect'
+import { mapCommerceLead, productBucket, websiteFromEmail } from '@/features/marketing/api/commerce-notify-collect'
 
 const base = { bzmnNm: '테스트상회', rnAddr: '서울특별시 강남구 테헤란로 1', brno: '1234567890' }
 
@@ -112,5 +112,32 @@ describe('mapCommerceLead', () => {
     expect(productBucket('반려동물 사료')).toBe('반려동물')
     expect(productBucket('')).toBeNull()
     expect(productBucket(null)).toBeNull()
+  })
+
+  // 🏠 홈페이지 유추 — 원부의 domnCn 이 거의 비어 와서 우리 DB 홈페이지 보유율이 **0.0%** 였다.
+  //   자체 도메인 메일(라이브 표본의 35%)은 그 자체가 회사 사이트 단서다. 비용 0.
+  //   ⚠️ 안전장치는 개인 메일 목록 하나뿐 — 빠뜨리면 naver.com 을 업체 홈페이지로 저장하게 된다.
+  it('자체 도메인 메일이면 홈페이지를 유추한다', () => {
+    expect(websiteFromEmail('ceo@shop.co.kr')).toBe('http://shop.co.kr')
+    expect(mapCommerceLead({ bzmnNm: '테스트상회', rprsvEmladr: 'ceo@shop.co.kr' }).website).toBe('http://shop.co.kr')
+  })
+
+  it('🚫 개인 메일은 **절대** 홈페이지가 아니다(실측 상위 도메인 전부)', () => {
+    for (const e of ['a@naver.com', 'a@gmail.com', 'a@hanmail.net', 'a@daum.net', 'a@nate.com',
+                     'a@outlook.com', 'a@hotmail.com', 'a@qq.com', 'a@163.com', 'a@126.com', 'a@kakao.com']) {
+      expect(websiteFromEmail(e), e).toBeNull()
+    }
+    expect(mapCommerceLead({ bzmnNm: '테스트상회', rprsvEmladr: 'a@naver.com' }).website).toBeNull()
+  })
+
+  it('원부에 진짜 도메인이 있으면 **그쪽이 우선**(유추는 폴백일 뿐)', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', rprsvEmladr: 'ceo@personalbrand.kr', dmnNm: 'realshop.co.kr' })
+    expect(l.website).toBe('http://realshop.co.kr')
+  })
+
+  it('형식이 이상하면 유추하지 않는다(추측 금지)', () => {
+    for (const e of ['', null, 'no-at-sign', 'a@', 'a@localhost', 'a@shop..kr', 'a@dd**.com']) {
+      expect(websiteFromEmail(e as string), String(e)).toBeNull()
+    }
   })
 })
