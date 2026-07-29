@@ -141,10 +141,10 @@ node scripts/check-critical-chunks.mjs --rebaseline # 의도적 변경 시 + _me
   현재 헤드룸 23.8KB(216.2/240) 라 급하지 않다.
 - `dist/` 빌드가 재생성하는 `src/worker/generated/route-chunk-map.ts` 는 **커밋 대상 아님**
   (이번에도 `git checkout --` 로 되돌렸다).
-- **CLAUDE.md 의 낡은 사실 2건(미수정, 의도적)** — 여러 세션이 동시에 만지는 파일이라 충돌을
-  만들지 않으려고 뒀다. 다음에 CLAUDE.md 를 어차피 만지는 세션이 함께 고칠 것:
-  1. **"프록시가 `urdeal.kr` 을 차단(CONNECT 403)"** → 2026-07-29 실측 **200, 열린다**.
-     이 오기를 믿으면 라이브 실측을 포기하고 대표에게 화면 복사를 요청하게 된다(불필요한 왕복).
-     실제로 차단된 것은 **`*.pages.dev`**(PR 프리뷰)와 `dash.cloudflare.com` 이다.
-  2. "현재 47개 불변식 GREEN" 은 실제 76개와 어긋난다.
-  (권위 있는 불변식 목록은 `docs/AUDIT_INVARIANTS.md` 이고 그쪽은 정확하다.)
+- **CLAUDE.md 낡은 사실 2건 — 대표 지시로 수정 완료**(commit 은 아래 참조):
+  1. *"프록시가 `urdeal.kr` 을 차단(CONNECT 403)"* → **거짓**. 실측 `urdeal.kr/` 200 ·
+     `urdeal.kr/api/version` 200 · `live.ur-team.com/api/version` 200. 실제로 막힌 건
+     `dash.cloudflare.com` · **`*.pages.dev`(PR 프리뷰)** · 한국 공공 API 도메인.
+     → "막혔다고 단정하기 전에 한 번 찔러보라"는 문장을 함께 넣었다(프록시 규칙은 바뀐다).
+  2. "현재 47개 불변식 GREEN" → **76**. 29개가 밀려 있었다. 이 줄은 가드 강제 대상이 아니라
+     수동 관리라 계속 낡는다 — 정확한 값은 `audit-gate.sh` 마지막 줄이라는 주의를 덧붙였다.
