@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { parseUTCDate } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -114,7 +115,7 @@ export default function AgencyOrdersPage() {
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(o.total_amount)}원</td>
                   <td className="px-4 py-3"><PayBadge status={o.payment_status} /></td>
                   <td className="px-4 py-3 text-gray-500">
-                    {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {parseUTCDate(o.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                 </tr>
               ))}

@@ -10,6 +10,9 @@
  */
 
 import { sendAlimtalk } from './aligo'
+// 🛡️ 2026-07-27: 워커 런타임 TZ 는 UTC — `new Date(created_at).toLocaleString('ko-KR')` 는
+//   한국어 포맷의 **UTC 시각**(고객 기준 9시간 이른 시각)을 알림톡에 보낸다. KST SSOT 경유로 교정.
+import { formatKST } from '../utils/date'
 import { sendSystemAlimtalk } from './system-alimtalk'
 
 interface Env {
@@ -189,7 +192,7 @@ export async function sendOrderConfirmation(env: Env, orderId: number) {
     const message = `[주문 확인]
 
 주문번호: ${order.order_number}
-주문일시: ${new Date(order.created_at).toLocaleString('ko-KR')}
+주문일시: ${formatKST(order.created_at)}
 
 주문 상품:
 ${productList}

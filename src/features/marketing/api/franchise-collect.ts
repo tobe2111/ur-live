@@ -13,7 +13,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { describePublicDataFailure } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 
 const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
 const FRANCHISE_OP = 'getBrandList'
@@ -25,7 +25,7 @@ const g = (it: RawFranchise, ...keys: string[]): string => { for (const k of key
 async function fetchBrandPage(base: string, op: string, key: string, page: number, yr: string, budget: { left: number }): Promise<{ items: RawFranchise[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json${yr ? `&yr=${encodeURIComponent(yr)}` : ''}`
+  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=100&type=json&_type=json&resultType=json${yr ? `&yr=${encodeURIComponent(yr)}` : ''}`
   // 실패 원인을 삼키지 않는다 — 특히 플랫폼 서브리퀘스트 한도는 '네트워크 오류'로 뭉뚱그리면 영영 오진된다
   //   (2026-07-28 보강 레인 실사고와 동일 클래스).
   let res: Response | null = null

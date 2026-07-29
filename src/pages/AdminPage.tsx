@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { parseUTCDate } from '@/utils/date'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
@@ -193,7 +194,9 @@ export default function AdminPage() {
       for (const order of orders) {
         if (order.user_id && order.created_at) {
           const uid = String(order.user_id)
-          const orderTime = new Date(order.created_at).getTime()
+          // 🛡️ 2026-07-27: new Date(UTC-naive) 는 브라우저 로컬 오해석 → epoch 9h 어긋남 →
+          //   아래 60초 창에 절대 안 들어와 연속 주문 감지가 죽어 있었다(parseUTCDate 로 복원).
+          const orderTime = parseUTCDate(order.created_at).getTime()
           if (!continuousDetected.has(uid)) {
             const recent = recentOrdersRef.current.filter(
               r => r.userId === uid && Math.abs(now - r.time) < 60000
