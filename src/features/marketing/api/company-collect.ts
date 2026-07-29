@@ -12,10 +12,10 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
-import { buildKeywordRows, rotationWindow } from './company-keyword-grid'
+import { buildKeywordRows, rotationWindow, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -98,14 +98,17 @@ async function searchKakaoLocal(kakaoKey: string, kw: CompanyKeyword, budget?: F
 interface CompanyKeyword { id: number; keyword: string; category: string | null; subcategory: string | null; region: string | null; tier: number | null }
 
 /** 키워드 시드 버전 — 그리드(지역/업종)를 늘렸으면 +1 해야 기존 배포에 새 키워드가 들어간다. */
-const KEYWORD_SEED_VERSION = 2 // 2026-07-28: 전국 시군구 전면(31→235 지역)
+const KEYWORD_SEED_VERSION = 3 // 2026-07-29: 공동구매 생태계 추가(창고형 ×235 지역 + 전국 총판·벤더 8)
 const KEYWORD_SEED_KEY = 'ads_company_kw_seed'
 const KEYWORD_SEED_CHUNK = 500 // 1회 실행당 시드 상한(=5 batch) — 첫 시드가 수집 예산을 잡아먹지 않게
 
 const _kwDone = new WeakSet<object>()
-export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
-  if (_kwDone.has(DB)) return
+/** @returns 이번 호출이 **실제로 쓴 D1 쿼리 수** — 시드도 서브리퀘스트를 쓴다. 호출부가 예산에서 빼야
+ *  시드 라운드에만 조용히 천장을 넘는 일이 없다(2026-07-29: 시드 5배치 + 예산 45 = 50 = 무료 한도 정확히). */
+export async function ensureCompanyKeywords(DB: D1Database): Promise<number> {
+  if (_kwDone.has(DB)) return 0
   _kwDone.add(DB)
+  let spent = 0
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_company_keywords (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     keyword TEXT NOT NULL UNIQUE,
@@ -121,23 +124,35 @@ export async function ensureCompanyKeywords(DB: D1Database): Promise<void> {
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_keywords ADD COLUMN tier INTEGER').run().catch(() => null)
+  spent += 2
   // ⚠️ 2026-07-28 전국 시군구 전면 확장(31→235 지역, 시드 3,800행+) — 예전처럼 **매 실행마다 전량 재시드**하면
   //   실행당 39 batch 가 되어 서브리퀘스트를 통째로 잡아먹는다(수집할 예산이 안 남음). 그래서
   //   ① 버전 게이트로 완료 후엔 platform_settings 조회 1회로 끝내고 ② 첫 시드는 회당 SEED_CHUNK 행씩 나눠 넣는다.
   //   진행값 형식 `"<version>:<seededCount>"` — 중단/재개 안전(INSERT OR IGNORE 라 재실행 무해).
   const rows = buildKeywordRows()
   const cur = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(KEYWORD_SEED_KEY).first<{ value: string }>().catch(() => null)
-  const [ver, seeded] = String(cur?.value || '').split(':')
-  let done = ver === String(KEYWORD_SEED_VERSION) ? Math.max(0, parseInt(seeded || '0', 10) || 0) : 0
-  if (done >= rows.length) return
+  //   ③ 버전이 올라도 **앞부분이 그대로면 이어받는다**(2026-07-29) — 새 키워드는 배열 끝에 붙는데
+  //      매번 0 부터 다시 훑으면 회당 500행 × 10회 = 반나절 뒤에야 새 업종이 들어간다(앞 3,600행은 무변화인데).
+  //      지문이 어긋나면(재정렬·삭제) 안전하게 0 으로 — 덧붙이기라고 *가정*하지 않는다. 상세는 grid 파일 주석.
+  spent += 1 // 위 진행값 SELECT
+  let done = resumeSeedIndex(cur?.value, KEYWORD_SEED_VERSION, rows)
+  if (done >= rows.length) {
+    // 이어받아 이미 완료 상태면 진행값만 새 버전으로 각인(다음 실행부터 조회 1회로 종료).
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(KEYWORD_SEED_KEY, `${KEYWORD_SEED_VERSION}:${done}:${seedPrefixHash(rows, done)}`).run().catch(() => null)
+    return spent + 1
+  }
   const end = Math.min(rows.length, done + KEYWORD_SEED_CHUNK)
   for (let i = done; i < end; i += 100) {
     const stmts = rows.slice(i, Math.min(end, i + 100)).map(r => DB.prepare("INSERT OR IGNORE INTO ad_company_keywords (keyword, category, subcategory, region, tier, active, source) VALUES (?, ?, ?, ?, ?, 1, 'seed')")
       .bind(r.keyword, r.category, r.subcategory, r.region, r.tier))
     await DB.batch(stmts).catch(() => null)
+    spent += 1
   }
   done = end
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(KEYWORD_SEED_KEY, `${KEYWORD_SEED_VERSION}:${done}`).run().catch(() => null)
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(KEYWORD_SEED_KEY, `${KEYWORD_SEED_VERSION}:${done}:${seedPrefixHash(rows, done)}`).run().catch(() => null)
+  return spent + 1
 }
 
 export async function listCompanyKeywords(DB: D1Database): Promise<Array<CompanyKeyword & { active: number; found_total: number; saved_total: number; last_run_at: string | null }>> {
@@ -264,7 +279,7 @@ const CURSOR_KEY = 'ads_company_cursor'
 export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectStats> {
   const DB = env.DB
   await ensureCompanySchema(DB)
-  await ensureCompanyKeywords(DB)
+  const seedSpent = await ensureCompanyKeywords(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
@@ -303,7 +318,11 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const batch = kws.length // 회전 창이 이미 batchSize 만큼(끝에서 감김 포함) 읽어왔다
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false' // 기본 ON — 연락처 없는 리드는 보류.
   // 시작값을 상수로 고정 — 소비량을 다른 기준으로 재면 백오프/관측이 통째로 틀어진다(2026-07-28 kakao_sweep 실사고).
-  const budgetTotal = Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  const envBudgetRaw = Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 110) // 카카오 레인 추가로 60→110(12kw×4콜+webkr)
+  // 🧱 2026-07-29 — 이 레인만 **천장도 학습도 없이** 110 을 그대로 썼다(무료 플랜 인보케이션 한도는 50).
+  //   그래서 매 라운드 후반 fetch 가 조용히 전멸했고, 학습 루프가 없어 그 사실이 어디에도 안 남았다.
+  //   ⚠️ 시드 비용도 뺀다 — 시드가 도는 라운드에만 천장을 넘는 '가끔 죽는' 패턴은 원인 규명이 가장 어렵다.
+  const budgetTotal = Math.max(1, Math.min(envBudgetRaw, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) - seedSpent)
   const budget: FetchBudget = { left: budgetTotal }
 
   let found = 0, saved = 0
@@ -444,7 +463,9 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   소비량을 `cap - budget.left` 로 계산하면(예전 코드) 학습값 63 으로 시작했는데 600 기준으로 재서
   //   실제의 ~10배가 나온다 → 한도 오류 시 백오프가 `floor(590*0.8)=472` 로 **상한을 오히려 폭등**시켰다
   //   (되내려와야 할 안전판이 거꾸로 작동). 시작값을 명시 상수로 잡아 두 곳이 어긋날 수 없게 한다.
-  const budgetTotal = resolveSubreqBudget(cap, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal }
   let found = 0
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
@@ -469,7 +490,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
     await DB.prepare(`UPDATE ad_company_leads SET kakao_checked_at = datetime('now') WHERE id IN (${tried.join(',')})`)
       .run().catch(() => null)
   }
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, cap)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, cap, pcap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)

@@ -52,9 +52,37 @@ const BACKOFF_RATIO = 0.8
 export const isSubrequestLimitError = (msg?: string | null): boolean =>
   /too many (subrequests|api requests)/i.test(String(msg || ''))
 
-/** 이번 실행에 쓸 예산 — 학습값이 있으면 env/기본값과 함께 더 작은 쪽. */
-export function resolveSubreqBudget(envBudget: number, learnedCap: number): number {
-  return learnedCap > 0 ? Math.min(envBudget, learnedCap) : envBudget
+/**
+ * 🧱 플랫폼 천장 — **학습이 넘을 수 없는 절대 상한** (2026-07-29 신설).
+ *
+ *   왜 필요한가(관측):
+ *     `ads_subreq_cap_influencer=55` · `ads_subreq_cap_kakao_sweep=65` — 이 두 레인은 건당 fetch 1 이라
+ *     한도 오류를 **잡을 수 있는 예외로** 만나고, 그래서 50 바로 위에서 오르내리며 수렴했다(천장의 존재 증거).
+ *     그런데 `ads_subreq_cap_company_enrich=172` — 천장의 3.4배다. 이 레인만 다른 이유는 하나다:
+ *     **부딪히는 방식이 다르다.** 건당 4~6 fetch 라 라운드가 4~9번째 리드에서 끝나는데, 그때 남는 증거가
+ *     `partial:true`(마지막 체크포인트)뿐이고 `crash` 도 `limit_hit` 도 없다 — 즉 잡을 예외가 오지 않는다.
+ *     ⇒ 회복(×1.25)만 계속 적용되고 하향은 한 번도 안 걸리는 **한 방향 드리프트**. 자기교정 루프가
+ *       "실패를 관측할 수 있다"를 전제하는데 이 레인에서 그 전제가 깨져 있었다.
+ *
+ *   ⇒ 관측에만 의존하지 않는다. 문서화된 플랫폼 한도(무료 플랜 **인보케이션당 50, D1 포함**)를 코드가 직접
+ *     지킨다. 45 인 이유는 라운드 **꼬리**(잔여 집계 SELECT + 학습값 쓰기 + 최종 스냅샷 ≈ 3)를 남기기 위함 —
+ *     천장에 딱 붙이면 결과 기록이 잘려 또 무증거 사망이 된다.
+ *
+ *   🔧 유료 전환 시: 배포 없이 `ADS_SUBREQ_PLATFORM_CAP` 으로 올린다(예: 900).
+ *      ⚠️ 추측으로 올리지 말 것 — 올린 뒤 레인들의 학습값이 다시 그 근처에서 수렴하는지 확인하고 판단한다.
+ */
+export const SUBREQ_PLATFORM_CAP_DEFAULT = 45
+
+/** env 의 플랫폼 천장(없거나 이상값이면 기본값). 상한 900 은 유료 플랜(1,000)의 꼬리 여유. */
+export function platformSubreqCap(raw?: string | null): number {
+  const n = parseInt(String(raw ?? ''), 10)
+  return Number.isFinite(n) && n > 0 ? Math.min(900, Math.max(10, n)) : SUBREQ_PLATFORM_CAP_DEFAULT
+}
+
+/** 이번 실행에 쓸 예산 — env·학습값·**플랫폼 천장** 중 가장 작은 값. */
+export function resolveSubreqBudget(envBudget: number, learnedCap: number, platformCap = SUBREQ_PLATFORM_CAP_DEFAULT): number {
+  const learned = learnedCap > 0 ? Math.min(envBudget, learnedCap) : envBudget
+  return Math.max(1, Math.min(learned, platformCap))
 }
 
 /**
@@ -70,13 +98,22 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number): numb
  *   할 일의 양이 정한다 — 구속하지 않는 천장을 낮게 유지할 이유가 없다. 너무 높이 올라가면 그 다음 무거운
  *   라운드가 한도 오류를 보고 `hitLimit` 분기로 즉시 되내려온다(그게 이 피드백 루프의 안전판).
  *
+ * ⚠️ 2026-07-29: 회복도 **플랫폼 천장을 넘지 않는다**. 넘도록 두면 위 company_enrich 처럼
+ *   "부딪혀도 예외가 안 오는" 레인에서 상한이 무한정 올라가고, 그 결과 라운드가 매번 무증거로 죽는다.
+ *   (자기교정 루프는 실패를 *관측할 수 있을 때만* 작동한다 — 관측 불가 구간은 천장이 대신 막는다.)
+ *
  * @param spent      이번 실행이 실제로 쓴 fetch 수
  * @param hitLimit   이번 실행에서 한도 오류를 관측했나
+ * @param platformCap 문서화된 플랫폼 한도(무료 50 → 기본 45)
  */
 export function nextSubreqCap(
   spent: number, hitLimit: boolean, learnedCap: number, envBudget: number,
+  platformCap = SUBREQ_PLATFORM_CAP_DEFAULT,
 ): number | null {
-  if (hitLimit) return Math.max(SUBREQ_CAP_MIN, Math.floor(spent * BACKOFF_RATIO))
-  if (learnedCap > 0 && learnedCap < envBudget) return Math.min(envBudget, Math.ceil(learnedCap * RECOVER_RATIO))
+  const ceiling = Math.min(envBudget, platformCap)
+  if (hitLimit) return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), Math.min(ceiling, Math.floor(spent * BACKOFF_RATIO)))
+  // 이미 천장을 넘게 학습돼 있으면(과거 드리프트분) 천장으로 끌어내린다 — 그대로 두면 영영 안 내려온다.
+  if (learnedCap > ceiling) return ceiling
+  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, Math.ceil(learnedCap * RECOVER_RATIO))
   return null
 }

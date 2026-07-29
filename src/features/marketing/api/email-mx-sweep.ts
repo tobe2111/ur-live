@@ -13,6 +13,7 @@ import type { FetchBudget } from './influencer-discovery'
 import { domainAcceptsMail, isKnownMailDomain } from './contact-enrich'
 import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
+import { platformSubreqCap } from './collect-budget'
 
 export interface MxSweepStats { last_run: string; checked: number; removed: number; cursor_c: number; cursor_s: number; total_removed: number; note?: string }
 const STATS_KEY = 'ads_mxsweep_stats'
@@ -34,7 +35,9 @@ export async function sweepEmailMx(env: Env): Promise<MxSweepStats> {
   const writeCursor = async (k: string, v: number) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(k, String(v)).run().catch(() => null) }
 
   // DoH 예산(커스텀 도메인만 소모 — 유명 도메인은 무료 통과). 행 상한과 별개.
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || '', 10) || 80) }
+  // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
+  //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석 참조.
+  const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || '', 10) || 80)) }
   let checked = 0, removed = 0
 
   // ── ① 회사 리드 — 이메일 보유 행 커서 순회 ──

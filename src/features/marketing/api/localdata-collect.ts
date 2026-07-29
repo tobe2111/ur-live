@@ -22,7 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
 import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -55,7 +55,9 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
   const envBudget = Math.min(300, Math.max(20, parseInt((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET || '', 10) || 40))
   const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
-  const total = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt((env as unknown as { ADS_LOCALDATA_DEADLINE_MS?: string }).ADS_LOCALDATA_DEADLINE_MS || '', 10) || 20_000))
   return { budget: { left: total, limitHit: false, deadline: Date.now() + deadlineMs }, envBudget, learnedCap, total }
 }
@@ -65,7 +67,7 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
  * ⚠️ 소비량은 **여기서** 시작값 기준으로 도출한다(호출자가 계산해 넘기면 백오프가 거꾸로 작동할 여지가 생긴다).
  */
 async function persistLocalDataCap(env: Env, total: number, budget: FetchBudget, learnedCap: number, envBudget: number): Promise<void> {
-  const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP))
   if (nextCap == null) return
   await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('localdata'), String(nextCap)).run().catch(() => null)

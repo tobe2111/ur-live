@@ -18,6 +18,7 @@
  *   게이트: env `BUYER_AUTO_COLLECT_ENABLED === 'true'`(미설정=no-op). 설계: docs/design/overseas-buyer-collection.md
  */
 import type { Env } from '@/worker/types/env'
+import { platformSubreqCap } from '../../marketing/api/collect-budget'
 
 /** 의도 신호 티어 — 바이어가 얼마나 강하게 "사고 싶다"를 드러냈는가(매칭 스코어 기저). */
 export const INTENT_TIERS: Record<string, { label: string; weight: number }> = {
@@ -605,7 +606,8 @@ export async function runBuyerCollection(env: Env, opts: { force?: boolean } = {
   await ensureBuyerSchema(DB); await ensureBuyerTargets(DB)
 
   const batch = Math.min(10, Math.max(1, parseInt(env.BUYER_AUTOCOLLECT_BATCH || '3', 10) || 3))
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.BUYER_SUBREQUEST_BUDGET || '60', 10) || 60) }
+  // 🧱 플랫폼 천장 우선 — 넘으면 후반 fetch 가 잡히는 예외 없이 전멸한다(collect-budget.ts).
+  const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(5, parseInt(env.BUYER_SUBREQUEST_BUDGET || '60', 10) || 60)) }
 
   const cursorRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'buyer_collect_cursor'").first<{ value: string }>().catch(() => null)
   let cursor = parseInt(cursorRow?.value || '0', 10) || 0

@@ -10,7 +10,7 @@ import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './inf
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
 
@@ -218,7 +218,9 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
     .first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
-  const total = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const budget = newOpBudget(Math.max(6, total - RESERVE_OPS))
   const bdb = budgetedDb(DB, budget)
 
@@ -237,7 +239,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     out.paused = !!budget.exhausted   // 예산 소진으로 중단 — 다음 회차가 커서로 이어받는다(정상 동작)
     out.limit_hit = !!budget.limitHit // 플랫폼 한도 예외 관측 — 학습 상한을 내린다
     // 📉 학습 상한 갱신 — 수집 레인과 **같은 SSOT·같은 키**(한도는 워커 단위라 레인별로 다르지 않다).
-    const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, learnedCap, envBudget)
+    const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, learnedCap, envBudget, pcap)
     if (nextCap != null) {
       await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
         .bind(subreqCapKey('maintenance'), String(nextCap)).run().catch(() => null)

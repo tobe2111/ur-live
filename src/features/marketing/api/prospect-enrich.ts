@@ -17,7 +17,7 @@
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema } from './store-prospects'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
 export interface ProspectEnrichResult {
@@ -49,7 +49,9 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     .all<{ key: string; value: string }>().catch(() => null))?.results || []
   const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
   const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('prospect_enrich')) || '', 10) || 0)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // ⏱️ 벽시계 마감 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다(보강 레인에서 실측된 실패 모드).
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt(env.ADS_ENRICH_DEADLINE_MS || '', 10) || 20_000))
   const t0 = Date.now()
@@ -143,7 +145,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   spendD1()
   const rem = await DB.prepare("SELECT COUNT(*) AS n FROM store_prospects WHERE active = 1 AND (email IS NULL OR email = '')").first<{ n: number }>().catch(() => null)
   // 🩹 학습 상한 갱신 — 부딪혔으면 낮추고, 무사히 다 썼으면 조금 올린다(다른 레인과 동일 SSOT).
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget, pcap)
   if (nextCap != null) {
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(subreqCapKey('prospect_enrich'), String(nextCap)).run().catch(() => null)

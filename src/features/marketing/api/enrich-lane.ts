@@ -10,7 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
@@ -51,7 +51,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     .all<{ key: string; value: string }>().catch(() => null))?.results || []
   const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
   const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('company_enrich')) || '', 10) || 0)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // ⏱️ 벽시계 가드(2026-07-28) — 서브리퀘스트가 남아도 **시간**이 인보케이션을 끝낼 수 있다(느린 사이트 1곳이
   //   8s 타임아웃을 여러 번 먹는 경우). 20s 이후엔 새 fetch 를 시작하지 않고 Phase 3 → 정상 종료로 빠진다:
   //   죽는 대신 깨끗이 넘기면 스냅샷·학습·도장이 전부 정상 작동하고 남은 백로그는 다음 라운드가 이어받는다.
@@ -157,6 +159,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       crawl_reason: crawlReason, fail_samples: failSamples,
       // fetches=순수 외부 fetch · d1=DB 쿼리 · spent=둘의 합(학습 상한이 보는 진짜 소비량)
       fetches: budgetStart - budget.left - d1, d1, budget_total: budgetTotal, spent: budgetTotal - budget.left,
+      platform_cap: pcap, // 🧱 이 라운드가 절대 넘을 수 없는 천장(학습 상한과 별개) — 보는 사람이 다시 유추하지 않게
       limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
       run_id: runId, // 누적(ads_enrich_rollup)의 멱등 키 — 다음 라운드가 이 스냅샷을 접을 때 쓴다
       phase, p2, at, elapsed_ms: Date.now() - t0, deadline_hit: outOfBudget(budget) && budget.left > 0, targets: targets.length,
@@ -261,7 +264,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget, pcap)
   if (nextCap != null) {
     spendD1()
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(subreqCapKey('company_enrich'), String(nextCap)).run().catch(() => null)
