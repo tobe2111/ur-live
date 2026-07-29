@@ -11,20 +11,27 @@ import {
   ArrowLeft,
   Package,
   Loader2,
-  DollarSign,
   Box,
   FileText,
   Play,
-  Download
+  Image as ImageIcon,
+  Tag,
+  X,
+  Camera,
 } from 'lucide-react'
-import { downloadSellerTemplate } from '@/utils/product-template'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { StickyActionBar } from '@/components/ui/sticky-action-bar'
 
 import type { LiveStream, ProductFormData } from './seller-product-new/types'
 import DigitalProductSection from './seller-product-new/DigitalProductSection'
 import MealVoucherFields from './seller-product-new/MealVoucherFields'
 import LivePriceSection from './seller-product-new/LivePriceSection'
+import FormSection from './seller-product-new/FormSection'
+import BulkUploadTools from './seller-product-new/BulkUploadTools'
+import ProductPreviewRail from './seller-product-new/ProductPreviewRail'
+
+const FORM_ID = 'seller-product-new-form'
 
 export default function SellerProductNewPage() {
   const { t } = useTranslation()
@@ -61,6 +68,16 @@ export default function SellerProductNewPage() {
     if (!localStorage.getItem('seller_token')) navigate('/seller/login')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const categoryOptions: { value: string; label: string }[] = [
+    { value: 'fashion', label: t('common.fashion') },
+    { value: 'beauty', label: t('common.beauty') },
+    { value: 'food', label: t('common.food') },
+    { value: 'electronics', label: t('common.electronics') },
+    { value: 'lifestyle', label: t('common.lifestyle') },
+    { value: 'meal_voucher', label: t('seller.products.mealVoucherCategory') },
+  ]
+  const categoryLabel = categoryOptions.find(c => c.value === formData.category)?.label || ''
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -133,7 +150,9 @@ export default function SellerProductNewPage() {
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to create product:', error)
       const axiosErr = error as { response?: { data?: { error?: string } } }
+      // 🛡️ 폼 데이터를 보존한 채 에러만 표시(이전: window.location.reload 로 전체 입력 유실).
       setError(axiosErr.response?.data?.error || t('common.productRegisterFailed'))
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setLoading(false)
     }
@@ -145,7 +164,7 @@ export default function SellerProductNewPage() {
 
   return (
     <SellerLayout title={t('seller.productCreate')}>
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.productCreate')}
           subtitle={t('seller.newProductDesc')}
@@ -161,325 +180,332 @@ export default function SellerProductNewPage() {
           }
         />
 
-        <div className="mb-8">
-          <p className="text-sm text-gray-500">{t('seller.newProductDesc')}</p>
-          <button
-            type="button"
-            onClick={downloadSellerTemplate}
-            className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            {t('seller.bulkUploadTemplate')}
-          </button>
-
-          <div className="mt-3 flex items-center gap-3">
-            <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-              <FileText className="w-4 h-4" />
-              {t('seller.products.csvBulkUpload')}
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  try {
-                    const text = await file.text()
-                    const lines = text.split('\n').filter(l => l.trim())
-                    if (lines.length < 2) { toast.error(t('common.noData')); return }
-                    const headers = lines[0].split(',').map(h => h.trim())
-                    const token = localStorage.getItem('seller_token')
-                    let success = 0, fail = 0
-                    for (let i = 1; i < lines.length; i++) {
-                      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
-                      const row: Record<string, string> = {}
-                      headers.forEach((h, idx) => { row[h] = values[idx] || '' })
-                      try {
-                        await api.post('/api/seller/products', {
-                          name: row['name'] || row['상품명'],
-                          description: row['description'] || row['설명'] || '',
-                          price: Number(row['price'] || row['가격'] || 0),
-                          stock: Number(row['stock'] || row['재고'] || 0),
-                          image_url: row['image_url'] || row['이미지'] || '',
-                          category: row['category'] || row['카테고리'] || 'lifestyle',
-                        }, { headers: { Authorization: `Bearer ${token}` } })
-                        success++
-                      } catch { fail++ }
-                    }
-                    toast.success(t('seller.products.bulkResult', { success, fail }))
-                    if (success > 0) navigate('/seller/products')
-                  } catch { toast.error(t('seller.products.csvReadFailed')) }
-                  e.target.value = ''
-                }}
-              />
-            </label>
-            <p className="text-xs text-gray-500">{t('seller.products.bulkUploadHint')}</p>
-          </div>
-        </div>
+        <BulkUploadTools />
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
-              <Package className="w-5 h-5" />
-              <p>{error}</p>
-            </div>
-            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('common.retry')}</button>
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+            <Package className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            <p className="flex-1 text-sm text-red-700">{error}</p>
+            <button
+              type="button"
+              onClick={() => setError('')}
+              aria-label={t('common.close', { defaultValue: '닫기' })}
+              className="rounded-lg p-1 text-red-500 hover:bg-red-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
-          {/* Product Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.productName')} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder={t('seller.productNamePlaceholderForm')}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.productDescription')}
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder={t('seller.descriptionPlaceholder')}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Long Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.products.longDescription')}
-            </label>
-            <textarea
-              name="long_description"
-              value={formData.long_description}
-              onChange={handleChange}
-              placeholder={t('seller.products.longDescPlaceholder')}
-              rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">{t('seller.products.longDescHint')}</p>
-          </div>
-
-          {/* Price & Stock */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.originalPrice')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="30000"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
-            </div>
-
-            {formData.product_kind === 'physical' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('seller.stockQuantity')} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <form id={FORM_ID} onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+            {/* ── 좌: 입력 폼 ── */}
+            <div className="space-y-5">
+              {/* 기본 정보 */}
+              <FormSection
+                title={t('seller.products.secBasic', { defaultValue: '기본 정보' })}
+                desc={t('seller.products.secBasicDesc', { defaultValue: '상품명과 소개를 입력하세요' })}
+                icon={<FileText className="h-5 w-5" />}
+              >
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    {t('seller.productName')} <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
+                    type="text"
+                    name="name"
+                    value={formData.name}
                     onChange={handleChange}
-                    placeholder="100"
+                    placeholder={t('seller.productNamePlaceholderForm')}
                     required
-                    min="0"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
-              </div>
-            ) : (
-              <div className="flex items-center px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '📦 디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
-              </div>
-            )}
-          </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    {t('seller.productDescription')}
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder={t('seller.descriptionPlaceholder')}
+                    rows={3}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    {t('seller.products.longDescription')}
+                  </label>
+                  <textarea
+                    name="long_description"
+                    value={formData.long_description}
+                    onChange={handleChange}
+                    placeholder={t('seller.products.longDescPlaceholder')}
+                    rows={5}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">{t('seller.products.longDescHint')}</p>
+                </div>
+              </FormSection>
 
-          {/* Product Kind (Digital/Physical) */}
-          <DigitalProductSection
-            formData={formData}
-            onChange={handleChange}
-            onKindChange={(kind, deliveryType, contentFormat) =>
-              setFormData(p => ({ ...p, product_kind: kind, delivery_type: deliveryType, content_format: contentFormat }))
-            }
-          />
-
-          {/* Live-only Price */}
-          <LivePriceSection
-            formData={formData}
-            onChange={handleChange}
-            onToggle={enabled => setFormData(p => ({ ...p, live_price_enabled: enabled }))}
-          />
-
-          {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.productImageOptional')} <span className="text-gray-400">({t('common.optional')})</span>
-            </label>
-            <ImageUpload
-              value={formData.image_url}
-              onChange={(url) => setFormData({ ...formData, image_url: url })}
-              label=""
-              maxSizeKB={800}
-            />
-            <p className="text-xs text-gray-500 mt-2">{t('seller.productImageOptionalDesc')}</p>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('common.category')} <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="fashion">{t('common.fashion')}</option>
-              <option value="beauty">{t('common.beauty')}</option>
-              <option value="food">{t('common.food')}</option>
-              <option value="electronics">{t('common.electronics')}</option>
-              <option value="lifestyle">{t('common.lifestyle')}</option>
-              <option value="meal_voucher">{t('seller.products.mealVoucherCategory')}</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
-          </div>
-
-          {/* Meal Voucher Fields */}
-          {formData.category === 'meal_voucher' && (
-            <MealVoucherFields onChange={handleChange} />
-          )}
-
-          {/* Product Type info panel */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              {t('seller.productType')}
-            </label>
-            <div className="p-4 border-2 border-blue-500 bg-blue-50 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Play className="w-5 h-5 text-red-600 mt-1" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
-                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">{t('seller.sellerOnly')}</span>
+              {/* 가격 · 재고 */}
+              <FormSection
+                title={t('seller.products.secPricing', { defaultValue: '가격 · 재고' })}
+                icon={<Tag className="h-5 w-5" />}
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {t('seller.originalPrice')} <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">₩</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        placeholder="30000"
+                        required
+                        min="0"
+                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">{t('common.enterInWon')}</p>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{t('seller.liveOnlyProductNote')}</p>
-                  <p className="text-xs text-gray-500 mt-2">💡 {t('seller.featuredOnlyAdmin')}</p>
+
+                  {formData.product_kind === 'physical' ? (
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        {t('seller.stockQuantity')} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Box className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          name="stock"
+                          value={formData.stock}
+                          onChange={handleChange}
+                          placeholder="100"
+                          required
+                          min="0"
+                          className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">{t('common.enterInUnits')}</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '📦 디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
+                    </div>
+                  )}
+                </div>
+
+                <LivePriceSection
+                  formData={formData}
+                  onChange={handleChange}
+                  onToggle={enabled => setFormData(p => ({ ...p, live_price_enabled: enabled }))}
+                />
+              </FormSection>
+
+              {/* 상품 유형 (실물/디지털) */}
+              <FormSection
+                title={t('seller.products.secType', { defaultValue: '상품 유형' })}
+                icon={<Package className="h-5 w-5" />}
+              >
+                <DigitalProductSection
+                  formData={formData}
+                  onChange={handleChange}
+                  onKindChange={(kind, deliveryType, contentFormat) =>
+                    setFormData(p => ({ ...p, product_kind: kind, delivery_type: deliveryType, content_format: contentFormat }))
+                  }
+                />
+              </FormSection>
+
+              {/* 대표 이미지 */}
+              <FormSection
+                title={t('seller.products.secImage', { defaultValue: '대표 이미지' })}
+                icon={<ImageIcon className="h-5 w-5" />}
+                aside={<span className="text-xs text-gray-400">{t('common.optional')}</span>}
+              >
+                <ImageUpload
+                  value={formData.image_url}
+                  onChange={(url) => setFormData({ ...formData, image_url: url })}
+                  label=""
+                  maxSizeKB={800}
+                />
+                <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Camera className="h-3.5 w-3.5" />
+                  {t('seller.products.cameraHint', { defaultValue: '휴대폰에서는 촬영하거나 갤러리에서 선택할 수 있어요' })}
+                </p>
+                <p className="text-xs text-gray-400">{t('seller.productImageOptionalDesc')}</p>
+              </FormSection>
+
+              {/* 카테고리 · 상세 */}
+              <FormSection
+                title={t('seller.products.secCategory', { defaultValue: '카테고리 · 상세' })}
+                icon={<Tag className="h-5 w-5" />}
+              >
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    {t('common.category')} <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  >
+                    {categoryOptions.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">{t('seller.selectCategoryDesc')}</p>
+                </div>
+
+                {formData.category === 'meal_voucher' && (
+                  <MealVoucherFields onChange={handleChange} />
+                )}
+
+                {/* 노출 방식 안내 */}
+                <div className="rounded-lg border-2 border-blue-500 bg-blue-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Play className="mt-1 h-5 w-5 text-red-600" />
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
+                        <span className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white">{t('seller.sellerOnly')}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">{t('seller.liveOnlyProductNote')}</p>
+                      <p className="mt-2 text-xs text-gray-500">💡 {t('seller.featuredOnlyAdmin')}</p>
+                    </div>
+                  </div>
+                  <input type="hidden" name="product_type" value="live" />
+                </div>
+
+                {liveStreams.length > 0 && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      {t('seller.liveStreamLink')}
+                    </label>
+                    <div className="relative">
+                      <Play className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <select
+                        name="live_stream_id"
+                        value={formData.live_stream_id}
+                        onChange={handleChange}
+                        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">{t('seller.selectLiveStream')}</option>
+                        {liveStreams.map((stream) => (
+                          <option key={stream.id} value={stream.id}>
+                            {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">{t('seller.selectLiveStreamDesc')}</p>
+                  </div>
+                )}
+              </FormSection>
+
+              {/* 옵션 */}
+              <FormSection
+                title={t('seller.products.secOptions', { defaultValue: '옵션 · 재고 변형' })}
+                icon={<Box className="h-5 w-5" />}
+              >
+                <ProductOptionForm
+                  options={productOptions}
+                  onChange={setProductOptions}
+                  disabled={loading}
+                />
+              </FormSection>
+
+              {/* PC 인라인 액션 (모바일은 하단 고정 바) */}
+              <div className="hidden items-center justify-end gap-3 lg:flex">
+                <Button
+                  type="button"
+                  onClick={() => navigate('/seller/products')}
+                  className="bg-gray-100 px-6 py-2.5 text-gray-700 hover:bg-gray-200"
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-blue-600 px-8 py-2.5 text-white hover:bg-blue-700"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      {t('seller.registering')}
+                    </span>
+                  ) : (
+                    t('seller.productCreate')
+                  )}
+                </Button>
+              </div>
+
+              {/* 유의사항 */}
+              <div className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
+                <FileText className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div>
+                  <p className="mb-1 font-medium">{t('common.notices')}</p>
+                  <ul className="list-inside list-disc space-y-1 text-xs">
+                    <li>{t('seller.productNameRequired')}</li>
+                    <li>{t('seller.productCreateAfterEdit')}</li>
+                    <li>{t('seller.liveStreamLaterLink')}</li>
+                  </ul>
                 </div>
               </div>
             </div>
-            <input type="hidden" name="product_type" value="live" />
-          </div>
 
-          {/* Live Stream Selection */}
-          {liveStreams.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.liveStreamLink')}
-              </label>
-              <div className="relative">
-                <Play className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <select
-                  name="live_stream_id"
-                  value={formData.live_stream_id}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  <option value="">{t('seller.selectLiveStream')}</option>
-                  {liveStreams.map((stream) => (
-                    <option key={stream.id} value={stream.id}>
-                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('seller.selectLiveStreamDesc')}</p>
-            </div>
-          )}
-
-          {/* Product Options */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
-            <ProductOptionForm
-              options={productOptions}
-              onChange={setProductOptions}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Submit */}
-          <div className="pt-4 border-t">
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                onClick={() => navigate('/seller/products')}
-                className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white"
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {t('seller.registering')}
-                  </span>
-                ) : (
-                  t('seller.productCreate')
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Help Text */}
-          <div className="pt-4 border-t">
-            <div className="flex items-start gap-2 text-sm text-gray-600">
-              <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium mb-1">{t('common.notices')}</p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>{t('seller.productNameRequired')}</li>
-                  <li>{t('seller.productCreateAfterEdit')}</li>
-                  <li>{t('seller.liveStreamLaterLink')}</li>
-                </ul>
-              </div>
-            </div>
+            {/* ── 우: PC 미리보기 레일 (sticky) ── */}
+            <aside className="hidden lg:sticky lg:top-4 lg:block">
+              <ProductPreviewRail formData={formData} categoryLabel={categoryLabel} />
+            </aside>
           </div>
         </form>
       </div>
+
+      {/* 모바일 하단 고정 액션 바 (PC 는 위 인라인 버튼) */}
+      <StickyActionBar
+        responsiveClassName="lg:hidden"
+        className="border-t border-gray-200 bg-white px-4 pt-2.5 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
+      >
+        <div className="mx-auto flex max-w-6xl gap-3">
+          <Button
+            type="button"
+            onClick={() => navigate('/seller/products')}
+            className="flex-1 bg-gray-100 py-3 text-gray-700 hover:bg-gray-200"
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={FORM_ID}
+            disabled={loading}
+            className="flex-[2] bg-blue-600 py-3 text-white hover:bg-blue-700"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {t('seller.registering')}
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1.5">
+                <Package className="h-4 w-4" />
+                {t('seller.productCreate')}
+              </span>
+            )}
+          </Button>
+        </div>
+      </StickyActionBar>
     </SellerLayout>
   )
 }
