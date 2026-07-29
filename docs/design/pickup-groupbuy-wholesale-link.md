@@ -252,6 +252,15 @@
 
 > ⚠️ 도매몰은 **PG(Toss) 미사용** — 결제는 예치금(계좌이체로 충전된 잔액)에서 차감.
 
+> 🔴 **2026-07-29 정정 — 이 인용은 전면 참이 아니다(그대로 믿지 말 것).**
+> 도매에도 Toss 경로가 **있다**: `wholesale.routes.ts:1775 POST /orders/confirm` 이 `confirmTossPayment` 를 호출한다.
+> 위 문장은 `wholesale-plus`(연 구독) 맥락의 서술이고, **도매 전체를 규정하지 않는다.**
+> **다만 결론(§B.2 의 "소비자는 이 경로를 못 탄다")은 유지된다** — 그 경로는
+> `sellerIdFrom(Authorization)`(**`seller_token` 필수**) + `WHERE … distributor_seller_id = ?`(판매사 스코프) +
+> 대상 테이블 `wholesale_orders`(B2B 발주, 소비자 주문 개념 없음) 이라 **소비자가 구조적으로 진입 불가**다.
+> ⇒ *"PG 가 없어서 못 탄다"* 가 아니라 *"PG 는 있지만 인증·스코프·테이블이 B2B 전용이라 못 탄다"* 가 정확하다.
+> 상세: [operator-mall-saas-gap.md](./operator-mall-saas-gap.md) §3.
+
 즉 **"PG 연동 OFF"는 이미 참이고 할 일이 없다.** 그런데 도매몰에는 다른 돈길이 살아 있다:
 
 - **예치금**(`wholesale-deposit.routes.ts`) — 판매사 무통장입금 → 어드민 확인 → **잔액 적립** → 주문 시 차감. 즉 도매몰이 **선불 잔액을 보유**한다.

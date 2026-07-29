@@ -122,6 +122,12 @@ const modeLabel = CHANGED_ONLY
   ? (changedOnlyFellBack ? '전수 폴백(-a)' : `changed-only vs ${CHANGED_BASE}`)
   : ''
 if (files.length === 0) {
+  // 🛡️ 2026-07-29 (대표 지시): changed-only 는 '바뀐 파일 없음'이 정상이지만,
+  //   전수 모드에서 0개는 스캔이 헛도는 것이다(경로/필터 회귀) — 초록불로 넘기면 안 된다.
+  if (!CHANGED_ONLY) {
+    console.error('❌ file-size: 전수 스캔인데 대상 0개 — 검사가 헛돌고 있다(경로/필터 확인).')
+    process.exit(1)
+  }
   console.log(`✅ file-size: 대상 없음 (skip${modeLabel ? ` — ${modeLabel}` : ''}).`)
   process.exit(0)
 }

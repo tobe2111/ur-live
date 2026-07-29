@@ -44,6 +44,11 @@ function collect(dir) {
 }
 collect('src')
 try { collect('migrations') } catch { /* 없으면 skip */ }
+// 🛡️ 2026-07-29 (대표 지시): 0개를 훑고도 '신규 0'으로 초록불이 되는 것을 막는다(가장 조용한 실패 모드).
+if (files.length < 200) {
+  console.error(`❌ column-budget: 스캔 대상이 ${files.length}개뿐 — 검사가 헛돌고 있다(경로/필터 확인).`)
+  process.exit(1)
+}
 const fileTexts = files.map((p) => [p, readFileSync(p, 'utf-8')])
 
 let failed = false

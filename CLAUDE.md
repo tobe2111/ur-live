@@ -36,6 +36,13 @@
 4. **크로스-서비스 변경이 정말 필요하면** — 착수 전 **세 줄만 보고하고 바로 진행**한다(2026-07-29 대표 확정 — 이전의 "`AskUserQuestion` 으로 승인 대기"를 **대체**. 매번 멈추지 말 것):
    **(a) 어느 레일을 만지는가**(도매/소비자/양쪽 — 양쪽이면 파일·네임스페이스) · **(b) 머니 경로 접촉 여부**(결제·정산·적립·환불·원장 중 무엇, 없으면 "없음") · **(c) 롤백 방법**(게이트 OFF / revert / 블록 제거).
    ⚠️ (b)가 "있음"이면 **단독 세션 + staging 실결제** 룰이 추가로 붙는다. 상세: `docs/design/pickup-groupbuy-wholesale-link.md` §7.2
+> 💳 **결제 수단 오해 방지 (2026-07-29 실측 정정)**: 소스 주석 `wholesale-plus.routes.ts:4` 의
+> *"도매몰은 PG(Toss) 미사용 — 예치금에서 차감"* 은 **그 파일(연 구독) 맥락이지 도매 전체가 아니다.**
+> 도매에도 Toss 경로가 있다(`wholesale.routes.ts:1775 POST /orders/confirm` → `confirmTossPayment`).
+> **소비자가 그 경로를 못 타는 진짜 이유는 PG 부재가 아니라** `seller_token` 필수 · `distributor_seller_id`
+> 스코프 · 대상 테이블 `wholesale_orders`(B2B) 다. 몰 주문을 소비자에게 팔려면 **소비자 `orders` 레일**로
+> 태워야 한다(`payment.routes` 무수정). 상세: `docs/design/operator-mall-saas-gap.md` §3.
+
 5. 자동 가드: `scripts/check-dashboard-api-crossrole.mjs`(역할별 API 네임스페이스 격리) — 이 분리의 일부를 결정론으로 강제.
 
 > ⚠️ 이 룰 위반 시: 한 서비스 버그픽스가 다른 서비스를 망가뜨림 + 대표가 "왜 도매 고쳤는데 공구가 깨졌어?" 반복.
