@@ -83,7 +83,10 @@ while (true) {
 }
 
 // kick 이 가리키는 경로가 실제로 존재하는지 — 오타 하나면 그 레인이 조용히 사라진다(fallback 은 로컬 전용).
-const routeFiles = ['src/worker-ads/index.ts', 'src/worker-ads/public-data.routes.ts'].filter(existsSync)
+// 라우트 파일 목록 — index.ts 가 600줄 래칫에 닿아 핸들러를 모듈로 빼고 있다(public-data / chain).
+//   ⚠️ 새 `*.routes.ts` 를 만들어 `app.route()` 로 마운트하면 **여기에도 추가**해야 한다.
+//   안 하면 그 모듈의 라우트가 '없는 것'으로 보여 이 가드가 오탐을 낸다(2026-07-29 chain.routes 추출 시 실제 발생).
+const routeFiles = ['src/worker-ads/index.ts', 'src/worker-ads/public-data.routes.ts', 'src/worker-ads/chain.routes.ts'].filter(existsSync)
 const routes = new Set()
 for (const f of routeFiles) {
   for (const m of readFileSync(f, 'utf8').matchAll(/\.post\('(\/__ads\/[^'?]+)'/g)) routes.add(m[1])

@@ -436,7 +436,11 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
  *
  *   🧮 D1 도 서브리퀘스트다 — 예전엔 kakao fetch 만 세고 UPDATE 는 공짜로 쳤다(보강 레인에서 이미 고친 결함).
  *     도장·전화저장을 **배치 1회씩**으로 묶고 예산에 계상한다. */
-export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean }> {
+/**
+ * @returns `tried`/`limit_hit` 는 **self-chain 판정용**(2026-07-29) — 체인이 "진전이 있었나"를 알아야
+ *   한 건도 못 한 라운드를 40번 반복하는 헛돌기를 막는다. `done`=대상 소진.
+ */
+export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean; tried?: number; limit_hit?: boolean; day_lookups?: number }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
   const { kakaoLocalLookup } = await import('./contact-enrich')
@@ -494,10 +498,20 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
-  let totalFound = 0; try { totalFound = Number((prevRaw?.value ? JSON.parse(prevRaw.value) : {}).total_found) || 0 } catch { /* 초기 */ }
+  let totalFound = 0; let prevDay = ''; let prevDayLookups = 0
+  try {
+    const pj = prevRaw?.value ? JSON.parse(prevRaw.value) as Record<string, unknown> : {}
+    totalFound = Number(pj.total_found) || 0
+    prevDay = String(pj.day || ''); prevDayLookups = Number(pj.day_lookups) || 0
+  } catch { /* 초기 */ }
+  // 📊 하루 조회량(2026-07-29) — self-chain 으로 처리량을 올리기 전에 **카카오 일일 쿼터 소비를 눈으로 보고**
+  //   판단하기 위한 계수기. 같은 stats 블롭에 얹으므로 추가 쿼리 0. KST 기준으로 리셋.
+  const kstToday = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)
+  const dayLookups = prevDay === kstToday ? prevDayLookups : 0
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, tried: tried.length, total_found: totalFound + found,
+    day: kstToday, day_lookups: dayLookups + tried.length,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
   })).run().catch(() => null)
-  return { scanned: rows.length, found, cursor: 0, done: false }
+  return { scanned: rows.length, found, cursor: 0, done: false, tried: tried.length, limit_hit: !!budget.limitHit, day_lookups: dayLookups + tried.length }
 }

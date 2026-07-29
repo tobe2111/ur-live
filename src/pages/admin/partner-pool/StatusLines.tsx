@@ -24,15 +24,17 @@ export interface AgencyFunnel { total: number; with_email: number; site_no_email
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
 export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number; platform_cap?: number }
+/** 📞 카카오 전화 스윕 — 145k 무연락처 리드의 주 전화 확보 레인. */
+export interface KakaoSweepInfo { last_run?: string; scanned?: number; found?: number; tried?: number; total_found?: number; limit_hit?: boolean; day?: string; day_lookups?: number }
 export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, registryMatch }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; registryMatch?: RegistryMatchInfo | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; kakaoSweep?: KakaoSweepInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -146,6 +148,20 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         </div>
       )}
     </div>
+
+    {/* 📞 카카오 전화 스윕 — 연락처 없는 리드의 주 전화 확보 경로. 처리량이 곧 백로그 소진 속도다. */}
+    {kakaoSweep?.last_run && (
+      <div className="mb-3 text-xs text-gray-500">
+        📞 전화 스윕(카카오)
+        <span> · 최근 {kstShort(kakaoSweep.last_run)} · 조회 {formatNumber(kakaoSweep.tried ?? 0)} · <b className="text-indigo-600">전화 확보 {formatNumber(kakaoSweep.found ?? 0)}</b> (누적 {formatNumber(kakaoSweep.total_found ?? 0)})</span>
+        {kakaoSweep.limit_hit && <span className="text-amber-600 font-semibold"> · ⛔ 한도로 조기 중단</span>}
+        {/* 🔢 체인 깊이(ADS_KAKAO_SWEEP_CHAIN)를 올리기 전에 **여기 숫자로** 카카오 일일 쿼터 소비를 확인할 것.
+            추측으로 올리면 같은 키를 쓰는 보강 레인까지 쿼터를 잃는다. */}
+        {typeof kakaoSweep.day_lookups === 'number' && (
+          <span className="text-gray-400"> · 오늘 조회 {formatNumber(kakaoSweep.day_lookups)}건{kakaoSweep.day ? ` (${kakaoSweep.day})` : ''}</span>
+        )}
+      </div>
+    )}
 
     {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
     {commerce?.run && (

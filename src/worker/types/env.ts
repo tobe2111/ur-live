@@ -187,6 +187,10 @@ export interface Env {
   //   무료 플랜에선 건드릴 필요 없다. 유료 전환 시에만 올린다(예: 900) — 추측으로 올리지 말고 레인 학습값이
   //   그 근처에서 수렴하는지 확인하고 판단할 것(2026-07-29 company_enrich=172 드리프트 사고).
   ADS_SUBREQ_PLATFORM_CAP?: string;
+  // 🔁 카카오 전화 스윕 self-chain 깊이(기본 6, 1~24). 한 인보케이션 ≈55건 × 깊이 = 시간당 처리량.
+  //   ⚠️ 올리기 전에 스윕 stats 의 `day_lookups`(KST 일 조회량)로 카카오 쿼터 소비를 **실측**할 것 —
+  //   같은 키를 보강 레인도 쓰므로 쿼터를 태우면 그쪽까지 같이 죽는다.
+  ADS_KAKAO_SWEEP_CHAIN?: string;
   ADS_ENRICH_PHONE_CAP?: string;          // 보강 레인 Phase1(전화) **절대 건수** 상한(기본 0 — 전용 스윕이 전담).
                                           //   ⚠️ 비율(예산÷N) 금지 — 예산이 커지면 시간을 다 먹어 이메일이 굶는다(2026-07-28 실사고).
   ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
