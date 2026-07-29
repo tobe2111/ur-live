@@ -90,6 +90,17 @@ healthcheckRoutes.get('/api/_healthcheck/payments', async (c) => {
   }, healthy ? 200 : 503)
 })
 
+// 🫀 2026-07-05: cron 침묵 감지 외부 프로브 — uptime.yml(GitHub Actions, 10분)이 호출.
+//   ok:false = 핵심 cron 이 허용 간격 초과 미실행 or 전체 heartbeat 90분 침묵(cron 전면 사망).
+//   cron 내부 자가진단은 cron 이 죽으면 같이 죽으므로, 이 엔드포인트 + 외부 관측이 진짜 dead-man's switch.
+//   인증 없음 — cron 이름/시각만 노출(민감정보 0), 관측용 no-store.
+healthcheckRoutes.get('/api/_healthcheck/cron', async (c) => {
+  const { getCronHealth } = await import('../utils/cron-heartbeat')
+  const health = await getCronHealth(c.env.DB)
+  c.header('Cache-Control', 'no-store')
+  return c.json({ success: true, data: health }, health.ok ? 200 : 503)
+})
+
 healthcheckRoutes.get('/api/_healthcheck/version', async (c) => {
   // 배포된 코드 식별용 — deploy smoke test 에서 사용.
   return c.json({
