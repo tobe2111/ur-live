@@ -3,6 +3,8 @@ import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
+// ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
+import { withAdLabel, withOptOut, withSenderInfo } from './outreach-send'
 
 /**
  * 🎯 인플루언서 풀 전체 다운로드 응답 빌더 (admin-ads-influencers.routes 에서 추출 — 600줄 캡 준수).
@@ -85,14 +87,35 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
-  const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '📍지역', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
+  const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '✉️제목(광고표기)', '✉️본문틀', '📍지역', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
+  /**
+   * ⚖️ **수기 발송용 제목·본문틀** (2026-07-29) — 이 레포의 법적 장치는 전부 *대표가 안 쓰는* 경로에만
+   *   있었다: AI 초안(ANTHROPIC_API_KEY 필요 — 이번에 AI 기능을 숨김) · 서버 캠페인 발송(Resend 미사용).
+   *   실제 워크플로는 **엑셀 내보내기 → 메일 클라이언트에서 직접 발송**인데 거기엔 아무 문구도 없었다.
+   *   수집한 이메일(사전동의 없음)로 영리 목적 제안을 대량 발송하는 경로라, 표기 의무를 코드가 채워 준다.
+   *   `(광고)` 표기 · 수신거부 안내 · 전송자 정보 — 셋 다 발송 경로와 **같은 함수**(SSOT)로 만든다.
+   *   ⚠️ 이건 표기 의무를 돕는 것이지 사전동의를 대체하지 않는다. 발송 여부·범위는 대표 판단이다.
+   */
+  const mailSubject = (name: string): string => withAdLabel(`${(name || '').slice(0, 20)}님께 유어딜 제휴 제안 드립니다`)
+  const mailBody = (name: string, platform: string, category: string | null): string => {
+    const ch = PLAT[platform] || platform
+    const cat = category && category !== '기타' ? `${category} ` : ''
+    return withSenderInfo(withOptOut(
+      `안녕하세요, ${(name || '').slice(0, 20)}님.\n유어딜(UR Team) 제휴 담당자입니다.\n\n`
+      + `${ch}에서 ${cat}콘텐츠를 꾸준히 올리시는 것을 보고 연락드립니다.\n\n`
+      + '유어딜은 동네 매장의 이용권·공동구매를 소개하는 서비스입니다. 지역 매장 협찬을 원하는 사장님과 '
+      + '크리에이터를 연결해 드리고, 성사되면 협찬비와 별도로 판매 성과에 따른 수익을 드립니다.\n\n'
+      + '관심 있으시면 이 메일에 회신 주세요. 진행 방식과 조건을 자세히 안내드리겠습니다.\n\n'
+      + '감사합니다.\n유어딜 드림',
+    ))
+  }
   const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
   // 셀 값: number 는 숫자 그대로(xls Number 타입/csv 는 문자열화), 빈값은 '' — "null"/0 오염 없음.
   const cells = (r: ExpRow): (string | number)[] => [r.id, PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url,
     r.lead_score ?? '', noSub(r.platform) ? '' : (r.subscriber_count || 0),
     r.recent_avg_views ?? '', r.median_long_views ?? '', r.shorts_ratio ?? '', r.recent_avg_comments ?? '', r.recent_posts_30d ?? '', r.last_post_at || '',
     r.email || '', MAIL_KO[r.email_status || ''] || r.email_status || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '',
-    r.region || '', r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '', r.is_brand ? '브랜드⚠️' : '',
+    mailSubject(r.name), mailBody(r.name, r.platform, r.category), r.region || '', r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '', r.is_brand ? '브랜드⚠️' : '',
     r.source_keyword || '', STATUS_KO[r.status] || r.status,
     CH_KO[r.contact_channel || ''] || '', r.contacted_at || '', r.follow_up_at || '', r.source === 'inbound' ? '신청·동의' : '자동수집', r.consented_at || '', r.memo || '', (r.collected_at || '').slice(0, 10)]
   const stamp = new Date().toISOString().slice(0, 10) // 파일명 날짜 — 다운로드 반복 시 버전 구분
