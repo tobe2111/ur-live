@@ -3,6 +3,7 @@ import { isLikelyNoise, type InfluencerLead } from './influencer-discovery'
 import { looksLikeBrandChannel } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { regionFromKeyword } from './influencer-region'
+import { sanitizeLeadHandle } from './influencer-handle'
 
 /**
  * 💾 수집 리드 저장 — `influencer-auto-collect.ts` 에서 추출(2026-07-29, 600줄 캡).
@@ -53,8 +54,13 @@ export async function saveLeadsBatch(
     const insStmts = slice.map(l => {
       const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
       const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
+      // 🚧 핸들 저장 직전 정규화 — 파서가 호스트/스킴 조각을 남기는 경로가 아직 열려 있다.
+      //   (현재 코드로 재현: 카페 파서에 블로그 URL → 'blog.naver.com', 외부 URL → 'xxx.tistory.com',
+      //    블로그 파서에 외부/무id → 'https:'). 2026-07-28 에 12,357건을 복구했지만(#822) 그건 사후
+      //    치료였고, 생성 지점은 여기 하나뿐이라 여기서 막으면 새 플랫폼도 자동으로 같은 규칙을 받는다.
+      const handle = sanitizeLeadHandle(l.platform, l)
       return DB.prepare(insSql).bind(
-        accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
+        accountId, l.platform, l.channel_id, handle, l.name.slice(0, 120), l.url,
         l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
         l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
         cat, meta.sourceKeyword ?? null,
