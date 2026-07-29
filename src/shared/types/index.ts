@@ -334,6 +334,9 @@ export interface CreateOrderRequest {
     product_id: string;
     quantity: number;
     options?: Record<string, string>;
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 상품 — 서버가 option_id 로 price_adjustment 재계산 + 옵션 재고
+    //   CAS 차감. createOrderSchema(zod)와 정합. (머지로 유실됐던 것 복원 — order.routes 사용부와 짝.)
+    option_id?: number | string | null;
   }[];
   shipping_address: ShippingAddress;
   shipping_name: string;
