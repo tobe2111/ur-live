@@ -64,3 +64,32 @@ describe('하트비트 일괄 쓰기', () => {
     expect(FLUSH_AT).toBe(10)
   })
 })
+
+/**
+ * 🔓 **flush 이후 도착분** — 모든 레인이 `kick` 을 거치지는 않는다.
+ *
+ *   생 `ctx.waitUntil` 로 도는 레인(시트 미러 #882 등)은 마지막 flush **뒤에** 하트비트를 남길 수 있다.
+ *   그걸 모으기만 하면 영영 안 나가고, 그 레인은 **멈춘 것과 똑같이 생긴다** —
+ *   비용을 아끼려다 관측을 지우는 것이고, 이 레포가 반복해 만난 "조용한 부재" 그 자체다.
+ */
+describe('봉인 뒤에는 즉시 쓴다', () => {
+  it('flush 뒤에 add 하면 **또 flush 하지 않아도** 나간다', async () => {
+    // ⚠️ 여기서 flush 를 한 번 더 부르면 안 된다 — 그러면 봉인을 지워도 초록이라 **검사가 헛돈다**
+    //   (실제로 처음 쓴 이 테스트가 그랬고, 되돌려-검증에서 통과하는 걸 보고서야 알았다).
+    const seen: string[] = []
+    const b = createBeatBatch(async (list) => { seen.push(...list.map(x => x.name)) }, 10)
+    await b.flush()
+    b.add(beat('late'))
+    await Promise.resolve()
+    expect(seen).toEqual(['late'])
+    expect(b.size).toBe(0)
+  })
+
+  it('봉인 전에는 여전히 모은다 — 절약이 사라지면 이 PR 의 목적이 사라진다', () => {
+    const write = vi.fn(async (_list: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 10)
+    b.add(beat('a')); b.add(beat('b'))
+    expect(write).not.toHaveBeenCalled()
+    expect(b.size).toBe(2)
+  })
+})

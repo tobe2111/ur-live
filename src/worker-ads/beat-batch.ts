@@ -18,9 +18,16 @@
  * D1 `batch` 는 문장이 몇 개든 **서브리퀘스트 1개**다. 그래서 부모 비용이 `2N` → `N+1` 이 된다.
  * 20개 레인이면 40 → 21. 천장 아래로 내려간다.
  *
+ * ## flush 이후에 온 기록은 **버리지 않고 즉시 쓴다** (봉인 모드)
+ * 모든 레인이 `kick` 을 거치는 건 아니다 — 생 `ctx.waitUntil` 로 도는 레인(시트 미러 #882 등)은
+ * 마지막 flush **뒤에** 하트비트를 남길 수 있다. 그걸 모으기만 하면 영영 안 나가고,
+ * 그 레인은 *멈춘 것과 똑같이 생긴다* — 비용을 아끼려다 관측을 지우는 셈이다.
+ * ⇒ flush 가 끝난 뒤의 `add()` 는 모으지 않고 **바로 쓴다**(그 건만 서브리퀘스트 1, 배칭 이전과 동일).
+ *
  * ## 한계 (과신 금지)
  * - 부모가 flush 전에 죽으면 **그 묶음은 통째로 사라진다.** 그래서 `FLUSH_AT` 마다 중간 flush 해
  *   손실을 그 단위로 묶는다. 완전한 해법은 아니고 **손실을 유계로 만드는 것**이다.
+ * - 봉인 모드의 즉시 쓰기도 부모가 이미 회수됐으면 못 나간다(수명은 이 모듈이 못 건드린다).
  * - 레인 자신의 완료 기록(각 러너의 `stats.diag`)은 이 경로와 무관하다 — 그쪽이 진짜 관측이다.
  */
 
@@ -44,6 +51,7 @@ export const FLUSH_AT = 10
  */
 export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, flushAt = FLUSH_AT) {
   let pending: PendingBeat[] = []
+  let sealed = false // flush 를 한 번 지난 뒤 — 이제 모으기만 하면 아무도 안 내보낸다
   const inflight: Promise<unknown>[] = []
 
   const flushNow = (): Promise<void> => {
@@ -58,12 +66,14 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
   return {
     add(beat: PendingBeat): void {
       pending.push(beat)
-      if (pending.length >= flushAt) void flushNow()
+      // 봉인 뒤에는 임계치를 기다리지 않는다 — 기다리면 그 기록은 영영 안 나간다.
+      if (sealed || pending.length >= flushAt) void flushNow()
     },
-    /** 남은 것을 쓰고, 이미 시작된 쓰기까지 모두 끝나기를 기다린다. */
+    /** 남은 것을 쓰고, 이미 시작된 쓰기까지 모두 끝나기를 기다린다. 이후 도착분은 즉시 쓰기로 전환. */
     async flush(): Promise<void> {
       await flushNow()
       await Promise.allSettled(inflight)
+      sealed = true
     },
     /** 테스트/진단용 — 아직 안 쓴 건수. */
     get size(): number { return pending.length },
