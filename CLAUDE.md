@@ -33,7 +33,9 @@
 1. **한 서비스 작업 시 다른 서비스 파일/라우트/네임스페이스를 건드리지 말 것.** 예: 도매 정산 수정이 소비자 정산을, 도매 상품등록이 소비자 카탈로그를 바꾸면 안 됨.
 2. **공유 테이블은 구분 플래그로 격리** — `products.is_supply_product`(도매=1) · `sellers.is_distributor`(판매사=1). 한쪽 쿼리/변경이 반대쪽 행을 건드리지 않게 WHERE 에 항상 플래그 포함. 새 공유 컬럼 추가 금지(예산제 — `product_supply_meta` 사이드테이블).
 3. **"공구"는 둘 다 존재** — 도매에 B2B 발주가 있고 소비자엔 공동구매가 있음. 맥락(행위자/라우트/네임스페이스)으로 어느 쪽인지 먼저 확정. `community-group-buy`=소비자, `wholesale/orders`=도매.
-4. **크로스-서비스 변경이 정말 필요하면** 먼저 `AskUserQuestion` 으로 의도 확인 + 분리 위반 여부 명시.
+4. **크로스-서비스 변경이 정말 필요하면** — 착수 전 **세 줄만 보고하고 바로 진행**한다(2026-07-29 대표 확정 — 이전의 "`AskUserQuestion` 으로 승인 대기"를 **대체**. 매번 멈추지 말 것):
+   **(a) 어느 레일을 만지는가**(도매/소비자/양쪽 — 양쪽이면 파일·네임스페이스) · **(b) 머니 경로 접촉 여부**(결제·정산·적립·환불·원장 중 무엇, 없으면 "없음") · **(c) 롤백 방법**(게이트 OFF / revert / 블록 제거).
+   ⚠️ (b)가 "있음"이면 **단독 세션 + staging 실결제** 룰이 추가로 붙는다. 상세: `docs/design/pickup-groupbuy-wholesale-link.md` §7.2
 5. 자동 가드: `scripts/check-dashboard-api-crossrole.mjs`(역할별 API 네임스페이스 격리) — 이 분리의 일부를 결정론으로 강제.
 
 > ⚠️ 이 룰 위반 시: 한 서비스 버그픽스가 다른 서비스를 망가뜨림 + 대표가 "왜 도매 고쳤는데 공구가 깨졌어?" 반복.
@@ -399,6 +401,13 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
+> 🔴 **2026-07-29 무효 표기 (대표 지시)**: 아래 "확인된 사실(2026-07-28 실측)" 중 **이 토큰으로 조회에
+> 성공했다는 기록은 지금 유효하지 않다.** 2026-07-29 실측에서 `platform_settings.cf_api_token` 이
+> **`GET /user/tokens/verify` 자체를 실패**한다(`Authentication error` code 10000 — D1 권한 부족이 아니라
+> 토큰이 죽음). **재발급 예정이며 스코프는 D1 읽기 전용 최소**로 좁힌다(`docs/design/pickup-groupbuy-wholesale-link.md` §B.12).
+> ⇒ 이 절의 절차는 그대로 유효하지만, **"토큰은 살아 있다"를 전제하지 말고 `verify` 로 먼저 확인**할 것.
+> (아래 `usage_model` 정정과 같은 성격 — 낡은 실측을 믿고 오진한 사례가 반복됐다.)
+
 **확인된 사실(2026-07-28 실측 — 추측 대체)**:
 - ⚠️ **정정(2026-07-28 후속)**: 아래 "유료 → 1,000" 은 **틀렸다. 믿지 말 것.** `usage_model: standard` 는
   Workers **과금 모델**(bundled/unbound 세대 구분)이지 free/paid 구분이 아니다 — 무료 계정도 `standard` 로 나온다.
@@ -437,6 +446,23 @@ historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹
 (`apis.data.go.kr` · `open.neis.go.kr` 등 CONNECT 403). 공공 API 스펙 검증은 이 환경에서 직접 호출로 못 한다 →
 **라이브 워커의 `diag.error` 원문**(어드민 stats)이 사실상 유일한 ground truth. `data.go.kr` 문서 페이지는
 WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필요하다.
+
+## 🧪 규율은 문서가 아니라 테스트로 (2026-07-29 대표 지시 — "문서 기재로 끝내지 말 것")
+
+**규율 항목(지켜야 하는 불변식)을 발견하면 문서에 적는 것으로 끝내지 말 것.**
+**발견 즉시 "테스트로 환원 가능한가"를 먼저 판단하고, 가능하면 그 세션에 박는다.**
+
+판단 순서:
+1. **환원 가능한가?** — 레포 안에서 관측 가능한 사실로 표현되는가(파일 내용·발행 SQL·설정값·호출 그래프).
+2. **가능하면 그 세션에 작성** — 다음 세션으로 미루지 않는다. 미루면 문서만 남고 가드는 안 생긴다(실제로 반복됨).
+3. **부분만 가능하면 그 부분을 박고, 못 막는 범위를 테스트 주석에 명시** — "이 테스트가 못 막는 것"을 적어야
+   다음 세션이 가드를 과신하지 않는다.
+4. **반드시 깨뜨려서 확인** — 일부러 위반을 주입해 빨강이 뜨는지 본 뒤 복원. (가드가 헛도는 사고가 실제로 있었다.)
+
+> 예: *"ur-wholesale 에 cron 금지(정산 이중성숙)"* 는 머니 룰인데 **문서에만** 있었다(가드 0). 2026-07-29 에
+> `wholesale-invariants.test.ts` 로 환원 — 단, 실제 cron 은 **Cloudflare 대시보드**에 걸려 레포가 못 보므로
+> "레포 안에서 같은 사고를 만드는 경로"만 고정하고 그 한계를 주석에 적었다.
+
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:
@@ -988,6 +1014,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
 | Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험. 2026-07-28 보강: **dotenv/`.dev.vars` 파일 자체를 커밋 금지**(패턴 0) — `.env.deploy` 가 살아있는 CF 토큰을 담은 채 커밋돼 있었고(#737), 기존 값 패턴들이 전부 따옴표를 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다 |
 | cron 무음 정지(실행기록 없음) | `check-cron-heartbeat.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `safeCron` 이 **예외 발생 시에만** 기록해, 예외 없는 정지(cron 미발화·게이트 OFF 조기 return·내부 `.catch(() => null)` 로 삼킴)가 **성공으로 집계**됐다. 유어애즈 자동 정비가 그 경우로 07-26 부터 멈췄는데 아무도 몰랐고(#793), 당시 cron 70개 중 실행기록을 남기는 건 3개뿐이었다. safeCron 에 성공·실패 무관 하트비트(`platform_settings` 의 `cron_hb:{name}`) + 어드민 `GET /api/admin/cron-heartbeats`. **새 cron 은 반드시 `ctx.waitUntil(safeCron('이름', () => 작업(env)))` 형태로 등록** — 우회하면 그 작업만 관측 밖으로 나간다. 예외 `cron-heartbeat-ok` 주석 |
+| 시드 버전 재사용(재시드 무음 스킵) | `check-seed-version-monotonic.mjs` (warn) | `verify.yml` (strict) + audit-gate + pre-commit | 2026-07-29 — 가이드/블로그 시드는 "코드 버전 > DB 저장 버전"일 때만 재시드된다. **이미 쓴 번호를 다시 쓰면 조건이 거짓이라 에러 없이 아무 일도 안 일어난다** — 배포는 초록불이고 라이브 문서만 옛날 것으로 남는다. 이 레포에서 이미 두 번 났다: `GUIDE_SEED_VERSION = 8` 이 2026-07-20 서로 다른 두 커밋에 쓰였고(v11 주석이 수습을 기록 — "병행 배포 양쪽(각자 v8)이 모두 재시드되도록 9 로 합침"), `= 4` 도 두 번. 07-29 에도 PR #451·#425 가 동시에 12 를 잡았다(머지 직전 수동 발견). **세션이 여러 개 동시에 도는 한 계속 난다** → main 히스토리 대비 단조증가 강제. 상수를 안 건드린 브랜치는 검사 생략(소음 0). ⚠️ 미머지 브랜치끼리의 동시 선점은 못 막는다 — 나중에 머지하는 쪽이 CI 에서 걸려 +1 하면 된다. 예외 `seed-version-ok` |
 | Firebase 토큰 인증 수용 | `check-no-firebase-auth.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — Firebase 서비스계정 개인키가 `archive/` 문서에 3개월간 public 노출(#798). 그 키로 **커스텀 토큰 발급 → Firebase 공개 REST 로 ID 토큰 교환 → Bearer 제출** 하면 서명이 Google 공개키로 정상 검증돼 **임의 uid 로 로그인**이 됐다. **키 폐기만으로는 부족** — 수용 경로가 남으면 새 키가 또 유출될 때 재발한다. `requireAuth`/`optionalAuth`/`auth-token.routes` 의 Firebase 분기 제거 + `googleRoutes` 마운트 해제. KR=카카오 세션·셀러/어드민=JWT·GLOBAL 미런칭(#804)이라 실사용자 0(대표 확인). 되살리려면 `firebase-auth-ok` 주석 + 새 키 발급 |
 | 시크릿 자재(키 본문) 유입 | `check-secret-material.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `archive/` **19개 `.md`/`.txt`** 에 Google 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출(#798). 기존 가드가 둘 다 통과시켰다: `verify.yml` 의 검사는 **`src/` 의 `.ts/.tsx` 만** 보고, `check-no-secrets.sh` 는 **키 이름 패턴** 위주라 문서 안의 *키 본문*이 사각지대였다. 폴더명이 `secrets-redacted/` 라 처리된 것처럼 보였으나 원문 그대로였다. **확장자·경로 무관 전수 스캔**(PEM 실본문·Toss live·Stripe·AWS·Slack·Anthropic·OpenAI·GitHub PAT), 자리표시자는 오탐 제외, 예외는 `secret-material-ok` 주석. ⚠️ **작업트리만 본다 — history 유출은 스캔이 아니라 *회전*으로만 해결된다** |
 | Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
