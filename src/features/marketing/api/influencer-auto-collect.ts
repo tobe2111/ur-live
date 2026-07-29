@@ -22,8 +22,9 @@ import { saveLeadsBatch } from './influencer-save'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, stripVideoTitles, type FetchBudget } from './influencer-discovery'
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
-import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
+import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
+import { makeAlreadyContacted } from './influencer-known-contacts'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
@@ -237,21 +238,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   검색으로 하루 예산(100회)의 절반까지 낭비 + QUOTA 소진 마커가 늦은 쓰기에 덮여 실패 호출 반복.
   //   platform_settings 의 만료시각 CAS(단일 UPDATE = D1 원자)로 한 번에 하나만 실행 — busy 면 아무것도 안 만지고
   //   반환(체인은 yt_budget 부재 → done, cron 은 다음 틱, 수동은 진행 중인 실행이 대신 수집).
-  await DB.prepare('CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)').run().catch(() => null)
-  // 🪦 seed + **직전 lease 값 읽기**를 1 batch(=1 서브리퀘스트)로. 값이 '0' 이 아니면 직전 회차가
-  //   반납하지 못하고 죽은 것 — 그 사실은 여기서만 알 수 있다(죽은 회차는 아무것도 못 남긴다).
-  //   판정/처방은 `capAfterAbandonedRun`(collect-budget) 의 docblock 이 SSOT.
-  const leaseSeed = await DB.batch<{ value: string }>([
-    DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value) VALUES ('${LEASE_KEY}', '0')`),
-    DB.prepare(`SELECT value FROM platform_settings WHERE key = '${LEASE_KEY}'`),
-  ]).catch(() => null)
-  const priorLease = parseInt(String(leaseSeed?.[1]?.results?.[0]?.value ?? '0'), 10) || 0
-  const nowMs = Date.now()
-  const leaseR = await DB.prepare(`UPDATE platform_settings SET value = ? WHERE key = '${LEASE_KEY}' AND CAST(value AS INTEGER) < ?`)
-    .bind(String(nowMs + LEASE_TTL_MS), nowMs).run().catch(() => null)
-  // 유기 판정은 **CAS 를 이겼을 때만** 의미가 있다(졌으면 그 lease 는 살아있는 실행의 것이다).
-  const abandonedPrev = !!leaseR?.meta?.changes && priorLease > 0
-  if (!leaseR?.meta?.changes) {
+  // 🪦 획득 + **직전 회차 유기 판정**은 `acquireLeaseDetect`(collect-lease SSOT) — 죽은 회차가 남기는
+  //   유일한 흔적(반납 안 된 lease)을 읽는다. 처방은 `capAfterAbandonedRun` docblock 참조.
+  const { acquired, abandoned: abandonedPrev } = await acquireLeaseDetect(DB, LEASE_KEY, LEASE_TTL_MS)
+  if (!acquired) {
     const prevStats = await getAutoCollectStats(DB)
     return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
   }
@@ -417,6 +407,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   let ytBudgetBlocked = false
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
+  // 💸 재조우 보강 스킵 훅 — 왜/예산회계는 `influencer-known-contacts.ts` docblock 이 SSOT.
+  const alreadyContacted = makeAlreadyContacted(DB, POOL_ACCOUNT_ID, budget)
+
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
@@ -428,7 +421,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ytUsed++
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
-        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order })
+        const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         if (r.ok) {
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
@@ -440,7 +433,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     }
     if (hasNaver) {
       try {
-        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort })
+        const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort, alreadyContacted })
         if (r.ok) {
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }

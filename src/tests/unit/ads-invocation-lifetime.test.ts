@@ -94,17 +94,58 @@ describe('capAfterAbandonedRun — 유기된 회차의 하향', () => {
  */
 describe('수집 엔진 — 유기 lease 판정의 배선', () => {
   const src = read('src/features/marketing/api/influencer-auto-collect.ts')
+  const lease = read('src/features/marketing/api/collect-lease.ts')
 
-  it('CAS 승리(meta.changes)와 직전 값(>0)을 함께 본다', () => {
-    expect(src).toMatch(/abandonedPrev\s*=\s*!!leaseR\?\.meta\?\.changes\s*&&\s*priorLease\s*>\s*0/)
+  it('CAS 승리와 직전 값(>0)을 함께 본다 — 졌으면 그 lease 는 살아 있는 실행의 것이다', () => {
+    expect(lease).toMatch(/abandoned:\s*acquired\s*&&\s*prior\s*>\s*0/)
   })
 
   it('직전 lease 읽기를 seed 와 같은 batch 로 묶는다 — 관측이 예산을 더 먹지 않게', () => {
-    expect(src).toMatch(/DB\.batch<\{ value: string \}>\(\[[\s\S]{0,400}SELECT value FROM platform_settings/)
+    expect(lease).toMatch(/DB\.batch<\{ value: string \}>\(\[[\s\S]{0,400}SELECT value FROM platform_settings/)
   })
 
   it('유기 판정이 이번 회차의 예산에 즉시 반영된다(다음 회차가 아니라)', () => {
     // 죽은 회차는 상한을 못 낮춘다 → 낮추는 일은 살아남은 쪽이 해야 한다.
     expect(src).toMatch(/abandonedPrev\s*\?\s*capAfterAbandonedRun\(storedCap/)
+  })
+})
+
+/**
+ * 💸 **재조우 보강 스킵** — 버려질 fetch 를 쏘지 않는다.
+ *
+ *   저장은 빈 칸만 COALESCE 백필한다 → 이미 연락처가 있는 리드를 보강하면 결과가 통째로 버려진다.
+ *   이 레인의 병목이 정확히 그 fetch 예산이라(실측 `spent 40/40`), 풀이 커질수록(38,813) 낭비가 커진다.
+ *
+ *   ⚠️ 못 막는 것: 실제로 몇 건이 스킵되는지는 라이브 값이다. 여기서는 **배선과 회계**만 고정한다.
+ */
+describe('재조우 보강 스킵 — 배선과 예산 회계', () => {
+  const disc = read('src/features/marketing/api/influencer-discovery.ts')
+  const known = read('src/features/marketing/api/influencer-known-contacts.ts')
+  const col = read('src/features/marketing/api/influencer-auto-collect.ts')
+
+  it('YT·네이버 보강 대상이 훅을 거친다', () => {
+    expect((disc.match(/filterUncontacted\(opts\.alreadyContacted/g) || []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('훅이 없거나 실패하면 보강을 그대로 진행한다 — 최적화가 수집을 막으면 안 된다', () => {
+    const fn = /async function filterUncontacted[\s\S]*?\n\}/.exec(disc)?.[0] || ''
+    expect(fn).toMatch(/if\s*\(!hook[\s\S]{0,40}return rows/)
+    expect(fn).toMatch(/catch\s*\{\s*return rows\s*\}/)
+  })
+
+  it('🧾 조회도 예산에서 뺀다 — D1 도 서브리퀘스트다(#784 의 비대칭을 다시 만들지 않는다)', () => {
+    expect(known).toMatch(/budget\.left\s*-=\s*1/)
+    // 예산이 바닥이면 조회조차 하지 않는다(마감 기록용 여유를 잡아먹지 않게).
+    expect(known).toMatch(/budget\.left\s*<=\s*1/)
+  })
+
+  it('연락처가 **비어 있는** 재조우는 스킵하지 않는다 — 그건 백필이 실제로 채운다', () => {
+    expect(known).toMatch(/COALESCE\(email,''\)\s*<>\s*''/)
+    expect(known).toMatch(/COALESCE\(instagram,''\)\s*<>\s*''/)
+  })
+
+  it('수집 엔진이 훅을 만들어 발굴에 넘긴다', () => {
+    expect(col).toMatch(/makeAlreadyContacted\(DB,\s*POOL_ACCOUNT_ID,\s*budget\)/)
+    expect((col.match(/alreadyContacted\s*\}/g) || []).length).toBeGreaterThanOrEqual(2)
   })
 })
