@@ -15,7 +15,7 @@ const CRAWL_REASON_LABEL: Record<string, string> = {
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
-export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
+export interface Commerce { gate: boolean; run: (RunInfo & { upserted?: number; diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 /** 하드 실패 백오프 상태(2026-07-29) — '왜 지금 안 도는가'를 대표가 읽을 수 있게. */
 export interface LaneHealthInfo { fail_streak?: number; first_failed_at?: string; next_probe_at?: number; last_error?: string }
 export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string }; health?: LaneHealthInfo }) | null }
@@ -168,7 +168,13 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
       <div className="mb-3 text-xs rounded-lg border border-gray-200 bg-gray-50 p-2.5">
         <span className="font-semibold text-gray-700">🛒 통신판매</span>
         {commerce.run.diag?.error ? <span className="text-amber-600"> · {commerce.run.diag.error}</span>
-          : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {commerce.run.found ?? 0} / 저장 {commerce.run.saved ?? 0}</span>}
+          : <span className="text-gray-500"> · 최근 {kstShort(commerce.run.last_run)} · 발굴 {formatNumber(commerce.run.found ?? 0)} / <b className="text-indigo-600">신규 {formatNumber(commerce.run.saved ?? 0)}</b>
+              {typeof commerce.run.upserted === 'number' && (
+                /* 🧮 2026-07-29: 예전 '저장' 은 **시도 수**라 이미 아는 업체를 다시 긁어도 그대로 셌다.
+                   신규가 0 에 가까워지는 건 '고장'이 아니라 '원부를 다 훑었다'는 뜻 — 그 구분을 위해 재확인을 함께 보여준다. */
+                <span className="text-gray-400" title="재확인 = 이미 알던 업체를 다시 만난 건수. 신규 0 + 재확인 다수 = 원부 완주(정상). 둘 다 0 = 수집이 안 도는 것."> (재확인 {formatNumber(commerce.run.upserted)})</span>
+              )}
+            </span>}
         {commerce.probe && (
           <span> · <span className={commerce.probe.hasEmail ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>이메일 필드 {commerce.probe.hasEmail ? `있음 ✅${commerce.probe.emailField ? ` (${commerce.probe.emailField}, 선택입력이라 일부만 채워짐)` : ''}` : '없음 ❌'}</span></span>
         )}

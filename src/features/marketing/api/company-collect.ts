@@ -278,7 +278,7 @@ const CURSOR_KEY = 'ads_company_cursor'
 /** 한 번의 업체 자동수집(cron 홀수시 틱 또는 수동). 게이트 체크는 호출부. 커서 순환으로 며칠에 걸쳐 전 키워드 커버. */
 export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectStats> {
   const DB = env.DB
-  await ensureCompanySchema(DB)
+  const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비 — 아래 예산에서 차감
   const seedSpent = await ensureCompanyKeywords(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -322,7 +322,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   // 🧱 2026-07-29 — 이 레인만 **천장도 학습도 없이** 110 을 그대로 썼다(무료 플랜 인보케이션 한도는 50).
   //   그래서 매 라운드 후반 fetch 가 조용히 전멸했고, 학습 루프가 없어 그 사실이 어디에도 안 남았다.
   //   ⚠️ 시드 비용도 뺀다 — 시드가 도는 라운드에만 천장을 넘는 '가끔 죽는' 패턴은 원인 규명이 가장 어렵다.
-  const budgetTotal = Math.max(1, Math.min(envBudgetRaw, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) - seedSpent)
+  const budgetTotal = Math.max(1, Math.min(envBudgetRaw, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) - seedSpent - schemaSpent)
   const budget: FetchBudget = { left: budgetTotal }
 
   let found = 0, saved = 0
@@ -442,7 +442,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
  */
 export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean; tried?: number; limit_hit?: boolean; day_lookups?: number }> {
   const DB = env.DB
-  await ensureCompanySchema(DB)
+  const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
   const { kakaoLocalLookup } = await import('./contact-enrich')
   const key = env.KAKAO_REST_API_KEY || ''
   if (!key) return { scanned: 0, found: 0, cursor: 0, done: false }
@@ -470,7 +470,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
-  const budget: FetchBudget = { left: budgetTotal }
+  const budget: FetchBudget = { left: budgetTotal - schemaSpent }
   let found = 0
   const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
   const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)

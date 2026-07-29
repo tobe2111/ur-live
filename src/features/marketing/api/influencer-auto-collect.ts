@@ -14,22 +14,25 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { ensureQualityColumns, looksLikeBrandChannel, scoreLead } from './influencer-quality'
-import { resolveCategory, classifyCategory } from './influencer-classify'
+import { backfillRegions } from './influencer-region'
+import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론
+// 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
+export { MIN_YT_SUBSCRIBERS } from './influencer-save'
+import { saveLeadsBatch } from './influencer-save'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, stripVideoTitles, type FetchBudget } from './influencer-discovery'
+import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
+import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
 
-/** 자동확장 활성 키워드 상한(런어웨이 방지) + 후보 자동승격 임계(반복 등장 횟수). */
-const MAX_ACTIVE_KEYWORDS = 200
+// 🌱 자동확장 상한/승격 자리 계산은 `influencer-keyword-rotation.ts` SSOT(아래 재수출) — 이 브랜치도
+//   같은 버그(seed 가 auto 를 밀어냄)를 독립적으로 고쳤으나 순수함수+관측을 갖춘 main 판을 채택했다.
 const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
-/** 🎯 유튜브 최소 구독자(대표 지시 2026-07-21) — 미만 채널은 수집 안 함(소형 노이즈 컷). 네이버/카페/티스토리는 지표 없어 무관. */
-export const MIN_YT_SUBSCRIBERS = 1000
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
@@ -38,6 +41,8 @@ export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
+//   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
+//   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
 import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
@@ -93,104 +98,18 @@ const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 
 
-/**
- * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
- *   2026-07-20 ①: INSERT OR IGNORE → **컨택 백필 upsert**. 신규는 INSERT, 기존 리드는 이메일/인스타/틱톡/
- *   링크가 **비어있을 때만** 새로 찾은 값으로 채움(늦게 발견된 컨택 자동 반영 — 자가치유). status/memo(수동
- *   큐레이션)·category 는 불변. DO UPDATE 의 WHERE 로 실제 채울 게 있을 때만 change=1 → 중복 인플레 없음.
- */
-async function saveLeadsBatch(
-  DB: D1Database, accountId: number, rawLeads: InfluencerLead[],
-  meta: { category?: string | null; sourceKeyword?: string | null },
-): Promise<number> {
-  // 🧹 노이즈(뉴스·방송·기관·대행) 제외 + 🎯 유튜브는 구독자 1000 이상만 수집(대표 지시 — 소형 노이즈 컷).
-  //   예외(F-25): 구독자 비공개 채널(API 가 0 반환)은 총조회 200만+ 면 대형으로 보고 통과(discovery 저장 필터와 정합).
-  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description)
-    && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS && !((l.subscriber_count || 0) === 0 && (l.view_count || 0) >= 2_000_000)))
-  if (!leads.length) return 0
-  // 2-패스: ① INSERT OR IGNORE — changes=1 ⟺ **진짜 신규**(백필 UPDATE 를 신규로 오집계하던 버그 방지:
-  //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
-  //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
-  const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, lead_score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
-  //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
-  //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
-  const backfillSql = `UPDATE ad_influencer_leads SET
-      email = COALESCE(email, ?), instagram = COALESCE(instagram, ?), tiktok = COALESCE(tiktok, ?), links = COALESCE(links, ?),
-      subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END,
-      view_count = CASE WHEN ? > 0 THEN ? ELSE view_count END,
-      description = CASE WHEN ? != '' THEN ? ELSE description END,
-      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END
-    WHERE account_id = ? AND platform = ? AND channel_id = ?`
-  let saved = 0
-  const CHUNK = 50
-  for (let i = 0; i < leads.length; i += CHUNK) {
-    const slice = leads.slice(i, i + CHUNK)
-    const insStmts = slice.map(l => {
-      const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
-      const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
-      const brand = looksLikeBrandChannel(l.name, l.description) ? 1 : 0 // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
-      /**
-       * 🏅 **저장 시점 즉시 채점**(2026-07-29) — 신규 리드가 큐 뒤에 갇히던 것.
-       *   `lead_score` 를 안 넣으면 NULL 인데, 발송 큐와 점수 정렬은 `(lead_score IS NULL) ASC` 로
-       *   **미채점을 후순위**로 민다. 점수는 야간 정비(quality 패스)가 4,500명씩 커서로 도는데
-       *   38,374명이면 한 바퀴에 8~9라운드 = 실측 기준 **최대 ~42시간**. 그동안 하루 700명씩 들어오는
-       *   신규는 아무리 좋은 리드여도 목록에 안 나온다 — 발송이 수동(하루 N명)이라 그 지연이 곧 손실이다.
-       *   ⇒ scoreLead 는 **순수함수**라 DB 왕복이 0 이다. 저장하면서 같이 계산하지 않을 이유가 없다.
-       *   측정 전이라 활동성은 중립으로 잡히고, 이후 quality 패스가 실측값으로 덮어쓴다(멱등).
-       */
-      const { score } = scoreLead({
-        platform: l.platform, subscriber_count: l.subscriber_count, email: l.email,
-        instagram: l.instagram, links: l.links, category: cat, is_brand: brand,
-        url: l.url, last_post_at: l.last_post_at ?? null,
-      })
-      return DB.prepare(insSql).bind(
-        accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
-        l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
-        l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
-        cat, meta.sourceKeyword ?? null,
-        brand,
-        l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
-        catSrc,
-        score,
-      )
-    })
-    const rs = await DB.batch(insStmts).catch(() => null)
-    const existing: typeof slice = []
-    slice.forEach((l, idx) => { if (rs?.[idx]?.meta?.changes === 1) saved++; else existing.push(l) }) // 신규만 카운트
-    if (existing.length) { // 기존 행 백필(신규 아님) — 컨택 빈칸 채움 + 규모/소개글 최신화
-      await DB.batch(existing.map(l => {
-        const d = l.description.slice(0, 500)
-        const lp = l.last_post_at ?? null
-        return DB.prepare(backfillSql).bind(
-          l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
-          l.view_count, l.view_count, d, d, lp, lp, lp,
-          accountId, l.platform, l.channel_id,
-        )
-      })).catch(() => null)
-    }
-  }
-  return saved
-}
 
 // 🔗 링크인바이오 백필(enrichPoolFromLinkInBio) · 📝 블로거 활동성 보강은 2026-07-28 에
 //   `influencer-enrich-lane.ts`(보강 전용 레인)로 이동했다 — 수집 인보케이션의 서브리퀘스트를
 //   발굴이 먼저 다 써서 **한 건도 못 돌던 것**이 라이브 실측으로 확인됐기 때문(그 파일 헤더 참조).
 
-export async function readSetting(DB: D1Database, key: string): Promise<string | null> {
-  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
-  const v = row?.value
-  return v === undefined || v === null || v === '' ? null : String(v)
-}
-export async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run().catch(() => null)
-}
+// ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
+export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
+import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 
-/** 키워드 테이블 보장 + 시드(최초 1회, 멱등 INSERT OR IGNORE). */
-export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
+/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
+const KW_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     keyword TEXT NOT NULL UNIQUE,
     category TEXT,
@@ -198,22 +117,49 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
     hits INTEGER NOT NULL DEFAULT 0,
     source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now'))
-  )`).run().catch(() => null)
+  )`,
   // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
   // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
   //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
   //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
   //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
-  const stmts = [...SEED, ...REGION_SEED, ...BANGBAE_SEED].flatMap(g => g.keywords.map(kw =>
-    DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-      .bind(kw, g.category, 'seed')))
-  await DB.batch(stmts).catch(() => null)
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
+]
+
+const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
+
+/**
+ * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
+ *
+ * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
+ *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
+ *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
+ *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
+ *
+ *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
+ *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
+ */
+export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
+  const cached = _kwSchemaPromise.get(DB)
+  if (cached) return cached
+  const p = (async () => {
+    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
+    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
+    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
+    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
+    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
+    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
+      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+        .bind(kw, g.category, 'seed')))
+    await DB.batch(stmts).catch(() => null)
+  })()
+  _kwSchemaPromise.set(DB, p)
+  return p
 }
 
 export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
@@ -351,17 +297,25 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
-  // 💤 자동확장 키워드 회수(F-30) — 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
-  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')").run().catch(() => null)
-  // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
-  //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
-  //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
-  //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
-  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8").run().catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  // 💤 자동확장 키워드 회수 2종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
+  await DB.batch([
+    // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
+    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')"),
+    // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
+    //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
+    //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
+    //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
+    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
+  ]).catch(() => null)
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
-  const prev = await getAutoCollectStats(DB)
+  // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서2·학습상한·YT카운터를 낱개로 읽으면
+  //   읽기에만 5 서브리퀘스트, 그만큼 발굴 fetch 가 줄어든다(D1 도 한도에 포함, #784).
+  const SETTING_KEYS = [STATS_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY]
+  const settings = await readSettings(DB, SETTING_KEYS)
+  let prev: AutoCollectStats | null = null
+  try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   if (!kws.length) {
     const empty: AutoCollectStats = { last_run: stamp, last_saved: 0, last_keywords: [], total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, cursor: 0 }
@@ -379,9 +333,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
   const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
   const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
-  let priCursor = parseInt((await readSetting(DB, 'ads_autocollect_cursor_pri')) || '0', 10)
+  let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
-  let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
+  let cursor = parseInt(settings[CURSOR_KEY] || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
   //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
@@ -429,7 +383,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
-  const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
+  // 🔀 병합: 읽기는 이 브랜치의 배치(readSettings — 낱개 5회 → 1회), 천장은 main(#837).
+  const learnedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
@@ -448,6 +403,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   let quotaHit = false
   const used: string[] = []
   const kwStats = new Map<number, { found: number; saved: number }>() // 📊 키워드별 발굴/저장(성과 관측)
+  const starvedIds = new Set<number>() // 🌵 예산 고갈/한도 오류로 '공정한 시도'가 못 된 키워드(무판정 대상)
   const hashtagFreq = new Map<string, number>()
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
     // 🛡️ F-29: 출현 횟수가 아니라 **채널(리드) 단위**로 카운트(같은 소개글의 #맛집 #맛집 #맛집 이 3히트가 되던 것 차단)
@@ -476,7 +432,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const ytDay = ytQuotaDayKey(Date.now())
   let ytSearchUsed = 0
   {
-    const raw = await readSetting(DB, YT_USED_KEY)
+    const raw = settings[YT_USED_KEY]
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
@@ -510,11 +466,26 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
-      try {
+      //   🚦 2026-07-29 게이트 신설(기본 ON = 현행 유지). 실측 근거: 카페 리드 100명 표본에서 **이메일 0명 ·
+      //   연락처 1명**, 그리고 보강 경로가 아예 없다(`enrichNaverActivity` 는 platform='naver_blog' 만 본다).
+      //   즉 카페는 **영원히 연락 불가**인데 키워드마다 서브리퀘스트를 쓴다 — 이 레인이 매시간
+      //   `Too many subrequests` 로 죽고 활성 키워드 210개 중 124개가 이틀째 순번을 못 받는 상황에서,
+      //   수확 가치 0 인 호출이 예산의 25~30% 를 먹는다. 끄면 그만큼 더 많은 키워드가 돈다.
+      //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
+      if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
+    // 🌵 **공정한 시도였나** — 예산이 이 키워드 도중에 바닥났거나 한도 오류를 봤으면 '무수확'이 아니라 '굶은'
+    //   것이다. 루프는 키워드 *시작 전*에만 예산을 보므로, 남은 예산 1로 시작한 키워드도 모든 fetch 를
+    //   시도하고 전부 실패한다 → kFound 0 → 아래 UPDATE 가 barren_streak 를 올린다.
+    //   그 결과가 가볍지 않다: 점수에서 streak×25 를 깎고(`pickYtKeywords`), 쿨다운을 최대 4일까지 벌리고,
+    //   auto 키워드는 8회면 **비활성**된다. 게다가 굶는 자리는 픽 목록의 꼬리로 **결정적**이라 특정 키워드가
+    //   반복해서 맞는다 — 예산 부족이 키워드 품질로 오기록되는 자기강화 루프다.
+    //   ⇒ 굶은 회차는 발굴/저장 누적만 반영하고 streak·last_saved·last_run_at 은 건드리지 않는다(= 무판정).
+    const starved = budget.left <= 0 || isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+    if (starved) starvedIds.add(k.id); else starvedIds.delete(k.id) // 같은 실행에 재등장하면 마지막 판정이 유효
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
@@ -524,9 +495,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
-    await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>
+    await DB.batch(Array.from(kwStats.entries()).map(([id, v]) => starvedIds.has(id)
+      // 🌵 굶은 회차 — 수확만 누적하고 **판정은 보류**(streak/last_saved/last_run_at 불변).
+      //   last_run_at 을 안 건드리는 것이 핵심이다: 순번을 못 받았으니 여전히 '실행 대기'로 남아야 한다.
+      ? DB.prepare('UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ? WHERE id = ?')
+        .bind(v.found, v.saved, id)
       // 🌵 무수확이면 연속 카운터 +1, 한 명이라도 건지면 0 으로 리셋(고갈 판정의 유일한 근거).
-      DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
+      : DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
         barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, last_run_at = datetime('now') WHERE id = ?`)
         .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
@@ -537,13 +512,25 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   let kwAuto: { active: number; room: number; cap: number } | undefined
   const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
   if (topTags.length) {
+    // 🏷️ 2026-07-29 승격 태그에 업종 부여 — 전부 `'자동'` 이면 ① 우선 풀(슬롯 3/4)에 영영 못 들고
+    //   ② `resolveCategory` 가 NON_CATEGORIES 로 버려 그 리드가 카테고리 미분류(fit 0)가 된다.
+    //   실측: 상위 후보 13/13 정확히 분류됨(서울맛집→맛집 …). 카페→맛집은 REGION_SEED 관례 그대로
+    //   ('카페'는 CORE_CATEGORIES 에 없어 두면 fit 20→10).
+    const promoCat = (tag: string): string => {
+      const c = classifyCategory(tag)
+      return !c ? '자동' : c === '카페' ? '맛집' : c
+    }
     const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
-      VALUES (?, '자동', 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
-    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
+      VALUES (?, ?, 0, ?, 'auto')
+      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits,
+        -- 이미 쌓인 후보 790개는 전부 '자동' 이라, 다시 마이닝될 때 업종을 채워 준다(수동 지정은 보존).
+        category = CASE WHEN category IS NULL OR category IN ('자동', '') THEN excluded.category ELSE category END`
+    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, promoCat(tag), freq))).catch(() => null)
     // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
     // 🌱 자리는 **auto 쿼터** 기준(시드 수 무관) — 예전엔 활성 전체로 세서 시드만으로 상한에 닿아
     //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
+    //   🔀 병합: 이 브랜치도 같은 버그를 독립적으로 고쳤으나(kws 에서 source 카운트), main 판이
+    //   순수함수(`autoPromotionRoom`)+관측(`kwAuto`)까지 갖췄으므로 그쪽을 채택한다.
     const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
       .first<{ n: number }>().catch(() => null)
     const room = autoPromotionRoom(autoRow?.n ?? 0)
@@ -561,6 +548,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       }
     }
   }
+
+  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
+  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
@@ -581,10 +571,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
-  await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
-  await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
-  await writeSetting(DB, CURSOR_KEY, String(nextCursor))
-  await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
+  // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
+  await writeSettings(DB, [
+    [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
+    ['ads_autocollect_cursor_pri', String(nextPriCursor)],
+    [CURSOR_KEY, String(nextCursor)],
+    [STATS_KEY, JSON.stringify(stats)],
+  ])
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats

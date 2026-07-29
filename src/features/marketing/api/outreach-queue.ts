@@ -42,11 +42,15 @@ export const SEND_QUEUE_ORDER_BY = '(lead_score IS NULL) ASC, lead_score DESC, s
  * @param poolAccountId 풀 계정 id (POOL)
  * @param platform      플랫폼 필터(허용목록 밖이면 무시)
  * @param opts.onlyWithoutDraft 초안이 아직 없는 리드만 — 프리필 레인 전용(사람이 쓴/기생성 초안 덮어쓰기 방지)
+ * @param opts.category/region  📍 이행용 좁히기(2026-07-29) — 서비스몰이 파는 축이 **지역×업종**이라
+ *   큐에서 바로 "강남 맛집 10명"을 뽑을 수 있어야 한다. 미지정이면 기존 동작 그대로.
+ * @param opts.emailOnly        📧 이메일 보유만 — 대표 아웃리치 채널이 이메일 전용일 때.
+ *   ⚠️ 기본값 아님. 쪽지/DM 경로도 실제로 쓰이므로(ch_note 기록) 기본을 좁히면 쓰던 흐름이 깨진다.
  */
 export function buildSendQueueWhere(
   poolAccountId: number,
   platform?: string,
-  opts?: { onlyWithoutDraft?: boolean },
+  opts?: { onlyWithoutDraft?: boolean; category?: string; region?: string; emailOnly?: boolean },
 ): { where: string; binds: (string | number)[] } {
   const where = [
     'account_id = ?',
@@ -64,5 +68,10 @@ export function buildSendQueueWhere(
   if ((SEND_QUEUE_PLATFORMS as readonly string[]).includes(p)) { where.push('platform = ?'); binds.push(p) }
   // 프리필은 빈 초안만 채운다 — 이미 있는 초안(사람이 손봤을 수 있다)을 덮으면 작업물이 사라진다.
   if (opts?.onlyWithoutDraft) where.push("(outreach_draft IS NULL OR outreach_draft = '')")
+  const cat = (opts?.category || '').trim()
+  if (cat) { where.push('category = ?'); binds.push(cat.slice(0, 20)) }
+  const reg = (opts?.region || '').trim()
+  if (reg) { where.push('region = ?'); binds.push(reg.slice(0, 20)) }
+  if (opts?.emailOnly) where.push('email IS NOT NULL')
   return { where: where.join(' AND '), binds }
 }

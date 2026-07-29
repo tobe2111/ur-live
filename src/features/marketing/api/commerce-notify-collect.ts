@@ -9,7 +9,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
-import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam } from './public-data-diag'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
@@ -88,7 +88,12 @@ async function fetchCommercePage(base: string, op: string, key: string, page: nu
   return { items: arr, count: arr.length, msg }
 }
 
-export interface CommerceStats { last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
+export interface CommerceStats {
+  last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number
+  /** 재확인(이미 알던 업체를 다시 만난) 건수 — `saved`(신규)와 함께 봐야 '완주'와 '고장'이 갈린다(2026-07-29). */
+  upserted?: number
+  diag: { configured: boolean; error?: string; sample?: unknown }
+}
 const STATS_KEY = 'ads_commerce_stats'
 const CURSOR_KEY = 'ads_commerce_cursor'
 
@@ -116,7 +121,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
-  let found = 0, saved = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
+  let found = 0, saved = 0, upserted = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
   const msgs: string[] = []
   for (const svc of services) {
     const ck = `${CURSOR_KEY}_${svc.name}`
@@ -129,7 +134,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
-      saved += await saveCompanyLeads(DB, leads, { requireContact: true }).catch(() => 0)
+      // 신규/재확인 분리(2026-07-29) — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다.
+      const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 }))
+      saved += c.inserted; upserted += c.upserted
       page++
     }
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(ck, String(page)).run().catch(() => null)
@@ -137,7 +144,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s
 }

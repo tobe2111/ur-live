@@ -61,7 +61,7 @@ describe('maxPhaseGapHours — 자정 불연속까지 센다', () => {
 describe('makeHourGates — 발화 조건과 주기 신고가 같은 자리에서 나온다', () => {
   const spy = () => {
     const calls: Array<{ path: string; gap?: number }> = []
-    const kick = (path: string, _fn: () => Promise<unknown>, gap?: number) => { calls.push({ path, gap }) }
+    const kick: KickFn = (path, _fn, opts) => { calls.push({ path, gap: opts?.gap }) }
     return { calls, kick }
   }
   const noop = async () => undefined
@@ -226,14 +226,21 @@ describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
     expect(offenders).toEqual([])
   })
 
-  it('라운드는 waitUntil 로 분리되고 결과를 하트비트로 남긴다(관측 유실 금지)', () => {
+  it('드라이버는 체인을 await 한 채 응답하지 않는다 — 부모의 kick 이 그만큼 묶인다', () => {
+    const offenders: string[] = []
+    for (const m of src.matchAll(/enrichRoutes\.post\('\/__ads\/[a-z-]*-driver'[\s\S]{0,600}?\n\}\)/g)) {
+      if (/await\s+runRoundChain\(/.test(m[0])) offenders.push(m[0].split('\n')[0].slice(0, 70))
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('체인은 waitUntil 로 분리되고 결과를 하트비트로 남긴다(관측 유실 금지)', () => {
     expect(src).toMatch(/executionCtx\?\.waitUntil/)
-    expect(src).toMatch(/recordCronBeat\(/)
-    expect(src).toMatch(/-rounds`/)
+    expect(src).toMatch(/driverBeat\(/)
   })
 
   it('드라이버가 두 개 다 분리 헬퍼를 쓴다(검사 대상 존재 확인)', () => {
-    expect((src.match(/runRoundsDetached\(/g) || []).length).toBeGreaterThanOrEqual(3)
+    expect((src.match(/dispatchRoundChain\(/g) || []).length).toBeGreaterThanOrEqual(3)
   })
 })
 

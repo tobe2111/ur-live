@@ -49,6 +49,16 @@ app.get('/__ads/health', (c) => {
       neis: on('ADS_NEIS_ENABLED'), hira: on('ADS_HIRA_ENABLED'), store_kakao: on('ADS_STORE_KAKAO_ENABLED'),
       enrich_disabled: on('ADS_ENRICH_DISABLED'),
     },
+    // 🎛️ 튜닝값(비밀 아님) — 2026-07-29 신설. 게이트는 켜졌는지만 보여 주는데, 대표가 대시보드에서
+    //   라운드·카페 스위치를 바꿔도 **적용됐는지 밖에서 확인할 방법이 없었다**(실제로 오늘 그 질문에 답을
+    //   못 했다). 미설정이면 코드 기본값이 무엇인지까지 같이 보여 준다.
+    tuning: {
+      collect_rounds: e.ADS_COLLECT_ROUNDS ?? '(미설정 → 기본 4)',
+      influencer_enrich_rounds: e.ADS_INFLUENCER_ENRICH_ROUNDS ?? '(미설정 → 기본 12)',
+      collect_cafe: e.ADS_COLLECT_CAFE_ENABLED ?? '(미설정 → 켜짐)',
+      subrequest_budget: e.ADS_SUBREQUEST_BUDGET ?? '(미설정 → 기본 300, 실효는 학습 상한과 min)',
+      yt_search_budget: e.ADS_YT_SEARCH_BUDGET ?? '(미설정 → 기본 90)',
+    },
   })
 })
 
@@ -262,20 +272,22 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     }
   }
 
-  // ⏱️ maxGapMin: 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
-  //   일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
-  //   — 조건과 주기를 따로 적지 않는 것이 요점이다(lane-cadence.ts 주석 참조).
+  //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
   const laneReg = createLaneRegistry()
-  const kick = (path: string, fallback: () => Promise<unknown>, maxGapMin?: number): void => {
+  //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
+  //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
+  //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
+  const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
     laneReg.note(path)
+    const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     ctx.waitUntil((async () => {
       const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
         else await fallback()
-        await adsBeat(path.replace(/^\/__ads\//, ''), true, Date.now() - t0, undefined, maxGapMin)
+        await adsBeat(beat, true, Date.now() - t0, undefined, opts?.gap)
       } catch (err) {
-        await adsBeat(path.replace(/^\/__ads\//, ''), false, Date.now() - t0, err, maxGapMin)
+        await adsBeat(beat, false, Date.now() - t0, err, opts?.gap)
       }
     })())
   }
@@ -294,8 +306,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
+  //   🔁 2026-07-29 시간당 N라운드(`collect-chain`) — 1라운드로는 키워드 3개에서 예산이 끊겨 활성 210개
+  //   한 바퀴에 70시간이었다. ⚠️ 라운드를 **여기서 N번 부르지 않는다**: 이 핸들러도 서브리퀘스트 50 을
+  //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
+  //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
+  //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
   if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-    kick('/__ads/collect', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) })
+    kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, { beat: 'collect' })
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
   //   배경(라이브 실측): 보강 4종이 수집과 같은 인보케이션에 얹혀 있어 발굴이 서브리퀘스트를 다 쓰고 나면
@@ -306,6 +323,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   각 라운드가 perf_checked_at/bio_checked_at 도장을 찍어 다음 라운드는 다음 구간을 이어 순회(중복 0).
   //   기본 ON(킬스위치 ADS_INFLUENCER_ENRICH_DISABLED='true' 만 끔) — 켜야 도는 구조로 두면
   //   "켠 줄 알았는데 안 돌던" 사고(제조사 수집 cron 누락)를 반복한다.
+  //   🔁 2026-07-29 **라운드를 체인으로** — 라운드 수는 그대로지만 오케스트레이터가 내는 비용이 6 → 1 이다.
+  //   근거는 바로 아래 시트 미러 블록이 이미 적어 둔 실패 양식이다: 부모가 예산을 다 쓰면 **SELF.fetch 1개조차
+  //   못 써서 throw** 한다(그래서 러너가 '시작조차 못 함'). 라운드를 부모에서 6번 부르면 그 위험을 6배로
+  //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
+  //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
     // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).
     //   여기서 for-await 로 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 매시간
@@ -391,15 +413,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   실제로 작동해 적중률 0%→45%(ok 5/11)가 됐지만, 학습된 실효 상한이 **29**(= 워커 호출당 한도가
     //   명목 1,000이 아니라 훨씬 낮고 D1 쿼리까지 나눠 씀) → **라운드당 11건**이 천장. 2라운드면 22건/시간인데
     //   백로그가 12만+ 이라 의미 있는 속도가 안 나온다. 라운드를 늘리는 것만이 정직한 증속(각 라운드가
-    //   새 예산을 받으므로). SELF fetch 자체는 이 cron 인보케이션의 서브요청 1개씩이라 20라운드도 안전.
-    //   🔁 2026-07-29: 그 라운드 루프를 **드라이버 인보케이션**으로 옮겼다.
-    //   8회 순차 SELF fetch 를 부모에서 await 하면 그동안 부모가 살아 있어야 하고, 실측상 그 때문에
-    //   07:00 틱이 8개 레인에서 **조용히 잘렸다**(하트비트는 fetch 가 끝나야 찍히므로 기록도 안 남는다).
-    //   부모 비용은 이제 kick 1개. 라운드 수·순차성·기본값(8)은 그대로 — 도는 장소만 바뀐다.
+    //   새 예산을 받으므로).
+    //   🔁 2026-07-29: 라운드 루프를 **드라이버 인보케이션**으로 옮겼다(`/__ads/enrich-company-driver`).
+    //     여기서 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 11개 레인 kick 으로
+    //     천장 근처다 — 07:00 실측에서 인플루언서 수집이 **실패 기록조차 못 남겼다.** 드라이버로 넘기면
+    //     부모 비용은 라운드 수와 무관하게 kick 1개(+하트비트)로 고정된다. 근거는 그 라우트 주석 참조.
+    //     덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라 조용히 멈춰도 몰랐다).
     kick('/__ads/enrich-company-driver', async () => {
       const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
-      return enrichHeldLeads(env)
-    })
+      return enrichHeldLeads(env) // SELF 미바인딩(로컬) — 1라운드만
+    }, { beat: 'enrich-company' })
     // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
     //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
     //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
@@ -472,8 +495,6 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   서브리퀘스트를 잡아먹어 라이브가 `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. kick 은 각자 새 예산을 받는다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     //   체인 진입점(2026-07-29) — 업종 16개를 하루 1회로는 못 훑는다(그래서 음식점·카페·미용·숙박이 0건이었다).
-    //   ⏱️ 병합(2026-07-29): 경로는 main 의 체인, 발화 조건+주기 신고는 `gates.dailyAt` — 둘 다 필요하다
-    //      (raw kick 으로 두면 일 1회 레인이 매시간으로 신고돼 매일 오탐 경보가 된다).
     gates.dailyAt(20, '/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
@@ -542,13 +563,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //    두되, 개수가 어긋나면 아래 순환이 어긋나므로 **추가 시 두 곳을 함께 고칠 것**(가드: 유닛테스트).
     const PHASES = ['merge', 'reextract', 'reclassify', 'quality', 'handle'] as const
     const phase = PHASES[hourUTC % PHASES.length]
-    // ⏱️ 한 단계는 매시간이 아니라 **최대 9시간** 만에 돌아온다(5단계 순환 + 자정 불연속).
-    //   매시간으로 신고하면 정상인데도 항상 stale 로 잡힌다 — 2026-07-29 실측에서 실제로
-    //   `?phase=quality` 가 age 167분 · stale 이었다. 개수를 바꾸면 간격도 자동으로 따라온다.
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
       const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
       return runMaintenancePhase(env, phase)
-    }, phaseGapMinutes(PHASES.length))
+    }, { gap: phaseGapMinutes(PHASES.length) })
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {

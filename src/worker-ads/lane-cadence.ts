@@ -61,8 +61,13 @@ export function maxPhaseGapHours(phaseCount: number): number {
 /** 단계 순환 레인의 stale 기준(분). */
 export const phaseGapMinutes = (phaseCount: number): number => staleGapMinutes(maxPhaseGapHours(phaseCount) * 60)
 
-/** `kick(path, fallback, maxGapMin?)` 과 같은 모양이면 무엇이든 받는다(테스트에서 스파이 주입). */
-export type KickFn = (path: string, fallback: () => Promise<unknown>, maxGapMin?: number) => void
+/**
+ * `kick(path, fallback, opts?)` 과 같은 모양이면 무엇이든 받는다(테스트에서 스파이 주입).
+ *   `gap`  — 이 레인의 실제 기대 간격(분). 없으면 워커 cron 식에서 유도(= 매시간).
+ *   `beat` — 하트비트 이름 고정(경로가 바뀌어도 옛 행이 남아 영원히 stale 로 경보되는 것 방지).
+ */
+export interface KickOpts { gap?: number; beat?: string }
+export type KickFn = (path: string, fallback: () => Promise<unknown>, opts?: KickOpts) => void
 
 /**
  * 하트비트 이름 = `/__ads/` 접두와 쿼리를 뗀 것.
@@ -125,14 +130,14 @@ export function neverFiredLanes(known: string[], beatNames: string[]): string[] 
 export function makeHourGates(hourUTC: number, kick: KickFn, registry?: LaneRegistry) {
   return {
     /** 일 1회 — 지정한 UTC 시각에만. */
-    dailyAt(hour: number, path: string, fallback: () => Promise<unknown>): void {
+    dailyAt(hour: number, path: string, fallback: () => Promise<unknown>, beat?: string): void {
       registry?.note(path)   // ⬅ 발화하지 않는 시각에도 '이 레인이 있다'는 사실은 남긴다
-      if (hourUTC === hour) kick(path, fallback, dailyGapMinutes())
+      if (hourUTC === hour) kick(path, fallback, { gap: dailyGapMinutes(), ...(beat ? { beat } : {}) })
     },
     /** N시간마다 — `hourUTC % n === offset` 인 시각에만. */
-    everyNHours(n: number, offset: number, path: string, fallback: () => Promise<unknown>): void {
+    everyNHours(n: number, offset: number, path: string, fallback: () => Promise<unknown>, beat?: string): void {
       registry?.note(path)
-      if (n > 0 && hourUTC % n === offset) kick(path, fallback, everyNHoursGapMinutes(n))
+      if (n > 0 && hourUTC % n === offset) kick(path, fallback, { gap: everyNHoursGapMinutes(n), ...(beat ? { beat } : {}) })
     },
   }
 }

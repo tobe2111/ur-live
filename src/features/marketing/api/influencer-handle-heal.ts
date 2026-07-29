@@ -31,33 +31,16 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { OpBudget } from './maintenance-budget'
 import { ensureInfluencerSchema } from './influencer-discovery'
 
-/** 네이버 블로그 id 형식 — RSS/모바일홈 fetch 가 받아들이는 문자셋(보강 레인과 **같은 규칙**이어야 한다). */
-export const NAVER_HANDLE_RE = /^[A-Za-z0-9_-]{2,40}$/
-const POOL = 0
-
-/** 정규 URL — 어드민 링크·중복 판정(channel_id)이 같은 표기를 쓰도록 한 곳에서 만든다. */
-export const naverBlogUrl = (handle: string): string => `https://blog.naver.com/${handle}`
-
 /**
- * 저장된 행에서 **진짜 블로그 id** 를 뽑는다 — 순수 함수(유닛테스트로 고정).
- *   우선순위: 이미 정상인 handle → channel_id → url. 어디서도 못 뽑으면 null(= 복구 불가, 건드리지 않음).
- *   스킴 유무·`m.` 서브도메인·`?blogId=` 형태(검색이 가끔 포스트 링크를 준다)를 모두 흡수한다.
+ * 🔤 핸들 규칙(형식·추출)은 `influencer-handle.ts` 가 SSOT — **저장 직전 검증**(influencer-save.ts)도
+ *   같은 규칙을 써야 하는데 그 경로에서 이 파일을 import 하면 순환이 된다(heal → discovery → …).
+ *   기존 import 경로(테스트 포함)를 깨지 않도록 그대로 재수출한다.
  */
-export function deriveNaverHandle(row: { handle?: string | null; channel_id?: string | null; url?: string | null }): string | null {
-  const stored = String(row.handle || '').trim()
-  if (NAVER_HANDLE_RE.test(stored)) return stored // 정상 — 그대로(불필요한 write 0)
-  for (const raw of [row.channel_id, row.url]) {
-    const s = String(raw || '').trim()
-    if (!s) continue
-    // ① 경로형: [https://][m.]blog.naver.com/<id> — 스킴이 없어도 문자열 시작에서 매칭.
-    const path = /(?:^|\/\/)(?:m\.)?blog\.naver\.com\/([^/?#\s]+)/i.exec(s)?.[1]
-    if (path && NAVER_HANDLE_RE.test(path)) return path
-    // ② 쿼리형: .../PostView.naver?blogId=<id> — 포스트 링크에서도 블로거를 특정할 수 있다.
-    const qs = /[?&]blogId=([^&#\s]+)/i.exec(s)?.[1]
-    if (qs && NAVER_HANDLE_RE.test(qs)) return qs
-  }
-  return null
-}
+export { NAVER_HANDLE_RE, naverBlogUrl, deriveNaverHandle } from './influencer-handle'
+import { NAVER_HANDLE_RE, deriveNaverHandle, naverBlogUrl } from './influencer-handle'
+
+/** 공용 풀 계정 id — 이 파일의 모든 쿼리가 쓰는 상수(규칙 분리 때 딸려 나갔던 것). */
+const POOL = 0
 
 export interface HandleHealResult {
   scanned: number     // 이번 회차에 검사한 손상 후보 행

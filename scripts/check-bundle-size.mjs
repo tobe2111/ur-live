@@ -255,6 +255,19 @@ if (jsonMode) {
   console.log(`   Single max KB: ${BUDGET.singleRawKB} KB`);
   if (criticalGzip > 0) {
     console.log(`   Critical path: ${(criticalGzip / 1024).toFixed(1)} / ${BUDGET.criticalGzipKB} KB gzip (entry+modulepreload ${criticalFiles.length} files)`);
+    // 🔎 2026-07-29: **위반이 아닐 때도** 구성을 찍는다. 이 예산은 실측 294.5/300(여유 1.8%)이라
+    //   "언제 터지나"보다 "무엇이 차지하나"가 실질 정보인데, 그동안 총합만 보였다.
+    //   npm 이 막힌 컨테이너에서는 이 로그가 구성을 아는 유일한 창이다(빌드를 못 돌린다).
+    const criticalTop = criticalFiles
+      .map(f => ({ name: f.name, gz: f.gzip > 0 ? f.gzip : zlib.gzipSync(fs.readFileSync(path.join(distDir, f.name))).length }))
+      .sort((a, b) => b.gz - a.gz);
+    for (const f of criticalTop.slice(0, 8)) {
+      console.log(`      ${((f.gz / criticalGzip) * 100).toFixed(0).padStart(3)}%  ${(f.gz / 1024).toFixed(1).padStart(6)} KB  ${f.name}`);
+    }
+    if (criticalTop.length > 8) {
+      const rest = criticalTop.slice(8).reduce((s, f) => s + f.gz, 0);
+      console.log(`             ${(rest / 1024).toFixed(1).padStart(6)} KB  (나머지 ${criticalTop.length - 8}개)`);
+    }
   }
 
   if (violations.length === 0) {

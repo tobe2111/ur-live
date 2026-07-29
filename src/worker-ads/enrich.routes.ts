@@ -29,76 +29,112 @@ enrichRoutes.post('/__ads/prefill-outreach-drafts', async (c) => {
   }
 })
 
+/** 라운드 상한 — env 로 조정(1~20). 기본값은 레인마다 다르다(인플루언서 12 · 파트너풀 8). */
+export function resolveEnrichRounds(raw: string | undefined, fallback = 12): number {
+  return Math.min(20, Math.max(1, parseInt(raw || '', 10) || fallback))
+}
 
 /**
- * 🚀 라운드를 **응답 뒤로** 돌린다 — 드라이버의 핵심.
+ * 🔁 라운드 체인 공통 실행부 — 드라이버 두 개(인플루언서·파트너풀)가 같은 규칙을 쓴다.
  *
- * ## 왜 (2026-07-29 라이브 실측으로 드러난 #835 의 미완)
- * 부모의 `kick` 은 `await env.SELF.fetch(...)` 다 — **응답을 기다린다.** 그런데 드라이버가
- * 라운드를 전부 돌고 나서 응답하면, 부모는 그 12라운드(각 라운드가 외부 크롤) 내내 살아 있어야 한다.
- * #835 는 라운드를 부모의 *서브리퀘스트 예산*에서 뺐지만 부모의 *수명*에서는 못 뺐다.
- *
- * 실측(07:00 틱): 발화한 8개는 전부 **빠른 레인**(D1 전용)이고, 빠진 것은 전부 **느린 레인**
- * (외부 크롤)이었다. `enrich_lane.last_run` 은 05:02 에서 멈춰 두 틱을 통째로 걸렀다.
- * 즉 부모의 수명이 천장이었고, 느린 레인은 일도 못 하고 하트비트도 못 남겼다.
- *
- * ## 처방
- * 드라이버는 **즉시 응답**하고(부모의 kick 은 곧바로 풀린다) 라운드는 자기 인보케이션의
- * `waitUntil` 에서 돈다. 부모는 다음 레인을 바로 디스패치한다.
- *
- * ⚠️ 관측을 잃지 않는다 — 라운드 결과를 **자기 하트비트**(`ads:{lane}-rounds`)로 남긴다.
- *   즉시 응답만 하고 결과를 안 남기면 "돌긴 했나"를 다시 알 수 없게 된다(고치려던 그 병).
+ *   규칙은 셋뿐이고, 셋 다 실측에서 나왔다:
+ *   ① **순차** — 각 라운드가 `*_checked_at` 도장을 찍어야 다음 라운드가 다음 구간을 집는다.
+ *      동시 실행하면 같은 행을 중복 조회하고 예산만 태운다(선점이 아니라 정렬+LIMIT 이라서).
+ *   ② **실패 즉시 중단** — 남은 라운드를 헛돌리지 않는다. 다음 정각이 이어받는다.
+ *   ③ **SELF 미바인딩(로컬)이면 1회 직접 실행** — 체인이 불가능한 환경에서 조용히 0라운드가 되지 않게.
  */
-async function runRoundsDetached(
-  c: { env: Env; executionCtx?: { waitUntil(p: Promise<unknown>): void } },
-  lane: string,
+async function runRoundChain(
+  env: { SELF?: { fetch: (r: Request) => Promise<Response> } },
+  path: string,
   rounds: number,
-  once: () => Promise<unknown>,
-  roundPath: string,
-): Promise<{ ok: boolean; rounds: number; planned: number; error?: string }> {
-  const env = c.env
-  const work = async () => {
-    const t0 = Date.now()
-    let done = 0
-    let error: string | undefined
-    for (let i = 0; i < rounds; i++) {
-      if (!env.SELF?.fetch) { // SELF 미바인딩(로컬) — 체인 불가라 1회 직접 실행
-        try { await once(); done++ } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
-        break
-      }
-      try {
-        const r = await env.SELF.fetch(new Request(`https://ur-ads${roundPath}`, { method: 'POST' }))
-        if (!r.ok) { error = `round${i + 1}: HTTP ${r.status}`; break }
-        done++
-      } catch (err) {
-        error = `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
-        break
-      }
+  local: () => Promise<unknown>,
+): Promise<{ done: number; error?: string }> {
+  let done = 0
+  for (let i = 0; i < rounds; i++) {
+    if (!env.SELF?.fetch) {
+      try { await local(); done++ } catch (err) { return { done, error: `local: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}` } }
+      break
     }
     try {
-      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-      // 매시간 도는 레인이라 기대 간격은 매시간 기준(cron 식 대신 명시 — lane-cadence.ts 참조).
-      await recordCronBeat(env as never, `ads:${lane}-rounds`, !!done, Date.now() - t0, undefined,
-        { rounds: done, planned: rounds, ...(error ? { error } : {}) }, 150)
-    } catch { /* 관측 실패가 라운드를 망치지 않는다 */ }
-    return { ok: !!done, rounds: done, planned: rounds, ...(error ? { error } : {}) }
+      const r = await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
+      if (!r.ok) return { done, error: `round${i + 1}: HTTP ${r.status}` }
+      done++
+    } catch (err) {
+      return { done, error: `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}` }
+    }
   }
+  return { done }
+}
 
+/**
+ * 🔔 드라이버가 **자기 인보케이션에서 직접** 하트비트를 남긴다 (2026-07-29).
+ *
+ *   왜 부모(kick)의 기록만으로 부족한가: `kick` 은 체인 **응답을 기다린 뒤** 기록한다. 그래서
+ *   *오래 걸리는 레인일수록 기록이 먼저 사라진다* — 부모가 예산/수명을 다 쓰면 하트비트 D1 쓰기조차 못 한다.
+ *   라이브 증거: 07:00 에 인플루언서 수집·보강은 **실패 기록조차 없었고**, 31초짜리 `sweep-kakao-chain` 은
+ *   레인이 실제로 돌았는데도(내부 기록 존재) 부모의 하트비트는 **한 번도 남은 적이 없다.**
+ *   ⇒ 가장 관측이 필요한 레인이 가장 먼저 관측 밖으로 나가는 구조였다.
+ *
+ *   드라이버는 자기 예산이 있으므로 이 쓰기는 성사된다. 부모가 살아 있으면 부모 기록이 나중에 덮어쓰고
+ *   (같은 이름·같은 진실), 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 기록이 남는다.**
+ *   ⚠️ 이 보강이 있어야 메인 워커의 `cron-stale-watch` 가 이 레인의 정지를 알릴 수 있다
+ *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
+ */
+async function driverBeat(env: unknown, name: string, ok: boolean, ms: number): Promise<void> {
+  try {
+    const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *')
+  } catch { /* 관측 실패가 작업을 막지 않는다 */ }
+}
+
+/** 드라이버 응답 — 한 라운드도 못 돌았으면 500 으로 알린다(kick 의 하트비트가 ok:false 로 기록해야 관측된다). */
+const driverJson = (c: { json: (b: unknown, s?: number) => Response }, r: { done: number; error?: string }, planned: number): Response =>
+  (!r.done && r.error)
+    ? c.json({ ok: false, rounds: r.done, planned, error: r.error }, 500)
+    : c.json({ ok: true, rounds: r.done, planned, ...(r.error ? { error: r.error } : {}) })
+
+
+/**
+ * 🚀 라운드 체인을 **응답 뒤로** 돌린다 (2026-07-29 — #840 의 드라이버 격리를 한 걸음 더).
+ *
+ * ## 왜 (같은 날 실측)
+ * #840 이 라운드를 드라이버로 옮겨 **부모의 서브리퀘스트 예산**은 지켰다. 그런데 부모의 `kick` 은
+ * `await env.SELF.fetch(...)` 다 — **응답을 기다린다.** 드라이버가 체인을 다 돌고 응답하면
+ * 부모는 그 12라운드(각 라운드가 외부 크롤) 내내 살아 있어야 한다. 즉 **수명은 여전히 묶여 있었다.**
+ *
+ * 07:00 틱 실측: 발화한 8개는 전부 **빠른 레인**(D1 전용), 빠진 것은 전부 **느린 레인**(외부 크롤).
+ * `enrich_lane.last_run` 은 05:02 에서 멈춰 두 틱을 통째로 걸렀다 — 부모의 수명이 천장이었다.
+ *
+ * ## 처방
+ * 드라이버가 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다). 체인은 드라이버 자기 인보케이션의
+ * `waitUntil` 에서 돌고, 끝나면 `driverBeat` 로 결과를 남긴다 — **관측은 그대로**다.
+ * (#840 의 driverBeat 이 여기서 진가를 낸다: 부모가 이미 떠나도 이 기록은 성사된다.)
+ *
+ * `executionCtx` 가 없으면(로컬/테스트) 기존처럼 동기 실행 — 동작 동일.
+ */
+async function dispatchRoundChain(
+  c: {
+    env: Env
+    executionCtx?: { waitUntil(p: Promise<unknown>): void }
+    json: (b: unknown, s?: number) => Response
+  },
+  beatName: string,
+  roundPath: string,
+  rounds: number,
+  local: () => Promise<unknown>,
+): Promise<Response> {
+  const t0 = Date.now()
+  const work = async () => {
+    const r = await runRoundChain(c.env, roundPath, rounds, local)
+    await driverBeat(c.env, beatName, !(!r.done && r.error), Date.now() - t0)
+    return r
+  }
   if (c.executionCtx?.waitUntil) {
     c.executionCtx.waitUntil(work())
-    return { ok: true, rounds: 0, planned: rounds } // 디스패치 성공(결과는 위 하트비트로)
+    // 디스패치 성공만 알린다 — 실제 라운드 결과는 위 driverBeat 이 남긴다.
+    return c.json({ ok: true, dispatched: rounds, detached: true })
   }
-  return work() // 로컬/미지원 — 기존처럼 동기 실행
-}
-
-/** 라운드 상한 — env 로 조정(1~20). 기본 12: 아래 드라이버 주석의 실측 근거 참조. */
-export function resolveEnrichRounds(raw: string | undefined): number {
-  return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 12))
-}
-
-/** 파트너풀(회사) 이메일 보강 라운드 — 기존 부모 루프의 기본값 8 을 그대로 승계(행동 변화 0). */
-export function resolveCompanyEnrichRounds(raw: string | undefined): number {
-  return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 8))
+  return driverJson(c, await work(), rounds)
 }
 
 // 📝 보강 1라운드(블로거 활동성·연락처 + 링크인바이오 + YT 성과) — 수집과 **분리된 인보케이션**.
@@ -131,43 +167,32 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
-  const r = await runRoundsDetached(c, 'enrich-influencer', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
-  }, '/__ads/enrich-influencer')
-  return c.json(r, r.ok ? 200 : 500)
+  })
 })
 
 /**
- * 📧 파트너풀 **이메일 보강 라운드 드라이버** — 2026-07-29 신설.
+ * 📧 파트너풀 이메일 보강 라운드 **드라이버** — 위와 같은 처방을 마지막 남은 부모 루프에 적용(2026-07-29).
  *
- * ## 왜 (라이브 실측)
- * 이 레인만 아직 라운드 루프를 **부모 cron 인보케이션에서** 돌리고 있었다:
- * `for (i < 8) await env.SELF.fetch('/__ads/enrich-company')` — 8회 **순차** 왕복이고,
- * 한 라운드는 실제로 외부 사이트를 크롤한다. 부모는 그동안 살아 있어야 한다.
+ *   왜 지금인가: 라이브 하트비트가 이 루프의 대가를 그대로 보여줬다.
+ *     06:00 — 늦게 킥된 4개 레인이 전부 FAIL(인플루언서 수집 포함), 전부 6초 안에 끝남.
+ *     07:00 — 인플루언서 수집·보강은 **실패 기록조차 못 남겼다**(부모가 하트비트 D1 쓰기마저 못 함).
+ *   부모는 매시간 11개 레인을 kick 하는데, 여기서 라운드를 직접 도느라 **8개(기본)~20개(env 상향)**를
+ *   더 얹는다. 그게 천장을 넘기는 마지막 한 삽이었다. 다른 레인들이 이미 드라이버로 옮겨간 이유와 동일하다.
  *
- * 2026-07-29 07:00 틱 실측: 발화한 레인이 **8개에서 잘렸다**(05:00 엔 15개+). 실패 기록조차
- * 없는 **조용한 절단** — `kick` 의 하트비트는 SELF fetch 가 *끝난 뒤* 찍히므로, 부모가 먼저
- * 회수되면 그 레인들은 기록도 안 남긴다. 직전 06:00 틱에는 5개 레인이
- * `Worker exceeded CPU time limit.` 으로 실패했다.
+ *   ⚠️ 위 주석의 "SELF fetch 는 1개씩이라 20라운드도 안전" 은 **틀렸다.** 부모 인보케이션의 서브리퀘스트는
+ *   *합계*로 세므로 라운드 수만큼 부모가 비싸진다 — 20으로 올린 순간 뒤쪽 레인이 통째로 굶는다.
+ *   드라이버로 옮기면 부모 비용은 라운드 수와 **무관하게** kick 1개로 고정된다.
  *
- * 이건 #830(수집 러너)·#831(kick 격리)·#835(인플루언서 보강 드라이버)에서 세 번 고친 것과
- * **정확히 같은 실패 양식**이고, #830 커밋도 "남은 공유 블록은 같은 방식으로 떼면 된다"고
- * 인계에 남겼다. 남은 마지막 하나가 이것이다.
- *
- * ## 처방 (인플루언서 드라이버와 동일)
- * 라운드를 **자기 인보케이션**으로 옮긴다. 부모가 내는 비용은 언제나 kick 1개(SELF fetch + 하트비트).
- * 드라이버는 자기 예산·자기 시간 안에서 라운드를 돌고, 부모는 즉시 다음 레인을 디스패치한다.
- *
- * ⚠️ 라운드는 **순차**여야 한다 — 각 라운드가 `enrich_checked_at` 도장을 찍어야 다음 라운드가
- *   다음 백로그 구간을 집는다(동시 실행하면 같은 행을 중복 크롤하고 예산만 태운다).
- * 💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고 다음 정각이 이어받는다.
+ *   덤: 이 레인은 생 `waitUntil` 이라 **하트비트가 없었다**(조용히 멈춰도 아무도 모름). kick 으로 넘기면
+ *   `ads:enrich-company` 이름으로 관측 대상이 된다.
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
-  const rounds = resolveCompanyEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS)
-  const r = await runRoundsDetached(c, 'enrich-company', rounds, async () => {
+  const rounds = resolveEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS, 8)
+  return dispatchRoundChain(c, 'enrich-company', '/__ads/enrich-company', rounds, async () => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
-  }, '/__ads/enrich-company')
-  return c.json(r, r.ok ? 200 : 500)
+  })
 })
