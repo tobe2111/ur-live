@@ -101,6 +101,30 @@ export async function notifyCronFailure(env: Env, name: string, err: unknown): P
   }
 }
 
+/**
+ * 🔴 [wholesale-cron-gate 2026-07-29] 도매 번들 cron no-op — 정산 이중성숙 차단.
+ *
+ * 배경: 소비자(ur-live)와 도매(ur-wholesale)는 **같은 entry `src/worker/index.ts` 를 두 번 빌드**한다
+ *   (`build-worker.js`; `WHOLESALE_BUNDLE` 은 라우트 포함 여부만 가른다). 그래서 도매 번들도 지금까지
+ *   `handleCronScheduled` 를 그대로 싣고 있었고, 도매 Pages 대시보드에 cron trigger 가 걸리는 순간
+ *   `matureSupplierSettlements`·예치금/출금 reconcile 이 **이중 실행 → 이중 지급**이었다.
+ *   기존 방어는 "대시보드에서 설정 안 함" 뿐이라 레포가 지킬 수 없었다(가드 0).
+ *
+ * ⚠️ 극성 — 최대 위험은 도매가 아니라 **소비자 cron 이 조용히 죽는 것**이다. 호출부(index.ts)는
+ *   `__INCLUDE_WHOLESALE__ === true`(도매 확실)일 때만 이 no-op 을 쓰고, define 미치환/undefined/문자열은
+ *   **전부 실제 핸들러로 폴백**한다(최악 = 현행 동작, 회귀 0). 느슨한 `__INCLUDE_WHOLESALE__ ?` 금지 —
+ *   `wholesale-cron-gate.test.ts` 가 빨강.
+ *
+ * ⚠️ 정산 로직 무접촉 — 실행 *주체*만 가른다. 이 함수는 아무 머니 함수도 부르지 않는다.
+ * 롤백: index.ts 의 삼항을 `scheduled: handleCronScheduled,` 로 환원(1줄).
+ */
+export const WHOLESALE_CRON_NOOP_MARKER = '[wholesale-cron-gate] skipped cron on wholesale bundle'
+
+/** 도매 번들에서 cron 이 발화하면 아무 일도 하지 않는다. 무음 금지 — 설정 실수이므로 로그는 남긴다. */
+export async function wholesaleCronNoop(event: ScheduledEvent): Promise<void> {
+  console.error(WHOLESALE_CRON_NOOP_MARKER, event?.cron ?? '')
+}
+
 export async function handleCronScheduled(
   event: ScheduledEvent,
   env: Env,

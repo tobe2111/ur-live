@@ -2477,7 +2477,7 @@ app.onError(errorHandler);
 
 // 🛡️ 2026-04-27 (TD-006 부분): scheduled handler 를 src/worker/scheduled.ts 로 분리.
 // worker/index.ts 가 90줄 줄어듦. cron 로직 변경 시 scheduled.ts 만 수정.
-import { handleCronScheduled } from './scheduled';
+import { handleCronScheduled, wholesaleCronNoop } from './scheduled';
 
 import { swallow } from './utils/swallow';
 // 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
@@ -2613,5 +2613,5 @@ export default {
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
     return app.fetch(request, fenv, ctx);
   },
-  scheduled: handleCronScheduled,
+  scheduled: __INCLUDE_WHOLESALE__ === true ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하게 바꾸면 소비자 cron 사망). 배경: scheduled.ts
 };
