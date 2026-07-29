@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 60건 · 최신순 · 이 목록은 자동 생성된다._
+_총 62건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
@@ -5508,6 +5508,8 @@ _총 60건 · 최신순 · 이 목록은 자동 생성된다._
 - [🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**](handoff/2026-07-29-cron-no-op-staging.md)
 - [🛡️ 2026-07-29 — "한 번도 안 뛴 cron" 탐지 가드 (실사고 후 환원)](handoff/2026-07-29-cron-never-fired-guard.md)
 - [수집량 계측 정정 + 유어딜 4대 업종 우선 (대표 지시 반영)](handoff/2026-07-29-collect-truth-and-priority.md)
+- [2026-07-29 — 번들 critical path: app-components 를 엔트리 preload 에서 분리](handoff/2026-07-29-bundle-critical-path.md)
+- [유어애즈 정비 슬롯 재배분 — 균등 순환이 "일이 남은 곳"을 못 보고 있었다](handoff/2026-07-29-ads-maintenance-slots.md)
 - [✅ 2026-07-29 (9차-e) — **cron 경보가 매일 오탐을 울리고 있었다 (ur-ads 레인 주기 신고)**](handoff/2026-07-29-ads-lane-cadence.md)
 - [유어애즈 수집 우선순위 역전 수리 + 서브리퀘스트 천장 (PR #837)](handoff/2026-07-29-ads-collect-priority.md)
 - [유어애즈 수집 DB 품질 — 거부 의사 존중 · 지역 그리드 전국 · 실패 사유 관측 (PR #853)](handoff/2026-07-29-ads-collect-db-quality.md)
