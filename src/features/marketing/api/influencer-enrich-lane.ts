@@ -139,6 +139,23 @@ export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; nav
  *   ⚠️ 배정은 상한일 뿐 실제 중단은 여전히 `budget.left`/deadline 이 한다 — 과배정해도 초과 지출은 없다.
  */
 /**
+ * 🔄 **직전 회차에 뒷 레인이 굶었나** — 선두 교대의 폴백 신호(순수).
+ *
+ *   판정선은 `selected > 0 && tried === 0` 이다. "큐가 비었다"(selected 0)와 명확히 다르다 —
+ *   **고를 사람은 있었는데 한 명도 못 쟀다**는 뜻이고, 그 회차는 SELECT 비용만 쓰고 통째로 버려진 것이다.
+ *   라이브에서 정확히 이 값이 반복해 찍혔다(`selected 12~13 · tried 0`).
+ *
+ *   ⚠️ `deadline_hit` 을 조건에 넣지 않는다 — 창을 다 쓰는 건 정상이고(예산을 남기지 않았다는 뜻),
+ *   문제는 *뒷 레인이 한 명도 못 받은 것*이다. 두 개를 섞으면 정상 회차까지 뒤집는다.
+ *   ⚠️ 스냅샷이 없거나 깨졌으면 `false` — 첫 배포·유실에서 기존 순서를 유지한다.
+ */
+export function starvedLastRound(prev: { naver?: { selected?: number; tried?: number } } | null | undefined): boolean {
+  const n = prev?.naver
+  if (!n) return false
+  return (n.selected || 0) > 0 && (n.tried || 0) === 0
+}
+
+/**
  * 🔀 **병합 메모(2026-07-29)**: 이 브랜치도 같은 12:00 실측(`selected 13 · tried 0 · spent 18/45 ·
  *   deadline_hit`)에서 독립적으로 같은 수리를 했다(`sliceDeadline`, bio 25%/yt 50% 고정 분할).
  *   **main 판을 채택하고 이쪽을 버린다** — 같은 것을 두 벌 두면 조용히 갈라지고, main 판이 더 낫다:
@@ -326,10 +343,19 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
    *   오늘 네 번째로 만난 같은 병이다 — **줄을 세우면 꼬리가 굶는다.** 앞선 세 번(예산·시계·순번)은
    *   '몫을 보장'해서 풀었는데, 여기서는 몫이 원자적이지 않아 실패했다. 그럴 땐 **자리를 바꾸는 것**이 답이다.
    */
+  // 📖 직전 회차 스냅샷 — **선두 결정과 누적 합계 둘 다** 쓴다(읽기 1회, 추가 비용 0).
+  //   예전엔 마지막에만 읽었는데, 선두 결정이 이 값을 필요로 해서 앞으로 옮겼다.
+  const prev = await readSnapshot(DB)
   // ⚠️ `ytUnits` 는 **바깥 스코프**여야 한다 — 아래 스냅샷의 `yt_units` 가 읽는다.
   //   선두 교대를 넣으며 헬퍼 안에 가뒀다가 타입 에러가 났다(CI 가 잡음, npm 403 으로 로컬 tsc 미실행).
   let ytUnits = 0
-  const naverFirst = depth % 2 === 1
+  //   🩹 2026-07-29 보강 — `depth % 2` **하나로는 발화 못 하는 회차**가 있다. 위 주석은 "체인이 depth 2+ 로
+  //   도는 것이 확인됐다"를 전제하는데, 배포(13:38) 이후 14:00 틱 실측은 **`depth: 0`** 이었다
+  //   (`naver { selected 12, tried 0 }` 그대로). 체인이 한 라운드에서 끊기면 depth 는 영원히 0 이고,
+  //   `0 % 2 === 1` 은 항상 거짓이라 **교대가 한 번도 안 일어난다.** 전제가 깨지면 처방도 같이 죽는 형태다.
+  //   ⇒ 직전 회차가 실제로 굶었으면(`selected > 0 && tried === 0`) 깊이와 무관하게 선두를 넘긴다.
+  //   둘은 서로를 보완한다: 체인이 정상이면 결정적 교대가 반반을 보장하고, 끊겨도 자기교정이 받는다.
+  const naverFirst = depth % 2 === 1 || starvedLastRound(prev)
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
@@ -363,7 +389,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   const cap = nextSubreqCap(budgetTotal - budget.left, limitHit, learnedCap, envBudget, pcap)
   if (cap != null) await writeSetting(DB, subreqCapKey('influencer_enrich'), String(cap)).catch(() => undefined)
 
-  const prev = await readSnapshot(DB)
+  // 📖 prev 는 위(선두 결정 지점)에서 이미 읽었다 — 여기서 다시 읽지 않는다(읽기 1회 유지).
   const stamp = nowStamp()
   const snap: InfluencerEnrichSnapshot = {
     last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,

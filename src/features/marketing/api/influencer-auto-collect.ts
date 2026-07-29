@@ -14,7 +14,6 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { backfillRegions, recheckBlankRegions } from './influencer-region'
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -40,7 +39,7 @@ import { promoteHashtagKeywords } from './influencer-keyword-promote'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, interleavePicks } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, interleavePicks, isUnjudgedRound } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -381,6 +380,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     used.push(k.keyword); processedIds.add(k.id)
     if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
+    // 🌵 **검색이 한 번이라도 성공했나** — 무판정 판정의 핵심 신호(`isUnjudgedRound`).
+    //   예산은 멀쩡한데 YT 쿼터 소진 + 네이버 실패로 **아무것도 물어보지 못한** 회차가 있다.
+    //   그걸 '무수확'으로 적으면 잘 되는 키워드를 스스로 은퇴시킨다(아래 주석의 자기강화 루프).
+    let kSearched = 0
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     // 🎯 YT 슬롯은 **성과가중 픽에만**(멤버십) — 위치 기반이면 배치 순서가 쿼터 배분까지 바꾼다(위 docblock).
     const ytSlot = ytIds.has(k.id) && ytUsed < batch
@@ -391,6 +394,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       try {
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order, alreadyContacted })
         if (r.ok) {
+          kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
         } else {
@@ -403,6 +407,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       try {
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort, alreadyContacted })
         if (r.ok) {
+          kSearched++
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -416,7 +421,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
       if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
-        if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
+        if (r.ok) { kSearched++; if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.cafe.found += r.leads.length; diag.cafe.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) } }
       } catch { /* fail-soft */ }
     }
     /**
@@ -437,6 +442,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (hasKakao && (env as unknown as { ADS_COLLECT_TISTORY_DISABLED?: string }).ADS_COLLECT_TISTORY_DISABLED !== 'true') try {
       const r = await discoverTistoryBloggers((env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY, k.keyword, { size: 50, budget, sort: naverSort === 'date' ? 'recency' : 'accuracy' })
       if (r.ok) {
+        kSearched++
         diag.tistory.found += r.leads?.length || 0; kFound += r.leads?.length || 0
         if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.saved += s; kSaved += s; mine(r.leads) }
       } else if (!diag.tistory.error) diag.tistory.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -448,7 +454,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   auto 키워드는 8회면 **비활성**된다. 게다가 굶는 자리는 픽 목록의 꼬리로 **결정적**이라 특정 키워드가
     //   반복해서 맞는다 — 예산 부족이 키워드 품질로 오기록되는 자기강화 루프다.
     //   ⇒ 굶은 회차는 발굴/저장 누적만 반영하고 streak·last_saved·last_run_at 은 건드리지 않는다(= 무판정).
-    const starved = budget.left <= 0 || isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+    //   ⚠️ 2026-07-29: 여기 조건이 `isUnjudgedRound`(순수함수 + 유닛 6개)와 **갈라져 있었다** —
+    //   함수는 있는데 프로덕션에서 아무도 안 불러, 정작 라이브에선 옛 조건이 돌았다("가드가 있는데 안 돎").
+    //   옛 조건이 못 잡던 것: **검색이 한 번도 성공 못 한 회차**(YT 쿼터 소진 + 네이버 실패). 그때 예산은
+    //   멀쩡하다 — 우리가 굶은 게 아니라 *안 물어본* 것이라, 예산 기준만으론 안 걸린다.
+    //   라이브 실측: 활성 210개 중 62개가 `found_total = 0` 인데 그 안에 `먹방`·`홈카페`·`뷰티 유튜버`가
+    //   있었다. 한국에서 가장 많이 검색되는 축이 진짜로 0 일 리 없다.
+    const starved = isUnjudgedRound({ budgetLeft: budget.left, searchedOk: kSearched, ytError: diag.yt.error, naverError: diag.naver.error })
     if (starved) starvedIds.add(k.id); else starvedIds.delete(k.id) // 같은 실행에 재등장하면 마지막 판정이 유효
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
@@ -493,7 +505,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
@@ -509,14 +521,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),
   ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)
-  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
-  //   재판정은 **규칙 버전이 오른 회차에만 1회** 돈다(그 외엔 조회 1번으로 즉시 반환).
-  //   ⬇️ 2026-07-29 재수리: **커서/통계 저장 뒤로 옮겼다.** 그전엔 이 *선택적* 백필 2개가 결정적인
-  //   커서 저장보다 **앞**에 있어, 꼬리에서 예산이 끊기면 백필은 되고 **커서는 안 밀리는** 최악의 순서였다
-  //   (커서가 안 밀리면 다음 회차가 같은 키워드를 다시 돈다 — 10:00 틱이 정확히 그 상태였다).
-  //   백필은 커서와 달리 **다음 틱이 그대로 이어받는다**(멱등·커서리스) — 그래서 뒤가 맞다.
-  try { await recheckBlankRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 재시도(멱등) */ }
-  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
+  // 📍 지역 백필은 **정비의 `reextract` 단계**로 옮겼다(2026-07-29) — `sweepRegions` 주석에 실측 근거.
+  //   요지: 여기(수집 꼬리)는 발굴이 예산을 다 쓴 자리라 회차당 400행이 한계였고, 그 속도로는
+  //   미판정 37,075건에 약 3.9일이 걸렸다. 정비 쪽은 fresh 인보케이션이라 한 회차에 수천 행을 돈다.
+  //   ⚠️ 여기서 다시 부르지 말 것 — 두 벌로 두면 조용히 갈라진다.
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
