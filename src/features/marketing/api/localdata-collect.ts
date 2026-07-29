@@ -183,6 +183,8 @@ export interface LocalDataStats {
   total_runs: number; total_saved: number
   /** 📏 예산 계측(2026-07-29) — 상태줄이 한도 근접을 숫자로 보게. 구 스냅샷 호환 위해 optional. */
   budget_total?: number; spent?: number; limit_hit?: boolean; pending_days?: number
+  /** 📦 과거 백필 창(일). **0 = OFF** — 이 경우 유입은 '전일 변동분' 트리클뿐이다(2026-07-29). */
+  backfill_days?: number
   diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string }
 }
 const STATS_KEY = 'ads_localdata_stats'
@@ -286,6 +288,10 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
     // 📏 예산 계측 — 한도에 닿기 **전에** 보이게(시트 미러가 `ok:true` 인 채 34시간 멈춰 있던 교훈).
     budget_total: budgetTotal, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
     pending_days: nextPending.length,
+    // 📦 백필 상태(2026-07-29) — 기본이 **0=OFF** 라, 이게 꺼져 있으면 매장 DB 의 유일한 유입이
+    //   '전일 변동분'(하루 수백 건 트리클)뿐이다. 전국 음식점을 쌓으려면 백필이 켜져야 하는데
+    //   화면에 그 사실이 안 보여 "왜 안 쌓이지"가 판정 불가였다. 숫자를 그대로 노출한다.
+    backfill_days: Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0),
     diag: { configured: true, error: err, sample, endpoints: Object.keys(endpoints) },
   }
   await persist(s)

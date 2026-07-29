@@ -28,7 +28,7 @@ export interface EnrichInfo { last_run?: string; processed?: number; enriched?: 
 export interface KakaoSweepInfo { last_run?: string; scanned?: number; found?: number; tried?: number; total_found?: number; limit_hit?: boolean; day?: string; day_lookups?: number }
 export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
-export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
+export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; pending_days?: number; backfill_days?: number; spent?: number; budget_total?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
 export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
@@ -232,6 +232,20 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
           ? <span> · 최근 {kstShort(localdata.run.last_run)} · 저장 {localdata.run.saved ?? 0} / 갱신 {localdata.run.updated ?? 0}{typeof localdata.run.closed === 'number' ? ` / 폐업 ${localdata.run.closed}` : ''}</span>
           : <span className="text-amber-600"> · 아직 실행 안 됨 — 개업/상권 리포트 공개면이 빈 상태(전체 실행 1회로 채워짐)</span>}
         {localdata?.run?.diag?.error && <span className="text-amber-600"> · ⚠️ {localdata.run.diag.error}</span>}
+        {/* 🧮 왜 안 쌓이는지의 두 축(2026-07-29 실측: 음식점·카페·미용·숙박 **0건**):
+            ① 밀린 날(pending) — 업종 16개를 한 인보케이션이 못 훑어 쌓인다(체인이 소진).
+            ② 백필 OFF — 유입이 '전일 변동분' 트리클뿐. 전국 매장을 쌓으려면 켜야 한다. */}
+        {typeof localdata?.run?.pending_days === 'number' && localdata.run.pending_days > 0 && (
+          <span className="text-amber-600"> · 밀린 날 {formatNumber(localdata.run.pending_days)}일(체인이 이어서 소진)</span>
+        )}
+        {typeof localdata?.run?.spent === 'number' && (
+          <span className="text-gray-400"> · 예산 {formatNumber(localdata.run.spent)}/{formatNumber(localdata.run.budget_total ?? 0)}</span>
+        )}
+        {typeof localdata?.run?.backfill_days === 'number' && (
+          localdata.run.backfill_days > 0
+            ? <span className="text-gray-400"> · 과거 백필 {formatNumber(localdata.run.backfill_days)}일</span>
+            : <span className="text-amber-600 font-semibold" title="ADS_LOCALDATA_BACKFILL_DAYS=0 — 과거 데이터를 전혀 안 긁는다. 유입이 '전일 변동분'뿐이라 전국 음식점 DB 가 사실상 안 쌓인다."> · ⚠️ 과거 백필 OFF — 전일 변동분만 유입</span>
+        )}
       </div>
       {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
       {work24?.run && (
