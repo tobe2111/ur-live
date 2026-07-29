@@ -52,8 +52,6 @@
 어드민이 대행하면 **소비자 몰 화면 + 3분 등록 폼** 둘만으로 "엑셀을 버렸는가" 판정 가능.
 
 
-## 🔴 2026-07-29 (11차) — **세션 ①: gb 특가 → 소비자 결제 배선 (머니 경로, staging 실결제 대기)**
-
 ## ✍️ 세션을 끝낼 때 (필수)
 
 **`docs/handoff/<날짜>-<슬러그>.md` 파일을 새로 만들어라.** 이 파일(`CURRENT_WORK.md`)은 **편집하지 마라** —
@@ -4935,7 +4933,6 @@ Phase 6 — 마케팅/UX 강화
   `seller-settlements.routes.ts voucher-redeem`)
 
 
-
 ## 🎯 2026-05-21 세션 — 5 Phase 정산 인프라 + UX 통합
 
 ### Phase A: Commission 출금 + 기초 인프라
@@ -5128,7 +5125,6 @@ Phase 6 — 마케팅/UX 강화
 ### ✅ 완료된 항목 (2026-05-21)
 - ~~공급자 (가게 사장님) 자체 onboarding UI~~ → `SellerRegisterSupplierPage.tsx` 이미 존재 (2026-05-20 신규)
 - ~~새 기능 통합 테스트 (commission withdrawal)~~ → 9개 테스트 신규
-
 
 
 ## 📦 2026-05-19 세션 — KT Alpha (기프티쇼) B2B API 통합
