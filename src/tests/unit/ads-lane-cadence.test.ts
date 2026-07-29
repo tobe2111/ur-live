@@ -242,6 +242,21 @@ describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
   it('드라이버가 두 개 다 분리 헬퍼를 쓴다(검사 대상 존재 확인)', () => {
     expect((src.match(/dispatchRoundChain\(/g) || []).length).toBeGreaterThanOrEqual(3)
   })
+
+  /**
+   * 🔎 **부분 실행이 조용히 성공으로 보이지 않는가** (2026-07-29 라이브 실측 후 추가).
+   *
+   * 10:00 틱 기록: `ads:enrich-influencer-driver · ok:true · ms:18,615`. 12라운드를 계획했는데
+   * 라운드 1회가 실측 16초니 **한 라운드밖에 못 돈 것**이다. 그런데 `ok:true` 라 화면상 정상이었고,
+   * `runRoundChain` 이 들고 온 원문 error 는 하트비트에 안 실려 **왜 멈췄는지 알 길이 없었다.**
+   * 처리량이 곧 품질인 파이프라인에서 "12 계획 → 1 실행"은 12배 손해인데 아무도 모른다.
+   */
+  it('체인 결과(done/planned/error)를 하트비트에 남긴다 — 부분 실행을 조용히 넘기지 않는다', () => {
+    const call = /driverBeat\(\s*c\.env[\s\S]{0,400}?\)\n/.exec(src)?.[0] || ''
+    expect(call).toMatch(/done:\s*r\.done/)
+    expect(call).toMatch(/planned:\s*rounds/)
+    expect(call).toMatch(/error:\s*r\.error/)
+  })
 })
 
 /**

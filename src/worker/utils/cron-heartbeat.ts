@@ -22,15 +22,20 @@
 import type { Env } from '../types/env'
 
 /**
- * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
- * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·문자열만 추린다
+ * (배열은 길이만, 중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ * 유닛으로 고정하려고 export 한다 — **값이 조용히 사라지는 사고**를 실제로 겪었다(아래 ✂️ 주석).
  */
-function summarizeResult(v: unknown): string | null {
+export function summarizeResult(v: unknown): string | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
     if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
-    else if (typeof val === 'string' && val.length <= 24) parts.push(`${k}=${val}`)
+    // ✂️ 2026-07-29: 예전엔 24자를 넘는 문자열을 **통째로 버렸다.** 그런데 길어지는 문자열은 대개
+    //   `error` 다 — 즉 **가장 알고 싶은 값이 정확히 그 이유로 사라졌다**(라운드 체인이 왜 멈췄는지가
+    //   `round2: Error: Too many subrequests` 처럼 24자를 넘어 기록에서 증발). 버리지 말고 자른다.
+    //   전체는 어차피 MAX_NOTE 로 묶여 있어 '한 줄 요약'이라는 성격은 그대로다.
+    else if (typeof val === 'string' && val) parts.push(`${k}=${val.length <= 72 ? val : `${val.slice(0, 71)}…`}`)
     else if (Array.isArray(val)) parts.push(`${k}[${val.length}]`)
     if (parts.join(' ').length > MAX_NOTE) break
   }

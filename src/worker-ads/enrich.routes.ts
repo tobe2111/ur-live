@@ -80,10 +80,10 @@ async function runRoundChain(
  *   ⚠️ 이 보강이 있어야 메인 워커의 `cron-stale-watch` 가 이 레인의 정지를 알릴 수 있다
  *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
  */
-async function driverBeat(env: unknown, name: string, ok: boolean, ms: number): Promise<void> {
+async function driverBeat(env: unknown, name: string, ok: boolean, ms: number, result?: unknown): Promise<void> {
   try {
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *')
+    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *', result)
   } catch { /* 관측 실패가 작업을 막지 않는다 */ }
 }
 
@@ -126,7 +126,21 @@ async function dispatchRoundChain(
   const t0 = Date.now()
   const work = async () => {
     const r = await runRoundChain(c.env, roundPath, rounds, local)
-    await driverBeat(c.env, beatName, !(!r.done && r.error), Date.now() - t0)
+    /**
+     * 🔎 **몇 라운드를 왜 멈췄는지**를 하트비트에 남긴다 (2026-07-29 라이브 실측 후 추가).
+     *
+     * 그 전엔 `ok`/`ms` 만 남겨서, 10:00 틱이 `ok:true · ms:18,615` 로 기록됐다.
+     * 12라운드를 계획했는데 18.6초면 **한 라운드밖에 못 돈 것**인데(라운드 1회 실측 16초),
+     * `ok:true` 라 화면상 정상이었다 — 그리고 **왜 멈췄는지는 어디에도 없었다**
+     * (`runRoundChain` 은 첫 실패에서 원문 error 를 들고 돌아오는데 그걸 버리고 있었다).
+     *
+     * 이게 이 레포가 반복해 만난 형태다: 실패가 아니라 **조용한 부분 실행**.
+     * 처리량이 곧 품질인 파이프라인에서 "12 계획 → 1 실행"은 12배 손해인데 경보가 안 울린다.
+     * ⇒ `done/planned/error` 를 남겨 다음 틱이 **추측 없이** 원인을 말하게 한다.
+     */
+    const partial = r.done < rounds
+    await driverBeat(c.env, beatName, !(!r.done && r.error), Date.now() - t0,
+      { done: r.done, planned: rounds, ...(partial ? { partial: true } : {}), ...(r.error ? { error: r.error } : {}) })
     return r
   }
   if (c.executionCtx?.waitUntil) {
