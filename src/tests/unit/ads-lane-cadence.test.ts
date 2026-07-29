@@ -189,6 +189,54 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
   })
 })
 
+/**
+ * 🔭 **관측 밖 레인 래칫** (2026-07-29).
+ *
+ *   ur-ads 의 레인은 대부분 `kick()` 을 거쳐 `ads:<이름>` 하트비트를 남긴다. 그런데 몇몇은
+ *   `ctx.waitUntil` 로 **생으로** 도는데, 그런 레인은 멈춰도 아무도 모른다 — `cron-stale-watch` 는
+ *   *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하기* 때문이다(부재는 침묵과 다르게 생겼다).
+ *
+ *   실측(07-29 12:00, 배포가 안 겹친 정각 회차): 다른 13개 레인은 다 돌았는데 **시트 미러만
+ *   `ads_sheets_last_sync` 가 09:00:21 그대로**였다 — 성공도 KICK_FAILED 도 안 남아서, 멈췄다는
+ *   사실 자체를 화면에서 볼 수 없었다. 그 레인에 하트비트를 배선하면서 같은 모양을 래칫으로 고정한다.
+ *
+ *   ⚠️ 남은 것들을 지금 다 배선하지 않는 이유: 부모 인보케이션은 이미 서브리퀘스트 ~31/50 을 쓰고
+ *   있고 하트비트 하나가 D1 쓰기 1이다. **증거 없이 5개를 더 얹으면** 뒤에 선 레인이 굶는다 —
+ *   그건 이 세션이 방금 고친 실패 양식(#880 블로거 굶주림)과 같은 클래스다.
+ *   ⇒ 지금은 **늘어나지 못하게만** 막고, 실제로 멈춘 정황이 나오는 레인부터 하나씩 배선한다.
+ *   ⚠️ 이 래칫이 못 보는 것: 이미 목록에 있는 5개가 조용히 멈추는 것(그건 여전히 안 보인다).
+ */
+describe('worker-ads — 생 waitUntil 레인은 관측 밖이다(래칫)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  /** `ctx.waitUntil((async () => { … })` 블록을 중괄호 짝으로 정확히 잘라낸다(문자열 길이 추정 금지). */
+  const rawLanes = (): string[] => {
+    const out: string[] = []
+    for (const m of src.matchAll(/ctx\.waitUntil\(\(async \(\) => \{/g)) {
+      const open = m.index! + m[0].length - 1
+      let depth = 0
+      for (let j = open; j < src.length; j++) {
+        if (src[j] === '{') depth++
+        else if (src[j] === '}' && --depth === 0) { out.push(src.slice(m.index!, j + 1)); break }
+      }
+    }
+    return out
+  }
+
+  it('검사 대상이 실제로 존재한다 — 0건 통과를 성공으로 오인하지 않게', () => {
+    expect(rawLanes().length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('🔒 하트비트 없는 생 레인이 늘어나지 않는다(현재 5 — 새 레인은 반드시 kick 또는 adsBeat)', () => {
+    const blind = rawLanes().filter(b => !b.includes('adsBeat('))
+    expect(blind.length, `관측 밖 레인이 늘었다(${blind.length}개) — 새 레인은 kick() 을 쓰거나 adsBeat 을 남겨라`)
+      .toBeLessThanOrEqual(5)
+  })
+
+  it('🔒 시트 미러는 하트비트를 남긴다 — 09:00 이후 멈춘 걸 아무도 못 보던 자리', () => {
+    expect(src).toMatch(/adsBeat\('sheets-sync'/)
+  })
+})
+
 describe('neverFiredLanes — "게이트는 ON 인데 기록이 없다"', () => {
   it('하트비트가 없는 레인만 고른다', () => {
     expect(neverFiredLanes(['collect', 'collect-nps'], ['ads:collect', 'ads:scheduled']))
