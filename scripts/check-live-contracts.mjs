@@ -34,8 +34,8 @@
  *
  * ## 어떻게 쓰나
  *
- *   node scripts/check-live-contracts.mjs                    # 기본 https://live.ur-team.com
- *   BASE_URL=https://urdeal.kr node scripts/check-live-contracts.mjs
+ *   node scripts/check-live-contracts.mjs                          # 기본 https://urdeal.kr (정본)
+ *   BASE_URL=https://live.ur-team.com node scripts/check-live-contracts.mjs   # 프록시가 정본을 막는 환경
  *   node scripts/check-live-contracts.mjs --json             # CI 집계용
  *
  * ⚠️ **PR 게이트가 아니다.** 외부 네트워크에 의존해 간헐 실패가 나므로 PR 을 막으면 안 된다.
@@ -43,7 +43,10 @@
  */
 import { readFileSync, existsSync } from 'node:fs'
 
-const BASE = (process.env.BASE_URL || 'https://live.ur-team.com').replace(/\/$/, '')
+// 정본 도메인(2026-07-20 이전 완료). 구 `live.ur-team.com` 은 전 경로 301 이라 검사 대상이 아니다.
+// ⚠️ 이 컨테이너의 에이전트 프록시는 urdeal.kr 을 막는다(CONNECT 403) — 로컬에서 돌려볼 땐
+//    `BASE_URL=https://live.ur-team.com` 을 주면 된다(같은 워커라 결과가 사실상 같다).
+const BASE = (process.env.BASE_URL || 'https://urdeal.kr').replace(/\/$/, '')
 const WHOLESALE_BASE = (process.env.WHOLESALE_BASE_URL || 'https://utongstart.com').replace(/\/$/, '')
 const JSON_OUT = process.argv.includes('--json')
 const UA = 'Mozilla/5.0 (compatible; ur-live-contract-check/1.0; +https://urdeal.kr)'

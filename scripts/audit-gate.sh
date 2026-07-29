@@ -135,6 +135,7 @@ if domain deploy; then
   run "sitemap 죽은 URL 제출"            env STRICT_SITEMAP=1          node scripts/check-sitemap-routes.mjs
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
   run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs
+  run "구 도메인 사용자 노출"            env STRICT_LEGACY_DOMAIN=1    node scripts/check-legacy-domain.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
