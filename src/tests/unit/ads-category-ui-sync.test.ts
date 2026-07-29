@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
+import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
+import { SEED, REGION_SEED, BANGBAE_SEED } from '@/features/marketing/api/influencer-seed-keywords'
 import { POOL_CATEGORIES } from '@/pages/admin/AdminInfluencerPoolPage'
 import { PRIORITY_CATS } from '@/pages/admin/influencer-pool/KeywordManager'
 
@@ -31,5 +33,27 @@ describe('카테고리 축 — 서버 SSOT ↔ 어드민 화면', () => {
   it('③ 신설 축(공동구매)이 양쪽에 반영돼 있다', () => {
     expect(PRIORITY_CATEGORIES).toContain('공동구매')
     expect(POOL_CATEGORIES).toContain('공동구매')
+  })
+
+  /**
+   * 🔒 2026-07-29 — ②가 **우선 카테고리만** 봐서 놓친 자리를 막는다.
+   *   실측: 분류기가 만드는 '카페' 가 필터 목록에 없어 **4,675명(풀의 12%)이 화면에서 통째로 안 보였다**.
+   *   우선축이 아니라는 이유로 가드를 통과했다 — "가장 조용한 실패"가 가드 사각지대에서 그대로 재현된 것이다.
+   *   ⇒ 검사 범위를 **분류기가 만들 수 있는 전 축**으로 넓힌다(규칙을 늘리면 화면이 따라오도록).
+   */
+  it('🔒 ④ 분류기가 만드는 모든 카테고리가 목록 필터에 있다', () => {
+    const missing = CLASSIFIED_CATEGORIES.filter(c => !POOL_CATEGORIES.includes(c))
+    expect(missing, `분류기는 만드는데 화면 필터에 없다 → 그 축으로 수집된 사람이 안 보인다: ${missing.join(', ')}`)
+      .toEqual([])
+  })
+
+  /**
+   * 🔒 시드 카테고리도 같은 계약 — 시드로 *찾아 놓고* 화면에서 못 고르면 같은 반쪽 상태다.
+   *   (시드 파일 헤더가 경고하는 "분류 규칙이 없으면 영영 키워드 상속" 과 짝을 이루는 검사.)
+   */
+  it('🔒 ⑤ 시드 카테고리도 전부 목록 필터에 있다', () => {
+    const seedCats = Array.from(new Set([...SEED, ...REGION_SEED, ...BANGBAE_SEED].map(g => g.category)))
+    const missing = seedCats.filter(c => !POOL_CATEGORIES.includes(c))
+    expect(missing, `시드로 수집하는데 화면 필터에 없다: ${missing.join(', ')}`).toEqual([])
   })
 })
