@@ -12,6 +12,7 @@
  *   개인정보 최소화: 원시 IP/UA 등은 저장 안 하고, 크리에이터가 공개한 비즈니스 컨택만 기록.
  */
 
+import { searchFetch, fetchNaverBlogHome } from './search-fetch'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
 
@@ -350,21 +351,6 @@ async function fetchNaverBlogRss(handle: string): Promise<string> {
   } catch { return '' }
 }
 
-/** 🏠 네이버 블로그 **홈(모바일)** 공개 HTML — 프로필 소개글 + 위젯(인스타/링크트리/오픈카톡/이메일)이 여기 있음.
- *  RSS(글 본문)보다 컨택 적중률 높음(블로거는 이메일을 글이 아니라 프로필/위젯에 둠). 공개 페이지 · 쿼터 무관 · fail-soft.
- *  모바일 SSR(m.blog.naver.com)이 데스크톱 iframe 보다 정적 텍스트가 풍부 → 브라우저 UA 로 요청. */
-async function fetchNaverBlogHome(handle: string): Promise<string> {
-  if (!/^[A-Za-z0-9_-]{2,40}$/.test(handle)) return ''
-  try {
-    const res = await fetch(`https://m.blog.naver.com/${handle}`, {
-      signal: AbortSignal.timeout(10000),
-      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1', accept: 'text/html' },
-      redirect: 'follow',
-    })
-    if (!res.ok) return ''
-    return (await res.text()).slice(0, 80000) // 프로필/위젯 영역에 mailto:·instagram.com·linktr.ee 링크
-  } catch { return '' }
-}
 
 export async function discoverNaverBloggers(
   clientId: string | undefined, clientSecret: string | undefined, keyword: string, opts: { display?: number; enrichMax?: number; budget?: FetchBudget; sort?: 'sim' | 'date' } = {},
@@ -377,8 +363,8 @@ export async function discoverNaverBloggers(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
   const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
+  const { res, failure } = await searchFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }, '블로그 검색 호출')
+  if (!res) return { ok: false, error: 'FAILED', message: failure || '블로그 검색 호출 실패' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `블로그 검색 오류 (HTTP ${res.status})` }
   // 고유 블로거로 집계(블로그홈 링크 기준).
@@ -459,8 +445,8 @@ export async function discoverNaverCafes(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim'
   const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '카페 검색 호출 실패 (네트워크)' }
+  const { res, failure } = await searchFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }, '카페 검색 호출')
+  if (!res) return { ok: false, error: 'FAILED', message: failure || '카페 검색 호출 실패' }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `카페 검색 오류 (HTTP ${res.status})` }
   const byCafe = new Map<string, InfluencerLead & { _matches: number }>()
@@ -500,8 +486,8 @@ export async function discoverTistoryBloggers(
   const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
   const sort = opts.sort === 'recency' ? 'recency' : 'accuracy'
   const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=${sort}`
-  const res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '티스토리 검색 호출 실패 (네트워크)' }
+  const { res, failure } = await searchFetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }, '티스토리 검색 호출')
+  if (!res) return { ok: false, error: 'FAILED', message: failure || '티스토리 검색 호출 실패' }
   const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.message || `티스토리 검색 오류 (HTTP ${res.status})` }
   const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
