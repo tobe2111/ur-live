@@ -402,3 +402,44 @@ describe('orphanLaneBeats — 기록은 있는데 지금은 아무도 안 부르
     expect(orphanLaneBeats(known, beats)).toEqual(['ads:old-lane'])
   })
 })
+
+/**
+ * 🐛 **beat 이름을 덮어쓴 레인이 두 목록에 동시에 뜨던 오탐** (2026-07-29 라이브에서 오진을 유발했다).
+ *
+ * `kick(path, fn, { beat })` 은 하트비트 이름을 경로와 다르게 쓸 수 있고, 실제로 쓰는 레인이 있다
+ * (`/__ads/enrich-company-driver` → beat `enrich-company`). 그런데 알려진 목록엔 **경로 이름**이,
+ * 하트비트엔 **beat 이름**이 들어가서:
+ *   · `never_fired` — 경로 이름(enrich-company-driver)으로는 기록이 없다 → "한 번도 안 돎"
+ *   · `orphan_lanes` — beat 이름(enrich-company)은 알려진 목록에 없다 → "이제 없는 레인"
+ * **같은 레인이 양쪽에 동시에** 떴고, 이번 세션이 그걸 보고 "보강 드라이버가 한 번도 안 돌았다"고
+ * 오진했다. 관측 도구가 틀린 답을 주면 없느니만 못하다.
+ */
+describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록한다', () => {
+  it('beat 이 있으면 beat 이름으로, 없으면 경로에서 유도', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/enrich-company-driver', 'enrich-company')
+    reg.note('/__ads/collect-nps')
+    expect(reg.list()).toEqual(['collect-nps', 'enrich-company'])
+  })
+
+  it('🔒 덮어쓴 레인이 never_fired 에도 orphan 에도 안 뜬다 — 오탐의 정확한 재현', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/enrich-company-driver', 'enrich-company')
+    const beats = ['ads:enrich-company']            // 하트비트는 beat 이름으로 남는다
+    expect(neverFiredLanes(reg.list(), beats)).toEqual([])
+    expect(orphanLaneBeats(reg.list(), beats)).toEqual([])
+  })
+
+  it('빈 beat 은 무시하고 경로로 폴백한다(빈 문자열이 이름을 지우면 안 된다)', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/collect-nps', '')
+    reg.note('/__ads/collect-mx', '   ')
+    expect(reg.list()).toEqual(['collect-mx', 'collect-nps'])
+  })
+
+  it('worker-ads 의 kick 이 beat 을 등록에 넘긴다 — 순수함수만 고치면 배선이 빠진다', () => {
+    // 이 레포가 반복해 만난 형태: 함수는 고쳤는데 호출부가 안 넘겨 **조용히 예전 동작** 유지.
+    const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
+  })
+})

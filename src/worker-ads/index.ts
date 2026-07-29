@@ -251,8 +251,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
-    laneReg.note(path)
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
+    laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
     ctx.waitUntil((async () => {
       const t0 = Date.now()
       try {
