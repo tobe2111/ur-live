@@ -12,7 +12,7 @@ import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
 import { useCollectRun } from './influencer-pool/useCollectRun'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
-import SendQueueModal from './influencer-pool/SendQueueModal'
+import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
 import ExcelExportButtons from './influencer-pool/ExcelExportButtons'
@@ -66,7 +66,7 @@ export default function AdminInfluencerPoolPage() {
   const [run, setRun] = useState<RunStats | null>(null)
   const [gate, setGate] = useState(false)
   // 📊 시트 동기화 상태(무음 실패 가시화) + 🚦 게이트 실값 — gate 가 '고장'과 '꺼짐'을 가른다(null=알 수 없음).
-  const [sheets, setSheets] = useState<{ sync: { ok: boolean; at?: string; error?: string | null } | null; gate: boolean | null }>({ sync: null, gate: null })
+  const [sheets, setSheets] = useState<{ sync: { ok: boolean; at?: string; error?: string | null } | null; cron: { at?: string; ok?: boolean } | null; gate: boolean | null }>({ sync: null, cron: null, gate: null })
   const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
   const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
@@ -136,7 +136,7 @@ export default function AdminInfluencerPoolPage() {
   // stats 응답 반영 SSOT — 최초 로드와 수집 폴링(useCollectRun)이 같은 함수를 쓴다(둘이 갈라지면 화면 불일치).
   const applyMeta = useCallback((d: Record<string, unknown>) => {
     const g = <T,>(k: string) => d[k] as T
-    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheets({ sync: g<{ ok: boolean; at?: string; error?: string | null }>('sheets_sync') || null, gate: typeof d.sheets_gate === 'boolean' ? d.sheets_gate : null })
+    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheets({ sync: g<{ ok: boolean; at?: string; error?: string | null }>('sheets_sync') || null, cron: g<{ at?: string; ok?: boolean }>('sheets_cron') || null, gate: typeof d.sheets_gate === 'boolean' ? d.sheets_gate : null })
     setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
     setMaintainRunning(!!d.maintain_running)
     setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
@@ -242,7 +242,6 @@ export default function AdminInfluencerPoolPage() {
   const [drafting, setDrafting] = useState(false)
   const [draftProgress, setDraftProgress] = useState('')
   const [draftView, setDraftView] = useState<{ lead: Lead; draft: OutreachDraftData } | null>(null)
-  const [queueOpen, setQueueOpen] = useState(false) // 🚀 발송 모드(선택 있으면 선택만, 없으면 현재 필터 전체)
   function toggleSelect(id: number) {
     setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }
@@ -359,7 +358,7 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
-        <CollectDiagPanel run={run} sheetsSync={sheets.sync} sheetsGate={sheets.gate} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
+        <CollectDiagPanel run={run} sheetsSync={sheets.sync} sheetsCron={sheets.cron} sheetsGate={sheets.gate} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
           enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
@@ -389,9 +388,7 @@ export default function AdminInfluencerPoolPage() {
             <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
               {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
             </button>
-            <button onClick={() => setQueueOpen(true)} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
-              🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
-            </button>
+            <SendModeButtons leads={leads} selectedIds={selected} onReach={l => reachOut(l as unknown as Lead)} />
             <ConsentedSendPanel />
             <ColdSendPanel />
             <ExcelExportButtons variant="contactable" />
@@ -591,9 +588,6 @@ export default function AdminInfluencerPoolPage() {
             onOpenMail={() => { reachOut(draftView.lead); setDraftView(null) }}
           />
         )}
-        {/* 🚀 발송 모드 — 한 명씩 원클릭(Enter) 발송 큐. 선택 있으면 선택만. */}
-        {/* ⚖️ 발송 큐 제외(코드 강제): rejected(수신거부) + 반송/스팸신고 주소(email_status) — 안내문 아닌 하드 필터. */}
-        {queueOpen && <SendQueueModal leads={(selected.size ? leads.filter(l => selected.has(l.id)) : leads).filter(l => l.status !== 'rejected' && l.email_status !== 'bounced' && l.email_status !== 'complained')} onReach={reachOut} onClose={() => setQueueOpen(false)} />}
       </div>
     </AdminLayout>
   )

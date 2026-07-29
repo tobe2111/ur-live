@@ -64,9 +64,11 @@ export interface EnrichLaneRecord {
   crash?: string; crash_at?: string
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
+export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
-  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
+  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number; trigger?: string } | null
+  /** 🕘 cron 회차 전용 마지막 시각 — 수동 실행이 덮어쓰는 sheetsSync 로는 "자동으로 돈 적 있나"를 못 답한다. */
+  sheetsCron?: { at?: string; ok?: boolean } | null
   /** 🚦 ur-ads env 의 시트 동기화 게이트 실값. null=알 수 없음 — 모를 때는 단정하지 않는다. */
   sheetsGate?: boolean | null
   maintenance?: MaintenanceRecord | null
@@ -108,8 +110,14 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintena
         ) : (
           <div className="mb-2 mt-1 text-[11px] text-amber-600">
             📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
-            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''})
-            {sheetsGate === true ? ' — 게이트는 켜져 있는데 실행이 중간에 죽고 있는 것입니다.' : ' — 매시간 도는 작업입니다(게이트 상태 확인 불가).'}
+            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}
+            {sheetsSync.trigger ? ` · ${sheetsSync.trigger === 'cron' ? '자동' : sheetsSync.trigger === 'manual' ? '수동 실행' : '출처 미상'}` : ''})
+            {/* 🔎 cron 기록 유무가 '고장'과 '한 번도 안 돎'을 가른다 — 마지막 스탬프는 수동 실행이 덮어쓴다. */}
+            {sheetsGate === true
+              ? (sheetsCron?.at
+                ? ` — 게이트는 켜져 있고 자동 실행 기록도 있습니다(마지막 자동 ${fmtKST(sheetsCron.at)}) — 실행이 중간에 죽고 있는 것입니다.`
+                : ' — 게이트는 켜져 있는데 자동 실행 기록이 아예 없습니다(cron 이 이 잡에 도달하지 못하는 것).')
+              : ' — 매시간 도는 작업입니다(게이트 상태 확인 불가).'}
             {' '}정비 도구에서 수동 동기화로 원인이 기록됩니다.
           </div>
         )

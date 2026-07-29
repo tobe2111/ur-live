@@ -250,11 +250,13 @@ app.post('/__ads/sweep-nts', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
-// 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
+// 📊 인플루언서 풀 → 구글시트 동기화 — 메인 어드민(수동 버튼)과 아래 cron 이 **같은 라우트**를 쓴다.
+//   ⚠️ 그래서 `?by=cron` 으로 출처를 구분해 스탬프에 남긴다 — 이게 없어서 "마지막 동기화 07-27"이
+//   'cron 고장'인지 '사람이 한 번 누른 것'인지 갈리지 않아 41시간을 오진했다(sheets-sync.ts 주석 참조).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
     const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-    const r = await syncInfluencerPoolToSheets(c.env)
+    const r = await syncInfluencerPoolToSheets(c.env, c.req.query('by') === 'cron' ? 'cron' : 'manual')
     return c.json(r, r.ok ? 200 : 400)
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -370,11 +372,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
         let r: { ok: boolean; error?: string | null }
         if (env.SELF?.fetch) {
-          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync', { method: 'POST' }))
+          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync?by=cron', { method: 'POST' }))
           r = await resp.json().then(j => j as { ok: boolean; error?: string | null }).catch(() => ({ ok: false, error: 'SELF_RESPONSE_PARSE' }))
         } else {
           const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-          r = await syncInfluencerPoolToSheets(env)
+          r = await syncInfluencerPoolToSheets(env, 'cron')
         }
         if (!r.ok && env.DISCORD_WEBHOOK_URL && (r.error || '') !== (prevErr || '')) {
           const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
