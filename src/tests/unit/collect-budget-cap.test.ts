@@ -12,11 +12,11 @@ import { nextSubreqCap, resolveSubreqBudget, SUBREQ_CAP_MIN, isSubrequestLimitEr
 describe('nextSubreqCap — 회복', () => {
   it('🔒 예산을 남기고 완주해도 상한을 올린다 (데드락 회귀 테스트)', () => {
     // 실측 그대로: 학습값 63, 예산 63 중 29 소비, 한도 오류 없음 → 예전엔 null(고착)이었다.
-    expect(nextSubreqCap(29, false, 63, 300)).toBe(79) // ceil(63 * 1.25)
+    expect(nextSubreqCap(29, false, 63, 300)).toBe(73) // ceil(63 * 1.15)
   })
 
   it('예산을 다 쓴 경우에도 동일하게 회복', () => {
-    expect(nextSubreqCap(63, false, 63, 300)).toBe(79)
+    expect(nextSubreqCap(63, false, 63, 300)).toBe(73)
   })
 
   it('회복은 env 예산을 넘지 않는다', () => {
@@ -44,6 +44,34 @@ describe('nextSubreqCap — 회복', () => {
     }
     expect(cap).toBe(300)
     expect(steps).toBeLessThan(20)
+  })
+})
+
+/**
+ * 🔒 2026-07-29 **영구 진동 회귀 테스트** — 이게 이 파일에서 가장 중요한 잠금이다.
+ *
+ *   사고: BACKOFF 0.8 과 RECOVER 1.25 가 **정확히 서로의 역수**(0.8 × 1.25 = 1.0)라,
+ *   한도에 부딪혀 내려간 상한이 다음 회차에 **부딪혔던 바로 그 값으로** 복귀했다.
+ *   라이브 실측 44↔55 무한 왕복 — 천장 아래 정착이 산술적으로 불가능했고, 부딪히는 회차마다
+ *   진행 중이던 키워드의 수확을 통째로 버렸다. 아무 에러도 안 나서 "자가교정 작동 중"으로 보였다.
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 실제 플랫폼 천장이 얼마인지는 검사하지 않는다(관측으로만 알 수 있다).
+ *   여기서 고정하는 건 "부딪힌 값으로 되돌아가지 않는다"는 **수렴 성질** 하나다.
+ */
+describe('nextSubreqCap — 반(反)진동 불변식', () => {
+  it('🔒 한 번 부딪힌 값으로는 절대 되돌아가지 않는다', () => {
+    for (const bad of [30, 44, 50, 55, 63, 100, 137, 250]) {
+      const down = nextSubreqCap(bad, true, bad, 300)!       // 부딪힘 → 하향
+      expect(down).toBeLessThan(bad)
+      const up = nextSubreqCap(1, false, down, 300)!          // 무사통과 → 회복
+      expect(up).toBeLessThan(bad)                            // ← 예전엔 정확히 bad 로 복귀했다
+    }
+  })
+
+  it('하향은 항상 소비량보다 작다 (같은 지점에서 또 죽지 않게)', () => {
+    for (const spent of [30, 44, 55, 100, 300]) {
+      expect(nextSubreqCap(spent, true, spent, 300)!).toBeLessThan(spent)
+    }
   })
 })
 
