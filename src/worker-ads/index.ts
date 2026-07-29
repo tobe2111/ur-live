@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, scheduleGapMinutes, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -287,10 +287,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
+    const t0 = Date.now()
     try {
       const { handleSocialMaintenance } = await import('@/worker/cron/social-maintenance')
       await handleSocialMaintenance(env)
-    } catch { /* fail-soft */ }
+      await adsBeat('social-maintenance', true, Date.now() - t0)
+    } catch (err) { await adsBeat('social-maintenance', false, Date.now() - t0, err) }
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
@@ -493,21 +495,22 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
   if (env.ADS_AUTOBID_ENABLED === 'true') {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try {
         const { runAutobidAll } = await import('@/features/marketing/api/autobid')
         await runAutobidAll(env)
-      } catch { /* fail-soft */ }
+        await adsBeat('autobid', true, Date.now() - t0)
+      } catch (err) { await adsBeat('autobid', false, Date.now() - t0, err) }
     })())
   }
 
   // ── 매일 18:00 UTC — 일일 배치(가격→순위→스냅샷→알림→자동입찰 섀도우) ────────
   if (hourUTC === 18) {
     ctx.waitUntil((async () => {
-      try { const { refreshAllWatches } = await import('@/features/marketing/api/price-monitor'); await refreshAllWatches(env) } catch { /* fail-soft */ }
-      try { const { refreshAllRankTargets } = await import('@/features/marketing/api/rank-tracker'); await refreshAllRankTargets(env) } catch { /* fail-soft */ }
-      try { const { snapshotAllAccounts } = await import('@/features/marketing/api/metrics-history'); await snapshotAllAccounts(env) } catch { /* fail-soft */ }
-      try { const { runAlertsAll } = await import('@/features/marketing/api/alerts'); await runAlertsAll(env) } catch { /* fail-soft */ }
-      try { const { runAutobidShadowAll } = await import('@/features/marketing/api/autobid'); await runAutobidShadowAll(env) } catch { /* fail-soft */ }
+      const t0 = Date.now()
+      const { runAdsDailyBatch } = await import('./daily-batch') // 5단계 순차(순서에 의미) — 그 파일 헤더 참조
+      await runAdsDailyBatch(env)
+      await adsBeat('daily-batch', true, Date.now() - t0, undefined, dailyGapMinutes())
     })())
   }
 
@@ -551,7 +554,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   0건이면 무발송(no-op) — Discord 스팸 방지. 자동 감지는 웹훅(resend)이 실시간 처리, 여기선 요약만.
   if (hourUTC === 23) {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try { const { runFollowupReminder } = await import('@/features/marketing/api/outreach-webhook'); await runFollowupReminder(env) } catch { /* fail-soft */ }
+      await adsBeat('followup-reminder', true, Date.now() - t0, undefined, dailyGapMinutes())
     })())
   }
 
@@ -561,8 +566,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // ── 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트 ────────────────────
   if (hourUTC === 0 && dowUTC === 1) {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try { const { handleSocialDraft } = await import('@/worker/cron/social-draft'); await handleSocialDraft(env) } catch { /* fail-soft */ }
       try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
+      await adsBeat('weekly-report', true, Date.now() - t0, undefined, staleGapMinutes(7 * 24 * 60))
     })())
   }
 

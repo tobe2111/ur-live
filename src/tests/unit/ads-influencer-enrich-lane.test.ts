@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline, starvedLastRound } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -117,5 +119,49 @@ describe('frontStageDeadline — 앞 레인이 창을 다 먹지 못하게', () 
     // 창 자체가 이상해도 과거 시각을 만들지 않는다.
     expect(frontStageDeadline(T0, Number.NaN, 40)).toBe(T0)
     expect(frontStageDeadline(T0, -5_000, 40)).toBe(T0)
+  })
+})
+
+/**
+ * 🔄 **선두 교대의 폴백** — `depth % 2` 하나로는 발화 못 하는 회차가 있다.
+ *
+ *   #885 는 "체인이 depth 2+ 로 돈다"를 전제로 홀수 라운드에 블로거를 앞세운다. 그런데 배포(13:38) 이후
+ *   **14:00 틱 실측이 `depth: 0`** 이었고 `naver { selected 12, tried 0 }` 은 그대로였다.
+ *   체인이 한 라운드에서 끊기면 depth 는 영원히 0 이고 `0 % 2 === 1` 은 항상 거짓이라, **교대가 한 번도
+ *   안 일어난다.** 전제가 깨지면 처방도 같이 죽는 형태다 — 그래서 깊이와 무관한 신호를 하나 더 둔다.
+ */
+describe('starvedLastRound — 깊이와 무관한 교대 신호', () => {
+  it('🔒 고를 사람은 있었는데 한 명도 못 쟀으면 굶은 것 — 라이브에서 반복해 찍힌 값', () => {
+    expect(starvedLastRound({ naver: { selected: 12, tried: 0 } })).toBe(true)
+    expect(starvedLastRound({ naver: { selected: 13, tried: 0 } })).toBe(true)
+  })
+
+  it('🔒 큐가 빈 것(selected 0)은 굶은 게 아니다 — 할 일 없는 레인에 선두를 주지 않는다', () => {
+    expect(starvedLastRound({ naver: { selected: 0, tried: 0 } })).toBe(false)
+  })
+
+  it('🔒 한 명이라도 쟀으면 정상 — 창을 다 썼어도 뒤집지 않는다', () => {
+    expect(starvedLastRound({ naver: { selected: 13, tried: 1 } })).toBe(false)
+    expect(starvedLastRound({ naver: { selected: 13, tried: 13 } })).toBe(false)
+  })
+
+  it('🔒 스냅샷이 없거나 깨졌으면 기존 순서 유지(첫 배포·유실에 안전)', () => {
+    for (const v of [null, undefined, {}, { naver: {} }]) expect(starvedLastRound(v as never)).toBe(false)
+  })
+})
+
+/**
+ * 🔌 배선 잠금 — 순수함수만 테스트하면 "함수는 있는데 부르는 곳이 없는" 사고를 못 잡는다
+ *   (같은 날 `isUnjudgedRound` 가 정확히 그랬다). 호출부를 소스로 확인한다.
+ */
+describe('배선 — 교대가 깊이와 굶주림 둘 다 본다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-enrich-lane.ts'), 'utf8')
+
+  it('🔒 두 신호를 OR 로 묶는다 — 어느 하나가 죽어도 교대가 산다', () => {
+    expect(src).toMatch(/const naverFirst = depth % 2 === 1 \|\| starvedLastRound\(prev\)/)
+  })
+
+  it('🔒 직전 스냅샷을 레인 시작 전에 읽는다 — 끝에서만 읽으면 선두 결정에 못 쓴다', () => {
+    expect(src.indexOf('const prev = await readSnapshot(DB)')).toBeLessThan(src.indexOf('const naverFirst ='))
   })
 })
