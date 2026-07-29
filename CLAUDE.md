@@ -33,7 +33,9 @@
 1. **한 서비스 작업 시 다른 서비스 파일/라우트/네임스페이스를 건드리지 말 것.** 예: 도매 정산 수정이 소비자 정산을, 도매 상품등록이 소비자 카탈로그를 바꾸면 안 됨.
 2. **공유 테이블은 구분 플래그로 격리** — `products.is_supply_product`(도매=1) · `sellers.is_distributor`(판매사=1). 한쪽 쿼리/변경이 반대쪽 행을 건드리지 않게 WHERE 에 항상 플래그 포함. 새 공유 컬럼 추가 금지(예산제 — `product_supply_meta` 사이드테이블).
 3. **"공구"는 둘 다 존재** — 도매에 B2B 발주가 있고 소비자엔 공동구매가 있음. 맥락(행위자/라우트/네임스페이스)으로 어느 쪽인지 먼저 확정. `community-group-buy`=소비자, `wholesale/orders`=도매.
-4. **크로스-서비스 변경이 정말 필요하면** 먼저 `AskUserQuestion` 으로 의도 확인 + 분리 위반 여부 명시.
+4. **크로스-서비스 변경이 정말 필요하면** — 착수 전 **세 줄만 보고하고 바로 진행**한다(2026-07-29 대표 확정 — 이전의 "`AskUserQuestion` 으로 승인 대기"를 **대체**. 매번 멈추지 말 것):
+   **(a) 어느 레일을 만지는가**(도매/소비자/양쪽 — 양쪽이면 파일·네임스페이스) · **(b) 머니 경로 접촉 여부**(결제·정산·적립·환불·원장 중 무엇, 없으면 "없음") · **(c) 롤백 방법**(게이트 OFF / revert / 블록 제거).
+   ⚠️ (b)가 "있음"이면 **단독 세션 + staging 실결제** 룰이 추가로 붙는다. 상세: `docs/design/pickup-groupbuy-wholesale-link.md` §7.2
 5. 자동 가드: `scripts/check-dashboard-api-crossrole.mjs`(역할별 API 네임스페이스 격리) — 이 분리의 일부를 결정론으로 강제.
 
 > ⚠️ 이 룰 위반 시: 한 서비스 버그픽스가 다른 서비스를 망가뜨림 + 대표가 "왜 도매 고쳤는데 공구가 깨졌어?" 반복.
@@ -397,6 +399,13 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
+> 🔴 **2026-07-29 무효 표기 (대표 지시)**: 아래 "확인된 사실(2026-07-28 실측)" 중 **이 토큰으로 조회에
+> 성공했다는 기록은 지금 유효하지 않다.** 2026-07-29 실측에서 `platform_settings.cf_api_token` 이
+> **`GET /user/tokens/verify` 자체를 실패**한다(`Authentication error` code 10000 — D1 권한 부족이 아니라
+> 토큰이 죽음). **재발급 예정이며 스코프는 D1 읽기 전용 최소**로 좁힌다(`docs/design/pickup-groupbuy-wholesale-link.md` §B.12).
+> ⇒ 이 절의 절차는 그대로 유효하지만, **"토큰은 살아 있다"를 전제하지 말고 `verify` 로 먼저 확인**할 것.
+> (아래 `usage_model` 정정과 같은 성격 — 낡은 실측을 믿고 오진한 사례가 반복됐다.)
+
 **확인된 사실(2026-07-28 실측 — 추측 대체)**:
 - ⚠️ **정정(2026-07-28 후속)**: 아래 "유료 → 1,000" 은 **틀렸다. 믿지 말 것.** `usage_model: standard` 는
   Workers **과금 모델**(bundled/unbound 세대 구분)이지 free/paid 구분이 아니다 — 무료 계정도 `standard` 로 나온다.
@@ -435,6 +444,23 @@ historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹
 (`apis.data.go.kr` · `open.neis.go.kr` 등 CONNECT 403). 공공 API 스펙 검증은 이 환경에서 직접 호출로 못 한다 →
 **라이브 워커의 `diag.error` 원문**(어드민 stats)이 사실상 유일한 ground truth. `data.go.kr` 문서 페이지는
 WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필요하다.
+
+## 🧪 규율은 문서가 아니라 테스트로 (2026-07-29 대표 지시 — "문서 기재로 끝내지 말 것")
+
+**규율 항목(지켜야 하는 불변식)을 발견하면 문서에 적는 것으로 끝내지 말 것.**
+**발견 즉시 "테스트로 환원 가능한가"를 먼저 판단하고, 가능하면 그 세션에 박는다.**
+
+판단 순서:
+1. **환원 가능한가?** — 레포 안에서 관측 가능한 사실로 표현되는가(파일 내용·발행 SQL·설정값·호출 그래프).
+2. **가능하면 그 세션에 작성** — 다음 세션으로 미루지 않는다. 미루면 문서만 남고 가드는 안 생긴다(실제로 반복됨).
+3. **부분만 가능하면 그 부분을 박고, 못 막는 범위를 테스트 주석에 명시** — "이 테스트가 못 막는 것"을 적어야
+   다음 세션이 가드를 과신하지 않는다.
+4. **반드시 깨뜨려서 확인** — 일부러 위반을 주입해 빨강이 뜨는지 본 뒤 복원. (가드가 헛도는 사고가 실제로 있었다.)
+
+> 예: *"ur-wholesale 에 cron 금지(정산 이중성숙)"* 는 머니 룰인데 **문서에만** 있었다(가드 0). 2026-07-29 에
+> `wholesale-invariants.test.ts` 로 환원 — 단, 실제 cron 은 **Cloudflare 대시보드**에 걸려 레포가 못 보므로
+> "레포 안에서 같은 사고를 만드는 경로"만 고정하고 그 한계를 주석에 적었다.
+
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:
@@ -443,7 +469,7 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 2. **RED·미보유 영역만 작업** — 게이트가 RED 면 그 가드가 가리키는 사이트만, `AUDIT_INVARIANTS.md` 의 "가드 미보유" 영역(결제 금액정확성·런타임 크래시·외부 PG 실응답)만 수동 감사.
 3. **새 불변식을 발견·확인하면 가드부터 만들어라**(애초에 없도록) → `audit-gate.sh` + `AUDIT_INVARIANTS.md` 갱신. 수동 감사 결과를 반복하지 말고 기계가 지키게 한다.
 
-> 현재 29개 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·배포). 상세: `docs/AUDIT_INVARIANTS.md`.
+> 현재 47개 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포). 상세: `docs/AUDIT_INVARIANTS.md`.
 
 > 🧪 **staging 검증 백로그 SSOT = `docs/STAGING_CHECKLIST.md`** (2026-07-05 신설). audit log 에 "staging 실결제 검증 필수"를 남길 때는 **같은 커밋에서 이 체크리스트에 항목(S#/P#) 추가** + 게이트 플래그면 `admin-system-monitoring.routes.ts` `OPS_GATES` 등록. 어드민 열람: `/admin/system-monitoring` "게이트·하트비트" 탭. cron 침묵·백업 무결성 관측: `cron-heartbeat.ts` + `/api/_healthcheck/cron` + `docs/BACKUP_RESTORE.md`.
 
@@ -1020,6 +1046,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 모달/시트가 하단 네비 뒤로 가려짐 | `check-modal-zindex.mjs` (warn) | `verify.yml` (strict) | 2026-06-26 대표 "이 문제 계속 발생 — 근본적으로". 풀스크린 오버레이(`fixed inset-0 z-[N]`)를 `z-[100]`(FAB 대) 등 네비(`z-[9999]`) 아래로 달아 하단 네비가 모달/바텀시트(공구권 등록 시트 등) 위를 덮어 버튼이 안 보임. 새 모달 추가마다 재발 → 표준 스케일(`src/constants/z-index.ts`: 모달 10500 / 시트 10600 / 토스트 20000 / 확인창 100000) 강제. 23개 일괄 교정 후 strict. 예외(네비 숨김 화면 전용 등) `modal-zindex-ok` 주석 + `pointer-events-none` 자동 제외 |
 | 대시보드 라우팅(다중역할/겸업 lock-out) | `check-seller-wholesale-redirect.mjs` (warn) | `verify.yml` (strict) | 2026-06-30 대표 신고 — `/seller` 들어가면 `/wholesale` 로 튕김. `SellerLayout` 이 `localStorage.is_distributor === '1'` 하나로 무조건 도매몰 redirect(마운트 effect + render 가드 2곳) → **소비자 셀러 + 판매사 겸업** 계정이 셀러 대시보드에서 영구 차단(기존 셀러가 `/become-distributor` 한 번만 해도 같은 셀러 행에 is_distributor=1 덧붙어 겸업이 됨). `is_distributor`=도매 *접근권*(capability)이지 도매 *전용*(exclusivity)이 아님(주석은 "겸업 영향 없음" 약속했으나 코드 미구현). **일반 룰(이 클래스 전체): 대시보드 레이아웃/페이지(`*Layout`·`*DashboardPage`·`Seller*`·`supplier-dashboard`)에서 가산 권한 플래그(`is_*`) 단독 게이트로 서비스간 redirect/`return null` 금지** — 셀러↔도매=서버 권위 `wholesale_only`(SSOT `computeWholesaleOnly`, 인증 `GET /api/seller/surface`), 또는 다중역할 보호 동반조건(`!loggedIn`/`!token`/단일역할 `role !==`). 게이트를 새 신호로 바꿔 기존 깨진 겸업 계정은 재로그인 없이 자동 치유. 예외 `seller-wholesale-redirect-ok`/`multi-role-redirect-ok` 주석 |
 | god 파일 재발(페이지/라우트 비대화) | `check-file-size.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-06-29 대표 "리팩토링 반복 말고 애초에 막아라". 페이지/라우트가 "일단 여기에 한 블록 더" 누적으로 god 파일(MyVouchersPage 1296·GroupBuyListPage 1309…) → 사후 대규모 분해 필요. **래칫**: 신규 파일 600줄 초과 차단 + 기존 대형 파일은 `scripts/file-size-baseline.json`(현재 82개 동결)보다 **커지면 차단**(줄이는 건 OK). 줄인 뒤 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. 분해법: 카드·모달·섹션·핸들러群을 같은이름 폴더(`foo-list/`)로 추출(GroupBuyListPage→`group-buy-list/` 9개, MyVouchersPage→`my-vouchers/` 7개 선례). 예외 `file-size-ok` 주석 / `[SKIP_SIZE]` |
+| DB 타임스탬프 KST 오표기(9시간 어긋남) | `check-utc-date-parse.mjs` (warn, 래칫) | `verify.yml` + audit-gate (strict) | 2026-07-27 어드민 '최근 활동' 전수조사 — D1 `CURRENT_TIMESTAMP`/`datetime('now')` 는 `'YYYY-MM-DD HH:MM:SS'`(UTC, **`Z` 없음**)라 브라우저 `new Date()` 는 **로컬(KST)로 오해석**하고, 워커(TZ=UTC)의 `.toLocaleString('ko-KR')` 은 **UTC 시각을 한국어로** 찍는다 → 어디서 보든 9시간 어긋남. 실사고 4건: 연속 주문 감지(`Math.abs(now-orderTime)<60000`)가 9h 차이로 **영구 미발동**(AdminPage) · 고객 **알림톡 주문일시** 9h 이름(alimtalk-auto) · 셀러 **주문 날짜필터** 경계 누락(SellerOrdersPage — date input 은 UTC 자정, created_at 은 로컬 오해석으로 규약 혼재) · **교환권 만료일 안내 메일**이 하루 이름(group-buy.routes). 같은 포맷터를 페이지마다 손으로 다시 짜는 중복(AdminInfluencerPoolPage 등)도 이 클래스. **SSOT = `src/utils/date.ts`** — `parseUTCDate`(UTC-naive/ISO-Z 양쪽 처리) · `formatKST`/`formatKSTDate`/`formatKSTTime`/`formatKSTShort` · 날짜 입력 경계는 `kstDayStartMs`/`kstDayEndMs`(서버 `DATE(created_at,'+9 hours')` 와 동일 규약). 옵션 객체를 유지해야 하면 `parseUTCDate(x).toLocaleString(loc, { timeZone: 'Asia/Seoul', ... })`. 규칙 A(어디서든 `new Date(x.created_at).toLocale*` 금지) + 규칙 B(pages/components/hooks 는 비교·정렬까지 금지 — 브라우저 TZ 에 따라 결과가 달라짐). 래칫 `scripts/utc-date-baseline.json`: 신규/증가만 차단(줄이는 건 OK, 정리 후 `--rebaseline`). **서버/워커측 잔여 0**, 클라 87건 동결 = 점진 정리 대상. 예외 `utc-date-ok` 주석 |
 | 블로그 시드 최신성(낡은 명칭/기능 재유입) | `check-blog-seed-currency.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-07-01 대표 신고 "블로그가 자동으로 안 고쳐짐". 소비자 블로그(`/blog`) 시드는 `blog.routes.ts` `blogSeedPosts()` + `BLOG_SEED_VERSION` 버전 재시드(관리자 수동편집=`manually_edited=1` 보존). 시드가 폐기 명칭(식사권/공구권/인플루언서/큐레이터)·영구중단 기능(라이브커머스/라이브방송/쇼츠)·도매몰(유통스타트/판매사/제조사) 내용으로 되돌아가면 라이브 블로그가 다시 낡아짐. **서비스 사실 바뀌면 시드 고치고 `BLOG_SEED_VERSION` +1**(안 올리면 라이브 미반영). 상세: 위 "📝 블로그 시드 자동 업데이트" 섹션. 예외 `blog-currency-ok` 주석 |
 
 | pagination NaN 크래시(비숫자 page/limit) | `check-pagination-nan.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-07-01 도매몰 라이브 전수조사 — `GET /api/wholesale/catalog?page=abc&limit=xyz` → **HTTP 500**. `Math.max(1, parseInt(q('page')\|\|'1',10))` 가 비숫자 query 에 `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN)` 크래시. 문자열 기본값('1')은 query *부재* 시에만 쓰여 NaN 을 못 막음(음수/거대값/빈값은 이미 200 정상 — **비숫자 문자열만** 500 → 봇/스크래퍼/오염 링크가 도매몰 메인 카탈로그·소비자 동네딜 등 목록을 크래시). 전 서비스 동일 클래스(도매·소비자·에이전시·어드민·셀러 100+ 라인) 일괄 수정. **규칙(강)**: request 의 page/limit/offset/days 등 정수 파싱은 **반드시 `intParam(raw, 기본값)`(`@/shared/pagination`) 경유** — NaN/부재→기본값, 0/음수는 보존해 호출부 `Math.max/Math.min` 클램프에 위임. 순진한 `parseInt(...) \|\| N` / `Number(x \|\| N)` 은 **0 을 삼켜** min-클램프(limit=0→1)를 깨고 inner/outer 폴백 혼동을 유발하므로 금지. ID 해석용 parseInt(numId 등)는 `isNaN` 가드 보유라 무관. 예외 `pagination-nan-ok` 주석 |

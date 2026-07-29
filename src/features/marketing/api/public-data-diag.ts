@@ -55,6 +55,30 @@ export async function describePublicDataFailure(res: Response | null, netMsg = '
   return `${head} — ${flat.slice(0, 180)}`
 }
 
+/**
+ * 🔑 서비스키 정규화 — **인코딩 키가 들어와도 이중 인코딩되지 않게** (2026-07-28).
+ *
+ *   data.go.kr 은 같은 키를 **인코딩(`%2B`·`%2F`·`%3D`)** 과 **디코딩(`+`·`/`·`=`)** 두 벌로 준다.
+ *   포털 화면도 *"Encoding/Decoding 된 인증키를 적용하면서 구동되는 키를 사용하라"* 고만 안내한다.
+ *   호출부는 `encodeURIComponent(key)` 를 하므로 **인코딩 키가 저장돼 있으면 두 번 인코딩되어 인증 실패**한다.
+ *
+ *   ⚠️ 그런데 Cloudflare 시크릿은 **쓰기 전용**이라 어느 쪽이 저장돼 있는지 **볼 수가 없다.**
+ *   ⇒ 알아낼 필요가 없게 만든다: 들어온 값을 한 번 디코드해 본 뒤 **항상 한 번만** 인코딩한다.
+ *   - 디코딩 키(`+/=`, `%` 없음)  → decode 는 no-op → 기존과 동일
+ *   - 인코딩 키(`%2B` 등)         → 원문으로 되돌린 뒤 한 번 인코딩 → 정상
+ *   어느 쪽을 넣든 같은 결과가 되므로 이 실패 클래스가 **구조적으로 사라진다.**
+ */
+export function serviceKeyParam(raw: string | undefined | null): string {
+  const k = String(raw || '')
+  if (!k) return ''
+  let base = k
+  if (/%[0-9A-Fa-f]{2}/.test(k)) {
+    // 퍼센트 시퀀스가 있으면 인코딩 키일 가능성 — 디코드해 본다(깨지면 원문 유지).
+    try { base = decodeURIComponent(k) } catch { base = k }
+  }
+  return encodeURIComponent(base)
+}
+
 /** 200 이지만 본문이 에러인 경우(포털은 200 + 에러코드를 자주 준다). 에러면 설명, 아니면 null. */
 export function describePublicDataBody(body: string): string | null {
   const code = findCode(body)

@@ -10,6 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
+import { serviceKeyParam } from './public-data-diag'
 
 const HIRA_BASE = 'https://apis.data.go.kr/B551182/hospInfoServicev2'
 const HIRA_OP = 'getHospBasisList'
@@ -97,7 +98,7 @@ export async function runHiraHospitalCollect(env: Env, maxPages = 3): Promise<Hi
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
-    const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=500&_type=json`
+    const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=500&_type=json`
     // ⚠️ 2026-07-28 수리: `.catch(() => null)` 이 예외 원문을 버려 32회 연속 실패가 전부 '네트워크 오류'
     //   한 줄로 뭉개졌다 — 서브리퀘스트 한도인지 실제 네트워크 장애인지 구분 불가(오진의 원인).
     let res: Response | null = null

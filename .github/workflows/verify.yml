@@ -404,6 +404,16 @@ jobs:
         run: STRICT_LINKSHOP_OWNERSHIP=1 node scripts/check-linkshop-ownership.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-27: UTC-naive DB 타임스탬프의 순진한 `new Date()` 파싱 — 9시간 어긋남 클래스.
+      #   D1 `CURRENT_TIMESTAMP`/`datetime('now')` 는 'YYYY-MM-DD HH:MM:SS'(UTC, Z 없음) →
+      #   브라우저는 로컬(KST)로 오해석, 워커는 `.toLocaleString('ko-KR')` 이 UTC 시각을 한국어로 표기.
+      #   실사고: 연속 주문 감지 영구 미발동 · 알림톡 주문일시 9h 이름 · 주문 날짜필터 경계 누락 ·
+      #   교환권 만료일 안내 하루 이름. SSOT = src/utils/date.ts (parseUTCDate/formatKST*/kstDay*Ms).
+      #   래칫(scripts/utc-date-baseline.json): 신규/증가만 차단, 잔여분은 점진 정리. 예외 `utc-date-ok`.
+      - name: UTC timestamp parse guard (strict)
+        run: STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").
       #   풀스크린 오버레이(fixed inset-0 z-[N])가 네비(9999)보다 낮은 z 면 네비가 덮음. 현재 위반 0 → strict.
       #   표준: 모달 10500 / 시트 10600 (src/constants/z-index.ts). 예외는 `modal-zindex-ok` 주석.
