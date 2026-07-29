@@ -46,7 +46,7 @@ function InviteSellerPanel({ sellerCount }: { sellerCount: number }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const agencyId = localStorage.getItem('agency_id')
-  const inviteUrl = `https://live.ur-team.com/seller/register?agency=${agencyId}`
+  const inviteUrl = `https://urdeal.kr/seller/register?agency=${agencyId}`
 
   const handleCopy = async () => {
     try {

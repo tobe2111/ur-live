@@ -19,13 +19,16 @@ function normalizeKakaoPhone(raw: string | undefined): string | null {
  * - 서비스 약관 조회
  */
 
-import type { 
-  KakaoTokenResponse, 
+import type {
+  KakaoTokenResponse,
   KakaoUserInfoResponse,
   KakaoServiceTermsResponse,
   KakaoUser,
-  User 
+  User
 } from '../types';
+// 🔗 2026-07-03 [UNLOCK_LOADING] 링크샵 핸들 즉시 발급 SSOT — worker util 상대경로 import.
+//   (worker 컨텍스트 실행이라 @/ alias 금지 — CLAUDE.md '배포 관련 절대 하지 말 것')
+import { generateUniqueHandle } from '../../../worker/utils/handle-generator';
 
 export class KakaoAuthService {
   private readonly KAKAO_AUTH_URL = 'https://kauth.kakao.com';
@@ -325,6 +328,10 @@ export class KakaoAuthService {
           //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
           //   → 현재 값이 비었거나 카카오 CDN 출처일 때만 갱신(카카오 아바타 변경은 계속 동기화),
           //   커스텀 업로드는 보존. phone 의 COALESCE 보존 패턴과 동일 사상.
+          // 🛡️ 2026-07-12 (가입·탈퇴 감사 A): email 을 COALESCE(?, email) 로 보존 —
+          //   기존엔 매 로그인 email = ? 라 사용자가 카카오 이메일 동의를 **철회**하면
+          //   (kakaoUser.email=null) 기존 email 이 NULL 로 덮여 사라졌음(phone 은 이미 COALESCE 보존).
+          //   이메일을 실제로 바꾼 경우(non-null)는 그대로 갱신되므로 동기화는 유지.
           // 🛡️ 2026-06-24 (속도 최적화): email_verified 를 이 UPDATE 에 합침 — 기존엔
           //   아래에서 별도 UPDATE 1회를 더 날려 로그인마다 D1 왕복이 1번 더 들었음.
           //   기존 유저는 여기서 한 번에 갱신, 신규 유저만 INSERT 후 별도 UPDATE(아래 isNewUser 분기).
@@ -333,7 +340,7 @@ export class KakaoAuthService {
           await this.db.prepare(`
             UPDATE users
             SET name = ?,
-                email = ?,
+                email = COALESCE(?, email),
                 profile_image = CASE
                   WHEN profile_image IS NULL OR profile_image = ''
                        OR profile_image LIKE '%kakaocdn.net%' OR profile_image LIKE '%kakao.com%'
@@ -358,7 +365,7 @@ export class KakaoAuthService {
             await this.db.prepare(`
               UPDATE users
               SET name = ?,
-                  email = ?,
+                  email = COALESCE(?, email),
                   updated_at = datetime('now')
               WHERE id = ?
             `).bind(
@@ -461,6 +468,19 @@ export class KakaoAuthService {
           await this.db.prepare(`UPDATE users SET email_verified = ? WHERE id = ?`)
             .bind(kakaoUser.emailVerified === true ? 1 : 0, userId).run();
         } catch { /* 컬럼 미존재 — 비치명적, repair-schema 가 컬럼 추가 */ }
+
+        // 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 웨지 전환 깔때기 P0):
+        //   가입 즉시 링크샵 핸들(/u/{handle}) 발급. 기존엔 첫 핀/큐레이터 접속 때 lazy 생성이라
+        //   (curator.routes.ts:409·793) 대다수 신규 유저가 handle-less 상태 → "당신은 이미 쇼핑몰이
+        //   있어요" 자산이 구매 넛지 시점에 준비 안 됨. 신규 유저는 handle 이 확정적으로 NULL 이므로
+        //   조회 왕복 없이 UPDATE 1회로 즉시 배선(generateUniqueHandle 내부 UNIQUE 검사는 발급당 1회).
+        //   best-effort: 실패해도 로그인 비차단 — 레거시/실패분은 기존 lazy backfill(curator.routes)이 커버.
+        //   handle 컬럼/생성 로직은 SSOT(handle-generator.ts) 재사용 — 여기선 호출만.
+        try {
+          const handle = await generateUniqueHandle(this.db, kakaoUser.name, undefined, userId);
+          await this.db.prepare(`UPDATE users SET handle = ? WHERE id = ? AND (handle IS NULL OR handle = '')`)
+            .bind(handle, userId).run();
+        } catch { /* handle 컬럼 미존재/생성 실패 — 비치명적, lazy backfill 로 재시도됨 */ }
       }
 
       // 사용자 정보 다시 조회하여 반환.

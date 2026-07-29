@@ -69,8 +69,9 @@ describe('point-ledger: adjustUserPoints', () => {
     expect(up[0].args).toEqual(['u1', 1000, 0]) // bumpTotalCharged 미지정 → total_charged 0
     const led = ledgerInserts(db)
     expect(led).toHaveLength(1)
-    // (user_id, type, amount, [subquery user_id], description, order_id)
-    expect(led[0].args).toEqual(['u1', 'invite_reward', 1000, 'u1', '보상', '77'])
+    // (user_id, type, amount, [subquery user_id], description, order_id, free_delta)
+    // 💸 2026-07-05 유상/무상 버킷: 장부에 free_delta 추가 — bucket 미지정(paid) 적립은 0.
+    expect(led[0].args).toEqual(['u1', 'invite_reward', 1000, 'u1', '보상', '77', 0])
   })
 
   it('bumpTotalCharged — total_charged 도 delta 만큼', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,8 @@ import { CheckCircle, Package, AlertCircle } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
+// 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (자기완결 — 결제 로직과 분리)
+import SellerConversionNudge from './payment-success/SellerConversionNudge'
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -277,15 +280,7 @@ export default function PaymentSuccessPage() {
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료
-      // 🛡️ 2026-05-13 (Phase A): 라이브에서 진입한 결제면 5초 카운트다운 후 자동 라이브 복귀.
-      //   시청 유지 + FOMO 자극. 사용자 명시적 취소 가능.
-      const lastLiveId = localStorage.getItem('lastViewedLiveId')
-      const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
-      const isFromLive = lastLiveId && lastViewedAt && (Date.now() - parseInt(lastViewedAt, 10)) < 600_000  // 10분 이내
-      if (isFromLive && lastLiveId) {
-        autoReturnTargetRef.current = `/live/${lastLiveId}`
-        setAutoReturnSec(5)
-      }
+      // 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 카운트다운 삭제.
     }
   }
 
@@ -301,20 +296,13 @@ export default function PaymentSuccessPage() {
     return () => clearTimeout(t)
   }, [autoReturnSec, navigate])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-[#6e6e73] dark:text-gray-400 font-medium">{t('paymentSuccess.approving')}</p>
-        </div>
-      </div>
-    )
-  }
+  // 🎯 2026-07-18 [UNLOCK] 로딩 단일화(대표 승인 "통일해") — loading=true 동안의 스피너를 유어딜 BrandLoader 로.
+  //   ⚠️ 결제 확정/금액검증/TossPaymentObject(receipt/cashReceipt/easyPay/card) 표시 로직은 loading=false 이후라 전부 byte-불변.
+  if (loading) return <BrandLoader fullScreen label={t('paymentSuccess.approving')} />
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
@@ -322,7 +310,7 @@ export default function PaymentSuccessPage() {
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] text-[#1d1d1f] dark:text-white"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] text-[#1d1d1f] dark:text-white"
             >
               다시 시도
             </Button>
@@ -339,10 +327,10 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A3446]">
           {/* 성공 아이콘 */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-3 sm:mb-4">
@@ -387,7 +375,7 @@ export default function PaymentSuccessPage() {
           {/* 주문 정보 */}
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1A1A] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+              <div className="bg-[#f5f5f7] dark:bg-[#1A2334] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
@@ -436,7 +424,7 @@ export default function PaymentSuccessPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
+                  <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A3446]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
                     <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                       {formatNumber(parseInt(amount || '0'))}원
@@ -460,7 +448,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.receipt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -478,7 +466,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.cashReceipt.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1A1A] hover:bg-[#e8e8ed] dark:hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1A2334] hover:bg-[#e8e8ed] dark:hover:bg-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -500,7 +488,7 @@ export default function PaymentSuccessPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-gray-300 leading-relaxed">
                     주문이 정상적으로 완료되었습니다. 배송 현황은 주문 내역에서 확인하실 수 있습니다.
                   </p>
@@ -509,13 +497,20 @@ export default function PaymentSuccessPage() {
             </div>
           )}
 
+          {/* 🔗 2026-07-03 [UNLOCK] (대표 승인 "1~4번 전부, 가장 이상적으로" — 웨지 전환 깔때기 P0):
+                구매 직후(가장 뜨거운 순간) 셀러 전환 넛지. 기존 전환 CTA 는 마이/링크샵 소유자뷰에만
+                있어 이미 관심 있는 사람만 봄(self-selection). 방금 산 소비자에게 "당신도 팔 수 있어요"를
+                제시해 로컬딜 미끼 → 링크샵 D2C 로 잇는다. 자기완결 컴포넌트라 결제 승인/금액검증/표시
+                로직 전부 byte-불변(additive only). 셀러(seller_token 보유)·데모·닫음 사용자에겐 미노출. */}
+          {orderInfo && orderInfo.status !== 'demo' && <SellerConversionNudge />}
+
           {/* 액션 버튼 */}
           <div className="mt-5 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             {orderInfo?.status === 'demo' ? (
               <>
                 <Button
                   onClick={() => navigate('/payment/demo')}
-                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A3446] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   다시 테스트하기
                 </Button>
@@ -530,35 +525,23 @@ export default function PaymentSuccessPage() {
               <>
                 <Button
                   onClick={() => navigate('/my-orders')}
-                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] dark:bg-[#2A3446] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   주문 내역 보기
                 </Button>
+                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속. */}
                 <Button
-                  onClick={() => {
-                    // ✅ UX M20 FIX: 1시간 이상 경과한 lastViewedLiveId는 stale로 간주하여 홈으로 이동
-                    setAutoReturnSec(null)  // 카운트다운 취소
-                    const lastLiveId = localStorage.getItem('lastViewedLiveId')
-                    const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
-                    const isStale = !lastViewedAt || (Date.now() - parseInt(lastViewedAt, 10)) > 3600000
-                    if (lastLiveId && !isStale) {
-                      navigate(`/live/${lastLiveId}`)
-                    } else {
-                      navigate('/')
-                    }
-                  }}
+                  onClick={() => navigate('/')}
                   className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
-                  {autoReturnSec !== null && autoReturnSec > 0
-                    ? `라이브 복귀 (${autoReturnSec}초)`
-                    : '쇼핑 계속하기'}
+                  쇼핑 계속하기
                 </Button>
               </>
             )}
           </div>
 
           {/* 고객센터 정보 */}
-          <div className="mt-5 sm:mt-6 lg:mt-8 pt-5 sm:pt-6 border-t border-[#e5e5e7] dark:border-[#2A2A2A] text-center">
+          <div className="mt-5 sm:mt-6 lg:mt-8 pt-5 sm:pt-6 border-t border-[#e5e5e7] dark:border-[#2A3446] text-center">
             <p className="text-xs sm:text-sm text-[#86868b] dark:text-gray-500 mb-2">
               궁금한 점이 있으신가요?
             </p>

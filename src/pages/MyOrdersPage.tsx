@@ -30,14 +30,14 @@ function OrdersSkeleton() {
   return (
     <div className="space-y-4 animate-pulse" aria-hidden="true">
       <div className="h-11 rounded-xl bg-gray-100 dark:bg-[#161616]" />
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#1A1A1A] pb-2.5">
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2A3446] pb-2.5">
         {[40, 32, 44, 32].map((w, i) => (
           <div key={i} className="h-4 rounded bg-gray-100 dark:bg-[#161616]" style={{ width: w }} />
         ))}
       </div>
       <div className="space-y-3">
         {[0, 1, 2].map(i => (
-          <div key={i} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
+          <div key={i} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] p-4">
             <div className="h-3 w-16 rounded bg-gray-100 dark:bg-[#161616] mb-3" />
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#161616] shrink-0" />
@@ -47,7 +47,7 @@ function OrdersSkeleton() {
                 <div className="h-3.5 w-1/4 rounded bg-gray-100 dark:bg-[#161616]" />
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between">
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2A3446] flex justify-between">
               <div className="h-5 w-20 rounded bg-gray-100 dark:bg-[#161616]" />
               <div className="h-5 w-24 rounded bg-gray-100 dark:bg-[#161616]" />
             </div>
@@ -216,11 +216,11 @@ export default function MyOrdersPage() {
   // 🛡️ 2026-05-28 (사용자 요청 A): 헤더/레이아웃을 CartPage(/cart) 와 동일한 쇼핑 페이지 표준
   //   스타일로 통일 — 화이트 테마 + 스티키 헤더(뒤로가기 + 가운데 제목). Wallet/LargeTitle chrome 제거.
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-safe-nav md:pb-20">
       <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
 
       {/* 헤더 — 무신사 스타일: 뒤로가기 + 좌측 large title */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center gap-1 px-4 py-3">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
@@ -240,7 +240,7 @@ export default function MyOrdersPage() {
               className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                 statusFilter === f.key
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                  : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
+                  : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446]'
               }`}
             >
               {f.label}

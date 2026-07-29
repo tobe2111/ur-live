@@ -212,7 +212,7 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     return typeof v === 'string' ? v.trim().length > 0 : v != null
   }
 
-  const SPEC: Array<{ key: string; group: 'blocking' | 'security' | 'perf' | 'payments' | 'optional'; note: string }> = [
+  const SPEC: Array<{ key: string; group: 'blocking' | 'security' | 'perf' | 'payments' | 'optional' | 'infra'; note: string }> = [
     // 대시보드/서비스 자체를 게이트 — 없으면 전 운영자 영향.
     { key: 'JWT_SECRET', group: 'blocking', note: '모든 대시보드 로그인(어드민/셀러/제조사/판매사/에이전시). 없으면 로그인 500.' },
     { key: 'FRONTEND_URL', group: 'blocking', note: 'OAuth 콜백/리다이렉트 베이스 URL.' },
@@ -224,13 +224,24 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     // 성능 — degraded.
     { key: 'SESSION_KV', group: 'perf', note: '세션/카운트 캐시. 없으면 동작하나 D1 부하.' },
     { key: 'CACHE_KV', group: 'perf', note: '전역 public API 캐시. 없으면 edge 캐시만(region cold 시 D1 hit).' },
+    // 🆕 2026-07-01 (Cloudflare 전수조사): 인프라 바인딩 — R2 버킷/Durable Objects/분석 KV.
+    //   wrangler.toml 에 주석 처리돼 Dashboard 수동 바인딩에 의존 → 리포지토리로 검증 불가하던 것을 가시화.
+    { key: 'MEDIA_BUCKET', group: 'infra', note: '이미지 업로드 R2 버킷. 없으면 업로드 503(dataURI 폴백 없음).' },
+    { key: 'BACKUP_BUCKET', group: 'infra', note: '주간 D1 백업 R2 버킷. 없으면 자동 백업 미동작(재해복구 0).' },
+    { key: 'ANALYTICS_KV', group: 'infra', note: '분석(웹바이탈/퍼널) 전용 KV. 없으면 분석 write skip(무해, SESSION_KV 잠식 안 함).' },
+    { key: 'PUBLIC_R2_URL', group: 'infra', note: 'R2 커스텀 도메인(media.ur-team.com). 없으면 /api/media 워커 서빙(요청당 워커 과금).' },
+    { key: 'LIVE_STREAM', group: 'infra', note: '라이브 채팅 Durable Object 바인딩.' },
+    { key: 'RATE_LIMITER', group: 'infra', note: '글로벌 rate-limit Durable Object 바인딩(미바인딩 시 in-memory 폴백).' },
     // 소비자 결제 — 도매몰 무관.
     { key: 'TOSS_SECRET_KEY', group: 'payments', note: '소비자 결제 승인/취소.' },
     { key: 'TOSS_CLIENT_KEY', group: 'payments', note: '소비자 결제 위젯.' },
     { key: 'TOSS_WEBHOOK_SECRET', group: 'payments', note: '결제 webhook 시그니처 검증.' },
     // 선택 기능 — fail-soft.
     { key: 'KAKAO_REST_API_KEY', group: 'optional', note: '소비자 카카오 로그인(대시보드 무관).' },
-    { key: 'ALIGO_API_KEY', group: 'optional', note: '알림톡 발송.' },
+    // 알림톡은 3종(API키+userid+발신프로필키)이 모두 있어야 발송(sendSystemAlimtalk 게이트). 하나라도 없으면 silent skip.
+    { key: 'ALIGO_API_KEY', group: 'optional', note: '알림톡 발송 — Aligo API 키. (userid·발신프로필키와 3종 세트, 하나만 빠져도 발송 0)' },
+    { key: 'ALIGO_USER_ID', group: 'optional', note: '알림톡 발송 — Aligo 계정 아이디.' },
+    { key: 'ALIGO_SENDER_KEY', group: 'optional', note: '알림톡 발송 — 카카오 발신프로필키(senderkey). 채널 등록 시 발급.' },
     { key: 'NAVER_SEARCH_CLIENT_ID', group: 'optional', note: '제조사 시중최저가 대조.' },
     { key: 'UCANSIGN_API_KEY', group: 'optional', note: '전자계약 자동발송.' },
     { key: 'ANTHROPIC_API_KEY', group: 'optional', note: '유어애즈 AI마케터/리뷰생성.' },
@@ -245,6 +256,7 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
 
   const blockingMissing = results.filter((r) => r.group === 'blocking' && !r.present).map((r) => r.key)
   const securityMissing = results.filter((r) => r.group === 'security' && !r.present).map((r) => r.key)
+  const infraMissing = results.filter((r) => r.group === 'infra' && !r.present).map((r) => r.key)
   const ready = dbOk && blockingMissing.length === 0
 
   const groups: Record<string, Array<{ key: string; present: boolean; note: string }>> = {}
@@ -256,6 +268,7 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     summary: {
       blocking_missing: blockingMissing,   // 비어야 함 — 있으면 로그인 자체가 깨짐
       security_missing: securityMissing,   // 비어야 안전 — 있으면 fail-open(동작은 함)
+      infra_missing: infraMissing,         // Cloudflare 인프라 바인딩(R2/DO/분석KV) — 있으면 백업/업로드/비용 영향
     },
     groups,
     environment: c.env.ENVIRONMENT ?? 'unknown',

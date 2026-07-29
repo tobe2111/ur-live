@@ -7,6 +7,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { tracedEndpoint } from '../utils/request-tracing';
@@ -263,7 +264,20 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         }, 400);
       }
 
-      // 🛡️ 옵션 처리 — option_id 있으면 소유권 검증 + 서버 price_adjustment + 옵션 재고 체크.
+      // 🎯 2026-07-04 (FCFS 당첨자 전용 결제 게이트 — fcfs-gate.ts): 추첨(체험단) 상품은
+      //   당첨자만 주문 가능. 비-FCFS 상품은 메타 1조회 후 통과(fail-open — 소프트 접근제어).
+      {
+        const { checkFcfsPurchasable } = await import('../utils/fcfs-gate');
+        const fcfsGate = await checkFcfsPurchasable(c.env.DB, Number(product.id), userId);
+        if (!fcfsGate.ok) {
+          return c.json({ success: false, error: `"${product.name}" — ${fcfsGate.error}`, code: fcfsGate.code }, 403);
+        }
+      }
+
+      // 🛡️ 옵션 처리 — option_id 가 오면 소유권 검증 + **서버 권위 price_adjustment** + 옵션 재고 체크.
+      //   그동안 클라(ProductDetailPage:262 · 장바구니)는 option_id 를 보냈고 상세 API 는
+      //   price_adjustment 를 내려줬는데, 여기서는 `product.price * quantity` 로만 계산해
+      //   **유료 옵션 추가금이 한 번도 청구되지 않았다**(옵션 재고도 안 봤다).
       const optId = reqItem.option_id != null ? Number(reqItem.option_id) : null;
       let priceAdjustment = 0;
       let optionValue: string | null = null;
@@ -429,19 +443,39 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
             const cap = computeCouponDiscount(coupon, discountBase);
             const claimed = Math.min(clientCoupon, cap);
             if (claimed > 0) {
-              // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+              // 🛡️ 2026-07-11 (pre-launch audit R6 — 한정수량 쿠폰 초과발급): 게이트를 원자
+              //   UPDATE 로 '선행' + meta.changes 검사(머니룰 #1). 이전: coupon_uses INSERT 가
+              //   먼저 + used_count 증가 결과 미검사 → 동시 사용자 N명이 soldOut 사전검사(stale
+              //   SELECT)를 함께 통과하면 total_count 초과 발급. changes==0 = 소진 → 쿠폰 미적용
+              //   (주문은 할인 없이 진행). NULL/0 total_count = 무제한(기존 soldOut 판정과 정합).
+              //   할인 금액 계산(claimed/cap)은 무변경 — 발급 가능 여부 게이트만 원자화.
               try {
-                const ins = await c.env.DB.prepare(
-                  'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
-                ).bind(couponIdNum, userId, claimed).run();
-                if ((ins.meta?.changes ?? 0) > 0) {
-                  couponDiscount = claimed;
-                  couponConsumed = true;
-                  await c.env.DB.prepare(
-                    'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
-                  ).bind(couponIdNum).run().catch(() => {});
+                const gate = await c.env.DB.prepare(
+                  'UPDATE coupons SET used_count = COALESCE(used_count, 0) + 1 WHERE id = ? AND (total_count IS NULL OR total_count = 0 OR COALESCE(used_count, 0) < total_count)'
+                ).bind(couponIdNum).run();
+                if ((gate.meta?.changes ?? 0) > 0) {
+                  // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+                  try {
+                    const ins = await c.env.DB.prepare(
+                      'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
+                    ).bind(couponIdNum, userId, claimed).run();
+                    if ((ins.meta?.changes ?? 0) > 0) {
+                      couponDiscount = claimed;
+                      couponConsumed = true;
+                    } else {
+                      // 소비 미발생 → 게이트 증가분 보상 복원 (used_count 과대계상 방지, 원자 감소)
+                      await c.env.DB.prepare(
+                        'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                      ).bind(couponIdNum).run().catch(() => {});
+                    }
+                  } catch {
+                    // UNIQUE 위반 = 이미 사용 → 게이트 증가분 보상 복원 + couponDiscount 0 (할인 없음)
+                    await c.env.DB.prepare(
+                      'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                    ).bind(couponIdNum).run().catch(() => {});
+                  }
                 }
-              } catch { /* UNIQUE 위반 = 이미 사용 → couponDiscount 0 (할인 없음) */ }
+              } catch { /* 게이트 실패 → couponDiscount 0 (할인 없음, 주문 차단 안 함) */ }
             }
           }
         }
@@ -584,7 +618,21 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // 제휴 마케팅 수수료 추적 (ref 파라미터)
-    const referrerId = body.referrer_id || body.ref
+    // 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): body 에 ref 가 없을 때만 `affiliate_ref` 쿠키를
+    //   fallback 으로 읽음 — 클라 localStorage 가 유실돼도(인앱 브라우저 → 외부 브라우저 재방문 등)
+    //   affiliate-track.ts 가 심은 SameSite=Lax 쿠키는 이미 서버로 전송되고 있었는데 안 읽고 있었음.
+    //   검증은 클라(storeAffiliateRef :14)와 동일: 숫자 1~12자리 + 본인(user_id) 구매 skip.
+    //   ⚠️ body 에 referrer_id/ref 가 있으면 기존과 byte-동일(순수 additive fallback SOURCE).
+    //   커미션 계산/적립 로직(affiliate-credit.ts 등)은 무변경 — intent 저장 입력값만 보강.
+    let referrerId = body.referrer_id || body.ref
+    if (!referrerId) {
+      try {
+        const cookieRef = getCookie(c, 'affiliate_ref')
+        if (cookieRef && /^\d{1,12}$/.test(cookieRef) && cookieRef !== String(userId)) {
+          referrerId = cookieRef
+        }
+      } catch { /* 쿠키 파싱 실패 — fallback 없이 기존 동작 */ }
+    }
     if (referrerId && referrerId !== String(userId)) {
       // 🏁 2026-06-12 (전 플로우 감사 🔴): 기존 내부 fetch('/api/affiliate/track') 는
       //   ① 인증 헤더 없음 → requireAuth 401 ② 주문이 아직 PENDING → 상태검사 차단 — 이중 사망으로
@@ -892,12 +940,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
         dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (refundAmount / totalAmt))); // 혼합 — 현금 환불비율만큼 딜 비례
       }
       if (dealRefund > 0) {
-        await c.env.DB.prepare(
-          'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-        ).bind(dealRefund, String(order.user_id)).run();
-        await c.env.DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT — 원장 order_id 역산).
+        const { refundDealPoints } = await import('../utils/point-buckets');
+        await refundDealPoints(c.env.DB, {
+          userId: String(order.user_id),
+          amount: dealRefund,
+          ref: [(order as any).order_number || null, String(order.id ?? body.order_id)],
+          type: 'refund',
+          description: `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`,
+        });
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
@@ -1033,8 +1084,15 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
           return c.json({ success: false, error: '취소 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
         }
         try {
-          await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(refundPoints, String(order.user_id)).run();
-          await c.env.DB.prepare("INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)").bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 부분취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-deal-partial'));
+          // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+          const { refundDealPoints } = await import('../utils/point-buckets');
+          await refundDealPoints(c.env.DB, {
+            userId: String(order.user_id),
+            amount: refundPoints,
+            ref: [order.order_number, String(orderId)],
+            type: 'refund',
+            description: `[환불] 주문 부분취소 (order:${order.order_number})`,
+          });
         } catch (e) { console.error('[ORDERS] deal partial refund error:', e); }
         createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-partial'));
         return c.json({ success: true, message: '부분 취소되어 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
@@ -1116,11 +1174,15 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         if (dealUsedTotal > 0 && totalAmt > 0 && partialCancelAmt > 0) {
           const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (partialCancelAmt / totalAmt)));
           if (dealRefund > 0) {
-            await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(dealRefund, String(order.user_id)).run();
-            await c.env.DB.prepare(
-              "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-            ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 혼합결제 딜분 부분환급 (order:${order.order_number})`).run().catch(swallow('order:point-tx-mixed-cancel'));
-            await c.env.DB.prepare('UPDATE orders SET deal_used = MAX(0, COALESCE(deal_used,0) - ?) WHERE id = ?').bind(dealRefund, orderId).run().catch(swallow('order:deal-used-dec'));
+            // 💸 2026-07-05 버킷: 혼합결제 딜 차감(원장 order_id=orders.id)의 무상분 무상 복원 (refundDealPoints SSOT).
+            const { refundDealPoints } = await import('../utils/point-buckets');
+            await refundDealPoints(c.env.DB, {
+              userId: String(order.user_id),
+              amount: dealRefund,
+              ref: [String(orderId), order.order_number],
+              type: 'refund',
+              description: `[환불] 혼합결제 딜분 환급 (order:${order.order_number})`,
+            });
           }
         }
       } catch (e) {

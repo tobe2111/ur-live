@@ -240,7 +240,7 @@ export async function getValidAccessToken(
  */
 app.get('/auth-url', async (c) => {
   const clientId = c.env.YOUTUBE_CLIENT_ID
-  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback'
+  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://urdeal.kr/seller/youtube/callback'
 
   if (!clientId) {
     return c.json({
@@ -307,7 +307,7 @@ app.post('/oauth/callback', async (c) => {
 
   const clientId = c.env.YOUTUBE_CLIENT_ID
   const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
-  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback'
+  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://urdeal.kr/seller/youtube/callback'
 
   if (!clientId || !clientSecret) {
     return c.json({

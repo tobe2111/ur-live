@@ -1,9 +1,10 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 참여완료 카카오 공유 모달(verbatim 추출). 동작 불변.
 import { toast } from '@/hooks/useToast'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 export default function PostJoinShareModal({ data, onClose }: { data: { product_id: number; name: string; image_url?: string }; onClose: () => void }) {
   const userId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
-  const shareUrl = `https://live.ur-team.com/group-buy/${data.product_id}${userId ? `?ref=${userId}` : ''}`
+  const shareUrl = `https://urdeal.kr/group-buy/${data.product_id}${userId ? `?ref=${userId}` : ''}`
 
   async function shareToKakao() {
     try {
@@ -14,7 +15,7 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
         content: {
           title: `${data.name} 공구 함께해요!`,
           description: '친구 가입 시 양쪽 0.5% 보너스 딜 🎁',
-          imageUrl: data.image_url || `https://live.ur-team.com/api/og/group-buy/${data.product_id}`,
+          imageUrl: data.image_url || `https://urdeal.kr/api/og/group-buy/${data.product_id}`,
           link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
         },
         buttons: [{ title: '나도 참여하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
@@ -27,14 +28,14 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-white dark:bg-[#0F151D] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="text-center mb-4">
           <p className="text-3xl mb-2">🎉</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">참여 완료!</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-gray-900 dark:text-white">0.5% 보너스 딜</span></p>
         </div>
         {data.image_url && (
-          <img src={data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" />
+          <img src={cfImage(data.image_url, { width: 800, quality: 82, format: 'auto' }) || data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, data.image_url)} />
         )}
         <p className="text-sm font-bold text-center text-gray-900 dark:text-white mb-4">{data.name}</p>
         <button

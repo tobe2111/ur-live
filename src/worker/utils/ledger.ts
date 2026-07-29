@@ -31,7 +31,7 @@ interface LedgerEntry {
 
 let DDL_DONE = false
 
-async function ensureLedgerTable(DB: D1Database): Promise<void> {
+export async function ensureLedgerTable(DB: D1Database): Promise<void> {
   if (_done_ensureLedgerTable.has(DB)) return
   _done_ensureLedgerTable.add(DB)
   if (DDL_DONE) return
@@ -230,6 +230,24 @@ export async function recordAgencyCommissionShare(
     return { agency_id: null, amount: 0 }
   }
 
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정 — commission-funding-restructure.md):
+  //   같은 구매에 결제확정 시 GMV 커미션(agency_store_intro_commissions sales_commission, 아비터 캡 대상)이
+  //   이미 적립됐으면 이 사용시점 셰어(platform_fee 30%)는 **skip** — 두 시스템이 같은 에이전시에
+  //   같은 주문으로 이중 적립(최대 GMV 3.5% > 플랫폼 수수료)하던 구조적 누수 차단.
+  //   확정 커미션이 없을 때(영입 시점이 구매 후 등)만 이 레거시 셰어가 단독 지급(단일-지급 보장).
+  try {
+    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM agency_store_intro_commissions
+          WHERE order_id = ? AND agency_id = ? AND type = 'sales_commission'
+            AND COALESCE(status, 'pending') != 'cancelled' LIMIT 1`,
+      ).bind(v.order_id, seller.introduced_by_agency_id).first().catch(() => null)
+      if (dup) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
+
   // 분배 비율 (platform_settings)
   let sharePct = 0.30  // default 30%
   try {
@@ -361,6 +379,28 @@ export async function recordIntroductionCommissionShare(
     return { influencer_id: null, amount: 0 }
   }
 
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정): 같은 구매에 결제확정 시 영입 커미션
+  //   (influencer_attributions source='store_intro', 아비터 캡 대상)이 이미 적립됐으면 이 사용시점
+  //   셰어(platform_fee 20%)는 skip — 같은 크리에이터에 같은 주문 이중 적립(GMV 2.5%) 차단.
+  // 🛡️ 2026-07-12 (§0-2 본인구매 가드 — 대표 [UNLOCK]): 이용권 구매자==영입 인플이면 skip —
+  //   영입자가 자기 영입 매장 이용권을 사서 쓰면 platform_fee 20% 를 스스로 수령하던 자가 루프 차단
+  //   (store-intro-commission.ts 의 결제시점 가드와 짝 — 이 함수는 사용시점 레일).
+  try {
+    const v = await DB.prepare('SELECT order_id, user_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null; user_id: string | number | null }>().catch(() => null)
+    if (v?.user_id != null && String(v.user_id) === String(seller.introduced_by_influencer_id)) {
+      return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    }
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM influencer_attributions
+          WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
+            AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
+      ).bind(v.order_id, String(seller.introduced_by_influencer_id)).first().catch(() => null)
+      if (dup) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
+
   // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
   let sharePct = 0.20
   try {
@@ -420,6 +460,8 @@ export async function recordRefundLedger(
     metadata: { reason: params.reason, voucher_id: params.voucher_id },
   })
 }
+
+// 💸 owner-promo 원장 차감/역전(debitOwnerPromoForOrder/reverseOwnerPromoDebit)은 ./owner-promo.ts 로 추출(2026-07-12 file-size 래칫 — 본문 byte-동일).
 
 /**
  * 순 receivable (지급 이력 제외) = (credit − fee_amount) − debit.

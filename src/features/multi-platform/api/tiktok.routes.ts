@@ -70,7 +70,7 @@ app.get('/auth-url', requireAuth(), async (c) => {
     })
   }
 
-  const redirectUri = `${env.FRONTEND_URL || 'https://live.ur-team.com'}/seller/tiktok-callback`
+  const redirectUri = `${env.FRONTEND_URL || 'https://urdeal.kr'}/seller/tiktok-callback`
   const url = new URL(TIKTOK_AUTH_URL)
   url.searchParams.set('client_key', env.TIKTOK_CLIENT_KEY)
   url.searchParams.set('scope', SCOPES)
@@ -106,7 +106,7 @@ app.post('/callback', requireAuth(), async (c) => {
     await (env as any).RATE_LIMIT_KV.delete(`tiktok-state:${body.state}`).catch(swallow('multi-platform:api:tiktok'))
   }
 
-  const redirectUri = `${env.FRONTEND_URL || 'https://live.ur-team.com'}/seller/tiktok-callback`
+  const redirectUri = `${env.FRONTEND_URL || 'https://urdeal.kr'}/seller/tiktok-callback`
 
   // 1. code → access_token 교환
   let tokenData: any

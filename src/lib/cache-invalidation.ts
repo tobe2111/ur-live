@@ -6,14 +6,14 @@
  * - 라이브 상태 변경 → 라이브 목록 캐시 삭제
  * - 상품 생성/수정/삭제 → 관련 캐시 삭제
  *
- * 🛡️ 2026-05-12: live.ur-team.com 외 ur-live.pages.dev / 프리뷰 도메인도 동시 무효화.
+ * 🛡️ 2026-05-12: urdeal.kr 외 ur-live.pages.dev / 프리뷰 도메인도 동시 무효화.
  *   기존: 프라이머리 호스트만 무효화 → .pages.dev 미러는 TTL 끝까지 stale.
  */
 
 import { purgeCache } from './edge-cache';
 
 const HOSTS = [
-  'https://live.ur-team.com',
+  'https://urdeal.kr',
   'https://ur-live.pages.dev',
 ];
 

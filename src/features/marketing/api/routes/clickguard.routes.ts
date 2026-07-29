@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { adsAccountIdFrom } from '../ads-account'
+import { checkCapacity } from '../ads-entitlements'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from '../clickguard'
 
 const adsClickguardRoutes = new Hono<{ Bindings: Env }>()
@@ -46,6 +47,9 @@ adsClickguardRoutes.post('/clickguard/site', rateLimit({ action: 'ads-cg-site-ad
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  // 플랜 한도(ADS_BILLING_ENFORCED='true' 일 때만 집행 — 기본 무제한).
+  const cap = await checkCapacity(c.env, sellerId, 'clickguard_sites', (await listSites(c.env.DB, sellerId)).length)
+  if (!cap.ok) return c.json({ success: false, error: cap.error, plan: cap.plan }, 402)
   const r = await registerSite(c.env.DB, sellerId, String(body.domain || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, advertiser_key: r.advertiser_key })

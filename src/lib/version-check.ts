@@ -10,6 +10,7 @@
  */
 
 import { Capacitor } from '@capacitor/core'
+import { reloadWithCacheBust } from '@/utils/chunk-error'
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5분
 const VERSION_STORAGE_KEY = 'ur_build_version'
@@ -58,8 +59,11 @@ async function forceReload() {
       await Promise.all(regs.map((r) => r.update()))
     }
   } catch {}
-  // 캐시 우회 리로드
-  window.location.reload()
+  // 🛡️ 2026-07-20: 캐시 우회 리로드 — plain window.location.reload() 는 bfcache/heuristic/edge 가
+  //   옛 index.html(옛 청크 해시)을 그대로 재서빙하면 또 404 → 무한 새로고침 루프(대표 신고 "새로고침
+  //   눌러도 계속 안됨")를 만드는 CLAUDE.md 금지 안티패턴. 청크-복구 SSOT(__cb 캐시버스트 + location.replace)
+  //   로 항상 최신 문서를 강제한다.
+  reloadWithCacheBust()
 }
 
 async function checkVersion() {

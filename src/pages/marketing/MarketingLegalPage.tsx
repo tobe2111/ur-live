@@ -44,7 +44,8 @@ export default function MarketingLegalPage() {
   const sections = isPrivacy ? PRIVACY : TERMS
 
   return (
-    <div className="force-light-theme" style={{ minHeight: '100dvh', background: '#F4F5F7', color: '#0B0E14', fontFamily: 'Pretendard, system-ui, sans-serif' }}>
+    <div className="force-light-theme" style={{ minHeight: '100dvh', background: '#F4F5F7', color: '#0B0E14', fontFamily: '"Pretendard Variable","PretendardV",Pretendard,system-ui,sans-serif' }}>
+      <style dangerouslySetInnerHTML={{ __html: "@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}" }} />
       <SEO title={`유어애즈 ${title} - UR Ads`} description={`유어애즈(UR Ads) ${title}`} url={isPrivacy ? '/ads/privacy' : '/ads/terms'} />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '28px 20px 80px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

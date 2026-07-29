@@ -52,6 +52,7 @@
   "is_active",
   "is_distributor",
   "is_featured_seller",
+  "is_verified",
   "kakao_chat_url",
   "kakaotalk_name",
   "kakaotalk_url",

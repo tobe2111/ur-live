@@ -14,14 +14,19 @@ import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatBizNo, formatPhoneKr } from '@/utils/format-kr'
 import { consumeWholesaleLoginIntent } from '@/utils/wholesale-session'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
-import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { useWholesaleMall, currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
+
+// 🏬 2026-07-04 (대표 신고 — 몰별 별도 회원가입): 가입/전환 POST 에 현재 몰 slug 전달.
+//   서버 registrationMallId 가 ?mall= 을 최우선으로 읽음 — 미전달 시 host(urdeal.kr=기본 1) 폴백이라
+//   메디스타트(?mall=medi) 가입 폼에서 가입해도 유통스타트(mall 1)로 가입되던 갭 차단.
+const mallQS = () => { const s = currentWholesaleMallSlug(); return s ? `?mall=${encodeURIComponent(s)}` : '' }
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 export default function WholesaleJoinPage() {
   const navigate = useNavigate()
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
-  const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, logoUrl: mallLogo, requiresLicense, licenseLabel } = useWholesaleMall()
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   // 🔢 2026-06-26 (대표 가입폼 UX): 가입 클릭 시 첫 문제 필드로 포커스 이동 + 전화/이메일 완성형 검증.
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -35,7 +40,7 @@ export default function WholesaleJoinPage() {
   useEffect(() => {
     // 🏭 2026-06-29 (교과서적 — off-by-default): 명시 로그인 직후 1회만 자동 토큰교환. 아니면 미발화.
     if (!kakaoUser || !consumeWholesaleLoginIntent()) return
-    api.post('/api/wholesale/become-distributor', {})
+    api.post(`/api/wholesale/become-distributor${mallQS()}`, {})
       .then((r) => {
         const d = r.data || {}
         if (d.status === 'pending') setPendingStatus(true)
@@ -70,6 +75,8 @@ export default function WholesaleJoinPage() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — requiresLicense 몰에서만 노출·필수.
+  const [licenseNo, setLicenseNo] = useState('')
   // 담당자가 대표자와 동일 — 체크 시 대표자(성명/연락처)를 담당자에 즉시 복사.
   const [sameAsRep, setSameAsRep] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -105,6 +112,8 @@ export default function WholesaleJoinPage() {
     if (!form.business_name.trim()) { failAt('business_name', '상호(회사명)를 입력해주세요'); return }
     if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', '사업자등록번호 10자리를 정확히 입력해주세요'); return }
     if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
+    // 🏥 규제 몰(의료용품) — 인허가 신고번호 필수.
+    if (requiresLicense && !licenseNo.trim()) { toast.error(`${licenseLabel || '인허가 신고번호'}를 입력해주세요`); return }
     if (!form.representative.trim()) { failAt('representative', '대표자 성명을 입력해주세요'); return }
     if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)'); return }
     if (!sameAsRep) {
@@ -132,13 +141,15 @@ export default function WholesaleJoinPage() {
         representative_phone: form.representative_phone.trim(),
         manager_name: form.manager_name.trim(), manager_phone: form.manager_phone.trim(), manager_email: managerEmail,
         business_license_url: licenseUrl,
+        // 🏥 2026-07-03 규제 몰 인허가 신고번호(있을 때만) — 서버가 requires_license 몰에서 필수 검증.
+        license_no: licenseNo.trim() || undefined,
         // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (선택 — 서버가 사이드테이블에 저장).
         categories, channel: channel.trim(),
       }
       // 카카오 유저 → become-distributor(세션 인증), 그 외 → register(이메일/비번).
       const res = kakaoUser
-        ? await api.post('/api/wholesale/become-distributor', payload)
-        : await api.post('/api/wholesale/register', { ...payload, email: form.email.trim(), password: form.password })
+        ? await api.post(`/api/wholesale/become-distributor${mallQS()}`, payload)
+        : await api.post(`/api/wholesale/register${mallQS()}`, { ...payload, email: form.email.trim(), password: form.password })
       const data = res.data
       if (!data?.success) throw new Error(data?.error || '신청에 실패했어요')
       // 이미 승인된 셀러(겸업)가 카카오로 유통회원 승급한 경우 → 즉시 로그인.
@@ -331,6 +342,14 @@ export default function WholesaleJoinPage() {
             </div>
           )}
           <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
+          {/* 🏥 2026-07-03 규제 몰(의료용품) — 인허가 신고번호 (해당 몰에서만 노출·필수) */}
+          {requiresLicense && (
+            <div>
+              <label className="block text-[13px] font-semibold text-[#0C2454] mb-1.5">{licenseLabel || '인허가 신고번호'} <span className="text-[#FC5424]">*</span></label>
+              <input value={licenseNo} onChange={e => setLicenseNo(e.target.value.slice(0, 60))} disabled={loading} className={inputCls} placeholder="예: 제0000-000호" />
+              <p className="mt-1 text-[12px] text-[#8A929E]">규제 품목 취급을 위해 {licenseLabel || '인허가 신고번호'}가 필요합니다. 승인 시 관리자가 확인합니다.</p>
+            </div>
+          )}
           <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 
           {/* 🏭 2026-06-10 (사용자 요청 — 약관): 가입 = 도매몰 이용약관 동의 (필수 체크) */}
@@ -348,20 +367,8 @@ export default function WholesaleJoinPage() {
           </button>
         </form>
 
-        {/* 🏭 2026-06-04 카카오로 간편 가입 — 비-카카오 사용자에게만 노출 (사업자 정보는 동일하게 입력). */}
-        {!kakaoUser && (
-          <>
-            <div className="relative my-4 flex items-center gap-3">
-              <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-              <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
-              <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-            </div>
-            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale/join&intent=user' }}
-              className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-              카카오로 시작하기
-            </button>
-          </>
-        )}
+        {/* 🏭 2026-07-03 (대표): 유통스타트 도매몰 카카오 간편가입 제거 — 판매사 가입은 사업자 인증(이메일/비밀번호) 전용.
+            ⚠️ 소비자(유어딜) 카카오 로그인과 무관 — 도매몰 가입 표면에서만 카카오 진입 제거(서비스 분리). */}
 
         <div className="mt-8 pt-6 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사이신가요?{' '}

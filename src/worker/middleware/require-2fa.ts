@@ -57,7 +57,9 @@ async function generateTOTP(secretBase32: string, timestamp: number): Promise<st
   return code.toString().padStart(6, '0')
 }
 
-async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> {
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ④): admin 로그인 TOTP 게이트(admin.routes.ts)가 재사용하도록 export.
+//   검증 로직 자체는 불변(±30s 창) — export 키워드만 추가.
+export async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> {
   if (!/^\d{6}$/.test(code)) return false
   const now = Math.floor(Date.now() / 1000)
   for (const offset of [-30, 0, 30]) {
@@ -67,8 +69,12 @@ async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> 
   return false
 }
 
+// 🔕 2026-07-19 대표 지시 "어드민 대시보드 2단계 인증 없애줘" — 전면 비활성(아래 early-return).
+//   등록계정 포함 모든 요청 통과. 인프라(설정 페이지·verifyTOTP·검증 로직)는 존치 — 재도입 = 이 스위치 한 줄 제거.
+const TWO_FA_DISABLED = true
 export function require2FA(): MiddlewareHandler<{ Bindings: Env }> {
   return async (c, next) => {
+    if (TWO_FA_DISABLED) return await next()
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
     const userAsAny = user as unknown as { id?: number | string; type?: string }

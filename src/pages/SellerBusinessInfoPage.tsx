@@ -84,7 +84,8 @@ export default function SellerBusinessInfoPage() {
     address_detail: '',
     mail_order_number: '', // 🖼️ 2026-07-01 통신판매업신고번호 (링크샵 판매자 정보 표시용)
     phone: '',
-    email: ''
+    email: '',
+    onnuri_merchant: false // 🏪 2026-07-05 온누리상품권 가맹 (동네딜 카드/상세 뱃지)
   })
 
   // 🛡️ 2026-04-22 배치 128: 계좌 정보 섹션 추가 (이전엔 등록 UI 자체가 없어서 settlements 버그 유발)
@@ -235,6 +236,7 @@ export default function SellerBusinessInfoPage() {
       business_number: d.business_number || '', business_name: d.business_name || '', ceo_name: d.ceo_name || '',
       business_type: d.business_type || '', business_category: d.business_category || '', postal_code: d.postal_code || '',
       address: d.address || '', address_detail: d.address_detail || '', mail_order_number: d.mail_order_number || '', phone: d.phone || '', email: d.email || '',
+      onnuri_merchant: !!d.onnuri_merchant,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessInfoQ.data])
@@ -465,6 +467,7 @@ export default function SellerBusinessInfoPage() {
             submitting={submitting}
             onSubmit={handleSubmit}
             onChange={handleChange}
+            onToggleOnnuri={(v) => setFormData(f => ({ ...f, onnuri_merchant: v }))}
             onAddressSearch={openAddressSearch}
             onEnterEditMode={() => setEditMode(true)}
             onCancelEdit={() => {
@@ -481,7 +484,8 @@ export default function SellerBusinessInfoPage() {
                   address_detail: businessInfo.address_detail || '',
                   mail_order_number: businessInfo.mail_order_number || '',
                   phone: businessInfo.phone || '',
-                  email: businessInfo.email || ''
+                  email: businessInfo.email || '',
+                  onnuri_merchant: !!businessInfo.onnuri_merchant
                 })
               }
             }}

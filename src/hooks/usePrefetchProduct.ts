@@ -23,11 +23,12 @@ export function usePrefetchProduct() {
   const queryClient = useQueryClient()
   const pendingRef = useRef<Set<string | number>>(new Set())
 
-  return useCallback((productIdRaw: string | number | undefined) => {
-    if (!productIdRaw) return
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 키를 String 으로 정규화 — useProduct 는 useParams(string) 키를 쓰는데
-    //   카드는 number 를 넘겨 ['product', 123] ≠ ['product', '123'] → prefetch 가 상세에서 절대 소비 안 됨.
-    const productId = String(productIdRaw)
+  return useCallback((rawId: string | number | undefined) => {
+    if (!rawId) return
+    // 🚑 2026-07-10 (로딩 전수조사): 키를 String 으로 정규화 — 카드는 숫자 id, 상세(useProduct)는
+    //   useParams 문자열 키(['product','123'])라 ['product',123] 프리페치가 항상 캐시 미스였음
+    //   (탭마다 풀스크린 로더 + 중복 네트워크). RQ 키는 123 ≠ '123'.
+    const productId = String(rawId)
     if (pendingRef.current.has(productId)) return
     // 이미 fresh cache 있으면 skip
     const existing = queryClient.getQueryState(['product', productId])

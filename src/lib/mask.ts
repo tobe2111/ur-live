@@ -18,6 +18,21 @@ export function maskEmail(email: string | null | undefined): string {
 }
 
 /**
+ * 사람 이름 마스킹 — '홍길동' → '홍*동', '홍길' → '홍*', 'Jonathan' → 'J******n'
+ *
+ * 🔐 2026-07-05 (운영 감사 Q8): 에이전시는 매장 성과 관리 조직이지 주문 당사자가 아님 —
+ * 소속 셀러 주문의 수령인/투숙객 **실명 원문**을 에이전시 대시보드에 내려보내지 않는다.
+ * 식별(같은 사람인지)만 가능하면 되므로 첫/끝 글자만 남김.
+ */
+export function maskPersonName(name: string | null | undefined): string {
+  if (!name || typeof name !== 'string') return ''
+  const s = name.trim()
+  if (s.length <= 1) return s ? '*' : ''
+  if (s.length === 2) return `${s[0]}*`
+  return `${s[0]}${'*'.repeat(s.length - 2)}${s[s.length - 1]}`
+}
+
+/**
  * 전화번호 마스킹
  * '010-1234-5678' → '010-****-5678'
  */

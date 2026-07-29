@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft, Truck, X, SearchX } from 'lucide-react'
-import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg, currentWholesaleMallSlug, withWholesaleMall, wholesaleMallSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
@@ -128,13 +128,14 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
   // 🏭 2026-06-19 (대표 전수조사): 인증별 캐시 분리 — 게스트 가격(null)이 로그인 후 잔존해 비로그인 UI 고착하는 것 방지.
-  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}|${wholesaleAuthSeg()}`
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}|${wholesaleAuthSeg()}|${wholesaleMallSeg()}`
   // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "로드되자마자 상품이 안 떠"): worker SSR 주입
   //   (__SSR_INITIAL_WHOLESALE__) 즉시 소비. 기본 파라미터에서만.
   //   - guest: initialData — fetch 자체가 없음 (0-RTT 완결)
   //   - 로그인: placeholderData — 카드(사진/이름/재고)는 즉시 그리고, 등급가 fetch 가 도착하면 가격 교체.
   //     (가격 영역은 isPlaceholderData 동안 스켈레톤 — 잠금 칩 오표시 방지)
-  const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
+  // 🏥 2026-07-03: 몰 프리뷰(?mall=)일 땐 SSR 시드(기본 몰 전용) 미사용 — 해당 몰 카탈로그를 fresh fetch.
+  const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand && !currentWholesaleMallSlug()
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
     // initialdata-check-ok: 의도적 — guest 기본 카탈로그는 SSR(__SSR_INITIAL_WHOLESALE__) 로 0-RTT 완결
@@ -151,6 +152,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     },
     queryFn: () => {
       const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만) — 의료몰 카탈로그 해석
       if (committedSearch) params.set('search', committedSearch)
       if (cat !== 'all') params.set('category', cat)
       if (sort !== 'popular') params.set('sort', sort)
@@ -179,11 +181,12 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brands=1 로 현재 몰의 브랜드 distinct 목록(이름+상품수) 로드.
   //   브랜드 전시관 진입(brandView) + 특정 브랜드 미선택일 때만 활성(enabled) → 그 외엔 fetch 안 함.
   const brandsQ = useQuery<BrandEntry[]>({
-    queryKey: queryKeys.wholesale('catalog-brands', ''),
+    queryKey: queryKeys.wholesale('catalog-brands', wholesaleMallSeg()),
     queryFn: () => {
       const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      const mallSlug = currentWholesaleMallSlug()
       return api
-        .get('/api/wholesale/catalog?brands=1', { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+        .get(`/api/wholesale/catalog?brands=1${mallSlug ? `&mall=${encodeURIComponent(mallSlug)}` : ''}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
         .then((r) => (r.data?.success ? ((r.data.brands || []) as BrandEntry[]) : []))
         .catch(() => [])
     },
@@ -213,7 +216,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const homeQ = useWholesaleHome()
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (없으면 유통스타트/#FC5424 기본 → byte-identical).
   //   헤더 워드마크(name+logo) + 브랜드 색(CSS 변수 --ud-brand). 기본 몰이면 모든 값이 현 디폴트와 동일.
-  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo, categories: mallCategories } = useWholesaleMall()
   // 도매 서피스에서 문서 타이틀을 몰 이름으로(선택). 기본 몰이면 '유통스타트' → 동작 불변.
   useEffect(() => {
     if (typeof document !== 'undefined' && mallName) document.title = `${mallName} 도매몰`
@@ -249,6 +252,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     setMoreLoading(true)
     try {
       const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만)
       if (committedSearch) params.set('search', committedSearch)
       if (cat !== 'all') params.set('category', cat)
       if (sort !== 'popular') params.set('sort', sort)
@@ -315,18 +319,22 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   알려진 id 는 한글 라벨, 모르는 값(공급자 자유 입력)은 원본 문자열 그대로 — 필터/카운트는 불변
   //   (catCounts[id] ?? '' 라 0개 분류는 빈값/0 표시).
   const cats = useMemo<CatOpt[]>(() => {
-    // 🏭 2026-06-29 (대표 결정 — 카테고리 3개 고정): 전체 + 식품/리빙/건강만 노출.
-    //   데이터에 다른(레거시) 분류가 있어도 표시하지 않는다(기존 'unknown' 확장 제거). 상품 0개여도 3종은 항상 노출.
-    const known = WHOLESALE_CATEGORIES
+    // 🏥 2026-07-03 (의료용품 도매몰): 몰의 categories_json(useWholesaleMall().categories) 우선 노출 —
+    //   없으면 기본(식품/리빙/건강). 몰=도메인=카테고리 세트. 전체 + 몰 카테고리.
+    //   (기존 유통스타트는 categories_json 미설정 → WHOLESALE_CATEGORIES 폴백으로 byte-동일.)
+    const source = (mallCategories && mallCategories.length ? mallCategories : WHOLESALE_CATEGORIES)
       .filter(c => c.id !== 'all')
       .map(c => ({ id: c.id, label: c.label }))
-    return [{ id: 'all', label: '전체' }, ...known]
-  }, [])
+    return [{ id: 'all', label: '전체' }, ...source]
+  }, [mallCategories])
 
   const recentQ = useWholesaleRecentItems({ enabled: deferredReady })
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
-  const loggedIn = !!token
+  // 🏬 2026-07-04 (대표 신고): 각 몰 별도 회원 — 타 몰 계정(서버 /me 가 mall_mismatch)은 이 몰에서 게스트 취급.
+  //   토큰만으로 로그인 판정하면 유통스타트 세션이 메디스타트 프리뷰(?mall=)에 그대로 노출됐음.
+  const mallMismatch = meQ.data?.mall_mismatch === true
+  const loggedIn = !!token && !mallMismatch
   // 로그인한 판매사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
   const meLoadFailed = !!(loggedIn && meQ.isFetched && meQ.isError && !me)
   useEffect(() => {
@@ -485,7 +493,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
     // 🏭 2026-07-01 (라이브 감사): order_multiple·제조사 정책 스냅샷 포함 — 상세페이지 담기와 동일 계약.
     //   (이전 누락 → 카트/체크아웃 배송비 '무료'·최소주문 미표시, 결제 시 ORDER_MULTIPLE/MIN_ORDER 뒤늦은 거부.)
-    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq, order_multiple: om, supplier_group: p.supplier_group ?? null, supplier_policy: p.supplier_policy ?? null })
+    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq, order_multiple: om, supplier_group: p.supplier_group ?? null, supplier_policy: p.supplier_policy ?? null, product_shipping_fee: p.product_shipping_fee ?? null })
     toast.success(initQty > 1 ? `장바구니에 ${comma(initQty)}개 담았어요` : '장바구니에 담았어요')
   }
   const reorder = (r: ReorderItem) => {
@@ -578,6 +586,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       />
 
       <main className="ur-content-wide px-5 lg:px-8">
+        {/* 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 계정 안내 배너(게스트 강등 이유 설명 + 이 몰 가입 유도). */}
+        {mallMismatch && (
+          <div className="mt-3 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 flex-wrap" style={{ background: '#FFF7E6', border: '1px solid #FDE1A8', color: '#8A5A00' }}>
+            <span>지금 로그인된 계정은 <b>{meQ.data?.member_mall_name || '다른 몰'}</b> 회원이에요. <b>{mallName}</b>은 별도 가입이 필요합니다.</span>
+            <button onClick={() => navigate('/wholesale/join')} className="font-extrabold underline underline-offset-2">{mallName} 판매사 가입 →</button>
+          </div>
+        )}
         {/* 🏬 컬렉션 모드: 전용 페이지 타이틀 (홈은 배너/히어로/레일 노출). */}
         {collectionMode ? (
           <div className="pt-5 pb-1 flex items-center gap-2.5">

@@ -9,6 +9,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
+import { requireAdmin } from '../middleware/auth'
 
 export const selftestRoutes = new Hono<{ Bindings: Env }>()
 
@@ -29,23 +30,10 @@ async function runCheck(name: string, fn: () => Promise<string | void>): Promise
   }
 }
 
-selftestRoutes.get('/api/_selftest', async (c) => {
-  // 어드민 권한 검증
-  const auth = c.req.header('Authorization') || ''
-  const token = auth.replace(/^Bearer\s+/i, '')
-  if (!token) return c.json({ success: false, error: 'auth required' }, 401)
-  // 🔒 2026-06-22 (보안 감사): JWT_SECRET 미설정 시 빈 문자열 fallback 제거 — 빈 키 서명 admin JWT 위조 방지(fail-closed).
-  if (!c.env.JWT_SECRET) return c.json({ success: false, error: 'not configured' }, 503)
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as { role?: string; user_type?: string }
-    if (payload.role !== 'admin' && payload.user_type !== 'admin') {
-      return c.json({ success: false, error: 'admin only' }, 403)
-    }
-  } catch {
-    return c.json({ success: false, error: 'invalid token' }, 401)
-  }
-
+// 어드민만 — 표준 미들웨어. (이전 수제 JWT 검증은 `payload.role==='admin'`/`user_type==='admin'`
+// 클레임을 기대했는데, 실제 어드민 토큰은 `type:'admin'` + `role:'super'|…`(서브롤)이라 정상 어드민도
+// 항상 403 — /api/_errors/recent 와 동일 버그. requireAdmin() 으로 통일.)
+selftestRoutes.get('/api/_selftest', requireAdmin(), async (c) => {
   const checks: CheckResult[] = []
 
   // 1. D1 ping

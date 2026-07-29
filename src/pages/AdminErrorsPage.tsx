@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 
 /**
@@ -29,9 +30,33 @@ interface GroupedError {
   rows: ErrorRow[]
 }
 
+// 클립보드 복사 (fallback 포함 — 구형 브라우저/비HTTPS 대비).
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch { /* fallthrough */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export default function AdminErrorsPage() {
   const [hours, setHours] = useState(1)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (hours별 캐시).
   const { data: rows = [], isLoading: loading, isError, refetch } = useApiQuery<ErrorRow[]>(
     ['admin', 'errors', hours], '/api/_errors/recent',
@@ -39,6 +64,24 @@ export default function AdminErrorsPage() {
   )
   const error = isError ? 'load failed' : ''
   const load = () => refetch()
+
+  // 그룹 1건을 복사용 텍스트로 직렬화.
+  function formatGroupText(g: GroupedError): string {
+    const lines = [
+      `[${g.type}] ${g.message}`,
+      `발생 ${g.count}회 · 최근 ${new Date(g.latest).toLocaleString('ko-KR')}`,
+    ]
+    if (g.urls.size) lines.push(`URL: ${Array.from(g.urls).join(', ')}`)
+    return lines.join('\n')
+  }
+
+  async function doCopy(key: string, text: string) {
+    const ok = await copyText(text)
+    if (ok) {
+      setCopiedKey(key)
+      window.setTimeout(() => setCopiedKey(k => (k === key ? null : k)), 1500)
+    }
+  }
 
   // 메시지로 그룹화
   const groups: GroupedError[] = []
@@ -75,6 +118,7 @@ export default function AdminErrorsPage() {
   }
 
   return (
+    <AdminLayout title="Frontend 에러">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="Frontend 에러 대시보드" url="/admin/errors" noindex />
       <div className="max-w-6xl mx-auto">
@@ -94,6 +138,14 @@ export default function AdminErrorsPage() {
                 </button>
               ))}
               <button onClick={load} className="px-3 py-1.5 text-sm bg-gray-100 rounded">새로고침</button>
+              {groups.length > 0 && (
+                <button
+                  onClick={() => doCopy('__all__', groups.map(formatGroupText).join('\n\n'))}
+                  className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded"
+                >
+                  {copiedKey === '__all__' ? '✓ 복사됨' : '전체 복사'}
+                </button>
+              )}
             </div>
           </div>
           <div className="text-sm text-gray-500 mt-2">
@@ -121,38 +173,51 @@ export default function AdminErrorsPage() {
             const isOpen = expanded.has(key)
             return (
               <div key={i} className="bg-white rounded-lg shadow">
-                <button
-                  onClick={() => toggleExpand(key)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3"
-                >
-                  <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-white shrink-0 ${
-                    g.count >= 10 ? 'bg-red-500' : g.count >= 3 ? 'bg-amber-500' : 'bg-gray-400'
-                  }`}>
-                    {g.count}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                        g.type === 'error' ? 'bg-red-100 text-red-700' :
-                        g.type === 'unhandledrejection' ? 'bg-orange-100 text-orange-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {g.type}
-                      </span>
-                      <span className="text-[11px] text-gray-500">
-                        {new Date(g.latest).toLocaleString('ko-KR')}
-                      </span>
-                      <span className="text-[11px] text-gray-500">
-                        · {g.urls.size} URLs · {g.user_ids.size} users
-                      </span>
+                <div className="flex items-stretch">
+                  <button
+                    onClick={() => toggleExpand(key)}
+                    className="flex-1 min-w-0 text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3"
+                  >
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full font-bold text-white shrink-0 ${
+                      g.count >= 10 ? 'bg-red-500' : g.count >= 3 ? 'bg-amber-500' : 'bg-gray-400'
+                    }`}>
+                      {g.count}
                     </div>
-                    <p className="text-sm text-gray-900 font-mono break-all line-clamp-2">{g.message}</p>
-                  </div>
-                  <span className="text-gray-400 shrink-0">{isOpen ? '▼' : '▶'}</span>
-                </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                          g.type === 'error' ? 'bg-red-100 text-red-700' :
+                          g.type === 'unhandledrejection' ? 'bg-orange-100 text-orange-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {g.type}
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          {new Date(g.latest).toLocaleString('ko-KR')}
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          · {g.urls.size} URLs · {g.user_ids.size} users
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-900 font-mono break-all line-clamp-2">{g.message}</p>
+                    </div>
+                    <span className="text-gray-400 shrink-0">{isOpen ? '▼' : '▶'}</span>
+                  </button>
+                  <button
+                    onClick={() => doCopy(key, formatGroupText(g))}
+                    title="이 에러 문구 복사"
+                    className="shrink-0 px-3 border-l border-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    {copiedKey === key ? '✓ 복사됨' : '복사'}
+                  </button>
+                </div>
 
                 {isOpen && (
                   <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-3">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 mb-1">전체 메시지</p>
+                      <pre className="text-[11px] text-gray-900 bg-white border border-gray-200 rounded p-2 whitespace-pre-wrap break-all select-text max-h-60 overflow-auto">{g.message}</pre>
+                    </div>
                     <div>
                       <p className="text-[11px] font-bold text-gray-500 mb-1">발생 URL</p>
                       <div className="flex flex-wrap gap-1">
@@ -183,5 +248,6 @@ export default function AdminErrorsPage() {
         </div>
       </div>
     </div>
+    </AdminLayout>
   )
 }

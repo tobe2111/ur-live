@@ -72,6 +72,27 @@ export async function grantInviteRewardForFirstPurchase(
       if (parsed > 0) rewardAmount = parsed
     } catch { /* default */ }
 
+    // 💸 2026-07-04 [INV-CB]: 초대 보상은 정액이라 거래 예산 캡에 못 들어감 → **월 예산 캡**으로 방어.
+    //   platform_settings.invite_reward_monthly_budget_krw 미설정(또는 0 이하)=무제한(현행).
+    //   soft cap(동시 2건 레이스 시 1건 초과 가능 — 가드레일 목적). 설계: commission-funding-restructure.md §3-E.
+    try {
+      const budgetRow = await queryFirst<{ value: string }>(
+        DB, "SELECT value FROM platform_settings WHERE key = 'invite_reward_monthly_budget_krw'", [],
+      )
+      const budget = budgetRow?.value ? parseInt(budgetRow.value, 10) : 0
+      if (Number.isFinite(budget) && budget > 0) {
+        const spent = await queryFirst<{ total: number }>(
+          DB,
+          `SELECT COALESCE(SUM(reward_amount), 0) AS total FROM invite_rewards
+            WHERE status = 'granted' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')`,
+          [],
+        )
+        if ((Number(spent?.total) || 0) + rewardAmount > budget) {
+          return { granted: false, reason: 'monthly_budget_exhausted' }
+        }
+      }
+    } catch { /* 설정 조회 실패 → 현행(무제한) */ }
+
     // claim-before-credit: UNIQUE 선점 — 동시/중복 호출 중 1회만 적립
     const claim = await executeRun(
       DB,
@@ -90,6 +111,7 @@ export async function grantInviteRewardForFirstPurchase(
       type: 'invite_reward',
       description: '친구 초대 첫 구매 보상',
       bumpTotalCharged: true,
+      bucket: 'free', // 💸 2026-07-05: 초대 보상 = 무상 딜 (출금 제외·우선 차감)
     })
     if (!adjusted.ok) return { granted: false, reason: 'error' }
     // users.deal_balance best-effort (컬럼 없을 수 있음)
@@ -159,10 +181,13 @@ export async function reverseInviteRewardOnRefund(
     if (amount <= 0) return
 
     // 초대자 포인트 회수 (MAX(0,...) clamp — 이미 소진했으면 가용분만, 음수 방지).
+    // 💸 2026-07-05 버킷: 무상 적립의 회수 → free 도 함께 회수 (무상 적립-역전 대칭). 컬럼 사전 보장.
+    const { ensureDealBuckets } = await import('./point-buckets')
+    await ensureDealBuckets(DB)
     await executeRun(
       DB,
-      "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?",
-      [amount, String(row.inviter_user_id)],
+      "UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ?",
+      [amount, amount, String(row.inviter_user_id)],
     ).catch(() => {})
     // 장부 기록 (best-effort, 음수 delta).
     await recordPointTransaction(DB, {
@@ -170,6 +195,7 @@ export async function reverseInviteRewardOnRefund(
       delta: -amount,
       type: 'invite_reward_reversal',
       description: '초대 보상 회수 (친구 주문 환불)',
+      freeDelta: -amount,
     }).catch(() => {})
     // users.deal_balance best-effort 역전.
     await executeRun(

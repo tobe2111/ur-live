@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useShippingQuote } from './checkout/useShippingQuote'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CartItem } from '@/types/cart'
@@ -17,6 +18,7 @@ import { isKorea } from '@/config/region'
 import { captureError } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 // 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
@@ -100,50 +102,9 @@ function CartCheckout() {
   // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
 
-  // 🛡️ 2026-07-02 (쇼핑 전수조사 — 결제 금액 정합): 배송비/가격 서버 권위 견적.
-  //   서버 주문 생성과 동일 함수·데이터(POST /api/orders/shipping-quote)로 그룹별 배송비와
-  //   현재가를 받아 그대로 표시/청구 — 클라 자체 계산(바로구매 3,000 하드코드 / 무료배송
-  //   threshold / 제주·도서산간 지역비 미인지 / stale snapshot)이 서버 총액과 어긋나
-  //   Toss confirm "금액 불일치" 400 을 유발하던 클래스 제거. 견적 실패 시 기존 클라 계산 fallback.
-  const [quotedFees, setQuotedFees] = useState<Record<string, number> | null>(null)
-  const quoteKeyRef = useRef('')
-  useEffect(() => {
-    if (cartItems.length === 0) return
-    const key = cartItems.map(i => `${i.product_id}x${i.quantity}`).sort().join(',') + '|' + (selectedAddress?.postal_code || '')
-    if (quoteKeyRef.current === key) return
-    quoteKeyRef.current = key
-    api.post('/api/orders/shipping-quote', {
-      items: cartItems.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
-      postal_code: selectedAddress?.postal_code || null,
-    }).then(r => {
-      if (!r.data?.success) return
-      const data = r.data.data as {
-        items: Array<{ product_id: string; unit_price: number; available: boolean }>
-        groups: Array<{ seller_id: string | null; shipping_fee: number }>
-      }
-      const fees: Record<string, number> = {}
-      for (const g of data.groups) fees[String(Number(g.seller_id) || 0)] = g.shipping_fee
-      setQuotedFees(fees)
-      // 현재가 반영 — snapshot 이 stale(셀러 가격 변경)이면 최신가로 교체 + 안내. 판매종료는 제외.
-      const priceMap = new Map(data.items.filter(it => it.available).map(it => [String(it.product_id), it.unit_price]))
-      const unavailable = new Set(data.items.filter(it => !it.available).map(it => String(it.product_id)))
-      let changed = false; let removed = false
-      setCartItems(prev => {
-        const next = prev
-          .filter(it => { const gone = unavailable.has(String(it.product_id)); if (gone) removed = true; return !gone })
-          .map(it => {
-            const cur = priceMap.get(String(it.product_id))
-            const shown = it.price_snapshot ?? it.price ?? 0
-            if (cur == null || cur === shown) return it
-            changed = true
-            return { ...it, price_snapshot: cur, price: cur, item_total: cur * it.quantity }
-          })
-        return (changed || removed) ? next : prev
-      })
-      if (removed) toast.error(t('checkoutPage.itemsUnavailableRemoved', { defaultValue: '판매가 종료된 상품을 주문에서 제외했어요' }))
-      else if (changed) toast.info(t('checkoutPage.pricesUpdated', { defaultValue: '상품 가격이 변경되어 최신 가격으로 반영했어요' }))
-    }).catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] shipping-quote 실패 — 클라 계산 fallback:', err) })
-  }, [cartItems, selectedAddress])
+  // 🛡️ 결제 금액 정합 — 배송비·현재가는 서버 권위 견적(useShippingQuote). 클라 자체 계산이
+  //   서버 총액과 어긋나 Toss confirm 이 '금액 불일치' 400 을 내던 클래스를 제거한다.
+  const quotedFees = useShippingQuote(cartItems, selectedAddress?.postal_code, setCartItems, t)
 
   // 🛡️ 2026-05-23 v2 (revert + 회귀 방어): server clientKey 다시 fetch — env 미스매치 영구 차단.
   //   배경: 이전 commit (eb29a060) 에서 VITE env 만 사용으로 바꿨는데, 운영자가 빌드 env 미설정 시
@@ -320,6 +281,10 @@ function CartCheckout() {
 
   // 공동구매 할인 조회 (cartItems 로드 후)
   useEffect(() => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 친구초대 동적할인 종료(REFERRAL_GROUP_DISCOUNT_DISABLED) —
+    //   /api/referral/discount 는 항상 null 반환. 결제 크리티컬 패스에서 상품 수만큼 무의미한 왕복을
+    //   하던 것을 조기 차단(ReferralSection 은 이미 같은 플래그로 단락). 재개 시 배치 엔드포인트 권장.
+    if (REFERRAL_GROUP_DISCOUNT_DISABLED) return
     if (cartItems.length === 0) return
     const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
     if (uniqueProductIds.length === 0) return
@@ -479,7 +444,7 @@ function CartCheckout() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f4f4f4] overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#f4f4f4] overflow-x-hidden">
       <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
       {/* 🛡️ 2026-05-21: 뒤로가기 무한 루프 영구 fix.
             기존: navigate('/cart') → new history entry → [prev, /cart, /checkout, /cart].
@@ -514,15 +479,15 @@ function CartCheckout() {
                     selectedAddress={selectedAddress}
                     onAddressSelected={setSelectedAddress}
                   />
-                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
                 </>
               )}
 
               {/* 비배송 안내 — 기프티콘 교환권(MMS) vs 동네딜 공구(매장 사용) 구분. */}
               {isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">📱</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
@@ -534,9 +499,9 @@ function CartCheckout() {
                 </section>
               )}
               {noShipping && !isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">🎟️</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
@@ -562,13 +527,13 @@ function CartCheckout() {
                 />
               )}
 
-              <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+              <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
 
               {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal').
                   🛡️ 2026-05-23 v2: clientKey 로드 끝나기 전엔 스피너만 — TossPaymentWidget 이
                   빈/잘못된 키로 init 시도해 에러 토스트 띄우는 회귀 영구 차단. */}
               {!isAllDealOnly && !clientKeyLoaded ? (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-8 flex items-center justify-center">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-8 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   <span className="ml-3 text-sm text-gray-500">결제 시스템 준비 중...</span>
                 </section>

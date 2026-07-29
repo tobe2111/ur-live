@@ -26,14 +26,22 @@ interface RealtimeStats {
 
 export default function SellerRealtimeDashboardPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 60s 폴링 → useApiQuery refetchInterval.
-  const { data = null, isLoading: loading, refetch } = useApiQuery<RealtimeStats | null>(
+  const { data = null, isLoading: loading, isError, refetch } = useApiQuery<RealtimeStats | null>(
     ['seller', 'realtime-stats'], '/api/seller-marketing/realtime-stats',
     { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 60_000 },
   )
   const load = () => refetch()
 
   if (loading && !data) return <SellerLayout title="실시간 대시보드"><div className="p-6"><p className="text-gray-500">로딩 중...</p></div></SellerLayout>
-  if (!data) return null
+  // 🛡️ 2026-07-20 (셀러 감사): fetch 실패/데이터 없음 → 빈 흰 화면(return null) 대신 레이아웃 + 재시도 안내.
+  if (!data) return (
+    <SellerLayout title="실시간 대시보드">
+      <div className="p-8 text-center">
+        <p className="text-gray-500 mb-3">{isError ? '데이터를 불러오지 못했습니다' : '표시할 데이터가 없습니다'}</p>
+        <button onClick={load} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700">새로고침</button>
+      </div>
+    </SellerLayout>
+  )
 
   // 🛡️ 2026-05-17: safeNum 으로 NaN 방어 — 데이터 누락 시 0%, 0건 표시
   const totalVouchers = safeNum(data.voucher_stats?.total)
@@ -82,11 +90,11 @@ export default function SellerRealtimeDashboardPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Ticket className="w-4 h-4 text-amber-500" /> Voucher 사용률 (30일)</h3>
             <p className="text-3xl font-extrabold text-gray-900">{useRate}%</p>
-            <p className="text-[11px] text-gray-500 mt-1">{data.voucher_stats.used} / {data.voucher_stats.total}</p>
+            <p className="text-[11px] text-gray-500 mt-1">{safeNum(data.voucher_stats?.used)} / {safeNum(data.voucher_stats?.total)}</p>
             <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
               <div className="bg-amber-500 h-full rounded-full" style={{ width: `${useRate}%` }} />
             </div>
-            <p className="text-[10px] text-gray-400 mt-2">미사용 {data.voucher_stats.unused} · 만료 {data.voucher_stats.expired}</p>
+            <p className="text-[10px] text-gray-400 mt-2">미사용 {safeNum(data.voucher_stats?.unused)} · 만료 {safeNum(data.voucher_stats?.expired)}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> 인플 Referral 매출 (30일)</h3>

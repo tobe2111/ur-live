@@ -64,6 +64,37 @@ function randomKey(len = 16): string {
   return s
 }
 
+// 🖼️ 2026-07-22 (R2 최적화 #1 — 대표 "미래 대비 다 하자"): 업로드 원본을 **same-origin cdn-cgi 리사이저**로
+//   축소해 그 키에 덮어쓴다(저장 용량 5~20× 절감). 외부 URL 은 리사이저가 404(외부 origin 미허용)지만
+//   same-origin(/api/media)은 작동 확인됨. **완전 fail-soft**: 리사이즈 실패/미축소면 원본 그대로 유지 →
+//   최악의 경우 저장이 안 줄 뿐 이미지가 깨지지 않음. GIF(애니 보존)·소용량(<400KB)은 skip.
+//   덮어쓴 뒤 엣지 캐시(#2)에 남았을 원본을 delete → 다음 요청이 축소본으로 재캐시.
+async function resizeStoredImageInPlace(
+  env: Bindings, origin: string, key: string, contentType: string, originalSize: number,
+): Promise<number> {
+  if (!env.MEDIA_BUCKET) return originalSize
+  if (contentType === 'image/gif') return originalSize      // 애니메이션 보존
+  if (originalSize < 400 * 1024) return originalSize         // 이미 작음 — 변환 비용 낭비
+  try {
+    const resizeUrl = `${origin}/cdn-cgi/image/width=1600,quality=82,fit=scale-down/${origin}/api/media/${key}`
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 12000)
+    let r: Response
+    try { r = await fetch(resizeUrl, { signal: ctrl.signal }) } finally { clearTimeout(timer) }
+    if (!r.ok) return originalSize
+    const ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+    if (!ct.startsWith('image/')) return originalSize
+    const buf = await r.arrayBuffer()
+    if (buf.byteLength < 500 || buf.byteLength >= originalSize) return originalSize  // 더 작을 때만 교체
+    await env.MEDIA_BUCKET.put(key, buf, {
+      httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { resized: '1', at: new Date().toISOString() },
+    })
+    try { await (caches as unknown as { default: Cache }).default.delete(`${origin}/api/media/${key}`) } catch { /* noop */ }
+    return buf.byteLength
+  } catch { return originalSize }
+}
+
 async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => string | undefined } }): Promise<{ role: string; id: number } | null> {
   // 1) Bearer JWT (셀러/어드민/에이전시/유저 토큰).
   const auth = c.req.header('Authorization') || ''
@@ -93,7 +124,12 @@ async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => st
   return null
 }
 
-uploadRoutes.post('/upload/image', cors(), async (c) => {
+// 🛡️ 2026-07-01 (Cloudflare 전수조사): 인증 이미지 업로드 IP rate-limit 추가.
+//   기존엔 인증만 있고 rate-limit 이 없어, 탈취/자동화된 인증 계정 1개가 10MB×무한 PUT 으로
+//   R2 스토리지/쓰기·대역폭을 남용할 수 있었음(business-cert 는 이미 10/600 보유). 정상 셀러의
+//   상품 이미지 대량 업로드(수십 장/세션)는 통과하되 스크립트성 폭주는 차단하도록 100/10분(IP).
+//   non-auth 액션이라 DB 오류 시 fail-open(정상 업로드 안 막음) — rate-limit.ts 참조.
+uploadRoutes.post('/upload/image', cors(), rateLimit({ action: 'image-upload', max: 100, windowSec: 600 }), async (c) => {
   try {
     const auth = await getRoleAndId(c)
     if (!auth) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -153,6 +189,9 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
       customMetadata: { uploader: `${auth.role}:${auth.id}`, uploaded_at: new Date().toISOString() },
     })
 
+    // 🖼️ 저장 직후 same-origin 리사이즈로 축소(용량 절감) — 동기 수행(URL 이 항상 축소본을 가리키게). fail-soft.
+    const finalSize = await resizeStoredImageInPlace(c.env, new URL(c.req.url).origin, key, detected, file.size)
+
     // 5. 공개 URL.
     // 🏭 2026-06-05 (사용자 신고 — 링크샵 배경 이미지 실패): PUBLIC_R2_URL 미설정 시 'r2://key'(실 URL 아님)를
     //   반환해 업로드 이미지(배너 등)가 깨졌음. 사업자등록증과 동일하게 same-origin 워커 서빙(/api/media/*)으로.
@@ -165,7 +204,7 @@ uploadRoutes.post('/upload/image', cors(), async (c) => {
       data: {
         key,
         url,
-        size: file.size,
+        size: finalSize,
         mime: detected,
       },
     })
@@ -215,19 +254,29 @@ uploadRoutes.get('/media/:key{.+}', cors(), async (c) => {
     const key = c.req.param('key')
     if (!key || !key.startsWith('uploads/')) return c.json({ success: false, error: 'not found' }, 404)
     if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: 'R2 미설정' }, 503)
+    // 🗄️ 2026-07-22 (R2 최적화 #2): 엣지 캐시(caches.default) 우선 — 히트면 워커가 R2 를 안 읽고 바로 서빙
+    //   (워커 호출·R2 Class B 읽기 절감). 업로드는 랜덤키+immutable 이라 캐시 안전. GET 만.
+    const cacheKey = new Request(new URL(c.req.url).toString(), { method: 'GET' })
+    const cache = (caches as unknown as { default: Cache }).default
+    const hit = await cache.match(cacheKey).catch(() => undefined)
+    if (hit) return hit
     const obj = await c.env.MEDIA_BUCKET.get(key)
     if (!obj) return c.json({ success: false, error: 'not found' }, 404)
     const headers = new Headers()
     headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream')
     headers.set('Cache-Control', 'public, max-age=31536000, immutable')
-    return new Response(obj.body, { headers })
+    const res = new Response(obj.body, { headers })
+    c.executionCtx?.waitUntil?.(cache.put(cacheKey, res.clone()).catch(() => {}))
+    return res
   } catch (err) {
     return safeError(c, err, '미디어 조회 중 오류', '[upload]')
   }
 })
 
 // 본인 업로드 파일 삭제 (key 가 본인 prefix 와 일치할 때만).
-uploadRoutes.delete('/upload/image/:key{.+}', cors(), async (c) => {
+// 🛡️ 2026-07-01 (Cloudflare 전수조사): 삭제도 IP rate-limit — 소유권 검증은 있으나 무제한이라
+//   자동화된 대량 삭제(본인 자산 self-DoS / admin 토큰 남용) 가능. 60/10분(IP)로 상한.
+uploadRoutes.delete('/upload/image/:key{.+}', cors(), rateLimit({ action: 'image-delete', max: 60, windowSec: 600 }), async (c) => {
   try {
     const auth = await getRoleAndId(c)
     if (!auth) return c.json({ success: false, error: '인증 필요' }, 401)

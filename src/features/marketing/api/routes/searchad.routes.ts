@@ -13,6 +13,10 @@ import { getMetricsHistory, computeWoW, snapshotAccountRecent, trendContextFrom 
 import { aiMarketerAdvice, type AiMarketerContext } from '../ai-marketer'
 import { listReports, generateWeeklyReport } from '../weekly-report'
 import { keywordShopping, keywordTrend } from '../keyword-tools'
+import { listRankTargets } from '../rank-tracker'
+import { meterDaily } from '../ads-entitlements'
+import { clickReport } from '../clickguard'
+import { listWatches } from '../price-monitor'
 import { resolveSearchAdCreds, naverOpenId, naverOpenSecret } from './helpers'
 import { intParam } from '@/shared/pagination'
 
@@ -83,7 +87,7 @@ adsSearchadRoutes.get('/searchad/campaigns', rateLimit({ action: 'ads-sa-list', 
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, not_connected: true, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200(콘솔 4xx 소음 제거, 2026-07-27)
   const r = await listCampaigns(creds)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, campaigns: r.campaigns })
@@ -96,7 +100,7 @@ adsSearchadRoutes.get('/searchad/adgroups', rateLimit({ action: 'ads-sa-list', m
   const campaignId = String(c.req.query('campaignId') || '').trim()
   if (!campaignId) return c.json({ success: false, error: 'campaignId 가 필요합니다' }, 400)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, not_connected: true, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200(콘솔 4xx 소음 제거, 2026-07-27)
   const r = await listAdgroups(creds, campaignId)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, adgroups: r.adgroups })
@@ -109,7 +113,7 @@ adsSearchadRoutes.get('/searchad/keywords', rateLimit({ action: 'ads-sa-list', m
   const adgroupId = String(c.req.query('adgroupId') || '').trim()
   if (!adgroupId) return c.json({ success: false, error: 'adgroupId 가 필요합니다' }, 400)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, not_connected: true, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200(콘솔 4xx 소음 제거, 2026-07-27)
   const r = await listKeywords(creds, adgroupId)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, keywords: r.keywords })
@@ -121,7 +125,7 @@ adsSearchadRoutes.get('/searchad/estimate', rateLimit({ action: 'ads-sa-estimate
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await resolveSearchAdCreds(c, sellerId)
-  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED', code: 'SEARCHAD_REQUIRED' }, 503)
   const keyword = String(c.req.query('keyword') || '').trim()
   if (!keyword) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
   const device = c.req.query('device') === 'MOBILE' ? 'MOBILE' : 'PC'
@@ -220,7 +224,7 @@ adsSearchadRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, not_connected: true, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200(콘솔 4xx 소음 제거, 2026-07-27)
   const days = Number(c.req.query('days')) === 30 ? 30 : 7
   const r = await accountStats(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
@@ -253,7 +257,7 @@ adsSearchadRoutes.get('/searchad/keyword-efficiency', rateLimit({ action: 'ads-s
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, not_connected: true, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200(콘솔 4xx 소음 제거, 2026-07-27)
   const days = Number(c.req.query('days')) === 7 ? 7 : 30
   const r = await keywordEfficiency(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
@@ -265,7 +269,7 @@ adsSearchadRoutes.get('/searchad/pacing', rateLimit({ action: 'ads-sa-pacing', m
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
-  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', not_connected: true, code: 'NOT_CONNECTED' }) // 미연동=정상 상태 → 200
   const r = await budgetPacing(creds)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, campaigns: r.campaigns })
@@ -277,6 +281,9 @@ adsSearchadRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wi
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  // 일일 사용량 미터링(집행은 ADS_BILLING_ENFORCED='true' 일 때만 — 기본은 카운트만 적재).
+  const meter = await meterDaily(c.env, sellerId, 'ai_per_day')
+  if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const seed = String(body.seed || '').trim().slice(0, 40)
 
@@ -297,6 +304,35 @@ adsSearchadRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wi
     const trendTenant = await getActiveTenantId(c.env.DB, sellerId).catch(() => null)
     const trend = trendContextFrom(await getMetricsHistory(c.env.DB, sellerId, 14, trendTenant).catch(() => []))
     if (trend) ctx.trend = trend
+    // 🆕 키워드 효율(낭비 키워드) — 연결 시에만(검색광고 read). fail-soft.
+    const eff = await keywordEfficiency(creds, 30, 60).catch(() => null)
+    if (eff?.ok && eff.items?.length) {
+      ctx.efficiency = {
+        days: 30, scanned: eff.scanned || eff.items.length,
+        waste: eff.items.filter(k => k.waste).slice(0, 8).map(k => ({ keyword: k.keyword, cost: k.cost, clicks: k.clicks })),
+        top: eff.items.filter(k => k.conv > 0).slice(0, 5).map(k => ({ keyword: k.keyword, cost: k.cost, conv: k.conv, roas: k.roas })),
+      }
+    }
+  }
+  // 🆕 grounding 확장 — 유어애즈가 이미 적재한 데이터(연결 무관, DB read only). 전부 fail-soft 병렬.
+  {
+    const [rk, cg, pw] = await Promise.allSettled([
+      listRankTargets(c.env.DB, sellerId),
+      clickReport(c.env.DB, sellerId, 7),
+      listWatches(c.env.DB, sellerId),
+    ])
+    if (rk.status === 'fulfilled' && rk.value.length) {
+      ctx.ranks = rk.value.slice(0, 10).map(t => ({ keyword: t.keyword, mall: t.mall_match, rank: t.last_rank, prevRank: t.prev_rank }))
+    }
+    if (cg.status === 'fulfilled' && cg.value.totalClicks > 0) {
+      ctx.clickguard = { days: cg.value.days, totalClicks: cg.value.totalClicks, adClicks: cg.value.adClicks, suspiciousIps: cg.value.suspects.filter(s => s.suspicious).length }
+    }
+    if (pw.status === 'fulfilled' && pw.value.length) {
+      ctx.price = pw.value.slice(0, 10).map(w => ({
+        query: w.query, myPrice: w.my_price, lowest: w.last_lowest, lowestMall: w.last_mall,
+        undercut: w.my_price != null && w.last_lowest != null && w.last_lowest < w.my_price,
+      }))
+    }
   }
   // 키워드 분석(seed 시) — 연관키워드(연결/플랫폼 키) + 쇼핑경쟁 + 추세
   if (seed) {
@@ -314,7 +350,7 @@ adsSearchadRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wi
 
   const r = await aiMarketerAdvice(c.env.ANTHROPIC_API_KEY, ctx)
   if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
-  return c.json({ success: true, advice: r.advice, grounded: { connected: ctx.connected, hasStats: !!ctx.stats, hasKeyword: !!ctx.keyword } })
+  return c.json({ success: true, advice: r.advice, grounded: { connected: ctx.connected, hasStats: !!ctx.stats, hasKeyword: !!ctx.keyword, hasEfficiency: !!ctx.efficiency, hasRanks: !!ctx.ranks, hasClickguard: !!ctx.clickguard, hasPrice: !!ctx.price } })
 })
 
 // ── AI 주간 리포트 (자동 생성·저장 — 읽기 전용) ─────────────────────────────

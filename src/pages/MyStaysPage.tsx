@@ -12,14 +12,16 @@ import SEO from '@/components/SEO'
 import { Building2, Calendar, Star, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-300' },
+  pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-600 dark:bg-[#1A2334] dark:text-gray-300' },
   confirmed: { label: '예약 확정', color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' },
   checked_in: { label: '체크인 완료', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' },
   checked_out: { label: '이용 완료', color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300' },
-  cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400' },
+  cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500 dark:bg-[#1A2334] dark:text-gray-400' },
   no_show: { label: '노쇼', color: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' },
   refunded: { label: '환불됨', color: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300' },
   dispute: { label: '분쟁 중', color: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300' },
@@ -62,10 +64,10 @@ export default function MyStaysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-safe-nav">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-safe-nav">
       <SEO title="내 숙소 예약 - 유어딜" description="숙소 예약 내역" url="/my-stays" />
 
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" /></button>
           <h1 className="text-base font-bold flex-1 text-gray-900 dark:text-white">내 숙소 예약</h1>
@@ -74,7 +76,8 @@ export default function MyStaysPage() {
 
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="text-center py-20 text-gray-400 dark:text-gray-500 text-sm">로딩 중...</div>
+          /* 🚑 2026-07-10 로더 통일: 맨 텍스트 → BrandLoader */
+          <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
@@ -94,14 +97,14 @@ export default function MyStaysPage() {
         ) : (
           <div className="space-y-3">
             {bookings.map((b) => {
-              const st = STATUS_LABELS[b.status] || { label: b.status, color: 'bg-gray-100 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-300' }
+              const st = STATUS_LABELS[b.status] || { label: b.status, color: 'bg-gray-100 text-gray-600 dark:bg-[#1A2334] dark:text-gray-300' }
               const canCancel = ['confirmed', 'pending'].includes(b.status)
               const canReview = b.status === 'checked_out'
               return (
-                <div key={b.id} className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#1A1A1A] rounded-xl p-4">
+                <div key={b.id} className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
                   <div className="flex items-start gap-3">
-                    <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
-                      {b.image_url ? <img src={b.image_url} alt={b.product_name} className="w-full h-full object-cover" /> : null}
+                    <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
+                      {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
@@ -129,7 +132,7 @@ export default function MyStaysPage() {
                           <span className="text-xs font-mono font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-[#1A1A1A]">
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
                         <p className="text-sm font-extrabold text-gray-900 dark:text-white">₩{formatNumber(b.total_amount)}</p>
                         <div className="flex gap-1">
                           {canCancel && (
@@ -213,8 +216,8 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#1A1A1A] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white dark:bg-[#0A0A0A] px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="bg-white dark:bg-[#0F151D] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2A3446] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white dark:bg-[#0F151D] px-5 py-4 border-b border-gray-100 dark:border-[#2A3446]">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">리뷰 작성</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{booking.product_name}</p>
         </div>
@@ -229,11 +232,11 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white" />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{comment.length}/5000</p>
           </div>
           <div className="flex gap-2 pt-2">

@@ -24,23 +24,61 @@ import {
   scopedRoleCanAccess,
   type AdminRole,
 } from '../../shared/admin-roles';
+import { parseSessionCookie } from '../utils/session';
 
-/** Bearer admin JWT 에서 role 추출. 유효한 admin 토큰이 아니면 null(→ 라우트 auth 가 처리). */
+/**
+ * 어드민 요청의 role 추출. 유효한 admin 인증이 아니면 null(→ 라우트 requireAdmin 이 처리).
+ *   1) Bearer admin JWT — role 은 토큰 클레임.
+ *   2) 🛡️ 2026-07-01 (어드민 라이브 보안 감사): httpOnly 어드민 세션 쿠키 경로.
+ *      requireAdmin 은 Bearer 없이 쿠키만으로도 admin 인증을 허용하는데(auth.ts §2), 세션 쿠키
+ *      payload 엔 세부 role 이 없어(parseSessionCookie 가 role='admin' 하드코딩) 기존엔 이 게이트가
+ *      쿠키 경로에서 role=null → next() 로 스코핑을 통째로 건너뛰었음 → 제한역할(wholesale/ops/cs/…)
+ *      계정이 Authorization 헤더만 빼고 쿠키로 호출하면 전권(재무·타서비스) 우회. 쿠키 인증이면
+ *      DB 에서 실제 role 을 조회해 Bearer 와 동일 스코핑을 적용해 우회를 차단.
+ */
 async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
   const secret = (c.env as { JWT_SECRET?: string }).JWT_SECRET;
   if (!secret) return null;
+
+  // 1) Bearer admin JWT
   const authHeader = c.req.header('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!token) return null;
-  try {
-    // HS256 고정(alg-confusion 방어) — auth.ts verifyJWT 와 동일.
-    if (!(await jwt.verify(token, secret, { algorithm: 'HS256' }))) return null;
-    const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
-    if (payload.type !== 'admin') return null;
-    return normalizeAdminRole(payload.role);
-  } catch {
-    return null;
+  if (token) {
+    try {
+      // HS256 고정(alg-confusion 방어) — auth.ts verifyJWT 와 동일.
+      if (await jwt.verify(token, secret, { algorithm: 'HS256' })) {
+        const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
+        if (payload.type === 'admin') return normalizeAdminRole(payload.role);
+      }
+    } catch { /* fall through to cookie */ }
   }
+
+  // 2) httpOnly 어드민 세션 쿠키 (Bearer 없을 때 requireAdmin 이 수락하는 경로 — 게이트도 커버).
+  try {
+    const su = await parseSessionCookie(c.req.header('Cookie'), secret, ['admin']);
+    if (su && su.type === 'admin' && su.userId) {
+      const DB = (c.env as { DB: D1Database }).DB;
+      try {
+        const row = await DB.prepare('SELECT role FROM admins WHERE id = ?')
+          .bind(su.userId).first<{ role?: string }>();
+        if (row) return normalizeAdminRole(row.role);
+        // 세션은 유효한데 admins row 없음 → 라우트 requireAdmin 이 판단(null).
+      } catch {
+        // 🔐 2026-07-12 (RBAC 감사 F): 인증된 어드민 쿠키인데 role 조회가 DB 오류 → 1회 재시도,
+        //   그래도 실패면 fail-CLOSED(viewer). 기존엔 catch→null→상위 `if(!role) next()` 로 떨어져
+        //   role 스코핑이 통째로 사라지는 fail-OPEN(제한역할이 쿠키+D1블립 창에서 전권 획득)이었음.
+        //   requireAdminRole(auth.ts) 의 fail-CLOSED 정책과 통일.
+        try {
+          const retry = await DB.prepare('SELECT role FROM admins WHERE id = ?')
+            .bind(su.userId).first<{ role?: string }>();
+          if (retry) return normalizeAdminRole(retry.role);
+        } catch { /* 재시도도 실패 — 아래 안전차단 */ }
+        return 'viewer';
+      }
+    }
+  } catch { /* 쿠키 파싱 자체 실패 → 미인증(null) — 라우트 requireAdmin 이 401 처리 */ }
+
+  return null;
 }
 
 export function adminRbacMiddleware() {
@@ -71,8 +109,13 @@ export function adminRbacMiddleware() {
         : c.json({ success: false, error: '담당 도메인 밖의 영역입니다 (도매 전용 계정)', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
     }
 
+    // 🔐 2026-07-12 (RBAC 감사 D): GET 이지만 상태를 바꾸는(DDL/유지보수) 경로는 읽기 예외에서 제외 —
+    //   viewer 등 읽기전용/제한역할이 GET 으로 우회해 변경하지 못하게 mutate 검사로 넘긴다.
+    //   (/api/admin/optimize-db 는 CREATE INDEX DDL 실행 — 세그먼트가 어떤 WRITE_DOMAINS 에도 없어
+    //    canAdminRoleMutate 가 super/admin 만 통과시킴 → viewer/ops/cs/finance 403.)
+    const isGetMutation = /\/optimize-db(?:$|[/?])/.test(pathname);
     // 읽기는 허용(대시보드 조회).
-    if (method === 'GET' || method === 'HEAD') return next();
+    if ((method === 'GET' || method === 'HEAD') && !isGetMutation) return next();
 
     // 변경 — 역할별 도메인 검사.
     if (canAdminRoleMutate(role, pathname)) return next();

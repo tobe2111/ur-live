@@ -22,7 +22,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
             (regionKey || gpsRegion)
               ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
-              : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
+              : 'bg-white dark:bg-[#1A2334] border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-300'
           }`}
           aria-label="지역 선택"
         >
@@ -34,7 +34,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
         <button
           onClick={detectMyRegion}
           disabled={detectingRegion}
-          className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 disabled:opacity-50"
+          className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-gray-700 dark:text-gray-300 disabled:opacity-50"
           aria-label={t('groupBuy.detectMyRegion', { defaultValue: '내 동네 자동 감지' })}
         >
           {detectingRegion

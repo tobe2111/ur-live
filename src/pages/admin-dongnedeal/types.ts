@@ -16,6 +16,12 @@ export interface DealRow {
   max_per_person?: number | null
   /** 🎯 카카오 장소 페이지 URL (place.map.kakao.com/{id}). */
   kakao_place_url?: string | null
+  /** 🔎 데모 상품 여부(slug demo-deal-*) — 목록 뱃지용. */
+  is_demo?: number
+  /** 🔎 오픈예정형(prelaunch) 여부 — 목록 뱃지용. */
+  prelaunch?: number
+  /** 🖼️ 현재 갤러리(images+detail_images 병합, 서버 동봉) — 수정 폼 프리필용. */
+  gallery?: string[] | null
 }
 
 export const CAT_LABEL: Record<string, string> = {

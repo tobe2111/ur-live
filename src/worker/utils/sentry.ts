@@ -176,10 +176,21 @@ class SentryClient {
     // Add request context
     if (context?.request) {
       const url = new URL(context.request.url);
+      // 🔐 2026-07-12 (PIPA 감사 J): 민감 헤더 스크러빙 — 기존엔 Object.fromEntries 로
+      //   Cookie/Authorization 등 전체 헤더가 그대로 Sentry(외부)로 나갔음(세션토큰·인증정보 유출).
+      //   D1 request_traces 는 이미 마스킹하는데 Sentry 만 없어 비대칭. 인증/세션류는 [redacted].
+      const SENSITIVE_HEADERS = new Set([
+        'cookie', 'set-cookie', 'authorization', 'proxy-authorization',
+        'x-api-key', 'x-auth-token', 'x-session-token', 'x-csrf-token',
+      ]);
+      const scrubbedHeaders: Record<string, string> = {};
+      for (const [k, v] of context.request.headers.entries()) {
+        scrubbedHeaders[k] = SENSITIVE_HEADERS.has(k.toLowerCase()) ? '[redacted]' : v;
+      }
       event.request = {
         url: context.request.url,
         method: context.request.method,
-        headers: Object.fromEntries(context.request.headers.entries()),
+        headers: scrubbedHeaders,
         query_string: url.search,
       };
 

@@ -52,6 +52,12 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       ariaSearch: '검색',
       ariaCart: '장바구니',
     },
+    // 🗺️ 2026-07-07 (대표 신고 — 홈 로딩 중 'restaurantMap.nearMe' 등 원본 키 노출): 홈(`/`)=동네딜 지도
+    //   list 뷰라 그 상단 라벨(내 주변/정렬)이 critical 셋에 없어 full translation.json 도착 전 raw 노출됨.
+    restaurantMap: {
+      nearMe: '내 주변',
+      sort: { distance: '거리순', discount: '할인율순', price: '가격 낮은순', rating: '평점순' },
+    },
     seo: {
       home: {
         title: '돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스',
@@ -71,6 +77,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       linkshop: 'Linkshop', my: 'My', cart: 'Cart', myPage: 'My Page',
     },
     mainHome: { ariaSearch: 'Search', ariaCart: 'Cart' },
+    restaurantMap: { nearMe: 'Near me', sort: { distance: 'By distance', discount: 'By discount', price: 'Lowest price', rating: 'By rating' } },
     seo: { home: { title: 'Money-saving shopping — group buying & live commerce', description: '' } },
   },
   ja: {
@@ -85,6 +92,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       linkshop: 'リンクショップ', my: 'マイ', cart: 'カート', myPage: 'マイページ',
     },
     mainHome: { ariaSearch: '検索', ariaCart: 'カート' },
+    restaurantMap: { nearMe: '現在地周辺', sort: { distance: '距離順', discount: '割引率順', price: '価格が安い順', rating: '評価順' } },
     seo: { home: { title: 'お得なショッピング — 共同購入 & ライブコマース', description: '' } },
   },
   zh: {
@@ -99,6 +107,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       linkshop: '链接店', my: '我的', cart: '购物车', myPage: '我的',
     },
     mainHome: { ariaSearch: '搜索', ariaCart: '购物车' },
+    restaurantMap: { nearMe: '附近', sort: { distance: '按距离', discount: '按折扣', price: '价格从低到高', rating: '按评分' } },
     seo: { home: { title: '省钱购物 — 团购与直播电商', description: '' } },
   },
   es: {
@@ -113,6 +122,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       linkshop: 'Linkshop', my: 'Mi', cart: 'Carrito', myPage: 'Mi página',
     },
     mainHome: { ariaSearch: 'Buscar', ariaCart: 'Carrito' },
+    restaurantMap: { nearMe: 'Cerca de mí', sort: { distance: 'Por distancia', discount: 'Por descuento', price: 'Precio más bajo', rating: 'Por valoración' } },
     seo: { home: { title: 'Compras inteligentes — compras grupales y live commerce', description: '' } },
   },
   fr: {
@@ -127,6 +137,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
       linkshop: 'Linkshop', my: 'Mon', cart: 'Panier', myPage: 'Mon compte',
     },
     mainHome: { ariaSearch: 'Recherche', ariaCart: 'Panier' },
+    restaurantMap: { nearMe: 'Près de moi', sort: { distance: 'Par distance', discount: 'Par remise', price: 'Prix croissant', rating: 'Par évaluation' } },
     seo: { home: { title: 'Achats malins — achats groupés & live commerce', description: '' } },
   },
 }

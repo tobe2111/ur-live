@@ -73,7 +73,7 @@ export async function handleAppointmentReminder(env: Env): Promise<void> {
         // 유저 알림
         if (userPhone) {
           const loc = apt.restaurant_address ? `\n📍 ${apt.restaurant_address}` : ''
-          const msg = `[유어딜] 내일 예약 알림 — ${apt.product_name}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}${loc}\n예약 확인 / 변경: live.ur-team.com/my-appointments`
+          const msg = `[유어딜] 내일 예약 알림 — ${apt.product_name}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}${loc}\n예약 확인 / 변경: urdeal.kr/my-appointments`
           await sendSystemAlimtalk(envRecord, userPhone, 'appointment_reminder_user', msg)
         }
         // 매장 알림 (예약 1건이라도 있으면)

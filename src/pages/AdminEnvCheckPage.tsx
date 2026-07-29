@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import { getTossClientKey } from '@/lib/toss-preload'
 
@@ -92,6 +93,7 @@ export default function AdminEnvCheckPage() {
   )
 
   return (
+    <AdminLayout title="환경변수 점검">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="Env 점검" url="/admin/env-check" noindex />
       <div className="max-w-3xl mx-auto">
@@ -284,5 +286,6 @@ export default function AdminEnvCheckPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   )
 }

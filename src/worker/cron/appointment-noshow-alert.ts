@@ -69,7 +69,7 @@ export async function handleAppointmentNoshowAlert(env: Env): Promise<void> {
           await DB.prepare("UPDATE appointment_bookings SET noshow_alert_sent_at = datetime('now') WHERE id = ?").bind(apt.id).run()
           continue
         }
-        const msg = `[유어딜] 노쇼 의심 — ${apt.product_name || '예약'}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}\n👤 ${apt.user_name || apt.user_id} ${apt.user_phone || ''}\n\n실제 방문 안 했으면: live.ur-team.com/seller/appointments → 노쇼 처리\n방문 완료했으면: → 완료 처리`
+        const msg = `[유어딜] 노쇼 의심 — ${apt.product_name || '예약'}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}\n👤 ${apt.user_name || apt.user_id} ${apt.user_phone || ''}\n\n실제 방문 안 했으면: urdeal.kr/seller/appointments → 노쇼 처리\n방문 완료했으면: → 완료 처리`
         await sendSystemAlimtalk(envRecord, apt.seller_phone, 'appointment_noshow_alert', msg)
         await DB.prepare("UPDATE appointment_bookings SET noshow_alert_sent_at = datetime('now') WHERE id = ?").bind(apt.id).run()
         sent++

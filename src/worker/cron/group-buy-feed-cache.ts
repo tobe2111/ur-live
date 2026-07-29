@@ -27,7 +27,8 @@ const COLS = `
   p.group_buy_deadline AS expires_at, p.group_buy_tiers,
   p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
   p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
-  p.restaurant_name, p.restaurant_address,
+  p.restaurant_name, p.restaurant_address, p.slug,
+  p.restaurant_lat, p.restaurant_lng,
   s.name AS seller_name, s.profile_image AS seller_avatar
 `
 
@@ -66,7 +67,7 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
             AND (p.group_buy_status = ? OR ? = 'all')
             AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-          ORDER BY p.created_at DESC
+          ORDER BY (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END), p.created_at DESC
           LIMIT 50
         `).bind(...categories, status, status).all()
 

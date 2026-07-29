@@ -37,7 +37,9 @@ const STATUS: Record<WithdrawalRequest['status'], { t: string; c: string }> = {
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
-export default function AdminWholesaleWithdrawalsPage() {
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →
+//   AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭이 그대로 렌더 (AdminDistributorApprovalPage 패턴).
+export default function AdminWholesaleWithdrawalsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'requested' | 'all'>('requested')
   const [actingId, setActingId] = useState<number | null>(null)
@@ -94,9 +96,8 @@ export default function AdminWholesaleWithdrawalsPage() {
     } finally { setActingId(null) }
   }
 
-  return (
-    <AdminLayout title="제조사 출금">
-      <div className="ur-content-full px-4 lg:px-8 py-6">
+  const body = (
+      <div className={embedded ? '' : 'ur-content-full px-4 lg:px-8 py-6'}>
         <DashboardPageHeader icon={<Banknote className="w-5 h-5" />} title="제조사 정산금 출금" subtitle="제조사 출금 신청을 확인하고 등록 계좌로 송금한 뒤 승인합니다. 반려 시 잔액이 복원됩니다." />
 
         <div className="flex flex-wrap items-center gap-2 my-4">
@@ -176,6 +177,8 @@ export default function AdminWholesaleWithdrawalsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
   )
+
+  if (embedded) return body
+  return <AdminLayout title="제조사 출금">{body}</AdminLayout>
 }

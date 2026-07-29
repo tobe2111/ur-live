@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, Wallet, AlertTriangle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { WT, won, comma } from './wholesale/wholesale-theme'
-import { useWholesaleDeposit, useInvalidateWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import { useWholesaleDeposit, useInvalidateWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
@@ -24,6 +24,8 @@ export default function WholesaleCheckoutPage() {
   const { items, subtotal, totalQty, clear } = useWholesaleCart()
   const depositQ = useWholesaleDeposit()
   const invalidateDeposit = useInvalidateWholesaleDeposit()
+  // 🧩 2026-07-03 몰 기능 토글 — 'dropship' 이 꺼진 몰(예: 향후 특정 몰)에선 대량발주(드랍십) 패널 숨김. 기본 ON.
+  const { feature } = useWholesaleMall()
   // 👥 2026-06-12 (감사 부채): viewer 직원 — 서버 403 전 UI 사전 안내 (fail-open, 서버가 최종 방어).
   const isViewer = useIsWholesaleViewer()
 
@@ -191,7 +193,7 @@ export default function WholesaleCheckoutPage() {
       <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
         {/* 🏭 2026-06-29 (대표 — 대량발주 엑셀을 주문/결제 페이지에서): 양식 다운로드 + 작성본 업로드.
             제조사별 코드(product_id)로 매칭 → 검토 후 카트 담아 예치금 결제(여러 제조사 자동 분배). */}
-        <BulkOrderPanel token={token} />
+        {feature('dropship') && <BulkOrderPanel token={token} />}
 
         {/* 주문 상품 요약 */}
         <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>

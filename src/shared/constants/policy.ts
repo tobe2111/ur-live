@@ -65,9 +65,11 @@ export const COMMISSION_DEFAULTS = {
   /** 에이전시 본인 commission (매출 기준) */
   AGENCY_OWN_RATE: 2.0,
 
-  /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일(값 불변).
-   *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념. */
-  AGENCY_STORE_INTRO_PCT: 2.0,
+  /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일.
+   *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념.
+   *  💰 2026-07-05 대표 확정 (자문 (b)안): 2.0 → 1.0 — 약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"
+   *  라 문서-시스템 정합. 개별 상향은 어드민 에이전시 관리의 store_intro_commission_pct(성과 보상 레버). */
+  AGENCY_STORE_INTRO_PCT: 1.0,
   /** 영입자(크리에이터) 매장영입(platform_settings.influencer_store_intro_pct 미설정 시 fallback). */
   INFLUENCER_STORE_INTRO_PCT: 1.5,
 

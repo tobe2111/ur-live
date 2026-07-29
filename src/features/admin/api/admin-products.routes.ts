@@ -26,6 +26,8 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
+// 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
+import { rehostImageToR2 } from '@/worker/utils/rehost-image';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -290,16 +292,38 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
 
+    // 🎯 2026-07-03 (대표 "삭제하면 아예 안 보여야"): soft-retire 는 slug 를 'retired-' 로 마킹 →
+    //   목록(dongnedeal/list)이 제외 → 삭제 즉시 관리 목록에서 사라짐(눈-토글 '숨김'은 slug 유지라 계속 보임).
+    const RETIRE_SET = "is_active = 0, slug = CASE WHEN slug LIKE 'retired-%' THEN slug ELSE 'retired-' || slug || '-' || id END, updated_at = datetime('now')";
     const hasOrders = await executeQuery<IdRow>(DB, 'SELECT id FROM order_items WHERE product_id = ? LIMIT 1', [productId]);
     if (hasOrders.length > 0) {
-      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0 } });
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
     }
 
-    await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
-    await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    // 🛡️ 2026-07-02 (대표 신고 — 동네딜 단건 삭제 500): order_items 만 검사하던 하드삭제가
+    //   다른 FK 참조(fcfs_applications/product_supply_meta/vouchers/product_regions 등) 때문에 실패 → 500.
+    //   seed-demo 일괄삭제(2026-07-01)와 동일 패턴: 부속 데이터 선정리(best-effort) → DELETE 시도 →
+    //   그래도 실패(잔여 FK)면 soft-retire(is_active=0) 폴백 — 어떤 경우에도 500 없이 목록에서 사라짐.
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드된 fake 리뷰(product_reviews)·장바구니·
+    //   위시리스트가 FK 로 하드삭제를 막아 soft-retire 로만 처리되던 것 → 파생 자식행도 선정리(주문 없을 때만이라 안전).
+    await executeRun(DB, 'DELETE FROM product_supply_meta WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM fcfs_applications WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_regions WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_reviews WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM cart_items WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM wishlists WHERE product_id = ?', [productId]).catch(() => {});
+    try {
+      await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
+      await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    } catch {
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
+      await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0, reason: 'fk_refs' } });
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+      return c.json({ success: true, data: { id: productId, soft_deleted: true } });
+    }
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
 
     return c.json({ success: true, data: { id: productId } });
@@ -898,13 +922,11 @@ adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (
 
 const DEAL_DEMO_SLUG = 'demo-deal-';
 
-// 🛡️ 2026-07-02 (대표 신고 — 쇼핑 상품이 동네딜에 섞임): 동네딜 = 이용권 4종 전용.
-//   'general'(일반 온라인 쇼핑, 별칭 '일반'/'일반 상품'/'온라인') 매핑 제거 → mapDealCategory 가 null
-//   반환 → bulk-import/단건등록이 "카테고리 인식 불가"로 거부. 서비스 분리(도매/쇼핑↔동네딜) 정합.
 const DEAL_CATEGORY_ALIAS: Record<string, string> = {
   '이용권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 이용권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
   '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
+  // ❌ 2026-07-02 (대표 확정 "완전 분리"): general(배송형) alias 제거 — 동네딜 도구로 배송형 등록 불가.
   '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
 };
 function mapDealCategory(raw: string): string | null {
@@ -938,34 +960,318 @@ function parseDealCsv(text: string): Record<string, string>[] {
 // spots/seed = 추첨 응모(fcfs) — 정원(spots) 대비 지원 시드(seed, 정원 초과) → "선착순 {seed}/{spots}명" 표시.
 // ⚠️ desc = 유저에게 그대로 노출되는 상품 설명 — "데모" 문구 절대 금지(2026-07-02 대표 지시,
 //   실제 상품처럼 보여야 함). 데모 식별은 slug(demo-deal-N, 유저 비노출)로만.
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; spots: number; seed: number; desc: string }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
-  // 🛡️ 2026-07-02 (대표 신고): 드립백/한라봉(cat:'general' 무료배송·산지직송 = 일반 온라인 쇼핑) 데모 제거 —
-  //   동네딜(매장 이용권) 데모에 쇼핑 상품이 섞여 시드되던 것. 동네딜 데모는 이용권 4종만.
+// pq = 카카오 장소검색용 순수 업종 키워드(이미지검색용 q 와 분리 — "상차림/인테리어/시술" 같은 노이즈 배제).
+//   place 매칭은 `{지역} {pq}` 로 질의 → 실제 매장(좌표·주소·place_url) 반환 확률 극대화(대표 "정확하게").
+// 🗑️ 2026-07-06 (worker 번들 4MB 예산 초과 — 743B 오버): 레거시 고정 40종 템플릿 `DEAL_DEMO` 제거.
+//   유일 사용처였던 desc-heal(`description LIKE '데모%'`)은 여러 차례 재생성으로 대상 행이 0(사멸) →
+//   heal 은 이름 stripRegion 폴백만으로 동등 동작. 시드는 생성형 DEMO_BIZ(업종 문법)로 완전 전환됨.
+//   번들 8KB 감량 → 자기부과 사이즈 가드(4MB) 보존(가드 상향 대신 실사(死) 데이터 제거 — 레포 철학).
+
+// 🎲 2026-07-05 (대표 "40종 고정이 아니라 랜덤으로 뽑아와야 — 뭐가 이상적?"): **생성형 데모 문법**.
+//   방향 역전: 상품을 정해놓고 매장을 찾는 게 아니라, 카카오에서 그 업종 실매장을 **랜덤으로 뽑고**
+//   그 매장에 맞는 오퍼(구성·가격·할인)를 조합 생성. 업종(28) × 패턴(2~3) × 가격밴드 × 할인 25~45%
+//   × 실매장(지역별 수십 곳 랜덤) × 실사진(매장명 검색) = 사실상 무한 조합, 같은 상품 반복 소멸.
+interface DemoOfferPattern { n: string; d: string; min: number; max: number }
+interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
+const DEMO_BIZ: DemoBiz[] = [
+  { pq: '삼겹살', cat: 'meal_voucher', pat: [
+    { n: '숙성 삼겹살 2인 세트 (된찌 포함)', d: '숙성 삼겹살 2인 + 된장찌개 + 볶음밥 마무리. 숯불에 구워드립니다.', min: 26000, max: 38000 },
+    { n: '삼겹살 500g + 김치찌개', d: '두툼한 삼겹살 500g 과 김치찌개. 셀프바 반찬 무제한.', min: 22000, max: 32000 },
+    { n: '제주 흑돼지 모둠구이 2인', d: '흑돼지 오겹·목살 모둠 2인. 멜젓 소스와 함께 구워드립니다.', min: 34000, max: 48000 },
+    { n: '항정살 + 목살 반반 세트', d: '항정살과 목살 반반 구성 2인. 계란찜 서비스.', min: 27000, max: 39000 } ] },
+  { pq: '한우', cat: 'meal_voucher', pat: [
+    { n: '한우 모둠 2인 스페셜', d: '등심·살치·안심 모둠 2인. 직원이 부위별로 구워드립니다.', min: 69000, max: 98000 },
+    { n: '한우 런치 정식 2인', d: '한우 불고기 정식 2인 런치 구성. 평일 점심 방문.', min: 32000, max: 45000 },
+    { n: '한우 육회 + 등심 구이 세트', d: '신선 육회 한 접시와 등심 구이 2인 구성.', min: 55000, max: 82000 } ] },
+  { pq: '스시', cat: 'meal_voucher', pat: [
+    { n: '초밥 오마카세 런치 코스', d: '셰프 추천 니기리 12점 런치 오마카세. 카운터석 진행, 예약 우선.', min: 39000, max: 65000 },
+    { n: '모둠초밥 2인 세트 (우동 포함)', d: '모둠초밥 2인 + 미니우동. 당일 손질 재료만 사용합니다.', min: 28000, max: 42000 },
+    { n: '스시 디너 오마카세', d: '디너 니기리 15점 + 앞요리 구성. 카운터석, 100% 예약제.', min: 65000, max: 110000 } ] },
+  { pq: '파스타', cat: 'meal_voucher', pat: [
+    { n: '파스타 + 리조또 2인 세트', d: '파스타 1 + 리조또 1 + 샐러드. 소스는 매일 매장에서 만듭니다.', min: 24000, max: 36000 },
+    { n: '런치 파스타 코스 2인', d: '샐러드 + 파스타 2 + 음료. 평일 런치 한정 구성.', min: 21000, max: 30000 },
+    { n: '투움바 + 감바스 2인 세트', d: '투움바 파스타와 감바스, 빵 리필 포함.', min: 26000, max: 38000 } ] },
+  { pq: '화덕피자', cat: 'meal_voucher', pat: [
+    { n: '화덕피자 + 파스타 2인 세트', d: '화덕에서 구운 피자 1판 + 파스타 1개. 방문 시 이용권 QR 제시.', min: 24000, max: 35000 },
+    { n: '고르곤졸라 + 마르게리타 반반', d: '인기 메뉴 반반 1판 + 꿀 디핑. 포장 가능.', min: 22000, max: 31000 } ] },
+  { pq: '카페', cat: 'meal_voucher', iq: '카페 디저트', pat: [
+    { n: '음료 2잔 + 시그니처 디저트', d: '음료 2잔과 시그니처 디저트 1개. 매장 좌석 이용 가능.', min: 11000, max: 17000 },
+    { n: '핸드드립 2잔 + 오늘의 디저트', d: '스페셜티 핸드드립 2잔 + 오늘의 디저트. 원두 설명과 함께.', min: 12000, max: 19000 },
+    { n: '시그니처 라떼 2잔 + 케이크', d: '시그니처 라떼 2잔과 오늘의 케이크 1조각.', min: 13000, max: 19000 } ] },
+  { pq: '브런치 카페', cat: 'meal_voucher', iq: '브런치 플레이트', pat: [
+    { n: '주말 브런치 2인 세트', d: '브런치 플레이트 택2 + 아메리카노 2잔. 주말 방문 가능.', min: 24000, max: 36000 },
+    { n: '프렌치토스트 + 커피 2인', d: '브리오슈 프렌치토스트 + 아메리카노 2잔. 주말 가능.', min: 19000, max: 28000 } ] },
+  { pq: '쌀국수', cat: 'meal_voucher', pat: [
+    { n: '쌀국수 + 분짜 2인 세트', d: '양지 쌀국수 2 + 분짜 1. 육수는 매일 아침 우려냅니다.', min: 17000, max: 26000 },
+    { n: '곱빼기 쌀국수 2인 + 짜조', d: '곱빼기 쌀국수 2그릇 + 짜조 3개.', min: 19000, max: 27000 } ] },
+  { pq: '마라탕', cat: 'meal_voucher', pat: [
+    { n: '마라탕 2인 + 꿔바로우', d: '재료 자유 선택 마라탕 2인 + 꿔바로우(중). 맵기 조절 가능.', min: 21000, max: 30000 },
+    { n: '마라샹궈 2인 세트', d: '재료 선택 마라샹궈(2인) + 공깃밥 2. 맵기 조절 가능.', min: 24000, max: 34000 } ] },
+  { pq: '돈까스', cat: 'meal_voucher', pat: [
+    { n: '수제 돈까스 정식 2인', d: '저온숙성 등심 돈까스 정식 2인. 매일 아침 빵가루를 입힙니다.', min: 18000, max: 27000 },
+    { n: '로스 + 히레 반반 정식', d: '로스와 히레 반반 정식 2인. 미소국·샐러드 포함.', min: 20000, max: 29000 } ] },
+  { pq: '족발', cat: 'meal_voucher', pat: [
+    { n: '족발 中 + 막국수 세트', d: '쫄깃한 앞다리 족발(中) + 비빔막국수. 포장도 가능.', min: 29000, max: 41000 },
+    { n: '불족발 + 주먹밥 세트', d: '매콤 불족발(中) + 주먹밥 2인. 맵기 선택 가능.', min: 30000, max: 43000 },
+    { n: '보쌈 정식 2인', d: '수육 보쌈 2인 정식 + 굴(계절) 추가 가능.', min: 28000, max: 40000 } ] },
+  { pq: '치킨', cat: 'meal_voucher', pat: [
+    { n: '치킨 + 생맥주 2잔 세트', d: '반반 치킨 + 생맥주 500cc 2잔. 매장 취식 전용.', min: 17000, max: 25000 },
+    { n: '순살 치킨 + 치즈볼 세트', d: '순살 한 마리 + 치즈볼 6개. 소스 2종 선택.', min: 19000, max: 26000 } ] },
+  { pq: '국밥', cat: 'meal_voucher', pat: [
+    { n: '국밥 2인 + 수육 小', d: '진한 국밥 2그릇 + 수육 한 접시. 매일 직접 끓입니다.', min: 19000, max: 28000 },
+    { n: '순대국 2인 + 모둠순대', d: '진한 순대국 2그릇 + 모둠순대 한 접시.', min: 20000, max: 29000 } ] },
+  { pq: '곱창', cat: 'meal_voucher', pat: [
+    { n: '곱창 모둠 2인 + 볶음밥', d: '곱창·대창 모둠 2인 + 마무리 볶음밥. 당일 손질 국내산.', min: 34000, max: 49000 },
+    { n: '곱창전골 2인 (사리 포함)', d: '곱창전골 2인 + 라면사리·우동사리. 마무리 볶음밥 별도.', min: 32000, max: 45000 } ] },
+  { pq: '베이커리', cat: 'meal_voucher', iq: '베이커리 빵', pat: [
+    { n: '베이커리 인기빵 6종 박스', d: '당일 구운 인기 빵 6종. 매장에서 직접 골라 담으세요.', min: 13000, max: 19000 },
+    { n: '케이크 홀 + 아메리카노 2잔', d: '시그니처 케이크 1호 + 아메리카노 2잔. 당일 예약 픽업.', min: 25000, max: 38000 },
+    { n: '소금빵 5개 세트', d: '매일 오전 굽는 소금빵 5개 구성. 조기 소진 유의.', min: 9000, max: 14000 } ] },
+  { pq: '샤브샤브', cat: 'meal_voucher', pat: [
+    { n: '샤브샤브 2인 (야채바 포함)', d: '소고기 샤브샤브 2인 + 야채바. 마무리 죽 포함.', min: 30000, max: 44000 },
+    { n: '월남쌈 + 샤브 2인 세트', d: '월남쌈 재료 무제한 + 샤브 2인. 마무리 죽 포함.', min: 32000, max: 46000 },
+    { n: '버섯 샤브 2인 (칼국수 포함)', d: '모둠 버섯 샤브 2인 + 칼국수 사리.', min: 28000, max: 40000 } ] },
+  { pq: '미용실', cat: 'beauty_voucher', iq: '미용실 인테리어', pat: [
+    { n: '프리미엄 커트 + 두피 샴푸', d: '1:1 맞춤 컨설팅 커트 + 두피 마사지 샴푸. 디자이너 지명 가능.', min: 20000, max: 35000 },
+    { n: '뿌리염색 + 손상모 클리닉', d: '뿌리염색 + 클리닉 패키지. 저자극 염모제 사용, 예약 우선.', min: 39000, max: 65000 },
+    { n: '남성 커트 + 다운펌', d: '남성 커트와 다운펌 패키지. 소요 약 1시간.', min: 28000, max: 45000 } ] },
+  { pq: '네일샵', cat: 'beauty_voucher', iq: '젤네일 아트', pat: [
+    { n: '젤네일 풀케어 + 이달의 아트', d: '젤네일 풀케어와 이달의 아트. 큐티클 정리·영양 마무리 포함.', min: 29000, max: 48000 },
+    { n: '패디큐어 풀케어', d: '각질 정리 + 패디 젤 원컬러. 여름 준비 인기 시술.', min: 32000, max: 50000 },
+    { n: '원컬러 젤 + 큐티클 케어', d: '원컬러 젤네일 + 큐티클 정리. 첫 방문 환영.', min: 25000, max: 38000 } ] },
+  { pq: '속눈썹', cat: 'beauty_voucher', iq: '속눈썹 연장', pat: [
+    { n: '속눈썹 연장 풀세트 + 리터치', d: '풀세트 연장 + 2주 내 리터치 1회. 시술 약 90분, 예약제.', min: 25000, max: 45000 },
+    { n: '속눈썹 펌 (클리닉 포함)', d: '자연스러운 컬의 속눈썹 펌 + 영양 클리닉.', min: 20000, max: 33000 } ] },
+  { pq: '왁싱샵', cat: 'beauty_voucher', iq: '왁싱샵 인테리어', pat: [
+    { n: '브라질리언 왁싱 1회', d: '1회용 위생 재료만 사용. 100% 예약제, 개인 룸 진행.', min: 29000, max: 45000 },
+    { n: '전신 왁싱 패키지', d: '전신 왁싱 풀 패키지. 마무리 진정 관리 포함, 예약제.', min: 45000, max: 75000 },
+    { n: '팔 + 다리 왁싱 세트', d: '팔 전체 + 다리 전체 왁싱. 1회용 재료, 예약제.', min: 39000, max: 60000 } ] },
+  { pq: '피부관리', cat: 'beauty_voucher', iq: '피부관리 에스테틱', pat: [
+    { n: '진정 광채 관리 1회 (60분)', d: '클렌징 → 진정 앰플 → 광채 마스크 풀코스. 민감성도 가능.', min: 33000, max: 59000 },
+    { n: '아쿠아필 1회 (모공 집중)', d: '아쿠아필 딥클렌징 + 진정 마스크. 시술 약 50분.', min: 39000, max: 66000 },
+    { n: '등 관리 1회 (스크럽+팩)', d: '등 스크럽 + 진정 팩 관리. 여름철 인기 코스.', min: 35000, max: 55000 } ] },
+  { pq: '마사지', cat: 'beauty_voucher', iq: '마사지샵', pat: [
+    { n: '아로마 전신 마사지 60분', d: '아로마 오일 전신 관리 60분. 개인 룸, 100% 예약제.', min: 42000, max: 69000 },
+    { n: '발 + 종아리 집중 40분', d: '발바닥·종아리 집중 관리 40분. 당일 예약 문의.', min: 29000, max: 45000 },
+    { n: '커플 전신 관리 60분 (2인)', d: '2인 동시 진행 전신 관리 60분. 커플룸 예약제.', min: 79000, max: 120000 } ] },
+  { pq: '애견미용', cat: 'etc_voucher', iq: '강아지 미용', pat: [
+    { n: '반려견 종합 미용 (목욕+커트)', d: '목욕 + 전체 커트(소형견 기준). 중·대형견은 매장 문의.', min: 30000, max: 48000 },
+    { n: '스파 + 베이직 미용', d: '탄산 스파 목욕 + 베이직 미용(소형견). 사진 전송 서비스.', min: 40000, max: 60000 },
+    { n: '부분미용 (발 + 위생)', d: '발 클리핑 + 위생 미용 + 발톱. 30분 내외.', min: 15000, max: 24000 } ] },
+  { pq: '클라이밍', cat: 'etc_voucher', iq: '실내 클라이밍', pat: [
+    { n: '클라이밍 1일권 + 초보 강습', d: '1일 이용권 + 강습 30분 + 암벽화·초크 대여 포함.', min: 16000, max: 25000 },
+    { n: '주중 자유이용 1주일권', d: '평일 자유 이용 1주 + 암벽화 대여. 초보 환영.', min: 29000, max: 45000 } ] },
+  { pq: '필라테스', cat: 'etc_voucher', iq: '기구 필라테스', pat: [
+    { n: '기구 필라테스 체험 2회', d: '리포머 기구 체험 2회. 소수정원 강사 밀착 지도.', min: 25000, max: 42000 },
+    { n: '1:1 개인 레슨 1회', d: '1:1 맞춤 기구 레슨 50분. 체형 분석 포함.', min: 45000, max: 75000 } ] },
+  { pq: '헬스장', cat: 'etc_voucher', iq: '헬스장 PT', pat: [
+    { n: 'PT 체험 2회 + 인바디', d: '1:1 PT 2회 + 인바디 측정·식단 상담. 초보 환영.', min: 29000, max: 49000 },
+    { n: '1개월 이용권 + 운동복', d: '헬스 1개월 + 운동복·수건 포함. 첫 등록 혜택.', min: 49000, max: 80000 } ] },
+  { pq: '요가원', cat: 'etc_voucher', iq: '요가 수업', pat: [
+    { n: '요가 3회 체험권', d: '하타·빈야사 자유 수강 3회. 매트 무료 대여.', min: 24000, max: 39000 },
+    { n: '주말 클래스 2회권', d: '주말 오전 클래스 2회. 초보 환영, 매트 무료.', min: 20000, max: 32000 } ] },
+  { pq: '방탈출', cat: 'etc_voucher', iq: '방탈출 카페', pat: [
+    { n: '방탈출 2인 이용권', d: '테마 자유 선택 2인. 난이도별 테마 보유, 예약 후 방문.', min: 20000, max: 32000 },
+    { n: '공포 테마 2인 (야간)', d: '공포 테마 2인 야간 타임. 담력 자신 있는 분만.', min: 24000, max: 36000 } ] },
+  { pq: '사진관', cat: 'etc_voucher', iq: '프로필 사진 스튜디오', pat: [
+    { n: '프로필 촬영 + 보정 2컷', d: '개인 프로필 30분 촬영 + 고급 보정 2컷. 의상 1벌 교체 가능.', min: 39000, max: 69000 },
+    { n: '증명사진 + 헤어메이크업', d: '취업용 증명사진 + 간단 헤어메이크업 + 보정 1컷.', min: 35000, max: 55000 } ] },
+  { pq: '셀프사진관', cat: 'etc_voucher', iq: '셀프사진관 부스', pat: [
+    { n: '셀프사진 2인 (소품 무제한)', d: '부스 촬영 + 인화 2매 + 소품 무제한. 데이트 코스로 인기.', min: 10000, max: 16000 },
+    { n: '네컷 촬영 + 액자 세트', d: '네컷 2회 촬영 + 미니 액자 1개. 소품 무제한.', min: 14000, max: 22000 } ] },
+  { pq: '볼링장', cat: 'etc_voucher', iq: '볼링장', pat: [
+    { n: '볼링 2게임 + 대여화 (2인)', d: '2인 2게임 + 볼링화 대여 포함. 주말 저녁도 사용 가능.', min: 15000, max: 24000 },
+    { n: '3게임 + 음료 무제한 (2인)', d: '2인 3게임 + 탄산음료 무제한. 볼링화 포함.', min: 22000, max: 34000 } ] },
+  { pq: '스크린골프', cat: 'etc_voucher', iq: '스크린골프', pat: [
+    { n: '스크린골프 2시간 (2인)', d: '룸 2시간 + 음료 2잔. 초보 레슨 모드 지원.', min: 26000, max: 42000 },
+    { n: '레슨 30분 + 라운드 1시간', d: '프로 레슨 30분 + 스크린 라운드 1시간(1인).', min: 35000, max: 55000 } ] },
+  { pq: '만화카페', cat: 'etc_voucher', iq: '만화카페 내부', pat: [
+    { n: '만화카페 4시간 + 음료 2잔', d: '프라이빗 룸 4시간 + 음료 2잔. 신간 매주 입고.', min: 12000, max: 19000 },
+    { n: '커플석 3시간 + 음료 2잔', d: '커플 좌석 3시간 + 음료 2잔. 담요 제공.', min: 16000, max: 24000 } ] },
+  { pq: '도자기공방', cat: 'etc_voucher', iq: '도자기 공방 클래스', pat: [
+    { n: '도자기 원데이 클래스 2인', d: '물레 체험 + 소품 1개 제작. 완성품은 2주 후 수령.', min: 34000, max: 55000 },
+    { n: '핸드페인팅 머그 클래스', d: '초벌 머그에 핸드페인팅. 1시간 30분, 2주 후 수령.', min: 25000, max: 40000 } ] },
 ];
+// 미지정 지역 시드 시 검색 앵커를 서울 전역에 분산(로테이션 대신 랜덤 구).
+const DEMO_GUS = ['강남구', '서초구', '송파구', '마포구', '성동구', '용산구', '영등포구', '광진구', '종로구', '중구', '강동구', '동작구', '관악구', '서대문구', '노원구'];
+// 오퍼 랜덤 조합: 패턴 → 가격(밴드 내 100원 단위) → 업종별 현실 할인율 역산 정가.
+//   💰 2026-07-05 (대표 "가격대 합리적인가? 시중가 대비 할인 맞나?"): 판매가 밴드는 업종 시세 기준
+//   수기 캘리브레이션(매장별 실가는 API 미제공 — 합성 정가임을 인지하고 운영). 할인율은 실제 로컬딜
+//   관행대로 업종별 차등: 식사 12~28%(음식점 마진 얇음), 뷰티 30~50%(첫방문 할인 관행 큼), 기타 18~38%.
+function demoDiscountRange(cat: string): [number, number] {
+  if (cat === 'meal_voucher') return [0.12, 0.28];
+  if (cat === 'beauty_voucher') return [0.3, 0.5];
+  return [0.18, 0.38];
+}
+// mult = 업종별 시세 보정 배율(어드민 편집, platform_settings.demo_price_multipliers) — 물가 드리프트 대응.
+function buildDemoOffer(t: DemoBiz, mult = 1, avoid?: Set<string>): { name: string; desc: string; price: number; orig: number; q: string } {
+  // 🎯 2026-07-06 (대표 "곱창 모둠 2인+볶음밥이 2번 넘게 나옴 — 최대한 현실적"): 같은 배치에서
+  //   이미 쓴 오퍼 문구는 피해 재추첨(패턴 소진 시에만 허용). 상품명이 매장명으로 유니크해도
+  //   오퍼 문구까지 다양해야 "데모 티" 가 없음.
+  let p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  if (avoid && t.pat.length > 1) {
+    for (let tries = 0; tries < 8 && avoid.has(p.n); tries++) p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  }
+  const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * mult / 100) * 100);
+  const [dMin, dMax] = demoDiscountRange(t.cat);
+  const disc = dMin + Math.random() * (dMax - dMin);
+  const orig = Math.round(price / (1 - disc) / 1000) * 1000;
+  return { name: p.n, desc: p.d, price, orig, q: t.iq || t.pq };
+}
+
+// 💰 2026-07-05 (대표 "최대한 이상적으로" — 시세 스냅샷의 낡음 방지): 업종별 가격 배율을
+//   어드민이 직접 보정(platform_settings JSON). 시드 시 밴드에 곱해짐. '*' = 전체 기본 배율.
+async function loadDemoPriceMultipliers(DB: D1Database): Promise<Map<string, number>> {
+  const m = new Map<string, number>();
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'demo_price_multipliers'").first<{ value: string }>();
+    if (row?.value) {
+      const obj = JSON.parse(row.value) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(obj)) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 0.5 && n <= 2) m.set(k, n);
+      }
+    }
+  } catch { /* 미설정 = 배율 1 */ }
+  return m;
+}
+
+// GET /dongnedeal/price-bands — 업종별 기준 밴드 + 현재 배율 + 최종 보정일 (어드민 보정 UI 용)
+adminProductsRoutes.get('/dongnedeal/price-bands', cors(), async (c) => {
+  try {
+    const mult = await loadDemoPriceMultipliers(c.env.DB);
+    const updated = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'demo_price_bands_updated_at'").first<{ value: string }>().catch(() => null);
+    const rows = DEMO_BIZ.map((t) => ({
+      pq: t.pq,
+      cat: t.cat,
+      min: Math.min(...t.pat.map((p) => p.min)),
+      max: Math.max(...t.pat.map((p) => p.max)),
+      multiplier: mult.get(t.pq) ?? mult.get('*') ?? 1,
+    }));
+    return c.json({ success: true, data: rows, updated_at: updated?.value || null });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
+
+// PUT /dongnedeal/price-bands — 업종별 배율 저장(0.5~2.0). 물가 변동 시 어드민이 직접 보정.
+adminProductsRoutes.put('/dongnedeal/price-bands', cors(), async (c) => {
+  try {
+    const body = await c.req.json<{ multipliers?: Record<string, unknown> }>().catch(() => ({} as never));
+    const src = body?.multipliers && typeof body.multipliers === 'object' ? body.multipliers : {};
+    const clean: Record<string, number> = {};
+    for (const [k, v] of Object.entries(src)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0.5 || n > 2) continue;  // 0.5~2 배 밖은 무시(오타 방어)
+      if (k !== '*' && !DEMO_BIZ.some((t) => t.pq === k)) continue;
+      if (Math.abs(n - 1) > 0.001) clean[k] = Math.round(n * 100) / 100;
+    }
+    const now = new Date().toISOString();
+    await c.env.DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('demo_price_multipliers', ?)").bind(JSON.stringify(clean)).run();
+    await c.env.DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('demo_price_bands_updated_at', ?)").bind(now).run().catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_price_bands', targetType: 'settings', after: clean }).catch(() => {});
+    return c.json({ success: true, saved: Object.keys(clean).length, updated_at: now });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
+
+// 📊 2026-07-05 (대표 "데모가 만든 데이터를 활용하면 되지 않을까"): **응모 수요 인사이트** —
+//   데모에 대한 **실제 유저 응모**(fcfs_applications 행 = 전부 실유저, 표시용 시드 미포함)를
+//   업종·지역·가격대로 집계. ① 어디부터 입점 영업할지(수요 증거) ② 가격 수용성(응모 많은 가격대)
+//   ③ 쌓이면 밴드 자동 보정 근거. 데모의 부산물이 아니라 데모의 **본래 목적** 데이터.
+adminProductsRoutes.get('/dongnedeal/demand-insights', cors(), async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT p.id, p.name, p.price, p.restaurant_name, p.restaurant_address,
+             bm.value AS biz, COALESCE(a.cnt, 0) AS applies
+        FROM products p
+        LEFT JOIN product_supply_meta bm ON bm.product_id = p.id AND bm.key = 'demo_biz'
+        LEFT JOIN (SELECT product_id, COUNT(*) AS cnt FROM fcfs_applications GROUP BY product_id) a
+               ON a.product_id = p.id
+       WHERE p.slug LIKE ?
+       ORDER BY applies DESC
+       LIMIT 500
+    `).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string; price: number; restaurant_name: string | null; restaurant_address: string | null; biz: string | null; applies: number }>();
+    const rows = results || [];
+    const byBiz = new Map<string, { products: number; applies: number; priceSum: number }>();
+    const byGu = new Map<string, { products: number; applies: number }>();
+    for (const r of rows) {
+      const biz = r.biz || '(태그 없음)';
+      const b = byBiz.get(biz) || { products: 0, applies: 0, priceSum: 0 };
+      b.products++; b.applies += r.applies; b.priceSum += r.price || 0; byBiz.set(biz, b);
+      const gu = (r.restaurant_address || '').match(/([가-힣]+구)/)?.[1] || '(기타)';
+      const g = byGu.get(gu) || { products: 0, applies: 0 };
+      g.products++; g.applies += r.applies; byGu.set(gu, g);
+    }
+    const biz = [...byBiz.entries()].map(([k, v]) => ({
+      biz: k, products: v.products, applies: v.applies,
+      avg_price: Math.round(v.priceSum / Math.max(1, v.products)),
+      applies_per_product: Math.round((v.applies / Math.max(1, v.products)) * 10) / 10,
+    })).sort((x, y) => y.applies - x.applies);
+    const regions = [...byGu.entries()].map(([k, v]) => ({ gu: k, products: v.products, applies: v.applies }))
+      .sort((x, y) => y.applies - x.applies);
+    const top = rows.filter((r) => r.applies > 0).slice(0, 20).map((r) => ({
+      id: r.id, name: r.name, store: r.restaurant_name, price: r.price, applies: r.applies,
+    }));
+    return c.json({ success: true, biz, regions, top, total_applies: rows.reduce((s2, r) => s2 + r.applies, 0), total_products: rows.length });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
 //   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
-async function kakaoPlaceLookup(
+// 🎯 2026-07-03 (대표 "지역 정확도"): 지역명을 좌표(중심점)로 1회 해석 — 이후 매장검색을 이 좌표
+//   반경으로 앵커링(문자열 이어붙이기보다 정확). 카카오 주소검색 우선, 실패 시 키워드검색 폴백.
+async function resolveRegionCenter(
+  env: { KAKAO_REST_API_KEY?: string },
+  region: string,
+): Promise<{ x: string; y: string } | null> {
+  const key = env.KAKAO_REST_API_KEY;
+  const q = (region || '').trim();
+  if (!key || !q) return null;
+  try {
+    for (const url of [
+      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(q)}&size=1`,
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=1`,
+    ]) {
+      const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+      if (!res.ok) continue;
+      const data = await res.json() as { documents?: Array<{ x?: string; y?: string }> };
+      const doc = data?.documents?.[0];
+      if (doc?.x && doc?.y) return { x: doc.x, y: doc.y };
+    }
+    return null;
+  } catch { return null; }
+}
+
+// 🏨 2026-07-20: 숙소 데모 시드(admin-stays.routes)도 동일한 실매장 매칭을 쓰도록 export.
+export async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
-): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
+  pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
+  center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null; placeId: string | null; phone: string | null; categoryName: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=1`;
+    // size 넉넉히(15) → 실제 존재하는 매장 후보 확보 후 pickIndex 로 회전 선택(대표 "카카오맵에서 랜덤/필터로 매장 선정").
+    //   center 지정 시 그 좌표 반경 20km 내를 거리순으로 → 지역 정확도 극대화(문자열 이어붙이기 대비).
+    // 🎲 2026-07-05 (대표 "랜덤으로 뽑아와야"): pickIndex=-1 이면 페이지(1~3)·후보 모두 랜덤 —
+    //   같은 업종을 여러 번 시드해도 매번 다른 실매장.
+    const randomMode = pickIndex < 0;
+    const page = randomMode ? 1 + Math.floor(Math.random() * 3) : 1;
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15&page=${page}`;
+    if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
-    const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
-    const doc = data?.documents?.[0];
+    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; phone?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    let docs = data?.documents || [];
+    if (!docs.length) return null;
+    // 🎯 2026-07-05 (오매칭 축소 — 갈비집에 샤브샤브): 랜덤 모드에선 카카오 카테고리/상호에
+    //   검색 업종 토큰이 포함된 후보를 우선(없으면 전체 폴백 — 매칭 자체는 안 죽임).
+    if (randomMode) {
+      const token = query.trim().split(/\s+/).pop() || '';
+      const affine = docs.filter((d) => (d.category_name || '').includes(token) || (d.place_name || '').includes(token));
+      if (affine.length) docs = affine;
+    }
+    const doc = randomMode ? docs[Math.floor(Math.random() * docs.length)] : docs[pickIndex % docs.length];
     if (!doc) return null;
     const lat = Number(doc.y), lng = Number(doc.x);
     return {
@@ -974,6 +1280,11 @@ async function kakaoPlaceLookup(
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
       placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+      placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
+      // 📞 2026-07-21 (대표 "다 넣어줘 — 최대한 다 긁어와"): 카카오 키워드 API 가 주는 실전화·실업종을
+      //   그간 흘리던 것 → 캡처. 전화=restaurant_phone(상세 노출), 업종=meta(참조/추후 활용).
+      phone: doc.phone || null,
+      categoryName: doc.category_name || null,  // 예 "음식점 > 한식 > 곰탕,설렁탕"
     };
   } catch { return null; }
 }
@@ -981,10 +1292,7 @@ async function kakaoPlaceLookup(
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
 adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   try {
-    // 🛡️ 2026-07-02 (대표 신고 — 쇼핑 상품이 동네딜 현황에 섞임): 동네딜은 이용권 4종(VOUCHER_CATEGORIES)
-    //   전용. 'general'(일반 온라인 쇼핑, 별칭 '온라인'/'일반 상품')은 서비스 분리상 동네딜 아님 —
-    //   소비자 동네딜 피드(group-buy-public)도 general 제외. 통계에서 general 제거해 경계 정합.
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'];
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
     const ph = cats.map(() => '?').join(',');
     const row = await c.env.DB.prepare(
       `SELECT COUNT(*) AS total, SUM(CASE WHEN COALESCE(is_active,1)=1 AND group_buy_status='active' THEN 1 ELSE 0 END) AS active FROM products WHERE category IN (${ph})`
@@ -1000,6 +1308,15 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   }
 });
 
+// 🎯 2026-07-03 (대표 "애초에 정확하게, 가장 이상적으로"): 검색된 실사진을 서버측에서 내려받아
+//   우리 R2(MEDIA_BUCKET)에 **재호스팅** → 우리 도메인(/api/media/…) https 로 영구 서빙.
+//   핫링크의 구조적 문제(인증서 불일치·혼합콘텐츠·핫링크차단·원본 404/삭제)를 원천 소멸 —
+//   저장되는 건 항상 우리 URL 이라 렌더 시 cfImage(zone 리사이저)가 same-origin 으로 리사이즈.
+//   이 함수가 URL 을 돌려주면 = "정상 이미지 확보"(검증+영구화 동시). 실패(키·네트워크·비이미지·과대/과소)
+//   → null → 호출측이 좌표없음과 결합해 '유령 데모' 스킵 판정에 사용.
+// 🎯 2026-07-21: rehostImageToR2 본체를 worker/utils/rehost-image.ts 로 추출(공용 SSOT — 시드 커버 +
+//   demo-image-rehost cron 이 공유). import 는 파일 상단(파일 중간 import 금지 룰) — 동작/시그니처 불변.
+
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
@@ -1008,20 +1325,20 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { region?: string; category?: string };
     const region = String(body.region || '').trim().slice(0, 30);
     const catFilter = mapDealCategory(String(body.category || '').trim());
-    const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
-    if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
+    // 🎲 2026-07-05: 시드 소스 = 생성형 업종 문법(DEMO_BIZ). (레거시 고정 템플릿은 2026-07-06 제거됨.)
+    const types = catFilter ? DEMO_BIZ.filter((t) => t.cat === catFilter) : DEMO_BIZ;
+    if (types.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 업종이 없습니다' }, 400);
 
-    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 기존에 시드/등록된 **깨지는 이미지**(phinf 인증서
-    //   불일치·http mixed content) 일괄 치유 — search.pstatic 프록시로 랩. 새 시드뿐 아니라
-    //   이미 홈에 떠 있는 오염 카드(ERR_CERT_COMMON_NAME_INVALID)까지 이 버튼 한 번으로 복구.
+    // 🛡️ 2026-07-02 v2 (라이브 콘솔 증거로 방향 전환): v1 은 phinf/http 원본을 search.pstatic
+    //   프록시로 감쌌으나 **그 프록시가 404**(imgnews·yt3 등 외부발 src 거부 — 콘솔 실측).
+    //   v2 치유 = 프록시 래퍼로 오염된 행을 **원본으로 un-wrap**. 원본 http/phinf 는 렌더 시점
+    //   cfImage(zone 리사이저, CDN_CGI_VERIFIED 실측 ok)가 처리하므로 DB 는 원본이 정답.
     let healed = 0;
     try {
       const { needsNaverImageHeal, toNaverSafeImageUrl } = await import('../../../shared/naver-safe-image');
       const broken = await DB.prepare(
         `SELECT id, image_url FROM products
-          WHERE image_url LIKE 'http://%'
-             OR image_url LIKE '%phinf%'
-             OR (image_url LIKE '%naver.net%' AND image_url NOT LIKE 'https://search.pstatic.net%')
+          WHERE image_url LIKE 'https://search.pstatic.net/common/%'
           LIMIT 500`
       ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }));
       for (const rowB of (broken.results || [])) {
@@ -1034,6 +1351,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       }
     } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
 
+    // ❌ 2026-07-02: 과거 시드된 general(배송형) 데모 자동 은퇴 — 동네딜 데모는 로컬 이용권만.
+    //   soft-retire(is_active=0 + slug 리네임)로 노출 제거·참조 보존. 시드 재실행 한 번이면 정리됨.
+    try {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now')
+          WHERE slug LIKE ? AND category = 'general' AND is_active = 1`
+      ).bind(DEAL_DEMO_SLUG + '%').run();
+    } catch { /* best-effort */ }
+
     // 🛡️ 2026-07-02 (대표 "데모 문구가 유저에게 보이면 안 됨"): 기존 시드분의 "데모 동네딜 — …"
     //   설명을 실제 상품 설명(템플릿 desc)으로 일괄 교정. 매칭 = 지역 프리픽스 제거한 상품명.
     try {
@@ -1042,10 +1368,24 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string }>().catch(() => ({ results: [] as { id: number; name: string }[] }));
       const stripRegion = (s: string) => String(s || '').replace(/^\[[^\]]+\]\s*/, '').trim();
       for (const rowD of (oldDemo.results || [])) {
-        const tpl = DEAL_DEMO.find((d) => stripRegion(d.name) === stripRegion(rowD.name));
-        const newDesc = tpl?.desc || stripRegion(rowD.name);  // 템플릿 미매칭이어도 최소한 "데모" 제거
+        const newDesc = stripRegion(rowD.name);  // 레거시 "데모…" 설명 → 최소한 상품명 기반으로(데모 문구 제거)
         await DB.prepare('UPDATE products SET description = ? WHERE id = ?').bind(newDesc, rowD.id).run().catch(() => {});
       }
+    } catch { /* best-effort */ }
+
+    // 🏷️ 2026-07-19 (대표 — 제목 중복 제거): 옛 '{실매장명} · 오퍼'/'[구] 오퍼' 이름을 '오퍼만' 신형으로
+    //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
+    await healDemoNamesInPlace(DB).catch(() => {});
+
+    // 🏠 2026-07-06 (대표 "주소 미등록 영구 해결"): 주소 없는 데모(레거시·불완전 매칭)는 실매장 검증 불가 →
+    //   자동 은퇴(soft-retire: is_active=0 + slug 리네임). 피드에서 사라지고, 새 생성분은 위 가드로 항상 주소 보유.
+    try {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now')
+          WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'
+            AND COALESCE(is_active,1) = 1
+            AND (restaurant_address IS NULL OR TRIM(restaurant_address) = '')`
+      ).bind(DEAL_DEMO_SLUG + '%').run();
     } catch { /* best-effort */ }
 
     // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
@@ -1057,76 +1397,215 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const m = suffixRe.exec(String(row.slug || ''));
       if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
-    // 🖼️ 실사진: 네이버 이미지검색(전 단계 search.pstatic 프록시 — 인증서 깨짐 구조적 0).
-    //   실패/키없음 → picsum 폴백. batchIndex 로테이션 = 누적 시드 동일 사진 중복 완화.
-    const batchIndex = Math.floor(maxSuffix / items.length);
-    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
-    const resolvedImgs = await Promise.all(
-      items.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
-    );
-    // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
-    //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
-    const resolvedPlaces = await Promise.all(
-      items.map((d) => (d.rest || d.addr || region)
-        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.q}`.trim()).catch(() => null)
-        : Promise.resolve(null))
-    );
+    // 🔁 2026-07-04 (대표 "계속 생성" + "왜 개수가 제각각?"): count(1~24, 기본 8) 를 **정확히 채울 때까지**
+    //   라운드 보충(최대 3라운드) — 실매장 미매칭/중복매장 스킵분을 다른 랜덤 매장으로 메꿈.
+    //   그 지역 실매장 후보가 고갈될 때만 목표 미달(skipped 표기).
+    const reqCount = Math.max(1, Math.min(24, Math.round(Number((body as { count?: unknown }).count)) || 8));
+    // 🏷️ 2026-07-05 (대표 "옵션으로 선택할 수 있게 개발해줘"): mode='prelaunch' = **오픈 예정·사전 응모형** —
+    //   소비자 표면에 '오픈 예정' 배지 + 구매 대신 사전 응모 유도 + **생성 리뷰 미부착**(정직 모드).
+    //   기본(미지정) = 실상품형(기존과 동일).
+    const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
+    const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
+    //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
+    const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
+    // 🎲 업종을 셔플해서 need 만큼 — 한 배치 안에서 업종이 최대한 안 겹치고, 부족하면 순환.
+    //   🎯 2026-07-06: 라운드(≤3) 반복 시 **이미 시드된 업종을 뒤로** 밀어(미사용 업종 우선) 라운드
+    //   경계에서 같은 업종·같은 오퍼가 반복되던 것 차단(곱창 2번↑ 사건의 한 축).
+    const usedTypes = new Set<string>();
+    const nextWork = (need: number): Array<{ t: DemoBiz }> => {
+      const fresh = types.filter((t) => !usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const rest = types.filter((t) => usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const pool = [...fresh, ...rest];  // 미사용 업종 먼저 소진 → 다양성 최대
+      const w: Array<{ t: DemoBiz }> = [];
+      for (let i = 0; i < need; i++) w.push({ t: pool[i % pool.length] });
+      return w;
+    };
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
     //   삽입 후 last_row_id 로 product_supply_meta 에 fcfs 설정 기록 → 기존 fcfs UI 가 "선착순 {seed}/{spots}명" 표시.
+    // 🎛️ 2026-07-04 (대표 "지원자 수 조절 + 각각 기간 설정 — 지금은 데모만"): 시드 옵션 —
+    //   fcfsDays(마감 N일 후, 1~60, 기본 7) + applicantsMin/Max(표시 지원자 수 랜덤 범위, 미지정 시 템플릿값).
+    //   개별 수정은 DealList 의 추첨 설정(PUT /api/admin/fcfs/:id)으로.
     const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
-    const fcfsDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7일 후 마감(데모)
+    const optB = body as { fcfsDays?: unknown; applicantsMin?: unknown; applicantsMax?: unknown };
+    const fcfsDays = Math.max(1, Math.min(60, Math.round(Number(optB.fcfsDays)) || 7));
+    const fcfsDeadline = new Date(Date.now() + fcfsDays * 24 * 60 * 60 * 1000).toISOString();
+    const aMinRaw = Math.round(Number(optB.applicantsMin));
+    const hasApplicantRange = Number.isFinite(aMinRaw) && aMinRaw > 0;
+    const aMin = hasApplicantRange ? Math.min(aMinRaw, 5000) : 0;
+    const aMax = hasApplicantRange ? Math.min(Math.max(Math.round(Number(optB.applicantsMax)) || aMin, aMin), 5000) : 0;
+    const pickApplicants = (tplSeed: number) => hasApplicantRange ? aMin + Math.floor(Math.random() * (aMax - aMin + 1)) : tplSeed;
     let seeded = 0;
     let realPhotos = 0;
     let placed = 0;
-    for (let i = 0; i < items.length; i++) {
-      const d = items[i];
-      const img = resolvedImgs[i] || d.img;
-      if (resolvedImgs[i]) realPhotos++;
-      // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
-      const place = resolvedPlaces[i];
-      if (place?.lat != null) placed++;
-      const restName = place?.name || d.rest || null;
-      const restAddr = place?.address || d.addr || null;
-      // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
-      const dispName = region
-        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${region}]`) : `[${region}] ${d.name}`)
-        : d.name;
-      const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
-      let res;
-      try {
-        res = await DB.prepare(
-          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
-      } catch {
-        // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
-        res = await DB.prepare(
-          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
-      }
-      seeded++;
-      // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
-      const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
-      if (pid > 0 && d.spots > 0 && d.seed > 0) {
-        await setSupplyMeta(DB, pid, {
-          fcfs_enabled: '1',
-          fcfs_spots: d.spots,
-          fcfs_applied_seed: d.seed,
-          fcfs_deadline: fcfsDeadline,
-        }).catch(() => {});
-      }
-      // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
-      if (pid > 0 && place?.placeUrl) {
-        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
+    let skipped = 0;  // 🎯 좌표·실사진 둘 다 없어 생성하지 않은 데모 수
+    // 🎯 2026-07-03 (대표 "데모 리뷰가 매장 특색에 안 맞음"): 시드된 데모의 매장특색 리뷰 생성 대상.
+    const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
+    // 🔁 같은 호출 내 + **기존 시드분과도** 동일 매장 중복 생성 방지 — DB 의 기존 데모 매장을 선적재.
+    const usedStores = new Set<string>();
+    const usedOffers = new Set<string>();  // 🎯 2026-07-06: 배치 내 오퍼 문구 반복 억제(패턴 소진 전까지)
+    try {
+      const prev = await DB.prepare(
+        `SELECT restaurant_name, restaurant_address FROM products WHERE slug LIKE ?`
+      ).bind(DEAL_DEMO_SLUG + '%').all<{ restaurant_name: string | null; restaurant_address: string | null }>();
+      for (const r of (prev.results || [])) usedStores.add(`${r.restaurant_name || ''}|${r.restaurant_address || ''}`);
+    } catch { /* best-effort */ }
+    let slugCursor = maxSuffix;  // 누적 추가 — 기존 번호 다음부터, 실제 INSERT 시에만 증가(라운드 무관 충돌 0)
+    for (let round = 0; round < 3 && seeded < reqCount; round++) {
+      const work = nextWork(reqCount - seeded);
+      // 🎲 1단계: 실매장 랜덤 매칭 먼저(랜덤 페이지·랜덤 후보) — region 미지정이면 서울 랜덤 구로 분산.
+      const resolvedPlaces = await Promise.all(
+        work.map((w) => kakaoPlaceLookup(
+          c.env,
+          regionCenter ? w.t.pq : `서울 ${DEMO_GUS[Math.floor(Math.random() * DEMO_GUS.length)]} ${w.t.pq}`,
+          -1,  // 랜덤 모드
+          regionCenter,
+        ).catch(() => null))
+      );
+      // 🖼️ 2단계: 실사진 3~5장(랜덤) — 2026-07-20 대표("연관없는 사진 가끔" + "3~5장 랜덤" +
+      //   "카카오 플레이스 사진도 함께"). fetchDemoPhotos = 카카오 플레이스 등록 사진(그 매장 실제 사진,
+      //   관련도 100%) 우선 → 부족분 네이버 매장명 스코어링 → 업종 일반 폴백.
+      const resolvedImgSets = await Promise.all(
+        work.map(async (w, i) => {
+          const pl = resolvedPlaces[i]
+          if (!pl?.name) return [] as string[]
+          try {
+            return await fetchDemoPhotos(c.env, {
+              placeId: pl.placeId,
+              nameQuery: pl.name,
+              address: pl.address,  // 🖼️ 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
+              naverQuery: `${pl.name} ${w.t.pq}`,
+              fallbackQuery: w.t.iq || w.t.pq,
+              count: 3 + Math.floor(Math.random() * 3),
+            })
+          } catch { return [] as string[] }
+        })
+      );
+      // 🎯 2026-07-03: 대표(카드) 사진 1장만 우리 R2 로 재호스팅(/api/media/…) — 서브리퀘스트 한도 보호.
+      //   추가 갤러리 사진(2~5번째)은 search.pstatic(네이버 자체 CDN, 인증서·핫링크 안전) URL 그대로 사용.
+      const validImgs = await Promise.all(
+        resolvedImgSets.map((arr) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)),
+      );
+      for (let i = 0; i < work.length && seeded < reqCount; i++) {
+        const t = work[i].t;
+        const realPhoto = validImgs[i];               // 검증 통과 실사진(없으면 null)
+        if (realPhoto) realPhotos++;
+        const place = resolvedPlaces[i];
+        const hasCoord = place?.lat != null;
+        if (hasCoord) placed++;
+        // 🎯 2026-07-03 (대표 "데모는 실제 있는 매장이어야 해"): 카카오 실매장 매칭 실패 = 생성 안 함(스킵).
+        // 🏠 2026-07-06 (대표 "주소 미등록 영구 해결"): 좌표뿐 아니라 **주소도 필수** — 둘 다 있어야 실매장 인정.
+        if (!hasCoord || !place?.address) { skipped++; continue; }
+        const storeKey = `${place?.name || ''}|${place?.address || ''}`;
+        if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
+        usedStores.add(storeKey);
+        // 🎲 3단계: 그 매장에 맞는 오퍼 랜덤 조합(패턴×가격밴드×할인 25~45%).
+        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1, usedOffers);
+        usedOffers.add(offer.name);
+        usedTypes.add(t.pq);  // 이 업종은 시드됨 → 다음 라운드 nextWork 에서 뒤로
+        // 🖼️ 커버 = 대표사진 우선순위: ① R2 재호스팅본(카카오 대표사진→우리 도메인) → ② 재호스팅 실패 시
+        //   대표사진 원본 URL(resolvedImgSets[0] = 카카오 대표사진, 없으면 네이버 top) → ③ 최후 picsum.
+        //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
+        //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
+        const img = realPhoto || resolvedImgSets[i][0] || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
+        const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
+        const restAddr = place?.address || null;
+        // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 2026-07-06 '매장명 · 오퍼' 역전): 상품명 = **오퍼(메뉴명)만**.
+        //   홈 리스트가 제목 아랫줄에 매장명(restaurant_name)을 별도 표시하므로 제목의 매장명 프리픽스는
+        //   중복이었음("한성식당 · 곱창전골 2인" + 아랫줄 "한성식당"). 매장 구분은 restaurant_name 컬럼 전담.
+        const dispName = offer.name;
+        const slug = DEAL_DEMO_SLUG + (++slugCursor);
+        const restPhone = place?.phone || null;  // 📞 카카오 실전화(있으면) — 상세 노출
+        let res;
+        try {
+          res = await DB.prepare(
+            `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, place?.lat ?? null, place?.lng ?? null, slug).run();
+        } catch {
+          // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
+          res = await DB.prepare(
+            `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, slug).run();
+        }
+        seeded++;
+        // 🧹 2026-07-05 (리뷰 57~119개 부풀림 근본원인): SQLite 가 삭제된 옛 데모의 rowid 를 재사용 →
+        //   과거 고아 리뷰/응모/장바구니가 **새 상품에 상속**됨. 재사용 id 의 잔재를 즉시 청소.
+        {
+          const pid0 = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
+          if (pid0 > 0) {
+            for (const tbl of ['product_reviews', 'fcfs_applications', 'cart_items', 'wishlists']) {
+              await DB.prepare(`DELETE FROM ${tbl} WHERE product_id = ?`).bind(pid0).run().catch(() => {});
+            }
+          }
+        }
+        // 추첨 응모 설정 — 정원 3~8 랜덤, 표시 지원자 = 정원×3~6배(범위 지정 시 그 랜덤).
+        const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
+        if (pid > 0) {
+          const spots = 3 + Math.floor(Math.random() * 6);
+          await setSupplyMeta(DB, pid, {
+            fcfs_enabled: '1',
+            fcfs_spots: spots,
+            fcfs_applied_seed: pickApplicants(spots * (3 + Math.floor(Math.random() * 4))),
+            fcfs_deadline: fcfsDeadline,
+            demo_biz: t.pq,  // 📊 수요 인사이트 그룹핑 키(업종별 실응모 집계)
+            ...(isPrelaunch ? { prelaunch: '1' } : {}),  // 🏷️ 오픈 예정형 표시(소비자 배지·CTA 분기)
+          }).catch(() => {});
+        }
+        // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) + 실업종(참조/추후 활용) — 매칭 성공 시만.
+        if (pid > 0 && place?.placeUrl) {
+          await setSupplyMeta(DB, pid, {
+            kakao_place_url: place.placeUrl,
+            ...(place.categoryName ? { kakao_category: place.categoryName } : {}),
+          }).catch(() => {});
+        }
+        // 🖼️ 2026-07-20 (대표 "사진 3~5장 랜덤"): 갤러리 = [대표(R2 재호스팅)] + 추가 실사진(pstatic CDN)
+        //   → products.images(JSON, 상세 스와이프 갤러리 소비). 컬럼 미존재 환경 조용히 skip.
+        {
+          const extraImgs = resolvedImgSets[i].slice(1, 5);
+          if (pid > 0 && extraImgs.length > 0) {
+            await DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+              .bind(JSON.stringify([img, ...extraImgs]), pid).run().catch(() => {});
+          }
+        }
+        // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
+        if (pid > 0 && !isPrelaunch) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });  // 🏷️ 오픈 예정형 = 리뷰 미부착
       }
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
-    return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
+    // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 좌표 없이 시드된 행(place 미매칭/폴백 INSERT)을
+    //   응답 직후 즉시 지오코딩 — 일일 cron Pass A 를 그대로 1회 실행(waitUntil, fail-soft).
+    //   당일 좌표 공백 → 방문자마다 클라 지오코딩 폴백 발동하던 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
+    // 🎯 2026-07-03 (대표 "데모 리뷰 매장 특색에 맞게, 가장 이상적으로"): 시드된 데모에 매장특색 리뷰 생성
+    //   (Claude Haiku grounding: 오프라인 이용권·실매장명·업종 → 배송어 없이 자연스럽게. 키/실패 시 업종별 결정론 폴백).
+    //   응답 후 waitUntil(외부 LLM 호출이라 응답 블록 방지) — review_count>0 채워 시간당 generic cron 이 안 건드림.
+    if (seededForReviews.length > 0) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/utils/demo-review-generator').then((m) => {
+            // 🎭 상품별 리뷰 수 6~12 랜덤(동일 개수=조작 티) + **배치 공용 seen** 으로 매장 간 리뷰 중복 방지.
+            const seenShared = new Set<string>();
+            return Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 6 + Math.floor(Math.random() * 7), seenShared).catch(() => 0)));
+          }).then(() =>
+            invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {})
+          ).catch(() => {})
+        );
+      } catch { /* executionCtx 미가용 — 시간당 cron 이 폴백 처리 */ }
+    }
+    return c.json({ success: true, seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -1142,6 +1621,13 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
     await c.env.DB.prepare(
       `DELETE FROM fcfs_applications WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
     ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드 fake 리뷰·장바구니·위시가 FK 로 하드삭제를
+    //   막아 soft-retire 로만 남던 것 → 파생 자식행 선정리(데모 전용이라 안전) → 실제 하드삭제.
+    for (const t of ['product_reviews', 'cart_items', 'wishlists']) {
+      await c.env.DB.prepare(
+        `DELETE FROM ${t} WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
+      ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    }
     // 🛡️ 2026-07-01 (대표 신고 "데모 정리 안됨" — 500): 일괄 DELETE 는 데모에 주문/바우처 등
     //   FK 참조가 하나라도 붙으면 전체가 실패(500). → 행별 삭제 + 실패 행은 soft-retire
     //   (is_active=0 + slug 를 retired- 로 리네임 → 노출/데모 카운트에서 제외, 참조 데이터 보존).
@@ -1161,6 +1647,93 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted, retired } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, deleted, retired });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🎬 2026-07-07 (대표 — "데모 데이터 실제로 심어서 테스트"): 링크샵 리디자인 확인용 데모 상품 시드.
+//   특정 셀러(seller_id)의 '내 상품' + '이용권'을 채워 링크샵을 꽉 찬 상태로 만든다.
+//   slug 'demo-linkshop-N' 로 식별 → DELETE 로 일괄 제거. 멱등(이미 있으면 skip). 이미지는 기존 데모 R2 사진 재사용.
+const LINKSHOP_DEMO_SLUG = 'demo-linkshop-';
+const LINKSHOP_DEMO_IMGS = [
+  '/api/media/uploads/demo/2026-07/2985830a-52bf-4173-aa0f-e69b9bf97c5c.jpg',
+  '/api/media/uploads/demo/2026-07/47e8a692-c70b-40f9-a190-17cd10ba1a6a.jpg',
+  '/api/media/uploads/demo/2026-07/8ee6cb67-05c1-4fd2-b589-499991c3980c.webp',
+  '/api/media/uploads/demo/2026-07/f3414af6-6fa4-40e2-a74f-90c5f27840ed.jpg',
+  '/api/media/uploads/demo/2026-07/57f1183b-4b70-4377-a299-aa6fb23955aa.jpg',
+  '/api/media/uploads/demo/2026-07/925d1b90-34c2-4ecb-8f0b-e8975f19f114.jpg',
+  '/api/media/uploads/demo/2026-07/bdec2dec-80c4-416c-a67e-a3c9f46790e4.jpg',
+  '/api/media/uploads/demo/2026-07/d3975223-f7ef-4cce-bf87-c5968fd532a1.jpg',
+  '/api/media/uploads/demo/2026-07/67e0aeeb-4b19-4ee6-b38d-09ade8b2d3f0.jpg',
+];
+const LINKSHOP_DEMO_SHOP = [
+  { name: '프리미엄 한우 등심 500g 냉장', price: 69000, original_price: 89000, category: 'food' },
+  { name: '국내산 참기름 선물세트 (500ml x2)', price: 38000, original_price: 0, category: 'food' },
+  { name: '명란젓 500g 특상품 저염', price: 19900, original_price: 24900, category: 'food' },
+  { name: '수제 어묵탕 밀키트 2인분', price: 15900, original_price: 0, category: 'food' },
+  { name: '전통방식 쌀조청 850g', price: 12000, original_price: 0, category: 'food' },
+  { name: '제주 손질 갈치 냉동 5팩', price: 27000, original_price: 32000, category: 'food' },
+];
+const LINKSHOP_DEMO_VOUCHERS = [
+  { name: '[성수] 소금집델리 브런치 이용권', price: 28000, original_price: 34000, restaurant: '소금집델리 성수' },
+  { name: '[연남] 수제버거 세트 교환권', price: 18000, original_price: 0, restaurant: '연남버거하우스' },
+];
+
+// POST /linkshop-demo/seed  { seller_id }  — 데모 상품/이용권 시드 (멱등)
+adminProductsRoutes.post('/linkshop-demo/seed', cors(), async (c) => {
+  try {
+    const body = (await c.req.json().catch(() => ({}))) as { seller_id?: number | string };
+    const sellerId = Number(body.seller_id);
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'seller_id 필요' }, 400);
+    // 이미 심었으면 skip (멱등)
+    const existing = await c.env.DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ? AND seller_id = ?`)
+      .bind(LINKSHOP_DEMO_SLUG + '%', sellerId).first<{ c: number }>().catch(() => ({ c: 0 }));
+    if ((existing?.c ?? 0) > 0) return c.json({ success: true, alreadySeeded: true, count: existing!.c });
+    let n = 0, imgI = 0;
+    const insShop = async (p: typeof LINKSHOP_DEMO_SHOP[number]) => {
+      const slug = LINKSHOP_DEMO_SLUG + (++n);
+      await c.env.DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+           is_active, seller_id, stock, stock_quantity, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, ?, 50, 50, ?, datetime('now'), datetime('now'))`
+      ).bind(p.name, p.name + ' — 데모 상품', p.price, p.original_price || null, LINKSHOP_DEMO_IMGS[imgI++ % LINKSHOP_DEMO_IMGS.length], p.category, sellerId, slug).run();
+    };
+    const insVoucher = async (v: typeof LINKSHOP_DEMO_VOUCHERS[number]) => {
+      const slug = LINKSHOP_DEMO_SLUG + (++n);
+      await c.env.DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+           is_active, seller_id, stock, stock_quantity, restaurant_name, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'meal_voucher', 'regular', 1, ?, 50, 50, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original_price || null, LINKSHOP_DEMO_IMGS[imgI++ % LINKSHOP_DEMO_IMGS.length], sellerId, v.restaurant, slug).run();
+    };
+    for (const p of LINKSHOP_DEMO_SHOP) await insShop(p).catch(() => {});
+    for (const v of LINKSHOP_DEMO_VOUCHERS) await insVoucher(v).catch(() => {});
+    await writeAuditLog(c, { action: 'linkshop_seed_demo', targetType: 'product', after: { sellerId, seeded: n } }).catch(() => {});
+    return c.json({ success: true, seeded: n, seller_id: sellerId });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// DELETE /linkshop-demo/seed?seller_id=  — 데모 상품/이용권 일괄 제거
+adminProductsRoutes.delete('/linkshop-demo/seed', cors(), async (c) => {
+  try {
+    const sellerId = Number(c.req.query('seller_id'));
+    const rows = await c.env.DB.prepare(`SELECT id FROM products WHERE slug LIKE ?${Number.isFinite(sellerId) && sellerId > 0 ? ' AND seller_id = ?' : ''}`)
+      .bind(...(Number.isFinite(sellerId) && sellerId > 0 ? [LINKSHOP_DEMO_SLUG + '%', sellerId] : [LINKSHOP_DEMO_SLUG + '%']))
+      .all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }));
+    let deleted = 0, retired = 0;
+    for (const r of (rows.results || [])) {
+      for (const t of ['product_reviews', 'cart_items', 'wishlists']) {
+        await c.env.DB.prepare(`DELETE FROM ${t} WHERE product_id = ?`).bind(r.id).run().catch(() => {});
+      }
+      try { const del = await c.env.DB.prepare(`DELETE FROM products WHERE id = ?`).bind(r.id).run(); if (del.meta?.changes) { deleted++; continue; } } catch { /* FK → retire */ }
+      await c.env.DB.prepare(`UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id WHERE id = ?`).bind(r.id).run().catch(() => {});
+      retired++;
+    }
     return c.json({ success: true, deleted, retired });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1187,7 +1760,7 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       const cat = mapDealCategory(catRaw);
       if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
-      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 맛집(이용권)/미용/기타 중 하나 (일반 쇼핑 상품은 동네딜 아님)` }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/숙소 중 하나` }); continue; }
       if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
       const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
       const origNum = orig ? Math.round(Number(orig)) : 0;
@@ -1198,8 +1771,8 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       try {
         await c.env.DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, datetime('now'), datetime('now'))`
         ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr).run();
         created++;
         results.push({ row: rowNum, name, status: 'ok' });
@@ -1210,6 +1783,15 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_bulk_import', targetType: 'product', after: { total: rows.length, created } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    // 🧭 2026-07-02: CSV 등록은 좌표 없이 INSERT — 응답 직후 cron Pass A 1회 즉시 실행(waitUntil,
+    //   fail-soft, batch ≤100/회)로 좌표+동 태깅 채움 → 당일 클라 지오코딩 폴백 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1227,13 +1809,14 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
       max_per_person?: number | string;
       kakao_place_url?: string;
+      image_urls?: string[];  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리용 다중 이미지
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
     const price = Math.round(Number(String(b.price ?? '').replace(/[^\d.-]/g, '')));
     if (!name) return c.json({ success: false, error: '상품명을 입력하세요' }, 400);
     if (!Number.isFinite(price) || price <= 0) return c.json({ success: false, error: '판매가가 올바르지 않습니다' }, 400);
-    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타/일반)' }, 400);
+    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타)' }, 400);
     if (cat === 'stay_voucher') return c.json({ success: false, error: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }, 400);
     const origNum = Math.round(Number(String(b.original_price ?? '').replace(/[^\d.-]/g, ''))) || 0;
     const img = String(b.image_url || '').trim() || null;
@@ -1243,12 +1826,19 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     const desc = String(b.description || '').trim() || name;
     const lat = Number(b.lat); const lng = Number(b.lng);
     const hasCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 이미지 → products.image_urls(JSON) — 상세 스와이프
+    //   갤러리(image_url + image_urls 병합·중복제거)가 소비. 최대 8장·http(s) URL 만.
+    const galleryJson = Array.isArray(b.image_urls)
+      ? JSON.stringify(b.image_urls.filter((u) => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8))
+      : null;
+    // 갤러리 저장처 = detail_images (0004 마이그레이션 실존 컬럼 — 상세 스와이프 갤러리가 병합 소비.
+    //   image_urls 는 products 에 없음 + 컬럼 예산제로 신설 금지 → 기존 컬럼 재사용이 정답.)
     const r = await c.env.DB.prepare(
-      `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-         is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_phone,
+      `INSERT INTO products (name, description, price, original_price, image_url, detail_images, category, product_type,
+         is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone,
          restaurant_lat, restaurant_lng, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(name, desc, price, origNum > price ? origNum : null, img, galleryJson && galleryJson !== '[]' ? galleryJson : null, cat, rest, addr, phone,
       hasCoord ? lat : null, hasCoord ? lng : null).run();
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도 meta 저장 (1~99, 0/미설정=무제한).
     {
@@ -1264,6 +1854,16 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
     }
+    // 🧭 2026-07-02: 좌표 없이 등록 시 즉시 지오코딩(waitUntil, fail-soft) — cron 전 갭 제거.
+    if (!hasCoord && addr && r.meta?.last_row_id) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then((m) =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(r.meta.last_row_id))
+          ).catch(() => {})
+        );
+      } catch { /* ctx 미가용 — cron 백필 */ }
+    }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
     // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
     //   앱 캐시(group_buy_products:*) 무효화. 셀러 상품 등록과 동일 패턴. (edge/SSR TTL 은 별도.)
@@ -1278,17 +1878,87 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
 // GET /dongnedeal/list — 등록된 동네딜 목록(최근순). 수정/삭제 관리용.
 adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   try {
-    // 🛡️ 2026-07-02 (대표 신고): 동네딜 목록도 이용권 4종 전용 — general(일반 쇼핑) 제외.
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'];
-    const ph = cats.map(() => '?').join(',');
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
     const limRaw = Number(c.req.query('limit'));
     const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
+    // 🔢 2026-07-06 (대표 "모든 동네딜이 다 나오나?" — 100개 cap 확인): offset 페이지네이션 + total 반환.
+    const off = Math.max(0, intParam(c.req.query('offset'), 0));
+
+    // 🔎 2026-07-06 (대표 "등록된 도매딜 필터링 — 지역·카테고리·상품형태 등"): 서버측 필터(전 목록 대상).
+    //   전부 additive — 파라미터 없으면 기존 쿼리와 동일(카테고리 5종·retired 제외·최신순).
+    const where: string[] = [`COALESCE(slug,'') NOT LIKE 'retired-%'`];
+    const params: (string | number)[] = [];
+
+    // 카테고리: 허용 목록 중 하나면 단일, 아니면 5종 전체.
+    const catParam = String(c.req.query('category') || '').trim();
+    if (catParam && cats.includes(catParam)) {
+      where.push('category = ?'); params.push(catParam);
+    } else {
+      where.push(`category IN (${cats.map(() => '?').join(',')})`); params.push(...cats);
+    }
+
+    // 지역: 공백 토큰(예 "서울 강남") 전부 restaurant_address 에 포함(AND) — 최대 3토큰.
+    const regionParam = String(c.req.query('region') || '').trim();
+    if (regionParam) {
+      for (const tok of regionParam.split(/\s+/).filter(Boolean).slice(0, 3)) {
+        where.push('restaurant_address LIKE ?'); params.push(`%${tok}%`);
+      }
+    }
+
+    // 데모/실등록 source.
+    const source = String(c.req.query('source') || '').trim();
+    if (source === 'demo') where.push(`COALESCE(slug,'') LIKE 'demo-deal-%'`);
+    else if (source === 'real') where.push(`COALESCE(slug,'') NOT LIKE 'demo-deal-%'`);
+
+    // 노출 상태.
+    const status = String(c.req.query('status') || '').trim();
+    if (status === 'active') where.push('COALESCE(is_active,1) = 1');
+    else if (status === 'hidden') where.push('COALESCE(is_active,1) = 0');
+
+    // 상품형태: 오픈예정형(prelaunch, product_supply_meta) vs 실상품형(live).
+    const mode = String(c.req.query('mode') || '').trim();
+    if (mode === 'prelaunch') where.push(`EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
+    else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
+
+    const whereClause = where.join(' AND ');
+    // 🔃 2026-07-20 (대표 — "최신순으로도 보고 싶다"): 정렬 화이트리스트. 기본 최신순은 기존과 동일하되
+    //   **id DESC tie-break 추가** — 한 배치로 시드된 데모는 created_at(초 단위)이 동일해 동순위 순서가
+    //   임의였음(최신순처럼 안 보이던 원인). id 는 단조증가라 배치 내에서도 진짜 등록순 보장.
+    const sortParam = String(c.req.query('sort') || '').trim();
+    const ORDER_SQL: Record<string, string> = {
+      newest: 'created_at DESC, id DESC',
+      oldest: 'created_at ASC, id ASC',
+      name: 'name ASC, id DESC',
+      price_high: 'price DESC, id DESC',
+      price_low: 'price ASC, id DESC',
+    };
+    const orderBy = ORDER_SQL[sortParam] || ORDER_SQL.newest;
+    // 전체 개수(같은 WHERE) — '더 보기' 판정 + 헤더 표시용.
+    const totalRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`
+    ).bind(...params).first<{ total: number }>().catch(() => ({ total: 0 }));
+    const total = Number(totalRow?.total ?? 0);
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
-              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
-         FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
-    ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug,
+              images, detail_images
+         FROM products WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
+    ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
+    // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
+    // 🖼️ 2026-07-21 (대표 "어드민이 사진 직접 수정"): 갤러리(images=데모 시드 / detail_images=수기·수정)
+    //   병합 → gallery(string[]) 로 동봉 — 수정 폼이 현재 사진을 보여주고 교체할 수 있게. raw 는 제거.
+    for (const r of rows) {
+      r.is_demo = String(r.slug || '').startsWith('demo-deal-') ? 1 : 0;
+      delete r.slug;
+      const g: string[] = [];
+      for (const raw of [r.images, r.detail_images]) {
+        if (typeof raw !== 'string' || !raw) continue;
+        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u && !g.includes(u)) g.push(u); } catch { /* not json */ }
+      }
+      r.gallery = g.slice(0, 8);
+      delete r.images; delete r.detail_images;
+    }
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
     try {
       const ids = rows.map(r => Number(r.id)).filter(n => Number.isFinite(n));
@@ -1299,12 +1969,290 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
           r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
           const kpu = mm?.get(Number(r.id))?.kakao_place_url;
           r.kakao_place_url = normalizeKakaoPlaceUrl(kpu);
+          r.prelaunch = String(mm?.get(Number(r.id))?.prelaunch || '') === '1' ? 1 : 0; // 🔎 오픈예정형 뱃지
         }
       }
     } catch { /* fail-soft */ }
-    return c.json({ success: true, data: rows });
+    return c.json({ success: true, data: rows, total, offset: off, limit: lim });
   } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env), data: [], total: 0 }, 500);
+  }
+});
+
+// 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 07-06 정정 방향 역전): 기존 데모 상품명의
+//   '{실매장명} · ' 프리픽스를 **제자리(in-place)에서 제거** — 좌표·R2사진·리뷰·응모·수요인사이트
+//   전부 보존한 채 이름만 '오퍼(메뉴명)만' 신형으로. 옛 '[구] ' 지역 프리픽스도 함께 정리.
+//   멱등(프리픽스 없으면 skip). 엔드포인트(수동) + 시드 heal 블록(자동) + 데모 유지 cron 재사용.
+export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: number; skipped: number; samples: Array<{ id: number; from: string; to: string }> }> {
+  const { results } = await DB.prepare(
+    `SELECT id, name, restaurant_name FROM products
+       WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'`
+  ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string | null; restaurant_name: string | null }>()
+    .catch(() => ({ results: [] as { id: number; name: string | null; restaurant_name: string | null }[] }));
+  let healed = 0, skipped = 0;
+  const samples: Array<{ id: number; from: string; to: string }> = [];
+  for (const r of (results || [])) {
+    const store = (r.restaurant_name || '').trim();
+    const cur = (r.name || '').trim();
+    if (!cur) { skipped++; continue; }
+    let next = cur;
+    if (store && next.startsWith(`${store} · `)) next = next.slice(`${store} · `.length).trim(); // 매장명 프리픽스 제거
+    next = next.replace(/^\[[^\]]+\]\s*/, '').trim();             // 옛 '[구] ' 프리픽스 제거
+    if (!next || next === cur) { skipped++; continue; }           // 이미 신형(프리픽스 없음)
+    const res = await DB.prepare(
+      `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(next, r.id).run().catch(() => null);
+    if (res?.meta?.changes) { healed++; if (samples.length < 8) samples.push({ id: r.id, from: cur, to: next }); }
+    else skipped++;
+  }
+  return { healed, skipped, samples };
+}
+
+// POST /dongnedeal/heal-names — 위 in-place 정정을 수동 트리거(+ 캐시 무효화 + 감사로그).
+adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
+  try {
+    const { healed, skipped, samples } = await healDemoNamesInPlace(c.env.DB);
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_heal_names', targetType: 'product', after: { healed, skipped } }).catch(() => {});
+    return c.json({ success: true, healed, skipped, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/refresh-reviews — 🔄 2026-07-06 (대표 "기존 100개+도 다 새 리뷰로"): 기존 데모의
+//   옛 리뷰를 새 품질 composer 로 재생성. limit 개씩(기본 20) 청크 — 응답 remaining>0 이면 다시 호출.
+//   review_gen_v='2' 마커로 멱등(이미 새로고침한 건 skip). ?force=1 로 전체 재실행.
+adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
+  try {
+    const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)));
+    const force = c.req.query('force') === '1';
+    const { refreshDemoReviews } = await import('../../../worker/utils/demo-review-generator');
+    const { refreshed, reviews, remaining } = await refreshDemoReviews(c.env as unknown as Env, limit, force);
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_refresh_reviews', targetType: 'product', after: { refreshed, reviews, remaining } }).catch(() => {});
+    return c.json({ success: true, refreshed, reviews, remaining });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/recondition-images — 🖼️ 2026-07-21 (대표 "이미 만들어진 데모도 모두 지금 컨디션으로,
+//   갤러리 있는 것까지 전부"): 기존 데모(동네딜+숙소)를 즉시 현재 컨디션으로 재적용(카카오 대표사진 커버 +
+//   3~5장 갤러리). cron(demo-image-rehost)이 시간당 소량 자동 수렴하는 것과 동일 로직(reconditionDemos SSOT)을
+//   어드민이 온디맨드로 청크(회당 6개, 서브리퀘스트 예산 안)로 돌린다. 클라가 remaining>0 이면 반복 호출.
+adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => {
+  try {
+    const { reconditionDemos, DEMO_COND_V } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const r = await reconditionDemos(c.env as unknown as Env, perRun);
+    // 남은 대상 수(버전 마커 미보유 데모) — 클라 진행바/반복 종료 판정용.
+    const remainRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?)`
+    ).bind(DEMO_COND_V).first<{ n: number }>().catch(() => ({ n: 0 }));
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, reconditioned: r.reconditioned, skipped: r.skipped, remaining: Number(remainRow?.n ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/heal-broken-images — 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 사진만
+//   즉시 감지·재획득. 커버를 서버측 검증(referer 없이 fetch)해 죽었으면(404/삭제) 대표사진 재획득 +
+//   갤러리에서 깨진 것 제거. 성한 커버는 건드리지 않음(working 사진 churn 0). img_heal_ck 마커로 수렴.
+adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const { validateImageLoads } = await import('../../../worker/utils/rehost-image');
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    const HEAL_CK = '1';  // 검증 완료 마커 버전(재검증 필요 시 bump)
+    const rows = (await DB.prepare(
+      `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
+         FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)
+        ORDER BY p.id LIMIT ?`
+    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
+      .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
+    let checked = 0, healed = 0;
+    const metaMap = await getSupplyMeta(DB, rows.map(r => r.id)).catch(() => new Map<number, Record<string, string>>());
+    for (const row of rows) {
+      checked++;
+      const coverOk = await validateImageLoads(row.image_url);
+      if (!coverOk) {
+        // 커버가 죽음 → 대표사진 재획득(카카오/네이버 대표사진 우선).
+        const fresh = await fetchDemoPhotos(c.env, {
+          placeId: metaMap.get(row.id)?.kakao_place_url || null,
+          nameQuery: row.restaurant_name,
+          address: row.restaurant_address,
+          count: 3 + Math.floor(Math.random() * 3),
+        }).catch(() => [] as string[]);
+        if (fresh.length > 0) {
+          await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(fresh[0], JSON.stringify(fresh.slice(0, 5)), row.id).run().catch(() => {});
+          // 새 외부 URL 을 R2 로 이관하도록 rehost 재큐잉.
+          await setSupplyMeta(DB, row.id, { img_rehost_done: '0' }).catch(() => {});
+          healed++;
+        }
+      }
+      await setSupplyMeta(DB, row.id, { img_heal_ck: HEAL_CK }).catch(() => {});
+    }
+    const remainRow = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)`
+    ).bind(HEAL_CK).first<{ n: number }>().catch(() => ({ n: 0 }));
+    if (healed > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    // 🩹 R2 바인딩 상태 동봉 — 미바인딩이면 rehost(영구화) 전멸이라 사진 반복 깨짐의 근본 원인.
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    return c.json({ success: true, checked, healed, remaining: Number(remainRow?.n ?? 0), bucketBound });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/rehost-images — ☁️ 2026-07-21 (대표 스샷 "커버 294개 중 R2 1 · 외부 293"): 외부 커버를
+//   즉시 대량 R2 이관(cron 2/시간이라 느림 → 온디맨드 청크). 클라가 remaining 0까지 반복.
+adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
+  try {
+    const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    // ⚡ 병렬 fetch(요청당 6개). 대용량 커버(카카오/다음 1~3MB)를 12+개 동시에 받으면 워커 메모리 압박 →
+    //   요청 실패("멈춤"). 6개면 ≤~18MB 로 안전하면서도 순차 대비 6× 빠름.
+    const perRun = Math.min(8, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
+    if (r.rehosted > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    return c.json({ success: true, ...r });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/rehost-diagnose — 🔍 2026-07-21 (대표 "되는거 아닌 것 같은데?"): R2 이관 0 의 진짜 원인
+//   규명 — 외부 커버 몇 개를 서버가 실제로 fetch 해보고 상태/컨텐츠타입/바이트/실패사유를 그대로 반환.
+//   (네이버/카카오 CDN 이 CF 워커 서버fetch 를 403/HTML차단/타임아웃 하는지 실측 — 추측 금지 원칙.)
+adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const rows = ((await DB.prepare(
+      `SELECT id, image_url FROM products
+        WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+          AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
+        ORDER BY RANDOM() LIMIT 6`
+    ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }))).results) || [];
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const samples: Array<{ id: number; host: string; ok: boolean; status: number; contentType: string; bytes: number; reason: string }> = [];
+    for (const row of rows) {
+      let host = ''; try { host = new URL(row.image_url).hostname; } catch { /* noop */ }
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      let ok = false, status = 0, contentType = '', bytes = 0, reason = '';
+      try {
+        // 실제 이관과 동일하게 원본 직접 fetch(서버측 리사이즈는 외부 호스트 미지원 확인) → 11MB 캡.
+        const res = await fetch(row.image_url, { signal: ctrl.signal });
+        status = res.status;
+        contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!res.ok) reason = `HTTP ${status}`;
+        else if (!contentType.startsWith('image/')) reason = `이미지 아님(${contentType || '무형식'})`;
+        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 11 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
+      } catch (e) { reason = (e as Error)?.name === 'AbortError' ? '타임아웃(8s)' : '연결 실패'; }
+      finally { clearTimeout(timer); }
+      samples.push({ id: row.id, host, ok, status, contentType, bytes, reason: ok ? '정상' : reason });
+    }
+    const okCount = samples.filter((s) => s.ok).length;
+    return c.json({ success: true, bucketBound, okCount, total: samples.length, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /d1-profile — 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): rows_read 상위 쿼리 조회(isolate-로컬).
+//   ?reset=1 로 집계 초기화. D1_PROFILE_ENABLED='true' 여야 데이터가 쌓임(기본 OFF).
+adminProductsRoutes.get('/d1-profile', cors(), async (c) => {
+  try {
+    const { getD1Profile, resetD1Profile } = await import('../../../worker/utils/d1-profiler');
+    if (c.req.query('reset') === '1') { resetD1Profile(); return c.json({ success: true, reset: true }); }
+    const pe = c.env as unknown as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+    const forceOn = pe.D1_PROFILE_ENABLED === 'true';
+    const sampleRate = forceOn ? 1 : (pe.D1_PROFILE_SAMPLE != null && pe.D1_PROFILE_SAMPLE !== '' ? Number(pe.D1_PROFILE_SAMPLE) : 0.02);
+    // 샘플링이라 isolate-로컬 집계(전량 아님). 상시 2% 자동 수집 — 무거운 쿼리는 rows≥2000 콘솔 로그로도 포착.
+    return c.json({ success: true, mode: forceOn ? 'forced-100%' : `sampling-${Math.round(sampleRate * 100)}%`, sampleRate, top: getD1Profile(30) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /r2-orphan-report — 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 리포트(온디맨드). 기본 삭제 안 함
+//   (R2_ORPHAN_CLEANUP_ENABLED='true' 여야 실제 삭제). 참조 없는 60일+ 객체 수/용량만 집계해 반환.
+adminProductsRoutes.get('/r2-orphan-report', cors(), async (c) => {
+  try {
+    const { r2OrphanCleanup } = await import('../../../worker/cron/r2-orphan-cleanup');
+    const report = await r2OrphanCleanup(c.env as unknown as Env);
+    return c.json({ success: true, ...report, candidateMB: Math.round((report.candidateBytes / 1024 / 1024) * 10) / 10 });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/rehost-reset-skip — 🔄 이전 실패 런이 남긴 'rehost_skip'(이관 불가 마킹)을 전부 해제 →
+//   근본원인 수정 후 모든 커버를 다시 이관 시도할 수 있게. (사진 정리 시작 시 클라가 먼저 호출.)
+adminProductsRoutes.post('/dongnedeal/rehost-reset-skip', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`DELETE FROM product_supply_meta WHERE key='rehost_skip'`).run().catch(() => ({ meta: { changes: 0 } }));
+    return c.json({ success: true, cleared: Number((r as { meta?: { changes?: number } })?.meta?.changes ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/image-health — 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 진단.
+//   R2 바인딩 여부(rehost 가능성) + 커버가 외부 URL(깨질 위험) vs 내부(/api/media, 안전) 비율.
+adminProductsRoutes.get('/dongnedeal/image-health', cors(), async (c) => {
+  try {
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const row = await c.env.DB.prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN COALESCE(image_url,'') = '' THEN 1 ELSE 0 END) AS no_cover,
+         SUM(CASE WHEN image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS internal_cover,
+         SUM(CASE WHEN image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS external_cover,
+         SUM(CASE WHEN image_url LIKE '%pstatic.net%' OR image_url LIKE '%phinf%' THEN 1 ELSE 0 END) AS naver_cover
+       FROM products
+      WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1`
+    ).first<{ total: number; no_cover: number; internal_cover: number; external_cover: number; naver_cover: number }>().catch(() => null);
+    return c.json({
+      success: true,
+      bucketBound,
+      cover: {
+        total: Number(row?.total ?? 0),
+        internal_r2: Number(row?.internal_cover ?? 0),   // 안전(우리 도메인) — 안 깨짐
+        external: Number(row?.external_cover ?? 0),        // 외부 URL — 핫링크/삭제 시 깨질 위험
+        naver: Number(row?.naver_cover ?? 0),              // 그중 네이버 CDN
+        none: Number(row?.no_cover ?? 0),
+      },
+      hint: bucketBound
+        ? '외부 커버는 rehost cron/재적용으로 R2(내부) 이관 시 영구 안정화.'
+        : '⚠️ MEDIA_BUCKET(R2) 미바인딩 — 사진 R2 이관이 전부 안 됨. Cloudflare 대시보드 → ur-live → Settings → Bindings → R2 → MEDIA_BUCKET 바인딩 필요(근본 해결).',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
@@ -1321,6 +2269,15 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.price !== undefined) { const n = Math.round(Number(String(b.price).replace(/[^\d.-]/g, ''))); if (Number.isFinite(n) && n > 0) put('price', n); }
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    let galleryArr: string[] | null = null;
+    if (b.image_urls !== undefined) {
+      const arr = Array.isArray(b.image_urls)
+        ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
+        : [];
+      put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
+      galleryArr = arr;  // 🖼️ 2026-07-21: 데모 시드 갤러리(images 컬럼)도 아래에서 동기 — 옛 시드 사진 잔존 방지
+    }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
     if (b.restaurant_phone !== undefined) put('restaurant_phone', String(b.restaurant_phone || '').trim() || null);
@@ -1353,6 +2310,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (params.length > 0) {
       params.push(id);
       await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 어드민이 갤러리를 바꾸면 데모 시드가 쓴
+    //   images 컬럼도 같은 값으로 교체 — 상세 병합 렌더에서 옛 시드 사진이 섞여 남지 않게.
+    //   별도 문(best-effort) — images 컬럼 미존재 환경에서도 본 수정은 성공.
+    if (galleryArr !== null) {
+      await c.env.DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+        .bind(galleryArr.length > 0 ? JSON.stringify(galleryArr) : null, id).run().catch(() => {});
     }
     await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영

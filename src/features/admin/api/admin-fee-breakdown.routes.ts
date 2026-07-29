@@ -25,7 +25,11 @@ import { safeError } from '@/worker/utils/safe-error'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { auditLog } from '../../../worker/middleware/audit-log'
 import { recordOrderFeeBreakdown } from '@/worker/utils/fee-breakdown-record'
-import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
+// 🛡️ 2026-07-01 (어드민 라이브 감사): NULL-rate 폴백을 정산 SSOT(PLATFORM_FEE_PCT=5)와 일치시킴.
+//   이전엔 @/shared/constants 의 DEFAULT_COMMISSION_RATE(=10)를 써서 현행 비교(cur_platform)가
+//   NULL-rate 주문에 대해 실제 정산(admin-settlements, =5%)의 2배로 부풀려 표시 → 컷오버 판단 오도.
+import { COMMISSION_DEFAULTS } from '@/shared/constants/policy'
+const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 import type { Env } from '../../../worker/types/env'
 
 export const adminFeeBreakdownRoutes = new Hono<{ Bindings: Env }>()

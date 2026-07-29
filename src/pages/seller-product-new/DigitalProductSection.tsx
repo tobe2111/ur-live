@@ -57,7 +57,7 @@ export default function DigitalProductSection({ formData, onChange, onKindChange
               name="content_url"
               value={formData.content_url}
               onChange={onChange}
-              placeholder={t('seller.products.contentUrlPlaceholder', { defaultValue: 'https://r2.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크' })}
+              placeholder={t('seller.products.contentUrlPlaceholder', { defaultValue: 'https://media.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크' })}
               className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 bg-white"
             />
             <p className="text-[11px] text-purple-700 mt-1">{t('seller.products.contentUrlHint', { defaultValue: '⚠️ R2 또는 외부 CDN URL. 구매자만 접근 가능한 signed URL이 자동 발급됩니다.' })}</p>

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { CheckCircle, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -59,22 +60,20 @@ export default function PointsChargeSuccessPage() {
   }, [paymentKey, orderId, amount])
 
   if (loading) {
+    // 🎯 2026-07-18 로딩 단일화 — 유어딜 BrandLoader(SEO 는 head 로 렌더되므로 형제 배치).
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
+      <>
         <SEO title={t('pointsCharge.processingTitle', { defaultValue: '딜 충전 처리' })} description={t('pointsCharge.processingDesc', { defaultValue: '딜 포인트 충전 처리 중' })} url="/points/charge/success" noindex />
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">{t('pointsCharge.processingMsg', { defaultValue: '충전을 처리하는 중...' })}</p>
-        </div>
-      </div>
+        <BrandLoader fullScreen label={t('pointsCharge.processingMsg', { defaultValue: '충전을 처리하는 중...' })} />
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
         <SEO title={t('pointsCharge.failTitle', { defaultValue: '딜 충전 실패' })} description={t('pointsCharge.failDesc', { defaultValue: '딜 포인트 충전에 실패했습니다' })} url="/points/charge/success" noindex />
-        <div className="max-w-md w-full text-center bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#1A1A1A]">
+        <div className="max-w-md w-full text-center bg-white dark:bg-[#0F151D] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#2A3446]">
           <p className="text-red-600 mb-4">{error}</p>
           <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
             {t('common.retry', { defaultValue: '다시 시도' })}
@@ -85,9 +84,9 @@ export default function PointsChargeSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
       <SEO title={t('pointsCharge.successTitle', { defaultValue: '딜 충전 완료' })} description={t('pointsCharge.successDesc', { defaultValue: '딜 포인트 충전이 완료되었습니다' })} url="/points/charge/success" noindex />
-      <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#1A1A1A]">
+      <div className="max-w-md w-full bg-white dark:bg-[#0F151D] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#2A3446]">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
@@ -101,6 +100,21 @@ export default function PointsChargeSuccessPage() {
           <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[20px] font-bold ml-0.5">딜</span></p>
           <p className="text-[12px] text-white/55 mt-2.5">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
+        {/* 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 딜포인트 락인 강화):
+              충전 직후는 float→spend 전환의 최적 순간인데 기존 CTA(이전 화면/추가 충전)엔 '쓰러 가기'가
+              없어 잔액이 유휴로 남았음(소진 유인 0 = 락인 약화). 방금 충전한 딜을 즉시 이용권/교환권
+              카탈로그에서 쓰도록 유도 → 소비 습관 형성. **가짜 보너스 없음**(2026-05-22 대표의 '맞지도 않는
+              보너스 제거' 방침 준수) — 이미 보유한 실잔액을 쓰라는 정직한 넛지만. 충전 confirm/잔액 로직
+              byte-불변(additive CTA). 단, '딜 부족→충전' 복귀 루프(loginReturnUrl)면 원래 결제로 돌아가야
+              하므로 그 경우엔 이 스팬드 CTA 대신 복귀를 우선(끊기지 않게). */}
+        {(() => { try { return !localStorage.getItem('loginReturnUrl') } catch { return true } })() && (
+          <button
+            onClick={() => navigate('/vouchers')}
+            className="w-full py-3.5 mb-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
+          >
+            {t('pointsCharge.spendNow', { defaultValue: '지금 이용권 사러 가기 →' })}
+          </button>
+        )}
         <div className="flex gap-3">
           <button
             onClick={() => {
@@ -114,13 +128,13 @@ export default function PointsChargeSuccessPage() {
               }
               navigate(-2)
             }}
-            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
+            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
             {t('pointsCharge.goBack', { defaultValue: '이전 화면으로' })}
           </button>
           <button
             onClick={() => navigate('/points/charge')}
-            className="flex-1 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
+            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
             {t('pointsCharge.chargeMore', { defaultValue: '추가 충전' })}
           </button>

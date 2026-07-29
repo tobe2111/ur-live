@@ -10,6 +10,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureOrderTables, ensureQtyConstraintSchema, sellerIdFrom, loadGradeTable, loadSellerGrade } from './wholesale-helpers'
+import { loadMallCommissionPct } from './wholesale-settlement'
+import { sellerMallIdOf } from './wholesale-malls'
 import { ensureTaxDocSchema, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
 import { buildCsv, csvResponse } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
@@ -27,7 +29,8 @@ app.get('/proposals', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
       note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
     )`).run().catch(swallow('wholesale:ensure-proposals'))
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const { results } = await DB.prepare(`
       SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
@@ -38,7 +41,7 @@ app.get('/proposals', async (c) => {
       ORDER BY wp.created_at DESC LIMIT 50
     `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const items = (results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       return { id: r.id, note: r.note, product_id: r.product_id, name: r.name, image_url: r.image_url, stock: r.stock, distributor_price: price }
     })
     return c.json({ success: true, proposals: items })
@@ -133,7 +136,8 @@ app.get('/catalog-export', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -145,7 +149,7 @@ app.get('/catalog-export', async (c) => {
     // 🏭 #8 상품코드(제조사 등록, full) — 대량발주 매칭 참고용. 비가격 정보.
     const catMeta = await getSupplyMeta(DB, (rows.results || []).map(r => r.id)).catch(() => new Map<number, Record<string, string>>())
     const out = (rows.results || []).map(r => {
-      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       return [r.id, (catMeta.get(r.id)?.product_code || '').trim(), r.name, r.category || '', r.stock, price, grade]
     })
     return xlsxResponse(buildXlsx(['product_id', '상품코드', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
@@ -166,7 +170,8 @@ app.get('/catalog/export', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // pack_size / order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -182,7 +187,7 @@ app.get('/catalog/export', async (c) => {
     const header = ['상품코드', 'product_id', '상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
     const out = (rows.results || []).map(r => {
       // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       return [(plMeta.get(r.id)?.product_code || '').trim(), r.id, r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
     })
     return csvResponse(buildCsv(header, out), `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`)
@@ -206,7 +211,8 @@ app.get('/order-template', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -228,7 +234,7 @@ app.get('/order-template', async (c) => {
       .bind(sellerId).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
     for (const r of cm.results || []) if (!codeByPid.has(r.product_id)) codeByPid.set(r.product_id, r.code)
     const out = (rows.results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       const regCode = (tplMeta.get(r.id)?.product_code || '').trim() // 🏭 #8 제조사 등록 코드(full) 우선
       // product_id·상품코드·카탈로그 정보는 프리필, 옵션/주문수량/받는사람~배송메시지는 빈칸(판매사 입력).
       return [r.id, regCode || codeByPid.get(r.id) || '', r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), '', '', '', '', '', '', '']

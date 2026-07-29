@@ -37,6 +37,7 @@ type IntroducedSummary = {
   total_stores: number; active_stores: number; inactive_stores?: number
   total_commission: number; month_commission: number
   pending_commission: number; available_commission: number; paid_commission: number
+  funding_source?: string // 💡 flip B1 선반영 — 'platform'(기본) | 'owner' (프레이밍 게이트)
 }
 
 type AgencyBundle = {
@@ -130,6 +131,9 @@ export default function AgencyPage() {
   const agencyProfile = bundleQ.data?.agencyProfile ?? null
   // 🏪 매장 영입 요약 (대시보드 1순위 지표)
   const introduced = bundleQ.data?.introducedSummary ?? null
+  // 💡 2026-07-11 (flip B1 선반영): 재원 게이트 — 'owner' 확인 시에만 promo 재원 프레이밍.
+  //   미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  const ownerFunded = introduced?.funding_source === 'owner'
   const loading = bundleQ.isLoading && !bundleQ.data
 
   // 세션 만료(success=false → fetcher 가 null 반환) → 로그인. (캐시 갱신은 fetcher 내부에서 성공 시 수행.)
@@ -470,10 +474,17 @@ export default function AgencyPage() {
               })}
             </p>
             <p className="text-[11px] opacity-50 mt-0.5">
-              {t('agency.sellerCommissionAside', {
-                defaultValue: '소속 셀러 매출 추정 수수료 {{c}}원 ({{rate}}%)',
-                c: formatNumber(commission), rate: commissionRate,
-              })}
+              {/* 💡 flip B1 (게이트드 선반영): owner-펀딩 확인 시에만 "조율 몫 · 매장 promo 재원" 프레이밍 —
+                  platform(현행 기본) 은 기존 문구 byte-동일 */}
+              {ownerFunded
+                ? t('agency.sellerCommissionAsideOwner', {
+                    defaultValue: '소속 셀러 매출 추정 조율 몫 {{c}}원 ({{rate}}% · 매장 promo 재원)',
+                    c: formatNumber(commission), rate: commissionRate,
+                  })
+                : t('agency.sellerCommissionAside', {
+                    defaultValue: '소속 셀러 매출 추정 수수료 {{c}}원 ({{rate}}%)',
+                    c: formatNumber(commission), rate: commissionRate,
+                  })}
             </p>
           </div>
           <button
@@ -678,42 +689,7 @@ export default function AgencyPage() {
         </div>
       </div>
 
-      {/* 7. Live Schedule — 🏁 라이브 중단 시 숨김(공구 집중) */}
-      {!LIVE_COMMERCE_SUSPENDED && liveScheduleItems.length > 0 && (
-        <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">{t('agency.liveInProgress')}</h2>
-            <button
-              onClick={() => navigate('/agency/streams')}
-              className="text-xs text-purple-600 hover:underline flex items-center gap-1 font-semibold"
-            >
-              {t('agency.liveStatus')} <ArrowUpRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {liveScheduleItems.map((item, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3.5 bg-pink-50/60">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                    LIVE
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-gray-900 truncate">{item.sellerName}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{item.title}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/agency/streams')}
-                  className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 ml-3 flex-shrink-0"
-                >
-                  {t('common.preview')} <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 스케줄 섹션 삭제(/agency/streams 페이지 제거됨). */}
       </div>
     </AgencyLayout>
   )
