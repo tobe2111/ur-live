@@ -25,6 +25,13 @@ import { healthRoutes } from './health.routes'
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
 
+/**
+ * 🌙 야간 라이브 재보정 시각(UTC) = KST 04시.
+ *   시간별 정비 순환이 **이 시각을 양보**한다 — 둘이 같은 lease 를 다투기 때문(아래 스케줄러 docblock).
+ *   두 곳이 같은 값을 봐야 하므로 상수로 둔다(따로 적으면 한쪽만 옮겨져 다시 겹친다).
+ */
+export const RESCAN_HOUR_UTC = 19
+
 const app = new Hono<{ Bindings: Env }>()
 
 // 🔎 식별 헤더 — 이 워커가 실제로 서빙 중임을 외부에서 확정하기 위한 신호(운영/컷오버 검증용).
@@ -533,15 +540,33 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
       'reclassify',
     ] as const
+    /**
+     * 🤝 **19시는 야간 재보정에 양보한다** — 둘이 같은 lease 를 다투다 한쪽이 조용히 사라지고 있었다.
+     *
+     *   `runMaintenancePhase` 와 `runNightlyRescan` 은 **같은 `MAINT_LEASE_KEY`** 를 잡는다(의도적 —
+     *   둘 다 YouTube 쿼터를 써서 동시 실행이 곧 하루 예산 낭비다). 그런데 시간별 순환을 도입한
+     *   2026-07-28 부터 **19시에 둘 다 발화**하고, 먼저 dispatch 되는 이쪽이 항상 lease 를 가져갔다.
+     *   진 쪽은 `busy:true` 로 **스냅샷도 안 남기고** 돌아가서, 어드민에서는 *"한 번도 안 돔"* 으로 보였다.
+     *
+     *   📏 실측이 정확히 그 모양이었다: `maintenance_rescan.at = 2026-07-27T19:00` 이후 정지 —
+     *   **시간별 순환이 배포된 바로 그날부터**다. 고장이 아니라 경합이었다.
+     *
+     *   ⇒ 하루 1회뿐이고 미루면 그날치가 통째로 날아가는 재보정에 이 시각을 준다. 순환 단계는 나머지
+     *     23시간을 갖는다(아래 유닛이 "양보 후에도 모든 단계가 남고 간격이 경보 임계 안"임을 검사한다).
+     */
     const phase = PHASES[hourUTC % PHASES.length]
-    kick(`/__ads/maintenance?phase=${phase}`, async () => {
-      const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
-      return runMaintenancePhase(env, phase)
-    }, { gap: scheduleGapMinutes(PHASES) })
+    if (hourUTC !== RESCAN_HOUR_UTC) {
+      kick(`/__ads/maintenance?phase=${phase}`, async () => {
+        const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
+        return runMaintenancePhase(env, phase)
+      }, { gap: scheduleGapMinutes(PHASES, [RESCAN_HOUR_UTC]) })
+    }
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
+  //   ⚠️ 이 시각은 위 순환이 **양보**한다(같은 lease 경합 — 위 docblock 참조). 시각을 바꾸려면 두 곳을
+  //     같이 바꿔야 하므로 상수 하나를 공유한다.
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    gates.dailyAt(19, '/__ads/maintenance-rescan', async () => {
+    gates.dailyAt(RESCAN_HOUR_UTC, '/__ads/maintenance-rescan', async () => {
       const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
       return runNightlyRescan(env)
     })

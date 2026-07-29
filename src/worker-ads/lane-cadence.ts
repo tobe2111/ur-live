@@ -59,14 +59,18 @@ export function maxPhaseGapHours(phaseCount: number): number {
  *   배정표를 그대로 읽어 계산한다.
  * ⚠️ 24시간으로 닫아 계산하는 게 맞다 — `hourUTC` 는 매일 0 으로 리셋되므로 배정 패턴의 주기는 항상 하루다
  *   (슬롯 수가 24의 약수가 아니어도 마찬가지).
+ *
+ * `skipHours` — 그 시각을 **다른 레인에 양보**해 이 배정표가 안 도는 시간. 양보는 간격을 넓히므로
+ *   경보 임계가 여전히 유효한지 계산으로 확인할 수 있어야 한다(유닛이 그걸 검사한다).
  */
-export function maxScheduleGapHours(schedule: readonly unknown[]): number {
+export function maxScheduleGapHours(schedule: readonly unknown[], skipHours: readonly number[] = []): number {
   const n = schedule.length
   if (n < 1) return 24
+  const skip = new Set(skipHours)
   let worst = 0
   for (const phase of new Set(schedule)) {
     const hours: number[] = []
-    for (let h = 0; h < 24; h++) if (schedule[h % n] === phase) hours.push(h)
+    for (let h = 0; h < 24; h++) if (!skip.has(h) && schedule[h % n] === phase) hours.push(h)
     if (!hours.length) continue // 슬롯 수 > 24 — 24시간 안에 한 번도 안 오는 단계는 아래 폴백이 받는다
     for (let i = 0; i < hours.length; i++) {
       const next = i + 1 < hours.length ? hours[i + 1]! : hours[0]! + 24

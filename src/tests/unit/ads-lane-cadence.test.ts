@@ -503,3 +503,69 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
   })
 })
+
+/**
+ * 🤝 **19시 양보** — 시간별 정비 순환과 야간 재보정이 같은 lease 를 다투던 것 (2026-07-29).
+ *
+ *   `runMaintenancePhase` 와 `runNightlyRescan` 은 의도적으로 같은 `MAINT_LEASE_KEY` 를 잡는다
+ *   (둘 다 YouTube 쿼터를 써서 동시 실행이 곧 하루 예산 낭비). 그런데 시간별 순환이 도입된
+ *   2026-07-28 부터 19시에 **둘 다** 발화했고, 먼저 dispatch 되는 순환이 항상 이겼다.
+ *   진 쪽은 스냅샷도 안 남기고 돌아가 어드민에서는 "한 번도 안 돔"으로 보였다
+ *   (실측: `maintenance_rescan.at` 이 2026-07-27T19:00 에서 정지 — 순환 배포 당일부터).
+ *
+ *   ⚠️ 양보는 공짜가 아니다 — 그 시각 슬롯의 단계가 한 번 덜 돈다. 그래서 **양보 후에도**
+ *   ① 모든 단계가 하루에 최소 한 번 돌고 ② 실제 최대 간격이 경보 임계 안에 있어야 한다.
+ *   이 둘을 계산으로 고정한다(배정표를 나중에 바꿔도 자동으로 재검사된다).
+ */
+describe('🤝 야간 재보정에 19시를 양보해도 정비 순환이 굶지 않는다', () => {
+  const YIELD = [19]
+  const slotAt = (h: number) => MAINT_SCHEDULE[h % MAINT_SCHEDULE.length]
+
+  it('양보한 시각의 단계가 다른 시각에도 배정돼 있다 — 아니면 그 단계가 영영 안 돈다', () => {
+    const yielded = slotAt(19)
+    const remaining = Array.from({ length: 24 }, (_, h) => h).filter(h => !YIELD.includes(h) && slotAt(h) === yielded)
+    expect(remaining.length, `${yielded} 가 19시에만 배정돼 있다 — 양보하면 사라진다`).toBeGreaterThan(0)
+  })
+
+  /**
+   * ⚠️ **지금 배정표(12슬롯)에서는 이 검사가 절대 안 깨진다** — 24 % 12 === 0 이라 모든 슬롯이 하루 2회
+   *   돌고, 19시 슬롯은 7시에도 돈다. 그러니 "늘 초록"을 "검사가 헛돈다"로 읽지 말 것:
+   *   길이를 **20 이상**으로 바꾸면 19시에만 도는 슬롯이 생기고(19+20 > 23) 그때 빨간불이 뜬다(실측 확인).
+   *   즉 이 검사는 지금이 아니라 **다음 사람이 배정표 길이를 바꿀 때** 값을 한다.
+   */
+  it('양보 후에도 모든 단계가 하루 안에 최소 한 번 돈다', () => {
+    const ran = new Set(Array.from({ length: 24 }, (_, h) => h).filter(h => !YIELD.includes(h)).map(slotAt))
+    const missing = MAINT_PHASES.filter(p => !ran.has(p))
+    expect(missing, `양보로 하루 동안 사라지는 단계: ${missing.join(', ')}`).toEqual([])
+  })
+
+  /**
+   * 경보 임계는 **양보를 모르는** 값(`scheduleGapMinutes(PHASES, [19])`)으로 계산돼 워커에 들어간다.
+   * 실제 간격이 그 값을 넘으면 정상 동작이 stale 로 신고된다 — 경보를 무디게 만드는 것만큼이나 나쁘다
+   * (거짓 경보가 반복되면 사람이 경보를 끈다).
+   */
+  it('양보를 반영한 임계가 양보 전 임계보다 느슨해지지 않거나, 느슨해졌다면 그만큼만이다', () => {
+    const before = maxScheduleGapHours(MAINT_SCHEDULE)
+    const after = maxScheduleGapHours(MAINT_SCHEDULE, YIELD)
+    expect(after).toBeGreaterThanOrEqual(before)      // 양보는 간격을 넓히기만 한다
+    expect(after, `양보 후 최대 간격 ${after}h — 하루를 넘으면 그 단계는 사실상 정지다`).toBeLessThanOrEqual(24)
+    expect(scheduleGapMinutes(MAINT_SCHEDULE, YIELD)).toBe(staleGapMinutes(after * 60))
+  })
+
+  it('🔒 스케줄러가 실제로 양보한다 — 상수 공유(두 벌로 두면 한쪽만 옮겨져 다시 겹친다)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/export const RESCAN_HOUR_UTC = 19/)
+    expect(src, '순환이 19시를 양보하지 않는다').toMatch(/hourUTC !== RESCAN_HOUR_UTC/)
+    expect(src, '임계 계산에 양보가 반영되지 않았다').toMatch(/scheduleGapMinutes\(PHASES, \[RESCAN_HOUR_UTC\]\)/)
+    expect(src, '재보정 시각이 상수를 안 쓴다').toMatch(/dailyAt\(RESCAN_HOUR_UTC,/)
+  })
+
+  it('🔒 경합에 진 재보정이 흔적을 남긴다 — 무음이면 "안 돎"과 구분되지 않는다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+    const block = /export async function runNightlyRescan[\s\S]{0,2000}?\n\}/.exec(src)?.[0] || ''
+    expect(block, 'runNightlyRescan 을 못 찾았다').toBeTruthy()
+    // busy 반환 경로에서 스냅샷 키를 쓴다
+    const busyPath = /acquireLease\([\s\S]{0,900}?\n  \}/.exec(block)?.[0] || ''
+    expect(busyPath).toMatch(/ads_maintenance_rescan_last/)
+  })
+})
