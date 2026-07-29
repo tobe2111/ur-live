@@ -65,20 +65,91 @@ export const phaseGapMinutes = (phaseCount: number): number => staleGapMinutes(m
 export type KickFn = (path: string, fallback: () => Promise<unknown>, maxGapMin?: number) => void
 
 /**
+ * 하트비트 이름 = `/__ads/` 접두와 쿼리를 뗀 것.
+ *
+ * ⚠️ 쿼리를 떼는 이유: 유지보수 레인은 `?phase=merge` 처럼 **매 시간 다른 이름**으로 기록된다.
+ *   쿼리째로 비교하면 그 순간 안 도는 4개 단계가 전부 "한 번도 안 돌았다"로 잡힌다(오탐).
+ */
+export const laneKey = (path: string): string =>
+  path.replace(/^\/__ads\//, '').split('?')[0]
+
+/**
+ * 🔭 이 스케줄 실행이 **알고 있는 레인** 모음 — "한 번도 발화하지 않은 레인"을 보이게 하려고 둔다.
+ *
+ * ## 왜 필요한가 (라이브 사례)
+ * 하트비트는 **기록된 행**만 본다. 그래서 게이트는 켜져 있는데 한 번도 안 돈 레인은
+ * `stale` 판정 대상 자체가 아니다 — 목록에 아예 없으니 아무도 눈치채지 못한다.
+ * 2026-07-29 `ads:collect-nps` 가 정확히 그 상태였고, "안 도는 건지 원래 없는 건지"를
+ * 화면에서 구분할 수 없어 세션 여러 개가 같은 질문을 반복했다.
+ *
+ * ## 어떻게 손복제를 피하나
+ * 시각 게이트가 `makeHourGates` 안으로 들어간 덕에, **발화하지 않는 시각에도 헬퍼는 호출된다**
+ * → 그 순간 레인 이름을 알 수 있다. 즉 이 목록은 손으로 관리하는 표가 아니라
+ * **디스패치 코드가 그 자리에서 뱉는 사실**이다(레인을 추가/삭제하면 자동으로 따라온다).
+ *
+ * 담기는 것 = **env 게이트를 통과한 레인**(= 돌아야 하는 것). 게이트 OFF 는 의도적 정지이므로 제외.
+ */
+export interface LaneRegistry {
+  note(path: string): void
+  /** 알려진 레인 이름(정렬·중복제거). */
+  list(): string[]
+}
+
+export function createLaneRegistry(): LaneRegistry {
+  const seen = new Set<string>()
+  return {
+    note(path: string) { const k = laneKey(path); if (k) seen.add(k) },
+    list() { return [...seen].sort() },
+  }
+}
+
+/**
+ * 알려진 레인 중 **하트비트가 하나도 없는** 것 — 순수함수(테스트 가능).
+ * 하트비트 이름은 `ads:` 접두가 붙어 있고 쿼리를 달 수 있으므로 접두/쿼리를 떼고 비교한다.
+ */
+export function neverFiredLanes(known: string[], beatNames: string[]): string[] {
+  const fired = new Set(
+    beatNames
+      .filter(n => n.startsWith('ads:'))
+      .map(n => n.slice('ads:'.length).split('?')[0]),
+  )
+  return known.filter(k => !fired.has(k)).sort()
+}
+
+/**
  * **시각 게이트와 주기 신고를 한 자리에 묶는다.**
  *
  * 이전엔 호출부가 `if (hourUTC === 16 && gate) kick(...)` 처럼 조건만 쓰고 주기는 아무도 안 알렸다.
  * 여기에 묶어두면 "일 1회로 바꿨는데 주기 신고는 매시간 그대로" 같은 드리프트가 **구조적으로 불가능**하다.
  */
-export function makeHourGates(hourUTC: number, kick: KickFn) {
+export function makeHourGates(hourUTC: number, kick: KickFn, registry?: LaneRegistry) {
   return {
     /** 일 1회 — 지정한 UTC 시각에만. */
     dailyAt(hour: number, path: string, fallback: () => Promise<unknown>): void {
+      registry?.note(path)   // ⬅ 발화하지 않는 시각에도 '이 레인이 있다'는 사실은 남긴다
       if (hourUTC === hour) kick(path, fallback, dailyGapMinutes())
     },
     /** N시간마다 — `hourUTC % n === offset` 인 시각에만. */
     everyNHours(n: number, offset: number, path: string, fallback: () => Promise<unknown>): void {
+      registry?.note(path)
       if (n > 0 && hourUTC % n === offset) kick(path, fallback, everyNHoursGapMinutes(n))
     },
   }
+}
+
+/**
+ * 알려진 레인 목록을 `platform_settings` 에 한 줄로 남긴다(스케줄 실행당 D1 쓰기 1회).
+ * 어드민이 하트비트와 대조해 "게이트는 ON 인데 기록이 없다"를 판정한다.
+ * **절대 throw 하지 않는다** — 관측이 디스패치를 막으면 안 된다.
+ */
+export const KNOWN_LANES_KEY = 'ads_known_lanes'
+
+export async function recordKnownLanes(env: unknown, lanes: string[]): Promise<void> {
+  try {
+    const DB = (env as { DB?: { prepare(q: string): { bind(...a: unknown[]): { run(): Promise<unknown> } } } }).DB
+    if (!DB || !lanes.length) return
+    const value = JSON.stringify({ at: new Date().toISOString(), lanes }).slice(0, 2000)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(KNOWN_LANES_KEY, value).run()
+  } catch { /* fail-soft */ }
 }

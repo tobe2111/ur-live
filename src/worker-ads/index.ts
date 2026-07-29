@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, phaseGapMinutes } from './lane-cadence'
+import { makeHourGates, phaseGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -286,7 +286,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // ⏱️ maxGapMin: 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //   일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //   — 조건과 주기를 따로 적지 않는 것이 요점이다(lane-cadence.ts 주석 참조).
+  const laneReg = createLaneRegistry()
   const kick = (path: string, fallback: () => Promise<unknown>, maxGapMin?: number): void => {
+    laneReg.note(path)
     ctx.waitUntil((async () => {
       const t0 = Date.now()
       try {
@@ -298,7 +300,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       }
     })())
   }
-  const gates = makeHourGates(hourUTC, kick)
+  const gates = makeHourGates(hourUTC, kick, laneReg)
 
   // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
   //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
@@ -582,6 +584,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { runFollowupReminder } = await import('@/features/marketing/api/outreach-webhook'); await runFollowupReminder(env) } catch { /* fail-soft */ }
     })())
   }
+
+  // 🔭 이번 실행이 '알고 있는' 레인(게이트 ON)을 남긴다 — 하트비트와 대조해 '한 번도 안 돈 레인'을 판정.
+  ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
 
   // ── 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트 ────────────────────
   if (hourUTC === 0 && dowUTC === 1) {

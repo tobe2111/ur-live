@@ -12,6 +12,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 import { listCronHeartbeats, getCronHealth } from '@/worker/utils/cron-heartbeat'
+import { neverFiredLanes, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
 
@@ -54,7 +55,24 @@ adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
   // 하루 넘게 기록이 없으면 눈에 띄게(대부분 cron 이 일 1회 이상이다 — 주간/월간 작업은 오탐이므로
   // 화면에서 사람이 판단하도록 표시만 하고 서버는 단정하지 않는다).
   const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)
-  return c.json({ success: true, data: { items, stale, count: items.length } })
+
+  // 🔭 2026-07-29: 하트비트는 **기록된 행**만 본다 — 게이트는 켜져 있는데 한 번도 안 돈 레인은
+  //   목록에 아예 없어서 `stale` 판정 대상조차 아니다("안 도는 건지 원래 없는 건지" 구분 불가).
+  //   ur-ads 스케줄러가 매 실행 남기는 '알고 있는 레인' 목록과 대조해 그 구멍을 메운다.
+  //   실사례: `ads:collect-nps` — 게이트 ON 인데 기록이 없어 세션 여러 개가 같은 질문을 반복했다.
+  let never_fired: string[] = []
+  let known_lanes_at: string | null = null
+  try {
+    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(KNOWN_LANES_KEY).first<{ value: string }>()
+    if (row?.value) {
+      const v = JSON.parse(row.value) as { at?: string; lanes?: string[] }
+      known_lanes_at = v.at ?? null
+      never_fired = neverFiredLanes(Array.isArray(v.lanes) ? v.lanes : [], items.map(i => i.name))
+    }
+  } catch { /* 관측 보조 — 실패해도 본 목록은 그대로 준다 */ }
+
+  return c.json({ success: true, data: { items, stale, count: items.length, never_fired, known_lanes_at } })
 })
 
 adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {

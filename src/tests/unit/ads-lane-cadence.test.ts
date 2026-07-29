@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
   maxPhaseGapHours, phaseGapMinutes, makeHourGates,
+  neverFiredLanes, createLaneRegistry, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
 
@@ -110,5 +111,44 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
 
   it('단계 순환 레인은 단계 수에서 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
     expect(src).toMatch(/phaseGapMinutes\(PHASES\.length\)/)
+  })
+})
+
+describe('neverFiredLanes — "게이트는 ON 인데 기록이 없다"', () => {
+  it('하트비트가 없는 레인만 고른다', () => {
+    expect(neverFiredLanes(['collect', 'collect-nps'], ['ads:collect', 'ads:scheduled']))
+      .toEqual(['collect-nps'])
+  })
+
+  it('쿼리가 붙은 하트비트도 같은 레인으로 본다 — 단계 순환이 오탐되지 않게', () => {
+    // maintenance 는 매 시간 ?phase=… 가 달라진다. 쿼리째 비교하면 4개 단계가 전부 never-fired 로 잡힌다.
+    expect(neverFiredLanes(['maintenance'], ['ads:maintenance?phase=merge'])).toEqual([])
+  })
+
+  it('ads: 접두가 아닌 메인 워커 cron 은 비교에 끼어들지 않는다', () => {
+    expect(neverFiredLanes(['collect'], ['cache-prewarm', 'retry-alimtalk'])).toEqual(['collect'])
+  })
+
+  it('알려진 레인이 없으면 아무것도 신고하지 않는다(첫 배포 오탐 방지)', () => {
+    expect(neverFiredLanes([], ['ads:collect'])).toEqual([])
+  })
+})
+
+describe('createLaneRegistry — 발화하지 않는 시각에도 레인을 알아본다', () => {
+  it('일 1회 레인은 조건이 안 맞는 시각에도 등록된다 (이게 never-fired 판정의 전제)', () => {
+    const reg = createLaneRegistry()
+    const fired: string[] = []
+    const kick: KickFn = (p) => { fired.push(p) }
+    // 03시 — NPS(16시)는 발화하지 않는다
+    makeHourGates(3, kick, reg).dailyAt(16, '/__ads/collect-nps', async () => undefined)
+    expect(fired).toEqual([])                    // 안 돌았지만
+    expect(reg.list()).toEqual(['collect-nps'])  // 존재는 안다
+  })
+
+  it('쿼리는 떼고 중복은 합친다', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/maintenance?phase=merge')
+    reg.note('/__ads/maintenance?phase=quality')
+    expect(reg.list()).toEqual(['maintenance'])
   })
 })
