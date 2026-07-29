@@ -270,14 +270,41 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   인보케이션 한도를 넘어 늦게 실행되는 트랙(YT 검색·저장)이 중간에 죽음. 각 트랙을 SELF 서비스바인딩으로
   //   **자체 인보케이션**(fresh 한도)에 격리 — 야간 정비(18/19시)와 동일 패턴. SELF 미바인딩이면 직접 실행
   //   폴백(로컬 안전). 실패는 fail-soft(매시간 cron 이라 다음 틱 재시도).
+  // 💓🚨 2026-07-28: ur-ads 는 **실패를 어디에도 남기지 않았다** — 아래 catch 들이 전부 조용히 삼켜
+  //   cron_failures·어드민 벨에 한 건도 도달하지 않았다(메인 워커의 safeCron 과 달리 래퍼가 없었다).
+  //   게다가 실행 기록도 없어 "안 돌았다"조차 알 수 없었다 — 07-26~28 자동 정비 무음 정지가 그 결과다(#793/#826).
+  //   ⇒ 메인의 safeCron 과 같은 계약을 여기에도 준다: **성공·실패 무관 하트비트 + 실패 통지**.
+  //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
+  //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
+  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown): Promise<void> => {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron)
+    } catch { /* 관측 실패가 작업을 막지 않는다 */ }
+    if (!ok) {
+      try {
+        const { reportCronFailure } = await import('@/worker/utils/cron-reporter')
+        await reportCronFailure(env as never, `ads:${name}`, err, { cron: event.cron }, 'error')
+      } catch { /* 통지 실패도 삼킨다 */ }
+    }
+  }
+
   const kick = (path: string, fallback: () => Promise<unknown>): void => {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
         else await fallback()
-      } catch { /* fail-soft */ }
+        await adsBeat(path.replace(/^\/__ads\//, ''), true, Date.now() - t0)
+      } catch (err) {
+        await adsBeat(path.replace(/^\/__ads\//, ''), false, Date.now() - t0, err)
+      }
     })())
   }
+
+  // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
+  //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
+  ctx.waitUntil(adsBeat('scheduled', true, 0))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {

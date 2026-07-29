@@ -115,14 +115,17 @@ export async function handleCronScheduled(
   const safeCron = async (name: string, task: () => Promise<unknown>) => {
     const t0 = Date.now();
     let ok = true;
+    let out: unknown;
     try {
-      await task();
+      // 반환값이 있으면 '무엇을 했나'까지 기록한다 — 0건으로 끝난 게 '할 일이 없어서'인지
+      // '조용히 실패해서'인지 구분하려면 실행 사실만으로는 부족하다.
+      out = await task();
     } catch (err) {
       ok = false;
       await notifyCronFailure(env, name, err);
     } finally {
       // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
-      await recordCronBeat(env, name, ok, Date.now() - t0, cron);
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out);
     }
   };
 

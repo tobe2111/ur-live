@@ -15,7 +15,9 @@
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 
-export async function handlePayoutsGenerate(env: Env): Promise<void> {
+// 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
+//   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
+export async function handlePayoutsGenerate(env: Env): Promise<{ created: number; period: string } | void> {
   const DB = env.DB
   if (!DB) return
   try {
@@ -128,6 +130,8 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
         await sendDiscordAlert(webhook, '💸 주간 정산 생성', summary, 'info').catch(() => {})
       }
     } catch { /* 하트비트 실패는 정산 생성에 영향 없음 */ }
+
+    return { created, period: periodStart }
   } catch (e) {
     // 🔔 2026-07-08: 이전엔 여기서 삼켜 safeCron 의 실패 알림 경로에 안 닿았음(무음).
     //   재throw → scheduled.ts safeCron → notifyCronFailure(Discord + cron_failures + 어드민 벨).
