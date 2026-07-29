@@ -535,6 +535,24 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
   return c.json({ success: true })
 })
 
+// POST /api/admin/ads/influencer-pool/mark-contacted { ids, channel? } — ✅ 수기 발송 후 일괄 '보냄' 처리
+//   대표가 목록을 받아 **직접** 메일을 보내는 워크플로(2026-07-29 확정: Resend 미사용)에서, 보낸 사실을
+//   시스템이 알 방법이 없었다. 그러면 다음 내보내기에 **같은 사람이 또 나온다**(목록은 contacted_at IS NULL
+//   로 거른다) → 중복 발송으로 상대가 짜증나고 브랜드가 깎인다. 내보낸 엑셀의 ID 열을 그대로 붙여넣어 닫는다.
+//   멱등: 이미 contacted_at 이 있으면 덮어쓰지 않는다(COALESCE) — 두 번 눌러도 최초 발송일이 보존된다.
+app.post('/influencer-pool/mark-contacted', async (c) => {
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const ids = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n) => Number.isFinite(n) && n > 0).slice(0, 500)
+  if (!ids.length) return c.json({ success: false, error: '처리할 ID 를 넣어주세요' }, 400)
+  const ch = ['email', 'dm', 'note', 'kakao', 'call', 'other'].includes(String(b.channel || '')) ? String(b.channel) : 'email'
+  const ph = ids.map(() => '?').join(',')
+  const r = await c.env.DB.prepare(`UPDATE ad_influencer_leads
+      SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = COALESCE(contact_channel, ?),
+          status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END
+    WHERE account_id = ? AND id IN (${ph})`).bind(ch, POOL, ...ids).run().catch(() => null)
+  return c.json({ success: true, updated: r?.meta?.changes ?? 0, requested: ids.length })
+})
+
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
 //   ?platform=youtube|naver_blog|naver_cafe|… → 매체별 분리 파일(2026-07-28 대표 요청). 없으면 전체(기존).
