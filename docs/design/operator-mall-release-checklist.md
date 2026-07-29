@@ -242,7 +242,13 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | **운영자(셀러)** | `SellerOrdersPage.tsx:226` | `POST /api/seller/orders/:n/refund` → `refundOrderFully(expectSellerId)` | ✅ **붙는다** — 몰 주문이 소비자 `orders` 라서 |
 | 어드민 | `AdminOrdersPage.tsx:271` | `refundOrderFully`(전액) | ✅ |
 | 어드민(반품 검수) | `AdminReturnsPage.tsx:109` | `PUT /api/returns/:id/refund` | ✅ |
-| 소비자 요청 입구 | `MyOrdersPage.tsx:295` "반품 신청" → `POST /api/returns/request` · 조회 `MyReturnsPage` | | ✅ (배송완료 주문 한정) |
+| 소비자 요청 입구 | `MyOrdersPage.tsx:295` "반품 신청" → `POST /api/returns/request` · 조회 `MyReturnsPage` | | 🔴 **픽업엔 안 붙는다** — 아래 |
+
+> 🔴 **P0 픽업 전용 확정(2026-07-29)이 만든 새 구멍**: 소비자 반품 신청 입구는 게이트가
+> **`DELIVERED` + 7일 이내**다(`ReturnRequestModal.tsx:4` — 서버 스펙도 동일). **픽업 주문은
+> `DELIVERED` 에 도달하지 않으므로 소비자가 반품을 올릴 입구가 아예 없다.**
+> ⇒ 세션 ④ 범위에 **픽업 주문용 요청 입구**를 넣는다(픽업 확인 전=취소 / 확인 후=보관구분 정책 §C7).
+> 이건 배송 전제로 만들어진 화면이 픽업에 그대로 안 붙는 첫 사례다 — 다른 화면도 같은 눈으로 볼 것.
 
 | 🟡 구멍 | 판정 |
 |---|---|
@@ -272,7 +278,7 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | **③-a** | 소비자 몰 화면 — 몰 스코프 + 브랜딩 + 비로그인 | — | OFF | ⬜ (**X5a 대기**) |
 | **③-b** | 3분 등록 폼 — `mall_id` 스탬프 | — | OFF | ⬜ |
 | **③-c** | 예치금 격리 + *"신규 몰 경로 예치금 참조 0"* 래칫 **＋ 결제 실패 소비자 알림 신설**(§5.2) | — | — | ⬜ |
-| **④** | 픽업 공구 — `voucher_visits` · 픽업일 · **보관구분 미수령 분기** **＋ 부분환불 UI**(§5.4) | 🔴 | OFF | ⬜ (**단독 세션**) |
+| **④** | 픽업 공구 — `voucher_visits` · 픽업일 · **보관구분 미수령 분기** **＋ 부분환불 UI ＋ 픽업 주문 반품 입구**(§5.4) | 🔴 | OFF | ⬜ (**단독 세션**) |
 | **⑤** | 운영자 셀프 개설 + 대시보드 **몰 스코프** **＋ 반품 큐 화면**(`GET /api/returns/seller` 소비) | — | — | ⬜ (P0 이후) |
 | **철거** | 도매 라우트 마운트 해제 + 화면 삭제 | — | — | ⬜ (**X2·X8 대기 · 별도 PR 고립**) |
 
