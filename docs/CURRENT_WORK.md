@@ -55,16 +55,46 @@ baseline 은 래칫 *상한*이라 작은 쪽을 고르면 병합 직후 CI 가 
    라우트의 `try/catch` 경계가 무너짐(TS1005 'try' expected).
 
 ### ⚠️ 이번에 내가 틀린 것 (같은 실수 반복 방지 — 제일 값진 항목)
-- **검증 명령의 `echo` 를 조건 없이 출력해 "에러 없음"으로 오판하고, 위 2번 버그를 담은 커밋을 푸시했다.**
-  → tsc 는 반드시 **개수/종료코드로 판정**할 것:
+- 🚨 **이 환경의 로컬 tsc 는 죽어 있다 — "tsc 에러 0" 을 믿지 말 것.**
+  로컬 TypeScript 가 **6.0.2** 로 올라가 있고, 이 버전은 `tsconfig.json` 의 `baseUrl` deprecation 을
+  **설정 오류로 판정해 즉시 중단**한다 → **파일을 단 하나도 검사하지 않는다.**
+  일부러 `const x: number = "문자열"` 을 넣고 돌려도 **0건**으로 나온다(실측). `package.json` 지정은 `^5.5.4` 인데
+  실제 설치본이 6.0.2 다. 복구 시도(`npm ci` · 개별 설치) 전부 **npm 403** 으로 실패 —
+  이 세션에서는 되살릴 수 없었다. ⇒ **CI 가 유일한 타입 검증 수단이다.**
+  · 그래서 내가 이 세션에서 보고한 "tsc 에러 0" 은 **전부 무의미했다**(#425 를 두 번 GREEN 이라 오판한 원인).
+  · 다음 세션은 먼저 이걸 확인할 것: `npx tsc --version` → 6.x 면 로컬 검증 불가.
+    `npx tsc --noEmit --skipLibCheck 2>&1 | head -3` 에 `tsconfig.json(...): error TS5101` 만 나오고 끝나면 그게 증상이다.
+  · 근본 수리 후보(별도): `tsconfig.json` 에 `"ignoreDeprecations": "6.0"` 추가 또는 typescript 5.x 고정.
+    ⚠️ 단 `ignoreDeprecations` 만 넣으면 6.0.2 가 `baseUrl` 을 계속 쓰긴 하나, 이 환경은 node_modules 도
+    깨져 있어(react 타입 소실, 64,706 에러) 그것만으로는 안 낫는다. npm 접근이 되는 환경에서 처리할 것.
+- **검증 명령의 `echo` 를 조건 없이 출력해 "에러 없음"으로 오판하고 버그를 담은 커밋을 푸시했다.**
+  → 판정은 반드시 **개수/종료코드**로. 다만 위 항목 때문에 이 명령조차 이 환경에선 무의미하다:
   `ERR=$(npx tsc --noEmit --skipLibCheck 2>&1 | grep "error TS" | grep -vc baseUrl)`
-  (`baseUrl` deprecation 1건은 로컬 tsconfig 상시 경고라 제외. CI 는 다른 tsconfig 를 쓴다.)
+- **브랜치 단독 tsc 는 CI 와 다르다.** CI 는 **main 병합 결과**를 검사한다.
+  `#425` 가 그래서 깨졌다 — main 이 `SellerLayout.title` 을 required 로 바꿨는데 브랜치는 모르고 있었다.
+  로컬 검증은 반드시 `git merge origin/main` **후에** 할 것.
 - **`ur-live-global` 빌드가 매 PR 실패한다고 말했는데 틀렸다.** 그건 대표가 07-28 에 삭제했다.
   실제로 보이는 건 `Cloudflare Pages / ur-wholesale` 체크가 **실패가 아니라 영원히 in_progress** 로
   남는 것이다(1시간 전 머지된 `#830` 도 그 상태). **머지를 막지는 않는다.**
   CF 토큰에 Pages 권한이 없어(`Authentication error`) 원인은 대시보드 확인 필요 — 대표 판단 사항.
 - `get_job_logs(failed_only=true)` 가 **실패 스텝을 못 집어낼 때가 있다**(로그 꼬리만 반환).
   실패 원인은 `get_job_logs(job_id=..., tail_lines=60)` 로 직접 볼 것.
+
+### 🔎 가드가 만들어지자마자 잡은 현재형 사례 (조치 필요)
+
+`#818`(2026-07-29 머지)이 `company-classify.ts` 에 **새 기관 판정 규칙**을 추가했다 —
+`ORG_WORD_STRICT`(구청/시청/도청/군청/주민센터/행정복지센터/진흥원/재단/협회/교육청/보건소/의회/청사 …)
+→ `lead_type='org'` 조기 반환. **그런데 `CLASSIFY_RULES_VERSION` 은 3 그대로다**(마지막 bump 07-27).
+
+재검사 쿼리가 `classified_v IS NULL OR classified_v < CLASSIFY_RULES_VERSION` **뿐이고 시간 폴백이 없어**,
+이미 `classified_v=3` 이 찍힌 행은 **영원히** 이 규칙을 못 받는다. 즉 **새 기관 규칙이 지금 사실상 죽어 있다**
+(신규 유입 행에만 적용). 07-27 에 이 방식을 도입한 이유가 바로 그 구멍을 막으려던 것이었다.
+
+**조치**: `CLASSIFY_RULES_VERSION` 3 → 4.
+⚠️ **단, 부작용을 알고 올릴 것** — bump 는 전량 재검사를 트리거하고, `reclassifyCompanyLeads` 의
+housekeeping 은 `ok=false`(공고·정부페이지) 로 판정된 **미큐레이션 행을 삭제**한다(대표가 손댄 행은 보류).
+새 규칙은 기관을 `ok=true, lead_type='org'` 로 살리는 방향이라 대량 삭제가 의도는 아니지만,
+**리드 데이터를 건드리는 변경이라 이번 세션에서 임의로 올리지 않았다.** 대표 확인 후 1줄 bump.
 
 ### 다음 세션 첫 액션
 1. `#425` CI 확인 → GREEN 이면 머지(이 항목 작성 시점 in_progress).
