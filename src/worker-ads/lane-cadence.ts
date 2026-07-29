@@ -83,9 +83,12 @@ export function maxScheduleGapHours(schedule: readonly unknown[], skipHours: rea
 /** 균등 단계 순환 레인의 stale 기준(분). */
 export const phaseGapMinutes = (phaseCount: number): number => staleGapMinutes(maxPhaseGapHours(phaseCount) * 60)
 
-/** 가중 배정표 레인의 stale 기준(분) — 배정표를 그대로 넘긴다. */
-export const scheduleGapMinutes = (schedule: readonly unknown[]): number =>
-  staleGapMinutes(maxScheduleGapHours(schedule) * 60)
+/**
+ * 가중 배정표 레인의 stale 기준(분) — 배정표를 그대로 넘긴다.
+ * `skipHours` 는 다른 레인에 **양보한** 시각(간격이 그만큼 넓어지므로 임계도 함께 넓어져야 한다).
+ */
+export const scheduleGapMinutes = (schedule: readonly unknown[], skipHours: readonly number[] = []): number =>
+  staleGapMinutes(maxScheduleGapHours(schedule, skipHours) * 60)
 
 /**
  * `kick(path, fallback, opts?)` 과 같은 모양이면 무엇이든 받는다(테스트에서 스파이 주입).
