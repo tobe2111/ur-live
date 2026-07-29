@@ -20,7 +20,7 @@
  *    그건 필터가 아니라 **측정**의 문제라 여기서 해결하지 않는다.
  */
 import { describe, it, expect } from 'vitest'
-import { classifyCategory, isFitoutBulkBuy } from '@/features/marketing/api/influencer-classify'
+import { classifyCategory, isFitoutBulkBuy, shouldClearCategory } from '@/features/marketing/api/influencer-classify'
 
 describe('isFitoutBulkBuy — 입주 시공업체 신호', () => {
   // 🔒 라이브에서 실제로 잘못 잡힌 문구들. 문구를 바꾸지 말 것 — 이게 이 가드의 존재 이유다.
@@ -76,5 +76,48 @@ describe('다른 카테고리는 영향받지 않는다', () => {
   it('맛집·뷰티 등 기존 판정 불변', () => {
     expect(classifyCategory('동네 맛집 먹방 채널', '')).toBe('맛집')
     expect(classifyCategory('데일리 메이크업 뷰티 채널', '')).toBe('뷰티')
+  })
+})
+
+/**
+ * 🧹 **옛 규칙으로 굳은 값을 지운다** — 재분류의 사각지대(2026-07-29 실측).
+ *
+ * 재분류는 `classifyCategory` 가 값을 주면 덮고 **`null` 이면 그대로 둔다.** 그래서 새 가드를
+ * 만들어도 "다른 규칙에도 안 걸리는" 행은 옛 값이 **영구히 굳는다.**
+ * 실측: 입주 시공업체 27명에 가드를 적용해 보니 **6명만 교정되고 21명이 공동구매로 남았다.**
+ * ("측정하면 점진 교정된다"는 내 앞선 설명이 이 실측으로 틀렸음이 드러났다.)
+ *
+ * ⚠️ 이 규칙을 **넓히지 말 것**: "현재 규칙이 그 값을 거부한다는 걸 아는" 조합만 지운다.
+ *    모르는 값을 지우면 사람이 손으로 고친 분류까지 날아간다.
+ */
+describe('shouldClearCategory — 굳은 값 청소', () => {
+  it('입주업체인데 공동구매로 굳어 있으면 지운다', () => {
+    expect(shouldClearCategory('공동구매', '팔도방충망님의 블로그', '블랙스텐망 공동구매 시공 후기')).toBe(true)
+    expect(shouldClearCategory('공동구매', '연아건축', 'ALC건축 토목 설계 공동구매기획전')).toBe(true)
+  })
+  it('진짜 공구 셀러의 공동구매는 지키다', () => {
+    expect(shouldClearCategory('공동구매', '따뜻한식탁', '반찬 공구 오픈 · 공구 일정 안내')).toBe(false)
+  })
+  it('분류불가 토큰(자동/일반)은 종전대로 지운다 — 기존 동작 불변', () => {
+    for (const v of ['자동', '일반']) expect(shouldClearCategory(v, '아무개', '')).toBe(true)
+    // 빈 문자열은 **이미 비어 있어 지울 게 없다**(기존 코드도 `r.category &&` 로 걸렀다).
+    //   처음엔 여기도 true 로 썼다가 테스트가 잡았다 — NON_CATEGORIES 에 '' 가 있다고 해서
+    //   '지워야 하는 값'인 것은 아니다(그 집합은 '카테고리로 안 치는 값'의 목록이다).
+    expect(shouldClearCategory('', '아무개', '')).toBe(false)
+  })
+  it('다른 카테고리는 안 건드린다 — 넓히면 수동 분류가 날아간다', () => {
+    expect(shouldClearCategory('맛집', '팔도방충망', '창호 시공 후기')).toBe(false)
+    expect(shouldClearCategory('리빙', 'LX 인테리어 공식대리점', '리모델링')).toBe(false)
+    expect(shouldClearCategory(null, '아무개', '')).toBe(false)
+    expect(shouldClearCategory(undefined, '아무개', '')).toBe(false)
+  })
+})
+
+describe('🚧 배선 — 재분류가 실제로 그 판단을 쓰는가', () => {
+  it('runReclassifyPool 이 shouldClearCategory 로 청소한다', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync('src/features/marketing/api/influencer-performance.ts', 'utf8')
+    // 순수함수만 만들고 배선을 안 하면 21명은 그대로 굳어 있는다 — 조용히 아무 일도 안 일어난다.
+    expect(src).toMatch(/!byContent && shouldClearCategory\(r\.category, r\.name, r\.description\)/)
   })
 })
