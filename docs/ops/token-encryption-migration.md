@@ -95,10 +95,15 @@ GET /api/health/env-readiness  →  summary.security_missing 에서 DATA_ENCRYPT
 
 ## 5. 함께 처리할 것 — `INTERNAL_API_TOKEN`
 
-같은 `security_missing` 에 있다. 내부 전용 엔드포인트(cron/정산) 보호용이고, **미설정이면 fail-open** 이다.
-키 생성·등록 절차가 동일하므로 **같은 작업 세션에서 함께** 처리하는 것이 효율적이다.
-다만 이쪽은 *"미설정 시 어떤 엔드포인트가 무방비인지"* 를 먼저 확인해야 한다 — **별도 조사 항목**으로 둔다
-(이 문서의 범위 아님).
+같은 `security_missing` 에 있다. 키 생성·등록 절차가 동일하므로 **같은 작업 세션에서 함께** 처리하면 된다.
+
+> ✅ **정정(2026-07-29 조사 완료)**: 이 문서는 처음에 *"미설정이면 fail-open"* 이라고 적었다. **틀렸다.**
+> 소비처 4곳이 전부 `if (!opsToken || opsToken !== reqToken) return 403` — **미설정이면 열리는 게 아니라
+> 잠긴다.** 라이브 실측도 403. `env-readiness` 가 이 키를 `security`(그룹 설명 *"fail-open"*) 에 둬서
+> 생긴 오독이었다.
+>
+> ⇒ 실제 리스크는 보안이 아니라 **가용성**이다 — 어드민 비밀번호 초기화·rate-limit 해제 같은 **복구 레버가
+> 잠겨 있다.** 오픈을 막지는 않는다. 상세: `docs/design/operator-mall-open-blockers-2026-07.md` §3.
 
 ## 6. 이 트랙이 판정하지 못하는 것
 

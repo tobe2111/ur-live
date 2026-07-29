@@ -220,7 +220,9 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     { key: 'RATE_LIMIT_KV', group: 'security', note: '로그인/결제 brute-force 방어. 없으면 fail-open(무제한 시도).' },
     { key: 'TURNSTILE_SECRET', group: 'security', note: '봇 차단(CAPTCHA). 없으면 fail-open.' },
     { key: 'DATA_ENCRYPTION_KEY', group: 'security', note: '카카오/외부 토큰 at-rest 암호화. 없으면 평문 저장 위험.' },
-    { key: 'INTERNAL_API_TOKEN', group: 'security', note: '내부 전용 엔드포인트(cron/정산) 보호.' },
+    // ⚠️ 이 그룹 설명은 fail-open 이지만 이 키만은 **fail-closed** 다(소비처 4곳 전부 `!token → 403`).
+    //   미설정은 무방비가 아니라 복구 레버가 잠긴 상태다 — 2026-07-29 조사에서 반대로 읽힌 적이 있다.
+    { key: 'INTERNAL_API_TOKEN', group: 'security', note: '내부 전용 엔드포인트(어드민 복구/정산) 보호. ⚠️ 미설정 시 fail-CLOSED — 무방비가 아니라 복구 경로가 잠긴다.' },
     // 성능 — degraded.
     { key: 'SESSION_KV', group: 'perf', note: '세션/카운트 캐시. 없으면 동작하나 D1 부하.' },
     { key: 'CACHE_KV', group: 'perf', note: '전역 public API 캐시. 없으면 edge 캐시만(region cold 시 D1 hit).' },
