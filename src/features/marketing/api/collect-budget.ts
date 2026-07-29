@@ -50,8 +50,14 @@ export const SUBREQ_CAP_MIN = 25
  *   ⇒ 회복 +2/회차(선형), 백오프 ×0.8(승수) → 실패 1회당 성공 회차가 5~6배로 늘어난다.
  */
 const RECOVER_STEP = 2
-/** 한도 관측 시 하향 배율(부딪힌 지점보다 확실히 아래로). */
+/** 한도 관측 시 하향 배율(부딪힌 지점보다 확실히 아래로). **확실한 신호**에만 쓴다. */
 const BACKOFF_RATIO = 0.8
+/**
+ * 🪦 '직전 회차 유기' 하향 폭 — **가산**(회복 +2와 같은 축). 이 신호는 오탐이 섞이므로
+ *   (lease 반납이 예산 고갈 시 조용히 실패한다) 승수로 깎으면 나선이 된다. `capAfterAbandonedRun` 주석 참조.
+ *   회복(+2)보다 크게 잡아 조건이 지속되는 동안은 순감(−2/회차)이 유지되게 한다.
+ */
+const ABANDON_STEP = 4
 
 /**
  * 응답/에러 메시지에 플랫폼 한도 신호가 있는가.
@@ -122,14 +128,32 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number, platf
  *   만료된 타임스탬프가 남는다 — 다음 회차가 그 흔적을 보고 "직전 회차는 못 끝냈다"를 확정한다.
  *   추가 쓰기 0(이미 있는 lease 를 읽기만 한다).
  *
- * ⚠️ 오탐: 한 회차가 lease TTL(5분)보다 오래 정상 실행되면 다음 회차가 유기로 오독한다. 그 경우 상한이
- *   한 단계 내려갈 뿐이고(바닥 `SUBREQ_CAP_MIN`), 가산 회복이 도로 올린다 — 안전한 방향의 오차다.
- * ⚠️ 못 보는 것: 죽은 지점이 어디인지는 모른다. "이번엔 덜 쓰자"만 말한다.
+ * 🩹 **2026-07-29 재수리 — 하향을 승수에서 가산으로.** 위 "안전한 방향의 오차"라는 판단이 라이브에서 틀렸다.
+ *
+ *   실측(같은 날 5시간, `limit_hit` 은 **내내 false**):
+ *     | 시각 | learned_cap | spent |
+ *     |---|---|---|
+ *     | 09:00 | 44 | 40/40 |
+ *     | 12:00 | 36 | 32/32 |
+ *     | 13:00 | 32 | 28/28 |
+ *     | 14:00 | **27** | 23/23 |
+ *   한도를 한 번도 안 봤는데 5시간에 **−39%**. 내려갈 수 있는 경로는 이 함수뿐이었다.
+ *
+ *   왜 오탐이 상시가 됐나: lease 반납(`releaseLease`)은 D1 쓰기이고 `.catch(() => null)` 로 감싸여 있다.
+ *   즉 **서브리퀘스트가 바닥난 회차에서는 반납이 조용히 실패**한다 — 하필 상한에 닿았을 때 항상 그렇다.
+ *   그래서 "유기" 신호가 매 회차 켜졌고, 여기서 −20% 를 곱했다.
+ *   ⇒ **불확실한 신호 × 승수 하향 = 나선.** 회복은 +2(가산)라 −20% 를 절대 못 따라잡는다
+ *     (44 에서 −8.8 vs +2). 원 주석의 "가산 회복이 도로 올린다"는 그 산술을 안 해 본 것이다.
+ *
+ *   ⇒ 신호의 신뢰도에 맞춰 **하향도 가산**(−`ABANDON_STEP`)으로 바꾼다. 조건이 지속되면 회차당 순 −2 로
+ *   여전히 내려가지만(교정은 유지), 오탐이 상시여도 **바닥까지 자유낙하하지 않는다**.
+ *   ⚠️ 진짜 한도 충돌(`hitLimit`)의 하향은 **승수 그대로**다 — 그건 관측이 확실한 신호라 빠르게 물러나는 게 맞다.
+ *   ⚠️ 못 보는 것: 죽은 지점이 어디인지는 모른다. "이번엔 덜 쓰자"만 말한다.
  */
 export function capAfterAbandonedRun(learnedCap: number, envBudget: number, platformCap = SUBREQ_PLATFORM_CAP_DEFAULT): number {
   const ceiling = Math.min(envBudget, platformCap)
   const base = learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling
-  return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), Math.floor(base * BACKOFF_RATIO))
+  return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), base - ABANDON_STEP)
 }
 
 /**
