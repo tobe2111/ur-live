@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
   maxPhaseGapHours, phaseGapMinutes, maxScheduleGapHours, scheduleGapMinutes, makeHourGates,
-  neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
+  neverFiredLanes, orphanLaneBeats, createLaneRegistry, buildAgeInfo, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
 import { MAINT_PHASES, MAINT_SCHEDULE } from '../../features/marketing/api/influencer-maintenance'
@@ -489,5 +489,53 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     // 이 레포가 반복해 만난 형태: 함수는 고쳤는데 호출부가 안 넘겨 **조용히 예전 동작** 유지.
     const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
     expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
+  })
+})
+
+/**
+ * 🕐 **배포 직후 회차를 하트비트가 스스로 신고한다** — 오늘 세 번 오진한 원인의 구조적 해소.
+ *
+ * 배포는 진행 중인 isolate 를 죽인다 → 배포 창에 걸린 정각 회차는 `ms=0` · 카운터 `+0` 으로 남고,
+ * 그 모양은 **코드 결함과 구분되지 않는다.** 이 세션은 그걸 보고 두 번 오진했다
+ * (11:00 "self-chain 이 수집을 죽였다" · 13:00 "#880 의 바닥이 부족하다"). 두 번 다 GitHub
+ * 배포 로그를 파러 가서야 알았는데, 그 정보는 **워커가 이미 갖고 있다**(자기 번들의 빌드 시각).
+ *
+ * ⚠️ 이 테스트가 **못 보는 것**: 실제 배포 시각과 빌드 시각의 차이(빌드 후 배포까지 수십 초).
+ *    그래서 판정은 '정확히 0'이 아니라 **작은 값(0~2분)이면 의심**이다 — 근사 신호로 쓸 것.
+ */
+describe('buildAgeInfo — 배포 직후 회차 신고', () => {
+  it('스탬프가 없으면 조용히 빈 객체 — 관측이 실행을 막지 않는다', () => {
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+    expect(buildAgeInfo()).toEqual({})
+  })
+
+  it('스탬프가 있으면 분 단위 나이를 낸다', () => {
+    const now = Date.parse('2026-07-29T13:00:00Z')
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-29T12:59:30Z'
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 1 })   // 30초 → 반올림 1분
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-29T11:00:00Z'
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 120 })
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+  })
+
+  it('깨진 스탬프·미래 시각에 throw 하지 않는다', () => {
+    const now = Date.parse('2026-07-29T13:00:00Z')
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = 'not-a-date'
+    expect(buildAgeInfo(now)).toEqual({})
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-30T00:00:00Z' // 미래
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 0 })   // 음수 금지
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+  })
+})
+
+describe('🚧 배선 — 빌드 스탬프가 실제로 주입되고 실려 나가는가', () => {
+  it('빌드 스크립트가 __ADS_BUILD_AT__ 을 define 한다', () => {
+    const b = readFileSync(join(process.cwd(), 'scripts/build-worker-ads.js'), 'utf8')
+    expect(b).toMatch(/'__ADS_BUILD_AT__':\s*JSON\.stringify\(new Date\(\)\.toISOString\(\)\)/)
+  })
+  it('scheduled 비트가 그 값을 싣는다 — 안 실으면 만들어도 아무 데도 안 보인다', () => {
+    // ⚠️ 파일 스코프의 `src` 를 쓰면 다른 describe 의 값(enrich.routes)이 잡힌다 — 명시적으로 읽는다.
+    const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(idx).toMatch(/adsBeat\('scheduled'[\s\S]{0,80}?buildAgeInfo\(\)/)
   })
 })

@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -232,10 +232,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
   //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
   // 🏷️ 실패 사유 = `cronErrorCode`(SSOT·근거는 그 docblock) · `maxGapMin`(#847) — 두 관심사는 독립이다.
-  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number): Promise<void> => {
+  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>): Promise<void> => {
     try {
       const { recordCronBeat, cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
-      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron, ok ? undefined : { err: cronErrorCode(err) }, maxGapMin)
+      const result = ok ? extra : { err: cronErrorCode(err), ...(extra || {}) }
+      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron, result, maxGapMin)
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {
       try {
@@ -268,7 +269,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
   //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
-  ctx.waitUntil(adsBeat('scheduled', true, 0))
+  //   🕐 이 회차가 **새 배포 직후인지**를 함께 남긴다 — 배포는 진행 중인 isolate 를 죽이므로
+  //   배포 창에 걸린 정각 회차는 아무 일도 못 하고 사라진다(2026-07-29 에 그걸 세 번 오진했다:
+  //   `ms=0` · 카운터 +0 을 보고 코드 결함으로 읽었는데 실제로는 배포와 겹친 것이었다).
+  //   `build_age_min` 이 작으면(≈0~2) 그 회차의 관측은 **판정 근거로 쓰면 안 된다.**
+  ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, buildAgeInfo()))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
