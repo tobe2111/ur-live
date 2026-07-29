@@ -43,6 +43,31 @@ import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 /** 링크인바이오 플랫폼 자체 메일(안내/noreply) — 인플루언서 연락처가 아니라 저장 금지. */
 const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
 
+/** 🔗 한 체인(정각 1회 = 라운드 N개)의 합계. 라운드 하나가 아니라 **그 시간에 실제로 일어난 일**. */
+export interface EnrichChainRollup {
+  rounds: number            // 스냅샷을 쓴 라운드 수. `depth + 1` 보다 작으면 중간 라운드가 죽은 것이다.
+  /**
+   * 🧱 드라이버가 **계획한** 라운드 수(기본 12). `rounds` 와의 격차가 곧 **체인 수명 천장**이다.
+   *
+   *   2026-07-29 실측: 계획 12 · 도달 `depth 2`(라운드 3) — 13:00:0x 시작 → 13:01:36 마지막 기록,
+   *   즉 이 레인이 정각마다 실제로 확보하는 벽시계는 **~90초**뿐이다. 그동안 여러 세션이
+   *   "라운드를 12로 늘렸다"를 처리량 근거로 삼았는데, **9라운드는 한 번도 존재한 적이 없다.**
+   *   ⇒ 라운드 상한(`ADS_INFLUENCER_ENRICH_ROUNDS`)이나 라운드 창(`ADS_ENRICH_DEADLINE_MS`)을
+   *     키우는 처방은 이 격차가 메워진 뒤에야 의미가 있다. 창을 키우면 라운드가 **줄어든다**.
+   */
+  rounds_planned?: number
+  max_depth: number
+  bio: number
+  yt: number
+  naver_selected: number    // 고른 수 ↔ 잰 수의 간격이 곧 "시간에 잘렸다"는 증거다
+  naver_tried: number
+  naver_measured: number
+  naver_contacts: number
+  deadline_hits: number     // 몇 라운드가 벽시계로 끊겼나(예산 소진과 구분)
+  spent: number
+  started_at?: string
+}
+
 export interface InfluencerEnrichSnapshot {
   last_run?: string
   bio: number                 // 🔗 링크인바이오로 연락처를 새로 채운 리드 수
@@ -63,6 +88,19 @@ export interface InfluencerEnrichSnapshot {
    *   ⇒ 이름을 다투지 않는 곳(이 스냅샷)에 싣는다. 어차피 라운드마다 쓰는 값이라 **추가 쓰기 0**.
    */
   depth?: number
+  /**
+   * 🔗 **이 체인(=이번 정각) 전체의 합** — 스냅샷이 *마지막 라운드만* 남기던 사각지대를 메운다.
+   *
+   *   2026-07-29 실측: `depth: 2 · naver { selected: 12, tried: 0 }`. 체인은 최소 3라운드(0·1·2)를
+   *   돌았는데 **보이는 건 마지막 한 장뿐**이라, 앞 라운드가 블로거를 쟀는지 못 쟀는지 알 방법이 없었다.
+   *   그런데 오늘 #880(블로거 시간 바닥) 판정을 **이 한 장으로 세 번** 했다 — 한 번은 그 오독으로
+   *   단계 순서를 통째로 뒤집는 커밋까지 썼다가 되돌렸다.
+   *
+   *   ⚠️ 이 값이 **못 보는 것**: 라운드가 스냅샷 쓰기 전에 죽으면 안 세어진다. 그래서 `rounds` 가
+   *   `depth + 1` 보다 작으면 그 자체가 신호다(중간 라운드 사망). 같은 이유로 이 값을 신뢰하려면
+   *   `rounds` 를 먼저 볼 것 — 합만 보면 죽은 라운드를 '0을 낸 라운드'와 구분 못 한다.
+   */
+  chain?: EnrichChainRollup
   elapsed_ms: number
   total_measured?: number     // 누적 — "얼마나 진행됐나"를 라운드 하나가 아니라 전체로 본다
   total_contacts?: number
@@ -101,6 +139,23 @@ export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; nav
  *   ⚠️ 배정은 상한일 뿐 실제 중단은 여전히 `budget.left`/deadline 이 한다 — 과배정해도 초과 지출은 없다.
  */
 /**
+ * 🔄 **직전 회차에 뒷 레인이 굶었나** — 선두 교대의 폴백 신호(순수).
+ *
+ *   판정선은 `selected > 0 && tried === 0` 이다. "큐가 비었다"(selected 0)와 명확히 다르다 —
+ *   **고를 사람은 있었는데 한 명도 못 쟀다**는 뜻이고, 그 회차는 SELECT 비용만 쓰고 통째로 버려진 것이다.
+ *   라이브에서 정확히 이 값이 반복해 찍혔다(`selected 12~13 · tried 0`).
+ *
+ *   ⚠️ `deadline_hit` 을 조건에 넣지 않는다 — 창을 다 쓰는 건 정상이고(예산을 남기지 않았다는 뜻),
+ *   문제는 *뒷 레인이 한 명도 못 받은 것*이다. 두 개를 섞으면 정상 회차까지 뒤집는다.
+ *   ⚠️ 스냅샷이 없거나 깨졌으면 `false` — 첫 배포·유실에서 기존 순서를 유지한다.
+ */
+export function starvedLastRound(prev: { naver?: { selected?: number; tried?: number } } | null | undefined): boolean {
+  const n = prev?.naver
+  if (!n) return false
+  return (n.selected || 0) > 0 && (n.tried || 0) === 0
+}
+
+/**
  * 🔀 **병합 메모(2026-07-29)**: 이 브랜치도 같은 12:00 실측(`selected 13 · tried 0 · spent 18/45 ·
  *   deadline_hit`)에서 독립적으로 같은 수리를 했다(`sliceDeadline`, bio 25%/yt 50% 고정 분할).
  *   **main 판을 채택하고 이쪽을 버린다** — 같은 것을 두 벌 두면 조용히 갈라지고, main 판이 더 낫다:
@@ -127,6 +182,44 @@ export function frontStageDeadline(started: number, deadlineMs: number, naverFlo
   const pct = Math.min(80, Math.max(10, Number.isFinite(naverFloorPct) ? naverFloorPct : 40))
   const window = Math.max(0, Number.isFinite(deadlineMs) ? deadlineMs : 0)
   return started + Math.floor((window * (100 - pct)) / 100)
+}
+
+/**
+ * 🔗 체인 합산 — **순수 함수**(유닛으로 고정).
+ *
+ *   `depth === 0` 은 새 체인의 시작이라 **리셋**한다. 이어 붙이면 어제 회차가 오늘 합계에 섞여
+ *   "이번 정각에 무슨 일이 있었나"를 다시 못 보게 된다(그게 애초에 이 값을 만든 이유다).
+ *
+ *   ⚠️ 앞 체인의 잔재를 물려받지 않으려고 **prev 의 chain 을 depth 0 에서는 아예 안 읽는다.**
+ *      이전 체인이 중간에 죽어 `rounds` 가 3에 멈춰 있어도 새 정각은 1부터 센다.
+ */
+export function rollupChain(
+  prev: EnrichChainRollup | undefined,
+  depth: number,
+  round: { bio: number; yt: number; naver: NaverEnrichDiag; spent: number; deadlineHit: boolean; at: string; roundsPlanned?: number },
+): EnrichChainRollup {
+  const d = Number.isFinite(depth) && depth > 0 ? Math.floor(depth) : 0
+  const base: EnrichChainRollup = d === 0 || !prev
+    ? { rounds: 0, max_depth: 0, bio: 0, yt: 0, naver_selected: 0, naver_tried: 0, naver_measured: 0, naver_contacts: 0, deadline_hits: 0, spent: 0, started_at: round.at }
+    : prev
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : 0)
+  const planned = Number.isFinite(round.roundsPlanned) && (round.roundsPlanned as number) > 0
+    ? Math.floor(round.roundsPlanned as number)
+    : base.rounds_planned   // 로컬 호출(계획 미전달)이 앞 라운드의 계획을 지우지 않게
+  return {
+    rounds: n(base.rounds) + 1,
+    ...(planned ? { rounds_planned: planned } : {}),
+    max_depth: Math.max(n(base.max_depth), d),
+    bio: n(base.bio) + n(round.bio),
+    yt: n(base.yt) + n(round.yt),
+    naver_selected: n(base.naver_selected) + n(round.naver.selected),
+    naver_tried: n(base.naver_tried) + n(round.naver.tried),
+    naver_measured: n(base.naver_measured) + n(round.naver.measured),
+    naver_contacts: n(base.naver_contacts) + n(round.naver.contacts),
+    deadline_hits: n(base.deadline_hits) + (round.deadlineHit ? 1 : 0),
+    spent: n(base.spent) + n(round.spent),
+    started_at: base.started_at || round.at,
+  }
 }
 
 export function naverRoomFromRemaining(remaining: number, plannedMax: number): number {
@@ -200,7 +293,7 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   실패해도 throw 하지 않는다(호출부는 fail-soft) — 대신 **crash 원문을 스냅샷에 남긴다**.
  *   증거 없는 종료가 진단을 몇 세션씩 잡아먹은 것이 2026-07-28 파트너풀 레인의 교훈이다.
  */
-export async function runInfluencerEnrich(env: Env, depth = 0): Promise<InfluencerEnrichSnapshot> {
+export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -250,10 +343,19 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
    *   오늘 네 번째로 만난 같은 병이다 — **줄을 세우면 꼬리가 굶는다.** 앞선 세 번(예산·시계·순번)은
    *   '몫을 보장'해서 풀었는데, 여기서는 몫이 원자적이지 않아 실패했다. 그럴 땐 **자리를 바꾸는 것**이 답이다.
    */
+  // 📖 직전 회차 스냅샷 — **선두 결정과 누적 합계 둘 다** 쓴다(읽기 1회, 추가 비용 0).
+  //   예전엔 마지막에만 읽었는데, 선두 결정이 이 값을 필요로 해서 앞으로 옮겼다.
+  const prev = await readSnapshot(DB)
   // ⚠️ `ytUnits` 는 **바깥 스코프**여야 한다 — 아래 스냅샷의 `yt_units` 가 읽는다.
   //   선두 교대를 넣으며 헬퍼 안에 가뒀다가 타입 에러가 났다(CI 가 잡음, npm 403 으로 로컬 tsc 미실행).
   let ytUnits = 0
-  const naverFirst = depth % 2 === 1
+  //   🩹 2026-07-29 보강 — `depth % 2` **하나로는 발화 못 하는 회차**가 있다. 위 주석은 "체인이 depth 2+ 로
+  //   도는 것이 확인됐다"를 전제하는데, 배포(13:38) 이후 14:00 틱 실측은 **`depth: 0`** 이었다
+  //   (`naver { selected 12, tried 0 }` 그대로). 체인이 한 라운드에서 끊기면 depth 는 영원히 0 이고,
+  //   `0 % 2 === 1` 은 항상 거짓이라 **교대가 한 번도 안 일어난다.** 전제가 깨지면 처방도 같이 죽는 형태다.
+  //   ⇒ 직전 회차가 실제로 굶었으면(`selected > 0 && tried === 0`) 깊이와 무관하게 선두를 넘긴다.
+  //   둘은 서로를 보완한다: 체인이 정상이면 결정적 교대가 반반을 보장하고, 끊겨도 자기교정이 받는다.
+  const naverFirst = depth % 2 === 1 || starvedLastRound(prev)
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
@@ -287,9 +389,12 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
   const cap = nextSubreqCap(budgetTotal - budget.left, limitHit, learnedCap, envBudget, pcap)
   if (cap != null) await writeSetting(DB, subreqCapKey('influencer_enrich'), String(cap)).catch(() => undefined)
 
-  const prev = await readSnapshot(DB)
+  // 📖 prev 는 위(선두 결정 지점)에서 이미 읽었다 — 여기서 다시 읽지 않는다(읽기 1회 유지).
+  const stamp = nowStamp()
   const snap: InfluencerEnrichSnapshot = {
-    last_run: nowStamp(), bio, yt, naver, spent, budget_total: budgetTotal, depth,
+    last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,
+    // 🔗 이번 정각 전체의 합 — 마지막 라운드 한 장으로 판정하던 오독을 끝낸다(위 `chain` 주석의 실측 근거).
+    chain: rollupChain(prev?.chain, depth, { bio, yt, naver, spent, deadlineHit, at: stamp, roundsPlanned }),
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,
     yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
     total_measured: (prev?.total_measured || 0) + naver.measured + yt,

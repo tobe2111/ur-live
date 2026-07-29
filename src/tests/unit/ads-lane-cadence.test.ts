@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
   maxPhaseGapHours, phaseGapMinutes, maxScheduleGapHours, scheduleGapMinutes, makeHourGates,
-  neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
+  neverFiredLanes, orphanLaneBeats, createLaneRegistry, buildAgeInfo, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
 import { MAINT_PHASES, MAINT_SCHEDULE } from '../../features/marketing/api/influencer-maintenance'
@@ -231,13 +231,15 @@ describe('worker-ads — 생 waitUntil 레인은 관측 밖이다(래칫)', () =
     expect(rawLanes().length).toBeGreaterThanOrEqual(5)
   })
 
-  it('🔒 하트비트 없는 생 레인이 늘어나지 않는다(현재 5 — 새 레인은 반드시 kick 또는 adsBeat)', () => {
+  it('🔒 하트비트 없는 생 레인이 하나도 없다 — 새 레인은 반드시 kick 또는 adsBeat', () => {
     // ⚠️ 본문을 모듈로 분리하고 `adsBeat` 을 **인자로 넘기는** 형태도 관측된 것으로 본다
     //   (`runSheetsMirrorLane(env, adsBeat)`). 호출만 보면 놓치므로 토큰 뒤 `(`·`,`·`)` 를 모두 받는다.
     //   그 형태의 진짜 보증은 아래 짝 검사다 — 넘긴 쪽이 실제로 하트비트를 남기는지 모듈에서 확인한다.
+    // 🔒 2026-07-29 후속: 남아 있던 5개(social-maintenance · autobid · 18시 일일배치 · 23시 팔로업 ·
+    //   주간 리포트)를 전부 배선해 **허용치가 0** 이 됐다. 비용 우려는 구조로 해소된다 —
+    //   시간 게이트 레인은 한 시각에 하나씩만 켜지므로 정각당 실제 증가는 +1~2 D1 쓰기다.
     const blind = rawLanes().filter(b => !/adsBeat[(,)]/.test(b))
-    expect(blind.length, `관측 밖 레인이 늘었다(${blind.length}개) — 새 레인은 kick() 을 쓰거나 adsBeat 을 남겨라`)
-      .toBeLessThanOrEqual(5)
+    expect(blind.length, `관측 밖 레인 ${blind.length}개 — kick() 을 쓰거나 adsBeat 을 남겨라`).toBe(0)
   })
 
   it('🔒 시트 미러는 하트비트를 남긴다 — 09:00 이후 멈춘 걸 아무도 못 보던 자리', () => {
@@ -501,5 +503,90 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     // 이 레포가 반복해 만난 형태: 함수는 고쳤는데 호출부가 안 넘겨 **조용히 예전 동작** 유지.
     const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
     expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
+  })
+})
+
+/**
+ * 🕐 **배포 직후 회차를 하트비트가 스스로 신고한다** — 오늘 세 번 오진한 원인의 구조적 해소.
+ *
+ * 배포는 진행 중인 isolate 를 죽인다 → 배포 창에 걸린 정각 회차는 `ms=0` · 카운터 `+0` 으로 남고,
+ * 그 모양은 **코드 결함과 구분되지 않는다.** 이 세션은 그걸 보고 두 번 오진했다
+ * (11:00 "self-chain 이 수집을 죽였다" · 13:00 "#880 의 바닥이 부족하다"). 두 번 다 GitHub
+ * 배포 로그를 파러 가서야 알았는데, 그 정보는 **워커가 이미 갖고 있다**(자기 번들의 빌드 시각).
+ *
+ * ⚠️ 이 테스트가 **못 보는 것**: 실제 배포 시각과 빌드 시각의 차이(빌드 후 배포까지 수십 초).
+ *    그래서 판정은 '정확히 0'이 아니라 **작은 값(0~2분)이면 의심**이다 — 근사 신호로 쓸 것.
+ */
+describe('buildAgeInfo — 배포 직후 회차 신고', () => {
+  it('스탬프가 없으면 조용히 빈 객체 — 관측이 실행을 막지 않는다', () => {
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+    expect(buildAgeInfo()).toEqual({})
+  })
+
+  it('스탬프가 있으면 분 단위 나이를 낸다', () => {
+    const now = Date.parse('2026-07-29T13:00:00Z')
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-29T12:59:30Z'
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 1 })   // 30초 → 반올림 1분
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-29T11:00:00Z'
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 120 })
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+  })
+
+  it('깨진 스탬프·미래 시각에 throw 하지 않는다', () => {
+    const now = Date.parse('2026-07-29T13:00:00Z')
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = 'not-a-date'
+    expect(buildAgeInfo(now)).toEqual({})
+    ;(globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__ = '2026-07-30T00:00:00Z' // 미래
+    expect(buildAgeInfo(now)).toEqual({ build_age_min: 0 })   // 음수 금지
+    delete (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+  })
+})
+
+describe('🚧 배선 — 빌드 스탬프가 실제로 주입되고 실려 나가는가', () => {
+  it('빌드 스크립트가 __ADS_BUILD_AT__ 을 define 한다', () => {
+    const b = readFileSync(join(process.cwd(), 'scripts/build-worker-ads.js'), 'utf8')
+    expect(b).toMatch(/'__ADS_BUILD_AT__':\s*JSON\.stringify\(new Date\(\)\.toISOString\(\)\)/)
+  })
+  it('scheduled 비트가 그 값을 싣는다 — 안 실으면 만들어도 아무 데도 안 보인다', () => {
+    // ⚠️ 파일 스코프의 `src` 를 쓰면 다른 describe 의 값(enrich.routes)이 잡힌다 — 명시적으로 읽는다.
+    const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(idx).toMatch(/adsBeat\('scheduled'[\s\S]{0,80}?buildAgeInfo\(\)/)
+  })
+})
+
+/**
+ * 📍 **지역 백필의 자리** — 라이브 실측(2026-07-29)이 만든 불변식.
+ *
+ *   | 지역 판정 | 인원 | 비중 |
+ *   |---|---|---|
+ *   | 값 있음 | **282** | **0.7%** |
+ *   | 지역 없는 키워드로 확정 | 1,808 | 4.6% |
+ *   | **미판정** | **37,075** | **94.7%** |
+ *
+ *   `강남 맛집` 한 키워드로 741명을 모았는데 어드민에서 `region=강남` 은 **0명**이었다.
+ *   동네딜은 지역×업종 매칭이 본질이라 그 축이 사실상 없는 상태였다.
+ *
+ *   ❗ 처음엔 "예산 고갈로 굶는다"고 읽었는데 **틀렸다** — 채워진 2,090건이 정확히 5회차 × 400 이라
+ *   백필은 **정상 동작 중이고 단지 느렸다**(3.9일). 고칠 것은 고장이 아니라 **자리와 크기**였다.
+ *   ⇒ 수집 꼬리(예산 바닥) → 정비 `reextract` 단계(fresh 인보케이션, 할 일 0이라 슬롯이 남던 곳).
+ *
+ *   ⚠️ 이 테스트가 못 보는 것: 실제 채움 속도(라이브 값이라 코드가 모른다). `stats.region_pending` 으로 볼 것.
+ */
+describe('지역 백필 — 한 곳에서만, 정비 인보케이션에서', () => {
+  const collect = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+  const maint = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+
+  it('🔒 수집 레인은 더 이상 백필을 부르지 않는다(두 벌 금지)', () => {
+    expect(collect).not.toMatch(/await backfillRegions\(/)
+    expect(collect).not.toMatch(/await recheckBlankRegions\(/)
+  })
+
+  it('🔒 정비의 reextract 단계가 스윕을 돈다 — 할 일 0이던 슬롯이 실제 일을 갖는다', () => {
+    expect(maint).toMatch(/out\.region = await sweepRegions\(bdb, budget\)/)
+    expect(maint).toMatch(/await backfillRegions\(DB, POOL, 500\)/)
+  })
+
+  it('🔒 예산이 남는 동안 반복한다 — 한 청크로 끝나면 옮긴 의미가 없다', () => {
+    expect(maint).toMatch(/while \(!budget\.exhausted && budget\.left >= 6\)/)
   })
 })

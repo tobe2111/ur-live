@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { isUnjudgedRound, pickYtKeywords, ytCooldownMs } from '@/features/marketing/api/influencer-keyword-rotation'
 
@@ -56,5 +58,33 @@ describe('오염된 streak 의 대가 — 왜 무판정이 중요한가', () => 
     expect(picks[0].id).toBe(2) // ← 오염이 우량 키워드를 밀어낸다(이 역전이 실제로 라이브에서 벌어졌다)
     // 오염이 없었다면 우량 키워드가 이긴다
     expect(pickYtKeywords([{ ...good, barren_streak: 0 }, meh], 1, now)[0].id).toBe(1)
+  })
+})
+
+/**
+ * 🔌 **배선 잠금** — 이 파일이 오래 초록이었는데 라이브는 안 고쳐져 있었다.
+ *
+ *   `isUnjudgedRound` 는 순수함수라 유닛이 직접 호출해 통과했지만, **프로덕션 호출부가 옛 조건
+ *   (`budget.left <= 0 || isSubrequestLimitError(...)`)으로 남아 있었다** — 즉 함수는 있는데
+ *   아무도 안 불렀다. 이 레포가 "가드가 있는데 안 돎"이라고 부르는 바로 그 모양이고,
+ *   순수함수만 테스트하면 **구조적으로 못 잡는다**(그래서 호출부를 소스로 확인한다).
+ *
+ *   ⚠️ 못 보는 것: 인자를 잘못 넘기는 경우(예: `searchedOk` 에 엉뚱한 카운터). 그건 문자열로는 못 본다.
+ */
+describe('배선 — 수집 루프가 실제로 이 판정을 쓴다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+
+  it('🔒 호출부가 isUnjudgedRound 를 쓴다(옛 조건 복귀 금지)', () => {
+    expect(src).toMatch(/const starved = isUnjudgedRound\(/)
+    expect(src).not.toMatch(/const starved = budget\.left <= 0/)
+  })
+
+  it('🔒 검색 성공 카운터가 실제로 증가한다 — 안 그러면 항상 무판정이 되어 고갈 판정이 통째로 죽는다', () => {
+    expect(src).toMatch(/let kSearched = 0/)
+    expect((src.match(/kSearched\+\+/g) || []).length).toBeGreaterThanOrEqual(3) // YT · 네이버블로그 · 카페 · 티스토리
+  })
+
+  it('🔒 무판정 건수가 스냅샷에 노출된다 — 판정이 도는지 밖에서 보여야 한다', () => {
+    expect(src).toMatch(/kw_unjudged: starvedIds\.size/)
   })
 })
