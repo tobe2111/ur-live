@@ -16,7 +16,9 @@ export interface RunInfo { last_run?: string; found?: number; saved?: number; en
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
 export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
-export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
+/** 하드 실패 백오프 상태(2026-07-29) — '왜 지금 안 도는가'를 대표가 읽을 수 있게. */
+export interface LaneHealthInfo { fail_streak?: number; first_failed_at?: string; next_probe_at?: number; last_error?: string }
+export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string }; health?: LaneHealthInfo }) | null }
 export interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
@@ -167,6 +169,17 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         {franchise.run.diag?.error ? <span className="text-amber-600"> · {franchise.run.diag.error}</span>
           : <span> · 최근 {kstShort(franchise.run.last_run)} · 발굴 {franchise.run.found ?? 0} / 저장 {franchise.run.saved ?? 0}</span>}
         <span className="text-gray-400"> · 연락처는 보강(홈페이지 검색)으로 채워짐</span>
+        {/* 🩹 하드 실패 백오프(2026-07-29) — 재시도로 안 낫는 실패는 물러난다. 대표가 설정을 고치면
+            다음 탐침에서 자동 복귀하므로 "멈췄다"가 아니라 "대기 중 + 무엇을 고쳐야 하나"로 보여준다. */}
+        {(franchise.run.health?.fail_streak ?? 0) > 0 && (
+          <div className="mt-1 text-[11px] text-amber-600">
+            ⚠️ {franchise.run.health?.fail_streak}회 연속 실패
+            {franchise.run.health?.first_failed_at ? `(${kstShort(franchise.run.health.first_failed_at)}부터)` : ''}
+            {(franchise.run.health?.next_probe_at ?? 0) > Date.now()
+              ? ` · 재시도 대기 중 — 엔드포인트/활용신청 확인 필요(고치면 자동 복귀)`
+              : ' · 다음 실행에서 재시도'}
+          </div>
+        )}
       </div>
     )}
 
