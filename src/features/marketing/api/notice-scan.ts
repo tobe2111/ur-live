@@ -7,6 +7,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureNoticeSchema, saveNotices, type GovNotice } from './gov-notices'
+import { serviceKeyParam } from './public-data-diag'
 
 // ✅ 실 엔드포인트(대표 활용신청 승인 화면 확인 2026-07-27): 조달청_나라장터 **공공데이터개방표준서비스**
 //   /1230000/ao/PubDataOpnStdService — 입찰공고는 날짜구간 조회(getDataSetOpnStdBidPblancInfo) 후 키워드를
@@ -61,7 +62,7 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
     const now = new Date()
     const bgn = ymdhm(new Date(now.getTime() - 3 * 86400000), '0000')
     const end = ymdhm(now, '2359')
-    const url = `${naraBase}/getDataSetOpnStdBidPblancInfo?serviceKey=${encodeURIComponent(key)}&pageNo=1&numOfRows=300&type=json&bidNtceBgnDt=${bgn}&bidNtceEndDt=${end}`
+    const url = `${naraBase}/getDataSetOpnStdBidPblancInfo?serviceKey=${serviceKeyParam(key)}&pageNo=1&numOfRows=300&type=json&bidNtceBgnDt=${bgn}&bidNtceEndDt=${end}`
     const items = pickArray(await fetchJson(url, budget))
     if (!sampleBid && items[0]) sampleBid = items[0]
     for (const it of items) {
@@ -81,7 +82,7 @@ export async function runNoticeScan(env: Env): Promise<NoticeStats> {
   // ── 기업마당 지원사업 — 키워드 검색 ──
   for (const kw of KEYWORDS) {
     if (budget.left <= 0) break
-    const url = `${bizBase}/getSupportBusinessList?serviceKey=${encodeURIComponent(key)}&numOfRows=30&pageNo=1&resultType=json&searchCnst=${encodeURIComponent(kw)}`
+    const url = `${bizBase}/getSupportBusinessList?serviceKey=${serviceKeyParam(key)}&numOfRows=30&pageNo=1&resultType=json&searchCnst=${encodeURIComponent(kw)}`
     const items = pickArray(await fetchJson(url, budget))
     if (!sampleGrant && items[0]) sampleGrant = items[0]
     for (const it of items) {

@@ -20,7 +20,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
-import { describePublicDataFailure } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
 
@@ -128,7 +128,8 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
 
 /** 인허가 1페이지(1업종 엔드포인트) 조회 → RawLicense[]. */
 async function fetchLicensePage(base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number, budget?: FetchBudget): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
-  const url = `${base}/${endpoint}?serviceKey=${encodeURIComponent(key)}&pageIndex=${pageIndex}&pageSize=500&type=json&resultType=json&lastModTsBgn=${dayYmd}&lastModTsEnd=${dayYmd}`
+  // 🔑 serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 저장돼 있어도 이중 인코딩되지 않게(public-data-diag SSOT).
+  const url = `${base}/${endpoint}?serviceKey=${serviceKeyParam(key)}&pageIndex=${pageIndex}&pageSize=500&type=json&resultType=json&lastModTsBgn=${dayYmd}&lastModTsEnd=${dayYmd}`
   // ⚠️ 2026-07-28 수리: 예전엔 실패 시 `{items:[],count:0}` 만 반환해 **원인을 통째로 삼켰다** →
   //   stats 의 error 가 항상 undefined → 5회 실행 0건인데 화면상 "정상 0건"과 구분 불가(진단 실명).
   //   franchise-collect 가 이미 지키는 룰("실패 원인을 삼키지 않는다")을 이 레인에도 적용.

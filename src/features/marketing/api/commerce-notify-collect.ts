@@ -10,6 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { serviceKeyParam } from './public-data-diag'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -64,7 +65,7 @@ function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entrie
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=500&type=json&_type=json&resultType=json`
+  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=500&type=json&_type=json&resultType=json`
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
   if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
   const raw = await res.text().catch(() => '')
