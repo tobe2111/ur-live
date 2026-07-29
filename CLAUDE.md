@@ -354,8 +354,12 @@
 미주입 세션이면 대표에게 값을 요청하지 말고 **다음 세션에서 수행**하거나 대표에게 상태줄을 요청한다.
 
 **접속 절차(3가지 함정 주의)**:
-1. **도메인**: 이 환경의 에이전트 프록시는 `urdeal.kr` 을 차단(CONNECT 403)한다. **`live.ur-team.com` 을 쓸 것** —
-   도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+1. **도메인**: `live.ur-team.com` 을 쓰면 확실하다 — 도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+   ⚠️ **2026-07-29 정정**: 여기 오래 적혀 있던 *"프록시가 `urdeal.kr` 을 차단(CONNECT 403)"* 은 **더 이상 사실이 아니다** —
+   실측 `urdeal.kr/`(HTML) **200** · `urdeal.kr/api/version` **200** · `live.ur-team.com/api/version` **200**.
+   이 오기를 믿으면 **할 수 있는 라이브 실측을 포기하고 대표에게 화면 복사를 요청하는 왕복**이 생긴다(실제로 그럴 뻔했다).
+   이 환경에서 **실제로 막힌 것**은 `dash.cloudflare.com` · **`*.pages.dev`(PR 프리뷰 — CONNECT 403)** ·
+   한국 공공 API 도메인(`apis.data.go.kr` 등)이다. 프록시 규칙은 바뀔 수 있으니 **막혔다고 단정하기 전에 한 번 찔러볼 것.**
 2. **User-Agent**: `botProtection()`(`bot-detection.ts`)이 curl UA 를 차단하고 `{"success":false,"error":"Forbidden"}`
    (키 2개, `code` 없음)를 준다. **브라우저 UA 헤더 필수**. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트로 **다른 원인**.
 3. **토큰**: `POST /api/admin/login` {email,password} → 응답 토큰 필드가 **한 가지가 아니다** — 실측상
@@ -507,7 +511,10 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 2. **RED·미보유 영역만 작업** — 게이트가 RED 면 그 가드가 가리키는 사이트만, `AUDIT_INVARIANTS.md` 의 "가드 미보유" 영역(결제 금액정확성·런타임 크래시·외부 PG 실응답)만 수동 감사.
 3. **새 불변식을 발견·확인하면 가드부터 만들어라**(애초에 없도록) → `audit-gate.sh` + `AUDIT_INVARIANTS.md` 갱신. 수동 감사 결과를 반복하지 말고 기계가 지키게 한다.
 
-> 현재 47개 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포). 상세: `docs/AUDIT_INVARIANTS.md`.
+> 현재 **76개** 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·시각KST·배포·번들). 상세: `docs/AUDIT_INVARIANTS.md`.
+> ⚠️ 이 숫자는 가드를 추가할 때마다 낡는다(2026-07-29 에 47 → 76 으로 정정 — 29개가 밀려 있었다).
+> **정확한 값은 `bash scripts/audit-gate.sh` 의 마지막 줄**이고, `check-audit-registry-sync` 가
+> `docs/AUDIT_INVARIANTS.md` 의 개수만 강제한다(이 줄은 강제 대상이 아니라 수동 관리다).
 
 > 🧪 **staging 검증 백로그 SSOT = `docs/STAGING_CHECKLIST.md`** (2026-07-05 신설). audit log 에 "staging 실결제 검증 필수"를 남길 때는 **같은 커밋에서 이 체크리스트에 항목(S#/P#) 추가** + 게이트 플래그면 `admin-system-monitoring.routes.ts` `OPS_GATES` 등록. 어드민 열람: `/admin/system-monitoring` "게이트·하트비트" 탭. cron 침묵·백업 무결성 관측: `cron-heartbeat.ts` + `/api/_healthcheck/cron` + `docs/BACKUP_RESTORE.md`.
 

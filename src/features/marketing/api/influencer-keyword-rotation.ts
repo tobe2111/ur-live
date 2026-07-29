@@ -26,6 +26,47 @@ export interface YtPickKeyword {
   last_run_at?: string | null
   /** 🌵 연속 무수확 횟수 — 한 명이라도 저장되면 0 으로 리셋된다(고갈 판정의 유일한 근거). */
   barren_streak?: number
+  /** 🌾 누적 **발견** 수. `saved_total` 과 짝을 이뤄 '수확률'을 만든다 — 아래 `yieldPenalty` 참조. */
+  found_total?: number
+}
+
+/**
+ * 🌾 **수확률 페널티** — `barren_streak` 이 구조적으로 못 보는 낭비 (2026-07-29 라이브 실측).
+ *
+ * ## barren_streak 의 사각지대
+ * 그 카운터는 **`found == 0`**(아무도 못 찾음) 회차만 센다. 그래서
+ * **"많이 찾았는데 한 명도 안 남는"** 키워드는 streak 가 영원히 0 이고, 고갈 판정에 걸리지 않는다.
+ *
+ * 라이브 실측(2026-07-29) — 전부 `active=1 · barren_streak=0`:
+ * ```
+ *   [숙소] 한옥스테이   found=117  saved=0
+ *   [맛집] 부산 맛집    found=123  saved=0
+ *   [숙소] 펜션 추천    found=119  saved=0
+ *   [맛집] 로컬 맛집    found=105  saved=0     → 검색 464건, 리드 0명
+ *   [맛집] 방배 카페    found=154  saved=1  (0.6%)
+ * ```
+ * 게다가 넷 다 `PRIORITY_CATEGORIES`(숙소·맛집)라 점수에서 **+50 을 받는다** —
+ * 아무것도 못 내면서 희소한 YT 검색 슬롯(하루 100회)에서 *우대*받고 있었다.
+ *
+ * ## 왜 '삭제'가 아니라 '감점'인가
+ * `saved 0` 의 원인은 둘이고 **구분할 수 없다**: ① 키워드가 나쁘다 ② 찾은 사람이 **전부 이미 풀에 있다**
+ * (=고갈). 둘 다 "지금 이 슬롯을 여기 쓰지 말라"는 결론은 같지만, ②는 시간이 지나면 되살아난다
+ * (새 크리에이터는 계속 생긴다). 그래서 배제가 아니라 **점수 감점**이다 — 더 나은 키워드가 쿨다운이면
+ * 여전히 뽑히고, 한 명이라도 건지면 `last_saved * 3` 과 수확률 상승으로 즉시 복귀한다.
+ *
+ * ⚠️ **증거가 쌓이기 전엔 벌주지 않는다**(`YIELD_EVIDENCE_MIN`) — 갓 만든 키워드를 0%로 낙인찍으면
+ *    탐색이 죽는다(`pickYtKeywords` 가 신규 탐색 슬롯을 따로 보장하는 이유와 같은 정신).
+ */
+export const YIELD_EVIDENCE_MIN = 60   // 이만큼 찾아본 뒤에야 수확률을 신뢰한다
+export const YIELD_OK_RATE = 0.10      // 10% 이상이면 정상 — 손대지 않는다
+export const YIELD_PENALTY_MAX = 60    // 0% 일 때의 감점 = 우선 카테고리 보너스(+50)를 상쇄하고 남는 값
+
+export function yieldPenalty(k: YtPickKeyword): number {
+  const found = Math.max(0, k.found_total || 0)
+  if (found < YIELD_EVIDENCE_MIN) return 0
+  const rate = Math.max(0, k.saved_total || 0) / found
+  if (rate >= YIELD_OK_RATE) return 0
+  return Math.round(((YIELD_OK_RATE - rate) / YIELD_OK_RATE) * YIELD_PENALTY_MAX)
 }
 
 const YT_PICK_COOLDOWN_MS = 6 * 3600 * 1000 // 같은 키워드 최소 6h 간격(하루 최대 4회 — 5각도 회전과 조합)
@@ -49,8 +90,10 @@ export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, p
   const ranAt = (k: YtPickKeyword) => k.last_run_at ? Date.parse(k.last_run_at.replace(' ', 'T') + (/[zZ+]/.test(k.last_run_at.slice(10)) ? '' : 'Z')) : NaN
   //   🌵 누적 성과(`saved_total`)는 과거의 영광이라 고갈돼도 점수를 떠받친다 → 연속 무수확만큼 깎는다.
   //   최근 성과(`last_saved`)와 우선 카테고리 가중은 그대로(잘 무는 키워드는 여전히 최우선).
+  //   🌾 수확률 감점 추가(2026-07-29) — `barren_streak` 은 "못 찾음"만 보고 "찾았는데 안 남음"을 못 본다.
   const score = (k: YtPickKeyword) => (k.last_saved || 0) * 3 + Math.min(k.saved_total || 0, 100)
     + (k.category && priorityCats.includes(k.category) ? 50 : 0) - Math.max(0, k.barren_streak || 0) * 25
+    - yieldPenalty(k)
   const neverRun = kws.filter(k => !k.last_run_at).sort((a, b) => a.id - b.id)
   const cooled = kws.filter(k => { const t = ranAt(k); return Number.isFinite(t) && nowMs - t >= ytCooldownMs(k) })
     .sort((a, b) => score(b) - score(a) || ranAt(a) - ranAt(b))
@@ -109,4 +152,36 @@ export function isUnjudgedRound(r: {
 }): boolean {
   return r.budgetLeft <= 0 || r.searchedOk === 0
     || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
+}
+
+/**
+ * 🔀 **YT 픽과 커서 픽을 번갈아 놓는다** — 커서가 영영 안 도는 것을 푼다 (2026-07-29 실측).
+ *
+ * ## 무엇이 고장이었나 (12:00 틱)
+ * `picks { planned: 16, processed: 2, from_yt: 2, from_cursor: 0 }` — 16개를 계획했는데 예산으로 2개만
+ * 돌았고 **둘 다 YT 픽**이었다. 배열이 `[...ytPicks, ...cursorPicks]` 라 커서 픽은 전부 꼬리에 있었다.
+ *
+ * 그런데 커서 전진은 `prefixDone`(처리된 **선행 구간** 길이)으로 계산한다 → 커서 픽이 한 번도 처리되지
+ * 않으니 `nextCursor = cursor + 0` → **커서가 영원히 제자리**다. 두 결함이 서로를 강화한다:
+ * 꼬리라서 못 돌고, 못 도니까 커서가 안 밀리고, 안 밀리니 다음 회차도 같은 자리다.
+ * ⇒ 활성 키워드 330개 중 **매 회차 같은 소수만** 돌고 나머지는 순번을 못 받는다(수집 폭이 구조적으로 갇힘).
+ *
+ * ## 오늘 세 번째 같은 병
+ * ① 보강 레인: 마지막 track(naver)이 **시계**를 못 받음 · ② 그 전엔 마지막 track 이 **예산**을 못 받음 ·
+ * ③ 여기: 뒤쪽 픽이 **순번**을 못 받음. **줄을 세우면 꼬리가 굶는다** — 자원이 무엇이든.
+ *
+ * ⚠️ 이 함수만으론 부족하다: 순서를 섞으면 커서 픽이 YT 슬롯(희소 자원)을 가져가 성과가중 선택이 희석된다.
+ *   그래서 호출부에서 YT 게이트를 **위치 기반(`ytUsed < batch`)에서 멤버십 기반(`ytIds.has`)으로** 함께 바꾼다.
+ *   둘 중 하나만 하면 안 된다 — 순서와 쿼터 배분이 한 조건에 얽혀 있던 것이 원인이기 때문이다.
+ *
+ * ⚠️ 상대 순서는 보존한다 — `prefixDone` 이 각 목록의 **선행 구간**을 세므로 뒤섞으면 커서 계산이 깨진다.
+ */
+export function interleavePicks<T>(ytPicks: T[], cursorPicks: T[], total: number): T[] {
+  const out: T[] = []
+  const cap = Number.isFinite(total) ? Math.max(0, total) : 0
+  for (let i = 0; i < Math.max(ytPicks.length, cursorPicks.length) && out.length < cap; i++) {
+    if (i < ytPicks.length && out.length < cap) out.push(ytPicks[i])
+    if (i < cursorPicks.length && out.length < cap) out.push(cursorPicks[i])
+  }
+  return out
 }

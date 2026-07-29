@@ -15,7 +15,6 @@
  */
 import type { Env } from '@/worker/types/env'
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
-import { classifyCategory, canAutoPromote } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론 + 적합성 게이트
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -25,6 +24,8 @@ import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-perfo
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
+import { KW_DDL } from './influencer-keyword-ddl'
+import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
@@ -32,16 +33,19 @@ export const POOL_ACCOUNT_ID = 0
 
 // 🌱 자동확장 상한/승격 자리 계산은 `influencer-keyword-rotation.ts` SSOT(아래 재수출) — 이 브랜치도
 //   같은 버그(seed 가 auto 를 밀어냄)를 독립적으로 고쳤으나 순수함수+관측을 갖춘 main 판을 채택했다.
-const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
+export { AUTO_PROMOTE_HITS } from './influencer-keyword-promote' // 호출부 호환 재수출
+import { promoteHashtagKeywords } from './influencer-keyword-promote'
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, interleavePicks } from './influencer-keyword-rotation'
 
-// 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts`. 이제 그 소비자는 `influencer-keyword-store.ts` 다
-//   (2026-07-29 키워드 저장소 분리) — 여기서는 더 이상 참조하지 않는다.
+// 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
+//   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
+//   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
 // 📊 결과 타입은 `influencer-collect-types.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
@@ -60,10 +64,58 @@ const STATS_KEY = 'ads_autocollect_stats'
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 
-// 🗂️ 키워드 테이블 DDL · 시드 · CRUD → `influencer-keyword-store.ts` 로 분리(600줄 래칫).
-//   기존 import 경로 호환 위해 재수출(호출부 무수정).
-export { ensureDiscoveryKeywords, listDiscoveryKeywords, addDiscoveryKeyword, setKeywordActive } from './influencer-keyword-store'
-import { ensureDiscoveryKeywords } from './influencer-keyword-store'
+const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
+
+/**
+ * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
+ *
+ * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
+ *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
+ *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
+ *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
+ *
+ *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
+ *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
+ */
+export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
+  const cached = _kwSchemaPromise.get(DB)
+  if (cached) return cached
+  const p = (async () => {
+    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
+    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
+    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
+    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
+    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
+    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
+      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+        .bind(kw, g.category, 'seed')))
+    await DB.batch(stmts).catch(() => null)
+  })()
+  _kwSchemaPromise.set(DB, p)
+  return p
+}
+
+export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
+  await ensureDiscoveryKeywords(DB)
+  const r = await DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000')
+    .all<DiscoveryKeyword>().catch(() => null)
+  return r?.results || []
+}
+
+export async function addDiscoveryKeyword(DB: D1Database, keyword: string, category?: string): Promise<{ ok: boolean; error?: string }> {
+  const kw = (keyword || '').trim()
+  if (kw.length < 2 || kw.length > 40) return { ok: false, error: 'INVALID' }
+  await ensureDiscoveryKeywords(DB)
+  await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+    .bind(kw, (category || '수동').slice(0, 40), 'manual').run().catch(() => null)
+  return { ok: true }
+}
+
+export async function setKeywordActive(DB: D1Database, id: number, active: boolean): Promise<{ ok: boolean }> {
+  await DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run().catch(() => null)
+  return { ok: true }
+}
 
 export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectStats | null> {
   const raw = await readSetting(DB, STATS_KEY)
@@ -71,31 +123,15 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
   try { return JSON.parse(raw) as AutoCollectStats } catch { return null }
 }
 
-// 공개 소개글에서 해시태그 후보 추출(자가성장 신호 — 명시적 토픽 마커라 품질 양호).
-const HASHTAG_RE = /#([\p{L}\p{N}_]{2,20})/gu
-// 🛡️ 2026-07-23 전수조사(F-29/30): 범용/참여유도/캠페인 태그는 검색 키워드로 무의미한데 승격되면 하루 100회뿐인
-//   YT 검색 슬롯(신규 키워드 탐색 보장)을 확정 소모 — 스톱리스트로 후보 진입 자체를 차단.
-const HASHTAG_STOP = new Set(['shorts', 'shortsvideo', '쇼츠', '구독', '구독자', '좋아요', '일상', '브이로그', 'vlog', '맞팔', '맞팔환영', '소통', '팔로우', '팔로워', 'follow', 'followme', 'fyp', 'viral', '추천', '추천영상', '광고', '협찬', '내돈내산', '이벤트', '유튜브', 'youtube', '유튜버', '인스타', '인스타그램', 'instagram', '데일리', 'daily', '선팔', '좋테', '구취', '알고리즘', 'subscribe', 'like'])
-function mineHashtags(text: string): string[] {
-  const out: string[] = []
-  let m: RegExpExecArray | null
-  HASHTAG_RE.lastIndex = 0
-  while ((m = HASHTAG_RE.exec(text)) !== null) {
-    const t = m[1]
-    if (/^\d+$/.test(t)) continue // 순수 숫자 제외
-    if (HASHTAG_STOP.has(t.toLowerCase())) continue // 범용/참여유도 태그 제외
-    out.push(t)
-  }
-  return out
-}
+// 🏷️ 해시태그 후보 추출 → `influencer-hashtag-mine.ts` 로 분리(600줄 래칫). 순수 로직이라 이 파일에 있을 이유가 없다.
 
 // ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
 // 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
 export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
-import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
+import { mineHashtags } from './influencer-hashtag-mine'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
 // ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
@@ -187,7 +223,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak, found_total FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
   // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서2·학습상한·YT카운터를 낱개로 읽으면
@@ -241,7 +277,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
   const ytIds = new Set(ytPicks.map(k => k.id))
-  const finalPicks = [...ytPicks, ...picks.filter(p => !ytIds.has(p.id))].slice(0, totalPick)
+  // 🔀 번갈아 배치 — 꼬리의 커서 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
+  const finalPicks = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -345,8 +382,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
-    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
-    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages <= ytBudgetTotal) {
+    // 🎯 YT 슬롯은 **성과가중 픽에만**(멤버십) — 위치 기반이면 배치 순서가 쿼터 배분까지 바꾼다(위 docblock).
+    const ytSlot = ytIds.has(k.id) && ytUsed < batch
+    if (hasYouTube && !quotaHit && ytSlot && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
+    if (hasYouTube && !quotaHit && ytSlot && ytSearchUsed + ytPages <= ytBudgetTotal) {
       ytUsed++
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
@@ -436,54 +475,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
 
-  // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
-  //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
-  const promoted: string[] = []
-  let kwAuto: { active: number; room: number; cap: number } | undefined
-  const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
-  if (topTags.length) {
-    // 🏷️ 2026-07-29 승격 태그에 업종 부여 — 전부 `'자동'` 이면 ① 우선 풀(슬롯 3/4)에 영영 못 들고
-    //   ② `resolveCategory` 가 NON_CATEGORIES 로 버려 그 리드가 카테고리 미분류(fit 0)가 된다.
-    //   실측: 상위 후보 13/13 정확히 분류됨(서울맛집→맛집 …). 카페→맛집은 REGION_SEED 관례 그대로
-    //   ('카페'는 CORE_CATEGORIES 에 없어 두면 fit 20→10).
-    const promoCat = (tag: string): string => {
-      const c = classifyCategory(tag)
-      return !c ? '자동' : c === '카페' ? '맛집' : c
-    }
-    const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
-      VALUES (?, ?, 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits,
-        -- 이미 쌓인 후보 790개는 전부 '자동' 이라, 다시 마이닝될 때 업종을 채워 준다(수동 지정은 보존).
-        category = CASE WHEN category IS NULL OR category IN ('자동', '') THEN excluded.category ELSE category END`
-    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, promoCat(tag), freq))).catch(() => null)
-    // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
-    // 🌱 자리는 **auto 쿼터** 기준(시드 수 무관) — 예전엔 활성 전체로 세서 시드만으로 상한에 닿아
-    //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
-    //   🔀 병합: 이 브랜치도 같은 버그를 독립적으로 고쳤으나(kws 에서 source 카운트), main 판이
-    //   순수함수(`autoPromotionRoom`)+관측(`kwAuto`)까지 갖췄으므로 그쪽을 채택한다.
-    const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
-      .first<{ n: number }>().catch(() => null)
-    const room = autoPromotionRoom(autoRow?.n ?? 0)
-    kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
-    if (room > 0) {
-      // 🚪 적합성 게이트(2026-07-29 대표 승인) — 승격 후보를 **거래가 일어나는 축**으로 좁힌다.
-      //   근거·왜 "분류 가능 여부"만으론 부족한지는 `AUTO_PROMOTE_CATEGORIES` 주석(실측 수치 포함).
-      //   ⚠️ SQL 이 아니라 여기서 거른다: 후보의 `category` 는 위 upsert 가 방금 채운 값이라
-      //   같은 판정을 두 벌로 두지 않으려면 `promoCat` 과 **같은 함수**를 써야 한다.
-      const gated = topTags.filter(([t]) => canAutoPromote(promoCat(t)))
-      const ph = gated.map(() => '?').join(',')
-      const cands = gated.length ? await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
-        WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
-        .bind(AUTO_PROMOTE_HITS, ...gated.map(([t]) => t), room)
-        .all<{ id: number; keyword: string }>().catch(() => null) : null
-      const rows = cands?.results || []
-      if (rows.length) {
-        await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)
-        promoted.push(...rows.map(r => r.keyword))
-      }
-    }
-  }
-
+  // ③ 해시태그 자동확장 — 승격 로직은 `influencer-keyword-promote.ts`(600줄 래칫 분리).
+  //   적합성 게이트(2026-07-29 대표 승인)도 그 안에 있다 — 승격을 결정하는 자리와 같은 파일이라야
+  //   "게이트를 우회하는 두 번째 승격 경로"가 생기지 않는다.
+  const { promoted, kwAuto } = await promoteHashtagKeywords(DB, hashtagFreq)
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다

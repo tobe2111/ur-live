@@ -14,6 +14,7 @@ import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGO
 export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso,
   avgStats, parseIsoDurationSec, SHORTS_MAX_SEC, medianOf, videoMetrics } from './influencer-parse'
 import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, deriveNaverRssSignals, videoMetrics, parseIsoDurationSec } from './influencer-parse'
+import { isSelfBlogLink } from './influencer-self-link'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
 import { platformSubreqCap } from './collect-budget'
@@ -410,7 +411,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
        *   ② 저장이 `COALESCE(links, ?)` 라 **한번 자기링크로 채워지면 나중에 찾은 진짜 외부 링크가 영영
        *   안 들어간다** — 노이즈가 실제 연락처를 막는다.
        */
-      const extLinks = c.links.filter(u => !/blog\.naver\.com/i.test(u))
+      const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
       if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (extLinks.length && !r.links)) diag.contacts++
       if (biz && !r.email) diag.emails = (diag.emails || 0) + 1
       if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }

@@ -11,6 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
+import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -32,7 +33,9 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
   //    마스킹(`*` 포함)이거나 이메일 형식 아니면 저장 안 함(쓸모없는 주소로 숫자 부풀리기 방지). anyEmail 은 이미 정규식 검증.
   const rawEml = g(it, 'rprsvEmladr', 'email', 'coEml', 'eml', 'emlAddr', 'coEmlAddr', 'rprsvEml', 'elctrnMailAdres')
   const email = (rawEml && !rawEml.includes('*') && EMAIL_RE.test(rawEml)) ? rawEml.toLowerCase() : anyEmail(it)
-  const domain = anyDomain(it)
+  // 🏠 도메인 필드가 비면 **이메일 도메인**에서 유추(자체 도메인만 — 개인 메일은 홈페이지가 아니다).
+  //   원부의 domnCn 은 거의 비어 와서 우리 DB 홈페이지 보유율이 0% 였다. 비용 0(추가 요청 없음).
+  const domain = anyDomain(it) || (websiteFromEmail(email) || '').replace(/^https?:\/\//, '')
   // 🪦 폐업 판정(2026-07-29 라이브 실측: 온라인판매 리드 표본 2,000건 중 **10.2% 가 폐업**이고
   //   그중 35% 는 이메일까지 붙어 `active=1` 로 접촉 풀에 있었다 = 문 닫은 가게에 영업메일).
   //   등록부가 말해준 상태만 본다 — 상호/주소로 추측하지 않는다.
@@ -107,6 +110,39 @@ export function productBucket(raw: string | null | undefined): string | null {
   return null
 }
 
+/**
+ * 📮 **개인 메일 제공자** — 이 도메인은 회사 홈페이지가 될 수 없다 (2026-07-29).
+ *   라이브 실측(이메일 보유 표본 800): naver 28.4% · gmail 20.9% · hanmail/daum/nate 8.2% ·
+ *   outlook/hotmail 7.1% · 중국계(163/qq/126) 4.6% — **65%가 개인 메일**이고 나머지 35%가 자체 도메인이다.
+ *   ⚠️ 이 목록이 이 기능의 안전장치 전부다. 빠뜨리면 `naver.com` 을 업체 홈페이지로 저장하게 된다.
+ */
+const PERSONAL_MAIL = new Set([
+  'naver.com', 'gmail.com', 'hanmail.net', 'daum.net', 'nate.com', 'kakao.com', 'kakao.co.kr',
+  'hotmail.com', 'outlook.com', 'outlook.kr', 'live.com', 'msn.com', 'icloud.com', 'me.com',
+  'yahoo.com', 'yahoo.co.kr', 'aol.com', 'protonmail.com', 'proton.me', 'zoho.com', 'gmx.com',
+  'qq.com', '163.com', '126.com', 'sina.com', 'foxmail.com', 'hanmir.com', 'korea.com', 'empas.com',
+])
+
+/**
+ * 이메일 도메인에서 **회사 홈페이지**를 유추한다. 개인 메일이면 `null`.
+ *
+ *   왜: 통신판매 원부는 대표자 이메일을 주지만 도메인(`domnCn`)은 거의 비어 온다 — 그래서 우리 DB 의
+ *   홈페이지 보유율이 0% 다. `ceo@shop.co.kr` 같은 **자체 도메인 메일**은 그 자체가 회사 사이트 단서다.
+ *
+ *   ⚠️ 정직하게: 이건 **새 이메일을 만들어 주지 않는다**(이미 이메일이 있는 행에서만 나온다).
+ *   얻는 것은 *접촉 자격 판별*과 *그 사이트에서 전화·회사정보를 얻을 길*이다. 비용은 0(추가 요청 없음).
+ */
+export function websiteFromEmail(email: string | null | undefined): string | null {
+  const e = String(email || '').trim().toLowerCase()
+  const at = e.lastIndexOf('@')
+  if (at < 1) return null
+  const host = e.slice(at + 1)
+  if (!host || host.includes('*') || PERSONAL_MAIL.has(host)) return null
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host)) return null // 형식 이상은 버린다(추측 금지)
+  if (host.split('.').some(p => !p)) return null
+  return `http://${host}`
+}
+
 const EMAIL_RE = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i
 const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$/i
 
@@ -149,7 +185,13 @@ export interface CommerceStats {
   upserted?: number
   /** 🪦 이번 회차에서 **폐업으로 판정돼 접촉 풀에서 빠진** 건수(2026-07-29). 저장은 되고 active=0 만 된다. */
   closed?: number
-  diag: { configured: boolean; error?: string; sample?: unknown }
+  diag: {
+    configured: boolean; error?: string; sample?: unknown
+    /** 📊 원본 필드가 **실제로 몇 % 채워져 오는가** + 형식 예시(가려짐). 추가 요청 0(받아온 응답을 셀 뿐). */
+    coverage?: FieldCoverage[]
+    /** 빈 필드 한 줄 요약 — 상태줄용. */
+    coverage_note?: string
+  }
 }
 const STATS_KEY = 'ads_commerce_stats'
 const CURSOR_KEY = 'ads_commerce_cursor'
@@ -191,6 +233,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
   let found = 0, saved = 0, upserted = 0, closed = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
+  // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
+  //   다를 이유도 없다). 이 값이 "필드 이름을 추측으로 쓰던" 반복 실패를 끝내는 유일한 근거다.
+  let coverage: FieldCoverage[] = []
   const msgs: string[] = []
   for (const svc of services) {
     const ck = `${CURSOR_KEY}_${svc.name}`
@@ -200,6 +245,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
+      if (items.length) coverage = fieldCoverage(items)
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
@@ -214,7 +260,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
   await persist(s)
   return s
 }

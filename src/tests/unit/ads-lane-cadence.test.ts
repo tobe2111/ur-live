@@ -170,11 +170,16 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
   })
 
   it('⏰ stale 기준은 배정표의 **실제** 최대 간격에서 나온다 — 슬롯 수 기준보다 촘촘하다', () => {
-    // 이 배정표의 실제 최대 간격은 merge·reextract 의 10시간(24 를 10 으로 나눈 자정 불연속 포함).
-    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(10)
-    // 슬롯 수만 보면 14시간 — 그대로 쓰면 경보 창이 28.5h 로 벌어진다(멈춤을 그만큼 늦게 안다).
-    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(14)
-    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThan(phaseGapMinutes(MAINT_SCHEDULE.length))
+    // 이 배정표의 실제 최대 간격은 merge·reextract 의 **12시간**.
+    // 🔢 2026-07-29: 10슬롯(10h) → `selflink` 추가로 12슬롯. 이 숫자를 고른 근거가 있다 —
+    //    단순히 덧붙인 11슬롯은 **13h** 였다(24 를 11 로 나눌 때의 자정 불연속). 이 검사가 그걸 잡아
+    //    12(24 의 약수)로 되돌렸다: 각 슬롯이 하루 **정확히 2회** 고정 시각에 돌아 간격이 12h 로 수렴한다.
+    //    ⚠️ 즉 경보 창은 10h→12h 만큼만 느슨해졌다(11슬롯이었다면 13h). 더 늘릴 거면 여기서 다시 판단할 것.
+    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(12)
+    // 슬롯 수만 보면 12시간 — 12슬롯은 균등 순환과 같은 값이라 이번엔 둘이 같다(가중이 24 의 약수에 맞아떨어짐).
+    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(12)
+    // 가중 배정이 균등과 같아졌으므로 '더 촘촘하다'가 아니라 '더 느슨하지 않다'가 이번 배정표의 사실이다.
+    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThanOrEqual(phaseGapMinutes(MAINT_SCHEDULE.length))
   })
 
   it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
@@ -186,6 +191,61 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
     }
     // 0 으로 만들지 않는다 — 지금 filled:0 은 '고장'이 아니라 '다 했다'라, 새 미추출 행이 생기면 다시 돌아야 한다.
     for (const p of MAINT_PHASES) expect(share(p), `${p} 배정 0`).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * 🔭 **관측 밖 레인 래칫** (2026-07-29).
+ *
+ *   ur-ads 의 레인은 대부분 `kick()` 을 거쳐 `ads:<이름>` 하트비트를 남긴다. 그런데 몇몇은
+ *   `ctx.waitUntil` 로 **생으로** 도는데, 그런 레인은 멈춰도 아무도 모른다 — `cron-stale-watch` 는
+ *   *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하기* 때문이다(부재는 침묵과 다르게 생겼다).
+ *
+ *   실측(07-29 12:00, 배포가 안 겹친 정각 회차): 다른 13개 레인은 다 돌았는데 **시트 미러만
+ *   `ads_sheets_last_sync` 가 09:00:21 그대로**였다 — 성공도 KICK_FAILED 도 안 남아서, 멈췄다는
+ *   사실 자체를 화면에서 볼 수 없었다. 그 레인에 하트비트를 배선하면서 같은 모양을 래칫으로 고정한다.
+ *
+ *   ⚠️ 남은 것들을 지금 다 배선하지 않는 이유: 부모 인보케이션은 이미 서브리퀘스트 ~31/50 을 쓰고
+ *   있고 하트비트 하나가 D1 쓰기 1이다. **증거 없이 5개를 더 얹으면** 뒤에 선 레인이 굶는다 —
+ *   그건 이 세션이 방금 고친 실패 양식(#880 블로거 굶주림)과 같은 클래스다.
+ *   ⇒ 지금은 **늘어나지 못하게만** 막고, 실제로 멈춘 정황이 나오는 레인부터 하나씩 배선한다.
+ *   ⚠️ 이 래칫이 못 보는 것: 이미 목록에 있는 5개가 조용히 멈추는 것(그건 여전히 안 보인다).
+ */
+describe('worker-ads — 생 waitUntil 레인은 관측 밖이다(래칫)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  /** `ctx.waitUntil((async () => { … })` 블록을 중괄호 짝으로 정확히 잘라낸다(문자열 길이 추정 금지). */
+  const rawLanes = (): string[] => {
+    const out: string[] = []
+    for (const m of src.matchAll(/ctx\.waitUntil\(\(async \(\) => \{/g)) {
+      const open = m.index! + m[0].length - 1
+      let depth = 0
+      for (let j = open; j < src.length; j++) {
+        if (src[j] === '{') depth++
+        else if (src[j] === '}' && --depth === 0) { out.push(src.slice(m.index!, j + 1)); break }
+      }
+    }
+    return out
+  }
+
+  it('검사 대상이 실제로 존재한다 — 0건 통과를 성공으로 오인하지 않게', () => {
+    expect(rawLanes().length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('🔒 하트비트 없는 생 레인이 늘어나지 않는다(현재 5 — 새 레인은 반드시 kick 또는 adsBeat)', () => {
+    // ⚠️ 본문을 모듈로 분리하고 `adsBeat` 을 **인자로 넘기는** 형태도 관측된 것으로 본다
+    //   (`runSheetsMirrorLane(env, adsBeat)`). 호출만 보면 놓치므로 토큰 뒤 `(`·`,`·`)` 를 모두 받는다.
+    //   그 형태의 진짜 보증은 아래 짝 검사다 — 넘긴 쪽이 실제로 하트비트를 남기는지 모듈에서 확인한다.
+    const blind = rawLanes().filter(b => !/adsBeat[(,)]/.test(b))
+    expect(blind.length, `관측 밖 레인이 늘었다(${blind.length}개) — 새 레인은 kick() 을 쓰거나 adsBeat 을 남겨라`)
+      .toBeLessThanOrEqual(5)
+  })
+
+  it('🔒 시트 미러는 하트비트를 남긴다 — 09:00 이후 멈춘 걸 아무도 못 보던 자리', () => {
+    // 분리 후에도 불변식은 그대로다: ① 엔트리가 그 레인에 beat 를 넘긴다 ② 레인이 실제로 남긴다.
+    expect(src).toMatch(/runSheetsMirrorLane\(env, adsBeat\)/)
+    const lane = readFileSync(join(process.cwd(), 'src/worker-ads/sheets-mirror-lane.ts'), 'utf8')
+    expect(lane).toMatch(/beat\('sheets-sync'/)
+    expect((lane.match(/beat\('sheets-sync'/g) || []).length, '성공·실패 양쪽 경로에 남겨야 한다').toBeGreaterThanOrEqual(2)
   })
 })
 
@@ -400,5 +460,46 @@ describe('orphanLaneBeats — 기록은 있는데 지금은 아무도 안 부르
     const beats = ['ads:collect', 'ads:old-lane']
     expect(neverFiredLanes(known, beats)).toEqual(['collect-nps'])
     expect(orphanLaneBeats(known, beats)).toEqual(['ads:old-lane'])
+  })
+})
+
+/**
+ * 🐛 **beat 이름을 덮어쓴 레인이 두 목록에 동시에 뜨던 오탐** (2026-07-29 라이브에서 오진을 유발했다).
+ *
+ * `kick(path, fn, { beat })` 은 하트비트 이름을 경로와 다르게 쓸 수 있고, 실제로 쓰는 레인이 있다
+ * (`/__ads/enrich-company-driver` → beat `enrich-company`). 그런데 알려진 목록엔 **경로 이름**이,
+ * 하트비트엔 **beat 이름**이 들어가서:
+ *   · `never_fired` — 경로 이름(enrich-company-driver)으로는 기록이 없다 → "한 번도 안 돎"
+ *   · `orphan_lanes` — beat 이름(enrich-company)은 알려진 목록에 없다 → "이제 없는 레인"
+ * **같은 레인이 양쪽에 동시에** 떴고, 이번 세션이 그걸 보고 "보강 드라이버가 한 번도 안 돌았다"고
+ * 오진했다. 관측 도구가 틀린 답을 주면 없느니만 못하다.
+ */
+describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록한다', () => {
+  it('beat 이 있으면 beat 이름으로, 없으면 경로에서 유도', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/enrich-company-driver', 'enrich-company')
+    reg.note('/__ads/collect-nps')
+    expect(reg.list()).toEqual(['collect-nps', 'enrich-company'])
+  })
+
+  it('🔒 덮어쓴 레인이 never_fired 에도 orphan 에도 안 뜬다 — 오탐의 정확한 재현', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/enrich-company-driver', 'enrich-company')
+    const beats = ['ads:enrich-company']            // 하트비트는 beat 이름으로 남는다
+    expect(neverFiredLanes(reg.list(), beats)).toEqual([])
+    expect(orphanLaneBeats(reg.list(), beats)).toEqual([])
+  })
+
+  it('빈 beat 은 무시하고 경로로 폴백한다(빈 문자열이 이름을 지우면 안 된다)', () => {
+    const reg = createLaneRegistry()
+    reg.note('/__ads/collect-nps', '')
+    reg.note('/__ads/collect-mx', '   ')
+    expect(reg.list()).toEqual(['collect-mx', 'collect-nps'])
+  })
+
+  it('worker-ads 의 kick 이 beat 을 등록에 넘긴다 — 순수함수만 고치면 배선이 빠진다', () => {
+    // 이 레포가 반복해 만난 형태: 함수는 고쳤는데 호출부가 안 넘겨 **조용히 예전 동작** 유지.
+    const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
   })
 })

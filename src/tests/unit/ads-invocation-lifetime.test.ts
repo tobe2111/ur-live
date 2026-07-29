@@ -22,6 +22,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
+import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
+import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -183,5 +186,210 @@ describe('수집 진단 — 카페는 따로 센다', () => {
 
   it('diag 초기값에 cafe 가 있다 — 없으면 런타임에 undefined 증가로 조용히 NaN 이 된다', () => {
     expect(col).toMatch(/cafe:\s*\{\s*found:\s*0,\s*saved:\s*0\s*\}/)
+  })
+})
+
+/**
+ * ⏱️ **마지막 레인이 시계를 굶지 않는다** (2026-07-29 12:00 실측).
+ *
+ *   실측: `spent 18 / budget_total 45` · `deadline_hit: true` · `elapsed 23.4s` ·
+ *   `naver { selected: 13, tried: 0 }` — **예산의 60%를 남긴 채 시계로 끝났고**, 13건을 뽑아 놓고
+ *   한 건도 못 돌렸다. 순서가 bio → yt → **naver(마지막)** 인데 yt 가 20초를 다 썼기 때문이다.
+ *
+ *   앞선 세션이 같은 자리에서 **예산** 굶주림을 고쳤다(`naverRoomFromRemaining`). 구속 자원이
+ *   예산에서 시계로 옮겨갔을 뿐 병은 같다 — **순서가 고정되면 마지막 레인은 무엇이 구속하든 굶는다.**
+ */
+describe('보강 레인 — 앞 레인 사전 마감(블로거 시간 바닥)', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+
+  it('바닥 비율만큼을 블로거 몫으로 남긴다', () => {
+    expect(frontStageDeadline(1_000, 20_000, 40)).toBe(13_000) // 앞 레인은 60% 까지
+    expect(frontStageDeadline(0, 20_000, 50)).toBe(10_000)
+  })
+
+  it('비율은 10~80 으로 클램프되고 비정상 입력은 기본값(40)이 된다', () => {
+    expect(frontStageDeadline(0, 20_000, 0)).toBe(18_000)    // <10 → 10
+    expect(frontStageDeadline(0, 20_000, 99)).toBe(4_000)    // >80 → 80
+    expect(frontStageDeadline(0, 20_000, Number.NaN)).toBe(12_000) // NaN → 40
+    expect(frontStageDeadline(0, Number.NaN, 40)).toBe(0)
+  })
+
+  it('앞 레인에 사전 마감을 씌우고 블로거 직전에 푼다 — 복원이 빠지면 블로거도 갇힌다', () => {
+    expect(lane).toMatch(/budget\.deadline = frontStageDeadline\(started, deadlineMs, naverFloorPct\)/)
+    expect(lane).toMatch(/budget\.deadline = started \+ deadlineMs/)
+  })
+
+  /**
+   * 🧨 여기 있던 "복원이 블로거 호출 **앞**에 온다" 검사는 **삭제했다**(2026-07-29, CI 가 잡음).
+   *
+   *   파일 전체에서 두 문자열의 **인덱스 대소**로 순서를 봤는데, 선두 교대를 넣으며 블로거 호출이
+   *   `runNaver()` 헬퍼 안으로 들어가 **분기보다 위**에 정의되자 그 전제가 깨졌다(13,666 < 14,676).
+   *   불변식 자체는 살아 있고 — 짝수 라운드에서 상한→복원→블로거 순서 — 아래 '선두 교대' describe 의
+   *   `짝수 라운드는 종전대로…` 가 **else 분기 안에서** 더 정확히 본다.
+   *
+   *   교훈(오늘 두 번째): 불변식을 **텍스트 위치**로 쓰면 리팩토링이 전제를 깬다. 지켜야 할 것은
+   *   *사실*(어느 분기에서 무엇이 먼저 도는가)이지 파일 안의 좌표가 아니다.
+   */
+})
+
+/**
+ * 🕳️ **깊이는 하트비트로 못 본다** — 같은 이름에 부모가 나중에 쓰기 때문(12:00 실측 `result: null`).
+ *   판정 창은 레인 스냅샷이어야 한다.
+ */
+describe('self-chain 깊이 관측 — 이름을 다투지 않는 곳에 싣는다', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+  const routes = read('src/worker-ads/enrich.routes.ts')
+
+  it('레인 스냅샷이 depth 를 싣는다', () => {
+    expect(lane).toMatch(/depth\?:\s*number/)
+    expect(lane).toMatch(/budget_total:\s*budgetTotal,\s*depth/)
+  })
+
+  it('드라이버가 쿼리의 depth 를 레인으로 넘긴다', () => {
+    expect(routes).toMatch(/runInfluencerEnrich\(c\.env,\s*Number\.isFinite\(d\)/)
+  })
+})
+
+/**
+ * 🔀 **커서 픽이 꼬리에 몰려 영영 안 돌던 것** (2026-07-29 12:00 실측).
+ *
+ *   `picks { planned: 16, processed: 2, from_yt: 2, from_cursor: 0 }` — 예산으로 2개만 돌았고 둘 다 YT 픽.
+ *   배열이 `[...ytPicks, ...cursorPicks]` 였기 때문이다. 그런데 커서 전진은 `prefixDone`(처리된 **선행
+ *   구간** 길이)으로 계산하므로, 커서 픽이 한 번도 처리되지 않으면 `nextCursor = cursor + 0` —
+ *   **커서가 영원히 제자리**다. 활성 키워드 330개 중 매 회차 같은 소수만 돈다.
+ *
+ *   오늘 세 번째 같은 병이다(보강 레인의 시계 · 그 전엔 예산 · 여기선 순번).
+ *   **줄을 세우면 꼬리가 굶는다 — 자원이 무엇이든.**
+ */
+describe('키워드 픽 — 커서가 순번을 받는다', () => {
+  const col = read('src/features/marketing/api/influencer-auto-collect.ts')
+
+  it('YT 픽과 커서 픽을 번갈아 놓는다 — 2개만 돌아도 커서가 1개는 받는다', () => {
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 6)).toEqual(['y1', 'c1', 'y2', 'c2', 'y3', 'c3'])
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 2)).toEqual(['y1', 'c1'])
+  })
+
+  it('한쪽이 비어도 나머지로 채운다(총량 유지)', () => {
+    expect(interleavePicks([], ['c1', 'c2'], 5)).toEqual(['c1', 'c2'])
+    expect(interleavePicks(['y1', 'y2'], [], 5)).toEqual(['y1', 'y2'])
+  })
+
+  it('상대 순서를 보존한다 — prefixDone 이 선행 구간을 세므로 뒤섞으면 커서 계산이 깨진다', () => {
+    const r = interleavePicks(['y1', 'y2'], ['c1', 'c2'], 4)
+    expect(r.filter(x => x.startsWith('y'))).toEqual(['y1', 'y2'])
+    expect(r.filter(x => x.startsWith('c'))).toEqual(['c1', 'c2'])
+  })
+
+  it('total 이 비정상이어도 안전하다', () => {
+    expect(interleavePicks(['y1'], ['c1'], 0)).toEqual([])
+    expect(interleavePicks(['y1'], ['c1'], Number.NaN)).toEqual([])
+  })
+
+  it('호출부가 번갈아 배치를 쓴다(concat 회귀 금지)', () => {
+    expect(col).toMatch(/interleavePicks\(ytPicks,/)
+    expect(col).not.toMatch(/\[\.\.\.ytPicks,\s*\.\.\.picks\.filter/)
+  })
+
+  /**
+   * ⚠️ 짝이 되는 변경 — 순서만 바꾸면 커서 픽이 희소한 YT 쿼터를 가져가 성과가중 선택이 희석된다.
+   *   위치 기반(`ytUsed < batch` 단독)은 "앞에서 batch 개"라는 뜻이라 배치 순서와 쿼터 배분이 얽혀 있었다.
+   */
+  it('YT 슬롯은 멤버십으로 준다 — 순서와 쿼터 배분을 분리한다', () => {
+    expect(col).toMatch(/const ytSlot = ytIds\.has\(k\.id\) && ytUsed < batch/)
+    // 위치 단독 게이트가 되살아나면 희석이 재발한다.
+    expect(col).not.toMatch(/!quotaHit && ytUsed < batch &&/)
+  })
+})
+
+/**
+ * 🧹 **자기링크 정리** — 노이즈가 진짜 연락처의 자리를 막던 것 (2026-07-29 대표 승인).
+ *
+ *   실측(`platform=naver_blog&hasContact=1`, total **1,029**): 표본 200건 중 `links` 보유 198,
+ *   그중 **197건이 자기링크뿐**(외부 1). **117건(58%)** 은 이메일도 인스타도 없이 links 만 차 있었다 —
+ *   '연락처 보유'로 집계되는데 실제 연락 수단이 없고, `COALESCE(links, ?)` 백필이 **영영 막힌** 상태다.
+ *
+ *   ⚠️ 못 막는 것: 라이브에서 실제로 몇 행이 정리되는지는 여기서 알 수 없다. 판정 규칙과 배선만 고정한다.
+ */
+describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
+  it('네이버 블로그 자기 주소를 잡는다(m./blog.me 포함)', () => {
+    expect(isSelfBlogLink('https://blog.naver.com/abc')).toBe(true)
+    expect(isSelfBlogLink('https://m.blog.naver.com/abc/123')).toBe(true)
+    expect(isSelfBlogLink('https://abc.blog.me/1')).toBe(true)
+  })
+
+  it('연락처가 되는 외부 링크는 건드리지 않는다', () => {
+    expect(isSelfBlogLink('https://linktr.ee/abc')).toBe(false)
+    expect(isSelfBlogLink('https://instagram.com/abc')).toBe(false)
+    // 카페는 블로그가 아니다(별도 플랫폼) — 여기서 자기링크로 치면 안 된다.
+    expect(isSelfBlogLink('https://cafe.naver.com/abc')).toBe(false)
+    // 유사 도메인 오탐 금지 — 경계가 없으면 남의 사이트를 지운다.
+    expect(isSelfBlogLink('https://myblog.naver.company.com/x')).toBe(false)
+  })
+
+  it('전부 자기링크면 비우고, 섞여 있으면 외부만 남기고, 외부만이면 손대지 않는다', () => {
+    expect(cleanSelfLinks('https://blog.naver.com/a https://m.blog.naver.com/b')).toBe(null)
+    expect(cleanSelfLinks('https://blog.naver.com/a https://linktr.ee/x')).toBe('https://linktr.ee/x')
+    expect(cleanSelfLinks('https://linktr.ee/x')).toBeUndefined()
+    expect(cleanSelfLinks('')).toBeUndefined()
+    expect(cleanSelfLinks(null)).toBeUndefined()
+  })
+
+  it('멱등 — 정리 결과를 다시 넣으면 변경 없음(정비 패스가 매 바퀴 같은 행을 갱신하지 않게)', () => {
+    const once = cleanSelfLinks('https://blog.naver.com/a https://linktr.ee/x')
+    expect(cleanSelfLinks(once as string)).toBeUndefined()
+  })
+
+  it('판정을 네 벌로 두지 않는다 — 발굴·측정이 SSOT 를 import 한다', () => {
+    for (const f of ['influencer-discovery', 'influencer-performance']) {
+      const src = read(`src/features/marketing/api/${f}.ts`)
+      expect(src, `${f} 가 SSOT 를 안 쓴다`).toMatch(/from '\.\/influencer-self-link'/)
+      expect(src, `${f} 에 인라인 사본이 남아 있다`).not.toMatch(/!\/blog\\\.naver\\\.com\/i\.test/)
+    }
+  })
+
+  /** ⚠️ 이 표에서 빠진 단계는 **영원히 안 돈다** — 침묵이 아니라 부재라 경보에도 안 잡힌다. */
+  it('정비 스케줄과 cron 리터럴 양쪽에 selflink 가 있다', () => {
+    expect(read('src/features/marketing/api/influencer-maintenance.ts')).toMatch(/'selflink',/)
+    expect(read('src/worker-ads/index.ts')).toMatch(/'selflink',/)
+  })
+})
+
+/**
+ * 🔁 **선두 교대** — 몫 보장으로 못 푼 굶주림을 순서로 푼다 (2026-07-29 13:00 실측).
+ *
+ *   사전 마감(`frontStageDeadline`, 앞 레인 60% 상한)을 넣은 **뒤에도** 결과가 같았다:
+ *   `naver { selected: 12, tried: 0 } · deadline_hit · elapsed 20.8s · spent 19/45`.
+ *   중단은 **건 사이에서만** 일어나므로, YT 한 건이 마감 직전에 시작해 타임아웃(~9s)을 물면
+ *   창을 넘겨 버린다 — **상한으로는 못 막는 종류**다(상한을 낮춰도 한 건이 창보다 길 수 있다).
+ *
+ *   ⇒ 홀수 라운드는 블로거가 먼저. 체인이 depth 2+ 로 도는 것이 같은 틱에 확인됐으므로(`depth: 2`)
+ *     틱마다 블로거 선두 라운드가 최소 한 번 온다.
+ */
+describe('보강 레인 — 라운드마다 선두 교대', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+
+  it('depth 홀짝으로 선두를 가른다', () => {
+    expect(lane).toMatch(/const naverFirst = depth % 2 === 1/)
+  })
+
+  it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
+    const branch = /if \(naverFirst\) \{[\s\S]{0,300}?\n  \} else \{/.exec(lane)?.[0] || ''
+    expect(branch, 'naverFirst 분기를 못 찾았다').toBeTruthy()
+    expect(branch).toMatch(/runNaver\(\)[\s\S]{0,80}runFront\(\)/)
+    expect(branch).not.toMatch(/frontStageDeadline/)
+  })
+
+  it('짝수 라운드는 종전대로 사전 마감 + 복원 순서를 지킨다', () => {
+    const el = lane.slice(lane.indexOf('} else {'))
+    const cap = el.indexOf('frontStageDeadline')
+    const restore = el.indexOf('budget.deadline = started + deadlineMs')
+    const naver = el.indexOf('runNaver()')
+    expect(cap).toBeGreaterThan(-1)
+    expect(restore).toBeGreaterThan(cap)   // 상한 뒤에 복원
+    expect(naver).toBeGreaterThan(restore) // 복원 뒤에 블로거
+  })
+
+  it('블로거 호출이 한 곳뿐이다 — 두 벌로 두면 한쪽만 고쳐진다', () => {
+    expect((lane.match(/enrichNaverActivity\(DB, budget/g) || []).length).toBe(1)
   })
 })

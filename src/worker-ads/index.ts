@@ -18,6 +18,7 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
+import { createBeatBatch } from './beat-batch'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
@@ -232,10 +233,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
   //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
   // 🏷️ 실패 사유 = `cronErrorCode`(SSOT·근거는 그 docblock) · `maxGapMin`(#847) — 두 관심사는 독립이다.
+  // 🧾 하트비트는 **모아서 한 번에** 쓴다 — `kick` 당 D1 1회씩 쓰면 부모 비용이 2N 이 되어
+  //   천장(~50)에 닿고, 넘는 순간 뒤쪽 레인은 **디스패치도 실패 기록도 못 한다**(근거: beat-batch.ts).
+  const beats = createBeatBatch(async (list) => {
+    const { buildCronBeatRow } = await import('@/worker/utils/cron-heartbeat')
+    await env.DB.batch(list.map((b) => {
+      const { key, value } = buildCronBeatRow(b.name, b.ok, b.ms, b.cron, b.result, b.maxGapMin)
+      return env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value)
+    }))
+  })
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number): Promise<void> => {
     try {
-      const { recordCronBeat, cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
-      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron, ok ? undefined : { err: cronErrorCode(err) }, maxGapMin)
+      const { cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
+      beats.add({ name: `ads:${name}`, ok, ms, cron: event.cron, result: ok ? undefined : { err: cronErrorCode(err) }, maxGapMin })
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {
       try {
@@ -250,10 +260,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
+  //   `kicked` — 디스패치 프로미스 모음. **마지막 flush 가 이걸 기다려야** 한다(안 그러면 빈 배치를 쓰고
+  //   그 뒤에 쌓인 하트비트는 영영 안 나간다 — 배선이 절반이면 관측이 0 이 되는 그 실패).
+  const kicked: Promise<unknown>[] = []
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
-    laneReg.note(path)
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
-    ctx.waitUntil((async () => {
+    laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
+    const p = (async () => {
       const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
@@ -262,7 +275,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch (err) {
         await adsBeat(beat, false, Date.now() - t0, err, opts?.gap)
       }
-    })())
+    })()
+    kicked.push(p)
+    ctx.waitUntil(p)
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
 
@@ -325,42 +340,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })
   }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
-  //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
-  //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).
-  //   동기화 자체는 SELF 인보케이션에서(풀 성장에 비례하는 D1 페이지 읽기+Sheets 쓰기를 수집과 격리),
-  //   경보 판단만 여기서(응답 JSON 파싱 — 1 fetch + D1 1읽기라 가벼움).
+  //   🔔 2026-07-29 **하트비트 배선**(#882) — 이 레인만 `kick()` 을 안 거쳐 생 `waitUntil` 이라 지금까지
+  //   **관측 밖**이었다. `cron-stale-watch` 는 *한 번도 기록이 없는 이름을 판정 대상으로 잡지 못하므로*,
+  //   멈춰도 침묵 경보에 안 걸렸다(실측: 다른 13개 레인이 다 돈 회차에 이것만 3시간 전 기록 그대로).
+  //   🧹 2026-07-29 본문은 `sheets-mirror-lane.ts` 로 분리(엔트리 600줄 캡) — **동작 불변, 위치만**.
   if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
     ctx.waitUntil((async () => {
-      try {
-        const prevRaw = await env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
-        const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
-        let r: { ok: boolean; error?: string | null }
-        if (env.SELF?.fetch) {
-          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync?by=cron', { method: 'POST' }))
-          r = await resp.json().then(j => j as { ok: boolean; error?: string | null }).catch(() => ({ ok: false, error: 'SELF_RESPONSE_PARSE' }))
-        } else {
-          const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-          r = await syncInfluencerPoolToSheets(env, 'cron')
-        }
-        if (!r.ok && env.DISCORD_WEBHOOK_URL && (r.error || '') !== (prevErr || '')) {
-          const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
-          await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, '유어애즈 구글시트 동기화 실패', `${r.error || 'unknown'}\n(해결 전까지 시트 미러 정지 — 어드민 정비 도구에서 수동 재시도 가능)`, 'warn').catch(() => null)
-        }
-      } catch (err) {
-        // 🔎 2026-07-29: 여기서 통째로 삼키던 것이 **3세션을 잡아먹었다**. 실패의 실제 양식은
-        //   "러너가 돌다 실패"가 아니라 **"러너가 시작조차 못 함"** 이었다 — 위 `SELF.fetch` 는 이 부모
-        //   인보케이션의 서브리퀘스트 1개이고, 부모가 인라인 레인(백필 최대 192 fetch/시간)에 예산을
-        //   다 쓰면 그 1개조차 못 써서 throw 한다. 그러면 sheets-sync 는 진입하지 않으니 자기 스탬프도
-        //   못 남기고, 화면엔 **옛 `ok:true` 가 그대로** 남는다(실측: 48시간 정지인데 성공 표시).
-        //   ⇒ 부모 쪽에서도 스탬프를 남긴다. best-effort(한도가 원인이면 이 D1 쓰기도 실패할 수 있다)지만,
-        //   성공하는 회차엔 "kick 이 못 떴다"가 그대로 보인다 — 원인이 정반대인 두 경우가 갈린다.
-        const msg = String((err as { message?: string } | null)?.message || err || '').slice(0, 200)
-        await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-          .bind('ads_sheets_last_sync', JSON.stringify({
-            at: new Date().toISOString(), ok: false, rows: null,
-            error: `KICK_FAILED: 동기화 러너를 띄우지 못했습니다(부모 인보케이션 예산 소진 의심) — ${msg}`,
-          })).run().catch(() => null)
-      }
+      const { runSheetsMirrorLane } = await import('./sheets-mirror-lane')
+      await runSheetsMirrorLane(env, adsBeat)
     })())
   }
   // 🔁 동의 리드 리마인드 — 매시간 시도(러너가 게이트 OFF/야간/무대상이면 no-op). 1인 1회(reminded_at CAS).
@@ -408,12 +395,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     kick('/__ads/sweep-kakao-chain', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
+    // ⚠️ beat 를 **현재 이름 그대로** 고정한다(쿼리 포함). 깔끔한 이름으로 바꾸면 라이브의 옛 행
+    //   `ads:reclassify-company?passes=5` 가 남아 stale watch 가 영원히 울린다 — 이름은 못생겨도 안정이 먼저다.
+    //   passes 값을 바꿔도 하트비트가 개명되지 않는다(그게 이 고정의 목적).
     kick('/__ads/reclassify-company?passes=5', async () => {
       const { reclassifyCompanyLeads } = await import('@/features/marketing/api/company-discovery')
       let last = await reclassifyCompanyLeads(env.DB, 1000) // 첫 패스만 housekeeping(억제 스윕)
       for (let i = 1; i < 5 && !last.done; i++) last = await reclassifyCompanyLeads(env.DB, 1000, false)
       return last
-    })
+    }, { beat: 'reclassify-company?passes=5' })
   }
   // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").
   //   `runMakerCollect` 는 어드민 수동 버튼에만 연결돼 있었고 **cron 이 어디에도 없어서** 제조사 풀이
@@ -486,7 +476,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ 이 레인이 이 워커에서 가장 폭발적이었다(2일 × 16업종 × 6페이지 = 최대 192 fetch, **매시간**).
   //   인라인이던 동안 같은 인보케이션의 다른 작업들(시트 미러 포함)까지 예산을 굶겼을 가능성이 크다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) })
+    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) }, { beat: 'collect-localdata?mode=backfill' })
   }
   const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).
@@ -539,7 +529,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //    `reclassify` 는 전수 한 바퀴에 65시간, `handle` 은 수율 최고(2,481)인데 아직 안 끝났다.
     const PHASES = [
       'merge', 'reextract', 'reclassify', 'quality', 'handle',
+      'selflink',
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+      'reclassify',
     ] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
@@ -573,6 +565,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
     })())
   }
+
+  // 🧾 **모든 디스패치가 끝난 뒤** 남은 하트비트를 한 번에 쓴다(중간분은 임계치에서 이미 나갔다).
+  //   ⚠️ 기다리지 않고 flush 하면 빈 배치를 쓰고, 그 뒤 쌓인 기록은 영영 안 나간다.
+  ctx.waitUntil(Promise.allSettled(kicked).then(() => beats.flush()))
 }
 
 export default { fetch: app.fetch, scheduled }

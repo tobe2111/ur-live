@@ -117,7 +117,17 @@ export const laneKey = (path: string): string =>
  * 담기는 것 = **env 게이트를 통과한 레인**(= 돌아야 하는 것). 게이트 OFF 는 의도적 정지이므로 제외.
  */
 export interface LaneRegistry {
-  note(path: string): void
+  /**
+   * @param path  `/__ads/...` 경로
+   * @param beat  하트비트 이름을 경로와 **다르게** 쓰는 레인의 그 이름(`kick` 의 `opts.beat`).
+   *
+   * ⚠️ 2026-07-29 실측 버그 — 원래 `path` 만 받았다. 그런데 `kick` 은 beat 이름을 덮어쓸 수 있고
+   *   실제로 덮어쓰는 레인이 있다(`/__ads/enrich-company-driver` → beat `enrich-company`).
+   *   알려진 목록엔 경로 이름이, 하트비트엔 beat 이름이 들어가니 **같은 레인이 `never_fired`(경로 이름은
+   *   기록이 없다)와 `orphan_lanes`(beat 이름은 알려진 목록에 없다) 양쪽에 동시에** 떴다.
+   *   판정을 오도한다 — 이번 세션이 실제로 "enrich-company-driver 가 한 번도 안 돌았다"고 오진했다.
+   */
+  note(path: string, beat?: string): void
   /** 알려진 레인 이름(정렬·중복제거). */
   list(): string[]
 }
@@ -125,7 +135,7 @@ export interface LaneRegistry {
 export function createLaneRegistry(): LaneRegistry {
   const seen = new Set<string>()
   return {
-    note(path: string) { const k = laneKey(path); if (k) seen.add(k) },
+    note(path: string, beat?: string) { const k = (beat || '').trim() || laneKey(path); if (k) seen.add(k) },
     list() { return [...seen].sort() },
   }
 }
@@ -179,12 +189,12 @@ export function makeHourGates(hourUTC: number, kick: KickFn, registry?: LaneRegi
   return {
     /** 일 1회 — 지정한 UTC 시각에만. */
     dailyAt(hour: number, path: string, fallback: () => Promise<unknown>, beat?: string): void {
-      registry?.note(path)   // ⬅ 발화하지 않는 시각에도 '이 레인이 있다'는 사실은 남긴다
+      registry?.note(path, beat)   // ⬅ 발화하지 않는 시각에도 '이 레인이 있다'는 사실은 남긴다(이름은 beat 우선)
       if (hourUTC === hour) kick(path, fallback, { gap: dailyGapMinutes(), ...(beat ? { beat } : {}) })
     },
     /** N시간마다 — `hourUTC % n === offset` 인 시각에만. */
     everyNHours(n: number, offset: number, path: string, fallback: () => Promise<unknown>, beat?: string): void {
-      registry?.note(path)
+      registry?.note(path, beat)
       if (n > 0 && hourUTC % n === offset) kick(path, fallback, { gap: everyNHoursGapMinutes(n), ...(beat ? { beat } : {}) })
     },
   }
