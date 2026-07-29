@@ -116,7 +116,8 @@ chainRoutes.post('/__ads/sweep-kakao-chain', async (c) => {
     return { stats, chained }
   }
   try {
-    const r = await runDetachable(c, round)
+    // depth 0 만 완료 하트비트를 남긴다 — 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다.
+    const r = await runDetachable(c, round, depth === 0 ? 'sweep-kakao-chain' : undefined)
     return r.detached ? c.json({ ok: true, detached: true, depth }) : c.json({ ok: true, ...r.result, depth })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -157,7 +158,7 @@ chainRoutes.post('/__ads/collect-localdata-chain', async (c) => {
     return { stats, chained }
   }
   try {
-    const r = await runDetachable(c, round)
+    const r = await runDetachable(c, round, depth === 0 ? 'collect-localdata-chain' : undefined)
     return r.detached ? c.json({ ok: true, detached: true, depth }) : c.json({ ok: true, ...r.result, depth })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })

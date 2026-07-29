@@ -19,6 +19,7 @@ const ctxOf = (query: Record<string, string>, withCtx = true) => {
   return {
     scheduled,
     c: {
+      env: {},
       req: { query: (k: string) => query[k] },
       ...(withCtx ? { executionCtx: { waitUntil: (p: Promise<unknown>) => { scheduled.push(p) } } } : {}),
     },
@@ -69,5 +70,39 @@ describe('runDetachable', () => {
     await expect(scheduled[0]).resolves.toBeUndefined() // 삼키되 — 콘솔로는 흘린다(조용한 소멸 방지)
     expect(err).toHaveBeenCalled()
     err.mockRestore()
+  })
+})
+
+// 🔔 detach 는 관측 사각지대를 새로 만든다 — 부모 하트비트가 '던지기 성공'만 뜻하게 되므로,
+//   레인이 조용히 죽어도 ok:true 로 남는다. 그래서 **작업이 끝난 뒤 실제 결과로 다시 기록**한다.
+describe('완료 하트비트 (detach 가 만든 사각지대의 처방)', () => {
+  it('작업이 끝나면 **실제 결과로** 하트비트를 다시 쓴다 — 부모의 낙관적 기록을 덮는다', async () => {
+    const beats: Array<{ name: string; ok: boolean }> = []
+    vi.doMock('@/worker/utils/cron-heartbeat', () => ({
+      recordCronBeat: async (_e: unknown, name: string, ok: boolean) => { beats.push({ name, ok }) },
+    }))
+    const { runDetachable } = await import('@/worker-ads/detach')
+    const { c, scheduled } = ctxOf({ detach: '1' })
+
+    await runDetachable(c, async () => { throw new Error('lane died') }, 'collect-neis')
+    await scheduled[0]
+
+    expect(beats).toEqual([{ name: 'ads:collect-neis', ok: false }]) // 실패가 실패로 남는다
+    vi.doUnmock('@/worker/utils/cron-heartbeat')
+  })
+
+  it('beat 이름을 안 주면 기록하지 않는다(체인 depth>0 처럼 같은 시간대를 N번 덮지 않게)', async () => {
+    const beats: unknown[] = []
+    vi.doMock('@/worker/utils/cron-heartbeat', () => ({
+      recordCronBeat: async () => { beats.push(1) },
+    }))
+    const { runDetachable } = await import('@/worker-ads/detach')
+    const { c, scheduled } = ctxOf({ detach: '1' })
+
+    await runDetachable(c, async () => 'ok')
+    await scheduled[0]
+
+    expect(beats).toHaveLength(0)
+    vi.doUnmock('@/worker/utils/cron-heartbeat')
   })
 })

@@ -25,12 +25,14 @@ export const publicDataRoutes = new Hono<{ Bindings: Env }>()
  */
 const lane = (run: (env: Env) => Promise<unknown>) => async (c: {
   env: Env
-  req: { query: (k: string) => string | undefined }
+  req: { query: (k: string) => string | undefined; path: string }
   executionCtx?: { waitUntil: (p: Promise<unknown>) => void }
   json: (b: unknown, s?: number) => Response
 }) => {
   try {
-    const r = await runDetachable(c, () => run(c.env))
+    // 🔔 완료 하트비트 이름 = 라우트 경로(부모 kick 의 기본 beat 와 같은 이름) → 부모의 '던지기 성공'을
+    //   레인의 **실제 결과**가 덮어쓴다. detach 가 만드는 관측 사각지대의 처방(detach.ts 주석).
+    const r = await runDetachable(c, () => run(c.env), c.req.path.replace(/^\/__ads\//, ''))
     return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, stats: r.result })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 }
@@ -67,7 +69,8 @@ publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
       const stats = await runLocalDataCollect(c.env)
       if (mode === 'collect') return { stats }
       return { stats, backfill: await runLocalDataBackfill(c.env, 2).catch(() => null) }
-    })
+    // 부모 kick 의 beat 와 **같은 이름**(쿼리 포함)이어야 덮어쓰기가 성립한다.
+    }, mode === 'backfill' ? 'collect-localdata?mode=backfill' : 'collect-localdata')
     return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, ...r.result })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
