@@ -149,6 +149,12 @@ jobs:
         run: node scripts/check-cron-heartbeat.mjs
         continue-on-error: false
 
+      # 🧮 2026-07-29: 유어애즈 수집 레인 격리. 인라인 ctx.waitUntil 로 붙은 레인은 한 인보케이션의
+      #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
+      - name: 유어애즈 레인 격리 (strict)
+        run: node scripts/check-ads-lane-isolation.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

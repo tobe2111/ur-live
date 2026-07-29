@@ -341,7 +341,6 @@ curl -sS -X PATCH "https://live.ur-team.com/api/admin/admins/10/multi-session" \
 ```
 > ⚠️ **자동화 계정에만 켤 것.** 단일 세션은 계정 공유·도용의 *탐지 신호*이기도 하다(남이 쓰면 내가 튕겨서
 > 알게 된다). 사람이 쓰는 운영 계정에 켜면 그 신호를 잃는다.
-
 ```bash
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
@@ -438,7 +437,6 @@ historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹
 (`apis.data.go.kr` · `open.neis.go.kr` 등 CONNECT 403). 공공 API 스펙 검증은 이 환경에서 직접 호출로 못 한다 →
 **라이브 워커의 `diag.error` 원문**(어드민 stats)이 사실상 유일한 ground truth. `data.go.kr` 문서 페이지는
 WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필요하다.
-
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
 **감사/전수조사 요청을 받으면 먼저 `bash scripts/audit-gate.sh` 를 돌려라.** 그리고:
