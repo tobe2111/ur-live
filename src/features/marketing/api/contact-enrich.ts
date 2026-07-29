@@ -56,8 +56,12 @@ export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|jo
  *    **한도 초과 뒤 무의미하게 시도된 것**이고, 그 행들이 실패 도장(7일 쿨다운)까지 받아 재시도 풀에서
  *    이탈해 있었다 → 버전 bump 로 그 오염분을 전량 즉시 재시도 대상으로 되돌린다.
  *  v6 (2026-07-28) = 국내 수기 난독화 복원(골뱅이/(at)/[dot]) — `no_contact` 로 집계된 사이트 중 **실제로는
- *    이메일이 있는데 못 읽은 것**을 회수. 추출기 개선이므로 이전 no_contact 판정분을 전량 재시도해야 한다. */
-export const CRAWL_RULES_VERSION = 6
+ *    이메일이 있는데 못 읽은 것**을 회수. 추출기 개선이므로 이전 no_contact 판정분을 전량 재시도해야 한다.
+ *  v7 (2026-07-29) = **상호 존재 가드를 본문 텍스트로** 판정. 그전엔 원문 HTML 과 비교해
+ *    `김밥<span>천국</span>` 처럼 태그가 상호 중간에 끼면 무조건 불일치였다(로고/헤더는 거의 항상 그렇다).
+ *    실측: 매장 레인이 발견한 사이트 **2/2 가 `no_name`** 으로 버려졌고 매장 36,872건 중 이메일은 **1건**.
+ *    ⇒ 이전에 `no_name` 도장을 받은 행 전량이 즉시 재시도 대상이어야 하므로 bump. */
+export const CRAWL_RULES_VERSION = 7
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
@@ -260,7 +264,26 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
 //   subreq_limit(워커 한도 소진) / timeout(상대 서버 무응답 8s) / network(DNS·TLS·연결거부).
 //   셋은 처방이 전혀 다르다: 한도=예산 축소, 타임아웃=대기시간·동시성 조정, DNS=대상 URL 품질.
 export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout' | 'deadline'
-export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
+export interface CrawlResult {
+  email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string
+  /** 🔎 `no_name` 인데 **느슨한 상호**(지점·법인격·괄호 제거)로는 맞았다 — 채택은 안 하고 **세기만** 한다.
+   *  가드를 얼마나 풀어야 하는지는 라이브 분포로 정할 일이지 추측으로 정할 일이 아니다(그 결정의 근거값). */
+  nameLoose?: boolean
+}
+
+/** 상호 매칭용 정규화 — 공백 제거는 기본, `loose` 면 오귀속 위험이 있는 축약까지 적용(측정 전용). */
+export function normBizName(raw: string, loose = false): string {
+  let s = String(raw || '').replace(/&[a-z]+;|&#\d+;/gi, ' ') // HTML 엔티티는 글자가 아니다
+  if (loose) {
+    s = s.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')               // 괄호 안(지점·설명)
+      .replace(/\(?주\)?식?회?사?|㈜|주식회사|유한회사|합자회사/g, ' ') // 법인격
+      // ⚠️ `\b` 를 쓰면 안 된다 — JS 의 워드 경계는 ASCII 기준이라 한글 뒤에서 **항상 실패**한다
+      //   (처음 그렇게 썼다가 '강남2호점' 이 하나도 안 지워졌다. 테스트가 잡았다).
+      .replace(/[0-9]*호점|지점|본점|직영점/g, ' ')              // 지점 표기
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')                        // 남은 구두점
+  }
+  return s.replace(/\s+/g, '')
+}
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
@@ -282,8 +305,10 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null, reason: 'robots' }
   }
   let email: string | null = null, phone: string | null = null, nameSeen = !requireName, anyPage = false
+  let nameLoose = false // 느슨한 상호로만 맞은 경우 — 채택 없이 계측만(위 CrawlResult.nameLoose 주석)
   let siteName: string | null = null // 🏷️ 사이트 자기 이름(og:site_name→title 첫 구획) — webkr 헤드라인 상호 치유용
-  const wantName = requireName ? norm(requireName) : ''
+  const wantName = requireName ? normBizName(requireName) : ''
+  const wantLoose = requireName ? normBizName(requireName, true) : ''
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
   //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤3)** + 사이트맵 기반 연락처 페이지 발견(2026-07-27 고도화).
   //   국내 대행사/SME 는 그누보드·cafe24·아임웹 자체 경로가 흔해 고정 경로만으론 놓침. same-origin 만 + 파일 제외.
@@ -335,7 +360,17 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     if (!html) continue
     anyPage = true
     const slice = html.slice(0, 200000)
-    if (!nameSeen && wantName && norm(slice).includes(wantName)) nameSeen = true
+    // 🏷️ 상호 존재 검사는 **본문 텍스트**로 한다(2026-07-29 근본수리). 원문 HTML 로 비교하면
+    //   `김밥<span>천국</span>` 처럼 **태그가 상호 중간에 끼는 순간 무조건 불일치**다 — 로고/헤더는
+    //   거의 항상 그렇게 마크업된다. 실측: 매장 레인이 발견한 사이트 2/2 가 `no_name` 으로 버려졌고
+    //   매장 36,872건 중 이메일 보유는 **1건**이었다. 태그를 지우면 그 대부분이 정당하게 통과한다.
+    //   ⚠️ 원문 비교도 남긴다 — og:site_name 처럼 **속성값** 안에 있는 상호는 태그 제거로 사라진다.
+    if (!nameSeen && wantName) {
+      const text = normBizName(stripTag(slice))
+      if (text.includes(wantName) || norm(slice).includes(wantName)) nameSeen = true
+      // 느슨한 상호로만 맞는 경우는 **채택하지 않고 센다**(지점명 차이로 프랜차이즈 본사에 오귀속될 위험).
+      else if (wantLoose.length >= 2 && normBizName(stripTag(slice), true).includes(wantLoose)) nameLoose = true
+    }
     if (path === '' && !siteName) {
       const og = slice.match(/property=["']og:site_name["'][^>]*content=["']([^"'<>]{2,40})["']/i)?.[1]
         || slice.match(/content=["']([^"'<>]{2,40})["'][^>]*property=["']og:site_name["']/i)?.[1]
@@ -382,7 +417,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
       }
     }
   }
-  if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
+  if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name', nameLoose } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) { email = null; return { email: null, phone, siteName, reason: 'dead_domain' } } // 죽은 도메인(반송 확정) 배제
   // 한도 도달은 **사이트의 문제가 아니다** — 별도 사유로 분리해야 호출부가 '실패 도장' 대신 '중단'을 고른다.
   //   타임아웃(AbortError)도 분리 — 우리 인프라(한도) vs 상대 서버(무응답) vs 주소 품질(DNS)을 분포로 판별.
