@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { isLikelyNoise, type InfluencerLead } from './influencer-discovery'
-import { looksLikeBrandChannel, scoreLead } from './influencer-quality'
+import { declinesOutreach, looksLikeBrandChannel, scoreLead } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { regionFromKeyword } from './influencer-region'
 import { sanitizeLeadHandle } from './influencer-handle'
@@ -35,8 +35,8 @@ export async function saveLeadsBatch(
   // 📍 활동 지역 — 배치 전체가 같은 수집 키워드라 1회만 계산. '' = 확인했지만 지역 없음(재검사 방지).
   const region = regionFromKeyword(meta.sourceKeyword) ?? ''
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, region, lead_score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, region, lead_score, opted_out)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
   //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
   //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
@@ -45,7 +45,8 @@ export async function saveLeadsBatch(
       subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END,
       view_count = CASE WHEN ? > 0 THEN ? ELSE view_count END,
       description = CASE WHEN ? != '' THEN ? ELSE description END,
-      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END
+      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END,
+      opted_out = CASE WHEN ? = 1 THEN 1 ELSE opted_out END
     WHERE account_id = ? AND platform = ? AND channel_id = ?`
   let saved = 0
   const CHUNK = 50
@@ -61,6 +62,13 @@ export async function saveLeadsBatch(
       const handle = sanitizeLeadHandle(l.platform, l)
       const brand = looksLikeBrandChannel(l.name, l.description) ? 1 : 0 // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
       /**
+       * 🚫 "공동구매 제안은 정중히 사양합니다" — 본인이 소개글에 거부를 써 둔 채널(2026-07-29 대표 제보).
+       *   저장은 하되 발송 큐·엑셀·시트에서 자동 제외한다(노이즈는 낭비지만 이건 **거부 의사 무시**다).
+       *   ⚠️ 여기의 `l.description` 은 **원문**이다 — DB 저장은 500자로 잘리므로, 잘리기 전에 판정해야
+       *   소개글 뒤쪽에 적힌 문구를 놓치지 않는다.
+       */
+      const optOut = declinesOutreach(l.name, l.description) ? 1 : 0
+      /**
        * 🏅 **저장 시점 즉시 채점**(2026-07-29, #841) — 신규 리드가 큐 뒤에 갇히던 것.
        *   `lead_score` 가 NULL 이면 발송 큐·점수 정렬이 `(lead_score IS NULL) ASC` 로 **미채점을 후순위**로 민다.
        *   점수는 야간 정비(quality 패스)가 4,500명씩 커서로 도는데 38,374명이면 한 바퀴 최대 ~42시간이라,
@@ -71,7 +79,7 @@ export async function saveLeadsBatch(
       const { score } = scoreLead({
         platform: l.platform, subscriber_count: l.subscriber_count, email: l.email,
         instagram: l.instagram, links: l.links, category: cat, is_brand: brand,
-        url: l.url, last_post_at: l.last_post_at ?? null,
+        url: l.url, last_post_at: l.last_post_at ?? null, opted_out: optOut,
       })
       return DB.prepare(insSql).bind(
         accountId, l.platform, l.channel_id, handle, l.name.slice(0, 120), l.url,
@@ -83,6 +91,7 @@ export async function saveLeadsBatch(
         catSrc,
         region, // 📍 활동 지역(수집 키워드 접두) — 서비스몰 '지역 맞춤 매칭'의 쿼리 키
         score,  // 🏅 즉시 채점(#841) — NULL 이면 큐 뒤로 밀린다
+        optOut, // 🚫 제안 거부 명시 — 발송 큐에서 자동 제외
       )
     })
     const rs = await DB.batch(insStmts).catch(() => null)
@@ -95,6 +104,9 @@ export async function saveLeadsBatch(
         return DB.prepare(backfillSql).bind(
           l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
           l.view_count, l.view_count, d, d, lp, lp, lp,
+          // 🚫 재조우 시에도 거부 문구를 확인한다(나중에 써 넣은 사람도 잡히게).
+          //   0 이면 기존 값 유지(sticky) — 한 번 선 태그를 소개글 편집·절단으로 되돌리지 않는다.
+          declinesOutreach(l.name, l.description) ? 1 : 0,
           accountId, l.platform, l.channel_id,
         )
       })).catch(() => null)

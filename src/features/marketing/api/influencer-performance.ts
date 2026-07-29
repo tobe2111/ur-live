@@ -401,11 +401,21 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors); if (!subsAfter || subsAfter <= 0) subsAfter = neighbors }
       const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
       const c = extractContacts(homeText)
-      if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
+      /**
+       * 🔗 **자기 블로그 URL 은 연락처가 아니다**(2026-07-29 실측).
+       *   `extractContacts` 의 blog-URL 수집은 *유튜버*에겐 크로스플랫폼 발자국이라 값지지만,
+       *   네이버 블로거에겐 자기 글 링크일 뿐이다. 실측: 이메일 없는 블로거 303명 중 **295명이 links 보유**
+       *   인데 내용은 m.blog.naver.com(1,997)·blog.naver.com(292) — 외부 링크는 **3개**뿐이었다.
+       *   ⚠️ 두 가지가 망가진다: ① '연락처 보유'와 '새 연락처 획득률'이 부푼다(판단 근거로 쓰던 수치다)
+       *   ② 저장이 `COALESCE(links, ?)` 라 **한번 자기링크로 채워지면 나중에 찾은 진짜 외부 링크가 영영
+       *   안 들어간다** — 노이즈가 실제 연락처를 막는다.
+       */
+      const extLinks = c.links.filter(u => !/blog\.naver\.com/i.test(u))
+      if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (extLinks.length && !r.links)) diag.contacts++
       if (biz && !r.email) diag.emails = (diag.emails || 0) + 1
       if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }
       if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]); instaAfter = instaAfter || c.instagram[0] }
-      if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+      if (extLinks.length) { sets.push('links = COALESCE(links, ?)'); binds.push(extLinks.slice(0, 8).join(' ')) }
     }
     // 🏷️ **측정한 그 자리에서 재분류**(2026-07-29) — 추가 fetch 0.
     //   배경: 풀의 74%(28,673명)가 네이버 블로거인데 이들의 업종은 거의 전부 **수집 키워드 상속**이다

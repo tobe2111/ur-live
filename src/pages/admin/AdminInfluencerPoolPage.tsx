@@ -21,6 +21,7 @@ import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
 import RecruitButton from './influencer-pool/RecruitButton'
+import { LeadNameCell } from './influencer-pool/LeadNameCell'
 import PoolFilters from './influencer-pool/PoolFilters'
 
 /**
@@ -40,6 +41,7 @@ interface Lead {
   recent_avg_views?: number | null; recent_avg_comments?: number | null; recent_posts_30d?: number | null // 📈 성과(YT 최근평균/네이버 30일 포스팅)
   median_long_views?: number | null; shorts_ratio?: number | null // 📈 롱폼 중앙값 + 쇼츠 비중(%) — 쇼츠 착시 배제 지표
   is_brand?: number | null; lead_score?: number | null            // 🏢 브랜드 공식 채널 추정 · 🏅 리드 점수(0~100)
+  opted_out?: number | null                                       // 🚫 소개글에 제안 거부 명시 — 발송 큐 자동 제외
   last_post_at?: string | null // 📝 블로거 마지막 글 날짜(검색 postdate/RSS — 활동 신호)
   email_status?: string | null // 📬 Resend 웹훅(bounced/complained/opened) — 발송 큐 하드 필터에 사용
   category_source?: string | null // 🏷️ 'content'=본문·소개글로 확인 · 그 외=발굴 키워드 상속(미확인)
@@ -50,7 +52,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; opted_out?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
@@ -91,6 +93,7 @@ export default function AdminInfluencerPoolPage() {
   const [region, setRegion] = useState('')
   const [catSource, setCatSource] = useState('')   // 🏷️ 분류 신뢰도(content/keyword) — 대표 4축 ② 작업 대상 특정용
   const [measured, setMeasured] = useState('')     // 📏 측정 여부(1/0) — 대표 4축 ④ 백로그 가시화
+  const [optedOutOnly, setOptedOutOnly] = useState(false) // 🚫 거부 표시된 리드만 — 자동 태깅 오탐 검수용
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
@@ -119,6 +122,7 @@ export default function AdminInfluencerPoolPage() {
     if (region) params.set('region', region)
     if (catSource) params.set('catSource', catSource)
     if (measured) params.set('measured', measured)
+    if (optedOutOnly) params.set('optedOutOnly', '1')
     if (tier) params.set('tier', tier)
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
@@ -129,7 +133,7 @@ export default function AdminInfluencerPoolPage() {
     if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, optedOutOnly, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -424,6 +428,7 @@ export default function AdminInfluencerPoolPage() {
           hasContact={hasContact} setHasContact={setHasContact}
           catSource={catSource} setCatSource={setCatSource}
           measured={measured} setMeasured={setMeasured}
+          optedOutOnly={optedOutOnly} setOptedOutOnly={setOptedOutOnly}
           hideNoise={hideNoise} setHideNoise={setHideNoise}
           brandOnly={brandOnly} setBrandOnly={setBrandOnly}
           inboundOnly={inboundOnly} setInboundOnly={setInboundOnly}
@@ -479,16 +484,7 @@ export default function AdminInfluencerPoolPage() {
                       <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} aria-label={`${l.name} 초안 대상 선택`} />
                     </td>
                     <td className="px-3 py-2">
-                      <a href={/^https?:\/\//i.test(l.url) ? l.url : `https://${(l.url || '').replace(/^\/+/, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-900 hover:underline">{/* 🐛 스킴 없는 옛 URL(blog.naver.com/..) 도 절대경로로 — 상대경로 404 방지 */}
-                        {l.thumbnail && <img src={l.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover" loading="lazy" />}
-                        <span>
-                          <span className="font-medium">{l.name}</span>
-                          {l.lead_score != null && <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle ${l.lead_score >= 70 ? 'bg-emerald-100 text-emerald-700' : l.lead_score >= 45 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`} title="리드 점수 0~100 — 연락가능성·규모적합도·활동성·카테고리핏 합산(야간 자동 채점)">🏅{l.lead_score}</span>}
-                          {l.is_brand ? <span className="ml-1.5 px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium align-middle" title="브랜드/기업 공식 채널 추정 — 인플루언서가 아닐 수 있음(노이즈 숨김에 포함)">🏢 브랜드</span> : null}
-                          {l.source === 'inbound' && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[10px] font-medium align-middle" title="스스로 신청 · 사전동의">📥 신청</span>}
-                          <span className="ml-1.5 text-xs text-gray-400">{PLATFORM_LABEL[l.platform] || l.platform}{l.handle ? ` · ${l.handle}` : ''}</span>
-                        </span>
-                      </a>
+                      <LeadNameCell lead={l} platformLabel={PLATFORM_LABEL} />
                     </td>
                     <td className="px-3 py-2 text-right text-gray-700">
                       {l.platform === 'naver_blog' ? (

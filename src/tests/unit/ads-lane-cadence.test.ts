@@ -248,14 +248,16 @@ describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
    *
    * 10:00 틱 기록: `ads:enrich-influencer-driver · ok:true · ms:18,615`. 12라운드를 계획했는데
    * 라운드 1회가 실측 16초니 **한 라운드밖에 못 돈 것**이다. 그런데 `ok:true` 라 화면상 정상이었고,
-   * `runRoundChain` 이 들고 온 원문 error 는 하트비트에 안 실려 **왜 멈췄는지 알 길이 없었다.**
-   * 처리량이 곧 품질인 파이프라인에서 "12 계획 → 1 실행"은 12배 손해인데 아무도 모른다.
+   * 왜 멈췄는지는 어디에도 없었다. 이 레포가 반복해 만난 형태 — 실패가 아니라 **조용한 부분 실행**.
+   *
+   * ⚠️ 지금 구현은 self-chain(라운드마다 새 인보케이션)이라 depth 0 이 "몇 라운드 돌았는지"를 알 수 없다.
+   *    대신 `planned`(계획) 와 `chained`(다음 라운드를 낳았는가) 로 판정한다 — 계획이 12인데
+   *    `chained=false` 면 그 자리에서 끊긴 것이고, `error` 가 그 이유다.
    */
-  it('체인 결과(done/planned/error)를 하트비트에 남긴다 — 부분 실행을 조용히 넘기지 않는다', () => {
-    const call = /driverBeat\(\s*c\.env[\s\S]{0,400}?\)\n/.exec(src)?.[0] || ''
-    expect(call).toMatch(/done:\s*r\.done/)
-    expect(call).toMatch(/planned:\s*rounds/)
-    expect(call).toMatch(/error:\s*r\.error/)
+  it('체인 결과(planned/chained/error)를 하트비트에 남긴다 — 부분 실행을 조용히 넘기지 않는다', () => {
+    const beat = /async function driverBeat\([\s\S]{0,700}?\n\}/.exec(src)?.[0] || ''
+    expect(beat).toMatch(/recordCronBeat\(/)
+    for (const k of ['planned', 'chained', 'error']) expect(beat).toContain(k)
   })
 })
 

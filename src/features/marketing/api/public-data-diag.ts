@@ -79,6 +79,28 @@ export function serviceKeyParam(raw: string | undefined | null): string {
   return encodeURIComponent(base)
 }
 
+/**
+ * 🕳️ **'값 없음'을 문자열로 주는 것** — data.go.kr 공통 습성 (2026-07-29 실측으로 확인).
+ *
+ *   통신판매 원부 실응답: `telno: "N/A"` · `rnAddr: "N/A"` · `domnCn: "N/A"` · `crno: "N/A"`.
+ *   문제는 `"N/A"` 가 **JS 에서 truthy** 라는 것이다. 별칭 폴백(`g(it,'rnAddr','lctnAddr')`)이
+ *   앞 필드에서 `"N/A"` 를 받아 **진짜 값이 있는 뒤 필드를 건너뛴다.**
+ *
+ *   라이브 실측 결과(표본 1,000): **온라인판매 리드의 31.7% 가 `address = "N/A"`** 였고
+ *   그 전부가 `region = null` 이었다. 그런데 같은 행의 지번주소(`lctnAddr`)엔 실제 주소가 있었다 —
+ *   **정보가 있는데 버린 것**이다. 게다가 카카오 전화 스윕은 `address != ''` 로 거르므로
+ *   `"N/A"` 가 통과해 **존재하지 않는 주소로 조회**를 날렸다(실측 47건 시도 0건 발견).
+ *
+ *   ⇒ 판정은 한 곳에서. 새 공공데이터 레인은 필드 추출 시 이걸 통과시켜라.
+ */
+const NO_VALUE = new Set(['n/a', 'na', 'n.a.', '-', '--', '없음', '해당없음', '미상', '알수없음', 'null', 'undefined', '.'])
+
+/** '값 없음'인가 — 공백/빈 문자열 + 포털이 쓰는 자리표시자 문자열. */
+export function isNoValue(raw: unknown): boolean {
+  const s = String(raw ?? '').trim().toLowerCase()
+  return !s || NO_VALUE.has(s)
+}
+
 /** 200 이지만 본문이 에러인 경우(포털은 200 + 에러코드를 자주 준다). 에러면 설명, 아니면 null. */
 export function describePublicDataBody(body: string): string | null {
   const code = findCode(body)

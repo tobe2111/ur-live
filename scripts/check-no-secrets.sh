@@ -72,8 +72,16 @@ for f in $staged; do
   [ -n "$m" ] && violations="$violations\n[$f] JWT_SECRET hardcoded:\n$m"
 
   # 패턴 5: Firebase service account private key
-  m=$(grep -nE "BEGIN RSA PRIVATE KEY|BEGIN PRIVATE KEY" "$f" 2>/dev/null || true)
-  [ -n "$m" ] && violations="$violations\n[$f] Private key PEM:\n$m"
+  #   ⚠️ 헤더 문자열만으로는 판정하지 않는다 — **PEM 을 파싱하는 코드**가 헤더를 리터럴로 갖는 건 정상이다
+  #   (`sheets-sync.ts` 의 `importPrivateKey` 가 매번 걸려 이 가드가 상시 RED 였다. 매번 우는 경고는
+  #   곧 [SKIP_SECRET_CHECK] 를 습관으로 만들고, 그러면 **진짜 유출도 같이 통과한다**).
+  #   진짜 키는 헤더 + **긴 base64 본문**을 함께 갖는다(수천 자). 둘 다 있을 때만 잡는다.
+  #   (본문만 있고 헤더가 없는 형태는 `check-secret-material.mjs` 가 확장자·경로 무관 전수로 본다.)
+  if grep -qE "BEGIN RSA PRIVATE KEY|BEGIN PRIVATE KEY" "$f" 2>/dev/null \
+     && grep -qE "^[A-Za-z0-9+/]{60,}={0,2}$|[A-Za-z0-9+/]{100,}" "$f" 2>/dev/null; then
+    m=$(grep -nE "BEGIN RSA PRIVATE KEY|BEGIN PRIVATE KEY" "$f" 2>/dev/null || true)
+    violations="$violations\n[$f] Private key PEM(헤더+base64 본문):\n$m"
+  fi
 
   # 패턴 6: AWS access key
   m=$(grep -nE "AKIA[0-9A-Z]{16}" "$f" 2>/dev/null || true)

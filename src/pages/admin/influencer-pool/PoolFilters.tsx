@@ -19,6 +19,8 @@ export interface PoolFiltersProps {
   catSource: string; setCatSource: (v: string) => void
   /** 📏 측정 여부 — 아직 한 번도 안 잰 리드는 연락처·본문분류가 통째로 비어 있다. */
   measured: string; setMeasured: (v: string) => void
+  /** 🚫 거부 표시된 리드만 — 자동 태깅(소개글의 '제안 사양합니다')의 오탐을 검수하는 창구. */
+  optedOutOnly: boolean; setOptedOutOnly: (v: boolean) => void
   tier: string; setTier: (v: string) => void
   sort: string; setSort: (v: string) => void
   hasEmail: boolean; setHasEmail: (v: boolean) => void
@@ -98,6 +100,10 @@ export default function PoolFilters(p: PoolFiltersProps) {
       </label>
       <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 bg-white cursor-pointer" title="브랜드/기업 공식 채널로 태깅된 리드만 — 오탐 검수용">
         <input type="checkbox" checked={p.brandOnly} onChange={e => { p.setBrandOnly(e.target.checked); if (e.target.checked) p.setHideNoise(false) }} /> 🏢 브랜드만
+      </label>
+      {/* 🚫 자동 거부 태깅은 오탐이 있을 수 있다(소개글 문구 기반). 골라볼 수 없으면 검수 자체가 불가능하다. */}
+      <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 bg-white cursor-pointer" title="소개글에 제안 거부가 명시돼 자동 제외된 리드만 — 오탐 검수용">
+        <input type="checkbox" checked={p.optedOutOnly} onChange={e => p.setOptedOutOnly(e.target.checked)} /> 🚫 거부 표시만
       </label>
       <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
         <input type="checkbox" checked={p.inboundOnly} onChange={e => p.setInboundOnly(e.target.checked)} /> 📥 신청·동의

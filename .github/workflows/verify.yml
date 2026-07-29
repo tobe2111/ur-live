@@ -151,6 +151,14 @@ jobs:
 
       # 🧮 2026-07-29: 유어애즈 수집 레인 격리. 인라인 ctx.waitUntil 로 붙은 레인은 한 인보케이션의
       #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
+      # 🕳️ 2026-07-29: 포털은 '값 없음'을 문자열 "N/A" 로 준다 — truthy 라 별칭 폴백이 앞 필드의 "N/A" 를
+      #   채택하고 뒤의 진짜 값을 건너뛴다. 실측: 통신판매 리드의 31.7% 가 주소 "N/A" + region null 이었고,
+      #   카카오 스윕은 `address != ''` 로 걸러 그 행들을 없는 주소로 조회했다(47건 시도 → 0건 발견).
+      #   ⚠️ 이 가드는 `a || b` 형태의 2항 폴백은 못 잡는다(구문이 흔해 오탐 없이 특정 불가).
+      - name: 공공데이터 '값 없음' 자리표시자 판정 (strict)
+        run: node scripts/check-public-data-sentinel.mjs -s
+        continue-on-error: false
+
       - name: 유어애즈 레인 격리 (strict)
         run: node scripts/check-ads-lane-isolation.mjs
       # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**

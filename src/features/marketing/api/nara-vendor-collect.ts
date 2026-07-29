@@ -11,7 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
 
 const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
@@ -19,7 +19,9 @@ const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
 const AGENCY_RE = /광고|마케팅|홍보|커뮤니케이션|미디어|디자인|이벤트|프로모션|콘텐츠|브랜딩|퍼포먼스|기획|판촉|인쇄/ // 2026-07-27 종합기획사 포집(아인종합기획형)
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawV = Record<string, unknown>
-const g = (it: RawV, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+// ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
+//   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
+const g = (it: RawV, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
 async function fetchVendorPage(base: string, op: string, key: string, page: number, bgnDt: string, endDt: string): Promise<{ items: RawV[]; msg?: string }> {

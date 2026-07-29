@@ -20,6 +20,27 @@
  *   대신 **기록 누락이 없다**(모아서 쓰면 waitUntil 이 먼저 끝나 유실될 수 있다).
  */
 import type { Env } from '../types/env'
+// 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
+import { findNeverFired, type NeverFiredEntry } from './cron-expected'
+
+/**
+ * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
+ *
+ *   원래 이 함수가 생긴 이유는 아래 `summarizeResult` 가 **24자 초과 문자열을 버렸기** 때문이다
+ *   (`Too many subrequests by single Worker invocation` = 47자 → 통째로 증발). 2026-07-29 에
+ *   ur-ads 4개 레인이 동시에 `ok:false` 로 죽었는데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
+ *
+ *   ⚠️ 같은 날 **그 24자 드롭 자체를 없앴다**(아래 ✂️ 주석 — 자르되 버리지 않는다). 그래도 이 함수는 유지한다:
+ *   원문을 남기는 것과 **정규화된 코드로 분류**하는 것은 다른 일이다. `limit`/`timeout` 은 다음 행동
+ *   (AIMD 감속 / 타임아웃 조정)을 바로 정해주고, 원문은 문구가 바뀌면 집계가 깨진다. 둘 다 남긴다.
+ */
+export function cronErrorCode(e: unknown): string {
+  const msg = String((e as { message?: string } | null)?.message || e || '')
+  if (/too many (subrequests|api requests)/i.test(msg)) return 'limit' // 예산 고갈 — AIMD 가 대응할 신호
+  const name = (e as { name?: string } | null)?.name
+  if (name === 'TimeoutError' || /timeout|aborted/i.test(msg)) return 'timeout'
+  return (name || 'Error').slice(0, 24)
+}
 
 /**
  * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·문자열만 추린다
@@ -216,6 +237,13 @@ export interface CronHealth {
   stale: CronStaleEntry[]
   /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
   missing: string[]
+  /**
+   * 🔴 **한 번도 안 뛴 cron 식** — 코드는 기대하는데 기록이 0인 것.
+   * `stale`(뛰다가 멈춤)과 **다른 사고**다: 트리거 미등록은 침묵이 아니라 **부재**라 기존 판정에
+   * 아예 안 잡혔다(2026-07-29 실사고 — 주간 정산 지급·백업이 한 번도 안 돌고 있었다).
+   * 오탐 방지로 **추적 창이 그 주기보다 길 때만** 채워진다.
+   */
+  never_fired: NeverFiredEntry[]
 }
 
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
@@ -242,6 +270,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
       last_finished_at: null, age_min: null,
     }],
     missing: [],
+    never_fired: [],
   })
   if (!beats.length) return empty(trackedMin < TOTAL_SILENCE_MIN)
 
@@ -260,6 +289,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
         max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
       }],
       missing: [],
+      never_fired: [],  // 전면 침묵이면 개별 부재는 노이즈 — 먼저 전체를 살려야 한다
     }
   }
 
@@ -277,12 +307,17 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
     }
   }
 
+  // 🔴 기대 목록 대조 — "뛰다가 멈춤"이 아니라 **한 번도 안 뜀**.
+  const neverFired = findNeverFired(beats.map(b => b.cron), trackedMin, expectedMaxAgeMinutes)
+
   return {
-    ok: stale.length === 0,
+    // 부재도 ok 를 깬다 — 이걸 ok 로 두면 2026-07-29 사고가 그대로 반복된다(초록불인데 지급이 안 나감).
+    ok: stale.length === 0 && neverFired.length === 0,
     bootstrapping: false,
     latest_heartbeat_at: newest?.at ?? null,
     latest_age_min: latestAge,
     stale,
     missing,
+    never_fired: neverFired,
   }
 }

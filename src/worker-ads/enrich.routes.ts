@@ -35,120 +35,89 @@ export function resolveEnrichRounds(raw: string | undefined, fallback = 12): num
 }
 
 /**
- * 🔁 라운드 체인 공통 실행부 — 드라이버 두 개(인플루언서·파트너풀)가 같은 규칙을 쓴다.
+ * 🔁 **즉시 응답 + self-chain 1라운드** — 두 세션의 진단을 하나로 합친 형태(2026-07-29).
  *
- *   규칙은 셋뿐이고, 셋 다 실측에서 나왔다:
- *   ① **순차** — 각 라운드가 `*_checked_at` 도장을 찍어야 다음 라운드가 다음 구간을 집는다.
- *      동시 실행하면 같은 행을 중복 조회하고 예산만 태운다(선점이 아니라 정렬+LIMIT 이라서).
- *   ② **실패 즉시 중단** — 남은 라운드를 헛돌리지 않는다. 다음 정각이 이어받는다.
- *   ③ **SELF 미바인딩(로컬)이면 1회 직접 실행** — 체인이 불가능한 환경에서 조용히 0라운드가 되지 않게.
- */
-async function runRoundChain(
-  env: { SELF?: { fetch: (r: Request) => Promise<Response> } },
-  path: string,
-  rounds: number,
-  local: () => Promise<unknown>,
-): Promise<{ done: number; error?: string }> {
-  let done = 0
-  for (let i = 0; i < rounds; i++) {
-    if (!env.SELF?.fetch) {
-      try { await local(); done++ } catch (err) { return { done, error: `local: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}` } }
-      break
-    }
-    try {
-      const r = await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
-      if (!r.ok) return { done, error: `round${i + 1}: HTTP ${r.status}` }
-      done++
-    } catch (err) {
-      return { done, error: `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}` }
-    }
-  }
-  return { done }
-}
-
-/**
- * 🔔 드라이버가 **자기 인보케이션에서 직접** 하트비트를 남긴다 (2026-07-29).
+ * ## 두 가지가 동시에 문제였다
+ * **(A) 부모의 수명**(#847 진단): `kick` 은 `await env.SELF.fetch(...)` 라 드라이버가 응답할 때까지
+ *   부모가 살아 있어야 한다. 07:00 틱 실측 — 발화한 8개는 전부 빠른 레인(D1 전용), 빠진 것은 전부
+ *   느린 레인(외부 크롤). 부모 수명이 천장이었다.
+ * **(B) 드라이버 인보케이션의 용량**(이 세션 진단): 라운드를 한 인보케이션에서 `for` 로 돌리자
+ *   20 계획 중 **1~2라운드**에서 멈췄다(총측정 08:00 +17 = 1라운드 · 09:00 +54 = 2라운드).
+ *   하트비트가 `ok` 였으니 취소가 아니라 **정상 반환** — 체인이 스스로 끊긴 것이다.
  *
- *   왜 부모(kick)의 기록만으로 부족한가: `kick` 은 체인 **응답을 기다린 뒤** 기록한다. 그래서
- *   *오래 걸리는 레인일수록 기록이 먼저 사라진다* — 부모가 예산/수명을 다 쓰면 하트비트 D1 쓰기조차 못 한다.
- *   라이브 증거: 07:00 에 인플루언서 수집·보강은 **실패 기록조차 없었고**, 31초짜리 `sweep-kakao-chain` 은
- *   레인이 실제로 돌았는데도(내부 기록 존재) 부모의 하트비트는 **한 번도 남은 적이 없다.**
- *   ⇒ 가장 관측이 필요한 레인이 가장 먼저 관측 밖으로 나가는 구조였다.
+ * (A)만 고치면 루프는 여전히 한 인보케이션 안이라 (B)가 남고, (B)만 고치면 depth 0 의 라운드를
+ * 부모가 기다려 (A)가 남는다. ⇒ **둘 다** 한다.
  *
- *   드라이버는 자기 예산이 있으므로 이 쓰기는 성사된다. 부모가 살아 있으면 부모 기록이 나중에 덮어쓰고
- *   (같은 이름·같은 진실), 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 기록이 남는다.**
- *   ⚠️ 이 보강이 있어야 메인 워커의 `cron-stale-watch` 가 이 레인의 정지를 알릴 수 있다
- *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
- */
-async function driverBeat(env: unknown, name: string, ok: boolean, ms: number, result?: unknown): Promise<void> {
-  try {
-    const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *', result)
-  } catch { /* 관측 실패가 작업을 막지 않는다 */ }
-}
-
-/** 드라이버 응답 — 한 라운드도 못 돌았으면 500 으로 알린다(kick 의 하트비트가 ok:false 로 기록해야 관측된다). */
-const driverJson = (c: { json: (b: unknown, s?: number) => Response }, r: { done: number; error?: string }, planned: number): Response =>
-  (!r.done && r.error)
-    ? c.json({ ok: false, rounds: r.done, planned, error: r.error }, 500)
-    : c.json({ ok: true, rounds: r.done, planned, ...(r.error ? { error: r.error } : {}) })
-
-
-/**
- * 🚀 라운드 체인을 **응답 뒤로** 돌린다 (2026-07-29 — #840 의 드라이버 격리를 한 걸음 더).
+ * ## 형태
+ * ① 핸들러는 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다 — (A) 해소).
+ * ② 라운드 작업은 이 인보케이션의 `waitUntil` 에서 돌고, 끝나면 **다음 라운드를 새 인보케이션으로**
+ *    spawn 한다 — 한 인보케이션이 N라운드를 이고 가지 않는다((B) 해소).
+ * ③ spawn 은 `waitUntil` 로 등록해 취소를 막되, **다음 depth 도 즉시 응답**하므로 이 대기는 찰나다
+ *    (중첩 await 가 체인 전체로 늘어지지 않는 이유 — 각 단계가 ACK 만 기다린다).
+ * ④ 하트비트는 depth 0 에서만 — 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다.
  *
- * ## 왜 (같은 날 실측)
- * #840 이 라운드를 드라이버로 옮겨 **부모의 서브리퀘스트 예산**은 지켰다. 그런데 부모의 `kick` 은
- * `await env.SELF.fetch(...)` 다 — **응답을 기다린다.** 드라이버가 체인을 다 돌고 응답하면
- * 부모는 그 12라운드(각 라운드가 외부 크롤) 내내 살아 있어야 한다. 즉 **수명은 여전히 묶여 있었다.**
- *
- * 07:00 틱 실측: 발화한 8개는 전부 **빠른 레인**(D1 전용), 빠진 것은 전부 **느린 레인**(외부 크롤).
- * `enrich_lane.last_run` 은 05:02 에서 멈춰 두 틱을 통째로 걸렀다 — 부모의 수명이 천장이었다.
- *
- * ## 처방
- * 드라이버가 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다). 체인은 드라이버 자기 인보케이션의
- * `waitUntil` 에서 돌고, 끝나면 `driverBeat` 로 결과를 남긴다 — **관측은 그대로**다.
- * (#840 의 driverBeat 이 여기서 진가를 낸다: 부모가 이미 떠나도 이 기록은 성사된다.)
- *
- * `executionCtx` 가 없으면(로컬/테스트) 기존처럼 동기 실행 — 동작 동일.
+ * ⚠️ 순차성 유지: 다음 라운드는 이번 **작업이 끝난 뒤** spawn 되므로 `perf_checked_at` 도장 이후에
+ *   다음 구간을 집는다(동시 실행 아님). 💥 실패하면 다음을 안 낳는다 — 다음 정각이 이어받는다.
+ * `executionCtx` 가 없으면(로컬/테스트) 동기 실행 — 동작 동일.
  */
 async function dispatchRoundChain(
   c: {
     env: Env
-    executionCtx?: { waitUntil(p: Promise<unknown>): void }
+    executionCtx?: { waitUntil: (p: Promise<unknown>) => void }
+    req: { query: (k: string) => string | undefined }
     json: (b: unknown, s?: number) => Response
   },
   beatName: string,
-  roundPath: string,
+  path: string,
   rounds: number,
   local: () => Promise<unknown>,
 ): Promise<Response> {
   const t0 = Date.now()
-  const work = async () => {
-    const r = await runRoundChain(c.env, roundPath, rounds, local)
-    /**
-     * 🔎 **몇 라운드를 왜 멈췄는지**를 하트비트에 남긴다 (2026-07-29 라이브 실측 후 추가).
-     *
-     * 그 전엔 `ok`/`ms` 만 남겨서, 10:00 틱이 `ok:true · ms:18,615` 로 기록됐다.
-     * 12라운드를 계획했는데 18.6초면 **한 라운드밖에 못 돈 것**인데(라운드 1회 실측 16초),
-     * `ok:true` 라 화면상 정상이었다 — 그리고 **왜 멈췄는지는 어디에도 없었다**
-     * (`runRoundChain` 은 첫 실패에서 원문 error 를 들고 돌아오는데 그걸 버리고 있었다).
-     *
-     * 이게 이 레포가 반복해 만난 형태다: 실패가 아니라 **조용한 부분 실행**.
-     * 처리량이 곧 품질인 파이프라인에서 "12 계획 → 1 실행"은 12배 손해인데 경보가 안 울린다.
-     * ⇒ `done/planned/error` 를 남겨 다음 틱이 **추측 없이** 원인을 말하게 한다.
-     */
-    const partial = r.done < rounds
-    await driverBeat(c.env, beatName, !(!r.done && r.error), Date.now() - t0,
-      { done: r.done, planned: rounds, ...(partial ? { partial: true } : {}), ...(r.error ? { error: r.error } : {}) })
-    return r
+  const raw = parseInt(c.req.query('depth') || '0', 10)
+  const depth = Number.isFinite(raw) && raw > 0 ? raw : 0
+  const env = c.env as unknown as { SELF?: { fetch: (r: Request) => Promise<Response> } }
+
+  const work = async (): Promise<{ chained: boolean; error?: string }> => {
+    let error: string | undefined
+    try { await local() } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
+    let chained = false
+    if (!error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
+      chained = true
+      // 다음 라운드는 **새 인보케이션**(새 예산). 다음 depth 도 즉시 응답하므로 이 대기는 찰나다.
+      c.executionCtx.waitUntil(
+        env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
+          .then(() => undefined).catch(() => undefined),
+      )
+    }
+    if (depth === 0) await driverBeat(c.env, beatName, Date.now() - t0, { chained, error }, rounds)
+    return { chained, error }
   }
+
   if (c.executionCtx?.waitUntil) {
     c.executionCtx.waitUntil(work())
     // 디스패치 성공만 알린다 — 실제 라운드 결과는 위 driverBeat 이 남긴다.
-    return c.json({ ok: true, dispatched: rounds, detached: true })
+    return c.json({ ok: true, dispatched: rounds, depth, detached: true })
   }
-  return driverJson(c, await work(), rounds)
+  const r = await work() // 로컬/테스트: 체인 불가 → 1라운드 동기 실행
+  return r.error ? c.json({ ok: false, depth, error: r.error }, 500) : c.json({ ok: true, depth, planned: rounds })
+}
+
+/**
+ * 🔔 **드라이버가 자기 인보케이션에서 하트비트를 남긴다**(depth 0 에서만).
+ *
+ *   왜 부모(kick)의 기록만으로 부족한가: 부모가 예산/수명을 다 쓰면 하트비트 D1 쓰기조차 못 한다 —
+ *   라이브 07:00 에 인플루언서 레인들이 **실패 기록조차 못 남겼다.** 여기서 쓰면 성사된다.
+ *   ⚠️ 이 보강이 있어야 메인 워커 `cron-stale-watch` 가 이 레인의 정지를 알린다
+ *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
+ *   📊 `planned/chained/error` 동봉 — "몇 라운드에서 왜 멈췄나"를 어드민 한 줄로 판정하기 위해
+ *      (이 환경은 wss 가 막혀 라이브 로그를 못 본다).
+ */
+async function driverBeat(env: unknown, name: string, ms: number, r: { chained: boolean; error?: string }, planned: number): Promise<void> {
+  try {
+    const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+    await recordCronBeat(env as never, `ads:${name}`, !r.error, ms, '0 * * * *',
+      { planned, chained: r.chained, ...(r.error ? { error: r.error.slice(0, 120) } : {}) })
+  } catch { /* 관측 실패가 작업을 막지 않는다 */ }
 }
 
 // 📝 보강 1라운드(블로거 활동성·연락처 + 링크인바이오 + YT 성과) — 수집과 **분리된 인보케이션**.
@@ -181,7 +150,7 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
-  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer-driver', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
   })
@@ -205,7 +174,7 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS, 8)
-  return dispatchRoundChain(c, 'enrich-company', '/__ads/enrich-company', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-company', '/__ads/enrich-company-driver', rounds, async () => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
   })
