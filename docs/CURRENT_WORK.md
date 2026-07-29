@@ -90,6 +90,14 @@ baseline 은 래칫 *상한*이라 작은 쪽을 고르면 병합 직후 CI 가 
 이미 `classified_v=3` 이 찍힌 행은 **영원히** 이 규칙을 못 받는다. 즉 **새 기관 규칙이 지금 사실상 죽어 있다**
 (신규 유입 행에만 적용). 07-27 에 이 방식을 도입한 이유가 바로 그 구멍을 막으려던 것이었다.
 
+**📊 라이브 실측 (2026-07-29 04:4x, 어드민 `/api/admin/partner-pool/stats`)** — 추측이 아니라 숫자다:
+- `stats.total` = **171,028** 건
+- `reclassify.run.remaining_unclassified` = **0** ← 재분류 레인이 **이미 한 바퀴를 끝냈다**
+  ⇒ 기존 풀 전량이 `classified_v = 3` 이고, 재검사 쿼리(`classified_v < 3`)는 **아무것도 안 잡는다**.
+- 따라서 `#818` 의 기관 규칙은 **171,028건 중 0건에 적용**된다. 신규 유입분(직전 실행 기준 하루 93건)에만 붙는다.
+- 참고 분포: `byLeadType` = partner 167,839 / unknown 2,451 / **org 738**, `byCategory` 지역조직 18.
+  구청·시청·주민센터류가 지금 `partner` 쪽에 섞여 있을 가능성이 큰데, 그걸 걸러내려던 게 그 규칙이었다.
+
 **조치**: `CLASSIFY_RULES_VERSION` 3 → 4.
 ⚠️ **단, 부작용을 알고 올릴 것** — bump 는 전량 재검사를 트리거하고, `reclassifyCompanyLeads` 의
 housekeeping 은 `ok=false`(공고·정부페이지) 로 판정된 **미큐레이션 행을 삭제**한다(대표가 손댄 행은 보류).
