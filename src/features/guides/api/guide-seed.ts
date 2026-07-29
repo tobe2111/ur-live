@@ -18,6 +18,8 @@
 import { AUTO_REFERENCE } from './auto-reference'
 import type { SeedSection } from './guide-seed-types'
 import { ADMIN_SEED } from './guide-seed-admin'
+// 🫀 2026-07-05: 자동 관측 체계 섹션 — guide-seed-admin.ts 는 file-size baseline 동결이라 별도 파일.
+import { ADMIN_OPS_SECTIONS } from './guide-seed-admin-ops'
 import { SELLER_SEED } from './guide-seed-seller'
 import { AGENCY_SEED } from './guide-seed-agency'
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 가이드 — admin 가이드에서 분리.
@@ -36,7 +38,7 @@ function autoRefSection(role: GuideRole): SeedSection {
 }
 
 export const GUIDE_SEEDS: Record<GuideRole, SeedSection[]> = {
-  admin: [...ADMIN_SEED, autoRefSection('admin')],
+  admin: [...ADMIN_SEED, ...ADMIN_OPS_SECTIONS, autoRefSection('admin')],
   seller: [...SELLER_SEED, autoRefSection('seller')],
   agency: [...AGENCY_SEED, autoRefSection('agency')],
   wholesale: [...WHOLESALE_SEED, autoRefSection('wholesale')],

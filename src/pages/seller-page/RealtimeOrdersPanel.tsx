@@ -5,6 +5,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ShoppingBag, RefreshCw, ArrowUpRight, Clock, CheckCircle2, Package, Truck, XCircle } from 'lucide-react'
+import { parseUTCDate } from '@/utils/date'
 import type { Order } from './types'
 
 const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -119,7 +120,8 @@ export default function RealtimeOrdersPanel({ recentOrders, newOrderIds, ordersR
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-gray-400">
-                      {new Date(order.created_at).toLocaleString(i18n.language, {
+                      {parseUTCDate(order.created_at).toLocaleString(i18n.language, {
+                        timeZone: 'Asia/Seoul',
                         month: 'numeric', day: 'numeric',
                         hour: '2-digit', minute: '2-digit'
                       })}

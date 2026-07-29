@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
+import { serviceKeyParam } from './public-data-diag'
 
 // 17개 시도교육청 코드(나이스 표준) — 커서가 이 순서로 순환.
 const NEIS_OFFICES: Array<[string, string]> = [
@@ -107,7 +108,7 @@ export async function runNeisAcademyCollect(env: Env, maxPages = 3): Promise<Nei
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
-    const url = `${NEIS_HUB}/${service}?KEY=${encodeURIComponent(key)}&Type=json&pIndex=${page}&pSize=1000&ATPT_OFCDC_SC_CODE=${officeCode}`
+    const url = `${NEIS_HUB}/${service}?KEY=${serviceKeyParam(key)}&Type=json&pIndex=${page}&pSize=1000&ATPT_OFCDC_SC_CODE=${officeCode}`
     // 실패 원인을 삼키지 않는다 — 원인 불명의 0건이 몇 주씩 방치되는 클래스(2026-07-28 전수점검).
     let res: Response | null = null
     let netMsg = '네트워크 오류'

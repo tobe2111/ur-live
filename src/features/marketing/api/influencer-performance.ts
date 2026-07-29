@@ -341,8 +341,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     category: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'naver_blog'
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
       ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
     rows = res?.results || []
   } catch (err) {

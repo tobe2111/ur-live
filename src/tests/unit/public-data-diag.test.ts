@@ -8,7 +8,7 @@
  *   본문이 유일한 ground truth 이고, 이 매핑이 그걸 행동으로 옮긴다.
  */
 import { describe, it, expect } from 'vitest'
-import { describePublicDataFailure, describePublicDataBody } from '@/features/marketing/api/public-data-diag'
+import { describePublicDataFailure, describePublicDataBody, serviceKeyParam } from '@/features/marketing/api/public-data-diag'
 
 const resp = (status: number, body: string) =>
   ({ status, text: async () => body }) as unknown as Response
@@ -55,5 +55,36 @@ describe('describePublicDataFailure — 원인별 조치 주체', () => {
   it('200 인데 본문이 에러인 경우도 잡는다(포털은 200+에러를 자주 준다)', () => {
     expect(describePublicDataBody('{"returnAuthMsg":"SERVICE_ACCESS_DENIED_ERROR"}')).toContain('승인')
     expect(describePublicDataBody('{"response":{"body":{"items":[]}}}')).toBeNull() // 정상 빈 결과는 에러 아님
+  })
+})
+
+describe('serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 와도 같은 결과', () => {
+  // data.go.kr 은 같은 키를 두 벌로 준다. Cloudflare 시크릿은 **쓰기 전용**이라 어느 쪽이 들어있는지
+  //   볼 수 없다 → 알아낼 필요가 없게 만든다. 이 동치가 그 계약이다.
+  const DECODED = 'abc+de/fg=='            // 디코딩 키 형태
+  const ENCODED = encodeURIComponent(DECODED) // 인코딩 키 형태(%2B %2F %3D)
+
+  it('🔒 두 형태가 **같은 쿼리 파라미터**로 수렴한다(이중 인코딩 없음)', () => {
+    expect(serviceKeyParam(DECODED)).toBe(serviceKeyParam(ENCODED))
+  })
+
+  it('결과는 한 번만 인코딩된 값 — 서버가 원문으로 되돌릴 수 있다', () => {
+    expect(decodeURIComponent(serviceKeyParam(ENCODED))).toBe(DECODED)
+    expect(decodeURIComponent(serviceKeyParam(DECODED))).toBe(DECODED)
+  })
+
+  it('멱등 — 이미 정규화된 값을 다시 넣어도 같다', () => {
+    const once = serviceKeyParam(ENCODED)
+    expect(serviceKeyParam(once)).toBe(once)
+  })
+
+  it('퍼센트가 깨져 있어도 던지지 않는다(원문 유지 → 최소한 예전 동작)', () => {
+    expect(() => serviceKeyParam('bad%ZZkey')).not.toThrow()
+    expect(serviceKeyParam('bad%ZZkey')).toBe(encodeURIComponent('bad%ZZkey'))
+  })
+
+  it('빈값은 빈 문자열', () => {
+    expect(serviceKeyParam(undefined)).toBe('')
+    expect(serviceKeyParam(null)).toBe('')
   })
 })

@@ -26,7 +26,7 @@ const ROUTE_FILES = ['src/worker-ads/index.ts', 'src/worker-ads/public-data.rout
 const strict = process.env.STRICT_COLLECTOR_CRON === '1'
 
 /** 진입점으로 볼 이름들 — 레인 하나를 통째로 도는 함수. 보조 헬퍼(enrichNaverActivity 등)는 대상 아님. */
-const ENTRY = /^(run[A-Za-z]*(Collect|Sweep|Enrich)|sweep[A-Z]\w*|match\w*Emails)$/
+const ENTRY = /^(run[A-Za-z]*(Collect|Sweep|Enrich|Backfill)|sweep[A-Z]\w*|match\w*Emails)$/
 
 function walk(dir, out = []) {
   let entries
@@ -65,6 +65,28 @@ for (const f of ROUTE_FILES) {
   })
 }
 
+// ── ② 독립 인보케이션 검사 — `scheduled()` 의 `ctx.waitUntil` 블록들은 **하나의 인보케이션을 공유**한다.
+//   수집 러너를 거기서 직접 await 하면 서로의 서브리퀘스트를 잡아먹는다. 라이브 실사고(2026-07-28):
+//   인허가(업종 16 × 페이지) + NEIS + 심평원 + 백필이 같은 인보케이션에 얹혀
+//   `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. → `kick(...)` 은 SELF fetch = **새 예산**이다.
+const shared = []
+{
+  const si2 = workerSrc.indexOf('scheduled(')
+  const body = si2 >= 0 ? workerSrc.slice(si2) : ''
+  const re = /ctx\.waitUntil\(\(async \(\) => \{/g
+  let m
+  while ((m = re.exec(body))) {
+    const end = body.indexOf('})())', m.index)
+    if (end < 0) break
+    const seg = body.slice(m.index, end + 5)
+    if (seg.includes('kick(') || seg.includes('SELF?.fetch') || seg.includes('SELF.fetch')) continue
+    for (const fn of seg.match(/\b(run[A-Za-z]*(?:Collect|Sweep|Backfill)|sweep[A-Z]\w*|match\w*Emails)\b/g) || []) {
+      if (/collector-cron-ok/.test(seg)) continue
+      if (!shared.includes(fn)) shared.push(fn)
+    }
+  }
+}
+
 const problems = []
 for (const dir of SCAN_DIRS) {
   for (const file of walk(dir)) {
@@ -84,8 +106,14 @@ for (const dir of SCAN_DIRS) {
   }
 }
 
+if (shared.length) {
+  console.log(`${strict ? '❌' : '⚠️'}  크론 인보케이션을 공유하는 수집 러너 ${shared.length}건: ${shared.join(', ')}`)
+  console.log('   → `ctx.waitUntil(직접 await)` 대신 `kick(\'/__ads/…\')` 로. kick 은 SELF fetch = 독립 인보케이션 = 새 예산.')
+  console.log('   (의도적이면 그 블록에 `collector-cron-ok` 주석)')
+  process.exit(strict ? 1 : 0)
+}
 if (!problems.length) {
-  console.log('✅ 수집·스윕 러너 전부 스케줄에 물려 있음.')
+  console.log('✅ 수집·스윕 러너 전부 스케줄에 물려 있고, 각자 독립 인보케이션에서 돈다.')
   process.exit(0)
 }
 console.log(`${strict ? '❌' : '⚠️'}  스케줄 없는 수집·스윕 러너 ${problems.length}건:`)

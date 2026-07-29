@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { formatKSTShort } from '@/utils/date'
 import { Link } from 'react-router-dom'
 import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
@@ -431,7 +432,7 @@ export default function AdminVoucherTransactionsPage() {
               ) : rows.map(r => (
                 <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-2 px-3 text-gray-900 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
+                    {formatKSTShort(r.created_at)}
                   </td>
                   <td className="py-2 px-3 text-gray-900">
                     <div className="font-medium">{r.user_name || `user ${r.user_id}`}</div>

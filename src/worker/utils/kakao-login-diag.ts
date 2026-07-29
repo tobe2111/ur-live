@@ -39,9 +39,15 @@ async function ensureDiagTable(DB: D1Database): Promise<void> {
   } catch { /* fail-soft — 진단 테이블 생성 실패해도 로그인 정상 */ }
   // 🩺 2026-06-20: 콜백 단계별 타이밍(ms) 컬럼 — 위 CREATE 에 포함(SSOT). 단,
   //   ms_* 컬럼 도입 *이전*에 만들어진 기존 prod 테이블에는 ALTER 로 보강(멱등, 이미 있으면 throw→무시).
-  for (const col of ['ms_total', 'ms_token', 'ms_userinfo', 'ms_db']) {
-    try { await DB.prepare(`ALTER TABLE kakao_login_diag ADD COLUMN ${col} INTEGER`).run(); }
-    catch { /* 컬럼 이미 존재 — 무시 */ }
+  //   ⚠️ 문자열 보간(`ADD COLUMN ${col}`) 대신 **정적 리터럴**로 편 이유: 보간형은
+  //   check-sql-column-exists 가 해석을 포기하고 건너뛴다(dynamic-skip). 정적이면 실제로 검사된다.
+  for (const stmt of [
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_total INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_token INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_userinfo INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_db INTEGER',
+  ]) {
+    try { await DB.prepare(stmt).run(); } catch { /* 컬럼 이미 존재 — 무시 */ }
   }
 }
 

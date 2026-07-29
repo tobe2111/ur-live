@@ -25,6 +25,8 @@ import { COMMISSION_DEFAULTS } from '@/shared/constants/policy';
 const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT;
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { requireAdminRole } from '@/worker/middleware/auth';
+// 🛡️ 2026-07-27: 워커 TZ=UTC — CSV 정산 시각을 KST SSOT 로 표기(한국어 포맷의 UTC 시각 방지).
+import { formatKST } from '@/utils/date';
 // 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 정산 실행/일괄완료(돈 액션) require2FA — 옵트인
 //   (2FA 미등록 관리자는 no-op 통과, 등록 시 X-2FA-Code 헤더 필수). 핸들러 본문 불변.
 import { require2FA } from '@/worker/middleware/require-2fa';
@@ -371,8 +373,8 @@ adminSettlementsRoutes.get('/settlement/export-csv', cors(), async (c) => {
       r.commission_amount,
       r.seller_amount,
       r.settlement_status === 'completed' ? '완료' : '대기',
-      r.settled_at ? new Date(r.settled_at).toLocaleString('ko-KR') : '-',
-      new Date(r.created_at).toLocaleString('ko-KR'),
+      r.settled_at ? formatKST(r.settled_at) : '-',
+      formatKST(r.created_at),
     ]);
 
     const csvContent = [headers, ...rows]
