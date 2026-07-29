@@ -34,7 +34,8 @@ const STATS_KEY = 'ads_prospect_enrich_stats'
 /** 보류 없이 active 매장 후보의 이메일/홈페이지/전화를 예산 내에서 채운다. 신규개업·홈페이지보유 우선. */
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
   const DB = env.DB
-  await ensureProspectSchema(DB)
+  // 스키마 DDL 실비도 예산에서 차감(localdata 와 동일 — store-prospects 주석 참조).
+  const schemaSpent = await ensureProspectSchema(DB)
   const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -58,6 +59,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const budget: FetchBudget = { left: budgetTotal, deadline: t0 + deadlineMs }
   let d1 = 0
   const spendD1 = (n = 1) => { budget.left -= n; d1 += n }
+  budget.left -= schemaSpent
   spendD1() // 위 boot SELECT
   if (await foldEnrichRollup(DB, PROSPECT_ROLLUP_KEY, bootVal(STATS_KEY), bootVal(PROSPECT_ROLLUP_KEY))) spendD1()
   const runId = (globalThis.crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)

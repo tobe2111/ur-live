@@ -22,8 +22,8 @@ const CURSOR_S = 'ads_mxsweep_cursor_s' // store_prospects id 커서
 
 export async function sweepEmailMx(env: Env): Promise<MxSweepStats> {
   const DB = env.DB
-  await ensureCompanySchema(DB)
-  await ensureProspectSchema(DB)
+  // 스키마 DDL 실비를 예산에서 뺀다(2026-07-29) — 안 빼면 우리 계수와 플랫폼 계수가 갈라진다.
+  const schemaSpent = (await ensureCompanySchema(DB)) + (await ensureProspectSchema(DB))
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: MxSweepStats | null = null
@@ -37,7 +37,7 @@ export async function sweepEmailMx(env: Env): Promise<MxSweepStats> {
   // DoH 예산(커스텀 도메인만 소모 — 유명 도메인은 무료 통과). 행 상한과 별개.
   // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
   //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석(기본 60·근거) 참조.
-  const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || '', 10) || 80)) }
+  const budget: FetchBudget = { left: Math.max(1, Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || '', 10) || 80)) - schemaSpent) }
   let checked = 0, removed = 0
 
   // ── ① 회사 리드 — 이메일 보유 행 커서 순회 ──

@@ -201,7 +201,9 @@ function resolveEndpoints(env: Env): Record<string, string> {
 /** 인허가 변동분 1틱(cron 일1회 또는 수동). 전일 변동분 × 업종별 엔드포인트 × 페이지네이션. */
 export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const DB = env.DB
-  await ensureProspectSchema(DB)
+  // 🧾 스키마 DDL 비용도 예산에서 뺀다(2026-07-29) — 안 빼면 우리 계수(40)와 플랫폼 계수(49)가
+  //   갈라져 그 차이만큼 조용히 죽는다. 이 레인이 total_saved:0 이던 잔여 원인.
+  const schemaSpent = await ensureProspectSchema(DB)
   const now = new Date()
   const stamp = now.toISOString().slice(0, 19).replace('T', ' ')
   const todayYmd = ymd(now)
@@ -222,6 +224,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const MAX_PAGES = Math.max(1, parseInt((env as unknown as { ADS_LOCALDATA_MAX_PAGES?: string }).ADS_LOCALDATA_MAX_PAGES || '', 10) || 6)
   const { budget, envBudget, learnedCap, total: budgetTotal } = await resolveLocalDataBudget(env)
   const spendD1 = () => { budget.left -= 1 } // D1 도 같은 지갑에서 지불(분모를 진실로)
+  budget.left -= schemaSpent // 스키마 DDL 실비(위 주석)
   spendD1() // 위 prev 조회
   let found = 0, saved = 0, closed = 0
   let sample: unknown; let lastMsg: string | undefined
@@ -316,7 +319,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
   const DB = env.DB
   const windowDays = Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0)
   if (!windowDays) return { enabled: false, done: true, days: [], found: 0, saved: 0 }
-  await ensureProspectSchema(DB)
+  const schemaSpent = await ensureProspectSchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
   const key = (env as unknown as { ADS_LOCALDATA_SERVICE_KEY?: string }).ADS_LOCALDATA_SERVICE_KEY || env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
   if (!key) return { enabled: true, done: false, days: [], found: 0, saved: 0 }
   const base = (env as unknown as { ADS_LOCALDATA_ENDPOINT?: string }).ADS_LOCALDATA_ENDPOINT || LOCALDATA_BASE
@@ -331,6 +334,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
   // 🧮 2026-07-29: 이 레인이 가장 폭발적이었다 — maxDaysPerRun(2) × 16업종 × 6페이지 = **최대 192 fetch** 를
   //   매시간 인라인으로 쏟아부어, 같은 인보케이션의 다른 작업(시트 미러 등)까지 굶겼다. 예산 + 업종 커서로 제한.
   const { budget, envBudget, learnedCap, total: budgetTotal } = await resolveLocalDataBudget(env)
+  budget.left -= schemaSpent // 스키마 DDL 실비(위 주석) — 안 빼면 이 레인도 조용히 천장을 넘는다
   const spendD1 = () => { budget.left -= 1 }
   spendD1() // 위 커서 조회
   const idxRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(BF_IDX_KEY).first<{ value: string }>().catch(() => null)

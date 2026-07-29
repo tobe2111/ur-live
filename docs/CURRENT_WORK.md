@@ -5413,9 +5413,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 49건 · 최신순 · 이 목록은 자동 생성된다._
+_총 50건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
+- [스키마 DDL 비용이 어느 예산에도 안 잡혀 있었다 — `partial:true` 조기 사망의 실체](handoff/2026-07-29-schema-cost-uncounted.md)
 - [✅ 2026-07-29 — 가드를 지키는 가드: "검사가 안 도는" 클래스 박제 (대표 "개선점 더 찾아")](handoff/2026-07-29-note.md)
 - [✅ 2026-07-29 — **열린 PR 20건 일괄 정리 + 병합 마찰 제거 가드 2종** (대표 "PR 정리 계속 / 더 개선점")](handoff/2026-07-29-note-2.md)
 - [🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**](handoff/2026-07-29-cron-no-op-staging.md)

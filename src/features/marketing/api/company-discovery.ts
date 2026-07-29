@@ -82,8 +82,18 @@ const SELECT_COLS = 'id, company_key, company_name, category, subcategory, tier,
 
 /* ── 스키마 (런타임 보장 — ur-ads 는 CI 마이그레이션 미작동, repair-schema 패턴) ─────── */
 const _schemaDone = new WeakSet<object>()
-export async function ensureCompanySchema(DB: D1Database): Promise<void> {
-  if (_schemaDone.has(DB)) return
+/**
+ * 스키마 보장. @returns **이번 호출이 실제로 쓴 D1 쿼리 수**(이미 보장돼 있으면 0).
+ *
+ *   ⚠️ 2026-07-29: 여기서 **35개**의 DDL 이 돈다. 그 비용이 **어느 레인의 예산에도 안 잡혀 있었다.**
+ *   무료 플랜 인보케이션 천장이 50~60 인데, 콜드 격리에서 보강 레인은 예산 60 을 세면서 실제로는
+ *   60+35=95 를 쓴다 → 라운드가 **잡을 예외도 없이** 중간에 죽는다. `partial:true` 로만 남고
+ *   `limit_hit:false` 이던 그 미해결 증상의 유력한 실체다(학습 상한이 172 까지 드리프트한 이유이기도 하다:
+ *   라운드가 `nextSubreqCap` 에 도달하지 못하니 하향이 한 번도 안 걸렸다).
+ *   ⇒ 호출부가 예산에서 뺄 수 있게 실비를 돌려준다. 세지 않으면 "우리 계수"와 "플랫폼 계수"가 갈라진다.
+ */
+export async function ensureCompanySchema(DB: D1Database): Promise<number> {
+  if (_schemaDone.has(DB)) return 0
   _schemaDone.add(DB)
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_company_leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -218,6 +228,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
     for (const [sql, binds] of remap) await DB.prepare(sql).bind(...binds).run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_cat_v3', '1')").run().catch(() => null)
   }
+  return 35 // 위 DDL 35개(각각 서브리퀘스트 1) — 호출부가 예산에서 뺀다
 }
 
 /** 중복 차단 키 — **사업자등록번호(10자리) 최우선**(같은 업체가 여러 소스/서비스에서 와도 1행 —

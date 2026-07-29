@@ -80,9 +80,20 @@ export interface StoreProspectRow extends StoreProspect {
 const SELECT_COLS = 'id, opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, email, website, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, status, active, is_new_open, memo, contact_channel, follow_up_at, collected_at, last_verified_at'
 
 const _schemaDone = new WeakSet<object>()
-export async function ensureProspectSchema(DB: D1Database): Promise<void> {
-  if (_schemaDone.has(DB)) return
+/**
+ * 스키마 보장. @returns **이번 호출이 실제로 쓴 D1 쿼리 수**(이미 보장돼 있으면 0).
+ *
+ *   ⚠️ 2026-07-29: 이 함수는 DDL 을 **9개** 실행하는데 그 비용이 **어느 레인의 예산에도 안 잡혔다.**
+ *   인허가 레인은 자기 예산을 40 으로 세면서 실제로는 40+9=49 를 썼고, 무료 플랜 인보케이션 천장이
+ *   그 언저리라 매번 `⛔ 플랫폼 요청한도 도달` 로 죽으며 **total_saved: 0** 이었다.
+ *   (같은 클래스를 회사 키워드 시드에서 이미 한 번 고쳤다 — 부기 비용을 예산에서 빼지 않으면
+ *    "우리가 세는 숫자"와 "플랫폼이 세는 숫자"가 갈라지고, 그 차이만큼 조용히 죽는다.)
+ *   ⇒ 호출부가 예산에서 뺄 수 있게 실제 비용을 돌려준다.
+ */
+export async function ensureProspectSchema(DB: D1Database): Promise<number> {
+  if (_schemaDone.has(DB)) return 0
   _schemaDone.add(DB)
+  let spent = 0
   await DB.prepare(`CREATE TABLE IF NOT EXISTS store_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     opn_svc_id TEXT NOT NULL,
@@ -125,6 +136,8 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)').run().catch(() => null)
+  spent += 9 // 위 DDL 9개(각각 서브리퀘스트 1)
+  return spent
 }
 
 /** 영업상태구분코드 → active(01 영업중만 1). */
