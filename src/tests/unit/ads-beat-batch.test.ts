@@ -16,7 +16,7 @@ const beat = (name: string): PendingBeat => ({ name, ok: true, ms: 1 })
 
 describe('하트비트 일괄 쓰기', () => {
   it('임계치 전에는 **쓰지 않는다**(그게 절약의 전부다)', async () => {
-    const write = vi.fn(async () => {})
+    const write = vi.fn(async (_list: PendingBeat[]) => {})
     const b = createBeatBatch(write, 10)
     for (let i = 0; i < 9; i++) b.add(beat(`a${i}`))
     expect(write).not.toHaveBeenCalled()
@@ -24,7 +24,7 @@ describe('하트비트 일괄 쓰기', () => {
   })
 
   it('임계치에 닿으면 **한 번에** 내보낸다 — N건이 쓰기 1회', async () => {
-    const write = vi.fn(async () => {})
+    const write = vi.fn(async (_list: PendingBeat[]) => {})
     const b = createBeatBatch(write, 10)
     for (let i = 0; i < 10; i++) b.add(beat(`a${i}`))
     await b.flush()
@@ -41,7 +41,7 @@ describe('하트비트 일괄 쓰기', () => {
   })
 
   it('20건 + flush = 쓰기 2회(중간 1 + 마지막 1) — 손실이 임계치 단위로 묶인다', async () => {
-    const write = vi.fn(async () => {})
+    const write = vi.fn(async (_list: PendingBeat[]) => {})
     const b = createBeatBatch(write, 10)
     for (let i = 0; i < 20; i++) b.add(beat(`a${i}`))
     await b.flush()
@@ -49,7 +49,7 @@ describe('하트비트 일괄 쓰기', () => {
   })
 
   it('빈 상태에서 flush 하면 아무것도 쓰지 않는다(빈 배치로 서브리퀘스트를 낭비하지 않는다)', async () => {
-    const write = vi.fn(async () => {})
+    const write = vi.fn(async (_list: PendingBeat[]) => {})
     await createBeatBatch(write).flush()
     expect(write).not.toHaveBeenCalled()
   })
