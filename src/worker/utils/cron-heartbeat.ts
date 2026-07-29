@@ -33,6 +33,12 @@ export async function recordCronBeat(
   name: string,
   ok: boolean,
   ms: number,
+  /**
+   * 이번 실행을 유발한 cron 식(`event.cron`). **기대 주기를 손으로 관리하는 표를 만들지 않기 위해**
+   * 여기 함께 기록한다 — 68개짜리 수동 표는 금방 낡아 오탐/누락을 만든다.
+   * 경보(cron-stale-watch)가 이 값으로 "얼마나 안 돌면 이상한가"를 스스로 계산한다.
+   */
+  cronExpr?: string,
 ): Promise<void> {
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
@@ -41,6 +47,7 @@ export async function recordCronBeat(
       at: new Date().toISOString(),
       ok,
       ms: Math.max(0, Math.round(ms)),
+      ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
     }).slice(0, MAX_VALUE)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(`cron_hb:${name.slice(0, 80)}`, value)
@@ -55,6 +62,32 @@ export interface CronHeartbeat {
   ms: number | null
   /** 마지막 실행 이후 경과(분). 오래될수록 '멈춤' 의심. */
   age_minutes: number | null
+  /** 실행을 유발한 cron 식(있으면). 기대 주기 계산에 쓴다. */
+  cron?: string | null
+  /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
+  stale?: boolean | null
+}
+
+/**
+ * cron 식으로부터 **"이 시간을 넘기면 이상하다"** 기준(분)을 계산한다. 순수함수 — 테스트 가능.
+ *
+ * 넉넉하게 잡는다(기대주기 × 2 + 30분 여유): 배포·재시도·지연으로 한두 번 밀리는 것까지
+ * 경보로 올리면 곧 아무도 안 본다. "확실히 이상한 것만" 울리는 게 목적이다.
+ * 해석 불가한 식은 null → **경보하지 않는다**(모르면 조용히 있는 편이 오탐보다 낫다).
+ */
+export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
+  if (!cronExpr || typeof cronExpr !== 'string') return null
+  const f = cronExpr.trim().split(/\s+/)
+  if (f.length !== 5) return null
+  const [min, hour, dom, , dow] = f
+  let base: number
+  const everyN = /^\*\/(\d{1,3})$/.exec(min || '')
+  if (everyN && hour === '*') base = Math.max(1, Number(everyN[1]))
+  else if (hour === '*') base = 60              // 매시 (분 고정)
+  else if (dow !== '*') base = 60 * 24 * 7      // 주간
+  else if (dom !== '*') base = 60 * 24 * 31     // 월간
+  else base = 60 * 24                           // 매일
+  return base * 2 + 30
 }
 
 /** 어드민 조회용 — 오래된 것부터. 실패해도 빈 배열(화면이 죽지 않게). */
@@ -65,16 +98,20 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     ).all<{ key: string; value: string }>()
     const now = Date.now()
     const rows = (results || []).map((r) => {
-      let at: string | null = null, ok: boolean | null = null, ms: number | null = null
+      let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null
       try {
-        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number }
-        at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null; ms = typeof v.ms === 'number' ? v.ms : null
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string }
+        at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
+        ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null
       } catch { /* 깨진 값은 null 로 */ }
       const t = at ? Date.parse(at) : NaN
+      const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
+      const limit = expectedMaxAgeMinutes(cron)
       return {
         name: r.key.slice('cron_hb:'.length),
-        at, ok, ms,
-        age_minutes: Number.isFinite(t) ? Math.round((now - t) / 60000) : null,
+        at, ok, ms, cron,
+        age_minutes: age,
+        stale: (limit != null && age != null) ? age > limit : null,
       }
     })
     // 오래된 것 먼저 = 멈췄을 가능성이 높은 것 먼저.

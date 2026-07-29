@@ -122,7 +122,7 @@ export async function handleCronScheduled(
       await notifyCronFailure(env, name, err);
     } finally {
       // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
-      await recordCronBeat(env, name, ok, Date.now() - t0);
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron);
     }
   };
 
@@ -171,6 +171,13 @@ export async function handleCronScheduled(
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
+    // 🚨 2026-07-28: cron 멈춤 감시 — 하트비트가 '보이게' 했다면 이건 '알려준다'.
+    //   기대 주기는 하트비트에 저장된 cron 식으로 스스로 계산(수동 주기표 없음). 12시간 재알림 억제.
+    //   ⚠️ 자기 자신이 멈추면 못 알린다(watchdog 한계) — 그 경우는 외부 uptime 관측이 잡는다.
+    ctx.waitUntil(safeCron('cron-stale-watch', async () => {
+      const { handleCronStaleWatch } = await import('./cron/cron-stale-watch');
+      await handleCronStaleWatch(env);
+    }));
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
     // 📰 2026-07-19 (운영 자동화 ①): 어드민 일일 다이제스트 — hourly 슬롯에서 UTC 22시(KST 07:00)만
     //   실행(내부 게이트 + 같은 KST 날짜 멱등). read-only 집계 → 벨+Discord(+설정 시 메일/알림톡).
