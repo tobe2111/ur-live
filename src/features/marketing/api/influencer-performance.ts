@@ -85,6 +85,25 @@ export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
+/**
+ * ⏱️ **이 단계가 쓸 시간이 끝났는가** — 예산(`budget.left`)과 **독립**인 두 번째 정지 조건.
+ *
+ * ## 왜 이게 따로 필요한가 (2026-07-29, 배포와 안 겹친 첫 클린 틱)
+ * 보강 레인은 앞 단계(유튜브)에 **사전 마감**을 씌워 뒤에 선 블로거 레인의 시간 바닥을 보장한다
+ * (`frontStageDeadline`, 기본 40%). 그런데 그 바닥이 실측에서 전혀 듣지 않았다:
+ * ```
+ *   14:00 틱 — 창 20,000ms · 앞 단계 사전 마감 12,000ms
+ *   결과: elapsed 28,095ms · naver { selected: 12, tried: 0 } · spent 19/45
+ * ```
+ * 원인은 단순하다 — **바닥은 '마감'인데, 그 마감을 앞 단계가 한 번도 읽지 않았다.** 이 함수의 세 루프는
+ * `budget.left` 만 보고 `budget.deadline` 은 안 봤다. 그래서 fetch 타임아웃 10s × 채널 수가 그대로
+ * 창을 넘겼고, 블로거는 매 회차 **선택만 하고 한 명도 못 재고** 반환했다(예산은 26 이나 남긴 채).
+ *
+ * ⚠️ 시간으로 멈춘 건은 **예산으로 멈춘 건과 같은 취급**(`budgetSkipped`)이다 — 스탬프를 찍으면
+ *    "측정했더니 0" 으로 각인돼 다음 순환에서 재선택 대상에서 빠진다(이 파일이 반복해 지켜온 불변식).
+ */
+const outOfTime = (b: FetchBudget): boolean => !!b.deadline && Date.now() >= b.deadline
+
 /** 🎯 YouTube topicDetails(구글 자체 주제분류, Wikipedia URL)를 우리 카테고리로 매핑 — 텍스트 파싱보다 신뢰도↑.
  *  구체적 주제 먼저. 없거나 매핑 불가면 null(호출부가 기존 category 유지). part=topicDetails 는 추가 쿼터 0. */
 export function topicToCategory(topicUrls: string[] | undefined): string | null {
@@ -107,7 +126,8 @@ export function topicToCategory(topicUrls: string[] | undefined): string | null 
 export async function enrichYouTubePerformance(
   apiKey: string | undefined, DB: D1Database, budget: FetchBudget, max: number, mode: 'progress' | 'refresh' = 'progress',
 ): Promise<number> {
-  if (!apiKey || max <= 0 || budget.left <= 3) return 0
+  // ⏱️ 시간이 이미 지났으면 **아무것도 하지 않는다** — D1/DDL 도 서브리퀘스트다(레인 예산과 같은 지갑).
+  if (!apiKey || max <= 0 || budget.left <= 3 || outOfTime(budget)) return 0
   await ensurePerfExtraColumns(DB) // channel_published_at 참조(백필 조건) 전 보강
   // 선택 대상 — progress(cron): perf 미수집 채널을 구독자 많은 순(pub_checked_at 로 자기종료: 좀비채널도 1회 후 재선택 X).
   //   refresh(수동 라이브 재조회): 이미 수집됐어도 **개인메일이 아직 없는 채널**(NULL·대행사)을 오래된 조회순으로 재선택
@@ -156,7 +176,9 @@ export async function enrichYouTubePerformance(
   for (const r of rows) {
     const pl = uploads.get(r.channel_id)
     if (!pl) { videoIdsByLead.set(r.id, []); continue }                 // 업로드 재생목록 없음 = 실제로 영상 0 → avg 0 이 정답
-    if (budget.left <= 2) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue } // 예산 소진 — perf 보류
+    // ⏱️ 예산 **또는 시간** 소진 — perf 보류(0 각인 금지). 시간을 안 보면 아래 10s 타임아웃 × 채널 수가
+    //   그대로 창을 넘겨, 뒤에 선 블로거 레인이 통째로 굶는다(2026-07-29 14:00 클린 틱 실측).
+    if (budget.left <= 2 || outOfTime(budget)) { videoIdsByLead.set(r.id, []); budgetSkipped.add(r.id); continue }
     budget.left--
     const piRes = await fetch(`${YT_BASE}/playlistItems?part=contentDetails&playlistId=${pl}&maxResults=10&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
@@ -170,7 +192,7 @@ export async function enrichYouTubePerformance(
   //   📈 part 에 contentDetails 추가(=영상 길이) — 같은 1 unit 이라 쿼터 비용 증가 0. 쇼츠/롱폼 구분에 사용.
   const allIds = Array.from(videoIdsByLead.values()).flat()
   const stats = new Map<string, { views: number; comments: number; durationSec: number }>()
-  for (let i = 0; i < allIds.length && budget.left > 0; i += 50) {
+  for (let i = 0; i < allIds.length && budget.left > 0 && !outOfTime(budget); i += 50) {
     budget.left--
     const vRes = await fetch(`${YT_BASE}/videos?part=statistics,contentDetails&id=${allIds.slice(i, i + 50).join(',')}&maxResults=50&key=${apiKey}`,
       { signal: AbortSignal.timeout(10000) }).catch(() => null)
