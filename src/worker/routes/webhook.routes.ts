@@ -613,7 +613,7 @@ async function handlePaymentConfirmed(
     }
   }
 
-  // 🔐 2026-06-11 [UNLOCK] (사용자 승인 — 머니 감사 Med-C): 커미션 적립 (벤더사/영입자/공급자).
+  // 🔐 2026-06-11 [UNLOCK] (사용자 승인 — 머니 감사 Med-C): 커미션 적립 (에이전시/영입자/공급자).
   //   /confirm 에만 있던 적립을 webhook 확정 경로에도 추가 — 브라우저가 confirm 못 보내고 webhook
   //   만 도착해도 커미션 누락 없음. 3종 모두 order_id 멱등 → /confirm 과 둘 다 와도 안전(이중적립 X).
   if (DB && result.confirmed > 0) {

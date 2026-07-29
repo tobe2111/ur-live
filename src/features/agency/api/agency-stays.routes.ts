@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-18: 숙소 공구 벤더사 — 담당 셀러들의 숙소 모니터링 (PR 1 Foundation).
+ * 🛡️ 2026-05-18: 숙소 공구 에이전시 — 담당 셀러들의 숙소 모니터링 (PR 1 Foundation).
  *
  *   - GET /agency/stays                   — 담당 셀러들 숙소 목록 + KPI
  *   - GET /agency/stays/bookings          — 담당 셀러들 예약

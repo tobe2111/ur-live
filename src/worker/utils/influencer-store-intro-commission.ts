@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-06-01 영입자(크리에이터) 매장 영입 commission.
  *
- * 벤더사 입점 commission(agency-store-intro-commission.ts)의 인플루언서 버전.
+ * 에이전시 입점 commission(agency-store-intro-commission.ts)의 인플루언서 버전.
  * 크리에이터가 매장을 영입(seller_prospects → sellers.introduced_by_influencer_id)하면,
  * 그 매장의 매 결제마다 영입자에게 매출의 N%(platform_settings.influencer_store_intro_pct, default 1.5%)를 적립.
  *

@@ -92,7 +92,7 @@ smokeTestRoutes.get('/api/_internal/smoke-test', requireAdmin(), async (c) => {
     { cat: 'admin', path: '/api/admin/blog', method: 'GET' },
     { cat: 'admin', path: '/api/admin/agencies', method: 'GET' },
 
-    // ── 벤더사 대시보드 ──────────────────────────────
+    // ── 에이전시 대시보드 ──────────────────────────────
     { cat: 'agency', path: '/api/agency/me', method: 'GET' },
     { cat: 'agency', path: '/api/agency/sellers', method: 'GET' },
     { cat: 'agency', path: '/api/agency/analytics/summary', method: 'GET' },

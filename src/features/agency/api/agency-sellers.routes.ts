@@ -158,7 +158,7 @@ app.get('/streams', async (c) => {
   return c.json({ success: true, data: streams.results })
 })
 
-// ── GET /settlements — 소속 셀러 정산 통합 (벤더사 수수료 포함) ──
+// ── GET /settlements — 소속 셀러 정산 통합 (에이전시 수수료 포함) ──
 // 🛡️ 2026-04-28 TD-006 (split): /settlements*, /settlement-invoices* →
 //   src/features/agency/api/agency-settlements.routes.ts
 

@@ -92,7 +92,7 @@ export default function AboutPage() {
                   to="/agency/login"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#121212] font-bold text-sm lg:text-base transition-colors"
                 >
-                  벤더사 가입
+                  에이전시 가입
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
@@ -132,7 +132,7 @@ export default function AboutPage() {
             />
             <ValueCard
               icon={<Users className="w-6 h-6" />}
-              tag="벤더사"
+              tag="에이전시"
               title="소속 관리 + 정산"
               desc="담당 셀러·매장의 공구/주문/정산을 한 화면에서 통합 관리."
               color="emerald"
@@ -212,10 +212,10 @@ export default function AboutPage() {
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-4. 벤더사 매칭 — 영업 없이 협업" icon={<Bot className="w-5 h-5" />}>
+            <SubBlock title="2-4. 에이전시 매칭 — 영업 없이 협업" icon={<Bot className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
-                <li>· 카테고리/규모/지역 기반 벤더사 매칭 추천</li>
-                <li>· 공구 운영이 어려우면 검증된 벤더사가 등록·관리 대행</li>
+                <li>· 카테고리/규모/지역 기반 에이전시 매칭 추천</li>
+                <li>· 공구 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
               </ul>
             </SubBlock>
 
@@ -242,8 +242,8 @@ export default function AboutPage() {
           </div>
         </Section>
 
-        {/* ========== 벤더사 기대효과 ========== */}
-        <Section id="agency" title="벤더사 (MCN) 기대효과" subtitle="왜 유어딜에서 셀러를 키우는가" tone="purple">
+        {/* ========== 에이전시 기대효과 ========== */}
+        <Section id="agency" title="에이전시 (MCN) 기대효과" subtitle="왜 유어딜에서 셀러를 키우는가" tone="purple">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FeatureCard
               icon={<Users className="w-5 h-5" />}
@@ -263,12 +263,12 @@ export default function AboutPage() {
             <FeatureCard
               icon={<Star className="w-5 h-5" />}
               title="그룹 인센티브"
-              desc="벤더사 전체 목표 매출 달성 시 추가 수수료 환급. 멤버 동기부여 → 자연 그로스 룹."
+              desc="에이전시 전체 목표 매출 달성 시 추가 수수료 환급. 멤버 동기부여 → 자연 그로스 룹."
             />
             <FeatureCard
               icon={<Bot className="w-5 h-5" />}
               title="AI 셀러 매칭 — 영입 자동화"
-              desc="유어딜에 가입한 미소속 셀러 중 벤더사 카테고리/규모 적합 셀러 추천. 영업 자동화 → MCN 인력 비용 절감."
+              desc="유어딜에 가입한 미소속 셀러 중 에이전시 카테고리/규모 적합 셀러 추천. 영업 자동화 → MCN 인력 비용 절감."
             />
             <FeatureCard
               icon={<Wallet className="w-5 h-5" />}
@@ -329,10 +329,10 @@ export default function AboutPage() {
               { icon: <Wallet className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
               { icon: <Sparkles className="w-5 h-5" />, title: '크리에이터 링크샵', desc: '공구·교환권을 핀해 공유. 친구 초대 보너스 + 매장 영입 수익.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
-              { icon: <Users className="w-5 h-5" />, title: '벤더사 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
+              { icon: <Users className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
               { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
               { icon: <MapPin className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
-              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔벤더사 매칭, 사용자↔공구 추천 피드.' },
+              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔공구 추천 피드.' },
             ].map((f, i) => (
               <div
                 key={i}
@@ -414,12 +414,12 @@ export default function AboutPage() {
               ]}
             />
             <FitCard
-              title="벤더사 (MCN)"
+              title="에이전시 (MCN)"
               icon={<Users className="w-5 h-5" />}
               items={[
                 '크리에이터 5명 이상 보유',
                 '커머스 전환 본격 시도하는 기존 MCN',
-                '신인 데뷔 채널 찾는 신생 벤더사',
+                '신인 데뷔 채널 찾는 신생 에이전시',
               ]}
             />
             <FitCard
@@ -447,7 +447,7 @@ export default function AboutPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl mx-auto mb-10">
               <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
-              <CTACard to="/agency/login" title="벤더사" subtitle="사업자 인증 → 멤버 초대" />
+              <CTACard to="/agency/login" title="에이전시" subtitle="사업자 인증 → 멤버 초대" />
               <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
               <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
             </div>

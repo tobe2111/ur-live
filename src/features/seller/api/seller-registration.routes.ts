@@ -190,7 +190,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         if (matched) {
           const col = matched.introducerType === 'agency' ? 'introduced_by_agency_id' : 'introduced_by_influencer_id'
           // 🛡️ 2026-05-28: 영입 commission 기본 기간 차등 (docs/SERVICE_MODEL.md §3).
-          //   벤더사 = 장기(12개월), 크리에이터(유저) = 6개월 → 과도한 영입 경쟁 완화.
+          //   에이전시 = 장기(12개월), 크리에이터(유저) = 6개월 → 과도한 영입 경쟁 완화.
           //   어드민이 매장별로 referral_bonus_until 재설정 가능 (commission-settings).
           const months = matched.introducerType === 'agency' ? 12 : 6
           await db.prepare(
@@ -367,7 +367,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       seller_type: 'influencer' | 'store_owner' | 'both';
       youtube_email?: string;
       description?: string;
-      // 🛡️ 2026-05-20: 벤더사 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
+      // 🛡️ 2026-05-20: 에이전시 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
@@ -430,8 +430,8 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
     const passwordHash = await hashPassword(tempPasswordStr);
 
-    // 🛡️ 2026-05-20: 벤더사 추천 코드 → agency_id 매칭.
-    //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 벤더사 매니지먼트 기존 흐름 유지.
+    // 🛡️ 2026-05-20: 에이전시 추천 코드 → agency_id 매칭.
+    //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 에이전시 매니지먼트 기존 흐름 유지.
     //   잘못된 코드면 silent (가입은 진행, introduced_by_agency_id 만 null).
     // 🛡️ 2026-05-21 Phase D-6 영구 정책 (docs/AGENCY_POLICY.md):
     //   "한 가게 = 1개 lock-in only" — agency_intro_code 와 influencer_intro_code 동시 사용 금지.
@@ -442,7 +442,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     if (hasAgencyCode && hasInfluencerCode) {
       return c.json({
         success: false,
-        error: '벤더사 코드와 인플루언서 코드는 동시에 입력할 수 없습니다. 둘 중 하나만 선택하세요.',
+        error: '에이전시 코드와 인플루언서 코드는 동시에 입력할 수 없습니다. 둘 중 하나만 선택하세요.',
         code: 'CONFLICTING_INTRO_CODES',
       }, 400)
     }
@@ -500,7 +500,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       throw insertErr;
     }
 
-    // 벤더사 dashboard 알림 — 입점 통보
+    // 에이전시 dashboard 알림 — 입점 통보
     if (introducedAgencyId) {
       const { createDashboardNotification: notify2 } = await import('../../notifications/api/dashboard-notifications.routes');
       notify2(db, 'agency', String(introducedAgencyId), 'store_introduced',
@@ -633,7 +633,7 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
         status: seller.status,
         seller_type: seller.seller_type,
         business_name: seller.business_name,
-        // 신 스키마 (SellerWaitingPage, SellerRegisterBusinessPage) — 벤더사 /my-agency-status 와 동일
+        // 신 스키마 (SellerWaitingPage, SellerRegisterBusinessPage) — 에이전시 /my-agency-status 와 동일
         linked: true,
         seller: {
           id: seller.id,

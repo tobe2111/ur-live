@@ -4,7 +4,7 @@
  * 매일 18:00 UTC 실행 (다른 daily cron 과 함께).
  *
  * 동작:
- * - 모든 활성 벤더사에 대해 이번 달 3종 의무 작업의 actual_value 갱신
+ * - 모든 활성 에이전시에 대해 이번 달 3종 의무 작업의 actual_value 갱신
  * - row 가 없으면 자동 생성 (target_value 는 tier 기반 디폴트)
  * - 100% 도달 시 status='completed', 월말 미달 시 'failed' (월말 cron 별도)
  *

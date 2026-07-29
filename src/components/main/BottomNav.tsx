@@ -48,7 +48,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onClick={() => { onDone(); navigate('/agency/register/business') }}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
           >
-            {t('bottomNav.alsoRegisterAgency', { defaultValue: '벤더사로도 등록하기 →' })}
+            {t('bottomNav.alsoRegisterAgency', { defaultValue: '에이전시로도 등록하기 →' })}
           </button>
         )}
       </div>
@@ -78,7 +78,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           onClick={() => { onDone(); navigate('/agency/register/business') }}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
         >
-          {t('bottomNav.registerAsAgency', { defaultValue: '벤더사로 등록하기 →' })}
+          {t('bottomNav.registerAsAgency', { defaultValue: '에이전시로 등록하기 →' })}
         </button>
       )}
     </div>
@@ -453,7 +453,7 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* 벤더사 권한도 있으면 (셀러 + 벤더사 겸직) 별도 링크 — AGENCY_HIDDEN 셸브 시 숨김 */}
+                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 — AGENCY_HIDDEN 셸브 시 숨김 */}
                   {!AGENCY_HIDDEN && (isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
@@ -463,13 +463,13 @@ export default function BottomNav() {
                         <span className="text-lg">💼</span>
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '벤더사 대시보드' })}</p>
+                        <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
                         <p className="text-[11px] text-gray-500 mt-0.5">{t('bottomNav.agencyDashboardDesc', { defaultValue: '소속 셀러 관리' })}</p>
                       </div>
                     </button>
                   )}
 
-                  {/* 벤더사만 있고 셀러 아님 — AGENCY_HIDDEN 셸브 시 숨김 */}
+                  {/* 에이전시만 있고 셀러 아님 — AGENCY_HIDDEN 셸브 시 숨김 */}
                   {!AGENCY_HIDDEN && !(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <div className="space-y-3">
                       <button
@@ -480,7 +480,7 @@ export default function BottomNav() {
                           <span className="text-xl">💼</span>
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '벤더사 대시보드' })}</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })}</p>
                           <p className="text-[12px] text-gray-900 dark:text-white/70 mt-0.5">{t('bottomNav.agencyDashboardDesc2', { defaultValue: '소속 셀러 관리, 계약, 정산' })}</p>
                         </div>
                       </button>

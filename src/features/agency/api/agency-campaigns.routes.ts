@@ -1,7 +1,7 @@
 /**
  * Agency Campaigns Routes (Agency P0 #4)
  *
- * 벤더사가 직접 캠페인(이벤트)을 생성/관리하고, 참여 셀러별 KPI/보너스를 설정.
+ * 에이전시가 직접 캠페인(이벤트)을 생성/관리하고, 참여 셀러별 KPI/보너스를 설정.
  * 마이그레이션: 0209_agency_campaigns.sql
  *
  * 마운트: /api/agency/campaigns
@@ -219,7 +219,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
 
   // 함께 셀러 등록 (옵션)
   if (body.seller_ids?.length) {
-    // 자기 벤더사 소속 셀러만 허용
+    // 자기 에이전시 소속 셀러만 허용
     const ph = body.seller_ids.map(() => '?').join(',')
     const { results: owned } = await c.env.DB.prepare(
       `SELECT seller_id FROM agency_sellers WHERE agency_id = ? AND seller_id IN (${ph})`

@@ -9,7 +9,7 @@ import { logInfo, logError } from '../utils/logger'
  * - 가입 90일 이상 + 전월 매출 < 500만원  → 'junior'
  * - 전월 매출 ≥ 500만원                  → 'senior'
  *
- * tier_locked = 1 인 벤더사는 어드민 수동 override 상태 → 자동 평가 skip.
+ * tier_locked = 1 인 에이전시는 어드민 수동 override 상태 → 자동 평가 skip.
  *
  * 참조: docs/AGENCY_STRATEGY_QUICKWIN.md (Q1), migrations/0212_agency_tier.sql
  */

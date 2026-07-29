@@ -200,7 +200,7 @@ app.post('/send', requireAgencyPermission('message'), async (c) => {
     return c.json({ success: false, error: '한 번에 최대 200명' }, 400)
   }
 
-  // 1) 템플릿 조회 (자기 벤더사 것만)
+  // 1) 템플릿 조회 (자기 에이전시 것만)
   const tmpl = await c.env.DB.prepare(
     'SELECT id, name, body FROM agency_message_templates WHERE id = ? AND agency_id = ? AND is_active = 1'
   ).bind(body.template_id, agencyId).first<{ id: number; name: string; body: string }>()
@@ -215,10 +215,10 @@ app.post('/send', requireAgencyPermission('message'), async (c) => {
     WHERE ag.agency_id = ? AND ag.seller_id IN (${ph})
   `).bind(agencyId, ...body.seller_ids).all<{ seller_id: number; seller_name: string }>()
 
-  // 3) 벤더사 정보
+  // 3) 에이전시 정보
   const agency = await c.env.DB.prepare('SELECT name, commission_rate FROM agencies WHERE id = ?')
     .bind(agencyId).first<{ name: string; commission_rate: number }>()
-  const agencyName = agency?.name || '벤더사'
+  const agencyName = agency?.name || '에이전시'
   const commissionRate = agency?.commission_rate ?? 2.0
 
   let sent = 0
@@ -322,7 +322,7 @@ app.post('/preview', async (c) => {
   const usedVars = extractVariables(body.body)
   const unknownVars = findUnknownVariables(body.body)
 
-  // 샘플 셀러 + 벤더사 정보 조회
+  // 샘플 셀러 + 에이전시 정보 조회
   let sampleSeller: { name: string; business_name: string | null; email: string | null } | null = null
   if (body.sample_seller_id) {
     sampleSeller = await c.env.DB.prepare(
@@ -341,7 +341,7 @@ app.post('/preview', async (c) => {
     seller_name: sampleSeller?.name || '○○○',
     seller_business_name: sampleSeller?.business_name || '○○○ 사업자',
     seller_email: sampleSeller?.email || 'sample@example.com',
-    agency_name: agency?.name || '벤더사',
+    agency_name: agency?.name || '에이전시',
     commission_rate: agency?.commission_rate ?? 2.0,
     custom_link: body.custom_link || '/seller',
   })
@@ -377,7 +377,7 @@ function getVariableDescription(key: string): string {
     seller_business_name: '셀러 사업자명',
     seller_email: '셀러 이메일',
     seller_tier: '셀러 등급 (브론즈/실버/골드)',
-    agency_name: '본 벤더사 이름',
+    agency_name: '본 에이전시 이름',
     commission_rate: '수수료율 (%)',
     current_month: '이번 달 (YYYY-MM)',
     current_date: '오늘 날짜 (YYYY-MM-DD)',

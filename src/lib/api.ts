@@ -46,7 +46,7 @@ const URL_401_DEBOUNCE_MS = 5 * 1000;
 // 5xx 디바운스 캐시 — 같은 URL+status 30s 내 중복 토스트 차단
 const _recent5xx: Map<string, number> = new Map();
 
-// 🛡️ 2026-04-29: 셀러/어드민/벤더사 refresh inflight 락.
+// 🛡️ 2026-04-29: 셀러/어드민/에이전시 refresh inflight 락.
 //   같은 페이지에서 여러 API 가 동시 401 → 각각 인터셉터 진입 → 동시 refresh 호출 →
 //   refresh token rotation 환경에서 첫 번째만 성공, 두 번째부터 stale token 으로 401 → 강제 로그아웃.
 //   inflight Promise 캐시로 동시 요청은 같은 결과 공유.
@@ -267,7 +267,7 @@ api.interceptors.request.use(
 
     // ── Prospects (매장 영입 사전등록) — 영업자 인증 ────────────────────────
     // 🛡️ 2026-06-25: /api/prospects 는 requireAuth() 인데 /api/agency/* prefix 가 아니라
-    //   토큰이 안 붙어 이메일 로그인 벤더사가 401 → '매장 영입 현황' 목록 영구 빈값 + 제안 제출 실패였음.
+    //   토큰이 안 붙어 이메일 로그인 에이전시가 401 → '매장 영입 현황' 목록 영구 빈값 + 제안 제출 실패였음.
     //   영업자 토큰(agency > admin > seller=influencer) 우선순위로 부착. requireAuth 가 셋 다 수용.
     if (url.startsWith('/api/prospects')) {
       const agencyToken = localStorage.getItem('agency_token');
@@ -616,7 +616,7 @@ api.interceptors.response.use(
 
       // 세션 쿠키 유저는 쿠키가 유효한지 확인 후 처리
       // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_type 비의존 — 세션 흔적(session_login/user_id)이
-      //   있으면 헬스체크 보호 적용. 기존 user_type==='user' 게이트는 어드민/셀러/벤더사 + 소비자
+      //   있으면 헬스체크 보호 적용. 기존 user_type==='user' 게이트는 어드민/셀러/에이전시 + 소비자
       //   듀얼 로그인 시 user_type 이 'admin'/'seller' 로 남아 보호를 건너뛰고 → 401 한 번에
       //   소비자 세션(user_id+session_login)을 삭제했다. (auth.ts hasConsumerSession() 과 동일 기준.
       //   헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자에겐 무해 — session:false 면 정상 정리.)
@@ -666,7 +666,7 @@ api.interceptors.response.use(
         localStorage.setItem('loginReturnUrl', currentPath);
       }
 
-      // 셀러/어드민/벤더사 대시보드 영역만 강제 redirect.
+      // 셀러/어드민/에이전시 대시보드 영역만 강제 redirect.
       // 일반 사용자(/, /products 등) 는 *현재 페이지 유지* + 401 reject.
       //   그래야 카톡 인앱에서 비로그인 사용자가 홈 둘러보다 알림톡/위시리스트 등
       //   호출 시 401 받아도 redirect 안 함 (UX 보호).

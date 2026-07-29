@@ -2,11 +2,11 @@
  * PK Battles Routes — Phase 2-7 (셀러 vs 셀러 매출 경쟁)
  *
  * 마운트:
- *   /api/agency/pk             — 벤더사 (매칭/관리)
+ *   /api/agency/pk             — 에이전시 (매칭/관리)
  *   /api/pk-public             — 공개 (시청자 화면, 활성 PK 조회)
  *
  * 흐름:
- *   1) 벤더사 owner/manager 가 소속 셀러 2명 + 시간 입력 → POST /
+ *   1) 에이전시 owner/manager 가 소속 셀러 2명 + 시간 입력 → POST /
  *   2) 셀러 둘 다 라이브 시작 → POST /:id/start
  *   3) 자동 ends_at 까지 매출 집계 (cron 또는 on-demand)
  *   4) ends_at 시점에 우승자 자동 결정 + 보상
@@ -101,7 +101,7 @@ interface BattleRow {
   created_at: string;
 }
 
-// POST / — PK 매칭 생성 (벤더사)
+// POST / — PK 매칭 생성 (에이전시)
 app.post('/', async (c) => {
   const agency = c.get('agency');
   const body = await c.req.json<{
@@ -115,13 +115,13 @@ app.post('/', async (c) => {
     return c.json({ success: false, error: 'duration must be 15/30/60' }, 400);
   }
 
-  // 두 셀러가 본 벤더사 소속인지 검증
+  // 두 셀러가 본 에이전시 소속인지 검증
   const cnt = await c.env.DB.prepare(`
     SELECT COUNT(*) AS cnt FROM agency_sellers
     WHERE agency_id = ? AND seller_id IN (?, ?)
   `).bind(agency.id, body.seller_a_id, body.seller_b_id).first<{ cnt: number }>().catch(() => null);
   if ((cnt?.cnt ?? 0) !== 2) {
-    return c.json({ success: false, error: '두 셀러 모두 본 벤더사 소속이어야 합니다.' }, 403);
+    return c.json({ success: false, error: '두 셀러 모두 본 에이전시 소속이어야 합니다.' }, 403);
   }
 
   await ensureTable(c.env.DB);
@@ -137,7 +137,7 @@ app.post('/', async (c) => {
   });
 });
 
-// GET / — 본 벤더사 PK 목록
+// GET / — 본 에이전시 PK 목록
 app.get('/', async (c) => {
   const agency = c.get('agency');
   await ensureTable(c.env.DB);

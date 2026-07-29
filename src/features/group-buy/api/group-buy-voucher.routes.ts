@@ -157,7 +157,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                   merchant_id: merchantId,
                   seller_id: sellerId,
                 })
-                // 🛡️ Phase D: 벤더사 commission 자동 분배 (introduced_by_agency_id 있을 시).
+                // 🛡️ Phase D: 에이전시 commission 자동 분배 (introduced_by_agency_id 있을 시).
                 await recordAgencyCommissionShare(DB, {
                   voucher_id: meta.voucher_id,
                   merchant_id: merchantId,

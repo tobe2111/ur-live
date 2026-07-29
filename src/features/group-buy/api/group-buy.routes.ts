@@ -417,7 +417,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const influencerAmount = influencerActive ? Math.floor(totalAmount * effectiveInfluencerPct / 100) : 0
     const userBonusAmount = hasInfluencer ? Math.floor(totalAmount * rates.user_referral_bonus_pct / 100) : 0
     // sellerAmount = 총액 - 셀러 commission (유어딜) - 인플 - 사용자 보너스
-    //   (벤더사 commission 은 셀러 수수료에 이미 포함된 경로로 처리 — agencies 별도 routing)
+    //   (에이전시 commission 은 셀러 수수료에 이미 포함된 경로로 처리 — agencies 별도 routing)
     const sellerAmount = totalAmount - commissionAmount - influencerAmount - userBonusAmount
 
     // 주문 생성 (idempotency_key 저장 — 중복 발급 영구 차단)
@@ -452,7 +452,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       })
     } catch (e) { if (import.meta.env?.DEV) console.warn('[gb ledger]', e) }
 
-    // 🛡️ 2026-05-31: 벤더사 입점 매장 commission — 공구 딜 결제도 적립 (이전: payment.routes 카드만
+    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 공구 딜 결제도 적립 (이전: payment.routes 카드만
     //   호출 → 공구는 누락). UNIQUE(order_id,type) 멱등 + introduced_by_agency_id 없으면 noop.
     if (newOrderId) {
       c.executionCtx?.waitUntil((async () => {
@@ -1204,7 +1204,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       if (!_saleDeferred) await _saleFx()
     }
 
-    // 🛡️ 2026-05-31: 벤더사 입점 매장 commission — 카드 결제도 적립 (딜 경로와 동일). UNIQUE 멱등.
+    // 🛡️ 2026-05-31: 에이전시 입점 매장 commission — 카드 결제도 적립 (딜 경로와 동일). UNIQUE 멱등.
     c.executionCtx?.waitUntil((async () => {
       try {
         const { creditAgencyStoreIntroCommission } = await import('../../../worker/utils/agency-store-intro-commission')

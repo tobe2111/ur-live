@@ -1,7 +1,7 @@
 /**
  * Agency API Routes
  *
- * Agency = 벤더사 (여러 셀러를 관리하는 대행사)
+ * Agency = 에이전시 (여러 셀러를 관리하는 대행사)
  *
  * Auth:
  *   POST /api/agency/login
@@ -63,7 +63,7 @@ async function ensureAgencyTables(DB: D1Database) {
 
   // 기존 DB 에 빠진 컬럼 ensure
   await DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(swallow('agency:api:agency'))
-  // 🛡️ 카카오 유저 → 벤더사 확장 연결용 (users.id FK, 수동 체크)
+  // 🛡️ 카카오 유저 → 에이전시 확장 연결용 (users.id FK, 수동 체크)
   await DB.prepare("ALTER TABLE agencies ADD COLUMN linked_user_id INTEGER").run().catch(swallow('agency:api:agency'))
   await DB.prepare("CREATE INDEX IF NOT EXISTS idx_agencies_linked_user ON agencies(linked_user_id)").run().catch(swallow('agency:api:agency'))
 
@@ -162,7 +162,7 @@ async function signAgencyToken(
   )
 }
 
-// 🏁 2026-06-13: 벤더사 refresh token 발급 — admin/seller 와 동형(누락분 근본수정).
+// 🏁 2026-06-13: 에이전시 refresh token 발급 — admin/seller 와 동형(누락분 근본수정).
 //   access(30일) 만료 시 강제 로그아웃되던 원인: agency 만 refresh token / /refresh endpoint 부재.
 //   refresh 는 90일 + token_use:'refresh' 마커(access 토큰을 refresh 로 오용 방지).
 async function signAgencyRefreshToken(
@@ -239,11 +239,11 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   }>()
 
   if (!name || !contact_name || !email || !password) {
-    return c.json({ success: false, error: '벤더사명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+    return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
   }
   // 🛡️ 입력 길이 검증
   if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
-    return c.json({ success: false, error: '벤더사명은 1~100자여야 합니다.' }, 400)
+    return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
   }
   if (typeof contact_name !== 'string' || contact_name.length < 1 || contact_name.length > 50) {
     return c.json({ success: false, error: '담당자명은 1~50자여야 합니다.' }, 400)
@@ -268,7 +268,7 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
   createDashboardNotification(
     c.env.DB, 'admin', null, 'agency_registered',
-    '새 벤더사 가입 신청', `${name} (${contact_name})`, '/admin/agencies'
+    '새 에이전시 가입 신청', `${name} (${contact_name})`, '/admin/agencies'
   ).catch((_e) => { if (typeof console !== 'undefined') console.warn('[agency:register] notify failed:', _e) })
 
   // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡
@@ -276,7 +276,7 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
     try {
       const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
       sendSystemAlimtalk(c.env, phone, 'agency_registered',
-        `[유어딜] ${contact_name}님,\n벤더사 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
+        `[유어딜] ${contact_name}님,\n에이전시 가입 신청이 접수되었어요.\n1~3일 내 검토 후 결과를 안내드립니다.`
       ).catch(swallow('agency:applicant-alimtalk'))
     } catch { /* ignore */ }
   }
@@ -284,8 +284,8 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   return c.json({ success: true, message: '가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.' }, 201)
 })
 
-// ── POST /register-from-user (카카오 유저 → 벤더사 확장) ────
-// 🛡️ 카카오 로그인된 유저가 같은 계정에 벤더사 role 추가.
+// ── POST /register-from-user (카카오 유저 → 에이전시 확장) ────
+// 🛡️ 카카오 로그인된 유저가 같은 계정에 에이전시 role 추가.
 // 별도 이메일/비밀번호 없이 세션 쿠키 + 비즈니스 정보만 입력.
 app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_from_user', max: 3, windowSec: 3600 }), async (c) => {
   try {
@@ -302,14 +302,14 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
     }
     const userId = sessionUser.userId
 
-    // 이미 연결된 벤더사가 있으면 중복 차단
+    // 이미 연결된 에이전시가 있으면 중복 차단
     const existing = await db.prepare(
       'SELECT id, status FROM agencies WHERE linked_user_id = ?'
     ).bind(userId).first<{ id: number; status: string }>()
     if (existing) {
       return c.json({
         success: false,
-        error: existing.status === 'pending' ? '이미 벤더사 가입 신청 중입니다. 관리자 승인을 기다려주세요.' : '이미 벤더사 계정이 존재합니다.',
+        error: existing.status === 'pending' ? '이미 에이전시 가입 신청 중입니다. 관리자 승인을 기다려주세요.' : '이미 에이전시 계정이 존재합니다.',
         agency_id: existing.id,
         status: existing.status,
       }, 409)
@@ -320,10 +320,10 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
     }>()
 
     if (!name || !contact_name) {
-      return c.json({ success: false, error: '벤더사명과 담당자명은 필수입니다.' }, 400)
+      return c.json({ success: false, error: '에이전시명과 담당자명은 필수입니다.' }, 400)
     }
     if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
-      return c.json({ success: false, error: '벤더사명은 1~100자여야 합니다.' }, 400)
+      return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
     }
     if (typeof contact_name !== 'string' || contact_name.length < 1 || contact_name.length > 50) {
       return c.json({ success: false, error: '담당자명은 1~50자여야 합니다.' }, 400)
@@ -349,23 +349,23 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
 
-    // 🛡️ 2026-04-28: 어드민 알림 — 유저→벤더사 전환 신청 (이전 누락).
+    // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
     createDashboardNotification(
       db, 'admin', null, 'agency_registered',
-      '유저→벤더사 전환 신청', `${name} (유저 #${userId})`, '/admin/agencies'
+      '유저→에이전시 전환 신청', `${name} (유저 #${userId})`, '/admin/agencies'
     ).catch((_e) => { if (typeof console !== 'undefined') console.warn('[agency:register-from-user] notify failed:', _e) })
 
     return c.json({
       success: true,
-      message: '벤더사 가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
+      message: '에이전시 가입 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
     }, 201)
   } catch (error) {
     console.error('Agency register-from-user error:', error)
-    return c.json({ success: false, error: '벤더사 가입 신청 중 오류가 발생했습니다' }, 500)
+    return c.json({ success: false, error: '에이전시 가입 신청 중 오류가 발생했습니다' }, 500)
   }
 })
 
-// ── GET /my-agency-status — 카카오 유저의 벤더사 전환 상태 ──
+// ── GET /my-agency-status — 카카오 유저의 에이전시 전환 상태 ──
 app.get('/my-agency-status', async (c) => {
   try {
     await ensureAgencyTables(c.env.DB)
@@ -492,7 +492,7 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
 })
 
 // ── POST /refresh (공개) ──────────────────────────────────────
-// 🏁 2026-06-13: 벤더사 토큰 갱신 — admin(/api/admin/refresh)·seller 와 동형.
+// 🏁 2026-06-13: 에이전시 토큰 갱신 — admin(/api/admin/refresh)·seller 와 동형.
 //   클라이언트(api.ts 401 인터셉터 + useTokenAutoRefresh)가 호출. signature 검증 기반
 //   (admin 의 hashed-store 가 행 없을 때 폴백하는 동작과 동일 수준 — 가용성 우선).
 app.post('/refresh', cors(), rateLimit({ action: 'agency_refresh', max: 20, windowSec: 300 }), async (c) => {
@@ -587,7 +587,7 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
         await sendEmail(
           {
             to: agency.email,
-            subject: '[유어딜] 벤더사 비밀번호 재설정 안내',
+            subject: '[유어딜] 에이전시 비밀번호 재설정 안내',
             html: getPasswordResetEmailHTML(resetUrl),
           },
           RESEND_API_KEY,
@@ -706,7 +706,7 @@ app.get('/profile', async (c) => {
 // 🛡️ 2026-05-27 (loading P1 — audit D): 8 endpoint self-fetch 통합 응답.
 //   이전: AgencyPage 진입 시 8개 HTTP request (HTTP/2 parallel) + 8 Worker invocation.
 //   변경: 1 request + 1 invocation. self-fetch 는 같은 PoP latency ~5ms.
-//   효과: Worker invocation 87%↓ (비용 절감 — 벤더사 100명+ 시점 효과 큼).
+//   효과: Worker invocation 87%↓ (비용 절감 — 에이전시 100명+ 시점 효과 큼).
 //   부분 실패 graceful: Promise.allSettled 로 한 endpoint 실패해도 나머지 표시.
 app.get('/dashboard/bundle', async (c) => {
   const auth = c.req.header('Authorization') || ''
@@ -745,7 +745,7 @@ app.get('/dashboard/bundle', async (c) => {
 // 🛡️ 2026-04-28 TD-006 (split): /sellers, /sellers/:id/stats, /orders, /streams,
 //   /sellers/:id/products, /sellers/:id/inventory, /ranking, /schedule, /returns →
 //   src/features/agency/api/agency-sellers.routes.ts
-// ── PUT /profile — 벤더사 프로필 수정 ──────────────────────────
+// ── PUT /profile — 에이전시 프로필 수정 ──────────────────────────
 // 🛡️ 2026-04-22 배치 162: 은행 계좌 필드 추가 (정산 플로우 마비 P0 fix).
 //   이전: bank_name/bank_account/account_holder 를 /settlements/request 가 조회만 하고
 //   저장은 어디서도 안 해 정산이 불가능. 이 PUT 에서 저장 허용.
@@ -785,7 +785,7 @@ app.put('/profile', async (c) => {
   return c.json({ success: true })
 })
 
-// ── GET /notifications — 벤더사 알림 ────────────────────────────
+// ── GET /notifications — 에이전시 알림 ────────────────────────────
 app.get('/notifications', async (c) => {
   const { id: agencyId } = c.get('agency') as { id: number }
 
@@ -946,7 +946,7 @@ app.post('/sellers/:id/streams', rateLimit({ action: 'agency_seller_stream_creat
   return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
 })
 
-// ── POST /invite-seller — 셀러 초대 (벤더사가 셀러 계정 생성) ─────
+// ── POST /invite-seller — 셀러 초대 (에이전시가 셀러 계정 생성) ─────
 // 🛡️ 2026-04-22 배치 147: rate limit + 비밀번호 복잡도 검증 추가
 app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
@@ -976,7 +976,7 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
   const { hashPassword: hashPw } = await import('../../../lib/password')
   const hash = await hashPw(password)
 
-  // 🛡️ 2026-04-26 (P0 #1): 벤더사 초대 셀러는 'pending' 으로 생성 → 어드민 심사 후 'approved'.
+  // 🛡️ 2026-04-26 (P0 #1): 에이전시 초대 셀러는 'pending' 으로 생성 → 어드민 심사 후 'approved'.
   // affiliated_agency_id 로 어드민 심사 페이지에서 출처 식별.
   // 하위 호환: affiliated_agency_id 컬럼 없으면 (구 schema) 그냥 생성 진행.
   let result;
@@ -996,7 +996,7 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
 
   const sellerId = result.meta.last_row_id
 
-  // 벤더사에 소속
+  // 에이전시에 소속
   await c.env.DB.prepare('INSERT OR IGNORE INTO agency_sellers (agency_id, seller_id) VALUES (?, ?)')
     .bind(agencyId, sellerId).run()
 

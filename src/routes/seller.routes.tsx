@@ -14,7 +14,7 @@ const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage'))
 //   쿼리 보존 리다이렉트로 폐쇄 — 어디서 눌러도 같은 화면(카카오 계정 업그레이드)에 도착.
 const SellerRegisterSupplierPage = lazy(() => import('@/pages/SellerRegisterSupplierPage'))
 
-/** 레거시 셀러 가입 경로 → 단일 관문 리다이렉트 (벤더사 ?agency= 등 쿼리 보존). */
+/** 레거시 셀러 가입 경로 → 단일 관문 리다이렉트 (에이전시 ?agency= 등 쿼리 보존). */
 function LegacySellerRegisterRedirect() {
   const location = useLocation()
   return <Navigate to={{ pathname: '/seller/register/supplier', search: location.search }} replace />

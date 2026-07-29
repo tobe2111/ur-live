@@ -8,7 +8,7 @@ import { adminSettlementsRoutes } from '@/features/admin/api/admin-settlements.r
  *
  * 대상(테스트 0개였음):
  *   - referral-tree: 추천 commission 적립(calculate-commission) + 출금 승인/거부(돈 out)
- *   - agency-settlements: 벤더사 정산 청구
+ *   - agency-settlements: 에이전시 정산 청구
  *   - admin-settlements: 어드민 정산 실행/완료/원천징수 (돈 out)
  *
  * 막는 회귀: 핸들러 소실(계약) + 인증 게이트 누락으로 무권한자가 출금승인·정산실행 트리거.

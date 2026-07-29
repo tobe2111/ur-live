@@ -4,7 +4,7 @@
  * 마운트: /api/admin/ops-insights
  *
  * Endpoints:
- *   GET / — 부진 벤더사 + 부진 셀러 + 신규 가입 후 미접속 + 결제 이상 검출
+ *   GET / — 부진 에이전시 + 부진 셀러 + 신규 가입 후 미접속 + 결제 이상 검출
  *
  * 어드민이 한 번에 운영 위험 요소를 파악하기 위한 통합 위젯.
  *
@@ -36,7 +36,7 @@ app.get('/', async (c) => {
     async () => {
       const out: Record<string, any> = {};
 
-      // 1. 부진 벤더사 (월 매출 0) — agency_sellers + orders JOIN + GROUP BY 로 1 query.
+      // 1. 부진 에이전시 (월 매출 0) — agency_sellers + orders JOIN + GROUP BY 로 1 query.
       try {
         const r = await DB.prepare(`
           SELECT a.id, a.name, a.email,

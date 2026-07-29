@@ -3,8 +3,8 @@
  *
  * v4 (2026-05-21): 보유한 role 의 "대시보드 바로가기" 단축 카드 추가.
  *   - 셀러 토큰 있으면: 📊 셀러 대시보드 → /seller
- *   - 벤더사 토큰 있으면: 📊 벤더사 대시보드 → /agency
- *   - 둘 다 있는 사용자도 양쪽 진입 가능 (셀러+벤더사 겸업).
+ *   - 에이전시 토큰 있으면: 📊 에이전시 대시보드 → /agency
+ *   - 둘 다 있는 사용자도 양쪽 진입 가능 (셀러+에이전시 겸업).
  *
  * v3 영구 디자인:
  *   - 단일 화이트 카드 컨테이너 안에 list 형식 (당근 마이페이지 "내 메뉴" 패턴).
@@ -37,15 +37,15 @@ export default function RoleCtaGrid() {
     const dash: Cta[] = [
       { icon: '🔗', title: t('roleCta.linkshop', { defaultValue: '내 링크샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '교환권·공구 추천하고 적립 받기' }), to: '/u/me', show: () => true, accent: true },
       { icon: '📊', title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
-      { icon: '📊', title: t('roleCta.agencyDash', { defaultValue: '벤더사 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken && !AGENCY_HIDDEN, accent: true },
+      { icon: '📊', title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken && !AGENCY_HIDDEN, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
-      //   동네 공구 제안 + 역할 전환(사업자/벤더사) 중심으로 재구성.
+      //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
       { icon: '🤝', title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       { icon: '🏪', title: t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' }), desc: t('roleCta.openShopDesc', { defaultValue: '사업자 등록 → 내 상품·이용권 판매' }), to: '/seller/register/supplier', show: () => !hasSellerToken },
-      { icon: '🤵', title: t('roleCta.agencyBiz', { defaultValue: '벤더사 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken && !AGENCY_HIDDEN },
+      { icon: '🤵', title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken && !AGENCY_HIDDEN },
     ]
     return {
       dashboardItems: dash.filter(c => c.show()),

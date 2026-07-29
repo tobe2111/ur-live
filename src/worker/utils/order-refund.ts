@@ -38,7 +38,7 @@ const CANCELLABLE = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED']
 /**
  * 🛡️ 2026-06-26 전액 환불/취소 시 **부가 적립·쿠폰·이용권 역전** (order_id 멱등, 전부 best-effort).
  *
- * 디지털 access revoke · affiliate 적립 역전 · 공급자/영입자/벤더사 매장영입 역전 · 구매자
+ * 디지털 access revoke · affiliate 적립 역전 · 공급자/영입자/에이전시 매장영입 역전 · 구매자
  * referral_bonus 회수 · 쿠폰 un-use · 이용권 정산 clawback. 전부 order_id/order_number 기준이라
  * 멱등(2회차엔 대상 0). **Toss 취소/상태전이/재고/딜/referral_commissions 는 미포함** — 호출자가 처리.
  *
@@ -72,7 +72,7 @@ export async function reverseOrderAncillaryOnRefund(
       .bind(orderId).run().catch(swallow('order-refund:affiliate-holding'))
   } catch { /* table may not exist */ }
 
-  // 공급자(B2B) + 영입자 + 벤더사 매장영입 적립 역전.
+  // 공급자(B2B) + 영입자 + 에이전시 매장영입 적립 역전.
   try {
     const { reverseSupplierOnRefund } = await import('../../features/supply/api/supply-settlement')
     await reverseSupplierOnRefund(DB, orderId, 'order_refund')
@@ -245,7 +245,7 @@ export async function refundOrderFully(
   } catch { /* table may not exist */ }
 
   // 6~9b. 부가 적립·쿠폰·이용권·디지털 역전 (공유 헬퍼 — 인라인 취소/환불 경로와 대칭 공유).
-  //   affiliate · 공급자/영입자/벤더사 매장영입 · referral_bonus · 쿠폰 un-use · 이용권 clawback ·
+  //   affiliate · 공급자/영입자/에이전시 매장영입 · referral_bonus · 쿠폰 un-use · 이용권 clawback ·
   //   디지털 access revoke. 전부 order_id 멱등(CAS 전이 후라 1회만). (referral_commissions 는 step5 인라인.)
   await reverseOrderAncillaryOnRefund(DB, Number(order.id), order.order_number, opts.reason)
 

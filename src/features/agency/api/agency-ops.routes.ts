@@ -147,7 +147,7 @@ app.put('/targets', async (c: AgencyCtx) => {
 
   // 🛡️ 2026-04-29 보안 audit CRITICAL: agency_sellers 소유권 검증.
   // 이전: body 의 seller_id 를 인증된 agency 가 진짜 소속 셀러인지 검증 없이 INSERT
-  // → 다른 벤더사의 seller_id 로 fake target 생성 가능 (DB 오염).
+  // → 다른 에이전시의 seller_id 로 fake target 생성 가능 (DB 오염).
   const ownership = await c.env.DB.prepare(
     'SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ? LIMIT 1'
   ).bind(agencyId, seller_id).first()
@@ -196,7 +196,7 @@ app.get('/settlements/csv', async (c: AgencyCtx) => {
 
   const rows = results || []
   const csv = [
-    '셀러명,이메일,정산건수,총매출(원),셀러수수료5%(원),벤더사수수료2%(원)',
+    '셀러명,이메일,정산건수,총매출(원),셀러수수료5%(원),에이전시수수료2%(원)',
     ...rows.map((r: any) => `${r.seller_name},${r.email},${r.settled_orders},${r.total_amount},${Math.round(r.seller_commission)},${Math.round(r.agency_commission)}`)
   ].join('\n')
 
@@ -301,7 +301,7 @@ app.post('/contracts', async (c: AgencyCtx) => {
 
   // 🛡️ 2026-04-29 보안 audit CRITICAL: agency_sellers 소유권 검증.
   // 이전: body 의 seller_id 가 인증된 agency 의 소속 셀러인지 검증 없이 INSERT
-  // → 다른 벤더사의 seller_id 로 fake 계약 생성 가능.
+  // → 다른 에이전시의 seller_id 로 fake 계약 생성 가능.
   const ownership = await c.env.DB.prepare(
     'SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ? LIMIT 1'
   ).bind(agencyId, seller_id).first()

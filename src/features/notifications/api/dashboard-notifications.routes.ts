@@ -22,7 +22,7 @@ async function ensureTable(DB: D1Database) {
   if (_ensureTableDone) return
   try {
     // 🛡️ 2026-04-28: CHECK 제약에 'agency' 추가. 이전엔 'admin'/'seller' 만 허용해
-    //   벤더사 측 알림 INSERT 가 실패 → 어드민이 벤더사 신청 알림 못 봄.
+    //   에이전시 측 알림 INSERT 가 실패 → 어드민이 에이전시 신청 알림 못 봄.
     // 🏭 2026-06-12: 'supplier' 추가 — 제조사 출금 승인/반려 알림이 CHECK 위반으로 무음 증발하던
     //   사고 수정(도매몰 감사). 기존 프로덕션 테이블은 repair-schema 의 CHECK 마이그레이션이 재생성.
     await DB.prepare(`CREATE TABLE IF NOT EXISTS dashboard_notifications (
@@ -87,7 +87,7 @@ export async function createDashboardNotification(
         await DB.prepare(
           `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
            VALUES ('admin', NULL, ?, ?, ?, ?)`
-        ).bind(type, '[벤더사] ' + title, message ?? null, link ?? null).run();
+        ).bind(type, '[에이전시] ' + title, message ?? null, link ?? null).run();
       } catch { /* ignore */ }
     } else {
       throw err;
@@ -106,7 +106,7 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
   const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 20)), 100);
   const unreadOnly = c.req.query('unread_only') === 'true';
 
-  // 🛡️ 2026-04-28: agency 분기 추가. 이전엔 admin/seller 만 분기 → 벤더사는 자기 알림 못 봄.
+  // 🛡️ 2026-04-28: agency 분기 추가. 이전엔 admin/seller 만 분기 → 에이전시는 자기 알림 못 봄.
   const recipientType = user.type === 'admin' ? 'admin' : user.type === 'agency' ? 'agency' : 'seller';
   const recipientId = String(user.id);
 

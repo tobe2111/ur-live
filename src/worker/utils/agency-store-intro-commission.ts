@@ -1,11 +1,11 @@
 /**
- * 🛡️ 2026-05-20: 벤더사 입점 가게 commission credit.
+ * 🛡️ 2026-05-20: 에이전시 입점 가게 commission credit.
  *
  * 호출 시점: 주문이 PAID/DONE 으로 confirm 된 직후 (payment.routes.ts).
  * 입력: 각 order 의 seller_id + total_amount.
  * 동작:
  *   1. 해당 seller 의 introduced_by_agency_id 조회 — null 이면 noop.
- *   2. 벤더사의 store_intro_commission_pct (default 2%) 가져옴.
+ *   2. 에이전시의 store_intro_commission_pct (default 2%) 가져옴.
  *   3. (가게 첫 PAID 주문이면) signup_bonus ₩30,000 1회 적립.
  *   4. sales_commission 적립 — 매 주문마다 (영구).
  *   5. UNIQUE(order_id, type) 으로 중복 방지 — 재confirm 시 안전.
@@ -33,7 +33,7 @@ export async function creditAgencyStoreIntroCommission(
     const agencyId = sellerRow?.introduced_by_agency_id
     if (!agencyId) return
 
-    // 2. 벤더사 commission rate + 한도(개월) — per-agency 어드민 설정.
+    // 2. 에이전시 commission rate + 한도(개월) — per-agency 어드민 설정.
     //    🛡️ 2026-06-27: commission_term_months 컬럼 미존재 환경 대비 try, 미존재 시 율만(무제한=현행).
     let pct: number = DEFAULT_AGENCY_COMMISSION_PCT  // 🏭 2026-06-29 (머지 정합): 리터럴 추론(`2`) 방지 — 재대입 number
     let termMonths = 0  // 0 = 무제한(현행). NULL 컬럼/미설정도 0.
@@ -107,7 +107,7 @@ export async function creditAgencyStoreIntroCommission(
 }
 
 /**
- * 🔐 2026-06-11 (머니 감사 High#2): 주문 환불 시 벤더사 매장영입 커미션 역전.
+ * 🔐 2026-06-11 (머니 감사 High#2): 주문 환불 시 에이전시 매장영입 커미션 역전.
  *   creditAgencyStoreIntroCommission 가 적립(status='pending')하는데 환불 역전이 어떤 경로에도
  *   없어 환불해도 cron 이 성숙→지급하던 누수. order-refund + returns 양쪽에서 호출(단일 진실).
  *   pending/available 만 회수(이미 paid 면 차기 정산 상계 — 별도, 여기선 미성숙분만 안전 차단).

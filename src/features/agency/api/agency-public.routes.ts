@@ -4,7 +4,7 @@
  * 마운트: /api/agency-public
  *
  * 공개 라우트 (인증 X):
- *   GET /:slug                     — 벤더사 공개 정보 + 소속 셀러 (옵션) + 누적 매출 (옵션)
+ *   GET /:slug                     — 에이전시 공개 정보 + 소속 셀러 (옵션) + 누적 매출 (옵션)
  *
  * 인증 라우트:
  *   PATCH /me/public               — 본인 공개 페이지 정보 편집 (slug, bio, logo, cover, 노출 옵션)

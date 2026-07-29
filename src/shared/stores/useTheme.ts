@@ -54,7 +54,7 @@ function applyToDocument(applied: AppliedTheme) {
   // 정책 (CLAUDE.md A안):
   //   - 화이트 테마 페이지 (쇼핑/결제/상세) = light 모드 → bg-white, dark 모드 → dark: variants 활성
   //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#020202] 강제 → 토글 무영향 (의도)
-  //   - 셀러/어드민/벤더사 = #F4F5F7 강제 + dark: variants 절대 금지 (pre-commit hook 차단)
+  //   - 셀러/어드민/에이전시 = #F4F5F7 강제 + dark: variants 절대 금지 (pre-commit hook 차단)
   // 즉 토글은 쇼핑/결제 흐름에만 시각 적용. 사고 재발 방지를 위해 글로벌 CSS override 는 사용 안 함.
   try {
     const root = document.documentElement

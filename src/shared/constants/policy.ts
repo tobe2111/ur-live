@@ -8,7 +8,7 @@
  *
  * ── INDEX ───────────────────────────────────────────────────────
  *  ① REFUND_POLICY       — 환불 / 만료 / 분쟁 / 출금
- *  ② COMMISSION_DEFAULTS — 수수료율 (플랫폼/셀러/벤더사/제휴/추천)
+ *  ② COMMISSION_DEFAULTS — 수수료율 (플랫폼/셀러/에이전시/제휴/추천)
  *  ③ TAX_POLICY          — 원천징수율 + 임계값 (사업소득/기타소득)
  *  ④ TIME_CONSTANTS      — 폴링 / dedup / threshold (초 단위)
  *  ⑤ SELLER_ROLES        — `src/shared/seller-roles.ts` (역할 helper)
@@ -56,17 +56,17 @@ export const COMMISSION_DEFAULTS = {
   /** 위탁 판매 셀러 commission */
   SELLER_COMMISSION_PCT: 10,
 
-  /** 벤더사 입점 분배 (platform_fee 중) */
+  /** 에이전시 입점 분배 (platform_fee 중) */
   AGENCY_SHARE_PCT: 30,
 
   /** 인플루언서 입점 분배 (platform_fee 중) */
   INFLUENCER_INTRO_SHARE_PCT: 20,
 
-  /** 벤더사 본인 commission (매출 기준) */
+  /** 에이전시 본인 commission (매출 기준) */
   AGENCY_OWN_RATE: 2.0,
 
   /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일(값 불변).
-   *  벤더사 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념. */
+   *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념. */
   AGENCY_STORE_INTRO_PCT: 2.0,
   /** 영입자(크리에이터) 매장영입(platform_settings.influencer_store_intro_pct 미설정 시 fallback). */
   INFLUENCER_STORE_INTRO_PCT: 1.5,

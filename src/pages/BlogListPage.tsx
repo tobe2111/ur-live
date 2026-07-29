@@ -31,7 +31,7 @@ const COVER_EMOJI: Array<[RegExp, string]> = [
   [/payment|결제/, '💳'],
   [/review|리뷰/, '⭐'],
   [/settlement|정산/, '📊'],
-  [/agency|벤더사/, '🤝'],
+  [/agency|에이전시/, '🤝'],
 ]
 // 📝 제목/요약에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
 const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')

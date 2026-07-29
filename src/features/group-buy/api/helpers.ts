@@ -253,7 +253,7 @@ export async function clawbackVoucherCommission(
   }
   if (clawStmts.length > 0) await DB.batch(clawStmts)
 
-  // 🛡️ 2026-05-31: 벤더사 입점 sales_commission(구매 시 order 단위 적립) 도 동일 비례 회수.
+  // 🛡️ 2026-05-31: 에이전시 입점 sales_commission(구매 시 order 단위 적립) 도 동일 비례 회수.
   //   payout 은 agency_store_intro_commissions 를 status 별 SUM(commission_amount) 로 집계하므로
   //   cancelled 전환 + 부분 감액이면 정합. paid 는 제외(이미 송금). order_id 없으면 skip.
   if (orderId) {

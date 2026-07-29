@@ -249,7 +249,7 @@ export default function AdminPendingSellersPage() {
                     ? { label: '❌ NTS 불일치', color: 'bg-red-100 text-red-700' }
                     : { label: `⚠️ ${ntsResult?.status || '확인 필요'}`, color: 'bg-amber-100 text-amber-700' }
               const introducer = s.introduced_by_agency_id
-                ? `🏢 벤더사 #${s.introduced_by_agency_id}`
+                ? `🏢 에이전시 #${s.introduced_by_agency_id}`
                 : s.introduced_by_influencer_id
                   ? `🎤 인플루언서 #${s.introduced_by_influencer_id}`
                   : null

@@ -636,7 +636,7 @@ adminSellersRoutes.patch('/sellers/:id/donation-commission', cors(), async (c) =
   }
 });
 
-// 🛡️ 2026-05-21 Phase D: 사장님(store_owner) 매직링크 재발송 — 어드민/벤더사 1-click.
+// 🛡️ 2026-05-21 Phase D: 사장님(store_owner) 매직링크 재발송 — 어드민/에이전시 1-click.
 //   기존 endpoint (seller-orders.routes.ts:961) 는 셀러 본인용. 어드민이 발송 트리거 시 본 endpoint.
 //   인프라 동일 (sendStoreOwnerAlimtalk + token) — 어드민 권한 확장만.
 adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
@@ -672,10 +672,10 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
   }
 });
 
-// 🛡️ 2026-05-21: 벤더사 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
+// 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
 //   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
 //   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
-//   사유: 가게 사장님 분쟁 (영업권 충돌) / 벤더사 무활동 6개월 unlock 등.
+//   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
 adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -690,7 +690,7 @@ adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), async (c) => {
     if (newAgencyId != null) {
       // 새 agency 존재 확인
       const agency = await DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(newAgencyId).first();
-      if (!agency) return c.json({ success: false, error: '대상 벤더사를 찾을 수 없습니다.' }, 404);
+      if (!agency) return c.json({ success: false, error: '대상 에이전시를 찾을 수 없습니다.' }, 404);
     }
     // 현재 값 조회 (감사 로그용 + race detection 용)
     const current = await DB.prepare('SELECT introduced_by_agency_id, introduced_by_influencer_id, updated_at FROM sellers WHERE id = ?').bind(sellerId).first<{ introduced_by_agency_id: number | null; introduced_by_influencer_id: number | null; updated_at: string | null }>();

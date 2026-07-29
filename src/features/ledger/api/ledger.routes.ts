@@ -1,9 +1,9 @@
 /**
- * 🛡️ 2026-05-21 Phase D-2: 셀러/벤더사 본인 ledger 조회.
+ * 🛡️ 2026-05-21 Phase D-2: 셀러/에이전시 본인 ledger 조회.
  *
  * GET /api/ledger/my — 본인 ledger entries 페이지네이션
  *   - 셀러: credit_account = 'seller:N' OR 'merchant:N'
- *   - 벤더사: credit_account = 'agency:N'
+ *   - 에이전시: credit_account = 'agency:N'
  *   - 합산 + entries 리스트
  *   - payout 처리됨 / 미처리 구분
  */
@@ -111,7 +111,7 @@ ledgerRoutes.get('/ledger/my', requireAuth(), async (c) => {
     if (filter) accounts = [filter]
     else return c.json({ success: false, error: 'admin 은 ?account= 명시 필수' }, 400)
   } else {
-    return c.json({ success: false, error: '셀러/벤더사 전용' }, 403)
+    return c.json({ success: false, error: '셀러/에이전시 전용' }, 403)
   }
   if (accounts.length === 0) return c.json({ success: true, data: { summary: {}, entries: [] } })
 

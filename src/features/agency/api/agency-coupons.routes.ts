@@ -4,12 +4,12 @@
  * 마운트: /api/agency/coupons
  * 마이그레이션: 0216_coupons_agency_distribution.sql
  *
- * 흐름: 벤더사가 템플릿 쿠폰 1개 생성 → N명 셀러에게 배포 → 셀러별로 복제된 쿠폰 생성
+ * 흐름: 에이전시가 템플릿 쿠폰 1개 생성 → N명 셀러에게 배포 → 셀러별로 복제된 쿠폰 생성
  *      → 각 셀러는 자기 시청자에게 발급
  *
  * Endpoints:
  *   POST   /distribute              — 템플릿 쿠폰을 셀러 N명에게 배포 (자동 복제)
- *   GET    /distributions           — 본인 벤더사의 배포 이력
+ *   GET    /distributions           — 본인 에이전시의 배포 이력
  *   GET    /distributions/:id/stats — 배포된 쿠폰의 사용 효과 분석
  *
  * 참조: docs/AGENCY_STRATEGY_QUICKWIN.md (Q7)
@@ -113,7 +113,7 @@ app.post('/distribute', requireAgencyPermission('coupon'), async (c) => {
     return c.json({ success: false, error: '본인 소속 셀러 없음' }, 400)
   }
 
-  // 2) 부모(템플릿) 쿠폰 생성 (seller_id NULL = 벤더사 소유)
+  // 2) 부모(템플릿) 쿠폰 생성 (seller_id NULL = 에이전시 소유)
   const parentCode = `AG${agencyId}-${Date.now().toString(36).toUpperCase()}`
   const parentResult = await c.env.DB.prepare(`
     INSERT INTO coupons (code, name, type, value, min_order_amount, total_count, used_count, seller_id, distributed_by_agency_id, is_active, starts_at, expires_at)
@@ -165,7 +165,7 @@ app.post('/distribute', requireAgencyPermission('coupon'), async (c) => {
       // 셀러에게 알림
       await c.env.DB.prepare(`
         INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
-        VALUES ('seller', ?, 'coupon_distributed', '벤더사 쿠폰 배포', ?, '/seller/coupons', datetime('now'))
+        VALUES ('seller', ?, 'coupon_distributed', '에이전시 쿠폰 배포', ?, '/seller/coupons', datetime('now'))
       `).bind(
         String(seller.seller_id),
         `${body.name} (${body.quantity_per_seller}장) — 시청자에게 발급 가능`,
@@ -227,7 +227,7 @@ app.get('/distributions/:parentId/stats', async (c) => {
   const parentId = parseInt(c.req.param('parentId'))
   if (!Number.isFinite(parentId) || parentId <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
 
-  // 자기 벤더사 배포인지 확인
+  // 자기 에이전시 배포인지 확인
   const owned = await c.env.DB.prepare(
     'SELECT 1 FROM agency_coupon_distributions WHERE agency_id = ? AND parent_coupon_id = ? LIMIT 1'
   ).bind(agencyId, parentId).first()

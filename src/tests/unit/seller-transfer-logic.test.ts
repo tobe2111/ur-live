@@ -59,7 +59,7 @@ describe('transfer: 요청 검증', () => {
     })).toEqual({ valid: true })
   })
 
-  it('동일 벤더사 → invalid', () => {
+  it('동일 에이전시 → invalid', () => {
     expect(validateTransferRequest({
       fromAgencyId: 1, toAgencyId: 1, sellerId: 100,
     })).toEqual({ valid: false, reason: 'same_agency' })

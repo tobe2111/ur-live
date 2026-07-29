@@ -143,7 +143,7 @@ export default function AdminAgencyPage() {
   }
 
   async function handleReject(a: Agency) {
-    if (!(await confirmDialog({ message: `"${a.name}" 벤더사 가입을 거절하시겠습니까?`, danger: true }))) return
+    if (!(await confirmDialog({ message: `"${a.name}" 에이전시 가입을 거절하시겠습니까?`, danger: true }))) return
     try {
       await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
       fetchAgencies()
@@ -163,7 +163,7 @@ export default function AdminAgencyPage() {
   }
 
   async function handleResetPassword(a: Agency) {
-    const newPwd = prompt(`"${a.name}" 벤더사의 새 비밀번호 (8자 이상):`, '')
+    const newPwd = prompt(`"${a.name}" 에이전시의 새 비밀번호 (8자 이상):`, '')
     if (newPwd === null) return
     if (!newPwd || newPwd.length < 8) {
       toast.error(t('admin.agency.k005', { defaultValue: '비밀번호는 8자 이상이어야 합니다.' }))
@@ -180,7 +180,7 @@ export default function AdminAgencyPage() {
   }
 
   async function handleDelete(a: Agency) {
-    if (!(await confirmDialog({ message: `"${a.name}" 벤더사를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`, danger: true }))) return
+    if (!(await confirmDialog({ message: `"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`, danger: true }))) return
     try {
       await api.delete(`/api/admin/agencies/${a.id}`, { headers })
       fetchAgencies()
@@ -213,7 +213,7 @@ export default function AdminAgencyPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.agency')}
-          subtitle={`총 ${agencies.length}개 벤더사`}
+          subtitle={`총 ${agencies.length}개 에이전시`}
           icon={<Users className="h-5 w-5" />}
           actions={
             <button
@@ -221,18 +221,18 @@ export default function AdminAgencyPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <Plus className="h-3.5 w-3.5" />
-              벤더사 추가
+              에이전시 추가
             </button>
           }
         />
       <div className="hidden flex items-center justify-between">
-        <p className="text-sm text-gray-500">총 {agencies.length}개 벤더사</p>
+        <p className="text-sm text-gray-500">총 {agencies.length}개 에이전시</p>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
-          벤더사 추가
+          에이전시 추가
         </button>
       </div>
 
@@ -285,11 +285,11 @@ export default function AdminAgencyPage() {
           </div>
         )}
 
-        {/* 전체 벤더사 목록 */}
+        {/* 전체 에이전시 목록 */}
         {agencies.filter(a => a.status !== 'pending').length === 0 && agencies.filter(a => a.status === 'pending').length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-500 text-sm mb-1">{t('admin.agency.k013', { defaultValue: '등록된 벤더사가 없습니다.' })}</p>
-            <p className="text-gray-400 text-xs">{t('admin.agency.k014', { defaultValue: '벤더사 추가 버튼으로 생성하세요.' })}</p>
+            <p className="text-gray-500 text-sm mb-1">{t('admin.agency.k013', { defaultValue: '등록된 에이전시가 없습니다.' })}</p>
+            <p className="text-gray-400 text-xs">{t('admin.agency.k014', { defaultValue: '에이전시 추가 버튼으로 생성하세요.' })}</p>
           </div>
         ) : (
         <div className="space-y-3">
@@ -489,7 +489,7 @@ export default function AdminAgencyPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-5">
-              {modal === 'create' ? t('admin.agency.k039', { defaultValue: '벤더사 추가' }) : t('admin.agency.k040', { defaultValue: '벤더사 수정' })}
+              {modal === 'create' ? t('admin.agency.k039', { defaultValue: '에이전시 추가' }) : t('admin.agency.k040', { defaultValue: '에이전시 수정' })}
             </h2>
 
             {error && (
@@ -498,7 +498,7 @@ export default function AdminAgencyPage() {
 
             <div className="space-y-4">
               {[
-                { key: 'name', label: t('admin.agency.k041', { defaultValue: '벤더사명' }), placeholder: t('admin.agency.k042', { defaultValue: '(주)베스트벤더사' }), required: true },
+                { key: 'name', label: t('admin.agency.k041', { defaultValue: '에이전시명' }), placeholder: t('admin.agency.k042', { defaultValue: '(주)베스트에이전시' }), required: true },
                 { key: 'contact_name', label: t('admin.agency.k043', { defaultValue: '담당자명' }), placeholder: t('admin.agency.k044', { defaultValue: '홍길동' }), required: true },
                 { key: 'email', label: t('admin.agency.k045', { defaultValue: '이메일' }), placeholder: 'agency@example.com', required: true },
                 { key: 'password', label: modal === 'create' ? t('admin.agency.k046', { defaultValue: '비밀번호' }) : t('admin.agency.k047', { defaultValue: '비밀번호 (변경 시만 입력)' }), placeholder: t('admin.agency.k048', { defaultValue: '8자 이상' }), required: modal === 'create' },
@@ -532,7 +532,7 @@ export default function AdminAgencyPage() {
                 </div>
               )}
 
-              {/* 정산 기본 수수료율 (agencies.commission_rate) — 벤더사 GMV 수수료의 실제 SSOT.
+              {/* 정산 기본 수수료율 (agencies.commission_rate) — 에이전시 GMV 수수료의 실제 SSOT.
                   이전엔 백엔드만 지원하고 입력이 없어 조정 불가였음 (2026 전수조사). */}
               {modal === 'edit' && (
                 <div>
@@ -544,11 +544,11 @@ export default function AdminAgencyPage() {
                     placeholder="기본 2"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">벤더사가 소속 셀러 매출(GMV)에서 받는 기본 수수료율. 정산·통계에 반영.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">에이전시가 소속 셀러 매출(GMV)에서 받는 기본 수수료율. 정산·통계에 반영.</p>
                 </div>
               )}
 
-              {/* 🛡️ 2026-06-27 per-agency 매장영입 커미션 율·기간 (대표 — 벤더사마다 조정) */}
+              {/* 🛡️ 2026-06-27 per-agency 매장영입 커미션 율·기간 (대표 — 에이전시마다 조정) */}
               {modal === 'edit' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>

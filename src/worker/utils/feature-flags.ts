@@ -26,7 +26,7 @@ export interface FeatureFlags {
   enable_search_suggestions: boolean;
   enable_realtime_viewer_count: boolean;
   enable_donation_live_toast: boolean;
-  // 🛡️ 2026-04-26 (X2): 신규 벤더사 기능 kill switches.
+  // 🛡️ 2026-04-26 (X2): 신규 에이전시 기능 kill switches.
   // 마이그레이션 0207~0221 미적용 또는 cron 오작동 시 즉시 OFF 가능.
   // OFF 시: cron handler 가 시작 시 graceful skip.
   enable_agency_tier_eval: boolean;        // Q1

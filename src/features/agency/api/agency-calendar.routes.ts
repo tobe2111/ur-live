@@ -214,7 +214,7 @@ app.post('/streams/:id/notes', async (c) => {
       if (seller?.seller_id) {
         await c.env.DB.prepare(`
           INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
-          VALUES ('seller', ?, 'agency_note', '벤더사 노트', ?, ?, datetime('now'))
+          VALUES ('seller', ?, 'agency_note', '에이전시 노트', ?, ?, datetime('now'))
         `).bind(
           String(seller.seller_id),
           body.content.trim().slice(0, 100),
@@ -282,13 +282,13 @@ app.delete('/notes/:id', async (c) => {
 
 // ── POST /notes/:id/mark-read — 셀러가 읽음 처리 ──
 //
-// ⚠️ 이 엔드포인트는 벤더사 인증 미들웨어 사용 중 — 향후 셀러 전용 변종 필요.
+// ⚠️ 이 엔드포인트는 에이전시 인증 미들웨어 사용 중 — 향후 셀러 전용 변종 필요.
 // 임시: visible_to_seller=1 인 노트의 read_by_seller_at 업데이트.
 app.post('/notes/:id/mark-read', async (c) => {
   const agency = c.get('agency')
   const id = parseInt(c.req.param('id'))
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
-  // 🛡️ 2026-06-12 (감사 1단계): 벤더사 스코프 누락 — 타 벤더사 노트 id 로 read_by_seller_at
+  // 🛡️ 2026-06-12 (감사 1단계): 에이전시 스코프 누락 — 타 에이전시 노트 id 로 read_by_seller_at
   //   변조 가능하던 것 차단 (파일 내 다른 노트 endpoint 와 동일한 AND agency_id = ? 패턴).
   await c.env.DB.prepare(
     "UPDATE agency_live_notes SET read_by_seller_at = datetime('now') WHERE id = ? AND agency_id = ? AND visible_to_seller = 1 AND read_by_seller_at IS NULL"

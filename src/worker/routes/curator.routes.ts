@@ -1251,7 +1251,7 @@ curatorRoutes.post('/me/business', requireAuth(), async (c) => {
 
 // ============================================================
 // GET /me/introduced-stores — 내가 영입한 매장 + commission (Creator 대칭).
-//   벤더사 AgencyIntroducedStoresPage 의 유저 버전. introduced_by_influencer_id = 본인 users.id.
+//   에이전시 AgencyIntroducedStoresPage 의 유저 버전. introduced_by_influencer_id = 본인 users.id.
 // ============================================================
 curatorRoutes.get('/me/introduced-stores', requireAuth(), async (c) => {
   try {

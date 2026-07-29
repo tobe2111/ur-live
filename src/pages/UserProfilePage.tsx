@@ -226,7 +226,7 @@ export default function UserProfilePage() {
       <MyReferralCard />
       </EarningsGroup>
 
-      {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 벤더사.
+      {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <RoleCtaGrid />

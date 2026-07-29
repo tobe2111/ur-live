@@ -106,11 +106,11 @@ export default function AdminAgencyCreatorApprovalPage() {
   }
 
   return (
-    <AdminLayout title={t('admin.pages.agencyCreatorApproval', '벤더사 셀러 심사')}>
+    <AdminLayout title={t('admin.pages.agencyCreatorApproval', '에이전시 셀러 심사')}>
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="벤더사 셀러 심사"
-          subtitle={t('admin.agencyCreatorApproval.subtitle', { defaultValue: '벤더사가 초대한 셀러의 사업자 정보를 검증하고 승인/반려 처리' })}
+          title="에이전시 셀러 심사"
+          subtitle={t('admin.agencyCreatorApproval.subtitle', { defaultValue: '에이전시가 초대한 셀러의 사업자 정보를 검증하고 승인/반려 처리' })}
           icon={<Building2 className="h-5 w-5" />}
         />
 
@@ -165,7 +165,7 @@ export default function AdminAgencyCreatorApprovalPage() {
                     </div>
 
                     <p className="text-xs text-gray-400 mt-2">
-                      {t('admin.agencyCreatorApproval.linkedAgency', { defaultValue: '소속 벤더사' })}: <strong className="text-gray-600">{item.agency_name || '-'}</strong>
+                      {t('admin.agencyCreatorApproval.linkedAgency', { defaultValue: '소속 에이전시' })}: <strong className="text-gray-600">{item.agency_name || '-'}</strong>
                       {item.agency_email && <span className="ml-1">({item.agency_email})</span>}
                     </p>
 

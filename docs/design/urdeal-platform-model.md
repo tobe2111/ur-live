@@ -21,7 +21,7 @@
 
 | 서비스 | 정체성 | 행위자 | 도메인 | 코드 경계 |
 |---|---|---|---|---|
-| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·벤더사·운영 | `live.ur-team.com` | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
+| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `live.ur-team.com` | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
 | **🏭 도매몰** (유통스타트) | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 제조사·판매사·도매 어드민 | `utongstart.com` | `features/supply/**`, `pages/wholesale*`, `pages/supplier-dashboard` |
 | **📣 유어애즈** (마케팅) | 광고·자동입찰·부정클릭방지·통합실적 | 광고주(매장/셀러)·운영 | `/ads` | `features/marketing`, urads-* 문서 |
 
@@ -38,10 +38,10 @@
 | **일반 유저** | 회원가입 누구나 (`users`+handle, 링크샵 자동생성) | 딜 발견·구매, 친구 추천/초대 | 딜 적립·절약, 초대·추천 수익 | 핀 어필리에이트 **2%** · 초대 보상 **1,000딜**(첫 구매) |
 | **인플루언서** | 판매승인 셀러 `seller_type='influencer'` | 팔로워에 **추천**·매장 **영입** | 추천 클릭→구매 커미션, 영입 매장 매출 | 추천 2% · 매장영입 **1.5%**(성숙 T+7, 원천징수 후) |
 | **매장 업주** | 사업자 유저 `seller_type='store_owner'` | **본인 상품/이용권** 판매 | 판매액·현금 정산 | 판매 플랫폼 수수료 **3P 5%**(이용권/쇼핑), **1P 0%**(유어딜 직판) |
-| **벤더사** (옛 에이전시) ⏸️*셸브* | `agencies` (B2B 조직) | 조직 규모 **매장 영입** (재정의) | 영입 가게 GMV 커미션 | 영입 가게 GMV **1%**(플랫폼분에서), **24개월** 한도, 실판매 시만 |
+| **에이전시** ⏸️*셸브* | `agencies` (B2B 조직) | 조직 규모 **매장 영입** (재정의) | 영입 가게 GMV 커미션 | 영입 가게 GMV **1%**(플랫폼분에서), **24개월** 한도, 실판매 시만 |
 | **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** + 충전 마진 |
 
-> ⏸️ **벤더사 셸브 (2026-07-04 대표 결정 — `AGENCY_HIDDEN=true`)**: 라이브커머스 영구중단으로 벤더사의 차별점이던 **'소속 셀러 로스터 관리(MCN 모델)'가 근거 상실** + **실제 파트너 0명**. 남은 유일 가치 '매장 영입'은 이미 인플루언서 store-intro 로 존재 → 39페이지 투기적 대시보드를 접음(`community-proposal`·`shopping-tab` 과 동일 flag 패턴, 코드/데이터/admin·크론 전부 보존·가역). **재오픈 시 재정의**: 벤더사 = "조직 규모 매장영입 계정"(store-intro at scale + 팀 시트). **로스터/랭킹/비교/PK/캠페인 등 라이브 시대 운영도구는 부활 금지** — 영입→입점가게 매출→정산 커미션 루프만 린하게. 진입(`/agency/*`·`/agency-partner`·하단바/푸터/마이 CTA)은 홈 리다이렉트/숨김.
+> ⏸️ **에이전시 셸브 (2026-07-04 대표 결정 — `AGENCY_HIDDEN=true`)**: 라이브커머스 영구중단으로 에이전시의 차별점이던 **'소속 셀러 로스터 관리(MCN 모델)'가 근거 상실** + **실제 파트너 0명**. 남은 유일 가치 '매장 영입'은 이미 인플루언서 store-intro 로 존재 → 39페이지 투기적 대시보드를 접음(`community-proposal`·`shopping-tab` 과 동일 flag 패턴, 코드/데이터/admin·크론 전부 보존·가역). **재오픈 시 재정의**: 에이전시 = "조직 규모 매장영입 계정"(store-intro at scale + 팀 시트). **로스터/랭킹/비교/PK/캠페인 등 라이브 시대 운영도구는 부활 금지** — 영입→입점가게 매출→정산 커미션 루프만 린하게. 진입(`/agency/*`·`/agency-partner`·하단바/푸터/마이 CTA)은 홈 리다이렉트/숨김.
 
 > **능력 레이어 모델**: 유저 →(사업자등록·판매승인)→ 사업자 유저. 같은 `/u/{handle}`에 기능이 *레이어로 추가*(신분 교체 아님). `seller_type`은 `influencer | store_owner | both`.
 > **원천징수**: 사업소득 3.3% / 기타소득 8.8% (`tax-withholding.ts`) — 커미션 지급 시.
@@ -86,7 +86,7 @@
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
 
-### 벤더사 / 운영 / 도매
+### 에이전시 / 운영 / 도매
 - `/agency/*`(관리·영입·정산) · `/admin/*`(운영 콘솔) · `/wholesale/*`·`/supplier/*`(도매)
 
 ---
@@ -108,7 +108,7 @@
 |---|---|---|---|---|
 | **어필리에이트(추천/핀)** | 추천한 유저·인플루언서 | 2% (CAC라 낮춤, 0 가능) | 주문 confirm, order_id 멱등 | 환불 시 clawback |
 | **매장영입(인플루언서)** | 매장 영입한 크리에이터 | 1.5% | 매 결제, T+7 성숙, 원천징수 | `reverseInfluencerStoreIntroOnRefund` |
-| **매장영입(벤더사)** | 영입 벤더사 | 1% (플랫폼 5%에서) | 실판매 시만, 24개월 한도 | 대칭 역전 |
+| **매장영입(에이전시)** | 영입 에이전시 | 1% (플랫폼 5%에서) | 실판매 시만, 24개월 한도 | 대칭 역전 |
 | **공급자(도매)** | 공급 상품 공급자 | 공급가 | 즉시(D2), order_id 멱등 | `reverseSupplierOnRefund` |
 | **초대 보상** | 초대한 유저 | 1,000딜 | 피초대자 첫 구매, UNIQUE claim | — |
 
@@ -123,7 +123,7 @@
 ## 6. 성장 루프 (Growth Loops)
 
 1. **추천 루프**: 유저/인플루언서가 상품 상세의 **"+" 핀**으로 링크샵에 담음 → 공유 → 클릭 `?aff=` 어트리뷰션 → 구매 시 어필리에이트 2% 적립. (링크샵 = 수요 캡처 표면)
-2. **영입 루프**: 인플루언서가 매장을 유어딜에 **영입** → 그 매장 매 결제마다 영입자 커미션(지속·시한부). 공급 확장. (벤더사는 이 영입을 *조직 규모*로 하는 계정 — 현재 셸브, 위 §2 참조.)
+2. **영입 루프**: 인플루언서가 매장을 유어딜에 **영입** → 그 매장 매 결제마다 영입자 커미션(지속·시한부). 공급 확장. (에이전시는 이 영입을 *조직 규모*로 하는 계정 — 현재 셸브, 위 §2 참조.)
 3. **초대 루프**: 유저 초대 링크 `/g/:invite_code` → 피초대자 첫 구매 시 양쪽 보상.
 4. **수요신호 루프**: 커뮤니티 공구 제안 → 어드민 알림 → 확정 시 참여자 전원 알림. (없는 상품을 유저가 끌어옴)
 5. **SEO/공유 루프**: 링크샵·블로그·공구 상세 서버측 OG/JSON-LD → 카톡/네이버/구글 유입 → 재유통.
@@ -132,7 +132,7 @@
 
 ## 7. 링크샵 역할 모델 (요약 — 상세: linkshop-role-model.md)
 
-- **링크샵을 "소유"하는 건 3부류**(유저·인플루언서·매장 업주). 벤더사·운영은 rollup 뒷단.
+- **링크샵을 "소유"하는 건 3부류**(유저·인플루언서·매장 업주). 에이전시·운영은 rollup 뒷단.
 - **역할 적응형 2모드**:
   - **큐레이터 모드**(본인 상품 없음): 추천(핀)이 hero.
   - **스토어프론트 모드**(본인 상품 있음): 내 상품 hero + 추천 **하단 opt-in** 섹션.
@@ -175,7 +175,7 @@
 |---|---|---|
 | **1** | 매장 링크샵 하단 "추천" opt-in 부활(`CuratorPinsSection` 재연결) + 핀 담기 토스트 안내 | 낮음 |
 | **2** | 링크샵 모드 자동 전환(본인 상품 유무 → 큐레이터↔스토어프론트) | 중 |
-| **3** | 벤더사 매출 rollup 대시보드(관리 매장 GMV/정산 집계) | 중 |
+| **3** | 에이전시 매출 rollup 대시보드(관리 매장 GMV/정산 집계) | 중 |
 | **4** | 부류별 온보딩 분기("추천할래요/팔래요" 초기 모드 힌트) | 낮음 |
 | **5** | 정산 단일화(payout SSOT)·머니이동 정합 (`settlement-reconciliation.md`) | 중·대표 결정 |
 
@@ -193,9 +193,9 @@
 
 1. **매장 "추천" 섹션 기본값**: off(직접 켜야) vs on? (정체성 보수적이면 off 권장)
 2. **인플루언서 본인 상품 판매 허용 범위**(both 모드 육성?)
-3. ~~**벤더사 rollup 착수 시점**~~ → **결정됨(2026-07-04)**: 벤더사 셸브(`AGENCY_HIDDEN`), 로스터/rollup 모델 폐기. 재오픈은 첫 진짜 파트너 발생 시 "조직 규모 매장영입" 린 셋만.
+3. ~~**에이전시 rollup 착수 시점**~~ → **결정됨(2026-07-04)**: 에이전시 셸브(`AGENCY_HIDDEN`), 로스터/rollup 모델 폐기. 재오픈은 첫 진짜 파트너 발생 시 "조직 규모 매장영입" 린 셋만.
 4. **정산 단일화**(payout SSOT·정산신청 폐기) 머니이동 정책 — staging 검증 동반.
-5. **1P/3P·벤더사 요율 cutover**(3P 10→5%·벤더사 2→1%) 결제 배선 gated — 대표 승인+staging (`product-ownership-model.md`).
+5. **1P/3P·에이전시 요율 cutover**(3P 10→5%·에이전시 2→1%) 결제 배선 gated — 대표 승인+staging (`product-ownership-model.md`).
 6. **쇼핑탭 재오픈** 시점(`SHOPPING_TAB_HIDDEN`) · 도매몰·유어애즈 소비자 노출 전략.
 
 ---
@@ -213,7 +213,7 @@
 |---|---|---|---|
 | 소비자(유저) | `user_id`·`user_type`·`session_login`·`active_role` | `ur_session`(카카오) | 세션쿠키 + `/session/establish` 재발급 |
 | 사업자 유저(셀러) | `seller_token`(JWT 30일)·`seller_refresh_token`·`seller_id`·`seller_username` | `ud_seller_token` | `useTokenAutoRefresh('seller')` |
-| 벤더사 | `agency_token`·`agency_refresh_token` | `ud_agency_token` | 동일 |
+| 에이전시 | `agency_token`·`agency_refresh_token` | `ud_agency_token` | 동일 |
 | 어드민 | `admin_token`·`admin_refresh_token` | — | 동일 |
 | 도매(공급자) | `ud_supplier_token` | 쿠키 | — |
 
@@ -265,7 +265,7 @@
 
 ## 18. 백그라운드 잡 (크론 60+, `wrangler.toml` 스케줄)
 - **정산/재무**: auto-settlement·payouts-generate·influencer-payout·reconciliation·ledger-reconcile·ledger-integrity-check·prospects-commission-activate
-- **벤더사**: agency-auto-settle·agency-monthly-invoices/report/tasks·agency-tier-eval·agency-creator-eval·agency-seller-match·agency-store-intro-monthly-bonus·agency-inactive-sellers
+- **에이전시**: agency-auto-settle·agency-monthly-invoices/report/tasks·agency-tier-eval·agency-creator-eval·agency-seller-match·agency-store-intro-monthly-bonus·agency-inactive-sellers
 - **셀러/등급**: seller-tier-eval·seller-daily-report·seller-churn-detect·wholesale-grade-eval
 - **캐시/성능**: cache-prewarm·cache-warming·group-buy-feed-cache
 - **숙소**: stay-checkout-transition·stay-pending-expire·stay-reminder·stay-voucher-expire
@@ -274,7 +274,7 @@
 - **schema-repair-daily**(18 UTC): migrations 누락 컬럼/테이블 자동 보장(신규 컬럼은 다음날 자동 적용 — 또는 어드민 수동 `/api/_internal/repair-schema`).
 
 ## 19. 어드민 운영 도구 (101 페이지, `AdminLayout` 그룹)
-운영 · 🎯유어애즈 · 🏭도매몰(운영/정산/CS) · 🏪오프라인 공구 · 🛒온라인 쇼핑 · 회원/파트너 · 💰정산/재무 · 검증/CS. 주요: 대시보드·인사이트·퍼널·매출분석·운영가이드·**플랫폼 모델**·어뷰징탐지·환경준비·정산·분쟁·리뷰관리·셀러/벤더사 승인·블로그·유어애즈.
+운영 · 🎯유어애즈 · 🏭도매몰(운영/정산/CS) · 🏪오프라인 공구 · 🛒온라인 쇼핑 · 회원/파트너 · 💰정산/재무 · 검증/CS. 주요: 대시보드·인사이트·퍼널·매출분석·운영가이드·**플랫폼 모델**·어뷰징탐지·환경준비·정산·분쟁·리뷰관리·셀러/에이전시 승인·블로그·유어애즈.
 
 ## 20. 캐싱·성능 아키텍처 (잠금)
 - **SSR 0-RTT**: `worker/index.ts` HTMLRewriter 가 `__SSR_INITIAL_{MAIN,VOUCHERS,BROWSE,DETAIL,SELLER,CURATOR,WHOLESALE,BLOGPOST,GROUPBUY}__` 주입 + `caches.default` edge read → 첫 페인트 데이터 즉시.

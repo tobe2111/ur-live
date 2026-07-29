@@ -9,7 +9,7 @@
  *   - 사용된 voucher 통계 (status 별)
  *   - QR 스캔 빠른 진입
  *   - 정산 내역 요약
- *   - 인플루언서/벤더사 commission 안내
+ *   - 인플루언서/에이전시 commission 안내
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'

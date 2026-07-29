@@ -374,7 +374,7 @@ disputesRoutes.get('/seller/pending', requireAuth(), async (c) => {
   }
 })
 
-// ── GET /api/disputes/agency/pending — 벤더사 본인 셀러망 분쟁 ──
+// ── GET /api/disputes/agency/pending — 에이전시 본인 셀러망 분쟁 ──
 disputesRoutes.get('/agency/pending', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   const userAsAny = user as unknown as { id?: number | string; type?: string }
@@ -405,7 +405,7 @@ disputesRoutes.get('/agency/pending', requireAuth(), async (c) => {
   }
 })
 
-// ── GET /api/agency/group-buy/overview — 벤더사 본인 셀러망 공구 요약 ──
+// ── GET /api/agency/group-buy/overview — 에이전시 본인 셀러망 공구 요약 ──
 disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   const userAsAny = user as unknown as { id?: number | string; type?: string }

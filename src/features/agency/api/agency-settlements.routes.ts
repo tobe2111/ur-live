@@ -35,7 +35,7 @@ app.get('/settlements', async (c) => {
   const { id: agencyId } = c.get('agency') as { id: number }
 
   try {
-    // 벤더사 수수료율 조회
+    // 에이전시 수수료율 조회
     const agency = await c.env.DB.prepare('SELECT commission_rate FROM agencies WHERE id = ?')
       .bind(agencyId).first<{ commission_rate: number }>()
     const agencyRate = agency?.commission_rate ?? 2.0
@@ -53,7 +53,7 @@ app.get('/settlements', async (c) => {
       ORDER BY o.created_at DESC LIMIT 100
     `).bind(agencyId).all()
 
-    // 벤더사 수수료 계산
+    // 에이전시 수수료 계산
     const enriched = (results || []).map((r: any) => ({
       ...r,
       agency_commission_rate: agencyRate,
@@ -132,7 +132,7 @@ app.get('/settlement-invoices/:id', async (c) => {
 })
 
 // ── POST /settlements/request — 🏁 2026-06-12 (P3 사용자 결정) 레일 폐기 ──
-//   벤더사 보상 정본 = 영입 커미션(agency_store_intro_commissions, 자동 적립·멱등) —
+//   에이전시 보상 정본 = 영입 커미션(agency_store_intro_commissions, 자동 적립·멱등) —
 //   같은 매출 2%+2% 이중 산정 구조 제거. 지급은 어드민 지급 센터(T+7 성숙분 일괄)가 처리.
 //   기존 신청 이력 GET 은 존치(기록 보존).
 app.post('/settlements/request', async (c) => {

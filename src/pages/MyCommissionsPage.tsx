@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-21: 사용자/셀러/벤더사 공통 — 추천 commission 조회 + 출금 신청.
+ * 🛡️ 2026-05-21: 사용자/셀러/에이전시 공통 — 추천 commission 조회 + 출금 신청.
  *   - GET /api/referral-tree/my-commissions: 내 commission 리스트 + 요약
  *   - POST /api/referral-tree/withdrawals: granted 잔액 출금 신청
  *   - GET /api/referral-tree/withdrawals: 내 출금 신청 이력

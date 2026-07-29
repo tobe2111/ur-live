@@ -19,7 +19,7 @@ interface MobileAppLayoutProps {
  * 📐 2026-06-16: PC 컨슈머 프레임 (docs/design 미관 결정) — 모바일 완성도를 PC 로 그대로.
  *   - app-framed 페이지: PC(lg+) 에서 가운데 430px 프레임 + 배경 (모바일 디자인 그대로 액자화)
  *   - data-mobile-only (라이브/쇼츠 9:16): 기존 430px 액자 + 좌우 패널 유지
- *   - 대시보드(셀러/어드민/벤더사) + 도매몰/공급자(B2B): 풀 PC 너비 (HIDE_SIDEBAR_PREFIXES → 프레임 제외)
+ *   - 대시보드(셀러/어드민/에이전시) + 도매몰/공급자(B2B): 풀 PC 너비 (HIDE_SIDEBAR_PREFIXES → 프레임 제외)
  *   - 모바일(<lg): 전부 풀 너비 (영향 없음)
  *
  * 🛡️ 2026-05-03 hotfix: data-mobile-only 페이지에 xl:pl-56 적용 시 컬럼 압축 사고 → mobile-only 는 padding 0.

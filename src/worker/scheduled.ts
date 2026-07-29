@@ -311,7 +311,7 @@ export async function handleCronScheduled(
     //   정책 B: is_active=1 검수 통과한 상품만. 어떤 경로 (셀러/관리자/카페24/대량업로드/KT Alpha)
     //   로 생성됐든 1일 안에 카드 별점·리뷰 노출. idempotent.
     ctx.waitUntil(safeCron('auto-seed-reviews', () => handleAutoSeedReviews(env)));
-    // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 벤더사 alert
+    // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
     ctx.waitUntil(safeCron('seller-churn-detect', () => handleSellerChurnDetect(env)));
     // 🛡️ 2026-05-15 (TD-G08): ledger 정합성 검증 — Σdebit ≠ Σcredit / 음수 wallet → Discord alert
     ctx.waitUntil(safeCron('ledger-reconcile', () => handleLedgerReconcile(env)));
@@ -331,7 +331,7 @@ export async function handleCronScheduled(
       }
       // Phase 1-2: 부진 셀러 알림 (매일)
       await handleAgencyInactiveSellers(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/inactive-sellers', e));
-      // 🛡️ 2026-05-20: 벤더사 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
+      // 🛡️ 2026-05-20: 에이전시 입점 가게 월 성장 보너스 — 매일 체크하지만 동월 중복은 내부 가드.
       //   실질적으로 매월 1일 첫 실행만 의미 있음 (전월 매출 fix 됨).
       // 🔐 2026-06-11 (정합성 감사 🔴): 매월 1일에만 실행 — 기존 매일 실행 + note-LIKE 멱등(약함)이라
       //   같은 날 cron 중복/재시도 시 growth_bonus 이중 적립 위험. 1일 게이트로 실행 빈도 자체를 월1회로.
@@ -348,7 +348,7 @@ export async function handleCronScheduled(
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
       await handleSellerDailyReport(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/seller-daily-report', e));
-      // 2026-05-05: 신규 셀러 ↔ 벤더사 자동 매칭 제안
+      // 2026-05-05: 신규 셀러 ↔ 에이전시 자동 매칭 제안
       await handleAgencySellerMatch(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/agency-seller-match', e));
       // 2026-05-05: 광고 슬롯 낙찰 처리
       await handleAdSlotsAward(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/ad-slots-award', e));

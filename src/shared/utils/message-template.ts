@@ -8,7 +8,7 @@
  *   {{seller_business_name}} — 셀러 사업자명
  *   {{seller_email}}         — 셀러 이메일
  *   {{seller_tier}}          — 셀러 등급 (브론즈/실버/골드)
- *   {{agency_name}}          — 벤더사 이름
+ *   {{agency_name}}          — 에이전시 이름
  *   {{commission_rate}}      — 수수료율 (%)
  *   {{current_month}}        — 이번 달 (YYYY-MM)
  *   {{current_date}}         — 오늘 날짜 (YYYY-MM-DD)

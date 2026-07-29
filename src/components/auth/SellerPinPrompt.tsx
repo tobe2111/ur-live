@@ -134,7 +134,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
 }
 
 /**
- * SellerPinSetup — 셀러/벤더사 프로필에서 PIN 최초 설정
+ * SellerPinSetup — 셀러/에이전시 프로필에서 PIN 최초 설정
  */
 export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' | 'agency' }) {
   const { t } = useTranslation()

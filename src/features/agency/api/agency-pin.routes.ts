@@ -1,5 +1,5 @@
 /**
- * Agency PIN — 벤더사 민감 액션 추가 인증 (셀러 PIN 과 동일 패턴)
+ * Agency PIN — 에이전시 민감 액션 추가 인증 (셀러 PIN 과 동일 패턴)
  *
  * 엔드포인트:
  *   POST /set-pin
@@ -54,7 +54,7 @@ agencyPinRoutes.post('/set-pin', rateLimit({ action: 'agency_set_pin', max: 5, w
   const agency = await c.env.DB.prepare(
     'SELECT password_hash, linked_user_id FROM agencies WHERE id = ?'
   ).bind(agencyId).first<{ password_hash: string; linked_user_id: number | null }>()
-  if (!agency) return c.json({ success: false, error: '벤더사를 찾을 수 없습니다' }, 404)
+  if (!agency) return c.json({ success: false, error: '에이전시를 찾을 수 없습니다' }, 404)
 
   if (!agency.linked_user_id) {
     if (!current_password) return c.json({ success: false, error: '현재 비밀번호를 입력해주세요' }, 400)
@@ -115,7 +115,7 @@ agencyPinRoutes.post('/request-kakao-stepup', rateLimit({ action: 'agency_kakao_
     'SELECT linked_user_id FROM agencies WHERE id = ?'
   ).bind(agencyId).first<{ linked_user_id: number | null }>()
   if (!agency?.linked_user_id) {
-    return c.json({ success: false, error: '이 벤더사는 카카오 연동이 되어있지 않습니다.', code: 'NOT_LINKED' }, 412)
+    return c.json({ success: false, error: '이 에이전시는 카카오 연동이 되어있지 않습니다.', code: 'NOT_LINKED' }, 412)
   }
   if (Number(agency.linked_user_id) !== Number(sessionUser.userId)) {
     return c.json({ success: false, error: '연결된 카카오 계정과 현재 세션이 일치하지 않습니다.' }, 403)
@@ -124,7 +124,7 @@ agencyPinRoutes.post('/request-kakao-stepup', rateLimit({ action: 'agency_kakao_
   const token = await signJwt({
     sub: String(agencyId),
     agency_id: agencyId,
-    purpose: 'agency_pin_verified', // 벤더사 전용 stepup 은 pin_verified 와 동일 쿠키 경로로
+    purpose: 'agency_pin_verified', // 에이전시 전용 stepup 은 pin_verified 와 동일 쿠키 경로로
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 900,
   }, c.env.JWT_SECRET)

@@ -88,12 +88,12 @@ export default function AgencyTransfersPage() {
       <div className="p-6 space-y-6">
         <DashboardPageHeader
           title={t('agency.transfers.pageTitle', { defaultValue: '셀러 이전 (Network)' })}
-          subtitle={t('agency.transfers.pageSubtitle', { defaultValue: '벤더사 간 셀러 이전. 3자 동의 (보내는 쪽 → 받는 쪽 → 셀러)' })}
+          subtitle={t('agency.transfers.pageSubtitle', { defaultValue: '에이전시 간 셀러 이전. 3자 동의 (보내는 쪽 → 받는 쪽 → 셀러)' })}
           icon={<ArrowRightLeft className="h-5 w-5" />}
         />
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
-          {t('agency.transfers.flowDesc', { defaultValue: '⚠️ 이전 흐름: ① 보내는 벤더사 신청 → ② 받는 벤더사 수락 → ③ 셀러 본인이 셀러 대시보드에서 직접 동의 → 매핑 변경. 이전 후 30일 cooldown. 셀러에게 알림이 자동 발송되며, 벤더사가 셀러 대신 동의할 수 없습니다 (보안).' })}
+          {t('agency.transfers.flowDesc', { defaultValue: '⚠️ 이전 흐름: ① 보내는 에이전시 신청 → ② 받는 에이전시 수락 → ③ 셀러 본인이 셀러 대시보드에서 직접 동의 → 매핑 변경. 이전 후 30일 cooldown. 셀러에게 알림이 자동 발송되며, 에이전시가 셀러 대신 동의할 수 없습니다 (보안).' })}
         </div>
 
         {loading ? (
@@ -188,7 +188,7 @@ function TransferCard(props: {
       )}
       {props.kind === 'outgoing' && transfer.status === 'accepted_by_to' && (
         <div className="mt-3 text-[11px] text-blue-700 bg-blue-50 p-2.5 rounded">
-          {t('agency.transfers.sellerConsentNote', { defaultValue: '✅ 받는 벤더사가 수락했습니다. 셀러 본인이 직접 동의해야 매핑이 변경됩니다. 셀러에게 마이페이지 → 셀러 대시보드 → "벤더사 이전" 메뉴에서 응답 요청해주세요.' })}
+          {t('agency.transfers.sellerConsentNote', { defaultValue: '✅ 받는 에이전시가 수락했습니다. 셀러 본인이 직접 동의해야 매핑이 변경됩니다. 셀러에게 마이페이지 → 셀러 대시보드 → "에이전시 이전" 메뉴에서 응답 요청해주세요.' })}
         </div>
       )}
       {props.kind === 'outgoing' && transfer.status === 'pending' && (

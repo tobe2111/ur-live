@@ -12,12 +12,6 @@
   - **C (현행)**: 유지. 항목 6 "이미 충족"으로 간주.
 - **리마인드 문구 예시**: "지난번 보류하신 도매 항목 6(제조사 마진 직접설정) 아직 고민 중이신가요? 원하시면 A(신모델)/B/C 중에 정해주세요."
 
-## ✅ 2026-07-05 — "에이전시" → "벤더사" 명칭 전면 통일 (대표 "에이전시 대시보드를 이름을 모두 벤더사 대시보드로, 벤더사로 명칭 통일하자")
-- **범위**: 사용자-가시 라벨 전량. **src 702건**(180 파일 .ts/.tsx + index.css) 한글 토큰 `에이전시→벤더사` 일괄 치환 + **locale 6개 언어 324값**(값만, 키 불변): 벤더사 / **Vendor** / **ベンダー** / **供应商** / **Proveedor** / **Fournisseur**. "에이전시 대시보드"→"벤더사 대시보드", 법적 문안 "에이전시 파트너 약관"→"벤더사 파트너 약관"(`src/shared/legal/agency-terms.ts`·`index.ts`) 포함.
-- **코드 식별자 전부 불변** — `agencies`·`AgencyLayout`·`agency_token`/`ud_agency_token`·`/agency/*` 라우트·`AGENCY_HIDDEN`·i18n 키(`agencyDashboard`·`sheetTitleAgency`…)·cron(`agency-auto-settle`…)·비교값 `senderType==='agency'`. 한글 토큰 "에이전시"는 식별자에 안 쓰여(romanized `agency`) 안전 치환 — logic/DB 저장값 비교 0건 확인.
-- **SSOT 갱신**: `CLAUDE.md` 명칭표+역할주석+dated note, `docs/design/urdeal-platform-model.md` 행위자표, `docs/design/partner-terms-as-contract.md`, `docs/business/urdeal-business-plan.md`, `scripts/generate-proposal-refs.mjs` 라벨. **historical audit log(커밋별)은 소급 변경 X**(유통사→판매사·공구권→이용권 선례 동일).
-- **검증**: locale JSON 6개 유효+키 무손상, audit-gate 43불변식 GREEN, 테마/파일크기 가드 0. (tsc/build 는 이 원격환경 npm 403 로 미실행 — 문자열/주석만 변경이라 타입 영향 0.) 에이전시는 현재 `AGENCY_HIDDEN=true` 셸브 — 라이브 UI 영향 최소, 재개 시 새 라벨.
-
 ## ✅ 2026-07-03 — 실 사업자 이용권 자동리뷰 금지 + 어드민 수동부여 (대표 "실 사업자 유저 이용권은 리뷰 붙으면 안됨, 어드민에서만")
 - **자동 리뷰 제외**: `auto-seed-fake-reviews`(시간당 cron)의 스캔/타깃 쿼리에 `seller_id IS NULL` 추가 → **실 사업자 유저 업로드(seller_id 있음) 상품엔 자동 fake 리뷰가 절대 안 붙음**. 데모·플랫폼(seller_id NULL)만 대상.
 - **어드민 수동 부여**(이미 존재하는 `AdminReviewsPage`→`/api/admin/reviews/generate`, 별도 경로라 자동제외와 무관)를 **이상적화**: 이용권(오프라인) 카테고리는 AI 모드에서 매장/업종 grounding 생성기(`buildStoreReviews`, 데모와 동일 SSOT — 배송어 금지·실매장명·업종 반영) 사용. 쇼핑 상품은 기존 일반 프롬프트 유지.

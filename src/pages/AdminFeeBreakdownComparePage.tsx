@@ -155,7 +155,7 @@ export default function AdminFeeBreakdownComparePage() {
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
         <p className="font-bold text-sm">📖 이 화면은 무엇인가요?</p>
         <p>
-          새 수수료 규칙(플랫폼 3P 5%/1P 0% · 벤더사 1%/24개월)을 <strong>실제 정산에 적용하기 전</strong>,
+          새 수수료 규칙(플랫폼 3P 5%/1P 0% · 에이전시 1%/24개월)을 <strong>실제 정산에 적용하기 전</strong>,
           현행 정산과 얼마나 달라지는지 <strong>계산만 해서</strong> 나란히 보여줍니다. 이 화면은 어떤 돈도 이동시키지 않습니다.
         </p>
         <ol className="list-decimal list-inside space-y-0.5 mt-1">
@@ -235,14 +235,14 @@ export default function AdminFeeBreakdownComparePage() {
               hint="현행: total×커미션율 / 새: 3P 5%·1P 0%"
             />
             <SummaryCard
-              label="② 벤더사 매장영입"
+              label="② 에이전시 매장영입"
               cur={totals.cur_agency} neo={totals.new_agency} delta={totals.delta_agency}
               hint="현행: 2%+₩30k 무제한 / 새: 1%·24개월·플랫폼 내 분배"
             />
             <SummaryCard
               label="③ 플랫폼 순이익 (영입 지급 후)"
               cur={totals.cur_platform_net} neo={totals.new_platform_net} delta={totals.delta_platform_net}
-              hint="현행: 커미션−벤더사−영입자 / 새: platform−agency"
+              hint="현행: 커미션−에이전시−영입자 / 새: platform−agency"
             />
           </div>
 
@@ -251,7 +251,7 @@ export default function AdminFeeBreakdownComparePage() {
             <strong className="text-gray-700">⚠️ 모델 차이 해석 주의:</strong>{' '}
             영입자(인플) 인센티브는 <strong>현행=플랫폼 비용</strong>(순이익에서 차감)이지만{' '}
             <strong>새 모델=주인 자율 promo</strong>(플랫폼 비용 아님)라 ③ 플랫폼 순이익 산식이 다릅니다.{' '}
-            공급가(supply)는 공급라인 공급가로 계산되며(현행과 동일 base), promo 만 미모델링(0)입니다. 핵심 비교는 ①플랫폼·②벤더사입니다.{' '}
+            공급가(supply)는 공급라인 공급가로 계산되며(현행과 동일 base), promo 만 미모델링(0)입니다. 핵심 비교는 ①플랫폼·②에이전시입니다.{' '}
             현행 영입자 합계 {formatWon(totals.cur_influencer)} · 현행 핀추천(affiliate) 합계 {formatWon(totals.cur_affiliate)} · 현행 공급가 합계 {formatWon(totals.cur_supply)}.
           </div>
 
@@ -266,8 +266,8 @@ export default function AdminFeeBreakdownComparePage() {
                   <th className="px-3 py-2 text-right font-medium">결제액</th>
                   <th className="px-3 py-2 text-right font-medium bg-gray-100">플랫폼<br/>현행</th>
                   <th className="px-3 py-2 text-right font-medium bg-gray-100">플랫폼<br/>새</th>
-                  <th className="px-3 py-2 text-right font-medium">벤더사<br/>현행</th>
-                  <th className="px-3 py-2 text-right font-medium">벤더사<br/>새</th>
+                  <th className="px-3 py-2 text-right font-medium">에이전시<br/>현행</th>
+                  <th className="px-3 py-2 text-right font-medium">에이전시<br/>새</th>
                   <th className="px-3 py-2 text-right font-medium bg-gray-100">순이익<br/>차이</th>
                 </tr>
               </thead>

@@ -6,9 +6,9 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
- * 벤더사 팀 멤버 초대 수락 페이지 (`/agency/accept-invite?token=...`).
+ * 에이전시 팀 멤버 초대 수락 페이지 (`/agency/accept-invite?token=...`).
  *   AgencyMembersPage 가 이 URL 을 생성해 초대장 링크로 발송하는데 라우트가 없어 404 였음(초대 플로우 단절).
- *   흐름: token 파싱 → 벤더사 로그인 필요 시 로그인으로(returnUrl 로 복귀) → POST /accept → 완료.
+ *   흐름: token 파싱 → 에이전시 로그인 필요 시 로그인으로(returnUrl 로 복귀) → POST /accept → 완료.
  */
 export default function AgencyAcceptInvitePage() {
   const navigate = useNavigate()
@@ -48,7 +48,7 @@ export default function AgencyAcceptInvitePage() {
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 flex items-center justify-center p-4">
-      <SEO title="팀 초대 수락 - 유어딜" description="벤더사 팀 멤버 초대 수락" url="/agency/accept-invite" noindex />
+      <SEO title="팀 초대 수락 - 유어딜" description="에이전시 팀 멤버 초대 수락" url="/agency/accept-invite" noindex />
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm text-center">
         <div className="flex justify-center mb-5">
           <UrDealLogo size={20} />
@@ -68,16 +68,16 @@ export default function AgencyAcceptInvitePage() {
             </div>
             <h1 className="text-lg font-bold text-gray-900 mb-1">팀 초대를 받으셨습니다</h1>
             <p className="text-sm text-gray-500 mb-5">
-              초대를 수락하려면 <strong>초대받은 이메일</strong>의 벤더사 계정으로 로그인해주세요.
+              초대를 수락하려면 <strong>초대받은 이메일</strong>의 에이전시 계정으로 로그인해주세요.
             </p>
             <button
               onClick={goLogin}
               className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
             >
-              벤더사 로그인
+              에이전시 로그인
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              계정이 없으신가요? <Link to="/agency/register" className="text-indigo-600 font-medium hover:underline">벤더사 등록</Link>
+              계정이 없으신가요? <Link to="/agency/register" className="text-indigo-600 font-medium hover:underline">에이전시 등록</Link>
             </p>
           </>
         )}

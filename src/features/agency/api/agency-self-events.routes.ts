@@ -4,7 +4,7 @@
  * 마운트: /api/agency/self-events
  *
  * Endpoints:
- *   GET    /                — 본 벤더사 이벤트 목록 (active/ended)
+ *   GET    /                — 본 에이전시 이벤트 목록 (active/ended)
  *   POST   /                — 새 이벤트 생성 (campaign 권한)
  *   POST   /:id/cancel      — 이벤트 취소 (campaign 권한)
  *   POST   /:id/join        — 셀러가 참여 (참여형 이벤트)
@@ -101,7 +101,7 @@ async function ensureTables(DB: D1Database) {
   `).run().catch(swallow('agency:api:agency-self-events'));
 }
 
-// GET / — 본 벤더사 이벤트 목록
+// GET / — 본 에이전시 이벤트 목록
 app.get('/', async (c) => {
   const agencyId = c.get('agency').id;
   await ensureTables(c.env.DB);
@@ -161,14 +161,14 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
     agency.email || null,
   ).run();
 
-  // 본 벤더사 소속 셀러에게 알림 (참여 가능)
+  // 본 에이전시 소속 셀러에게 알림 (참여 가능)
   await c.env.DB.prepare(`
     INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
     SELECT 'seller', CAST(seller_id AS TEXT), 'agency_event', ?, ?, ?, datetime('now')
     FROM agency_sellers WHERE agency_id = ?
   `).bind(
     `🎯 새 이벤트: ${body.title}`,
-    `매출 ${Number(body.target_value ?? 0).toLocaleString('ko-KR')} 달성 시 ${Number(body.reward_deal ?? 0).toLocaleString('ko-KR')}딜 지급. 참여하시려면 벤더사에 문의.`,
+    `매출 ${Number(body.target_value ?? 0).toLocaleString('ko-KR')} 달성 시 ${Number(body.reward_deal ?? 0).toLocaleString('ko-KR')}딜 지급. 참여하시려면 에이전시에 문의.`,
     `/seller`,
     agency.id,
   ).run().catch(swallow('agency:api:agency-self-events'));
@@ -189,7 +189,7 @@ app.post('/:id/cancel', requireAgencyPermission('campaign'), async (c) => {
   return c.json({ success: true });
 });
 
-// POST /:id/join — 셀러가 참여 (셀러 토큰 또는 벤더사가 대행)
+// POST /:id/join — 셀러가 참여 (셀러 토큰 또는 에이전시가 대행)
 app.post('/:id/join', async (c) => {
   const agencyId = c.get('agency').id;
   const id = Number(c.req.param('id'));
@@ -197,11 +197,11 @@ app.post('/:id/join', async (c) => {
 
   if (!body.seller_id) return c.json({ success: false, error: 'seller_id 필수' }, 400);
 
-  // 본 벤더사 소속 셀러인지 확인
+  // 본 에이전시 소속 셀러인지 확인
   const ms = await c.env.DB.prepare(
     `SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ?`
   ).bind(agencyId, body.seller_id).first().catch(() => null);
-  if (!ms) return c.json({ success: false, error: '본 벤더사 소속 셀러가 아닙니다.' }, 403);
+  if (!ms) return c.json({ success: false, error: '본 에이전시 소속 셀러가 아닙니다.' }, 403);
 
   // 이벤트 검증
   const ev = await c.env.DB.prepare(

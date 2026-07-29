@@ -106,9 +106,9 @@ export default function AdminPolicyDashboardPage() {
   const commissionRows = [
     { key: 'PLATFORM_FEE_PCT', value: COMMISSION_DEFAULTS.PLATFORM_FEE_PCT, unit: '%', desc: '플랫폼 fee (어드민 조정 가능)', dynamic: dynamicSettings.platform_fee_pct ? `${dynamicSettings.platform_fee_pct}%` : undefined },
     { key: 'SELLER_COMMISSION_PCT', value: COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT, unit: '%', desc: '위탁 셀러 commission', dynamic: dynamicSettings.seller_commission_pct ? `${dynamicSettings.seller_commission_pct}%` : undefined },
-    { key: 'AGENCY_SHARE_PCT', value: COMMISSION_DEFAULTS.AGENCY_SHARE_PCT, unit: '%', desc: '벤더사 입점 분배 (platform_fee 중)', dynamic: dynamicSettings.agency_share_pct ? `${dynamicSettings.agency_share_pct}%` : undefined },
+    { key: 'AGENCY_SHARE_PCT', value: COMMISSION_DEFAULTS.AGENCY_SHARE_PCT, unit: '%', desc: '에이전시 입점 분배 (platform_fee 중)', dynamic: dynamicSettings.agency_share_pct ? `${dynamicSettings.agency_share_pct}%` : undefined },
     { key: 'INFLUENCER_INTRO_SHARE_PCT', value: COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT, unit: '%', desc: '인플 입점 분배 (platform_fee 중)', dynamic: dynamicSettings.influencer_intro_share_pct ? `${dynamicSettings.influencer_intro_share_pct}%` : undefined },
-    { key: 'AGENCY_OWN_RATE', value: COMMISSION_DEFAULTS.AGENCY_OWN_RATE, unit: '%', desc: '벤더사 본인 매출 commission' },
+    { key: 'AGENCY_OWN_RATE', value: COMMISSION_DEFAULTS.AGENCY_OWN_RATE, unit: '%', desc: '에이전시 본인 매출 commission' },
     { key: 'AFFILIATE_COMMISSION_PCT', value: COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT, unit: '%', desc: '제휴 마케팅 (쿠팡파트너스형) 추천인 보상' },
     { key: 'REFERRAL_BONUS_BOTHSIDES_PCT', value: COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT, unit: '%', desc: '공구 양쪽 보너스 (추천인 + 피추천인)' },
     { key: 'STAYS_COMMISSION_CAP_PCT', value: COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT, unit: '%', desc: '숙박 카테고리 commission 상한' },

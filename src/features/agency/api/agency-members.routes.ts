@@ -5,7 +5,7 @@
  * 마이그레이션: 0217_agency_members.sql
  *
  * Endpoints:
- *   GET    /                          — 본인 벤더사 멤버 목록
+ *   GET    /                          — 본인 에이전시 멤버 목록
  *   POST   /invite                    — 멤버 초대 (owner/manager만)
  *   PATCH  /:id                       — 역할/권한 변경 (owner만)
  *   POST   /:id/suspend               — 일시 정지 (owner만)
@@ -100,7 +100,7 @@ function effectivePermissions(role: Role, override?: string | null): Permissions
   } catch { return base }
 }
 
-// ── 본인이 owner 인지 확인 (현재 인증된 벤더사 = agencies.email 매칭) ──
+// ── 본인이 owner 인지 확인 (현재 인증된 에이전시 = agencies.email 매칭) ──
 async function isOwner(DB: D1Database, agencyId: number, email: string): Promise<boolean> {
   try {
     const row = await DB.prepare(

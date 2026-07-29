@@ -1,7 +1,7 @@
 /**
  * Admin: Agency Creator Approval Routes (P0 #1)
  *
- * 벤더사가 초대한 셀러를 어드민이 심사:
+ * 에이전시가 초대한 셀러를 어드민이 심사:
  * - GET    /agency-creator-approvals         — 심사 대기 목록 (status 필터)
  * - GET    /agency-creator-approvals/:id     — 단건 상세
  * - POST   /agency-creator-approvals/:id/approve  — 승인 (sellers.status='approved')
@@ -132,7 +132,7 @@ app.post('/:id/approve', auditLog('agency_approval.approve'), async (c) => {
     WHERE id = ?
   `).bind(adminUserId, id).run()
 
-  // 3) (best-effort) 벤더사에게 알림
+  // 3) (best-effort) 에이전시에게 알림
   c.env.DB.prepare(`
     INSERT INTO agency_notifications (agency_id, type, title, message, link, created_at)
     SELECT agency_id, 'creator_approved', '셀러 승인 완료', '신규 셀러가 어드민 승인되어 활성화됐습니다.', '/agency/sellers', datetime('now')
@@ -174,7 +174,7 @@ app.post('/:id/reject', auditLog('agency_approval.reject'), async (c) => {
     WHERE id = ?
   `).bind(reason, adminUserId, id).run()
 
-  // 3) (best-effort) 벤더사에게 알림
+  // 3) (best-effort) 에이전시에게 알림
   c.env.DB.prepare(`
     INSERT INTO agency_notifications (agency_id, type, title, message, link, created_at)
     SELECT agency_id, 'creator_rejected', '셀러 반려', ?, '/agency/sellers', datetime('now')

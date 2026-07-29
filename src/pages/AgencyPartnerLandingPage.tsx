@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-15: 벤더사 가입 안내 — PC 풀 너비.
+ * 🛡️ 2026-05-15: 에이전시 가입 안내 — PC 풀 너비.
  *
  * 핵심 메시지: "총판처럼 운영. 셀러 데려오면 평생 GMV 분배."
  */
@@ -14,16 +14,16 @@ export default function AgencyPartnerLandingPage() {
   const [avgGmv, setAvgGmv] = useState(2_000_000)
 
   const totalGmv = sellers * avgGmv
-  // 🏷️ 벤더사 수수료 = GMV × commission_rate% (실제 정산 SSOT: agencies.commission_rate, 기본 2%,
-  //   어드민이 벤더사별 조정 가능). 이전의 '5%×30%=1.5%' 표기는 실제 정산과 불일치라 폐기.
+  // 🏷️ 에이전시 수수료 = GMV × commission_rate% (실제 정산 SSOT: agencies.commission_rate, 기본 2%,
+  //   어드민이 에이전시별 조정 가능). 이전의 '5%×30%=1.5%' 표기는 실제 정산과 불일치라 폐기.
   const AGENCY_RATE_PCT = 2
   const agencyShare = totalGmv * AGENCY_RATE_PCT / 100
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <SEO
-        title="유어딜 벤더사 파트너 — 셀러 데려오면 평생 GMV 분배"
-        description="공구 벤더사 / 마케팅 회사 를 위한 총판 파트너십. 자체 셀러 망 + 우리 인프라 = 30% 수수료 분배 + 데이터 dashboard."
+        title="유어딜 에이전시 파트너 — 셀러 데려오면 평생 GMV 분배"
+        description="공구 에이전시 / 마케팅 회사 를 위한 총판 파트너십. 자체 셀러 망 + 우리 인프라 = 30% 수수료 분배 + 데이터 dashboard."
         url="/agency-partner"
         type="website"
       />
@@ -33,7 +33,7 @@ export default function AgencyPartnerLandingPage() {
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 hover:text-gray-900">사장님</Link>
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 hover:text-gray-900">인플루언서</Link>
-          <a href="mailto:jiwon@ur-team.com?subject=벤더사%20파트너%20문의" className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-full text-sm font-bold">
+          <a href="mailto:jiwon@ur-team.com?subject=에이전시%20파트너%20문의" className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-full text-sm font-bold">
             제휴 문의
           </a>
         </div>
@@ -41,7 +41,7 @@ export default function AgencyPartnerLandingPage() {
 
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <span className="inline-block px-3 py-1 bg-gray-900 text-white rounded-full text-xs font-bold mb-5">🤝 벤더사 파트너십</span>
+          <span className="inline-block px-3 py-1 bg-gray-900 text-white rounded-full text-xs font-bold mb-5">🤝 에이전시 파트너십</span>
           <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
             셀러 망(網)이<br />
             <span className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">평생 매출</span> 입니다.
@@ -51,7 +51,7 @@ export default function AgencyPartnerLandingPage() {
             <span className="font-bold">셀러 데려오면 그 셀러의 평생 GMV 5% × 30% 가 매월 분배됩니다.</span>
           </p>
           <a
-            href="mailto:jiwon@ur-team.com?subject=벤더사%20파트너%20문의"
+            href="mailto:jiwon@ur-team.com?subject=에이전시%20파트너%20문의"
             className="inline-block px-8 py-4 bg-gray-900 hover:bg-black text-white rounded-full font-extrabold text-lg shadow-xl"
           >
             제휴 문의 보내기 →
@@ -59,7 +59,7 @@ export default function AgencyPartnerLandingPage() {
         </div>
       </section>
 
-      {/* 벤더사 가치 4 */}
+      {/* 에이전시 가치 4 */}
       <section className="bg-gray-50 px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">왜 우리와 파트너 해야 하나요?</h2>
@@ -68,7 +68,7 @@ export default function AgencyPartnerLandingPage() {
               { icon: Building2, title: '인프라 0원', desc: '결제 / 정산 / 환불 / 알림 — 우리가 다 해드립니다. 개발 X.' },
               { icon: Repeat, title: '평생 분배', desc: '데려온 셀러의 모든 향후 GMV 의 1.5% 가 매월 자동 입금.' },
               { icon: BarChart3, title: '실시간 dashboard', desc: '본인 망 셀러 매출 / 정산 / 분쟁 — 한 화면에서 다 관리.' },
-              { icon: ShieldCheck, title: '브랜드 lock-in', desc: '벤더사 전용 도메인 + 본인 브랜드로 추천 가능.' },
+              { icon: ShieldCheck, title: '브랜드 lock-in', desc: '에이전시 전용 도메인 + 본인 브랜드로 추천 가능.' },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100">
                 <f.icon className="w-8 h-8 text-gray-900 mb-3" />
@@ -84,7 +84,7 @@ export default function AgencyPartnerLandingPage() {
       <section className="px-6 lg:px-12 py-16">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl lg:text-4xl font-extrabold mb-3">벤더사 수익 시뮬레이터</h2>
+            <h2 className="text-3xl lg:text-4xl font-extrabold mb-3">에이전시 수익 시뮬레이터</h2>
             <p className="text-gray-600">데려올 셀러 수와 평균 매출을 입력하세요</p>
           </div>
           <div className="bg-gray-50 rounded-3xl p-6 lg:p-10">
@@ -109,11 +109,11 @@ export default function AgencyPartnerLandingPage() {
                   <span className="font-bold">{(totalGmv / 100_000_000).toFixed(2)}억원</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">벤더사 수수료 {AGENCY_RATE_PCT}%</span>
+                  <span className="text-gray-500">에이전시 수수료 {AGENCY_RATE_PCT}%</span>
                   <span className="font-bold text-pink-600">{(agencyShare / 10000).toFixed(0)}만원</span>
                 </div>
                 <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl p-5 text-white text-center mt-4">
-                  <p className="text-sm opacity-90 mb-1">벤더사 월 수익</p>
+                  <p className="text-sm opacity-90 mb-1">에이전시 월 수익</p>
                   <p className="text-3xl font-extrabold">{(agencyShare / 10000).toFixed(0)}<span className="text-xl font-bold">만원</span></p>
                 </div>
               </div>
@@ -124,7 +124,7 @@ export default function AgencyPartnerLandingPage() {
 
       <section className="bg-gray-900 px-6 lg:px-12 py-16 text-white text-center">
         <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">한 번 데려오면<br />평생 분배 받습니다.</h2>
-        <a href="mailto:jiwon@ur-team.com?subject=벤더사%20파트너%20문의" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform">
+        <a href="mailto:jiwon@ur-team.com?subject=에이전시%20파트너%20문의" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform">
           <Phone className="w-5 h-5" /> 제휴 문의
         </a>
         <p className="text-xs opacity-70 mt-6">jiwon@ur-team.com</p>

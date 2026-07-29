@@ -3,7 +3,7 @@
  *
  * 원본 위치: agency.routes.ts (1867-1982).
  *
- * - POST /api/agency/link-kakao        — 벤더사 계정에 카카오 연동
+ * - POST /api/agency/link-kakao        — 에이전시 계정에 카카오 연동
  * - POST /api/agency/unlink-kakao      — 연동 해제 (현재 비번 검증)
  * - GET  /api/agency/kakao-link-status — 연동 상태
  *
@@ -28,7 +28,7 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
     const agency = await DB.prepare(
       'SELECT id, linked_user_id FROM agencies WHERE id = ?'
     ).bind(agencyId).first<{ id: number; linked_user_id: number | null }>()
-    if (!agency) return c.json({ success: false, error: '벤더사를 찾을 수 없습니다' }, 404)
+    if (!agency) return c.json({ success: false, error: '에이전시를 찾을 수 없습니다' }, 404)
     if (agency.linked_user_id) {
       return c.json({ success: false, error: '이미 카카오 계정이 연동되어 있습니다.' }, 409)
     }
@@ -69,7 +69,7 @@ app.post('/link-kakao', async (c: AgencyCtx) => {
       'SELECT id FROM agencies WHERE linked_user_id = ? AND id != ?'
     ).bind(kakaoUserId, agencyId).first<{ id: number }>()
     if (otherLink) {
-      return c.json({ success: false, error: '이 카카오 계정은 이미 다른 벤더사에 연동되어 있습니다.' }, 409)
+      return c.json({ success: false, error: '이 카카오 계정은 이미 다른 에이전시에 연동되어 있습니다.' }, 409)
     }
 
     await DB.prepare(
@@ -90,7 +90,7 @@ app.post('/unlink-kakao', async (c: AgencyCtx) => {
   try {
     const agencyId = c.get('agency').id
 
-    // 🛡️ 카카오 전용 벤더사(/register-from-user)는 임시 비번만 있어 unlink 시 lockout.
+    // 🛡️ 카카오 전용 에이전시(/register-from-user)는 임시 비번만 있어 unlink 시 lockout.
     const body = await c.req.json<{ current_password?: string }>().catch(() => ({} as { current_password?: string }))
     if (!body.current_password) {
       return c.json({
@@ -103,7 +103,7 @@ app.post('/unlink-kakao', async (c: AgencyCtx) => {
     const agency = await c.env.DB.prepare(
       'SELECT password_hash FROM agencies WHERE id = ?'
     ).bind(agencyId).first<{ password_hash: string }>()
-    if (!agency) return c.json({ success: false, error: '벤더사를 찾을 수 없습니다' }, 404)
+    if (!agency) return c.json({ success: false, error: '에이전시를 찾을 수 없습니다' }, 404)
 
     const ok = await verifyPassword(body.current_password, agency.password_hash)
     if (!ok) return c.json({ success: false, error: '비밀번호가 틀렸습니다' }, 401)

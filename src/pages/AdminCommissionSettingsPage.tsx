@@ -119,14 +119,14 @@ export default function AdminCommissionSettingsPage() {
             <div className="bg-purple-500" style={{ width: `${form.platform_margin_pct}%` }} title={`유어딜 ${form.platform_margin_pct}%`} />
             <div className="bg-pink-500" style={{ width: `${form.influencer_commission_pct}%` }} title={`인플 ${form.influencer_commission_pct}%`} />
             <div className="bg-yellow-500" style={{ width: `${form.user_referral_bonus_pct}%` }} title={`유저 ${form.user_referral_bonus_pct}%`} />
-            <div className="bg-blue-500" style={{ width: `${form.agency_commission_pct}%` }} title={`벤더사 ${form.agency_commission_pct}%`} />
+            <div className="bg-blue-500" style={{ width: `${form.agency_commission_pct}%` }} title={`에이전시 ${form.agency_commission_pct}%`} />
             <div className="bg-emerald-500" style={{ width: `${sellerReceives}%` }} title={`셀러 ${sellerReceives}%`} />
           </div>
           <div className="grid grid-cols-5 gap-2 text-[10px] text-center">
             <span className="text-purple-700">유어딜 {form.platform_margin_pct}%</span>
             <span className="text-pink-700">인플 {form.influencer_commission_pct}%</span>
             <span className="text-yellow-700">유저 {form.user_referral_bonus_pct}%</span>
-            <span className="text-blue-700">벤더사 {form.agency_commission_pct}%</span>
+            <span className="text-blue-700">에이전시 {form.agency_commission_pct}%</span>
             <span className="text-emerald-700">셀러 {sellerReceives.toFixed(1)}%</span>
           </div>
           {totalCommission > 50 && (
@@ -140,7 +140,7 @@ export default function AdminCommissionSettingsPage() {
             { key: 'platform_margin_pct', label: '유어딜 운영 마진 (%)', help: '플랫폼 기본 수수료' },
             { key: 'influencer_commission_pct', label: '인플루언서 commission (%)', help: '?ref= 진입 시 인플루언서에게 지급 (차단된 경우 0)' },
             { key: 'user_referral_bonus_pct', label: '사용자 referral 보너스 (%)', help: '?ref= 진입 시 사용자에게 즉시 적립 (차단된 경우도 지급 — 유어딜이 떠안음)' },
-            { key: 'agency_commission_pct', label: '벤더사 commission (%)', help: '셀러가 벤더사 소속일 때 추가 차감' },
+            { key: 'agency_commission_pct', label: '에이전시 commission (%)', help: '셀러가 에이전시 소속일 때 추가 차감' },
           ] as Array<{ key: keyof Settings; label: string; help: string }>).map(({ key, label, help }) => (
             <div key={key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>

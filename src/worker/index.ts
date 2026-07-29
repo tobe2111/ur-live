@@ -179,10 +179,10 @@ import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blo
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
-// 🛡️ 2026-05-20: 벤더사 = 가게 입점 영업 모델 (Phase 2).
+// 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 import { agencyIntroducedStoresRoutes } from '../features/agency/api/agency-introduced-stores.routes';
 import { agencySettlementsRoutes } from '../features/agency/api/agency-settlements.routes';
-// 🛡️ 2026-05-18: 숙소 공구 벤더사 모니터링 — PR 1 Foundation.
+// 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
 import { agencyStaysRoutes } from '../features/agency/api/agency-stays.routes';
 import { agencyOpsRoutes } from '../features/agency/api/agency-ops.routes';
 import { agencySellersRoutes } from '../features/agency/api/agency-sellers.routes';
@@ -1065,7 +1065,7 @@ app.route('/api/health/detailed', healthRoutes);
 // /api/_internal/repair-new-tables → routes/internal-admin-tools.routes.ts (TD-006 Phase C)
 
 // 🛡️ 2026-04-27: 마이그레이션 적용 상태 검증 (admin 전용, 읽기만).
-// 신규 벤더사/TikTok 테이블이 D1 에 적용됐는지 한 번에 확인.
+// 신규 에이전시/TikTok 테이블이 D1 에 적용됐는지 한 번에 확인.
 // 응답: { summary: { applied, missing }, results: [{ table, exists }] }
 // /api/_internal/migration-status → routes/internal-diagnostics.routes.ts (TD-006 split)
 
@@ -1486,9 +1486,9 @@ app.route('/api/banners', bannerRoutes);
 // adminApp has: CORS + IP whitelist + requireAdmin() + audit log
 // ============================================================
 adminApp.route('/agencies', adminAgencyRoutes);
-// 🏦 2026-06-12 지급 센터 — 셀러/큐레이터/벤더사 신청→입금완료 통합 (사용자 결정)
+// 🏦 2026-06-12 지급 센터 — 셀러/큐레이터/에이전시 신청→입금완료 통합 (사용자 결정)
 adminApp.route('/payout-center', payoutCenterRoutes);
-// 🛡️ 2026-04-26: 벤더사 셀러 심사 큐 (Agency P0 #1)
+// 🛡️ 2026-04-26: 에이전시 셀러 심사 큐 (Agency P0 #1)
 adminApp.route('/agency-creator-approvals', adminAgencyApprovalsRoutes);
 // Admin tools (chart, sellers, banners, notices, settlements, reports, settings)
 adminApp.route('/tools', adminToolsRoutes);
@@ -1680,7 +1680,7 @@ app.route('/api', adminFeeBreakdownRoutes);
 app.route('/api', funnelRoutes);
 // 🛡️ 2026-05-21 Phase D: 세무 (전자세금계산서 + 연말 리포트).
 app.route('/api', adminTaxRoutes);
-// 🛡️ 2026-05-21 Phase D-2: 셀러/벤더사 본인 ledger 조회.
+// 🛡️ 2026-05-21 Phase D-2: 셀러/에이전시 본인 ledger 조회.
 app.route('/api', ledgerRoutes);
 // 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산 + 어드민 송금 + 인플 카탈로그
 app.route('/api/seller-marketing', sellerMarketingRoutes);
@@ -1836,7 +1836,7 @@ app.route('/api/seller/tiktok', tiktokRoutes);
 // /api/blog는 공개 GET /public, /public/:slug만 허용 (나머지는 라우터 내부에서 admin 체크)
 app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용 (내부에서 /public만 공개)
 
-// ── 벤더사 ──
+// ── 에이전시 ──
 app.route('/api/agency', agencyPinRoutes);
 app.route('/api/agency', agencyRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
@@ -1846,7 +1846,7 @@ app.route('/api/agency', agencyStatsRoutes);
 app.route('/api/agency', agencyIntroducedStoresRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /settlements, /settlement-invoices, /settlement-invoices/:id, /settlements/request
 app.route('/api/agency', agencySettlementsRoutes);
-// 🛡️ 2026-05-18: 숙소 공구 벤더사 (PR 1 Foundation).
+// 🛡️ 2026-05-18: 숙소 공구 에이전시 (PR 1 Foundation).
 app.route('/api/agency', agencyStaysRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /notices, /monthly-tasks, /targets, /sellers/compare, /contracts
 app.route('/api/agency', agencyOpsRoutes);
@@ -1858,9 +1858,9 @@ app.route('/api/agency/campaigns', agencyCampaignsRoutes);
 app.route('/api/agency/incentives', agencyIncentivesRoutes);
 // 🛡️ 2026-04-26 Q2: 메시지 템플릿 + 일괄 발송
 app.route('/api/agency/messages', agencyMessagesRoutes);
-// 🛡️ 2026-04-26 Q7: 쿠폰 캐스케이드 (벤더사 → 셀러 → 시청자)
+// 🛡️ 2026-04-26 Q7: 쿠폰 캐스케이드 (에이전시 → 셀러 → 시청자)
 app.route('/api/agency/coupons', agencyCouponsRoutes);
-// 🛡️ 2026-04-26 M4: 벤더사 멀티 권한 (owner/manager/agent/analyst)
+// 🛡️ 2026-04-26 M4: 에이전시 멀티 권한 (owner/manager/agent/analyst)
 app.route('/api/agency/members', agencyMembersRoutes);
 // 🛡️ 2026-04-26 M5: 라이브 캘린더 + 에이전트 노트
 app.route('/api/agency/calendar', agencyCalendarRoutes);
@@ -1871,7 +1871,7 @@ app.route('/api/prospects', prospectsRoutes);
 // 🛡️ 2026-04-27 Phase 1-4: 6대 KPI 대시보드 API
 app.route('/api/agency/kpi', agencyKpiRoutes);
 app.route('/api/partner-terms', partnerTermsRoutes);
-// 🛡️ 2026-04-27 Phase 1-7: 벤더사 공개 브랜딩 페이지
+// 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
 app.route('/api/agency-public', agencyPublicRoutes);          // 공개 (인증 X)
 app.route('/api/agency/public-profile', agencyPublicEditRoutes); // 본인 편집 (인증)
 // 2026-05-05: 신규 셀러 자동 매칭 제안 (수락/거절)
@@ -1883,7 +1883,7 @@ app.route('/api/bundles', bundlePublicRoutes);
 app.route('/api/bundles', bundleCartRoutes);
 app.route('/api/seller/bundles', bundleSellerRoutes);
 
-// 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/벤더사 읽기)
+// 🛡️ 2026-04-23 배치 174: 운영 가이드 (어드민 편집, 셀러/에이전시 읽기)
 app.route('/api/guides', guideRoutes);
 
 // YouTube / Live streaming

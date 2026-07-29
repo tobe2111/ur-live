@@ -109,7 +109,7 @@ export default function SellerProspectsPage() {
     }
   }
 
-  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보·벤더사 코드가 자동 채워진
+  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보·에이전시 코드가 자동 채워진
   //   단일 관문(/seller/register/supplier) 링크. 사장님은 카카오 로그인 + 확인·제출만.
   async function copyInviteLink(id: number) {
     try {

@@ -274,7 +274,7 @@ paymentsRouter.post('/confirm', async (c) => {
 
     // 🔐 2026-06-11 [UNLOCK] (사용자 승인 — 머니 감사 Med-A): ALREADY_PROCESSED_PAYMENT 분기의
     //   early-return 제거. 기존엔 updateStatus('DONE')만 하고 즉시 반환 → side-effect(reduceStock·
-    //   벤더사/영입자/공급자/추천 커미션·KT 교환권 발송) 영구 생략. 정상 동시요청은 아래 CAS 가
+    //   에이전시/영입자/공급자/추천 커미션·KT 교환권 발송) 영구 생략. 정상 동시요청은 아래 CAS 가
     //   처리하므로 이 분기를 타는 유일 케이스가 "Toss 승인 직후 ~ CAS 직전 worker 크래시 → 재시도"
     //   = side-effect 가 한 번도 안 돈 상태. early-return 제거로 아래 confirmClaim CAS 에 위임:
     //   이미 DONE 이면 changes==0 멱등 반환 / 아직 PENDING(크래시) 이면 claim 후 side-effect 복구.
@@ -508,7 +508,7 @@ paymentsRouter.post('/confirm', async (c) => {
         } catch { /* fail-soft */ }
 
         // 🏁 2026-06-26 [UNLOCK] (사용자 승인 "문제 4번 해결" — 결제완료 체감 단축):
-        //   벤더사/영입자/도매 공급자 커미션 적립 3종을 confirm 응답을 막던 동기 실행에서
+        //   에이전시/영입자/도매 공급자 커미션 적립 3종을 confirm 응답을 막던 동기 실행에서
         //   이 waitUntil 블록(응답 후)으로 이동. 셋 다 이미 fail-soft + order_id 멱등이라
         //   응답 후 실행해도 정합성 영향 0 (재시도/중복 confirm 시 이중적립 없음).
         //   ⚠️ Toss confirm/금액검증/CAS/재고차감/딜차감은 위에서 동기 유지 — 무변경.

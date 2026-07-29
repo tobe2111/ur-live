@@ -68,9 +68,9 @@ describe('dashboard-session 단일 세션 강제', () => {
     expect(deriveDashboardSeat({ type: 'supplier', sub: '9' })).toEqual({ role: 'supplier', id: 9 })
     // 도매 직원 서브계정 → seller_sub(sub_account_id), sub(부모)보다 우선
     expect(deriveDashboardSeat({ type: 'seller', sub: '100', sub_account_id: 42 })).toEqual({ role: 'seller_sub', id: 42 })
-    // 벤더사 멤버 → agency_member(member_id)
+    // 에이전시 멤버 → agency_member(member_id)
     expect(deriveDashboardSeat({ type: 'agency', sub: '5', member_id: 11 })).toEqual({ role: 'agency_member', id: 11 })
-    // 벤더사 멤버 없음(카카오/레거시) → org 시트
+    // 에이전시 멤버 없음(카카오/레거시) → org 시트
     expect(deriveDashboardSeat({ type: 'agency', sub: '5' })).toEqual({ role: 'agency', id: 5 })
     // 비대상
     expect(deriveDashboardSeat({ type: 'user', sub: '1' })).toBeNull()

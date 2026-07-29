@@ -13,14 +13,14 @@ export const ADMIN_SEED: SeedSection[] = [
 ### 역할 정의
 - **유저(구매자)** — 홈/쇼츠/라이브 시청, 장바구니·결제, 후원(donation)
 - **셀러** — 상품 등록, 라이브 방송, 정산 요청, 번들·공동구매·타임딜 생성
-- **벤더사** — 셀러 모집·관리, 수수료 수익, 성과 비교
+- **에이전시** — 셀러 모집·관리, 수수료 수익, 성과 비교
 - **관리자(운영팀)** — 승인·정산·모더레이션·지표 모니터링
 
 ### 기술 스택
 \`Cloudflare Pages + Workers + D1 + R2 + KV + Durable Objects\`. 프론트는 React + Vite, 모바일은 Capacitor 래핑.
 
 ### 수익 모델
-상품 판매 플랫폼 수수료(기본 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 벤더사 수수료.`,
+상품 판매 플랫폼 수수료(기본 5%, 셀러별 조정 가능) + 후원/기부 수수료(15%) + 알림톡 발송비 + 에이전시 수수료.`,
   },
   {
     key: 'daily', icon: '✅', title: '일일 운영 체크리스트', order: 20,
@@ -28,7 +28,7 @@ export const ADMIN_SEED: SeedSection[] = [
 1. **대시보드** → 어제 매출·주문·신규 가입자 확인
 2. **셀러 승인** → 대기중 신청 처리 (영업일 기준 24h 이내)
 3. **정산** → REQUESTED 상태 신청 검토 및 처리 (3~5 영업일 내 입금)
-4. **샘플 신청** → 벤더사에서 셀러에게 보낸 샘플 요청 승인
+4. **샘플 신청** → 에이전시에서 셀러에게 보낸 샘플 요청 승인
 5. **리뷰 모더레이션** → 신고된 리뷰 확인·숨김 처리
 6. **감사 로그** → 전날 관리자 행동 리뷰 (이상 행동 탐지)
 
@@ -85,22 +85,22 @@ export const ADMIN_SEED: SeedSection[] = [
 매일 18시 최고 입찰자 낙찰. 5개 슬롯 (메인 hero, 카테고리 top, 라이브 추천 1/2/3). 낙찰 후 셀러가 결제 완료하면 24시간 우선 노출 적용.`,
   },
   {
-    key: 'agency-ops', icon: '🤝', title: '벤더사 관리', order: 40,
-    content: `**벤더사 = 여러 셀러를 대표하는 중개 조직**. 관리자 페이지: \`/admin/agencies\`
+    key: 'agency-ops', icon: '🤝', title: '에이전시 관리', order: 40,
+    content: `**에이전시 = 여러 셀러를 대표하는 중개 조직**. 관리자 페이지: \`/admin/agencies\`
 
 ### 가입 플로우
-- 벤더사 자체 가입 → **status: pending** → 관리자 승인 필요
-- 승인 후 벤더사는 \`/seller/register?agency=<id>\` 링크로 셀러 초대 가능
-- 초대로 가입한 셀러는 **agency_id** 가 자동 연결 → 벤더사 수수료 적용
+- 에이전시 자체 가입 → **status: pending** → 관리자 승인 필요
+- 승인 후 에이전시는 \`/seller/register?agency=<id>\` 링크로 셀러 초대 가능
+- 초대로 가입한 셀러는 **agency_id** 가 자동 연결 → 에이전시 수수료 적용
 
 ### 수수료 구조
-- 기본 2% (벤더사가 유치한 셀러의 매출에서 플랫폼 수수료와 별도)
+- 기본 2% (에이전시가 유치한 셀러의 매출에서 플랫폼 수수료와 별도)
 - 플랫폼 수익 = 총매출 × 10%
-- 벤더사 수익 = 총매출 × 2%
+- 에이전시 수익 = 총매출 × 2%
 - 셀러 수익 = 총매출 × 88%
 
 ### 🛡️ 셀러 심사 워크플로우 (2026-04-26 추가)
-- 벤더사가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨
+- 에이전시가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨
 - \`agency_creator_approvals\` 테이블에 심사 대기 row 생성
 - 어드민이 \`/admin/agency-creator-approvals\` 에서 검증 후 승인/반려
 - 승인 → sellers.status='approved', is_active=1 → 로그인/판매 가능
@@ -112,11 +112,11 @@ export const ADMIN_SEED: SeedSection[] = [
 - \`POST /api/admin/agency-creator-approvals/:id/reject\` — body: { reason }
 
 ### 계약 변경
-\`/admin/agencies\` → 벤더사 상세 → 수수료율 수정. 변경 이력은 감사 로그에 기록.
+\`/admin/agencies\` → 에이전시 상세 → 수수료율 수정. 변경 이력은 감사 로그에 기록.
 
 ### 🤖 신규 셀러 자동 매칭 (2026-05-05)
-- 매일 18시 배치가 가입 60일 이내 무소속 셀러를 자동으로 벤더사에 매칭 제안
-- 벤더사는 \`/agency/match-suggestions\` 에서 수락/거절
+- 매일 18시 배치가 가입 60일 이내 무소속 셀러를 자동으로 에이전시에 매칭 제안
+- 에이전시는 \`/agency/match-suggestions\` 에서 수락/거절
 - 수락 즉시 \`agency_sellers\` 에 추가, 셀러에게 알림 발송`,
   },
   {
@@ -147,11 +147,11 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
   {
     key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
     content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
-셀러 정산 · 큐레이터 환급 · 벤더사 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
+셀러 정산 · 큐레이터 환급 · 에이전시 영입 커미션의 **모든 지급 요청이 한 화면**에 모입니다.
 1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
 2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
 3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
-- 벤더사는 환불 보호를 위해 **7일 경과분만** 일괄 지급 버튼이 활성화됩니다
+- 에이전시는 환불 보호를 위해 **7일 경과분만** 일괄 지급 버튼이 활성화됩니다
 - 큐레이터 반려 시 차감됐던 딜이 자동 복원됩니다
 - 제조사(공급사) 출금은 기존 전용 화면(\`/admin/wholesale-withdrawals\`) 그대로
 
@@ -163,7 +163,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 
 ### 일괄 처리 (\`/admin/settlements-bulk\`)
 - 매주 수요일 일괄 정산 권장 — CSV 다운로드 → 은행 일괄이체 → 완료 후 업로드
-- 금액 = 총매출 − 플랫폼 수수료(10%) − 벤더사 수수료(2%) − 환불액 − 배송비 정산
+- 금액 = 총매출 − 플랫폼 수수료(10%) − 에이전시 수수료(2%) − 환불액 − 배송비 정산
 
 ### 정산 검증 포인트
 - DONE 상태 주문만 집계됨 (구매확정 14일 경과)
@@ -572,7 +572,7 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 **구현**: \`html\` 태그에 \`.dark\` class 토글 + \`src/index.css\` 글로벌 override.
 - 다크 모드: 기존 \`bg-[#020202]\` / \`text-white\` 등 그대로
 - 라이트 모드: \`html:not(.dark)\` selector 가 hardcoded 다크 색상을 light 로 invert
-- 셀러/어드민/벤더사 대시보드는 토글 무영향 (강제 화이트 유지)
+- 셀러/어드민/에이전시 대시보드는 토글 무영향 (강제 화이트 유지)
 
 **사고 사례 / 운영 노트**:
 - 컬러 버튼 (bg-pink/red/blue/gradient) 위 흰 텍스트는 라이트 모드에서도 유지 (invisible 방지 안전장치)
@@ -717,7 +717,7 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 3단계 추천 commission 의 출금 신청을 처리하는 어드민 페이지.
 
 ### 흐름
-1. 사용자/셀러/벤더사가 \`/my-commissions\` 에서 **출금 신청** 클릭
+1. 사용자/셀러/에이전시가 \`/my-commissions\` 에서 **출금 신청** 클릭
 2. 계좌 정보 입력 → \`commission_withdrawals\` row 생성 (status=pending)
 3. 연관된 \`referral_commissions\` 의 status: \`granted\` → \`withdrawal_requested\`
 4. 어드민이 이 페이지에서 신청 검토 → **송금완료** OR **거절** 선택
@@ -792,7 +792,7 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - 50건 넘어도 페이지 1 만 보이던 버그 fix (\`res.data.totalPages\` 응답 키 호환).
 
 ### 사용자 상세 (확장)
-- 연결된 셀러 / 벤더사 계정 표시 (linked_user_id)
+- 연결된 셀러 / 에이전시 계정 표시 (linked_user_id)
 - 상태 변경 (active/suspended/banned) — \`PATCH /api/admin/users/:id/status\``,
   },
   // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 관리

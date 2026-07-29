@@ -7,7 +7,7 @@ import DOMPurify from 'dompurify'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
- * 운영 가이드 공통 뷰어 — 어드민/셀러/벤더사 모두 사용
+ * 운영 가이드 공통 뷰어 — 어드민/셀러/에이전시 모두 사용
  *
  * - markdown 렌더러 내장 (간단한 버전: **bold**, ### h3, `code`, > blockquote, 리스트)
  * - editable=true 면 관리자 편집 UI 활성화

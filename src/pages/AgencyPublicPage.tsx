@@ -26,7 +26,7 @@ export default function AgencyPublicPage() {
     ['agency-public', slug ?? ''], `/api/agency-public/${slug}`,
     { enabled: !!slug, select: (r: any) => (r?.success ? r.data : null) },
   )
-  const error = isError || (!loading && !data && slug) ? '해당 벤더사를 찾을 수 없습니다.' : null
+  const error = isError || (!loading && !data && slug) ? '해당 에이전시를 찾을 수 없습니다.' : null
 
   if (loading) {
     return (
@@ -114,7 +114,7 @@ export default function AgencyPublicPage() {
         <div className="bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl p-6 text-white mb-6">
           <h2 className="text-xl font-bold mb-2">🎟️ {data.name} 와 함께 성장하세요</h2>
           <p className="text-sm text-white/90 mb-4">
-            입점 신청을 보내고 본 벤더사의 공동구매·이용권 운영 지원을 받아보세요.
+            입점 신청을 보내고 본 에이전시의 공동구매·이용권 운영 지원을 받아보세요.
           </p>
           <Link
             to={`/seller/register?agency=${data.id}`}

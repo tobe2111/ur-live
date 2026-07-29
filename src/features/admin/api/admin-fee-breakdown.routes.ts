@@ -6,12 +6,12 @@
  *   이 라우트는 어떤 돈도 적립/이동하지 않음 — SELECT 만.
  *
  *   배경: fee-resolver 그림자 배선(2026-06-27, payment.routes `_confirmSideFx`)이
- *   FEE_RESOLVER_ENABLED='true' 일 때 새 분배(플랫폼 5%/0% · 벤더사 1%/24mo)를
- *   order_fee_breakdown 에 *계산만 기록*. 현행 정산(셀러 커미션 + 벤더사 매장영입 2%+₩30k +
+ *   FEE_RESOLVER_ENABLED='true' 일 때 새 분배(플랫폼 5%/0% · 에이전시 1%/24mo)를
+ *   order_fee_breakdown 에 *계산만 기록*. 현행 정산(셀러 커미션 + 에이전시 매장영입 2%+₩30k +
  *   영입자 1.5% + 공급가)은 별개 테이블에 그대로. 이 엔드포인트가 둘을 order_id 로 조인해 비교.
  *
  *   ⚠️ 그림자 기록의 한계(현 시점): recordOrderFeeBreakdown 는 supplyCost/promo 를 안 넘겨
- *   new_supply/new_promo 는 항상 0. 즉 *플랫폼+벤더사* 슬라이스가 검증의 핵심. supply 는
+ *   new_supply/new_promo 는 항상 0. 즉 *플랫폼+에이전시* 슬라이스가 검증의 핵심. supply 는
  *   현행(supplier_settlements)만 참고로 표시.
  *
  * Endpoints (전부 requireAdmin):
@@ -130,8 +130,8 @@ adminFeeBreakdownRoutes.get('/admin/fee-breakdown/compare', requireAdmin(), asyn
       const new_platform = num(r.new_platform)
       const new_agency = num(r.new_agency)
       // 플랫폼 순이익(영입 인센티브 지급 후) — 모델별 의미 차이 주석은 응답 note 참조.
-      //   현행: 플랫폼이 셀러커미션을 받고, 거기서 벤더사(2%+₩30k)+영입자(1.5%)를 *별도 비용*으로 지급.
-      //   새 규칙: 벤더사(1%)는 플랫폼 5% *안에서* 분배(platform_net = platform - agency). 영입자는
+      //   현행: 플랫폼이 셀러커미션을 받고, 거기서 에이전시(2%+₩30k)+영입자(1.5%)를 *별도 비용*으로 지급.
+      //   새 규칙: 에이전시(1%)는 플랫폼 5% *안에서* 분배(platform_net = platform - agency). 영입자는
       //           새 모델에서 '주인 자율 promo'라 플랫폼 비용 아님 → platform_net 그대로.
       const cur_platform_net = cur_platform - cur_agency - cur_influencer
       const new_platform_net = num(r.new_platform_net)
@@ -190,7 +190,7 @@ adminFeeBreakdownRoutes.get('/admin/fee-breakdown/compare', requireAdmin(), asyn
       shadow_table_exists: true,
       rows: list,
       totals,
-      note: '읽기 전용 비교. 새 규칙은 그림자 기록(order_fee_breakdown), 현행은 실제 정산 테이블 라이브 조회. 영입자(인플) 인센티브는 현행=플랫폼 비용 / 새 모델=주인 자율 promo 라 platform_net 산식이 다름(주문별 cur_platform_net = 셀러커미션 − 벤더사 − 영입자). new_supply 는 공급라인 공급가로 계산(현행 supplier_settlements 와 동일 base, 단 resolver 는 amount−platform 으로 clamp). new_promo 는 주인 자율값이라 미모델링(0).',
+      note: '읽기 전용 비교. 새 규칙은 그림자 기록(order_fee_breakdown), 현행은 실제 정산 테이블 라이브 조회. 영입자(인플) 인센티브는 현행=플랫폼 비용 / 새 모델=주인 자율 promo 라 platform_net 산식이 다름(주문별 cur_platform_net = 셀러커미션 − 에이전시 − 영입자). new_supply 는 공급라인 공급가로 계산(현행 supplier_settlements 와 동일 base, 단 resolver 는 amount−platform 으로 clamp). new_promo 는 주인 자율값이라 미모델링(0).',
     })
   } catch (err) {
     return safeError(c, err, '비교 데이터 조회 중 오류가 발생했습니다', '[fee-breakdown]')

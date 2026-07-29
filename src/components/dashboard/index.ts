@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-04-22 배치 127: 셀러/벤더사 대시보드 공통 디자인 시스템
+ * 🛡️ 2026-04-22 배치 127: 셀러/에이전시 대시보드 공통 디자인 시스템
  *
  * 사용 예:
  *   import { DashboardPageHeader, DashboardStatCard, DashboardCard, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'

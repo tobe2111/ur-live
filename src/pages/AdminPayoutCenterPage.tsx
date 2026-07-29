@@ -1,5 +1,5 @@
 /**
- * 🏦 지급 센터 (2026-06-12 — 사용자 결정): 셀러 정산 · 큐레이터 환급 · 벤더사 영입 커미션의
+ * 🏦 지급 센터 (2026-06-12 — 사용자 결정): 셀러 정산 · 큐레이터 환급 · 에이전시 영입 커미션의
  * "신청 → (수동 이체) → 입금완료 기록"을 한 화면에서. 운영 루틴 = 매주 금요일 일괄.
  * 어드민 라이트 테마 고정 (dark: 금지 룰).
  */
@@ -21,7 +21,7 @@ interface PaidRow { rail: string; id: number; who: string | null; amount: number
 
 type Data = { sellers: SellerRow[]; curators: CuratorRow[]; agencies: AgencyRow[]; recent_paid: PaidRow[] }
 
-const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '큐레이터 환급', agency: '벤더사 커미션' }
+const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '큐레이터 환급', agency: '에이전시 커미션' }
 
 export default function AdminPayoutCenterPage() {
   const [tab, setTab] = useState<'seller' | 'curator' | 'agency'>('seller')
@@ -78,7 +78,7 @@ export default function AdminPayoutCenterPage() {
 
       {/* 레일 탭 */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        {([['seller', '셀러 정산', Banknote], ['curator', '큐레이터 환급', Users], ['agency', '벤더사 커미션', Building2]] as const).map(([k, label, Icon]) => (
+        {([['seller', '셀러 정산', Banknote], ['curator', '큐레이터 환급', Users], ['agency', '에이전시 커미션', Building2]] as const).map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${tab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -145,8 +145,8 @@ export default function AdminPayoutCenterPage() {
           )}
 
           {tab === 'agency' && (
-            <Table empty={!data?.agencies.length} emptyText="적립된 벤더사 커미션이 없습니다"
-              head={['벤더사', '지급 가능 (7일 경과)', '성숙 대기', '건수', '입금 계좌', '처리']}>
+            <Table empty={!data?.agencies.length} emptyText="적립된 에이전시 커미션이 없습니다"
+              head={['에이전시', '지급 가능 (7일 경과)', '성숙 대기', '건수', '입금 계좌', '처리']}>
               {data?.agencies.map(r => (
                 <tr key={r.agency_id} className="border-t border-gray-50">
                   <td className="px-4 py-3 text-[13px] font-medium text-gray-900">{r.agency_name}</td>
@@ -156,7 +156,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3">{bank(r.bank_name, r.bank_account, r.account_holder)}</td>
                   <td className="px-4 py-3">
                     <button disabled={busy === `a${r.agency_id}` || r.payable_matured <= 0}
-                      onClick={() => act(`벤더사 커미션 ${formatWon(r.payable_matured)}`, `a${r.agency_id}`, () => api.post(`/api/admin/payout-center/agency/${r.agency_id}/paid`, {}))}
+                      onClick={() => act(`에이전시 커미션 ${formatWon(r.payable_matured)}`, `a${r.agency_id}`, () => api.post(`/api/admin/payout-center/agency/${r.agency_id}/paid`, {}))}
                       className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-40">일괄 입금 완료</button>
                   </td>
                 </tr>

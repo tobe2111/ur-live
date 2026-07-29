@@ -1,7 +1,7 @@
 /**
  * Operation Guide Routes — admin editable, role-scoped read access
  *
- * 🛡️ 2026-04-23 배치 174: 어드민/셀러/벤더사 3종 운영 가이드
+ * 🛡️ 2026-04-23 배치 174: 어드민/셀러/에이전시 3종 운영 가이드
  *
  * - 어드민만 수정 가능 (PATCH)
  * - 각 역할은 자기 가이드만 조회 가능 + 어드민은 전체 조회 가능
@@ -73,7 +73,7 @@ guideRoutes.get('/:type', cors(), async (c) => {
     return c.json({ success: false, error: 'Invalid guide type' }, 400)
   }
 
-  // 권한 체크: 어드민은 모두 / 셀러는 seller / 벤더사는 agency / 도매몰은 어드민 전용
+  // 권한 체크: 어드민은 모두 / 셀러는 seller / 에이전시는 agency / 도매몰은 어드민 전용
   const allowedRoles: Record<GuideType, string[]> = {
     admin: ['admin'],
     seller: ['admin', 'seller'],

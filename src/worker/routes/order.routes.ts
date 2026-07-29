@@ -809,7 +809,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     }
 
     // 🛡️ 2026-06-26 (소비자 감사 다): 전액 환불 시 부가 적립·쿠폰·이용권 역전 — refundOrderFully 와
-    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/벤더사 커미션, referral_bonus, 이용권 clawback,
+    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/에이전시 커미션, referral_bonus, 이용권 clawback,
     //   디지털 revoke). 인라인 referral_commissions 회수는 위에서 이미 처리. 부분 환불은 전체역전이 틀리므로 제외.
     //   (/:id/cancel 전액취소는 refundOrderFully 경유라 자동 처리 — /refund 만 인라인이라 여기서 배선.)
     if ((Number((order as any).refunded_amount ?? 0) + refundAmount) >= Number(order.total_amount ?? 0)) {
@@ -900,7 +900,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     if (paymentMadeStatuses.includes(order.status)) {
       // 💸 2026-06-26 셀프취소 머니버그 근본수정 — 전액취소는 refundOrderFully SSOT 경유.
       //   기존 인라인 경로 버그(머니룰 #2 대칭·CAS 멱등): ① 딜 전액결제(toss_key 없음) 422 차단 + 딜환급 dead
-      //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/벤더사/영입자 미역전.
+      //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/에이전시/영입자 미역전.
       //   refundOrderFully: 카드 Toss취소(또는 딜 환급) + 딜 사용분 복원 + 쿠폰복원 + 전 적립 역전 + CAS 멱등.
       const remaining = Number(order.total_amount ?? 0) - Number(order.refunded_amount ?? 0);
       const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining;

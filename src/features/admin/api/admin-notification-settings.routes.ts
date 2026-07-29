@@ -44,8 +44,8 @@ async function ensureTable(db: D1Database) {
     ['seller_registered',      1, 1, 0, 1, '[어드민] 셀러 가입 신청'],
     ['seller_approved',        1, 1, 1, 1, '[셀러] 가입 승인 (알림톡 권장)'],
     ['seller_rejected',        1, 1, 0, 0, '[셀러] 가입 거절'],
-    ['agency_registered',      1, 1, 0, 1, '[어드민] 벤더사 가입 신청'],
-    ['agency_approved',        1, 1, 1, 1, '[벤더사] 가입 승인 (알림톡 권장)'],
+    ['agency_registered',      1, 1, 0, 1, '[어드민] 에이전시 가입 신청'],
+    ['agency_approved',        1, 1, 1, 1, '[에이전시] 가입 승인 (알림톡 권장)'],
     // 주문·배송
     ['new_order',              1, 0, 1, 1, '[셀러] 새 주문 (즉시 알림 권장)'],
     ['order_delivered',        1, 0, 0, 1, '[셀러+어드민] 배송 완료'],
@@ -56,7 +56,7 @@ async function ensureTable(db: D1Database) {
     // 정산
     ['settlement_completed',   1, 1, 0, 1, '[셀러] 정산 완료'],
     ['settlement_request',     1, 0, 0, 1, '[어드민] 셀러 정산 신청'],
-    ['agency_settlement',      1, 0, 0, 1, '[어드민] 벤더사 정산 신청'],
+    ['agency_settlement',      1, 0, 0, 1, '[어드민] 에이전시 정산 신청'],
     // 후원·리뷰
     ['donation_received',      1, 0, 1, 1, '[셀러] 후원 받음 (라이브)'],
     ['new_review',             1, 0, 0, 1, '[셀러] 새 리뷰 등록'],
@@ -87,7 +87,7 @@ async function ensureTable(db: D1Database) {
     ['system_alert',           1, 1, 0, 0, '[어드민] 시스템 에러/장애'],
     ['payment_failed',         1, 0, 0, 1, '[어드민] 결제 실패'],
     ['inactive_seller',        1, 1, 0, 0, '[어드민] 부진 셀러 detect'],
-    ['inactive_agency',        1, 1, 0, 0, '[어드민] 부진 벤더사 detect'],
+    ['inactive_agency',        1, 1, 0, 0, '[어드민] 부진 에이전시 detect'],
   ] as const
   await db.batch(seeds.map(([type, dash, email, alim, push, desc]) =>
     db.prepare(

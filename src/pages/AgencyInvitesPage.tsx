@@ -86,7 +86,7 @@ export default function AgencyInvitesPage() {
       <div className="p-6 space-y-6">
         <DashboardPageHeader
           title={t('agency.invites.pageTitle', { defaultValue: '셀러 영입 (QR / 링크)' })}
-          subtitle={t('agency.invites.subtitle', { defaultValue: '코드를 발급해서 셀러에게 공유하세요. 7일 유효, 가입 시 자동으로 본 벤더사에 매핑됩니다.' })}
+          subtitle={t('agency.invites.subtitle', { defaultValue: '코드를 발급해서 셀러에게 공유하세요. 7일 유효, 가입 시 자동으로 본 에이전시에 매핑됩니다.' })}
           icon={<QrCode className="h-5 w-5" />}
         />
 

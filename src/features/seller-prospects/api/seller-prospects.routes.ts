@@ -54,11 +54,11 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
   }
   const introducerType = body.introducer_type === 'agency' ? 'agency' : 'influencer'
 
-  // 🛡️ 2026-06-25 (대표 승인 — B4): 벤더사 영입은 대시보드/커미션이 agencies.id 로 조회하므로
+  // 🛡️ 2026-06-25 (대표 승인 — B4): 에이전시 영입은 대시보드/커미션이 agencies.id 로 조회하므로
   //   introducer_id 를 canonical agencies.id 로 저장. 기존엔 user.id 를 그대로 써서, 카카오 로그인
-  //   벤더사(user.id = users.id ≠ agencies.id)의 영입 매장/커미션이 대시보드에 영영 안 잡혔음.
+  //   에이전시(user.id = users.id ≠ agencies.id)의 영입 매장/커미션이 대시보드에 영영 안 잡혔음.
   //   해소: user.id 가 곧 agencies.id(이메일 로그인) 이거나 agencies.linked_user_id(카카오)면 매핑.
-  //   `id = ?` 매치 우선(ORDER BY)으로 collision(어떤 users.id == 타 벤더사 id) 시에도 본인 우선.
+  //   `id = ?` 매치 우선(ORDER BY)으로 collision(어떤 users.id == 타 에이전시 id) 시에도 본인 우선.
   let introducerId = String(user.id)
   if (introducerType === 'agency') {
     try {
@@ -143,8 +143,8 @@ prospectsRoutes.get('/mine', requireAuth(), async (c) => {
   return c.json({ success: true, data: results })
 })
 
-// ── 🏁 2026-07-02 (대표 "가장 이상적으로" — 벤더사 대리 등록) ──────────────────────
-// 벤더사/영입자가 등록한 prospect 로 **사장님 가입 링크** 생성 → 사장님은 카카오 로그인 +
+// ── 🏁 2026-07-02 (대표 "가장 이상적으로" — 에이전시 대리 등록) ──────────────────────
+// 에이전시/영입자가 등록한 prospect 로 **사장님 가입 링크** 생성 → 사장님은 카카오 로그인 +
 // 확인·제출만(정보 재입력 0). 무상태 HMAC 토큰(스키마 무변경) — 링크 소지자만 프리필 조회 가능.
 async function prospectToken(secret: string, id: number): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
@@ -152,7 +152,7 @@ async function prospectToken(secret: string, id: number): Promise<string> {
   return Array.from(new Uint8Array(sig)).slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-// POST /:id/invite-link — 본인 prospect 의 사장님 가입 링크 발급(벤더사 코드 자동 포함).
+// POST /:id/invite-link — 본인 prospect 의 사장님 가입 링크 발급(에이전시 코드 자동 포함).
 prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
   if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -171,7 +171,7 @@ prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
   }
   if (!ownerOk) return c.json({ success: false, error: '본인 등록 prospect 아님' }, 403)
   const pt = await prospectToken(c.env.JWT_SECRET, id)
-  // 벤더사면 intro_code 동봉 → 가입 폼 추천코드 자동 입력(영입 커미션 lock-in 보장).
+  // 에이전시면 intro_code 동봉 → 가입 폼 추천코드 자동 입력(영입 커미션 lock-in 보장).
   let agencyCode: string | null = null
   if (row.introducer_type === 'agency') {
     const ag = await c.env.DB.prepare('SELECT intro_code FROM agencies WHERE id = ?')

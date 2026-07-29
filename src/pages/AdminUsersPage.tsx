@@ -339,7 +339,7 @@ export default function AdminUsersPage() {
                                   </div>
                                 )}
 
-                                {/* 연결된 셀러 / 벤더사 */}
+                                {/* 연결된 셀러 / 에이전시 */}
                                 {(detail.linked_seller || detail.linked_agency) && (
                                   <div className="pt-2 border-t border-gray-200 space-y-2">
                                     <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t('admin.users.linkedAccounts', { defaultValue: '연결된 계정' })}</p>
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
                                     {detail.linked_agency && (
                                       <div className="bg-purple-50 border border-purple-100 rounded-lg p-2.5 flex items-center justify-between">
                                         <div>
-                                          <p className="text-[11px] text-purple-700 font-bold">💼 벤더사</p>
+                                          <p className="text-[11px] text-purple-700 font-bold">💼 에이전시</p>
                                           <p className="text-sm text-gray-900 font-semibold">{detail.linked_agency.name}</p>
                                           <p className="text-[10px] text-gray-500">
                                             담당: {detail.linked_agency.contact_name} · {detail.linked_agency.status}

@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-28: 어드민 — 매장별 commission 관리 + 영입 ledger audit.
  *
- * 1) 매장 id 조회 → 영입 벤더사/크리에이터 표시 + referral_bonus_until 기간 / commission_rate 설정
+ * 1) 매장 id 조회 → 영입 에이전시/크리에이터 표시 + referral_bonus_until 기간 / commission_rate 설정
  *    (GET/PATCH /api/admin/sellers/:id/commission-settings)
  * 2) 영입 commission ledger 불일치 audit (GET /api/admin/intro-commission-audit) + 수동 backfill
  *
@@ -128,7 +128,7 @@ export default function AdminMerchantCommissionsPage() {
   }
 
   const introducer = cs?.introduced_by_agency_id
-    ? `벤더사: ${cs.agency_name || `#${cs.introduced_by_agency_id}`}`
+    ? `에이전시: ${cs.agency_name || `#${cs.introduced_by_agency_id}`}`
     : cs?.introduced_by_influencer_id
       ? `크리에이터: ${cs.influencer_handle ? '@' + cs.influencer_handle : `#${cs.introduced_by_influencer_id}`}`
       : '영입자 없음'

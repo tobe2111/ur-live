@@ -108,7 +108,7 @@ function InviteSellerPanel({ sellerCount }: { sellerCount: number }) {
             </div>
           </div>
           <p className="text-xs text-gray-400">
-            이 링크로 가입한 셀러는 자동으로 벤더사에 소속됩니다.
+            이 링크로 가입한 셀러는 자동으로 에이전시에 소속됩니다.
           </p>
         </div>
       )}

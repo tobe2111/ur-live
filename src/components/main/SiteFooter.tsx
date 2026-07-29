@@ -4,7 +4,7 @@ export default function SiteFooter() {
   return (
     <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]">
       <div className="flex flex-col gap-1.5 footer-tiny">
-        {/* 🛡️ 2026-05-21: 역할별 진입 CTA — 사용자/사장님/셀러/벤더사 가입 직접 link.
+        {/* 🛡️ 2026-05-21: 역할별 진입 CTA — 사용자/사장님/셀러/에이전시 가입 직접 link.
               마이페이지의 CTA grid 와 동일 destination. */}
         <div className="flex flex-col gap-1 mb-3 text-[12px] font-semibold">
           {/* 🧭 2026-06-17: 그룹 referral(/referral) 숨김 — '공구 개최하기' CTA 비노출(플래그 false 면 복원). */}
@@ -21,7 +21,7 @@ export default function SiteFooter() {
           </a>
           {!AGENCY_HIDDEN && (
           <a href="/agency/register/business" className="text-violet-600 dark:text-violet-400 hover:underline">
-            🤵 벤더사 사업 시작 →
+            🤵 에이전시 사업 시작 →
           </a>
           )}
           {/* 🛡️ 2026-06-04 도매몰 진입 플로우: 통합 소개 허브(/wholesale/intro)로 — 제조사 입점·판매사 가입 분기. */}

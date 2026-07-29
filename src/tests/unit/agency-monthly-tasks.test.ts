@@ -89,13 +89,13 @@ describe('agency-monthly-tasks: taskProgress', () => {
   })
 
   describe('실 시나리오', () => {
-    it('senior 벤더사 매출 80% 달성', () => {
+    it('senior 에이전시 매출 80% 달성', () => {
       const r = taskProgress('sales_quota', 8_000_000, 10_000_000)
       expect(r.pct).toBe(80)
       expect(r.completed).toBe(false)
       expect(r.label).toBe('800만원 / 1000만원')
     })
-    it('new 벤더사 영입 완료', () => {
+    it('new 에이전시 영입 완료', () => {
       const r = taskProgress('creator_growth', 2, 2)
       expect(r.pct).toBe(100)
       expect(r.completed).toBe(true)
