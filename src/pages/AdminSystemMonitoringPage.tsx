@@ -73,6 +73,8 @@ interface CronHeartbeat {
   stale?: boolean | null
   /** 마지막 실행이 무엇을 했는지 한 줄 요약. */
   result?: string | null
+  /** 이 판정에 쓰인 기대 간격(분) — '왜 멈춤으로 봤나'의 근거. 안 보이면 또 오진한다. */
+  max_gap_min?: number | null
 }
 
 export default function AdminSystemMonitoringPage() {
@@ -130,11 +132,18 @@ export default function AdminSystemMonitoringPage() {
   )
   // 💓 2026-07-28: cron 실행 하트비트 — cron_failures 는 '예외가 났을 때만' 남는다.
   //   예외 없이 멈춘 경우(미발화 / 게이트 OFF / 내부 .catch 로 삼킴)는 여기서만 보인다(#826).
-  const heartbeatQ = useApiQuery<{ items: CronHeartbeat[]; stale: string[] }>(
+  const heartbeatQ = useApiQuery<{ items: CronHeartbeat[]; stale: string[]; never_fired: string[]; orphan_lanes: string[] }>(
     ['admin', 'cron-heartbeats'], '/api/admin/cron-heartbeats',
-    { enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], stale: r?.success ? (r.data.stale || []) : [] }) },
+    { enabled: tab === 'cron', select: (r: any) => ({
+      items: r?.success ? (r.data.items || []) : [],
+      stale: r?.success ? (r.data.stale || []) : [],
+      never_fired: r?.success ? (r.data.never_fired || []) : [],
+      orphan_lanes: r?.success ? (r.data.orphan_lanes || []) : [],
+    }) },
   )
   const heartbeats = heartbeatQ.data?.items ?? []
+  const neverFired = heartbeatQ.data?.never_fired ?? []
+  const orphanLanes = heartbeatQ.data?.orphan_lanes ?? []
 
   const cronFailures = cronQ.data?.items ?? []
   const cronCounts = cronQ.data?.counts ?? []
@@ -274,6 +283,43 @@ export default function AdminSystemMonitoringPage() {
             </div>
           </DashboardCard>
         )}
+        {/* 🔭 '한 번도 안 돈 레인' — 하트비트 목록에는 **행 자체가 없어서** 위 목록으로는 절대 안 보인다.
+            게이트는 켜져 있는데 기록이 없다는 뜻이라, '안 도는 건지 원래 없는 건지'를 여기서 가른다. */}
+        {tab === 'cron' && neverFired.length > 0 && (
+          <DashboardCard className="!p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-gray-900">🔭 한 번도 안 돈 레인</h3>
+              <span className="text-[11px] text-gray-500">게이트는 ON 인데 실행 기록이 없다</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {neverFired.map(n => (
+                <span key={n} className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs font-semibold">{n}</span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-gray-500">
+              실행 기록이 아예 없으면 '멈춤 의심' 판정 대상조차 되지 않는다 — 그래서 따로 보여준다.
+            </p>
+          </DashboardCard>
+        )}
+        {/* 🪦 고아 기록 — 이름이 바뀌었거나 게이트가 꺼진 레인. 아무도 갱신 안 하니 **영원히 stale** 이다.
+            실측(2026-07-29): `sweep-kakao-phone` 이 `sweep-kakao-chain` 으로 개명됐는데 옛 행이 계속 경보. */}
+        {tab === 'cron' && orphanLanes.length > 0 && (
+          <DashboardCard className="!p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-gray-900">🪦 고아 기록</h3>
+              <span className="text-[11px] text-gray-500">기록은 있는데 지금은 아무도 안 부른다</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {orphanLanes.map(n => (
+                <span key={n} className="px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs font-medium line-through">{n}</span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-gray-500">
+              이름이 바뀌었거나 게이트가 꺼진 레인이다. 아무도 갱신하지 않으니 영원히 &lsquo;멈춤 의심&rsquo; 으로 남는다 —
+              고칠 수 없는 경보는 곧 전체 경보를 무시하게 만든다. 지우기 전에 어느 쪽인지 확인할 것.
+            </p>
+          </DashboardCard>
+        )}
         {/* 💓 실행 하트비트 — '멈춤' 은 실패 목록에 안 나온다(예외가 없으니까). 여기서만 보인다. */}
         {tab === 'cron' && heartbeats.length > 0 && (
           <DashboardCard className="!p-3">
@@ -294,7 +340,12 @@ export default function AdminSystemMonitoringPage() {
                   </span>
                   {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}
                   {h.result && <span className="text-gray-400 truncate" title={h.result}>{h.result}</span>}
-                  {h.cron && <span className="ml-auto shrink-0 text-gray-300 font-mono">{h.cron}</span>}
+                  {h.max_gap_min != null && (
+                    <span className="ml-auto shrink-0 text-gray-400" title="이 시간을 넘기면 '멈춤 의심'">
+                      기준 {h.max_gap_min >= 60 ? `${Math.round(h.max_gap_min / 60)}시간` : `${h.max_gap_min}분`}
+                    </span>
+                  )}
+                  {h.cron && <span className={`shrink-0 text-gray-300 font-mono ${h.max_gap_min == null ? 'ml-auto' : ''}`}>{h.cron}</span>}
                 </div>
               ))}
             </div>

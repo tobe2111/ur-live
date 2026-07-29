@@ -84,6 +84,17 @@ export async function recordCronBeat(
    * 작은 평면 객체만 받는다(로그가 아니라 한 줄 요약).
    */
   result?: unknown,
+  /**
+   * 이 작업의 **실제** 기대 간격(분). cron 식만으로는 알 수 없을 때 작업이 직접 신고한다.
+   *
+   * ⚠️ 2026-07-29 신설 — ur-ads 처럼 **하나의 cron 이 여러 주기의 레인을 디스패치**하면
+   * `event.cron`(매시간) 이 실제 주기를 말해주지 못한다. 일 1회 레인이 매시간으로 기록돼
+   * **정상 동작 중에도 하루 21.5시간을 `stale`** 로 보고했다(실측: `ads:maintenance?phase=quality`
+   * age 167분 · stale). 그 판정은 uptime 프로브를 타고 이슈+메일로 나간다 — 매일 울리는 오탐은
+   * "확실히 이상한 것만 울린다"는 이 모듈의 설계 의도를 깨고 경보 전체를 무력화한다.
+   * 값이 있으면 cron 식보다 **우선**한다. 없으면 종전대로 cron 식에서 유도한다.
+   */
+  maxGapMin?: number,
 ): Promise<void> {
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
@@ -93,6 +104,7 @@ export async function recordCronBeat(
       ok,
       ms: Math.max(0, Math.round(ms)),
       ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
+      ...(Number.isFinite(maxGapMin) && (maxGapMin as number) > 0 ? { g: Math.round(maxGapMin as number) } : {}),
       ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
     }).slice(0, MAX_VALUE)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
@@ -112,6 +124,8 @@ export interface CronHeartbeat {
   cron?: string | null
   /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
   stale?: boolean | null
+  /** 이 판정에 쓰인 기대 간격(분) — 작업이 신고했으면 그 값, 아니면 cron 식에서 유도. */
+  max_gap_min?: number | null
   /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
   result?: string | null
 }
@@ -147,18 +161,22 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
     const now = Date.now()
     const rows = (results || []).map((r) => {
       let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
+      let gap: number | null = null
       try {
-        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string }
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string; g?: number }
         at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
         ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null; note = v.r ?? null
+        gap = typeof v.g === 'number' && v.g > 0 ? v.g : null
       } catch { /* 깨진 값은 null 로 */ }
       const t = at ? Date.parse(at) : NaN
       const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
-      const limit = expectedMaxAgeMinutes(cron)
+      // 작업이 직접 신고한 주기가 있으면 그것이 진실 — cron 식은 폴백이다(위 maxGapMin 주석 참조).
+      const limit = gap ?? expectedMaxAgeMinutes(cron)
       return {
         name: r.key.slice('cron_hb:'.length),
         at, ok, ms, cron, result: note,
         age_minutes: age,
+        max_gap_min: limit,
         stale: (limit != null && age != null) ? age > limit : null,
       }
     })
@@ -265,7 +283,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   const stale: CronStaleEntry[] = []
   const missing: string[] = []
   for (const b of beats) {
-    const limit = expectedMaxAgeMinutes(b.cron)
+    const limit = b.max_gap_min ?? expectedMaxAgeMinutes(b.cron)
     if (limit == null || b.age_minutes == null) { missing.push(b.name); continue }
     if (b.age_minutes > limit) {
       stale.push({

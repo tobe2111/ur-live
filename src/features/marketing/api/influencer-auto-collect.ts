@@ -14,7 +14,7 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { backfillRegions } from './influencer-region'
+import { backfillRegions, recheckBlankRegions } from './influencer-region'
 import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
@@ -511,6 +511,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
 
   // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
+  //   재판정은 **규칙 버전이 오른 회차에만 1회** 돈다(그 외엔 조회 1번으로 즉시 반환) — 규칙을 고쳐도
+  //   `''` 로 확정된 기존 행이 안 고쳐지던 구멍을 막는다. 상수만 올리고 이 호출이 없으면 아무 일도 안 난다.
+  try { await recheckBlankRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 재시도(멱등) */ }
   try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
