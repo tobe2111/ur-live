@@ -67,3 +67,35 @@ influencerRoutes.post('/__ads/enrich-influencer', async (c) => {
     return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
   }
 })
+
+/**
+ * 🔁 보강 self-chain — 라운드를 **오케스트레이터가 아니라 각 라운드가** 잇는다(2026-07-29).
+ *
+ *   그 전엔 cron 이 `enrich-influencer` 를 6번 직접 불렀다. 라운드마다 부모 인보케이션의 서브리퀘스트를
+ *   1개씩 쓰는데, 부모는 다른 레인들과 그 예산을 공유한다 — 이 파일 이웃(시트 미러)이 이미 기록해 둔
+ *   실패 양식이 정확히 그것이다: **부모가 예산을 다 쓰면 SELF.fetch 1개조차 못 써서 러너가 시작조차 못 한다.**
+ *   그 피해는 waitUntil 목록에서 뒤에 선 레인이 받는다(이 세션 범위 밖의 레인들).
+ *   ⇒ 부모 비용을 1로 고정하고 라운드는 여기서 잇는다. 라운드 수(`ADS_INFLUENCER_ENRICH_ROUNDS`)는 불변.
+ *
+ *   ⏹️ 백로그가 비면 조기 종료한다 — 할 일이 없는데 남은 라운드를 다 도는 것은 순수 낭비다.
+ */
+influencerRoutes.post('/__ads/enrich-influencer-chain', async (c) => {
+  const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
+  let stats: { bio?: number; yt?: number; naver?: { tried?: number } } | null = null
+  try {
+    const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+    stats = await runInfluencerEnrich(c.env)
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+  const rounds = Math.min(20, Math.max(1, parseInt((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 6))
+  const didWork = (stats?.bio || 0) + (stats?.yt || 0) + (stats?.naver?.tried || 0) > 0
+  const done = !didWork || depth + 1 >= rounds || depth >= 40 // 무대상/라운드 소진/깊이 상한
+  let chained = false
+  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/enrich-influencer-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  return c.json({ ok: true, stats, chained, depth })
+})

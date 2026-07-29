@@ -27,7 +27,10 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs'
 const FILE = 'src/worker-ads/index.ts'
 const ALLOW_MARK = 'ads-lane-ok'
 /** 수집·스윕 러너로 간주하는 모듈 경로 패턴 — 이들은 외부 API 를 대량 호출한다. */
-const RUNNER_RE = /await import\('([^']*(?:collect|sweep)[^']*)'\)/i
+// ⚠️ 2026-07-29 `enrich` 추가 — 인플루언서 보강 레인이 이 검사 **밖**에 있었다(경로에 collect/sweep 이
+//   없어서). 그 블록은 kick 을 안 써서 **하트비트조차 없었다** — "무음 정지 근절"(CLAUDE.md) 대상에서
+//   조용히 빠져 있었던 것이다. 보강도 수집과 똑같이 독립 인보케이션에서 돌아야 하는 레인이다.
+const RUNNER_RE = /await import\('([^']*(?:collect|sweep|enrich)[^']*)'\)/i
 
 let fail = 0
 const err = (m) => { console.error(`   ❌ ${m}`); fail++ }

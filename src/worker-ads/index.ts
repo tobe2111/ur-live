@@ -292,18 +292,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   각 라운드가 perf_checked_at/bio_checked_at 도장을 찍어 다음 라운드는 다음 구간을 이어 순회(중복 0).
   //   기본 ON(킬스위치 ADS_INFLUENCER_ENRICH_DISABLED='true' 만 끔) — 켜야 도는 구조로 두면
   //   "켠 줄 알았는데 안 돌던" 사고(제조사 수집 cron 누락)를 반복한다.
+  //   🔁 2026-07-29 **라운드를 체인으로** — 라운드 수는 그대로지만 오케스트레이터가 내는 비용이 6 → 1 이다.
+  //   근거는 바로 아래 시트 미러 블록이 이미 적어 둔 실패 양식이다: 부모가 예산을 다 쓰면 **SELF.fetch 1개조차
+  //   못 써서 throw** 한다(그래서 러너가 '시작조차 못 함'). 라운드를 부모에서 6번 부르면 그 위험을 6배로
+  //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
+  //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
-    const rounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 6))
-    ctx.waitUntil((async () => {
-      try {
-        if (env.SELF?.fetch) {
-          for (let i = 0; i < rounds; i++) await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-influencer', { method: 'POST' }))
-        } else {
-          const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-          await runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
-        }
-      } catch { /* fail-soft — 다음 틱 재시도 */ }
-    })())
+    kick('/__ads/enrich-influencer-chain', async () => {
+      const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+      return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
+    }, 'enrich-influencer')
   }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
   //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
