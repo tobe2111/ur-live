@@ -48,16 +48,31 @@ if (!distDir) {
 
 const files = fs.readdirSync(distDir);
 
+/**
+ * gzip 크기를 **직접 계산**한다.
+ *
+ * ⚠️ 2026-07-29: 예전엔 디스크의 `.gz` 사이드카만 읽었다(`existsSync(f + '.gz') ? … : 0`).
+ *   **vite 는 `.gz` 를 만들지 않는다** → 모든 파일의 gzip 이 0 → totalGzip 이 항상 0 →
+ *   `0 > 1.5` 는 영원히 거짓 → **gzip 예산이 몇 달간 통과만 했다.**
+ *   그 죽은 값이 raw 예산 상향 4번의 근거로 인용됐다("gzip 은 여유 있으니 감지력은 유지된다").
+ *   critical-path 예산은 같은 파일에서 이미 `zlib.gzipSync` 로 직접 재고 있었다 — 그 방식으로 통일한다.
+ *   사이드카가 있으면(압축 산출물을 만드는 빌드) 그걸 우선 쓴다: 실제 배포 바이트에 더 가깝다.
+ */
+const gzipOf = (fileName) => {
+  const gzPath = path.join(distDir, fileName + '.gz');
+  if (fs.existsSync(gzPath)) return fs.statSync(gzPath).size;
+  return zlib.gzipSync(fs.readFileSync(path.join(distDir, fileName))).length;
+};
+
 const jsFiles = files
   .filter(f => f.endsWith('.js'))
   .map(f => {
     const stats = fs.statSync(path.join(distDir, f));
-    const gzPath = path.join(distDir, f + '.gz');
     const brPath = path.join(distDir, f + '.br');
     return {
       name: f,
       size: stats.size,
-      gzip: fs.existsSync(gzPath) ? fs.statSync(gzPath).size : 0,
+      gzip: gzipOf(f),
       brotli: fs.existsSync(brPath) ? fs.statSync(brPath).size : 0,
     };
   })
@@ -68,8 +83,7 @@ const cssFiles = files
   .map(f => ({
     name: f,
     size: fs.statSync(path.join(distDir, f)).size,
-    gzip: fs.existsSync(path.join(distDir, f + '.gz'))
-      ? fs.statSync(path.join(distDir, f + '.gz')).size : 0,
+    gzip: gzipOf(f),
   }));
 
 // ── Critical path: index.html 의 entry <script type="module"> + <link rel="modulepreload"> 합 ──
@@ -112,14 +126,19 @@ const BUDGET = {
   //   유기적 성장 지표일 뿐.
   // 🛡️ 2026-07-29: 8.7 → 8.8 상향(**5번째**). #425(리뷰 확인 페이지) 로 실측 8.70 MB → 경계 초과.
   //   ⚠️ 이전 4번의 상향은 전부 "gzip(0.00/1.5 여유) 과 critical-path 가 통과하니 회귀 감지력은 유지된다" 를
-  //   근거로 들었는데, **그 gzip 예산은 죽어 있다**: `f.gzip` 은 디스크의 `.gz` 파일에서만 읽고(line 60·71)
-  //   vite 는 `.gz` 를 만들지 않는다 → totalGzip 이 **항상 0** → `0 > 1.5` 는 영원히 거짓이다.
-  //   즉 지금 살아 있는 감지기는 **critical-path 하나뿐**이다(294.5/300 — 여유 5.5KB, 이쪽이 진짜 위험선).
-  //   TODO(별도, 빌드 가능한 환경 필요): critical-path 가 이미 쓰는 방식(line 91 `zlib.gzipSync`)으로
-  //   totalGzip 을 실제 계산하고, 실측값 기준으로 totalGzipMB 를 재설정해 되살릴 것.
-  //   (지금 그냥 켜면 실제 gzip 총량이 1.5MB 를 넘어 전 PR 이 red 가 된다 — 측정 없이 켜면 안 된다.)
+  //   근거로 들었는데, **그때 그 gzip 예산은 죽어 있었다**: `f.gzip` 을 디스크의 `.gz` 파일에서만 읽는데
+  //   vite 는 `.gz` 를 만들지 않아 totalGzip 이 **항상 0** → `0 > 1.5` 가 영원히 거짓이었다.
+  //   ✅ 같은 날 복구 완료 — `gzipOf`(zlib 직접 계산) + 실측 기반 임계값. **이제 두 감지기 모두 살아 있다.**
+  //   (그전까지 실제로 작동한 감지기는 critical-path 하나뿐이었다 — 294.5/300, 여유 5.5KB.)
   totalRawMB: 8.8,
-  totalGzipMB: 1.5,
+  // ✅ 2026-07-29 교정 완료 — **CI 실측 2.707 MB**(run 30426592229, main+가드 변경 기준).
+  //   ⚠️ 교정 전 추정은 "2.2~2.5MB" 였고 **틀렸다**. 그 추정값으로 켰다면 전 PR 이 red 였다.
+  //   숫자를 지어내지 말고 반드시 CI 의 "Bundle size report" 로그에서 읽을 것.
+  //   헤드룸 ~7%: 유기적 주간 성장은 통과시키되, eager import 가 새로 하나 들어오는 수준
+  //   (gzip 기준 수백 KB)은 잡는다.
+  //   📌 이 값을 올릴 때는 **무엇이 늘었는지 한 줄 적을 것.** raw 예산이 5번 올라가는 동안
+  //      "gzip 은 여유 있다" 가 근거로 인용됐는데 그 값은 **죽어 있었다**(항상 0). 이제 진짜 값이다.
+  totalGzipMB: 2.9,
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
   // 비대 감지 임계는 유지 (900KB 넘으면 진짜 코드 분할 필요).
@@ -139,7 +158,14 @@ const violations = [];
 if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
   violations.push(`총 raw JS ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalRawMB} MB`);
 }
-if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
+// 🛡️ 측정 실패는 통과가 아니다 — 이 파일이 정확히 그렇게 몇 달을 통과했다(항상 0).
+if (totalGzip === 0) {
+  violations.push('총 gzip 을 측정하지 못했다 (js 산출물 0건 또는 압축 실패) — 예산 검사가 무력화된 상태다');
+} else if (BUDGET.totalGzipMB == null) {
+  // 교정 대기: 위반으로 올리지 않되, 측정값을 눈에 띄게 남겨 다음 커밋이 임계값을 확정하게 한다.
+  console.error(`\n🔴 [CALIBRATION PENDING] 총 gzip JS 실측 = ${(totalGzip / 1024 / 1024).toFixed(3)} MB (${(totalGzip / 1024).toFixed(1)} KB)`);
+  console.error(`   → scripts/check-bundle-size.mjs 의 BUDGET.totalGzipMB 를 이 값 + 헤드룸으로 설정하세요.`);
+} else if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
   violations.push(`총 gzip JS ${(totalGzip / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalGzipMB} MB`);
 }
 // 🛡️ 2026-07-29: "못 쟀다" 를 "예산 안" 으로 읽지 않는다.
@@ -215,7 +241,7 @@ if (jsonMode) {
 
   console.log('\n💰 Budget:');
   console.log(`   Total raw JS:  ${(totalSize / 1024 / 1024).toFixed(2)} / ${BUDGET.totalRawMB} MB`);
-  console.log(`   Total gzip JS: ${(totalGzip / 1024 / 1024).toFixed(2)} / ${BUDGET.totalGzipMB} MB`);
+  console.log(`   Total gzip JS: ${(totalGzip / 1024 / 1024).toFixed(3)} / ${BUDGET.totalGzipMB ?? '미교정(CALIBRATION PENDING)'} MB`);
   console.log(`   Single max KB: ${BUDGET.singleRawKB} KB`);
   if (criticalGzip > 0) {
     console.log(`   Critical path: ${(criticalGzip / 1024).toFixed(1)} / ${BUDGET.criticalGzipKB} KB gzip (entry+modulepreload ${criticalFiles.length} files)`);

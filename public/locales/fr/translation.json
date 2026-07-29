@@ -4013,7 +4013,8 @@
       "linked": "Compte Kakao lié !",
       "unlinked": "Lien Kakao supprimé",
       "passwordRequired": "Configuration du mot de passe requise. Veuillez en définir un depuis votre profil."
-    }
+    },
+    "forgotPasswordUseKakao": "Mot de passe oublié ? Connectez-vous avec Kakao"
   },
   "notifications": {
     "title": "Notifications",

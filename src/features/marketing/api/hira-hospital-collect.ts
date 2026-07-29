@@ -98,12 +98,16 @@ export async function runHiraHospitalCollect(env: Env, maxPages = 3): Promise<Hi
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
-    const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=500&_type=json`
+    // 🩹 2026-07-28 실측 수리: `numOfRows=500` 으로 **42회 실행 전부 타임아웃**(total_saved 0).
+    //   심평원 병원목록은 페이지가 크면 응답이 느리다 — 한 번도 성공한 적이 없으니 크기를 줄이는 것이 맞다.
+    //   env 로 조정 가능(무배포): 성공하면 올리고, 여전히 타임아웃이면 더 줄인다. 판정은 stats.diag.error 로.
+    const numRows = Math.min(500, Math.max(20, parseInt((env as unknown as { ADS_HIRA_ROWS?: string }).ADS_HIRA_ROWS || '', 10) || 100))
+    const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=${numRows}&_type=json`
     // ⚠️ 2026-07-28 수리: `.catch(() => null)` 이 예외 원문을 버려 32회 연속 실패가 전부 '네트워크 오류'
     //   한 줄로 뭉개졌다 — 서브리퀘스트 한도인지 실제 네트워크 장애인지 구분 불가(오진의 원인).
     let res: Response | null = null
     let netMsg = '네트워크 오류'
-    try { res = await fetch(url, { signal: AbortSignal.timeout(20000) }) } catch (err) {
+    try { res = await fetch(url, { signal: AbortSignal.timeout(25000) }) } catch (err) {
       const m = err instanceof Error ? err.message : String(err || '')
       if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달 — maxPages 를 줄일 것'
       else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`

@@ -74,7 +74,7 @@ export default function GroupBuyGuideCard() {
 
       {/* CTA — 자세히 보기 / referral 페이지 */}
       <div className="mt-2.5 flex items-center justify-center gap-3 text-[11px]">
-        <Link to="/influencer" className="font-bold text-gray-900 dark:text-white hover:underline">
+        <Link to="/influencer/dashboard" className="font-bold text-gray-900 dark:text-white hover:underline">
           내 추천 링크 →
         </Link>
       </div>

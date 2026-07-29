@@ -31,6 +31,7 @@ export type SubreqLane =
   | 'maintenance'       // 야간 풀 자동 정비 — D1 중심(통합/재추출/재분류) + 일부 재조회 fetch
   | 'store_kakao'       // 무인매장 발굴(카카오 로컬 키워드) — 키워드당 fetch 1 + 저장 batch
   | 'localdata'         // 인허가(지방행정) 매장 후보 — 업종당 fetch 1~6 + 저장 D1(업종 16종 → 가장 폭발적)
+  | 'prospect_enrich'    // 매장 후보 연락처 보강 — 건당 크롤 4~6 + D1 다수(회사 풀 보강과 동급으로 비쌈)
 /** 레인별 학습 상한 저장 키(platform_settings). */
 export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane}`
 /** 이 아래로는 안 내린다 — 수확이 0 이 되면 학습 자체가 무의미. */
@@ -63,9 +64,47 @@ const BACKOFF_RATIO = 0.8
 export const isSubrequestLimitError = (msg?: string | null): boolean =>
   /too many (subrequests|api requests)/i.test(String(msg || ''))
 
-/** 이번 실행에 쓸 예산 — 학습값이 있으면 env/기본값과 함께 더 작은 쪽. */
-export function resolveSubreqBudget(envBudget: number, learnedCap: number): number {
-  return learnedCap > 0 ? Math.min(envBudget, learnedCap) : envBudget
+/**
+ * 🧱 플랫폼 천장 — **학습이 넘을 수 없는 절대 상한** (2026-07-29 신설).
+ *
+ *   왜 필요한가(관측):
+ *     `ads_subreq_cap_influencer=55` · `ads_subreq_cap_kakao_sweep=65` — 이 두 레인은 건당 fetch 1 이라
+ *     한도 오류를 **잡을 수 있는 예외로** 만나고, 그래서 50 바로 위에서 오르내리며 수렴했다(천장의 존재 증거).
+ *     그런데 `ads_subreq_cap_company_enrich=172` — 천장의 3.4배다. 이 레인만 다른 이유는 하나다:
+ *     **부딪히는 방식이 다르다.** 건당 4~6 fetch 라 라운드가 4~9번째 리드에서 끝나는데, 그때 남는 증거가
+ *     `partial:true`(마지막 체크포인트)뿐이고 `crash` 도 `limit_hit` 도 없다 — 즉 잡을 예외가 오지 않는다.
+ *     ⇒ 회복(×1.25)만 계속 적용되고 하향은 한 번도 안 걸리는 **한 방향 드리프트**. 자기교정 루프가
+ *       "실패를 관측할 수 있다"를 전제하는데 이 레인에서 그 전제가 깨져 있었다.
+ *
+ *   ⇒ 관측에만 의존하지 않는다. **드리프트를 막는 천장**을 코드가 직접 갖는다.
+ *
+ *   🔢 값을 60 으로 정한 근거(문서 수치가 아니라 **역산**):
+ *     회복은 ×1.25 뿐이라 25 에서 시작한 궤적은 25→32→40→50→63→79… 다. **55·65 는 이 궤적에 없다.**
+ *     둘 다 백오프(×0.8)로만 나올 수 있는 값이고, 역산하면 각각 **spent≈69·81 에서 한도를 만났다**는 뜻이다.
+ *     즉 잘 도는 레인들은 *우리 계수기 기준* 70~80 까지 도달한다 — 문서의 "무료 50" 을 그대로 천장으로 삼으면
+ *     (한때 45 로 잡았다) **정상 레인을 30% 깎는다**. 우리 계수기가 실제 서브리퀘스트보다 과다 계상하는
+ *     것으로 보인다(배치·조기반환분까지 세는 지점들). ⇒ 관측된 생존선(55~65) 언저리인 60 을 택한다:
+ *     드리프트(172)는 3배 가까이 잘라내면서 정상 레인은 거의 건드리지 않는다.
+ *
+ *   ⚠️ 이 값은 **추정이다**(플랫폼이 알려주지 않는다). 확실한 것은 하나뿐 — *관측 불가 레인의 무한 상승을
+ *     막아야 한다*. 레인 학습값이 60 에 붙어 있고 한도 오류가 안 보이면 올려도 되고, 여전히 무증거로 죽으면
+ *     내린다. 무배포 조정: `ADS_SUBREQ_PLATFORM_CAP`.
+ *
+ *   🔧 유료 전환 시: 배포 없이 `ADS_SUBREQ_PLATFORM_CAP` 으로 올린다(예: 900).
+ *      ⚠️ 추측으로 올리지 말 것 — 올린 뒤 레인들의 학습값이 다시 그 근처에서 수렴하는지 확인하고 판단한다.
+ */
+export const SUBREQ_PLATFORM_CAP_DEFAULT = 60
+
+/** env 의 플랫폼 천장(없거나 이상값이면 기본값). 상한 900 은 유료 플랜(1,000)의 꼬리 여유. */
+export function platformSubreqCap(raw?: string | null): number {
+  const n = parseInt(String(raw ?? ''), 10)
+  return Number.isFinite(n) && n > 0 ? Math.min(900, Math.max(10, n)) : SUBREQ_PLATFORM_CAP_DEFAULT
+}
+
+/** 이번 실행에 쓸 예산 — env·학습값·**플랫폼 천장** 중 가장 작은 값. */
+export function resolveSubreqBudget(envBudget: number, learnedCap: number, platformCap = SUBREQ_PLATFORM_CAP_DEFAULT): number {
+  const learned = learnedCap > 0 ? Math.min(envBudget, learnedCap) : envBudget
+  return Math.max(1, Math.min(learned, platformCap))
 }
 
 /**
@@ -81,14 +120,25 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number): numb
  *   할 일의 양이 정한다 — 구속하지 않는 천장을 낮게 유지할 이유가 없다. 너무 높이 올라가면 그 다음 무거운
  *   라운드가 한도 오류를 보고 `hitLimit` 분기로 즉시 되내려온다(그게 이 피드백 루프의 안전판).
  *
+ * ⚠️ 2026-07-29: 회복도 **플랫폼 천장을 넘지 않는다**. 넘도록 두면 위 company_enrich 처럼
+ *   "부딪혀도 예외가 안 오는" 레인에서 상한이 무한정 올라가고, 그 결과 라운드가 매번 무증거로 죽는다.
+ *   (자기교정 루프는 실패를 *관측할 수 있을 때만* 작동한다 — 관측 불가 구간은 천장이 대신 막는다.)
+ *
  * @param spent      이번 실행이 실제로 쓴 fetch 수
  * @param hitLimit   이번 실행에서 한도 오류를 관측했나
+ * @param platformCap 드리프트 방지 천장(기본 60 — 근거는 위 역산 주석)
  */
 export function nextSubreqCap(
   spent: number, hitLimit: boolean, learnedCap: number, envBudget: number,
+  platformCap = SUBREQ_PLATFORM_CAP_DEFAULT,
 ): number | null {
-  if (hitLimit) return Math.max(SUBREQ_CAP_MIN, Math.floor(spent * BACKOFF_RATIO))
-  // 📈 가산 회복 — 배율이면 백오프의 역수와 맞물려 진동한다(위 RECOVER_STEP 주석의 실사고).
-  if (learnedCap > 0 && learnedCap < envBudget) return Math.min(envBudget, learnedCap + RECOVER_STEP)
+  // 🧱 천장(#837) — 관측 불가 레인의 한 방향 드리프트를 막는다.
+  const ceiling = Math.min(envBudget, platformCap)
+  if (hitLimit) return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), Math.min(ceiling, Math.floor(spent * BACKOFF_RATIO)))
+  // 이미 천장을 넘게 학습돼 있으면(과거 드리프트분) 천장으로 끌어내린다 — 그대로 두면 영영 안 내려온다.
+  if (learnedCap > ceiling) return ceiling
+  // 📈 가산 회복 — 배율이면 백오프(×0.8)의 역수와 맞물려 2주기 진동한다(위 RECOVER_STEP 주석의 실사고).
+  //   천장(#837)은 *상한*을 막고, 가산은 *천장 아래에서의 진동*을 막는다 — 둘은 다른 실패를 푼다.
+  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, learnedCap + RECOVER_STEP)
   return null
 }

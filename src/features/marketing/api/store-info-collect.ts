@@ -17,6 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { kakaoLocalLookup, naverLocalLookup, crawlContact } from './contact-enrich'
+import { platformSubreqCap } from './collect-budget'
 
 const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
@@ -96,7 +97,9 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const t = STOREINFO_TARGETS[ti]
 
   const batch = Math.max(1, parseInt(env.ADS_STOREINFO_BATCH || '', 10) || 3)
-  const budget: FetchBudget = { left: Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60) }
+  // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
+  //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석(기본 60·근거) 참조.
+  const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60)) }
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false'
 
   let found = 0, saved = 0, sample: unknown

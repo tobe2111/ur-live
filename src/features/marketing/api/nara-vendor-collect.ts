@@ -11,7 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth } from './public-data-diag'
 
 const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
@@ -43,7 +43,7 @@ async function fetchVendorPage(base: string, op: string, key: string, page: numb
   return { items: arr, msg }
 }
 
-export interface NaraVendorStats { last_run: string; page: number; scanned: number; matched: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
+export interface NaraVendorStats { last_run: string; page: number; scanned: number; matched: number; saved: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown }; health?: LaneHealth }
 const STATS_KEY = 'ads_naravendor_stats'
 const CURSOR_KEY = 'ads_naravendor_cursor'
 
@@ -67,6 +67,14 @@ export async function runNaraVendorCollect(env: Env, maxPages = 5): Promise<Nara
   const ymdhm = (d: Date, hm: string) => `${d.getUTCFullYear()}${p2(d.getUTCMonth() + 1)}${p2(d.getUTCDate())}${hm}`
   const bgnDt = ymdhm(new Date(now.getTime() - days * 86400000), '0000')
   const endDt = ymdhm(now, '2359')
+  // 🩹 하드 실패 백오프(2026-07-29) — 재시도로 낫지 않는 실패(404·활용신청·회원등급)를 두 시간마다 다시
+  //   쏘면, 인보케이션당 45~50 뿐인 서브리퀘스트를 **잘 도는 레인에서 빼앗는다**. 물러나되 주기적으로 찔러
+  //   대표가 설정을 고치면 배포 없이 스스로 살아난다(public-data-diag SSOT).
+  const nowMs = Date.now()
+  if (laneShouldSkip(prev?.health, nowMs)) {
+    const s: NaraVendorStats = { last_run: stamp, page: prev?.page || 0, scanned: 0, matched: 0, saved: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true, error: `대기: ${laneHealthNote(prev?.health, nowMs)}` }, health: prev?.health }
+    await persist(s); return s
+  }
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
 
@@ -104,7 +112,7 @@ export async function runNaraVendorCollect(env: Env, maxPages = 5): Promise<Nara
   //   무엇을 고쳐야 하는지 화면에 박아둔다(2026-07-28: 8회 연속 `API: HTTP 404` 만 뜨고 방치됨).
   const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치(현재 op 는 문서 추정값). 나라장터 사용자정보 서비스 스펙 확인 후 ADS_NARA_VENDOR_ENDPOINT/ADS_NARA_VENDOR_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
   const error = saved === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
-  const s: NaraVendorStats = { last_run: stamp, page, scanned, matched, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: NaraVendorStats = { last_run: stamp, page, scanned, matched, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample }, health: updateLaneHealth(prev?.health, error || null, nowMs) }
   await persist(s)
   return s
 }
