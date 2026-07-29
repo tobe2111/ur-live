@@ -13,13 +13,15 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
 
 const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
 const FRANCHISE_OP = 'getBrandList'
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawFranchise = Record<string, unknown>
-const g = (it: RawFranchise, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+// ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
+//   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
+const g = (it: RawFranchise, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 
 /** 브랜드 1페이지 조회 → RawFranchise[]. 봉투 다형태 방어 + header resultMsg 회수. */
 async function fetchBrandPage(base: string, op: string, key: string, page: number, yr: string, budget: { left: number }): Promise<{ items: RawFranchise[]; count: number; msg?: string }> {

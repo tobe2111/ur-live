@@ -11,7 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, type StoreProspect } from './store-prospects'
-import { serviceKeyParam } from './public-data-diag'
+import { serviceKeyParam, isNoValue } from './public-data-diag'
 
 // 17개 시도교육청 코드(나이스 표준) — 커서가 이 순서로 순환.
 const NEIS_OFFICES: Array<[string, string]> = [
@@ -27,7 +27,9 @@ const NEIS_HUB = 'https://open.neis.go.kr/hub'
 const NEIS_SERVICE_DEFAULT = 'acaInsTiInfo'
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawAca = Record<string, unknown>
-const g = (it: RawAca, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+// ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
+//   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
+const g = (it: RawAca, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 
 /** NEIS 봉투: {<서비스명>:[{head:[…,{RESULT}]},{row:[…]}]} / 오류: {RESULT:{CODE,MESSAGE}}.
  *  ⚠️ 봉투 최상위 키 = **서비스명**이라 서비스명을 바꾸면 키도 같이 바뀐다. 예전엔 `acaInsttSc` 를

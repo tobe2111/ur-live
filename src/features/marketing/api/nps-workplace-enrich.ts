@@ -22,15 +22,17 @@
 import type { Env } from '@/worker/types/env'
 import { ensureCompanySchema } from './company-discovery'
 import { parseItems } from './hira-hospital-collect'
-import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
 
 const NPS_BASE = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2'
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[\s()㈜]|주식회사|유한회사|\(주\)|\(유\)/g, '')
 /** 필드명 후보 조회(camel/snake/lower 방어) — data.go.kr 서비스별 표기가 흔들려 실응답 기준 방어 파싱. */
+//   ⚠️ `isNoValue` 를 거친다 — 포털은 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라, 앞 별칭에서 걸리면
+//   **뒤 별칭의 진짜 값을 건너뛴다**(통신판매 레인이 그렇게 주소 31.7% 를 잃었다). SSOT: public-data-diag.
 const g = (o: Record<string, string>, ...keys: string[]): string => {
-  for (const k of keys) { if (o[k] != null && String(o[k]).trim() !== '') return String(o[k]).trim() }
+  for (const k of keys) { if (!isNoValue(o[k])) return String(o[k]).trim() }
   const lower = Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), v]))
-  for (const k of keys) { const v = lower[k.toLowerCase()]; if (v != null && String(v).trim() !== '') return String(v).trim() }
+  for (const k of keys) { const v = lower[k.toLowerCase()]; if (!isNoValue(v)) return String(v).trim() }
   return ''
 }
 const regionTokens = (s: string) => new Set((s || '').match(/[가-힣]{2,}(?:시|군|구|동|로|길)/g) || [])

@@ -7,7 +7,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureNoticeSchema, saveNotices, type GovNotice } from './gov-notices'
-import { serviceKeyParam } from './public-data-diag'
+import { serviceKeyParam, isNoValue } from './public-data-diag'
 
 // ✅ 실 엔드포인트(대표 활용신청 승인 화면 확인 2026-07-27): 조달청_나라장터 **공공데이터개방표준서비스**
 //   /1230000/ao/PubDataOpnStdService — 입찰공고는 날짜구간 조회(getDataSetOpnStdBidPblancInfo) 후 키워드를
@@ -17,7 +17,9 @@ const NARA_BASE = 'https://apis.data.go.kr/1230000/ao/PubDataOpnStdService'
 const BIZINFO_BASE = 'https://apis.data.go.kr/1421000/hpsBnaSituService'   // 기업마당(중기부) — 확정 대상
 const KEYWORDS = ['상권활성화', '소상공인', '마케팅', '창업', '상권']
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
-const g = (it: Record<string, unknown>, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+// ⚠️ 별칭 폴백은 `isNoValue` 를 통과해야 한다 — 포털이 '값 없음'을 `"N/A"` 문자열로 주는데 truthy 라
+//   앞 별칭에서 걸리면 **뒤 별칭의 진짜 값을 건너뛴다**(통신판매에서 주소 31.7% 를 그렇게 잃었다).
+const g = (it: Record<string, unknown>, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 
 function pickArray(data: Record<string, unknown> | null): Record<string, unknown>[] {
   if (!data) return []
