@@ -231,6 +231,8 @@ export interface NaverEnrichDiag {
   rss_intro?: number   // 채널 `<description>`(블로그 소개글)을 받은 행
   rss_emails?: number  // 그 소개글에서 **처음** 이메일을 얻은 행
   cat_body?: number    // 글 본문 빈도로 **빈칸을** 채운 행(기존 분류 덮어쓰기 아님)
+  /** 🏠 홈 fetch 를 생략한 행(연락처 4종이 이미 다 차 있어 응답이 버려질 것) — 아낀 서브리퀘스트 수와 같다. */
+  home_skipped?: number
   /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
    *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
   query_error?: string
@@ -248,6 +250,26 @@ export interface NaverEnrichDiag {
  *   ④ **글 제목 → 카테고리 신호**: RSS 최근 글 제목을 description 꼬리(` | 글: …`)에 갱신 —
  *      야간 재분류가 실제 콘텐츠로 판정(검색 스니펫 1건 상속보다 정확).
  */
+/**
+ * 🏠 블로그 **홈 HTML 을 받을 가치가 있는가** — 순수 판정(테스트 가능).
+ *
+ * ## 왜
+ * 홈에서 얻는 건 넷뿐이고(이웃수·이메일·인스타·링크) **저장은 전부 빈칸 채움**이다
+ * (`COALESCE(email, ?)` · `CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ?`).
+ * 즉 넷이 이미 다 차 있으면 홈 응답은 **통째로 버려진다** — 그런데 서브리퀘스트는 소비된다.
+ *
+ * 서브리퀘스트가 이 파이프라인의 천장이다(라운드 실측 `spent 44/45` = 예산 소진으로 끝남).
+ * 버려질 fetch 하나를 안 쓰면 그 예산이 **아직 아무것도 없는 리드**에게 간다.
+ * 이건 추정이 아니라 저장 규칙에서 바로 따라 나오는 사실이라, 라운드 병목의 원인과 무관하게 맞다.
+ *
+ * ⚠️ 하나라도 비어 있으면 받는다 — 보수적으로. "이미 충분해 보인다"로 정보 수집을 줄이지 않는다.
+ */
+export function naverHomeUseful(r: {
+  email?: string | null; instagram?: string | null; links?: string | null; subscriber_count?: number | null
+}): boolean {
+  return !r.email || !r.instagram || !r.links || !((r.subscriber_count || 0) > 0)
+}
+
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
@@ -321,7 +343,10 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     //   라운드는 벽시계 20s 가 상한이라 직렬이면 **한 라운드에 1~2명**밖에 못 재고, cron 도 라운드를
     //   6회 예약해 놓고 2회에서 시간이 끝난다(라이브 실측: 라운드 13.8s / 9.1s 후 정지).
     //   병렬로 바꾸면 건당 상한이 8s — 같은 서브리퀘스트 수로 처리량이 배가 된다.
-    const wantHome = budget.left >= 2 // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다
+    // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다.
+    // + 홈이 **아무것도 못 채우는** 리드면 아예 안 받는다(아래 naverHomeUseful — 순수 낭비 제거).
+    const wantHome = budget.left >= 2 && naverHomeUseful(r)
+    if (!wantHome && budget.left >= 2) diag.home_skipped = (diag.home_skipped || 0) + 1
     budget.left -= wantHome ? 2 : 1
     const [rssXml, homeText] = await Promise.all([
       (async (): Promise<string | null> => {

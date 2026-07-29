@@ -15,6 +15,7 @@ import {
   extractRssItemText, buildNaverDescription, deriveNaverRssSignals,
 } from '@/features/marketing/api/influencer-parse'
 import { classifyCategory, classifyCategoryByHits } from '@/features/marketing/api/influencer-classify'
+import { naverHomeUseful } from '@/features/marketing/api/influencer-performance'
 
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -170,5 +171,30 @@ describe('🚧 규약 — 본문에서 연락처를 뽑지 않는다(소스 불�
     // 본문 변수(rssBody)가 연락처 추출기에 들어가면 남의 연락처가 DB 에 박힌다 — 되돌리기 어려운 오염.
     expect(src).not.toMatch(/(?:pickBusinessEmail|extractContacts)\s*\(\s*rssBody/)
     expect(src).toMatch(/pickBusinessEmail\(rssIntro\)/)
+  })
+})
+
+/**
+ * 🏠 홈 fetch 생략 판정 — 버려질 요청 하나가 곧 다른 리드 하나다.
+ *
+ * 홈 저장은 전부 빈칸 채움(`COALESCE(email, ?)` 등)이라, 넷이 다 차 있으면 응답이 통째로 버려진다.
+ * 라운드는 `spent 44/45` 로 **예산을 다 쓰고** 끝나므로, 버려질 fetch 를 안 쓰면 그 예산이
+ * 아직 아무것도 없는 리드에게 간다. (라운드가 왜 1회만 도는지와 무관하게 참인 개선이다.)
+ */
+describe('naverHomeUseful — 보수적으로: 하나라도 비면 받는다', () => {
+  const full = { email: 'a@b.com', instagram: 'ig', links: 'https://x', subscriber_count: 1200 }
+
+  it('넷이 다 차 있으면 홈은 아무것도 못 채운다 → 생략', () => {
+    expect(naverHomeUseful(full)).toBe(false)
+  })
+  for (const k of ['email', 'instagram', 'links'] as const) {
+    it(`${k} 이 비면 받는다`, () => expect(naverHomeUseful({ ...full, [k]: null })).toBe(true))
+  }
+  it('이웃수가 0/미측정이면 받는다 — 규모 지표가 곧 정렬·필터의 근거다', () => {
+    expect(naverHomeUseful({ ...full, subscriber_count: 0 })).toBe(true)
+    expect(naverHomeUseful({ ...full, subscriber_count: null })).toBe(true)
+  })
+  it('아무것도 없는 신규 리드는 당연히 받는다', () => {
+    expect(naverHomeUseful({})).toBe(true)
   })
 })
