@@ -3,7 +3,10 @@ import { useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 
-export default function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
+export default function ReviewBonusButton(
+  { voucherCode, restaurantName, restaurantAddress }:
+  { voucherCode: string; restaurantName?: string | null; restaurantAddress?: string | null },
+) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'url' | 'screenshot'>('url')
   const [reviewUrl, setReviewUrl] = useState('')
@@ -65,6 +68,20 @@ export default function ReviewBonusButton({ voucherCode }: { voucherCode: string
               <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐
               <br/>3) 아래에 제출
             </p>
+            {/* 🗺️ 어느 매장 후기인지 못 찾아 헤매지 않게 — 매장명과 카카오맵 검색 링크를 바로 준다. */}
+            {restaurantName && (
+              <div className="mb-4 p-2.5 rounded-xl bg-gray-50 dark:bg-[#1A2334]">
+                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{restaurantName}</p>
+                {restaurantAddress && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{restaurantAddress}</p>
+                )}
+                <a
+                  href={`https://map.kakao.com/?q=${encodeURIComponent(restaurantName)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-block mt-1.5 text-[11px] font-bold text-gray-900 dark:text-white underline"
+                >카카오맵에서 이 매장 찾기 →</a>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-1 mb-3">
               <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
               <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>

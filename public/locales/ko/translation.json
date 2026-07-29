@@ -2512,7 +2512,8 @@
       "promoSpend": "promo 지출",
       "influencerDeals": "인플 협업",
       "experienceCampaigns": "체험 캠페인",
-      "myLinkshop": "내 링크샵"
+      "myLinkshop": "내 링크샵",
+      "reviewVerifications": "리뷰 확인"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3060,6 +3061,26 @@
       "drawPrompt": "추첨할 인원 수 (모집 {{slots}}명)",
       "drawConfirm": "추첨을 실행합니다. 선정자에게 0원 체험권이 자동 발급됩니다.\n(공정 추첨 — 시드·풀·결과가 영구 기록되어 되돌릴 수 없습니다.)",
       "drawDone": "추첨 완료 — 응모 {{pool}}명 중 {{winners}}명 선정, 체험권 {{issued}}건 발급"
+    },
+    "reviewVerify": {
+      "title": "카카오맵 리뷰 확인",
+      "subtitle": "이용권을 쓴 손님이 남긴 카카오맵 후기를 확인해주세요. 확인 시 손님에게 보너스 딜 + 동네 리뷰어 점수가 지급됩니다.",
+      "tabPending": "확인 대기",
+      "tabPaid": "지급 완료",
+      "tabRejected": "거절",
+      "empty": "내역이 없어요",
+      "emptyPending": "확인 대기 중인 리뷰 인증이 없어요",
+      "approve": "확인 (보너스 지급)",
+      "reject": "거절",
+      "rejectConfirm": "거절 확정",
+      "reasonPlaceholder": "거절 사유 (손님에게 전달됩니다)",
+      "reasonRequired": "거절 사유를 입력해주세요",
+      "approvedToast": "확인 완료 — 손님에게 보너스와 리뷰 점수가 지급됐어요",
+      "rejectedToast": "거절 처리됐어요",
+      "ocrPassed": "자동검증 통과 (참고)",
+      "openReview": "인증 보기",
+      "footNote": "보너스는 후기 별점·내용과 무관하게 방문 인증에 대해 지급됩니다. 운영팀이 승인 내역을 샘플링 감사할 수 있어요.",
+      "loadError": "목록을 불러오지 못했어요"
     }
   },
   "admin": {
