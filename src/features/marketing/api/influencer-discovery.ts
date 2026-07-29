@@ -576,6 +576,9 @@ export const AD_INFLUENCER_DDL: string[] = [
   //   ✍ 개인화 초안(생성만·발송 없음, 정보통신망법) · 🔗 링크인바이오 시도 스탬프 · 📥 유입출처+사전동의 시각.
   'ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT',
   'ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT',
+  // 📍 활동 지역(수집 키워드 접두에서 추출) — 서비스몰의 '지역 맞춤 매칭'이 쿼리 가능해진다.
+  //    '' = 확인했지만 지역 없음(NULL 재검사 방지). 추정 신호이지 확정이 아님(influencer-region.ts).
+  'ALTER TABLE ad_influencer_leads ADD COLUMN region TEXT',
   'ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME',
   'ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME',
   'ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT',

@@ -14,9 +14,12 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
-import { resolveCategory, classifyCategory } from './influencer-classify'
+import { backfillRegions } from './influencer-region'
+// 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
+export { MIN_YT_SUBSCRIBERS } from './influencer-save'
+import { saveLeadsBatch } from './influencer-save'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, stripVideoTitles, type FetchBudget } from './influencer-discovery'
+import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
@@ -28,8 +31,6 @@ export const POOL_ACCOUNT_ID = 0
 /** 자동확장 활성 키워드 상한(런어웨이 방지) + 후보 자동승격 임계(반복 등장 횟수). */
 const MAX_ACTIVE_KEYWORDS = 200
 const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
-/** 🎯 유튜브 최소 구독자(대표 지시 2026-07-21) — 미만 채널은 수집 안 함(소형 노이즈 컷). 네이버/카페/티스토리는 지표 없어 무관. */
-export const MIN_YT_SUBSCRIBERS = 1000
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
@@ -123,71 +124,6 @@ const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
 
 
-/**
- * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
- *   2026-07-20 ①: INSERT OR IGNORE → **컨택 백필 upsert**. 신규는 INSERT, 기존 리드는 이메일/인스타/틱톡/
- *   링크가 **비어있을 때만** 새로 찾은 값으로 채움(늦게 발견된 컨택 자동 반영 — 자가치유). status/memo(수동
- *   큐레이션)·category 는 불변. DO UPDATE 의 WHERE 로 실제 채울 게 있을 때만 change=1 → 중복 인플레 없음.
- */
-async function saveLeadsBatch(
-  DB: D1Database, accountId: number, rawLeads: InfluencerLead[],
-  meta: { category?: string | null; sourceKeyword?: string | null },
-): Promise<number> {
-  // 🧹 노이즈(뉴스·방송·기관·대행) 제외 + 🎯 유튜브는 구독자 1000 이상만 수집(대표 지시 — 소형 노이즈 컷).
-  //   예외(F-25): 구독자 비공개 채널(API 가 0 반환)은 총조회 200만+ 면 대형으로 보고 통과(discovery 저장 필터와 정합).
-  const leads = rawLeads.filter(l => !isLikelyNoise(l.name, l.description)
-    && !(l.platform === 'youtube' && (l.subscriber_count || 0) < MIN_YT_SUBSCRIBERS && !((l.subscriber_count || 0) === 0 && (l.view_count || 0) >= 2_000_000)))
-  if (!leads.length) return 0
-  // 2-패스: ① INSERT OR IGNORE — changes=1 ⟺ **진짜 신규**(백필 UPDATE 를 신규로 오집계하던 버그 방지:
-  //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
-  //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
-  const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
-  //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
-  //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
-  const backfillSql = `UPDATE ad_influencer_leads SET
-      email = COALESCE(email, ?), instagram = COALESCE(instagram, ?), tiktok = COALESCE(tiktok, ?), links = COALESCE(links, ?),
-      subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END,
-      view_count = CASE WHEN ? > 0 THEN ? ELSE view_count END,
-      description = CASE WHEN ? != '' THEN ? ELSE description END,
-      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END
-    WHERE account_id = ? AND platform = ? AND channel_id = ?`
-  let saved = 0
-  const CHUNK = 50
-  for (let i = 0; i < leads.length; i += CHUNK) {
-    const slice = leads.slice(i, i + CHUNK)
-    const insStmts = slice.map(l => {
-      const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
-      const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
-      return DB.prepare(insSql).bind(
-        accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
-        l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
-        l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
-        cat, meta.sourceKeyword ?? null,
-        looksLikeBrandChannel(l.name, l.description) ? 1 : 0, // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
-        l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
-        catSrc,
-      )
-    })
-    const rs = await DB.batch(insStmts).catch(() => null)
-    const existing: typeof slice = []
-    slice.forEach((l, idx) => { if (rs?.[idx]?.meta?.changes === 1) saved++; else existing.push(l) }) // 신규만 카운트
-    if (existing.length) { // 기존 행 백필(신규 아님) — 컨택 빈칸 채움 + 규모/소개글 최신화
-      await DB.batch(existing.map(l => {
-        const d = l.description.slice(0, 500)
-        const lp = l.last_post_at ?? null
-        return DB.prepare(backfillSql).bind(
-          l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
-          l.view_count, l.view_count, d, d, lp, lp, lp,
-          accountId, l.platform, l.channel_id,
-        )
-      })).catch(() => null)
-    }
-  }
-  return saved
-}
 
 // 🔗 링크인바이오 백필(enrichPoolFromLinkInBio) · 📝 블로거 활동성 보강은 2026-07-28 에
 //   `influencer-enrich-lane.ts`(보강 전용 레인)로 이동했다 — 수집 인보케이션의 서브리퀘스트를
@@ -570,6 +506,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       }
     }
   }
+
+  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
+  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다

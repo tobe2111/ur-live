@@ -43,7 +43,7 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   await ensureOutreachColumns(DB)   // email_status(반송·스팸신고 — 발송 안전 정보)
   // 🛡️ 2026-07-23 전수조사: 단일 SELECT LIMIT 20000 하드캡 — 28k 풀에서 8천 명이 조용히 누락되던 것.
   //   5천행 페이지 읽기(D1 응답크기 안전)로 전환 + 상한 60000(현 풀 2배 여유 — 초과 시에만 잘림).
-  type ExpRow = { id: number; platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null }
+  type ExpRow = { id: number; platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; region: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null }
   const rows: ExpRow[] = []
   // 🎯 매체별 분리 다운로드(2026-07-28 대표 요청) — 화이트리스트 밖 값은 무시하고 전체(기존 동작).
   const plat = platform && EXPORT_PLATFORMS[platform] ? platform : ''
@@ -75,7 +75,7 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const PAGE = 5000, CAP = 60000
   for (let off = 0; off < CAP; off += PAGE) {
     // 정렬: 카테고리별 시트 분리 유지 + 시트 안은 리드점수순(미채점 후순위) — "누구부터 컨택?"이 파일 순서로 답 됨.
-    const page = (await DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
+    const page = (await DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, region, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
       FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
@@ -85,14 +85,14 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
-  const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
+  const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '📍지역', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
   const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
   // 셀 값: number 는 숫자 그대로(xls Number 타입/csv 는 문자열화), 빈값은 '' — "null"/0 오염 없음.
   const cells = (r: ExpRow): (string | number)[] => [r.id, PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url,
     r.lead_score ?? '', noSub(r.platform) ? '' : (r.subscriber_count || 0),
     r.recent_avg_views ?? '', r.median_long_views ?? '', r.shorts_ratio ?? '', r.recent_avg_comments ?? '', r.recent_posts_30d ?? '', r.last_post_at || '',
     r.email || '', MAIL_KO[r.email_status || ''] || r.email_status || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '',
-    r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '', r.is_brand ? '브랜드⚠️' : '',
+    r.region || '', r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '', r.is_brand ? '브랜드⚠️' : '',
     r.source_keyword || '', STATUS_KO[r.status] || r.status,
     CH_KO[r.contact_channel || ''] || '', r.contacted_at || '', r.follow_up_at || '', r.source === 'inbound' ? '신청·동의' : '자동수집', r.consented_at || '', r.memo || '', (r.collected_at || '').slice(0, 10)]
   const stamp = new Date().toISOString().slice(0, 10) // 파일명 날짜 — 다운로드 반복 시 버전 구분
