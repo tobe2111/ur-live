@@ -181,6 +181,47 @@ jobs:
         run: node scripts/check-guard-registry.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-29: 같은 경로에 라우트를 두 번 달면 먼저 선언된 것만 렌더되고 나머지는
+      #   **에러 없이 조용히 죽는다**. 실측: `/influencer` 가 두 번 등록돼(대시보드 + B2B 영입 랜딩)
+      #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
+      - name: 라우트 경로 중복 차단 (strict)
+        run: node scripts/check-duplicate-routes.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: CLAUDE.md 잠금표가 **사라진 심볼**을 지키면 표가 틀린 지도가 된다.
+      #   실측 2건: `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임) · `MainHomePage`(참조 0인 죽은 파일인데
+      #   "eager import 유지" 를 요구 — 따르면 죽은 컴포넌트를 되살리게 된다).
+      #   ⚠️ 한계: 문자열 존재만 본다 — 주석에만 남은 심볼은 통과한다(위 MainHomePage 가 그 경우였다).
+      - name: 잠금표 심볼 실재 (strict)
+        run: node scripts/check-lock-table-symbols.mjs -s
+        continue-on-error: false
+
+      # 🔎 2026-07-29: sitemap 이 죽은 URL 을 검색엔진에 제출하는 것 차단(**네 번째 재발**).
+      #   실측: `/group-buy`(실제로는 <Navigate> 리다이렉트인데 priority 0.95·hourly) ·
+      #   `/vouchers?category=` 영문 슬러그 6개(필터는 한글 카테고리라 전부 0건 = soft-404) ·
+      #   `/live/{id}` ×100(라이브커머스 영구중단으로 라우트 자체가 없는데 hourly 로 발행).
+      #   ⚠️ catch-all(`*`) 라우트는 매칭에서 제외한다 — 포함하면 모든 URL 이 통과해 검사가 무의미해진다.
+      - name: sitemap 죽은 URL 차단 (strict)
+        run: node scripts/check-sitemap-routes.mjs -s
+        continue-on-error: false
+
+      # 🔒 2026-07-29: 로그인 필요한 경로가 크롤에 열려 있으면 크롤러가 로그인 벽을 받아 soft-404 로
+      #   집계되고, 그만큼 크롤 예산이 실제 상품 페이지에서 빠진다. 실측 71건(셀러 대시보드만 ~40개) —
+      #   `/admin`·`/supplier` 는 전면 차단인데 셀러/에이전시는 login·register 두 개만 막혀 있었다.
+      #   ⚠️ prefix 추가 시 공개 경로를 삼키지 않는지 확인할 것(`/creator`→`/creators`, `/u/me`→`/u/melon`).
+      - name: 비공개 라우트 크롤 노출 차단 (strict)
+        run: node scripts/check-robots-private-routes.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: tsconfig 가 타입체크를 통째로 중단시키는 설정을 갖지 않게 한다.
+      #   `baseUrl` 은 TS 6 에서 **에러(TS5101)** 라 설정 로드 단계에서 tsc 가 즉시 멈춘다 — 파일 0개 검사.
+      #   실측: baseUrl 있을 때 출력 2줄 / 없앤 뒤 전량 검사. 짧은 출력이 "에러 없음"과 구분되지 않아
+      #   이 레포는 몇 세션 동안 "로컬 tsc 는 죽어 있다"고 적어둔 채 지나갔다.
+      #   ⚠️ ignoreDeprecations 로 막지 말 것 — 고정 TS(5.5)가 그 값을 거부해 CI 가 깨진다(버전 결합).
+      - name: tsconfig 타입체크 무력화 차단 (strict)
+        run: node scripts/check-tsconfig-resolution.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
@@ -322,6 +363,10 @@ jobs:
       #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.
       - name: Subrequest cap lane-isolation guard (strict)
         run: node scripts/check-subreq-cap-lane.mjs -s
+        continue-on-error: false
+
+      - name: Subrequest platform-ceiling guard (strict)
+        run: node scripts/check-subreq-platform-cap.mjs -s
         continue-on-error: false
 
       # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
@@ -528,6 +573,22 @@ jobs:
       # ── 3. 타입 체크 ──
       # 🛡️ 2026-07-12: frontend tsc 를 strict 로 (이전 warn-only → BrandLoader import 누락이
       #   Verify 를 통과하고 배포까지 가 블로그 상세 전면 크래시). 현재 에러 0 — 유지 강제.
+      # 🛡️ 2026-07-29: **"0개 파일 검사 → 0 에러"** 를 성공으로 읽지 않는다.
+      #   실측: `tsconfig.json` 의 `baseUrl` 이 TS 6 에서 TS5101(에러)로 승격돼, 최신 tsc 는
+      #   설정 로드 단계에서 **즉시 중단** — 파일을 하나도 안 보고 끝났다. 그린 신호와 구분이 안 된다.
+      #   (이 세션이 실제로 그 상태의 tsc 를 "에러 0" 으로 오독했다.) 검사 대상 수를 하한으로 못 박는다.
+      - name: Type check — 검사 대상 수 확인 (0개 통과 방지)
+        run: |
+          COUNT=$(npx tsc --noEmit --skipLibCheck --listFilesOnly 2>/dev/null | grep -c '^' || true)
+          echo "typecheck 대상 파일: $COUNT"
+          if [ "$COUNT" -lt 500 ]; then
+            echo "❌ 검사 대상이 $COUNT 개뿐 — tsconfig 로드가 중단됐거나 include 가 깨졌다."
+            echo "   (0 에러가 '통과'가 아니라 '아무것도 안 봤다' 일 수 있다)"
+            npx tsc --noEmit --skipLibCheck --listFilesOnly 2>&1 | head -20
+            exit 1
+          fi
+        continue-on-error: false
+
       - name: Type check (frontend)
         run: npx tsc --noEmit --skipLibCheck
         continue-on-error: false

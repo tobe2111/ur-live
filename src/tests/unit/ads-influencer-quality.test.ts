@@ -152,3 +152,62 @@ describe('블로거 정보 보강 순수부 (2026-07-27 — "블로그 부정확
     expect(extractRssTitles('')).toEqual([])
   })
 })
+
+/**
+ * 🏅 2026-07-29 — 하루 20명이 상한인 수동 아웃리치에서 **앞자리 낭비**를 만들던 3가지.
+ *   (라이브: 블로거 28,673명 중 26,245명(92%)이 활동성 미측정 상태였다.)
+ */
+describe('scoreLead — 미측정과 죽음을 구분한다', () => {
+  const NOW = Date.parse('2026-07-29T00:00:00Z')
+  const blog = (over = {}) => ({ platform: 'naver_blog', url: 'https://blog.naver.com/x', category: '맛집', ...over })
+
+  it('🐛 미측정 블로거를 "포스팅 없음"으로 깎지 않는다 — 92%가 여기 걸려 상위가 편향됐다', () => {
+    const unmeasured = scoreLead(blog({ recent_posts_30d: null, last_post_at: null }), NOW)
+    const dead = scoreLead(blog({ recent_posts_30d: 0 }), NOW)
+    expect(unmeasured.score).toBeGreaterThan(dead.score)
+    expect(unmeasured.reasons.join()).toContain('미측정')
+  })
+
+  it('측정값이 없어도 last_post_at 으로 활동성을 판단한다(네이버 postdate 는 측정 없이 채워진다)', () => {
+    const fresh = scoreLead(blog({ recent_posts_30d: null, last_post_at: '2026-07-25' }), NOW) // 4일 전
+    const stale = scoreLead(blog({ recent_posts_30d: null, last_post_at: '2025-01-01' }), NOW) // 1년 반 전
+    expect(fresh.score).toBeGreaterThan(stale.score)
+    expect(fresh.reasons.join()).toContain('최근 2주')
+  })
+
+  it('측정값이 있으면 그것이 우선한다(last_post_at 이 낡아도 실측을 신뢰)', () => {
+    const measured = scoreLead(blog({ recent_posts_30d: 15, last_post_at: '2020-01-01' }), NOW)
+    expect(measured.reasons.join()).not.toContain('미측정')
+    expect(measured.score).toBeGreaterThan(scoreLead(blog({ recent_posts_30d: 0 }), NOW).score)
+  })
+
+  it('미래 날짜(데이터 오류)는 활동성 신호로 쓰지 않는다', () => {
+    const future = scoreLead(blog({ recent_posts_30d: null, last_post_at: '2099-01-01' }), NOW)
+    expect(future.reasons.join()).toContain('미측정') // null 취급 → 중립
+  })
+})
+
+describe('scoreLead — 연락 불가 리드는 상위를 차지할 수 없다', () => {
+  const NOW = Date.parse('2026-07-29T00:00:00Z')
+
+  it('🐛 열 수 있는 채널이 하나도 없으면 강하게 감점 — 발송 큐에 못 들어가는데 hot 이었다', () => {
+    const base = { platform: 'naver_blog', category: '맛집', recent_posts_30d: 20 }
+    const reachable = scoreLead({ ...base, url: 'https://blog.naver.com/x' }, NOW)
+    const unreachable = scoreLead({ ...base, url: 'blog.naver.com/x' }, NOW) // 스킴 없음 = pickReach null
+    expect(reachable.score).toBeGreaterThan(unreachable.score)
+    expect(unreachable.reasons.join()).toContain('연락 불가')
+  })
+
+  it('이메일·인스타·스킴있는 url 중 하나만 있어도 연락 가능으로 본다', () => {
+    const base = { platform: 'naver_blog', category: '맛집', recent_posts_30d: 20 }
+    for (const ch of [{ email: 'a@b.com' }, { instagram: 'foo' }, { url: 'https://x.com/y' }]) {
+      expect(scoreLead({ ...base, ...ch }, NOW).reasons.join()).not.toContain('연락 불가')
+    }
+  })
+
+  it('점수는 0~100 을 벗어나지 않는다(감점 누적 후에도)', () => {
+    const worst = scoreLead({ platform: 'naver_blog', is_brand: 1, recent_posts_30d: 0 }, NOW)
+    expect(worst.score).toBeGreaterThanOrEqual(0)
+    expect(worst.score).toBeLessThanOrEqual(100)
+  })
+})

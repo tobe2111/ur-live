@@ -8,6 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
+import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY, OUTREACH_NOISE_WORDS } from './outreach-queue'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -97,7 +98,9 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('source') === 'inbound') where.push("source = 'inbound'")
   // 🧹 노이즈 숨김 — 기존 풀에 남은 뉴스·방송·기관·체험단모집·대행 계정 제외(신규는 저장 시점에 이미 필터).
   if (c.req.query('hideNoise') === '1') {
-    for (const w of ['뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단', '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청']) {
+    // 🧹 목록과 발송 큐가 **같은 노이즈 목록**을 쓴다(SSOT: outreach-queue). 두 벌이면 화면에서 숨긴
+    //   사람이 큐에는 나오는 모순이 생긴다 — 2026-07-29 실측에서 실제로 그 상태였다.
+    for (const w of OUTREACH_NOISE_WORDS) {
       where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
     }
     where.push('COALESCE(is_brand, 0) = 0') // 🏢 브랜드 공식 채널(기업 계정)도 함께 숨김 — 태깅만, 삭제 아님
@@ -153,24 +156,15 @@ app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await 
 app.get('/influencer-pool/send-queue', async (c) => {
   await ensureInfluencerSchema(c.env.DB); await ensureOutreachColumns(c.env.DB); await ensureQualityColumns(c.env.DB)
   const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)))
-  const where = [
-    'account_id = ?',
-    "platform != 'naver_cafe'",
-    "status = 'new'", 'contacted_at IS NULL',
-    // ① 열 수 있는 채널 — url 은 **스킴이 있어야** 실제로 열린다(pickReach 와 동일 기준).
-    "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
-    "COALESCE(email_status,'') NOT IN ('bounced','complained')",
-    'COALESCE(is_brand, 0) = 0',
-  ]
-  const binds: (string | number)[] = [POOL]
-  const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  // 🔗 선별 기준은 `outreach-queue.ts` SSOT — **초안 프리필 레인이 같은 술어를 써야** 사람이 실제로 보는
+  //   큐와 미리 초안을 만들어 둔 대상이 일치한다(갈리면 프리필은 돌았는데 화면 상단은 계속 빈 초안).
+  const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'))
   const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, email_status
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')}
-    ORDER BY (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ?`)
+    FROM ad_influencer_leads WHERE ${where}
+    ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
-  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
 })

@@ -53,7 +53,7 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 3
+export const CLASSIFY_RULES_VERSION = 4 // 2026-07-29: 공동구매 규칙 추가 — 기존 171k 행도 소급 재분류돼야 새 카테고리에 잡힌다
 
 /** 카테고리 권위 소스 — 이 소스들의 category 는 **정부 등록부의 공식 업종**(상가정보 업종코드·통신판매
  *  신고업태·공정위 가맹·나라장터 업종)이라 텍스트 정규식(BIZ_RULES)이 덮어쓰면 안 된다(권위 역전 금지).
@@ -94,6 +94,9 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   { re: /(종합\s*광고|종합\s*기획|광고\s*기획|광고\s*대행|홍보\s*기획|홍보\s*대행)/, category: '대행사', subcategory: '종합광고기획', tier: 1, type: 'partner' },
   { re: /(이벤트\s*(?:기획|대행)|행사\s*(?:기획|대행)|프로모션\s*대행)/, category: '대행사', subcategory: '행사·이벤트', tier: 1, type: 'partner' },
   { re: /(판촉물|홍보물\s*제작|전단지?\s*제작|옥외\s*광고|인쇄\s*기획|기념품\s*제작)/, category: '간판', subcategory: '간판·광고물 제작', tier: 2, type: 'partner' },
+  // 🛒 공동구매(2026-07-29) — 대행사 규칙 **다음**에 둔다: '공동구매 마케팅 대행'은 대행사가 맞다.
+  //   ⚠️ '공구' 단독은 **연장/공구상가**를 뜻하므로 절대 매칭하지 않는다(공구상가 오수집이 이 규칙의 주된 위험).
+  { re: /(공동\s*구매|공구\s*(?:총판|벤더|대행|딜)|창고형\s*(?:매장|할인|마트|공동))/, category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 1, type: 'partner' },
   // 창업
   { re: /(창업\s*컨설팅|창업\s*지원|점포\s*개발|프랜차이즈\s*컨설팅)/, category: '창업', subcategory: '창업컨설팅', tier: 1, type: 'partner' },
   { re: /(상권\s*분석|입지\s*분석)/, category: '창업', subcategory: '상권분석', tier: 1, type: 'partner' },

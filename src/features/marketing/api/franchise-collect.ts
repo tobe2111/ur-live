@@ -13,7 +13,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth } from './public-data-diag'
 
 const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
 const FRANCHISE_OP = 'getBrandList'
@@ -52,7 +52,7 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
   return { items: arr, count: arr.length, msg }
 }
 
-export interface FranchiseStats { last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown } }
+export interface FranchiseStats { last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown }; health?: LaneHealth }
 const STATS_KEY = 'ads_franchise_stats'
 const CURSOR_KEY = 'ads_franchise_cursor'
 
@@ -70,6 +70,14 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const persist = async (s: FranchiseStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   if (!key) { const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
+  // 🩹 하드 실패 백오프(2026-07-29) — 재시도로 낫지 않는 실패(404·활용신청·회원등급)를 두 시간마다 다시
+  //   쏘면, 인보케이션당 45~50 뿐인 서브리퀘스트를 **잘 도는 레인에서 빼앗는다**. 물러나되 주기적으로 찔러
+  //   대표가 설정을 고치면 배포 없이 스스로 살아난다(public-data-diag SSOT).
+  const now = Date.now()
+  if (laneShouldSkip(prev?.health, now)) {
+    const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, page: prev?.page || 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true, error: `대기: ${laneHealthNote(prev?.health, now)}` }, health: prev?.health }
+    await persist(s); return s
+  }
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
   let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
   // ⚠️ 2026-07-28 수리: 이 레인이 **보강 전용 예산(ADS_ENRICH_BUDGET, 대표 설정값 800)** 을 빌려 쓰고 있었다
@@ -107,7 +115,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   //   (2026-07-28: 11회 연속 `API: HTTP 404` 만 뜨는데 무엇을 고쳐야 하는지 화면에 안 나와 방치됐다).
   const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치. 공공데이터포털의 '가맹정보 브랜드 목록' 스펙 확인 후 ADS_FRANCHISE_ENDPOINT/ADS_FRANCHISE_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
   const error = found === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
-  const s: FranchiseStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: FranchiseStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample }, health: updateLaneHealth(prev?.health, error || null, now) }
   await persist(s)
   return s
 }

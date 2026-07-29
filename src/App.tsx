@@ -736,8 +736,8 @@ function AppContent() {
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
             <Route path="/my-stays" element={<MyStaysPage />} />
-            <Route path="/influencer" element={<InfluencerDashboardPage />} />
-            {/* 🛡️ 2026-05-15: B2B 랜딩 페이지 — PC 풀 너비, 영업/모집용 */}
+            <Route path="/influencer/dashboard" element={<InfluencerDashboardPage />} />
+            {/* 🛡️ 2026-05-15: B2B 랜딩 — PC 풀 너비, 영업/모집용. ⚠️ 2026-07-29: `/influencer` 가 중복 등록돼 이 랜딩이 두 달간 도달 불가였다(대시보드가 선점) → 대시보드를 /influencer/dashboard 로 이사. 가드: check-duplicate-routes */}
             <Route path="/business" element={<BusinessLandingPage />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} />
             <Route path="/agency-partner" element={<AgencyPartnerLandingPage />} />

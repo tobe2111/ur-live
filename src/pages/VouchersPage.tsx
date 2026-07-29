@@ -802,7 +802,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             공구로 적립
           </button>
           <span className="text-gray-300 dark:text-gray-700">·</span>
-          <button type="button" onClick={() => navigate('/influencer')} className="text-gray-500 dark:text-gray-400 hover:underline">
+          <button type="button" onClick={() => navigate('/influencer/dashboard')} className="text-gray-500 dark:text-gray-400 hover:underline">
             친구 추천 5%
           </button>
         </div>

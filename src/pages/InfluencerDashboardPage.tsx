@@ -146,7 +146,7 @@ export default function InfluencerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0F151D] text-white pb-safe-nav">
-      <SEO title="인플 대시보드 - 유어딜" description="referral 실적" url="/influencer" />
+      <SEO title="인플 대시보드 - 유어딜" description="referral 실적" url="/influencer/dashboard" />
 
       <div className="sticky top-0 z-30 bg-[#0F151D]/95 backdrop-blur-md border-b border-[#2A3446]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">

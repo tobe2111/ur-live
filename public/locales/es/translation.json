@@ -4013,7 +4013,8 @@
       "linked": "¡Cuenta de Kakao vinculada!",
       "unlinked": "Vinculación de Kakao eliminada",
       "passwordRequired": "Configuración de contraseña requerida. Por favor, configura una contraseña desde tu perfil primero."
-    }
+    },
+    "forgotPasswordUseKakao": "¿Olvidó su contraseña? Inicie sesión con Kakao"
   },
   "notifications": {
     "title": "Notificaciones",

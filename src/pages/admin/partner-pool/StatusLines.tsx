@@ -16,20 +16,25 @@ export interface RunInfo { last_run?: string; found?: number; saved?: number; en
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
 export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
-export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
+/** 하드 실패 백오프 상태(2026-07-29) — '왜 지금 안 도는가'를 대표가 읽을 수 있게. */
+export interface LaneHealthInfo { fail_streak?: number; first_failed_at?: string; next_probe_at?: number; last_error?: string }
+export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string }; health?: LaneHealthInfo }) | null }
 export interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
 export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
-export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number; platform_cap?: number }
+/** 📞 카카오 전화 스윕 — 145k 무연락처 리드의 주 전화 확보 레인. */
+export interface KakaoSweepInfo { last_run?: string; scanned?: number; found?: number; tried?: number; total_found?: number; limit_hit?: boolean; day?: string; day_lookups?: number }
+export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
-export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
+export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; pending_days?: number; backfill_days?: number; spent?: number; budget_total?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, registryMatch }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; registryMatch?: RegistryMatchInfo | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; kakaoSweep?: KakaoSweepInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -103,6 +108,9 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
           {typeof enrichLast.d1 === 'number' && (
             <span> (외부요청 {formatNumber(enrichLast.fetches ?? 0)} + DB쓰기 <b className={enrichLast.d1 > (enrichLast.fetches ?? 0) ? 'text-amber-600' : ''}>{formatNumber(enrichLast.d1)}</b>)</span>
           )}
+          {typeof enrichLast.platform_cap === 'number' && (
+            <span title="플랫폼 한도(무료 인보케이션당 50)에서 결과기록 꼬리를 뺀 값 — 학습 상한이 이걸 넘지 못한다. 유료 전환 시 ADS_SUBREQ_PLATFORM_CAP 로 조정."> · 천장 {formatNumber(enrichLast.platform_cap)}</span>
+          )}
           {enrichLast.limit_hit
             ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 이번 라운드 중단(실패 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
             : <span> · 한도 여유</span>}
@@ -120,7 +128,40 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
       {enrichLast?.fail_samples?.length ? (
         <div className="mt-1 text-[11px] text-gray-400 break-all">실패 샘플: {enrichLast.fail_samples.join(' · ')}</div>
       ) : null}
+      {/* 🧮 오늘 누적(2026-07-29) — 위 스냅샷은 **라운드마다 덮인다**. 그래서 '⏳ 중단' 한 장으로는
+          ⓐ 모든 라운드가 초반에 죽는다 ⓑ 마지막 라운드만 부모 크론 종료에 잘렸다 를 **구분할 수 없었다**
+          (처방이 정반대인데). rounds 대비 중단 비율 + 끝난 단계 분포가 그 판정을 대신한다. */}
+      {enrichRollup && enrichRollup.rounds > 0 && (
+        <div className="mt-1 text-[11px] text-gray-400">
+          오늘({enrichRollup.day}) 누적 · 라운드 {formatNumber(enrichRollup.rounds)}회
+          {' · '}<span className={enrichRollup.partial >= enrichRollup.rounds ? 'text-amber-600 font-semibold' : ''}>중단 {formatNumber(enrichRollup.partial)}</span>
+          {enrichRollup.deadline > 0 && <span> · 시간상한 {formatNumber(enrichRollup.deadline)}</span>}
+          {enrichRollup.limit > 0 && <span> · 요청한도 {formatNumber(enrichRollup.limit)}</span>}
+          {enrichRollup.crash > 0 && <span className="text-red-500 font-semibold"> · 예외 {formatNumber(enrichRollup.crash)}</span>}
+          {' · '}처리 {formatNumber(enrichRollup.processed)} · <b className="text-indigo-600">확보 {formatNumber(enrichRollup.enriched)}</b>
+          {' · '}크롤 {formatNumber(enrichRollup.crawls)}
+          {Object.keys(enrichRollup.phase || {}).length > 0 && (
+            <span title="라운드가 어디서 끝났는지 — p2 에 몰리면 이메일 단계에서 매번 죽는다는 뜻">
+              {' · '}종료단계 {Object.entries(enrichRollup.phase || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' / ')}
+            </span>
+          )}
+        </div>
+      )}
     </div>
+
+    {/* 📞 카카오 전화 스윕 — 연락처 없는 리드의 주 전화 확보 경로. 처리량이 곧 백로그 소진 속도다. */}
+    {kakaoSweep?.last_run && (
+      <div className="mb-3 text-xs text-gray-500">
+        📞 전화 스윕(카카오)
+        <span> · 최근 {kstShort(kakaoSweep.last_run)} · 조회 {formatNumber(kakaoSweep.tried ?? 0)} · <b className="text-indigo-600">전화 확보 {formatNumber(kakaoSweep.found ?? 0)}</b> (누적 {formatNumber(kakaoSweep.total_found ?? 0)})</span>
+        {kakaoSweep.limit_hit && <span className="text-amber-600 font-semibold"> · ⛔ 한도로 조기 중단</span>}
+        {/* 🔢 체인 깊이(ADS_KAKAO_SWEEP_CHAIN)를 올리기 전에 **여기 숫자로** 카카오 일일 쿼터 소비를 확인할 것.
+            추측으로 올리면 같은 키를 쓰는 보강 레인까지 쿼터를 잃는다. */}
+        {typeof kakaoSweep.day_lookups === 'number' && (
+          <span className="text-gray-400"> · 오늘 조회 {formatNumber(kakaoSweep.day_lookups)}건{kakaoSweep.day ? ` (${kakaoSweep.day})` : ''}</span>
+        )}
+      </div>
+    )}
 
     {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
     {commerce?.run && (
@@ -144,6 +185,17 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         {franchise.run.diag?.error ? <span className="text-amber-600"> · {franchise.run.diag.error}</span>
           : <span> · 최근 {kstShort(franchise.run.last_run)} · 발굴 {franchise.run.found ?? 0} / 저장 {franchise.run.saved ?? 0}</span>}
         <span className="text-gray-400"> · 연락처는 보강(홈페이지 검색)으로 채워짐</span>
+        {/* 🩹 하드 실패 백오프(2026-07-29) — 재시도로 안 낫는 실패는 물러난다. 대표가 설정을 고치면
+            다음 탐침에서 자동 복귀하므로 "멈췄다"가 아니라 "대기 중 + 무엇을 고쳐야 하나"로 보여준다. */}
+        {(franchise.run.health?.fail_streak ?? 0) > 0 && (
+          <div className="mt-1 text-[11px] text-amber-600">
+            ⚠️ {franchise.run.health?.fail_streak}회 연속 실패
+            {franchise.run.health?.first_failed_at ? `(${kstShort(franchise.run.health.first_failed_at)}부터)` : ''}
+            {(franchise.run.health?.next_probe_at ?? 0) > Date.now()
+              ? ` · 재시도 대기 중 — 엔드포인트/활용신청 확인 필요(고치면 자동 복귀)`
+              : ' · 다음 실행에서 재시도'}
+          </div>
+        )}
       </div>
     )}
 
@@ -180,6 +232,20 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
           ? <span> · 최근 {kstShort(localdata.run.last_run)} · 저장 {localdata.run.saved ?? 0} / 갱신 {localdata.run.updated ?? 0}{typeof localdata.run.closed === 'number' ? ` / 폐업 ${localdata.run.closed}` : ''}</span>
           : <span className="text-amber-600"> · 아직 실행 안 됨 — 개업/상권 리포트 공개면이 빈 상태(전체 실행 1회로 채워짐)</span>}
         {localdata?.run?.diag?.error && <span className="text-amber-600"> · ⚠️ {localdata.run.diag.error}</span>}
+        {/* 🧮 왜 안 쌓이는지의 두 축(2026-07-29 실측: 음식점·카페·미용·숙박 **0건**):
+            ① 밀린 날(pending) — 업종 16개를 한 인보케이션이 못 훑어 쌓인다(체인이 소진).
+            ② 백필 OFF — 유입이 '전일 변동분' 트리클뿐. 전국 매장을 쌓으려면 켜야 한다. */}
+        {typeof localdata?.run?.pending_days === 'number' && localdata.run.pending_days > 0 && (
+          <span className="text-amber-600"> · 밀린 날 {formatNumber(localdata.run.pending_days)}일(체인이 이어서 소진)</span>
+        )}
+        {typeof localdata?.run?.spent === 'number' && (
+          <span className="text-gray-400"> · 예산 {formatNumber(localdata.run.spent)}/{formatNumber(localdata.run.budget_total ?? 0)}</span>
+        )}
+        {typeof localdata?.run?.backfill_days === 'number' && (
+          localdata.run.backfill_days > 0
+            ? <span className="text-gray-400"> · 과거 백필 {formatNumber(localdata.run.backfill_days)}일</span>
+            : <span className="text-amber-600 font-semibold" title="ADS_LOCALDATA_BACKFILL_DAYS=0 — 과거 데이터를 전혀 안 긁는다. 유입이 '전일 변동분'뿐이라 전국 음식점 DB 가 사실상 안 쌓인다."> · ⚠️ 과거 백필 OFF — 전일 변동분만 유입</span>
+        )}
       </div>
       {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
       {work24?.run && (

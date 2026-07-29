@@ -49,16 +49,30 @@ export interface ScoreInput {
   is_brand?: number | boolean | null
   consented_at?: string | null
   source?: string | null
+  /** 🏠 채널/블로그 홈 URL — 이메일·인스타가 없어도 **쪽지/댓글**로 접촉 가능한지 판단(스킴 필수). */
+  url?: string | null
+  /** 📅 마지막 글 날짜(YYYY-MM-DD). 네이버 검색 API 가 postdate 로 주므로 **RSS 측정 없이도** 알 수 있다. */
+  last_post_at?: string | null
 }
 
 export interface ScoreResult { score: number; reasons: string[] }
+
+/** 'YYYY-MM-DD' → 오늘로부터 며칠 전. 파싱 불가/미래 날짜면 null(= 신호 없음, 감점 아님). */
+export function daysSince(iso: string | null | undefined, nowMs: number): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '').trim())
+  if (!m) return null
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  if (!Number.isFinite(t)) return null
+  const d = (nowMs - t) / 86_400_000
+  return d < 0 ? null : d // 미래 날짜는 데이터 오류 — 활동성 신호로 쓰지 않는다
+}
 
 /**
  * 리드 점수 0~100 — 높을수록 먼저 연락할 가치. 4축 합산 후 감점/가점.
  *   연락가능성 30 · 규모적합도 25 · 활동성 25 · 카테고리핏 20 (+동의 보너스, −브랜드 감점)
  *   ⚠️ 이 함수가 SSOT — SQL 로 중복 구현하지 말 것(드리프트 방지).
  */
-export function scoreLead(l: ScoreInput): ScoreResult {
+export function scoreLead(l: ScoreInput, nowMs: number = Date.now()): ScoreResult {
   const reasons: string[] = []
   const platform = String(l.platform || '')
   const isYt = platform === 'youtube'
@@ -102,11 +116,30 @@ export function scoreLead(l: ScoreInput): ScoreResult {
     // 구독자 대비 조회수가 높으면(찐팬 비율) 소폭 가산 — 규모보다 반응이 중요.
     if (subs > 0 && perf > 0 && perf / subs >= 0.2 && activity < 25) { activity = Math.min(25, activity + 3); reasons.push('구독자 대비 반응 좋음') }
   } else {
-    if (posts30 >= 12) activity = 25
-    else if (posts30 >= 6) activity = 20
-    else if (posts30 >= 2) activity = 13
-    else if (posts30 === 1) activity = 7
-    else reasons.push('최근 30일 포스팅 없음')
+    /**
+     * 📝 블로그/카페 활동성 — 2026-07-29 근본수정.
+     *   기존엔 `recent_posts_30d` 만 봤는데 이 값은 **RSS 측정을 마친 리드에만** 있다.
+     *   라이브 실측: 블로거 28,673명 중 **26,245명(92%)이 미측정** → 전부 `posts30 = 0` 으로 떨어져
+     *   "최근 30일 포스팅 없음"(활동성 0점)을 받았다. **아직 안 잰 것과 죽은 것이 구분되지 않았고**,
+     *   그래서 상위 목록이 "먼저 측정된 소수"에 편향됐다(먼저 잰 순서 ≠ 좋은 순서).
+     *   ⇒ ① 측정값이 있으면 그대로 ② 없으면 `last_post_at`(네이버 검색 API 의 postdate — **측정 없이도
+     *   대부분 채워진다**)으로 판단 ③ 둘 다 없으면 **중립**(죽었다고 단정하지 않는다).
+     */
+    const measured = l.recent_posts_30d != null
+    if (measured) {
+      if (posts30 >= 12) activity = 25
+      else if (posts30 >= 6) activity = 20
+      else if (posts30 >= 2) activity = 13
+      else if (posts30 === 1) activity = 7
+      else reasons.push('최근 30일 포스팅 없음') // ← 측정 결과로서의 0. 미측정은 아래 '활동성 미측정(중립)'
+    } else {
+      const days = daysSince(l.last_post_at, nowMs)
+      if (days == null) { activity = 12; reasons.push('활동성 미측정(중립)') }
+      else if (days <= 14) { activity = 23; reasons.push('최근 2주 내 글') }
+      else if (days <= 45) { activity = 18; reasons.push('최근 6주 내 글') }
+      else if (days <= 120) { activity = 11 }
+      else { activity = 4; reasons.push(`마지막 글 ${Math.round(days)}일 전`) }
+    }
   }
 
   // (4) 카테고리 핏 20 — 유어딜 핵심 카테고리 우선.
@@ -121,6 +154,15 @@ export function scoreLead(l: ScoreInput): ScoreResult {
   // 보정 — 동의 리드는 즉시 발송 가능(법적으로 자유)이라 최우선. 브랜드 공식 채널은 인플루언서가 아니라 큰 감점.
   if (l.consented_at || l.source === 'inbound') { score += 15; reasons.push('사전동의 리드') }
   if (l.is_brand) { score -= 35; reasons.push('브랜드 공식 채널 추정') }
+  /**
+   * 🚫 연락 불가 리드 강한 감점 — 2026-07-29 신설.
+   *   발송 큐(`pickReach`)는 이메일·인스타·**스킴 있는 url** 중 하나가 있어야 열 수 있고, 없으면
+   *   큐에서 제외된다. 그런데 점수는 규모+활동성+카테고리로 **70점까지** 받을 수 있어, 연락할 방법이
+   *   없는 리드가 `score_hot` 상위를 차지했다 — 하루 20명이 상한인 지금 그 자리는 곧 손실이다.
+   *   ⚠️ 삭제·제외가 아니라 **후순위**다(보강이 돌면 연락처가 생겨 곧바로 제자리를 찾는다).
+   */
+  const reachable = !!(l.email || l.instagram || (l.url && /^https?:\/\//i.test(l.url)))
+  if (!reachable) { score -= 40; reasons.push('연락 불가(발송 큐 제외 대상)') }
 
   return { score: Math.max(0, Math.min(100, Math.round(score))), reasons }
 }
@@ -160,8 +202,11 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
 
   let scanned = 0, branded = 0, scored = 0, done = false
   while (scanned < MAX) {
+    // ⚠️ url·last_post_at 이 빠지면 아래 scoreLead 의 '연락 가능성'·'미측정 활동성' 보정이 통째로 무력화된다
+    //   (undefined → 연락 불가로 오판 / 활동성 중립 폴백 불가). 컬럼 추가 시 이 SELECT 를 함께 볼 것.
     const rows = (await DB.prepare(`SELECT id, platform, name, description, subscriber_count, recent_avg_views,
-        median_long_views, recent_posts_30d, email, instagram, links, category, is_brand, consented_at, source
+        median_long_views, recent_posts_30d, email, instagram, links, category, is_brand, consented_at, source,
+        url, last_post_at
       FROM ad_influencer_leads WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`)
       .bind(cursor, PAGE).all<ScoreInput & { id: number; name: string | null; description: string | null }>().catch(() => null))?.results || []
     // ⚠️ 2026-07-28: 예산 소진으로 빈 배열이 온 것을 "끝났다"로 오판하면 아래에서 커서를 0 으로 리셋해
