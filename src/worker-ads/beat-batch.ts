@@ -1,0 +1,71 @@
+/**
+ * 🧾 **디스패치 하트비트 일괄 쓰기** — 부모 cron 의 서브리퀘스트 비용을 절반으로 (2026-07-29).
+ *
+ * ## 산수가 원인을 지목한다
+ * 부모 `scheduled()` 의 `kick` 한 번은 **2 서브리퀘스트**다 — `SELF.fetch` 1 + 하트비트 D1 쓰기 1.
+ * 매시간 15~20개 레인을 던지면 **30~40**. 인보케이션 천장(이 플랫폼에서 ~50, D1 도 같은 지갑)에 바로 닿는다.
+ *
+ * 천장을 넘으면 뒤쪽 `SELF.fetch` 가 던지고, `catch` 가 실패를 기록하려는 **D1 쓰기도 같이 실패**한다.
+ * ⇒ 그 레인은 `ok:false` 행이 아니라 **행 자체가 없다.** 라이브가 정확히 그 모습이었다:
+ *   통신판매(2시간마다)가 02:00 이후 04·06·08·10·12 를 **통째로 걸렀고**, 실패 기록도 없었다.
+ *
+ * ## 왜 이 처방인가 (앞선 오진을 반복하지 않기 위해)
+ * 같은 날 "레인이 즉시 응답하게" 라는 처방을 냈다가 되돌렸다 — 서비스 바인딩 피호출자는 호출자보다
+ * 오래 살 수 없어서 작업이 **취소**됐다(#874 실측: 라운드 0회). 그건 *수명*을 건드리는 처방이었다.
+ * 이번 처방은 **수명을 건드리지 않는다** — 레인은 예전과 똑같이 응답 전에 일하고, 부모도 예전과
+ * 똑같이 기다린다. 줄어드는 건 **부기(簿記) 비용**뿐이다: 하트비트 N회 쓰기 → `DB.batch` **1회**.
+ *
+ * D1 `batch` 는 문장이 몇 개든 **서브리퀘스트 1개**다. 그래서 부모 비용이 `2N` → `N+1` 이 된다.
+ * 20개 레인이면 40 → 21. 천장 아래로 내려간다.
+ *
+ * ## 한계 (과신 금지)
+ * - 부모가 flush 전에 죽으면 **그 묶음은 통째로 사라진다.** 그래서 `FLUSH_AT` 마다 중간 flush 해
+ *   손실을 그 단위로 묶는다. 완전한 해법은 아니고 **손실을 유계로 만드는 것**이다.
+ * - 레인 자신의 완료 기록(각 러너의 `stats.diag`)은 이 경로와 무관하다 — 그쪽이 진짜 관측이다.
+ */
+
+/** 한 건의 하트비트 — `recordCronBeat` 과 같은 정보를 담되 쓰기를 미룬다. */
+export interface PendingBeat {
+  name: string
+  ok: boolean
+  ms: number
+  cron?: string
+  result?: unknown
+  maxGapMin?: number
+}
+
+/** 이만큼 쌓이면 중간 flush — 부모가 죽어도 손실이 이 단위를 넘지 않게. */
+export const FLUSH_AT = 10
+
+/**
+ * 하트비트 누적기. `add()` 는 쓰지 않고 모으기만 하고, 임계치에 닿거나 `flush()` 될 때 **한 번에** 쓴다.
+ *
+ * @param write 실제 쓰기(주입 — 테스트에서 D1 없이 검증). 반환값은 무시한다(fail-soft).
+ */
+export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, flushAt = FLUSH_AT) {
+  let pending: PendingBeat[] = []
+  const inflight: Promise<unknown>[] = []
+
+  const flushNow = (): Promise<void> => {
+    if (!pending.length) return Promise.resolve()
+    const batch = pending
+    pending = []
+    const p = write(batch).catch(() => undefined) // 관측 실패가 작업을 막지 않는다
+    inflight.push(p)
+    return p
+  }
+
+  return {
+    add(beat: PendingBeat): void {
+      pending.push(beat)
+      if (pending.length >= flushAt) void flushNow()
+    },
+    /** 남은 것을 쓰고, 이미 시작된 쓰기까지 모두 끝나기를 기다린다. */
+    async flush(): Promise<void> {
+      await flushNow()
+      await Promise.allSettled(inflight)
+    },
+    /** 테스트/진단용 — 아직 안 쓴 건수. */
+    get size(): number { return pending.length },
+  }
+}

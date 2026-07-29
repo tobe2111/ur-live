@@ -18,6 +18,7 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
+import { createBeatBatch } from './beat-batch'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
@@ -232,10 +233,19 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
   //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
   // 🏷️ 실패 사유 = `cronErrorCode`(SSOT·근거는 그 docblock) · `maxGapMin`(#847) — 두 관심사는 독립이다.
+  // 🧾 하트비트는 **모아서 한 번에** 쓴다 — `kick` 당 D1 1회씩 쓰면 부모 비용이 2N 이 되어
+  //   천장(~50)에 닿고, 넘는 순간 뒤쪽 레인은 **디스패치도 실패 기록도 못 한다**(근거: beat-batch.ts).
+  const beats = createBeatBatch(async (list) => {
+    const { buildCronBeatRow } = await import('@/worker/utils/cron-heartbeat')
+    await env.DB.batch(list.map((b) => {
+      const { key, value } = buildCronBeatRow(b.name, b.ok, b.ms, b.cron, b.result, b.maxGapMin)
+      return env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value)
+    }))
+  })
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number): Promise<void> => {
     try {
-      const { recordCronBeat, cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
-      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron, ok ? undefined : { err: cronErrorCode(err) }, maxGapMin)
+      const { cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
+      beats.add({ name: `ads:${name}`, ok, ms, cron: event.cron, result: ok ? undefined : { err: cronErrorCode(err) }, maxGapMin })
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {
       try {
@@ -250,10 +260,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
+  //   `kicked` — 디스패치 프로미스 모음. **마지막 flush 가 이걸 기다려야** 한다(안 그러면 빈 배치를 쓰고
+  //   그 뒤에 쌓인 하트비트는 영영 안 나간다 — 배선이 절반이면 관측이 0 이 되는 그 실패).
+  const kicked: Promise<unknown>[] = []
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
     laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
-    ctx.waitUntil((async () => {
+    const p = (async () => {
       const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
@@ -262,7 +275,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       } catch (err) {
         await adsBeat(beat, false, Date.now() - t0, err, opts?.gap)
       }
-    })())
+    })()
+    kicked.push(p)
+    ctx.waitUntil(p)
   }
   const gates = makeHourGates(hourUTC, kick, laneReg)
 
@@ -587,6 +602,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
     })())
   }
+
+  // 🧾 **모든 디스패치가 끝난 뒤** 남은 하트비트를 한 번에 쓴다(중간분은 임계치에서 이미 나갔다).
+  //   ⚠️ 기다리지 않고 flush 하면 빈 배치를 쓰고, 그 뒤 쌓인 기록은 영영 안 나간다.
+  ctx.waitUntil(Promise.allSettled(kicked).then(() => beats.flush()))
 }
 
 export default { fetch: app.fetch, scheduled }
