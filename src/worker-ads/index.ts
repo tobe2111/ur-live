@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, phaseGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -531,15 +531,21 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⇒ ① 매시간 **한 단계씩 순환**(단계당 fresh 인보케이션 예산 — 하루 24회 ≈ 단계별 6회) ② 각 단계는 커서로
   //      다음 회차에 이어받는다 ③ 결과는 예산 밖에서 항상 기록. **새 cron 추가 없음**(무료 계정 cron 5/5 소진).
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    // ⚠️ 단계 목록은 influencer-maintenance 의 MAINT_PHASES 가 SSOT — 여기 복제하면 단계를 늘려도
+    // ⚠️ 배정표는 influencer-maintenance 의 **MAINT_SCHEDULE 이 SSOT** — 여기 복제하면 단계를 늘려도
     //    cron 이 모른다(실제로 'handle' 단계가 그렇게 누락될 뻔했다). 정적 import 를 피하려고 리터럴을
-    //    두되, 개수가 어긋나면 아래 순환이 어긋나므로 **추가 시 두 곳을 함께 고칠 것**(가드: 유닛테스트).
-    const PHASES = ['merge', 'reextract', 'reclassify', 'quality', 'handle'] as const
+    //    두되, **유닛(ads-lane-cadence)이 두 리터럴의 일치를 직접 비교**한다 — 주석 약속이 아니라 빨간불.
+    // 🩹 2026-07-29 균등 순환(`% 5`) → 가중 10슬롯. 근거는 SSOT 쪽 주석에 라이브 수치로 적어 뒀다:
+    //    `reextract` 는 전수 36,880행에 `filled: 0`(할 일이 구조적으로 없음)인데 20%를 가져갔고,
+    //    `reclassify` 는 전수 한 바퀴에 65시간, `handle` 은 수율 최고(2,481)인데 아직 안 끝났다.
+    const PHASES = [
+      'merge', 'reextract', 'reclassify', 'quality', 'handle',
+      'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+    ] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
       const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
       return runMaintenancePhase(env, phase)
-    }, { gap: phaseGapMinutes(PHASES.length) })
+    }, { gap: scheduleGapMinutes(PHASES) })
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {

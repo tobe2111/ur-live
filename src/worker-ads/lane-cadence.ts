@@ -45,21 +45,43 @@ export const everyNHoursGapMinutes = (n: number): number => staleGapMinutes(Math
  */
 export function maxPhaseGapHours(phaseCount: number): number {
   const p = Math.max(1, Math.floor(phaseCount))
+  // 균등 순환은 "슬롯 i 에 단계 i" 인 배정표와 같다 — 아래 일반형에 위임(공식을 두 벌 두지 않는다).
+  return maxScheduleGapHours(Array.from({ length: p }, (_, i) => i))
+}
+
+/**
+ * **가중 배정표**(같은 단계가 여러 슬롯을 차지)에서 한 단계가 다시 돌아오기까지의 최대 간격(시간).
+ *
+ * ⚠️ 왜 `maxPhaseGapHours(schedule.length)` 로 대신하면 안 되나: 그건 슬롯이 전부 **서로 다른 단계**라고
+ *   가정한 값이라, 가중 배정표에서는 실제보다 크게 나온다. 2026-07-29 정비 배정표(10슬롯)의 실제 최대
+ *   간격은 **10시간**인데 슬롯 수 기준으로는 14시간이 나왔다 — 그대로 쓰면 stale 경보 창이 18.5h → 28.5h 로
+ *   **느슨해진다**(멈춤을 그만큼 늦게 안다). 경보를 조용히 약화시키는 건 이 레포가 반복해 만난 실패 양식이라,
+ *   배정표를 그대로 읽어 계산한다.
+ * ⚠️ 24시간으로 닫아 계산하는 게 맞다 — `hourUTC` 는 매일 0 으로 리셋되므로 배정 패턴의 주기는 항상 하루다
+ *   (슬롯 수가 24의 약수가 아니어도 마찬가지).
+ */
+export function maxScheduleGapHours(schedule: readonly unknown[]): number {
+  const n = schedule.length
+  if (n < 1) return 24
   let worst = 0
-  for (let phase = 0; phase < p; phase++) {
+  for (const phase of new Set(schedule)) {
     const hours: number[] = []
-    for (let h = 0; h < 24; h++) if (h % p === phase) hours.push(h)
-    if (!hours.length) continue // 24시간 안에 한 번도 안 도는 단계(p > 24) — 아래 폴백이 받는다
+    for (let h = 0; h < 24; h++) if (schedule[h % n] === phase) hours.push(h)
+    if (!hours.length) continue // 슬롯 수 > 24 — 24시간 안에 한 번도 안 오는 단계는 아래 폴백이 받는다
     for (let i = 0; i < hours.length; i++) {
-      const next = i + 1 < hours.length ? hours[i + 1] : hours[0] + 24
-      worst = Math.max(worst, next - hours[i])
+      const next = i + 1 < hours.length ? hours[i + 1]! : hours[0]! + 24
+      worst = Math.max(worst, next - hours[i]!)
     }
   }
   return worst || 24
 }
 
-/** 단계 순환 레인의 stale 기준(분). */
+/** 균등 단계 순환 레인의 stale 기준(분). */
 export const phaseGapMinutes = (phaseCount: number): number => staleGapMinutes(maxPhaseGapHours(phaseCount) * 60)
+
+/** 가중 배정표 레인의 stale 기준(분) — 배정표를 그대로 넘긴다. */
+export const scheduleGapMinutes = (schedule: readonly unknown[]): number =>
+  staleGapMinutes(maxScheduleGapHours(schedule) * 60)
 
 /**
  * `kick(path, fallback, opts?)` 과 같은 모양이면 무엇이든 받는다(테스트에서 스파이 주입).
