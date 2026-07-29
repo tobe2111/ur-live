@@ -20,6 +20,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
+import { describePublicDataFailure } from './public-data-diag'
 
 // 지방행정 인허가 공통 베이스(업종별 슬러그를 append). ⚠️ 슬러그 맵은 LICENSE_UPJONG(store-prospects.ts) SSOT.
 const LOCALDATA_BASE = 'https://apis.data.go.kr/1741000'
@@ -89,7 +90,8 @@ async function fetchLicensePage(base: string, endpoint: string, key: string, day
     if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(업종×페이지 과다) — ADS_LOCALDATA_MAX_PAGES 를 줄일 것'
     else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
   }
-  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : netMsg }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], count: 0, msg: await describePublicDataFailure(res, netMsg) }
   const data = await res.json().catch(() => null) as Record<string, unknown> | null
   const { rows, msg } = extractRows(data)
   return { items: rows, count: rows.length, msg }
