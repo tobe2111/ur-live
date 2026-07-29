@@ -250,6 +250,9 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
    *   오늘 네 번째로 만난 같은 병이다 — **줄을 세우면 꼬리가 굶는다.** 앞선 세 번(예산·시계·순번)은
    *   '몫을 보장'해서 풀었는데, 여기서는 몫이 원자적이지 않아 실패했다. 그럴 땐 **자리를 바꾸는 것**이 답이다.
    */
+  // ⚠️ `ytUnits` 는 **바깥 스코프**여야 한다 — 아래 스냅샷의 `yt_units` 가 읽는다.
+  //   선두 교대를 넣으며 헬퍼 안에 가뒀다가 타입 에러가 났다(CI 가 잡음, npm 403 으로 로컬 tsc 미실행).
+  let ytUnits = 0
   const naverFirst = depth % 2 === 1
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
@@ -262,7 +265,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
     if (ytMax > 0 && ytRoom > 0 && env.YOUTUBE_API_KEY) {
       try { yt = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, Math.min(ytMax, ytRoom)) } catch (err) { note(err) }
     }
-    const ytUnits = Math.max(0, beforeYt - budget.left)
+    ytUnits = Math.max(0, beforeYt - budget.left)
     if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
   }
 
