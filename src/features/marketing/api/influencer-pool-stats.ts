@@ -98,16 +98,23 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
   //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
   let gate = env.ADS_AUTO_COLLECT_ENABLED === 'true'
+  // 📊 2026-07-29: 시트 미러 게이트도 함께 읽는다. health 는 이미 `sheets_sync` 를 돌려주는데 여기서
+  //   `auto_collect` 만 꺼내 쓰고 있었다 → 미러가 멈췄을 때 **게이트가 꺼진 것인지 실행이 실패한 것인지**
+  //   화면에서 구분할 수 없었다(실측: 스탬프가 48시간째 `ok:true` 인 채 07-27 에 정지, crash 도 없음 =
+  //   러너가 아예 진입하지 않았다는 뜻인데 원인 후보 두 개를 못 가림). 조치 주체가 정반대인 두 원인이다.
+  let sheetsGate: boolean | null = null
   try {
     if (env.ADS?.fetch) {
       const hr = await env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
-      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
+      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean; sheets_sync?: boolean } } | null
       if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
+      if (typeof hj?.gates?.sheets_sync === 'boolean') sheetsGate = hj.gates.sheets_sync
     }
   } catch { /* 폴백 유지 */ }
   return {
     stats: { ...(agg || {}), ...tail },
     gate,
+    sheets_gate: sheetsGate,
     ...diag,
     category_funnel: catFunnel?.results || [],
   }

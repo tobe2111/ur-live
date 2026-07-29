@@ -418,45 +418,27 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
   if (hourUTC === 17 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); await sweepEmailMx(env) } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
   // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
   if (hourUTC === 23 && (env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); await runNaraVendorCollect(env, 5) } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env, 5) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
   if (hourUTC === 19 && env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
-        await sweepBusinessStatus(env)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/sweep-nts', async () => { const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env) })
   }
   // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
   if (hourUTC === 20 && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
-        await runLocalDataCollect(env)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-localdata?mode=collect', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
   if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); await runNeisAcademyCollect(env, 3) } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 6) })
   }
   if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); await runHiraHospitalCollect(env, 3) } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6) })
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
   //   동일 병목: 인허가 게이트 OFF 면 보강도 0회이던 결합 해소). 킬스위치 ADS_ENRICH_DISABLED 만 끔.
@@ -464,13 +446,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
   }
   // 📦 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 인허가 트랙 게이트 유지(수집 예산 소비).
+  //   ⚠️ 이 레인이 이 워커에서 가장 폭발적이었다(2일 × 16업종 × 6페이지 = 최대 192 fetch, **매시간**).
+  //   인라인이던 동안 같은 인보케이션의 다른 작업들(시트 미러 포함)까지 예산을 굶겼을 가능성이 크다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    ctx.waitUntil((async () => {
-      try {
-        const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-        await runLocalDataBackfill(env, 2)
-      } catch { /* fail-soft */ }
-    })())
+    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) })
   }
   const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).

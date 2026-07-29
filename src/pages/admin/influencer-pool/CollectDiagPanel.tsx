@@ -61,9 +61,11 @@ export interface EnrichLaneRecord {
   crash?: string; crash_at?: string
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
+export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
   sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
+  /** 📊 ur-ads 워커 env 의 `ADS_SHEETS_SYNC_ENABLED` 실값(null=조회 실패). 멈춤의 조치 주체를 가른다. */
+  sheetsGate?: boolean | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
   /** 🔧 2026-07-28: 서버 lease 기준 '정비 진행 중'. 없으면 버튼을 눌러도 진행/완료를 알 수 없었다. */
@@ -95,7 +97,12 @@ export default function CollectDiagPanel({ run, sheetsSync, maintenance, mainten
       ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
         <div className="mb-2 mt-1 text-[11px] text-amber-600">
           📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
-          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}) — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.
+          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''})
+          {/* 🔎 2026-07-29: 멈춤을 보여주는 것만으로는 **조치 주체**가 안 갈렸다 — 게이트가 꺼진 것(대표가 켜야 함)과
+              러너가 실패한 것(내가 고쳐야 함)은 정반대다. ur-ads 워커 env 의 실값을 그대로 표시한다. */}
+          {sheetsGate === false
+            ? ' — ⛔ 원인 확정: ur-ads 워커의 ADS_SHEETS_SYNC_ENABLED 가 꺼져 있어요. 켜야 매시간 자동으로 돕니다.'
+            : ' — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.'}
         </div>
       ) : null}
 
