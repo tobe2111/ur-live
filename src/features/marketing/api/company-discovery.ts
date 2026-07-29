@@ -14,6 +14,7 @@ import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_R
 import { NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { isValidKrPhone } from './contact-enrich'
 import { normalizeCompanyName } from './registry-email-match'
+import { runDdlOnce } from './ads-schema-guard'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -92,10 +93,16 @@ const _schemaDone = new WeakSet<object>()
  *   라운드가 `nextSubreqCap` 에 도달하지 못하니 하향이 한 번도 안 걸렸다).
  *   ⇒ 호출부가 예산에서 뺄 수 있게 실비를 돌려준다. 세지 않으면 "우리 계수"와 "플랫폼 계수"가 갈라진다.
  */
-export async function ensureCompanySchema(DB: D1Database): Promise<number> {
-  if (_schemaDone.has(DB)) return 0
-  _schemaDone.add(DB)
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_company_leads (
+/**
+ * 🧾 파트너 풀 스키마 DDL — `runDdlOnce` 로 **한 번만** 적용(2026-07-29).
+ *
+ *   왜 배열로 뺐나: 예전엔 이 21개를 **매 콜드 인보케이션마다** 실행했다. 무료 플랜 천장이 50~60 인데
+ *   21+게이트3 = 24 를 스키마에만 썼다 — 보강 레인 예산 60 의 40% 다. `runDdlOnce` 는 체크섬을
+ *   `platform_settings` 에 남겨 **따뜻한 DB 는 SELECT 1회**로 끝낸다(인플루언서 레인·시트 미러가 쓰던 검증된 헬퍼).
+ *   ⚠️ 문장을 고치면 체크섬이 바뀌어 **자동으로 전부 재적용**된다 — 새 컬럼은 여기 배열에 추가하면 된다.
+ */
+export const COMPANY_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS ad_company_leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_key TEXT NOT NULL,
     company_name TEXT NOT NULL,
@@ -117,50 +124,43 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
     follow_up_at DATETIME,
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
-  )`).run().catch(() => null)
-  // 🔤 상호 지문(name_norm) — **원부 매칭 SSOT**. 예전엔 SQL 프리필터가 `공백·(주)·주식회사` 만 지우고
-  //   LIKE 패턴은 JS `normalizeCompanyName`(구두점·㈜·(유)·유한회사까지 제거) 결과를 써서 **양쪽 정규화가
-  //   어긋나 있었다**(그 함수 주석이 "같은 함수를 써야 매칭이 성립한다" 고 못박은 불변식이 깨진 상태).
-  //   → 저장 시 **JS 함수로 한 번** 계산해 컬럼에 넣는다. 이제 분기 자체가 불가능하고, LIKE 풀스캔도
-  //   인덱스 동등비교로 바뀐다(타깃 400개 × 원부 10만행 풀스캔이 사라진다).
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN name_norm TEXT').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_name_norm ON ad_company_leads(name_norm)').run().catch(() => null)
-  // additive 컬럼(공공데이터 전환 §11) — 기존 행 무영향. active=1(액션풀), 연락처 없거나 폐업이면 0.
-  // 🧬 중복 병합 표식 — **접힌 행(패자)의 승자 id**. 삭제 대신 표시만 하는 설계(company-dedupe.ts)라
-  //   리드를 고르는 **모든 쿼리가 `merged_into IS NULL` 을 봐야 한다**. 그래서 컬럼 생성을 dedupe 모듈에만
-  //   맡기지 않고 여기(스키마 SSOT)에서 보장한다 — 병합을 한 번도 안 돌린 DB 에서도 그 조건이 안전하려면.
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN merged_into INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN active INTEGER NOT NULL DEFAULT 1').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN contact_source TEXT').run().catch(() => null) // 연락처 출처(provenance): govreg/kakao/homepage/naver/registry
-  // 분류 3축 분리(2026-07-27) — lead_type=접촉 가치(partner/store/org/unknown), classify_confidence=분류 근거(evidence/keyword/none).
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN lead_type TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classify_confidence TEXT').run().catch(() => null)
-  // 👥 국민연금 규모 검증(2026-07-27) — nps_members=가입자수(직원 규모), nps_checked_at=조회 시각(미매칭도 기록해 재조회 방지).
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_members INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
-  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
-  // ☎️ 카카오 전화 스윕 시도 도장(2026-07-28) — 스윕이 id 커서에서 **tier 우선순위**로 바뀌면서 필요해졌다.
-  //   id 커서는 정렬이 id 순일 때만 성립하는데, 우선순위 정렬과 함께 쓰면 커서가 tier1 을 지나쳐 버린다.
-  //   도장 + 30일 쿨다운이면 정렬을 자유롭게 바꿔도 같은 행을 무한 재시도하지 않는다.
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER').run().catch(() => null) // 어느 버전 규칙으로 검사받았나(< CLASSIFY_RULES_VERSION 이면 재검사 대상)
-  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 어느 버전 크롤러로 시도했나(< CRAWL_RULES_VERSION 이면 재시도 대상)
-  // 📵 반송 억제 목록(2026-07-27) — 반송 확인된 이메일은 재수집(크롤/레지스트리 재유입)으로 되살아나지 않게.
-  //   어드민 '반송' 마킹이 유일한 쓰기 경로 — 시스템이 임의로 넣지 않음(수동 발송 체계라 반송은 사람이 확인).
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_email_suppress (
+  )`,
+  'ALTER TABLE ad_company_leads ADD COLUMN name_norm TEXT',
+  'CREATE INDEX IF NOT EXISTS idx_company_leads_name_norm ON ad_company_leads(name_norm)',
+  'ALTER TABLE ad_company_leads ADD COLUMN merged_into INTEGER',
+  'ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT',
+  'ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME',
+  'ALTER TABLE ad_company_leads ADD COLUMN active INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE ad_company_leads ADD COLUMN contact_source TEXT',
+  'ALTER TABLE ad_company_leads ADD COLUMN lead_type TEXT',
+  'ALTER TABLE ad_company_leads ADD COLUMN classify_confidence TEXT',
+  'ALTER TABLE ad_company_leads ADD COLUMN nps_members INTEGER',
+  'ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME',
+  'ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME',
+  'ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME',
+  'ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER',
+  'ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER',
+  `CREATE TABLE IF NOT EXISTS ad_email_suppress (
     email TEXT PRIMARY KEY,
     reason TEXT,
     created_at DATETIME DEFAULT (datetime('now'))
-  )`).run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)').run().catch(() => null)
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_company_leads_tier ON ad_company_leads(tier, id)',
+  'CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)',
+  'CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)',
+  'CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)',
+]
+
+export async function ensureCompanySchema(DB: D1Database): Promise<number> {
+  if (_schemaDone.has(DB)) return 0
+  _schemaDone.add(DB)
+  // 🧾 DDL 은 체크섬 기반 1회 적용(위 COMPANY_DDL 주석) — 따뜻한 DB 는 SELECT 1회.
+  const { ran } = await runDdlOnce(DB, 'ads_ddl_company', COMPANY_DDL)
+  // 실비: 체크섬 SELECT 1 + (적용했다면 문장수 + platform_settings 보장 1 + 체크섬 쓰기 1)
+  let spent = 1 + (ran ? COMPANY_DDL.length + 2 : 0)
 
   // 🧹 키 v2 마이그레이션(1회, 플래그) — 사업자번호 보유 행을 b: 키로 통일 + 기존 중복(통신판매 현황/상세 2서비스) 병합.
+  spent += 1 // v2 게이트 SELECT
   const v2 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_key_v2'").first<{ value: string }>().catch(() => null)
   if (!v2?.value) {
     // ① 중복군(같은 사업자번호)의 대표행(MIN id)에 형제 행의 연락처 백필(정보 손실 0)
@@ -192,6 +192,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
   // 🧹 오수집 정리 v1(2026-07-27) — 공고/모집글·정부페이지가 업체 리드로 저장된 것 제거.
   //   대표 신고: "은평구, 2026년 … 수행기관 모집" 이 '대행사 · 소상공인 마케팅' 리드로 노출.
   //   ⚠️ **미큐레이션 행만**(status='new' AND memo IS NULL) 삭제 — 대표가 손댄 행은 절대 안 건드림.
+  spent += 1 // junk_v1 게이트 SELECT
   const j1 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_junk_v1'").first<{ value: string }>().catch(() => null)
   if (!j1?.value) {
     const junkLike = ['%모집%', '%공고%', '%지원사업%', '%수행기관%', '%보도자료%', '%공지사항%', '%선정결과%', '%선정 결과%', '%합니다%', '%습니다%',
@@ -206,6 +207,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
 
   // 🏷️ 카테고리 v3 마이그레이션(1회, 플래그) — 우산어 → 실무 업종명(2026-07-27 대표 "간판·인테리어처럼").
   //   순수 리라벨(삭제/연락처 무접촉) — 큐레이션 행도 새 어휘로 통일(택소노미 전환은 전량 적용이 정합).
+  spent += 1 // cat_v3 게이트 SELECT
   const v3 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_cat_v3'").first<{ value: string }>().catch(() => null)
   if (!v3?.value) {
     const remap: Array<[string, (string | number)[]]> = [
@@ -228,7 +230,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
     for (const [sql, binds] of remap) await DB.prepare(sql).bind(...binds).run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_cat_v3', '1')").run().catch(() => null)
   }
-  return 35 // 위 DDL 35개(각각 서브리퀘스트 1) — 호출부가 예산에서 뺀다
+  return spent // 실제로 쓴 D1 쿼리 수 — 호출부가 예산에서 뺀다
 }
 
 /** 중복 차단 키 — **사업자등록번호(10자리) 최우선**(같은 업체가 여러 소스/서비스에서 와도 1행 —

@@ -1,0 +1,53 @@
+/**
+ * 🧾 파트너 풀 스키마 DDL 이관 (2026-07-29) — `runDdlOnce` 로 옮기며 **문장을 흘리지 않았는지** 고정.
+ *
+ *   왜 옮겼나: 21개 DDL 을 **매 콜드 인보케이션마다** 실행했다. 무료 플랜 천장이 50~60 인데 스키마에만
+ *   21+게이트3 = 24 를 썼다(보강 레인 예산 60 의 40%). 그래서 라운드가 **잡을 예외도 없이** 죽었다.
+ *
+ *   ⚠️ 이 이관의 유일한 위험: **문장을 하나 빠뜨리면** 새 DB 에서 그 컬럼/인덱스가 안 생기고,
+ *   그 사실은 배포 후 'no such column' 으로만 드러난다. 그래서 목록 자체를 여기서 고정한다.
+ */
+import { describe, it, expect } from 'vitest'
+import { COMPANY_DDL } from '@/features/marketing/api/company-discovery'
+
+describe('COMPANY_DDL', () => {
+  it('문장 수가 유지된다(이관 시 흘림 0)', () => {
+    expect(COMPANY_DDL).toHaveLength(21)
+  })
+
+  it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {
+    const joined = COMPANY_DDL.join('\n')
+    expect(joined).toContain('CREATE TABLE IF NOT EXISTS ad_company_leads')
+    expect(joined).toContain('CREATE TABLE IF NOT EXISTS ad_email_suppress')
+  })
+
+  it('🔒 파이프라인이 의존하는 컬럼이 전부 들어 있다(빠지면 라이브에서 no such column)', () => {
+    const joined = COMPANY_DDL.join('\n')
+    for (const col of [
+      'name_norm',          // 원부 이메일 이식 매칭
+      'merged_into',        // 중복 병합(삭제 대신 접기)
+      'business_no',        // 사업자번호 기준 dedup
+      'enrich_checked_at',  // 크롤 재시도 쿨다운
+      'kakao_checked_at',   // 전화 스윕 쿨다운
+      'classified_v',       // 분류 규칙 버전(소급 재분류)
+      'enrich_v',           // 크롤 규칙 버전
+      'nps_members',        // 국민연금 규모
+      'contact_source',     // 연락처 출처(허위 0 추적)
+      'lead_type',          // partner/store/org 판별
+    ]) expect(joined).toContain(col)
+  })
+
+  it('조회 경로 인덱스가 유지된다(없으면 풀스캔)', () => {
+    const joined = COMPANY_DDL.join('\n')
+    for (const idx of ['idx_company_leads_tier', 'idx_company_leads_region', 'idx_company_leads_cat', 'idx_company_leads_active', 'idx_company_leads_name_norm'])
+      expect(joined).toContain(idx)
+  })
+
+  it('DDL 만 담는다 — 데이터 마이그레이션(UPDATE/DELETE)은 여기 들어오면 안 된다', () => {
+    // runDdlOnce 는 체크섬이 같으면 **전부 건너뛴다**. 1회성 데이터 정리를 여기 넣으면
+    // 체크섬이 바뀔 때마다 다시 돌아 라이브 데이터를 예상 밖으로 건드린다.
+    for (const sql of COMPANY_DDL) {
+      expect(/^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)/i.test(sql.trim())).toBe(true)
+    }
+  })
+})
