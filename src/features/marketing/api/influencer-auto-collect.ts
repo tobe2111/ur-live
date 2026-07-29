@@ -21,7 +21,6 @@ import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-perfo
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { maybeAlertCollectHealth } from './collect-health-alert'
-import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -38,12 +37,21 @@ export const MIN_YT_SUBSCRIBERS = 1000
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 
+// 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
+
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
   pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
   promoted?: string[]; youtube_quota_hit?: boolean
+  /**
+   * 🌱 신규 키워드 승격 자리(2026-07-29) — `promoted: []` 가 "후보가 없어서"인지 **"자리가 없어서"**인지
+   *   밖에서 갈리게. 이 값이 없어서 auto 승격이 영구 0 인 걸 몇 세션 동안 못 봤다(활성 210 > 상한 200).
+   *   room 이 0 으로 붙박이면 발굴이 굶고 있는 것 — 수집은 도는데 풀이 안 크는 조용한 실패다.
+   */
+  kw_auto?: { active: number; room: number; cap: number }
   /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
    *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
   bio_enriched?: number
@@ -256,6 +264,9 @@ function mineHashtags(text: string): string[] {
 // ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
+// 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
+export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
+import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
@@ -521,6 +532,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
   //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
   const promoted: string[] = []
+  let kwAuto: { active: number; room: number; cap: number } | undefined
   const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
   if (topTags.length) {
     const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
@@ -528,7 +540,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
     await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
     // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
-    const room = Math.max(0, MAX_ACTIVE_KEYWORDS - kws.length)
+    // 🌱 자리는 **auto 쿼터** 기준(시드 수 무관) — 예전엔 활성 전체로 세서 시드만으로 상한에 닿아
+    //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
+    const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
+      .first<{ n: number }>().catch(() => null)
+    const room = autoPromotionRoom(autoRow?.n ?? 0)
+    kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
     if (room > 0) {
       const ph = topTags.map(() => '?').join(',')
       const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
@@ -556,7 +573,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,

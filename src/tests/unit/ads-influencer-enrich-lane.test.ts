@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich, naverRoomFromLeft } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -46,6 +46,32 @@ describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
     expect(p.bioMax).toBeGreaterThan(0)
   })
 
+  it('②-3 앞 레인이 안 쓴 예산은 블로거가 흡수한다(정적 배분보다 줄지 않는다)', () => {
+    const { naverMax } = planInfluencerEnrich(45)
+    // 실측 재현: bio 0 · yt 14 를 쓰고 31 이 남은 시점 → 정적 배분 10 에 묶이지 않는다.
+    expect(naverRoomFromRemaining(31, naverMax)).toBeGreaterThan(naverMax)
+    // 앞 레인이 예산을 다 썼으면 기존 동작으로 안전하게 되돌아간다(줄어들지 않음).
+    for (const left of [0, 1, 2, 5, 45]) {
+      expect(naverRoomFromRemaining(left, naverMax)).toBeGreaterThanOrEqual(naverMax)
+    }
+  })
+
+  it('②-4 흡수분도 실제 잔여로 감당 가능하다 — 과배정이 예산을 넘지 않는다', () => {
+    // 배정분(계획 0 가정)의 fetch 비용(건당 2)이 남은 예산을 넘으면 라운드 끝이 헛돌고 도장을 못 찍는다.
+    for (const left of [0, 1, 2, 3, 7, 21, 31, 45, 200]) {
+      expect(naverRoomFromRemaining(left, 0) * 2).toBeLessThanOrEqual(Math.max(0, left))
+    }
+  })
+
+  it('②-5 잔여가 음수/NaN 이어도 0 이상으로 수렴한다', () => {
+    for (const left of [-5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const v = naverRoomFromRemaining(left, Number.NaN)
+      expect(Number.isFinite(v)).toBe(true)
+      expect(v).toBeGreaterThanOrEqual(0)
+      expect(v).toBeLessThanOrEqual(30) // enrichNaverActivity 의 SELECT LIMIT 상한과 동일
+    }
+  })
+
   it('③ 학습 상한 키가 수집 레인과 분리돼 있다', () => {
     expect(subreqCapKey('influencer_enrich')).not.toBe(subreqCapKey('influencer'))
     expect(subreqCapKey('influencer_enrich')).toBe('ads_subreq_cap_influencer_enrich')
@@ -54,37 +80,5 @@ describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
   it('④ 성과 컬럼 DDL 목록이 바뀌면 체크섬도 바뀐다(컬럼 미생성 방지)', () => {
     expect(ddlChecksum(AD_PERF_DDL)).not.toBe(ddlChecksum([...AD_PERF_DDL, 'ALTER TABLE ad_influencer_leads ADD COLUMN x TEXT']))
     expect(AD_PERF_DDL).toContain('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT')
-  })
-})
-
-/**
- * 📝 2026-07-29 — 앞 레인이 안 쓴 예산이 증발하던 손실의 회귀 테스트.
- *   라이브 실측: 계획 `bio 6 · yt 14 · naver 10` → 실제 `bio 0 · yt 14 · naver 10`.
- *   bio 몫 6 이 남았는데도 블로거는 계획값 10 에 묶여 더 뽑지 못했다(백로그 26,191명인데).
- */
-describe('naverRoomFromLeft — 남은 예산을 블로거가 이어받는다', () => {
-  it('🔒 앞 레인이 덜 쓰면 블로거 몫이 늘어난다 (실측 시나리오)', () => {
-    // 예산 45 · 계획 naverMax 10 · bio 0 소비 · yt 14 소비 → 잔여 31
-    expect(naverRoomFromLeft(31, 10)).toBeGreaterThan(10)
-    expect(naverRoomFromLeft(31, 10)).toBe(14) // floor((31-2)/2)
-  })
-
-  it('계획값보다 작아지지 않는다 — 빠듯한 라운드에서 오히려 줄면 퇴보다', () => {
-    expect(naverRoomFromLeft(4, 10)).toBe(10)
-    expect(naverRoomFromLeft(0, 10)).toBe(10)
-  })
-
-  it('상한 30 을 넘지 않는다(SELECT LIMIT 이 헛되이 커지지 않게)', () => {
-    expect(naverRoomFromLeft(500, 10)).toBe(30)
-  })
-
-  it('음수 잔여에도 안전하다', () => {
-    expect(naverRoomFromLeft(-5, 0)).toBe(0)
-  })
-
-  it('건당 fetch 2 를 반영한다 — 잔여의 절반 이하만 대상으로 잡는다', () => {
-    for (const left of [10, 20, 40, 60]) {
-      expect(naverRoomFromLeft(left, 0) * 2).toBeLessThanOrEqual(left)
-    }
   })
 })

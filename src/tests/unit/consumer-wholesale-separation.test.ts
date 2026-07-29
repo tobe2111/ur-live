@@ -19,7 +19,7 @@
  * 깨지면(제외절 제거/토큰 wipe 누락/매입가 노출) CI 빨강.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { PRODUCT_DETAIL_FIELDS, productDetailCols, productDetailColsHealed } from '@/shared/db/product-columns'
 import { ProductRepository } from '@/features/products/repositories/ProductRepository'
@@ -98,16 +98,52 @@ describe('유어딜 소비자 ↔ 도매몰 분리 불변식', () => {
       expect(hasCostCol(await captureSql((r) => r.findAll({} as never, 0, 20)))).toEqual([])
     })
 
-    // 라우트의 인라인 SELECT 목록 — 소비자 노출면.
-    for (const f of [
-      'src/features/group-buy/api/group-buy-public.routes.ts',
-      'src/features/products/api/products.routes.ts',
-      'src/worker/routes/curator.routes.ts',
-    ]) {
-      it(`${f} SELECT 목록에 매입가 없음`, () => {
-        expect(hasCostCol(read(f))).toEqual([])
+    // 소비자 노출면 전체 — **열거가 아니라 glob 래칫**(2026-07-29 대표 승인).
+    //   이전엔 파일 3개를 손으로 열거해, 새 라우트가 생기면 자동으로 안 잡혔다(노출면이 늘 때마다
+    //   사람이 목록에 추가해야 했고, 잊으면 무방비). 지금은 소비자 디렉터리를 통째로 훑고
+    //   baseline(scripts/consumer-cost-column-baseline.json)에 등록된 파일만 예외로 둔다.
+    //
+    // ⚠️ 이 래칫이 보장하는 것 / 못 하는 것 (baseline 파일에도 같은 문구가 있다 — 과신 금지):
+    //   보장 O — 새로 생긴 파일이 조용히 검사에서 빠지지 않는다.
+    //   보장 X — "모든 노출 경로가 옳다"가 아니다. 텍스트 언급이 없어도 SELECT * / 동적 컬럼 조립 /
+    //            타 테이블 조인으로 매입가가 실릴 수 있다. 그 축은 위 '발행 SQL 캡처' 테스트가 맡고,
+    //            진입점(findById/findAll)은 여전히 사람이 지정한다.
+    const CONSUMER_DIRS = [
+      'src/features/products',
+      'src/features/group-buy',
+      'src/worker/routes',
+      'src/worker/cron',
+    ]
+    const baseline = JSON.parse(read('scripts/consumer-cost-column-baseline.json')) as {
+      allow: Record<string, string>
+    }
+    const walk = (dir: string): string[] => {
+      const abs = resolve(process.cwd(), dir)
+      if (!existsSync(abs)) return []
+      return readdirSync(abs, { withFileTypes: true }).flatMap((e) => {
+        const rel = `${dir}/${e.name}`
+        if (e.isDirectory()) return walk(rel)
+        return /\.(ts|tsx)$/.test(e.name) ? [rel] : []
       })
     }
+
+    it('소비자 노출면 어디에도 매입가 컬럼이 없다 (glob 래칫 — 새 파일 자동 검출)', () => {
+      const scanned = CONSUMER_DIRS.flatMap(walk)
+      expect(scanned.length).toBeGreaterThan(20) // 스캔이 헛돌면(경로 오타 등) 여기서 잡힌다
+      const offenders = scanned
+        .filter((f) => !(f in baseline.allow))
+        .map((f) => ({ f, cols: hasCostCol(read(f)) }))
+        .filter((x) => x.cols.length > 0)
+        .map((x) => `${x.f} → ${x.cols.join(',')}`)
+      expect(offenders).toEqual([])
+    })
+
+    it('baseline 예외는 전부 실재하고 사유가 붙어 있다 (죽은 예외 방지)', () => {
+      for (const [f, reason] of Object.entries(baseline.allow)) {
+        expect(existsSync(resolve(process.cwd(), f)), `${f} 없음 — 예외 정리 필요`).toBe(true)
+        expect(String(reason).length, `${f} 사유 누락`).toBeGreaterThan(10)
+      }
+    })
 
     // products 는 D1 컬럼 한도(100)에 붙어 있어 `SELECT *` 가 곧 매입가 동반 노출이다.
     it('소비자 상품 경로에 products SELECT * / p.* 없음', () => {

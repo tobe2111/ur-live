@@ -70,7 +70,14 @@ function walk(dir, out = []) {
 }
 
 const violations = []
-for (const abs of walk(path.join(ROOT, 'src'))) {
+// 🛡️ 2026-07-29 (대표 지시): 스캔이 헛돌면(경로 변경·필터 회귀) 0개를 훑고도 '위반 0'으로 초록불이 된다.
+//   래칫의 가장 조용한 실패 모드라, 본 것이 몇 개인지 먼저 확인한다. 하한은 실측(1,946개) 대비 넉넉히 낮게.
+const _scanned = walk(path.join(ROOT, 'src'))
+if (_scanned.length < 200) {
+  console.error(`❌ utc-date: 스캔 대상이 ${_scanned.length}개뿐 — 검사가 헛돌고 있다(경로/필터 확인).`)
+  process.exit(1)
+}
+for (const abs of _scanned) {
   const rel = path.relative(ROOT, abs).split(path.sep).join('/')
   if (EXEMPT_FILES.has(rel) || EXEMPT_DIRS.some(d => rel.startsWith(d))) continue
   const src = fs.readFileSync(abs, 'utf8')

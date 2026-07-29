@@ -15,7 +15,12 @@ import { formatNumber } from '@/utils/format'
 export interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
 
 // ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
-export const PRIORITY_CATS = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
+// 🔗 우선 카테고리는 **서버 SSOT 를 그대로 쓴다**(`influencer-keyword-rotation.ts` — import 0 인 순수 모듈).
+//   여기 목록을 손으로 복제해 두면 서버가 축을 추가해도 UI 는 모른 채 갈라진다 — 실제로 그랬다:
+//   2026-07-29 서버에 '공동구매'를 넣었는데 이 사본은 6개 그대로라 우선 태깅이 화면에서 불가능했다.
+//   (서버 모듈 주석도 "두 벌로 두면 조용히 갈라진다"고 이미 경고하고 있었다.)
+export { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
 
 const CAND_PREVIEW = 60 // 후보 기본 표시 상한 — 성과순 정렬이라 상위가 곧 유의미한 것들
 

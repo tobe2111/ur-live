@@ -77,20 +77,25 @@ export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; nav
 }
 
 /**
- * 📝 블로거 몫 **실행 시점 재계산** — 2026-07-29 실측 손실 수리.
+ * 📝 블로거 몫을 **이 시점의 실제 잔여 예산**으로 다시 계산한다.
  *
- *   `planInfluencerEnrich` 는 라운드 *시작 전에* 몫을 나눈다. 그런데 앞 두 레인(링크인바이오·YT)이
- *   계획보다 적게 쓰면 그 차액이 **그냥 증발했다** — `naverMax` 가 SELECT LIMIT 이라 예산이 남아도
- *   더 뽑을 수 없기 때문이다. 라이브 실측이 정확히 그 상태였다:
- *     계획 `bio 6 · yt 14 · naver 10` → 실제 `bio 0 · yt 14 · naver 10`  (bio 몫 6 증발)
- *   같은 함수의 주석은 "앞 레인이 남긴 예산 전부를 쓴다"고 약속하는데 코드가 지키지 않고 있었다.
+ *   위 `planInfluencerEnrich` 는 라운드 *시작 전* 배분이라 앞 레인(링크인바이오·YT)이 배정분을
+ *   다 안 쓰면 그만큼이 그대로 버려진다. 라이브 실측(2026-07-29)에서 정확히 그랬다:
+ *   `bio: 0`(링크인바이오 후보 없음 — 예약 6 통째로 미사용) · `yt: 14` · `naver: 10` →
+ *   **`spent: 38 / budget_total: 45`**. 남은 7 은 26,018건짜리 블로거 백로그가 쓸 수 있었던 예산인데
+ *   매 라운드 버려지고 있었다. 호출부 주석은 이미 "앞 레인이 남긴 예산 전부를 쓴다"고 약속하고
+ *   있었으므로, 이건 새 정책이 아니라 **약속과 구현의 불일치를 메우는 것**이다.
  *
- *   ⇒ 블로거 차례에 **실제 잔여**로 다시 계산한다(건당 fetch 2 + 마무리 여유 2).
- *   계획값보다 작아지지는 않게(`Math.max`) — 예산이 빠듯한 라운드에서 오히려 줄면 퇴보다.
+ *   `-1` 은 소비 루프의 중단 조건(`budget.left <= 1`)과 맞춘 것 — 마지막 1은 어차피 못 쓴다.
+ *   `/2` 는 블로거 건당 fetch 2(RSS + 모바일 홈). 상한 30 은 `enrichNaverActivity` 의 SELECT LIMIT 과 동일.
+ *   ⚠️ 배정은 상한일 뿐 실제 중단은 여전히 `budget.left`/deadline 이 한다 — 과배정해도 초과 지출은 없다.
  */
-export function naverRoomFromLeft(budgetLeft: number, plannedNaverMax: number): number {
-  const room = Math.max(0, Math.min(30, Math.floor((budgetLeft - 2) / 2)))
-  return Math.max(plannedNaverMax, room)
+export function naverRoomFromRemaining(remaining: number, plannedMax: number): number {
+  const left = Number.isFinite(remaining) ? remaining : 0
+  const planned = Number.isFinite(plannedMax) ? plannedMax : 0
+  const affordable = Math.floor(Math.max(0, left - 1) / 2)
+  // 계획분보다 줄이지 않는다 — 앞 레인이 예산을 다 썼을 때 기존 동작으로 안전하게 되돌아간다.
+  return Math.max(0, Math.min(30, Math.max(planned, affordable)))
 }
 
 /** 유튜브 성과 보강의 **일일 units 카운터**(검색과 같은 10,000 풀을 나눠 쓴다). "YYYY-MM-DD:count". */
@@ -197,8 +202,9 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
   const ytUnits = Math.max(0, beforeYt - budget.left)
   if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
   // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 앞 레인이 남긴 예산 전부를 쓴다.
-  //   ⚠️ 그 약속을 지키려면 **실행 시점 잔여**로 다시 계산해야 한다(계획값은 bio/yt 가 덜 쓴 몫을 모른다).
-  try { naver = await enrichNaverActivity(DB, budget, naverRoomFromLeft(budget.left, naverMax)) } catch (err) { note(err) }
+  //   ⚠️ 그러려면 정적 배분(naverMax)이 아니라 **이 시점의 잔여**로 다시 계산해야 한다 — 안 그러면
+  //   앞 레인이 안 쓴 몫이 매 라운드 버려진다(실측: bio 후보 0 → spent 38/45). `naverRoomFromRemaining` 참조.
+  try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
 
   const spent = budgetTotal - budget.left
   const deadlineHit = Date.now() >= (budget.deadline || Infinity)

@@ -73,6 +73,31 @@ describe('도매 머니/데이터 훅 — 에러 삼킴 회귀 방지 (정적 �
  * ⚠️ 남은 못 막는 범위: 누군가 게이트를 되돌리고 **동시에** 대시보드에 cron 을 걸면 이중성숙이 부활한다.
  *   게이트 되돌림은 `wholesale-cron-gate.test.ts` 가 CI 에서 잡으므로, 실제로는 "CI 빨강을 무시하고 머지"
  *   해야만 재현된다.
+ *
+ * 🧪 **배포 후 실측(2026-07-29, PR #829 머지 `e8e29c8` 배포분)**
+ *   **① 소비자 cron 생존 — 확인됨.** 배포 감지(`/api/version` 해시 변경) 후 `/api/_healthcheck/cron` 의
+ *     `latest_heartbeat_at` 이 04:01:54Z → 04:05:53Z 로 전진, `ok=true` · `stale=[]` · `missing=[]`
+ *     (하트비트 기록 작업 26건). ⇒ 게이트가 소비자 cron 을 죽이지 않았다.
+ *     ⚠️ 단, `supplier-settlement-mature` 는 **일 1회(`0 18 * * *`) 분기**라 배포 후 아직 그 사이클이
+ *     오지 않았다(하트비트 목록에 없는 이유 — 관측 밖이 아니라 미발화). 2·5·60분 분기는 전부 정상이므로
+ *     같은 진입점을 쓰는 일간 분기도 사실상 안전하나, **관측으로 확정된 것은 아니다** → 18:00 UTC 이후
+ *     `/api/admin/cron-heartbeats` 에서 `supplier-settlement-mature` 등장 확인이 남는다.
+ *
+ *   **② 도매 cron no-op — 코드 레벨 증명 완료, 플랫폼 부착은 미검증.**
+ *     빌드 산출물을 Node 에서 직접 `scheduled()` 호출(`env.DB` = 접촉 시 throw 프록시):
+ *       · 도매 번들 → `[wholesale-cron-gate] skipped cron…` 로그만, **DB 무접촉**
+ *       · 소비자 번들(대조군) → 로그 없음, **`[cron:supplier-settlement-mature]` 가 DB 접촉**
+ *     ⇒ 하네스가 차이를 실제로 감지함(무음 통과 아님) + 게이트 없었으면 도매에서도 정산이 돌았다는 직증.
+ *     미검증분은 "cron trigger 부착 시 Cloudflare 가 배포된 scheduled export 를 호출하는가"뿐 —
+ *     **우리 코드가 아니라 플랫폼 동작**이며, 대시보드 접근(이 환경 프록시 차단 + CF 토큰 무효)이 필요하다.
+ *
+ *   🔴 **②의 플랫폼 부착은 예치금 잔액 확인 전까지 보류**(2026-07-29 대표 판단 — 이전의 "GMV 0 이라
+ *     지금이 창" 은 **너무 넓은 논거였다**). 이유: cron 에는 정산 성숙만 있는 게 아니라
+ *     **매시간 분기(`0 * * * *`)에 `wholesale-deposit-reconcile`·`wholesale-withdrawal-reconcile`** 이 있고,
+ *     그중 `reconcileOrphanedDepositOrders` 는 조회가 아니라 **환불(refunded)** 을 수행한다 —
+ *     판매사 예치금 잔액을 실제로 쓴다. **GMV 0 은 주문에서 성숙하는 공급자 정산에만 해당**하고,
+ *     예치금은 선불로 이미 들어와 있어 GMV 와 무관하다. 잔액을 모르는 상태로 부착하면 폭발반경이 미지수다.
+ *     ⇒ 순서: 예치금 숫자 확보 → ② 부착(대표가 대시보드에서 직접, 즉시 제거) → gb 가격 결제 배선.
  */
 describe('정산 cron 은 소비자 워커에서만 — 이중성숙 차단', () => {
   const readRepo = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
