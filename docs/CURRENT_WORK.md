@@ -5360,15 +5360,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 54건 · 최신순 · 이 목록은 자동 생성된다._
-_총 49건 · 최신순 · 이 목록은 자동 생성된다._
-
-**2026-07-29**
-- [🔴 2026-07-29 — 세션 ②: sitemap 몰 격리 가드 (SEO 되돌림 불가 → 최우선)](handoff/2026-07-29-session2-sitemap-mall-guard.md)
-_총 50건 · 최신순 · 이 목록은 자동 생성된다._
+_총 55건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
+- [🔴 2026-07-29 — 세션 ②: sitemap 몰 격리 가드 (SEO 되돌림 불가 → 최우선)](handoff/2026-07-29-session2-sitemap-mall-guard.md)
 - [스키마 DDL 비용이 어느 예산에도 안 잡혀 있었다 — `partial:true` 조기 사망의 실체](handoff/2026-07-29-schema-cost-uncounted.md)
 - [🔴 2026-07-29 — **같은 날 3건을 중복 개발하고 버렸다: 착수 전 `origin/main` 을 보라**](handoff/2026-07-29-origin-main.md)
 - [✅ 2026-07-29 — 가드를 지키는 가드: "검사가 안 도는" 클래스 박제 (대표 "개선점 더 찾아")](handoff/2026-07-29-note.md)

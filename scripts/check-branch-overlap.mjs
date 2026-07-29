@@ -51,8 +51,13 @@ const mine = new Set([
 ])
 const theirs = new Set(lines(sh(`git diff --name-only ${mergeBase}..${base}`)))
 
-// 인계 문서는 세션마다 자기 파일을 만들므로 겹침의 의미가 다르다(내용 충돌이 아니다) — 소음 제거.
-const IGNORE = (f) => f.startsWith('docs/handoff/') || f === 'docs/CURRENT_WORK.md'
+// 세션별 인계 파일은 각자 새 파일이라 겹칠 일이 없다 — 소음 제거.
+//   ⚠️ 단 `docs/CURRENT_WORK.md`(생성된 목차)는 **제외하지 않는다.** 2026-07-29 실측:
+//   인계를 세션별 파일로 쪼개 충돌 면적을 줄였지만 **목차는 여전히 공유 파일**이라,
+//   다른 세션이 handoff 를 추가하면 목차가 함께 바뀌어 **GitHub 머지가 그 파일 하나로 막힌다**
+//   (로컬은 `merge=union` 으로 조용히 풀려 차이를 못 느낀다 — 그래서 처음에 제외했다가 실제로 막혔다).
+//   생성물이라 해소는 `git merge` 후 `node scripts/generate-handoff-index.mjs` 한 번이면 끝난다.
+const IGNORE = (f) => f.startsWith('docs/handoff/')
 const overlap = [...mine].filter(f => theirs.has(f) && !IGNORE(f)).sort()
 
 if (!overlap.length) {
