@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
+import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { wholesaleCodePrefix, buildWholesaleProductCode, wholesaleCodeSuffix } from '@/shared/wholesale-product-code'
 import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
@@ -38,6 +39,16 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
   } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', gallery_images: '', supply_visibility: 'ALL', barcode: '', product_code: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 🏥 2026-07-03 (의료용품 도매몰): 카테고리 드롭다운을 몰별로 — 몰의 categories_json 우선(없으면 기본 3종).
+  //   의료몰 제조사는 의료기기/위생/간병/건강, 유통스타트는 식품/리빙/건강(fallback = byte-동일).
+  const { categories: mallCats } = useWholesaleMall()
+  const categoryOptions = (mallCats && mallCats.length ? mallCats : WHOLESALE_CATEGORIES.filter(c => c.id !== 'all'))
+  useEffect(() => {
+    // 몰 카테고리 로드 후 현재 선택이 그 몰에 없으면 첫 카테고리로(신규 등록 기본값 정합).
+    if (mallCats && mallCats.length && !mallCats.some(c => c.id === form.category)) {
+      setForm(f => ({ ...f, category: mallCats[0].id }))
+    }
+  }, [mallCats, form.category])
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
   const [bulkUploading, setBulkUploading] = useState(false)
   const bulkRef = useRef<HTMLInputElement>(null)
@@ -189,7 +200,7 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
               {/* 🏭 2026-06-04 카테고리 표준화 — 자유 입력 → 도매몰 표준 카테고리 select.
                   카탈로그 필터(WHOLESALE_CATEGORIES)와 값 일치 → 판매사 카테고리 필터가 항상 동작. */}
               <select disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls}>
-                {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                {categoryOptions.map(c => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>

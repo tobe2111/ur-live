@@ -304,7 +304,7 @@ export function TossPaymentWidget({
           w-full py-4 rounded-lg font-bold text-white text-lg transition-all
           ${(loadingState !== 'ready' || isProcessing)
             ? 'bg-gray-300 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            : 'bg-brand hover:bg-brand-dark active:bg-brand-dark'
           }
         `}
       >

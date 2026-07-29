@@ -47,7 +47,7 @@ export default function InfluencerRankingsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] pb-20">
       <SEO title="인플루언서 랭킹 - 유어딜" description="지역별 매출 Top 인플루언서 — 실시간 ranking" url="/influencer/rankings" />
 
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
@@ -66,7 +66,7 @@ export default function InfluencerRankingsPage() {
               key={r.key}
               onClick={() => setRegion(r.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200'
+                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
               {r.label}
@@ -77,19 +77,19 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white dark:bg-[#0A0A0A]">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A3446] rounded-lg text-xs bg-white dark:bg-[#0F151D]">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-xs bg-white dark:bg-[#0A0A0A]">
+            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2A3446] rounded-lg text-xs bg-white dark:bg-[#0F151D]">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-2xl overflow-hidden">
           {loading ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (
@@ -100,7 +100,7 @@ export default function InfluencerRankingsPage() {
                 const isTop3 = r.rank <= 3
                 const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : null
                 return (
-                  <li key={r.rank} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] last:border-0 ${isTop3 ? 'bg-amber-50' : ''}`}>
+                  <li key={r.rank} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#2A3446] last:border-0 ${isTop3 ? 'bg-amber-50' : ''}`}>
                     <span className={`w-8 text-center font-extrabold ${isTop3 ? 'text-amber-600' : 'text-gray-400'}`}>
                       {medal || r.rank}
                     </span>

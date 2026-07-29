@@ -47,6 +47,40 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- 🛡️ 2026-07-18 앱 출시 대비: 셀러 QR 스캔(웹뷰 getUserMedia) — 미기재 시 카메라 접근 즉시 크래시/거부 -->
+	<key>NSCameraUsageDescription</key>
+	<string>매장에서 이용권 QR 코드를 스캔해 사용 처리하기 위해 카메라를 사용합니다.</string>
+	<!-- 🛡️ 2026-07-18 앱 출시 대비: 토스 결제 시 카드사/간편결제 앱 호출(canOpenURL 판별용 스킴 목록) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaotalk</string>
+		<string>supertoss</string>
+		<string>ispmobile</string>
+		<string>kb-acp</string>
+		<string>kbbank</string>
+		<string>liivbank</string>
+		<string>newliiv</string>
+		<string>shinhan-sr-ansimclick</string>
+		<string>smshinhanansimclick</string>
+		<string>shinhanpayfan</string>
+		<string>hdcardappcardansimclick</string>
+		<string>smhyundaiansimclick</string>
+		<string>lotteappcard</string>
+		<string>lottesmartpay</string>
+		<string>cloudpay</string>
+		<string>hanawalletmembers</string>
+		<string>nhallonepayansimclick</string>
+		<string>nhappcardansimclick</string>
+		<string>newsmartpib</string>
+		<string>com.wooricard.wcard</string>
+		<string>citispay</string>
+		<string>citicardappkr</string>
+		<string>citimobileapp</string>
+		<string>kftc-bankpay</string>
+		<string>payco</string>
+		<string>samsungpay</string>
+		<string>scardcertiapp</string>
+	</array>
 	<!-- 🛡️ 2026-06-27: 커스텀 URL 스킴 yourdeal:// — Android intent-filter 와 parity.
 	     딥링크 / OAuth 콜백을 앱으로 되돌리기. Universal Links(applinks)는 entitlements 별도. -->
 	<key>CFBundleURLTypes</key>

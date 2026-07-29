@@ -73,9 +73,18 @@ export async function generateWeeklyReport(env: Env, sellerId: number, opts?: { 
     .bind(sellerId, periodKey, JSON.stringify({ ...(ctx.stats || {}), trend: ctx.trend || null }), advice).run().catch(() => null)
   // 이메일(best-effort) — Resend + 유어애즈 계정 이메일 있을 때만.
   //   ⚠️ 2026-06-28: 테넌트는 이제 ad_accounts.id(독립 계정) — sellers.email 아님(독립 계정 분리 후속 정정).
-  if (advice && env.RESEND_API_KEY && env.RESEND_FROM) {
+  //   2026-07-27: AI 미설정이어도 통계 요약으로 발송(리포트 이메일 = 리텐션 루프 — advice 유무에 안 묶음).
+  const s = ctx.stats
+  const fallbackBody = s ? [
+    `최근 ${s.days}일 실적 요약`,
+    `· 광고비 ₩${(s.salesAmt || 0).toLocaleString()} · 클릭 ${(s.clkCnt || 0).toLocaleString()} · 전환 ${(s.ccnt || 0).toLocaleString()}`,
+    `· CTR ${((s.ctr || 0) * 100).toFixed(1)}% · CPC ₩${(s.cpc || 0).toLocaleString()}`,
+    '', '자세한 분석은 대시보드에서: https://urdeal.kr/ads/dashboard?tab=performance',
+  ].join('\n') : ''
+  const emailBody = advice || fallbackBody
+  if (emailBody && env.RESEND_API_KEY && env.RESEND_FROM) {
     const acc = await env.DB.prepare('SELECT email FROM ad_accounts WHERE id = ?').bind(sellerId).first<{ email: string | null }>().catch(() => null)
-    if (acc?.email) await sendReportEmail(env, acc.email, periodKey, advice).catch(() => {})
+    if (acc?.email && !acc.email.endsWith('@kakao.local')) await sendReportEmail(env, acc.email, periodKey, emailBody).catch(() => {})
   }
   return { ok: true, advice }
 }

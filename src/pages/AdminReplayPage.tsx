@@ -331,16 +331,10 @@ export default function AdminReplayPage() {
                   </p>
 
                   <div className="flex gap-1.5 mt-3">
-                    <a
-                      href={`/live/${s.id}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200"
-                    >
-                      <ExternalLink className="w-3 h-3" /> {t('admin.replay.viewLink', { defaultValue: '보기' })}
-                    </a>
+                    {/* 🗑️ 2026-07-07 라이브커머스 제거: /live 뷰어 링크 삭제(관리 기능만 유지). */}
                     <button
                       onClick={() => startEdit(s)}
-                      className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100"
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100"
                     >
                       <Edit2 className="w-3 h-3" /> 수정
                     </button>

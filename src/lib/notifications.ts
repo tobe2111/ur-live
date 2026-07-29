@@ -122,10 +122,10 @@ export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: nu
           content: {
             title: `🔴 ${sellerName} 라이브 시작!`,
             description: title,
-            image_url: 'https://live.ur-team.com/og-image.png',
-            link: { web_url: `https://live.ur-team.com/live/${streamId}`, mobile_web_url: `https://live.ur-team.com/live/${streamId}` },
+            image_url: 'https://urdeal.kr/og-image.png',
+            link: { web_url: `https://urdeal.kr/live/${streamId}`, mobile_web_url: `https://urdeal.kr/live/${streamId}` },
           },
-          buttons: [{ title: '시청하기', link: { web_url: `https://live.ur-team.com/live/${streamId}`, mobile_web_url: `https://live.ur-team.com/live/${streamId}` } }],
+          buttons: [{ title: '시청하기', link: { web_url: `https://urdeal.kr/live/${streamId}`, mobile_web_url: `https://urdeal.kr/live/${streamId}` } }],
         });
 
         await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
@@ -153,7 +153,7 @@ export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, tit
 
     if (!followers?.length) return 0;
     const { getKakaoTokenSimple } = await import('./kakao-token');
-    const fullUrl = `https://live.ur-team.com${link}`
+    const fullUrl = `https://urdeal.kr${link}`
     let sent = 0;
     for (const f of followers.slice(0, 100)) {
       try {
@@ -161,7 +161,7 @@ export async function sendKakaoToFollowers(DB: D1Database, sellerId: number, tit
         if (!token) continue;
         const templateObject = JSON.stringify({
           object_type: 'feed',
-          content: { title, description, image_url: 'https://live.ur-team.com/og-image.png', link: { web_url: fullUrl, mobile_web_url: fullUrl } },
+          content: { title, description, image_url: 'https://urdeal.kr/og-image.png', link: { web_url: fullUrl, mobile_web_url: fullUrl } },
           buttons: [{ title: buttonText, link: { web_url: fullUrl, mobile_web_url: fullUrl } }],
         });
         await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {

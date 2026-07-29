@@ -56,8 +56,22 @@ export const IN_APP_LABELS: Record<InAppBrowserName, string> = {
   threads: 'Threads',
 }
 
+/**
+ * 🛡️ 2026-07-18 앱 출시 대비 (app-ready-audit §2 선결과제): 자사 Capacitor 래퍼 감지.
+ *   자사 앱의 WebView 는 '적대적 인앱 브라우저'가 아님 — 외부 브라우저 유도 배너/자동 redirect 를
+ *   띄우면 안 됨(앱에서 앱 밖으로 쫓아내는 꼴). Capacitor 전역 객체로 판별(주입 전 아주 이른
+ *   시점엔 UA 폴백 없음 — 배너 컴포넌트는 마운트 후 호출이라 안전).
+ */
+export function isOwnAppWebView(): boolean {
+  if (typeof window === 'undefined') return false
+  const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+  try { return !!cap?.isNativePlatform?.() } catch { return false }
+}
+
 export function detectInAppBrowser(): InAppBrowserName | null {
   if (typeof navigator === 'undefined') return null
+  // 자사 앱 래퍼는 인앱 브라우저 아님 — 배너/외부유도 대상에서 제외
+  if (isOwnAppWebView()) return null
   const ua = navigator.userAgent
   for (const { name, regex } of PATTERNS) {
     if (regex.test(ua)) return name
@@ -81,39 +95,27 @@ export function isAndroid(): boolean {
 }
 
 /**
- * 🛡️ 2026-04-28: 카카오톡 인앱 → 외부 브라우저 *자동* redirect.
+ * 🛡️ 2026-07-23 (대표 지시 "카톡도 그냥 열리게"): 카카오톡 인앱도 자동 외부 이동하지 않음.
  *
- * 카카오톡 인앱은 무한 reload + 흰화면 발생 케이스가 많아서, detect 즉시 강제 이동.
- * (다른 인앱은 안내 배너로 사용자 선택)
+ * 배경: 2026-04-28 도입 당시엔 카톡 인앱이 흰화면 + 무한 reload 가 잦아 detect 즉시 강제 이동했으나,
+ *   ① 무한 reload 의 실제 원인은 리다이렉트를 가드 없이 매번 시도한 것(2026-04-29 sessionStorage
+ *      가드로 해결) ② 흰화면의 근본 원인이던 Service Worker/PWA(카카오 OAuth 차단)는 2026-04-27 제거
+ *   ③ 이후 부팅/청크 자가복구가 견고해짐 → 원래 사유가 대부분 해소. 게다가 카카오 로그인은 카카오톡
+ *   인앱 브라우저(자체 세션) 안에서가 오히려 제일 잘 됨.
  *
- * sessionStorage 로 1회만 시도 — 사용자가 외부 브라우저에서 다시 카톡 링크 클릭 시
- * 무한 redirect 안 일어나도록 가드.
+ * 정책: 카톡 포함 모든 인앱은 앱을 그대로 렌더. 안내 배너(InAppBrowserBanner)도 2026-06-20 대표
+ *   요청으로 미마운트(노이즈) — 인앱에서 정말 막히는 기능(충전/결제 등)만 기능 단위 게이트
+ *   (IosTopupGate/InAppFeatureBlockedModal)가 그 시점에 openInExternalBrowser 로 안내.
+ *   이 함수는 no-op(항상 false) 으로 유지 — main.tsx 의 `if (!_kakaoRedirected)` 마운트 게이트가
+ *   항상 통과하도록.
  *
- * @returns redirect 시도했으면 true (호출자가 React 마운트 중단해야 함)
+ * ⚠️ 회귀(카톡 인앱 흰화면) 발견 시 롤백: git 이력에서 kakao scheme 자동 이동 본문 복원 +
+ *   index.html 인라인 스크립트의 카톡 scheme 복원(SSOT 쌍).
+ *
+ * @returns 항상 false (자동 이동 안 함)
  */
-const KAKAO_REDIRECT_KEY = 'ur_kakao_external_redirect_v1'
-
 export function autoRedirectKakaoToExternal(): boolean {
-  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
-  if (detectInAppBrowser() !== 'kakao') return false
-
-  // 이미 한 번 시도했으면 스킵 (무한 루프 방지)
-  try {
-    if (sessionStorage.getItem(KAKAO_REDIRECT_KEY) === '1') return false
-    sessionStorage.setItem(KAKAO_REDIRECT_KEY, '1')
-  } catch { /* sessionStorage 차단된 경우에도 진행 */ }
-
-  const url = window.location.href
-  if (isIOS()) {
-    window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
-  } else {
-    const target = url.replace(/^https?:\/\//, '')
-    // 🛡️ 2026-06-17: Chrome 미설치(삼성인터넷 기본 등 — 한국 점유율 높음) 시 intent 실패 → 빈 화면 사고.
-    //   S.browser_fallback_url 추가: intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → sessionStorage 가드가
-    //   재이동을 막아 그 로드에서 React 정상 마운트(인앱에서라도 앱이 뜸 + 배너로 수동 외부열기 가능).
-    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'
-  }
-  return true
+  return false
 }
 
 /**

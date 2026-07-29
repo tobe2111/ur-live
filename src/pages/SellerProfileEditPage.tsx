@@ -377,11 +377,11 @@ export default function SellerProfileEditPage() {
 
         {/* Public Page Preview */}
         {profile && (
-          <div className="mb-8 apple-card p-6 bg-gradient-to-r from-[#007aff]/5 to-[#5856d6]/5 border-2 border-[#007aff]/20">
+          <div className="mb-8 apple-card p-6 bg-[var(--brand-tint)] border-2 border-brand/20">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <ExternalLink className="h-5 w-5 text-[#007aff]" />
+                  <ExternalLink className="h-5 w-5 text-brand" />
                   <h3 className="text-[17px] font-semibold text-[#1d1d1f]">
                     {t('seller.publicPagePreview')}
                   </h3>
@@ -392,7 +392,7 @@ export default function SellerProfileEditPage() {
                 <a
                   href={`/s/${profile.id}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#007aff] text-white rounded-lg hover:bg-[#0051d5] transition-colors text-[13px] font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors text-[13px] font-medium"
                 >
                   <ExternalLink className="h-4 w-4" />
                   {t('seller.viewPublicPage')}
@@ -406,8 +406,8 @@ export default function SellerProfileEditPage() {
           {/* Profile Image Section */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#007aff]/10 rounded-full flex items-center justify-center">
-                <ImageIcon className="h-5 w-5 text-[#007aff]" />
+              <div className="w-10 h-10 bg-brand/10 rounded-full flex items-center justify-center">
+                <ImageIcon className="h-5 w-5 text-brand" />
               </div>
               <div>
                 <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.profileImage')}</h2>
@@ -443,7 +443,7 @@ export default function SellerProfileEditPage() {
                   value={formData.profile_image}
                   onChange={(e) => setFormData({ ...formData, profile_image: e.target.value })}
                   placeholder="https://example.com/profile.jpg"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
                 <p className="mt-2 text-[11px] text-[#6e6e73]">
                   {t('seller.recommendSquare')}
@@ -471,7 +471,7 @@ export default function SellerProfileEditPage() {
                 placeholder={t('seller.bioPlaceholder')}
                 rows={4}
                 maxLength={500}
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent resize-none"
               />
               <p className="mt-2 text-[11px] text-[#6e6e73] text-right">
                 {formData.bio.length}/500
@@ -503,7 +503,7 @@ export default function SellerProfileEditPage() {
                   value={formData.sns_instagram}
                   onChange={(e) => setFormData({ ...formData, sns_instagram: e.target.value })}
                   placeholder="username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
               </div>
 
@@ -518,7 +518,7 @@ export default function SellerProfileEditPage() {
                   value={formData.sns_youtube}
                   onChange={(e) => setFormData({ ...formData, sns_youtube: e.target.value })}
                   placeholder="@username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
               </div>
 
@@ -533,7 +533,7 @@ export default function SellerProfileEditPage() {
                   value={formData.sns_facebook}
                   onChange={(e) => setFormData({ ...formData, sns_facebook: e.target.value })}
                   placeholder="username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
               </div>
 
@@ -548,7 +548,7 @@ export default function SellerProfileEditPage() {
                   value={formData.sns_twitter}
                   onChange={(e) => setFormData({ ...formData, sns_twitter: e.target.value })}
                   placeholder="@username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function SellerProfileEditPage() {
                 value={formData.kakao_chat_link}
                 onChange={(e) => setFormData({ ...formData, kakao_chat_link: e.target.value })}
                 placeholder="https://open.kakao.com/o/..."
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
               <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <div className="flex gap-2 text-[11px] text-orange-800">
@@ -632,7 +632,7 @@ export default function SellerProfileEditPage() {
                 value={formData.website_url}
                 onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
                 placeholder="https://yourwebsite.com"
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
             </div>
           </div>
@@ -660,7 +660,7 @@ export default function SellerProfileEditPage() {
                   value={shippingData.base_shipping_fee}
                   onChange={(e) => setShippingData({ ...shippingData, base_shipping_fee: e.target.value.replace(/[^\d]/g, '') })}
                   placeholder="3000"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
                 <p className="mt-2 text-[11px] text-[#6e6e73]">{t('seller.baseShippingFeeHint', { defaultValue: '비워두면 무료배송(0원)' })}</p>
               </div>
@@ -674,7 +674,7 @@ export default function SellerProfileEditPage() {
                   value={shippingData.free_shipping_threshold}
                   onChange={(e) => setShippingData({ ...shippingData, free_shipping_threshold: e.target.value.replace(/[^\d]/g, '') })}
                   placeholder="50000"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
                 <p className="mt-2 text-[11px] text-[#6e6e73]">{t('seller.freeShippingThresholdHint', { defaultValue: '이 금액 이상 주문 시 무료배송. 비우면 미적용' })}</p>
               </div>
@@ -706,7 +706,7 @@ export default function SellerProfileEditPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 py-4 px-6 bg-[#007aff] text-white rounded-xl hover:bg-[#0051d5] transition-colors text-[15px] font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-4 px-6 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

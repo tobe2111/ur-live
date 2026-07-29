@@ -1,6 +1,8 @@
 # D1 백업·복구 런북 (구조 이슈 #5)
 
 > D1 Time Travel: 모든 쓰기가 자동 기록 — **최근 30일 내 임의 시점으로 복구 가능** (별도 백업 설정 불필요, 비용 0).
+>
+> **3차 경로 (2026-07-11)**: GitHub Actions 주간 export (`.github/workflows/d1-backup.yml`, 수요일 20:00 UTC) → GH artifact 90일 보존. Worker 내부 덤프(R2)와 완전 독립 — 복구 시 Actions 탭에서 `d1-backup-YYYYMMDD` artifact 다운로드 → gunzip → `wrangler d1 execute toss-live-commerce-db --remote --file=backup.sql`.
 
 ## 평시 (자동 — 할 일 없음)
 - D1 이 모든 변경을 자동 보존 (30일). 추가 백업 작업 불필요.

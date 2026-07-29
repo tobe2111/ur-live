@@ -23,8 +23,12 @@ export function usePrefetchProduct() {
   const queryClient = useQueryClient()
   const pendingRef = useRef<Set<string | number>>(new Set())
 
-  return useCallback((productId: string | number | undefined) => {
-    if (!productId) return
+  return useCallback((rawId: string | number | undefined) => {
+    if (!rawId) return
+    // 🚑 2026-07-10 (로딩 전수조사): 키를 String 으로 정규화 — 카드는 숫자 id, 상세(useProduct)는
+    //   useParams 문자열 키(['product','123'])라 ['product',123] 프리페치가 항상 캐시 미스였음
+    //   (탭마다 풀스크린 로더 + 중복 네트워크). RQ 키는 123 ≠ '123'.
+    const productId = String(rawId)
     if (pendingRef.current.has(productId)) return
     // 이미 fresh cache 있으면 skip
     const existing = queryClient.getQueryState(['product', productId])

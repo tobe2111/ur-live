@@ -9,11 +9,13 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
+import { stripStorePrefix } from '@/utils/deal-title'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
@@ -28,6 +30,8 @@ const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
 }
 
 interface FeedCardProduct extends Product {
+  /* 🏷️ 2026-07-19 (대표 UI v2 P2): 제목 매장명 프리픽스 제거용 — 리스트 API 가 이미 내려줌 */
+  restaurant_name?: string
   group_buy_current?: number
   group_buy_target?: number
   group_buy_status?: string
@@ -36,6 +40,9 @@ interface FeedCardProduct extends Product {
   seller_avatar?: string
   category?: string
   business_address?: string
+  // restaurant_address 는 base Product(string|undefined) 상속 — 재선언 금지(TS2430).
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   discount_rate?: number
   current_price?: number
   original_price?: number
@@ -48,6 +55,8 @@ interface FeedCardProduct extends Product {
   gc_brand_name?: string | null
   gc_brand_icon_url?: string | null
   gc_goods_type_detail?: string | null
+  // 🏪 2026-07-05: 온누리상품권 가맹 매장 (seller_meta enrich — B2G 표시)
+  onnuri_merchant?: boolean
 }
 
 // 🛡️ 2026-05-21: 구매 수 사람 친화 포맷 (4 자리 이상 → 만 단위).
@@ -87,7 +96,7 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; pc?: boolean; userLoc?: { lat: number; lng: number } | null }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -135,27 +144,51 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
   )
   const rating = p.avg_rating ?? 0
   const soldCount = p.sold_count ?? 0
+  // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
+  const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
+  const distKm = (() => {
+    if (!userLoc || p.restaurant_lat == null || p.restaurant_lng == null) return null
+    const la = Number(p.restaurant_lat), ln = Number(p.restaurant_lng)
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null
+    const toRad = (d: number) => (d * Math.PI) / 180
+    const dLat = toRad(la - userLoc.lat), dLng = toRad(ln - userLoc.lng)
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(userLoc.lat)) * Math.cos(toRad(la)) * Math.sin(dLng / 2) ** 2
+    const km = 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+    if (km >= 10) return null // 📍 2026-07-19 (대표 UI v2 P1): 10km+ 는 km 대신 지역명(addrShort) 우선
+    return km < 1 ? `${Math.round(km * 10) / 10}` : `${Math.round(km)}`
+  })()
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
   // 🎨 2026-06-18 (대표 신고 — 홈 공구 카드 그라데이션 사라짐): /group-buy 와 동일한 cardGradient 룩 복원.
   //   대표색 단색 카드 + 사진 하단 같은색 번짐 + 대비 글자색. (GroupBuyGridCard 와 정합)
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   const grad = cardGradient(cardColor)
+  // 🖥️ 2026-07-16 (대표 — PC 카드 가시성): pc 면 대표색 그라데이션(카드 틴트 + 사진 하단 번짐 + 흐린 글자색)
+  //   제거 → 깔끔한 흰/다크 카드 + 표준 텍스트색(선명). 모바일(!pc)은 기존 그라데이션 룩 그대로.
+  const tSub = pc ? undefined : { color: grad.sub }
+  const tText = pc ? undefined : { color: grad.text }
+  const tAccent = pc ? undefined : { color: grad.accent }
+  const cSub = pc ? 'text-gray-500 dark:text-gray-400' : ''
+  const cText = pc ? 'text-gray-900 dark:text-white' : ''
+  const cAccent = pc ? 'text-brand-text' : ''
 
   return (
     <Link
       ref={linkRef}
-      to={`/group-buy/${p.id}`}
+      // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
+      //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
+      to={canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className="block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
-      style={{ backgroundColor: grad.base }}
+      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
+      style={pc ? undefined : { backgroundColor: grad.base }}
     >
-      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩 */}
+      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
+          🖥️ PC(pc)는 그라데이션 없이 깔끔한 이미지 + 흰/다크 카드(가시성). */}
       <div
-        className="relative aspect-square w-full overflow-hidden"
-        style={{ backgroundColor: grad.base }}
+        className={`relative aspect-square w-full overflow-hidden ${pc ? 'bg-gray-100 dark:bg-[#222225]' : ''}`}
+        style={pc ? undefined : { backgroundColor: grad.base }}
       >
         {p.image_url ? (
           <img
@@ -181,6 +214,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
                 if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
+            onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -190,58 +224,73 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
           </div>
         )}
 
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거). 🖥️ PC 는 깔끔한 이미지(번짐 제거). */}
+        {!pc && <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />}
 
         {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
         {isUrgent && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm">
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm">
             ⏰ {remaining}
           </span>
         )}
 
         {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
-        {fcfs && <FcfsBadge info={fcfs} className="absolute top-2 right-2" />}
+        {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
       </div>
 
-      <div className="px-2.5 pb-2.5 pt-1.5">
-        {/* 브랜드 (gift_catalog) — 있을 때만 */}
-        {brandName && (
-          <p className="flex items-center gap-1 text-[10px] leading-none mb-0.5" style={{ color: grad.sub }}>
+      <div className={pc ? 'px-3.5 pb-3.5 pt-2.5' : 'px-2.5 pb-2.5 pt-1.5'}>
+        {/* 브랜드 (gift_catalog) — 있을 때만. 🏪 온누리 가맹 뱃지는 브랜드 유무와 무관 표시 */}
+        {(brandName || p.onnuri_merchant) && (
+          <p className={`flex items-center gap-1 text-[10px] leading-none mb-0.5 ${cSub}`} style={tSub}>
             {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
-            <span className="truncate">{brandName}</span>
+            {brandName && <span className="truncate">{brandName}</span>}
+            {p.onnuri_merchant && (
+              <span className="shrink-0 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold">온누리</span>
+            )}
           </p>
         )}
 
         {/* 원가 strikethrough (있을 때만) */}
         {originalPrice > price && originalPrice > 0 && (
-          <p className="text-[11px] line-through leading-tight" style={{ color: grad.sub }}>
+          <p className={`text-[11px] line-through leading-tight ${cSub}`} style={tSub}>
             {formatNumber(originalPrice)}원
           </p>
         )}
 
         {/* 제목 — 2줄 max */}
-        <p className="text-[13px] font-semibold line-clamp-2 leading-tight mt-0.5" style={{ color: grad.text }}>
-          {p.name}
+        <p className={`${pc ? 'text-[14.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
+          {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
 
         {/* 할인% + 최종가 — 핵심 강조 */}
         <p className="flex items-baseline gap-1 mt-1">
           {discount > 0 && (
-            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
+            <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cAccent}`} style={tAccent}>{discount}%</span>
           )}
-          <span className="text-[15px] font-extrabold" style={{ color: grad.text }}>
+          <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
             {formatNumber(price)}원
           </span>
+          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
+          {p.category === 'stay_voucher' && price > 0 && (
+            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
+          )}
         </p>
 
+        {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
+        {(p.restaurant_name || addrShort || distKm != null) && (
+          <p className={`flex items-center gap-1 mt-0.5 text-[11px] min-w-0 ${cSub}`} style={tSub}>
+            <span className="shrink-0">📍</span>
+            <span className="truncate">{[p.restaurant_name, addrShort].filter(Boolean).join(' · ')}</span>
+            {distKm != null && <span className={`shrink-0 whitespace-nowrap font-bold ${cText}`} style={tText}>· {distKm}km</span>}
+          </p>
+        )}
         {/* ⭐ 평점 + 구매수 */}
         {(rating > 0 || soldCount > 0) && (
-          <p className="flex items-center gap-1.5 mt-0.5 text-[11px]" style={{ color: grad.sub }}>
+          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`} style={tSub}>
             {rating > 0 && (
               <span className="flex items-center gap-0.5">
                 <span className="text-yellow-500">★</span>
-                <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
+                <span className={`font-bold ${cText}`} style={tText}>{rating.toFixed(1)}</span>
               </span>
             )}
             {soldCount > 0 && (

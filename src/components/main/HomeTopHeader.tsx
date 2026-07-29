@@ -71,7 +71,7 @@ export default function HomeTopHeader() {
   }
 
   return (
-    <div className="md:hidden lg:block sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div className="md:hidden lg:block sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
       <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-2.5 space-y-2">
         {/* 1행: 로고 + 검색 + 기록 + 알림 */}
         <div className="flex items-center gap-2.5">
@@ -83,7 +83,7 @@ export default function HomeTopHeader() {
 
           <button
             onClick={() => navigate('/search')}
-            className="flex-1 min-w-0 flex items-center gap-2 h-10 px-3.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-left"
+            className="flex-1 min-w-0 flex items-center gap-2 h-10 px-3.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-left"
             aria-label="검색"
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" strokeWidth={2} />

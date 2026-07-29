@@ -15,6 +15,21 @@ describe('canTransition — 합법/불법 전이', () => {
     expect(canTransition('DELIVERED', 'REFUNDED')).toBe(true)
   })
 
+  // 🛡️ 2026-07-05 (대표 신고): 결제완료 주문을 관리자/셀러가 '배송 완료'로 직접(전진 건너뛰기).
+  //   교환권·매장픽업·외부송장 등 SHIPPING 단계가 없는 이행에 필수. 머니 무관(delivered_at·알림만).
+  it('🔒 결제 이후 전진 건너뛰기 허용 (배송완료 직접 표시)', () => {
+    expect(canTransition('PAID', 'DELIVERED')).toBe(true)
+    expect(canTransition('DONE', 'DELIVERED')).toBe(true)
+    expect(canTransition('PREPARING', 'DELIVERED')).toBe(true)
+    expect(canTransition('PAID', 'PREPARING')).toBe(true)
+  })
+
+  it('🔒 미결제 상태는 이행상태로 점프 불가 (선결제 불변 — 미결제 배송완료 금지)', () => {
+    expect(canTransition('PENDING', 'DELIVERED')).toBe(false)
+    expect(canTransition('PENDING', 'SHIPPING')).toBe(false)
+    expect(canTransition('AWAITING_PAYMENT', 'DELIVERED')).toBe(false)
+  })
+
   it('역방향/불법 전이는 차단', () => {
     expect(canTransition('PAID', 'PENDING')).toBe(false)      // 결제완료 → 대기 역전 차단
     expect(canTransition('DELIVERED', 'SHIPPING')).toBe(false) // 배송완료 → 배송중 후퇴 차단
@@ -68,7 +83,13 @@ describe('statusesThatCanReach — CAS UPDATE 용 역방향 집합', () => {
     expect(reach).not.toContain('CANCELLED')
   })
 
-  it('DELIVERED 로 갈 수 있는 상태 = SHIPPING', () => {
-    expect(statusesThatCanReach('DELIVERED')).toEqual(['SHIPPING'])
+  it('DELIVERED 로 갈 수 있는 상태 = PAID/DONE/PREPARING/SHIPPING (전진 건너뛰기 허용)', () => {
+    const reach = statusesThatCanReach('DELIVERED')
+    for (const s of ['PAID', 'DONE', 'PREPARING', 'SHIPPING']) {
+      expect(reach, `${s} → DELIVERED`).toContain(s)
+    }
+    // 미결제/종결 상태는 DELIVERED 로 직접 못 감
+    expect(reach).not.toContain('PENDING')
+    expect(reach).not.toContain('CANCELLED')
   })
 })

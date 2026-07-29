@@ -312,7 +312,7 @@ export default function WholesaleProductPage() {
               <div className="flex items-center gap-2 text-[14px] font-bold" style={{ color: WT.ink }}>
                 <Lock className="w-4 h-4" style={{ color: WT.brand }} /> 등급 공급가는 로그인 후 확인할 수 있어요
               </div>
-              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>판매사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
+              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>사업자 정보 확인 후 승인되면 내 등급 공급가로 사입할 수 있어요</p>
               <div className="mt-3 flex gap-2.5">
                 <button onClick={goLogin} className="flex-1 h-12 rounded-xl text-[15px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>로그인</button>
                 <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>판매사 가입</button>

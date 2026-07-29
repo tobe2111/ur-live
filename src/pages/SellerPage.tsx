@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useSellerMode } from '@/hooks/useSellerMode'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
@@ -27,6 +27,7 @@ import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
 import NewSellerSteps from './seller-page/NewSellerSteps'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
+import StoreQuickTrio from './seller-page/StoreQuickTrio'
 import AlertsGrid from './seller-page/AlertsGrid'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
@@ -261,7 +262,7 @@ export default function SellerPage() {
               if (Notification.permission === 'granted') {
                 new Notification(t('seller.newOrderNotifTitle', { defaultValue: '🛒 새 주문이 들어왔어요!' }), {
                   body: t('seller.newOrderNotifBody', { defaultValue: '{{count}}건의 새 주문을 확인하세요', count: newIds.size }),
-                  icon: '/favicon.ico',
+                  icon: '/icon-biz-192.png',
                 })
               } else if (Notification.permission === 'default') {
                 Notification.requestPermission()
@@ -444,17 +445,7 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      {/* 🏭 라이브 잠정 중단 동안 송출 버튼 숨김 — nav 는 mode 필터로 숨겨졌는데
-          이 버튼만 역할(isInfluencer) 게이트라 도달불가 페이지로 유도하던 잔재. 재개 시 자동 복원. */}
-      {!LIVE_COMMERCE_SUSPENDED && isInfluencer && (
-        <button
-          onClick={() => navigate('/seller/live-broadcast')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Play className="w-3.5 h-3.5" />
-          {t('seller.startLive')}
-        </button>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: 송출 버튼 삭제. */}
     </div>
   )
 
@@ -471,25 +462,9 @@ export default function SellerPage() {
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
             대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
 
+        {/* 🧭 2026-07-19 (대표 UI v2 P2 — 심플 모드): 🏪 스캔 안내 카드 → 3액션 트리오(QR스캔·정산·내 딜)로 대체 */}
         <RoleGate showFor="store-or-both">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🏪</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-emerald-900">{t('seller.scan.homeCardTitle', { defaultValue: '매장 사장님 — 손님 바우처는 여기서 스캔' })}</p>
-                <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
-                  {t('seller.scan.homeCardDesc', { defaultValue: '손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)' })}
-                </p>
-                {/* 🧭 2026-06-10 (현장 동선 갭): 문구만 있고 누를 곳이 없던 것 → 스캔 화면 직행 버튼 */}
-                <button
-                  onClick={() => navigate('/seller/scan')}
-                  className="mt-2.5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold active:scale-[0.98] transition-transform"
-                >
-                  📷 {t('seller.scan.homeCardBtn', { defaultValue: '바우처 스캔 열기' })}
-                </button>
-              </div>
-            </div>
-          </div>
+          <StoreQuickTrio />
         </RoleGate>
 
         {/* 🏭 2026-06-04 (사용자 요청): 시작 가이드(온보딩 체크리스트) 제거 — 대시보드 간소화. */}
@@ -658,41 +633,41 @@ export default function SellerPage() {
             </div>
           )}
 
-          {/* ── Main grid ── */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+          {/* ── Main grid ──
+              🖥️ 2026-07-16 (대표 신고 — 공간활용 안 됨): 실시간 주문 패널 제거(2026-06-04) 후 3열 그리드에
+              오른쪽 패널 1개만 남아 2/3 가 비었음. 4개 블록(빠른액션·전환퍼널·알림·공개페이지)을 직접
+              그리드 자식으로 펼쳐 2×2(md+)로 폭을 꽉 채움. items-start 로 상단 정렬. */}
+          <div className="grid md:grid-cols-2 gap-3 sm:gap-5 items-start">
 
-            {/* 🏭 2026-06-04 (사용자 요청): 실시간 주문 패널 제거 — 셀러 대시보드 간소화. */}
+            {/* 빠른 액션 — 활동 데이터 기반 동적 배치(가장 자주 쓰는 액션 → 좌상단) */}
+            <QuickActions
+              hasMealVouchers={hasMealVouchers}
+              sellerType={sellerType}
+              activeGroupBuys={activeGroupBuys}
+              isInfluencer={isInfluencer}
+              hasLiveHistory={hasLiveHistory}
+            />
 
-            {/* ── Right panel (col-span-1) ── */}
-            <div className="space-y-4">
+            {/* 알림 */}
+            <AlertsGrid
+              followerCount={followerCount}
+              stockAlertCount={stockAlertCount}
+              pendingOrders={stats.pendingOrders || 0}
+              pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
+              fmtShort={fmtShort}
+            />
 
-              {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
+            {/* 전환 퍼널(시청자→주문 — 라이브커머스 지표) — 🏪 2026-07-19 SELLER_STORE_ONLY_MODE:
+                매장 콘솔에선 숨김(라이브 영구중단 + 매장 업주에게 무의미한 '시청자' 지표 = 정신없음의 일부). */}
+            {!SELLER_STORE_ONLY_MODE && (
               <ConversionFunnel
                 totalViewers={stats.totalViewers}
                 totalOrders={stats.totalOrders}
               />
+            )}
 
-              {/* 빠른 액션 — 활동 데이터 기반 동적 배치 */}
-              <QuickActions
-                hasMealVouchers={hasMealVouchers}
-                sellerType={sellerType}
-                activeGroupBuys={activeGroupBuys}
-                isInfluencer={isInfluencer}
-                hasLiveHistory={hasLiveHistory}
-              />
-
-              {/* 알림 */}
-              <AlertsGrid
-                followerCount={followerCount}
-                stockAlertCount={stockAlertCount}
-                pendingOrders={stats.pendingOrders || 0}
-                pendingSettlement={stats.pendingSettlement ?? Math.round(stats.totalRevenue * 0.85)}
-                fmtShort={fmtShort}
-              />
-
-              {/* 내 공개 페이지 미리보기 */}
-              <PublicPagePreview />
-            </div>
+            {/* 내 공개 페이지 미리보기 */}
+            <PublicPagePreview />
           </div>
 
           {/* ── Chart ── */}

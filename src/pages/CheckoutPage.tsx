@@ -17,6 +17,7 @@ import { isKorea } from '@/config/region'
 import { captureError } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 // 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
@@ -271,6 +272,10 @@ function CartCheckout() {
 
   // 공동구매 할인 조회 (cartItems 로드 후)
   useEffect(() => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 친구초대 동적할인 종료(REFERRAL_GROUP_DISCOUNT_DISABLED) —
+    //   /api/referral/discount 는 항상 null 반환. 결제 크리티컬 패스에서 상품 수만큼 무의미한 왕복을
+    //   하던 것을 조기 차단(ReferralSection 은 이미 같은 플래그로 단락). 재개 시 배치 엔드포인트 권장.
+    if (REFERRAL_GROUP_DISCOUNT_DISABLED) return
     if (cartItems.length === 0) return
     const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
     if (uniqueProductIds.length === 0) return
@@ -427,7 +432,7 @@ function CartCheckout() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f4f4f4] overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#f4f4f4] overflow-x-hidden">
       <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
       {/* 🛡️ 2026-05-21: 뒤로가기 무한 루프 영구 fix.
             기존: navigate('/cart') → new history entry → [prev, /cart, /checkout, /cart].
@@ -462,15 +467,15 @@ function CartCheckout() {
                     selectedAddress={selectedAddress}
                     onAddressSelected={setSelectedAddress}
                   />
-                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+                  <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
                 </>
               )}
 
               {/* 비배송 안내 — 기프티콘 교환권(MMS) vs 동네딜 공구(매장 사용) 구분. */}
               {isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">📱</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
@@ -482,9 +487,9 @@ function CartCheckout() {
                 </section>
               )}
               {noShipping && !isAllDealOnly && (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">🎟️</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
@@ -510,13 +515,13 @@ function CartCheckout() {
                 />
               )}
 
-              <div className="h-[6px] bg-gray-100 dark:bg-[#1A1A1A]" />
+              <div className="h-[6px] bg-gray-100 dark:bg-[#1A2334]" />
 
               {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal').
                   🛡️ 2026-05-23 v2: clientKey 로드 끝나기 전엔 스피너만 — TossPaymentWidget 이
                   빈/잘못된 키로 init 시도해 에러 토스트 띄우는 회귀 영구 차단. */}
               {!isAllDealOnly && !clientKeyLoaded ? (
-                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-8 flex items-center justify-center">
+                <section className="bg-white dark:bg-[#0F151D] px-5 py-8 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   <span className="ml-3 text-sm text-gray-500">결제 시스템 준비 중...</span>
                 </section>

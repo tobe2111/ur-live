@@ -18,9 +18,10 @@ const authHeader = () => {
 
 interface Rule { keyword_id: string; adgroup_id: string | null; keyword_text: string | null; target_rank: number; max_bid: number; device: string; enabled: number; last_applied_bid: number | null; last_run_at: string | null; schedule_json: string | null }
 interface LogRow { keyword_id: string; old_bid: number; new_bid: number; target_rank: number; est_bid: number; reason: string; created_at: string }
+interface ShadowRow { keyword_id: string; keyword_text: string | null; planned_bid: number; est_bid: number; reason: string; run_date: string }
 interface PreviewRow { keyword_id: string; keyword_text: string | null; estBid: number; plan: { bid: number; change: boolean; reason: string }; applied: boolean }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
 const REASON_KO: Record<string, string> = { matched_estimate: '추정가 적용', capped_at_max: '최대가 도달', within_threshold: '변동 미미', no_estimate: '추정 없음', schedule_paused: '전략 일시정지' }
 
 // 서버 SCHEDULE_PRESETS 키와 1:1 (서버가 normalizeSchedule 로 해석).
@@ -55,6 +56,7 @@ export default function AutobidPanel() {
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvText, setCsvText] = useState('')
   const [err, setErr] = useState(false)
+  const [shadow, setShadow] = useState<ShadowRow[]>([])
 
   const load = useCallback(async () => {
     setErr(false)
@@ -62,6 +64,11 @@ export default function AutobidPanel() {
       const r = await api.get('/api/ads/searchad/autobid/rules', { headers: authHeader() })
       if (r.data?.success) { setRules(r.data.rules || []); setLog(r.data.log || []); setEngineOn(!!r.data.engine_on) }
     } catch { setErr(true) }
+    // 섀도우 히스토리(있을 때만 표시 — fail-soft).
+    try {
+      const s = await api.get('/api/ads/searchad/autobid/shadow', { headers: authHeader() })
+      if (s.data?.success) setShadow(s.data.items || [])
+    } catch { /* 섀도우 미가동 — 무시 */ }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -126,15 +133,15 @@ export default function AutobidPanel() {
 
   const csvBox = (
     <>
-      <button onClick={() => setCsvOpen(v => !v)} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11.5px] font-bold text-gray-700 dark:text-gray-200">CSV 일괄</button>
+      <button onClick={() => setCsvOpen(v => !v)} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11.5px] font-bold text-gray-700 dark:text-gray-200">CSV 일괄</button>
       {csvOpen && (
-        <div className="mt-2 w-full rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+        <div className="mt-2 w-full rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5">한 줄에 한 규칙 · 열: <span className="font-mono">keyword_id,keyword_text,target_rank,max_bid,device,전략</span> (전략: always/peak/closing/weekend/night_save)</p>
           <textarea value={csvText} onChange={e => setCsvText(e.target.value)} rows={4} placeholder={'kw-123,무선이어폰,2,3000,PC,peak'}
-            className="w-full rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] p-2 text-[12px] font-mono text-gray-900 dark:text-white" />
+            className="w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2 text-[12px] font-mono text-gray-900 dark:text-white" />
           <div className="mt-1.5 flex justify-end gap-1.5">
             <button onClick={() => { setCsvOpen(false); setCsvText('') }} className="rounded-lg px-2.5 py-1 text-[11.5px] text-gray-500 dark:text-gray-400">취소</button>
-            <button onClick={submitCsv} disabled={busy === 'csv'} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy === 'csv' ? '…' : '일괄 등록'}</button>
+            <button onClick={submitCsv} disabled={busy === 'csv'} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy === 'csv' ? '…' : '일괄 등록'}</button>
           </div>
         </div>
       )}
@@ -162,8 +169,8 @@ export default function AutobidPanel() {
         <div className="text-[14px] font-bold text-gray-900 dark:text-white">자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">({rules.length} · 활성 {enabledCount})</span></div>
         <div className="flex gap-1.5">
           {csvBox}
-          <button onClick={runPreview} disabled={busy === 'preview'} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{busy === 'preview' ? '…' : '미리보기'}</button>
-          <button onClick={runNow} disabled={busy === 'run' || enabledCount === 0} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy === 'run' ? '…' : '지금 적용'}</button>
+          <button onClick={runPreview} disabled={busy === 'preview'} className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2.5 py-1 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{busy === 'preview' ? '…' : '미리보기'}</button>
+          <button onClick={runNow} disabled={busy === 'run' || enabledCount === 0} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy === 'run' ? '…' : '지금 적용'}</button>
         </div>
       </div>
       <p className={`mt-1 text-[11px] ${engineOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-500'}`}>
@@ -179,13 +186,13 @@ export default function AutobidPanel() {
             {rules.map(r => {
               const si = schedInfo(r.schedule_json)
               return (
-                <tr key={r.keyword_id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                <tr key={r.keyword_id} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                   <td className="py-1.5 pr-2 font-medium text-gray-900 dark:text-white truncate max-w-[120px]">{r.keyword_text || r.keyword_id}</td>
                   <td className="py-1.5 pr-2">{r.target_rank}위 <span className="text-gray-400 dark:text-gray-500">{r.device === 'MOBILE' ? '모바일' : 'PC'}</span></td>
                   <td className="py-1.5 pr-2 text-right tabular-nums">₩{formatNumber(r.max_bid)}</td>
                   <td className="py-1.5 pr-2">
                     <select value={si.key === 'custom' ? '' : si.key} onChange={e => saveRule(r, { schedule: e.target.value })} disabled={busy === r.keyword_id}
-                      className="rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1 py-0.5 text-[10.5px] text-gray-700 dark:text-gray-200 max-w-[120px]">
+                      className="rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1 py-0.5 text-[10.5px] text-gray-700 dark:text-gray-200 max-w-[120px]">
                       {si.key === 'custom' && <option value="">맞춤</option>}
                       {SCHEDULE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                     </select>
@@ -193,7 +200,7 @@ export default function AutobidPanel() {
                   <td className="py-1.5 pr-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{r.last_applied_bid ? `₩${formatNumber(r.last_applied_bid)}` : '-'}</td>
                   <td className="py-1.5 pr-2">
                     <button onClick={() => saveRule(r, { enabled: !r.enabled })} disabled={busy === r.keyword_id}
-                      className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${r.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'}`}>
+                      className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${r.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400'}`}>
                       {r.enabled ? 'ON' : 'OFF'}
                     </button>
                   </td>
@@ -206,7 +213,7 @@ export default function AutobidPanel() {
       </div>
 
       {preview && (
-        <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+        <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
           <p className="text-[12px] font-bold text-gray-900 dark:text-white">미리보기 (적용 안 됨)</p>
           <div className="mt-1.5 space-y-1">
             {preview.length === 0 ? <p className="text-[11px] text-gray-400 dark:text-gray-500">활성 규칙이 없습니다.</p>
@@ -217,6 +224,21 @@ export default function AutobidPanel() {
                 </div>
               ))}
           </div>
+        </div>
+      )}
+
+      {shadow.length > 0 && (
+        <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">섀도우 기록 <span className="font-medium text-gray-400 dark:text-gray-500">— 엔진이 켜져 있었다면 실행했을 변경(실제 적용 0)</span></p>
+          <div className="mt-1.5 space-y-0.5">
+            {shadow.slice(0, 8).map((s, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-[10.5px] text-gray-500 dark:text-gray-400">
+                <span className="truncate">{s.keyword_text || s.keyword_id}</span>
+                <span className="shrink-0 tabular-nums">추정 ₩{formatNumber(s.est_bid)} → ₩{formatNumber(s.planned_bid)} · {s.run_date.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">이 기록으로 엔진 판단을 검증한 뒤 자동 엔진을 켜세요.</p>
         </div>
       )}
 

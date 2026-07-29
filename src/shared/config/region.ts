@@ -14,7 +14,7 @@
  *   await toss.initialize()
  * }
  * 
- * // GLOBAL 전용 코드 (live.ur-team.com에서 실행 안 됨)
+ * // GLOBAL 전용 코드 (urdeal.kr에서 실행 안 됨)
  * if (isGlobal()) {
  *   const stripe = await import('./stripe-payment')  // lazy import
  *   await stripe.initialize()
@@ -63,7 +63,7 @@ const REGION_CONFIG_MAP: Record<Region, RegionConfig> = {
     currency: 'KRW',
     paymentProvider: 'toss',
     authProviders: ['kakao', 'google'],
-    domainPatterns: ['live.ur-team.com', 'kr.', 'localhost:5173', 'localhost:4173']
+    domainPatterns: ['urdeal.kr', 'kr.', 'localhost:5173', 'localhost:4173']
   },
   GLOBAL: {
     code: 'GLOBAL',

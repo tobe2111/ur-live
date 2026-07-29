@@ -29,6 +29,10 @@ import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { storeAffiliateRef } from '@/utils/affiliate-track'
+// 🚑 2026-07-10 [UNLOCK_LOADING]: 사업자 링크샵 워터폴 완화 — linked_seller 확인 즉시 셀러 /public 워밍
+//   (SellerPublicPage lazy 청크 다운로드와 병렬). 독립 모듈이라 lazy 청크 분리 불변.
+import { warmSellerPublic } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -85,6 +89,17 @@ export default function CuratorPage() {
     return false
   })()
 
+  // 💸 2026-07-07 (대표 결정 — "링크샵에 들어왔다면 수익이 생기게" · 진입=세션 귀속): 링크샵에 들어온 순간
+  //   주인(user_id)을 24h affiliate_ref 로 심는다 → 이후 방문자가 이 링크샵을 통해 뭘 사든(핀·이용권·쇼핑)
+  //   결제 시 referrer_id 로 전송돼 주인에게 커미션 귀속. 기존엔 '핀 클릭'만 귀속돼 링크샵 진입 자체는 무귀속이던
+  //   갭을 메움. storeAffiliateRef 가 본인(my user_id===ref)이면 자동 skip(자기 링크샵 진입은 무귀속) +
+  //   숫자 user_id 검증. 자기 상품 구매는 서버 self-seller 가드로 판매수익만(추천수수료 이중지급 방지).
+  useEffect(() => {
+    const cid = data?.curator?.id
+    if (!cid || isOwner) return
+    storeAffiliateRef(String(cid))
+  }, [data?.curator?.id, isOwner])
+
   useEffect(() => {
     if (!handle) return
     let alive = true
@@ -99,7 +114,7 @@ export default function CuratorPage() {
         const moved = (res as { new_handle?: string } | null)?.new_handle
         if (moved) { navigate(`/u/${moved}`, { replace: true }); return }
         if (!res || !res.success) {
-          setError(res?.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
+          setError(res?.error || t('curator.notFound', { defaultValue: '링크샵을 찾을 수 없어요' }))
           return
         }
         // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있어도 redirect X.
@@ -110,6 +125,16 @@ export default function CuratorPage() {
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [handle, t])
+
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: linked_seller 확인 즉시(SSR 시드 포함) 셀러 /public 페치 시작 —
+  //   SellerPublicPage 는 마운트 후 같은 in-flight 를 이어받음(seller-public-fetch 공유 모듈).
+  //   기존엔 [curator 응답 → lazy 청크 로드/마운트 → 그제서야 seller fetch] 완전 직렬 워터폴.
+  // 🚀 2026-07-11 (1-RTT): 서버가 linked_seller_public 을 동봉하면 fetch 자체가 불필요 → warm 스킵.
+  //   구캐시(필드 없는 edge 응답 최대 900s)/동봉 실패 시에만 기존 warm 폴백(점진 롤아웃 호환).
+  useEffect(() => {
+    const u = data?.linked_seller?.username
+    if (u && !data?.linked_seller_public) warmSellerPublic(u)
+  }, [data?.linked_seller?.username, data?.linked_seller_public])
 
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {
@@ -161,10 +186,10 @@ export default function CuratorPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '😢 링크샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
-        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#020202] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
+        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#0F151D] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
   }
@@ -181,9 +206,13 @@ export default function CuratorPage() {
         <BrandLoader fullScreen />
       }>
         {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
-            🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달.
+            ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5, 대표 "다 해줘"): pins 전달 재개 —
+            SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
+            "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} />
+        {/* 🚀 2026-07-11 (1-RTT): 서버 동봉 셀러 페이로드를 시드로 전달 — SellerPublicPage 가 동기 소비해
+            셀러 fetch 생략(없으면 기존 fetch 폴백). */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} ownerOverride={isOwner} sellerSeed={data.linked_seller_public ?? null} />
       </Suspense>
     )
   }
@@ -202,17 +231,17 @@ export default function CuratorPage() {
         title={`${curator.name} (@${curator.handle})의 링크샵`}
         description={curator.bio || `${curator.name} 님이 추천하는 ${pins.length}개의 상품`}
         url={`/u/${curator.handle}`}
-        image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+        image={`https://urdeal.kr/api/og/curator/${curator.handle}`}
       />
-      <div className="min-h-[100dvh] bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-28">
         {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.
             방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
-          <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-2 flex items-center justify-between gap-2">
+          <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0F151D]/85 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 py-2 flex items-center justify-between gap-2">
             <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">👁 {t('curator.ownerViewBar', { defaultValue: '내 링크샵 · 방문자에게 보이는 화면' })}</span>
             <button
               onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12px] font-bold active:scale-95 transition-transform"
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[12px] font-bold active:scale-95 transition-transform"
             >
               ✎ {t('curator.editButton', { defaultValue: '편집하기' })}
             </button>
@@ -238,7 +267,6 @@ export default function CuratorPage() {
         )}
         <CuratorHeader
           curator={curator}
-          pinCount={pins.length}
           isOwner={ownerView}
           accountType="user"
           onCopyLink={copyLink}
@@ -249,7 +277,7 @@ export default function CuratorPage() {
             기능(미리보기/순서/인라인 편집)은 전부 보존. design: docs/design/linkshop-edit-declutter.md */}
         {ownerView && pins.length > 0 && !reorderMode && (
           <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
               <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
                 <span className="text-[#6b7280] text-[13px] leading-none">✎</span>
                 {t('curator.editMode', { defaultValue: '편집 모드' })}
@@ -268,7 +296,7 @@ export default function CuratorPage() {
               >⚙ {t('curator.dashboardBtn', { defaultValue: '대시보드' })}</button>
               <button
                 onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
+                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#0F151D] active:opacity-80"
               >✓ {t('curator.done', { defaultValue: '완료' })}</button>
             </div>
           </div>
@@ -291,7 +319,7 @@ export default function CuratorPage() {
           <div className="max-w-3xl mx-auto px-4 pt-3">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{t('curator.reorderTitle', { defaultValue: '핀 순서 바꾸기' })}</span>
-              <button onClick={() => setReorderMode(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:opacity-80">{t('curator.done', { defaultValue: '완료' })}</button>
+              <button onClick={() => setReorderMode(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[12.5px] font-bold active:opacity-80">{t('curator.done', { defaultValue: '완료' })}</button>
             </div>
             <PinManageList
               pins={pins}
@@ -305,7 +333,7 @@ export default function CuratorPage() {
             {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
             {pins.length > 0 && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
-                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
+                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334]">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
                   <input
                     value={query}
@@ -583,7 +611,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
             <div
               key={pin.id}
               data-pinrow
-              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#1A2334] ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2A3446]'}`}
               style={{ opacity: dragging ? 0.92 : 1 }}
             >
               <span
@@ -594,7 +622,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
               >⋮⋮</span>
               {img
                 ? <img src={cfImage(img, { width: 100, format: 'auto' }) || img} alt="" className="w-[52px] h-[52px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
-                : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1A1A1A] shrink-0" />}
+                : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1A2334] shrink-0" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
@@ -604,7 +632,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
                   ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 적립 ₩{{amt}}/건', amt: est.toLocaleString('ko-KR') }) : ''}</div>
                   : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
               </div>
-              <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
+              <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
             </div>
           )
         })}
@@ -659,13 +687,13 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
           aria-hidden="true"
         >
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
-              <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1A1A1A]">
+            <div key={n} className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334]">
+              <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1A2334]">
                 <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>
               <div className="p-2.5">
-                <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1A1A1A]" />
-                <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1A1A1A] mt-2" />
+                <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1A2334]" />
+                <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1A2334] mt-2" />
                 <div className="mt-2 pl-2 border-l-2 border-[#6b7280]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
               </div>
             </div>
@@ -677,7 +705,7 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
           </div>
           <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
-          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold">{browseLabel}</Link>
+          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[14px] font-bold">{browseLabel}</Link>
         </div>
       </div>
     </div>

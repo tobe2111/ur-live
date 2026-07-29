@@ -328,6 +328,10 @@ export class KakaoAuthService {
           //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
           //   → 현재 값이 비었거나 카카오 CDN 출처일 때만 갱신(카카오 아바타 변경은 계속 동기화),
           //   커스텀 업로드는 보존. phone 의 COALESCE 보존 패턴과 동일 사상.
+          // 🛡️ 2026-07-12 (가입·탈퇴 감사 A): email 을 COALESCE(?, email) 로 보존 —
+          //   기존엔 매 로그인 email = ? 라 사용자가 카카오 이메일 동의를 **철회**하면
+          //   (kakaoUser.email=null) 기존 email 이 NULL 로 덮여 사라졌음(phone 은 이미 COALESCE 보존).
+          //   이메일을 실제로 바꾼 경우(non-null)는 그대로 갱신되므로 동기화는 유지.
           // 🛡️ 2026-06-24 (속도 최적화): email_verified 를 이 UPDATE 에 합침 — 기존엔
           //   아래에서 별도 UPDATE 1회를 더 날려 로그인마다 D1 왕복이 1번 더 들었음.
           //   기존 유저는 여기서 한 번에 갱신, 신규 유저만 INSERT 후 별도 UPDATE(아래 isNewUser 분기).
@@ -336,7 +340,7 @@ export class KakaoAuthService {
           await this.db.prepare(`
             UPDATE users
             SET name = ?,
-                email = ?,
+                email = COALESCE(?, email),
                 profile_image = CASE
                   WHEN profile_image IS NULL OR profile_image = ''
                        OR profile_image LIKE '%kakaocdn.net%' OR profile_image LIKE '%kakao.com%'
@@ -361,7 +365,7 @@ export class KakaoAuthService {
             await this.db.prepare(`
               UPDATE users
               SET name = ?,
-                  email = ?,
+                  email = COALESCE(?, email),
                   updated_at = datetime('now')
               WHERE id = ?
             `).bind(

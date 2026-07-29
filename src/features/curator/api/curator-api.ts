@@ -46,6 +46,8 @@ export interface CuratorProfile {
   youtube_url?: string | null
   instagram_url?: string | null
   tiktok_url?: string | null
+  /** ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
+  linkshop_show_recommend?: number
 }
 
 export interface CuratorPageResponse {
@@ -54,6 +56,9 @@ export interface CuratorPageResponse {
   pins: CuratorPin[]
   // 🛡️ 2026-05-25: linked seller — 있으면 셀러 공개페이지로 navigate (풍부 UI)
   linked_seller?: { id: number; username: string; name: string } | null
+  // 🚀 2026-07-11 (1-RTT): 서버가 동봉한 셀러 공개 페이로드(= /api/sellers/:id/public data) —
+  //   SellerPublicPage 가 시드로 동기 소비해 셀러 fetch 를 생략. 구캐시/실패 시 null(클라 폴백 fetch).
+  linked_seller_public?: Record<string, unknown> | null
   error?: string
 }
 

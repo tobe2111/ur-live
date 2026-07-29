@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-DB_NAME="${DB_NAME:-ur-live-db}"
+# DB 이름 SSOT: wrangler.toml:33 (database_name = "toss-live-commerce-db") — 정합 유지 필수
+DB_NAME="${DB_NAME:-toss-live-commerce-db}"
 BACKUP_DIR="${BACKUP_DIR:-./backups/d1}"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}-${TIMESTAMP}.sql"

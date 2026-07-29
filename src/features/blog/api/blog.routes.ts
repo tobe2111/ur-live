@@ -10,7 +10,8 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 import { swallow } from '@/worker/utils/swallow';
 import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
-import { blogSeedPosts } from './blog-seed';
+// 🥗 2026-07-15 워커 다이어트(대표 승인): blog-seed(임베드 블로그 글 ~62KB)는 syncBlogSeed 안에서만 쓰이므로
+//   정적 import → 동적 import 로 이동(guide-seed 와 동일 검증된 패턴). 시드 동기화 발생 시에만 로드 → 메인 워커 번들 축소.
 import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env }>()
 
@@ -20,7 +21,9 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 🔄 시드 콘텐츠 버전 — 아래 seedPosts 배열(글 내용)을 바꾸면 이 숫자를 +1 하세요.
 // 올리면 배포 후 첫 접근 시 라이브 DB 에 자동 재반영됩니다.
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
-const BLOG_SEED_VERSION = 4
+// 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
+// v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
+const BLOG_SEED_VERSION = 8
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
@@ -237,6 +240,7 @@ app.delete('/:id', async (c) => {
 const LEGACY_SEED_SLUGS = [
   'why-live-commerce', 'seller-start-guide', 'meal-voucher-business', 'agency-partnership',
   'live-auction-timedeal', 'friend-invite-group-buy', 'yourdeal-vs-others', 'review-reward-system',
+  'what-is-yourdeal',  // 2026-07-28 → 'what-is-urdeal' 로 리네임(브랜드/도메인 정합). 구 URL 은 worker 301.
   'deal-points-guide', 'seller-settlement-guide', 'live-broadcast-tips', 'consumer-shopping-guide',
   'seller-tier-system', 'supporter-ranking-system', 'voucher-how-to-use', 'influencer-live-commerce',
   'group-buy-success-tips', 'safe-payment-system', 'restaurant-map-guide', 'shorts-content-strategy',
@@ -245,6 +249,7 @@ const LEGACY_SEED_SLUGS = [
 // 시드↔DB 동기화: 신규 글 삽입 / 시드 관리 글 최신화 / 낡은 시드 글 비공개.
 // 관리자가 수정(manually_edited=1)하거나 직접 작성(is_seed=0)한 글은 절대 건드리지 않음.
 async function syncBlogSeed(DB: D1Database) {
+  const { blogSeedPosts } = await import('./blog-seed') // 🥗 동적 로드(위 import 주석 참조) — 시드 동기화 시에만
   const posts = blogSeedPosts()
 
   // 구 시드 글을 시드 관리 대상으로 표시(1회, 멱등) → 낡은 글 정리 가능하게

@@ -15,7 +15,7 @@ const authHeader = () => {
 
 interface Report { id: number; period_key: string; summary_json: string | null; advice_md: string | null; created_at: string }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
 
 export default function WeeklyReportPanel() {
   const [reports, setReports] = useState<Report[]>([])
@@ -47,7 +47,7 @@ export default function WeeklyReportPanel() {
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between">
         <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 주간 리포트 <span className="text-gray-400 dark:text-gray-500 font-medium">({reports.length})</span></div>
-        <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
+        <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
       </div>
       <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">매주 월요일 자동 생성 · 최근 7일 실적 기반 AI 진단(읽기 전용).</p>
 
@@ -58,7 +58,7 @@ export default function WeeklyReportPanel() {
       ) : (
         <div className="mt-2 space-y-1.5">
           {reports.map((rep) => (
-            <div key={rep.id} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A]">
+            <div key={rep.id} className="rounded-xl border border-gray-100 dark:border-[#2A3446]">
               <button onClick={() => setOpenId(openId === rep.id ? null : rep.id)} className="w-full flex items-center justify-between px-3 py-2 text-left">
                 <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">주간 리포트 · {rep.period_key}</span>
                 <span className="text-[10.5px] text-gray-400 dark:text-gray-500">{(rep.created_at || '').slice(0, 10)} {openId === rep.id ? '▴' : '▾'}</span>

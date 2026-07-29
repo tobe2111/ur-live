@@ -9,6 +9,10 @@ export const WHOLESALE_CODE_PREFIX: Record<string, string> = {
   food: 'FD',
   living: 'LV',
   health: 'HT',
+  // 🏥 2026-07-03 (의료용품 도매몰 신설): 의료기기 MD · 위생용품 SN · 간병용품 CR.
+  medical_device: 'MD',
+  hygiene: 'SN',
+  care: 'CR',
 };
 
 export function wholesaleCodePrefix(category?: string | null): string {

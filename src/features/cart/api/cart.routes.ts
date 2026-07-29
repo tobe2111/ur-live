@@ -47,7 +47,7 @@ cartRoutes.use(
   '*',
   cors({
     origin: [
-      'https://live.ur-team.com',
+      'https://urdeal.kr',
       'https://ur-live.pages.dev',
       'http://localhost:5173',
       'http://localhost:3000',

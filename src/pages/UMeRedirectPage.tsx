@@ -9,6 +9,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { curatorApi } from '@/features/curator/api/curator-api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function UMeRedirectPage() {
   const navigate = useNavigate()
@@ -68,9 +69,11 @@ export default function UMeRedirectPage() {
     return () => { alive = false }
   }, [navigate])
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 비브랜드 "⏳ 링크샵 로딩 중..." 텍스트 → BrandLoader.
+  //   목적지(/u/{handle} = CuratorPage)도 BrandLoader 라 위상동기로 한 로더처럼 이어짐.
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-      <div className="text-sm text-gray-500 dark:text-gray-400">⏳ 링크샵 로딩 중...</div>
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+      <BrandLoader fullScreen />
     </div>
   )
 }

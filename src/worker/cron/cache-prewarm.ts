@@ -22,12 +22,15 @@
  *   - KV write 한도 도달 시 prewarm 주기 줄이거나 (10-15분) endpoint 수 줄임
  */
 
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { logInfo, logError } from '../utils/logger';
 import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
 
 interface PrewarmEnv {
   FRONTEND_URL?: string;
   DB?: D1Database;
+  /** 🌍 2026-07-12: SSR 페이로드 전역(KV) 워밍 — 미바인딩이면 KV 단계 전부 skip(현행 동일). */
+  CACHE_KV?: KVNamespace;
 }
 
 /**
@@ -100,8 +103,28 @@ const HOT_PATHS: readonly string[] = [
  * fetch 는 자기 자신 (FRONTEND_URL) 을 호출 — Cloudflare Worker 의 sub-request 로 카운트.
  * 무료 plan 의 sub-request 한도 (50 req/invocation) 안에 안전히 들어옴.
  */
+// 🌍 2026-07-12 [UNLOCK_LOADING] (대표 "계속, 이상적으로" — 콜드 콜로 TTFB 마감): SSR 슬롯 페이로드의
+//   **전역(KV) 워밍**. caches.default 는 콜로별이라 cron prewarm 이 다른 지역 콜로에 안 미쳐, 콜드 콜로
+//   하드로드는 워커가 self-fetch(콜드 D1, 0.5~1.5s)를 기다린 뒤에야 HTML 을 보냈다(TTFB 실측 1.1~1.9s).
+//   KV 는 전역 복제라 어느 콜로든 ~수십 ms 에 페이로드 확보 → worker/index.ts SSR 읽기 경로가
+//   [edge miss → KV read → self-fetch] 순으로 소비.
+//   💰 비용 가드(무료 1K writes/day, CLAUDE.md KV 잠금 철학): **쓰기는 cron 전용 + 15분 표본화** —
+//   6키 × (5분 cron 중 매시 0/15/30/45분 창만) 96회/day = 576 writes/day < 1K. 읽기는 콜드-콜로
+//   edge-miss 시에만(무료 100K/day 대비 미미). CACHE_KV 미바인딩이면 전부 skip = 현행 100% 동일.
+const SSR_KV_PATHS: readonly string[] = [
+  '/api/group-buy/products?status=active&category=all',            // MAIN(홈)
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low',      // VOUCHERS
+  '/api/products?page=1&limit=20&exclude_deal_only=1',             // BROWSE
+  '/api/streams?status=live&limit=20',                             // LIVE
+  '/api/wholesale/catalog',                                        // WHOLESALE(guest)
+  '/api/blog/public?limit=100',                                    // BLOG
+];
+const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급 수준)
+
 export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
-  const baseUrl = env.FRONTEND_URL || 'https://live.ur-team.com';
+  const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
+  // 🌍 2026-07-12: KV 쓰기 표본화 창 — 5분 cron 중 매시 0/15/30/45분대 실행만 기록(576 writes/day < 1K 한도).
+  const kvWriteWindow = new Date().getMinutes() % 15 < 5;
 
   // 🏎️ 2026-06-19 (A: 카탈로그 행 근본수정): products 정규화를 읽기 경로에서 빼 cron 으로 이전.
   //   self-fetch(아래 HOT_PATHS) 보다 먼저 실행 → 정규화된 데이터로 캐시/ KV 워밍. 멱등·실패 무시.
@@ -133,6 +156,16 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
         } as RequestInit & { cf?: Record<string, unknown> });
         if (res.ok) {
           success++;
+          // 🌍 2026-07-12: SSR 슬롯 키만 전역(KV) 기록 — 15분 표본화(비용 가드, 위 SSR_KV_PATHS 주석).
+          if (kvWriteWindow && env.CACHE_KV && SSR_KV_PATHS.includes(path)) {
+            try {
+              const body = await res.text();
+              // JSON 성공 응답만 기록(에러/HTML 오염 방지) + 500KB 캡(KV value 한도/비용 방어)
+              if (body.startsWith('{') && body.includes('"success":true') && body.length < 500_000) {
+                await env.CACHE_KV.put(`ssr:${path}`, body, { expirationTtl: SSR_KV_TTL_S });
+              }
+            } catch { /* KV 실패 — edge/self-fetch 경로가 그대로 커버 */ }
+          }
         } else {
           failed++;
         }
@@ -149,7 +182,7 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   }
 
   // 🏭 2026-06-18 (전수조사 — 도매 카탈로그 cold/느림 근본원인): caches.default 는 요청 URL의 origin 으로
-  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=live.ur-team.com) origin 만 데우는데, 실제 도매 사용자는
+  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=urdeal.kr) origin 만 데우는데, 실제 도매 사용자는
   //   utongstart.com 호스트로 접속 → /catalog 핸들러의 early-match/put 키가 utongstart origin 이라
   //   prewarm 이 채운 live origin 캐시와 영영 불일치 → utongstart 도매몰은 prewarm 혜택 0(매 요청 cold D1).
   //   도매 전용 path 만 utongstart origin 으로도 한 번 더 데운다(additive, HOT 24+dynamic≈20+WS 5 ≈ 49 < 50).

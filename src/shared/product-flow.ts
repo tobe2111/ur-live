@@ -100,10 +100,14 @@ export function resolveProductFlow(product: ProductFlowInput) {
  * 🧭 2026-06-22: 상품의 정규(canonical) 상세 페이지 경로.
  *   /products/:id 직접 진입 시 종류에 맞는 페이지로 정렬하기 위한 라우팅 SSOT.
  *     - 교환권(deal_only=1)        → /vouchers/:id (딜 결제 전용 UI)
+ *     - 숙소(stay_voucher)         → /stays/:id (객실·날짜 예약 UI — 2026-07-20 신설, 아래 주석)
  *     - 공구(voucher 카테고리)       → /group-buy/:id (홈 피드/동네딜 리스트가 링크하는 정규 페이지)
  *     - 온라인 일반 상품             → null (/products/:id 가 이미 정규 → redirect 불요)
  *   ⚠️ group_buy_status 로 분류 금지(migration 0146 에서 모든 상품 DEFAULT 'active') —
  *      deal_only + isVoucherCategory SSOT 만 사용 (order-type.ts / voucher-categories.ts 와 동일 기준).
+ *   🏨 2026-07-20 (숙소 상세 SSOT — 대표 "더 이상적으로"): 숙소는 객실/날짜/예약이 있는 /stays/:id 가
+ *      정식 상세인데 홈 피드·지도가 일반 딜 상세로 보내 진입점마다 다른 상세가 뜨던 것 정규화.
+ *      stay_info 미보유 stay_voucher(안전판)는 StayDetailPage 가 /group-buy/:id 로 폴백(단방향 — 루프 0).
  */
 export function canonicalDetailPath(p: {
   id: string | number
@@ -111,6 +115,7 @@ export function canonicalDetailPath(p: {
   category?: string | null
 }): string | null {
   if (Number(p.deal_only) === 1) return FLOW_CONFIG.voucher_deal.detailPath(p.id)
+  if (p.category === 'stay_voucher') return `/stays/${p.id}`
   if (isVoucherCategory(p.category)) return FLOW_CONFIG.group_buy_toss.detailPath(p.id)
   return null
 }
