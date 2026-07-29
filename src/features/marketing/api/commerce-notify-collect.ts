@@ -12,6 +12,7 @@ import type { Env } from '@/worker/types/env'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
+import { redactServiceKey } from './license-url'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -157,6 +158,26 @@ function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) 
 /** 인터넷도메인 필드(크롤 관문 겸 **수동 접촉용 회사 사이트**). 이메일 형태는 제외. */
 function anyDomain(it: RawCommerce): string { for (const [k, v] of Object.entries(it)) { if (!/dmn|domain|url|site|hmpg|hompage|homepage/i.test(k)) continue; const s = stripTag(v); if (s && !s.includes('@') && DOMAIN_RE.test(s)) return s } return '' }
 
+/**
+ * 🩺 **비-JSON 응답을 읽을 수 있게 만든다** (2026-07-29 라이브 실측 후 수리).
+ *
+ *   원래는 `raw.slice(0,160)` **먼저** 자르고 태그를 지웠다. data.go.kr 오류 XML 은 선언부와 래퍼
+ *   태그만으로 그 길이를 넘기기 쉬워서, 남는 텍스트가 **반토막이거나 아예 빈 문자열**이 된다.
+ *   라이브가 정확히 그랬다 — 통신판매 레인의 진단이 `"비JSON 응답"` 한 마디뿐이라
+ *   **쿼터 초과인지 키 미등록인지 형태 문제인지 전혀 갈리지 않았다**(수집이 멈춘 채 원인 불명).
+ *
+ *   ⇒ 태그를 **먼저** 지우고 그 다음에 자른다. 본문이 비어 있으면 바이트 수라도 남긴다
+ *     (빈 응답 vs 태그만 있는 응답을 구분해야 처방이 갈린다).
+ *   ⚠️ 서비스키가 본문에 echo 되는 게이트웨이가 있어 **키는 가린다**(이 레포는 공개 저장소이고
+ *     이 문자열은 어드민 화면·인계 문서로 흘러간다).
+ */
+export function describeNonJson(raw: string, max = 200): string {
+  const body = String(raw || '')
+  const text = redactServiceKey(body).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!text) return `비JSON 응답(본문 ${body.length}B)`
+  return text.slice(0, max)
+}
+
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
@@ -166,7 +187,7 @@ async function fetchCommercePage(base: string, op: string, key: string, page: nu
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
-  if (!data) return { items: [], count: 0, msg: raw.slice(0, 160).replace(/<[^>]+>/g, ' ').trim() || '비JSON 응답' } // XML 오류(등록안됨 등) 그대로 노출
+  if (!data) return { items: [], count: 0, msg: describeNonJson(raw) } // XML 오류(등록안됨/쿼터초과 등) 그대로 노출
   const resp = (data.response ?? data) as Record<string, unknown>
   const header = resp.header as Record<string, unknown> | undefined
   const rc = header ? String(header.resultCode ?? '') : ''
