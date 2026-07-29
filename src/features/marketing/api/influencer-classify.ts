@@ -71,6 +71,39 @@ export function classifyCategory(name: string, description?: string | null): str
   return null
 }
 
+// 빈도 계산용 global 사본(모듈 로드 시 1회). 원본 RULES 는 첫-매치-승이라 `g` 를 붙이면 안 된다(lastIndex 오염).
+const RULES_G = RULES.map(r => ({ cat: r.cat, re: new RegExp(r.re.source, r.re.flags.replace(/g/g, '') + 'g') }))
+
+/**
+ * 🔢 **빈도 기반** 분류 — 글 본문처럼 **긴 텍스트 전용**.
+ *
+ * ## 왜 별도 함수인가
+ * `classifyCategory` 는 **첫 매치 승**이다. 이름·소개글처럼 짧고 밀도 높은 텍스트엔 맞지만,
+ * 글 본문 수천 자에 그대로 쓰면 **스치는 한 단어**가 카테고리를 결정한다
+ * (여행 후기에 나온 "카페" 한 번이 그 블로거를 카페 블로거로 만든다).
+ * 그래서 본문에는 ① 최소 반복 횟수를 요구하고 ② 가장 많이 걸린 규칙을 고른다.
+ *
+ * ⚠️ 호출부 규약: 이 값으로 **기존 판정을 덮지 말 것.** `classifyCategory` 가 null 일 때
+ *    (= 이름·소개글·제목 어디에도 신호가 없을 때)만 채우는 **폴백**으로 쓴다.
+ *    정밀도를 지키면서 재현율만 올리는 방향이고, 반대로 쓰면 조용히 오분류가 늘어난다.
+ */
+export function classifyCategoryByHits(text: string, minHits = 3): string | null {
+  if (!text || text.length < 80) return null   // 짧은 텍스트는 빈도 신호가 의미 없다 — 첫-매치 함수 몫
+  let best: { cat: string; hits: number } | null = null
+  for (const r of RULES_G) {
+    r.re.lastIndex = 0
+    let n = 0
+    for (;;) {
+      const prev = r.re.lastIndex
+      if (r.re.exec(text) === null) break
+      if (r.re.lastIndex === prev) r.re.lastIndex++   // 빈 매치 방어(무한루프 금지)
+      if (++n >= 200) break                            // 병적 입력 상한
+    }
+    if (n >= minHits && (!best || n > best.hits)) best = { cat: r.cat, hits: n }  // 동점은 RULES 순서(우선순위) 유지
+  }
+  return best?.cat || null
+}
+
 /** 저장 시점 최종 카테고리 — 콘텐츠 신호 우선, 없으면 키워드 카테고리(단 '자동'/'일반'은 null 로). */
 export function resolveCategory(name: string, description: string | null | undefined, keywordCat: string | null | undefined): string | null {
   const byContent = classifyCategory(name, description)

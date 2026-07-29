@@ -44,6 +44,8 @@ interface Lead {
   opted_out?: number | null                                       // 🚫 소개글에 제안 거부 명시 — 발송 큐 자동 제외
   last_post_at?: string | null // 📝 블로거 마지막 글 날짜(검색 postdate/RSS — 활동 신호)
   email_status?: string | null // 📬 Resend 웹훅(bounced/complained/opened) — 발송 큐 하드 필터에 사용
+  category_source?: string | null // 🏷️ 'content'=본문·소개글로 확인 · 그 외=발굴 키워드 상속(미확인)
+  perf_checked_at?: string | null // 📏 활동성 측정 시도 시각. NULL = 한 번도 안 잼(연락처·본문분류가 통째로 빔)
 }
 const CHANNELS: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
 function parseDraft(raw?: string | null): OutreachDraftData | null {
@@ -91,6 +93,9 @@ export default function AdminInfluencerPoolPage() {
   })
   // 📍 활동 지역 필터 — 수집 키워드 접두에서 캡처된 값(거주지 아님). 지역×업종으로 매칭 후보를 좁힌다.
   const [region, setRegion] = useState('')
+  const [catSource, setCatSource] = useState('')   // 🏷️ 분류 신뢰도(content/keyword) — 대표 4축 ② 작업 대상 특정용
+  const [measured, setMeasured] = useState('')     // 📏 측정 여부(1/0) — 대표 4축 ④ 백로그 가시화
+  const [optedOutOnly, setOptedOutOnly] = useState(false) // 🚫 거부 표시된 리드만 — 자동 태깅 오탐 검수용
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
@@ -117,6 +122,9 @@ export default function AdminInfluencerPoolPage() {
     if (hasInstagram) params.set('hasInstagram', '1')
     if (category) params.set('category', category)
     if (region) params.set('region', region)
+    if (catSource) params.set('catSource', catSource)
+    if (measured) params.set('measured', measured)
+    if (optedOutOnly) params.set('optedOutOnly', '1')
     if (tier) params.set('tier', tier)
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
@@ -127,7 +135,7 @@ export default function AdminInfluencerPoolPage() {
     if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, region, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, optedOutOnly, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -420,6 +428,9 @@ export default function AdminInfluencerPoolPage() {
           hasEmail={hasEmail} setHasEmail={setHasEmail}
           hasInstagram={hasInstagram} setHasInstagram={setHasInstagram}
           hasContact={hasContact} setHasContact={setHasContact}
+          catSource={catSource} setCatSource={setCatSource}
+          measured={measured} setMeasured={setMeasured}
+          optedOutOnly={optedOutOnly} setOptedOutOnly={setOptedOutOnly}
           hideNoise={hideNoise} setHideNoise={setHideNoise}
           brandOnly={brandOnly} setBrandOnly={setBrandOnly}
           inboundOnly={inboundOnly} setInboundOnly={setInboundOnly}
@@ -507,7 +518,16 @@ export default function AdminInfluencerPoolPage() {
                       {l.tiktok && <a href={`https://tiktok.com/@${l.tiktok}`} target="_blank" rel="noreferrer" className="block text-gray-700 hover:underline">TT @{l.tiktok}</a>}
                       {!l.instagram && !l.tiktok && <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2 text-xs text-gray-500">{l.category || '—'}</td>
+                    <td className="px-3 py-2 text-xs text-gray-500">
+                      {l.category || '—'}
+                      {/* 🏷️ 값만 보여주면 그게 확인된 건지 물려받은 건지 알 수 없다 — 실측 84%가 상속값이다. */}
+                      {l.category && l.category_source !== 'content' && (
+                        <span className="ml-1 text-amber-600" title="발굴 키워드에서 물려받은 값 — 본문으로 확인되지 않았다">⚠️</span>
+                      )}
+                      {!l.perf_checked_at && (
+                        <span className="ml-1 text-gray-400" title="아직 한 번도 측정하지 않음 — 연락처·본문분류가 비어 있는 게 정상이다">⏳</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
                         {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}

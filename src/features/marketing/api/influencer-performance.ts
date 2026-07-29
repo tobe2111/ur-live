@@ -9,10 +9,11 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
-import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
 // 🧩 순수 파서는 `influencer-parse.ts` — 기존 import 경로 호환을 위해 재수출.
-export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso } from './influencer-parse'
-import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount } from './influencer-parse'
+export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso,
+  avgStats, parseIsoDurationSec, SHORTS_MAX_SEC, medianOf, videoMetrics } from './influencer-parse'
+import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, deriveNaverRssSignals, videoMetrics, parseIsoDurationSec } from './influencer-parse'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
 import { platformSubreqCap } from './collect-budget'
@@ -59,53 +60,7 @@ export function correctedAboutEmail(aboutDesc: string | undefined, stored: strin
   return storedIsPersonal ? null : fresh // 이미 개인메일이면 안 건드림(처닝 방지), 아니면(대행사/NULL) 교정
 }
 
-// ── 순수 계산(테스트 가능) ──────────────────────────────────────────────────
-export function avgStats(videos: { views: number; comments: number }[]): { avgViews: number; avgComments: number } {
-  if (!videos.length) return { avgViews: 0, avgComments: 0 }
-  const s = videos.reduce((a, v) => ({ v: a.v + (v.views || 0), c: a.c + (v.comments || 0) }), { v: 0, c: 0 })
-  return { avgViews: Math.round(s.v / videos.length), avgComments: Math.round(s.c / videos.length) }
-}
-
-/** ISO-8601 duration(PT#H#M#S) → 초. 파싱 불가/빈값은 0(=길이 미상 → 롱폼 판정에서 제외). */
-export function parseIsoDurationSec(iso?: string | null): number {
-  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/i.exec(String(iso || '').trim())
-  if (!m) return 0
-  const [, d, h, mi, s] = m
-  const sec = (parseInt(d || '0', 10) * 86400) + (parseInt(h || '0', 10) * 3600) + (parseInt(mi || '0', 10) * 60) + Math.round(parseFloat(s || '0'))
-  return Number.isFinite(sec) ? sec : 0
-}
-
-/** 쇼츠 판정 임계(초) — 유튜브 쇼츠 최대 길이(3분) 기준. 이보다 길면 롱폼으로 본다. */
-export const SHORTS_MAX_SEC = 180
-
-/** 숫자 배열의 중앙값(정수 반올림). 빈 배열은 0. */
-export function medianOf(nums: number[]): number {
-  if (!nums.length) return 0
-  const a = [...nums].sort((x, y) => x - y)
-  const mid = a.length >> 1
-  return Math.round(a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2)
-}
-
-/**
- * 📈 채널 성과 지표(2026-07-27 개선) — 기존 '전체 평균 조회수'는 **쇼츠/롱폼 혼합 + 산술평균**이라
- *   쇼츠 몇 개가 터진 채널이 과대평가됐다(협찬 단가 오판). 롱폼만의 **중앙값**을 별도로 계산해
- *   실제 콘텐츠 도달력을 보수적으로 추정하고, 쇼츠 비중도 함께 노출한다.
- *   ⚠️ avgViews/avgComments 는 기존 표시·정렬 호환을 위해 그대로 유지(제거 아님).
- */
-export function videoMetrics(videos: { views: number; comments: number; durationSec?: number }[]): {
-  avgViews: number; avgComments: number; medianLongViews: number; shortsRatio: number
-} {
-  const { avgViews, avgComments } = avgStats(videos)
-  const withLen = videos.filter(v => (v.durationSec || 0) > 0)
-  const longs = withLen.filter(v => (v.durationSec || 0) > SHORTS_MAX_SEC)
-  const shorts = withLen.length - longs.length
-  return {
-    avgViews, avgComments,
-    // 길이를 못 잰 경우(전부 0초)엔 롱폼 중앙값을 0 으로 두고 호출부가 avg 로 폴백하게 한다.
-    medianLongViews: medianOf(longs.map(v => v.views || 0)),
-    shortsRatio: withLen.length ? Math.round((shorts / withLen.length) * 100) : 0,
-  }
-}
+// ── 순수 계산(비디오 지표)은 `influencer-parse.ts` 로 이사(2026-07-29 — 이 파일 600줄 캡) · 아래에서 재수출.
 
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
@@ -268,6 +223,16 @@ export interface NaverEnrichDiag {
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
+  /** 🎁 이미 받은 RSS 에서 **더 뽑은** 것(추가 fetch 0) — 2026-07-29 대표 4축(카테고리화·정보 최대 수집).
+   *  ⚠️ 이 환경에선 `rss.blog.naver.com` 이 프록시 차단이라 응답 실물을 못 봤다.
+   *     그래서 이 카운터들이 **필드 존재 여부의 판정 근거**다: 계속 0 이면 그 필드는 오지 않는 것이니
+   *     추측으로 파서를 더 손대지 말고 이 경로를 접을 것. */
+  rss_cat?: number     // `<category>`(블로거 자기분류)를 받은 행
+  rss_intro?: number   // 채널 `<description>`(블로그 소개글)을 받은 행
+  rss_emails?: number  // 그 소개글에서 **처음** 이메일을 얻은 행
+  cat_body?: number    // 글 본문 빈도로 **빈칸을** 채운 행(기존 분류 덮어쓰기 아님)
+  /** 🏠 홈 fetch 를 생략한 행(연락처 4종이 이미 다 차 있어 응답이 버려질 것) — 아낀 서브리퀘스트 수와 같다. */
+  home_skipped?: number
   /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
    *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
   query_error?: string
@@ -285,6 +250,26 @@ export interface NaverEnrichDiag {
  *   ④ **글 제목 → 카테고리 신호**: RSS 최근 글 제목을 description 꼬리(` | 글: …`)에 갱신 —
  *      야간 재분류가 실제 콘텐츠로 판정(검색 스니펫 1건 상속보다 정확).
  */
+/**
+ * 🏠 블로그 **홈 HTML 을 받을 가치가 있는가** — 순수 판정(테스트 가능).
+ *
+ * ## 왜
+ * 홈에서 얻는 건 넷뿐이고(이웃수·이메일·인스타·링크) **저장은 전부 빈칸 채움**이다
+ * (`COALESCE(email, ?)` · `CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ?`).
+ * 즉 넷이 이미 다 차 있으면 홈 응답은 **통째로 버려진다** — 그런데 서브리퀘스트는 소비된다.
+ *
+ * 서브리퀘스트가 이 파이프라인의 천장이다(라운드 실측 `spent 44/45` = 예산 소진으로 끝남).
+ * 버려질 fetch 하나를 안 쓰면 그 예산이 **아직 아무것도 없는 리드**에게 간다.
+ * 이건 추정이 아니라 저장 규칙에서 바로 따라 나오는 사실이라, 라운드 병목의 원인과 무관하게 맞다.
+ *
+ * ⚠️ 하나라도 비어 있으면 받는다 — 보수적으로. "이미 충분해 보인다"로 정보 수집을 줄이지 않는다.
+ */
+export function naverHomeUseful(r: {
+  email?: string | null; instagram?: string | null; links?: string | null; subscriber_count?: number | null
+}): boolean {
+  return !r.email || !r.instagram || !r.links || !((r.subscriber_count || 0) > 0)
+}
+
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
@@ -358,7 +343,10 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     //   라운드는 벽시계 20s 가 상한이라 직렬이면 **한 라운드에 1~2명**밖에 못 재고, cron 도 라운드를
     //   6회 예약해 놓고 2회에서 시간이 끝난다(라이브 실측: 라운드 13.8s / 9.1s 후 정지).
     //   병렬로 바꾸면 건당 상한이 8s — 같은 서브리퀘스트 수로 처리량이 배가 된다.
-    const wantHome = budget.left >= 2 // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다
+    // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다.
+    // + 홈이 **아무것도 못 채우는** 리드면 아예 안 받는다(아래 naverHomeUseful — 순수 낭비 제거).
+    const wantHome = budget.left >= 2 && naverHomeUseful(r)
+    if (!wantHome && budget.left >= 2) diag.home_skipped = (diag.home_skipped || 0) + 1
     budget.left -= wantHome ? 2 : 1
     const [rssXml, homeText] = await Promise.all([
       (async (): Promise<string | null> => {
@@ -386,18 +374,20 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     const sets: string[] = [`perf_checked_at = datetime('now')`]
     const binds: (string | number)[] = []
     let descForClass = r.description || '' // 🏷️ 재분류용 본문 — 아래에서 최신 글 제목으로 갱신되면 그 값을 쓴다
+    let rssIntro = ''   // 채널 소개글(본인 작성) — 연락처 보강에 **안전한** 유일한 RSS 출처
+    let rssBody = ''    // 글 본문 묶음 — **분류 전용**(남의 연락처가 섞임)
     if (rssXml !== null) {
       diag.measured++
       const pubDates = extractPubDates(rssXml)
       sets.push('recent_posts_30d = ?'); binds.push(countRecentPosts(pubDates, Date.now()))
       const newest = pubDates.map(d => Date.parse(d)).filter(Number.isFinite).sort((a, b) => b - a)[0]
       if (newest) { sets.push(`last_post_at = CASE WHEN last_post_at IS NULL OR last_post_at < ? THEN ? ELSE last_post_at END`); binds.push(...[new Date(newest).toISOString().slice(0, 10), new Date(newest).toISOString().slice(0, 10)]) }
-      const titles = extractRssTitles(rssXml)
-      if (titles.length) { // 글 제목 꼬리 갱신 — 기존 꼬리 제거 후 최신으로 교체(분류 신호 신선 유지)
-        const bare = stripVideoTitles(r.description || '').trim()
-        descForClass = `${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500)
-        sets.push('description = ?'); binds.push(descForClass)
-      }
+      // 🎁 같은 응답에서 뽑을 수 있는 걸 전부 뽑는다(추가 fetch 0) — 제목 + 블로거 자기분류 + 블로그 소개글 + 본문.
+      const sig = deriveNaverRssSignals(rssXml, r.description || '')
+      if (sig.cats.length) diag.rss_cat = (diag.rss_cat || 0) + 1
+      if (sig.intro) diag.rss_intro = (diag.rss_intro || 0) + 1
+      if (sig.description) { descForClass = sig.description; sets.push('description = ?'); binds.push(sig.description) }
+      rssIntro = sig.intro; rssBody = sig.body
     }
     let emailAfter = r.email
     let instaAfter = r.instagram
@@ -434,7 +424,19 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     //   유튜브 경로는 이미 About 으로 재분류하는데(reconcileCategory) 네이버만 빠져 있었다.
     //   방금 받은 최신 글 제목이 블로거가 실제로 쓰는 주제라 키워드 상속보다 훨씬 정직한 신호다.
     //   ⚠️ live 가 null 이면 기존 값을 유지한다(reconcile 규칙 동일) — 못 알아본 것을 '없음'으로 덮지 않는다.
-    const liveCat = classifyCategory(r.name || '', descForClass)
+    // 📇 홈에서 못 얻은 것만 **블로그 소개글**로 보강 — 추가 fetch 0(이미 받은 RSS).
+    //   ⚠️ 소개글은 본인이 쓴 프로필이라 홈 프로필과 신뢰도가 같다. 글 본문(rssBody)은 **쓰지 않는다** —
+    //      협찬 문의처·업체 정보 등 남의 연락처가 섞여 발송 대상이 오염된다.
+    if (rssIntro && (!emailAfter || !instaAfter)) {
+      const biz = !emailAfter ? pickBusinessEmail(rssIntro) : null
+      const ig = !instaAfter ? extractContacts(rssIntro).instagram[0] : null
+      if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = biz; diag.emails = (diag.emails || 0) + 1; diag.rss_emails = (diag.rss_emails || 0) + 1 }
+      if (ig) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(ig); instaAfter = ig }
+      if (biz || ig) diag.contacts++
+    }
+    let liveCat = classifyCategory(r.name || '', descForClass)
+    // 🔢 이름·소개글·제목 어디에도 신호가 없을 때만 **글 본문 빈도**로 폴백(덮어쓰기 아님 — 빈칸 채움).
+    if (!liveCat && rssBody) { liveCat = classifyCategoryByHits(rssBody); if (liveCat) diag.cat_body = (diag.cat_body || 0) + 1 }
     if (liveCat && !NON_CATEGORIES.has(liveCat)) {
       const finalCat = reconcileCategory(r.category, liveCat, null)
       if (finalCat) { sets.push('category = ?', `category_source = 'content'`); binds.push(finalCat) }

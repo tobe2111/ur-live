@@ -7,9 +7,15 @@ import { cronErrorCode, summarizeResult } from '@/worker/utils/cron-heartbeat'
  *   06:00 회차에 ur-ads 4개 레인이 **동시에** `ok:false` 로 죽었는데 어드민에는 `result: null` 뿐이었다.
  *   전부 2~6초 만에 끝난 초기 사망인데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
  *
- *   ⚠️ 핵심 함정: `summarizeResult` 는 **24자 초과 문자열을 버린다**.
- *   `Too many subrequests by single Worker invocation`(47자)을 그대로 넘기면 통째로 사라진다 —
- *   그래서 호출부(worker-ads `errCode`)가 짧은 분류 코드로 줄인다. 이 테스트는 그 계약을 잠근다.
+ *   ⚠️ 원래 함정: `summarizeResult` 가 **24자 초과 문자열을 버렸다**.
+ *   `Too many subrequests by single Worker invocation`(47자)을 그대로 넘기면 통째로 사라졌고,
+ *   그래서 호출부가 짧은 분류 코드(`cronErrorCode`)로 줄이는 계약이 생겼다.
+ *
+ *   ✂️ **같은 날 그 드롭 자체를 없앴다**(자르되 버리지 않는다). 두 세션이 같은 갭을 각자 만나
+ *   한쪽은 '호출부가 줄인다', 다른 쪽은 '요약기가 안 버린다'로 고쳤고 — **둘 다 남긴다**:
+ *   원문 보존과 정규화 코드는 다른 일이다(코드는 집계·자동대응용, 원문은 사람이 읽는 용).
+ *   실제로 이 병합이 아니었으면 main 의 새 드라이버 하트비트(`error` 를 120자로 잘라 넘긴다)가
+ *   **그 24자 규칙에 걸려 또 사라졌을 것**이다.
  */
 describe('cronErrorCode — 실패를 짧은 분류 코드로', () => {
   it('🔒 서브리퀘스트 한도는 limit — AIMD 가 반응해야 하는 유일한 신호', () => {
@@ -35,10 +41,12 @@ describe('summarizeResult — 실패 사유가 실제로 남는가', () => {
     expect(summarizeResult({ err: 'TypeError' })).toBe('err=TypeError')
   })
 
-  it('🐛 원문 그대로는 24자 제한에 걸려 사라진다 — 그래서 코드로 줄여야 한다', () => {
+  it('🔒 원문도 이제는 사라지지 않는다 — 버리지 말고 자른다', () => {
     const raw = 'Too many subrequests by single Worker invocation'
     expect(raw.length).toBeGreaterThan(24)
-    expect(summarizeResult({ err: raw })).toBeNull() // 이 동작이 바뀌면 호출부 전제가 깨진다
+    const out = summarizeResult({ err: raw })
+    expect(out).toBeTruthy()
+    expect(out).toContain('Too many subrequests')   // 사람이 읽고 판단할 만큼은 남는다
   })
 
   it('성공 회차(undefined)는 요약을 만들지 않는다', () => {

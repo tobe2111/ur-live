@@ -15,6 +15,7 @@
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
+import { stripVideoTitles } from './influencer-parse'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
@@ -66,8 +67,10 @@ const uniqLower = (arr: string[]): string[] => Array.from(new Set(arr.map(s => s
 const PLATFORM_LABEL_LOCAL_RE = /^(insta|instagram|ig|tiktok|틱톡|인스타|인스타그램|youtube|yt|facebook|fb|twitter|threads|telegram|텔레그램|kakao|kakaotalk|카톡|x)$/i // 🛡️ F-01: "insta @sunny.day"→insta@sunny.day 가짜 이메일 날조 차단(로컬파트=플랫폼 라벨이면 "라벨+@핸들" 표기)
 export const isPlatformLabelEmail = (e: string): boolean => PLATFORM_LABEL_LOCAL_RE.test(e.split('@')[0] || '')
 
-/** 🏷️ 영상 제목 세그먼트(" | 영상: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지(제목=분류 전용). */
-export const stripVideoTitles = (s: string): string => String(s || '').replace(/\s\|\s(?:영상|글):[\s\S]*$/, '')
+/** 🏷️ 분류 전용 꼬리(" | 영상/글/소개/분류: …") 제거 — 컨택 재추출/해시태그 마이닝의 타인 핸들·캠페인 태그 오수집 방지.
+ *  구현은 순수 파서(`influencer-parse.ts`)로 이사했다(붙이는 쪽 `buildNaverDescription` 과 한 파일에 둬야 마커가 안 어긋난다).
+ *  기존 import 경로를 깨지 않으려고 여기서 재수출한다(import 는 파일 상단 — 중간 import 금지 룰). */
+export { stripVideoTitles }
 
 // 🧹 노이즈 판별 — 개인 인플루언서가 아닌 게 거의 확실한 계정(뉴스·방송·기관·체험단모집·마케팅대행).
 //   보수적(오탐 최소) — bare 체험단/서포터즈/대행사 는 정상 창작자(협찬 환영·"대행사 아님") 오제외라 '…모집'·부정문만 노이즈.

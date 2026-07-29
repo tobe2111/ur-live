@@ -242,6 +242,23 @@ describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
   it('드라이버가 두 개 다 분리 헬퍼를 쓴다(검사 대상 존재 확인)', () => {
     expect((src.match(/dispatchRoundChain\(/g) || []).length).toBeGreaterThanOrEqual(3)
   })
+
+  /**
+   * 🔎 **부분 실행이 조용히 성공으로 보이지 않는가** (2026-07-29 라이브 실측 후 추가).
+   *
+   * 10:00 틱 기록: `ads:enrich-influencer-driver · ok:true · ms:18,615`. 12라운드를 계획했는데
+   * 라운드 1회가 실측 16초니 **한 라운드밖에 못 돈 것**이다. 그런데 `ok:true` 라 화면상 정상이었고,
+   * 왜 멈췄는지는 어디에도 없었다. 이 레포가 반복해 만난 형태 — 실패가 아니라 **조용한 부분 실행**.
+   *
+   * ⚠️ 지금 구현은 self-chain(라운드마다 새 인보케이션)이라 depth 0 이 "몇 라운드 돌았는지"를 알 수 없다.
+   *    대신 `planned`(계획) 와 `chained`(다음 라운드를 낳았는가) 로 판정한다 — 계획이 12인데
+   *    `chained=false` 면 그 자리에서 끊긴 것이고, `error` 가 그 이유다.
+   */
+  it('체인 결과(planned/chained/error)를 하트비트에 남긴다 — 부분 실행을 조용히 넘기지 않는다', () => {
+    const beat = /async function driverBeat\([\s\S]{0,700}?\n\}/.exec(src)?.[0] || ''
+    expect(beat).toMatch(/recordCronBeat\(/)
+    for (const k of ['planned', 'chained', 'error']) expect(beat).toContain(k)
+  })
 })
 
 /**

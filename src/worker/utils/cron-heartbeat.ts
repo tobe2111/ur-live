@@ -24,17 +24,15 @@ import type { Env } from '../types/env'
 import { findNeverFired, type NeverFiredEntry } from './cron-expected'
 
 /**
- * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
- * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
- */
-/**
  * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
  *
- *   왜 필요한가: 아래 `summarizeResult` 는 **24자 초과 문자열을 버린다**. 실패 원문
- *   (`Too many subrequests by single Worker invocation` = 47자)을 그대로 넘기면 통째로 사라져
- *   어드민에는 `result: null` 만 남는다 — 실제로 2026-07-29 에 ur-ads 4개 레인이 동시에
- *   `ok:false` 로 죽었는데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
- *   한도/타임아웃 구분이면 다음 행동을 정하기에 충분하고, 전체 원문은 Discord 통지에 실린다.
+ *   원래 이 함수가 생긴 이유는 아래 `summarizeResult` 가 **24자 초과 문자열을 버렸기** 때문이다
+ *   (`Too many subrequests by single Worker invocation` = 47자 → 통째로 증발). 2026-07-29 에
+ *   ur-ads 4개 레인이 동시에 `ok:false` 로 죽었는데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
+ *
+ *   ⚠️ 같은 날 **그 24자 드롭 자체를 없앴다**(아래 ✂️ 주석 — 자르되 버리지 않는다). 그래도 이 함수는 유지한다:
+ *   원문을 남기는 것과 **정규화된 코드로 분류**하는 것은 다른 일이다. `limit`/`timeout` 은 다음 행동
+ *   (AIMD 감속 / 타임아웃 조정)을 바로 정해주고, 원문은 문구가 바뀌면 집계가 깨진다. 둘 다 남긴다.
  */
 export function cronErrorCode(e: unknown): string {
   const msg = String((e as { message?: string } | null)?.message || e || '')
@@ -45,15 +43,20 @@ export function cronErrorCode(e: unknown): string {
 }
 
 /**
- * 결과 요약(순수 — 유닛 잠금). ⚠️ **24자 초과 문자열은 버린다** — `cronErrorCode`(위)가 존재하는 이유가
- *   이 제한이다. 제한을 바꾸려면 그 함수와 유닛(ads-cron-beat-errcode)을 함께 보라.
+ * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·문자열만 추린다
+ * (배열은 길이만, 중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ * 유닛으로 고정하려고 export 한다 — **값이 조용히 사라지는 사고**를 실제로 겪었다(아래 ✂️ 주석).
  */
 export function summarizeResult(v: unknown): string | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
     if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
-    else if (typeof val === 'string' && val.length <= 24) parts.push(`${k}=${val}`)
+    // ✂️ 2026-07-29: 예전엔 24자를 넘는 문자열을 **통째로 버렸다.** 그런데 길어지는 문자열은 대개
+    //   `error` 다 — 즉 **가장 알고 싶은 값이 정확히 그 이유로 사라졌다**(라운드 체인이 왜 멈췄는지가
+    //   `round2: Error: Too many subrequests` 처럼 24자를 넘어 기록에서 증발). 버리지 말고 자른다.
+    //   전체는 어차피 MAX_NOTE 로 묶여 있어 '한 줄 요약'이라는 성격은 그대로다.
+    else if (typeof val === 'string' && val) parts.push(`${k}=${val.length <= 72 ? val : `${val.slice(0, 71)}…`}`)
     else if (Array.isArray(val)) parts.push(`${k}[${val.length}]`)
     if (parts.join(' ').length > MAX_NOTE) break
   }
