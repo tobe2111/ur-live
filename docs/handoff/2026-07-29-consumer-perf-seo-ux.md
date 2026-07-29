@@ -115,6 +115,15 @@ done
 ⚠️ **Pages 프리뷰로는 검증할 수 없다** — `*.pages.dev` 를 이 환경의 이그레스 정책이 403 으로 막는다
 (시도했고 막혔다. 다시 시도하지 말 것). 배포 후 위 curl 이 유일한 판정이다.
 
+### 🔭 머지하며 본 것 — 다음 세션 참고
+
+main 이 `src/worker/utils/mall-ssr-meta.ts`(`buildMallMeta`)를 새로 넣었다. **메타를 만들기만** 하고
+`worker/index.ts` 에는 아직 배선돼 있지 않다(grep 0). 나중에 배선할 때는 `.on()` 체인을 새로 쓰지 말고
+**`surface-ssr-meta.applySurfaceMeta` 를 재사용할 것** — 이 PR 이 상세 4벌의 복붙을 그 하나로 합쳤고,
+noindex·jsonLd·ogImage 를 이미 지원한다. 체인이 또 늘면 같은 복붙이 다시 시작된다.
+(⚠️ 이 세션에서 `influencer-keyword-store.ts` 를 양쪽이 각자 만들어 충돌한 전례가 있다 — 새 헬퍼를
+만들기 전에 `git log origin/main -- <경로>` 로 main 이 이미 만들었는지 먼저 볼 것.)
+
 ### 📋 남은 항목 (대표 판단 / 다음 세션)
 
 1. **표에 아직 없는 소비자 표면** — `/area-report`(지역별 동적 제목이라 정적 표에 안 맞음) ·
