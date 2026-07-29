@@ -2488,7 +2488,8 @@
       "promoSpend": "プロモ支出",
       "influencerDeals": "インフル協業",
       "experienceCampaigns": "体験キャンペーン",
-      "myLinkshop": "マイリンクショップ"
+      "myLinkshop": "マイリンクショップ",
+      "reviewVerifications": "レビュー確認"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3060,6 +3061,26 @@
       "drawPrompt": "抽選人数（募集 {{slots}}名）",
       "drawConfirm": "抽選を実行します。当選者に0円体験券が自動発行されます。\n（公正抽選 — シード・プール・結果が永久記録され、取り消せません。）",
       "drawDone": "抽選完了 — 応募{{pool}}名中{{winners}}名当選、体験券{{issued}}件発行"
+    },
+    "reviewVerify": {
+      "title": "カカオマップ レビュー確認",
+      "subtitle": "利用券を使ったお客様が投稿したカカオマップのレビューを確認してください。承認するとお客様にボーナスディール＋レビュアーレベルのポイントが付与されます。",
+      "tabPending": "確認待ち",
+      "tabPaid": "支給済み",
+      "tabRejected": "却下",
+      "empty": "履歴がありません",
+      "emptyPending": "確認待ちのレビュー認証はありません",
+      "approve": "確認（ボーナス支給）",
+      "reject": "却下",
+      "rejectConfirm": "却下を確定",
+      "reasonPlaceholder": "却下理由（お客様に送信されます）",
+      "reasonRequired": "却下理由を入力してください",
+      "approvedToast": "確認完了 — お客様にボーナスとレビューポイントを支給しました",
+      "rejectedToast": "却下しました",
+      "ocrPassed": "自動検証パス（参考）",
+      "openReview": "認証を見る",
+      "footNote": "ボーナスは評価や内容に関係なく、来店認証に対して支給されます。運営チームが承認内容をサンプリング監査する場合があります。",
+      "loadError": "リストを読み込めませんでした"
     }
   },
   "admin": {

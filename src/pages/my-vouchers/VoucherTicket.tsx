@@ -210,7 +210,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                   {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
                 </button>
               )}
-              {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} />}
+              {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
             </div>
           )}
         </>

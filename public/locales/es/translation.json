@@ -1793,7 +1793,8 @@
       "promoSpend": "Gasto promo",
       "influencerDeals": "Colabs influencers",
       "experienceCampaigns": "Campañas de prueba",
-      "myLinkshop": "Mi Linkshop"
+      "myLinkshop": "Mi Linkshop",
+      "reviewVerifications": "Verificar reseñas"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2381,6 +2382,26 @@
       "drawPrompt": "Número a seleccionar (plazas: {{slots}})",
       "drawConfirm": "¿Ejecutar el sorteo? Los ganadores recibirán automáticamente un cupón de ₩0.\n(Sorteo justo — semilla, lista y resultados quedan registrados permanentemente y no se puede deshacer.)",
       "drawDone": "Sorteo completado — {{winners}} seleccionados de {{pool}} inscritos, {{issued}} cupones emitidos"
+    },
+    "reviewVerify": {
+      "title": "Verificación de reseñas de Kakao Map",
+      "subtitle": "Verifica las reseñas de Kakao Map enviadas por clientes que usaron un vale. Al aprobar, el cliente recibe deals de bono + puntos de nivel de reseñador.",
+      "tabPending": "Pendientes",
+      "tabPaid": "Pagadas",
+      "tabRejected": "Rechazadas",
+      "empty": "Sin registros",
+      "emptyPending": "No hay verificaciones de reseñas pendientes",
+      "approve": "Confirmar (pagar bono)",
+      "reject": "Rechazar",
+      "rejectConfirm": "Confirmar rechazo",
+      "reasonPlaceholder": "Motivo del rechazo (se envía al cliente)",
+      "reasonRequired": "Ingresa el motivo del rechazo",
+      "approvedToast": "Confirmado — bono y puntos enviados al cliente",
+      "rejectedToast": "Rechazado",
+      "ocrPassed": "Verificación automática superada (referencia)",
+      "openReview": "Ver comprobante",
+      "footNote": "Los bonos se pagan por la verificación de visita, sin importar la calificación o el contenido. El equipo de operaciones puede auditar por muestreo.",
+      "loadError": "No se pudo cargar la lista"
     }
   },
   "admin": {
