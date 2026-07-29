@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Check, X, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+// 🔗 2026-07-03 매장 사용 직후(또 하나의 뜨거운 순간) 셀러 전환 넛지 재사용 — 자기완결·자기게이트
+import SellerConversionNudge from '@/pages/payment-success/SellerConversionNudge'
 
 /**
  * 🎟️ 2026-06-20 (대표 — 사용처리 "카운터는 신뢰로 통과"): 소비자 셀프 사용처리 + 라이브 사용완료 화면.
@@ -188,6 +190,12 @@ export default function VoucherRedeemModal({
             >
               🗺️ 카카오맵에 후기 남기기
             </a>
+
+            {/* 🔗 2026-07-03 매장에서 방금 잘 쓴 직후 = 전환 최적 순간. 결제완료 화면과 동일 넛지 재사용
+                (자기게이트: 셀러/데모/비로그인/이미 닫음 미노출 — 같은 DISMISS_KEY 공유). */}
+            <div className="text-left">
+              <SellerConversionNudge />
+            </div>
           </div>
         )}
 
