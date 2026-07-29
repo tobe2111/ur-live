@@ -21,7 +21,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
+import { capAfterAbandonedRun, nextSubreqCap } from '@/features/marketing/api/collect-budget'
 import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
@@ -67,9 +67,9 @@ describe('레인 수명 — 작업은 응답 전에 끝낸다', () => {
  *   상한이 **오히려 올라간다**(회복 +2). 그러면 다음 회차도 같은 자리에서 죽는다 — 닫힌 고리다.
  *   실측 11:00: `spent 40/40 · learned_cap 44 · limit_hit false` 인데 마감 기록이 없었다.
  */
-describe('capAfterAbandonedRun — 유기된 회차의 하향', () => {
-  it('직전 회차가 유기됐으면 상한을 내린다', () => {
-    expect(capAfterAbandonedRun(44, 300, 60)).toBe(35) // floor(44 * 0.8)
+describe('capAfterAbandonedRun — 유기된 회차의 하향(가산)', () => {
+  it('직전 회차가 유기됐으면 상한을 내린다 — **가산** −4', () => {
+    expect(capAfterAbandonedRun(44, 300, 60)).toBe(40)
   })
 
   it('바닥(SUBREQ_CAP_MIN) 아래로는 안 내려간다 — 수확 0 이 되면 학습 자체가 무의미', () => {
@@ -78,15 +78,40 @@ describe('capAfterAbandonedRun — 유기된 회차의 하향', () => {
   })
 
   it('학습값이 없으면(0) 천장 기준으로 내린다 — 무근거로 천장을 그대로 쓰지 않는다', () => {
-    expect(capAfterAbandonedRun(0, 300, 60)).toBe(48) // floor(60 * 0.8)
+    expect(capAfterAbandonedRun(0, 300, 60)).toBe(56)
   })
 
   it('천장을 넘게 드리프트한 학습값도 천장 기준으로 깎는다', () => {
-    expect(capAfterAbandonedRun(172, 300, 60)).toBe(48)
+    expect(capAfterAbandonedRun(172, 300, 60)).toBe(56)
   })
 
   it('env 예산이 천장보다 작으면 그쪽이 기준이다', () => {
-    expect(capAfterAbandonedRun(100, 40, 60)).toBe(32) // floor(40 * 0.8)
+    expect(capAfterAbandonedRun(100, 40, 60)).toBe(36)
+  })
+
+  /**
+   * 🩹 **2026-07-29 실측이 만든 검사** — 하향이 승수(×0.8)일 때 라이브에서 벌어진 일:
+   *   | 시각 | learned_cap | limit_hit |
+   *   |---|---|---|
+   *   | 09:00 | 44 | false |
+   *   | 12:00 | 36 | false |
+   *   | 13:00 | 32 | false |
+   *   | 14:00 | **27** | false |
+   *   한도를 한 번도 안 봤는데 5시간에 **−39%**. 원인: lease 반납은 D1 쓰기이고 `.catch(() => null)` 이라
+   *   **예산이 바닥난 회차에선 조용히 실패**한다 — 하필 상한에 닿았을 때 항상 그렇다. 그래서 '유기' 오탐이
+   *   상시가 됐고, 거기에 −20% 를 곱했다. 회복은 +2 라 절대 못 따라잡는다(44 에서 −8.8 vs +2).
+   *   ⇒ 불확실한 신호에는 **가산 하향**. 조건이 지속돼도 자유낙하가 아니라 회차당 순 −2 다.
+   */
+  it('🔒 오탐이 상시여도 자유낙하하지 않는다 — 회복(+2)과 같은 축의 하향', () => {
+    // 하향 −4 와 회복 +2 가 매 회차 함께 걸리면 순 −2. 승수였다면 같은 5회차에 44 → 27 이었다.
+    let cap = 44
+    for (let i = 0; i < 5; i++) cap = Math.min(60, capAfterAbandonedRun(cap, 300, 60) + 2)
+    expect(cap).toBe(34)          // 44 − 2×5 = 34 (선형)
+    expect(cap).toBeGreaterThan(27) // 승수 시절의 5회차 실측값보다 확실히 높다
+  })
+
+  it('🔒 확실한 신호(한도 충돌)의 하향은 여전히 승수다 — 두 신호를 같은 축으로 뭉개지 않는다', () => {
+    expect(nextSubreqCap(45, true, 44, 300, 60)).toBe(36) // floor(45 * 0.8)
   })
 })
 
@@ -369,15 +394,14 @@ describe('보강 레인 — 라운드마다 선두 교대', () => {
   const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
 
   /**
-   * ⚠️ **depth 0 이 블로거 선두여야 한다**(14:00 실측). 처음엔 홀수를 선두로 썼는데,
-   *   체인이 안 이어진 틱(`depth: 0`)에서는 라운드가 하나뿐이라 블로거가 또 굶었다.
-   *   체인 생존은 틱마다 다르다(13:00 depth 2 · 14:00 depth 0) — 있을 때만 되는 처방은 처방이 아니다.
+   * 🔁 **선두 조건 자체는 여기서 고정하지 않는다** — `ads-influencer-enrich-lane.test.ts` 가 SSOT.
+   *
+   *   나는 같은 14:00 실측(`depth: 0` 인 틱에서 블로거가 또 굶음)을 보고 `depth % 2 === 0` 으로
+   *   뒤집으려 했는데, **다른 세션의 `depth % 2 === 1 || starvedLastRound(prev)` 가 더 낫다**:
+   *   내 판은 체인이 계속 안 이어지면 이번엔 **앞 레인(링크인바이오·YT)이 영구히** 굶는다 —
+   *   굶는 쪽을 바꿨을 뿐 굶주림 자체는 그대로다. 저쪽은 결정적 교대 + 자기교정이라 양쪽을 다 살린다.
+   *   ⇒ 조건을 두 파일에서 각각 고정하면 서로를 되돌리는 싸움이 된다. 여기서는 **분기의 성질**만 본다.
    */
-  it('라운드가 하나뿐이어도(depth 0) 블로거가 선두다', () => {
-    expect(lane).toMatch(/const naverFirst = depth % 2 === 0/)
-    expect(lane, '홀수 선두는 단일 라운드 틱에서 블로거를 굶긴다').not.toMatch(/naverFirst = depth % 2 === 1/)
-  })
-
   it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
     const branch = /if \(naverFirst\) \{[\s\S]{0,300}?\n  \} else \{/.exec(lane)?.[0] || ''
     expect(branch, 'naverFirst 분기를 못 찾았다').toBeTruthy()

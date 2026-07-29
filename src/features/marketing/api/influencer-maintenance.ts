@@ -14,6 +14,8 @@ import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS }
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 import { healNaverHandles } from './influencer-handle-heal'
+// 📍 지역 백필 — 여기(정비 인보케이션)가 제자리다. 근거는 `sweepRegions` 주석.
+import { backfillRegions, recheckBlankRegions } from './influencer-region'
 
 const POOL = 0
 
@@ -245,6 +247,47 @@ const PHASE_LEASE_TTL_MS = 3 * 60_000
 const RESERVE_OPS = 6
 
 /**
+ * 📍 **지역 백필 스윕** — `region` 이 비어 있는 행을 `source_keyword` 에서 채운다(외부 호출 0, D1 전용).
+ *
+ *   ## 왜 여기(정비)로 옮겼나 — 라이브 실측 2026-07-29
+ *   | 지역 판정 | 인원 | 비중 |
+ *   |---|---|---|
+ *   | 값 있음 | **282** | **0.7%** |
+ *   | 지역 없는 키워드로 확정(`''`) | 1,808 | 4.6% |
+ *   | **미판정(NULL)** | **37,075** | **94.7%** |
+ *
+ *   `강남 맛집` 한 키워드로만 741명을 모았는데 어드민에서 `region=강남` 을 고르면 **0명**이 나온다.
+ *   유어딜 동네딜은 지역×업종 매칭이 본질이라, 그 축이 사실상 없는 상태였다.
+ *
+ *   ❗ **처음엔 "예산 고갈로 백필이 굶는다"고 읽었는데 틀렸다.** 채워진 2,090건(=filled+none)이
+ *   정확히 5회차 × 400 이라, 백필은 **정상 동작 중이고 단지 느렸다**(회차당 400행 → 37,075건에 약 3.9일).
+ *   ⇒ 고칠 것은 "고장"이 아니라 **자리와 크기**다.
+ *
+ *   자리: 그전엔 수집 인보케이션의 **꼬리**에 있었다. 그 지점은 발굴이 예산을 다 쓴 뒤라 크게 못 늘린다.
+ *   반면 `reextract` 단계는 전수 36,880행을 훑고 `filled: 0` — **할 일이 없는데 자기 인보케이션
+ *   (fresh 예산)을 통째로 갖고 있었다.** 둘을 맞바꾼다.
+ *   크기: 한 청크(500행)가 [SELECT 1 + batch 5] ≈ 6 ops 라, 남은 예산이 허락하는 만큼 반복한다.
+ *
+ *   ⚠️ 커서가 없어도 된다 — 처리된 행은 값이 `NULL` 이 아니게 되므로 다음 청크가 자연히 다음 구간을 잡는다.
+ *   ⚠️ **한 곳에서만 돈다** — 수집 꼬리의 호출은 같은 커밋에서 제거했다(두 벌로 두면 조용히 갈라진다).
+ *   ⚠️ 정비를 끄면(`ADS_AUTO_MAINTENANCE_ENABLED='false'`) 지역 백필도 함께 멈춘다.
+ */
+export async function sweepRegions(DB: D1Database, budget: OpBudget): Promise<{ filled: number; chunks: number; done: boolean }> {
+  // 규칙 버전이 올랐을 때만 1회 — 그 외엔 조회 1번으로 즉시 반환(멱등).
+  try { await recheckBlankRegions(DB, POOL) } catch { /* 다음 회차가 재시도 */ }
+  let filled = 0, chunks = 0, done = false
+  // 청크당 ~6 ops. 예산이 그만큼도 안 남았으면 다음 회차에 넘긴다(무리해서 시작하지 않는다).
+  while (!budget.exhausted && budget.left >= 6) {
+    let n = 0
+    try { n = await backfillRegions(DB, POOL, 500) } catch { break } // 한도 예외 — 다음 회차가 이어받음
+    chunks++
+    filled += n
+    if (n === 0) { done = true; break }  // 미판정 행이 더 없다 = 전수 완료
+  }
+  return { filled, chunks, done }
+}
+
+/**
  * 🌙 정비 1단계 실행 — 예산 안에서 진행하고, **성공/중단/한도 여부를 반드시 기록**한다.
  *   반환·기록 형태는 기존 `ads_maintenance_last`(어드민 패널)와 호환(단계 키를 병합 갱신).
  */
@@ -266,7 +309,10 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const out: Record<string, unknown> = { at, kind: 'maintenance', phase }
   try {
     if (phase === 'merge') out.merge = await mergeDuplicatePool(bdb, { groupCap: 150 })
-    else if (phase === 'reextract') out.reextract = await reextractPoolContacts(bdb, { budget })
+    else if (phase === 'reextract') {
+      out.reextract = await reextractPoolContacts(bdb, { budget })
+      out.region = await sweepRegions(bdb, budget)   // 같은 성격(가진 데이터로 빈칸 채우기) — 아래 주석 참조
+    }
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
     else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
     else if (phase === 'selflink') out.selflink = await cleanSelfLinkNoise(bdb, { budget })

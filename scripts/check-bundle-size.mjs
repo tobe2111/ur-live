@@ -151,12 +151,42 @@ const BUDGET = {
   singleRawKB: 1000,
   // 🛡️ 2026-06-11: critical path gzip 예산 — 2026-06-09 실측 257KB 기준 +헤드룸.
   //   넘으면 entry 에 eager import 가 새로 들어갔다는 신호 → lazy/manualChunks 분할 먼저.
-  criticalGzipKB: 300,
+  // ⬇️ 2026-07-29: 300 → 250 **하향**. 이 파일에서 임계값이 내려가는 건 처음이다.
+  //   app-components 를 엔트리 preload 에서 들어냈다(vite.config manualChunks 의 app-shell 허용목록 —
+  //   그 청크 76 모듈 중 엔트리가 eager 로 쓰는 건 14 개뿐이었고 62 개 280KB 가 얹혀 가고 있었다).
+  //   실측 **294.7 → 226.7 KB**(로컬 `npm run build:client`). 로컬↔CI 오차는 0.2KB 수준이라
+  //   (직전 CI 294.5 vs 로컬 294.7) 이 값을 그대로 신뢰할 수 있다.
+  //   ⬇️ 같은 PR 2단계: 250 → **240**. `cn()`+tailwind-merge(97.1 KB raw)와 도매 훅(15.7 KB)이
+  //   app-utils 를 통해 크리티컬에 얹혀 있던 것을 마저 들어냈다(실측 226.7 → **216.0 KB**).
+  //   누적 **294.7 → 216.0 KB (−78.7KB, −27%)**. 240 = 실측 + 약 10% 헤드룸(동일 기준).
+  //   250 = 실측 + 약 10% 헤드룸. **여유를 300 그대로 두면 안 된다** — 73KB(24%) 짜리 헤드룸은
+  //   eager import 가 새로 들어와도 한참 뒤에야 울리는 **둔한 감지기**이고, 그 사이 다시 차오른다.
+  //   (실제로 그렇게 차올랐다: app-components 는 2026-05-24·05-27 에 -248KB·-305KB 를 덜어냈는데도
+  //    2026-07 에 다시 20% 를 먹고 있었다. 헤드룸을 남기면 규율이 아니라 예산이 소비된다.)
+  //   📌 이 값을 **올리려면** 무엇이 왜 늘었는지 한 줄 적을 것. raw 예산은 "gzip 은 여유 있다" 를
+  //      근거로 5번 올라갔고 그 gzip 값은 죽어 있었다 — 근거로 인용하는 숫자가 살아있는지부터 볼 것.
+  criticalGzipKB: 240,
 };
 
 const violations = [];
 if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
   violations.push(`총 raw JS ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalRawMB} MB`);
+  // 🔎 2026-07-29: **무엇이 큰지 + 그게 사용자에게 무슨 의미인지까지** 말해준다.
+  //   이 예산이 터지면 지금까지 5번 모두 "임계값 상향"으로 끝났다. 그 이유 중 하나는 메시지가
+  //   "8.81 > 8.8" 뿐이라 **판단 재료가 없어서** 다. 실측(2026-07-29)으로 성격이 분명해졌다:
+  //   상위 3개(sentry·charts·firebase)만 3.5MB(40%)이고 **전부 lazy 청크**다 —
+  //   사용자는 이 8.75MB 를 다운로드하지 않는다. 즉 이 값은 **UX 지표가 아니라 성장 지표**이고,
+  //   실제 사용자 체감은 `critical path`(이 파일의 다른 예산), 실제 플랫폼 한도는
+  //   `_worker.js` gzip 1MB(main.yml) 과 `dist/client` 50MB(실측 36MB) 가 각각 따로 지킨다.
+  //   ⇒ 올릴지 줄일지 정하기 전에 **아래 목록이 정말 lazy 인지**부터 볼 것(크리티컬이면 진짜 문제다).
+  const topRaw = jsFiles.slice(0, 5);
+  const criticalNames = new Set(criticalFiles.map(f => f.name));
+  for (const f of topRaw) {
+    const tag = criticalNames.has(f.name) ? '⚠️ CRITICAL' : 'lazy';
+    violations.push(`    ↳ ${f.name}: ${(f.size / 1024).toFixed(0)} KB raw (${tag})`);
+  }
+  violations.push('    → lazy 만 커졌다면 사용자 체감은 그대로다(critical path 예산이 그쪽을 지킨다).');
+  violations.push('    → 임계값을 올리려면 **무엇이 왜 늘었는지 한 줄** 남길 것. 이 값은 이미 5번 올라갔다.');
 }
 // 🛡️ 측정 실패는 통과가 아니다 — 이 파일이 정확히 그렇게 몇 달을 통과했다(항상 0).
 if (totalGzip === 0) {

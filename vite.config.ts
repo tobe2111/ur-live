@@ -170,6 +170,29 @@ export default defineConfig({
           if (id.includes('/src/hooks/useSearch')) return 'app-search'
           // 셀러/어드민/에이전시 Layout 의 토큰 자동 갱신 — Layout 진입 시만 필요.
           if (id.includes('/src/hooks/useTokenAutoRefresh')) return 'app-auth'
+          // 🛡️ 2026-07-29 (critical path): `cn()` + tailwind-merge 를 app-utils 에서 들어낸다.
+          //   `src/lib/utils.ts` 는 아래 catch-all(`/src/lib/`)에 걸려 app-utils 로 갔는데,
+          //   **app-utils 는 엔트리가 쓰는 청크(api.ts·auth.ts 등)라 preload 된다** → 같이 실려 올라갔다.
+          //   그런데 실측하면 `src/lib/utils.ts` 는 **엔트리에서 도달 불가**다 —
+          //   importer 가 `components/ui/skeleton.tsx` · `separator.tsx` **둘뿐**이고 둘 다 lazy.
+          //   더 큰 문제는 딸려오는 것: `tailwind-merge` 는 manualChunks 규칙이 **없어서**
+          //   rollup 이 "importer 가 있는 청크"에 넣는데, 그 유일한 importer 가 이 파일이라
+          //   **97.1 KB raw 가 통째로 크리티컬 패스에 있었다**(app-utils 285.2 KB 의 34%).
+          //   → 전용 leaf 청크로 빼면 tailwind-merge 가 규칙이 없어 **이 청크를 따라 나간다**.
+          //   ⚠️ `/src/lib/utils` 는 `/src/lib/` 보다 **먼저** 와야 한다(먼저 매칭되는 규칙이 이긴다).
+          //   ⚠️⚠️ **왜 기존 청크(app-components)에 합치지 않고 전용 청크인가 — 실측으로 걸러낸 함정.**
+          //   `manualChunks` 는 `build:ssr`(`vite build --ssr`, **같은 vite.config**)에도 적용돼
+          //   **SSR 모듈 초기화 순서를 바꾼다.** 이 모듈을 `app-components` 로 보냈더니
+          //   `prerender:main` 출력이 **25,718 → 2,873 chars 로 붕괴**했다(SSR 중 컴포넌트가 던져
+          //   React 가 서브트리를 스트립 → "SSR-unsafe 경계" 경고). **빌드는 exit 0, tsc 도 0** 이라
+          //   조용히 지나갈 뻔했다. 전용 leaf 청크로 두면 25,718 chars 그대로 + 같은 이득(216 KB).
+          //   ⇒ 청크를 옮길 때는 **번들 크기만 보지 말고 `prerender:main` 의 chars 도 같이 볼 것.**
+          if (id.includes('/src/lib/utils')) return 'app-ui-utils'
+          // 🛡️ 2026-07-29 (서비스 분리 + critical path): 도매(B2B) 훅을 소비자 크리티컬 패스에서 제거.
+          //   useWholesale(12.0 KB) · useWholesaleChat(3.7 KB) 이 `/src/hooks/` catch-all 로 app-utils 에
+          //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
+          //   도매 페이지는 각자 lazy 청크라 그쪽에서 이 청크를 받으면 된다.
+          if (id.includes('/src/hooks/queries/useWholesale')) return 'app-wholesale-hooks'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
@@ -217,6 +240,39 @@ export default defineConfig({
           //   ⚠️ FrameWrapper / GripFrameLayout 은 App.tsx 에서 import → critical path 유지 필수.
           //     (app-live-components 로 옮기면 app-live-components chunk 가 critical path 진입 → 손해)
           if (id.includes('/src/components/LiveDonation')) return 'app-live-components'
+          // 🛡️ 2026-07-29 (critical path): app-shell — **엔트리가 실제로 eager 로 쓰는 컴포넌트만.**
+          //   배경: 이 아래 catch-all(`/src/components/` → app-components)이 **분류 규칙의 기본값**이라,
+          //   폴더 규칙에 이름이 적히지 않은 컴포넌트는 전부 app-components 로 떨어졌다. 그런데
+          //   app-components 는 엔트리가 (아래 14개 때문에) 필요로 하는 청크라 **modulepreload 에 오른다**
+          //   → 그 안에 같이 실린 것들이 전부 첫 페인트 바이트가 된다.
+          //   실측(2026-07-29 로컬 빌드, generateBundle 덤프): app-components 76 모듈 327.2 KB raw 중
+          //   **엔트리 eager 는 14 모듈 46.8 KB(14%)뿐이고, 62 모듈 280.4 KB(86%)가 얹혀 가고 있었다** —
+          //   MarketingDashboardShell·admin-nav-config·wholesale/PlusMembershipCard·VoucherScanner 처럼
+          //   소비자 첫 화면이 절대 안 쓰는 대시보드/도매 코드까지 포함.
+          //   ⚠️ 지금까지의 대응은 "큰 폴더를 하나씩 app-components 에서 빼내는" **블록리스트**였다
+          //   (2026-05-24 live/streaming, 05-27 seller/cart/search/… — 그때마다 -248KB·-305KB 를 얻었지만
+          //   기본값이 '크리티컬' 인 구조는 그대로라 **새 컴포넌트가 생길 때마다 예산이 다시 차올랐다**).
+          //   그래서 기본값을 뒤집는다: **여기 명시된 것만 크리티컬**, 나머지는 자동으로 lazy 쪽.
+          //   이 목록은 main.tsx 로부터의 **정적(eager) import 폐쇄집합**이다 — dynamic import() 는 경계.
+          //   ❗ 목록을 늘리기 전에: 정말 App.tsx/main.tsx 가 **정적으로** import 하는가?
+          //     lazy 페이지에서만 쓰면 여기 넣지 말 것(넣는 순간 첫 페인트 바이트가 된다).
+          //     반대로 여기 있는 모듈이 정적 import 하는 컴포넌트는 **함께 들어와야 한다**(안 그러면
+          //     app-shell → app-components 정적 엣지가 생겨 app-components 가 다시 preload 된다).
+          if (
+            id.includes('/src/components/FrameWrapper') ||
+            id.includes('/src/components/GripFrameLayout') ||
+            id.includes('/src/components/MobileAppLayout') ||
+            id.includes('/src/components/DesktopLiveSidebar') ||
+            id.includes('/src/components/ErrorBoundary') ||
+            id.includes('/src/components/ToastContainer') ||
+            id.includes('/src/components/ScrollToTop') ||
+            id.includes('/src/components/OfflineBanner') ||
+            id.includes('/src/components/ThemeProvider') ||
+            id.includes('/src/components/IosTopupGate') ||
+            id.includes('/src/components/KakaoConsultButton') ||
+            id.includes('/src/components/brand/') ||
+            id.includes('/src/components/ui/confirm-dialog')
+          ) return 'app-shell'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||

@@ -652,6 +652,13 @@ jobs:
       - name: Bundle size budget
         run: npm run check:bundle:budget
 
+      # 🛡️ 2026-07-29: 총합 예산은 **후행** 감지기라(임계값을 넘어야 울림) "청크 하나가 통째로
+      #   크리티컬 패스에 새로 들어온" 구조 변화를 여유가 있는 동안 놓친다 — 이 레포에서 세 번 재발했다.
+      #   이 가드는 총합이 아니라 **구성**(청크 이름 집합)을 동결해 신규 진입을 즉시 이름으로 알려준다.
+      #   반드시 build 뒤에 둘 것(산출물 필요).
+      - name: Critical path chunk composition (strict)
+        run: node scripts/check-critical-chunks.mjs
+
       # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
       - name: Bundle size report
         if: success()
