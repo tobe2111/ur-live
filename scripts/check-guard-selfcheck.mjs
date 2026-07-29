@@ -45,7 +45,10 @@ const ALLOW_MARK = 'zero-scan-ok'
 /** "0이면 실패" 를 선언했는가 — 0 비교와 비정상 종료가 함께 있으면 인정한다. */
 function declaresZeroFail(src) {
   if (src.includes(ALLOW_MARK)) return true
-  const comparesZero = /(?:length|size|count|total|scanned|checked|files|targets|entries|rows)\s*(?:\(\))?\s*(?:===|==|<=?)\s*(?:0|1)\b/i.test(src)
+  // ⚠️ 처음엔 `=== 0` 만 인정했다가 **이미 선언이 있는 가드를 미선언으로 잡았다**
+  //   (`check-products-column-budget` 은 `files.length < 200` 으로 훨씬 강하게 선언하고 있었다).
+  //   "대상이 기대치보다 적으면 실패" 는 전부 같은 선언이므로 임계값을 가리지 않는다.
+  const comparesZero = /(?:length|size|count|total|scanned|checked|files|targets|entries|rows)\s*(?:\(\))?\s*(?:===|==|<=?)\s*\d+/i.test(src)
   const exitsNonZero = /process\.exit\(1\)/.test(src)
   return comparesZero && exitsNonZero
 }
