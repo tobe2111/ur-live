@@ -27,6 +27,7 @@ import {
   buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
   shouldProbe, type ProbeAttempt, type VariantState,
 } from './license-url'
+import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -216,6 +217,9 @@ export interface LocalDataStats {
     fail_probe?: { url: string; endpoint: string; day: string; page: number; msg?: string }
     /** 🔬 형태 후보 시도 이력(라이브 판정 근거). */
     probe?: { at: string; winner: string | null; attempts: ProbeAttempt[] }
+    /** 📊 원본 필드 채움률 + 형식 예시(가려짐) — 필드 이름을 추측으로 쓰지 않기 위한 근거. 추가 요청 0. */
+    coverage?: FieldCoverage[]
+    coverage_note?: string
   }
 }
 const STATS_KEY = 'ads_localdata_stats'
@@ -264,6 +268,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   spendD1() // 위 설정 3키 일괄 조회(1회)
   let found = 0, saved = 0, closed = 0
   let sample: unknown; let lastMsg: string | undefined
+  let coverage: FieldCoverage[] = [] // 📊 마지막으로 받은 페이지 기준(누적 안 함 — 스냅샷 비대화 방지)
 
   // 🔬 요청 형태(변종) — env 가 있으면 고정(프로브 금지), 없으면 DB 에 적힌 것, 그것도 없으면 현행 v1.
   //   env 고정은 "대표가 스펙을 확인했다" 는 뜻이므로 자동 탐색이 그 결정을 덮어쓰지 않는다.
@@ -310,6 +315,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
         //   구분이 안 돼 다음 틱이 이 업종을 건너뛴다 = 그 업종 데이터 영구 누락(유닛테스트가 잡은 실버그).
         if (budget.limitHit) { stoppedAt = ei; break }
         if (!sample && items[0]) sample = items[0]
+        if (items.length) coverage = fieldCoverage(items)
         // 🩺 첫 실패의 실제 요청을 **키를 가려** 남긴다 — 500 은 본문에 원인 코드가 없어, 이게 없으면
         //   "무엇을 보냈길래 500 인가"를 이 환경(외부 CONNECT 차단)에서 판정할 방법이 아예 없다.
         if (msg && !failProbe) failProbe = { url: redactServiceKey(url), endpoint, day: item.day, page, msg: msg.slice(0, 200) }
@@ -370,6 +376,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       configured: true, error: err, sample, endpoints: Object.keys(endpoints),
       // 🔬 "무엇을 어떻게 보내고 있고, 무엇이 실패했는가" — 추측 없이 판정하기 위한 최소 증거 3종.
       variant: variantId, fail_probe: failProbe, probe: probeInfo,
+      coverage, coverage_note: coverageNote(coverage) || undefined,
     },
   }
   await persist(s)
