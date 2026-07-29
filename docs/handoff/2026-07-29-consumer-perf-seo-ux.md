@@ -72,9 +72,13 @@
 
 ### 🧪 가드 (규율은 문서가 아니라 테스트로)
 
-- `src/tests/unit/consumer-surface-seo.test.ts` (17) — 접미사 1회·canonical 자기참조·표면별 상이·추적파라미터 제거.
-- `src/tests/unit/surface-ssr-meta.test.ts` (15) — **배선**까지: 가짜 HTMLRewriter 로 어떤 셀렉터에 무엇이 들어가는지.
-- 되돌려-검증 완료: `withSiteName` 의 중복 흡수 1줄 제거 → 4개 빨강, 복원 → 17개 초록.
+- `src/tests/unit/consumer-surface-seo.test.ts` (**37**) — 접미사 1회·canonical 자기참조·표면별 상이·
+  추적파라미터 제거 + **배선 드리프트**(페이지 17곳이 실제로 표를 읽는지 소스에서 확인).
+- `src/tests/unit/surface-ssr-meta.test.ts` (**15**) — 가짜 HTMLRewriter 로 어떤 셀렉터에 무엇이 들어가는지
+  + `shouldNoindexMissingEntity`(타임아웃 제외 포함).
+- `src/tests/unit/consumer-redirects.test.ts` (**10**) — 별칭 301. **`App.tsx` 를 읽어 대조**하므로
+  라우트가 사라지거나 `<Navigate>` 가 아니게 되면 빨간불(죽은 301 방지).
+- 되돌려-검증 완료: `withSiteName` 의 중복 흡수 1줄 제거 → 4개 빨강, 복원 → 초록.
 - ⚠️ **못 막는 것**: `worker/index.ts` 가 `applySurfaceMeta` 를 *호출하지 않게* 되는 회귀. HTMLRewriter 는
   Workers 런타임 전용이라 여기서 실행 못 한다. **배포 후 아래 명령이 유일한 판정**이다.
 
@@ -113,9 +117,10 @@ done
 
 ### 📋 남은 항목 (대표 판단 / 다음 세션)
 
-1. **랜딩 4종(`/about`·`/creators`·`/creators/apply`·`/partners`) 은 여전히 서버 메타가 제네릭 홈**이다.
-   sitemap 에 priority 0.6~0.85 로 제출 중. 고치려면 `CONSUMER_SURFACE_SEO` 에 항목을 추가하고
-   **그 페이지의 `<SEO>` 도 같은 상수를 읽게** 바꿀 것(문구가 두 벌이 되면 반드시 갈라진다).
+1. **표에 아직 없는 소비자 표면** — `/area-report`(지역별 동적 제목이라 정적 표에 안 맞음) ·
+   `/terms/seller`·`/terms/agency`·`/terms/influencer`·`/terms/group-buy`(문서별로 제목이 달라
+   `TermsDocument` 가 동적 생성). 넣으려면 정적 문자열이 아니라 **빌더**가 필요하다.
+   ⚠️ 랜딩 4종과 콘텐츠 14종은 **이미 처리됐다**(위 표 #11·#16) — 다시 파지 말 것.
 2. **소비자 쇼핑 카탈로그에 데모 상품 9건이 살아 있다** — `/api/products?exclude_deal_only=1` 15건 중 9건이
    `seller_id` 없음 + `images.unsplash.com`(예: `/products/1` "무선 이어폰 프리미엄"). 이건 **코드가 아니라
    데이터** 문제라 손대지 않았다(비활성화는 어드민 작업). 지금은 sitemap 에도 그대로 들어간다.
@@ -124,7 +129,12 @@ done
    건드리지 않았다. 줄이려면 타일 레벨/초기 줌 또는 리스트-우선 진입이 레버.
 4. **`useMapProducts` 가 page 2→7 을 순차 호출**(329곳 → 6 왕복). 설계대로(progressive, SOFT_CAP 500)라
    지금은 정상이지만, 상품이 늘면 이 순차가 먼저 아플 자리다.
-5. ~~감사 게이트 RED(유어애즈 602줄)~~ → **해소됨**. 키워드 저장소를 분리해 528줄. 지금 `audit-gate.sh` 는 **ALL GREEN 75**.
+5. ~~감사 게이트 RED(유어애즈 602줄)~~ → **해소됨. 단, 내 분리가 아니라 main 것이다.**
+   머지 시점에 **양쪽이 같은 파일을 각자 분리**했고 파일명(`influencer-keyword-store.ts`)까지 겹쳤다.
+   레포 선례대로 main 구조로 통일하고 이쪽 분리는 폐기했다(main 이 이미 523줄로 해결해 목적이 사라짐).
+   ⚠️ 이때 `git rm` 이 **main 의 파일을 지울 뻔했다** — 같은 이름의 파일이 양쪽에 새로 생기면
+   `git show origin/main:<path>` 로 **어느 쪽 파일인지 먼저 확인**할 것.
+   머지 후 `audit-gate.sh` = **ALL GREEN 76**(main 신규 가드 '크리티컬 청크 구성 동결' 포함).
 
 ### ❌ 이번에 기각한 것 (다음 세션이 다시 파지 않게)
 
