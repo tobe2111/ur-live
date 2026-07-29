@@ -17,6 +17,24 @@
 - `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).
 - 배선 추가 불필요 — 기존 pre-commit(warn)/verify.yml(strict)/audit-gate 에 이미 등재된 스크립트 확장. CLAUDE.md 방어선 표 갱신.
 - 검증: 레포 전체 0건(현행 클린) + 음성테스트(실사고 형태 `.all<T>().catch()` 포함 2건 차단, 정상 3패턴 통과, strict exit 1).
+## ✅ 2026-07-02 — 쇼핑 상품 전 구간 전수조사 + 일괄 수리 (대표 "전부", PR #429)
+일반 온라인 쇼핑 상품(교환권/동네딜/도매 제외) 셀러등록~상세~카트~주문/결제~환불~정산 6세그먼트 병렬 감사(에이전트 6 + audit-gate 41). **P0(돈유출) 0 확인**(서버 가격/할인/재고 권위 재계산 + Toss confirm strict 금액검증) — 대신 "표시금액≠서버금액 → 결제 400" 클래스 + 배선 끊김 다수 수리. 3커밋(857bb73·9ccdee5·4dd8675).
+- **결제 금액 정합(Toss confirm 400 클래스)**: `shipping.ts` free_shipping_threshold=0="무료배송 없음"(클라/points 정합) + `order.routes` 비배송(교환권/이용권) 배송비 0(threshold 수정과 상쇄짝 — 동일커밋) + `POST /orders/shipping-quote`(주문생성과 동일 함수·데이터 견적) + 미결제취소 CAS+재고/쿠폰 복원. `CheckoutPage/useBeforePayment` 서버 견적 사용·쿠폰 최대그룹 배정(멀티셀러 UNIQUE 회피)·Σ(서버 total) 검증 후 승인·stale snapshot 최신가. `scheduled-cleanup` AWAITING_PAYMENT 스위핑+쿠폰 복원.
+- **옵션 파이프라인 재건(전 구간 사망→복구)**: `useProduct` 응답형태(항상 [] 였음)·셀러 GET/POST 컬럼·필드명 정합(수정저장 시 옵션 전멸+재고 0 저장 수정)·order.routes 옵션가 서버 재계산+option_id 소유권검증+옵션재고 CAS 차감/복원·카트 option_id 저장/표시(join)/변경(PUT)·상세 UI 추가금/품절·useCart id 타입 정합.
+- **환불/취소 상태머신**: 부분취소가 주문 전체 CANCELLED+전 재고/커미션 회수 → refunded_amount CAS만(status 유지)·refundOrderFully 잔여액 기준(이중환급/EXCEED 방지)·`/orders/refund` DELIVERED 제거(반품 절차 경유)+전액시만 플립.
+- **셀러 대시보드 진실**: 상품목록 is_active 반환·재고 COALESCE 순서·비활성 표시(재활성화 가능)·토글 enum(PAUSED→HIDDEN)·삭제 status=DELETED 실세팅(구매 차단)·주문 order_items/payment_status 반환·50→200 cap·송장/일괄 상태 전이 가드(취소·미결제 부활 차단)·delivered_at 기록.
+- **소비자 표시**: 검색 카드/정렬/필터 이중할인 제거(price=최종가)·자동완성 형태 정합·prefetch 키 String·카트 선택리셋/수량감소 수정·PRODUCT_DETAIL_FIELDS 에 detail_images/long_description(+repair 등록)로 상세정보 빈렌더 복구+셀러 저장 배선.
+- **[UNLOCK] 정산/재고(대표 AskUserQuestion 2건 승인)**: `webhook.routes handlePaymentFailed` 재고복원을 전이 성공분(status='FAILED')만(지연 실패 webhook이 DONE 주문 재고 부풀리던 초과판매 차단). `handlePaymentConfirmed`+`returns.routes` 에 쇼핑 원장 credit/reverse 대칭(SHOPPING_LEDGER_ENABLED 게이트 OFF=현행 동일, 재오픈 선행 수리). CLAUDE.md audit log 2건.
+- 검증: audit-gate **41 invariants ALL GREEN**. ⚠️ **이 원격환경 npm 403 → 전체 tsc/build 미실행. 잠금파일 회귀 + 결제 정합은 staging 실결제 E2E 필수**: 옵션상품(선택→담기→결제→옵션재고 차감→환불복원)·배송비(제주/무료배송/멀티셀러)·멀티셀러+쿠폰·부분취소(주문유지·잔여 추가취소)·셀러 상품 비활성/재활성·주문 상품목록 표시. 🔵 미완(별도): 쇼핑탭 재오픈 시 정산 게이트 ON + 이중계상 가드 확정, 옵션 조합(색상×사이즈) 모델, 리뷰 사진 업로드(소비자용 엔드포인트)·카트 뱃지 invalidate(P2).
+
+## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
+`/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
+- **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
+- **🔴 MyStaysPage 다크 전용 하드코딩** → 라이트 기본+`dark:` 전면 전환(마이 위성 유일한 테마 규칙 전면 위반이었음) + `refund_rate` NaN% 가드 + 핑크→B&W.
+- **🔴 주문 현황 바 반쪽 동작**: 별도 fetch → `useMyOrders` 재사용(RQ 캐시 공유), 5칸 전부 무필터 `/my-orders` → **상태 필터(`?status=`) 배선 + MyOrdersPage 에 필터 칩 신설**, 항상 0이던 '리뷰' → 리뷰 가능 주문 수(DELIVERED/DONE, MyReviews 기준) + `/my-reviews` 이동.
+- **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
+- **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
+- 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
 ## 🟡 2026-07-29 (9차) — **A1 폐기 확정 + §4/§5 개정 · 예치금 동결 검토(잔액 실측 미완, 코드 0)**
 
 8차(#819, 머지 `e75b433`)가 올린 판단에 대표가 답했다. **결정을 문서에 반영했고 코드는 여전히 0.**

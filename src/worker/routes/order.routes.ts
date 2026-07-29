@@ -68,6 +68,9 @@ const createOrderSchema = z.object({
     product_id: z.string().min(1),
     quantity: z.number().int().positive().max(99),
     options: z.record(z.string()).optional(),
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 상품은 option_id 전달 → 서버가 price_adjustment 를 권위
+    //   재계산(클라 snapshot 불신) + 옵션별 재고 CAS 차감. 없으면 기본 상품(옵션 없음).
+    option_id: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullish(),
   })).min(1),
   shipping_address: z.object({
     postal_code: z.string(),
@@ -223,6 +226,24 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }
     }
 
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 서버 권위 조회 — option_id 있는 아이템의 price_adjustment/
+    //   stock 을 서버가 직접 읽어 단가 재계산 + 옵션 소유권 검증. 클라가 보낸 가격은 신뢰 안 함.
+    stage = 'option-lookup';
+    const optionIds = request.items
+      .map(i => (i.option_id != null ? Number(i.option_id) : null))
+      .filter((v): v is number => Number.isFinite(v) && (v as number) > 0);
+    const optionMap = new Map<number, { id: number; product_id: number; option_value: string; price_adjustment: number; stock: number }>();
+    if (optionIds.length > 0) {
+      try {
+        const ph = optionIds.map(() => '?').join(',');
+        const { results: optRows } = await c.env.DB.prepare(
+          `SELECT id, product_id, option_value, COALESCE(price_adjustment,0) AS price_adjustment, COALESCE(stock,0) AS stock
+             FROM product_options WHERE id IN (${ph})`,
+        ).bind(...optionIds).all<{ id: number; product_id: number; option_value: string; price_adjustment: number; stock: number }>();
+        for (const r of optRows ?? []) optionMap.set(Number(r.id), r);
+      } catch { /* product_options 부재 env — 옵션 없이 진행(가격조정 0) */ }
+    }
+
     // Build order items with pre-flight stock check (READ phase)
     const orderItems = [];
     let subtotal = 0;
@@ -253,7 +274,28 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         }
       }
 
-      const itemSubtotal = product.price * reqItem.quantity;
+      // 🛡️ 옵션 처리 — option_id 가 오면 소유권 검증 + **서버 권위 price_adjustment** + 옵션 재고 체크.
+      //   그동안 클라(ProductDetailPage:262 · 장바구니)는 option_id 를 보냈고 상세 API 는
+      //   price_adjustment 를 내려줬는데, 여기서는 `product.price * quantity` 로만 계산해
+      //   **유료 옵션 추가금이 한 번도 청구되지 않았다**(옵션 재고도 안 봤다).
+      const optId = reqItem.option_id != null ? Number(reqItem.option_id) : null;
+      let priceAdjustment = 0;
+      let optionValue: string | null = null;
+      if (optId != null && Number.isFinite(optId) && optId > 0) {
+        const opt = optionMap.get(optId);
+        if (!opt || Number(opt.product_id) !== Number(product.id)) {
+          return c.json({ success: false, error: `"${product.name}"의 옵션을 찾을 수 없습니다` }, 400);
+        }
+        if (Number(opt.stock) > 0 && Number(opt.stock) < reqItem.quantity) {
+          return c.json({ success: false, error: `"${product.name} - ${opt.option_value}" 옵션 재고가 부족합니다 (남은 수량: ${opt.stock})` }, 400);
+        }
+        priceAdjustment = Math.trunc(Number(opt.price_adjustment) || 0);
+        optionValue = opt.option_value;
+      }
+
+      // 단가 = 상품가 + 옵션 조정(서버 권위). 음수 방지.
+      const unitPrice = Math.max(0, product.price + priceAdjustment);
+      const itemSubtotal = unitPrice * reqItem.quantity;
       subtotal += itemSubtotal;
 
       orderItems.push({
@@ -262,10 +304,13 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         product_name: product.name,
         product_thumbnail: product.thumbnail_url,
         product_sku: product.sku,
-        unit_price: product.price,
+        unit_price: unitPrice,
         quantity: reqItem.quantity,
         subtotal: itemSubtotal,
-        options: reqItem.options,
+        // options: option_value 를 저장해 주문/셀러 화면에서 어떤 옵션인지 표시.
+        options: optionValue ? { ...(reqItem.options ?? {}), value: optionValue, option_id: String(optId) } : reqItem.options,
+        // 옵션 재고 CAS 차감 대상(옵션 있고 재고 관리 중인 경우만 — stock=0 은 무제한 취급).
+        option_id: (optId != null && optionMap.get(optId) && Number(optionMap.get(optId)!.stock) > 0) ? optId : null,
       });
     }
 
@@ -281,13 +326,27 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       regionRules = results ?? []
     } catch { /* fallback to hardcoded — calculateShippingFeeV2 가 처리 */ }
 
-    const feeCalc = calculateShippingFeeV2({
-      subtotal,
-      baseFee: seller?.base_shipping_fee ?? 3000,
-      freeShippingThreshold: seller?.free_shipping_threshold ?? null,
-      postalCode: body.shipping_address?.postal_code ?? null,
-      regionRules,
-    })
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 비배송 주문(교환권 deal_only=1 / 이용권 voucher 카테고리 — 매장 사용)은
+    //   배송비 0. 클라(CheckoutPage allVoucher)와 동일 SSOT 신호 — 이전엔 서버만 V2 로 부과해
+    //   confirm 금액 불일치 400 (threshold=0 버그와 상쇄돼 숨어있던 짝 — 반드시 같은 커밋).
+    let noShipping = false
+    try {
+      const { isVoucherCategory } = await import('../../shared/constants/voucher-categories')
+      noShipping = products.length > 0 && products.every(p => {
+        const row = p as unknown as { deal_only?: number | null; category?: string | null }
+        return Number(row.deal_only) === 1 || isVoucherCategory(row.category ?? null)
+      })
+    } catch { noShipping = false }
+
+    const feeCalc = noShipping
+      ? { baseFee: 0, regionFee: 0, totalFee: 0, region: 'normal' as const, freeShippingApplied: false }
+      : calculateShippingFeeV2({
+          subtotal,
+          baseFee: seller?.base_shipping_fee ?? 3000,
+          freeShippingThreshold: seller?.free_shipping_threshold ?? null,
+          postalCode: body.shipping_address?.postal_code ?? null,
+          regionRules,
+        })
     const shippingFee = feeCalc.totalFee
     const regionCode = feeCalc.region
     const extraShippingFee = feeCalc.regionFee
@@ -314,6 +373,38 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         error: `"${stockResult.insufficientProduct}" 재고가 부족합니다 (동시 주문으로 인해 품절 처리되었습니다)`,
         code: 'OUT_OF_STOCK',
       }, 409);
+    }
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션별 재고 CAS 차감 — 상품 재고 예약 성공 후.
+    //   option_id 는 재고관리 중인 옵션(stock>0)만 세팅됨. 부족하면 상품 재고를 되돌리고 실패 반환
+    //   (머니 룰 #1 — 사전 SELECT 만으론 동시요청 못 막음 → WHERE stock >= ? CAS + changes 검사).
+    stage = 'reserve-option-stock';
+    const optionReserveItems = orderItems.filter(i => i.option_id != null) as Array<typeof orderItems[number] & { option_id: number }>;
+    if (optionReserveItems.length > 0) {
+      const optStmts = optionReserveItems.map(i =>
+        c.env.DB.prepare('UPDATE product_options SET stock = stock - ? WHERE id = ? AND stock >= ?')
+          .bind(i.quantity, i.option_id, i.quantity)
+      );
+      const optResults = await c.env.DB.batch(optStmts).catch(() => null);
+      const optFailedIdx = optResults ? optResults.findIndex(r => (r?.meta?.changes ?? 0) === 0) : 0;
+      if (!optResults || optFailedIdx >= 0) {
+        // 옵션 재고 부족 → 상품 재고 예약 원복(보상) 후 실패 반환.
+        await orderRepo['qb'].batch(orderItems.map(item => ({
+          sql: `UPDATE products SET stock = stock + ?, updated_at = datetime('now') WHERE id = ?`,
+          params: [item.quantity, item.product_id],
+        }))).catch(e => console.error('[ORDERS] option-fail stock restore failed:', e));
+        // 이미 차감된 옵션 재고도 원복(부분 성공분).
+        if (optResults) {
+          const restored = optionReserveItems.slice(0, optFailedIdx);
+          if (restored.length > 0) {
+            await c.env.DB.batch(restored.map(i =>
+              c.env.DB.prepare('UPDATE product_options SET stock = stock + ? WHERE id = ?').bind(i.quantity, i.option_id)
+            )).catch(e => console.error('[ORDERS] option restore failed:', e));
+          }
+        }
+        const failedName = optResults ? optionReserveItems[optFailedIdx]?.product_name : '옵션';
+        return c.json({ success: false, error: `"${failedName}" 옵션 재고가 부족합니다 (동시 주문으로 품절되었습니다)`, code: 'OPTION_OUT_OF_STOCK' }, 409);
+      }
     }
 
     // ── 💸 2026-06-17 서버 권위 할인 (validate-by-cap) ──────────────────────
@@ -707,7 +798,9 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
-    const refundableStatuses = ['PAID', 'DONE', 'DELIVERED'];
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): DELIVERED 제거 — 배송완료 상품은 반품 절차(승인→회수→검수)를
+    //   거쳐야 환불(상품 회수 없이 셀프 전액환불 방지). 결제완료/미배송 주문만 즉시 환불 허용.
+    const refundableStatuses = ['PAID', 'DONE'];
     if (!refundableStatuses.includes(order.status)) {
       return c.json({
         success: false,
@@ -788,18 +881,23 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 422);
     }
 
-    // DB 상태 업데이트 + 재고 복구
-    await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
-      cancel_reason: `[환불요청] ${body.reason}`,
-      cancelled_at: new Date().toISOString(),
-    });
-    await orderRepo.restoreStock(body.order_id);
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 전액 환불일 때만 상태 CANCELLED 플립 + 재고 복원.
+    //   이전엔 부분환불도 무조건 CANCELLED + 전 재고 복원 → 잔여분 취소 불능 + 유령 재고.
+    //   (refunded_amount 는 위 CAS 로 이미 누적 기록됨.)
+    const isFullRefundNow = (Number((order as any).refunded_amount ?? 0) + refundAmount) >= Number(order.total_amount ?? 0);
+    if (isFullRefundNow) {
+      await orderRepo.updateStatusById(body.order_id, 'REFUNDED', {
+        cancel_reason: `[환불요청] ${body.reason}`,
+        cancelled_at: new Date().toISOString(),
+      });
+      await orderRepo.restoreStock(body.order_id);
+    }
 
     // ✅ 환불 시 추천 커미션도 회수 (webhook path 동등화)
     // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 — 이미 withdrawn 인 커미션은 포인트 재차감 안 됨.
-    // 기존 버그: UPDATE 이후 SELECT WHERE status='withdrawn' 하면 과거 회수분까지 포함 → 중복 차감.
-    // 수정: UPDATE 시점에 회수된 row 만 RETURNING-style 로 조회 (updated_at 범위로 필터).
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 전액 환불일 때만 커미션 전량 회수(부분환불은 매출 일부만 취소).
     try {
+      if (!isFullRefundNow) throw { __skipCommission: true };
       const revokeTs = new Date().toISOString();
       // 먼저 granted 인 commission 을 읽고 CAS 로 withdrawn 전환
       // 🛡️ 2026-06-01 머니플로우 감사 fix: 잘못된 컬럼(user_id/amount)으로 항상 0건 매칭 →
@@ -1052,53 +1150,29 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         }, 422);
       }
 
-      // Toss 취소 성공 → DB 업데이트 (원자적 배치)
-      await orderRepo.updateStatusById(orderId, 'CANCELLED', {
-        cancelled_at: new Date().toISOString(),
-        cancel_reason: reason,
-      });
-
-      // 재고 복구
-      await orderRepo.restoreStock(orderId);
-
-      // ✅ 추천 커미션 회수 (cancel paid 경로)
-      // 🛡️ 2026-04-22: CAS 로 이중 회수 방어 (refund 와 동일 패턴)
-      try {
-        // 🛡️ 2026-06-01 머니플로우 감사 fix: user_id/amount → beneficiary_id/commission_amount (실제 스키마).
-        const toRevoke = await c.env.DB.prepare(
-          "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-        ).bind(orderId).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
-
-        for (const co of (toRevoke.results || [])) {
-          const cas = await c.env.DB.prepare(
-            "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'"
-          ).bind(co.id).run().catch(() => null);
-          if (cas && (cas.meta?.changes ?? 0) > 0) {
-            await c.env.DB.prepare(
-              'UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?'
-            ).bind(co.commission_amount, co.beneficiary_id).run().catch((err) => {
-              console.error('[ORDERS] user_points debit failed (cancel paid):', err);
-            });
-          }
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 이 블록은 '부분취소' 전용(전액은 위 refundOrderFully 로 분기).
+      //   이전엔 부분취소인데도 주문 전체를 CANCELLED 로 플립(잔여 미환불분 취소 영구 불능) + 전 재고
+      //   복원(유령 재고) + 커미션 전액 회수 + refunded_amount 미기록 이었음. 수정: Toss 부분취소분만
+      //   refunded_amount CAS 누적 + status 유지(잔여분 추가취소 가능). 재고/커미션 전량 회수 제거
+      //   (부분취소는 금액 기반이라 어느 품목인지 불명 — 전량 복원은 오류).
+      {
+        const partialCancelAmt = Math.max(0, Math.round(cancelAmount ?? 0));
+        const casRes = await c.env.DB.prepare(
+          "UPDATE orders SET refunded_amount = COALESCE(refunded_amount,0) + ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(refunded_amount,0) + ? <= total_amount"
+        ).bind(partialCancelAmt, orderId, partialCancelAmt).run().catch(() => null);
+        if (!casRes || (casRes.meta?.changes ?? 0) === 0) {
+          console.error('[ORDERS] partial cancel refunded_amount CAS failed after Toss success', { orderId, partialCancelAmt });
         }
-        // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending) 추천 커미션은 잔액 회수 없이 상태만 닫음.
-        await c.env.DB.prepare(
-          "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'pending'"
-        ).bind(orderId).run().catch(swallow('order:commission-pending-close-cancel'));
-      } catch (e) {
-        console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
       }
 
-      // 🛡️ 2026-06-26 (소비자 감사 P1): 혼합결제(Toss 카드 + 딜)의 '딜 사용분' 환급.
-      //   전액 딜결제(deal_points)는 위 분기에서 early-return 되므로 여기는 toss(카드/혼합)만 도달.
-      //   기존엔 deal_points 만 환급해 혼합주문의 딜분이 영구 미복원이었음. cancelAmount(현금 취소비율)만큼
-      //   deal_used 를 비례 환급(전액 취소면 deal_used 전부). Toss 취소 성공 후라 단일실행.
+      // 🛡️ 혼합결제(Toss 카드 + 딜)의 '딜 사용분' 비례 환급 — 부분취소 비율만큼.
+      //   deal_used 를 환급분만큼 감액해 이후 전액취소 시 이중환급 방지.
       try {
         const dealUsedTotal = Math.max(0, Math.round(Number((order as any).deal_used ?? 0)));
         const totalAmt = Number(order.total_amount ?? 0);
-        if (dealUsedTotal > 0 && totalAmt > 0) {
-          const cashRefund = Math.max(0, Math.round(cancelAmount ?? totalAmt));
-          const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (cashRefund / totalAmt)));
+        const partialCancelAmt = Math.max(0, Math.round(cancelAmount ?? 0));
+        if (dealUsedTotal > 0 && totalAmt > 0 && partialCancelAmt > 0) {
+          const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (partialCancelAmt / totalAmt)));
           if (dealRefund > 0) {
             // 💸 2026-07-05 버킷: 혼합결제 딜 차감(원장 order_id=orders.id)의 무상분 무상 복원 (refundDealPoints SSOT).
             const { refundDealPoints } = await import('../utils/point-buckets');
@@ -1112,13 +1186,13 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
           }
         }
       } catch (e) {
-        console.error('[ORDERS] Mixed-pay deal refund (cancel paid) error:', e);
+        console.error('[ORDERS] Mixed-pay deal partial refund error:', e);
       }
 
-      // 주문 취소 알림
-      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-paid'));
+      // 부분취소 알림 (주문 status 는 유지 — '부분 취소').
+      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-paid'));
       if (order.seller_id) {
-        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-paid'));
+        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-paid'));
       }
 
       // 유저에게 인앱 알림 (주문 취소)
@@ -1129,7 +1203,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
-      if (import.meta.env.DEV) console.info('[ORDERS] Cancel success (paid):', {
+      if (import.meta.env.DEV) console.info('[ORDERS] Partial cancel success (paid):', {
         orderId,
         paymentKey,
         cancelAmount: latestCancel?.cancelAmount,
@@ -1138,10 +1212,10 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
       return c.json({
         success: true,
-        message: '주문 및 결제가 취소되었습니다',
+        message: '부분 취소되었습니다',
         data: {
           order_id: orderId,
-          cancel_amount: latestCancel?.cancelAmount ?? order.total_amount,
+          cancel_amount: latestCancel?.cancelAmount ?? Math.max(0, Math.round(cancelAmount ?? 0)),
           cancelled_at: latestCancel?.canceledAt ?? new Date().toISOString(),
           toss_status: tossResult.data.status,
         },
@@ -1150,10 +1224,20 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
 
     // ── 5. 미결제 주문 취소 (PENDING / AWAITING_PAYMENT) ─────
     // 결제가 일어나지 않았으므로 Toss API 불필요
-    await orderRepo.updateStatusById(orderId, 'CANCELLED', {
-      cancelled_at: new Date().toISOString(),
-      cancel_reason: reason,
-    });
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): CAS 전이 + 예약 재고 복원 + 쿠폰 복원.
+    //   이전: 무조건 CANCELLED 플립만 → 주문 생성 시 reserveStock 로 차감된 재고가 영구 미복원
+    //   (24h cron 은 status='PENDING' 만 대상이라 CANCELLED 로 바뀐 뒤엔 영영 안 돌아옴)
+    //   + 생성 시 소진된 쿠폰 미복원(쿠폰 영구 소실). CAS 라 동시 취소/cron 경쟁에도 1회만 복원.
+    const unpaidCas = await c.env.DB.prepare(
+      "UPDATE orders SET status = 'CANCELLED', cancelled_at = ?, cancel_reason = ?, updated_at = datetime('now') WHERE id = ? AND status IN ('PENDING', 'AWAITING_PAYMENT')"
+    ).bind(new Date().toISOString(), reason, order.id).run();
+    if ((unpaidCas.meta?.changes ?? 0) > 0) {
+      await orderRepo.restoreStock(String(order.id)).catch(swallow('order:cancel-unpaid-stock'));
+      try {
+        const { restoreCouponsForOrders } = await import('../../features/coupons/api/coupons.routes');
+        await restoreCouponsForOrders(c.env.DB, [order.id]);
+      } catch { /* best-effort — 쿠폰 미사용 주문이면 no-op */ }
+    }
 
     // 주문 취소 알림
     createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-pending'));
@@ -1182,6 +1266,102 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
   } catch (err) {
     console.error('[ORDERS] Cancel error:', err);
     return c.json({ success: false, error: 'Failed to cancel order' }, 500);
+  }
+});
+
+// ── POST /api/orders/shipping-quote ──────────────────────────────────────────
+// 🛡️ 2026-07-02 (쇼핑 전수조사 — 결제 금액 정합): 체크아웃 표시 금액의 서버 권위 견적.
+//   배경: 클라가 배송비를 자체 계산(바로구매 3,000 하드코드 / threshold 의미 / 제주·도서산간
+//   지역 추가비 미인지 / 레거시 shipping_fee 컬럼)해 서버 주문 총액과 어긋나면 Toss confirm 이
+//   "금액 불일치" 400 으로 정상 결제를 막았음. 이 견적은 주문 생성(POST /)과 동일 함수
+//   (calculateShippingFeeV2)·동일 데이터(sellers/regional_shipping_fees/products 현재가)를 쓰므로
+//   클라가 그대로 표시/청구하면 구조적으로 일치. 가격도 DB 현재가 반환 — snapshot stale 감지용.
+ordersRouter.post('/shipping-quote', rateLimit({ action: 'shipping_quote', max: 30, windowSec: 60 }), async (c) => {
+  try {
+    const body = await c.req.json<{ items?: Array<{ product_id?: string | number; quantity?: number }>; postal_code?: string | null }>().catch(() => ({} as { items?: never[]; postal_code?: null }));
+    const rawItems = Array.isArray(body.items) ? body.items.slice(0, 100) : [];
+    const items = rawItems
+      .map(it => ({
+        product_id: String(it?.product_id ?? ''),
+        quantity: Math.min(9999, Math.max(1, Math.floor(Number(it?.quantity) || 1))),
+      }))
+      .filter(it => /^\d+$/.test(it.product_id));
+    if (items.length === 0) return c.json({ success: false, error: 'items가 필요합니다' }, 400);
+    const postalCode = typeof body.postal_code === 'string' && body.postal_code.length <= 10 ? body.postal_code : null;
+
+    const productRepo = new ProductRepository(c.env.DB);
+    const products = await productRepo.findByIds([...new Set(items.map(i => i.product_id))]);
+    const productMap = new Map(products.map(p => [String(p.id), p]));
+
+    const { isVoucherCategory } = await import('../../shared/constants/voucher-categories');
+    const { calculateShippingFeeV2 } = await import('../../shared/utils/shipping');
+    let regionRules: Array<{ region_code: string; postal_code_pattern: string; extra_fee: number }> = [];
+    try {
+      const { results } = await c.env.DB.prepare(
+        `SELECT region_code, postal_code_pattern, extra_fee FROM regional_shipping_fees WHERE is_active = 1`,
+      ).all<{ region_code: string; postal_code_pattern: string; extra_fee: number }>();
+      regionRules = results ?? [];
+    } catch { /* fallback 하드코딩 — calculateShippingFeeV2 가 처리 */ }
+
+    // 셀러(seller_id) 단위 그룹핑 — 주문 생성과 동일 단위.
+    type QuoteGroup = { seller_id: string | null; subtotal: number; allNoShip: boolean };
+    const groups = new Map<string, QuoteGroup>();
+    const quotedItems: Array<{ product_id: string; unit_price: number; quantity: number; available: boolean }> = [];
+    for (const it of items) {
+      const p = productMap.get(it.product_id);
+      if (!p) {
+        // 비활성/삭제/미존재 — 클라가 카트에서 제거하도록 신호.
+        quotedItems.push({ product_id: it.product_id, unit_price: 0, quantity: it.quantity, available: false });
+        continue;
+      }
+      const unitPrice = Math.max(0, Number(p.price) || 0);
+      quotedItems.push({ product_id: it.product_id, unit_price: unitPrice, quantity: it.quantity, available: true });
+      const key = String(p.seller_id ?? '');
+      const g = groups.get(key) ?? { seller_id: p.seller_id ? String(p.seller_id) : null, subtotal: 0, allNoShip: true };
+      g.subtotal += unitPrice * it.quantity;
+      g.allNoShip = g.allNoShip && (Number(p.deal_only) === 1 || isVoucherCategory(p.category ?? null));
+      groups.set(key, g);
+    }
+
+    const qb = new QueryBuilder(c.env.DB);
+    const groupQuotes: Array<{
+      seller_id: string | null; subtotal: number; shipping_fee: number;
+      region: string; region_fee: number; free_shipping_applied: boolean; no_shipping: boolean;
+    }> = [];
+    for (const g of groups.values()) {
+      // 주문 생성(POST /)과 동일한 셀러 배송설정 조회 + 레거시 컬럼 fallback.
+      let baseFee = 3000; let threshold: number | null = null;
+      if (g.seller_id) {
+        try {
+          const s = await qb.queryOne<{ base_shipping_fee: number | null; free_shipping_threshold: number | null }>(
+            'SELECT base_shipping_fee, free_shipping_threshold FROM sellers WHERE id = ?', [g.seller_id]);
+          if (s) { baseFee = s.base_shipping_fee ?? 3000; threshold = s.free_shipping_threshold ?? null; }
+        } catch {
+          try {
+            const s = await qb.queryOne<{ shipping_fee: number | null; free_shipping_threshold: number | null }>(
+              'SELECT shipping_fee, free_shipping_threshold FROM sellers WHERE id = ?', [g.seller_id]);
+            if (s) { baseFee = s.shipping_fee ?? 3000; threshold = s.free_shipping_threshold ?? null; }
+          } catch { /* 기본값 유지 */ }
+        }
+      }
+      const fee = g.allNoShip
+        ? { baseFee: 0, regionFee: 0, totalFee: 0, region: 'normal', freeShippingApplied: false }
+        : calculateShippingFeeV2({ subtotal: g.subtotal, baseFee, freeShippingThreshold: threshold, postalCode, regionRules });
+      groupQuotes.push({
+        seller_id: g.seller_id, subtotal: g.subtotal, shipping_fee: fee.totalFee,
+        region: fee.region, region_fee: fee.regionFee,
+        free_shipping_applied: fee.freeShippingApplied, no_shipping: g.allNoShip,
+      });
+    }
+
+    const totalSubtotal = groupQuotes.reduce((s, g) => s + g.subtotal, 0);
+    const totalShipping = groupQuotes.reduce((s, g) => s + g.shipping_fee, 0);
+    return c.json({
+      success: true,
+      data: { items: quotedItems, groups: groupQuotes, total_subtotal: totalSubtotal, total_shipping_fee: totalShipping },
+    });
+  } catch (err) {
+    return safeError(c, err, '배송비 계산 중 오류가 발생했습니다', '[orders:quote]');
   }
 });
 

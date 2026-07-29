@@ -169,17 +169,26 @@ export async function refundOrderFully(
     return { ok: false, status: 400, error: `현재 상태(${status})에서는 환불할 수 없습니다` }
   }
 
-  const amount = Math.max(0, Math.floor(Number(order.total_amount ?? order.amount ?? 0)))
+  // 💸 2026-07-02 (쇼핑 전수조사): 환불액 = 총액 − 기존 부분취소 누적(refunded_amount).
+  //   이전엔 total_amount 전액이라 ① 딜 결제: 부분취소 후 전액취소 시 부분취소분 이중 환급
+  //   ② 카드: Toss 에 전액 재요청 → EXCEED_CANCEL_AMOUNT 402 → 잔여분 취소 영구 불능.
+  let alreadyRefunded = 0
+  try {
+    const r = await DB.prepare('SELECT COALESCE(refunded_amount, 0) AS ra FROM orders WHERE id = ?')
+      .bind(Number(order.id)).first<{ ra: number }>()
+    alreadyRefunded = Math.max(0, Math.floor(Number(r?.ra ?? 0)))
+  } catch { /* 컬럼 부재 등 — 0 취급(기존 동작) */ }
+  const amount = Math.max(0, Math.floor(Number(order.total_amount ?? order.amount ?? 0)) - alreadyRefunded)
   const paymentKey = order.toss_payment_key || order.payment_key
   const isDeal = order.payment_method === 'deal_points'
 
-  // 1. 카드 결제 → Toss 취소 (실패 시 상태 미변경).
-  if (!isDeal) {
+  // 1. 카드 결제 → Toss 취소 (실패 시 상태 미변경). 잔여 0 이면 상태 전이만(돈 이동 없음).
+  if (!isDeal && amount > 0) {
     if (!paymentKey) {
       return { ok: false, status: 422, error: '결제 키를 찾을 수 없습니다. 고객센터에 문의해주세요.', code: 'PAYMENT_KEY_MISSING' }
     }
     const { tossCancelPayment } = await import('./toss-payments')
-    const res = await tossCancelPayment(paymentKey, env.TOSS_SECRET_KEY as string, opts.reason, amount || undefined)
+    const res = await tossCancelPayment(paymentKey, env.TOSS_SECRET_KEY as string, opts.reason, amount)
     if (!res.success) {
       return { ok: false, status: 402, error: res.message || '환불 처리에 실패했습니다', code: res.code }
     }
@@ -232,13 +241,20 @@ export async function refundOrderFully(
   // 4. 재고 복원(물리상품) + order_items CANCELLED. (디지털 revoke 는 아래 부가역전 헬퍼.)
   try {
     const items = await DB.prepare(`
-      SELECT oi.product_id, oi.quantity, p.product_kind
+      SELECT oi.product_id, oi.quantity, oi.option_id, p.product_kind
       FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id
       WHERE oi.order_id = ? AND (oi.status IS NULL OR oi.status != 'CANCELLED')
-    `).bind(Number(order.id)).all<{ product_id: number; quantity: number; product_kind: string | null }>()
+    `).bind(Number(order.id)).all<{ product_id: number; quantity: number; option_id: number | null; product_kind: string | null }>()
     const phys = (items.results || []).filter(it => !it.product_kind || it.product_kind === 'physical')
     if (phys.length > 0) {
       await DB.batch(phys.map(it => DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').bind(it.quantity, it.product_id)))
+    }
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션별 재고 복원(주문 생성 시 CAS 차감분). 물리/디지털 무관 — 옵션 재고는
+    //   product_options.stock 이라 항상 복원(디지털은 유한재고 옵션도 있을 수 있음).
+    const withOpt = (items.results || []).filter(it => it.option_id != null)
+    if (withOpt.length > 0) {
+      await DB.batch(withOpt.map(it => DB.prepare('UPDATE product_options SET stock = stock + ? WHERE id = ?').bind(it.quantity, it.option_id)))
+        .catch(swallow('order-refund:option-stock'))
     }
     await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
       .bind(Number(order.id)).run().catch(swallow('order-refund:items'))

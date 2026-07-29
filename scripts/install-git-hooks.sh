@@ -289,10 +289,6 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
-# 🔢 시드 버전 단조증가 — 이미 쓴 번호를 다시 쓰면 재시드가 에러 없이 그냥 안 돈다(무음).
-#   느린 검사(git log)라 상수를 실제로 건드린 커밋에서만 의미가 있고, 아니면 즉시 통과한다.
-node scripts/check-seed-version-monotonic.mjs || true
-
 # 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
 #   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
 node scripts/check-current-work-sync.mjs || true
@@ -437,3 +433,11 @@ echo "  6. 소개서 동기화 권고 + 자동 참조 재생성 (warn-only, 매 
 echo "  7. TypeScript (npx tsc)"
 echo "  8. 파일 중간 import 검출"
 echo "  9. Worker 번들 빌드 (런타임 crash catch)"
+
+# 🔀 병합 드라이버 등록 (.gitattributes 의 merge=filesize-baseline 이 이걸 필요로 한다).
+#   미등록 환경은 평소대로 충돌이 날 뿐이라 안전하다 — 조용한 오작동은 없다.
+git config merge.filesize-baseline.name "file-size baseline: 키별 최대값 병합"
+git config merge.filesize-baseline.driver "node scripts/merge-file-size-baseline.mjs %A %O %B %P"
+echo ""
+echo "==> 병합 드라이버 등록됨: scripts/file-size-baseline.json (키별 최대값 자동 병합)"
+echo "    docs/CURRENT_WORK.md 는 .gitattributes 의 merge=union (git 내장) 으로 양쪽 보존."
