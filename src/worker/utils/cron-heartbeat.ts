@@ -20,6 +20,8 @@
  *   대신 **기록 누락이 없다**(모아서 쓰면 waitUntil 이 먼저 끝나 유실될 수 있다).
  */
 import type { Env } from '../types/env'
+// 🔴 기대 목록 대조(트리거 미등록 탐지) — 정적 목록 vs 런타임 기록. 상세: cron-expected.ts
+import { findNeverFired, type NeverFiredEntry } from './cron-expected'
 
 /**
  * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
@@ -211,6 +213,13 @@ export interface CronHealth {
   stale: CronStaleEntry[]
   /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
   missing: string[]
+  /**
+   * 🔴 **한 번도 안 뛴 cron 식** — 코드는 기대하는데 기록이 0인 것.
+   * `stale`(뛰다가 멈춤)과 **다른 사고**다: 트리거 미등록은 침묵이 아니라 **부재**라 기존 판정에
+   * 아예 안 잡혔다(2026-07-29 실사고 — 주간 정산 지급·백업이 한 번도 안 돌고 있었다).
+   * 오탐 방지로 **추적 창이 그 주기보다 길 때만** 채워진다.
+   */
+  never_fired: NeverFiredEntry[]
 }
 
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
@@ -237,6 +246,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
       last_finished_at: null, age_min: null,
     }],
     missing: [],
+    never_fired: [],
   })
   if (!beats.length) return empty(trackedMin < TOTAL_SILENCE_MIN)
 
@@ -255,6 +265,7 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
         max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
       }],
       missing: [],
+      never_fired: [],  // 전면 침묵이면 개별 부재는 노이즈 — 먼저 전체를 살려야 한다
     }
   }
 
@@ -272,12 +283,17 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
     }
   }
 
+  // 🔴 기대 목록 대조 — "뛰다가 멈춤"이 아니라 **한 번도 안 뜀**.
+  const neverFired = findNeverFired(beats.map(b => b.cron), trackedMin, expectedMaxAgeMinutes)
+
   return {
-    ok: stale.length === 0,
+    // 부재도 ok 를 깬다 — 이걸 ok 로 두면 2026-07-29 사고가 그대로 반복된다(초록불인데 지급이 안 나감).
+    ok: stale.length === 0 && neverFired.length === 0,
     bootstrapping: false,
     latest_heartbeat_at: newest?.at ?? null,
     latest_age_min: latestAge,
     stale,
     missing,
+    never_fired: neverFired,
   }
 }
