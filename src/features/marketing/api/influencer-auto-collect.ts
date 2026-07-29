@@ -441,7 +441,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
   const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal }

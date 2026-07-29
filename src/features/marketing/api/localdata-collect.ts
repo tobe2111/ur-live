@@ -55,7 +55,7 @@ async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; 
   const envBudget = Math.min(300, Math.max(20, parseInt((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET || '', 10) || 40))
   const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
     .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt((env as unknown as { ADS_LOCALDATA_DEADLINE_MS?: string }).ADS_LOCALDATA_DEADLINE_MS || '', 10) || 20_000))

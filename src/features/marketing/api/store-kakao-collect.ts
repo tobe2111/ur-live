@@ -99,7 +99,7 @@ export async function runStoreKakaoCollect(env: Env): Promise<StoreKakaoStats> {
   const envBudget = Math.min(80, Math.max(5, parseInt(env.ADS_STORE_KAKAO_BUDGET || '', 10) || 30))
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('store_kakao')).first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // 다른 레인과 **같은 형태**의 예산 객체를 쓴다(가드가 이 형태를 요구한다 — 소비량 계산이 어긋나면

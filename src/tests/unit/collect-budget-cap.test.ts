@@ -134,7 +134,23 @@ describe('플랫폼 천장 — 학습 상한이 넘을 수 없다', () => {
     expect(v!).toBeLessThanOrEqual(45)
   })
 
-  it('platformSubreqCap — 미설정/이상값은 기본 45, 유료 전환 시 env 로 상향', () => {
+  /**
+   * 🔢 기본 천장이 **관측된 생존선 위**에 있어야 한다.
+   *   회복은 ×1.25 뿐이라 25 시작 궤적은 25→32→40→50→63→79… — 라이브의 `influencer=55`·`kakao_sweep=65` 는
+   *   이 궤적에 없다. 둘 다 백오프(×0.8)로만 나오는 값이고 역산하면 spent≈69·81 에서 한도를 만났다는 뜻이다.
+   *   즉 잘 도는 레인은 우리 계수기 기준 70~80 까지 간다 — 천장을 50 이하로 내리면 **정상 레인을 깎는다**
+   *   (실제로 처음 45 로 잡았다가 이 역산으로 정정했다). 근거 없이 다시 내리지 못하게 고정한다.
+   */
+  it('🔒 기본 천장은 관측 생존선(55~65) 아래로 내려가지 않는다', () => {
+    expect(SUBREQ_PLATFORM_CAP_DEFAULT).toBeGreaterThanOrEqual(55)
+    // 드리프트(라이브 172)는 확실히 잘라내야 한다 — 천장이 그보다 한참 아래
+    expect(SUBREQ_PLATFORM_CAP_DEFAULT).toBeLessThan(100)
+    expect(resolveSubreqBudget(300, 172, SUBREQ_PLATFORM_CAP_DEFAULT)).toBe(SUBREQ_PLATFORM_CAP_DEFAULT)
+    // 정상 레인(55)은 천장에 걸리지 않는다 = 깎이지 않는다
+    expect(resolveSubreqBudget(300, 55, SUBREQ_PLATFORM_CAP_DEFAULT)).toBe(55)
+  })
+
+  it('platformSubreqCap — 미설정/이상값은 기본값, 유료 전환 시 env 로 상향', () => {
     expect(platformSubreqCap(undefined)).toBe(SUBREQ_PLATFORM_CAP_DEFAULT)
     expect(platformSubreqCap('')).toBe(SUBREQ_PLATFORM_CAP_DEFAULT)
     expect(platformSubreqCap('abc')).toBe(SUBREQ_PLATFORM_CAP_DEFAULT)

@@ -218,7 +218,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
   const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
     .first<{ value: string }>().catch(() => null)
   const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const total = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const budget = newOpBudget(Math.max(6, total - RESERVE_OPS))

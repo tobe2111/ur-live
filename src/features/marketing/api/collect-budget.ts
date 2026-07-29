@@ -64,14 +64,24 @@ export const isSubrequestLimitError = (msg?: string | null): boolean =>
  *     ⇒ 회복(×1.25)만 계속 적용되고 하향은 한 번도 안 걸리는 **한 방향 드리프트**. 자기교정 루프가
  *       "실패를 관측할 수 있다"를 전제하는데 이 레인에서 그 전제가 깨져 있었다.
  *
- *   ⇒ 관측에만 의존하지 않는다. 문서화된 플랫폼 한도(무료 플랜 **인보케이션당 50, D1 포함**)를 코드가 직접
- *     지킨다. 45 인 이유는 라운드 **꼬리**(잔여 집계 SELECT + 학습값 쓰기 + 최종 스냅샷 ≈ 3)를 남기기 위함 —
- *     천장에 딱 붙이면 결과 기록이 잘려 또 무증거 사망이 된다.
+ *   ⇒ 관측에만 의존하지 않는다. **드리프트를 막는 천장**을 코드가 직접 갖는다.
+ *
+ *   🔢 값을 60 으로 정한 근거(문서 수치가 아니라 **역산**):
+ *     회복은 ×1.25 뿐이라 25 에서 시작한 궤적은 25→32→40→50→63→79… 다. **55·65 는 이 궤적에 없다.**
+ *     둘 다 백오프(×0.8)로만 나올 수 있는 값이고, 역산하면 각각 **spent≈69·81 에서 한도를 만났다**는 뜻이다.
+ *     즉 잘 도는 레인들은 *우리 계수기 기준* 70~80 까지 도달한다 — 문서의 "무료 50" 을 그대로 천장으로 삼으면
+ *     (한때 45 로 잡았다) **정상 레인을 30% 깎는다**. 우리 계수기가 실제 서브리퀘스트보다 과다 계상하는
+ *     것으로 보인다(배치·조기반환분까지 세는 지점들). ⇒ 관측된 생존선(55~65) 언저리인 60 을 택한다:
+ *     드리프트(172)는 3배 가까이 잘라내면서 정상 레인은 거의 건드리지 않는다.
+ *
+ *   ⚠️ 이 값은 **추정이다**(플랫폼이 알려주지 않는다). 확실한 것은 하나뿐 — *관측 불가 레인의 무한 상승을
+ *     막아야 한다*. 레인 학습값이 60 에 붙어 있고 한도 오류가 안 보이면 올려도 되고, 여전히 무증거로 죽으면
+ *     내린다. 무배포 조정: `ADS_SUBREQ_PLATFORM_CAP`.
  *
  *   🔧 유료 전환 시: 배포 없이 `ADS_SUBREQ_PLATFORM_CAP` 으로 올린다(예: 900).
  *      ⚠️ 추측으로 올리지 말 것 — 올린 뒤 레인들의 학습값이 다시 그 근처에서 수렴하는지 확인하고 판단한다.
  */
-export const SUBREQ_PLATFORM_CAP_DEFAULT = 45
+export const SUBREQ_PLATFORM_CAP_DEFAULT = 60
 
 /** env 의 플랫폼 천장(없거나 이상값이면 기본값). 상한 900 은 유료 플랜(1,000)의 꼬리 여유. */
 export function platformSubreqCap(raw?: string | null): number {
@@ -104,7 +114,7 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number, platf
  *
  * @param spent      이번 실행이 실제로 쓴 fetch 수
  * @param hitLimit   이번 실행에서 한도 오류를 관측했나
- * @param platformCap 문서화된 플랫폼 한도(무료 50 → 기본 45)
+ * @param platformCap 드리프트 방지 천장(기본 60 — 근거는 위 역산 주석)
  */
 export function nextSubreqCap(
   spent: number, hitLimit: boolean, learnedCap: number, envBudget: number,

@@ -462,7 +462,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
  */
 export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processed: number }> {
   // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
-  //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석 참조.
+  //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석(기본 60·근거) 참조.
   const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), 250) }
   let processed = 0
   for (let i = 0; i < Math.max(1, Math.min(10, passes)) && budget.left > 5; i++) {

@@ -463,7 +463,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   소비량을 `cap - budget.left` 로 계산하면(예전 코드) 학습값 63 으로 시작했는데 600 기준으로 재서
   //   실제의 ~10배가 나온다 → 한도 오류 시 백오프가 `floor(590*0.8)=472` 로 **상한을 오히려 폭등**시켰다
   //   (되내려와야 할 안전판이 거꾸로 작동). 시작값을 명시 상수로 잡아 두 곳이 어긋날 수 없게 한다.
-  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(collect-budget 참조: 무료 50 → 기본 45).
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(cap, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal }

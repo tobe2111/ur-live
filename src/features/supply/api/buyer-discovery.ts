@@ -606,7 +606,7 @@ export async function runBuyerCollection(env: Env, opts: { force?: boolean } = {
   await ensureBuyerSchema(DB); await ensureBuyerTargets(DB)
 
   const batch = Math.min(10, Math.max(1, parseInt(env.BUYER_AUTOCOLLECT_BATCH || '3', 10) || 3))
-  // 🧱 플랫폼 천장 우선 — 넘으면 후반 fetch 가 잡히는 예외 없이 전멸한다(collect-budget.ts).
+  // 🧱 플랫폼 천장 우선 — 넘으면 후반 fetch 가 잡히는 예외 없이 전멸한다(collect-budget.ts 주석).
   const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(5, parseInt(env.BUYER_SUBREQUEST_BUDGET || '60', 10) || 60)) }
 
   const cursorRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'buyer_collect_cursor'").first<{ value: string }>().catch(() => null)
