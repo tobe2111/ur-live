@@ -179,6 +179,16 @@ if (criticalGzip === 0) {
   violations.push('critical path 를 측정하지 못했다 (dist/index.html 미발견 또는 script/modulepreload 매칭 0건) — 예산 검사가 무력화된 상태다');
 } else if (criticalGzip / 1024 > BUDGET.criticalGzipKB) {
   violations.push(`critical path gzip ${(criticalGzip / 1024).toFixed(1)} KB > ${BUDGET.criticalGzipKB} KB (entry+modulepreload ${criticalFiles.length}개)`);
+  // 🔎 2026-07-29: **무엇을 줄여야 하는지까지 말해준다.** 이 예산은 실측 294.5/300 으로 여유가 1.8% 뿐이라
+  //   다음에 eager import 하나만 늘어도 터진다. 그때 "몇 KB 초과" 만 알려주면 받는 사람이 처음부터
+  //   빌드를 다시 돌려 원인을 찾아야 한다(이 레포는 npm 이 막힌 컨테이너가 흔해 그게 비싸다).
+  //   기여도 상위 5개를 함께 찍어 바로 lazy 분할 대상을 고르게 한다.
+  const top = criticalFiles
+    .map(f => ({ name: f.name, gz: f.gzip > 0 ? f.gzip : zlib.gzipSync(fs.readFileSync(path.join(distDir, f.name))).length }))
+    .sort((a, b) => b.gz - a.gz)
+    .slice(0, 5);
+  for (const f of top) violations.push(`    ↳ ${f.name}: ${(f.gz / 1024).toFixed(1)} KB gzip`);
+  violations.push(`    → 위 청크에서 첫 페인트에 불필요한 것을 lazy 로 내리세요(entry 에 새 eager import 가 들어왔는지부터 확인).`);
 }
 const overSized = jsFiles.filter(f => f.size / 1024 > BUDGET.singleRawKB);
 if (overSized.length > 0) {
