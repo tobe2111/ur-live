@@ -15,6 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
+import { publicDataRoutes } from './public-data.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
@@ -81,6 +82,32 @@ app.post('/__ads/collect-chain', async (c) => {
   return c.json({ ok: true, stats, chained })
 })
 
+// 📝 인플루언서 풀 보강 1라운드(블로거 활동성·연락처 + 링크인바이오) — 수집과 **분리된 인보케이션**.
+//   왜 분리했는지는 `influencer-enrich-lane.ts` 헤더(라이브 실측: 수집에 얹혀 있어 한 건도 못 돌았음).
+//   💥 원문 릴레이 — 'FAILED' 로 뭉개면 라운드가 왜 안 도는지 라이브에서 알 길이 없다(파트너풀 레인과 동일).
+app.post('/__ads/enrich-influencer', async (c) => {
+  try {
+    const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+    return c.json({ ok: true, stats: await runInfluencerEnrich(c.env) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
+// 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
+//   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
+app.post('/__ads/route-biz-blogs', async (c) => {
+  try {
+    const { routeBusinessBlogsToPartnerPool } = await import('@/features/marketing/api/biz-blog-router')
+    const max = Math.max(100, Math.min(20000, parseInt(c.req.query('max') || '', 10) || 3000))
+    return c.json({ ok: true, stats: await routeBusinessBlogsToPartnerPool(c.env, { dryRun: c.req.query('apply') !== '1', max, reset: c.req.query('reset') === '1' }) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
 // 🤝 파트너(업체) 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(외부 도달 불가). 게이트 무관(수동=의도).
 app.post('/__ads/collect-company', async (c) => {
   try {
@@ -98,6 +125,24 @@ app.post('/__ads/enrich-company', async (c) => {
     return c.json({ ok: true, stats })
     // 💥 원문 릴레이(2026-07-28) — 'FAILED' 로 뭉개면 라이브에서 라운드가 왜 안 끝나는지 알 길이 없다.
     //   내부 진단 엔드포인트(어드민 위임 전용)라 원문 노출 대상이 관리자로 한정된다.
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
+// 🔗 원부 이메일 이식 — **D1 전용**(외부 API 0). 크론 배선이 없어 어드민 버튼으로만 돌던 것을 정규 레인으로.
+//   한 인보케이션 = 한 예산. 커서가 백로그를 이어 순회하므로 매시간 조금씩 전량을 훑는다.
+app.post('/__ads/match-registry', async (c) => {
+  try {
+    const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
+    const budget = { left: 45 } // 플랫폼 서브리퀘스트 한도(≈50) 안쪽 — D1 쿼리도 여기서 지불한다
+    let last = null as Awaited<ReturnType<typeof matchRegistryEmails>> | null
+    for (let i = 0; i < 5; i++) {
+      last = await matchRegistryEmails(c.env, 400, budget)
+      if (last.done || budget.left <= 8) break
+    }
+    return c.json({ ok: true, stats: last })
   } catch (err) {
     const e = err as { name?: string; message?: string } | null
     return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
@@ -157,72 +202,8 @@ app.post('/__ads/reclassify-company', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
-// 🏪 상가정보(공공데이터) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-storeinfo', async (c) => {
-  try {
-    const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect')
-    const stats = await runStoreInfoCollect(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너 수동 트리거 — 메인 어드민이 env.ADS 로만 호출.
-app.post('/__ads/collect-commerce', async (c) => {
-  try { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return c.json({ ok: true, stats: await runCommerceCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/collect-franchise', async (c) => {
-  try { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return c.json({ ok: true, stats: await runFranchiseCollect(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/scan-notices', async (c) => {
-  try { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return c.json({ ok: true, stats: await runNoticeScan(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🏪 매장 후보(인허가) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-//   전일 변동분 + (백필 설정 시) 과거 1청크도 함께 진행 — 버튼 누를수록 축적 가속.
-app.post('/__ads/collect-localdata', async (c) => {
-  try {
-    const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-    const stats = await runLocalDataCollect(c.env)
-    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
-    return c.json({ ok: true, stats, backfill })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📧 매장 후보(인허가) 이메일 우선 연락처 보강 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/enrich-prospects', async (c) => {
-  try {
-    const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich')
-    const stats = await enrichProspectContacts(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📑 나라장터 조달업체(대행사 계열) 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-nara-vendor', async (c) => {
-  try { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return c.json({ ok: true, stats: await runNaraVendorCollect(c.env, 5) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🎓 나이스 학원·교습소 · 🏥 심평원 병원 수동 수집 트리거 — 메인 어드민이 env.ADS 로만 호출. 게이트 무관(수동=의도).
-app.post('/__ads/collect-neis', async (c) => {
-  try { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return c.json({ ok: true, stats: await runNeisAcademyCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-app.post('/__ads/collect-hira', async (c) => {
-  try { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return c.json({ ok: true, stats: await runHiraHospitalCollect(c.env, 6) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 📮 이메일 재검증 스윕 수동 트리거 — 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
-app.post('/__ads/sweep-mx', async (c) => {
-  try { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return c.json({ ok: true, stats: await sweepEmailMx(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🏛️ 사업자 폐업 스윕 수동 트리거 — 국세청 상태조회 활용신청 검증 겸(메인 어드민이 env.ADS 로만 호출).
-app.post('/__ads/sweep-nts', async (c) => {
-  try {
-    const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
-    const stats = await sweepBusinessStatus(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
+// 🏛️ 공공데이터 수집·스윕 수동 트리거 — 별 모듈로 추출(2026-07-28, god 파일 래칫). 경로/동작 불변.
+app.route('/', publicDataRoutes)
 
 // 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
 app.post('/__ads/sheets-sync', async (c) => {
@@ -234,10 +215,14 @@ app.post('/__ads/sheets-sync', async (c) => {
 })
 
 // 🌙 야간 자동 정비 — cron(SELF.fetch)이 새 invocation 예산으로 호출. 어드민 버튼과 동일 SSOT 모듈.
+//   ?phase=merge|reextract|reclassify|quality — 2026-07-28: 단계별 **자체 인보케이션**(fresh 예산). 무료 플랜의
+//   실효 상한(인보케이션당 ~29 D1 연산)에선 4단계를 한 번에 돌 수 없다(= 07-27 이후 무음 정지의 원인).
+//   phase 없으면 4단계 순차(🧰 전체 정비 버튼 폴백 — 각 단계가 내부적으로 자기 예산을 쓴다).
 app.post('/__ads/maintenance', async (c) => {
   try {
-    const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance')
-    const r = await runNightlyMaintenance(c.env)
+    const m = await import('@/features/marketing/api/influencer-maintenance')
+    const p = c.req.query('phase')
+    const r = m.isMaintPhase(p) ? await m.runMaintenancePhase(c.env, p) : await m.runNightlyMaintenance(c.env)
     return c.json({ ok: true, ...r })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -285,14 +270,41 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   인보케이션 한도를 넘어 늦게 실행되는 트랙(YT 검색·저장)이 중간에 죽음. 각 트랙을 SELF 서비스바인딩으로
   //   **자체 인보케이션**(fresh 한도)에 격리 — 야간 정비(18/19시)와 동일 패턴. SELF 미바인딩이면 직접 실행
   //   폴백(로컬 안전). 실패는 fail-soft(매시간 cron 이라 다음 틱 재시도).
+  // 💓🚨 2026-07-28: ur-ads 는 **실패를 어디에도 남기지 않았다** — 아래 catch 들이 전부 조용히 삼켜
+  //   cron_failures·어드민 벨에 한 건도 도달하지 않았다(메인 워커의 safeCron 과 달리 래퍼가 없었다).
+  //   게다가 실행 기록도 없어 "안 돌았다"조차 알 수 없었다 — 07-26~28 자동 정비 무음 정지가 그 결과다(#793/#826).
+  //   ⇒ 메인의 safeCron 과 같은 계약을 여기에도 준다: **성공·실패 무관 하트비트 + 실패 통지**.
+  //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
+  //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
+  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown): Promise<void> => {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron)
+    } catch { /* 관측 실패가 작업을 막지 않는다 */ }
+    if (!ok) {
+      try {
+        const { reportCronFailure } = await import('@/worker/utils/cron-reporter')
+        await reportCronFailure(env as never, `ads:${name}`, err, { cron: event.cron }, 'error')
+      } catch { /* 통지 실패도 삼킨다 */ }
+    }
+  }
+
   const kick = (path: string, fallback: () => Promise<unknown>): void => {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
         else await fallback()
-      } catch { /* fail-soft */ }
+        await adsBeat(path.replace(/^\/__ads\//, ''), true, Date.now() - t0)
+      } catch (err) {
+        await adsBeat(path.replace(/^\/__ads\//, ''), false, Date.now() - t0, err)
+      }
     })())
   }
+
+  // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
+  //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
+  ctx.waitUntil(adsBeat('scheduled', true, 0))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
@@ -305,6 +317,28 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
   if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
     kick('/__ads/collect', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) })
+  }
+  // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
+  //   배경(라이브 실측): 보강 4종이 수집과 같은 인보케이션에 얹혀 있어 발굴이 서브리퀘스트를 다 쓰고 나면
+  //   전부 0 으로 즉시 반환했다(`naver_enrich.tried:0` · `bio_enriched:0` 고착 · 표본 1,000행 중
+  //   `perf_checked_at` 채워진 행 0). 그 결과 풀 37,414명 중 연락처 보유가 8.8% 에 고정 —
+  //   특히 74%를 차지하는 네이버 블로거는 활동성조차 한 번도 측정된 적이 없다.
+  //   ⇒ 파트너풀 이메일 보강과 동일한 처방: **라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산**.
+  //   각 라운드가 perf_checked_at/bio_checked_at 도장을 찍어 다음 라운드는 다음 구간을 이어 순회(중복 0).
+  //   기본 ON(킬스위치 ADS_INFLUENCER_ENRICH_DISABLED='true' 만 끔) — 켜야 도는 구조로 두면
+  //   "켠 줄 알았는데 안 돌던" 사고(제조사 수집 cron 누락)를 반복한다.
+  if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
+    const rounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS || '', 10) || 6))
+    ctx.waitUntil((async () => {
+      try {
+        if (env.SELF?.fetch) {
+          for (let i = 0; i < rounds; i++) await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-influencer', { method: 'POST' }))
+        } else {
+          const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+          await runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
+        }
+      } catch { /* fail-soft — 다음 틱 재시도 */ }
+    })())
   }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
   //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
@@ -365,6 +399,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
       } catch { /* fail-soft — 다음 틱 재시도 */ }
     })())
+    // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
+    //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
+    //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
+    kick('/__ads/match-registry', async () => {
+      const { matchRegistryEmails } = await import('@/features/marketing/api/registry-email-match')
+      return matchRegistryEmails(env, 400, { left: 45 })
+    })
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
     kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
@@ -491,19 +532,29 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })())
   }
 
-  // ── 🌙 매일 18:00 UTC(=KST 03시) 자동 정비 + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
-  //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류 / 🧭재보정→🔄재조회)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
-  //   SELF 바인딩으로 **자체 인보케이션**에서 실행(fresh 서브리퀘스트 예산 — 같은 틱의 일일배치와 예산 미공유). 미바인딩 시 직접 실행 폴백.
+  // ── 🌙 자동 정비 = **매시간 1단계 순환** + 19:00 UTC(=KST 04시) 라이브 재보정 (2026-07-26 대표 "버튼 말고 자동으로") ──
+  //   버튼 시퀀스(🧬중복통합→🔗재추출→🏷️재분류→🏅품질)의 자동화 — influencer-maintenance SSOT(버튼과 동일 로직, 멱등).
+  //   SELF 바인딩으로 **자체 인보케이션**에서 실행(fresh 서브리퀘스트 예산 — 같은 틱의 다른 레인과 예산 미공유). 미바인딩 시 직접 실행 폴백.
   //   기본 ON(대표 지시) — 끄려면 ur-ads env ADS_AUTO_MAINTENANCE_ENABLED='false'. 결과는 platform_settings 에 기록(무음 실패 방지).
-  if ((hourUTC === 18 || hourUTC === 19) && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    const path = hourUTC === 18 ? '/__ads/maintenance' : '/__ads/maintenance-rescan'
-    ctx.waitUntil((async () => {
-      try {
-        if (env.SELF?.fetch) { await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' })) }
-        else if (hourUTC === 18) { const { runNightlyMaintenance } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyMaintenance(env) }
-        else { const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance'); await runNightlyRescan(env) }
-      } catch { /* fail-soft */ }
-    })())
+  //   🩹 2026-07-28 근본수리: 기존엔 18시에 **4단계를 한 인보케이션**으로 몰아 돌렸다. 무료 플랜의 실효
+  //   서브리퀘스트 상한은 ~29(학습값)인데 정비 1회는 수백~수천 D1 연산이 필요해 **매번 첫 단계 도중 죽었고**,
+  //   모든 D1 호출이 `.catch(()=>null)` 이라 결과 스탬프조차 못 남겨 "07-26 이후 멈춤"으로 보였다.
+  //   ⇒ ① 매시간 **한 단계씩 순환**(단계당 fresh 인보케이션 예산 — 하루 24회 ≈ 단계별 6회) ② 각 단계는 커서로
+  //      다음 회차에 이어받는다 ③ 결과는 예산 밖에서 항상 기록. **새 cron 추가 없음**(무료 계정 cron 5/5 소진).
+  if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+    const PHASES = ['merge', 'reextract', 'reclassify', 'quality'] as const
+    const phase = PHASES[hourUTC % PHASES.length]
+    kick(`/__ads/maintenance?phase=${phase}`, async () => {
+      const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
+      return runMaintenancePhase(env, phase)
+    })
+  }
+  // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
+  if (hourUTC === 19 && env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
+    kick('/__ads/maintenance-rescan', async () => {
+      const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
+      return runNightlyRescan(env)
+    })
   }
 
   // ── 매일 23:00 UTC(=08:00 KST) — 유어애즈 아웃리치 팔로업 리마인더(무응답·회신도착 다이제스트) ──

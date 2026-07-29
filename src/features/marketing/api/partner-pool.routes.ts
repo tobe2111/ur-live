@@ -17,9 +17,14 @@ import {
 } from './company-discovery'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
+import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 
 const app = new Hono<{ Bindings: Env }>()
+
 app.use('*', requireAdmin())
+// 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
+//   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
+app.route('/', partnerPoolDedupeRoutes)
 
 /* 🔔 작업 완료 알림벨 공용(2026-07-27) — 백그라운드(waitUntil) 작업은 페이지를 떠나도 계속되지만
  *   완료 토스트는 페이지와 함께 사라진다 → 결과를 알림벨에 남겨 어디서든/나중에 확인 가능하게. */
@@ -72,6 +77,7 @@ app.post('/:id/bounce', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   await ensureCompanySchema(c.env.DB)
+  // merged-filter-ok — id 지정 단건 조회(어드민이 명시한 행).
   const row = await c.env.DB.prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
   const email = (row?.email || '').trim().toLowerCase()
   if (!email) return c.json({ success: false, error: '이 리드에 이메일이 없습니다' }, 400)
@@ -289,7 +295,7 @@ app.get('/contact-list', async (c) => {
   const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
   const companies = (await c.env.DB.prepare(
     `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
-     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+     WHERE active = 1 AND merged_into IS NULL AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
      ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
   ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
   const stores = (await c.env.DB.prepare(
@@ -300,47 +306,11 @@ app.get('/contact-list', async (c) => {
   return c.json({ success: true, companies, stores })
 })
 
-// POST /api/admin/partner-pool/collect-nara — 📑 나라장터 조달업체(대행사 계열) 수동 수집(ur-ads 위임).
-app.post('/collect-nara', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '📑 조달업체 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-mx — 📮 기존 이메일 재검증(죽은 도메인 정리, ur-ads 위임).
-app.post('/sweep-mx', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '📮 이메일 재검증', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
-app.post('/sweep-nts', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' }))
-    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
-    await notifyJobDone(c.env.DB, '🏛 폐업 정리', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
-  } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// 위임 3종(나라장터 수집 · 이메일 재검증 · 폐업 정리) — 아래 delegateCollect 하나로 통일(같은 보일러플레이트였다).
+//   ⚠️ 함수 선언은 호이스팅되므로 정의(아래)보다 위에서 호출해도 안전하다.
+app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업체 수집'))
+app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
+app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
 
 // GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
 app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))
@@ -375,9 +345,12 @@ app.post('/match-registry', async (c) => {
   const passes = Math.min(20, Math.max(1, intParam(c.req.query('passes'), 5)))
   const run = async () => {
     const { matchRegistryEmails } = await import('./registry-email-match')
+    // 🪙 패스들이 **한 인보케이션을 공유**한다 — 예산도 공유해야 한다. 예전엔 패스마다 수백 쿼리를 날려
+    //   서브리퀘스트 한도에 눌렸고, 그 실패를 `.catch(() => null)` 가 삼켜 통계엔 '원부에 없음' 으로 남았다.
+    const budget = { left: 45 } // 플랫폼 한도(≈50) 안쪽. 부족하면 다음 호출/크론이 커서로 이어받는다.
     for (let i = 0; i < passes; i++) {
-      const r = await matchRegistryEmails(c.env, 400).catch(() => null)
-      if (!r || r.done) break
+      const r = await matchRegistryEmails(c.env, 400, budget).catch(() => null)
+      if (!r || r.done || budget.left <= 8) break
     }
   }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }

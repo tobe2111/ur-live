@@ -10,6 +10,8 @@ import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './inf
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity } from './influencer-performance'
 import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
 
 const POOL = 0
 
@@ -121,14 +123,24 @@ export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: num
 }
 
 /** 🔗 기존 풀 소개글 연락처 재추출(백필, 멱등) — 개선된 추출기 재적용(API 재호출 0). 날조/대행사 이메일 소급 정리 포함. */
-export async function reextractPoolContacts(DB: D1Database): Promise<{ scanned: number; filled: number }> {
+export async function reextractPoolContacts(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; filled: number; done: boolean }> {
   await ensureInfluencerSchema(DB)
-  let scanned = 0, filled = 0
-  for (let off = 0; ; off += 2000) {
+  // 🔗 2026-07-28: OFFSET 전수스캔 → **id 커서**(품질/재분류 패스와 동일 패턴). 무료 플랜 예산에선 한 실행이
+  //   전수를 못 도는데, 커서가 없으면 매번 앞부분만 다시 훑고 뒤쪽 백로그는 영원히 재추출되지 않는다.
+  const CURSOR_KEY = 'ads_reextract_cursor'
+  const PAGE = 2000
+  let cursor = 0
+  const cRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (cRaw?.value) cursor = Math.max(0, parseInt(cRaw.value, 10) || 0)
+  let scanned = 0, filled = 0, done = false
+  for (;;) {
     const rows = (await DB.prepare(`SELECT id, description, email, instagram, tiktok, links FROM ad_influencer_leads
-        WHERE account_id = ? AND description IS NOT NULL AND description != '' ORDER BY id ASC LIMIT 2000 OFFSET ?`).bind(POOL, off)
+        WHERE account_id = ? AND id > ? AND description IS NOT NULL AND description != '' ORDER BY id ASC LIMIT ?`).bind(POOL, cursor, PAGE)
       .all<{ id: number; description: string | null; email: string | null; instagram: string | null; tiktok: string | null; links: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    const pageStart = cursor
+    for (const r of rows) cursor = Math.max(cursor, r.id)
     scanned += rows.length
     const ups: ReturnType<typeof DB.prepare>[] = []
     for (const r of rows) {
@@ -146,9 +158,12 @@ export async function reextractPoolContacts(DB: D1Database): Promise<{ scanned: 
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     filled += ups.length
-    if (rows.length < 2000) break
+    if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
+    if (rows.length < PAGE) { done = true; break }
   }
-  return { scanned, filled }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
+  return { scanned, filled, done }
 }
 
 /**
@@ -158,20 +173,82 @@ export async function reextractPoolContacts(DB: D1Database): Promise<{ scanned: 
  *   결과를 platform_settings 에 기록(무음 실패 방지 — 어드민 stats 로 노출 가능).
  */
 export async function runNightlyMaintenance(env: Env): Promise<Record<string, unknown>> {
-  const DB = env.DB
-  // 🔒 단일화 lease — 야간 cron · 🧰 전체 정비 버튼 · 연타가 겹치면 같은 그룹을 두 실행이 동시에 병합하고
-  //   (레이스) 아래 rescan 은 YouTube 쿼터까지 중복 소모한다. 수집 lease 와 같은 CAS 패턴, 별개 키.
-  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) return { at: new Date().toISOString(), kind: 'maintenance', busy: true }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'maintenance' }
+  for (const phase of MAINT_PHASES) {
+    const r = await runMaintenancePhase(env, phase)
+    if (r.busy) { out.busy = true; break }
+    // 결과 + 실패사유 + 예산상태를 모두 승계 — 버튼 응답에서 "왜 조금만 됐는지"가 보여야 한다.
+    if (r[phase] !== undefined) out[phase] = r[phase]
+    if (r[`${phase}_error`] !== undefined) out[`${phase}_error`] = r[`${phase}_error`]
+    if (r.paused) out.paused = true
+    if (r.limit_hit) out.limit_hit = true
+  }
+  return out
+}
+
+// ── 🧮 예산 인지 단계 실행(2026-07-28 근본수리) ─────────────────────────────
+//   이전 구조는 4단계를 **한 인보케이션**에서 연달아 돌렸다 — 그런데 중복통합만 해도 그룹당 3쿼리 × 150그룹,
+//   재추출/재분류는 3.6만 행 전수 페이징이라 **한 실행에 수백~수천 D1 연산**이 필요했다.
+//   무료 플랜의 실효 상한은 인보케이션당 ~29(학습값). 즉 매 실행이 한도에서 죽었고, 모든 D1 호출이
+//   `.catch(() => null)` 이라 **마지막 결과 기록조차 실패** → 어드민엔 "아무것도 안 돎"으로만 보였다.
+//   ⇒ ① 단계당 1 인보케이션(fresh 예산) ② 예산 래퍼로 소진 시 안전 중단 ③ 커서로 다음 회차 이어받기
+//      ④ **결과 스탬프는 예산 밖에서 항상 기록**(무음 정지 구조적 불가).
+export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality'
+export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality']
+export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includes(v as MaintPhase)
+
+/** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
+const PHASE_LEASE_TTL_MS = 3 * 60_000
+/** 리스 해제·스탬프·커서 기록용으로 남겨두는 연산(예산에서 제외) — 이게 없으면 "기록조차 못 하는" 원래 병이 재발. */
+const RESERVE_OPS = 6
+
+/**
+ * 🌙 정비 1단계 실행 — 예산 안에서 진행하고, **성공/중단/한도 여부를 반드시 기록**한다.
+ *   반환·기록 형태는 기존 `ads_maintenance_last`(어드민 패널)와 호환(단계 키를 병합 갱신).
+ */
+export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<Record<string, unknown>> {
+  const DB = env.DB
+  const at = new Date().toISOString()
+  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, PHASE_LEASE_TTL_MS)) return { at, kind: 'maintenance', phase, busy: true }
+
+  const envBudget = Math.max(10, Math.min(800, parseInt(String(env.ADS_MAINT_OPS_BUDGET || ''), 10) || 60))
+  const learnedRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('maintenance'))
+    .first<{ value: string }>().catch(() => null)
+  const learnedCap = Math.max(0, parseInt(learnedRaw?.value || '', 10) || 0)
+  const total = resolveSubreqBudget(envBudget, learnedCap)
+  const budget = newOpBudget(Math.max(6, total - RESERVE_OPS))
+  const bdb = budgetedDb(DB, budget)
+
+  const out: Record<string, unknown> = { at, kind: 'maintenance', phase }
   try {
-    try { out.merge = await mergeDuplicatePool(DB, { groupCap: 150 }) } catch (e) { out.merge_error = (e as Error)?.message || 'fail' }
-    try { out.reextract = await reextractPoolContacts(DB) } catch (e) { out.reextract_error = (e as Error)?.message || 'fail' }
-    try { out.reclassify = await runReclassifyPool(DB) } catch (e) { out.reclassify_error = (e as Error)?.message || 'fail' }
-    // 🏅 품질 패스 — 브랜드 공식 채널 태깅 + 리드 스코어 재계산(커서 순환, 회차당 상한 있음).
-    try { out.quality = await runQualityPass(DB) } catch (e) { out.quality_error = (e as Error)?.message || 'fail' }
+    if (phase === 'merge') out.merge = await mergeDuplicatePool(bdb, { groupCap: 150 })
+    else if (phase === 'reextract') out.reextract = await reextractPoolContacts(bdb, { budget })
+    else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
+    else out.quality = await runQualityPass(bdb, { budget })
+  } catch (e) {
+    out[`${phase}_error`] = (e as Error)?.message || 'fail'
+  } finally {
+    out.ops = budget.used
+    out.cap = total
+    out.paused = !!budget.exhausted   // 예산 소진으로 중단 — 다음 회차가 커서로 이어받는다(정상 동작)
+    out.limit_hit = !!budget.limitHit // 플랫폼 한도 예외 관측 — 학습 상한을 내린다
+    // 📉 학습 상한 갱신 — 수집 레인과 **같은 SSOT·같은 키**(한도는 워커 단위라 레인별로 다르지 않다).
+    const nextCap = nextSubreqCap(budget.used, !!budget.limitHit, learnedCap, envBudget)
+    if (nextCap != null) {
+      await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+        .bind(subreqCapKey('maintenance'), String(nextCap)).run().catch(() => null)
+      out.next_cap = nextCap
+    }
+    // ⭐ 결과 기록 — **예산 밖(실제 DB)에서, 항상**. 이전 단계 기록과 병합해 어드민 한 줄 요약을 유지.
+    const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_maintenance_last'")
+      .first<{ value: string }>().catch(() => null)
+    let prev: Record<string, unknown> = {}
+    try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as Record<string, unknown> : {} } catch { prev = {} }
+    for (const k of Object.keys(prev)) if (k.endsWith('_error') || k === 'at' || k === 'kind' || k === 'phase') delete prev[k]
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_maintenance_last', JSON.stringify(out).slice(0, 1000)).run().catch(() => null)
-  } finally { await releaseLease(DB, MAINTAIN_LEASE_KEY) }
+      .bind('ads_maintenance_last', JSON.stringify({ ...prev, ...out }).slice(0, 2000)).run().catch(() => null)
+    await releaseLease(DB, MAINTAIN_LEASE_KEY)
+  }
   return out
 }
 

@@ -6,9 +6,11 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { runDdlOnce } from './ads-schema-guard'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -156,19 +158,21 @@ export function parseNaverNeighborCount(html: string): number {
 }
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
+//   channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지)
+//   + 📈 롱폼 중앙값(쇼츠 착시 배제)·쇼츠 비중 + 📝 블로거 마지막 글 날짜(검색 API postdate — RSS 차단 무관).
+export const AD_PERF_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT',
+]
 const _perfColPromise = new WeakMap<object, Promise<void>>()
+/** 🧱 2026-07-28: 매 인보케이션 5 ALTER → 체크섬 1회 조회(무료 플랜 예산 회수 — D1 도 서브리퀘스트다).
+ *  목록이 바뀌면 체크섬이 달라져 자동 재적용되므로 "버전 올리는 걸 잊어 컬럼이 안 생기는" footgun 이 없다. */
 export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
   const c = _perfColPromise.get(DB); if (c) return c
-  // channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지).
-  const p = (async () => {
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME').run().catch(() => null)
-    // 📈 2026-07-27 지표 개선 — 롱폼 중앙값(쇼츠 착시 배제) + 쇼츠 비중(%).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER').run().catch(() => null)
-    // 📝 블로거 마지막 글 날짜(YYYY-MM-DD) — 검색 API postdate 로 채움(RSS 차단과 무관하게 항상 동작).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT').run().catch(() => null)
-  })()
+  const p = runDdlOnce(DB, 'ads_ddl_influencer_perf', AD_PERF_DDL).then(() => undefined)
   _perfColPromise.set(DB, p); return p
 }
 
@@ -327,7 +331,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
-    if (budget.left <= 1) break
+    // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
+    //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
+    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
     if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
@@ -476,23 +482,38 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
-export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: number; changed: number }> {
-  let scanned = 0, changed = 0
-  for (let off = 0; ; off += 3000) {
+export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
+  // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
+  //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
+  //   (품질 패스가 이미 쓰는 패턴과 동일: 끝까지 돌면 0 으로 리셋해 순환 재검증).
+  const CURSOR_KEY = 'ads_reclassify_cursor'
+  const PAGE = 3000
+  let cursor = 0
+  const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
+
+  let scanned = 0, changed = 0, done = false
+  for (;;) {
     const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
-        WHERE account_id = 0 ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(off)
+        WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
       .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    const pageStart = cursor
     scanned += rows.length
     const ups: ReturnType<D1Database['prepare']>[] = []
     for (const r of rows) {
+      cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
       else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length
-    if (rows.length < 3000) break
+    if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
+    if (rows.length < PAGE) { done = true; break }
   }
-  return { scanned, changed }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
+  return { scanned, changed, done }
 }

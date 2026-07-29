@@ -31,6 +31,16 @@ const NOTICE_WORD = /(모집|공고|공지사항|접수\s*안내|신청\s*안내
 const SENTENCE_WORD = /(합니다|습니다|하세요|드립니다|바랍니다|입니다\b)/
 /** 기관·비영리 접미 — 차단하진 않고 lead_type=org 로 분류(지역조직 파트너 가치 있음). */
 const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|공단|공사|진흥원|진흥공단|재단|협회|연합회|조합|상인회|위원회|의회|교육청|보건소|센터장|정부|부처|청사)/
+/**
+ * 🏛 **명백한** 기관 어휘 — 업종 규칙보다 **먼저** 본다.
+ *
+ *   실사고(2026-07-28 실측): BIZ_RULES 를 먼저 돌려서, **행사를 하는 재단·협회가 '대행사 tier1'**
+ *   (우리가 실제로 영업할 풀)로 들어갔다. 예: `동대문문화재단`(구청 축제 대행 공고) ·
+ *   `서울옥외광고협회 중랑구지부`. 기관은 무엇을 하든 기관이다 — 하는 일로 신분이 바뀌지 않는다.
+ *   ⚠️ 모호한 어휘(`공사`·`공단`·`조합`·`센터장`)는 **일부러 뺐다** — `○○전기공사` 같은 정상 업체를
+ *   기관으로 오분류하기 때문. 그것들은 아래 기존 ORG_WORD 후처리가 계속 담당한다.
+ */
+const ORG_WORD_STRICT = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|진흥원|재단|협회|연합회|교육청|보건소|의회|청사)/
 
 export type LeadType = 'partner' | 'store' | 'org' | 'unknown'
 /** registry = 정부 등록부의 공식 업종(최고 신뢰) · evidence = 리드 텍스트 근거 · keyword = 검색어 추정 · none */
@@ -163,6 +173,10 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
 
   // ③ 업종 분류 — 리드 자신의 텍스트가 1순위 근거, 키워드는 폴백.
   const hay = `${name} ${desc}`
+  // 🏛 기관 선판정 — 업종 규칙보다 먼저. 재단·협회가 '행사 대행' 을 한다고 영업 대상(파트너)이 되지 않는다.
+  if (ORG_WORD_STRICT.test(name)) {
+    return { ok: true, category: input.category ?? '지역조직', subcategory: input.subcategory ?? null, tier: input.tier ?? 3, lead_type: 'org', confidence: 'evidence' }
+  }
   for (const r of BIZ_RULES) {
     if (!r.re.test(hay)) continue
     if (r.type === 'store') {

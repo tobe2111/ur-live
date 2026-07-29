@@ -80,7 +80,7 @@ import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-g
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
-import { googleRoutes } from '../features/auth/api/google.routes';
+// import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
@@ -1440,8 +1440,8 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 
-// Feature: Google/Firebase auth
-app.route('/api/auth/google', googleRoutes);
+// 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
+// app.route('/api/auth/google', googleRoutes);
 
 // ============================================================
 // Users Routes  ← /api/users/role, /api/users/init

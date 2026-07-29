@@ -204,7 +204,8 @@ crons = ["*/2 * * * *", "*/5 * * * *", "0 * * * *", "0 3 * * *", "0 9 * * *", "0
 #   wrangler secret list                            # List all configured secrets
 #   wrangler secret delete SECRET_NAME              # Delete a secret
 #
-# See SECRET_MANAGEMENT.md for detailed security guidelines
+# See docs/SECRET_ROTATION_RUNBOOK.md for detailed security guidelines
+#   (구 SECRET_MANAGEMENT.md 는 2026-07-28 삭제 — 실제 키 본문을 담고 있었다)
 # ============================================================
 
 # ============================================================

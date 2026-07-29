@@ -33,7 +33,7 @@ export async function sweepBusinessStatus(env: Env): Promise<NtsSweepStats> {
   let cursor = parseInt(curRaw?.value || '0', 10); if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
 
   // 활성 + 사업자번호 보유 리드 100건(커서 이후). 소진 시 커서 리셋(다음 틱에 처음부터 재순환).
-  const rows = (await DB.prepare("SELECT id, business_no FROM ad_company_leads WHERE active = 1 AND business_no IS NOT NULL AND business_no != '' AND id > ? ORDER BY id ASC LIMIT 100")
+  const rows = (await DB.prepare("SELECT id, business_no FROM ad_company_leads WHERE active = 1 AND merged_into IS NULL AND business_no IS NOT NULL AND business_no != '' AND id > ? ORDER BY id ASC LIMIT 100")
     .bind(cursor).all<{ id: number; business_no: string }>().catch(() => null))?.results || []
   if (!rows.length) {
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, '0').run().catch(() => null)

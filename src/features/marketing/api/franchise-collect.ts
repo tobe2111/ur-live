@@ -13,6 +13,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { describePublicDataFailure } from './public-data-diag'
 
 const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
 const FRANCHISE_OP = 'getBrandList'
@@ -33,7 +34,8 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
     const m = err instanceof Error ? err.message : String(err || '')
     if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(한 번에 너무 많은 페이지) — 페이지 수를 줄여 여러 번 나눠 수집'
   }
-  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : netMsg }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], count: 0, msg: await describePublicDataFailure(res, netMsg) }
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
@@ -101,7 +103,10 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  // 404 는 키 문제가 아니라 **경로/오퍼레이션명 문제**다 — 그 사실과 무배포 교정 방법을 오류에 박아둔다
+  //   (2026-07-28: 11회 연속 `API: HTTP 404` 만 뜨는데 무엇을 고쳐야 하는지 화면에 안 나와 방치됐다).
+  const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치. 공공데이터포털의 '가맹정보 브랜드 목록' 스펙 확인 후 ADS_FRANCHISE_ENDPOINT/ADS_FRANCHISE_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
+  const error = found === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
   const s: FranchiseStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s

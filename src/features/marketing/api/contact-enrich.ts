@@ -8,7 +8,8 @@
 import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
 import { isSubrequestLimitError } from './collect-budget'
 
-const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+// 예산 = 서브리퀘스트 수 + **시간**(budget.deadline). 정의는 influencer-discovery 의 FetchBudget 주석 참조.
+const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 /**
@@ -185,6 +186,28 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 //   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
 export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
 
+/**
+ * 🔎 크롤 가능한 **자체 사이트**인가 — 지도/SNS/UGC/구인 플랫폼 URL 은 크롤해도 업체 이메일이 안 나온다.
+ *   (2026-07-28 실측: 사이트 보유 행의 **22.9%** 가 instagram·blog.naver·cafe.naver·youtube·facebook·
+ *    pf.kakao·soomgo 같은 플랫폼 URL — 크롤 예산을 여기에 태우고 있었다.)
+ *   ⚠️ 예전엔 enrich-lane 내부 클로저라 **수집 레인이 같은 판정을 못 썼다** → SSOT 로 승격.
+ *   website 컬럼 자체는 보존한다(사람이 수동 접촉할 땐 유용) — '크롤 대상이냐'만 판정.
+ */
+export function realSite(w: string | null | undefined): string | null {
+  if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
+  try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
+  return w
+}
+
+/** SQL 선정 단계에서 쓰는 플랫폼 호스트 제외 목록 — `LIMIT n` 슬롯을 크롤 불가 URL 이 차지하지 않게 한다.
+ *  (JS `realSite` 가 최종 판정 — 여기서는 인덱스 없이도 값싸게 대부분을 걷어내는 1차 필터.) */
+export const PLATFORM_URL_SQL_EXCLUDE = [
+  '%instagram.com%', '%facebook.com%', '%youtube.com%', '%youtu.be%', '%blog.naver.com%', '%cafe.naver.com%',
+  '%post.naver.com%', '%naver.me%', '%place.map%', '%map.naver%', '%pf.kakao.com%', '%kakao.com%',
+  '%tistory.com%', '%brunch.co.kr%', '%band.us%', '%soomgo.com%', '%getmiso.com%', '%kmong.com%',
+  '%saramin.co.kr%', '%jobkorea.co.kr%', '%wanted.co.kr%', '%albamon.com%',
+]
+
 /** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
  *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
  *   crawlContact 의 requireName 가드(페이지에 상호 존재)로 2중 검증 — 오귀속(허위) 구조적 차단. */
@@ -236,7 +259,7 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
 // ⚠️ 'network'(예외 발생)는 원인이 갈린다 — 표본 4건이 아니라 **분포 자체가 답하도록** 쪼갠다:
 //   subreq_limit(워커 한도 소진) / timeout(상대 서버 무응답 8s) / network(DNS·TLS·연결거부).
 //   셋은 처방이 전혀 다르다: 한도=예산 축소, 타임아웃=대기시간·동시성 조정, DNS=대상 URL 품질.
-export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout'
+export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout' | 'deadline'
 export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
@@ -244,7 +267,8 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null, reason: 'bad_url' }
   // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
   if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null, reason: 'blocked_host' }
-  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: 'budget' }
+  // 예산 소진과 **시간 초과**를 구분해 기록 — 처방이 다르다(예산=캡 조정 / 시간=동시성·타임아웃 조정).
+  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: budget?.deadline && Date.now() >= budget.deadline ? 'deadline' : 'budget' }
   spendBudget(budget)
   // ⚠️ 예산 회계는 **fetch 1회 = spend 1회**를 지킨다(과소평가하면 한도를 예산보다 먼저 치고, 과대평가하면
   //   학습 상한이 실제보다 낮게 굳는다). 이 robots 요청은 바로 위 spendBudget 이 이미 계상한 몫이다 —
@@ -366,6 +390,9 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     : lastStatus === -1 && /^AbortError|TimeoutError/.test(errSink.msg) ? 'timeout'
     : lastStatus === 403 || lastStatus === 401 ? 'http_403'
     : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
-  const reason: CrawlReason = email ? 'ok' : (!anyPage ? httpReason() : 'no_contact')
+  // ⏱️ 시간으로 끊긴 걸 'no_contact'(이메일 미게시)로 적으면 **사이트 탓으로 오분류**된다 — 분포가 처방을
+  //   가리키게 하려면 별도 사유여야 한다(2026-07-28).
+  const timedOut = !!budget?.deadline && Date.now() >= budget.deadline
+  const reason: CrawlReason = email ? 'ok' : timedOut ? 'deadline' : (!anyPage ? httpReason() : 'no_contact')
   return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin, failErr: email || !errSink.msg ? undefined : errSink.msg }
 }
