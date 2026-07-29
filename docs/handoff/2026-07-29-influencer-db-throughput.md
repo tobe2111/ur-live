@@ -284,3 +284,17 @@ YT 를 끄지 않는다(유효한 축 + 일일 units 별도). 순수함수 + 배
 1. `enrich_lane.naver.tried` 가 **0이 아닌지** — 이 수리의 유일한 판정 기준.
 2. 그 다음에야 `rss_cat`/`rss_intro`/`cat_body` 를 본다(0 이면 네이버 RSS 에 필드가 없는 것 → 파서 손대지 말 것).
 3. `total_measured` 시간당 증가를 **두 틱 이상** 재라(한 틱으로 계산하지 말 것 — 이 세션이 두 번 틀렸다).
+
+### 🧬 발견 — `ensureDiscoveryKeywords` 등 키워드 헬퍼가 **두 벌**이다 (미해결)
+
+`influencer-auto-collect.ts` 와 `influencer-keyword-store.ts` 가
+`ensureDiscoveryKeywords` · `listDiscoveryKeywords` · `addDiscoveryKeyword` 를 **각자 정의**한다.
+정규화 비교로 세 함수 **본문은 동일**했다.
+
+⚠️ 그런데 `ensureDiscoveryKeywords` 는 각자 파일의 `KW_DDL`·`SEED`·`REGION_SEED`·`BANGBAE_SEED`
+상수를 참조한다 — **그 시드 목록이 같은지는 확인하지 않았다.** 시드가 갈리면 어느 쪽이 먼저 실행되느냐에
+따라 활성 키워드 집합이 달라진다(수집 축이 조용히 바뀐다).
+
+**지금 안 고친 이유**: ① 시드 동일성 미확인 ② 같은 파일을 다른 세션이 활발히 고치는 중(오늘만 4 PR).
+**다음 세션이 할 것**: 두 파일의 시드 상수를 실제로 비교 → 같으면 store 를 SSOT 로 두고 auto-collect 는
+re-export 로 (약 55줄 감소 + 드리프트 위험 제거). 다르면 **어느 쪽이 라이브에 반영돼 있는지부터** 판정.

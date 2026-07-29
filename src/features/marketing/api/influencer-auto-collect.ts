@@ -145,23 +145,7 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
   try { return JSON.parse(raw) as AutoCollectStats } catch { return null }
 }
 
-// 공개 소개글에서 해시태그 후보 추출(자가성장 신호 — 명시적 토픽 마커라 품질 양호).
-const HASHTAG_RE = /#([\p{L}\p{N}_]{2,20})/gu
-// 🛡️ 2026-07-23 전수조사(F-29/30): 범용/참여유도/캠페인 태그는 검색 키워드로 무의미한데 승격되면 하루 100회뿐인
-//   YT 검색 슬롯(신규 키워드 탐색 보장)을 확정 소모 — 스톱리스트로 후보 진입 자체를 차단.
-const HASHTAG_STOP = new Set(['shorts', 'shortsvideo', '쇼츠', '구독', '구독자', '좋아요', '일상', '브이로그', 'vlog', '맞팔', '맞팔환영', '소통', '팔로우', '팔로워', 'follow', 'followme', 'fyp', 'viral', '추천', '추천영상', '광고', '협찬', '내돈내산', '이벤트', '유튜브', 'youtube', '유튜버', '인스타', '인스타그램', 'instagram', '데일리', 'daily', '선팔', '좋테', '구취', '알고리즘', 'subscribe', 'like'])
-function mineHashtags(text: string): string[] {
-  const out: string[] = []
-  let m: RegExpExecArray | null
-  HASHTAG_RE.lastIndex = 0
-  while ((m = HASHTAG_RE.exec(text)) !== null) {
-    const t = m[1]
-    if (/^\d+$/.test(t)) continue // 순수 숫자 제외
-    if (HASHTAG_STOP.has(t.toLowerCase())) continue // 범용/참여유도 태그 제외
-    out.push(t)
-  }
-  return out
-}
+// 🏷️ 해시태그 후보 추출 → `influencer-hashtag-mine.ts` 로 분리(600줄 래칫). 순수 로직이라 이 파일에 있을 이유가 없다.
 
 // ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
@@ -170,6 +154,7 @@ export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_
 export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
+import { mineHashtags } from './influencer-hashtag-mine'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
 // ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
