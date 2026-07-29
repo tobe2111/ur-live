@@ -47,6 +47,13 @@ const TARGETS = [
     severity: 'low',
     why: '7일 시간 폴백이 있어 결국 재크롤된다.',
   },
+  {
+    file: 'src/features/marketing/api/influencer-region.ts',
+    name: 'REGION_RULES_VERSION',
+    severity: 'high',
+    why: "미매칭이 ''(지역 없음 확정)로 저장돼 재검사를 막는다 — 안 올리면 기존 행은 영구히 옛 판정에 갇힌다."
+      + " 2026-07-29 실사고: '방배동 맛집'(누적 241명)이 '동' 접미 미지원으로 전부 지역 없음이었다.",
+  },
 ]
 
 const STRICT = process.argv.includes('-s') || process.env.STRICT_RULES_VERSION === '1'
