@@ -378,9 +378,14 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     }
     let emailAfter = r.email
     let instaAfter = r.instagram
+    // 🐛 2026-07-29: 아래 재채점이 email/instagram 은 **갱신 후** 값을 쓰면서 이웃수만 갱신 *전* 값을 썼다.
+    //   방금 측정한 이웃수를 자기 점수에 반영하지 못해, 이웃 3,000+ 블로거가 규모 22 대신 13(미측정 기본)으로
+    //   채점된다 — 9점 손해가 야간 정비(커서 4,500/일 → 최대 8일)까지 그대로 남는다. 대표가 점수순으로
+    //   연락 대상을 고르므로, 하필 **방금 측정된 신선한 리드**가 뒤로 밀리는 방향의 오차다.
+    let subsAfter = r.subscriber_count
     if (homeText !== null) {
       const neighbors = parseNaverNeighborCount(homeText)
-      if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors) }
+      if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors); if (!subsAfter || subsAfter <= 0) subsAfter = neighbors }
       const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
       const c = extractContacts(homeText)
       if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
@@ -410,7 +415,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     if (posts30 !== undefined) {
       const { score } = scoreLead({
         platform: 'naver_blog', email: emailAfter, instagram: instaAfter, links: r.links,
-        subscriber_count: r.subscriber_count, recent_posts_30d: posts30,
+        subscriber_count: subsAfter, recent_posts_30d: posts30,
         recent_avg_views: r.recent_avg_views, median_long_views: r.median_long_views,
         category: r.category, is_brand: r.is_brand, consented_at: r.consented_at, source: r.source,
       })
