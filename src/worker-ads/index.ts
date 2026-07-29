@@ -553,7 +553,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //    `reclassify` 는 전수 한 바퀴에 65시간, `handle` 은 수율 최고(2,481)인데 아직 안 끝났다.
     const PHASES = [
       'merge', 'reextract', 'reclassify', 'quality', 'handle',
+      'selflink',
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+      'reclassify',
     ] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {

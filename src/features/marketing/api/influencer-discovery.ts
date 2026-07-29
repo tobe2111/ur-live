@@ -14,6 +14,7 @@
 
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
+import { isSelfBlogLink } from './influencer-self-link'
 import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 import { stripVideoTitles } from './influencer-parse'
 
@@ -329,7 +330,7 @@ export async function discoverYouTubeInfluencers(
       if (!l.instagram && c.instagram[0]) l.instagram = c.instagram[0]
       if (!l.tiktok && c.tiktok[0]) l.tiktok = c.tiktok[0]
       // 🔗 자기 블로그 URL 제외 — 네이버 블로거에겐 연락처가 아니라 자기 글 링크다(위 보강 레인과 동일 기준).
-    const extLinks = c.links.filter(u => !/blog\.naver\.com/i.test(u))
+    const extLinks = c.links.filter(u => !isSelfBlogLink(u)) // 판정 SSOT: influencer-self-link
     if (!l.links && extLinks.length) l.links = extLinks.join(' ')
     }
     // 🏷️ 영상 제목=카테고리 신호. F-09: 500자 소개글 뒤에 붙이고 재-500 자르면 무효이던 버그 — 소개글 360자로 양보.

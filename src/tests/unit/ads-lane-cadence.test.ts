@@ -170,11 +170,16 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
   })
 
   it('⏰ stale 기준은 배정표의 **실제** 최대 간격에서 나온다 — 슬롯 수 기준보다 촘촘하다', () => {
-    // 이 배정표의 실제 최대 간격은 merge·reextract 의 10시간(24 를 10 으로 나눈 자정 불연속 포함).
-    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(10)
-    // 슬롯 수만 보면 14시간 — 그대로 쓰면 경보 창이 28.5h 로 벌어진다(멈춤을 그만큼 늦게 안다).
-    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(14)
-    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThan(phaseGapMinutes(MAINT_SCHEDULE.length))
+    // 이 배정표의 실제 최대 간격은 merge·reextract 의 **12시간**.
+    // 🔢 2026-07-29: 10슬롯(10h) → `selflink` 추가로 12슬롯. 이 숫자를 고른 근거가 있다 —
+    //    단순히 덧붙인 11슬롯은 **13h** 였다(24 를 11 로 나눌 때의 자정 불연속). 이 검사가 그걸 잡아
+    //    12(24 의 약수)로 되돌렸다: 각 슬롯이 하루 **정확히 2회** 고정 시각에 돌아 간격이 12h 로 수렴한다.
+    //    ⚠️ 즉 경보 창은 10h→12h 만큼만 느슨해졌다(11슬롯이었다면 13h). 더 늘릴 거면 여기서 다시 판단할 것.
+    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(12)
+    // 슬롯 수만 보면 12시간 — 12슬롯은 균등 순환과 같은 값이라 이번엔 둘이 같다(가중이 24 의 약수에 맞아떨어짐).
+    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(12)
+    // 가중 배정이 균등과 같아졌으므로 '더 촘촘하다'가 아니라 '더 느슨하지 않다'가 이번 배정표의 사실이다.
+    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThanOrEqual(phaseGapMinutes(MAINT_SCHEDULE.length))
   })
 
   it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
