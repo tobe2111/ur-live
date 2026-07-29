@@ -249,6 +249,8 @@ export interface LocalDataStats {
     fail_probe?: { url: string; endpoint: string; day: string; page: number; msg?: string }
     /** 🔬 형태 후보 시도 이력(라이브 판정 근거). */
     probe?: { at: string; winner: string | null; attempts: ProbeAttempt[] }
+    /** 마지막으로 확정된 형태 + 그때의 시도 기록 — 쿨다운 중에도 결론이 화면에 남는다. */
+    probe_last?: { id: string; at: string; attempts?: ProbeAttempt[] } | null
     /** 📊 원본 필드 채움률 + 형식 예시(가려짐) — 필드 이름을 추측으로 쓰지 않기 위한 근거. 추가 요청 0. */
     coverage?: FieldCoverage[]
     coverage_note?: string
@@ -406,6 +408,11 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       configured: true, error: err, sample, endpoints: Object.keys(endpoints),
       // 🔬 "무엇을 어떻게 보내고 있고, 무엇이 실패했는가" — 추측 없이 판정하기 위한 최소 증거 3종.
       variant: variantId, fail_probe: failProbe, probe: probeInfo,
+      // 🔭 **지난** 프로브 결론도 항상 노출한다(2026-07-29 실측 후 추가). `probe` 는 프로브를 *수행한*
+      //   그 실행의 스냅샷에만 실려서, 6시간 쿨다운 동안 화면엔 아무 결론도 안 남았다 —
+      //   "프로브가 뭐라고 답했나"를 물으면 **아무도 답할 수 없는** 상태였다(라이브에서 실제로 그랬다).
+      //   저장된 상태는 이 실행 시작 때 이미 읽어 뒀으므로 **추가 쿼리 0**.
+      probe_last: vState ? { id: vState.id, at: new Date(vState.probed_at || 0).toISOString().slice(0, 19).replace('T', ' '), attempts: vState.attempts } : null,
       coverage, coverage_note: coverageNote(coverage) || undefined,
     },
   }
