@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { pickReach, parseReachDraft, type ReachLead } from './reach'
 
 /**
@@ -11,7 +11,17 @@ export interface QueueLead extends ReachLead { id: number; status: string }
 
 const PLATFORM_KO: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 
-export default function SendQueueModal<T extends QueueLead>({ leads, onReach, onClose }: { leads: T[]; onReach: (l: T) => void; onClose: () => void }) {
+export default function SendQueueModal<T extends QueueLead>({ leads: rawLeads, onReach, onClose }: { leads: T[]; onReach: (l: T) => void; onClose: () => void }) {
+  /**
+   * 🧹 열 수 없는 리드는 **큐에 넣지 않는다** — 2026-07-29 실측 근본수리.
+   *   기존엔 rejected/bounced 만 걸러 넣어서, 연락 수단이 없는 리드(특히 `url` 에 스킴이 없어
+   *   `pickReach` 가 null 을 주던 손상 핸들 12,357건)가 큐에 그대로 섞였다. 화면은 "연락 채널 없음 —
+   *   건너뛰세요"만 반복하고 진행률(1/200)은 허수였다 → 발송 모드를 켤 이유가 사라진다.
+   *   서버 send-queue 가 같은 기준으로 이미 거르지만, **다른 진입로(현재 필터·선택 발송)도 있으므로
+   *   마지막 방어선을 모달 안에 둔다**(여기가 유일하게 모든 진입로가 통과하는 지점).
+   */
+  const leads = useMemo(() => rawLeads.filter(l => pickReach(l) !== null), [rawLeads])
+  const dropped = rawLeads.length - leads.length
   const [idx, setIdx] = useState(0)
   const [sent, setSent] = useState(0)
   const [skipped, setSkipped] = useState(0)
@@ -48,7 +58,19 @@ export default function SendQueueModal<T extends QueueLead>({ leads, onReach, on
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-sm" aria-label="닫기">✕</button>
         </div>
 
-        {done ? (
+        {leads.length === 0 ? (
+          /* 🈳 빈 큐를 '완료'로 위장하지 않는다 — 왜 비었는지가 다음 행동을 가른다. */
+          <div className="text-center py-6">
+            <div className="text-3xl mb-2">🈳</div>
+            <div className="text-sm font-semibold text-gray-900">지금 연락할 수 있는 리드가 없습니다</div>
+            <p className="mt-1 text-xs text-gray-500">
+              {dropped > 0
+                ? `${dropped}명이 연락 수단(이메일·인스타·열리는 링크)이 없어 제외됐습니다. 보강이 돌면 다시 채워집니다.`
+                : '필터를 넓히거나 다른 목록에서 다시 시도해 보세요.'}
+            </p>
+            <button onClick={onClose} className="mt-4 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">닫기</button>
+          </div>
+        ) : done ? (
           <div className="text-center py-6">
             <div className="text-3xl mb-2">🎉</div>
             <div className="text-sm font-semibold text-gray-900">끝! 열기 {sent}건 · 건너뜀 {skipped}건</div>
@@ -57,7 +79,10 @@ export default function SendQueueModal<T extends QueueLead>({ leads, onReach, on
           </div>
         ) : (
           <>
-            <div className="mb-1 text-[11px] text-gray-400">{idx + 1} / {leads.length} · 열기 {sent} · 건너뜀 {skipped}</div>
+            <div className="mb-1 text-[11px] text-gray-400">
+              {idx + 1} / {leads.length} · 열기 {sent} · 건너뜀 {skipped}
+              {dropped > 0 && <span className="ml-1 text-gray-300">· 연락불가 {dropped}명 제외됨</span>}
+            </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="text-sm font-semibold text-gray-900">{cur.name} <span className="ml-1 text-xs font-normal text-gray-400">{PLATFORM_KO[cur.platform] || cur.platform}</span></div>
               <div className="mt-1 text-xs text-gray-600">

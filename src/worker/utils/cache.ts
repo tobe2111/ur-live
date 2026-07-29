@@ -128,7 +128,13 @@ export async function cacheInvalidate(
   const arr = Array.isArray(keys) ? keys : [keys];
   // L1에서도 즉시 제거
   arr.forEach(k => l1.delete(`${namespace}:${k}`));
-  if (!KV) return;
+  // 🛡️ 2026-07-21 (KV delete 무료한도 보호): L2 KV 가 OFF(L2_KV_ENABLED=false)면
+  //   cacheGet 이 KV 에 아무것도 쓰지 않으므로 삭제할 키도 없다. 그런데 여기서 매 무효화마다
+  //   KV.delete 를 호출하면 **존재하지 않는 키**를 지우려 시도 → 순수 낭비.
+  //   invalidateGroupBuyProductsCache 1회 = 28 KV.delete(4 status × 7 category), 셀러/어드민 상품
+  //   작업·주문 흐름마다 발생 → 무료 한도(1천 delete/일) 초과(대표 신고 2026-07-21).
+  //   쓰기 경로(cacheGet)와 대칭으로 L2 게이트에 맞춰 삭제도 스킵. 복원: L2_KV_ENABLED=true.
+  if (!KV || !L2_KV_ENABLED) return;
   await Promise.all(
     arr.map((k) => KV.delete(`${namespace}:${k}`).catch(swallow('worker:utils:cache')))
   );
