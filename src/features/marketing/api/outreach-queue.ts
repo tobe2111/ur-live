@@ -18,6 +18,22 @@
 /** 플랫폼 필터 허용값 — 라우트 쿼리스트링과 프리필이 같은 목록을 쓰게 한다. */
 export const SEND_QUEUE_PLATFORMS = ['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'] as const
 
+/**
+ * 🧹 이름 기반 노이즈 — 개인 크리에이터가 아닌 게 거의 확실한 계정(뉴스·방송·기관·모집책·대행).
+ *
+ *   ⚠️ **목록 화면(`hideNoise=1`)과 같은 목록이어야 한다.** 두 벌로 두면 *화면에서 숨긴 사람이
+ *   발송 큐에는 나오는* 모순이 생긴다 — 2026-07-29 실측에서 실제로 그 상태였다(큐는 `is_brand` 만 걸렀다).
+ *   저장 시점에도 `isLikelyNoise` 가 거르지만 그건 **신규 저장분만**이고, 필터 도입 전에 쌓인
+ *   기존 풀에는 남아 있다(그래서 목록에 `hideNoise` 옵션이 존재한다).
+ *
+ *   규모는 크지 않다(실측 ~43명 / 큐 대상 24,929명). 그래도 거르는 이유는 **하루 N명이 상한인
+ *   수동 발송에서 그 한 자리가 곧 손실**이기 때문이다 — 뉴스 계정에 제휴 제안을 보내는 건 순수 낭비다.
+ */
+export const OUTREACH_NOISE_WORDS = [
+  '뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단',
+  '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청',
+] as const
+
 /** ④ 점수 높은 순(미채점은 후순위) — score_hot 부터 소진. */
 export const SEND_QUEUE_ORDER_BY = '(lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC'
 
@@ -46,6 +62,8 @@ export function buildSendQueueWhere(
     'COALESCE(is_brand, 0) = 0',
   ]
   const binds: (string | number)[] = [poolAccountId]
+  // 🧹 이름 기반 노이즈 제외 — 목록 화면(`hideNoise=1`)과 **같은 기준**(위 상수 주석 참조).
+  for (const w of OUTREACH_NOISE_WORDS) { where.push('name NOT LIKE ?'); binds.push(`%${w}%`) }
   const p = (platform || '').trim()
   if ((SEND_QUEUE_PLATFORMS as readonly string[]).includes(p)) { where.push('platform = ?'); binds.push(p) }
   // 프리필은 빈 초안만 채운다 — 이미 있는 초안(사람이 손봤을 수 있다)을 덮으면 작업물이 사라진다.

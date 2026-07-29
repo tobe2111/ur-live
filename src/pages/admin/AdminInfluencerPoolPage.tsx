@@ -392,7 +392,7 @@ export default function AdminInfluencerPoolPage() {
             <button onClick={generateDrafts} disabled={drafting || !selected.size} className="px-4 py-2 rounded-lg border border-violet-300 bg-violet-50 text-violet-700 text-sm font-medium disabled:opacity-50" title="선택 리드의 개인화 제안 초안을 AI 로 일괄 생성(10명씩 순차) — 발송은 사람이 검토 후 직접">
               {drafting ? (draftProgress || '초안 생성 중…') : `✍ 선택 초안 생성${selected.size ? ` (${selected.size})` : ''}`}
             </button>
-            <SendModeButtons leads={leads} selectedIds={selected} onReach={l => reachOut(l as unknown as Lead)} />
+            <SendModeButtons leads={leads} selectedIds={selected} platform={platform} onReach={l => reachOut(l as unknown as Lead)} />
             <ConsentedSendPanel />
             <ColdSendPanel />
             <ExcelExportButtons variant="contactable" />

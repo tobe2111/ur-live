@@ -46,12 +46,20 @@ describe('발송 큐 선별 SSOT — 프리필과 큐가 갈리지 않는다', (
   })
 
   it('③-2 허용목록 밖 플랫폼은 SQL 로 새지 않는다(바인드만 사용)', () => {
-    const bad = buildSendQueueWhere(0, "'; DROP TABLE ad_influencer_leads--")
+    // ⚠️ 2026-07-29: 정확 배열 비교(`toEqual([0])`)였는데 노이즈 필터가 바인드를 더하면서 깨졌다.
+    //   이 테스트의 의도는 "바인드 개수"가 아니라 **플랫폼 값이 SQL 에 인라인되지 않는다**이므로,
+    //   그 의도만 직접 검사하도록 바꾼다(선별 규칙이 늘어도 견딘다).
+    const evil = "'; DROP TABLE ad_influencer_leads--"
+    const bad = buildSendQueueWhere(0, evil)
     expect(bad.where).not.toContain('DROP')
-    expect(bad.binds).toEqual([0]) // 허용목록 밖 → 필터 자체가 안 붙는다
+    expect(bad.where).not.toContain('platform = ?') // 허용목록 밖 → 필터 자체가 안 붙는다
+    expect(bad.binds).not.toContain(evil)           // 값도 바인드에 안 실린다
+    expect(bad.binds[0]).toBe(0)                    // 풀 계정 id 는 항상 첫 바인드
     for (const p of SEND_QUEUE_PLATFORMS) {
       const ok = buildSendQueueWhere(0, p)
-      expect(ok.binds).toEqual([0, p]) // 값은 항상 바인드로
+      expect(ok.where).toContain('platform = ?')
+      expect(ok.binds).toContain(p) // 값은 항상 바인드로(문자열 보간 금지)
+      expect(ok.binds.length).toBe(bad.binds.length + 1) // 플랫폼 바인드 정확히 1개 추가
     }
   })
 

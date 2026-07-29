@@ -40,12 +40,15 @@ const EMPTY: SendQueueState = { leads: [], remaining: 0, loading: false, error: 
 export function useSendQueue() {
   const [state, setState] = useState<SendQueueState>(EMPTY)
 
-  /** 큐를 채운다. 성공 시 leads.length > 0 이면 호출부가 발송 모드를 연다. */
-  const load = useCallback(async (limit = 20): Promise<SendQueueLead[]> => {
+  /** 큐를 채운다. 성공 시 leads.length > 0 이면 호출부가 발송 모드를 연다.
+   *  `platform` 을 주면 그 매체만 — 통합 큐는 점수순이라 유튜브가 독식해 블로거가 안 나온다(실측). */
+  const load = useCallback(async (limit = 20, platform?: string): Promise<SendQueueLead[]> => {
     setState(s => ({ ...s, loading: true, error: null }))
     try {
+      const qs = new URLSearchParams({ limit: String(limit) })
+      if (platform) qs.set('platform', platform)
       const r = await api.get<{ success: boolean; leads?: SendQueueLead[]; remaining?: number }>(
-        `/api/admin/ads/influencer-pool/send-queue?limit=${limit}`,
+        `/api/admin/ads/influencer-pool/send-queue?${qs.toString()}`,
       )
       const leads = r.data?.leads || []
       setState({ leads, remaining: r.data?.remaining ?? leads.length, loading: false, error: null })

@@ -37,19 +37,19 @@ export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane
 /** 이 아래로는 안 내린다 — 수확이 0 이 되면 학습 자체가 무의미. */
 export const SUBREQ_CAP_MIN = 25
 /**
- * 회복 시 상향 배율(과학습 되돌리기).
+ * 📈 회복은 **가산**(AIMD) — 2026-07-29 진동 근본수리.
  *
- * ⚠️ 2026-07-29 **영구 진동 수리** — 이 값은 원래 1.25 였고 `BACKOFF_RATIO` 는 0.8 이었다.
- *   `0.8 × 1.25 = 1.0` — **정확히 서로의 역수**다. 그래서 한도에 부딪혀 내려간 상한이 다음 회차에
- *   *부딪혔던 바로 그 값으로* 정확히 되돌아왔다. 천장 아래에 정착하는 것이 **산술적으로 불가능**했다.
+ *   그 전엔 회복이 배율(×1.25)이었는데 백오프(×0.8)의 **정확한 역수**라 완벽한 2주기 진동이 생겼다:
+ *     `55 →(한도충돌)→ 44 →(성공)→ 55 →(한도충돌)→ 44 …`
+ *   라이브 실측이 정확히 그 상태였다(`learned_cap: 55` · `spent: 55` · `limit_hit: true`).
+ *   **2회마다 1회씩 그 회차의 수확을 통째로 버린다** — 발굴은 다 해놓고 저장 직전에 끊기므로
+ *   외부 API 쿼터까지 같이 태운다(가장 비싼 실패다).
  *
- *   라이브 실측(인플루언서 수집 05:00): `spent 55 = budget_total 55 · limit_hit true · learned_cap 55`.
- *   → 44 로 내려갔다가 55 로 복귀 → 또 부딪힘. 44↔55 무한 왕복이고, 55 회차마다 그 키워드의 수확을 버렸다.
- *
- *   ⇒ 배율을 비대칭으로 만든다: `0.8 × 1.15 = 0.92 < 1`. 부딪힌 값으로 되돌아가는 것이 구조적으로 불가능해지고
- *   (유닛 불변식으로 잠금), 그러면서도 한도 오류가 없는 한 유한 회차에 env 예산까지 회복한다(데드락 없음).
+ *   곱셈 회복은 천장이 어디든 결국 넘어선다. 한도 근처에서 **머무르려면** 증가는 작고 느리게,
+ *   감소는 크고 빠르게여야 한다 — TCP 혼잡제어(AIMD)와 같은 이유다.
+ *   ⇒ 회복 +2/회차(선형), 백오프 ×0.8(승수) → 실패 1회당 성공 회차가 5~6배로 늘어난다.
  */
-const RECOVER_RATIO = 1.15
+const RECOVER_STEP = 2
 /** 한도 관측 시 하향 배율(부딪힌 지점보다 확실히 아래로). */
 const BACKOFF_RATIO = 0.8
 
@@ -132,10 +132,13 @@ export function nextSubreqCap(
   spent: number, hitLimit: boolean, learnedCap: number, envBudget: number,
   platformCap = SUBREQ_PLATFORM_CAP_DEFAULT,
 ): number | null {
+  // 🧱 천장(#837) — 관측 불가 레인의 한 방향 드리프트를 막는다.
   const ceiling = Math.min(envBudget, platformCap)
   if (hitLimit) return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), Math.min(ceiling, Math.floor(spent * BACKOFF_RATIO)))
   // 이미 천장을 넘게 학습돼 있으면(과거 드리프트분) 천장으로 끌어내린다 — 그대로 두면 영영 안 내려온다.
   if (learnedCap > ceiling) return ceiling
-  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, Math.ceil(learnedCap * RECOVER_RATIO))
+  // 📈 가산 회복 — 배율이면 백오프(×0.8)의 역수와 맞물려 2주기 진동한다(위 RECOVER_STEP 주석의 실사고).
+  //   천장(#837)은 *상한*을 막고, 가산은 *천장 아래에서의 진동*을 막는다 — 둘은 다른 실패를 푼다.
+  if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, learnedCap + RECOVER_STEP)
   return null
 }

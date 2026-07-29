@@ -8,7 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
-import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY } from './outreach-queue'
+import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY, OUTREACH_NOISE_WORDS } from './outreach-queue'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -103,7 +103,9 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('source') === 'inbound') where.push("source = 'inbound'")
   // 🧹 노이즈 숨김 — 기존 풀에 남은 뉴스·방송·기관·체험단모집·대행 계정 제외(신규는 저장 시점에 이미 필터).
   if (c.req.query('hideNoise') === '1') {
-    for (const w of ['뉴스', '신문사', '방송국', '연합뉴스', '체험단', '서포터즈', '기자단', '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청']) {
+    // 🧹 목록과 발송 큐가 **같은 노이즈 목록**을 쓴다(SSOT: outreach-queue). 두 벌이면 화면에서 숨긴
+    //   사람이 큐에는 나오는 모순이 생긴다 — 2026-07-29 실측에서 실제로 그 상태였다.
+    for (const w of OUTREACH_NOISE_WORDS) {
       where.push('name NOT LIKE ?'); binds.push(`%${w}%`)
     }
     where.push('COALESCE(is_brand, 0) = 0') // 🏢 브랜드 공식 채널(기업 계정)도 함께 숨김 — 태깅만, 삭제 아님
