@@ -40,7 +40,15 @@ function walk(dir, out = []) {
 const RE = /fixed inset-0[^"'`]*z-\[(\d+)\]|z-\[(\d+)\][^"'`]*fixed inset-0/
 
 const violations = []
-for (const file of walk(SRC)) {
+const scannedFiles = walk(SRC)
+
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 스캔 대상이 비면 위반도 0이라 초록이 뜨는데,
+//   그 초록은 아무것도 보장하지 않는다(같은 날 실측 3건이 그 상태로 몇 주~몇 달 방치됐다).
+if (scannedFiles.length === 0) {
+  console.error('❌ 검사 대상 파일이 0개다 — 스캔 경로가 낡았을 가능성이 크다(통과 아님).')
+  process.exit(1)
+}
+for (const file of scannedFiles) {
   const lines = fs.readFileSync(file, 'utf8').split('\n')
   for (let i = 0; i < lines.length; i++) {
     const ln = lines[i]
