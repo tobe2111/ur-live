@@ -22,7 +22,7 @@
 import type { Env } from '@/worker/types/env'
 import { ensureCompanySchema } from './company-discovery'
 import { parseItems } from './hira-hospital-collect'
-import { describePublicDataFailure } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 
 const NPS_BASE = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2'
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[\s()㈜]|주식회사|유한회사|\(주\)|\(유\)/g, '')
@@ -80,7 +80,7 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
     // ① 사업장 기본 검색(상호 + 있으면 사업자번호 6자리로 서버측 축소)
     const params = new URLSearchParams({ wkpl_nm: t.company_name, numOfRows: '20', pageNo: '1', dataType: 'JSON' })
     if (biz6) params.set('bzowr_rgst_no', biz6)
-    const url = `${NPS_BASE}/getBassInfoSearchV2?serviceKey=${encodeURIComponent(key)}&${params.toString()}`
+    const url = `${NPS_BASE}/getBassInfoSearchV2?serviceKey=${serviceKeyParam(key)}&${params.toString()}`
     budget.left -= 1
     let netErr = ''
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch((e) => { netErr = String((e as Error)?.message || ''); return null })
@@ -117,7 +117,7 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
     // ③ 상세 조회 → 가입자 수
     budget.left -= 1
     let dErr = ''
-    const dRes = await fetch(`${NPS_BASE}/getDetailInfoSearchV2?serviceKey=${encodeURIComponent(key)}&seq=${encodeURIComponent(seq)}&dataType=JSON`, { signal: AbortSignal.timeout(15000) }).catch((e) => { dErr = String((e as Error)?.message || ''); return null })
+    const dRes = await fetch(`${NPS_BASE}/getDetailInfoSearchV2?serviceKey=${serviceKeyParam(key)}&seq=${encodeURIComponent(seq)}&dataType=JSON`, { signal: AbortSignal.timeout(15000) }).catch((e) => { dErr = String((e as Error)?.message || ''); return null })
     if (/too many subrequests/i.test(dErr)) { limitHit = true; break }
     if (!dRes || !dRes.ok) { lastMsg = await describePublicDataFailure(dRes, '상세조회 실패'); continue } // 도장 없이
     const detail = parseItems(await dRes.text().catch(() => ''))

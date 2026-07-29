@@ -9,7 +9,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureCompanySchema } from './company-discovery'
-import { describePublicDataFailure } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 
 export interface NtsSweepStats { last_run: string; checked: number; closed: number; cursor: number; total_closed: number; note?: string }
 const STATS_KEY = 'ads_ntsstatus_stats'
@@ -52,7 +52,7 @@ export async function sweepBusinessStatus(env: Env): Promise<NtsSweepStats> {
   let closed = 0
   let note: string | undefined
   if (bnos.length) {
-    const res = await fetch(`https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${encodeURIComponent(key)}`, {
+    const res = await fetch(`https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${serviceKeyParam(key)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ b_no: bnos }), signal: AbortSignal.timeout(15000),
     }).catch(() => null)
