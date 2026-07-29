@@ -58,11 +58,43 @@ curl -s https://urdeal.kr/ | grep -o 'modulepreload[^>]*app-components' || echo 
 왜 늘었는지 적을 것 — raw 예산이 5번 올라가는 동안 근거로 인용된 gzip 값은 죽어 있었다
 (2026-07-29 에 복구됨).
 
+## 3-2. 2단계 — app-utils (commit `0d5c81f`)
+
+같은 기법을 `app-utils`(크리티컬 2위)에 적용:
+
+- **`tailwind-merge` 97.1 KB raw** 가 크리티컬에 있었다. 이 패키지는 manualChunks 규칙이
+  **없어서** rollup 이 *importer 가 있는 청크*에 넣는데, 유일한 importer 가 `src/lib/utils.ts`
+  (=`cn()`)이고 그게 `/src/lib/` catch-all 로 app-utils 에 있었다. 그런데 `lib/utils.ts` 는
+  **엔트리에서 도달 불가**(importer 가 `ui/skeleton`·`ui/separator` 둘뿐, 둘 다 lazy).
+  → 전용 leaf 청크 `app-ui-utils` 로 빼면 tailwind-merge 가 따라 나간다.
+- **도매 훅** `useWholesale`·`useWholesaleChat`(15.7 KB)이 `/src/hooks/` catch-all 로 묶여
+  도매몰을 안 여는 소비자도 받고 있었다 → `app-wholesale-hooks`.
+
+**226.7 → 216.2 KB** · 예산 250 → **240** 재하향.
+
+> 💡 **규칙이 없는 node_modules 패키지는 "importer 를 따라간다".** 그래서 무거운 서드파티가
+> 크리티컬에 있으면 그 패키지가 아니라 **그것을 import 하는 우리 모듈의 청크 배정**을 봐야 한다.
+
+### ❗ 여기서 걸러낸 함정 — 청크 이동이 SSR 을 조용히 깨뜨린다
+
+`cn` 을 처음엔 실사용처와 같은 청크(`app-components`)로 보냈다. 그랬더니
+**`prerender:main` 출력이 25,718 → 2,873 chars 로 붕괴**했다.
+`manualChunks` 는 `build:ssr`(`vite build --ssr`, **같은 vite.config**)에도 적용돼
+**SSR 모듈 초기화 순서를 바꾸고**, SSR 중 컴포넌트가 던져 React 가 서브트리를 스트립한다
+("SSR-unsafe 경계" 경고). **빌드 exit 0 · tsc 0 · 번들 예산 통과** — 전부 초록이라
+그냥 지나갈 뻔했다. **전용 leaf 청크**로 바꾸니 25,718 chars 유지 + 이득은 동일.
+
+⇒ **청크를 옮겼으면 번들 크기만 보지 말고 `npm run prerender:main` 의 chars 를 같이 볼 것.**
+   비교 기준값: **25,718 chars**(2026-07-29 기준).
+
+> 참고: `NO_I18NEXT_INSTANCE` 경고는 **이 작업 이전부터 있던 것**이다. 중간에 이걸 새 회귀로
+> 오해했다가 첫 빌드 로그를 다시 grep 해서 정정했다 — 경고 유무가 아니라 **chars 수**가 신호다.
+
 ## 4. 남은 결정 / 대기
 
 - **대표 판단 대기**: PR #878 머지 여부(draft).
-- **후보(미착수)**: `app-utils` 43.3 KB(19%) · `index` 15.9 KB 을 같은 덤프 기법으로 열어
-  엔트리가 실제로 쓰는 부분만 남기기. 지금 헤드룸이 23KB 라 다음 유기적 성장은 흡수 가능하지만,
-  구조적으로는 `app-utils` 가 다음 차례다.
+- **후보(미착수)**: `index` 15.9 KB(App.tsx 70.6 KB raw 가 대부분) — 라우트 트리를 더 쪼갤 수
+  있는지. `app-utils` 는 2단계에서 처리했다(32.5 KB 로 축소).
+  현재 헤드룸 23.8KB(216.2/240) 라 급하지 않다.
 - `dist/` 빌드가 재생성하는 `src/worker/generated/route-chunk-map.ts` 는 **커밋 대상 아님**
   (이번에도 `git checkout --` 로 되돌렸다).
