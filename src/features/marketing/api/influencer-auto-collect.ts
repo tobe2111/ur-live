@@ -45,7 +45,6 @@ import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 //   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
 import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
-export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
@@ -73,6 +72,12 @@ export interface AutoCollectStats {
   }
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
+  /**
+   * 🌵 이번 회차에 **고갈 판정을 보류한** 키워드 수 — 굶었거나(예산·한도) 검색이 한 번도 성공하지 못한 것.
+   *   `last_saved` 가 낮을 때 "키워드가 다 훑였다"와 "예산/쿼터가 모자랐다"를 가르는 유일한 수치다.
+   *   (이 구분이 없던 시절 미검색 회차가 고갈로 기록돼 `먹방`·`홈카페` 같은 축이 조용히 밀려났다.)
+   */
+  kw_unjudged?: number
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
   /**
@@ -107,81 +112,10 @@ const STATS_KEY = 'ads_autocollect_stats'
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 
-/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
-const KW_DDL: string[] = [
-  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword TEXT NOT NULL UNIQUE,
-    category TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    hits INTEGER NOT NULL DEFAULT 0,
-    source TEXT NOT NULL DEFAULT 'seed',
-    created_at DATETIME DEFAULT (datetime('now'))
-  )`,
-  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
-  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
-  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
-  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
-  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
-]
+// 🗂️ 키워드 테이블(스키마·시드·목록·토글·1회성 복구)은 `influencer-keyword-store.ts` — 호출부 호환 위해 재수출.
+export { ensureDiscoveryKeywords, healBarrenStreakOnce, listDiscoveryKeywords, addDiscoveryKeyword, setKeywordActive, type DiscoveryKeyword } from './influencer-keyword-store'
+import { ensureDiscoveryKeywords, healBarrenStreakOnce } from './influencer-keyword-store'
 
-const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
-
-/**
- * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
- *
- * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
- *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
- *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
- *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
- *
- *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
- *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
- */
-export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
-  const cached = _kwSchemaPromise.get(DB)
-  if (cached) return cached
-  const p = (async () => {
-    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
-    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
-    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
-    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
-    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
-    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
-    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
-      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-        .bind(kw, g.category, 'seed')))
-    await DB.batch(stmts).catch(() => null)
-  })()
-  _kwSchemaPromise.set(DB, p)
-  return p
-}
-
-export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
-  await ensureDiscoveryKeywords(DB)
-  const r = await DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000')
-    .all<DiscoveryKeyword>().catch(() => null)
-  return r?.results || []
-}
-
-export async function addDiscoveryKeyword(DB: D1Database, keyword: string, category?: string): Promise<{ ok: boolean; error?: string }> {
-  const kw = (keyword || '').trim()
-  if (kw.length < 2 || kw.length > 40) return { ok: false, error: 'INVALID' }
-  await ensureDiscoveryKeywords(DB)
-  await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-    .bind(kw, (category || '수동').slice(0, 40), 'manual').run().catch(() => null)
-  return { ok: true }
-}
-
-export async function setKeywordActive(DB: D1Database, id: number, active: boolean): Promise<{ ok: boolean }> {
-  await DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run().catch(() => null)
-  return { ok: true }
-}
 
 export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectStats | null> {
   const raw = await readSetting(DB, STATS_KEY)
@@ -212,6 +146,7 @@ function mineHashtags(text: string): string[] {
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
 // 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
 export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
+import { isUnjudgedRound } from './influencer-keyword-rotation'
 import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 
@@ -297,6 +232,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
+  // 🩹 오염된 고갈 카운터 1회 복구 — **은퇴 판정보다 먼저** 돌아야 한다(안 그러면 이번 회차가
+  //   옛 오염값으로 또 은퇴시키고 나서 리셋된다). 적용 후엔 읽기 1회로 끝난다.
+  await healBarrenStreakOnce(DB)
   // 💤 자동확장 키워드 회수 2종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
   await DB.batch([
     // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
@@ -451,6 +389,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
+    /**
+     * 🔎 **실제로 성공한 검색 횟수**. 0 이면 "수확이 없다"가 아니라 **"안 물어봤다"** 이다.
+     *   아래 `starved` 판정에 합류한다(예산 고갈 외에 YT 쿼터 소진 클래스를 덮기 위해 — 상세는 그 주석).
+     */
+    let kSearched = 0
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
     if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages <= ytBudgetTotal) {
@@ -459,6 +402,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       try {
         const r = await discoverYouTubeInfluencers(env, k.keyword, { maxResults: 50, pages: ytPages, enrichMax: 8, budget, searchType: ytAngle.searchType, order: ytAngle.order })
         if (r.ok) {
+          kSearched++
           diag.yt.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.yt.saved += s; kSaved += s; mine(r.leads) }
         } else {
@@ -471,6 +415,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       try {
         const r = await discoverNaverBloggers(naverId, naverSecret, k.keyword, { display: 100, enrichMax: 5, budget, sort: naverSort })
         if (r.ok) {
+          kSearched++
           diag.naver.found += r.leads?.length || 0; kFound += r.leads?.length || 0
           if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.saved += s; kSaved += s; mine(r.leads) }
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
@@ -494,7 +439,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   auto 키워드는 8회면 **비활성**된다. 게다가 굶는 자리는 픽 목록의 꼬리로 **결정적**이라 특정 키워드가
     //   반복해서 맞는다 — 예산 부족이 키워드 품질로 오기록되는 자기강화 루프다.
     //   ⇒ 굶은 회차는 발굴/저장 누적만 반영하고 streak·last_saved·last_run_at 은 건드리지 않는다(= 무판정).
-    const starved = budget.left <= 0 || isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+    // 🌵 판정 가능 여부는 `isUnjudgedRound`(순수 SSOT — 근거·라이브 증거는 그 주석) 하나로 결정한다.
+    const starved = isUnjudgedRound({
+      budgetLeft: budget.left, searchedOk: kSearched, ytError: diag.yt.error, naverError: diag.naver.error,
+    })
     if (starved) starvedIds.add(k.id); else starvedIds.delete(k.id) // 같은 실행에 재등장하면 마지막 판정이 유효
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
@@ -582,6 +530,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, promoted, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
+    // 🌵 이번 회차에 **판정을 보류한** 키워드 수(굶었거나 검색이 한 번도 성공 못 함). `saved` 가 낮을 때
+    //   원인이 *키워드 고갈*인지 *예산·쿼터 부족*인지 가른다 — 이 값이 크면 키워드를 더 넣어도 소용없다.
+    ...(starvedIds.size ? { kw_unjudged: starvedIds.size } : {}),
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,

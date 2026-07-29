@@ -25,7 +25,28 @@ import type { Env } from '../types/env'
  * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
  * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
  */
-function summarizeResult(v: unknown): string | null {
+/**
+ * 실패 사유를 **짧은 분류 코드**로 (순수 — 유닛 잠금).
+ *
+ *   왜 필요한가: 아래 `summarizeResult` 는 **24자 초과 문자열을 버린다**. 실패 원문
+ *   (`Too many subrequests by single Worker invocation` = 47자)을 그대로 넘기면 통째로 사라져
+ *   어드민에는 `result: null` 만 남는다 — 실제로 2026-07-29 에 ur-ads 4개 레인이 동시에
+ *   `ok:false` 로 죽었는데 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다.
+ *   한도/타임아웃 구분이면 다음 행동을 정하기에 충분하고, 전체 원문은 Discord 통지에 실린다.
+ */
+export function cronErrorCode(e: unknown): string {
+  const msg = String((e as { message?: string } | null)?.message || e || '')
+  if (/too many (subrequests|api requests)/i.test(msg)) return 'limit' // 예산 고갈 — AIMD 가 대응할 신호
+  const name = (e as { name?: string } | null)?.name
+  if (name === 'TimeoutError' || /timeout|aborted/i.test(msg)) return 'timeout'
+  return (name || 'Error').slice(0, 24)
+}
+
+/**
+ * 결과 요약(순수 — 유닛 잠금). ⚠️ **24자 초과 문자열은 버린다** — `cronErrorCode`(위)가 존재하는 이유가
+ *   이 제한이다. 제한을 바꾸려면 그 함수와 유닛(ads-cron-beat-errcode)을 함께 보라.
+ */
+export function summarizeResult(v: unknown): string | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
