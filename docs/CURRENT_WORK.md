@@ -61,7 +61,34 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 
 **가드**: `wholesale-cron-gate.test.ts`(극성·분기·무음금지·로직무접촉 5검사).
 
-### ➡️ staging 검증 (배포 후 — 세션이 못 함, 대표/운영 확인 필요)
+### ✅ staging 검증 결과 (2026-07-29, PR #829 머지 `e8e29c8` 배포 후 실측)
+
+**① 소비자 cron 생존 — 확인됨.** 배포 감지(`/api/version` `index-Cnt2hP-3.js` → `index-DHLNQdeB.js`) 후
+`/api/_healthcheck/cron` 의 `latest_heartbeat_at` 이 **04:01:54Z → 04:05:53Z 전진**, `ok=true` ·
+`stale=[]` · `missing=[]`(하트비트 기록 26건). **게이트가 소비자 cron 을 죽이지 않았다.**
+> ⚠️ **남은 1건**: `supplier-settlement-mature` 는 **일 1회(`0 18 * * *`)** 분기라 배포 후 아직 미발화 —
+> 하트비트 목록에 없는 이유가 그것이다(**관측 밖이 아님**. `scheduled.ts:298` 에서 `safeCron` 정상 경유).
+> **18:00 UTC 이후** `/api/admin/cron-heartbeats` 에서 `supplier-settlement-mature` 등장 확인이 남는다.
+> ⇒ 이번에 한 번 오판했다: 목록에 없길래 "관측 밖"으로 읽었으나 실제로는 주기 문제였다.
+
+**② 도매 cron no-op — 코드 레벨 증명 완료 / 플랫폼 부착 미검증.**
+빌드 산출물을 Node 에서 직접 `scheduled()` 호출(`env.DB` = 접촉 시 throw 하는 Proxy):
+
+| 번들 | no-op 로그 | DB 접촉 |
+|---|---|---|
+| 도매(`WHOLESALE_BUNDLE=1`) | `[wholesale-cron-gate] skipped cron…` | **없음** |
+| 소비자(대조군) | 없음 | **있음 — `[cron:supplier-settlement-mature]`** |
+
+⇒ 하네스가 차이를 실제로 감지(무음 통과 아님) + **게이트가 없었으면 도매에서도 정산이 돌았다는 직접 증거**.
+미검증분은 *"cron trigger 부착 시 Cloudflare 가 배포된 scheduled export 를 호출하는가"* 하나 —
+**우리 코드가 아니라 플랫폼 동작**이다.
+
+**🔴 대표 액션 필요(②의 남은 절반)**: 이 환경은 `dash.cloudflare.com` 프록시 차단 + `cf_api_token` 무효
+(`Invalid API Token`, 재확인함)라 cron 부착을 세션이 못 한다. 택1 —
+(a) **Pages 설정 편집 권한 있는 CF 토큰** 제공 → 세션이 부착·관찰·제거까지 수행
+(b) **대표가 대시보드에서** ur-wholesale 에 임시 cron(`*/2 * * * *`) 부착 → 2~4분 뒤 정산 미발생 확인 → **즉시 제거**
+
+### ➡️ (이전 기록) staging 검증 계획
 1. 🔴 **소비자 cron 정상 발화**(이게 훨씬 중요) — 하트비트 갱신이 가장 빠른 판정.
    `/api/admin/system-monitoring` 의 cron 하트비트가 계속 최신인지. **멈추면 즉시 롤백**(아래).
 2. 도매에 cron 을 시험 삼아 걸었을 때 정산이 **안 돌고** `[wholesale-cron-gate] skipped cron` 로그만 남는지.
