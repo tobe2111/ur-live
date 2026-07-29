@@ -359,7 +359,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     //   LIMIT 15 라 이런 URL 이 슬롯을 차지하면 **진짜 사이트가 영영 안 뽑힌다**(예산과 슬롯 이중 낭비).
     const platformNot = PLATFORM_URL_SQL_EXCLUDE.map(() => 'website NOT LIKE ?').join(' AND ')
     const targets = (await DB.prepare(`SELECT id, website, phone, category FROM ad_company_leads
-        WHERE source IN ('local','webkr') AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
+        WHERE source IN ('local','webkr') AND merged_into IS NULL AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')
           AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
           AND ${platformNot}
         ORDER BY (CASE WHEN tier = 1 THEN 0 ELSE 1 END), id DESC LIMIT 15`)
@@ -402,24 +402,36 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
 /* ── ☎️ 카카오 전용 전화 스윕(2026-07-27 대표 "더 빠르고 정확히는?") ──────────────────
  *   보류 10만+ 의 대부분은 오프라인 업체 = 목표가 **전화**인데, 통합 보강은 예산 1/3 만 전화에 써서
  *   카카오 무료 쿼터(10만/일)가 크게 놀았음. 이 레인은 카카오만(1건=1콜, 네이버·크롤 무접촉) 대량 순회:
- *   시간당 기본 600건 → 일 1.4만+ — 보류 전화 1차 순회를 단독으로 ~일주일에 끝냄.
- *   id 커서 랩(한 바퀴 돌면 0 리셋) — enrich_checked_at 무접촉(이메일 보강 흐름과 독립).
- *   허위 0: kakaoLocalLookup 은 상호+주소 매칭 실패 시 null(기존 SSOT 그대로). */
+ *   허위 0: kakaoLocalLookup 은 상호+주소 매칭 실패 시 null(기존 SSOT 그대로).
+ *
+ *   🎯 2026-07-28 **우선순위 전환** — 라이브 실측이 시킨 변경:
+ *     tier1·2(실제 콜드 접촉할 풀) 5,218곳 중 전화 없는 행이 **2,594곳뿐**인데, 이 스윕은 `ORDER BY id ASC`
+ *     로 12만 행을 **입고 순서대로** 훑고 있었다. 무료 플랜 실효 처리량이 시간당 ~50건이라 tier1 에 닿는 데
+ *     몇 달이 걸린다("일주일이면 끝난다"던 위 주석은 600건/시간을 전제한 것으로, 그 전제가 틀렸다).
+ *     → **tier 오름차순**으로 훑는다. tier1·2 는 이틀이면 채워지고, 접촉 가능 풀이 2,624 → 5,200 으로 2배가 된다.
+ *
+ *   🔁 진행 방식도 id 커서 → **시도 도장(`kakao_checked_at`) + 30일 쿨다운** 으로 바꾼다.
+ *     id 커서는 정렬이 id 순일 때만 성립한다 — 우선순위 정렬과 함께 쓰면 커서가 tier1 을 지나쳐 버린다.
+ *     도장 방식은 보강 레인(`enrich_checked_at`)이 이미 쓰는 검증된 패턴이고, 실패한 행이 앞줄을 영원히
+ *     막지 않게 해준다(그 사고가 `check-crawl-cooldown` 가드의 유래다).
+ *
+ *   🧮 D1 도 서브리퀘스트다 — 예전엔 kakao fetch 만 세고 UPDATE 는 공짜로 쳤다(보강 레인에서 이미 고친 결함).
+ *     도장·전화저장을 **배치 1회씩**으로 묶고 예산에 계상한다. */
 export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; found: number; cursor: number; done: boolean }> {
   const DB = env.DB
   await ensureCompanySchema(DB)
   const { kakaoLocalLookup } = await import('./contact-enrich')
   const key = env.KAKAO_REST_API_KEY || ''
-  const CUR = 'ads_kakao_sweep_cursor'
   if (!key) return { scanned: 0, found: 0, cursor: 0, done: false }
   const cap = Math.min(600, Math.max(50, parseInt((env as unknown as { ADS_KAKAO_SWEEP_CAP?: string }).ADS_KAKAO_SWEEP_CAP || '', 10) || 600))
-  const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CUR).first<{ value: string }>().catch(() => null)
-  let cursor = parseInt(curRaw?.value || '0', 10); if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
+  // 🎯 tier 오름차순 = 접촉 가치 순. 도장 쿨다운으로 재시도를 통제(커서 없음 — 위 헤더 주석 참조).
   const rows = (await DB.prepare(
     `SELECT id, company_name, region, address FROM ad_company_leads
-     WHERE id > ? AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != '' ORDER BY id ASC LIMIT ?`)
-    .bind(cursor, cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
-  if (!rows.length) { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, '0').run().catch(() => null); return { scanned: 0, found: 0, cursor: 0, done: true } }
+     WHERE merged_into IS NULL AND (phone IS NULL OR phone = '') AND address IS NOT NULL AND address != ''
+       AND (kakao_checked_at IS NULL OR kakao_checked_at < datetime('now', '-30 days'))
+     ORDER BY (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
+    .bind(cap).all<{ id: number; company_name: string; region: string | null; address: string }>().catch(() => null))?.results || []
+  if (!rows.length) return { scanned: 0, found: 0, cursor: 0, done: true }
   // 🩹 2026-07-28 근본수리(실측: "주소는 있는데 전화가 없는" 리드 1만+): 이 스윕은 예산 객체를 안 넘겨
   //   회당 600 fetch 를 무통제로 쏘았고, 서브리퀘스트 한도를 넘으면 이후 조회가 전부 조용히 실패했다.
   //   그런데 커서는 **무조건 마지막 행까지 전진**해서, 한 건도 못 받은 라운드의 600건이 통째로 건너뛰어졌다
@@ -434,28 +446,37 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   //   (되내려와야 할 안전판이 거꾸로 작동). 시작값을 명시 상수로 잡아 두 곳이 어긋날 수 없게 한다.
   const budgetTotal = resolveSubreqBudget(cap, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
-  let found = 0, lastDone = cursor
+  let found = 0
+  const tried: number[] = []                                   // 시도한 행 → 도장(배치 1회)
+  const hits: Array<{ id: number; phone: string }> = []        // 전화 확보분 → 저장(배치 1회)
   for (const r of rows) {
-    if (budget.left <= 0 || budget.limitHit) break // 여기서 멈추면 남은 행은 커서가 안 넘어가 다음 라운드 대상
+    if (budget.left <= 2 || budget.limitHit) break // 배치 쓰기 2회 몫은 남겨둔다
     const k = await kakaoLocalLookup(key, r.company_name, r.region, r.address, budget)
-    if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 커서를 전진시키지 않는다
-    lastDone = r.id
-    if (k.phone) {
-      found++
-      await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?")
-        .bind(k.phone, r.id).run().catch(() => null)
-    }
+    if (budget.limitHit) break // 한도 도달 — 이 행은 조회된 적 없으므로 도장도 찍지 않는다(다음 라운드 재시도)
+    tried.push(r.id)
+    if (k.phone) { found++; hits.push({ id: r.id, phone: k.phone }) }
+  }
+  // 💾 쓰기는 배치로 — 건건이 쓰면 부기(簿記)가 예산을 먹어 크롤 기회를 줄인다(보강 레인과 동일 교훈).
+  if (hits.length) {
+    budget.left -= 1
+    await DB.batch(hits.map(h => DB.prepare(
+      "UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?",
+    ).bind(h.phone, h.id))).catch(() => null)
+  }
+  if (tried.length) {
+    budget.left -= 1
+    // 숫자 id 만 보간 — 바인딩 개수 가변 회피(D1 문장당 100개 제한과 무관하게 안전).
+    await DB.prepare(`UPDATE ad_company_leads SET kakao_checked_at = datetime('now') WHERE id IN (${tried.join(',')})`)
+      .run().catch(() => null)
   }
   const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, cap)
   if (nextCap != null) await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(subreqCapKey('kakao_sweep'), String(nextCap)).run().catch(() => null)
-  const nextCursor = lastDone
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CUR, String(nextCursor)).run().catch(() => null)
   const prevRaw = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_kakao_sweep_stats'").first<{ value: string }>().catch(() => null)
   let totalFound = 0; try { totalFound = Number((prevRaw?.value ? JSON.parse(prevRaw.value) : {}).total_found) || 0 } catch { /* 초기 */ }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind('ads_kakao_sweep_stats', JSON.stringify({
-    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, cursor: nextCursor, total_found: totalFound + found,
+    last_run: new Date().toISOString().slice(0, 19).replace('T', ' '), scanned: rows.length, found, tried: tried.length, total_found: totalFound + found,
     limit_hit: !!budget.limitHit, // 한도로 조기 중단했는가 — true 면 남은 행은 커서 미전진(다음 라운드 재시도)
   })).run().catch(() => null)
-  return { scanned: rows.length, found, cursor: nextCursor, done: false }
+  return { scanned: rows.length, found, cursor: 0, done: false }
 }

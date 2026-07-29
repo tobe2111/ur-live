@@ -72,6 +72,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
   const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
       WHERE (active = 0 OR email IS NULL OR email = '')
+        AND merged_into IS NULL
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
@@ -237,7 +238,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
 
   phase = 'p3_done'
   spendD1()
-  const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0").first<{ n: number }>().catch(() => null)
+  const rem = await DB.prepare("SELECT COUNT(*) AS n FROM ad_company_leads WHERE active = 0 AND merged_into IS NULL").first<{ n: number }>().catch(() => null)
   const crawls = Object.values(crawlReason).reduce((s, n) => s + n, 0)
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }

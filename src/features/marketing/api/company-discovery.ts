@@ -111,6 +111,10 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN name_norm TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_company_leads_name_norm ON ad_company_leads(name_norm)').run().catch(() => null)
   // additive 컬럼(공공데이터 전환 §11) — 기존 행 무영향. active=1(액션풀), 연락처 없거나 폐업이면 0.
+  // 🧬 중복 병합 표식 — **접힌 행(패자)의 승자 id**. 삭제 대신 표시만 하는 설계(company-dedupe.ts)라
+  //   리드를 고르는 **모든 쿼리가 `merged_into IS NULL` 을 봐야 한다**. 그래서 컬럼 생성을 dedupe 모듈에만
+  //   맡기지 않고 여기(스키마 SSOT)에서 보장한다 — 병합을 한 번도 안 돌린 DB 에서도 그 조건이 안전하려면.
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN merged_into INTEGER').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN business_no TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN last_verified_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN active INTEGER NOT NULL DEFAULT 1').run().catch(() => null)
@@ -123,6 +127,10 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN nps_checked_at DATETIME').run().catch(() => null)
   // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프. 없으면 같은 상위 200행만 매시간 공회전(뒷줄 영영 미도달).
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
+  // ☎️ 카카오 전화 스윕 시도 도장(2026-07-28) — 스윕이 id 커서에서 **tier 우선순위**로 바뀌면서 필요해졌다.
+  //   id 커서는 정렬이 id 순일 때만 성립하는데, 우선순위 정렬과 함께 쓰면 커서가 tier1 을 지나쳐 버린다.
+  //   도장 + 30일 쿨다운이면 정렬을 자유롭게 바꿔도 같은 행을 무한 재시도하지 않는다.
+  await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN kakao_checked_at DATETIME').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN classified_v INTEGER').run().catch(() => null) // 어느 버전 규칙으로 검사받았나(< CLASSIFY_RULES_VERSION 이면 재검사 대상)
   await DB.prepare('ALTER TABLE ad_company_leads ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 어느 버전 크롤러로 시도했나(< CRAWL_RULES_VERSION 이면 재시도 대상)
   // 📵 반송 억제 목록(2026-07-27) — 반송 확인된 이메일은 재수집(크롤/레지스트리 재유입)으로 되살아나지 않게.
@@ -141,6 +149,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
   const v2 = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_company_key_v2'").first<{ value: string }>().catch(() => null)
   if (!v2?.value) {
     // ① 중복군(같은 사업자번호)의 대표행(MIN id)에 형제 행의 연락처 백필(정보 손실 0)
+    // merged-filter-ok — 사업자번호 기준 1회 마이그레이션(ads_company_key_v2 게이트). 병합 이전 시대의 정리.
     await DB.prepare(`UPDATE ad_company_leads SET
         email = COALESCE(email, (SELECT d.email FROM ad_company_leads d WHERE d.business_no = ad_company_leads.business_no AND d.id != ad_company_leads.id AND d.email IS NOT NULL LIMIT 1)),
         phone = COALESCE(phone, (SELECT d.phone FROM ad_company_leads d WHERE d.business_no = ad_company_leads.business_no AND d.id != ad_company_leads.id AND d.phone IS NOT NULL LIMIT 1)),
@@ -148,6 +157,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
       WHERE business_no IS NOT NULL AND business_no != ''
         AND id = (SELECT MIN(m.id) FROM ad_company_leads m WHERE m.business_no = ad_company_leads.business_no)`).run().catch(() => null)
     // ② 대표행 외 **미큐레이션**(status=new·메모 없음) 중복만 삭제 — 대표가 손댄 행은 보존
+    // merged-filter-ok — 같은 1회 마이그레이션의 짝(사업자번호 중복 정리).
     await DB.prepare(`DELETE FROM ad_company_leads WHERE business_no IS NOT NULL AND business_no != ''
         AND status = 'new' AND memo IS NULL
         AND id != (SELECT MIN(m.id) FROM ad_company_leads m WHERE m.business_no = ad_company_leads.business_no)`).run().catch(() => null)
@@ -157,7 +167,10 @@ export async function ensureCompanySchema(DB: D1Database): Promise<void> {
     // ④ 통신판매 재분류('대행사' tier1 오분류 → '온라인판매' tier4 — 보강 우선순위 정합)
     await DB.prepare("UPDATE ad_company_leads SET category = '온라인판매', tier = 4 WHERE source = 'commerce' AND category = '대행사'").run().catch(() => null)
     // ⑤ 백필로 연락처 생긴 보류 행 승격(일관성)
-    await DB.prepare("UPDATE ad_company_leads SET active = 1 WHERE active = 0 AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))").run().catch(() => null)
+    //   ⚠️ **접힌 행(merged_into)은 제외** — 중복 병합의 패자는 전화가 있어서 보류된 게 아니라 *같은 업체라서*
+    //   접힌 것이다. 이 스윕이 전화 유무만 보고 되살리면 **병합이 통째로 무효화**된다(2026-07-28 실측:
+    //   첫 병합 1,523행이 전부 전화 보유 → 다음 정비 틱에 전원 부활할 뻔했다).
+    await DB.prepare("UPDATE ad_company_leads SET active = 1 WHERE active = 0 AND merged_into IS NULL AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))").run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_key_v2', '1')").run().catch(() => null)
   }
 
@@ -334,6 +347,9 @@ function buildLeadWhere(filter: CompanyLeadFilter): { sql: string; binds: (strin
   const where: string[] = ['1=1']
   const binds: (string | number)[] = []
   // heldOnly: 연락처 없어 보류(active=0)된 것만. includeHeld: 전체(보류 포함). 기본(둘 다 false): 액션풀(active=1)만.
+  // 🧬 접힌 행(중복 병합 패자)은 **어느 목록에도 안 나온다** — 삭제하지 않고 표시만 하는 설계라
+  //   필터에서 빼주지 않으면 '보류' 목록이 중복으로 부풀고 대표가 같은 업체를 여러 번 보게 된다.
+  where.push('merged_into IS NULL')
   if (filter.heldOnly) where.push('active = 0')
   else if (!filter.includeHeld) where.push('active = 1')
   if (filter.category) { where.push('category = ?'); binds.push(filter.category) }
@@ -368,6 +384,7 @@ export async function listCompanyLeads(DB: D1Database, filter: CompanyLeadFilter
   const limit = Math.min(2000, Math.max(1, filter.limit || 500))
   const offset = Math.max(0, Math.round(filter.offset || 0))
   const r = await DB.prepare(
+    // merged-filter-ok — 조건은 buildLeadWhere() SSOT 가 만들고 거기에 `merged_into IS NULL` 이 있다.
     `SELECT ${SELECT_COLS} FROM ad_company_leads WHERE ${sql}
      ORDER BY active DESC, (tier IS NULL) ASC, tier ASC, collected_at DESC, id DESC LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all<CompanyLeadRow>().catch(() => null)
@@ -378,6 +395,7 @@ export async function listCompanyLeads(DB: D1Database, filter: CompanyLeadFilter
 export async function countCompanyLeads(DB: D1Database, filter: CompanyLeadFilter = {}): Promise<number> {
   await ensureCompanySchema(DB)
   const { sql, binds } = buildLeadWhere(filter)
+  // merged-filter-ok — 위와 같은 buildLeadWhere() 조건(목록↔총건수 정합).
   const r = await DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads WHERE ${sql}`).bind(...binds).first<{ n: number }>().catch(() => null)
   return Number(r?.n) || 0
 }
@@ -400,7 +418,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   const n = Math.min(1000, Math.max(1, limit))
   const rows = (await DB.prepare(
     `SELECT id, company_name, description, website, category, subcategory, tier, source, source_keyword, status, memo, phone, email, contact_source
-     FROM ad_company_leads WHERE id > ? AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
+     FROM ad_company_leads WHERE id > ? AND merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?) ORDER BY id ASC LIMIT ?`)
     .bind(cursor, CLASSIFY_RULES_VERSION, n).all<{ id: number; company_name: string; description: string | null; website: string | null; category: string | null; subcategory: string | null; tier: number | null; source: string; source_keyword: string | null; status: string; memo: string | null; phone: string | null; email: string | null; contact_source: string | null }>()
     .catch(() => null))?.results || []
   if (!rows.length) {
@@ -455,7 +473,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   const nextCursor = rows[rows.length - 1].id
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(RECLASSIFY_CURSOR, String(nextCursor)).run().catch(() => null)
   // 📊 진행률 가시화(2026-07-27 대표 "청소 얼마나 됐나 안 보임") — 남은 미분류 수 포함 스탬프.
-  const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE classified_v IS NULL OR classified_v < ?').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
+  const remRow = await DB.prepare('SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND (classified_v IS NULL OR classified_v < ?)').bind(CLASSIFY_RULES_VERSION).first<{ n: number }>().catch(() => null)
   const prevStat = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_reclassify_stats'").first<{ value: string }>().catch(() => null)
   let tot = { removed: 0, updated: 0 }
   try { const p = prevStat?.value ? JSON.parse(prevStat.value) : null; if (p) tot = { removed: p.total_removed || 0, updated: p.total_updated || 0 } } catch { /* 초기 */ }
@@ -529,7 +547,7 @@ export async function deleteCompanyLeads(DB: D1Database, ids: number[]): Promise
 }
 
 /* ── 통계(어드민 대시보드 스트립) ──────────────────────────────────────────────── */
-export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number }
+export interface CompanyStats { total: number; with_contact: number; with_email: number; held_no_contact: number; active_pipeline: number; recent7: number; needs_review: number; merged_away: number }
 export interface AgencyEmailFunnel { total: number; with_email: number; site_no_email: number; site_tried: number; no_site: number }
 export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStats; byCategory: Array<{ k: string; n: number }>; byTier: Array<{ k: number | null; n: number }>; byLeadType: Array<{ k: string; n: number }>; agencyEmailFunnel: AgencyEmailFunnel }> {
   await ensureCompanySchema(DB)
@@ -537,7 +555,8 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       COUNT(*) AS total,
       SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS with_contact,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) AS held_no_contact,
+      SUM(CASE WHEN active = 0 AND merged_into IS NULL THEN 1 ELSE 0 END) AS held_no_contact,
+      SUM(CASE WHEN merged_into IS NOT NULL THEN 1 ELSE 0 END) AS merged_away,
       SUM(CASE WHEN status NOT IN ('new','rejected') THEN 1 ELSE 0 END) AS active_pipeline,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
       SUM(CASE WHEN lead_type IS NULL OR lead_type = 'unknown' THEN 1 ELSE 0 END) AS needs_review
@@ -555,11 +574,12 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
       SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS site_no_email,
       SUM(CASE WHEN (email IS NULL OR email = '') AND website IS NOT NULL AND website != '' AND enrich_checked_at IS NOT NULL THEN 1 ELSE 0 END) AS site_tried,
       SUM(CASE WHEN (email IS NULL OR email = '') AND (website IS NULL OR website = '') THEN 1 ELSE 0 END) AS no_site
-    FROM ad_company_leads WHERE category = '대행사'`).first<Record<string, number>>().catch(() => null)
+    FROM ad_company_leads WHERE category = '대행사' AND merged_into IS NULL`).first<Record<string, number>>().catch(() => null)
   return {
     stats: {
       total: Number(t?.total) || 0, with_contact: Number(t?.with_contact) || 0, with_email: Number(t?.with_email) || 0,
       held_no_contact: Number(t?.held_no_contact) || 0,
+      merged_away: Number(t?.merged_away) || 0, // 중복 병합으로 접힌 행(삭제 아님 — 복원 가능)
       active_pipeline: Number(t?.active_pipeline) || 0, recent7: Number(t?.recent7) || 0,
       needs_review: Number(t?.needs_review) || 0,
     },

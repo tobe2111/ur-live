@@ -63,6 +63,8 @@ if domain money; then
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
   run "크롤 재시도 쿨다운"                node scripts/check-crawl-cooldown.mjs -s
+  run "접힌 리드(중복병합) 누수"          node scripts/check-merged-lead-filter.mjs
+  run "수집 러너 스케줄 누락"            node scripts/check-collector-cron.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
@@ -112,6 +114,7 @@ if domain deploy; then
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
+  run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
