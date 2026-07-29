@@ -313,11 +313,33 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   //   import 하므로 정적 import 는 순환이 된다. 상대경로 동적 import 는 레포 규칙상 허용되는 형태.
   const { scoreLead } = await import('./influencer-quality')
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
-  const stmts = []
-  for (const r of rows) {
+  // 타입 명시 필수 — 아래 push 가 워커 클로저 안에서 일어나 추론이 안 된다(동시화 이전엔 같은 스코프라 추론됐다).
+  const stmts: ReturnType<D1Database['prepare']>[] = []
+  /**
+   * 🏃 **블로거 단위 동시 처리**(2026-07-29) — 라운드가 예산을 남긴 채 시간에 끊기던 것.
+   *
+   *   실측(08:00 라운드): `selected 12 · tried 3 · spent 25/45 · deadline_hit true · elapsed 20.3s`.
+   *   즉 **예산의 44%를 못 쓰고** 벽시계로 끝났다. 건당 두 fetch 는 이미 병렬인데(아래) 블로거는
+   *   한 명씩 순차라, 네이버 응답이 건당 ~6.8s 면 20s 안에 3명이 천장이다. 예산이 아니라 **직렬화**가
+   *   병목이었다 — 같은 서브리퀘스트로 처리량만 버리고 있었다.
+   *
+   *   ⚠️ 동시성 3 으로 **보수적**으로 잡는다: 우리가 때리는 호스트는 둘(rss./m.blog.naver.com)이고
+   *   호스트당 동시 연결을 과하게 올리면 차단·지연으로 되돌아온다 — 그건 처리량을 늘리는 게 아니라
+   *   레인을 통째로 죽이는 방향이다. 3 이면 호스트당 3 으로, 흔한 6-per-host 한도 아래에 머문다.
+   *   (더 올리기 전에 `failed` 카운터가 안 오르는지부터 확인할 것 — 추측으로 올리면 조용히 악화된다.)
+   *
+   *   ✅ 예산 정합: 아래 [잔량 검사 → 차감] 사이에 `await` 가 없다(전부 동기 구문). JS 는 단일 스레드라
+   *   그 구간이 원자적으로 실행되므로 동시 워커가 같은 잔량을 두 번 쓰는 초과 지출이 생기지 않는다.
+   */
+  const NAVER_CONCURRENCY = 3
+  let cursor = 0
+  const worker = async (): Promise<void> => {
+   for (;;) {
     // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
-    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
+    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) return
+    const r = rows[cursor++]
+    if (!r) return
     // 🩹 손상 핸들 자가복구 — 일괄 힐(healNaverHandles)이 전수를 도는 데 몇 시간 걸리므로, 레인이 만나는
     //    행은 그 자리에서 살린다. 되살리면 handle/url 을 함께 고쳐 다음부터는 손상 상태로 안 돌아온다.
     const handle = deriveNaverHandle(r)
@@ -423,7 +445,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       sets.push('lead_score = ?'); binds.push(score)
     }
     stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, r.id))
+   }
   }
+  await Promise.all(Array.from({ length: Math.min(NAVER_CONCURRENCY, rows.length) }, () => worker()))
   if (stmts.length) await DB.batch(stmts).catch(() => null)
   return diag
 }

@@ -29,7 +29,18 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
   try {
     const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
     stats = await runInfluencerAutoCollect(c.env)
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+  } catch (err) {
+    // 💥 원문 릴레이 + **실패도 기록**(2026-07-29) — 그전엔 'FAILED' 한 단어만 남기고 하트비트도 건너뛰어,
+    //   라이브에서 이 레인은 "안 돈 것"과 구분이 안 됐다(실제로 오늘 그 오진을 했다).
+    const msg = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}`
+    if (depth === 0) {
+      try {
+        const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+        await recordCronBeat(c.env as never, 'ads:collect', false, 0, '0 * * * *', { crash: msg.slice(0, 120) })
+      } catch { /* 관측 실패가 응답을 막지 않는다 */ }
+    }
+    return c.json({ ok: false, error: msg }, 500)
+  }
   const yb = stats?.yt_budget
   const used = yb && typeof yb.used === 'number' ? yb.used : -1
   const total = yb && typeof yb.total === 'number' ? yb.total : 0
