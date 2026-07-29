@@ -98,16 +98,22 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
   //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
   let gate = env.ADS_AUTO_COLLECT_ENABLED === 'true'
+  // 📊 시트 미러 게이트도 같은 health 응답에서 가져온다(추가 왕복 0). 이게 없으면 어드민이 "34시간째
+  //   멈춰 있어요 — 매시간 도는 작업입니다"를 **꺼져 있을 때도** 띄운다(2026-07-28: 실제로 그랬다).
+  //   '고장'과 '꺼짐'은 다음 행동이 정반대라 반드시 구분돼야 한다.
+  let sheetsGate: boolean | null = null
   try {
     if (env.ADS?.fetch) {
       const hr = await env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
-      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
+      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean; sheets_sync?: boolean } } | null
       if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
+      if (typeof hj?.gates?.sheets_sync === 'boolean') sheetsGate = hj.gates.sheets_sync
     }
   } catch { /* 폴백 유지 */ }
   return {
     stats: { ...(agg || {}), ...tail },
     gate,
+    sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,
     category_funnel: catFunnel?.results || [],
   }

@@ -61,22 +61,37 @@ export async function handleLedgerIntegrityCheck(env: Env): Promise<void> {
     const voucherFlowMismatches: Mismatch[] = []
 
     // 검증 2: user_points.balance vs SUM(point_transactions)
+    //
+    // ⚠️ 2026-07-27 근본수정 — 이 검사는 오탐만 내고 있었다(대표 신고 'ledger_mismatch 4건').
+    //   ① **컬럼 불일치**: 기록 SSOT `recordPointTransaction`(point-ledger.ts)은 `amount` 에만 쓰는데
+    //      검사는 `points_amount` 를 읽었다 → 메인 경로로 쌓인 거래가 전부 0 으로 계산돼
+    //      잔액 있는 유저는 무조건 불일치로 잡힘. (products.stock/stock_quantity 와 같은 이중컬럼 부채.)
+    //   ② **타입 화이트리스트**: charge/referral_bonus/refund/donate 4종만 세고 나머지(signup_bonus·
+    //      commission·cash_withdraw·deal·free·intro_commission_backfill·referral_bonus_reversed …)를 0 처리.
+    //   ③ **부호 이중적용**: `amount` 는 이미 부호 있는 값(적립 +, 차감 −)인데 donate 에 −를 또 붙임.
+    //   → 전 타입을 부호 그대로 합산한다. 레거시 행(amount 비고 points_amount 만 있는 구 코드 산출물)은
+    //      구 규약(절대값 + 타입으로 부호 결정)으로 폴백.
+    const SIGNED_SUM = `SUM(CASE
+      WHEN COALESCE(pt.amount, 0) != 0 THEN pt.amount
+      WHEN pt.type IN ('donate','cash_withdraw','use','spend','deduct') THEN -COALESCE(pt.points_amount, 0)
+      ELSE COALESCE(pt.points_amount, 0) END)`
     try {
-      const r = await DB.prepare(`
-        SELECT up.user_id, up.balance,
-               COALESCE(SUM(CASE pt.type
-                 WHEN 'charge' THEN pt.points_amount
-                 WHEN 'referral_bonus' THEN pt.points_amount
-                 WHEN 'refund' THEN pt.points_amount
-                 WHEN 'donate' THEN -pt.points_amount
-                 ELSE 0 END), 0) AS computed
+      const mismatchSql = `
+        SELECT up.user_id, up.balance, COALESCE(${SIGNED_SUM}, 0) AS computed,
+               up.balance - COALESCE(${SIGNED_SUM}, 0) AS diff
           FROM user_points up
           LEFT JOIN point_transactions pt ON pt.user_id = up.user_id
          GROUP BY up.user_id, up.balance
-        HAVING balance != computed LIMIT 30
-      `).all<{ user_id: string; balance: number; computed: number }>().catch(() => ({ results: [] }))
-      if (r.results && r.results.length > 0) {
-        voucherFlowMismatches.push({ check: 'user_points_balance_mismatch', count: r.results.length, sample: r.results.slice(0, 5) })
+        HAVING balance != computed`
+      // 총 건수(정확) + 샘플(상위 5) 분리 — 기존엔 LIMIT 30 결과 길이를 count 로 써서 30 에서 잘렸다.
+      const [cnt, r] = await Promise.all([
+        DB.prepare(`SELECT COUNT(*) AS n FROM (${mismatchSql})`).first<{ n: number }>().catch(() => null),
+        DB.prepare(`${mismatchSql} ORDER BY ABS(up.balance - COALESCE(${SIGNED_SUM}, 0)) DESC LIMIT 5`)
+          .all<{ user_id: string; balance: number; computed: number; diff: number }>().catch(() => ({ results: [] })),
+      ])
+      const total = Number(cnt?.n ?? (r.results?.length ?? 0))
+      if (total > 0) {
+        voucherFlowMismatches.push({ check: 'user_points_balance_mismatch', count: total, sample: r.results ?? [] })
       }
     } catch { /* skip */ }
 
