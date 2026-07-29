@@ -136,6 +136,64 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 - **훅 수리**: `.claude/hooks/session-start.sh` — npm 403 시 스크래퍼 서버 기동 스킵(매 세션 ERR_MODULE_NOT_FOUND 노이즈 제거).
 - ⏭️ **대표 액션 잔여**: ① 머지 후 `npx wrangler@3 deploy` 1회(cron 은 별도 Workers 프로젝트 — heartbeat 기록이 그때부터 시작, 그 전까지는 bootstrapping=오탐 0) ② 반나절 "검증 데이"로 STAGING_CHECKLIST S/P 항목 소화 ③ 분기 백업 복구 리허설 1회(BACKUP_RESTORE.md) ④ TD-001 D1 Migration CI 토큰 권한.
 - ⚠️ 이 원격환경 npm 403 으로 전체 tsc/build 미실행 — CI(verify.yml) 위임. 가드(sql-table/bind/theme/file-size 등) 통과 확인.
+## 🟢 2026-07-29 (10차) — **인플루언서 수집: 키워드 210개 중 3개만 도는 이유를 특정하고 고침** (PR #840)
+
+> 🔒 **범위: 인플루언서 레인만.** 업체/파트너풀은 다른 세션이 동시에 작업 중이라 건드리지 않았다.
+
+### 판정 — 라이브 실측(04:00 실행)
+`run.last_keywords` 가 **3개**였다. 뽑은 건 16개(batch 4 + NAVER_EXTRA 12)인데 13개는 손도 못 댔다.
+에러는 없다 — `budget.left <= 0` 조기 종료다. 활성 키워드 210개 ÷ 3 = **한 바퀴 70시간**,
+그래서 124개가 이틀째 순번을 못 받고 있었다(6차부터 이어진 미제).
+
+**원인은 두 겹이었다.**
+1. **인보케이션당 여력** — Cloudflare 는 D1 호출도 서브리퀘스트 한도(무료 50)에 포함한다(#784).
+   루프 진입 전 고정 D1 이 ~22개, 그중 7개가 `ensureDiscoveryKeywords` 의 CREATE 1 + ALTER 6 이었다.
+   몇 달 전 만들어진 테이블에 대한 no-op 을 매시간 영원히 재실행하며 발굴 fetch 예산을 먹고 있었다.
+   (`ensureInfluencerSchema` 는 2026-07-28 에 같은 이유로 `runDdlOnce` 가 됐는데 이 함수만 남았다.)
+2. **인보케이션 수** — 보강 레인은 시간당 6라운드인데 발굴은 **1라운드**. self-chain 엔드포인트
+   (`/__ads/collect-chain`)가 이미 있었는데 **cron 이 안 쓰고** 있었고, 쓰더라도 중단조건이 전부
+   YT 기준이라 YT 일일 예산(90)이 떨어진 뒤 — 하루의 대부분 — 첫 호출이 즉시 done 이었다.
+   정작 볼륨의 주력은 쿼터가 남아도는 네이버(25k/day, 실측 ~2%)다.
+
+### 고친 것
+- `ensureDiscoveryKeywords` 7 → 1 (runDdlOnce 체크섬 + 메모). 시드는 문장으로 안 넣는다 —
+  키워드 200개 = 200 서브리퀘스트 = 그 실행 즉사. DDL 체크섬에 시드 체크섬을 마커로 섞어
+  시드가 바뀐 회차에만 1 batch. 설정 읽기 5→1·쓰기 4→1·회수 UPDATE 2→1. 합계 ~14 회수.
+- cron 이 `collect` → `collect-chain` 킥 + **최소 라운드 바닥**(`ADS_COLLECT_ROUNDS`, 기본 4·상한 12).
+  YT 와 무관하게 N라운드는 잇고, YT 예산이 남아 있으면 기존 버스트가 그대로 더 이어진다.
+- 📍 **활동 지역 캡처** — 서비스몰이 "지역·업종 맞춤 매칭"(15,000원/명)을 파는데 풀에 지역 필드가
+  아예 없었다(40컬럼 전수). 수집 키워드가 `"강남 맛집"` 처럼 지역으로 시작한다(연락 대상 2,285명 중
+  401명=17%) → `region` 컬럼 + 접두 추출(`influencer-region.ts`) + DB 전용 백필 + 엑셀 열.
+  ⚠️ 추정이다. "그 지역을 다루는 콘텐츠"이지 거주지가 아니다 — 후보를 좁히는 신호로만.
+
+### ⚠️ 이번에 틀렸던 판단 (같은 오진 방지)
+- **라운드를 오케스트레이터에서 N번 부르려다 되돌렸다.** `kick` 은 waitUntil 로 던지고 안 기다린다 →
+  N개가 동시에 떠서 lease CAS 에 하나만 이기고 나머지는 `busy` 로 즉시 반환(완전 무의미). 게다가
+  scheduled 핸들러 자체도 서브리퀘스트 50 을 공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 —
+  더 부풀리면 **waitUntil 목록의 꼬리(= 다른 세션의 업체/파트너 레인)가 조용히 죽는다.**
+  ⇒ 오케스트레이터 비용은 1건 그대로 두고 체인이 스스로 잇게 했다.
+- **하트비트 이름을 경로 따라 바꿀 뻔했다.** `cron_hb:ads:collect` 가 남아 stale watch 가 영원히
+  '침묵' 경보를 냈을 것이다(작업은 멀쩡한데 알람만 울림) → `kick(..., beatName)` 으로 이름 고정.
+- **이 컨테이너는 npm registry 403** 이라 vitest/build 를 못 돌렸다(07-28 세션과 다름). tsc·가드만
+  로컬, 나머지는 CI. CLAUDE.md 의 "npm 정상화" 는 세션마다 다시 확인할 것.
+
+### 다음 세션 첫 액션
+배포 후 정각 +5분에 아래를 읽는다. **`last_keywords` 길이가 판정선이다.**
+```bash
+curl -sS "https://live.ur-team.com/api/admin/ads/influencer-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" \
+ | python3 -c "import sys,json;d=json.load(sys.stdin);r=d['run'];print('키워드',len(r.get('last_keywords') or []),'저장',r['last_saved'],'spent',r.get('spent'),'/',r.get('budget_total'),'학습상한',r.get('learned_cap'),'한도',r.get('limit_hit'))"
+```
+- 3 → 아무것도 안 변했다(체인 미동작 의심: `chained` 응답·`SELF` 바인딩 확인).
+- 5~6 → 오버헤드 절감만 먹었다(체인이 안 돈다).
+- **15+ → 둘 다 먹었다.** 이때 `learned_cap` 이 29 위로 회복하는지도 같이 본다.
+- 그 다음 미제: 활성 210개 중 순번 못 받은 키워드 수를 다시 세어 70시간 → 몇 시간이 됐는지 확인.
+  (`SELECT COUNT(*) FROM ad_discovery_keywords WHERE active=1 AND (last_run_at IS NULL OR last_run_at <= datetime('now','-1 day'))`)
+
+### 대표 대기 항목
+- `ADS_COLLECT_CAFE_ENABLED` 는 **아직 안 만든 변수**다(#840 머지 후 ur-ads 에 `false` 로 새로 추가).
+  카페 리드 100명 표본에 이메일 0·연락처 1이고 보강 경로도 없다 — 끄면 그만큼 키워드가 더 돈다.
+- `ADS_COLLECT_ROUNDS` 는 미설정이면 4. 더 세게 돌리려면 ur-ads 에 6~8 로 추가.
+
 ## 🟢 2026-07-29 (9차-b) — **유어애즈: 수집 레인 2개가 0건이던 진짜 이유 = 코드가 아니라 호출 방식**
 
 6차-m·7차가 남긴 "다음 세션 첫 액션" 4개를 라이브에서 전부 실측하고, 그중 하나의 근본원인을 고쳤다.
