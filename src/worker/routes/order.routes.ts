@@ -16,11 +16,8 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
-import { maxTierDiscount } from '../../features/group-buy/api/helpers';
-// 🎟️ [gb-price-wiring 2026-07-29] 공구 엔진(gb_mode/gb_price)을 소비자 결제 경로에 연결.
-//   그간 resolveGbPricing 은 마켓플레이스 '표시'에만 쓰여, 공구가가 실제 결제에 안 붙었다.
-import { resolveGbPricing, type GbSession } from '../../shared/gb-session';
-import { getGbSessions } from '../utils/gb-session-store';
+// 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
+import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { swallow } from '../utils/swallow';
 import { hideOrder } from '../utils/hidden-orders';
@@ -248,17 +245,9 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       } catch { /* product_options 부재 env — 옵션 없이 진행(가격조정 0) */ }
     }
 
-    // 🎟️ [gb-price-wiring] 공구 세션 배치 조회(N+1 회피). 실패해도 주문은 막지 않는다(상시가로 진행).
-    //   ⚠️ 안전 방향: validateGbSession 이 `gb_price < 상시가` 를 강제하고 resolveGbPricing 도
-    //      `gbPrice < list` 일 때만 적용하므로, 이 배선은 **가격을 낮추기만 할 뿐 올릴 수 없다**.
-    const gbSessions: Map<number, GbSession> = await getGbSessions(
-      c.env.DB, productIds.map((id) => Number(id)),
-    ).catch(() => new Map<number, GbSession>());
-    const gbNowMs = Date.now();
-    // linkOnly 세션은 ?ref 경유일 때만 공구가. 아래 referrerId 해석부(line ~627)와 같은 소스를 읽는다.
-    const gbViaRef = Boolean(body.referrer_id || body.ref || getCookie(c, 'affiliate_ref'));
-    /** 공구가가 실제 적용된 상품 — 아래 groupBuyCap 에서 제외(이중 할인 차단). */
-    const gbAppliedIds = new Set<number>();
+    // 🎟️ linkOnly 세션은 ?ref 경유일 때만 공구가 — 아래 referrerId 해석부와 같은 소스.
+    const gbPricing = await loadGbOrderPricing(c.env.DB, productIds.map(Number),
+      Boolean(body.referrer_id || body.ref || getCookie(c, 'affiliate_ref')));
 
     // Build order items with pre-flight stock check (READ phase)
     const orderItems = [];
@@ -310,14 +299,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }
 
       // 단가 = (공구가 또는 상품가) + 옵션 조정(서버 권위). 음수 방지.
-      //   🎟️ [gb-price-wiring] 공구 live 면 상시가 대신 공구 특가를 기준가로 쓴다.
-      //      originalPrice 는 할인율 표시에만 쓰이므로 금액 산출엔 불필요(null 전달).
-      const listPrice = Number(product.price) || 0;
-      const gbSess = gbSessions.get(Number(product.id));
-      const gbPricing = gbSess ? resolveGbPricing(gbSess, listPrice, null, gbNowMs, gbViaRef) : null;
-      const basePrice = gbPricing ? gbPricing.effectivePrice : listPrice;
-      if (gbPricing && basePrice < listPrice) gbAppliedIds.add(Number(product.id));
-      const unitPrice = Math.max(0, basePrice + priceAdjustment);
+      const unitPrice = Math.max(0, gbPricing.basePrice(Number(product.id), Number(product.price) || 0) + priceAdjustment);
       const itemSubtotal = unitPrice * reqItem.quantity;
       subtotal += itemSubtotal;
 
@@ -523,24 +505,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     //      cap = Σ 항목( quantity × (단가 − round(단가 × (1 − md/100))) ) — group-buy-public 의 current_price
     //      와 동일 공식이라 정직한 클라는 byte-일치(confirm 통과), 부풀린 클라만 cap 으로 잘림.
     //      tiers 없는 상품(즉시판매 단일가/일반상품)은 md=0 → cap=0(그룹바이 할인 미인정 — price 가 곧 최종가).
-    let groupBuyCap = 0;
-    try {
-      const tierPh = orderItems.map(() => '?').join(',');
-      const { results: tierRows } = await c.env.DB.prepare(
-        `SELECT id, group_buy_tiers FROM products WHERE id IN (${tierPh})`,
-      ).bind(...orderItems.map(i => Number(i.product_id))).all<{ id: number; group_buy_tiers: string | null }>();
-      const tierMap = new Map<number, string | null>((tierRows ?? []).map(r => [Number(r.id), r.group_buy_tiers]));
-      for (const it of orderItems) {
-        // 🎟️ [gb-price-wiring] 이중 할인 차단: 공구가가 이미 단가에 반영된 상품은 tier 할인 대상에서 제외.
-        //   (제외 안 하면 perUnit 이 '이미 낮아진' unit_price 에서 또 계산돼 서버 cap 이 부풀고 과소청구된다.)
-        if (gbAppliedIds.has(Number(it.product_id))) continue;
-        const md = maxTierDiscount(tierMap.get(Number(it.product_id)) ?? null);
-        if (md > 0) {
-          const perUnit = Math.max(0, it.unit_price - Math.round(it.unit_price * (1 - md / 100)));
-          groupBuyCap += perUnit * it.quantity;
-        }
-      }
-    } catch { groupBuyCap = 0; } // 조회 실패 → 그룹바이 할인 미인정(fail-closed, 과금 보호)
+    const groupBuyCap = await computeGroupBuyCap(c.env.DB, orderItems, gbPricing.applied);
     const groupBuyPortion = Math.min(
       Math.max(0, clientDiscount - clientCoupon - reqDeal),
       groupBuyCap,

@@ -22,8 +22,10 @@ import { resolveGbPricing, type GbSession } from '@/shared/gb-session'
  *   그 축은 **staging 실결제**가 담당하며, 통과 전에는 다음 세션으로 넘어가지 않는다.
  */
 
-const ORDER_ROUTES = 'src/worker/routes/order.routes.ts'
-const src = readFileSync(resolve(process.cwd(), ORDER_ROUTES), 'utf8')
+// 배선은 order.routes(호출부) + gb-order-pricing(로직) 두 파일에 걸쳐 있다.
+//   file-size 래칫에 걸려 로직을 헬퍼로 분리했으므로, 검사도 양쪽을 본다.
+const src = readFileSync(resolve(process.cwd(), 'src/worker/routes/order.routes.ts'), 'utf8')
+const helper = readFileSync(resolve(process.cwd(), 'src/worker/utils/gb-order-pricing.ts'), 'utf8')
 
 describe('gb 특가 결제 배선 — 순수 모델 불변식', () => {
   const live = (price: number, opts: Partial<GbSession> = {}): GbSession => ({
@@ -90,21 +92,23 @@ describe('유어딜 순수취 == 정확히 5% (공구가여도 불변)', () => {
   it('배선이 새 요율 로직을 들이지 않았다 — order.routes 에 플랫폼 요율 리터럴 없음', () => {
     // 5%/0.05/platform_fee_pct 를 주문 경로에서 직접 계산하기 시작하면 SSOT 가 갈라진다.
     expect(/platform_fee_pct|0\.05\b|\*\s*5\s*\/\s*100/.test(src)).toBe(false)
+    expect(/platform_fee_pct|0\.05\b/.test(helper)).toBe(false)
   })
 })
 
 describe('이중 할인 차단 (구 tier 모델 ↔ 신 gb 모델)', () => {
   it('공구가 적용 상품은 groupBuyCap 누적에서 제외된다', () => {
     // 배선의 핵심 안전장치. 빠지면 cap 이 부풀어 과소청구된다.
-    expect(src.includes('gbAppliedIds')).toBe(true)
-    expect(/gbAppliedIds\.has\(Number\(it\.product_id\)\)\)\s*continue/.test(src)).toBe(true)
+    expect(/gbApplied\.has\(Number\(it\.product_id\)\)\)\s*continue/.test(helper)).toBe(true)
+    // 호출부가 applied 집합을 cap 계산에 실제로 넘기는지(안 넘기면 제외가 무효)
+    expect(/computeGroupBuyCap\([^)]*gbPricing\.applied\)/.test(src)).toBe(true)
   })
 
   it('gb 적용 판정은 "상시가보다 낮을 때"만 — 동일가면 tier 할인을 계속 허용', () => {
-    expect(/if \(gbPricing && basePrice < listPrice\) gbAppliedIds\.add/.test(src)).toBe(true)
+    expect(/if \(eff < list\) applied\.add/.test(helper)).toBe(true)
   })
 
   it('세션 조회 실패가 주문을 막지 않는다 (fail-soft → 상시가)', () => {
-    expect(/getGbSessions\([\s\S]{0,200}?\.catch\(\(\) => new Map/.test(src)).toBe(true)
+    expect(/getGbSessions\([\s\S]{0,200}?\.catch\(\(\) => new Map/.test(helper)).toBe(true)
   })
 })
