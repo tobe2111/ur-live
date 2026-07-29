@@ -117,6 +117,7 @@ if domain deploy; then
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
+  run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
