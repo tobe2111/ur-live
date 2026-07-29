@@ -144,6 +144,16 @@ describe('재조우 보강 스킵 — 배선과 예산 회계', () => {
     expect(known).toMatch(/COALESCE\(instagram,''\)\s*<>\s*''/)
   })
 
+  /**
+   * 🔗 라이브 표본 200건: `hasContact=1` 네이버 블로거의 **58%** 가 자기 blog.naver.com 주소만 갖고 있다
+   *   (이메일 77 · 인스타 9 · 외부링크 1 · 자기링크만 117). 그걸 '연락처'로 세면 이 훅이
+   *   **영영 보강 안 되는 리드**를 만든다 — `COALESCE` 백필은 빈 칸만 채우는데 links 가 차 있기 때문.
+   */
+  it('네이버 블로거의 자기 blog.naver.com 링크는 연락처로 세지 않는다 — 오염을 고착시키지 않게', () => {
+    expect(known).toMatch(/links NOT LIKE '%blog\.naver\.com%'/)
+    expect(known).toMatch(/platform === 'naver_blog'\s*\n?\s*\?/)
+  })
+
   it('수집 엔진이 훅을 만들어 발굴에 넘긴다', () => {
     expect(col).toMatch(/makeAlreadyContacted\(DB,\s*POOL_ACCOUNT_ID,\s*budget\)/)
     expect((col.match(/alreadyContacted\s*\}/g) || []).length).toBeGreaterThanOrEqual(2)

@@ -35,11 +35,24 @@ export function makeAlreadyContacted(DD: D1Database, pool: number, budget: Fetch
     budget.left -= 1 // 🧾 D1 도 서브리퀘스트 — 발굴 fetch 와 같은 지갑에서 뺀다
     // 플랫폼마다 신원 키가 다르다: 유튜브=channel_id · 네이버 블로그=handle(블로그 id).
     const col = platform === 'naver_blog' ? 'handle' : 'channel_id'
+    /**
+     * 🔗 **자기 블로그 링크는 연락처가 아니다** — 라이브 표본 200건 실측(2026-07-29):
+     *   `hasContact=1` 인 네이버 블로거의 **58%** 가 `links` 에 자기 blog.naver.com 주소만 갖고 있었다
+     *   (이메일 77 · 인스타 9 · 외부링크 **1** · 자기링크만 117). 유입 경로는 이미 막았지만(자기링크 필터)
+     *   **기존 행은 그대로 남아 있다.**
+     *   ⇒ 그 행을 '연락처 보유'로 세면 이 훅이 **영영 보강 안 되는 리드를 만든다** — 저장의
+     *     `COALESCE` 는 비어 있을 때만 채우는데 `links` 가 차 있으니 진짜 연락처가 들어갈 자리도 없다.
+     *     최적화가 오염을 고착시키는 셈이라, 여기서는 **덜 스킵하는 쪽**으로 판정한다.
+     *   ⚠️ 이건 유입 차단도 기존 행 정리도 아니다 — 정리(대량 UPDATE)는 대표 판단 대기 항목이다.
+     */
+    const linkIsContact = platform === 'naver_blog'
+      ? "(COALESCE(links,'') <> '' AND links NOT LIKE '%blog.naver.com%')"
+      : "COALESCE(links,'') <> ''"
     const ph = uniq.map(() => '?').join(',')
     const r = await DD.prepare(
       `SELECT ${col} AS k FROM ad_influencer_leads
         WHERE account_id = ? AND platform = ? AND ${col} IN (${ph})
-          AND (COALESCE(email,'') <> '' OR COALESCE(instagram,'') <> '' OR COALESCE(links,'') <> '')`,
+          AND (COALESCE(email,'') <> '' OR COALESCE(instagram,'') <> '' OR ${linkIsContact})`,
     ).bind(pool, platform, ...uniq).all<{ k: string }>().catch(() => null)
     return new Set((r?.results || []).map(x => x.k).filter(Boolean))
   }
