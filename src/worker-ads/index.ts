@@ -74,7 +74,15 @@ app.post('/__ads/collect-chain', async (c) => {
   const yb = stats?.yt_budget
   const used = yb && typeof yb.used === 'number' ? yb.used : -1
   const total = yb && typeof yb.total === 'number' ? yb.total : 0
-  const done = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed || depth >= 40 // 소진/쿼터/진전없음/깊이 상한
+  const ytDone = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed // YT 소진/쿼터/진전없음
+  // 🔁 2026-07-29 **최소 라운드 바닥(floor)** — 기존 중단조건은 전부 *YT* 기준이라, YT 일일 예산(기본 90)이
+  //   떨어진 뒤(하루의 대부분)엔 첫 호출이 즉시 done → 매시간 **1라운드**로 주저앉았다. 그런데 볼륨의 주력은
+  //   쿼터가 남아도는 네이버(25k/day, 실측 ~2% 사용)고, 네이버를 막는 건 쿼터가 아니라 **인보케이션당
+  //   서브리퀘스트 예산**이다. 실측 04:00: 키워드 16개 중 3개만 처리 → 활성 210개 한 바퀴 70시간.
+  //   ⇒ YT 와 무관하게 최소 N라운드는 잇는다(각 라운드 = 새 예산). 커서가 처리한 만큼만 전진하므로 중복 0.
+  const rounds = Math.min(12, Math.max(1, parseInt((c.env as unknown as { ADS_COLLECT_ROUNDS?: string }).ADS_COLLECT_ROUNDS || '', 10) || 4))
+  //   ⛔ busy(다른 실행이 lease 보유)면 더 이어도 전부 busy 로 튕긴다 — 즉시 중단.
+  const done = !!stats?.busy || depth >= 40 || (depth + 1 >= rounds && ytDone)
   let chained = false
   if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
     chained = true
@@ -292,15 +300,18 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     }
   }
 
-  const kick = (path: string, fallback: () => Promise<unknown>): void => {
+  //   `beatName` — 하트비트 이름을 경로와 다르게 고정해야 할 때. 이름을 바꾸면 옛 `cron_hb:ads:<옛이름>`
+  //   행이 그대로 남아 **stale watch 가 영원히 '침묵'으로 경보**한다(작업은 멀쩡한데 알람만 울림).
+  const kick = (path: string, fallback: () => Promise<unknown>, beatName?: string): void => {
+    const beat = beatName || path.replace(/^\/__ads\//, '')
     ctx.waitUntil((async () => {
       const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
         else await fallback()
-        await adsBeat(path.replace(/^\/__ads\//, ''), true, Date.now() - t0)
+        await adsBeat(beat, true, Date.now() - t0)
       } catch (err) {
-        await adsBeat(path.replace(/^\/__ads\//, ''), false, Date.now() - t0, err)
+        await adsBeat(beat, false, Date.now() - t0, err)
       }
     })())
   }
@@ -318,8 +329,23 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
+  //
+  //   🔁 2026-07-29 **시간당 N라운드** — 보강 레인(아래)이 이미 쓰는 처방을 수집에도 적용한다.
+  //   배경(라이브 실측 04:00): 키워드 16개를 뽑고 **3개만 처리**하고 끝났다. 에러가 아니라 서브리퀘스트
+  //   예산 소진이다(D1 호출도 한도에 포함 — #784). 활성 키워드 210개 ÷ 3 = **한 바퀴 70시간**,
+  //   그래서 124개가 이틀째 순번을 못 받고 있었다. 한 인보케이션의 예산은 늘릴 수 없다(무료 플랜 천장 50).
+  //   ⇒ 늘릴 수 있는 건 **인보케이션 수**다. 라운드 = 독립 인보케이션 = 새 예산.
+  //   커서가 처리한 만큼만 전진하므로 라운드는 자연히 다음 구간을 이어받는다(중복 0).
+  //   lease 는 각 실행 끝에 해제되고 라운드는 **순차 await** 이라 서로 밀어내지 않는다.
+  //   ⚠️ YT 검색 일일 예산(기본 90)은 그대로다 — 하루 총량은 같고 소진이 앞당겨질 뿐이며,
+  //   `ytCooldownMs` 가 같은 키워드 재검색을 막는다. 볼륨의 실제 수혜자는 쿼터가 남아도는 네이버다.
+  //   ⚠️ 라운드를 **오케스트레이터에서 N번 부르지 않는다**. 이 scheduled 핸들러 자체도 서브리퀘스트 50 을
+  //   공유하는데(SELF.fetch 1건 = 1 서브리퀘스트), 이미 보강 레인 둘이 14 라운드를 던지고 kick 도 여럿이다.
+  //   여기서 더 부풀리면 **waitUntil 목록의 꼬리**(다른 레인)가 조용히 죽는다 — 그건 이 세션 범위 밖이다.
+  //   ⇒ 오케스트레이터는 1건만 던지고(`collect-chain`), 라운드는 **각 인보케이션이 스스로 다음을 잇는다**.
   if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-    kick('/__ads/collect', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) })
+    // 하트비트는 'collect' 로 고정 — 경로만 chain 으로 바뀐 것이라 이름을 바꾸면 옛 계열이 침묵 경보를 낸다.
+    kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, 'collect')
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).
   //   배경(라이브 실측): 보강 4종이 수집과 같은 인보케이션에 얹혀 있어 발굴이 서브리퀘스트를 다 쓰고 나면
