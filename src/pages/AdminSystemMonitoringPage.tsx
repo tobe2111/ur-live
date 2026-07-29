@@ -142,7 +142,7 @@ export default function AdminSystemMonitoringPage() {
   const deliveryPush = deliveryQ.data?.push ?? EMPTY_DELIVERY
   const deliveryEmail = deliveryQ.data?.email ?? EMPTY_DELIVERY
   const loading = tab === 'cron' ? cronQ.isLoading : tab === 'alimtalk' ? alimtalkQ.isLoading : deliveryQ.isLoading
-  const load = () => { if (tab === 'cron') { cronQ.refetch(); heartbeatQ.refetch(); } } else if (tab === 'alimtalk') alimtalkQ.refetch(); else deliveryQ.refetch() }
+  const load = () => { if (tab === 'cron') { cronQ.refetch(); heartbeatQ.refetch() } else if (tab === 'alimtalk') alimtalkQ.refetch(); else deliveryQ.refetch() }
 
   const retryDelivery = async (kind: 'push' | 'email', id: number) => {
     setActing(id)
