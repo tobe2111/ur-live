@@ -150,3 +150,44 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 2026-07-05 신설 이후 **staging 으로 게이트를 닫은 전례가 0건**. 게다가 레포 안에 모순이 있다:
 `scripts/deploy-staging.sh`(ur-live-staging 존재 전제) ↔ `prod-smoke.yml:4` 주석 *"staging 이 없어…"*.
 ⇒ 세션 ② 착수 전 **① 프로젝트 실존 ② 별도 D1 ③ Toss 테스트 키** 3가지를 대표가 확인해야 한다.
+
+---
+
+## 🔴 2026-07-29 08:30Z — **ur-live cron 트리거가 `*/5` 하나뿐일 가능성** (어드민 API 실측)
+
+`GET /api/admin/cron-heartbeats` + `/api/admin/tools/settings` 직접 조회. **추측 아님. 단, 주장 범위를 좁힌다.**
+
+추적 시작 `cron_hb_tracking_since = 2026-07-29T03:42Z`(≈4.7h 전) — 이 창 안에서만 판정 가능하다.
+
+| cron 식 | 기회 | ur-live 하트비트 | 판정 |
+|---|---|---|---|
+| `*/5 * * * *` | ~56 | **10건** | 🟢 등록됨 (= **소비자 cron 생존 확인**) |
+| `*/2 * * * *` | ~140 | **0** | 🔴 미등록 (결정적) |
+| `0 * * * *` | 5 | **0** (같은 시각 ur-ads 는 22건) | 🔴 ur-live 미등록 (강함) |
+| 일간·주간 | **0** | 0 | ⚪ **판정 불가 — 창이 짧다. 단정 금지** |
+
+사실이면 안 도는 것: `toss-refund-retry`·`webhook-failed-drain`·`kt-alpha-voucher-retry`·
+`wholesale-{deposit,withdrawal}-reconcile`(시간) / `auto-settlement`·`expired-voucher-refund`·
+`supplier-settlement-mature`·`affiliate-mature`·`ledger-{integrity-check,reconcile}`(일간) /
+**`payouts-generate`(주간 정산 지급)**·**`d1-backup`(주간 백업)**.
+
+### 🩺 왜 안 보였나 — 하트비트 감시자의 사각지대
+`cron-stale-watch`/`_healthcheck/cron` 은 **한 번이라도 뛴 작업이 멈췄는가**만 본다.
+**한 번도 안 뛴 작업은 목록에 없어 `missing: []`** 로 나온다(실측). ⇒ *"기대 목록 vs 실제"* 대조가 없으면
+**미등록 트리거는 영원히 안 보인다.** (가드로 환원 가능 — 코드의 `cron === '...'` 식을 파싱해 기대 목록을
+만들고 하트비트와 대조. 다음 세션 후보.)
+
+### ⚠️ 이 발견이 **직전 세션의 검증 계획을 고쳤다** — 다음 세션이 반복하지 말 것
+번들 cron 게이트 검증 ①을 *"18:00 UTC 에 `supplier-settlement-mature` 하트비트가 없으면 롤백"* 으로
+잡아뒀었다. **그 부재는 게이트 탓이 아니라 트리거 미등록 탓일 수 있다** — 그대로 했으면 **멀쩡한 게이트를
+되돌릴 뻔했다.** 소비자 cron 생존은 **`*/5` 10건**으로 이미 확인됐으니 검증 ①은 그 근거로 **대체**한다.
+
+### 다음 판정
+`0 9 * * *` 이 **09:00 UTC** 에 발화 → 이후 하트비트에 `stay-reminder`·`appointment-reminder` 등장 여부로
+일간 블록 정상/비정상 확정. 최종 판정은 **대표가 CF 대시보드 ur-live → Settings → Trigger Events** 확인.
+
+### 부수 확인
+- `platform_settings.cf_api_token` **여전히 죽어 있음** — `/user/tokens/verify` → `code 1000 Invalid API Token`
+  (CLAUDE.md 기재는 code 10000 이었으나 실측은 **1000**). ⇒ D1 직접 조회 불가.
+- **도매 배포는 이 환경에서 도달 불가** — `utongstart.com`·`ur-wholesale.pages.dev` 둘 다 프록시 CONNECT 차단(000).
+  ⇒ 예치금 4숫자(X2)는 **구조적으로 대표만 확인 가능**하다(우회로 없음을 실측으로 확인).
