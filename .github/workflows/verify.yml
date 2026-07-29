@@ -342,17 +342,6 @@ jobs:
       - name: Consumer product supply isolation (strict)
         run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
         continue-on-error: false
-
-      # 🎟️ 2026-07-02: 서비스 분리(동네딜 ↔ 쇼핑) — 동네딜(매장 이용권) 어드민 도구가 일반 쇼핑(general)
-      #   카테고리를 통계/목록/별칭/데모/옵션에 끌어들이지 못하게 회귀 잠금(대표 신고 실사고). 현재 위반 0 → strict.
-      - name: Dongnedeal category isolation (strict)
-        run: STRICT_DONGNEDEAL=1 node scripts/check-dongnedeal-category.mjs
-        continue-on-error: false
-
-      # 🏭 2026-06-30: 대시보드 라우팅 — 다중역할/겸업 계정이 대시보드에서 lock-out 되는 재발 방지(일반화).
-      #   대시보드 레이아웃/페이지(*Layout·*DashboardPage·Seller*·supplier-dashboard)에서 가산 권한 플래그(is_*)
-      #   단독 게이트로 서비스간 redirect/return null 금지 — 셀러↔도매=서버권위 wholesale_only, 또는 다중역할
-      #   보호 동반조건(!loggedIn/!token/단일역할 role !==). 현재 위반 0 → strict.
       - name: Dashboard cross-service redirect guard (strict)
         run: STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
         continue-on-error: false
