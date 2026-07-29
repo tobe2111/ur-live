@@ -110,6 +110,40 @@ Uploaded ur-live (42.41 sec)
 - **`CACHE_KV` 는 바인딩돼 있다** — 2026-07-12 인계의 *"대시보드 1스텝 필요"* 는 이미 해소됨.
 - `RATE_LIMIT_KV` 는 헤더로도 동작 확인(`x-ratelimit-limit: 300`, `remaining: 299`).
 
+### 2.2-b 🔴 **같은 이름의 두 런타임** — env-readiness 가 재는 곳과 cron 이 도는 곳이 다르다 (2026-07-29 대표 화면 확인)
+
+대표가 CF 대시보드를 열어 확인한 결과, **`ur-live` 는 두 개**다.
+
+| | Pages `ur-live` | Workers `ur-live` |
+|---|---|---|
+| 무엇을 하나 | **HTTP 요청 전부**(소비자·어드민 API) | **cron 전부**(`scheduled`) |
+| 시크릿 | **전부 있음**(JWT/Toss/ALIGO/KAKAO…) | **0개** — Plaintext `FRONTEND_URL`·`SCRAPER_URL` 뿐 |
+| 바인딩 | CACHE_KV·SESSION_KV·RATE_LIMIT_KV·DB·MEDIA_BUCKET·LIVE_STREAM·ADS | **DB·LIVE_STREAM·RATE_LIMITER 뿐**(`wrangler.toml` 이 선언하는 것만 — KV·R2 는 전부 주석 처리 `YOUR_..._ID`) |
+| Compatibility date | Sep 25, 2024 | Dec 1, 2025 (레포와 일치) |
+
+> 🔴 **`GET /api/health/env-readiness` 는 HTTP 엔드포인트라 Pages 런타임을 잰다.**
+> 그 결과가 `TOSS_SECRET_KEY ✅ · ALIGO ✅ · CACHE_KV ✅` 였던 것은 **Pages 이야기**이고,
+> **cron 이 그것을 쓸 수 있다는 뜻이 전혀 아니다.** 이 문서가 §2.2 에서 그 표를 실었을 때
+> 그 구분을 안 했다 — **판정의 범위를 잘못 잡았다.**
+> ⇒ 이 감사 자체의 교훈("같은 함수를 쓴다 ≠ 같은 게이트 뒤다")이 런타임 층에서 반복된 사례다.
+
+**그래서 실제로 무엇이 죽어 있나** — cron 이 **DB 만 쓰는 일은 정상, 바깥과 말하는 일은 전부 무음 skip**:
+
+| 작업(등록된 블록) | 상태 | 근거 |
+|---|---|---|
+| 정산 성숙 · 원장 정합 · 스키마 수리 | 🟢 동작 | DB 만 씀 — `ledger_mismatch` 기록이 그 증거 |
+| **`cache-prewarm` 의 SSR KV 전역 워밍** | 🔴 **한 번도 안 돎** | `cache-prewarm.ts:159` `if (… && env.CACHE_KV …)` → Worker 에 CACHE_KV 없음. **2026-07-12 기능이 무효** |
+| 알림톡 계열(리마인더·재시도) | 🔴 무음 skip | `!!(env.ALIGO_API_KEY && …)` 게이트 |
+| `daily-self-diagnostic` | 🔴 도달 0 | Discord 키 없음 — *"누락 시크릿"* 경보를 만들어도 **갈 곳이 없다** |
+| 교환권 만료 **카드** 환불 | 🔴 실패 | `TOSS_SECRET_KEY` 없음 (딜포인트 환불은 DB 라 동작 — 8/22 건은 안전) |
+
+⚠️ **하트비트는 이걸 못 잡는다** — 전부 `ok=true` 다. 예외가 안 나고 **조용히 아무것도 안 하기** 때문이고,
+이게 CLAUDE.md 가 하트비트를 만든 이유였던 바로 그 클래스다. **하트비트는 "돌았다"를 증명하지 "했다"를 증명하지 않는다.**
+
+**고치는 법**: cron 을 Pages 로 옮길 수 없다(Pages Functions 는 cron 미지원) ⇒ **Worker 쪽에 필요한 것을 채우는 수밖에 없다.**
+바인딩(KV·R2)은 `wrangler.toml` 주석을 풀면 배포가 자동으로 붙일 수 있으나 **네임스페이스 ID 가 필요**하고,
+시크릿은 `wrangler.toml` 에 두면 안 되므로 **대시보드 또는 `wrangler secret put`** 이다.
+
 ### 2.3 그 밖의 코드 밖 의존
 
 | 항목 | 판정 | 무엇이 있어야 판정되나 |
