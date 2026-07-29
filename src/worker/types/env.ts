@@ -191,6 +191,9 @@ export interface Env {
   //   ⚠️ 올리기 전에 스윕 stats 의 `day_lookups`(KST 일 조회량)로 카카오 쿼터 소비를 **실측**할 것 —
   //   같은 키를 보강 레인도 쓰므로 쿼터를 태우면 그쪽까지 같이 죽는다.
   ADS_KAKAO_SWEEP_CHAIN?: string;
+  // 🔁 인허가(매장 후보) 수집 self-chain 깊이(기본 6, 1~24). 업종 16개를 하루 1회로는 못 훑어
+  //   음식점·카페·미용·숙박이 0건이던 원인 — 체인이 같은 날의 남은 업종을 이어 훑는다.
+  ADS_LOCALDATA_CHAIN?: string;
   ADS_ENRICH_PHONE_CAP?: string;          // 보강 레인 Phase1(전화) **절대 건수** 상한(기본 0 — 전용 스윕이 전담).
                                           //   ⚠️ 비율(예산÷N) 금지 — 예산이 커지면 시간을 다 먹어 이메일이 굶는다(2026-07-28 실사고).
   ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.

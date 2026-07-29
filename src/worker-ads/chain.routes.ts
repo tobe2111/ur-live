@@ -14,6 +14,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { isHardConfigFailure } from '@/features/marketing/api/public-data-diag'
 
 export const chainRoutes = new Hono<{ Bindings: Env }>()
 
@@ -67,6 +68,38 @@ chainRoutes.post('/__ads/sweep-kakao-chain', async (c) => {
   if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
     chained = true
     c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/sweep-kakao-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  return c.json({ ok: true, stats, chained, depth })
+})
+
+/**
+ * 🔁 인허가(매장 후보) 수집 self-chain (2026-07-29) — **유어딜 이용권의 공급 DB 가 0 인 원인**.
+ *
+ *   실측: `store_prospects` 24,160 건 중 **학원이 24,038(99.5%)**, 인허가 레인의 `total_saved` 는 **0**.
+ *   즉 유어딜이 실제로 파는 네 업종(일반음식점·휴게음식점·미용업·숙박업)이 **한 건도 없다.**
+ *
+ *   원인은 산수다: `mode=collect` 는 **하루 1회**인데 업종이 16개고 업종당 최대 6페이지다. 한 인보케이션
+ *   예산(40~60)으로는 1~2 업종밖에 못 훑는다 → 그날의 나머지 업종은 `pending` 으로 남고, 다음 날은 또
+ *   새 날이 큐에 추가된다 → 밀린 날이 `MAX_PENDING_DAYS`(14)를 넘으면 **버려진다**(영구 누락).
+ *   ⇒ 커서(업종 인덱스)는 이미 정확히 구현돼 있다. 부족한 건 **인보케이션 횟수**뿐이다.
+ *
+ *   중단 조건: ① 남은 날 없음(`pending_days=0`) ② 깊이 상한 ③ **하드 설정 실패**(404·활용신청 등 —
+ *   재시도로 안 낫는 실패에 체인을 돌리면 그냥 낭비다. 오늘 만든 `isHardConfigFailure` 재사용).
+ *   ⚠️ '수확 0' 은 중단 사유가 **아니다** — 예산이 끊겨 0인 경우가 바로 체인이 필요한 상황이다.
+ */
+chainRoutes.post('/__ads/collect-localdata-chain', async (c) => {
+  const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
+  const maxDepth = Math.min(24, Math.max(1, parseInt((c.env as { ADS_LOCALDATA_CHAIN?: string }).ADS_LOCALDATA_CHAIN || '', 10) || 6))
+  let stats: Awaited<ReturnType<typeof import('@/features/marketing/api/localdata-collect').runLocalDataCollect>> | null = null
+  try {
+    const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+    stats = await runLocalDataCollect(c.env)
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+  const done = !stats || !stats.pending_days || depth + 1 >= maxDepth || isHardConfigFailure(stats.diag?.error)
+  let chained = false
+  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-localdata-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
   }
   return c.json({ ok: true, stats, chained, depth })
 })
