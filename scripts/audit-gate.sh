@@ -119,6 +119,7 @@ if domain deploy; then
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
   run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
+  run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
