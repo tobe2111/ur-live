@@ -104,18 +104,28 @@ export async function recordCronBeat(
   try {
     const DB = (env as unknown as { DB?: D1Database }).DB
     if (!DB || !name) return
-    const value = JSON.stringify({
-      at: new Date().toISOString(),
-      ok,
-      ms: Math.max(0, Math.round(ms)),
-      ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
-      ...(Number.isFinite(maxGapMin) && (maxGapMin as number) > 0 ? { g: Math.round(maxGapMin as number) } : {}),
-      ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
-    }).slice(0, MAX_VALUE)
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind(`cron_hb:${name.slice(0, 80)}`, value)
-      .run()
+    const { key, value } = buildCronBeatRow(name, ok, ms, cronExpr, result, maxGapMin)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run()
   } catch { /* fail-soft — 관측 실패가 작업을 막지 않는다 */ }
+}
+
+/**
+ * 하트비트 한 행의 (key, value) — **페이로드 모양의 SSOT**.
+ *   단건 쓰기(`recordCronBeat`)와 일괄 쓰기(worker-ads `beat-batch`)가 **같은 것을 쓰도록** 분리했다.
+ *   두 벌로 쓰면 한쪽만 필드가 추가되고, 그 어긋남은 조용하다(이 레포가 반복해 겪은 실패 양식).
+ */
+export function buildCronBeatRow(
+  name: string, ok: boolean, ms: number, cronExpr?: string, result?: unknown, maxGapMin?: number,
+): { key: string; value: string } {
+  const value = JSON.stringify({
+    at: new Date().toISOString(),
+    ok,
+    ms: Math.max(0, Math.round(ms)),
+    ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
+    ...(Number.isFinite(maxGapMin) && (maxGapMin as number) > 0 ? { g: Math.round(maxGapMin as number) } : {}),
+    ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
+  }).slice(0, MAX_VALUE)
+  return { key: `cron_hb:${name.slice(0, 80)}`, value }
 }
 
 export interface CronHeartbeat {
