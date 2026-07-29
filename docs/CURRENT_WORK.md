@@ -5582,6 +5582,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 49건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-07-29**
+- [🔴 2026-07-29 — 세션 ②: sitemap 몰 격리 가드 (SEO 되돌림 불가 → 최우선)](handoff/2026-07-29-session2-sitemap-mall-guard.md)
 _총 50건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
