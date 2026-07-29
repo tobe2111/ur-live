@@ -44,6 +44,22 @@ PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 �
     #445 를 그대로 머지하면 그 개선이 **되돌아간다** → PR 의 `src/shared/legal/*` 약관 파일은 버리고
     main 의 `src/pages/terms/` SSOT 를 쓰면 된다.
 
+### 추가 발견 (대표 "더 개선할 것들 찾아")
+
+- **`/influencer` 중복 라우트** — B2B 영입 랜딩이 두 달간 도달 불가. 수리 + 가드 `check-duplicate-routes`.
+- **`CLAUDE.md` 잠금표가 사라진 심볼을 지키고 있었다(2건)** — `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임,
+  동작은 유지) · `MainHomePage`(홈이 `HomeRoute` 로 바뀌며 **참조 0인 죽은 파일**이 됐는데 표는 "eager import 유지" 요구
+  → 따르면 죽은 컴포넌트를 되살림). 둘 다 표를 사실에 맞게 고치고 가드 `check-lock-table-symbols` 신설.
+- **`src/pages/MainHomePage.tsx`(85줄)는 참조 0인 죽은 파일** — 삭제하지 않고 남겨 뒀다(레포의 코드 보존 관행,
+  `GroupBuyListPage` 선례). 정리하려면 별도 판단.
+
+### ⚠️ 이번에 틀린 판단 (추가)
+
+3. **"라우팅 안 된 페이지 256개"라고 셌는데 틀렸다.** `App.tsx` 만 보고 `src/routes/*.routes.tsx` 4개를 빠뜨렸다.
+   제대로 세니 6개였고 그중 5개는 탭 임베드·의도적 보존이라 **진짜 고아는 1개**(`MainHomePage`)였다.
+   → 라우트 정의는 `App.tsx` 에만 있지 않다. `grep -rl "<Route" src/` 로 먼저 파일 목록을 잡을 것.
+4. **번들 gzip 총량을 2.2~2.5MB 로 추정했는데 실측은 2.707MB.** 추정값으로 임계를 켰으면 전 PR 이 red.
+
 ### 다음 세션 첫 액션
 1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
 2. ~~번들 gzip 예산 되살리기(ⓐ)~~ — **같은 날 완료**(실측 2.707MB → 임계 2.9). 아래는 방법 기록용 — `npm ping` 이 되는 환경에서:

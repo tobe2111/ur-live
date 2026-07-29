@@ -188,6 +188,14 @@ jobs:
         run: node scripts/check-duplicate-routes.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-29: CLAUDE.md 잠금표가 **사라진 심볼**을 지키면 표가 틀린 지도가 된다.
+      #   실측 2건: `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임) · `MainHomePage`(참조 0인 죽은 파일인데
+      #   "eager import 유지" 를 요구 — 따르면 죽은 컴포넌트를 되살리게 된다).
+      #   ⚠️ 한계: 문자열 존재만 본다 — 주석에만 남은 심볼은 통과한다(위 MainHomePage 가 그 경우였다).
+      - name: 잠금표 심볼 실재 (strict)
+        run: node scripts/check-lock-table-symbols.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

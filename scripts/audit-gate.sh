@@ -127,6 +127,7 @@ if domain deploy; then
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
   # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.
   run "가드 레지스트리(안 도는 가드)"     env STRICT_GUARD_REGISTRY=1   node scripts/check-guard-registry.mjs
+  run "잠금표 심볼 실재(낡은 지도)"      env STRICT_LOCK_TABLE=1       node scripts/check-lock-table-symbols.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
