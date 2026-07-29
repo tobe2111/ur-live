@@ -82,67 +82,30 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
 `crawl_no_contact` 가 많으면 **이 경로 자체를 접고** 전화 기반 접촉으로 방향을 튼다.
 
 
-## 네 번째 건 (이번 세션 최대) — **레인들이 아예 안 돌고 있었다**
+## 네 번째 건 — **내가 틀렸다: '즉시 응답' 처방을 되돌렸다**
 
-한 시각의 `ads:*` 하트비트를 오래된 순으로 세우면 **완벽한 계단**이 나온다:
+진단은 맞았다. 게이트 없는 매시간 레인(`enrich-prospects`·`collect-neis`·`collect-hira`·
+`collect-localdata(백필)`·`match-registry`)이 09:00/10:00 이후 슬롯을 놓쳤고, 11:00 엔 6개만 완주했다.
+원인도 맞았다 — `kick` 이 `await SELF.fetch` 라 레인이 끝나야 부모가 풀린다.
 
-```
-11:00 (이번 시간)  enrich-company · enrich-influencer-driver     ← 즉시 응답으로 바뀐 레인(#863)
-10:00 (1시간 전)   match-registry · collect-store-kakao · collect-maker · reclassify-company
-09:00 (2시간 전)   enrich-prospects · collect-neis · collect-hira · collect-localdata(백필)
-08:00 (3시간 전)   collect-storeinfo
-05:00 (6시간 전)   collect-company · sweep-kakao-phone
-```
+**처방이 틀렸다.** "레인이 즉시 응답하고 작업은 자기 `waitUntil` 로" 를 구현했는데, 같은 날 **#874 가
+라이브로 그 반대를 증명**했다: **서비스 바인딩 피호출자는 호출자보다 오래 살 수 없다.**
+즉시 응답 → 부모의 await 이 풀림 → 부모 인보케이션 종료 → 피호출자의 `waitUntil` 작업 **취소**.
+실측: 11:00 틱에 드라이버 하트비트는 즉시 찍혔는데 9분 뒤까지 레인의 `last_run` 은 그대로였다 —
+**라운드 0회**. 직전 틱(구 코드)은 최소 1라운드를 돌렸다. 즉 그 처방은 늦게 도는 걸 **아예 안 돌게** 만든다.
 
-⚠️ **정밀하게**(내 첫 서술을 정정한다 — 이 계단 전부가 굶주림은 아니다):
-계단의 일부는 **스케줄 때문**이다. `maintenance?phase=*` 는 `PHASES[hourUTC % N]` 이라 이름마다
-몇 시간에 한 번 도는 게 정상이고, `collect-company`(홀수시)·`collect-storeinfo`(짝수시)도 매시간이 아니다.
-**굶주림의 증거는 따로 있다** — *게이트 없는 매시간 레인*이 자기 슬롯을 놓친 것:
-`enrich-prospects`·`collect-neis`·`collect-hira`·`collect-localdata(백필)`·`match-registry` 는
-**매시간 무조건** 도는데 09:00/10:00 이 마지막이고 11:00 엔 없었다. 반면 즉시응답 레인 2개는
-**한 번도 안 빠졌다**. 11:00 에 완주한 건 6개뿐이다.
+⇒ **전부 되돌렸다**: `detach.ts`·`?detach=1` 배선·테스트·가드(`check-ads-kick-detach`)·베이스라인 전부 삭제.
+가드까지 지운 이유는 그게 **틀린 방향을 강제**하기 때문이다 — 남겨두면 다음 세션을 함정으로 끌고 간다.
 
-원인: `kick` 은 `await env.SELF.fetch(path)` — **레인이 일을 다 끝내고 응답할 때까지 부모가 살아 있어야 한다.**
-레인 하나가 20초면 목록 뒷부분은 부모 수명 안에 **디스패치조차 안 된다.**
+남긴 것 둘(그 자체로 옳다):
+- `public-data.routes.ts` `lane()` 주석에 **이 교훈을 박제** — 다음 사람이 같은 유혹에 빠지지 않게.
+- `reclassify-company?passes=5` 의 하트비트 이름 고정 — `passes` 를 바꾸면 beat 가 개명돼 옛 행이
+  영원히 stale 경보가 되던 실제 결함(이건 detach 와 무관하게 참이다).
 
-💡 다음 세션에 대한 경고: "계단 = 굶주림"으로 **일반화하지 마라.** 스케줄로 설명되는 칸이 섞여 있다.
-판정은 **게이트 없는 매시간 레인이 슬롯을 놓쳤는가**로만 하라(그게 굶주림의 유일한 결정적 신호다).
-
-**결정적 근거**: 11:00 에 돈 두 레인은 정확히 #863 이 즉시 응답으로 바꾼 것들이다. 같은 처방을 나머지에.
-
-- `detach.ts` 신설 — cron(`?detach=1`)이면 **즉시 응답**하고 작업은 그 인보케이션의 waitUntil 에서 계속.
-- 이번 PR 적용 범위: `public-data.routes.ts` 의 `lane()` 전체(storeinfo·commerce·franchise·notices·
-  enrich-prospects·nara·neis·hira) + `collect-localdata`. cron kick 4곳에 `?detach=1`.
-- ⚠️ **어드민 수동 버튼은 detach 하지 않는다** — 눌렀는데 결과가 안 뜨면 UX 후퇴다. "누가 불렀나"를
-  URL 이 말하게 하고 코드가 추측하지 않는다.
-- ⚠️ **하트비트 이름은 고정**(`opts.beat`) — 경로가 바뀌면 옛 행이 남아 stale watch 가 영원히 경보한다.
-
-**적용 범위(이번 PR)**: public-data 계열 12개 전부(storeinfo·commerce·franchise·notices·
-enrich-prospects·nara·neis·hira·store-kakao·sweep-mx·sweep-nts·localdata) + 체인 2개
-(sweep-kakao-chain·collect-localdata-chain). 드라이버 2개는 이미 즉시 응답이라 `kick-fast-ok` 로 명시.
-
-**영구화 — 가드 `check-ads-kick-detach.mjs`**(audit-gate + verify strict, 73번째 불변식):
-- **R1** 모든 디스패치는 `?detach=1` · `kick-fast-ok` 주석 · 베이스라인(부채) 중 하나여야 한다.
-- **R2** 쿼리가 붙은 경로는 **하트비트 이름을 고정**해야 한다 — 안 하면 beat 가 개명돼 옛 행이 영원히
-  stale 경보가 된다. ⚠️ 이 규칙은 **필요해서 생겼다**: 이 가드를 만든 커밋에서 내가 그 실수를 냈고,
-  가드가 잡았다. 덤으로 **기존 결함**(`reclassify-company?passes=5`)도 잡아 현재 이름으로 고정했다.
-- 측정 대상 0건이면 스스로 실패한다(헛도는 가드 방지).
-- **남은 부채 11개**는 `scripts/ads-kick-detach-baseline.json` 에 명시 — 래칫이라 **새 위반은 불가**,
-  하나씩 변환하며 목록에서 지운다.
-
-
-### ⚠️ detach 가 **새로 만든** 사각지대 — 같은 PR 안에서 닫았다
-
-예전엔 부모가 완료까지 기다렸으므로 부모의 하트비트가 곧 **완료 신호**였다. detach 하면 그 하트비트는
-**"던지기 성공"** 으로 의미가 바뀐다 — 레인이 그 뒤 조용히 죽어도 `ok:true` 로 남는다.
-그건 이 세션이 내내 고쳐온 실패 클래스(*자기 상태를 정직하게 보고하지 않음*)를 **내가 새로 만드는 것**이다.
-
-⇒ 작업이 끝난 뒤 **실제 결과로 같은 이름의 하트비트를 다시 쓴다**(#863 드라이버와 같은 처방).
-부모의 낙관적 기록을 레인의 실제 결과가 덮는다(레인이 나중에 끝나므로 순서 보장).
-레인이 아예 죽으면 그 쓰기도 없어 값은 낙관적으로 남지만, **다음 시간의 stale/실패가 잡는다.**
-체인은 `depth===0` 에서만 기록한다(라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다).
-
-**판정법**: 배포 1시간 뒤 `GET /api/admin/cron-heartbeats` 에서 위 계단이 **평평해졌는지**(전부 age≈0) 본다.
+**⚠️ 그래서 굶주림은 아직 안 고쳐졌다.** 다음 세션이 풀어야 할 진짜 문제다. 가능한 방향(미검증):
+① 부모가 레인을 **N개씩 나눠 여러 틱에** 분산(우선순위 로테이션) ② 레인당 작업량을 줄여 응답을 빠르게
+③ cron 트리거를 늘려 틱당 레인 수를 줄이기. **①~③ 어느 것도 실측 전엔 채택하지 마라** — 오늘 이
+자리에서 그럴듯한 처방이 정반대로 작동했다.
 
 ## 남은 결정 / 대기
 

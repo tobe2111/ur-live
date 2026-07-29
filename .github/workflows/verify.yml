@@ -159,14 +159,6 @@ jobs:
         run: node scripts/check-public-data-sentinel.mjs -s
         continue-on-error: false
 
-      # 🚀 2026-07-29: 부모 cron 의 `kick` 은 `await SELF.fetch` 라 레인이 일을 다 끝내야 응답한다 —
-      #   레인 하나가 20초면 목록 뒷부분은 **디스패치조차 안 된다**. 라이브 하트비트가 완벽한 계단을
-      #   보여줬다(collect-company 6시간째 정지). 에러가 안 나므로 가드가 아니면 또 놓친다.
-      #   R2 는 쿼리 붙은 경로의 하트비트 개명(옛 행이 영원히 stale)까지 막는다.
-      - name: cron 레인 디스패치 — 부모 대기 차단 (strict)
-        run: node scripts/check-ads-kick-detach.mjs -s
-        continue-on-error: false
-
       - name: 유어애즈 레인 격리 (strict)
         run: node scripts/check-ads-lane-isolation.mjs
       # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**

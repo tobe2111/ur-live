@@ -308,7 +308,6 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   (시트 미러 등)부터 굶는다.** kick 1개로 넘기면 부모 비용은 고정 2, 라운드는 드라이버의
     //   독립 예산에서 돈다. 덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라
     //   **관측 밖** — 조용히 멈춰도 아무도 몰랐다).
-    // kick-fast-ok — dispatchRoundChain 이 **즉시 응답**한다(#863). 부모는 ms 단위로 풀린다.
     kick('/__ads/enrich-influencer-driver', async () => {
       const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
       return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
@@ -393,7 +392,6 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //     천장 근처다 — 07:00 실측에서 인플루언서 수집이 **실패 기록조차 못 남겼다.** 드라이버로 넘기면
     //     부모 비용은 라운드 수와 무관하게 kick 1개(+하트비트)로 고정된다. 근거는 그 라우트 주석 참조.
     //     덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라 조용히 멈춰도 몰랐다).
-    // kick-fast-ok — dispatchRoundChain 이 **즉시 응답**한다(#863). 부모는 ms 단위로 풀린다.
     kick('/__ads/enrich-company-driver', async () => {
       const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
       return enrichHeldLeads(env) // SELF 미바인딩(로컬) — 1라운드만
@@ -407,7 +405,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     })
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
     //   체인 진입점 — 한 라운드(≈55건)에서 끝내지 않고 진전이 있는 한 이어 돈다(chain.routes.ts 주석).
-    kick('/__ads/sweep-kakao-chain?detach=1', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) }, { beat: 'sweep-kakao-chain' })
+    kick('/__ads/sweep-kakao-chain', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
     // ⚠️ beat 를 **현재 이름 그대로** 고정한다(쿼리 포함). 깔끔한 이름으로 바꾸면 라이브의 옛 행
@@ -436,15 +434,15 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🏪 무인매장(아이스크림 할인점·무인판매점) — 매시간. 카카오 로컬 키워드 검색이라 인허가 승인과 무관하고
   //   **전화가 함께 들어온다**(네이버 지역검색은 전화가 빈값). 게이트 ADS_STORE_KAKAO_ENABLED(기본 OFF).
   if ((env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {
-    kick('/__ads/collect-store-kakao?detach=1', async () => {
+    kick('/__ads/collect-store-kakao', async () => {
       const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect')
       return runStoreKakaoCollect(env)
-    }, { beat: 'collect-store-kakao' })
+    })
   }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (env.ADS_STOREINFO_ENABLED === 'true') {
-    gates.everyNHours(2, 0, '/__ads/collect-storeinfo?detach=1', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) }, 'collect-storeinfo')
+    gates.everyNHours(2, 0, '/__ads/collect-storeinfo', async () => { const { runStoreInfoCollect } = await import('@/features/marketing/api/store-info-collect'); return runStoreInfoCollect(env) })
   }
   // 💼 고용24 채용기업 — 일 1회(hourUTC===15 = KST 00시). 게이트 ADS_WORK24_ENABLED(기본 OFF).
   if ((env as unknown as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true') {
@@ -456,16 +454,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    gates.dailyAt(17, '/__ads/sweep-mx?detach=1', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) }, 'sweep-mx')
+    gates.dailyAt(17, '/__ads/sweep-mx', async () => { const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env) })
   }
   // 📑 나라장터 조달업체(대행사 계열) — 일 1회(hourUTC===23 = KST 08시). 게이트 ADS_NARA_VENDOR_ENABLED.
   if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'true') {
-    gates.dailyAt(23, '/__ads/collect-nara-vendor?detach=1', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env, 5) }, 'collect-nara-vendor')
+    gates.dailyAt(23, '/__ads/collect-nara-vendor', async () => { const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect'); return runNaraVendorCollect(env, 5) })
   }
   // 🏛️ 사업자 폐업 스윕 — 일 1회(hourUTC===19 = KST 04시). 사업자번호 보유 리드 100건/일 국세청 상태조회 →
   //   폐업이면 active=0(죽은 연락처에 아웃리치 낭비 방지). fail-soft(활용신청 전엔 no-op + note).
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
-    gates.dailyAt(19, '/__ads/sweep-nts?detach=1', async () => { const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env) }, 'sweep-nts')
+    gates.dailyAt(19, '/__ads/sweep-nts', async () => { const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env) })
   }
   // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
   //   ⚠️ 2026-07-28: 직접 await → **kick(독립 인보케이션)**. 이 스케줄 핸들러의 waitUntil 블록들은
@@ -473,37 +471,37 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   서브리퀘스트를 잡아먹어 라이브가 `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. kick 은 각자 새 예산을 받는다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     //   체인 진입점(2026-07-29) — 업종 16개를 하루 1회로는 못 훑는다(그래서 음식점·카페·미용·숙박이 0건이었다).
-    gates.dailyAt(20, '/__ads/collect-localdata-chain?detach=1', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) }, 'collect-localdata-chain')
+    gates.dailyAt(20, '/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
   if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
-    kick('/__ads/collect-neis?detach=1', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 6) }, { beat: 'collect-neis' })
+    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 6) })
   }
   if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
-    kick('/__ads/collect-hira?detach=1', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6) }, { beat: 'collect-hira' })
+    kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6) })
   }
   // 📧 매장 후보 이메일 우선 연락처 보강 자동 드레인 — **매시간, 수집 게이트와 분리**(2026-07-27 — 회사 풀과
   //   동일 병목: 인허가 게이트 OFF 면 보강도 0회이던 결합 해소). 킬스위치 ADS_ENRICH_DISABLED 만 끔.
   if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED !== 'true') {
-    kick('/__ads/enrich-prospects?detach=1', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) }, { beat: 'enrich-prospects' })
+    kick('/__ads/enrich-prospects', async () => { const { enrichProspectContacts } = await import('@/features/marketing/api/prospect-enrich'); return enrichProspectContacts(env) })
   }
   // 📦 과거 백필 1청크(ADS_LOCALDATA_BACKFILL_DAYS 설정 시) — 인허가 트랙 게이트 유지(수집 예산 소비).
   //   ⚠️ 이 레인이 이 워커에서 가장 폭발적이었다(2일 × 16업종 × 6페이지 = 최대 192 fetch, **매시간**).
   //   인라인이던 동안 같은 인보케이션의 다른 작업들(시트 미러 포함)까지 예산을 굶겼을 가능성이 크다.
   if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    kick('/__ads/collect-localdata?mode=backfill&detach=1', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) }, { beat: 'collect-localdata?mode=backfill' })
+    kick('/__ads/collect-localdata?mode=backfill', async () => { const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2) }, { beat: 'collect-localdata?mode=backfill' })
   }
   const envx = env as unknown as { ADS_COMMERCE_ENABLED?: string; ADS_FRANCHISE_ENABLED?: string; ADS_NOTICE_ENABLED?: string }
   // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 🏢 공정위 가맹 — hourUTC===22(주 1회 성격, 매일 소량 페이지).
   if (envx.ADS_COMMERCE_ENABLED === 'true') {
-    gates.everyNHours(2, 0, '/__ads/collect-commerce?detach=1', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) }, 'collect-commerce')
+    gates.everyNHours(2, 0, '/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
   }
   if (envx.ADS_FRANCHISE_ENABLED === 'true') {
-    gates.dailyAt(22, '/__ads/collect-franchise?detach=1', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) }, 'collect-franchise')
+    gates.dailyAt(22, '/__ads/collect-franchise', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) })
   }
   // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시). 게이트 ADS_NOTICE_ENABLED.
   if (envx.ADS_NOTICE_ENABLED === 'true') {
-    gates.dailyAt(21, '/__ads/scan-notices?detach=1', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) }, 'scan-notices')
+    gates.dailyAt(21, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
   }
   // 자동입찰(게이트 ON 일 때만) — 이전 "*/5" 대체(매시간). 기본 OFF = no-op.
   if (env.ADS_AUTOBID_ENABLED === 'true') {

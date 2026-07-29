@@ -11,30 +11,18 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { runDetachable } from './detach'
 
 export const publicDataRoutes = new Hono<{ Bindings: Env }>()
 
-/**
- * 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다).
+/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다).
  *
- * 🚀 2026-07-29: cron(`?detach=1`)이면 **즉시 응답**하고 작업은 이 인보케이션의 waitUntil 에서 계속한다.
- *   부모 `scheduled()` 의 `kick` 은 응답을 기다리므로, 레인이 20초를 붙들면 목록 뒷부분이 **디스패치조차
- *   안 된다**(라이브 하트비트가 6시간 계단을 보여줬다 — 근거는 `detach.ts` 헤더).
- *   ⚠️ 어드민 수동 버튼은 detach 하지 않는다 — 눌렀는데 결과가 안 뜨면 UX 후퇴다.
+ *  ⚠️ 2026-07-29: 한때 cron 호출을 "즉시 응답 + waitUntil" 로 바꿨다가 **되돌렸다.**
+ *  서비스 바인딩 피호출자는 **호출자보다 오래 살 수 없다** — 즉시 응답하면 부모의 await 이 풀리고
+ *  부모 인보케이션이 끝나면서 이쪽 waitUntil 작업이 **취소**된다(#874 라이브 실측: 라운드 0회).
+ *  ⇒ 작업은 **응답 전에**, 호출자가 살아 있는 동안 한다.
  */
-const lane = (run: (env: Env) => Promise<unknown>) => async (c: {
-  env: Env
-  req: { query: (k: string) => string | undefined; path: string }
-  executionCtx?: { waitUntil: (p: Promise<unknown>) => void }
-  json: (b: unknown, s?: number) => Response
-}) => {
-  try {
-    // 🔔 완료 하트비트 이름 = 라우트 경로(부모 kick 의 기본 beat 와 같은 이름) → 부모의 '던지기 성공'을
-    //   레인의 **실제 결과**가 덮어쓴다. detach 가 만드는 관측 사각지대의 처방(detach.ts 주석).
-    const r = await runDetachable(c, () => run(c.env), c.req.path.replace(/^\/__ads\//, ''))
-    return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, stats: r.result })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+const lane = (run: (env: Env) => Promise<unknown>) => async (c: { env: Env; json: (b: unknown, s?: number) => Response }) => {
+  try { return c.json({ ok: true, stats: await run(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 }
 
 // 🏪 상가정보(공공데이터) 수집.
@@ -63,15 +51,11 @@ publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
   try {
     const mode = c.req.query('mode') // 'collect' | 'backfill' | (없음)=둘 다
     const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-    // 🚀 cron 은 즉시 응답(위 lane 주석과 같은 이유) — 이 레인은 20초 예산을 다 쓰므로 부모를 가장 오래 붙든다.
-    const r = await runDetachable(c, async () => {
-      if (mode === 'backfill') return { backfill: await runLocalDataBackfill(c.env, 2) }
-      const stats = await runLocalDataCollect(c.env)
-      if (mode === 'collect') return { stats }
-      return { stats, backfill: await runLocalDataBackfill(c.env, 2).catch(() => null) }
-    // 부모 kick 의 beat 와 **같은 이름**(쿼리 포함)이어야 덮어쓰기가 성립한다.
-    }, mode === 'backfill' ? 'collect-localdata?mode=backfill' : 'collect-localdata')
-    return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, ...r.result })
+    if (mode === 'backfill') return c.json({ ok: true, backfill: await runLocalDataBackfill(c.env, 2) })
+    const stats = await runLocalDataCollect(c.env)
+    if (mode === 'collect') return c.json({ ok: true, stats })
+    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
+    return c.json({ ok: true, stats, backfill })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 

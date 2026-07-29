@@ -14,7 +14,6 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { runDetachable } from './detach'
 import { isHardConfigFailure } from '@/features/marketing/api/public-data-diag'
 
 export const chainRoutes = new Hono<{ Bindings: Env }>()
@@ -95,31 +94,21 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
  *      소비를 본 뒤 `ADS_KAKAO_SWEEP_CHAIN` 으로 올린다. 추측으로 먼저 올리면 같은 키를 쓰는 보강
  *      레인까지 쿼터를 잃는다 — 이 세션에서 반복 확인한 실패 방식이다(문서 수치 > 실측).
  */
-/**
- * 🚀 체인 depth 0 도 **부모를 붙든다** (2026-07-29). 체인은 다음 depth 만 waitUntil 로 넘길 뿐,
- *   자기 라운드는 동기로 돌고 나서 응답한다 — 즉 부모 `kick` 은 그 20초를 그대로 기다린다.
- *   cron(`?detach=1`)이면 라운드까지 백그라운드로 넘겨 부모를 ms 단위로 풀어준다(근거: detach.ts 헤더).
- *   ⚠️ 어드민 수동 호출은 detach 하지 않으므로 stats 를 그대로 받는다.
- */
 chainRoutes.post('/__ads/sweep-kakao-chain', async (c) => {
   const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
   const maxDepth = Math.min(24, Math.max(1, parseInt((c.env as { ADS_KAKAO_SWEEP_CHAIN?: string }).ADS_KAKAO_SWEEP_CHAIN || '', 10) || 6))
-  const round = async () => {
-    const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')
-    const stats = await runKakaoPhoneSweep(c.env)
-    const done = !stats || stats.done || !stats.tried || depth + 1 >= maxDepth
-    let chained = false
-    if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
-      chained = true
-      c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/sweep-kakao-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
-    }
-    return { stats, chained }
-  }
+  let stats: Awaited<ReturnType<typeof import('@/features/marketing/api/company-collect').runKakaoPhoneSweep>> | null = null
   try {
-    // depth 0 만 완료 하트비트를 남긴다 — 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다.
-    const r = await runDetachable(c, round, depth === 0 ? 'sweep-kakao-chain' : undefined)
-    return r.detached ? c.json({ ok: true, detached: true, depth }) : c.json({ ok: true, ...r.result, depth })
+    const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')
+    stats = await runKakaoPhoneSweep(c.env)
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+  const done = !stats || stats.done || !stats.tried || depth + 1 >= maxDepth
+  let chained = false
+  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/sweep-kakao-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  return c.json({ ok: true, stats, chained, depth })
 })
 
 /**
@@ -137,30 +126,21 @@ chainRoutes.post('/__ads/sweep-kakao-chain', async (c) => {
  *   재시도로 안 낫는 실패에 체인을 돌리면 그냥 낭비다. 오늘 만든 `isHardConfigFailure` 재사용).
  *   ⚠️ '수확 0' 은 중단 사유가 **아니다** — 예산이 끊겨 0인 경우가 바로 체인이 필요한 상황이다.
  */
-/**
- * 🚀 체인 depth 0 도 **부모를 붙든다** (2026-07-29). 체인은 다음 depth 만 waitUntil 로 넘길 뿐,
- *   자기 라운드는 동기로 돌고 나서 응답한다 — 즉 부모 `kick` 은 그 20초를 그대로 기다린다.
- *   cron(`?detach=1`)이면 라운드까지 백그라운드로 넘겨 부모를 ms 단위로 풀어준다(근거: detach.ts 헤더).
- *   ⚠️ 어드민 수동 호출은 detach 하지 않으므로 stats 를 그대로 받는다.
- */
 chainRoutes.post('/__ads/collect-localdata-chain', async (c) => {
   const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
   const maxDepth = Math.min(24, Math.max(1, parseInt((c.env as { ADS_LOCALDATA_CHAIN?: string }).ADS_LOCALDATA_CHAIN || '', 10) || 6))
-  const round = async () => {
-    const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
-    const stats = await runLocalDataCollect(c.env)
-    const done = !stats || !stats.pending_days || depth + 1 >= maxDepth || isHardConfigFailure(stats.diag?.error)
-    let chained = false
-    if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
-      chained = true
-      c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-localdata-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
-    }
-    return { stats, chained }
-  }
+  let stats: Awaited<ReturnType<typeof import('@/features/marketing/api/localdata-collect').runLocalDataCollect>> | null = null
   try {
-    const r = await runDetachable(c, round, depth === 0 ? 'collect-localdata-chain' : undefined)
-    return r.detached ? c.json({ ok: true, detached: true, depth }) : c.json({ ok: true, ...r.result, depth })
+    const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
+    stats = await runLocalDataCollect(c.env)
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+  const done = !stats || !stats.pending_days || depth + 1 >= maxDepth || isHardConfigFailure(stats.diag?.error)
+  let chained = false
+  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-localdata-chain?depth=${depth + 1}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
+  }
+  return c.json({ ok: true, stats, chained, depth })
 })
 
 export default chainRoutes
