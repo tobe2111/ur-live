@@ -72,6 +72,7 @@ if domain money; then
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
   run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
+  run "동시 세션 겹침"                   node scripts/check-branch-overlap.mjs
 fi
 
 if domain schema; then

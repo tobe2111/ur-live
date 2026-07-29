@@ -93,6 +93,50 @@ const driverJson = (c: { json: (b: unknown, s?: number) => Response }, r: { done
     ? c.json({ ok: false, rounds: r.done, planned, error: r.error }, 500)
     : c.json({ ok: true, rounds: r.done, planned, ...(r.error ? { error: r.error } : {}) })
 
+
+/**
+ * 🚀 라운드 체인을 **응답 뒤로** 돌린다 (2026-07-29 — #840 의 드라이버 격리를 한 걸음 더).
+ *
+ * ## 왜 (같은 날 실측)
+ * #840 이 라운드를 드라이버로 옮겨 **부모의 서브리퀘스트 예산**은 지켰다. 그런데 부모의 `kick` 은
+ * `await env.SELF.fetch(...)` 다 — **응답을 기다린다.** 드라이버가 체인을 다 돌고 응답하면
+ * 부모는 그 12라운드(각 라운드가 외부 크롤) 내내 살아 있어야 한다. 즉 **수명은 여전히 묶여 있었다.**
+ *
+ * 07:00 틱 실측: 발화한 8개는 전부 **빠른 레인**(D1 전용), 빠진 것은 전부 **느린 레인**(외부 크롤).
+ * `enrich_lane.last_run` 은 05:02 에서 멈춰 두 틱을 통째로 걸렀다 — 부모의 수명이 천장이었다.
+ *
+ * ## 처방
+ * 드라이버가 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다). 체인은 드라이버 자기 인보케이션의
+ * `waitUntil` 에서 돌고, 끝나면 `driverBeat` 로 결과를 남긴다 — **관측은 그대로**다.
+ * (#840 의 driverBeat 이 여기서 진가를 낸다: 부모가 이미 떠나도 이 기록은 성사된다.)
+ *
+ * `executionCtx` 가 없으면(로컬/테스트) 기존처럼 동기 실행 — 동작 동일.
+ */
+async function dispatchRoundChain(
+  c: {
+    env: Env
+    executionCtx?: { waitUntil(p: Promise<unknown>): void }
+    json: (b: unknown, s?: number) => Response
+  },
+  beatName: string,
+  roundPath: string,
+  rounds: number,
+  local: () => Promise<unknown>,
+): Promise<Response> {
+  const t0 = Date.now()
+  const work = async () => {
+    const r = await runRoundChain(c.env, roundPath, rounds, local)
+    await driverBeat(c.env, beatName, !(!r.done && r.error), Date.now() - t0)
+    return r
+  }
+  if (c.executionCtx?.waitUntil) {
+    c.executionCtx.waitUntil(work())
+    // 디스패치 성공만 알린다 — 실제 라운드 결과는 위 driverBeat 이 남긴다.
+    return c.json({ ok: true, dispatched: rounds, detached: true })
+  }
+  return driverJson(c, await work(), rounds)
+}
+
 // 📝 보강 1라운드(블로거 활동성·연락처 + 링크인바이오 + YT 성과) — 수집과 **분리된 인보케이션**.
 //   왜 분리했는지는 `influencer-enrich-lane.ts` 헤더(라이브 실측: 수집에 얹혀 있어 한 건도 못 돌았음).
 //   💥 원문 릴레이 — 'FAILED' 로 뭉개면 라운드가 왜 안 도는지 라이브에서 알 길이 없다(파트너풀 레인과 동일).
@@ -122,14 +166,11 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
-  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
-  const r = await runRoundChain(c.env, '/__ads/enrich-influencer', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
   })
-  await driverBeat(c.env, 'enrich-influencer-driver', !(!r.done && r.error), Date.now() - t0)
-  return driverJson(c, r, rounds)
 })
 
 /**
@@ -149,12 +190,9 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
  *   `ads:enrich-company` 이름으로 관측 대상이 된다.
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
-  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS, 8)
-  const r = await runRoundChain(c.env, '/__ads/enrich-company', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-company', '/__ads/enrich-company', rounds, async () => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
   })
-  await driverBeat(c.env, 'enrich-company', !(!r.done && r.error), Date.now() - t0)
-  return driverJson(c, r, rounds)
 })
