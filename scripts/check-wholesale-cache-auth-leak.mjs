@@ -53,6 +53,11 @@ for (const rel of files) {
 }
 
 console.log('🛡️  도매 카탈로그 엣지-캐시 인증 누수 가드')
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** supply 라우트 폴더가 옮겨지면 조용히 0개가 된다.
+if (files.length === 0) {
+  console.error(`❌ ${API_DIR} 에서 검사 대상(.ts)을 하나도 못 찾았다 — 경로가 낡았다(통과 아님).`)
+  process.exit(1)
+}
 console.log(`   스캔 ${files.length} 파일 · 핸들러 ${scannedHandlers}개 (supply 라우트)`)
 if (violations.length === 0) {
   console.log('✅ 위반 0 — 인증별로 다른 응답에 public CDN 캐시를 거는 핸들러는 모두 캐시키 분리(cache-auth-ok) 문서화됨.')

@@ -33,6 +33,11 @@
  *   - "공개인가"의 판정은 `ProtectedRoute` 문자열 유무다. 레이아웃(`SellerLayout` 등)으로만 보호되는
  *     경로는 R1 대상이 아니다(그쪽은 이미 prefix 로 덮여 있다).
  *
+ * ⚠️ **이 가드가 보는 것은 레포의 파일이지 크롤러가 받는 응답이 아니다.** 오리진이 그 파일을
+ *    통째로 대체할 수 있다 — 2026-07-29 실측에서 `live.ur-team.com/robots.txt` 가
+ *    **Cloudflare Managed robots.txt** 로 대체돼 있어 여기 규칙이 하나도 서빙되지 않았다.
+ *    "실제로 서빙되는가" 는 `scripts/check-live-contracts.mjs`(주기 실행)가 본다. 둘은 짝이다.
+ *
  * 기본 warn-only(exit 0). 차단: STRICT_ROBOTS=1 또는 `-s`.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs'

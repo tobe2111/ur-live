@@ -44,7 +44,12 @@ function inScope(path) {
 }
 
 // ── wholesale-reachable 화면 → 파일 매핑(nav 검사와 동일 로직) ─────────────────
-const layout = read('src/components/AdminLayout.tsx')
+// 🔧 2026-07-29: 네비 정의가 2026-07-22 에 `admin-nav-config.ts` 로 빠져나갔는데 이 가드(와 짝인
+//   nav 도달성 가드)는 AdminLayout 만 읽고 있었다 → **검사 화면 0개**로 한 달 넘게 "위반 0" 초록.
+//   두 파일을 함께 읽는다(어느 쪽으로 옮겨져도 계속 잡히도록).
+const layout = ['src/components/admin/admin-nav-config.ts', 'src/components/AdminLayout.tsx']
+  .map((f) => { try { return read(f) } catch { return '' } })
+  .join('\n')
 const routes = read('src/routes/admin.routes.tsx')
 const allowed = new Set()
 {
@@ -98,6 +103,13 @@ for (const p of [...allowed].filter((x) => x.startsWith('/admin/'))) {
 // ── 리포트 ───────────────────────────────────────────────────────────────────
 console.log(`🔐 도매 어드민 API 스코프 검사`)
 console.log(`   wholesale 스코프 prefixes=[${SCOPE.prefixes}] exact=[${SCOPE.exact}] · 검사 화면 ${[...allowed].filter((x) => x.startsWith('/admin/')).length}개`)
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 검사 화면이 비면 위반이 0인 게 당연하고,
+//   그 초록은 아무것도 보장하지 않는다(이 가드가 실제로 한 달 넘게 그 상태였다).
+if ([...allowed].filter((x) => x.startsWith('/admin/')).length === 0) {
+  console.error(`❌ 검사 화면이 0개다 — 통과가 아니다. 네비 정의(domain:'wholesale') 위치가 바뀌었을 수 있다.`)
+  console.error(`   이 가드가 읽는 파일: admin-nav-config.ts · AdminLayout.tsx`)
+  process.exit(1)
+}
 if (violations.length === 0) {
   console.log(`✅ 위반 0 — 도매 도달 화면의 모든 /api/admin 호출이 스코프 안.`)
   process.exit(0)

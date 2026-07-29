@@ -113,6 +113,12 @@ if (fs.existsSync(migDir)) {
 }
 // src (repair-schema + 인라인 CREATE TABLE 포함)
 const srcFiles = walk(path.join(ROOT, 'src'), ['.ts', '.tsx'])
+
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 대상이 비면 위반도 0이라 초록이 뜬다.
+if (srcFiles.length === 0) {
+  console.error('❌ 검사 대상(.ts/.tsx)이 0개다 — 스캔 경로가 낡았다(통과 아님).')
+  process.exit(1)
+}
 for (const f of srcFiles) collectCreates(fs.readFileSync(f, 'utf8'))
 
 // ── 2) SQL 문자열 추출 + 3) 테이블 참조 검증 ────────────────────
