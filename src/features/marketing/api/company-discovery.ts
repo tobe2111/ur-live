@@ -235,69 +235,6 @@ export function companyKey(lead: Pick<CompanyLead, 'company_name' | 'website' | 
 /* ── 저장(멱등 upsert — 빈 컨택만 백필, 큐레이션 필드 불변) ────────────────────────── */
 //   requireContact=true: 연락처(전화/이메일) 없는 리드는 active=0(액션풀 제외·보류) 로 저장 →
 //   이후 보강 UPDATE 가 연락처를 채우면 active=1 로 승격("연락처 필수" 정책). 수동/명부는 false(항상 활성).
-export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opts: { requireContact?: boolean } = {}): Promise<number> {
-  if (!leads.length) return 0
-  await ensureCompanySchema(DB)
-  const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
-  const tierOf = (v: unknown): number | null => { const t = Math.round(Number(v)); return Number.isFinite(t) && t >= COMPANY_TIER_MIN && t <= COMPANY_TIER_MAX ? t : null }
-  // 🧭 저장 전 판별·분류(SSOT company-classify) — 모든 소스(네이버/webkr/상가정보/통신판매/나라장터…)가 이 관문을 통과.
-  //   ① 업체가 아닌 것(공고·모집글·기사제목·정부 도메인)은 여기서 **탈락**(저장 안 함) → 오수집 구조적 차단.
-  //   ② 카테고리 권위 위계(2026-07-27 대표 "카테고리 분류 정확한가"): **정부 등록부 공식 업종(registry)
-  //      > 리드 텍스트 근거(evidence) > 검색 키워드(keyword)**. 상가정보 업종코드·통신판매 신고업태·공정위
-  //      가맹·나라장터 소스의 category 는 공식 업종이라 정규식이 못 덮어씀 — 발굴 소스(local/webkr)만 재분류.
-  const rows = leads
-    .map(l => ({ ...l, company_name: (l.company_name || '').trim() }))
-    .filter(l => l.company_name.length >= 2)
-    .map(l => {
-      const c = classifyLead(l)
-      if (!c.ok) return null
-      const registry = REGISTRY_CATEGORY_SOURCES.has(String(l.source || '')) && !!l.category
-      if (registry) {
-        // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
-        return { ...l, _type: c.lead_type === 'unknown' ? 'partner' : c.lead_type, _conf: 'registry' }
-      }
-      // webkr 제목-파편 의심 이름은 저장 시점부터 '분류 확인'(none) — 재분류에만 있던 강등을 입구에도 동일 적용.
-      const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspectCompanyName(l.company_name, l.source_keyword) ? 'none' : c.confidence
-      return { ...l, category: c.category, subcategory: c.subcategory, tier: c.tier, _type: c.lead_type, _conf: conf }
-    })
-    .filter((l): l is NonNullable<typeof l> => l !== null)
-  if (!rows.length) return 0
-  const CHUNK = 50
-  let saved = 0
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK)
-    const stmts = slice.map(l => {
-      const active = opts.requireContact ? (hasContact(l) ? 1 : 0) : 1
-      return DB.prepare(
-      `INSERT INTO ad_company_leads (company_key, company_name, name_norm, category, subcategory, tier, region, website, email, phone, address, description, business_no, contact_source, source, source_keyword, active, lead_type, classify_confidence, classified_v)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(company_key) DO UPDATE SET
-         name_norm = COALESCE(ad_company_leads.name_norm, excluded.name_norm),
-         lead_type = COALESCE(ad_company_leads.lead_type, excluded.lead_type),
-         classify_confidence = COALESCE(ad_company_leads.classify_confidence, excluded.classify_confidence),
-         email = COALESCE(ad_company_leads.email, excluded.email),
-         phone = COALESCE(ad_company_leads.phone, excluded.phone),
-         website = COALESCE(ad_company_leads.website, excluded.website),
-         address = COALESCE(ad_company_leads.address, excluded.address),
-         business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
-         contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
-         active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
-                         OR COALESCE(ad_company_leads.phone, excluded.phone) IS NOT NULL
-                       THEN 1 ELSE ad_company_leads.active END`
-    ).bind(
-      companyKey(l), l.company_name.slice(0, 120), normalizeCompanyName(l.company_name),
-      clamp(l.category, 40), clamp(l.subcategory, 40), tierOf(l.tier), clamp(l.region, 60),
-      clamp(l.website, 200), clamp(l.email, 120), clamp(l.phone, 40), clamp(l.address, 300),
-      clamp(l.description, 800), clamp(l.business_no, 20), clamp(l.contact_source, 20), clamp(l.source, 20) || 'manual', clamp(l.source_keyword, 60), active,
-      // 신규 행은 현행 규칙 버전으로 태어남(재검사 불필요). 기존 행(conflict)은 미스탬프 유지 → 소급 정리가 잡음.
-      l._type, l._conf, CLASSIFY_RULES_VERSION
-    )
-    })
-    const res = await DB.batch(stmts).catch(() => null)
-    if (res) saved += slice.length
-  }
-  return saved
-}
 
 /* ── 붙여넣기 임포트(레인 B 공정위 정보공개서 · C 상인회 명부 등) ─────────────────── */
 //   헤더 행이 있는 표(CSV/TSV)를 붙여넣으면 컬럼을 한글/영문 헤더로 매핑 → CompanyLead[]. source='registry'.
@@ -595,3 +532,6 @@ export async function companyStats(DB: D1Database): Promise<{ stats: CompanyStat
     },
   }
 }
+
+// 💾 저장 관문은 별 모듈로 분리(2026-07-29 god 파일 래칫) — 기존 import 경로 유지를 위해 re-export.
+export { saveCompanyLeads, saveCompanyLeadsCounted } from './company-save'

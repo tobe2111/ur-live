@@ -19,7 +19,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
-import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
+import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, PRIORITY_UPJONG, type StoreProspect } from './store-prospects'
 import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
@@ -237,7 +237,15 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const queue: PendingDay[] = [...pending]
   if (!queue.some(q => q.day === dayYmd)) queue.push({ day: dayYmd, idx: 0 })
 
-  const eps = Object.entries(endpoints)
+  // 🎯 우선 업종 먼저(2026-07-29 대표 "음식점·카페·미용실·숙박에 힘을 써") — 예산이 끊겨도 이 넷은 훑고 끊긴다.
+  //   ⚠️ 커서(`item.idx`)가 이 순서를 기준으로 저장되므로 정렬은 **매 실행 동일**해야 한다(안정 정렬).
+  //   LICENSE_UPJONG 은 객체 리터럴이라 삽입 순서가 고정 → 같은 입력이면 같은 순서. env 병합분만 뒤로 간다.
+  const eps = Object.entries(endpoints).sort((a, b) => {
+    const rank = (cat: string) => (PRIORITY_UPJONG as readonly string[]).indexOf(cat)
+    const ra = rank(a[1]), rb = rank(b[1])
+    if (ra !== rb) return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb)
+    return 0
+  })
   const leftover: PendingDay[] = []
   for (let qi = 0; qi < queue.length; qi++) {
     const item = queue[qi]

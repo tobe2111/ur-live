@@ -37,6 +37,18 @@ export const LICENSE_UPJONG: Record<string, string> = {
 }
 /** 필터 드롭다운 표시용 카테고리(수집 업종). 학원=NEIS(neis-academy-collect) · 병원=인허가+심평원(hira-hospital-collect). */
 export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국', '체력단련장', '체육도장', '당구장', '골프연습장', '노래연습장', '학원']
+/**
+ * 🎯 유어딜이 **실제로 이용권을 파는** 업종 (2026-07-29 대표 지시 — "학원은 거의 안 써.
+ *   음식점, 카페, 미용실, 숙박에 힘을 써 앞으로").
+ *
+ *   왜 상수로 두나: 매장 풀이 **학원 99.5%**(24,038/24,160) 인데 이 넷은 0 건이었다. 앞으로 인허가 레인이
+ *   돌기 시작하면 두 종류가 한 큐에 섞이는데, 정렬이 없으면 **양 많은 쪽이 보강 예산을 먹는다**.
+ *   ⚠️ 여기 이름은 `LICENSE_UPJONG` 의 **값(한글 업종명)** 과 정확히 일치해야 한다 — 다르면 조용히 0 순위가 된다.
+ */
+export const PRIORITY_UPJONG = ['일반음식점', '휴게음식점', '미용업', '숙박업'] as const
+/** SQL `ORDER BY` 조각 — 우선 업종을 먼저. (문자열 리터럴은 위 상수에서 생성해 두 곳이 갈라지지 않게.) */
+export const PRIORITY_UPJONG_SQL = `(CASE WHEN category IN (${PRIORITY_UPJONG.map(c => `'${c}'`).join(', ')}) THEN 0 ELSE 1 END)`
+
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
