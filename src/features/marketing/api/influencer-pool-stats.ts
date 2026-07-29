@@ -77,6 +77,19 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
       SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
       SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
       SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword,
+      -- 📍 **지역 채움률**(2026-07-29) — 필터가 0건일 때 "고장인가 아직 안 채워졌나"를 가르는 유일한 근거.
+      --   실측으로 이걸 착각할 뻔했다: 58개 지역 토큰 중 56개가 0건이라 필터가 죽은 줄 알았는데,
+      --   실제로는 백필(backfillRegions, 400행/틱, DB 전용)이 **오늘 막 시작**돼 아직 앞부분만 훑은 상태였다.
+      --   진행률이 안 보이면 다음 세션도 같은 오진을 하고 멀쩡한 코드를 파게 된다.
+      --   region: NULL=아직 판정 안 함 · ''=판정했지만 지역 없음(재검사 안 함) · 값=지역 토큰.
+      SUM(CASE WHEN region IS NOT NULL AND region != '' THEN 1 ELSE 0 END) AS region_filled,
+      SUM(CASE WHEN region = '' THEN 1 ELSE 0 END) AS region_none,
+      SUM(CASE WHEN region IS NULL THEN 1 ELSE 0 END) AS region_pending,
+      -- 📏 **규모(이웃수) 채움률** — tier(규모) 필터가 실제로 쓸모 있는 범위를 말해준다.
+      --   실측: 네이버 블로그 29,074명 중 이웃수 보유 **170명(0.6%)** — 측정된 2,380명 기준으로도 7%다.
+      --   즉 규모 필터는 유튜브 전용에 가깝다. 이 숫자가 없으면 "필터가 왜 안 걸리지"를 매번 다시 판다.
+      SUM(CASE WHEN platform = 'naver_blog' AND subscriber_count > 0 THEN 1 ELSE 0 END) AS nb_with_subs,
+      SUM(CASE WHEN platform = 'youtube' AND subscriber_count > 0 THEN 1 ELSE 0 END) AS yt_with_subs,
       -- 📣 모집 전환: 안내한 리드(분모) 대비 실제 신청(동의)한 리드(분자) — 풀이 '쓸 수 있는 재고'로 바뀌는 비율.
       SUM(CASE WHEN recruited_at IS NOT NULL THEN 1 ELSE 0 END) AS recruited,
       SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted

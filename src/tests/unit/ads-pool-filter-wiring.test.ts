@@ -95,3 +95,32 @@ describe('풀 목록 — 화면이 판정에 쓰는 컬럼을 서버가 실제�
     })
   }
 })
+
+/**
+ * 📊 **채움률 통계도 같은 쌍이다** — 서버가 세도 화면이 안 읽으면 없는 것과 같다.
+ *
+ * 이 지표들이 존재하는 이유 자체가 오진 방지다(2026-07-29): 지역 토큰 58개 중 56개가 0건이라
+ * "지역 필터가 죽었다"고 결론 낼 뻔했는데, 실제로는 백필이 막 시작돼 앞부분만 훑은 상태였다.
+ * 진행률이 화면에 없으면 다음 세션도 같은 오진을 하고 멀쩡한 코드를 판다.
+ */
+describe('풀 통계 — 채움률 지표가 서버↔화면 양쪽에 있다', () => {
+  const stats = readFileSync('src/features/marketing/api/influencer-pool-stats.ts', 'utf8')
+  const page = readFileSync(PAGE, 'utf8')
+
+  for (const k of ['region_filled', 'region_none', 'region_pending', 'nb_with_subs', 'yt_with_subs']) {
+    it(`${k} — 서버가 세고 화면이 읽는다`, () => {
+      // ⚠️ `toContain('AS region_pending')` 로 썼다가 **회귀 주입에 초록불**이 떴다:
+      //    `AS region_pending_typo` 도 그 문자열을 *포함*한다. 별칭은 경계까지 봐야 한다.
+      expect(stats).toMatch(new RegExp(`\\bAS ${k}\\b(?!_)`))
+      expect(page).toMatch(new RegExp(`stats\\.${k}\\b(?!_)`))
+    })
+  }
+
+  it('집계 SQL 이 템플릿 리터럴을 깨지 않는다 — 백틱 주석 금지', () => {
+    // 실제로 밟았다: SQL 주석에 `backfillRegions` 처럼 백틱을 쓰면 템플릿 문자열이 그 자리에서 끝난다.
+    // tsc 가 잡아주긴 하지만(조용한 실패는 아님) 같은 실수를 반복하지 않게 고정한다.
+    const sql = /DB\.prepare\(`SELECT[\s\S]*?FROM ad_influencer_leads WHERE account_id = \?`\)/.exec(stats)?.[0] || ''
+    expect(sql.length).toBeGreaterThan(500)   // 집계 쿼리를 못 찾으면 검사가 헛도는 것이다
+    expect(sql.split('\n').filter(l => l.trim().startsWith('--') && l.includes('`'))).toEqual([])
+  })
+})
