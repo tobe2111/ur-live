@@ -236,3 +236,43 @@ describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
     expect((src.match(/runRoundsDetached\(/g) || []).length).toBeGreaterThanOrEqual(3)
   })
 })
+
+/**
+ * 🛡️ ur-ads 배포 트리거가 **실제 의존 코드**를 덮는가.
+ *
+ * `deploy-ads.yml` 의 `paths` 는 손으로 적은 목록이라 드리프트한다. 실제로 드리프트해 있었다:
+ * `src/worker/**`(ur-ads 의 하트비트 기록기 `cron-heartbeat.ts` 가 여기 있다)와
+ * `src/features/social-media/**`(매시간 도는 소셜 유지보수)가 빠져 있어서, 그 파일만 바꾸면
+ * **배포가 아예 안 돌고 ur-ads 는 조용히 낡은 코드로 계속 돈다** — 실패도 안 나므로 눈치채기 어렵다.
+ *
+ * ⚠️ 못 막는 것: 전이 의존(worker-ads → marketing → 제3의 폴더)까지는 안 본다. 직접 import 만.
+ */
+describe('deploy-ads.yml — 배포 트리거가 ur-ads 의존 경로를 덮는다', () => {
+  const wf = readFileSync(join(process.cwd(), '.github/workflows/deploy-ads.yml'), 'utf8')
+  const srcFiles = ['index.ts', 'enrich.routes.ts', 'public-data.routes.ts', 'lane-cadence.ts']
+    .map(f => join(process.cwd(), 'src/worker-ads', f))
+    .filter(p => { try { readFileSync(p); return true } catch { return false } })
+
+  // `@/features/marketing/...` → 'src/features/marketing' · `@/worker/utils/...` → 'src/worker/utils'
+  const prefixes = new Set<string>()
+  for (const f of srcFiles) {
+    const t = readFileSync(f, 'utf8')
+    for (const m of t.matchAll(/@\/([a-z-]+)\/([a-z-]+)/g)) prefixes.add(`src/${m[1]}/${m[2]}`)
+  }
+  /** 정확히 그 경로거나, 더 넓은 상위 경로가 있으면 덮인 것으로 본다. */
+  const covered = (p: string): boolean => {
+    const parts = p.split('/')
+    for (let i = parts.length; i >= 2; i--) if (wf.includes(`'${parts.slice(0, i).join('/')}/**'`)) return true
+    return false
+  }
+
+  it('검사 대상이 실제로 있다 — 0건 통과를 성공으로 오인하지 않게', () => {
+    expect(srcFiles.length).toBeGreaterThan(0)
+    expect(prefixes.size).toBeGreaterThan(0)
+  })
+
+  it('worker-ads 가 import 하는 모든 최상위 경로가 paths 에 있다', () => {
+    const missing = [...prefixes].filter(p => !covered(p)).sort()
+    expect(missing).toEqual([])
+  })
+})

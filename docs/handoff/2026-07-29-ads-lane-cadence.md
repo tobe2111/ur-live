@@ -40,11 +40,11 @@ ur-ads 의 `adsBeat` 은 모든 레인에 **워커의 cron 식(`event.cron` = `0
 
 ### 검증
 
-- 신규 유닛 **27개** — 공식 동치성(`staleGapMinutes(60) === expectedMaxAgeMinutes('0 * * * *')`)을
+- 신규 유닛 **29개** — 공식 동치성(`staleGapMinutes(60) === expectedMaxAgeMinutes('0 * * * *')`)을
   고정해 두 곳이 갈라지면 실패한다 · 자정 불연속 · 게이트 발화 횟수.
 - **가드를 깨뜨려 확인**: NPS 사이트를 원래 버그 모양(`if (hourUTC === 16 …) kick(…)`)으로 되돌리자
   회귀 테스트가 정확히 그 줄을 잡고 실패 → 복원 후 통과.
-- 전체: `tsc 0` · 유닛 **2,955 pass(232 파일)** · `npm run build` exit 0 · **audit-gate 63 ALL GREEN**.
+- 전체: `tsc 0` · 유닛 **2,957 pass(232 파일)** · `npm run build` exit 0 · **audit-gate 63 ALL GREEN**.
 - 머니 경로 무접촉.
 
 ### ② 이어서 — **"한 번도 발화하지 않은 레인"도 보이게** (같은 PR)
@@ -116,6 +116,27 @@ ur-ads 의 `adsBeat` 은 모든 레인에 **워커의 cron 식(`event.cron` = `0
 (`runRoundsDetached`). 부모의 kick 은 곧바로 풀려 다음 레인을 디스패치한다.
 ⚠️ 관측을 잃지 않는다 — 라운드 결과를 **자기 하트비트 `ads:{lane}-rounds`** 로 남긴다
 (즉시 응답만 하고 결과를 안 남기면 "돌긴 했나"를 다시 알 수 없게 된다 — 고치려던 그 병).
+
+### ⑤ 배포 트리거가 ur-ads 의존 코드를 안 덮고 있었다 (조용한 no-op)
+
+④를 커밋하다 확인한 것. `deploy-ads.yml` 의 `paths` 는 **손으로 적은 목록**이라 드리프트해 있었다:
+
+| 경로 | ur-ads 가 쓰는가 | 트리거에 있었나 |
+|---|---|---|
+| `src/worker-ads/**` | ✅ | ✅ |
+| `src/features/marketing/**` | ✅ | ✅ |
+| **`src/worker/**`** | ✅ (`cron-heartbeat.ts` = ur-ads 의 하트비트 기록기) | ❌ |
+| **`src/features/social-media/**`** | ✅ (매시간 소셜 유지보수) | ❌ |
+| **`src/features/supply/**`** | ✅ (동적 import) | ❌ |
+
+즉 **그 파일들만 바꾸면 ur-ads 배포가 아예 안 돈다** — 실패도 안 나므로 ur-ads 가 조용히 낡은
+코드로 계속 돈다. 이번 세션의 `maxGapMin` 신고도 `src/worker-ads/**` 를 같이 바꿔서 우연히
+배포되는 것이지, `cron-heartbeat.ts` 만 고쳤으면 **라이브에 반영되지 않았을 것이다.**
+
+**처방**: 빠진 3개 경로 추가 + **유닛이 worker-ads 의 import prefix 를 스캔해 트리거에 빠진 게
+있으면 실패**시킨다(목록이 다시 드리프트하면 CI 가 잡는다). 회귀 주입(원래 빠져 있던 `src/worker/**`
+를 다시 제거)으로 실제로 잡히는 것 확인.
+⚠️ 못 막는 것: **전이 의존**(worker-ads → marketing → 제3의 폴더)은 안 본다. 직접 import 만.
 
 ### ⚠️ 이 수정이 **못** 하는 것 (과신 금지)
 
