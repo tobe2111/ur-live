@@ -59,14 +59,18 @@ export function maxPhaseGapHours(phaseCount: number): number {
  *   배정표를 그대로 읽어 계산한다.
  * ⚠️ 24시간으로 닫아 계산하는 게 맞다 — `hourUTC` 는 매일 0 으로 리셋되므로 배정 패턴의 주기는 항상 하루다
  *   (슬롯 수가 24의 약수가 아니어도 마찬가지).
+ *
+ * `skipHours` — 그 시각을 **다른 레인에 양보**해 이 배정표가 안 도는 시간. 양보는 간격을 넓히므로
+ *   경보 임계가 여전히 유효한지 계산으로 확인할 수 있어야 한다(유닛이 그걸 검사한다).
  */
-export function maxScheduleGapHours(schedule: readonly unknown[]): number {
+export function maxScheduleGapHours(schedule: readonly unknown[], skipHours: readonly number[] = []): number {
   const n = schedule.length
   if (n < 1) return 24
+  const skip = new Set(skipHours)
   let worst = 0
   for (const phase of new Set(schedule)) {
     const hours: number[] = []
-    for (let h = 0; h < 24; h++) if (schedule[h % n] === phase) hours.push(h)
+    for (let h = 0; h < 24; h++) if (!skip.has(h) && schedule[h % n] === phase) hours.push(h)
     if (!hours.length) continue // 슬롯 수 > 24 — 24시간 안에 한 번도 안 오는 단계는 아래 폴백이 받는다
     for (let i = 0; i < hours.length; i++) {
       const next = i + 1 < hours.length ? hours[i + 1]! : hours[0]! + 24
@@ -79,9 +83,12 @@ export function maxScheduleGapHours(schedule: readonly unknown[]): number {
 /** 균등 단계 순환 레인의 stale 기준(분). */
 export const phaseGapMinutes = (phaseCount: number): number => staleGapMinutes(maxPhaseGapHours(phaseCount) * 60)
 
-/** 가중 배정표 레인의 stale 기준(분) — 배정표를 그대로 넘긴다. */
-export const scheduleGapMinutes = (schedule: readonly unknown[]): number =>
-  staleGapMinutes(maxScheduleGapHours(schedule) * 60)
+/**
+ * 가중 배정표 레인의 stale 기준(분) — 배정표를 그대로 넘긴다.
+ * `skipHours` 는 다른 레인에 **양보한** 시각(간격이 그만큼 넓어지므로 임계도 함께 넓어져야 한다).
+ */
+export const scheduleGapMinutes = (schedule: readonly unknown[], skipHours: readonly number[] = []): number =>
+  staleGapMinutes(maxScheduleGapHours(schedule, skipHours) * 60)
 
 /**
  * `kick(path, fallback, opts?)` 과 같은 모양이면 무엇이든 받는다(테스트에서 스파이 주입).
@@ -196,6 +203,32 @@ export function makeHourGates(hourUTC: number, kick: KickFn, registry?: LaneRegi
     everyNHours(n: number, offset: number, path: string, fallback: () => Promise<unknown>, beat?: string): void {
       registry?.note(path, beat)
       if (n > 0 && hourUTC % n === offset) kick(path, fallback, { gap: everyNHoursGapMinutes(n), ...(beat ? { beat } : {}) })
+    },
+    /**
+     * 매시간 **가중 배정표** 순환 — 단, `yieldHours` 의 시각은 다른 레인에 양보하고 건너뛴다.
+     *
+     * ⚠️ **양보 시각과 주기 신고를 한 자리에서 만드는 것이 이 메서드의 존재 이유다.**
+     *   `if (hourUTC !== 19) { kick(…, { gap: scheduleGapMinutes(PHASES, [19]) }) }` 처럼 손으로 쓰면
+     *   조건과 주기가 **두 군데**가 되고, 한쪽만 고치는 순간 *"안 도는데 경보는 안 울리는"* 상태가 된다 —
+     *   위 회귀 차단 주석이 말하는 원래 버그와 **같은 모양**이다(그 유닛이 실제로 내 첫 판을 잡았다).
+     *   양보를 늘리려면 `yieldHours` 에 더하기만 하면 주기 신고가 **자동으로 따라온다.**
+     *
+     * `beatOf` 를 주면 하트비트 이름을 고정한다(경로에 쿼리가 붙어 단계마다 이름이 갈리는 것 방지).
+     */
+    hourlySchedule<T>(
+      schedule: readonly T[],
+      yieldHours: readonly number[],
+      pathOf: (phase: T) => string,
+      fallbackOf: (phase: T) => () => Promise<unknown>,
+      beatOf?: (phase: T) => string,
+    ): void {
+      if (!schedule.length) return
+      const phase = schedule[hourUTC % schedule.length] as T
+      const path = pathOf(phase)
+      const beat = beatOf?.(phase)
+      registry?.note(path, beat) // 양보한 시각에도 '이 레인이 있다'는 사실은 남긴다(dailyAt 과 같은 이유)
+      if (yieldHours.includes(hourUTC)) return
+      kick(path, fallbackOf(phase), { gap: scheduleGapMinutes(schedule, yieldHours), ...(beat ? { beat } : {}) })
     },
   }
 }

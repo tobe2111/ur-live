@@ -9,31 +9,13 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
+// 🧱 DDL 은 **한 벌만** — 아래 `runDdlOnce` 키(`ads_ddl_discovery_keywords`)를 이 파일과
+//   `influencer-auto-collect` 가 **공유**하는데, 각자 KW_DDL 을 들고 있었다. 내용이 같아 오늘은 무해했지만
+//   한쪽만 고치는 순간 체크섬이 매 인보케이션 엇갈려 **DDL + 시드 200문장이 영원히 재실행**된다
+//   (그 재실행을 없애려고 2026-07-29 에 만든 최적화가 통째로 뒤집힌다).
+import { KW_DDL } from './influencer-keyword-ddl'
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
-
-/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
-const KW_DDL: string[] = [
-  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword TEXT NOT NULL UNIQUE,
-    category TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    hits INTEGER NOT NULL DEFAULT 0,
-    source TEXT NOT NULL DEFAULT 'seed',
-    created_at DATETIME DEFAULT (datetime('now'))
-  )`,
-  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
-  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
-  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
-  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
-  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
-]
 
 const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
 

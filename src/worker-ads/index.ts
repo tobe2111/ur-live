@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, scheduleGapMinutes, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -24,6 +24,10 @@ import { healthRoutes } from './health.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
+
+/** 🌙 야간 재보정 시각(UTC) = KST 04시. 시간별 정비 순환이 이 시각을 **양보**한다(같은 lease 경합).
+ *  두 곳이 같은 값을 봐야 하므로 상수 — 따로 적으면 한쪽만 옮겨져 다시 겹친다. */
+export const RESCAN_HOUR_UTC = 19
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -543,15 +547,21 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
       'reclassify',
     ] as const
-    const phase = PHASES[hourUTC % PHASES.length]
-    kick(`/__ads/maintenance?phase=${phase}`, async () => {
-      const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
-      return runMaintenancePhase(env, phase)
-    }, { gap: scheduleGapMinutes(PHASES) })
+    // 🤝 **19시는 야간 재보정에 양보한다**(`RESCAN_HOUR_UTC`) — 둘이 같은 `MAINT_LEASE_KEY` 를 다투다
+    //   진 쪽이 스냅샷도 안 남기고 사라지고 있었다(`maintenance_rescan.at` 이 07-27 에서 정지 — 순환 배포일).
+    //   양보 비용 0: `handle` 은 4·7·10·16·22시에 그대로 돈다. 근거·설계는 `gates.hourlySchedule` docblock.
+    gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC],
+      (phase) => `/__ads/maintenance?phase=${phase}`,
+      (phase) => async () => {
+        const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
+        return runMaintenancePhase(env, phase)
+      })
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
+  //   ⚠️ 이 시각은 위 순환이 **양보**한다(같은 lease 경합 — 위 docblock 참조). 시각을 바꾸려면 두 곳을
+  //     같이 바꿔야 하므로 상수 하나를 공유한다.
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    gates.dailyAt(19, '/__ads/maintenance-rescan', async () => {
+    gates.dailyAt(RESCAN_HOUR_UTC, '/__ads/maintenance-rescan', async () => {
       const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
       return runNightlyRescan(env)
     })

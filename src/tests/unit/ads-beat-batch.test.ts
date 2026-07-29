@@ -40,12 +40,16 @@ describe('하트비트 일괄 쓰기', () => {
     expect(seen).toEqual(['x', 'y'])
   })
 
-  it('20건 + flush = 쓰기 2회(중간 1 + 마지막 1) — 손실이 임계치 단위로 묶인다', async () => {
+  it('20건 = 몰린 구간 1회 + 꼬리 10회 — **손실 안전이 절약보다 우선**한다', async () => {
+    // ⚠️ 이 기대값은 2026-07-29 라이브 실측 후 **의도적으로 바뀌었다**(원래는 "2회").
+    //   꼬리를 모아 두면 뒤에 add 가 없어 나이 상한이 발화하지 못하고, 부모가 회수되며 사라진다
+    //   (`reclassify` 자기 스탬프 15:01 ↔ 하트비트 13:01, 두 틱 연속). 절약은 몰린 구간에서만 취한다.
     const write = vi.fn(async (_list: PendingBeat[]) => {})
     const b = createBeatBatch(write, 10)
     for (let i = 0; i < 20; i++) b.add(beat(`a${i}`))
     await b.flush()
-    expect(write).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenCalledTimes(11)          // 첫 10건 묶음 1회 + 이후 10건 각각
+    expect(write.mock.calls[0][0]).toHaveLength(10)  // 몰린 구간의 절약은 그대로
   })
 
   it('빈 상태에서 flush 하면 아무것도 쓰지 않는다(빈 배치로 서브리퀘스트를 낭비하지 않는다)', async () => {
@@ -145,5 +149,36 @@ describe('나이 상한 — 오래 들고 있지 않는다', () => {
     expect(write).toHaveBeenCalledTimes(1)
     b.add(beat('b')) // 봉인 뒤라 즉시 나간다
     expect(write).toHaveBeenCalledTimes(2)
+  })
+})
+
+/**
+ * 🔒 **꼬리는 즉시 쓴다** — 2026-07-29 라이브가 두 번 가르쳐 준 것.
+ *
+ *   나이 상한만으로는 부족했다. 상한은 `add()` 시점에만 검사하는데, 라운드의 **마지막** 기록들은
+ *   뒤따르는 add 가 없어 검사 자체가 안 돌고 마지막 flush 까지 대기한다 — 부모가 그 전에 회수되면 사라진다.
+ *   실측: `reclassify` 자기 스탬프 15:01:09 ↔ 하트비트 13:01(두 틱 연속). *돌았는데 기록이 없다*.
+ *
+ *   ⚠️ 이 성질이 깨지면 느린 레인(정확히 우리가 지켜보고 싶은 레인)만 골라서 관측 밖으로 나간다.
+ */
+describe('첫 flush 뒤 도착분은 꼬리다 — 즉시 쓴다', () => {
+  it('🔒 임계치 flush 이후의 add 는 다음 flush 를 기다리지 않는다', () => {
+    const write = vi.fn(async (_l: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 3, 60_000)
+    b.add(beat('a')); b.add(beat('b')); b.add(beat('c')) // 임계치 → 1회차 쓰기(몰린 구간)
+    expect(write).toHaveBeenCalledTimes(1)
+    b.add(beat('tail1'))
+    expect(write, '꼬리는 즉시 나가야 한다').toHaveBeenCalledTimes(2)
+    b.add(beat('tail2'))
+    expect(write).toHaveBeenCalledTimes(3)
+    expect(b.size).toBe(0)
+  })
+
+  it('몰린 구간의 절약은 유지된다 — 첫 묶음은 여전히 한 번에', () => {
+    const write = vi.fn(async (_l: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 5, 60_000)
+    for (let i = 0; i < 5; i++) b.add(beat(`a${i}`))
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write.mock.calls[0][0]).toHaveLength(5)
   })
 })
