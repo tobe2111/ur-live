@@ -238,6 +238,16 @@ const OPS_GATES: OpsGate[] = [
   { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null },
   { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null },
   { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null },
+  // 🎟️ 2026-07-29 (실행 증거 감사): 공구 엔진 게이트가 **두 겹**인데 어느 명부에도 없었다.
+  //   서버 `platform_settings.gb_engine_enabled`(현재 키 자체 부재 = false) +
+  //   클라 `src/shared/feature-flags.ts` `GB_ENGINE_ENABLED`(현재 하드코딩 false).
+  //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
+  //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
+  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null },
+  // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
+  { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null },
+  { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null },
+  { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {

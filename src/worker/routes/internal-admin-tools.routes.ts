@@ -1098,8 +1098,8 @@ internalAdminToolsRoutes.get('/api/admin/prospects', requireAdmin(), async (c) =
 })
 
 // 🛡️ 2026-05-27: 운영 대시보드 통합 status — 한 endpoint 에 SSR/cron/D1/cache 상태.
-//   사용자 요청 — 운영 상태 점검 위해 분산된 정보 통합.
-internalAdminToolsRoutes.get('/api/admin/ops-status', requireAdmin(), async (c) => {
+//   ⚠️ 2026-07-29 `ops-status` → `ops-snapshot`(경로 양보 — 게이트 현황판과 충돌해 그 화면이 죽었다).
+internalAdminToolsRoutes.get('/api/admin/ops-snapshot', requireAdmin(), async (c) => {
   try {
     const DB = c.env.DB
     const now = Date.now()
