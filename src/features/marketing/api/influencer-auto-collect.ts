@@ -14,7 +14,6 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { backfillRegions, recheckBlankRegions } from './influencer-region'
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -522,14 +521,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
     ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),
   ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)
-  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
-  //   재판정은 **규칙 버전이 오른 회차에만 1회** 돈다(그 외엔 조회 1번으로 즉시 반환).
-  //   ⬇️ 2026-07-29 재수리: **커서/통계 저장 뒤로 옮겼다.** 그전엔 이 *선택적* 백필 2개가 결정적인
-  //   커서 저장보다 **앞**에 있어, 꼬리에서 예산이 끊기면 백필은 되고 **커서는 안 밀리는** 최악의 순서였다
-  //   (커서가 안 밀리면 다음 회차가 같은 키워드를 다시 돈다 — 10:00 틱이 정확히 그 상태였다).
-  //   백필은 커서와 달리 **다음 틱이 그대로 이어받는다**(멱등·커서리스) — 그래서 뒤가 맞다.
-  try { await recheckBlankRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 재시도(멱등) */ }
-  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
+  // 📍 지역 백필은 **정비의 `reextract` 단계**로 옮겼다(2026-07-29) — `sweepRegions` 주석에 실측 근거.
+  //   요지: 여기(수집 꼬리)는 발굴이 예산을 다 쓴 자리라 회차당 400행이 한계였고, 그 속도로는
+  //   미판정 37,075건에 약 3.9일이 걸렸다. 정비 쪽은 fresh 인보케이션이라 한 회차에 수천 행을 돈다.
+  //   ⚠️ 여기서 다시 부르지 말 것 — 두 벌로 두면 조용히 갈라진다.
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats

@@ -505,3 +505,40 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
   })
 })
+
+/**
+ * 📍 **지역 백필의 자리** — 라이브 실측(2026-07-29)이 만든 불변식.
+ *
+ *   | 지역 판정 | 인원 | 비중 |
+ *   |---|---|---|
+ *   | 값 있음 | **282** | **0.7%** |
+ *   | 지역 없는 키워드로 확정 | 1,808 | 4.6% |
+ *   | **미판정** | **37,075** | **94.7%** |
+ *
+ *   `강남 맛집` 한 키워드로 741명을 모았는데 어드민에서 `region=강남` 은 **0명**이었다.
+ *   동네딜은 지역×업종 매칭이 본질이라 그 축이 사실상 없는 상태였다.
+ *
+ *   ❗ 처음엔 "예산 고갈로 굶는다"고 읽었는데 **틀렸다** — 채워진 2,090건이 정확히 5회차 × 400 이라
+ *   백필은 **정상 동작 중이고 단지 느렸다**(3.9일). 고칠 것은 고장이 아니라 **자리와 크기**였다.
+ *   ⇒ 수집 꼬리(예산 바닥) → 정비 `reextract` 단계(fresh 인보케이션, 할 일 0이라 슬롯이 남던 곳).
+ *
+ *   ⚠️ 이 테스트가 못 보는 것: 실제 채움 속도(라이브 값이라 코드가 모른다). `stats.region_pending` 으로 볼 것.
+ */
+describe('지역 백필 — 한 곳에서만, 정비 인보케이션에서', () => {
+  const collect = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-auto-collect.ts'), 'utf8')
+  const maint = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+
+  it('🔒 수집 레인은 더 이상 백필을 부르지 않는다(두 벌 금지)', () => {
+    expect(collect).not.toMatch(/await backfillRegions\(/)
+    expect(collect).not.toMatch(/await recheckBlankRegions\(/)
+  })
+
+  it('🔒 정비의 reextract 단계가 스윕을 돈다 — 할 일 0이던 슬롯이 실제 일을 갖는다', () => {
+    expect(maint).toMatch(/out\.region = await sweepRegions\(bdb, budget\)/)
+    expect(maint).toMatch(/await backfillRegions\(DB, POOL, 500\)/)
+  })
+
+  it('🔒 예산이 남는 동안 반복한다 — 한 청크로 끝나면 옮긴 의미가 없다', () => {
+    expect(maint).toMatch(/while \(!budget\.exhausted && budget\.left >= 6\)/)
+  })
+})
