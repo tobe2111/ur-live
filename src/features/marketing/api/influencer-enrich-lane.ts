@@ -253,7 +253,20 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
   // ⚠️ `ytUnits` 는 **바깥 스코프**여야 한다 — 아래 스냅샷의 `yt_units` 가 읽는다.
   //   선두 교대를 넣으며 헬퍼 안에 가뒀다가 타입 에러가 났다(CI 가 잡음, npm 403 으로 로컬 tsc 미실행).
   let ytUnits = 0
-  const naverFirst = depth % 2 === 1
+  /**
+   * 🩸 **홀수가 아니라 짝수(=depth 0 포함)가 블로거 선두다** — 14:00 실측으로 뒤집었다.
+   *
+   *   처음엔 `depth % 2 === 1`(홀수 라운드가 블로거 선두)로 썼다. 전제는 "체인이 depth 2+ 로 도니
+   *   틱마다 홀수 라운드가 최소 한 번 온다"였고, 13:00 틱의 `depth: 2` 가 그 근거였다.
+   *   **그 전제가 틀렸다.** 14:00 틱은 `depth: 0` — 체인이 이어지지 않아 **라운드가 하나뿐**이었고,
+   *   0 은 짝수라 앞 레인이 먼저 돌아 블로거는 또 굶었다(`selected 12 · tried 0 · deadline_hit`).
+   *   체인 생존은 틱마다 다르다(13:00 depth 2 · 14:00 depth 0) — **있을 때만 되는 처방은 처방이 아니다.**
+   *
+   *   ⇒ `depth 0` 을 블로거 선두로 만든다. 라운드가 하나뿐이어도 블로거가 마감 전체를 쓴다.
+   *     앞 레인(링크인바이오·YT)은 depth 1 부터 선두를 받는다 — 체인이 이어지면 공평해지고,
+   *     안 이어지면 **백로그가 27,093 인 쪽**이 우선한다. 그 선택이 맞다.
+   */
+  const naverFirst = depth % 2 === 0
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
     try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }

@@ -368,8 +368,14 @@ describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
 describe('보강 레인 — 라운드마다 선두 교대', () => {
   const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
 
-  it('depth 홀짝으로 선두를 가른다', () => {
-    expect(lane).toMatch(/const naverFirst = depth % 2 === 1/)
+  /**
+   * ⚠️ **depth 0 이 블로거 선두여야 한다**(14:00 실측). 처음엔 홀수를 선두로 썼는데,
+   *   체인이 안 이어진 틱(`depth: 0`)에서는 라운드가 하나뿐이라 블로거가 또 굶었다.
+   *   체인 생존은 틱마다 다르다(13:00 depth 2 · 14:00 depth 0) — 있을 때만 되는 처방은 처방이 아니다.
+   */
+  it('라운드가 하나뿐이어도(depth 0) 블로거가 선두다', () => {
+    expect(lane).toMatch(/const naverFirst = depth % 2 === 0/)
+    expect(lane, '홀수 선두는 단일 라운드 틱에서 블로거를 굶긴다').not.toMatch(/naverFirst = depth % 2 === 1/)
   })
 
   it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
