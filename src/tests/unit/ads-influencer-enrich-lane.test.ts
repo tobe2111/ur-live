@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -44,6 +44,32 @@ describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
     expect(p.naverMax).toBeGreaterThan(3)
     expect(p.ytMax).toBeGreaterThan(3)   // 📈 YT 800개 표본의 94%가 성과 미측정 — 여기가 0 이면 그대로 굳는다
     expect(p.bioMax).toBeGreaterThan(0)
+  })
+
+  it('②-3 앞 레인이 안 쓴 예산은 블로거가 흡수한다(정적 배분보다 줄지 않는다)', () => {
+    const { naverMax } = planInfluencerEnrich(45)
+    // 실측 재현: bio 0 · yt 14 를 쓰고 31 이 남은 시점 → 정적 배분 10 에 묶이지 않는다.
+    expect(naverRoomFromRemaining(31, naverMax)).toBeGreaterThan(naverMax)
+    // 앞 레인이 예산을 다 썼으면 기존 동작으로 안전하게 되돌아간다(줄어들지 않음).
+    for (const left of [0, 1, 2, 5, 45]) {
+      expect(naverRoomFromRemaining(left, naverMax)).toBeGreaterThanOrEqual(naverMax)
+    }
+  })
+
+  it('②-4 흡수분도 실제 잔여로 감당 가능하다 — 과배정이 예산을 넘지 않는다', () => {
+    // 배정분(계획 0 가정)의 fetch 비용(건당 2)이 남은 예산을 넘으면 라운드 끝이 헛돌고 도장을 못 찍는다.
+    for (const left of [0, 1, 2, 3, 7, 21, 31, 45, 200]) {
+      expect(naverRoomFromRemaining(left, 0) * 2).toBeLessThanOrEqual(Math.max(0, left))
+    }
+  })
+
+  it('②-5 잔여가 음수/NaN 이어도 0 이상으로 수렴한다', () => {
+    for (const left of [-5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const v = naverRoomFromRemaining(left, Number.NaN)
+      expect(Number.isFinite(v)).toBe(true)
+      expect(v).toBeGreaterThanOrEqual(0)
+      expect(v).toBeLessThanOrEqual(30) // enrichNaverActivity 의 SELECT LIMIT 상한과 동일
+    }
   })
 
   it('③ 학습 상한 키가 수집 레인과 분리돼 있다', () => {
