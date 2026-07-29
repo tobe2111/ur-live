@@ -300,6 +300,10 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; 
   fi
 fi
 
+# 🔀 동시 세션 겹침 조기경보(2026-07-29 신설) — main 이 *이 브랜치가 고친 파일*을 그 사이에 바꿨으면 경고.
+#   단순 '뒤처짐'이 아니라 **실제 겹침**만 본다(매번 울면 우회가 습관이 된다).
+node scripts/check-branch-overlap.mjs || true
+
 # 🔄 인계 문서 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
 #   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
 node scripts/check-current-work-sync.mjs || true
