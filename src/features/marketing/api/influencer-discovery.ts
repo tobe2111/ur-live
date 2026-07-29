@@ -17,6 +17,17 @@ import { runDdlOnce } from './ads-schema-guard'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
+/**
+ * 🔎 2026-07-29 예외 원문 보존 — 발굴 fetch 가 `.catch(() => null)` 로 사유를 버려 어드민에는
+ *   "블로그 검색 호출 실패 (네트워크)" 라는 뭉뚱그린 문구만 남았다. 같은 인보케이션의 유튜브가
+ *   `Too many subrequests` 를 내고 있어도 네이버는 '네트워크'로 보여 **같은 원인인지 구분이 불가**했다.
+ *   AbortError=상대 무응답 / TypeError "Too many subrequests"=플랫폼 한도 / 그 외=DNS·TLS 로 갈린다.
+ */
+function fetchErrText(err: unknown): string {
+  const e = err as { name?: string; message?: string } | null
+  return `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 160)}`
+}
+
 export interface ExtractedContacts { emails: string[]; instagram: string[]; tiktok: string[]; links: string[] }
 
 const EMAIL_RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g
@@ -377,8 +388,10 @@ export async function discoverNaverBloggers(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
   const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '블로그 검색 호출 실패 (네트워크)' }
+  let res: Response | null = null
+  let fetchErr: string | undefined
+  try { res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  if (!res) return { ok: false, error: 'FAILED', message: `블로그 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `블로그 검색 오류 (HTTP ${res.status})` }
   // 고유 블로거로 집계(블로그홈 링크 기준).
@@ -459,8 +472,10 @@ export async function discoverNaverCafes(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim'
   const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '카페 검색 호출 실패 (네트워크)' }
+  let res: Response | null = null
+  let fetchErr: string | undefined
+  try { res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  if (!res) return { ok: false, error: 'FAILED', message: `카페 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `카페 검색 오류 (HTTP ${res.status})` }
   const byCafe = new Map<string, InfluencerLead & { _matches: number }>()
@@ -500,8 +515,10 @@ export async function discoverTistoryBloggers(
   const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
   const sort = opts.sort === 'recency' ? 'recency' : 'accuracy'
   const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=${sort}`
-  const res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }).catch(() => null)
-  if (!res) return { ok: false, error: 'FAILED', message: '티스토리 검색 호출 실패 (네트워크)' }
+  let res: Response | null = null
+  let fetchErr: string | undefined
+  try { res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  if (!res) return { ok: false, error: 'FAILED', message: `티스토리 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.message || `티스토리 검색 오류 (HTTP ${res.status})` }
   const byBlog = new Map<string, InfluencerLead & { _matches: number }>()
