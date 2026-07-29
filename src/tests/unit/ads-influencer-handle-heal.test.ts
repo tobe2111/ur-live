@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
 import { deriveNaverHandle, naverBlogUrl, NAVER_HANDLE_RE } from '@/features/marketing/api/influencer-handle-heal'
-import { MAINT_PHASES } from '@/features/marketing/api/influencer-maintenance'
+import { MAINT_PHASES, MAINT_SCHEDULE } from '@/features/marketing/api/influencer-maintenance'
 
 /**
  * 🩹 2026-07-28 — 네이버 블로거 핸들 복구의 불변식 잠금.
@@ -53,21 +52,18 @@ describe('deriveNaverHandle — 저장된 행에서 진짜 블로그 id 복구',
 })
 
 /**
- * 🔁 정비 단계 순환의 이중 정의 잠금.
- *   ur-ads cron 은 `hourUTC % PHASES.length` 로 단계를 고르는데, 그 배열이 소스에 **리터럴로 복제**돼 있다
- *   (워커 번들에 정적 import 를 안 넣으려는 의도적 중복). 한쪽에만 단계를 추가하면 새 단계가 **영원히
- *   실행되지 않는다** — 조용한 실패라 관측조차 안 된다. 그래서 두 정의의 일치를 기계가 지킨다.
+ * 🔁 이 단계가 **정비 순환에 실제로 배정돼 있는가**.
+ *   ⚠️ 2026-07-29: 균등 순환(`% 5`)이 가중 배정표(`MAINT_SCHEDULE`)로 바뀌면서, "정의돼 있다"와
+ *   "돌기로 배정돼 있다"가 갈라졌다 — `MAINT_PHASES` 에만 있고 배정표에 없으면 **영원히 안 돈다.**
+ *   그래서 여기선 배정표를 본다. cron 리터럴 ↔ 배정표의 전체 일치는 `ads-lane-cadence` 가 지킨다
+ *   (한 불변식은 한 자리에서 — 두 곳에 두면 한쪽만 고쳐 놓고 지켜지는 줄 안다).
  */
-describe('정비 단계 — MAINT_PHASES ↔ ur-ads cron 순환 배열 일치', () => {
-  it('cron 의 PHASES 리터럴이 MAINT_PHASES 와 같은 순서·같은 개수다', () => {
-    const src = readFileSync('src/worker-ads/index.ts', 'utf8')
-    const m = /const PHASES = \[([^\]]+)\] as const/.exec(src)
-    expect(m, 'ur-ads cron 의 PHASES 리터럴을 찾지 못했다').toBeTruthy()
-    const literal = (m as RegExpExecArray)[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
-    expect(literal).toEqual(MAINT_PHASES)
+describe("정비 단계 — 손상 핸들 복구('handle')가 실제로 배정돼 있다", () => {
+  it('MAINT_PHASES 에 정의돼 있다', () => {
+    expect(MAINT_PHASES).toContain('handle')
   })
 
-  it("손상 핸들 복구('handle')가 순환에 포함돼 있다", () => {
-    expect(MAINT_PHASES).toContain('handle')
+  it('🔒 배정표에도 들어 있다 — 정의만 있고 배정이 없으면 조용히 한 번도 안 돈다', () => {
+    expect(MAINT_SCHEDULE).toContain('handle')
   })
 })

@@ -45,6 +45,13 @@ const walk = (dir) => {
 }
 walk('src')
 
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 라우트 파일을 하나도 못 찾으면 중복도 0이라
+//   초록이 뜨는데, 그 초록은 아무것도 보장하지 않는다.
+if (files.length === 0) {
+  console.error('❌ 라우트 파일(.tsx/.jsx)을 하나도 못 찾았다 — 스캔 경로가 낡았다(통과 아님).')
+  process.exit(1)
+}
+
 const violations = []
 let scannedRoutes = 0
 

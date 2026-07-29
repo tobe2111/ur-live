@@ -200,6 +200,35 @@ export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality' | 'han
 export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality', 'handle']
 export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includes(v as MaintPhase)
 
+/**
+ * ⏱️ **시간대별 단계 배정표** — 균등 순환(`PHASES[h % 5]`)을 라이브 실측으로 대체(2026-07-29).
+ *
+ *   왜 균등이 틀렸나: 단계마다 남은 일의 양이 다른데 슬롯은 똑같이 나눠 갖고 있었다.
+ *   같은 날 어드민 실측(`ads_maintenance_last`):
+ *     - `reextract` — **전수 36,880행을 훑고 `filled: 0`, `done: true`.** 저장 시점에 이미 추출하므로
+ *       남은 일이 구조적으로 없다. 그런데도 5시간마다 한 슬롯(정비 용량의 20%)을 통째로 가져갔다.
+ *     - `merge` — `merged: 5`(그룹 3). 값은 있지만 소량이고 시급하지 않다.
+ *     - `reclassify` — 38,382행을 회차당 3,000행씩. 균등 배정이면 전수 한 바퀴에 13회차 × 5h = **65시간**.
+ *       분류 규칙을 고쳐도 라이브에 닿는 데 2.7일이 걸린다는 뜻이다(#867 이 정확히 그 상황이었다).
+ *     - `handle` — `fixed: 2,481`(+`reopened: 150`)로 **수율이 가장 높고 아직 `done: false`**.
+ *       게다가 이 단계가 밀린 만큼 블로거 보강 레인의 큐 앞머리가 측정 불가 행으로 막힌다(아래 주석 참조)
+ *       — 즉 풀의 74%를 차지하는 네이버 블로거 연락처 확보라는 **가장 큰 레버의 관문**이다.
+ *   ⇒ **일이 남은 쪽으로 옮긴다.** 10슬롯 중 `reclassify` 3 · `handle` 3(각 기존 2) ←
+ *      `reextract` 1 · `merge` 1(각 기존 2). `quality` 2 유지.
+ *      전수 스윕: reclassify 65h → **43h**, handle 은 회차가 1.5배.
+ *
+ *   ⚠️ **줄이는 쪽을 0으로 만들지 않는다.** 지금 `filled: 0` 인 건 "고장"이 아니라 "다 했다"이고,
+ *   미추출 행이 새로 생기면 다시 값이 나와야 한다. 10시간에 한 번이면 자기치유가 유지된다.
+ *   ⚠️ 이 표에서 빠진 단계는 **영원히 안 돈다** — 침묵이 아니라 부재라 경보에도 안 잡힌다.
+ *   그래서 `MAINT_PHASES` 전 단계 포함을 유닛(ads-lane-cadence)이 강제한다.
+ *   ⚠️ 배분의 **타당성**은 코드가 못 본다(라이브 수율은 코드 밖 사실이다). 위 수치가 뒤집히면
+ *   — 예컨대 `handle` 이 `done: true` 로 끝나면 — 그 슬롯은 다시 남는 일 쪽으로 옮겨야 한다.
+ */
+export const MAINT_SCHEDULE: MaintPhase[] = [
+  'merge', 'reextract', 'reclassify', 'quality', 'handle',
+  'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+]
+
 /** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
 const PHASE_LEASE_TTL_MS = 3 * 60_000
 /** 리스 해제·스탬프·커서 기록용으로 남겨두는 연산(예산에서 제외) — 이게 없으면 "기록조차 못 하는" 원래 병이 재발. */

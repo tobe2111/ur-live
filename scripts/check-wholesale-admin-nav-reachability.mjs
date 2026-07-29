@@ -20,7 +20,15 @@ import { fileURLToPath } from 'url'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => readFileSync(resolve(ROOT, p), 'utf8')
 
-const layout = read('src/components/AdminLayout.tsx')
+// 🔧 2026-07-29: 네비 정의는 2026-07-22(`3b9be05db`, 즐겨찾기 기능)에 AdminLayout 에서
+//   `admin-nav-config.ts` 로 **빠져나갔다.** 이 가드는 그걸 모른 채 AdminLayout 만 읽어
+//   `domain: 'wholesale'` 을 0개 찾았고, 그 결과 **허용 경로 0개 · 스캔 화면 0개**로
+//   "위반 0" 초록을 계속 냈다 — 한 달 넘게 아무것도 검사하지 않았다.
+//   (형제 유닛테스트 `admin-wholesale-queue-nav.test.ts` 는 새 파일을 읽고 있어서 멀쩡했다.)
+//   두 파일을 함께 읽는다 — 나중에 어느 쪽으로 옮겨져도 계속 잡히도록.
+const layout = ['src/components/admin/admin-nav-config.ts', 'src/components/AdminLayout.tsx']
+  .map((f) => { try { return read(f) } catch { return '' } })
+  .join('\n')
 const routes = read('src/routes/admin.routes.tsx')
 
 // ── 1) wholesale-role 허용 경로 집합 ─────────────────────────────────────────
@@ -89,6 +97,15 @@ console.log(`🧭 wholesale-role 어드민 네비 도달성 검사`)
 console.log(`   허용 경로 ${allowed.size}개 · 스캔 화면 ${scanned.length}개 · 매핑실패 ${missingFile.length}개`)
 if (missingFile.length) {
   console.log(`   ⚠️ route→파일 매핑 못 찾음(수동 확인): ${missingFile.join(', ')}`)
+}
+// 🛡️ 2026-07-29: **측정 0 = 통과가 아니라 실패.** 이 가드는 네비 정의가 다른 파일로 옮겨간 뒤
+//   `허용 경로 0개 · 스캔 화면 0개` 로 한 달 넘게 "위반 0" 초록을 냈다. 검사 대상이 비면
+//   위반이 0인 게 당연하고, 그 초록은 아무것도 보장하지 않는다. 그러니 비면 큰 소리로 실패한다.
+if (allowed.size === 0 || scanned.length === 0) {
+  console.error(`❌ 검사 대상이 비었다(허용 경로 ${allowed.size} · 스캔 화면 ${scanned.length}) — 통과가 아니다.`)
+  console.error(`   네비 정의(domain:'wholesale' 그룹)나 라우트 파일 경로가 바뀌었을 가능성이 크다.`)
+  console.error(`   이 가드가 읽는 파일: admin-nav-config.ts · AdminLayout.tsx · routes/admin.routes.tsx`)
+  process.exit(1)
 }
 if (violations.length === 0) {
   console.log(`✅ 위반 0 — 모든 정적 /admin 링크가 wholesale-role 도달 가능.`)
