@@ -23,7 +23,7 @@ import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, 
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
-import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
@@ -238,10 +238,19 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   platform_settings 의 만료시각 CAS(단일 UPDATE = D1 원자)로 한 번에 하나만 실행 — busy 면 아무것도 안 만지고
   //   반환(체인은 yt_budget 부재 → done, cron 은 다음 틱, 수동은 진행 중인 실행이 대신 수집).
   await DB.prepare('CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)').run().catch(() => null)
-  await DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value) VALUES ('${LEASE_KEY}', '0')`).run().catch(() => null)
+  // 🪦 seed + **직전 lease 값 읽기**를 1 batch(=1 서브리퀘스트)로. 값이 '0' 이 아니면 직전 회차가
+  //   반납하지 못하고 죽은 것 — 그 사실은 여기서만 알 수 있다(죽은 회차는 아무것도 못 남긴다).
+  //   판정/처방은 `capAfterAbandonedRun`(collect-budget) 의 docblock 이 SSOT.
+  const leaseSeed = await DB.batch<{ value: string }>([
+    DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value) VALUES ('${LEASE_KEY}', '0')`),
+    DB.prepare(`SELECT value FROM platform_settings WHERE key = '${LEASE_KEY}'`),
+  ]).catch(() => null)
+  const priorLease = parseInt(String(leaseSeed?.[1]?.results?.[0]?.value ?? '0'), 10) || 0
   const nowMs = Date.now()
   const leaseR = await DB.prepare(`UPDATE platform_settings SET value = ? WHERE key = '${LEASE_KEY}' AND CAST(value AS INTEGER) < ?`)
     .bind(String(nowMs + LEASE_TTL_MS), nowMs).run().catch(() => null)
+  // 유기 판정은 **CAS 를 이겼을 때만** 의미가 있다(졌으면 그 lease 는 살아있는 실행의 것이다).
+  const abandonedPrev = !!leaseR?.meta?.changes && priorLease > 0
   if (!leaseR?.meta?.changes) {
     const prevStats = await getAutoCollectStats(DB)
     return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
@@ -339,7 +348,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
   // 🔀 병합: 읽기는 이 브랜치의 배치(readSettings — 낱개 5회 → 1회), 천장은 main(#837).
-  const learnedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
+  const storedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
+  // 🪦 직전 회차가 lease 를 반납 못 하고 죽었으면 **이번 회차부터 즉시** 덜 쓴다(다음 회차가 아니라).
+  //   죽은 회차는 상한을 못 낮추므로, 낮추는 일은 살아남은 쪽이 대신 해야 한다.
+  const learnedCap = abandonedPrev ? capAfterAbandonedRun(storedCap, envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) : storedCap
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   /**

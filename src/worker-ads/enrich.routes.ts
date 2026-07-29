@@ -49,16 +49,30 @@ export function resolveEnrichRounds(raw: string | undefined, fallback = 12): num
  * 부모가 기다려 (A)가 남는다. ⇒ **둘 다** 한다.
  *
  * ## 형태
- * ① 핸들러는 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다 — (A) 해소).
- * ② 라운드 작업은 이 인보케이션의 `waitUntil` 에서 돌고, 끝나면 **다음 라운드를 새 인보케이션으로**
- *    spawn 한다 — 한 인보케이션이 N라운드를 이고 가지 않는다((B) 해소).
- * ③ spawn 은 `waitUntil` 로 등록해 취소를 막되, **다음 depth 도 즉시 응답**하므로 이 대기는 찰나다
- *    (중첩 await 가 체인 전체로 늘어지지 않는 이유 — 각 단계가 ACK 만 기다린다).
- * ④ 하트비트는 depth 0 에서만 — 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다.
+ * ① 라운드 작업을 **응답 전에** 끝낸다 — 부모의 kick 은 *한 라운드*(실측 ~16초)만 잡는다.
+ * ② 끝나면 **다음 라운드를 새 인보케이션으로** spawn 하고 응답한다 — 한 인보케이션이 N라운드를
+ *    이고 가지 않는다((B) 해소). 부모가 잡히는 시간은 전체 체인이 아니라 1라운드다((A) 완화).
+ * ③ 하트비트는 **라운드마다** 남기고 `depth` 를 실어 보낸다(마지막 기록 = 그 틱이 도달한 최대 깊이).
+ *
+ * ## 🩸 왜 "즉시 응답"을 되돌렸나 (2026-07-29 11:00 라이브 실측 — 내가 낸 회귀)
+ * 첫 판은 ①을 "핸들러가 **즉시 응답**하고 라운드는 `waitUntil` 에서 돈다"로 썼다. 그러면 부모의
+ * kick 이 곧바로 풀리니 (A)가 완전히 사라진다고 봤다. **틀렸다.**
+ *   실측: 11:00 틱에 `ads:enrich-influencer-driver`(11:00:02, ok, result=null) 와
+ *   `ads:collect`(11:00:02, "started=true") 가 **둘 다 즉시** 기록됐는데, 9분 뒤까지
+ *   `enrich_lane.last_run` 은 10:00:18, `run.last_run` 은 09:00:04 그대로였다 — **라운드가 한 번도
+ *   완료되지 않았다.** 직전(구 코드) 10:00 틱은 최소 1라운드를 돌렸다. 즉 "즉시 응답"이 0라운드를 만들었다.
+ *   이유: 서비스 바인딩 피호출자는 **호출자보다 오래 살 수 없다.** 즉시 응답 → `kick` 의 await 이 풀림
+ *   → 부모 인보케이션 종료 → 피호출자의 `waitUntil` 작업이 취소. 응답을 앞당길수록 더 빨리 죽는다.
+ * ⇒ 작업은 **호출자가 살아 있는 동안**(응답 전에) 해야 한다. 즉시 응답은 (A)를 고치는 게 아니라
+ *   작업을 지우는 것이었다.
+ *
+ * ⚠️ 아직 확실히 모르는 것: spawn 을 `waitUntil` 로 걸었을 때 **체인이 depth 1 너머로 이어지는지**.
+ *   이어지면 계획대로 N라운드, 안 이어지면 틱당 1라운드(구 동작과 동일 — 최악도 회귀는 아니다).
+ *   그래서 ③으로 **깊이를 계측**한다: 다음 틱에 하트비트의 `depth` 가 0 이면 체인이 안 이어지는 것이고,
+ *   그때 처방은 "라운드를 체인이 아니라 cron 이 직접 N번 kick"(루트가 수명을 쥔다)이다.
  *
  * ⚠️ 순차성 유지: 다음 라운드는 이번 **작업이 끝난 뒤** spawn 되므로 `perf_checked_at` 도장 이후에
  *   다음 구간을 집는다(동시 실행 아님). 💥 실패하면 다음을 안 낳는다 — 다음 정각이 이어받는다.
- * `executionCtx` 가 없으면(로컬/테스트) 동기 실행 — 동작 동일.
  */
 async function dispatchRoundChain(
   c: {
@@ -77,29 +91,22 @@ async function dispatchRoundChain(
   const depth = Number.isFinite(raw) && raw > 0 ? raw : 0
   const env = c.env as unknown as { SELF?: { fetch: (r: Request) => Promise<Response> } }
 
-  const work = async (): Promise<{ chained: boolean; error?: string }> => {
-    let error: string | undefined
-    try { await local() } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
-    let chained = false
-    if (!error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
-      chained = true
-      // 다음 라운드는 **새 인보케이션**(새 예산). 다음 depth 도 즉시 응답하므로 이 대기는 찰나다.
-      c.executionCtx.waitUntil(
-        env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
-          .then(() => undefined).catch(() => undefined),
-      )
-    }
-    if (depth === 0) await driverBeat(c.env, beatName, Date.now() - t0, { chained, error }, rounds)
-    return { chained, error }
-  }
+  // 🩸 라운드는 **응답 전에** 돈다 — 호출자가 살아 있는 동안이어야 취소되지 않는다(위 실측 참조).
+  let error: string | undefined
+  try { await local() } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
 
-  if (c.executionCtx?.waitUntil) {
-    c.executionCtx.waitUntil(work())
-    // 디스패치 성공만 알린다 — 실제 라운드 결과는 위 driverBeat 이 남긴다.
-    return c.json({ ok: true, dispatched: rounds, depth, detached: true })
+  let chained = false
+  if (!error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
+    chained = true
+    // 다음 라운드는 **새 인보케이션**(새 예산·새 서브리퀘스트 한도). 응답을 막지 않게 waitUntil 로 건다.
+    c.executionCtx.waitUntil(
+      env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
+        .then(() => undefined).catch(() => undefined),
+    )
   }
-  const r = await work() // 로컬/테스트: 체인 불가 → 1라운드 동기 실행
-  return r.error ? c.json({ ok: false, depth, error: r.error }, 500) : c.json({ ok: true, depth, planned: rounds })
+  // 라운드마다 기록 — 마지막 기록의 `depth` 가 그 틱이 실제로 도달한 깊이다(체인 생존 여부의 유일한 관측점).
+  await driverBeat(c.env, beatName, Date.now() - t0, { chained, error, depth }, rounds)
+  return error ? c.json({ ok: false, depth, error }, 500) : c.json({ ok: true, depth, planned: rounds, chained })
 }
 
 /**
@@ -112,11 +119,11 @@ async function dispatchRoundChain(
  *   📊 `planned/chained/error` 동봉 — "몇 라운드에서 왜 멈췄나"를 어드민 한 줄로 판정하기 위해
  *      (이 환경은 wss 가 막혀 라이브 로그를 못 본다).
  */
-async function driverBeat(env: unknown, name: string, ms: number, r: { chained: boolean; error?: string }, planned: number): Promise<void> {
+async function driverBeat(env: unknown, name: string, ms: number, r: { chained: boolean; error?: string; depth: number }, planned: number): Promise<void> {
   try {
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
     await recordCronBeat(env as never, `ads:${name}`, !r.error, ms, '0 * * * *',
-      { planned, chained: r.chained, ...(r.error ? { error: r.error.slice(0, 120) } : {}) })
+      { planned, depth: r.depth, chained: r.chained, ...(r.error ? { error: r.error.slice(0, 120) } : {}) })
   } catch { /* 관측 실패가 작업을 막지 않는다 */ }
 }
 

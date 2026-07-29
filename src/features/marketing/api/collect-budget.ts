@@ -108,6 +108,31 @@ export function resolveSubreqBudget(envBudget: number, learnedCap: number, platf
 }
 
 /**
+ * 🪦 **말없이 죽은 회차**를 관측해 상한을 내린다 (2026-07-29 — 11:00 라이브 실측).
+ *
+ *   위 `nextSubreqCap` 의 하향은 `hitLimit`(= 잡을 수 있는 예외)에 걸려 있다. 그런데 이 레인이
+ *   실제로 죽는 방식은 예외가 아니다 — **인보케이션째 사라진다.** 그러면:
+ *     · `hitLimit=false` 로 남고 → 다음 회차에 상한이 **오히려 +2** 올라가고 → 또 죽는다.
+ *     · 마감 쓰기(커서·통계·상한)가 통째로 못 나가니 **죽었다는 사실 자체도 안 남는다.**
+ *   실측(11:00): `ads:collect` 는 `started=true` 를 남기고 시작했는데 9분 뒤까지 `run.last_run` 은
+ *   09:00:04 그대로였다. `spent 40/40 · learned_cap 44 · limit_hit false` — 자기교정 루프가
+ *   "실패를 관측할 수 있다"는 전제 위에 서 있는데, 그 전제가 깨진 자리다(company_enrich 와 같은 병).
+ *
+ *   ⇒ **부재를 신호로 읽는다.** 정상 종료는 lease 를 `'0'` 으로 반납한다. 말없이 죽으면 반납이 없어
+ *   만료된 타임스탬프가 남는다 — 다음 회차가 그 흔적을 보고 "직전 회차는 못 끝냈다"를 확정한다.
+ *   추가 쓰기 0(이미 있는 lease 를 읽기만 한다).
+ *
+ * ⚠️ 오탐: 한 회차가 lease TTL(5분)보다 오래 정상 실행되면 다음 회차가 유기로 오독한다. 그 경우 상한이
+ *   한 단계 내려갈 뿐이고(바닥 `SUBREQ_CAP_MIN`), 가산 회복이 도로 올린다 — 안전한 방향의 오차다.
+ * ⚠️ 못 보는 것: 죽은 지점이 어디인지는 모른다. "이번엔 덜 쓰자"만 말한다.
+ */
+export function capAfterAbandonedRun(learnedCap: number, envBudget: number, platformCap = SUBREQ_PLATFORM_CAP_DEFAULT): number {
+  const ceiling = Math.min(envBudget, platformCap)
+  const base = learnedCap > 0 ? Math.min(learnedCap, ceiling) : ceiling
+  return Math.max(Math.min(SUBREQ_CAP_MIN, ceiling), Math.floor(base * BACKOFF_RATIO))
+}
+
+/**
  * 다음 실행의 상한 — 바꿀 필요가 없으면 null(쓰기 생략).
  *
  * ⚠️ 2026-07-28 데드락 수리: 예전엔 회복 조건에 `exhausted`(= 예산을 0까지 다 씀)를 요구했다.

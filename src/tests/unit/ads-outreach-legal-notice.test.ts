@@ -51,7 +51,13 @@ describe('제휴 제안 문안 — 의무 표기', () => {
 
   it('발송 큐 API 가 문안을 동봉한다 — 안 실어 주면 화면이 조용히 폴백으로 돌아간다', () => {
     const src = read('src/features/marketing/api/admin-ads-influencers.routes.ts')
-    expect(src).toMatch(/mail_subject:\s*outreachSubject\(/)
-    expect(src).toMatch(/mail_body:\s*outreachBody\(/)
+    // ⚠️ 첫 판은 `mail_subject: outreachSubject(` **호출 형태**를 봤다가, 바로 다음 커밋에서
+    //   그 매핑을 SSOT 모듈로 옮기자 빨강이 났다(파일크기 래칫 때문). 지키려던 건 "큐 응답에 문안이
+    //   실린다"는 *사실*이지 그것을 어느 파일에서 조립하느냐가 아니다 → 구현 위치가 아니라
+    //   **SSOT 를 거쳐 응답에 실리는가**로 판정한다. 문안을 여기서 다시 손으로 쓰면 그건 아래에서 막는다.
+    expect(src).toMatch(/from '\.\/outreach-template'/)
+    expect(src).toMatch(/withOutreachTemplate\(/)
+    // 라우트가 자체 문안을 재정의하면(=세 벌째) 다시 갈라진다.
+    expect(src).not.toMatch(/유어딜 제휴 제안 드립니다/)
   })
 })
