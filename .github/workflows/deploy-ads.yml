@@ -12,8 +12,17 @@ on:
   push:
     branches: [main]
     paths:
+      # ⚠️ 2026-07-29: 이 목록은 **ur-ads 번들이 실제로 끌어오는 코드**를 덮어야 한다.
+      #   그 전엔 worker-ads/marketing 만 있어서, `src/worker/utils/cron-heartbeat.ts`(ur-ads 의
+      #   하트비트 기록기)나 `src/features/social-media/**`(매시간 도는 소셜 유지보수)만 바꾸면
+      #   **배포가 아예 안 돌아 ur-ads 가 조용히 낡은 코드로 계속 돌았다.**
+      #   목록이 손복제라 드리프트한 전형적인 사례 — 유닛(`ads-lane-cadence.test.ts`)이 이제
+      #   worker-ads 의 import prefix 를 스캔해 여기 빠진 게 있으면 실패시킨다.
       - 'src/worker-ads/**'
       - 'src/features/marketing/**'
+      - 'src/features/social-media/**'
+      - 'src/features/supply/**'
+      - 'src/worker/**'
       - 'wrangler-ads.toml'
       - 'scripts/build-worker-ads.js'
 

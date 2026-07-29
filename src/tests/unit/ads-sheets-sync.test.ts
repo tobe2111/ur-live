@@ -36,19 +36,27 @@ describe('leadToRow ↔ SHEET_HEADER 정렬', () => {
     expect(row[SHEET_HEADER.indexOf('평균조회수')]).toBe(3400)
     expect(row[SHEET_HEADER.indexOf('평균댓글')]).toBe(21)
   })
-  it('🏅 2026-07-27 확장 열 — 점수/롱폼중앙값/메일상태/분류근거/브랜드 (기계값 미러)', () => {
+  it('🏅 2026-07-27 확장 열 — 점수/롱폼중앙값/메일상태/분류근거/제외태그 (기계값 미러)', () => {
     const row = leadToRow({ ...lead, lead_score: 72, median_long_views: 2100, shorts_ratio: 40, is_brand: 1, email_status: 'bounced', last_post_at: '2026-07-19', category_source: 'content' })
     expect(row.length).toBe(SHEET_HEADER.length)
     expect(row[SHEET_HEADER.indexOf('점수')]).toBe(72)
     expect(row[SHEET_HEADER.indexOf('롱폼중앙값')]).toBe(2100)
     expect(row[SHEET_HEADER.indexOf('메일상태')]).toBe('bounced')
     expect(row[SHEET_HEADER.indexOf('분류근거')]).toBe('content')
-    expect(row[SHEET_HEADER.indexOf('브랜드')]).toBe(1)
+    expect(row[SHEET_HEADER.indexOf('제외태그')]).toBe('brand')
     // 미채점 리드는 전부 빈칸 + 분류근거는 category 있으면 NULL≈keyword
     const bare = leadToRow(lead)
     expect(bare[SHEET_HEADER.indexOf('점수')]).toBe('')
-    expect(bare[SHEET_HEADER.indexOf('브랜드')]).toBe('')
+    expect(bare[SHEET_HEADER.indexOf('제외태그')]).toBe('')
     expect(bare[SHEET_HEADER.indexOf('분류근거')]).toBe('keyword')
+  })
+  /**
+   * 🚫 2026-07-29 — 시트에서 손으로 고를 때도 "제안 사절"을 써 둔 사람이 걸러져야 한다.
+   *   거부 명시는 브랜드 추정보다 강한 신호라 같은 칸에서 우선한다(열 추가 없이 미러 유지).
+   */
+  it('🚫 제외태그는 거부 명시가 브랜드보다 우선한다', () => {
+    expect(leadToRow({ ...lead, opted_out: 1 })[SHEET_HEADER.indexOf('제외태그')]).toBe('optout')
+    expect(leadToRow({ ...lead, opted_out: 1, is_brand: 1 })[SHEET_HEADER.indexOf('제외태그')]).toBe('optout')
   })
 })
 
