@@ -73,6 +73,7 @@ import { getFeatureFlags } from './utils/feature-flags';
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
+import { recordCronBeat } from './utils/cron-heartbeat';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -107,11 +108,24 @@ export async function handleCronScheduled(
 ): Promise<void> {
   const cron = event.cron;
 
+  // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
+  //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
+  //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).
+  //   여기 한 곳이 68개 작업 전부의 진입점이라, 이 줄들이 곧 전체 커버리지다.
   const safeCron = async (name: string, task: () => Promise<unknown>) => {
+    const t0 = Date.now();
+    let ok = true;
+    let out: unknown;
     try {
-      await task();
+      // 반환값이 있으면 '무엇을 했나'까지 기록한다 — 0건으로 끝난 게 '할 일이 없어서'인지
+      // '조용히 실패해서'인지 구분하려면 실행 사실만으로는 부족하다.
+      out = await task();
     } catch (err) {
+      ok = false;
       await notifyCronFailure(env, name, err);
+    } finally {
+      // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out);
     }
   };
 
@@ -160,6 +174,13 @@ export async function handleCronScheduled(
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
+    // 🚨 2026-07-28: cron 멈춤 감시 — 하트비트가 '보이게' 했다면 이건 '알려준다'.
+    //   기대 주기는 하트비트에 저장된 cron 식으로 스스로 계산(수동 주기표 없음). 12시간 재알림 억제.
+    //   ⚠️ 자기 자신이 멈추면 못 알린다(watchdog 한계) — 그 경우는 외부 uptime 관측이 잡는다.
+    ctx.waitUntil(safeCron('cron-stale-watch', async () => {
+      const { handleCronStaleWatch } = await import('./cron/cron-stale-watch');
+      await handleCronStaleWatch(env);
+    }));
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
     // 📰 2026-07-19 (운영 자동화 ①): 어드민 일일 다이제스트 — hourly 슬롯에서 UTC 22시(KST 07:00)만
     //   실행(내부 게이트 + 같은 KST 날짜 멱등). read-only 집계 → 벨+Discord(+설정 시 메일/알림톡).

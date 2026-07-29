@@ -3,7 +3,9 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
+import OpeningWelcomePanel from './store-prospects/OpeningWelcomePanel'
 
 interface Prospect {
   id: number; biz_name: string; category: string | null; uptae: string | null
@@ -28,9 +30,12 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
+const PAGE_SIZE = 100
 
 export default function AdminStoreProspectsPage() {
   const [rows, setRows] = useState<Prospect[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
   const [stats, setStats] = useState<Stats | null>(null)
   const [collect, setCollect] = useState<Collect | null>(null)
   const [collecting, setCollecting] = useState(false)
@@ -43,6 +48,7 @@ export default function AdminStoreProspectsPage() {
   const [fRegion, setFRegion] = useState('')
   const [fView, setFView] = useState('') // '' | 'newOpen' | 'closed' | 'phone'
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
 
   const loadStats = useCallback(async () => {
     try { const r = await api.get('/api/admin/store-prospects/stats'); if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setNeis(r.data.neis || null); setHira(r.data.hira || null) } } catch { /* noop */ }
@@ -57,14 +63,17 @@ export default function AdminStoreProspectsPage() {
       if (fView === 'closed') p.set('includeClosed', '1')
       if (fView === 'phone') p.set('hasPhone', '1')
       if (fView === 'email') p.set('hasEmail', '1')
-      if (q.trim()) p.set('q', q.trim())
+      if (dq.trim()) p.set('q', dq.trim())
+      p.set('limit', String(PAGE_SIZE))
+      p.set('offset', String(page * PAGE_SIZE))
       const r = await api.get(`/api/admin/store-prospects?${p.toString()}`)
-      if (r.data?.success) setRows(r.data.prospects || [])
+      if (r.data?.success) { setRows(r.data.prospects || []); setTotal(Number(r.data.total) || 0) }
     } catch { toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [fCategory, fRegion, fView, q])
+  }, [fCategory, fRegion, fView, dq, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadRows() }, [loadRows])
+  useEffect(() => { setPage(0) }, [fCategory, fRegion, fView, q]) // 필터 변경 시 1페이지로
 
   async function runCollect() {
     if (!collect?.adsBinding) { toast.error('ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작합니다'); return }
@@ -123,6 +132,9 @@ export default function AdminStoreProspectsPage() {
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🏪 매장 후보" subtitle="지방행정 인허가로 발굴한 유어딜 입점 대상 매장 — 발굴·개업감지·폐업정리 (수집 ≠ 발송)" />
 
+        {/* 🎉 개업 웰컴 — 최근 개업 큐 + 개업 컨설팅 브리핑(상권 수치·멘트) */}
+        <OpeningWelcomePanel onStatusChange={(id, status) => patchStatus(id, status)} />
+
         <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}
           {statCard('영업중', stats?.operating || 0)}
@@ -140,7 +152,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '🏥 병원 수집'}</button>
           <button onClick={async () => { try { const r = await api.get('/api/admin/store-prospects/export', { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="영업중 매장 후보를 엑셀 호환 CSV 로(한글 BOM) — 인증 다운로드">⬇ CSV</button>
           <div className="grow" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>
 
         {collect && (
@@ -241,6 +253,16 @@ export default function AdminStoreProspectsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* 페이지네이션 — 총건수 기준으로 끝까지 이동(대표 "목록이 끝까지 안 나와") */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <span>{total.toLocaleString()}건 중 {(total === 0 ? 0 : page * PAGE_SIZE + 1).toLocaleString()}–{Math.min(total, (page + 1) * PAGE_SIZE).toLocaleString()} · {page + 1}/{Math.max(1, Math.ceil(total / PAGE_SIZE)).toLocaleString()} 페이지</span>
+          <div className="grow" />
+          <button onClick={() => setPage(0)} disabled={page === 0} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">« 처음</button>
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">‹ 이전</button>
+          <button onClick={() => setPage(p => Math.min(Math.ceil(total / PAGE_SIZE) - 1, p + 1))} disabled={(page + 1) * PAGE_SIZE >= total} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">다음 ›</button>
+          <button onClick={() => setPage(Math.max(0, Math.ceil(total / PAGE_SIZE) - 1))} disabled={(page + 1) * PAGE_SIZE >= total} className="px-2.5 py-1.5 rounded border border-gray-300 bg-white disabled:opacity-40">끝 »</button>
         </div>
       </div>
     </AdminLayout>

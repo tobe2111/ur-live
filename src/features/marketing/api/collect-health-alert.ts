@@ -1,0 +1,48 @@
+/**
+ * 🔔 수집 건강 경보 — influencer-auto-collect 에서 분리(파일 크기 상한 준수).
+ *   "신규 0건"이 며칠 무음이던 2026-07-20 실사고(배포가 시크릿을 wipe)의 재발 방지 장치.
+ *   상태(경보 중/해제)는 platform_settings 한 칸에 두고, 회복 시 1회 해제 알림을 보낸다.
+ */
+import type { Env } from '@/worker/types/env'
+import { readSetting, writeSetting } from './influencer-auto-collect'
+
+export type CollectDiag = {
+  yt: { configured: boolean; found: number; saved: number; error?: string }
+  naver: { configured: boolean; found: number; saved: number; error?: string }
+  tistory?: { configured: boolean; found: number; saved: number; error?: string }
+}
+
+const ALERT_KEY = 'ads_autocollect_alert_at' // 경보 throttle 상태(빈값=건강)
+
+/** 🔔 조용한 실패 방어(2026-07-20 실사고 — deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음): 키 소실 또는
+ *  전 플랫폼 발굴 0 이면 Discord 경보(6h throttle · 회복 시 해제). fail-soft · 웹훅 미설정=no-op. */
+export async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
+  const webhook = env.DISCORD_WEBHOOK_URL
+  if (!webhook) return
+  const { diag, saved, quotaHit } = run
+  const keyMissing = !diag.yt.configured || !diag.naver.configured
+  // 🛡️ 2026-07-23: 풀 포화(발굴O·전부 중복 → saved=0)는 정상이라 오경보였음 → found 까지 0 일 때만 불건강.
+  const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
+  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
+  const prevAt = await readSetting(DB, ALERT_KEY)
+  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
+  if (!unhealthy) {
+    if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
+      await writeSetting(DB, ALERT_KEY, '')
+      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
+    }
+    return
+  }
+  const last = prevAt ? Date.parse(prevAt) : 0
+  const now = Date.now()
+  if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
+  await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
+  const lines = [
+    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
+    `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
+    `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
+    diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
+    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '', '어드민 인플루언서 풀에서 상세 확인.',
+  ].filter(Boolean)
+  await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
+}

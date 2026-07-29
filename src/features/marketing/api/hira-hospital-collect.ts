@@ -17,8 +17,9 @@ const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '')
 type RawH = Record<string, string>
 const fnv = (s: string): string => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 } return h.toString(16) }
 
-/** XML `<item>…</item>` 경량 파싱(Workers 에 DOMParser 없음) — `<tag>값</tag>` 쌍 추출. JSON 응답이면 그대로. */
-function parseItems(text: string): { items: RawH[]; msg?: string } {
+/** XML `<item>…</item>` 경량 파싱(Workers 에 DOMParser 없음) — `<tag>값</tag>` 쌍 추출. JSON 응답이면 그대로.
+ *  data.go.kr 표준 봉투 공용 — 국민연금(nps-workplace-enrich)도 재사용(export). */
+export function parseItems(text: string): { items: RawH[]; msg?: string } {
   const t = text.trim()
   if (t.startsWith('{')) {
     try {
@@ -97,8 +98,16 @@ export async function runHiraHospitalCollect(env: Env, maxPages = 3): Promise<Hi
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
     const url = `${HIRA_BASE}/${HIRA_OP}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=500&_type=json`
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) }).catch(() => null)
-    if (!res || !res.ok) { lastMsg = res ? `HTTP ${res.status}` : '네트워크 오류'; break }
+    // ⚠️ 2026-07-28 수리: `.catch(() => null)` 이 예외 원문을 버려 32회 연속 실패가 전부 '네트워크 오류'
+    //   한 줄로 뭉개졌다 — 서브리퀘스트 한도인지 실제 네트워크 장애인지 구분 불가(오진의 원인).
+    let res: Response | null = null
+    let netMsg = '네트워크 오류'
+    try { res = await fetch(url, { signal: AbortSignal.timeout(20000) }) } catch (err) {
+      const m = err instanceof Error ? err.message : String(err || '')
+      if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달 — maxPages 를 줄일 것'
+      else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
+    }
+    if (!res || !res.ok) { lastMsg = res ? `HTTP ${res.status}` : netMsg; break }
     const text = await res.text().catch(() => '')
     const { items, msg } = parseItems(text)
     if (msg) lastMsg = msg

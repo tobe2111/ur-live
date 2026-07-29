@@ -9,6 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { welcomeEmail, textToHtml } from './outreach-send'
+import { getOrCreateClaimCode } from './lead-claim'
 import { sendEmail } from '@/services/email'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -29,6 +30,11 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
   const email = clean(b.email, 120).toLowerCase()
   const contact = clean(b.contact, 120) // 인스타/카톡/전화 등 자유 연락처
   const message = clean(b.message, 500)
+  // 🆕 2026-07-27 셀프 등록 확장 — 매칭 품질 3요소(활동 지역·규모·희망 단가)를 자유서술이 아닌 필드로.
+  //   ⚖️ 전부 **자기신고**라 측정치(subscriber_count/recent_avg_views)에는 절대 쓰지 않고 description 에만 기록.
+  const region = clean(b.region, 60)      // 활동 지역(예: 서울 서초구)
+  const followers = clean(b.followers, 20).replace(/[^\d]/g, '').slice(0, 9) // 구독자/팔로워 규모(숫자만)
+  const rate = clean(b.rate, 60)          // 희망 협찬 단가(자유 표기 — 협의/제품제공 등 비금액 답변 허용)
   if (!name || name.length < 2) return c.json({ success: false, error: '이름/채널명을 입력해주세요' }, 400)
   if (!/^https?:\/\/.{3,}/i.test(url)) return c.json({ success: false, error: '채널 주소(URL)를 정확히 입력해주세요' }, 400)
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return c.json({ success: false, error: '이메일 형식을 확인해주세요' }, 400)
@@ -38,15 +44,29 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
   await ensureInfluencerSchema(c.env.DB)
   const channelId = url.replace(/\/+$/, '').toLowerCase().slice(0, 200) // URL 기준 멱등(재신청 중복 방지)
   const memo = [message && `신청 메모: ${message}`, contact && `연락처: ${contact}`].filter(Boolean).join(' / ').slice(0, 500) || null
+  // 자기신고 프로필 → description(어드민 풀 검색 대상 필드 — '방배' 같은 지역 검색이 바로 동작).
+  //   '[자기신고]' 접두로 크롤 수집분과 구분. 분야를 함께 적어 야간 재분류가 카테고리를 뒤집지 않게 한다.
+  const selfProfile = [
+    '[자기신고]', region && `지역: ${region}`, followers && `팔로워: ${Number(followers).toLocaleString()}`,
+    rate && `희망단가: ${rate}`, `분야: ${category}`,
+  ].filter(Boolean).join(' · ').slice(0, 400)
   // 신청 = 사전동의. 기존 리드면 컨택/동의만 보강(수동 상태·메모 불변), 신규면 삽입.
   await c.env.DB.prepare(`INSERT INTO ad_influencer_leads
-      (account_id, platform, channel_id, name, url, email, category, source_keyword, source, memo, consented_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'inbound-신청', 'inbound', ?, datetime('now'), 'new')
+      (account_id, platform, channel_id, name, url, email, category, source_keyword, source, memo, description, consented_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'inbound-신청', 'inbound', ?, ?, datetime('now'), 'new')
     ON CONFLICT(account_id, platform, channel_id) DO UPDATE SET
       email = COALESCE(ad_influencer_leads.email, excluded.email),
       source = 'inbound',
+      -- 재신청: 크롤로 수집된 소개글은 보존(분류 근거), 비어 있을 때만 자기신고로 채움. 메모는 최신 신청분 반영.
+      description = COALESCE(NULLIF(ad_influencer_leads.description, ''), excluded.description),
+      memo = COALESCE(excluded.memo, ad_influencer_leads.memo),
       consented_at = COALESCE(ad_influencer_leads.consented_at, excluded.consented_at)`)
-    .bind(POOL, platform, channelId, name, url, email || null, category, memo).run().catch(() => null)
+    .bind(POOL, platform, channelId, name, url, email || null, category, memo, selfProfile).run().catch(() => null)
+  // 🔗 가입 추적 코드 — 신청 직후 바로 시작하려는 사람을 위해 응답에 실어준다(온보딩 메일과 같은 코드).
+  //   실패해도 접수는 유효(코드 없으면 프론트가 일반 가입 링크로 폴백).
+  const leadRow = await c.env.DB.prepare('SELECT id FROM ad_influencer_leads WHERE account_id = ? AND platform = ? AND channel_id = ?')
+    .bind(POOL, platform, channelId).first<{ id: number }>().catch(() => null)
+  const claimCode = leadRow ? await getOrCreateClaimCode(c.env.DB, leadRow.id).catch(() => null) : null
   // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
   if (email && c.env.RESEND_API_KEY) {
     const send = async () => {
@@ -55,7 +75,7 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
     }
     if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(send()); else await send().catch(() => null)
   }
-  return c.json({ success: true, message: '신청이 접수되었습니다. 검토 후 제휴 담당자가 연락드립니다.' })
+  return c.json({ success: true, message: '신청이 접수되었습니다. 검토 후 제휴 담당자가 연락드립니다.', claim_code: claimCode })
 })
 
 export { app as influencerApplyRoutes }

@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import DemandPanel from './buyer-pool/DemandPanel'
 
@@ -136,6 +137,7 @@ export default function AdminBuyerPoolPage() {
   const [hasContact, setHasContact] = useState(false)
   const [category, setCategory] = useState('')
   const [q, setQ] = useState('')
+  const dq = useDebouncedValue(q) // ⏱️ 서버 검색은 타이핑 멈춘 뒤 1회(키 입력마다 왕복 방지)
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
   const [showTargets, setShowTargets] = useState(false)
@@ -185,11 +187,11 @@ export default function AdminBuyerPoolPage() {
       if (intent) params.set('intent', intent)
       if (minScore > 0) params.set('minScore', String(minScore))
       if (hasContact) params.set('hasContact', '1')
-      if (q.trim()) params.set('q', q.trim())
+      if (dq.trim()) params.set('q', dq.trim())
       const r = await api.get(`/api/admin/buyer-pool?${params.toString()}`)
       if (r.data?.success) { setLeads(r.data.leads || []); setLoadError(false) }
     } catch { setLoadError(true); toast.error('목록을 불러오지 못했습니다') } finally { setLoading(false) }
-  }, [status, country, category, intent, minScore, hasContact, q])
+  }, [status, country, category, intent, minScore, hasContact, dq])
 
   const loadTargets = useCallback(async () => {
     try { const r = await api.get('/api/admin/buyer-pool/targets'); if (r.data?.success) setTargets(r.data.targets || []) } catch { /* noop */ }

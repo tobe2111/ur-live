@@ -90,9 +90,39 @@ jobs:
             FAIL=1
           fi
 
+          echo "##### 6) 유어애즈(/ads) 표면 — 2026-07-27 신설(그간 회귀 자동감지 사각) #####"
+          # 랜딩 HTML(SPA 셸) 200
+          check "유어애즈 랜딩"              "/ads"                                ''
+          # ur-ads 워커 위임 살아있음 — 무토큰 /auth/me 는 401 JSON 이 정상(200/404/500 이면 위임/워커 죽음).
+          ADSME=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 "$BASE/api/ads/auth/me" || echo "000")
+          if [ "$ADSME" = "401" ]; then
+            echo "✅ PASS  ur-ads 워커 위임 (/api/ads/auth/me → 401)"
+          else
+            echo "❌ FAIL  ur-ads 워커 위임 이상 (/api/ads/auth/me → HTTP $ADSME, 기대 401)"
+            FAIL=1
+          fi
+          # 메인 워커 ads-pay 설정(공개) — 게이트 상태 무관 200 JSON
+          check "유어애즈 결제 설정"          "/api/ads-pay/config"                 ''
+
+          echo "##### 7) 모집 퍼널 뒷단 — 2026-07-28 신설(신청 → 가입 → 첫 판매 연결) #####"
+          # 초대코드 클레임 페이지 — 온보딩 메일·신청완료·어드민 모집 안내가 전부 이 URL 로 보낸다(죽으면 퍼널 단절).
+          check "크리에이터 시작 페이지"      "/creators/start"                     ''
+          check "크리에이터 신청 페이지"      "/creators/apply"                     ''
+          # 클레임 API — 존재할 수 없는 코드라 **아무 행도 안 바뀜**(read-only 와 동등).
+          #   기대 401(로그인 필요) = 라우트·모듈·스키마(claim_code/linked_user_id/joined_at ALTER) 전부 살아있음.
+          #   5xx 면 스키마 미적용 또는 모듈 로드 실패 — prod D1 에 컬럼이 안 생겼다는 유일한 무인증 신호.
+          CLAIM=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 -X POST "$BASE/api/creator-claim" \
+            -H 'content-type: application/json' -d '{"code":"ZZZZZZZZZZZZ"}' || echo "000")
+          if [ "$CLAIM" = "401" ]; then
+            echo "✅ PASS  초대코드 클레임 (POST /api/creator-claim → 401 · 스키마·라우트 정상)"
+          else
+            echo "❌ FAIL  초대코드 클레임 이상 (POST /api/creator-claim → HTTP $CLAIM, 기대 401)"
+            FAIL=1
+          fi
+
           echo
           if [ "$FAIL" = "1" ]; then
             echo "::error::PROD SMOKE 실패 — 위 ❌ 항목 확인. 도매몰 핵심 플로우 회귀 가능."
             exit 1
           fi
-          echo "🎉 모든 핵심 불변식 PASS — 도매몰/소비자 핵심 플로우 정상."
+          echo "🎉 모든 핵심 불변식 PASS — 도매몰/소비자/유어애즈 핵심 플로우 정상."

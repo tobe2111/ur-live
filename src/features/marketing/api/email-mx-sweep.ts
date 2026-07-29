@@ -40,7 +40,7 @@ export async function sweepEmailMx(env: Env): Promise<MxSweepStats> {
   // ── ① 회사 리드 — 이메일 보유 행 커서 순회 ──
   let cursorC = await readCursor(CURSOR_C)
   {
-    const rows = (await DB.prepare("SELECT id, email, phone FROM ad_company_leads WHERE email IS NOT NULL AND email != '' AND id > ? ORDER BY id ASC LIMIT 150")
+    const rows = (await DB.prepare("SELECT id, email, phone FROM ad_company_leads WHERE email IS NOT NULL AND email != '' AND merged_into IS NULL AND id > ? ORDER BY id ASC LIMIT 150")
       .bind(cursorC).all<{ id: number; email: string; phone: string | null }>().catch(() => null))?.results || []
     if (!rows.length) cursorC = 0 // 소진 → 다음 실행에 처음부터(신규분 재검 순환)
     for (const r of rows) {

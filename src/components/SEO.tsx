@@ -111,8 +111,13 @@ export default function SEO({
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       <meta name="apple-mobile-web-app-title" content={siteName} />
 
-      {/* Naver — main 도메인(urdeal.kr) 전용 인증 토큰. utongstart.com 은 별도 토큰 필요 → 잘못된 토큰 노출 방지 위해 도매에선 생략. */}
-      {!isWholesale && <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />}
+      {/* 🔎 2026-07-28 (대표 "네이버에 유어딜 검색해도 안 나옴" 조사): 네이버 인증 토큰을 여기서 제거.
+          ❌ 이 컴포넌트는 react-helmet(=JS 렌더) 이라 **네이버 크롤러(Yeti)가 볼 수 없다** — 검증된 근거:
+             7/20 여기에 토큰 추가 + 사이트 등록 → 7/21 수집 0 → 7/22 index.html 에 정적 토큰 배포된
+             바로 그날 수집 2·색인 1 발생(서치어드바이저 실측). 즉 정적 토큰만 실효.
+          ✅ 인증 토큰 SSOT = `index.html` 정적 meta(프리렌더 → JS 없이 Yeti 도달).
+             서로 다른 두 토큰이 공존하면 소유확인이 어느 쪽을 볼지 불확실해지므로 여기선 삭제한다.
+          ⚠️ utongstart.com(도매)은 별도 등록·별도 토큰 필요 — 필요 시 그 도메인 정적 HTML 에 추가할 것. */}
 
       {/* JSON-LD — 단일 또는 배열 둘 다 지원 (Google 권장: 페이지당 여러 개 OK) */}
       {Array.isArray(jsonLd) ? (

@@ -11,11 +11,12 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { describePublicDataFailure } from './public-data-diag'
 
 const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
 // 대행사/마케팅 계열 판별 — 업종명·업체명 어느 필드든 매칭(필드명 불확실 대비 전 값 스캔).
-const AGENCY_RE = /광고|마케팅|홍보|커뮤니케이션|미디어|디자인|이벤트|프로모션|콘텐츠|브랜딩|퍼포먼스/
+const AGENCY_RE = /광고|마케팅|홍보|커뮤니케이션|미디어|디자인|이벤트|프로모션|콘텐츠|브랜딩|퍼포먼스|기획|판촉|인쇄/ // 2026-07-27 종합기획사 포집(아인종합기획형)
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawV = Record<string, unknown>
 const g = (it: RawV, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
@@ -24,7 +25,8 @@ const pickRegion = (addr: string): string | null => { const m = addr.match(/([�
 async function fetchVendorPage(base: string, op: string, key: string, page: number, bgnDt: string, endDt: string): Promise<{ items: RawV[]; msg?: string }> {
   const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=200&type=json&inqryDiv=1&inqryBgnDt=${bgnDt}&inqryEndDt=${endDt}`
   const res = await fetch(url, { signal: AbortSignal.timeout(20000) }).catch(() => null)
-  if (!res || !res.ok) return { items: [], msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], msg: await describePublicDataFailure(res) }
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
@@ -98,7 +100,10 @@ export async function runNaraVendorCollect(env: Env, maxPages = 5): Promise<Nara
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
-  const error = saved === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  // 404 = 경로/오퍼레이션명 문제(키 문제 아님). 오퍼레이션명은 애초에 문서 추정값이라 특히 의심 대상 —
+  //   무엇을 고쳐야 하는지 화면에 박아둔다(2026-07-28: 8회 연속 `API: HTTP 404` 만 뜨고 방치됨).
+  const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치(현재 op 는 문서 추정값). 나라장터 사용자정보 서비스 스펙 확인 후 ADS_NARA_VENDOR_ENDPOINT/ADS_NARA_VENDOR_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
+  const error = saved === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
   const s: NaraVendorStats = { last_run: stamp, page, scanned, matched, saved, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
   await persist(s)
   return s

@@ -13,6 +13,7 @@
  */
 
 import { resolveCategory, classifyCategory } from './influencer-classify'
+import { runDdlOnce } from './ads-schema-guard'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
 
@@ -202,9 +203,9 @@ export type DiscoverResult =
 /** 🔒 서브리퀘스트 예산(2026-07-20) — Cloudflare Worker 1회 실행의 subrequest 한도 방어.
  *   여러 키워드 발굴이 한 cron 실행에 누적돼 "Too many subrequests" 로 중도 실패하던 사고 방지.
  *   호출자가 공유 객체를 넘기면 각 외부 fetch 전에 소진 → 0 이 되면 발굴을 우아하게 조기 종료(에러 아님).
- *   미전달이면 무제한(단건 수동 발굴 등 기존 동작 불변). */
-export type FetchBudget = { left: number }
-const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+ *   미전달이면 무제한(단건 수동 발굴 등 기존 동작 불변). `limitHit`(2026-07-28) = 이번 실행에서 **플랫폼 한도 오류를 실제로 관측**했나 — 예산(left)은 우리가 세는 숫자일 뿐 실제 한도가 아니라, 한도에 부딪힌 사실은 fetch 실패 메시지로만 알 수 있다. 각 레인이 이 플래그를 세우고 호출부가 즉시 중단 + 학습 상한 하향(collect-budget.ts)에 쓴다. */
+export type FetchBudget = { left: number; limitHit?: boolean; deadline?: number } // deadline(2026-07-28, epoch ms)=이후 새 fetch 금지(벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다). 미설정=무제한, 기존 레인 동작 불변
+const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
@@ -539,12 +540,14 @@ const _schemaPromise = new WeakMap<object, Promise<void>>()
 export function ensureInfluencerSchema(DB: D1Database): Promise<void> {
   const cached = _schemaPromise.get(DB)
   if (cached) return cached
-  const p = _ensureInfluencerSchema(DB)
+  const p = runDdlOnce(DB, 'ads_ddl_influencer', AD_INFLUENCER_DDL).then(() => undefined)
   _schemaPromise.set(DB, p)
   return p
 }
-async function _ensureInfluencerSchema(DB: D1Database): Promise<void> {
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_influencer_leads (
+/** DDL 전체(순서 보존) — 🧱 2026-07-28: 매 인보케이션 16쿼리 → 체크섬 1회 조회(무료 플랜 예산 회수).
+ *  ⚠️ 문장을 추가/수정하면 체크섬이 자동으로 바뀌어 다음 실행에 전부 재적용된다(수동 버전 bump 불필요). */
+export const AD_INFLUENCER_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS ad_influencer_leads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id INTEGER NOT NULL,
     platform TEXT NOT NULL DEFAULT 'youtube',
@@ -568,29 +571,26 @@ async function _ensureInfluencerSchema(DB: D1Database): Promise<void> {
     source_keyword TEXT,
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(account_id, platform, channel_id)
-  )`).run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_acct ON ad_influencer_leads(account_id, id)').run().catch(() => null)
-  // 기존 테이블(구버전) 대비 컬럼 보강 — 이미 있으면 catch 로 무시(자동 수집 출처 분류용).
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT').run().catch(() => null)
-  // 아웃리치 후속 관리 — 컨택 시점 + 다음 팔로업 예정일(무응답 리드 추적용).
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME').run().catch(() => null)
-  // 컨택 채널(이메일/인스타DM/네이버쪽지/카톡/전화/기타) — memo 규칙 대신 구조화 필드.
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT').run().catch(() => null)
-  // ✍ 개인화 제안 초안(JSON {subject,body,dm,generated_at}) — 생성만, 발송 없음(정보통신망법).
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT').run().catch(() => null)
-  // 🔗 링크인바이오 보강 시도 시각 — NULL 이면 미시도(cron 이 잔여 예산으로 순차 소진, 재시도 폭주 방지).
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME').run().catch(() => null)
-  // 📥 유입 출처(자동수집=NULL/'auto', 인바운드 신청='inbound') + 사전동의 시각(인바운드=신청 시 기록 → 자유 연락 가능).
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME').run().catch(() => null)
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_acct ON ad_influencer_leads(account_id, id)',
+  // 구버전 테이블 대비 컬럼 보강(이미 있으면 catch 로 무시): 출처 분류 · 아웃리치 후속(컨택시점/팔로업/채널) ·
+  //   ✍ 개인화 초안(생성만·발송 없음, 정보통신망법) · 🔗 링크인바이오 시도 스탬프 · 📥 유입출처+사전동의 시각.
+  'ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME',
   // 📈 성과 지표(2026-07-21) — YT 최근 영상 ≤10 평균 조회/댓글, 네이버 RSS 30일 포스팅 수, 수집 스탬프.
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_views INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_comments INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recent_posts_30d INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN perf_checked_at DATETIME').run().catch(() => null)
-}
+  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_views INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_comments INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_posts_30d INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN perf_checked_at DATETIME',
+]
+
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
 export async function saveInfluencerLeads(

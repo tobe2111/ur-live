@@ -18,7 +18,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
-import { startDashboardSession } from '@/worker/utils/dashboard-session';
+import { startDashboardSession, ensureDashboardSessionsTable } from '@/worker/utils/dashboard-session';
 
 export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -404,6 +404,54 @@ adminAccountsRoutes.post('/admins/:id/reset-pin', cors(), rateLimit({ action: 'a
     return c.json({ success: true, message: '보안 PIN이 초기화되었습니다. 해당 관리자는 다음 로그인 시 새 PIN을 설정합니다.' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] reset pin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+/**
+ * 🤝 PATCH /admins/:id/multi-session { enabled: boolean } — 동시 로그인 허용 토글 (super_admin 전용).
+ *
+ * 배경(2026-07-28 대표 "동시 로그인되게 하고"): 대시보드는 시트별 **단일 세션**이라 같은 계정으로 다른
+ *   곳에서 로그인하면 기존 세션이 즉시 무효(SESSION_SUPERSEDED). 자동화 계정(claude@…)은 여러 세션이
+ *   동시에 쓰도록 문서화돼 있어 서로를 계속 밀어냈고, 대표가 브라우저로 들어오면 자동화가 끊겼다.
+ *
+ * ⚠️ 보안 트레이드오프: 단일 세션은 계정 공유·도용의 **탐지 신호**이기도 하다(남이 쓰면 내가 튕긴다).
+ *   그래서 **계정별 opt-in**(기본 0)이며, 사람이 쓰는 운영 계정에는 켜지 말 것 — 자동화 계정 전용.
+ */
+adminAccountsRoutes.patch('/admins/:id/multi-session', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(currentUser?.id).first<{ role: string }>();
+    if (!me || me.role !== 'super_admin') {
+      return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+    }
+    const adminId = Number(c.req.param('id'));
+    if (!Number.isFinite(adminId) || adminId <= 0) return c.json({ success: false, error: '유효하지 않은 id 입니다' }, 400);
+    const body = await c.req.json<{ enabled?: boolean }>().catch(() => ({} as { enabled?: boolean }));
+    const enabled = body.enabled === true ? 1 : 0;
+
+    const target = await DB.prepare('SELECT id, email FROM admins WHERE id = ?').bind(adminId).first<{ id: number; email: string }>();
+    if (!target) return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+
+    // 세션 추적행이 아직 없을 수 있다(그 계정이 아직 로그인한 적 없음) → 행을 만들되 **플래그만** 건드린다.
+    //   ⚠️ min_valid_iat 은 절대 덮어쓰지 않는다 — 0 으로 되돌리면 이전에 무효화됐던 옛 토큰이 되살아난다.
+    await ensureDashboardSessionsTable(DB);
+    const r = await DB.prepare(
+      `INSERT INTO dashboard_sessions (account_type, account_id, min_valid_iat, updated_at, multi_session)
+       VALUES ('admin', ?, 0, datetime('now'), ?)
+       ON CONFLICT(account_type, account_id) DO UPDATE SET
+         multi_session = excluded.multi_session,
+         updated_at    = excluded.updated_at`,
+    ).bind(adminId, enabled).run().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: { admin_id: adminId, email: target.email, multi_session: enabled === 1 },
+      changed: (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] multi-session toggle error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

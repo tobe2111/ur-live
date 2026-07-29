@@ -20,6 +20,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
+import { describePublicDataFailure } from './public-data-diag'
 
 // 지방행정 인허가 공통 베이스(업종별 슬러그를 append). ⚠️ 슬러그 맵은 LICENSE_UPJONG(store-prospects.ts) SSOT.
 const LOCALDATA_BASE = 'https://apis.data.go.kr/1741000'
@@ -79,8 +80,18 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
 /** 인허가 1페이지(1업종 엔드포인트) 조회 → RawLicense[]. */
 async function fetchLicensePage(base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
   const url = `${base}/${endpoint}?serviceKey=${encodeURIComponent(key)}&pageIndex=${pageIndex}&pageSize=500&type=json&resultType=json&lastModTsBgn=${dayYmd}&lastModTsEnd=${dayYmd}`
-  const res = await fetch(url, { signal: AbortSignal.timeout(20000) }).catch(() => null)
-  if (!res || !res.ok) return { items: [], count: 0 }
+  // ⚠️ 2026-07-28 수리: 예전엔 실패 시 `{items:[],count:0}` 만 반환해 **원인을 통째로 삼켰다** →
+  //   stats 의 error 가 항상 undefined → 5회 실행 0건인데 화면상 "정상 0건"과 구분 불가(진단 실명).
+  //   franchise-collect 가 이미 지키는 룰("실패 원인을 삼키지 않는다")을 이 레인에도 적용.
+  let res: Response | null = null
+  let netMsg = '네트워크 오류'
+  try { res = await fetch(url, { signal: AbortSignal.timeout(20000) }) } catch (err) {
+    const m = err instanceof Error ? err.message : String(err || '')
+    if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(업종×페이지 과다) — ADS_LOCALDATA_MAX_PAGES 를 줄일 것'
+    else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
+  }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], count: 0, msg: await describePublicDataFailure(res, netMsg) }
   const data = await res.json().catch(() => null) as Record<string, unknown> | null
   const { rows, msg } = extractRows(data)
   return { items: rows, count: rows.length, msg }

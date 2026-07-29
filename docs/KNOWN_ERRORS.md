@@ -44,6 +44,8 @@
 | 글로벌 CSS invert 적용 후 UI 깨짐 | 다크모드 invert hack | 사용 금지 (`docs/INCIDENTS.md`) |
 | CSP nonce 적용 후 화면 깨짐 | `style-src` 에 `'nonce-XXX'` | 사용 금지. `'unsafe-inline'` 유지 |
 | 특정 브라우저에서만 페이지 무한로딩/"응답 없는 페이지"/흰화면 + 콘솔 무에러 (특히 /admin 등 저빈도 대시보드) | 그 브라우저에 잔존한 캐시(낡은 index.html)·캐시형 서비스워커·만료 토큰 상태 — 서버는 정상인데 원격에서 원인 특정 불가 | **사용자에게 `live.ur-team.com/recover` 열게 하기** — SW/캐시/HTML 신선도/청크/토큰/어드민 API 를 자동 진단 + 원클릭 완전복구 버튼. 결과는 `frontend_errors`(type='admin-diag') 에 자동 기록 (2026-07-04, killer-sw.routes.ts) |
+| "화면을 새로 불러올게요" 복구 오버레이가 **가끔** 뜨고(주로 배포 직후, `?__cb=` 붙은 URL) 버튼도 무효, **시간 지나면 저절로 정상** | 배포 전파 창 — 새 index.html 은 서빙되는데 새 청크가 엣지에 퍼지기 전(실제 수십 초~수분) 청크 404 반복. 옛 재시도(0.7~2.5s×3회/90s)는 '수초 창' 가정이라 창 안에서 소진 → 오버레이, 버튼 reload 도 창 안이라 또 실패 | 2026-07-27 수리: 지수 백오프 8회/5분(0.7→30s, 로더 상태로 창 통과) + 워치독 유예 억제 + 오버레이 30s 자동 재시도(index.html 부트가드 ↔ chunk-error.ts SSOT 쌍). 재발 시 어드민 `/api/_errors/recent` 의 `[boot-stuck]` beacon(reason/chunkSeen/lastErr)으로 원인 확증 |
+| PC F12(DevTools) 모바일 에뮬레이션에서 **카카오 지도 스와이프/팬이 아예 안 됨** (시트/버튼은 정상, 콘솔 무에러) — Windows 터치 노트북 실기기도 동일 | 카카오맵 코어(4.5.13)가 로드 시 입력 모드를 1회 판정: `H = ontouchstart && (!Chrome UA \|\| Android UA)` — H=false 면 **마우스 핸들러만** 바인딩. DevTools 기본 "Responsive"(UA 스푸핑 없음)·터치스크린 데스크톱 Chrome/Edge 는 "데스크톱 Chrome UA+터치" 라 카카오는 마우스만 듣는데 브라우저는 터치만 보냄 | `src/lib/kakao-touch-shim.ts` `attachKakaoTouchShim(el)` — 해당 환경에서만 터치→마우스 합성(탭은 호환 click 위임 → 핀 클릭 보존). useKakaoMap·VoucherMap 배선 완료(2026-07-27, CDP 3시나리오 검증). 새 지도 표면 추가 시 이 헬퍼 부착. 참고: Pixel/iPhone **프리셋** 선택 시엔 UA 스푸핑으로 원래 정상 |
 
 ## 환경변수 / 배포
 
@@ -62,6 +64,17 @@
 | Toss confirm 후 wallet/order 이중 처리 | CAS 가드 없음 | 옵션 B 헬퍼 (`confirmTossPayment` + caller CAS) |
 
 ---
+
+## 수집 / 크롤 (유어애즈 파트너 풀 · 도매 제조사 풀)
+
+| 에러 메시지 (단어 그대로) | 발생 위치 | 진짜 원인 | 해결 |
+|---|---|---|---|
+| `Too many subrequests by single Worker invocation` | `enrichHeldLeads` 크롤 · `runCompanyAutoCollect` · 프랜차이즈 수집 — 어드민 상태줄 **실패 샘플**에 노출 | **한 인보케이션의 외부 fetch + D1 쿼리 합계가 Cloudflare 서브리퀘스트 한도 초과.** 초과 지점부터 **이후 모든 fetch 가 throw** → `.catch(() => '')` 들이 삼켜 `network`/`fetch_fail` 로 뭉뚱그려짐. ⚠️ **예산(env)은 외부 fetch 만 세는데 D1 쿼리도 같은 한도를 먹는다** → 고정 숫자로는 못 막음 | 관측 학습 상한(`collect-budget.ts` `resolveSubreqBudget`/`nextSubreqCap`) 배선 + `safeFetch` 로 한도 신호(`FetchBudget.limitHit`) 관측 → **도장 없이 즉시 중단** + 다음 실행 상한 자동 하향. 레인별 학습 키 분리(`ads_subreq_cap` / `supply_subreq_cap` — 워커가 다르면 한도도 다름). 2026-07-28 PR #784 |
+| 크롤 적중률 0% · 사유가 `network`/`페이지 못가져옴` 일색 · `이메일 미게시(no_contact)` **0건** | 어드민 파트너 풀 상태줄 | `no_contact` 0 = HTML 을 **한 장도 못 받음** → 추출이 아니라 **fetch 문제**. 네트워크가 필요 없는 `blocked_host` 만 정상 집계되면 **전역 실패** 확정 | 위 서브리퀘스트 한도 항목 참조. 판별은 **실패 샘플의 예외 이름**으로: `TypeError/Error: Too many subrequests`=워커 한도 · `AbortError`=상대 서버 무응답 · 그 외=DNS/TLS |
+| 실패가 전부 `network` 인데 타임아웃인지 한도인지 구분 불가 | `crawlContact` | 예외를 `.catch(() => '')` 로 삼켜 원인 정보가 소멸 | 사유 버킷 분해: `subreq_limit` / `timeout` / `network`(DNS·TLS). **표본 몇 건이 아니라 분포가 원인을 답하게** 한다 |
+| 크롤은 도는데 `blocked_host` 비중이 큼(실측 133 중 59 = 44%) | `enrichHeldLeads` Phase 2 | 저장된 `website` 가 블로그·SNS 등 **제3자 도메인** — 크롤은 거부되는데 대상 슬롯을 먹고 7일 쿨다운 도장까지 받음 | `realSite()` 가 `THIRD_PARTY_HOST` 도 걸러 `site=null` → 네이버 **발견 경로로 넘겨** 진짜 홈페이지를 찾게 함(슬롯 회수). `website` 컬럼은 보존(수동 접촉용) |
+| 개선했는데 기존 실패분이 재시도되지 않음 | 보강 대상 쿼리 | `enrich_checked_at` **7일 쿨다운**에 갇혀 있음 | **`CRAWL_RULES_VERSION` +1** — 대상 쿼리의 `COALESCE(enrich_v,0) < VERSION` 이 전량을 즉시 재시도 대상으로 되돌린다. 크롤 경로·추출기를 고치면 **반드시 버전 bump**(분류 규칙 `CLASSIFY_RULES_VERSION` 과 동일 철학) |
+| 어드민 API 가 `{"success":false,"error":"Forbidden"}` (키 2개, `code` 없음) | 모든 `/api/*` | **봇 감지**(`bot-detection.ts`)가 `curl` 등 비브라우저 User-Agent 차단. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트(`admin-security.ts`)로 **다른 원인** | 진단 호출 시 브라우저 User-Agent 헤더 사용(§ CLAUDE.md 어드민 진단 접근) |
 
 ## 새 사고 추가 템플릿
 

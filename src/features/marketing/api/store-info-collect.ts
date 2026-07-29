@@ -29,15 +29,15 @@ const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '')
  *   대행사(tier1)도 상가정보 광고대행과 겹치나 오탐 커 네이버 유지 — 여기선 간판/광고물 '제작'만. */
 type StoreTarget = { code: string; divId?: string; category: string; subcategory: string; tier: number }
 const STOREINFO_TARGETS: StoreTarget[] = [
-  { code: 'M10402', category: '전문서비스', subcategory: '세무사', tier: 5 },
-  { code: 'M10401', category: '전문서비스', subcategory: '공인회계사', tier: 5 },
-  { code: 'M10307', category: '전문서비스', subcategory: '공인노무사', tier: 5 },
-  { code: 'M11401', category: '매장인프라', subcategory: '명함·간판·광고물 제작', tier: 3 },
-  { code: 'M10504', category: '매장인프라', subcategory: '광고물 설계·제작', tier: 3 },
-  { code: 'M10502', category: '매장인프라', subcategory: '옥외·전시 광고', tier: 3 },
-  { code: 'M11201', category: '매장인프라', subcategory: '인테리어 디자인', tier: 3 },
-  { code: 'L10203', category: '전문서비스', subcategory: '상가 부동산 중개', tier: 3 },
-  { code: 'M10703', category: '창업생태계', subcategory: '경영 컨설팅', tier: 1 },
+  { code: 'M10402', category: '전문서비스', subcategory: '세무·기장', tier: 5 },
+  { code: 'M10401', category: '전문서비스', subcategory: '회계', tier: 5 },
+  { code: 'M10307', category: '전문서비스', subcategory: '노무', tier: 5 },
+  { code: 'M11401', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
+  { code: 'M10504', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
+  { code: 'M10502', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
+  { code: 'M11201', category: '인테리어', subcategory: '인테리어·시공', tier: 3 },
+  { code: 'L10203', category: '부동산', subcategory: '상가부동산', tier: 3 },
+  { code: 'M10703', category: '창업', subcategory: '창업컨설팅', tier: 1 },
 ]
 
 /** data.go.kr 상가정보 원항목(필드명은 문서 기준 — 실응답으로 검증). 방어적 파싱. */
@@ -126,7 +126,7 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const hasNaver = !!(clientId && clientSecret)
   if (kakaoKey || hasNaver) {
-    const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 ORDER BY id DESC LIMIT 20")
+    const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 AND merged_into IS NULL ORDER BY id DESC LIMIT 20")
       .all<{ id: number; company_name: string; region: string | null; website: string | null; address: string | null }>().catch(() => null))?.results || []
     for (const h of held) {
       if (outOfBudget(budget)) break

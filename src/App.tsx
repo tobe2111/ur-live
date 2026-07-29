@@ -77,7 +77,7 @@ const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
 const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
-const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage'))
+const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const CreatorStartPage = lazy(() => import('./pages/CreatorStartPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -139,6 +139,7 @@ const MarketingResetPage = lazy(() => import('./pages/marketing/MarketingResetPa
 const MarketingLegalPage = lazy(() => import('./pages/marketing/MarketingLegalPage'))
 const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlockPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
+const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
 // 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
@@ -182,6 +183,8 @@ const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
+const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
@@ -616,10 +619,10 @@ function AppContent() {
           {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
-          {/* 🗑️ 2026-06-20 (대표 요청): 인앱 브라우저 경고 배너(InAppBrowserBanner) 제거 —
-              "카카오톡 인앱 브라우저에서는 일부 기능이 제한될 수 있어요" 노이즈. 카카오 로그인은
-              이제 정상 동작 + 카톡 인앱은 main.tsx 가 외부 브라우저로 자동 redirect. 복원하려면
-              `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 다시 렌더. */}
+          {/* 🗑️ 2026-06-20 (대표 요청): InAppBrowserBanner 미마운트(노이즈) — 카카오 로그인은 카톡 인앱에서도
+              정상. 2026-07-23: 카톡 자동 외부-redirect 도 제거(autoRedirectKakaoToExternal=no-op) → 모든 인앱은
+              배너/팝업/강제이동 없이 렌더, 기능별 제한(카메라 등)만 InAppFeatureBlockedModal 이 사용 시점 안내.
+              복원: `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
@@ -650,7 +653,7 @@ function AppContent() {
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
-            <Route path="/creators/apply" element={<CreatorApplyPage />} />
+            <Route path="/creators/apply" element={<CreatorApplyPage />} /><Route path="/creators/start" element={<CreatorStartPage />} />
             <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} />
             <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
@@ -714,6 +717,7 @@ function AppContent() {
             <Route path="/ads/terms" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/privacy" element={<ErrorBoundary><MarketingLegalPage /></ErrorBoundary>} />
             <Route path="/ads/unlock" element={<ErrorBoundary><MarketingUnlockPage /></ErrorBoundary>} />
+            <Route path="/ads/kakao" element={<ErrorBoundary><MarketingKakaoCallbackPage /></ErrorBoundary>} />
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
@@ -1000,6 +1004,9 @@ function AppContent() {
 
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/new-openings" element={<NewOpeningsPage />} />
+            <Route path="/area-report" element={<AreaReportPage />} />
+            <Route path="/area-report/:region" element={<AreaReportPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
 
             {/* Terms Pages */}

@@ -119,3 +119,15 @@ export const SELLER_STORE_ONLY_MODE = true
  */
 export const MATCHING_ENABLED = true
 
+
+/**
+ * ADS_AI_HIDDEN — 유어애즈 **AI 기능 노출 숨김** (2026-07-28 대표 결정 "AI 기능 안 쓸 거야").
+ *   배경: 라이브 점검에서 `/api/ads/ai-marketer`·`/content/generate` 가 전 계정 503 `NOT_CONFIGURED`
+ *         (ur-ads 워커에 ANTHROPIC_API_KEY 미설정). 대표가 **키를 넣지 않기로 확정** → 화면에만 남은
+ *         AI 메뉴가 광고주에겐 '눌러도 안 되는 버튼' + 내부 문구("Anthropic API 키 설정 후 사용") 노출.
+ *   true: 대시보드 'AI 스튜디오' 탭(콘텐츠 생성·AI 마케터)과 소개 페이지(/ads)의 AI 홍보(기능 섹션·
+ *         요금제 문구·푸터 링크·메타 description)를 숨김. 옛 딥링크(?tab=ai·#sec-ai)는 홈 탭으로 폴백.
+ *   ⚠️ 서버 라우트(/api/ads/ai-marketer·/content/*)·컴포넌트·엔타이틀먼트는 **전부 보존** — 키를 넣고
+ *      이 플래그만 false 로 되돌리면 즉시 복원(가역). 어드민 매칭 AI 근거(admin-matching)는 별개(무관).
+ */
+export const ADS_AI_HIDDEN = true

@@ -20,7 +20,7 @@ export interface ProspectEnrichResult { processed: number; email_found: number; 
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
   const DB = env.DB
   await ensureProspectSchema(DB)
-  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup } = await import('./contact-enrich')
+  const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
@@ -28,6 +28,11 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
 
   let processed = 0, emailFound = 0, phoneFound = 0, siteFound = 0
   const upd = async (id: number, patch: { email?: string | null; website?: string | null; phone?: string | null; source?: string | null }) => {
+    // 📵 반송 억제 — 반송 확인 이메일 재부착 방지(회사 풀과 동일 루프).
+    if (patch.email) {
+      const sup = await DB.prepare('SELECT 1 AS x FROM ad_email_suppress WHERE email = ?').bind(patch.email.toLowerCase()).first<{ x: number }>().catch(() => null)
+      if (sup) patch.email = null
+    }
     const r = await DB.prepare(
       `UPDATE store_prospects SET
          email = COALESCE(email, ?),
@@ -40,10 +45,16 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     return ((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0
   }
   const addr = (r: { addr_road: string | null; addr_lot: string | null }) => r.addr_road || r.addr_lot || ''
+  // 시도 스탬프(성공/실패 무관) — 예산이 백로그 전체를 순회하게(회사 풀과 동일 처방, 7일 쿨다운).
+  const stamp = async (id: number) => { await DB.prepare(`UPDATE store_prospects SET enrich_checked_at = datetime('now'), enrich_v = ${CRAWL_RULES_VERSION} WHERE id = ?`).bind(id).run().catch(() => null) }
+  // 쿨다운 + 크롤러 버전 — 크롤 개선 시 이전 실패분 전량 즉시 재시도(회사 풀과 동일 처방).
+  const COOL = `AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})`
 
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
+  //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).
+  const cap1 = Math.min(120, Math.max(40, Math.floor(budget.left / 6)))
   const withSite = (await DB.prepare(
-    "SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ORDER BY is_new_open DESC, id DESC LIMIT 40"
+    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap1}`
   ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   for (const p of withSite) {
     if (budget.left <= 2) break
@@ -53,12 +64,14 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
       const ok = await upd(p.id, { email: c.email, phone: p.phone ? null : c.phone, source: c.email ? 'homepage' : null })
       if (ok) { if (c.email) emailFound++; if (c.phone && !p.phone) phoneFound++ }
     }
+    await stamp(p.id)
   }
 
   // ── Pass 2: 홈페이지 없음 → 네이버 지역검색으로 link 발견 → 크롤. 예산 남을 때만(1건당 비쌈). ──
   if (budget.left > 4 && (nvId && nvSecret)) {
+    const cap2 = Math.min(60, Math.max(25, Math.floor(budget.left / 12)))
     const noSite = (await DB.prepare(
-      "SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ORDER BY is_new_open DESC, id DESC LIMIT 25"
+      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap2}`
     ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; phone: string | null }>().catch(() => null))?.results || []
     for (const p of noSite) {
       if (budget.left <= 4) break
@@ -77,6 +90,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
         const ok = await upd(p.id, { email, website: site, phone, source })
         if (ok) { if (email) emailFound++; if (phone) phoneFound++ }
       }
+      await stamp(p.id)
     }
   }
 

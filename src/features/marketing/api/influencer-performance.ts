@@ -6,9 +6,11 @@
  *   perf_checked_at 스탬프로 재시도 폭주 방지(실패도 스탬프 — 다음 대상으로 진행).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { runDdlOnce } from './ads-schema-guard'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -156,19 +158,21 @@ export function parseNaverNeighborCount(html: string): number {
 }
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
+//   channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지)
+//   + 📈 롱폼 중앙값(쇼츠 착시 배제)·쇼츠 비중 + 📝 블로거 마지막 글 날짜(검색 API postdate — RSS 차단 무관).
+export const AD_PERF_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT',
+]
 const _perfColPromise = new WeakMap<object, Promise<void>>()
+/** 🧱 2026-07-28: 매 인보케이션 5 ALTER → 체크섬 1회 조회(무료 플랜 예산 회수 — D1 도 서브리퀘스트다).
+ *  목록이 바뀌면 체크섬이 달라져 자동 재적용되므로 "버전 올리는 걸 잊어 컬럼이 안 생기는" footgun 이 없다. */
 export function ensurePerfExtraColumns(DB: D1Database): Promise<void> {
   const c = _perfColPromise.get(DB); if (c) return c
-  // channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지).
-  const p = (async () => {
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN channel_published_at DATETIME').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN pub_checked_at DATETIME').run().catch(() => null)
-    // 📈 2026-07-27 지표 개선 — 롱폼 중앙값(쇼츠 착시 배제) + 쇼츠 비중(%).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN median_long_views INTEGER').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN shorts_ratio INTEGER').run().catch(() => null)
-    // 📝 블로거 마지막 글 날짜(YYYY-MM-DD) — 검색 API postdate 로 채움(RSS 차단과 무관하게 항상 동작).
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN last_post_at TEXT').run().catch(() => null)
-  })()
+  const p = runDdlOnce(DB, 'ads_ddl_influencer_perf', AD_PERF_DDL).then(() => undefined)
   _perfColPromise.set(DB, p); return p
 }
 
@@ -287,13 +291,15 @@ export async function enrichYouTubePerformance(
     const vids = leadVideoIds.map(id => stats.get(id)).filter((v): v is { views: number; comments: number; durationSec: number } => !!v)
     // 🛡️ videos.list 실패(영상 id 는 있는데 통계 0건 매칭 = 측정 실패)도 0 각인 대신 보류 — 진짜 영상 0(id 없음)과 구분.
     const measureFailed = leadVideoIds.length > 0 && vids.length === 0
+    // 🏷️ 분류 근거 — 라이브 About 규칙=content / 유튜브 자체분류=topic / 그 외(유지)=기존 근거 보존(COALESCE).
+    const catSrc = catToWrite == null ? null : catToWrite === liveCat ? 'content' : catToWrite === topicCat.get(r.channel_id) ? 'topic' : null
     if (budgetSkipped.has(r.id) || measureFailed) // perf 미측정 — perf 컬럼/스탬프 무접촉(다음 틱 재선택), About/개설일/카테고리만
-      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ? WHERE id = ?`)
-        .bind(pub, fixEmail, catToWrite, r.id)
+      return DB.prepare(`UPDATE ad_influencer_leads SET channel_published_at = COALESCE(channel_published_at, ?), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source) WHERE id = ?`)
+        .bind(pub, fixEmail, catToWrite, catSrc, r.id)
     // 📈 롱폼 중앙값 + 쇼츠 비중 동시 기록(쇼츠 착시 배제 — 협찬 단가 판단용). 길이를 못 잰 배치는 중앙값 0 → 표시는 avg 폴백.
     const { avgViews, avgComments, medianLongViews, shortsRatio } = videoMetrics(vids)
-    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, median_long_views = ?, shorts_ratio = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, perf_checked_at = datetime('now') WHERE id = ?`)
-      .bind(avgViews, avgComments, medianLongViews, shortsRatio, pub, fixEmail, catToWrite, r.id)
+    return DB.prepare(`UPDATE ad_influencer_leads SET recent_avg_views = ?, recent_avg_comments = ?, median_long_views = ?, shorts_ratio = ?, channel_published_at = COALESCE(channel_published_at, ?), pub_checked_at = datetime('now'), email = COALESCE(?, email), category = ?, category_source = COALESCE(?, category_source), perf_checked_at = datetime('now') WHERE id = ?`)
+      .bind(avgViews, avgComments, medianLongViews, shortsRatio, pub, fixEmail, catToWrite, catSrc, r.id)
   })
   await DB.batch(stmts).catch(() => null)
   return rows.length
@@ -325,7 +331,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
-    if (budget.left <= 1) break
+    // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
+    //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
+    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
     if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
@@ -408,9 +416,9 @@ export async function runYtLiveRefetch(env: Env, passes = 3): Promise<{ processe
  *   전 YT 풀(수천)도 ≈ N/50 호출(4,200개 ≈ 85콜, 하루 쿼터 10k 의 <1%) → **버튼 한 번에 전 풀 재보정**(waitUntil 백그라운드).
  *   반복 클릭·수백 클릭 불필요. 멱등(같은 결과 재적용 무해). 0-views/perf 힐과 무관(그건 채널당 호출이라 별도).
  */
-export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number }> {
+export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number }): Promise<{ scanned: number; changed: number; confirmed: number }> {
   const apiKey = env.YOUTUBE_API_KEY
-  if (!apiKey) return { scanned: 0, changed: 0 }
+  if (!apiKey) return { scanned: 0, changed: 0, confirmed: 0 }
   const DB = env.DB
   await ensurePerfExtraColumns(DB)
   // 🛡️ 2026-07-23 전수조사: 이 함수만 fetch 예산·진행 커서가 없어 20k 풀에서 무제한 fetch → 인보케이션 중도 사망 시
@@ -421,12 +429,12 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
   const CURSOR_KEY = 'ads_catrescan_cursor'
   const { readSetting, writeSetting } = await import('./influencer-auto-collect')
   let afterId = Math.max(0, parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10) || 0)
-  let scanned = 0, changed = 0, calls = 0, reachedEnd = false
+  let scanned = 0, changed = 0, confirmed = 0, calls = 0, reachedEnd = false
   while (scanned < CAP && calls < MAX_CALLS) {
-    const rows = (await DB.prepare(`SELECT id, channel_id, name, category FROM ad_influencer_leads
+    const rows = (await DB.prepare(`SELECT id, channel_id, name, category, category_source FROM ad_influencer_leads
         WHERE account_id = 0 AND platform = 'youtube' AND channel_id IS NOT NULL AND id > ?
         ORDER BY id ASC LIMIT 1000`).bind(afterId)
-      .all<{ id: number; channel_id: string; name: string | null; category: string | null }>().catch(() => null))?.results || []
+      .all<{ id: number; channel_id: string; name: string | null; category: string | null; category_source: string | null }>().catch(() => null))?.results || []
     if (!rows.length) { reachedEnd = true; break }
     for (let i = 0; i < rows.length && scanned < CAP && calls < MAX_CALLS; i += 50) {
       const batch = rows.slice(i, i + 50)
@@ -441,11 +449,27 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
         if (it.id) { const tc = topicToCategory(it.topicDetails?.topicCategories); if (tc) topicById.set(it.id, tc) }
       }
       const ups = batch
-        .map(r => ({ id: r.id, finalCat: reconcileCategory(r.category, classifyCategory(r.name || '', aboutById.get(r.channel_id) || ''), topicById.get(r.channel_id) || null), prev: r.category }))
-        .filter(x => x.finalCat !== x.prev) // 변경분만 write
+        .map(r => {
+          const live = classifyCategory(r.name || '', aboutById.get(r.channel_id) || '')
+          const topic = topicById.get(r.channel_id) || null
+          const finalCat = reconcileCategory(r.category, live, topic)
+          // 🏷️ 채택 근거 — 라이브 About 규칙이면 content, 유튜브 자체분류면 topic, 유지/기타는 기존 근거 보존(null=미기록).
+          const src = finalCat == null ? null : finalCat === live ? 'content' : finalCat === topic ? 'topic' : undefined
+          // ✅ 2026-07-28 확인분 — 카테고리는 그대로인데 **라이브 신호가 그 값을 확증**한 경우.
+          //   이전엔 변경분만 write 해서, 키워드 상속 카테고리가 *맞다고 확인돼도* category_source 가 'keyword' 로
+          //   남았다 → 어드민 "근거 검증됨 7%"가 재보정을 아무리 돌려도 안 움직임(재검증은 실제로 되는데 계측만 거짓).
+          //   이미 content/topic 으로 검증된 행은 제외 — 매 순회 같은 값 재기록 방지.
+          const alreadyVerified = r.category_source === 'content' || r.category_source === 'topic'
+          const confirmOnly = finalCat === r.category && !!src && !alreadyVerified
+          return { id: r.id, finalCat, prev: r.category, src, confirmOnly }
+        })
+        .filter(x => x.finalCat !== x.prev || x.confirmOnly)
       if (ups.length) {
-        await DB.batch(ups.map(x => DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id))).catch(() => null)
-        changed += ups.length
+        await DB.batch(ups.map(x => x.src === undefined
+          ? DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.id)
+          : DB.prepare('UPDATE ad_influencer_leads SET category = ?, category_source = ? WHERE id = ? AND account_id = 0').bind(x.finalCat, x.src, x.id))).catch(() => null)
+        // 교정(changed)과 확증(confirmed)은 의미가 달라 따로 센다 — 리포트가 "몇 개 고쳤나"를 부풀리지 않게.
+        for (const x of ups) { if (x.confirmOnly) confirmed++; else changed++ }
       }
       scanned += batch.length
       afterId = batch[batch.length - 1].id
@@ -454,27 +478,42 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
     if (rows.length < 1000 && scanned >= 0 && calls < MAX_CALLS) { reachedEnd = true; break }
   }
   if (reachedEnd) await writeSetting(DB, CURSOR_KEY, '0') // 한 바퀴 완료 — 다음 클릭은 처음부터(멱등 재보정)
-  return { scanned, changed }
+  return { scanned, changed, confirmed }
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
-export async function runReclassifyPool(DB: D1Database): Promise<{ scanned: number; changed: number }> {
-  let scanned = 0, changed = 0
-  for (let off = 0; ; off += 3000) {
+export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
+  // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
+  //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
+  //   (품질 패스가 이미 쓰는 패턴과 동일: 끝까지 돌면 0 으로 리셋해 순환 재검증).
+  const CURSOR_KEY = 'ads_reclassify_cursor'
+  const PAGE = 3000
+  let cursor = 0
+  const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
+
+  let scanned = 0, changed = 0, done = false
+  for (;;) {
     const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
-        WHERE account_id = 0 ORDER BY id ASC LIMIT 3000 OFFSET ?`).bind(off)
+        WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
       .all<{ id: number; name: string; description: string | null; category: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) break
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    const pageStart = cursor
     scanned += rows.length
     const ups: ReturnType<D1Database['prepare']>[] = []
     for (const r of rows) {
+      cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
-      if (byContent && byContent !== r.category) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = ? WHERE id = ? AND account_id = 0').bind(byContent, r.id))
+      if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
       else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length
-    if (rows.length < 3000) break
+    if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
+    if (rows.length < PAGE) { done = true; break }
   }
-  return { scanned, changed }
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
+  return { scanned, changed, done }
 }

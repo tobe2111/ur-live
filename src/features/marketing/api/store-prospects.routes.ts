@@ -8,8 +8,9 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  listProspects, prospectStats, updateProspect,
+  listProspects, countProspects, prospectStats, updateProspect,
   LICENSE_CATEGORIES, PROSPECT_STATUSES, PROSPECT_CONTACT_CHANNELS,
+  type ProspectFilter,
 } from './store-prospects'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -17,7 +18,9 @@ app.use('*', requireAdmin())
 
 // GET /api/admin/store-prospects?category=&region=&status=&newOpen=1&includeClosed=1&hasPhone=1&q=&limit=
 app.get('/', async (c) => {
-  const prospects = await listProspects(c.env.DB, {
+  const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)))
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0))
+  const filter: ProspectFilter = {
     category: c.req.query('category') || undefined,
     region: (c.req.query('region') || '').trim() || undefined,
     status: c.req.query('status') || undefined,
@@ -26,9 +29,12 @@ app.get('/', async (c) => {
     hasPhone: c.req.query('hasPhone') === '1',
     hasEmail: c.req.query('hasEmail') === '1',
     q: (c.req.query('q') || '').trim() || undefined,
-    limit: Math.min(2000, Math.max(1, intParam(c.req.query('limit'), 500))),
-  })
-  return c.json({ success: true, prospects })
+  }
+  const [prospects, total] = await Promise.all([
+    listProspects(c.env.DB, { ...filter, limit, offset }),
+    countProspects(c.env.DB, filter),
+  ])
+  return c.json({ success: true, prospects, total, limit, offset })
 })
 
 // GET /api/admin/store-prospects/meta
@@ -101,6 +107,24 @@ app.post('/enrich-contacts', async (c) => {
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// GET /api/admin/store-prospects/new-open-digest — 🎉 개업 웰컴 큐(최근 개업 + 지역 집계).
+app.get('/new-open-digest', async (c) => {
+  const { newOpenDigest } = await import('./opening-briefing')
+  const days = Math.min(90, Math.max(1, intParam(c.req.query('days'), 14)))
+  const d = await newOpenDigest(c.env.DB, days, 30)
+  return c.json({ success: true, ...d })
+})
+
+// GET /api/admin/store-prospects/:id/briefing — 📊 개업 컨설팅 브리핑(상권 수치 + 멘트 초안, 전부 자체 집계).
+app.get('/:id/briefing', async (c) => {
+  const id = intParam(c.req.param('id'), 0)
+  if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
+  const { openingBriefing } = await import('./opening-briefing')
+  const b = await openingBriefing(c.env.DB, id)
+  if (!b) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
+  return c.json({ success: true, ...b })
 })
 
 // GET /api/admin/store-prospects/export — 엑셀 호환 CSV(BOM + 수식 인젝션 방어). 인증 blob 다운로드용.

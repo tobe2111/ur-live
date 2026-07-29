@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
-import { MATCHING_ENABLED } from '@/shared/feature-flags'
+import { DASH_TABS } from '@/pages/marketing/dashboard-tabs'
 
 interface Tenant { customer_id: string; tenant_label: string | null; connected_at: string | null; is_active: number }
 const authHeader = () => {
@@ -17,36 +17,18 @@ const authHeader = () => {
  *   디자인 SSOT: docs/design/urads/UR Ads Dashboard.dc.html (236px 사이드바 · mono 라벨 · line 아이콘).
  *   본문(기능 패널)은 그대로 — 다크 시 루트 `dark` 스코프로 패널의 dark: variant 활성(코스믹),
  *   라이트 시 `dark` 제거로 패널이 라이트 variant(흰 카드) 렌더. 토픽바 토글(기본 다크, localStorage 유지).
- *   사이드바 nav = 섹션 앵커 스크롤(전부 마운트 유지 → 패널 상태 보존, 기능 불변).
+ *   🗂️ 2026-07-27 재편(대표 "한 페이지에 다 몰아넣어 투박함"): 앵커 스크롤 18항목 → 기능 그룹 7탭.
+ *   사이드바/모바일 칩 = URL(?tab=) 전환 — 탭 SSOT dashboard-tabs.tsx, 활성 탭 패널만 렌더.
  *   surface 분리(/ads): 소비자/도매 chrome 비노출(worker/App isMarketingSurface).
  */
-const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
-  { id: 'sec-keyword', label: '키워드 확장', icon: <path d="M11 4.5a6.5 6.5 0 1 0 4.5 11.2M11 8v6M8 11h6M20 20l-4.2-4.2" /> },
-  { id: 'sec-opportunity', label: '기회 키워드', icon: <path d="M12 2v3M12 19v3M2 12h3M19 12h3M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" /> },
-  { id: 'sec-portfolio', label: '키워드 포트폴리오', icon: <path d="M4 7h16M4 12h16M4 17h10M2 4h.01" /> },
-  { id: 'sec-trend', label: '성과 추세', icon: <path d="M3 17l6-6 4 4 8-8M21 7v5h-5" /> },
-  { id: 'sec-searchad', label: '검색광고 실적', icon: <path d="M3 21h18M5 18v-7M10.3 18V6M15.6 18v-9" /> },
-  { id: 'sec-efficiency', label: '키워드 효율', icon: <path d="M3 3v18h18M7 14l3-3 3 2 5-6" /> },
-  { id: 'sec-autobid', label: '자동입찰', icon: <path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3" /> },
-  { id: 'sec-content', label: 'AI 콘텐츠', icon: <path d="M4 5h16M4 10h16M4 15h10M4 20h7" /> },
-  { id: 'sec-services', label: '서비스몰', icon: <path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M3 9h18M9 13h6" /> },
-  { id: 'sec-links', label: '단축 링크', icon: <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /> },
-  { id: 'sec-influencers', label: '인플루언서 발굴', icon: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /> },
-  // 체험단 매칭(성과기반) — 게이트 OFF(MATCHING_ENABLED) 시 나브에서도 숨김(패널 미마운트와 정합).
-  ...(MATCHING_ENABLED ? [{ id: 'sec-matching', label: '체험단 매칭', icon: <path d="M20 7l-8 4-8-4 8-4 8 4zM4 7v6l8 4 8-4V7M12 11v10" /> }] : []),
-  { id: 'sec-ai', label: 'AI 마케터', icon: <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" /> },
-  { id: 'sec-report', label: '주간 리포트', icon: <path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" /> },
-  { id: 'sec-fraud', label: '부정클릭 방어', icon: <path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3zM9 12l2 2 4-4" /> },
-  { id: 'sec-rank', label: '쇼핑 순위', icon: <path d="M12 15l-5 6 5-3 5 3-5-6zM12 2a6 6 0 1 0 0 12A6 6 0 0 0 12 2z" /> },
-  { id: 'sec-price', label: '가격·소싱', icon: <path d="M20 12l-8 8-9-9V3h8l9 9zM7.5 7.5h.01" /> },
-  { id: 'sec-alerts', label: '알림', icon: <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /> },
-  { id: 'sec-store', label: '발주 수집', icon: <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /> },
-]
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
+.uad{font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif}
 .uad{--bg:#F4F5F7;--surface:#FFFFFF;--panel:#FFFFFF;--ink:#0B0E14;--ink2:#565E6C;--ink3:#8A93A3;--border:#ECEDF1;--border2:#E2E6F2;--brand:#3B6EF5;--brand-soft:#EAF0FF;--brand-ink:#2A56D4;--sidebar:#FFFFFF;--topbar:rgba(255,255,255,.85);--scroll:#C7CDD9}
 .uad.dark{--bg:#06080F;--surface:#0A0E1A;--panel:#0E1322;--ink:#F5F7FA;--ink2:#9AA6BE;--ink3:#6E7A95;--border:#1B2233;--border2:#26304A;--brand:#3B6EF5;--brand-soft:#16224A;--brand-ink:#9BB0FF;--sidebar:#090C16;--topbar:rgba(6,8,15,.72);--scroll:#2A3450}
-.uad .mono{font-family:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace}
+/* 2026-07-27 폰트 통일: mono(IBM Plex — 미로드라 임의 시스템 mono 렌더)도 Pretendard 상속 */
+.uad .mono{font-family:inherit;font-weight:700}
 .uad .uad-nav{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink2);cursor:pointer;transition:background .12s,color .12s;background:transparent;border:none;text-align:left;width:100%}
 .uad .uad-nav:hover{background:var(--surface);color:var(--ink)}
 .uad.dark .uad-nav:hover{background:var(--surface)}
@@ -68,13 +50,13 @@ function NavIcon({ children }: { children: ReactNode }) {
 
 export default function MarketingDashboardShell({ title = '대시보드', planLabel, showNav = true, children }: { title?: string; planLabel?: string; showNav?: boolean; children: ReactNode }) {
   const navigate = useNavigate()
-  const [active, setActive] = useState<string>(NAV[0].id)
+  const location = useLocation()
+  // 활성 탭 = 대시보드 URL 의 ?tab= (기본 home). 대시보드 밖(계정설정 등)에선 활성 없음.
+  const onDash = location.pathname === '/ads/dashboard'
+  const active = onDash ? (new URLSearchParams(location.search).get('tab') || 'home') : ''
   // 계정 드롭다운(헤더) — 회사명/계정설정/로그아웃. 모든 화면에서 직접 로그아웃.
   const [acctOpen, setAcctOpen] = useState(false)
   const company = typeof window !== 'undefined' ? (localStorage.getItem('ads_company') || '내 계정') : '내 계정'
-  // 체험단 매칭 나브는 어드민 전용 — 비어드민에겐 숨김(패널 미마운트와 정합).
-  const isAdmin = typeof window !== 'undefined' && !!localStorage.getItem('admin_token')
-  const navItems = NAV.filter((n) => n.id !== 'sec-matching' || isAdmin)
   function logout() {
     for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
     navigate('/ads/login', { replace: true })
@@ -125,30 +107,12 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
       window.location.reload() // 모든 패널을 새 고객사 데이터로 새로고침
     } catch { setTenantOpen(false) }
   }
-  const addTenant = () => { setTenantOpen(false); go('sec-searchad') }
+  const addTenant = () => { setTenantOpen(false); go('performance') }
 
-  // 스크롤스파이 — 보이는 섹션을 사이드바에 활성 표시(전부 마운트 유지). 섹션 없으면(비로그인) skip.
-  useEffect(() => {
-    if (!showNav) return
-    const els = NAV.map((n) => document.getElementById(n.id)).filter(Boolean) as HTMLElement[]
-    if (!els.length) return
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        if (vis[0]?.target?.id) setActive(vis[0].target.id)
-      },
-      // 토픽바 바로 아래(상단)에 걸린 섹션을 활성으로 — 클릭 후 그 섹션이 계속 하이라이트.
-      { rootMargin: '-72px 0px -62% 0px', threshold: [0, 1] },
-    )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [showNav])
-
-  const go = (id: string) => {
-    const el = document.getElementById(id)
-    if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setActive(id)
+  // 탭 전환 — URL(?tab=) 이 SSOT. 대시보드 밖(계정설정 등)에서 눌러도 대시보드 해당 탭으로 이동.
+  const go = (tab: string) => {
+    navigate(`/ads/dashboard?tab=${tab}`)
+    try { window.scrollTo({ top: 0 }) } catch { /* ignore */ }
   }
 
   return (
@@ -186,9 +150,9 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         )}
 
         <nav style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto' }}>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>MENU</div>
-          {showNav ? navItems.map((n) => (
-            <button key={n.id} type="button" onClick={() => go(n.id)} className={`uad-nav${active === n.id ? ' active' : ''}`}>
+          <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.1em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>메뉴</div>
+          {showNav ? DASH_TABS.map((n) => (
+            <button key={n.id} type="button" onClick={() => go(n.id)} title={n.desc} className={`uad-nav${active === n.id ? ' active' : ''}`}>
               <NavIcon>{n.icon}</NavIcon>{n.label}
             </button>
           )) : (
@@ -244,6 +208,18 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
             )}
           </div>
         </header>
+
+        {/* 모바일 탭 바 — 사이드바가 숨는 <lg 에서 탭 전환(기존엔 모바일 네비 0 이었음) */}
+        {showNav && (
+          <nav className="lg:hidden" style={{ position: 'sticky', top: 60, zIndex: 18, background: 'var(--topbar)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)', display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px', whiteSpace: 'nowrap' }}>
+            {DASH_TABS.map((n) => (
+              <button key={n.id} type="button" onClick={() => go(n.id)}
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: active === n.id ? 'transparent' : 'var(--border2)', background: active === n.id ? 'var(--brand-soft)' : 'var(--surface)', color: active === n.id ? 'var(--brand-ink)' : 'var(--ink2)' }}>
+                {n.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
         {/* 모바일 고객사 드롭다운(칩 클릭 시) */}
         {showNav && activeTenant && tenantOpen && (
