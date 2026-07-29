@@ -18,12 +18,15 @@ import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
 import { ensureProspectSchema } from './store-prospects'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
 export interface ProspectEnrichResult {
   processed: number; email_found: number; phone_found: number; site_found: number; remaining_no_email: number
   /** 계측(2026-07-28 신설) — 이 레인이 왜 0건인지 판정 가능하게. */
   last_run?: string; spent?: number; budget_total?: number; limit_hit?: boolean; deadline_hit?: boolean
   elapsed_ms?: number; crawl_reason?: Record<string, number>; learned_cap?: number
+  /** 누적(ads_prospect_enrich_rollup)의 멱등 키 — 다음 라운드가 이 스냅샷을 접는다. */
+  run_id?: string
 }
 
 const STATS_KEY = 'ads_prospect_enrich_stats'
@@ -40,8 +43,12 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   //   실효 한도는 그 훨씬 아래라 cap1 = left/6 = 50 크롤 × 약 4 fetch = 200 요청을 시도했고,
   //   중간에 죽어도 **아무 기록이 없어** 아무도 몰랐다. 이제 부딪히면 다음 실행부터 낮춘다.
   const envBudget = Math.min(300, Math.max(15, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 80))
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('prospect_enrich'))
-    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
+  // 부팅 조회 1회로 3개(학습 상한 + 직전 스냅샷 + 누적) — 회사 보강 레인과 동일 처방(그 파일 주석 참조).
+  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
+    .bind(subreqCapKey('prospect_enrich'), STATS_KEY, PROSPECT_ROLLUP_KEY)
+    .all<{ key: string; value: string }>().catch(() => null))?.results || []
+  const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
+  const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('prospect_enrich')) || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   // ⏱️ 벽시계 마감 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다(보강 레인에서 실측된 실패 모드).
   const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt(env.ADS_ENRICH_DEADLINE_MS || '', 10) || 20_000))
@@ -49,7 +56,9 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const budget: FetchBudget = { left: budgetTotal, deadline: t0 + deadlineMs }
   let d1 = 0
   const spendD1 = (n = 1) => { budget.left -= n; d1 += n }
-  spendD1() // 위 learnedCap SELECT
+  spendD1() // 위 boot SELECT
+  if (await foldEnrichRollup(DB, PROSPECT_ROLLUP_KEY, bootVal(STATS_KEY), bootVal(PROSPECT_ROLLUP_KEY))) spendD1()
+  const runId = (globalThis.crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)
   const crawlReason: Record<string, number> = {}
   const outOfTime = () => !!budget.deadline && Date.now() >= budget.deadline
 
@@ -145,7 +154,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     last_run: new Date().toISOString().slice(0, 19).replace('T', ' '),
     spent: budgetTotal - budget.left, budget_total: budgetTotal, limit_hit: !!budget.limitHit,
     deadline_hit: outOfTime(), elapsed_ms: Date.now() - t0, crawl_reason: crawlReason,
-    learned_cap: nextCap ?? learnedCap,
+    learned_cap: nextCap ?? learnedCap, run_id: runId,
   }
   // 📝 스냅샷 — 이 레인이 왜 0건인지 다음 사람이 **묻지 않고 볼 수 있게**(이 파일 상단 참조).
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')

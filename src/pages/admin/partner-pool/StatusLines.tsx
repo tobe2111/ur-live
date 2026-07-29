@@ -22,14 +22,15 @@ export interface AgencyFunnel { total: number; with_email: number; site_no_email
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
 export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number }
+export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, registryMatch }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, enrichRollup, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; registryMatch?: RegistryMatchInfo | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -120,6 +121,25 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
       {enrichLast?.fail_samples?.length ? (
         <div className="mt-1 text-[11px] text-gray-400 break-all">실패 샘플: {enrichLast.fail_samples.join(' · ')}</div>
       ) : null}
+      {/* 🧮 오늘 누적(2026-07-29) — 위 스냅샷은 **라운드마다 덮인다**. 그래서 '⏳ 중단' 한 장으로는
+          ⓐ 모든 라운드가 초반에 죽는다 ⓑ 마지막 라운드만 부모 크론 종료에 잘렸다 를 **구분할 수 없었다**
+          (처방이 정반대인데). rounds 대비 중단 비율 + 끝난 단계 분포가 그 판정을 대신한다. */}
+      {enrichRollup && enrichRollup.rounds > 0 && (
+        <div className="mt-1 text-[11px] text-gray-400">
+          오늘({enrichRollup.day}) 누적 · 라운드 {formatNumber(enrichRollup.rounds)}회
+          {' · '}<span className={enrichRollup.partial >= enrichRollup.rounds ? 'text-amber-600 font-semibold' : ''}>중단 {formatNumber(enrichRollup.partial)}</span>
+          {enrichRollup.deadline > 0 && <span> · 시간상한 {formatNumber(enrichRollup.deadline)}</span>}
+          {enrichRollup.limit > 0 && <span> · 요청한도 {formatNumber(enrichRollup.limit)}</span>}
+          {enrichRollup.crash > 0 && <span className="text-red-500 font-semibold"> · 예외 {formatNumber(enrichRollup.crash)}</span>}
+          {' · '}처리 {formatNumber(enrichRollup.processed)} · <b className="text-indigo-600">확보 {formatNumber(enrichRollup.enriched)}</b>
+          {' · '}크롤 {formatNumber(enrichRollup.crawls)}
+          {Object.keys(enrichRollup.phase || {}).length > 0 && (
+            <span title="라운드가 어디서 끝났는지 — p2 에 몰리면 이메일 단계에서 매번 죽는다는 뜻">
+              {' · '}종료단계 {Object.entries(enrichRollup.phase || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' / ')}
+            </span>
+          )}
+        </div>
+      )}
     </div>
 
     {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
