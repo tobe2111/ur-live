@@ -103,10 +103,14 @@ export class ProductRepository {
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
-      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)`;
+      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)
+      AND NOT (COALESCE(category, '') = 'general' AND seller_id IS NULL)`;
     // 🛡️ 2026-06-26 (대표 신고 — 도매상품이 유어딜 소비자 쇼핑에 누수): 도매몰(/api/wholesale/*) 전용
     //   카탈로그 마스터(is_supply_product=1 AND supply_source_id 없음)는 소비자 목록/쇼핑/검색에서 제외.
     //   도매몰은 별도 엔드포인트라 영향 0. 판매사 사입 재판매본(supply_source_id 있음)·일반 상품은 그대로 노출.
+    // 🛡️ 2026-07-02 (대표 신고 — 동네딜 general 누수 후속): 셀러 없는 'general'(예전 동네딜 데모 시드
+    //   드립백/한라봉 등 orphan) 은 이행/정산 주체가 없어 소비자 쇼핑에 떠선 안 됨 → 배제. 셀러 있는
+    //   일반 상품은 그대로(seller_id IS NULL 한정). 데이터 정리(데모삭제)와 별개의 안전망.
     const params: any[] = [];
 
     if (filter.sellerId) {
@@ -238,7 +242,8 @@ export class ProductRepository {
   async count(filter: ProductFilter): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
-      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)`;
+      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)
+      AND NOT (COALESCE(category, '') = 'general' AND seller_id IS NULL)`;
     const params: any[] = [];
 
     if (filter.sellerId) {
@@ -435,6 +440,7 @@ export class ProductRepository {
       WHERE products_fts MATCH ?
       AND p.is_active = 1
       AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
+      AND NOT (COALESCE(p.category, '') = 'general' AND p.seller_id IS NULL)
     `;
 
     const params: any[] = [sanitizedQuery];

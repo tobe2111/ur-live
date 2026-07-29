@@ -132,6 +132,9 @@ export class ProductRepository {
       updated_at: String(row['updated_at'] ?? ''),
       seller_name: row['seller_name'] ? String(row['seller_name']) : undefined,
       seller_slug: row['seller_slug'] ? String(row['seller_slug']) : undefined,
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 주문 배송비의 비배송(교환권/이용권) 판별용 passthrough.
+      category: row['category'] != null ? String(row['category']) : null,
+      deal_only: row['deal_only'] != null ? Number(row['deal_only']) : null,
     };
   }
 }

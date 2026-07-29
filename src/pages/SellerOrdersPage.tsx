@@ -55,7 +55,9 @@ export default function SellerOrdersPage() {
         navigate('/seller/login')
         return []
       }
-      const response = await api.get('/api/seller/orders')
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): limit=200(서버 최대) — 이전엔 파라미터 없어 기본 50건 하드캡,
+      //   51건째부터 목록/검색/CSV 에서 구주문이 조용히 사라졌음. (200 초과는 후속 서버 페이지네이션 배선.)
+      const response = await api.get('/api/seller/orders', { params: { limit: 200 } })
       if (response.data.success) {
         return (response.data.data || response.data.orders || []) as Order[]
       }
@@ -163,7 +165,7 @@ export default function SellerOrdersPage() {
       order.shipping_address,
       order.total_amount,
       getStatusText(order.status),
-      order.payment_status === 'completed' ? 'Paid' : order.payment_status,
+      (order.payment_status === 'approved' || order.payment_status === 'completed') ? 'Paid' : order.payment_status,
       order.courier || '',
       order.tracking_number || '',
       formatKST(order.created_at)
@@ -525,8 +527,8 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">
-                            <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
-                              {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
+                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
+                              {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">

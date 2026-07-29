@@ -153,6 +153,12 @@ jobs:
       #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
       - name: 유어애즈 레인 격리 (strict)
         run: node scripts/check-ads-lane-isolation.mjs
+      # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**
+      #   그냥 안 돈다 — 배포는 성공하고 라이브 문서만 옛날 것으로 남는다(무음 정지).
+      #   이 레포에서 이미 두 번 났다(v8 중복 → v11 주석이 그 수습을 기록 / v4 중복).
+      #   세션이 동시에 여러 개 도는 한 계속 난다 → main 히스토리 대비 단조증가를 강제한다.
+      - name: 시드 버전 단조증가 (strict)
+        run: node scripts/check-seed-version-monotonic.mjs -s
         continue-on-error: false
 
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
@@ -348,11 +354,6 @@ jobs:
       - name: Consumer product supply isolation (strict)
         run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
         continue-on-error: false
-
-      # 🏭 2026-06-30: 대시보드 라우팅 — 다중역할/겸업 계정이 대시보드에서 lock-out 되는 재발 방지(일반화).
-      #   대시보드 레이아웃/페이지(*Layout·*DashboardPage·Seller*·supplier-dashboard)에서 가산 권한 플래그(is_*)
-      #   단독 게이트로 서비스간 redirect/return null 금지 — 셀러↔도매=서버권위 wholesale_only, 또는 다중역할
-      #   보호 동반조건(!loggedIn/!token/단일역할 role !==). 현재 위반 0 → strict.
       - name: Dashboard cross-service redirect guard (strict)
         run: STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
         continue-on-error: false

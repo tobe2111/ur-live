@@ -1,5 +1,122 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 쇼핑 상품 전 구간 전수조사 + 일괄 수리 (대표 "전부", PR #429)
+일반 온라인 쇼핑 상품(교환권/동네딜/도매 제외) 셀러등록~상세~카트~주문/결제~환불~정산 6세그먼트 병렬 감사(에이전트 6 + audit-gate 41). **P0(돈유출) 0 확인**(서버 가격/할인/재고 권위 재계산 + Toss confirm strict 금액검증) — 대신 "표시금액≠서버금액 → 결제 400" 클래스 + 배선 끊김 다수 수리. 3커밋(857bb73·9ccdee5·4dd8675).
+- **결제 금액 정합(Toss confirm 400 클래스)**: `shipping.ts` free_shipping_threshold=0="무료배송 없음"(클라/points 정합) + `order.routes` 비배송(교환권/이용권) 배송비 0(threshold 수정과 상쇄짝 — 동일커밋) + `POST /orders/shipping-quote`(주문생성과 동일 함수·데이터 견적) + 미결제취소 CAS+재고/쿠폰 복원. `CheckoutPage/useBeforePayment` 서버 견적 사용·쿠폰 최대그룹 배정(멀티셀러 UNIQUE 회피)·Σ(서버 total) 검증 후 승인·stale snapshot 최신가. `scheduled-cleanup` AWAITING_PAYMENT 스위핑+쿠폰 복원.
+- **옵션 파이프라인 재건(전 구간 사망→복구)**: `useProduct` 응답형태(항상 [] 였음)·셀러 GET/POST 컬럼·필드명 정합(수정저장 시 옵션 전멸+재고 0 저장 수정)·order.routes 옵션가 서버 재계산+option_id 소유권검증+옵션재고 CAS 차감/복원·카트 option_id 저장/표시(join)/변경(PUT)·상세 UI 추가금/품절·useCart id 타입 정합.
+- **환불/취소 상태머신**: 부분취소가 주문 전체 CANCELLED+전 재고/커미션 회수 → refunded_amount CAS만(status 유지)·refundOrderFully 잔여액 기준(이중환급/EXCEED 방지)·`/orders/refund` DELIVERED 제거(반품 절차 경유)+전액시만 플립.
+- **셀러 대시보드 진실**: 상품목록 is_active 반환·재고 COALESCE 순서·비활성 표시(재활성화 가능)·토글 enum(PAUSED→HIDDEN)·삭제 status=DELETED 실세팅(구매 차단)·주문 order_items/payment_status 반환·50→200 cap·송장/일괄 상태 전이 가드(취소·미결제 부활 차단)·delivered_at 기록.
+- **소비자 표시**: 검색 카드/정렬/필터 이중할인 제거(price=최종가)·자동완성 형태 정합·prefetch 키 String·카트 선택리셋/수량감소 수정·PRODUCT_DETAIL_FIELDS 에 detail_images/long_description(+repair 등록)로 상세정보 빈렌더 복구+셀러 저장 배선.
+- **[UNLOCK] 정산/재고(대표 AskUserQuestion 2건 승인)**: `webhook.routes handlePaymentFailed` 재고복원을 전이 성공분(status='FAILED')만(지연 실패 webhook이 DONE 주문 재고 부풀리던 초과판매 차단). `handlePaymentConfirmed`+`returns.routes` 에 쇼핑 원장 credit/reverse 대칭(SHOPPING_LEDGER_ENABLED 게이트 OFF=현행 동일, 재오픈 선행 수리). CLAUDE.md audit log 2건.
+- 검증: audit-gate **41 invariants ALL GREEN**. ⚠️ **이 원격환경 npm 403 → 전체 tsc/build 미실행. 잠금파일 회귀 + 결제 정합은 staging 실결제 E2E 필수**: 옵션상품(선택→담기→결제→옵션재고 차감→환불복원)·배송비(제주/무료배송/멀티셀러)·멀티셀러+쿠폰·부분취소(주문유지·잔여 추가취소)·셀러 상품 비활성/재활성·주문 상품목록 표시. 🔵 미완(별도): 쇼핑탭 재오픈 시 정산 게이트 ON + 이중계상 가드 확정, 옵션 조합(색상×사이즈) 모델, 리뷰 사진 업로드(소비자용 엔드포인트)·카트 뱃지 invalidate(P2).
+
+## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
+`/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
+- **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
+- **🔴 MyStaysPage 다크 전용 하드코딩** → 라이트 기본+`dark:` 전면 전환(마이 위성 유일한 테마 규칙 전면 위반이었음) + `refund_rate` NaN% 가드 + 핑크→B&W.
+- **🔴 주문 현황 바 반쪽 동작**: 별도 fetch → `useMyOrders` 재사용(RQ 캐시 공유), 5칸 전부 무필터 `/my-orders` → **상태 필터(`?status=`) 배선 + MyOrdersPage 에 필터 칩 신설**, 항상 0이던 '리뷰' → 리뷰 가능 주문 수(DELIVERED/DONE, MyReviews 기준) + `/my-reviews` 이동.
+- **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
+- **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
+- 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+## 🟡 2026-07-29 (9차) — **A1 폐기 확정 + §4/§5 개정 · 예치금 동결 검토(잔액 실측 미완, 코드 0)**
+
+8차(#819, 머지 `e75b433`)가 올린 판단에 대표가 답했다. **결정을 문서에 반영했고 코드는 여전히 0.**
+
+### ✅ 대표 확정 (2026-07-29)
+- **A1 = §4 HTTP 연계 폐기.** 같은 레포·같은 D1 전제로 §4 재작성 — `supply_source_id` 재판매 복제 +
+  `products.stock` 원자 CAS 재사용. **서버간 시크릿·재고 콜백·멱등키 서술 전부 삭제.** P2 원칙 유지, 수단만 교체.
+  → 다음 세션은 **이걸 다시 묻지 말 것.**
+- **§5 문구 축소** — "어느 쪽도 대금을 쥐지 않는다" → **"모드 B 공급사 매입대금에 한해 플랫폼이 쥐지 않는다."**
+  유어딜 `platform:escrow` / 도매몰 예치금은 **현존 구조로 명시**(법무 제시 때 넓게 쓰면 그 자리에서 깨진다).
+- **예치금 = 폐지 아님, 동결 검토.**
+- **법무 묶음 순서** ① 예치금 선불충전 전금법 해당 여부 → ② 모드 B 대금흐름 → ③ 미수령 청약철회 고지 문구.
+- **§9 열린 3건(브랜드명·모드 B 수수료율·법무 문구) 임의 결정 금지.**
+- **예치금 조회 = ②(대표 직접 확인).** ③ 진단 엔드포인트 **금지**.
+- **동결 순서 §9 명시** — 게이트 선차단 금지.
+- **supply_price 노출은 문서가 아니라 가드 테스트로 고정** → 아래.
+
+### 🛡️ 신규 가드 — 매입가 컬럼 누수(불변식 ④)
+`src/tests/unit/consumer-wholesale-separation.test.ts` 에 **④** 추가(기존 ①~③ 은 *행* 누수, ④는 **컬럼** 누수).
+재판매 복제본은 `supply_price` 를 **행에 실제로 저장**하므로(`supply.routes.ts:333~344`) 격리는 *행의 부재*가
+아니라 **SELECT 컬럼 선택**으로만 이뤄진다 — 노출면에 컬럼 하나 얹으면 매장이 마진 구조를 본다.
+- 정적: `PRODUCT_DETAIL_FIELDS` / `productDetailCols(Healed)` · 라우트 3종 SELECT 목록 · products `SELECT *` 금지
+- **행위**: fake D1 로 `findById`/`findAll` **발행 SQL 캡처** — 인라인 `baseCols` 는 정적 검사로 못 잡아서 필요
+- **되돌려-검증 완료**(CLAUDE.md 룰): `PRODUCT_DETAIL_FIELDS` 에 `supply_price` 주입 → 정적+`findById` 2건 실패
+  확인, 인라인 `baseCols` 에만 주입 → `findAll` 1건 실패 확인. **가드가 실제로 잡는다.** 복원 후 15/15 green
+
+### 🛡️ 신규 가드 2 — 정산 cron 이중성숙 (`wholesale-invariants.test.ts`)
+대표 지시 *"규율 항목은 문서 기재로 끝내지 말 것"* 을 이번 배치에 적용해 찾은 **가드 0 머니 룰**.
+별도배포 문서가 *"ur-wholesale 에 cron 절대 금지(정산 이중성숙)"* 를 **문서로만** 갖고 있었다.
+- 🔴 **구조적 사실(이번에 확인)**: 소비자·도매 번들이 **같은 entry `src/worker/index.ts` 를 공유**해 두 번 빌드되고,
+  그 entry 가 `scheduled: handleCronScheduled` 를 export → **도매 번들도 cron 핸들러를 싣고 있다.**
+  도매 쪽에 cron 이 걸리는 순간 `matureSupplierSettlements`·예치금/출금 reconcile 이 이중 실행된다.
+  `WHOLESALE_BUNDLE` 플래그는 **라우트 포함 여부만** 가르지 cron 을 안 가른다.
+- 가드: 공유 entry 로 cron 도는 워커는 `ur-live` 하나뿐 · scheduled export 단일 · 도매 라우트가 성숙 직접호출 금지
+- **되돌려-검증 완료**: 도매용 wrangler 에 cron 주입 → 빨강 확인 후 복원(12/12 green)
+- ✅ **해소됨 — 번들 레벨 게이트 구현(대표 승인, 아래 별도 항목).** 당초 "못 막는 범위"로 적었던
+  *"cron 은 CF 대시보드에 걸려 레포가 못 본다"* 는 게이트로 무해해졌다. 이 파일은 이제 **두 번째 방어선**.
+
+## 🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**
+
+대표 승인: *"gb 가격 배선보다 먼저. GMV 0 인 지금이 머니 경로를 실수해도 피해가 0 인 유일한 창이고,
+8월부터는 같은 작업이 실위험 작업이 된다."*
+
+**문제(구조)**: 소비자·도매가 **같은 entry `src/worker/index.ts` 를 두 번 빌드**하고 그 entry 가 `scheduled` 를
+export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 에 cron 이 걸리면 `matureSupplierSettlements`·
+예치금/출금 reconcile 이 **이중 실행 → 이중 지급**. 기존 방어는 "대시보드에서 설정 안 함" 뿐이었다.
+
+**수정(1줄 + no-op 함수)**: `scheduled: __INCLUDE_WHOLESALE__ === true ? wholesaleCronNoop : handleCronScheduled`
+**정산 로직 무접촉 — 실행 주체만 가름.**
+
+> ⚠️ **극성이 이 변경의 전부다.** 최대 위험은 도매가 아니라 **소비자 cron 이 조용히 죽는 것**.
+> `=== true`(도매 확실)일 때만 no-op, define 미치환/undefined/문자열은 **전부 실제 핸들러로 폴백**
+> (최악 = 현행 동작). 느슨한 `__INCLUDE_WHOLESALE__ ?` 로 바꾸지 말 것 — 가드가 빨강.
+
+**양방향 검증(빌드 산출물 실측)**:
+- 소비자: no-op 마커 0 · 정산성숙 심볼 3 · **게이트 없음/있음 번들 바이트 동일**(`20ced382e72e0053`) → 회귀 0
+- 도매: no-op 마커 1 · default export `scheduled:<no-op>` 바인딩 확인
+- 되돌려-검증: 극성 반전 → 빨강 / 느슨한 truthiness → 빨강 / 복원 green
+
+**가드**: `wholesale-cron-gate.test.ts`(극성·분기·무음금지·로직무접촉 5검사).
+
+### ➡️ staging 검증 (배포 후 — 세션이 못 함, 대표/운영 확인 필요)
+1. 🔴 **소비자 cron 정상 발화**(이게 훨씬 중요) — 하트비트 갱신이 가장 빠른 판정.
+   `/api/admin/system-monitoring` 의 cron 하트비트가 계속 최신인지. **멈추면 즉시 롤백**(아래).
+2. 도매에 cron 을 시험 삼아 걸었을 때 정산이 **안 돌고** `[wholesale-cron-gate] skipped cron` 로그만 남는지.
+
+**롤백**: `src/worker/index.ts` 의 삼항을 `scheduled: handleCronScheduled,` 로 환원(1줄).
+
+> ⚠️ **이번에 틀렸던 판단(기록)**: 머지 후 재검증에서 `git stash push src/worker/index.ts` 를 썼는데
+> **이미 커밋된 상태라 stash 가 비었고**("No stash entries found") 같은 소스를 두 번 빌드해 비교했다 —
+> 그 실행은 **무효**였다. 게이트를 실제로 제거한 소스로 다시 빌드해 재확인함. 위 sha 는 재실행 값.
+> ⇒ 번들 비교 검증은 **"비교 대상이 실제로 달랐는지"를 먼저 확인**할 것.
+
+### 🧊 픽업 공구 = **문서 동결**(2026-07-29 대표 지시)
+설계는 여기서 멈춘다. **다음 작업은 `gb 가격 소비자 결제 경로 배선`(§7 순서 ①)으로 전환.**
+🔴 **머니 경로 → 단독 세션 + staging 실결제 필수.** 이 세션에서 이어서 시작하지 말 것.
+- 문제: `resolveGbPricing` 이 마켓플레이스 표시·어드민 조종석·셀러 저장 3곳에만 있고 **소비자 구매 경로엔 없다**
+  → 공구가가 결제에 안 붙는다. 이걸 먼저 안 하면 픽업 공구를 만들어도 값이 안 실린다.
+- 착수 시 §7.2 3줄 보고: (a) 어느 레일 (b) 머니 경로 접촉 (c) 롤백 방법 → **보고 후 바로 진행**(대기 X)
+
+### ➡️ 그 전에 받을 것 — **대표가 넘길 예치금 숫자**
+조회 경로는 **②로 확정**: 대표가 도매 어드민 `/admin/wholesale-overview` 의 `deposit_liability` +
+`pending_charge_requests` 를 직접 확인해 전달한다(코드 0). **③ 진단 엔드포인트는 만들지 말 것**(대표 명시).
+이 환경에선 CF D1 API(토큰 무효)·소비자 배포 어드민(404, 도매 라우트 DCE)·도매 호스트(프록시 차단) 전부 막혔다.
+**숫자를 추정하지 말 것.** 필요: `balance>0` 계정수 · `SUM(balance)` · 최대잔액 · `pending` 충전요청수.
+
+**숫자 받은 뒤 동결 순서(대표 확정 — 이 순서 고정)**:
+`① 신규 충전요청 차단 → ② pending 전건 처리 → ③ 잔액 소진·환급 → ④ 기능 OFF`.
+🔴 **게이트 선차단 금지** — ④를 먼저 하면 ②③ 경로가 같이 닫혀 **판매사 잔액이 회수 불가로 갇힌다.**
+
+**CF 토큰**: 예치금과 **별건**. 재발급하되 **D1 읽기 전용 최소 스코프**(§B.12). CLAUDE.md 의 07-28 실측 기록은
+**무효 표기 완료** — 그 절을 믿고 "토큰 살아 있다" 전제하지 말고 `verify` 로 먼저 확인할 것.
+
+> ⚠️ **이번에 틀렸던 판단**: src 무변경 근거로 `git diff origin/main -- src/` 를 썼는데, **main 이 앞서면
+> main 의 새 src 가 섞여 들어와 오염된다.** 정확한 기준은 `git diff $(git merge-base origin/main HEAD)..HEAD`.
+> 결론은 같았지만 근거가 틀렸다.
+>
+> ⚠️ **CF 토큰 상태 정정**: CLAUDE.md "☁️ Cloudflare API 접근" 절차대로 D1 에서 꺼냈으나 **토큰이 죽어 있다.**
+> 그 절의 실측 기록(워커 목록 조회 성공 등)은 07-28 시점이고 **지금은 유효하지 않다.**
 ## 🟢 2026-07-29 (6차-q) — **매장 보강 레인이 계측 자체가 없었다 + 심평원 42회 전패**
 
 `store_prospects` 16,015곳 중 **이메일 0**. 왜인지 알 방법이 없었다 — `prospect-enrich` 는 결과를

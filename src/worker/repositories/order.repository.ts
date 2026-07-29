@@ -47,6 +47,7 @@ export class OrderRepository {
       quantity: number;
       subtotal: number;
       options?: Record<string, string>;
+      option_id?: number | null;   // 🛡️ 2026-07-02: 옵션 재고 환불 복원용 — order_items.option_id 저장.
     }[],
     subtotal: number,
     shippingFee: number,
@@ -161,13 +162,14 @@ export class OrderRepository {
     if (items.length > 0) {
       const itemStmts = items.map(item => ({
         sql: `INSERT INTO order_items (
-          order_id, product_id, seller_id,
+          order_id, product_id, option_id, seller_id,
           product_name, product_image,
           price, unit_price, quantity, subtotal, currency, options, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
         params: [
           orderId,
           item.product_id,
+          item.option_id ?? null,          // 🛡️ 2026-07-02: 옵션 재고 환불 복원용.
           item.seller_id || null,
           item.product_name,
           item.product_thumbnail ?? null,  // UI uses product_thumbnail, DB column is product_image
@@ -451,6 +453,7 @@ export class OrderRepository {
       .select({
         product_id: order_items_table.product_id,
         quantity: order_items_table.quantity,
+        option_id: order_items_table.option_id,
       })
       .from(order_items_table)
       .where(and(
@@ -466,6 +469,17 @@ export class OrderRepository {
       sql: 'UPDATE products SET stock = stock + ? WHERE id = ?',
       params: [item.quantity, item.product_id],
     }));
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션별 재고도 복원 — 주문 생성 시 CAS 차감한 product_options.stock.
+    //   이전엔 상품 재고만 복원돼 옵션 재고가 취소/환불마다 단조 감소(유령 품절).
+    for (const item of items) {
+      if (item.option_id != null) {
+        statements.push({
+          sql: 'UPDATE product_options SET stock = stock + ? WHERE id = ?',
+          params: [item.quantity, item.option_id],
+        });
+      }
+    }
 
     // Also update order items status
     statements.push({
