@@ -171,6 +171,22 @@ const BUDGET = {
 const violations = [];
 if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
   violations.push(`총 raw JS ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalRawMB} MB`);
+  // 🔎 2026-07-29: **무엇이 큰지 + 그게 사용자에게 무슨 의미인지까지** 말해준다.
+  //   이 예산이 터지면 지금까지 5번 모두 "임계값 상향"으로 끝났다. 그 이유 중 하나는 메시지가
+  //   "8.81 > 8.8" 뿐이라 **판단 재료가 없어서** 다. 실측(2026-07-29)으로 성격이 분명해졌다:
+  //   상위 3개(sentry·charts·firebase)만 3.5MB(40%)이고 **전부 lazy 청크**다 —
+  //   사용자는 이 8.75MB 를 다운로드하지 않는다. 즉 이 값은 **UX 지표가 아니라 성장 지표**이고,
+  //   실제 사용자 체감은 `critical path`(이 파일의 다른 예산), 실제 플랫폼 한도는
+  //   `_worker.js` gzip 1MB(main.yml) 과 `dist/client` 50MB(실측 36MB) 가 각각 따로 지킨다.
+  //   ⇒ 올릴지 줄일지 정하기 전에 **아래 목록이 정말 lazy 인지**부터 볼 것(크리티컬이면 진짜 문제다).
+  const topRaw = jsFiles.slice(0, 5);
+  const criticalNames = new Set(criticalFiles.map(f => f.name));
+  for (const f of topRaw) {
+    const tag = criticalNames.has(f.name) ? '⚠️ CRITICAL' : 'lazy';
+    violations.push(`    ↳ ${f.name}: ${(f.size / 1024).toFixed(0)} KB raw (${tag})`);
+  }
+  violations.push('    → lazy 만 커졌다면 사용자 체감은 그대로다(critical path 예산이 그쪽을 지킨다).');
+  violations.push('    → 임계값을 올리려면 **무엇이 왜 늘었는지 한 줄** 남길 것. 이 값은 이미 5번 올라갔다.');
 }
 // 🛡️ 측정 실패는 통과가 아니다 — 이 파일이 정확히 그렇게 몇 달을 통과했다(항상 0).
 if (totalGzip === 0) {
