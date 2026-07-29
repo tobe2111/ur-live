@@ -22,6 +22,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
+import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -183,5 +185,112 @@ describe('수집 진단 — 카페는 따로 센다', () => {
 
   it('diag 초기값에 cafe 가 있다 — 없으면 런타임에 undefined 증가로 조용히 NaN 이 된다', () => {
     expect(col).toMatch(/cafe:\s*\{\s*found:\s*0,\s*saved:\s*0\s*\}/)
+  })
+})
+
+/**
+ * ⏱️ **마지막 레인이 시계를 굶지 않는다** (2026-07-29 12:00 실측).
+ *
+ *   실측: `spent 18 / budget_total 45` · `deadline_hit: true` · `elapsed 23.4s` ·
+ *   `naver { selected: 13, tried: 0 }` — **예산의 60%를 남긴 채 시계로 끝났고**, 13건을 뽑아 놓고
+ *   한 건도 못 돌렸다. 순서가 bio → yt → **naver(마지막)** 인데 yt 가 20초를 다 썼기 때문이다.
+ *
+ *   앞선 세션이 같은 자리에서 **예산** 굶주림을 고쳤다(`naverRoomFromRemaining`). 구속 자원이
+ *   예산에서 시계로 옮겨갔을 뿐 병은 같다 — **순서가 고정되면 마지막 레인은 무엇이 구속하든 굶는다.**
+ */
+describe('보강 레인 — 앞 레인 사전 마감(블로거 시간 바닥)', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+
+  it('바닥 비율만큼을 블로거 몫으로 남긴다', () => {
+    expect(frontStageDeadline(1_000, 20_000, 40)).toBe(13_000) // 앞 레인은 60% 까지
+    expect(frontStageDeadline(0, 20_000, 50)).toBe(10_000)
+  })
+
+  it('비율은 10~80 으로 클램프되고 비정상 입력은 기본값(40)이 된다', () => {
+    expect(frontStageDeadline(0, 20_000, 0)).toBe(18_000)    // <10 → 10
+    expect(frontStageDeadline(0, 20_000, 99)).toBe(4_000)    // >80 → 80
+    expect(frontStageDeadline(0, 20_000, Number.NaN)).toBe(12_000) // NaN → 40
+    expect(frontStageDeadline(0, Number.NaN, 40)).toBe(0)
+  })
+
+  it('앞 레인에 사전 마감을 씌우고 블로거 직전에 푼다 — 복원이 빠지면 블로거도 갇힌다', () => {
+    expect(lane).toMatch(/budget\.deadline = frontStageDeadline\(started, deadlineMs, naverFloorPct\)/)
+    expect(lane).toMatch(/budget\.deadline = started \+ deadlineMs/)
+  })
+
+  it('복원이 블로거 호출 **앞**에 온다(순서가 뒤집히면 무효)', () => {
+    const restore = lane.indexOf('budget.deadline = started + deadlineMs')
+    const naverCall = lane.indexOf('enrichNaverActivity(DB, budget')
+    expect(restore).toBeGreaterThan(0)
+    expect(naverCall).toBeGreaterThan(restore)
+  })
+})
+
+/**
+ * 🕳️ **깊이는 하트비트로 못 본다** — 같은 이름에 부모가 나중에 쓰기 때문(12:00 실측 `result: null`).
+ *   판정 창은 레인 스냅샷이어야 한다.
+ */
+describe('self-chain 깊이 관측 — 이름을 다투지 않는 곳에 싣는다', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+  const routes = read('src/worker-ads/enrich.routes.ts')
+
+  it('레인 스냅샷이 depth 를 싣는다', () => {
+    expect(lane).toMatch(/depth\?:\s*number/)
+    expect(lane).toMatch(/budget_total:\s*budgetTotal,\s*depth/)
+  })
+
+  it('드라이버가 쿼리의 depth 를 레인으로 넘긴다', () => {
+    expect(routes).toMatch(/runInfluencerEnrich\(c\.env,\s*Number\.isFinite\(d\)/)
+  })
+})
+
+/**
+ * 🔀 **커서 픽이 꼬리에 몰려 영영 안 돌던 것** (2026-07-29 12:00 실측).
+ *
+ *   `picks { planned: 16, processed: 2, from_yt: 2, from_cursor: 0 }` — 예산으로 2개만 돌았고 둘 다 YT 픽.
+ *   배열이 `[...ytPicks, ...cursorPicks]` 였기 때문이다. 그런데 커서 전진은 `prefixDone`(처리된 **선행
+ *   구간** 길이)으로 계산하므로, 커서 픽이 한 번도 처리되지 않으면 `nextCursor = cursor + 0` —
+ *   **커서가 영원히 제자리**다. 활성 키워드 330개 중 매 회차 같은 소수만 돈다.
+ *
+ *   오늘 세 번째 같은 병이다(보강 레인의 시계 · 그 전엔 예산 · 여기선 순번).
+ *   **줄을 세우면 꼬리가 굶는다 — 자원이 무엇이든.**
+ */
+describe('키워드 픽 — 커서가 순번을 받는다', () => {
+  const col = read('src/features/marketing/api/influencer-auto-collect.ts')
+
+  it('YT 픽과 커서 픽을 번갈아 놓는다 — 2개만 돌아도 커서가 1개는 받는다', () => {
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 6)).toEqual(['y1', 'c1', 'y2', 'c2', 'y3', 'c3'])
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 2)).toEqual(['y1', 'c1'])
+  })
+
+  it('한쪽이 비어도 나머지로 채운다(총량 유지)', () => {
+    expect(interleavePicks([], ['c1', 'c2'], 5)).toEqual(['c1', 'c2'])
+    expect(interleavePicks(['y1', 'y2'], [], 5)).toEqual(['y1', 'y2'])
+  })
+
+  it('상대 순서를 보존한다 — prefixDone 이 선행 구간을 세므로 뒤섞으면 커서 계산이 깨진다', () => {
+    const r = interleavePicks(['y1', 'y2'], ['c1', 'c2'], 4)
+    expect(r.filter(x => x.startsWith('y'))).toEqual(['y1', 'y2'])
+    expect(r.filter(x => x.startsWith('c'))).toEqual(['c1', 'c2'])
+  })
+
+  it('total 이 비정상이어도 안전하다', () => {
+    expect(interleavePicks(['y1'], ['c1'], 0)).toEqual([])
+    expect(interleavePicks(['y1'], ['c1'], Number.NaN)).toEqual([])
+  })
+
+  it('호출부가 번갈아 배치를 쓴다(concat 회귀 금지)', () => {
+    expect(col).toMatch(/interleavePicks\(ytPicks,/)
+    expect(col).not.toMatch(/\[\.\.\.ytPicks,\s*\.\.\.picks\.filter/)
+  })
+
+  /**
+   * ⚠️ 짝이 되는 변경 — 순서만 바꾸면 커서 픽이 희소한 YT 쿼터를 가져가 성과가중 선택이 희석된다.
+   *   위치 기반(`ytUsed < batch` 단독)은 "앞에서 batch 개"라는 뜻이라 배치 순서와 쿼터 배분이 얽혀 있었다.
+   */
+  it('YT 슬롯은 멤버십으로 준다 — 순서와 쿼터 배분을 분리한다', () => {
+    expect(col).toMatch(/const ytSlot = ytIds\.has\(k\.id\) && ytUsed < batch/)
+    // 위치 단독 게이트가 되살아나면 희석이 재발한다.
+    expect(col).not.toMatch(/!quotaHit && ytUsed < batch &&/)
   })
 })
