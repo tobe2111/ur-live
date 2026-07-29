@@ -77,6 +77,13 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
          -- 🗺️ region 도 채운다(2026-07-29) — 예전엔 conflict 시 갱신 대상이 아니라, 주소가 나중에
          --   채워져도 **지역은 영영 NULL** 이었다("N/A" 주소 31.7% 를 치유해도 필터가 안 살아나는 원인).
          region = COALESCE(ad_company_leads.region, excluded.region),
+         -- 🏷️ subcategory: 비어 있으면 채우고, **원부의 총칭 자리표시자('통신판매')만** 더 구체적인 값으로 승격한다.
+         --   왜 이 좁은 규칙인가: 온라인판매 151,277건이 전부 '통신판매' 로 굳어 분류가 없는데(실측 100%),
+         --   그냥 excluded 로 덮으면 사람이 큐레이션한 값까지 원부 값이 밀어낸다. 총칭만 올린다.
+         subcategory = CASE
+           WHEN ad_company_leads.subcategory IS NULL OR ad_company_leads.subcategory = '' THEN excluded.subcategory
+           WHEN ad_company_leads.subcategory = '통신판매' AND excluded.subcategory IS NOT NULL AND excluded.subcategory != '통신판매' THEN excluded.subcategory
+           ELSE ad_company_leads.subcategory END,
          business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
          contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
          active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL

@@ -38,10 +38,14 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
   //   등록부가 말해준 상태만 본다 — 상호/주소로 추측하지 않는다.
   const status = `${g(it, 'operSttusCdNm', 'operSttus')} ${g(it, 'bzmnRgsSttusSeNm', 'bzmnRgsSttusSe')}`
   const closed = /폐업|말소|휴업|취소/.test(status)
+  // 🏷️ 취급품목 — **실제로 존재하는 필드**로 겨눈다(구 별칭 `upteNm` 은 실응답에 없어 100% '통신판매' 고착).
+  //   원문은 description 에 남겨(정보 손실 0) 라이브 값을 보고 버킷 표를 정밀화할 수 있게 한다.
+  const goods = g(it, 'trtmntPrdlstNm', 'ntslPrdlstCn', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm')
+  const method = g(it, 'ntslMthdNm')
   return {
     // 통신판매사업자 = 일반 온라인 판매업체(대행사 아님) → '온라인판매' tier 4. (이전 '대행사' tier1 오분류는
     //   보강 우선순위(tier1 우선)를 통신판매가 독식하게 만들어 실제 대행사 리드를 밀어냈음 — 정합 교정.)
-    company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '온라인판매', subcategory: g(it, 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm') || '통신판매', tier: 4,
+    company_name: g(it, 'bzmnNm', 'bsshNm', 'coNm', 'brmNm', 'entrNm', 'cmpnyNm'), category: '온라인판매', subcategory: productBucket(goods) || '통신판매', tier: 4,
     region: pickRegion(addr), address: addr || null,
     phone: null, // 통신판매 데이터엔 업체 전화 없음(chrgDeptTelno 는 관공서) → 보강 단계에서 카카오로 확보
     email: email || null,
@@ -51,7 +55,13 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
     //   그 자체로 값이다(신고 원부의 도메인 = 고품질). 정보를 공짜로 버리고 있었다 → 항상 저장.
     website: domain ? (/^https?:\/\//i.test(domain) ? domain : `http://${domain}`) : null,
     business_no: g(it, 'brno', 'bizrno', 'bzmnRegNo') || null,
-    description: [g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') && `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}`, g(it, 'operSttusCdNm', 'operSttus')].filter(Boolean).join(' · ') || null,
+    // 📎 원문 보존 — 취급품목/판매방식은 버킷으로 요약해도 **원문이 있어야** 다음에 표를 고칠 수 있다.
+    description: [
+      g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm') && `대표 ${g(it, 'rprsvNm', 'rprsntvNm', 'ceoNm')}`,
+      g(it, 'operSttusCdNm', 'operSttus'),
+      goods && `취급 ${goods.slice(0, 120)}`,
+      method && `판매 ${method.slice(0, 40)}`,
+    ].filter(Boolean).join(' · ') || null,
     contact_source: email ? 'commerce' : null, // 이메일 있을 때만 통신판매 출처(전화는 보강 출처가 기록)
     source: 'commerce', source_keyword: g(it, 'prmmiMnno', 'mnno', 'dclrNo') || 'commerce',
     closed,
@@ -61,6 +71,42 @@ const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '')
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
 export type RawCommerce = Record<string, unknown>
+
+/**
+ * 🏷️ 취급품목 → 업종 버킷 (2026-07-29).
+ *
+ *   **문제(라이브 실측)**: 온라인판매 리드 151,277건의 `subcategory` 가 **100% `'통신판매'`** —
+ *   88% 의 풀에 분류가 사실상 없다. 원인은 별칭 목록이 **존재하지 않는 필드**를 겨눴기 때문이다
+ *   (`upteNm` 은 실응답에 없다 — 라이브 키 목록으로 확인). 실제로 있는 건
+ *   `trtmntPrdlstNm`(취급품목) · `ntslPrdlstCn`(판매품목) · `ntslMthdNm`(판매방식) 이다.
+ *
+ *   ⚠️ **한계를 분명히 한다**: 키가 존재하는 건 확인했지만, 이 환경에선 그 값의 **실제 문자열을 아직 못 봤다**
+ *   (유일한 라이브 샘플이 폐업 행이라 전부 "N/A"). 그래서 매칭되면 버킷, **안 되면 현행 `'통신판매'` 유지**로
+ *   두고 원문은 `description` 에 남긴다 — 라이브에서 실제 값을 본 뒤 이 표를 정밀화하면 된다(추측 최소화).
+ */
+const PRODUCT_BUCKETS: Array<[string, RegExp]> = [
+  ['패션·잡화', /의류|패션|의복|셔츠|바지|원피스|신발|구두|가방|잡화|악세|액세서리|주얼리|시계|모자/],
+  ['뷰티', /화장품|뷰티|미용|스킨|헤어|향수|네일|마스크팩/],
+  ['식품', /식품|농산|수산|축산|건강식품|가공식품|음료|커피|차\b|과자|반찬|정육|과일/],
+  ['가전·디지털', /가전|전자|컴퓨터|노트북|휴대폰|스마트폰|디지털|카메라|음향|주변기기|소프트웨어/],
+  ['생활·주방', /생활용품|주방|욕실|청소|세제|수납|침구|생활잡화/],
+  ['가구·인테리어', /가구|인테리어|조명|커튼|벽지|소품/],
+  ['유아동', /유아|아동|출산|육아|완구|장난감|기저귀/],
+  ['스포츠·레저', /스포츠|레저|등산|캠핑|자전거|골프|헬스|낚시/],
+  ['반려동물', /반려|애완|펫\b|사료/],
+  ['건강·의료', /건강|의료|의약|의료기기|보조식품|영양제/],
+  ['도서·문구', /도서|서적|문구|사무용품|음반|교재/],
+  ['자동차·공구', /자동차|차량|타이어|공구|산업용품|부품/],
+]
+
+/** 취급품목 텍스트 → 버킷. 못 맞추면 null(호출부가 현행 `'통신판매'` 유지). */
+export function productBucket(raw: string | null | undefined): string | null {
+  const s = String(raw || '')
+  if (!s) return null
+  for (const [name, re] of PRODUCT_BUCKETS) if (re.test(s)) return name
+  return null
+}
+
 const EMAIL_RE = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i
 const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$/i
 

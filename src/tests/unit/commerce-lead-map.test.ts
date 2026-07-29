@@ -7,7 +7,7 @@
  *   대표는 전화·메일로 직접 접촉하므로 회사 사이트는 그 자체로 값이다.
  */
 import { describe, it, expect } from 'vitest'
-import { mapCommerceLead } from '@/features/marketing/api/commerce-notify-collect'
+import { mapCommerceLead, productBucket } from '@/features/marketing/api/commerce-notify-collect'
 
 const base = { bzmnNm: '테스트상회', rnAddr: '서울특별시 강남구 테헤란로 1', brno: '1234567890' }
 
@@ -85,5 +85,32 @@ describe('mapCommerceLead', () => {
     const l = mapCommerceLead({ bzmnNm: '테스트상회', brno: 'N/A', rprsvNm: '없음', lctnAddr: '서울특별시 강남구 역삼동 1' })
     expect(l.business_no).toBeNull()
     expect(l.description || '').not.toContain('없음')
+  })
+
+  // 🏷️ 분류 — 라이브 실측: 온라인판매 151,277건의 subcategory 가 **100% '통신판매'** 였다.
+  //   원인은 별칭 목록이 **실응답에 없는 필드**(`upteNm`)를 겨눈 것. 실제 키는 trtmntPrdlstNm/ntslPrdlstCn.
+  it('취급품목이 있으면 업종 버킷으로 분류한다(88% 풀이 단일 라벨로 굳어 있던 것)', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', trtmntPrdlstNm: '여성의류, 패션잡화' })
+    expect(l.subcategory).toBe('패션·잡화')
+  })
+
+  it('취급품목이 없거나 못 맞추면 현행 "통신판매" 를 유지한다(무리한 분류 금지)', () => {
+    expect(mapCommerceLead({ bzmnNm: '테스트상회' }).subcategory).toBe('통신판매')
+    expect(mapCommerceLead({ bzmnNm: '테스트상회', trtmntPrdlstNm: '기타' }).subcategory).toBe('통신판매')
+    expect(mapCommerceLead({ bzmnNm: '테스트상회', trtmntPrdlstNm: 'N/A' }).subcategory).toBe('통신판매')
+  })
+
+  it('취급품목·판매방식 **원문**을 description 에 남긴다 — 버킷 표를 나중에 고칠 수 있어야 한다', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', trtmntPrdlstNm: '건강기능식품', ntslMthdNm: '인터넷' })
+    expect(l.description).toContain('취급 건강기능식품')
+    expect(l.description).toContain('판매 인터넷')
+  })
+
+  it('productBucket 은 대표 품목군을 가른다', () => {
+    expect(productBucket('화장품/향수')).toBe('뷰티')
+    expect(productBucket('노트북 및 주변기기')).toBe('가전·디지털')
+    expect(productBucket('반려동물 사료')).toBe('반려동물')
+    expect(productBucket('')).toBeNull()
+    expect(productBucket(null)).toBeNull()
   })
 })
