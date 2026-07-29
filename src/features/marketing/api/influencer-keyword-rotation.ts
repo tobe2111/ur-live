@@ -8,6 +8,7 @@
  *   ⚠️ `influencer-auto-collect.ts` 에서 분리된 이유는 그 파일이 600줄 래칫에 닿았기 때문이다.
  *   호환을 위해 원래 모듈이 이 심볼들을 그대로 재수출한다(기존 import 경로 유지).
  */
+import { isSubrequestLimitError } from './collect-budget'
 
 /** 우선 카테고리 — 유어딜 딜과 결이 맞는 축(맛집·뷰티·숙소). 선택 점수에 가중된다. */
 //   🛒 '공동구매' 추가(2026-07-29 대표 지시) — 이미 자기 팔로워에게 직접 파는 층이라 링크샵 전환 장벽이
@@ -18,6 +19,8 @@ export interface YtPickKeyword {
   id: number
   keyword: string
   category: string | null
+  /** 'seed'(대표 큐레이션) | 'auto'(해시태그 자동확장) | 'manual' — 자동확장 상한을 auto 에만 적용하기 위해 필요. */
+  source?: string | null
   saved_total?: number
   last_saved?: number
   last_run_at?: string | null
@@ -82,4 +85,28 @@ export function autoPromotionRoom(activeAutoCount: number, cap = MAX_AUTO_KEYWOR
   const n = Number.isFinite(activeAutoCount) ? Math.max(0, activeAutoCount) : 0
   const c = Number.isFinite(cap) ? Math.max(0, cap) : 0
   return Math.max(0, c - n)
+}
+
+/**
+ * 🌵 **이 회차의 결과를 키워드 판정에 써도 되는가** (2026-07-29 — 순수함수로 승격).
+ *
+ *   같은 버그가 두 번 나왔다. 둘 다 "수확 0" 을 키워드 탓으로 기록한 것인데, 원인은 달랐다:
+ *     ① 예산 고갈·서브리퀘스트 한도 — 우리 쪽이 굶어서 fetch 가 전부 실패 (#851 에서 수리)
+ *     ② **검색을 한 번도 성공 못 함** — YT 쿼터 소진(`quotaHit`/예산/배치상한)이면 호출조차 안 하고,
+ *        그 사이 네이버까지 실패하면 예산은 멀쩡한데 `found 0` 이 남는다.
+ *   ②의 라이브 증거: `먹방`·`홈카페`·`뷰티 유튜버`·`코스메틱 추천`·`맛집 브이로그` 가 전부
+ *   `found_total = 0`. 한국에서 가장 많이 검색되는 축들이 진짜로 0 일 리 없다.
+ *
+ *   기록되면 대가가 크다 — 점수 −25/회(`pickYtKeywords`) · 쿨다운 +6h/회(최대 4일) ·
+ *   auto 는 8회면 **영구 비활성**. 즉 잘 되는 키워드를 스스로 은퇴시키는 자기강화 루프가 된다.
+ *   ⇒ **물어봤는가**를 판정의 전제로 둔다. 안 물어봤으면 답을 기록하지 않는다(무판정).
+ */
+export function isUnjudgedRound(r: {
+  /** 이 키워드 처리 후 남은 예산 */ budgetLeft: number
+  /** 성공한 검색 호출 수(YT·네이버 합) */ searchedOk: number
+  ytError?: string
+  naverError?: string
+}): boolean {
+  return r.budgetLeft <= 0 || r.searchedOk === 0
+    || isSubrequestLimitError(r.ytError) || isSubrequestLimitError(r.naverError)
 }

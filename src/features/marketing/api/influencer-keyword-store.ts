@@ -1,0 +1,111 @@
+/**
+ * 🗂️ 발굴 **키워드 테이블 저장소** — `influencer-auto-collect.ts` 에서 추출 (2026-07-29, 600줄 캡).
+ *
+ *   수집 엔진 파일은 여러 세션이 계속 블록을 얹는 자리다(저장 → `influencer-save.ts`,
+ *   설정 → `influencer-settings.ts`, 시드 → `influencer-seed-keywords.ts` 에 이어 네 번째 분리).
+ *   키워드 *테이블의 수명주기*(스키마·시드·목록·추가/토글·1회성 복구)는 그 자체로 하나의 관심사라
+ *   여기가 제자리다. 동작은 이전과 동일(로직 이동만) — 호출부 호환은 원 파일의 재수출이 유지한다.
+ */
+import type { D1Database } from '@cloudflare/workers-types'
+import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
+
+export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
+
+/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
+const KW_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword TEXT NOT NULL UNIQUE,
+    category TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    hits INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'seed',
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`,
+  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
+  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
+  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
+  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
+  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
+]
+
+const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
+
+/**
+ * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
+ *
+ * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
+ *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
+ *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
+ *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
+ *
+ *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
+ *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
+ */
+export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
+  const cached = _kwSchemaPromise.get(DB)
+  if (cached) return cached
+  const p = (async () => {
+    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
+    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
+    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
+    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
+    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
+    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
+      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+        .bind(kw, g.category, 'seed')))
+    await DB.batch(stmts).catch(() => null)
+  })()
+  _kwSchemaPromise.set(DB, p)
+  return p
+}
+
+/**
+ * 🩹 **1회성 복구 — 오염된 고갈 카운터 초기화** (2026-07-29).
+ *
+ *   기록부가 "검색하고 0명"과 "검색을 못 함"을 구분하지 못하던 동안 `barren_streak` 은
+ *   **물어보지도 않은 회차**를 세면서 자랐다(수집 루프의 `starved` 주석 참조). 그래서 지금 DB 에 남아
+ *   있는 값은 신뢰할 수 없다 — 그대로 두면 고쳐진 회계 위에서도 옛 오염이 계속 벌을 준다
+ *   (점수 −25/회 · 쿨다운 +6h/회 · auto 는 8회면 영구 비활성).
+ *
+ *   ① **잘못 은퇴한 auto 키워드 복구** — `saved_total > 0` 인데 streak 로 꺼진 것들. 저 조건은 다른
+ *      은퇴 규칙(`saved_total = 0` + 2일)에 절대 안 걸리므로 꺼진 이유가 고갈 카운터뿐이다.
+ *      (어드민이 손으로 끈 키워드는 productive 하면 streak 가 0 이라 여기 안 걸린다 — 대표 결정 보존.)
+ *   ② **카운터 전면 리셋** — 진짜 고갈이면 고쳐진 회계로 8회 만에 다시 쌓인다(손실 없음).
+ *
+ *   `runDdlOnce` 체크섬으로 **딱 한 번만** 실행된다(적용 후엔 읽기 1회 — 무료 플랜 예산 보호).
+ */
+export async function healBarrenStreakOnce(DB: D1Database): Promise<void> {
+  await runDdlOnce(DB, 'ads_kw_barren_reset_v1', [
+    "UPDATE ad_discovery_keywords SET active = 1, barren_streak = 0 WHERE source = 'auto' AND active = 0 AND COALESCE(barren_streak, 0) >= 8 AND saved_total > 0",
+    'UPDATE ad_discovery_keywords SET barren_streak = 0 WHERE COALESCE(barren_streak, 0) > 0',
+  ])
+}
+
+export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
+  await ensureDiscoveryKeywords(DB)
+  const r = await DB.prepare('SELECT id, keyword, category, active, hits, source, created_at FROM ad_discovery_keywords ORDER BY active DESC, hits DESC, id ASC LIMIT 1000')
+    .all<DiscoveryKeyword>().catch(() => null)
+  return r?.results || []
+}
+
+export async function addDiscoveryKeyword(DB: D1Database, keyword: string, category?: string): Promise<{ ok: boolean; error?: string }> {
+  const kw = (keyword || '').trim()
+  if (kw.length < 2 || kw.length > 40) return { ok: false, error: 'INVALID' }
+  await ensureDiscoveryKeywords(DB)
+  await DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+    .bind(kw, (category || '수동').slice(0, 40), 'manual').run().catch(() => null)
+  return { ok: true }
+}
+
+export async function setKeywordActive(DB: D1Database, id: number, active: boolean): Promise<{ ok: boolean }> {
+  await DB.prepare('UPDATE ad_discovery_keywords SET active = ? WHERE id = ?').bind(active ? 1 : 0, id).run().catch(() => null)
+  return { ok: true }
+}

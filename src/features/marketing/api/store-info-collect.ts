@@ -75,7 +75,7 @@ const CURSOR_KEY = 'ads_storeinfo_cursor' // 'targetIdx:page'
 /** 상가정보 1틱(cron 짝수시 또는 수동). 게이트 체크는 호출부. 커서 순환(타깃×페이지)로 전국 커버. */
 export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const DB = env.DB
-  await ensureCompanySchema(DB)
+  const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비(아래 예산에서 차감)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const serviceKey = env.PUBLIC_DATA_SERVICE_KEY || (env as unknown as { NTS_API_KEY?: string }).NTS_API_KEY || ''
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
@@ -99,7 +99,7 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const batch = Math.max(1, parseInt(env.ADS_STOREINFO_BATCH || '', 10) || 3)
   // 🧱 플랫폼 천장(2026-07-29) — env 값이 얼마든 인보케이션 한도를 넘을 수 없다. 넘으면 후반 fetch 가
   //   조용히 전멸하고(잡히는 예외 없이) 그 사실이 어디에도 안 남는다. collect-budget.ts 주석(기본 60·근거) 참조.
-  const budget: FetchBudget = { left: Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60)) }
+  const budget: FetchBudget = { left: Math.max(1, Math.min(platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP), Math.max(5, parseInt(env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 60)) - schemaSpent) }
   const requireContact = env.ADS_COMPANY_REQUIRE_CONTACT !== 'false'
 
   let found = 0, saved = 0, sample: unknown

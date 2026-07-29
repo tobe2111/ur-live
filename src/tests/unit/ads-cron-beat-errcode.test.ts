@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeResult } from '@/worker/utils/cron-heartbeat'
+import { cronErrorCode, summarizeResult } from '@/worker/utils/cron-heartbeat'
 
 /**
  * 🏷️ 2026-07-29 — 실패 하트비트에 사유가 없던 갭의 회귀 방지.
@@ -11,6 +11,23 @@ import { summarizeResult } from '@/worker/utils/cron-heartbeat'
  *   `Too many subrequests by single Worker invocation`(47자)을 그대로 넘기면 통째로 사라진다 —
  *   그래서 호출부(worker-ads `errCode`)가 짧은 분류 코드로 줄인다. 이 테스트는 그 계약을 잠근다.
  */
+describe('cronErrorCode — 실패를 짧은 분류 코드로', () => {
+  it('🔒 서브리퀘스트 한도는 limit — AIMD 가 반응해야 하는 유일한 신호', () => {
+    expect(cronErrorCode(new Error('Too many subrequests by single Worker invocation'))).toBe('limit')
+    expect(cronErrorCode(new Error('Too many API requests by single worker invocation'))).toBe('limit')
+  })
+  it('타임아웃은 timeout(이름/문구 어느 쪽으로 와도)', () => {
+    const e = new Error('The operation was aborted'); e.name = 'TimeoutError'
+    expect(cronErrorCode(e)).toBe('timeout')
+    expect(cronErrorCode(new Error('request timeout'))).toBe('timeout')
+  })
+  it('그 외는 예외 이름(24자 이내) — summarizeResult 가 버리지 않는 길이', () => {
+    expect(cronErrorCode(new TypeError('x is not a function'))).toBe('TypeError')
+    expect(cronErrorCode(null)).toBe('Error')
+    expect(cronErrorCode(cronErrorCode).length).toBeLessThanOrEqual(24)
+  })
+})
+
 describe('summarizeResult — 실패 사유가 실제로 남는가', () => {
   it('🔒 짧은 분류 코드는 보존된다(호출부가 이 형태로 넘긴다)', () => {
     expect(summarizeResult({ err: 'limit' })).toBe('err=limit')

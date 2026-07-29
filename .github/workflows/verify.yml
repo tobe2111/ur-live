@@ -213,6 +213,15 @@ jobs:
         run: node scripts/check-robots-private-routes.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-29: tsconfig 가 타입체크를 통째로 중단시키는 설정을 갖지 않게 한다.
+      #   `baseUrl` 은 TS 6 에서 **에러(TS5101)** 라 설정 로드 단계에서 tsc 가 즉시 멈춘다 — 파일 0개 검사.
+      #   실측: baseUrl 있을 때 출력 2줄 / 없앤 뒤 전량 검사. 짧은 출력이 "에러 없음"과 구분되지 않아
+      #   이 레포는 몇 세션 동안 "로컬 tsc 는 죽어 있다"고 적어둔 채 지나갔다.
+      #   ⚠️ ignoreDeprecations 로 막지 말 것 — 고정 TS(5.5)가 그 값을 거부해 CI 가 깨진다(버전 결합).
+      - name: tsconfig 타입체크 무력화 차단 (strict)
+        run: node scripts/check-tsconfig-resolution.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
@@ -358,6 +367,12 @@ jobs:
 
       - name: Subrequest platform-ceiling guard (strict)
         run: node scripts/check-subreq-platform-cap.mjs -s
+        continue-on-error: false
+
+      # 🧾 2026-07-29: 스키마 DDL(회사 35 / 매장 9) 비용이 어느 레인 예산에도 안 잡혀, 우리 계수와
+      #   플랫폼 계수가 갈라진 만큼 라운드가 **잡을 예외도 없이** 죽었다(인허가 total_saved:0, 보강 partial:true).
+      - name: 부기 비용 예산 차감 (strict)
+        run: node scripts/check-schema-cost-counted.mjs -s
         continue-on-error: false
 
       # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
@@ -564,6 +579,22 @@ jobs:
       # ── 3. 타입 체크 ──
       # 🛡️ 2026-07-12: frontend tsc 를 strict 로 (이전 warn-only → BrandLoader import 누락이
       #   Verify 를 통과하고 배포까지 가 블로그 상세 전면 크래시). 현재 에러 0 — 유지 강제.
+      # 🛡️ 2026-07-29: **"0개 파일 검사 → 0 에러"** 를 성공으로 읽지 않는다.
+      #   실측: `tsconfig.json` 의 `baseUrl` 이 TS 6 에서 TS5101(에러)로 승격돼, 최신 tsc 는
+      #   설정 로드 단계에서 **즉시 중단** — 파일을 하나도 안 보고 끝났다. 그린 신호와 구분이 안 된다.
+      #   (이 세션이 실제로 그 상태의 tsc 를 "에러 0" 으로 오독했다.) 검사 대상 수를 하한으로 못 박는다.
+      - name: Type check — 검사 대상 수 확인 (0개 통과 방지)
+        run: |
+          COUNT=$(npx tsc --noEmit --skipLibCheck --listFilesOnly 2>/dev/null | grep -c '^' || true)
+          echo "typecheck 대상 파일: $COUNT"
+          if [ "$COUNT" -lt 500 ]; then
+            echo "❌ 검사 대상이 $COUNT 개뿐 — tsconfig 로드가 중단됐거나 include 가 깨졌다."
+            echo "   (0 에러가 '통과'가 아니라 '아무것도 안 봤다' 일 수 있다)"
+            npx tsc --noEmit --skipLibCheck --listFilesOnly 2>&1 | head -20
+            exit 1
+          fi
+        continue-on-error: false
+
       - name: Type check (frontend)
         run: npx tsc --noEmit --skipLibCheck
         continue-on-error: false

@@ -64,6 +64,7 @@ if domain money; then
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
   run "서브리퀘스트 플랫폼 천장 우회"     node scripts/check-subreq-platform-cap.mjs -s
+  run "부기 비용 예산 미차감"            node scripts/check-schema-cost-counted.mjs -s
   run "크롤 재시도 쿨다운"                node scripts/check-crawl-cooldown.mjs -s
   run "접힌 리드(중복병합) 누수"          node scripts/check-merged-lead-filter.mjs
   run "수집 러너 스케줄 누락"            node scripts/check-collector-cron.mjs
@@ -131,6 +132,7 @@ if domain deploy; then
   run "잠금표 심볼 실재(낡은 지도)"      env STRICT_LOCK_TABLE=1       node scripts/check-lock-table-symbols.mjs
   run "sitemap 죽은 URL 제출"            env STRICT_SITEMAP=1          node scripts/check-sitemap-routes.mjs
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
+  run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

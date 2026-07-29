@@ -45,10 +45,10 @@ const HOT_PATHS: readonly string[] = [
   '/api/home/bundle',
   '/api/home/categories',
   '/api/products?limit=20',
-  '/api/streams',
-  '/api/streams?status=live&limit=10',
-  // 🛡️ 2026-05-27 (Step P1-2): LiveListPage SSR key 와 정확히 일치.
-  '/api/streams?status=live&limit=20',
+  // 🚫 2026-07-29: `/api/streams` 3종 제거 — **라이브 실측 404**(라이브커머스 영구중단
+  //   `LIVE_COMMERCE_SUSPENDED`로 라우트 자체가 없다). 예열은 실패해도 조용히 넘어가므로
+  //   몇 달간 매 5분마다 404 를 세 번씩 받아오고 있었다. 아래 예산 주석이 말하듯 이 cron 은
+  //   서브리퀘스트 상한(50)에 붙어 있어(≈49), 그 낭비가 곧 다른 경로의 예열 실패다.
   '/api/banners',
   '/api/group-buy/products',
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
@@ -62,13 +62,12 @@ const HOT_PATHS: readonly string[] = [
   // 🏭 2026-06-04 [LOADING_ADDITIVE]: 동네딜 '유저 공구'(community) 탭 — 클라 요청과 정확히 일치.
   //   30s 엣지캐시라 organic 방문 사이 만료 → cold D1. 5분 cron warm 으로 탭 전환 즉시 응답.
   '/api/community-group-buy/list?status=proposed&sort=popular&limit=20',
-  // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 도매몰 상품 느림): guest 카탈로그/배너/몰 브랜딩 warm.
-  //   카탈로그 클라 기본 요청은 trailing '?' (`/api/wholesale/catalog?`) — 캐시키 정확 일치 위해 두 형태 모두.
-  '/api/wholesale/catalog?',
-  '/api/wholesale/catalog',
-  '/api/wholesale/banners',
-  '/api/wholesale/mall',
-  '/api/wholesale/board/posts?type=notice',
+  // 🚫 2026-07-29: 도매 5종을 **이 목록에서** 제거 — 여기는 FRONTEND_URL(소비자) 오리진으로 요청하는데
+  //   도매 라우트는 소비자 번들에 없다(`__INCLUDE_WHOLESALE__`). 라이브 실측 결과 5개 전부 **404** 였다.
+  //   즉 2026-06-10 에 의도한 "guest 카탈로그 warm" 은 이 경로로는 한 번도 이뤄지지 않았다.
+  //   ⚠️ 실제 도매 워밍은 **아래 utongstart 오리진 블록**이 담당한다 — 그쪽은 건드리지 않았다.
+  //   (이 컨테이너는 프록시가 utongstart.com 을 막아 그 블록의 200 여부는 확인하지 못했다.)
+  //   소비자 오리진에서도 도매를 서빙하게 되면 그때 다시 추가할 것.
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
   '/api/group-buy/products?status=active&category=meal_voucher',
@@ -86,7 +85,7 @@ const HOT_PATHS: readonly string[] = [
   '/api/vouchers/categories',
   '/api/group-buy/live-ticker',
   '/api/sections',
-  '/api/shorts',
+  // 🚫 2026-07-29: '/api/shorts' 제거 — 라이브 실측 404(쇼츠도 중단). 위 streams 와 같은 이유.
   '/api/currency/rates',
   // 📝 2026-07-01: 블로그 공개 목록 — 이 fetch 가 maybeSyncBlogSeed() 를 트리거해 배포 후
   //   버전 재시드를 cron 이 먼저 수행(첫 방문자 콜드 동기화 제거) + 공개 목록 캐시 warm.
@@ -109,14 +108,14 @@ const HOT_PATHS: readonly string[] = [
 //   KV 는 전역 복제라 어느 콜로든 ~수십 ms 에 페이로드 확보 → worker/index.ts SSR 읽기 경로가
 //   [edge miss → KV read → self-fetch] 순으로 소비.
 //   💰 비용 가드(무료 1K writes/day, CLAUDE.md KV 잠금 철학): **쓰기는 cron 전용 + 15분 표본화** —
-//   6키 × (5분 cron 중 매시 0/15/30/45분 창만) 96회/day = 576 writes/day < 1K. 읽기는 콜드-콜로
+//   4키 × (5분 cron 중 매시 0/15/30/45분 창만) 96회/day = 384 writes/day < 1K. 읽기는 콜드-콜로
 //   edge-miss 시에만(무료 100K/day 대비 미미). CACHE_KV 미바인딩이면 전부 skip = 현행 100% 동일.
 const SSR_KV_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=all',            // MAIN(홈)
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',      // VOUCHERS
   '/api/products?page=1&limit=20&exclude_deal_only=1',             // BROWSE
-  '/api/streams?status=live&limit=20',                             // LIVE
-  '/api/wholesale/catalog',                                        // WHOLESALE(guest)
+  // 🚫 2026-07-29: LIVE(/api/streams) · WHOLESALE(/api/wholesale/catalog) 제거 — 소비자 오리진에서
+  //   둘 다 404 라 `if (res.ok)` 를 통과한 적이 없다(KV 기록 0). 남은 4키가 실제로 쓰이는 슬롯이다.
   '/api/blog/public?limit=100',                                    // BLOG
 ];
 const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급 수준)
