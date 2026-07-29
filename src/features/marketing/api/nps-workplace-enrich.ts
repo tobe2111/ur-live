@@ -37,7 +37,7 @@ const regionTokens = (s: string) => new Set((s || '').match(/[가-힣]{2,}(?:시
 
 export interface NpsStats {
   last_run: string; checked: number; matched: number; total_checked: number; total_matched: number
-  diag: { configured: boolean; error?: string; sample?: unknown }
+  diag: { configured: boolean; error?: string; sample?: unknown; empty_probe?: { name: string; len: number; keys: string; totalCount: string; head: string } }
 }
 const STATS_KEY = 'ads_nps_stats'
 
@@ -65,6 +65,8 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
     .catch(() => null))?.results || []
 
   let checked = 0, matched = 0, sample: unknown, lastMsg: string | undefined
+  /** 빈 응답 1건의 증거(위 주석) — '검색 0건'과 '봉투 파싱 실패'를 다음 세션이 구분할 수 있게. */
+  let emptyProbe: { name: string; len: number; keys: string; totalCount: string; head: string } | undefined
   // 🪙 서브리퀘스트 예산 — 이 레인이 유일하게 안 세고 있었다(오늘 고친 다른 레인들과 동일 계정 방식).
   //   한도(≈50) 안쪽에서 fetch·D1 을 모두 지불한다. 남는 2 는 마지막 배치 쓰기 몫.
   const budget = { left: Math.max(8, Math.min(45, maxLeads * 2)) }
@@ -90,9 +92,24 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
       // 상대 서버 실패는 '조회했으나 결과 없음' 이 아니다 — 도장 없이 넘긴다(다음 라운드 재시도).
       continue
     }
-    const { items, msg } = parseItems(await res.text().catch(() => ''))
+    const rawBody = await res.text().catch(() => '')
+    const { items, msg } = parseItems(rawBody)
     if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]
+    // 🩺 **0건의 정체를 남긴다**(2026-07-29) — 라이브가 `checked:40 · matched:0` 인데 `sample` 도 `error` 도
+    //   없었다. 즉 매 요청이 200 인데 items 가 비어 있었다는 뜻인데, 그게 ⓐ 진짜로 검색 결과가 0 인지
+    //   ⓑ 우리가 봉투를 못 푸는지 **구분할 근거가 하나도 없었다**(이 세션 내내 반복된 그 클래스).
+    //   빈 응답의 최상위 키·본문 길이·totalCount 를 첫 1건만 기록한다(비용 0, 다음 세션이 추측 없이 판정).
+    if (!items.length && !emptyProbe) {
+      let keys = ''; let totalCount = ''
+      try {
+        const j = JSON.parse(rawBody) as Record<string, unknown>
+        keys = Object.keys(j).join(',')
+        const body = ((j.response as Record<string, unknown>)?.body ?? j.body) as Record<string, unknown> | undefined
+        if (body) { keys += ` | body:${Object.keys(body).join(',')}`; totalCount = String(body.totalCount ?? '') }
+      } catch { keys = '비JSON' }
+      emptyProbe = { name: t.company_name.slice(0, 30), len: rawBody.length, keys: keys.slice(0, 200), totalCount, head: rawBody.slice(0, 160) }
+    }
     // ② 엄격 매칭 — 상호 정규화 일치 필수 + (사업자6자리 or 지역 토큰) 보조 검증.
     const want = norm(t.company_name)
     const leadRegion = regionTokens(`${t.region || ''} ${t.address || ''}`)
@@ -138,7 +155,7 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
   const s: NpsStats = {
     last_run: stamp, checked, matched,
     total_checked: (prev?.total_checked || 0) + checked, total_matched: (prev?.total_matched || 0) + matched,
-    diag: { configured: true, error, sample },
+    diag: { configured: true, error, sample, empty_probe: emptyProbe },
   }
   await persist(s)
   return s

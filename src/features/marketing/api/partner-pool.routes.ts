@@ -252,9 +252,15 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun] = await Promise.all([
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep] = await Promise.all([
     readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
     readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
+    // 🧮 누적(2026-07-29) — 스냅샷은 라운드마다 덮이므로 "모든 라운드가 죽는다"와 "마지막만 잘렸다"를
+    //   한 장으로는 **구분할 수 없었다**. 하루치 rounds/partial/phase 분포를 함께 보여 판정 가능하게.
+    readKey('ads_enrich_rollup'),
+    // 📞 카카오 전화 스윕(2026-07-29) — 145k 무연락처 리드의 **주 전화 확보 레인인데 화면에 없었다**.
+    //   `day_lookups` 는 self-chain 깊이를 올리기 전에 카카오 쿼터 소비를 실측하기 위한 값.
+    readKey('ads_kakao_sweep_stats'),
   ])
   // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
   //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
@@ -283,7 +289,7 @@ app.get('/stats', async (c) => {
     work24: { gate: gate('work24', (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true'), run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
-    enrichLast, enrichBurst, reclassifyBurst, runAll, running,
+    enrichLast, enrichRollup, enrichBurst, reclassifyBurst, runAll, running, kakaoSweep,
     // 🏪 매장 후보(인허가) — 소비자 공개면/개업 웰컴의 데이터원. 상태줄에 없어 0건인 걸 아무도 몰랐음(2026-07-28).
     localdata: { gate: gate('localdata', false), run: localdataRun },
   })

@@ -324,6 +324,10 @@ jobs:
         run: node scripts/check-subreq-cap-lane.mjs -s
         continue-on-error: false
 
+      - name: Subrequest platform-ceiling guard (strict)
+        run: node scripts/check-subreq-platform-cap.mjs -s
+        continue-on-error: false
+
       # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
       #   없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 다음 회차에도 또 선두 → 매시간 같은 앞줄만
       #   재크롤하고 백로그는 영영 미도달(에러도 로그도 안 남는다). 같은 사고가 보강 레인·수집 레인에서

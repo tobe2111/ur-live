@@ -84,3 +84,73 @@ export function describePublicDataBody(body: string): string | null {
   const code = findCode(body)
   return code ? `${code} — ${CODE_HINT[code]}` : null
 }
+
+// ── 🩹 하드 실패 백오프 (2026-07-29) ────────────────────────────────────────────────
+//
+//   실측: `franchise` 13회 · `nara` 10회 연속 **HTTP 404 "API not found"** — 저장 0. `work24` 는
+//   "개인회원은 사용할 수 없는 OPEN-API입니다" 를 9회. 이것들은 **재시도로 낫는 실패가 아니다**
+//   (엔드포인트가 틀렸거나 활용신청/회원등급이 필요하다 = 사람이 고쳐야 하는 것). 그런데 두 시간마다
+//   같은 요청을 8페이지씩 다시 쐈다.
+//
+//   왜 이게 단순 낭비가 아닌가: 서브리퀘스트는 **인보케이션당 45~50 이 천장**이라는 게 같은 날 확정됐다.
+//   고칠 수 없는 레인이 매 라운드 예산을 먼저 먹으면, 잘 도는 레인(수집·보강)이 그만큼 굶는다.
+//   ⇒ 하드 실패는 **지수 백오프로 물러나되 주기적으로 한 번씩 찔러본다** — 대표가 활용신청을 마치면
+//     코드 배포 없이 스스로 살아나야 하기 때문이다(영구 차단이면 그 자체가 또 다른 무증거 정지가 된다).
+
+/**
+ * 사람이 고쳐야 낫는 실패인가(재시도 무의미). 5xx·타임아웃·네트워크는 **아니다**(일시적일 수 있다).
+ *
+ *   ⚠️ 순서가 중요하다: 설정 오류 문구를 **먼저** 본다. data.go.kr 은 키 미등록 같은 설정 오류를
+ *   **HTTP 5xx 로도** 내려주기 때문에, HTTP 코드로 먼저 갈라내면 그 경우를 '일시 장애'로 오분류해
+ *   영원히 재시도하게 된다(지금 고치려는 바로 그 낭비).
+ */
+export function isHardConfigFailure(msg?: string | null): boolean {
+  const m = String(msg || '')
+  if (!m) return false
+  if (/API not found|등록되지\s*않은|활용\s*신청|개인회원|사용할 수 없는|권한|DENIED|SERVICE[_ ]KEY|인증키|미등록|NOT[_ ]REGISTERED/i.test(m)) return true
+  return /HTTP 4\d\d/i.test(m) // 4xx = 우리 요청이 틀렸다(경로·파라미터). 5xx·네트워크는 상대 사정이라 재시도.
+}
+
+/** 레인 건강 상태 — 각 레인의 stats 블롭에 함께 저장된다(추가 테이블 0). */
+export interface LaneHealth { fail_streak?: number; first_failed_at?: string; next_probe_at?: number; last_error?: string }
+
+/** 연속 실패 이 횟수까지는 평소대로 재시도(일시 장애를 성급히 백오프하지 않는다). */
+export const HARD_FAIL_GRACE = 3
+/** 백오프 상한 — 하루에 한 번은 반드시 찔러본다(대표가 고쳤는데 영영 안 도는 일이 없게). */
+export const HARD_FAIL_MAX_BACKOFF_MS = 24 * 3_600_000
+
+/** 이번 라운드를 건너뛸까. `next_probe_at` 이 미래면 skip — 그 외엔 항상 실행. */
+export function laneShouldSkip(health: LaneHealth | null | undefined, nowMs: number): boolean {
+  const at = Number(health?.next_probe_at)
+  return Number.isFinite(at) && at > nowMs
+}
+
+/**
+ * 실행 결과로 건강 상태를 갱신한다.
+ * @param msg 실패 메시지(성공이면 null/undefined) — **성공하면 즉시 초기화**(자가 치유).
+ */
+export function updateLaneHealth(prev: LaneHealth | null | undefined, msg: string | null | undefined, nowMs: number): LaneHealth {
+  if (!msg) return {} // 성공 — 스트릭·백오프 전부 해제
+  const streak = Math.max(0, Number(prev?.fail_streak) || 0) + 1
+  const out: LaneHealth = {
+    fail_streak: streak,
+    first_failed_at: prev?.first_failed_at || new Date(nowMs).toISOString().slice(0, 19).replace('T', ' '),
+    last_error: String(msg).slice(0, 200),
+  }
+  if (isHardConfigFailure(msg) && streak > HARD_FAIL_GRACE) {
+    // 2h → 4h → 8h … 24h 상한. 소프트 실패(5xx·네트워크)엔 백오프를 걸지 않는다.
+    const step = Math.min(HARD_FAIL_MAX_BACKOFF_MS, 2 * 3_600_000 * 2 ** (streak - HARD_FAIL_GRACE - 1))
+    out.next_probe_at = nowMs + step
+  }
+  return out
+}
+
+/** 상태줄 문구 — "왜 지금 안 도는가"를 대표가 읽을 수 있게(추측 대신 사실 + 다음 시도 시각). */
+export function laneHealthNote(health: LaneHealth | null | undefined, nowMs: number): string | null {
+  const streak = Number(health?.fail_streak) || 0
+  if (streak <= 0) return null
+  const skip = laneShouldSkip(health, nowMs)
+  const mins = skip ? Math.ceil(((health?.next_probe_at as number) - nowMs) / 60_000) : 0
+  return `${streak}회 연속 실패${health?.first_failed_at ? `(${health.first_failed_at}부터)` : ''}` +
+    (skip ? ` — 재시도 대기 중(약 ${mins}분 후 재시도). 설정(엔드포인트·활용신청·회원등급) 확인 필요` : '')
+}
