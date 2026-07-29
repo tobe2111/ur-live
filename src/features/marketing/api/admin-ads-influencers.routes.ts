@@ -542,7 +542,9 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 //   contactable=1: 수기 제휴 제안용 "지금 연락할 사람"만(이메일 보유·브랜드 제외·미접촉·반송이력 없음).
 app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(
   c.env.DB, POOL, c.req.query('format') || 'xls', c.req.query('platform') || '',
-  { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')) },
+  // 수기 발송용 목록은 **기본으로 유어딜 적합 카테고리를 앞에** 둔다(끄려면 coreFirst=0).
+  { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')),
+    coreFirst: c.req.query('contactable') === '1' && c.req.query('coreFirst') !== '0' },
 ))
 
 

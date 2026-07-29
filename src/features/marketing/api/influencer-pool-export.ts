@@ -36,7 +36,7 @@ export const EXPORT_PLATFORMS: Record<string, string> = {
  *     · 아직 연락 안 한 사람(contacted_at 없음)  · 반송·스팸신고 이력 제외(보내면 튕긴다)
  *   정렬은 기존과 동일(점수순) — 파일 위에서부터 순서대로 연락하면 된다. 미지정 시 기존 동작(전체) 불변.
  */
-export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number }): Promise<Response> {
+export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean }): Promise<Response> {
   await ensureInfluencerSchema(DB)  // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
   await ensureQualityColumns(DB)    // lead_score/is_brand/category_source — SELECT·정렬이 참조
   await ensurePerfExtraColumns(DB)  // median_long_views/shorts_ratio/last_post_at
@@ -62,13 +62,23 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     : ''
   const minScore = Number.isFinite(opts?.minScore) ? Math.max(0, Math.min(100, Number(opts?.minScore))) : null
   const scoreFilter = minScore != null ? ` AND COALESCE(lead_score,0) >= ${minScore}` : ''
+  // 🎯 유어딜 적합 카테고리 우선(2026-07-29) — 라이브 실측에서 **연락 대상 상위 20명이 전부 '기타'**였다
+  //   (인문학 채널·주식 단타·부업 노하우…). 점수 공식은 적합도에 100점 중 20점만 주므로 "구독자 많고
+  //   이메일 있는 채널"이 "구독자 적은 맛집 블로거"를 이긴다. 동네 매장 이용권을 파는 서비스에서
+  //   그 순서로 제안을 보내면 회신이 없을 뿐 아니라 브랜드 신뢰가 깎인다.
+  //   ⚠️ 점수 공식은 건드리지 않는다(전체 순위가 흔들린다) — **정렬 앞단에 카테고리 우선순위만** 얹는다.
+  //   목록 자체는 그대로라 밑으로 내려가면 나머지도 있다(잘라내지 않음).
+  const coreCats = ['맛집', '외식창업', '숙소', '뷰티', '네일', '여행', '푸드', '카페'] // 리터럴만 — 인젝션 무관
+  const coreFirst = opts?.coreFirst
+    ? `CASE WHEN category IN (${coreCats.map(c => `'${c}'`).join(',')}) THEN 0 ELSE 1 END, `
+    : ''
   const PAGE = 5000, CAP = 60000
   for (let off = 0; off < CAP; off += PAGE) {
     // 정렬: 카테고리별 시트 분리 유지 + 시트 안은 리드점수순(미채점 후순위) — "누구부터 컨택?"이 파일 순서로 답 됨.
     const page = (await DB.prepare(`SELECT platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
-      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
       .bind(...(plat ? [poolId, plat, PAGE, off] : [poolId, PAGE, off])).all<ExpRow>().catch(() => null))?.results || []
     rows.push(...page)
     if (page.length < PAGE) break
