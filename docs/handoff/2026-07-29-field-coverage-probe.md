@@ -94,10 +94,19 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
 05:00 (6시간 전)   collect-company · sweep-kakao-phone
 ```
 
-우연이 아니다. 부모 `scheduled()` 는 매시간 ~15개 레인을 `kick()` 하는데 `kick` 은
-`await env.SELF.fetch(path)` — **레인이 일을 다 끝내고 응답할 때까지 부모가 살아 있어야 한다.**
+⚠️ **정밀하게**(내 첫 서술을 정정한다 — 이 계단 전부가 굶주림은 아니다):
+계단의 일부는 **스케줄 때문**이다. `maintenance?phase=*` 는 `PHASES[hourUTC % N]` 이라 이름마다
+몇 시간에 한 번 도는 게 정상이고, `collect-company`(홀수시)·`collect-storeinfo`(짝수시)도 매시간이 아니다.
+**굶주림의 증거는 따로 있다** — *게이트 없는 매시간 레인*이 자기 슬롯을 놓친 것:
+`enrich-prospects`·`collect-neis`·`collect-hira`·`collect-localdata(백필)`·`match-registry` 는
+**매시간 무조건** 도는데 09:00/10:00 이 마지막이고 11:00 엔 없었다. 반면 즉시응답 레인 2개는
+**한 번도 안 빠졌다**. 11:00 에 완주한 건 6개뿐이다.
+
+원인: `kick` 은 `await env.SELF.fetch(path)` — **레인이 일을 다 끝내고 응답할 때까지 부모가 살아 있어야 한다.**
 레인 하나가 20초면 목록 뒷부분은 부모 수명 안에 **디스패치조차 안 된다.**
-`collect-company` 는 **6시간째** 안 돌았다. 수집이 0인 게 당연했다.
+
+💡 다음 세션에 대한 경고: "계단 = 굶주림"으로 **일반화하지 마라.** 스케줄로 설명되는 칸이 섞여 있다.
+판정은 **게이트 없는 매시간 레인이 슬롯을 놓쳤는가**로만 하라(그게 굶주림의 유일한 결정적 신호다).
 
 **결정적 근거**: 11:00 에 돈 두 레인은 정확히 #863 이 즉시 응답으로 바꾼 것들이다. 같은 처방을 나머지에.
 
