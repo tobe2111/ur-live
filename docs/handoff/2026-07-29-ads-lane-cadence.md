@@ -63,6 +63,9 @@ ur-ads 의 `adsBeat` 은 모든 레인에 **워커의 cron 식(`event.cron` = `0
   `platform_settings.ads_known_lanes` 에 남긴다(부모 예산 +1, fail-soft).
 - `GET /api/admin/cron-heartbeats` 응답에 **`never_fired`** + `known_lanes_at` 추가.
 - 쿼리는 떼고 비교한다 — 안 그러면 `maintenance?phase=*` 5단계 중 4개가 매번 오탐된다.
+- **어드민 화면 배선까지 같은 커밋에서** — `/admin/system-monitoring` 에 '🔭 한 번도 안 돈 레인'
+  카드 + 각 행에 판정 근거(`기준 N시간`) 표시. ⚠️ 안 그러면 **내가 고치려던 그 클래스를 내가 만든다**
+  ("서버는 고쳤는데 볼 곳이 없다"). 실제로 UI 는 `stale` 만 읽고 있어서 새 필드가 안 보일 뻔했다.
 
 ### ⚠️ 이 수정이 **못** 하는 것 (과신 금지)
 
