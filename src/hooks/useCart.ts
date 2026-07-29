@@ -146,8 +146,10 @@ export function useUpdateCartQuantity() {
 
         return {
           ...old,
+          // 🛡️ 2026-07-02 (쇼핑 전수조사): id 타입 정규화 — API id 는 number, 호출부는 String() 전달이라
+          //   `===` 가 항상 false → 낙관적 업데이트 무동작(refetch 까지 UI 정지)이었음.
           items: old.items.map((item) =>
-            item.id === itemId ? { ...item, quantity } : item
+            String(item.id) === String(itemId) ? { ...item, quantity } : item
           ),
         }
       })
@@ -186,7 +188,7 @@ export function useRemoveFromCart() {
 
         return {
           ...old,
-          items: old.items.filter((item) => item.id !== itemId),
+          items: old.items.filter((item) => String(item.id) !== String(itemId)),
         }
       })
 
@@ -243,7 +245,7 @@ export function useUpdateCartOption() {
         return {
           ...old,
           items: old.items.map((item) =>
-            item.id === itemId ? { ...item, option_id: optionId } : item
+            String(item.id) === String(itemId) ? { ...item, option_id: optionId } : item
           ),
         }
       })

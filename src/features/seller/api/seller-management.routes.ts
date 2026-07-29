@@ -515,20 +515,30 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
     ).bind(productId, sellerId).first<ProductIdRow>();
     if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
 
-    const body = await c.req.json<{ options: Array<{ option_type: string; option_value: string; price_adjustment?: number; stock_quantity?: number }> }>();
-    const options = body.options || [];
+    const body = await c.req.json<{ options: Array<{ option_type: string; option_value: string; price_adjustment?: number; stock?: number; stock_quantity?: number }> }>();
+    const rawOptions = Array.isArray(body.options) ? body.options : [];
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 클라(ProductOptionForm)는 `stock` 필드로 보냄 — 이전엔 서버가
+    //   `stock_quantity` 만 읽어 입력 재고가 무조건 0 으로 저장됐음. `stock` 우선 + 레거시 호환.
+    //   또한 빈 타입/값 옵션은 스킵(유효성) — 신규 페이지가 length>0 만 보내지만 방어.
+    const options = rawOptions
+      .map(o => ({
+        option_type: String(o.option_type ?? '').trim(),
+        option_value: String(o.option_value ?? '').trim(),
+        price_adjustment: Math.trunc(Number(o.price_adjustment) || 0),
+        stock: Math.max(0, Math.trunc(Number(o.stock ?? o.stock_quantity) || 0)),
+      }))
+      .filter(o => o.option_type && o.option_value);
 
-    // 기존 옵션 삭제 후 새 옵션 삽입 (upsert 방식)
-    await DB.prepare(`DELETE FROM product_options WHERE product_id = ?`).bind(productId).run();
-
+    // 기존 옵션 삭제 후 새 옵션 삽입 (upsert 방식). 원자성 — DELETE+INSERT 를 단일 batch 로.
     // 🛡️ 2026-04-30 TD-005: canonical 'stock' 컬럼에만 INSERT (stock_quantity 이중 쓰기 제거).
-    //   기존 row 의 stock_quantity 값은 SELECT side COALESCE 로 읽혀 호환됨.
+    const stmts = [DB.prepare(`DELETE FROM product_options WHERE product_id = ?`).bind(productId)];
     for (const opt of options) {
-      await DB.prepare(
+      stmts.push(DB.prepare(
         `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock, created_at)
          VALUES (?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(productId, opt.option_type, opt.option_value, opt.price_adjustment ?? 0, opt.stock_quantity ?? 0).run();
+      ).bind(productId, opt.option_type, opt.option_value, opt.price_adjustment, opt.stock));
     }
+    await DB.batch(stmts);
 
     const updated = await DB.prepare(
       `SELECT * FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
