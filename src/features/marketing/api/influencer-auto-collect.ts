@@ -519,7 +519,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         } else if (!diag.naver.error) diag.naver.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
       } catch (e) { if (!diag.naver.error) diag.naver.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
       // 네이버 카페 — 동일 키/쿼터풀(25k 여유). 커뮤니티(카페) 단위 집계.
-      try {
+      //   🚦 2026-07-29 게이트 신설(기본 ON = 현행 유지). 실측 근거: 카페 리드 100명 표본에서 **이메일 0명 ·
+      //   연락처 1명**, 그리고 보강 경로가 아예 없다(`enrichNaverActivity` 는 platform='naver_blog' 만 본다).
+      //   즉 카페는 **영원히 연락 불가**인데 키워드마다 서브리퀘스트를 쓴다 — 이 레인이 매시간
+      //   `Too many subrequests` 로 죽고 활성 키워드 210개 중 124개가 이틀째 순번을 못 받는 상황에서,
+      //   수확 가치 0 인 호출이 예산의 25~30% 를 먹는다. 끄면 그만큼 더 많은 키워드가 돈다.
+      //   ⚠️ 기본값을 바꾸지 않는다(수집 정책은 대표 결정) — `ADS_COLLECT_CAFE_ENABLED='false'` 로 끈다.
+      if ((env as unknown as { ADS_COLLECT_CAFE_ENABLED?: string }).ADS_COLLECT_CAFE_ENABLED !== 'false') try {
         const r = await discoverNaverCafes(naverId, naverSecret, k.keyword, { display: 50, budget, sort: naverSort })
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
