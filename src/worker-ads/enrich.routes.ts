@@ -34,6 +34,11 @@ export function resolveEnrichRounds(raw: string | undefined): number {
   return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 12))
 }
 
+/** 파트너풀(회사) 이메일 보강 라운드 — 기존 부모 루프의 기본값 8 을 그대로 승계(행동 변화 0). */
+export function resolveCompanyEnrichRounds(raw: string | undefined): number {
+  return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 8))
+}
+
 // 📝 보강 1라운드(블로거 활동성·연락처 + 링크인바이오 + YT 성과) — 수집과 **분리된 인보케이션**.
 //   왜 분리했는지는 `influencer-enrich-lane.ts` 헤더(라이브 실측: 수집에 얹혀 있어 한 건도 못 돌았음).
 //   💥 원문 릴레이 — 'FAILED' 로 뭉개면 라운드가 왜 안 도는지 라이브에서 알 길이 없다(파트너풀 레인과 동일).
@@ -85,6 +90,57 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
     }
   }
   // 라운드를 한 번도 못 돌았으면 실패로 알린다 — kick 의 하트비트가 ok:false 로 기록해야 관측된다.
+  if (!done && error) return c.json({ ok: false, rounds: done, planned: rounds, error }, 500)
+  return c.json({ ok: true, rounds: done, planned: rounds, ...(error ? { error } : {}) })
+})
+
+/**
+ * 📧 파트너풀 **이메일 보강 라운드 드라이버** — 2026-07-29 신설.
+ *
+ * ## 왜 (라이브 실측)
+ * 이 레인만 아직 라운드 루프를 **부모 cron 인보케이션에서** 돌리고 있었다:
+ * `for (i < 8) await env.SELF.fetch('/__ads/enrich-company')` — 8회 **순차** 왕복이고,
+ * 한 라운드는 실제로 외부 사이트를 크롤한다. 부모는 그동안 살아 있어야 한다.
+ *
+ * 2026-07-29 07:00 틱 실측: 발화한 레인이 **8개에서 잘렸다**(05:00 엔 15개+). 실패 기록조차
+ * 없는 **조용한 절단** — `kick` 의 하트비트는 SELF fetch 가 *끝난 뒤* 찍히므로, 부모가 먼저
+ * 회수되면 그 레인들은 기록도 안 남긴다. 직전 06:00 틱에는 5개 레인이
+ * `Worker exceeded CPU time limit.` 으로 실패했다.
+ *
+ * 이건 #830(수집 러너)·#831(kick 격리)·#835(인플루언서 보강 드라이버)에서 세 번 고친 것과
+ * **정확히 같은 실패 양식**이고, #830 커밋도 "남은 공유 블록은 같은 방식으로 떼면 된다"고
+ * 인계에 남겼다. 남은 마지막 하나가 이것이다.
+ *
+ * ## 처방 (인플루언서 드라이버와 동일)
+ * 라운드를 **자기 인보케이션**으로 옮긴다. 부모가 내는 비용은 언제나 kick 1개(SELF fetch + 하트비트).
+ * 드라이버는 자기 예산·자기 시간 안에서 라운드를 돌고, 부모는 즉시 다음 레인을 디스패치한다.
+ *
+ * ⚠️ 라운드는 **순차**여야 한다 — 각 라운드가 `enrich_checked_at` 도장을 찍어야 다음 라운드가
+ *   다음 백로그 구간을 집는다(동시 실행하면 같은 행을 중복 크롤하고 예산만 태운다).
+ * 💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고 다음 정각이 이어받는다.
+ */
+enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
+  const env = c.env
+  const rounds = resolveCompanyEnrichRounds((env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS)
+  let done = 0
+  let error: string | undefined
+  for (let i = 0; i < rounds; i++) {
+    if (!env.SELF?.fetch) { // SELF 미바인딩(로컬) — 체인 불가라 1회 직접 실행
+      try {
+        const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+        await enrichHeldLeads(env); done++
+      } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
+      break
+    }
+    try {
+      const r = await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+      if (!r.ok) { error = `round${i + 1}: HTTP ${r.status}`; break }
+      done++
+    } catch (err) {
+      error = `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
+      break
+    }
+  }
   if (!done && error) return c.json({ ok: false, rounds: done, planned: rounds, error }, 500)
   return c.json({ ok: true, rounds: done, planned: rounds, ...(error ? { error } : {}) })
 })

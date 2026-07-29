@@ -413,16 +413,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   명목 1,000이 아니라 훨씬 낮고 D1 쿼리까지 나눠 씀) → **라운드당 11건**이 천장. 2라운드면 22건/시간인데
     //   백로그가 12만+ 이라 의미 있는 속도가 안 나온다. 라운드를 늘리는 것만이 정직한 증속(각 라운드가
     //   새 예산을 받으므로). SELF fetch 자체는 이 cron 인보케이션의 서브요청 1개씩이라 20라운드도 안전.
-    const enrichRounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS || '', 10) || 8))
-    ctx.waitUntil((async () => {
-      try {
-        if (env.SELF?.fetch) {
-          for (let i = 0; i < enrichRounds; i++) {
-            await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
-          }
-        } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
-      } catch { /* fail-soft — 다음 틱 재시도 */ }
-    })())
+    //   🔁 2026-07-29: 그 라운드 루프를 **드라이버 인보케이션**으로 옮겼다.
+    //   8회 순차 SELF fetch 를 부모에서 await 하면 그동안 부모가 살아 있어야 하고, 실측상 그 때문에
+    //   07:00 틱이 8개 레인에서 **조용히 잘렸다**(하트비트는 fetch 가 끝나야 찍히므로 기록도 안 남는다).
+    //   부모 비용은 이제 kick 1개. 라운드 수·순차성·기본값(8)은 그대로 — 도는 장소만 바뀐다.
+    kick('/__ads/enrich-company-driver', async () => {
+      const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+      return enrichHeldLeads(env)
+    })
     // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
     //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
     //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.

@@ -176,3 +176,33 @@ describe('worker-ads/index.ts — 레인 등록은 저장보다 먼저 끝난다
     expect(after).toEqual([])
   })
 })
+
+/**
+ * 🛡️ 부모 cron 인보케이션에서 **라운드 루프를 돌리지 않는다**.
+ *
+ * 이 레포가 네 번 데인 실패 양식이다(#830 수집 러너 · #831 kick 격리 · #835 인플루언서 보강 ·
+ * 2026-07-29 파트너풀 보강). `for (…) await env.SELF.fetch(…)` 를 부모에서 돌리면 그동안 부모가
+ * 살아 있어야 하고, 부모가 먼저 회수되면 **뒤쪽 레인이 하트비트도 없이 조용히 사라진다**
+ * (실측: 07:00 틱이 8개 레인에서 절단, 실패 기록 0). 라운드는 드라이버 인보케이션이 돈다.
+ *
+ * ⚠️ 이 테스트가 못 막는 것: 루프가 아닌 **단발** 인라인 await(무거운 단일 작업)는 잡지 않는다.
+ */
+describe('worker-ads/index.ts — 부모는 라운드 루프를 돌리지 않는다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+
+  it('for 루프 안에서 env.SELF.fetch 를 await 하지 않는다', () => {
+    // ⚠️ 표기 변종(`env.SELF.fetch` · `env.SELF?.fetch` · `env.SELF!.fetch`)을 전부 덮어야 한다 —
+    //   처음 쓴 정규식이 `!` 를 놓쳐 회귀 주입을 통과시켰다(깨뜨려 보지 않았으면 헛도는 가드가 됐다).
+    const offenders: string[] = []
+    for (const m of src.matchAll(/\bfor\s*\(/g)) {
+      const window = src.slice(m.index ?? 0, (m.index ?? 0) + 300)
+      if (/await\s+env\.SELF\s*[!?]?\s*\.?\s*fetch/.test(window)) offenders.push(window.split('\n')[0].trim().slice(0, 70))
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('라운드가 필요한 레인은 드라이버 경로로 kick 한다(검사 대상 존재 확인)', () => {
+    expect(src).toMatch(/kick\('\/__ads\/enrich-influencer-driver'/)
+    expect(src).toMatch(/kick\('\/__ads\/enrich-company-driver'/)
+  })
+})
