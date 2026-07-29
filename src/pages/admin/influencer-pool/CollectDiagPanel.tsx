@@ -70,6 +70,17 @@ export interface EnrichLaneRecord {
    *   기존 누적치는 그대로다 — 화면엔 **이메일만** 보여 오독을 원천 차단한다.
    */
   total_emails?: number
+  /**
+   * 🔗 **이번 정각 전체의 합**(라운드 N개). 위 필드들은 전부 *마지막 라운드 한 장*이라,
+   *   체인이 3라운드를 돌아도 앞 두 라운드가 무엇을 했는지 화면에서 볼 수 없었다.
+   *   ⚠️ `rounds` 를 먼저 볼 것 — `max_depth + 1` 보다 작으면 중간 라운드가 죽은 것이고,
+   *      그때 합계 0 은 '못 쟀다'가 아니라 '기록이 없다'는 뜻이다.
+   */
+  chain?: {
+    rounds?: number; rounds_planned?: number; max_depth?: number; bio?: number; yt?: number
+    naver_selected?: number; naver_tried?: number; naver_measured?: number; naver_contacts?: number
+    deadline_hits?: number; spent?: number; started_at?: string
+  }
   crash?: string; crash_at?: string
 }
 
@@ -187,6 +198,27 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
           {enrichLane.total_emails != null ? <span className="text-emerald-700">{` · 📧 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
+        </div>
+      ) : null}
+      {/* 🔗 이번 정각 **전체**(라운드 합) — 위 줄은 마지막 라운드 한 장이라, 앞 라운드의 성과가 안 보였다.
+          `rounds < max_depth+1` 이면 중간 라운드가 죽은 것 → 합계 0 을 '못 쟀다'로 읽으면 오진이다. */}
+      {enrichLane?.chain?.rounds ? (
+        <div className="mb-1 text-xs text-gray-500">
+          {`🔗 이번 회차 합계 — 라운드 ${formatNumber(enrichLane.chain.rounds)}`}
+          {/* 🧱 계획 대비 도달 — 격차가 곧 체인 수명 천장이다(계획 12에 도달 3이면 9라운드는 존재한 적이 없다). */}
+          {enrichLane.chain.rounds_planned
+            ? <span className={(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? 'text-amber-600' : ''}>
+                {`/${formatNumber(enrichLane.chain.rounds_planned)}`}
+                {(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? ' (수명으로 조기 종료)' : ''}
+              </span> : ''}
+          {(enrichLane.chain.rounds || 0) < (enrichLane.chain.max_depth || 0) + 1
+            ? <span className="text-amber-600">{` (⚠️ 깊이 ${enrichLane.chain.max_depth} — 중간 라운드 기록 없음)`}</span> : ''}
+          {` · 블로거 ${formatNumber(enrichLane.chain.naver_measured || 0)}/${formatNumber(enrichLane.chain.naver_tried || 0)}`}
+          {(enrichLane.chain.naver_selected || 0) > (enrichLane.chain.naver_tried || 0)
+            ? <span className="text-amber-600">{` (고른 ${formatNumber(enrichLane.chain.naver_selected || 0)} 중 ${formatNumber((enrichLane.chain.naver_selected || 0) - (enrichLane.chain.naver_tried || 0))}명 못 잼)`}</span> : ''}
+          {enrichLane.chain.naver_contacts ? ` · 연락처 +${formatNumber(enrichLane.chain.naver_contacts)}` : ''}
+          {enrichLane.chain.yt ? ` · 📈 ${formatNumber(enrichLane.chain.yt)}` : ''}
+          {enrichLane.chain.deadline_hits ? ` · ⏱️ 시간상한 ${formatNumber(enrichLane.chain.deadline_hits)}회` : ''}
         </div>
       ) : null}
       {enrichLane?.crash ? (

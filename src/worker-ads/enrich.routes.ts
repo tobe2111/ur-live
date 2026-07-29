@@ -169,7 +169,10 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   const d = parseInt(c.req.query('depth') || '0', 10)
   return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer-driver', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-    return runInfluencerEnrich(c.env, Number.isFinite(d) && d > 0 ? d : 0)
+    // 🧱 계획 라운드 수를 함께 넘긴다 — 스냅샷의 `chain.rounds_planned` 와 실제 `rounds` 의 격차가
+    //    **체인 수명 천장**을 드러낸다(실측 07-29: 계획 12 · 도달 3). 그 격차를 못 보면 다음 세션도
+    //    "라운드를 늘렸으니 처리량이 늘었다"를 근거로 쓴다 — 늘린 라운드는 존재한 적이 없었다.
+    return runInfluencerEnrich(c.env, Number.isFinite(d) && d > 0 ? d : 0, rounds)
   })
 })
 
