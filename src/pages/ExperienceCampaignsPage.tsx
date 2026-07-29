@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Gift, Clock, Users, CheckCircle2 } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
 
@@ -58,7 +59,7 @@ export default function ExperienceCampaignsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#0F151D] text-white pb-24">
-      <SEO title="체험단 응모 - 유어딜" description="무료로 응모하고 공정 추첨으로 매장 체험권을 받아보세요." url="/experience" />
+      <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
         <h1 className="text-[20px] font-black flex items-center gap-2"><Gift className="w-5 h-5 text-pink-400" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>

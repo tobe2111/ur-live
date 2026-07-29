@@ -27,6 +27,12 @@ export interface ConsumerSurfaceSeo {
   description: string
   /** canonical 에 보존할 쿼리 파라미터. 나머지(utm 등)는 버려 중복 URL 을 막는다. */
   canonicalParams?: readonly string[]
+  /**
+   * 서버에서도 `robots: noindex, follow` 를 낸다.
+   * 클라 `<SEO noindex>` 는 JS 렌더 후라 비-JS 크롤러(네이버 Yeti)에겐 무효였다 — 실측으로
+   * `/search`·`/gb-market` 이 클라에선 noindex 인데 **서빙 HTML 은 `index, follow`** 였다.
+   */
+  noindex?: boolean
 }
 
 /** 표시용 사이트명 — `SEO.tsx` 의 SITE_NAME 과 같은 값(접미사는 렌더 쪽에서 1회만 붙인다). */
@@ -78,6 +84,87 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/partners': {
     title: '입점 안내',
     description: '광고는 클릭에 돈을 쓰고, 유어딜은 손님이 매장에 온 다음에만 비용이 듭니다. 수수료 5% 업계 최저.',
+  },
+
+  // ── 🗺️ 소비자 콘텐츠 표면 ─────────────────────────────────────────────
+  //   전부 실측에서 **홈 메타 + `index, follow` + canonical 없음** 으로 나왔다(라우트 30개 전수).
+  //   문구는 각 페이지 `<SEO>` 가 쓰던 것을 그대로 옮겨 왔다(사용자 노출 변화 0).
+  //   i18n 을 쓰는 페이지는 `t(key, { defaultValue: CONSUMER_SURFACE_SEO[...].title })` 형태로
+  //   **ko 기본값만** 여기서 읽는다 — 다국어는 유지되고 ko 문구는 한 곳에서 온다.
+  '/stays': {
+    title: '숙소',
+    description: '펜션·호텔·풀빌라 숙소 이용권 — 할인가로 예약하고 매장에서 바로 사용',
+  },
+  '/meal-vouchers': {
+    title: '이용권',
+    description: '맛집 이용권을 할인가에 만나보세요. 치킨·피자·한식·카페 등 다양한 이용권 특가.',
+  },
+  '/experience': {
+    title: '체험단 응모',
+    description: '무료로 응모하고 공정 추첨으로 매장 체험권을 받아보세요.',
+  },
+  '/new-openings': {
+    title: '우리 동네 새 가게',
+    description: '이번 달 우리 동네에 새로 문을 연 가게들 — 공공 인허가 데이터 기반 신규 개업 소식.',
+  },
+  '/business': {
+    title: '유어딜 사장님 — 3분이면 매장 매출이 시작됩니다',
+    description: '자영업자를 위한 모바일 우선 공동구매 플랫폼. Magic Link 로 PIN 없이 통계 확인, 자동 환불, 카카오톡 알림톡까지. 수수료 3-5%.',
+  },
+  '/influencer': {
+    title: '유어딜 인플루언서 — 팔로워가 곧 수익이 됩니다',
+    description: '매장 섭외 없이 카톡 share 만으로 공구 수익. 친구 추천 양쪽 0.5% 보너스 딜 + 셀러 추천 commission 분할.',
+  },
+  '/influencer/rankings': {
+    title: '인플루언서 랭킹',
+    description: '지역별 매출 Top 인플루언서 — 실시간 ranking',
+  },
+  '/introduce': {
+    title: '유어딜 - 우리 동네 공동구매 (맛집·뷰티·숙소)',
+    description: '우리 동네 맛집·뷰티·숙소를 그룹 특가로. 함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.',
+  },
+  '/join': {
+    title: '시작하기',
+    description: '동네 핫플, 친구랑 공동구매. 매장 가입 또는 로그인으로 시작하세요.',
+  },
+
+  // ── 📜 약관·정책 ──────────────────────────────────────────────────────
+  //   ⚠️ `/terms` 의 클라 `<SEO>` 는 `TermsOfServicePage` 가 아니라 위임 대상인
+  //   `terms/TermsDocument` 안에 있다(문서 제목 SSOT = `terms/consumer-terms-content.ts`).
+  //   여기 title 은 그 문서 제목과 **같은 값**을 서버가 낼 수 있게 둔 것이다 — 문서 제목을 바꾸면
+  //   여기도 바꿔야 한다(형제 `/terms/seller` 등은 문서별로 달라 표에 넣지 않았다).
+  '/terms': {
+    title: '유어딜 이용약관',
+    description: '유어딜 서비스 이용약관 정본입니다.',
+  },
+  '/privacy': {
+    title: '개인정보처리방침',
+    description: '유어딜 개인정보처리방침입니다.',
+  },
+  '/refund': {
+    title: '환불정책',
+    description: '유어딜 환불 및 반품 정책을 안내합니다.',
+  },
+  '/faq': {
+    title: '자주 묻는 질문',
+    description: '유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.',
+  },
+  '/gdpr': {
+    title: 'Privacy Policy (GDPR) - YourDeal',
+    description: 'YourDeal privacy policy and GDPR compliance information.',
+  },
+
+  // ── 🚫 색인 제외 ──────────────────────────────────────────────────────
+  //   클라 `<SEO noindex>` 는 JS 렌더 후라 비-JS 크롤러엔 무효 — 서버에서도 막는다.
+  '/search': {
+    title: '검색',
+    description: '유어딜에서 원하는 이용권을 검색하세요.',
+    noindex: true,
+  },
+  '/gb-market': {
+    title: '공구 마켓',
+    description: '지금 소개비가 걸린 공구를 찾아 내 링크샵에 담으세요.',
+    noindex: true,
   },
 }
 
@@ -143,6 +230,8 @@ export interface ResolvedSurfaceSeo {
   title: string
   description: string
   canonical: string
+  /** true 면 서버에서도 robots noindex */
+  noindex?: boolean
 }
 
 /**
@@ -183,5 +272,6 @@ export function resolveConsumerSurfaceSeo(
     title: pageTitle,
     description,
     canonical: buildCanonical(origin, path, search, entry.canonicalParams),
+    ...(entry.noindex ? { noindex: true } : {}),
   }
 }

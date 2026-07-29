@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronDown, Search, HelpCircle, Mail, Clock } from 'lucid
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 interface FAQ {
   id: number
@@ -57,7 +58,7 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D]">
-      <SEO title={t('faq.seoTitle', { defaultValue: '자주 묻는 질문 - 유어딜' })} description={t('faq.seoDesc', { defaultValue: '유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.' })} url="/faq" jsonLd={faqJsonLd} />
+      <SEO title={t('faq.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].title })} description={t('faq.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].description })} url="/faq" jsonLd={faqJsonLd} />
 
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">

@@ -9,6 +9,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, Megaphone, Wallet, BarChart3, Phone } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 export default function InfluencerLandingPage() {
   const navigate = useNavigate()
@@ -16,8 +17,7 @@ export default function InfluencerLandingPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
       <SEO
-        title="유어딜 인플루언서 — 팔로워가 곧 수익이 됩니다"
-        description="매장 섭외 없이 카톡 share 만으로 공구 수익. 친구 추천 양쪽 0.5% 보너스 딜 + 셀러 추천 commission 분할."
+        title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description}
         url="/influencer"
         type="website"
       />

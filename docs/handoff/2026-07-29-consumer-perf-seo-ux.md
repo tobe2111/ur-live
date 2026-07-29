@@ -50,6 +50,23 @@
 | 12 | 유어애즈 `influencer-auto-collect.ts` 602줄 — main 에서 이미 audit-gate RED | 키워드 저장소(DDL·시드·CRUD)를 `influencer-keyword-store.ts` 로 분리(602→528). **audit-gate ALL GREEN 75** |
 | 9 | **사라진 상세가 `200 + index,follow`** — `/group-buy/99999999` 가 제네릭 홈 메타로 색인 가능. 워커 self-fetch 는 그 순간 404 를 받고도(`X-SSR-Status: DETAIL:self-fetch-404`) 안 썼다. sitemap 이 상세 829건 제출 → 내려갈 때마다 홈 중복 1개 | `shouldNoindexMissingEntity` — 엔티티 슬롯 + `self-fetch-404` 일 때만 noindex **+ HTTP 404 응답**(본문은 SPA 셸 그대로 → 클라가 "없는 상품" 화면 정상 렌더). **타임아웃은 제외**("느리다"≠"없다") |
 
+### 3차 — 공개 표면 전수(30개) + 다크 모드
+
+| # | 문제(실측) | 수리 |
+|---|---|---|
+| 13 | **공개 라우트 30개 전부** 홈 메타 + `index, follow` + canonical 없음 | 원인 2종으로 분리해 각각 수리(아래) |
+| 14 | `App.tsx` 에 `<Navigate>` 로만 있는 **별칭 7개**가 200+색인가능 = 홈 복제본 7개 | 워커 진입부 **서버 301**(`consumer-redirects.ts`). SPA 내부 이동은 서버를 안 타므로 `<Navigate>` 는 **그대로 둔다** |
+| 15 | `/search`·`/gb-market` 은 클라가 **noindex 선언인데 서빙 HTML 은 `index, follow`** | 표에 `noindex` 플래그 신설 → 서버도 막는다 |
+| 16 | 콘텐츠 표면 14개가 서버 메타 없음 | `CONSUMER_SURFACE_SEO` 확장 + **그 페이지 17곳이 같은 표를 읽게** 배선(i18n 은 `defaultValue` 로 유지) |
+| 17 | `RefundPolicyPage` 의 `url="/refund-policy"` 가 이제 301 별칭 — canonical 이 리다이렉트를 가리킴 | `/refund` 로 정정 |
+
+**다크 모드**: 7개 표면(`/`·`/vouchers`·`/faq`·`/stays`·`/new-openings`·`/join`·`/group-buy/2847`)을
+`ur_theme_mode_v1='dark'` + `colorScheme:'dark'` 로 렌더 — **라이트 잔재 0 · 안 보이는 글자 0 · JS 에러 0**.
+`check-theme-consistency` 가 실제로 일하고 있다. (스크린샷으로도 확인.)
+
+🐛 **이번에 테스트가 내 버그를 잡았다**: `/faq` 를 페이지에 배선해 놓고 표 항목을 빠뜨려
+`undefined.title` 런타임 크래시 직전이었다. 배선 드리프트 가드가 없었으면 FAQ 페이지가 그대로 나갔을 것.
+
 부수: DETAIL/STAYDETAIL/PRODUCT/CURATOR 의 **똑같은 `.on()` 체인 4벌**을 `applySurfaceMeta` 하나로 통일
 (`worker/index.ts` 2620→2591줄, 파일크기 래칫 준수). 출력 불변 — 셀렉터·순서·값 동일.
 
@@ -73,7 +90,7 @@ done
 **판정**: 다섯 경로의 `<title>` 이 서로 달라야 하고, 전부 canonical 이 **자기 URL** 이어야 한다.
 하나라도 `유어딜 - 돈버는 쇼핑…` 이 나오면 워커 배선이 안 탄 것(값이 아니라 배선을 볼 것).
 
-추가 판정 3가지:
+추가 판정 (2·3차분):
 ```bash
 # ① 사라진 상세 = HTTP 404 (이전엔 200)
 curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/group-buy/99999999      # → 404
@@ -81,7 +98,18 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/group-buy/99999999  
 curl -sS https://urdeal.kr/products/2192 | grep -o 'name="robots" content="[^"]*"'   # → noindex, follow
 # ③ sitemap 에서 교환권이 빠졌나 (이전 500건 → 실제 쇼핑 상품만)
 curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>https://urdeal.kr/products/'  # → 15 안팎
+# ④ 별칭 7개가 301 (이전엔 200 + index,follow)
+for p in /group-buy /restaurant-map /terms-of-service /privacy-policy /refund-policy /shipping-policy /product/2687; do
+  printf '%-20s ' "$p"; curl -sS -o /dev/null -w '%{http_code} → %{redirect_url}\n' "https://urdeal.kr$p"
+done
+# ⑤ 콘텐츠 표면이 자기 메타를 갖나 (이전엔 30개 전부 홈 메타)
+for p in /stays /faq /business /new-openings /terms; do
+  printf '%-16s ' "$p"; curl -sS "https://urdeal.kr$p" | grep -oE '<title>[^<]*' | head -1
+done
 ```
+
+⚠️ **Pages 프리뷰로는 검증할 수 없다** — `*.pages.dev` 를 이 환경의 이그레스 정책이 403 으로 막는다
+(시도했고 막혔다. 다시 시도하지 말 것). 배포 후 위 curl 이 유일한 판정이다.
 
 ### 📋 남은 항목 (대표 판단 / 다음 세션)
 

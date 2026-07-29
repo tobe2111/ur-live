@@ -11,7 +11,9 @@
  *    `curl https://urdeal.kr/vouchers | grep canonical` 로 확인할 것.
  */
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
+  CONSUMER_SURFACE_SEO,
   resolveConsumerSurfaceSeo,
   withSiteName,
   buildCanonical,
@@ -136,5 +138,41 @@ describe('escapeAttr — 문자열로 마크업을 만드는 자리의 최소 �
 
   it('& 를 먼저 치환해 이중 이스케이프가 되지 않는다', () => {
     expect(escapeAttr('?a=1&b=2')).toBe('?a=1&amp;b=2')
+  })
+})
+
+describe('페이지가 표를 실제로 읽는가 — 문구 두 벌 방지', () => {
+  // 표에 넣어 두고 페이지는 여전히 하드코딩하면 **조용히 갈라진다**(그게 이 파일의 존재 이유).
+  // 그래서 "표를 읽는다"를 소스에서 확인한다. 리터럴로 되돌리면 여기서 빨간불.
+  const WIRED: Array<[string, string]> = [
+    ['/about', 'src/pages/AboutPage.tsx'],
+    ['/creators', 'src/pages/CreatorsPage.tsx'],
+    ['/creators/apply', 'src/pages/CreatorApplyPage.tsx'],
+    ['/partners', 'src/pages/PartnersPage.tsx'],
+    ['/stays', 'src/pages/StaysSearchPage.tsx'],
+    ['/meal-vouchers', 'src/pages/MealVouchersPage.tsx'],
+    ['/experience', 'src/pages/ExperienceCampaignsPage.tsx'],
+    ['/new-openings', 'src/pages/NewOpeningsPage.tsx'],
+    ['/influencer/rankings', 'src/pages/InfluencerRankingsPage.tsx'],
+    ['/join', 'src/pages/JoinChoicePage.tsx'],
+    ['/privacy', 'src/pages/PrivacyPolicyPage.tsx'],
+    ['/gb-market', 'src/pages/GbMarketplacePage.tsx'],
+    ['/business', 'src/pages/BusinessLandingPage.tsx'],
+    ['/influencer', 'src/pages/InfluencerLandingPage.tsx'],
+    ['/faq', 'src/pages/FAQPage.tsx'],
+    ['/refund', 'src/pages/RefundPolicyPage.tsx'],
+    ['/introduce', 'src/pages/IntroducePage.tsx'],
+  ]
+
+  it.each(WIRED)('%s 페이지가 CONSUMER_SURFACE_SEO 를 읽는다', (route, file) => {
+    const src = readFileSync(file, 'utf8')
+    expect(src, `${file} 이 표를 import 하지 않는다`).toContain('consumer-surfaces')
+    expect(src, `${file} 이 '${route}' 항목을 참조하지 않는다`).toContain(`CONSUMER_SURFACE_SEO['${route}']`)
+  })
+
+  it('배선된 경로는 전부 표에 존재한다', () => {
+    for (const [route] of WIRED) {
+      expect(CONSUMER_SURFACE_SEO[route], route).toBeDefined()
+    }
   })
 })

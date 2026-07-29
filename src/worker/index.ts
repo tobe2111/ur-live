@@ -166,6 +166,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
 import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
@@ -2553,6 +2554,13 @@ export default {
       if (request.method === 'GET' || request.method === 'HEAD') {
         const renamed = resolveRenamedBlogPath(url.pathname);
         if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
+        // 🔀 2026-07-29 별칭 경로 301 (SSOT: shared/seo/consumer-redirects).
+        //   `App.tsx` 에 `<Navigate>` 로만 있던 경로들 — 서버는 그 URL 에도 SPA 셸을 200 + index,follow
+        //   로 내주고 있어서 크롤러에겐 "홈과 같은 내용의 색인 가능 URL" 이 7개 더 있는 셈이었다.
+        //   클라 리다이렉트는 JS 를 돌리는 방문자에게만 통한다. SPA 내부 이동은 서버를 안 타므로
+        //   App.tsx 의 <Navigate> 는 그대로 둔다(지우면 앱 안에서 갈 곳이 없어진다).
+        const alias = resolveConsumerAlias(url.pathname);
+        if (alias) return Response.redirect(`${url.origin}${alias}${url.search || ''}`, 301);
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
