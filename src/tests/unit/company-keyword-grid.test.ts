@@ -5,7 +5,7 @@
  *   전국 3,800개 규모에서는 눈으로 못 잡으므로 순수함수로 분리해 여기서 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { rotationWindow, buildKeywordRows, S2_REGIONS, S2_TRADES } from '@/features/marketing/api/company-keyword-grid'
+import { rotationWindow, buildKeywordRows, S2_REGIONS, S2_TRADES, resumeSeedIndex, seedPrefixHash, S3_TRADES_LOCAL, S3_TRADES_NATIONWIDE } from '@/features/marketing/api/company-keyword-grid'
 
 describe('rotationWindow', () => {
   it('창이 끝을 안 넘으면 단일 구간', () => {
@@ -71,11 +71,81 @@ describe('키워드 그리드', () => {
     const rows = buildKeywordRows()
     const unique = new Set(rows.map(r => r.keyword))
     expect(unique.size).toBeGreaterThan(3000)
-    const tier1Trades = S2_TRADES.filter(t => t.tier === 1).length
-    expect(rows.filter(r => r.tier === 1).length).toBe(S2_REGIONS.length * tier1Trades)
+    // tier1 = (전국 그리드에 얹히는 업종 × 지역) + (지역 없는 전국 축). 2026-07-29 공동구매(S3) 추가로
+    //   S2 만 세면 안 된다 — 새 축을 더할 때 이 식도 함께 늘어나야 '다수' 주장이 유지된다.
+    const gridTier1 = [...S2_TRADES, ...S3_TRADES_LOCAL].filter(t => t.tier === 1).length
+    const nationTier1 = S3_TRADES_NATIONWIDE.filter(t => t.tier === 1).length
+    expect(rows.filter(r => r.tier === 1).length).toBe(S2_REGIONS.length * gridTier1 + nationTier1)
   })
 
   it('키워드 길이가 저장 한도(40자) 안에 든다', () => {
     for (const r of buildKeywordRows()) expect(r.keyword.length).toBeLessThanOrEqual(40)
+  })
+})
+
+/**
+ * 🛒 공동구매 생태계 시드 (2026-07-29 대표 "창고형 공동구매, 공동구매 관련 키워드 업체들").
+ *   ⚠️ 서비스 분리: 여기는 유어딜 파트너 풀. 도매몰(제조사) 레인과 섞이면 안 된다.
+ */
+describe('공동구매 키워드 시드', () => {
+  const rows = buildKeywordRows()
+  const gb = rows.filter(r => r.category === '공동구매')
+
+  it('창고형은 지역 그리드에 얹히고, 총판·벤더는 전국(무지역)이다', () => {
+    expect(gb.length).toBeGreaterThan(0)
+    const local = gb.filter(r => r.region)
+    const national = gb.filter(r => !r.region)
+    expect(local.length).toBeGreaterThan(100)   // 지역 × 창고형
+    expect(national.length).toBeGreaterThan(0)  // 지역 접두 없는 온라인 축
+    // 전국 축에 지역명이 섞이면 리콜이 죽는다(거짓 지역 라벨도 금지)
+    for (const r of national) expect(r.keyword.startsWith('서울')).toBe(false)
+  })
+
+  it('전국 축 키워드는 지역이 접두되지 않는다', () => {
+    expect(gb.some(r => r.keyword === '공동구매 총판' && !r.region)).toBe(true)
+  })
+
+  it('🔧 "공구" 단독 키워드를 만들지 않는다 — 공구상가(연장)를 긁어오게 된다', () => {
+    for (const r of gb) expect(/(^|\s)공구(\s|$)/.test(r.keyword)).toBe(false)
+  })
+})
+
+/**
+ * 🔢 시드 이어받기 — 버전 bump 가 앞부분을 다시 훑지 않게(새 업종이 반나절 늦게 들어가던 문제).
+ *   앞이 바뀌었으면 반드시 0 으로 떨어져야 한다: "덧붙이기겠지"라는 가정이 데이터를 건너뛰게 만든다.
+ */
+describe('resumeSeedIndex — 버전 bump 시 이어받기', () => {
+  const rows = buildKeywordRows()
+
+  it('같은 버전이면 평소대로 이어받는다', () => {
+    expect(resumeSeedIndex('3:500', 3, rows)).toBe(500)
+  })
+
+  it('진행값이 없으면 0', () => {
+    expect(resumeSeedIndex(null, 3, rows)).toBe(0)
+    expect(resumeSeedIndex('', 3, rows)).toBe(0)
+    expect(resumeSeedIndex('2:0', 3, rows)).toBe(0)
+  })
+
+  it('구형(지문 없는) 진행값은 안전하게 0 — 앞이 그대로인지 확인할 수단이 없다', () => {
+    expect(resumeSeedIndex('2:3600', 3, rows)).toBe(0)
+  })
+
+  it('✅ 버전이 올라도 앞부분 지문이 같으면 이어받는다(덧붙이기만 한 경우)', () => {
+    const h = seedPrefixHash(rows, 3600)
+    expect(resumeSeedIndex(`2:3600:${h}`, 3, rows)).toBe(3600)
+  })
+
+  it('🔒 앞부분이 바뀌었으면 0 부터 — 건너뛴 행이 영영 안 들어가는 사고 방지', () => {
+    expect(resumeSeedIndex('2:3600:deadbeef', 3, rows)).toBe(0)
+  })
+
+  it('저장된 진행값이 현재 행 수보다 크면 잘라낸다(그리드 축소 후)', () => {
+    const h = seedPrefixHash(rows, rows.length)
+    expect(resumeSeedIndex(`2:${rows.length + 10}:${h}`, 3, rows)).toBeLessThanOrEqual(rows.length)
+  })
+
+  it('지문은 앞부분 길이에 따라 달라진다(길이만 맞고 내용이 다르면 잡힌다)', () => {
+    expect(seedPrefixHash(rows, 100)).not.toBe(seedPrefixHash(rows, 101))
   })
 })

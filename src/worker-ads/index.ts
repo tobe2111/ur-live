@@ -16,7 +16,8 @@ import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
-import { influencerRoutes } from './influencer.routes' // 🎯 인플루언서 수집·보강 트리거(600줄 래칫으로 분리)
+import { chainRoutes } from './chain.routes'
+import { enrichRoutes } from './enrich.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
@@ -59,6 +60,18 @@ app.get('/__ads/health', (c) => {
     },
   })
 })
+
+// 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
+//   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
+app.post('/__ads/collect', async (c) => {
+  try {
+    const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
+    const stats = await runInfluencerAutoCollect(c.env)
+    return c.json({ ok: true, stats })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
+
 
 // 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
 //   외부 요청 0회(D1 만) — 상호+블로그URL 을 넘기면 파트너풀 보강 레인이 전화/이메일을 채운다.
@@ -169,7 +182,8 @@ app.post('/__ads/reclassify-company', async (c) => {
 
 // 🏛️ 공공데이터 수집·스윕 수동 트리거 — 별 모듈로 추출(2026-07-28, god 파일 래칫). 경로/동작 불변.
 app.route('/', publicDataRoutes)
-app.route('/', influencerRoutes)
+app.route('/', chainRoutes)           // 🔁 self-chain 진입점(전화 스윕·인허가) — 인보케이션 천장 때문에 이어 돈다
+app.route('/', enrichRoutes)          // 📝 인플루언서 보강 레인 + 라운드 드라이버
 
 // 📊 인플루언서 풀 → 구글시트 동기화 — 메인 어드민(수동 버튼)과 아래 cron 이 **같은 라우트**를 쓴다.
 //   ⚠️ 그래서 `?by=cron` 으로 출처를 구분해 스탬프에 남긴다 — 이게 없어서 "마지막 동기화 07-27"이
@@ -308,10 +322,27 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   키우고, 그 피해는 waitUntil 목록에서 **뒤에 선 다른 레인**이 받는다. 체인은 각 라운드가 자기
   //   인보케이션에서 다음을 잇게 해 부모 비용을 1로 고정한다(수집 레인과 같은 구조).
   if ((env as unknown as { ADS_INFLUENCER_ENRICH_DISABLED?: string }).ADS_INFLUENCER_ENRICH_DISABLED !== 'true') {
-    kick('/__ads/enrich-influencer-chain', async () => {
+    // 🔁 라운드 루프는 **드라이버 인보케이션**이 돈다(`/__ads/enrich-influencer-driver`).
+    //   여기서 for-await 로 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 매시간
+    //   11개 레인 × 2(fetch+하트비트) ≈ 31/50 을 쓰고 있다 — 라운드를 늘릴수록 **뒤쪽 waitUntil
+    //   (시트 미러 등)부터 굶는다.** kick 1개로 넘기면 부모 비용은 고정 2, 라운드는 드라이버의
+    //   독립 예산에서 돈다. 덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라
+    //   **관측 밖** — 조용히 멈춰도 아무도 몰랐다).
+    kick('/__ads/enrich-influencer-driver', async () => {
       const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
       return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
-    }, 'enrich-influencer')
+    })
+  }
+  // ✍ 발송 큐 상위 초안 미리 채우기 — 실측: 발송가능 22,533명인데 접촉 0명, 큐 상위 표본은 전원 초안 없음.
+  //   사람이 10명마다 AI 를 기다리는 구조라 수집·보강을 아무리 빨리 해도 접촉 수가 안 는다.
+  //   💰 **AI 호출 = 비용**이라 기본 OFF(블로그 AI 초안 `BLOG_AI_DRAFTS_ENABLED` 와 같은 하우스 패턴).
+  //   켜도 버퍼 상한(기본 100)까지만 — 22,533명 전량 생성은 레인 자체가 구조적으로 못 한다.
+  //   ⚖️ [LEGAL] 생성만, 발송 없음(콜드 리드 자동발송 경로 없음 — 사람이 1건씩 검토·발송).
+  if ((env as unknown as { ADS_OUTREACH_PREFILL_ENABLED?: string }).ADS_OUTREACH_PREFILL_ENABLED === 'true') {
+    kick('/__ads/prefill-outreach-drafts', async () => {
+      const { runOutreachDraftPrefill } = await import('@/features/marketing/api/outreach-draft-prefill')
+      return runOutreachDraftPrefill(env)
+    })
   }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
   //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
@@ -394,7 +425,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return matchRegistryEmails(env, 400, { left: 45 })
     })
     // ☎️ 카카오 전용 전화 스윕 — 보류 대량 전화 채움(카카오 쿼터 10만/일 활용, 네이버·크롤 무접촉).
-    kick('/__ads/sweep-kakao-phone', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
+    //   체인 진입점 — 한 라운드(≈55건)에서 끝내지 않고 진전이 있는 한 이어 돈다(chain.routes.ts 주석).
+    kick('/__ads/sweep-kakao-chain', async () => { const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect'); return runKakaoPhoneSweep(env) })
     // 🧭 소급 재분류 — 매시간 5패스×1000건(DB-only, 외부 API 0·예산 무소모 — 규칙 버전 bump 후 전량
     //   재검사도 클릭 없이 ~하루면 자동 소진). 기사제목/키워드메아리/쓰레기전화/의심이름 자동 청소.
     kick('/__ads/reclassify-company?passes=5', async () => {
@@ -456,7 +488,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   **하나의 인보케이션**을 공유하므로, 인허가(업종 16 × 페이지) + NEIS + 심평원 + 백필이 서로의
   //   서브리퀘스트를 잡아먹어 라이브가 `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. kick 은 각자 새 예산을 받는다.
   if (hourUTC === 20 && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
-    kick('/__ads/collect-localdata?mode=collect', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
+    //   체인 진입점(2026-07-29) — 업종 16개를 하루 1회로는 못 훑는다(그래서 음식점·카페·미용·숙박이 0건이었다).
+    kick('/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
   if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {

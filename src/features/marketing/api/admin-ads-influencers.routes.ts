@@ -8,6 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
+import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY } from './outreach-queue'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -158,34 +159,21 @@ app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await 
 app.get('/influencer-pool/send-queue', async (c) => {
   await ensureInfluencerSchema(c.env.DB); await ensureOutreachColumns(c.env.DB); await ensureQualityColumns(c.env.DB)
   const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)))
-  const where = [
-    'account_id = ?',
-    "platform != 'naver_cafe'",
-    "status = 'new'", 'contacted_at IS NULL',
-    // ① 열 수 있는 채널 — url 은 **스킴이 있어야** 실제로 열린다(pickReach 와 동일 기준).
-    "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
-    "COALESCE(email_status,'') NOT IN ('bounced','complained')",
-    'COALESCE(is_brand, 0) = 0',
-  ]
-  const binds: (string | number)[] = [POOL]
-  const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
-  // 🎯 2026-07-29 **이행용 좁히기** — 서비스몰이 파는 건 「지역·업종 맞춤 매칭」인데, 정작 발송 큐를
-  //   그 축으로 못 좁혔다("강남 맛집 10명" 주문이 오면 전체 점수순 목록에서 사람이 눈으로 골라야 했다).
-  //   목록 API 와 같은 필터를 큐에도 준다(같은 의미·같은 이름 — 두 곳이 갈라지면 결과가 달라 보인다).
-  const category = (c.req.query('category') || '').trim()
-  if (category) { where.push('category = ?'); binds.push(category.slice(0, 20)) }
-  const region = (c.req.query('region') || '').trim()
-  if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
-  // 📧 이메일 전용 — 대표 아웃리치 채널이 이메일이라, 인스타/URL 만 있는 리드는 '오늘 보낼 20명'을
-  //   채우고도 실제로 못 보낸다. 기본은 기존 동작(열 수 있는 채널 전부) 유지 — 옵션으로만.
-  if (c.req.query('emailOnly') === '1') where.push('email IS NOT NULL')
+  // 🔗 선별 기준은 `outreach-queue.ts` SSOT — **초안 프리필 레인이 같은 술어를 써야** 사람이 실제로 보는
+  //   큐와 미리 초안을 만들어 둔 대상이 일치한다(갈리면 프리필은 돌았는데 화면 상단은 계속 빈 초안).
+  // 🎯 이행용 좁히기 — 서비스몰이 파는 건 「지역·업종 맞춤 매칭」인데 큐를 그 축으로 못 좁혔다
+  //   ("강남 맛집 10명" 주문이 오면 전체 점수순에서 눈으로 골라야 했다). 목록 API 와 같은 이름·의미.
+  //   📧 emailOnly — 대표 아웃리치 채널이 이메일이라, 인스타/URL 만 있는 리드는 '20명'을 채우고도 못 보낸다.
+  //   ⚠️ 셋 다 **옵션**이다. 기본 동작은 그대로 — 쪽지 등 다른 채널도 실제로 쓰인다(ch_note 기록 있음).
+  const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'), {
+    category: c.req.query('category'), region: c.req.query('region'), emailOnly: c.req.query('emailOnly') === '1',
+  })
   const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, region, email_status
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')}
-    ORDER BY (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ?`)
+    FROM ad_influencer_leads WHERE ${where}
+    ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
-  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
 })

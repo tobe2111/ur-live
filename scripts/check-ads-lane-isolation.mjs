@@ -86,12 +86,13 @@ while (true) {
 }
 
 // kick 이 가리키는 경로가 실제로 존재하는지 — 오타 하나면 그 레인이 조용히 사라진다(fallback 은 로컬 전용).
-// ⚠️ 목록을 손으로 유지하지 않는다 — index.ts 가 600줄 래칫에 닿을 때마다 라우트가 새 모듈로 빠지는데
-//   (public-data 2026-07-28 · influencer 2026-07-29), 그때마다 여기 추가하는 걸 잊으면 **가드가 멀쩡한
-//   라우트를 '없다'고 오탐**한다(실제로 났다). `src/worker-ads/*.routes.ts` 를 전부 훑는다.
+//   ⚠️ 목록을 손으로 유지하면 안 된다 — 라우트를 새 모듈로 **추출하는 순간**(god 파일 래칫 때문에 실제로
+//   일어난다: public-data.routes.ts 2026-07-28 · enrich.routes.ts 2026-07-29) 그 경로가 목록에서 빠져
+//   가드가 "라우트 없음"으로 오탐하거나, 반대로 진짜 오타를 놓친다. `src/worker-ads/*.routes.ts` 를 자동 수집한다.
+const routeDir = 'src/worker-ads'
 const routeFiles = [
-  'src/worker-ads/index.ts',
-  ...(existsSync('src/worker-ads') ? readdirSync('src/worker-ads').filter(f => f.endsWith('.routes.ts')).map(f => `src/worker-ads/${f}`) : []),
+  `${routeDir}/index.ts`,
+  ...(existsSync(routeDir) ? readdirSync(routeDir).filter((f) => f.endsWith('.routes.ts')).map((f) => `${routeDir}/${f}`) : []),
 ].filter(existsSync)
 const routes = new Set()
 for (const f of routeFiles) {

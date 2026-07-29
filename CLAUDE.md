@@ -136,13 +136,13 @@
 | `src/pages/VouchersPage.tsx` | `__SSR_INITIAL_VOUCHERS__` 즉시 사용 + default sort `price_low` | first paint 회귀 |
 | `src/pages/BrowsePage.tsx` | `__SSR_INITIAL_BROWSE__` 즉시 사용 | first paint 회귀 |
 | `src/features/auth/services/KakaoAuthService.ts` | `upsertUser` 의 same-email seller auto-link | `/host/new` fall through 사고 회귀 |
-| `src/features/auth/api/kakao.routes.ts` | `linkUserExtraRoles` 응답에 `seller.username` 포함 | localStorage `seller_username` 누락 |
+| `src/features/auth/api/kakao.routes.ts` | `issueLinkedRoleTokens` 응답에 `seller.username` 포함 | localStorage `seller_username` 누락 |
 | `src/pages/KakaoCallbackPage.tsx` | `seller_username` localStorage 저장 + admin/agency 토큰 있을 때 user_type 보존 | 이중 로그인 race |
 | `src/worker/routes/repair-schema.routes.ts` | `backfill: sellers.linked_user_id (same-email)` UPDATE | 시드 데이터 정정 못 함 |
 | `index.html` | preload `crossOrigin` 속성 없음 (same-origin) | preload mismatch → 200-500ms 손해 |
 | `index.html` | Speculation Rules prerender 대상 (`/group-buy/*`, `/products/*`, `/live/*`) | 카드 클릭 후 prerender 효과 X |
 | `index.html` | preconnect (`firebasestorage.googleapis.com` 등) | DNS+TLS 100-200ms 손해 |
-| `src/App.tsx` | `MainHomePage` eager `import` (lazy X) | chunk fetch waterfall 50-100ms |
+| ~~`src/App.tsx`~~ | ~~`MainHomePage` eager `import` (lazy X)~~ → **2026-07-29 폐기**: 홈이 `HomeRoute`(PC=`PcHomePage` / 모바일=`RestaurantMapPage`, **둘 다 lazy**)로 바뀌면서 `MainHomePage` 는 참조 0인 죽은 파일이 됐다. 이 행을 그대로 따르면 **죽은 컴포넌트를 eager import 로 되살리게 된다.** 현재 홈 lazy 는 App.tsx:46 이 명시한 의도적 트레이드오프(카카오 SDK async 로드라 청크 페치가 가려짐) | (해당 없음) |
 | `src/App.tsx` | idle prefetch (BrowsePage / VouchersPage / UserProfilePage / MyVouchersPage / SellerPublicPage) | 탭 클릭 시 chunk fetch 대기 |
 | Migration `0276_products_groupbuy_perf_index` | `idx_products_groupbuy_feed` partial composite index | 풀스캔 회귀 → 상품 늘면 선형 느려짐 |
 | Migration `0080` FTS5 | `products_fts` virtual table | 검색 풀스캔 회귀 |
@@ -288,18 +288,24 @@
 
 ## 🔄 진행 중 작업 인계 (필수 — 새 세션 진입 시 첫 액션)
 
-**새 세션 시작 시 반드시 `docs/CURRENT_WORK.md` 먼저 읽기.**
+**새 세션 시작 시 반드시 `docs/CURRENT_WORK.md`(인계 목차) 먼저 읽고, 거기서 최근 1~3건을 열기.**
 
-이 파일은 **진행 중 / 미완 작업의 단일 진실원천 (SSOT)**:
-- 현재 작업 중인 기능 / 미완 todo 리스트
-- 최근 커밋 + 핵심 아키텍처 결정
-- 다음 작업 우선순위
+인계는 **세션별 파일**이다(2026-07-29 구조 변경 — 대표 승인):
+- `docs/handoff/<날짜>-<슬러그>.md` — **세션마다 자기 파일 하나**. 이게 실제 인계 내용이다.
+- `docs/CURRENT_WORK.md` — **자동 생성 목차 + 규칙**. ❌ **사람이 편집하지 마라**
+  (`scripts/generate-handoff-index.mjs` 가 pre-commit 에서 재생성 + stage).
+- `docs/handoff/archive/` — 2026-07-26 이전 기록(내용 무변경 보존). 필요할 때 grep.
+
+> 🧱 **왜 나눴나**: 예전엔 모든 세션이 `CURRENT_WORK.md` **맨 위에** append 해서, 내용상 무관한 두
+> 브랜치가 **같은 줄을 다퉈 거의 모든 PR 에서 충돌**했다(2026-07-29 하루 10번+ 수작업 병합).
+> `.gitattributes` 의 `merge=union`(#836)은 **로컬에서만** 통하고 **GitHub 서버측 머지는 그 드라이버를
+> 안 쓴다**(07-29 #835 머지에서 실측: 로컬 clean ↔ GitHub `dirty`). 그래서 다툴 줄 자체를 없앴다.
 
 **자동 업데이트 룰 (모든 세션이 지킬 것)**:
-1. 새 기능/리팩토링 시작 시 → `docs/CURRENT_WORK.md` 의 "진행 중" 표에 추가
-2. 기능 완료 + commit 시 → 해당 항목을 "완료" 섹션으로 이동 + commit hash 기록
-3. 사용자가 새 요구 추가 시 → 즉시 표에 반영
-4. 매 commit 의 변경 파일에 코어 기능 (송출/결제/인증) 포함 시 → 같은 commit 에 `docs/CURRENT_WORK.md` 갱신 함께 staged
+1. 세션 작업을 시작·진행하면서 알게 된 것 → **자기 handoff 파일**에 적는다(공유 파일 편집 금지).
+2. 기능 완료 + commit 시 → 그 파일에 commit/PR 해시 기록.
+3. 사용자가 새 요구 추가 시 → 즉시 반영.
+4. 매 commit 의 변경 파일에 코어 기능 (송출/결제/인증) 포함 시 → 같은 commit 에 handoff 갱신 함께 staged
 
 **세션을 끝낼 때(또는 PR 을 머지할 때) 반드시 남길 4가지** — 다음 세션이 이것만 읽고 이어갈 수 있어야 한다:
 1. **다음 세션의 첫 액션** — 명령/쿼리까지 구체적으로. "무엇을 보면 무엇이 판정되는가"까지.
@@ -308,7 +314,7 @@
 4. **남은 결정/대기 항목** — 대표 판단이 필요한 것.
 
 🛡️ **자동 강제 (2026-07-28 신설)**: `scripts/check-current-work-sync.mjs` — 브랜치가 `src/` 를 바꿨는데
-`docs/CURRENT_WORK.md` 를 **한 번도** 안 건드렸으면 경고(pre-commit + audit-gate). 문서/테스트만 바꾼 브랜치는
+**인계(`docs/handoff/**` 또는 목차)** 를 **한 번도** 안 건드렸으면 경고(pre-commit + audit-gate). 문서/테스트만 바꾼 브랜치는
 검사 대상 아님(소음 억제). 차단: `STRICT_HANDOFF=1` · 우회: 커밋 메시지 `[SKIP_HANDOFF]`.
 > 이 가드는 **실제 사고 후** 만들어졌다 — 2026-07-28 세션이 보강 레인 수리 5건을 머지하는 동안 인계를 한 번도
 > 갱신하지 않아, 문서가 이전 세션에 멈춰 있었다. 룰만 있고 강제가 없으면 결국 놓친다.
@@ -1021,7 +1027,11 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험. 2026-07-28 보강: **dotenv/`.dev.vars` 파일 자체를 커밋 금지**(패턴 0) — `.env.deploy` 가 살아있는 CF 토큰을 담은 채 커밋돼 있었고(#737), 기존 값 패턴들이 전부 따옴표를 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다 |
 | cron 무음 정지(실행기록 없음) | `check-cron-heartbeat.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `safeCron` 이 **예외 발생 시에만** 기록해, 예외 없는 정지(cron 미발화·게이트 OFF 조기 return·내부 `.catch(() => null)` 로 삼킴)가 **성공으로 집계**됐다. 유어애즈 자동 정비가 그 경우로 07-26 부터 멈췄는데 아무도 몰랐고(#793), 당시 cron 70개 중 실행기록을 남기는 건 3개뿐이었다. safeCron 에 성공·실패 무관 하트비트(`platform_settings` 의 `cron_hb:{name}`) + 어드민 `GET /api/admin/cron-heartbeats`. **새 cron 은 반드시 `ctx.waitUntil(safeCron('이름', () => 작업(env)))` 형태로 등록** — 우회하면 그 작업만 관측 밖으로 나간다. 예외 `cron-heartbeat-ok` 주석 |
 | 시드 버전 재사용(재시드 무음 스킵) | `check-seed-version-monotonic.mjs` (warn) | `verify.yml` (strict) + audit-gate + pre-commit | 2026-07-29 — 가이드/블로그 시드는 "코드 버전 > DB 저장 버전"일 때만 재시드된다. **이미 쓴 번호를 다시 쓰면 조건이 거짓이라 에러 없이 아무 일도 안 일어난다** — 배포는 초록불이고 라이브 문서만 옛날 것으로 남는다. 이 레포에서 이미 두 번 났다: `GUIDE_SEED_VERSION = 8` 이 2026-07-20 서로 다른 두 커밋에 쓰였고(v11 주석이 수습을 기록 — "병행 배포 양쪽(각자 v8)이 모두 재시드되도록 9 로 합침"), `= 4` 도 두 번. 07-29 에도 PR #451·#425 가 동시에 12 를 잡았다(머지 직전 수동 발견). **세션이 여러 개 동시에 도는 한 계속 난다** → main 히스토리 대비 단조증가 강제. 상수를 안 건드린 브랜치는 검사 생략(소음 0). ⚠️ 미머지 브랜치끼리의 동시 선점은 못 막는다 — 나중에 머지하는 쪽이 CI 에서 걸려 +1 하면 된다. 예외 `seed-version-ok` |
+| 잠금표가 사라진 심볼을 지킴(낡은 지도) | `check-lock-table-symbols.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — 이 문서의 두 잠금표(Toss V2 / 로딩)는 "이 파일의 이 심볼을 건드리지 마라" 형태인데, **코드가 리네임·삭제돼도 표는 남는다.** 그러면 표가 *틀린 지도*가 되어 다음 세션을 반대 방향으로 이끈다. 실측 2건: ① `kakao.routes.ts | linkUserExtraRoles` → `issueLinkedRoleTokens` 로 리네임됨(지키려던 `seller.username` 동작 자체는 유지) ② `App.tsx | MainHomePage eager import` → 홈이 `HomeRoute`(PC=`PcHomePage`/모바일=`RestaurantMapPage`, **둘 다 lazy**)로 바뀌면서 `MainHomePage` 는 **참조 0인 죽은 파일**이 됐다 — 이 행을 따르면 죽은 컴포넌트를 eager import 로 되살리게 된다(현재 lazy 는 App.tsx:46 의 의도적 트레이드오프). ⚠️ **못 잡는 것**: 문자열 존재만 보므로 심볼이 **주석에만** 남아도 통과한다 — ②가 정확히 그 경우라 가드가 아니라 사람이 찾았다. 리네임·삭제는 잡지만 "언급은 있는데 더는 안 살아 있음"은 못 잡는다 |
+| 비공개 라우트가 크롤에 열림 | `check-robots-private-routes.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — `ProtectedRoute` 로 보호되는 경로 **71개가 robots.txt 에 안 막혀 있었다**(셀러 대시보드만 ~40개). `/admin`·`/supplier` 는 전면 차단인데 셀러/에이전시는 `login`·`register` 두 개만 — 규칙이 ad hoc 으로 자라며 생긴 구멍이다. 크롤러는 로그인 벽/빈 SPA 를 받아 **soft-404** 로 집계하고 그만큼 크롤 예산이 실제 상품 페이지에서 빠진다(에러가 없어 안 보인다). ⚠️ **prefix 추가 시 공개 경로를 삼키는지 반드시 확인**: `/creator` 는 공개 모집 `/creators`·`/creators/apply`(사이트맵 등재)를 함께 막아 **제외**했고, `/u/me` 는 `$` 앵커가 없으면 `/u/melon` 같은 **실제 링크샵 핸들**을 통째로 막는다. prefix 안의 공개 페이지는 `Allow:` 예외로 살릴 것(`/seller/plus-friend-guide`·`/influencer/rankings` 가 그 사례). ⚠️ **못 보는 것**: "공개인데 막힘" 방향은 이 가드가 안 본다 — `<SEO>` 존재를 색인 의도로 읽었더니 원래 의도적으로 막아온 페이지 19건이 오탐으로 잡혔다. 색인 의도의 진짜 신호는 **사이트맵 등재**이고 그 모순은 `check-sitemap-routes` 가 본다 |
+| sitemap 이 죽은 URL 제출(SEO 신뢰도) | `check-sitemap-routes.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — **네 번째 재발**이라 가드로 박았다. sitemap 은 "이 URL 을 색인해 달라"는 선언인데 라우트가 사라져도 표는 남고, 에러가 안 나 아무도 모른다(크롤 예산 낭비 + 서치콘솔/서치어드바이저 수집오류 → 사이트맵 신뢰도 하락). 실측: ① `/group-buy` — 실제로는 `<Navigate to="/">` 인데 **priority 0.95·hourly** 로 두 번째로 높게 제출 ② `/vouchers?category=cafe|convenience|restaurant|beauty|department|mobile` — 필터는 **한글 표시 카테고리**(`편의점`·`커피/음료`…)로 도는데 영문 슬러그를 제출 → 6개 전부 0건(soft-404). 라이브 실측으로 실재 카테고리 3개로 교체 ③ `/live/{id}` ×100 — 라이브커머스 영구중단으로 **라우트 자체가 없는데** hourly 로 발행. 같은 파일 정적 목록엔 "미노출"이라 적어 놓고 **동적 섹션만 정리에서 빠져 있었다**(주석과 코드가 어긋난 전형). ⚠️ **catch-all(`*`) 라우트는 매칭에서 제외** — 포함하면 모든 URL 이 "라우트 있음"으로 통과해 검사가 통째로 무의미해진다(첫 구현이 실제로 그래서 죽은 URL 주입에 초록불이 떴다) |
 | **가드가 있는데 안 돎**(레지스트리) | `check-guard-registry.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — 이 레포에서 반복된 사고는 "검사가 실패한다"가 아니라 **"검사가 아예 안 돈다"**이다. 배포는 초록불이고 아무도 모른다. 같은 날 실측 3건에서 도출: ⓐ `check-bundle-size` 의 gzip 총량 예산이 `.gz` 사이드카를 읽는데 **vite 는 그 파일을 만들지 않는다** → 측정값 항상 0 → `0 > 1.5` 는 영원히 거짓 → 몇 달간 통과만 했다(상향 근거로 4번 인용된 "gzip 은 여유 있다"가 전부 이 죽은 값이었다) ⓑ `check-input-text-color` 는 `dark:text-white` 를 오탐해 **정상 코드에 빨간불**을 내는 바람에 audit-gate·verify·훅 **어디에도 등록되지 못한 채** 남았다 — 파일이 존재하니 보호받는 것처럼 보였다 ⓒ `check-linkshop-ownership` 은 대상 파일이 없으면 조용히 `continue` 해서, **이름만 바뀌어도 그 불변식이 소리 없이 사라지는** 구조였다. **강제 2가지**: R1 모든 `scripts/check-*.{mjs,sh}` 가 실제 실행 경로(audit-gate/워크플로/훅/러너가 호출하는 npm 스크립트)에 있을 것 — package.json 에 **정의만** 된 것은 등록으로 치지 않는다(`check:i18n` 이 실제로 그 상태였다) · R2 가드가 코드에서 지목한 고정 파일 경로가 존재할 것(주석 속 경로는 제외). ⚠️ **못 막는 것**: 등록은 됐는데 판정 로직이 틀려 늘 통과하는 경우(ⓐ) — 그건 각 가드가 **"측정 대상 0건이면 통과가 아니라 실패"**를 스스로 선언해야 잡힌다. 새 가드를 쓸 때 이 선언을 넣을 것. 예외 `guard-registry-ok` 주석 |
+| 라우트 경로 중복(조용히 죽는 페이지) | `check-duplicate-routes.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — `src/App.tsx` 에 `<Route path="/influencer">` 가 **두 번** 있었다(`InfluencerDashboardPage` 739줄 / `InfluencerLandingPage` 742줄). 같은 `<Routes>` 안 동일 경로라 먼저 선언된 대시보드가 항상 이기고, **2026-05-15 에 만든 B2B 영입 랜딩은 두 달 넘게 한 번도 렌더된 적이 없었다** — 에러도 경고도 빌드실패도 없다. 페이지를 만들고 라우트를 달았으니 됐다고 믿게 되지만 실제로는 죽어 있는, 이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 클래스. 대표 확정으로 **랜딩이 `/influencer`**(`/business`·`/agency-partner` 와 3종 세트), 대시보드는 `/influencer/dashboard` 로 이사하고 소비자 인바운드 3곳(마이 추천 적립 카드·홈 가이드 "내 추천 링크"·교환권 "친구 추천 5%")을 함께 옮겼다. ⚠️ **못 잡는 것**: 경로가 다른데 한쪽이 다른 쪽을 그림자처럼 가리는 경우(`/a/:id` 가 `/a/new` 를 선점) — 문자열 비교로는 판정 불가. 예외 `duplicate-route-ok` 주석 |
 | 규칙 버전 미bump(소급 적용 무음 누락) | `check-rules-version-bump.mjs` (warn) | `verify.yml` (strict) + audit-gate | 2026-07-29 — 유어애즈 리드 파이프라인은 행마다 처리 시점의 규칙 버전을 스탬프하고(`classified_v`·`enrich_v`) 재처리 대상을 `COALESCE(v,0) < 상수` 로 고른다. **규칙만 고치고 상수를 안 올리면 에러 없이 옛 판정이 굳는다.** 특히 `CLASSIFY_RULES_VERSION` 은 재검사 쿼리에 **시간 폴백이 없어 영구**다 — 2026-07-27 에 "인천교통공사…특강" 류가 옛 규칙 스탬프로 영구 재검사 제외됐던 사고의 수습이 바로 이 `classified_v` 방식이라, **메커니즘 전체가 '상수 올리기'에 걸려 있다.** `CRAWL_RULES_VERSION`·`MAKER_CRAWL_VERSION` 은 7일 시간 폴백이 있어 경고만(strict 차단은 classify 만). 주석/공백만 바뀐 경우는 제외(소음 억제). 예외 `rules-version-ok` |
 | Firebase 토큰 인증 수용 | `check-no-firebase-auth.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — Firebase 서비스계정 개인키가 `archive/` 문서에 3개월간 public 노출(#798). 그 키로 **커스텀 토큰 발급 → Firebase 공개 REST 로 ID 토큰 교환 → Bearer 제출** 하면 서명이 Google 공개키로 정상 검증돼 **임의 uid 로 로그인**이 됐다. **키 폐기만으로는 부족** — 수용 경로가 남으면 새 키가 또 유출될 때 재발한다. `requireAuth`/`optionalAuth`/`auth-token.routes` 의 Firebase 분기 제거 + `googleRoutes` 마운트 해제. KR=카카오 세션·셀러/어드민=JWT·GLOBAL 미런칭(#804)이라 실사용자 0(대표 확인). 되살리려면 `firebase-auth-ok` 주석 + 새 키 발급 |
 | 시크릿 자재(키 본문) 유입 | `check-secret-material.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `archive/` **19개 `.md`/`.txt`** 에 Google 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출(#798). 기존 가드가 둘 다 통과시켰다: `verify.yml` 의 검사는 **`src/` 의 `.ts/.tsx` 만** 보고, `check-no-secrets.sh` 는 **키 이름 패턴** 위주라 문서 안의 *키 본문*이 사각지대였다. 폴더명이 `secrets-redacted/` 라 처리된 것처럼 보였으나 원문 그대로였다. **확장자·경로 무관 전수 스캔**(PEM 실본문·Toss live·Stripe·AWS·Slack·Anthropic·OpenAI·GitHub PAT), 자리표시자는 오탐 제외, 예외는 `secret-material-ok` 주석. ⚠️ **작업트리만 본다 — history 유출은 스캔이 아니라 *회전*으로만 해결된다** |

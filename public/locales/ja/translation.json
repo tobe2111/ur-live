@@ -242,7 +242,8 @@
       "linked": "Kakaoアカウントを連携しました!",
       "unlinked": "Kakao連携を解除しました",
       "passwordRequired": "パスワード設定が必要です。先にプロフィールでパスワードを設定してください。"
-    }
+    },
+    "forgotPasswordUseKakao": "パスワードをお忘れですか？カカオでログインしてください"
   },
   "notifications": {
     "title": "お知らせ",

@@ -15,7 +15,6 @@
  */
 import type { Env } from '@/worker/types/env'
 import { backfillRegions } from './influencer-region'
-import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seeds' // 🌱 탐색 범위(순수 데이터) — 자유 확장
 import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
@@ -24,26 +23,15 @@ import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, 
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
-import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap } from './collect-budget'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
 
-/**
- * 자동확장 상한 — 🐛 2026-07-29 **의미 교정**.
- *
- *   원래 `MAX_ACTIVE_KEYWORDS = 200` 을 **활성 전체**에 걸었는데, 대표가 큐레이션한 seed 가 190개까지
- *   늘면서 `room = 200 - 210 = 0` 이 되어 **자동 승격이 영구 차단**됐다. 아무 신호도 없이.
- *   실측 피해: 비활성 auto 후보 **790개**가 쌓였고 상위가 서울맛집(hits 701)·서초카페(342)·강남맛집(327)·
- *   방배동맛집(273) — 임계는 5인데 수백 회씩 쌓이고도 한 번도 활성화되지 않았다. 8월 방배 시딩을
- *   준비하는 중에 '방배동맛집'이 그 상태였다.
- *
- *   ⇒ 상한은 **런어웨이 방지**가 목적이므로 *자동 생성분(auto)* 에만 건다. seed 는 대표가 정한 축이라
- *   런어웨이가 아니고, 밀어내야 할 대상도 아니다. 전체 활성은 seed + 최대 40 으로 유계.
- */
-const MAX_AUTO_KEYWORDS = 40
+// 🌱 자동확장 상한/승격 자리 계산은 `influencer-keyword-rotation.ts` SSOT(아래 재수출) — 이 브랜치도
+//   같은 버그(seed 가 auto 를 밀어냄)를 독립적으로 고쳤으나 순수함수+관측을 갖춘 main 판을 채택했다.
 const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
@@ -52,12 +40,23 @@ const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입�
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 
+// 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
+//   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
+//   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
+
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
   last_run: string; last_saved: number; last_keywords: string[]
   total_runs: number; total_saved: number; cursor: number
   pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
   promoted?: string[]; youtube_quota_hit?: boolean
+  /**
+   * 🌱 신규 키워드 승격 자리(2026-07-29) — `promoted: []` 가 "후보가 없어서"인지 **"자리가 없어서"**인지
+   *   밖에서 갈리게. 이 값이 없어서 auto 승격이 영구 0 인 걸 몇 세션 동안 못 봤다(활성 210 > 상한 200).
+   *   room 이 0 으로 붙박이면 발굴이 굶고 있는 것 — 수집은 도는데 풀이 안 크는 조용한 실패다.
+   */
+  kw_auto?: { active: number; room: number; cap: number }
   /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
    *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
   bio_enriched?: number
@@ -104,35 +103,9 @@ const STATS_KEY = 'ads_autocollect_stats'
 //   `influencer-enrich-lane.ts`(보강 전용 레인)로 이동했다 — 수집 인보케이션의 서브리퀘스트를
 //   발굴이 먼저 다 써서 **한 건도 못 돌던 것**이 라이브 실측으로 확인됐기 때문(그 파일 헤더 참조).
 
-export async function readSetting(DB: D1Database, key: string): Promise<string | null> {
-  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
-  const v = row?.value
-  return v === undefined || v === null || v === '' ? null : String(v)
-}
-/**
- * 🧮 여러 설정을 **1 서브리퀘스트로** 읽는다 (2026-07-29).
- *   D1 호출은 인보케이션당 서브리퀘스트 한도(무료 50)에 포함된다(#784). 이 레인은 커서·예산·쿼터를
- *   낱개 `readSetting` 으로 읽어 **읽기에만 4~5개**를 썼고, 그만큼 발굴 fetch 여력이 줄었다.
- */
-export async function readSettings(DB: D1Database, keys: string[]): Promise<Record<string, string | null>> {
-  const out: Record<string, string | null> = {}
-  for (const k of keys) out[k] = null
-  if (!keys.length) return out
-  const ph = keys.map(() => '?').join(',')
-  const rows = (await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN (${ph})`)
-    .bind(...keys).all<{ key: string; value: string }>().catch(() => null))?.results || []
-  for (const r of rows) out[r.key] = r.value === undefined || r.value === null || r.value === '' ? null : String(r.value)
-  return out
-}
-export async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run().catch(() => null)
-}
-/** 🧮 여러 설정을 1 batch(=1 서브리퀘스트)로 저장 — 위 `readSettings` 와 같은 이유. */
-export async function writeSettings(DB: D1Database, kv: [string, string][]): Promise<void> {
-  if (!kv.length) return
-  await DB.batch(kv.map(([k, v]) =>
-    DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(k, v))).catch(() => null)
-}
+// ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
+export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
+import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 
 /** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
 const KW_DDL: string[] = [
@@ -237,6 +210,9 @@ function mineHashtags(text: string): string[] {
 // ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
 //   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
+// 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
+export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
+import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
@@ -285,7 +261,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     if (isSubrequestLimitError(crash) && spent > 0) {
       // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
       //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
-      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget) // subreq-cap-lane-ok
+      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) // subreq-cap-lane-ok
       if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
     // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
@@ -407,8 +383,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
+  // 🔀 병합: 읽기는 이 브랜치의 배치(readSettings — 낱개 5회 → 1회), 천장은 main(#837).
   const learnedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   const budget: FetchBudget = { left: budgetTotal }
   ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
@@ -512,7 +491,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget, pcap)
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
@@ -530,6 +509,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
   //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
   const promoted: string[] = []
+  let kwAuto: { active: number; room: number; cap: number } | undefined
   const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
   if (topTags.length) {
     // 🏷️ 2026-07-29 승격 태그에 업종 부여 — 전부 `'자동'` 이면 ① 우선 풀(슬롯 3/4)에 영영 못 들고
@@ -547,9 +527,14 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         category = CASE WHEN category IS NULL OR category IN ('자동', '') THEN excluded.category ELSE category END`
     await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, promoCat(tag), freq))).catch(() => null)
     // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
-    // 🌱 auto 자리만 센다(seed 는 상한 대상이 아니다 — 위 상수 주석 참조).
-    const autoActive = kws.filter(k => k.source === 'auto').length
-    const room = Math.max(0, MAX_AUTO_KEYWORDS - autoActive)
+    // 🌱 자리는 **auto 쿼터** 기준(시드 수 무관) — 예전엔 활성 전체로 세서 시드만으로 상한에 닿아
+    //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
+    //   🔀 병합: 이 브랜치도 같은 버그를 독립적으로 고쳤으나(kws 에서 source 카운트), main 판이
+    //   순수함수(`autoPromotionRoom`)+관측(`kwAuto`)까지 갖췄으므로 그쪽을 채택한다.
+    const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
+      .first<{ n: number }>().catch(() => null)
+    const room = autoPromotionRoom(autoRow?.n ?? 0)
+    kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
     if (room > 0) {
       const ph = topTags.map(() => '?').join(',')
       const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
@@ -580,7 +565,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,

@@ -181,6 +181,38 @@ jobs:
         run: node scripts/check-guard-registry.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-29: 같은 경로에 라우트를 두 번 달면 먼저 선언된 것만 렌더되고 나머지는
+      #   **에러 없이 조용히 죽는다**. 실측: `/influencer` 가 두 번 등록돼(대시보드 + B2B 영입 랜딩)
+      #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
+      - name: 라우트 경로 중복 차단 (strict)
+        run: node scripts/check-duplicate-routes.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: CLAUDE.md 잠금표가 **사라진 심볼**을 지키면 표가 틀린 지도가 된다.
+      #   실측 2건: `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임) · `MainHomePage`(참조 0인 죽은 파일인데
+      #   "eager import 유지" 를 요구 — 따르면 죽은 컴포넌트를 되살리게 된다).
+      #   ⚠️ 한계: 문자열 존재만 본다 — 주석에만 남은 심볼은 통과한다(위 MainHomePage 가 그 경우였다).
+      - name: 잠금표 심볼 실재 (strict)
+        run: node scripts/check-lock-table-symbols.mjs -s
+        continue-on-error: false
+
+      # 🔎 2026-07-29: sitemap 이 죽은 URL 을 검색엔진에 제출하는 것 차단(**네 번째 재발**).
+      #   실측: `/group-buy`(실제로는 <Navigate> 리다이렉트인데 priority 0.95·hourly) ·
+      #   `/vouchers?category=` 영문 슬러그 6개(필터는 한글 카테고리라 전부 0건 = soft-404) ·
+      #   `/live/{id}` ×100(라이브커머스 영구중단으로 라우트 자체가 없는데 hourly 로 발행).
+      #   ⚠️ catch-all(`*`) 라우트는 매칭에서 제외한다 — 포함하면 모든 URL 이 통과해 검사가 무의미해진다.
+      - name: sitemap 죽은 URL 차단 (strict)
+        run: node scripts/check-sitemap-routes.mjs -s
+        continue-on-error: false
+
+      # 🔒 2026-07-29: 로그인 필요한 경로가 크롤에 열려 있으면 크롤러가 로그인 벽을 받아 soft-404 로
+      #   집계되고, 그만큼 크롤 예산이 실제 상품 페이지에서 빠진다. 실측 71건(셀러 대시보드만 ~40개) —
+      #   `/admin`·`/supplier` 는 전면 차단인데 셀러/에이전시는 login·register 두 개만 막혀 있었다.
+      #   ⚠️ prefix 추가 시 공개 경로를 삼키지 않는지 확인할 것(`/creator`→`/creators`, `/u/me`→`/u/melon`).
+      - name: 비공개 라우트 크롤 노출 차단 (strict)
+        run: node scripts/check-robots-private-routes.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
@@ -322,6 +354,10 @@ jobs:
       #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.
       - name: Subrequest cap lane-isolation guard (strict)
         run: node scripts/check-subreq-cap-lane.mjs -s
+        continue-on-error: false
+
+      - name: Subrequest platform-ceiling guard (strict)
+        run: node scripts/check-subreq-platform-cap.mjs -s
         continue-on-error: false
 
       # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
