@@ -366,6 +366,8 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
             if (pr.winner && pr.winner !== variantId) { variantId = pr.winner; page--; continue } // 승자로 이 페이지 재시도
           }
         }
+        // 🛑 백필과 동일 — 에러로 끝난 업종은 완료가 아니다(그날을 미완으로 남겨 다음 회차가 이어받는다).
+        if (msg && !count) { stoppedAt = ei; break }
         if (!count) break
         const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
@@ -489,6 +491,13 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
           })
           if (pr) { bfState = pr.state; if (pr.winner) { bfVariant = pr.winner; page--; continue } }
         }
+        // 🛑 **에러와 '그날 데이터 없음'을 구분한다** (2026-07-29 실측 근본수리).
+        //   그전엔 둘 다 `!count` 로 같이 처리돼, 500 이 나도 그 업종을 '완료'로 보고 **날짜 커서가 전진**했다.
+        //   결과: 백필 180일 창이 고장난 API 에 통째로 소모되고 누적 저장은 **0건**이었다
+        //   (라이브: `backfill_days:180 · pending_days:0 · total_saved:0`). 고쳐도 이미 지나간 날짜는
+        //   되돌아오지 않는다 — 그게 이 클래스가 위험한 이유다(도장은 성공을 확인하고 찍어야 한다).
+        //   ⚠️ `msg` 없이 `count===0` 은 **정상적으로 그날 변동이 없는 것**이므로 그대로 완료 처리한다.
+        if (msg && !count) { stoppedAt = ei; break }
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length
