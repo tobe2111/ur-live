@@ -15,7 +15,16 @@
 
 ## 1. 대시보드에서 확인할 것 (대표)
 
-**Workers & Pages → `ur-live` → Settings → Trigger Events (Cron Triggers)**
+> 🔴 **자기정정(2026-07-29)**: 앞서 *"`ur-live` **Pages** 프로젝트 → Settings"* 로 적었는데 **그 자리엔 Cron 항목이
+> 없을 가능성이 높다.** **Cron Trigger 는 Workers 기능이고 Pages 프로젝트엔 없다.** 이 레포도
+> `CLAUDE.md:1102` 가 *"Worker/Cron 변경 시 `npx wrangler@3 deploy` (Workers 프로젝트 — cron 코드 동기화)"*
+> 라고 별도 Workers 배포를 명시한다. ⇒ **소비자 cron 을 싣고 있는 것은 Pages 가 아니라 별도 Worker** 다.
+
+**Workers & Pages 목록에서 `ur-ads` 가 아닌 소비자 코드용 Worker 를 찾아 → Settings → Trigger Events (Cron Triggers)**
+
+> 📌 그 Worker 의 **이름 자체를 모른다**(레포가 배포 대상 이름을 기록하지 않는다). 목록에서 **Worker 타입 항목
+> 전부의 이름**을 알려주시면 어느 것이 소비자 cron 캐리어인지 특정할 수 있다.
+> ⚠️ 여기서 **"Pages 프로젝트에 Cron 메뉴가 없다"는 것 자체가 정보**다 — 없다고 당황하지 마시고 그대로 알려줄 것.
 
 기대 목록 10개 — 코드가 분기하는 값과 **문자열이 정확히** 같아야 한다(공백·표기 차이도 불일치):
 
