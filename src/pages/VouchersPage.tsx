@@ -810,8 +810,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
             2026-05-28: 자체 sticky 제거 — 위 reveal 그룹(wrapper)이 sticky 담당. */}
       {sections.length === 0 && !sectionsReady && (
-        /* 자리 예약 — 높이는 실측값(칩 행 50px). 시각적 스켈레톤은 두지 않는다(로더 통일 정책). */
-        <div className="h-[50px] border-b border-gray-100 dark:border-[#2A3446]" aria-hidden="true" />
+        /* 자리 예약 — 높이는 실측값(칩 행 50px, **테두리 포함**). 시각적 스켈레톤은 두지 않는다(로더 통일 정책).
+           ⚠️ 여기에 border 를 더하면 51px 이 돼 교체 순간 1px 이 밀린다 — 높이만 맞춘다. */
+        <div className="h-[50px]" aria-hidden="true" />
       )}
       {sections.length > 0 && (
         <div className="bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
