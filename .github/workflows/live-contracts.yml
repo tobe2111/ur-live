@@ -1,0 +1,57 @@
+name: Live Contracts
+
+# 🌐 2026-07-29: 레포가 "제공한다"고 **코드에 선언한 URL** 이 실제로 살아 있는지 주기 점검.
+#   대상: 캐시 예열(`HOT_PATHS`) · SSR 전역 워밍(`SSR_KV_PATHS`) · 색인 요청(`sitemap.xml`).
+#
+#   왜 필요한가: 정적 가드(check-sitemap-routes)는 **라우트가 존재하는가**만 본다. 그런데 번들 분리
+#   (`__INCLUDE_WHOLESALE__`)·기능 폐기·배포 상태 때문에 라우트가 있어도 실제로는 죽어 있을 수 있다.
+#   2026-07-29 실측에서 HOT_PATHS 31개 중 9개가 404, sitemap 에서 죽은 URL 3종이 나왔는데
+#   **예열은 실패해도 조용히 넘어가므로**(`if (res.ok)`) 몇 달간 아무 신호도 없었다. 그 12건을
+#   사람이 손으로 찾았다 — 이 워크플로가 그 일을 대신한다.
+#
+#   ⚠️ **PR 게이트가 아니다.** 외부 네트워크에 의존해 간헐 실패가 나므로 PR 을 막으면 안 된다.
+#      실패하면 예약 워크플로 실패 알림(GitHub 이메일)으로만 전달된다.
+#      urdeal.kr 자체가 죽는 상황은 uptime.yml(10분 주기)이 담당한다 — 역할이 다르다.
+on:
+  schedule:
+    # 매주 **월요일 05:17 KST**. KST=UTC+9 라 UTC 로는 **일요일 20:17** — 요일도 함께 당겨야 한다.
+    - cron: '17 20 * * 0'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: '점검할 오리진 (기본 https://urdeal.kr)'
+        required: false
+        default: 'https://urdeal.kr'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 의존성 불필요 — 스크립트는 node 내장(fs/fetch)만 쓴다.
+      - name: 라이브 계약 검증
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://urdeal.kr' }}
+        run: node scripts/check-live-contracts.mjs
+
+      - name: 실패 시 요약 남기기
+        if: failure()
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://urdeal.kr' }}
+        run: |
+          {
+            echo '## 🌐 라이브 계약 검증 실패'
+            echo ''
+            echo '코드에 선언한 URL 중 응답하지 않는 것이 있습니다.'
+            echo '기능이 폐기됐다면 **선언에서 지우세요** — 죽은 예열 URL 은 서브리퀘스트 예산만'
+            echo '먹고(무료 50/인보케이션) 아무 신호도 남기지 않고, 죽은 sitemap URL 은 크롤 예산'
+            echo '낭비 + 사이트맵 신뢰도 하락입니다.'
+            echo ''
+            echo '```'
+            node scripts/check-live-contracts.mjs 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
