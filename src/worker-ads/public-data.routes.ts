@@ -35,19 +35,23 @@ publicDataRoutes.post('/__ads/scan-notices', lane(async (env) => {
   const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env)
 }))
 
-// 🏪 매장 후보(인허가) 전일 변동분.
-//   ⚠️ 2026-07-28 분리: 예전엔 여기서 **백필까지 같은 인보케이션**에 돌렸다. 업종 16개 × 페이지에
-//   백필 청크까지 얹히면 서브리퀘스트 한도(≈50)를 확실히 넘겨, 라이브가 실제로
-//   `⛔ 플랫폼 요청한도 도달(업종×페이지 과다)` 를 뱉으며 `found:0` 에 고착했다.
-//   → 백필은 아래 별도 라우트(=별도 인보케이션 = 새 예산)로 뗀다.
-publicDataRoutes.post('/__ads/collect-localdata', lane(async (env) => {
-  const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env)
-}))
-
-// 📦 인허가 과거 백필 1청크 — **수집과 별도 인보케이션**(위 주석 참조).
-publicDataRoutes.post('/__ads/backfill-localdata', lane(async (env) => {
-  const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2)
-}))
+// 🏪 매장 후보(인허가) — 전일 변동분 + (백필 설정 시) 과거 1청크도 함께(버튼 누를수록 축적 가속).
+//
+//   🧮 2026-07-29 `mode` 추가: cron 은 **둘을 각자의 인보케이션에서** 돌려야 한다. 두 러너는 각각
+//   자기 서브리퀘스트 예산(collect-budget 학습 상한)을 잡으므로 한 인보케이션에서 둘 다 돌리면
+//   예산 2배 = 플랫폼 천장 초과 — 이 레인이 `total_saved: 0` 이던 원인을 그대로 재현하게 된다.
+//   기본(=파라미터 없음)은 **수동 버튼의 기존 동작 그대로**(collect+backfill) 유지.
+publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
+  try {
+    const mode = c.req.query('mode') // 'collect' | 'backfill' | (없음)=둘 다
+    const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
+    if (mode === 'backfill') return c.json({ ok: true, backfill: await runLocalDataBackfill(c.env, 2) })
+    const stats = await runLocalDataCollect(c.env)
+    if (mode === 'collect') return c.json({ ok: true, stats })
+    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
+    return c.json({ ok: true, stats, backfill })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
 
 // 📧 매장 후보(인허가) 이메일 우선 연락처 보강.
 publicDataRoutes.post('/__ads/enrich-prospects', lane(async (env) => {

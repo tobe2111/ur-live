@@ -21,6 +21,55 @@
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, type StoreProspect } from './store-prospects'
 import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { type FetchBudget } from './influencer-discovery'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
+
+/**
+ * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
+ *
+ *   증상: 6회 실행 동안 **단 한 건도 저장하지 못했다**(라이브 실측). 진단에 남은 원인은
+ *   `⛔ 플랫폼 요청한도 도달` — data.go.kr 한도가 아니라 **Cloudflare 인보케이션 서브리퀘스트 한도**다.
+ *
+ *   구조적 원인 둘:
+ *   ① 이 레인이 cron 에서 `kick()`(SELF = 독립 인보케이션) 이 아니라 **인라인 `ctx.waitUntil`** 로 돌아
+ *      같은 인보케이션의 다른 레인들과 예산을 다퉜다 — 정상 작동하는 레인(storeinfo·commerce·company)은
+ *      전부 kick 경유였고, `total_saved: 0` 인 레인(localdata·nara)은 전부 인라인이었다.
+ *   ② 예산 개념 자체가 없어 **16업종 × 최대 6페이지를 맹목 순회**했다(백필은 2일치라 최대 192 fetch).
+ *      한도에 부딪히면 그 회차 수확이 통째로 버려지고, 다음 회차도 같은 지점에서 죽는다.
+ *
+ *   ⇒ ①은 worker-ads cron 에서 kick 전환, ②는 여기 — 다른 레인들이 이미 쓰는 관측 학습 상한
+ *   (`collect-budget` SSOT)을 적용하고, **중단 지점을 커서로 남겨 다음 틱이 이어받는다**.
+ *   ⚠️ D1 도 서브리퀘스트다(enrich-lane 이 같은 이유로 놓쳤던 것) — 같은 지갑에서 지불한다.
+ */
+const outOfBudget = (b: FetchBudget): boolean => b.left <= 0 || !!b.limitHit || (!!b.deadline && Date.now() >= b.deadline)
+/** 미완 업종 이어받기 커서 — 예산이 끊긴 지점(day + 업종 인덱스)을 남겨 다음 틱이 그날을 마저 훑는다. */
+const PENDING_KEY = 'ads_localdata_pending'
+/** 백필의 업종 인덱스(현재 커서 날짜 내부) — 날짜가 넘어가면 0 으로 리셋. */
+const BF_IDX_KEY = 'ads_localdata_backfill_idx'
+const MAX_PENDING_DAYS = 14 // 미완 일자 적체 상한(그 이상은 백필 레인이 담당)
+
+interface PendingDay { day: string; idx: number }
+
+/** 이 레인의 예산 산출(env × 관측 학습 상한) — 다른 레인 키와 절대 공유하지 않는다(collect-budget 주석 참조). */
+async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; envBudget: number; learnedCap: number; total: number }> {
+  const envBudget = Math.min(300, Math.max(20, parseInt((env as unknown as { ADS_LOCALDATA_BUDGET?: string }).ADS_LOCALDATA_BUDGET || '', 10) || 40))
+  const learnedCap = Math.max(0, parseInt((await env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('localdata'))
+    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
+  const total = resolveSubreqBudget(envBudget, learnedCap)
+  const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt((env as unknown as { ADS_LOCALDATA_DEADLINE_MS?: string }).ADS_LOCALDATA_DEADLINE_MS || '', 10) || 20_000))
+  return { budget: { left: total, limitHit: false, deadline: Date.now() + deadlineMs }, envBudget, learnedCap, total }
+}
+
+/**
+ * 학습 상한 갱신 — 부딪혔으면 쓴 양보다 낮게, 무사히 끝났으면 조금 올린다(collect-budget SSOT).
+ * ⚠️ 소비량은 **여기서** 시작값 기준으로 도출한다(호출자가 계산해 넘기면 백오프가 거꾸로 작동할 여지가 생긴다).
+ */
+async function persistLocalDataCap(env: Env, total: number, budget: FetchBudget, learnedCap: number, envBudget: number): Promise<void> {
+  const nextCap = nextSubreqCap(total - budget.left, !!budget.limitHit, learnedCap, envBudget)
+  if (nextCap == null) return
+  await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(subreqCapKey('localdata'), String(nextCap)).run().catch(() => null)
+}
 
 // 지방행정 인허가 공통 베이스(업종별 슬러그를 append). ⚠️ 슬러그 맵은 LICENSE_UPJONG(store-prospects.ts) SSOT.
 const LOCALDATA_BASE = 'https://apis.data.go.kr/1741000'
@@ -78,17 +127,24 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
 }
 
 /** 인허가 1페이지(1업종 엔드포인트) 조회 → RawLicense[]. */
-async function fetchLicensePage(base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
+async function fetchLicensePage(base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number, budget?: FetchBudget): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
+  // 🔑 serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 저장돼 있어도 이중 인코딩되지 않게(public-data-diag SSOT).
   const url = `${base}/${endpoint}?serviceKey=${serviceKeyParam(key)}&pageIndex=${pageIndex}&pageSize=500&type=json&resultType=json&lastModTsBgn=${dayYmd}&lastModTsEnd=${dayYmd}`
   // ⚠️ 2026-07-28 수리: 예전엔 실패 시 `{items:[],count:0}` 만 반환해 **원인을 통째로 삼켰다** →
   //   stats 의 error 가 항상 undefined → 5회 실행 0건인데 화면상 "정상 0건"과 구분 불가(진단 실명).
   //   franchise-collect 가 이미 지키는 룰("실패 원인을 삼키지 않는다")을 이 레인에도 적용.
   let res: Response | null = null
   let netMsg = '네트워크 오류'
+  if (budget) budget.left -= 1
   try { res = await fetch(url, { signal: AbortSignal.timeout(20000) }) } catch (err) {
     const m = err instanceof Error ? err.message : String(err || '')
-    if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(업종×페이지 과다) — ADS_LOCALDATA_MAX_PAGES 를 줄일 것'
-    else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
+    // 🩹 2026-07-29: 한도 판정을 `collect-budget` SSOT 로 위임 — 예전엔 `too many subrequests` 하나만 봐서
+    //   Cloudflare 가 바인딩 소진에 던지는 "Too many API requests by single worker invocation" 을 놓쳤다
+    //   (좁게 보면 *한도가 아닌 일반 오류*로 분류돼 학습 상한이 안 내려가고 매 실행 같은 지점에서 죽는다).
+    if (isSubrequestLimitError(m)) {
+      if (budget) budget.limitHit = true
+      netMsg = '⛔ 인보케이션 요청한도 도달(업종×페이지 과다) — 남은 업종은 다음 틱이 이어받음'
+    } else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
   }
   // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
   if (!res || !res.ok) return { items: [], count: 0, msg: await describePublicDataFailure(res, netMsg) }
@@ -120,7 +176,13 @@ function toProspect(it: RawLicense, endpoint: string, category: string): StorePr
   }
 }
 
-export interface LocalDataStats { last_run: string; day: string; found: number; saved: number; new_open: number; closed: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string } }
+export interface LocalDataStats {
+  last_run: string; day: string; found: number; saved: number; new_open: number; closed: number
+  total_runs: number; total_saved: number
+  /** 📏 예산 계측(2026-07-29) — 상태줄이 한도 근접을 숫자로 보게. 구 스냅샷 호환 위해 optional. */
+  budget_total?: number; spent?: number; limit_hit?: boolean; pending_days?: number
+  diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string }
+}
 const STATS_KEY = 'ads_localdata_stats'
 const BF_CURSOR_KEY = 'ads_localdata_backfill_ymd'
 
@@ -154,28 +216,76 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   if (!Object.keys(endpoints).length) { const s = base0('NO_ENDPOINTS: 업종 엔드포인트 미설정'); await persist(s); return s }
 
   const MAX_PAGES = Math.max(1, parseInt((env as unknown as { ADS_LOCALDATA_MAX_PAGES?: string }).ADS_LOCALDATA_MAX_PAGES || '', 10) || 6)
+  const { budget, envBudget, learnedCap, total: budgetTotal } = await resolveLocalDataBudget(env)
+  const spendD1 = () => { budget.left -= 1 } // D1 도 같은 지갑에서 지불(분모를 진실로)
+  spendD1() // 위 prev 조회
   let found = 0, saved = 0, closed = 0
   let sample: unknown; let lastMsg: string | undefined
-  for (const [endpoint, category] of Object.entries(endpoints)) {
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const { items, count, msg } = await fetchLicensePage(base, endpoint, key, dayYmd, page)
-      if (msg) lastMsg = msg
-      if (!sample && items[0]) sample = items[0]
-      if (!count) break
-      const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
-      for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
-      found += rows.length
-      saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
-      if (count < 500) break // 마지막 페이지
+
+  // 📋 처리 대상 일자 = [미완으로 남겨둔 날들] + [이번 틱의 전일 변동분]. 앞에서부터 드레인하고,
+  //   예산이 끊긴 지점(업종 인덱스)을 그대로 되남겨 다음 틱이 **같은 날의 남은 업종부터** 이어받는다.
+  //   (이 커서가 없으면 예산이 짧은 날 뒤쪽 업종은 영영 미도달 — 전화 스윕이 `ORDER BY id ASC` 로
+  //    tier1 에 영영 못 닿던 것과 같은 클래스의 버그.)
+  const pendRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(PENDING_KEY).first<{ value: string }>().catch(() => null)
+  spendD1()
+  let pending: PendingDay[] = []
+  try { const p = JSON.parse(pendRaw?.value || '[]'); if (Array.isArray(p)) pending = p.filter(x => /^\d{8}$/.test(String(x?.day))).map(x => ({ day: String(x.day), idx: Math.max(0, Number(x.idx) || 0) })) } catch { pending = [] }
+  const queue: PendingDay[] = [...pending]
+  if (!queue.some(q => q.day === dayYmd)) queue.push({ day: dayYmd, idx: 0 })
+
+  const eps = Object.entries(endpoints)
+  const leftover: PendingDay[] = []
+  for (let qi = 0; qi < queue.length; qi++) {
+    const item = queue[qi]
+    if (outOfBudget(budget)) { leftover.push(item); continue } // 예산 소진 — 손대지 않은 날은 그대로 보존
+    let stoppedAt: number | null = null
+    for (let ei = item.idx; ei < eps.length; ei++) {
+      if (outOfBudget(budget)) { stoppedAt = ei; break }
+      const [endpoint, category] = eps[ei]
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        if (outOfBudget(budget)) { stoppedAt = ei; break } // 이 업종은 아직 안 끝났다 → 다음 틱이 이 업종부터
+        const { items, count, msg } = await fetchLicensePage(base, endpoint, key, item.day, page, budget)
+        if (msg) lastMsg = msg
+        // ⚠️ 한도로 **이 요청이 실패**했으면 이 업종은 '완료'가 아니다. `!count` 로 빠져나가면 정상 0건과
+        //   구분이 안 돼 다음 틱이 이 업종을 건너뛴다 = 그 업종 데이터 영구 누락(유닛테스트가 잡은 실버그).
+        if (budget.limitHit) { stoppedAt = ei; break }
+        if (!sample && items[0]) sample = items[0]
+        if (!count) break
+        const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
+        for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
+        found += rows.length
+        spendD1()
+        saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
+        if (count < 500) break // 마지막 페이지
+      }
+      if (stoppedAt != null) break
     }
+    if (stoppedAt != null) leftover.push({ day: item.day, idx: stoppedAt })
   }
+  // 미완 일자 영속 — 오래된 것부터 최대 MAX_PENDING_DAYS 일(그 이상 밀리면 백필 레인이 담당하므로 버린다).
+  const nextPending = leftover.slice(-MAX_PENDING_DAYS)
+  spendD1()
+  if (nextPending.length) {
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(PENDING_KEY, JSON.stringify(nextPending)).run().catch(() => null)
+  } else if (pending.length) {
+    await DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(PENDING_KEY).run().catch(() => null)
+  }
+  await persistLocalDataCap(env, budgetTotal, budget, learnedCap, envBudget)
+
   // 신규 개업 집계(현재 DB 반영 상태).
   const no = await DB.prepare('SELECT COUNT(*) AS n FROM store_prospects WHERE is_new_open = 1').first<{ n: number }>().catch(() => null)
   const newOpen = Number(no?.n) || 0
 
   // 데이터 0건인데 API 메시지가 있으면 진단에 노출(키 오류/등록 대기 등).
   const err = found === 0 && lastMsg && !/정상|INFO-000/.test(lastMsg) ? `API: ${lastMsg}` : undefined
-  const s: LocalDataStats = { last_run: stamp, day: dayYmd, found, saved, new_open: newOpen, closed, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error: err, sample, endpoints: Object.keys(endpoints) } }
+  const s: LocalDataStats = {
+    last_run: stamp, day: dayYmd, found, saved, new_open: newOpen, closed,
+    total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
+    // 📏 예산 계측 — 한도에 닿기 **전에** 보이게(시트 미러가 `ok:true` 인 채 34시간 멈춰 있던 교훈).
+    budget_total: budgetTotal, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit,
+    pending_days: nextPending.length,
+    diag: { configured: true, error: err, sample, endpoints: Object.keys(endpoints) },
+  }
   await persist(s)
   return s
 }
@@ -186,7 +296,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
  *   시간당 1청크(maxDaysPerRun일)씩 진행(ur-ads 매시간 크론 + 수동 수집 버튼에 부착) — 커서 영속이라 중단/재개 안전.
  *   변동일 기준 조회라 과거로 갈수록 그날 변동된 매장이 계속 나옴 → 전국 매장이 점진 축적. 멱등 upsert 라 중복 0.
  */
-export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise<{ enabled: boolean; done: boolean; days: string[]; found: number; saved: number }> {
+export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise<{ enabled: boolean; done: boolean; days: string[]; found: number; saved: number; spent?: number; limit_hit?: boolean; endpoint_idx?: number }> {
   const DB = env.DB
   const windowDays = Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0)
   if (!windowDays) return { enabled: false, done: true, days: [], found: 0, saved: 0 }
@@ -202,23 +312,54 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
   let cur = String(curRaw?.value || '').replace(/\D/g, '').slice(0, 8)
   if (cur.length !== 8) cur = ymd(new Date(now.getTime() - 2 * 86400000)) // 전일은 일일 틱 담당 → 그 전날부터 역방향
   const MAX_PAGES = Math.max(1, parseInt((env as unknown as { ADS_LOCALDATA_MAX_PAGES?: string }).ADS_LOCALDATA_MAX_PAGES || '', 10) || 6)
+  // 🧮 2026-07-29: 이 레인이 가장 폭발적이었다 — maxDaysPerRun(2) × 16업종 × 6페이지 = **최대 192 fetch** 를
+  //   매시간 인라인으로 쏟아부어, 같은 인보케이션의 다른 작업(시트 미러 등)까지 굶겼다. 예산 + 업종 커서로 제한.
+  const { budget, envBudget, learnedCap, total: budgetTotal } = await resolveLocalDataBudget(env)
+  const spendD1 = () => { budget.left -= 1 }
+  spendD1() // 위 커서 조회
+  const idxRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(BF_IDX_KEY).first<{ value: string }>().catch(() => null)
+  spendD1()
+  let startIdx = Math.max(0, parseInt(String(idxRaw?.value || ''), 10) || 0)
+  const eps = Object.entries(endpoints)
   let found = 0, saved = 0
   const days: string[] = []
   for (let i = 0; i < maxDaysPerRun && cur >= floorYmd; i++) {
+    if (outOfBudget(budget)) break
     days.push(cur)
-    for (const [endpoint, category] of Object.entries(endpoints)) {
+    let stoppedAt: number | null = null
+    for (let ei = startIdx; ei < eps.length; ei++) {
+      if (outOfBudget(budget)) { stoppedAt = ei; break }
+      const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const { items, count } = await fetchLicensePage(base, endpoint, key, cur, page)
+        if (outOfBudget(budget)) { stoppedAt = ei; break }
+        const { items, count } = await fetchLicensePage(base, endpoint, key, cur, page, budget)
+        if (budget.limitHit) { stoppedAt = ei; break } // 한도로 실패한 업종은 완료가 아니다(위 일일 레인과 동일)
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length
+        spendD1()
         saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
         if (count < 500) break
       }
+      if (stoppedAt != null) break
     }
+    // ⚠️ 날짜 커서는 **그날을 다 훑었을 때만** 넘긴다 — 예산으로 중간에 끊겼는데 넘기면 그날 뒤쪽 업종이
+    //   영구 누락된다(멱등 upsert 라 이어받기 재조회는 안전).
+    if (stoppedAt != null) {
+      startIdx = stoppedAt
+      spendD1()
+      await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_IDX_KEY, String(stoppedAt)).run().catch(() => null)
+      break
+    }
+    startIdx = 0
     const d = new Date(Date.UTC(+cur.slice(0, 4), +cur.slice(4, 6) - 1, +cur.slice(6, 8)) - 86400000)
     cur = ymd(d)
-    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_CURSOR_KEY, cur).run().catch(() => null)
+    spendD1()
+    await DB.batch([
+      DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_CURSOR_KEY, cur),
+      DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_IDX_KEY, '0'),
+    ]).catch(() => null)
   }
-  return { enabled: true, done: cur < floorYmd, days, found, saved }
+  await persistLocalDataCap(env, budgetTotal, budget, learnedCap, envBudget)
+  return { enabled: true, done: cur < floorYmd, days, found, saved, spent: budgetTotal - budget.left, limit_hit: !!budget.limitHit, endpoint_idx: startIdx }
 }
