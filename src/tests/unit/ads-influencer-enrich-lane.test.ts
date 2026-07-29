@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline, starvedLastRound } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline, starvedLastRound, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -163,5 +163,42 @@ describe('배선 — 교대가 깊이와 굶주림 둘 다 본다', () => {
 
   it('🔒 직전 스냅샷을 레인 시작 전에 읽는다 — 끝에서만 읽으면 선두 결정에 못 쓴다', () => {
     expect(src.indexOf('const prev = await readSnapshot(DB)')).toBeLessThan(src.indexOf('const naverFirst ='))
+  })
+})
+
+/**
+ * 📐 블로거 시간 바닥 비율 — 2026-07-29 16:00 A/B 실측이 만든 값.
+ *
+ * 인접한 두 깨끗한 회차(배포 겹침 없음)가 앞 단계 몫의 대가를 그대로 보여줬다:
+ * ```
+ *   15:00 블로거 선두 : yt  0 · naver{선택 22, 측정 22} · spent 44/45 · elapsed  8.3s
+ *   16:00 유튜브 선두 : yt 14 · naver{선택 18, 측정  6} · spent 19/45 · elapsed 22.0s
+ * ```
+ * 유튜브 14채널의 대가로 **블로거 12명이 선택만 되고 버려졌다**. 백로그(블로거 27,324 · 증가 중)와
+ * 측정 값어치(블로거는 이메일 수율 50~59%, 유튜브는 대개 이미 있는 값 갱신)가 이 배분을 뒤집는다.
+ *
+ * ⚠️ 이 테스트가 **못 보는 것**: 실제 라이브 적용 여부. `ADS_ENRICH_NAVER_FLOOR_PCT` 가 대시보드에
+ *    설정돼 있으면 env 가 이깁니다 — 적용은 다음 회차의 `naver.tried` 로 확인할 것.
+ */
+describe('블로거 시간 바닥 기본값', () => {
+  it('기본이 70% — 앞 단계는 창의 30%까지만', () => {
+    expect(NAVER_FLOOR_PCT_DEFAULT).toBe(70)
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, NAVER_FLOOR_PCT_DEFAULT)).toBe(t0 + 6_000)
+  })
+  it('🔒 16:00 회귀 재현: 40% 였다면 앞 단계가 창의 60%(12s)를 먹는다', () => {
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, 40)).toBe(t0 + 12_000)   // 실제로 그래서 블로거가 8s 만 받았다
+    // 새 기본값은 그 절반 — 블로거 몫이 8s → 14s 로 늘어난다.
+    expect(frontStageDeadline(t0, 20_000, NAVER_FLOOR_PCT_DEFAULT) - t0).toBeLessThan(12_000)
+  })
+  it('바닥은 여전히 상한 80%에 걸린다 — 앞 단계를 통째로 굶기지 않는다', () => {
+    const t0 = 1_000_000
+    expect(frontStageDeadline(t0, 20_000, 99) - t0).toBe(4_000)   // 20% 는 남는다
+  })
+  it('레인이 상수를 실제로 쓴다 — 리터럴 40 이 남아 있으면 기본값 변경이 무의미하다', () => {
+    const src = readFileSync('src/features/marketing/api/influencer-enrich-lane.ts', 'utf8')
+    expect(src).toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[\s\S]{0,120}?NAVER_FLOOR_PCT_DEFAULT/)
+    expect(src).not.toMatch(/ADS_ENRICH_NAVER_FLOOR_PCT[^\n]*\|\|\s*40\b/)
   })
 })

@@ -178,8 +178,32 @@ export function starvedLastRound(prev: { naver?: { selected?: number; tried?: nu
  *   일찍 끝나면 남은 시간은 그대로 블로거가 가져간다(복원 후 원래 마감으로 돌아가므로).
  *   즉 앞 레인은 **블로거를 통째로 굶길 때만** 손해를 본다.
  */
+/**
+ * 📐 블로거 시간 바닥의 **기본 비율** — 2026-07-29 16:00 A/B 실측으로 40 → 70.
+ *
+ * 인접한 두 깨끗한 회차(배포 겹침 없음)가 앞 단계 몫의 대가를 그대로 보여줬다:
+ * ```
+ *   15:00 블로거 선두 : yt  0 · naver{선택 22, 측정 22} · spent 44/45 · elapsed  8.3s
+ *   16:00 유튜브 선두 : yt 14 · naver{선택 18, 측정  6} · spent 19/45 · elapsed 22.0s
+ * ```
+ * 유튜브 14채널을 얻는 대가로 **블로거 12명이 선택만 되고 버려졌고**(선택 18 · 시도 6),
+ * 예산은 26이나 남은 채 시간이 끝났다. 백로그 비율이 이 배분을 정당화하지 않는다 —
+ * 블로거 미측정 **27,324**(계속 증가) vs 유튜브는 그 1/4 수준이고 대부분 이미 규모 값을 갖고 있다.
+ * 게다가 측정의 값어치도 다르다: 블로거 측정은 **이메일 수율 50~59%**(실측)를 내고,
+ * 유튜브 측정은 대개 이미 있는 구독자/조회수를 갱신한다.
+ *
+ * ⚠️ 이 값이 **못 고치는 것**: `elapsed` 가 창을 넘는 것(16:00 은 22.0s). 사전 마감은
+ *    *"언제까지 새 일을 시작하나"* 만 정하고 진행 중인 fetch 는 못 끊는다(최대 8s 초과).
+ *    그래서 라운드 수(체인 수명 ~30s 에 종속)는 이 값으로 안 늘어난다 — 그건 창 크기
+ *    (`ADS_ENRICH_DEADLINE_MS`)의 문제이고 별도 판단이다.
+ *
+ * ⚠️ 환경변수가 이미 설정돼 있으면 이 기본값은 안 쓰인다(env 우선). 실제 적용 여부는
+ *    다음 회차의 `naver.tried` 증가로 확인할 것.
+ */
+export const NAVER_FLOOR_PCT_DEFAULT = 70
+
 export function frontStageDeadline(started: number, deadlineMs: number, naverFloorPct: number): number {
-  const pct = Math.min(80, Math.max(10, Number.isFinite(naverFloorPct) ? naverFloorPct : 40))
+  const pct = Math.min(80, Math.max(10, Number.isFinite(naverFloorPct) ? naverFloorPct : NAVER_FLOOR_PCT_DEFAULT))
   const window = Math.max(0, Number.isFinite(deadlineMs) ? deadlineMs : 0)
   return started + Math.floor((window * (100 - pct)) / 100)
 }
@@ -326,7 +350,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
     if (isSubrequestLimitError(msg)) limitHit = true
     if (!crash) crash = msg
   }
-  const naverFloorPct = parseInt((env as unknown as { ADS_ENRICH_NAVER_FLOOR_PCT?: string }).ADS_ENRICH_NAVER_FLOOR_PCT || '', 10) || 40
+  const naverFloorPct = parseInt((env as unknown as { ADS_ENRICH_NAVER_FLOOR_PCT?: string }).ADS_ENRICH_NAVER_FLOOR_PCT || '', 10) || NAVER_FLOOR_PCT_DEFAULT
   /**
    * 🔁 **라운드마다 선두를 교대한다** — 사전 마감만으로는 부족했다(2026-07-29 13:00 실측).
    *

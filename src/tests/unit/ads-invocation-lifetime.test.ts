@@ -22,7 +22,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun, nextSubreqCap } from '@/features/marketing/api/collect-budget'
-import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { frontStageDeadline, NAVER_FLOOR_PCT_DEFAULT } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
 
@@ -232,10 +232,14 @@ describe('보강 레인 — 앞 레인 사전 마감(블로거 시간 바닥)', 
     expect(frontStageDeadline(0, 20_000, 50)).toBe(10_000)
   })
 
-  it('비율은 10~80 으로 클램프되고 비정상 입력은 기본값(40)이 된다', () => {
+  it('비율은 10~80 으로 클램프되고 비정상 입력은 기본값이 된다', () => {
     expect(frontStageDeadline(0, 20_000, 0)).toBe(18_000)    // <10 → 10
     expect(frontStageDeadline(0, 20_000, 99)).toBe(4_000)    // >80 → 80
-    expect(frontStageDeadline(0, 20_000, Number.NaN)).toBe(12_000) // NaN → 40
+    // ⚠️ 기본값을 **숫자로 박지 않는다**(2026-07-29): 원래 `.toBe(12_000) // NaN → 40` 이었는데,
+    //    실측(16:00 A/B — 유튜브 선두 회차에서 블로거 선택 18 중 시도 6)으로 기본값을 40 → 70 으로
+    //    조율하자 *동작은 의도대로인데 테스트만* 깨졌다. 고정할 것은 특정 숫자가 아니라
+    //    **"비정상 입력이면 기본값으로 떨어진다"** 는 계약이다.
+    expect(frontStageDeadline(0, 20_000, Number.NaN)).toBe(frontStageDeadline(0, 20_000, NAVER_FLOOR_PCT_DEFAULT))
     expect(frontStageDeadline(0, Number.NaN, 40)).toBe(0)
   })
 
