@@ -35,15 +35,19 @@ publicDataRoutes.post('/__ads/scan-notices', lane(async (env) => {
   const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env)
 }))
 
-// 🏪 매장 후보(인허가) — 전일 변동분 + (백필 설정 시) 과거 1청크도 함께(버튼 누를수록 축적 가속).
-publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
-  try {
-    const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-    const stats = await runLocalDataCollect(c.env)
-    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
-    return c.json({ ok: true, stats, backfill })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
+// 🏪 매장 후보(인허가) 전일 변동분.
+//   ⚠️ 2026-07-28 분리: 예전엔 여기서 **백필까지 같은 인보케이션**에 돌렸다. 업종 16개 × 페이지에
+//   백필 청크까지 얹히면 서브리퀘스트 한도(≈50)를 확실히 넘겨, 라이브가 실제로
+//   `⛔ 플랫폼 요청한도 도달(업종×페이지 과다)` 를 뱉으며 `found:0` 에 고착했다.
+//   → 백필은 아래 별도 라우트(=별도 인보케이션 = 새 예산)로 뗀다.
+publicDataRoutes.post('/__ads/collect-localdata', lane(async (env) => {
+  const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env)
+}))
+
+// 📦 인허가 과거 백필 1청크 — **수집과 별도 인보케이션**(위 주석 참조).
+publicDataRoutes.post('/__ads/backfill-localdata', lane(async (env) => {
+  const { runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataBackfill(env, 2)
+}))
 
 // 📧 매장 후보(인허가) 이메일 우선 연락처 보강.
 publicDataRoutes.post('/__ads/enrich-prospects', lane(async (env) => {
