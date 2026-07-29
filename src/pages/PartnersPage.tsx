@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, QrCode, FileCheck2, Wallet, PenLine, MessageCircle, ArrowRight } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { formatNumber } from '@/utils/format'
 
@@ -64,7 +65,8 @@ export default function PartnersPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#FAF7F5] dark:bg-[#0F151D]">
-      <SEO title="입점 안내 - 유어딜" description="광고는 클릭에 돈을 쓰고, 유어딜은 손님이 매장에 온 다음에만 비용이 듭니다. 수수료 5% 업계 최저." url="/partners" />
+      {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
+      <SEO title={CONSUMER_SURFACE_SEO['/partners'].title} description={CONSUMER_SURFACE_SEO['/partners'].description} url="/partners" />
       {/* 상단 미니 바 */}
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#FAF7F5]/90 dark:bg-[#0F151D]/90 backdrop-blur-sm">
         <Link to="/" aria-label="유어딜 홈"><UrDealLogo size={18} /></Link>

@@ -111,9 +111,17 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
       }
 
       // 활성 상품 최신 500개 (voucher 카테고리는 위에서 처리됨)
+      // 🔎 2026-07-29 (소비자 SEO 실측): **`deal_only = 1`(교환권) 제외 — 색인 결정 우회를 막는다.**
+      //   기존 조건은 `category NOT IN (*_voucher)` 뿐이라, KT-Alpha 기프티콘처럼 카테고리가
+      //   '피자'·'치킨'·'용역서비스' 인 교환권이 전부 통과했다. 실측: 제출된 500건 중 ~485건이 그것이었고
+      //   (`seller_id` 없음 · 이미지 `bizimg.giftishow.com`), 소비자 쇼핑 카탈로그에는 15건뿐이었다.
+      //   교환권 상세는 `/vouchers/:id` 에서 **의도적으로 noindex**(2026-07-07)인데 같은 상품을
+      //   `/products/:id` 로 색인 요청하고 있었다 — 한 상품이 두 URL 로 갈려 한쪽만 막힌 상태였다.
+      //   같은 커밋에서 `buildProductMeta` 도 deal_only 를 noindex 로 맞춰 두 경로가 일치한다.
       const products = await DB.prepare(
         `SELECT id FROM products
          WHERE is_active = 1
+           AND COALESCE(deal_only, 0) = 0
            AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
          ORDER BY id DESC LIMIT 500`

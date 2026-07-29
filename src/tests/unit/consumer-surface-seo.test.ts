@@ -103,8 +103,24 @@ describe('resolveConsumerSurfaceSeo — 표면마다 다른 메타 + canonical',
     expect(r.pageTitle).toContain('스타벅스')
   })
 
+  it('랜딩 4종도 서버 메타를 갖는다 (sitemap 이 제출하는데 제네릭 홈이었다)', () => {
+    for (const p of ['/about', '/creators', '/creators/apply', '/partners']) {
+      const r = resolveConsumerSurfaceSeo(p, '', ORIGIN)
+      expect(r, p).not.toBeNull()
+      expect(r!.canonical, p).toBe(`https://urdeal.kr${p}`)
+      expect(r!.description.length, p).toBeGreaterThan(20)
+    }
+  })
+
+  it('sitemap 이 제출하는 정적 경로는 전부 메타를 갖는다 (선언과 구현이 갈리지 않게)', () => {
+    // sitemap.routes.ts 의 정적 목록과 같은 집합. 여기에 추가하면 저기도 추가할 것.
+    for (const p of ['/', '/browse', '/vouchers', '/map', '/about', '/creators', '/creators/apply', '/partners']) {
+      expect(resolveConsumerSurfaceSeo(p, '', ORIGIN), p).not.toBeNull()
+    }
+  })
+
   it('어떤 표면도 제목에 사이트명을 두 번 담지 않는다', () => {
-    for (const [path, search] of [['/', ''], ['/vouchers', ''], ['/vouchers', '?category=편의점'], ['/browse', ''], ['/map', '']] as const) {
+    for (const [path, search] of [['/', ''], ['/vouchers', ''], ['/vouchers', '?category=편의점'], ['/browse', ''], ['/map', ''], ['/about', ''], ['/creators/apply', ''], ['/partners', '']] as const) {
       const r = resolveConsumerSurfaceSeo(path, search, ORIGIN)!
       expect(r.pageTitle.split('유어딜').length - 1, `${path}${search}`).toBe(1)
     }

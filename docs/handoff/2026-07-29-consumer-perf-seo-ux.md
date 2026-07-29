@@ -45,7 +45,10 @@
 | 6 | `/vouchers` **CLS 0.188**(첫 방문). 카테고리 칩(50px)+브랜드 스트립(113px)이 SSR 로 먼저 그려진 목록 위로 늦게 삽입 | `sectionsReady` 로 자리 예약(높이는 실측값) |
 | 7 | 비로그인이 딜 상세를 열 때마다 콘솔 401 (`/api/fcfs/:id/me`) | 비로그인이면 호출 안 함 |
 | 8 | sitemap 의 storefront 8건이 **전부 상품 0개**, 그중 6건이 QA 계정(`테스트 상점`·`검증상호`…) | **콘텐츠 게이트**(상품≥1 OR 핀≥1). 이름 패턴으로 거르지 않음 — 자기유지되는 기준 |
-| 9 | **사라진 상세가 `200 + index,follow`** — `/group-buy/99999999` 가 제네릭 홈 메타로 색인 가능. 워커 self-fetch 는 그 순간 404 를 받고도(`X-SSR-Status: DETAIL:self-fetch-404`) 안 썼다. sitemap 이 상세 829건 제출 → 내려갈 때마다 홈 중복 1개 | `shouldNoindexMissingEntity` — 엔티티 슬롯 + `self-fetch-404` 일 때만 noindex. **타임아웃은 제외**("느리다"≠"없다") |
+| 10 | **같은 교환권이 두 URL 로 갈려 한쪽만 noindex** — `/vouchers/2192` 는 `noindex`(2026-07-07 결정)인데 `/products/2192` 는 `index,follow` 였고 **sitemap 이 후자를 500건 제출**. 즉 색인 제외 결정이 다른 URL 로 우회되고 있었다. 제출 500건 중 ~485건이 KT-Alpha 기프티콘(`seller_id` 없음·`bizimg.giftishow.com`)이고 소비자 쇼핑 카탈로그엔 15건뿐 | sitemap `/products` 에서 `deal_only=1` 제외 + `buildProductMeta` 가 deal_only 를 noindex — **두 경로가 일치** |
+| 11 | 랜딩 4종(`/about`·`/creators`·`/creators/apply`·`/partners`)이 서버 메타 제네릭 홈 | `CONSUMER_SURFACE_SEO` 에 편입 + **그 페이지들의 `<SEO>` 도 같은 표를 읽게** 배선(문구 두 벌 방지) |
+| 12 | 유어애즈 `influencer-auto-collect.ts` 602줄 — main 에서 이미 audit-gate RED | 키워드 저장소(DDL·시드·CRUD)를 `influencer-keyword-store.ts` 로 분리(602→528). **audit-gate ALL GREEN 75** |
+| 9 | **사라진 상세가 `200 + index,follow`** — `/group-buy/99999999` 가 제네릭 홈 메타로 색인 가능. 워커 self-fetch 는 그 순간 404 를 받고도(`X-SSR-Status: DETAIL:self-fetch-404`) 안 썼다. sitemap 이 상세 829건 제출 → 내려갈 때마다 홈 중복 1개 | `shouldNoindexMissingEntity` — 엔티티 슬롯 + `self-fetch-404` 일 때만 noindex **+ HTTP 404 응답**(본문은 SPA 셸 그대로 → 클라가 "없는 상품" 화면 정상 렌더). **타임아웃은 제외**("느리다"≠"없다") |
 
 부수: DETAIL/STAYDETAIL/PRODUCT/CURATOR 의 **똑같은 `.on()` 체인 4벌**을 `applySurfaceMeta` 하나로 통일
 (`worker/index.ts` 2620→2591줄, 파일크기 래칫 준수). 출력 불변 — 셀렉터·순서·값 동일.
@@ -70,22 +73,30 @@ done
 **판정**: 다섯 경로의 `<title>` 이 서로 달라야 하고, 전부 canonical 이 **자기 URL** 이어야 한다.
 하나라도 `유어딜 - 돈버는 쇼핑…` 이 나오면 워커 배선이 안 탄 것(값이 아니라 배선을 볼 것).
 
+추가 판정 3가지:
+```bash
+# ① 사라진 상세 = HTTP 404 (이전엔 200)
+curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/group-buy/99999999      # → 404
+# ② 교환권은 어느 URL 로 와도 noindex (이전엔 /products/:id 만 index,follow)
+curl -sS https://urdeal.kr/products/2192 | grep -o 'name="robots" content="[^"]*"'   # → noindex, follow
+# ③ sitemap 에서 교환권이 빠졌나 (이전 500건 → 실제 쇼핑 상품만)
+curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>https://urdeal.kr/products/'  # → 15 안팎
+```
+
 ### 📋 남은 항목 (대표 판단 / 다음 세션)
 
 1. **랜딩 4종(`/about`·`/creators`·`/creators/apply`·`/partners`) 은 여전히 서버 메타가 제네릭 홈**이다.
    sitemap 에 priority 0.6~0.85 로 제출 중. 고치려면 `CONSUMER_SURFACE_SEO` 에 항목을 추가하고
    **그 페이지의 `<SEO>` 도 같은 상수를 읽게** 바꿀 것(문구가 두 벌이 되면 반드시 갈라진다).
-2. **사라진 상세의 HTTP 상태는 200 그대로 뒀다** — SPA 셸·청크 로딩·클라 라우팅을 건드리지 않기 위해서다.
-   진짜 404 상태로 바꾸면 soft-404 가 완전히 사라지지만 프리렌더/캐시/클라 부트와의 상호작용을 별도로 검증해야 한다. **대표 결정 필요.**
-3. **sitemap 의 `/products` 500건** — 쇼핑 탭은 `SHOPPING_TAB_HIDDEN` 으로 숨겨져 있는데 색인은 요청 중이다.
-   `/products/1` 은 데모(`무선 이어폰 프리미엄`, og:image 가 unsplash). **대표 결정 필요**: 숨긴 표면을
-   계속 색인 요청할 것인가.
-4. **홈 첫 페인트가 지도**라 Kakao SDK 101KB + 타일 PNG ~500KB 가 붙는다. 홈=지도는 대표 결정(2026-07-15)이라
+2. **소비자 쇼핑 카탈로그에 데모 상품 9건이 살아 있다** — `/api/products?exclude_deal_only=1` 15건 중 9건이
+   `seller_id` 없음 + `images.unsplash.com`(예: `/products/1` "무선 이어폰 프리미엄"). 이건 **코드가 아니라
+   데이터** 문제라 손대지 않았다(비활성화는 어드민 작업). 지금은 sitemap 에도 그대로 들어간다.
+   ⚠️ 이름/이미지 호스트로 코드에서 거르려 하지 말 것 — 실제 셀러가 같은 패턴을 쓸 수 있다. 데이터를 정리하는 게 맞다.
+3. **홈 첫 페인트가 지도**라 Kakao SDK 101KB + 타일 PNG ~500KB 가 붙는다. 홈=지도는 대표 결정(2026-07-15)이라
    건드리지 않았다. 줄이려면 타일 레벨/초기 줌 또는 리스트-우선 진입이 레버.
-5. **`useMapProducts` 가 page 2→7 을 순차 호출**(329곳 → 6 왕복). 설계대로(progressive, SOFT_CAP 500)라
+4. **`useMapProducts` 가 page 2→7 을 순차 호출**(329곳 → 6 왕복). 설계대로(progressive, SOFT_CAP 500)라
    지금은 정상이지만, 상품이 늘면 이 순차가 먼저 아플 자리다.
-6. **감사 게이트가 main 에서 이미 RED 1건** — `src/features/marketing/api/influencer-auto-collect.ts` 602줄
-   (600 초과, #875 에서 넘었다). 유어애즈 레인이라 이번 PR 범위 밖으로 뒀다. CI(`--changed-only`)는 영향 없다.
+5. ~~감사 게이트 RED(유어애즈 602줄)~~ → **해소됨**. 키워드 저장소를 분리해 528줄. 지금 `audit-gate.sh` 는 **ALL GREEN 75**.
 
 ### ❌ 이번에 기각한 것 (다음 세션이 다시 파지 않게)
 

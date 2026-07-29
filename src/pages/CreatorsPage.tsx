@@ -7,6 +7,7 @@
 import { Link } from 'react-router-dom'
 import { Link2, MousePointerClick, Share2, UserPlus, ArrowRight, Bell, BarChart3 } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /** 📋 시드 모집 폼 — 기본은 유어딜 네이티브 신청 폼(/creators/apply, 사전동의·풀 자동적재).
@@ -22,7 +23,8 @@ const STEPS = [
 export default function CreatorsPage() {
   return (
     <div className="min-h-[100dvh] bg-[#FAF7F5] dark:bg-[#0F151D]">
-      <SEO title="크리에이터 모집 - 유어딜" description="링크 하나로 동네 맛집을 팔고 커미션을 받으세요. 가입 → 딜 선택 → 링크 공유, 3단계면 시작." url="/creators" />
+      {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
+      <SEO title={CONSUMER_SURFACE_SEO['/creators'].title} description={CONSUMER_SURFACE_SEO['/creators'].description} url="/creators" />
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#FAF7F5]/90 dark:bg-[#0F151D]/90 backdrop-blur-sm">
         <Link to="/" aria-label="유어딜 홈"><UrDealLogo size={18} /></Link>
         <Link to="/about" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">서비스 소개</Link>

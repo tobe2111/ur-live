@@ -993,7 +993,8 @@ app.use('*', async (c, next) => {
     //   "홈과 똑같은 내용의 색인 가능한 URL" 이 하나씩 생기는 구조였다(soft-404 — 에러가 없어 안 보인다).
     //   ⚠️ HTTP 상태는 200 그대로 둔다 — SPA 셸/청크 로딩·클라 라우팅에 영향을 주지 않기 위해서다.
     //   색인만 막는다. (진짜 404 상태 전환은 별개 결정 — handoff 참조.)
-    if (shouldNoindexMissingEntity(ssrSlot, ssrStatus)) {
+    const entityGone = shouldNoindexMissingEntity(ssrSlot, ssrStatus);
+    if (entityGone) {
       rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
     }
     if (ssrSlot === 'SELLER' && ssrPayload) {
@@ -1030,7 +1031,15 @@ app.use('*', async (c, next) => {
       });
     }
     const rewritten = rb.transform(c.res);
-    c.res = new Response(rewritten.body, rewritten);
+    // 🪦 2026-07-29 사라진 엔티티는 **HTTP 404** 로 응답한다(본문은 SPA 셸 그대로).
+    //   noindex 만으로는 이미 색인된 URL 이 늦게 빠지고 서치콘솔엔 계속 soft-404 로 잡힌다.
+    //   404 는 "없어졌다"를 명시하는 유일한 신호다. 본문을 그대로 두므로 브라우저는 SPA 를 부팅해
+    //   "없는 상품" 화면을 정상 렌더한다(HTTP 상태는 렌더를 막지 않는다).
+    //   ⚠️ 판정 근거는 **우리 API 의 404** 뿐이다 — 타임아웃/5xx 는 제외(shouldNoindexMissingEntity).
+    //   ⚠️ 정적 자산은 이 경로를 타지 않는다(text/html 청크포인트 안) → 청크 404 자가복구와 무관.
+    c.res = entityGone
+      ? new Response(rewritten.body, { status: 404, statusText: 'Not Found', headers: rewritten.headers })
+      : new Response(rewritten.body, rewritten);
     // 🛡️ 2026-06-25 [UNLOCK_LOADING] (대표 승인 "가장 이상적으로 모두"): SPA HTML 셸은 항상 재검증.
     //   옛 HTML(옛 청크 해시)이 브라우저/bfcache 에 잔존 → 새 배포 후 그 청크 404 → 흰화면/안넘어감을
     //   *근본* 차단(서버가 매 하드로드마다 fresh HTML → fresh 청크 해시 보장). 클라 캐시버스트 복구와 이중 방어.
