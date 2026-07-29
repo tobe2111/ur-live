@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { clearServerSessionCookies } from '@/utils/auth'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
@@ -13,6 +14,7 @@ import {
   TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
   Building2,
   Store,
+  Handshake,
   type LucideIcon
 } from 'lucide-react'
 
@@ -55,6 +57,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: '매장 영입', i18nKey: 'agency.nav.storeRecruit',
     items: [
       { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
+      // 🤝 2026-07-10: 3단 위임 모델 (§4.3) — 매장 위임 조회/요청
+      { path: '/agency/delegations', label: '매장 위임', i18nKey: 'agency.nav.delegations', icon: Handshake, mode: 'common' },
       { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: UserPlus, mode: 'common' },
       { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
       // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
@@ -205,8 +209,13 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   // 성장 활성 라벨은 최근 30일 매출이 있을 때만 표시
   const hasActiveGrowth = revenue30d != null && revenue30d > 0
 
-  function logout() {
-    ['agency_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
+  async function logout() {
+    // 🔑 2026-06-29 (로그아웃 근본수정): 서버 httpOnly agency 세션쿠키(ur_agency_session) 삭제를 await —
+    //   기존엔 localStorage 만 지워 쿠키가 남아 재인증됐다(로그아웃해도 로그인). 유저/셀러/어드민 세션은 보존.
+    await clearServerSessionCookies('agency')
+    ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
+    // 🔑 2026-06-29 (PII 잔존 제거): RQ 캐시에 남은 에이전시 데이터(매장/정산/실적)를 비움 — logoutSeller 와 대칭.
+    try { const { getQueryClient } = await import('@/lib/react-query'); getQueryClient().clear() } catch { /* best-effort */ }
     navigate('/agency/login')
   }
 

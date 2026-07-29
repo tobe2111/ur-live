@@ -4,11 +4,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Banknote, Loader2, Check, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 제조사 정산금 출금 신청 처리 (예치금 입금확인의 역방향).
 //   제조사 출금 신청(잔액 예약됨) → 어드민이 등록 계좌로 송금 후 승인 / 또는 반려(예약 복원). 라이트 테마.
@@ -36,7 +37,9 @@ const STATUS: Record<WithdrawalRequest['status'], { t: string; c: string }> = {
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
-export default function AdminWholesaleWithdrawalsPage() {
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →
+//   AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭이 그대로 렌더 (AdminDistributorApprovalPage 패턴).
+export default function AdminWholesaleWithdrawalsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'requested' | 'all'>('requested')
   const [actingId, setActingId] = useState<number | null>(null)
@@ -47,7 +50,7 @@ export default function AdminWholesaleWithdrawalsPage() {
   //   인증=api 인터셉터 자동(admin_token). filter 변경 시 queryKey 로 자동 재조회.
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-withdrawals', filter] as const
-  const { data: requests = [], isLoading: loading, refetch } = useApiQuery<WithdrawalRequest[]>(
+  const { data: requests = [], isLoading: loading, isError, error, refetch } = useApiQuery<WithdrawalRequest[]>(
     queryKey,
     '/api/admin/wholesale-withdrawals',
     {
@@ -93,9 +96,8 @@ export default function AdminWholesaleWithdrawalsPage() {
     } finally { setActingId(null) }
   }
 
-  return (
-    <AdminLayout title="제조사 출금">
-      <div className="ur-content-full px-4 lg:px-8 py-6">
+  const body = (
+      <div className={embedded ? '' : 'ur-content-full px-4 lg:px-8 py-6'}>
         <DashboardPageHeader icon={<Banknote className="w-5 h-5" />} title="제조사 정산금 출금" subtitle="제조사 출금 신청을 확인하고 등록 계좌로 송금한 뒤 승인합니다. 반려 시 잔액이 복원됩니다." />
 
         <div className="flex flex-wrap items-center gap-2 my-4">
@@ -112,6 +114,8 @@ export default function AdminWholesaleWithdrawalsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="출금 신청" />
         ) : requests.length === 0 ? (
           <p className="text-center text-gray-400 py-20">출금 신청이 없습니다.</p>
         ) : (
@@ -139,7 +143,7 @@ export default function AdminWholesaleWithdrawalsPage() {
                       {req.bank_name || '-'} {req.bank_account || ''}
                       {req.account_holder && <span className="block text-[11px] text-gray-400">{req.account_holder}</span>}
                     </td>
-                    <td className="py-2.5 px-4 text-gray-500">{req.requested_at ? new Date(req.requested_at).toLocaleDateString('ko-KR') : '-'}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(req.requested_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                     <td className="py-2.5 px-4">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[req.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[req.status]?.t || req.status}</span>
                       {req.admin_memo && <span className="block text-[11px] text-gray-400 mt-0.5">{req.admin_memo}</span>}
@@ -163,7 +167,7 @@ export default function AdminWholesaleWithdrawalsPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="block text-right text-gray-400 text-xs">{req.processed_at ? new Date(req.processed_at).toLocaleDateString('ko-KR') : '—'}</span>
+                        <span className="block text-right text-gray-400 text-xs">{safeDate(req.processed_at)?.toLocaleDateString('ko-KR') ?? '—'}</span>
                       )}
                     </td>
                   </tr>
@@ -173,6 +177,8 @@ export default function AdminWholesaleWithdrawalsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
   )
+
+  if (embedded) return body
+  return <AdminLayout title="제조사 출금">{body}</AdminLayout>
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { isKorea } from '@/config/region'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { trackFunnel } from '@/lib/funnel'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -13,6 +14,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { hasConsumerSession } from '@/utils/auth'
 
 // Kakao SDK 타입 선언
@@ -47,6 +49,8 @@ export default function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
+  // 🛡️ 2026-06-23: 카카오 로그인 진행 가드 — 반복 클릭 방지 (ref = re-render 없음 → iOS freeze 회피)
+  const kakaoNavRef = useRef(false)
 
   // ✅ Region-based auth store 선택 (hooks 규칙 준수)
   const isKR = isKorea()
@@ -83,6 +87,8 @@ export default function LoginPage() {
     returnUrlRef.current = safeInternalPath(raw, '/')
   }
   const returnUrl = returnUrlRef.current
+  // 🆕 2026-06-29 퍼널 계측: returnUrl 이 있으면 보호 라우트(결제/보관함/링크샵)에서 튕겨 온 것 = 로그인 벽 노출.
+  useEffect(() => { if (returnUrl && returnUrl !== '/') trackFunnel('login_wall_shown', { from: returnUrl }) }, [returnUrl])
   const isLoggedIn = !!user || hasConsumerSession()
   // 🛡️ 2026-05-01: ?switch=1 query — 명시적 계정 전환 의도 (다른 사람 디바이스 등).
   //   localStorage 청소 + auto-redirect skip → 로그인 UI 표시.
@@ -127,7 +133,15 @@ export default function LoginPage() {
   //   navigation 즉시 실행. 이전: setLoading/setError → React re-render → iOS Safari 가
   //   navigation 을 큐잉하고 freeze. 카카오 로그인은 server-side OAuth redirect 만 사용 →
   //   Kakao JS SDK 불필요. 동기 navigation 으로 단순화.
+  // 🛡️ 2026-06-23 (대표 신고 — 로딩 장면 없어 반복 클릭): 클릭 즉시 풀스크린 로딩 오버레이.
+  //   ⚠️ React setState 금지 (2026-05-04 사고: 카카오 클릭 시 re-render → iOS Safari navigation 큐잉 freeze).
+  //   → 순수 DOM 으로 주입(렌더 사이클 무관) 후 즉시 navigation. 페이지가 떠나기 전까지 오버레이 노출 → 재클릭 차단 + 체감속도.
+  // 🚑 2026-07-10: 카카오 로딩 오버레이 → 공용 SSOT(utils/kakao-login-overlay — BrandLoader 와
+  //   픽셀·위상 동일, 순수 DOM(iOS freeze 제약) 유지). 셀러/에이전시 로그인과 공유.
+
   function handleKakaoLogin() {
+    if (kakaoNavRef.current) return // 이미 진행 중 — 반복 클릭 무시
+    kakaoNavRef.current = true
     try {
       const rawReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
@@ -137,8 +151,11 @@ export default function LoginPage() {
       if (wantsSwitch) {
         params.set('force_account', '1')
       }
+      showKakaoLoadingOverlay() // 공용 SSOT — 순수 DOM, iOS freeze 없음
       window.location.href = `/auth/kakao/start?${params.toString()}`
     } catch (err: unknown) {
+      kakaoNavRef.current = false // 실패 시 재시도 허용
+      removeKakaoLoadingOverlay()
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
       toast.error(t('auth.kakaoLoginError'))
     }
@@ -252,14 +269,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center">
         <div className="text-gray-500 dark:text-gray-400">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#020202] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
+    <div className="relative min-h-screen bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
 
       {/* 은은한 에메랄드→틸 그라데이션 포인트 (장식 — 본문 가독성 영향 없음) */}
@@ -281,11 +298,11 @@ export default function LoginPage() {
             {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-[12px] text-gray-700 dark:text-gray-300">
               <MapPin className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-[12px] text-gray-700 dark:text-gray-300">
               <Ticket className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
@@ -317,7 +334,7 @@ export default function LoginPage() {
         {!showEmailLogin && !showForgotPassword && (
           <div>
             {/* 주 CTA 카드 — 카카오(KR)/구글(GLOBAL) 로그인. 버튼 로직/마크업 불변, 배치만 강조 */}
-            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A] p-5 shadow-sm">
+            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] p-5 shadow-sm">
             {/* ✅ Region-based Primary Login Button */}
             {isKR ? (
               /* Kakao Login Button (KR) */
@@ -375,6 +392,14 @@ export default function LoginPage() {
             )}
               <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
                 {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
+              </p>
+              {/* 📜 2026-07-05 이용약관 v1.0 제5조: 가입(로그인)으로 약관·개인정보처리방침 동의 성립 고지 */}
+              <p className="mt-2 text-center text-[10.5px] text-gray-400 dark:text-gray-600 font-light leading-relaxed">
+                {t('login.termsNotice', { defaultValue: '로그인(가입) 시' })}{' '}
+                <Link to="/terms" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
+                {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
+                <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
+                {t('login.termsNoticeEnd', { defaultValue: '에 동의하는 것으로 봅니다' })}
               </p>
             </div>
 

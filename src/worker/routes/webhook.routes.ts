@@ -368,7 +368,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       case 'PAYMENT_STATUS_CHANGED':
         // status 로 세분화 분기.
         if (status === 'DONE') {
-          await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+          await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         } else if (status === 'CANCELED' || status === 'PARTIAL_CANCELED') {
           await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         } else if (status === 'ABORTED' || status === 'EXPIRED') {
@@ -387,7 +387,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         // 가상계좌 입금 알림 — docs: 입금 / 입금 취소 둘 다 트리거.
         //   data.status 'DONE' → 입금 완료, 'CANCELED' → 입금 취소 (반환).
         if (status === 'DONE') {
-          await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+          await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         } else if (status === 'CANCELED') {
           await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         } else {
@@ -414,7 +414,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       // ─── Legacy 이벤트 (옛 등록 webhook 호환 — 점진 deprecated) ─
       case 'payment.confirmed':
-        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         break;
       case 'payment.cancelled':
       case 'payment.partial_canceled':
@@ -427,7 +427,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         await handleVirtualAccountIssued(orderRepo, data, tossOrderId);
         break;
       case 'payment.virtual_account_deposited':
-        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         break;
       case 'refund_completed':
         if (process.env.NODE_ENV !== 'production') console.log('[Webhook] refund_completed:', tossOrderId);
@@ -504,7 +504,8 @@ async function handlePaymentConfirmed(
   data: TossWebhookPayload['data'],
   orderNumber: string,
   paymentKey: string,
-  DB?: D1Database
+  DB?: D1Database,
+  env?: Env,
 ): Promise<void> {
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
     orderNumber,
@@ -624,6 +625,102 @@ async function handlePaymentConfirmed(
       await creditOrderCommissions(DB, wOrders.results || [])
     } catch (e) {
       console.error('[WEBHOOK] commission credit failed:', String(e).slice(0, 200))
+    }
+  }
+
+  // 💸 2026-06-26 [UNLOCK] (대표 승인 "3건 다 고쳐" — 소비자 감사): webhook 확정 경로 side-effect 누락 보강.
+  //   /confirm 에만 있던 ① 혼합결제 딜 차감 ② KT-Alpha 교환권 발송 을 webhook 에도 추가 — 브라우저가
+  //   confirm 못 보내고 webhook 만 도착해도 딜 미차감/교환권 미발송이 없게. confirmPaymentAtomic CAS
+  //   (result.confirmed>0)가 confirm↔webhook 단일실행을 보장 → 이중차감/이중발송 없음(KT 는 per-order 멱등도).
+  //   ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — side-effect 배선만.
+  if (DB && result.confirmed > 0) {
+    // ① 혼합결제(Toss+딜) 딜 사용분 차감 — payment.routes `/confirm` 과 동일 로직(adjustUserPoints CAS guardBalance).
+    try {
+      const { adjustUserPoints } = await import('../utils/point-ledger')
+      const dealRows = await DB.prepare(
+        'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
+      ).bind(orderNumber).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }))
+      for (const r of (dealRows?.results ?? [])) {
+        const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)))
+        if (used > 0 && r.user_id != null) {
+          const res = await adjustUserPoints(DB, {
+            userId: r.user_id, delta: -used, type: 'order_payment',
+            description: `주문 결제 딜 사용 (#${r.id})`, orderId: r.id, guardBalance: true,
+          })
+          if (!res.ok && res.reason === 'insufficient') {
+            const balRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(String(r.user_id)).first<{ balance: number }>().catch(() => null)
+            const avail = Math.max(0, Number(balRow?.balance ?? 0))
+            if (avail > 0) {
+              await adjustUserPoints(DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(() => {})
+            }
+          }
+        }
+      }
+    } catch (e) {
+      captureException(e as Error, { tags: { area: 'webhook', kind: 'deal_deduct' } }).catch(swallow('webhook:deal-deduct'))
+    }
+
+    // ② KT-Alpha 교환권 자동 발송 — auto_voucher_send=1 상품. autoSendKtAlpha 는 per-order 멱등(이미 발송 시 skip).
+    if (env) {
+      try {
+        const ktOrders = await DB.prepare(
+          'SELECT id, user_id, shipping_phone FROM orders WHERE order_number = ?'
+        ).bind(orderNumber).all<{ id: number; user_id: string | number | null; shipping_phone: string | null }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string | number | null; shipping_phone: string | null }> }))
+        const ktList = ktOrders?.results ?? []
+        if (ktList.length > 0) {
+          const firstUser = ktList.find(o => o.user_id != null)?.user_id ?? ''
+          const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+          await autoSendKtAlphaVouchersForOrders(
+            env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            ktList.map(o => ({ id: Number(o.id), shipping_phone: o.shipping_phone ?? undefined, user_id: o.user_id })),
+            String(firstUser),
+          )
+        }
+      } catch (e) {
+        console.error('[WEBHOOK] KT-Alpha send failed:', String(e).slice(0, 200))
+      }
+    }
+  }
+
+  // 🔔 2026-06-26 [UNLOCK] (대표 승인 "모두 해줘" — 소비자 감사 D): 결제완료 buyer 인앱 알림 — webhook 경로.
+  //   /confirm 의 동일 'order_paid' 알림과 confirmPaymentAtomic CAS(result.confirmed>0)로 단일실행
+  //   (confirm↔webhook 중 이긴 쪽만 도달 → 이중알림 없음). 셀러만 통보되고 buyer 무통보이던 누락 보강.
+  //   ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — notifyUser side-effect 배선만.
+  if (DB && result.confirmed > 0) {
+    try {
+      const { notifyUser } = await import('../../lib/notifications')
+      const orow = await DB.prepare(
+        'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
+      ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null)
+      if (orow?.user_id) {
+        await notifyUser(
+          DB, String(orow.user_id), 'order_paid',
+          '✅ 결제가 완료됐어요', `주문 ${orderNumber} — ₩${Number(data.totalAmount ?? 0).toLocaleString('ko-KR')} 결제 완료`,
+          '/my-orders',
+        ).catch(() => {})
+      }
+    } catch (e) {
+      console.error('[WEBHOOK] order_paid buyer notification failed:', String(e).slice(0, 200))
+    }
+    // 🔔 2026-07-01 [UNLOCK]: 셀러 '결제 확정' 대시보드 알림 — webhook 경로. 이전엔 /confirm(payment.routes:463)
+    //   에만 있어, confirmPaymentAtomic CAS 로 webhook 이 이기면 셀러가 '💳 결제 확정' 벨을 못 받던
+    //   비대칭(2026-06-26 buyer 알림은 대칭화됐으나 셀러 반쪽 누락) 보강. result.confirmed>0(단일실행)
+    //   가드 하에서만 → 이중알림 없음. ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — 알림 배선만.
+    try {
+      const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+      const { results: sellerRows } = await DB.prepare(
+        'SELECT seller_id, total_amount, order_number FROM orders WHERE order_number = ? AND seller_id IS NOT NULL'
+      ).bind(orderNumber).all<{ seller_id: number | null; total_amount: number | null; order_number: string }>()
+      for (const row of (sellerRows ?? [])) {
+        if (!row.seller_id) continue
+        await createDashboardNotification(
+          DB, 'seller', String(row.seller_id), 'order_paid',
+          '💳 결제 확정', `주문 ${row.order_number} — ₩${Number(row.total_amount ?? 0).toLocaleString('ko-KR')} 결제가 확정되었습니다`,
+          '/seller/orders',
+        ).catch(() => {})
+      }
+    } catch (e) {
+      console.error('[WEBHOOK] seller order_paid notification failed:', String(e).slice(0, 200))
     }
   }
 
@@ -763,6 +860,23 @@ async function handlePaymentCancelled(
   // Send order cancellation notification
   await sendOrderNotification(orderRepo, orderNumber, 'cancelled', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));
+
+  // 🔔 2026-07-01 [UNLOCK]: Toss webhook 취소 → buyer 인앱 알림. 기존 sendOrderNotification 은
+  //   Discord 전용(운영 채널)이라 앱 알림함엔 취소 기록이 없었음. 앱-발화 취소(order.routes)는 이미
+  //   notifyUser 하지만 Toss 측/비동기 취소는 이 webhook 만 도달 → 구매자 무통보. ⚠️ 결제취소/환불/
+  //   커미션역전/쿠폰복원 로직 무수정 — notifyUser side-effect 1블록 추가만.
+  try {
+    const { notifyUser } = await import('../../lib/notifications');
+    const orow = await DB.prepare(
+      'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
+    ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null);
+    if (orow?.user_id) {
+      await notifyUser(DB, String(orow.user_id), 'order_cancelled', '주문이 취소되었습니다', `주문 ${orderNumber}이(가) 취소되었습니다. 환불은 결제수단에 따라 처리됩니다.`, '/my-orders').catch(() => {});
+    }
+  } catch (e) {
+    console.error('[WEBHOOK] order_cancelled buyer notification failed:', String(e).slice(0, 200));
+  }
+
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
     orderNumber,
     ordersUpdated: orders.length,
@@ -838,13 +952,17 @@ async function handleVirtualAccountDeposited(
   data: TossWebhookPayload['data'],
   orderNumber: string,
   paymentKey: string,
-  DB?: D1Database
+  DB?: D1Database,
+  env?: Env,
 ): Promise<void> {
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
 
-  // Same as payment.confirmed — pass DB through so amount verification + digital
-  // access grant + auction-hold consume run.
-  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB);
+  // Same as payment.confirmed — pass DB + env through so amount verification + digital
+  // access grant + auction-hold consume + 커미션 적립 + 딜차감 + KT-Alpha 교환권 자동발송
+  // 이 실제 입금 시점에 모두 실행된다.
+  // 🛡️ 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사): env 미전달 시 env-gated KT-Alpha 발송이
+  //   가상계좌 입금완료 경로에서 스킵되던 비대칭 보강 (카드 /confirm 과 동일하게 발송).
+  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB, env);
 }
 
 export { webhookRouter };

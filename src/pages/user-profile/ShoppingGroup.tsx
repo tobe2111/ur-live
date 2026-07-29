@@ -23,7 +23,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       key: 'assets',
       label: t('shopping.groupAssets', { defaultValue: '이용권·자산' }),
       items: [
-        { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 교환권' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
+        // 🛡️ 2026-07-02: sub '이용권·이용권'(치환 중복 카피 버그) → 지갑 실제 구성(이용권+교환권) 반영
+        { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장 이용권 · 교환권' }), count: counts.voucher, path: '/my-vouchers' },
         { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
         { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
         { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
@@ -55,9 +56,9 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
         {groups.map((g, gi) => (
           <div key={g.key}>
+            {/* 🛡️ 2026-07-02: 인라인 검정 고정 borderTop → 테마 대응 클래스(다크에서 구분선 소실 수정) */}
             <p
-              className="px-3.5 pt-3 pb-1.5 text-[10px] font-bold tracking-wide text-gray-400 dark:text-white/35"
-              style={{ borderTop: gi ? '1px solid rgba(0,0,0,0.06)' : 'none' }}
+              className={`px-3.5 pt-3 pb-1.5 text-[10px] font-bold tracking-wide text-gray-400 dark:text-white/35 ${gi ? 'border-t border-black/[0.06] dark:border-white/[0.06]' : ''}`}
             >
               {g.label}
             </p>
@@ -66,8 +67,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
                 key={item.path}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
-                style={{ borderTop: i ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06] ${i ? 'border-t border-black/[0.04] dark:border-white/[0.05]' : ''}`}
               >
                 <span className="text-lg" aria-hidden="true">{item.icon}</span>
                 <div className="flex-1 min-w-0">

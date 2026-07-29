@@ -22,30 +22,52 @@ import {
   type GradeMargin, type DistributorGrade, type QtyTier,
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
+import { intParam } from '@/shared/pagination'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
-import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
+import { creditSupplierOnWholesaleOrder, loadMallCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
+import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale-order-status'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
-import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
-import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
+import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
+import { resolveMallId, registrationMallId, loadMallByHost, loadMallById, loadMallBySlug, DEFAULT_MALL_ID, sellerMallIdOf } from './wholesale-malls'
+import { saveWholesaleLicense } from './wholesale-license'
+import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
   ensureOrderTables, ensureSupplierPolicySchema, loadSupplierPolicies, computeSupplierShipping,
   parseProductShipFee, hasRestrictedVisibility, _supplyCatalogReady, ensureQtyConstraintSchema,
-  ensureCreditSchema, loadSellerCredit, sellerIdFrom, sellerIdFromCookieGet,
+  ensureCreditSchema, loadSellerCredit, sellerIdFrom, sellerIdFromCookieGet, isSellerBlocked,
   type SubRole, SUB_ROLES, subClaimsFrom, SUB_EMAIL_RE, requireSubAdmin,
   loadGradeTable, loadMinPlatformMarginPct, loadSellerGrade, loadQtyTiers,
   ftsAvailable, buildFtsMatch, CATALOG_SORT_ORDER, ensureDistributorSellerSchema,
-  notifySuppliersOfPaidOrder, BULK_MAX_ROWS,
+  notifySuppliersOfPaidOrder, notifySuppliersOfOrderEvent, BULK_MAX_ROWS,
 } from './wholesale-helpers'
 // public API 보존 — wholesale-board.routes.ts 가 `from './wholesale.routes'` 로 가져옴(re-export).
 export { loadGradeTable, loadSellerGrade } from './wholesale-helpers'
+import { registerWholesaleDocumentRoutes } from './wholesale-documents.routes'
+// 🏭 2026-06-29 분해 후 잔존 /orders/export(line ~1660)가 쓰므로 xlsx import 를 상단으로 복원(기존 파일중간 import 제거).
+import { buildXlsx, xlsxResponse } from './xlsx'
 
 const app = new Hono<{ Bindings: Env }>()
+
+// 🏭 2026-06-30 (대표 — 고마진/프리미엄 등급 서버 게이팅): 프리미엄 전용관(?premium=1) 데이터를
+//   받을 수 없는 등급. 클라(WholesaleCatalogPage)의 MARGIN_PREMIUM_BLOCKED_GRADES 와 동일 정책 —
+//   클라 잠금화면은 UX, 이 서버 게이트가 *데이터* 차단(URL 직접 호출로도 Basic 은 빈 목록). Premium 전용으로
+//   좁히려면 ['B','C']. 'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터가 아니라 서버 게이트 불필요.
+const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
+
+// 🏬 2026-07-04 (대표 신고 — ?mall=medi 에서 유통스타트 세션/빠른재주문 노출): 판매사 소속 몰 조회.
+//   "몰=도메인=계정" 설계는 도메인별 localStorage 분리 전제였으나, 같은 도메인 ?mall= 프리뷰(+API 직접 호출)에선
+//   타 몰 토큰이 회원 표면을 그대로 통과했다 → **회원 표면(me/home/recent-items/catalog 등급가/주문)은
+//   소속 몰에서만 회원으로 인정**(타 몰에선 게스트/차단). 각 몰 별도 로그인·회원가입 원칙의 서버 강제.
+async function sellerMallId(DB: D1Database, sellerId: number): Promise<number> {
+  return sellerMallIdOf(DB, sellerId) // SSOT = wholesale-malls.sellerMallIdOf (documents/board 와 공용)
+}
 
 // ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
 //   🏬 2026-06-09 멀티-몰 테넌시: host → mall(없으면 기본 몰 id=1). 프런트 헤더 브랜드명/로고/색/카테고리용.
@@ -54,13 +76,24 @@ const app = new Hono<{ Bindings: Env }>()
 app.get('/mall', async (c) => {
   const { DB } = c.env
   try {
-    let host: string | null = null
-    try { host = new URL(c.req.url).hostname } catch { host = c.req.header('Host') || null }
-    const mall = await loadMallByHost(DB, host)
+    // 🏥 2026-07-03: host-only → resolveMallId(c) — `?mall=<slug>` 도 존중해 도메인 연결 전 몰도 브랜딩/카테고리 노출.
+    //   (기존: loadMallByHost host 전용 → ?mall=medi 여도 기본 몰 브랜드로 표시되던 갭.)
+    const mallId = await resolveMallId(c)
+    const mall = await loadMallById(DB, mallId)
     // categories_json 서버 parse → 배열(파싱 실패 시 null). 클라 JSON.parse 부담 제거.
     let categories: unknown = null
     if (mall?.categories_json) {
       try { categories = JSON.parse(mall.categories_json) } catch { categories = null }
+    }
+    // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — 파싱해 객체로 반환(미설정=빈 객체=전 기능 ON).
+    let features: Record<string, boolean> = {}
+    if (mall?.features_json) {
+      try { const f = JSON.parse(mall.features_json); if (f && typeof f === 'object' && !Array.isArray(f)) features = f } catch { features = {} }
+    }
+    // 🏢 2026-07-04 몰 회사(푸터) 정보 — 미설정 키는 클라가 기본 BUSINESS_INFO 로 폴백(기본 몰 byte-불변).
+    let company: Record<string, string> | null = null
+    if (mall?.company_json) {
+      try { const cj = JSON.parse(mall.company_json); if (cj && typeof cj === 'object' && !Array.isArray(cj)) company = cj as Record<string, string> } catch { company = null }
     }
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'max-age=300')
@@ -73,11 +106,18 @@ app.get('/mall', async (c) => {
         brand_color: mall?.brand_color ?? null,
         logo_url: mall?.logo_url ?? null,
         categories: Array.isArray(categories) ? categories : null,
+        // 🏥 규제 몰 게이트 — 클라가 인허가 필드 노출 여부 판단.
+        requires_license: mall?.requires_license ? 1 : 0,
+        license_label: mall?.license_label ?? null,
+        // 🧩 몰 기능 토글(제외 레이어) — 클라가 UI 게이트. 키 부재 = ON.
+        features,
+        // 🏢 몰 회사(푸터) 정보 — 상호/대표/사업자번호/통판신고/주소/입금/연락처. 미설정=null(기본 폴백).
+        company,
       },
     })
   } catch (err) {
     // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
-    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null } })
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {}, company: null } })
   }
 })
 
@@ -117,7 +157,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     const phone = String(body.phone || '').trim()
     const business_number_raw = String(body.business_number || '').replace(/[^0-9]/g, '') // 🏭 사업자등록번호 숫자만(하이픈 무관)
     const representative = String(body.representative || '').trim()    // 대표자명
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> XSS 차단. http(s)·상대경로만.
+    const business_license_raw = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    const business_license_url = (/^https?:\/\//i.test(business_license_raw) || /^\//.test(business_license_raw)) ? business_license_raw : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)
@@ -174,6 +216,14 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     const passwordHash = await hashPassword(password)
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c).catch(() => 1) // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — requires_license 면 판매업 신고번호 필수.
+    const regMall = await loadMallById(DB, mallId).catch(() => null)
+    const licenseRequired = !!(regMall && regMall.requires_license)
+    const permitNo = String(body.license_no || body.permit_no || '').trim().slice(0, 60)
+    const permitUrl = String(body.license_url || '').trim().slice(0, 1000)
+    if (licenseRequired && !permitNo) {
+      return c.json({ success: false, error: `${regMall?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+    }
     // 🏁 2026-06-12 (P4 정책 확정 — "둘 다 수동 승인"): 국세청 결과는 참고 표시용 저장만. fail-soft.
     let ntsStatus2: string | null = null
     try {
@@ -248,6 +298,8 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
       sellerId = Number(row?.id) || 0
     }
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
+    // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — 사이드 테이블, fail-soft.
+    if (licenseRequired || permitNo) await saveWholesaleLicense(DB, 'distributor', sellerId, mallId, permitNo, permitUrl || null)
 
     // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',
@@ -257,15 +309,17 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
     dispatchSignupContract(c, { accountType: 'distributor', accountId: sellerId, signerName: representative || name, signerPhone: phone || manager_phone || representative_phone, businessName: business_name })
 
+    // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (가입 메타 — 사이드테이블, fail-soft).
+    await setWholesaleSignupMeta(DB, 'distributor', sellerId, body.categories, body.channel)
+
     return c.json({
       success: true,
       status: 'pending',
       message: '판매사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
     })
   } catch (err) {
-    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정). console+Sentry 도 기록.
-    console.error('[wholesale:register] 500:', (err as Error)?.message || String(err))
-    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500)
+    // 🛡️ 2026-06-25: 임시 _diag 노출 제거(보안 — raw DB 에러 클라 반환 금지 룰). safeError 가 Sentry/DEV 로깅 담당.
+    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
   }
 })
 
@@ -289,7 +343,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const business_number = String(body.business_number || '').trim()
     const representative = String(body.representative || '').trim()
     const phone = String(body.phone || '').trim()
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500)
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 가입경로와 동일).
+    const business_license_rawc = String(body.business_license_url || '').trim().slice(0, 500)
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawc) || /^\//.test(business_license_rawc)) ? business_license_rawc : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)
@@ -336,7 +392,41 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       const bizNo = await DB.prepare('SELECT business_number FROM sellers WHERE id = ?')
         .bind(seller.id).first<{ business_number: string | null }>().catch(() => null)
       if (!bizNo?.business_number) {
-        return c.json({ success: true, status: 'needs_business_info', code: 'BUSINESS_INFO_REQUIRED', message: '도매 이용을 위해 사업자 정보 등록이 필요합니다.' })
+        // 🛡️ 2026-07-01 (라이브 전수조사 — 가입 유실 근본수정): 사업자정보 없는 기존 승인셀러가
+        //   가입 폼(사업자번호/등록증/대표자)을 제출하면, 이전엔 저장·알림 없이 needs_business_info 만
+        //   반환 → 프론트는 "신청 완료" 표시 but 어드민 승인큐엔 아무것도 없어 영구 미승인·재제출 무한루프.
+        //   이제 폼이 실제로 왔으면 기존 행에 저장 + status=pending 강등(재검증) + 어드민 벨.
+        const bn = business_number.replace(/[^0-9]/g, '')
+        const hasSubmission = !!(business_name && business_license_url && /^\d{10}$/.test(bn) && representative && representative_phone && manager_name && manager_phone)
+        if (!hasSubmission) {
+          // 빈 body/자동 프로브 — 폼 작성 유도(가입 화면 렌더용).
+          return c.json({ success: true, status: 'needs_business_info', code: 'BUSINESS_INFO_REQUIRED', message: '도매 이용을 위해 사업자 정보 등록이 필요합니다.' })
+        }
+        let ntsStatusUp: string | null = null
+        try {
+          const { ntsCheckStatus } = await import('../../../worker/utils/nts-business-verify')
+          const rows = await ntsCheckStatus((c.env as { NTS_API_KEY?: string }).NTS_API_KEY, [bn])
+          ntsStatusUp = rows[0]?.b_stt || null
+        } catch { /* fail-soft */ }
+        // ⚠️ 소비자 셀러 겸업 보호: 전체 seller `status` 는 건드리지 않는다(pending 강등 시 소비자
+        //   storefront 까지 잠김 — 크로스서비스 사고). 도매 문서 검증 플래그만 pending 으로.
+        await DB.prepare(`UPDATE sellers SET
+            business_name = ?, business_number = ?, representative_name = COALESCE(?, representative_name),
+            phone = COALESCE(?, phone), representative_phone = COALESCE(?, representative_phone),
+            manager_name = COALESCE(?, manager_name), manager_phone = COALESCE(?, manager_phone),
+            manager_email = COALESCE(?, manager_email),
+            business_registration_image_url = ?, business_registration_status = 'pending',
+            nts_status = ?, updated_at = datetime('now')
+          WHERE id = ?`).bind(
+          business_name, bn, representative || null, phone || null, representative_phone || null,
+          manager_name || null, manager_phone || null, manager_email || null,
+          business_license_url, ntsStatusUp, seller.id,
+        ).run().catch(swallow('wholesale:become:bizinfo-update'))
+        await setWholesaleSignupMeta(DB, 'distributor', seller.id, body.categories, body.channel).catch(swallow('wholesale:become:meta'))
+        createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청(사업자정보 보완)',
+          `${business_name} (${bn})${ntsStatusUp ? ` — 국세청: ${ntsStatusUp}` : ' — 국세청: 조회 안 됨'}`,
+          '/admin/seller-approval').catch(swallow('wholesale:become:notify-bizinfo'))
+        return c.json({ success: true, status: 'pending', message: '사업자 정보가 접수되었습니다. 관리자 승인 후 이용할 수 있습니다.' })
       }
       const nowSec = Math.floor(Date.now() / 1000)
       const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
@@ -393,6 +483,8 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, userId, mallId, ntsStatus).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '판매사 신청 중 오류가 발생했습니다' }, 500)
+    // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (카카오 가입 메타 — fail-soft).
+    await setWholesaleSignupMeta(DB, 'distributor', sid, body.categories, body.channel)
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',
       `${business_name} (${business_number})${ntsStatus ? ` — 국세청: ${ntsStatus}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
@@ -597,10 +689,33 @@ app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windo
 })
 
 // ── GET /me ───────────────────────────────────────────────────────────────────
+// 🏭 2026-06-29 (E): 판매사 가입 메타(취급 카테고리·주력 판매채널) 셀프 조회/수정.
+app.get('/signup-meta', async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+app.patch('/signup-meta', rateLimit({ action: 'wholesale-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await setWholesaleSignupMeta(c.env.DB, 'distributor', sellerId, body.categories, body.channel, true)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+
 app.get('/me', async (c) => {
   const { sellerId, subAccountId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   try {
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사면 회원정보 대신 mall_mismatch 만 반환(데이터 비노출).
+    const curMall = await resolveMallId(c)
+    const myMall = await sellerMallId(c.env.DB, sellerId)
+    if (myMall !== curMall) {
+      const member = await loadMallById(c.env.DB, myMall).catch(() => null)
+      return c.json({ success: true, mall_mismatch: true, member_mall_slug: member?.slug ?? 'default', member_mall_name: member?.brand_name || member?.name || '유통스타트' })
+    }
     await ensureCreditSchema(c.env.DB)
     const sg = await loadSellerGrade(c.env.DB, sellerId)
     const table = await loadGradeTable(c.env.DB)
@@ -644,7 +759,10 @@ app.get('/home', async (c) => {
   const { DB } = c.env
   try {
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureSupplyMetaTable(DB)])
-    const [sg, table, homeMallId] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 회원 홈 차단(빠른재주문/등급가 등 회원 데이터).
+    const homeMallId = await resolveMallId(c)
+    if (await sellerMallId(DB, sellerId) !== homeMallId) return c.json({ success: false, error: '이 몰의 회원이 아닙니다', code: 'MALL_MISMATCH' }, 401)
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, homeMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료(override ?? 전역).
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
@@ -653,12 +771,12 @@ app.get('/home', async (c) => {
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')} AND ${gradeExposureWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       // ⚠️ retail_price = 권장소비자가(공급자 입력) — 원가(supply_price)/제조사 신원은 비노출. 판매사 마진 산출용.
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
 
-    const [best, fresh, cats, proposalsRes] = await Promise.all([
+    const [best, fresh, cats, proposalsRes, pendingReceiptRow] = await Promise.all([
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId, grade).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
@@ -666,6 +784,9 @@ app.get('/home', async (c) => {
         SELECT ${cols} FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
         WHERE wp.status = 'active' AND wp.distributor_seller_id = ? AND ${baseWhere} ORDER BY wp.created_at DESC LIMIT 12
       `).bind(sellerId, sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      // 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 — 발송완료(SHIPPED/PARTIAL_REFUNDED) = 구매확정 전.
+      //   구매확정해야 정산 마무리 + 클레임 창 종료 → 홈 액션 배너로 누락 방지. fail-soft(.catch→0).
+      DB.prepare(`SELECT COUNT(*) AS n FROM wholesale_orders WHERE distributor_seller_id = ? AND status IN ('SHIPPED','PARTIAL_REFUNDED')`).bind(sellerId).first<{ n: number }>().catch(() => null),
     ])
 
     return c.json({
@@ -675,6 +796,7 @@ app.get('/home', async (c) => {
       new: enrich(fresh.results || []),
       proposals: enrich(proposalsRes.results || []),
       categories: (cats.results || []).map(c2 => ({ key: c2.category, count: c2.cnt })),
+      pending_receipt: Math.max(0, Number(pendingReceiptRow?.n) || 0),
     })
   } catch (err) {
     return safeError(c, err, '도매몰 홈 조회 중 오류가 발생했습니다', '[wholesale]')
@@ -690,11 +812,14 @@ app.get('/recent-items', async (c) => {
   try {
     await ensureOrderTables(DB)
     await ensureSupplyVisibilitySchema(DB)
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 '빠른 재주문'(타 몰 사입 이력) 노출 차단(대표 신고 증상).
+    const riMallId = await resolveMallId(c)
+    if (await sellerMallId(DB, sellerId) !== riMallId) return c.json({ success: true, items: [] })
     // 최근 주문 라인 (상품별 최신 1건 — JS dedupe). 결제완료 이상만.
     const lines = await DB.prepare(`
       SELECT i.product_id AS product_id, i.qty AS qty, o.created_at AS created_at
       FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
-      WHERE o.distributor_seller_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE')
+      WHERE o.distributor_seller_id = ? AND o.status IN ('PAID','ACCEPTED','SHIPPED','PARTIAL_REFUNDED','DONE')
       ORDER BY o.created_at DESC LIMIT 120
     `).bind(sellerId).all<{ product_id: number; qty: number; created_at: string }>().catch(() => ({ results: [] as { product_id: number; qty: number; created_at: string }[] }))
     const seen = new Map<number, { qty: number; created_at: string }>()
@@ -702,7 +827,7 @@ app.get('/recent-items', async (c) => {
     const ids = [...seen.keys()].slice(0, 12)
     if (!ids.length) return c.json({ success: true, items: [] })
 
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, riMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료
     const ph = ids.map(() => '?').join(',')
     // 현재 구매 가능 + 가시성 통과한 원본 공급상품만 (단종/숨김 제외).
     const prods = await DB.prepare(`
@@ -717,7 +842,7 @@ app.get('/recent-items', async (c) => {
     const items = ids.map(id => {
       const p = byId.get(id); const meta = seen.get(id)
       if (!p) return null
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override, defaultPlatformMarginPct: commPct })
       const moq = Math.max(1, p.moq || 1)
       return { id: p.id, name: p.name, image_url: p.image_url, stock: p.stock, distributor_price: price, retail_price: p.retail_price || null, moq, last_qty: Math.max(moq, meta?.qty || moq), last_date: (meta?.created_at || '').slice(0, 10) }
     }).filter(Boolean)
@@ -731,16 +856,35 @@ app.get('/recent-items', async (c) => {
 //   🔭 향후(BIZ-4 후속, OUT OF SCOPE): 품절 상품 '재입고 알림 구독'(restock-alert) — 별도 구독 테이블 +
 //      재고 0→N 전환 감지 cron + 알림 발송 필요. 이번 작업 범위 아님(검색/정렬/필터만).
 app.get('/catalog', async (c) => {
+  // cache-auth-ok: 엣지 캐시 인증 누수 차단 — 비로그인 응답만 public CDN 캐시(canonical 키, SSR/cron prewarm 용).
+  //   로그인 요청은 useWholesaleCatalog 가 URL 에 v=in 을 붙여(비로그인 canonical 유지) *엣지 캐시 키를 분리* →
+  //   로그인 판매사는 비로그인 'null 가격' 공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 2026-06-29.
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
-  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+  let sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사는 이 몰 카탈로그에서 게스트(등급가 비노출) 강등.
+  if (sellerId && (await sellerMallId(c.env.DB, sellerId)) !== (await resolveMallId(c))) sellerId = null
   const guest = !sellerId
+  // 🛡️ 2026-06-29: 인증 시도(무효 토큰/쿠키)가 있었으면 guest 라도 public 공유캐시 금지(v=in 키 오염→누수 차단).
+  const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-  const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '24', 10) || 24, 1), 100)
+  // 🏬 2026-07-04 (대표 신고 — medi 카탈로그에 유통스타트 상품): 게스트 KV/캐논 캐시가 host 로만 몰을 구분해
+  //   같은 도메인 ?mall= 프리뷰가 타 몰 페이로드를 서빙(KV-HIT) + 역방향(캐논 키 오염)도 가능했음.
+  //   → 몰 캐시 세그먼트: 기본 몰(파라미터 없음/미해석 slug)은 '' = 기존 키 byte-동일(SSR/prewarm 잠금 보존),
+  //   비기본 몰만 `:m{id}` 부착. 쓰레기 slug 는 기본 몰로 해석되므로 '' → KV 키 파편화/write 낭비 0.
+  let mallCacheSeg = ''
+  {
+    const mallQ = (c.req.query('mall') || '').trim()
+    if (mallQ) {
+      const mPrev = await loadMallBySlug(DB, mallQ).catch(() => null)
+      if (mPrev && mPrev.id !== DEFAULT_MALL_ID) mallCacheSeg = `:m${mPrev.id}`
+    }
+  }
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const limit = Math.min(Math.max(intParam(c.req.query('limit'), 24), 1), 100)
   const offset = (page - 1) * limit
   const search = (c.req.query('search') || '').slice(0, 100)
   const category = (c.req.query('category') || '').slice(0, 80)
@@ -761,6 +905,19 @@ app.get('/catalog', async (c) => {
     c.header('X-WS-Reason', 'premium-guest-locked')
     return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
   }
+  // 🏭 2026-06-30 (대표 — 등급 서버 게이팅): 로그인했어도 Basic 등급은 프리미엄 전용관 데이터 차단.
+  //   guest 는 위에서 처리됨. 여기선 로그인 Basic('C')만 추가 차단 → 클라 잠금화면(UX)과 이중 게이트.
+  //   프리미엄 경로(저트래픽·명시적)에서만 등급 1회 조회 — 일반 카탈로그 핫패스엔 영향 0. 아래 등급캐시/쿼리
+  //   전부에 *선행*하므로 Basic 은 프리미엄 응답을 캐시에서도 라이브에서도 절대 수신 못 함.
+  if (premiumOnly && !guest) {
+    const sgGate = await loadSellerGrade(DB, sellerId!).catch(() => ({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>))
+    const gradeGate = effectiveGrade({ grade: sgGate.distributor_grade, specialUntil: sgGate.special_discount_until })
+    if (PREMIUM_BLOCKED_GRADES.includes(gradeGate)) {
+      c.header('Cache-Control', 'private, no-store')
+      c.header('X-WS-Reason', 'premium-grade-locked')
+      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: gradeGate, premium_locked: true })
+    }
+  }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
   //   ?brands=1 이면 상품 목록 대신 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 반환(브랜드 그리드용).
   //   둘 다 미지정 = 현행 동작 완전 불변(byte-identical 요청).
@@ -774,7 +931,9 @@ app.get('/catalog', async (c) => {
     //   를 직접 read → guest HIT 면 즉시 반환(setup 전부 skip). 아래 put(비어있지 않을 때만)·prewarm 과 동일 키.
     //   guest = 가격 null 이라 머니 무관. 로그인은 미적용(등급가 → 기존 grade-cache 경로).
     {
-      const isDefaultGuestReqEarly = guest && page === 1 && !search && !category && !sortKey
+      // 🛡️ 2026-06-29: !authAttempt — 무효 토큰/쿠키를 보낸 요청은 이 guest 조기 캐시반환을 타지 못하게(그 응답이
+      //   v=in 키에 public 캐시돼 유효토큰 유저에게 누수되는 구멍 차단). 진짜 익명만 조기 KV/edge HIT.
+      const isDefaultGuestReqEarly = guest && !authAttempt && page === 1 && !search && !category && !sortKey
         && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
       if (isDefaultGuestReqEarly) {
         // 🏎️ 2026-06-19 (B: 글로벌 KV 캐시) — caches.default 는 colo별이라 저트래픽 도매몰은 대부분 colo가 cold
@@ -785,7 +944,8 @@ app.get('/catalog', async (c) => {
           const kv = (c.env as { CACHE_KV?: { get: (k: string) => Promise<string | null>; put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           if (kv) {
             const host = new URL(c.req.url).hostname
-            const kvBody = await kv.get(`ws:cat:g:${host}`).catch(() => null)
+            // 🏬 2026-07-04: 몰 세그 포함 — ?mall= 프리뷰가 타 몰 KV 페이로드를 절대 못 받게(기본 몰 키는 불변).
+            const kvBody = await kv.get(`ws:cat:g:${host}${mallCacheSeg}`).catch(() => null)
             if (kvBody) return c.body(kvBody, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'KV-HIT' })
           }
         } catch { /* KV 미지원/오류 — caches.default 로 진행 */ }
@@ -852,11 +1012,12 @@ app.get('/catalog', async (c) => {
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB), ensureSupplyMetaTable(DB)])
     // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
-    const [sg, table, mallId, visRestricted] = await Promise.all([
+    const mallId = await resolveMallId(c) // 🏬 몰 선해석(per-isolate 캐시) — 몰별 수수료 병렬 로드에 필요.
+    const [sg, table, visRestricted, commPct] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
       loadGradeTable(DB),
-      resolveMallId(c),
       hasRestrictedVisibility(DB),
+      loadMallCommissionPct(DB, mallId), // 🏬 2026-07-04: 몰별 수수료(override ?? 전역) — 표시=청구 정합 유지.
     ])
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
@@ -996,11 +1157,16 @@ app.get('/catalog', async (c) => {
     }
 
 
+    // 🚚 2026-07-02 (감사 — 표시=청구 정합): 상품별 배송비(wholesale_shipping_fee) 일괄 로드 → 카드/카트에 동봉.
+    //   기존엔 카탈로그가 정책 배송비만 줘서, 상품별 배송비 설정 상품을 리스트에서 담으면 체크아웃 배송비가
+    //   서버 청구액(computeSupplierShipping 은 상품별 우선)과 어긋났음. detail 은 이미 반환 중 — 리스트도 정합.
+    const listShipMeta = await getSupplyMeta(DB, (rows.results || []).map(r => r.id)).catch(() => undefined)
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
       const price = guest ? null : resolveDistributorPrice({
         baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
+        defaultPlatformMarginPct: commPct,
       }).price
       const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
       // 🚚 정책은 JOIN 으로 동봉됨 (loadSupplierPolicies 별도 RTT 제거) — 동일 값.
@@ -1020,6 +1186,8 @@ app.get('/catalog', async (c) => {
         // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
         supplier_group: supId != null ? `s${supId}` : null,
         supplier_policy: supId != null ? { min_order_amount: supPol?.min_order_amount ?? 0, shipping_fee: supPol?.shipping_fee ?? 0, free_ship_threshold: supPol?.free_ship_threshold ?? 0 } : null,
+        // 🚚 상품별 배송비(설정 시 정책보다 우선) — 카트 그룹 배송비 계산이 서버와 동일하도록 동봉.
+        product_shipping_fee: parseProductShipFee(listShipMeta?.get(r.id)) ?? null,
         requires_login: guest,
       }
     })
@@ -1034,10 +1202,11 @@ app.get('/catalog', async (c) => {
     //   initialData 로 주입 → guest 가 refetch 없이 빈 화면 고착. 비어있으면 no-store 로 다음 요청이 즉시 재시도.
     const isEmptyCatalog = items.length === 0
     // 기본 guest 요청(검색/카테고리/정렬/가격/프리미엄/브랜드 미지정) — SSR/prewarm 이 읽는 캐논 키와 1:1.
-    const isDefaultGuestReq = guest && page === 1 && !search && !category && !sortKey
+    const isDefaultGuestReq = guest && !authAttempt && page === 1 && !search && !category && !sortKey
       && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
     if (guest) {
-      if (isEmptyCatalog) {
+      // 🛡️ 빈 결과(콜드/일시오류) 또는 인증 시도(무효 토큰/쿠키)면 public 공유캐시 금지 — 후자는 v=in 키 오염→누수 차단.
+      if (isEmptyCatalog || authAttempt) {
         c.header('Cache-Control', 'private, no-store')
       } else {
         c.header('Cache-Control', 'public, max-age=60')
@@ -1052,12 +1221,17 @@ app.get('/catalog', async (c) => {
           //   host 별 키(early KV read 와 1:1). TTL 600s(>cron 5분 주기 → 항상 신선 유지). CACHE_KV 없으면 skip.
           const kv = (c.env as { CACHE_KV?: { put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           const host = new URL(c.req.url).hostname
+          // 🏬 2026-07-04: 캐논 edge put 은 **기본 몰일 때만** — ?mall= 프리뷰 페이로드가 캐논 키(SSR/prewarm 이 읽는
+          //   /api/wholesale/catalog)를 오염시켜 기본 몰 사용자에게 타 몰 상품이 서빙되는 역방향 누수 차단.
+          //   KV 는 몰 세그 키로 항상 put(비기본 몰도 자체 키로 워밍 이득).
           c.executionCtx.waitUntil(Promise.all([
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            kv ? kv.put(`ws:cat:g:${host}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
+            ...(mallCacheSeg === '' ? [
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            ] : []),
+            kv ? kv.put(`ws:cat:g:${host}${mallCacheSeg}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
           ]))
         }
       }
@@ -1081,12 +1255,24 @@ app.get('/catalog', async (c) => {
 })
 
 // ── GET /catalog/:id ──────────────────────────────────────────────────────────
-app.get('/catalog/:id', async (c) => {
+// 🛡️ 2026-07-01 (라이브 전수조사): :id 를 숫자 전용({[0-9]+})으로 — 이전엔 '/catalog/export'(단가표 CSV,
+//   wholesale-documents 에 등록)까지 이 라우트가 섀도잉해 parseInt('export')=NaN → 400 "잘못된 상품 ID"
+//   (라이브 재현). 숫자 외 세그먼트는 뒤에 등록된 documents 라우트로 정상 폴스루.
+app.get('/catalog/:id{[0-9]+}', async (c) => {
+  // cache-auth-ok: 엣지 캐시 인증 누수 차단 — 비로그인 상세만 public CDN 캐시. 로그인 요청은 useWholesaleProduct
+  //   가 URL 에 ?v=in 을 붙여 *엣지 캐시 키를 비로그인(v=out)과 분리* → 로그인 판매사가 비로그인 'null 가격'
+  //   공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 대표 신고 "상세만 공급가 미설정 간헐" 근본수정. 2026-06-29.
   // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능. 가격(등급가/권장가/tier)은 로그인 시에만.
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
-  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+  let sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사는 이 몰 상세에서 게스트(등급가 비노출) 강등.
+  if (sellerId && (await sellerMallId(c.env.DB, sellerId)) !== (await resolveMallId(c))) sellerId = null
   const guest = !sellerId
+  // 🛡️ 2026-06-29 잔여 누수 차단: 토큰/쿠키를 *보냈는데* 무효(만료 등)인 요청은 비록 guest 로 떨어져도 절대
+  //   public 공유캐시 금지 — 그 'null 가격' 응답이 v=in 키에 캐시돼 유효토큰 유저에게 누수되는 구멍을 막음.
+  //   진짜 익명(인증 시도 0)만 public 캐시 → SSR/cron/비로그인 둘러보기 성능 보존.
+  const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
@@ -1138,21 +1324,27 @@ app.get('/catalog/:id', async (c) => {
     const orderMultiple = Math.max(1, r.order_multiple || 1)
     // 🖼️ 2026-06-12: 상세페이지 이미지(JSON 배열) — 썸네일과 분리 노출 (guest 포함, 가격정보 아님).
     let detailImages: string[] = []
-    try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
+    try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 30) } catch { /* 손상 JSON — 무시 */ }
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — product_supply_meta.gallery_images(JSON). 썸네일(image_url)과 별개, 상단 캐러셀용. 최대 10장.
+    let galleryImages: string[] = []
+    try { const arr = JSON.parse(shipMeta?.gallery_images || '[]'); if (Array.isArray(arr)) galleryImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
     if (guest) {
-      // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s, banners 와 동일 분리). KV 미사용.
-      c.header('Cache-Control', 'public, max-age=60')
-      c.header('CDN-Cache-Control', 'public, max-age=300')
+      // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s). KV 미사용.
+      //   🛡️ 단, 인증 시도(무효 토큰/쿠키)가 있었으면 public 금지 — v=in 키 오염 방지(잔여 누수 차단).
+      if (authAttempt) { c.header('Cache-Control', 'private, no-store') }
+      else { c.header('Cache-Control', 'public, max-age=60'); c.header('CDN-Cache-Control', 'public, max-age=300') }
       return c.json({
         success: true,
         item: {
           id: r.id, name: r.name, description: r.description, image_url: r.image_url,
           detail_images: detailImages,
+          gallery_images: galleryImages,
           category: r.category, stock: r.stock, distributor_price: null,
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
           supplier_group: supplierGroup, supplier_policy: supplierPolicy,
           product_shipping_fee: productShippingFee,
+          product_code: shipMeta?.product_code || null,
           inquirable: supId != null,
         },
         grade: null, requires_login: true,
@@ -1161,14 +1353,16 @@ app.get('/catalog/:id', async (c) => {
 
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
     //   네 쿼리 모두 독립 → 병렬(3 RTT 절약, 카탈로그 리스트와 동일 패턴).
-    const [table, minMarginPct, tierMap] = await Promise.all([
+    const [table, minMarginPct, tierMap, commPct] = await Promise.all([
       loadGradeTable(DB),
       loadMinPlatformMarginPct(DB),
       loadQtyTiers(DB, [id]),
+      loadMallCommissionPct(DB, mallId), // 🏬 2026-07-04: 몰별 수수료(override ?? 전역).
     ]) // sg 는 SELECT 전 등급게이트에서 이미 로드됨(재사용 — 중복 쿼리 제거)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
+      defaultPlatformMarginPct: commPct,
     })
     const rawTiers = tierMap.get(r.id) || []
     // 🛡️ PRC-1: floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
@@ -1181,12 +1375,14 @@ app.get('/catalog/:id', async (c) => {
       item: {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         detail_images: detailImages,
+        gallery_images: galleryImages,
         category: r.category, stock: r.stock, distributor_price: price,
         retail_price: r.retail_price || null, moq, pack_size: packSize, order_multiple: orderMultiple,
         sold_count: r.sold_count || 0,
         tiers,
         supplier_group: supplierGroup, supplier_policy: supplierPolicy,
         product_shipping_fee: productShippingFee,
+        product_code: shipMeta?.product_code || null,
         // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있을 때만 '제조사에 문의' 노출 (신원 비공개 — boolean 만).
         inquirable: supId != null,
       },
@@ -1237,11 +1433,28 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   //   ⚠️ JWT 클레임만 읽는 추가 검사 — money-CAS/reserve-before-charge/결제 로직은 절대 미변경.
   const { subRole: orderSubRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (orderSubRole === 'viewer') return c.json({ success: false, error: '주문 권한이 없는 계정(뷰어)입니다' }, 403)
+  // 🛡️ 2026-06-26 (A2 분리 감사): 도매 주문은 판매사(is_distributor) 전용 — 승인된 일반 셀러의 도매가 구매 차단.
+  //   wholesale-plus/deposit 와 동일한 토큰 클레임 게이트. 진입(주문 생성)에서 차단 → /orders/confirm(캡처)엔
+  //   추가 게이트 불필요(미생성 주문은 confirm 불가, 결제경로 무변경).
+  try {
+    const { verify: _verifyDist } = await import('hono/jwt')
+    const _distClaims = await _verifyDist((c.req.header('Authorization') || '').substring(7), c.env.JWT_SECRET, 'HS256') as { is_distributor?: number | boolean }
+    if (!_distClaims.is_distributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
+  } catch { return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403) }
   const { DB } = c.env
   // 🖋️ 2026-06-22 (전자계약 차단): 미서명 계약이 있으면 발주 차단 — 카카오 서명 완료 후 거래.
   //   contract_signatures 행이 없으면(미설정·기존/자격증명 전 계정) 통과 → 락아웃 방지(grandfather).
   if (await hasUnsignedContract(DB, 'distributor', sellerId)) {
     return c.json({ success: false, error: '전자계약서 서명 완료 후 발주할 수 있습니다. 카카오로 받은 계약서에 서명해주세요.', code: 'CONTRACT_REQUIRED' }, 403)
+  }
+  // 🔐 2026-06-24 (전수조사): 승인 후 정지·거부된 판매사가 만료 전 토큰으로 발주(예치금 차감)하던 갭 차단.
+  if (await isSellerBlocked(DB, sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 이 몰 발주 차단(상품 몰스코프로도 걸러지지만 명확한 에러 우선).
+  const orderMallId = await resolveMallId(c)
+  if (await sellerMallId(DB, sellerId) !== orderMallId) {
+    return c.json({ success: false, error: '이 몰의 회원이 아닙니다. 해당 몰에 별도 가입 후 이용해주세요.', code: 'MALL_MISMATCH' }, 403)
   }
   try {
     await ensureOrderTables(DB)
@@ -1272,14 +1485,13 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 게이트(visible_grades) 서브쿼리 대상 보장
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
     // 🆕 2026-06-16 commPct: 정산 분배(제조사 vs 플랫폼). 정산 호출(creditSupplier…)이 같은 요청에서 동기 실행 → drift 없음.
-    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadMallCommissionPct(DB, orderMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료(청구=표시 정합)
     // 🏷️ 2026-06-18 등급별 노출 게이트 — 카탈로그에서 안 보이는(등급 제한) 상품은 ID 직접 주문도 차단.
     const orderViewerGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 판매사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
     // 🏬 감사 🟡#3: mall 스코프 — 카탈로그처럼 주문도 요청 판매사의 몰로 제한(크로스몰 주문 차단).
-    const orderMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -1341,6 +1553,44 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 
+    // 📦 2026-06-29 (대표 — 대량발주 드랍십): body.dropship 면 받는사람별 라인으로 분해.
+    //   ⚠️ 단가/합계 불변 — 라인 단가 = 위 상품 합산기준 tier 단가(묶음 사입과 동일). Σ라인 == subtotal 검증.
+    //   비드랍십(기본)은 insertLines = lines 로 *byte-identical*. INSERT/재고 차감만 라인 분해(돈 경로 무변경).
+    type InsertLine = { product_id: number; supplier_id: number | null; name: string; qty: number; base: number; unit: number; line_total: number; option?: string; ship?: { name: string; phone: string; postal: string; address: string; message: string }; ext_order_no?: string }
+    const isDropship = body.dropship === true || body.dropship === 'true'
+    let insertLines: InsertLine[] = lines
+    if (isDropship) {
+      const priceByPid = new Map(lines.map((l) => [l.product_id, l]))
+      const readShip = (o: Record<string, unknown>) => {
+        const s = (o.ship_to && typeof o.ship_to === 'object') ? o.ship_to as Record<string, unknown> : o
+        return {
+          name: String(s.name ?? s.recipient ?? '').trim().slice(0, 60),
+          phone: String(s.phone ?? '').trim().slice(0, 30),
+          postal: String(s.postal ?? s.zipcode ?? '').trim().slice(0, 20),
+          address: String(s.address ?? '').trim().slice(0, 300),
+          message: String(s.message ?? s.memo ?? '').trim().slice(0, 200),
+        }
+      }
+      const ds: InsertLine[] = []
+      for (const it of rawItems as Array<Record<string, unknown>>) {
+        const pid = Math.floor(Number(it.product_id))
+        const qty = Math.floor(Number(it.qty))
+        if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(qty) || qty <= 0) continue
+        const pr = priceByPid.get(pid)
+        if (!pr) continue
+        const ship = readShip(it)
+        if (!ship.name || !ship.address) {
+          return c.json({ success: false, error: '받는사람·주소가 비어있는 행이 있습니다', code: 'DROPSHIP_NO_RECIPIENT' }, 400)
+        }
+        ds.push({ product_id: pid, supplier_id: pr.supplier_id, name: pr.name, qty, base: pr.base, unit: pr.unit, line_total: pr.unit * qty, option: String(it.option ?? '').trim().slice(0, 120), ship, ext_order_no: String(it.ext_order_no ?? '').trim().slice(0, 60) })
+      }
+      if (!ds.length) return c.json({ success: false, error: '드랍십 주문 행이 없습니다' }, 400)
+      // 합계 정합 — Σ라인 == subtotal(합산기준). 불일치면 클라 변조/누락 → 차단(돈 미이동).
+      const dsum = ds.reduce((s, l) => s + l.line_total, 0)
+      if (dsum !== subtotal) return c.json({ success: false, error: '주문 합계가 일치하지 않습니다' }, 400)
+      insertLines = ds
+    }
+
     // ── 🚚 2026-06-09 제조사별 최소주문금액 게이트 + 배송비 (청구 *전* 서버 계산·검증) ──────────
     //   ⚠️ MONEY GATE: PENDING insert/deduct 보다 *앞*. min-order 미달이면 청구 자체 안 함(돈 미이동).
     //   shipping_total 은 제조사별 정책으로 서버 계산 → 청구액 = subtotal + shipping_total.
@@ -1374,6 +1624,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const shipPhone = String(ship.phone || shipFromProfile?.shipping_phone || '').slice(0, 30) || null
     const shipAddr = String(ship.address || shipFromProfile?.shipping_address || '').slice(0, 300) || null
     const shipPostal = String(ship.postal || shipFromProfile?.shipping_postal_code || '').slice(0, 20) || null
+    // 🚚 2026-06-29 (대표): 배송 메시지(선택) — 주문 헤더에 저장해 제조사/판매사 주문 상세에 노출.
+    const shipMessage = String(ship.message || '').slice(0, 100) || null
 
     const orderName = lines.length === 1
       ? lines[0].name.slice(0, 90)
@@ -1391,7 +1643,22 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     //   UNIQUE(distributor_seller_id, idempotency_key) 가 동시/재시도 race 를 단독 중재. 차감은 이 INSERT 를
     //   '이긴' 요청만 1회 수행 → 이중차감 불가. 차감 전 주문 행이 존재하므로 차감↔주문 사이 크래시에도
     //   '잔액만 빠지고 주문 없음'(무음 손실) 불가 — PENDING 주문이 감사추적 + EXPIRED 스윕 대상으로 남음.
-    const idemKey = String(body.idempotency_key || '').slice(0, 64)
+    let idemKey = String(body.idempotency_key || '').slice(0, 64)
+    if (!idemKey) {
+      // 🛡️ 2026-07-02 (감사 — 클라 키 누락 시 이중주문 방어): 클라가 idempotency_key 를 안 보내면
+      //   UNIQUE(seller, key) 가 NULL-distinct 로 더블클릭/재시도 중복주문을 못 막는다(공식 클라는 안정키
+      //   전송·방어됨 — 직접 API/누락 호출자용 defense-in-depth). 서버가 요청 내용(판매사+장바구니+청구액+
+      //   배송지)의 결정적 해시 + 30초 버킷으로 폴백 키 합성 → 같은 장바구니의 빠른 중복 제출은 같은 키로
+      //   충돌(기존 주문 반환, 무-이중차감), 의도적 재주문(30초 후 다른 버킷)은 새 키로 정상 통과.
+      const sig = [
+        sellerId, chargeTotal, (shipAddr || '').slice(0, 60),
+        lines.map((l) => `${l.product_id}:${l.qty}:${l.unit}`).sort().join(','),
+        Math.floor(Date.now() / 30_000),
+      ].join('|')
+      let h = 5381
+      for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) | 0
+      idemKey = `auto-${sellerId}-${(h >>> 0).toString(36)}`.slice(0, 64)
+    }
     // 합성 toss_order_id — wholesale_orders.toss_order_id 는 NOT NULL/UNIQUE.
     const depOrderId = `DEP-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
@@ -1400,9 +1667,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     let idemConflict = false
     try {
       const insD = await DB.prepare(`
-        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
-        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
-      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message)
+        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?, ?)
+      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal, shipMessage).run()
       dOrderId = Number(insD.meta?.last_row_id)
     } catch { idemConflict = true }
     if (idemConflict || !dOrderId) {
@@ -1414,9 +1681,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       return c.json({ success: false, error: '주문 생성 중 오류가 발생했습니다' }, 500)
     }
 
-    // STEP 2 — 예치금 원자 차감(CAS). 이 요청이 주문을 소유(INSERT 승리) → 단 1회만 차감.
+    // STEP 2 — 예치금 원자 차감 + 'order' 원장 기록을 **단일 트랜잭션**으로(deductDepositForOrder).
     //   💰 차감액 = chargeTotal(상품합 + 제조사별 배송비). 클라 금액 불신 — 전부 서버 재계산값.
-    const deduct = await deductDeposit(DB, sellerId, chargeTotal)
+    //   🛡️ 2026-07-02 (감사 orphan-reconcile 근본수정): 차감과 'order' 원장이 원자적이라 "잔액만 빠지고
+    //   원장 없음" 크래시 윈도우 소멸 → reconcileOrphanedDepositOrders 의 EXISTS('order' txn) 게이트가
+    //   신뢰 가능(차감 ⟺ 원장). 별도 STEP 3(recordDepositTxn) 불필요.
+    const deduct = await deductDepositForOrder(DB, sellerId, chargeTotal, dOrderId, `도매 예치금 주문 #${dOrderId}`)
     if (!deduct.ok) {
       // 잔액 부족 — 돈 미이동. PENDING 예약 삭제(idemKey 해제 → 충전 후 동일 체크아웃 재시도 가능) 후 402.
       await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(swallow('wholesale:pending-release'))
@@ -1429,24 +1699,22 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         shortfall: Math.max(0, chargeTotal - deduct.balance),
       }, 402)
     }
-    const balanceAfterDeduct = deduct.balanceAfter
-
-    // STEP 3 — 차감 원장(ref_id=order.id, 환불 멱등 가드가 이 ref_id 로 매칭). PAID 확정은 재고 확보 후(아래).
-    await recordDepositTxn(DB, sellerId, 'order', -chargeTotal, balanceAfterDeduct, String(dOrderId), `도매 예치금 주문 #${dOrderId}`)
+    const balanceAfterDeduct = deduct.balanceAfter // 응답 표시용. 원장은 deductDepositForOrder 가 원자 기록.
 
     // 주문 항목 + 재고 차감(oversell 가드) — 실패 시 주문 FAILED + 예치금 환불(보상).
     try {
-      for (const l of lines) {
+      for (const l of insertLines) {
+        const dl = l as InsertLine
         await DB.prepare(`
-          INSERT INTO wholesale_order_items (wholesale_order_id, product_id, supplier_id, name, qty, base_supply_price, distributor_unit_price, line_total)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(dOrderId, l.product_id, l.supplier_id ?? null, l.name, l.qty, l.base, l.unit, l.line_total).run()
+          INSERT INTO wholesale_order_items (wholesale_order_id, product_id, supplier_id, name, qty, base_supply_price, distributor_unit_price, line_total, option_label, ext_order_no, ship_to_name, ship_to_phone, ship_to_postal, ship_to_address, ship_to_message)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(dOrderId, dl.product_id, dl.supplier_id ?? null, dl.name, dl.qty, dl.base, dl.unit, dl.line_total, dl.option || null, dl.ext_order_no || null, dl.ship?.name || null, dl.ship?.phone || null, dl.ship?.postal || null, dl.ship?.address || null, dl.ship?.message || null).run()
       }
 
       // 재고 원자적 차감(oversell 가드 — Toss confirm 과 동일). 실패 시 성공분 복원 + 보상 환불.
       const dDecremented: Array<{ product_id: number; qty: number }> = []
       let dOversold = false
-      for (const l of lines) {
+      for (const l of insertLines) {
         const upd = await DB.prepare(
           "UPDATE products SET stock = stock - ?, sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ? AND (stock IS NULL OR stock >= ?)"
         ).bind(l.qty, l.qty, l.product_id, l.qty).run().catch(() => ({ meta: { changes: 0 } }))
@@ -1495,6 +1763,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       subtotal,
       shipping_total: shippingTotal,
       order_name: orderName,
+      dropship: isDropship,
+      line_count: insertLines.length,
     })
   } catch (err) {
     return safeError(c, err, '주문 생성 중 오류가 발생했습니다', '[wholesale]')
@@ -1506,6 +1776,10 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
+  // 🔐 2026-06-24 (전수조사): 정지·거부 판매사 차단 — Toss 캡처(confirmTossPayment) 전에 차단해 무단결제 방지.
+  if (await isSellerBlocked(DB, sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
   try {
     await ensureOrderTables(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -1517,14 +1791,16 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
     }
 
     const order = await DB.prepare(
-      'SELECT id, status, subtotal FROM wholesale_orders WHERE toss_order_id = ? AND distributor_seller_id = ?'
-    ).bind(tossOrderId, sellerId).first<{ id: number; status: string; subtotal: number }>()
+      'SELECT id, status, subtotal, COALESCE(shipping_total,0) AS shipping_total FROM wholesale_orders WHERE toss_order_id = ? AND distributor_seller_id = ?'
+    ).bind(tossOrderId, sellerId).first<{ id: number; status: string; subtotal: number; shipping_total: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (order.status === 'PAID') return c.json({ success: true, order_id: order.id, already: true })
     if (order.status !== 'PENDING') return c.json({ success: false, error: '처리할 수 없는 주문 상태입니다' }, 400)
 
-    // 서버 재계산 금액과 일치 검증 (클라이언트 금액 신뢰 X)
-    if (Number(order.subtotal) !== Math.round(amount)) {
+    // 서버 재계산 금액과 일치 검증 (클라이언트 금액 신뢰 X). 🛡️ 2026-06-29: 청구액 = subtotal + 배송비.
+    //   기존엔 subtotal 만 비교 → (이 Toss 경로 재가동 시) 배송비만큼 과소결제 허용되던 잠복 결함 차단.
+    const expectedCharge = Math.round(Number(order.subtotal) + Number(order.shipping_total))
+    if (expectedCharge !== Math.round(amount)) {
       return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400)
     }
 
@@ -1623,8 +1899,8 @@ app.get('/orders/export', rateLimit({ action: 'wholesale-orders-export', max: 10
     }>()
     const headers = ['주문번호', '주문일', '결제일', '상태', '등급', '상품합계', '배송비', '총결제', '택배사', '운송장번호']
     const STATUS_KO: Record<string, string> = {
-      PENDING: '결제대기', PAID: '결제완료', ON_CREDIT: '여신(외상)', SHIPPED: '배송중',
-      PARTIAL_REFUNDED: '부분환불', REFUNDED: '환불완료', CANCELLED: '취소', DONE: '구매확정', FAILED: '실패', EXPIRED: '만료',
+      PENDING: '결제대기', PAID: '결제완료', ACCEPTED: '수락됨', ON_CREDIT: '여신(외상)', SHIPPED: '배송중',
+      PARTIAL_REFUNDED: '부분환불', REFUNDED: '환불완료', REJECTED: '제조사 거절', CANCELLED: '취소', DONE: '구매확정', FAILED: '실패', EXPIRED: '만료',
     }
     const rows = (results || []).map(o => [
       o.toss_order_id || `W-${o.id}`,
@@ -1652,12 +1928,56 @@ app.get('/orders', async (c) => {
   const { DB } = c.env
   try {
     await ensureOrderTables(DB)
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 컨텍스트에선 이 판매사의 주문 이력 비노출.
+    if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) return c.json({ success: true, orders: [] })
     const { results } = await DB.prepare(`
-      SELECT id, toss_order_id, status, grade, subtotal, courier, tracking_number, created_at, paid_at, shipped_at
+      SELECT id, toss_order_id, status, grade,
+             COALESCE(subtotal, 0) AS subtotal,
+             COALESCE(shipping_total, 0) AS shipping_total,
+             (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+             courier, tracking_number, created_at, paid_at, shipped_at,
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message,
+             reject_reason, cancel_reason,
+             COALESCE(refunded_amount, 0) AS refunded_amount
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
-    return c.json({ success: true, orders: results ?? [] })
+    const orders = (results ?? []) as Array<Record<string, unknown> & { id: number; items?: unknown[] }>
+    // 🏭 2026-06-29 (대표 신고 — 주문내역 상세 부족): 주문별 라인아이템(상품/수량/단가/제조사) 일괄 첨부.
+    //   idx_wholesale_items_order 로 IN 조회 효율적. suppliers LEFT JOIN 으로 제조사명(조인 실패 시 아이템만).
+    if (orders.length > 0) {
+      const ids = orders.map((o) => o.id)
+      const ph = ids.map(() => '?').join(',')
+      let itemRows: Array<{ wholesale_order_id: number }> = []
+      try {
+        const r = await DB.prepare(
+          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
+                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status,
+                  i.courier, i.tracking_number,
+                  s.business_name AS supplier_name
+             FROM wholesale_order_items i LEFT JOIN suppliers s ON s.id = i.supplier_id
+            WHERE i.wholesale_order_id IN (${ph})`
+        ).bind(...ids).all<{ wholesale_order_id: number }>()
+        itemRows = r.results ?? []
+      } catch {
+        // suppliers 조인 실패(테이블 부재 등) → 제조사명 없이 아이템만(graceful).
+        const r = await DB.prepare(
+          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
+                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status,
+                  i.courier, i.tracking_number
+             FROM wholesale_order_items i WHERE i.wholesale_order_id IN (${ph})`
+        ).bind(...ids).all<{ wholesale_order_id: number }>().catch(() => ({ results: [] as Array<{ wholesale_order_id: number }> }))
+        itemRows = r.results ?? []
+      }
+      const byOrder = new Map<number, unknown[]>()
+      for (const it of itemRows) {
+        const arr = byOrder.get(it.wholesale_order_id) ?? []
+        arr.push(it)
+        byOrder.set(it.wholesale_order_id, arr)
+      }
+      for (const o of orders) o.items = byOrder.get(o.id) ?? []
+    }
+    return c.json({ success: true, orders })
   } catch (err) {
     return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[wholesale]')
   }
@@ -1686,11 +2006,16 @@ app.get('/orders/:id', async (c) => {
   try {
     await ensureOrderTables(DB)
     const order = await DB.prepare(
-      'SELECT id, toss_order_id, status, grade, subtotal, courier, tracking_number, created_at, paid_at, shipped_at FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?'
+      `SELECT id, toss_order_id, status, grade,
+              COALESCE(subtotal, 0) AS subtotal,
+              COALESCE(shipping_total, 0) AS shipping_total,
+              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+              courier, tracking_number, created_at, paid_at, shipped_at
+       FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?`
     ).bind(id, sellerId).first()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     const { results } = await DB.prepare(
-      'SELECT product_id, name, qty, distributor_unit_price, line_total FROM wholesale_order_items WHERE wholesale_order_id = ?'
+      'SELECT product_id, name, qty, distributor_unit_price, line_total, option_label, ext_order_no, ship_to_name, ship_to_phone, ship_to_postal, ship_to_address, ship_to_message, line_status FROM wholesale_order_items WHERE wholesale_order_id = ?'
     ).bind(id).all()
     return c.json({ success: true, order, items: results ?? [] })
   } catch (err) {
@@ -1698,203 +2023,70 @@ app.get('/orders/:id', async (c) => {
   }
 })
 
-// ── GET /proposals — 나에게 제안된 상품 (등급가 포함) ─────────────────────────
-app.get('/proposals', async (c) => {
+// ── POST /orders/:id/confirm — 판매사 구매확정 (SHIPPED → DONE) ────────────────
+//   2026-06-27 (대표 — 마무리 단계): 발송 완료된 주문을 판매사가 '구매확정'해 종결(DONE). 고아였던
+//   DONE/구매확정 배지를 살림. 본인 소유만. 멱등(이미 DONE 이면 already).
+app.post('/orders/:id/confirm', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const { DB } = c.env
-  try {
-    await ensureSupplyVisibilitySchema(DB) // supply_margin_override_pct 컬럼 보장 (cold isolate)
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
-      note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
-    )`).run().catch(swallow('wholesale:ensure-proposals'))
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
-    const { results } = await DB.prepare(`
-      SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
-             COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
-      FROM wholesale_proposals wp
-      JOIN products p ON p.id = wp.product_id
-      WHERE wp.distributor_seller_id = ? AND wp.status = 'active'
-        AND p.is_active = 1 AND p.is_supply_product = 1
-      ORDER BY wp.created_at DESC LIMIT 50
-    `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number; margin_override: number | null }>()
-    const items = (results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return { id: r.id, note: r.note, product_id: r.product_id, name: r.name, image_url: r.image_url, stock: r.stock, distributor_price: price }
-    })
-    return c.json({ success: true, proposals: items })
-  } catch (err) {
-    return safeError(c, err, '제안 조회 중 오류가 발생했습니다', '[wholesale]')
-  }
-})
-
-// ── GET /statement?from=&to= — 거래내역서 (판매사 매입 내역) ──────────────────
-app.get('/statement', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const { DB } = c.env
-  try {
-    await ensureOrderTables(DB)
-    const from = (c.req.query('from') || '').slice(0, 10)
-    const to = (c.req.query('to') || '').slice(0, 10)
-    let where = "distributor_seller_id = ? AND status IN ('PAID','SHIPPED','REFUNDED')"
-    const binds: unknown[] = [sellerId]
-    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) { where += ' AND date(COALESCE(paid_at, created_at)) >= ?'; binds.push(from) }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(to)) { where += ' AND date(COALESCE(paid_at, created_at)) <= ?'; binds.push(to) }
-    const { results } = await DB.prepare(`
-      SELECT id, status, subtotal, grade, paid_at, created_at
-      FROM wholesale_orders WHERE ${where} ORDER BY COALESCE(paid_at, created_at) DESC LIMIT 500
-    `).bind(...binds).all<{ id: number; status: string; subtotal: number; grade: string | null; paid_at: string | null; created_at: string }>()
-    const rows = results || []
-    const totalPaid = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
-    const totalRefunded = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
-    return c.json({ success: true, orders: rows, summary: { count: rows.length, total_paid: totalPaid, total_refunded: totalRefunded, net: totalPaid - totalRefunded } })
-  } catch (err) {
-    return safeError(c, err, '거래내역 조회 중 오류가 발생했습니다', '[wholesale]')
-  }
-})
-
-// ── GET /documents — 판매사 본인 발행 자료(거래명세서/세금계산서, sales 방향만) ──────
-import { ensureTaxDocSchema, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
-
-app.get('/documents', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const { DB } = c.env
-  try {
-    await ensureTaxDocSchema(DB)
-    // sales = 유통스타트→판매사(본인 수취 자료). 매입(purchase)은 제조사 자료라 비노출.
-    const { results } = await DB.prepare(
-      `SELECT id, doc_type, period_month, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at, nts_confirm_num
-       FROM tax_documents WHERE distributor_seller_id = ? AND direction = 'sales'
-       ORDER BY period_month DESC, id DESC LIMIT 200`
-    ).bind(sellerId).all()
-    return c.json({ success: true, documents: results || [] })
-  } catch (err) {
-    return safeError(c, err, '자료 조회 중 오류가 발생했습니다', '[wholesale]')
-  }
-})
-
-// ── GET /documents/:id/html — 인쇄용 HTML (본인 sales 문서만, IDOR 가드) ──────────
-app.get('/documents/:id/html', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.text('로그인이 필요합니다', 401)
   const { DB } = c.env
   const id = Number(c.req.param('id'))
-  if (!Number.isFinite(id) || id <= 0) return c.text('잘못된 문서 ID', 400)
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
-    await ensureTaxDocSchema(DB)
-    const doc = await DB.prepare(
-      `SELECT id, doc_type, direction, period_month, party_name, supply_amount, vat_amount, total_amount, order_count, status, issued_at
-       FROM tax_documents WHERE id = ? AND distributor_seller_id = ? AND direction = 'sales'`
-    ).bind(id, sellerId).first<TaxDocRow>()
-    if (!doc) return c.text('문서를 찾을 수 없습니다', 404)
-    return c.html(renderTaxDocHtml(doc))
-  } catch {
-    return c.text('문서를 열 수 없습니다', 500)
+    await ensureOrderTables(DB)
+    const order = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?')
+      .bind(id, sellerId).first<{ id: number; status: string }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    if (order.status === 'DONE') return c.json({ success: true, already: true })
+    const ok = await transitionWholesaleOrder(DB, id, 'DONE', ['SHIPPED', 'PARTIAL_REFUNDED'], ", confirmed_at=datetime('now')")
+    if (!ok) return c.json({ success: false, error: '구매확정할 수 없는 주문 상태입니다 (발송 완료 후 가능)' }, 400)
+    // 🔔 구매확정 시 제조사(공급자)에게 통지 — 정산이 곧 성숙(다음 정산일)함을 알림. fail-soft.
+    await notifySuppliersOfOrderEvent(DB, id, 'wholesale_confirmed', '도매 주문 구매확정',
+      `주문 #${id} 이(가) 판매사 구매확정 처리되었습니다. 정산이 진행됩니다.`).catch(swallow('wholesale:notify-confirm'))
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '구매확정 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 
-// ── 엑셀 — 판매사 등급가 카탈로그 다운로드(.xlsx) + 주문 양식(.csv 재업로드용) ─────
-import { buildCsv, csvResponse } from './supply-csv'
-import { buildXlsx, xlsxResponse } from './xlsx'
-
-// GET /catalog-export — 내 등급가 카탈로그 .xlsx (제조사 신원 비노출 — 등급가만)
-app.get('/catalog-export', async (c) => {
+// ── POST /orders/:id/cancel — 판매사 발송 전 주문 취소 (예치금 즉시환불) ─────────
+//   2026-06-27 (대표 — 발송 전 셀프취소): PAID/ACCEPTED(미발송) 주문을 판매사가 취소 → 예치금 복원 +
+//   정산 역전 + 재고복원 + CANCELLED. 발송된 라인이 하나라도 있으면 취소 불가(반품 경로로). 어드민 승인 불필요.
+app.post('/orders/:id/cancel', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
-    await ensureSupplyVisibilitySchema(DB)
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
-    const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
-      FROM products p
-      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
-        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
-        AND ${gradeExposureWhere('p')}
-      ORDER BY p.name LIMIT 10000
-    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
-    const out = (rows.results || []).map(r => {
-      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.id, r.name, r.category || '', r.stock, price, grade]
-    })
-    return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    await ensureOrderTables(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const reason = String(body.reason || '판매사 취소').slice(0, 100)
+    const order = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?')
+      .bind(id, sellerId).first<{ id: number; status: string }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    // 발송된 라인이 있으면 취소 불가 — 반품 경로로.
+    const shipped = await DB.prepare("SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status = 'SHIPPED'")
+      .bind(id).first<{ c: number }>()
+    if ((shipped?.c ?? 0) > 0) return c.json({ success: false, error: '이미 발송된 주문은 취소할 수 없습니다. 반품을 이용해주세요.' }, 400)
+    const r = await refundWholesaleOrderFully(c.env, { orderId: id, reason, allowedPrev: ['PAID', 'ACCEPTED'], finalStatus: 'CANCELLED', extraSetSql: ", cancelled_at=datetime('now')", notifyTitle: '도매 주문 취소' })
+    if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, (r.httpStatus as 400 | 402 | 404) || 400)
+    if (!r.already) {
+      await DB.prepare('UPDATE wholesale_orders SET cancel_reason = ? WHERE id = ?').bind(reason, id).run().catch(swallow('wholesale:cancel-reason'))
+      // 🔔 제조사(공급자)에게 취소 통지 — 수락했던 주문이 취소될 수 있으므로 발송 준비 중단 안내. fail-soft.
+      await notifySuppliersOfOrderEvent(DB, id, 'wholesale_cancelled', '도매 주문 취소',
+        `주문 #${id} 이(가) 판매사에 의해 취소되었습니다. (${reason})`).catch(swallow('wholesale:notify-cancel'))
+    }
+    return c.json({ success: true, already: r.already, refunded_amount: r.refundAmount })
   } catch (err) {
-    return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[wholesale]')
+    return safeError(c, err, '주문 취소 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 
-// ── BIZ-8 (2026-06-08) GET /catalog/export?format=csv — 판매사 등급가 단가표 CSV ──────
-//   엑셀로 바로 여는 단가표. 컬럼: 상품명/바코드/공급가(등급가)/MOQ/박스단위(order_multiple)/재고.
-//   ⚠️ 가격 = 카탈로그가 보여주는 것과 동일한 서버계산 등급가(resolveDistributorPrice) — 다른 등급가
-//      누출 절대 없음(내 등급 1개만 계산). supply_price(제조사 원가)/supplier_id(신원) 미노출.
-//   PDF 는 범위 밖(follow-up). format 파라미터는 csv 만 지원(미지정/그외 → csv).
-app.get('/catalog/export', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const { DB } = c.env
-  try {
-    await ensureSupplyVisibilitySchema(DB)
-    await ensureQtyConstraintSchema(DB) // pack_size / order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
-    const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
-             COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
-             p.supply_margin_override_pct AS margin_override
-      FROM products p
-      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
-        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
-        AND ${gradeExposureWhere('p')}
-      ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
-    const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
-    const out = (rows.results || []).map(r => {
-      // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
-    })
-    return csvResponse(buildCsv(header, out), `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`)
-  } catch (err) {
-    return safeError(c, err, '단가표 내보내기 중 오류가 발생했습니다', '[wholesale]')
-  }
-})
-
-// GET /order-template — 주문 양식 CSV. 로그인 시 내 카탈로그(등급가 포함) 프리필 →
-//   판매사는 '주문수량' 칸만 채워 업로드. 비로그인은 빈 양식(헤더만).
-app.get('/order-template', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  // BIZ-9 (2026-06-09): 박스단위(order_multiple) 열 추가 — 판매사가 양식에서 주문 배수 제약을 바로 보고 입력.
-  //   product_id 가 robust 매칭 키(상품명 변경에도 안전). 주문수량 = 판매사 입력칸(빈칸).
-  const header = ['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '박스단위', '주문수량']
-  if (!sellerId) {
-    return csvResponse(buildCsv(header, [['예: 123', '상품명(참고용)', '식품', '500', '9000', '1', '1', '10']]), 'wholesale-order-template.csv')
-  }
-  const { DB } = c.env
-  try {
-    await ensureSupplyVisibilitySchema(DB)
-    await ensureQtyConstraintSchema(DB) // order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
-    const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
-             COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
-             p.supply_margin_override_pct AS margin_override
-      FROM products p
-      WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
-        AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
-        AND ${gradeExposureWhere('p')}
-      ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
-    const out = (rows.results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 판매사가 입력
-    })
-    return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
-  } catch (err) {
-    return safeError(c, err, '주문 양식 생성 중 오류가 발생했습니다', '[wholesale]')
-  }
-})
+// ── GET /proposals — 나에게 제안된 상품 (등급가 포함) ─────────────────────────
+// 🏭 2026-06-29 God 파일 분해: 리포팅/문서/내보내기 라우트(/proposals·/statement·/documents·/catalog-export 등)를
+//   wholesale-documents.routes.ts 로 추출. 원위치에서 호출해 라우트 등록 순서/동작 불변.
+registerWholesaleDocumentRoutes(app)
 
 // ── POST /orders/bulk-preview — 대량주문(엑셀/CSV) 검증·미리보기 (결제 X) ───────────
 //   BIZ-9 (2026-06-09): 작성본 업로드 → 서버가 product_id 로 매칭 + MOQ/박스단위/재고 검증 →
@@ -1917,39 +2109,65 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       return c.json({ success: false, error: `한 번에 처리 가능한 행은 최대 ${BULK_MAX_ROWS}개입니다 (현재 ${rawItems.length}개)`, code: 'TOO_MANY_ROWS' }, 400)
     }
 
-    // 행 정규화 — product_id 로 합산(같은 상품 여러 줄). qty<=0/비숫자/blank 는 오류로 분류.
+    // 📦 2026-06-29 드랍십 정규화 — 한 행 = 한 명에게 보내는 1건(같은 상품도 받는사람 다르면 별개 라인).
+    //   매칭: product_id 직접(우선) → 상품코드(판매사 학습 맵/제조사 ext_code). 청구 검증/단가는 상품별 *합산*
+    //   기준(MOQ/박스단위/재고/수량구간 할인) — 묶음 사입과 금액 동일. 옵션/받는사람은 비가격 패스스루.
     type ErrRow = { row?: number; product_id?: number | null; name?: string; qty?: number; reason: string }
+    type ShipTo = { name: string; phone: string; postal: string; address: string; message: string }
+    type InRow = { row: number; pid: number | null; code: string; qty: number; option: string; ship: ShipTo; extOrderNo: string }
+    const readShip = (o: Record<string, unknown>): ShipTo => {
+      const s = (o.ship_to && typeof o.ship_to === 'object') ? o.ship_to as Record<string, unknown> : o
+      return {
+        name: String(s.name ?? s.recipient ?? '').trim().slice(0, 60),
+        phone: String(s.phone ?? '').trim().slice(0, 30),
+        postal: String(s.postal ?? s.zipcode ?? '').trim().slice(0, 20),
+        address: String(s.address ?? '').trim().slice(0, 300),
+        message: String(s.message ?? s.memo ?? '').trim().slice(0, 200),
+      }
+    }
     const errors: ErrRow[] = []
-    const reqMap = new Map<number, number>()
-    const lineNoMap = new Map<number, number>() // product_id → 첫 등장 행번호(오류 표시용)
+    const inRows: InRow[] = []
+    const learnPairs: Array<{ code: string; product_id: number }> = []
+    const codesToResolve: string[] = []
     rawItems.forEach((it: unknown, idx: number) => {
       const o = (it && typeof it === 'object') ? it as Record<string, unknown> : {}
-      const pid = Math.floor(Number(o.product_id))
+      const pidRaw = Math.floor(Number(o.product_id))
+      const pid = Number.isFinite(pidRaw) && pidRaw > 0 ? pidRaw : null
+      const code = normCode(o.code ?? o.product_code)
       const qty = Math.floor(Number(o.qty))
       const rowNo = Number.isFinite(Number(o.row)) ? Math.floor(Number(o.row)) : idx + 1
-      if (!Number.isFinite(pid) || pid <= 0) {
-        errors.push({ row: rowNo, product_id: null, reason: '상품코드(product_id)가 올바르지 않습니다' })
-        return
-      }
-      if (!Number.isFinite(qty) || qty <= 0) {
-        errors.push({ row: rowNo, product_id: pid, qty: 0, reason: '주문수량이 비어있거나 0 이하입니다' })
-        return
-      }
-      reqMap.set(pid, (reqMap.get(pid) || 0) + qty)
-      if (!lineNoMap.has(pid)) lineNoMap.set(pid, rowNo)
+      const option = String(o.option ?? '').trim().slice(0, 120)
+      const extOrderNo = String(o.ext_order_no ?? o.order_no ?? '').trim().slice(0, 60)
+      if (pid && code) learnPairs.push({ code, product_id: pid })
+      if (!pid && code) codesToResolve.push(code)
+      inRows.push({ row: rowNo, pid, code, qty, option, ship: readShip(o), extOrderNo })
     })
+
+    // 🔁 코드 학습(product_id+상품코드 동시 행) 후 코드만 있는 행 해석. 같은 업로드 내 학습분도 즉시 반영.
+    await learnCodes(DB, sellerId, learnPairs)
+    const codeMap = codesToResolve.length ? await resolveCodes(DB, sellerId, codesToResolve) : new Map<string, number>()
+    for (const r of inRows) { if (!r.pid && r.code) r.pid = codeMap.get(r.code) ?? null }
+
+    // 상품별 합산 — 검증/단가용(드랍십 다행이라도 같은 상품은 합산 기준으로 MOQ/할인 적용).
+    const reqMap = new Map<number, number>()
+    for (const r of inRows) {
+      if (!r.pid) { errors.push({ row: r.row, product_id: null, reason: r.code ? `상품코드 '${r.code}' 를 찾을 수 없습니다 (등록 필요·product_id 입력)` : '상품을 찾을 수 없습니다 (product_id 또는 상품코드 입력)' }); continue }
+      if (!Number.isFinite(r.qty) || r.qty <= 0) { errors.push({ row: r.row, product_id: r.pid, qty: 0, reason: '주문수량이 비어있거나 0 이하입니다' }); continue }
+      if (!r.ship.name || !r.ship.address) { errors.push({ row: r.row, product_id: r.pid, qty: r.qty, reason: '받는사람·주소가 비어있습니다 (드랍십은 받는사람 필수)' }); continue }
+      reqMap.set(r.pid, (reqMap.get(r.pid) || 0) + r.qty)
+    }
 
     const ids = [...reqMap.keys()]
     if (ids.length === 0) {
-      return c.json({ success: true, items: [], subtotal: 0, matched: 0, error_count: errors.length, errors })
+      return c.json({ success: true, mode: 'dropship', items: [], subtotal: 0, shipping_total: 0, grand_total: 0, matched: 0, error_count: errors.length, errors })
     }
 
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB)
-    const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])
+    const previewMallId = await resolveMallId(c) // 🏬 몰 선해석 — 아래 몰스코프 SELECT + 몰별 수수료 공용.
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadMallCommissionPct(DB, previewMallId)]) // 🏬 2026-07-04: 몰별 수수료
     const placeholders = ids.map(() => '?').join(',')
     // 🏬 감사 🟡#3: 미리보기도 주문과 동일 mall 스코프(크로스몰 차단).
-    const previewMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -1962,42 +2180,40 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
     `).bind(...ids, previewMallId, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
-
-    const items: Array<{ product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }> = []
-    // 🚚 제조사별 min-order/배송비 계산용 라인(검증/표시 only — 청구 X). supplier_id 는 응답에 비노출.
     const shipMetaPreview = await getSupplyMeta(DB, ids) // 🚚 상품별 배송비 — 미리보기도 주문과 동일 산식.
+
+    // 상품별 합산 검증 + authoritative 단가 산출 → priceByPid(라인 단가 = 합산기준 tier 단가, 묶음 사입과 동일).
+    type Priced = { unit: number; supplier_id: number | null; name: string; image_url: string | null }
+    const priceByPid = new Map<number, Priced>()
+    const invalidPid = new Set<number>() // 검증 실패 상품 — 그 상품의 모든 행을 오류 처리.
     const previewLines: Array<{ supplier_id: number | null; line_total: number; product_shipping_fee?: number }> = []
-    let subtotal = 0
     for (const pid of ids) {
       const qty = reqMap.get(pid) || 0
-      const rowNo = lineNoMap.get(pid)
       const p = found.get(pid)
-      if (!p) {
-        errors.push({ row: rowNo, product_id: pid, qty, reason: '주문할 수 없는 상품입니다 (품절·중지·열람권한 없음)' })
-        continue
-      }
+      if (!p) { invalidPid.add(pid); errors.push({ row: undefined, product_id: pid, qty, reason: '주문할 수 없는 상품입니다 (품절·중지·열람권한 없음)' }); continue }
       const moq = Math.max(1, p.moq || 1)
       const orderMultiple = Math.max(1, p.order_multiple || 1)
-      if (qty < moq) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (요청 ${qty}개)` })
-        continue
-      }
-      if (orderMultiple > 1 && qty % orderMultiple !== 0) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (요청 ${qty}개)` })
-        continue
-      }
-      if (p.stock != null && p.stock < qty) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 요청 ${qty}개)` })
-        continue
-      }
-      // 등급 단가 → tier floor → 수량구간 할인 적용 (주문 생성과 동일 산식 — 표시 정합).
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      if (qty < moq) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (합계 ${qty}개)` }); continue }
+      if (orderMultiple > 1 && qty % orderMultiple !== 0) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (합계 ${qty}개)` }); continue }
+      if (p.stock != null && p.stock < qty) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 합계 ${qty}개)` }); continue }
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override, defaultPlatformMarginPct: commPct })
       const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
       const unit = tierUnitPrice(price, qty, tierMap.get(pid), tierFloor)
-      const lineTotal = unit * qty
+      priceByPid.set(pid, { unit, supplier_id: p.supplier_id, name: p.name, image_url: p.image_url })
+      previewLines.push({ supplier_id: p.supplier_id, line_total: unit * qty, product_shipping_fee: parseProductShipFee(shipMetaPreview.get(pid)) })
+    }
+
+    // 받는사람별 라인(각 1건) — 표시·주문 생성용. 단가=상품 합산기준 tier 단가. Σline_total == subtotal(묶음과 동일).
+    const items: Array<{ row: number; product_id: number; name: string; image_url: string | null; option: string; qty: number; unit_price: number; line_total: number; ship_to: ShipTo; ext_order_no: string }> = []
+    let subtotal = 0
+    for (const r of inRows) {
+      if (!r.pid || r.qty <= 0 || !r.ship.name || !r.ship.address) continue // 이미 errors 에 분류됨.
+      if (invalidPid.has(r.pid)) continue // 상품 검증 실패 — 행 오류(상품 단위로 이미 기록).
+      const pr = priceByPid.get(r.pid)
+      if (!pr) continue
+      const lineTotal = pr.unit * r.qty
       subtotal += lineTotal
-      items.push({ product_id: pid, name: p.name, image_url: p.image_url, qty, unit_price: unit, line_total: lineTotal, moq, order_multiple: orderMultiple })
-      previewLines.push({ supplier_id: p.supplier_id, line_total: lineTotal, product_shipping_fee: parseProductShipFee(shipMetaPreview.get(pid)) })
+      items.push({ row: r.row, product_id: r.pid, name: pr.name, image_url: pr.image_url, option: r.option, qty: r.qty, unit_price: pr.unit, line_total: lineTotal, ship_to: r.ship, ext_order_no: r.extOrderNo })
     }
 
     // 🚚 제조사별 최소주문금액 충족 여부 + 배송비 + 총 청구 예상액(결제 X). supplier_id 미노출(group key 만).
@@ -2008,7 +2224,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
     return c.json({
       success: true,
-      items,
+      mode: 'dropship',
+      items, // 받는사람별 라인(주문 생성에 그대로 재전송)
       subtotal,
       shipping_total: shippingTotal,
       grand_total: subtotal + shippingTotal,

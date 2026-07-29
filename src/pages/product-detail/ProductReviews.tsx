@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -28,14 +28,14 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212]">
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 dark:border-[#2A3446] rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334]">
         {t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
       </button>
     )
   }
 
   return (
-    <div className="mt-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+    <div className="mt-3 border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2 bg-pink-50">
         <span className="text-sm">🎁</span>
@@ -53,7 +53,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         rows={3}
         maxLength={2000}
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
-        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:border-blue-400"
       />
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
@@ -71,7 +71,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
             </div>
           ))}
           {images.length < 5 && (
-            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2A2A2A] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
+            <label className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-[#2A3446] rounded-md flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:border-gray-500 active:scale-95 transition">
               {uploading ? (
                 <span className="text-[10px]">업로드 중</span>
               ) : (
@@ -114,7 +114,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </div>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 text-sm rounded-lg font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         <button
           disabled={content.length < 10 || submitting}
           onClick={async () => {
@@ -181,28 +181,53 @@ interface Review {
   created_at: string
   seller_reply?: string | null
   seller_reply_at?: string | null
+  // 🎁 2026-07-05: 체험단(FCFS) 참여 리뷰 — 서버 자동 판정(표시광고법 의무 표시)
+  is_sponsored?: number | boolean
 }
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
   const { t } = useTranslation()
   const [summary, setSummary] = useState<ReviewSummary | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
+  // 🗑️ 2026-07-07 (로딩 낭비 감사): 리뷰는 상품상세 최하단(폴드 밖)이라 마운트 즉시 summary+list 를
+  //   받던 것을 IntersectionObserver 로 게이팅(600px). 부모(ProductDetailPage)가 above-fold 평점용
+  //   경량 summary 를 이미 갖고 있어, 여기 상세 summary/목록은 섹션 근처 스크롤 시에만 로드 → 마운트
+  //   중복 요청 제거. HomeProductsRail 동일 패턴.
+  const [inView, setInView] = useState(false)
+  const gateRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = gateRef.current
+    if (!el || inView) return
+    if (typeof IntersectionObserver === 'undefined') { setInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [inView])
+
+  // summary 는 limit 무관 — 전체보기(5→100) 토글이 summary 를 재요청하지 않도록 list 와 분리.
+  useEffect(() => {
+    if (!inView) return
+    api.get(`/api/reviews/product/${productId}/summary`)
+      .then(r => { if (r?.data?.success) setSummary(r.data.data) })
+      .catch(() => { /* silent */ })
+  }, [productId, inView])
 
   useEffect(() => {
-    Promise.all([
-      api.get(`/api/reviews/product/${productId}/summary`).catch(() => null),
-      api.get(`/api/reviews/product/${productId}?limit=${limit}`).catch(() => null),
-    ]).then(([sumRes, listRes]) => {
-      if (sumRes?.data?.success) setSummary(sumRes.data.data)
-      if (listRes?.data?.success) setReviews(listRes.data.data.reviews)
-    })
-  }, [productId, limit])
+    if (!inView) return
+    api.get(`/api/reviews/product/${productId}?limit=${limit}`)
+      .then(r => { if (r?.data?.success) setReviews(r.data.data.reviews) })
+      .catch(() => { /* silent */ })
+  }, [productId, limit, inView])
 
   const avgRating = summary?.avg_rating ?? 0
   const totalCount = summary?.total_count ?? 0
 
   return (
     <div>
+      {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 리뷰 summary/목록 로드. */}
+      <div ref={gateRef} aria-hidden style={{ height: 1 }} />
       <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
         {t('reviews.heading', { defaultValue: '리뷰' })} {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 font-normal">({totalCount})</span>}
       </h2>
@@ -224,7 +249,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
               return (
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1A2334] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -244,7 +269,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
           {reviews.map((r) => (
-            <div key={r.id} className="border border-gray-200 dark:border-[#2A2A2A]/50 rounded-xl p-3">
+            <div key={r.id} className="border border-gray-200 dark:border-[#2A3446]/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">
@@ -253,13 +278,19 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
                     ))}
                   </div>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">{r.user_name}</span>
+                  {/* 🎁 표시광고법: 체험단 리뷰 자동 뱃지 — 서버 판정(작성자가 끌 수 없음) */}
+                  {!!r.is_sponsored && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[9px] font-bold border border-amber-200 dark:border-amber-500/30">
+                      {t('reviews.sponsoredBadge', { defaultValue: '체험 제공' })}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
               {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
               {/* 🏁 2026-06-12 (전수조사 🟡): 셀러 답글 — 셀러는 달 수 있는데 구매자에겐 비노출이던 갭 */}
               {r.seller_reply && (
-                <div className="mt-2 bg-gray-50 dark:bg-[#121212] rounded-lg p-2.5">
+                <div className="mt-2 bg-gray-50 dark:bg-[#1A2334] rounded-lg p-2.5">
                   <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-0.5">
                     {t('reviews.sellerReplyLabel', { defaultValue: '판매자 답글' })}
                     {r.seller_reply_at && (

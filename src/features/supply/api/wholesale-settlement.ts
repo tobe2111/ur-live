@@ -13,9 +13,22 @@
 import { recordLedger } from '@/worker/utils/ledger'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
-const REFUND_WINDOW_DAYS = 7
-// 🛡️ 브랜드제품: '거의 당일' 정산이되 최소 환불 클로백 안전창(1일) 확보 — 지급 후 환불로 인한 미회수 방지.
-const BRAND_REFUND_WINDOW_DAYS = 1
+// 🗓️ 2026-06-23 (대표 확정): 도매 정산 지급일 = "금주(월~일 KST) 발주 → 차주 목요일 00:00 KST".
+//   기존 건별 +7일/+1일(브랜드) 롤링을 **주단위 고정 지급일**로 통일. 도매몰 전용(소비자 정산 무관).
+const KST_OFFSET_MS = 9 * 3600_000
+/**
+ * 발주 시각이 속한 KST 주(월~일)의 **다음 주 목요일 00:00 KST** 를 정산 가용 시각(UTC ISO)으로 반환.
+ *   매일 18:00 UTC `matureSupplierSettlements` cron 이 available_at 경과 시 pending→available 로 성숙.
+ *   예) 월요일 발주 → 차주 목(10일 뒤) / 일요일 발주 → 같은 차주 목(4일 뒤). 한 주 전체가 동일 목요일로 묶임.
+ * @param nowMs 발주(결제) epoch ms
+ */
+export function wholesaleSettlementAvailableAt(nowMs: number): string {
+  const kst = new Date(nowMs + KST_OFFSET_MS)         // UTC 필드가 KST 벽시계를 표현
+  const daysSinceMonday = (kst.getUTCDay() + 6) % 7   // 월=0, 화=1, …, 일=6
+  // 이번 주 월요일 00:00 KST 의 UTC epoch (Date.UTC 는 음수 date 정규화)
+  const mondayKstMidnightUtc = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday) - KST_OFFSET_MS
+  return new Date(mondayKstMidnightUtc + 10 * 86400_000).toISOString() // 차주 목요일 = 이번 주 월 + 10일
+}
 
 /**
  * 🆕 2026-06-17 대표 확정 모델 (cost-plus): 제조사가 받을 금액(공급원가) *위에* 플랫폼 마진%를 붙여 공급가 산출.
@@ -31,6 +44,24 @@ export async function loadPlatformCommissionPct(DB: D1Database): Promise<number>
   ).first<{ value: string }>().catch(() => null)
   const v = Number(row?.value)
   return Number.isFinite(v) && v >= 0 && v <= 90 ? v : DEFAULT_PLATFORM_COMMISSION_PCT
+}
+
+/**
+ * 🏬 2026-07-04 (대표 — 몰별 조정): 몰별 수수료(마진%) override — wholesale_malls.commission_rate.
+ *   유효(0~90)면 그 몰 값, 아니면 null(전역 사용). per-isolate 몰 캐시 read 라 D1 추가 0회.
+ *   기존엔 어드민 몰 폼의 '수수료율'이 저장만 되고 가격에 미적용(write-only 함정)이던 것을 실배선.
+ */
+export async function mallCommissionPctOverride(DB: D1Database, mallId?: number | null): Promise<number | null> {
+  if (mallId == null) return null
+  const { loadMallById } = await import('./wholesale-malls')
+  const m = await loadMallById(DB, mallId).catch(() => null)
+  const v = Number(m?.commission_rate)
+  return Number.isFinite(v) && v >= 0 && v <= 90 ? v : null
+}
+
+/** 몰별 수수료(override ?? 전역). 표시·청구 전 지점이 이 로더(또는 override 패턴)로 정합 — 몰 미설정=전역(기존 byte-동일). */
+export async function loadMallCommissionPct(DB: D1Database, mallId?: number | null): Promise<number> {
+  return (await mallCommissionPctOverride(DB, mallId)) ?? loadPlatformCommissionPct(DB)
 }
 
 /** 라인 단가 정산 분해 — 제조사 = 공급원가 전액(입력가), 플랫폼 = 공급가 − 공급원가. 주문생성·정산 공용 SSOT.
@@ -63,6 +94,11 @@ async function _doEnsureSourceColumn(DB: D1Database): Promise<void> {
   // CREATE/ALTER 문은 기존과 동일 — 이미 존재하면 무시(컬럼 추가는 1회).
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'")
     .run().catch(() => { /* 이미 존재 — 무시 */ })
+  // 🛡️ 2026-06-19 (머니 감사): 적립/클로백의 ON CONFLICT(order_id, product_id, source) 타겟 보장.
+  //   creditSupplier 가 항상 호출하는 ensure 라 여기서 보장하면, 인덱스 부재로 ON CONFLICT 가 throw→미적립 되는
+  //   경로를 원천 차단. source 컬럼 추가 직후라 안전. 기존 중복행 있으면 생성 실패→swallow(repair-schema 가 정리).
+  await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_settle_unique ON supplier_settlements(order_id, product_id, source)")
+    .run().catch(() => { /* 이미 존재 / 중복행 — 무시(repair-schema 보강) */ })
 }
 
 interface WholesaleLine {
@@ -81,14 +117,13 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   if (!wholesaleOrderId) return 0
   await ensureSourceColumn(DB)
 
-  // 멱등 가드.
-  const existing = await DB.prepare(
-    "SELECT 1 FROM supplier_settlements WHERE order_id = ? AND source = 'wholesale' LIMIT 1"
-  ).bind(wholesaleOrderId).first().catch(() => null)
-  if (existing) return 0
+  // 🛡️ 2026-06-29: 멱등은 per-line ON CONFLICT(order_id, product_id, source) DO NOTHING 으로 *내재적* 보장
+  //   (소비자 creditSupplierOnOrder 와 동일). 기존의 'order 에 settlement 1건이라도 있으면 전체 skip' early-return 은
+  //   부분적립(크래시 mid-loop) 주문의 남은 라인이 재호출로도 영영 안 채워지는 sticky-partial 버그라 제거.
+  //   정상(중복 없음) 경로는 동일, 이미 적립된 라인은 아래 changes==0 게이트로 잔액·원장·카운트까지 skip(이중적립 0).
 
-  // 🛡️ 스펙 정산 분기: 브랜드제품(is_brand_product=1) = 판매 후 당일(즉시 available) / 일반제품 = 7일 환불창 성숙.
-  //   products.is_brand_product 없을 수 있어 LEFT JOIN + COALESCE(0).
+  // 🗓️ 2026-06-23 (대표 확정): 정산 지급일 = 차주 목요일 통일(브랜드/일반 구분 폐지 — 위 wholesaleSettlementAvailableAt).
+  //   is_brand_product 컬럼은 더는 분기에 안 쓰지만 SELECT 유지(타입/하위호환, 무해).
   const rows = await DB.prepare(`
     SELECT i.product_id, i.supplier_id, i.qty, i.base_supply_price, i.distributor_unit_price,
            COALESCE(p.is_brand_product, 0) AS is_brand_product
@@ -97,11 +132,11 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   `).bind(wholesaleOrderId).all<WholesaleLine & { is_brand_product: number }>().catch(() => ({ results: [] as (WholesaleLine & { is_brand_product: number })[] }))
 
   let credited = 0
-  const notifySuppliers = new Set<number>()
   // 🆕 2026-06-16 정산 분배: 제조사 = max(원가, 공급가×(1−수수료%)), 플랫폼 = 공급가 − 제조사(= 수수료).
   const commPct = await loadPlatformCommissionPct(DB)
-  const generalAvailableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
-  const brandAvailableAt = new Date(Date.now() + BRAND_REFUND_WINDOW_DAYS * 86400_000).toISOString()
+  // 🗓️ 2026-06-23 (대표 확정): 도매 정산 = "금주(월~일) 발주 → 차주 목요일 00:00 KST" 통일(브랜드/일반 구분 없음).
+  //   기존 건별 +7일/+1일 롤링 → 주단위 고정 지급일. 도매몰 전용(소비자 supply-settlement.ts 무관).
+  const settlementAvailableAt = wholesaleSettlementAvailableAt(Date.now())
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
     const distUnit = Math.floor(Number(r.distributor_unit_price) || 0) // 판매사 지불 단가(공급가, tier할인 반영)
@@ -109,14 +144,20 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
     const supplyAmount = manufacturerUnit * qty // 제조사 정산액(원가 하한)
     if (supplyAmount <= 0) continue
     const retailAmount = distUnit * qty // 판매사 지불액(공급가 — retail−supply = 플랫폼 수수료)
-    const isBrand = Number(r.is_brand_product) === 1
-    const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
-    const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'
+    const availableAt = settlementAvailableAt // 브랜드/일반 통일 — 차주 목요일
+    const noteText = 'B2B 도매주문 — 차주 목요일 정산(금주 월~일 발주분)'
 
-    await DB.prepare(`
+    // 🛡️ 2026-06-19 (머니 감사): 라인별 멱등 — idx_supplier_settle_unique(order_id, product_id, source) 로
+    //   ON CONFLICT DO NOTHING. 기존 plain INSERT 는 중복 시 throw 라, 동시 같은-주문 경쟁의 부분 인터리브에서
+    //   한 라인 throw → 루프 중단 → 나머지 라인 미적립(under-credit) 여지가 있었음. 이제 이미 적립된 라인은
+    //   조용히 skip + 그 라인의 잔액증가·원장·카운트도 함께 skip(아래 changes 게이트) → 이중적립·잔액과다·미적립 0.
+    //   정상(중복 없음) 경로는 동작 byte-identical.
+    const insSettle = await DB.prepare(`
       INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
       VALUES (?, ?, ?, NULL, ?, ?, 'pending', ?, 'wholesale', ?)
+      ON CONFLICT(order_id, product_id, source) DO NOTHING
     `).bind(r.supplier_id, wholesaleOrderId, r.product_id, retailAmount, supplyAmount, availableAt, noteText).run()
+    if ((insSettle.meta?.changes ?? 0) === 0) continue // 이미 적립된 라인 → 잔액·원장·카운트 skip
 
     await DB.prepare(`
       INSERT INTO supplier_balances (supplier_id, pending_amount, updated_at)
@@ -131,19 +172,13 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
         metadata: { product_id: r.product_id, qty, wholesale_order_id: wholesaleOrderId },
       })
     } catch { /* ledger best-effort */ }
-    notifySuppliers.add(r.supplier_id)
     credited++
   }
 
-  // 제조사 대시보드 알림 — 주문 접수 시 발송 준비 안내 (제조사당 1회, best-effort).
-  for (const sid of notifySuppliers) {
-    try {
-      await createDashboardNotification(
-        DB, 'supplier', String(sid), 'wholesale_order',
-        '새 도매 주문', '도매 주문이 접수되었습니다. 발송을 준비해주세요.', '/supplier/wholesale-orders',
-      )
-    } catch { /* best-effort */ }
-  }
+  // 🔔 2026-06-26 (알림 중복 제거): 제조사 신규주문 알림은 호출부의 notifySuppliersOfPaidOrder()
+  //   (type='wholesale_new_order', 품목/수량 포함 — 2026-06-12 감사 fix)가 전담한다. 과거엔 여기서도
+  //   type='wholesale_order' 벨을 보내 제조사가 한 주문에 2건(서로 다른 type 이라 dedup 안 됨) 수신했음.
+  //   이 함수는 정산 적립만 담당하도록 알림 루프 제거(적립/원장 로직은 불변).
   return credited
 }
 
@@ -285,4 +320,66 @@ export async function reverseSupplierOnWholesaleRefund(
     ).bind(marginReversed, wholesaleOrderId).run().catch(() => { /* best-effort: 집계 필드 */ })
   }
   return reversed
+}
+
+/**
+ * 🛡️ 2026-06-28 (대표 — 잔여 P1 근본수정): 환불 진행 중 도매 정산 성숙/지급 보류.
+ *   배경: 발송완료(SHIPPED) 라인을 어드민 강제환불/반품승인할 때, 그 사이 cron(matureSupplierSettlements)
+ *   이 정산을 pending→available 로 매숙하고 payoutSupplier 가 지급해버리면 **제조사 지급 + 바이어 환불**이
+ *   겹쳤다(클로백 후 수동 회수). 환불 경로 시작 시 이 헬퍼로 held_at 을 찍으면:
+ *     - matureSupplierSettlements 는 `held_at IS NULL` 만 매숙 → pending 정산은 매숙 안 됨 → 역전이 cancel 로 깨끗.
+ *     - payoutSupplier 는 `held_at IS NULL` 만 지급(아래 fix) → 이미 available 인 정산도 지급 안 됨 → 역전이 cancel.
+ *   환불 직전에 이미 지급(paid) 완료된 진짜 동시 케이스만 클로백(불가피, 알림 복구). 멱등·best-effort.
+ *   (claim hold = wholesale-claims.routes.holdSettlements 와 동일 메커니즘 — 분쟁 hold 와 공존: 둘 다 held_at.)
+ * @returns hold 된 정산 row 수
+ */
+export async function holdWholesaleSettlements(
+  DB: D1Database,
+  wholesaleOrderId: number,
+  supplierId?: number,
+  productIds?: number[],
+): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ })
+  // 🛡️ 스코프는 reverseSupplierOnWholesaleRefund 와 동일하게 — 부분환불(제조사/라인 한정) 시 *역전 대상 정산만*
+  //   보류해야 함. 미스코프로 주문 전체를 보류하면 환불 안 된 다른 제조사/라인의 정산이 영구 동결(미지급)된다.
+  const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
+  const pids = (productIds || []).filter(p => Number.isFinite(p) && p > 0)
+  const pidWhere = pids.length ? ` AND product_id IN (${pids.map(() => '?').join(',')})` : ''
+  const r = await DB.prepare(
+    `UPDATE supplier_settlements SET held_at = datetime('now')
+       WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND held_at IS NULL
+       ${scoped ? 'AND supplier_id = ?' : ''}${pidWhere}`
+  ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]), ...pids).run().catch(() => null)
+  return r?.meta?.changes ?? 0
+}
+
+/**
+ * 🛡️ 2026-06-29 (적대적 self-review 수정): 도매주문의 정산 hold 를 *현재 열린 클레임 스코프*에 맞게 재정렬.
+ *   배경(BUG 2B): 클레임 hold/해제가 주문 전체(unscoped)라, 다제조사 주문에서 제조사 A 클레임 해결 시 *아직 열린*
+ *   제조사 B 클레임의 hold 까지 풀려 분쟁 중 B 정산이 성숙·지급될 수 있었다. 배경(BUG 2A): 환불(Toss) 실패로 라인이
+ *   롤백됐는데 hold 가 남아 정당(미환불) 라인이 영구 동결되기도 했다. → 해제는 항상 이 함수로:
+ *   pending/available hold 를 전부 푼 뒤, **아직 '열린'(open/reviewing) 클레임 스코프(제조사별, order-level 이면 전체)**
+ *   로만 재보류 → 열린 분쟁만 정확히 보호하고, 닫힌 분쟁/롤백된 환불의 hold 는 깨끗이 해제. 멱등·best-effort.
+ *   (취소/클로백 row 는 status 필터로 미접촉 — cancelled 환불 라인은 어차피 성숙/지급 대상 아님.)
+ * @returns 해제(step1)된 정산 row 수
+ */
+export async function reconcileWholesaleHolds(DB: D1Database, wholesaleOrderId: number): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ })
+  // 1) 이 주문의 미지급(pending/available) 정산 hold 전부 해제.
+  const rel = await DB.prepare(
+    "UPDATE supplier_settlements SET held_at = NULL WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND held_at IS NOT NULL"
+  ).bind(wholesaleOrderId).run().catch(() => null)
+  // 2) 아직 열린 클레임 스코프로 재보류(다른 열린 분쟁이 보호하던 정산은 계속 보류). wholesale_claims 부재 시 catch→[].
+  const open = await DB.prepare(
+    "SELECT DISTINCT supplier_id FROM wholesale_claims WHERE wholesale_order_id = ? AND status IN ('open','reviewing')"
+  ).bind(wholesaleOrderId).all<{ supplier_id: number | null }>().catch(() => ({ results: [] as { supplier_id: number | null }[] }))
+  const rows = open.results || []
+  if (rows.some(r => r.supplier_id == null)) {
+    await holdWholesaleSettlements(DB, wholesaleOrderId) // order-level(다제조사) 클레임 → 전체 보류
+  } else {
+    for (const r of rows) if (r.supplier_id) await holdWholesaleSettlements(DB, wholesaleOrderId, r.supplier_id)
+  }
+  return rel?.meta?.changes ?? 0
 }

@@ -39,7 +39,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.
 export default function SellerVoucherOrdersPage() {
   const navigate = useNavigate()
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: orders = [], isLoading: loading } = useApiQuery<VoucherOrder[]>(
+  const { data: orders = [], isLoading: loading, isError, refetch } = useApiQuery<VoucherOrder[]>(
     ['seller', 'voucher-orders'], '/api/seller/voucher-orders',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -75,7 +75,17 @@ export default function SellerVoucherOrdersPage() {
           </div>
         </div>
 
-        {loading ? <DashboardLoading /> : orders.length === 0 ? (
+        {loading ? <DashboardLoading /> : isError ? (
+          /* 🛡️ 2026-07-20 (셀러 감사): fetch 실패를 '교환권 0건·차감액 ₩0'(정상 빈 상태)으로 위장하지 않음. */
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <Gift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 mb-4">교환권 내역을 불러오지 못했습니다</p>
+            <button onClick={() => refetch()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-50">
+              다시 시도
+            </button>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <Gift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-500 mb-4">아직 발송한 교환권이 없습니다</p>

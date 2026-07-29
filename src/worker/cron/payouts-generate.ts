@@ -15,7 +15,9 @@
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 
-export async function handlePayoutsGenerate(env: Env): Promise<void> {
+// 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
+//   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
+export async function handlePayoutsGenerate(env: Env): Promise<{ created: number; period: string } | void> {
   const DB = env.DB
   if (!DB) return
   try {
@@ -30,20 +32,38 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
     const { REFUND_POLICY } = await import('../../shared/constants/policy')
     const MIN_AMOUNT = REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
 
-    // 지난주 발생한 credit (외상) 집계
+    // 🛡️ 2026-06-26 [머니수정] credit 집계를 '지난주만' → '전기간 누적' 으로 변경.
+    //   기존엔 credit 은 1주치인데 차감(paid)은 전기간이라, 누적 payout 이 1주 credit 을
+    //   넘는 기성 payee 는 pending 이 음수→skip(만성 미지급) + 누락된 주/MIN 미만 주의 credit 은
+    //   영영 재포착 못 함(각 run 이 자기 7일 창만 봄). 이제 getPayablePending(ledger.ts) 의 정식
+    //   공식 = (전기간 credit − 전기간 미완료 payout) 으로 실외상 잔액을 반영.
+    // 💸 2026-07-01 (정산 정합 — 대표 승인): 이전엔 credit-only 합산이라 (A) 공구 seller 의 gross credit
+    //   에서 수수료 미차감 + (B) seller:N 의 기존 debit(환불 역전·인플루언서/추천 커미션)을 무시 → 과다지급.
+    //   정식 net 잔액 = (credit − fee_amount) − debit. getLedgerReceivable(ledger.ts) 와 동일 공식.
+    //   (fee_amount 는 공구 seller credit 에만 존재 → 다른 payee/이용권 무영향. debit 는 payee receivable 차감.)
     const credits = await DB.prepare(`
-      SELECT credit_account, SUM(amount) as total
-        FROM ledger_entries
-       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-         AND created_at BETWEEN ? AND ?
-       GROUP BY credit_account
-    `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59').all<{ credit_account: string; total: number }>().catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
+      SELECT account, SUM(net) as total FROM (
+        SELECT credit_account AS account, amount - COALESCE(fee_amount, 0) AS net
+          FROM ledger_entries
+         WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'
+        UNION ALL
+        SELECT debit_account AS account, -amount AS net
+          FROM ledger_entries
+         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
+      )
+      GROUP BY account
+    `).all<{ account: string; total: number }>()
+      .then(r => ({ results: (r.results || []).map(x => ({ credit_account: x.account, total: x.total })) }))
+      .catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
 
-    // 이미 payout 처리된 amount
+    // 이미 payout 처리됐거나(완료) 처리 대기중인(pending) amount.
+    // 🛡️ credit 이 전기간 누적이 됐으므로 차감도 전기간 — 'pending' 도 포함해야 직전 run 이 만든
+    //   미승인 pending payout 이 다음 주(다른 period) run 에서 같은 외상으로 재생성되는 이중 pending 을 차단.
+    //   (rejected/failed/cancelled 는 미차감 → 그 외상은 다음 run 에서 정상 재포착.)
     const paid = await DB.prepare(`
       SELECT (payee_type || ':' || payee_id) as account, SUM(amount) as total
         FROM payouts
-       WHERE status IN ('approved','sent')
+       WHERE status IN ('pending','approved','sent')
        GROUP BY payee_type, payee_id
     `).all<{ account: string; total: number }>().catch(() => ({ results: [] as Array<{ account: string; total: number }> }))
     const paidMap = new Map((paid.results || []).map(r => [r.account, r.total]))
@@ -94,7 +114,28 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
       }
     }
     if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd}`)
+
+    // 🔔 2026-07-08 (무인운영 감사): 성공 하트비트 — 주간 정산 생성이 조용히 멈추면(무소식)
+    //   운영자가 알아채도록 매 run 요약을 어드민 벨 + Discord 로 push. 리포트가 "안 오는 것"이
+    //   곧 이상신호가 되게 한다. 집계/INSERT 로직은 불변 — 요약 통지 1블록만 추가.
+    try {
+      const summary = `주간 정산 생성: ${created}건 (${periodStart} ~ ${periodEnd})`
+      try {
+        const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(DB, 'admin', null, 'payouts_generated', '💸 주간 정산 생성', summary, '/admin/payouts')
+      } catch { /* 벨 실패 무시 */ }
+      const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
+      if (webhook) {
+        const { sendDiscordAlert } = await import('../utils/discord-alert')
+        await sendDiscordAlert(webhook, '💸 주간 정산 생성', summary, 'info').catch(() => {})
+      }
+    } catch { /* 하트비트 실패는 정산 생성에 영향 없음 */ }
+
+    return { created, period: periodStart }
   } catch (e) {
+    // 🔔 2026-07-08: 이전엔 여기서 삼켜 safeCron 의 실패 알림 경로에 안 닿았음(무음).
+    //   재throw → scheduled.ts safeCron → notifyCronFailure(Discord + cron_failures + 어드민 벨).
     logError('[payouts-cron] failed', { error: (e as Error).message })
+    throw e
   }
 }

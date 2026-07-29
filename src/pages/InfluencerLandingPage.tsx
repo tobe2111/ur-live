@@ -14,7 +14,7 @@ export default function InfluencerLandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
       <SEO
         title="유어딜 인플루언서 — 팔로워가 곧 수익이 됩니다"
         description="매장 섭외 없이 카톡 share 만으로 공구 수익. 친구 추천 양쪽 0.5% 보너스 딜 + 셀러 추천 commission 분할."
@@ -22,7 +22,7 @@ export default function InfluencerLandingPage() {
         type="website"
       />
 
-      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 lg:px-12 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
@@ -54,7 +54,7 @@ export default function InfluencerLandingPage() {
       </section>
 
       {/* 수익 사례 카드 */}
-      <section className="bg-gray-50 dark:bg-[#121212] px-6 lg:px-12 py-16">
+      <section className="bg-gray-50 dark:bg-[#1A2334] px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">실제 인플루언서 수익 사례</h2>
           <div className="grid sm:grid-cols-3 gap-5">
@@ -63,7 +63,7 @@ export default function InfluencerLandingPage() {
               { tier: '미디엄 (팔로워 10만)', monthly: '300-600만원', desc: '주 3-5회 share + 카테고리 specialty' },
               { tier: '메가 (팔로워 50만+)', monthly: '1,500만원+', desc: '본인 브랜드 공구 + 셀러 영입 추가' },
             ].map((c, i) => (
-              <div key={i} className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 border border-gray-100 dark:border-[#1A1A1A]">
+              <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-100 dark:border-[#2A3446]">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{c.tier}</p>
                 <p className="text-3xl font-extrabold text-pink-600 mb-2">{c.monthly}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-300">{c.desc}</p>
@@ -83,7 +83,7 @@ export default function InfluencerLandingPage() {
             { icon: Megaphone, title: '본인 공구 진행', desc: '본인이 검증한 매장과 직접 공구 캠페인. 5% 수수료 후 90% 인플루언서 수령 옵션.', amt: '예: 100만 GMV → 90만 수령' },
             { icon: BarChart3, title: '셀러 영입 commission', desc: '본인이 영입한 셀러의 평생 GMV 의 일정 비율 분배 (에이전시 모델).', amt: '예: 영입 셀러 월 GMV 1천만 → 인플루언서 50만/월' },
           ].map((s, i) => (
-            <div key={i} className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 border border-gray-200 dark:border-[#2A2A2A] flex gap-4">
+            <div key={i} className="bg-white dark:bg-[#0F151D] rounded-2xl p-6 border border-gray-200 dark:border-[#2A3446] flex gap-4">
               <s.icon className="w-10 h-10 text-pink-500 shrink-0" />
               <div className="flex-1">
                 <h3 className="font-bold mb-1">{s.title}</h3>
@@ -99,14 +99,14 @@ export default function InfluencerLandingPage() {
         <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">지금 share 한 번이<br />다음 달 월급이 됩니다.</h2>
         <button
           onClick={() => navigate('/register')}
-          className="px-8 py-4 bg-white dark:bg-[#0A0A0A] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
+          className="px-8 py-4 bg-white dark:bg-[#0F151D] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
         >
           무료로 가입 →
         </button>
         <p className="text-xs opacity-70 mt-6">팔로워 수 제한 없음 · 신용카드 불필요</p>
       </section>
 
-      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#1A1A1A]">
+      <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-[#2A3446]">
         © 2026 리스터코퍼레이션 · <a href="mailto:jiwon@ur-team.com" className="underline">jiwon@ur-team.com</a>
       </footer>
     </div>

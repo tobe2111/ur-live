@@ -18,6 +18,7 @@ import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
@@ -42,16 +43,23 @@ app.get('/stats', async (c) => {
   const [sellerCount, orderStats, activeStreams, activeGroupBuys] = await Promise.all([
     c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM agency_sellers WHERE agency_id = ?')
       .bind(agencyId).first<{ cnt: number }>(),
+    // 🏪 2026-06-25 스코프 정합: revenue_30d 도 active_group_buys 와 동일하게 소속 셀러(agency_sellers)
+    //   **또는** 영입 매장(introduced_by_agency_id) 매출을 집계 — 영입 매장만 있고 agency_sellers 가 비면
+    //   active_group_buys>0 인데 revenue_30d=0 이라 사이드바 배지가 항상 '휴면' 으로 오표시되던 것 수정.
     c.env.DB.prepare(`
       SELECT
         COUNT(*) AS order_count,
         COALESCE(SUM(o.total_amount), 0) AS total_revenue,
         COALESCE(SUM(o.seller_amount), 0) AS net_revenue
       FROM orders o
-      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
-      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE')
+      INNER JOIN sellers s ON s.id = o.seller_id
+      WHERE o.status IN ('PAID','DONE')
         AND o.created_at >= date('now', '-30 days')
-    `).bind(agencyId).first<{ order_count: number; total_revenue: number; net_revenue: number }>(),
+        AND (
+          s.introduced_by_agency_id = ?
+          OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = o.seller_id AND ag.agency_id = ?)
+        )
+    `).bind(agencyId, agencyId).first<{ order_count: number; total_revenue: number; net_revenue: number }>(),
     c.env.DB.prepare(`
       SELECT COUNT(*) AS cnt
       FROM live_streams ls
@@ -194,7 +202,7 @@ app.get('/stats/kpi', async (c) => {
 // ── GET /stats/daily — 일별 매출 추이 (RevenueTrendChart 용) ───
 app.get('/stats/daily', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
-  const days = Number(c.req.query('days') || 7)
+  const days = intParam(c.req.query('days'), 7)
   try {
     const { results } = await c.env.DB.prepare(`
       SELECT date(o.created_at) AS date,

@@ -14,6 +14,7 @@
  * 신고/제안(최저가 미준수 등)은 기존 wholesale_proposal_tickets(/api/wholesale/proposal-tickets) 재사용.
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
@@ -23,20 +24,14 @@ import { swallow } from '@/worker/utils/swallow'
 import { resolveMallId } from './wholesale-malls'
 import { resolveDistributorPrice } from '@/lib/distributor-pricing'
 import { loadGradeTable, loadSellerGrade } from './wholesale.routes'
+import { loadMallCommissionPct } from './wholesale-settlement'
+import { sellerMallIdOf } from './wholesale-malls'
+import { intParam } from '@/shared/pagination'
 
 type D1Database = Env['DB']
 
 // ── 공유 헬퍼 (wholesale-main.routes 와 동일 패턴) ───────────────────────────
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 const VALID_BOARD_TYPE = new Set(['notice', 'archive', 'shipping'])
 
@@ -80,7 +75,7 @@ pub.get('/posts', async (c) => {
     await ensureBoardSchema(DB)
     const type = String(c.req.query('type') || 'notice')
     if (!VALID_BOARD_TYPE.has(type)) return c.json({ success: false, error: '게시판 유형 오류' }, 400)
-    const page = Math.max(1, Number(c.req.query('page') || 1) || 1)
+    const page = Math.max(1, intParam(c.req.query('page'), 1))
     const limit = 20
     const mallId = await resolveMallId(c)
     const { results } = await DB.prepare(
@@ -150,7 +145,8 @@ wish.get('/', async (c) => {
       `SELECT w.product_id, w.created_at,
               p.name, p.image_url, p.category, p.brand_name, p.price AS retail_price, p.is_active,
               COALESCE(p.supply_price, 0) AS supply_price, p.supply_margin_override_pct AS margin_override,
-              COALESCE(p.is_supply_product, 0) AS is_supply_product, COALESCE(p.stock, 0) AS stock
+              COALESCE(p.is_supply_product, 0) AS is_supply_product, COALESCE(p.stock, 0) AS stock,
+              COALESCE(p.min_order_qty, 1) AS moq, COALESCE(p.order_multiple, 1) AS order_multiple
        FROM wholesale_wishlists w
        LEFT JOIN products p ON p.id = w.product_id
        WHERE w.seller_id = ?
@@ -159,18 +155,21 @@ wish.get('/', async (c) => {
       product_id: number; created_at: string; name: string | null; image_url: string | null
       category: string | null; brand_name: string | null; retail_price: number | null; is_active: number | null
       supply_price: number; margin_override: number | null; is_supply_product: number; stock: number
+      moq: number; order_multiple: number
     }>()
     const rows = results ?? []
     // 🏷️ 등급 공급가 enrich — 카탈로그와 동일 SSOT(resolveDistributorPrice). 공급상품이고 원가>0 일 때만.
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)]) // 🏬 2026-07-04: 몰별 수수료
     const items = rows.map((r) => {
       const distributor_price = r.is_supply_product && r.supply_price > 0
-        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override }).price
+        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct }).price
         : null
       return {
         product_id: r.product_id, created_at: r.created_at, name: r.name, image_url: r.image_url,
         category: r.category, brand_name: r.brand_name, retail_price: r.retail_price || null,
         is_active: r.is_active, stock: r.stock, distributor_price,
+        moq: r.moq, order_multiple: r.order_multiple, // 🏭 2026-07-01: 담기 시 MOQ/배수 정합(결제 거부 방지)
       }
     })
     return c.json({ success: true, items })

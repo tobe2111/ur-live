@@ -21,6 +21,8 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { seedWishlistBaseline, clearWishlistBaseline } from '@/worker/cron/wishlist-notify';
+import { intParam } from '@/shared/pagination'
 
 // v31 FIX: wishlist mutation rate limit (per-IP, 분당 20회)
 const wishlistRateLimit = rateLimit({ action: 'wishlist_mutation', max: 20, windowSec: 60 });
@@ -73,8 +75,8 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
     const userId = String(authUser.id);
-    const limit = parseInt(c.req.query('limit') || '50');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = intParam(c.req.query('limit'), 50);
+    const offset = intParam(c.req.query('offset'), 0);
     // 🎨 2026-06-10: dominant_color 포함(카드 그라데이션). 컬럼 미적용 DB 는 1회 실패 후 제외 재시도
     //   (ProductRepository `_dominantColorCol` 모듈캐시 패턴 — 매 요청 2쿼리 방지).
     const listSql = (withColor: boolean) => `
@@ -130,10 +132,12 @@ wishlistRoutes.post('/toggle', wishlistRateLimit, requireAuth(), async (c) => {
     if (existing) {
       await DB.prepare('DELETE FROM wishlists WHERE user_id = ? AND product_id = ?')
         .bind(userId, product_id).run();
+      await clearWishlistBaseline(DB, userId, product_id); // 재입고/가격 dedup 정리
       return c.json({ success: true, action: 'removed', data: { isWishlisted: false } });
     } else {
       const result = await DB.prepare('INSERT INTO wishlists (user_id, product_id) VALUES (?, ?)')
         .bind(userId, product_id).run();
+      await seedWishlistBaseline(DB, userId, product_id); // 재입고 오통지 방지 + 가격 baseline
       return c.json({ success: true, action: 'added', data: { isWishlisted: true, id: result.meta.last_row_id } });
     }
   } catch (err) {
@@ -150,6 +154,9 @@ wishlistRoutes.delete('/', wishlistRateLimit, requireAuth(), async (c) => {
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
     const userId = String(authUser.id);
     await DB.prepare('DELETE FROM wishlists WHERE user_id = ?').bind(userId).run();
+    // 재입고/가격 dedup 도 전체 정리(누적 방지)
+    await DB.prepare('DELETE FROM wishlist_stock_notifications WHERE user_id = ?').bind(userId).run().catch(() => {});
+    await DB.prepare('DELETE FROM wishlist_price_notifications WHERE user_id = ?').bind(userId).run().catch(() => {});
     return c.json({ success: true, message: '위시리스트를 모두 비웠습니다.' });
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');
@@ -192,6 +199,8 @@ wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
       .bind(userId, productId)
       .run();
 
+    await seedWishlistBaseline(DB, userId, productId); // 재입고 오통지 방지 + 가격 baseline
+
     return c.json({
       success: true,
       data: { id: result.meta.last_row_id, userId, productId, productName: product.name },
@@ -213,15 +222,16 @@ wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
     const userId = String(authUser.id);
 
-    const wishlist = await DB.prepare('SELECT id FROM wishlists WHERE id = ? AND user_id = ?')
+    const wishlist = await DB.prepare('SELECT id, product_id FROM wishlists WHERE id = ? AND user_id = ?')
       .bind(id, userId)
-      .first();
+      .first<{ id: number; product_id: number }>();
 
     if (!wishlist) {
       return c.json({ success: false, error: '찜 목록에서 찾을 수 없습니다.' }, 404);
     }
 
     await DB.prepare('DELETE FROM wishlists WHERE id = ? AND user_id = ?').bind(id, userId).run();
+    await clearWishlistBaseline(DB, userId, wishlist.product_id); // 재입고/가격 dedup 정리
 
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
@@ -249,6 +259,8 @@ wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireAuth(), a
       return c.json({ success: false, error: '찜 목록에서 찾을 수 없습니다.' }, 404);
     }
 
+    await clearWishlistBaseline(DB, userId, productId); // 재입고/가격 dedup 정리
+
     return c.json({ success: true, message: '찜 목록에서 삭제되었습니다.' });
   } catch (err) {
     console.error('[Wishlist] Delete by product error:', err);
@@ -271,8 +283,8 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
-    const limit = parseInt(c.req.query('limit') || '20');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = intParam(c.req.query('limit'), 20);
+    const offset = intParam(c.req.query('offset'), 0);
 
     const { results } = await DB.prepare(`
       SELECT

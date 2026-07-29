@@ -53,7 +53,7 @@ export default function WholesaleChannelsPage() {
   ]
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-20" style={{ background: WT.fill }}>
       <SEO title="채널 연동 — 유통스타트" description="무재고 위탁판매로 도매 상품을 내 스마트스토어·쿠팡에 등록하세요" url="/wholesale/channels" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

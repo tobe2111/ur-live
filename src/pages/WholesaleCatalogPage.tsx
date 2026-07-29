@@ -4,12 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { ChevronRight, FileSpreadsheet } from 'lucide-react'
-import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
+import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft, Truck, X, SearchX } from 'lucide-react'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg, currentWholesaleMallSlug, withWholesaleMall, wholesaleMallSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
+import { consumeWholesaleLoginIntent, clearWholesaleLoginIntent } from '@/utils/wholesale-session'
 import { toast } from '@/hooks/useToast'
 import {
   WT, comma, WHOLESALE_CATEGORIES,
@@ -49,6 +50,10 @@ const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalM
 //   /wholesale(home) | /wholesale/best|new|margin|premium|brands.
 export type WholesaleCollectionMode = 'best' | 'new' | 'margin' | 'premium' | 'brands'
 
+// 🏭 2026-06-29 (대표 — 고마진/프리미엄 등급 게이팅): margin/premium 관에 접속 차단되는 등급.
+//   Basic(C, 일반회원)만 차단 = Standard·Premium 허용(대표 "일반회원 막아줘"). Premium 전용으로 좁히려면 ['B','C'].
+const MARGIN_PREMIUM_BLOCKED_GRADES = ['C']
+
 export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollectionMode } = {}) {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -75,8 +80,11 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       })
   }, [navigate])
 
-  const [search, setSearch] = useState('')
-  const [committedSearch, setCommittedSearch] = useState('')
+  // 🏭 2026-06-29 (공통 ShopBar 연동): 서브페이지의 공통 검색바는 `/wholesale?search=` 로 이동시키므로
+  //   카탈로그가 마운트 시 URL ?search= 를 초기 검색어로 흡수해야 그 검색이 실제로 적용된다.
+  const initialSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || '').trim() : ''
+  const [search, setSearch] = useState(initialSearch)
+  const [committedSearch, setCommittedSearch] = useState(initialSearch)
   const [cat, setCat] = useState('all')
   // 🏬 컬렉션 모드 초기 정렬: 신상품=newest, 마진=discount, 그 외=popular(베스트).
   const [sort, setSort] = useState<CatalogSort>(mode === 'new' ? 'newest' : mode === 'margin' ? 'discount' : 'popular')
@@ -110,17 +118,24 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 활성 가격대 → min/max (원). 미선택이면 둘 다 null.
   const band = useMemo(() => PRICE_BANDS.find(b => b.id === priceBand) ?? null, [priceBand])
 
+  // 🔍 2026-06-30 (검색/필터 UX): 활성 필터 여부 + 초기화 — 결과 0 일 때 막다른 길 대신 복구 CTA 제공.
+  const hasActiveFilters = !!committedSearch || cat !== 'all' || sort !== 'popular' || inStock || !!priceBand || !!selectedBrand
+  const resetFilters = () => {
+    setSearch(''); setCommittedSearch(''); setCat('all'); setSort('popular'); setInStock(false); setPriceBand(''); setSelectedBrand('')
+  }
+
   // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
   // 🏭 2026-06-19 (대표 전수조사): 인증별 캐시 분리 — 게스트 가격(null)이 로그인 후 잔존해 비로그인 UI 고착하는 것 방지.
-  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}|${wholesaleAuthSeg()}`
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}|${wholesaleAuthSeg()}|${wholesaleMallSeg()}`
   // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "로드되자마자 상품이 안 떠"): worker SSR 주입
   //   (__SSR_INITIAL_WHOLESALE__) 즉시 소비. 기본 파라미터에서만.
   //   - guest: initialData — fetch 자체가 없음 (0-RTT 완결)
   //   - 로그인: placeholderData — 카드(사진/이름/재고)는 즉시 그리고, 등급가 fetch 가 도착하면 가격 교체.
   //     (가격 영역은 isPlaceholderData 동안 스켈레톤 — 잠금 칩 오표시 방지)
-  const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
+  // 🏥 2026-07-03: 몰 프리뷰(?mall=)일 땐 SSR 시드(기본 몰 전용) 미사용 — 해당 몰 카탈로그를 fresh fetch.
+  const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand && !currentWholesaleMallSlug()
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
     // initialdata-check-ok: 의도적 — guest 기본 카탈로그는 SSR(__SSR_INITIAL_WHOLESALE__) 로 0-RTT 완결
@@ -137,6 +152,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     },
     queryFn: () => {
       const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만) — 의료몰 카탈로그 해석
       if (committedSearch) params.set('search', committedSearch)
       if (cat !== 'all') params.set('category', cat)
       if (sort !== 'popular') params.set('sort', sort)
@@ -165,11 +181,12 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brands=1 로 현재 몰의 브랜드 distinct 목록(이름+상품수) 로드.
   //   브랜드 전시관 진입(brandView) + 특정 브랜드 미선택일 때만 활성(enabled) → 그 외엔 fetch 안 함.
   const brandsQ = useQuery<BrandEntry[]>({
-    queryKey: queryKeys.wholesale('catalog-brands', ''),
+    queryKey: queryKeys.wholesale('catalog-brands', wholesaleMallSeg()),
     queryFn: () => {
       const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      const mallSlug = currentWholesaleMallSlug()
       return api
-        .get('/api/wholesale/catalog?brands=1', { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+        .get(`/api/wholesale/catalog?brands=1${mallSlug ? `&mall=${encodeURIComponent(mallSlug)}` : ''}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
         .then((r) => (r.data?.success ? ((r.data.brands || []) as BrandEntry[]) : []))
         .catch(() => [])
     },
@@ -199,7 +216,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const homeQ = useWholesaleHome()
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (없으면 유통스타트/#FC5424 기본 → byte-identical).
   //   헤더 워드마크(name+logo) + 브랜드 색(CSS 변수 --ud-brand). 기본 몰이면 모든 값이 현 디폴트와 동일.
-  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo, categories: mallCategories } = useWholesaleMall()
   // 도매 서피스에서 문서 타이틀을 몰 이름으로(선택). 기본 몰이면 '유통스타트' → 동작 불변.
   useEffect(() => {
     if (typeof document !== 'undefined' && mallName) document.title = `${mallName} 도매몰`
@@ -221,6 +238,48 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const bestItems = ((home?.best && home.best.length ? home.best : items) as unknown as CatalogItem[])
   // 비로그인 기본 랜딩(필터/검색/특수뷰 없음) — 시안 큐레이션(타일·베스트·특가 풀폭) 노출 + 필터 사이드바 숨김.
   const cleanHome = !collectionMode && !token && cat === 'all' && !committedSearch && !premiumView && !brandView && !inStock && !priceBand
+
+  // 🔍 2026-06-30 (검색/필터 UX — 더보기): 1페이지(catalogQ)는 SSR/잠금 그대로 두고, 2페이지+ 만 별도 fetch 로
+  //   누적(append). catalogQ/initialData/placeholderData/SSR 전부 미접촉(purely additive). 서버 has_more 로 판정.
+  const CATALOG_PAGE = 24
+  const [moreItems, setMoreItems] = useState<CatalogItem[]>([])
+  const [morePage, setMorePage] = useState(2)
+  const [moreHasMore, setMoreHasMore] = useState(true)
+  const [moreLoading, setMoreLoading] = useState(false)
+  useEffect(() => { setMoreItems([]); setMorePage(2); setMoreHasMore(true) }, [catalogKey]) // 필터/검색/등급 변경 시 누적 초기화
+  const loadMore = useCallback(async () => {
+    if (moreLoading || !moreHasMore) return
+    setMoreLoading(true)
+    try {
+      const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만)
+      if (committedSearch) params.set('search', committedSearch)
+      if (cat !== 'all') params.set('category', cat)
+      if (sort !== 'popular') params.set('sort', sort)
+      if (inStock) params.set('in_stock', '1')
+      if (band?.min != null) params.set('min_price', String(band.min))
+      if (band?.max != null) params.set('max_price', String(band.max))
+      if (premiumView) params.set('premium', '1')
+      if (selectedBrand) params.set('brand', selectedBrand)
+      params.set('page', String(morePage))
+      const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      const r = await api.get(`/api/wholesale/catalog?${params.toString()}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+      const newItems = (r.data?.success ? (r.data.items || []) : []) as CatalogItem[]
+      const srvMore = typeof r.data?.has_more === 'boolean' ? r.data.has_more : newItems.length >= CATALOG_PAGE
+      setMoreItems(prev => {
+        const seen = new Set([...prev.map(i => i.id), ...allItems.map(i => i.id)])
+        return [...prev, ...newItems.filter(i => !seen.has(i.id))]
+      })
+      setMorePage(p => p + 1)
+      setMoreHasMore(srvMore && newItems.length > 0)
+    } catch { /* 유지(버튼으로 재시도 가능) */ }
+    finally { setMoreLoading(false) }
+  }, [moreLoading, moreHasMore, morePage, committedSearch, cat, sort, inStock, band, premiumView, selectedBrand, allItems])
+  const displayItems = useMemo(() => {
+    if (!moreItems.length) return items
+    const seen = new Set(items.map(i => i.id))
+    return [...items, ...moreItems.filter(i => !seen.has(i.id))]
+  }, [items, moreItems])
 
   // 🏭 2026-06-08 SEO: 카탈로그 상품 ItemList JSON-LD — 이름·이미지·utongstart URL 만(공급가 절대 제외).
   //   기본(검색/필터 없는) 카탈로그에서만 노출 → 정규 도매 인덱스 시그널. 상위 24개로 제한.
@@ -260,27 +319,22 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   알려진 id 는 한글 라벨, 모르는 값(공급자 자유 입력)은 원본 문자열 그대로 — 필터/카운트는 불변
   //   (catCounts[id] ?? '' 라 0개 분류는 빈값/0 표시).
   const cats = useMemo<CatOpt[]>(() => {
-    const present = new Set<string>()
-    if (home?.categories?.length) { for (const c2 of home.categories) if (c2.key) present.add(c2.key) }
-    else { for (const p of allItems) if (p.category) present.add(p.category) }
-    const labelOf = new Map(WHOLESALE_CATEGORIES.map(c => [c.id, c.label]))
-    // 고정 분류 전체(상품 0개여도 노출). 'all' 은 아래 맨 앞에 별도 추가.
-    const known = WHOLESALE_CATEGORIES
+    // 🏥 2026-07-03 (의료용품 도매몰): 몰의 categories_json(useWholesaleMall().categories) 우선 노출 —
+    //   없으면 기본(식품/리빙/건강). 몰=도메인=카테고리 세트. 전체 + 몰 카테고리.
+    //   (기존 유통스타트는 categories_json 미설정 → WHOLESALE_CATEGORIES 폴백으로 byte-동일.)
+    const source = (mallCategories && mallCategories.length ? mallCategories : WHOLESALE_CATEGORIES)
       .filter(c => c.id !== 'all')
       .map(c => ({ id: c.id, label: c.label }))
-    const knownIds = new Set(known.map(k => k.id))
-    // 데이터에만 존재하는 비표준 분류 — 카운트순 정렬 후 표준 분류 뒤에 추가.
-    const unknown = [...present]
-      .filter(id => !knownIds.has(id))
-      .sort((a, b) => (catCounts[b] || 0) - (catCounts[a] || 0))
-      .map(id => ({ id, label: labelOf.get(id) || id }))
-    return [{ id: 'all', label: '전체' }, ...known, ...unknown]
-  }, [home?.categories, allItems, catCounts])
+    return [{ id: 'all', label: '전체' }, ...source]
+  }, [mallCategories])
 
   const recentQ = useWholesaleRecentItems({ enabled: deferredReady })
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
-  const loggedIn = !!token
+  // 🏬 2026-07-04 (대표 신고): 각 몰 별도 회원 — 타 몰 계정(서버 /me 가 mall_mismatch)은 이 몰에서 게스트 취급.
+  //   토큰만으로 로그인 판정하면 유통스타트 세션이 메디스타트 프리뷰(?mall=)에 그대로 노출됐음.
+  const mallMismatch = meQ.data?.mall_mismatch === true
+  const loggedIn = !!token && !mallMismatch
   // 로그인한 판매사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
   const meLoadFailed = !!(loggedIn && meQ.isFetched && meQ.isError && !me)
   useEffect(() => {
@@ -293,10 +347,26 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   /wholesale 카탈로그는 등급가·제조사 신원 비공개의 "판매사(구매자) 전용" 구조라, 제조사가 여기 있으면
   //   상단에 '제조사 대시보드'가 떠 어색. 제조사 홈(/supplier)으로 자동 이동(각 역할이 자기 홈).
   //   판매사 토큰(seller_token)이 있으면 구매자로서 정상 열람 → 리다이렉트 X(겸업 판매사 보호).
-  const supplierOnly = !!supplierToken && !loggedIn
+  // 🏭 2026-06-29 (통합 셸 Phase 3): `?preview=1` 이면 리다이렉트 우회 — 제조사가 상단바 '카탈로그 미리보기'
+  //   로 의도적으로 매장을 둘러보게(게스트 뷰). 일반 진입(파라미터 없음)은 기존대로 /supplier 자연 안내.
+  const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
+  const supplierOnly = !!supplierToken && !loggedIn && !isPreview
   useEffect(() => {
     if (supplierOnly) navigate('/supplier', { replace: true })
   }, [supplierOnly, navigate])
+  // 🏭 2026-06-29 (대표 지시 — "/wholesale/margin 안보여야 해"): 고마진 특가(margin)·프리미엄 전용관(premium)
+  //   컬렉션은 판매사(seller_token) 전용. 네비 버튼은 memberOnlyGo 로 비로그인 클릭을 막지만, 라우트 자체엔
+  //   가드가 없어 비로그인 소비자/게스트가 URL(/wholesale/margin·/premium)을 직접 입력하면 페이지가 그대로
+  //   노출되던 구멍을 라우트 레벨에서 차단 → 로그인으로 유도. (제조사 ?preview=1 게스트뷰는 제외.)
+  const memberGated = (mode === 'margin' || mode === 'premium') && !loggedIn && !isPreview
+  useEffect(() => {
+    if (!memberGated) return
+    toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' }))
+    navigate('/wholesale/login', { replace: true })
+  }, [memberGated, navigate, t])
+  // 🏭 2026-06-29 (대표 재지시 — 버튼은 보이되 Basic 접속 차단): margin/premium 은 Standard·Premium 등급 전용.
+  //   로그인 Basic(C)은 리다이렉트 대신 페이지 안 '등급 전용' 잠금 안내(아래 gradeBlocked 분기). 등급 미로드 시 판정 보류
+  //   (meQ.isFetched 후에만 차단 — A/B 깜빡임/오차단 방지). me 조회 실패 시 fail-open(정당 회원 lockout 회피).
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
   //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
@@ -306,7 +376,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   사업자정보 400 → 무시하고 신청 배너 유지). SupplierLoginPage 의 /become 자동시도와 대칭.
   const [becoming, setBecoming] = useState(false)
   useEffect(() => {
-    if (!userSession || becoming) return
+    // 🏭 2026-06-29 (교과서적 — off-by-default): 카카오 명시 로그인 직후 1회만 토큰교환. ambient 자동로그인 없음.
+    if (!userSession || becoming || !consumeWholesaleLoginIntent()) return
     let cancelled = false
     setBecoming(true)
     api.post('/api/wholesale/become-distributor', {})
@@ -337,14 +408,17 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userSession])
   const goLogin = () => navigate('/wholesale/login')
-  const logout = () => {
+  const logout = async () => {
     // 🏭 2026-06-08: 도매몰 로그아웃 — 판매사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
     //   둘 중 어느 역할로 들어왔든 한 버튼으로 로그아웃. full reload 로 토큰/RQ 캐시 깨끗이.
-    clearAuthData('seller')
+    // 🔑 2026-06-29: ① 서버 세션쿠키(ur_seller_session) 삭제 await(없으면 잔존 재인증) +
+    //   ② stale 로그인-의도 제거(카카오 세션 살아있어도 become 자동 probe 가 재로그인 못 함 — off-by-default).
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
+    clearWholesaleLoginIntent()
     try { clearSupplierSession() } catch { /* noop */ }
     toast.success('로그아웃되었어요')
-    if (typeof window !== 'undefined') window.location.assign('/wholesale')
+    if (typeof window !== 'undefined') window.location.assign('/wholesale/login')
   }
   // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 — 내 구독 product_id 집합 + 토글 핸들러.
   const [restockSubs, setRestockSubs] = useState<Set<number>>(new Set())
@@ -402,16 +476,24 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
-    if (!loggedIn || p.distributor_price == null) {
+    // 🏭 2026-06-27 (가드 발견 — 같은 버그 클래스): 로그인 판정은 토큰(loggedIn)으로만. 로그인했는데
+    //   등급 공급가가 미설정/스테일(null/0)이면 로그인 유도(goLogin) 대신 안내만 — '로그인하세요' 오판 차단.
+    if (!loggedIn) {
       toast.info('로그인하면 등급 공급가로 담을 수 있어요')
       goLogin()
+      return
+    }
+    if (p.distributor_price == null || p.distributor_price <= 0) {
+      toast.info('이 상품은 회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.')
       return
     }
     const moq = Math.max(1, p.moq || 1)
     // 🏭 BIZ-8: 초기 담기 수량 = MOQ 를 만족하는 최소 order_multiple 배수(서버 검증과 일치).
     const om = Math.max(1, p.order_multiple || 1)
     const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
-    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
+    // 🏭 2026-07-01 (라이브 감사): order_multiple·제조사 정책 스냅샷 포함 — 상세페이지 담기와 동일 계약.
+    //   (이전 누락 → 카트/체크아웃 배송비 '무료'·최소주문 미표시, 결제 시 ORDER_MULTIPLE/MIN_ORDER 뒤늦은 거부.)
+    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq, order_multiple: om, supplier_group: p.supplier_group ?? null, supplier_policy: p.supplier_policy ?? null, product_shipping_fee: p.product_shipping_fee ?? null })
     toast.success(initQty > 1 ? `장바구니에 ${comma(initQty)}개 담았어요` : '장바구니에 담았어요')
   }
   const reorder = (r: ReorderItem) => {
@@ -425,11 +507,45 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const grade = me?.grade || home?.grade || 'C'
 
   // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 판매사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
-  if (supplierOnly) return null
+  //   판매사 전용 컬렉션(margin/premium) 을 비로그인이 직접 URL 로 연 경우도 동일하게 렌더 차단(로그인 리다이렉트 중).
+  if (supplierOnly || memberGated) return null
+
+  // 🏭 Basic(C) 회원이 margin/premium 직접 접속 → 상품 대신 '등급 전용' 잠금 안내(버튼은 보이되 접속 차단).
+  const gradeBlocked = (mode === 'margin' || mode === 'premium') && loggedIn && !isPreview
+    && meQ.isFetched && !!me?.grade && MARGIN_PREMIUM_BLOCKED_GRADES.includes(me.grade)
+  if (gradeBlocked) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col" style={{ background: '#fff', color: WT.ink }}>
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
+          <div className="ur-content-wide flex items-center justify-between px-5 lg:px-8 h-[52px]">
+            <button onClick={() => navigate('/wholesale')} aria-label={t('common.back', { defaultValue: '뒤로' })}><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+            <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>{mode ? COLLECTION_TITLE[mode] : ''}</h1>
+            <div className="w-9" />
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="text-center max-w-sm">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: WT.fill }}>
+              <Lock className="w-7 h-7" style={{ color: WT.ink3 }} />
+            </div>
+            <h2 className="text-[18px] font-extrabold mb-2" style={{ color: WT.ink }}>
+              {t('wholesale.gradeLocked.title', { defaultValue: '{{name}}은 Standard·Premium 등급 전용이에요', name: mode ? COLLECTION_TITLE[mode] : '' })}
+            </h2>
+            <p className="text-[14px] leading-relaxed mb-6" style={{ color: WT.ink3 }}>
+              {t('wholesale.gradeLocked.desc', { defaultValue: '현재 등급(Basic)에서는 이용할 수 없어요. 등급이 올라가면 더 높은 마진의 상품과 프리미엄 전용관을 이용할 수 있어요.' })}
+            </p>
+            <button onClick={() => navigate('/wholesale')} className="px-6 h-12 rounded-2xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>
+              {t('wholesale.gradeLocked.home', { defaultValue: '도매몰 홈으로' })}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
       <SEO
         domain="wholesale"
         title={collectionMode && mode ? `${COLLECTION_TITLE[mode]} — 유통스타트 도매몰` : '유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트'}
@@ -470,6 +586,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       />
 
       <main className="ur-content-wide px-5 lg:px-8">
+        {/* 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 계정 안내 배너(게스트 강등 이유 설명 + 이 몰 가입 유도). */}
+        {mallMismatch && (
+          <div className="mt-3 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 flex-wrap" style={{ background: '#FFF7E6', border: '1px solid #FDE1A8', color: '#8A5A00' }}>
+            <span>지금 로그인된 계정은 <b>{meQ.data?.member_mall_name || '다른 몰'}</b> 회원이에요. <b>{mallName}</b>은 별도 가입이 필요합니다.</span>
+            <button onClick={() => navigate('/wholesale/join')} className="font-extrabold underline underline-offset-2">{mallName} 판매사 가입 →</button>
+          </div>
+        )}
         {/* 🏬 컬렉션 모드: 전용 페이지 타이틀 (홈은 배너/히어로/레일 노출). */}
         {collectionMode ? (
           <div className="pt-5 pb-1 flex items-center gap-2.5">
@@ -497,15 +620,37 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             featured={featured}
           />
 
+          {/* 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 발주 액션 배너 — 구매확정 누락 방지(정산 마무리·클레임 종료).
+              로그인 + pending_receipt>0 일 때만(없으면 화면 소음 0). 탭하면 주문 목록으로. */}
+          {loggedIn && (home?.pending_receipt ?? 0) > 0 && (
+            <button
+              onClick={() => navigate('/wholesale/orders')}
+              className="mt-4 w-full text-left rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-colors"
+              style={{ background: WT.brandSoft, border: `1px solid ${WT.brand}33` }}
+            >
+              <Truck className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-bold" style={{ color: WT.ink }}>
+                  {t('wholesale.pendingReceipt.title', { defaultValue: '수령 확인 대기 {{n}}건', n: home?.pending_receipt ?? 0 }).replace('{{n}}', String(home?.pending_receipt ?? 0))}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: WT.ink2 }}>
+                  {t('wholesale.pendingReceipt.desc', { defaultValue: '구매확정하면 정산이 마무리되고 클레임 기간이 종료돼요' })}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+            </button>
+          )}
+
           {/* 🧹 2026-06-17 (시안): 신뢰 신호 바 삭제 */}
 
-          {/* 🏭 2026-06-15 시안: 카테고리 타일 + 베스트 — 비로그인 마케팅 랜딩 */}
-          {!loggedIn && (
-            <div className="pt-4 space-y-8">
-              <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
-              <BestGrid items={bestItems} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />
-            </div>
-          )}
+          {/* 🏭 2026-06-29 (대표 "로그인 안 한 페이지가 기준 / 구조 통일"): 카테고리 타일 + 베스트를
+              로그인 여부와 무관하게 표시. 기존엔 `!loggedIn` 게이트로 로그인 시 랜딩이 통째로 사라져
+              '다른 페이지' 느낌이었음 — 게스트 마케팅 랜딩 구조가 기준이고, 로그인은 가격(등급가)·개인화
+              레일만 '추가'되게 통일. (bestItems 는 home.best||items 라 로그인 무관 채워짐.) */}
+          <div className="pt-4 space-y-8">
+            <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
+            <BestGrid items={bestItems} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />
+          </div>
 
           {/* 개인화 레일 (로그인 데이터 기반 — 빠른 재주문·전용 공급) */}
           <HomeRails
@@ -598,12 +743,47 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
                     </div>
                   ))}
                 </div>
-              ) : items.length === 0 ? (
-                <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
-                  {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
+              ) : (catalogQ.isError && items.length === 0) ? (
+                // 🏭 2026-06-29: fetch 실패를 '상품 없음'으로 위장 금지 — 명시 에러 + 재시도(WholesaleOrdersPage 와 동일 패턴).
+                //   stale 데이터가 있으면(placeholderData) 그리드 유지, 데이터 0 + 에러일 때만 에러 UI.
+                <div className="text-center py-20">
+                  <p className="text-[14px] mb-3" style={{ color: WT.ink3 }}>상품을 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
+                  <button onClick={() => catalogQ.refetch()} className="px-4 h-10 rounded-xl text-[14px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>다시 시도</button>
                 </div>
+              ) : items.length === 0 ? (
+                // 🔍 2026-06-30: 검색/필터 결과 0 → 막다른 길 대신 복구(초기화) CTA. 필터 없이 진짜 빈 카탈로그면 기존 안내.
+                hasActiveFilters ? (
+                  <div className="text-center py-20">
+                    <SearchX className="w-10 h-10 mx-auto mb-3" style={{ color: WT.ink4 }} />
+                    <p className="text-[15px] font-semibold mb-1" style={{ color: WT.ink2 }}>
+                      {committedSearch
+                        ? t('wholesale.search.noneFor', { defaultValue: "'{{q}}' 검색 결과가 없어요", q: committedSearch }).replace('{{q}}', committedSearch)
+                        : t('wholesale.search.noneFilter', { defaultValue: '조건에 맞는 상품이 없어요' })}
+                    </p>
+                    <p className="text-[13px] mb-4" style={{ color: WT.ink4 }}>{t('wholesale.search.tryAdjust', { defaultValue: '검색어나 필터를 바꿔보세요.' })}</p>
+                    <button onClick={resetFilters} className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl text-[13px] font-bold" style={{ background: WT.ink, color: '#fff' }}>
+                      <X className="w-3.5 h-3.5" /> {t('wholesale.search.resetAll', { defaultValue: '검색·필터 초기화' })}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
+                )
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
+                    {displayItems.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
+                  </div>
+                  {/* 🔍 2026-06-30 더보기 — page1 이 꽉 찼고(≥24) 아직 남았으면(has_more) 노출. 추가 페이지만 라이브 fetch. */}
+                  {moreHasMore && displayItems.length >= CATALOG_PAGE && (
+                    <div className="mt-7 text-center">
+                      <button onClick={loadMore} disabled={moreLoading}
+                        className="inline-flex items-center justify-center gap-1.5 px-6 h-12 rounded-2xl text-[14px] font-bold disabled:opacity-60"
+                        style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>
+                        {moreLoading ? t('common.loading', { defaultValue: '불러오는 중...' }) : t('wholesale.loadMore', { defaultValue: '더 보기' })}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

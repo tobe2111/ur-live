@@ -77,7 +77,7 @@ export default function MarketSignalCard({ name, category, distributorPrice }: {
           {shopping.trend === 'flat' && '─ 쇼핑 클릭 수요 보합'}
         </p>
       )}
-      {season && season.peakMonths.length > 0 && (
+      {season && Array.isArray(season.peakMonths) && season.peakMonths.length > 0 && (
         <p className="text-[12px] font-semibold mt-1" style={{ color: '#9A6B00' }}>
           🗓️ 성수기: {season.peakMonths.map(m => `${m}월`).join('·')}{season.peakMonths.includes(nowMonth) ? ' — 지금이 성수기예요 🔥' : ''}
         </p>

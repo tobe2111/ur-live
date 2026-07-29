@@ -15,6 +15,8 @@
  * 호출 시점: 무조건 1회, React 마운트 전.
  */
 
+import { useAuthStore } from '@/client/stores/auth.store'
+
 const PROCESSED_FLAG = '__urAuthCallbackProcessed'
 
 export function processAuthCallbackParams(): void {
@@ -65,6 +67,9 @@ export function processAuthCallbackParams(): void {
         const prevUserId = localStorage.getItem('user_id')
         if (incomingUserId && prevUserId && String(incomingUserId) === String(prevUserId)) {
           for (const k of ['admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email']) KEEP_KEYS.add(k)
+          // 🛡️ 2026-06-26 (소비자 감사 P1): 같은 user.id 재로그인이면 링크샵 핸들 캐시도 보존 —
+          //   로그인 직후 첫 링크샵 클릭이 느리거나 /creator 로 fall-through 하던 것 방지(누출 위험 없음, 동일인).
+          for (const k of ['user_handle', 'linked_seller_username', 'seller_username']) KEEP_KEYS.add(k)
         }
       } catch { /* ignore */ }
       const isKeeper = (k: string) =>
@@ -114,6 +119,17 @@ export function processAuthCallbackParams(): void {
       if (userName) {
         try { sessionStorage.setItem('ur_kakao_login_welcome', userName) } catch { /* */ }
       }
+
+      // 🔑 2026-06-29 (핀/큐레이터 인증 뷰 동기화): generic useAuthStore('auth-storage') 에도 로그인 반영.
+      //   서버-redirect 콜백 경로도 KakaoCallbackPage(POST) 와 대칭으로 핀 스토어를 set 해야
+      //   "로그인했는데 핀 UI 는 로그아웃" 분기가 안 생긴다. 위 wipe 이후라 새 user 로 재퍼시스트됨.
+      //   (이 함수는 React 마운트 전 동기 실행 → set 의 persist 도 동기 → 자동핀이 첫 마운트에서 본다.)
+      try {
+        useAuthStore.getState().setAuth(
+          { id: urlParams.get('userId')!, email: userEmail || '', name: userName || '', role: 'user' },
+          '', '',
+        )
+      } catch { /* 핀은 다음 마운트에서 보정 */ }
     } catch { /* localStorage blocked (incognito etc.) — ignore */ }
 
     // 🛡️ 2026-06-20 (iOS 대시보드 로그인 — A 방식 자매수정): 링크 역할 토큰(seller/agency/판매사 등)을

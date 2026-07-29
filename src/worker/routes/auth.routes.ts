@@ -97,6 +97,10 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       [generateId(), userId, tokenHash]
     );
 
+    // 🔐 2026-06-29 (V-2): 가입 직후 자동 로그인도 카카오와 동일하게 ur_session httpOnly 발급(로그인 핸들러와 대칭).
+    const sessionCookie = await createSessionCookie(userId, name, email, undefined, secret, 'user');
+    c.header('Set-Cookie', sessionCookie, { append: true });
+
     return c.json({
       success: true,
       data: {
@@ -188,6 +192,12 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
 
     // Update last login
     await qb.execute('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?', [user.id]);
+
+    // 🔐 2026-06-29 (V-2 로그아웃 lifecycle 전수조사): 이메일 로그인도 카카오와 동일하게 ur_session httpOnly 발급.
+    //   그간 Bearer 토큰만 줘서 SSR 개인화/세션 경로가 카카오 로그인과 비대칭이었음(소비자 세션 SSOT 누락).
+    //   same-origin 200(JSON) 응답이라 iOS WebKit 에도 영속(잠긴 iOS 쿠키 패턴 — XHR 로그인은 first-party). additive.
+    const sessionCookie = await createSessionCookie(user.id, user.name, user.email, undefined, secret, 'user');
+    c.header('Set-Cookie', sessionCookie, { append: true });
 
     return c.json({
       success: true,
@@ -512,5 +522,36 @@ authRouter.post('/logout', async (c) => {
   c.header('Set-Cookie', clearSessionCookie('agency'), { append: true });
   return c.json({ success: true, message: 'Logged out' });
 });
+
+// 🔐 2026-07-04 (P2 자가치유 — 대표 "다 해줘 이상적으로", platform-model §14-5):
+//   연결 셀러/에이전시인데 역할 토큰이 만료/부재면 /seller/login 으로 튕기던 갭의 근본수정.
+//   소비자 세션(ur_session, same-origin — iOS-safe)이 살아있으면 카카오 로그인 때와 **동일한
+//   함수(issueLinkedRoleTokens)** 로 역할 토큰을 재발급 — 재로그인 0회.
+//   보안: requireAuth 가 세션/토큰 인증 + 소비자(type='user')만 허용(셀러/어드민 Bearer 의
+//   id 는 users.id 가 아니라 오발급 위험 → 차단). 발급 대상은 sellers.linked_user_id = 본인
+//   + status active/approved 만(함수 내 게이트) — IDOR 불가. 클라: RouteGuards SelfHeal.
+authRouter.post(
+  '/reissue-role-tokens',
+  rateLimit({ action: 'reissue_role_tokens', max: 10, windowSec: 60 }),
+  requireAuth(),
+  async (c) => {
+    try {
+      const user = getCurrentUser(c);
+      if (!user || user.type !== 'user') {
+        return c.json({ success: false, error: '소비자 로그인 상태에서만 사용할 수 있습니다' }, 403);
+      }
+      // 세션 쿠키(sub=users.id, isDbId) 또는 Firebase uid → users.id 해석
+      const { resolveUserId } = await import('../utils/resolve-user-id');
+      const uid = await resolveUserId(c.env.DB, String(user.id), (user as { isDbId?: boolean }).isDbId === true);
+      if (!uid) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+      const { issueLinkedRoleTokens } = await import('../../features/auth/api/kakao.routes');
+      const tokens = await issueLinkedRoleTokens(c.env.DB, c.env.JWT_SECRET, Number(uid));
+      return c.json({ success: true, data: tokens });
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[reissue-role-tokens]', e);
+      return c.json({ success: false, error: '토큰 재발급에 실패했습니다' }, 500);
+    }
+  },
+);
 
 export { authRouter };

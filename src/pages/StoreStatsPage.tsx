@@ -5,6 +5,7 @@ import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine, Camera, X
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🛡️ 2026-05-16: QR 스캐너 모달 — qr-scanner 라이브러리 사용 (~10KB gzipped).
 //   사용 흐름: 매장 점주가 [QR 스캔] 버튼 → 카메라 활성화 → QR 인식 → 코드 자동 입력 후 사용 처리.
@@ -182,19 +183,16 @@ export default function StoreStatsPage() {
   // Magic Link 토큰으로 자동 인증 중 — 로딩 화면
   if (magicToken && !authenticated && !error) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-orange-500 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">매장 인증 중...</p>
-        </div>
+        <BrandLoader label="매장 인증 중..." />
       </div>
     )
   }
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
@@ -231,7 +229,7 @@ export default function StoreStatsPage() {
   const usedPercent = stats.total_vouchers > 0 ? Math.round((stats.used / stats.total_vouchers) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] px-5 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] px-5 py-8">
       <SEO title={t('storeStats.titleSuffix', { name: stats.restaurant_name || t('storeStats.fallbackRestaurant') })} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="ur-content-narrow">
         {/* 헤더 */}
@@ -245,10 +243,10 @@ export default function StoreStatsPage() {
           {[
             { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
             { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1A1A1A]' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1A2334]' },
             { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-[#0A0A0A] rounded-xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+            <div key={s.label} className="bg-white dark:bg-[#0F151D] rounded-xl p-4 border border-gray-200 dark:border-[#2A3446]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{s.label}</span>
                 <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center`}>
@@ -261,19 +259,19 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 사용률 바 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A] mb-5">
+        <div className="bg-white dark:bg-[#0F151D] rounded-xl p-5 border border-gray-200 dark:border-[#2A3446] mb-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용률</span>
             <span className="text-sm font-bold text-green-600">{usedPercent}%</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-[#2A2A2A] rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-[#2A3446] rounded-full h-3">
             <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${usedPercent}%` }} />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
         </div>
 
         {/* 🛡️ 2026-05-16 (선물하기 모델): 손님이 미리 결제한 메뉴 제공 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
+        <div className="bg-white dark:bg-[#0F151D] rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <ScanLine className="w-5 h-5 text-emerald-600" />
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">손님 식권 확인 → 메뉴 제공</h3>
@@ -304,7 +302,7 @@ export default function StoreStatsPage() {
               onChange={e => setVoucherCode(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
               placeholder="예: UR-AB12-XY34"
-              className="flex-1 border border-gray-300 dark:border-[#2A2A2A] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+              className="flex-1 border border-gray-300 dark:border-[#2A3446] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-white dark:bg-[#1A2334] text-gray-900 dark:text-white"
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -317,7 +315,7 @@ export default function StoreStatsPage() {
             </button>
           </div>
           {recentUses.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2A2A2A]">
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2A3446]">
               <p className="text-[11px] text-gray-500 mb-2">최근 시도</p>
               <div className="space-y-1.5">
                 {recentUses.slice(0, 5).map((u, i) => (
@@ -334,13 +332,13 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 공동구매 현황 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
+        <div className="bg-white dark:bg-[#0F151D] rounded-xl p-5 border border-gray-200 dark:border-[#2A3446]">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">참여자</span>
             <span className="text-sm font-bold text-pink-600">{stats.group_buy_current}/{stats.group_buy_target}명</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-[#2A2A2A] rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-[#2A3446] rounded-full h-2">
             <div className="h-full bg-pink-500 rounded-full" style={{ width: `${stats.group_buy_target > 0 ? Math.min(100, (stats.group_buy_current / stats.group_buy_target) * 100) : 0}%` }} />
           </div>
         </div>

@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { DollarSign, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
@@ -17,7 +17,7 @@ export default function AdminSettlementsBulkPage() {
   const [selected, setSelected] = useState<number[]>([])
   const [processing, setProcessing] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: pending = [], isLoading: loading, refetch } = useApiQuery<any[]>(
+  const { data: pending = [], isLoading: loading, isError, error, refetch } = useApiQuery<any[]>(
     ['admin', 'settlements-pending'], '/api/admin/tools/settlements/pending',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -46,6 +46,8 @@ export default function AdminSettlementsBulkPage() {
     <AdminLayout title={t('admin.pages.settlementsBulk')}>
       <AdminFinanceTabs />
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '정산 0건'으로 위장하지 않도록 표면화 */}
+        {isError && <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="정산 대기 목록" />}
         <DashboardPageHeader
           title={t('admin.pages.settlementsBulk')}
           subtitle="선택된 정산 건 한 번에 처리"
@@ -81,9 +83,9 @@ export default function AdminSettlementsBulkPage() {
                 <DollarSign className="w-4 h-4 text-green-500" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{p.seller_name} ({p.business_name || '-'})</p>
-                  <p className="text-xs text-gray-500">{p.order_count}건 · 총 {formatNumber(p.total_amount)}원 · 수수료 {Math.round(p.commission)}원</p>
+                  <p className="text-xs text-gray-500">{p.order_count}건 · 총 {formatNumber(p.total_amount)}원 · 수수료 {formatNumber(Math.round(Number(p.commission)) || 0)}원</p>
                 </div>
-                <p className="text-sm font-bold text-green-600">{(Number(p.total_amount) - Math.round(p.commission)).toLocaleString()}원</p>
+                <p className="text-sm font-bold text-green-600">{formatNumber((Number(p.total_amount) || 0) - (Math.round(Number(p.commission)) || 0))}원</p>
               </div>
             ))}
           </div>

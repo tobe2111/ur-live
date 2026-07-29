@@ -25,6 +25,11 @@ export interface CuratorPin {
   is_active: number
   commission_rate: number
   dominant_color?: string | null
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수.
+  discount_rate?: number | null
+  avg_rating?: number | null
+  review_count?: number | null
+  sold_count?: number | null
 }
 
 export interface CuratorProfile {
@@ -36,11 +41,13 @@ export interface CuratorProfile {
   banner_url?: string | null
   headline?: string | null // 🎨 2026-06-18 마퀴(흐르는 헤드라인)
   accent?: string | null // 🎨 2026-06-19 마퀴 액센트 색 (#RRGGBB)
-  theme: 'dark' | 'light' | string
+  // 🔗 2026-07-01 (대표 결정): linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드였음).
   // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
   youtube_url?: string | null
   instagram_url?: string | null
   tiktok_url?: string | null
+  /** ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
+  linkshop_show_recommend?: number
 }
 
 export interface CuratorPageResponse {
@@ -49,6 +56,9 @@ export interface CuratorPageResponse {
   pins: CuratorPin[]
   // 🛡️ 2026-05-25: linked seller — 있으면 셀러 공개페이지로 navigate (풍부 UI)
   linked_seller?: { id: number; username: string; name: string } | null
+  // 🚀 2026-07-11 (1-RTT): 서버가 동봉한 셀러 공개 페이로드(= /api/sellers/:id/public data) —
+  //   SellerPublicPage 가 시드로 동기 소비해 셀러 fetch 를 생략. 구캐시/실패 시 null(클라 폴백 fetch).
+  linked_seller_public?: Record<string, unknown> | null
   error?: string
 }
 

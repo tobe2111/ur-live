@@ -79,7 +79,7 @@ export default function WholesaleNaverPage() {
   const inputCls = 'w-full h-12 px-3.5 rounded-xl text-[14px] text-gray-900 outline-none'
 
   return (
-    <div className="min-h-screen" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh]" style={{ background: WT.fill }}>
       <SEO title="스마트스토어 연동 - 유통스타트" description="네이버 스마트스토어 연동" url="/wholesale/naver" noindex />
       <header className="bg-white" style={{ borderBottom: `1px solid ${WT.line}` }}>
         <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">

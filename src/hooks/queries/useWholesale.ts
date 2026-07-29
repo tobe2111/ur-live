@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
+import { supplierApi, getSupplierToken } from '@/lib/supplier-api'
 
 function sellerAuth(): { headers: Record<string, string> } {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -28,17 +29,46 @@ export function wholesaleAuthSeg(): 'in' | 'out' {
   return hasSellerToken() ? 'in' : 'out'
 }
 
+export interface WholesaleOrderItem {
+  product_id: number
+  name: string | null
+  qty: number
+  distributor_unit_price: number
+  line_total: number
+  supplier_name?: string | null
+  option_label?: string | null      // 📦 드랍십: 라인 옵션(상품상세)
+  ext_order_no?: string | null       // 판매사 외부 주문번호(참조)
+  ship_to_name?: string | null       // 드랍십 라인별 받는사람
+  ship_to_message?: string | null
+  line_status?: string | null
+  courier?: string | null            // 🏭 2026-07-01 라인별 운송장(다제조사/부분발송 — 주문레벨 tracking 은 단일공급자만)
+  tracking_number?: string | null
+}
+
 export interface WholesaleOrderRow {
   id: number
   toss_order_id?: string
   status: string
   grade: string | null
   subtotal: number
+  shipping_total?: number
+  grand_total?: number  // subtotal + 배송비 — 예치금 실제 차감액(표시 기준)
   courier?: string | null
   tracking_number?: string | null
+  refunded_amount?: number  // 🏭 2026-07-01 (라이브 감사): 부분/전액 환불액 — 판매사도 환불 가시성
   created_at: string
   paid_at?: string | null
   shipped_at?: string | null
+  // 🏭 2026-06-29 주문내역 상세화 — 라인아이템 + 배송지(목록 API 가 첨부).
+  items?: WholesaleOrderItem[]
+  ship_to_name?: string | null
+  ship_to_phone?: string | null
+  ship_to_address?: string | null
+  ship_to_postal?: string | null
+  ship_to_message?: string | null
+  // 🏭 2026-06-30: 거절/취소 사유 — 제조사 거절(REJECTED) 시 판매사가 사유 확인용.
+  reject_reason?: string | null
+  cancel_reason?: string | null
 }
 
 export interface WholesaleSummary {
@@ -63,6 +93,20 @@ export interface WholesaleMallBrand {
   brand_color: string | null
   logo_url: string | null
   categories: { id: string; label: string }[] | null
+  // 🏥 2026-07-03 규제 몰(의료용품): 가입 시 인허가 신고번호 필수 여부 + 필드 라벨.
+  requires_license?: number | null
+  license_label?: string | null
+  // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — { key: boolean }. 키 부재 = ON.
+  features?: Record<string, boolean>
+  // 🏢 2026-07-04 몰 회사(푸터) 정보 — 미설정 키는 기본(유통스타트) 폴백.
+  company?: Record<string, string> | null
+}
+
+/** 🧩 몰 기능이 켜졌는지(제외 레이어) — 키 부재/미설정 = 기본값(def, 기본 ON). false 면 그 몰에서 숨김. */
+export function mallFeatureEnabled(features: Record<string, boolean> | undefined | null, key: string, def = true): boolean {
+  if (!features) return def
+  const v = features[key]
+  return typeof v === 'boolean' ? v : def
 }
 
 /** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FC5424 (default 몰 byte-identical). */
@@ -73,14 +117,38 @@ export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
   brand_color: '#FC5424',
   logo_url: null,
   categories: null,
+  requires_license: 0,
+  license_label: null,
+  features: {},
+  company: null,
+}
+
+/**
+ * 🏥 2026-07-03 (의료용품 도매몰): 현재 도매 몰 slug — URL `?mall=<slug>` 우선(있으면 세션 저장),
+ *   없으면 세션 폴백. 도메인 연결 전 `?mall=medi` 미리보기/가입용. 기본 몰(호스트 해석)은 slug 없음
+ *   → 서버가 host 로 결정(기존 동작 불변). in-app 이동에도 몰 컨텍스트 유지(세션 지속).
+ */
+export function currentWholesaleMallSlug(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('mall')
+    if (fromUrl) { try { sessionStorage.setItem('ur_wholesale_mall', fromUrl) } catch { /* quota */ } return fromUrl }
+    try { return sessionStorage.getItem('ur_wholesale_mall') || null } catch { return null }
+  } catch { return null }
+}
+/** RQ 캐시 키 세그먼트 — 몰별 캐시 분리(없으면 'default'). 두 몰이 `?mall=` 로 섞여도 캐시 충돌 방지. */
+export function wholesaleMallSeg(): string { return currentWholesaleMallSlug() || 'default' }
+/** URLSearchParams 에 `mall=<slug>` 부착(있을 때만) — 서버 resolveMallId 가 존중. */
+export function withWholesaleMall(params: URLSearchParams): URLSearchParams {
+  const s = currentWholesaleMallSlug(); if (s) params.set('mall', s); return params
 }
 
 export function useWholesaleMall() {
   const q = useQuery<WholesaleMallBrand>({
-    queryKey: queryKeys.wholesale('mall'),
+    queryKey: queryKeys.wholesale('mall', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/mall')
+        .get(`/api/wholesale/mall${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`)
         .then((r) => (r.data?.success && r.data.mall ? (r.data.mall as WholesaleMallBrand) : DEFAULT_MALL_BRAND))
         .catch(() => DEFAULT_MALL_BRAND),
     staleTime: 30 * 60 * 1000, // per-host — 한 도메인은 한 몰. 길게 캐시.
@@ -96,15 +164,26 @@ export function useWholesaleMall() {
     brandColor: mall.brand_color || '#FC5424',
     logoUrl: mall.logo_url || null,
     categories: mall.categories || null,
+    requiresLicense: mall.requires_license === 1,
+    licenseLabel: mall.license_label || null,
+    slug: mall.slug || 'default',
+    features: mall.features || {},
+    // 🧩 편의: 이 몰에서 기능이 켜졌는지(제외 레이어). 예: feature('dropship') === false → 숨김.
+    feature: (key: string, def = true) => mallFeatureEnabled(mall.features, key, def),
+    // 🏢 몰 회사(푸터) 정보 — 미설정 시 null(소비처가 기본 BUSINESS_INFO 폴백).
+    company: mall.company || null,
     isLoading: q.isLoading,
   }
 }
 
 export function useWholesaleOrders() {
   return useQuery<WholesaleOrderRow[]>({
-    queryKey: queryKeys.wholesale('orders'),
+    queryKey: queryKeys.wholesale('orders', wholesaleMallSeg()),
+    // 🛡️ 2026-06-19 (감사): .catch 로 에러를 빈배열로 삼키지 않음 — 전역 retry:1 로 일시 실패 자동 복구.
+    //   삼키면 네트워크/5xx 가 '주문 없음'으로 오표시 + staleTime 동안 재시도 0. 소비처는 `data: orders=[]` 안전.
+    //   🏬 2026-07-04: ?mall= 전달(타 몰 컨텍스트에선 주문 이력 비노출) + 몰별 캐시 분리.
     queryFn: () =>
-      api.get('/api/wholesale/orders', sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])).catch(() => []),
+      api.get(`/api/wholesale/orders${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -123,8 +202,8 @@ export function useWholesaleStatement(from: string, to: string, opts?: { enabled
     queryFn: () =>
       api
         .get(`/api/wholesale/statement?from=${from}&to=${to}`, sellerAuth())
-        .then((r) => (r.data?.success ? { orders: r.data.orders || [], summary: r.data.summary ?? null } : { orders: [], summary: null }))
-        .catch(() => ({ orders: [], summary: null })),
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 복구. 소비처 `data?.orders ?? []` 안전.
+        .then((r) => (r.data?.success ? { orders: r.data.orders || [], summary: r.data.summary ?? null } : { orders: [], summary: null })),
     // 🏭 2026-06-10 (카탈로그 최속화): idle 이후 지연 가능 — 기본 true(기존 동작 불변).
     enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
@@ -136,10 +215,15 @@ export function useWholesaleStatement(from: string, to: string, opts?: { enabled
 export function useWholesaleCatalog(search: string) {
   return useQuery<WholesaleCatalogItem[]>({
     // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
-    queryKey: queryKeys.wholesale('catalog', `${search}:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('catalog', `${search}:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () => {
       const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만)
       if (search) params.set('search', search)
+      // 🛡️ 2026-06-29 엣지 캐시 인증 누수 차단(상세와 동일): 로그인 요청만 v=in 으로 *엣지 캐시 키*를 비로그인과
+      //   분리 → 비로그인 'null 가격' 공유캐시를 로그인 판매사가 절대 안 읽음. 비로그인 URL 은 canonical 유지
+      //   (SSR/cron prewarm 키 1:1 보존) — guest 엔 v 미부착. 서버는 v 무시.
+      if (wholesaleAuthSeg() === 'in') params.set('v', 'in')
       return api.get(`/api/wholesale/catalog?${params.toString()}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : []))
     },
     // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능(가격은 서버가 null 로 가림).
@@ -167,12 +251,17 @@ export function useWholesaleProduct(id: string | undefined) {
   //   게스트로 본 응답(distributor_price=null)이 로그인 후에도 남아 비로그인 UI 고착. 카탈로그 훅은
   //   로그인 시 항상 fresh fetch 하는데 이 훅만 누락된 비대칭이 원인. 키 분리 → 로그인은 'in' 키로 항상 fresh.
   return useQuery<WholesaleProductData>({
-    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () =>
       api
-        .get(`/api/wholesale/catalog/${id}`, sellerAuth())
-        .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' }))
-        .catch(() => ({ item: null, grade: '' })),
+        // 🛡️ 2026-06-29 (대표 신고 — 상세만 '공급가 미설정' 간헐): 비로그인 상세 응답은 CDN public 300s 캐시인데
+        //   CF 캐시 키가 Authorization 을 안 가려 비로그인 'null 가격' 응답이 로그인 판매사에게 서빙됨(목록은
+        //   등급별 캐시키라 정상). 인증 구분자(v=in|out)를 URL 에 붙여 *엣지 캐시 키*를 분리 → 로그인은 비로그인
+        //   캐시를 절대 안 읽음(서버 캐시 로직/비로그인 성능 불변). 서버는 v 파라미터 무시.
+        //   🏥 2026-07-03: `?mall=` 부착(있을 때만) — 의료몰 상세도 올바른 몰로 해석.
+        .get(`/api/wholesale/catalog/${id}?v=${wholesaleAuthSeg()}${currentWholesaleMallSlug() ? `&mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 로 콜드 상세(실측 콜드 1s) 일시 실패 복구. 소비처 `data?.item ?? null` 안전.
+        .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' })),
     // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능(가격 null).
     enabled: !!id,
     staleTime: 60 * 1000,
@@ -184,8 +273,9 @@ export function useWholesaleProduct(id: string | undefined) {
 export function useWholesaleMe() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return useQuery<any>({
-    queryKey: queryKeys.wholesale('me'),
-    queryFn: () => api.get('/api/wholesale/me', sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
+    queryKey: queryKeys.wholesale('me', wholesaleMallSeg()),
+    // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(서버가 타 몰 회원이면 mall_mismatch 반환) + 몰별 캐시 분리.
+    queryFn: () => api.get(`/api/wholesale/me${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
     enabled: hasSellerToken(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -199,21 +289,23 @@ export interface WholesaleHomeData {
   new: WholesaleCatalogItem[]
   proposals: WholesaleCatalogItem[]
   categories: { key: string; count: number }[]
+  // 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 발주 수(SHIPPED/PARTIAL_REFUNDED) — 홈 액션 배너용.
+  pending_receipt?: number
 }
 
 /** 도매몰 홈 한 번에 (베스트/신상품/추천제안/카테고리). 시안 홈의 섹션 레일용. */
 export function useWholesaleHome() {
   return useQuery<WholesaleHomeData>({
-    queryKey: queryKeys.wholesale('home'),
+    queryKey: queryKeys.wholesale('home', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/home', sellerAuth())
+        .get(`/api/wholesale/home${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
         .then((r) =>
           r.data?.success
-            ? { grade: r.data.grade || '', best: r.data.best || [], new: r.data.new || [], proposals: r.data.proposals || [], categories: r.data.categories || [] }
-            : { grade: '', best: [], new: [], proposals: [], categories: [] },
+            ? { grade: r.data.grade || '', best: r.data.best || [], new: r.data.new || [], proposals: r.data.proposals || [], categories: r.data.categories || [], pending_receipt: Number(r.data.pending_receipt) || 0 }
+            : { grade: '', best: [], new: [], proposals: [], categories: [], pending_receipt: 0 },
         )
-        .catch(() => ({ grade: '', best: [], new: [], proposals: [], categories: [] })),
+        .catch(() => ({ grade: '', best: [], new: [], proposals: [], categories: [], pending_receipt: 0 })),
     enabled: hasSellerToken(),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -229,9 +321,10 @@ export interface WholesaleReorderItem {
 /** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */
 export function useWholesaleRecentItems(opts?: { enabled?: boolean }) {
   return useQuery<WholesaleReorderItem[]>({
-    queryKey: queryKeys.wholesale('recent-items'),
+    queryKey: queryKeys.wholesale('recent-items', wholesaleMallSeg()),
     queryFn: () =>
-      api.get('/api/wholesale/recent-items', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
+      // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(타 몰 회원이면 서버가 빈 목록) + 몰별 캐시 분리.
+      api.get(`/api/wholesale/recent-items${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
     // 🏭 2026-06-10 (카탈로그 최속화): 호출부가 idle 이후로 미룰 수 있게 enabled 옵션 — 기본 true(기존 동작 불변).
     enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
@@ -319,13 +412,51 @@ export function useWholesaleDeposit() {
                 recent_txns: (r.data.recent_txns || []) as WholesaleDepositTxn[],
               }
             : { balance: 0, deposit_account: null, recent_txns: [] },
-        )
-        .catch(() => ({ balance: 0, deposit_account: null, recent_txns: [] })),
+        ),
+    // 🛡️ 2026-06-19 (감사·머니 중요): 잔액 에러를 ₩0 으로 삼키지 않음 — retry:1 복구. 충전 직후 일시 조회실패가
+    //   '잔액 없음'으로 오표시되어 사용자 자산 혼동 + 결제 차단되던 위험 제거. 소비처 `data?.balance` 안전.
     enabled: hasSellerToken(),
+    // 💰 2026-06-27 (대표 — 예치금 실시간): 잔액은 돈이라 항상 신선해야 함. 주문/충전 후 즉시 반영되도록
+    //   refetchOnMount:'always' + 탭 복귀(focus) 재조회. 주문 성공 시점엔 useInvalidateWholesaleDeposit() 로 즉시 무효화.
+    staleTime: 10 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * 🏭 2026-06-29 (통합 셸 Phase 3): 제조사 정산 가용 잔액 — 공용 상단바(WholesaleUtilBar)의 '정산' 칩용.
+ *   판매사 예치금(useWholesaleDeposit)에 대응하는 제조사 짝. supplier_token 게이트라 판매사/게스트엔 미실행(영향 0).
+ *   /api/supplier/me 의 balance.available_amount(가용 정산금) 사용.
+ *   ⚠️ 이 supplier API 호출은 *훅 파일*에 격리 — 공용 바(판매사 storefront 그룹)가 /api/supplier 를 직접
+ *      호출하면 crossrole 가드가 막으므로, 바는 이 훅만 호출한다(역할 인지 = supplier_token 있을 때만 fetch).
+ */
+export interface SupplierBalance { available_amount?: number; pending_amount?: number; paid_amount?: number }
+export function useSupplierBalance() {
+  return useQuery<SupplierBalance | null>({
+    queryKey: ['supplier', 'balance-me'],
+    queryFn: async () => {
+      const res = await supplierApi.get<{ data?: { balance?: SupplierBalance } }>('/api/supplier/me')
+      return res?.data?.balance ?? null
+    },
+    enabled: typeof window !== 'undefined' && !!getSupplierToken(),
     staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   })
+}
+
+/**
+ * 💰 예치금 잔액 즉시 무효화 훅 — 주문 생성/충전 직후 호출하면 모든 화면(공용 util 바 포함)의
+ *   예치금 표시가 실시간으로 갱신된다. (예치금 즉시차감 모델이라 클릭 직후 잔액이 바뀜.)
+ */
+export function useInvalidateWholesaleDeposit() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-requests') })
+  }
 }
 
 export type WholesaleChargeStatus = 'pending' | 'confirmed' | 'rejected'
@@ -345,8 +476,8 @@ export function useWholesaleChargeRequests() {
     queryFn: () =>
       api
         .get('/api/wholesale/deposits/requests', sellerAuth())
-        .then((r) => (r.data?.success ? (r.data.requests || []) : []))
-        .catch(() => []),
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 복구. 소비처 `requestsQ.data ?? []` 안전.
+        .then((r) => (r.data?.success ? (r.data.requests || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -406,10 +537,11 @@ export interface WholesaleBanner {
 /** 메인 배너 캐러셀 — 공개(비로그인 노출). active 배너만 서버가 반환. */
 export function useWholesaleBanners() {
   return useQuery<WholesaleBanner[]>({
-    queryKey: queryKeys.wholesale('banners'),
+    queryKey: queryKeys.wholesale('banners', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/banners')
+        // 🏬 2026-07-04: ?mall= 전달 — 몰별 배너(서버 GET /banners 는 이미 resolveMallId 필터) + 몰별 캐시 분리.
+        .get(`/api/wholesale/banners${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`)
         .then((r) => (r.data?.success ? ((r.data.banners || []) as WholesaleBanner[]) : []))
         .catch(() => []),
     staleTime: 5 * 60 * 1000,
@@ -422,10 +554,10 @@ export function useWholesaleBanners() {
 export function useWholesalePremiumCatalog(enabled = true) {
   return useQuery<WholesaleCatalogItem[]>({
     // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
-    queryKey: queryKeys.wholesale('catalog', `premium:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('catalog', `premium:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () =>
       api
-        .get('/api/wholesale/catalog?premium=1', sellerAuth())
+        .get(`/api/wholesale/catalog?premium=1${currentWholesaleMallSlug() ? `&mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
         .then((r) => (r.data?.success ? ((r.data.items || []) as WholesaleCatalogItem[]) : []))
         .catch(() => []),
     enabled,
@@ -436,7 +568,7 @@ export function useWholesalePremiumCatalog(enabled = true) {
 }
 
 export type WholesaleFeedbackType = 'proposal' | 'report'
-export type WholesaleFeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+export type WholesaleFeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'rejected'
 export interface WholesaleFeedback {
   id: number
   type: WholesaleFeedbackType

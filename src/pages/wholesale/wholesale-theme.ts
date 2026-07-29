@@ -49,13 +49,13 @@ export const GRADE_LABEL: Record<string, string> = {
 }
 
 /**
- * 🏷️ 2026-06-15 (대표 모델 확정) 회원 등급명 — 일반 / 프로 / 프리미엄.
+ * 🏷️ 2026-06-29 (대표 확정) 회원 등급명 — Basic / Standard / Premium.
  *   엔진(distributor-pricing 코드 A/B/C)은 무변경, 표시명만 매핑 → 머니 로직 0 리스크.
- *   프리미엄 = A(일정 매출 달성, 최저 공급가) · 프로 = B(연 구독, 우대 공급가) · 일반 = C(승인 가입, 기본).
+ *   Premium = A(일정 매출 달성, 최저 공급가) · Standard = B(연 구독, 우대 공급가) · Basic = C(승인 가입, 기본).
  *   D/OEM/특별가는 어드민 엣지 케이스로 라벨 유지.
  */
 export const GRADE_NAME: Record<string, string> = {
-  A: '프리미엄', B: '프로', C: '일반', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
+  A: 'Premium', B: 'Standard', C: 'Basic', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
 }
 
 /**
@@ -67,6 +67,8 @@ export const GRADE_NAME: Record<string, string> = {
 export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: '결제대기', color: '#9A6B00', bg: '#f9fafb' },
   PAID: { label: '결제완료', color: '#11875A', bg: '#EAF6EF' },
+  ACCEPTED: { label: '수락됨 · 발송대기', color: '#0E7490', bg: '#E0F2FE' },
+  REJECTED: { label: '제조사 거절', color: '#D63A4E', bg: '#FDECEF' },
   ON_CREDIT: { label: '여신(외상)', color: '#0E8A6E', bg: '#E6F6F1' },
   SHIPPED: { label: '배송중', color: '#1B64DA', bg: '#EAF1FE' },
   PARTIAL_REFUNDED: { label: '부분환불', color: '#C2620C', bg: '#FFF1E6' },
@@ -81,13 +83,11 @@ export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: stri
 export const wholesaleOrderStatusBadge = (status: string | null | undefined) =>
   WHOLESALE_ORDER_STATUS[String(status || '')] || { label: String(status || '-'), color: WT.ink3, bg: WT.fill }
 
-/** 카테고리 정의 (도매 카탈로그 칩/사이드바) */
+/** 카테고리 정의 (도매 카탈로그 칩/사이드바 + 상품 등록 드롭다운 SSOT).
+ *  🏭 2026-06-29 (대표 결정): 식품·리빙·건강 3종 고정(+전체). 뷰티/패션/디지털/생활 제거. */
 export const WHOLESALE_CATEGORIES: { id: string; label: string }[] = [
   { id: 'all', label: '전체' },
   { id: 'food', label: '식품' },
-  { id: 'beauty', label: '뷰티' },
   { id: 'living', label: '리빙' },
-  { id: 'fashion', label: '패션' },
-  { id: 'digital', label: '디지털' },
-  { id: 'lifestyle', label: '생활' },
+  { id: 'health', label: '건강' },
 ]

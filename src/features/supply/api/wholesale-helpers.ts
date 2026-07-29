@@ -6,6 +6,9 @@
 import { swallow } from '@/worker/utils/swallow'
 import { type GradeMargin, type QtyTier } from '@/lib/distributor-pricing'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+// 🔐 2026-06-28 (대표 "큰 리팩터"): 셀러 토큰 파싱은 서비스 중립 공용 유틸로 이동(`@/worker/utils/seller-auth`).
+//   기존 import 경로(`from './wholesale-helpers'`) 보존을 위해 re-export — wholesale.routes/wholesale-deposit 등 무수정.
+export { sellerIdFrom, sellerIdFromCookieGet } from '@/worker/utils/seller-auth'
 
 // ── B2B 주문 테이블 (선결제). 멱등 ensure. ───────────────────────────────────
 const _whEnsured = new WeakSet<object>()
@@ -51,17 +54,58 @@ export async function ensureOrderTables(DB: D1Database) {
     courier TEXT,
     tracking_number TEXT,
     shipped_at DATETIME,
-    line_status TEXT NOT NULL DEFAULT 'PENDING'
+    line_status TEXT NOT NULL DEFAULT 'PENDING',
+    accepted_at DATETIME,
+    option_label TEXT,
+    ext_order_no TEXT,
+    ship_to_name TEXT,
+    ship_to_phone TEXT,
+    ship_to_postal TEXT,
+    ship_to_address TEXT,
+    ship_to_message TEXT
   )`).run().catch(swallow('wholesale:create-items'))
+  // 🏭 2026-07-01 (라이브 감사 — 라인단위 수락): 제조사별 수락 시각. line_status(발송/환불 게이트)는
+  //   건드리지 않고(수락해도 PENDING 유지 → 발송 가능) accepted_at 로만 수락 표시(다제조사 독립 수락).
+  await DB.prepare('ALTER TABLE wholesale_order_items ADD COLUMN accepted_at DATETIME').run().catch(swallow('wholesale:items-accepted-at'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))
   // 🛡️ 2026-06-09 perf: 결제확인(confirm)의 toss_order_id 조회 + 정산 멱등확인(order_id,source) — 주문 누적 시 풀스캔 방지.
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_toss ON wholesale_orders(toss_order_id)`).run().catch(swallow('wholesale:idx4'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_supplier_settlements_order_source ON supplier_settlements(order_id, source)`).run().catch(swallow('wholesale:idx5'))
+  // 🛡️ 2026-06-19 (머니 감사): 정산 멱등의 근간 — UNIQUE(order_id, product_id, source). 도매 적립/클로백의
+  //   ON CONFLICT 타겟. repair-schema(idx_supplier_settle_unique)에도 있지만 self-heal 로 ensure 에도 보장
+  //   (미실행 env 에서 ON CONFLICT 타겟 부재로 throw 되는 것 방지). 기존 중복행 있으면 생성 실패→swallow(정리 후 재생성).
+  await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_settle_unique ON supplier_settlements(order_id, product_id, source)`).run().catch(swallow('wholesale:idx-settle-unique'))
   // 🚚 2026-06-09 배송정책: wholesale_orders.shipping_total — 주문에 합산된 (제조사별) 배송비 총액.
   //   grand total = subtotal + shipping_total. 보상환불은 (subtotal+shipping_total) 전액 환불.
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-total'))
+  // 🏭 2026-06-27 (대표 — B2B 플로우 완성): 수락/거절/취소/구매확정 단계 타임스탬프 + 사유 (best-effort self-heal).
+  //   PENDING→PAID→ACCEPTED→SHIPPED→DONE + REJECTED/CANCELLED. 상태머신(wholesale-order-status.ts) 이 전이 관리.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN accepted_at DATETIME').run().catch(swallow('wholesale:alter-accepted-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN rejected_at DATETIME').run().catch(swallow('wholesale:alter-rejected-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN reject_reason TEXT').run().catch(swallow('wholesale:alter-reject-reason'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancelled_at DATETIME').run().catch(swallow('wholesale:alter-cancelled-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancel_reason TEXT').run().catch(swallow('wholesale:alter-cancel-reason'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN confirmed_at DATETIME').run().catch(swallow('wholesale:alter-confirmed-at'))
+  // 🚚 2026-06-29 (대표 — 배송 메시지 주문 전달): 단일주문은 ship_to_* 가 주문 헤더에 있으므로 메시지도 헤더에.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN ship_to_message TEXT').run().catch(swallow('wholesale:alter-ship-message'))
+  // 🛡️ 2026-06-28 (머니 P0 — 배송비 이중환불 차단): 라인 스코프 환불의 배송비 단발 환불 멱등 마커.
+  //   전량환불 도달 시 단 하나의 호출만 배송비를 환불(CAS WHERE shipping_refunded=0). 동시 다라인/다제조사
+  //   환불에서 stale snapshot 기반 배송비 gap 이 이중 환불되던 것 차단.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_refunded INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-refunded'))
+  // 📦 2026-06-29 (대표 — 대량발주 드랍십): 라인별 옵션(상품상세) + 받는사람별 배송지. 같은 상품이라도
+  //   행마다 다른 고객에게 직배(드랍십)되므로 라인 단위로 보관 — 제조사가 라인별 송장 발행. 금액 경로 불변
+  //   (옵션/배송지는 비가격 패스스루). best-effort self-heal — 기존 env 에 컬럼 추가(신규는 위 CREATE 포함).
+  for (const sql of [
+    'ALTER TABLE wholesale_order_items ADD COLUMN option_label TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ext_order_no TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_name TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_phone TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_postal TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_address TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_message TEXT',
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:alter-item-dropship')) }
 }
 
 // ── 🚚 2026-06-09 제조사(공급자)별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────
@@ -239,31 +283,15 @@ export async function loadSellerCredit(DB: D1Database, sellerId: number): Promis
   return { limit, outstanding, frozen, available: Math.max(0, limit - outstanding), status: row?.status ?? null }
 }
 
-// ── 셀러(판매사) JWT → seller_id ──────────────────────────────────────────────
-export async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
-
-// 🔐 2026-06-11 SSR Phase 2-F (docs/SSR_PHASE2_AUTH.md §3.3): beta(SSR) loader 가 forward 한
-//   httpOnly ud_seller_token 쿠키 fallback. 이 파일 라우트들은 requireAuth 미들웨어를 안 거쳐
-//   auth.ts 의 쿠키 fallback 이 적용되지 않음 → 자체 보강. **GET/HEAD 에서만** 동작(CSRF 표면 0)
-//   — 쓰기(POST/PATCH/DELETE)는 계속 Bearer 전용. 토큰 값/검증 경로는 sellerIdFrom 재사용(단일 유지).
-export async function sellerIdFromCookieGet(
-  c: { req: { method: string; header: (name: string) => string | undefined } },
-  jwtSecret: string,
-): Promise<number | null> {
-  const method = c.req.method.toUpperCase()
-  if (method !== 'GET' && method !== 'HEAD') return null
-  const m = (c.req.header('Cookie') || '').match(/(?:^|;\s*)ud_seller_token=([^;]+)/)
-  if (!m) return null
-  return sellerIdFrom('Bearer ' + decodeURIComponent(m[1]), jwtSecret)
+// 🔐 2026-06-24 (전수조사): 판매사 토큰은 30일 유효 + status 를 발급시점에 박제 → sellerIdFrom(seller-auth) 은 서명만 검증.
+//   승인 후 정지/거부된 판매사가 만료 전까지 발주·충전(예치금 차감/충전요청)을 계속할 수 있던 갭을 닫기 위한
+//   **요청시점 status 재검사**. reject-list(정지/거부/대기/차단)만 차단 → approved/active(정상 happy-path)는 불변.
+//   fail-open: status 조회 실패 시 차단 안 함(정상 발주를 transient DB 오류로 막지 않음).
+const BLOCKED_SELLER_STATUSES = new Set(['suspended', 'rejected', 'banned', 'deleted', 'pending'])
+export async function isSellerBlocked(DB: D1Database, sellerId: number): Promise<boolean> {
+  const row = await DB.prepare('SELECT status FROM sellers WHERE id = ?').bind(sellerId)
+    .first<{ status: string | null }>().catch(() => null)
+  return BLOCKED_SELLER_STATUSES.has(String(row?.status || '').toLowerCase())
 }
 
 // ── 👥 2026-06-09 판매사 직원 서브계정 ────────────────────────────────────────
@@ -422,6 +450,39 @@ export async function ensureDistributorSellerSchema(DB: D1Database) {
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:ensure-schema')) }
 }
 
+/**
+ * 🏭 2026-06-30 [서비스 분리 SSOT] "도매 전용(순수 판매사)" 판별 — 셀러 대시보드 ↔ 도매몰 라우팅 단일 진실원천.
+ *
+ * 배경(대표 신고 — `/seller` 들어가면 `/wholesale` 로 튕김): `SellerLayout` 이 `is_distributor === 1`
+ *   하나로 셀러 대시보드 접근을 막아, **소비자 셀러 + 판매사 겸업** 계정이 대시보드에서 영구 차단됐다.
+ *   문제는 `is_distributor` 가 "도매 접근 권한 있음"(capability)일 뿐 "도매 전용"(exclusivity)이 아니라는 것.
+ *   기존 셀러가 `/become-distributor` 한 번만 해도 같은 셀러 행에 `is_distributor=1` 이 덧붙어 겸업이 된다.
+ *
+ * 규칙(애매하면 false=대시보드 노출 — **절대 lock-out 금지**, 편향은 안전한 쪽으로):
+ *   아래를 **모두** 만족할 때만 '도매 전용'(true):
+ *     · is_distributor = 1
+ *     · seller_type ∉ { store_owner, both }   (소비자 매장 운영자는 언제나 셀러)
+ *     · 소비자(비-도매) 상품이 하나도 없음      (있으면 겸업 — 셀러 대시보드 필요)
+ *
+ *   클라이언트 localStorage(`is_distributor`)는 coarse hint 로만 쓰고, 실제 라우팅 판정은
+ *   반드시 이 서버 권위 함수로 한다. → 표면(SellerLayout/SellerLoginPage)에서 `is_distributor`
+ *   직접 비교로 도매몰 redirect 하는 패턴은 `check-seller-wholesale-redirect.mjs` 가 차단.
+ */
+export async function computeWholesaleOnly(DB: D1Database, sellerId: number): Promise<boolean> {
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return false
+  const s = await DB.prepare('SELECT is_distributor, seller_type FROM sellers WHERE id = ? LIMIT 1')
+    .bind(sellerId).first<{ is_distributor: number | null; seller_type: string | null }>().catch(() => null)
+  if (!s || !s.is_distributor) return false
+  const st = String(s.seller_type || '')
+  if (st === 'store_owner' || st === 'both') return false // 소비자 매장 운영자 → 항상 셀러
+  // 소비자(비-도매) 상품을 하나라도 보유 → 겸업 → 셀러 대시보드 유지(도매 전용 아님).
+  const consumerProduct = await DB.prepare(
+    "SELECT 1 AS x FROM products WHERE seller_id = ? AND COALESCE(is_supply_product, 0) = 0 LIMIT 1"
+  ).bind(sellerId).first<{ x: number }>().catch(() => null)
+  if (consumerProduct) return false
+  return true
+}
+
 // 🔔 2026-06-12 (도매몰 감사 fix): 주문 PAID 확정 시 라인의 제조사들에게 "새 도매 주문" 알림.
 //   기존엔 대시보드 방문 시 발송대기 배지 집계뿐 — 제조사가 접속 전엔 신규 주문을 몰라 발송 지연.
 //   fail-soft(알림 실패가 결제를 절대 막지 않음) + PAID CAS 승자 경로에서만 호출(중복 알림 방지).
@@ -440,6 +501,24 @@ export async function notifySuppliersOfPaidOrder(DB: D1Database, orderId: number
       `주문 #${orderId} — 품목 ${r.line_cnt}건 / 수량 ${r.unit_cnt}개 발송을 준비해주세요.`,
       '/supplier/wholesale-orders',
     ).catch(swallow('wholesale:notify-supplier-order'))
+  }
+}
+
+/**
+ * 🔔 2026-06-27 (라이프사이클 알림 완성): 주문에 라인이 있는 모든 제조사(공급자)에게 단일 이벤트 알림.
+ *   구매확정(DONE)/취소(CANCELLED) 등 — 기존엔 신규주문/발송 알림만 있고 확정·취소 통지가 없어 제조사가
+ *   정산 성숙/주문 취소를 대시보드에서 몰랐음. fail-soft(알림 실패가 본 처리를 막지 않음).
+ */
+export async function notifySuppliersOfOrderEvent(
+  DB: D1Database, orderId: number, type: string, title: string, body: string, link = '/supplier/wholesale-orders',
+): Promise<void> {
+  const rows = await DB.prepare(
+    `SELECT DISTINCT supplier_id FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL`
+  ).bind(orderId).all<{ supplier_id: number }>()
+  for (const r of rows.results || []) {
+    if (!Number.isFinite(r.supplier_id) || r.supplier_id <= 0) continue
+    await createDashboardNotification(DB, 'supplier', String(r.supplier_id), type, title, body, link)
+      .catch(swallow('wholesale:notify-supplier-event'))
   }
 }
 

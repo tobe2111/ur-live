@@ -6,7 +6,6 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function AdminLoginPage() {
@@ -17,6 +16,9 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   // 🛡️ 2026-05-03: Turnstile token (TURNSTILE_SITE_KEY 미설정 시 'disabled' 자동 통과)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도(특히 비번→PIN 2단계) 전 토큰 재발급 — 일회용 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -24,6 +26,10 @@ export default function AdminLoginPage() {
   // 🆕 2026-06-17 보안 PIN: PIN 칸은 처음부터 노출(한 번에 입력). needPin=true 면 강조(서버가 pin_required 반환).
   const [needPin, setNeedPin] = useState(false)
   const [pin, setPin] = useState('')
+  // 🔐 2026-07-11 (보안감사 R3 ④) 로그인 TOTP: 2FA 등록 계정은 서버가 ADMIN_2FA_REQUIRED/INVALID(401,
+  //   totp_required)를 반환 → OTP 칸 노출 후 totp_code 와 함께 재제출. 미등록 계정은 칸 자체가 안 보임.
+  const [needOtp, setNeedOtp] = useState(false)
+  const [otp, setOtp] = useState('')
 
   // Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forAdmin)에서 처리)
   useEffect(() => {
@@ -53,14 +59,18 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
-      clearAuthData('user')
+      // 🛡️ 2026-06-26 (대표 신고 — 유저↔어드민 상호 로그아웃 근본수정):
+      //   기존엔 어드민 로그인 시작 시 무조건 clearAuthData('user') 로 소비자 세션을 파괴했음.
+      //   KR 에선 clearAuthData 가 /api/auth/logout-cookies 까지 호출해 httpOnly ur_session 쿠키를
+      //   없애므로 "어드민 로그인 = 유저 강제 로그아웃". 코드베이스의 이중 로그인 '공존' 설계
+      //   (RouteGuards 토큰존재 기반 + 아래 line 'User 세션 보호' 주석)와 정면 모순이었다.
+      //   KR 소비자 세션(쿠키)은 어드민 Bearer 와 독립이라 공존 가능 → 파괴하지 않는다.
+      //   글로벌(Firebase)만 기존대로 정리 + signOut (Bearer 공간/토큰 일관성 유지).
       clearFirebaseTokenCache()
-      // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
-      //   글로벌만 Firebase signOut 시도 (3초 타임아웃 hang 방지).
       try {
         const { isKorea } = await import('@/config/region')
         if (!isKorea()) {
+          clearAuthData('user')
           const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
           await Promise.race([
             signOutPromise,
@@ -76,6 +86,7 @@ export default function AdminLoginPage() {
         password,
         turnstile_token: turnstileToken,
         pin: pin.trim() || undefined,
+        totp_code: otp.trim() || undefined, // 🔐 2FA 등록 계정만 필요 — 비우면 미전송
       })
 
       // 🆕 보안 PIN: 서버가 PIN 요구(미입력/형식오류) → PIN 입력 단계로.
@@ -83,6 +94,8 @@ export default function AdminLoginPage() {
         setNeedPin(true)
         setError(response.data.error || response.data.message || '6자리 보안 PIN을 입력하세요')
         setLoading(false)
+        // 🛡️ 1차 제출이 Turnstile 토큰을 이미 소비 → PIN 재제출 전 새 토큰 발급(재사용 403 방지).
+        refreshTurnstile()
         return
       }
 
@@ -120,6 +133,14 @@ export default function AdminLoginPage() {
         }
         localStorage.removeItem('admin_must_set_pin')
 
+        // 🔐 2026-07-11 (보안감사 R3 ④): finance/super 인데 2FA 미등록 → 설정 페이지로 유도 (must_set_pin 미러).
+        //   토큰은 이미 발급됨(잠금 없음) — 안내 후 /admin/2fa 에서 인증앱 등록. 등록 후부터 로그인에 OTP 필수.
+        if (response.data.data.must_set_2fa) {
+          toast.error('이 계정(재무/슈퍼 권한)은 2단계 인증(OTP) 등록이 필요합니다. 인증 앱을 등록해주세요.')
+          navigate('/admin/2fa', { replace: true })
+          return
+        }
+
         // 🆕 도매 파트너(wholesale)는 소비자 어드민 홈(/admin) 접근 불가 → 도매 통합 현황으로 랜딩.
         const landing = String(admin.role || '').toLowerCase() === 'wholesale' ? '/admin/wholesale-overview' : '/admin'
         navigate(landing, { replace: true })
@@ -128,7 +149,11 @@ export default function AdminLoginPage() {
       if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
       // 🆕 보안 PIN: 잘못된 PIN(401)도 pin_required → PIN 단계 유지.
       if (err.response?.data?.pin_required) setNeedPin(true)
+      // 🔐 2FA 등록 계정: ADMIN_2FA_REQUIRED(코드 부재)/ADMIN_2FA_INVALID(불일치) → OTP 입력 칸 노출 후 재제출.
+      if (err.response?.data?.totp_required) setNeedOtp(true)
       setError(err.response?.data?.message || err.response?.data?.error || t('admin.login.failed'))
+      // 🛡️ 실패(비번/PIN/OTP 오류 또는 Turnstile 403) → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -263,6 +288,31 @@ export default function AdminLoginPage() {
                 </p>
               </div>
 
+              {/* 🔐 2026-07-11 (보안감사 R3 ④) OTP — 2FA 등록 계정이 서버 totp_required 를 받으면 노출. */}
+              {needOtp && (
+                <div>
+                  <label htmlFor="admin-otp" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    2단계 인증 코드 (OTP)
+                  </label>
+                  <input
+                    id="admin-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    aria-label="2단계 인증 코드"
+                    autoFocus
+                    className="w-full px-4 py-3 border border-[#9ca3af] rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] focus:border-transparent"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    이 계정은 2단계 인증이 설정되어 있습니다. 인증 앱(Google Authenticator 등)의 6자리 코드를 입력하세요.
+                  </p>
+                </div>
+              )}
+
               {/* Remember Me */}
               <div className="flex items-center gap-2">
                 <input
@@ -280,8 +330,7 @@ export default function AdminLoginPage() {
                 </label>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge (VITE_TURNSTILE_SITE_KEY 미설정 시 자동 통과) */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               <button
                 type="submit"

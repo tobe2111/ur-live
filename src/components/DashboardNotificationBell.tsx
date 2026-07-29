@@ -16,6 +16,9 @@ interface Notification {
 
 interface Props {
   tokenKey: 'admin_token' | 'seller_token' | 'agency_token'
+  // 🔔 2026-06-30: 다크 배경(도매 유틸바)용 색 오버라이드 — 미지정이면 기존 라이트 대시보드 스타일 유지(additive).
+  iconClassName?: string
+  buttonClassName?: string
 }
 
 function timeAgo(dateStr: string): string {
@@ -31,7 +34,7 @@ function timeAgo(dateStr: string): string {
   return `${days}일 전`
 }
 
-export default function DashboardNotificationBell({ tokenKey }: Props) {
+export default function DashboardNotificationBell({ tokenKey, iconClassName, buttonClassName }: Props) {
   const { t } = useTranslation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -142,12 +145,12 @@ export default function DashboardNotificationBell({ tokenKey }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className={`relative p-2 rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
         aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <Bell className="w-5 h-5 text-gray-600" />
+        <Bell className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
             {unreadCount > 99 ? '99+' : unreadCount}

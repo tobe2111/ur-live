@@ -50,8 +50,8 @@ app.get('/health', (c) => {
 app.get('/api/*', (c) => {
   return c.json({
     success: false,
-    error: 'Please use the main API at https://live.ur-team.com/api',
-    redirect: 'https://live.ur-team.com' + c.req.path
+    error: 'Please use the main API at https://urdeal.kr/api',
+    redirect: 'https://urdeal.kr' + c.req.path
   }, 302);
 });
 

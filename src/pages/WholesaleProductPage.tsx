@@ -2,22 +2,18 @@ import { lazy, Suspense, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle, Store } from 'lucide-react'
+import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { cfImage } from '@/utils/cf-image'
+import { StickyActionBar } from '@/components/ui/sticky-action-bar'
 import { WT, won, comma, discountRate, unitMargin, marginVsRetail, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // 💬 채팅 위젯은 lazy — 상품 상세 초기 청크에 채팅 코드 0 byte(버튼 클릭 시에만 fetch).
 //   (floating FAB 없이 위젯만 직접 mount — 상품 상세는 인라인 "제조사에 문의" 버튼이 트리거)
 const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
-// 🛒 스마트스토어 내보내기 모달 — lazy (연동 안 쓰는 판매사는 chunk 비용 0).
-const NaverExportModal = lazy(() => import('@/pages/wholesale/NaverExportModal'))
-// 🛒 쿠팡 내보내기 모달 — lazy (연결 폼 내장).
-const CoupangExportModal = lazy(() => import('@/pages/wholesale/CoupangExportModal'))
-// 📊 시장 신호 카드 — lazy (로그인 판매사만 마운트, 키 미설정이면 자체 숨김).
-const MarketSignalCard = lazy(() => import('@/pages/wholesale/MarketSignalCard'))
+// 🛒 2026-06-29 (대표 요청): 상품 상세의 스마트스토어/쿠팡 등록 버튼·모달 제거.
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
 //   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 수량 구간별 단가표(volume tier) + 하단 고정 CTA.
@@ -28,6 +24,8 @@ interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   // 🖼️ 2026-06-12: 상세페이지 이미지(썸네일과 분리) — 상세설명 탭에 세로 갤러리.
   detail_images?: string[]
+  // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — 썸네일(image_url)과 함께 상단 캐러셀.
+  gallery_images?: string[]
   category: string | null; stock: number; distributor_price: number | null
   retail_price?: number | null; moq?: number; pack_size?: number; order_multiple?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
   // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
@@ -35,6 +33,8 @@ interface DetailItem {
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
   // 🚚 2026-06-16: 상품별 배송비(설정 시 정책 배송비보다 우선). null = 미설정 → 정책 배송비 폴백.
   product_shipping_fee?: number | null
+  // 🏭 2026-06-29: 상품코드(카테고리 접두어 FD/LV/HT + 제조사 입력). null = 미입력 → 미노출.
+  product_code?: string | null
   // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있는 상품만 true → '제조사에 문의' 노출.
   inquirable?: boolean
 }
@@ -89,20 +89,18 @@ export default function WholesaleProductPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const h = { headers: { Authorization: `Bearer ${token}` } }
 
-  const { data, isLoading: loading } = useWholesaleProduct(id)
+  const { data, isLoading: loading, isError, refetch } = useWholesaleProduct(id)
   const item = (data?.item ?? null) as DetailItem | null
   const grade = data?.grade ?? ''
   const [qty, setQty] = useState(1)
-  const [ordering, setOrdering] = useState(false)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
+  // 🖼️ 2026-06-30: 대표 이미지 캐러셀 — 썸네일(image_url) + 갤러리(gallery_images) 순서·중복제거. 선택 인덱스 clamp.
+  const [galleryIdx, setGalleryIdx] = useState(0)
   const cart = useWholesaleCart()
 
   // 💬 "제조사에 문의" — 로그인 판매사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
   //   버튼 클릭 시에만 lazy 위젯 mount + 상품 기준 스레드 자동 진입.
   const [chatOpen, setChatOpen] = useState(false)
-  // 🛒 2026-06-12: 스마트스토어/쿠팡 내보내기 모달.
-  const [naverOpen, setNaverOpen] = useState(false)
-  const [coupangOpen, setCoupangOpen] = useState(false)
 
   // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 상태.
   //   로그인 + 품절일 때만 노출. 내 구독 목록(/restock/subscriptions)에서 이 상품 포함 여부로 초기화.
@@ -163,33 +161,37 @@ export default function WholesaleProductPage() {
 
   function addToCart() {
     if (!item) return
-    if (item.distributor_price == null) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
+    // 🏭 2026-06-27 (대표 신고 — 로그인했는데 '로그인하면…' 토스트): 로그인 판정은 토큰으로.
+    //   기존 `distributor_price == null` 게이트는 로그인 상태인데 등급 공급가 미설정/스테일이면 잘못 로그인 유도.
+    if (!token) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
+    if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
-  async function placeOrder() {
-    if (!item || ordering) return
-    if (item.distributor_price == null) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
+  // 🏭 2026-06-29 (대표 — '바로 주문'은 주문/결제 페이지로): 인라인 즉시차감 시트 대신, 이 상품을 카트에
+  //   담아 도매 주문/결제 페이지(/wholesale/checkout — 주문상품·배송지·예치금 결제)로 이동. 실제 예치금
+  //   차감은 체크아웃의 '결제'에서만(상품 상세에서 즉시차감 X).
+  function placeOrder() {
+    if (!item) return
+    // 🏭 2026-06-27 (대표 신고): 로그인 판정은 토큰으로 — 가격 null(등급 미설정/스테일)은 로그인 유도 아님.
+    if (!token) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
+    if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
-    setOrdering(true)
-    try {
-      const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }] }, h)
-      if (r.data.success) {
-        navigate(`/wholesale/checkout?order=${r.data.order_id}`, { state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name } })
-      } else { toast.error(r.data.error || '주문 생성 실패') }
-    } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문 생성 중 오류')
-    } finally { setOrdering(false) }
+    // 현재 수량 구간 단가 스냅샷(표시용 — 결제액은 체크아웃에서 서버 재계산 SSOT).
+    let unit = item.distributor_price, bm = 0
+    for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
+    navigate('/wholesale/checkout')
   }
 
   // 🏭 perf: 풀스크린 스피너 대신 상세 레이아웃 스켈레톤(빈 화면 X — 체감 로딩 ↓).
   if (loading) return (
-    <div className="min-h-screen pb-28" style={{ background: '#fff' }}>
+    <div className="min-h-[100dvh] pb-28" style={{ background: '#fff' }}>
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <ArrowLeft className="w-5 h-5" style={{ color: WT.ink4 }} />
@@ -210,8 +212,18 @@ export default function WholesaleProductPage() {
     </div>
   )
   if (!item) {
+    // 🛡️ fetch 실패(네트워크/5xx)는 '없는 상품'이 아니라 일시 오류 — 재시도 노출(빈 not-found 위장 방지).
+    if (isError) {
+      return (
+        <div className="min-h-[100dvh] flex flex-col items-center justify-center" style={{ background: '#fff' }}>
+          <p className="mb-1 text-[15px] font-medium" style={{ color: WT.ink2 }}>상품을 불러오지 못했어요</p>
+          <p className="mb-4 text-[13px]" style={{ color: WT.ink4 }}>네트워크 상태를 확인해주세요.</p>
+          <button onClick={() => refetch()} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+        </div>
+      )
+    }
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#fff' }}>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center" style={{ background: '#fff' }}>
         <p className="mb-4 text-[14px]" style={{ color: WT.ink3 }}>상품을 찾을 수 없습니다.</p>
         <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>카탈로그로</button>
       </div>
@@ -228,6 +240,8 @@ export default function WholesaleProductPage() {
   //   '로그인하세요' 가 잘못 뜸. 토큰 있으면(로그인) 절대 로그인 UI 안 띄움 — 가격은 useWholesaleProduct 의
   //   인증별 캐시 키로 fresh 보장. (가격 null 가드는 담기/주문 액션에 별도로 남아 안전.)
   const locked = !token // 비로그인(토큰 없음) → 가격 가림 + 로그인 유도
+  // 🏭 2026-06-27 (대표 신고 — ₩0 오표시): 로그인했지만 이 등급의 공급가가 미설정(null/0)이면 '미설정' 안내.
+  const priceUnset = !(item.distributor_price && item.distributor_price > 0)
   // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
   let effUnit = item.distributor_price ?? 0, bestMin = 0
   for (const t of tiers) if (qty >= t.min_qty && t.min_qty >= bestMin) { bestMin = t.min_qty; effUnit = t.unit_price }
@@ -239,7 +253,10 @@ export default function WholesaleProductPage() {
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#fff', color: WT.ink }}>
+    // 🏭 2026-06-27 (대표 신고 — 모바일 하단 잘림): 하단 여백은 더 이상 고정 숫자(pb-28)로 손맞춤하지 않는다.
+    //   하단 고정 CTA 바를 <StickyActionBar> 로 두면 바 높이(+iOS safe-area)만큼 spacer 가 자동 삽입돼
+    //   본문이 항상 바를 비운다(드리프트 구조적 불가). 루트는 min-h-[100dvh] 만.
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
       <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="판매사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
@@ -251,17 +268,43 @@ export default function WholesaleProductPage() {
       </header>
 
       <main className="ur-content-wide px-5 lg:px-8 py-5 lg:flex lg:gap-8">
-        {/* 갤러리 */}
-        <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
-          <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-            {item.image_url && <img src={cfImage(item.image_url, { width: 800, format: 'auto' }) || item.image_url} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
-          </div>
-        </div>
+        {/* 갤러리 — 썸네일 + 대표 이미지(여러 각도). 중복 제거, 순서 보존. */}
+        {(() => {
+          const gallery = Array.from(new Set([item.image_url, ...(item.gallery_images ?? [])].filter((u): u is string => !!u)))
+          const activeIdx = gallery.length ? Math.min(galleryIdx, gallery.length - 1) : 0
+          const main = gallery[activeIdx]
+          return (
+            <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
+              <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
+                {main && <img src={cfImage(main, { width: 800, format: 'auto' }) || main} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
+              </div>
+              {gallery.length > 1 && (
+                <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
+                  {gallery.map((u, i) => (
+                    <button key={u + i} type="button" onClick={() => setGalleryIdx(i)} aria-label={`이미지 ${i + 1}`}
+                      className="w-14 h-14 rounded-lg overflow-hidden shrink-0 transition-all"
+                      style={{ border: `2px solid ${i === activeIdx ? WT.brand : WT.line}`, opacity: i === activeIdx ? 1 : 0.65 }}>
+                      <img src={cfImage(u, { width: 120, format: 'auto' }) || u} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* 정보 */}
         <div className="flex-1 min-w-0">
           {catLabel && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold mb-2.5" style={{ background: WT.fill, color: WT.ink2 }}>{catLabel}</span>}
           <h2 className="font-extrabold tracking-[-0.01em] leading-snug text-[21px] lg:text-[26px]" style={{ color: WT.ink }}>{item.name}</h2>
+          {/* 🏭 2026-06-29: 상품코드 — 카테고리 접두어(FD/LV/HT) + 제조사 입력. 미입력이면 미노출. */}
+          {item.product_code && (
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold tracking-wide font-mono"
+              style={{ background: WT.fill, color: WT.ink3, border: '1px solid ' + WT.line }}>
+              <span style={{ color: WT.ink4 }}>상품코드</span>
+              <span className="tabular-nums" style={{ color: WT.ink2 }}>{item.product_code}</span>
+            </div>
+          )}
 
           {locked ? (
             // 비로그인: 도매가 숨김 + 로그인/가입 유도
@@ -269,7 +312,7 @@ export default function WholesaleProductPage() {
               <div className="flex items-center gap-2 text-[14px] font-bold" style={{ color: WT.ink }}>
                 <Lock className="w-4 h-4" style={{ color: WT.brand }} /> 등급 공급가는 로그인 후 확인할 수 있어요
               </div>
-              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>판매사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
+              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>사업자 정보 확인 후 승인되면 내 등급 공급가로 사입할 수 있어요</p>
               <div className="mt-3 flex gap-2.5">
                 <button onClick={goLogin} className="flex-1 h-12 rounded-xl text-[15px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>로그인</button>
                 <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>판매사 가입</button>
@@ -281,10 +324,17 @@ export default function WholesaleProductPage() {
                 <span className="inline-flex items-center font-bold rounded-full px-2.5 py-0.5 text-[13px]" style={{ color: WT.brand, background: WT.brandSoft }}>{GRADE_LABEL[grade] || grade}등급가</span>
                 <span className="text-[13px]" style={{ color: WT.ink3 }}>개당 공급가</span>
               </div>
-              <div className="mt-1.5 flex items-end gap-2.5">
-                <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price ?? 0)}</span>
-                {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
-              </div>
+              {priceUnset ? (
+                <div className="mt-1.5">
+                  <span className="font-extrabold tracking-[-0.01em] leading-none text-[22px] lg:text-[26px]" style={{ color: WT.ink3 }}>공급가 미설정</span>
+                  <p className="mt-1 text-[13px]" style={{ color: WT.ink4 }}>회원님 등급의 공급가가 아직 설정되지 않았어요 · 제조사에 문의해주세요</p>
+                </div>
+              ) : (
+                <div className="mt-1.5 flex items-end gap-2.5">
+                  <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price ?? 0)}</span>
+                  {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
+                </div>
+              )}
               <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
                 {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
                 {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won((item.distributor_price ?? 0) * moq)}</span></>}
@@ -331,12 +381,7 @@ export default function WholesaleProductPage() {
             )
           })()}
 
-          {/* 📊 2026-06-12 (감사 개선 ⑤): 시장 신호 — 시중 최저가 vs 내 공급가, 수요/시즌. 사입 확신 보조. */}
-          {!locked && token && (
-            <Suspense fallback={null}>
-              <MarketSignalCard name={item.name} category={item.category} distributorPrice={item.distributor_price} />
-            </Suspense>
-          )}
+          {/* 📊 2026-06-29 (대표 요청): 시장 신호(네이버쇼핑 최저가 참고) 제거 — 정확도 낮고 불필요. */}
 
           {/* 💬 제조사에 문의 — 로그인 판매사 + 연결된 제조사 있는 상품만(데모/관리자 상품은 숨김). */}
           {!locked && token && item.inquirable !== false && (
@@ -349,30 +394,6 @@ export default function WholesaleProductPage() {
               <MessageCircle className="w-4.5 h-4.5" style={{ color: WT.brand }} />
               제조사에 문의
             </button>
-          )}
-
-          {/* 🛒 2026-06-12 — 스마트스토어/쿠팡 내보내기 (로그인 판매사만). 사입 즉시 양대 채널 등록. */}
-          {!locked && token && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setNaverOpen(true)}
-                className="h-12 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5"
-                style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
-              >
-                <Store className="w-4 h-4" style={{ color: '#03C75A' }} />
-                스마트스토어 등록
-              </button>
-              <button
-                type="button"
-                onClick={() => setCoupangOpen(true)}
-                className="h-12 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5"
-                style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
-              >
-                <Store className="w-4 h-4" style={{ color: '#346AFF' }} />
-                쿠팡 등록
-              </button>
-            </div>
           )}
 
           {/* 데스크톱 인라인 CTA */}
@@ -403,9 +424,9 @@ export default function WholesaleProductPage() {
             ) : (
               <div className="mt-3 flex gap-2.5">
                 <button onClick={addToCart} className="px-7 h-14 rounded-2xl text-[16px] font-bold" style={{ background: WT.fill, color: WT.ink }}>담기</button>
-                <button onClick={placeOrder} disabled={ordering}
-                  className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-                  {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : '바로 주문'}
+                <button onClick={placeOrder}
+                  className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white" style={{ background: WT.brand }}>
+                  바로 주문
                 </button>
               </div>
             )}
@@ -439,13 +460,13 @@ export default function WholesaleProductPage() {
             )}
           </>)}
           {tab === 'ship' && <p>주문 확정 후 1~2 영업일 내 출고됩니다. 한 주문에 같은 제조사 상품은 합배송될 수 있어요. 도서산간은 추가 배송비가 발생할 수 있어요.</p>}
-          {tab === 'settle' && <p>브랜드 상품은 출고 익일, 일반 상품은 출고 후 7일에 정산돼요. 정산 내역은 <b style={{ color: WT.ink }}>거래내역</b>에서 확인할 수 있어요.</p>}
+          {tab === 'settle' && <p>정산은 발주가 속한 주(월~일)의 <b style={{ color: WT.ink }}>다음 주 목요일</b>에 처리돼요(발송 완료분 기준). 정산 내역은 <b style={{ color: WT.ink }}>거래내역</b>에서 확인할 수 있어요.</p>}
           {tab === 'return' && <p>단순 변심 반품은 미개봉 상태에 한해 출고일로부터 7일 내 가능합니다. 식품·위생용품은 개봉 시 교환·반품이 제한돼요.</p>}
         </div>
       </div>
 
-      {/* 모바일 하단 고정 CTA */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white z-40 px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+      {/* 모바일 하단 고정 CTA — StickyActionBar(자동 spacer)로 본문 하단 잘림 구조적 차단. */}
+      <StickyActionBar responsiveClassName="lg:hidden" className="bg-white px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         {locked ? (
           <button onClick={goLogin} className="w-full h-14 rounded-2xl text-[16px] font-bold text-white flex items-center justify-center gap-2" style={{ background: WT.brand }}>
             <Lock className="w-5 h-5" /> 로그인하고 공급가 확인
@@ -471,13 +492,13 @@ export default function WholesaleProductPage() {
         </div>
         <div className="flex gap-2.5">
           <button onClick={addToCart} className="px-6 h-14 rounded-2xl text-[16px] font-bold" style={{ background: WT.fill, color: WT.ink }}>담기</button>
-          <button onClick={placeOrder} disabled={ordering}
-            className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-            {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : '바로 주문'}
+          <button onClick={placeOrder}
+            className="flex-1 h-14 rounded-2xl text-[16px] font-bold text-white" style={{ background: WT.brand }}>
+            바로 주문
           </button>
         </div>
         </>)}
-      </div>
+      </StickyActionBar>
 
       {/* 💬 "제조사에 문의" 위젯 — 클릭 시에만 lazy mount, 상품 기준 스레드 자동 진입.
           🛡️ 서버가 product_id → 제조사를 서버사이드 해석 — 클라는 제조사 신원/ID 를 모름. */}
@@ -487,23 +508,7 @@ export default function WholesaleProductPage() {
         </Suspense>
       )}
 
-      {/* 🛒 스마트스토어/쿠팡 내보내기 — lazy 모달. */}
-      {naverOpen && (
-        <Suspense fallback={null}>
-          <NaverExportModal
-            product={{ id: item.id, name: item.name, retail_price: item.retail_price, distributor_price: item.distributor_price, stock: item.stock }}
-            onClose={() => setNaverOpen(false)}
-          />
-        </Suspense>
-      )}
-      {coupangOpen && (
-        <Suspense fallback={null}>
-          <CoupangExportModal
-            product={{ id: item.id, name: item.name, retail_price: item.retail_price, distributor_price: item.distributor_price, stock: item.stock }}
-            onClose={() => setCoupangOpen(false)}
-          />
-        </Suspense>
-      )}
+      {/* 🏭 2026-06-27 (대표 — 바로주문 중간 확인): 예치금 즉시차감 전 주문요약 + 차감 후 잔액 확인 시트. */}
     </div>
   )
 }

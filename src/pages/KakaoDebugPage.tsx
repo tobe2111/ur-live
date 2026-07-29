@@ -2,7 +2,7 @@
  * 카카오 로그인 디버그 페이지
  * 
  * KOE101 오류 발생 시 이 페이지로 가서 설정을 확인하세요.
- * 접속 방법: https://live.ur-team.com/debug/kakao
+ * 접속 방법: https://urdeal.kr/debug/kakao
  */
 
 import { useState, useEffect } from 'react'
@@ -69,7 +69,7 @@ export default function KakaoDebugPage() {
     }
 
     // 4. Redirect URI 확인
-    const redirectUri = 'https://live.ur-team.com/auth/kakao/sync/callback'
+    const redirectUri = 'https://urdeal.kr/auth/kakao/sync/callback'
     results.push({
       name: 'Redirect URI',
       status: 'warning',
@@ -106,7 +106,7 @@ export default function KakaoDebugPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0F151D] py-8 px-4">
       <SEO title="Debug" noindex />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
@@ -214,14 +214,14 @@ export default function KakaoDebugPage() {
                 카카오 개발자 콘솔에서 <strong>Redirect URI</strong> 등록:
                 <br />
                 <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                  https://live.ur-team.com/auth/kakao/sync/callback
+                  https://urdeal.kr/auth/kakao/sync/callback
                 </code>
               </li>
               <li>
                 <strong>카카오 로그인</strong> 활성화 확인 (제품 설정 메뉴)
               </li>
               <li>
-                <strong>Web 플랫폼</strong> 등록: <code className="bg-gray-100 px-2 py-1 rounded">https://live.ur-team.com</code>
+                <strong>Web 플랫폼</strong> 등록: <code className="bg-gray-100 px-2 py-1 rounded">https://urdeal.kr</code>
               </li>
               <li>앱 빌드 및 배포 후 테스트</li>
             </ol>

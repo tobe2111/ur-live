@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { swallow } from '@/shared/utils/swallow'
-import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen, ChevronRight } from 'lucide-react'
-import LiveStartGuideModal from './LiveStartGuideModal'
+import { CheckCircle2, Circle, Trophy, Sparkles, ChevronRight } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 
 interface OnboardingStep {
   step_key: string
@@ -23,8 +23,9 @@ interface OnboardingData {
 const STEP_LABEL: Record<string, { title: string; desc: string; path: string }> = {
   profile_complete: { title: '프로필 완성', desc: '사진/소개/주소 입력', path: '/seller/profile' },
   first_product: { title: '첫 상품 등록', desc: '판매할 상품 1개 추가', path: '/seller/products' },
-  first_live: { title: '첫 라이브 시작', desc: '15분 이상 권장', path: '/seller/live-broadcast' },
-  first_donation: { title: '첫 후원 받기', desc: '시청자에게 첫 응원', path: '/seller/donations' },
+  // 🗑️ 2026-07-07 라이브커머스 제거: first_live/first_donation 스텝은 렌더에서 숨김(아래 게이트).
+  first_live: { title: '첫 라이브 시작', desc: '15분 이상 권장', path: '/seller' },
+  first_donation: { title: '첫 후원 받기', desc: '시청자에게 첫 응원', path: '/seller' },
   first_payment: { title: '첫 결제 완료', desc: '시청자가 상품 구매', path: '/seller/orders' },
   first_alimtalk: { title: '첫 알림톡 발송', desc: '카카오톡 알림 1회', path: '/seller/alimtalk' },
 }
@@ -34,7 +35,6 @@ export default function SellerOnboardingWidget() {
   const [data, setData] = useState<OnboardingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_bootcamp_dismissed') === 'true')
-  const [showLiveGuide, setShowLiveGuide] = useState(false)
 
   useEffect(() => {
     if (dismissed) { setLoading(false); return }
@@ -95,6 +95,8 @@ export default function SellerOnboardingWidget() {
 
       <div className="space-y-1">
         {data.steps.map((s) => {
+          // 🏭 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED): '첫 라이브'·'첫 후원' 온보딩 스텝 숨김.
+          if (LIVE_COMMERCE_SUSPENDED && (s.step_key === 'first_live' || s.step_key === 'first_donation')) return null
           const meta = STEP_LABEL[s.step_key]
           if (!meta) return null
           return (
@@ -125,18 +127,7 @@ export default function SellerOnboardingWidget() {
         </div>
       )}
 
-      <button
-        onClick={() => setShowLiveGuide(true)}
-        className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
-      >
-        <BookOpen className="w-3.5 h-3.5" /> 라이브 시작 가이드 보기
-      </button>
-
-      <LiveStartGuideModal
-        open={showLiveGuide}
-        onClose={() => setShowLiveGuide(false)}
-        onContinue={() => setShowLiveGuide(false)}
-      />
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 시작 가이드' 버튼/모달 제거. */}
     </div>
   )
 }

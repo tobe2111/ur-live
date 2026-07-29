@@ -39,5 +39,5 @@ export const CACHE_DAY_TTL_S = 24 * 60 * 60;      // 1일
 // ── 비즈니스 로직 ──────────────────────────────────────────────────
 export const ORDER_AUTO_CONFIRM_DAYS = 7;         // 7일 후 자동 확정
 export const REFUND_WINDOW_DAYS = 7;              // 7일 환불 가능
-export const VOUCHER_DEFAULT_EXPIRY_DAYS = 90;    // 식사권 90일
+export const VOUCHER_DEFAULT_EXPIRY_DAYS = 90;    // 이용권 90일
 export const SETTLEMENT_PROCESSING_DAYS = 5;      // 정산 영업일 5일

@@ -56,7 +56,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
     variant === 'card-overlay'
       ? 'absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 hover:bg-pink-500 backdrop-blur transition-all'
       : variant === 'detail-floating'
-        ? 'w-11 h-11 rounded-full flex items-center justify-center bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] hover:border-pink-500 transition-all'
+        ? 'w-11 h-11 rounded-full flex items-center justify-center bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] hover:border-pink-500 transition-all'
         : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors'
 
   const icon = pinned ? '📌' : '➕'

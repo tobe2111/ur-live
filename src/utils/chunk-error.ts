@@ -29,3 +29,61 @@ export function isAppChunkUrl(url: unknown): boolean {
   const u = String(url || '')
   return /\/assets\/[^?#]*\.(?:m?js|css)(?:[?#]|$)/.test(u)
 }
+
+/**
+ * 🛡️ 2026-06-25 청크-에러 복구 reload (SSOT) — 옛 HTML(옛 청크 해시) 재서빙 방지.
+ *
+ *   plain `window.location.reload()` 의 함정: bfcache/브라우저 heuristic 캐시/edge 가
+ *   "옛 index.html" 을 그대로 돌려주면 → 그 HTML 이 참조하는 옛 청크 해시가 또 404 →
+ *   같은 ChunkLoadError 무한 → 가드가 막아 영구 흰화면 / 에러UI 루프 (사용자 신고:
+ *   /admin/wholesale-overview 흰화면 + "판매사 승인 클릭해도 페이지 안 넘어감").
+ *
+ *   해결: `__cb` 캐시버스트 토큰 + `location.replace` → bfcache 무력화 + 항상 새 문서 fetch
+ *   (새 빌드의 새 청크 해시 참조). `__cb` 는 main.tsx 부트스트랩이 마운트 후 URL 에서 제거.
+ */
+export function reloadWithCacheBust(): void {
+  try {
+    const u = new URL(window.location.href)
+    u.searchParams.set('__cb', Date.now().toString(36))
+    window.location.replace(u.toString())
+  } catch {
+    try { window.location.reload() } catch { /* URL/location 차단 환경 — silent */ }
+  }
+}
+
+let _reloadPending = false // 🛡️ 유예 재시도 중 다중 청크에러가 카운트를 소진하지 않게(재진입 가드).
+
+/**
+ * 🛡️ 청크 에러 자동복구 — 단일 루프 가드 SSOT.
+ *   index.html 인라인 부트가드 + main.tsx window 핸들러 + React ErrorBoundary 가 모두 이 함수를 통해
+ *   같은 sessionStorage 키(`__ur_chunk_reload__`)·포맷(`{n,t}`)·윈도(60초 내 2회)를 공유 → 이중 카운트·무한 reload 0.
+ *   (인라인 가드는 모듈 로드 전 실행이라 같은 로직을 하드코딩으로 별도 보유 — 키/포맷/윈도만 일치.)
+ * @returns true = 캐시버스트 새로고침 트리거함(유예 후 새 문서) / false = 5분 내 8회 초과(=stale 아닌 진짜 에러 → UI 표시)
+ *
+ * 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
+ * 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼" — /admin/influencer-pool 실사례):
+ *   전파 창이 '수초'라는 가정(0.7~2.5s 유예 × 90s 내 3회)이 실제 창(수십 초~수분)보다 짧아,
+ *   창 안에서 재시도를 소진하고 복구 오버레이가 떴음 + 버튼을 눌러도 창 안이라 또 실패("버튼 의미 없음"),
+ *   전파가 끝나면 저절로 정상("시간 지나면 됨"). → **지수 백오프 8회 / 5분 창**(0.7→1.4→2.8→5.6→
+ *   11→22→30→30s, 누적 ~104s)으로 전파 창을 브랜드 로더 상태로 통과 — 고객은 오버레이를 거의 못 봄.
+ *   무한루프는 8회 캡 + 5분 윈도가 여전히 차단.
+ *   index.html 인라인 부트가드의 reloadOnce 와 KEY/포맷/윈도(300s·8회)·유예식 동일(SSOT 미러 — 함께 갱신).
+ */
+export function recoverFromChunkError(): boolean {
+  if (_reloadPending) return true // 이미 유예 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+  try {
+    const KEY = '__ur_chunk_reload__'
+    const now = Date.now()
+    let st: { n: number; t: number } = { n: 0, t: 0 }
+    try { const raw = sessionStorage.getItem(KEY); if (raw) { const p = JSON.parse(raw); if (p && typeof p === 'object') st = p } } catch { /* 옛 포맷 — 리셋 */ }
+    const within = now - st.t < 300_000
+    if (within && st.n >= 8) return false // 5분 내 8회 — 진짜 에러 → 무한 reload 차단(수동 복구 UI)
+    const attempt = within ? st.n + 1 : 1
+    sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }))
+    _reloadPending = true
+    setTimeout(reloadWithCacheBust, Math.min(700 * Math.pow(2, attempt - 1), 30_000)) // 지수 백오프(0.7s→30s)
+    return true
+  } catch {
+    try { window.location.reload(); return true } catch { return false }
+  }
+}

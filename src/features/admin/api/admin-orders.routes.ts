@@ -18,6 +18,8 @@ import { executeQuery } from '@/worker/utils/database';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { logAudit } from '../../../lib/audit-log';
 import { auditLog } from '@/worker/middleware/audit-log';
+import { intParam } from '@/shared/pagination'
+import { buildCsv } from '@/worker/utils/csv-safe'
 
 export const adminOrdersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -76,8 +78,8 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     // 🛡️ 2026-05-27 (loading P1 — audit A): 서버 페이지네이션 + 검색.
     //   이전: LIMIT 1000 hard cap + 클라 측 slice + 클라 측 검색 → 주문 10000+ 시 timeout/OOM.
     //   변경: page/limit + 서버 검색 (order_number / shipping_name / shipping_phone) + total count.
-    const page = Math.max(1, Number.parseInt(c.req.query('page') || '1', 10) || 1);
-    const rawLimit = Number.parseInt(c.req.query('limit') || '50', 10) || 50;
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const rawLimit = intParam(c.req.query('limit'), 50);
     const limit = Math.min(500, Math.max(10, rawLimit));
     const offset = (page - 1) * limit;
 
@@ -203,12 +205,12 @@ adminOrdersRoutes.get('/orders/export', cors(), async (c) => {
 
     const orders = await executeQuery<OrderRow>(DB, q, params);
 
-    const BOM = '﻿';
-    const header = '주문번호,주문일시,주문상태,고객명,연락처,주소,운송장번호,결제금액';
-    const rows = orders.map(o =>
-      [o.order_number, o.created_at, o.status, o.shipping_name, o.shipping_phone, `"${o.shipping_address}"`, o.tracking_number, o.total_amount].join(',')
-    );
-    const csv = BOM + header + '\n' + rows.join('\n');
+    // 🛡️ 2026-07-13 (데이터 감사 3단계): 수식 인젝션 안전 CSV — 수취인명/연락처/주소 등
+    //   유저-제어 free-text 를 csvEscape(= + - @ 선행 무력화 + quote)로 내보냄(hand-rolled join 제거).
+    const header = ['주문번호', '주문일시', '주문상태', '고객명', '연락처', '주소', '운송장번호', '결제금액'];
+    const csv = buildCsv(header, orders.map(o =>
+      [o.order_number, o.created_at, o.status, o.shipping_name, o.shipping_phone, o.shipping_address, o.tracking_number, o.total_amount]
+    ));
 
     return new Response(csv, {
       headers: {

@@ -83,12 +83,12 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
+        className="bg-white dark:bg-[#0F151D] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -104,7 +104,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
               {info.title}
             </h2>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] shrink-0">
+          <button onClick={onClose} aria-label={t('common.close')} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] shrink-0">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
@@ -130,7 +130,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
           <button
             onClick={handleCopy}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-[13px]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-[13px]"
           >
             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             {copied ? 'URL 복사됨!' : 'URL 복사'}

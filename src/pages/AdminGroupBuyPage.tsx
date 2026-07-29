@@ -63,7 +63,7 @@ interface AnalyticsData {
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
-  meal_voucher: '🍽️ 식사권',
+  meal_voucher: '🍽️ 이용권',
   beauty_voucher: '💇 뷰티',
   health_voucher: '💪 헬스',
   pet_voucher: '🐶 펫',

@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
+import { safeDate } from '@/utils/safe-date'
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
 import WholesaleShippingGuide from './WholesaleShippingGuide'
@@ -52,7 +53,7 @@ const TICKET_STATUS: Record<string, { label: string; color: string }> = {
 }
 
 function fmtDate(iso: string): string {
-  try { return new Date(iso.includes('T') ? iso : iso + 'Z').toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return iso }
+  return safeDate(iso)?.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }) ?? iso
 }
 
 export default function WholesaleBoardPage() {
@@ -101,7 +102,7 @@ export default function WholesaleBoardPage() {
   useEffect(() => { if (tab === 'report' && loggedIn) loadTickets() }, [tab, loggedIn, loadTickets])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="게시판 - 유통스타트" description="공지사항, 상품 자료실, 배송 안내, 제안·신고" url="/wholesale/board" noindex />
 
       {/* 헤더 */}

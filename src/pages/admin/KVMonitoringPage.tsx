@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { RefreshCw, Activity, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatKST } from '@/utils/date'
@@ -52,6 +53,7 @@ export default function KVMonitoringPage() {
   }
 
   return (
+    <AdminLayout title="KV 모니터링">
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -250,5 +252,6 @@ export default function KVMonitoringPage() {
         </>
       )}
     </div>
+    </AdminLayout>
   )
 }

@@ -2,27 +2,213 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <!-- 🏭 2026-06-04 배포-청크 불일치 자동 복구 (가장 이상적 + 안전).
-         캐시된 옛 index.html 이 삭제된 app 청크(/assets/*.js)를 참조 → 404 → SPA fallback HTML →
-         "Expected a JavaScript module script but server responded with text/html" → 앱 부팅 실패
-         ("인터넷 연결 끊김"). 이 인라인 가드는 청크 로드 전에 실행되어, app 청크 로드 실패를
-         capture 단계로 감지 → 세션당 1회만 자동 새로고침 → 사용자는 최신 index.html 로 무중단 복구.
-         ⚠️ 제3자/외부 스크립트(예: CSP 차단된 /cdn-cgi/* email-decode)는 제외 → 불필요한 reload 0. -->
+    <!-- 🛡️ 2026-06-29 배포-청크 불일치 자동 복구 인라인 부트가드 (대표 신고 — 새 배포 후 도매몰 흰화면).
+         캐시된/edge 옛 index.html 이 삭제된 app 청크(/assets/*.js·css)를 참조 → 404 → SPA fallback HTML →
+         "Expected a JavaScript module script but server responded with text/html" → 앱 부팅 실패(흰화면).
+         이 인라인 가드는 어떤 청크보다 먼저 실행 → 엔트리/코어 청크가 실패해도(번들 안 main.tsx 복구코드가
+         로드조차 안 되는 닭/달걀 케이스) 동작한다. 모듈 스크립트 + modulepreload 리소스 로드 실패를 capture
+         로 감지 → __cb 캐시버스트 + location.replace 로 옛 문서 재서빙(bfcache/edge) 우회(plain reload 는
+         stale 재서빙 시 또 404 → 영구 흰화면이라 금지). main.tsx SSOT(reloadOnceForChunk)와 동일
+         sessionStorage 키·윈도(60초 내 2회) 공유 → 이중카운트·무한 reload 없음. __cb 는 main.tsx 가 부팅 후 제거.
+         ⚠️ 제3자/외부 스크립트는 /assets/ prefix 검사로 제외 → 불필요한 reload 0. -->
     <script>
       (function () {
-        function isAppChunk(t) {
-          return t && t.tagName === 'SCRIPT' && typeof t.src === 'string'
-            && t.src.lastIndexOf(location.origin + '/assets/', 0) === 0;
-        }
-        window.addEventListener('error', function (e) {
-          if (!isAppChunk(e && e.target)) return; // app 청크(/assets/*.js) 실패만 처리
+        // 🛡️ 2026-07-20 (대표 신고 "새로고침 버튼 눌러도 계속 잘 안돼" — 고질적 문제 전수조사):
+        //   복구 UI 가 왜 떴는지 진단 데이터를 남긴다. chunkSeen=진짜 청크404/MIME 확증, lastErr=마지막 에러
+        //   메시지. 서빙 HTML 은 no-store(브라우저 stale 불가)라, 복구 UI 는 대부분 '느린/실패한 첫 마운트'
+        //   워치독에서 뜨는데(캐시 문제 아님) 기존엔 무조건 "저장된 옛 버전" 오진 + __cb 캐시버스트만 반복해
+        //   못 고치는 케이스가 루프에 갇혔다. 이제 원인을 서버(frontend_errors)로 beacon → 다음 발생 시 진짜
+        //   원인 가시화(어드민 /api/_errors/recent). 부트가드는 엔트리 청크 실패 전 실행이라 self-contained.
+        var lastErr = '';
+        var chunkSeen = false;
+        var reloadPending = false; // 🛡️ 재시도 유예(setTimeout) 중 다중 청크에러가 카운트를 소진하지 않게(재진입 가드).
+        function beaconStuck(reason) {
           try {
-            var k = '__ur_chunk_reload__';
-            if (sessionStorage.getItem(k)) return; // 1회만 — 무한 reload 차단
-            sessionStorage.setItem(k, '1');
-            location.reload();
-          } catch (_) { /* sessionStorage 차단 환경 — silent */ }
+            var t = 0;
+            try { t = Math.round(window.performance && performance.now ? performance.now() : 0); } catch (e) {}
+            // 엔트리 번들이 실행됐는지(=main.tsx 가 window.__urBootStarted 세팅). 안 돌았으면 청크404/CSP/네트워크,
+            //   돌았으면 마운트가 느리거나 막힌 것(무거운 렌더/행/렌더에러) — 진짜 원인 구분의 핵심 신호.
+            var bs = 0; try { bs = window.__urBootStarted || 0; } catch (e) {}
+            var payload = JSON.stringify({
+              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' entryRan=' + (bs ? 'y' : 'n') + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
+              url: location.pathname + location.search,
+              type: 'manual',
+              user_agent: navigator.userAgent
+            });
+            if (navigator.sendBeacon) { navigator.sendBeacon('/api/_errors/log', new Blob([payload], { type: 'application/json' })); }
+            else if (window.fetch) { fetch('/api/_errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {}); }
+          } catch (e) { /* beacon 실패는 무시 — 진단은 best-effort */ }
+        }
+        function isAppChunk(t) {
+          if (!t || t === window) return false;
+          var url = t.src || t.href || '';
+          return (t.tagName === 'SCRIPT' || t.tagName === 'LINK')
+            && url.lastIndexOf(location.origin + '/assets/', 0) === 0
+            && /\.(?:m?js|css)(?:[?#]|$)/.test(url);
+        }
+        // 🛡️ dynamic import() / modulepreload 실패의 브라우저별 메시지 변종(= chunk-error.ts isChunkLoadError SSOT 미러).
+        //   React.lazy 청크 실패는 리소스 error 이벤트가 아니라 promise reject 로 옴 → unhandledrejection 도 감시해야 함.
+        function isChunkMsg(m) {
+          m = String(m || '').toLowerCase();
+          return m.indexOf('failed to fetch dynamically imported module') >= 0
+            || m.indexOf('error loading dynamically imported module') >= 0
+            || m.indexOf('importing a module script failed') >= 0
+            || m.indexOf('failed to load module script') >= 0
+            || m.indexOf('expected a javascript') >= 0
+            || m.indexOf('responded with a mime type') >= 0
+            || m.indexOf('unable to preload css') >= 0;
+        }
+        // 🛡️ 2회 초과(진짜 stale 고착 — 예: 잔존 캐시-우선 SW 가 옛 문서 계속 서빙)면 무한 reload/무한로딩 대신
+        //   정적 복구 화면을 띄운다 → 사용자가 절대 "응답 없는 페이지"/무한 스피너에 갇히지 않음(1클릭 완전복구).
+        // 🛡️ 2026-07-20 (대표 신고 전수조사): 복구 UI 를 원인별로 구분 + 에스컬레이션 + 진단.
+        //   reason='chunk' (진짜 청크404/MIME 확증) → 즉시 강한 복구(캐시/SW 완전삭제 + __cb).
+        //   reason='slow'  (12s 워치독인데 청크 에러 증거 없음 = 네트워크 지연/느린 콜드스타트/결정적 에러) →
+        //     ① 1단계: 부드러운 안내 + '다시 시도'(가벼운 __cb 캐시버스트만, 캐시 안 지움 — 오진 시 무해).
+        //     ② 이미 이 세션에서 복구 UI 를 본 적 있으면(앞선 시도가 안 통함) 강한 복구로 자동 승격.
+        //   기존엔 무조건 "저장된 옛 버전"(캐시 오진) + hardRecover 반복 → 캐시 문제 아닌 케이스가 루프.
+        function showStuckUI(reason) {
+          try {
+            if (document.getElementById('ur-stuck-recover')) return;
+            var shownBefore = false;
+            try { shownBefore = sessionStorage.getItem('__ur_stuck_shown__') === '1'; sessionStorage.setItem('__ur_stuck_shown__', '1'); } catch (e) {}
+            beaconStuck(reason || (chunkSeen ? 'chunk' : 'slow'));
+            var hard = reason === 'chunk' || chunkSeen || shownBefore; // 확증된 청크 or 재발 → 완전복구
+            var dark = false;
+            try { dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+            var bg = dark ? '#0F151D' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
+            var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
+            var desc = hard
+              ? '앱이 업데이트되는 중이에요. 잠시 뒤 자동으로 다시 시도합니다 — 바로 시도하려면 아래 버튼을 눌러주세요.'
+              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 잠시 뒤 자동으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
+            var primaryLabel = hard ? '최신 화면으로 새로고침' : '다시 시도';
+            var d = document.createElement('div');
+            d.id = 'ur-stuck-recover';
+            d.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:' + bg + ';color:' + fg + ';font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif');
+            var html = '<div style="font-weight:800;font-size:20px">' + title + '</div>'
+              + '<div style="font-size:14px;line-height:1.6;color:' + sub + ';max-width:320px">' + desc + '</div>'
+              + '<button id="ur-stuck-btn" style="margin-top:4px;padding:12px 28px;border:0;border-radius:999px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer">' + primaryLabel + '</button>';
+            if (!hard) {
+              html += '<button id="ur-stuck-hard" style="margin-top:2px;padding:6px 12px;border:0;background:none;color:' + sub + ';font-size:12px;text-decoration:underline;cursor:pointer">그래도 안 되면 · 캐시 비우고 복구</button>';
+            }
+            d.innerHTML = html;
+            document.body.appendChild(d);
+            var pb = document.getElementById('ur-stuck-btn');
+            if (pb) pb.addEventListener('click', function () { if (hard) hardRecover(); else bustReload(); });
+            var hb = document.getElementById('ur-stuck-hard');
+            if (hb) hb.addEventListener('click', function () { hardRecover(); });
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 오버레이 자동 재시도 — 배포 전파 창
+            //   클래스는 시간이 지나면 저절로 낫는다(대표 실측 "시간 지나니까 정상"). 사용자가 버튼을 안 눌러도
+            //   30초 뒤 __cb reload 로 스스로 복구 시도(전파 완료 시점에 자동 정상화). 실패해도 다음 문서의
+            //   오버레이가 다시 30초 타이머를 재장전 → 주기적 자동 치유(무한 고속 루프 아님 — 30s 간격).
+            setTimeout(bustReload, 30000);
+          } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
+        }
+        // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
+        function bustReload() {
+          try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
+          catch (e) { try { location.reload(); } catch (_) {} }
+        }
+        // 완전복구: 잔존 SW unregister + 모든 캐시 삭제 후 캐시버스트 reload(수동 버튼 — 가드 카운트 무시).
+        function hardRecover() {
+          try { sessionStorage.removeItem('__ur_chunk_reload__'); } catch (e) {}
+          var jobs = [];
+          try {
+            if ('serviceWorker' in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) {
+                var u = (r.active && r.active.scriptURL) || '';
+                return u.indexOf('push-sw.js') >= 0 ? null : r.unregister();
+              }));
+            }).catch(function () {}));
+            if ('caches' in window) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).catch(function () {}));
+          } catch (e) {}
+          Promise.all(jobs).then(bustReload, bustReload);
+          setTimeout(bustReload, 1500); // SW/caches API 가 걸려도 최대 1.5s 뒤 강제 진행
+        }
+        function reloadOnce() {
+          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+          try {
+            var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
+            try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
+            var within = now - st.t < 300000;
+            if (within && st.n >= 8) { showStuckUI('chunk'); return; } // 5분 내 8회 — stale 고착 → 무한 reload 대신 복구 UI
+            var attempt = within ? st.n + 1 : 1;
+            sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
+            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창이 '수초' 가정(0.7~2.5s×3회/90s)
+            //   보다 실제(수십 초~수분)로 길어, 창 안에서 재시도 소진 → 오버레이 + 버튼도 창 안이라 무효 →
+            //   시간 지나면 저절로 정상(= /admin/influencer-pool 실사례). **지수 백오프 8회/5분 창**(0.7→30s,
+            //   누적 ~104s)으로 전파 창을 URDEAL 로더 상태로 통과 — 고객은 오버레이를 거의 못 봄.
+            //   무한루프는 8회 캡이 여전히 차단. chunk-error.ts recoverFromChunkError 와 SSOT 미러(함께 갱신).
+            reloadPending = true;
+            var grace = Math.min(700 * Math.pow(2, attempt - 1), 30000);
+            setTimeout(function () {
+              try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
+              catch (e) { try { location.reload(); } catch (_) {} }
+            }, grace);
+          } catch (e) { try { location.reload(); } catch (_) { /* sessionStorage/location 차단 — silent */ } }
+        }
+        // 부팅 후 배선(main.tsx)·React ErrorBoundary 가 못 잡는 최악의 케이스(잔존 SW 고착)에서도 복구 UI 를 낼 수 있게 노출.
+        window.__urShowStuckUI = showStuckUI;
+        // 🛡️ 2026-07-16 (대표 신고 "새로고침 버튼 눌러도 한번에 안돼"): 슬로우 힌트(#ur-pre-react 8s 고착)의
+        //   '↻ 새로고침'이 plain location.reload() 였음 — 옛 문서(bfcache/edge/heuristic·잔존 SW)를 그대로 재서빙 →
+        //   또 고착 → 무한 반복(+ javascript: href 는 CSP 차단 가능). hardRecover(SW/캐시 삭제 + __cb 캐시버스트)를
+        //   전역 노출해 그 버튼이 stuck-UI 버튼과 동일한 '1클릭 완전복구' 경로를 쓰게 한다.
+        window.__urHardRecover = hardRecover;
+        window.addEventListener('error', function (e) {
+          if (isAppChunk(e && e.target)) { chunkSeen = true; try { lastErr = 'asset ' + ((e.target && (e.target.src || e.target.href)) || ''); } catch (x) {} reloadOnce(); return; } // app 청크(/assets/*.{js,css}) 리소스 실패
+          if (e && isChunkMsg(e.message)) { chunkSeen = true; lastErr = String(e.message).slice(0, 240); reloadOnce(); return; } // 인라인 스크립트 파싱/모듈 에러 변종
+          if (e && e.message) lastErr = String(e.message).slice(0, 240); // 비-청크 에러도 진단용 기록(마운트 못 하는 진짜 원인 포착)
         }, true); // capture: 리소스 로드 에러는 버블하지 않음
+        window.addEventListener('unhandledrejection', function (e) {
+          var m = e && e.reason && (e.reason.message || e.reason);
+          if (isChunkMsg(m)) { chunkSeen = true; lastErr = String(m).slice(0, 240); reloadOnce(); } // React.lazy dynamic import reject
+          else if (m) { try { lastErr = String(m).slice(0, 240); } catch (x) {} } // 진단용
+        });
+        // 🛡️ 2026-07-20 (전수조사): CSP 위반은 스크립트를 *조용히* 차단한다(error 이벤트 없음) → 엔트리 스크립트가
+        //   CSP 로 막히면 'entry-stalled' 로만 보이고 원인이 안 남는다(캐시버스트로 절대 못 고치는 결정적 부류).
+        //   securitypolicyviolation 을 잡아 차단 리소스를 lastErr 에 기록 → beacon → /admin/errors 에서 즉시 판별.
+        window.addEventListener('securitypolicyviolation', function (e) {
+          try {
+            var uri = (e && (e.blockedURI || e.violatedDirective)) || '';
+            lastErr = 'CSP ' + (e && e.effectiveDirective || e && e.violatedDirective || '') + ' blocked ' + String(uri).slice(0, 160);
+            // 우리 앱 스크립트/청크가 CSP 로 막힌 거면 엔트리 실행 불능 = 진짜 stuck 원인 확증.
+            if (isAppChunk({ tagName: 'SCRIPT', src: uri }) || /\/assets\//.test(String(uri))) chunkSeen = true;
+          } catch (x) { /* 진단 실패 무시 */ }
+        });
+        // 🛡️ 잔존 캐시-우선 SW 조기 제거 — 옛 pwa-sw/sw 가 삭제된 청크를 서빙해 무한로딩/"응답없음"을 만드는 근본원인.
+        //   어떤 앱 청크보다 먼저 실행 → main.tsx(엔트리 번들)가 SW 캐시에 막혀 못 도는 케이스도 커버. push-sw.js 만 보호.
+        try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker.getRegistrations().then(function (rs) {
+              rs.forEach(function (r) {
+                var u = (r.active && r.active.scriptURL) || (r.waiting && r.waiting.scriptURL) || '';
+                if (u.indexOf('push-sw.js') < 0) { try { r.unregister(); } catch (e) {} }
+              });
+            }).catch(function () {});
+          }
+        } catch (e) {}
+        // 🛡️ 2026-07-16 (대표 신고 "새로고침 버튼 눌러도 항상 한번에 새로고침이 안돼"): 워커가 #root 를 정적
+        //   URDEAL 로더로 교체하므로(worker/index.ts urdealLoaderHtml) 기존 8초 슬로우힌트(#ur-pre-react/
+        //   #ur-slow-hint — #root 안이라 미서빙)가 죽어 있었음 → 앱이 청크404/stale-SW/네트워크 행으로 안 뜨면
+        //   로더가 무한 회전 + 화면 안 탈출구 0 → 사용자는 브라우저 새로고침(plain reload)만 → 또 stale 재서빙 →
+        //   "한번에 새로고침 안됨". 서빙되는 이 부트가드에 워치독을 둬, 12초 뒤에도 앱이 안 떴으면(로더 그대로)
+        //   showStuckUI(자체 fixed 오버레이 + hardRecover 1클릭 완전복구)를 띄운다. 앱이 늦게라도 뜨면
+        //   main.tsx 가 오버레이를 제거(느린 회선 false-positive 자동 해제). 정상 부팅엔 no-op.
+        //   전 표면 커버: main.tsx 는 라우트 무관 성공 부팅 시 __urMounted=1 을 세팅하므로, #root 가 소비자
+        //   로더든 대시보드/도매/블로그 placeholder 든 상관없이 '앱 미마운트' 하나로 판정(로더 마크업 의존 X).
+        setTimeout(function () {
+          try {
+            if (window.__urMounted) return;
+            // 🛡️ 2026-07-27: 재시도 유예(지수 백오프) 중이면 오버레이 억제 — 예약된 __cb reload 가 곧 실행됨.
+            //   유예가 12s 를 넘는 후반 시도에서 워치독이 끼어들어 '고객용 복구 화면'을 띄우던 것 차단(로더 유지).
+            if (reloadPending) return;
+            // reason 3분류로 진단 정밀화: chunk(확증된 404/MIME) / entry-stalled(엔트리 미실행 = 다운로드/차단/
+            //   네트워크) / mount-slow(엔트리는 돌았는데 마운트 미완 = 무거운 렌더·행·렌더에러). 셋 다 gentle 1단계
+            //   부터(=캐시 안 지움) — 청크 확증이나 세션 내 재발 시에만 showStuckUI 가 완전복구로 승격.
+            var reason = chunkSeen ? 'chunk' : (window.__urBootStarted ? 'mount-slow' : 'entry-stalled');
+            showStuckUI(reason);
+          } catch (e) { /* silent */ }
+        }, 12000);
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -30,20 +216,23 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="유어딜" />
-    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #020202.
+    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #0F151D.
          시스템 라이트 모드 사용자는 #FFFFFF (흰 테마 쇼핑 페이지와 매칭).
          App.tsx 의 useStatusBarTheme() 가 페이지 테마에 따라 동적으로 override. -->
-    <meta name="theme-color" content="#020202" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F151D" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- 🎯 파비콘 (브라우저 탭) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본). PNG 실치수 우선 -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <!-- 🛡️ 2026-04-30: iOS Safari PWA 설치용 — 다양한 사이즈 -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="유어딜" />
-    <title>유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스</title>
+    <title>유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜</title>
 
     <!-- 🛡️ 2026-05-27 (Lighthouse 진단 — 잠금 해제): preconnect 14→3개 정리.
          이전: 14개 preconnect → Lighthouse 가 "사용 안 함" 경고 + connection 부담.
@@ -54,6 +243,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <link rel="preconnect" href="https://img1.kakaocdn.net" crossorigin />
+    <!-- 🎨 2026-07-19 확정 워드마크(urdeal.) — Poppins 800 을 urdeal 6글자 서브셋(&text=, ~2KB)만 로드.
+         첫 페인트 로더 워드마크가 즉시 사용 → preconnect 정당. CSP style-src(fonts.googleapis)/font-src(fonts.gstatic) 기허용. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=swap" rel="stylesheet" />
     <link rel="dns-prefetch" href="https://js.tosspayments.com" />
     <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
@@ -140,11 +334,11 @@
       /* Critical reset + layout (Tailwind preflight subset) */
       *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
       html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:'Pretendard Variable',-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
-      body{margin:0;line-height:inherit;background:#fff;color:#0a0a0a}
+      body{margin:0;line-height:inherit;background:#fff;color:#0F151D}
       img,svg,video,canvas,iframe{display:block;max-width:100%;height:auto}
       button{background:transparent;background-image:none;padding:0;font-family:inherit;font-feature-settings:inherit;cursor:pointer}
       /* 다크 모드 진입 직전 깜빡임 방지 */
-      html.dark body{background:#020202;color:#fff}
+      html.dark body{background:#0F151D;color:#fff}
 
       /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
          JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */
@@ -153,6 +347,17 @@
       #ud-inapp-block .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; box-sizing: border-box; }
       #ud-inapp-block .ulogo { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px; background: linear-gradient(135deg, #ff6b6b, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
       #ud-inapp-block .tagline { font-size: 11px; color: #8e8e93; margin-bottom: 24px; letter-spacing: 0.05em; font-weight: 500; }
+
+      /* 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): 부팅 스플래시를 UR·DEAL 워드마크 로더로
+         (React 라우트 전환 BrandLoader 와 동일 룩). '유어딜' 한글 로더 → UR·DEAL 로 통일. */
+      #ur-pre-react .urw { position: relative; display: inline-flex; align-items: center; font-weight: 900; font-style: italic; font-size: 30px; line-height: 1; letter-spacing: -0.055em; font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; animation: ur-boot-breathe 1.5s ease-in-out infinite; }
+      #ur-pre-react .urw .p { position: absolute; left: 5.4px; top: 8.4px; width: 0; height: 0; border-left: 4.2px solid currentColor; border-top: 2.7px solid transparent; border-bottom: 2.7px solid transparent; opacity: 0.85; }
+      #ur-pre-react .urw .d { display: inline-block; width: 4.2px; height: 4.2px; background: currentColor; border-radius: 50%; margin: 0 2.4px; transform: translateY(-1.8px); }
+      #ur-pre-react .urt { position: relative; overflow: hidden; width: 96px; height: 3px; border-radius: 999px; margin: 16px auto 0; background: rgba(140,140,140,0.2); }
+      #ur-pre-react .urb { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 999px; background: currentColor; animation: ur-boot-sweep 1.15s cubic-bezier(0.4,0,0.2,1) infinite; animation-delay: 0.2s; }
+      @keyframes ur-boot-breathe { 0%,100% { opacity: 0.5; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1); } }
+      @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+      @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
       #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
       #ud-inapp-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
       #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
@@ -166,21 +371,68 @@
 
     <!-- CSP nonce placeholder — Worker HTMLRewriter가 content 값을 요청별 nonce로 교체 -->
     <meta name="csp-nonce" content="" />
-    <meta name="description" content="동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑." />
-    <meta name="keywords" content="라이브커머스,라이브쇼핑,공동구매,맛집,식사권,인플루언서,유어딜" />
+    <meta name="description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
+    <meta name="keywords" content="이용권,교환권,기프티콘,동네딜,공동구매,맛집,뷰티,숙소,할인,쿠폰,체험단,리뷰,링크샵,로컬딜,유어딜" />
     <meta name="author" content="리스터코퍼레이션" />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스" />
-    <meta property="og:description" content="동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑." />
+    <meta property="og:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
+    <meta property="og:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://live.ur-team.com" />
+    <meta property="og:url" content="https://urdeal.kr" />
     <meta property="og:site_name" content="유어딜" />
+
+    <!-- 🧠 2026-07-27 GEO/엔티티 SEO (대표 — "구글 AI 개요에 우리 서비스가 나와야"): 브랜드 엔티티
+         구조화 데이터. 상품/블로그엔 JSON-LD 가 있었지만 '유어딜 = 무엇' 을 선언하는 Organization/
+         WebSite 스키마가 사이트 전체에 없어, 검색 AI 가 동음이의(유어딜라잇 등)로 흘러가던 갭을 마감.
+         프리렌더 정적 삽입 — JS 렌더 없이 모든 크롤러/AI 봇에 전달. 사실만 기재(푸터 법적 고지와 동일 SSOT).
+         ⚠️ 도메인 이전(2026-07-20) 직후라 AI 개요 반영은 수주 소요 — 오프사이트 신호(공식 SNS sameAs·
+         뉴스 보도·비즈니스 프로필)는 별도 대표 액션(사이트 밖). 공식 프로필 확정 시 sameAs 배열 추가할 것. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://urdeal.kr/#organization",
+          "name": "유어딜",
+          "alternateName": ["urdeal", "UrDeal", "유어딜 urdeal.kr"],
+          "url": "https://urdeal.kr/",
+          "logo": "https://urdeal.kr/icon-512.png",
+          "description": "유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권, 기프티콘 교환권, 내 주변 동네딜 지도, 누구나 만드는 링크샵을 제공합니다.",
+          "email": "jiwon@ur-team.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "남부순환로359길 14, 3층(도곡동)",
+            "addressLocality": "강남구",
+            "addressRegion": "서울특별시",
+            "addressCountry": "KR"
+          },
+          "parentOrganization": { "@type": "Organization", "name": "리스터코퍼레이션" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://urdeal.kr/#website",
+          "url": "https://urdeal.kr/",
+          "name": "유어딜",
+          "alternateName": "urdeal",
+          "inLanguage": "ko",
+          "publisher": { "@id": "https://urdeal.kr/#organization" }
+        }
+      ]
+    }
+    </script>
     <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스" />
-    <meta name="twitter:description" content="동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑." />
-    <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
-    <meta property="og:image" content="https://live.ur-team.com/logo.png" />
+    <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
+    <meta name="twitter:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
+    <!-- 🔎 네이버 사이트 소유확인 SSOT (서치어드바이저 urdeal.kr 등록분). **반드시 이 정적 HTML 에만** 둘 것 —
+         SEO.tsx(react-helmet=JS 렌더)에 두면 Yeti(네이버 크롤러)가 못 본다. 실측(2026-07): 7/20 JS 토큰만
+         있을 땐 수집 0 → 7/22 이 정적 토큰 배포 당일 수집 2·색인 1 발생. 토큰 교체 시 여기만 수정. -->
+    <meta name="naver-site-verification" content="cad39baa7e707a1c538fe915fd9eeef8f104b842" />
+    <meta property="og:image" content="https://urdeal.kr/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:image" content="https://urdeal.kr/og-image.png" />
 
     <!-- 🛡️ FOUC 방지 — React 마운트 전 첫 페인트부터 올바른 테마 적용.
          정책 (CLAUDE.md A안):
@@ -188,7 +440,7 @@
            - localStorage 'light' → 라이트
            - localStorage 'system' or null (신규 사용자) → OS prefers-color-scheme 추적
          적용 범위: 화이트 테마 페이지 (쇼핑/결제) — dark: variants 활성/비활성.
-         다크 페이지 (홈/마이/라이브) 는 bg-[#020202] 명시 강제라 토글 무영향. -->
+         다크 페이지 (홈/마이/라이브) 는 bg-[#0F151D] 명시 강제라 토글 무영향. -->
     <script>
       (function () {
         var v = null;
@@ -205,7 +457,7 @@
           document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
         } catch (e) {}
         // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
-        window.__urInitialBg = dark ? '#020202' : '#ffffff';
+        window.__urInitialBg = dark ? '#0F151D' : '#ffffff';
         window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
       })();
     </script>
@@ -292,12 +544,12 @@
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
       <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>
         <div style="text-align:center;padding:24px;">
-          <div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;">유어딜</div>
-          <div style="font-size:13px;color:#888;">로딩 중...</div>
+          <div class="urw"><span style="position:relative;display:inline-flex;align-items:baseline;">UR<span class="p"></span></span><span class="d"></span>DEAL</div>
+          <div class="urt"><div class="urb"></div></div>
           <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin-top:24px;max-width:280px;line-height:1.5;">
             10초 이상 멈춰있다면 브라우저 캐시를 비우거나<br/>다른 브라우저(Chrome/Safari)로 열어주세요.
             <br/><br/>
-            <a href="javascript:location.reload()" style="color:#4a9eff;text-decoration:none;">↻ 새로고침</a>
+            <button type="button" id="ur-slow-reload" style="background:none;border:0;padding:0;font:inherit;color:#4a9eff;text-decoration:none;cursor:pointer;">↻ 새로고침</button>
           </div>
         </div>
       </div>
@@ -322,44 +574,32 @@
             // 8초 후에도 placeholder 남으면 슬로우 힌트 표시 (일반 브라우저 전용)
             setTimeout(function() {
               var hint = document.getElementById('ur-slow-hint');
-              if (hint && document.getElementById('ur-pre-react')) hint.style.display = 'block';
+              if (hint && document.getElementById('ur-pre-react')) {
+                hint.style.display = 'block';
+                // 🛡️ 2026-07-16: '↻ 새로고침' → hardRecover(1클릭 완전복구). CSP-safe 이벤트 배선(inline onclick/
+                //   javascript: href 대신 — stuck-btn 과 동일 패턴). 전역 미정의(엣지케이스) 시 plain reload 폴백.
+                var rb = document.getElementById('ur-slow-reload');
+                if (rb) rb.addEventListener('click', function () {
+                  if (window.__urHardRecover) window.__urHardRecover(); else location.reload();
+                });
+              }
             }, 8000);
             return;
           }
 
-          // 🛡️ 2026-04-30: 풀스크린 block 안 띄움 (사용자 신고). app 정상 렌더 + InAppBrowserBanner 가 dismissible 안내.
-
-          // OS 별 자동 호출 스킴 (1회 시도)
-          var url = window.location.href;
-          // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리 데스크톱 UA(Macintosh+touch)도 iOS 로 판별 — in-app-browser.ts 와 일치.
-          var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
-          var isAndroid = /Android/i.test(ua);
-          var scheme = '';
-          if (isKakao && isIOS) {
-            scheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
-          } else if (isLine && (isIOS || isAndroid)) {
-            scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
-          } else if (isAndroid) {
-            // 🛡️ 2026-06-20 (C1): S.browser_fallback_url 추가 — Chrome 미설치(삼성인터넷 기본 등,
-            //   한국 점유율 높음) 단말에서 intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지.
-            //   sessionStorage 가드(REDIRECT_KEY)가 재이동을 막아 그 로드에서 React 정상 마운트.
-            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal/openInExternalBrowser) 와
-            //   동일 형식 유지(SSOT) — 한쪽 변경 시 양쪽 같이 갱신. 가드 키도 공유.
-            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
-          }
-
-          // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.
-          //   카톡 in-app 에서 kakaotalk:// 스킴이 외부 브라우저 호출 후
-          //   webview 가 reload 되면 이 스크립트가 다시 실행됨. 가드 없으면
-          //   "유저 로그인 무한 루프" 증상 발생 (mobile only).
-          //   key 는 main.tsx 의 autoRedirectKakaoToExternal 와 공유.
-          var REDIRECT_KEY = 'ur_kakao_external_redirect_v1';
-          var alreadyTried = false;
-          try { alreadyTried = sessionStorage.getItem(REDIRECT_KEY) === '1'; } catch (e) {}
-          if (scheme && !alreadyTried) {
-            try { sessionStorage.setItem(REDIRECT_KEY, '1'); } catch (e) {}
-            try { window.location.href = scheme; } catch (e) {}
-          }
+          // 🛡️ 2026-07-25 (대표 지시 "카톡도 그냥 열리게"): 인앱 브라우저에서 외부 브라우저로
+          //   자동 이동/팝업("외부 앱을 열려고 합니다")을 더 이상 시도하지 않음. 카카오톡 포함 모든
+          //   인앱(카톡/인스타/페북/네이버/라인)은 앱을 그대로 렌더.
+          //   React 쪽 autoRedirectKakaoToExternal 도 no-op 으로 정렬(SSOT).
+          //   배경: 무한 reload 는 sessionStorage 가드로, 흰화면의 근본 원인이던 Service Worker 는
+          //     2026-04-27 제거로 해소 + 부팅/청크 자가복구 견고화 → 강제 이동 불필요. 카카오 로그인은
+          //     카톡 인앱(자체 세션) 안에서가 오히려 제일 잘 됨(App.tsx 2026-06-20 배너 제거 주석 참조).
+          //   안내 배너(InAppBrowserBanner)도 2026-06-20 대표 요청으로 미마운트(노이즈) — 인앱에서 정말
+          //     막히는 기능(충전/결제 등)은 기능 단위 게이트(IosTopupGate/InAppFeatureBlockedModal)가
+          //     그 시점에만 외부 브라우저(openInExternalBrowser)를 안내.
+          //   ⚠️ 회귀(카톡 흰화면) 시 롤백: git 이력에서 이 블록의 카톡 scheme 자동 이동 + REDIRECT_KEY
+          //     가드 복원 + in-app-browser.ts autoRedirectKakaoToExternal 본문 복원(SSOT 쌍).
+          //   (inApp 이면 위 8초 슬로우 힌트도 건너뜀 — 그대로 유지.)
         } catch (e) { /* never break the page */ }
       })();
     </script>

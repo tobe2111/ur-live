@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -93,7 +94,7 @@ export default function AdminBusinessVerificationPage() {
           <div className="space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
               ⚠️ <strong>{sellers.length}건</strong> 검증 대기 — 보통 1-3 영업일 내 처리 권장.
-              승인 시 셀러는 현금 정산 + 딜 환급 가능 (8.8% 원천징수 자동 적용).
+              승인 시 셀러는 현금 정산 + 딜 환급 가능 (세법 기준 원천징수 자동 적용 — 사업소득 3.3% / 기타소득 8.8%).
             </div>
 
             {sellers.map((s) => (
@@ -102,7 +103,7 @@ export default function AdminBusinessVerificationPage() {
                   {/* 좌측: 이미지 */}
                   <div className="bg-gray-50 p-4 flex items-center justify-center min-h-[300px]">
                     {s.business_registration_image_url ? (
-                      <a href={s.business_registration_image_url} target="_blank" rel="noopener noreferrer"
+                      <a href={safeHttpHref(s.business_registration_image_url)} target="_blank" rel="noopener noreferrer"
                         className="block max-w-full max-h-[400px]">
                         <img
                           src={s.business_registration_image_url}

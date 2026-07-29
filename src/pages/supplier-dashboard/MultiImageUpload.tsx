@@ -14,18 +14,21 @@ import { ImagePlus, X, ArrowUp, ArrowDown, Loader2 } from 'lucide-react'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { toast } from '@/hooks/useToast'
 
-const MAX_FILES = 10
+// 🖼️ 2026-06-30: 최대 장수는 max prop(기본 30 — 긴 상세페이지). 갤러리는 10 등 호출측이 지정. 서버 slice 와 동기 필수.
+const DEFAULT_MAX_FILES = 30
 const MAX_SIZE = 10 * 1024 * 1024
 
 function splitUrls(v: string): string[] {
   return v.split(/[,\n|]/).map(u => u.trim()).filter(Boolean)
 }
 
-export default function MultiImageUpload({ value, onChange, t }: {
+export default function MultiImageUpload({ value, onChange, t, max = DEFAULT_MAX_FILES }: {
   value: string
   onChange: (commaJoined: string) => void
   t: (k: string, o?: Record<string, unknown>) => string
+  max?: number
 }) {
+  const MAX_FILES = max
   const urls = splitUrls(value)
   const [uploading, setUploading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)

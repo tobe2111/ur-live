@@ -34,7 +34,7 @@ export function Layout() {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-6">
-              <Link to="/products" className="text-gray-600 hover:text-blue-600 transition-colors">
+              <Link to="/browse" className="text-gray-600 hover:text-blue-600 transition-colors">
                 상품
               </Link>
               {isAuthenticated && (
@@ -104,7 +104,7 @@ export function Layout() {
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-3">
               <Link
-                to="/products"
+                to="/browse"
                 className="block text-gray-600"
                 onClick={() => setMobileMenuOpen(false)}
               >

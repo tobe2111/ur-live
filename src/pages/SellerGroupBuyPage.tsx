@@ -9,11 +9,15 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
+import GroupBuyOpenPanel from './seller-group-buy/GroupBuyOpenPanel'
+import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
 
 interface GroupBuyProduct {
-  id: number; name: string; price: number; image_url?: string
+  id: number; name: string; price: number; image_url?: string; category?: string
   restaurant_name?: string; restaurant_phone?: string
   group_buy_target: number; group_buy_current: number
   group_buy_deadline?: string; group_buy_status: string; store_verify_pin?: string
@@ -93,7 +97,7 @@ export default function SellerGroupBuyPage() {
   }
 
   if (loading) {
-    return <SellerLayout title={t('seller.nav.mealVoucher')}><div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" /></div></SellerLayout>
+    return <SellerLayout title={t('seller.nav.mealVoucher')}><BrandLoader /></SellerLayout>
   }
 
   return (
@@ -102,7 +106,7 @@ export default function SellerGroupBuyPage() {
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.nav.mealVoucher')}
-          subtitle={t('seller.groupBuySubtitle', { defaultValue: '공동구매 / 식사권 관리' })}
+          subtitle={t('seller.groupBuySubtitle', { defaultValue: '공동구매 / 이용권 관리' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button
@@ -110,7 +114,7 @@ export default function SellerGroupBuyPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-pink-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-pink-600 active:scale-[0.98] transition"
             >
               <Plus className="h-4 w-4" />
-              {t('seller.groupBuy.registerVoucher', { defaultValue: '공구권 등록' })}
+              {t('seller.groupBuy.registerVoucher', { defaultValue: '이용권 등록' })}
             </button>
           }
         />
@@ -187,6 +191,11 @@ export default function SellerGroupBuyPage() {
               </p>
             )}
           </div>
+        )}
+
+        {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스(받은 제안 승인/거절 + 인플루언서에게 협업 제안) — 게이트 OFF */}
+        {GB_ENGINE_ENABLED && products.length > 0 && (
+          <GbProposalsPanel products={products.map(p => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
         )}
 
         {/* 상품 없음 */}
@@ -281,6 +290,11 @@ export default function SellerGroupBuyPage() {
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
                   </button>
+
+                  {/* 🎟️ 2026-07-06 (§2-A 방향 A): 매장이 공구 열기 — GB_ENGINE_ENABLED 게이트(기본 OFF) */}
+                  {GB_ENGINE_ENABLED && (
+                    <GroupBuyOpenPanel productId={p.id} listPrice={safeNum(p.price)} category={p.category || 'meal_voucher'} headers={headers} />
+                  )}
 
                   {/* 식당 사장 공유 링크 (Magic Link 우선) */}
                   <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">

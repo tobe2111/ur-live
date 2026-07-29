@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { AlertTriangle, Loader2, X, RotateCcw, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 BIZ-1 (2026-06-08) 어드민 도매 클레임(RMA) 검수 — 판매사 발의 하자/오배송 신고 처리.
 //   approve(승인) 시 실제 환불은 기존 강제환불 엔드포인트(/api/admin/distributor/orders/:id/refund)로 집행.
@@ -55,7 +56,7 @@ export default function AdminWholesaleClaimsPage() {
   const [memo, setMemo] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const { data: claims = [], isLoading: loading, refetch } = useApiQuery<ClaimRow[]>(
+  const { data: claims = [], isLoading: loading, isError, error, refetch } = useApiQuery<ClaimRow[]>(
     ['admin', 'wholesale-claims', status], '/api/wholesale/admin/claims',
     { params: status ? { status } : {}, headers: h.headers, select: (r: any) => (r?.success ? r.claims || [] : []) },
   )
@@ -107,6 +108,8 @@ export default function AdminWholesaleClaimsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="클레임" />
         ) : claims.length === 0 ? (
           <p className="text-center text-gray-400 py-20">클레임이 없습니다.</p>
         ) : (
@@ -117,7 +120,7 @@ export default function AdminWholesaleClaimsPage() {
                   <th className="py-2.5 px-4 font-medium">클레임</th>
                   <th className="py-2.5 px-4 font-medium">주문</th>
                   <th className="py-2.5 px-4 font-medium">판매사</th>
-                  <th className="py-2.5 px-4 font-medium">공급자</th>
+                  <th className="py-2.5 px-4 font-medium">제조사</th>
                   <th className="py-2.5 px-4 font-medium">사유</th>
                   <th className="py-2.5 px-4 font-medium">상태</th>
                   <th className="py-2.5 px-4 font-medium">일자</th>
@@ -132,7 +135,7 @@ export default function AdminWholesaleClaimsPage() {
                     <td className="py-2.5 px-4 text-gray-600">{cl.supplier_name || (cl.supplier_id ? `#${cl.supplier_id}` : '혼합/미지정')}</td>
                     <td className="py-2.5 px-4 text-gray-600">{REASON[cl.reason_code] || cl.reason_code}</td>
                     <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[cl.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[cl.status]?.t || cl.status}</span></td>
-                    <td className="py-2.5 px-4 text-gray-500">{new Date(cl.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(cl.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -153,7 +156,7 @@ export default function AdminWholesaleClaimsPage() {
             <div className="text-sm text-gray-600 space-y-1.5 mb-4">
               <div>주문 <b className="text-gray-900">#{detail.wholesale_order_id}</b> · 주문상태 {detail.order_status || '-'} · 결제 {formatWon(Number(detail.order_subtotal) || 0)} · 환불 {formatWon(Number(detail.order_refunded) || 0)}</div>
               <div>판매사 <b className="text-gray-900">{detail.distributor_name || detail.distributor_username || `#${detail.distributor_seller_id}`}</b></div>
-              <div>공급자 {detail.supplier_name || (detail.supplier_id ? `#${detail.supplier_id}` : '혼합/미지정')}</div>
+              <div>제조사 {detail.supplier_name || (detail.supplier_id ? `#${detail.supplier_id}` : '혼합/미지정')}</div>
               <div>사유 <b className="text-gray-900">{REASON[detail.reason_code] || detail.reason_code}</b>{detail.wholesale_order_item_id ? ` · 항목 #${detail.wholesale_order_item_id}` : ' · 주문 전체'}</div>
             </div>
 

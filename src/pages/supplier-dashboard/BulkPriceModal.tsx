@@ -38,7 +38,8 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
       const retailNum = Number(e.retail)
       const item: { product_id: number; supply_price: number; retail_price?: number; reason?: string } = { product_id: it.id, supply_price: supply }
       if (e.retail !== '' && Number.isFinite(retailNum)) {
-        if (retailNum < supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+        // 🔧 2026-06-24 (전수조사 M2): 단건과 동일 — 공급가보다 높아야(동일가=마진0 차단).
+        if (retailNum <= supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가보다 높아야 합니다' })); return }
         item.retail_price = retailNum
       }
       if (reason.trim()) item.reason = reason.trim()
@@ -71,7 +72,7 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
           <p className="text-sm text-gray-400 text-center py-10">{t('supplier.bulkNoApproved', { defaultValue: '가격 변경 가능한 승인 상품이 없습니다.' })}</p>
         ) : (
           <>
-            <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+            <div className="border border-gray-200 rounded-xl overflow-x-auto mb-4">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 text-xs">
                   <tr>

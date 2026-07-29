@@ -18,6 +18,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
@@ -45,7 +46,7 @@ export default function SellerProductEditPage() {
     detail_images: [] as string[],
     product_type: 'featured',
     category: 'lifestyle',
-    // 식사권 필드
+    // 이용권 필드
     restaurant_name: '',
     restaurant_address: '',
     restaurant_phone: '',
@@ -54,6 +55,8 @@ export default function SellerProductEditPage() {
     group_buy_target: '',
     group_buy_deadline: '',
     store_verify_pin: '',
+    // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0/빈값 = 무제한.
+    max_per_person: '',
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -85,6 +88,7 @@ export default function SellerProductEditPage() {
       voucher_terms: productData.voucher_terms || '', voucher_expiry: productData.voucher_expiry || '',
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
       store_verify_pin: productData.store_verify_pin || '',
+      max_per_person: productData.max_per_person ? String(productData.max_per_person) : '',
     })
     if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,6 +129,8 @@ export default function SellerProductEditPage() {
           group_buy_target: Number(formData.group_buy_target) || 0,
           group_buy_deadline: formData.group_buy_deadline || null,
           store_verify_pin: formData.store_verify_pin || null,
+          // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정): 0=무제한 해제, 1~99=제한.
+          max_per_person: Number(formData.max_per_person) > 0 ? Math.min(99, Math.floor(Number(formData.max_per_person))) : 0,
         } : {}),
       }
 
@@ -193,7 +199,7 @@ export default function SellerProductEditPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <BrandLoader />
       </div>
     )
   }
@@ -376,11 +382,11 @@ export default function SellerProductEditPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
-              <option value="meal_voucher">🍽️ 식사권 (공동구매)</option>
+              <option value="meal_voucher">🍽️ 이용권 (공동구매)</option>
             </select>
           </div>
 
-          {/* 식사권 전용 필드 */}
+          {/* 이용권 전용 필드 */}
           {formData.category === 'meal_voucher' && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
@@ -409,6 +415,12 @@ export default function SellerProductEditPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
                   <input type="number" name="group_buy_target" value={formData.group_buy_target} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
+              </div>
+              {/* 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 구매 수량 제한 (0=무제한). */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1인당 최대 구매 수량</label>
+                <input type="number" name="max_per_person" value={formData.max_per_person} onChange={handleChange} min={0} max={99} placeholder="0 = 무제한" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+                <p className="text-[11px] text-gray-400 mt-1">한 사람이 최대 몇 개까지 구매할 수 있는지 (0 = 제한 없음, 최대 99)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>

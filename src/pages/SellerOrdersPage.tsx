@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -437,9 +438,7 @@ export default function SellerOrdersPage() {
 
         {/* Loading */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-          </div>
+          <BrandLoader />
         ) : (
           <>
             {/* Orders List */}

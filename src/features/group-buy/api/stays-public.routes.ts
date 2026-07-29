@@ -9,6 +9,8 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 
 type Bindings = { DB: D1Database }
@@ -95,18 +97,27 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
   }
 })
 
-// 상세
-staysPublicRoutes.get('/stays/:productId', cors(), async (c) => {
+// 상세 — 🖼️ 2026-07-20 (대표 SSR/OG): publicCache(120) 로 edge 캐시 → 워커 SSR self-fetch 0-RTT.
+//   user-agnostic(좌표는 숙소 공개 주소 — 지도 노출용, 비공개 정보 아님). 로그인/등급가 없음.
+staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) => {
   try {
     const productId = Number(c.req.param('productId'))
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'Invalid productId' }, 400)
 
+    // ⭐ 평점: 실예약 리뷰(stay_booking_reviews) 우선, 없으면 products 집계(데모 리뷰=product_reviews →
+    //   seedDemoReviews 가 products.avg_rating/review_count 갱신)로 폴백 → 카드·상세 평점 일치.
     const product = await c.env.DB.prepare(
       `SELECT p.id, p.name, p.description, p.image_url, p.is_active, p.seller_id,
+              p.restaurant_name, p.images,
               psi.*,
               s.name as seller_name,
-              (SELECT AVG(rating_overall) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) as avg_rating,
-              (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) as review_count
+              COALESCE(
+                (SELECT AVG(rating_overall) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1),
+                p.avg_rating
+              ) as avg_rating,
+              CASE WHEN (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1) > 0
+                   THEN (SELECT COUNT(*) FROM stay_booking_reviews rev WHERE rev.product_id = p.id AND rev.is_visible = 1)
+                   ELSE COALESCE(p.review_count, 0) END as review_count
          FROM products p
          INNER JOIN product_stay_info psi ON psi.product_id = p.id
          LEFT JOIN sellers s ON s.id = p.seller_id
@@ -119,6 +130,16 @@ staysPublicRoutes.get('/stays/:productId', cors(), async (c) => {
         WHERE product_id = ? AND is_active = 1
         ORDER BY base_price_weekday`
     ).bind(productId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
+
+    // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): kakao_place_url 은 products 컬럼이
+    //   아니라 product_supply_meta(컬럼 예산제) — 상세 응답에 동봉해야 StayDetailPage 미니맵이
+    //   매장 페이지로 직접 연결됨(없으면 클라가 숙소명+주소 link/search 폴백). fail-soft.
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+      const meta = await getSupplyMeta(c.env.DB, [productId])
+      const placeUrl = meta.get(productId)?.kakao_place_url
+      if (placeUrl) (product as Record<string, unknown>).kakao_place_url = placeUrl
+    } catch { /* 메타 실패가 상세를 막지 않음 */ }
 
     return c.json({
       success: true,
@@ -245,7 +266,7 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
 // 🛡️ 2026-05-18: 예약 생성 — date 모드 (날짜 지정) + voucher 모드 (기간 무관) 둘 다 지원.
 //   date 모드: body.check_in_date / check_out_date + room_id 필수.
 //   voucher 모드: body.voucher_type ('weekday' | 'weekend') 필수, 날짜 없음.
-staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -330,7 +351,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     // 모드 호환성 검증 — 셀러가 허용한 모드인지.
     const allowedMode = room.sale_mode || 'date'
     if (allowedMode !== 'both' && allowedMode !== saleMode) {
-      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소권 (날짜 미지정)' : '날짜 지정'} 모드만 지원합니다` }, 400)
+      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소 이용권 (날짜 미지정)' : '날짜 지정'} 모드만 지원합니다` }, 400)
     }
     if (saleMode === 'voucher') {
       if (voucherType === 'weekday' && room.voucher_weekend_only) {
@@ -522,7 +543,7 @@ function generateCheckInCode(): string {
 //     - 1 order 의 total_amount 는 모든 item 의 합.
 //
 //   응답: { order_id, bookings: [...], total_amount, items: [...] }
-staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -595,7 +616,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
     const sellerId = firstRoom.seller_id
     const allowedMode = firstRoom.sale_mode || 'date'
     if (allowedMode !== 'both' && allowedMode !== saleMode) {
-      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소권' : '날짜 지정'} 모드만 지원합니다` }, 400)
+      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소 이용권' : '날짜 지정'} 모드만 지원합니다` }, 400)
     }
 
     // 2. 각 item 별 가격 계산 + 검증.
@@ -851,7 +872,7 @@ staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
 //   🛡️ 2026-06-12 (전수조사 4차 B-2 다객실 confirm 단일화): orders.stay_booking_id(첫 booking)만
 //     confirmed 하던 것을 stay_bookings WHERE order_id=? 전체 루프로 — 각 booking CAS + 달력 차감.
 //     단건 주문은 루프가 1건이라 기존 동작과 동일.
-staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 'stay_booking_confirm', max: 10, windowSec: 300 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -1045,7 +1066,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
     const firstClaimed = claimed[0]
     const periodText = firstClaimed.check_in_date
       ? `${firstClaimed.check_in_date} ~ ${firstClaimed.check_out_date}`
-      : '숙소권 (날짜 협의)'
+      : '숙소 이용권 (날짜 협의)'
     try {
       c.executionCtx?.waitUntil?.((async () => {
         try {
@@ -1057,6 +1078,16 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
               c.env.DB, 'seller', String(sellerRow.seller_id), 'stay_booking_paid',
               '🏡 숙소 예약 확정', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
               '/seller/stays/bookings',
+            ).catch(() => {})
+          }
+          // 🔔 2026-06-26 (소비자 감사 B): 셀러만 통보되고 소비자는 무통보이던 누락 보강 — 예약자 인앱 알림.
+          //   물리상품 환불/취소는 알림 가는데 숙소 확정만 빠져있던 비대칭. fail-soft.
+          if (order.user_id) {
+            const { notifyUser } = await import('../../../lib/notifications')
+            await notifyUser(
+              c.env.DB, String(order.user_id), 'stay_booking_confirmed',
+              '🏡 숙소 예약이 확정됐어요', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
+              '/my-stays',
             ).catch(() => {})
           }
         } catch { /* fail-soft */ }
@@ -1080,7 +1111,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
 })
 
 // 🛡️ 2026-05-18 (PR 6): 사용자 예약 취소 — 취소 정책 따른 환불 비율 자동 계산.
-staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
+staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action: 'stay_booking_cancel', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -1210,6 +1241,22 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
        VALUES (?, ?, ?, 'user', ?, ?)`
     ).bind(id, booking.status, nextStatus, userId, logReason)
       .run().catch(() => { /* noop */ })
+
+    // 🔔 2026-06-26 (소비자 감사 B): 숙소 취소/환불 완료 시 예약자 무통보이던 누락 보강 — 인앱 알림.
+    //   물리상품 취소/환불(order.routes/returns)은 알림 가는데 숙소만 빠져있던 비대칭. 응답 후 실행(fail-soft).
+    try {
+      c.executionCtx?.waitUntil?.((async () => {
+        try {
+          const { notifyUser } = await import('../../../lib/notifications')
+          const msg = refundActuallyDone && refundAmount > 0
+            ? `예약이 취소되고 ₩${Number(refundAmount).toLocaleString('ko-KR')}이 환불됐어요`
+            : refundAmount > 0
+              ? '예약이 취소됐어요 · 환불은 확인 후 처리됩니다'
+              : '예약이 취소됐어요 (환불 정책상 환불금은 없습니다)'
+          await notifyUser(c.env.DB, String(booking.user_id), 'stay_booking_cancelled', '🏡 숙소 예약이 취소됐어요', msg, '/my-stays').catch(() => {})
+        } catch { /* fail-soft */ }
+      })())
+    } catch { /* no ctx */ }
 
     return c.json({
       success: true,

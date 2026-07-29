@@ -12,6 +12,7 @@
  *   Phase B(별도): 주문 자동 수집 → 도매 자동 발주 → 송장 푸시 (드랍쉬핑 완성).
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -20,23 +21,14 @@ import {
   ensureNaverConnectionSchema, loadNaverConnection, saveNaverConnection,
   issueNaverToken, searchNaverLeafCategories, uploadImageToNaver,
   buildNaverProductPayload, naverFetch,
-} from './naver-commerce-core'
+} from '@/services/naver-commerce-core'
 
 type D1Database = Env['DB']
 
 const app = new Hono<{ Bindings: Env }>()
 
 // 공유 헬퍼 (wholesale-board.routes 와 동일 패턴)
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 /** 유통회원(승인) 본인 확인 — is_distributor 필수. */
 async function requireDistributor(c: { req: { header: (k: string) => string | undefined }; env: Env }): Promise<{ sellerId: number } | { error: string; status: 401 | 403 }> {
@@ -81,8 +73,9 @@ app.get('/status', async (c) => {
     if ('error' in auth) return c.json({ success: false, error: auth.error }, auth.status)
     await ensureNaverConnectionSchema(c.env.DB)
     const row = await c.env.DB.prepare(
-      'SELECT client_id, connected_at, last_verified_at, last_export_at FROM naver_commerce_connections WHERE seller_id = ?'
-    ).bind(auth.sellerId).first<{ client_id: string; connected_at: string; last_verified_at: string | null; last_export_at: string | null }>().catch(() => null)
+      // 🛡️ 2026-06-25: owner_type 누락 시 같은 id 의 supplier 연결을 distributor 에게 노출(UNIQUE(owner_type,seller_id)). 스코프 명시.
+      'SELECT client_id, connected_at, last_verified_at, last_export_at FROM naver_commerce_connections WHERE owner_type = ? AND seller_id = ?'
+    ).bind('distributor', auth.sellerId).first<{ client_id: string; connected_at: string; last_verified_at: string | null; last_export_at: string | null }>().catch(() => null)
     const exports = await c.env.DB.prepare(
       'SELECT COUNT(*) AS n FROM naver_product_exports WHERE seller_id = ?'
     ).bind(auth.sellerId).first<{ n: number }>().catch(() => null)
@@ -109,7 +102,10 @@ app.delete('/connect', async (c) => {
       return c.json({ success: false, error: '조회 전용 직원 계정은 이 작업을 할 수 없습니다' }, 403)
     }
     await ensureNaverConnectionSchema(c.env.DB)
-    await c.env.DB.prepare('DELETE FROM naver_commerce_connections WHERE seller_id = ?').bind(auth.sellerId).run()
+    // 🛡️ 2026-06-26 [보안] owner_type 스코프 — GET /status·load/save 와 달리 DELETE 만 owner_type 누락이라
+    //   같은 숫자 id 의 제조사(owner_type='supplier') 네이버 연결까지 삭제 가능했음(cross-tenant). 연결 테이블은
+    //   UNIQUE(owner_type, seller_id) — distributor 스코프 명시.
+    await c.env.DB.prepare("DELETE FROM naver_commerce_connections WHERE owner_type = 'distributor' AND seller_id = ?").bind(auth.sellerId).run()
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '연결 해제 중 오류가 발생했습니다', '[naver-commerce]')
@@ -171,7 +167,7 @@ app.post('/export', rateLimit({ action: 'naver-export', max: 30, windowSec: 600 
     }
 
     // 1) 이미지 → 네이버 업로드 (네이버는 자체 업로드 URL 만 허용)
-    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://live.ur-team.com${prod.image_url}`
+    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://urdeal.kr${prod.image_url}`
     const img = await uploadImageToNaver(conn, imageAbs)
     if (!img.ok || !img.url) return c.json({ success: false, error: img.error || '이미지 업로드 실패' }, 502)
 

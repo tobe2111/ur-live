@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -32,6 +33,9 @@ type Seller = {
   business_registration_image_url?: string | null
   business_registration_status?: BizRegStatus | string | null
   business_registration_reject_reason?: string | null
+  // 🧱 2026-06-30 (서비스 분리 — 도매 판매사 구분): is_distributor=1 이면 도매(유통스타트) 판매사.
+  is_distributor?: number
+  distributor_grade?: string | null
   // 🏭 2026-06-09 Wave 1: 대표자/담당자 인적사항
   representative_name?: string | null
   representative_phone?: string | null
@@ -51,6 +55,7 @@ const STATUS_OPTIONS = [
 const STATUS_BADGE: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   active: 'bg-green-100 text-green-700 border-green-200',
+  approved: 'bg-green-100 text-green-700 border-green-200', // 🛡️ 2026-06-25: 승인 액션이 status='approved' 로 세팅 → '활성'과 동일 취급
   suspended: 'bg-gray-200 text-gray-600 border-gray-300',
   rejected: 'bg-red-100 text-red-700 border-red-200',
 }
@@ -58,9 +63,14 @@ const STATUS_BADGE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: '승인 대기',
   active: '활성',
+  approved: '활성',
   suspended: '정지',
   rejected: '거부',
 }
+
+// 🛡️ 2026-06-25: 승인은 status 를 'approved' 로 만드는데 UI 탭/카운트는 'active' 기준 → 정규화로 통일.
+//   (승인했는데 '활성' 탭에서 사라지고 raw 'approved' 배지 + 재승인 시 400 나던 불일치 수정)
+const normStatus = (s: string) => (s === 'approved' ? 'active' : s)
 
 export default function AdminSellerApprovalPage() {
   const { t } = useTranslation()
@@ -71,13 +81,16 @@ export default function AdminSellerApprovalPage() {
     (searchParams.get('status') as typeof STATUS_OPTIONS[number]['key']) || 'pending'
   )
   const [search, setSearch] = useState(searchParams.get('q') || '')
+  // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): 도매 판매사(is_distributor=1) 목록에서 숨김 토글.
+  //   기본 false = 배지로 구분만. true = 유어딜 소비자 셀러만(도매 전용/겸업 판매사 숨김).
+  const [hideDistributor, setHideDistributor] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [bizActingId, setBizActingId] = useState<number | null>(null)
   const h = useMemo(() => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
   }), [])
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (필터/검색은 클라 적용).
-  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<Seller[]>(
+  const { data: sellers = [], isLoading: loading, isError, error, refetch } = useApiQuery<Seller[]>(
     ['admin', 'sellers-approval'], '/api/admin/sellers',
     { params: { limit: 200 }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -90,7 +103,8 @@ export default function AdminSellerApprovalPage() {
   // 필터 + 검색 적용
   const filtered = useMemo(() => {
     return sellers.filter(s => {
-      if (filter !== 'all' && s.status !== filter) return false
+      if (filter !== 'all' && normStatus(s.status) !== filter) return false
+      if (hideDistributor && Number(s.is_distributor) === 1) return false  // 🧱 도매 판매사 숨김 토글
       if (search.trim()) {
         const q = search.toLowerCase().trim()
         const text = `${s.name || ''} ${s.email || ''} ${s.business_name || ''} ${s.business_number || ''} ${s.phone || ''}`.toLowerCase()
@@ -98,7 +112,7 @@ export default function AdminSellerApprovalPage() {
       }
       return true
     })
-  }, [sellers, filter, search])
+  }, [sellers, filter, search, hideDistributor])
 
   const approve = async (id: number) => {
     setActingId(id)
@@ -151,7 +165,7 @@ export default function AdminSellerApprovalPage() {
           `✅ 공급자 등록 완료\n\n` +
           `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
           `[로그인 정보 — 가게에 전달]\n` +
-          `URL: https://live.ur-team.com${d.login_url}\n` +
+          `URL: https://urdeal.kr${d.login_url}\n` +
           `Username: ${d.username}\n` +
           `Password: ${d.temp_password}\n\n` +
           `* 가게가 로그인 후 비밀번호 변경 권장.`
@@ -219,7 +233,7 @@ export default function AdminSellerApprovalPage() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: sellers.length }
-    for (const s of sellers) c[s.status] = (c[s.status] || 0) + 1
+    for (const s of sellers) { const k = normStatus(s.status); c[k] = (c[k] || 0) + 1 }
     return c
   }, [sellers])
 
@@ -271,11 +285,42 @@ export default function AdminSellerApprovalPage() {
                 <span className="ml-1.5 text-[10px] opacity-70">{counts[opt.key] ?? 0}</span>
               </button>
             ))}
+            {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 숨김 토글 — 유어딜 소비자 셀러만 보기. */}
+            <button
+              onClick={() => setHideDistributor(v => !v)}
+              title="도매(유통스타트) 판매사를 목록에서 숨깁니다. 겸업(소비자+도매)도 함께 숨겨집니다."
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                hideDistributor
+                  ? 'bg-amber-500 text-white border-amber-500'
+                  : 'bg-white text-amber-700 border-amber-200 hover:border-amber-400'
+              }`}
+            >
+              {hideDistributor ? '🏭 도매 숨김 ON' : '🏭 도매 제외'}
+            </button>
           </div>
         </div>
 
         {/* 목록 */}
-        {loading ? <DashboardLoading /> : filtered.length === 0 ? (
+        {loading ? <DashboardLoading /> : isError ? (
+          /* 🛡️ 2026-06-25: 로드 실패를 '셀러 없음'과 구분 — 기존엔 401/500 도 빈 목록으로 보여 데이터 0 처럼 오인.
+             서버 오류/세션만료 시 명시 안내 + 재시도 + 재로그인 경로. (HTTP 상태 노출 = 진단용) */
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm font-bold text-red-700">셀러 목록을 불러오지 못했습니다</p>
+            {(() => {
+              const st = (error as { response?: { status?: number } } | undefined)?.response?.status
+              // 🛡️ 2026-06-25: 상태별 정확 안내 — 403(IP 화이트리스트/권한)이 가장 흔한 원인. '세션만료'는 401 에만.
+              const msg = st === 403 ? '관리자 허용 IP 또는 권한이 아닙니다 — 운영자에게 ADMIN_IP_WHITELIST(허용 IP) 확인을 요청하세요'
+                : st === 401 ? '로그인 세션이 만료되었습니다 — 다시 로그인해주세요'
+                : st === 500 ? '서버 오류가 발생했습니다 — 잠시 후 다시 시도해주세요'
+                : '목록을 불러오지 못했습니다 — 네트워크/서버 상태를 확인해주세요'
+              return <p className="mt-1 text-xs text-red-600">{msg}{st ? ` (HTTP ${st})` : ''}</p>
+            })()}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button onClick={() => load()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800">다시 시도</button>
+              <button onClick={() => navigate('/admin/login', { replace: true })} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
           <DashboardEmptyState
             icon={<UserCheck className="h-7 w-7" />}
             title={search ? `'${search}' 검색 결과 없음` : `${STATUS_LABEL[filter] || '해당'} 셀러 없음`}
@@ -306,6 +351,13 @@ export default function AdminSellerApprovalPage() {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[s.status] || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABEL[s.status] || s.status}
                     </span>
+                    {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 구분 배지 — 유어딜 셀러 목록에 섞인 도매 회원 식별. */}
+                    {Number(s.is_distributor) === 1 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-100 text-amber-800 border-amber-200"
+                        title={`도매(유통스타트) 판매사${s.distributor_grade ? ` · 등급 ${s.distributor_grade}` : ''} — 도매 관리는 '판매사 관리'`}>
+                        🏭 도매 판매사
+                      </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
                       {bizLabel}
                     </span>
@@ -439,7 +491,7 @@ export default function AdminSellerApprovalPage() {
                     {s.business_registration_image_url ? (
                       <>
                         <a
-                          href={s.business_registration_image_url}
+                          href={safeHttpHref(s.business_registration_image_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block mb-2"

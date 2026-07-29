@@ -5,14 +5,18 @@ import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
+import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { safeInternalPath } from '@/utils/safe-internal-path'
+import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  // 🆕 2026-06-28 로그인 후 복귀 경로(예: 유어애즈 /ads/dashboard). 없으면 기존 /seller·/wholesale.
+  const rawReturn = searchParams.get('returnUrl') || searchParams.get('redirect')
+  const returnUrl = rawReturn ? safeInternalPath(rawReturn, '') : ''
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,10 +24,16 @@ export default function SellerLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도 전 토큰 재발급 — 일회용 Turnstile 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
+  // 🔗 2026-06-26 카카오 단일로그인 통일 (Step 2a): 카카오 우선, 이메일 폼은 기존 셀러용 fallback.
+  //   저장된 remember_email 이 있으면(=기존 이메일 셀러) 폼을 자동으로 펼쳐 회귀 0.
+  const [showEmailLogin, setShowEmailLogin] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('seller_remember_email')
-    if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true) }
+    if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true); setShowEmailLogin(true) }
   }, [])
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
@@ -57,12 +67,14 @@ export default function SellerLoginPage() {
         }
         const { seller, accessToken, refreshToken } = response.data.data
         clearFirebaseTokenCache()
-        clearAuthData('user')
-        // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
-        //   KR 한정으로 Firebase SDK 로드 방지. 글로벌은 기존 동작 유지.
+        // 🛡️ 2026-06-26 (유저↔셀러 상호 로그아웃 근본수정 — 어드민 로그인과 동일):
+        //   KR 소비자 세션(httpOnly ur_session 쿠키)은 셀러 Bearer 와 독립 → 셀러 로그인이 유저를
+        //   강제 로그아웃하지 않게 파괴 금지(공존: 유저→사업자등록→사업자 유저는 같은 사람).
+        //   글로벌(Firebase)만 기존대로 정리 + signOut.
         try {
           const { isKorea } = await import('@/config/region')
           if (!isKorea()) {
+            clearAuthData('user')
             import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
           }
         } catch { /* region detect 실패 시 안전 — Firebase 호출 안 함 */ }
@@ -76,18 +88,22 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_email', seller.email || '')
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
         localStorage.setItem('seller_type', seller.seller_type || 'influencer')
-        // 🏭 2026-06-04 판매사 분리: 순수 판매사(is_distributor)는 셀러 대시보드 대신 도매몰로.
-        if (seller.is_distributor) {
-          localStorage.setItem('is_distributor', '1')
-          navigate('/wholesale', { replace: true })
-        } else {
-          localStorage.removeItem('is_distributor')
-          navigate('/seller', { replace: true })
-        }
+        // 🏭 2026-06-04 판매사 분리: 도매 접근권(capability) hint — 도매 채팅/배지 등에서 사용.
+        if (seller.is_distributor) localStorage.setItem('is_distributor', '1')
+        else localStorage.removeItem('is_distributor')
+        // 🏭 2026-06-30 [서비스 분리] 새 로그인 = SellerLayout 표면 판정 세션 상태 리셋(이전 계정 잔존 방지).
+        try { ['ur_seller_surface', 'ur_seller_bounced', 'ur_force_seller'].forEach(k => sessionStorage.removeItem(k)) } catch { /* noop */ }
+        // 🏭 2026-06-30 [서비스 분리] 라우팅은 '도매 전용'(wholesale_only) 기준 — 겸업(소비자 셀러+판매사)은
+        //   is_distributor=1 이어도 셀러 대시보드로(서버 권위 computeWholesaleOnly 결과). is_distributor 하나로
+        //   분기하던 옛 코드는 겸업을 도매몰로 잘못 보냈다. wholesale_only 없으면(구버전 응답) 셀러로 폴백.
+        // 🆕 returnUrl 있으면 거기로(유어애즈 등).
+        navigate(returnUrl || (seller.wholesale_only ? '/wholesale' : '/seller'), { replace: true })
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       setError(err_.response?.data?.error || t('seller.loginErrorDefault'))
+      // 🛡️ 실패 → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -161,7 +177,38 @@ export default function SellerLoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 🔗 카카오 로그인 = 기본(권장). 카카오 한 번으로 셀러 권한 자동 복원/신청 */}
+            <a
+              href={`/auth/kakao/start?redirect=${encodeURIComponent(returnUrl || '/seller')}&intent=seller`}
+              /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 사이 무반응 구간에 공용 브랜드
+                 오버레이(순수 DOM — navigation 방해 0) — 소비자 LoginPage 와 동일 UX. 라이트 고정 표면. */
+              onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
+            >
+              <span className="text-lg">💬</span>
+              {t('seller.kakaoLoginPrimary', { defaultValue: '카카오로 로그인 / 시작하기' })}
+            </a>
+            <p className="text-[11px] text-gray-400 text-center mt-2 leading-relaxed">
+              {t('seller.kakaoLoginPrimaryHint', { defaultValue: '카카오 계정 하나로 로그인하면 셀러 권한이 자동으로 연결돼요.' })}
+            </p>
+
+            {/* 기존 이메일 셀러 로그인 (fallback) */}
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setShowEmailLogin(v => !v)}
+                className="w-full flex items-center justify-center gap-1.5 text-[13px] text-gray-500 hover:text-gray-700 transition-colors"
+                aria-expanded={showEmailLogin}
+              >
+                {t('seller.emailLoginToggle', { defaultValue: '기존 이메일로 로그인' })}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showEmailLogin ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {/* 조건부 렌더(=display:none 아님) — invisible Turnstile 이 숨겨진 컨테이너에서 미실행되는 문제 방지.
+                폼 상태(formData/turnstileToken)는 부모 useState 라 토글해도 유지. */}
+            {showEmailLogin && (
+            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               {/* Email */}
               <div>
                 <label htmlFor="seller-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
@@ -241,10 +288,12 @@ export default function SellerLoginPage() {
                 >
                   {t('auth.forgotPassword')}
                 </Link>
+                <Link to="/seller/relink" className="block mt-1.5 text-brand font-bold hover:underline">
+                  {t('seller.relink.entry', { defaultValue: '카카오 계정이 바뀌셨나요? 계정 재연결 →' })}
+                </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               {/* Login button */}
               <button
@@ -262,26 +311,7 @@ export default function SellerLoginPage() {
                 )}
               </button>
             </form>
-
-            {/* 카카오 로그인 — 카카오 연동된 셀러는 한 번 로그인으로 셀러 권한 자동 복원 */}
-            <div className="mt-4">
-              <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span>또는</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              <a
-                href={`/auth/kakao/start?redirect=${encodeURIComponent('/seller')}&intent=seller`}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-2xl transition-colors no-underline"
-              >
-                <span className="text-base">💬</span>
-                카카오로 셀러 시작하기
-              </a>
-              <p className="text-[10px] text-gray-400 text-center mt-2">
-                카카오 로그인 후 안내에 따라 셀러 권한을 신청할 수 있어요
-              </p>
-            </div>
+            )}
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">

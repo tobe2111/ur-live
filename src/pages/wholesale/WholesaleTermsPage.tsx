@@ -9,11 +9,12 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
-import { BUSINESS_INFO } from './WholesaleFooter'
+import { useBusinessInfo, type BusinessInfo } from './WholesaleFooter'
 
-const OP = BUSINESS_INFO.company // 플랫폼 운영자 = 사람과고리
-
-const SECTIONS: { title: string; body: string[] }[] = [
+// 🏢 2026-07-04 몰별 사업자정보 — company_json 오버레이 주입(미설정 몰은 기본과 동일).
+function buildSections(BUSINESS_INFO: BusinessInfo): { title: string; body: string[] }[] {
+  const OP = BUSINESS_INFO.company // 플랫폼 운영자
+  return [
   {
     title: '제1조 (목적)',
     body: [
@@ -34,6 +35,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     body: [
       '① 이 약관의 목적물은 플랫폼이 유통스타트 사이트에 게시하는 상품 중 판매사에게 공급 가능한 것으로 표시된 상품으로 합니다.',
       '② 상품의 목록·공급가·재고는 유통스타트 사이트(카탈로그)를 통하여 고시하며, 수시로 변경될 수 있습니다.',
+      '③ 판매사의 회원등급은 플랫폼이 부여하며, 판매사는 별도의 유료 절차를 통하여 회원등급의 조정을 신청할 수 있습니다. 등급별 공급가·혜택은 유통스타트 사이트를 통하여 고시합니다.',
     ],
   },
   {
@@ -46,9 +48,9 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '제5조 (상품의 공급 및 배송)',
     body: [
-      '① 플랫폼은 선량한 관리자의 주의로써 판매사가 발주한 상품을 공급할 의무를 집니다.',
-      '② 플랫폼(또는 플랫폼이 지정하는 제조사·물류처)은 판매사가 지정한 최종 소비자에게 발주 시 안내된 기일 내에 상품을 발송합니다(택배 직발송 원칙).',
-      '③ 품절·생산지연 등으로 기일 내 발송이 어려운 경우 플랫폼은 지체 없이 판매사에게 통지하고, 판매사는 주문 취소 또는 발송일 변경을 선택할 수 있습니다.',
+      '① 플랫폼은 판매사가 발주한 상품을 공급할 의무를 집니다.',
+      '② 제조사는 판매사가 지정한 최종 소비자에게 발주 시 안내된 기일 내에 상품을 발송합니다(택배 직발송 원칙).',
+      '③ 품절·생산지연 등으로 기일 내 발송이 어려운 경우 플랫폼은 1일 이내에 판매사에게 통지하고, 판매사는 주문 취소 또는 발송일 변경을 선택할 수 있습니다.',
     ],
   },
   {
@@ -69,7 +71,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: '제8조 (교환 및 반품)',
     body: [
       '① 판매사 또는 판매사가 지정한 수령자는 상품 수령일로부터 14일 이내에 상품의 정상 여부를 확인하여야 하며, 이 기간 경과 후에는 교환·반품 접수가 제한될 수 있습니다.',
-      '② 초기 불량, 오배송, 게시된 규격과 상이한 상품에 대하여는 플랫폼이 교환·반품 의무 및 그 비용을 부담합니다.',
+      '② 초기 불량, 오배송, 게시된 규격과 상이한 상품에 대하여는 제조사가 교환·반품 의무 및 그 비용을 부담합니다.',
       '③ 단순 변심에 의한 교환·반품 비용은 판매사(또는 수령자)가 부담하며, 포장 개봉·훼손 등으로 재판매가 불가능한 상품은 반품할 수 없습니다.',
       '④ 상품 페이지에 공시된 내용을 확인하지 않아 발생한 교환·반품의 책임은 판매사에게 있습니다.',
     ],
@@ -113,7 +115,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '제14조 (해지 및 해제)',
     body: [
-      '① 일방이 이 약관을 위반하고 상당한 기간을 정한 시정 요구에도 이를 시정하지 않는 경우, 상대방은 서면(이메일·카카오톡·문자메시지 포함) 통지로 계약을 해지할 수 있습니다.',
+      '① 일방이 이 약관을 위반하고 7일의 기간을 정한 시정 요구에도 이를 시정하지 않는 경우, 상대방은 서면(이메일·카카오톡·문자메시지 포함) 통지로 계약을 해지할 수 있습니다.',
       '② 판매사의 중대한 가격정책 위반 시 플랫폼은 상품 공급을 중단할 수 있으며, 공급 중단 후 30일 내 시정되지 않으면 계약은 해지된 것으로 봅니다.',
       '③ 해지 시점까지 발생한 대금·정산 채권관계는 해지에도 불구하고 유효합니다.',
     ],
@@ -159,11 +161,13 @@ const SECTIONS: { title: string; body: string[] }[] = [
     ],
   },
 ]
+}
 
 export default function WholesaleTermsPage() {
   const navigate = useNavigate()
+  const SECTIONS = buildSections(useBusinessInfo())
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="이용약관 - 유통스타트" description="유통스타트 B2B 도매몰 이용약관(물품 공급 약관)" url="/wholesale/terms" noindex />
       <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium px-5 lg:px-8 flex items-center h-14">

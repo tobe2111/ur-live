@@ -17,11 +17,25 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
+import { normalizeAdminRole } from '@/shared/admin-roles'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
 app.use('*', requireAdmin())
 app.use('*', adminAuditMiddleware())
+
+// 🔒 2026-06-29 (대표 — "도매몰 관리는 슈퍼어드민만"): 몰 생성/수정(관리)은 슈퍼 전용.
+//   GET(몰 목록)은 여러 도매 어드민 화면의 몰 선택기(AdminMallSelect)가 읽으므로 유지 — 관리(쓰기)만 잠금.
+//   requireAdmin 이 c.set('user',{role}) 로 넣은 역할을 정규화해 super 만 통과.
+function requireSuperAdmin() {
+  return async (c: import('hono').Context, next: import('hono').Next) => {
+    const role = normalizeAdminRole((c.get('user') as { role?: string } | undefined)?.role)
+    if (role !== 'super') {
+      return c.json({ success: false, error: '도매몰 관리는 슈퍼관리자만 가능합니다', code: 'SUPER_ONLY' }, 403)
+    }
+    return next()
+  }
+}
 
 // slug: 소문자/숫자/하이픈만 (host 라우팅·URL 안전). 길이 cap. 미충족 시 null.
 function cleanSlug(raw: unknown): string | null {
@@ -39,13 +53,53 @@ function cleanText(raw: unknown, max: number): string | null {
   return s || null
 }
 
+/**
+ * 🧩 2026-07-03 몰 기능 토글 JSON 정규화 — 평평한 { key: boolean } 객체만 허용(주입/오염 방지).
+ *   문자열/객체 입력 모두 수용 → 파싱 후 boolean 값만 추려 재직렬화. 빈/무효 → null(미설정=전 기능 ON).
+ *   키는 영숫자/언더스코어 40자 이내로 제한. 최대 40개 키.
+ */
+function validFeaturesJson(raw: unknown): string | null {
+  let obj: unknown = raw
+  if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+  const out: Record<string, boolean> = {}
+  let n = 0
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (n >= 40) break
+    if (typeof v !== 'boolean') continue
+    const key = String(k).trim().slice(0, 40)
+    if (!/^[a-zA-Z0-9_]+$/.test(key)) continue
+    out[key] = v; n++
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null
+}
+
+/**
+ * 🏢 2026-07-04 몰 회사(푸터) 정보 JSON 정규화 — 평평한 { key: string } 만 허용.
+ *   허용 키 화이트리스트(푸터 표시 항목) + 값 300자 cap. 빈/무효 → null(미설정=기본 BUSINESS_INFO 폴백).
+ */
+const COMPANY_KEYS = ['company', 'ceo', 'bizRegNo', 'mailOrderNo', 'address', 'tel', 'fax', 'csEmail', 'bankName', 'bankNo', 'bankHolder'] as const
+function validCompanyJson(raw: unknown): string | null {
+  let obj: unknown = raw
+  if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+  const out: Record<string, string> = {}
+  for (const k of COMPANY_KEYS) {
+    const v = (obj as Record<string, unknown>)[k]
+    if (typeof v !== 'string') continue
+    const s = v.trim().slice(0, 300)
+    if (s) out[k] = s
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null
+}
+
 // ── GET / — 전체 몰 목록 ──────────────────────────────────────────────────────
 app.get('/', async (c) => {
   const { DB } = c.env
   try {
     await ensureMallSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active, created_at
+      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active, created_at
        FROM wholesale_malls ORDER BY id ASC LIMIT 200`
     ).all()
     return c.json({ success: true, malls: results ?? [] })
@@ -55,7 +109,7 @@ app.get('/', async (c) => {
 })
 
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────
-app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
+app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   try {
     await ensureMallSchema(DB)
@@ -71,6 +125,13 @@ app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, window
     const deposit_account = cleanText(body.deposit_account, 500)
     const commission_rate = Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null
     const categories_json = cleanText(body.categories_json, 4000)
+    // 🏥 2026-07-03 규제 몰 게이트 — 가입 시 인허가(신고번호) 필수 여부 + 필드 라벨.
+    const requires_license = Number(body.requires_license) === 1 ? 1 : 0
+    const license_label = cleanText(body.license_label, 80)
+    // 🧩 2026-07-03 몰 기능 토글 JSON (제외 레이어). 최대 2000자. 파싱 검증(잘못된 JSON 은 저장 안 함).
+    const features_json = validFeaturesJson(body.features_json)
+    // 🏢 2026-07-04 몰 회사(푸터) 정보 JSON.
+    const company_json = validCompanyJson(body.company_json)
     const active = Number(body.active) === 0 ? 0 : 1
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
@@ -78,9 +139,9 @@ app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, window
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -91,7 +152,7 @@ app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, window
 })
 
 // ── PATCH /:id — 몰 수정 ──────────────────────────────────────────────────────
-app.patch('/:id', rateLimit({ action: 'admin-wholesale-mall-update', max: 60, windowSec: 60 }), async (c) => {
+app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-update', max: 60, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 몰 ID' }, 400)
@@ -116,6 +177,10 @@ app.patch('/:id', rateLimit({ action: 'admin-wholesale-mall-update', max: 60, wi
     if ('deposit_account' in body) { sets.push('deposit_account = ?'); binds.push(cleanText(body.deposit_account, 500)) }
     if ('commission_rate' in body) { sets.push('commission_rate = ?'); binds.push(Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null) }
     if ('categories_json' in body) { sets.push('categories_json = ?'); binds.push(cleanText(body.categories_json, 4000)) }
+    if ('requires_license' in body) { sets.push('requires_license = ?'); binds.push(Number(body.requires_license) === 1 ? 1 : 0) }
+    if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
+    if ('features_json' in body) { sets.push('features_json = ?'); binds.push(validFeaturesJson(body.features_json)) }
+    if ('company_json' in body) { sets.push('company_json = ?'); binds.push(validCompanyJson(body.company_json)) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1
       // 🔒 INVARIANT 가드: 기본 몰(id=1)은 비활성 금지(전 데이터의 기본 몰 — 비활성 시 카탈로그/배너 전멸).

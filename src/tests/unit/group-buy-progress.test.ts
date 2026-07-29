@@ -1,7 +1,7 @@
 /**
  * 공동구매 진행률 + 달성 판정 — 순수 로직 테스트
  *
- * 식사권 (meal_voucher) 공구의 진행률 계산과 달성 판정 시뮬레이션.
+ * 이용권 (meal_voucher) 공구의 진행률 계산과 달성 판정 시뮬레이션.
  * src/pages/RestaurantMapPage.tsx, MainHomePage.tsx 등에서 같은 로직 사용.
  *
  * 가드:

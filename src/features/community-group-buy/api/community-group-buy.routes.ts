@@ -20,6 +20,7 @@ import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { intParam } from '@/shared/pagination'
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -115,11 +116,15 @@ async function recordCommunityPointTx(
   type: 'community_deposit' | 'refund',
   amount: number,
   description: string,
+  // 💸 2026-07-05 버킷: orderId(예: cgb:{groupId}) + freeDelta(무상 적용분 — 차감 음수/복원 양수)로
+  //   환불 대칭 복원(computeFreeRestorePortion)의 원장 근거를 남긴다.
+  orderId?: string | null,
+  freeDelta?: number,
 ): Promise<void> {
   try {
     await DB.prepare(
-      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)",
-    ).bind(userId, type, amount, amount, userId, description).run()
+      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta) VALUES (?, ?, ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)",
+    ).bind(userId, type, amount, amount, userId, description, orderId ?? null, Math.round(freeDelta ?? 0)).run()
   } catch { /* fail-soft — 원장은 보조 기록 */ }
 }
 
@@ -203,15 +208,22 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
   await ensureUserPointsTable(DB);
 
   // 💸 2026-06-12 (4차 감사 #4): total_donated 누적 오용 제거 — 보증금은 후원이 아님.
+  // 💸 2026-07-05 버킷: 무상 우선 차감 (free 사전 조회는 원장 기록·롤백 대칭용).
+  const { ensureDealBuckets: ensureBucketsCreate } = await import('../../../worker/utils/point-buckets');
+  await ensureBucketsCreate(DB);
+  const freeRowCreate = await queryFirst<{ fb: number }>(
+    DB, 'SELECT COALESCE(free_balance, 0) AS fb FROM user_points WHERE user_id = ?', [userId],
+  ).catch(() => null);
   const deductResult = await executeRun(
     DB,
-    "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
-    [depositPerPerson, userId, depositPerPerson],
+    "UPDATE user_points SET balance = balance - ?, free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositPerPerson, depositPerPerson, userId, depositPerPerson],
   );
 
   if (!deductResult.meta.changes) {
     return c.json({ success: false, error: `딜이 부족합니다 (보증금: ${depositPerPerson}딜)`, code: 'INSUFFICIENT_BALANCE' }, 400);
   }
+  const freeUsedCreate = Math.min(Math.max(0, Number(freeRowCreate?.fb ?? 0)), depositPerPerson);
 
   // Best-effort sync to legacy users.deal_balance (may not exist in prod)
   try {
@@ -264,12 +276,12 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
       [groupBuyId, userId, user.name || '익명', depositPerPerson],
     );
   } catch (insertErr) {
-    // 보증금 복원 (user_points + legacy users.deal_balance)
+    // 보증금 복원 (user_points + legacy users.deal_balance) — 💸 버킷 대칭(방금 무상 차감분 무상 복원)
     try {
       await executeRun(
         DB,
-        "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
-        [depositPerPerson, userId],
+        "UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = datetime('now') WHERE user_id = ?",
+        [depositPerPerson, freeUsedCreate, userId],
       );
     } catch { /* 복원 실패 — 아래 500 응답으로 운영 확인 */ }
     try {
@@ -287,6 +299,7 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
   await recordCommunityPointTx(
     DB, userId, 'community_deposit', depositPerPerson,
     `[커뮤니티 공구] 보증금 차감 — ${body.restaurant_name} (group:${groupBuyId})`,
+    `cgb:${groupBuyId}`, -freeUsedCreate,
   );
 
   // 🧲 2026-06-10 수요 신호 루프: 새 제안 → 어드민 벨 알림 (fail-soft — 제안 생성을 막지 않음).
@@ -322,7 +335,9 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
 });
 
 // ── POST /join/:code — 초대코드로 참여 ────────────────────────────────
-communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
+// 🧯 2026-07-02 (폭주 점검): action 이 소비자 공구 join 과 'group_buy_join' 으로 동일해 같은 IP 버킷을
+//   공유(서로의 한도 소모) → 'community_gb_join' 으로 분리. 한도/윈도우 불변.
+communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'community_gb_join', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -382,10 +397,16 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   }
 
   // 💸 2026-06-12 (4차 감사 #4): total_donated 누적 오용 제거 — 보증금은 후원이 아님.
+  // 💸 2026-07-05 버킷: 무상 우선 차감 (free 사전 조회는 원장 기록용).
+  const { ensureDealBuckets: ensureBucketsJoin } = await import('../../../worker/utils/point-buckets');
+  await ensureBucketsJoin(DB);
+  const freeRowJoin = await queryFirst<{ fb: number }>(
+    DB, 'SELECT COALESCE(free_balance, 0) AS fb FROM user_points WHERE user_id = ?', [userId],
+  ).catch(() => null);
   const deductResult = await executeRun(
     DB,
-    "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
-    [depositAmount, userId, depositAmount],
+    "UPDATE user_points SET balance = balance - ?, free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+    [depositAmount, depositAmount, userId, depositAmount],
   );
 
   if (!deductResult.meta.changes) {
@@ -415,6 +436,7 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
   await recordCommunityPointTx(
     DB, userId, 'community_deposit', depositAmount,
     `[커뮤니티 공구] 보증금 차감 — ${group.restaurant_name} (group:${group.id})`,
+    `cgb:${group.id}`, -Math.min(Math.max(0, Number(freeRowJoin?.fb ?? 0)), depositAmount),
   );
 
   // ✅ CONCURRENCY: 단일 UPDATE 로 원자 증가 + 목표 달성 시 status 전이.
@@ -590,8 +612,8 @@ communityGroupBuyRoutes.get('/list', async (c) => {
 
   const status = c.req.query('status') || 'proposed';
   const sort = c.req.query('sort') || 'newest';
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
 
   let orderBy = 'created_at DESC';
@@ -839,25 +861,14 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
     if (!claim || !claim.meta.changes) continue; // 이미 환불 처리됨
 
     // 딜 포인트 환불 — user_points UPSERT
+    // 💸 2026-07-05 버킷: 이 유저의 보증금 차감(cgb:{gid} 원장) 무상분을 무상으로 복원.
     try {
-      const existingPts = await queryFirst<{ balance: number }>(
-        DB,
-        'SELECT balance FROM user_points WHERE user_id = ?',
-        [member.user_id],
-      );
-      if (existingPts) {
-        await executeRun(
-          DB,
-          "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
-          [member.deposit_amount, member.user_id],
-        );
-      } else {
-        await executeRun(
-          DB,
-          'INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)',
-          [member.user_id, member.deposit_amount, member.deposit_amount],
-        );
-      }
+      const { computeFreeRestorePortion, bucketRestoreUpsertStatement, ensureDealBuckets } = await import('../../../worker/utils/point-buckets');
+      await ensureDealBuckets(DB);
+      const freePortion = await computeFreeRestorePortion(DB, `cgb:${group.id}`, member.deposit_amount, member.user_id);
+      await bucketRestoreUpsertStatement(DB, { userId: member.user_id, amount: member.deposit_amount, freePortion }).run();
+      // 원장은 아래 recordCommunityPointTx 가 기록 (freeDelta 전달)
+      (member as { _freePortion?: number })._freePortion = freePortion;
     } catch (e) {
       // 적립 실패 → claim 롤백 (다음 환불 시도가 재처리 가능하도록)
       try {
@@ -886,6 +897,7 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
     await recordCommunityPointTx(
       DB, member.user_id, 'refund', member.deposit_amount,
       `[커뮤니티 공구] 보증금 환불 — ${group.restaurant_name} (group:${group.id})`,
+      `cgb:${group.id}`, (member as { _freePortion?: number })._freePortion ?? 0,
     );
 
     // 멤버 상태 변경
@@ -894,6 +906,18 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
       "UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?",
       [member.id],
     );
+
+    // 🔔 2026-06-26 (소비자 감사 A): 보증금 환불됐는데 통보 0이던 누락 보강 — 그 자리에 없는 참여자가
+    //   딜 환급을 영영 모르던 문제. claim 멱등 통과한(실제 환불된) 멤버만 1회 알림. confirm 블록과 동일 패턴.
+    await DB.prepare(`
+      INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+      VALUES (?, 'user', 'group_buy_refunded', ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      member.user_id,
+      `💰 보증금이 환불됐어요`,
+      `${group.restaurant_name} 공동구매가 무산되어 보증금 ${Number(member.deposit_amount).toLocaleString('ko-KR')}딜을 돌려드렸어요`,
+      `/community-group-buy/${group.invite_code}/messages`,
+    ).run().catch(() => { /* notifications 테이블 없으면 skip (confirm 알림과 동일 패턴) */ });
 
     refundCount++;
   }

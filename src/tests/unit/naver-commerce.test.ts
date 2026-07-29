@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import bcrypt from 'bcryptjs'
-import { signClientSecret, buildNaverProductPayload, type ExportInput } from '../../features/supply/api/naver-commerce-core'
+import { signClientSecret, buildNaverProductPayload, type ExportInput } from '../../services/naver-commerce-core'
 
 describe('signClientSecret (커머스API 전자서명)', () => {
   it('client_secret(bcrypt salt)으로 `${id}_${ts}` 를 해시 → base64 — 역검증 일치', async () => {

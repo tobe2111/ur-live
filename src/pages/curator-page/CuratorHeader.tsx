@@ -17,8 +17,8 @@ import { snsUrl } from '@/utils/sns-url'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, ImagePlus } from 'lucide-react'
-import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
+import VerifiedSeal from '@/components/VerifiedSeal'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { toast } from '@/hooks/useToast'
@@ -40,24 +40,28 @@ interface CuratorHeaderProps {
     instagram_url?: string | null
     tiktok_url?: string | null
   }
-  pinCount: number
   isOwner: boolean
+  // 🏁 2026-06-25 (대표 — 일반/사업자 구분 표시): 이름 옆 작은 배지. 'business'=사업자 유저(인증/판매), 'user'=일반.
+  accountType?: 'user' | 'business'
   onCopyLink: () => void
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
 
 export default function CuratorHeader({
   curator,
-  pinCount,
   isOwner,
+  accountType,
   onCopyLink,
   onCuratorUpdate,
 }: CuratorHeaderProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [editingField, setEditingField] = useState<'name' | 'bio' | null>(null)
+  // 🏅 2026-07-02 (대표 — "처음 보는 유저는 저 문양이 뭔지 모름"): 이름 옆 파란 U 인증씰을 클릭하면
+  //   "사업자 인증이 된 유저" 설명 팝오버. hover title 은 모바일 미노출이라 tap 기반으로 전환.
+  const [showVerified, setShowVerified] = useState(false)
   // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
-  const shareHost = typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'
+  const shareHost = typeof window !== 'undefined' ? window.location.host : 'urdeal.kr'
   const [editingHandle, setEditingHandle] = useState(false)
   const [handleVal, setHandleVal] = useState(curator.handle)
   const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')
@@ -100,7 +104,8 @@ export default function CuratorHeader({
   // 🎨 2026-06-18 마퀴 헤드라인 편집(소유자).
   const [editingHeadline, setEditingHeadline] = useState(false)
   const [headlineVal, setHeadlineVal] = useState(curator.headline || '')
-  // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 주황.
+  // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 중립 회색(마퀴 바는 면적이 커 로즈=면 강조
+  //   '10% 이하' 룰 위배라 중립 유지 — 브랜드 로즈는 폴백 배너 그라데이션·행동 요소에만).
   const ACCENT_DEFAULT = '#6b7280'
   const ACCENT_PRESETS = ['#6b7280', '#4b5563', '#374151', '#1f2937', '#0E9F6E', '#111827']
   const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
@@ -108,7 +113,7 @@ export default function CuratorHeader({
   const accentText = (() => {
     const h = accentColor.replace('#', '')
     const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1a1a1a' : '#ffffff'
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1A2334' : '#ffffff'
   })()
   async function saveAccent(hex: string) {
     const prev = curator.accent || ''
@@ -234,13 +239,14 @@ export default function CuratorHeader({
   const [bannerBroken, setBannerBroken] = useState(false)
   useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
-  // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로 (브랜드 앰버 + 잉크).
-  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A1A1A 130%)'
+  // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로. 🎨 2026-07-20 (accent 잔재 정합): 옛 주황(#FF8A3D)
+  //   중간 스톱 → 브랜드 로즈(#E0526B) — 회색→로즈→잉크 온-브랜드 히어로(배너 없는 링크샵만 노출).
+  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #E0526B 42%, #1A2334 130%)'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
   return (
-    <header className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A]">
+    <header className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
       {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
       <div className="max-w-3xl mx-auto">
         {editingHeadline ? (
@@ -332,7 +338,7 @@ export default function CuratorHeader({
             />
           )}
           {/* 하단 그라데이션 페이드 — 배너가 페이지 배경으로 자연스럽게 melt (좌우 풀블리드 + 부드러운 전환) */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-[#020202]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-[#0F151D]" />
           {/* 공유 (방문자/소유자 공통) — 우상단 오버레이 */}
           <button
             type="button"
@@ -367,6 +373,7 @@ export default function CuratorHeader({
 
       <div className="max-w-3xl mx-auto px-4 pb-4">
         {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 (배너 하단 페이드 위로 살짝 올림) */}
+        {/* 🗑️ 2026-07-07 (대표 — "프로필 사진 없애줘"): 배너 위 아바타 제거. 배너가 정체성. */}
         <div className="-mt-6 relative z-10 text-center">
 
           {editingField === 'name' ? (
@@ -379,8 +386,8 @@ export default function CuratorHeader({
                 onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
                 maxLength={40}
               />
-              <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-1.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#020202] shrink-0 active:scale-95 disabled:opacity-50"><Check className="w-4 h-4" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95"><X className="w-4 h-4" /></button>
+              <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-1.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#0F151D] shrink-0 active:scale-95 disabled:opacity-50"><Check className="w-4 h-4" /></button>
+              <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 dark:bg-[#2A3446] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95"><X className="w-4 h-4" /></button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-1.5">
@@ -390,10 +397,48 @@ export default function CuratorHeader({
               >
                 {curator.name}
               </h1>
+              {/* 🏁 2026-06-25 (대표 — 인스타 인증딱지 스타일): 인증 유저(사업자)는 이름 옆 파란 U 씰.
+                  🏅 2026-07-02 (대표 — "처음 보는 유저는 저 문양이 뭔지 모름"): 클릭 시 설명 팝오버(tap 기반). */}
+              {accountType === 'business' && (
+                <span className="relative inline-flex shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowVerified(v => !v) }}
+                    aria-label={t('curator.verifiedBusinessUser', { defaultValue: '사업자 인증이 된 유저예요' })}
+                    aria-expanded={showVerified}
+                    className="inline-flex active:scale-90 transition-transform"
+                  >
+                    <VerifiedSeal size={18} />
+                  </button>
+                  {showVerified && (
+                    <>
+                      {/* 바깥 클릭 닫기 백드롭 (span — h1 안이라 inline 요소만 허용) */}
+                      <span className="fixed inset-0 z-[10499]" onClick={(e) => { e.stopPropagation(); setShowVerified(false) }} />
+                      <span
+                        role="tooltip"
+                        className="absolute left-1/2 top-full mt-2 -translate-x-1/2 z-[10500] block w-max max-w-[220px] rounded-xl bg-gray-900 dark:bg-white px-3 py-2 text-left shadow-xl ring-1 ring-black/5"
+                      >
+                        {/* 위쪽 꼭지 */}
+                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900 dark:bg-white" />
+                        <span className="flex items-center gap-1.5">
+                          <VerifiedSeal size={13} className="shrink-0" />
+                          <span className="text-[12.5px] font-bold text-white dark:text-gray-900 leading-tight whitespace-nowrap">
+                            {t('curator.verifiedBusinessUser', { defaultValue: '사업자 인증이 된 유저예요' })}
+                          </span>
+                        </span>
+                        <span className="block mt-1 text-[11px] text-white/70 dark:text-gray-500 leading-snug">
+                          {t('curator.verifiedBusinessDesc', { defaultValue: '사업자등록 정보가 확인되었어요.' })}
+                        </span>
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
               {isOwner && <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-pointer" onClick={() => setEditingField('name')} />}
             </div>
           )}
           <p className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">@{curator.handle}</p>
+          {/* 🗑️ 2026-07-07 (대표 — "상품·이용권·평점 스탯 필요없어"): 스탯 줄 제거. */}
 
           {editingField === 'bio' ? (
             <div className="mt-2.5 max-w-md mx-auto">
@@ -403,11 +448,11 @@ export default function CuratorHeader({
                 onChange={(e) => setEditBio(e.target.value)}
                 rows={2}
                 maxLength={200}
-                className="w-full text-[13.5px] text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0A0A] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none text-center"
+                className="w-full text-[13.5px] text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0F151D] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none text-center"
               />
               <div className="flex gap-2 mt-1 justify-center">
-                <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg">저장</button>
-                <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
+                <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-xs font-bold rounded-lg">저장</button>
+                <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
               </div>
             </div>
           ) : (curator.bio || isOwner) && (
@@ -448,7 +493,7 @@ export default function CuratorHeader({
 
         {/* SNS 편집 패널 (소유자) */}
         {isOwner && editingSns && (
-          <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3 space-y-2 max-w-md mx-auto">
+          <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-3 space-y-2 max-w-md mx-auto">
             {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
@@ -456,13 +501,13 @@ export default function CuratorHeader({
                   value={snsForm[key]}
                   onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
                   placeholder="@핸들 또는 링크"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                 />
               </div>
             ))}
             <div className="flex gap-2 pt-1">
-              <button onClick={saveSns} disabled={saving} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
-              <button onClick={() => setEditingSns(false)} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+              <button onClick={saveSns} disabled={saving} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
+              <button onClick={() => setEditingSns(false)} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
             </div>
           </div>
         )}
@@ -471,7 +516,7 @@ export default function CuratorHeader({
         {isOwner ? (
           <div className="mt-4 max-w-md mx-auto">
             {/* 🔗 2026-06-17 (사용자 요청 — "링크 공유가 우선, 주소 변경과 묶어서"): 주소 표시 + 복사/카카오 공유 + 주소 변경 한 카드. */}
-            <div className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3.5">
+            <div className="rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-3.5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 링크샵 주소</span>
                 {!editingHandle && (
@@ -485,7 +530,7 @@ export default function CuratorHeader({
               </div>
               {editingHandle ? (
                 <div>
-                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
+                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A3446] bg-white dark:bg-[#1A2334]">
                     <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
                     <input
                       value={handleVal}
@@ -499,39 +544,23 @@ export default function CuratorHeader({
                     <p className={`text-[11.5px] mt-1.5 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400' : 'text-red-500'}`}>{handleMsg}</p>
                   )}
                   <div className="flex gap-2 mt-2">
-                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
-                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
+                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
                   </div>
                 </div>
               ) : (
                 // 🔗 2026-06-18 (사용자 요청 — 배너 우상단 공유 버튼과 중복): 주소 카드의 링크복사/카카오공유 제거.
                 //   주소 표시 + '주소 변경'만 유지. 공유는 배너 히어로 우상단 공유 아이콘으로 일원화.
-                <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
+                <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446]">
                   <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          // 🔗 2026-06-17 (방문자 공유): 라벨 단 균등 2버튼 (오너 카드와 동일 톤).
-          <div className="flex gap-2 mt-4 max-w-md mx-auto">
-            <button
-              onClick={onCopyLink}
-              className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Share2 className="w-3.5 h-3.5" /> {t('curator.copyLink', { defaultValue: '링크 복사' })}
-            </button>
-            <div className="flex-1">
-              <KakaoShareButton
-                title={`${curator.name} 의 링크샵`}
-                description={curator.bio || `${pinCount}개 상품 추천 중`}
-                imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-                link={`/u/${curator.handle}`}
-                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
-                buttonText="카카오 공유"
-              />
-            </div>
-          </div>
+          // 🗑️ 2026-07-07 (대표 — "링크복사·카카오공유 버튼 없애줘"): 방문자 공유 2버튼 제거.
+          //   공유는 배너 우상단 공유 아이콘으로 일원화(오너/방문자 공통).
+          null
         )}
       </div>
     </header>

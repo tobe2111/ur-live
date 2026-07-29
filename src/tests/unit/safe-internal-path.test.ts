@@ -75,6 +75,35 @@ describe('safe-internal-path', () => {
     })
   })
 
+  // 🧭 2026-07-11 (감사 §R2): ref/aff/invite 화이트리스트 보존 — 나머지 query/hash 는 계속 제거
+  describe('safeInternalPath - 어트리뷰션 화이트리스트 보존', () => {
+    it('?ref= 보존 (인플 share_url)', () => {
+      expect(safeInternalPath('/group-buy/33?ref=123')).toBe('/group-buy/33?ref=123')
+    })
+    it('?aff= / ?invite= 보존', () => {
+      expect(safeInternalPath('/vouchers/9?aff=45')).toBe('/vouchers/9?aff=45')
+      expect(safeInternalPath('/?invite=77')).toBe('/?invite=77')
+    })
+    it('비화이트리스트 param 은 계속 제거 (에러 누적 방어 불변)', () => {
+      expect(safeInternalPath('/user/profile?error=database_error')).toBe('/user/profile')
+      expect(safeInternalPath('/group-buy/33?ref=123&error=x&utm_source=y')).toBe('/group-buy/33?ref=123')
+    })
+    it('hash 는 계속 제거', () => {
+      expect(safeInternalPath('/group-buy/33?ref=123#section')).toBe('/group-buy/33?ref=123')
+    })
+    it('안전하지 않은 값(charset 밖)은 보존 안 함', () => {
+      expect(safeInternalPath('/x?ref=<script>')).toBe('/x')
+      expect(safeInternalPath('/x?ref=https://evil.com')).toBe('/x')
+    })
+    it('금지 path 는 ref 있어도 여전히 차단', () => {
+      expect(safeInternalPath('/login?ref=123')).toBe('/')
+      expect(safeInternalPath('/auth/kakao/start?ref=123')).toBe('/')
+    })
+    it('외부 URL 은 ref 있어도 여전히 차단', () => {
+      expect(safeInternalPath('//evil.com?ref=123')).toBe('/')
+    })
+  })
+
   describe('회귀 — 카카오 OAuth 자기참조', () => {
     it('/auth/kakao/start?redirect=... 차단 (OAuth hop 루프)', () => {
       expect(safeInternalPath('/auth/kakao/start?redirect=/auth/kakao/start')).toBe('/')

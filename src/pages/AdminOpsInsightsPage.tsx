@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { useAdminOpsInsights } from '@/hooks/queries'
 import { AlertTriangle, TrendingDown, UserX, Clock, Building2, ExternalLink } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -27,13 +27,27 @@ export default function AdminOpsInsightsPage() {
   // 🛡️ 2026-05-22 P1 영구 fix: React Query 마이그.
   //   서버 KV cache 5분 + 클라이언트 staleTime 5분 → admin 페이지 전환 시 cache hit.
   //   같은 admin 가 다시 진입해도 서버 호출 0 (5분 내).
-  const { data: insightsData, isLoading: loading } = useAdminOpsInsights()
-  const data: OpsInsight | null = (insightsData as OpsInsight) ?? null
+  const { data: insightsData, isLoading: loading, isError, error, refetch } = useAdminOpsInsights()
+  // 🛡️ 2026-07-01 (대표 "insights 백지 왜 안돼"): 오류/부분응답 방어.
+  //   - 오류(403 IP·권한 / 500 / 네트워크) → data undefined → 기존엔 `: null` 로 백지.
+  //     이제 isError 를 표면화(DashboardLoadError — 상태별 안내 + 재시도/재로그인).
+  //   - 성공이지만 `{}` 등 배열 누락 응답 → `.length`/`.map` 크래시(ErrorBoundary 폴백) 방지 위해
+  //     모든 배열을 기본값 [] 로 정규화 → 렌더 본문은 항상 안전.
+  const raw = insightsData as Partial<OpsInsight> | undefined
+  const hasData = !!raw && Object.keys(raw).length > 0
+  const data: OpsInsight | null = hasData ? {
+    inactive_agencies: raw!.inactive_agencies ?? [],
+    dormant_new_sellers: raw!.dormant_new_sellers ?? [],
+    stuck_pending_orders: raw!.stuck_pending_orders ?? [],
+    dormant_sellers: raw!.dormant_sellers ?? [],
+    notifications_24h: raw!.notifications_24h ?? [],
+    failed_webhooks_24h: raw!.failed_webhooks_24h ?? [],
+  } : null
   const summary: OpsInsightSummary | null = data ? {
-    inactive_agencies: data.inactive_agencies?.length ?? 0,
-    dormant_new_sellers: data.dormant_new_sellers?.length ?? 0,
-    stuck_pending_orders: data.stuck_pending_orders?.length ?? 0,
-    dormant_sellers: data.dormant_sellers?.length ?? 0,
+    inactive_agencies: data.inactive_agencies.length,
+    dormant_new_sellers: data.dormant_new_sellers.length,
+    stuck_pending_orders: data.stuck_pending_orders.length,
+    dormant_sellers: data.dormant_sellers.length,
     failed_webhooks_24h: data.failed_webhooks_24h?.length ?? 0,
   } : null
 
@@ -58,6 +72,8 @@ export default function AdminOpsInsightsPage() {
 
         {loading ? (
           <div className="text-center text-sm text-gray-400 py-8">{t('admin.opsInsights.loading', { defaultValue: '불러오는 중...' })}</div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })} />
         ) : data ? (
           <>
             {/* 부진 에이전시 */}
@@ -168,7 +184,9 @@ export default function AdminOpsInsightsPage() {
               </Section>
             )}
           </>
-        ) : null}
+        ) : (
+          <div className="text-center text-sm text-gray-400 py-8">{t('admin.opsInsights.empty', { defaultValue: '표시할 인사이트가 없습니다.' })}</div>
+        )}
       </div>
     </AdminLayout>
   )

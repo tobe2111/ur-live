@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { canonicalDetailPath } from '@/shared/product-flow'
 import PinButton from '@/components/curator/PinButton'
 
 interface Product {
@@ -16,6 +17,10 @@ interface Product {
   seller_username: string
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시.
   deal_only?: number
+  // 🎫 2026-06-21 (대표 요청): 교환권은 판매자 핸들 대신 브랜드명(스타벅스 등) 표시.
+  brand_name?: string
+  // 🧭 2026-07-20 (대표 — 검색 페이지 이동 정규화): 종류별 정규 상세 경로 판별용.
+  category?: string | null
 }
 
 interface ProductCardProps {
@@ -46,10 +51,14 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
   const discount = product.discount_rate || 0
   const showDiscountBadge = discount >= 30
   const priceUnit = Number(product.deal_only) === 1 ? '딜' : '원'
+  // 🧭 2026-07-20 (대표 — "페이지 이동 가장 이상적으로"): 종류별 정규 상세로 직접 링크(교환권 /vouchers,
+  //   숙소 /stays, 이용권 /group-buy). 기존엔 전부 /products/:id 로 보내 ProductDetailPage 가 다시
+  //   canonicalDetailPath 로 리다이렉트하던 추가 홉을 제거(리다이렉트 SSOT 는 동일 함수 재사용).
+  const detailPath = canonicalDetailPath(product) ?? `/products/${product.id}`
 
   return (
-    <Link to={`/products/${product.id}`} className="block text-left group">
-      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1A1A]">
+    <Link to={detailPath} className="block text-left group">
+      <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A2334]">
         {product.image_url ? (
           /* 🛡️ 2026-05-23 (Task 4): Cloudflare Image Resizing — WebP/AVIF 자동 변환 + DPI별 srcset.
               원본 URL 그대로 → 50-80% 트래픽 절감, LCP ↓.
@@ -64,7 +73,7 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
             decoding="async"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1A1A1A]">
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-[#1A2334]">
             <span className="text-gray-300 dark:text-gray-600 text-2xl">📦</span>
           </div>
         )}
@@ -96,10 +105,13 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
       </div>
 
       <div className="mt-2.5 px-0.5">
-        {/* Seller name */}
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5">
-          @{product.seller_name || product.seller_username}
-        </p>
+        {/* 🎫 2026-06-21 (대표 요청): 교환권(deal_only=1)은 판매자 핸들(@) 대신 브랜드명 표시.
+            판매자 없는 교환권에 빈 '@' 만 뜨던 것 해소 — 브랜드·판매자 둘 다 없으면 줄 생략. */}
+        {Number(product.deal_only) === 1 && product.brand_name ? (
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-0.5 truncate">{product.brand_name}</p>
+        ) : (product.seller_name || product.seller_username) ? (
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-0.5 truncate">@{product.seller_name || product.seller_username}</p>
+        ) : null}
 
         {/* Product name with keyword highlight */}
         <p className="text-[13px] text-gray-900 dark:text-white leading-[1.35] line-clamp-2 mb-1.5">

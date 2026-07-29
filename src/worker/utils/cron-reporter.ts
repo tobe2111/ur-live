@@ -76,15 +76,16 @@ export async function reportCronFailure(
     ).run()
 
     // 3. admin 대시보드 알림 (critical / error 만 — warning 은 노이즈)
+    // 🛡️ 2026-07-01: 실제 테이블은 dashboard_notifications (없는 admin_dashboard_notifications·body·severity
+    //   컬럼 참조로 조용히 실패 → cron 실패 알림이 어드민 벨에 안 뜸). recipient_type='admin'·message 로 교정.
     if (severity !== 'warning') {
       try {
         await env.DB.prepare(`
-          INSERT INTO admin_dashboard_notifications (type, title, body, link, severity, created_at)
-          VALUES ('cron_failure', ?, ?, '/admin/cron-failures', ?, datetime('now'))
+          INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+          VALUES ('admin', NULL, 'cron_failure', ?, ?, '/admin/cron-failures', datetime('now'))
         `).bind(
           `Cron 실패: ${jobName}`,
-          errMsg.slice(0, 200),
-          severity
+          errMsg.slice(0, 200)
         ).run()
       } catch { /* notifications 테이블 없으면 silent */ }
     }

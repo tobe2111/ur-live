@@ -1,22 +1,35 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
+import { readCache } from '@/hooks/queries/localCache'
+import { pickSeedDetail } from './group-buy/seed-detail'
+import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
+// 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): PC 우측 sticky 구매 박스 + 섹션 추출(파일크기 래칫).
+import DealPurchaseBox from './group-buy/DealPurchaseBox'
+import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
+import OtherDealsRow from './group-buy/OtherDealsRow'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -25,6 +38,25 @@ import { useInvalidateMyVouchers } from '@/hooks/queries'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+// 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
+const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
+
+// 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
+//   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
+//   공간만 예약(중립, 로딩 표시 X). 스크롤해 도달하면 그때 로드(정상). RestaurantMiniMap 내부 SDK 게이트와 별개의 chunk 게이트.
+function DeferUntilVisible({ minHeight, children }: { minHeight: number; children: ReactNode }) {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (visible) return
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') { setVisible(true); return }
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { rootMargin: '300px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [visible])
+  return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
+}
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -52,6 +84,12 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
+  /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
+  max_per_person?: number
+  /** 🏷️ 오픈 예정형 데모 — 구매 대신 사전 응모 CTA */
+  prelaunch?: boolean
+  /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
+  kakao_place_url?: string
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -63,13 +101,6 @@ interface GroupBuyDetail {
   seller_youtube?: string | null
   seller_tiktok?: string | null
   seller_facebook?: string | null
-}
-
-interface Participant {
-  masked_name: string
-  avatar?: string
-  created_at: string
-  quantity: number
 }
 
 function CategoryEmoji({ cat }: { cat: string }) {
@@ -95,7 +126,9 @@ export default function GroupBuyDetailPage() {
   // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
   const refUserId = searchParams.get('ref')
   // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
-  useEffect(() => { storeAffiliateRef(searchParams.get('aff')) }, [searchParams])
+  // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) 도 커미션 레일에 저장 — 기존엔 랜딩 배너
+  //   플래그(refUserId)로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
+  useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
 
   // 🛡️ 2026-06-11 (플로우 감사 갭#5): 토스 실패 복귀(?fail=1) 무안내였음 — failUrl 만 만들고
   //   읽는 코드가 없어 유저가 결제 성패를 모름. 1회 toast + URL 정리(새로고침 중복 방지).
@@ -115,11 +148,21 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const isInfluencerLanding = !!refUserId
-  const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [loading, setLoading] = useState(true)
+  const qc = useQueryClient()
+  // 🧭 2026-06-22 (전수조사): 첫 paint 시드 — 홈 카드 prefetch(RQ) / SSR inject / localCache 를 즉시 소비.
+  //   시드가 있으면 skeleton 을 건너뛰고 바로 content (axios fetch 는 freshness 보정으로 background 수행).
+  //   없으면 seedDetail=null → 기존 skeleton + fetch fallback (안전).
+  const seedDetail = useMemo<GroupBuyDetail | null>(() => pickSeedDetail<GroupBuyDetail>(Number(id), {
+    rqCached: qc.getQueryData(queryKeys.groupBuyProduct(Number(id))),
+    ssrText: typeof document !== 'undefined' ? document.getElementById('__SSR_INITIAL_DETAIL__')?.textContent : null,
+    localCached: readCache<GroupBuyDetail | null>(`gb:${Number(id)}`, null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [id, qc])
+  const [detail, setDetail] = useState<GroupBuyDetail | null>(seedDetail)
+  const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
@@ -159,60 +202,71 @@ export default function GroupBuyDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
       toast.error('잘못된 ID')
-      navigate('/group-buy')
+      navigate('/map') // 🧹 2026-07-20: /group-buy 는 홈 리다이렉트(죽은 경로) → 동네딜 지도로
       return
     }
     let cancelled = false
 
-    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
-    //   효과: 첫 paint 부터 상세 표시 (axios fetch waterfall ~200-500ms 제거).
-    //   miss 시 useEffect 가 정상 axios fetch (fallback 안전).
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && parsed?.data?.id === productId) {
-            setDetail(parsed.data)
-          }
-        }
-      }
-    } catch { /* SSR inject 누락 / 손상 — fallback */ }
-
-    Promise.all([
-      api.get(`/api/group-buy/products/${productId}`),
-      api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailRes, partRes]) => {
+    // 🧭 2026-06-22 (전수조사): 첫 paint SSR/prefetch 시드는 위 seedDetail(useState 초기값)이 담당.
+    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 로더 후 채움.
+    // 🎯 2026-07-01 (대표 "로딩 2번 + 느림" — 근본): raw axios → RQ fetchQuery 로 **in-flight prefetch dedupe**.
+    //   홈 카드 touchstart prefetch(~0.6s) 진행 중에 탭하면, 기존엔 페이지가 같은 요청을 처음부터 다시
+    //   시작(중복 네트워크 + 로더 노출 2배) → fetchQuery 는 같은 키의 진행 중 요청을 그대로 이어받고,
+    //   방금 끝난 prefetch(≤60s fresh)는 네트워크 0회로 즉시 반환. 캐시 write-back 도 RQ 가 자동.
+    const detailPromise = qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(productId),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${productId}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '상품을 찾을 수 없습니다')
+        // 🛡️ 2026-05-23 revert 유지: 받은 상품 그대로 렌더(카테고리 redirect 금지 — 과거 사고).
+        return r.data.data as GroupBuyDetail
+      },
+      staleTime: 60_000,
+    })
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): participants fetch 제거 — 리디자인 후 어디서도 렌더 안 되던
+    //   죽은 요청(상세 진입마다 무의미한 왕복 1개). 상세 payload 만 로드.
+    detailPromise.then((detailData) => {
       if (cancelled) return
-      if (detailRes.data?.success) {
-        // 🛡️ 2026-05-23 revert: /group-buy/:id 진입 시 redirect 제거.
-        //   이전 redirect 가 모든 voucher 카테고리 상품을 /vouchers/:id 로 보내서
-        //   공구 페이지 자체가 렌더 안 됐던 사고 (모든 공구 상품이 voucher 카테고리인 환경).
-        //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
-        //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
-        setDetail(detailRes.data.data)
+      if (detailData) {
+        setDetail(detailData)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
           recordRecentlyViewed({
-            id: detailRes.data.data.id,
-            name: detailRes.data.data.name,
-            image_url: detailRes.data.data.image_url,
-            restaurant_name: detailRes.data.data.restaurant_name,
-            price: detailRes.data.data.price,
+            id: detailData.id,
+            name: detailData.name,
+            image_url: detailData.image_url,
+            restaurant_name: detailData.restaurant_name,
+            price: detailData.price,
           })
         } catch { /* silent */ }
-      } else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
-      setParticipants(partRes.data?.data || [])
-    }).catch(() => toast.error('네트워크 오류'))
+      }
+    }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
-  }, [productId, navigate])
+  }, [productId, navigate, qc])
 
   // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
+  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 이 섹션은 폴드 아래(페이지 최하단 가로 스크롤)라
+  //   마운트 즉시 전체 active 목록을 받던 것을 IntersectionObserver 로 게이팅 — 사용자가 그 근처까지
+  //   스크롤할 때만 1회 fetch. HomeProductsRail 과 동일 패턴(600px rootMargin). SSR seed·폴링·below-fold
+  //   lazy 전부 불변(additive — 관찰 게이트 1개 추가). 대다수(빠른 이탈/구매) 뷰에서 요청 자체가 사라짐.
+  const [otherDealsInView, setOtherDealsInView] = useState(false)
+  const otherDealsSentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = otherDealsSentinelRef.current
+    if (!el || otherDealsInView) return
+    if (typeof IntersectionObserver === 'undefined') { setOtherDealsInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setOtherDealsInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [otherDealsInView, detail?.seller_id])
+
   useEffect(() => {
     const sid = detail?.seller_id
-    if (!sid) return
+    if (!sid || !otherDealsInView) return
     let cancelled = false
     api.get('/api/group-buy/products?status=active')
       .then(r => {
@@ -226,7 +280,7 @@ export default function GroupBuyDetailPage() {
       })
       .catch(() => { /* silent */ })
     return () => { cancelled = true }
-  }, [detail?.seller_id, productId])
+  }, [detail?.seller_id, productId, otherDealsInView])
 
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
@@ -240,13 +294,16 @@ export default function GroupBuyDetailPage() {
       if (document.hidden) return
       try {
         const d = await api.get(`/api/group-buy/products/${productId}`)
-        if (d.data?.success) setDetail(d.data.data)
+        if (d.data?.success) {
+          setDetail(d.data.data)
+          qc.setQueryData(queryKeys.groupBuyProduct(productId), d.data.data)
+        }
       } catch { /* silent */ }
     }
     // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
     //   2026-05-27: 마감까지 거리 기반 adaptive — 멀면 길게, 가까우면 짧게 (서버 부하 ↓, UX 유지).
     const jitter = () => {
-      const deadlineMs = detail.group_buy_deadline ? new Date(detail.group_buy_deadline).getTime() - Date.now() : Infinity
+      const deadlineMs = detail.group_buy_deadline ? safeTime(detail.group_buy_deadline) - Date.now() : Infinity
       const base = deadlineMs > 86400000 ? 20000 : deadlineMs > 3600000 ? 10000 : 5000
       return base + Math.floor((Math.random() - 0.5) * base * 0.4)
     }
@@ -259,7 +316,7 @@ export default function GroupBuyDetailPage() {
     }
     scheduleNext()
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
-  }, [detail?.group_buy_status, productId])
+  }, [detail?.group_buy_status, productId, qc])
 
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 단계별 tier 사다리 UI 제거 (design/groupbuy-instant-sale.md).
   //   공구가는 인원 무관 고정(최대 할인 적용)이라 group_buy_tiers 렌더링 불필요.
@@ -267,6 +324,8 @@ export default function GroupBuyDetailPage() {
   // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
   const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
   const total = unitPrice * quantity
+  // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
+  const maxQty = detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : 10
   // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
   //   기준가 = original_price(정가, MSRP) 가 있고 결제가보다 크면 그것, 없으면 공구 기준가(price).
   //   순수 파생값 — SSR/폴링/잠금 동작 불변(렌더 카피만 추가).
@@ -276,14 +335,18 @@ export default function GroupBuyDetailPage() {
   const unitSaving = Math.max(0, refPrice - unitPrice)
   const totalSaving = unitSaving * quantity
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
+  // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형은 구매 불가 — 사전 응모(FcfsApplyBlock)로 유도.
+  const isPrelaunch = !!detail?.prelaunch
+  const buyable = isJoinable && !isPrelaunch
 
-  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + detail_images/image_urls(JSON) 병합·중복제거.
+  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
+  //   🖼️ 2026-07-20: products.images(PRODUCT_DETAIL_FIELDS 기포함 — 데모 시드 3~5장) 병합 추가.
   const galleryImages: string[] = (() => {
     if (!detail) return []
     const out: string[] = []
     if (detail.image_url) out.push(detail.image_url)
-    const extra = detail as { detail_images?: string | null; image_urls?: string | null }
-    for (const raw of [extra.image_urls, extra.detail_images]) {
+    const extra = detail as { detail_images?: string | null; image_urls?: string | null; images?: string | null }
+    for (const raw of [extra.images, extra.image_urls, extra.detail_images]) {
       if (!raw) continue
       try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
     }
@@ -339,6 +402,11 @@ export default function GroupBuyDetailPage() {
         const e = err as { response?: { data?: { error?: string; code?: string } } }
         const code = e?.response?.data?.code
         if (code === 'INSUFFICIENT_POINTS') {
+          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+          if (TOPUP_DISABLED) {
+            toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+            return
+          }
           const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
           if (charge) {
             localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -413,61 +481,31 @@ export default function GroupBuyDetailPage() {
   }
 
   if (loading) {
-    // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-        {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}
-        <div
-          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)]"
-          style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
-        >
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto">
-          <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A] animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="h-4 w-1/3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <div className="h-8 w-32 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-          </div>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-              <div className="h-6 w-16 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-            <div className="h-3 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 소비자 로딩을 유어딜 BrandLoader(SSOT)로 통일.
+    //   ⚠️ SSR seed(`__SSR_INITIAL_DETAIL__`) 있으면 loading=false 라 이 로더는 seed-miss/콜드 SPA 이동에만 노출.
+    return <BrandLoader fullScreen />
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/group-buy')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
     )
   }
 
   return (
-    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100vh' }}>
+    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100dvh' }}>
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
           detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${unitPrice.toLocaleString('ko-KR')}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${detail.price.toLocaleString('ko-KR')}원`
+            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
         url={`/group-buy/${productId}`}
-        image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
+        image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
         type="product"
         jsonLd={[{
           '@context': 'https://schema.org',
@@ -478,7 +516,7 @@ export default function GroupBuyDetailPage() {
           brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
           offers: {
             '@type': 'Offer',
-            url: `https://live.ur-team.com/group-buy/${productId}`,
+            url: `https://urdeal.kr/group-buy/${productId}`,
             priceCurrency: 'KRW',
             price: unitPrice,
             availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
@@ -504,9 +542,9 @@ export default function GroupBuyDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
-            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
-            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://live.ur-team.com/group-buy/${productId}` },
+            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://urdeal.kr/' },
+            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://urdeal.kr/group-buy' },
+            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://urdeal.kr/group-buy/${productId}` },
           ],
         }]}
       />
@@ -518,10 +556,12 @@ export default function GroupBuyDetailPage() {
 
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
+      {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 상단 담당 → 이 플로팅 헤더는
+          모바일 전용(lg:hidden). 핀/공유는 lg 섹션 탭 우측에 별도 렌더. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
           headerSolid
-            ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
+            ? 'bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]'
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
@@ -531,7 +571,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => navigate(-1)}
             className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
             aria-label="뒤로가기"
           >
@@ -556,22 +596,32 @@ export default function GroupBuyDetailPage() {
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
             description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-            imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+            imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
+            {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+              salePrice: detail.price,
+              discountRate: detail.current_discount_pct,
+              secondaryButtonText: '자세히 보기',
+            })}
             compact
             className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
           />
         </div>
       </header>
 
+      {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
+          이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
+          하단 고정 구매바 그대로(불변). */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-5">
+      <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1A2334', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {!src && <CategoryEmoji cat={detail.category} />}
             </div>
           ))}
@@ -583,7 +633,7 @@ export default function GroupBuyDetailPage() {
             <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {({ meal_voucher: '식사권', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
+            {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
           </span>
           {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
           {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
@@ -598,6 +648,37 @@ export default function GroupBuyDetailPage() {
       </div>
 
       <main id="gb-main" role="main">
+        {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
+        <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
+          {[
+            { id: 'gb-sec-info', label: '이용권 정보' },
+            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
+            { id: 'gb-sec-reviews', label: '리뷰' },
+          ].map((tab) => (
+            <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              {tab.label}
+            </button>
+          ))}
+          {/* 핀/공유 — 모바일 플로팅 헤더가 lg:hidden 이라 PC 는 여기서 제공 */}
+          <span className="ml-auto flex items-center gap-1 pb-1">
+            <PinButton productId={detail.id} price={detail.price} variant="detail-floating" className="!w-9 !h-9 shrink-0" />
+            <KakaoShareButton
+              title={`${detail.name} 공구 참여하기`}
+              description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
+              imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
+              link={shareLink}
+              buttonText="나도 참여하기"
+              {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+                salePrice: detail.price,
+                discountRate: detail.current_discount_pct,
+                secondaryButtonText: '자세히 보기',
+              })}
+              compact
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A2334]"
+            />
+          </span>
+        </nav>
         {/* 추천 진입 배너 (?ref=) — 어트리뷰션 유지 */}
         {isInfluencerLanding && (
           <div style={{ margin: '14px 18px 0', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--gbd-ink)', color: 'var(--gbd-card)' }}>
@@ -611,7 +692,18 @@ export default function GroupBuyDetailPage() {
 
         {/* 타이틀 */}
         <div style={{ padding: '20px 18px 0' }}>
-          {detail.restaurant_name && <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>{detail.restaurant_name} · 정식 등록 매장</div>}
+          {detail.restaurant_name && (
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
+              {detail.restaurant_name} · 정식 등록 매장
+              {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
+              {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
+                <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
+              )}
+            </div>
+          )}
+          {isPrelaunch && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>🔔 오픈 예정 · 사전 응모 받는 중</span>
+          )}
           <h1 style={{ margin: '7px 0 0', fontSize: 22, lineHeight: 1.34, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {(detail.restaurant_address || detail.restaurant_phone) && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 12 }}>
@@ -633,6 +725,9 @@ export default function GroupBuyDetailPage() {
           </div>
           <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
+
+        {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
+        <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
@@ -697,11 +792,11 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 상품 안내 */}
-        <div style={{ padding: '22px 18px' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 안내</div>
+        {/* 상품 안내 — 🖥️ 2026-07-19 그루폰식 헤더('무엇을 기대하세요?') + 탭 앵커 */}
+        <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>무엇을 기대하세요?</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}까지` : '결제 즉시 사용'].map((chip) => (
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
               <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)' }} />{chip}
               </span>
@@ -710,48 +805,21 @@ export default function GroupBuyDetailPage() {
           {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
 
-        {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md) */}
-        {(() => {
-          const menuItems = ((detail as { menu?: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> }).menu) || []
-          if (!menuItems.length) return null
-          return (
-            <>
-              <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-              <div style={{ padding: '22px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
-                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>식사권으로 주문 가능</span>
-                </div>
-                <div style={{ marginTop: 8, borderBottom: '1px solid var(--gbd-line2)' }}>
-                  {menuItems.map((m, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '12px 0', borderTop: '1px solid var(--gbd-line2)' }}>
-                      <div style={{ width: 56, height: 56, borderRadius: 11, flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: m.image ? `url("${cfImage(m.image, { width: 120, format: 'auto' }) || m.image}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                          {m.hot && <span style={{ flex: '0 0 auto', padding: '2px 6px', borderRadius: 5, background: 'var(--gbd-danger-soft)', color: 'var(--gbd-danger)', fontSize: 10.5, fontWeight: 800 }}>인기</span>}
-                        </div>
-                        {m.desc && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.desc}</div>}
-                      </div>
-                      {m.price && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{m.price}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )
-        })()}
+        {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
+        <DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} />
 
         {/* 매장 위치 — RestaurantMiniMap(잠금 lazy) + 주소 카드 + 길찾기 */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
             <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div style={{ padding: '22px 18px' }}>
+            <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
-                <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                  <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
-                </Suspense>
+                <DeferUntilVisible minHeight={172}>
+                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
+                  </Suspense>
+                </DeferUntilVisible>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -790,7 +858,7 @@ export default function GroupBuyDetailPage() {
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
           <div style={{ marginTop: 15 }}>
             {[
-              { k: '사용기한', v: detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')} 까지` : '발급 후 사용 기간 적용' },
+              { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
               { k: '사용처', v: detail.restaurant_name || '전 지점' },
               { k: '사용 방법', v: '매장에서 교환권 제시' },
             ].map((row, i, arr) => (
@@ -815,74 +883,101 @@ export default function GroupBuyDetailPage() {
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-        <div style={{ padding: '22px 18px' }}>
-          <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
-            <ProductReviews productId={productId} limit={5} />
-          </Suspense>
-        </div>
+        <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
+          <DeferUntilVisible minHeight={80}>
+            <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
+              <ProductReviews productId={productId} limit={5} />
+            </Suspense>
+          </DeferUntilVisible>
 
-        {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
-        {otherDeals.length > 0 && (
-          <>
-            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div style={{ padding: '22px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이 셀러의 다른 공구</div>
-                {(detail.seller_handle || detail.seller_username) && <a href={detail.seller_handle ? `/u/${detail.seller_handle}` : `/profile/${detail.seller_username}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
-              </div>
-              <div className="noscroll" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity' }}>
-                {otherDeals.map((o) => {
-                  const pct = o.discount_pct || (o.original_price && o.original_price > o.price ? Math.round((1 - o.price / o.original_price) * 100) : 0)
-                  return (
-                    <a key={o.id} href={`/group-buy/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
-                      <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                        {pct > 0 && <span style={{ position: 'absolute', left: 8, top: 8, padding: '3px 7px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 11, fontWeight: 800 }}>{pct}%</span>}
-                      </div>
-                      <div style={{ marginTop: 9, fontSize: 13, fontWeight: 600, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
-                        <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
-                        {o.original_price && o.original_price > o.price && <span style={{ fontSize: 11.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
-                      </div>
-                    </a>
-                  )
-                })}
-              </div>
-            </div>
-          </>
+          {/* 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 — GB_ENGINE_ENABLED 게이트(기본 OFF, 미노출) */}
+          {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
+            <button
+              onClick={() => setShowPropose(true)}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
+            >
+              📣 이 매장에 공구 제안하기 (인플루언서)
+            </button>
+          )}
+        </div>
+        {GB_ENGINE_ENABLED && showPropose && detail && (
+          <Suspense fallback={null}>
+            <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
+          </Suspense>
         )}
 
-        <div style={{ height: 112 }} />
+        {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
+        <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
+        {/* 이 셀러의 다른 공구 — 가로 스크롤. 추출: OtherDealsRow(fetch/IO 게이팅은 여기 소유 — 불변) */}
+        <OtherDealsRow deals={otherDeals} sellerHandle={detail.seller_handle} sellerUsername={detail.seller_username} />
+
+        <div className="lg:hidden" style={{ height: 112 }} />
       </main>
+      </div>{/* /좌측 콘텐츠 컬럼 */}
+
+      {/* 🖥️ 우측 sticky 구매 박스 — PC 전용(모바일은 하단 고정 구매바). 상태/핸들러 공유(controlled). */}
+      <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:self-start lg:pb-10">
+        <DealPurchaseBox
+          name={detail.name}
+          discountPct={detail.current_discount_pct || 0}
+          unitPrice={unitPrice}
+          refPrice={refPrice}
+          unitSaving={unitSaving}
+          totalSaving={totalSaving}
+          total={total}
+          quantity={quantity}
+          setQuantity={setQuantity}
+          maxQty={maxQty}
+          maxPerPerson={detail.max_per_person}
+          buyable={buyable}
+          isJoinable={isJoinable}
+          isPrelaunch={isPrelaunch}
+          joining={joining}
+          onBuy={handleJoin}
+          onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        />
+      </aside>
+      </div>{/* /lg 그루폰식 그리드 */}
 
       {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
-            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
+            fixed (BottomNav z-9999 위). gbd 자손이라 var() 상속.
+            🖥️ 2026-07-19 (그루폰식): PC(lg+)는 우측 sticky DealPurchaseBox 가 담당 → 이 바는 모바일 전용. */}
       <footer
-        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '11px 16px calc(13px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        className="fixed bottom-0 inset-x-0 z-[10002] lg:hidden"
         role="contentinfo" aria-label="결제 영역"
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
-            {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
-          </span>
+      <div
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
+              {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
+            </span>
+            {detail?.max_per_person && detail.max_per_person > 0 ? (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>1인당 최대 {detail.max_per_person}개</span>
+            ) : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!isJoinable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
             <span style={{ minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={!isJoinable || quantity >= 10} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= 10) ? .4 : 1 }}>+</button>
+            <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-          <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>토스로 3초 안전결제 · 미사용 시 100% 자동환불</span>
+          <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
         </div>
         <button
-          onClick={handleJoin}
-          disabled={!isJoinable || joining}
-          aria-label={isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
-          style={{ width: '100%', height: 53, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : handleJoin}
+          disabled={(!isJoinable && !isPrelaunch) || joining}
+          aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
+          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
-          {joining ? '처리 중…' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+          {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>
+      </div>{/* /bar box */}
       </footer>
     </div>
   )

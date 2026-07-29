@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, ArrowLeft, Send, MessageCircle, Loader2, Factory } from 'lucide-react'
 import { WT } from './wholesale-theme'
+import { safeTime } from '@/utils/safe-date'
 import { useChatPoll } from '@/hooks/useChatPoll'
 import {
   wholesaleChatApi,
@@ -40,8 +41,8 @@ interface Props {
 // ── 상대 시간(가벼움) ──
 function timeAgo(dateStr: string, fallback: string): string {
   if (!dateStr) return ''
-  const then = new Date((dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z')).getTime()
-  if (!Number.isFinite(then)) return fallback
+  const then = safeTime(dateStr)
+  if (!then) return fallback
   const diff = Math.max(0, Date.now() - then)
   const m = Math.floor(diff / 60000)
   if (m < 1) return fallback

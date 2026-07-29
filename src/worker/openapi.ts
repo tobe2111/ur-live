@@ -30,7 +30,7 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
 \`\`\`
 
 ## Base URL
-- Production: https://live.ur-team.com
+- Production: https://urdeal.kr
 - Development: http://localhost:8787
     `,
     contact: {
@@ -40,12 +40,12 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>
     },
     license: {
       name: 'Proprietary',
-      url: 'https://live.ur-team.com/terms'
+      url: 'https://urdeal.kr/terms'
     }
   },
   servers: [
     {
-      url: 'https://live.ur-team.com',
+      url: 'https://urdeal.kr',
       description: 'Production server'
     },
     {

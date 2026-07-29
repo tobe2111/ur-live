@@ -90,7 +90,7 @@ export default function WholesaleDashboardShell({
   )
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: WT.fill, color: WT.ink }}>
+    <div className="flex h-[100dvh] overflow-hidden" style={{ background: WT.fill, color: WT.ink }}>
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -128,7 +128,7 @@ export default function WholesaleDashboardShell({
           {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-4 lg:px-6 py-6 max-w-6xl mx-auto">{children}</div>
         </main>
       </div>

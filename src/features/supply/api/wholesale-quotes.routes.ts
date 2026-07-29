@@ -18,6 +18,8 @@
  *   → 유통회원: /api/wholesale/quotes*, 어드민: /api/wholesale/admin/quotes*
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
+import { sanitizeString } from '@/worker/utils/validation'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -88,16 +90,7 @@ async function _ensureWholesaleQuotesSchema(DB: D1Database): Promise<void> {
 }
 
 // ── 셀러(판매사) JWT → seller_id (wholesale.routes.ts 패턴) ─────────────────────
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 /** 유효한 정수(>=min)면 floor, 아니면 null. */
 function intOrNull(v: unknown, min = 0): number | null {
@@ -121,26 +114,31 @@ app.post('/quotes', rateLimit({ action: 'wholesale-quote', max: 30, windowSec: 3
   try {
     await ensureWholesaleQuotesSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const title = String(body.title || '').trim().slice(0, 200)
+    const title = sanitizeString(String(body.title || '')).trim().slice(0, 200)
     if (!title) return c.json({ success: false, error: '견적 제목을 입력해주세요' }, 400)
-    const requestText = body.request_text ? String(body.request_text).slice(0, 2000) : null
+    const requestText = body.request_text ? sanitizeString(String(body.request_text)).slice(0, 2000) : null
     const requestedQtyRaw = intOrNull(body.requested_qty, 1)
     const requestedQty = requestedQtyRaw && requestedQtyRaw > 0 ? requestedQtyRaw : 1
     const targetUnitPrice = intOrNull(body.target_unit_price, 0)
     const productId = intOrNull(body.product_id, 1)
     const supplierId = intOrNull(body.supplier_id, 1)
 
-    // 상품 지정 시 존재 검증(선택) — 공급상품 한정.
+    // 🛡️ 2026-06-26 [보안] 상품 지정 시 공급(도매)상품만 허용 + supplier_id 는 클라 입력 신뢰 대신
+    //   상품의 실제 공급자로 서버 도출. 기존엔 존재만 확인하고 임의 supplier_id 를 그대로 저장했음.
+    let resolvedSupplierId = supplierId
     if (productId !== null) {
-      const exists = await DB.prepare('SELECT 1 FROM products WHERE id = ?').bind(productId).first().catch(() => null)
-      if (!exists) return c.json({ success: false, error: '존재하지 않는 상품입니다' }, 400)
+      const prod = await DB.prepare(
+        'SELECT supplier_id FROM products WHERE id = ? AND is_supply_product = 1'
+      ).bind(productId).first<{ supplier_id: number | null }>().catch(() => null)
+      if (!prod) return c.json({ success: false, error: '존재하지 않는 상품입니다' }, 400)
+      if (prod.supplier_id != null) resolvedSupplierId = Number(prod.supplier_id)
     }
 
     const ins = await DB.prepare(
       `INSERT INTO wholesale_quotes
          (distributor_seller_id, supplier_id, product_id, title, request_text, requested_qty, target_unit_price, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'requested')`
-    ).bind(sellerId, supplierId, productId, title, requestText, requestedQty, targetUnitPrice).run()
+    ).bind(sellerId, resolvedSupplierId, productId, title, requestText, requestedQty, targetUnitPrice).run()
 
     // 운영자에게 신규 견적요청 알림 (best-effort).
     await createDashboardNotification(
@@ -332,12 +330,13 @@ admin.patch('/quotes/:id/respond', async (c) => {
     }
 
     const res = await c.env.DB.prepare(
+      // 🛡️ 2026-06-25: status CAS — 동시 회신/수락 시 accepted/converted 견적 덮어쓰기 방지.
       `UPDATE wholesale_quotes
          SET quoted_unit_price = ?, quoted_moq = ?, quote_memo = ?, valid_until = ?,
              status = 'quoted', updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND status IN ('requested','quoted','expired')`
     ).bind(quotedUnitPrice, quotedMoq, quoteMemo, validUntil, id).run()
-    if (!res.meta.changes) return c.json({ success: false, error: '견적을 찾을 수 없습니다' }, 404)
+    if (!res.meta.changes) return c.json({ success: false, error: '이미 처리되었거나 회신할 수 없는 견적입니다' }, 409)
 
     // 유통회원에게 견적 회신 알림.
     await createDashboardNotification(

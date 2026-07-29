@@ -22,9 +22,9 @@ export async function ensureGrades(db: D1Database) {
     active INTEGER NOT NULL DEFAULT 1,
     updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('distributor-admin:create-table'))
-  // 🆕 2026-06-16 신모델 = 판매가 대비 보장마진(%). 프리미엄 38 / 프로 30 / 일반 15.
+  // 🆕 2026-06-16 신모델 = 판매가 대비 보장마진(%). Premium 38 / Standard 30 / Basic 15. (2026-06-29 등급명 영문화)
   await db.prepare(`INSERT OR IGNORE INTO distributor_grades (grade, label, margin_pct, sort_order, is_special) VALUES
-    ('A','프리미엄',38,1,0),('B','프로',30,2,0),('C','일반',15,3,0),
+    ('A','Premium',38,1,0),('B','Standard',30,2,0),('C','Basic',15,3,0),
     ('D','D등급',8,4,0),('OEM','OEM',40,5,0),('SPECIAL','특별할인(기간한정)',45,9,1)`)
     .run().catch(swallow('distributor-admin:seed'))
   // 🆕 2026-06-16 공식 전환(원가×마크업 → 판매가×(1−보장마진)) 1회 마이그레이션. 기존 행은 구 마크업 값
@@ -33,14 +33,26 @@ export async function ensureGrades(db: D1Database) {
   const flag = await db.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(MIGRATE_FLAG).first<{ value: string }>().catch(() => null)
   if (!flag) {
     await db.batch([
-      db.prepare("UPDATE distributor_grades SET margin_pct = 38, label = '프리미엄' WHERE grade = 'A'"),
-      db.prepare("UPDATE distributor_grades SET margin_pct = 30, label = '프로' WHERE grade = 'B'"),
-      db.prepare("UPDATE distributor_grades SET margin_pct = 15, label = '일반' WHERE grade = 'C'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 38, label = 'Premium' WHERE grade = 'A'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 30, label = 'Standard' WHERE grade = 'B'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 15, label = 'Basic' WHERE grade = 'C'"),
       db.prepare("UPDATE distributor_grades SET margin_pct = 8 WHERE grade = 'D'"),
       db.prepare("UPDATE distributor_grades SET margin_pct = 40 WHERE grade = 'OEM'"),
       db.prepare("UPDATE distributor_grades SET margin_pct = 45 WHERE grade = 'SPECIAL'"),
       db.prepare("INSERT INTO platform_settings (key, value, updated_at) VALUES (?, '1', datetime('now')) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = datetime('now')").bind(MIGRATE_FLAG),
     ]).catch(swallow('distributor-admin:grade-model-v2-migrate'))
+  }
+  // 🏭 2026-06-29 (대표 — 등급명 영문 통일 Basic/Standard/Premium): v2 를 이미 실행한 기존 DB 는 라벨이
+  //   프리미엄/프로/일반 으로 남아 있으므로 v3 로 1회 영문 relabel(마진/정렬 등 가격 요소 불변 — label 만).
+  const RELABEL_FLAG = 'wholesale_grade_label_en_20260629'
+  const relFlag = await db.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(RELABEL_FLAG).first<{ value: string }>().catch(() => null)
+  if (!relFlag) {
+    await db.batch([
+      db.prepare("UPDATE distributor_grades SET label = 'Premium' WHERE grade = 'A' AND label IN ('프리미엄','프리미엄 등급')"),
+      db.prepare("UPDATE distributor_grades SET label = 'Standard' WHERE grade = 'B' AND label IN ('프로','프로 등급')"),
+      db.prepare("UPDATE distributor_grades SET label = 'Basic' WHERE grade = 'C' AND label IN ('일반','일반 등급')"),
+      db.prepare("INSERT INTO platform_settings (key, value, updated_at) VALUES (?, '1', datetime('now')) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = datetime('now')").bind(RELABEL_FLAG),
+    ]).catch(swallow('distributor-admin:grade-label-en-v3'))
   }
 }
 

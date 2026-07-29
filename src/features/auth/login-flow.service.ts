@@ -121,7 +121,15 @@ export async function logout(userType?: 'user' | 'seller' | 'admin'): Promise<vo
     const storedType = localStorage.getItem('user_type')
     userType = (storedType as 'user' | 'seller' | 'admin') || 'user'
   }
-  
+
+  // 🔑 2026-06-29 (로그아웃 근본수정): httpOnly 세션쿠키(ur_session 등)는 클라가 JS 로 못 지움 → 서버가
+  //   삭제해야 진짜 로그아웃. 이 경로(UserProfilePage 등 실제 로그아웃 버튼)가 **이동 전에 await** 하도록 명시 호출
+  //   (아래 clearAuthData 도 fire-and-forget 로 같은 삭제를 하지만, 여기서 await 해 네비게이션 전 쿠키 삭제를 보장).
+  try {
+    const { clearServerSessionCookies } = await import('@/utils/auth')
+    await clearServerSessionCookies(userType)
+  } catch { /* best-effort — 로컬 정리는 계속 진행 */ }
+
   logger.info(`[LoginFlow] 🚪 ${userType} 로그아웃 시작`)
   
   try {
@@ -202,6 +210,61 @@ export async function logout(userType?: 'user' | 'seller' | 'admin'): Promise<vo
     }, 100)
     throw error
   }
+}
+
+/**
+ * 🔑 2026-07-07 (대표 승인 "전부 로그아웃"): 마이페이지 로그아웃 = 소비자+셀러+어드민+에이전시
+ *   세션 전부 종료(단일 역할이든 다중역할이든 완전 로그아웃).
+ *
+ *   배경: 다중역할 계정(어드민/셀러 + 소비자)에서 `logout('user')` 로 소비자만 지우면
+ *   대시보드 Bearer 토큰(seller_token/admin_token/agency_token)이 남아 `isLoggedInSync()`
+ *   가 true → 홈이 여전히 "로그인됨"으로 보임 → 대표 신고 "로그아웃이 안 됨". 이중 로그인
+ *   편의를 포기하고 명시적 로그아웃은 전 역할을 종료하도록 대표가 확정.
+ *
+ *   서버 httpOnly 세션쿠키(ur_*) 전체 삭제를 **await**(네비게이션 전 완료 → 재인증 레이스 0)
+ *   후, 각 역할 localStorage(clearAuthData) + 에이전시/파생 신호 + 인메모리 스토어를 정리한다.
+ */
+export async function logoutAll(): Promise<void> {
+  // 1️⃣ 모든 역할 서버 세션쿠키(ur_session/ur_seller_session/ur_admin_session/ur_agency_session)
+  //    + ud_* SSR 토큰 삭제. 무인자 = 전체(worker /api/auth/logout-cookies 의 else 분기).
+  try {
+    const { clearServerSessionCookies } = await import('@/utils/auth')
+    await clearServerSessionCookies()
+  } catch { /* best-effort — 로컬 정리는 계속 진행 */ }
+
+  // 2️⃣ 인메모리 인증 스토어 초기화 (하드 리로드가 최종 보증이나 방어적으로 선정리).
+  try {
+    const isKR = (await import('@/shared/config/region')).isKorea()
+    if (isKR) {
+      const { useAuthKR } = await import('@/shared/stores/useAuthKR')
+      const s = useAuthKR.getState(); s.setUser(null); s.setLoading(false); s.setAuthReady(true)
+    } else {
+      const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+      const s = useAuthWorld.getState(); s.setUser(null); s.setLoading(false); s.setAuthReady(true)
+    }
+  } catch (err) {
+    logger.warn('[LoginFlow] logoutAll 스토어 초기화 실패(무시):', { error: String(err) })
+  }
+
+  // 3️⃣ 역할별 localStorage 정리 (clearAuthData 가 zustand persist·useAuthStore 도 함께 정리).
+  try {
+    const { clearAuthData } = await import('@/utils/auth')
+    clearAuthData('user'); clearAuthData('seller'); clearAuthData('admin')
+    // 에이전시·제조사(supplier) 키(clearAuthData 미지원) + user_type + 링크샵/도매 파생 신호까지
+    //   확실히 제거 → "전부 로그아웃"이 정말 전 역할을 덮게(잔여 로그인 0). (supplier_token 은
+    //   isLoggedInSync 대상은 아니나, 명시 전체 로그아웃이므로 도매 대시보드 Bearer 도 함께 종료.)
+    ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email',
+      'supplier_token', 'supplier_refresh_token', 'supplier_id', 'supplier_name', 'supplier_email',
+      'user_type', 'seller_username', 'user_handle', 'linked_seller_username', 'is_distributor']
+      .forEach(k => { try { localStorage.removeItem(k) } catch { /* quota */ } })
+  } catch (err) {
+    logger.warn('[LoginFlow] logoutAll localStorage 정리 실패(무시):', { error: String(err) })
+  }
+
+  // 4️⃣ sessionStorage 정리 후 홈으로 하드 리로드(모든 상태 초기화).
+  try { sessionStorage.clear() } catch { /* 무시 */ }
+  logger.info('[LoginFlow] ✅ 전체 로그아웃 완료 — 홈으로 이동')
+  setTimeout(() => { window.location.href = '/' }, 50)
 }
 
 // ============================================

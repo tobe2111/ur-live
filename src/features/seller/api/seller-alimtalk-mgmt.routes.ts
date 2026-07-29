@@ -15,6 +15,7 @@
 import { Hono } from 'hono'
 import { requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error';
+import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
@@ -283,8 +284,8 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk/messages', requireSeller(), async (c) =>
     const sellerId = authUser?.id
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
-    const page = parseInt(c.req.query('page') || '1', 10)
-    const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100)
+    const page = intParam(c.req.query('page'), 1)
+    const limit = Math.min(intParam(c.req.query('limit'), 20), 100)
     const offset = (page - 1) * limit
 
     const account = await DB.prepare(

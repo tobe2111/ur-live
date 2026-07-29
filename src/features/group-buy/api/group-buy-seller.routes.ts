@@ -21,6 +21,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { clawbackVoucherCommission } from './helpers'
+import { intParam } from '@/shared/pagination'
 
 interface RefundVoucherRow {
   id: number
@@ -105,13 +106,25 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
         })())
 
         // 딜 결제건 1 voucher 당 applied_price(실제 결제가) 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
         if (v.payment_method === 'deal_points' && v.user_id) {
           const amount = refundAmount
-          await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-            .bind(amount, v.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 환불: ${product.name}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          const orderRow = v.order_id
+            ? await DB.prepare('SELECT order_number FROM orders WHERE id = ?').bind(v.order_id).first<{ order_number: string }>().catch(() => null)
+            : null
+          await refundDealPoints(DB, {
+            userId: v.user_id,
+            amount,
+            ref: orderRow?.order_number || null,
+            type: 'refund',
+            description: `공동구매 미달성 환불: ${product.name}`,
+          })
+          // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          try {
+            const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+            await reverseVisitRewardOnRefund(DB, orderRow?.order_number)
+          } catch { /* fail-soft */ }
         }
         // 🛡️ 2026-05-21 Phase TD-A1: 토스 결제건 자동 환불 (영구 — 기존엔 어드민이 수동 처리).
         else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id) {
@@ -128,10 +141,24 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
               if (result.ok) {
                 await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
               } else {
-                // toss_refund_failures 에 이미 helper 가 기록 (재시도 cron 가능)
-                if (import.meta.env?.DEV) console.warn('[toss refund failed]', result)
+                // retryable(5xx)은 gateway 가 toss_refund_failures 기록 → cron 재시도.
+                // 🚨 non-retryable(4xx)은 cron 이 안 집음 → 어드민 벨/Discord 수동환불 알림.
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '셀러 수동환불', paymentKey: orderRow.payment_key, voucherId: v.id,
+                  amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+                })
               }
-            } catch (e) { if (import.meta.env?.DEV) console.warn('[toss refund]', e) }
+            } catch (e) {
+              if (import.meta.env?.DEV) console.warn('[toss refund]', e)
+              try {
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '셀러 수동환불(예외)', voucherId: v.id, amount: refundAmount,
+                  errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+                })
+              } catch { /* fail-soft */ }
+            }
           })())
         }
         // 🛡️ 2026-05-30: 인플 commission clawback — 환불된 매출의 미지급 커미션 회수 (기존 누수 차단).
@@ -193,8 +220,8 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
-  // ── GET /store-voucher-ledger — 🎟️ 2026-06-20 매장 공구권 원장 (대표 — "사장님 지갑") ──
-  //   사장님이 자기 매장의 공구권을 미사용/사용/정산 상태로 한눈에. 읽기 전용·집계 — 돈 이동 X(Phase 1).
+  // ── GET /store-voucher-ledger — 🎟️ 2026-06-20 매장 이용권 원장 (대표 — "사장님 지갑") ──
+  //   사장님이 자기 매장의 이용권을 미사용/사용/정산 상태로 한눈에. 읽기 전용·집계 — 돈 이동 X(Phase 1).
   //   알림톡 실시간 감시 대체: 항상 있는 원장. 정산 검토의 토대.
   router.get('/store-voucher-ledger', requireAuth(), async (c) => {
     const user = getCurrentUser(c)
@@ -288,7 +315,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능합니다' }, 403)
 
     const { DB } = c.env
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')))
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
     try {
       const { results } = await DB.prepare(`
         SELECT l.id, l.code, l.product_id, l.success, l.reason, l.created_at,

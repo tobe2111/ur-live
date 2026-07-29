@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
 import { useBalance } from '@/hooks/queries'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const clientKey = getTossClientKey()
 
@@ -169,10 +170,11 @@ export default function PointsChargePage() {
 
   // 🛡️ handleConfirmPayment 제거 — widgets() in-page 결제 경로 폐기.
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): Loader2 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
@@ -180,12 +182,12 @@ export default function PointsChargePage() {
   const pointsPreview = selected?.points ?? 0
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334]">
       <SEO title={t('pointsCharge.seoTitle', { defaultValue: '딜 충전 - 유어딜' })} description={t('pointsCharge.seoDesc', { defaultValue: '딜 포인트를 충전하세요' })} url="/points/charge" noindex />
 
       {/* 헤더 — 🛡️ 2026-05-22: top-14 (md+) 제거. PC layout 위 빈 공간 깨짐 fix.
             /points/charge 는 fullScreenPrefixes 라 DesktopTopNav 없음 → top-0 통일. */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
             onClick={() => navigate(-1)}
@@ -202,8 +204,8 @@ export default function PointsChargePage() {
       <main className="ur-content-narrow px-4 lg:px-8 pt-5 pb-28 space-y-4">
         {/* 현재 잔액 카드 */}
         <section className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-gray-800 via-gray-800 to-gray-800 text-white shadow-md">
-          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#0A0A0A]/10" aria-hidden="true" />
-          <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-white dark:bg-[#0A0A0A]/5" aria-hidden="true" />
+          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#0F151D]/10" aria-hidden="true" />
+          <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-white dark:bg-[#0F151D]/5" aria-hidden="true" />
           <div className="relative">
             <div className="flex items-center gap-1.5 mb-1">
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
@@ -236,7 +238,7 @@ export default function PointsChargePage() {
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
                           ? 'border-pink-500 bg-pink-50 dark:bg-pink-500/10 ring-2 ring-pink-200 dark:ring-pink-500/30'
-                          : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:border-gray-300 dark:hover:border-[#3A3A3A]'
+                          : 'border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] hover:border-gray-300 dark:hover:border-[#3A3A3A]'
                       }`}
                       aria-label={`${formatNumber(opt.amount)}원 충전`}
                     >
@@ -260,7 +262,7 @@ export default function PointsChargePage() {
 
             {/* 충전 후 잔액 미리보기 */}
             {selected && (
-              <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
+              <section className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-4">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.currentBalance', { defaultValue: '현재 잔액' })}</span>
                   <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>
@@ -269,7 +271,7 @@ export default function PointsChargePage() {
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.chargeDeals', { defaultValue: '충전 딜' })}</span>
                   <span className="font-semibold text-pink-600">+{formatNumber(pointsPreview)}딜</span>
                 </div>
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A3446] flex items-center justify-between">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
                   <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
@@ -294,7 +296,7 @@ export default function PointsChargePage() {
 
       {/* 하단 고정 CTA */}
       <div
-        className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-30"
+        className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3">

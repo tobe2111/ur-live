@@ -9,7 +9,9 @@
  * 기존 분산된 admin 페이지 통합 → 어드민 검수 부담 ↓.
  */
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
@@ -35,6 +37,16 @@ interface PendingSeller {
   created_at: string
   prospect_proof_url?: string | null
   prospect_notes?: string | null
+}
+
+interface UnlinkedSeller {
+  seller_id: number
+  seller_name: string | null
+  seller_email: string | null
+  username: string | null
+  status: string
+  business_name: string | null
+  suggested: { user_id: number; handle: string; name: string | null; email: string | null } | null
 }
 
 export default function AdminPendingSellersPage() {
@@ -84,8 +96,56 @@ export default function AdminPendingSellersPage() {
     }
   }
 
+  // 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(링크샵 handle) 수동 연결. 이메일이 달라 자동연결이 안 되는
+  //   셀러를, 운영자가 셀러 ID + 유저 핸들로 직접 묶음 → /u/{handle} 가 셀러 storefront 표시 + 프로필 링크 /u/ 통일.
+  const [linkSellerId, setLinkSellerId] = useState('')
+  const [linkHandle, setLinkHandle] = useState('')
+  const [linking, setLinking] = useState(false)
+  const [linkingId, setLinkingId] = useState<number | null>(null)  // per-row(원클릭) 진행 상태
+
+  // 🔗 2026-06-26 (카카오 단일로그인 통일 Step 2 보강): 미연결 셀러 목록 + 추정 매칭(원클릭 연결).
+  const { data: unlinked = [], refetch: refetchUnlinked } = useApiQuery<UnlinkedSeller[]>(
+    ['admin', 'unlinked-sellers'], '/api/admin/sellers/unlinked',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+
+  // 공유 연결 로직 — 수동 폼 + 목록 원클릭 모두 사용.
+  async function doLink(sellerId: number, handle: string): Promise<boolean> {
+    const h = handle.trim().replace(/^@/, '')
+    if (!h) { toast.error('유저 핸들을 입력하세요'); return false }
+    try {
+      const r = await api.patch(`/api/admin/sellers/${sellerId}/link-user`, { handle: h })
+      if (r.data?.success) {
+        toast.success(`셀러 #${sellerId} ↔ @${h} 연결 완료 — /u/${h} 로 통일됩니다`)
+        refetchUnlinked()
+        return true
+      }
+      toast.error(r.data?.error || '연결 실패')
+      return false
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || '연결 실패')
+      return false
+    }
+  }
+
+  async function linkSellerToUser() {
+    const id = linkSellerId.trim()
+    if (!/^\d+$/.test(id)) { toast.error('셀러 ID(숫자)를 입력하세요'); return }
+    setLinking(true)
+    const ok = await doLink(Number(id), linkHandle)
+    if (ok) { setLinkSellerId(''); setLinkHandle('') }
+    setLinking(false)
+  }
+
+  async function linkSuggested(sellerId: number, handle: string) {
+    setLinkingId(sellerId)
+    await doLink(sellerId, handle)
+    setLinkingId(null)
+  }
+
   return (
-    <>
+    <AdminLayout title="매장 검수">
       <SEO title="매장 검수 - admin" description="pending 셀러 통합 검수" url="/admin/pending-sellers" />
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -96,6 +156,77 @@ export default function AdminPendingSellersPage() {
         </header>
 
         <div className="max-w-5xl mx-auto px-4 py-4 space-y-3">
+          {/* 🔗 셀러 ↔ 유저(링크샵) 수동 연결 도구 */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <p className="text-sm font-bold text-gray-900">🔗 셀러 ↔ 유저(링크샵) 연결</p>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              이메일이 달라 자동 연결이 안 된 셀러를 유저 링크샵에 직접 묶습니다. 연결하면 셀러 프로필/공구가 <b>/u/&#123;핸들&#125;</b> 로 통일돼요.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={linkSellerId} onChange={(e) => setLinkSellerId(e.target.value)}
+                inputMode="numeric" placeholder="셀러 ID (예: 5)"
+                className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <span className="text-gray-400 text-sm">↔ @</span>
+              <input
+                value={linkHandle} onChange={(e) => setLinkHandle(e.target.value)}
+                placeholder="유저 핸들 (예: jiwon1228)"
+                className="flex-1 min-w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <button
+                onClick={linkSellerToUser} disabled={linking}
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+              >
+                {linking ? '연결 중…' : '연결'}
+              </button>
+            </div>
+          </div>
+
+          {/* 🔗 미연결 셀러 목록 + 추정 매칭(원클릭 연결) */}
+          {unlinked.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-bold text-gray-900">
+                🔗 카카오 미연결 셀러 ({unlinked.length})
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  추정 매칭 {unlinked.filter((u) => u.suggested).length}건
+                </span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                링크샵 유저와 아직 연결되지 않은 셀러입니다. 이메일이 정확히 1명과 일치하면 추정 매칭이 표시돼요 — <b>연결</b> 한 번이면 <b>/u/&#123;핸들&#125;</b> 로 통일됩니다. 매칭이 없으면 위 도구로 핸들을 직접 입력하세요.
+              </p>
+              <div className="mt-3 divide-y divide-gray-100">
+                {unlinked.map((u) => (
+                  <div key={u.seller_id} className="py-2.5 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        #{u.seller_id} {u.business_name || u.seller_name || u.username || '(이름 없음)'}
+                        <span className="ml-1.5 text-[11px] font-normal text-gray-400">{u.status}</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 truncate">{u.seller_email || '이메일 없음'}</p>
+                    </div>
+                    {u.suggested ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <p className="text-[11px] text-gray-500">추정 매칭</p>
+                          <p className="text-xs font-semibold text-gray-900">@{u.suggested.handle}</p>
+                        </div>
+                        <button
+                          onClick={() => linkSuggested(u.seller_id, u.suggested!.handle)}
+                          disabled={linkingId === u.seller_id}
+                          className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-40"
+                        >
+                          {linkingId === u.seller_id ? '연결 중…' : '연결'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="shrink-0 text-[11px] text-gray-400">매칭 없음 — 수동</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : sellers.length === 0 ? (
@@ -191,6 +322,6 @@ export default function AdminPendingSellersPage() {
           )}
         </div>
       </div>
-    </>
+    </AdminLayout>
   )
 }

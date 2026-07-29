@@ -5,8 +5,11 @@ export type Tab = 'overview' | 'catalog' | 'orders' | 'settlements' | 'chat'
 
 export interface Me {
   profile: { business_name: string; email: string; status: string }
-  balance: { pending_amount: number; available_amount: number; paid_amount: number }
-  product_counts: { total: number; pending: number; approved: number; rejected: number }
+  // 🏦 2026-06-30: 정산 계좌 3종(은행/계좌/예금주) 등록 여부 — 출금 가능 게이트·계좌 등록 안내용(서버 additive).
+  has_payout_account?: boolean
+  balance: { pending_amount: number; available_amount: number; reserved_amount?: number; held_amount?: number; spendable_amount?: number; paid_amount: number }
+  // 🏭 2026-06-30 (할 일 확장): out_of_stock/low_stock 는 승인·노출 상품 중 품절/저재고 수(서버 additive, optional).
+  product_counts: { total: number; pending: number; approved: number; rejected: number; out_of_stock?: number; low_stock?: number }
   // 🧭 2026-06-12 (온보딩 마일스톤): 첫 주문/첫 정산 달성 판정용 — 서버 additive.
   milestones?: { orders: number; settlements: number }
 }
@@ -17,6 +20,13 @@ export interface CatalogItem {
   lowest_price_url?: string | null; lowest_price_checked?: number
   pending_supply_price?: number | null; pending_retail_price?: number | null
   pending_price_reason?: string | null
+  // 🔧 2026-06-24: GET /products 가 이미 반환하는 편집용 필드(수정 모달 prefill — 데이터 유실 방지).
+  description?: string | null; image_url?: string | null; brand_logo_url?: string | null
+  min_order_qty?: number; pack_size?: number; order_multiple?: number
+  // 🖼️ 2026-06-30: 상세페이지 이미지 — GET 이 JSON 문자열로 반환(수정모드 prefill). 편집 시 PATCH 로 갱신.
+  detail_images?: string | string[] | null
+  // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta 저장, GET 이 JSON 문자열로 반환(수정모드 prefill).
+  gallery_images?: string | string[] | null
 }
 export interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null

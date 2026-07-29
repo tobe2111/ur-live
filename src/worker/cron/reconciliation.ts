@@ -13,6 +13,8 @@ import { logInfo, logError } from '../utils/logger'
  */
 
 import type { Env } from '../types/env';
+import { OrderRepository } from '../repositories/order.repository';
+import { creditOrderCommissions } from '../utils/order-commissions';
 
 export async function runReconciliation(env: Env): Promise<void> {
   const DB = env.DB;
@@ -89,6 +91,7 @@ export async function runReconciliation(env: Env): Promise<void> {
 
     let autoReconciled = 0;
     let stillStuck = 0;
+    const orderRepo = new OrderRepository(DB);
 
     for (const order of (stuck.results || [])) {
       if (!env.TOSS_SECRET_KEY) {
@@ -104,14 +107,40 @@ export async function runReconciliation(env: Env): Promise<void> {
           }
         );
         if (tossRes.ok) {
-          const tossData = await tossRes.json() as { status?: string };
-          if (tossData.status === 'DONE') {
-            // Toss confirmed but our DB missed it — fix it.
-            await DB.prepare(
-              "UPDATE orders SET status = 'PAID', updated_at = datetime('now') WHERE id = ? AND status = 'PENDING'"
-            ).bind(order.id).run();
+          const tossData = await tossRes.json() as { status?: string; totalAmount?: number };
+          // 🛡️ 2026-06-26 [머니수정] fail-closed amount 검증 — Toss 가 DONE 이어도 결제 금액이
+          //   주문 금액과 다르면 자동 확정하지 않고 수동 검토로 넘김(webhook 의 AMOUNT_MISMATCH 가드와 동일 원칙).
+          const amountMatches = Number(tossData.totalAmount) === Number(order.total_amount);
+          if (tossData.status === 'DONE' && amountMatches) {
+            // Toss confirmed but our DB missed the webhook/confirm callback.
+            // 🛡️ 2026-06-26 [머니수정] 기존엔 bare `status='PAID'` flip 만 했음 →
+            //   ① /confirm side-effect(주문확정·재고·교환권·커미션)가 영영 안 돌고
+            //   ② 'PAID' 가 /confirm CAS 가드의 NOT IN 목록이라 이후 복구도 영구 차단
+            //   → 고객은 결제했는데 상품/교환권을 못 받는 상태로 고착됨.
+            //   이제 webhook 의 누락복구와 '동일한' 멱등 경로로 처리:
+            //   confirmPaymentAtomic(orders=DONE + order_items=CONFIRMED + payment_status=approved)
+            //   → creditOrderCommissions(order_id 멱등 적립). 이중확정/이중적립 없음.
+            const conf = await orderRepo.confirmPaymentAtomic(order.order_number, {
+              toss_payment_key: order.toss_payment_key,
+              toss_order_id: order.order_number,
+              paid_at: new Date().toISOString(),
+            });
+            if (conf.confirmed > 0) {
+              try {
+                const wOrders = await DB.prepare(
+                  'SELECT id, seller_id, total_amount FROM orders WHERE order_number = ?'
+                ).bind(order.order_number).all<{ id: number; seller_id: number | null; total_amount: number | null }>();
+                await creditOrderCommissions(DB, wOrders.results || []);
+              } catch (ce) {
+                logError('[Reconciliation] commission credit failed', { order: order.order_number, error: String(ce).slice(0, 200) });
+              }
+            }
             autoReconciled++;
-            details.push({ check: 'reconciled_paid', found: 1, action: `updated_to_paid:${order.order_number}` });
+            details.push({ check: 'reconciled_paid', found: 1, action: `confirmed_done:${order.order_number}` });
+          } else if (tossData.status === 'DONE' && !amountMatches) {
+            // 결제는 DONE 인데 금액 불일치 → 자동 확정 금지, 수동 검토.
+            stillStuck++;
+            details.push({ check: 'amount_mismatch', found: 1, action: `manual_review:${order.order_number}` });
           } else {
             // Toss says not done → leave for manual review.
             stillStuck++;

@@ -14,11 +14,6 @@ export interface Seller {
   follower_count?: number
 }
 
-export interface LiveStream {
-  id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
-  scheduled_at?: string; created_at: string
-}
-
 export interface Product {
   id: number; name: string; price: number; original_price?: number; discount_rate?: number
   image_url?: string; sold_count?: number; category?: string
@@ -30,10 +25,5 @@ export interface Product {
   deal_only?: number
 }
 
-export interface Short {
-  id: number; title: string; youtube_video_id?: string; view_count: number; thumbnail_url?: string
-  product_id?: number; product_name?: string; product_price?: number
-}
-
-// 🛡️ 2026-05-19: 'shop' 탭 추가 — 셀러가 등록한 일반 상품 (식사권 외) 공개.
-export type Tab = 'home' | 'shop' | 'vouchers' | 'shorts' | 'live' | 'info'
+// 🧹 2026-07-20 (링크샵 전수조사): LiveStream·Short·Tab 타입 제거 — 라이브/쇼츠 영구중단 + 탭→
+//   단일 스크롤 섹션 전환(2026-06-25) 이후 도달불가. Seller/Product 만 사용 중.

@@ -12,10 +12,11 @@ import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import ImageUpload from '@/components/upload/ImageUpload'
 import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { normalizeAdminRole } from '@/shared/admin-roles'
 
 interface MallRow {
   id: number
@@ -28,8 +29,28 @@ interface MallRow {
   deposit_account: string | null
   commission_rate: number | null
   categories_json: string | null
+  // 🏥 규제 몰(인허가) + 🧩 기능 토글 + 🏢 회사(푸터) 정보 — 2026-07-03/04 몰별 설정.
+  requires_license?: number | null
+  license_label?: string | null
+  features_json?: string | null
+  company_json?: string | null
   active: number
 }
+
+// 🏢 몰별 회사(푸터) 정보 필드 — WholesaleFooter BUSINESS_INFO 키와 1:1. 비우면 기본(유통스타트) 폴백.
+const COMPANY_FIELDS: { key: string; label: string; ph: string }[] = [
+  { key: 'company', label: '상호', ph: '사람과고리' },
+  { key: 'ceo', label: '대표자', ph: '송유미' },
+  { key: 'bizRegNo', label: '사업자등록번호', ph: '108-20-56790' },
+  { key: 'mailOrderNo', label: '통신판매신고', ph: '제 20174-서울중구-0242호' },
+  { key: 'address', label: '주소', ph: '서울 중구 …' },
+  { key: 'tel', label: '전화(고객센터)', ph: '02-2038-0996' },
+  { key: 'fax', label: '팩스', ph: '0303-3443-4424' },
+  { key: 'csEmail', label: '이메일', ph: 'cs@example.com' },
+  { key: 'bankName', label: '입금 은행', ph: '우체국' },
+  { key: 'bankNo', label: '입금 계좌번호', ph: '014084-02-129530' },
+  { key: 'bankHolder', label: '예금주', ph: '사람과고리(송유미)' },
+]
 
 interface MallForm {
   slug: string
@@ -41,12 +62,17 @@ interface MallForm {
   deposit_account: string
   commission_rate: string
   categories_json: string
+  requires_license: boolean
+  license_label: string
+  features_json: string
+  company: Record<string, string>
   active: boolean
 }
 
 const EMPTY: MallForm = {
   slug: '', name: '', host: '', brand_name: '', brand_color: '#111827',
-  logo_url: '', deposit_account: '', commission_rate: '', categories_json: '', active: true,
+  logo_url: '', deposit_account: '', commission_rate: '', categories_json: '',
+  requires_license: false, license_label: '', features_json: '', company: {}, active: true,
 }
 
 const DEFAULT_MALL_ID = 1
@@ -59,7 +85,7 @@ export default function AdminWholesaleMallsPage() {
   const [form, setForm] = useState<MallForm>(EMPTY)
   const [saving, setSaving] = useState(false)
 
-  const { data: malls, isLoading: loading } = useApiQuery<MallRow[]>(
+  const { data: malls, isLoading: loading, isError, error, refetch } = useApiQuery<MallRow[]>(
     ['admin', 'wholesale-malls'], '/api/admin/wholesale-malls',
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,6 +116,10 @@ export default function AdminWholesaleMallsPage() {
       deposit_account: m.deposit_account || '',
       commission_rate: m.commission_rate != null ? String(m.commission_rate) : '',
       categories_json: m.categories_json || '',
+      requires_license: !!m.requires_license,
+      license_label: m.license_label || '',
+      features_json: m.features_json || '',
+      company: (() => { try { const cj = JSON.parse(m.company_json || ''); return (cj && typeof cj === 'object' && !Array.isArray(cj)) ? cj : {} } catch { return {} } })(),
       active: !!m.active,
     })
     setShowForm(true)
@@ -114,7 +144,19 @@ export default function AdminWholesaleMallsPage() {
       deposit_account: form.deposit_account.trim() || null,
       commission_rate: commission && Number.isFinite(Number(commission)) ? Number(commission) : null,
       categories_json: form.categories_json.trim() || null,
+      // 🏥 인허가 게이트 + 🧩 기능 토글 + 🏢 회사(푸터) 정보.
+      requires_license: form.requires_license ? 1 : 0,
+      license_label: form.license_label.trim() || null,
+      features_json: form.features_json.trim() || null,
+      company_json: (() => {
+        const entries = Object.entries(form.company).filter(([, v]) => typeof v === 'string' && v.trim())
+        return entries.length ? JSON.stringify(Object.fromEntries(entries.map(([k, v]) => [k, v.trim()]))) : null
+      })(),
       active: form.active ? 1 : 0,
+    }
+    // features_json 유효성(입력했을 때만).
+    if (form.features_json.trim()) {
+      try { JSON.parse(form.features_json) } catch { toast.error('기능 토글 JSON 형식이 올바르지 않습니다'); return }
     }
     setSaving(true)
     try {
@@ -145,6 +187,20 @@ export default function AdminWholesaleMallsPage() {
     }
   }
 
+  // 🔒 2026-06-29 (대표): 도매몰 관리는 슈퍼어드민 전용 — 다른 역할이 URL 직접진입해도 차단(백엔드 쓰기도 super-only).
+  const isSuper = typeof window !== 'undefined' && normalizeAdminRole(localStorage.getItem('admin_role')) === 'super'
+  if (!isSuper) {
+    return (
+      <AdminLayout title={t('admin.mall.title', { defaultValue: '도매 몰 관리' })}>
+        <div className="ur-content-full px-4 lg:px-8 py-16 text-center">
+          <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm font-semibold text-gray-700">{t('admin.mall.superOnly', { defaultValue: '도매몰 관리는 슈퍼관리자만 접근할 수 있어요.' })}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('admin.mall.superOnlyHint', { defaultValue: '몰 생성·수정 권한이 필요하면 슈퍼관리자에게 문의하세요.' })}</p>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout title={t('admin.mall.title', { defaultValue: '도매 몰 관리' })}>
       <div className="ur-content-full px-4 lg:px-8 py-6">
@@ -161,6 +217,9 @@ export default function AdminWholesaleMallsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          // 🛡️ 2026-06-29 (audit): fetch 실패를 '몰 없음'으로 위장 금지 — 에러+재시도.
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 몰" />
         ) : list.length === 0 ? (
           <p className="text-center text-gray-400 py-20">{t('admin.mall.empty', { defaultValue: '등록된 몰이 없습니다.' })}</p>
         ) : (
@@ -266,7 +325,45 @@ export default function AdminWholesaleMallsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.commission', { defaultValue: '수수료율 (%)' })}</label>
                   <input type="number" step="0.1" value={form.commission_rate} onChange={(e) => setForm((f) => ({ ...f, commission_rate: e.target.value }))}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="5" />
+                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="10" />
+                  <p className="text-[11px] text-gray-400 mt-1">이 몰의 플랫폼 마진%(공급가 = 원가×(1+%)). 비우면 전역 수수료 사용 — 표시가·결제가에 즉시 적용.</p>
+                </div>
+              </div>
+
+              {/* 🏥 규제 몰(인허가) — 가입 시 신고번호 필수 여부 + 필드 라벨 */}
+              <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
+                <label className="flex items-center gap-2 text-sm text-gray-700 font-semibold">
+                  <input type="checkbox" checked={form.requires_license} onChange={(e) => setForm((f) => ({ ...f, requires_license: e.target.checked }))} className="w-4 h-4" />
+                  가입 시 인허가(신고번호) 필수 — 규제 몰
+                </label>
+                {form.requires_license && (
+                  <input value={form.license_label} onChange={(e) => setForm((f) => ({ ...f, license_label: e.target.value }))} maxLength={80}
+                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400"
+                    placeholder="인허가 필드 라벨 — 예: 의료기기 판매업 신고번호" />
+                )}
+              </div>
+
+              {/* 🧩 기능 토글(제외 레이어) — {"키": false} 로 이 몰에서 기능 숨김. 비우면 전 기능 ON. */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">기능 토글 (JSON — 이 몰에서 뺄 기능)</label>
+                <textarea value={form.features_json} onChange={(e) => setForm((f) => ({ ...f, features_json: e.target.value }))} rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono"
+                  placeholder='{"dropship": false}' />
+                <p className="text-[11px] text-gray-400 mt-1">비우면 전 기능 켜짐. 예: {'{"dropship": false}'} = 이 몰에서 대량발주(드랍십) 숨김.</p>
+              </div>
+
+              {/* 🏢 회사(푸터) 정보 — 비운 칸은 기본(유통스타트) 정보로 폴백. 푸터/고객센터/약관에 반영. */}
+              <div className="rounded-lg border border-gray-200 p-3">
+                <p className="text-xs font-bold text-gray-700 mb-2">푸터 사업자 정보 <span className="font-normal text-gray-400">— 비운 칸은 기본(유통스타트) 정보 사용</span></p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {COMPANY_FIELDS.map((cf) => (
+                    <div key={cf.key} className={cf.key === 'address' || cf.key === 'mailOrderNo' ? 'col-span-2' : ''}>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">{cf.label}</label>
+                      <input value={form.company[cf.key] || ''} maxLength={300}
+                        onChange={(e) => setForm((f) => ({ ...f, company: { ...f.company, [cf.key]: e.target.value } }))}
+                        className="w-full h-9 px-2.5 rounded-lg border border-gray-200 text-[13px] text-gray-900 outline-none focus:border-gray-400" placeholder={cf.ph} />
+                    </div>
+                  ))}
                 </div>
               </div>
 

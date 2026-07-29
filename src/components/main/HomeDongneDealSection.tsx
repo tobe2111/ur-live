@@ -58,7 +58,7 @@ export default function HomeDongneDealSection() {
       {items === null ? (
         <div className="grid grid-cols-3 gap-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
+            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (

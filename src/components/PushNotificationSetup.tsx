@@ -18,6 +18,32 @@ import { Bell, X } from 'lucide-react'
 const SNOOZE_KEY = 'push_prompt_snooze_until'
 const SNOOZE_DAYS = 14
 
+/**
+ * 🔔 2026-07-01 (라이브 전수조사): VAPID 공개키 해석을 **런타임 서버 우선**으로.
+ *   기존엔 빌드타임 `VITE_VAPID_PUBLIC_KEY` 하나에만 의존 — 이 값이 빌드 시점에 비어 있으면
+ *   번들에 `const a=void 0`로 인라인돼 구독 함수가 영구 no-op(프로덕션 실측 확인, 웹푸시 0건).
+ *   게다가 공개키를 빌드(클라)·런타임(서버 서명) 두 곳에 넣어야 해 drift 위험.
+ *   이제 서버 `/api/push/vapid-public-key`(런타임 `VAPID_PUBLIC_KEY`)를 우선 사용하고,
+ *   빌드 변수는 폴백. → secret 하나만 설정하면 재배포 없이 구독+서명 키가 자동 일치.
+ */
+let _vapidKeyPromise: Promise<string> | null = null
+function resolveVapidKey(): Promise<string> {
+  if (_vapidKeyPromise) return _vapidKeyPromise
+  _vapidKeyPromise = (async () => {
+    const buildKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+    if (buildKey) return buildKey
+    try {
+      const res = await fetch('/api/push/vapid-public-key')
+      if (!res.ok) return ''
+      const data = (await res.json()) as { publicKey?: string }
+      return data?.publicKey || ''
+    } catch {
+      return ''
+    }
+  })()
+  return _vapidKeyPromise
+}
+
 export default function PushNotificationSetup() {
   const { t } = useTranslation()
   const [showBanner, setShowBanner] = useState(false)
@@ -35,28 +61,39 @@ export default function PushNotificationSetup() {
       localStorage.getItem('agency_id')
     if (!isLoggedIn) return
 
-    // 이미 구독/거부/스누즈면 표시 안 함
-    if (localStorage.getItem('push_subscribed')) return
     if (Notification.permission === 'denied') return
-    try {
-      const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
-      if (until && Date.now() < until) return
-    } catch { /* */ }
 
     // 🛡️ 2026-04-30 v2: PWA standalone 이면 풀 기능 → 진행. 아니면 인앱 매트릭스 체크.
     if (!isPWAStandalone() && isFeatureBlockedSync('notification')) {
       if (import.meta.env.DEV) console.info('[PushNotification] In-app webview blocked — skipping')
       return
     }
-    // VAPID 키 없으면 푸시 자체가 불가 — 배너도 안 띄움
-    if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) return
+    // VAPID 키(런타임 서버 우선)를 해석한 뒤에만 진행 — 키 없으면 배너/구독 모두 skip.
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    void resolveVapidKey().then((vapidKey) => {
+      if (cancelled || !vapidKey) return
 
-    // 이미 권한 granted(과거 수락) 인데 구독 기록만 없는 경우 — 배너 없이 조용히 재구독
-    const timer = setTimeout(() => {
-      if (Notification.permission === 'granted') { void subscribe(false) }
-      else setShowBanner(true)
-    }, 10000)
-    return () => clearTimeout(timer)
+      // 🔔 2026-07-01: 권한이 이미 granted 면 배너 없이 **항상** 서버 구독을 재조정(self-heal).
+      //   이전엔 localStorage.push_subscribed 플래그가 있으면 조기 return 해서, 브라우저가
+      //   endpoint 를 교체하거나 서버가 410 으로 구독행을 지우면 클라는 '구독됨'으로 착각하고
+      //   영구 두절됐음. 이제 getSubscription→재전송(ON CONFLICT 멱등)으로 매 마운트 self-heal.
+      //   push_subscribed 는 배너 억제용으로만 사용.
+      if (Notification.permission === 'granted') {
+        timer = setTimeout(() => { void subscribe(false) }, 8000)
+        return
+      }
+
+      // permission === 'default' (아직 안 물어봄) — 구독 이력/스누즈면 배너 skip
+      if (localStorage.getItem('push_subscribed')) return
+      try {
+        const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
+        if (until && Date.now() < until) return
+      } catch { /* */ }
+
+      timer = setTimeout(() => setShowBanner(true), 10000)
+    })
+    return () => { cancelled = true; if (timer) clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -64,7 +101,7 @@ export default function PushNotificationSetup() {
     if (busy) return
     setBusy(true)
     try {
-      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+      const vapidKey = await resolveVapidKey()
       if (!vapidKey) return
 
       // 🛡️ 2026-04-28: push-sw.js (push-only, no fetch handler) 명시적 등록.
@@ -83,17 +120,25 @@ export default function PushNotificationSetup() {
         })
       }
 
-      // 제스처 문맥에서만 권한 요청 (granted 재구독 경로는 요청 불필요)
-      if (Notification.permission !== 'granted') {
-        if (!fromGesture) return
-        const permission = await Notification.requestPermission()
-        if (permission !== 'granted') { setShowBanner(false); return }
-      }
+      // 🔔 2026-07-01: 기존 브라우저 구독을 우선 재사용(self-heal). 없을 때만 새로 구독.
+      let sub = await reg.pushManager.getSubscription()
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey,
-      })
+      if (!sub) {
+        // 제스처 문맥에서만 권한 요청 (granted 재구독 경로는 요청 불필요)
+        if (Notification.permission !== 'granted') {
+          if (!fromGesture) return
+          const permission = await Notification.requestPermission()
+          if (permission !== 'granted') { setShowBanner(false); return }
+        }
+        try {
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
+        } catch (subErr) {
+          // 다른 VAPID 키로 만든 구독이 남아 있으면 InvalidStateError — 교체 후 재시도(키 로테이션 self-heal).
+          const stale = await reg.pushManager.getSubscription()
+          if (stale) { try { await stale.unsubscribe() } catch { /* */ } sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey }) }
+          else throw subErr
+        }
+      }
 
       const token =
         localStorage.getItem('admin_token') ||
@@ -128,7 +173,7 @@ export default function PushNotificationSetup() {
 
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
-      <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl shadow-xl p-4 flex items-start gap-3">
+      <div className="bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-2xl shadow-xl p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center shrink-0">
           <Bell className="w-5 h-5 text-pink-500" />
         </div>
@@ -145,7 +190,7 @@ export default function PushNotificationSetup() {
               {t('push.promptOn', { defaultValue: '켜기' })}
             </button>
             <button onClick={snooze}
-              className="px-3.5 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
+              className="px-3.5 py-1.5 bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
               {t('push.promptLater', { defaultValue: '나중에' })}
             </button>
           </div>

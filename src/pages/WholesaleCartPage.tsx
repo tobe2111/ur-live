@@ -1,10 +1,9 @@
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Trash2, ShoppingCart, ShieldCheck } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
-import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 2026-06-04 유통스타트 도매몰 — 다품목 장바구니. 2026-06-16 시안(서브페이지) 2단 레이아웃 리디자인.
@@ -15,7 +14,9 @@ export default function WholesaleCartPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, setQty, remove, clear, subtotal, totalQty } = useWholesaleCart()
 
-  if (!token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29 (대표 신고 — "장바구니 눌렀는데 소개페이지로"): 장바구니는 localStorage 기반이라
+  //   비로그인도 열람 가능해야 한다. 기존 `!token → /wholesale/intro` 리다이렉트는 게스트가 카트
+  //   아이콘을 누르면 마케팅 소개페이지로 튕겨 혼란만 줬다 → 제거. 로그인은 주문(체크아웃) 시점에만 요구.
 
   // 🚚 제조사별 최소주문금액/배송비 계산(표시용 — 서버가 청구 시 재계산 = SSOT).
   const grouped = groupBySupplier(items)
@@ -25,7 +26,11 @@ export default function WholesaleCartPage() {
   const canOrder = grouped.allMinMet
   const policyGroups = grouped.groups.filter((g) => g.minOrderAmount > 0 || g.shipping > 0 || g.freeShipRemaining > 0)
 
-  const goCheckout = () => { if (items.length && canOrder) navigate('/wholesale/checkout') }
+  // 주문은 판매사 로그인 필요 — 비로그인은 로그인으로(소개페이지 아님).
+  const goCheckout = () => {
+    if (!token) { navigate('/wholesale/login'); return }
+    if (items.length && canOrder) navigate('/wholesale/checkout')
+  }
 
   // ── 주문 예상금액 카드 (데스크톱 우측 sticky / 모바일 인라인) ──
   const summaryCard = (withButton: boolean) => (
@@ -60,12 +65,13 @@ export default function WholesaleCartPage() {
   )
 
   return (
-    <div className="min-h-screen pb-24 lg:pb-10" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] pb-24 lg:pb-10" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="장바구니 - 유통스타트 도매" description="도매 장바구니" url="/wholesale/cart" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[54px]">
           <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <button onClick={() => navigate('/wholesale')} className="shrink-0"><WholesaleWordmark height={22} /></button>
+          {/* 🏭 2026-06-29: 로고는 공통 <WholesaleShopBar/> 가 담당 — 중복 제거하고 페이지 제목만 표시. */}
+          <span className="text-[15px] font-bold" style={{ color: WT.ink }}>장바구니</span>
         </div>
       </header>
 
@@ -90,7 +96,12 @@ export default function WholesaleCartPage() {
 
               <div>
                 {items.map((it) => {
-                  const step = Math.max(1, it.moq || 1)
+                  // 🏭 2026-07-01 (라이브 감사): 주문 배수(order_multiple) 정합 — om>1 이면 배수 단위로 증감하고
+                  //   하한을 MOQ-정렬 최소수량으로. 이전엔 moq 단위로만 증감해 배수 어긋난 수량이 결제 시 400 거부.
+                  const moq = Math.max(1, it.moq || 1)
+                  const om = Math.max(1, it.order_multiple || 1)
+                  const minQty = om > 1 ? Math.ceil(moq / om) * om : moq
+                  const step = om > 1 ? om : moq
                   return (
                     <div key={it.id} className="flex gap-3.5 py-4 items-center" style={{ borderBottom: '1px solid ' + WT.line }}>
                       <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="w-[72px] h-[72px] lg:w-[78px] lg:h-[78px] shrink-0 rounded-xl overflow-hidden" style={{ background: WT.fill }}>
@@ -99,13 +110,14 @@ export default function WholesaleCartPage() {
                       <div className="flex-1 min-w-0">
                         <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="text-left text-[14px] font-medium line-clamp-2 leading-[1.4]" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</button>
                         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                          {step > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>MOQ {comma(step)}</span>}
+                          {moq > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>MOQ {comma(moq)}</span>}
+                          {om > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>{comma(om)}개 단위</span>}
                           <button onClick={() => remove(it.id)} className="inline-flex items-center gap-0.5 text-[11.5px]" style={{ color: WT.ink4 }}><Trash2 className="w-3 h-3" /> 삭제</button>
                         </div>
                         {/* 모바일: 수량 스텝퍼 + 라인합 (좁은 화면용 인라인) */}
                         <div className="mt-2 flex items-center justify-between lg:hidden">
                           <div className="inline-flex items-center rounded-lg h-9" style={{ border: '1px solid ' + WT.line2 }}>
-                            <button className="h-9 w-9 text-[16px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= step}>−</button>
+                            <button className="h-9 w-9 text-[16px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= minQty}>−</button>
                             <span className="w-10 text-center text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(it.qty)}</span>
                             <button className="h-9 w-9 text-[16px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + step)}>+</button>
                           </div>
@@ -115,7 +127,7 @@ export default function WholesaleCartPage() {
                       {/* 데스크톱: 수량 스텝퍼 */}
                       <div className="hidden lg:flex flex-col items-center gap-1.5 shrink-0">
                         <div className="inline-flex items-center rounded-lg h-8" style={{ border: '1px solid ' + WT.line2 }}>
-                          <button className="h-8 w-[30px] text-[15px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= step}>−</button>
+                          <button className="h-8 w-[30px] text-[15px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= minQty}>−</button>
                           <span className="w-[42px] text-center text-[13px] font-bold tabular-nums" style={{ color: WT.ink, borderLeft: '1px solid ' + WT.line, borderRight: '1px solid ' + WT.line }}>{comma(it.qty)}</span>
                           <button className="h-8 w-[30px] text-[15px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + step)}>+</button>
                         </div>

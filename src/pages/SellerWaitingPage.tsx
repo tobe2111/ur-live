@@ -13,7 +13,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Clock, AlertCircle, ArrowRight, Home, RefreshCw } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { Clock, AlertCircle, ArrowRight, Home, RefreshCw } from 'lucide-react'
 
 type Status = 'pending' | 'suspended' | 'rejected' | 'active' | 'unknown'
 
@@ -27,8 +28,8 @@ export default function SellerWaitingPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const fetchStatus = useCallback(async () => {
-    setLoading(true)
+  const fetchStatus = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     setErrorMsg(null)
     try {
       const res = await api.get('/api/seller/my-seller-status')
@@ -38,11 +39,28 @@ export default function SellerWaitingPage() {
         setBusinessName(res.data.data.seller?.business_name || '')
         setRejectReason(res.data.data.seller?.reject_reason || '')
         if (s === 'active' || (s as string) === 'approved') {
+          // 🏁 2026-07-02 단일 퍼널: seller_token 없이 /seller 로 가면 requireSeller 가
+          //   이메일/비번 로그인으로 튕김(카카오 유저에겐 낯선 화면). switch-to-seller 로
+          //   같은 세션에서 셀러 토큰을 발급받아 저장한 뒤 진입 — 재로그인 0.
+          try {
+            const sw = await api.post('/api/seller/switch-to-seller')
+            if (sw.data?.success && sw.data.data?.accessToken) {
+              const { accessToken, refreshToken, seller } = sw.data.data
+              localStorage.setItem('seller_token', accessToken)
+              if (refreshToken) localStorage.setItem('seller_refresh_token', refreshToken)
+              if (seller?.id != null) localStorage.setItem('seller_id', String(seller.id))
+              if (seller?.name) localStorage.setItem('seller_name', seller.name)
+              if (seller?.email) localStorage.setItem('seller_email', seller.email)
+              if (seller?.username) localStorage.setItem('seller_username', seller.username)
+              if (seller?.seller_type) localStorage.setItem('seller_type', seller.seller_type)
+            }
+          } catch { /* 토큰 발급 실패 — /seller 가드가 로그인 안내 (기존 동작) */ }
           navigate('/seller', { replace: true })
           return
         }
       } else {
-        navigate('/seller/register/business?from=kakao', { replace: true })
+        // 신청 이력 없음 → 단일 가입 관문으로 (레거시 막다른 /register/business 아님)
+        navigate('/seller/register/supplier', { replace: true })
         return
       }
     } catch (err: unknown) {
@@ -67,10 +85,18 @@ export default function SellerWaitingPage() {
 
   useEffect(() => { fetchStatus() }, [fetchStatus])
 
+  // 🏁 2026-07-02 단일 퍼널: pending 동안 30초마다 자동 갱신 — 승인되면 이 화면이 스스로
+  //   토큰 발급 → 대시보드 진입(수동 새로고침 힌트 의존 제거). 언마운트 시 정리.
+  useEffect(() => {
+    if (status !== 'pending') return
+    const timer = setInterval(() => { fetchStatus({ silent: true }) }, 30_000)
+    return () => clearInterval(timer)
+  }, [status, fetchStatus])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
+        <BrandLoader />
       </div>
     )
   }
@@ -90,7 +116,7 @@ export default function SellerWaitingPage() {
           </div>
           <div className="space-y-2">
             <button
-              onClick={fetchStatus}
+              onClick={() => fetchStatus()}
               className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm"
             >
               <RefreshCw className="w-4 h-4" />
@@ -161,6 +187,10 @@ export default function SellerWaitingPage() {
               <li>{t('sellerWaiting.benefit2')}</li>
               <li>{t('sellerWaiting.benefit3')}</li>
             </ul>
+            {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 현금 정산 = 사업자등록증 인증 1회 추가 필요 사전 고지 */}
+            <p className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">
+              {t('sellerWaiting.secondGate', { defaultValue: '💳 승인 후 현금 정산을 받으려면 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
+            </p>
           </div>
         )}
 

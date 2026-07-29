@@ -76,6 +76,14 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   if (!have.has('barcode')) {
     await DB.prepare('ALTER TABLE products ADD COLUMN barcode TEXT').run().catch(swallow('supply-vis:add-barcode'))
   }
+  // 🛡️ 2026-06-25: store-import INSERT 가 slug/product_type 를 쓰는데 이 ensure 에 없어 미repair 환경에서
+  //   per-item INSERT 가 'no such column' 으로 전부 실패(0건 등록·무음) → self-heal 추가.
+  if (!have.has('slug')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN slug TEXT').run().catch(swallow('supply-vis:add-slug'))
+  }
+  if (!have.has('product_type')) {
+    await DB.prepare("ALTER TABLE products ADD COLUMN product_type TEXT DEFAULT 'regular'").run().catch(swallow('supply-vis:add-product-type'))
+  }
   if (!have.has('is_brand_product')) {
     // 스펙 정산 분기: 브랜드제품(1) = 판매 후 당일 정산 / 일반제품(0) = 7일 환불창 성숙 후.
     await DB.prepare('ALTER TABLE products ADD COLUMN is_brand_product INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-brand'))

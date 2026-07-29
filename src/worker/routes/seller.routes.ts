@@ -11,7 +11,8 @@ import type { Env } from '../types/env';
 import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';
 import type { Seller } from '../../shared/types';
-import { cacheGet } from '../utils/cache';
+import { buildSellerPublicPayload } from '../utils/seller-public-payload';
+import { intParam } from '@/shared/pagination'
 
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -20,8 +21,8 @@ sellersRouter.get('/', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     // ✅ 실제 sellers 테이블 스키마에 맞게 수정
@@ -90,80 +91,18 @@ sellersRouter.get('/:id', async (c) => {
   }
 });
 
+// 🚀 2026-07-11: 셀러 공개 페이로드 조립(자가치유 SELECT + enrich)은 utils/seller-public-payload.ts 로
+//   추출(SSOT) — curator.routes 가 linked_seller_public 동봉에 같은 함수를 공유(사업자 링크샵 1-RTT 화). 로직 불변.
+
 // GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증, ID/username/slug 지원)
 sellersRouter.get('/:id/public', async (c) => {
   try {
     const param = c.req.param('id');
-
-    // Seller profile changes infrequently — 5 min TTL with 2 min SWR.
-    // Key uses the lookup param directly (id/username/slug) so independent
-    // callers that hit different keys stay cache-correct.
-    // 🛡️ 2026-04-22: 공개 endpoint — 민감 필드 제외하고 public 필드만 SELECT
-    // 이전: SELECT * 로 bank_account/email/phone/password_hash/business_number 노출
-    // 🛡️ 2026-04-27: production sellers 테이블에 follower_count/is_verified 컬럼 없어서 500 → 제거
-    //                 follower_count 는 seller_follows COUNT 서브쿼리로 대체
-    // 🛡️ 2026-04-27 (2차): 너무 많이 잘라내서 셀러공개 페이지에 "이름 없음" + SNS/사업자 정보 미연동 →
-    //                       SNS 링크, 사업자 정보 (전자상거래법 표시 의무 항목), 대표자명 추가.
-    //                       프론트 호환을 위해 DB 컬럼명 alias: kakao_chat_url→kakao_chat_link, representative_name→ceo_name
-    //                       민감 필드는 여전히 제외: password_hash/email/phone/bank_*/account_holder/tax_email
-    // 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 컬럼 추가
-    //   banner_url / brand_color / external_live_* (TikTok/Instagram/Facebook)
-    const PUBLIC_SELLER_COLUMNS_FULL =
-      's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
-      's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
-      's.sns_instagram, s.sns_youtube, s.sns_facebook, s.sns_twitter, s.website_url, ' +
-      's.kakao_chat_url AS kakao_chat_link, s.representative_name AS ceo_name, ' +
-      's.banner_url, s.brand_color, ' +
-      's.external_live_tiktok, s.external_live_instagram, s.external_live_facebook, ' +
-      '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
-    // 🛡️ 2026-05-16: production 에 신규 컬럼 (banner_url/brand_color/external_live_*) 없는 환경 fallback
-    const PUBLIC_SELLER_COLUMNS_FALLBACK =
-      's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
-      's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
-      "COALESCE(s.sns_instagram, '') AS sns_instagram, COALESCE(s.sns_youtube, '') AS sns_youtube, " +
-      "COALESCE(s.sns_facebook, '') AS sns_facebook, COALESCE(s.sns_twitter, '') AS sns_twitter, COALESCE(s.website_url, '') AS website_url, " +
-      "NULL AS kakao_chat_link, NULL AS ceo_name, NULL AS banner_url, NULL AS brand_color, " +
-      "NULL AS external_live_tiktok, NULL AS external_live_instagram, NULL AS external_live_facebook, " +
-      '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
-    const seller = await cacheGet(
-      c.env.SESSION_KV,
-      `seller:${param}`,
-      async () => {
-        const qb = new QueryBuilder(c.env.DB);
-        const isNumeric = /^\d+$/.test(param);
-        // 신규 컬럼 SELECT 시도 → 실패 시 fallback SELECT
-        try {
-          return isNumeric
-            ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FULL} FROM sellers s WHERE s.id = ?`, [param])
-            : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FULL} FROM sellers s WHERE s.username = ?`, [param]);
-        } catch (e) {
-          console.warn('[SELLERS] full SELECT failed, fallback:', e instanceof Error ? e.message : e);
-          return isNumeric
-            ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FALLBACK} FROM sellers s WHERE s.id = ?`, [param])
-            : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FALLBACK} FROM sellers s WHERE s.username = ?`, [param]);
-        }
-      },
-      { ttl: 300, staleWhileRevalidate: 120 }
-    );
-
+    // 🚀 2026-07-11: 본문을 buildSellerPublicPayload(SSOT)로 위임 — 동작/캐시키/enrich 전부 기존과 동일.
+    const seller = await buildSellerPublicPayload(c.env, param);
     if (!seller) {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     }
-
-    // 🏁 2026-06-12 (P5 — 전 플로우 감사, 사용자 승인 "모두 이상적"): 셀러에 연결된 유저가
-    //   큐레이터(핸들 보유)면 handle 을 additive 로 동봉 — SellerPublicPage 가 '추천 핀' 섹션을
-    //   lazy 렌더할 수 있게. 기존 응답 필드/캐시 키 불변(추가만), 실패 시 조용히 생략.
-    try {
-      const sid = (seller as { id?: number }).id
-      if (sid) {
-        const linked = await c.env.DB.prepare(
-          `SELECT u.handle FROM sellers s JOIN users u ON u.id = s.linked_user_id
-            WHERE s.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
-        ).bind(sid).first<{ handle: string }>()
-        if (linked?.handle) (seller as Record<string, unknown>).curator_handle = linked.handle
-      }
-    } catch { /* additive — 생략 가능 */ }
-
     return c.json({ success: true, data: seller });
   } catch (err) {
     console.error('[SELLERS] Public profile error:', err);
@@ -181,8 +120,8 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     const products = await qb.queryMany<any>(
@@ -222,7 +161,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { status, limit = '10' } = c.req.query();
-    const limitNum = Math.min(parseInt(limit, 10), 50);
+    const limitNum = Math.min(Math.max(intParam(limit, 10), 1), 50);
 
     const params: unknown[] = [sellerId];
     let statusWhere = '';

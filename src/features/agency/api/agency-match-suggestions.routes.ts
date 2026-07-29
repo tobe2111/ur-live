@@ -47,7 +47,15 @@ app.get('/match-suggestions', async (c) => {
     LIMIT 50
   `).bind(agencyId).all().catch(() => null);
 
-  return c.json({ suggestions: rows?.results ?? [] });
+  // 🔧 2026-06-24 (전수조사): cron 이 match_reason 을 JSON.stringify 로 저장 → 프론트는 객체로 읽어
+  //   reason.tierScore 등이 항상 undefined → 점수 막대(ScoreBar) 가 영구 미표시였음. 여기서 파싱해 반환.
+  const suggestions = (rows?.results ?? []).map((r) => {
+    const row = r as Record<string, unknown>
+    let reason: unknown = {}
+    try { reason = JSON.parse(String(row.match_reason ?? '{}')) } catch { reason = {} }
+    return { ...row, match_reason: reason }
+  })
+  return c.json({ suggestions });
 });
 
 // POST /match-suggestions/:id/accept

@@ -16,9 +16,18 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
-import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
+// 🔒 2026-07-01 (정산 감사 — 대표 "5% 로 통일"): 소비자 셀러 정산의 플랫폼 take 기본율은
+//   policy SSOT(PLATFORM_FEE_PCT=5). 이전엔 @/shared/constants 의 DEFAULT_COMMISSION_RATE(=10)
+//   를 fallback 으로 써 NULL-rate(레거시) 주문이 fee-resolver(5%)·auto-settlement(5%)와 달리
+//   10% 로 집계/execute 되어 셀러 과소지급 위험이 있었음. 아래 alias 로 파일 전체 정산 수식을 5% 로 통일.
+//   (orders.commission_rate 스냅샷이 있으면 그 값 우선 — 이 기본율은 스냅샷 NULL 인 주문에만 적용.)
+import { COMMISSION_DEFAULTS } from '@/shared/constants/policy';
+const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT;
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { requireAdminRole } from '@/worker/middleware/auth';
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 정산 실행/일괄완료(돈 액션) require2FA — 옵트인
+//   (2FA 미등록 관리자는 no-op 통과, 등록 시 X-2FA-Code 헤더 필수). 핸들러 본문 불변.
+import { require2FA } from '@/worker/middleware/require-2fa';
 import { logAudit } from '../../../lib/audit-log';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 
@@ -220,7 +229,7 @@ adminSettlementsRoutes.patch('/settlement/:id/status', cors(), rateLimit({ actio
   }
 });
 
-adminSettlementsRoutes.post('/settlement/batch-complete', cors(), rateLimit({ action: 'admin_settlement_batch', max: 5, windowSec: 60 }), requireAdminRole('finance'), async (c) => {
+adminSettlementsRoutes.post('/settlement/batch-complete', cors(), rateLimit({ action: 'admin_settlement_batch', max: 5, windowSec: 60 }), requireAdminRole('finance'), require2FA(), async (c) => {
   try {
     const { DB } = c.env;
     const { order_ids } = await c.req.json<{ order_ids: number[] }>();
@@ -263,7 +272,7 @@ adminSettlementsRoutes.post('/settlement/batch-complete', cors(), rateLimit({ ac
   }
 });
 
-adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: 'admin_settlement_execute', max: 5, windowSec: 60 }), requireAdminRole('finance'), async (c) => {
+adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: 'admin_settlement_execute', max: 5, windowSec: 60 }), requireAdminRole('finance'), require2FA(), async (c) => {
   try {
     const { DB } = c.env;
     const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({} as { period_start?: string; period_end?: string }));
@@ -309,7 +318,7 @@ adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: '
           const row = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(seller.seller_id).first<{ phone: string; business_name: string }>().catch(() => null);
           if (!row?.phone) continue;
           const amount = (seller.settlement_amount || 0).toLocaleString('ko-KR');
-          const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: live.ur-team.com/seller/settlements`;
+          const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: urdeal.kr/seller/settlements`;
           await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, row.phone, 'seller_settlement_completed', message);
         }
       } catch (e) {
@@ -510,7 +519,10 @@ adminSettlementsRoutes.get('/tax-withholding/summary', cors(), async (c) => {
 
 function csvEscape(v: string): string {
   if (v == null) return '';
-  const s = String(v);
+  let s = String(v);
+  // 🛡️ 2026-06-26 [보안] CSV 수식 인젝션 차단 — 셀러 회사명/이메일 등 사용자-제어 값이
+  //   = + - @ 탭/CR 로 시작하면 선행 작은따옴표로 무력화 후 quote-escape.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return `"${s.replace(/"/g, '""')}"`;
   }

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { ChevronLeft, ChevronRight, Play, Clock, Loader2, Calendar } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { ChevronLeft, ChevronRight, Play, Clock, Calendar } from 'lucide-react'
 
 export default function AgencySchedulePage() {
   const { t } = useTranslation()
@@ -59,7 +60,7 @@ export default function AgencySchedulePage() {
         />
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <BrandLoader />
         ) : (
           <>
             {/* 요일 헤더 */}

@@ -9,7 +9,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, XCircle } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { trackFunnel } from '@/lib/funnel'
 import api from '@/lib/api'
 import { fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
@@ -44,6 +46,7 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          trackFunnel('payment_succeeded', { type: 'group_buy' }) // 🆕 퍼널 계측 (이용권 결제 완료)
           fireAffiliateTrack(r.data?.data?.order_id, Number(productId), undefined) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           try {
@@ -66,13 +69,12 @@ export default function GroupBuyConfirmPaymentPage() {
   }, [paymentKey, orderId, amount, productId, qty, navigate])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] flex items-center justify-center px-4">
       <SEO title="공구 결제 처리" url="/group-buy/confirm-payment" noindex />
       <div className="text-center max-w-sm">
         {state === 'processing' && (
           <>
-            <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
-            <p className="text-lg font-bold text-gray-900 dark:text-white">결제 승인 중...</p>
+            <BrandLoader label="결제 승인 중" />
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">잠시만 기다려주세요</p>
           </>
         )}

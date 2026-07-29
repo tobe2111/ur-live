@@ -12,6 +12,7 @@ import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/se
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { formatNumber } from '@/utils/format'
 import { getTossPayments } from '@/lib/toss-preload'
 import { resolveTossFlow } from '@/lib/toss-key-type'
@@ -160,7 +161,7 @@ export default function SellerAlimtalkPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <BrandLoader />
       </div>
     )
   }

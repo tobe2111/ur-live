@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { normalizeAdminRole } from '@/shared/admin-roles'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -30,7 +31,17 @@ const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_st
 export default function AdminProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales' | 'supplier-products'>('products')
+  const [searchParams] = useSearchParams()
+  // 🆕 2026-06-24: 도매 파트너(wholesale 어드민)는 '제조사 등록 상품'(승인 큐)만 — 소비자 상품관리 탭 숨김.
+  //   '도매 통합 현황'의 승인 큐 카드(상품 승인/가격변경) 클릭 시 바로 이 탭으로 (deep-link `?tab=supplier-products`).
+  const isWholesaleAdmin = normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null) === 'wholesale'
+  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales' | 'supplier-products'>(() => {
+    if (isWholesaleAdmin) return 'supplier-products'
+    const urlTab = searchParams.get('tab')
+    return (urlTab && ['products', 'sample-requests', 'supply-sales', 'supplier-products'].includes(urlTab))
+      ? (urlTab as 'products' | 'sample-requests' | 'supply-sales' | 'supplier-products')
+      : 'products'
+  })
   // 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐.
   const [spStatusFilter, setSpStatusFilter] = useState('pending')
   const [error, setError] = useState('')
@@ -394,37 +405,43 @@ export default function AdminProductsPage() {
         ) : undefined
       }
     >
-      {/* 탭 */}
+      {/* 탭 — 도매 파트너(wholesale)는 '제조사 등록 상품'(승인 큐)만 노출 */}
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('sample-requests')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
-            {pendingCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
-            )}
-          </span>
-        </button>
+        {!isWholesaleAdmin && (
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
+          </button>
+        )}
+        {!isWholesaleAdmin && (
+          <button
+            onClick={() => setActiveTab('sample-requests')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-1.5">
+              <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
+              {pendingCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
+              )}
+            </span>
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('supplier-products')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '제조사 등록 상품' })}</span>
         </button>
-        <button
-          onClick={() => setActiveTab('supply-sales')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> {t('admin.products.k019', { defaultValue: '공급 판매 현황' })}</span>
-        </button>
+        {!isWholesaleAdmin && (
+          <button
+            onClick={() => setActiveTab('supply-sales')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> {t('admin.products.k019', { defaultValue: '공급 판매 현황' })}</span>
+          </button>
+        )}
       </div>
 
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 mb-4">{error}</div>}

@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Truck, Loader2, RotateCcw, Package, Download, Upload, Boxes } from 'lucide-react'
+import { ArrowLeft, Truck, Loader2, RotateCcw, Package, Download, Upload, Boxes, Check, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
+import { safeDate } from '@/utils/safe-date'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -22,12 +24,16 @@ interface Line {
   tracking_number: string | null
   shipped_at: string | null
   line_status: string
+  accepted_at?: string | null
   order_status: string
   created_at: string
   ship_to_name: string | null
   ship_to_phone: string | null
   ship_to_address: string | null
   ship_to_postal: string | null
+  option_label?: string | null
+  ext_order_no?: string | null
+  ship_to_message?: string | null
 }
 
 export default function SupplierWholesaleOrdersPage() {
@@ -52,6 +58,9 @@ export default function SupplierWholesaleOrdersPage() {
     return [...m.entries()].map(([orderId, items]) => ({
       orderId, items,
       pendingCount: items.filter(it => it.line_status !== 'SHIPPED' && it.line_status !== 'REFUNDED').length,
+      // 🏭 2026-07-01 (라이브 감사 — 라인단위 수락): 내 미처리(발송/환불 전) 라인 중 아직 수락 안 한 것.
+      //   수락/거절 버튼은 주문 상태가 아니라 '내 라인'으로 게이트 → 다제조사에서 남의 수락에 안 사라짐.
+      unacceptedCount: items.filter(it => it.line_status === 'PENDING' && !it.accepted_at).length,
     }))
   }, [lines])
 
@@ -75,7 +84,9 @@ export default function SupplierWholesaleOrdersPage() {
       const csv = await readTableFileAsCsv(file) // 📥 2026-06-12: 엑셀(.xlsx)/CP949 CSV 대응
       const r = await supplierApi.post<{ summary?: { ok: number; failed: number; skipped: number } }>('/api/supplier/wholesale/tracking/bulk', { csv })
       const s = r.summary
-      toast.success(`송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`)
+      // 🛡️ 2026-06-25: 0건 등록(전부 실패/skip)에 success 토스트는 오인 — ok>0 일 때만 success.
+      const msg = `송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`
+      if ((s?.ok ?? 0) > 0) toast.success(msg); else toast.error(msg)
       load()
     } catch (err) { toast.error(err instanceof Error ? err.message : '일괄 업로드 실패') } finally { setUploading(false) }
   }
@@ -126,7 +137,7 @@ export default function SupplierWholesaleOrdersPage() {
   // 🛡️ 2026-06-12 (감사 개선): 라인 단위 환불 — 버튼이 라인에 있는데 동작은 내 전체 라인 환불이던 것.
   //   서버가 item_ids 부분집합 환불 + 라인별 정산 역전(product 스코프) + 멱등키(라인 집합)를 지원.
   async function refund(item: Line) {
-    if (!(await confirmDialog({ message: `'${item.name}' (수량 ${item.qty}개, ${formatWon(item.settle_amount)}) 만 환불 처리할까요? 같은 주문의 다른 상품은 유지됩니다. 되돌릴 수 없습니다.`, danger: true }))) return
+    if (!(await confirmDialog({ message: `'${item.name}' (수량 ${item.qty}개) 라인을 환불 처리할까요? 내 정산금 ${formatWon(item.settle_amount)} 이 회수되며 판매사에게는 결제액이 환불됩니다. 같은 주문의 다른 상품은 유지되고, 되돌릴 수 없습니다.`, danger: true }))) return
     setBusy(item.item_id)
     try {
       await supplierApi.post(`/api/supplier/wholesale/orders/${item.wholesale_order_id}/refund`, { reason: '판매자 반품 승인', item_ids: [item.item_id] })
@@ -135,8 +146,36 @@ export default function SupplierWholesaleOrdersPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '환불 처리 실패') } finally { setBusy(null) }
   }
 
+  // 🏭 2026-06-27 (대표 — 제조사 확인 단계): 주문 수락(PAID→ACCEPTED) / 거절(발송 전, 내 라인 환불).
+  async function accept(orderId: number) {
+    setBusyOrder(orderId)
+    try {
+      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/accept`, {})
+      toast.success('주문을 수락했습니다')
+      load()
+    } catch (e) { toast.error(e instanceof Error ? e.message : '주문 수락 실패') } finally { setBusyOrder(null) }
+  }
+  async function reject(orderId: number) {
+    // 🏭 2026-06-30: 거절 사유를 입력받아 판매사에게 전달(주문목록에 '제조사 거절 사유'로 노출).
+    //   기존엔 '제조사 거절' 하드코딩이라 판매사가 이유를 알 수 없었음.
+    const reason = await promptDialog({
+      message: `주문 #${orderId} 를 거절할까요? 내 상품 라인이 환불되고, 입력한 사유가 판매사에게 통지됩니다. 되돌릴 수 없습니다.`,
+      danger: true,
+      confirmText: '거절하고 환불',
+      prompt: { placeholder: '거절 사유 (예: 재고 소진, 단종) — 판매사에게 전달돼요', required: true, multiline: true },
+    })
+    if (reason === null) return // 취소
+    const reasonText = reason.trim().slice(0, 100) || '제조사 거절'
+    setBusyOrder(orderId)
+    try {
+      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/reject`, { reason: reasonText })
+      toast.success('주문을 거절하고 환불 처리했습니다')
+      load()
+    } catch (e) { toast.error(e instanceof Error ? e.message : '주문 거절 실패') } finally { setBusyOrder(null) }
+  }
+
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
+    <div className="min-h-[100dvh] bg-[#F4F5F7]">
       <SEO title="도매 주문 처리 - 제조사" description="제조사 도매 주문 송장/반품" url="/supplier/wholesale-orders" noindex />
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-[52px]">
@@ -156,7 +195,7 @@ export default function SupplierWholesaleOrdersPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+          <WholesaleLoading />
         ) : lines.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-gray-400"><Package className="w-10 h-10 mb-3" /><p>처리할 도매 주문이 없습니다.</p></div>
         ) : (
@@ -164,19 +203,50 @@ export default function SupplierWholesaleOrdersPage() {
             {groups.map(g => {
               const first = g.items[0]
               const od = orderDraft[g.orderId] || { courier: '', tracking: '' }
-              const canBundle = g.pendingCount >= 2 // 합배송: 미발송 라인 2개 이상일 때만 일괄발송 노출
+              // 📦 드랍십: 한 주문에 받는사람이 여럿이면(라인별 직배) 합배송 불가 — 라인별 개별송장만.
+              const mixedRecipients = g.items.some(it => (it.ship_to_name || '') !== (first.ship_to_name || '') || (it.ship_to_address || '') !== (first.ship_to_address || ''))
+              const canBundle = g.pendingCount >= 2 && !mixedRecipients // 합배송: 같은 받는사람 + 미발송 2건↑
               return (
                 <div key={g.orderId} className="bg-white rounded-xl border border-gray-200 p-4">
                   {/* 주문 헤더 + 배송지 (주문당 1회) */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-400">주문 #{g.orderId} · {new Date(first.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-xs text-gray-400">주문 #{g.orderId} · {safeDate(first.created_at)?.toLocaleString('ko-KR') ?? '-'}</span>
                     {g.pendingCount > 0
                       ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">발송대기 {g.pendingCount}건</span>
                       : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">발송완료</span>}
                   </div>
+                  {/* 🏭 2026-07-01 (라이브 감사 — 라인단위): 수락/거절은 '내 라인' 기준(주문 상태 아님).
+                      다제조사 주문에서 다른 제조사가 수락해도 내 미처리 라인이 있으면 버튼 유지. 수락 없이 발송도 가능. */}
+                  {g.unacceptedCount > 0 && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <button onClick={() => accept(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                        {busyOrder === g.orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} 내 상품 수락
+                      </button>
+                      <button onClick={() => reject(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center gap-1 px-3 py-2 border border-rose-200 text-rose-600 rounded-lg text-sm font-medium disabled:opacity-50">
+                        <X className="w-4 h-4" /> 거절
+                      </button>
+                    </div>
+                  )}
+                  {/* 내 라인을 모두 수락했으나 아직 미발송 — 수락됨 배지 + 거절(발송 전) 유지 */}
+                  {g.unacceptedCount === 0 && g.pendingCount > 0 && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700"><Check className="w-3.5 h-3.5" /> 수락됨 · 발송 대기</span>
+                      <button onClick={() => reject(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center gap-1 px-2.5 py-1 border border-rose-200 text-rose-600 rounded-lg text-xs font-medium disabled:opacity-50">
+                        <X className="w-3.5 h-3.5" /> 거절
+                      </button>
+                    </div>
+                  )}
                   <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-3">
-                    <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
-                    <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
+                    {mixedRecipients ? (
+                      <div className="font-medium text-gray-800">📦 받는사람별 직배(드랍십) · {g.items.length}건 — 각 상품 아래 받는분 확인</div>
+                    ) : (
+                      <>
+                        <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
+                        <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
+                        {/* 🏭 2026-06-30: 판매사 배송 메시지 — 단일 수령 주문에도 노출(발송 지시 누락 방지). */}
+                        {first.ship_to_message && <div className="text-gray-500 mt-1">💬 {first.ship_to_message}</div>}
+                      </>
+                    )}
                   </div>
 
                   {/* 합배송 일괄발송 (미발송 2건 이상) */}
@@ -214,8 +284,15 @@ export default function SupplierWholesaleOrdersPage() {
                         <div key={l.item_id} className="border border-gray-100 rounded-lg p-3">
                           <div className="flex items-center justify-between mb-2 gap-2">
                             <div>
-                              <div className="font-medium text-gray-900">{l.name}</div>
+                              <div className="font-medium text-gray-900">{l.name}{l.option_label ? <span className="text-gray-500 font-normal"> · {l.option_label}</span> : null}</div>
                               <div className="text-sm text-gray-500">수량 {l.qty}개 · 정산 {formatWon(l.settle_amount)}</div>
+                              {mixedRecipients && (l.ship_to_name || l.ship_to_address) && (
+                                <div className="text-xs text-gray-600 mt-1.5 bg-gray-50 rounded p-2">
+                                  📦 <b className="text-gray-800">{l.ship_to_name || '—'}</b> {l.ship_to_phone || ''} · {l.ship_to_postal ? `(${l.ship_to_postal}) ` : ''}{l.ship_to_address || ''}
+                                  {l.ext_order_no ? <span className="text-gray-400"> · 주문 {l.ext_order_no}</span> : null}
+                                  {l.ship_to_message ? <div className="text-gray-400 mt-0.5">메모: {l.ship_to_message}</div> : null}
+                                </div>
+                              )}
                             </div>
                             <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${refunded ? 'bg-gray-100 text-gray-500' : shipped ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
                               {refunded ? '환불됨' : shipped ? '발송완료' : '발송대기'}

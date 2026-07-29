@@ -53,7 +53,7 @@ export default function AdminCommissionSettingsPage() {
   const [saving, setSaving] = useState(false)
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형 폼이라 데이터 도착 시 시드.
-  const settingsQ = useApiQuery<Array<{ key: string; value: string }>>(['admin', 'commission-settings'], '/api/admin-tools/settings', {
+  const settingsQ = useApiQuery<Array<{ key: string; value: string }>>(['admin', 'commission-settings'], '/api/admin/tools/settings', {
     select: (r: any) => (r?.success && Array.isArray(r.data) ? r.data : []),
   })
   const loading = settingsQ.isLoading
@@ -84,7 +84,7 @@ export default function AdminCommissionSettingsPage() {
     }
     setSaving(true)
     try {
-      await api.put('/api/admin-tools/settings', form)
+      await api.put('/api/admin/tools/settings', form)
       toast.success('수수료 설정이 저장되었습니다')
     } catch {
       toast.error('저장 실패')

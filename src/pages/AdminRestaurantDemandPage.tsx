@@ -2,7 +2,7 @@
  * Admin 수요 신호 대시보드 — 카카오 일반 맛집 → 셀러 영입 우선순위.
  *
  * GET /api/restaurant-suggestions/stats — kakao_place_id 별 집계.
- * 사용자가 회색 핀 (식사권 미출시) 클릭 후 영입/알림 신청한 매장 top N.
+ * 사용자가 회색 핀 (이용권 미출시) 클릭 후 영입/알림 신청한 매장 top N.
  *
  * 🛡️ 2026-04-28: restaurant-map 옵션 B 의 admin 대시보드.
  */
@@ -52,7 +52,7 @@ export default function AdminRestaurantDemandPage() {
       <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="맛집 수요 신호"
-          subtitle="사용자가 식사권을 원하는 매장 — 셀러 영입 우선순위"
+          subtitle="사용자가 이용권을 원하는 매장 — 셀러 영입 우선순위"
           icon={<TrendingUp className="h-5 w-5" />}
           actions={
             <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50">

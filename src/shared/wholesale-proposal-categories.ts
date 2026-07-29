@@ -16,8 +16,8 @@ export interface ProposalCategory {
 export const PROPOSAL_CATEGORIES: readonly ProposalCategory[] = [
   { key: 'supply',   label: '상품 공급 제안',     emoji: '📦', desc: '상품을\n공급하고 싶어요!',              type: 'proposal' },
   { key: 'codev',    label: '상품 공동개발 제안', emoji: '🤝', desc: '상품 공동개발을\n제안해요!',           type: 'proposal' },
-  { key: 'live',     label: '라이브커머스 제안',   emoji: '📱', desc: '라이브커머스를\n제안해요!',           type: 'proposal' },
-  { key: 'sns',      label: 'SNS/공동구매 제안',  emoji: '🛍️', desc: 'SNS 공동구매·폐쇄몰\n파트너 할인 제안!', type: 'proposal' },
+  // 🏬 2026-06-29 (대표 요청): 라이브커머스 제안(live)·SNS/공동구매 제안(sns) 카드 제거
+  //   (라이브커머스 영구중단 LIVE_COMMERCE_SUSPENDED — 제안 카드 부적합). 기존 티켓은 categoryLabel 폴백.
   { key: 'report',   label: '최저가 미준수 신고', emoji: '💰', desc: '최저가\n미준수 신고',                 type: 'report' },
   { key: 'inquiry',  label: '문의 및 불편사항',   emoji: '💬', desc: '기타\n문의사항',                     type: 'report' },
 ] as const

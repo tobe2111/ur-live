@@ -3,7 +3,7 @@
  *   POST /api/supplier/register → status='pending' (어드민 승인 후 로그인 가능).
  *   라이트 테마.
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
@@ -12,19 +12,32 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatPhoneKr } from '@/utils/format-kr'
+import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
-import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { useWholesaleMall, currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
+import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🔢 2026-06-26: 가입신청 클릭 시 *순서대로* 검증 + 첫 문제 필드로 포커스 이동(기존엔 native required 가
+  //   대표자/담당자(required 없음)를 건너뛰고 무조건 이메일로 점프 — 대표 신고). form noValidate + 이 ref 맵으로 해결.
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
+  const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
-  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo, requiresLicense, licenseLabel } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — requiresLicense 몰에서만 노출·필수.
+  const [licenseNo, setLicenseNo] = useState('')
+  // 🏭 2026-06-29 (대표): 공급(취급) 카테고리(다중) + 희망 유통채널 — 선택 입력.
+  const [categories, setCategories] = useState<string[]>([])
+  const [channel, setChannel] = useState('')
+  const toggleCat = (id: string) => setCategories(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   // 🏭 2026-06-08 카카오 통합 (유통회원 WholesaleJoinPage 와 대칭):
   //   카카오로 로그인된 유저(아직 제조회원 아님) → 이메일/비번 없이 사업자 정보만 입력 후 /api/supplier/become.
   const kakaoUser = typeof window !== 'undefined' && !isSupplierLoggedIn() && !!localStorage.getItem('user_id')
@@ -76,22 +89,35 @@ export default function SupplierRegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!form.business_name.trim()) { fail(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
-    if (!/^\d{10}$/.test(form.business_number.replace(/[^0-9]/g, ''))) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
+    // 🔢 2026-06-26 (대표 신고): 화면 표시 순서대로 검증 + 첫 문제 필드로 포커스 이동.
+    const failAt = (k: string, m: string) => { setError(m); toast.error(m); focusField(k) }
+    if (!form.business_name.trim()) { failAt('business_name', t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
+    if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
     if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
-    // 🏭 2026-06-09 대표자/담당자 필수 검증 (연락처 양식은 lenient).
-    if (!form.representative.trim() || !form.representative_phone.trim()) { fail(t('supplier.errRep', { defaultValue: '대표자 성명·연락처를 입력해주세요' })); return }
-    if (!form.manager_name.trim() || !form.manager_phone.trim()) { fail(t('supplier.errManager', { defaultValue: '담당자 성명·연락처를 입력해주세요' })); return }
-    // 카카오 가입은 이메일/비번 불필요 — 일반(이메일) 가입만 비번 검증.
+    // 🏥 규제 몰(의료용품) — 인허가 신고번호 필수.
+    if (requiresLicense && !licenseNo.trim()) { fail(`${licenseLabel || '인허가 신고번호'}를 입력해주세요`); return }
+    // 🏭 대표자 — 성명/연락처 각각 검증(연락처는 완성형 휴대폰만). "010"·"010-9135" 미완성 차단.
+    if (!form.representative.trim()) { failAt('representative', t('supplier.errRepName', { defaultValue: '대표자 성명을 입력해주세요' })); return }
+    if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', t('supplier.errRepPhone', { defaultValue: '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    // 🏭 담당자 — '대표자와 동일' 체크 시 대표자 값 복사(검증 통과)라 스킵, 아니면 각각 검증.
+    if (!sameAsRep) {
+      if (!form.manager_name.trim()) { failAt('manager_name', t('supplier.errManagerName', { defaultValue: '담당자 성명을 입력해주세요' })); return }
+      if (!isValidKrPhone(form.manager_phone)) { failAt('manager_phone', t('supplier.errManagerPhone', { defaultValue: '담당자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    }
+    // 카카오 가입은 이메일/비번 불필요 — 일반(이메일) 가입만 검증.
     if (!kakaoUser) {
-      if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
-      if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
-      if (form.password !== passwordConfirm) { fail(t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })); return }
+      if (!isValidEmail(form.email)) { failAt('email', t('supplier.errEmail', { defaultValue: '로그인에 사용할 이메일을 정확히 입력해주세요 (예: name@company.com)' })); return }
+      if (form.password.length < 8) { failAt('password', t('supplier.errPwLen', { defaultValue: '비밀번호는 영문+숫자 포함 8자 이상이어야 합니다' })); return }
+      if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { failAt('password', t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 모두 포함해야 합니다' })); return }
+      if (form.password !== passwordConfirm) { failAt('passwordConfirm', t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })); return }
     }
     setLoading(true)
     try {
       // 카카오 유저 → /become(세션 인증, 사업자 정보만), 그 외 → /register(이메일/비번).
-      const url = kakaoUser ? '/api/supplier/become' : '/api/supplier/register'
+      // 🏬 2026-07-04 (몰별 별도 회원가입): 현재 몰 slug 를 ?mall= 로 전달 — 서버 registrationMallId 최우선.
+      //   미전달 시 host 폴백(기본 1)이라 메디스타트 폼에서 가입해도 유통스타트로 가입되던 갭 차단.
+      const mallSlug = currentWholesaleMallSlug()
+      const url = (kakaoUser ? '/api/supplier/become' : '/api/supplier/register') + (mallSlug ? `?mall=${encodeURIComponent(mallSlug)}` : '')
       // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.
       const managerEmail = (form.manager_email.trim() || form.email.trim()) || undefined
       // 대표자/담당자 공통 필드 (양 모드 동일).
@@ -100,6 +126,11 @@ export default function SupplierRegisterPage() {
         manager_name: form.manager_name.trim() || undefined,
         manager_phone: form.manager_phone.trim() || undefined,
         manager_email: managerEmail,
+        // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (선택 — 서버가 사이드테이블에 저장).
+        categories,
+        channel: channel.trim() || undefined,
+        // 🏥 2026-07-03 규제 몰 인허가 신고번호(있을 때만) — 서버가 requires_license 몰에서 필수 검증.
+        license_no: licenseNo.trim() || undefined,
       }
       const payload = kakaoUser
         ? {
@@ -130,8 +161,8 @@ export default function SupplierRegisterPage() {
         if (tok) headers.Authorization = `Bearer ${tok}`
       }
       const res = await fetch(url, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) })
-      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; status?: string; _diag?: string }
-      if (!res.ok || !data.success) throw new Error((data.error || t('supplier.registerFailed', { defaultValue: '가입에 실패했습니다' })) + (data._diag ? ` · ${data._diag}` : '')) // ⏳ _diag 임시
+      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; status?: string }
+      if (!res.ok || !data.success) throw new Error(data.error || t('supplier.registerFailed', { defaultValue: '가입에 실패했습니다' }))
       // 카카오 가입(/become) 신규 신청 → status==='pending'. (needs_registration 은 빈 body probe 응답이라 여기 안 옴.)
       setDone(true)
       toast.success(t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' }))
@@ -144,7 +175,7 @@ export default function SupplierRegisterPage() {
 
   if (done) {
     return (
-      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="force-light-theme min-h-[100dvh] flex items-center justify-center bg-gray-50 px-6">
         <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
@@ -167,7 +198,7 @@ export default function SupplierRegisterPage() {
   const labelCls = "block text-sm font-medium text-gray-700 mb-1.5"
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-6">
+    <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-6">
       <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
       <div className="max-w-lg mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
@@ -192,48 +223,71 @@ export default function SupplierRegisterPage() {
             <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '판매사 가입 →' })}</Link>
           </p>
 
-          {/* 🏭 2026-06-08 카카오 통합 (WholesaleJoinPage 와 대칭): 카카오로 로그인된 유저는 사업자 정보만 입력. */}
-          {kakaoUser && (
-            <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: '#FEF6D9', color: '#7A5C00' }}>
-              {t('supplier.kakaoModeNotice', { defaultValue: '카카오 계정으로 진행 중 — 사업자 정보만 입력하면 승인 심사로 넘어갑니다.' })}
-            </div>
-          )}
-
           {error && (
             <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 🔢 noValidate: native required 가 대표자/담당자(required 없음)를 건너뛰고 이메일로 점프하던 것 차단 → JS 순차검증 사용 */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label className={labelCls}>{t('supplier.fieldBizName', { defaultValue: '상호(사업자명)' })} <span className="text-red-500">*</span></label>
-              <input required disabled={loading} value={form.business_name} onChange={set('business_name')} className={inputCls} placeholder={t('supplier.phBizName', { defaultValue: '예: (주)유어딜무역' })} />
+              <input ref={reg('business_name')} disabled={loading} value={form.business_name} onChange={set('business_name')} className={inputCls} placeholder={t('supplier.phBizName', { defaultValue: '예: (주)유어딜무역' })} />
             </div>
             <div>
               <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FC5424]">*</span></label>
-              <input required disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
+              <input ref={reg('business_number')} disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
 
-            {/* 🏭 2026-06-09 대표자 정보 */}
+            {/* 🏥 2026-07-03 규제 몰(의료용품) — 인허가 신고번호 (해당 몰에서만 노출·필수) */}
+            {requiresLicense && (
+              <div>
+                <label className={labelCls}>{licenseLabel || '인허가 신고번호'} <span className="text-[#FC5424]">*</span></label>
+                <input disabled={loading} value={licenseNo} onChange={(e) => setLicenseNo(e.target.value.slice(0, 60))} className={inputCls} placeholder="예: 제0000-000호" />
+                <p className="mt-1 text-[12px] text-gray-500">규제 품목 취급을 위해 {licenseLabel || '인허가 신고번호'}가 필요합니다. 승인 시 관리자가 확인합니다.</p>
+              </div>
+            )}
+
+            {/* 🏭 2026-06-29 공급 정보 — 카테고리(다중) + 희망 유통채널 (선택) */}
             <div className="pt-3 border-t border-gray-100">
+              <p className="text-sm font-bold text-gray-900 mb-3">{t('supplier.supplyInfoSection', { defaultValue: '공급 정보' })} <span className="text-gray-400 font-normal">({t('supplier.optional', { defaultValue: '선택' })})</span></p>
+              <label className={labelCls}>{t('supplier.fieldCategories', { defaultValue: '공급(취급) 카테고리' })}</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => {
+                  const on = categories.includes(c.id)
+                  return (
+                    <button type="button" key={c.id} onClick={() => toggleCat(c.id)} disabled={loading}
+                      className="px-3.5 h-9 rounded-full text-sm font-bold transition-colors border"
+                      style={on ? { background: mallBrand, color: '#fff', borderColor: mallBrand } : { background: '#fff', color: '#4B5563', borderColor: '#E5E7EB' }}>
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <label className={labelCls}>{t('supplier.fieldDistChannel', { defaultValue: '희망 유통채널' })}</label>
+              <input disabled={loading} value={channel} onChange={e => setChannel(e.target.value)} className={inputCls} placeholder={t('supplier.phDistChannel', { defaultValue: '예: 도매몰, 온라인 판매사, 대형마트, 오프라인 도매상' })} />
+            </div>
+
+            {/* 🏭 2026-06-09 대표자 정보 · 2026-06-29 (대표): 유통사 가입처럼 구분선 명확화(pt-4 mt-4 border-gray-200). */}
+            <div className="pt-4 mt-4 border-t border-gray-200">
               <p className="text-sm font-bold text-gray-900 mb-3">{t('supplier.repSection', { defaultValue: '대표자 정보' })}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('supplier.fieldRepName', { defaultValue: '대표자 성명' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading} value={form.representative} onChange={setRep('representative')} className={inputCls} placeholder={t('supplier.phName', { defaultValue: '예: 홍길동' })} />
+                  <input ref={reg('representative')} disabled={loading} value={form.representative} onChange={setRep('representative')} className={inputCls} placeholder={t('supplier.phName', { defaultValue: '예: 홍길동' })} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldRepPhone', { defaultValue: '대표자 연락처' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading} value={form.representative_phone} onChange={setRep('representative_phone')} className={inputCls} placeholder="010-0000-0000" />
+                  <input ref={reg('representative_phone')} disabled={loading} value={form.representative_phone} onChange={setRep('representative_phone')} inputMode="numeric" className={inputCls} placeholder="010-0000-0000" />
                 </div>
               </div>
             </div>
 
-            {/* 🏭 2026-06-09 담당자 정보 (+ 대표자와 동일 원클릭 복사) */}
-            <div className="pt-3 border-t border-gray-100">
+            {/* 🏭 2026-06-09 담당자 정보 (+ 대표자와 동일 원클릭 복사) · 2026-06-29 구분선 명확화 */}
+            <div className="pt-4 mt-4 border-t border-gray-200">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-gray-900">{t('supplier.managerSection', { defaultValue: '담당자 정보' })}</p>
                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 cursor-pointer select-none">
@@ -244,37 +298,44 @@ export default function SupplierRegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('supplier.fieldManagerName', { defaultValue: '담당자 성명' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading || sameAsRep} value={form.manager_name} onChange={set('manager_name')} className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder={t('supplier.phManagerName', { defaultValue: '예: 김담당' })} />
+                  <input ref={reg('manager_name')} disabled={loading || sameAsRep} value={form.manager_name} onChange={set('manager_name')} className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder={t('supplier.phManagerName', { defaultValue: '예: 김담당' })} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldManagerPhone', { defaultValue: '담당자 연락처' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading || sameAsRep} value={form.manager_phone} onChange={setPhone('manager_phone')} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
+                  <input ref={reg('manager_phone')} disabled={loading || sameAsRep} value={form.manager_phone} onChange={setPhone('manager_phone')} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
                 </div>
               </div>
               <div className="mt-3">
-                <label className={labelCls}>{t('supplier.fieldManagerEmail', { defaultValue: '담당자 이메일' })} <span className="text-gray-400 font-normal">({t('common.optional', { defaultValue: '선택' })})</span></label>
-                <input type="email" disabled={loading} value={form.manager_email} onChange={set('manager_email')} className={inputCls} placeholder={kakaoUser ? t('supplier.phManagerEmailKakao', { defaultValue: '연락용 이메일' }) : t('supplier.phManagerEmail', { defaultValue: '미입력 시 로그인 이메일' })} autoComplete="off" />
+                <label className={labelCls}>{t('supplier.fieldManagerEmail', { defaultValue: '담당자 이메일' })} <span className="text-gray-400 font-normal">({t('supplier.managerEmailOptional', { defaultValue: '선택 · 연락용' })})</span></label>
+                <input type="email" disabled={loading} value={form.manager_email} onChange={set('manager_email')} className={inputCls} placeholder={kakaoUser ? t('supplier.phManagerEmailKakao', { defaultValue: '연락용 이메일' }) : t('supplier.phManagerEmail', { defaultValue: '미입력 시 아래 로그인 이메일 사용' })} autoComplete="off" />
               </div>
             </div>
             {/* 카카오 유저는 이메일/비번/정산계좌 불필요 (세션 인증 + 나중 등록). 일반 가입만 노출. */}
             {!kakaoUser && (
               <>
                 <div>
-                  <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
-                  <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />
+                  {/* 🔢 2026-06-26 (대표 신고 #6): 위 '담당자 이메일'(선택)과 혼동 → 로그인 아이디임을 라벨에 명시.
+                      2026-06-29 (대표): 라벨 순서 '로그인 아이디 (이메일)' 로 — 로그인 용도를 앞세움. */}
+                  <label className={labelCls}>{t('supplier.fieldLoginEmail', { defaultValue: '로그인 아이디 (이메일)' })} <span className="text-red-500">*</span></label>
+                  <input ref={reg('email')} type="email" inputMode="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" autoComplete="username" />
+                  <p className="text-xs text-gray-400 mt-1">{t('supplier.loginEmailHint', { defaultValue: '이 이메일로 로그인합니다. 위 담당자 이메일과 달라도 됩니다.' })}</p>
                 </div>
                 <div>
                   <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
-                  <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} autoComplete="new-password" />
+                  <input ref={reg('password')} type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} autoComplete="new-password" />
+                  {/* 🔢 2026-06-26 (대표 신고 #7): 비밀번호 기준 상시 표시. */}
+                  <p className={`text-xs mt-1 ${form.password.length === 0 ? 'text-gray-400' : (form.password.length >= 8 && /[a-zA-Z]/.test(form.password) && /[0-9]/.test(form.password)) ? 'text-green-600' : 'text-amber-600'}`}>
+                    {t('supplier.pwRule', { defaultValue: '영문과 숫자를 모두 포함해 8자 이상' })}
+                  </p>
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldPwConfirm', { defaultValue: '비밀번호 확인' })} <span className="text-red-500">*</span></label>
-                  <input required type="password" disabled={loading} value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className={inputCls} placeholder={t('supplier.phPwConfirm', { defaultValue: '비밀번호 재입력' })} autoComplete="new-password" />
+                  <input ref={reg('passwordConfirm')} type="password" disabled={loading} value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className={inputCls} placeholder={t('supplier.phPwConfirm', { defaultValue: '비밀번호 재입력' })} autoComplete="new-password" />
                   {passwordConfirm && form.password !== passwordConfirm && <p className="text-xs text-red-500 mt-1">{t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })}</p>}
                 </div>
 
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 mb-3 mt-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
+                <div className="pt-4 mt-4 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 mb-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <input disabled={loading} value={form.bank_name} onChange={set('bank_name')} className={inputCls} placeholder={t('supplier.phBank', { defaultValue: '은행' })} />
                     <input disabled={loading} value={form.bank_account} onChange={set('bank_account')} className={`${inputCls} col-span-2`} placeholder={t('supplier.phAccount', { defaultValue: '계좌번호' })} />
@@ -288,20 +349,8 @@ export default function SupplierRegisterPage() {
             </button>
           </form>
 
-          {/* 🏭 2026-06-08 카카오로 간편 가입 — 비-카카오 사용자에게만 노출 (사업자 정보는 동일 입력). WholesaleJoinPage 와 대칭. */}
-          {!kakaoUser && (
-            <>
-              <div className="relative my-5 flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400">{t('common.or', { defaultValue: '또는' })}</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-              <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/register&intent=user' }}
-                className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-                {t('supplier.kakaoStart', { defaultValue: '카카오로 시작하기' })}
-              </button>
-            </>
-          )}
+          {/* 🏭 2026-07-03 (대표): 유통스타트 도매몰 카카오 간편가입 제거 — 제조사 가입은 사업자 인증(이메일/비밀번호) 전용.
+              ⚠️ 소비자(유어딜) 카카오 로그인과 무관 — 도매몰 가입 표면에서만 제거(서비스 분리). */}
 
           <p className="mt-6 text-center text-sm text-gray-600">
             {t('supplier.haveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}

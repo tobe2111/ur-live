@@ -18,13 +18,17 @@ import { requireSupplier } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
-import { setSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { normalizeWholesaleCategory } from '@/shared/wholesale-category';
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
+import { intParam } from '@/shared/pagination'
+import { loadSpendable } from './supplier-withdrawal-core'
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -54,48 +58,87 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
   ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
 }
 
+// 🏭 2026-06-29 (E): 제조사 가입 메타(공급 카테고리·희망 유통채널) 셀프 조회/수정.
+supplierDashboardRoutes.get('/signup-meta', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
+supplierDashboardRoutes.patch('/signup-meta', rateLimit({ action: 'supplier-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+  await setWholesaleSignupMeta(c.env.DB, 'supplier', sid, body.categories, body.channel, true);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
+
 // ── GET /me — 프로필 + 잔고 요약 ─────────────────────────────────────────────
 supplierDashboardRoutes.get('/me', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
   try {
-    const profile = await DB.prepare(
-      `SELECT id, business_name, business_number, representative, email, phone,
-              bank_name, bank_account, account_holder, commission_rate, status, created_at
-         FROM suppliers WHERE id = ?`
-    ).bind(sid).first();
-    if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
-
-    const balance = await DB.prepare(
-      `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
-    ).bind(sid).first<{ pending_amount: number; available_amount: number; paid_amount: number }>().catch(() => null);
-
-    const counts = await DB.prepare(
-      `SELECT
-         COUNT(*) AS total,
-         SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
-         SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
-         SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
-       FROM products WHERE supplier_id = ? AND is_supply_product = 1`
-    ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null);
-
-    // 🧭 2026-06-12 (감사 개선 ⑥ — 온보딩 마일스톤): 가입→첫 상품→첫 승인→첫 주문→첫 정산.
-    //   홈 탭 체크리스트용 — 라이트한 COUNT 2개(fail-soft)만 추가, 기존 응답 필드 불변(additive).
-    const [orderCnt, settleCnt] = await Promise.all([
+    // ⚡ 2026-06-29 (perf audit): 제조사 대시보드 랜딩 — 6개 독립 쿼리를 직렬 await → 단일 Promise.all
+    //   (~5 RTT → 1, cold D1 체감 단축). reserved 는 컬럼 미존재 가능성이라 balance 와 합치지 않고 별도(.catch)
+    //   유지하되 병렬화. 404 판정은 profile 만 의존 → batch 후 검사.
+    const [profile, balance, rRow, counts, orderCnt, settleCnt] = await Promise.all([
+      DB.prepare(
+        `SELECT id, business_name, business_number, representative, email, phone,
+                bank_name, bank_account, account_holder, commission_rate, status, created_at
+           FROM suppliers WHERE id = ?`
+      ).bind(sid).first(),
+      DB.prepare(
+        `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
+      ).bind(sid).first<{ pending_amount: number; available_amount: number; paid_amount: number }>().catch(() => null),
+      // 🏦 2026-06-27 출금 예약(reserved) — '출금 가능' 표시가 미지급 출금요청 보류분 차감(spendable = available - reserved).
+      //   컬럼 미존재(출금 미경험 제조사)면 .catch → null → 0. balance SELECT 와 분리해야 missing-column 안전.
+      DB.prepare(
+        `SELECT COALESCE(reserved_amount, 0) AS reserved FROM supplier_balances WHERE supplier_id = ?`
+      ).bind(sid).first<{ reserved: number }>().catch(() => null),
+      DB.prepare(
+        // 🏭 2026-06-30 (할 일 확장): 재고 신호 추가 — 승인/노출 상품 중 품절(out_of_stock)·재고부족(low_stock).
+        //   actionable 'go restock' 만 의미 있으므로 approved/active 만 집계(pending 품절은 아직 노출 전 → 제외).
+        //   저재고 = 0 < stock <= min_order_qty(=한 번에 살 수 있는 최소). analytics 정의와 동일 임계.
+        `SELECT
+           COUNT(*) AS total,
+           SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
+           SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
+           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) <= 0 THEN 1 ELSE 0 END) AS out_of_stock,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) > 0 AND COALESCE(stock,0) <= COALESCE(min_order_qty,1) THEN 1 ELSE 0 END) AS low_stock
+         FROM products WHERE supplier_id = ? AND is_supply_product = 1`
+      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number; out_of_stock: number; low_stock: number }>().catch(() => null),
+      // 🧭 온보딩 마일스톤(가입→첫 상품→첫 승인→첫 주문→첫 정산) 체크리스트용 — 라이트 COUNT(fail-soft).
       DB.prepare('SELECT COUNT(*) AS n FROM wholesale_order_items WHERE supplier_id = ?')
         .bind(sid).first<{ n: number }>().catch(() => null),
       DB.prepare("SELECT COUNT(*) AS n FROM supplier_settlements WHERE supplier_id = ? AND source = 'wholesale'")
         .bind(sid).first<{ n: number }>().catch(() => null),
     ]);
+    if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
+    const reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
+    // 🏦 2026-07-01 (라이브 감사): 분쟁/환불 보류(held) 반영한 실가용액 — 이전엔 /me 가 held 를 안 내려
+    //   OverviewTab 이 available-reserved 만 '출금 가능'으로 표시 → held 있으면 출금 모달에서 "잔액 초과" 거절.
+    //   loadSpendable(SSOT) = available - reserved - held. fail-soft(컬럼 없으면 available-reserved).
+    const sp = await loadSpendable(DB, sid).catch(() => null);
+    const spendableAmount = sp ? sp.spendable : Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount);
+    const heldAmount = Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount - spendableAmount);
+    // 🏦 2026-06-30: 출금 가능하려면 정산 계좌 3종 필요 — 클라가 '계좌 등록' 안내/게이트에 사용.
+    const p = profile as { bank_name?: string | null; bank_account?: string | null; account_holder?: string | null };
+    const hasPayoutAccount = !!(p.bank_name && p.bank_account && p.account_holder);
 
     return c.json({
       success: true,
       data: {
         profile,
+        has_payout_account: hasPayoutAccount,
         balance: {
           pending_amount: balance?.pending_amount ?? 0,
           available_amount: balance?.available_amount ?? 0,
+          reserved_amount: reservedAmount,
+          held_amount: heldAmount,           // 🏦 분쟁/환불 보류 — 출금 불가분
+          spendable_amount: spendableAmount, // 🏦 실제 출금 가능액(available-reserved-held)
           paid_amount: balance?.paid_amount ?? 0,
         },
         product_counts: {
@@ -103,6 +146,8 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending: counts?.pending ?? 0,
           approved: counts?.approved ?? 0,
           rejected: counts?.rejected ?? 0,
+          out_of_stock: counts?.out_of_stock ?? 0,
+          low_stock: counts?.low_stock ?? 0,
         },
         milestones: {
           orders: orderCnt?.n ?? 0,
@@ -201,13 +246,55 @@ supplierDashboardRoutes.patch('/shipping-policy', async (c) => {
   }
 });
 
+// ── 🏦 2026-06-30 정산 계좌(출금 계좌) 등록/수정 ──────────────────────────────────
+//   배경: 가입 시 정산 계좌는 '선택'(나중에 등록 가능)인데, 가입 후 등록/수정할 UI/엔드포인트가 없었음
+//   → 계좌 없이 가입한 제조사가 정산금이 쌓여도 출금 시 NO_BANK 로 막히고 등록할 길이 없는 막다른 길.
+//   suppliers.bank_name / bank_account / account_holder (가입 스키마에 이미 존재). 본인(sid) 행만.
+supplierDashboardRoutes.get('/settlement-account', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const row = await DB.prepare('SELECT bank_name, bank_account, account_holder FROM suppliers WHERE id = ?')
+      .bind(sid).first<{ bank_name: string | null; bank_account: string | null; account_holder: string | null }>().catch(() => null);
+    const registered = !!(row?.bank_name && row?.bank_account && row?.account_holder);
+    return c.json({ success: true, data: { bank_name: row?.bank_name || '', bank_account: row?.bank_account || '', account_holder: row?.account_holder || '', registered } });
+  } catch (err) {
+    return safeError(c, err, '정산 계좌 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+supplierDashboardRoutes.patch('/settlement-account', rateLimit({ action: 'supplier-settlement-account', max: 20, windowSec: 300 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    const bankName = String(body.bank_name ?? '').trim().slice(0, 40);
+    const holder = String(body.account_holder ?? '').trim().slice(0, 40);
+    // 계좌번호 — 숫자/하이픈만(공백 제거). 3종 모두 함께 등록해야 출금 가능(부분 계좌는 무의미).
+    const acct = String(body.bank_account ?? '').replace(/\s+/g, '').slice(0, 30);
+    if (!bankName || !holder || !acct) {
+      return c.json({ success: false, error: '은행/계좌번호/예금주를 모두 입력해주세요' }, 400);
+    }
+    if (!/^[0-9-]{6,30}$/.test(acct)) {
+      return c.json({ success: false, error: '계좌번호 형식이 올바르지 않습니다 (숫자와 하이픈만)' }, 400);
+    }
+    await DB.prepare('UPDATE suppliers SET bank_name = ?, bank_account = ?, account_holder = ? WHERE id = ?')
+      .bind(bankName, acct, holder, sid).run();
+    return c.json({ success: true, message: '정산 계좌가 저장되었습니다', data: { bank_name: bankName, bank_account: acct, account_holder: holder, registered: true } });
+  } catch (err) {
+    return safeError(c, err, '정산 계좌 저장 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
 // ── GET /products — 내 카탈로그 ───────────────────────────────────────────────
 supplierDashboardRoutes.get('/products', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | approved | rejected
   try {
@@ -221,27 +308,46 @@ supplierDashboardRoutes.get('/products', async (c) => {
       where += " AND (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1))";
     }
 
-    const rows = await DB.prepare(
-      `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
-              COALESCE(min_order_qty,1) AS min_order_qty,
-              COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
-              lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
-              pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
-              COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
-              is_active, admin_memo, created_at, updated_at
-         FROM products WHERE ${where}
-         ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).bind(...params, limit, offset).all();
+    // ⚡ 2026-06-29 (perf audit): rows + count 독립쿼리 직렬 → Promise.all(/catalog 와 동일 패턴, 1 RTT 절약).
+    const [rows, total] = await Promise.all([
+      DB.prepare(
+        `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
+                stock, image_url, detail_images, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
+                COALESCE(min_order_qty,1) AS min_order_qty,
+                COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
+                lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
+                pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
+                COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
+                is_active, admin_memo, created_at, updated_at
+           FROM products WHERE ${where}
+           ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).bind(...params, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(*) AS count FROM products WHERE ${where}`
+      ).bind(...params).first<{ count: number }>(),
+    ]);
 
-    const total = await DB.prepare(
-      `SELECT COUNT(*) AS count FROM products WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+    // 🏭 2026-06-29: 상품코드 + 상품별 배송비(meta) 합치기 — products 컬럼 아님(예산제, product_supply_meta).
+    //   편집 폼 프리필 + 제조사 목록 노출용. fail-soft(메타 조회 실패해도 목록은 반환).
+    const items = (rows.results ?? []) as Array<Record<string, unknown> & { id: number }>;
+    if (items.length) {
+      const metaMap = await getSupplyMeta(DB, items.map((r) => Number(r.id))).catch(() => null);
+      if (metaMap) {
+        for (const r of items) {
+          const m = metaMap.get(Number(r.id));
+          r.product_code = m?.product_code || null;
+          if (m?.wholesale_shipping_fee != null && m.wholesale_shipping_fee !== '') {
+            r.shipping_fee = Number(m.wholesale_shipping_fee);
+          }
+          r.gallery_images = m?.gallery_images || null; // 🖼️ 대표 이미지 갤러리(JSON 문자열) — 수정모드 prefill.
+        }
+      }
+    }
 
     return c.json({
       success: true,
       data: {
-        items: rows.results ?? [],
+        items,
         total: total?.count ?? 0,
         page, limit,
         has_more: (total?.count ?? 0) > offset + limit,
@@ -263,9 +369,11 @@ supplierDashboardRoutes.post('/products', async (c) => {
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; min_order_qty?: number;
       pack_size?: number; order_multiple?: number;
-      lowest_price_url?: string;
+      lowest_price_url?: string; product_code?: string;
       // 🖼️ 2026-06-12: 상세페이지 이미지 — 배열 또는 쉼표 구분 문자열 (썸네일 image_url 과 분리).
       detail_images?: string[] | string;
+      // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta 저장. 배열/쉼표 문자열.
+      gallery_images?: string[] | string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -302,6 +410,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     //   seller_id=NULL (소스 카탈로그 상품 — 셀러가 register 로 자기 스토어에 복제).
     const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
+    // 🏭 2026-06-29 (대표): 상품코드 — 영숫자 대문자만(접두어는 클라가 카테고리로 붙임). product_supply_meta 저장.
+    const productCode = String(body.product_code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
     // 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 입력 — is_brand_product 체크 무관하게 저장(브랜드 전시관 노출용).
     const brandName = (body.brand_name || '').trim().slice(0, 120) || null;
@@ -315,8 +425,17 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const detailListRaw = Array.isArray(body.detail_images)
       ? body.detail_images.map(u => String(u))
       : String(body.detail_images || '').split(/[,\n|]/);
-    const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+    const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30); // 최대 30장 (MultiImageUpload MAX_FILES 동기)
     const detailImages = detailList.length ? JSON.stringify(detailList) : null;
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta.gallery_images(JSON). http(s) 만, 최대 10장. 썸네일 image_url 과 별개.
+    const galleryRaw = Array.isArray(body.gallery_images) ? body.gallery_images.map(u => String(u)) : String(body.gallery_images || '').split(/[,\n|]/);
+    const galleryList = galleryRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+    const galleryImagesJson = galleryList.length ? JSON.stringify(galleryList) : null;
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증 — 형제 필드(brand_logo/lowest_price/detail)는
+    //   전부 http(s)·상대경로 가드인데 primary image_url 만 raw 였음. javascript:/data: 차단 +
+    //   업로드 상대경로(/api/media/...)는 허용. (SSRF 는 fetch 지점에서 추가 차단 — naver-commerce-core)
+    const imageRaw = (body.image_url || '').trim().slice(0, 1000);
+    const imageUrlSafe = (/^https?:\/\//i.test(imageRaw) || /^\//.test(imageRaw)) ? imageRaw : '';
 
     const result = await DB.prepare(
       `INSERT INTO products (
@@ -330,9 +449,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
       Math.floor(suggestedRetail),
       Math.floor(supplyPrice),
       stock,
-      (body.image_url || '').slice(0, 1000),
+      imageUrlSafe,
       detailImages,
-      (body.category || 'lifestyle').slice(0, 60),
+      normalizeWholesaleCategory(body.category),
       sid,
       visibility,
       barcode,
@@ -348,11 +467,14 @@ supplierDashboardRoutes.post('/products', async (c) => {
     ).run();
 
     // 🚚 2026-06-15 (대표 요청): 상품별 배송비 — product_supply_meta(products 컬럼 미증식). 0=무료, 미입력=제조사 정책 폴백.
+    // 🏭 2026-06-29: 상품코드(product_code)도 같은 메타에 저장.
     {
+      const meta: Record<string, string | number> = {};
       const shipRaw = (body as { shipping_fee?: unknown }).shipping_fee;
-      if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) {
-        await setSupplyMeta(DB, Number(result.meta.last_row_id), { wholesale_shipping_fee: Math.max(0, Math.floor(Number(shipRaw))) }).catch(swallow('supplier-dashboard:ship-meta'));
-      }
+      if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) meta.wholesale_shipping_fee = Math.max(0, Math.floor(Number(shipRaw)));
+      if (productCode) meta.product_code = productCode;
+      if (galleryImagesJson) meta.gallery_images = galleryImagesJson; // 🖼️ 대표 이미지 갤러리
+      if (Object.keys(meta).length) await setSupplyMeta(DB, Number(result.meta.last_row_id), meta).catch(swallow('supplier-dashboard:meta'));
     }
 
     // 어드민 승인 큐 알림.
@@ -374,8 +496,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
 // 🖼️ 2026-06-12 (사용자 요청): 썸네일(대표)과 상세페이지 이미지 분리 — 상세는 쉼표로 여러 장(최대 10).
 const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '썸네일 이미지URL', '상세 이미지URL(쉼표로 여러 장)', '설명']
 const BULK_TEMPLATE_ROWS = [
-  ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명'],
-  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 판매사만 노출(20개 단위)'],
+  ['예시상품A', '5000', '9900', '100', 'living', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명 (카테고리: food=식품 · living=리빙 · health=건강)'],
+  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'food', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 판매사만 노출(20개 단위)'],
 ]
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
   return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
@@ -442,7 +564,10 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const stock = Math.max(0, Math.floor(Number(String(r['재고'] || r.stock || '0').replace(/[,\s]/g, '')) || 0));
       if (!name) { results.push({ row: i + 2, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) { results.push({ row: i + 2, name, status: 'error', reason: '공급가 오류' }); continue; }
-      const retailFinal = Number.isFinite(retail) && retail >= supplyPrice ? retail : supplyPrice;
+      // 🔧 2026-06-24 (전수조사 M2): 단건 폼과 동일 규칙 — 권장소비자가 > 공급가 강제(유통 마진).
+      //   기존엔 누락/동일가를 공급가로 폴백 → 마진 0(팔 수 없는 상품)이 조용히 생성됐음.
+      if (!Number.isFinite(retail) || retail <= supplyPrice) { results.push({ row: i + 2, name, status: 'error', reason: '권장소비자가는 공급가보다 높아야 합니다(유통 마진)' }); continue; }
+      const retailFinal = retail;
       const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility, true);
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();
@@ -459,14 +584,14 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       // 🖼️ 상세페이지 이미지 — 쉼표/줄바꿈 구분 여러 장(최대 10), http(s) 만 → detail_images JSON 배열.
       const detailRaw = String(r['상세 이미지URL(쉼표로 여러 장)'] || r['상세이미지URL'] || r.detail_images || '').trim();
       const detailList = detailRaw
-        ? detailRaw.split(/[,\n|]/).map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10)
+        ? detailRaw.split(/[,\n|]/).map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30) // 최대 30장 (MultiImageUpload MAX_FILES 동기)
         : [];
       const detailImages = detailList.length ? JSON.stringify(detailList) : null;
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
         Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl, detailImages,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
+        normalizeWholesaleCategory(r['카테고리'] || r.category), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }
@@ -588,13 +713,26 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
-      min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number;
+      min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number; product_code?: string;
+      detail_images?: string[] | string; // 🖼️ 2026-06-30: 상세이미지 수정 지원(배열/쉼표 문자열).
+      gallery_images?: string[] | string; // 🖼️ 2026-06-30: 대표 이미지 갤러리 수정(meta 저장).
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     // 🚚 2026-06-16: 상품별 배송비 수정 — product_supply_meta(wholesale_shipping_fee). 컬럼 아님(예산제) → sets 와 별개.
     const shipFee = (body.shipping_fee != null && Number.isFinite(Number(body.shipping_fee)))
       ? Math.max(0, Math.floor(Number(body.shipping_fee)))
       : undefined;
+    // 🏭 2026-06-29: 상품코드 수정 — product_supply_meta(product_code). 영숫자 대문자(≤18). 빈 문자열이면 해제(''), 미제공이면 무변경(undefined).
+    const productCode = (body.product_code != null)
+      ? String(body.product_code).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18)
+      : undefined;
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리 수정 — 제공 시에만. 배열/쉼표 → http(s) 필터 → 최대 10장 JSON. 빈 값이면 ''(해제).
+    let galleryPatch: string | undefined;
+    if (body.gallery_images !== undefined) {
+      const raw = Array.isArray(body.gallery_images) ? body.gallery_images.map(u => String(u)) : String(body.gallery_images || '').split(/[,\n|]/);
+      const list = raw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+      galleryPatch = list.length ? JSON.stringify(list) : '';
+    }
     await ensureSupplyVisibilitySchema(DB);
     await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
 
@@ -606,8 +744,13 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       const u = body.lowest_price_url.trim().slice(0, 500);
       sets.push('lowest_price_url = ?'); params.push(/^https?:\/\//i.test(u) ? u : '');
     }
-    if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
-    if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증(CREATE 와 동일) — javascript:/data: 차단, 상대경로 허용.
+    if (typeof body.image_url === 'string') {
+      const raw = body.image_url.trim().slice(0, 1000);
+      const safe = (/^https?:\/\//i.test(raw) || /^\//.test(raw)) ? raw : '';
+      sets.push('image_url = ?'); params.push(safe);
+    }
+    if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(normalizeWholesaleCategory(body.category)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
@@ -621,6 +764,13 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('brand_logo_url = ?'); params.push(safe);
     }
     // 🏭 BIZ-8 (2026-06-08) MOQ/박스단위 수정 — 정수 ≥1, 1~100000 clamp. (가격 산식 무관 — 수량 제약만.)
+    // 🖼️ 2026-06-30: 상세페이지 이미지 수정 — 제공(undefined 아님) 시에만 갱신. 배열/쉼표 문자열 → http(s) 필터 → 최대 30장 JSON.
+    //   빈 값이면 null(전체 해제). CREATE 와 동일 정규화. (기존엔 PATCH 미처리라 수정 불가였던 것 해소.)
+    if (body.detail_images !== undefined) {
+      const rawList = Array.isArray(body.detail_images) ? body.detail_images.map(u => String(u)) : String(body.detail_images || '').split(/[,\n|]/);
+      const list = rawList.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30);
+      sets.push('detail_images = ?'); params.push(list.length ? JSON.stringify(list) : null);
+    }
     if (body.min_order_qty != null && Number.isFinite(Number(body.min_order_qty))) { sets.push('min_order_qty = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty))))); }
     if (body.pack_size != null && Number.isFinite(Number(body.pack_size))) { sets.push('pack_size = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size))))); }
     if (body.order_multiple != null && Number.isFinite(Number(body.order_multiple))) { sets.push('order_multiple = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.order_multiple))))); }
@@ -641,21 +791,34 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('price = ?'); params.push(Math.floor(r));
     }
 
-    if (sets.length === 0 && shipFee === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (sets.length === 0 && shipFee === undefined && productCode === undefined && galleryPatch === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
-    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params, pid).run();
+    // 🛡️ 2026-06-25 (전수조사 IDOR 방어심화): UPDATE 에도 supplier_id 재스코프 — peer 핸들러(price-change/bulk)와 통일, TOCTOU 차단.
+    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ? AND supplier_id = ?`).bind(...params, pid, sid).run();
 
-    // 🚚 상품별 배송비(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
-    if (shipFee !== undefined) {
-      await setSupplyMeta(DB, Number(pid), { wholesale_shipping_fee: shipFee }).catch(swallow('supplier-dashboard:patch-ship-meta'));
+    // 🚚 상품별 배송비(meta) + 🏭 상품코드(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
+    {
+      const metaPatch: Record<string, string | number> = {};
+      if (shipFee !== undefined) metaPatch.wholesale_shipping_fee = shipFee;
+      if (productCode !== undefined) metaPatch.product_code = productCode; // 빈 문자열이면 해제.
+      if (galleryPatch !== undefined) metaPatch.gallery_images = galleryPatch; // 🖼️ 빈 문자열이면 해제.
+      if (Object.keys(metaPatch).length) {
+        await setSupplyMeta(DB, Number(pid), metaPatch).catch(swallow('supplier-dashboard:patch-meta'));
+      }
     }
 
     // 🛡️ 스펙: 공급가 수정 시 수정 전 금액 기록 (관리자만 확인).
     if (supplyChanged) {
       await recordSupplyPriceChange(DB, Number(pid), sid, existing.supply_price, newSupply, `supplier:${sid}`);
     }
+
+    // 🏭 2026-07-01 (라이브 감사): 수정=pending 재제출이므로 어드민 재승인 필요 → 승인 큐 알림.
+    //   이전엔 신규 등록만 벨을 보내 거부상품 수정 후 재제출이 무기한 대기했음(알림 비대칭 해소).
+    createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 재승인 요청',
+      `제조사 #${sid}: ${(existing as { name?: string }).name || `상품 #${pid}`} 수정 후 재제출`, '/admin/supplier-products')
+      .catch(swallow('supplier-dashboard:patch-notify'));
 
     return c.json({ success: true, data: { id: Number(pid), approval_status: 'pending' }, message: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' });
   } catch (err) {
@@ -704,6 +867,10 @@ supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => 
       }
       newRetail = r;
     }
+    // 🛡️ 2026-06-25 (전수조사): 판매가 미입력 시 새 공급가가 기존 판매가 이상이면 승인 후 마진 0/음수 → 차단(입력 시와 동일 불변식).
+    if (newRetail == null && existing.price != null && newSupply >= existing.price) {
+      return c.json({ success: false, error: '공급가가 기존 판매가 이상입니다. 판매가도 함께 올려주세요', code: 'RETAIL_TOO_LOW' }, 400);
+    }
     if (newSupply === existing.supply_price && (newRetail == null || newRetail === existing.price)) {
       return c.json({ success: false, error: '기존 가격과 동일합니다' }, 400);
     }
@@ -739,8 +906,8 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | available | paid | cancelled
   try {
@@ -749,20 +916,22 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
     if (['pending', 'available', 'paid', 'cancelled'].includes(status)) {
       where += ' AND ss.status = ?'; params.push(status);
     }
-    const rows = await DB.prepare(
-      `SELECT ss.id, ss.order_id, ss.product_id, ss.seller_id,
-              ss.retail_amount, ss.supply_amount, ss.status,
-              ss.created_at, ss.available_at, ss.paid_at, ss.note,
-              p.name AS product_name
-         FROM supplier_settlements ss
-         LEFT JOIN products p ON p.id = ss.product_id
-         WHERE ${where}
-         ORDER BY ss.created_at DESC LIMIT ? OFFSET ?`
-    ).bind(...params, limit, offset).all();
-
-    const total = await DB.prepare(
-      `SELECT COUNT(*) AS count FROM supplier_settlements ss WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+    // ⚡ 2026-06-29 (perf audit): rows + count 직렬 → Promise.all (1 RTT 절약).
+    const [rows, total] = await Promise.all([
+      DB.prepare(
+        `SELECT ss.id, ss.order_id, ss.product_id, ss.seller_id,
+                ss.retail_amount, ss.supply_amount, ss.status,
+                ss.created_at, ss.available_at, ss.paid_at, ss.note,
+                p.name AS product_name
+           FROM supplier_settlements ss
+           LEFT JOIN products p ON p.id = ss.product_id
+           WHERE ${where}
+           ORDER BY ss.created_at DESC LIMIT ? OFFSET ?`
+      ).bind(...params, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(*) AS count FROM supplier_settlements ss WHERE ${where}`
+      ).bind(...params).first<{ count: number }>(),
+    ]);
 
     return c.json({
       success: true,
@@ -838,8 +1007,8 @@ supplierDashboardRoutes.get('/orders', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   // status: to_ship(발송대기) | shipped(발송완료) | all
   const status = c.req.query('status') || 'to_ship';
@@ -849,32 +1018,33 @@ supplierDashboardRoutes.get('/orders', async (c) => {
     if (status === 'shipped') statusWhere = "o.status IN ('SHIPPING','DELIVERED','DONE','PARTIAL_REFUNDED')";
     else if (status === 'all') statusWhere = "o.status NOT IN ('PENDING','CANCELLED','FAILED','REFUNDED')";
 
-    // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문.
-    const rows = await DB.prepare(
-      `SELECT o.id AS order_id, o.order_number, o.status, o.created_at,
-              o.shipping_name, o.shipping_phone, o.shipping_address,
-              o.recipient_name, o.recipient_phone,
-              o.courier, o.tracking_number, o.shipped_at,
-              COUNT(oi.id) AS line_count, SUM(oi.quantity) AS total_qty,
-              GROUP_CONCAT(sp.name, ' | ') AS item_names
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         JOIN products sp ON sp.id = oi.product_id
-         JOIN products src ON src.id = sp.supply_source_id
-        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}
-        GROUP BY o.id
-        ORDER BY o.created_at DESC
-        LIMIT ? OFFSET ?`
-    ).bind(sid, limit, offset).all();
-
-    const totalRow = await DB.prepare(
-      `SELECT COUNT(DISTINCT o.id) AS count
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         JOIN products sp ON sp.id = oi.product_id
-         JOIN products src ON src.id = sp.supply_source_id
-        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}`
-    ).bind(sid).first<{ count: number }>().catch(() => null);
+    // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문. ⚡ 2026-06-29 (perf audit): rows+count 직렬 → Promise.all.
+    const [rows, totalRow] = await Promise.all([
+      DB.prepare(
+        `SELECT o.id AS order_id, o.order_number, o.status, o.created_at,
+                o.shipping_name, o.shipping_phone, o.shipping_address,
+                o.recipient_name, o.recipient_phone,
+                o.courier, o.tracking_number, o.shipped_at,
+                COUNT(oi.id) AS line_count, SUM(oi.quantity) AS total_qty,
+                GROUP_CONCAT(sp.name, ' | ') AS item_names
+           FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           JOIN products sp ON sp.id = oi.product_id
+           JOIN products src ON src.id = sp.supply_source_id
+          WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}
+          GROUP BY o.id
+          ORDER BY o.created_at DESC
+          LIMIT ? OFFSET ?`
+      ).bind(sid, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(DISTINCT o.id) AS count
+           FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           JOIN products sp ON sp.id = oi.product_id
+           JOIN products src ON src.id = sp.supply_source_id
+          WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}`
+      ).bind(sid).first<{ count: number }>().catch(() => null),
+    ]);
 
     return c.json({
       success: true,
@@ -1127,7 +1297,7 @@ supplierDashboardRoutes.post('/store/naver/connect', rateLimit({ action: 'sup-na
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   try {
-    const { issueNaverToken, saveNaverConnection } = await import('./naver-commerce-core');
+    const { issueNaverToken, saveNaverConnection } = await import('../../../services/naver-commerce-core');
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
     const clientId = String(body.client_id || '').trim();
     const clientSecret = String(body.client_secret || '').trim();
@@ -1170,7 +1340,7 @@ supplierDashboardRoutes.get('/store/status', async (c) => {
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
   try {
-    const { ensureNaverConnectionSchema } = await import('./naver-commerce-core');
+    const { ensureNaverConnectionSchema } = await import('../../../services/naver-commerce-core');
     const { ensureCoupangConnectionSchema } = await import('./coupang-core');
     await Promise.all([ensureNaverConnectionSchema(DB), ensureCoupangConnectionSchema(DB)]);
     const [naver, coupang] = await Promise.all([
@@ -1190,10 +1360,10 @@ supplierDashboardRoutes.get('/store/products', rateLimit({ action: 'sup-store-pr
   try {
     const channel = String(c.req.query('channel') || 'naver');
     if (channel === 'naver') {
-      const { loadNaverConnection, listNaverStoreProducts } = await import('./naver-commerce-core');
+      const { loadNaverConnection, listNaverStoreProducts } = await import('../../../services/naver-commerce-core');
       const conn = await loadNaverConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
       if (!conn) return c.json({ success: false, error: '먼저 스마트스토어를 연결해주세요', code: 'NOT_CONNECTED' }, 400);
-      const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1));
+      const page = Math.max(1, Math.floor(intParam(c.req.query('page'), 1)));
       const r = await listNaverStoreProducts(conn, page, 50);
       if (!r.ok) return c.json({ success: false, error: r.error }, 502);
       return c.json({ success: true, channel, items: r.items, total: r.total, page });
@@ -1258,13 +1428,13 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     }
     if (!items.length) return c.json({ success: false, error: '가져올 상품이 없습니다' }, 400);
 
-    const { mirrorImageToR2 } = await import('./naver-commerce-core');
+    const { mirrorImageToR2 } = await import('../../../services/naver-commerce-core');
     const r2env = c.env as unknown as { MEDIA_BUCKET?: R2Bucket; PUBLIC_R2_URL?: string };
 
     const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
        is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
-     VALUES (?, '', ?, ?, ?, ?, 'lifestyle', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+     VALUES (?, '', ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     let created = 0;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -1276,7 +1446,9 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
       const slug = `sup-${sid}-import-${Date.now()}-${i}`;
       try {
         await DB.prepare(INSERT_SQL).bind(
-          it.name, it.sale_price, supplyPrice, it.stock, image, sid, sid, slug,
+          // 🏭 2026-06-29 (B): 임포트 상품 카테고리를 상품명에서 추론(식품/건강 키워드) → 없으면 living.
+          //   원본 스토어가 카테고리를 안 주므로 이름 기반 자동분류로 카탈로그 칩 배치 개선.
+          it.name, it.sale_price, supplyPrice, it.stock, image, normalizeWholesaleCategory(it.name), sid, sid, slug,
         ).run();
         created++;
         results.push({ name: it.name, status: 'ok' });

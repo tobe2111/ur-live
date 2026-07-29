@@ -1,6 +1,6 @@
 /**
  * 🏭 2026-06-01 유통스타트 도메인 인식 (Phase 5).
- * live.ur-team.com = 소비자몰 / utongstart.com = 도매몰. 같은 코드·DB, 진입 화면만 분기.
+ * urdeal.kr = 소비자몰 / utongstart.com = 도매몰. 같은 코드·DB, 진입 화면만 분기.
  */
 
 /** 도매몰 도메인 호스트 목록 (서브도메인 포함). */
@@ -46,10 +46,18 @@ export function isWholesaleAllowedPath(pathname: string): boolean {
  * 단일 진실원천. worker(`src/worker/index.ts:isWholesaleSurface` `/^\/(wholesale|supplier)(\/|$)/`)
  * 와 **동일 규칙** — 한쪽 변경 시 같이 갱신.
  *
- * 도메인 무관(live.ur-team.com / utongstart.com 양쪽 동일). 소비자 nav 컴포넌트가
+ * 도메인 무관(urdeal.kr / utongstart.com 양쪽 동일). 소비자 nav 컴포넌트가
  * 직접 호출해 자기-차단(이중 방어). App.tsx 의 hideBottomNav allowlist 가 깨져도
  * 컴포넌트 단에서 한 번 더 막아 도매몰에 소비자 UI 누출을 구조적으로 차단.
  */
 export function isWholesaleSurface(pathname: string): boolean {
   return /^\/(wholesale|supplier)(\/|$)/.test(pathname)
+}
+
+/**
+ * 🆕 2026-06-26 유어애즈(UR Ads, /ads) — 3번째 서비스. 도매몰처럼 PC 풀너비 + 소비자 chrome 비노출.
+ *   worker(`isMarketingSurface` `/^\/(ads)(\/|$)/`)와 동일 규칙.
+ */
+export function isMarketingSurface(pathname: string): boolean {
+  return /^\/ads(\/|$)/.test(pathname)
 }

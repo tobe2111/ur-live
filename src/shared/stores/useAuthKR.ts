@@ -1,7 +1,7 @@
 /**
  * KR Region Auth Store — Firebase + Kakao OAuth
  *
- * Used by: KR region pages (live.ur-team.com)
+ * Used by: KR region pages (urdeal.kr)
  * Manages: Firebase user state, ID tokens, onAuthStateChanged
  *
  * Note: With session cookie auth, this store's role is reduced.

@@ -9,6 +9,11 @@
  * - Cron Triggers 연동
  */
 
+// 🔒 2026-06-27 (결제 정확성 감사 ⑤ — 대표 "5% 로 통일"): 플랫폼 기본 수수료율 단일 소스.
+//   이전엔 이 파일이 10%(0.10/10.0)를, 셀러 스키마·policy 는 5% 를 써 NULL-rate 주문이 10% 로 정산됐음.
+//   policy.ts COMMISSION_DEFAULTS.PLATFORM_FEE_PCT(=5) 로 통일 → 기본 수수료 변경은 policy.ts 한 곳에서.
+import { COMMISSION_DEFAULTS } from '../shared/constants/policy'
+
 interface Env {
   DB: D1Database
 }
@@ -66,7 +71,7 @@ interface SettlementReport {
  * divide percentage values by 100 first. Exception: donations.commission_rate
  * is stored as RATIO.
  */
-function calculatePlatformFee(amount: number, feeRate: number = 0.10): number {
+function calculatePlatformFee(amount: number, feeRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT / 100): number {
   return Math.round(amount * feeRate)
 }
 
@@ -121,7 +126,7 @@ async function calculateSellerSettlement(
   try {
     // 셀러 정보 조회 (수수료율 포함 — fallback 용)
     const seller = await DB.prepare(`
-      SELECT id, business_name, COALESCE(commission_rate, 10) AS commission_rate FROM sellers WHERE id = ?
+      SELECT id, business_name, COALESCE(commission_rate, ${COMMISSION_DEFAULTS.PLATFORM_FEE_PCT}) AS commission_rate FROM sellers WHERE id = ?
     `).bind(sellerId).first<{ id: number; business_name: string; commission_rate: number }>()
 
     if (!seller) {
@@ -462,7 +467,7 @@ export async function calculateAutoSettlement(
   DB: D1Database,
   periodStart?: string,
   periodEnd?: string,
-  defaultCommissionRate: number = 10.0
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 ): Promise<SellerSettlementCalc[]> {
   let dateFilter = ''
   const params: (string | number)[] = []
@@ -475,7 +480,7 @@ export async function calculateAutoSettlement(
   // 원래 구현 유지: sellers.commission_rate (어드민이 셀러별로 조정 가능)
   // 라이브 수수료, 후원 수수료 등은 platform_settings 테이블 + 각 기능별 라우트에서 별도 관리:
   //   - 후원: points.routes.ts 가 commission_rate_donation 참조
-  //   - 식사권: auto-settlement.ts 가 commission_rate_meal_voucher 참조
+  //   - 이용권: auto-settlement.ts 가 commission_rate_meal_voucher 참조
   //   - 라이브/일반 상품 정산: sellers.commission_rate (이 쿼리)
   const rows = await DB.prepare(`
     SELECT
@@ -515,7 +520,7 @@ export async function executeSettlement(
   DB: D1Database,
   periodStart?: string,
   periodEnd?: string,
-  defaultCommissionRate: number = 10.0
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 ): Promise<SettlementExecutionResult> {
   const now = new Date().toISOString()
   const batchId = `SETTLE-${Date.now()}`
@@ -594,7 +599,10 @@ export async function executeSettlement(
 export async function getSellerSettlementSummary(
   DB: D1Database,
   sellerId: number,
-  defaultCommissionRate: number = 10.0
+  // 🔒 2026-07-01 (정산 감사 — 대표 "5% 로 통일"): 기본 플랫폼 take 를 10.0 → policy SSOT(5%).
+  //   NULL-rate 셀러의 미정산 요약이 fee-resolver/auto-settlement 와 달리 10% 로 과대 계산돼
+  //   셀러가 보는 미정산액이 실제보다 작게 표시되던 문제 정정.
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 ): Promise<{
   unsettled_amount: number
   unsettled_orders: number

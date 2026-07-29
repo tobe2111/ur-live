@@ -1,19 +1,54 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
+import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { wholesaleCodePrefix, buildWholesaleProductCode, wholesaleCodeSuffix } from '@/shared/wholesale-product-code'
 import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
 import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
+
+// 🖼️ 2026-06-30: 저장된 detail_images(JSON 문자열 | 배열 | 쉼표) → 폼용 쉼표 문자열(MultiImageUpload value 포맷).
+function detailImagesToCsv(d: string | string[] | null | undefined): string {
+  if (!d) return ''
+  if (Array.isArray(d)) return d.filter(Boolean).join(',')
+  const s = String(d).trim()
+  if (s.startsWith('[')) { try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter(Boolean).join(',') : '' } catch { return '' } }
+  return s
+}
 import { downloadSupplierCsv } from './download-csv'
 import MultiImageUpload from './MultiImageUpload'
+import type { CatalogItem } from './types'
 
-export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+export default function AddProductModal({ t, onClose, onCreated, editItem }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void; editItem?: CatalogItem }) {
+  // 🔧 2026-06-24 (전수조사 H1): 거부/대기 상품 수정·재제출 — 기존엔 PATCH 엔드포인트만 있고 UI 없어 거부 상품이 막다른 길이었음.
+  //   editItem 있으면 prefill + PATCH(재제출 → pending). detail_images 는 GET /products 가 반환 안 하고 PATCH 도 미처리 → 수정모드에서 숨김(유실 방지).
+  const isEdit = !!editItem
+  const [form, setForm] = useState(() => isEdit && editItem ? {
+    name: editItem.name || '', description: editItem.description || '',
+    supply_price: String(editItem.supply_price ?? ''), suggested_retail_price: String(editItem.retail_price ?? ''),
+    stock: String(editItem.stock ?? ''), min_order_qty: editItem.min_order_qty ? String(editItem.min_order_qty) : '',
+    pack_size: editItem.pack_size ? String(editItem.pack_size) : '', order_multiple: editItem.order_multiple ? String(editItem.order_multiple) : '',
+    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: detailImagesToCsv(editItem.detail_images), gallery_images: detailImagesToCsv(editItem.gallery_images),
+    supply_visibility: editItem.supply_visibility || 'ALL', barcode: editItem.barcode || '',
+    product_code: wholesaleCodeSuffix((editItem as { product_code?: string }).product_code, editItem.category),
+    is_brand_product: !!editItem.is_brand_product, brand_name: editItem.brand_name || '', brand_logo_url: editItem.brand_logo_url || '',
+    lowest_price_url: editItem.lowest_price_url || '',
+  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', gallery_images: '', supply_visibility: 'ALL', barcode: '', product_code: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 🏥 2026-07-03 (의료용품 도매몰): 카테고리 드롭다운을 몰별로 — 몰의 categories_json 우선(없으면 기본 3종).
+  //   의료몰 제조사는 의료기기/위생/간병/건강, 유통스타트는 식품/리빙/건강(fallback = byte-동일).
+  const { categories: mallCats } = useWholesaleMall()
+  const categoryOptions = (mallCats && mallCats.length ? mallCats : WHOLESALE_CATEGORIES.filter(c => c.id !== 'all'))
+  useEffect(() => {
+    // 몰 카테고리 로드 후 현재 선택이 그 몰에 없으면 첫 카테고리로(신규 등록 기본값 정합).
+    if (mallCats && mallCats.length && !mallCats.some(c => c.id === form.category)) {
+      setForm(f => ({ ...f, category: mallCats[0].id }))
+    }
+  }, [mallCats, form.category])
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
   const [bulkUploading, setBulkUploading] = useState(false)
   const bulkRef = useRef<HTMLInputElement>(null)
@@ -39,8 +74,12 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
     if (!form.suggested_retail_price || !Number.isFinite(retail) || retail <= supply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가(판매가)는 공급가보다 높아야 합니다 — 유통 마진이 여기서 나옵니다' })); return }
     setSaving(true)
     try {
-      await supplierApi.post('/api/supplier/products', {
+      // 🔧 공통 payload. 🖼️ 2026-06-30: detail_images 를 등록·수정 공통으로 전송(PATCH 도 처리 → 수정 가능).
+      //   빈 문자열이면 서버가 전체 해제(null). 미변경이면 prefill 된 값 그대로 재전송(멱등).
+      const payload: Record<string, unknown> = {
         name: form.name.trim(),
+        detail_images: form.detail_images.trim(),
+        gallery_images: form.gallery_images.trim(),
         description: form.description.trim() || undefined,
         supply_price: supply,
         suggested_retail_price: retail,
@@ -51,15 +90,22 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
         shipping_fee: form.shipping_fee !== '' ? Math.max(0, Math.floor(Number(form.shipping_fee))) : undefined,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
-        detail_images: form.detail_images.trim() || undefined, // 🖼️ 쉼표 구분 여러 장 — 서버가 JSON 배열로 정규화
         supply_visibility: form.supply_visibility,
         barcode: form.barcode.trim() || undefined,
+        // 🏭 2026-06-29 (대표): 상품코드 = 카테고리 접두어(FD/LV/HT) + 제조사 입력. 빈 입력이면 미전송(미지정).
+        product_code: buildWholesaleProductCode(form.category, form.product_code) || undefined,
         is_brand_product: form.is_brand_product,
         brand_name: form.brand_name.trim() || undefined,
         brand_logo_url: form.is_brand_product ? (form.brand_logo_url.trim() || undefined) : undefined,
         lowest_price_url: form.lowest_price_url.trim() || undefined,
-      })
-      toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
+      }
+      if (isEdit && editItem) {
+        await supplierApi.patch(`/api/supplier/products/${editItem.id}`, payload)
+        toast.success(t('supplier.productUpdated', { defaultValue: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' }))
+      } else {
+        await supplierApi.post('/api/supplier/products', payload)
+        toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
+      }
       onCreated()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -75,10 +121,16 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-gray-900">{t('supplier.addProduct', { defaultValue: '공급상품 등록' })}</h3>
+          <h3 className="text-lg font-bold text-gray-900">{isEdit ? t('supplier.editProduct', { defaultValue: '공급상품 수정' }) : t('supplier.addProduct', { defaultValue: '공급상품 등록' })}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
-        {/* 📥 2026-06-12 (사용자 요청): 대량등록 옵션 — 여러 상품이면 엑셀 한 번에. */}
+        {isEdit && (
+          <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
+            {t('supplier.editResubmitHint', { defaultValue: '수정 후 저장하면 다시 승인 대기 상태가 됩니다.' })}
+          </div>
+        )}
+        {/* 📥 2026-06-12 (사용자 요청): 대량등록 옵션 — 여러 상품이면 엑셀 한 번에. (수정 모드 숨김) */}
+        {!isEdit && (
         <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
           <p className="text-[12.5px] font-bold text-gray-700 flex items-center gap-1.5">
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -99,6 +151,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
           </div>
           <p className="text-[10.5px] text-gray-400 mt-1.5">{t('supplier.bulkOptionHint', { defaultValue: '.xlsx 그대로 업로드 가능 · 한글 깨짐 자동 복구 · 최대 2,000행' })}</p>
         </div>
+        )}
 
         {error && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
         <form onSubmit={submit} className="space-y-3">
@@ -120,6 +173,16 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
               <input required type="number" min={1} disabled={saving} value={form.suggested_retail_price} onChange={e => setForm(f => ({ ...f, suggested_retail_price: e.target.value }))} className={inputCls} />
             </div>
           </div>
+          {/* 🏭 2026-06-29 (대표 #6): 마진율(%) 직접 입력 — 입력 시 공급가 기준으로 판매가 자동 계산.
+              저장은 기존대로 공급가/판매가(정산 엔진 불변). 판매가를 직접 입력해도 됨(양방향). */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldMargin', { defaultValue: '판매 마진율 (%)' })} <span className="text-gray-400 font-normal">{t('supplier.fieldMarginNote', { defaultValue: '· 공급가·판매가와 자동 연동' })}</span></label>
+            <input type="number" min={0} max={99} disabled={saving}
+              value={(() => { const s = Number(form.supply_price), r = Number(form.suggested_retail_price); return (Number.isFinite(s) && Number.isFinite(r) && r > s && r > 0) ? String(Math.round(((r - s) / r) * 100)) : '' })()}
+              onChange={e => { const m = Number(e.target.value); const s = Number(form.supply_price); if (Number.isFinite(m) && m >= 0 && m < 100 && Number.isFinite(s) && s > 0) setForm(f => ({ ...f, suggested_retail_price: String(Math.round(s / (1 - m / 100))) })) }}
+              className={inputCls} placeholder={t('supplier.fieldMarginPh', { defaultValue: '예: 30' })} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.marginHint', { defaultValue: '마진율을 입력하면 공급가 기준 권장 판매가가 자동 계산됩니다 (판매가 대비 마진).' })}</p>
+          </div>
           {/* 🏭 2026-06-12 (영업단 제안): 공급률 실시간 안내 — 낮출수록 더 많은 채널 잠금해제.
               권장가 미입력 시엔 입력 유도 한 줄만(공급가 폴백을 쓰면 공급률 100% 로 오해 유발). */}
           <SupplyChannelGuide t={t} supplyPrice={form.supply_price} retailPrice={form.suggested_retail_price} />
@@ -137,11 +200,26 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
               {/* 🏭 2026-06-04 카테고리 표준화 — 자유 입력 → 도매몰 표준 카테고리 select.
                   카탈로그 필터(WHOLESALE_CATEGORIES)와 값 일치 → 판매사 카테고리 필터가 항상 동작. */}
               <select disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls}>
-                {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => (
+                {categoryOptions.map(c => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>
             </div>
+          </div>
+          {/* 🏭 2026-06-29 (대표): 상품코드 — 카테고리 접두어(식품 FD · 리빙 LV · 건강 HT) 고정 + 제조사 입력. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldProductCode', { defaultValue: '상품코드' })} <span className="text-gray-400 font-normal">(선택)</span></label>
+            <div className="flex items-stretch">
+              <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-sm font-extrabold text-gray-700 tabular-nums">{wholesaleCodePrefix(form.category)}</span>
+              <input disabled={saving} value={form.product_code}
+                onChange={e => setForm(f => ({ ...f, product_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) }))}
+                className={inputCls + ' rounded-l-none uppercase tracking-wide'} placeholder="000BKJ" maxLength={16} />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              {form.product_code
+                ? t('supplier.productCodePreview', { defaultValue: '최종 코드: {{code}}', code: buildWholesaleProductCode(form.category, form.product_code) })
+                : t('supplier.productCodeHint', { defaultValue: '카테고리 접두어 뒤에 영문·숫자로 입력 (예: FD000BKJ)' })}
+            </p>
           </div>
           {/* 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 노출 — 모든 상품 등록 시 입력 가능(선택). */}
           <div>
@@ -175,11 +253,17 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '썸네일(대표) 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
           </div>
+          {/* 🖼️ 2026-06-30: 대표 이미지 갤러리 — 썸네일 외 여러 각도/색상 사진. 상품 상세 상단 캐러셀(썸네일과 함께 넘겨보기). 최대 10장. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldGalleryImages', { defaultValue: '대표 이미지 추가 (여러 각도 · 상단 갤러리)' })}</label>
+            <MultiImageUpload value={form.gallery_images} onChange={(v) => setForm(f => ({ ...f, gallery_images: v }))} t={t} max={10} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.galleryHint', { defaultValue: '썸네일 외 추가 각도·색상 사진. 상품 상세 상단에서 썸네일과 함께 넘겨볼 수 있어요. (최대 10장)' })}</p>
+          </div>
           {/* 🧩 2026-06-17 (입점폼 간소화): 부가 항목은 접어서 첫 등록 마찰 감소. 안의 값은 그대로 제출됨. */}
           <details className="border border-gray-200 rounded-xl">
             <summary className="cursor-pointer select-none text-sm font-semibold text-gray-700 px-3 py-2.5">⚙️ {t('supplier.moreFields', { defaultValue: '더보기 — 상세이미지 · 최저가 링크 · 바코드 · 공급범위 · 브랜드' })}</summary>
             <div className="px-3 pb-3 space-y-3">
-          {/* 🖼️ 2026-06-13 (사용자 요청): 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본). */}
+          {/* 🖼️ 2026-06-13 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본, 최대 30장). 2026-06-30: 수정 모드도 노출(PATCH 처리·GET prefill). */}
           <div>
             <label className={labelCls}>{t('supplier.fieldDetailImages2', { defaultValue: '상세페이지 이미지 (여러 장·GIF 가능)' })}</label>
             <MultiImageUpload value={form.detail_images} onChange={(v) => setForm(f => ({ ...f, detail_images: v }))} t={t} />
@@ -221,7 +305,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             </div>
           </details>
           <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60 mt-2">
-            {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.submitProduct', { defaultValue: '등록 신청' })}
+            {saving ? t('common.loading', { defaultValue: '처리 중...' }) : isEdit ? t('supplier.saveEdit', { defaultValue: '수정 저장 (재승인 요청)' }) : t('supplier.submitProduct', { defaultValue: '등록 신청' })}
           </button>
         </form>
       </div>

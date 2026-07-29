@@ -17,6 +17,7 @@
  * 마운트(worker/index.ts): app.route('/api/wholesale/chat', wholesaleChatRoutes)
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
@@ -370,7 +371,7 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
   try {
     await ensureChatSchema(DB)
     const reqBody = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const rawText = String(reqBody.body ?? '').trim()
+    const rawText = sanitizeString(String(reqBody.body ?? '')).trim()
     if (!rawText) return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
     if (rawText.length > 2000) return c.json({ success: false, error: '메시지는 2000자 이하여야 합니다' }, 400)
 

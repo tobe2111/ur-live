@@ -12,10 +12,12 @@
 
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Bell, TrendingUp, Loader2, Megaphone } from 'lucide-react'
+import { Users, Bell, TrendingUp, Megaphone } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 
@@ -43,7 +45,7 @@ export default function SellerFollowersPage() {
   const loading = analyticsQ.isLoading
 
   if (loading) {
-    return <SellerLayout title="단골 분석"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></SellerLayout>
+    return <SellerLayout title="단골 분석"><BrandLoader /></SellerLayout>
   }
   if (!data) {
     return <SellerLayout title="단골 분석"><div className="p-8 text-center text-gray-500">데이터 로드 실패</div></SellerLayout>
@@ -86,7 +88,8 @@ export default function SellerFollowersPage() {
           ) : (
             <div className="space-y-3">
               {([
-                { key: 'live_start', label: '📺 라이브 시작', value: data.notify_on.live_start },
+                // 🏭 라이브커머스 영구중단: '라이브 시작' 알림 종류 숨김.
+                ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'live_start', label: '📺 라이브 시작', value: data.notify_on.live_start }]),
                 { key: 'group_buy', label: '🔥 공구 시작', value: data.notify_on.group_buy },
                 { key: 'new_product', label: '🎁 신상품', value: data.notify_on.new_product },
               ]).map(item => (

@@ -32,17 +32,17 @@ export function SortMenu<T extends string>({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
+        className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
       >
         {current?.label}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[10500]" onClick={() => setOpen(false)} />
           <div
             role="listbox"
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[91] min-w-[150px] rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] shadow-xl py-1 overflow-hidden`}
+            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1A2334] border border-gray-100 dark:border-[#2A3446] shadow-xl py-1 overflow-hidden`}
           >
             {options.map((o) => {
               const selected = o.key === value

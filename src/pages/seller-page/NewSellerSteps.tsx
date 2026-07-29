@@ -21,7 +21,7 @@ export default function NewSellerSteps({ isStoreOwner }: { isStoreOwner: boolean
     isStoreOwner
       ? {
           icon: Ticket,
-          title: t('seller.newSteps.step2Store', { defaultValue: '첫 공구권 발행' }),
+          title: t('seller.newSteps.step2Store', { defaultValue: '첫 이용권 발행' }),
           desc: t('seller.newSteps.step2StoreDesc', { defaultValue: '우리 매장 공동구매 교환권을 만들어요' }),
           path: '/seller/group-buy',
         }

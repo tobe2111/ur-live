@@ -19,6 +19,7 @@ const SLIDE_MS = 450
 
 export default function WholesaleBannerCarousel() {
   const navigate = useNavigate()
+  // iserror-check-ok: 배너는 장식 요소 — fetch 실패 시 빈 배너(미표시)가 정상 동작이라 에러 분기 불필요.
   const { data: banners = [] } = useWholesaleBanners()
   const n = banners.length
 

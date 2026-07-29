@@ -9,7 +9,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Clock, AlertCircle, ArrowRight, Home } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { Clock, AlertCircle, ArrowRight, Home } from 'lucide-react'
 
 type Status = 'pending' | 'suspended' | 'rejected' | 'active' | 'unknown'
 
@@ -45,7 +46,7 @@ export default function AgencyWaitingPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
+        <BrandLoader />
       </div>
     )
   }

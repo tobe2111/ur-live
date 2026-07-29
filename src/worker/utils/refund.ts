@@ -62,25 +62,34 @@ export async function requestTossRefund(
 
 /**
  * 재고 복구
+ *
+ * 🛡️ 2026-07-12 (R6 멱등화 — pre-launch-security-audit R6, 대표 [UNLOCK] 승인):
+ *   기존엔 order_items 를 무필터로 읽어 `stock = stock + qty` 만 해서, 이 함수가 두 번
+ *   호출되면(이론상 중복 환불/레이스) 재고가 이중 복원 → 유령재고(oversell). 호출부(:207)가
+ *   order 상태 CAS(→REFUNDED)로 이미 1차 가드하나, 함수 자체를 order.repository.ts:446 과
+ *   동일하게 **item-level 멱등**으로 통일: ① 아직 취소 안 된 item 만 복원 ② 같은 batch 에서
+ *   item status='CANCELLED' 마킹 → 재호출 시 0건 매칭 no-op. **재고복원 SQL 만 변경 —
+ *   Toss 게이트웨이/환불금액/상태전환 전부 무접촉.**
  */
 export async function restoreStock(
   db: D1Database,
   orderId: string
 ): Promise<void> {
   const items = await db
-    .prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?')
+    .prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ? AND COALESCE(status,'') != 'CANCELLED'")
     .bind(orderId)
     .all<{ product_id: string; quantity: number }>()
 
-  if (items.results) {
-    await db.batch(
-      items.results.map((item) =>
+  if (items.results && items.results.length > 0) {
+    await db.batch([
+      ...items.results.map((item) =>
         db
           .prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
           .bind(item.quantity, item.product_id)
-      )
-    )
-
+      ),
+      // 멱등 마킹 — 재호출 시 위 SELECT 가 0건 → 이중 복원 불가.
+      db.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?").bind(orderId),
+    ])
   }
 }
 

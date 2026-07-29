@@ -10,13 +10,14 @@ import {
 } from '@/shared/admin-roles';
 
 describe('admin-roles RBAC SSOT', () => {
-  it('normalizeAdminRole: super_admin/super → super, 미상 → super(역호환)', () => {
+  it('normalizeAdminRole: super_admin/super → super, 빈값 → super(레거시), 미지 → viewer(fail-closed)', () => {
     expect(normalizeAdminRole('super_admin')).toBe('super');
     expect(normalizeAdminRole('super')).toBe('super');
     expect(normalizeAdminRole('VIEWER')).toBe('viewer');
     expect(normalizeAdminRole('finance')).toBe('finance');
     expect(normalizeAdminRole(null)).toBe('super');      // 레거시 계정 보호
-    expect(normalizeAdminRole('zzz')).toBe('super');
+    // 🔐 2026-07-12 RBAC 감사 G: 미지/오타 non-empty role 은 최소권한 viewer (fail-closed) — 손상·미지 문자열의 전권 획득 차단.
+    expect(normalizeAdminRole('zzz')).toBe('viewer');
   });
 
   it('adminPathSegment: /api/admin/<seg> 및 하이픈 변형', () => {

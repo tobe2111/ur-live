@@ -14,12 +14,14 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { DashboardLoadError } from '@/components/dashboard'
 
 interface VoucherTxRow {
   id: number
@@ -106,7 +108,7 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
   }, [orderId])
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">KT Alpha 진단 — Order #{orderId}</h3>
@@ -292,6 +294,7 @@ export default function AdminVoucherTransactionsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
+    <AdminLayout title="교환권 거래">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="교환권 거래 — 어드민" url="/admin/voucher-transactions" noindex />
       <div className="max-w-7xl mx-auto">
@@ -330,15 +333,27 @@ export default function AdminVoucherTransactionsPage() {
           </div>
         </div>
 
+        {/* 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "오늘 거래 0 · ₩0" 으로 위장하지 않도록 표면화 */}
+        {(todayStatsQ.isError || listQ.isError) && (
+          <div className="mb-4">
+            <DashboardLoadError
+              error={listQ.error ?? todayStatsQ.error}
+              onRetry={() => { todayStatsQ.refetch(); listQ.refetch() }}
+              loginPath="/admin/login"
+              label="교환권 거래 내역"
+            />
+          </div>
+        )}
+
         {/* 오늘 합계 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 수</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(todayStats.count)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 금액 (applied_price 합)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatWon(todayStats.amount)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
           </div>
         </div>
 
@@ -361,7 +376,7 @@ export default function AdminVoucherTransactionsPage() {
               <select value={category} onChange={(e) => { setPage(0); setCategory(e.target.value) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900">
                 <option value="">전체</option>
-                <option value="meal_voucher">식사권</option>
+                <option value="meal_voucher">이용권</option>
                 <option value="beauty_voucher">뷰티</option>
                 <option value="stay_voucher">숙박</option>
                 <option value="etc_voucher">기타</option>
@@ -475,6 +490,7 @@ export default function AdminVoucherTransactionsPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   )
 }
 

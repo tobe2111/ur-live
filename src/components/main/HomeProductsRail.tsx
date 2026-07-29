@@ -24,7 +24,7 @@ export default function HomeProductsRail() {
   const cacheRef = useRef<Record<string, Product[]>>({})
   const startedRef = useRef(false)
 
-  // /browse 카테고리 칩과 동일 키 + 동일 i18n 키 (식사권/교환권 제외 = 실물 상품만).
+  // /browse 카테고리 칩과 동일 키 + 동일 i18n 키 (이용권/교환권 제외 = 실물 상품만).
   const categories = [
     { key: 'all', label: t('browse.categoryAll', { defaultValue: '전체' }) },
     { key: 'food', label: t('browse.categoryFood', { defaultValue: '식품' }) },
@@ -95,7 +95,7 @@ export default function HomeProductsRail() {
               className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-bold transition-colors ${
                 active
                   ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'
+                  : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1A2334] dark:text-gray-300 dark:border-[#2A3446]'
               }`}
             >
               {c.label}
@@ -107,7 +107,7 @@ export default function HomeProductsRail() {
       {items === null ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
+            <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (

@@ -34,7 +34,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
   const { t } = useTranslation()
 
   const CATEGORIES = [
-    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 식사권' }), emoji: '🍽️' },
+    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 이용권' }), emoji: '🍽️' },
     { key: 'beauty_voucher', label: t('welcomeOnboarding.catBeautyVoucher', { defaultValue: '뷰티' }), emoji: '💇' },
     { key: 'health_voucher', label: t('welcomeOnboarding.catHealthVoucher', { defaultValue: '헬스·웰니스' }), emoji: '💪' },
     { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), emoji: '👗' },
@@ -129,11 +129,11 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center"
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="bg-white dark:bg-[#0F151D] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -145,7 +145,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all ${
-                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2A2A2A]'
+                  s === step ? 'w-6 bg-pink-500' : s < step ? 'w-3 bg-pink-300' : 'w-3 bg-gray-200 dark:bg-[#2A3446]'
                 }`}
               />
             ))}
@@ -183,7 +183,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                         {bonusAmount.toLocaleString()}딜 <span className="text-[12px] font-medium text-gray-500">(₩{bonusAmount.toLocaleString()} 가치)</span>
                       </p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        공구권 결제 / 후원에 현금처럼 바로 사용 가능
+                        이용권 결제 / 후원에 현금처럼 바로 사용 가능
                       </p>
                     </div>
                   </div>
@@ -202,7 +202,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0A0A0A] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#0F151D] rounded-xl text-center text-[13px] font-bold text-pink-600 flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
@@ -238,7 +238,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       className={`flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border-2 transition-all ${
                         selected
                           ? 'bg-pink-50 border-pink-500 shadow-sm'
-                          : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#2A2A2A]'
+                          : 'bg-white dark:bg-[#0F151D] border-gray-200 dark:border-[#2A3446]'
                       }`}
                     >
                       <span className="text-2xl">{c.emoji}</span>
@@ -268,12 +268,12 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <button
                 onClick={() => setAlimtalkOptIn(!alimtalkOptIn)}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#2A2A2A]'
+                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#0F151D] border-gray-200 dark:border-[#2A3446]'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A1A1A]'
+                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1A2334]'
                   }`}>
                     <span className="text-xl">💬</span>
                   </div>
@@ -299,7 +299,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
         </div>
 
         {/* 하단 버튼 */}
-        <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-[#1A1A1A]">
+        <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
           {step === 1 && (
             <button
               onClick={() => setStep(2)}

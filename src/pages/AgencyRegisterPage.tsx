@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { Mail, Lock, Eye, EyeOff, User, Phone, Building2, CheckCircle } from 'lucide-react'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { AGENCY_CORE_TERMS_SUMMARY } from './terms/agency-terms-content'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 export default function AgencyRegisterPage() {
   const { t } = useTranslation()
@@ -14,6 +18,13 @@ export default function AgencyRegisterPage() {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [done, setDone] = useState(false)
+  // 📜 2026-07-05 파트너 약관 v1.0: 전체 동의 + 핵심조항(제4·5·9·10조) 개별 동의 — 둘 다 필수
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [coreAgreed, setCoreAgreed] = useState(false)
+  // 🔢 2026-06-26 (대표 가입폼 UX): 첫 문제 필드 포커스 + 이메일/전화 완성형 검증.
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
+  const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
 
   function update(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [key]: e.target.value }))
@@ -22,12 +33,17 @@ export default function AgencyRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (form.password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다.')
-      return
-    }
-    if (form.password !== form.password_confirm) {
-      setError('비밀번호가 일치하지 않습니다.')
+    // 🔢 2026-06-26 (대표 가입폼 UX): 화면 순서대로 검증 + 첫 문제 필드로 포커스(이메일/전화 미완성 통과 차단).
+    const failAt = (k: string, m: string) => { setError(m); focusField(k) }
+    if (!form.name.trim()) { failAt('name', t('agency.agencyRegister.errName', { defaultValue: '에이전시명을 입력해주세요' })); return }
+    if (!form.contact_name.trim()) { failAt('contact_name', t('agency.agencyRegister.errContact', { defaultValue: '담당자명을 입력해주세요' })); return }
+    if (!isValidEmail(form.email)) { failAt('email', t('agency.agencyRegister.errEmail', { defaultValue: '이메일을 정확히 입력해주세요 (예: name@company.com)' })); return }
+    // 전화번호는 선택 — 입력했을 때만 완성형 검증.
+    if (form.phone.trim() && !isValidKrPhone(form.phone)) { failAt('phone', t('agency.agencyRegister.errPhone', { defaultValue: '전화번호를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    if (form.password.length < 8) { failAt('password', t('agency.agencyRegister.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다.' })); return }
+    if (form.password !== form.password_confirm) { failAt('password_confirm', t('agency.agencyRegister.passwordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' })); return }
+    if (!termsAgreed || !coreAgreed) {
+      setError(t('agency.agencyRegister.termsRequired', { defaultValue: '파트너 약관과 핵심 조항에 모두 동의해주세요' }))
       return
     }
     setLoading(true)
@@ -38,6 +54,8 @@ export default function AgencyRegisterPage() {
         email: form.email,
         password: form.password,
         phone: form.phone,
+        terms_agreed_version: TERMS_CURRENT_VERSION,
+        core_terms_agreed: true,
       })
       setDone(true)
     } catch (err: unknown) {
@@ -74,7 +92,7 @@ export default function AgencyRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex">
       {/* Left branding */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-white border-r border-gray-200">
         <div className="px-10 pt-10">
@@ -128,14 +146,14 @@ export default function AgencyRegisterPage() {
               <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* 에이전시명 */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelAgencyName', { defaultValue: '에이전시명' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text" required value={form.name} onChange={update('name')}
+                  <input ref={reg('name')}
+                    type="text" value={form.name} onChange={update('name')}
                     placeholder="(주)베스트에이전시"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -147,8 +165,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelContactName', { defaultValue: '담당자명' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text" required value={form.contact_name} onChange={update('contact_name')}
+                  <input ref={reg('contact_name')}
+                    type="text" value={form.contact_name} onChange={update('contact_name')}
                     placeholder="홍길동"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -160,8 +178,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelEmail', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="email" required value={form.email} onChange={update('email')}
+                  <input ref={reg('email')}
+                    type="email" inputMode="email" value={form.email} onChange={update('email')}
                     placeholder="agency@example.com"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -173,8 +191,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPhone', { defaultValue: '전화번호' })}</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="tel" value={form.phone} onChange={update('phone')}
+                  <input ref={reg('phone')}
+                    type="tel" inputMode="numeric" value={form.phone} onChange={update('phone')}
                     placeholder="010-1234-5678"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -186,8 +204,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPassword', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPw ? 'text' : 'password'} required value={form.password} onChange={update('password')}
+                  <input ref={reg('password')}
+                    type={showPw ? 'text' : 'password'} value={form.password} onChange={update('password')}
                     placeholder="8자 이상"
                     className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -202,8 +220,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPasswordConfirm', { defaultValue: '비밀번호 확인' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPw ? 'text' : 'password'} required value={form.password_confirm} onChange={update('password_confirm')}
+                  <input ref={reg('password_confirm')}
+                    type={showPw ? 'text' : 'password'} value={form.password_confirm} onChange={update('password_confirm')}
                     placeholder="비밀번호 재입력"
                     className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       form.password_confirm && form.password !== form.password_confirm
@@ -216,6 +234,19 @@ export default function AgencyRegisterPage() {
                   <p className="text-xs text-red-500 mt-1">{t('agency.agencyRegister.passwordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' })}</p>
                 )}
               </div>
+
+              <TermsConsentBox
+                termsLabel={t('agency.agencyRegister.termsAgree', { defaultValue: '유어딜 에이전시 파트너 약관(v1.0)에 동의합니다' })}
+                termsPath="/terms/agency"
+                agreed={termsAgreed}
+                onAgreedChange={setTermsAgreed}
+                core={{
+                  label: t('agency.agencyRegister.coreAgree', { defaultValue: '위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다' }),
+                  items: AGENCY_CORE_TERMS_SUMMARY,
+                  agreed: coreAgreed,
+                  onChange: setCoreAgreed,
+                }}
+              />
 
               <button
                 type="submit"

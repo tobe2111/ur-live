@@ -4,12 +4,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, Loader2, Check, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 도매 예치금 입금확인.
 //   판매사 충전 신청(은행 송금 대기) → 관리자 입금 확인 시 잔액 충전 / 반려. 라이트 테마.
@@ -34,7 +35,9 @@ const STATUS: Record<DepositRequest['status'], { t: string; c: string }> = {
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
-export default function AdminWholesaleDepositsPage() {
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →
+//   AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭이 그대로 렌더 (AdminDistributorApprovalPage 패턴).
+export default function AdminWholesaleDepositsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
   const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
@@ -66,7 +69,7 @@ export default function AdminWholesaleDepositsPage() {
   //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-deposits', filter, mallId] as const
-  const { data: requests = [], isLoading: loading, refetch } = useApiQuery<DepositRequest[]>(
+  const { data: requests = [], isLoading: loading, isError, error, refetch } = useApiQuery<DepositRequest[]>(
     queryKey,
     '/api/admin/wholesale-deposits',
     {
@@ -91,6 +94,8 @@ export default function AdminWholesaleDepositsPage() {
         setRequests((prev) => prev.map((x) => x.id === req.id ? { ...x, status: 'confirmed', confirmed_at: new Date().toISOString() } : x))
         // pending 필터면 목록에서 빠지도록 재조회.
         if (filter === 'pending') load()
+        // 🛡️ 2026-06-26: 통합 현황의 '대기 입금확인' 카운트도 갱신(승인 후에도 1 잔존 신고).
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'wholesale-overview'] })
       } else { toast.error(r.data?.error || '입금 확인 실패') }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류가 발생했습니다')
@@ -107,15 +112,15 @@ export default function AdminWholesaleDepositsPage() {
         toast.success('충전 신청을 반려했습니다')
         setRequests((prev) => prev.map((x) => x.id === req.id ? { ...x, status: 'rejected' } : x))
         if (filter === 'pending') load()
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'wholesale-overview'] })
       } else { toast.error(r.data?.error || '반려 실패') }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류가 발생했습니다')
     } finally { setActingId(null) }
   }
 
-  return (
-    <AdminLayout title="도매 예치금">
-      <div className="ur-content-full px-4 lg:px-8 py-6">
+  const body = (
+      <div className={embedded ? '' : 'ur-content-full px-4 lg:px-8 py-6'}>
         <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="판매사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
 
         {/* 🏦 예치금 입금 안내 계좌 — 판매사 충전 화면에 "이 계좌로 입금하세요"로 표시. 값은 DB(platform_settings) 저장. */}
@@ -156,6 +161,8 @@ export default function AdminWholesaleDepositsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="충전 신청" />
         ) : requests.length === 0 ? (
           <p className="text-center text-gray-400 py-20">충전 신청이 없습니다.</p>
         ) : (
@@ -180,7 +187,7 @@ export default function AdminWholesaleDepositsPage() {
                     </td>
                     <td className="py-2.5 px-4 text-right font-bold text-gray-900">{formatWon(req.amount)}</td>
                     <td className="py-2.5 px-4 text-gray-700">{req.depositor_name}</td>
-                    <td className="py-2.5 px-4 text-gray-500">{req.created_at ? new Date(req.created_at).toLocaleDateString('ko-KR') : '-'}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(req.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                     <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[req.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[req.status]?.t || req.status}</span></td>
                     <td className="py-2.5 px-4">
                       {req.status === 'pending' ? (
@@ -201,7 +208,7 @@ export default function AdminWholesaleDepositsPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="block text-right text-gray-400 text-xs">{req.confirmed_at ? new Date(req.confirmed_at).toLocaleDateString('ko-KR') : '—'}</span>
+                        <span className="block text-right text-gray-400 text-xs">{safeDate(req.confirmed_at)?.toLocaleDateString('ko-KR') ?? '—'}</span>
                       )}
                     </td>
                   </tr>
@@ -211,6 +218,8 @@ export default function AdminWholesaleDepositsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
   )
+
+  if (embedded) return body
+  return <AdminLayout title="도매 예치금">{body}</AdminLayout>
 }

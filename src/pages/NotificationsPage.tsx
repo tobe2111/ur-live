@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { ChevronLeft, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -39,11 +41,12 @@ export default function NotificationsPage() {
     })
   }
 
+  // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-safe-nav md:pb-20">
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" aria-hidden="true" />
@@ -55,9 +58,7 @@ export default function NotificationsPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 py-2">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <BrandLoader />
         ) : error ? (
           <div className="text-center py-20">
             <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
@@ -79,14 +80,15 @@ export default function NotificationsPage() {
                   if (!n.is_read) markReadMut.mutate(n.id)
                   if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
-                className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#1A1A1A] ${n.is_read ? 'opacity-50' : ''}`}
+                className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#2A3446] ${n.is_read ? 'opacity-50' : ''}`}
               >
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-pink-500'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>}
                   <p className="text-[10px] text-gray-500 dark:text-gray-500 mt-1">
-                    {new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
+                    {safeDate(n.created_at)?.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) ?? ''}
                   </p>
                 </div>
               </button>

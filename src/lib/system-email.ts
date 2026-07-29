@@ -73,6 +73,19 @@ export async function sendSystemEmail(
 }
 
 /**
+ * 🔔 2026-07-01: HTML 이스케이프 — 셀러/상품명 등 사용자 제어 문자열이 제목/본문/링크에 들어가
+ *   메일 본문·href 에 마크업/피싱 링크를 주입하는 것을 방지(이전엔 raw 보간).
+ */
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * 가입·승인 등 표준 시스템 메시지 HTML 빌더 (간단 템플릿).
  */
 export function buildSystemEmailHtml(opts: {
@@ -82,10 +95,15 @@ export function buildSystemEmailHtml(opts: {
   actionLabel?: string;    // 버튼 텍스트
   actionUrl?: string;      // 버튼 URL
 }): string {
-  const button = opts.actionLabel && opts.actionUrl
+  const title = escapeHtml(opts.title);
+  const greeting = escapeHtml(opts.greeting);
+  const body = escapeHtml(opts.body);
+  // actionUrl 은 http(s) 만 허용(javascript: 등 차단) + 속성 이스케이프.
+  const safeUrl = opts.actionUrl && /^https?:\/\//i.test(opts.actionUrl) ? escapeHtml(opts.actionUrl) : '';
+  const button = opts.actionLabel && safeUrl
     ? `<p style="margin:24px 0;">
-         <a href="${opts.actionUrl}" style="display:inline-block;background:#6b7280;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
-           ${opts.actionLabel}
+         <a href="${safeUrl}" style="display:inline-block;background:#6b7280;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
+           ${escapeHtml(opts.actionLabel)}
          </a>
        </p>`
     : '';
@@ -93,9 +111,9 @@ export function buildSystemEmailHtml(opts: {
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1f;">
       <h1 style="font-size:22px;margin:0 0 16px;background:linear-gradient(135deg,#ff6b6b,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">유어딜</h1>
-      <h2 style="font-size:18px;margin:0 0 16px;">${opts.title}</h2>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 12px;">${opts.greeting}</p>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;white-space:pre-line;">${opts.body}</p>
+      <h2 style="font-size:18px;margin:0 0 16px;">${title}</h2>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 12px;">${greeting}</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;white-space:pre-line;">${body}</p>
       ${button}
       <hr style="border:none;border-top:1px solid #e5e5e7;margin:32px 0 16px;">
       <p style="font-size:11px;color:#999;line-height:1.5;text-align:center;">

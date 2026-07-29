@@ -18,7 +18,7 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
     { key: '12m', label: t('supplier.period12m', { defaultValue: '최근 12개월' }) },
   ]
   const s = data?.summary
-  const maxRev = Math.max(1, ...((data?.series || []).map(p => Math.abs(p.revenue))))
+  const maxRev = Math.max(1, ...((data?.series || []).map(p => Math.abs(Number(p.revenue) || 0))))
 
   const cards = [
     { label: t('supplier.aTotalRevenue', { defaultValue: '총 매출(기간)' }), value: formatWon(s?.total_revenue ?? 0), cls: 'text-gray-900' },
@@ -79,8 +79,8 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
             ) : (
               <div className="flex items-end gap-1 h-40 overflow-x-auto pb-1" role="img" aria-label={t('supplier.aRevenueTrend', { defaultValue: '매출 추이' })}>
                 {(data?.series || []).map(p => {
-                  const h = Math.max(2, Math.round((Math.abs(p.revenue) / maxRev) * 100))
-                  const neg = p.revenue < 0
+                  const h = Math.max(2, Math.round((Math.abs(Number(p.revenue) || 0) / maxRev) * 100))
+                  const neg = (Number(p.revenue) || 0) < 0
                   return (
                     <div key={p.bucket} className="flex-1 min-w-[8px] flex flex-col items-center justify-end h-full group relative">
                       <div className={`w-full rounded-t ${neg ? 'bg-red-300' : 'bg-[#FC5424]/70'} group-hover:bg-[#FC5424] transition-colors`} style={{ height: `${h}%` }} />

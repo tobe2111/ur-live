@@ -290,6 +290,25 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('toss.confirm.amount_mismatch', { orderId: orderNumber });
     }
 
+    // 🛡️ 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사): 가상계좌(무통장입금) 조기확정 방어.
+    //   /confirm 은 Toss 응답 status 를 안 보고 무조건 DONE 으로 flip 했음 → 가상계좌는 confirm 시점에
+    //   status='WAITING_FOR_DEPOSIT'(입금 전)로 응답하는데 그대로 주문확정·재고차감·딜차감·디지털발급·
+    //   KT교환권 발송이 '입금 전에' 실행되는 구조적 위험. Toss 콘솔에서 가상계좌를 켜는 순간 조용히 깨짐.
+    //   수정: 입금대기 응답이면 확정하지 않고 AWAITING_PAYMENT 로만 표시 + 모든 side-effect skip →
+    //   실제 입금 시 DEPOSIT_CALLBACK webhook(handlePaymentConfirmed)이 완결. 미리 잡은 숙소 예약은
+    //   되돌림(미결제 방 홀드 방지 — 위 tossResult 실패 경로와 동일 releaseStays).
+    //   ⚠️ WAITING_FOR_DEPOSIT 한정 분기 — 카드/간편결제(DONE) 경로는 byte-불변.
+    if (String((tossData as { status?: string }).status || '').toUpperCase() === 'WAITING_FOR_DEPOSIT') {
+      await releaseStays();
+      await c.env.DB.prepare(
+        `UPDATE orders SET status = 'AWAITING_PAYMENT', payment_method = ?, toss_payment_key = ?, toss_order_id = ?, updated_at = datetime('now')
+         WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
+      ).bind(tossData.method ?? null, tossData.paymentKey ?? null, orderNumber, orderNumber).run().catch(() => null);
+      logInfo('toss.confirm.awaiting_deposit', { orderId: orderNumber, method: tossData.method });
+      const pendingOrders = await orderRepo.findByOrderNumber(orderNumber);
+      return c.json({ success: true, data: { orders: pendingOrders, payment: tossData }, status: 'AWAITING_PAYMENT' });
+    }
+
     // 🛡️ 2026-05-31 [UNLOCK] (사용자 승인): 동시 /confirm race 가드 (CAS).
     //   기존 read-then-write(alreadyDone SELECT) 는 두 동시요청이 모두 PENDING 을 읽고
     //   둘 다 reduceStock + agency/referral commission 적립 → 재고 2배 차감·커미션 중복.
@@ -366,9 +385,12 @@ paymentsRouter.post('/confirm', async (c) => {
     //   adjustUserPoints CAS(guardBalance) 로 음수잔액 방지. fail-soft(경보로 추적, 결제확정 불막음).
     //   ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — side-effect 차감 1블록 추가만.
     try {
+      // 🐛 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사 후속): `.bind(orderNumber)` 누락으로 D1 이
+      //   바인딩 오류를 던지고 .catch 가 빈 배열로 삼켜 이 블록 전체가 무음 no-op 이던 버그 수정.
+      //   (webhook 쪽 동일 블록은 bind 정상 — 그러나 /confirm 이 CAS 승자면 webhook 도 skip → 양쪽 미차감.)
       const dealRows = await c.env.DB.prepare(
         'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
-      ).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
+      ).bind(orderNumber).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
       for (const r of (dealRows?.results ?? [])) {
         const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)));
         if (used > 0 && r.user_id != null) {
@@ -395,6 +417,47 @@ paymentsRouter.post('/confirm', async (c) => {
       captureException(dealErr as Error, { tags: { area: 'payment', kind: 'deal_deduct' } }).catch(swallow('payment:deal-deduct'));
     }
 
+    // 🎫 2026-06-26 [UNLOCK] (대표 승인 "3건 다 고쳐" — 소비자 감사): 디지털 상품 access_token 발급을
+    //   /confirm 에도 추가. 기존엔 webhook 에만 있어 정상 경로(브라우저→/confirm)로 결제 완료 시 보관함
+    //   미발급 → webhook 지연/실패면 영구 미수령이었음. INSERT OR IGNORE + UNIQUE(order_item_id) 로
+    //   webhook 과 둘 다 와도 멱등(이중발급 X). ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — 발급 배선만.
+    try {
+      const digitalItems = await c.env.DB.prepare(`
+        SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, o.user_id,
+               p.product_kind, p.access_duration_days
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.order_number = ?
+          AND p.product_kind IS NOT NULL
+          AND p.product_kind != 'physical'
+      `).bind(orderNumber).all<{
+        order_item_id: number; order_id: string; product_id: number;
+        user_id: string; product_kind: string; access_duration_days: number | null;
+      }>();
+      if (digitalItems.results && digitalItems.results.length > 0) {
+        const stmts = digitalItems.results.map(item => {
+          const token = crypto.randomUUID();
+          const expiresAt = item.access_duration_days
+            ? `datetime('now', '+${Number(item.access_duration_days)} days')`
+            : 'NULL';
+          return c.env.DB.prepare(`
+            INSERT OR IGNORE INTO digital_product_access
+            (user_id, product_id, order_id, order_item_id, access_token, expires_at, status)
+            VALUES (?, ?, ?, ?, ?, ${expiresAt}, 'active')
+          `).bind(item.user_id, item.product_id, item.order_id, item.order_item_id, token);
+        });
+        await c.env.DB.batch(stmts);
+        const digUserId = digitalItems.results[0].user_id;
+        await c.env.DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link)
+          VALUES (?, 'user', 'digital_purchase', ?, ?, '/my/digital')
+        `).bind(digUserId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(swallow('payment:digital-notification'));
+      }
+    } catch (digErr) {
+      captureException(digErr as Error, { tags: { area: 'payment', kind: 'digital_access' } }).catch(swallow('payment:digital-access'));
+    }
+
     // 🏁 2026-06-12 [UNLOCK] (사용자 승인 "나머지 다 이상적으로 진행" — 전 플로우 감사 배선 3종):
     //   결제 확정 직후 side-effect 를 응답 후(waitUntil)로 — Toss confirm/금액검증/CAS 무변경.
     //   ① 큐레이터/추천 적립 소비: 주문 생성 시 저장된 order_referrer_intents → creditAffiliateFromIntent
@@ -403,12 +466,29 @@ paymentsRouter.post('/confirm', async (c) => {
     //   ③ 셀러 '결제 확정' 벨 알림: 기존엔 주문생성(PENDING) 시점 알림뿐 — 실결제 신호 부재였음
     {
       const _confirmSideFx = async () => {
+        // 💸 2026-07-04 [UNLOCK] [INV-CB] (대표 승인 "구현 하자 가장 이상적이고 영구적으로"):
+        //   흩어져 있던 플랫폼 부담 커미션(C1 어필리에이트 intent / C2 멀티티어 / C3 영입자 /
+        //   C4 에이전시 / 공급자)을 **오케스트레이터 1회 호출**로 통합 — creditOrderCommissions
+        //   (order-commissions.ts, webhook 과 동일 진입점). 게이트(platform_settings.
+        //   commission_budget_enabled) OFF 기본 = 기존과 동일 순서/인자로 각 헬퍼 위임(행동 0 변화),
+        //   ON = 3P 주문당 예산(수수료−PG준비금) 안에서 비례 배분. 부수효과: 기존 _confirmSideFx(C1)와
+        //   _postConfirmBg(C2)가 별개 waitUntil 로 병주하던 C1↔C2 dedup 레이스(이론상 이중지급)가
+        //   순차 실행으로 구조적 제거됨. ⚠️ Toss confirm/금액검증/confirmClaim CAS/재고·딜차감
+        //   전부 byte-불변 — side-effect 호출부만 통합. 설계: commission-funding-restructure.md.
         try {
-          const { creditAffiliateFromIntent } = await import('../utils/affiliate-credit')
-          for (const order of orders) {
-            await creditAffiliateFromIntent(c.env.DB, c.env, Number(order.id)).catch(() => {})
-          }
-        } catch { /* fail-soft */ }
+          const { creditOrderCommissions } = await import('../utils/order-commissions')
+          await creditOrderCommissions(
+            c.env.DB,
+            orders.map(o => ({
+              id: Number(o.id),
+              seller_id: (o as unknown as { seller_id?: number | null }).seller_id ?? null,
+              total_amount: (o as unknown as { total_amount?: number | null }).total_amount ?? null,
+            })),
+            { env: c.env, withAffiliate: true, buyerUserId: String(userId) },
+          )
+        } catch (e) {
+          logError('payment.order_commissions_failed', { error: String(e).slice(0, 200) })
+        }
         try {
           const { grantInviteRewardForFirstPurchase } = await import('../utils/invite-reward')
           await grantInviteRewardForFirstPurchase(c.env.DB, String(userId))
@@ -426,56 +506,82 @@ paymentsRouter.post('/confirm', async (c) => {
             ).catch(() => {})
           }
         } catch { /* fail-soft */ }
+
+        // 🔔 2026-06-26 [UNLOCK] (대표 승인 "모두 해줘" — 소비자 감사 D): 결제완료 시 셀러·어드민만
+        //   통보되고 buyer 인앱 알림이 없던 누락 보강. 결제성공화면(PaymentSuccessPage)과 별개로
+        //   알림함에도 주문완료를 남김. confirmClaim CAS 통과한 1회만 도달(webhook 과 단일실행 — 양쪽 배선).
+        //   ⚠️ Toss confirm/금액검증/CAS/재고/딜차감 전부 무변경 — notifyUser side-effect 1블록 추가만.
+        try {
+          const { notifyUser } = await import('../../lib/notifications')
+          const totalAmt = orders.reduce((s, o) => s + Number((o as unknown as { total_amount?: number | null }).total_amount ?? 0), 0)
+          const firstNum = (orders[0] as unknown as { order_number?: string })?.order_number
+          if (firstNum) {
+            await notifyUser(
+              c.env.DB, String(userId), 'order_paid',
+              '✅ 결제가 완료됐어요', `주문 ${firstNum}${orders.length > 1 ? ` 외 ${orders.length - 1}건` : ''} — ₩${totalAmt.toLocaleString('ko-KR')} 결제 완료`,
+              '/my-orders',
+            ).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+
+        // 🏁 2026-06-26 [UNLOCK] 에이전시/영입자/도매 공급자 커미션 3종은 2026-07-04 부터
+        //   위 creditOrderCommissions(오케스트레이터) 안에서 동일 순서로 실행 — 이 자리의 개별
+        //   호출 3블록은 그리로 통합됨(중복 제거). 멱등 키/역전 대칭/fail-soft 전부 불변.
+
+        // 🆕 2026-06-27 [UNLOCK] (대표 "배선하는 길로" 승인): fee-resolver 그림자 기록.
+        //   FEE_RESOLVER_ENABLED='true' 일 때만 — 새 수수료 규칙 분배를 *계산만 해서* order_fee_breakdown
+        //   에 기록(실제 정산/적립/위 커미션 전부 무변경). 스테이징 검증용. 기본 OFF=현행 100% 동일.
+        //   ⚠️ Toss confirm/금액검증/CAS/재고/딜차감/위 커미션 전부 byte-불변 — additive 기록 1블록만.
+        if (c.env.FEE_RESOLVER_ENABLED === 'true') {
+          try {
+            const { recordOrderFeeBreakdown } = await import('../utils/fee-breakdown-record')
+            for (const order of orders) {
+              await recordOrderFeeBreakdown(c.env.DB, {
+                id: Number(order.id),
+                seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+                total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+              }).catch(() => {})
+            }
+          } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
+        }
+
+        // 💸 2026-07-01 [UNLOCK] (대표 승인 "가장 이상적으로" — 정산 자동화 완성): 일반 쇼핑 주문
+        //   셀러 매출을 이중원장에 net 크레딧 → 주간 자동 payout 에 포함(공구/이용권과 동일 경로 통일).
+        //   기본 OFF(SHOPPING_LEDGER_ENABLED!=='true') — fee-resolver 그림자와 동일 2단 스위치.
+        //   멱등 + 이용권/공구 주문 skip(이중적립 0), 역전은 order-refund(reverseOrderAncillaryOnRefund)에 배선.
+        //   ⚠️ Toss confirm/금액검증/CAS/재고·딜차감/기존 side-effect 전부 byte-불변 — 게이트 블록 1개 추가만.
+        if (c.env.SHOPPING_LEDGER_ENABLED === 'true') {
+          try {
+            const { creditSellerOrderToLedger } = await import('../utils/order-ledger-credit')
+            for (const order of orders) {
+              await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(() => {})
+            }
+          } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
+        }
+
+        // 🧾 2026-07-13 [UNLOCK] 상권 쿠폰 경로 B(온라인 결제 자동발급) — 대표 승인 "(b) 전면 구현, 게이트 OFF·별도 PR".
+        //   참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인 + 기간 내 + 기준액 이상이면 상권 쿠폰 자동 발급.
+        //   기본 OFF(DISTRICT_AUTO_ISSUE_ENABLED!=='true') — 미설정 시 이 블록 미진입 → /confirm byte-동일.
+        //   ⚠️ 결제 성공 경로 영향 0: waitUntil 후처리 + autoIssue 자체가 완전 fail-soft(절대 throw 안 함) →
+        //      쿠폰 발급 실패가 결제 확정/응답을 롤백시키지 않음. Toss confirm/금액검증/CAS/재고·딜차감 전부 byte-불변.
+        //   병렬 엔티티(district_coupons) — 딜/유어딜 5%/원장 무접촉. 상세: district-coupon-estimate-2026-07.md §경로 B.
+        if (c.env.DISTRICT_AUTO_ISSUE_ENABLED === 'true') {
+          try {
+            const { autoIssueDistrictCouponForOrder } = await import('../../features/district/api/district-coupon.routes')
+            for (const order of orders) {
+              await autoIssueDistrictCouponForOrder(c.env.DB, {
+                orderNumber: String((order as unknown as { order_number?: string }).order_number || ''),
+                userId: String(userId),
+                sellerId: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+                amount: Number((order as unknown as { total_amount?: number | null }).total_amount ?? 0),
+              }, c.env).catch(() => {})
+            }
+          } catch { /* fail-soft — 발급 실패가 결제 무영향 */ }
+        }
       }
       let _fxDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }
       if (!_fxDeferred) await _confirmSideFx()
-    }
-
-    // 🛡️ 2026-05-20: 에이전시 입점 가게 commission 적립 (Phase 2).
-    //   가게 첫 결제 → ₩30,000 signup_bonus 1회.
-    //   매 결제 → 2% sales_commission (영구).
-    //   fail-soft — 결제 흐름 막지 않음.
-    try {
-      const { creditAgencyStoreIntroCommission } = await import('../utils/agency-store-intro-commission')
-      for (const order of orders) {
-        await creditAgencyStoreIntroCommission(c.env.DB, {
-          id: Number(order.id),
-          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
-          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
-        })
-      }
-    } catch (e) {
-      logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
-    }
-
-    // 🛡️ 2026-06-01 [UNLOCK] 영입자(크리에이터) 매장영입 commission (사용자 승인).
-    //   에이전시 버전과 동형 side-effect 적립 — Toss confirm/amount 검증 미변경.
-    //   매장 sellers.introduced_by_influencer_id 있으면 매출의 N% 를 영입자 influencer_attributions
-    //   (source='store_intro') 에 적립 → 기존 payout cron 이 사업자 3.3%/비사업자 8.8% 분기 처리.
-    try {
-      const { creditInfluencerStoreIntroCommission } = await import('../utils/influencer-store-intro-commission')
-      for (const order of orders) {
-        await creditInfluencerStoreIntroCommission(c.env.DB, {
-          id: Number(order.id),
-          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
-          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
-        })
-      }
-    } catch (e) {
-      logError('payment.influencer_intro_commission_failed', { error: String(e).slice(0, 200) })
-    }
-
-    // 🛡️ 2026-05-31 [UNLOCK] 도매몰 INC-5b (사용자 승인): 공급(B2B) 상품 판매 시 공급자에게
-    //   공급가 즉시 적립(D2). order_items 중 supply_source_id 라인만 calcSupplySplit 으로 분배.
-    //   fail-soft — 결제 흐름 막지 않음. order_id 멱등. (환불 시 returns 경로서 역전.)
-    try {
-      const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
-      for (const order of orders) {
-        await creditSupplierOnOrder(c.env.DB, Number(order.id))
-      }
-    } catch (e) {
-      logError('payment.supplier_credit_failed', { error: String(e).slice(0, 200) })
     }
 
     // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'
@@ -663,45 +769,37 @@ paymentsRouter.post('/confirm', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
-    try {
-      const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
-      await autoSendKtAlphaVouchersForOrders(
-        c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-        updatedOrders.map(o => ({
-          id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
-          shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
-          user_id: o.user_id,
-        })),
-        String(userId),
-      )
-    } catch (err) {
-      logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
-    }
-
-    // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
-    // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
-    // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
-    //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
-    try {
-      const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
-      for (const order of updatedOrders) {
-        const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
-        if (oid && order.total_amount) {
-          await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+    // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): KT 발송(외부 HTTP, prod 실측 1~4.5s) +
+    //   다단계 추천 커미션(트리 DB 왕복 다수)을 응답 후(waitUntil)로 이동 — confirm 응답을 동기로
+    //   막던 마지막 큰 두 블록. 내용/순서/에러처리 byte-불변, 실행 시점만. 안전판: 둘 다 fail-soft +
+    //   KT 는 per-order 멱등 + kt-alpha-voucher-retry cron(failed 재시도 + 미발송 스위퍼) 백스톱,
+    //   커미션은 confirmClaim CAS 로 단일실행 보장. ctx 없으면 동기 fallback.
+    {
+      const _postConfirmBg = async () => {
+        // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
+        try {
+          const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+          await autoSendKtAlphaVouchersForOrders(
+            c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            updatedOrders.map(o => ({
+              id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
+              shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
+              user_id: o.user_id,
+            })),
+            String(userId),
+          )
+        } catch (err) {
+          logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
         }
+
+        // ── 다단계 추천 커미션 ─────────────────────────────────────────────────
+        // 💸 2026-07-04 [UNLOCK] [INV-CB]: _confirmSideFx 의 creditOrderCommissions(오케스트레이터)
+        //   로 이동 — C1(어필리에이트)과의 상호배타 dedup 이 순차 보장되도록(기존엔 두 waitUntil 이
+        //   병주해 이론상 이중지급 레이스). 적립 로직/멱등/T+7 성숙 전부 불변 — 실행 위치만 통합.
       }
-    } catch (err) {
-      logError('payment.referral_commission_failed', {
-        orderNumber,
-        orderIds: updatedOrders.map(o => o.id),
-        userId: String(userId),
-        error: String(err).slice(0, 300),
-      });
-      captureException(err as Error, {
-        tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
-        extra: { orderNumber },
-      }).catch(swallow('payment:sentry-referral'));
+      let _pcDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_postConfirmBg()); _pcDeferred = true } } catch { /* no ctx */ }
+      if (!_pcDeferred) await _postConfirmBg()
     }
 
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────

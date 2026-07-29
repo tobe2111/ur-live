@@ -11,17 +11,24 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
-  LayoutDashboard, Users, Loader2,
+  LayoutDashboard, Users, MessageCircle, Truck,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 import { getSupplierToken } from '@/lib/supplier-api'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
+import { clearWholesaleLoginIntent } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
+import WholesaleSignupMetaEditor from '@/components/wholesale/WholesaleSignupMetaEditor'
+// 🏭 2026-06-29 (대표 신고 — 판매사 대시보드에 채팅 알람/페이지 없음): 제조사 대시보드와 대칭으로 채팅 탭+배지.
+import { useChatPoll } from '@/hooks/useChatPoll'
+import { wholesaleChatApi, hasChatToken } from '@/hooks/queries/useWholesaleChat'
+const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget'))
 
 // 서브페이지(탭 콘텐츠) — lazy 로 분리, 탭 열 때만 chunk fetch. embedded 모드로 본문만 렌더.
 const WholesaleDepositPage = lazy(() => import('./WholesaleDepositPage'))
@@ -31,27 +38,33 @@ const WholesaleDocsPage = lazy(() => import('./WholesaleDocsPage'))
 const WholesaleQuotesPage = lazy(() => import('./wholesale/WholesaleQuotesPage'))
 const WholesaleOemPage = lazy(() => import('./WholesaleOemPage'))
 const WholesaleStaffPage = lazy(() => import('./wholesale/WholesaleStaffPage'))
+// 🏭 2026-06-29 (대표 — 판매사 대시보드에 대량주문 항목): 엑셀 대량발주 패널(양식 다운로드 + 작성본 업로드).
+const BulkOrderPanel = lazy(() => import('./wholesale-catalog/BulkOrderPanel'))
 
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
 //   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
 
-const PAID_STATUSES = ['PAID', 'SHIPPED']
+// 매입(예치금 차감) 집계 대상 = 활성 주문 상태. 예치금은 PAID 시점 차감되어 ACCEPTED→SHIPPED→
+//   PARTIAL_REFUNDED→DONE 내내 차감 유지되므로 매입 총액에 모두 포함(2026-06-27 ACCEPTED/DONE
+//   누락으로 수락·구매확정된 주문이 '이번달/누적 매입'에서 빠지던 것 수정). 상태머신 ACTIVE 집합과 동기.
+const PAID_STATUSES = ['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE']
 
 // 탭 정의 — 라벨/아이콘. staff 는 canManageStaff 일 때만 추가.
 const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
   { key: 'overview', label: '대시보드', icon: LayoutDashboard },
   { key: 'deposits', label: '예치금', icon: Wallet },
   { key: 'orders', label: '주문내역', icon: ClipboardList },
+  { key: 'bulk', label: '대량 주문', icon: ShoppingCart },
   { key: 'statement', label: '거래내역', icon: Receipt },
   { key: 'documents', label: '자료', icon: FileText },
   { key: 'quotes', label: '견적', icon: ClipboardList },
   { key: 'oem', label: 'OEM/ODM', icon: Factory },
 ]
 const STAFF_TAB = { key: 'staff', label: '직원 계정', icon: Users }
+const CHAT_TAB = { key: 'chat', label: '채팅', icon: MessageCircle }
 
-const TabFallback = () => (
-  <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
-)
+const TabFallback = () => <WholesaleLoading />
+
 
 export default function WholesaleDashboardPage() {
   const navigate = useNavigate()
@@ -74,6 +87,13 @@ export default function WholesaleDashboardPage() {
   const cart = useWholesaleCart()
   const [orderTab, setOrderTab] = useState('all')
 
+  // 💬 채팅 unread 배지 — 제조사 대시보드와 동일 폴링(탭 숨김이면 중단). 판매사=distributor 토큰(seller_token+is_distributor).
+  const [chatUnread, setChatUnread] = useState(0)
+  useChatPoll(
+    async () => { try { setChatUnread((await wholesaleChatApi.unread()).unread); return true } catch { return false } },
+    { baseInterval: 25_000, maxInterval: 120_000, enabled: hasChatToken() },
+  )
+
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; sub_role?: string | null; can_manage_staff?: boolean } | null
   const grade = me?.grade || 'C'
   // 👥 직원 서브계정 컨텍스트 — owner(sub_role 없음)면 직원관리 노출. 직원이면 역할 배지 표시.
@@ -86,13 +106,15 @@ export default function WholesaleDashboardPage() {
   const now = new Date()
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const paidOrders = orders.filter((o) => PAID_STATUSES.includes(o.status))
+  // 💰 2026-06-25: 예치금은 subtotal+배송비(grand_total)로 차감 → 매입 집계도 grand_total 기준(배송비 누락 표시 수정).
   const thisMonthSpend = paidOrders
     .filter((o) => (o.paid_at || o.created_at || '').slice(0, 7) === ym)
-    .reduce((s, o) => s + (o.subtotal || 0), 0)
-  const totalSpend = paidOrders.reduce((s, o) => s + (o.subtotal || 0), 0)
-  const activeCount = orders.filter((o) => o.status === 'PAID').length
+    .reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
+  const totalSpend = paidOrders.reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
+  // 진행중(미완결) 주문 = 결제완료~배송중(구매확정/환불/취소 제외). ACCEPTED/SHIPPED/부분환불 포함.
+  const activeCount = orders.filter((o) => ['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(o.status)).length
   // 🧾 주문 내역 — 상태 탭 필터 (시안: 마이페이지 주문관리 테이블)
-  const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
+  const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'ACCEPTED', label: '수락됨' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
   const filteredOrders = (orderTab === 'all' ? orders : orders.filter((o) => o.status === orderTab)).slice(0, 12)
 
   const company = localStorage.getItem('seller_name') || '판매사'
@@ -102,20 +124,29 @@ export default function WholesaleDashboardPage() {
   const goTab = (key: string) => setSearchParams({ tab: key })
 
   // 🏭 2026-06-20: 사이드바 nav 직접 구성 — route-navigate 대신 setSearchParams(탭 전환). 카탈로그 항목 제거.
-  const tabDefs = canManageStaff ? [...TAB_META, STAFF_TAB] : TAB_META
+  // 💬 채팅 탭은 채팅토큰(distributor=seller_token+is_distributor) 있을 때만 노출 — 없으면 위젯이 빈상태라 숨김.
+  const tabDefs = [
+    ...TAB_META,
+    ...(hasChatToken() ? [CHAT_TAB] : []),
+    ...(canManageStaff ? [STAFF_TAB] : []),
+  ]
   const navItems: WholesaleNavItem[] = tabDefs.map(({ key, label, icon }) => ({
     key,
     label,
     icon,
     active: tab === key,
     onClick: () => goTab(key),
+    badge: key === 'chat' ? chatUnread : undefined,
   }))
   const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
-  const logout = () => {
-    clearAuthData('seller')
+  const logout = async () => {
+    // 🔑 2026-06-29: ① 서버 세션쿠키 삭제 await(잔존 재인증 방지) + ② stale 로그인-의도 제거
+    //   (카카오 세션 살아있어도 become-distributor 자동 probe 가 재로그인 못 함 — off-by-default) → 로그인 화면.
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-    window.location.assign('/wholesale')
+    clearWholesaleLoginIntent()
+    window.location.assign('/wholesale/login')
   }
 
   const headerRight = (
@@ -194,6 +225,23 @@ export default function WholesaleDashboardPage() {
             </div>
           ))}
         </section>
+
+        {/* 🚚 2026-06-30: 수령 확인 대기 nudge — 발송완료(SHIPPED/부분환불) 주문 = 구매확정 전. 카탈로그 홈 배너와
+            동일 액션(정산 마무리·클레임 종료). 이미 로드된 orders 로 계산(추가 fetch 0). */}
+        {(() => {
+          const pendingReceipt = orders.filter((o) => ['SHIPPED', 'PARTIAL_REFUNDED'].includes(o.status)).length
+          if (pendingReceipt === 0) return null
+          return (
+            <button onClick={() => goTab('orders')} className="w-full rounded-2xl p-4 flex items-center gap-3 text-left" style={{ background: WT.brandSoft, border: `1px solid ${WT.brand}33` }}>
+              <Truck className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold" style={{ color: WT.ink }}>수령 확인 대기 {comma(pendingReceipt)}건</div>
+                <div className="text-[12px] mt-0.5" style={{ color: WT.ink2 }}>구매확정하면 정산이 마무리되고 클레임 기간이 종료돼요</div>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+            </button>
+          )
+        })()}
 
         {/* 🏅 프로 멤버십(연 구독) — 예치금 차감. 일반→구독 CTA / 프로→만료·연장 / 프리미엄→안내 */}
         <PlusMembershipCard />
@@ -279,7 +327,7 @@ export default function WholesaleDashboardPage() {
                             <span className="lg:hidden rounded-full px-2 py-0.5 text-[10.5px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
                           </div>
                         </div>
-                        <span className="text-[14px] lg:text-[13px] font-extrabold tabular-nums shrink-0 lg:text-right" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
+                        <span className="text-[14px] lg:text-[13px] font-extrabold tabular-nums shrink-0 lg:text-right" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                         <span className="hidden lg:flex justify-center"><span className="rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span></span>
                         <span className="hidden lg:flex justify-center"><ChevronRight className="w-4 h-4" style={{ color: WT.ink4 }} /></span>
                       </button>
@@ -291,6 +339,9 @@ export default function WholesaleDashboardPage() {
           </div>
         </section>
 
+        {/* 🏭 2026-06-29 (E): 가입 시 입력한 취급 카테고리·주력 판매채널 사후 수정 */}
+        <WholesaleSignupMetaEditor kind="distributor" />
+
       </div>
   )
 
@@ -301,11 +352,13 @@ export default function WholesaleDashboardPage() {
       <Suspense fallback={<TabFallback />}>
         {tab === 'deposits' ? <WholesaleDepositPage embedded />
           : tab === 'orders' ? <WholesaleOrdersPage embedded />
+          : tab === 'bulk' ? <div className="pt-1"><BulkOrderPanel token={token} /></div>
           : tab === 'statement' ? <WholesaleStatementPage embedded />
           : tab === 'documents' ? <WholesaleDocsPage embedded />
           : tab === 'quotes' ? <WholesaleQuotesPage embedded />
           : tab === 'oem' ? <WholesaleOemPage embedded />
           : tab === 'staff' ? <WholesaleStaffPage embedded />
+          : tab === 'chat' ? <WholesaleChatWidget embedded onClose={() => { /* embedded */ }} onUnreadChange={setChatUnread} />
           : overview}
       </Suspense>
     )
@@ -322,6 +375,19 @@ export default function WholesaleDashboardPage() {
       onLogoClick={() => navigate('/wholesale')}
     >
       <SEO title="판매사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
+
+      {/* 🛡️ 2026-06-26: 주문/예치금 로드 실패를 "데이터 0(₩0)"로 위장하지 않도록 명시적 에러 배너 + 재시도.
+          (useWholesale 훅이 에러를 빈배열로 삼키지 않게 바뀐 뒤, 소비처가 isError 를 읽어야 함.) */}
+      {(ordersQ.isError || depositQ.isError) && (
+        <div className="mb-4 rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: '#FFF4F4', border: '1px solid #F3C9C9' }}>
+          <p className="text-[13px] font-medium" style={{ color: '#B3253B' }}>매입 현황·예치금 정보를 불러오지 못했어요. 네트워크 상태를 확인해주세요.</p>
+          <button
+            onClick={() => { ordersQ.refetch(); depositQ.refetch() }}
+            className="shrink-0 px-3 h-8 rounded-lg text-[13px] font-bold text-white"
+            style={{ background: '#B3253B' }}
+          >다시 시도</button>
+        </div>
+      )}
 
       {tabContent}
     </WholesaleDashboardShell>

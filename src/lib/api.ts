@@ -265,10 +265,38 @@ api.interceptors.request.use(
       }
     }
 
-    // ── Admin API (/api/admin/*) ───────────────────────────────────────────
+    // ── Prospects (매장 영입 사전등록) — 영업자 인증 ────────────────────────
+    // 🛡️ 2026-06-25: /api/prospects 는 requireAuth() 인데 /api/agency/* prefix 가 아니라
+    //   토큰이 안 붙어 이메일 로그인 에이전시가 401 → '매장 영입 현황' 목록 영구 빈값 + 제안 제출 실패였음.
+    //   영업자 토큰(agency > admin > seller=influencer) 우선순위로 부착. requireAuth 가 셋 다 수용.
+    if (url.startsWith('/api/prospects')) {
+      const agencyToken = localStorage.getItem('agency_token');
+      const adminToken = localStorage.getItem('admin_token');
+      const sellerToken = localStorage.getItem('seller_token');
+      if (agencyToken) { config.headers['Authorization'] = `Bearer ${agencyToken}`; return config; }
+      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
+      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      // fallthrough → user token / cookie
+    }
+
+    // ── Admin 내부 도구 (/api/_errors/recent, /api/_internal/*) ──────────────
+    // 🛡️ 2026-07-20: underscore 경로는 아래 admin 패턴(/api/admin/* · /api/<feature>/admin/*)에
+    //   안 걸려 admin_token 미부착 → 서버 JWT 검증 401 (어드민 에러 대시보드가 로그인해도 항상 401).
+    //   AdminKakaoLoginDiagPage 는 수동 헤더로 개별 우회했던 같은 클래스 — 여기서 구조적으로 부착.
+    //   (/api/_errors/log 는 공개 telemetry 라 제외 — recent 만 매칭.)
+    if (url.startsWith('/api/_errors/recent') || url.startsWith('/api/_internal/')) {
+      const token = localStorage.getItem('admin_token');
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
+      return config;
+    }
+
+    // ── Admin API (/api/admin/* + 하이픈 마운트 /api/admin-payouts, /api/admin-review-bonus) ──
     // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
     // throw 제거 — cookie 만으로도 서버에서 인증 통과.
-    if (url.startsWith('/api/admin/')) {
+    // 🛡️ 2026-07-01 (대표 "403 반복"): 기존 '/api/admin/'(슬래시)만 매칭 → /api/admin-payouts/*(하이픈)엔
+    //   admin_token 미부착 → 소비자 user 토큰이 붙어 requireUserType('admin')=403 (인플루언서 송금/분쟁).
+    //   `admin[-/]` 로 확장해 하이픈 어드민 마운트도 admin_token 부착(둘 다 requireAdmin 전용이라 안전).
+    if (/^\/api\/admin[-/]/.test(url)) {
       const token = localStorage.getItem('admin_token');
       if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
@@ -489,6 +517,20 @@ api.interceptors.response.use(
             originalRequest.headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
             return api(originalRequest);
           }
+          // 🛡️ 2026-07-04 (대표 "수시로 로그아웃"): 탭/코드경로 경합 가드 — refresh 실패가
+          //   '다른 탭(또는 useTokenAutoRefresh)이 먼저 회전(rotation)시켜 내 refresh 토큰이
+          //   폐기됨'인 경우, 저장소(localStorage 는 탭 공유)엔 이미 *새* 토큰이 있다.
+          //   기존엔 무조건 강제 로그아웃 + clearAuthData 가 그 새 토큰까지 삭제 → 이긴 탭도
+          //   동반 로그아웃(전 탭 로그아웃 연쇄). 저장소가 내가 시도한 값과 달라졌으면
+          //   로그아웃 대신 새 access 토큰으로 원요청 재시도.
+          try {
+            const latestRefresh = localStorage.getItem(refreshTokenKey);
+            const latestAccess = localStorage.getItem(tokenKey);
+            if (latestAccess && latestRefresh && latestRefresh !== refreshToken) {
+              originalRequest.headers['Authorization'] = `Bearer ${latestAccess}`;
+              return api(originalRequest);
+            }
+          } catch { /* storage 접근 불가 — 기존 로그아웃 흐름 */ }
           // null 이면 refresh 실패 → 아래 강제 로그아웃 fallthrough
         }
 
@@ -657,12 +699,20 @@ api.interceptors.response.use(
       if (isAuthPath) {
         return Promise.reject(error);
       }
+      // 🛡️ 2026-06-30 (대표 신고 — /admin ↔ /admin/login 무한 리다이렉트 루프 근본수정):
+      //   이 블록은 *소비자(user) 세션* 401 경로다. 대시보드(admin/seller/agency)에 이미 로그인(토큰 존재)한
+      //   사용자가 페이지에서 소비자 엔드포인트(예: 링크샵 프리페치 /api/curator/me/dashboard)를 호출해 401 나면,
+      //   기존엔 currentPath 만 보고 무조건 대시보드 로그인으로 보냈다 → 대시보드 토큰은 안 지우니 PublicRoute 가
+      //   즉시 다시 /admin 으로 튕겨 **무한 루프**(대표 화면: /admin↔/admin/login + curator 401 반복).
+      //   수정: 해당 역할 토큰이 *없을 때만*(진짜 미인증) 로그인으로 보낸다. 토큰이 있으면 그 대시보드는
+      //   인증된 상태이므로 무관한 소비자 401 로 리다이렉트하지 않는다(reject 만). 대시보드 토큰 자체의 만료는
+      //   위 dashboard-refresh 블록(_isDashboardUrl && _hasDashboardToken)이 별도로 처리(토큰 제거 후 redirect).
       if (currentPath.startsWith('/seller')) {
-        window.location.href = '/seller/login';
+        if (!localStorage.getItem('seller_token')) window.location.href = '/seller/login';
       } else if (currentPath.startsWith('/admin')) {
-        window.location.href = '/admin/login';
+        if (!localStorage.getItem('admin_token')) window.location.href = '/admin/login';
       } else if (currentPath.startsWith('/agency')) {
-        window.location.href = '/agency/login';
+        if (!localStorage.getItem('agency_token')) window.location.href = '/agency/login';
       }
       // 일반 사용자: redirect 하지 않음 — 401 reject 만
       return Promise.reject(error);
@@ -670,6 +720,32 @@ api.interceptors.response.use(
 
     // 403 Forbidden
     if (error.response?.status === 403) {
+      // 🛡️ 2026-06-25: 관리자 미인증(세션 만료) 403 → raw 콘솔에러 대신 깔끔한 재로그인 유도.
+      //   code='ADMIN_AUTH_REQUIRED'(requireAdmin 의 !user 분기)만 처리 — role 부족/2FA/IP화이트리스트
+      //   (code 다름)은 제외해 오리다이렉트 방지. 이미 로그인 페이지면 루프 방지로 skip.
+      // code 위치 2형식 대응: flat({code}) + nested({error:{code}}, errorResponse 헬퍼).
+      const _d = error.response?.data as { code?: string; error?: { code?: string } } | undefined;
+      const _code = _d?.code || _d?.error?.code;
+      if (_code === 'ADMIN_AUTH_REQUIRED' && typeof window !== 'undefined') {
+        const _p = window.location.pathname;
+        if (!_p.startsWith('/admin/login')) {
+          try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); } catch { /* noop */ }
+          window.location.href = '/admin/login?error=session_expired';
+          return Promise.reject(error);
+        }
+      }
+      // 🛡️ 2026-07-04 (대표 "/admin 무한로딩" 전수조사): IP 화이트리스트 차단은 인증 *이전* 403 이라
+      //   401 인터셉터/재로그인으로 절대 안 풀림 — 조용한 빈 대시보드 대신 원인+해결을 명시(30초 디바운스).
+      if (_code === 'ADMIN_IP_BLOCKED') {
+        const _k = 'ip-blocked';
+        const _last = _recent5xx.get(_k) ?? 0;
+        if (Date.now() - _last > 30_000) {
+          _recent5xx.set(_k, Date.now());
+          import('@/hooks/useToast').then(({ toast }) =>
+            toast.error('현재 네트워크(IP)가 어드민 허용목록에 없어 서버가 차단했습니다. urdeal.kr/recover 에서 현재 IP 확인 후 Cloudflare 환경변수 ADMIN_IP_WHITELIST 에 추가하세요.', { duration: 10000 })
+          ).catch(() => { /* toast 불가 환경 — console 만 */ });
+        }
+      }
       console.warn('[API] 접근 권한 없음:', url);
     }
 

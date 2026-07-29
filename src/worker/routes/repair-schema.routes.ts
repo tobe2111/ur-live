@@ -73,6 +73,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // ── admins ─────────────────────────────────────
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
     { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
+    // 🛡️ 2026-07-05: 소프트 삭제 컬럼 — 목록 제외/로그인 차단 필터가 참조(admin-accounts delete).
+    { desc: 'admins.status', sql: "ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'" },
+    { desc: 'admins.deleted_at', sql: "ALTER TABLE admins ADD COLUMN deleted_at DATETIME" },
     { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
     { desc: 'admins.login_pin_hash', sql: "ALTER TABLE admins ADD COLUMN login_pin_hash TEXT" },
     // ── RBAC 부트스트랩 (2026-06-17) ───────────────────────────────────────────
@@ -101,7 +104,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
-    { desc: 'users.linkshop_theme', sql: "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'" },
+    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보 편집): 통신판매업신고번호. sellers 는 100컬럼 한도(예산제)라
+    //   side table(seller_business_info)에 저장 — 공개 응답은 seller.routes 가 additive enrich.
+    { desc: 'seller_business_info.mail_order_number', sql: "ALTER TABLE seller_business_info ADD COLUMN mail_order_number TEXT" },
+    // 🔗 2026-07-01 (대표 결정): users.linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드).
+    //   기존 DB 컬럼은 D1 DROP 위험이라 방치(무해). 신규 복구 대상에서 제외.
     // 🛡️ 2026-05-25 (migration 0279): 배송 재설계 — 지역 / 추적
     { desc: 'orders.region_code', sql: "ALTER TABLE orders ADD COLUMN region_code TEXT" },
     { desc: 'orders.extra_shipping_fee', sql: "ALTER TABLE orders ADD COLUMN extra_shipping_fee INTEGER NOT NULL DEFAULT 0" },
@@ -188,6 +195,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'order_items.product_thumbnail', sql: "ALTER TABLE order_items ADD COLUMN product_thumbnail TEXT" },
     { desc: 'order_items.product_sku', sql: "ALTER TABLE order_items ADD COLUMN product_sku TEXT" },
     { desc: 'order_items.price', sql: "ALTER TABLE order_items ADD COLUMN price INTEGER" },
+    // 🛡️ 2026-06-25: 제조사 드랍쉽 발송 쿼리(supplier-dashboard.routes:988)가 oi.status 참조 — migration 0118 컬럼, 미적용 환경 500 방지.
+    { desc: 'order_items.status', sql: "ALTER TABLE order_items ADD COLUMN status TEXT DEFAULT 'PENDING'" },
 
     // ── shipping_addresses ─────────────────────────
     { desc: 'shipping_addresses.label', sql: "ALTER TABLE shipping_addresses ADD COLUMN label TEXT" },
@@ -252,6 +261,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_products_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_seller_active ON products(seller_id, is_active)" },
     // user_notifications: user_id + created_at (알림 목록 최적화)
     { desc: 'idx_user_notifications_user', sql: "CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications(user_id, created_at DESC)" },
+    // 🔔 2026-07-01: 레거시 notifications 테이블 인덱스(마이그레이션에만 있던 것 — repair-schema 로 이관).
+    //   소비자 벨/목록(GET /api/social/notifications, unread-count)이 user_type+user_id 로 조회 → 풀스캔 방지.
+    { desc: 'idx_notifications_user', sql: "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_type, user_id, is_read)" },
+    { desc: 'idx_notifications_created', sql: "CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC)" },
     // 🛡️ 2026-05-16: 광고 슬롯 자동 push EXISTS 서브쿼리용 — 매 streams 호출 시 평가됨
     { desc: 'idx_ad_slots_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_ad_slots_seller_active ON ad_slots(current_seller_id, is_active, expires_at)" },
     // 🛡️ 2026-05-16: 공구 목록 (지도/리스트) hot query — category + is_active + group_buy_status
@@ -262,6 +275,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
     // 🗺️ 2026-06-18: 유저 "내 동네" 태깅 — region.routes 가 채움 (GPS/수동). "내 동네 딜" 필터 기준.
     { desc: 'user_regions table', sql: "CREATE TABLE IF NOT EXISTS user_regions (user_id TEXT PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, gu_code TEXT, source TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    // 📜 2026-07-05: 약관 v1.0 시행 — 가입 시 약관 동의 기록 (terms-consent.ts ensureTermsConsents 와 동일 스키마)
+    { desc: 'terms_consents table', sql: "CREATE TABLE IF NOT EXISTS terms_consents (id INTEGER PRIMARY KEY AUTOINCREMENT, subject_type TEXT NOT NULL, subject_id TEXT, user_id TEXT, terms_slug TEXT NOT NULL, terms_version TEXT NOT NULL, core_terms_agreed INTEGER DEFAULT 0, ip TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
@@ -309,12 +324,24 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'suppliers.manager_email', sql: "ALTER TABLE suppliers ADD COLUMN manager_email TEXT" },
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
+    // 🛡️ 2026-06-28 정산 보류 — 분쟁/환불 진행 중 성숙·지급 제외(matureSupplierSettlements·payoutSupplier 가 held_at IS NULL 만).
+    { desc: 'supplier_settlements.held_at', sql: "ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
     // 🚚 2026-06-09 제조사별 배송/주문 정책 — suppliers 3컬럼(0=제한/배송비/무료배송 없음) + 주문 배송비 합계.
     { desc: 'suppliers.min_order_amount', sql: "ALTER TABLE suppliers ADD COLUMN min_order_amount INTEGER DEFAULT 0" },
     { desc: 'suppliers.shipping_fee', sql: "ALTER TABLE suppliers ADD COLUMN shipping_fee INTEGER DEFAULT 0" },
     { desc: 'suppliers.free_ship_threshold', sql: "ALTER TABLE suppliers ADD COLUMN free_ship_threshold INTEGER DEFAULT 0" },
     { desc: 'wholesale_orders.shipping_total', sql: "ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0" },
+    // 🏭 2026-06-27 B2B 상태머신 단계 타임스탬프/사유 + 🛡️ 2026-06-28 배송비 단발환불 멱등 마커.
+    //   ensureOrderTables 의 ALTER 와 동일 — accept/reject/distributor-admin 라우트는 ensureOrderTables 를
+    //   안 거치는 경로가 있어 repair-schema 에도 등록(콜드 isolate 에서 컬럼 부재로 무음 실패하던 것 차단).
+    { desc: 'wholesale_orders.accepted_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN accepted_at DATETIME" },
+    { desc: 'wholesale_orders.rejected_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN rejected_at DATETIME" },
+    { desc: 'wholesale_orders.reject_reason', sql: "ALTER TABLE wholesale_orders ADD COLUMN reject_reason TEXT" },
+    { desc: 'wholesale_orders.cancelled_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN cancelled_at DATETIME" },
+    { desc: 'wholesale_orders.cancel_reason', sql: "ALTER TABLE wholesale_orders ADD COLUMN cancel_reason TEXT" },
+    { desc: 'wholesale_orders.confirmed_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN confirmed_at DATETIME" },
+    { desc: 'wholesale_orders.shipping_refunded', sql: "ALTER TABLE wholesale_orders ADD COLUMN shipping_refunded INTEGER NOT NULL DEFAULT 0" },
     // 🏦 2026-06-09 예치금 주문 멱등 — 더블클릭/재시도 이중차감 방지(ensureDepositSchema 와 동일, repair 일관성).
     { desc: 'wholesale_orders.idempotency_key', sql: "ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT" },
     { desc: 'idx_wholesale_orders_idem', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL" },
@@ -327,6 +354,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.distributor_credit_limit', sql: "ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0" },
     { desc: 'sellers.outstanding_balance', sql: "ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0" },
     { desc: 'sellers.credit_frozen', sql: "ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0" },
+    // 🔐 2026-07-11 계좌 재검증 게이트 — 정산 계좌 변경 시 0으로 리셋, 어드민 재검증 후 1 복원.
+    //   production-drift 컬럼(seller-profile.routes.ts 에서 동적 UPDATE 로만 써 repair-schema 미등록이었음).
+    //   check-sql-column-exists 가 static UPDATE 를 분석하려면 inline DDL 에 등록 필요.
+    { desc: 'sellers.is_verified', sql: "ALTER TABLE sellers ADD COLUMN is_verified INTEGER DEFAULT 1" },
     { desc: 'wholesale_credit_ledger', sql: `CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       distributor_seller_id INTEGER NOT NULL,
@@ -472,6 +503,62 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       updated_at TEXT
     )` },
     { desc: 'idx_partnership_inquiries_status', sql: "CREATE INDEX IF NOT EXISTS idx_partnership_inquiries_status ON partnership_inquiries(status, id DESC)" },
+    // 🎯 2026-06-30 유어애즈 일별 메트릭(멀티테넌트) — ensureMetricsHistorySchema 와 동일 스키마 등록(복구 가능성).
+    //   핵심: UNIQUE INDEX(account_id, tenant, snap_date) 가 있어야 UPSERT 의 ON CONFLICT 가 유효(멱등·미스토어 방지).
+    { desc: 'ad_daily_metrics', sql: `CREATE TABLE IF NOT EXISTS ad_daily_metrics (
+      account_id INTEGER NOT NULL,
+      tenant TEXT NOT NULL DEFAULT '',
+      snap_date TEXT NOT NULL,
+      cost INTEGER DEFAULT 0,
+      conv_amt INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      conv INTEGER DEFAULT 0,
+      imp INTEGER DEFAULT 0,
+      roas REAL,
+      avg_rnk REAL,
+      created_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(account_id, tenant, snap_date)
+    )` },
+    { desc: 'idx_ad_daily_metrics_uniq', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_daily_metrics_uniq ON ad_daily_metrics(account_id, tenant, snap_date)" },
+    // 🆕 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브). 토큰 at-rest 암호화.
+    { desc: 'social_accounts', sql: `CREATE TABLE IF NOT EXISTS social_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      account_ref TEXT,
+      display_name TEXT,
+      access_token_enc TEXT,
+      refresh_token_enc TEXT,
+      token_expires_at DATETIME,
+      extra TEXT DEFAULT '{}',
+      status TEXT DEFAULT 'active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { desc: 'idx_social_accounts_platform', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_social_accounts_platform ON social_accounts(platform)" },
+    { desc: 'social_posts', sql: `CREATE TABLE IF NOT EXISTS social_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      topic_slug TEXT,
+      title TEXT,
+      body TEXT NOT NULL,
+      hashtags TEXT DEFAULT '[]',
+      media_url TEXT,
+      media_kind TEXT DEFAULT 'none',
+      status TEXT DEFAULT 'draft',
+      external_id TEXT,
+      external_url TEXT,
+      error TEXT,
+      scheduled_at DATETIME,
+      published_at DATETIME,
+      ai_generated INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { desc: 'idx_social_posts_status', sql: "CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(platform, status)" },
+    // 🎬 릴스/쇼츠 영상 기획·렌더 추적(추가만).
+    { desc: 'social_posts.storyboard', sql: "ALTER TABLE social_posts ADD COLUMN storyboard TEXT" },
+    { desc: 'social_posts.render_provider_job', sql: "ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT" },
+    { desc: 'social_posts.render_status', sql: "ALTER TABLE social_posts ADD COLUMN render_status TEXT" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },
@@ -484,6 +571,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.region_si', sql: "ALTER TABLE products ADD COLUMN region_si TEXT" },
     { desc: 'products.region_gu', sql: "ALTER TABLE products ADD COLUMN region_gu TEXT" },
     { desc: 'idx_products_region', sql: "CREATE INDEX IF NOT EXISTS idx_products_region ON products(region_si, region_gu, category) WHERE is_active = 1" },
+    // 🌍 2026-07-08 (대표 "수천개 대비 — 지도영역/거리 조회"): 공간 인덱스. bbox(위경도 BETWEEN)·near(거리정렬)
+    //   쿼리가 스케일에서 풀스캔 안 하도록. group-buy-public GET /products 의 bbox/near 파라미터용 토대.
+    { desc: 'idx_products_geo', sql: "CREATE INDEX IF NOT EXISTS idx_products_geo ON products(restaurant_lat, restaurant_lng) WHERE is_active = 1" },
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
     //   네이버 예약 / 야놀자 / 카카오톡 채널 URL — 자체 캘린더 안 만들고 위임.
     { desc: 'products.external_booking_url', sql: "ALTER TABLE products ADD COLUMN external_booking_url TEXT" },
@@ -510,12 +600,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
+    { desc: 'agencies.commission_term_months', sql: "ALTER TABLE agencies ADD COLUMN commission_term_months INTEGER" },
     // 🛡️ 2026-05-21: 리뷰 대량 생성 (admin-review-generator) 가 INSERT 하는 컬럼.
     //   기존 0132 schema 에 user_name / selected_option / is_generated 없음 → 사용자 신고 "생성 실패".
     //   영구 fix: daily cron 이 ensure → endpoint 자체 ALTER 의존성 제거.
     { desc: 'product_reviews.user_name', sql: "ALTER TABLE product_reviews ADD COLUMN user_name TEXT" },
     { desc: 'product_reviews.selected_option', sql: "ALTER TABLE product_reviews ADD COLUMN selected_option TEXT" },
     { desc: 'product_reviews.is_generated', sql: "ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0" },
+    // 🏪 2026-07-07: 사장님 답글 — 기존엔 seller-analytics ensure 에서만 lazy ALTER(셀러가 답글 달 때) →
+    //   데모 리뷰 시드/표시 경로에서 컬럼 부재 위험. repair-schema 에 등록해 영구 보장(멱등).
+    { desc: 'product_reviews.seller_reply', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT" },
+    { desc: 'product_reviews.seller_reply_at', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME" },
     // 🛡️ 2026-05-24: /api/vouchers/my SELECT 가 참조하는 컬럼 — 미존재 시 첫 SELECT crash → fallback 만 동작 (applied_price 누락).
     //   영구 fix: repair-schema 에 등록 → 매일 18 UTC cron 이 자동 ADD COLUMN (멱등).
     //   gift_* 컬럼은 선물하기 기능 (voucher 양도) 용. refund_status 는 환불 추적용.
@@ -524,6 +619,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'vouchers.delivered_gift_name', sql: "ALTER TABLE vouchers ADD COLUMN delivered_gift_name TEXT" },
     { desc: 'vouchers.applied_discount_pct', sql: "ALTER TABLE vouchers ADD COLUMN applied_discount_pct INTEGER DEFAULT 0" },
     { desc: 'vouchers.applied_price', sql: "ALTER TABLE vouchers ADD COLUMN applied_price INTEGER" },
+    { desc: 'vouchers.is_experience', sql: "ALTER TABLE vouchers ADD COLUMN is_experience INTEGER DEFAULT 0" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },
@@ -553,6 +649,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'table seller_influencer_deals', sql: "CREATE TABLE IF NOT EXISTS seller_influencer_deals (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, influencer_id TEXT NOT NULL, commission_pct REAL NOT NULL, starts_at DATETIME DEFAULT (datetime('now')), ends_at DATETIME, status TEXT DEFAULT 'proposed', proposed_by TEXT NOT NULL, message TEXT, created_at DATETIME DEFAULT (datetime('now')), responded_at DATETIME, UNIQUE(seller_id, influencer_id))" },
     { desc: 'idx_seller_inf_deals_seller', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_seller ON seller_influencer_deals(seller_id, status)" },
     { desc: 'idx_seller_inf_deals_inf', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_inf ON seller_influencer_deals(influencer_id, status)" },
+    // 🎬 2026-07-12 WP-B 조건부 우대커미션 (콘텐츠 인증 시 발효). requires_content_proof=1 이면
+    //   인플 링크제출(proof_url,proof_status='submitted') → 매장 승인 시 status='active'(발효).
+    { desc: 'seller_influencer_deals.requires_content_proof', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN requires_content_proof INTEGER DEFAULT 0" },
+    { desc: 'seller_influencer_deals.proof_url', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN proof_url TEXT" },
+    { desc: 'seller_influencer_deals.proof_status', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN proof_status TEXT" },
+    // 🤝 2026-07-10 매장↔에이전시 위임 3단 모델 (docs/design/vendor-commission-passthrough.md §4.3)
+    //   관계+모드 저장만 — 돈 효과 0 (분배 엔진은 8월 flip 과 함께). SSOT ensure: store-agency-delegation.ts
+    { desc: 'table store_agency_delegation', sql: "CREATE TABLE IF NOT EXISTS store_agency_delegation (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, agency_id INTEGER NOT NULL, mode TEXT NOT NULL DEFAULT 'approval', granted_at DATETIME, revoked_at DATETIME, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')), UNIQUE(seller_id, agency_id))" },
+    { desc: 'idx_store_agency_delegation_agency', sql: "CREATE INDEX IF NOT EXISTS idx_store_agency_delegation_agency ON store_agency_delegation(agency_id, mode)" },
+    // 🎟️ 2026-07-06 공구 엔진 §2-B: 양방향 공구 제안(인플→매장 / 매장→인플). 상대방 승인 시 gb 세션 open.
+    { desc: 'table gb_proposals', sql: "CREATE TABLE IF NOT EXISTS gb_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, seller_id INTEGER, influencer_id TEXT NOT NULL, proposed_by TEXT NOT NULL, deadline DATETIME, price INTEGER, promo_pct REAL, target INTEGER, message TEXT, status TEXT DEFAULT 'proposed', response_note TEXT, created_at DATETIME DEFAULT (datetime('now')), responded_at DATETIME)" },
+    { desc: 'idx_gb_proposals_seller', sql: "CREATE INDEX IF NOT EXISTS idx_gb_proposals_seller ON gb_proposals(seller_id, status)" },
+    { desc: 'idx_gb_proposals_inf', sql: "CREATE INDEX IF NOT EXISTS idx_gb_proposals_inf ON gb_proposals(influencer_id, status)" },
+    { desc: 'idx_gb_proposals_product', sql: "CREATE INDEX IF NOT EXISTS idx_gb_proposals_product ON gb_proposals(product_id, status)" },
     { desc: 'seed: seller_referral_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('seller_referral_bonus_pct', '1', '인플 매장 영입 추가 commission %', datetime('now'))" },
     { desc: 'seed: seller_referral_bonus_months', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('seller_referral_bonus_months', '6', '영입 보너스 기간 (개월)', datetime('now'))" },
     { desc: 'seed: max_influencer_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('max_influencer_commission_pct', '2', '인플 commission 최대 cap %', datetime('now'))" },
@@ -722,6 +832,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
+    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 에이전시가 영입한 매장의 귀속을
+    //   user.id(users.id) → canonical agencies.id 로 정정. 기존 prospect/registration 이 user.id 를 저장해
+    //   대시보드(agencies.id 조회)에서 영입 매장·커미션이 안 보였음(forward fix 는 seller-prospects.routes).
+    //   가드: '이미 유효한 agencies.id 가 아니면서(NOT IN agencies.id) 유효한 linked_user_id 인(IN …) 값만'
+    //   매핑 → 정상 행 불변·멱등(재실행 시 값이 이미 agency id 라 제외)·collision 회피.
+    { desc: 'backfill: seller_prospects.introducer_id (agency user.id→agencies.id)', sql: `UPDATE seller_prospects SET introducer_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = CAST(seller_prospects.introducer_id AS INTEGER) LIMIT 1) WHERE introducer_type = 'agency' AND CAST(introducer_id AS INTEGER) IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND CAST(introducer_id AS INTEGER) NOT IN (SELECT id FROM agencies)` },
+    { desc: 'backfill: sellers.introduced_by_agency_id (user.id→agencies.id)', sql: `UPDATE sellers SET introduced_by_agency_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = sellers.introduced_by_agency_id LIMIT 1), updated_at = datetime('now') WHERE introduced_by_agency_id IS NOT NULL AND introduced_by_agency_id IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND introduced_by_agency_id NOT IN (SELECT id FROM agencies)` },
+    // 🏭 2026-06-29 (대표 신고 — "업로드 제품 카테고리 배치 안됨") 근본수정 backfill: 도매 상품 카테고리를
+    //   표준 3종(food/living/health)으로 정규화. 스토어 임포트('lifestyle' 하드코드)·레거시 자유입력값이
+    //   카탈로그 칩 필터(p.category='food'…)에 안 잡혀 미배치되던 것 일괄 치유. is_supply_product=1 만
+    //   (소비자 상품 불변 — 서비스 분리). 순서: food→health→나머지 catch-all living. 멱등(재실행 시 3종은 제외).
+    { desc: 'backfill: supply products category → food', sql: `UPDATE products SET category='food', updated_at=datetime('now') WHERE COALESCE(is_supply_product,0)=1 AND COALESCE(category,'') NOT IN ('food','living','health') AND (lower(category) LIKE '%food%' OR category LIKE '%식품%' OR category LIKE '%먹거리%' OR category LIKE '%음료%' OR category LIKE '%간식%' OR category LIKE '%농산%' OR category LIKE '%수산%' OR category LIKE '%축산%' OR category LIKE '%신선%')` },
+    { desc: 'backfill: supply products category → health', sql: `UPDATE products SET category='health', updated_at=datetime('now') WHERE COALESCE(is_supply_product,0)=1 AND COALESCE(category,'') NOT IN ('food','living','health') AND (lower(category) LIKE '%health%' OR lower(category) LIKE '%supplement%' OR category LIKE '%건강%' OR category LIKE '%영양%' OR category LIKE '%비타민%' OR category LIKE '%다이어트%')` },
+    { desc: 'backfill: supply products category → living (catch-all)', sql: `UPDATE products SET category='living', updated_at=datetime('now') WHERE COALESCE(is_supply_product,0)=1 AND (category IS NULL OR category NOT IN ('food','living','health'))` },
     // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
     { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
     // 🛡️ 2026-05-22 P1: 교환권 페이지 로딩 perf — 사용자별 voucher 목록 조회.
@@ -732,7 +856,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   order.repository.ts createOrder 가 이 컬럼에 seller 의 현재 commission_rate 캡처.
     //   settlement-automation.ts 가 COALESCE(o.commission_rate, seller.rate) 로 우선 사용.
     //   production 에 컬럼 부재 환경 안전 — 본 ALTER 가 ensure.
-    { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 10.00" },
+    { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 5.00" }, // 🔒 2026-06-27 (감사 ⑤): 기본 5% 통일(셀러 기본·policy 와 일치). createOrder 가 셀러율 스냅샷하므로 평시 미사용 — fresh DB 일관용.
     { desc: 'orders.commission_amount', sql: "ALTER TABLE orders ADD COLUMN commission_amount INTEGER DEFAULT 0" },
     { desc: 'orders.seller_amount', sql: "ALTER TABLE orders ADD COLUMN seller_amount INTEGER DEFAULT 0" },
     // 🛡️ 2026-05-23: SQL column mismatch 23건 일괄 fix — production-schema 정합.
@@ -755,6 +879,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
     //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).
     { desc: 'user_points.total_used', sql: "ALTER TABLE user_points ADD COLUMN total_used INTEGER DEFAULT 0" },
+    //   - 💸 2026-07-05 유상/무상 버킷 (point-buckets.ts SSOT): free_balance = 무상 잔액(0 ≤ free ≤ balance),
+    //     free_delta = 거래별 무상 적용분(적립+/차감-) — 무상 우선 차감·무상 환급 제외·환불 대칭 복원 근거.
+    { desc: 'user_points.free_balance', sql: "ALTER TABLE user_points ADD COLUMN free_balance INTEGER NOT NULL DEFAULT 0" },
+    { desc: 'point_transactions.free_delta', sql: "ALTER TABLE point_transactions ADD COLUMN free_delta INTEGER DEFAULT 0" },
+    //   - 🎁 2026-07-05 체험단(FCFS) 참여 리뷰 자동 표시 (표시광고법) — 작성 API 서버 판정으로 세팅.
+    { desc: 'product_reviews.is_sponsored', sql: "ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0" },
     //   - settlements: 셀러 정산 신청 / 자동 정산 보고서 양쪽 모두 settlements 테이블 사용.
     //     amount / bank_name / account_number / account_holder = 셀러 정산 신청 지급 정보.
     //     total_sales / total_platform_fee / total_settlement / generated_at = 자동 정산 보고서 집계 컬럼.
@@ -817,6 +947,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.mall_id', sql: "ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'suppliers.mall_id', sql: "ALTER TABLE suppliers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'products.mall_id', sql: "ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 컬럼(기존 몰 기본 0/NULL = 무영향).
+    { desc: 'wholesale_malls.requires_license', sql: "ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0" },
+    { desc: 'wholesale_malls.license_label', sql: "ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT" },
+    { desc: 'wholesale_malls.features_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT" },
+    { desc: 'wholesale_malls.company_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN company_json TEXT" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.
@@ -840,6 +975,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   requiresTable 가드 — voucher_orders 는 아래 tables 루프에서 먼저 생성됨.
     { desc: 'voucher_orders.retry_count', sql: "ALTER TABLE voucher_orders ADD COLUMN retry_count INTEGER DEFAULT 0", requiresTable: 'voucher_orders' },
     { desc: 'voucher_orders.last_retry_at', sql: "ALTER TABLE voucher_orders ADD COLUMN last_retry_at DATETIME", requiresTable: 'voucher_orders' },
+    // 📖 2026-07-11 (가이드 버전 재시드): 수동편집 보존 플래그 — blog_posts.manually_edited 미러.
+    //   guide.routes.ts maybeSyncGuideSeed 가 manually_edited=0 섹션만 시드 최신화(관리자 편집 보존).
+    //   guide.routes.ts 인라인 ensure(ensureGuideEditColumn) 병행 — 여기 등록은 repair 경로용.
+    { desc: 'operation_guides.manually_edited', sql: "ALTER TABLE operation_guides ADD COLUMN manually_edited INTEGER DEFAULT 0", requiresTable: 'operation_guides' },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -941,6 +1080,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
+    // 📜 2026-07-05 약관 동의 로그 (누가·언제·몇 버전) — worker/utils/terms-agreements.ts SSOT 미러.
+    { name: 'terms_agreements', sql: `CREATE TABLE IF NOT EXISTS terms_agreements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_type TEXT NOT NULL,
+      subject_id TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      doc_version TEXT NOT NULL,
+      agreed INTEGER NOT NULL DEFAULT 1,
+      agreed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(subject_type, subject_id, doc_type, doc_version)
+    )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
@@ -970,6 +1120,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       product_id INTEGER NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, product_id)
+    )` },
+    // 🔔 2026-07-01: 찜 재입고/가격인하 알림 dedup(멱등) — wishlist-notify cron 이 self-ensure 하지만
+    //   fresh/repaired DB 보장 위해 등록. user_id TEXT(= wishlists.user_id 저장형).
+    { name: 'wishlist_stock_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_stock_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      notified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, product_id)
+    )` },
+    { name: 'wishlist_price_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_price_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      last_price INTEGER,
+      notified_at DATETIME,
+      PRIMARY KEY (user_id, product_id)
     )` },
     { name: 'agencies', sql: `CREATE TABLE IF NOT EXISTS agencies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1133,6 +1298,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       section_title TEXT NOT NULL,
       section_order INTEGER DEFAULT 0,
       content_md TEXT NOT NULL,
+      manually_edited INTEGER DEFAULT 0,
       updated_by INTEGER,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guide_type, section_key)
@@ -1221,7 +1387,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
-    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →
+    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 이용권 매출 →
     //   각 주문마다 2% (agencies.store_intro_commission_pct) commission 적립.
     //   타입: 'signup_bonus' (가게 첫 결제 ₩30k) / 'sales_commission' (매출 2%) / 'growth_bonus' (월 100만 돌파 ₩50k).
     //   영구 commission — 12개월 제한 없이 입점 가게 평생 매출에 대해 누적.
@@ -1410,6 +1576,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_dpa_product', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_product ON digital_product_access(product_id)` },
     { name: 'idx_dpa_order', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_order ON digital_product_access(order_id)` },
     { name: 'idx_dpa_token', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_token ON digital_product_access(access_token)` },
+    // 🎫 2026-06-26: order_item 당 access 1행 — INSERT OR IGNORE 가 confirm+webhook 양 경로에서 진짜 멱등이 되도록
+    //   UNIQUE. (best-effort — 기존 중복행 있으면 생성 실패하나 타 repair 안 깨뜨림; 그 경우 status CAS 가 단일실행 보장.)
+    { name: 'idx_dpa_order_item_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_dpa_order_item_unique ON digital_product_access(order_item_id)` },
     { name: 'digital_download_logs', sql: `CREATE TABLE IF NOT EXISTS digital_download_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_id INTEGER NOT NULL,
@@ -1455,14 +1624,19 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       active INTEGER NOT NULL DEFAULT 1,
       updated_at DATETIME DEFAULT (datetime('now'))
     )` },
-    // 기본 등급 시드 (어드민이 /admin 에서 마진율 편집). 고등급(A)일수록 큰 보장마진(= 낮은 공급가). 프리미엄/프로/일반.
+    // 기본 등급 시드 (어드민이 /admin 에서 마진율 편집). 고등급(A)일수록 큰 보장마진(= 낮은 공급가). Basic/Standard/Premium (2026-06-29 영문화).
     { name: 'seed: distributor_grades', sql: `INSERT OR IGNORE INTO distributor_grades (grade, label, margin_pct, sort_order, is_special) VALUES
-      ('A','프리미엄',38,1,0),
-      ('B','프로',30,2,0),
-      ('C','일반',15,3,0),
+      ('A','Premium',38,1,0),
+      ('B','Standard',30,2,0),
+      ('C','Basic',15,3,0),
       ('D','D등급',8,4,0),
       ('OEM','OEM',40,5,0),
       ('SPECIAL','특별할인(기간한정)',45,9,1)` },
+    // 🏭 2026-06-29 (등급명 영문화) — 기존 DB(옛 라벨 프리미엄/프로/일반) relabel. 멱등(영문이면 no-op),
+    //   label 만 변경(마진/정렬 등 가격 요소 불변). distributor-admin/helpers v3 와 이중 보장.
+    { name: 'relabel: distributor_grades A→Premium', sql: "UPDATE distributor_grades SET label = 'Premium' WHERE grade = 'A' AND label IN ('프리미엄','프리미엄 등급')" },
+    { name: 'relabel: distributor_grades B→Standard', sql: "UPDATE distributor_grades SET label = 'Standard' WHERE grade = 'B' AND label IN ('프로','프로 등급')" },
+    { name: 'relabel: distributor_grades C→Basic', sql: "UPDATE distributor_grades SET label = 'Basic' WHERE grade = 'C' AND label IN ('일반','일반 등급')" },
 
     // 🛡️ 2026-06-16 어드민 활동 감사로그 — writeAuditLog/adminAuditMiddleware 가 기록(모든 어드민 변경 자동).
     //   ⚠️ 마이그레이션(0126/0128)에만 있어 prod(마이그 미실행)엔 테이블이 없을 수 있음 → writeAuditLog 가
@@ -1607,6 +1781,50 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_wholesale_tax_inv_distributor', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_distributor ON wholesale_tax_invoices(distributor_seller_id, type, created_at DESC)` },
     { name: 'idx_wholesale_tax_inv_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_supplier ON wholesale_tax_invoices(supplier_id, type, created_at DESC)` },
     { name: 'idx_wholesale_tax_inv_status', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_status ON wholesale_tax_invoices(status, type, created_at DESC)` },
+    // 🧾 2026-07-01: 소비자 정산 매입세금계산서 역발행(셀러→플랫폼). settlement-tax-invoices.ts.
+    //   유어딜이 사업자 유저 셀러 정산 지급 시 초안 자동생성 → 셀러 승인 → provider(유니포스트) 발행.
+    //   ⚠️ 도매(wholesale_tax_invoices)와 별개 — 소비자(유어딜 공구) 전용 서비스 분리.
+    { name: 'settlement_tax_invoices', sql: `CREATE TABLE IF NOT EXISTS settlement_tax_invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      settlement_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      supply_amount INTEGER NOT NULL DEFAULT 0,
+      vat_amount INTEGER NOT NULL DEFAULT 0,
+      total_amount INTEGER NOT NULL DEFAULT 0,
+      supplier_biz_no TEXT,
+      period TEXT,
+      status TEXT NOT NULL DEFAULT 'draft',
+      provider TEXT,
+      provider_ref TEXT,
+      nts_confirm_num TEXT,
+      note TEXT,
+      requested_at DATETIME,
+      approved_at DATETIME,
+      issued_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_settlement_tax_inv_settlement', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_settlement_tax_inv_settlement ON settlement_tax_invoices(settlement_id)` },
+    { name: 'idx_settlement_tax_inv_seller', sql: `CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_seller ON settlement_tax_invoices(seller_id, created_at DESC)` },
+    { name: 'idx_settlement_tax_inv_status', sql: `CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_status ON settlement_tax_invoices(status, created_at DESC)` },
+    // seller_business_info(대표자명/업태/종목/주소 — migration 0012) 역발행 표기용. 미존재 환경 대비 보강.
+    { name: 'seller_business_info', sql: `CREATE TABLE IF NOT EXISTS seller_business_info (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      business_number TEXT,
+      business_name TEXT,
+      ceo_name TEXT,
+      business_type TEXT,
+      business_category TEXT,
+      postal_code TEXT,
+      address TEXT,
+      phone TEXT,
+      email TEXT,
+      is_verified INTEGER DEFAULT 0,
+      verified_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_seller_business_info_seller', sql: `CREATE INDEX IF NOT EXISTS idx_seller_business_info_seller ON seller_business_info(seller_id)` },
     // 🏭 2026-06-08 DATA-1: 고아행(FK 부재) 일일 스윕 리포트 (flag-only).
     { name: 'wholesale_integrity_reports', sql: `CREATE TABLE IF NOT EXISTS wholesale_integrity_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1765,12 +1983,31 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       deposit_account TEXT,
       commission_rate REAL,
       categories_json TEXT,
+      requires_license INTEGER DEFAULT 0,
+      license_label TEXT,
+      features_json TEXT,
+      company_json TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { name: 'idx_wholesale_malls_host', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL` },
     { name: 'idx_wholesale_malls_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)` },
     { name: 'seed: wholesale_malls default (id=1)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at) VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))` },
+    // 🏥 2026-07-03 (의료용품 도매몰): 메디스타트(id=2, slug='medi') 시드 — slug UNIQUE 로 멱등, host 없음(?mall=medi 접근).
+    { name: 'seed: wholesale_malls medi (id=2)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, categories_json, requires_license, license_label, active, created_at) VALUES (2, 'medi', '메디스타트', NULL, '메디스타트', '#0ea5e9', '[{"id":"medical_device","label":"의료기기"},{"id":"hygiene","label":"위생용품"},{"id":"care","label":"간병용품"},{"id":"health","label":"건강용품"}]', 1, '의료기기 판매업 신고번호', 1, datetime('now'))` },
+    // 🏥 2026-07-03 규제 몰 인허가(신고번호) 사이드 테이블 — owner_type='supplier'|'distributor', owner 당 1행.
+    { name: 'wholesale_licenses', sql: `CREATE TABLE IF NOT EXISTS wholesale_licenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_type TEXT NOT NULL,
+      owner_id INTEGER NOT NULL,
+      mall_id INTEGER NOT NULL DEFAULT 1,
+      permit_no TEXT,
+      permit_url TEXT,
+      verified INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_license_owner', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_license_owner ON wholesale_licenses(owner_type, owner_id)` },
 
     // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
     { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (
@@ -1884,19 +2121,79 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         section_title TEXT NOT NULL,
         section_order INTEGER DEFAULT 0,
         content_md TEXT NOT NULL,
+        manually_edited INTEGER DEFAULT 0,
         updated_by INTEGER,
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(guide_type, section_key)
       )`).run();
+      // manually_edited 는 위 runColumnSteps 의 ALTER 가 old 테이블에 이미 추가함(같은 repair 실행 내 선행) → 보존 copy.
       await DB.prepare(`INSERT INTO operation_guides
-        (id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at)
-        SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at
+        (id, guide_type, section_key, section_icon, section_title, section_order, content_md, manually_edited, updated_by, updated_at)
+        SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, COALESCE(manually_edited, 0), updated_by, updated_at
         FROM operation_guides_old`).run();
       await DB.prepare("DROP TABLE operation_guides_old").run();
       tableResults.push({ name: 'operation_guides:check-migration', status: 'ok' });
     }
   } catch (e: any) {
     tableResults.push({ name: 'operation_guides:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
+  }
+
+  // 🔔 2026-07-01: 알림 기본 테이블 보장(canonical). 이전엔 repair-schema 에 인덱스만 있고
+  //   CREATE TABLE 이 없어, 마이그레이션(CI 미작동) 또는 lazy 인라인 생성에만 의존했음(fresh/
+  //   repaired DB 에서 push_subscriptions 부재 → 웹푸시 전면 no-op 등의 리스크). 특히
+  //   notifications.user_type 을 NOT NULL DEFAULT 'user' 로 통일 — user_type 없이 INSERT 하는
+  //   소비자 알림이 조용히 실패하지 않게 함. 모두 IF NOT EXISTS(기존 테이블 불변).
+  for (const t of [
+    { name: 'notifications', sql: `CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        user_type TEXT NOT NULL DEFAULT 'user',
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        read_at DATETIME
+      )` },
+    { name: 'user_notifications', sql: `CREATE TABLE IF NOT EXISTS user_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { name: 'agency_notifications', sql: `CREATE TABLE IF NOT EXISTS agency_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { name: 'push_subscriptions', sql: `CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        user_type TEXT NOT NULL DEFAULT 'user',
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+  ]) {
+    try {
+      await DB.prepare(t.sql).run();
+      tableResults.push({ name: `${t.name}:ensure`, status: 'ok' });
+    } catch (e: any) {
+      tableResults.push({ name: `${t.name}:ensure`, status: 'error', error: String(e?.message || e).slice(0, 200) });
+    }
   }
 
   // 🏭 2026-06-12: dashboard_notifications CHECK 제약 확장 — recipient_type 에 'supplier' 추가.
@@ -2072,6 +2369,27 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const result = await runSchemaRepair(DB);
   return c.json({ success: true, ...result });
+});
+
+// 🔧 2026-07-13 (데이터 감사 3단계): off-live user_id 이력 backfill (firebase_uid → 숫자 users.id).
+//   GET(또는 apply 미지정)=dry-run 카운트만. apply 실행은 POST + body {confirm:true}. 멱등·admin 전용.
+//   live(카카오)=대상 0(무동작). user_points 충돌(숫자 잔액행 이미 존재)은 건드리지 않고 conflict 보고.
+repairSchemaRoutes.get('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, false); // dry-run
+  return c.json({ success: true, dry_run: true, ...result });
+});
+
+repairSchemaRoutes.post('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const body = await c.req.json<{ confirm?: boolean }>().catch(() => ({} as { confirm?: boolean }));
+  const apply = body.confirm === true;
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, apply);
+  return c.json({ success: true, dry_run: !apply, ...result });
 });
 
 export { repairSchemaRoutes };

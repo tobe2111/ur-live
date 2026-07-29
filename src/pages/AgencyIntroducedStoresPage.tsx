@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-20: 에이전시 — "내가 입점시킨 가게" 대시보드 (Phase 2).
  *
- * 사용자 요청: 에이전시 = 가게 입점 영업. 입점 가게의 모든 공구권 매출 → 2% 영구 commission.
+ * 에이전시 = 가게 입점 영업. 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
  *   추가 보상: ₩30k 가입 보너스 (가게 첫 결제) + ₩50k 월 성장 보너스 (월 100만 돌파).
  *
  * 페이지 구성:
@@ -28,6 +28,8 @@ interface Summary {
   pending_commission: number
   available_commission: number
   paid_commission: number
+  commission_pct?: number  // 🏷️ 2026-07-02: 본 에이전시 실제 적용 요율(설정값 연동, 기본 SSOT 1%)
+  funding_source?: string  // 💡 flip B1 선반영 — 'platform'(기본) | 'owner' (프레이밍 게이트)
 }
 
 interface IntroducedStore {
@@ -42,6 +44,7 @@ interface IntroducedStore {
   active_group_buys: number
   total_commission: number
   pending_commission: number
+  term_started_at: string | null
 }
 
 interface CommissionEntry {
@@ -60,7 +63,20 @@ interface CommissionEntry {
 interface IntroCode {
   intro_code: string | null
   commission_pct: number
+  term_months: number
   share_url: string | null
+}
+
+// 🗓️ 2026-07-05 (운영 감사 Q6): 매장별 커미션 잔여기간 — 기산일 = 첫 결제(signup_bonus).
+//   termMonths=0(미설정) → 무제한. 기산 전(첫 결제 없음) → 기산 전. 경과 → 잔여 N개월/만료.
+function termRemainLabel(termMonths: number, startedAt: string | null): { text: string; tone: 'ok' | 'warn' | 'muted' } {
+  if (!termMonths || termMonths <= 0) return { text: '무제한', tone: 'muted' }
+  if (!startedAt) return { text: `첫 결제 전 (${termMonths}개월)`, tone: 'muted' }
+  const elapsedMonths = (Date.now() - new Date(startedAt).getTime()) / (30.44 * 24 * 3600 * 1000)
+  const remain = termMonths - elapsedMonths
+  if (remain <= 0) return { text: '기간 만료', tone: 'muted' }
+  if (remain <= 3) return { text: `잔여 ${Math.ceil(remain)}개월`, tone: 'warn' }
+  return { text: `잔여 ${Math.floor(remain)}개월`, tone: 'ok' }
 }
 
 const TYPE_LABEL: Record<CommissionEntry['type'], { label: string; color: string }> = {
@@ -97,6 +113,9 @@ export default function AgencyIntroducedStoresPage() {
   const commissions = commissionsQ.data ?? []
   const introCode = introCodeQ.data ?? null
   const loading = summaryQ.isLoading || storesQ.isLoading || commissionsQ.isLoading || introCodeQ.isLoading
+  // 💡 2026-07-11 (flip B1 선반영): 재원 게이트 — 'owner' 확인 시에만 "매장 promo 재원" 프레이밍.
+  //   미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  const ownerFunded = summary?.funding_source === 'owner'
 
   const handleCopyCode = async () => {
     if (!introCode?.share_url) return
@@ -115,7 +134,11 @@ export default function AgencyIntroducedStoresPage() {
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="내가 입점시킨 가게"
-          subtitle="입점 가게의 매출 2% 영구 commission · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000"
+          /* 💡 flip B1 (게이트드 선반영): owner-펀딩 확인 시에만 "매장 promo 재원" 병기 —
+             platform(현행 기본) 은 기존 문구 byte-동일 */
+          subtitle={ownerFunded
+            ? `입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission — 매장 promo(매장 몫) 재원 (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`
+            : `입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
           icon={<Store className="h-5 w-5" />}
         />
 
@@ -139,9 +162,9 @@ export default function AgencyIntroducedStoresPage() {
               />
               <Kpi
                 icon={<Wallet className="w-5 h-5 text-emerald-600" />}
-                label="출금 가능"
+                label="지급 가능 (7일 성숙)"
                 value={`₩${formatNumber(summary?.available_commission ?? 0)}`}
-                sub={`대기 ₩${formatNumber(summary?.pending_commission ?? 0)}`}
+                sub={`성숙 중(7일 미경과) ₩${formatNumber(summary?.pending_commission ?? 0)}`}
                 bg="bg-emerald-50 border-emerald-100"
               />
               <Kpi
@@ -174,7 +197,10 @@ export default function AgencyIntroducedStoresPage() {
               <p className="text-xs text-gray-600 mt-2 leading-relaxed">
                 가게 사장님에게 이 코드를 알려주거나 가입 링크를 공유하세요.
                 <br />
-                가입 시 자동 매칭 → 입점 가게의 모든 매출에 <strong>{introCode?.commission_pct ?? 2}%</strong> 영구 commission.
+                가입 시 자동 매칭 → 입점 가게의 매출에 <strong>{introCode?.commission_pct ?? 1}%</strong> commission
+                {introCode?.term_months ? ` (첫 판매 확정일로부터 ${introCode.term_months}개월)` : ''}.
+                {/* 💡 flip B1: owner-펀딩일 때만 재원 출처 병기 — platform 동안 미렌더(기존 문구 불변) */}
+                {ownerFunded && ' 커미션은 매장 promo(매장 몫) 재원에서 지급됩니다.'}
               </p>
             </div>
 
@@ -237,6 +263,16 @@ export default function AgencyIntroducedStoresPage() {
                         <p className={`text-sm font-bold ${s.active_group_buys > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{s.active_group_buys}</p>
                         <p className="text-[10px] text-gray-400">개</p>
                       </div>
+                      {(() => {
+                        const term = termRemainLabel(introCode?.term_months ?? 0, s.term_started_at)
+                        return (
+                          <div className="text-center">
+                            <p className="text-[10px] text-gray-500">커미션 기간</p>
+                            <p className={`text-xs font-bold ${term.tone === 'warn' ? 'text-amber-600' : term.tone === 'ok' ? 'text-emerald-600' : 'text-gray-400'}`}>{term.text}</p>
+                            {s.term_started_at && <p className="text-[10px] text-gray-400">기산 {new Date(s.term_started_at).toLocaleDateString('ko-KR')}</p>}
+                          </div>
+                        )
+                      })()}
                       <div className="text-right">
                         <p className="text-[10px] text-gray-500">누적 매출</p>
                         <p className="text-sm font-bold text-gray-900">₩{formatNumber(s.total_sales)}</p>

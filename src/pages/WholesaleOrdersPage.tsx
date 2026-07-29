@@ -2,14 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download, CheckCircle2, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
+import { safeDate } from '@/utils/safe-date'
 
 // 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadWholesaleXlsx(path: string, filename: string) {
@@ -103,7 +108,7 @@ function OrderNotesThread({ orderId }: { orderId: number }) {
                       <span className="block text-[13px] leading-[1.45] whitespace-pre-wrap break-words">{n.body}</span>
                     </div>
                     <span className="mt-1 text-[11px] tabular-nums" style={{ color: WT.ink4 }}>
-                      {AUTHOR_LABEL[n.author_type] || n.author_type} · {new Date(n.created_at).toLocaleString('ko-KR')}
+                      {AUTHOR_LABEL[n.author_type] || n.author_type} · {safeDate(n.created_at)?.toLocaleString('ko-KR') ?? '-'}
                     </span>
                   </li>
                 )
@@ -133,8 +138,8 @@ function OrderNotesThread({ orderId }: { orderId: number }) {
   )
 }
 
-// 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후.
-const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CREDIT'])
+// 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후. (2026-06-27 ACCEPTED 추가 — 백엔드 정합.)
+const CLAIMABLE = new Set(['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CREDIT'])
 
 // 🏭 2026-06-04 유통스타트 도매 주문 내역 — TDS 라이트 시안 정비. 라이트 고정 B2B.
 
@@ -144,8 +149,33 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   const navigate = useNavigate()
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
+  const { data: orders = [], isLoading: loading, isError, refetch } = useWholesaleOrders()
+  const qc = useQueryClient()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
+  const [busyOrderId, setBusyOrderId] = useState<number | null>(null)
+  // 🏭 2026-06-27 (대표 — 마무리/발송전취소): 구매확정(SHIPPED→DONE) · 발송 전 주문취소(예치금 환불).
+  async function confirmReceipt(id: number) {
+    // 🛡️ 2026-06-29 (audit): 구매확정(SHIPPED→DONE)은 비가역 — 정산 확정 + 클레임 창 종료. 실수 확정 방지 게이트.
+    if (!(await confirmDialog({ message: `주문 #${id} 을(를) 구매확정할까요?\n확정하면 제조사 정산이 확정되고 이후 클레임이 제한돼요.`, confirmText: '구매확정' }))) return
+    setBusyOrderId(id)
+    try {
+      await api.post(`/api/wholesale/orders/${id}/confirm`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      toast.success('구매확정되었습니다')
+      refetch()
+      // 🏭 2026-06-30: 홈 '수령 확인 대기' 배너 즉시 갱신(구매확정으로 카운트 1↓).
+      qc.invalidateQueries({ queryKey: queryKeys.wholesale('home') })
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '구매확정 실패') } finally { setBusyOrderId(null) }
+  }
+  async function cancelOrder(id: number) {
+    // 🛡️ 2026-06-29 (audit): 네이티브 window.confirm → 통일 디자인 confirmDialog(다른 도매 페이지와 일관, danger 스타일).
+    if (!(await confirmDialog({ message: `주문 #${id} 을(를) 취소할까요? 예치금이 환불됩니다. (이미 발송된 주문은 취소할 수 없어요)`, danger: true, confirmText: '주문 취소' }))) return
+    setBusyOrderId(id)
+    try {
+      await api.post(`/api/wholesale/orders/${id}/cancel`, { reason: '판매사 취소' }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      toast.success('주문이 취소되고 예치금이 환불되었습니다')
+      refetch()
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문 취소 실패') } finally { setBusyOrderId(null) }
+  }
 
   // 🧭 2026-06-10 (생애주기 감사 갭#2): 내가 제기한 클레임 상태 추적 — 제기만 되고 볼 곳이 없던 갭.
   type MyClaim = { id: number; wholesale_order_id: number; reason_code: string; reason_text: string | null; status: string; admin_memo: string | null; created_at: string }
@@ -159,11 +189,17 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
       .catch(() => { /* 표시 전용 — 실패 시 섹션 미노출 */ })
   }
   useEffect(() => { loadClaims() }, [])
+  // 🏭 2026-07-01 (라이브 감사): 서버 클레임 5종(open/reviewing/approved/rejected/resolved) 전부 커버 —
+  //   이전엔 reviewing/resolved 누락으로 영문 raw 코드가 판매사 화면에 노출됐음.
   const CLAIM_STATUS: Record<string, { t: string; c: string; bg: string }> = {
     open: { t: '접수됨 · 심사 중', c: '#4b5563', bg: '#f3f4f6' },
+    reviewing: { t: '검토 중', c: '#92400E', bg: '#FEF3C7' },
     approved: { t: '승인 — 환불 처리', c: '#374151', bg: '#D1FAE5' },
     rejected: { t: '반려', c: '#B91C1C', bg: '#FEE2E2' },
+    resolved: { t: '처리 완료', c: '#374151', bg: '#E5E7EB' },
   }
+  // 심사 중(미해결) = open + reviewing (이전엔 open 만 세어 검토중 클레임이 카운터에서 빠졌음).
+  const claimPendingCount = claims.filter(cl => cl.status === 'open' || cl.status === 'reviewing').length
 
   useEffect(() => { if (!embedded && !token) navigate('/wholesale/login') }, [embedded, token, navigate])
 
@@ -179,7 +215,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
             <button onClick={() => setClaimsOpen(v => !v)} className="w-full flex items-center justify-between px-4 h-12">
               <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
                 내 클레임 {claims.length}건
-                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#4b5563' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
+                {claimPendingCount > 0 && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#4b5563' }}>· 심사 중 {claimPendingCount}</span>}
               </span>
               <span className="text-[12px]" style={{ color: WT.ink4 }}>{claimsOpen ? '접기' : '펼치기'}</span>
             </button>
@@ -194,7 +230,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ color: cs.c, background: cs.bg }}>{cs.t}</span>
                       </div>
                       {cl.admin_memo && <p className="text-[11px] mt-1" style={{ color: WT.ink3 }}>운영자: {cl.admin_memo}</p>}
-                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>{new Date(cl.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>{safeDate(cl.created_at)?.toLocaleString('ko-KR') ?? '-'}</p>
                     </div>
                   )
                 })}
@@ -203,7 +239,14 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
           </div>
         )}
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+          <WholesaleLoading />
+        ) : isError ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <Package className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
+            <p className="text-[15px] font-medium mb-1" style={{ color: WT.ink2 }}>주문 내역을 불러오지 못했어요</p>
+            <p className="text-[13px] mb-4" style={{ color: WT.ink4 }}>네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-6 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+          </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
             <Package className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
@@ -218,13 +261,94 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
               return (
                 <div key={o.id} className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-[12px] tabular-nums" style={{ color: WT.ink4 }}>{new Date(o.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-[12px] tabular-nums" style={{ color: WT.ink4 }}>{safeDate(o.created_at)?.toLocaleString('ko-KR') ?? '-'}</span>
                     <span className="text-[12px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ color: st.c, background: st.bg }}>{st.t}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] font-medium tabular-nums" style={{ color: WT.ink2 }}>주문 #{o.id}{o.grade ? ` · ${o.grade}등급가` : ''}</span>
-                    <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
+                    <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                   </div>
+
+                  {/* 🏭 2026-06-30: 거절/취소 사유 — 제조사가 주문을 거절하면 판매사가 왜인지 알 수 있게(가시성 갭). */}
+                  {(() => {
+                    const isRej = o.status === 'REJECTED' && !!o.reject_reason
+                    const isCan = (o.status === 'CANCELLED' || o.status === 'REFUNDED') && !!o.cancel_reason
+                    if (!isRej && !isCan) return null
+                    return (
+                      <div className="mt-2.5 rounded-xl px-3.5 py-2.5 flex items-start gap-2" style={{ background: isRej ? '#FEF3F2' : WT.fill, border: '1px solid ' + (isRej ? '#FECDCA' : WT.line) }}>
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: isRej ? '#B42318' : WT.ink3 }} />
+                        <p className="text-[12px] leading-relaxed" style={{ color: isRej ? '#B42318' : WT.ink2 }}>
+                          <b>{isRej ? '제조사 거절 사유' : '취소 사유'}</b>: {isRej ? o.reject_reason : o.cancel_reason}
+                        </p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* 🏭 2026-06-29 주문 라인아이템 — 상품/제조사/단가×수량/소계 */}
+                  {o.items && o.items.length > 0 && (
+                    <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
+                      {o.items.map((it, idx) => (
+                        <div key={idx} className="flex items-start justify-between gap-3 px-3.5 py-2.5" style={idx > 0 ? { borderTop: '1px solid ' + WT.line } : undefined}>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-medium truncate" style={{ color: WT.ink }}>{it.name || `상품 #${it.product_id}`}{it.option_label ? <span style={{ color: WT.ink4 }}> · {it.option_label}</span> : null}
+                              {/* 🏭 2026-07-01 (라이브 감사): 라인별 상태 — 부분환불 주문에서 어떤 라인이 환불/발송됐는지 가시화 */}
+                              {it.line_status === 'REFUNDED' && <span className="ml-1.5 text-[10.5px] font-bold px-1.5 py-0.5 rounded" style={{ color: '#B42318', background: '#FEE2E2' }}>환불됨</span>}
+                              {it.line_status === 'SHIPPED' && <span className="ml-1.5 text-[10.5px] font-bold px-1.5 py-0.5 rounded" style={{ color: '#1D4ED8', background: '#DBEAFE' }}>발송</span>}
+                            </p>
+                            <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>
+                              {it.supplier_name ? `${it.supplier_name} · ` : ''}{won(it.distributor_unit_price)} × {it.qty}개
+                            </p>
+                            {it.ship_to_name && (
+                              <p className="text-[11px] mt-0.5" style={{ color: WT.ink3 }}>📦 {it.ship_to_name}{it.ext_order_no ? ` · 주문 ${it.ext_order_no}` : ''}</p>
+                            )}
+                            {/* 🏭 2026-07-01 (라이브 감사): 라인별 운송장 — 다제조사/부분발송은 주문레벨 tracking 이 없어 여기 표시(이전엔 어디에도 안 뜸) */}
+                            {it.tracking_number && !o.tracking_number && (
+                              <button onClick={() => copyTrack(it.tracking_number!)} className="text-[11px] mt-0.5 inline-flex items-center gap-1" style={{ color: WT.ink2 }}>
+                                <Truck className="w-3 h-3" /> {it.courier || '택배'} {it.tracking_number} <span style={{ color: WT.ink4 }}>복사</span>
+                              </button>
+                            )}
+                          </div>
+                          <span className="text-[13px] font-bold tabular-nums whitespace-nowrap" style={{ color: WT.ink2 }}>{won(it.line_total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 금액 분해 — 상품 합계 / 배송비 (합계는 위 헤더에 표시) */}
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span style={{ color: WT.ink4 }}>상품 합계</span>
+                      <span className="tabular-nums" style={{ color: WT.ink2 }}>{won(o.subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span style={{ color: WT.ink4 }}>배송비</span>
+                      <span className="tabular-nums" style={{ color: WT.ink2 }}>{(o.shipping_total ?? 0) > 0 ? won(o.shipping_total) : '무료'}</span>
+                    </div>
+                    {/* 🏭 2026-07-01 (라이브 감사): 부분/전액 환불액 — 판매사 환불 가시성(이전엔 전액만 표시). */}
+                    {(o.refunded_amount ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span style={{ color: '#B42318' }}>환불액</span>
+                        <span className="tabular-nums font-semibold" style={{ color: '#B42318' }}>− {won(o.refunded_amount)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 배송지 */}
+                  {(o.ship_to_name || o.ship_to_address) && (
+                    <div className="mt-3 rounded-xl px-3.5 py-2.5" style={{ background: WT.fill2 }}>
+                      <p className="text-[11px] font-semibold mb-0.5" style={{ color: WT.ink3 }}>배송지</p>
+                      {(o.ship_to_name || o.ship_to_phone) && (
+                        <p className="text-[12px]" style={{ color: WT.ink2 }}>{o.ship_to_name || ''}{o.ship_to_phone ? ` · ${o.ship_to_phone}` : ''}</p>
+                      )}
+                      {o.ship_to_address && (
+                        <p className="text-[12px]" style={{ color: WT.ink3 }}>{o.ship_to_postal ? `(${o.ship_to_postal}) ` : ''}{o.ship_to_address}</p>
+                      )}
+                      {o.ship_to_message && (
+                        <p className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>💬 {o.ship_to_message}</p>
+                      )}
+                    </div>
+                  )}
+
                   {o.tracking_number && (
                     <div className="mt-3 flex items-stretch gap-2">
                       <button onClick={() => copyTrack(o.tracking_number!)} className="flex-1 flex items-center justify-between rounded-xl px-3.5 h-11" style={{ background: WT.fill2 }}>
@@ -242,8 +366,20 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                       )}
                     </div>
                   )}
+                  {/* 🏭 2026-06-27: 발송완료 → 구매확정(DONE) */}
+                  {(o.status === 'SHIPPED' || o.status === 'PARTIAL_REFUNDED') && (
+                    <button onClick={() => confirmReceipt(o.id)} disabled={busyOrderId === o.id} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-50" style={{ background: WT.ink }}>
+                      {busyOrderId === o.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} 구매확정
+                    </button>
+                  )}
+                  {/* 🏭 2026-06-27: 발송 전(PAID/ACCEPTED) 주문 취소 — 예치금 환불(서버가 발송된 라인 있으면 거부) */}
+                  {(o.status === 'PAID' || o.status === 'ACCEPTED') && (
+                    <button onClick={() => cancelOrder(o.id)} disabled={busyOrderId === o.id} className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
+                      {busyOrderId === o.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} 주문 취소
+                    </button>
+                  )}
                   {CLAIMABLE.has(o.status) && (
-                    <button onClick={() => setClaimOrderId(o.id)} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
+                    <button onClick={() => setClaimOrderId(o.id)} className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
                       <AlertTriangle className="w-4 h-4" style={{ color: WT.brand }} /> 클레임 제기
                     </button>
                   )}
@@ -264,7 +400,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 주문 내역 - 유통스타트" description="판매사 도매 주문 내역" url="/wholesale/orders" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">

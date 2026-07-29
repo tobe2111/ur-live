@@ -62,6 +62,7 @@ app.get('/', async (c) => {
     rows = await c.env.DB.prepare(`
       SELECT a.id, a.name, a.contact_name, a.email, a.phone, a.status, a.created_at,
              COALESCE(a.commission_rate, 2.0) AS commission_rate,
+             a.store_intro_commission_pct, a.commission_term_months,
              a.linked_user_id,
              COUNT(ag.seller_id) AS seller_count
       FROM agencies a
@@ -86,7 +87,7 @@ app.post('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { name, contact_name, email, password, phone } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
-  }>()
+  }>().catch(() => ({} as any))
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: 'name, contact_name, email, password 필수' }, 400)
@@ -108,6 +109,12 @@ app.post('/', async (c) => {
     VALUES (?, ?, ?, ?, ?)
   `).bind(name, contact_name, email, hash, phone || null).run()
 
+  // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+  //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+  //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+  await c.env.DB.prepare('UPDATE agencies SET commission_term_months = 24 WHERE id = ? AND commission_term_months IS NULL')
+    .bind(result.meta.last_row_id).run().catch(() => {})
+
   return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
 })
 
@@ -115,13 +122,16 @@ app.post('/', async (c) => {
 app.patch('/:id', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const id = Number(c.req.param('id'))
-  const { name, contact_name, phone, status, password, commission_rate, tier, tier_locked, auto_settle } = await c.req.json<{
+  const { name, contact_name, phone, status, password, commission_rate, tier, tier_locked, auto_settle, store_intro_commission_pct, commission_term_months } = await c.req.json<{
     name?: string; contact_name?: string; phone?: string; status?: string; password?: string;
     commission_rate?: number;
     tier?: 'new'|'junior'|'senior';        // Q1 — 어드민 수동 등급 변경
     tier_locked?: boolean;                  // Q1 — true 면 자동 평가 무시
     auto_settle?: boolean;                  // P0 #3 — 자동 정산 ON/OFF
-  }>()
+    // 🛡️ 2026-06-27 (대표 — per-agency 율·기간 조정): 매장영입 커미션 율(%) + 한도(개월).
+    store_intro_commission_pct?: number;    // 매장영입 매출 commission % (creditAgencyStoreIntroCommission 가 읽음)
+    commission_term_months?: number | null; // 영입 가게당 commission 지급 한도(개월). null/0 = 무제한(현행)
+  }>().catch(() => ({} as any))
 
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(id).first()
   if (!existing) return c.json({ success: false, error: 'Not found' }, 404)
@@ -135,6 +145,21 @@ app.patch('/:id', async (c) => {
 
   // commission_rate 컬럼 보장
   await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_rate REAL DEFAULT 2.0").run().catch(swallow('admin:api:admin-agency'))
+  // 🛡️ 2026-06-27: per-agency 매장영입 율·기간 컬럼 보장 (NULL term = 무제한 = 현행).
+  await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL").run().catch(swallow('admin:agency:pct'))
+  await c.env.DB.prepare("ALTER TABLE agencies ADD COLUMN commission_term_months INTEGER").run().catch(swallow('admin:agency:term'))
+  // per-agency 율·기간 저장 (값 준 것만 — COALESCE; term 은 0 입력 시 NULL=무제한으로 정규화).
+  if (store_intro_commission_pct !== undefined || commission_term_months !== undefined) {
+    const pctVal = (typeof store_intro_commission_pct === 'number' && Number.isFinite(store_intro_commission_pct) && store_intro_commission_pct >= 0 && store_intro_commission_pct <= 100) ? store_intro_commission_pct : null
+    const termVal = (typeof commission_term_months === 'number' && Number.isFinite(commission_term_months) && commission_term_months > 0) ? Math.round(commission_term_months) : (commission_term_months === 0 || commission_term_months === null ? 0 : null)
+    await c.env.DB.prepare(
+      `UPDATE agencies SET
+         store_intro_commission_pct = COALESCE(?, store_intro_commission_pct),
+         commission_term_months = CASE WHEN ? = -1 THEN commission_term_months WHEN ? = 0 THEN NULL ELSE ? END,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).bind(pctVal, termVal ?? -1, termVal ?? -1, termVal ?? -1, id).run().catch(swallow('admin:agency:pctterm'))
+  }
 
   if (tier !== undefined && !['new', 'junior', 'senior'].includes(tier)) {
     return c.json({ success: false, error: 'tier must be new/junior/senior' }, 400)
@@ -231,7 +256,7 @@ app.delete('/:id', async (c) => {
 // ── POST /agencies/:id/reset-password ─────────────────────────
 app.post('/:id/reset-password', rateLimit({ action: 'admin_agency_reset_password', max: 10, windowSec: 3600 }), async (c) => {
   const id = Number(c.req.param('id'))
-  const { newPassword } = await c.req.json<{ newPassword: string }>()
+  const { newPassword } = await c.req.json<{ newPassword: string }>().catch(() => ({} as any))
   if (!newPassword || newPassword.length < 8) {
     return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
   }
@@ -262,7 +287,7 @@ app.get('/:id/sellers', async (c) => {
 app.post('/:id/sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const agencyId = Number(c.req.param('id'))
-  const { seller_id } = await c.req.json<{ seller_id: number }>()
+  const { seller_id } = await c.req.json<{ seller_id: number }>().catch(() => ({} as any))
   if (!seller_id) return c.json({ success: false, error: 'seller_id 필수' }, 400)
 
   const agency = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(agencyId).first()

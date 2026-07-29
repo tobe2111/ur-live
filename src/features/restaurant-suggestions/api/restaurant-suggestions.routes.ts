@@ -1,7 +1,7 @@
 /**
  * Restaurant Suggestions Routes
  *
- * 사용자가 카카오 일반 맛집 (식사권 미출시) 에 대해 의향 표시:
+ * 사용자가 카카오 일반 맛집 (이용권 미출시) 에 대해 의향 표시:
  *   - 'invite': 이 매장 셀러 영입 신청
  *   - 'notify': 출시 알림 받기 (phone 등록)
  *
@@ -15,6 +15,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
+import { intParam } from '@/shared/pagination'
 
 async function ensureTables(DB: D1Database) {
   if (_done_ensureTables.has(DB)) return
@@ -86,7 +87,7 @@ restaurantSuggestionsRoutes.post('/', rateLimit({ action: 'restaurant_sug', max:
 // GET /api/restaurant-suggestions/stats — admin only, 수요 많은 매장 top N
 restaurantSuggestionsRoutes.get('/stats', requireAdmin(), async (c) => {
   await ensureTables(c.env.DB);
-  const limit = Math.min(50, Number(c.req.query('limit')) || 20);
+  const limit = Math.min(50, intParam(c.req.query('limit'), 20));
   try {
     const rows = await c.env.DB.prepare(`
       SELECT

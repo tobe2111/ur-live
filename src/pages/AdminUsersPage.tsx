@@ -352,7 +352,7 @@ export default function AdminUsersPage() {
                                             {detail.linked_seller.seller_type} · {detail.linked_seller.status}
                                           </p>
                                         </div>
-                                        <button onClick={() => navigate(`/admin/sellers?id=${detail.linked_seller!.id}`)}
+                                        <button onClick={() => navigate(`/admin/seller-approval?status=all&q=${encodeURIComponent(detail.linked_seller!.business_name || '')}`)}
                                           className="text-[11px] text-red-600 font-semibold px-2 py-1 hover:bg-red-100 rounded">
                                           {t('admin.users.manageLink', { defaultValue: '관리 →' })}
                                         </button>

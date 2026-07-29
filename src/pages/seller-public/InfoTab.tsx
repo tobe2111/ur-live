@@ -1,169 +1,127 @@
 /**
- * 🛡️ 2026-05-07: TD-018 분할 — SellerPublicPage 의 정보 탭
- * (소개 / SNS 링크 / 사업자 정보 / 서포터 랭킹 / 식사권 안내).
+ * 🛡️ 2026-05-07: TD-018 분할 — SellerPublicPage 의 정보 탭.
+ * 🏁 2026-06-26 (대표): 서포터 랭킹 제거 + 이용권 '이용안내'는 링크샵에서 제거(이용권 상세페이지 전담).
+ * 🖼️ 2026-07-01 (대표 신고): 소개 섹션 제거(헤더와 중복) + 판매자 정보 편집 딥링크 + 통신판매업신고번호.
+ * 🧾 2026-07-02 (대표 시안 — 쇼핑몰 푸터처럼): 카드+배지 → **"MORE INFO +" 접이식 푸터**(29cm/무신사식
+ *   `LABEL. value` 평문 + [사업자정보확인] 링크). 링크샵 맨 밑에 자연스럽게 얹힘. 카카오 문의는 유지.
  */
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Check, X, MessageCircle, Phone } from 'lucide-react'
-import SupporterRanking from '@/components/live/SupporterRanking'
+import { Link } from 'react-router-dom'
+import { MessageCircle, Phone, Pencil } from 'lucide-react'
 import type { Seller } from './types'
 import type { ThemeTokens } from './theme'
 
 interface Props {
   seller: Seller
-  sellerId: string
   isOwner: boolean
   T: ThemeTokens
-  // 인라인 편집 상태
-  editingField: string | null
-  setEditingField: (v: string | null) => void
-  editBio: string
-  setEditBio: (v: string) => void
-  editInsta: string
-  setEditInsta: (v: string) => void
-  editYoutube: string
-  setEditYoutube: (v: string) => void
-  editKakao: string
-  setEditKakao: (v: string) => void
-  saving: boolean
-  startEdit: (field: string) => void
-  saveEdit: (field: string, value: string) => void
 }
 
-export default function InfoTab({
-  seller, sellerId, isOwner, T,
-  editingField, setEditingField, editBio, setEditBio,
-  editInsta, setEditInsta, editYoutube, setEditYoutube, editKakao, setEditKakao,
-  saving, startEdit, saveEdit,
-}: Props) {
+// 🧹 2026-07-20 (링크샵 전수조사): 카카오 채팅 링크 인라인 편집 props(canSellerEdit/editingField/editKakao/
+//   saving/startEdit/saveEdit) 제거 — 연락처 편집은 셀러 대시보드 전담. InfoTab 은 표시 전용.
+export default function InfoTab({ seller, isOwner, T }: Props) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  const ceo = seller.ceo_name || seller.name
+  const bizNoDigits = (seller.business_number || '').replace(/[^0-9]/g, '')
+  const bizCheckUrl = bizNoDigits.length >= 10
+    ? `https://www.ftc.go.kr/bizCommPop.do?wrkr_no=${bizNoDigits}`
+    : null
+  const hasAnyInfo = !!(seller.business_name || ceo || seller.business_number || seller.mail_order_number || seller.business_address)
+
+  // 푸터 한 줄 — `LABEL. value` (라벨 세미볼드/뮤트, 값 살짝 진하게). 값 없으면 렌더 스킵.
+  // ⚠️ 각 <p> 에 명시적 text-[11px] 필수: 전역 `@layer base` 의 `p{font-size:clamp(15px…)}`(index.css)
+  //   이 부모 div 의 text-[10px] 상속을 덮어써 15px 로 커지던 버그(2026-07-07 대표 신고). 유틸리티 레이어가
+  //   base 를 이겨야 하므로 크기 클래스를 <p> 자신에 둔다.
+  const Row = ({ label, value, extra }: { label: string; value?: string | null; extra?: ReactNode }) =>
+    value ? (
+      <p className="text-[11px] leading-relaxed">
+        <span className="font-semibold text-gray-500 dark:text-gray-400">{label}</span>{' '}
+        <span className="text-gray-400 dark:text-gray-500">{value}</span>
+        {extra ? <> {extra}</> : null}
+      </p>
+    ) : null
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h3 className={`text-base font-bold ${T.text} mb-2`}>{t('seller.publicPage.introduction')}</h3>
-        {editingField === 'bio-info' ? (
-          <div>
-            <textarea autoFocus value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
-              className="w-full text-sm bg-gray-50 dark:bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none text-gray-900 dark:text-white" />
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
-              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">{t('common.cancel')}</button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
-            {seller.bio || (isOwner ? t('seller.publicPage.enterBioTap') : t('seller.publicPage.noBio'))}
-            {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
-          </p>
-        )}
-
-        {/* SNS 링크 */}
-        <div className="mt-3 space-y-2">
-          {/* Instagram */}
-          {editingField === 'instagram' ? (
-            <div className="flex gap-2">
-              <input autoFocus value={editInsta} onChange={e => setEditInsta(e.target.value)} placeholder="https://instagram.com/..."
-                className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
-              <button onClick={() => saveEdit('instagram', editInsta)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
-            </div>
-          ) : seller.sns_instagram ? (
-            <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
-              <a href={seller.sns_instagram} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-pink-500">Instagram →</a>
-              {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
-            </div>
-          ) : isOwner ? (
-            <button onClick={() => startEdit('instagram')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addInstagram')}</button>
-          ) : null}
-
-          {/* YouTube */}
-          {editingField === 'youtube' ? (
-            <div className="flex gap-2">
-              <input autoFocus value={editYoutube} onChange={e => setEditYoutube(e.target.value)} placeholder="https://youtube.com/..."
-                className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
-              <button onClick={() => saveEdit('youtube', editYoutube)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
-            </div>
-          ) : seller.sns_youtube ? (
-            <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
-              <a href={seller.sns_youtube} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-red-500">YouTube →</a>
-              {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
-            </div>
-          ) : isOwner ? (
-            <button onClick={() => startEdit('youtube')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addYoutube')}</button>
-          ) : null}
-
-          {/* 카카오 채팅 */}
-          {editingField === 'kakao' ? (
-            <div className="flex gap-2">
-              <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
-                className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
-              <button onClick={() => saveEdit('kakao', editKakao)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-              <button onClick={() => setEditingField(null)} aria-label="편집 취소" className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
-            </div>
-          ) : isOwner && !seller.kakao_chat_link ? (
-            <button onClick={() => startEdit('kakao')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> {t('seller.publicPage.addKakaoChat')}</button>
-          ) : null}
-        </div>
-      </section>
-
-      {/* 사업자 정보 + 연락처 (전자상거래법: 필수 표시 항목) */}
-      <section className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4">
-        <h3 className={`text-sm font-bold ${T.text} mb-3`}>{t('seller.publicPage.sellerInfo')}</h3>
-        <div className="text-sm text-gray-400 space-y-2">
-          <div className="flex">
-            <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessName')}</span>
-            <span className="text-xs">{seller.business_name || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
-          </div>
-          <div className="flex">
-            <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.representative')}</span>
-            <span className="text-xs">{seller.ceo_name || seller.name || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
-          </div>
-          <div className="flex">
-            <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.businessNumber')}</span>
-            <span className="text-xs">{seller.business_number || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
-          </div>
-          <div className="flex">
-            <span className="w-24 text-gray-400 shrink-0 text-xs">{t('seller.publicPage.mailOrderNumber')}</span>
-            <span className="text-xs">{seller.mail_order_number || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
-          </div>
-          <div className="flex">
-            <span className="w-24 text-gray-400 shrink-0 text-xs">{t('common.address')}</span>
-            <span className="text-xs">{seller.business_address || <span className="text-gray-500">{t('common.noInfo')}</span>}</span>
-          </div>
-          {/* 🛡️ 2026-04-22: 셀러 phone/email 공개 노출 제거 (개인정보 보호법 / PIPA) */}
-        </div>
-        {/* 연락 수단 */}
-        <div className="flex gap-2 mt-3">
+    <div className="space-y-3">
+      {/* 연락 수단 — 🧹 2026-07-20 (대표 — "카카오 채팅 링크 추가 없어도 됨"): 오너 인라인 편집/추가
+          어포던스 제거(연락처는 셀러 대시보드에서 관리). 방문자에겐 기존 링크가 있으면 표시만. */}
+      {(seller.kakao_chat_link || seller.phone) && (
+        <div className="flex gap-2">
           {seller.kakao_chat_link && (
             <a href={seller.kakao_chat_link} target="_blank" rel="noopener"
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold active:scale-[0.97]">
-              <MessageCircle className="w-3.5 h-3.5" /> {t('seller.publicPage.kakaoInquiry')}
+              <MessageCircle className="w-3.5 h-3.5" /> {t('seller.publicPage.kakaoInquiry', { defaultValue: '카카오 문의' })}
             </a>
           )}
           {seller.phone && (
             <a href={`tel:${seller.phone}`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#020202] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
-              <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry')}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
+              <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry', { defaultValue: '전화 문의' })}
             </a>
           )}
         </div>
-      </section>
+      )}
 
-      {/* 서포터 랭킹 */}
-      <section>
-        <SupporterRanking sellerId={sellerId} />
-      </section>
+      {/* 🧾 판매자(사업자) 정보 — 쇼핑몰 푸터식 "MORE INFO +" 접이식 (전자상거래법 표시 항목) */}
+      {(hasAnyInfo || isOwner) && (
+        <div className="pt-1">
+          <button
+            onClick={() => setOpen(o => !o)}
+            aria-expanded={open}
+            className="w-full flex items-center gap-1.5 py-1 text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
+          >
+            {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
+            <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
+            {isOwner && (
+              <Link
+                to="/seller/business-info"
+                onClick={e => e.stopPropagation()}
+                className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 normal-case tracking-normal active:opacity-70"
+              >
+                <Pencil className="w-2.5 h-2.5" /> {t('common.edit', { defaultValue: '수정' })}
+              </Link>
+            )}
+          </button>
 
-      <section>
-        <h3 className={`text-base font-bold ${T.text} mb-2`}>{t('seller.publicPage.voucherGuide')}</h3>
-        <div className="text-sm text-gray-400 space-y-2">
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.howToUse')}</span><span>{t('seller.publicPage.howToUseDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.validity')}</span><span>{t('seller.publicPage.validityDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.refund')}</span><span>{t('seller.publicPage.refundDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.contact')}</span><span>{t('seller.publicPage.contactDesc')}</span></div>
+          {open && (
+            <div className="mt-2 space-y-0.5 leading-relaxed text-gray-400 dark:text-gray-500">
+              {(seller.business_name || ceo) && (
+                <p className="text-[11px] leading-relaxed">
+                  {seller.business_name && (
+                    <><span className="font-semibold text-gray-500 dark:text-gray-400">COMPANY.</span> <span className="text-gray-400 dark:text-gray-500">{seller.business_name}</span></>
+                  )}
+                  {ceo && (
+                    <><span className="ml-3 font-semibold text-gray-500 dark:text-gray-400">CEO.</span> <span className="text-gray-400 dark:text-gray-500">{ceo}</span></>
+                  )}
+                </p>
+              )}
+              <Row label="ADDRESS." value={seller.business_address} />
+              <Row
+                label="BUSINESS NO."
+                value={seller.business_number}
+                extra={bizCheckUrl && (
+                  <a href={bizCheckUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-gray-500 dark:text-gray-400 underline underline-offset-2 active:opacity-70">
+                    [{t('seller.publicPage.bizInfoCheck', { defaultValue: '사업자정보확인' })}]
+                  </a>
+                )}
+              />
+              <Row label="ORDER LICENSE." value={seller.mail_order_number} />
+              {isOwner && !seller.mail_order_number && (
+                <p className="text-[11px] leading-relaxed">
+                  <span className="font-semibold text-gray-500 dark:text-gray-400">ORDER LICENSE.</span>{' '}
+                  <Link to="/seller/business-info" className="text-gray-400 dark:text-gray-500 underline underline-offset-2">
+                    {t('seller.publicPage.mailOrderNumber', { defaultValue: '통신판매업신고번호' })} {t('common.register', { defaultValue: '등록' })}
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      </section>
+      )}
     </div>
   )
 }

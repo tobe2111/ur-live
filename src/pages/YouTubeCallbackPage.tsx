@@ -56,14 +56,14 @@ export default function YouTubeCallbackPage() {
     if (error) {
       setStatus('error')
       setMessage(`OAuth 인증 실패: ${error}`)
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
       return
     }
 
     if (!code) {
       setStatus('error')
       setMessage('인증 코드가 없습니다.')
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
       return
     }
 
@@ -76,7 +76,7 @@ export default function YouTubeCallbackPage() {
         // 🛡️ 2026-05-11: 재연동 직후 stale 캐시 (token_expired=true) 가 화면에 잠시 깜빡이는
         //   현상 제거 — OAuth 성공 시 캐시 무효화 후 페이지로 이동.
         try { localStorage.removeItem('yt_channels_cache_v1') } catch { /* ignore */ }
-        setTimeout(() => navigate('/seller/live-broadcast'), 2000)
+        setTimeout(() => navigate('/seller'), 2000)
       } else {
         throw new Error(response.data.error || 'Unknown error')
       }
@@ -85,12 +85,12 @@ export default function YouTubeCallbackPage() {
       if (import.meta.env.DEV) console.error('OAuth callback error:', error)
       setStatus('error')
       setMessage(error_.response?.data?.error || error_.message || 'YouTube 연동에 실패했습니다.')
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
       <div className="apple-card p-8 sm:p-10 text-center max-w-sm w-full">
 
         {/* ── 로딩 ── */}
@@ -98,11 +98,11 @@ export default function YouTubeCallbackPage() {
           <div className="space-y-8">
             {/* 브랜드 플로우 */}
             <div className="flex items-center justify-center gap-2.5">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#1A1A1A] shadow-sm flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#2A3446] shadow-sm flex items-center justify-center">
                 <span className="text-[22px] font-black" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
-              <div className="w-12 h-12 rounded-2xl bg-[#007aff] flex items-center justify-center shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
                 <Radio className="w-6 h-6 text-white" />
               </div>
               <ConnectDots />
@@ -132,9 +132,9 @@ export default function YouTubeCallbackPage() {
                     {i < loadingStep ? (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
                     ) : i === loadingStep ? (
-                      <Loader2 className="w-4 h-4 text-[#007aff] animate-spin" />
+                      <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
-                      <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] block" />
+                      <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2A3446] block" />
                     )}
                   </div>
                   {/* 🛡️ 2026-05-14: 진행 안 한 단계 text-[#c7c7cc] (RGB 199) 너무 흐림 → 가독성 보강 (gray-500). */}
@@ -185,8 +185,8 @@ export default function YouTubeCallbackPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/seller/live-broadcast')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl hover:bg-[#0051d5] transition-colors text-[15px] font-semibold"
+              onClick={() => navigate('/seller')}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-semibold"
             >
               <RefreshCw className="w-4 h-4" />
               다시 시도하기

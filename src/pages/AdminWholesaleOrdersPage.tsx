@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminDataTable, { type AdminDataTableColumn } from '@/components/admin/AdminDataTable'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-01 유통스타트 — 어드민 도매주문 모니터 (오버사이트 + 강제환불). 라이트 테마.
 
@@ -32,15 +33,22 @@ interface DetailItem {
   courier: string | null; tracking_number: string | null; supplier_id: number | null; supplier_name: string | null
 }
 
+// 2026-06-27: 상태머신 12종 전부 라벨 — ACCEPTED/REJECTED/CANCELLED/DONE/ON_CREDIT/EXPIRED 누락 시 raw 코드 노출됐음.
 const STATUS: Record<string, { t: string; c: string }> = {
   PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700' },
   PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700' },
+  ACCEPTED: { t: '수락됨', c: 'bg-cyan-50 text-cyan-700' },
+  ON_CREDIT: { t: '여신(외상)', c: 'bg-teal-50 text-teal-700' },
   SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700' },
   PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700' },
   REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700' },
+  REJECTED: { t: '제조사 거절', c: 'bg-rose-50 text-rose-700' },
+  CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500' },
+  DONE: { t: '구매확정', c: 'bg-emerald-50 text-emerald-700' },
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
+  EXPIRED: { t: '만료', c: 'bg-gray-100 text-gray-500' },
 }
-const FILTERS = ['', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED']
+const FILTERS = ['', 'PAID', 'ACCEPTED', 'SHIPPED', 'DONE', 'PARTIAL_REFUNDED', 'REFUNDED', 'REJECTED', 'CANCELLED']
 
 // 🧱 2026-06-10: 공통 AdminDataTable 레퍼런스 적용 — 기존 셀 마크업/클래스 그대로 컬럼 정의로 이동.
 const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
@@ -50,7 +58,7 @@ const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
   { key: 'status', label: '상태', render: o => <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span> },
   { key: 'subtotal', label: '결제액', className: 'text-right', render: o => <span className="font-medium text-gray-900">{formatWon(o.subtotal)}</span> },
   { key: 'margin_total', label: '마진', className: 'text-right', render: o => <span className="text-gray-600">{formatWon(o.margin_total)}</span> },
-  { key: 'created_at', label: '일자', render: o => <span className="text-gray-500">{new Date(o.created_at).toLocaleDateString('ko-KR')}</span> },
+  { key: 'created_at', label: '일자', render: o => <span className="text-gray-500">{safeDate(o.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</span> },
 ]
 
 export default function AdminWholesaleOrdersPage() {
@@ -62,7 +70,7 @@ export default function AdminWholesaleOrdersPage() {
   const [detail, setDetail] = useState<{ order: OrderRow & Record<string, unknown>; items: DetailItem[] } | null>(null)
   const [refunding, setRefunding] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시, search 는 refetch 로 commit).
-  const { data: orders = [], isLoading: loading, refetch } = useApiQuery<OrderRow[]>(
+  const { data: orders = [], isLoading: loading, isError, error, refetch } = useApiQuery<OrderRow[]>(
     ['admin', 'distributor-orders', status], '/api/admin/distributor/orders',
     { params: { ...(status ? { status } : {}), ...(search ? { search } : {}) }, select: (r: any) => (r?.success ? r.orders || [] : []) },
   )
@@ -104,6 +112,9 @@ export default function AdminWholesaleOrdersPage() {
           </form>
         </div>
 
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 주문" />
+        ) : (
         <AdminDataTable<OrderRow>
           columns={ORDER_COLUMNS}
           rows={orders}
@@ -112,6 +123,7 @@ export default function AdminWholesaleOrdersPage() {
           rowKey={o => o.id}
           onRowClick={o => openDetail(o.id)}
         />
+        )}
       </div>
 
       {/* 상세 모달 */}
@@ -131,7 +143,8 @@ export default function AdminWholesaleOrdersPage() {
               배송지: {String(detail.order.ship_to_name || '-')} {String(detail.order.ship_to_phone || '')}<br />
               {String(detail.order.ship_to_address || '-')}
             </div>
-            <table className="w-full text-sm mb-4">
+            <div className="overflow-x-auto mb-4">
+            <table className="w-full min-w-[480px] text-sm">
               <thead><tr className="text-left text-gray-500 border-b border-gray-100">
                 <th className="py-2 font-medium">상품</th><th className="py-2 font-medium">제조사</th>
                 <th className="py-2 font-medium text-right">수량</th><th className="py-2 font-medium text-right">금액</th><th className="py-2 font-medium">상태</th>
@@ -148,7 +161,8 @@ export default function AdminWholesaleOrdersPage() {
                 ))}
               </tbody>
             </table>
-            {['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(detail.order.status as string) && (
+            </div>
+            {['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(detail.order.status as string) && (
               <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불
               </button>

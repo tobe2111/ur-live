@@ -54,23 +54,25 @@ export async function runAgencyStoreIntroMonthlyBonus(env: Env): Promise<{
       processed++
       const note = `[월 성장 보너스 ${yearMonth}] 가게 #${row.seller_id} 월매출 ₩${row.monthly_total.toLocaleString()}`
 
-      // 동월 중복 방지 — note 의 yearMonth prefix 로 체크.
-      const exist = await DB.prepare(
-        `SELECT id FROM agency_store_intro_commissions
-          WHERE store_seller_id = ? AND type = 'growth_bonus'
-            AND note LIKE ? LIMIT 1`
-      ).bind(row.seller_id, `%${yearMonth}%`).first().catch(() => null)
-      if (exist) continue
-
-      await DB.prepare(
+      // 🛡️ 2026-06-26 [머니] 동월 중복 방지를 원자적 INSERT...WHERE NOT EXISTS 한 문장으로 통합.
+      //   기존엔 별도 SELECT 체크 후 INSERT(레이스 — 같은 UTC일 재진입 시 이중 INSERT 여지) +
+      //   INSERT 실패가 `.catch(()=>null)` 로 삼켜지는데 awarded++ 는 무조건 실행(미적립을 적립으로 오보고)이었음.
+      //   이제 한 문장 원자 처리 + meta.changes 게이트로 실제 적립된 건만 카운트(claim-before-credit).
+      const ins = await DB.prepare(
         `INSERT INTO agency_store_intro_commissions
            (agency_id, store_seller_id, order_id, type, order_amount, commission_amount, status, note)
-         VALUES (?, ?, NULL, 'growth_bonus', ?, ?, 'pending', ?)`
-      ).bind(row.agency_id, row.seller_id, row.monthly_total, GROWTH_BONUS_AMOUNT, note)
+         SELECT ?, ?, NULL, 'growth_bonus', ?, ?, 'pending', ?
+          WHERE NOT EXISTS (
+            SELECT 1 FROM agency_store_intro_commissions
+             WHERE store_seller_id = ? AND type = 'growth_bonus' AND note LIKE ?
+          )`
+      ).bind(row.agency_id, row.seller_id, row.monthly_total, GROWTH_BONUS_AMOUNT, note, row.seller_id, `%${yearMonth}%`)
         .run().catch(() => null)
 
-      awarded++
-      totalAmount += GROWTH_BONUS_AMOUNT
+      if ((ins?.meta?.changes ?? 0) > 0) {
+        awarded++
+        totalAmount += GROWTH_BONUS_AMOUNT
+      }
     }
   } catch { /* fail-soft */ }
 

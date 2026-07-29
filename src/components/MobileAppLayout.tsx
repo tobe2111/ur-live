@@ -2,10 +2,10 @@ import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
+import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 
-const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
-const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
-const LinkshopMobileQR = lazy(() => import('./LinkshopMobileQR'))
+// 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
+const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
 interface MobileAppLayoutProps {
@@ -25,17 +25,20 @@ interface MobileAppLayoutProps {
  * 🛡️ 2026-05-03 hotfix: data-mobile-only 페이지에 xl:pl-56 적용 시 컬럼 압축 사고 → mobile-only 는 padding 0.
  */
 
-// 9:16 비디오 / 모바일 전용 UI 페이지 (PC 에서도 액자 + 좌우 패널). '/live/:id' 만 (리스트 '/live' 는 일반).
-const MOBILE_ONLY_PREFIXES = [
-  '/live/',        // LivePageV2 (9:16 풀스크린 비디오)
-  '/shorts',       // ShortsPage (9:16 쇼츠)
-]
+// 🗑️ 2026-07-07 라이브커머스 제거: 라이브/쇼츠 9:16 전용 페이지가 없어져 빈 목록(mobileOnly 항상 false).
+const MOBILE_ONLY_PREFIXES: string[] = []
 
 // 풀 PC 너비 (프레임/사이드바 제외): 대시보드 + 도매몰/공급자(B2B) + 결제리턴/임베드.
 // 🏭 2026-06-04 도매몰(/wholesale)·제조사(/supplier) = B2B 서피스 — 자체 카테고리 UI 사용.
 // 📐 2026-06-16 (사용자 확인): 도매몰 관련은 풀 PC 프레임이어야 함 → 여기 등재되어 app-framed 에서 자동 제외됨.
 const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
+  '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
+  // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
+  //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
+  //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
+  //   콘텐츠는 각 페이지의 max-w-6xl/4xl 로 중앙 정렬(가독성 유지). 모바일(<lg) 영향 0.
+  '/blog',
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
@@ -91,12 +94,17 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
   //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
   const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외(풀너비).
-  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
+  // 🖥️ 2026-07-15~16 [UNLOCK_LOADING] (대표 시안 — 당근 스타일 PC): 홈·카탈로그(교환권 등)를 lg+ 풀너비
+  //   (액자/사이드바/거터 제외)로. SSOT = `shared/pc-fullbleed.ts`. 모바일(<lg)은 프레임 CSS 가 lg+ 전용이라
+  //   영향 0. 2026-06-20 "PC 단일 액자 정체성" 잠금을 이 경로들에 한해 해제.
+  const isFullBleedHome = isFullBleedPcPath(location.pathname)
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 + 풀블리드 홈은 제외(풀너비).
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome
   // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
   //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
   //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 링크샵 방문자가 아닐 때만.
-  const showSidebar = !hideSidebar && !linkshopVisitor && !framed
+  // 🖥️ 풀블리드 홈은 앱 사이드바(DesktopLiveSidebar)도 숨김 — PcHomePage 자체 레일이 좌측을 담당.
+  const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome
   const showFrameRails = framed && !linkshopVisitor
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
@@ -114,18 +122,19 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     } else {
       body.classList.remove('app-frame-host', 'app-frame-dark')
     }
-    return () => { body.classList.remove('app-frame-host', 'app-frame-dark') }
-  }, [framed, applied])
+    // 🖥️ 2026-07-15~16: 풀블리드 마커 — index.css 가 lg+ 에서 하단 네비(app-frame-bar) 를 숨김(PC 자체 네비/레일).
+    body.classList.toggle('pc-fullbleed', isFullBleedHome)
+    return () => { body.classList.remove('app-frame-host', 'app-frame-dark', 'pc-fullbleed') }
+  }, [framed, applied, isFullBleedHome])
 
   return (
     <>
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
-      {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
-      {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
-      {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
-      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR — 방문자에게만(주인은 평소 앱 뷰). */}
-      {linkshopVisitor && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
+      {/* 🎨 2026-07-07 (대표 승인) 링크샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
+          유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
+      {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}
       {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
       {showFrameRails && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
       <div

@@ -9,16 +9,19 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
-import { hashPassword, verifyPassword } from '@/lib/password';
+import { hashPassword, verifyPassword, hashToken } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { swallow } from '@/worker/utils/swallow';
 import { dispatchSignupContract } from '@/worker/utils/signup-contract';
+import { setWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
+import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-import { registrationMallId } from './wholesale-malls';
+import { registrationMallId, loadMallById } from './wholesale-malls';
+import { saveWholesaleLicense } from './wholesale-license';
 
 // fail-soft 알림 발송 (가입 흐름이 알림 실패로 깨지지 않도록).
 const swallowNotify = (tag: string) => (err: unknown) => { if (import.meta.env.DEV) console.warn(`[supplier-auth] ${tag}`, err); };
@@ -104,7 +107,9 @@ async function issueSupplierTokens(
   const refreshToken = await sign({ ...base, token_use: 'refresh', iat: nowSec, exp: nowSec + 90 * 24 * 60 * 60 }, jwtSecret);
   try {
     await ensureSupplierAuthRefreshTable(DB);
-    const refreshHash = await hashPassword(refreshToken);
+    // 🏭 2026-06-29 (로그인 속도): refresh 토큰은 고엔트로피라 PBKDF2(10만 회) 대신 빠른 SHA-256 해시.
+    //   verifyPassword 가 s256$ prefix 를 인식 → 검증 무변경. 기존 PBKDF2 토큰도 그대로 검증됨(무중단).
+    const refreshHash = await hashToken(refreshToken);
     await DB.prepare(
       `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at) VALUES ('supplier', ?, ?, ?)`
     ).bind(sup.id, refreshHash, new Date((nowSec + 90 * 24 * 3600) * 1000).toISOString()).run();
@@ -138,7 +143,10 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     };
     const body = await c.req.json<RegBody>().catch(() => ({} as RegBody));
-    const bizLicenseUrl = (body.business_license_url || '').trim().slice(0, 500);
+    const bizLicenseRaw = (body.business_license_url || '').trim().slice(0, 500);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> 로 렌더되므로
+    //   javascript:/data: 면 admin 세션 XSS. http(s)·업로드 상대경로만 허용, 그 외는 빈값(아래 필수검사에서 거부).
+    const bizLicenseUrl = (/^https?:\/\//i.test(bizLicenseRaw) || /^\//.test(bizLicenseRaw)) ? bizLicenseRaw : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representativePhone = (body.representative_phone || '').trim().slice(0, 40);
     const managerName = (body.manager_name || '').trim().slice(0, 80);
@@ -147,7 +155,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     const email = (body.email || '').trim().toLowerCase();
     const password = body.password || '';
-    const businessName = (body.business_name || '').trim();
+    const businessName = (body.business_name || '').trim().slice(0, 200);
 
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
@@ -170,35 +178,78 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     const passwordHash = await hashPassword(password);
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — requires_license 면 신고번호 필수(없으면 가입 차단).
+    const regMall = await loadMallById(DB, mallId).catch(() => null)
+    const licenseRequired = !!(regMall && regMall.requires_license)
+    const licBody = body as Record<string, unknown>
+    const permitNo = String(licBody.license_no || licBody.permit_no || '').trim().slice(0, 60)
+    const permitUrl = String(licBody.license_url || '').trim().slice(0, 1000)
+    if (licenseRequired && !permitNo) {
+      return c.json({ success: false, error: `${regMall?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+    }
     const nts1 = await ntsStatusOf(c.env, DB, bizNum)
-    const result = await DB.prepare(`
-      INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-        bank_name, bank_account, account_holder, business_license_url,
-        representative_phone, manager_name, manager_phone, manager_email,
-        mall_id, nts_status, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
-    `).bind(
-      businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
-      body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
-      representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
-      mallId, nts1,
-    ).run();
+    // 🛡️ 2026-06-25: 판매사(wholesale.routes)와 동일한 self-heal — 풀 INSERT 가 컬럼 누락/드리프트로 실패해도
+    //   base 컬럼(business_name/email/password_hash NOT NULL)만 최소 INSERT 후 optional best-effort UPDATE → 가입 500 방지.
+    let supplierId = 0
+    try {
+      const result = await DB.prepare(`
+        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+          bank_name, bank_account, account_holder, business_license_url,
+          representative_phone, manager_name, manager_phone, manager_email,
+          mall_id, nts_status, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+      `).bind(
+        businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
+        body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
+        representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
+        mallId, nts1,
+      ).run();
+      supplierId = Number(result.meta.last_row_id)
+    } catch (insErr) {
+      const msg = String((insErr as Error)?.message || '')
+      console.error('[supplier-auth:register] 풀 INSERT 실패 → 자가치유 진입:', msg)
+      if (/UNIQUE|already exists|constraint failed: suppliers\.email/i.test(msg)) return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 409);
+      // base 컬럼만 — business_name(NOT NULL) + 가입 식별 핵심. 나머지는 best-effort UPDATE.
+      const insMin = await DB.prepare(
+        `INSERT INTO suppliers (business_name, business_number, email, password_hash, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))`
+      ).bind(businessName, bizNum, email, passwordHash).run();
+      supplierId = Number(insMin.meta.last_row_id)
+      if (supplierId) {
+        const optionalCols: Array<[string, string | number | null]> = [
+          ['representative', body.representative || null], ['phone', body.phone || null],
+          ['bank_name', body.bank_name || null], ['bank_account', body.bank_account || null],
+          ['account_holder', body.account_holder || null], ['business_license_url', bizLicenseUrl || null],
+          ['representative_phone', representativePhone || null], ['manager_name', managerName || null],
+          ['manager_phone', managerPhone || null], ['manager_email', managerEmail || null],
+          ['mall_id', mallId], ['nts_status', nts1],
+        ]
+        for (const [col, val] of optionalCols) {
+          await DB.prepare(`UPDATE suppliers SET ${col} = ? WHERE id = ?`).bind(val, supplierId).run().catch(swallow('supplier-auth:register:opt-col'))
+        }
+      }
+    }
+
+    // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — 사이드 테이블, fail-soft(가입 자체는 안 막음).
+    if (supplierId && (licenseRequired || permitNo)) {
+      await saveWholesaleLicense(DB, 'supplier', supplierId, mallId, permitNo, permitUrl || null)
+    }
 
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
-    const supplierId = Number(result.meta.last_row_id)
     if (supplierId) {
       dispatchSignupContract(c, { accountType: 'supplier', accountId: supplierId, signerName: body.representative || managerName, signerPhone: body.phone || managerPhone || representativePhone, businessName })
+      // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (가입 메타 — 사이드테이블, fail-soft).
+      await setWholesaleSignupMeta(DB, 'supplier', supplierId, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel)
     }
 
     return c.json({
       success: true,
       message: '가입 신청이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.',
-      data: { id: result.meta.last_row_id, status: 'pending' },
+      data: { id: supplierId, status: 'pending' },
     }, 201);
   } catch (err) {
-    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정).
-    console.error('[supplier-auth:register] 500:', (err as Error)?.message || String(err));
-    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500);
+    // 🛡️ 2026-06-25: 임시 _diag 노출 제거(보안 — raw DB 에러 클라 반환 금지 룰). safeError 가 Sentry/DEV 로깅 담당.
+    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[supplier-auth:register]');
   }
 });
 
@@ -220,11 +271,13 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       phone?: string; business_license_url?: string;
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     }>().catch(() => ({} as Record<string, never>));
-    const business_name = String(body.business_name || '').trim();
-    const business_number = String(body.business_number || '').trim();
-    const representative = String(body.representative || '').trim();
-    const phone = String(body.phone || '').trim();
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_name = String(body.business_name || '').trim().slice(0, 200);
+    const business_number = String(body.business_number || '').trim().slice(0, 40);
+    const representative = String(body.representative || '').trim().slice(0, 80);
+    const phone = String(body.phone || '').trim().slice(0, 40);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 /register 와 동일).
+    const business_license_rawb = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawb) || /^\//.test(business_license_rawb)) ? business_license_rawb : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40);
     const manager_name = String(body.manager_name || '').trim().slice(0, 80);
@@ -278,20 +331,43 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
 
       // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
       const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+      // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — /register 와 대칭.
+      const regMall2 = await loadMallById(DB, mallId).catch(() => null)
+      const licenseRequired2 = !!(regMall2 && regMall2.requires_license)
+      const licBody2 = body as Record<string, unknown>
+      const permitNo2 = String(licBody2.license_no || licBody2.permit_no || '').trim().slice(0, 60)
+      const permitUrl2 = String(licBody2.license_url || '').trim().slice(0, 1000)
+      if (licenseRequired2 && !permitNo2) {
+        return c.json({ success: false, error: `${regMall2?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+      }
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const nts2 = await ntsStatusOf(c.env, DB, business_number)
-      const ins = await DB.prepare(`
-        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-          business_license_url, representative_phone, manager_name, manager_phone, manager_email,
-          linked_user_id, mall_id, nts_status, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
-      `).bind(
-        business_name, business_number, representative || null, email, phone || null,
-        business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-        userId, mallId, nts2,
-      ).run();
-      const sid = Number(ins.meta?.last_row_id);
+      // 🛡️ 2026-06-25 (전수조사): 사전 dupe SELECT~INSERT 사이 동시 /become 경합 → UNIQUE throw 시 generic 500 +
+      //   중복 알림. /register 와 동일하게 try/catch 로 409 정규화(승인큐 알림은 성공 후에만).
+      let sid: number;
+      try {
+        const ins = await DB.prepare(`
+          INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+            business_license_url, representative_phone, manager_name, manager_phone, manager_email,
+            linked_user_id, mall_id, nts_status, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        `).bind(
+          business_name, business_number, representative || null, email, phone || null,
+          business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
+          userId, mallId, nts2,
+        ).run();
+        sid = Number(ins.meta?.last_row_id);
+      } catch (e) {
+        if (/UNIQUE|already exists|constraint failed: suppliers\.(email|linked_user)/i.test(String((e as Error)?.message || ''))) {
+          return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
+        }
+        throw e;
+      }
       if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
+      // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — fail-soft.
+      if (licenseRequired2 || permitNo2) await saveWholesaleLicense(DB, 'supplier', sid, mallId, permitNo2, permitUrl2 || null);
+      // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (카카오 가입 메타 — fail-soft).
+      await setWholesaleSignupMeta(DB, 'supplier', sid, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
       createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조사 승인 요청',
@@ -415,12 +491,15 @@ supplierAuthRoutes.post('/refresh', cors(), rateLimit({ action: 'supplier_refres
     try {
       await ensureSupplierAuthRefreshTable(DB);
       const rows = await DB.prepare(
-        `SELECT id, token_hash FROM auth_refresh_tokens WHERE user_type = 'supplier' AND user_id = ?`
-      ).bind(supplierId).all<{ id: number; token_hash: string }>();
+        `SELECT id, token_hash, expires_at FROM auth_refresh_tokens WHERE user_type = 'supplier' AND user_id = ?`
+      ).bind(supplierId).all<{ id: number; token_hash: string; expires_at: string }>();
       const candidates = rows.results || [];
       if (candidates.length > 0) {
+        // 🛡️ 2026-07-04: 행 단위 만료 강제(유예 지난 행 차단) — admin/seller refresh 와 동일 패턴.
+        const nowMs = Date.now();
+        const alive = filterAliveRefreshRows(candidates, nowMs);
         let matchedId: number | null = null;
-        for (const row of candidates) {
+        for (const row of alive) {
           const { valid } = await verifyPassword(refreshToken, row.token_hash);
           if (valid) { matchedId = row.id; break; }
         }
@@ -428,10 +507,16 @@ supplierAuthRoutes.post('/refresh', cors(), rateLimit({ action: 'supplier_refres
           if (import.meta.env.DEV) console.warn('[Supplier Refresh] refresh token not recognized (revoked or reused)');
           return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다', code: 'INVALID_REFRESH_TOKEN' }, 401);
         }
-        const del = await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run();
-        if (!del.meta?.changes) {
-          return c.json({ success: false, error: '토큰 갱신에 실패했습니다. 다시 로그인해주세요', code: 'TOKEN_ROTATION_FAILED' }, 401);
-        }
+        // 🛡️ 2026-07-04 (다중 탭 동시 갱신 연쇄 로그아웃 — admin/seller 와 동일 클래스):
+        //   rotate 즉시삭제 → 60초 유예. 유예 내 재사용 허용, 유예 후 alive 필터 차단.
+        await DB.prepare(
+          `UPDATE auth_refresh_tokens SET expires_at = ? WHERE id = ? AND expires_at > ?`,
+        ).bind(
+          rotationGraceExpiryIso(nowMs), matchedId, rotationGraceExpiryIso(nowMs),
+        ).run().catch(() => { /* best-effort — 유예 미설정이어도 갱신은 진행 */ });
+        await DB.prepare(
+          `DELETE FROM auth_refresh_tokens WHERE user_type = 'supplier' AND user_id = ? AND expires_at <= ?`,
+        ).bind(supplierId, new Date(nowMs).toISOString()).run().catch(() => { /* best-effort */ });
       }
       // candidates.length === 0 → 레거시(저장된 해시 없음). JWT 서명/만료는 이미 검증됨 → 신규 발급 허용(자연 마이그레이션).
     } catch (e) {

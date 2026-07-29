@@ -104,6 +104,25 @@ twofaRoutes.post('/setup', rateLimit({ action: '2fa_setup', max: 5, windowSec: 6
   const { DB } = c.env
   await ensureTotpColumn(DB, table)
 
+  // 🔐 2026-07-11 (사전점검 보안감사 R3): 활성화된 2FA(totp_enabled=1)를 코드 없이 secret 재발급으로
+  //   덮어쓰는 경로 차단 — 토큰 탈취자가 /setup 재호출만으로 기존 2FA 를 무력화할 수 있었음.
+  //   기존 인증앱의 6자리 코드(body.code)를 verifyTOTP 로 검증 후에만 재발급(단계적 재인증).
+  //   미설정/미활성(totp_enabled=0)은 현행 옵트인 흐름 그대로(코드 불요) — 최초 설정 UX 불변.
+  const existing = await DB.prepare(`SELECT totp_secret, totp_enabled FROM ${table} WHERE id = ?`)
+    .bind(userAsAny.id).first<{ totp_secret: string | null; totp_enabled: number }>()
+  if (existing?.totp_enabled && existing.totp_secret) {
+    let reauthBody: { code?: string } = {}
+    try { reauthBody = await c.req.json() } catch { /* code 미제공 → 아래에서 거부 */ }
+    const reauthCode = (reauthBody.code || '').toString()
+    if (!/^\d{6}$/.test(reauthCode)) {
+      return c.json({ success: false, error: '2FA 가 이미 활성화되어 있습니다. 재설정하려면 기존 인증앱의 6자리 코드(code)를 함께 보내세요.', code: 'TOTP_REAUTH_REQUIRED' }, 400)
+    }
+    const reauthOk = await verifyTOTP(existing.totp_secret, reauthCode)
+    if (!reauthOk) {
+      return c.json({ success: false, error: '기존 2FA 코드가 올바르지 않습니다', code: 'TOTP_REAUTH_FAILED' }, 403)
+    }
+  }
+
   const secret = generateBase32Secret(16)
   const issuer = 'UR-DEAL'
   const account = userAsAny.email || `user-${userAsAny.id}`

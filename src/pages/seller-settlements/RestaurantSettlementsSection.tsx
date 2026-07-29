@@ -72,6 +72,10 @@ export default function RestaurantSettlementsSection() {
                 <th className="py-2 pr-3 font-medium">{t('seller.gbSettle.colPeriod', { defaultValue: '기간' })}</th>
                 <th className="py-2 pr-3 font-medium">{t('seller.gbSettle.colStore', { defaultValue: '매장' })}</th>
                 <th className="py-2 pr-3 font-medium text-right">{t('seller.gbSettle.colUsed', { defaultValue: '사용 수' })}</th>
+                {/* 🧾 2026-07-05 (운영 감사 Q3): 정산액만으론 "얼마 팔려서 얼마 떼였나"가 안 보임 —
+                    판매액·수수료(율) 분해 컬럼. 데이터는 기존 API 응답에 이미 포함(표시만 추가). */}
+                <th className="py-2 pr-3 font-medium text-right">{t('seller.gbSettle.colRevenue', { defaultValue: '판매액' })}</th>
+                <th className="py-2 pr-3 font-medium text-right">{t('seller.gbSettle.colFee', { defaultValue: '수수료' })}</th>
                 <th className="py-2 pr-3 font-medium text-right">{t('seller.gbSettle.colAmount', { defaultValue: '정산액' })}</th>
                 <th className="py-2 font-medium">{t('seller.gbSettle.colStatus', { defaultValue: '상태' })}</th>
               </tr>
@@ -84,6 +88,11 @@ export default function RestaurantSettlementsSection() {
                   </td>
                   <td className="py-2.5 pr-3 text-gray-900 font-medium">{r.restaurant_name}</td>
                   <td className="py-2.5 pr-3 text-right text-gray-600">{formatNumber(r.total_vouchers_used)}</td>
+                  <td className="py-2.5 pr-3 text-right text-gray-600">{formatWon(r.total_revenue)}</td>
+                  <td className="py-2.5 pr-3 text-right text-gray-500 whitespace-nowrap">
+                    −{formatWon(r.commission_amount)}
+                    <span className="text-[11px] text-gray-400"> ({formatNumber(r.commission_rate)}%)</span>
+                  </td>
                   <td className="py-2.5 pr-3 text-right font-bold text-gray-900">{formatWon(r.settlement_amount)}</td>
                   <td className="py-2.5">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_STYLE[r.status] || STATUS_STYLE.pending}`}>

@@ -15,6 +15,7 @@ import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
 import { safeError } from '@/worker/utils/safe-error';
 import { requireAuth, getCurrentUser, requireAdminRole } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { intParam } from '@/shared/pagination'
 // ── Table setup ────────────────────────────────────────────────────────────
 
 async function ensureSettlementTables(DB: D1Database) {
@@ -78,6 +79,18 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
       reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
       resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).catch(() => {});
 
+    // 💸 2026-07-08 (머니 감사 Guard 2 근본수정 — 안①, 기본 OFF 게이트): 이용권 이중 정산레일
+    //   차단. ON 이면 이미 원장(Rail B)에 booking 된 voucher 를 이 수동 정산(Rail A)에서도 skip.
+    //   auto-settlement 크론과 동일 게이트(`settlement_skip_ledgered`). 기본 OFF = 현행 byte-불변.
+    let skipLedgered = false;
+    try {
+      const g = await executeQuery<{ value: string }>(DB, "SELECT value FROM platform_settings WHERE key = 'settlement_skip_ledgered'");
+      skipLedgered = g[0]?.value === 'true';
+    } catch { /* 키 없으면 OFF(현행) */ }
+    const ledgerSkipClause = skipLedgered
+      ? "AND NOT EXISTS (SELECT 1 FROM ledger_entries le WHERE le.reference_id = 'voucher:' || v.id AND le.event_type = 'voucher_used')"
+      : '';
+
     // Find all used vouchers that have NOT been assigned to a settlement yet.
     // Group by seller_id + product_id. (open 분쟁 제외 = 보류)
     const groups = await executeQuery<{
@@ -98,6 +111,7 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
       WHERE v.status = 'used'
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
+        ${ledgerSkipClause}
       GROUP BY p.seller_id, v.product_id
     `);
 
@@ -174,8 +188,8 @@ restaurantSettlementRoutes.get('/list', async (c) => {
   try {
     const status = c.req.query('status') || null;
     const sellerId = c.req.query('seller_id') || null;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -386,8 +400,8 @@ sellerSettlementRoutes.get('/', requireAuth(), async (c) => {
     }
 
     const status = c.req.query('status') || null;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = ['rs.seller_id = ?'];

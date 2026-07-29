@@ -12,12 +12,13 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Plus, Copy, Trash2, Loader2, Share2, Users, CheckCircle2, Megaphone } from 'lucide-react'
+import { Tag, Plus, Copy, Trash2, Share2, Users, CheckCircle2, Megaphone } from 'lucide-react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -260,7 +261,7 @@ export default function SellerPromoCodesPage() {
 
         {/* 코드 리스트 */}
         {loading ? (
-          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div>
+          <BrandLoader />
         ) : codes.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center">
             <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />

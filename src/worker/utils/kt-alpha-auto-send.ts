@@ -37,8 +37,8 @@ async function notifyUserKtSendFailed(
   if (userId === null || userId === undefined || userId === '') return
   try {
     await env.DB.prepare(
-      `INSERT INTO notifications (user_id, type, title, message, link, created_at)
-       VALUES (?, 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
+      `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+       VALUES (?, 'user', 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
     ).bind(String(userId), title, message).run()
   } catch { /* notifications 테이블/컬럼 차이 — silent (best-effort) */ }
 }
@@ -130,6 +130,13 @@ export async function autoSendKtAlphaVouchersForOrders(
   for (const order of orders) {
     const oid = Number(order.id)
     if (!oid) continue
+    // 🛡️ 2026-06-26 per-order 멱등 — confirm+webhook 양 경로 배선 후 이중발송 방지(상태 CAS 외 추가 방어).
+    //   이 주문의 KT 발송이 이미 시작/완료(voucher_orders 에 external_order_id 'u{oid}-…' 행 존재)면 skip.
+    //   trId 가 'u{oid}-…' 라 LIKE 'u{oid}-%' 는 oid 경계('-')로 prefix 충돌 없음(u85- 는 u850- 미매치).
+    const ktAlready = await env.DB.prepare(
+      `SELECT 1 FROM voucher_orders WHERE source = 'kt_alpha' AND external_order_id LIKE ? LIMIT 1`
+    ).bind(`u${oid}-%`).first().catch(() => null)
+    if (ktAlready) continue
     const ktItems = await env.DB.prepare(
       `SELECT oi.product_id, oi.product_name, oi.quantity, oi.unit_price,
               p.kt_alpha_gift_code
@@ -242,6 +249,14 @@ export async function autoSendKtAlphaVouchersForOrders(
             ).bind(res.orderNo || trId, res.pinNo || null, voId).run().catch(() => { /* noop */ })
           }
           totalSent++
+          // 🔔 2026-07-01: 발송 성공 알림(이전엔 실패만 알림). 유료 교환권 수령 확인 필요.
+          try {
+            const uid = order.user_id || fallbackUserId
+            if (uid !== null && uid !== undefined && uid !== '') {
+              const { notifyUser } = await import('../../lib/notifications')
+              await notifyUser(env.DB, String(uid), 'kt_alpha_sent', '🎫 교환권 발송 완료', '구매하신 교환권이 발송되었습니다. 문자와 보관함에서 확인하세요.', '/my-vouchers')
+            }
+          } catch { /* best-effort */ }
         } catch (sendErr) {
           const errMsg = (sendErr as Error).message.slice(0, 300)
           // 🛡️ 2026-05-25: sendCoupon 에러 errors 배열 + frontend_errors 둘 다 기록

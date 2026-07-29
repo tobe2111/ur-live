@@ -158,6 +158,13 @@
   - **[정리] 코드 보조문구 대비** gray-400 → gray-500(라이트).
   - **미선택(후속 제안)**: 만료 임박 알림 cron(D-3/D-1 알림톡·푸시 — 선결제 돈 손실 방지, 가치 큼). 검증: type-check 0 · theme 0 · build 0 · 목업 확인.
 
+- **2026-06-21 (9차 — 식사권 만료 임박 알림 cron)** 대표 승인 ("응 해줄래?"). 선결제 식사권이 유효기간(기본 90일) 만료로 소멸되는 것 방지.
+  - 신규 `src/worker/cron/voucher-expire.ts` `runMealVoucherExpireCron` — 숙소용 `stay-voucher-expire.ts` 패턴 복제. 미사용 식사권 중 만료 **D-7/D-3/D-1** 스캔 → ① 앱 내 알림(`notifications` INSERT, link=`/my-vouchers`) ② 카카오 알림톡(Aligo, `users.phone` 보유분, 인프라 설정 시 자동). **KT 기프티쇼 교환권(`p.kt_alpha_gift_code`)은 제외** — 쿠폰 유효기간은 기프티쇼 외부관리라 내부 expires_at 안내 시 오정보.
+  - 멱등: `notifications.type='voucher_expire_{n}d'` + 최근 2일 내 중복 체크(임계별 1회). 전부 fail-soft, 알림톡 실패는 `alimtalk_failures` → 기존 `retry-notifications` 재시도. LIMIT 500/run.
+  - `scheduled.ts` 의 기존 09:00(`0 9 * * *`, KST 18:00) 블록에 `meal-voucher-expire` 1개 추가(stay 알림 옆). **새 테이블/컬럼/wrangler cron 스케줄 변경 없음**(reuse notifications/alimtalk_failures, 기존 트리거).
+  - 결제/환불/CAS/잠금 전부 무관 — 읽기 + 알림. 검증: 워커 esbuild 번들 0 · 번들 내 함수 포함 확인.
+  - ⚠️ **활성화 2단계 남음(운영)**: ① 크론은 **Workers 프로젝트 별도 배포** 필요 — `npx wrangler@3 deploy`(main.yml:5 명시, Pages 배포로는 cron 미갱신). ② 알림톡은 Aligo 콘솔에 **정보성 템플릿 등록·승인** + env `ALIGO_VOUCHER_EXPIRE_SOON` — 미설정이어도 **앱 내 알림은 즉시 동작**(알림톡만 보류).
+
 - **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
   - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
   - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).

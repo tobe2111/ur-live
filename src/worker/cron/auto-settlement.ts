@@ -2,8 +2,9 @@ import { logInfo, logError } from '../utils/logger'
 /**
  * Auto-Settlement Cron Handler
  *
- * Calculates settlements for used vouchers that are 7+ days old
- * and have not yet been assigned to a settlement record.
+ * 🗓️ 2026-06-23 주간 정산 정책: 월~일(KST) 사용분 → 차주 목요일(KST) 정산.
+ *   (weeklySettlementCutoffUtc — settlement-schedule.ts. 이전 'used 7일 롤링' 대체.)
+ *   used 상태 + 아직 settlement 미배정 + open 분쟁 아님 + used_at < 주간 cutoff 인 voucher 만.
  *
  * Groups vouchers by seller, creates a pending settlement per seller,
  * and marks the vouchers as settled.
@@ -14,6 +15,14 @@ import { sendDiscordAlert } from '../utils/discord-alert';
 import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
+import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
+const _expColEnsured = new WeakSet<object>()
+async function ensureIsExperienceColumn(DB: D1Database): Promise<void> {
+  if (_expColEnsured.has(DB as unknown as object)) return
+  try { await DB.prepare("ALTER TABLE vouchers ADD COLUMN is_experience INTEGER DEFAULT 0").run() } catch { /* exists */ }
+  _expColEnsured.add(DB as unknown as object)
+}
+
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -37,19 +46,48 @@ export async function handleAutoSettlement(env: Env) {
       reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
       resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).run().catch(() => {});
 
-    // Find used vouchers not yet in any settlement, used 7+ days ago
+    // 🗓️ 2026-06-23 (대표 결정): 주간 정산 — 월~일(KST) 사용분 → 차주 목요일(KST) 정산.
+    //   (이전 'used 7일 롤링' 대체.) cutoff = 정산 도래한 가장 최근 주 일요일까지의 상한(UTC).
+    //   used_at < cutoff 만 정산. cron 이 매일 03:00 KST 돌므로 각 주는 그 차주 목요일 첫 실행에 정산(멱등).
+    const settlementCutoff = weeklySettlementCutoffUtc(Date.now());
+
+    // 💸 2026-07-08 (머니 감사 Guard 2 근본수정 — 안①, 기본 OFF 게이트): 이용권 정산이 두 레일
+    //   (restaurant_settlements Rail A ↔ ledger/payouts Rail B)에 같은 매출을 이중 적재하는 것을 원천 차단.
+    //   ON 이면 이미 원장(Rail B, event_type='voucher_used')에 booking 된 voucher 를 Rail A 생성에서 skip
+    //   → 단일 레일(원장→payouts) 수렴(settlement-reconciliation.md §4.1·Severe 3). 기본 OFF = 현행 byte-불변.
+    //   ⚠️ 라이브 정산이라 flip(ON) 전 staging 실검증 + '어느 레일이 실제 지급에 쓰이는지' 확인 필수.
+    let skipLedgered = false;
+    try {
+      const g = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'settlement_skip_ledgered'").first<{ value: string }>();
+      skipLedgered = g?.value === 'true';
+    } catch { /* 키 없으면 OFF(현행) */ }
+    const ledgerSkipClause = skipLedgered
+      ? "AND NOT EXISTS (SELECT 1 FROM ledger_entries le WHERE le.reference_id = 'voucher:' || v.id AND le.event_type = 'voucher_used')"
+      : '';
+
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
+    // 🛡️ 전수조사 fix: 이 SELECT 가 참조하는 vouchers.is_experience 는 번호 마이그레이션이 없어
+    //   (repair-schema/helpers ensure 로만 추가) 극단적 순서에서 'no such column' 으로 정산 회차
+    //   전체가 skip 될 수 있음 → cron 이 스스로 멱등 보증(WeakSet 메모, 실패 무해).
+    await ensureIsExperienceColumn(DB)
     const usedVouchers = await DB.prepare(`
       SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
              COALESCE(p.commission_rate, ?) as commission_rate
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
       WHERE v.status = 'used'
-        AND v.used_at <= datetime('now', '-7 days')
+        AND v.used_at < ?
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
-    `).bind(platformRate).all();
+        AND COALESCE(v.is_experience, 0) = 0
+        ${ledgerSkipClause}
+    `).bind(platformRate, settlementCutoff).all();
+    // 🎁 2026-07-12 (체험 캠페인 트랙 WP-A#4 — trial-campaign-track-2026-07.md): 0원 체험권은
+    //   매장 자기부담 무상제공이라 정산 대상 아님. applied_price=0 은 위 매출계산(:99)에서 정가로
+    //   폴백되므로 **SELECT 대상에서 구조적으로 제외**(voucher_disputes 제외와 동일 패턴 — 금액/분배
+    //   계산식 무변경). is_experience 마킹은 발급 시점(experience-voucher.ts)에만 세팅. 캠페인
+    //   미개설 시 이 컬럼은 항상 0/NULL → 현행 byte-불변.
 
     if (!usedVouchers.results?.length) return;
 
@@ -96,13 +134,16 @@ export async function handleAutoSettlement(env: Env) {
           settlementAmount
         ).run();
 
-        // Mark vouchers as settled
+        // Mark vouchers as settled.
+        // 🛡️ 2026-06-26 [머니] claim CAS — `AND settlement_id IS NULL` 가드 추가. 가드 없으면
+        //   두 정산 run 이 겹칠 때(현재는 일 1회 cron 만 트리거 → 사실상 없음) 같은 voucher 가
+        //   두 정산행에 동시 귀속될 수 있었음. 이제 voucher 는 한 정산행에만 한 번 claim.
         if (result.meta?.last_row_id && vouchers.length > 0) {
           const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
           if (voucherIds.length > 0) {
             const placeholders = voucherIds.map(() => '?').join(',');
             await DB.prepare(
-              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders})`
+              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders}) AND settlement_id IS NULL`
             ).bind(result.meta.last_row_id, ...voucherIds).run();
           }
         }

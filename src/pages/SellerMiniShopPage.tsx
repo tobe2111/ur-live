@@ -20,7 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { compressForUpload } from '@/lib/image-compress'
 import SellerLayout from '@/components/SellerLayout'
-import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { getSellerId } from '@/lib/seller-auth'
 import { DashboardPageHeader } from '@/components/dashboard'
 
@@ -154,7 +154,7 @@ export default function SellerMiniShopPage() {
   }
 
   if (loading) {
-    return <SellerLayout title="미니샵 설정"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></SellerLayout>
+    return <SellerLayout title="미니샵 설정"><BrandLoader /></SellerLayout>
   }
 
   return (
@@ -165,10 +165,7 @@ export default function SellerMiniShopPage() {
           subtitle="셀러 페이지를 본인 브랜드에 맞게 커스터마이징"
           icon={<Palette className="h-5 w-5" />}
         />
-        {/* 🛡️ 2026-05-21 Phase D: 셀러 트래킹 링크 (AI 1 영업 무기 — 인스타 즉시 공유) */}
-        {getSellerId() && (
-          <SellerTrackingLinkCopy sellerId={getSellerId() || ''} />
-        )}
+        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거 — 쇼핑 숨김 + 링크샵(/u/{handle})이 정식 공유 경로. */}
 
         {/* 미리보기 링크 */}
         {sellerSlug && (

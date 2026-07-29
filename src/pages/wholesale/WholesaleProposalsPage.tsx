@@ -20,7 +20,7 @@ export default function WholesaleProposalsPage() {
   const loggedIn = hasSellerToken()
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO
         domain="wholesale"
         title={t('wholesale.proposal.seoTitle', { defaultValue: '제안 / 신고 — 유통스타트 도매몰' })}

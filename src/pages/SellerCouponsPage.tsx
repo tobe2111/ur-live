@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Ticket, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Ticket, Plus, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -90,7 +91,7 @@ export default function SellerCouponsPage() {
           </div>
         )}
 
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : coupons.length === 0 ? (
+        {loading ? <BrandLoader /> : coupons.length === 0 ? (
           <p className="text-center py-12 text-gray-500">{t('seller.coupons.empty')}</p>
         ) : (
           <div className="space-y-3">

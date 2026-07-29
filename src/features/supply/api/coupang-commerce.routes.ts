@@ -12,6 +12,7 @@
  *   ⚠️ 실계정 E2E 1회 필요 — 경로/필드는 COUPANG_PATHS 상수에 집중, 에러는 쿠팡 메시지 그대로 표면화.
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -24,14 +25,7 @@ import {
 
 const app = new Hono<{ Bindings: Env }>()
 
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch { return null }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 async function requireDistributor(c: { req: { header: (k: string) => string | undefined }; env: Env }): Promise<{ sellerId: number } | { error: string; status: 401 | 403 }> {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -176,7 +170,7 @@ app.post('/export', rateLimit({ action: 'coupang-export', max: 30, windowSec: 60
     const returnCenter = (returnsRes.items || []).find(r => r.code === returnCenterCode)
     if (!returnCenter) return c.json({ success: false, error: '선택한 반품지를 찾을 수 없습니다 — 새로고침 후 다시 선택해주세요' }, 400)
 
-    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://live.ur-team.com${prod.image_url}`
+    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://urdeal.kr${prod.image_url}`
     const detailHtml = `<p>${(prod.description || prod.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p><p>※ 원산지: 상세설명 및 상품 라벨 참조</p>`
     const payload = buildCoupangProductPayload({
       vendorId: conn.vendor_id,

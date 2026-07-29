@@ -32,12 +32,12 @@ jobs:
             esac
           }
           # POST /api/version — 캐시 우회(POST) → worker 생존의 진짜 신호
-          check "API worker (POST /api/version)" -X POST "https://live.ur-team.com/api/version"
+          check "API worker (POST /api/version)" -X POST "https://urdeal.kr/api/version"
           # 핵심 상거래 API 2종
-          check "교환권/상품 목록" "https://live.ur-team.com/api/products?limit=1"
-          check "도매 카탈로그" "https://live.ur-team.com/api/wholesale/catalog?limit=1"
+          check "교환권/상품 목록" "https://urdeal.kr/api/products?limit=1"
+          check "도매 카탈로그" "https://urdeal.kr/api/wholesale/catalog?limit=1"
           # HTML 셸
-          check "메인 페이지 HTML" "https://live.ur-team.com/"
+          check "메인 페이지 HTML" "https://urdeal.kr/"
           if [ -n "$FAILS" ]; then
             echo "down=true" >> "$GITHUB_OUTPUT"
             printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
@@ -67,7 +67,7 @@ jobs:
               } else {
                 await github.rest.issues.create({
                   owner: context.repo.owner, repo: context.repo.repo,
-                  title: `🔴 [장애] live.ur-team.com 다운 감지 — ${now}`,
+                  title: `🔴 [장애] urdeal.kr 다운 감지 — ${now}`,
                   body, labels: ['uptime'],
                 })
               }

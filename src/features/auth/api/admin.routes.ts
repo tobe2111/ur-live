@@ -13,10 +13,11 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
 import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
+import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
-import { rateLimit } from '@/worker/middleware/rate-limit';
+import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -105,8 +106,8 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400);
     }
 
-    // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
-    {
+    const TURNSTILE_LOGIN_ENABLED = false; // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — sitekey↔secret/도메인 불일치 잠금 해소(재도입=true; rate-limit+비번+PIN 방어).
+    if (TURNSTILE_LOGIN_ENABLED) {
       const ip = c.req.header('cf-connecting-ip') || undefined;
       const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
       if (!ok) {
@@ -118,12 +119,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     try { await DB.prepare("ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'").run() } catch { /* already exists */ }
     try { await DB.prepare("ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1").run() } catch { /* already exists */ }
 
+    // 🔐 2026-07-05 (대표 지시 — "삭제하면 로그인 못하게 막아야"): 비활성/삭제 계정 로그인 차단.
+    //   기존엔 삭제가 email 을 _deleted_ 접미사로만 바꿔 원 email 매칭 실패에 의존했음(취약 — 접미사
+    //   미부착/이메일변경 경합 시 우회). is_active=0(삭제 시 항상 set, 로그인이 ALTER 로 컬럼 보장)을
+    //   직접 게이트해 확실히 차단. deactivated(is_active=0) 계정도 동일하게 로그인 불가(의도).
     const admins = await executeQuery<any>(
       DB,
-      'SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ?',
+      "SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ? AND COALESCE(is_active, 1) = 1",
       [email]
     );
-    
+
     if (admins.length === 0) {
       if (import.meta.env.DEV) console.warn('[Admin Login] Admin not found:', maskEmail(email));
       // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행해서
@@ -178,6 +183,49 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         mustSetPin = true;
       }
     }
+
+    // 🔐 2026-07-11 (사전점검 보안감사 R3 ④): 로그인 TOTP 게이트 + finance/super 등록 강제 (must_set_pin 미러).
+    //   - SSOT 축 = admins.totp_secret/totp_enabled 컬럼 — generic /api/2fa/* (twofa.routes.ts, Admin2FASetupPage
+    //     가 사용) 가 쓰고 require-2fa.ts 미들웨어가 읽는 바로 그 축. 본 파일 하단의 admin_2fa 테이블 경로
+    //     (/api/admin/2fa/setup·verify·validate)는 로그인이 /validate 를 호출한 적 없는 휴면(dead) 경로 —
+    //     사용하지 않음(삭제 아님, 존치).
+    //   - totp_enabled=1 계정: body.totp_code(6자리, 인증앱) 필수 — require-2fa.ts 의 verifyTOTP(±30s 창) 재사용.
+    //     부재/형식오류 → ADMIN_2FA_REQUIRED, 불일치 → ADMIN_2FA_INVALID. 둘 다 401 + 토큰 미발급.
+    //   - role ∈ {finance, super(레거시 super_admin 포함)} 인데 미등록(totp_enabled=0): 토큰은 오늘처럼 발급하되
+    //     must_set_2fa 플래그 → 프론트가 /admin/2fa 설정 페이지로 유도(잠금 없음 — 단독 관리자 lock-out 방지).
+    //     등록 완료 후부터 매 로그인 코드 필수. 그 외 역할 + 미등록: 현행 그대로(무변화).
+    //   ⚠️ fail-safe: totp_* 컬럼 미존재(프로덕션 drift 가능 — twofa.routes 가 setup 시 ALTER 로 추가)면
+    //     catch → null → 미등록 취급(로그인 차단 없음). admins 테이블 컬럼 추가 없음(read-only).
+    let mustSet2fa = false;
+    // 🔕 2026-07-19 대표 지시 "어드민 대시보드 2단계 인증 없애줘" — 로그인 TOTP 게이트 전면 비활성(재도입 = false 로).
+    const TOTP_LOGIN_GATE_DISABLED = true;
+    if (!TOTP_LOGIN_GATE_DISABLED) {
+      const totpRow = await DB.prepare('SELECT totp_secret, totp_enabled FROM admins WHERE id = ?')
+        .bind(admin.id).first<{ totp_secret: string | null; totp_enabled: number }>().catch(() => null);
+      if (totpRow?.totp_enabled && totpRow.totp_secret) {
+        const totpCode = String((body as { totp_code?: string }).totp_code || '').trim();
+        if (!/^\d{6}$/.test(totpCode)) {
+          return c.json({ success: false, totp_required: true, code: 'ADMIN_2FA_REQUIRED',
+            message: '이 계정은 2단계 인증(OTP)이 설정되어 있습니다. 인증 앱의 6자리 코드를 입력하세요.' }, 401);
+        }
+        const { verifyTOTP } = await import('../../../worker/middleware/require-2fa');
+        const totpOk = await verifyTOTP(totpRow.totp_secret, totpCode);
+        if (!totpOk) {
+          return c.json({ success: false, totp_required: true, code: 'ADMIN_2FA_INVALID',
+            error: 'OTP 코드가 올바르지 않습니다. 인증 앱의 최신 코드를 다시 입력하세요.' }, 401);
+        }
+      } else {
+        const TOTP_ENFORCED_ROLES = ['finance', 'super', 'super_admin'];
+        if (TOTP_ENFORCED_ROLES.includes(String(admin.role))) mustSet2fa = true;
+      }
+    }
+
+    // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 admin_login rate-limit 카운터 비움.
+    //   "본인이 5분에 5번 로그인하면 전부 성공이어도 잠기는" 문제 방지. 실패 시도는
+    //   위(잘못된 비번/PIN)에서 이미 반환되어 카운터에 남으므로 brute-force 방어 불변.
+    //   응답 후 실행(waitUntil) — 로그인 임계경로에 DB write 추가 안 함.
+    if (c.executionCtx) c.executionCtx.waitUntil(resetRateLimit(c, 'admin_login'));
+    else await resetRateLimit(c, 'admin_login');
 
     // 🆕 로그인 이력(IP) 기록 — fail-soft (로그인 차단 안 함).
     try {
@@ -247,6 +295,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         refreshToken,
         token, // backward compatibility
         must_set_pin: mustSetPin, // 🆕 강제 대상(도매 파트너/슈퍼)인데 보안 PIN 미설정 → 프론트가 PIN 설정 유도
+        must_set_2fa: mustSet2fa, // 🔐 R3 ④: finance/super 인데 2FA 미등록 → 프론트가 /admin/2fa 설정 유도 (must_set_pin 미러)
         admin: {
           id: admin.id as number,
           username: admin.username as string,
@@ -301,14 +350,15 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
     }
 
     const adminId = payload.sub;
+    // 🔐 2026-07-05: 삭제/비활성 계정은 refresh 로 세션 재발급 불가 — is_active 게이트(삭제 즉시 무효화).
     const admins = await executeQuery<any>(
       DB,
-      'SELECT id, username, email, name, role FROM admins WHERE id = ?',
+      'SELECT id, username, email, name, role FROM admins WHERE id = ? AND COALESCE(is_active, 1) = 1',
       [adminId]
     );
 
     if (admins.length === 0) {
-      console.warn('[Admin Refresh] Admin not found:', adminId);
+      console.warn('[Admin Refresh] Admin not found or deactivated:', adminId);
       return c.json({ success: false, error: '계정을 찾을 수 없습니다.' }, 401);
     }
 
@@ -324,8 +374,13 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
 
       const candidates = rows.results || [];
       if (candidates.length > 0) {
+        // 🛡️ 2026-07-04: 행 단위 만료 강제 — 이전엔 expires_at 을 조회만 하고 검사하지 않았음
+        //   (JWT exp 에만 의존). 아래 회전-유예(grace)를 도입하며 유예 지난 행이 계속 통하지
+        //   않도록 여기서 걸러낸다.
+        const nowMs = Date.now();
+        const alive = filterAliveRefreshRows(candidates, nowMs);
         let matchedId: number | null = null;
-        for (const row of candidates) {
+        for (const row of alive) {
           const { valid } = await verifyPassword(refreshToken, row.token_hash);
           if (valid) {
             matchedId = row.id;
@@ -336,8 +391,20 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
           console.warn('[Admin Refresh] refresh token not recognized (revoked or reused)');
           return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다.' }, 401);
         }
-        // rotate: 사용한 토큰 행 삭제
-        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(swallow('auth:api:admin'));
+        // 🛡️ 2026-07-04 (대표 "수시로 로그아웃"): rotate 즉시삭제 → **60초 유예**로 변경.
+        //   즉시 삭제하면 여러 탭이 같은 refresh 로 동시 갱신할 때 진 쪽이 'not recognized' 401
+        //   → 강제 로그아웃 + clearAuthData 가 이긴 탭의 새 토큰까지 삭제 → 전 탭 연쇄 로그아웃.
+        //   유예 내 재사용은 각자 새 토큰을 받고(경합 무해화), 유예 후엔 위 alive 필터가 차단
+        //   (rotation/재사용-탐지 의미 보존). 클라 짝: api.ts 인터셉터의 '저장소 변화 감지 재시도'.
+        await DB.prepare(
+          `UPDATE auth_refresh_tokens SET expires_at = ? WHERE id = ? AND expires_at > ?`,
+        ).bind(
+          rotationGraceExpiryIso(nowMs), matchedId, rotationGraceExpiryIso(nowMs),
+        ).run().catch(swallow('auth:api:admin'));
+        // 유예 지난 행 정리 (best-effort)
+        await DB.prepare(
+          `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ? AND expires_at <= ?`,
+        ).bind(Number(adminId), new Date(nowMs).toISOString()).run().catch(swallow('auth:api:admin'));
       }
     } catch (e) {
       console.error('[Admin Refresh] token store verify failed:', e);
@@ -422,7 +489,12 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   const user = (c as unknown as { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
   if (!user?.id) return c.json({ success: false, error: 'Unauthorized' }, 401);
   let pin = '';
-  try { pin = String(((await c.req.json<{ pin?: string }>()) || {}).pin || '').trim(); } catch { /* invalid json */ }
+  let currentPin = '';
+  try {
+    const body = (await c.req.json<{ pin?: string; current_pin?: string }>()) || {};
+    pin = String(body.pin || '').trim();
+    currentPin = String(body.current_pin || '').trim();
+  } catch { /* invalid json */ }
   if (!/^\d{6}$/.test(pin)) return c.json({ success: false, error: '6자리 숫자 PIN을 입력하세요' }, 400);
   // 너무 단순한 PIN 차단 (같은 숫자 6개 / 순차).
   if (/^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '111111'].includes(pin)) {
@@ -430,6 +502,21 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   }
   try {
     await ensureLoginPinColumn(DB);
+    // 🔐 2026-07-11 (사전점검 보안감사 R3): 이미 PIN 이 설정된 계정은 기존 PIN(current_pin) 검증
+    //   후에만 변경 가능 — 토큰 탈취자가 PIN 을 무단 재설정하는 경로 차단(단계적 재인증).
+    //   최초 설정(login_pin_hash IS NULL)은 현행 옵트인 흐름 그대로(current_pin 불요).
+    //   검증은 로그인 PIN 검증(:180)과 동일하게 verifyPassword(bcrypt) 재사용.
+    const existingRow = await DB.prepare('SELECT login_pin_hash FROM admins WHERE id = ?')
+      .bind(user.id).first<{ login_pin_hash: string | null }>();
+    if (existingRow?.login_pin_hash) {
+      if (!/^\d{6}$/.test(currentPin)) {
+        return c.json({ success: false, error: '기존 보안 PIN(current_pin)을 입력해야 변경할 수 있습니다', code: 'CURRENT_PIN_REQUIRED' }, 400);
+      }
+      const { valid: currentOk } = await verifyPassword(currentPin, existingRow.login_pin_hash);
+      if (!currentOk) {
+        return c.json({ success: false, error: '기존 보안 PIN이 올바르지 않습니다', code: 'CURRENT_PIN_MISMATCH' }, 403);
+      }
+    }
     const hash = await hashPassword(pin);
     await DB.prepare('UPDATE admins SET login_pin_hash = ? WHERE id = ?').bind(hash, user.id).run();
     return c.json({ success: true, message: '보안 PIN이 설정되었습니다. 다음 로그인부터 사용됩니다.' });

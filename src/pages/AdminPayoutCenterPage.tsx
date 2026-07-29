@@ -4,12 +4,14 @@
  * 어드민 라이트 테마 고정 (dark: 금지 룰).
  */
 import { useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatWon, formatNumber } from '@/utils/format'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
+import { DashboardLoadError } from '@/components/dashboard'
 import { Banknote, Landmark, Users, Building2, ExternalLink } from 'lucide-react'
 
 interface SellerRow { id: number; seller_id: number; seller_name: string | null; business_name: string | null; amount: number; period_start: string | null; period_end: string | null; bank_name: string | null; account_number: string | null; account_holder: string | null; status: string; created_at: string }
@@ -56,8 +58,11 @@ export default function AdminPayoutCenterPage() {
   }
 
   return (
+    <AdminLayout title="지급 센터">
     <div className="ur-content-full px-4 lg:px-8 py-6 space-y-5">
       <AdminFinanceTabs />
+      {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '대기 신청 없음'으로 위장하지 않도록 표면화 */}
+      {q.isError && <DashboardLoadError error={q.error} onRetry={() => q.refetch()} loginPath="/admin/login" label="지급 센터 데이터" />}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Landmark className="w-5 h-5" /> 지급 센터</h1>
@@ -179,6 +184,89 @@ export default function AdminPayoutCenterPage() {
           </div>
         )}
       </div>
+
+      {/* 🧾 정산 매입세금계산서 역발행 현황 */}
+      <SettlementTaxInvoicesPanel />
+    </div>
+    </AdminLayout>
+  )
+}
+
+interface TaxInvRow { id: number; settlement_id: number; seller_id: number; supply_amount: number; vat_amount: number; total_amount: number; period: string | null; status: string; nts_confirm_num: string | null; seller_name?: string | null; created_at: string }
+const TAXINV_STATUS: Record<string, { label: string; cls: string }> = {
+  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
+  requested: { label: '승인대기', cls: 'bg-blue-50 text-blue-700' },
+  approved: { label: '승인완료', cls: 'bg-indigo-50 text-indigo-700' },
+  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
+  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+  cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-500' },
+}
+
+function SettlementTaxInvoicesPanel() {
+  const [busy, setBusy] = useState<number | null>(null)
+  const q = useApiQuery<{ success: boolean; provider?: string; invoices?: TaxInvRow[] }>(
+    ['admin', 'settlement-tax-invoices'],
+    '/api/admin/tax/settlement-invoices',
+    { select: (d) => d as { success: boolean; provider?: string; invoices?: TaxInvRow[] } },
+  )
+  const rows = q.data?.invoices ?? []
+  const provider = q.data?.provider ?? 'none'
+
+  async function reissue(id: number) {
+    setBusy(id)
+    try {
+      const r = await api.post(`/api/admin/tax/settlement-invoices/${id}/reissue`, {})
+      if (r.data?.success) toast.success(r.data?.message || '역발행 요청 전송')
+      else toast.error(r.data?.message || r.data?.error || '처리 실패')
+      q.refetch()
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err?.response?.data?.error || '처리 실패')
+    } finally { setBusy(null) }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 className="text-[14px] font-bold text-gray-900">🧾 정산 세금계산서 역발행 (사업자 유저 셀러)</h3>
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${provider === 'none' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-700'}`}>
+          발행 연동: {provider === 'none' ? '미설정 (초안만 저장)' : provider}
+        </span>
+      </div>
+      {q.isLoading ? (
+        <p className="text-[13px] text-gray-400 py-6 text-center">불러오는 중…</p>
+      ) : !rows.length ? (
+        <p className="text-[13px] text-gray-400 py-8 text-center">역발행 대상 정산이 아직 없습니다 ✨</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead><tr className="bg-gray-50">{['셀러', '귀속', '공급가액', '부가세', '합계', '상태', '처리'].map(h => <th key={h} className="px-4 py-2.5 text-[11px] font-semibold text-gray-400 whitespace-nowrap">{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.map(r => {
+                const st = TAXINV_STATUS[r.status] || TAXINV_STATUS.draft
+                return (
+                  <tr key={r.id} className="border-t border-gray-50">
+                    <td className="px-4 py-3 text-[13px] font-medium text-gray-900">{r.seller_name || `#${r.seller_id}`}</td>
+                    <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{r.period || `#${r.settlement_id}`}</td>
+                    <td className="px-4 py-3 text-[12px] text-right whitespace-nowrap">{formatWon(r.supply_amount)}</td>
+                    <td className="px-4 py-3 text-[12px] text-right text-gray-500 whitespace-nowrap">{formatWon(r.vat_amount)}</td>
+                    <td className="px-4 py-3 text-[13px] font-bold text-right whitespace-nowrap">{formatWon(r.total_amount)}</td>
+                    <td className="px-4 py-3"><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{st.label}</span></td>
+                    <td className="px-4 py-3">
+                      {r.status !== 'issued' && provider !== 'none' ? (
+                        <button disabled={busy === r.id} onClick={() => reissue(r.id)}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">재발행</button>
+                      ) : (
+                        <span className="text-[12px] text-gray-400">{r.nts_confirm_num ? `#${r.nts_confirm_num}` : '—'}</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

@@ -60,7 +60,7 @@ export default function SellerConsignmentPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | Partnership['status']>('all')
   const [actingId, setActingId] = useState<number | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (role/status별 캐시).
-  const { data: partnerships = [], isLoading: loading, refetch } = useApiQuery<Partnership[]>(
+  const { data: partnerships = [], isLoading: loading, isError, refetch } = useApiQuery<Partnership[]>(
     ['seller', 'consignment', roleFilter, statusFilter], '/api/seller/consignment',
     {
       params: { ...(roleFilter !== 'all' ? { role: roleFilter } : {}), ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
@@ -152,6 +152,14 @@ export default function SellerConsignmentPage() {
         <div className="flex items-center justify-center py-16 text-gray-500">
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('seller.consignment.loading', { defaultValue: '불러오는 중...' })}
         </div>
+      ) : isError ? (
+        <DashboardCard>
+          <div className="text-center py-12">
+            <Handshake className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">{t('seller.consignment.loadError', { defaultValue: '위탁 파트너십을 불러오지 못했습니다.' })}</p>
+            <button onClick={() => refetch()} className="mt-3 text-xs underline text-gray-700">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          </div>
+        </DashboardCard>
       ) : partnerships.length === 0 ? (
         <DashboardCard>
           <div className="text-center py-12">

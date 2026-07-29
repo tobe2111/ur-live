@@ -25,6 +25,8 @@ interface WishItem {
   distributor_price: number | null
   is_active: number | null
   stock: number | null
+  moq?: number
+  order_multiple?: number
 }
 
 type Filter = 'all' | 'available' | 'sold'
@@ -47,17 +49,23 @@ export default function WholesaleWishlistPage() {
   }, [loggedIn])
 
   async function remove(productId: number) {
+    const snapshot = items // 🛡️ 2026-06-25: optimistic 실패 시 복원 — 옛 코드는 rollback 없어 잘못된 상태 고착.
     setItems(prev => (prev || []).filter(i => i.product_id !== productId))
     try { await api.post(`/api/wholesale/wishlist/${productId}/toggle`, {}, auth()) }
-    catch { toast.error('해제 실패 — 새로고침 후 다시 시도해주세요') }
+    catch { setItems(snapshot); toast.error('해제 실패 — 다시 시도해주세요') }
   }
 
   function isAvailable(it: WishItem) { return it.is_active !== 0 && (it.stock ?? 0) > 0 }
 
   function addToCart(it: WishItem) {
     if (it.distributor_price == null) { navigate(`/wholesale/product/${it.product_id}`); return }
-    cart.add({ id: it.product_id, qty: 1, name: it.name || `상품 #${it.product_id}`, image_url: it.image_url, price: it.distributor_price })
-    toast.success('장바구니에 담았어요')
+    // 🏭 2026-07-01 (라이브 감사): MOQ/주문배수 정합 담기 — 이전엔 qty:1 고정이라 MOQ>1 상품이
+    //   카트엔 정상처럼 보이다 결제 시 MOQ/ORDER_MULTIPLE 400 거부. 초기수량을 MOQ·배수에 맞춤.
+    const moq = Math.max(1, it.moq || 1)
+    const om = Math.max(1, it.order_multiple || 1)
+    const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
+    cart.add({ id: it.product_id, qty: initQty, name: it.name || `상품 #${it.product_id}`, image_url: it.image_url, price: it.distributor_price, moq, order_multiple: om })
+    toast.success(initQty > 1 ? `장바구니에 ${initQty.toLocaleString()}개 담았어요` : '장바구니에 담았어요')
   }
 
   const FILTERS: { id: Filter; label: string }[] = [
@@ -74,7 +82,7 @@ export default function WholesaleWishlistPage() {
   }, [items, filter])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="관심상품 - 유통스타트" description="찜한 도매 상품을 모아보고 재입고·가격변동을 확인하세요" url="/wholesale/wishlist" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

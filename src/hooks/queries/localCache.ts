@@ -26,6 +26,23 @@ export function readCache<T>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * 🛡️ 2026-07-02: 캐시 존재 시 값, 부재 시 null — 에러 폴백 분기용.
+ *   readCache(key, []) 는 "캐시 없음"과 "캐시된 빈 목록"을 구분 못 해, queryFn 의
+ *   .catch 폴백에 쓰면 네트워크 오류가 "빈 목록"으로 위장됨(페이지 에러 UI가 dead branch 화).
+ *   에러 폴백은 이 함수로: 캐시 있으면 last-known 표시, 없으면 throw → isError → 에러+재시도 UI.
+ */
+export function readCacheOrNull<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(PREFIX + key)
+    if (!raw) return null
+    try { localStorage.setItem(PREFIX + key + TS_SUFFIX, String(Date.now())) } catch { /* */ }
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
+
 export function writeCache<T>(key: string, value: T): void {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value))

@@ -2,6 +2,44 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-07-20 — 유어애즈 인플루언서 자동수집(Phase E) 신규 코드 부채
+무료 공식 API(YouTube Data v3 · 네이버 검색 오픈API)로 인플루언서를 매시간 순환 발굴 → **공용 풀**(`ad_influencer_leads.account_id=0`)에 누적. 어드민 `/admin/influencer-pool` 에서 열람/큐레이션/아웃리치. 코드: `src/features/marketing/api/influencer-{discovery,auto-collect}.ts` · `admin-ads.routes.ts` · `src/pages/admin/AdminInfluencerPoolPage.tsx` · ur-ads 워커 cron. ⚠️ **수집 ≠ 발송** — 실제 마케팅 발송은 정보통신망법상 사전동의 별도(이 엔진 범위 아님, mailto 초안만).
+
+### ✅ 2026-07-20 라이브 사고 3건 수정
+- ✅ **"Too many subrequests by single Worker invocation"** — 한 cron 실행에 키워드별 외부 fetch(검색+채널+채널별 컨택보충)가 누적돼 Worker subrequest 한도 초과 → 432건 저장 후 중도 실패(이후 키워드 전부 "네트워크 실패"로 오표시). **수정: `FetchBudget`(공유 카운터) 을 3개 발굴 함수(YT/네이버블로그/네이버카페)의 모든 `fetch` 앞에 배선 → 소진 시 우아하게 조기 종료(에러 아님)**. 기본 180(env `ADS_SUBREQUEST_BUDGET`), 커서가 다음 틱 이어받아 커버리지 손실 0(매시간 실행). enrichMax 도 YT 15→8·네이버 8→5 로 축소(폭 우선). 미전달이면 무제한(단건 수동 발굴 불변).
+- ✅ **어드민 풀 목록 500개 절단(전체 미열람)** — `/influencer-pool` 가 `LIMIT 500` 하드캡·페이지네이션 부재라 1800+ 풀 중 일부만 보임. **수정: `offset` 파라미터 + 필터별 `total` COUNT 반환 + UI "더 보기"(200씩 append) + "N / 전체 표시".**
+- ✅ **조용한 실패(silent failure)** — diag(플랫폼별 found/saved/error)를 저장만 하고 push 없음 → 시크릿 소실(=`wrangler deploy` plaintext wipe, 실발생)·쿼터소진 시 "신규 0건"이 조용히 지속. **수정: `maybeAlertCollectHealth` — 키 미설정 또는 전 플랫폼 saved=0 이면 Discord 경보(6h throttle + 회복 시 즉시 해제). `DISCORD_WEBHOOK_URL` 미설정이면 no-op.**
+- ✅ **셀러 매칭 지역(geo) 추가** — `GET /seller-match` 에 `product_regions`(시/군구/동 텍스트) LEFT JOIN → 매장별 지역 커버리지 표시 + `?region=` 텍스트 필터(로컬 딜 근접 매칭). **읽기 전용**(유어딜 데이터 무변경).
+
+### 🟢 남은 한계(저위험 · 구조적)
+- 🟢 **`ensureInfluencerSchema` 런타임 DDL SSOT 미등재** — `ad_influencer_leads`·`ad_discovery_keywords` 가 CLAUDE.md 허용 패턴(런타임 self-heal)이나 `production-schema.ts` 인터페이스 미등재. 동작 무관, 문서화 후속. **Low.**
+- 🟢 **연락처 확보율 = API 할당량 상한** — 영상설명·RSS 파싱으로 무료 범위 최대치. 유료 provider(인스타/틱톡 직접) 외 개선 여지 적음(구조적, 대표 "유료 보류"). **Low.**
+- 🟢 **중복 통합이 수동 버튼(email 기준)** — 자동 아님. UNIQUE(account_id,platform,channel_id) 로 채널 중복은 원천 차단되나 동일인의 크로스-플랫폼 중복은 수동 병합. **Low.**
+- 🟢 **셀러 매칭 지역 데이터 sparse** — `product_regions` 태깅된 매장만 지역 표시(미태깅 매장은 카테고리만). 인플루언서 측엔 위치 신호 없음 → 지역 매칭은 운영자 주도(텍스트 필터). **Low.**
+- 🟡 **자동수집 라이브 정확도는 실키 의존** — 이 개발환경 egress 차단이라 실 API 응답은 배포 후 검증(현재 라이브 동작 확인됨: 풀 1800+ 누적). 형제 유어애즈 모듈(`media-gateway`·`content-studio`·`order-collection`·`searchad-client`)도 egress-blind → 아래 06-27 항목과 동일하게 실계정 1회 검증 필요.
+
+## 📊 2026-06-27 — 유어애즈(UR Ads, 3번째 서비스) 신규 코드 부채
+보라웨어식 검색광고 마케팅 툴 신규 구축(`src/features/marketing/**`, `src/pages/marketing/**`). 이 환경은 외부 egress 차단이라 **네이버 실 API 호출 미검증** — 아래는 배포 후 실 키/실 계정으로 1회 검증 필요한 항목 + 알려진 한계.
+
+- 🟡 **검색광고 API 응답 스키마 블라인드 구현** (`searchad-client.ts`): `keywordstool`(RelKwdStat)·`estimate/average-position-bid`·`stats`·`ncc/campaigns|adgroups|keywords` 요청/응답 형태를 공식 문서 기반 **best-guess + 방어적 파싱**으로 작성. 실 호출 미검증 → 스키마가 다르면 해당 기능이 조용히 빈값/에러. **배포 후 실 계정으로 각 1회 확인 필수**(연관키워드·예상입찰가·실적·캠페인목록). 틀리면 파서만 1줄 수정. **Med(기능 정확성).**
+- 🟡 **자동입찰 자율 엔진 라이브 미검증** (`autobid.ts`): `planBid` 안전로직은 단위테스트로 박음(max_bid 하드캡 불변식), 그러나 estimate 응답·bid PUT 동작은 미검증. **글로벌 킬스위치 `ADS_AUTOBID_ENABLED` 기본 OFF** 라 실수 가동 0. 실 계정에서 `/autobid/preview`(dry-run) + `/autobid/run`(수동) 1회 확인 후에만 env 플래그 `true`. **High(돈) — 단, 기본 OFF 라 현재 위험 0.**
+- 🟢 **부정클릭 hit 엔드포인트 분산 abuse 미차단** (`clickguard.ts` `recordHit`): `advertiser_key` 는 픽셀에 노출(페이지 소스)되고 비-브라우저 요청은 `Origin` 위조 가능 → 분산 IP 로 `ad_click_events` bloat 가능(per-IP rateLimit 만 존재). 영향: 광고주 자기 리포트 오염 + DB 증가(2% 확률 90일 정리로 상한). **Phase 1 저위험**(돈 0). Phase 2 전 per-key 일일 cap 추가 권장. **Low.**
+- 🟢 **마케팅 패널 isError 미분기**: `SearchAdPanel`/`AutobidPanel`/`ClickGuardPanel` 이 fetch 실패를 graceful 빈상태로 처리(에러 토스트 X). 일시 5xx 시 "데이터 없음"으로 보일 수 있음(도매 iserror 가드 scope 밖). **Low(표시).**
+- 🟢 **`accountStats` 캠페인 30개 cap** (`searchad-client.ts`): 통합실적이 캠페인 30개까지만 집계(코드 주석 명시). 캠페인 많은 대형 광고주엔 부분 합계. **Low.**
+- 🟢 **i18n 미적용(국내 B2B 전용)**: 유어애즈 UI 한국어 하드코딩 — 도매몰과 동일(국내 사업자 대상). 셀러 대시보드 파일 아님(i18n 룰 scope 밖). 글로벌 확장 시 후속.
+- 🟢 **신규 테이블 ensureXxx 런타임 생성**(naver_commerce_connections·ad_searchad_connections·ad_clickguard_sites·ad_click_events·ad_autobid_rules/log·ad_price_watches): CLAUDE.md 허용 패턴(WeakSet 메모이즈)이나 production-schema.ts SSOT 미등재. 동작엔 무관(self-heal), 문서화 후속 권장. **Low.**
+
+## 📊 2026-06-26 — 전수감사 잔여(가드로 못 박는 latent) — 쇼핑 재오픈 전 fix 필수
+2026-06-26 5도메인 병렬 전수감사에서 나온, **결정론적 가드로 박기 어려운**(머니 흐름/문맥 의존) 확인 항목. `docs/AUDIT_INVARIANTS.md` "가드 미보유" 와 연동. **대부분 쇼핑탭 숨김(`SHOPPING_TAB_HIDDEN`) gated = 현재 라이브 영향 0, 단 재오픈 전 반드시 수정 + staging 실결제 검증.**
+
+- ✅ **[FIXED 2026-06-26 — 대표 "지금 진행"] 결제 셀프취소 `POST /api/orders/:id/cancel` refundOrderFully 우회 3건**: **전액취소를 `refundOrderFully` SSOT 경유로 라우팅** → B/C/D 동시 해소.
+  - **B (HIGH)**: 딜 전액결제(toss_key=NULL) 422 차단 → refundOrderFully 는 isDeal 시 Toss/키 체크 skip + 딜 환급 → **취소 가능**.
+  - **C (HIGH)**: 혼합결제 `deal_used` 미복원 → refundOrderFully step 3b 가 카드 Toss취소 후 deal_used 복원.
+  - **D (MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → refundOrderFully 가 전부 대칭 역전 + CAS 멱등(동시 이중취소도 1회만 — 기존 인라인의 무CAS 이중환급 race 도 동시 해소).
+  - **부분취소(`cancel_amount < 잔여`)**: 기존 카드 Toss 부분취소 경로 유지(refundOrderFully 는 전액전용). 딜/쿠폰 주문 부분취소는 여전히 제한적(toss_key 없으면 422) — pre-existing, 유저는 전액취소 선택 가능. 검증: tsc 0 · build 0 · refund 27 tests · money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제(딜전액·혼합·쿠폰 각 1회) 권장.
+- ✅ **[FIXED 2026-06-27] 제조사 "출금 가능" 표시 과대** (`OverviewTab.tsx:32`): `/api/supplier/me` balance 에 `reserved_amount` 추가(best-effort 조회, 컬럼 미존재 시 0) → 카드가 `available - reserved`(=출금 페이지 `spendable` 동일 의미) 표시. **기존 balance 조회/응답 필드 불변(additive), 도매몰 경계 내**(소비자 영향 0). tsc 0·audit-gate ALL GREEN. 잔여: `supplier-analytics.routes.ts:139 settle_available` 는 **다른 회계축**(`supplier_settlements` status='available' 합 ≠ `supplier_balances.reserved_amount`)이라 reserved 차감이 부정확 → 의도적 미수정(분석 요약 stat, actionable 출금버튼 아님).
+- ✅ **[FIXED 2026-06-27] 인플 프론트 원천징수 하드코딩**: `AdminInfluencerPayoutsPage.calcWithholding` 가 `WITHHOLDING_RATES`(`@/shared/constants/policy` — worker tax-withholding 재내보내기) 사용 → 3.3/8.8 literal 제거. 서버·프론트 단일 SSOT.
+
 ## 📊 2026-06-22 — 기술부채 전수 점검 + 보안/i18n 정리 (대표 "모두 가장 이상적으로")
 대표 "전체적으로 기술부채 확인" → 진단 도구 전수 실행 후 처리.
 - ✅ **npm audit production HIGH 2건 해소** — `form-data`(axios 경유, CRLF) `4.0.5→4.0.6`, `@grpc/grpc-js`(firebase-admin 경유, crash) `1.14.3→1.14.4`. **overrides** 로 transitive 강제 패치(fixAvailable=true, non-breaking). `npm audit --omit=dev` high/critical **0** 확인.
@@ -112,7 +150,7 @@
 | 항목 | 위치 | 비고 |
 |---|---|---|
 | 원시에러 누출 잔여 | orders/bulk-upload/admin-kt-alpha 등 | **인증/내부 경로라 저위험**. 점진 `safeError` |
-| 셀러 환불 **프론트 UI 버튼** | seller dashboard | 백엔드 `POST /orders/:id/refund` 완비 — 셀러 주문 상세에 '취소·환불' 버튼만 추가하면 됨(후속, 저위험) |
+| ✅ 셀러 환불 **프론트 UI 버튼** | seller dashboard | **[확인 2026-06-27] 이미 구현됨**(stale) — `OrderDetailModal` 이 PAID/DONE/PREPARING/SHIPPING 주문에 '취소·환불' 버튼 렌더(`onRefund`→`handleRefund`→`POST /orders/:id/refund`). |
 
 ### 검증 결론 (에이전트)
 - **tsc: 0 에러** (빌드는 타입 strip 하지만 tsc/CI 기준도 clean — 직전 `AdminWholesaleOrdersPage` 잠복에러 1건은 이미 수정).
@@ -819,6 +857,15 @@ PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행
 
 ### TD-003 (Cloudflare 유령 프로젝트) 진단 — 미해결 사용자 액션
 
+> ## ✅ 2026-07-28 종결 — 대표가 `ur-live-global` **삭제**(대시보드). 이 부채는 해소됐다.
+> - 실측: `world.ur-team.com` 응답 없음(워커 제거 반영) · `live.ur-team.com` **HTTP 200 정상**(무영향 확인).
+> - 레포 잔재도 같은 날 삭제: `wrangler.global.toml` · `scripts/deploy-global.sh` · `scripts/deploy-dual-sites.sh`
+>   (전수조사 결과 package.json·CI 워크플로·git hooks·가드 스크립트 참조 **0건** — 문서/archive 언급뿐이라 안전).
+> - ⚠️ **해외판을 다시 만들 때 이 프로젝트를 부활시키지 말 것.** 지역 판정이 런타임 hostname 기반
+>   (`src/shared/config/region.ts`)이라 **배포 1개 + 도메인 추가**로 끝난다(도매몰 utongstart.com 과 동일).
+>   상세: `docs/design/global-launch-readiness.md`.
+> - 아래는 종결 전 기록(경위 보존용).
+
 **증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
 
 **📌 2026-06-22 재확인 (PR #398)** — 동일 증상 지속. 확인된 사실:
@@ -1371,3 +1418,70 @@ src/features/group-buy/api/
 
 ### 운영 설정 (코드 아님)
 - `TOSS_WEBHOOK_IP_ALLOWLIST` 미설정 시 위조 webhook 여지(금액 DB 재검증되나 가짜 PAID 가능) → Cloudflare Dashboard → ur-live → Variables 설정 권장.
+
+## 🟡 2026-06-25 도매 차단게이트 audit 잔여 (latent/edge — live 흐름 무영향, 추적용)
+
+> 배경: 대표 신고 "AB테스트 오류 투성이" → 도매 write 핸들러의 "정당한 동작을 부당하게 막는 게이트" 전수조사.
+> **live 블로커는 1건뿐(상품 승인 최저가 게이트 — `61e92a9` 로 fix 완료)**. 아래 4건은 dead/edge/policy 라 미적용(추측성 변경 회피).
+
+### 1. `/orders/confirm` (wholesale Toss path) 금액검증이 배송비 누락 (latent/DEAD)
+- `wholesale.routes.ts:1526` `if (Number(order.subtotal) !== Math.round(amount))` — 실제 청구는 `subtotal + shipping_total`(line 1363 `chargeTotal`). 배송비 있는 주문은 Toss confirm path 에서 항상 400.
+- **dead**: 라이브 도매 주문은 예치금 전용 `/orders`(즉시 PAID) — `/orders/confirm`(Toss) 호출 클라 0건(검증함). 부활 시 fix: SELECT 에 `shipping_total` 추가 + `subtotal + COALESCE(shipping_total,0)` 비교.
+
+### 2. `become-distributor` 가 사업자번호 없는 승인셀러 차단 (policy)
+- `wholesale.routes.ts:337` — 라이브커머스로 승인된 인플루언서/매장셀러(사업자번호 미보유)가 카카오로 도매 진입 시 `BUSINESS_INFO_REQUIRED`. 의도된 정책(2026-06-12: 인플루언서 승인 ≠ 도매 승인). 프론트가 가입폼으로 유도하므로 dead-end 아님. 정책 유지.
+
+### 3. 멱등키가 FAILED 주문에 묶여 동일키 재시도 차단 (edge)
+- `wholesale.routes.ts:1407-1414` + `wholesale-deposit-core.ts:148` — transient OVERSOLD/에러로 `status='FAILED'` 된 주문의 `idempotency_key` 가 남아, **같은** 키 재시도가 `already:true`(재청구 0)로 막힘. 클라는 시도마다 새 키 생성이라 edge. money-path 라 신중 — 부활 시 fix: FAILED 시 `idempotency_key` null 또는 "새 키로 재시도" 시그널 반환.
+
+### 4. 합배송 SHIPPED 승격이 `PARTIAL_REFUNDED` 누락 (cosmetic)
+- `wholesale-supplier.routes.ts:182,226` — 발송은 허용(PAID/SHIPPED/PARTIAL_REFUNDED)인데 주문헤더 SHIPPED 승격은 `WHERE status='PAID'` 만 → 부분환불 주문의 잔여라인 발송 시 라인은 SHIPPED 되나 헤더는 PARTIAL_REFUNDED 유지. **에러 아님**(발송 성공). PARTIAL_REFUNDED→SHIPPED 승격은 환불상태 시그널 손실 우려라 미적용.
+
+## 🟡 2026-06-25 도매몰 6도메인 전수조사 잔여 (MED/LOW — CRITICAL/HIGH 는 batch1~5 로 fix 완료)
+
+> 6도메인 병렬 전수조사 후 머니3·기능먹통·silent-empty·CAS 등 17+건 수정(batch1~5). 아래는 영향 낮아 미적용 — 추적용.
+
+### 1. 소비자 드랍쉽 발송 탭 분류 (P1, 도매흐름 무관)
+- `supplier-dashboard.routes.ts:850-853` GET /orders 가 **주문 status**(o.status)로 to_ship/shipped 분류. 혼합주문(여러 제조사)에서 내 라인만 발송하면 o.status 가 안 올라가 내 발송라인이 양쪽 탭에서 누락 가능.
+- ⚠️ **도매(wholesale-supplier.routes)는 이미 라인 line_status 기준이라 무관** — 소비자 드랍쉽 경로만. 수정: 분류를 내 라인 shipped_at 기준으로(쿼리 재작성 — 신중).
+
+### 2. LOW 정리 (잔여)
+- `oem-requests.ts:16` ensure WeakSet 선마킹(promise-cache 패턴으로 통일 권장 — 코드품질 nit).
+- 등급별 마진율 탭 = 엑셀 전용(라이브 가격 무영향) — **대표 결정 대기**(엑셀전용 라벨 vs 등급차등가 부활).
+
+> 🧹 **2026-06-30 정리** — 위 섹션의 (구)항목 2~5 다수가 해소/무효 확인되어 제거:
+> - (구)2 제조사 대시보드 보조 로더 silent-empty → loadCatalog/orders/settlements 전부 `markErr`+`secErr` 로 표면화 완료 ✅
+> - (구)3 판매사 wishlist/naver/channels 페이지 **삭제됨**, oem 은 `isError` 분기로 de-mask 완료 ✅
+> - (구)4 Overview "출금 가능" → `available − reserved`(spendable) 표시 완료 ✅
+> - (구)5a StatementPage net 누락 → `?? (total_paid − total_refunded)` 폴백 적용 ✅ / (구)5b 송장 0건 → `toast.error` 완료 ✅ / (구)5c StaffPage **삭제됨** ✅
+
+## 🟡 2026-06-25 신규각도 전수조사(IDOR/stale-UI/숫자/동시성) 잔여
+
+> batch7~8 로 stale-UI·머니상태·IDOR방어심화·become race·claims dup·supply_price 마진가드 fix. 아래는 UNIQUE인덱스/restructure 필요 or 영향 낮아 미적용 — 추적용.
+
+### 1. 채널 export 중복 외부상품 (P0, 채널 한정·restructure 필요)
+- `coupang-commerce.routes.ts:200`·`naver-commerce.routes.ts:192` 가 외부 상품생성(coupang/naver POST)을 **로컬 멱등 row INSERT 전**에 실행 → 동시 export 2회면 외부 스토어에 실상품 2개. 클라 in-flight 가드는 단일클릭만 막음.
+- 수정: 외부호출 전에 `INSERT OR IGNORE coupang_product_exports/naver_commerce_* (..., status='exporting')` claim → `meta.changes===1` 일 때만 외부호출. UNIQUE 이미 존재(coupang-core:59, naver-core:73).
+
+### 2. supply.routes 중복생성 (P1, UNIQUE 인덱스 필요)
+- `/register`(316): `(seller_id, supply_source_id)` partial UNIQUE + ON CONFLICT 없음 → 동시 등록 시 store product 2개.
+- `/sample-requests`(168): `(seller_id, product_id)` UNIQUE 없음 → 중복 PENDING 2개. (admin PATCH 는 이미 CAS.)
+- 수정: 각 partial UNIQUE(repair-schema 등록) + INSERT OR IGNORE/ON CONFLICT.
+
+### 3. wholesale-claims 완전 race-proof (P2)
+- batch8 에서 active-claim 존재검사로 재제출(지배 케이스) 차단. 동시 race 완전차단은 `(wholesale_order_id, COALESCE(item_id,0)) WHERE status IN('open','reviewing')` partial UNIQUE 필요(repair-schema).
+
+### 4. 숫자/단위 LOW (P2)
+- `tax-withholding.ts:133` dup-path 가 `rate/100`(decimal) 반환, fresh-path 는 percent → 100× 불일치(현 호출자 미사용, latent). `dup.withholding_rate || 0` 로.
+- `supplier-dashboard.routes /store/import`(1233): `supply_rate_pct===100` 허용 → supply==sale(마진0). `>=100` 차단.
+- `WholesaleProductPage` qty 스텝퍼: moq 가 order_multiple 배수 아니면 비배수 qty 도달 후 서버 거부(UX dead-end). floor 보정.
+- POST /products(275,278): 공급가/판매가 `Math.floor` 누락(소수 저장). edit/price-change 는 floor 함.
+- WholesaleQuotesPage 견적요청 qty/price 클라 finite/range 가드 누락(서버 검증함, 비금전).
+
+### 5. stale-UI P2
+- `AdminWholesaleProductsPage` togglePremium/bulkSetPremium: 성공 후 optimistic[id] 미삭제 → refetch 후에도 stale optimistic 우세 가능. 성공분기에서 delete.
+- 위시리스트↔카탈로그 ♥ desync(별도 상태). RQ key 통일 권장.
+
+### 6. 동시성 P2
+- 설정 UPDATE(distributor-admin distributors/grades, admin-products premium) 비-CAS → 동시편집 시 중복/stale audit row(값은 last-writer-wins, 머니무관).
+- `wholesale-chat.routes:398` last_message_id 비원자 갱신 → 동시전송 시 preview 역행 + 중복 notify(cosmetic).

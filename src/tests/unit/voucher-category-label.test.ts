@@ -14,23 +14,23 @@ import { describe, it, expect } from 'vitest'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
 describe('getVoucherShortLabel — 모든 카테고리 명시 라벨', () => {
-  it('식사권 / 미용 / 숙소 / 기타 — 신규 4종', () => {
-    expect(getVoucherShortLabel('meal_voucher')).toBe('식사권')
-    expect(getVoucherShortLabel('beauty_voucher')).toBe('미용권')
-    expect(getVoucherShortLabel('stay_voucher')).toBe('숙소권')
-    expect(getVoucherShortLabel('etc_voucher')).toBe('기타권')
+  it('식사 / 미용 / 숙소 / 기타 이용권 — 신규 4종 ("{카테고리} 이용권")', () => {
+    expect(getVoucherShortLabel('meal_voucher')).toBe('식사 이용권')
+    expect(getVoucherShortLabel('beauty_voucher')).toBe('미용 이용권')
+    expect(getVoucherShortLabel('stay_voucher')).toBe('숙소 이용권')
+    expect(getVoucherShortLabel('etc_voucher')).toBe('기타 이용권')
   })
 
   it('legacy 카테고리 — graceful 매핑', () => {
-    expect(getVoucherShortLabel('health_voucher')).toBe('미용권')
-    expect(getVoucherShortLabel('pet_voucher')).toBe('기타권')
-    expect(getVoucherShortLabel('activity_voucher')).toBe('기타권')
+    expect(getVoucherShortLabel('health_voucher')).toBe('미용 이용권')
+    expect(getVoucherShortLabel('pet_voucher')).toBe('기타 이용권')
+    expect(getVoucherShortLabel('activity_voucher')).toBe('기타 이용권')
   })
 
-  it('미지 카테고리 — 바우처 fallback', () => {
-    expect(getVoucherShortLabel('unknown_xyz')).toBe('바우처')
-    expect(getVoucherShortLabel('')).toBe('바우처')
-    expect(getVoucherShortLabel(null)).toBe('바우처')
-    expect(getVoucherShortLabel(undefined)).toBe('바우처')
+  it('미지 카테고리 — 이용권 fallback', () => {
+    expect(getVoucherShortLabel('unknown_xyz')).toBe('이용권')
+    expect(getVoucherShortLabel('')).toBe('이용권')
+    expect(getVoucherShortLabel(null)).toBe('이용권')
+    expect(getVoucherShortLabel(undefined)).toBe('이용권')
   })
 })

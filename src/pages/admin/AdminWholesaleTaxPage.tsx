@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Receipt, Loader2, FileText, AlertCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminMallSelect, { useAdminMalls } from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 TAX-1 (2026-06-08) 어드민 도매 세무 — 미수/미지급 aging 리포트 + 매입(역발행) 세금계산서.
 //   라이트 고정 대시보드 테마(dark: 미사용). 역발행은 수동 1회 기록(자동 발사 X).
@@ -108,17 +109,17 @@ export default function AdminWholesaleTaxPage() {
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const { data: aging, isLoading: agingLoading } = useApiQuery<AgingResp | null>(
+  const { data: aging, isLoading: agingLoading, isError: agingIsError, error: agingError, refetch: refetchAging } = useApiQuery<AgingResp | null>(
     ['admin', 'wholesale-aging'], '/api/admin/wholesale/tax/aging',
     { headers: h.headers, select: (r: any) => (r?.success ? r : null), enabled: tab === 'aging' },
   )
 
-  const { data: candidates = [], isLoading: invLoading, refetch: refetchInv } = useApiQuery<InvoiceCandidate[]>(
+  const { data: candidates = [], isLoading: invLoading, isError: invIsError, error: invError, refetch: refetchInv } = useApiQuery<InvoiceCandidate[]>(
     ['admin', 'wholesale-purchase-invoices', period], '/api/admin/wholesale/tax/purchase-invoices',
     { params: { period }, headers: h.headers, select: (r: any) => (r?.success ? r.candidates || [] : []), enabled: tab === 'invoices' && /^\d{4}-\d{2}$/.test(period) },
   )
 
-  const { data: autoInvoices = [], isLoading: autoLoading, refetch: refetchAuto } = useApiQuery<AutoInvoiceRow[]>(
+  const { data: autoInvoices = [], isLoading: autoLoading, isError: autoIsError, error: autoError, refetch: refetchAuto } = useApiQuery<AutoInvoiceRow[]>(
     ['admin', 'wholesale-tax-invoices', autoStatus, autoType, autoMallId], '/api/admin/wholesale/wholesale-tax-invoices',
     { params: { status: autoStatus, type: autoType, ...(autoMallId ? { mall_id: autoMallId } : {}) }, headers: h.headers, select: (r: any) => (r?.success ? r.invoices || [] : []), enabled: tab === 'auto' },
   )
@@ -131,7 +132,7 @@ export default function AdminWholesaleTaxPage() {
   async function issue(cand: InvoiceCandidate) {
     if (cand.invoice_status !== 'none') return
     const ok = await confirmDialog({
-      message: `${cand.supplier_name || `공급사 #${cand.supplier_id}`} — ${period} 매입분 ${formatWon(cand.total_amount)} (공급가 ${formatWon(cand.supply_amount)} + 부가세 ${formatWon(cand.vat_amount)})\n역발행 세금계산서를 기록할까요?\n\n※ 실제 전자세금계산서는 검증 후 별도 발행됩니다(이 단계는 발행 의도 기록).`,
+      message: `${cand.supplier_name || `제조사 #${cand.supplier_id}`} — ${period} 매입분 ${formatWon(cand.total_amount)} (공급가 ${formatWon(cand.supply_amount)} + 부가세 ${formatWon(cand.vat_amount)})\n역발행 세금계산서를 기록할까요?\n\n※ 실제 전자세금계산서는 검증 후 별도 발행됩니다(이 단계는 발행 의도 기록).`,
     })
     if (!ok) return
     setIssuing(cand.supplier_id)
@@ -164,7 +165,7 @@ export default function AdminWholesaleTaxPage() {
         <DashboardPageHeader
           icon={<Receipt className="w-5 h-5" />}
           title={t('admin.wsTax.heading', { defaultValue: '도매 미수/미지급 + 매입 세금계산서' })}
-          subtitle={t('admin.wsTax.subtitle', { defaultValue: '공급사 미지급·판매사 미수 aging + 제조사→유통스타트 매입(역발행) 세금계산서' })}
+          subtitle={t('admin.wsTax.subtitle', { defaultValue: '제조사 미지급·판매사 미수 aging + 제조사→유통스타트 매입(역발행) 세금계산서' })}
         />
 
         <div className="flex items-center gap-2 my-4">
@@ -183,12 +184,14 @@ export default function AdminWholesaleTaxPage() {
         {tab === 'aging' && (
           agingLoading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+          ) : agingIsError ? (
+            <DashboardLoadError error={agingError} onRetry={() => refetchAging()} loginPath="/admin/login" label="채권 현황" />
           ) : (
             <div className="space-y-8">
               {/* 요약 카드 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.payableTotal', { defaultValue: '미지급 합계 (공급사)' })}</div>
+                  <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.payableTotal', { defaultValue: '미지급 합계 (제조사)' })}</div>
                   <div className="text-2xl font-bold text-gray-900">{formatWon(payableSum?.total || 0)}</div>
                   <div className="text-xs text-gray-400 mt-1">{payableSum?.count || 0}건 미정산</div>
                 </div>
@@ -199,14 +202,14 @@ export default function AdminWholesaleTaxPage() {
                 </div>
               </div>
 
-              {/* 미지급 (공급사) */}
+              {/* 미지급 (제조사) */}
               <section>
-                <h3 className="text-base font-bold text-gray-900 mb-2">{t('admin.wsTax.payable', { defaultValue: '미지급 — 공급사 미정산' })}</h3>
+                <h3 className="text-base font-bold text-gray-900 mb-2">{t('admin.wsTax.payable', { defaultValue: '미지급 — 제조사 미정산' })}</h3>
                 <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-gray-500 border-b border-gray-100">
-                        <th className="py-2.5 px-4 font-medium">공급사</th>
+                        <th className="py-2.5 px-4 font-medium">제조사</th>
                         {BUCKET_LABELS.map((l, i) => <th key={i} className={`py-2.5 px-4 font-medium text-right ${BUCKET_STYLE[i]}`}>{l}</th>)}
                         <th className="py-2.5 px-4 font-medium text-right">합계</th>
                       </tr>
@@ -266,7 +269,7 @@ export default function AdminWholesaleTaxPage() {
               </section>
 
               {aging?.as_of && (
-                <p className="text-[11px] text-gray-400">{t('admin.wsTax.asOf', { defaultValue: '기준' })}: {new Date(aging.as_of).toLocaleString('ko-KR')}</p>
+                <p className="text-[11px] text-gray-400">{t('admin.wsTax.asOf', { defaultValue: '기준' })}: {safeDate(aging.as_of)?.toLocaleString('ko-KR') ?? '-'}</p>
               )}
             </div>
           )
@@ -293,6 +296,8 @@ export default function AdminWholesaleTaxPage() {
 
             {invLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+            ) : invIsError ? (
+              <DashboardLoadError error={invError} onRetry={() => refetchInv()} loginPath="/admin/login" label="매입 내역" />
             ) : candidates.length === 0 ? (
               <p className="text-center text-gray-400 py-20">{t('admin.wsTax.noCandidates', { defaultValue: '해당 기간에 매입(지급된 정산) 내역이 없습니다.' })}</p>
             ) : (
@@ -300,7 +305,7 @@ export default function AdminWholesaleTaxPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-gray-500 border-b border-gray-100">
-                      <th className="py-2.5 px-4 font-medium">공급사</th>
+                      <th className="py-2.5 px-4 font-medium">제조사</th>
                       <th className="py-2.5 px-4 font-medium">사업자번호</th>
                       <th className="py-2.5 px-4 font-medium text-right">공급가액</th>
                       <th className="py-2.5 px-4 font-medium text-right">부가세</th>
@@ -375,6 +380,8 @@ export default function AdminWholesaleTaxPage() {
 
             {autoLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+            ) : autoIsError ? (
+              <DashboardLoadError error={autoError} onRetry={() => refetchAuto()} loginPath="/admin/login" label="세금계산서" />
             ) : autoInvoices.length === 0 ? (
               <p className="text-center text-gray-400 py-20">{t('admin.wsTax.noAuto', { defaultValue: '자동 발행된 세금계산서가 없습니다.' })}</p>
             ) : (

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useSearchInfinite } from '@/hooks/useSearch'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
 import ProductCard from '@/components/search/ProductCard'
@@ -22,9 +23,10 @@ interface Product {
   seller_username: string
   // 🛡️ 2026-05-19: 검색 결과 탭 (전체/교환권/쇼핑) 분리용.
   deal_only?: number
+  // 🖥️ 2026-07-16: 이용권(voucher 카테고리) 판별용 — 검색을 이용권만으로 필터.
+  category?: string
 }
 
-type TypeTab = 'all' | 'voucher' | 'shop'
 
 interface SearchSuggestion {
   type: 'product' | 'seller'
@@ -80,7 +82,6 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   // 🛡️ 2026-05-19: 검색 결과 타입 탭 (전체/교환권/쇼핑) — 사용자가 결과 안에서 분류 가능.
-  const [typeTab, setTypeTab] = useState<TypeTab>('all')
 
   useEffect(() => { document.title = t('search.pageTitle', { defaultValue: '검색 - 유어딜' }) }, [t])
 
@@ -108,9 +109,15 @@ export default function SearchPage() {
     }
 
     try {
+      // 🔎 2026-07-20 (대표 — 검색 자동완성 수리): `/api/search/suggestions` 는 { data: string[] } 를 반환.
+      //   기존 코드는 `data.suggestions`(존재 X)를 읽어 자동완성이 항상 비어 있었음. string[] → {type,text} 매핑.
       const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(value)}`)
-      if (response.data.success) {
-        setSuggestions(response.data.data.suggestions || [])
+      const list = response.data?.data
+      if (Array.isArray(list)) {
+        setSuggestions(list.filter((s: unknown): s is string => typeof s === 'string' && !!s)
+          .map((text: string) => ({ type: 'product' as const, text })))
+      } else {
+        setSuggestions([])
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to load suggestions:', error)
@@ -123,9 +130,11 @@ export default function SearchPage() {
     let filtered = (searchResult.products as Product[]).filter(product => {
       const price = getDiscountedPrice(product.price, product.discount_rate || 0)
       if (price < priceRange.min || price > priceRange.max) return false
-      // 🛡️ 2026-05-19: 타입 탭 필터 (교환권 vs 쇼핑).
-      if (typeTab === 'voucher' && Number(product.deal_only) !== 1) return false
-      if (typeTab === 'shop' && Number(product.deal_only) === 1) return false
+      // 🖥️ 2026-07-16 (대표 — "검색은 무조건 이용권만"): 교환권(deal_only=1 기프티콘) 항상 제외 +
+      //   category 있으면 이용권(voucher 카테고리: 식사/미용/숙소/기타)만. isVoucherCategory = 이용권 SSOT.
+      //   category 누락 응답에도 결과가 비지 않도록 deal_only 를 1차 가드로 사용(robust).
+      if (Number(product.deal_only) === 1) return false
+      if (product.category && !isVoucherCategory(product.category)) return false
       return true
     })
 
@@ -146,14 +155,25 @@ export default function SearchPage() {
   }
 
   const products = getSortedAndFilteredProducts()
-  const hasResults = !!(searchResult && searchResult.total > 0)
-  const showResults = !loading && !error && query && hasResults
+  // 🧹 2026-07-20 (소비자 감사): 결과 유무는 서버 total(교환권·쇼핑 포함 전체)이 아니라 **필터 후(이용권 전용)
+  //   products.length** 기준. 서버 매칭이 전부 비-이용권이면 total>0 이라 빈 그리드에 "N개 결과"만 뜨던 버그.
+  const hasResults = products.length > 0
+  // 현재 로드분이 전부 필터로 걸러졌지만 다음 페이지가 남았으면 자동으로 더 불러와 '결과 없음' 오표시 방지.
+  useEffect(() => {
+    if (query.length >= 2 && products.length === 0 && hasNextPage && !isFetchingNextPage && !loading) {
+      fetchNextPage()
+    }
+  }, [query, products.length, hasNextPage, isFetchingNextPage, loading, fetchNextPage])
+  // 아직 필터 통과 결과가 0건인데 더 불러올 게 남아 있으면 '없음' 대신 로딩 유지(자동 페치 중).
+  const stillLoadingResults = loading || (query.length >= 2 && products.length === 0 && (isFetchingNextPage || hasNextPage))
+  const showResults = !stillLoadingResults && !error && query && hasResults
 
   const relatedKeywords = DEFAULT_RELATED_KEYWORD_KEYS.map(k => t(`search.related.${k.key}`, { defaultValue: k.defaultValue }))
 
+  // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20 min-h-screen">
-      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요.' })} url="/search" noindex />
+    <div className="bg-white dark:bg-[#0F151D] pb-safe-nav md:pb-20 min-h-[100dvh]">
+      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
         query={query}
@@ -167,7 +187,7 @@ export default function SearchPage() {
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
-          loading={loading}
+          loading={stillLoadingResults}
           error={error}
           query={query}
           hasResults={hasResults}
@@ -177,45 +197,17 @@ export default function SearchPage() {
         {/* Results Grid */}
         {showResults && (
           <>
-            {/* 🛡️ 2026-05-19: 타입 탭 (전체/교환권/쇼핑) — 결과 안에서 분류. */}
-            {(() => {
-              const all = (searchResult.products as Product[]) || []
-              const voucherCount = all.filter(p => Number(p.deal_only) === 1).length
-              const shopCount = all.length - voucherCount
-              return (
-                <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar">
-                  {[
-                    { key: 'all' as TypeTab, label: '전체', count: all.length },
-                    { key: 'voucher' as TypeTab, label: '🎁 교환권', count: voucherCount },
-                    { key: 'shop' as TypeTab, label: '🛒 쇼핑', count: shopCount },
-                  ].map(tab => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setTypeTab(tab.key)}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                        typeTab === tab.key
-                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                          : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300'
-                      } ${tab.count === 0 && tab.key !== 'all' ? 'opacity-40' : ''}`}
-                      disabled={tab.count === 0 && tab.key !== 'all'}
-                    >
-                      {tab.label} <span className="text-[10px] opacity-70">({tab.count})</span>
-                    </button>
-                  ))}
-                </div>
-              )
-            })()}
+            {/* 🖥️ 2026-07-16 (대표 — 검색은 이용권만): 교환권/쇼핑 타입 탭 제거(이용권 단일). */}
 
             {/* Sort and Filter Bar with chips */}
             <SortFilterBar
-              totalResults={searchResult.total}
+              totalResults={products.length}
               sortBy={sortBy}
               onSortChange={setSortBy}
             />
 
             {/* 2-column Product Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -239,14 +231,14 @@ export default function SearchPage() {
             )}
 
             {/* Related Keywords Section */}
-            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#1A1A1A]">
+            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#2A3446]">
               <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('search.relatedKeywords', { defaultValue: '함께 검색된 키워드' })}</h3>
               <div className="flex flex-wrap gap-2">
                 {relatedKeywords.map((keyword) => (
                   <button
                     key={keyword}
                     onClick={() => handleSearch(keyword)}
-                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2A2A2A] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#121212] active:bg-gray-100 dark:bg-[#1A1A1A] dark:active:bg-[#1A1A1A] transition-colors"
+                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2A3446] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1A2334] active:bg-gray-100 dark:bg-[#1A2334] dark:active:bg-[#1A2334] transition-colors"
                   >
                     {keyword}
                   </button>

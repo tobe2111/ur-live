@@ -4,16 +4,17 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-09 Wave 2 — 어드민 도매 제안/신고 처리 큐.
 //   판매사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
 
 type FeedbackType = 'proposal' | 'report'
-type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+type FeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'rejected'
 
 interface FeedbackRow {
   id: number
@@ -31,14 +32,14 @@ interface FeedbackRow {
 
 const STATUS: Record<FeedbackStatus, { t: string; c: string }> = {
   open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
-  in_review: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
+  in_progress: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
   resolved: { t: '처리완료', c: 'bg-emerald-50 text-emerald-700' },
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
 const FILTERS: { id: string; label: string }[] = [
   { id: 'open', label: '접수' },
-  { id: 'in_review', label: '검토중' },
+  { id: 'in_progress', label: '검토중' },
   { id: 'resolved', label: '처리완료' },
   { id: 'rejected', label: '반려' },
   { id: 'all', label: '전체' },
@@ -57,7 +58,7 @@ export default function AdminWholesaleProposalsPage() {
   //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-proposals', filter, mallId] as const
-  const { data: rows = [], isLoading: loading, refetch } = useApiQuery<FeedbackRow[]>(
+  const { data: rows = [], isLoading: loading, isError, error, refetch } = useApiQuery<FeedbackRow[]>(
     queryKey,
     '/api/admin/wholesale-proposals',
     {
@@ -108,6 +109,8 @@ export default function AdminWholesaleProposalsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="제안/신고" />
         ) : rows.length === 0 ? (
           <p className="text-center text-gray-400 py-20">해당 상태의 제안/신고가 없습니다.</p>
         ) : (
@@ -120,7 +123,7 @@ export default function AdminWholesaleProposalsPage() {
                     {row.type === 'report' ? '신고' : '제안'}
                   </span>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[row.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[row.status]?.t || row.status}</span>
-                  <span className="text-xs text-gray-400 ml-auto">{row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : ''}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{safeDate(row.created_at)?.toLocaleString('ko-KR') ?? ''}</span>
                 </div>
                 <div className="text-sm font-bold text-gray-900">{row.subject}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{row.business_name || `판매사 #${row.seller_id}`}{row.target ? ` · 대상: ${row.target}` : ''}</div>
@@ -130,10 +133,10 @@ export default function AdminWholesaleProposalsPage() {
                     <span className="font-bold text-gray-800">운영팀 메모: </span>{row.admin_memo}
                   </div>
                 )}
-                {(row.status === 'open' || row.status === 'in_review') && (
+                {(row.status === 'open' || row.status === 'in_progress') && (
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {row.status === 'open' && (
-                      <button onClick={() => resolve(row, 'in_review')} disabled={actingId === row.id}
+                      <button onClick={() => resolve(row, 'in_progress')} disabled={actingId === row.id}
                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
                         검토 시작
                       </button>

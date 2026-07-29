@@ -11,7 +11,7 @@ export interface Restaurant {
   seller_id?: number
 }
 
-// 🛡️ 2026-04-28: 옵션 B — 카카오 Places 일반 맛집 (식사권 미출시)
+// 🛡️ 2026-04-28: 옵션 B — 카카오 Places 일반 맛집 (이용권 미출시)
 export interface KakaoPlace {
   id: string
   place_name: string

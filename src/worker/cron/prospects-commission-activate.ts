@@ -50,9 +50,11 @@ export async function handleProspectsCommissionActivate(env: Env): Promise<void>
           activated++
 
           // 어드민 알림 (영업 commission 활성)
+          // 🛡️ 2026-07-01: 실제 테이블은 dashboard_notifications (없는 admin_notifications·body 컬럼 참조로
+          //   조용히 실패 → 어드민 벨에 안 뜸). recipient_type='admin'/recipient_id=NULL(전체 어드민)·message 로 교정.
           await env.DB.prepare(
-            `INSERT INTO admin_notifications (type, title, body, link, created_at)
-             VALUES ('prospect_first_sale', '영업 commission 활성', ?, '/admin/prospects', datetime('now'))`
+            `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+             VALUES ('admin', NULL, 'prospect_first_sale', '영업 commission 활성', ?, '/admin/prospects', datetime('now'))`
           ).bind(
             `prospect #${p.id} (${p.introducer_type} ${p.introducer_id}) 의 매장 #${p.converted_seller_id} 첫 매출 발생 → commission lock-in`
           ).run().catch(() => null)
@@ -84,8 +86,8 @@ export async function handleProspectsCommissionActivate(env: Env): Promise<void>
       try {
         const daysLeft = Math.max(0, Math.ceil((new Date(p.expires_at).getTime() - Date.now()) / (24 * 60 * 60_000)))
         await env.DB.prepare(
-          `INSERT INTO admin_notifications (type, title, body, link, created_at)
-           VALUES ('prospect_expiring', '영업 prospect 만료 임박', ?, '/admin/prospects', datetime('now'))`
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', NULL, 'prospect_expiring', '영업 prospect 만료 임박', ?, '/admin/prospects', datetime('now'))`
         ).bind(
           `${p.introducer_type} #${p.introducer_id} 의 prospect (${p.store_name || p.contact_phone}) D-${daysLeft}`
         ).run().catch(() => null)

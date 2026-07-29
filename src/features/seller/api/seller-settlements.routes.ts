@@ -19,6 +19,8 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
+import { intParam } from '@/shared/pagination'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SettlementStatsRow {
@@ -49,13 +51,35 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
-    const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
-    const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
-    const rows = await db.prepare(
-      `SELECT id, seller_id, amount, bank_name, account_number, account_holder,
-              status, admin_memo, created_at, updated_at
-       FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
+    const limit = Math.max(1, Math.min(200, intParam(c.req.query('limit'), 20)));
+    const offset = Math.max(0, intParam(c.req.query('offset'), 0));
+    // 🩹 2026-06-25: 정산 테이블이 전부 ₩0 + 날짜 '오늘' 로 뜨던 버그 — 기존 SELECT 가 amount 만 반환해
+    //   클라(SettlementsTable)가 읽는 settlement_amount/total_sales/commission_*/period_*/requested_at 가 전부 undefined →
+    //   formatNumber(undefined)=0, formatKSTDate(undefined)=오늘. 실제 컬럼으로 매핑.
+    //   스키마 드리프트(자동집계 컬럼 미존재 DB) 대비 healing: rich 실패 시 basic 폴백(최소 금액/요청일은 살림).
+    const settleSelect = (cols: string) =>
+      `SELECT ${cols} FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    const richCols = `id, seller_id,
+              COALESCE(total_sales, 0) AS total_sales,
+              COALESCE(total_platform_fee, 0) AS commission_amount,
+              CASE WHEN COALESCE(total_sales, 0) > 0
+                   THEN ROUND(COALESCE(total_platform_fee, 0) * 100.0 / total_sales, 1) ELSE 0 END AS commission_rate,
+              COALESCE(total_settlement, amount, 0) AS settlement_amount,
+              amount, bank_name, account_number, account_holder,
+              period_start, period_end,
+              status, admin_memo, created_at AS requested_at, created_at, updated_at`;
+    const basicCols = `id, seller_id,
+              0 AS total_sales, 0 AS commission_amount, 0 AS commission_rate,
+              COALESCE(amount, 0) AS settlement_amount,
+              amount, bank_name, account_number, account_holder,
+              status, admin_memo, created_at AS requested_at, created_at, updated_at`;
+    let rows: { results: unknown[] } = { results: [] };
+    try {
+      rows = await db.prepare(settleSelect(richCols)).bind(sellerId, limit, offset).all();
+    } catch {
+      // 드리프트(자동집계 컬럼 미존재) → basic 폴백(최소 settlement_amount/requested_at 은 살림)
+      rows = await db.prepare(settleSelect(basicCols)).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
+    }
     const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
     return c.json({ success: true, data: rows.results, total: count?.total ?? 0 });
@@ -285,6 +309,59 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
   }
 });
 
+// 💸 2026-07-01 (정산 정합 — 대표 승인 "자동 정산 하나로 통일"): 셀러 실제 지급 현황(읽기 전용).
+//   진실원천 = 이중원장(ledger_entries) 의 seller:N credit − payouts 지급분(getPayablePending).
+//   동네딜 공구/이용권 매출이 원장에 적립 → 주간 집계 크론(payouts-generate) 이 payouts(pending) 생성 →
+//   어드민이 검토 후 송금(approved→sent). 이 엔드포인트는 그 실데이터를 그대로 노출(머니-이동 없음).
+//   ⚠️ 일반 쇼핑 상품 주문은 아직 원장 미배선(payment.routes 잠금) → orders 기반 매출은 매출 캘린더로 별도 표시.
+sellerSettlementsRoutes.get('/payouts', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+
+    // 순 receivable(지급 이력 제외) — (credit − fee_amount) − debit. ledger.ts SSOT.
+    const { getLedgerReceivable } = await import('../../../worker/utils/ledger');
+    const receivable = await getLedgerReceivable(c.env.DB, `seller:${sellerId}`).catch(() => 0);
+
+    // 실제 지급 기록 (payouts) — 이 셀러 건만.
+    const rows = await c.env.DB.prepare(
+      `SELECT id, amount, period_start, period_end, status,
+              account_number, account_holder, admin_memo,
+              created_at, approved_at, sent_at
+         FROM payouts
+        WHERE payee_type = 'seller' AND payee_id = ?
+        ORDER BY created_at DESC LIMIT 50`
+    ).bind(String(sellerId)).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+    const list = rows.results || [];
+
+    // 상태별 합계 — 지급 예정(pending+approved) vs 지급 완료(sent).
+    const sum = (st: string[]) => list
+      .filter(r => st.includes(String(r.status)))
+      .reduce((a, r) => a + Number(r.amount || 0), 0);
+    const scheduledTotal = sum(['pending', 'approved']);
+    const sentTotal = sum(['sent']);
+    // 미지급 = 순 receivable − (지급예정 + 지급완료). 세 버킷이 겹치지 않게 분할.
+    const payable = Math.max(0, Number(receivable) - scheduledTotal - sentTotal);
+
+    return c.json({
+      success: true,
+      data: {
+        payable,                          // 아직 payout 에 안 잡힌 순수 외상
+        scheduled_total: scheduledTotal,  // 집계됐고 송금 대기중
+        sent_total: sentTotal,            // 송금 완료
+        payouts: list,
+        auto: true,                       // 자동 정산 파이프라인 사용
+      },
+    });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
 // 🛡️ 2026-05-19: 비사업자 셀러용 — 적립금을 기프티쇼 교환권으로 받기.
 //   사업자 등록 X 인 셀러가 적립금 (gated_deal_amount) 을 voucher 로 교환.
 //   markup_pct (어드민 설정) 적용 — 우리 마진 확보.
@@ -306,7 +383,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
     const q = c.req.query('q') || ''
-    const limit = Math.min(60, Number(c.req.query('limit')) || 30)
+    const limit = Math.min(60, intParam(c.req.query('limit'), 30))
     let sql = `SELECT gift_code, name, brand_name, brand_icon_url,
                       sale_price, real_price, discount_rate,
                       image_url_small, image_url_large,
@@ -776,6 +853,41 @@ sellerSettlementsRoutes.get('/tax-summary', async (c) => {
   }
 });
 
+// 🧾 2026-07-01: 정산 매입세금계산서 역발행 — 셀러 목록 + 승인.
+//   유어딜이 지급액에 대해 초안(draft)을 자동 작성/요청 → 셀러가 여기서 '승인' 클릭(카카오 애드핏 모델).
+sellerSettlementsRoutes.get('/settlement-tax-invoices', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+    const items = await listSellerSettlementInvoices(c.env.DB, sellerId, 200);
+    return c.json({ success: true, data: items });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
+sellerSettlementsRoutes.post('/settlement-tax-invoices/:id/approve', rateLimit({ action: 'seller_settlement_taxinv_approve', max: 30, windowSec: 60 }), async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400);
+    const result = await approveSettlementInvoice(c.env.DB, c.env, id, sellerId);
+    if (!result) return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다' }, 404);
+    return c.json({ success: result.ok, status: result.status, message: '승인되었습니다' });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
 // 🛡️ 2026-05-18: 사업자등록증 이미지 업로드 (URL 만 받음 — 실제 업로드는 R2 별도 endpoint).
 //   상태는 'pending' 으로 변경 → 어드민 검증 대기.
 sellerSettlementsRoutes.post('/business-registration/submit', async (c) => {
@@ -877,7 +989,7 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const [orderStats, productStats, streamStats] = await Promise.all([
+    const [orderStats, productStats, streamStats, dailyRevenue] = await Promise.all([
       DB.prepare(`
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(total_amount), 0) as total_revenue
@@ -893,6 +1005,15 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
                SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) as live_streams
         FROM live_streams WHERE seller_id = ?
       `).bind(sellerId).first<{ total_streams: number; live_streams: number }>(),
+      // 📅 2026-06-25: 매출 캘린더(SellerSettlementsPage dailyQ)가 daily_revenue 를 읽는데
+      //   핸들러가 안 줘서 항상 빈값이었음. 최근 30일 일별 매출(PAID/DONE) 집계 추가.
+      DB.prepare(`
+        SELECT DATE(created_at) AS date, COALESCE(SUM(total_amount), 0) AS revenue
+        FROM orders
+        WHERE seller_id = ? AND status IN ('PAID','DONE')
+          AND created_at >= date('now', '-30 days')
+        GROUP BY DATE(created_at) ORDER BY date ASC
+      `).bind(sellerId).all<{ date: string; revenue: number }>().catch(() => ({ results: [] })),
     ]);
 
     return c.json({
@@ -904,6 +1025,7 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
         active_products: productStats?.active_products ?? 0,
         total_streams: streamStats?.total_streams ?? 0,
         live_streams: streamStats?.live_streams ?? 0,
+        daily_revenue: dailyRevenue?.results ?? [],
       },
     });
   } catch (err: unknown) {

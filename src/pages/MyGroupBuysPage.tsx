@@ -7,6 +7,8 @@ import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
 import { hasConsumerSession } from '@/utils/auth';
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
+import BrandLoader from '@/components/brand/BrandLoader'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -65,7 +67,8 @@ export default function MyGroupBuysPage() {
   const [tab, setTab] = useState<TabKey>('all');
 
   // 🛡️ 2026-06-01 Tier2: 3개 엔드포인트 + 상품 hydration 로드를 useMyGroupBuys 단일 쿼리로 캡슐화.
-  const { data, isLoading: loading } = useMyGroupBuys();
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 3개 엔드포인트 전멸 시 throw 하게 바뀜(빈 목록 위장 방지).
+  const { data, isLoading: loading, isError, refetch } = useMyGroupBuys();
   const referralGroups: ReferralGroup[] = data?.referralGroups ?? [];
   const vouchers: VoucherEntry[] = data?.vouchers ?? [];
   const community: CommunityGroupBuy[] = data?.community ?? [];
@@ -179,21 +182,21 @@ export default function MyGroupBuysPage() {
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: 'all', label: t('myGroupBuys.tabAll', { defaultValue: '전체' }), count: unified.length },
-    { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }), count: vouchers.length },
+    { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }), count: vouchers.length },
     { key: 'community', label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), count: community.length },
     // 🧭 2026-06-17: 그룹 referral 숨김 — '친구초대' 탭 비노출(플래그 false 면 복원).
     ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ key: 'referral' as TabKey, label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), count: referralGroups.length }]),
   ];
 
   return (
-    <div className="min-h-dvh bg-white dark:bg-[#0A0A0A]">
+    <div className="min-h-dvh bg-white dark:bg-[#0F151D]">
       <SEO
         title={t('myGroupBuys.title')}
         description={t('myGroupBuys.seoDesc')}
         url="/my-group-buys"
       />
       {/* 헤더 */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#2A2A2A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0F151D] border-b border-gray-200 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -204,14 +207,14 @@ export default function MyGroupBuysPage() {
       </header>
 
       {/* 탭 */}
-      <div className="flex border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] sticky top-14 z-30 overflow-x-auto">
+      <div className="flex border-b border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] sticky top-14 z-30 overflow-x-auto">
         {tabs.map(item => (
           <button
             key={item.key}
             onClick={() => setTab(item.key)}
             className={`flex-1 min-w-[80px] py-3 text-sm font-medium transition-colors whitespace-nowrap ${
               tab === item.key
-                ? 'text-gray-900 dark:text-white border-b-2 border-gray-900'
+                ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white'
                 : 'text-gray-500 dark:text-gray-400 border-b-2 border-transparent'
             }`}
           >
@@ -225,8 +228,16 @@ export default function MyGroupBuysPage() {
 
       <main className="ur-content-narrow px-4 lg:px-8 py-4 pb-24">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 rounded-full animate-spin" />
+          /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
+          <BrandLoader />
+        ) : isError ? (
+          /* 🛡️ 2026-07-02: 로드 전멸을 "참여 내역 없음"으로 위장하지 않음 — 에러 + 재시도. */
+          <div className="text-center py-20">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('myGroupBuys.loadFailed', { defaultValue: '참여 내역을 불러오지 못했어요' })}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              {t('common.retry', { defaultValue: '다시 시도' })}
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState onBrowse={() => navigate('/browse')} />
@@ -257,13 +268,13 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
   return (
     <button
       onClick={item.onClick}
-      className="w-full text-left bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="w-full text-left bg-white dark:bg-[#0F151D] rounded-xl border border-gray-200 dark:border-[#2A3446] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-3">
         {/* 썸네일 */}
-        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden shrink-0 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A2334] overflow-hidden shrink-0 flex items-center justify-center">
           {item.image ? (
-            <img src={item.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={cfImage(item.image, { width: 200, quality: 82, format: 'auto' }) || item.image} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image)} />
           ) : (
             <SourceIcon source={item.source} />
           )}
@@ -283,7 +294,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                 item.subBadgeAccent === 'pink'
                   ? 'bg-pink-50 text-pink-600'
-                  : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'
+                  : 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300'
               }`}>
                 {item.subBadge}
               </span>
@@ -292,7 +303,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 
           {/* 진행 바 (active + has target) */}
           {item.isActive && item.target && item.target > 0 && (
-            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden mb-2">
+            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A2334] rounded-full overflow-hidden mb-2">
               <div className="h-full bg-pink-500 transition-all" style={{ width: `${progressPct}%` }} />
             </div>
           )}
@@ -348,7 +359,7 @@ function SourceBadge({ source }: { source: Source }) {
   const { t } = useTranslation();
   const map: Record<Source, { label: string; cls: string }> = {
     voucher: {
-      label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }),
+      label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }),
       cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
     },
     community: {
@@ -378,16 +389,16 @@ function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
   }
   // expired/refunded/cancelled
   if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
   }
-  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
+  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
 }
 
 function EmptyState({ onBrowse }: { onBrowse: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center mb-4">
         <Gift className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
       <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>

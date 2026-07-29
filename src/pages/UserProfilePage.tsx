@@ -6,10 +6,10 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { cfImage } from '@/utils/cf-image'
-import { logout } from '@/features/auth/login-flow.service'
+import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight, Store, ScanLine } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -31,6 +31,7 @@ import {
   ProfileEditModal,
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -90,13 +91,11 @@ export default function UserProfilePage() {
   }, [user])
 
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
@@ -113,24 +112,29 @@ export default function UserProfilePage() {
   }
 
   // ✅ 로그아웃 핸들러
+  // 🔑 2026-07-07 (대표 확정 "전부 로그아웃"): 마이페이지 로그아웃 = 소비자+셀러+어드민+에이전시 전 세션 종료.
+  //   배경: 이전엔 logout('user') 로 소비자만 지웠으나, 다중역할 계정(어드민/셀러 + 소비자)에선
+  //   대시보드 Bearer 토큰(seller_token/admin_token 등)이 남아 isLoggedInSync()=true → 홈이 여전히
+  //   "로그인됨"으로 보임 → 대표 신고 "로그아웃이 안 됨". 이중 로그인 편의를 포기하고 명시적
+  //   로그아웃은 전 역할을 완전히 종료(logoutAll — 서버 ur_* 세션쿠키 전체 삭제 await + 전 역할 localStorage 정리).
   const handleLogout = async () => {
     try {
-      await logout()
-      navigate('/', { replace: true })
+      await logoutAll()  // 내부에서 하드 리로드('/') 로 마무리
     } catch (error) {
       if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+      window.location.href = '/'
     }
   }
 
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
-    <div className="bg-white dark:bg-[#020202] flex flex-col min-h-screen pb-7">
+    <div className="bg-white dark:bg-[#0F151D] flex flex-col min-h-screen pb-7">
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className="sr-only">{t('nav.mypage', { defaultValue: '마이페이지' })}</h1>
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#020202]">
+      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#0F151D]">
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
@@ -148,7 +152,7 @@ export default function UserProfilePage() {
             </div>
             <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
             <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
-              프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
+              {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
           {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹) */}
@@ -164,8 +168,19 @@ export default function UserProfilePage() {
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
-      {/* 🧭 2026-06-10 (UI 100점 패스 — 마이 최하점 원인): 수익·추천 3카드 도배 → 접이식 그룹.
-          첫 화면은 자산(딜 잔액·이용 내역) 중심, 수익 탐색은 1탭 뒤로. 카드 로직/데이터 불변. */}
+      {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
+      <RewardAdCard />
+
+      {/* 🧹 2026-06-22 (대표 — '내 자산 먼저' IA 재배치): 소비자 본인 자산(주문현황+나의 이용내역)을
+          역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액(딜 벌기) → 나의 이용내역 → 수익·추천(접힘) → 역할 진입. */}
+
+      {/* v4 주문 현황 */}
+      <OrderStatusBar />
+
+      {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
+      <ShoppingGroup counts={counts} />
+
+      {/* 🧭 2026-06-10 (UI 100점 패스): 수익·추천 3카드 도배 → 접이식 그룹(자산 다음으로 1탭 뒤). */}
       <EarningsGroup>
       {/* 🧹 2026-06-22 (대표 — 수익·추천 폴드 압축): 큰 카드 도배 → 컴팩트 행 한 묶음(B&W).
             ReferralEarnedCard/CuratorEarningsCard 는 행으로(데이터/라우트 불변, 빈값이면 null →
@@ -221,22 +236,6 @@ export default function UserProfilePage() {
         <RoleCtaGrid />
       </div>
 
-      {/* 🧹 2026-06-21: 쿠폰/바우처 스탯카드 제거 — '쇼핑·이용내역' 그룹의 쿠폰함/내 교환권 행과
-           같은 곳(/my-coupons · /my-vouchers)으로 가던 중복 진입점이라 통합(카운트는 그 행에 그대로 표시). */}
-
-      {/* v4 주문 현황 */}
-      <OrderStatusBar />
-
-      {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
-      <ShoppingGroup counts={counts} />
-
-      {/* 🧹 2026-06-21 (대표 — 마이 정리): '더보기'(배송지/리뷰) 섹션 제거 → 배송지·리뷰는
-           '쇼핑·이용내역' 그룹으로 흡수, '인플루언서 활동'은 '내 수익·추천' 그룹으로 흡수.
-           채팅 이름 설정은 라이브 영구중단으로 이미 제거. 흩어진 미니 섹션을 한 곳으로 통합. */}
-
-      {/* v4 광고 리워드 카드 */}
-      <RewardAdCard />
-
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 
       {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 흩어진 설정(알림/테마/언어/앱정보)을 접이식 '설정' 그룹으로 합침.
@@ -253,6 +252,24 @@ export default function UserProfilePage() {
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
+        {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
+            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => navigate('/store/scan')}
+            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+          >
+            <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
+              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+            </span>
+            <span className="text-left min-w-0">
+              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
+            </span>
+          </button>
+        )}
+
         {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
         {!!localStorage.getItem('seller_token') && (
           <button
@@ -261,7 +278,7 @@ export default function UserProfilePage() {
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-bold text-gray-900 dark:text-white active:opacity-80 transition-opacity"
           >
             <Store className="w-4 h-4" aria-hidden="true" />
-            {t('userProfile.myStore', { defaultValue: '내 매장 · 공구권·정산' })}
+            {t('userProfile.myStore', { defaultValue: '내 매장 · 이용권·정산' })}
           </button>
         )}
         {!!localStorage.getItem('seller_token') && (
@@ -301,7 +318,8 @@ export default function UserProfilePage() {
             { label: t('userProfile.faq'), path: '/faq' },
             { label: t('userProfile.terms'), path: '/terms' },
             { label: t('userProfile.privacy'), path: '/privacy' },
-            { label: t('userProfile.shippingPolicy'), path: '/shipping-policy' },
+            // 🛡️ 2026-07-02: '배송정책' 라벨이 /refund(환불·반품 정책)로 리다이렉트돼 라벨-도착지 불일치 — 정합.
+            { label: t('userProfile.refundPolicy', { defaultValue: '환불·반품 정책' }), path: '/refund' },
           ].map((item, i) => (
             <span key={item.label} className="flex items-center gap-2.5">
               {i > 0 && <span className="text-[10px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}

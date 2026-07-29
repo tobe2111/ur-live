@@ -7,9 +7,12 @@ import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import SellerVoucherPhotoGuide from '@/components/SellerVoucherPhotoGuide'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { compressForUpload } from '@/lib/image-compress'
+import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
+import PromoMarginCalculator, { promoGuideFor } from './seller-product-new/PromoMarginCalculator'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -82,8 +85,15 @@ export default function SellerMealVoucherNewPage() {
     group_buy_deadline: defaultDeadline,
     store_verify_pin: '',
     stock: 100,
+    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 최대 구매 수량. 0 = 무제한.
+    max_per_person: 0,
+    // 💰 2026-07-05 (§1 인플루언서 엔진): 소개비 % (0~50). 추천 판매 시 인플루언서 몫.
+    //   SELLER_PROMO_FIELD_ENABLED 로 게이트 — 서버도 platform_settings 게이트로 이중 안전.
+    promo_pct: 0,
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 place_url 캡처 → 상세 지도 직접 연결.
+    kakao_place_url: '',
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
-    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 식사권은 비워둠 (예약 불요).
+    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 이용권은 비워둠 (예약 불요).
     external_booking_url: '',
     // 🛡️ 2026-05-21: 지역 (region_si/region_gu) — restaurant_address 에서 자동 파싱.
     region_si: '',
@@ -148,6 +158,7 @@ export default function SellerMealVoucherNewPage() {
       restaurant_phone: place.phone || '',
       restaurant_lat: place.y || '',
       restaurant_lng: place.x || '',
+      kakao_place_url: place.id ? `https://place.map.kakao.com/${place.id}` : f.kakao_place_url,
     }))
     setPlaceSelected(true)
     toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))
@@ -234,8 +245,17 @@ export default function SellerMealVoucherNewPage() {
         region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
         // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR 추출 메뉴 → 공구 상세 '대표 메뉴' 섹션으로 저장 (product_supply_meta).
         menu: ocrItems.length > 0 ? ocrItems.map(it => ({ name: it.menu, price: `${formatNumber(it.price)}원` })) : undefined,
+        // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0 = 무제한. 서버가 product_supply_meta 에 저장 + 주문 검증.
+        max_per_person: Number(form.max_per_person) > 0 ? Math.floor(Number(form.max_per_person)) : 0,
+        // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 캡처한 place_url (없으면 미전송).
+        kakao_place_url: form.kakao_place_url || undefined,
         // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
         group_buy_tiers: null,
+        // 💰 2026-07-05 (§1): 소개비 → referral_commission_rate(0~0.5 fraction) + referral_enabled.
+        //   플래그 OFF 또는 0 이면 미전송(서버도 platform_settings 게이트로 이중 방어).
+        ...(SELLER_PROMO_FIELD_ENABLED && Number(form.promo_pct) > 0
+          ? { referral_enabled: true, referral_commission_rate: Math.min(0.5, Number(form.promo_pct) / 100) }
+          : {}),
       }
 
       const res = await api.post('/api/seller/products', payload, { headers })
@@ -260,7 +280,7 @@ export default function SellerMealVoucherNewPage() {
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
-          subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '식사권/공동구매 상품 등록' })}
+          subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '이용권/공동구매 상품 등록' })}
           icon={<Utensils className="h-5 w-5" />}
         />
         {/* 🛡️ 2026-05-15: OCR Quick Start — 메뉴판 사진 1장으로 30초 등록 */}
@@ -333,17 +353,17 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-base font-bold text-gray-900">
-                {t('seller.voucher.categoryTitle', { defaultValue: '공구권 종류' })}
+                {t('seller.voucher.categoryTitle', { defaultValue: '이용권 종류' })}
               </h2>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 공구권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
-                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 공구권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
-                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 공구권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
-                { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 공구권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
-                { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 공구권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
-                { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 공구권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
+                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 이용권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+                { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 이용권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
+                { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+                { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 이용권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
               ].map(c => (
                 <button
                   type="button"
@@ -468,7 +488,9 @@ export default function SellerMealVoucherNewPage() {
                 <span className="text-lg">📸</span>
                 <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
-              <p className="text-[11px] text-gray-500 mb-4">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+              <p className="text-[11px] text-gray-500 mb-3">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+              {/* 📸 2026-07-19 (대표 — 대표사진 가이드): 판매 전환이 잘 되는 사진 유형 안내(등록 플로우 개선). */}
+              <SellerVoucherPhotoGuide />
 
               <div className="space-y-3">
                 {/* 미리보기 */}
@@ -561,7 +583,7 @@ export default function SellerMealVoucherNewPage() {
             </div>
           )}
 
-          {/* 3. 식사권 정보 */}
+          {/* 3. 이용권 정보 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Utensils className="w-5 h-5 text-pink-500" />
@@ -614,6 +636,43 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
               </div>
+
+              {/* 💰 2026-07-05 (§1 인플루언서 엔진): 소개비(promo)% + 매장 실수령 계산기.
+                  SELLER_PROMO_FIELD_ENABLED = false (기본) → owner-funding 스테이징 검증 전까지 미노출. */}
+              {SELLER_PROMO_FIELD_ENABLED && (
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('seller.mealVoucher.promoLabel', { defaultValue: '추천 소개비 (%)' })}
+                      <span className="ml-2 text-[11px] font-normal text-gray-400">
+                        {t('seller.mealVoucher.promoRecommend', {
+                          defaultValue: `권장 ${promoGuideFor(form.category).min}~${promoGuideFor(form.category).max}%`,
+                          min: promoGuideFor(form.category).min, max: promoGuideFor(form.category).max,
+                        })}
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number" min={0} max={50} step={1}
+                        value={form.promo_pct || ''}
+                        onChange={e => update('promo_pct', Math.max(0, Math.min(50, Number(e.target.value))))}
+                        placeholder="0"
+                        className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                      {t('seller.mealVoucher.promoHint', { defaultValue: '인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.' })}
+                    </p>
+                  </div>
+                  <PromoMarginCalculator
+                    price={form.price}
+                    originalPrice={form.original_price}
+                    promoPct={form.promo_pct}
+                    category={form.category}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -649,6 +708,21 @@ export default function SellerMealVoucherNewPage() {
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 구매 수량 제한 (0=무제한). */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1인당 최대 구매 수량</label>
+                <input
+                  type="number"
+                  value={form.max_per_person || ''}
+                  onChange={e => update('max_per_person', Math.max(0, Math.min(99, Number(e.target.value) || 0)))}
+                  placeholder="0 = 무제한"
+                  min={0}
+                  max={99}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">한 사람이 최대 몇 개까지 구매할 수 있는지 설정 (0 = 제한 없음, 최대 99)</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -697,7 +771,7 @@ export default function SellerMealVoucherNewPage() {
 
               {/* 🛡️ 2026-05-21: 외부 예약 링크 — 숙소/뷰티 사전 예약 필수 카테고리.
                     유저가 바우처 발급 후 이 링크로 날짜 예약 (네이버 예약 / 야놀자 / 카카오톡 채널).
-                    식사권은 즉시 방문 가능하므로 비워둘 것. */}
+                    이용권은 즉시 방문 가능하므로 비워둘 것. */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   📅 외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>

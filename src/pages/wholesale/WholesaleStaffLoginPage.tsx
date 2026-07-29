@@ -52,8 +52,10 @@ export default function WholesaleStaffLoginPage() {
       localStorage.setItem('seller_email', s.email || '')
       localStorage.setItem('seller_username', s.username || '')
       localStorage.setItem('seller_type', s.seller_type || 'influencer')
-      localStorage.setItem('is_distributor', '1')
-      window.location.assign('/wholesale/dashboard')
+      // 🛡️ 2026-06-19 (감사 #4): 도매 직원은 부모(회사)가 도매사라 보통 1. 단, 응답에 명시적 0 이면 존중(방어).
+      localStorage.setItem('is_distributor', (s as { is_distributor?: number }).is_distributor === 0 ? '0' : '1')
+      // ⚡ 2026-06-29 (로그인 속도): 토큰 동기 set 후 SPA navigate — full reload(앱 재다운로드) 제거.
+      navigate('/wholesale/dashboard', { replace: true })
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')
     } finally { setLoading(false) }
@@ -62,7 +64,7 @@ export default function WholesaleStaffLoginPage() {
   const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
+    <div className="force-light-theme min-h-[100dvh] bg-white text-[#0C2454]">
       <SEO title="직원 로그인 — 판매사 도매몰" description="판매사 직원 로그인 — 회사 계정으로 사입을 도와드립니다." url="/wholesale/staff-login" noindex />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">

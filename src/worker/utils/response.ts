@@ -160,9 +160,10 @@ export function unauthorizedResponse(
  * Create a forbidden (403) error response
  */
 export function forbiddenResponse(
-  message: string = 'Forbidden access'
+  message: string = 'Forbidden access',
+  code: string = 'FORBIDDEN'
 ): ErrorResponse {
-  return errorResponse(message, 'FORBIDDEN');
+  return errorResponse(message, code);
 }
 
 /**

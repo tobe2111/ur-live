@@ -18,7 +18,7 @@ export const WHOLESALE_SEED: SeedSection[] = [
   {
     key: 'overview', icon: '🏭', title: '개요 — 유통스타트 3자 중개 구조', order: 10,
     content: `### 유통스타트(UtongStart) = 제조사 ↔ 판매사를 잇는 B2B 도매 중개 플랫폼
-별도 도메인 \`utongstart.com\` 으로 운영되지만 **같은 코드/DB** 입니다(live.ur-team.com 과 동일 앱, host 인식 라우팅).
+별도 도메인 \`utongstart.com\` 으로 운영되지만 **같은 코드/DB** 입니다(urdeal.kr 과 동일 앱, host 인식 라우팅).
 
 **❌ 단순 오픈 도매몰이 아님** — 선별(vetted)된 제조사·판매사만 참여. **제조사 ↔ 판매사 직거래 금지**(서로 신원·연락처 비노출). 모든 거래·정산·세금계산서는 유통스타트(=플랫폼=어드민)를 경유합니다.
 
@@ -36,7 +36,7 @@ export const WHOLESALE_SEED: SeedSection[] = [
 - 공개 소개: \`/wholesale/intro\` · 판매사 가입: \`/wholesale/join\` · 도매 카탈로그(쇼핑): \`/wholesale\`
 - 제조사(공급자) 대시보드: \`/supplier\` · 제조사 가입: \`/supplier/register\`
 - 어드민 도매 메뉴: \`/admin/suppliers\`(공급자) · \`/admin/distributor-grades\`(판매사 등급/마진) · \`/admin/wholesale-orders\`(도매 주문)
-- 도메인 게이팅: \`utongstart.com\` 에서는 도매 surface(\`/wholesale\`·\`/supplier\` 등) 밖의 모든 경로가 \`/wholesale/intro\` 로 302. live.ur-team.com 은 영향 없음.
+- 도메인 게이팅: \`utongstart.com\` 에서는 도매 surface(\`/wholesale\`·\`/supplier\` 등) 밖의 모든 경로가 \`/wholesale/intro\` 로 302. urdeal.kr 은 영향 없음.
 
 > 📌 이 가이드는 도매몰 운영의 **단일 진실원천**입니다. 어드민 일반 가이드의 도매 섹션은 이 페이지로 이동되었습니다.`,
   },

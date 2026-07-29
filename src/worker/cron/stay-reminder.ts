@@ -85,8 +85,8 @@ export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; 
     try {
       // 1. notifications 테이블 INSERT (어플 내 알림).
       await env.DB.prepare(
-        `INSERT INTO notifications (user_id, type, title, message, created_at)
-         SELECT b2.user_id, ?, ?, ?, datetime('now')
+        `INSERT INTO notifications (user_id, user_type, type, title, message, created_at)
+         SELECT b2.user_id, 'user', ?, ?, ?, datetime('now')
            FROM stay_bookings b2 WHERE b2.id = ?`
       ).bind(
         isToday ? 'stay_check_in_today' : 'stay_check_in_tomorrow',

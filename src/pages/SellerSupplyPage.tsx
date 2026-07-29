@@ -203,7 +203,7 @@ export default function SellerSupplyPage() {
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
               >
                 <option value="">전체 카테고리</option>
-                <option value="meal_voucher">🍽️ 식사권</option>
+                <option value="meal_voucher">🍽️ 이용권</option>
                 <option value="beauty_voucher">💇 뷰티</option>
                 <option value="stay_voucher">🏨 숙박</option>
                 <option value="health_voucher">💪 건강</option>

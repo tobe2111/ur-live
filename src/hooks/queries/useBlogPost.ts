@@ -18,7 +18,7 @@ export interface BlogPost {
   published_at: string
 }
 
-export function useBlogPost(slug: string | undefined) {
+export function useBlogPost(slug: string | undefined, initialData?: BlogPost | null) {
   return useQuery<BlogPost | null>({
     queryKey: queryKeys.blogPost(slug ?? ''),
     queryFn: () =>
@@ -30,5 +30,8 @@ export function useBlogPost(slug: string | undefined) {
     staleTime: 10 * 60 * 1000, // public 콘텐츠 — 길게 캐시
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+    // 📝 2026-07-01 SSR 시드(__SSR_INITIAL_BLOGPOST__) 즉시 사용 → 0-RTT 첫 페인트.
+    //   stale 로 표시(updatedAt=0)해 마운트 시 최신본 재검증(잘못된 옛값 고착 방지).
+    ...(initialData ? { initialData, initialDataUpdatedAt: 0 } : {}),
   })
 }

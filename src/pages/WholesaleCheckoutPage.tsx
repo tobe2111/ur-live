@@ -5,15 +5,17 @@ import { ArrowLeft, Loader2, Wallet, AlertTriangle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { WT, won, comma } from './wholesale/wholesale-theme'
-import { useWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import { useWholesaleDeposit, useInvalidateWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
+import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
 
 // 🏦 2026-06-09 유통스타트 도매 — 예치금(선불) 결제 체크아웃.
 //   Toss 위젯 흐름을 REPLACE → 주문 확인 + 예치금 결제. (여신/외상 옵션 제거 — 예치금 전용)
 //   결제: POST /api/wholesale/orders → status:PAID (paid_by:deposit) | 402 INSUFFICIENT_DEPOSIT.
 
 interface InsufficientInfo { balance: number; required: number; shortfall: number }
+interface SavedAddr { id: number; recipient_name: string; phone: string; postal_code: string; address: string; address_detail: string; message: string; is_default: number }
 
 export default function WholesaleCheckoutPage() {
   const { t } = useTranslation()
@@ -21,16 +23,85 @@ export default function WholesaleCheckoutPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, subtotal, totalQty, clear } = useWholesaleCart()
   const depositQ = useWholesaleDeposit()
+  const invalidateDeposit = useInvalidateWholesaleDeposit()
+  // 🧩 2026-07-03 몰 기능 토글 — 'dropship' 이 꺼진 몰(예: 향후 특정 몰)에선 대량발주(드랍십) 패널 숨김. 기본 ON.
+  const { feature } = useWholesaleMall()
   // 👥 2026-06-12 (감사 부채): viewer 직원 — 서버 403 전 UI 사전 안내 (fail-open, 서버가 최종 방어).
   const isViewer = useIsWholesaleViewer()
 
   const [paying, setPaying] = useState(false)
   const [insufficient, setInsufficient] = useState<InsufficientInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
-  // 🔁 멱등키 — 이 체크아웃 1회당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
-  const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  // 🔁 멱등키 — 이 체크아웃 시도당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
+  const newIdem = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const idemKeyRef = useRef<string>(newIdem())
 
   const balance = Number(depositQ.data?.balance) || 0
+
+  // 🚚 2026-06-29 (대표 — 체크아웃 배송지 *직접 입력* 필수): 사업자 주소 자동배송 아님 → 매 주문 주소 입력.
+  const [shipName, setShipName] = useState('')
+  const [shipPhone, setShipPhone] = useState('')
+  const [shipPostal, setShipPostal] = useState('')
+  const [shipAddr, setShipAddr] = useState('')
+  const [shipDetail, setShipDetail] = useState('')
+  const [shipMessage, setShipMessage] = useState('')
+  const [showPostcode, setShowPostcode] = useState(false)
+  // 🚚 2026-06-29 (대표 — 기본 배송지/최근 배송지): 판매사 배송지 주소록(GET) + 기본저장 옵션.
+  const [savedAddrs, setSavedAddrs] = useState<SavedAddr[]>([])
+  const [addrTab, setAddrTab] = useState<'recent' | 'manual'>('manual')
+  const [saveDefault, setSaveDefault] = useState(true)
+  const applyAddr = (a: SavedAddr) => {
+    setShipName(a.recipient_name || ''); setShipPhone(a.phone || '')
+    setShipPostal(a.postal_code || ''); setShipAddr(a.address || '')
+    setShipDetail(a.address_detail || ''); setShipMessage(a.message || '')
+  }
+
+  // Daum 우편번호 SDK 1회 로드.
+  useEffect(() => {
+    const SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    if (document.querySelector(`script[src="${SRC}"]`)) return
+    const s = document.createElement('script'); s.src = SRC; s.async = true; document.body.appendChild(s)
+  }, [])
+
+  // 🚚 배송지 주소록 로드 — 있으면 '최근 배송지' 탭 + 기본 배송지 자동 채움(없으면 직접입력).
+  const loadAddrs = (preselect = true) => {
+    if (!token) return
+    api.get('/api/wholesale/ship-addresses', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        const list = (r.data?.addresses ?? []) as SavedAddr[]
+        setSavedAddrs(list)
+        if (preselect && list.length) {
+          setAddrTab('recent')
+          applyAddr(list.find((a) => a.is_default) || list[0])
+        }
+      }).catch(() => { /* 주소록 없음 — 직접입력 유지 */ })
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAddrs(true) }, [token])
+
+  const deleteAddr = (id: number) => {
+    if (!token) return
+    setSavedAddrs((prev) => prev.filter((a) => a.id !== id)) // 낙관적 제거
+    api.delete(`/api/wholesale/ship-addresses/${id}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => loadAddrs(false))
+  }
+  useEffect(() => {
+    if (!showPostcode) return
+    const t = setTimeout(() => {
+      const el = document.getElementById('wholesale-postcode-box')
+      const daum = (window as unknown as { daum?: { Postcode: new (o: Record<string, unknown>) => { embed: (e: HTMLElement) => void } } }).daum
+      if (!el || !daum) { setShowPostcode(false); return }
+      el.innerHTML = ''
+      new daum.Postcode({
+        oncomplete: (data: { zonecode: string; roadAddress?: string; jibunAddress?: string }) => {
+          setShipPostal(data.zonecode || '')
+          setShipAddr(data.roadAddress || data.jibunAddress || '')
+          setShowPostcode(false)
+        },
+        width: '100%', height: '100%',
+      }).embed(el)
+    }, 60)
+    return () => clearTimeout(t)
+  }, [showPostcode])
 
   // 🚚 제조사별 최소주문금액/배송비 (표시용 — 서버가 청구 시 재계산 = SSOT). 청구액 = 상품합 + 배송비.
   const grouped = groupBySupplier(items)
@@ -44,12 +115,19 @@ export default function WholesaleCheckoutPage() {
     if (!paying && items.length === 0) navigate('/wholesale/cart', { replace: true })
   }, [items.length, paying, navigate])
 
-  if (!token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29: 비로그인 직접 진입은 마케팅 소개페이지가 아니라 로그인으로(주문은 판매사 로그인 필요).
+  if (!token) return <Navigate to="/wholesale/login" replace />
 
   async function payWithDeposit() {
     if (!items.length || paying) return
     if (!canOrder) {
       setErrorMsg(t('wholesale.checkout.minOrderNotMet', { defaultValue: '최소 주문 금액을 채우지 못한 공급처가 있습니다. 장바구니에서 확인해주세요.' }))
+      return
+    }
+    // 🚚 배송지 필수 — 받는사람·주소·연락처 입력 강제(드랍십 직배송 주소).
+    const fullAddr = `${shipAddr} ${shipDetail}`.trim()
+    if (!shipName.trim() || !shipAddr.trim() || !shipPhone.trim()) {
+      setErrorMsg(t('wholesale.checkout.addrRequired', { defaultValue: '배송지(받는 분·주소·연락처)를 입력해주세요.' }))
       return
     }
     setPaying(true)
@@ -58,18 +136,33 @@ export default function WholesaleCheckoutPage() {
     try {
       const r = await api.post('/api/wholesale/orders', {
         items: items.map((x) => ({ product_id: x.id, qty: x.qty })),
+        shipping: { name: shipName.trim(), phone: shipPhone.trim(), address: fullAddr, postal: shipPostal.trim(), message: shipMessage.trim() },
         idempotency_key: idemKeyRef.current,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success && r.data?.status === 'PAID') {
+        // 🚚 주소록 저장(최근 기록 + 기본 지정 옵션) — fail-soft, 주문 성공에만 기록.
+        api.post('/api/wholesale/ship-addresses', {
+          recipient_name: shipName.trim(), phone: shipPhone.trim(), postal_code: shipPostal.trim(),
+          address: shipAddr.trim(), address_detail: shipDetail.trim(), message: shipMessage.trim(), is_default: saveDefault,
+        }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => { /* 주소 저장 실패는 주문에 영향 없음 */ })
         clear()
+        invalidateDeposit() // 💰 예치금 즉시차감 → 잔액 실시간 갱신(상단 util 바 포함)
         navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
       } else {
-        setErrorMsg(r.data?.error || t('wholesale.checkout.payFailed', { defaultValue: '결제에 실패했습니다' }))
+        // 🏭 2026-07-01 (라이브 감사): 멱등키 충돌로 기존 미결제 주문(FAILED/EXPIRED/PENDING)이
+        //   status≠'PAID' 로 돌아오면, 같은 키로는 영영 그 주문만 반환돼 재시도가 고착됐음.
+        //   결제 미발생이 확정된 경로이므로 키를 회전해 재시도가 새 주문이 되게 함(이중과금 아님).
+        idemKeyRef.current = newIdem()
+        setErrorMsg(r.data?.error || t('wholesale.checkout.payRetry', { defaultValue: '이전 주문이 완료되지 않았어요. 다시 결제해주세요.' }))
         setPaying(false)
       }
     } catch (e: unknown) {
       const resp = (e as { response?: { status?: number; data?: Record<string, unknown> } })?.response
       const data = resp?.data || {}
+      // 🏭 2026-07-01 (라이브 감사): 402/422/409 는 예치금 청구 전 차단(돈 미이동) → 키 회전해 재시도
+      //   고착 방지. 반면 그 외(5xx/네트워크)는 청구 성공-응답유실 가능성이 있어 회전 금지(이중과금 방지).
+      const preChargeBlock = resp?.status === 402 || resp?.status === 422 || resp?.status === 409
+      if (preChargeBlock) idemKeyRef.current = newIdem()
       if (resp?.status === 402 && data.code === 'INSUFFICIENT_DEPOSIT') {
         setInsufficient({
           balance: Number(data.balance) || 0,
@@ -87,7 +180,7 @@ export default function WholesaleCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] pb-32" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 - 유통스타트" description="예치금으로 도매 주문 결제" url="/wholesale/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
@@ -98,6 +191,10 @@ export default function WholesaleCheckoutPage() {
       </header>
 
       <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
+        {/* 🏭 2026-06-29 (대표 — 대량발주 엑셀을 주문/결제 페이지에서): 양식 다운로드 + 작성본 업로드.
+            제조사별 코드(product_id)로 매칭 → 검토 후 카트 담아 예치금 결제(여러 제조사 자동 분배). */}
+        {feature('dropship') && <BulkOrderPanel token={token} />}
+
         {/* 주문 상품 요약 */}
         <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
           <p className="text-[12px] mb-2 font-bold" style={{ color: WT.ink3 }}>{t('wholesale.checkout.items', { defaultValue: '주문 상품' })}</p>
@@ -111,7 +208,7 @@ export default function WholesaleCheckoutPage() {
                   <div className="text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</div>
                   <div className="text-[12px] tabular-nums" style={{ color: WT.ink3 }}>{won(it.price || 0)} × {comma(it.qty)}</div>
                 </div>
-                <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: WT.ink }}>{won((it.price || 0) * it.qty)}</span>
+                <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: WT.ink }}>{won((it.price || 0) * (it.qty || 0))}</span>
               </li>
             ))}
           </ul>
@@ -148,11 +245,99 @@ export default function WholesaleCheckoutPage() {
           </section>
         )}
 
-        {/* 배송지 안내 */}
-        <section className="rounded-2xl p-4" style={{ background: WT.fill2 }}>
-          <p className="text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>{t('wholesale.checkout.shipping', { defaultValue: '배송지' })}</p>
-          <p className="text-[12px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.shippingNote', { defaultValue: '사업자 등록 주소지로 배송됩니다. 변경이 필요하면 관리자에게 문의하세요.' })}</p>
+        {/* 🚚 배송지 — 최근 배송지(주소록) / 직접입력 + 기본 배송지 저장 */}
+        <section className="rounded-2xl bg-white p-4 space-y-3" style={{ border: '1px solid ' + WT.line }}>
+          <p className="text-[12px] font-bold" style={{ color: WT.ink2 }}>{t('wholesale.checkout.shipping', { defaultValue: '배송지' })} <span style={{ color: WT.brand }}>*</span></p>
+
+          {savedAddrs.length > 0 && (
+            <div className="flex rounded-xl p-1 gap-1" style={{ background: WT.fill2 }}>
+              {([['recent', t('wholesale.checkout.addrTabRecent', { defaultValue: '최근 배송지' })], ['manual', t('wholesale.checkout.addrTabManual', { defaultValue: '직접입력' })]] as const).map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setAddrTab(k)}
+                  className="flex-1 h-9 rounded-lg text-[13px] font-bold transition-colors"
+                  style={addrTab === k ? { background: '#fff', color: WT.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: WT.ink3 }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {addrTab === 'recent' && savedAddrs.length > 0 ? (
+            <div className="space-y-2">
+              {savedAddrs.map((a) => {
+                const selected = a.recipient_name === shipName && a.address === shipAddr && a.phone === shipPhone
+                return (
+                  <div key={a.id} onClick={() => applyAddr(a)} className="rounded-xl p-3 cursor-pointer transition-colors"
+                    style={{ border: '1.5px solid ' + (selected ? WT.brand : WT.line2), background: selected ? WT.brandSoft : '#fff' }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[13.5px] font-bold" style={{ color: WT.ink }}>{a.recipient_name}</span>
+                          {a.is_default ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: WT.brand, background: WT.brandSoft }}>{t('wholesale.checkout.defaultBadge', { defaultValue: '기본' })}</span> : null}
+                        </div>
+                        <p className="text-[12.5px] mt-0.5 truncate" style={{ color: WT.ink2 }}>{a.address} {a.address_detail}</p>
+                        <p className="text-[12px] mt-0.5 tabular-nums" style={{ color: WT.ink3 }}>{a.phone}</p>
+                      </div>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); deleteAddr(a.id) }} aria-label={t('common.delete', { defaultValue: '삭제' })}
+                        className="shrink-0 text-[14px] leading-none px-2 py-1" style={{ color: WT.ink4 }}>✕</button>
+                    </div>
+                  </div>
+                )
+              })}
+              <button type="button" onClick={() => setAddrTab('manual')}
+                className="w-full h-10 rounded-xl text-[13px] font-bold" style={{ border: '1px dashed ' + WT.line2, color: WT.ink2 }}>
+                + {t('wholesale.checkout.newAddr', { defaultValue: '새 배송지 입력' })}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <input value={shipName} onChange={(e) => setShipName(e.target.value)} placeholder={t('wholesale.checkout.recipient', { defaultValue: '받는 분 성함' })}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: '#fff' }} />
+              <div className="flex gap-2">
+                <input value={shipPostal} readOnly placeholder={t('wholesale.checkout.postal', { defaultValue: '우편번호' })}
+                  className="flex-1 h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: WT.fill2 }} />
+                <button type="button" onClick={() => setShowPostcode(true)}
+                  className="shrink-0 h-11 px-4 rounded-xl text-[13px] font-bold text-white" style={{ background: WT.ink }}>{t('wholesale.checkout.findAddr', { defaultValue: '주소검색' })}</button>
+              </div>
+              <input value={shipAddr} readOnly placeholder={t('wholesale.checkout.addr', { defaultValue: '도로명/지번 주소 (주소검색)' })}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: WT.fill2 }} />
+              <input value={shipDetail} onChange={(e) => setShipDetail(e.target.value)} placeholder={t('wholesale.checkout.addrDetail', { defaultValue: '상세주소 (동/호수 등)' })}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: '#fff' }} />
+              <input value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} inputMode="tel" placeholder={t('wholesale.checkout.phone', { defaultValue: '연락처 (예: 010-1234-5678)' })}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: '#fff' }} />
+              <input value={shipMessage} onChange={(e) => setShipMessage(e.target.value)} maxLength={100} placeholder={t('wholesale.checkout.shipMessage', { defaultValue: '배송 메시지 (선택 · 예: 부재 시 경비실)' })}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line2, color: WT.ink, background: '#fff' }} />
+              <label className="flex items-center gap-2 cursor-pointer pt-0.5">
+                <input type="checkbox" checked={saveDefault} onChange={(e) => setSaveDefault(e.target.checked)} className="w-4 h-4 accent-current" style={{ color: WT.brand }} />
+                <span className="text-[13px]" style={{ color: WT.ink2 }}>{t('wholesale.checkout.saveDefault', { defaultValue: '이 배송지를 기본 배송지로 저장 (다음에 자동 입력)' })}</span>
+              </label>
+            </div>
+          )}
         </section>
+
+        {/* 💳 결제수단 — 계좌이체(예치금 차감) 고정 */}
+        <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
+          <p className="text-[12px] font-bold mb-2" style={{ color: WT.ink2 }}>{t('wholesale.checkout.payMethod', { defaultValue: '결제수단' })}</p>
+          <div className="rounded-xl px-3.5 py-3 flex items-center gap-2.5" style={{ border: '1.5px solid ' + WT.brand, background: WT.brandSoft }}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg shrink-0" style={{ background: '#fff' }}><Wallet className="w-4 h-4" style={{ color: WT.brand }} /></span>
+            <div className="min-w-0">
+              <div className="text-[13.5px] font-bold" style={{ color: WT.ink }}>{t('wholesale.checkout.bankTransfer', { defaultValue: '계좌이체' })}</div>
+              <div className="text-[11.5px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.bankTransferNote', { defaultValue: '계좌이체로 충전한 예치금에서 즉시 차감됩니다.' })}</div>
+            </div>
+          </div>
+        </section>
+
+        {/* 우편번호 검색 팝업 */}
+        {showPostcode && (
+          <div className="fixed inset-0 z-[10600] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setShowPostcode(false)}>
+            <div className="w-full max-w-md bg-white rounded-2xl overflow-hidden" style={{ height: 460 }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 h-12" style={{ borderBottom: '1px solid ' + WT.line }}>
+                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>{t('wholesale.checkout.findAddr', { defaultValue: '주소검색' })}</span>
+                <button onClick={() => setShowPostcode(false)} aria-label={t('common.close', { defaultValue: '닫기' })} className="text-[20px]" style={{ color: WT.ink3 }}>×</button>
+              </div>
+              <div id="wholesale-postcode-box" style={{ height: 408 }} />
+            </div>
+          </div>
+        )}
 
         {/* 예치금 잔액 vs 주문액 */}
         <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>

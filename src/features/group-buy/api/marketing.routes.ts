@@ -208,11 +208,19 @@ influencerApp.get('/me', async (c) => {
      LIMIT 50`
   ).bind(userId).all().catch(() => ({ results: [] }))
 
+  // 💡 2026-07-11 (flip 체크리스트 D1 선반영 — additive): 재원 스위치를 함께 반환해
+  //   클라 프레이밍을 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
+  //   fail-soft — 이 read 가 실패해도 정산 응답을 절대 막지 않음 (agency-delegation.routes.ts 패턴).
+  const fund = await DB.prepare(
+    `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
+  ).first<{ value: string }>().catch(() => null)
+
   return c.json({
     success: true,
     data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
+      funding_source: fund?.value || 'platform',
     },
   })
 })
@@ -315,7 +323,7 @@ influencerApp.put('/me', async (c) => {
 // 매장이 인플에게 우대 commission 제안
 sellerApp.post('/deals/propose', async (c) => {
   const sellerId = getSellerId(c)
-  const body = await c.req.json<{ influencer_id: string; commission_pct: number; ends_at?: string; message?: string }>().catch(() => ({} as any))
+  const body = await c.req.json<{ influencer_id: string; commission_pct: number; ends_at?: string; message?: string; requires_content_proof?: unknown }>().catch(() => ({} as any))
   const influencerId = String(body.influencer_id || '').trim()
   const pct = Number(body.commission_pct)
   if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) {
@@ -327,25 +335,83 @@ sellerApp.post('/deals/propose', async (c) => {
   if (!Number.isFinite(pct) || pct <= 0 || pct > cap) {
     return c.json({ success: false, error: `commission % 은 0 ~ ${cap} 범위` }, 400)
   }
+  // 🎬 WP-B: 콘텐츠 인증 조건. 1 이면 인플 링크제출→매장 승인 시 발효(status='active'). proof_status
+  //   'pending' 으로 시작해 propose 만으로는 발효 안 됨(기존 무조건부 흐름과 격리).
+  const requiresProof = body.requires_content_proof === true || body.requires_content_proof === 1 || body.requires_content_proof === '1' ? 1 : 0
   await c.env.DB.prepare(
-    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
-     VALUES (?, ?, ?, ?, 'proposed', 'seller', ?)
+    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message, requires_content_proof, proof_status)
+     VALUES (?, ?, ?, ?, 'proposed', 'seller', ?, ?, ?)
      ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
        commission_pct = excluded.commission_pct,
        ends_at = excluded.ends_at,
        status = 'proposed',
        proposed_by = 'seller',
        message = excluded.message,
+       requires_content_proof = excluded.requires_content_proof,
+       proof_url = NULL,
+       proof_status = excluded.proof_status,
        created_at = datetime('now'),
        responded_at = NULL`
-  ).bind(sellerId, influencerId, pct, body.ends_at || null, body.message || null).run()
+  ).bind(sellerId, influencerId, pct, body.ends_at || null, body.message || null, requiresProof, requiresProof ? 'pending' : null).run()
   return c.json({ success: true })
+})
+
+// 🎬 WP-B: 인플이 매장의 조건부 제안에 콘텐츠 링크 제출(=수락). status 는 'proposed' 유지 —
+//   발효는 매장 승인(approve-proof)에서만. (기존엔 매장→인플 제안 수락 API 부재 = 이 자리를 채움.)
+influencerApp.post('/deals/:id/submit-proof', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const dealId = Number(c.req.param('id'))
+  const body = await c.req.json<{ proof_url?: string }>().catch(() => ({} as { proof_url?: string }))
+  const url = String(body.proof_url || '').trim()
+  if (!/^https:\/\/[^\s]{5,500}$/i.test(url)) return c.json({ success: false, error: '유효한 https 콘텐츠 링크가 필요합니다' }, 400)
+  const r = await c.env.DB.prepare(
+    `UPDATE seller_influencer_deals SET proof_url = ?, proof_status = 'submitted', responded_at = datetime('now')
+     WHERE id = ? AND influencer_id = ? AND proposed_by = 'seller' AND requires_content_proof = 1
+       AND status = 'proposed' AND COALESCE(proof_status,'') IN ('pending','rejected')`
+  ).bind(url, dealId, userId).run().catch(() => null)
+  if (!r || !r.meta?.changes) return c.json({ success: false, error: '제출 가능한 제안이 없습니다' }, 404)
+  return c.json({ success: true })
+})
+
+// 🎬 WP-B: 인플이 자기에게 온 우대 제안 목록(콘텐츠 인증 상태 포함). submit-proof 대상 노출용.
+influencerApp.get('/deals', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, seller_id, commission_pct, ends_at, status, proposed_by, message, created_at, responded_at,
+            requires_content_proof, proof_url, proof_status
+     FROM seller_influencer_deals WHERE influencer_id = ?
+     ORDER BY created_at DESC LIMIT 100`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+// 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).
+//   이 UPDATE 가 우대율 발효 트리거 — 이후 판매분만 우대율(판매쿼리 status='active' 게이트), 소급 없음.
+sellerApp.post('/deals/:id/approve-proof', async (c) => {
+  const sellerId = getSellerId(c)
+  const dealId = Number(c.req.param('id'))
+  const body = await c.req.json<{ action: 'approve' | 'reject' }>().catch(() => ({ action: 'reject' as const }))
+  if (body.action === 'approve') {
+    const r = await c.env.DB.prepare(
+      `UPDATE seller_influencer_deals SET status = 'active', proof_status = 'approved', responded_at = datetime('now')
+       WHERE id = ? AND seller_id = ? AND requires_content_proof = 1 AND proof_status = 'submitted'`
+    ).bind(dealId, sellerId).run().catch(() => null)
+    if (!r || !r.meta?.changes) return c.json({ success: false, error: '승인 가능한 제출이 없습니다' }, 404)
+    return c.json({ success: true, status: 'active' })
+  }
+  const r = await c.env.DB.prepare(
+    `UPDATE seller_influencer_deals SET proof_status = 'rejected', responded_at = datetime('now')
+     WHERE id = ? AND seller_id = ? AND proof_status = 'submitted'`
+  ).bind(dealId, sellerId).run().catch(() => null)
+  if (!r || !r.meta?.changes) return c.json({ success: false, error: '반려 가능한 제출이 없습니다' }, 404)
+  return c.json({ success: true, status: 'rejected' })
 })
 
 sellerApp.get('/deals', async (c) => {
   const sellerId = getSellerId(c)
   const { results } = await c.env.DB.prepare(
-    `SELECT id, influencer_id, commission_pct, starts_at, ends_at, status, proposed_by, message, created_at, responded_at
+    `SELECT id, influencer_id, commission_pct, starts_at, ends_at, status, proposed_by, message, created_at, responded_at,
+            requires_content_proof, proof_url, proof_status
      FROM seller_influencer_deals WHERE seller_id = ?
      ORDER BY created_at DESC LIMIT 100`
   ).bind(sellerId).all().catch(() => ({ results: [] as any[] }))
@@ -359,7 +425,8 @@ sellerApp.post('/deals/:id/respond', async (c) => {
   const newStatus = body.action === 'accept' ? 'active' : 'rejected'
   const result = await c.env.DB.prepare(
     `UPDATE seller_influencer_deals SET status = ?, responded_at = datetime('now')
-     WHERE id = ? AND seller_id = ? AND status = 'proposed' AND proposed_by = 'influencer'`
+     WHERE id = ? AND seller_id = ? AND status = 'proposed' AND proposed_by = 'influencer'
+       AND COALESCE(requires_content_proof, 0) = 0`
   ).bind(newStatus, dealId, sellerId).run()
   if (!result.meta?.changes) return c.json({ success: false, error: 'not found or already responded' }, 404)
   return c.json({ success: true, status: newStatus })
@@ -375,13 +442,20 @@ influencerApp.post('/deals/propose', async (c) => {
   const capRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'max_influencer_commission_pct'").first<{ value: string }>().catch(() => null)
   const cap = Number(capRow?.value ?? 2)
   if (!Number.isFinite(pct) || pct <= 0 || pct > cap) return c.json({ success: false, error: `0 ~ ${cap}` }, 400)
-  await c.env.DB.prepare(
+  // 🛡️ 전수조사 HIGH fix: 매장의 *조건부* 제안(requires_content_proof=1)을 인플 재-propose 가
+  //   덮어쓰지 못하게 DO UPDATE 에 WHERE 가드 — 이전엔 proposed_by 만 'influencer' 로 뒤집혀
+  //   /respond(무조건부 수락 경로)로 콘텐츠 인증 없이 발효되는 백도어가 있었음.
+  const upsert = await c.env.DB.prepare(
     `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
      VALUES (?, ?, ?, ?, 'proposed', 'influencer', ?)
      ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
        commission_pct = excluded.commission_pct, ends_at = excluded.ends_at, status = 'proposed', proposed_by = 'influencer',
-       message = excluded.message, created_at = datetime('now'), responded_at = NULL`
+       message = excluded.message, created_at = datetime('now'), responded_at = NULL
+     WHERE COALESCE(seller_influencer_deals.requires_content_proof, 0) = 0`
   ).bind(sellerId, userId, pct, body.ends_at || null, body.message || null).run()
+  if (upsert.meta.changes === 0) {
+    return c.json({ success: false, error: '매장의 조건부(콘텐츠 인증) 제안이 진행 중입니다 — 정산 페이지에서 링크를 제출해주세요' }, 409)
+  }
   return c.json({ success: true })
 })
 
@@ -680,14 +754,15 @@ adminApp.post('/payouts/process', async (c) => {
     const bonusPct = Number(bonusRow?.value ?? 20)
     const dealAmount = Math.floor(amount * (100 + bonusPct) / 100)
     try { await DB.prepare("CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run() } catch {}
-    await DB.prepare(
-      `INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
-    ).bind(influencerId, dealAmount, dealAmount).run().catch(swallow('marketing:influencer-payout:balance'))
-    await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
-       VALUES (?, 'influencer_payout', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-    ).bind(influencerId, dealAmount, dealAmount, influencerId, `인플 정산 (딜 +${bonusPct}% 보너스)`).run().catch(swallow('marketing:influencer-payout:tx'))
+    // 💸 2026-07-05 버킷: 딜 수령(+보너스) = 무상 딜 — paid 로 두면 [현금정산 100 → 딜 120 → 재출금]
+    //   +보너스% 차익 세탁 루프가 열림. 딜 선택은 플랫폼 내 사용 목적(보너스가 그 대가) → free 태깅.
+    const { creditFreePoints } = await import('../../../worker/utils/point-buckets')
+    await creditFreePoints(DB, {
+      userId: influencerId,
+      amount: dealAmount,
+      type: 'influencer_payout',
+      description: `인플 정산 (딜 +${bonusPct}% 보너스)`,
+    }).catch(swallow('marketing:influencer-payout:balance'))
   }
   // attribution paid 처리 (잔고 claim 은 위에서 완료).
   await c.env.DB.prepare(

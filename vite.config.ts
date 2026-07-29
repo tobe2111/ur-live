@@ -63,6 +63,9 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
+    // 🚀 2026-07-12 (로딩 — 상세 하드로드 청크 병렬화): 라우트→청크 매핑용 매니페스트 출력.
+    //   scripts/generate-route-chunk-map.mjs 가 읽어 워커 modulepreload 주입 맵을 생성(빌드 체인).
+    manifest: true,
     // 🛡️ 2026-05-14 S3: modulePreload polyfill 활성 — 모든 브라우저에서 동작 보장.
     //   Vite 가 entry → import 한 chunk 들을 자동 preload (병렬 fetch) → JS 파싱 -300ms.
     modulePreload: { polyfill: true },
@@ -155,6 +158,12 @@ export default defineConfig({
           //   변경: 셀러 페이지 / Kakao 사용 시점만 fetch.
           if (id.includes('/src/lib/seller-tracking')) return 'app-seller-components'
           if (id.includes('/src/lib/kakao-sdk')) return 'app-kakao-sdk'
+          // 🖼️ 2026-07-01 [UNLOCK_LOADING] (링크샵 로딩 딥다이브): toss-preload 는 모듈 평가 즉시
+          //   Toss SDK CDN 다운로드 + client-key fetch 를 시작하는 사이드이펙트 모듈인데, /src/lib/
+          //   catch-all 로 app-utils(전 페이지 공유)에 묶여 **모든 페이지**(링크샵 포함)가 결제 SDK 를
+          //   로드했음. SDK 와 같은 'tosspayments' 청크로 분리 → import 하는 결제 표면
+          //   (Checkout/PointsCharge/TossWidgetPay 등)만 로드. 결제 페이지 preload 동작은 불변.
+          if (id.includes('/src/lib/toss-preload')) return 'tosspayments'
           if (id.includes('/src/lib/firebase-auth') || id.includes('/src/lib/firebase-config')) return 'app-firebase-wrapper'
           // 🛡️ phase 5: 페이지별 hook 분리 (사용처 1곳).
           if (id.includes('/src/hooks/useCart')) return 'app-cart'

@@ -5,7 +5,6 @@ import { Loader2, FileSpreadsheet, X, ShoppingCart, Upload, Download } from 'luc
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { WT, won, comma } from '../wholesale/wholesale-theme'
-import { useWholesaleCart } from '../wholesale/useWholesaleCart'
 import { parseCsvLine, downloadOrderForm, exportCatalog, exportPriceListCsv } from './csv-utils'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
 
@@ -16,12 +15,14 @@ import { readTableFileAsCsv } from '@/lib/read-table-file'
 export default function BulkOrderPanel({ token }: { token: string | null }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const cart = useWholesaleCart()
   const bulkInputRef = useRef<HTMLInputElement | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
-  type BulkPreviewItem = { product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }
+  const [submitting, setSubmitting] = useState(false)
+  type ShipTo = { name: string; phone: string; postal: string; address: string; message: string }
+  type BulkPreviewItem = { row: number; product_id: number; name: string; image_url: string | null; option: string; qty: number; unit_price: number; line_total: number; ship_to: ShipTo; ext_order_no: string }
   type BulkPreviewError = { row?: number; product_id?: number | null; name?: string; qty?: number; reason: string }
-  const [bulkPreview, setBulkPreview] = useState<{ items: BulkPreviewItem[]; subtotal: number; errors: BulkPreviewError[] } | null>(null)
+  const [bulkPreview, setBulkPreview] = useState<{ items: BulkPreviewItem[]; subtotal: number; shippingTotal: number; grandTotal: number; allMinMet: boolean; errors: BulkPreviewError[]; idem: string } | null>(null)
+
   async function onBulkFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (e.target) e.target.value = '' // 같은 파일 재선택 허용
     if (!file || bulkBusy) return
@@ -32,48 +33,79 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
       const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim())
       if (lines.length < 2) { toast.error('내용이 없는 파일이에요'); return }
       const header = parseCsvLine(lines[0]).map(h => h.trim())
-      const pidIdx = header.findIndex(h => h.toLowerCase() === 'product_id')
-      let qtyIdx = header.findIndex(h => h.replace(/\s/g, '') === '주문수량')
-      if (pidIdx < 0) { toast.error('product_id 열을 찾을 수 없어요 (양식을 다시 받아주세요)'); return }
-      if (qtyIdx < 0) qtyIdx = header.length - 1 // 주문수량 헤더 없으면 마지막 열
+      const norm = header.map(h => h.replace(/\s/g, '')) // 공백 제거 후 매칭(외부 발주서 헤더도 유연 인식)
+      const incl = (...kws: string[]) => { for (const kw of kws) { const i = norm.findIndex(h => h.includes(kw)); if (i >= 0) return i } return -1 }
+      const pidIdx = norm.findIndex(h => h.toLowerCase() === 'product_id')
+      const codeIdx = incl('상품코드')
+      let qtyIdx = norm.findIndex(h => h === '주문수량'); if (qtyIdx < 0) qtyIdx = incl('수량')
+      const optIdx = incl('옵션', '상품상세')   // 옵션(상품상세1 = 옵션)
+      const recipIdx = incl('받는사람', '수령인', '수취인', '받는분')
+      const phoneIdx = incl('전화', '연락처', '휴대폰', '핸드폰')
+      const postalIdx = incl('우편')
+      const addrIdx = incl('주소')
+      const msgIdx = incl('배송메시지', '배송요청', '메시지', '메모', '요청사항')
+      const orderNoIdx = incl('주문번호')
+      if (pidIdx < 0 && codeIdx < 0) { toast.error('product_id 또는 상품코드 열을 찾을 수 없어요 (양식을 다시 받아주세요)'); return }
+      if (qtyIdx < 0) qtyIdx = norm.length - 1 // 주문수량/수량 헤더 없으면 마지막 열
       const MAX_ROWS = 5000
-      // 행번호(엑셀 기준, 헤더=1행) 포함해 서버로 전송 — blank/0 qty 도 서버가 오류로 분류·안내.
-      const rows: { product_id: number; qty: number; row: number }[] = []
+      const val = (cols: string[], idx: number) => idx >= 0 ? String(cols[idx] ?? '').trim() : ''
+      // 행번호(엑셀 기준, 헤더=1행) 포함해 서버로 전송. 한 행 = 한 명에게 보내는 1건(드랍십).
+      const rows: Array<{ product_id?: number; code?: string; qty: number; option: string; ext_order_no: string; ship_to: ShipTo; row: number }> = []
       for (let i = 1; i < lines.length && rows.length < MAX_ROWS; i++) {
         const cols = parseCsvLine(lines[i])
-        const pidRaw = String(cols[pidIdx] ?? '').replace(/[^0-9]/g, '')
-        const qtyRaw = String(cols[qtyIdx] ?? '').replace(/[^0-9.]/g, '')
+        const pidRaw = pidIdx >= 0 ? String(cols[pidIdx] ?? '').replace(/[^0-9]/g, '') : ''
         const pid = Number(pidRaw)
-        const qty = Math.floor(Number(qtyRaw))
-        // product_id 없는 완전 빈 줄은 skip. qty 비었거나 0 인 행도 서버에 보내 사유 안내(단, pid 는 있어야 함).
-        if (!pidRaw || !Number.isFinite(pid) || pid <= 0) continue
-        rows.push({ product_id: pid, qty: Number.isFinite(qty) ? qty : 0, row: i + 1 })
+        const code = val(cols, codeIdx)
+        const qty = Math.floor(Number(String(cols[qtyIdx] ?? '').replace(/[^0-9.]/g, '')))
+        const ship_to: ShipTo = { name: val(cols, recipIdx), phone: val(cols, phoneIdx), postal: val(cols, postalIdx), address: val(cols, addrIdx), message: val(cols, msgIdx) }
+        const hasPid = !!pidRaw && Number.isFinite(pid) && pid > 0
+        // 매칭키(product_id/상품코드)도 없고 받는사람/주소도 없는 완전 빈 줄은 skip.
+        if (!hasPid && !code && !ship_to.name && !ship_to.address) continue
+        rows.push({ product_id: hasPid ? pid : undefined, code: code || undefined, qty: Number.isFinite(qty) ? qty : 0, option: val(cols, optIdx), ext_order_no: val(cols, orderNoIdx), ship_to, row: i + 1 })
       }
-      if (!rows.length) { toast.error('상품코드(product_id)가 있는 행이 없어요. 양식을 다시 받아주세요'); return }
-      // 서버 검증/미리보기 — 청구하지 않음.
+      if (!rows.length) { toast.error('처리할 행이 없어요. 양식을 다시 받아주세요'); return }
+      const idem = (globalThis.crypto?.randomUUID?.() || `bulk-${Date.now()}-${Math.floor(Math.random() * 1e6)}`)
+      // 서버 검증/미리보기 — 청구하지 않음. (상품코드는 product_id 로 해석됨)
       const r = await api.post('/api/wholesale/orders/bulk-preview', { items: rows }, { headers: { Authorization: `Bearer ${token}` } })
       if (!r.data?.success) { toast.error(r.data?.error || '주문서 검증에 실패했어요'); return }
       const items: BulkPreviewItem[] = r.data.items || []
       const errors: BulkPreviewError[] = r.data.errors || []
       const subtotal = Number(r.data.subtotal) || 0
+      const shippingTotal = Number(r.data.shipping_total) || 0
+      const grandTotal = Number(r.data.grand_total) || (subtotal + shippingTotal)
+      const allMinMet = r.data.all_min_met !== false
       if (!items.length && !errors.length) { toast.error('처리할 행이 없어요'); return }
-      setBulkPreview({ items, subtotal, errors })
-      if (items.length) toast.success(`${comma(items.length)}개 담을 수 있어요${errors.length ? ` · ${comma(errors.length)}개 오류` : ''}`)
-      else toast.error(`담을 수 있는 항목이 없어요 (${comma(errors.length)}개 오류)`)
+      setBulkPreview({ items, subtotal, shippingTotal, grandTotal, allMinMet, errors, idem })
+      if (items.length) toast.success(`${comma(items.length)}건 발주 가능${errors.length ? ` · ${comma(errors.length)}개 오류` : ''}`)
+      else toast.error(`발주 가능한 건이 없어요 (${comma(errors.length)}개 오류)`)
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문서 업로드 중 오류가 발생했어요')
     } finally { setBulkBusy(false) }
   }
-  // 미리보기 유효 라인 → 도매 카트에 담기 → 카트(검토·예치금 결제)로 이동.
-  function addBulkToCart() {
-    if (!bulkPreview?.items.length) return
-    for (const it of bulkPreview.items) {
-      cart.add({ id: it.product_id, qty: it.qty, name: it.name, image_url: it.image_url, price: it.unit_price, moq: it.moq })
-    }
-    const n = bulkPreview.items.length
-    setBulkPreview(null)
-    toast.success(`장바구니에 ${comma(n)}개 품목 담았어요`)
-    navigate('/wholesale/cart')
+  // 미리보기(받는사람별 라인) → 예치금으로 즉시 발주(드랍십). 제조사가 각 받는사람에게 직배.
+  async function submitDropshipOrder() {
+    if (!bulkPreview?.items.length || submitting) return
+    setSubmitting(true)
+    try {
+      const orderItems = bulkPreview.items.map(it => ({ product_id: it.product_id, qty: it.qty, option: it.option, ext_order_no: it.ext_order_no, ship_to: it.ship_to }))
+      const res = await api.post('/api/wholesale/orders', { dropship: true, items: orderItems, idempotency_key: bulkPreview.idem }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data?.success) {
+        const n = Number(res.data.line_count) || orderItems.length
+        setBulkPreview(null)
+        toast.success(`${comma(n)}건 발주 완료 · ${won(Number(res.data.amount) || 0)} 예치금 결제`)
+        navigate('/wholesale/orders')
+      } else {
+        toast.error(res.data?.error || '발주에 실패했어요')
+      }
+    } catch (err) {
+      const d = (err as { response?: { data?: { error?: string; code?: string; required?: number } } })?.response?.data
+      if (d?.code === 'INSUFFICIENT_DEPOSIT') {
+        toast.error(`예치금이 부족해요 (필요 ${won(Number(d.required) || 0)}). 충전 후 다시 발주해주세요`)
+        navigate('/wholesale/deposits')
+      } else {
+        toast.error(d?.error || '발주 중 오류가 발생했어요')
+      }
+    } finally { setSubmitting(false) }
   }
   // 오류행 리포트 CSV 다운로드 (행번호·상품코드·수량·사유).
   function downloadBulkErrors() {
@@ -89,10 +121,10 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
   return (
             <div className="mb-4 rounded-2xl p-4" style={{ border: '1px solid ' + WT.line, background: WT.fill2 }}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>대량 주문 (엑셀)</span>
-                <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>주문 많을 때</span>
+                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>대량 발주 (엑셀 · 드랍십)</span>
+                <span className="text-[11px] font-bold rounded-full px-2 py-0.5" style={{ background: WT.brandSoft, color: WT.brand }}>받는사람별 직배</span>
               </div>
-              <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>{t('wholesale.bulk.desc', { defaultValue: '주문 양식(내 카탈로그·등급가 포함)을 받아 주문수량만 채워 업로드하면, 장바구니에 담아 예치금으로 한 번에 결제할 수 있어요.' })}</p>
+              <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>{t('wholesale.bulk.desc', { defaultValue: '양식을 받아 한 행에 한 명씩(상품·옵션·수량·받는사람·주소)을 채워 업로드하면, 제조사가 각 받는사람에게 직접 발송합니다. 상품은 product_id 또는 상품코드로 매칭돼요.' })}</p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <button onClick={downloadOrderForm} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: '#fff', color: WT.ink, border: '1px solid ' + WT.line }}>
                   <Download className="w-4 h-4" /> {t('wholesale.bulk.download', { defaultValue: '주문 양식 다운로드' })}
@@ -110,7 +142,7 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
                     <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
                       {t('wholesale.bulk.resultTitle', { defaultValue: '업로드 결과' })}
                       {' · '}
-                      <span style={{ color: WT.brand }}>{comma(bulkPreview.items.length)}{t('wholesale.bulk.matchedSuffix', { defaultValue: '개 담김' })}</span>
+                      <span style={{ color: WT.brand }}>{comma(bulkPreview.items.length)}{t('wholesale.bulk.matchedSuffix', { defaultValue: '건 발주 가능' })}</span>
                       {bulkPreview.errors.length > 0 && <span style={{ color: '#D92D20' }}>{' · '}{comma(bulkPreview.errors.length)}{t('wholesale.bulk.errorSuffix', { defaultValue: '개 오류' })}</span>}
                     </span>
                     <button onClick={() => setBulkPreview(null)} aria-label="닫기"><X className="w-4 h-4" style={{ color: WT.ink3 }} /></button>
@@ -118,19 +150,24 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
 
                   {bulkPreview.items.length > 0 && (
                     <div className="px-3.5 py-2.5" style={{ borderBottom: bulkPreview.errors.length ? '1px solid ' + WT.line : undefined }}>
-                      <div className="max-h-40 overflow-y-auto -mx-1 px-1">
-                        {bulkPreview.items.slice(0, 50).map((it) => (
-                          <div key={it.product_id} className="flex items-center justify-between py-1 text-[12px]">
-                            <span className="truncate pr-2" style={{ color: WT.ink2 }}>{it.name}</span>
+                      <div className="max-h-44 overflow-y-auto -mx-1 px-1">
+                        {bulkPreview.items.slice(0, 50).map((it, i) => (
+                          <div key={`${it.row}-${i}`} className="flex items-start justify-between py-1 text-[12px] gap-2">
+                            <span className="min-w-0 flex-1" style={{ color: WT.ink2 }}>
+                              <span className="font-semibold">{it.ship_to.name || '받는사람 미입력'}</span>
+                              <span style={{ color: WT.ink4 }}> · {it.name}{it.option ? ` (${it.option})` : ''}</span>
+                            </span>
                             <span className="shrink-0 tabular-nums" style={{ color: WT.ink3 }}>{comma(it.qty)}개 · {won(it.line_total)}</span>
                           </div>
                         ))}
-                        {bulkPreview.items.length > 50 && <p className="py-1 text-[11px]" style={{ color: WT.ink4 }}>외 {comma(bulkPreview.items.length - 50)}개…</p>}
+                        {bulkPreview.items.length > 50 && <p className="py-1 text-[11px]" style={{ color: WT.ink4 }}>외 {comma(bulkPreview.items.length - 50)}건…</p>}
                       </div>
-                      <div className="flex items-center justify-between mt-2 pt-2 text-[13px] font-bold" style={{ borderTop: '1px dashed ' + WT.line, color: WT.ink }}>
-                        <span>{t('wholesale.bulk.subtotal', { defaultValue: '합계' })}</span>
-                        <span className="tabular-nums" style={{ color: WT.brand }}>{won(bulkPreview.subtotal)}</span>
+                      <div className="mt-2 pt-2 space-y-1 text-[12px]" style={{ borderTop: '1px dashed ' + WT.line }}>
+                        <div className="flex items-center justify-between" style={{ color: WT.ink3 }}><span>상품 합계</span><span className="tabular-nums">{won(bulkPreview.subtotal)}</span></div>
+                        {bulkPreview.shippingTotal > 0 && <div className="flex items-center justify-between" style={{ color: WT.ink3 }}><span>배송비</span><span className="tabular-nums">{won(bulkPreview.shippingTotal)}</span></div>}
+                        <div className="flex items-center justify-between text-[13px] font-bold pt-0.5" style={{ color: WT.ink }}><span>총 결제(예치금)</span><span className="tabular-nums" style={{ color: WT.brand }}>{won(bulkPreview.grandTotal)}</span></div>
                       </div>
+                      {!bulkPreview.allMinMet && <p className="mt-2 text-[11.5px] font-semibold" style={{ color: '#D92D20' }}>일부 제조사의 최소 주문 금액을 채우지 못했어요. 수량을 늘리거나 해당 행을 빼주세요.</p>}
                     </div>
                   )}
 
@@ -155,8 +192,8 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
 
                   {bulkPreview.items.length > 0 && (
                     <div className="px-3.5 py-2.5" style={{ borderTop: '1px solid ' + WT.line }}>
-                      <button onClick={addBulkToCart} className="w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white" style={{ background: WT.ink }}>
-                        <ShoppingCart className="w-4 h-4" /> {t('wholesale.bulk.toCart', { defaultValue: '장바구니에 담고 결제하기' })}
+                      <button onClick={submitDropshipOrder} disabled={submitting || !bulkPreview.allMinMet} className="w-full flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} {t('wholesale.bulk.submit', { defaultValue: '예치금으로 발주하기' })} · {won(bulkPreview.grandTotal)}
                       </button>
                     </div>
                   )}

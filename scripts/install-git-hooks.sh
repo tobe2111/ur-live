@@ -83,6 +83,14 @@ bash scripts/check-no-secrets.sh || {
   exit 1
 }
 
+# 🚨 2026-07-28: 위 검사는 '정해진 키 이름 패턴' 위주라 .md/.txt 안의 실제 키 본문을 못 잡았다.
+#   archive/ 19개 파일에 Firebase 서비스계정 개인키·Toss live·Stripe 시크릿이 추적된 채 남아 있었음.
+echo "==> Pre-commit: 시크릿 자재 전수 검사 (추적 파일)..."
+node scripts/check-secret-material.mjs || {
+  echo "❌ Commit blocked. 실제 키 본문이 파일에 있습니다 — public repo 는 커밋 즉시 영구 노출."
+  exit 1
+}
+
 # ⚠️ Silent error swallowing 검출 (warn-only)
 echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
 bash scripts/check-silent-errors.sh || true
@@ -118,6 +126,15 @@ node scripts/check-sql-not-null-insert.mjs || true
 echo "==> Pre-commit: 존재 없는 컬럼 참조 검사 (strict)..."
 node scripts/check-sql-column-exists.mjs -s || {
   echo "❌ Commit blocked. SQL 컬럼 mismatch 발견 — production-schema.ts 와 정합 필요."
+  exit 1
+}
+
+# 🛡️ 2026-07-01: 존재하지 않는 '테이블' 참조 검사 (strict — 차단).
+#   admin 리뷰관리가 없는 'reviews' 테이블(실제=product_reviews) 조회 → 항상 500 사고(대표 신고).
+#   'no such table' SqlError → 페이지 영구 500 영구 차단. 새 실제 테이블은 CREATE TABLE 추가 시 자동 인식.
+echo "==> Pre-commit: 존재 없는 테이블 참조 검사 (strict)..."
+node scripts/check-sql-table-exists.mjs -s || {
+  echo "❌ Commit blocked. 없는 테이블 참조 발견 — 오타이거나 KNOWN_TABLES_EXTRA 등록 필요."
   exit 1
 }
 
@@ -163,11 +180,50 @@ node scripts/check-query-initialdata.mjs || true
 echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
 node scripts/check-dual-login-guard.mjs || true
 
+# 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 (warn-only).
+#   대시보드 로그인이 무조건 clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가
+#   소비자 강제 로그아웃. user 정리는 !isKorea() 게이트 안에서만. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 로그인 세션 공존 가드 (warn-only)..."
+node scripts/check-dashboard-login-session-coexist.mjs || true
+
+# 🧱 2026-06-26: 서비스 분리 — 소비자 단건 상품 조회의 도매 원본 격리 회귀 잠금 (warn-only).
+#   누수 닫은 사이트(상세/카트/공구확정)가 필터를 잃으면 도매 B2B 원본이 소비자에 노출. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 소비자 상품 도매 격리 가드 (warn-only)..."
+node scripts/check-consumer-product-supply-isolation.mjs || true
+
+# 🏭 2026-06-29: 도매 자동 재로그인 ↔ 로그아웃 억제 가드 (warn-only).
+#   become-distributor/supplier-become 자동 probe 가 억제 게이트 없으면 명시 로그아웃이 풀림. CI strict.
+echo "==> Pre-commit: 도매 자동재로그인 억제 가드 (warn-only)..."
+node scripts/check-wholesale-autologin-guarded.mjs || true
+
+# ⚡ 2026-06-29: 도매 로그인 SPA 이동(속도) 회귀 가드 (warn-only). full reload 되돌림 차단. CI strict.
+echo "==> Pre-commit: 도매 로그인 SPA 이동 가드 (warn-only)..."
+node scripts/check-wholesale-login-spa-navigate.mjs || true
+
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.
 echo "==> Pre-commit: group_buy_status 종류판별 가드 (warn-only)..."
 node scripts/check-groupbuy-status-classify.mjs || true
+
+# 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 가드 (warn-only).
+#   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc → HTTP 500 발견. 비숫자 query 가
+#   NaN → SQL .bind(NaN) → 크래시. page/limit/offset 은 `parseInt(...) || <기본값>` 필수. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: pagination NaN 크래시 가드 (warn-only)..."
+node scripts/check-pagination-nan.mjs || true
+
+# 🛡️ 2026-07-01: 도매 공급가 모델 드리프트(폐기함수 직접호출) + 잔액 절대값 write 가드 (warn-only).
+#   공급가=resolveDistributorPrice SSOT / 잔액=원자증감·CAS. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 폐기 가격함수 가드 (warn-only)..."
+node scripts/check-deprecated-pricing.mjs || true
+echo "==> Pre-commit: 잔액 절대값 write 가드 (warn-only)..."
+node scripts/check-balance-absolute-write.mjs || true
+
+# 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 폭식 방지 (warn-only).
+#   cacheInvalidate 의 KV.delete 는 L2_KV_ENABLED 게이트 뒤에(쓰기 OFF 면 삭제 skip) + fan-out 금지.
+#   cacheGet L2 OFF 인데 삭제만 살아 28/호출 낭비한 사고. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: KV delete 무료한도 가드 (warn-only)..."
+node scripts/check-kv-delete-budget.mjs || true
 
 # 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
 #   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
@@ -175,10 +231,47 @@ node scripts/check-groupbuy-status-classify.mjs || true
 echo "==> Pre-commit: 로그인 입력 글자 가드 (warn-only)..."
 node scripts/check-light-input-guard.mjs || true
 
+# 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 (warn-only).
+#   인라인 부트가드 + chunk-error SSOT(캐시버스트) + main.tsx 배선 + worker SPA no-cache 4불변식.
+#   4번+ 재발한 버그 클래스 — 하나라도 빠지면 새 배포 후 대시보드 안 켜짐. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 배포-청크 자가복구 가드 (warn-only)..."
+node scripts/check-chunk-recovery-guard.mjs || true
+
 # 🛡️ 2026-06-22: 모바일 뷰포트/스크롤 함정 래칫 — 신규 라인의 h-screen(100vh)/min-h-0 누락 차단.
 #   동네딜 지도 하단 잘림 사건 재발 방지. staged diff 추가라인만 검사(레거시 무시). warn-only.
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
+
+# 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
+#   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
+echo "==> Pre-commit: 파일 크기 래칫 (god 파일 방지, warn-only)..."
+node scripts/check-file-size.mjs || true
+
+# 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
+echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
+node scripts/check-csv-injection.mjs || true
+
+# 🛡️ 2026-07-01: 블로그 시드 최신성 가드 (warn-only) — 소비자 블로그 시드에 폐기 명칭/기능·도매몰 유입 차단.
+echo "==> Pre-commit: 블로그 시드 최신성 가드 (warn-only)..."
+node scripts/check-blog-seed-currency.mjs || true
+
+# 🛡️ 2026-07-01: 블로그 fact 동기화 가드 (warn-only) — 수수료/원천징수/딜포인트 수치 변경 시 시드 갱신 유도.
+echo "==> Pre-commit: 블로그 fact 동기화 가드 (warn-only)..."
+bash scripts/check-blog-fact-sync.sh || true
+
+# 🛡️ 2026-06-26: 쿼리 isError 소비 가드 (warn-only) — 도매/제조사 surface 의 data 페이지가 isError 분기
+#   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
+echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
+node scripts/check-query-iserror.mjs || true
+
+# 🛡️ 2026-06-27: 가격기반 로그인 유도 가드 (warn-only) — 도매 surface 가 가격(*_price) null/0 을
+#   로그인 신호로 오용해 로그인 유도하면 "로그인했는데 '로그인하세요'" 재발. 신규 추가 차단.
+echo "==> Pre-commit: 가격기반 로그인 유도 가드 (warn-only)..."
+node scripts/check-login-gate-by-price.mjs || true
+
+# 🛡️ 2026-06-27: 도매주문 상태 무결성 가드 (warn-only) — wholesale_orders.status 정의 밖 값 차단.
+echo "==> Pre-commit: 도매주문 상태 무결성 가드 (warn-only)..."
+node scripts/check-wholesale-order-status.mjs || true
 
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
@@ -195,6 +288,10 @@ fi
 
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
+
+# 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
+#   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
+node scripts/check-current-work-sync.mjs || true
 
 # 🛡️ 마이그레이션 ↔ repair-schema drift (warn-only) — prod D1 은 .sql 자동적용 X, repair-schema 가 SSOT.
 echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."

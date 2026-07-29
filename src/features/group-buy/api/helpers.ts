@@ -10,7 +10,7 @@ import { swallow } from '../../../worker/utils/swallow'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 
-const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
+const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 이용권 기본 수수료 5%
 
 // 🛡️ 2026-05-15: 차등 수수료 — 셀러 GMV 기반 자동 산정 (셀러 lock-in)
 //   기본 5%, 월 GMV 1,000만+ 셀러 4%, 월 GMV 1억+ 셀러 3%
@@ -20,7 +20,7 @@ const TIER_COMMISSION = [
   { min_monthly_gmv: 10_000_000,  rate: 0.04 },  // 1천만+ → 4%
 ] as const
 
-/** DB에서 식사권 기본 수수료율 조회 (어드민 설정 우선, 없으면 5%) */
+/** DB에서 이용권 기본 수수료율 조회 (어드민 설정 우선, 없으면 5%) */
 export async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
   try {
     const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_rate_meal_voucher'").first<{ value: string }>()
@@ -135,7 +135,8 @@ export async function ensureTables(DB: D1Database): Promise<void> {
     `).run()
   } catch { /* exists */ }
   // applied_* 컬럼 자동 추가 (기존 테이블 마이그레이션)
-  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER']) {
+  // 🎁 2026-07-12 is_experience: 0원 체험권 마킹(정산 제외용, 체험 캠페인 트랙 WP-A).
+  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER', 'is_experience INTEGER DEFAULT 0']) {
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   _ensuredTables = true
@@ -340,7 +341,7 @@ export async function applyGroupBuyReferral(
     const isReferredByThis = sellerRow?.referred_by_influencer === p.referralInfluencerId
     const referralBonusActive = !!sellerRow?.referral_bonus_until && new Date(sellerRow.referral_bonus_until) > new Date()
     const dealRow = await DB.prepare(
-      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) LIMIT 1`
+      `SELECT commission_pct FROM seller_influencer_deals WHERE seller_id = ? AND influencer_id = ? AND status = 'active' AND (ends_at IS NULL OR ends_at > datetime('now')) AND (COALESCE(requires_content_proof, 0) = 0 OR proof_status = 'approved') LIMIT 1`
     ).bind(p.sellerId, p.referralInfluencerId).first<{ commission_pct: number }>().catch(() => null)
     effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
       is_referred_by_this_influencer: isReferredByThis,
@@ -463,8 +464,8 @@ export async function sendStoreOwnerAlimtalk(
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
 
-    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션 (default '식사권').
-    const label = data.categoryLabel || '식사권'
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션 (default '이용권').
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 통계 페이지 안내
 
 안녕하세요, ${data.restaurantName} 사장님!
@@ -500,7 +501,7 @@ ${data.statsUrl}
 
 /**
  * 🛡️ 2026-05-16: 사용자에게 voucher 발급 알림톡 (결제 완료 직후).
- *   링크: https://live.ur-team.com/my-vouchers (QR 코드 화면 진입)
+ *   링크: https://urdeal.kr/my-vouchers (QR 코드 화면 진입)
  */
 export async function sendBuyerVoucherIssuedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
@@ -513,14 +514,14 @@ export async function sendBuyerVoucherIssuedAlimtalk(
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const expDate = new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
-    const label = data.categoryLabel || '식사권'
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 발급 완료
 
 ${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
 ${data.qty}장 발급되었습니다.
 
 📱 매장에서 QR 코드 보여주세요:
-https://live.ur-team.com/my-vouchers
+https://urdeal.kr/my-vouchers
 
 ⏰ 유효기간: ${expDate}까지
 
@@ -577,20 +578,94 @@ ${data.restaurantName} 사장님,
 }
 
 /**
- * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
+ * 📣 2026-07-05 (운영 감사 Q4 — "판매될 때마다 사장님이 알아야"): 건별 판매 알림톡.
+ *   첫 판매는 sendSellerFirstVoucherAlimtalk(온보딩 상세)가 담당 — 이 함수는 2번째 판매부터.
+ *   호출측(group-buy.routes)이 first_voucher_notified 로 분기해 첫 판매 이중발송 없음.
  */
-export async function sendBuyerVoucherUsedAlimtalk(
+export async function sendSellerVoucherSoldAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
+  data: { restaurantName: string; productName: string; qty: number; amount: number }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const message = `[유어딜] 🎟️ 이용권 판매
+
+${data.restaurantName}
+"${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
+
+손님이 곧 방문할 수 있어요. 판매/사용 현황:
+https://urdeal.kr/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-sold'))
+  } catch { /* graceful */ }
+}
+
+/**
+ * 📣 2026-07-05 (운영 감사 Q4): 손님이 **셀프(PIN/매장코드)** 로 사용 처리했을 때 사장님 알림톡.
+ *   사장님이 직접 스캔(use-by-seller)한 경우는 본인이 실행자라 발송하지 않음(호출측 책임).
+ */
+export async function sendSellerVoucherUsedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; usedAt?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const message = `[유어딜] ✅ 이용권 사용 처리됨
+
+${data.restaurantName}
+"${data.productName}"${ts ? `
+사용 시각: ${ts}` : ''}
+
+손님이 매장에서 셀프 사용 처리했어요.
+정산은 사용 +7일 후 등록 계좌로 자동 진행됩니다.
+
+사용 내역: https://urdeal.kr/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-used'))
+  } catch { /* graceful */ }
+}
+
+/**
+ * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
+ * 🔔 2026-07-05: Aligo 카카오 알림톡(tpl_code 'voucher_used', sendSystemAlimtalk — dedup·캡·재시도 큐)
+ *   경로 추가. 기존 solapi LMS 는 레거시 폴백으로 유지(ALIMTALK_API_KEY 설정 환경만 동작).
+ *   ⚠️ 'voucher_used' 는 Aligo 콘솔 등록·승인 필요 — message 를 승인 템플릿 본문과 일치시켜 유지.
+ */
+export async function sendBuyerVoucherUsedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
+): Promise<void> {
+  if (!phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
-    const label = data.categoryLabel || '식사권'
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ✅ ${label} 사용 완료
 
 ${data.restaurantName}
@@ -600,9 +675,16 @@ ${ts ? '사용 시각: ' + ts : ''}
 맛있게 드세요! 🍱
 
 후기 작성하면 보너스 딜 지급:
-https://live.ur-team.com/my-vouchers
+https://urdeal.kr/my-vouchers
 
 문의: 유어딜 고객센터`
+    // ① Aligo 카카오 알림톡 (시스템 SSOT — ALIGO_* 미설정 시 내부 silent skip)
+    try {
+      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+      await sendSystemAlimtalk(env, cleanPhone, 'voucher_used', message)
+    } catch { /* fail-soft — 아래 레거시 경로가 백업 */ }
+    // ② 레거시 solapi LMS 폴백 (해당 키 설정 환경만)
+    if (!env.ALIMTALK_API_KEY) return
     await fetch('https://api.solapi.com/messages/v4/send', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
@@ -630,6 +712,9 @@ export async function reverseReferralBonusOnRefund(
 ): Promise<number> {
   if (!orderNumber) return 0
   try {
+    // 💸 2026-07-05 버킷: 아래 회수 UPDATE 가 free_balance 컬럼 참조 — 사전 보장(멱등).
+    const { ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
+    await ensureDealBuckets(DB)
     const rows = await DB.prepare(
       "SELECT user_id, points_amount FROM point_transactions WHERE order_id = ? AND type = 'referral_bonus'"
     ).bind(orderNumber).all<{ user_id: string; points_amount: number }>().catch(() => ({ results: [] as { user_id: string; points_amount: number }[] }))
@@ -641,12 +726,13 @@ export async function reverseReferralBonusOnRefund(
       if (dup) continue
       const amt = Math.floor(t.points_amount || 0)
       if (amt <= 0) continue
-      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
-        .bind(amt, t.user_id).run().catch(() => {})
+      // 💸 2026-07-05 버킷: referral_bonus 는 무상 적립 → 회수도 free 에서 (무상 적립-역전 대칭).
+      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+        .bind(amt, amt, t.user_id).run().catch(() => {})
       await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber).run().catch(() => {})
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber, -amt).run().catch(() => {})
       reversed++
     }
     return reversed

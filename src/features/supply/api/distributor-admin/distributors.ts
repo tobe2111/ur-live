@@ -4,6 +4,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ASSIGNABLE, ensureCreditSchemaAdmin, type Env } from './helpers'
+import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
 
 export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
   // ── GET /distributors?search=&assigned=1 ─────────────────────────────────────
@@ -41,6 +42,90 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: true, distributors: results ?? [] })
     } catch (err) {
       return safeError(c, err, '판매사 조회 중 오류가 발생했습니다', '[distributor-admin]')
+    }
+  })
+
+  // ── GET /distributors/pending-approvals ──────────────────────────────────────
+  //   🆕 2026-06-24 (대표 신고: 대시보드 '판매사 승인 N' 클릭 시 빈 목록): 가입 대기(is_distributor=1,
+  //   status='pending') 판매사 목록. 도매(wholesale)-스코프 엔드포인트(segment=distributor) — 도매 권한
+  //   어드민이 403 없이 조회·승인 가능(소비자 /api/admin/sellers 는 스코프 밖이라 403 → 빈 목록이었음).
+  //   카운트(wholesale-overview-admin: is_distributor=1 AND status='pending')와 동일 조건.
+  app.get('/distributors/pending-approvals', async (c) => {
+    try {
+      // 🏭 2026-06-29 가입 메타(취급 카테고리·주력 판매채널) 표시 — 사이드테이블 LEFT JOIN(없으면 ensure).
+      await ensureWholesaleSignupMeta(c.env.DB)
+      const { results } = await c.env.DB.prepare(
+        `SELECT s.id, s.username, s.name, s.business_name, s.business_number, s.email, s.phone,
+                s.representative_name, s.representative_phone, s.manager_name, s.manager_phone,
+                s.business_registration_image_url, s.business_registration_status,
+                s.status, s.created_at, COALESCE(s.mall_id,1) AS mall_id,
+                m.categories AS signup_categories, m.channel AS signup_channel
+         FROM sellers s
+         LEFT JOIN wholesale_signup_meta m ON m.member_type = 'distributor' AND m.member_id = s.id
+         WHERE s.is_distributor = 1 AND s.status = 'pending'
+         ORDER BY s.created_at ASC, s.id ASC LIMIT 200`
+      ).all().catch(() => ({ results: [] }))
+      return c.json({ success: true, distributors: results ?? [] })
+    } catch (err) {
+      return safeError(c, err, '판매사 승인 대기 조회 중 오류가 발생했습니다', '[distributor-admin]')
+    }
+  })
+
+  // ── PATCH /distributors/:id/approval ─────────────────────────────────────────
+  //   승인(approved) / 거부(rejected). CAS(status='pending' 일 때만) → 동시요청·중복 처리 멱등.
+  app.patch('/distributors/:id/approval', async (c) => {
+    try {
+      const id = Number(c.req.param('id'))
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
+      const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+      const action = String(body.action) === 'reject' ? 'reject' : 'approve'
+      const newStatus = action === 'approve' ? 'approved' : 'rejected'
+      const reason = typeof body.reason === 'string' ? body.reason.slice(0, 300) : null
+
+      // CAS: 대기(pending) + 판매사(is_distributor=1) 일 때만 1회 전이.
+      const res = await c.env.DB.prepare(
+        "UPDATE sellers SET status = ?, updated_at = datetime('now') WHERE id = ? AND is_distributor = 1 AND status = 'pending'"
+      ).bind(newStatus, id).run()
+      if (!res.meta.changes) {
+        return c.json({ success: false, error: '승인 대기 중인 판매사가 아닙니다 (이미 처리되었거나 존재하지 않음)' }, 409)
+      }
+      await writeAuditLog(c, {
+        action: action === 'approve' ? 'wholesale_distributor_approve' : 'wholesale_distributor_reject',
+        targetType: 'seller',
+        targetId: String(id),
+        before: { status: 'pending' },
+        after: { status: newStatus, reason },
+      }).catch(() => { /* audit 실패해도 성공 처리 */ })
+      // 판매사 대시보드 알림(fail-soft).
+      try {
+        const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(
+          c.env.DB, 'seller', String(id),
+          action === 'approve' ? 'distributor_approved' : 'distributor_rejected',
+          action === 'approve' ? '판매사 가입 승인' : '판매사 가입 거부',
+          action === 'approve' ? '도매몰 이용이 승인되었습니다.' : (reason || '가입이 거부되었습니다.'),
+          '/wholesale',
+        )
+      } catch { /* 알림 실패 무시 */ }
+      // 🔔 2026-06-26 (알림 보강): 승인/거부를 접속 전 채널(알림톡)로도 — 벨은 접속해야 보임(제조사 패턴과 동일).
+      //   판매사 phone 조회 후 fail-soft 발송. 알림톡 템플릿 미등록 시 silent skip(승인 자체는 막지 않음).
+      try {
+        const seller = await c.env.DB.prepare(
+          'SELECT business_name, name, manager_phone, representative_phone, phone FROM sellers WHERE id = ?'
+        ).bind(id).first<{ business_name: string | null; name: string | null; manager_phone: string | null; representative_phone: string | null; phone: string | null }>()
+        const phone = seller?.manager_phone || seller?.representative_phone || seller?.phone
+        if (phone) {
+          const bn = seller?.business_name || seller?.name || '판매사'
+          const msg = action === 'approve'
+            ? `[유통스타트] 판매사 승인 완료\n\n· 상호: ${bn}\n\n이제 로그인해 도매가로 사입할 수 있습니다.\nhttps://utongstart.com/wholesale/login`
+            : `[유통스타트] 판매사 가입이 반려되었습니다\n\n· 상호: ${bn}\n\n${reason || '자세한 내용은 고객센터로 문의해주세요.'}`
+          const { sendSystemAlimtalk } = await import('../../../../lib/system-alimtalk')
+          await sendSystemAlimtalk(c.env, phone, action === 'approve' ? 'distributor_approved' : 'distributor_rejected', msg)
+        }
+      } catch { /* fail-soft — 알림 실패가 승인을 막지 않음 */ }
+      return c.json({ success: true, status: newStatus })
+    } catch (err) {
+      return safeError(c, err, '판매사 승인 처리 중 오류가 발생했습니다', '[distributor-admin]')
     }
   })
 
@@ -84,6 +169,19 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
         before: { grade: prevSeller?.distributor_grade ?? null, special_discount_until: prevSeller?.special_discount_until ?? null },
         after: { grade, special_discount_until: special },
       }).catch(() => { /* audit 실패해도 성공 처리 */ })
+      // 🔔 2026-06-26 (알림 보강): 등급은 향후 모든 주문 단가를 좌우하는데 그간 통지가 전무했음.
+      //   실제로 바뀐 경우에만 판매사 대시보드 알림(fail-soft).
+      if ((prevSeller?.distributor_grade ?? null) !== grade) {
+        try {
+          const { createDashboardNotification } = await import('../../../notifications/api/dashboard-notifications.routes')
+          await createDashboardNotification(
+            c.env.DB, 'seller', String(id), 'distributor_grade_changed',
+            '회원 등급이 변경되었습니다',
+            grade ? `회원 등급이 ${grade} 등급으로 변경되었습니다. 공급가에 반영됩니다.` : '회원 등급이 해제되었습니다.',
+            '/wholesale',
+          )
+        } catch { /* 알림 실패 무시 */ }
+      }
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '판매사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
@@ -175,13 +273,17 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       const applied = Math.min(amount, prevOut)
       const newOut = prevOut - applied
 
-      const batch = await c.env.DB.batch([
-        c.env.DB.prepare("UPDATE sellers SET outstanding_balance = ?, updated_at = datetime('now') WHERE id = ?").bind(newOut, id),
-        c.env.DB.prepare(
-          "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, NULL, 'repayment', ?, ?, ?)"
-        ).bind(id, applied, newOut, memo || `미수금 상환 ${applied.toLocaleString('ko-KR')}원`),
-      ])
-      if ((batch[0]?.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '상환 처리에 실패했습니다' }, 500)
+      // 🛡️ 2026-07-01 (머니 룰 #1 claim-before-credit): outstanding 을 원자 CAS 로 차감.
+      //   기존 batch read-modify-write(절대값 write)는 동시 상환 2건이 같은 prevOut 을 읽어 하나가 덮어써
+      //   미수금이 과대 계상(플랫폼 채권 부풀림·판매사 손해)될 수 있었음. WHERE 에 prevOut 일치를 걸어
+      //   그 사이 값이 바뀌면 changes=0 → 원장 미기록 + 재시도 유도(이중 반영/유실 방지).
+      const upd = await c.env.DB.prepare(
+        "UPDATE sellers SET outstanding_balance = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(outstanding_balance,0) = ?"
+      ).bind(newOut, id, prevOut).run()
+      if ((upd.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '미수금 잔액이 방금 변경되었습니다. 새로고침 후 다시 시도해주세요', code: 'OUTSTANDING_CHANGED' }, 409)
+      await c.env.DB.prepare(
+        "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, NULL, 'repayment', ?, ?, ?)"
+      ).bind(id, applied, newOut, memo || `미수금 상환 ${applied.toLocaleString('ko-KR')}원`).run().catch(() => null)
       await writeAuditLog(c, {
         action: 'wholesale_credit_repayment',
         targetType: 'seller',

@@ -3,7 +3,7 @@ import { creditAgencyStoreIntroCommission } from '@/worker/utils/agency-store-in
 
 /**
  * 🛡️ 2026-06-01 에이전시 입점 commission 적립 테스트 (테스트 0개였음).
- *   signup_bonus(₩30,000 첫결제 1회) + sales_commission(매출×pct, default 2%) 적립 분기.
+ *   signup_bonus(₩30,000 첫결제 1회) + sales_commission(매출×pct, default 1%) 적립 분기.
  */
 
 interface Cfg { agencyId?: number | null; pct?: number | null; hasBonus?: boolean }
@@ -44,10 +44,10 @@ describe('creditAgencyStoreIntroCommission', () => {
     expect(ins(inserts, 'sales_commission')!.args).toContain(1000) // 50,000 × 2%
   })
 
-  it('default pct 2% 적용(설정 null)', async () => {
+  it('default pct 1% 적용(설정 null) — 2026-07-05 대표 확정 (b)안: 기본 2%→1%', async () => {
     const { db, inserts } = makeDB({ agencyId: 3, pct: null, hasBonus: true })
     await creditAgencyStoreIntroCommission(db, { id: 3, seller_id: 9, total_amount: 200_000 })
-    expect(ins(inserts, 'sales_commission')!.args).toContain(4000) // 200,000 × 2%
+    expect(ins(inserts, 'sales_commission')!.args).toContain(2000) // 200,000 × 1%
   })
 
   it('영입 에이전시 없음 → 적립 없음', async () => {

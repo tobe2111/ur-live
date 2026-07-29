@@ -10,7 +10,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { FileText, Loader2, Send } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -117,6 +117,8 @@ export default function AdminWholesaleQuotesPage() {
 
       {quotesQ.isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+      ) : quotesQ.isError ? (
+        <DashboardLoadError error={quotesQ.error} onRetry={() => quotesQ.refetch()} loginPath="/admin/login" label="견적" />
       ) : quotes.length === 0 ? (
         <p className="text-center text-gray-400 py-16 text-sm bg-white rounded-xl border border-gray-100">견적이 없습니다.</p>
       ) : (
@@ -137,7 +139,7 @@ export default function AdminWholesaleQuotesPage() {
                     <p className="text-xs text-gray-500">
                       {distLabel}
                       {q.product_name ? ` · ${q.product_name}` : (q.product_id ? ` · 상품#${q.product_id}` : '')}
-                      {` · 수량 ${q.requested_qty.toLocaleString('ko-KR')}`}
+                      {` · 수량 ${Number(q.requested_qty || 0).toLocaleString('ko-KR')}`}
                       {q.target_unit_price ? ` · 희망 ${won(q.target_unit_price)}` : ''}
                     </p>
                     {q.request_text ? <p className="text-xs text-gray-600 mt-1 bg-gray-50 rounded p-2 whitespace-pre-wrap">{q.request_text}</p> : null}

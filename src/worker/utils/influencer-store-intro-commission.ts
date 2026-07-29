@@ -14,7 +14,10 @@
  * 멱등: (influencer_id, order_id, source='store_intro') 이미 있으면 skip.
  * Fail-soft: 실패해도 결제 흐름 막지 않음.
  */
-const DEFAULT_STORE_INTRO_PCT = 1.5
+import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+
+// 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일(값 1.5 불변).
+const DEFAULT_STORE_INTRO_PCT = COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT
 const REFUND_WINDOW_DAYS = 7
 
 async function getStoreIntroPct(DB: D1Database): Promise<number> {
@@ -24,9 +27,49 @@ async function getStoreIntroPct(DB: D1Database): Promise<number> {
   return Number.isFinite(pct) && pct > 0 ? pct : DEFAULT_STORE_INTRO_PCT
 }
 
+/**
+ * 💸 2026-07-04 [INV-CB] (커미션 예산 아비터 — docs/design/commission-funding-restructure.md):
+ *   적립 없이 "이 주문에서 적립될 금액"만 계산(read-only). 오케스트레이터(order-commissions.ts)가
+ *   예산 배분 전에 요청액을 산출할 때 사용. 적립 로직(credit)과 동일 판정 — 부적격/0원이면 0.
+ *   ⚠️ 일시 오류 시 0 반환(fail-soft) → 예산 미배정 → credit 의 amountOverride=0 → 미적립.
+ *   미지급 방향 안전(초과지급 불가) — cron 재집계/보정 대상 아님(주문당 1회성).
+ */
+export async function computeInfluencerStoreIntroRequest(
+  DB: D1Database,
+  order: { id: number; seller_id?: number | null; total_amount?: number | null },
+): Promise<number> {
+  try {
+    if (!order.id || !order.seller_id || !order.total_amount || order.total_amount <= 0) return 0
+    const sellerRow = await DB.prepare(
+      `SELECT introduced_by_influencer_id FROM sellers WHERE id = ?`
+    ).bind(order.seller_id).first<{ introduced_by_influencer_id: number | string | null }>().catch(() => null)
+    const influencerId = sellerRow?.introduced_by_influencer_id
+    if (influencerId === null || influencerId === undefined || String(influencerId).trim() === '') return 0
+    const influencerIdStr = String(influencerId)
+    const blocked = await DB.prepare(
+      "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL LIMIT 1"
+    ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
+    if (blocked) return 0
+    // 🛡️ 2026-07-12 (§0-2 본인구매 가드 — credit 쪽과 동일 미러): 구매자==영입자면 요청액 0.
+    const buyer = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+      .bind(order.id).first<{ user_id: string | number | null }>().catch(() => null)
+    if (buyer?.user_id != null && String(buyer.user_id) === influencerIdStr) return 0
+    const existing = await DB.prepare(
+      "SELECT 1 FROM influencer_attributions WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro' LIMIT 1"
+    ).bind(order.id, influencerIdStr).first().catch(() => null)
+    if (existing) return 0
+    const pct = await getStoreIntroPct(DB)
+    const commission = Math.floor((Number(order.total_amount) * pct) / 100)
+    return commission > 0 ? commission : 0
+  } catch {
+    return 0
+  }
+}
+
 export async function creditInfluencerStoreIntroCommission(
   DB: D1Database,
   order: { id: number; seller_id?: number | null; total_amount?: number | null },
+  opts?: { amountOverride?: number },
 ): Promise<void> {
   try {
     if (!order.id || !order.seller_id || !order.total_amount || order.total_amount <= 0) return
@@ -45,6 +88,20 @@ export async function creditInfluencerStoreIntroCommission(
     ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
     if (blocked) return
 
+    // 2.5 🛡️ 2026-07-12 (§0-2 본인구매 가드 — 대표 [UNLOCK], pre-flip-risk-audit §③-3):
+    //   위 주석의 "self-매장 skip" 약속과 달리 **구매자==영입 인플 체크가 코드에 없어**, 영입자가
+    //   자기 영입 매장에서 본인 구매하면 매출 1.5% 를 스스로에게 적립할 수 있었음(자가 커미션 루프 —
+    //   promo flip 후 %가 커지면 기대수익 양수). 구매자 user_id 가 영입자면 skip + 어뷰즈 기록.
+    const buyer = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+      .bind(order.id).first<{ user_id: string | number | null }>().catch(() => null)
+    if (buyer?.user_id != null && String(buyer.user_id) === influencerIdStr) {
+      await DB.prepare(
+        `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+         VALUES ('self_store_intro_purchase', ?, 'order', ?, ?, 'medium')`
+      ).bind(influencerIdStr, String(order.id), JSON.stringify({ seller_id: order.seller_id })).run().catch(() => {})
+      return
+    }
+
     // 3. 멱등 — 같은 주문의 store_intro 적립 이미 있으면 skip.
     const existing = await DB.prepare(
       "SELECT 1 FROM influencer_attributions WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro' LIMIT 1"
@@ -52,8 +109,13 @@ export async function creditInfluencerStoreIntroCommission(
     if (existing) return
 
     // 4. commission 계산.
+    //    💸 [INV-CB] amountOverride: 예산 아비터(order-commissions.ts)가 배분한 상한 —
+    //    계산값보다 절대 커질 수 없음(min clamp = 축소만 가능, 안전 방향). 미전달 시 현행 동일.
     const pct = await getStoreIntroPct(DB)
-    const commission = Math.floor((Number(order.total_amount) * pct) / 100)
+    const computed = Math.floor((Number(order.total_amount) * pct) / 100)
+    const commission = opts?.amountOverride != null
+      ? Math.min(Math.max(0, Math.floor(opts.amountOverride)), computed)
+      : computed
     if (commission <= 0) return
 
     const availableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()

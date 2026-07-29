@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * TikTok OAuth callback 처리 페이지.
@@ -62,9 +63,7 @@ export default function SellerTikTokCallbackPage() {
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
         {status === 'pending' && (
           <>
-            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
-            </div>
+            <BrandLoader />
             <h2 className="text-lg font-bold text-center text-gray-900">TikTok 연동 중...</h2>
             <p className="text-sm text-gray-500 text-center mt-1">잠시만 기다려주세요</p>
           </>

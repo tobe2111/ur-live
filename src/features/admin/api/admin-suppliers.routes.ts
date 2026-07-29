@@ -14,6 +14,9 @@ import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api/supply-settlement';
+import { setWholesaleLicenseVerified } from '@/features/supply/api/wholesale-license';
+import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
+import { intParam } from '@/shared/pagination'
 
 export const adminSuppliersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -25,16 +28,35 @@ function safeAdminError(err: unknown, env: Env): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+// 🛡️ 2026-06-25: supplier_balances 테이블 ensure(멱등, WeakSet 메모) — 목록 쿼리가 LEFT JOIN
+//   supplier_balances 를 쓰는데, 이 테이블은 첫 정산 or repair-schema 때만 생성됨. 정산 0건 + repair 미실행
+//   fresh DB(=신규 도매몰)에선 'no such table' → GET /suppliers 500 → 제조사 목록 안 뜸 → 승인 자체 불가.
+//   per-request DDL 금지 룰 준수(ensureXxx + WeakSet). 스키마는 repair-schema.routes.ts:1548 와 동일.
+const _balancesEnsured = new WeakSet<object>();
+async function ensureSupplierBalances(DB: D1Database): Promise<void> {
+  if (_balancesEnsured.has(DB)) return;
+  _balancesEnsured.add(DB);
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS supplier_balances (
+    supplier_id INTEGER PRIMARY KEY,
+    pending_amount INTEGER NOT NULL DEFAULT 0,
+    available_amount INTEGER NOT NULL DEFAULT 0,
+    paid_amount INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(() => { /* 이미 존재 */ });
+}
+
 // ── GET /suppliers — 목록 + 잔고 ──────────────────────────────────────────────
 adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    await ensureSupplierBalances(DB); // 🛡️ fresh DB 500 방지 (위 주석)
+    await ensureWholesaleSignupMeta(DB); // 🏭 가입 메타(취급 카테고리·희망 유통채널) JOIN 안전 보장
     // 조회 시 성숙(환불창 지난 pending → available) 먼저 반영 — best-effort.
     await matureSupplierSettlements(DB).catch(() => 0);
 
     const status = String(c.req.query('status') || 'all'); // all | pending | approved | suspended | rejected
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
 
     let where = '1=1';
@@ -54,13 +76,15 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
     //   repair-schema 미적용 isolate 대비 — 새 컬럼 없으면 fallback 쿼리로 재시도(기존 동작 보존).
     //   🏬 멀티-몰: mall_id + mall name join 도 primary 쿼리에만(컬럼 없으면 fallback 으로 강등).
     const baseTail =
-      `      s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
+      `      m2.categories AS signup_categories, m2.channel AS signup_channel,
+              s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
               COALESCE(b.pending_amount, 0)   AS pending_amount,
               COALESCE(b.available_amount, 0) AS available_amount,
               COALESCE(b.paid_amount, 0)      AS paid_amount,
               (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id AND p.is_supply_product = 1) AS product_count
          FROM suppliers s
          LEFT JOIN supplier_balances b ON b.supplier_id = s.id
+         LEFT JOIN wholesale_signup_meta m2 ON m2.member_type = 'supplier' AND m2.member_id = s.id
          WHERE ${whereWithMall}
          ORDER BY (s.status = 'pending') DESC, s.created_at DESC
          LIMIT ? OFFSET ?`;
@@ -83,7 +107,20 @@ ${baseTail.replace(whereWithMall, where)}`
     const total = await DB.prepare(`SELECT COUNT(*) AS count FROM suppliers s WHERE ${where}`).bind(...params).first<{ count: number }>();
     const pendingCount = await DB.prepare("SELECT COUNT(*) AS count FROM suppliers WHERE status = 'pending'").first<{ count: number }>().catch(() => null);
 
-    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 첨부 — 승인 검토용(신고번호/검증여부). fail-soft(테이블 부재/오류 시 미부착).
+    const items = (rows.results ?? []) as Array<Record<string, unknown>>;
+    try {
+      const supIds = items.map((i) => Number(i.id)).filter((n) => Number.isFinite(n) && n > 0);
+      if (supIds.length) {
+        const ph = supIds.map(() => '?').join(',');
+        const lic = await DB.prepare(`SELECT owner_id, permit_no, verified FROM wholesale_licenses WHERE owner_type = 'supplier' AND owner_id IN (${ph})`)
+          .bind(...supIds).all<{ owner_id: number; permit_no: string | null; verified: number }>().catch(() => ({ results: [] as { owner_id: number; permit_no: string | null; verified: number }[] }));
+        const byId = new Map((lic.results || []).map((r) => [Number(r.owner_id), r]));
+        for (const it of items) { const l = byId.get(Number(it.id)); it.license_no = l?.permit_no ?? null; it.license_verified = l?.verified ?? 0; }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { items, total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] GET /suppliers error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -96,9 +133,11 @@ adminSuppliersRoutes.get('/suppliers/:id/payouts', cors(), async (c) => {
     const { DB } = c.env;
     const id = c.req.param('id');
     if (!/^\d+$/.test(String(id))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    // 🛡️ 2026-06-25: supplier_payouts 는 첫 지급/repair-schema 때만 생성 → 미생성 신규몰에서 'no such table' 500.
+    //   읽기전용 이력이라 미존재 = "지급 0건"으로 graceful degrade(.catch).
     const rows = await DB.prepare(
       'SELECT id, amount, settlement_count, status, bank_name, account_holder, note, created_at FROM supplier_payouts WHERE supplier_id = ? ORDER BY created_at DESC LIMIT 100'
-    ).bind(id).all();
+    ).bind(id).all().catch(() => ({ results: [] as unknown[] }));
     return c.json({ success: true, data: { items: rows.results ?? [] } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -135,7 +174,13 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     if (sets.length === 0) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     sets.push("updated_at = datetime('now')");
-    await DB.prepare(`UPDATE suppliers SET ${sets.join(', ')} WHERE id = ?`).bind(...params, id).run();
+    // 🛡️ 2026-06-25: status 변경 시 CAS — 사전 SELECT 만으론 동시 승인 못 막아 알림톡 2회. 기존 status 선점.
+    const statusGuard = body.status ? ' AND status = ?' : '';
+    const guardParams = body.status ? [existing.status] : [];
+    const upd = await DB.prepare(`UPDATE suppliers SET ${sets.join(', ')} WHERE id = ?${statusGuard}`).bind(...params, id, ...guardParams).run();
+    if (body.status && (upd.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
+    }
 
     await writeAuditLog(c, { action: 'supplier_account_update', targetType: 'supplier', targetId: String(id), after: { status: body.status, commission_rate: body.commission_rate } }).catch(() => {});
 
@@ -168,6 +213,23 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
   }
 });
 
+// ── POST /suppliers/:id/license-verify — 🏥 2026-07-03 규제 몰 인허가 확인/해제 토글 ──────────
+//   승인 검토자가 신고번호 확인 후 verified=1 로 표시(취소 가능). requires_license 몰 승인 절차 보조.
+adminSuppliersRoutes.post('/suppliers/:id/license-verify', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ verified?: boolean }>().catch(() => ({} as { verified?: boolean }));
+    const verified = body.verified !== false; // 기본 true(확인). 명시적 false 면 해제.
+    await setWholesaleLicenseVerified(DB, 'supplier', id, verified);
+    return c.json({ success: true, verified });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] license-verify error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // ── POST /suppliers/:id/payout — available 잔고 전액 지급 ──────────────────────
 adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), requireAdminRole('finance'), async (c) => {
   try {
@@ -187,6 +249,7 @@ adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), requireAdminRole('fin
       const msg = result.error === 'no_available_balance' ? '지급 가능한 잔고가 없습니다'
         : result.error === 'already_paid' ? '이미 처리된 지급입니다'
         : result.error === 'daily_cap_exceeded' ? '오늘 정산 한도(기본 1억원)를 초과합니다. 내일 다시 시도하거나 한도를 조정하세요'
+        : result.error === 'reserved_for_withdrawal' ? '출금 신청 예약분이 있어 직접 지급할 수 없습니다. 출금 관리(출금 승인)에서 처리하세요'
         : '지급 처리에 실패했습니다';
       return c.json({ success: false, error: msg, code: result.error }, 400);
     }

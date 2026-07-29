@@ -93,8 +93,10 @@ export async function deleteUserAccount(
     const userIdStr = String(userId);
 
     // Privacy: anonymize reviews
+    // 🛡️ 2026-07-01: 실제 테이블은 product_reviews (존재하지 않는 'reviews' 참조로 탈퇴 시 익명화가 조용히 실패했음).
+    //   user_id 는 INTEGER NOT NULL FK 라 'deleted' 문자열 대입 불가 → PII 인 이름만 익명화.
     await db
-      .prepare("UPDATE reviews SET user_id = 'deleted', user_name = '탈퇴회원' WHERE user_id = ?")
+      .prepare("UPDATE product_reviews SET user_name = '탈퇴회원' WHERE user_id = ?")
       .bind(userIdStr)
       .run()
       .catch(swallow("cleanup"));
@@ -305,7 +307,8 @@ export async function restoreUser(
   newName: string,
   newEmail: string | null,
   newProfileImage: string | null,
-  db: D1Database
+  db: D1Database,
+  newUserId?: number | string
 ): Promise<{ success: boolean; userId?: number; error?: string }> {
   try {
     // 1. 30일 내 탈퇴 기록 찾기
@@ -323,6 +326,25 @@ export async function restoreUser(
     }
 
     const userId = deletedRow.user_id
+
+    // 🔧 2026-07-12 (가입·탈퇴 감사 C): 재가입으로 생성된 신규 row 가 raw kakao_id 를 선점하면
+    //   아래 옛 row 복원 UPDATE 가 idx_users_kakao_id UNIQUE 위반으로 **항상 실패**했음(복원 기능 파손).
+    //   신규 row 는 방금 만들어진 빈 계정이므로 kakao_id 를 소프트-폐기(prefix)해 점유를 해제 →
+    //   옛 row 가 raw kakao_id 를 되찾을 수 있게 한다. 신규 row 는 로그인 매칭에서 배제(deleted_at set).
+    //   (복원 성공 후 프론트가 /login 재로그인 → raw kakao_id 로 옛 row 매칭 = 이력 그대로 복귀.)
+    if (newUserId != null && String(newUserId) !== String(userId)) {
+      await db
+        .prepare(
+          `UPDATE users
+             SET kakao_id = 'restored_dup_' || id || '_' || CAST(strftime('%s','now') AS TEXT),
+                 deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP),
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND kakao_id = ?`
+        )
+        .bind(String(newUserId), kakaoId)
+        .run()
+        .catch(swallow('restore: neutralize dup new row'))
+    }
 
     // 2. users row 복원 — kakao_id prefix 제거, 익명화 정보 갱신
     await db

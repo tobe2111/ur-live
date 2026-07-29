@@ -36,7 +36,7 @@ interface SellerRegisterRequest {
   phone: string
   address?: string
   description?: string
-  youtube_email: string
+  youtube_email?: string  // 🏁 2026-07-01: 라이브커머스 중단으로 선택 필드(미입력 허용)
   seller_type?: 'influencer' | 'store_owner' | 'both'
   invite_code?: string
 }
@@ -68,8 +68,8 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const representative_name = body.representative_name?.trim()
     const business_start_date = body.business_start_date?.trim()
 
-    // 필수 필드 검증
-    if (!username || !email || !password || !name || !business_name || !business_number || !phone || !youtube_email) {
+    // 필수 필드 검증 (youtube_email 은 라이브커머스 중단으로 선택 필드)
+    if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
       return c.json({
         success: false,
         error: 'Missing required fields'
@@ -85,11 +85,11 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }, 400);
     }
 
-    // 유튜브 구글 계정 이메일 형식 검증
-    if (!emailRegex.test(youtube_email)) {
+    // youtube_email 은 입력됐을 때만 형식 검증 (선택 필드)
+    if (youtube_email && !emailRegex.test(youtube_email)) {
       return c.json({
         success: false,
-        error: '유튜브 라이브에 사용할 구글 계정 이메일 형식이 올바르지 않습니다'
+        error: '구글 계정 이메일 형식이 올바르지 않습니다'
       }, 400);
     }
 
@@ -167,7 +167,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       phone,
       address || null,
       description || null,
-      youtube_email,
+      youtube_email || null,
       resolvedSellerType,
       representative_name || null,
       business_start_date || null,
@@ -199,6 +199,27 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
           ).bind(matched.introducerId, months, Number(result.meta.last_row_id)).run().catch(() => null)
         }
       } catch { /* graceful */ }
+    }
+
+    // 🔗 2026-06-23 (대표 결정 — 1단계 이상화): 로그인한 유저가 셀러 가입하면 가입 시점에 linked_user_id
+    //   즉시 연결. 기존엔 미연결로 태어나 "같은 이메일 사후 매칭"에 의존 → 이메일 다르면 영영 미연결
+    //   (tobe2111 사건의 근본 원인). 이제 카카오 user 세션이 있으면 이메일 무관하게 가입 즉시 연결.
+    //   비로그인(순수 이메일/비번) 가입은 기존대로 미연결(추후 same-email 자동/수동 연결).
+    //   idx_sellers_linked_user_unique(한 유저=한 셀러) 충돌 시 skip. 전 과정 fail-soft.
+    if (result.meta.last_row_id) {
+      try {
+        const { parseSessionCookie } = await import('../../../worker/utils/session')
+        const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
+        const uid = sessionUser?.userId
+        if (uid) {
+          const already = await db.prepare('SELECT id FROM sellers WHERE linked_user_id = ? LIMIT 1').bind(uid).first()
+          if (!already) {
+            await db.prepare(
+              `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
+            ).bind(uid, Number(result.meta.last_row_id)).run().catch(() => null)
+          }
+        }
+      } catch { /* 비로그인/세션 없음 — 미연결 유지 */ }
     }
 
     // 🛡️ 2026-05-27 v2 (UX 영구 fix): NTS 진위확인 비동기 — 가입 응답 즉시, 검증은 background.
@@ -350,12 +371,20 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
+      // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
+      terms_agreed_version?: string;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
+    }
+
+    // 📜 2026-07-05 판매자 이용약관 v1.0: 동의 없이는 판매 신청 불가 (동의 기록은 INSERT 후).
+    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent');
+    if (!isValidTermsVersion(body.terms_agreed_version)) {
+      return c.json({ success: false, error: '판매자 이용약관 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400);
     }
 
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
@@ -484,6 +513,16 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
     //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
     const newSellerId = result?.meta?.last_row_id;
+
+    // 📜 판매자 이용약관 동의 기록 (fail-soft — 검증은 상단에서 이미 통과)
+    recordTermsConsent(db, {
+      subjectType: 'seller',
+      subjectId: newSellerId ?? null,
+      userId,
+      slug: 'seller',
+      version: body.terms_agreed_version as string,
+      ip: c.req.header('CF-Connecting-IP') || null,
+    }).catch(() => null);
     if (newSellerId && curatorProfile) {
       const sets: string[] = [];
       const vals: any[] = [];

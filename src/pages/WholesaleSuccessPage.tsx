@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import SEO from '@/components/SEO'
 import { CheckCircle2 } from 'lucide-react'
 import { WT } from './wholesale/wholesale-theme'
@@ -14,9 +17,21 @@ export default function WholesaleSuccessPage() {
   const navigate = useNavigate()
   const [sp] = useSearchParams()
   const orderId = sp.get('order') || sp.get('orderId') || ''
+  const qc = useQueryClient()
+
+  // 🛡️ 2026-06-25 (전수조사 stale-UI P0): 주문 성공(예치금 즉시차감 PAID) 후 주문목록/예치금 잔액·거래내역이
+  //   옛값 고착(전역 staleTime 30분·refetchOnMount/onWindowFocus 둘 다 false → 하드리로드 전까지 "돈 안 빠진 듯").
+  //   두 주문경로(바로주문/장바구니결제) 모두 이 성공페이지로 오므로 여기서 1회 invalidate(DRY).
+  useEffect(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('orders') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-requests') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('statement') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('recent-items') })
+  }, [qc])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 완료 - 유통스타트" description="도매 주문 결제 결과" url="/wholesale/success" noindex />
       <CheckCircle2 className="w-14 h-14 mb-4" style={{ color: WT.pos }} />
       <h1 className="text-xl font-bold mb-1" style={{ color: WT.ink }}>

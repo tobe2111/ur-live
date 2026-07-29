@@ -16,6 +16,8 @@
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 import { swallow } from '../utils/swallow'
+// 🛡️ 2026-06-26 원천징수율 SSOT — 3.3/8.8 literal 하드코딩 금지(CLAUDE.md). 마스터 상수만 사용.
+import { WITHHOLDING_RATES } from '../utils/tax-withholding'
 
 interface InfluencerToPayout {
   influencer_id: string
@@ -92,10 +94,10 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
         missingBank.push(inf.influencer_id)
         continue
       }
-      // 원천징수 계산
+      // 원천징수 계산 (SSOT WITHHOLDING_RATES — fraction → % 환산)
       let withholdingPct = 0
-      if (inf.business_number) withholdingPct = 3.3
-      else if (inf.tax_type === 'other_income') withholdingPct = 8.8
+      if (inf.business_number) withholdingPct = WITHHOLDING_RATES.business_income * 100
+      else if (inf.tax_type === 'other_income') withholdingPct = WITHHOLDING_RATES.other_income * 100
       // 무신고: 0 (수동)
       const withholding = Math.floor(inf.available_amount * withholdingPct / 100)
       const netAmount = inf.available_amount - withholding
@@ -142,6 +144,9 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
 
     logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
   } catch (e) {
+    // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
+    //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
     logError('[cron:influencer-payout] failed', { error: String(e) })
+    throw e
   }
 }

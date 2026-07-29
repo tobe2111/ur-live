@@ -7,6 +7,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { tracedEndpoint } from '../utils/request-tracing';
@@ -15,6 +16,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
+import { maxTierDiscount } from '../../features/group-buy/api/helpers';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { swallow } from '../utils/swallow';
 import { hideOrder } from '../utils/hidden-orders';
@@ -22,6 +24,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
+import { reverseOrderAncillaryOnRefund } from '../utils/order-refund';
 import { safeError } from '../utils/safe-error';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
@@ -240,6 +243,16 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         }, 400);
       }
 
+      // 🎯 2026-07-04 (FCFS 당첨자 전용 결제 게이트 — fcfs-gate.ts): 추첨(체험단) 상품은
+      //   당첨자만 주문 가능. 비-FCFS 상품은 메타 1조회 후 통과(fail-open — 소프트 접근제어).
+      {
+        const { checkFcfsPurchasable } = await import('../utils/fcfs-gate');
+        const fcfsGate = await checkFcfsPurchasable(c.env.DB, Number(product.id), userId);
+        if (!fcfsGate.ok) {
+          return c.json({ success: false, error: `"${product.name}" — ${fcfsGate.error}`, code: fcfsGate.code }, 403);
+        }
+      }
+
       const itemSubtotal = product.price * reqItem.quantity;
       subtotal += itemSubtotal;
 
@@ -339,19 +352,39 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
             const cap = computeCouponDiscount(coupon, discountBase);
             const claimed = Math.min(clientCoupon, cap);
             if (claimed > 0) {
-              // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+              // 🛡️ 2026-07-11 (pre-launch audit R6 — 한정수량 쿠폰 초과발급): 게이트를 원자
+              //   UPDATE 로 '선행' + meta.changes 검사(머니룰 #1). 이전: coupon_uses INSERT 가
+              //   먼저 + used_count 증가 결과 미검사 → 동시 사용자 N명이 soldOut 사전검사(stale
+              //   SELECT)를 함께 통과하면 total_count 초과 발급. changes==0 = 소진 → 쿠폰 미적용
+              //   (주문은 할인 없이 진행). NULL/0 total_count = 무제한(기존 soldOut 판정과 정합).
+              //   할인 금액 계산(claimed/cap)은 무변경 — 발급 가능 여부 게이트만 원자화.
               try {
-                const ins = await c.env.DB.prepare(
-                  'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
-                ).bind(couponIdNum, userId, claimed).run();
-                if ((ins.meta?.changes ?? 0) > 0) {
-                  couponDiscount = claimed;
-                  couponConsumed = true;
-                  await c.env.DB.prepare(
-                    'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
-                  ).bind(couponIdNum).run().catch(() => {});
+                const gate = await c.env.DB.prepare(
+                  'UPDATE coupons SET used_count = COALESCE(used_count, 0) + 1 WHERE id = ? AND (total_count IS NULL OR total_count = 0 OR COALESCE(used_count, 0) < total_count)'
+                ).bind(couponIdNum).run();
+                if ((gate.meta?.changes ?? 0) > 0) {
+                  // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+                  try {
+                    const ins = await c.env.DB.prepare(
+                      'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
+                    ).bind(couponIdNum, userId, claimed).run();
+                    if ((ins.meta?.changes ?? 0) > 0) {
+                      couponDiscount = claimed;
+                      couponConsumed = true;
+                    } else {
+                      // 소비 미발생 → 게이트 증가분 보상 복원 (used_count 과대계상 방지, 원자 감소)
+                      await c.env.DB.prepare(
+                        'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                      ).bind(couponIdNum).run().catch(() => {});
+                    }
+                  } catch {
+                    // UNIQUE 위반 = 이미 사용 → 게이트 증가분 보상 복원 + couponDiscount 0 (할인 없음)
+                    await c.env.DB.prepare(
+                      'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                    ).bind(couponIdNum).run().catch(() => {});
+                  }
                 }
-              } catch { /* UNIQUE 위반 = 이미 사용 → couponDiscount 0 (할인 없음) */ }
+              } catch { /* 게이트 실패 → couponDiscount 0 (할인 없음, 주문 차단 안 함) */ }
             }
           }
         }
@@ -371,8 +404,29 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // ③ 공구할인 portion = 총할인 − 클라쿠폰 − 클라딜 (클램프). 잔액/쿠폰 차감 후 남은 한도 내.
+    //   🔒 2026-06-27 (결제 정확성 감사 — 그룹바이 할인 클라-신뢰 구멍): 클라 discount_amount 만 믿지
+    //      않고 상품별 authoritative tier(maxTierDiscount)로 서버 cap 재계산 → 조작 과소청구 차단.
+    //      cap = Σ 항목( quantity × (단가 − round(단가 × (1 − md/100))) ) — group-buy-public 의 current_price
+    //      와 동일 공식이라 정직한 클라는 byte-일치(confirm 통과), 부풀린 클라만 cap 으로 잘림.
+    //      tiers 없는 상품(즉시판매 단일가/일반상품)은 md=0 → cap=0(그룹바이 할인 미인정 — price 가 곧 최종가).
+    let groupBuyCap = 0;
+    try {
+      const tierPh = orderItems.map(() => '?').join(',');
+      const { results: tierRows } = await c.env.DB.prepare(
+        `SELECT id, group_buy_tiers FROM products WHERE id IN (${tierPh})`,
+      ).bind(...orderItems.map(i => Number(i.product_id))).all<{ id: number; group_buy_tiers: string | null }>();
+      const tierMap = new Map<number, string | null>((tierRows ?? []).map(r => [Number(r.id), r.group_buy_tiers]));
+      for (const it of orderItems) {
+        const md = maxTierDiscount(tierMap.get(Number(it.product_id)) ?? null);
+        if (md > 0) {
+          const perUnit = Math.max(0, it.unit_price - Math.round(it.unit_price * (1 - md / 100)));
+          groupBuyCap += perUnit * it.quantity;
+        }
+      }
+    } catch { groupBuyCap = 0; } // 조회 실패 → 그룹바이 할인 미인정(fail-closed, 과금 보호)
     const groupBuyPortion = Math.min(
       Math.max(0, clientDiscount - clientCoupon - reqDeal),
+      groupBuyCap,
       Math.max(0, discountBase - couponDiscount - dealUsed),
     );
 
@@ -473,7 +527,21 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // 제휴 마케팅 수수료 추적 (ref 파라미터)
-    const referrerId = body.referrer_id || body.ref
+    // 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): body 에 ref 가 없을 때만 `affiliate_ref` 쿠키를
+    //   fallback 으로 읽음 — 클라 localStorage 가 유실돼도(인앱 브라우저 → 외부 브라우저 재방문 등)
+    //   affiliate-track.ts 가 심은 SameSite=Lax 쿠키는 이미 서버로 전송되고 있었는데 안 읽고 있었음.
+    //   검증은 클라(storeAffiliateRef :14)와 동일: 숫자 1~12자리 + 본인(user_id) 구매 skip.
+    //   ⚠️ body 에 referrer_id/ref 가 있으면 기존과 byte-동일(순수 additive fallback SOURCE).
+    //   커미션 계산/적립 로직(affiliate-credit.ts 등)은 무변경 — intent 저장 입력값만 보강.
+    let referrerId = body.referrer_id || body.ref
+    if (!referrerId) {
+      try {
+        const cookieRef = getCookie(c, 'affiliate_ref')
+        if (cookieRef && /^\d{1,12}$/.test(cookieRef) && cookieRef !== String(userId)) {
+          referrerId = cookieRef
+        }
+      } catch { /* 쿠키 파싱 실패 — fallback 없이 기존 동작 */ }
+    }
     if (referrerId && referrerId !== String(userId)) {
       // 🏁 2026-06-12 (전 플로우 감사 🔴): 기존 내부 fetch('/api/affiliate/track') 는
       //   ① 인증 헤더 없음 → requireAuth 401 ② 주문이 아직 PENDING → 상태검사 차단 — 이중 사망으로
@@ -691,11 +759,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       return c.json({ success: false, error: '환불 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
     }
 
+    // 🔒 2026-06-27 (결제 정확성 감사 Low): Toss 취소 금액은 CAS 로 예약한 정수 refundAmount 와 동일해야
+    //   함(이전엔 미반올림 body.refund_amount 전달 → 비정수 입력 시 장부 1001 ↔ Toss 1000.6 불일치).
+    //   부분환불=정수 refundAmount, 전액환불(body 미지정)=undefined(Toss 전액취소) 유지.
+    const tossCancelAmount = (body.refund_amount && body.refund_amount > 0) ? refundAmount : undefined;
     const tossResult = await tossCancelPayment(
       paymentKey,
       tossSecretKey,
       `[환불요청] ${body.reason}`,
-      body.refund_amount,
+      tossCancelAmount,
     );
 
     if (!tossResult.success) {
@@ -756,19 +828,42 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
     }
 
-    // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 환불 금액만큼 포인트 환급
+    // 🛡️ 2026-06-26 (소비자 감사 P1): 딜 환급 — 전액 딜결제(deal_points) 또는 혼합결제(deal_used)의 딜분.
+    //   (전액 딜결제 주문은 toss_payment_key 가 없어 위 422 에서 막히므로 실질적으로 여기 도달하는 건
+    //    혼합결제이나, 양쪽 모두 안전하게 처리.) reserve-CAS(refunded_amount) 가 단일실행 보장.
     try {
       const payMethod = (order as any).payment_method;
-      if (payMethod === 'deal_points' && refundAmount > 0) {
-        await c.env.DB.prepare(
-          'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-        ).bind(refundAmount, String(order.user_id)).run();
-        await c.env.DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
+      const dealUsedTotal = Math.max(0, Math.round(Number((order as any).deal_used ?? 0)));
+      const totalAmt = Number(order.total_amount ?? 0);
+      let dealRefund = 0;
+      if (payMethod === 'deal_points') {
+        dealRefund = Math.max(0, Math.round(refundAmount)); // 전액 딜결제 — 환불액이 곧 딜
+      } else if (dealUsedTotal > 0 && totalAmt > 0) {
+        dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (refundAmount / totalAmt))); // 혼합 — 현금 환불비율만큼 딜 비례
+      }
+      if (dealRefund > 0) {
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT — 원장 order_id 역산).
+        const { refundDealPoints } = await import('../utils/point-buckets');
+        await refundDealPoints(c.env.DB, {
+          userId: String(order.user_id),
+          amount: dealRefund,
+          ref: [(order as any).order_number || null, String(order.id ?? body.order_id)],
+          type: 'refund',
+          description: `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`,
+        });
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
+    }
+
+    // 🛡️ 2026-06-26 (소비자 감사 다): 전액 환불 시 부가 적립·쿠폰·이용권 역전 — refundOrderFully 와
+    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/에이전시 커미션, referral_bonus, 이용권 clawback,
+    //   디지털 revoke). 인라인 referral_commissions 회수는 위에서 이미 처리. 부분 환불은 전체역전이 틀리므로 제외.
+    //   (/:id/cancel 전액취소는 refundOrderFully 경유라 자동 처리 — /refund 만 인라인이라 여기서 배선.)
+    if ((Number((order as any).refunded_amount ?? 0) + refundAmount) >= Number(order.total_amount ?? 0)) {
+      try {
+        await reverseOrderAncillaryOnRefund(c.env.DB, Number((order as any).id ?? body.order_id), String((order as any).order_number || body.order_id), `[환불요청] ${body.reason}`);
+      } catch (e) { console.error('[ORDERS] Ancillary reversal (refund) error:', e); }
     }
 
     // 유저에게 인앱 알림 (환불/주문 취소)
@@ -851,6 +946,61 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
+      // 💸 2026-06-26 셀프취소 머니버그 근본수정 — 전액취소는 refundOrderFully SSOT 경유.
+      //   기존 인라인 경로 버그(머니룰 #2 대칭·CAS 멱등): ① 딜 전액결제(toss_key 없음) 422 차단 + 딜환급 dead
+      //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/에이전시/영입자 미역전.
+      //   refundOrderFully: 카드 Toss취소(또는 딜 환급) + 딜 사용분 복원 + 쿠폰복원 + 전 적립 역전 + CAS 멱등.
+      const remaining = Number(order.total_amount ?? 0) - Number(order.refunded_amount ?? 0);
+      const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining;
+      if (isFullCancel) {
+        const { refundOrderFully } = await import('../utils/order-refund');
+        const r = await refundOrderFully(c.env.DB, c.env, orderId, { reason });
+        if (!r.ok) {
+          return c.json({ success: false, error: r.error || '환불 처리에 실패했습니다', code: r.code }, r.status as 400 | 402 | 404 | 422);
+        }
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-full'));
+        if (order.seller_id) {
+          createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-full'));
+        }
+        try {
+          const { notifyUser } = await import('../../lib/notifications');
+          await notifyUser(c.env.DB, String(order.user_id), 'order_status', '❌ 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+        } catch {} // fire and forget
+        return c.json({
+          success: true,
+          message: '주문 및 결제가 취소되었습니다',
+          data: { order_id: orderId, cancel_amount: remaining > 0 ? remaining : Number(order.total_amount ?? 0), cancelled_at: new Date().toISOString() },
+        });
+      }
+
+      // ── 부분취소(cancel_amount < 잔여) ──
+      // 부분취소 + 딜 전액결제: refundOrderFully 는 전액전용이라 부분 딜 환급만 인라인 처리.
+      //   refunded_amount CAS 로 이중환급 0. 부분이라 상태(CANCELLED)·커미션은 유지(미회수).
+      if (((order as any).payment_method) === 'deal_points') {
+        const refundPoints = Math.max(0, Math.round(cancelAmount ?? 0));
+        if (refundPoints <= 0) return c.json({ success: false, error: '취소 가능 금액이 없습니다' }, 400);
+        const reserve = await c.env.DB.prepare(
+          "UPDATE orders SET refunded_amount = COALESCE(refunded_amount,0) + ? WHERE id = ? AND COALESCE(refunded_amount,0) + ? <= total_amount"
+        ).bind(refundPoints, orderId, refundPoints).run().catch(() => null);
+        if (!reserve || (reserve.meta?.changes ?? 0) === 0) {
+          return c.json({ success: false, error: '취소 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
+        }
+        try {
+          // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+          const { refundDealPoints } = await import('../utils/point-buckets');
+          await refundDealPoints(c.env.DB, {
+            userId: String(order.user_id),
+            amount: refundPoints,
+            ref: [order.order_number, String(orderId)],
+            type: 'refund',
+            description: `[환불] 주문 부분취소 (order:${order.order_number})`,
+          });
+        } catch (e) { console.error('[ORDERS] deal partial refund error:', e); }
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-partial'));
+        return c.json({ success: true, message: '부분 취소되어 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
+      }
+
+      // 부분취소 + 카드: 기존 Toss 부분취소 경로.
       // toss_payment_key가 있어야 취소 가능
       const payInfo = await orderRepo.getPaymentInfo(orderId);
       const paymentKey = payInfo?.toss_payment_key;
@@ -939,22 +1089,30 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
       }
 
-      // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 포인트 환급 (payment_method='deal_points')
+      // 🛡️ 2026-06-26 (소비자 감사 P1): 혼합결제(Toss 카드 + 딜)의 '딜 사용분' 환급.
+      //   전액 딜결제(deal_points)는 위 분기에서 early-return 되므로 여기는 toss(카드/혼합)만 도달.
+      //   기존엔 deal_points 만 환급해 혼합주문의 딜분이 영구 미복원이었음. cancelAmount(현금 취소비율)만큼
+      //   deal_used 를 비례 환급(전액 취소면 deal_used 전부). Toss 취소 성공 후라 단일실행.
       try {
-        const payMethod = (order as any).payment_method;
-        if (payMethod === 'deal_points') {
-          const refundPoints = cancelAmount ?? Number(order.total_amount ?? 0);
-          if (refundPoints > 0) {
-            await c.env.DB.prepare(
-              'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-            ).bind(refundPoints, String(order.user_id)).run();
-            await c.env.DB.prepare(
-              "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-            ).bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-cancel-audit'));
+        const dealUsedTotal = Math.max(0, Math.round(Number((order as any).deal_used ?? 0)));
+        const totalAmt = Number(order.total_amount ?? 0);
+        if (dealUsedTotal > 0 && totalAmt > 0) {
+          const cashRefund = Math.max(0, Math.round(cancelAmount ?? totalAmt));
+          const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (cashRefund / totalAmt)));
+          if (dealRefund > 0) {
+            // 💸 2026-07-05 버킷: 혼합결제 딜 차감(원장 order_id=orders.id)의 무상분 무상 복원 (refundDealPoints SSOT).
+            const { refundDealPoints } = await import('../utils/point-buckets');
+            await refundDealPoints(c.env.DB, {
+              userId: String(order.user_id),
+              amount: dealRefund,
+              ref: [String(orderId), order.order_number],
+              type: 'refund',
+              description: `[환불] 혼합결제 딜분 환급 (order:${order.order_number})`,
+            });
           }
         }
       } catch (e) {
-        console.error('[ORDERS] Points refund (cancel paid) error:', e);
+        console.error('[ORDERS] Mixed-pay deal refund (cancel paid) error:', e);
       }
 
       // 주문 취소 알림

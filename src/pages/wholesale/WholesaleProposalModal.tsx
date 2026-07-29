@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { X, Lightbulb, Flag, Loader2, Send } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { safeDate } from '@/utils/safe-date'
 import {
   useWholesaleFeedbacks,
   useWholesaleFeedbackMutation,
@@ -18,7 +19,7 @@ import { WT } from './wholesale-theme'
 
 const STATUS_LABEL: Record<WholesaleFeedbackStatus, { label: string; bg: string; fg: string }> = {
   open: { label: '접수', bg: '#FFF6E5', fg: '#B7791F' },
-  in_review: { label: '검토중', bg: '#EAF1FF', fg: '#2B5CE6' },
+  in_progress: { label: '검토중', bg: '#EAF1FF', fg: '#2B5CE6' },
   resolved: { label: '처리완료', bg: '#EAF6EF', fg: '#11875A' },
   rejected: { label: '반려', bg: '#FDECEC', fg: '#CC2929' },
 }
@@ -133,7 +134,7 @@ export function WholesaleProposalForm({ onClose }: { onClose?: () => void }) {
                         : t('wholesale.proposal.type.proposal', { defaultValue: '제안' })}
                     </span>
                     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
-                    <span className="ml-auto text-[11px]" style={{ color: WT.ink4 }}>{f.created_at ? new Date(f.created_at).toLocaleDateString('ko-KR') : ''}</span>
+                    <span className="ml-auto text-[11px]" style={{ color: WT.ink4 }}>{safeDate(f.created_at)?.toLocaleDateString('ko-KR') ?? ''}</span>
                   </div>
                   <div className="text-[13px] font-bold" style={{ color: WT.ink }}>{f.subject}</div>
                   {f.target && <div className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>대상: {f.target}</div>}
@@ -165,8 +166,8 @@ export default function WholesaleProposalModal({ onClose }: { onClose: () => voi
   const loggedIn = hasSellerToken()
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.42)' }} onClick={onClose}>
-      <div className="w-full lg:max-w-lg bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10600] flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.42)' }} onClick={onClose}>
+      <div className="w-full lg:max-w-lg bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>
             {t('wholesale.proposal.title', { defaultValue: '제안 / 신고' })}

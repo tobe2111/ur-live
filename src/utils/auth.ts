@@ -13,6 +13,7 @@
 
 import { NavigateFunction } from 'react-router-dom'
 import { isSafeInternalPath } from './safe-internal-path'
+import { useAuthStore } from '@/client/stores/auth.store'
 
 // Firebase는 dynamic import로만 사용 (초기 번들에서 제외)
 async function getFirebaseAuth() {
@@ -48,14 +49,35 @@ const LEGACY_KEYS = {
 }
 
 /**
+ * 🔑 2026-06-29 (로그아웃 근본수정): 서버 httpOnly 세션 쿠키(ur_session/ur_seller_session/…) + SSR 토큰(ud_*)
+ *   삭제. httpOnly 라 클라가 JS 로 직접 못 지움 → 서버 엔드포인트가 Set-Cookie Max-Age=0 으로 삭제해야 한다.
+ *   type 지정 시 그 역할 세션만(선택적 로그아웃—듀얼로그인 보호), 미지정 시 전체. **await 가능** →
+ *   네비게이션/리로드 *전*에 쿠키 삭제를 완료해 로그아웃 직후 그 쿠키로 재인증되는 레이스를 제거한다.
+ */
+export async function clearServerSessionCookies(type?: 'seller' | 'admin' | 'user' | 'agency' | 'supplier'): Promise<void> {
+  try {
+    await fetch('/api/auth/logout-cookies', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(type ? { type } : {}),
+      // 🔑 keepalive: 호출 직후 navigate/reload 해도 요청이 끝까지 살아 Set-Cookie 가 적용되게(미-await 경로 보호).
+      keepalive: true,
+    })
+  } catch { /* SSR/비브라우저/네트워크 — 로컬 정리는 계속 진행 */ }
+}
+
+/**
  * 선택적 localStorage 키 삭제
  * localStorage.clear() 대신 사용하여 다른 세션 보호
- * 
+ *
  * @param type - 삭제할 세션 타입 ('seller' | 'admin' | 'user')
  */
 export function clearAuthData(type: 'seller' | 'admin' | 'user') {
-  // 🔐 2026-06-11 SSR Phase 2: 서버 httpOnly ud_* 쿠키도 삭제 (fire-and-forget — 실패해도 로컬 정리는 진행)
-  try { void fetch('/api/auth/logout-cookies', { method: 'POST', credentials: 'include' }).catch(() => {}) } catch { /* SSR/비브라우저 */ }
+  // 🔑 2026-06-29: 서버 httpOnly 세션쿠키(ur_*) + SSR 토큰(ud_*) 삭제 — type 전달로 해당 역할 세션만 정리
+  //   (듀얼로그인 보호). httpOnly 라 클라가 못 지움 → 서버 호출 필수. fire-and-forget(로컬 정리는 계속 진행).
+  //   ⚠️ 즉시 리로드/네비게이션이 뒤따르는 경로는 logout(type) 를 써서 이 호출을 await 해야 레이스 0.
+  try { void clearServerSessionCookies(type) } catch { /* SSR/비브라우저 */ }
   const keysToRemove: string[] = []
 
   if (type === 'seller') {
@@ -140,6 +162,11 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'deal-charge-storage',
       'recent-views-storage'
     )
+    // 🔑 2026-06-29 (로그아웃 근본수정 — 핀/큐레이터 'auth-storage' 분리뷰): 소비자 로그아웃 시
+    //   generic useAuthStore(persist key 'auth-storage') 도 초기화. 이 스토어는 핀(usePinAction)·
+    //   PinButton·App.tsx 자동핀이 읽는 *별도* 인증 뷰라, 안 지우면 로그아웃 후 새로고침해도
+    //   persist 가 isAuthenticated=true 로 rehydrate → 핀 UI 가 "로그인됨"으로 오표시.
+    try { useAuthStore.getState().clearAuth() } catch { /* SSR/비브라우저 */ }
   }
 
   // 선택적 삭제
@@ -171,24 +198,15 @@ export function getAccessToken(): string | null {
  */
 export async function isLoggedIn(): Promise<boolean> {
   try {
-    // 1️⃣ Check JWT tokens first (seller/admin)
-    const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
-    
-    if (userType === 'seller') {
-      const sellerToken = localStorage.getItem('seller_token')
-      if (sellerToken) {
-        return true
-      }
+    // 🛡️ 2026-06-29: 토큰/세션 존재만으로 판단 — isLoggedInSync / RouteGuards 와 일관.
+    //   기존 버그: user_type 게이트(=== 'seller'/'admin')에 묶여, 어드민/셀러 + 카카오 user 듀얼 로그인
+    //   시 user_type 이 'admin'/'seller' 로 남으면 셀러/어드민이 아닌 *소비자* 세션을 못 인정.
+    //   수정: user_type 무관하게 어떤 역할 토큰이든 있으면 로그인으로 판단(존재 기반).
+    if (isLoggedInSync()) {
+      return true
     }
-    
-    if (userType === 'admin') {
-      const adminToken = localStorage.getItem('admin_token')
-      if (adminToken) {
-        return true
-      }
-    }
-    
-    // 2️⃣ Check Firebase Auth (buyers with Kakao/Email login)
+
+    // Firebase Auth (글로벌 — Firebase 전용 세션이라 localStorage 신호가 없을 수 있음)
     const auth = await getFirebaseAuth()
     if (auth.currentUser) {
       return true
@@ -501,21 +519,34 @@ export function clearTempCartItem(): void {
  */
 export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise<void> {
   if (type) {
-    // ✅ Selective logout: Use clearAuthData
+    // ✅ 선택적 로그아웃 — 서버 세션쿠키(해당 역할) 삭제를 **await**(레이스 제거) 후 로컬 정리.
+    await clearServerSessionCookies(type)
     clearAuthData(type)
     return
   }
-  
+
   // ❌ Full logout: Remove ALL keys (legacy behavior)
+  // 🔑 2026-06-29 (로그아웃 근본수정): 모든 역할의 서버 httpOnly 세션쿠키(ur_*) 삭제를 **await** —
+  //   안 지우면 ur_session 잔존 → /api/auth/me·/session/health 가 그 쿠키로 재인증 → 로그아웃 실패.
+  await clearServerSessionCookies()
   // Firebase 키 제거
   Object.values(FIREBASE_STORAGE_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
-  
+
   // 레거시 JWT/세션 키 제거
   Object.values(LEGACY_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
+
+  // 🔑 2026-06-29: 위 두 목록에 없던 소비자 Bearer 토큰/세션 신호도 제거 — 안 지우면 /session/health 의
+  //   Bearer(user_token) fallback 으로 재인증돼 로그아웃이 안 됨(이메일·카카오 공통 localStorage.user_token).
+  ;['user_token', 'user_refresh_token', 'user_session_token', 'session_login', 'lastLoginUid', 'user_handle', 'linked_seller_username']
+    .forEach(k => localStorage.removeItem(k))
+
+  // 🔑 2026-06-29 (로그아웃 근본수정): generic useAuthStore('auth-storage', 핀/큐레이터 인증 뷰) 초기화 —
+  //   persist 가 isAuthenticated=true 로 남으면 로그아웃 후에도 핀 UI 가 로그인됨으로 보임.
+  try { useAuthStore.getState().clearAuth() } catch { /* SSR/비브라우저 */ }
   
   // Sentry 사용자 컨텍스트 제거
   try {

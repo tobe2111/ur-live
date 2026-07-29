@@ -28,11 +28,12 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   const navigate = useNavigate()
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const { data: docs = [], isLoading: loading } = useWholesaleDocuments()
+  const { data: docs = [], isLoading: loading, isError, refetch } = useWholesaleDocuments()
   const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
   const [tab, setTab] = useState<'all' | 'tax_invoice' | 'transaction_statement'>('all')
 
-  if (!embedded && !token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29: 비로그인 직접 진입은 마케팅 소개페이지가 아니라 로그인으로(장바구니/체크아웃과 일관).
+  if (!embedded && !token) return <Navigate to="/wholesale/login" replace />
 
   const list = docs.filter((d) => tab === 'all' || d.doc_type === tab)
 
@@ -60,6 +61,13 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+        ) : isError ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
+            <p className="text-[15px] font-medium mb-1" style={{ color: WT.ink2 }}>자료를 불러오지 못했어요</p>
+            <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+          </div>
         ) : list.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
             <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
@@ -147,7 +155,7 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="발행 자료 - 유통스타트" description="판매사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">

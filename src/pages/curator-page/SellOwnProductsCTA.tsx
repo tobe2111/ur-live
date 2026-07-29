@@ -1,22 +1,24 @@
 /**
  * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 링크샵 오너 화면 + 크리에이터 콘솔
  *   공용 사업자(판매) 진입 CTA. 기존 CuratorEarningsPage 내부 정의를 공유 컴포넌트로 추출(코드 동일).
- *   - 셀러 아님 → '사업자 등록하고 판매 시작' (→ /seller/register/supplier?from=curator)
- *   - 승인됨 → '빠른 상품 등록'(QuickProductModal, 대시보드 안 나감) + '셀러 대시보드' 전환
+ *   - 셀러 아님 → '인증받고 내 쇼핑몰 열기' (혜택 시트 → /seller/register/supplier?from=curator)
+ *   - 승인됨 → '상품 등록'(/seller/products/new) · '이용권 등록'(/seller/meal-voucher/new) · '셀러 대시보드'
  *   - 심사중/반려/정지 → 상태 안내
- *   QuickProductModal: 검증된 POST /api/seller/products 재활용. seller_token 보장(switch-to-seller).
+ *   🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달 제거 →
+ *     switch-to-seller 로 토큰 보장 후 정식 등록 풀페이지(이미지·상세·옵션)로 이동.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
-import QuickProductModal from './QuickProductModal'
+import VerifiedSeal from '@/components/VerifiedSeal'
 
 export default function SellOwnProductsCTA() {
   const navigate = useNavigate()
   const [sellerStatus, setSellerStatus] = useState<{ has_seller?: boolean; status?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [switching, setSwitching] = useState(false)
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  // 🏁 2026-06-26 (대표 — 일반 유저용 전환 혜택 안내): 티저 누르면 혜택 바텀시트.
+  const [showBenefits, setShowBenefits] = useState(false)
 
   useEffect(() => {
     import('@/lib/api').then(({ default: api }) => {
@@ -32,9 +34,11 @@ export default function SellOwnProductsCTA() {
   const st = sellerStatus?.status
   const hasSeller = !!sellerStatus?.has_seller
 
-  // 승인됨 → (a) 인라인 빠른 상품 등록 (대시보드 안 나감) + (b) 셀러 대시보드(주문·정산 관리)로 전환
+  // 승인됨 → 정식 등록 풀페이지로 (상품/이용권 각자) + 셀러 대시보드(주문·정산). seller_token 보장(switch-to-seller).
   if (hasSeller && (st === 'approved' || st === 'active')) {
-    const goDashboard = async () => {
+    // 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달 대신
+    //   switch-to-seller 로 토큰 보장 후 정식 등록 페이지로 이동(이미지·상세·옵션 풀폼).
+    const goSeller = async (path: string) => {
       if (switching) return
       setSwitching(true)
       try {
@@ -49,7 +53,7 @@ export default function SellOwnProductsCTA() {
           localStorage.setItem('seller_email', seller.email)
           localStorage.setItem('seller_username', seller.username)
           localStorage.setItem('seller_type', seller.seller_type)
-          navigate('/seller')
+          navigate(path)
         } else {
           toast.error('셀러 전환에 실패했습니다')
         }
@@ -60,32 +64,34 @@ export default function SellOwnProductsCTA() {
       }
     }
     return (
-      <section className="mb-6 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
-        <p className="text-sm font-bold text-pink-800 dark:text-pink-200">🛍️ 내 쇼핑몰 운영 중 — 판매·현금 정산 활성</p>
-        <p className="text-xs text-pink-700 dark:text-pink-300 mt-1 mb-3">
-          여기서 바로 상품을 올리거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
+      <section className="mb-6 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
+        <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🛍️ 내 쇼핑몰 운영 중 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+          상품·이용권을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setShowQuickAdd(true)}
-            className="px-4 py-2 bg-pink-500 text-white text-xs font-bold rounded-lg"
+            onClick={() => goSeller('/seller/products/new')}
+            disabled={switching}
+            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            + 빠른 상품 등록
+            {switching ? '이동 중…' : '+ 상품 등록'}
           </button>
           <button
-            onClick={goDashboard}
+            onClick={() => goSeller('/seller/meal-voucher/new')}
             disabled={switching}
-            className="px-4 py-2 bg-white dark:bg-[#1A1A1A] border border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            {switching ? '이동 중…' : '셀러 대시보드 →'}
+            + 이용권 등록
+          </button>
+          <button
+            onClick={() => goSeller('/seller')}
+            disabled={switching}
+            className="px-4 py-2 bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+          >
+            셀러 대시보드 →
           </button>
         </div>
-        {showQuickAdd && (
-          <QuickProductModal
-            onClose={() => setShowQuickAdd(false)}
-            onSuccess={() => setShowQuickAdd(false)}
-          />
-        )}
       </section>
     )
   }
@@ -93,7 +99,7 @@ export default function SellOwnProductsCTA() {
   // 심사 중 (셀러 신청 접수됨)
   if (hasSeller && st === 'pending') {
     return (
-      <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+      <section className="mb-6 bg-gray-50 dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 쇼핑몰 개설 신청 접수됨</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           관리자 승인 후 판매·현금 정산이 활성화됩니다.
@@ -112,19 +118,66 @@ export default function SellOwnProductsCTA() {
     )
   }
 
-  // 셀러 아님 → 내 쇼핑몰 개설 안내 (현행 모델: 판매=매장 등록 → /seller/register/supplier, register-from-user store_owner)
+  // 셀러 아님(=일반 유저) → 전환 혜택 티저. 누르면 혜택 바텀시트 → 사업자 등록 플로우.
   return (
-    <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
-      <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 쇼핑몰 열기</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-        내 상품을 직접 파는 쇼핑몰을 가질 수 있어요. 사업자 등록 → 관리자 승인 후 활성화되며, 추천 수익도 현금으로 정산받아요. (공구권 판매도 함께)
-      </p>
+    <>
       <button
-        onClick={() => navigate('/seller/register/supplier?from=curator')}
-        className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg"
+        onClick={() => setShowBenefits(true)}
+        className="w-full mb-6 flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-[#161616] text-white p-4 text-left active:scale-[0.99] transition-transform shadow-lg shadow-gray-900/10 dark:ring-1 dark:ring-[#2A3446]"
       >
-        내 쇼핑몰 만들기 →
+        <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14.5px] font-extrabold">인증받고 내 쇼핑몰 열기</span>
+          <span className="block text-[11.5px] text-gray-300 mt-0.5">내 상품 판매 · 현금 정산 · 파란 인증 씰</span>
+        </span>
+        <span className="text-gray-400 text-lg leading-none">›</span>
       </button>
-    </section>
+      {showBenefits && (
+        <BenefitsSheet
+          onClose={() => setShowBenefits(false)}
+          onStart={() => navigate('/seller/register/supplier?from=curator')}
+        />
+      )}
+    </>
+  )
+}
+
+// 🏁 2026-06-26 (대표 — 일반→인증 유저 전환 혜택 안내): 혜택 바텀시트.
+function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () => void }) {
+  const benefits: { icon?: string; seal?: boolean; t: string; d: string }[] = [
+    { icon: '🛍️', t: '내 상품 직접 판매', d: '링크샵이 곧 내 쇼핑몰 — 내가 파는 상품이 주인공' },
+    { icon: '💰', t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
+    { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 링크샵과 차별을' },
+    { icon: '🎟️', t: '이용권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
+  ]
+  return (
+    <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A2334] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
+        <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2A3446] mx-auto mt-1.5 mb-4" />
+        <h2 className="text-[21px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 쇼핑몰을 열어보세요</h2>
+        <div className="flex items-center gap-1.5 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
+          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A2334] text-[11px] font-bold">유저</span>
+          <span className="font-extrabold text-gray-400">→</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[11px] font-bold"><VerifiedSeal size={13} /> 인증 유저</span>
+          로 전환하면
+        </div>
+        <div className="mt-5 space-y-4">
+          {benefits.map((b, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A2334]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.icon}</span>
+              <div>
+                <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{b.t}</p>
+                <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{b.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[15.5px] font-extrabold active:opacity-80">
+          ✓ 사업자 인증 시작하기
+        </button>
+        <p className="text-center text-[11.5px] text-gray-400 dark:text-gray-500 mt-2.5">사업자등록 → 관리자 승인 후 활성화 · 무료</p>
+      </div>
+    </div>
   )
 }

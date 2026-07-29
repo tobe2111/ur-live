@@ -343,6 +343,24 @@ export async function handleScheduled(env: Env) {
         LIMIT 10000
       )
     `).run();
+    // 🔔 2026-07-01: 레거시 notifications + agency_notifications 도 정리(이전엔 방치 → 무한 증가).
+    //   소비자 벨이 notifications 를 UNION-read 하므로 user_notifications 와 동일 정책 적용.
+    await DB.prepare(`
+      DELETE FROM notifications
+      WHERE rowid IN (
+        SELECT rowid FROM notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
+    `).run().catch(() => { /* table 없으면 skip */ });
+    await DB.prepare(`
+      DELETE FROM agency_notifications
+      WHERE rowid IN (
+        SELECT rowid FROM agency_notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
+    `).run().catch(() => { /* table 없으면 skip */ });
   } catch (e) { logError('[Cron] notifications_cleanup error:', { error: String(e) }) }
 
   // ── 9. 만료된 리프레시 토큰 정리 ──
@@ -399,7 +417,7 @@ export async function handleScheduled(env: Env) {
   //   비용: 1회/5분 fetch (무료 한도 안전, KV write 100K/day << 일 288회).
   try {
     const { warmMainPageCache } = await import('./cache-warming')
-    const baseUrl = (env as { BASE_URL?: string }).BASE_URL || 'https://live.ur-team.com'
+    const baseUrl = (env as { BASE_URL?: string }).BASE_URL || 'https://urdeal.kr'
     const r = await warmMainPageCache(env as any, baseUrl)
     ;(results as any).cache_warming = r
   } catch (e) { logError('[Cron] cache-warming error:', { error: String(e) }) }
@@ -869,11 +887,11 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
+        ).bind(v.user_id, '이용권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
-          title: '식사권 만료 7일 전',
+          title: '이용권 만료 7일 전',
           body: `${v.product_name ?? '바우처'} 사용을 잊지 마세요`,
           url: '/my-vouchers',
           tag: `voucher-d7-${v.id}`,
@@ -899,11 +917,11 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
+        ).bind(v.user_id, '이용권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
-          title: '식사권 만료 1일 전',
+          title: '이용권 만료 1일 전',
           body: `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`,
           url: '/my-vouchers',
           tag: `voucher-d1-${v.id}`,
@@ -955,35 +973,31 @@ export async function handleScheduled(env: Env) {
           VALUES (?, ?, ?, datetime('now'))
         `).bind(m.group_buy_id, m.user_id, m.deposit_amount).run()
         if (!claim.meta?.changes) continue
-        // 딜 복구 (UPSERT 대신 안전한 SELECT-then-UPDATE) — 실패 시 claim 롤백(catch 에서)
+        // 딜 복구 — 💸 2026-07-05 버킷: 이 유저의 보증금 차감(cgb:{gid} 원장) 무상분을 무상으로 대칭 복원.
+        //   실패 시 claim 롤백(catch 에서). refundDealPoints 가 UPSERT + 원장(free_delta) 기록까지 담당.
         try {
-          const existing = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(m.user_id).first<{ balance: number }>()
-          if (existing) {
-            await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
-              .bind(m.deposit_amount, m.user_id).run()
-          } else {
-            await DB.prepare("INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))")
-              .bind(m.user_id, m.deposit_amount).run()
-          }
+          const { refundDealPoints } = await import('../utils/point-buckets')
+          const restored = await refundDealPoints(DB, {
+            userId: m.user_id,
+            amount: m.deposit_amount,
+            ref: `cgb:${m.group_buy_id}`,
+            type: 'refund',
+            description: `[커뮤니티 공구] 보증금 자동 환불 (group:${m.group_buy_id})`,
+          })
+          if (!restored.ok) throw new Error('refundDealPoints failed')
         } catch (creditErr) {
           await DB.prepare('DELETE FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?')
             .bind(m.group_buy_id, m.user_id).run().catch(() => null)
           throw creditErr
         }
-        // 💸 2026-06-12 (4차 감사 #4): 보증금 환불 원장 기록 (fail-soft, balance_after 서브쿼리 패턴)
-        await DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-        ).bind(m.user_id, m.deposit_amount, m.deposit_amount, m.user_id, `[커뮤니티 공구] 보증금 자동 환불 (group:${m.group_buy_id})`).run().catch(() => null)
         // 멤버 status 갱신
         await DB.prepare("UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?").bind(m.member_id).run()
         // 사용자 알림 (best-effort)
         try {
           await DB.prepare(`
             INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-            VALUES (?, 'user', 'community_group_buy_refunded', '공동구매 환불 완료',
-                    '참여하신 공동구매가 만료/실패하여 보증금 ${m.deposit_amount}원이 자동 환불됐어요.',
-                    '/mypage/group-buys', CURRENT_TIMESTAMP)
-          `).bind(m.user_id).run()
+            VALUES (?, 'user', 'community_group_buy_refunded', '공동구매 환불 완료', ?, '/mypage/group-buys', CURRENT_TIMESTAMP)
+          `).bind(m.user_id, `참여하신 공동구매가 만료/실패하여 보증금 ${Number(m.deposit_amount ?? 0).toLocaleString('ko-KR')}원이 자동 환불됐어요.`).run()
         } catch { /* notifications 없으면 skip */ }
         refunded++
       } catch (err) {

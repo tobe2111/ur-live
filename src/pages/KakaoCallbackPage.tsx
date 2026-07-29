@@ -10,10 +10,12 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { trackFunnel } from '@/lib/funnel'
 import { isKorea } from '@/config/region'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -53,14 +55,19 @@ export default function KakaoCallbackPage() {
         //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/링크샵 캐시 키가
         //   localStorage 에 잔존 → BottomNav 링크샵 탭이 옛 계정(디스크프리)을 가리키고, 잔존 seller_token 은
         //   보안상으로도 위험. 계정 전환 시 이 키들을 먼저 제거하고, 아래에서 응답에 있는 것만 재설정 → 신원 1개로 정합.
-        //   (잠긴 동작 불변·추가만: seller_username 저장 로직과 admin/agency 'user_type 보존'(아래 51줄)은 그대로.
-        //    admin_token 은 별도 로그인 컨텍스트라 건드리지 않음.)
+        //   (잠긴 동작 불변·추가만: seller_username 저장 로직과 admin/agency 'user_type 보존'(아래 51줄)은 그대로.)
+        // 🛡️ 2026-06-25 (대표 결정 — 보안 통일): 다른 user.id 로그인(계정 전환) 시 admin_* 토큰도 wipe.
+        //   기존엔 admin 토큰을 보존했으나, 서버-redirect 경로(auth-callback-bootstrap)는 이미 wipe 라 *경로별 비대칭*
+        //   이었음. 공용/공유 기기에서 다음 사용자가 관리자 콘솔을 이어받는 누출을 차단하기 위해 양 경로 모두 '삭제'로 통일.
+        //   (같은 user.id 재로그인이면 prevUserId === user.id 라 이 블록 미진입 → 관리자 세션 유지.)
         const prevUserId = localStorage.getItem('user_id')
         if (prevUserId && prevUserId !== String(user.id)) {
           for (const k of [
             'seller_token', 'seller_refresh_token', 'seller_id', 'seller_name', 'seller_username',
             'linked_seller_username', 'user_handle',
             'agency_token', 'agency_refresh_token', 'agency_id', 'agency_name',
+            'admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email',
+            'supplier_token', 'supplier_refresh_token', 'supplier_id', 'supplier_name',
             'is_distributor',
           ]) {
             try { localStorage.removeItem(k) } catch { /* ignore */ }
@@ -78,8 +85,19 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('user_id', String(user.id))
         localStorage.setItem('user_name', user.name || '')
         localStorage.setItem('session_login', 'true')
+        try { trackFunnel('login_succeeded') } catch { /* 퍼널 계측 fail-soft */ }
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
+        // 🔑 2026-06-29 (핀/큐레이터 인증 뷰 동기화): generic useAuthStore('auth-storage') 에도 로그인 반영.
+        //   핀(usePinAction)·PinButton·App.tsx 자동핀이 이 스토어의 isAuthenticated/user 를 읽는데,
+        //   카카오 콜백이 이를 안 세팅하면 "로그인했는데 핀 UI 는 로그아웃" 분기 발생.
+        try {
+          const { useAuthStore } = await import('@/client/stores/auth.store')
+          useAuthStore.getState().setAuth(
+            { id: String(user.id), email: user.email || '', name: user.name || '', role: 'user' },
+            '', '',
+          )
+        } catch { /* 비결정적 — 핀은 다음 마운트에서 보정 */ }
         // 🛡️ 2026-06-20 (A 방식): 이 POST 흐름은 same-origin XHR 200 응답에서 ur_session 쿠키를 set →
         //   iOS 에서도 영속(localStorage Bearer 불필요). 세션은 httpOnly 쿠키로만 인증.
 
@@ -166,12 +184,13 @@ export default function KakaoCallbackPage() {
     handleCallback()
   }, [])
 
+  // 🚑 2026-07-10 (로딩 전수조사 후속 — 대표 "다 웬만해선 하고싶은데"): 카카오 콜백 전용 스플래시
+  //   (한글 텍스트 "유어딜" + 자체 keyframes 바 — 마운트마다 0부터 리셋, 유일한 비-BrandLoader 잔존)
+  //   → BrandLoader 로 통일. UR·DEAL 워드마크 + 전역 위상동기라 목적지(홈 등)의 로더와 끊김 없이 이어짐.
+  //   ⚠️ 잠긴 로직(seller_username 저장·admin/agency user_type 보존)은 위 effect — byte-불변, 로딩 마크업만.
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto mb-3" />
-        <p className="text-gray-500 dark:text-gray-400 text-sm">로그인 처리 중...</p>
-      </div>
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+      <BrandLoader fullScreen label="로그인 처리 중이에요" />
     </div>
   )
 }
