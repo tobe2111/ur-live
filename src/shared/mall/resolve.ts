@@ -23,7 +23,10 @@
 export const CANONICAL_HOSTS: readonly string[] = [
   'urdeal.kr',
   'www.urdeal.kr',
-  'live.ur-team.com',
+  // 구 도메인은 전 경로 301 이지만 `/api/*` 는 301 제외라 **아직 도달한다**(CLAUDE.md).
+  //   여기서 빼면 이전 기간 동안 두 호스트의 몰 해석이 갈린다 — 그 비대칭이 더 위험하다.
+  //   표시 문자열이 아니라 **호스트 집합**이라 가드가 명시한 예외에 해당한다.
+  'live.ur-team.com', // legacy-domain-ok
   'ur-live.pages.dev',
   'localhost',
   '127.0.0.1',
