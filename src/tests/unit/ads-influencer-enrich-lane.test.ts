@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planInfluencerEnrich, naverRoomFromRemaining, ytPhaseDeadline, YT_CLOCK_SHARE } from '@/features/marketing/api/influencer-enrich-lane'
+import { planInfluencerEnrich, naverRoomFromRemaining, frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
 import { subreqCapKey } from '@/features/marketing/api/collect-budget'
 import { ddlChecksum } from '@/features/marketing/api/ads-schema-guard'
 import { AD_PERF_DDL } from '@/features/marketing/api/influencer-performance'
@@ -84,50 +84,38 @@ describe('planInfluencerEnrich — 보강 라운드 대상 배분', () => {
 })
 
 /**
- * ⏱️ **벽시계 분배** — 예산은 나눴는데 시간은 아무도 안 나눴다 (2026-07-29 라이브 실측).
- *
- * 12:00 틱 마지막 라운드:
- * ```
- *   yt: 14 · naver: { selected: 13, tried: 0 } · spent 18/45 · elapsed 23.4s · deadline_hit: true
- * ```
- * YT 가 20초 창을 통째로 써서 블로거 단계는 **대상 13건을 고르고 첫 fetch 도 못 했다.**
- * 예산은 27이나 남아 있었다 — 막은 건 예산이 아니라 시간이다. 그 틱의 블로거 측정은 **0**,
- * 그런데 백로그 26,696건(네이버의 91%)이 전부 그 단계 뒤에 있다.
- *
- * ⚠️ 같은 사고가 파트너풀 레인에서 먼저 났고(`enrich-lane.ts` 2026-07-28 주석), 그 교훈이 이 레인엔
- *    반영되지 않았다. **레인을 건너 반복되는 실패**라 순수함수 + 배선 양쪽을 고정한다.
+ * ⏱️ 2026-07-29 — **블로거 레인 시간 바닥**. 라이브 실측(배포가 없던 12:00 회차):
+ *   `yt 14 · naver { selected 13, tried 0 } · spent 18/45 · deadline_hit true · elapsed 23.4s`
+ *   예산이 27 남았는데 **벽시계**가 먼저 끝나, 맨 뒤에 선 블로거 레인이 13명을 선택만 하고 전부 버렸다.
+ *   같은 날 10:00 회차는 elapsed 16.0s 라 13명을 다 쟀다 — 유튜브 지연에 따라 **동전 던지기**였고,
+ *   하필 미측정 백로그의 88%(26,694명)가 블로거 쪽이다.
+ *   ⚠️ 예산 배분으로는 못 고친다(`naverRoomFromRemaining` 이 이미 남은 예산을 넘겨주는데도 0명이었다).
  */
-describe('ytPhaseDeadline — 앞 레인이 창을 다 먹지 못하게', () => {
-  it('기본 창(20s)에서 YT 는 일부만 받는다 — 나머지는 블로거 몫', () => {
-    const t0 = 1_000_000
-    const d = ytPhaseDeadline(t0, 20_000)
-    expect(d).toBeGreaterThan(t0)
-    expect(d).toBeLessThan(t0 + 20_000)          // 반드시 남긴다
-    expect(20_000 - (d - t0)).toBeGreaterThanOrEqual(8_000) // 블로거가 쓸 만큼 남는다(건당 ~8s)
-  })
-  it('아주 짧은 창은 나누지 않는다 — 둘 다 굶는 것보다 하나라도 돌게', () => {
-    expect(ytPhaseDeadline(0, 5_000)).toBe(5_000)
-    expect(ytPhaseDeadline(0, 3_000)).toBe(3_000)
-  })
-  it('share 는 0.1~0.9 로 클램프 — 잘못된 값이 한쪽을 0으로 만들지 않는다', () => {
-    expect(ytPhaseDeadline(0, 20_000, 5)).toBe(18_000)
-    expect(ytPhaseDeadline(0, 20_000, -1)).toBe(2_000)
-    expect(ytPhaseDeadline(0, 20_000, NaN)).toBe(Math.floor(20_000 * YT_CLOCK_SHARE))
-  })
-  it('이상값(음수·NaN 창)에 throw 하지 않는다', () => {
-    expect(ytPhaseDeadline(0, -1)).toBe(0)
-    expect(ytPhaseDeadline(0, NaN)).toBe(0)
-  })
-})
+describe('frontStageDeadline — 앞 레인이 창을 다 먹지 못하게', () => {
+  const T0 = 1_000_000
 
-describe('🚧 배선 — 순수함수만 고치면 라이브는 그대로다', () => {
-  it('YT 호출을 서브-데드라인으로 감싸고 finally 로 복원한다', async () => {
-    const fs = await import('node:fs')
-    const src = fs.readFileSync('src/features/marketing/api/influencer-enrich-lane.ts', 'utf8')
-    expect(src).toMatch(/budget\.deadline = ytPhaseDeadline\(started, deadlineMs\)/)
-    // 복원이 없으면 블로거가 짧은 창을 물려받아 **증상이 더 나빠진다**(예외 경로 포함이라 finally 필수).
-    expect(src).toMatch(/finally \{ budget\.deadline = fullDeadline \}/)
-    // 블로거 호출이 YT 뒤에 온다는 전제 자체를 고정(순서가 바뀌면 이 분배는 의미가 없다).
-    expect(src.indexOf('enrichYouTubePerformance(')).toBeLessThan(src.lastIndexOf('enrichNaverActivity('))
+  it('🔒 기본 40% 바닥 — 앞 레인은 20초 창의 12초까지만', () => {
+    expect(frontStageDeadline(T0, 20_000, 40)).toBe(T0 + 12_000)
+  })
+
+  it('🔒 바닥이 커질수록 앞 레인 몫이 줄어든다(단조)', () => {
+    const at = (pct: number) => frontStageDeadline(T0, 20_000, pct) - T0
+    expect(at(10)).toBeGreaterThan(at(40))
+    expect(at(40)).toBeGreaterThan(at(80))
+  })
+
+  it('🔒 항상 원래 마감보다 이르다 — 늦추면 바닥이 사라진다', () => {
+    for (const pct of [10, 40, 80]) expect(frontStageDeadline(T0, 20_000, pct)).toBeLessThan(T0 + 20_000)
+  })
+
+  it('🔒 이상값도 창 안에 머문다(설정 오타가 레인을 죽이지 않게)', () => {
+    for (const pct of [-100, 0, 5, 95, 500, Number.NaN]) {
+      const d = frontStageDeadline(T0, 20_000, pct)
+      expect(d).toBeGreaterThan(T0)          // 0 이면 앞 레인이 통째로 굶는다
+      expect(d).toBeLessThan(T0 + 20_000)    // 창을 넘으면 바닥이 없어진다
+    }
+    // 창 자체가 이상해도 과거 시각을 만들지 않는다.
+    expect(frontStageDeadline(T0, Number.NaN, 40)).toBe(T0)
+    expect(frontStageDeadline(T0, -5_000, 40)).toBe(T0)
   })
 })

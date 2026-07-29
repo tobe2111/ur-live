@@ -15,7 +15,6 @@
  */
 import type { Env } from '@/worker/types/env'
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
-import { classifyCategory, canAutoPromote } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론 + 적합성 게이트
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -33,7 +32,8 @@ export const POOL_ACCOUNT_ID = 0
 
 // 🌱 자동확장 상한/승격 자리 계산은 `influencer-keyword-rotation.ts` SSOT(아래 재수출) — 이 브랜치도
 //   같은 버그(seed 가 auto 를 밀어냄)를 독립적으로 고쳤으나 순수함수+관측을 갖춘 main 판을 채택했다.
-const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
+export { AUTO_PROMOTE_HITS } from './influencer-keyword-promote' // 호출부 호환 재수출
+import { promoteHashtagKeywords } from './influencer-keyword-promote'
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
@@ -152,7 +152,6 @@ export async function getAutoCollectStats(DB: D1Database): Promise<AutoCollectSt
 export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
 // 🌱 신규 키워드 승격 자리 — 순수 로직이라 회전 모듈이 제자리(이 파일 600줄 래칫).
 export { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
-import { MAX_AUTO_KEYWORDS, autoPromotionRoom } from './influencer-keyword-rotation'
 import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 import { mineHashtags } from './influencer-hashtag-mine'
 
@@ -495,54 +494,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
 
-  // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).
-  //   ⚠️ 2026-07-20: 태그별 개별 쿼리(수백 subrequest)가 Free 한도 초과의 공범 → 상위 50개만 + DB.batch 2회.
-  const promoted: string[] = []
-  let kwAuto: { active: number; room: number; cap: number } | undefined
-  const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
-  if (topTags.length) {
-    // 🏷️ 2026-07-29 승격 태그에 업종 부여 — 전부 `'자동'` 이면 ① 우선 풀(슬롯 3/4)에 영영 못 들고
-    //   ② `resolveCategory` 가 NON_CATEGORIES 로 버려 그 리드가 카테고리 미분류(fit 0)가 된다.
-    //   실측: 상위 후보 13/13 정확히 분류됨(서울맛집→맛집 …). 카페→맛집은 REGION_SEED 관례 그대로
-    //   ('카페'는 CORE_CATEGORIES 에 없어 두면 fit 20→10).
-    const promoCat = (tag: string): string => {
-      const c = classifyCategory(tag)
-      return !c ? '자동' : c === '카페' ? '맛집' : c
-    }
-    const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
-      VALUES (?, ?, 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits,
-        -- 이미 쌓인 후보 790개는 전부 '자동' 이라, 다시 마이닝될 때 업종을 채워 준다(수동 지정은 보존).
-        category = CASE WHEN category IS NULL OR category IN ('자동', '') THEN excluded.category ELSE category END`
-    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, promoCat(tag), freq))).catch(() => null)
-    // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
-    // 🌱 자리는 **auto 쿼터** 기준(시드 수 무관) — 예전엔 활성 전체로 세서 시드만으로 상한에 닿아
-    //   승격이 영구 0 이었다(`MAX_AUTO_KEYWORDS` 주석의 실측 참조).
-    //   🔀 병합: 이 브랜치도 같은 버그를 독립적으로 고쳤으나(kws 에서 source 카운트), main 판이
-    //   순수함수(`autoPromotionRoom`)+관측(`kwAuto`)까지 갖췄으므로 그쪽을 채택한다.
-    const autoRow = await DB.prepare("SELECT COUNT(*) AS n FROM ad_discovery_keywords WHERE active = 1 AND source = 'auto'")
-      .first<{ n: number }>().catch(() => null)
-    const room = autoPromotionRoom(autoRow?.n ?? 0)
-    kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
-    if (room > 0) {
-      // 🚪 적합성 게이트(2026-07-29 대표 승인) — 승격 후보를 **거래가 일어나는 축**으로 좁힌다.
-      //   근거·왜 "분류 가능 여부"만으론 부족한지는 `AUTO_PROMOTE_CATEGORIES` 주석(실측 수치 포함).
-      //   ⚠️ SQL 이 아니라 여기서 거른다: 후보의 `category` 는 위 upsert 가 방금 채운 값이라
-      //   같은 판정을 두 벌로 두지 않으려면 `promoCat` 과 **같은 함수**를 써야 한다.
-      const gated = topTags.filter(([t]) => canAutoPromote(promoCat(t)))
-      const ph = gated.map(() => '?').join(',')
-      const cands = gated.length ? await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
-        WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
-        .bind(AUTO_PROMOTE_HITS, ...gated.map(([t]) => t), room)
-        .all<{ id: number; keyword: string }>().catch(() => null) : null
-      const rows = cands?.results || []
-      if (rows.length) {
-        await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)
-        promoted.push(...rows.map(r => r.keyword))
-      }
-    }
-  }
-
+  // ③ 해시태그 자동확장 — 승격 로직은 `influencer-keyword-promote.ts`(600줄 래칫 분리).
+  //   적합성 게이트(2026-07-29 대표 승인)도 그 안에 있다 — 승격을 결정하는 자리와 같은 파일이라야
+  //   "게이트를 우회하는 두 번째 승격 경로"가 생기지 않는다.
+  const { promoted, kwAuto } = await promoteHashtagKeywords(DB, hashtagFreq)
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다

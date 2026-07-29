@@ -92,35 +92,27 @@ export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; nav
  *   ⚠️ 배정은 상한일 뿐 실제 중단은 여전히 `budget.left`/deadline 이 한다 — 과배정해도 초과 지출은 없다.
  */
 /**
- * ⏱️ **앞 레인이 벽시계를 다 먹지 못하게** — YT 단계에 창의 일부만 준다 (2026-07-29 라이브 실측).
+ * ⏱️ **앞 레인(링크인바이오 + 유튜브)에 씌우는 사전 마감** — 블로거 레인의 시간 바닥을 보장한다.
  *
- * ## 무슨 일이 있었나
- * 예산(서브리퀘스트) 배분은 위 두 함수가 촘촘히 다듬어 놨는데 **시간은 아무도 안 나눴다.**
- * 12:00 틱 마지막 라운드 실측:
- * ```
- *   yt: 14 · naver: { selected: 13, tried: 0 } · spent 18/45 · elapsed 23.4s · deadline_hit: true
- * ```
- * YT 가 20초 창을 통째로 쓰는 바람에, 블로거 단계는 **대상 13건을 골라 놓고 첫 fetch 도 못 했다.**
- * 예산은 27이나 남아 있었다 — 즉 **막은 것은 예산이 아니라 시간**이다.
- * 그 틱의 `total_measured` 증가분 +14 는 전부 YT 였고 **블로거 측정은 0** 이었다.
- * 백로그 26,696건(네이버의 91%)이 전부 그 단계 뒤에 있다.
+ *   왜 필요한가 (2026-07-29 라이브 실측, 배포가 없던 12:00 회차):
+ *     `yt: 14 · naver { selected: 13, tried: 0 } · spent: 18/45 · deadline_hit: true · elapsed 23.4s`
+ *   **예산이 27 이나 남았는데 시간이 먼저 끝났다.** 세 단계가 순차이고 마감을 하나로 공유하니,
+ *   맨 뒤에 선 블로거 레인은 앞 레인이 느린 회차에 **선택만 하고 한 명도 못 재고 반환**한다
+ *   (`selected 13 · tried 0` 이 정확히 그 모양 — SELECT 비용만 쓰고 13명을 통째로 버렸다).
+ *   같은 날 10:00 회차는 elapsed 16.0s 라 블로거가 13명을 다 쟀다 — 즉 **유튜브 지연에 따라
+ *   동전 던지기**가 되고 있었고, 하필 미측정 백로그의 88%(26,694명)가 블로거 쪽이다.
  *
- * ⚠️ 같은 사고가 파트너풀 레인에서 이미 났고(`enrich-lane.ts` 의 2026-07-28 주석: *"진짜 병목은
- * 서브리퀘스트가 아니라 시간인데, 비율 게이트는 예산만 보고 시간을 안 봤다"*), 그 교훈이 이 레인엔
- * 반영되지 않았다. 같은 실패가 레인을 건너 반복됐다.
+ *   ⚠️ 예산(`budget.left`) 배분으로는 못 고친다 — 이번 회차의 병목은 예산이 아니라 **벽시계**였다.
+ *   `naverRoomFromRemaining`(위)이 남은 예산을 넘겨주도록 이미 고쳐 놨는데도 0 명이 나온 이유가 이것이다.
  *
- * ## 왜 '중단'이 아니라 '분배'인가
- * YT 를 끄지 않는다 — YT 도 유효한 축이고 일일 units 예산도 따로 있다. 다만 **창의 일부**로 묶어
- * 블로거가 항상 남은 시간을 받게 한다. YT 는 건당 ~1 fetch 라 짧은 창에서도 여러 건을 처리한다.
+ *   설계: 고정 분할이 아니라 **바닥(floor)** 이다. 앞 레인은 창의 (100−floor)% 까지 쓸 수 있고,
+ *   일찍 끝나면 남은 시간은 그대로 블로거가 가져간다(복원 후 원래 마감으로 돌아가므로).
+ *   즉 앞 레인은 **블로거를 통째로 굶길 때만** 손해를 본다.
  */
-export const YT_CLOCK_SHARE = 0.45
-
-/** YT 단계에 줄 서브-데드라인(ms 절대시각). 창이 아주 짧으면(≤5s) 나누지 않는다 — 둘 다 굶는다. */
-export function ytPhaseDeadline(startedMs: number, deadlineMs: number, share = YT_CLOCK_SHARE): number {
-  const win = Number.isFinite(deadlineMs) ? Math.max(0, deadlineMs) : 0
-  if (win <= 5_000) return startedMs + win
-  const sh = Number.isFinite(share) ? Math.min(0.9, Math.max(0.1, share)) : YT_CLOCK_SHARE
-  return startedMs + Math.floor(win * sh)
+export function frontStageDeadline(started: number, deadlineMs: number, naverFloorPct: number): number {
+  const pct = Math.min(80, Math.max(10, Number.isFinite(naverFloorPct) ? naverFloorPct : 40))
+  const window = Math.max(0, Number.isFinite(deadlineMs) ? deadlineMs : 0)
+  return started + Math.floor((window * (100 - pct)) / 100)
 }
 
 export function naverRoomFromRemaining(remaining: number, plannedMax: number): number {
@@ -227,22 +219,23 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
     if (isSubrequestLimitError(msg)) limitHit = true
     if (!crash) crash = msg
   }
+  // ⏱️ 앞 레인에 **사전 마감**을 씌운다 — 블로거 레인의 시간 바닥 보장(`frontStageDeadline` 주석에 실측 근거).
+  //   복원 시점은 블로거 호출 직전. 앞 레인이 일찍 끝나면 남은 시간은 그대로 블로거가 쓴다.
+  const naverFloorPct = parseInt((env as unknown as { ADS_ENRICH_NAVER_FLOOR_PCT?: string }).ADS_ENRICH_NAVER_FLOOR_PCT || '', 10) || 40
+  budget.deadline = frontStageDeadline(started, deadlineMs, naverFloorPct)
   // 🔗 링크인바이오 먼저(백로그가 작고 건당 1 fetch — 블로거 백로그에 영원히 밀리지 않게).
   try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }
   // 📈 유튜브 성과 — 남은 일일 units 안에서만. 소모 units 는 실제 쓴 fetch 수로 계산(list 호출 1회 = 1 unit).
   const beforeYt = budget.left
   if (ytMax > 0 && ytRoom > 0 && env.YOUTUBE_API_KEY) {
-    // ⏱️ 창의 일부만 — 다 쓰면 블로거 단계가 대상만 고르고 fetch 0 이 된다(위 ytPhaseDeadline 주석의 실측).
-    const fullDeadline = budget.deadline
-    budget.deadline = ytPhaseDeadline(started, deadlineMs)
     try { yt = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, Math.min(ytMax, ytRoom)) } catch (err) { note(err) }
-    finally { budget.deadline = fullDeadline } // 🔒 예외로 빠져나가도 반드시 복원 — 안 하면 블로거가 짧은 창을 물려받는다
   }
   const ytUnits = Math.max(0, beforeYt - budget.left)
   if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
   // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 앞 레인이 남긴 예산 전부를 쓴다.
   //   ⚠️ 그러려면 정적 배분(naverMax)이 아니라 **이 시점의 잔여**로 다시 계산해야 한다 — 안 그러면
   //   앞 레인이 안 쓴 몫이 매 라운드 버려진다(실측: bio 후보 0 → spent 38/45). `naverRoomFromRemaining` 참조.
+  budget.deadline = started + deadlineMs // ⏱️ 사전 마감 해제 — 남은 창 전부를 블로거가 쓴다.
   try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
 
   const spent = budgetTotal - budget.left

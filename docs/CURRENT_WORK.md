@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 64건 · 최신순 · 이 목록은 자동 생성된다._
+_총 65건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
@@ -5513,6 +5513,7 @@ _총 64건 · 최신순 · 이 목록은 자동 생성된다._
 - [자동승격 적합성 게이트 + 골프 축 신설 (대표 승인 2건)](handoff/2026-07-29-ads-promote-gate-golf.md)
 - [유어애즈 정비 슬롯 재배분 — 균등 순환이 "일이 남은 곳"을 못 보고 있었다](handoff/2026-07-29-ads-maintenance-slots.md)
 - [✅ 2026-07-29 (9차-e) — **cron 경보가 매일 오탐을 울리고 있었다 (ur-ads 레인 주기 신고)**](handoff/2026-07-29-ads-lane-cadence.md)
+- [보강 레인의 블로거 굶주림 — 예산이 아니라 **벽시계**였다](handoff/2026-07-29-ads-enrich-naver-starvation.md)
 - [유어애즈 수집 우선순위 역전 수리 + 서브리퀘스트 천장 (PR #837)](handoff/2026-07-29-ads-collect-priority.md)
 - [유어애즈 수집 DB 품질 — 거부 의사 존중 · 지역 그리드 전국 · 실패 사유 관측 (PR #853)](handoff/2026-07-29-ads-collect-db-quality.md)
 - [유어애즈 분류 규칙 공백 — 라이브 800명 측정으로 특정 (PR 후속)](handoff/2026-07-29-ads-classify-gaps.md)
