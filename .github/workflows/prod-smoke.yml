@@ -23,13 +23,18 @@ jobs:
       - name: 핵심 불변식 단언 (도매몰 + 소비자)
         run: |
           BASE="https://urdeal.kr"
+          # 🏭 [wholesale-split 2026-07-16] 도매 라우트는 ur-wholesale 번들(별도 Pages 프로젝트).
+          #   메인 도메인은 __INCLUDE_WHOLESALE__=false → 도매 API 404(2026-07-29 실측 확인).
+          #   도매 점검만 ur-wholesale.pages.dev 로 분리한다. 소비자 BASE 는 urdeal.kr 유지
+          #   (2026-07-20 도메인 이전 — 구 live.ur-team.com 으로 되돌리지 말 것).
+          WHOLESALE_BASE="${WHOLESALE_BASE:-https://ur-wholesale.pages.dev}"
           FAIL=0
           # 일시 콜드/네트워크로 인한 가짜 실패 방지: 최대 3회 재시도.
-          # $1=설명 $2=URL $3=본문에 반드시 포함돼야 할 문자열(없으면 '')
+          # $1=설명 $2=URL $3=본문에 반드시 포함돼야 할 문자열(없으면 '') $4=베이스URL(없으면 $BASE)
           check() {
-            local desc="$1" url="$2" must="$3" code body ok=0
+            local desc="$1" url="$2" must="$3" base="${4:-$BASE}" code body ok=0
             for try in 1 2 3; do
-              body=$(curl -s --max-time 25 -w "\n%{http_code}" "$BASE$url" -H 'accept: application/json' 2>/dev/null || true)
+              body=$(curl -s --max-time 25 -w "\n%{http_code}" "$base$url" -H 'accept: application/json' 2>/dev/null || true)
               code=$(printf '%s' "$body" | tail -1)
               body=$(printf '%s' "$body" | sed '$d')
               if [ "$code" = "200" ]; then
@@ -50,26 +55,26 @@ jobs:
           check "소비자 상품 API"          "/api/products?page=1&limit=4"       '"success"'
 
           echo "##### 2) 도매몰 카탈로그 (CACHE_KV·데이터) #####"
-          check "도매 카탈로그 200+success" "/api/wholesale/catalog"             '"success":true'
-          check "도매 상품상세 200"         "/api/wholesale/catalog/6"           '"success"'
-          check "도매 배너"                "/api/wholesale/banners"             '"success"'
-          check "도매 몰 브랜딩"            "/api/wholesale/mall"                '"success"'
+          check "도매 카탈로그 200+success" "/api/wholesale/catalog"             '"success":true'  "$WHOLESALE_BASE"
+          check "도매 상품상세 200"         "/api/wholesale/catalog/6"           '"success"'       "$WHOLESALE_BASE"
+          check "도매 배너"                "/api/wholesale/banners"             '"success"'       "$WHOLESALE_BASE"
+          check "도매 몰 브랜딩"            "/api/wholesale/mall"                '"success"'       "$WHOLESALE_BASE"
 
           echo "##### 3) 도매몰 SSR (스켈레톤 고착 회귀 감지) #####"
           # /wholesale HTML 에 상품 데이터 슬롯이 주입돼야 함(없으면 콜드 스켈레톤 회귀).
-          HTML=$(curl -s --max-time 25 "$BASE/wholesale" 2>/dev/null || true)
+          HTML=$(curl -s --max-time 25 "$WHOLESALE_BASE/wholesale" 2>/dev/null || true)
           if printf '%s' "$HTML" | grep -q "__SSR_INITIAL_WHOLESALE__"; then
             echo "✅ PASS  /wholesale SSR 슬롯 주입됨"
           else
             echo "❌ FAIL  /wholesale SSR 슬롯 없음 — 스켈레톤 고착 회귀 가능 (SSR self-fetch timeout / CACHE_KV 손실?)"
             FAIL=1
           fi
-          SSR=$(curl -s -o /dev/null -D - --max-time 25 "$BASE/wholesale" 2>/dev/null | grep -i "x-ssr-status" || true)
+          SSR=$(curl -s -o /dev/null -D - --max-time 25 "$WHOLESALE_BASE/wholesale" 2>/dev/null | grep -i "x-ssr-status" || true)
           echo "    x-ssr-status: ${SSR:-(없음)}"
 
           echo "##### 4) 게스트 가격 가림 불변식 (로그인 안 했으면 도매가 null) #####"
           # 비인증 카탈로그는 distributor_price 가 노출되면 안 됨(가격은 로그인 전용).
-          GUEST=$(curl -s --max-time 25 "$BASE/api/wholesale/catalog" -H 'accept: application/json' 2>/dev/null || true)
+          GUEST=$(curl -s --max-time 25 "$WHOLESALE_BASE/api/wholesale/catalog" -H 'accept: application/json' 2>/dev/null || true)
           if printf '%s' "$GUEST" | grep -q '"requires_login":true'; then
             echo "✅ PASS  게스트 카탈로그 requires_login=true (도매가 가림)"
           else

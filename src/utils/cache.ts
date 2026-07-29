@@ -102,6 +102,7 @@ export async function invalidateCaches(
   keys: string[]
 ): Promise<void> {
   try {
+    // kv-delete-ok: 미사용(호출처 0)인 레거시 헬퍼 — 실행 경로 없음. KV delete 한도 무관.
     await Promise.all(keys.map(key => kv.delete(key)));
   } catch (error) {
     console.error(`[Cache] Bulk delete error:`, error);
