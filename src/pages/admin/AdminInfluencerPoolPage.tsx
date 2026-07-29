@@ -58,7 +58,10 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
-const POOL_CATEGORIES = ['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
+// 🏷️ 목록 필터 옵션. **서버가 분류하는 카테고리는 여기 다 있어야 한다** — 빠지면 그 축으로 수집된
+//   사람들을 화면에서 고를 수 없다(수집은 되는데 안 보이는 반쪽 상태). 유닛이 우선축 누락을 막는다.
+//   '공동구매' 는 2026-07-29 신설(대표 지시) — 이미 자기 팔로워에게 파는 층이라 링크샵 전환 1순위.
+export const POOL_CATEGORIES = ['공동구매', '맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
 // 📊 매체별 엑셀 분리 다운로드 — 서버 EXPORT_PLATFORMS 화이트리스트와 같은 키(추가 시 양쪽 갱신).
 
 export default function AdminInfluencerPoolPage() {

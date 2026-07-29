@@ -22,7 +22,7 @@
  *
  * 예외가 정말 필요하면(예: 외부 요청이 없는 D1 전용 잡) 해당 블록에 `ads-lane-ok` 주석.
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 
 const FILE = 'src/worker-ads/index.ts'
 const ALLOW_MARK = 'ads-lane-ok'
@@ -83,10 +83,14 @@ while (true) {
 }
 
 // kick 이 가리키는 경로가 실제로 존재하는지 — 오타 하나면 그 레인이 조용히 사라진다(fallback 은 로컬 전용).
-// 라우트 파일 목록 — index.ts 가 600줄 래칫에 닿아 핸들러를 모듈로 빼고 있다(public-data / chain).
-//   ⚠️ 새 `*.routes.ts` 를 만들어 `app.route()` 로 마운트하면 **여기에도 추가**해야 한다.
-//   안 하면 그 모듈의 라우트가 '없는 것'으로 보여 이 가드가 오탐을 낸다(2026-07-29 chain.routes 추출 시 실제 발생).
-const routeFiles = ['src/worker-ads/index.ts', 'src/worker-ads/public-data.routes.ts', 'src/worker-ads/chain.routes.ts'].filter(existsSync)
+//   ⚠️ 목록을 손으로 유지하면 안 된다 — 라우트를 새 모듈로 **추출하는 순간**(god 파일 래칫 때문에 실제로
+//   일어난다: public-data.routes.ts 2026-07-28 · enrich.routes.ts 2026-07-29) 그 경로가 목록에서 빠져
+//   가드가 "라우트 없음"으로 오탐하거나, 반대로 진짜 오타를 놓친다. `src/worker-ads/*.routes.ts` 를 자동 수집한다.
+const routeDir = 'src/worker-ads'
+const routeFiles = [
+  `${routeDir}/index.ts`,
+  ...(existsSync(routeDir) ? readdirSync(routeDir).filter((f) => f.endsWith('.routes.ts')).map((f) => `${routeDir}/${f}`) : []),
+].filter(existsSync)
 const routes = new Set()
 for (const f of routeFiles) {
   for (const m of readFileSync(f, 'utf8').matchAll(/\.post\('(\/__ads\/[^'?]+)'/g)) routes.add(m[1])
