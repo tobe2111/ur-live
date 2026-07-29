@@ -431,3 +431,61 @@ describe('보강 레인 수동 트리거 — depth 가 실제로 전달된다', 
     expect(ops).not.toMatch(/enrich-run[\s\S]{0,900}enrich-influencer-driver/)
   })
 })
+
+
+/**
+ * 🧱 **`runDdlOnce` 키를 공유하는 두 호출부는 같은 DDL 을 봐야 한다** (2026-07-29).
+ *
+ *   `ads_ddl_discovery_keywords` 키를 `influencer-auto-collect` 와 `influencer-keyword-store` 가
+ *   **함께** 쓰는데, 각자 `KW_DDL` 배열을 들고 있었다. 내용이 같아 그날은 무해했지만 — 한쪽만 고치면
+ *   체크섬이 호출부마다 달라져 **매 인보케이션 서로의 기록을 덮어쓰며 DDL + 시드 200문장이 영원히
+ *   재실행**된다. 무료 플랜에서 서브리퀘스트가 천장인데, 그 재실행을 없애려고 만든 최적화가 통째로
+ *   뒤집히는 형태다(그리고 에러가 안 나서 아무도 모른다 — 이 레포의 반복 실패형).
+ *
+ *   ⚠️ 못 막는 것: 다른 키에서 같은 구조가 생기는 것. 지금 공유 키는 이것 하나라(전수 확인) 그것만 고정한다.
+ */
+describe('🧱 DDL SSOT — 공유 키의 문장 목록은 한 벌이다', () => {
+  const DIR = 'src/features/marketing/api'
+
+  it('KW_DDL 정의는 레포에 정확히 하나', () => {
+    const defs = ['influencer-keyword-ddl.ts', 'influencer-keyword-store.ts', 'influencer-auto-collect.ts']
+      .filter(f => /^(export )?const KW_DDL/m.test(read(`${DIR}/${f}`)))
+    expect(defs, `KW_DDL 을 두 곳 이상에서 정의하고 있다: ${defs.join(', ')}`).toEqual(['influencer-keyword-ddl.ts'])
+  })
+
+  it('두 호출부 모두 그 SSOT 를 import 한다', () => {
+    for (const f of ['influencer-keyword-store.ts', 'influencer-auto-collect.ts']) {
+      expect(read(`${DIR}/${f}`), `${f} 가 KW_DDL 을 자체 정의하거나 안 쓴다`)
+        .toMatch(/import \{ KW_DDL \} from '\.\/influencer-keyword-ddl'/)
+    }
+  })
+})
+
+/**
+ * 🔍 **소스에 생 NUL 바이트를 두지 않는다** — 그 파일은 grep/ripgrep 이 통째로 건너뛴다 (2026-07-29).
+ *
+ *   `ads-schema-guard.ts` 에 `statements.join(NUL)` 이 **생 바이트로** 박혀 있었다. 구분자 선택 자체는
+ *   옳다(NUL 은 SQL 문에 못 들어가니 모호성이 없다) — 문제는 **표기**다. 그 한 바이트 때문에 `file(1)` 이
+ *   이 파일을 `data` 로 보고, **grep 기반 검사 전부가 이 파일만 못 봤다**(가드가 "있는데 안 도는" 것과
+ *   결과가 같다). 이스케이프(`U+0000`)로 적으면 문자열은 **동일**하고(체크섬 불변 — 실측 확인)
+ *   파일은 텍스트로 남는다.
+ *
+ *   ⚠️ 이 테스트 자신도 NUL 을 **생으로 쓰지 않는다**(`String.fromCharCode(0)`) — 그랬다간 검사 파일이
+ *   같은 사각지대로 들어간다.
+ */
+describe('🔍 소스에 생 NUL 바이트 없음 — grep 사각지대 방지', () => {
+  const NUL = String.fromCharCode(0)
+  const FILES = [
+    'src/features/marketing/api/ads-schema-guard.ts',
+    'src/features/marketing/api/influencer-keyword-ddl.ts',
+    'src/worker-ads/lane-cadence.ts',
+  ]
+
+  it('검사 대상이 실제로 존재한다(경로가 낡아 0건이 되는 것 차단)', () => {
+    for (const f of FILES) expect(read(f).length, `${f} 를 못 읽었다`).toBeGreaterThan(0)
+  })
+
+  it('어느 파일에도 U+0000 이 생으로 들어 있지 않다', () => {
+    for (const f of FILES) expect(read(f).includes(NUL), `${f} 에 생 NUL 이 있다`).toBe(false)
+  })
+})

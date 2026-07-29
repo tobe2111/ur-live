@@ -201,6 +201,32 @@ export function makeHourGates(hourUTC: number, kick: KickFn, registry?: LaneRegi
       registry?.note(path, beat)
       if (n > 0 && hourUTC % n === offset) kick(path, fallback, { gap: everyNHoursGapMinutes(n), ...(beat ? { beat } : {}) })
     },
+    /**
+     * 매시간 **가중 배정표** 순환 — 단, `yieldHours` 의 시각은 다른 레인에 양보하고 건너뛴다.
+     *
+     * ⚠️ **양보 시각과 주기 신고를 한 자리에서 만드는 것이 이 메서드의 존재 이유다.**
+     *   `if (hourUTC !== 19) { kick(…, { gap: scheduleGapMinutes(PHASES, [19]) }) }` 처럼 손으로 쓰면
+     *   조건과 주기가 **두 군데**가 되고, 한쪽만 고치는 순간 *"안 도는데 경보는 안 울리는"* 상태가 된다 —
+     *   위 회귀 차단 주석이 말하는 원래 버그와 **같은 모양**이다(그 유닛이 실제로 내 첫 판을 잡았다).
+     *   양보를 늘리려면 `yieldHours` 에 더하기만 하면 주기 신고가 **자동으로 따라온다.**
+     *
+     * `beatOf` 를 주면 하트비트 이름을 고정한다(경로에 쿼리가 붙어 단계마다 이름이 갈리는 것 방지).
+     */
+    hourlySchedule<T>(
+      schedule: readonly T[],
+      yieldHours: readonly number[],
+      pathOf: (phase: T) => string,
+      fallbackOf: (phase: T) => () => Promise<unknown>,
+      beatOf?: (phase: T) => string,
+    ): void {
+      if (!schedule.length) return
+      const phase = schedule[hourUTC % schedule.length] as T
+      const path = pathOf(phase)
+      const beat = beatOf?.(phase)
+      registry?.note(path, beat) // 양보한 시각에도 '이 레인이 있다'는 사실은 남긴다(dailyAt 과 같은 이유)
+      if (yieldHours.includes(hourUTC)) return
+      kick(path, fallbackOf(phase), { gap: scheduleGapMinutes(schedule, yieldHours), ...(beat ? { beat } : {}) })
+    },
   }
 }
 

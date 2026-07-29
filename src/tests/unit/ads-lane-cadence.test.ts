@@ -105,6 +105,34 @@ describe('makeHourGates — 발화 조건과 주기 신고가 같은 자리에�
     for (let h = 0; h < 24; h++) makeHourGates(h, s.kick).dailyAt(20, '/__ads/collect-localdata', noop)
     expect(s.calls).toHaveLength(1)
   })
+
+  /**
+   * 🤝 `hourlySchedule` — 양보 시각과 주기 신고가 **같은 입력**에서 나온다.
+   *   손으로 `if (hourUTC !== 19) { kick(…, { gap: … }) }` 를 쓰면 두 군데가 되고, 한쪽만 고치면
+   *   *"안 도는데 경보는 안 울리는"* 상태가 된다 — 위 'raw kick 금지' 불변식이 막는 그 형태다.
+   */
+  const SCHED = ['a', 'b', 'a', 'b'] as const
+  const pathOf = (p: string) => `/__ads/maintenance?phase=${p}`
+  const fallbackOf = () => noop
+
+  it('양보 시각엔 발화하지 않고, 나머지 시각엔 배정된 단계로 발화한다', () => {
+    const s = spy()
+    for (let h = 0; h < 24; h++) makeHourGates(h, s.kick).hourlySchedule(SCHED, [19], pathOf, fallbackOf)
+    expect(s.calls).toHaveLength(23)                                   // 24시간 − 양보 1
+    expect(s.calls.some(c => c.path === pathOf(SCHED[19 % SCHED.length]))).toBe(true) // 그 단계 자체는 다른 시각에 돈다
+  })
+
+  it('신고하는 주기가 **양보를 반영한** 값과 정확히 같다(손계산과 갈라질 수 없다)', () => {
+    const s = spy()
+    makeHourGates(0, s.kick).hourlySchedule(SCHED, [19], pathOf, fallbackOf)
+    expect(s.calls[0]?.gap).toBe(scheduleGapMinutes(SCHED, [19]))
+  })
+
+  it('빈 배정표는 아무것도 발화하지 않는다(0 주기로 즉시-stale 이 되지 않게)', () => {
+    const s = spy()
+    makeHourGates(0, s.kick).hourlySchedule([], [], pathOf, fallbackOf)
+    expect(s.calls).toEqual([])
+  })
 })
 
 /**
@@ -131,8 +159,13 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
 
   it('단계 순환 레인은 **배정표에서** 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
     // 슬롯 수(`PHASES.length`)로 유도하면 가중 배정표에서 과대추정 → stale 경보가 조용히 느슨해진다.
-    expect(src).toMatch(/scheduleGapMinutes\(PHASES\)/)
+    // 🔁 2026-07-29: 호출부에서 `scheduleGapMinutes(PHASES)` 를 직접 쓰던 것을 `gates.hourlySchedule` 안으로
+    //   옮겼다(양보 시각과 주기를 **한 입력**에서 유도하기 위해 — 위 'raw kick 금지' 불변식이 요구한 형태).
+    //   따라서 검사 대상은 "호출부가 그 게이트를 쓰는가" 로 바뀐다. 유도 자체의 정합은 아래 유닛이 본다.
+    expect(src).toMatch(/gates\.hourlySchedule\(PHASES,/)
     expect(src).not.toMatch(/phaseGapMinutes\(PHASES/)
+    // 호출부가 주기를 **손으로** 계산해 넘기면 다시 두 군데가 된다 — 그 형태를 금지한다.
+    expect(src).not.toMatch(/gap: scheduleGapMinutes\(/)
   })
 })
 
@@ -555,8 +588,9 @@ describe('🤝 야간 재보정에 19시를 양보해도 정비 순환이 굶지
   it('🔒 스케줄러가 실제로 양보한다 — 상수 공유(두 벌로 두면 한쪽만 옮겨져 다시 겹친다)', () => {
     const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
     expect(src).toMatch(/export const RESCAN_HOUR_UTC = 19/)
-    expect(src, '순환이 19시를 양보하지 않는다').toMatch(/hourUTC !== RESCAN_HOUR_UTC/)
-    expect(src, '임계 계산에 양보가 반영되지 않았다').toMatch(/scheduleGapMinutes\(PHASES, \[RESCAN_HOUR_UTC\]\)/)
+    // 양보는 `gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC], …)` 한 자리에서 표현된다 —
+    // 조건과 주기를 따로 쓰면(첫 판이 그랬다) 'raw kick 금지' 불변식이 먼저 잡는다.
+    expect(src, '순환이 19시를 양보하지 않는다').toMatch(/gates\.hourlySchedule\(PHASES, \[RESCAN_HOUR_UTC\]/)
     expect(src, '재보정 시각이 상수를 안 쓴다').toMatch(/dailyAt\(RESCAN_HOUR_UTC,/)
   })
 

@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, createLaneRegistry, recordKnownLanes } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -540,27 +540,20 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
       'reclassify',
     ] as const
-    /**
-     * 🤝 **19시는 야간 재보정에 양보한다** — 둘이 같은 lease 를 다투다 한쪽이 조용히 사라지고 있었다.
-     *
-     *   `runMaintenancePhase` 와 `runNightlyRescan` 은 **같은 `MAINT_LEASE_KEY`** 를 잡는다(의도적 —
-     *   둘 다 YouTube 쿼터를 써서 동시 실행이 곧 하루 예산 낭비다). 그런데 시간별 순환을 도입한
-     *   2026-07-28 부터 **19시에 둘 다 발화**하고, 먼저 dispatch 되는 이쪽이 항상 lease 를 가져갔다.
-     *   진 쪽은 `busy:true` 로 **스냅샷도 안 남기고** 돌아가서, 어드민에서는 *"한 번도 안 돔"* 으로 보였다.
-     *
-     *   📏 실측이 정확히 그 모양이었다: `maintenance_rescan.at = 2026-07-27T19:00` 이후 정지 —
-     *   **시간별 순환이 배포된 바로 그날부터**다. 고장이 아니라 경합이었다.
-     *
-     *   ⇒ 하루 1회뿐이고 미루면 그날치가 통째로 날아가는 재보정에 이 시각을 준다. 순환 단계는 나머지
-     *     23시간을 갖는다(아래 유닛이 "양보 후에도 모든 단계가 남고 간격이 경보 임계 안"임을 검사한다).
-     */
-    const phase = PHASES[hourUTC % PHASES.length]
-    if (hourUTC !== RESCAN_HOUR_UTC) {
-      kick(`/__ads/maintenance?phase=${phase}`, async () => {
+    // 🤝 **19시는 야간 재보정에 양보한다** — 둘이 같은 `MAINT_LEASE_KEY` 를 다투다(의도적 공유: 둘 다
+    //   YouTube 쿼터를 쓴다) 진 쪽이 스냅샷도 안 남기고 사라지고 있었다. 실측이 정확히 그 모양이다:
+    //   `maintenance_rescan.at` 이 2026-07-27T19:00 에서 정지 — **시간별 순환이 배포된 그날부터**다.
+    //   고장이 아니라 경합이었다. 하루 1회뿐이라 미루면 그날치가 통째로 날아가는 쪽에 이 시각을 준다.
+    //   양보 비용 0(계산 확인): `handle` 은 4·7·10·16·22시에 그대로 돌고 최대 간격은 merge 의 12h 불변.
+    //   ⚠️ 양보와 주기 신고를 **손으로 따로 쓰지 않는다** — `gates.hourlySchedule` 이 배정표와 양보목록
+    //     하나에서 둘 다 유도한다. 첫 판은 `if (hourUTC !== …) { kick(…) }` 으로 썼다가, 바로 그 드리프트를
+    //     막으려고 만들어져 있던 유닛에 걸렸다(조건과 주기가 두 군데가 되는 순간 조용히 어긋난다).
+    gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC],
+      (phase) => `/__ads/maintenance?phase=${phase}`,
+      (phase) => async () => {
         const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
         return runMaintenancePhase(env, phase)
-      }, { gap: scheduleGapMinutes(PHASES, [RESCAN_HOUR_UTC]) })
-    }
+      })
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
   //   ⚠️ 이 시각은 위 순환이 **양보**한다(같은 lease 경합 — 위 docblock 참조). 시각을 바꾸려면 두 곳을
