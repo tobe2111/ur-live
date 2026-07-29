@@ -111,7 +111,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
         o.shipping_address,
         o.tracking_number,
         o.courier,
-        NULL AS payment_method,
+        o.payment_method,
+        o.payment_status,
         o.created_at,
         o.updated_at,
         COALESCE(u.name, u.email) AS user_name,
@@ -120,6 +121,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
       LEFT JOIN users u ON o.user_id = u.id
       WHERE o.seller_id = ?
     `;
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): payment_method/payment_status 실제 반환(이전 NULL/미포함 →
+    //   셀러 화면 결제배지 항상 회색·undefined). SSOT payment_status 는 소문자 'approved'.
     const params: unknown[] = [sellerId];
 
     if (status) {
@@ -137,6 +140,29 @@ sellerOrdersRoutes.get('/orders', async (c) => {
     params.push(limit, offset);
 
     const orders = await db.prepare(query).bind(...params).all();
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 각 주문의 order_items 첨부 — 이전엔 상품 목록 미반환이라
+    //   셀러 상세 모달의 상품 섹션이 항상 미렌더(무엇을 몇 개 보낼지 알 수 없음). 옵션(options)도 포함.
+    const orderRows = (orders.results || []) as Array<Record<string, unknown>>;
+    if (orderRows.length > 0) {
+      try {
+        const oIds = orderRows.map(o => Number(o.id)).filter(Number.isFinite);
+        if (oIds.length > 0) {
+          const iph = oIds.map(() => '?').join(',');
+          const { results: itemRows = [] } = await db.prepare(
+            `SELECT order_id, product_id, product_name, quantity, unit_price, subtotal, options, product_image
+               FROM order_items WHERE order_id IN (${iph})`
+          ).bind(...oIds).all<Record<string, unknown>>();
+          const byOrder = new Map<number, Array<Record<string, unknown>>>();
+          for (const it of itemRows) {
+            const oid = Number(it.order_id);
+            if (!byOrder.has(oid)) byOrder.set(oid, []);
+            byOrder.get(oid)!.push(it);
+          }
+          for (const o of orderRows) o.items = byOrder.get(Number(o.id)) || [];
+        }
+      } catch { /* order_items 조회 실패 시 items 생략(주문 목록 자체는 반환) */ }
+    }
 
     let countQuery = `SELECT COUNT(*) as total FROM orders o WHERE o.seller_id = ?`;
     const countParams: unknown[] = [sellerId];
@@ -216,8 +242,13 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
     }
 
     // 소유권 확인 + 상태 변경 + 전이 검증을 원자적으로 처리
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): DELIVERED/SHIPPING 전이 시 타임스탬프 보강(반품 7일 창구·배송추적).
+    const extraSet =
+      dbStatus === 'DELIVERED' ? `, delivered_at = COALESCE(delivered_at, datetime('now'))`
+      : dbStatus === 'SHIPPING' ? `, shipped_at = COALESCE(shipped_at, datetime('now'))`
+      : '';
     const result = await db.prepare(
-      `UPDATE orders SET status = ?, updated_at = datetime('now')
+      `UPDATE orders SET status = ?, updated_at = datetime('now')${extraSet}
        WHERE (id = ? OR order_number = ?) AND seller_id = ?
          AND UPPER(status) IN (${prevPh})`
     ).bind(dbStatus, orderId, orderId, sellerId, ...allowedPrev).run();
@@ -360,12 +391,17 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
     const carrierKey = normalizeCourierKey(courier)
     const cleanedTracking = String(tracking_number || '').replace(/\s+/g, '')
 
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 배송 가능한 status 에서만 SHIPPING 으로 전이.
+    //   이전엔 status 무조건 'SHIPPING' → 취소(CANCELLED)/환불(REFUNDED)/미결제(PENDING) 주문에
+    //   송장을 넣으면 부활 → 14일 후 auto-confirm cron 이 정산 대상화(환불된 주문이 정산됨).
+    //   결제완료(PAID/DONE)·준비중(PREPARING)·이미 배송중(SHIPPING, 재입력) 만 허용.
     const result = await db.prepare(
       `UPDATE orders
        SET tracking_number = ?, courier = ?, tracking_carrier_code = ?,
            shipped_at = COALESCE(shipped_at, datetime('now')),
            status = 'SHIPPING', updated_at = datetime('now')
-       WHERE (id = ? OR order_number = ?) AND seller_id = ?`
+       WHERE (id = ? OR order_number = ?) AND seller_id = ?
+         AND UPPER(status) IN ('PAID','DONE','PREPARING','SHIPPING')`
     ).bind(cleanedTracking, courier || null, carrierKey || null, orderId, orderId, sellerId).run();
 
     // shipping_tracking_events audit (best-effort)
@@ -384,6 +420,13 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
     }
 
     if (!result.meta.changes) {
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 원인 구분 — 미존재(404) / 타 셀러(403) / 배송불가 상태(409).
+      const own = await db.prepare(
+        `SELECT status FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+      ).bind(orderId, orderId, sellerId).first<{ status: string }>();
+      if (own) {
+        return c.json({ success: false, error: `현재 상태(${own.status})에서는 배송 처리할 수 없습니다 (결제완료/준비중 주문만 가능).` }, 409);
+      }
       const exists = await db.prepare(
         `SELECT 1 FROM orders WHERE id = ? OR order_number = ? LIMIT 1`
       ).bind(orderId, orderId).first();
@@ -472,9 +515,10 @@ sellerOrdersRoutes.get('/products', async (c) => {
         p.name,
         p.description,
         p.price,
-        COALESCE(p.stock_quantity, p.stock, 0)                    AS stock,
+        COALESCE(p.stock, p.stock_quantity, 0)                    AS stock,
         COALESCE(p.thumbnail_url, p.image_url)                    AS image_url,
         COALESCE(p.status, 'ACTIVE')                              AS status,
+        COALESCE(p.is_active, 1)                                  AS is_active,
         p.category,
         p.created_at,
         p.updated_at,
@@ -487,9 +531,12 @@ sellerOrdersRoutes.get('/products', async (c) => {
       LEFT JOIN order_items oi ON p.id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.id
       WHERE p.seller_id = ?
-        AND COALESCE(p.is_active, 1) = 1
+        AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
         AND COALESCE(p.is_supply_product, 0) = 0
     `;
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 재고 COALESCE 순서 stock 우선(canonical) + is_active 반환(배지/토글 정상화)
+    //   + 필터를 is_active=1 → status != DELETED 로 변경(비활성/일시중지 상품도 목록에 보여 재활성화 가능,
+    //   삭제만 숨김). 이전엔 비활성화 즉시 목록에서 사라져 재활성화 경로가 0이었음.
     const params: unknown[] = [sellerId];
 
     if (search) {
@@ -502,7 +549,9 @@ sellerOrdersRoutes.get('/products', async (c) => {
 
     const products = await db.prepare(query).bind(...params).all();
 
-    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(is_active, 1) = 1`;
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): count 도 목록과 동일 필터(DELETED 제외 + 도매 원본 제외) — 이전엔
+    //   is_active=1 만이라 목록 쿼리와 불일치(도매상품 보유 셀러 total 과대, 비활성 상품 카운트 누락).
+    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(status, 'ACTIVE') != 'DELETED' AND COALESCE(is_supply_product, 0) = 0`;
     const countParams: unknown[] = [sellerId];
     if (search) {
       countQuery += ` AND (name LIKE ? OR description LIKE ?)`;
@@ -558,13 +607,16 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     if (!product) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
 
     // options 함께 반환 (있으면)
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 존재하는 컬럼만 SELECT. 이전엔 없는 컬럼(name/price/sort_order)을
+    //   조회해 항상 throw → 수정 페이지가 옵션을 [] 로 시드 → 저장 시 무조건 옵션 전멸(DELETE 후 0개).
+    //   실제 스키마: option_type/option_value/price_adjustment/stock. ProductOptionForm 필드명과 일치.
     let options: unknown[] = [];
     try {
       const optRes = await db.prepare(
-        `SELECT id, name, price, stock, sort_order
+        `SELECT id, option_type, option_value, price_adjustment, COALESCE(stock, 0) AS stock
            FROM product_options
           WHERE product_id = ?
-          ORDER BY sort_order ASC, id ASC`
+          ORDER BY option_type ASC, option_value ASC, id ASC`
       ).bind(productId).all();
       options = optRes.results || [];
     } catch {
@@ -638,12 +690,36 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
       }
     }
 
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 이행(fulfillment) 상태로의 일괄 전이는 '결제된 주문'에서만 허용.
+    //   이전엔 전이 검증이 없어 미결제 PENDING 을 일괄 DELIVERED/DONE 으로 승격(결제 없이 정산 대상화)
+    //   하거나 DELIVERED 를 PREPARING 으로 되돌려 정산/반품 창구를 왜곡할 수 있었음.
+    //   전이 가능한 이전 상태를 status 별로 제한(PREPARING/SHIPPING/DELIVERED 는 결제완료 이후만).
+    const FORWARD_PREV: Record<string, string[]> = {
+      PREPARING: ['PAID', 'DONE', 'PREPARING'],
+      SHIPPING: ['PAID', 'DONE', 'PREPARING', 'SHIPPING'],
+      DELIVERED: ['SHIPPING', 'DELIVERED'],
+    };
+    const allowedPrev = FORWARD_PREV[dbStatus];
+    let statusGuardSql = '';
+    const statusGuardParams: unknown[] = [];
+    if (allowedPrev) {
+      statusGuardSql = ` AND UPPER(status) IN (${allowedPrev.map(() => '?').join(',')})`;
+      statusGuardParams.push(...allowedPrev);
+    }
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): DELIVERED 전이 시 delivered_at 기록 — 반품 7일 창구가
+    //   delivered_at 기준이라 미기록 시 기한 없이 반품 가능해지던 갭. shipped_at 도 SHIPPING 시 보강.
+    const extraSet =
+      dbStatus === 'DELIVERED' ? `, delivered_at = COALESCE(delivered_at, datetime('now'))`
+      : dbStatus === 'SHIPPING' ? `, shipped_at = COALESCE(shipped_at, datetime('now'))`
+      : '';
+
     // 셀러 소유 확인 + 일괄 업데이트 (atomic)
     const result = await db.prepare(
       `UPDATE orders
-         SET status = ?, updated_at = datetime('now')
-       WHERE id IN (${placeholders}) AND seller_id = ?`
-    ).bind(dbStatus, ...order_ids, sellerId).run();
+         SET status = ?, updated_at = datetime('now')${extraSet}
+       WHERE id IN (${placeholders}) AND seller_id = ?${statusGuardSql}`
+    ).bind(dbStatus, ...order_ids, sellerId, ...statusGuardParams).run();
 
     // ── 유저에게 인앱 알림 일괄 발송 ──
     if (result.meta.changes) {
@@ -707,6 +783,9 @@ sellerOrdersRoutes.post('/products', async (c) => {
     const body = await c.req.json<{
       name: string;
       description?: string;
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
+      long_description?: string;
+      detail_images?: string;
       price: number;
       original_price?: number;
       stock?: number;
@@ -802,6 +881,14 @@ sellerOrdersRoutes.post('/products', async (c) => {
     //   기존 INSERT 누락으로 이용권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
     if (body.original_price !== undefined && body.original_price !== null && Number.isFinite(body.original_price)) {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
+    }
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — INSERT 컬럼셋 밖이라 별도 fail-soft UPDATE.
+    if (typeof body.long_description === 'string' && body.long_description.length <= 50000) {
+      try { await db.prepare(`UPDATE products SET long_description = ? WHERE id = ?`).bind(body.long_description, productId).run() } catch { /* column may not exist */ }
+    }
+    if (typeof body.detail_images === 'string' && body.detail_images.length <= 100000) {
+      try { await db.prepare(`UPDATE products SET detail_images = ? WHERE id = ?`).bind(body.detail_images, productId).run() } catch { /* column may not exist */ }
     }
 
     // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
@@ -966,6 +1053,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       stock?: number;
       image_url?: string;
       category?: string;
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/상세 이미지 — 이전 PUT 화이트리스트 누락으로 저장 무음 폐기.
+      long_description?: string;
+      detail_images?: string;
       live_only_price?: number | null;
       live_price_enabled?: boolean;
       status?: string;
@@ -1037,6 +1127,13 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       values.push(body.image_url, body.image_url);
     }
     if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
+    if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
+      fields.push('long_description = ?'); values.push(body.long_description);
+    }
+    if (body.detail_images !== undefined && (typeof body.detail_images === 'string') && body.detail_images.length <= 100000) {
+      fields.push('detail_images = ?'); values.push(body.detail_images);
+    }
     if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
     if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
     if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
@@ -1148,8 +1245,11 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
     } catch { /* gating best-effort, fall through to soft delete */ }
 
     // soft delete (status = DELETED)
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): status='DELETED' 도 실제로 세팅 — 이전엔 주석과 달리 is_active=0
+    //   만 바꿔 status='ACTIVE' 로 잔존 → ① 목록이 삭제/비활성 구분 불가 ② 주문 검증(is_active=1 OR
+    //   status='ACTIVE')이 통과해 삭제 상품이 여전히 구매 가능이었음. 이제 목록은 DELETED 만 숨김.
     const result = await db.prepare(
-      `UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
+      `UPDATE products SET is_active = 0, status = 'DELETED', updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
     ).bind(productId, sellerId).run();
 
     if (!result.meta.changes) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);

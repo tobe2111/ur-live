@@ -189,7 +189,10 @@ function getRegionExtraFee(
 export function calculateShippingFeeV2(input: ShippingFeeCalcInput): ShippingFeeCalcResult {
   const baseFee = Math.max(0, Number(input.baseFee) || 0)
   const subtotal = Math.max(0, Number(input.subtotal) || 0)
-  const threshold = typeof input.freeShippingThreshold === 'number' ? input.freeShippingThreshold : null
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): threshold 0/NULL = "무료배송 없음" (migration 0035 주석·클라 `> 0` 체크와 동일 의미).
+  //   이전엔 0 을 "항상 무료"로 해석 → 기본값 0 인 전 셀러에서 서버 0원 vs 클라 3,000원 → confirm 금액 불일치 400.
+  const threshold = typeof input.freeShippingThreshold === 'number' && input.freeShippingThreshold > 0
+    ? input.freeShippingThreshold : null
 
   const region = detectShippingRegion(input.postalCode, input.regionRules)
 
