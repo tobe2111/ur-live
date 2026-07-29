@@ -192,6 +192,8 @@ export interface Env {
   ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
   // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_STORE_KAKAO_ENABLED?: string;       // 🏪 무인매장(아이스크림 할인점·무인판매점) 카카오 키워드 수집 게이트(기본 OFF).
+  ADS_STORE_KAKAO_BUDGET?: string;        // 위 레인 서브리퀘스트 예산(기본 30, 5~80). 학습 상한과 더 작은 쪽 적용.
   ADS_STOREINFO_BATCH?: string;           // 1회 실행당 (업종×지역) 페어 수(기본 3).
   PUBLIC_DATA_SERVICE_KEY?: string;       // data.go.kr 일반 인증키. 미설정 시 NTS_API_KEY(동일 계정 serviceKey) 폴백.
   // 🏪 매장 후보 — 지방행정 인허가정보(store_prospects). 기본 OFF, 활용신청 후 ON.

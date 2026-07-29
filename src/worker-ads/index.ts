@@ -403,6 +403,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return runMakerCollect(env)
     })
   }
+  // 🏪 무인매장(아이스크림 할인점·무인판매점) — 매시간. 카카오 로컬 키워드 검색이라 인허가 승인과 무관하고
+  //   **전화가 함께 들어온다**(네이버 지역검색은 전화가 빈값). 게이트 ADS_STORE_KAKAO_ENABLED(기본 OFF).
+  if ((env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {
+    kick('/__ads/collect-store-kakao', async () => {
+      const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect')
+      return runStoreKakaoCollect(env)
+    })
+  }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
