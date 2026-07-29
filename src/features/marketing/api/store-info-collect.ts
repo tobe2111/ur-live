@@ -18,6 +18,7 @@ import { type FetchBudget } from './influencer-discovery'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { kakaoLocalLookup, naverLocalLookup, crawlContact } from './contact-enrich'
 import { platformSubreqCap } from './collect-budget'
+import { isNoValue } from './public-data-diag'
 
 const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
@@ -109,11 +110,13 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
     if (!sample && items[0]) sample = items[0] // 첫 원항목 → 필드 검증용 진단.
     if (!items.length) { page = 1; ti = (ti + 1) % STOREINFO_TARGETS.length; break } // 페이지 소진 → 다음 타깃.
     const leads: CompanyLead[] = items.map(it => {
-      const addr = stripTag(it.rdnmAdr || it.lnoAdr)
+      // ⚠️ `||` 로 이으면 앞 값이 '값 없음' 자리표시자여도 채택된다 — 뒤의 진짜 주소를 건너뛴다
+      //   (통신판매 레인에서 그렇게 주소 31.7% 를 잃었다). 판정 SSOT 는 public-data-diag.
+      const addr = stripTag(isNoValue(it.rdnmAdr) ? it.lnoAdr : it.rdnmAdr)
       return {
         company_name: stripTag(it.bizesNm), category: t.category, subcategory: t.subcategory, tier: t.tier,
         region: pickRegion(addr), address: addr || null, phone: null, email: null, website: null,
-        description: stripTag(it.indsSclsNm || it.indsMclsNm || it.ksicNm) || null,
+        description: stripTag([it.indsSclsNm, it.indsMclsNm, it.ksicNm].find(v => !isNoValue(v))) || null,
         source: 'storeinfo', source_keyword: t.code,
       }
     }).filter(l => l.company_name.length >= 2)

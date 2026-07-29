@@ -38,7 +38,13 @@ function makeDB(initial: Record<string, string> = {}) {
         if (/DELETE FROM platform_settings/i.test(sql)) delete kv[String(args[0])]
         return { meta: { changes: 1 } }
       },
-      all: async () => ({ results: [] }),
+      // 설정 키는 **일괄 조회**로 읽는다(D1 도 서브리퀘스트라 3회 → 1회로 줄인 뒤부터).
+      all: async () => {
+        if (/FROM platform_settings/i.test(sql)) {
+          return { results: args.map(k => ({ key: String(k), value: kv[String(k)] })).filter(r => r.value != null) }
+        }
+        return { results: [] }
+      },
     }
     return api
   }
