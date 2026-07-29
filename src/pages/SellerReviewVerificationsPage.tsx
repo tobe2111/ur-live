@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import { formatKST } from '@/utils/date'
 
 type Submission = {
   id: number
@@ -130,7 +131,7 @@ export default function SellerReviewVerificationsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate">{r.restaurant_name || r.product_name || `#${r.voucher_id}`}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">{r.product_name} · {new Date(r.created_at).toLocaleString()}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{r.product_name} · {formatKST(r.created_at)}</p>
                   {ocrPassed(r) && (
                     <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
                       <Sparkles className="w-3 h-3" />{t('seller.reviewVerify.ocrPassed', { defaultValue: '자동검증 통과 (참고)' })}
