@@ -251,8 +251,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다
   //     — 조건과 주기를 따로 적으면 어긋나고, 어긋나도 조용하다(lane-cadence.ts 주석 참조).
   const kick = (path: string, fallback: () => Promise<unknown>, opts?: { gap?: number; beat?: string }): void => {
-    laneReg.note(path)
     const beat = opts?.beat || path.replace(/^\/__ads\//, '')
+    laneReg.note(path, opts?.beat)   // 하트비트 이름과 **같은 이름**으로 등록해야 never_fired/orphan 이 어긋나지 않는다
     ctx.waitUntil((async () => {
       const t0 = Date.now()
       try {
@@ -329,8 +329,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).
   //   동기화 자체는 SELF 인보케이션에서(풀 성장에 비례하는 D1 페이지 읽기+Sheets 쓰기를 수집과 격리),
   //   경보 판단만 여기서(응답 JSON 파싱 — 1 fetch + D1 1읽기라 가벼움).
+  //   🔔 2026-07-29 **하트비트 배선** — 이 레인만 `kick()` 을 안 거쳐 생 `waitUntil` 이라, 지금까지
+  //   **관측 밖**이었다(다른 레인은 전부 `ads:<이름>` 으로 기록된다). `cron-stale-watch` 는 *한 번도
+  //   기록이 없는 이름을 판정 대상으로 잡지 못하므로*, 이 레인은 멈춰도 침묵 경보에 안 걸린다.
+  //   실측(07-29 12:00, 배포가 안 겹친 정각 회차): 다른 13개 레인은 다 돌았는데 시트 미러는
+  //   `ads_sheets_last_sync` 가 **09:00:21 그대로**였다 — 성공도 KICK_FAILED 도 안 남았다.
+  //   즉 아래 블록이 끝까지 못 갔다는 뜻인데, 그 사실을 볼 방법이 없었다.
+  //   ⚠️ 구조는 그대로 둔다(kick 으로 옮기면 아래 Discord 중복억제·KICK_FAILED 스탬프를 라우트로
+  //   옮겨야 하는데, 그건 하드-원 로직이라 이번 목적—관측—에 필요하지 않다). 비용은 시간당 D1 쓰기 1.
   if (env.ADS_SHEETS_SYNC_ENABLED === 'true') {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try {
         const prevRaw = await env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
         const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
@@ -346,7 +355,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
           const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
           await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, '유어애즈 구글시트 동기화 실패', `${r.error || 'unknown'}\n(해결 전까지 시트 미러 정지 — 어드민 정비 도구에서 수동 재시도 가능)`, 'warn').catch(() => null)
         }
+        await adsBeat('sheets-sync', r.ok, Date.now() - t0, r.ok ? undefined : new Error(r.error || 'SYNC_FAILED'))
       } catch (err) {
+        await adsBeat('sheets-sync', false, Date.now() - t0, err)
         // 🔎 2026-07-29: 여기서 통째로 삼키던 것이 **3세션을 잡아먹었다**. 실패의 실제 양식은
         //   "러너가 돌다 실패"가 아니라 **"러너가 시작조차 못 함"** 이었다 — 위 `SELF.fetch` 는 이 부모
         //   인보케이션의 서브리퀘스트 1개이고, 부모가 인라인 레인(백필 최대 192 fetch/시간)에 예산을
