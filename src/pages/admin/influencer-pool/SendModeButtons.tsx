@@ -16,19 +16,27 @@ import { useSendQueue, type SendQueueLead } from './useSendQueue'
 /** 오늘 한 번에 여는 기본 인원 — 사람이 한 자리에서 소화 가능한 크기(20명 ≈ Enter 20번). */
 const TODAY_N = 20
 
-export default function SendModeButtons<T extends QueueLead>({ leads, selectedIds, onReach }: {
+export default function SendModeButtons<T extends QueueLead>({ leads, selectedIds, onReach, platform }: {
   /** 현재 필터로 로드된 리드(기존 '발송 모드' 진입로). */
   leads: T[]
   /** 선택된 id — 있으면 선택분만 큐에 넣는다(기존 동작 보존). */
   selectedIds: Set<number>
   onReach: (l: QueueLead) => void
+  /**
+   * 🎬 화면의 매체 필터를 "오늘 보낼 N명"에도 그대로 적용한다 — 2026-07-29 실측 발견.
+   *   통합 큐는 점수순이라 **상위 20명이 전부 유튜브**였다(이메일 보유율 YT 32.5% vs 블로거 0.6% +
+   *   YT 는 성과가 측정돼 활동성 점수를 받는다). 블로거는 풀의 75%(28,673명)이고 큐 대상만 18,493명인데
+   *   통합 목록에서는 **구조적으로 한 명도 안 나온다**. 매체를 골라 돌릴 수 있어야 그 풀에 접근한다.
+   *   (서버 send-queue 는 이미 platform 을 받는다 — 화면이 안 넘기고 있었을 뿐이다.)
+   */
+  platform?: string
 }) {
   const [queue, setQueue] = useState<QueueLead[] | null>(null) // null = 모달 닫힘
   const today = useSendQueue()
 
   /** 🎯 서버가 골라준 "지금 열 수 있고 · 아직 접촉 안 한 · 점수 높은" 순 N명. */
   async function openToday() {
-    const picked: SendQueueLead[] = await today.load(TODAY_N)
+    const picked: SendQueueLead[] = await today.load(TODAY_N, platform)
     if (!picked.length) {
       toast.info(today.error || '지금 연락할 수 있는 리드가 없습니다 — 보강이 돌면 다시 채워집니다')
       return

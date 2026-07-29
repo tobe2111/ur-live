@@ -15,7 +15,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
+import { ensureQualityColumns, looksLikeBrandChannel, scoreLead } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
@@ -112,8 +112,8 @@ async function saveLeadsBatch(
   //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
   //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, lead_score)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
   //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
   //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
@@ -131,14 +131,30 @@ async function saveLeadsBatch(
     const insStmts = slice.map(l => {
       const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
       const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
+      const brand = looksLikeBrandChannel(l.name, l.description) ? 1 : 0 // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+      /**
+       * 🏅 **저장 시점 즉시 채점**(2026-07-29) — 신규 리드가 큐 뒤에 갇히던 것.
+       *   `lead_score` 를 안 넣으면 NULL 인데, 발송 큐와 점수 정렬은 `(lead_score IS NULL) ASC` 로
+       *   **미채점을 후순위**로 민다. 점수는 야간 정비(quality 패스)가 4,500명씩 커서로 도는데
+       *   38,374명이면 한 바퀴에 8~9라운드 = 실측 기준 **최대 ~42시간**. 그동안 하루 700명씩 들어오는
+       *   신규는 아무리 좋은 리드여도 목록에 안 나온다 — 발송이 수동(하루 N명)이라 그 지연이 곧 손실이다.
+       *   ⇒ scoreLead 는 **순수함수**라 DB 왕복이 0 이다. 저장하면서 같이 계산하지 않을 이유가 없다.
+       *   측정 전이라 활동성은 중립으로 잡히고, 이후 quality 패스가 실측값으로 덮어쓴다(멱등).
+       */
+      const { score } = scoreLead({
+        platform: l.platform, subscriber_count: l.subscriber_count, email: l.email,
+        instagram: l.instagram, links: l.links, category: cat, is_brand: brand,
+        url: l.url, last_post_at: l.last_post_at ?? null,
+      })
       return DB.prepare(insSql).bind(
         accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
         l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
         l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
         cat, meta.sourceKeyword ?? null,
-        looksLikeBrandChannel(l.name, l.description) ? 1 : 0, // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+        brand,
         l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
         catSrc,
+        score,
       )
     })
     const rs = await DB.batch(insStmts).catch(() => null)
