@@ -37,7 +37,7 @@ export const CartHeader = React.memo(function CartHeader({
   return (
     <>
       {/* v4 sticky white header: X left, title center, spacer right */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-10 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
         <div className="mx-auto max-w-md flex items-center justify-between px-4 py-3">
           <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
@@ -52,7 +52,7 @@ export const CartHeader = React.memo(function CartHeader({
 
       {/* Select-all row */}
       {itemCount > 0 && (
-        <div className="bg-gray-50 dark:bg-[#121212] border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="bg-gray-50 dark:bg-[#1A2334] border-b border-gray-100 dark:border-[#2A3446]">
           <div className="mx-auto max-w-md flex items-center justify-between px-4 py-2.5">
             <button
               type="button"
@@ -64,7 +64,7 @@ export const CartHeader = React.memo(function CartHeader({
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${
                   allSelected
                     ? 'bg-pink-500 border-pink-500'
-                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A] group-hover:border-gray-400'
+                    : 'bg-white dark:bg-[#0F151D] border-gray-300 dark:border-[#3A3A3A] group-hover:border-gray-400'
                 }`}
               >
                 {allSelected && (

@@ -4,8 +4,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
@@ -17,6 +17,9 @@ export default function AgencyLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도 전 토큰 재발급 — 일회용 Turnstile 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   const [rememberMe, setRememberMe] = useState(false)
 
   // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
@@ -63,6 +66,8 @@ export default function AgencyLoginPage() {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       setError(err_.response?.data?.error || t('auth.invalidCredentials'))
+      // 🛡️ 실패 → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -193,8 +198,7 @@ export default function AgencyLoginPage() {
                 </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               <button
                 type="submit"
@@ -215,6 +219,8 @@ export default function AgencyLoginPage() {
 
               <a
                 href={`/auth/kakao/start?redirect=${encodeURIComponent('/agency')}&intent=agency`}
+                /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 무반응 구간에 공용 브랜드 오버레이. */
+                onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors no-underline"
               >
                 <span className="text-base">💬</span>

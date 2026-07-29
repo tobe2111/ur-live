@@ -52,7 +52,7 @@ export async function initNativeFeatures() {
     // 다크 테마 메인 → 밝은 텍스트
     await StatusBar.setStyle({ style: Style.Dark })
     if (isAndroid()) {
-      await StatusBar.setBackgroundColor({ color: '#020202' })
+      await StatusBar.setBackgroundColor({ color: '#0F151D' })
       await StatusBar.setOverlaysWebView({ overlay: false })
     }
   } catch {}
@@ -105,12 +105,12 @@ export async function initNativeFeatures() {
     // 딥링크 처리
     App.addListener('appUrlOpen', (event) => {
       // v32 CRITICAL FIX: 딥링크 open-redirect 방지
-      // event.url: yourdeal://some/path 또는 https://live.ur-team.com/path 형태
+      // event.url: yourdeal://some/path 또는 https://urdeal.kr/path 형태
       //   🛡️ 2026-06-27: 커스텀 스킴을 실제 등록값(yourdeal)과 일치 — AndroidManifest intent-filter
       //   `android:scheme="yourdeal"` + iOS Info.plist CFBundleURLTypes 와 동일. (urlive/urdeal 는 구 호환 유지)
       try {
         const url = new URL(event.url)
-        const allowedHosts = new Set(['live.ur-team.com', 'www.live.ur-team.com'])
+        const allowedHosts = new Set(['urdeal.kr', 'www.urdeal.kr'])
         const isCustomScheme = url.protocol === 'yourdeal:' || url.protocol === 'urlive:' || url.protocol === 'urdeal:'
         const isAllowedHttps = (url.protocol === 'https:' || url.protocol === 'http:') && allowedHosts.has(url.host)
         if (!isCustomScheme && !isAllowedHttps) {
@@ -149,7 +149,7 @@ export async function setStatusBarStyle(mode: 'dark' | 'light') {
     const { StatusBar, Style } = await import('@capacitor/status-bar')
     await StatusBar.setStyle({ style: mode === 'dark' ? Style.Dark : Style.Light })
     if (isAndroid()) {
-      await StatusBar.setBackgroundColor({ color: mode === 'dark' ? '#020202' : '#ffffff' })
+      await StatusBar.setBackgroundColor({ color: mode === 'dark' ? '#0F151D' : '#ffffff' })
     }
   } catch {}
 }

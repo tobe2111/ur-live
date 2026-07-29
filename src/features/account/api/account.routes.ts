@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
 import {
   deleteUserAccount,
@@ -173,7 +174,7 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
  *   availableAt?: string; // ISO 8601 date string
  * }
  */
-accountRoutes.get('/check-restriction', async (c) => {
+accountRoutes.get('/check-restriction', rateLimit({ action: 'account_check_restriction', max: 20, windowSec: 3600 }), async (c) => {
   try {
     const email = c.req.query('email');
 
@@ -200,11 +201,26 @@ accountRoutes.get('/check-restriction', async (c) => {
 /**
  * 🛡️ 2026-05-01: GET /api/account/restorable?kakao_id=XXX
  *   카카오 OAuth 후 prompt 가 표시될 때 복원 가능 계정 체크.
- *   인증 불필요 (kakao_id 만으로 readonly 체크).
+ * 🔐 2026-07-12 (PIPA 감사 I): 기존엔 **인증 없이** kakao_id 만으로 original_name(실명)을 반환 →
+ *   kakao_id 열거로 타인 실명 조회 가능(PII 유출). 실제 복원 안내는 카카오 콜백 redirect
+ *   (restorable=1&originalName=, kakao.routes.ts:793)가 담당해 이 엔드포인트는 프론트 미사용.
+ *   → requireAuth + 본인 소유 kakao_id 만 조회 허용(세션 유저의 kakao_id 와 일치할 때만) + rate limit.
  */
-accountRoutes.get('/restorable', async (c) => {
+accountRoutes.get('/restorable', rateLimit({ action: 'account_restorable', max: 20, windowSec: 3600 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: 'unauth' }, 401)
+
   const kakaoId = c.req.query('kakao_id')
   if (!kakaoId) return c.json({ success: false, error: 'kakao_id required' }, 400)
+
+  // 본인 소유 검증 — 세션 유저의 실제 kakao_id 와 일치할 때만(타인 실명 열거 차단).
+  const me = await c.env.DB
+    .prepare('SELECT kakao_id FROM users WHERE id = ?')
+    .bind(user.id)
+    .first<{ kakao_id: string | null }>()
+  if (!me?.kakao_id || String(me.kakao_id) !== String(kakaoId)) {
+    return c.json({ success: false, error: 'forbidden' }, 403)
+  }
 
   const found = await findRestorableAccount(kakaoId, c.env.DB)
   if (!found) return c.json({ success: true, restorable: false })
@@ -244,7 +260,8 @@ accountRoutes.post('/restore', requireAuth(), async (c) => {
     current.name,
     current.email,
     current.profile_image,
-    c.env.DB
+    c.env.DB,
+    user.id // 🔧 2026-07-12 (감사 C): 방금 재가입으로 만들어진 신규 row(현재 세션)의 kakao_id 점유 해제용
   )
 
   if (!result.success) {

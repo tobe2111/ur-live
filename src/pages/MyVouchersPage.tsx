@@ -9,15 +9,18 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, X, ChevronRight, Map } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
-import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
+import WalletHeader from './my-vouchers/WalletHeader'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import QRModal from './my-vouchers/QRModal'
+import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
 
@@ -39,7 +42,7 @@ function walkMinutes(m: number): number {
 
 const STATUS_MAP = {
   unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
-  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400', icon: CheckCircle },
+  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400', icon: CheckCircle },
   expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: XCircle },
   refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
 } as const
@@ -205,12 +208,12 @@ export default function MyVouchersPage() {
                       key={v.id}
                       type="button"
                       onClick={() => setMapSelected(v)}
-                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2A3446]'}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
-                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A2334] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
                         {v.product_image
-                          ? <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+                          ? <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
                           : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -247,12 +250,21 @@ export default function MyVouchersPage() {
     <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
 
-      {/* 🎨 2026-06-20: back-only 빈 상단 바 제거 (최상위 탭 화면 — 시안엔 없음). LargeTitle 이 최상단. */}
-
-      {/* Large Title + 메타 */}
-      <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+      {/* 🎨 2026-07-20 (대표 — 지갑 상단 리디자인): LargeTitle + 회색 세그먼트 → 모던 지갑 헤더
+          (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
+      <WalletHeader
+        title={t('voucher.myVouchers')}
+        totalLabel={vouchers.length > 0 ? t('voucher.totalCount', { count: vouchers.length }) : null}
+        tabs={giftCount > 0 ? [
+          { key: 'gb', label: t('voucher.tabGroupBuy', { defaultValue: '이용권' }), count: gbCount },
+          { key: 'gift', label: t('voucher.tabGifticon', { defaultValue: '교환권' }), count: giftCount },
+        ] : undefined}
+        activeTab={sourceTab}
+        onTab={setSourceTab}
+      />
 
       {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
+      <div className="mt-4" />
       <VoucherDisputeBanner />
 
       {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
@@ -287,31 +299,6 @@ export default function MyVouchersPage() {
         </div>
       )}
 
-      {/* 🎟️ 2026-06-18: 이용권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 이용권.
-          🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
-      {giftCount > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-4">
-          <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]">
-            {([
-              ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '이용권' }), gbCount],
-              ['gift', '📱', t('voucher.tabGifticon', { defaultValue: '교환권' }), giftCount],
-            ] as const).map(([key, emoji, label, count]) => {
-              const active = sourceTab === key
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSourceTab(key)}
-                  className={`flex-1 py-2 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5 transition-all ${active ? 'bg-white dark:bg-[#2C2C2E] text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  <span aria-hidden>{emoji}</span>
-                  {label}
-                  <span className={`min-w-[17px] px-1 inline-flex items-center justify-center rounded-full text-[10px] font-extrabold tabular-nums ${active ? 'bg-black/[0.06] text-gray-500 dark:bg-white/10 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{count}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
@@ -331,11 +318,14 @@ export default function MyVouchersPage() {
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
-            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/group-buy')}
+            /* 🧭 2026-07-20: /group-buy 는 홈 리다이렉트(이중 홉) — 이용권 CTA 는 홈(동네딜 피드) 직행 */
+            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/')}
             t={t}
           />
         ) : (
           <>
+            {/* 🏠 2026-07-12 (앱-레디): 지갑 = 최고 관여 순간 → 홈 화면 추가 컨텍스트 유도(자가 게이트) */}
+            <AddToHomeHint context="wallet" />
             {/* 사용 가능 N + 🗺 지도 토글 (화면1) */}
             <div className="flex items-center justify-between mb-3">
               <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
@@ -360,7 +350,7 @@ export default function MyVouchersPage() {
 
             {/* 사용 완료 / 만료·환불 — 헤어라인 박스 (탭하면 인라인 펼침) */}
             {(usedItems.length > 0 || archivedItems.length > 0) && (
-              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#1F1F1F] overflow-hidden">
+              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#2A3446] overflow-hidden">
                 {([
                   { key: 'used', label: t('voucher.groupUsed', { defaultValue: '사용 완료' }), items: usedItems },
                   { key: 'archived', label: t('voucher.groupArchived', { defaultValue: '만료 · 환불' }), items: archivedItems },
@@ -368,7 +358,7 @@ export default function MyVouchersPage() {
                   const open = expandedGroups.has(g.key)
                   return (
                     <Fragment key={g.key}>
-                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#1F1F1F] mx-[15px]" />}
+                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#2A3446] mx-[15px]" />}
                       <button type="button"
                         onClick={() => setExpandedGroups(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
                         className="w-full flex items-center justify-between px-[15px] py-3.5 text-left">

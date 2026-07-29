@@ -54,6 +54,9 @@ async function ensureTable(DB: D1Database) {
   // 🛡️ 2026-05-21: 누락 컬럼 ALTER — user_name (real user 리뷰 시 카카오 이름 masked 저장).
   //   기존 0132 마이그레이션엔 없음. ALTER IF NOT EXISTS 미지원 → catch.
   try { await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run() } catch { /* exists */ }
+  // 🎁 2026-07-05: 체험단(FCFS) 참여 리뷰 자동 표시 — 표시광고법 의무(경제적 대가 표시).
+  //   작성 API 가 fcfs_applications(selected/paid) 자동 판정으로 세팅 — 작성자가 끌 수 없음.
+  try { await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0`).run() } catch { /* exists */ }
 }
 
 // GET /api/reviews/product/:productId — 상품 리뷰 목록
@@ -79,6 +82,7 @@ reviewsRoutes.get('/product/:productId', async (c) => {
     const r = await DB.prepare(`
       SELECT r.id, r.rating, r.content, r.images, r.created_at,
              r.seller_reply, r.seller_reply_at,
+             COALESCE(r.is_sponsored, 0) AS is_sponsored,
              COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
       FROM product_reviews r
       WHERE r.product_id = ? AND r.is_visible = 1
@@ -90,6 +94,7 @@ reviewsRoutes.get('/product/:productId', async (c) => {
     const r = await DB.prepare(`
       SELECT r.id, r.rating, r.content, r.images, r.created_at,
              NULL AS seller_reply, NULL AS seller_reply_at,
+             0 AS is_sponsored,
              COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
       FROM product_reviews r
       WHERE r.product_id = ? AND r.is_visible = 1
@@ -316,12 +321,22 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     } catch { /* noop */ }
   }
 
+  // 🎁 2026-07-05 표시광고법: 작성자가 이 상품 체험단(FCFS) 참여 확정자(selected/paid)면
+  //   is_sponsored=1 자동 부착 — 서버 판정(클라 입력 무시)이라 작성자가 끌 수 없음. 수동 누락 0.
+  let isSponsored = 0;
+  try {
+    const fcfs = await DB.prepare(
+      "SELECT 1 AS x FROM fcfs_applications WHERE product_id = ? AND user_id = ? AND status IN ('selected', 'paid') LIMIT 1"
+    ).bind(body.product_id, String(user.id)).first<{ x: number }>();
+    if (fcfs) isSponsored = 1;
+  } catch { /* fcfs 테이블 부재 환경 — 일반 리뷰로 저장 */ }
+
   await DB.prepare(`
-    INSERT INTO product_reviews (product_id, user_id, user_name, order_id, rating, content, images)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO product_reviews (product_id, user_id, user_name, order_id, rating, content, images, is_sponsored)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.product_id, user.id, userNameForReview,
-    rewardOrderId, body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
+    rewardOrderId, body.rating, body.content ?? '', JSON.stringify(body.images ?? []), isSponsored
   ).run();
 
   // 리뷰 등록 → 셀러 알림
@@ -367,21 +382,23 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
     // v24 FIX: lost-update 방지. SELECT-then-UPDATE 패턴은 동시 리뷰 작성 시 잔액 덮어쓰기 발생.
     // 원자적 UPSERT + balance = balance + ? 패턴으로 전환.
+    // 💸 2026-07-05 버킷: 리뷰 리워드 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감).
     await DB.prepare(`
-      INSERT INTO user_points (user_id, balance, total_charged)
-      VALUES (?, ?, 0)
+      INSERT INTO user_points (user_id, balance, free_balance, total_charged)
+      VALUES (?, ?, ?, 0)
       ON CONFLICT(user_id) DO UPDATE SET
         balance = balance + excluded.balance,
+        free_balance = COALESCE(free_balance, 0) + excluded.free_balance,
         updated_at = datetime('now')
-    `).bind(ptsUserId, rewardAmount).run();
+    `).bind(ptsUserId, rewardAmount, rewardAmount).run();
 
     // 트랜잭션 기록용 최신 잔액 조회 (원자성 보장 후)
     const updatedRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(ptsUserId).first<{ balance: number }>();
     const newBalance = updatedRow?.balance ?? rewardAmount;
 
-    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
+    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, free_delta) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc, rewardAmount).run();
 
     // deal_balance도 동기화 (users 테이블)
     await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')

@@ -6,9 +6,10 @@ import { canonicalDetailPath } from '@/shared/product-flow'
  *
  * 검증 (사용자 권장 ① 자동화):
  *   - 교환권(deal_only=1)        → /vouchers/:id
+ *   - 숙소(stay_voucher)         → /stays/:id (2026-07-20 신설 — 객실·날짜 예약 정규 상세)
  *   - 공구(voucher 카테고리)       → /group-buy/:id (레거시 카테고리 포함)
  *   - 온라인 일반 상품             → null (redirect 없이 /products/:id 유지)
- *   - 우선순위: 교환권 > 공구
+ *   - 우선순위: 교환권 > 숙소 > 공구
  *   - ⚠️ group_buy_status 로 분류하지 않음 (모든 상품 DEFAULT 'active' 회귀 방지)
  */
 describe('canonicalDetailPath', () => {
@@ -23,8 +24,12 @@ describe('canonicalDetailPath', () => {
   it('공구(voucher 카테고리) → /group-buy/:id', () => {
     expect(canonicalDetailPath({ id: 25, deal_only: 0, category: 'meal_voucher' })).toBe('/group-buy/25')
     expect(canonicalDetailPath({ id: 31, category: 'beauty_voucher' })).toBe('/group-buy/31')
-    expect(canonicalDetailPath({ id: 9, category: 'stay_voucher' })).toBe('/group-buy/9')
     expect(canonicalDetailPath({ id: 4, category: 'etc_voucher' })).toBe('/group-buy/4')
+  })
+
+  it('숙소(stay_voucher) → /stays/:id (2026-07-20 — 객실·날짜 예약 정규 상세)', () => {
+    expect(canonicalDetailPath({ id: 9, category: 'stay_voucher' })).toBe('/stays/9')
+    expect(canonicalDetailPath({ id: 9, deal_only: 0, category: 'stay_voucher' })).toBe('/stays/9')
   })
 
   it('레거시 voucher 카테고리도 공구로 인식', () => {

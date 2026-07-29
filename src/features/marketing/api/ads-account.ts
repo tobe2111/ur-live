@@ -73,7 +73,8 @@ export async function createAdsAccount(
   const phone = (input.phone || '').trim() || null
   if (!EMAIL_RE.test(email)) return { ok: false, status: 400, error: '올바른 이메일을 입력해주세요' }
   if (!company || company.length > 80) return { ok: false, status: 400, error: '회사(고객사) 이름을 입력해주세요' }
-  const pw = validatePasswordComplexity(input.password)
+  // 2026-07-10 대표 결정: 유어애즈 비번 정책 = 완화 모드(8자+ · 영문/숫자/특수 2종+) — 대문자 강제 해제.
+  const pw = validatePasswordComplexity(input.password, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   // 중복 이메일 사전 검사(인덱스가 최종 방어 — 경쟁 시 INSERT 실패).
   const dup = await DB.prepare('SELECT id FROM ad_accounts WHERE LOWER(email) = ?').bind(email).first<{ id: number }>().catch(() => null)
@@ -141,6 +142,44 @@ export async function unlockAdsAccount(DB: D1Database, id: number, code: string,
   return { ok: true }
 }
 
+// ── 📥 액세스 코드 요청 큐 (2026-07-27 — 가입→코드 대기 데드엔드 해소) ──────────
+//   신규 가입자가 코드를 받을 방법이 '연락처 문의'뿐이던 이탈 지점 → 원클릭 입장 요청 →
+//   어드민 승인 큐(/admin/ads-accounts)에서 승인하면 access_unlocked=1 (코드 입력 불필요).
+const _accessReqSchemaDone = new WeakSet<object>()
+export async function ensureAccessRequestSchema(DB: D1Database): Promise<void> {
+  if (_accessReqSchemaDone.has(DB)) return
+  _accessReqSchemaDone.add(DB)
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_access_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL UNIQUE,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT (datetime('now')),
+    decided_at DATETIME
+  )`).run().catch(() => null)
+}
+
+/** 입장 요청 등록(멱등) — 반환: unlocked(이미 해제) | created(신규 접수) | pending(이미 대기) | rejected(거절 이력 → 재요청 대기로 전환). */
+export async function requestAdsAccess(DB: D1Database, accountId: number, note?: string): Promise<'unlocked' | 'created' | 'pending'> {
+  await ensureAdsAccountSchema(DB); await ensureAccessRequestSchema(DB)
+  const acc = await getAdsAccount(DB, accountId)
+  if (acc && Number(acc.access_unlocked) === 1) return 'unlocked'
+  const ins = await DB.prepare('INSERT OR IGNORE INTO ad_access_requests (account_id, note) VALUES (?, ?)')
+    .bind(accountId, (note || '').slice(0, 300) || null).run().catch(() => null)
+  if (ins?.meta?.changes === 1) return 'created'
+  // 거절 이력이 있으면 재요청으로 되살림(대기중이면 no-op — status CAS).
+  const revived = await DB.prepare("UPDATE ad_access_requests SET status='pending', decided_at=NULL, created_at=datetime('now') WHERE account_id = ? AND status='rejected'")
+    .bind(accountId).run().catch(() => null)
+  return revived?.meta?.changes === 1 ? 'created' : 'pending'
+}
+
+/** 요청 상태 조회 — 없으면 null. */
+export async function getAdsAccessRequest(DB: D1Database, accountId: number): Promise<{ status: string; created_at: string } | null> {
+  await ensureAccessRequestSchema(DB)
+  return DB.prepare('SELECT status, created_at FROM ad_access_requests WHERE account_id = ?')
+    .bind(accountId).first<{ status: string; created_at: string }>().catch(() => null)
+}
+
 // ── 비밀번호 재설정(이메일 토큰) ─────────────────────────────────────────────
 const _resetSchemaDone = new WeakSet<object>()
 async function ensureResetSchema(DB: D1Database): Promise<void> {
@@ -185,12 +224,75 @@ export async function resetPasswordWithToken(DB: D1Database, token: string, newP
   const row = await DB.prepare("SELECT id, account_id FROM ad_password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')")
     .bind(tokenHash).first<{ id: number; account_id: number }>().catch(() => null)
   if (!row) return { ok: false, status: 400, error: '만료되었거나 이미 사용된 링크입니다. 다시 요청해주세요.' }
-  const pw = validatePasswordComplexity(newPassword)
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   const hash = await hashPassword(newPassword)
   await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, row.account_id).run().catch(() => null)
   await DB.prepare("UPDATE ad_password_resets SET used_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => null)
   return { ok: true }
+}
+
+// ── 🟡 카카오 로그인 (2026-07-27 대표 "/ads 도 카카오 로그인 가능하게") ────────
+//   유어애즈 독립 계정 유지 — 카카오는 *로그인 수단*일 뿐(유어딜 소비자 카카오 세션과 무관).
+//   매칭 규칙(플랫폼 관례 미러): ① kakao_id 일치 → 로그인 ② verified 이메일 일치 → 기존 계정에
+//   kakao_id 연결(미verified 이메일 takeover 차단 — 2026-05-31 감사 룰) ③ 없으면 신규 생성.
+const _kakaoColDone = new WeakSet<object>()
+async function ensureKakaoColumn(DB: D1Database): Promise<void> {
+  if (_kakaoColDone.has(DB)) return
+  _kakaoColDone.add(DB)
+  await DB.prepare('ALTER TABLE ad_accounts ADD COLUMN kakao_id TEXT').run().catch(() => null)
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_accounts_kakao ON ad_accounts(kakao_id) WHERE kakao_id IS NOT NULL').run().catch(() => null)
+}
+
+export interface KakaoAdsProfile { kakaoId: string; email: string | null; emailVerified: boolean; nickname: string | null }
+
+/** 카카오 프로필 → 유어애즈 계정 로그인/연결/생성. 반환 {account, created}. */
+export async function kakaoLoginAdsAccount(DB: D1Database, k: KakaoAdsProfile): Promise<{ ok: true; account: AdsAccount; created: boolean } | { ok: false; status: number; error: string }> {
+  await ensureAdsAccountSchema(DB)
+  await ensureKakaoColumn(DB)
+  const kid = String(k.kakaoId || '').trim()
+  if (!kid) return { ok: false, status: 400, error: '카카오 프로필을 확인하지 못했습니다' }
+  const cols = 'id, email, company_name, phone, status, access_unlocked'
+  // ① kakao_id 재로그인
+  let row = await DB.prepare(`SELECT ${cols} FROM ad_accounts WHERE kakao_id = ?`).bind(kid).first<AdsAccount>().catch(() => null)
+  // ② verified 같은 이메일 → 기존 이메일 계정에 카카오 연결. 이미 **다른** 카카오가 연결된 계정이면
+  //    로그인/연결/신규생성 전부 거부(그 이메일로 복구경로 진입도 차단 — 계정 탈취 여지 0).
+  if (!row && k.email && k.emailVerified) {
+    const byEmail = await DB.prepare(`SELECT ${cols}, kakao_id FROM ad_accounts WHERE LOWER(email) = ?`)
+      .bind(k.email.trim().toLowerCase()).first<AdsAccount & { kakao_id: string | null }>().catch(() => null)
+    if (byEmail?.kakao_id && byEmail.kakao_id !== kid) {
+      return { ok: false, status: 409, error: '이 이메일은 이미 다른 카카오 계정과 연결돼 있습니다 — 이메일 로그인을 이용해주세요' }
+    }
+    if (byEmail) {
+      await DB.prepare('UPDATE ad_accounts SET kakao_id = ? WHERE id = ? AND kakao_id IS NULL').bind(kid, byEmail.id).run().catch(() => null)
+      row = byEmail
+    }
+  }
+  // ③ 신규 생성 — 비번 없는 카카오 계정(무작위 해시 = 비번 로그인 불가, 카카오로만).
+  let created = false
+  if (!row) {
+    const email = k.email && k.emailVerified ? k.email.trim().toLowerCase() : `kakao${kid}@kakao.local`
+    const company = (k.nickname || '').trim().slice(0, 80) || '카카오 회원'
+    const randomPw = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hash = await hashPassword(randomPw)
+    try {
+      const r = await DB.prepare('INSERT INTO ad_accounts (email, password_hash, company_name, kakao_id) VALUES (?, ?, ?, ?)')
+        .bind(email, hash, company, kid).run()
+      const id = Number(r.meta?.last_row_id)
+      if (!id) return { ok: false, status: 500, error: '가입 처리 중 오류가 발생했습니다' }
+      row = { id, email, company_name: company, phone: null, status: 'active', access_unlocked: 0 }
+      created = true
+    } catch {
+      // UNIQUE 충돌(동시 요청 경쟁) — **내 kakao_id 로만** 재조회 자기치유(이메일 재조회는
+      //   다른 카카오가 연결된 계정으로 새는 탈취 경로라 금지).
+      row = await DB.prepare(`SELECT ${cols} FROM ad_accounts WHERE kakao_id = ?`)
+        .bind(kid).first<AdsAccount>().catch(() => null)
+      if (!row) return { ok: false, status: 409, error: '가입 처리 중 충돌이 발생했습니다 — 다시 시도해주세요' }
+    }
+  }
+  if (row.status && row.status !== 'active') return { ok: false, status: 403, error: '이용이 제한된 계정입니다' }
+  await DB.prepare("UPDATE ad_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => null)
+  return { ok: true, account: { ...row, access_unlocked: Number(row.access_unlocked) || 0 }, created }
 }
 
 export type MutateResult =
@@ -226,7 +328,20 @@ export async function changeAdsPassword(DB: D1Database, id: number, currentPassw
   if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
   const { valid } = await verifyPassword(currentPassword, row.password_hash)
   if (!valid) return { ok: false, status: 401, error: '현재 비밀번호가 올바르지 않습니다' }
-  const pw = validatePasswordComplexity(newPassword)
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
+  if (!pw.ok) return { ok: false, status: 400, error: pw.error }
+  const hash = await hashPassword(newPassword)
+  await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)
+  return { ok: true }
+}
+
+/** 어드민 강제 비밀번호 재설정 — 현재 비번 확인 없이 새 비번 세팅(운영자 콘솔 전용).
+ *  호출측(라우트)에서 requireAdmin 게이트 필수. 새 비번은 요청 바디로만 전달(레포에 하드코딩 금지). */
+export async function adminSetPassword(DB: D1Database, id: number, newPassword: string): Promise<PasswordResult> {
+  await ensureAdsAccountSchema(DB)
+  const row = await DB.prepare('SELECT id FROM ad_accounts WHERE id = ?').bind(id).first<{ id: number }>().catch(() => null)
+  if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
   if (!pw.ok) return { ok: false, status: 400, error: pw.error }
   const hash = await hashPassword(newPassword)
   await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)

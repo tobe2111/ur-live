@@ -1,7 +1,7 @@
 /**
  * RouteGuards — 로그인 보호 라우트
  *
- * 한국 (live.ur-team.com):
+ * 한국 (urdeal.kr):
  *   - localStorage 동기 체크만 (user_type + user_id)
  *   - Firebase 0, Zustand 0, isAuthReady 0, 타임아웃 0
  *
@@ -14,6 +14,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import BrandLoader from '@/components/brand/BrandLoader'
 import type { User as FirebaseUser } from 'firebase/auth'
 
 interface AuthWorldState {
@@ -73,6 +74,74 @@ function makeLoginUrl(pathname: string, search: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🔐 2026-07-04 [UNLOCK_LOADING] (P2 자가치유 — 대표 "다 해줘 이상적으로", platform-model §14-5):
+//   연결 셀러인데 seller_token 만료/부재(셀러는 refresh_token 미발급이 일반)면 곧장 /seller/login
+//   으로 튕기던 갭. 소비자 세션이 살아있으면 same-origin `POST /api/auth/reissue-role-tokens`
+//   (카카오 로그인과 동일 함수 issueLinkedRoleTokens)로 조용히 재발급 후 통과 — 재로그인 0회.
+//   ⚠️ 잠금 불변식 보존: isSellerLoggedIn/isDashboardTokenUsable 의 토큰-존재/exp 검사 로직은
+//   byte-불변(user_type 검사 추가 없음) — 실패 분기 뒤에 additive 복구 단계만 추가.
+//   연결 셀러가 아니면(재발급 결과 seller_token 없음) 기존과 동일하게 로그인으로.
+// ═══════════════════════════════════════════════════════════════════════════════
+function RoleTokenSelfHeal({ role, fallback, children }: {
+  role: 'seller' | 'agency'
+  fallback: React.ReactElement
+  children: React.ReactNode
+}) {
+  const [state, setState] = useState<'trying' | 'ok' | 'fail'>('trying')
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const r = await fetch('/api/auth/reissue-role-tokens', { method: 'POST', credentials: 'include' })
+        const d = await r.json().catch(() => null) as {
+          success?: boolean
+          data?: {
+            seller_token?: string
+            seller?: { id?: number; username?: string; business_name?: string; is_distributor?: number }
+            agency_token?: string
+            agency_refresh_token?: string
+            agency?: { id?: number; name?: string }
+          }
+        } | null
+        const data = d?.success ? d?.data : null
+        if (role === 'seller' && data?.seller_token) {
+          localStorage.setItem('seller_token', data.seller_token)
+          if (data.seller?.id != null) localStorage.setItem('seller_id', String(data.seller.id))
+          if (data.seller?.username) localStorage.setItem('seller_username', data.seller.username)
+          if (data.seller?.business_name) localStorage.setItem('seller_name', data.seller.business_name)
+          if (data.seller?.is_distributor) localStorage.setItem('is_distributor', '1')
+          if (alive) setState('ok')
+          return
+        }
+        if (role === 'agency' && data?.agency_token) {
+          localStorage.setItem('agency_token', data.agency_token)
+          if (data.agency_refresh_token) localStorage.setItem('agency_refresh_token', data.agency_refresh_token)
+          if (data.agency?.id != null) localStorage.setItem('agency_id', String(data.agency.id))
+          if (data.agency?.name) localStorage.setItem('agency_name', data.agency.name)
+          if (alive) setState('ok')
+          return
+        }
+      } catch { /* 네트워크 실패 → 기존 동작(로그인 이동) */ }
+      if (alive) setState('fail')
+    })()
+    return () => { alive = false }
+  }, [role])
+
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 통일): 1 RTT 동안 빈 화면(null) → 라이트 브랜드 로더.
+  //   목적지(셀러/에이전시 대시보드)는 라이트 고정 표면이라 forceLight + #F4F5F7 (worker placeholder 와 정합).
+  //   잠긴 토큰-존재 검사 로직은 불변 — 재발급 대기 프레임의 페인트만 변경.
+  if (state === 'trying') {
+    return (
+      <div style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
+  if (state === 'ok') return <>{children}</>
+  return fallback
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ProtectedRoute
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -96,7 +165,18 @@ export function ProtectedRoute({
     // 🔑 2026-07-02 (P1b): 존재만 X → 유효성(exp)까지. 만료+갱신불가면 흰화면 대신 로그인으로.
     const ok = isSellerLoggedIn()
     if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
-    if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
+    if (!ok) {
+      // 🔐 2026-07-04 (P2 자가치유): 소비자 세션이 살아있으면 로그인으로 보내기 전에
+      //   연결 셀러 토큰 재발급을 1회 시도(연결 셀러가 아니면 기존과 동일하게 로그인으로).
+      if (isUserLoggedIn()) {
+        return (
+          <RoleTokenSelfHeal role="seller" fallback={<Navigate to="/seller/login" state={{ from: location.pathname }} replace />}>
+            {children}
+          </RoleTokenSelfHeal>
+        )
+      }
+      return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
+    }
     return <>{children}</>
   }
 

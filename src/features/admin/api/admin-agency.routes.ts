@@ -109,6 +109,12 @@ app.post('/', async (c) => {
     VALUES (?, ?, ?, ?, ?)
   `).bind(name, contact_name, email, hash, phone || null).run()
 
+  // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+  //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+  //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+  await c.env.DB.prepare('UPDATE agencies SET commission_term_months = 24 WHERE id = ? AND commission_term_months IS NULL')
+    .bind(result.meta.last_row_id).run().catch(() => {})
+
   return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
 })
 

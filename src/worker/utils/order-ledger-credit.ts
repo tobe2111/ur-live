@@ -65,18 +65,36 @@ export async function creditSellerOrderToLedger(
 
   const rate = Number(order.commission_rate) // 플랫폼 take %
   const platformFee = Math.max(0, Math.round(total * rate / 100))
-  const sellerNet = Math.max(0, total - platformFee)
 
-  // 단일 균형 엔트리(공구와 동일 패턴): 유저 wallet 차감 = 셀러 receivable, fee_amount=수수료.
+  // 💸 2026-07-04 [INV-CB §3-D] promo owner-펀딩: 게이트 'owner' 일 때 이 주문의 핀 소개비
+  //   (affiliate_earnings 유효분)를 셀러 부담 fee 에 합산 — 추천인 딜 적립 재원을 주인 몫에서 충당.
+  //   기본 'platform'(미설정) = promoFee 0 → 현행 byte-동일. clamp: 셀러 net 음수 방지(fee-resolver
+  //   promo 가드와 동일 정신). 역전(reverseSellerOrderLedger)은 amount−fee_amount 기준이라 자동 대칭.
+  let promoFee = 0
+  try {
+    const src = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'promo_funding_source'")
+      .first<{ value: string }>().catch(() => null)
+    if (src?.value === 'owner') {
+      const s = await DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+          WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`,
+      ).bind(orderId).first<{ total: number }>().catch(() => null)
+      promoFee = Math.max(0, Math.min(Math.round(Number(s?.total) || 0), total - platformFee))
+    }
+  } catch { promoFee = 0 }
+
+  const sellerNet = Math.max(0, total - platformFee - promoFee)
+
+  // 단일 균형 엔트리(공구와 동일 패턴): 유저 wallet 차감 = 셀러 receivable, fee_amount=수수료(+promo).
   await recordLedger(DB, {
     event_type: 'order_paid',
     reference_id: ref,
     amount: total,                 // gross; 집계 net = amount − fee_amount
     debit_account: `user:${order.user_id ?? 0}`,
     credit_account: sellerAccount,
-    fee_amount: platformFee,
+    fee_amount: platformFee + promoFee,
     fee_account: 'platform:commission',
-    metadata: { kind: 'order_seller', order_id: orderId },
+    metadata: { kind: 'order_seller', order_id: orderId, ...(promoFee > 0 ? { promo_fee: promoFee } : {}) },
   })
   return { credited: sellerNet }
 }

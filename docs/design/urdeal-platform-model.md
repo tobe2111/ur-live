@@ -7,6 +7,23 @@
 
 ---
 
+## 🧭 한 줄 정의 (2026-07-08 대표 확정 — 제품 정체성)
+
+**유어딜 = 쇼핑 공구의 "벤더/에이전시 중개 모델"을 오프라인 매장 이용권으로 옮긴 것.**
+
+| | 쇼핑 공구 (기존) | 유어딜 (오프라인) |
+|---|---|---|
+| 조율자 | 벤더 | 에이전시 |
+| 조율 | 브랜드 ↔ 인플루언서 | 매장 ↔ 인플루언서 |
+| 판매물 | 상품 | **이용권** |
+| 수령 | 택배 | **QR 방문** |
+| 마진 | 브랜드 promo 를 벤더·인플 분배 | 매장 promo 를 에이전시·인플 분배 |
+| 플랫폼 몫 | — | 판·정산·QR·자동화 **인프라 5%** (중개 수수료 무관) |
+
+구조가 **1:1**. → **쇼핑 벤더·중개인들이 유어딜의 준비된 에이전시 풀**(구조 이해·인플 네트워크·엑셀 정산 고통 다 앎). 유어딜은 그들에게 "쇼핑으로 하던 걸 오프라인 이용권으로, 정산은 자동으로"를 제공. **경쟁이 아니라 이식.** → **쇼핑 상품 기능은 유어딜에 안 둔다**(그들과 같은 판이 되면 정체성 흐려짐; 오프라인 이용권 하나로 선명해야 넘어옴). 재원 원칙(유어딜 5%는 어떤 커미션도 안 건드림): §5-3 + `commission-funding-restructure.md` §확정 원칙.
+
+---
+
 ## 0. 설계 원칙 (전 서비스 공통)
 
 1. **역할이 표현을 정하고, 경제 엔진은 공통(stack)** — 한 사람이 여러 모자를 써도 각 행위(추천/판매/영입/구매)가 독립적으로 적립·정산된다.
@@ -21,7 +38,7 @@
 
 | 서비스 | 정체성 | 행위자 | 도메인 | 코드 경계 |
 |---|---|---|---|---|
-| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `live.ur-team.com` | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
+| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `urdeal.kr` (2026-07-20 이전, 구 `live.ur-team.com`=영구 301) | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
 | **🏭 도매몰** (유통스타트) | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 제조사·판매사·도매 어드민 | `utongstart.com` | `features/supply/**`, `pages/wholesale*`, `pages/supplier-dashboard` |
 | **📣 유어애즈** (마케팅) | 광고·자동입찰·부정클릭방지·통합실적 | 광고주(매장/셀러)·운영 | `/ads` | `features/marketing`, urads-* 문서 |
 
@@ -38,8 +55,8 @@
 | **일반 유저** | 회원가입 누구나 (`users`+handle, 링크샵 자동생성) | 딜 발견·구매, 친구 추천/초대 | 딜 적립·절약, 초대·추천 수익 | 핀 어필리에이트 **2%** · 초대 보상 **1,000딜**(첫 구매) |
 | **인플루언서** | 판매승인 셀러 `seller_type='influencer'` | 팔로워에 **추천**·매장 **영입** | 추천 클릭→구매 커미션, 영입 매장 매출 | 추천 2% · 매장영입 **1.5%**(성숙 T+7, 원천징수 후) |
 | **매장 업주** | 사업자 유저 `seller_type='store_owner'` | **본인 상품/이용권** 판매 | 판매액·현금 정산 | 판매 플랫폼 수수료 **3P 5%**(이용권/쇼핑), **1P 0%**(유어딜 직판) |
-| **에이전시** | `agencies` (B2B 조직) | 여러 매장 관리·영입·성장 | 관리 매장 GMV rollup, 영입 커미션 | 영입 가게 GMV **1%**(플랫폼분에서), **24개월** 한도, 실판매 시만 |
-| **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** + 충전 마진 |
+| **에이전시** | `agencies` (B2B 조직) | 매장-인플 **조율**(= 쇼핑 벤더의 오프라인판) | 관리 매장 GMV rollup, 조율 수수료 | 영입 가게 GMV **1%** (오늘 5%재원 → **8월 flip 시 매장 promo(조율 마진), 유어딜 5% 무관**), **24개월** 한도, 실판매 시만 |
+| **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** (충전 마진은 2026-07-18 충전 종료로 소멸) |
 
 > **능력 레이어 모델**: 유저 →(사업자등록·판매승인)→ 사업자 유저. 같은 `/u/{handle}`에 기능이 *레이어로 추가*(신분 교체 아님). `seller_type`은 `influencer | store_owner | both`.
 > **원천징수**: 사업소득 3.3% / 기타소득 8.8% (`tax-withholding.ts`) — 커미션 지급 시.
@@ -65,6 +82,8 @@
 | **숙소(stays)** | 날짜 캘린더 예약형 | `stays` | `/stays`, `/stays/:id` | reserve-before-charge |
 | **디지털** | 다운로드/코드형 (보관함 발급) | `digital` | `/my/digital` | — |
 | **선물(gifts)** | 교환권 선물하기 | `gifts` | `/gift/claim/:token` | — |
+| **체험 캠페인** | 무료 응모→공정추첨→**0원 체험권**(매장 자기부담) → QR 사용·성과 리포트 (2026-07-12, PR #499 draft) | `experience_campaigns` + `vouchers.is_experience=1` | `/experience` | **비정산** — 정산·커미션·5% 무관(원장 amount>0 게이트 우회) |
+| **상권 쿠폰** | B2G 영수증 페이백 — 참여점포 영수증 등록→검수→**무상 쿠폰**(예산 재원)→상권 내 자유 사용(사용 시점 매장 귀속)→매장 정산(수수료 0) (2026-07-13) | `district_campaigns/stores/receipts/coupons` — **병렬 엔티티(vouchers 무접촉·retrofit 금지, 대표 확정)** | `/district/:slug`, `/district/my` | **무상·비결제** — 딜/유어딜 5%/전금법 유상선불과 구조 분리. 만료=소멸 |
 | **경매/펀딩/타임딜** | 보조 커머스 메커니즘 | `auction`/`funding`/`timedeal` | — | — |
 
 > ⚠️ **종류 판별 SSOT**: `deal_only===1`(교환권) + `isVoucherCategory(category)`(이용권). `group_buy_status`로 종류 판별 금지(수명주기 전용).
@@ -75,26 +94,56 @@
 ## 4. 표면(라우트) 지도 — 행위자별
 
 ### 소비자 (다크/화이트 테마)
-- **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog`
+- **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **링크샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(지갑) · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
+- **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
+- **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- 🏪 **2026-07-19 대표 확정 — 셀러 대시보드 = 순수 '매장 운영 콘솔'** (`SELLER_STORE_ONLY_MODE`, 가역):
+  온라인 상품 관리(`/seller/products`)·도매 소싱(`/seller/supply`) nav 숨김(전 셀러 타입). **상품(물건)
+  판매 표면 = 링크샵(`/u/{handle}`) 일원화** — nav 최상단 '내 링크샵' 진입. 대시보드 핵심 동선 =
+  이용권 등록/관리 · QR 스캔 · 정산 · 리뷰 · 매장 통계(심플모드 SellerSimpleNav 와 정합). 전환퍼널
+  (시청자→주문, 라이브 잔재)은 홈에서 숨김. 라우트/API/데이터 보존 — 플래그 false 로 즉시 복원.
+- **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
 ### 에이전시 / 운영 / 도매
 - `/agency/*`(관리·영입·정산) · `/admin/*`(운영 콘솔) · `/wholesale/*`·`/supplier/*`(도매)
+- 어드민 신규: `/admin/district-coupons`(상권 쿠폰 — 캠페인·매장 PIN 일괄·영수증 검수·정산 CSV)
 
 ---
 
 ## 5. 경제 엔진 (Money Flows) — 전부 어드민 조정 기본값
 
 ### 5-1. 딜포인트
-- **충전**: 1원 = 1딜 (수수료 없음). 고액 패키지(5/10/20만) 권장 — PG 수수료(~2.5%) 흡수 위해 결제 횟수↓.
+- **~~충전~~ 종료** (2026-07-18 대표 확정 "충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거):
+  딜 = **활동 적립 전용 리워드 통화**(초대·추천 커미션·리뷰·이벤트·상권 방문 리워드). 유상 충전 진입 전부 게이트
+  (`TOPUP_DISABLED`, shared/feature-flags — 가역) + 서버 `/api/points/charge/init` 403. 기보유 유상 딜은 사용·환급 불변,
+  `/charge/confirm` 은 진행중 결제 완결 위해 유지. 가치 앵커는 그대로 **1딜 = 1원**.
 - **사용**: 후원·상품결제·이용권 구매 시 즉시 차감 (`adjustUserPoints` CAS guardBalance).
 - **최소 후원**: 500딜 · **후원 수수료**: 15%.
+- **유상/무상 이중 버킷** (2026-07-05, 약관 강제 — SSOT `worker/utils/point-buckets.ts`):
+  `user_points.balance`=총액 · `free_balance`=무상(가입/초대/광고/리뷰/이벤트/어드민 선물 등 리워드) · 유상=차액(파생).
+  차감은 전 경로 **무상 우선 소진**, **현금 환급(출금)은 유상 한도**(무상 딜 인출 불가 — 전금법 유상 잔액 산출 근거),
+  환불은 원장(`point_transactions.free_delta`) 역산으로 **원 버킷 대칭 복원**. 커미션성 소득(어필리에이트/추천 수익)은 유상.
+- **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
+  지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
+  +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
+- **약관 동의 로그** (2026-07-05, 두 체계 역할 분담 — ⚠️ 유어딜 소비자 서비스 전용, 도매몰/유어애즈는 각자 약관 별개):
+  **소비자(유저)** = 간주 동의(차단 UI 없음, 대표 확정 "자연스럽게") — LoginPage 카카오 버튼 아래 "로그인하면 이용약관·개인정보
+  동의" 고지(약관 제5조) + **신규 가입(첫 로그인) 시점에 1회** `terms_agreements`(SSOT `worker/utils/terms-agreements.ts`, 버전
+  `shared/constants/terms-versions.ts`, UNIQUE 멱등) 서버 기록(kakao.routes isNewUser). 이메일 가입은 체크박스 → `/users/init` 실저장.
+  `/api/terms/status·agree` 는 향후 개정 재동의(비차단 배너)용 대기 인프라. **가입 시점(셀러/에이전시)** = 정본 약관 체계
+  `terms_consents`(SSOT `worker/utils/terms-consent.ts` + `TermsConsentBox`) — 셀러 `register-from-user`·에이전시 register 2종
+  서버 400 강제(에이전시는 핵심조항 제4·5·9·10조 개별 동의).
+- **유입 소스 어트리뷰션** (2026-07-05 — SSOT `worker/utils/acquisition.ts` + `lib/acquisition.ts`): 시설물 QR/광고 URL 규격
+  `/local/{지역코드}?src={소스}`(소문자·숫자·하이픈, UTM 은 utm_source 흡수). 클라 first-touch 30일 고정 →
+  `acquisition_landings`(랜딩) → 로그인 claim `user_acquisition`(UNIQUE user_id=가입 귀속) → 첫 구매 스냅샷.
+  소스별 랜딩→가입→첫구매 퍼널은 어드민 상권 리포트(`/admin/district-report`)에 표시 + 시설물 QR 생성기 내장.
 
 ### 5-2. 판매 정산 (사업자 유저)
 - **플랫폼 수수료**: **3P(남의 상품, 이용권+쇼핑) 5%** / **1P(유어딜 직판) 0%** (`fee-resolver.ts` SSOT, `product-ownership-model.md`).
@@ -104,13 +153,26 @@
 ### 5-3. 성장 커미션 (stack — 동시 적립)
 | 커미션 | 대상 | 기본율 | 조건/성숙 | 역전 |
 |---|---|---|---|---|
-| **어필리에이트(추천/핀)** | 추천한 유저·인플루언서 | 2% (CAC라 낮춤, 0 가능) | 주문 confirm, order_id 멱등 | 환불 시 clawback |
-| **매장영입(인플루언서)** | 매장 영입한 크리에이터 | 1.5% | 매 결제, T+7 성숙, 원천징수 | `reverseInfluencerStoreIntroOnRefund` |
-| **매장영입(에이전시)** | 영입 에이전시 | 1% (플랫폼 5%에서) | 실판매 시만, 24개월 한도 | 대칭 역전 |
+| **어필리에이트(추천/핀)** | 추천한 유저·인플루언서 | 2% (CAC라 낮춤, 0 가능) · **promo 재원(5% 밖, flip)** | 주문 confirm, order_id 멱등 | 환불 시 clawback |
+| **매장영입(인플루언서)** | 매장 영입한 크리에이터 | 1.5% · **promo 재원(5% 밖, flip)** | 매 결제, T+7 성숙, 원천징수 | `reverseInfluencerStoreIntroOnRefund` |
+| **매장영입(에이전시)** | 영입 에이전시 | 1% (오늘 5% → **flip 시 매장 promo(조율 마진)**, 5% 무관) | 실판매 시만, 24개월 한도 | 대칭 역전 |
 | **공급자(도매)** | 공급 상품 공급자 | 공급가 | 즉시(D2), order_id 멱등 | `reverseSupplierOnRefund` |
 | **초대 보상** | 초대한 유저 | 1,000딜 | 피초대자 첫 구매, UNIQUE claim | — |
 
 > **머니 룰**(코드 작성 시 필수): ① Claim-before-credit(CAS 선점) ② 적립-역전 대칭(같은 commit) ③ 멱등=UNIQUE+INSERT OR IGNORE ④ status 플립≠취소(환불 경유). 자세히는 CLAUDE.md "💸 머니/정합성".
+>
+> 💸 **[INV-CB] 커미션 예산 캡 (2026-07-04 대표 확정 — "수수료율 동결, 재원 구조 수정")**: 위 커미션 중
+> **플랫폼 부담 비례(%) 커미션**(어필리에이트·멀티티어 추천트리·크리에이터 영입·에이전시 영입)의 총합은
+> 3P 주문당 **예산 = 플랫폼 수수료 − PG 준비금(`pg_reserve_pct`)** 을 초과할 수 없다(초과 시 비례 축소) —
+> 어떤 3P 거래도 커미션 때문에 플랫폼 마이너스가 구조적으로 불가. 오케스트레이터 `order-commissions.ts`
+> `creditOrderCommissions`(confirm/webhook 공용 진입점) 가 단일 배분자이고, 우회는 `check-commission-budget` 가드가 차단.
+> 정액 보상(초대 1,000딜·에이전시 signup ₩30,000)은 거래 캡 밖 → **월 예산 캡**(`invite_reward_monthly_budget_krw` /
+> `agency_signup_bonus_monthly_budget_krw`). 어필리에이트 재원은 `promo_funding_source`('platform' 기본 / 'owner')
+> 스위치로 **주인(셀러) 부담(promo 슬라이스)** 이전 가능 — 'owner' 면 추천인 딜 적립은 유지하되 같은 금액을
+> 주인 정산에서 차감(이용권=사용 시 원장 debit, 쇼핑=원장 fee 합산, 환불 역전 대칭). 게이트
+> `commission_budget_enabled` 기본 OFF(=현행) — staging 실결제 검증 후 활성. 설계: `commission-funding-restructure.md`.
+>
+> ⭐ **확정 원칙 (2026-07-08 대표 확정 — 8월 promo flip 방향)**: **유어딜 5% 는 *어떤* 커미션에도 안 쓴다(순수 인프라비).** 위 stack 전부 — 판매 커미션(어필리에이트·멀티티어·인플 영입 1.5%·인플 20% share) **그리고 에이전시(1%·30% share)까지** — **매장 promo(5% 밖, `promo_funding_source=owner`) 재원**으로 이전. 에이전시는 유어딜이 커미션을 주는 게 아니라 **매장-인플 조율로 매장 promo 마진에서 스스로 가져가는 독립 사업자**(= 쇼핑 벤더 모델의 오프라인판). 누가 얼마를 받든 **유어딜 5% 는 불변**(원장 `platform:revenue`=5% 전액, 성장 커미션 debit 0; PG 는 5% 안 흡수). 오늘 owner 스위치는 어필리에이트만 커버 → 8월 flip 이 나머지 **전 축(에이전시 포함)** 을 owner 로 확장 + 불변식 #44 신설(예외 없음). 상세·flip 체크리스트: `commission-funding-restructure.md` §확정 원칙. **지금은 문서 박제만 — 코드 무변경.**
 
 ### 5-4. 결제 (Toss V2)
 - 모든 confirm은 `confirmTossPayment()` 게이트웨이 경유(직접 fetch 금지). circuit breaker·idempotency·금액검증 자동.
@@ -171,7 +233,7 @@
 
 | 단계 | 내용 | 리스크 |
 |---|---|---|
-| **1** | 매장 링크샵 하단 "추천" opt-in 부활(`CuratorPinsSection` 재연결) + 핀 담기 토스트 안내 | 낮음 |
+| **1** | ✅ 완료(2026-07-04) — 매장 링크샵 하단 "추천" opt-in 부활 + 핀 담기 토스트 + 오너 토글(기본 off) | 낮음 |
 | **2** | 링크샵 모드 자동 전환(본인 상품 유무 → 큐레이터↔스토어프론트) | 중 |
 | **3** | 에이전시 매출 rollup 대시보드(관리 매장 GMV/정산 집계) | 중 |
 | **4** | 부류별 온보딩 분기("추천할래요/팔래요" 초기 모드 힌트) | 낮음 |
@@ -231,7 +293,7 @@
 
 ### 14-5. 알려진 취약점 (auth-product-registration-audit)
 - **P1(부분수정 2026-07-02)**: 소비자앱 체류 중 seller_token 미갱신 → App 전역 refresh 로 보강. 게이트 exp 검사 추가.
-- **P2(미해결)**: 연결 셀러인데 seller_token 미발급/만료+무refresh → `/seller/login` 튕김. **자가치유 재발급 엔드포인트**(소비자 세션 → `issueLinkedRoleTokens` 재노출) 필요 — 소비자 id 해석(firebaseUid↔users.id) + staging 검증 필요.
+- **P2(✅ 해결 2026-07-04)**: 연결 셀러인데 seller_token 만료/부재 → `/seller/login` 튕김 → **자가치유 구현**: `POST /api/auth/reissue-role-tokens`(requireAuth 소비자 세션 → `issueLinkedRoleTokens` 재사용, rate limit 10/분) + RouteGuards `RoleTokenSelfHeal`(게이트 실패 시 소비자 세션 있으면 1회 재발급 후 통과, 실패 시 기존과 동일 로그인 이동). 잠금 불변식(토큰 존재/exp 검사) byte-불변.
 - **UX**: 링크샵(모바일) → 상품등록 = 셀러 대시보드 풀폼 점프. 경량 바텀시트 등록 미구현.
 
 ## 15. 결제·정산 시스템

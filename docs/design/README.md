@@ -24,6 +24,11 @@
 
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
+| **🌏 해외판(GLOBAL) 실행 준비 상태** — "켜려면 실제로 뭐가 필요한가" 실측 체크리스트 | 2026-07-28 | 🅿️ 파킹(결정 대기) — 배포구조는 이미 해결(런타임 hostname 판정, 배포 1개+도메인 N개). **현 상태로 켜면 사고**: Stripe 가 주문 확정만 하고 이행(재고·발급·정산·알림) 0. 대표 결정 3건(무엇을 팔까·통화정책·유료전환) 후 착수. `ur-live-global` 은 폐기 확정 — **다시 만들지 말 것** | [global-launch-readiness.md](./global-launch-readiness.md) |
+| **🔗 픽업 공구 + 도매몰 연계**(대표 원문 아카이브 + 코드 대조 검증. 모드 A/B/C · 역할분담 · 정산 분리) | 2026-07-29 | 🟡 설계 · **대표 확인 A1 대기**(§4 HTTP 연계 폐기 제안 — 같은 D1 이라 불필요·역효과). 모드 C(상권 공동몰)는 `wholesale_malls` 멀티테넌트로 **신규 개발 거의 0 사실 확인** | [pickup-groupbuy-wholesale-link.md](./pickup-groupbuy-wholesale-link.md) |
+| **🏪 매장 상품 픽업 공구 — 설계 판정**(매장이 자기 물리 상품을 공구로 팔고 매장에서 픽업. 재사용 범위·gb_mode 파손 지점·픽업확인·정산 판정) | 2026-07-28 | 🟡 조사·판정 완료(코드 0) — **대표 결정 D1(미수령 손실 귀속) 대기 = 블로킹**. 결론: 쇼핑 재오픈 아님, **이용권 레일 위 하위종**(`stay_voucher` 선례). 5%·promo 레일은 무변경 성립 | [store-pickup-group-buy.md](./store-pickup-group-buy.md) |
+| **💸 벤더 커미션 Pass-through 분할**(소속 여부 자동분기 A/B + 딜단위 per-promo, order-commissions.ts 위에 얹기) | 2026-07-08 | 🅿️ 설계/구현 파킹 — 실벤더 1곳 이주 의사 시 그 벤더 분배방식에 맞춰 착수(단독 세션+staging). 규모 ≈10~14일 | [vendor-commission-passthrough.md](./vendor-commission-passthrough.md) |
+| **📝 블로그 상세 — 3단 레이아웃**(좌 목차 + 중앙 본문 + 우 추천글, 아싸뷰 스타일) | 2026-07-02 | ✅ 구현 완료 | [blog-detail-3col.md](./blog-detail-3col.md) |
 | **📝 블로그 UI — 토스 테크 스타일**(히어로 캐러셀 + 전체 아티클 리스트 + 페이지네이션) | 2026-07-01 | ✅ 구현 완료 (BlogListPage 전면 개편) | [blog-toss-style.md](./blog-toss-style.md) |
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ✅ 구현 완료 (단, 홈은 2026-06-20 동네딜 지도로 전환됨 — 사이드바는 라이브 시절 잔재, 라이브 중단으로 사실상 무의미) | [home-sidebar.md](./home-sidebar.md) |
 | Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ✅ BottomNav ➕ 시트로 구현(역할별 만들기 메뉴) | [quick-action-fab.md](./quick-action-fab.md) |
@@ -51,3 +56,5 @@
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
 | **🏭 도매몰 통합 셸 — 카탈로그↔판매사↔제조사 한 제품화** | 2026-06-29 | ⏳ 제안 / 착수 승인 대기 (Phase 1 권장) | [wholesale-unified-shell.md](./wholesale-unified-shell.md) |
 | **💸 정산 정합(소비자 셀러) — 3중 회계 통합 + 지급 SSOT** (아키텍처) | 2026-07-01 | 🟡 수수료 5% 통일 ✅ 배포 / 머니-이동(payout 단일화·정산신청 폐기) 대표 정책 결정 + staging 대기 | [settlement-reconciliation.md](./settlement-reconciliation.md) |
+| **🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 3레인(자동/레지스트리/수동)** | 2026-07-21 | 🟢 **1단계+레인 A(지역검색+이메일 크롤)+B/C(명부 임포트) 구현 완료** / 웹문서 보충·API 피드는 후속 | [partner-company-collection.md](./partner-company-collection.md) |
+| **🎯 전환추적(진짜 ROAS) — QR 실방문 증명 통합** | 2026-07-21 | 🟡 설계 SSOT / **착수 10월**(8월 실판매 데이터로 귀속 규칙 캘리브레이션 후) · 픽셀·조인 파이프라인 선설계 | [conversion-tracking-roas.md](./conversion-tracking-roas.md) |

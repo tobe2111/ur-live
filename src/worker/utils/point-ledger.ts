@@ -25,6 +25,7 @@
 
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types'
 import { ensurePointsTables } from './ensure-tables'
+import { freeCreditUpsertStatement } from './point-buckets'
 
 export interface PointAdjustInput {
   userId: string | number
@@ -38,6 +39,12 @@ export interface PointAdjustInput {
   bumpTotalCharged?: boolean
   /** 차감(delta<0) 시 balance >= |delta| 일 때만 차감 (원자 CAS 가드). 부족하면 ok:false. */
   guardBalance?: boolean
+  /**
+   * 💸 2026-07-05 유상/무상 버킷 (point-buckets.ts SSOT):
+   *  - 적립: 'free' 면 free_balance 도 동시 증가 (프로모션 리워드). 미지정 = paid (충전/커미션 소득 — 기존 동작).
+   *  - 차감: 버킷 무관 항상 free 우선 소진 (free_balance = MAX(0, free - |delta|)) — 약관 강제.
+   */
+  bucket?: 'paid' | 'free'
 }
 
 export type PointAdjustResult =
@@ -80,15 +87,19 @@ export function pointCreditUpsertStatement(
  */
 export async function recordPointTransaction(
   DB: D1Database,
-  input: Pick<PointAdjustInput, 'userId' | 'delta' | 'type' | 'description' | 'orderId'>,
+  input: Pick<PointAdjustInput, 'userId' | 'delta' | 'type' | 'description' | 'orderId'> & {
+    /** 이 거래가 무상 버킷에 적용된 부분 (적립 +, 차감 -). 환불 대칭 복원(free_delta 역산)의 근거. */
+    freeDelta?: number
+  },
 ): Promise<boolean> {
   const n = normalize({ ...input, type: input.type })
   if (!n || !input.type) return false
+  const freeDelta = Math.round(Number(input.freeDelta ?? 0)) || 0
   try {
     await ensurePointsTables(DB)
     await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, balance_after, description, order_id)
-       VALUES (?, ?, ?, COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0), ?, ?)`,
+      `INSERT INTO point_transactions (user_id, type, amount, balance_after, description, order_id, free_delta)
+       VALUES (?, ?, ?, COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0), ?, ?, ?)`,
     ).bind(
       n.uid,
       String(input.type).slice(0, 50),
@@ -96,6 +107,7 @@ export async function recordPointTransaction(
       n.uid,
       input.description ? String(input.description).slice(0, 300) : null,
       input.orderId != null ? String(input.orderId) : null,
+      freeDelta,
     ).run()
     return true
   } catch {
@@ -117,24 +129,57 @@ export async function adjustUserPoints(
   if (!n || !input.type) return { ok: false, reason: 'invalid' }
   try {
     await ensurePointsTables(DB)
+    let freeDelta = 0
     if (n.delta > 0) {
-      await pointCreditUpsertStatement(DB, { userId: n.uid, delta: n.delta, bumpTotalCharged: input.bumpTotalCharged }).run()
+      if (input.bucket === 'free') {
+        await freeCreditUpsertStatement(DB, { userId: n.uid, amount: n.delta, bumpTotalCharged: input.bumpTotalCharged }).run()
+        freeDelta = n.delta
+      } else {
+        await pointCreditUpsertStatement(DB, { userId: n.uid, delta: n.delta, bumpTotalCharged: input.bumpTotalCharged }).run()
+      }
     } else if (input.guardBalance) {
       const abs = Math.abs(n.delta)
+      // 💸 무상 우선 차감 — 사전 free 조회는 원장 free_delta 기록용 (잔액 정합은 아래 원자 UPDATE 가 보장).
+      const freeBefore = await getFreeBefore(DB, n.uid)
       const r = await DB.prepare(
-        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now')
+        `UPDATE user_points SET balance = balance - ?,
+           free_balance = MAX(0, COALESCE(free_balance, 0) - ?),
+           updated_at = datetime('now')
          WHERE user_id = ? AND balance >= ?`,
-      ).bind(abs, n.uid, abs).run()
+      ).bind(abs, abs, n.uid, abs).run()
       if (((r as { meta?: { changes?: number } })?.meta?.changes ?? 0) === 0) {
         return { ok: false, reason: 'insufficient' }
       }
+      freeDelta = -Math.min(freeBefore, abs)
     } else {
-      await pointCreditUpsertStatement(DB, { userId: n.uid, delta: n.delta }).run()
+      const abs = Math.abs(n.delta)
+      const freeBefore = await getFreeBefore(DB, n.uid)
+      await DB.prepare(
+        `INSERT INTO user_points (user_id, balance)
+         VALUES (?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           balance = balance + excluded.balance,
+           free_balance = MAX(0, COALESCE(free_balance, 0) - ?),
+           updated_at = datetime('now')`,
+      ).bind(n.uid, n.delta, abs).run()
+      freeDelta = -Math.min(freeBefore, abs)
     }
-    await recordPointTransaction(DB, input) // fail-soft
+    await recordPointTransaction(DB, { ...input, freeDelta }) // fail-soft
     return { ok: true }
   } catch {
     return { ok: false, reason: 'error' }
+  }
+}
+
+/** 차감 직전 무상 잔액 (원장 split 기록용 — 행/컬럼 부재 → 0). */
+async function getFreeBefore(DB: D1Database, uid: string): Promise<number> {
+  try {
+    const row = await DB.prepare('SELECT COALESCE(free_balance, 0) AS fb FROM user_points WHERE user_id = ?')
+      .bind(uid).first<{ fb: number }>()
+    const fb = Number(row?.fb ?? 0)
+    return Number.isFinite(fb) && fb > 0 ? fb : 0
+  } catch {
+    return 0
   }
 }
 
@@ -155,8 +200,12 @@ export async function zeroOutUserPoints(
     const row = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(uid).first<{ balance: number }>().catch(() => null)
     const bal = Number(row?.balance ?? 0)
-    await DB.prepare("UPDATE user_points SET balance = 0, updated_at = datetime('now') WHERE user_id = ?")
-      .bind(uid).run()
+    await DB.prepare("UPDATE user_points SET balance = 0, free_balance = 0, updated_at = datetime('now') WHERE user_id = ?")
+      .bind(uid).run().catch(async () => {
+        // free_balance 컬럼 부재 레거시 환경 폴백
+        await DB.prepare("UPDATE user_points SET balance = 0, updated_at = datetime('now') WHERE user_id = ?")
+          .bind(uid).run()
+      })
     if (bal !== 0 && Number.isFinite(bal)) {
       await recordPointTransaction(DB, { userId: uid, delta: -bal, type, description })
     }

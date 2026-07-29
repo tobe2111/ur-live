@@ -16,6 +16,13 @@ import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
+const _expColEnsured = new WeakSet<object>()
+async function ensureIsExperienceColumn(DB: D1Database): Promise<void> {
+  if (_expColEnsured.has(DB as unknown as object)) return
+  try { await DB.prepare("ALTER TABLE vouchers ADD COLUMN is_experience INTEGER DEFAULT 0").run() } catch { /* exists */ }
+  _expColEnsured.add(DB as unknown as object)
+}
+
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -43,8 +50,27 @@ export async function handleAutoSettlement(env: Env) {
     //   (이전 'used 7일 롤링' 대체.) cutoff = 정산 도래한 가장 최근 주 일요일까지의 상한(UTC).
     //   used_at < cutoff 만 정산. cron 이 매일 03:00 KST 돌므로 각 주는 그 차주 목요일 첫 실행에 정산(멱등).
     const settlementCutoff = weeklySettlementCutoffUtc(Date.now());
+
+    // 💸 2026-07-08 (머니 감사 Guard 2 근본수정 — 안①, 기본 OFF 게이트): 이용권 정산이 두 레일
+    //   (restaurant_settlements Rail A ↔ ledger/payouts Rail B)에 같은 매출을 이중 적재하는 것을 원천 차단.
+    //   ON 이면 이미 원장(Rail B, event_type='voucher_used')에 booking 된 voucher 를 Rail A 생성에서 skip
+    //   → 단일 레일(원장→payouts) 수렴(settlement-reconciliation.md §4.1·Severe 3). 기본 OFF = 현행 byte-불변.
+    //   ⚠️ 라이브 정산이라 flip(ON) 전 staging 실검증 + '어느 레일이 실제 지급에 쓰이는지' 확인 필수.
+    let skipLedgered = false;
+    try {
+      const g = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'settlement_skip_ledgered'").first<{ value: string }>();
+      skipLedgered = g?.value === 'true';
+    } catch { /* 키 없으면 OFF(현행) */ }
+    const ledgerSkipClause = skipLedgered
+      ? "AND NOT EXISTS (SELECT 1 FROM ledger_entries le WHERE le.reference_id = 'voucher:' || v.id AND le.event_type = 'voucher_used')"
+      : '';
+
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
+    // 🛡️ 전수조사 fix: 이 SELECT 가 참조하는 vouchers.is_experience 는 번호 마이그레이션이 없어
+    //   (repair-schema/helpers ensure 로만 추가) 극단적 순서에서 'no such column' 으로 정산 회차
+    //   전체가 skip 될 수 있음 → cron 이 스스로 멱등 보증(WeakSet 메모, 실패 무해).
+    await ensureIsExperienceColumn(DB)
     const usedVouchers = await DB.prepare(`
       SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
              COALESCE(p.commission_rate, ?) as commission_rate
@@ -54,7 +80,14 @@ export async function handleAutoSettlement(env: Env) {
         AND v.used_at < ?
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
+        AND COALESCE(v.is_experience, 0) = 0
+        ${ledgerSkipClause}
     `).bind(platformRate, settlementCutoff).all();
+    // 🎁 2026-07-12 (체험 캠페인 트랙 WP-A#4 — trial-campaign-track-2026-07.md): 0원 체험권은
+    //   매장 자기부담 무상제공이라 정산 대상 아님. applied_price=0 은 위 매출계산(:99)에서 정가로
+    //   폴백되므로 **SELECT 대상에서 구조적으로 제외**(voucher_disputes 제외와 동일 패턴 — 금액/분배
+    //   계산식 무변경). is_experience 마킹은 발급 시점(experience-voucher.ts)에만 세팅. 캠페인
+    //   미개설 시 이 컬럼은 항상 0/NULL → 현행 byte-불변.
 
     if (!usedVouchers.results?.length) return;
 

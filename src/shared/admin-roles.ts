@@ -22,12 +22,20 @@ export type AdminRole = 'super' | 'admin' | 'ops' | 'cs' | 'finance' | 'viewer' 
 
 export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance', 'viewer', 'wholesale'];
 
-/** admins.role 원시값 → 정규화. 미지/레거시는 super(전권) — 기존 계정 보호(역호환). */
+/**
+ * admins.role 원시값 → 정규화.
+ * 🔐 2026-07-12 (어드민 RBAC 감사 G): fail-OPEN 제거.
+ *   - 빈값/NULL(role 컬럼 이전 원조 관리자) → super 유지(레거시 보호 — 락아웃 방지).
+ *   - 알려진 역할 → 그대로.
+ *   - 미지/오타/손상된 non-empty 값 → viewer(최소권한, fail-CLOSED). 기존엔 이 경로도 super 라
+ *     JWT 클레임/DB 의 손상·미지 role 문자열이 전권을 획득할 수 있었음.
+ */
 export function normalizeAdminRole(raw: string | null | undefined): AdminRole {
   const r = String(raw || '').toLowerCase().trim();
+  if (r === '') return 'super';
   if (r === 'super_admin' || r === 'super') return 'super';
   if (r === 'admin' || r === 'ops' || r === 'cs' || r === 'finance' || r === 'viewer' || r === 'wholesale') return r as AdminRole;
-  return 'super';
+  return 'viewer';
 }
 
 /** 슈퍼 전용 영역(읽기·쓰기 모두 차단) — 계정관리(/admins) / 감사로그(/audit-logs).
@@ -112,7 +120,7 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
   { pattern: /\/gift-deal(?:$|[/?])/, allow: ['finance'] },                    // 딜 지급(머니 발행) — cs 차단
   { pattern: /\/tools\/settlements\/process(?:$|[/?])/, allow: ['finance'] },  // 정산 일괄 처리 — ops 차단
   { pattern: /\/tools\/settings(?:$|[/?])/, allow: ['finance'] },              // 플랫폼 설정(수수료 기본값 등) — ops 차단
-  { pattern: /\/sellers\/[^/]+\/(?:donation-commission|commission)(?:$|[/?])/, allow: ['finance'] }, // 셀러 수수료율 — ops 차단
+  { pattern: /\/sellers\/[^/]+\/(?:donation-commission|commission(?:-settings)?)(?:$|[/?])/, allow: ['finance'] }, // 셀러 수수료율/영입보너스(commission-settings 포함) — ops 차단(2026-07-12 감사 E: -settings 미매칭 갭 수리)
 ];
 
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */

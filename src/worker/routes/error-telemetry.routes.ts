@@ -13,6 +13,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { rateLimit } from '../middleware/rate-limit'
+import { requireAdmin } from '../middleware/auth'
 import { intParam } from '@/shared/pagination'
 
 export const errorTelemetryRoutes = new Hono<{ Bindings: Env }>()
@@ -62,22 +63,10 @@ errorTelemetryRoutes.post('/api/_errors/log', async (c) => {
   }
 })
 
-errorTelemetryRoutes.get('/api/_errors/recent', async (c) => {
-  // 어드민만 — JWT 검증.
-  const auth = c.req.header('Authorization') || ''
-  const token = auth.replace(/^Bearer\s+/i, '')
-  if (!token) return c.json({ success: false, error: 'auth required' }, 401)
-
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(token, c.env.JWT_SECRET || '', 'HS256') as { role?: string; user_type?: string }
-    if (payload.role !== 'admin' && payload.user_type !== 'admin') {
-      return c.json({ success: false, error: 'admin only' }, 403)
-    }
-  } catch {
-    return c.json({ success: false, error: 'invalid token' }, 401)
-  }
-
+// 어드민만 — 표준 미들웨어 사용. (이전 수제 JWT 검증은 `payload.role==='admin'`/`user_type==='admin'`
+// 클레임을 기대했는데, 실제 어드민 토큰은 `type:'admin'` + `role:'super'|'super_admin'|…`(서브롤)이라
+// 정상 어드민도 항상 403 — /admin/errors 대시보드가 로드 불가였음.)
+errorTelemetryRoutes.get('/api/_errors/recent', requireAdmin(), async (c) => {
   const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '1')), 168)
   const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 100)), 1000)
 

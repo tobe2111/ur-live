@@ -13,10 +13,10 @@ export default function OnboardingChecklist({ stats, hasBank }: { stats: Dashboa
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_onboarding_done') === '1')
   if (dismissed) return null
 
+  // 🗑️ 2026-07-07 라이브커머스 제거: '첫 라이브 방송' 온보딩 스텝 삭제.
   const steps = [
     { key: 'product', done: (stats.totalProducts ?? 0) > 0, label: t('seller.onboarding.addProduct', '첫 상품 등록'), path: '/seller/products/new', icon: Package },
     { key: 'bank', done: hasBank, label: t('seller.onboarding.bankAccount', '정산 계좌 등록'), path: '/seller/profile', icon: CreditCard },
-    { key: 'live', done: (stats.totalStreams ?? 0) > 0, label: t('seller.onboarding.firstLive', '첫 라이브 방송'), path: '/seller/live-broadcast', icon: Radio },
     { key: 'order', done: (stats.totalOrders ?? 0) > 0, label: t('seller.onboarding.firstOrder', '첫 주문 받기'), path: '#', icon: ShoppingBag },
   ]
   const doneCount = steps.filter(s => s.done).length

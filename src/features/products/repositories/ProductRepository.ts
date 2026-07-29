@@ -141,9 +141,12 @@ export class ProductRepository {
     
     if (filter.search) {
       // 🛡️ 2026-04-22: LIKE wildcard escape — %, _ 가 user input 에 있을 때 정확 매칭
+      // 🔎 2026-07-20 (대표 — 검색 커버리지): 상품명/설명 외 매장명(restaurant_name)도 매칭 →
+      //   "스타벅스 강남"·"○○식당" 처럼 매장으로 검색해도 그 매장의 이용권이 잡힘. restaurant_name 은
+      //   selected 컬럼이라 자가치유 안전(없으면 base products 에 존재).
       const escaped = String(filter.search).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`;
-      params.push(`%${escaped}%`, `%${escaped}%`);
+      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR restaurant_name LIKE ? ESCAPE '\\')`;
+      params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
     }
 
     if (filter.productType) {
@@ -260,9 +263,12 @@ export class ProductRepository {
     
     if (filter.search) {
       // 🛡️ 2026-04-22: LIKE wildcard escape — %, _ 가 user input 에 있을 때 정확 매칭
+      // 🔎 2026-07-20 (대표 — 검색 커버리지): 상품명/설명 외 매장명(restaurant_name)도 매칭 →
+      //   "스타벅스 강남"·"○○식당" 처럼 매장으로 검색해도 그 매장의 이용권이 잡힘. restaurant_name 은
+      //   selected 컬럼이라 자가치유 안전(없으면 base products 에 존재).
       const escaped = String(filter.search).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`;
-      params.push(`%${escaped}%`, `%${escaped}%`);
+      query += ` AND (name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR restaurant_name LIKE ? ESCAPE '\\')`;
+      params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
     }
 
     if (filter.productType) {

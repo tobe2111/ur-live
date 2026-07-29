@@ -1,0 +1,67 @@
+# 🎯 유어애즈 독립 Worker(ur-ads) 배포 — 설계: docs/design/urads-worker-split.md
+#
+#   메인 Pages(main.yml)와 독립. `wrangler deploy --config wrangler-ads.toml` 로 standalone Worker 배포.
+#   ⚠️ 이 워크플로 실패는 라이브 무영향 — ur-ads 는 아직 아무 트래픽도 안 받음(메인이 프록시 안 함, Phase C 전).
+#   요구 secret: CLOUDFLARE_API_TOKEN(Workers Scripts:Edit) · CLOUDFLARE_ACCOUNT_ID (main.yml 과 동일 재사용).
+#
+#   D1/시크릿 바인딩은 Cloudflare 대시보드에서 관리(대표 셋업) — 이 배포는 *코드*만 갱신.
+name: Deploy ur-ads Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/worker-ads/**'
+      - 'src/features/marketing/**'
+      - 'wrangler-ads.toml'
+      - 'scripts/build-worker-ads.js'
+
+concurrency:
+  group: deploy-ads
+  cancel-in-progress: true
+
+jobs:
+  deploy-ads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build + Deploy ur-ads Worker
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN 미설정 — ur-ads 배포 불가"
+            exit 1
+          fi
+          echo "=== esbuild 번들 ==="
+          node scripts/build-worker-ads.js
+          echo "=== wrangler deploy (ur-ads) ==="
+          MAX_RETRY=3
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "--- attempt $i/$MAX_RETRY ---"
+            OUT=$(npx wrangler@3 deploy --config wrangler-ads.toml 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then echo "✅ ur-ads 배포 성공 (attempt $i)"; exit 0; fi
+            if echo "$OUT" | grep -q "Uploaded ur-ads"; then
+              echo "::warning::스크립트 업로드 성공(부가 동기화만 실패) — 코드는 갱신됨."; exit 0
+            fi
+            [ $i -lt $MAX_RETRY ] && { echo "재시도 대기..."; sleep $((i*10)); }
+          done
+          echo "❌ ur-ads 배포 실패 (토큰 Workers Scripts:Edit 권한 / 번들 확인)"
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

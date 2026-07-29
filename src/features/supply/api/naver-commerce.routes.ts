@@ -167,7 +167,7 @@ app.post('/export', rateLimit({ action: 'naver-export', max: 30, windowSec: 600 
     }
 
     // 1) 이미지 → 네이버 업로드 (네이버는 자체 업로드 URL 만 허용)
-    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://live.ur-team.com${prod.image_url}`
+    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://urdeal.kr${prod.image_url}`
     const img = await uploadImageToNaver(conn, imageAbs)
     if (!img.ok || !img.url) return c.json({ success: false, error: img.error || '이미지 업로드 실패' }, 502)
 

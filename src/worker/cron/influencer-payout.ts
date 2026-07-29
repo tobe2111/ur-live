@@ -144,6 +144,9 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
 
     logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
   } catch (e) {
+    // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
+    //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
     logError('[cron:influencer-payout] failed', { error: String(e) })
+    throw e
   }
 }

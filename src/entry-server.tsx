@@ -14,7 +14,10 @@
  *   - lazy import 페이지는 Suspense fallback 만 렌더 (실제 module 평가 안 됨, safe).
  */
 
-import { renderToString } from 'react-dom/server'
+import { renderToString, renderToPipeableStream } from 'react-dom/server'
+// 🧵 2026-07-05 (prerender 스피너 근본수정): node:stream 은 이 번들의 유일 소비자가
+//   prerender-main.mjs(Node) 라서 안전 — worker 는 dist/server 를 임포트하지 않음.
+import { PassThrough } from 'node:stream'
 import { StaticRouter } from 'react-router-dom/server'
 import App, { type RouterLike } from './App'
 
@@ -47,4 +50,56 @@ export async function renderApp(url: string, _initialData?: unknown): Promise<Re
     html,
     status: 200,
   }
+}
+
+/**
+ * 🧵 2026-07-05 (prerender 스피너 근본수정 — 무한로딩 사건의 부차 원인 마감):
+ * renderToString 은 Suspense 를 못 기다려 lazy 페이지가 **스피너(fallback)+
+ * `<template data-msg>` 잔재**로 구워졌다. 이 함수는 renderToPipeableStream 의
+ * **onAllReady**(모든 lazy 모듈 로드 완료) 시점 HTML 을 수집 — 실제 페이지 마크업이 구워짐.
+ *
+ * 안전판: SSR-unsafe 모듈(window 접근)이 있어도 해당 Suspense 경계만 fallback 으로
+ * 남고(오늘과 동일한 최악치), 셸 자체가 실패하거나 타임아웃이면 기존 renderToString
+ * 결과로 **완전 폴백** — prerender 는 어떤 경우에도 현행보다 나빠지지 않는다.
+ * 데이터 fetch 는 SSR 에서 effect 미실행이라 allReady 가 네트워크를 기다리지 않음(모듈 로드만).
+ */
+export async function renderAppComplete(url: string, timeoutMs = 20000): Promise<RenderResult> {
+  const app = (
+    <App
+      Router={StaticRouter as unknown as RouterLike}
+      routerProps={{ location: url }}
+    />
+  )
+  const syncFallback = (): RenderResult => ({ html: renderToString(app), status: 200 })
+
+  return await new Promise<RenderResult>((resolvePromise) => {
+    let settled = false
+    const settle = (r: RenderResult) => { if (!settled) { settled = true; resolvePromise(r) } }
+    const timer = setTimeout(() => {
+      try { stream.abort() } catch { /* already done */ }
+      console.warn(`[entry-server] allReady ${timeoutMs}ms 타임아웃 — renderToString 폴백`)
+      settle(syncFallback())
+    }, timeoutMs)
+
+    const stream = renderToPipeableStream(app, {
+      onAllReady() {
+        clearTimeout(timer)
+        const pass = new PassThrough()
+        let out = ''
+        pass.on('data', (chunk: Buffer | string) => { out += String(chunk) })
+        pass.on('end', () => settle({ html: out, status: 200 }))
+        pass.on('error', () => settle(syncFallback()))
+        stream.pipe(pass)
+      },
+      onShellError(err: unknown) {
+        clearTimeout(timer)
+        console.warn('[entry-server] shell 렌더 실패 — renderToString 폴백:', err)
+        settle(syncFallback())
+      },
+      onError(err: unknown) {
+        // 경계 단위 오류(SSR-unsafe lazy 모듈 등) — 그 경계만 fallback 으로 남음(현행과 동일). 관측만.
+        console.warn('[entry-server] boundary 오류(해당 섹션 fallback 유지):', err)
+      },
+    })
+  })
 }

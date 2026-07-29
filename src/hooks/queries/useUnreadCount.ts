@@ -13,7 +13,10 @@ import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'unread-count'
 
-export function useUnreadCount() {
+// 🗑️ 2026-07-07 (로딩 낭비 감사): enabledExtra — 호출부 추가 게이트(데스크탑 뷰포트 등). 기본 true.
+//   DesktopTopNav(모바일 display:none)에서 60초 폴링이 안 보이는 배지 위해 돌던 것을 막는다. 모바일 홈은
+//   HomeTopHeader 가 같은 queryKey 로 소비(폴링 유지) — 같은 훅 dedup 이라 홈 배지는 정상.
+export function useUnreadCount(enabledExtra = true) {
   return useQuery<number>({
     queryKey: queryKeys.unreadCount(),
     queryFn: () =>
@@ -27,7 +30,7 @@ export function useUnreadCount() {
     // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 즉시 보정. 없으면 첫 60초 동안
     //   refetchInterval 첫 발동 전까지 잘못된 0 안읽음 뱃지.
     initialDataUpdatedAt: 0,
-    enabled: isLoggedInSync(),
+    enabled: enabledExtra && isLoggedInSync(),
     staleTime: 60_000,
     gcTime: 30 * 60 * 1000,
     refetchInterval: 60_000,

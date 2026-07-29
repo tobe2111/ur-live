@@ -10,7 +10,7 @@ const ROLES = ['ud_seller_token', 'ud_agency_token', 'ud_admin_token', 'ud_suppl
 describe('authTokenSetCookie', () => {
   it('produces HttpOnly + Secure + SameSite=Lax cookie for all 4 roles', () => {
     for (const name of ROLES) {
-      const c = authTokenSetCookie(name, 'jwt.tok.en', 'live.ur-team.com');
+      const c = authTokenSetCookie(name, 'jwt.tok.en', 'urdeal.kr');
       expect(c).toContain(`${name}=jwt.tok.en`);
       expect(c).toContain('HttpOnly');
       expect(c).toContain('Secure');
@@ -20,7 +20,9 @@ describe('authTokenSetCookie', () => {
     }
   });
 
-  it('attaches Domain=.ur-team.com only for ur-team.com hosts (host-only otherwise)', () => {
+  it('attaches Domain only for known apex hosts (host-only otherwise)', () => {
+    // 🌐 2026-07-20 도메인 이전: 정식 도메인 urdeal.kr → .urdeal.kr / 구 도메인 → .ur-team.com
+    expect(authTokenSetCookie('ud_admin_token', 'x', 'urdeal.kr')).toContain('Domain=.urdeal.kr');
     expect(authTokenSetCookie('ud_admin_token', 'x', 'live.ur-team.com')).toContain('Domain=.ur-team.com');
     expect(authTokenSetCookie('ud_admin_token', 'x', 'beta.ur-team.com')).toContain('Domain=.ur-team.com');
     // 도매 도메인 / pages.dev → host-only (Domain 속성 없음)
@@ -32,8 +34,8 @@ describe('authTokenSetCookie', () => {
 describe('authTokenClearCookie', () => {
   it('produces Max-Age=0 for all 4 roles', () => {
     for (const name of ROLES) {
-      expect(authTokenClearCookie(name, 'live.ur-team.com')).toContain(`${name}=; HttpOnly`);
-      expect(authTokenClearCookie(name, 'live.ur-team.com')).toContain('Max-Age=0');
+      expect(authTokenClearCookie(name, 'urdeal.kr')).toContain(`${name}=; HttpOnly`);
+      expect(authTokenClearCookie(name, 'urdeal.kr')).toContain('Max-Age=0');
     }
   });
 });

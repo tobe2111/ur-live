@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { Product } from './useProduct'
 
@@ -11,30 +11,10 @@ export interface SearchResult {
   suggested_query?: string | null
 }
 
-// 🎯 상품 검색 Hook (디바운싱 + 캐싱)
-export function useSearch(query: string, options?: { page?: number; limit?: number }) {
-  return useQuery({
-    queryKey: ['search', query, options],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      params.append('q', query)
-      if (options?.page) params.append('page', options.page.toString())
-      if (options?.limit) params.append('limit', options.limit.toString())
-
-      const response = await api.get(`/api/search?${params.toString()}`)
-      // 🛡️ 2026-05-19: backend response = { data: [], pagination: {...} } → SearchResult 정규화.
-      return {
-        products: response.data.data || [],
-        total: response.data.pagination?.total ?? (response.data.data?.length || 0),
-        page: response.data.pagination?.page ?? 1,
-        limit: response.data.pagination?.limit ?? 20,
-      } as SearchResult
-    },
-    enabled: query.length >= 2, // 2글자 이상만 검색
-    staleTime: 10 * 60 * 1000,  // 10분간 캐시
-    gcTime: 30 * 60 * 1000,     // 30분 후 메모리 해제
-  })
-}
+// 🧹 2026-07-20 (Phase 3 죽은 검색 코드 청소): 미사용 export 제거 —
+//   useSearch(단발 useQuery, importer 0) / usePopularSearches(importer 0) /
+//   useRecentSearches('recent-searches' store, importer 0). SearchPage 는 useSearchInfinite 만 사용.
+//   최근검색 UI 는 SearchStates(addRecentSearch, 'recent_searches_v1') / 지도는 'restaurant_search_history'.
 
 // 🛡️ 2026-05-19: cursor 무한스크롤 hook — SearchPage 에서 사용.
 //   페이지 단위로 누적 로드. backend /api/search?page=N&limit=M.
@@ -63,45 +43,4 @@ export function useSearchInfinite(query: string) {
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   })
-}
-
-// 🎯 인기 검색어 Hook
-export function usePopularSearches() {
-  return useQuery({
-    queryKey: ['popular-searches'],
-    queryFn: async () => {
-      const response = await api.get('/api/search/popular')
-      return response.data.data.keywords as string[]
-    },
-    staleTime: 30 * 60 * 1000, // 30분간 캐시
-  })
-}
-
-// 🎯 최근 검색어 Hook (로컬 스토리지 기반)
-export function useRecentSearches() {
-  const getRecentSearches = (): string[] => {
-    try {
-      const stored = localStorage.getItem('recent-searches')
-      return stored ? JSON.parse(stored) : []
-    } catch {
-      return []
-    }
-  }
-
-  const addRecentSearch = (keyword: string) => {
-    const recent = getRecentSearches()
-    const filtered = recent.filter((k) => k !== keyword)
-    const updated = [keyword, ...filtered].slice(0, 10) // 최대 10개
-    localStorage.setItem('recent-searches', JSON.stringify(updated))
-  }
-
-  const clearRecentSearches = () => {
-    localStorage.removeItem('recent-searches')
-  }
-
-  return {
-    recentSearches: getRecentSearches(),
-    addRecentSearch,
-    clearRecentSearches,
-  }
 }

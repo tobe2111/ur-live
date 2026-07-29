@@ -63,6 +63,9 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
+    // 🚀 2026-07-12 (로딩 — 상세 하드로드 청크 병렬화): 라우트→청크 매핑용 매니페스트 출력.
+    //   scripts/generate-route-chunk-map.mjs 가 읽어 워커 modulepreload 주입 맵을 생성(빌드 체인).
+    manifest: true,
     // 🛡️ 2026-05-14 S3: modulePreload polyfill 활성 — 모든 브라우저에서 동작 보장.
     //   Vite 가 entry → import 한 chunk 들을 자동 preload (병렬 fetch) → JS 파싱 -300ms.
     modulePreload: { polyfill: true },

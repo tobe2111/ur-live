@@ -35,3 +35,27 @@ export async function resolveUserId(
     return null;
   }
 }
+
+/**
+ * 머니 경로 안전 정규화: 인증 유저의 raw id 를 DB users.id **문자열**로 반환.
+ *
+ * - 정규화 성공 → 숫자 users.id 의 문자열 (orders INTEGER / vouchers·user_points TEXT 모두 바인딩 OK)
+ * - 정규화 실패(firebase_uid 미매칭 등) → **raw id 문자열로 폴백** (기존 `String(user.id)` 동작 보존)
+ *
+ * 목적: 같은 핸들러의 읽기·쓰기가 동일한 정규화 값을 쓰게 해 user_id 이중키(숫자 vs firebase_uid) 분열을
+ * 닫는다. live(카카오 세션 = isDbId) 는 이미 숫자라 **동작 무변화**, Firebase 유저에게만 교정 효과.
+ * 절대 null/throw 로 결제를 막지 않는다(실패 시 종전과 동일한 raw 값 사용).
+ */
+export async function resolveUserIdString(
+  db: D1Database,
+  rawId: string | number,
+  isDbId?: boolean
+): Promise<string> {
+  try {
+    const resolved = await resolveUserId(db, rawId, isDbId);
+    if (resolved != null) return String(resolved);
+  } catch {
+    /* fall through to raw */
+  }
+  return String(rawId);
+}

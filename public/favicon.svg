@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="116" fill="#FFFFFF"/>
-  <text x="256" y="276" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="240" font-style="italic" letter-spacing="-18" text-anchor="middle" dominant-baseline="central" fill="#0A0A0A">UR</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- 유어딜 확정 아이콘(로즈+ur, 2026-07 Final) — Poppins 납품 렌더 32px 임베드 -->
+  <image width="32" height="32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABo0lEQVR4AexUS0sCURT+nDElNR9p9qAWPQhqEVFkSVFotEzIioiiQggCQ6lFi2oV5a62tW/Xrk3/ol2raKEmYlJIEIk5OXmvMBsfMyni5g7cwznfOeeej+8Mlwt7/WIjD4cGf4wAU4ApwBRgCsgq0NRlR6tvBbbAFqx769AO9tLHW+cYgdW/SXGSNy0tUJ/UmTc8aOrugGXHC4NritaXM7IEeKsZOuco9HMO6GbGoe5so3dp+nqgn50AxfN57fAA9UlscE2i/SwI46Ib2qF+Wl/OyBIo11gJ5y0m8KaWSiVSri4EIIrIfX0jG41DeE9Jw0o5dSEgvH0gcXKF+EEIn3cPpeZK2L8IqDgOnK650Jz3C06xFQUB2ViiOFECkSWQS2cgCr+0VaXVwOhxw3bog2HeCZWap3gtRpbAz0uE7pLslQxS263QT4+BNxtJWPORJUAmpG7vkXkOA7kcCekPln58kpShYJVGEQGyz8TxJSKrAUSW9/G6fYRk6AbRtSCNY7unSF5cU5/k48FzxXQUEVB8WxWFjABTgCnAFKi7AnJv0x8AAAD//yuiZPcAAAAGSURBVAMADoW2we+/Pi4AAAAASUVORK5CYII="/>
 </svg>

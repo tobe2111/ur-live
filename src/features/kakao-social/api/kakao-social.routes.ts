@@ -49,10 +49,10 @@ kakaoSocialRoutes.post('/message/broadcast', requireAuth(), async (c) => {
     content: {
       title: `🔴 ${title}`,
       description: message || '유어딜에서 라이브 방송이 시작되었습니다!',
-      image_url: 'https://live.ur-team.com/og-image.png',
-      link: { web_url: `https://live.ur-team.com/live/${stream_id}`, mobile_web_url: `https://live.ur-team.com/live/${stream_id}` },
+      image_url: 'https://urdeal.kr/og-image.png',
+      link: { web_url: `https://urdeal.kr/live/${stream_id}`, mobile_web_url: `https://urdeal.kr/live/${stream_id}` },
     },
-    buttons: [{ title: '라이브 시청하기', link: { web_url: `https://live.ur-team.com/live/${stream_id}`, mobile_web_url: `https://live.ur-team.com/live/${stream_id}` } }],
+    buttons: [{ title: '라이브 시청하기', link: { web_url: `https://urdeal.kr/live/${stream_id}`, mobile_web_url: `https://urdeal.kr/live/${stream_id}` } }],
   });
 
   const result = await callKakaoApi(DB, user.id, c.env.KAKAO_REST_API_KEY || '',
@@ -99,7 +99,7 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
   const event = {
     title: `🔴 ${seller?.name || '셀러'} 라이브: ${stream.title}`,
     time: { start_at: startAt.toISOString().replace('.000Z', 'Z'), end_at: endAt.toISOString().replace('.000Z', 'Z'), time_zone: 'Asia/Seoul' },
-    description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://live.ur-team.com/live/${stream.id}`,
+    description: `유어딜 라이브 방송\n${stream.title}\n\n시청하기: https://urdeal.kr/live/${stream.id}`,
     reminders: [5],
     color: 'RED',
   };
@@ -150,8 +150,8 @@ kakaoSocialRoutes.get('/calendar/ics/:streamId', async (c) => {
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,
     `SUMMARY:🔴 ${seller?.name || 'Seller'} Live: ${stream.title}`,
-    `DESCRIPTION:Watch at https://live.ur-team.com/live/${stream.id}`,
-    `URL:https://live.ur-team.com/live/${stream.id}`,
+    `DESCRIPTION:Watch at https://urdeal.kr/live/${stream.id}`,
+    `URL:https://urdeal.kr/live/${stream.id}`,
     'BEGIN:VALARM',
     'TRIGGER:-PT30M',
     'ACTION:DISPLAY',
@@ -221,17 +221,17 @@ kakaoSocialRoutes.post(
           content: {
             title: `🔴 ${seller?.name || '셀러'} 라이브 시작!`,
             description: stream.title,
-            image_url: 'https://live.ur-team.com/og-image.png',
+            image_url: 'https://urdeal.kr/og-image.png',
             link: {
-              web_url: `https://live.ur-team.com/live/${stream.id}`,
-              mobile_web_url: `https://live.ur-team.com/live/${stream.id}`,
+              web_url: `https://urdeal.kr/live/${stream.id}`,
+              mobile_web_url: `https://urdeal.kr/live/${stream.id}`,
             },
           },
           buttons: [{
             title: '시청하기',
             link: {
-              web_url: `https://live.ur-team.com/live/${stream.id}`,
-              mobile_web_url: `https://live.ur-team.com/live/${stream.id}`,
+              web_url: `https://urdeal.kr/live/${stream.id}`,
+              mobile_web_url: `https://urdeal.kr/live/${stream.id}`,
             },
           }],
         });
@@ -264,10 +264,10 @@ kakaoSocialRoutes.post('/test/message', requireAdmin(), async (c) => {
       content: {
         title: '🔴 유어딜 라이브 시작!',
         description: '테스트 메시지입니다. 카카오 메시지 API 연동 확인용.',
-        image_url: 'https://live.ur-team.com/og-image.png',
-        link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+        image_url: 'https://urdeal.kr/og-image.png',
+        link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
       },
-      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' } }],
     });
 
     const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
@@ -381,10 +381,10 @@ kakaoSocialRoutes.post('/test/friend-message', requireAdmin(), async (c) => {
       content: {
         title: '🔴 유어딜 라이브 커머스',
         description: '친구에게 보내는 테스트 메시지입니다.',
-        image_url: 'https://live.ur-team.com/og-image.png',
-        link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+        image_url: 'https://urdeal.kr/og-image.png',
+        link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
       },
-      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' } }],
     });
 
     const msgRes = await fetch('https://kapi.kakao.com/v1/api/talk/friends/message/default/send', {

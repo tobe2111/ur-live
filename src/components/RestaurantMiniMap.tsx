@@ -109,10 +109,15 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
     if (!loaded || !resolvedCoord || !mapRef.current || mapInstance.current) return
     try {
       const pos = new window.kakao.maps.LatLng(resolvedCoord.lat, resolvedCoord.lng)
+      // 🗺️ 2026-07-25 (전수조사 M4): 터치 기기는 draggable=false — 기존엔 컨테이너 touch-action:pan-y
+      //   (세로는 페이지 스크롤)와 카카오 드래그가 동시에 활성이라, 대각선 제스처에서 지도가 찔끔
+      //   움직이다 페이지가 스크롤되는 지터 + 한 손가락 세로 팬 불가(가로만 됨). 미니맵은 위치 확인용 —
+      //   모바일 탐색은 "카카오맵" 링크로 유도(구글맵 cooperative 철학). PC(마우스) 드래그는 유지.
+      const coarsePointer = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
       mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
         center: pos,
         level: 4,
-        draggable: true,
+        draggable: !coarsePointer,
         scrollwheel: false, // 미니맵은 페이지 스크롤 보호 (사용자가 카카오맵 앱으로 이동 가능)
       })
       mapInstance.current.setZoomable(true)
@@ -149,8 +154,8 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
   if (!address && !resolvedCoord) return null
 
   return (
-    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] overflow-hidden">
+      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
           <div className="min-w-0">

@@ -2,7 +2,10 @@
  * 🎫 2026-06-21: 이용권(교환권) 만료 임박 알림 cron.
  *
  * 매일 09:00 UTC 실행 (stay-voucher-expire 와 동시, KST 18:00):
- *   - vouchers.expires_at 이 D-7 / D-3 / D-1 인 미사용(unused) 이용권
+ *   - vouchers.expires_at 이 D-30 / D-7 / D-3 / D-1 인 미사용(unused) 이용권
+ *   - 🧾 2026-07-05 (자문 컴플라이언스 점검): D-30 추가 — 공정위 신유형 상품권 표준약관의
+ *     "유효기간 도래 30일 전 통지" 요건 정합. (만료 시엔 auto-settlement 가 100% 자동 환불 —
+ *     표준약관 90% 환급 기준을 상회하는 정책이라 별도 환급 경로 불필요.)
  *   - 사용자에게 앱 내 알림(notifications) + 카카오 알림톡(인프라 설정 시) 발송
  *
  * 배경: 선결제 이용권은 유효기간(기본 90일)이 있어, 잊고 안 쓰면 낸 돈이 소멸.
@@ -33,8 +36,8 @@ type Row = {
   days_left: number
 }
 
-export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; d3: number; d1: number; alimtalk_sent: number; alimtalk_failed: number }> {
-  let d7 = 0, d3 = 0, d1 = 0
+export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number; d7: number; d3: number; d1: number; alimtalk_sent: number; alimtalk_failed: number }> {
+  let d30 = 0, d7 = 0, d3 = 0, d1 = 0
   let alimtalkSent = 0, alimtalkFailed = 0
 
   // D-7 / D-3 / D-1 임계 — 미사용 이용권(KT 교환권 제외).
@@ -49,7 +52,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; 
      WHERE v.status = 'unused'
        AND v.expires_at IS NOT NULL
        AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
-       AND CAST(julianday(v.expires_at) - julianday('now') AS INTEGER) IN (7, 3, 1)
+       AND CAST(julianday(v.expires_at) - julianday('now') AS INTEGER) IN (30, 7, 3, 1)
      ORDER BY v.expires_at ASC
      LIMIT 500
   `
@@ -64,7 +67,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; 
 
   for (const r of (rows.results || [])) {
     const daysLeft = Number(r.days_left)
-    if (![7, 3, 1].includes(daysLeft)) continue
+    if (![30, 7, 3, 1].includes(daysLeft)) continue
     // 멱등 키는 voucher 별(코드 포함) — 한 유저가 같은 날 여러 이용권 만료 시 각각 알림(돈이라 누락 금지).
     //   stay 버전은 (user,임계) 1회라 동일-일자 다건이 누락될 수 있음 → 이용권은 코드 스코프로 강화.
     const notifType = `voucher_expire_${daysLeft}d_${r.code}`
@@ -120,11 +123,12 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; 
         }
       }
 
-      if (daysLeft === 7) d7++
+      if (daysLeft === 30) d30++
+      else if (daysLeft === 7) d7++
       else if (daysLeft === 3) d3++
       else if (daysLeft === 1) d1++
     } catch { /* per-row fail-soft */ }
   }
 
-  return { d7, d3, d1, alimtalk_sent: alimtalkSent, alimtalk_failed: alimtalkFailed }
+  return { d30, d7, d3, d1, alimtalk_sent: alimtalkSent, alimtalk_failed: alimtalkFailed }
 }

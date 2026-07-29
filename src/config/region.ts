@@ -43,7 +43,7 @@ export const getDefaultLanguage = () => {
 
 export const getApiBaseUrl = () => {
   return import.meta.env.VITE_API_BASE_URL || 
-    (_isKorea() ? 'https://live.ur-team.com' : 'https://global.ur-team.com')
+    (_isKorea() ? 'https://urdeal.kr' : 'https://global.ur-team.com')
 }
 
 export const getSupportedLanguages = () => {

@@ -96,10 +96,10 @@ export default function PaymentFailPage() {
   const heroSub = isUserCancel ? '다시 진행하시려면 아래 버튼을 눌러주세요' : t('paymentFail.subtitle')
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0F151D] flex items-center justify-center p-4">
       <SEO title={isUserCancel ? '결제 취소' : t('paymentFail.title')} description={heroSub} url="/payment/fail" noindex />
       <div className="ur-content-narrow w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A2A2A]">
+        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2A3446]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>
@@ -128,7 +128,7 @@ export default function PaymentFailPage() {
 
             {/* 주문번호 (있는 경우) */}
             {orderId && (
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1A1A] rounded-xl p-4">
+              <div className="bg-[#f5f5f7] dark:bg-[#1A2334] rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
                   <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white font-mono">
@@ -143,14 +143,14 @@ export default function PaymentFailPage() {
           <div className="flex gap-3 mb-6">
             <Button
               onClick={() => navigate('/')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#2A2A2A] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-12 flex items-center justify-center gap-2"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#2A3446] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-12 flex items-center justify-center gap-2"
             >
               <Home className="h-4 w-4" />
               {t('paymentFail.toHome')}
             </Button>
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12 flex items-center justify-center gap-2"
+              className="flex-1 bg-brand hover:bg-brand-dark text-white h-12 flex items-center justify-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
               {t('paymentFail.retry')}
@@ -158,7 +158,7 @@ export default function PaymentFailPage() {
           </div>
 
           {/* 고객센터 정보 */}
-          <div className="text-center pt-6 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
+          <div className="text-center pt-6 border-t border-[#d2d2d7] dark:border-[#2A3446]">
             <p className="text-xs text-[#86868b] dark:text-gray-500 mb-2">
               {t('paymentFail.helpHeader')}
             </p>
@@ -172,7 +172,7 @@ export default function PaymentFailPage() {
 
           {/* 디버그 정보 (개발 환경에서만 표시) */}
           {import.meta.env.DEV && code && (
-            <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1A1A1A] rounded-lg">
+            <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1A2334] rounded-lg">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
               <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
                 Code: {code}

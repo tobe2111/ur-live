@@ -81,6 +81,10 @@ export const JWT_REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days
 // CORS — 허용 도메인 목록 (모든 라우트에서 공유)
 // ============================================================
 export const ALLOWED_ORIGINS = [
+  // 🌐 2026-07-20 도메인 이전 (대표 확정): 정식 도메인 urdeal.kr — 구 도메인은 301 전환기 동안
+  //   API 를 계속 서빙(구 SPA 세션·토스 웹훅·콘솔 등록 경로)하므로 목록에서 제거하지 말 것.
+  'https://urdeal.kr',
+  'https://www.urdeal.kr',
   'https://ur-live.pages.dev',
   'https://www.ur-live.com',
   'https://live.ur-team.com',

@@ -48,7 +48,7 @@ cafe24Routes.get('/auth-url', requireAdmin() as any, async (c) => {
     return c.json({ success: false, error: 'Cafe24 연동이 설정되지 않았습니다 (환경변수 미설정)', code: 'CAFE24_NOT_CONFIGURED' }, 400);
   }
 
-  const redirectUri = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24/callback`;
+  const redirectUri = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24/callback`;
   const scopes = 'mall.read_product,mall.write_product,mall.read_order,mall.write_order';
   const state = crypto.randomUUID();
 
@@ -83,7 +83,7 @@ cafe24Routes.get('/callback', async (c) => {
 
   if (error || !code) {
     // Redirect back to admin page with error
-    const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=${error || 'no_code'}`;
+    const adminUrl = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24?error=${error || 'no_code'}`;
     return c.redirect(adminUrl);
   }
 
@@ -91,7 +91,7 @@ cafe24Routes.get('/callback', async (c) => {
   const cookieState = getCookie(c, 'cafe24_oauth_state');
   if (!receivedState || !cookieState || receivedState !== cookieState) {
     deleteCookie(c, 'cafe24_oauth_state', { path: '/' });
-    const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=invalid_state`;
+    const adminUrl = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24?error=invalid_state`;
     return c.redirect(adminUrl);
   }
   deleteCookie(c, 'cafe24_oauth_state', { path: '/' });
@@ -100,7 +100,7 @@ cafe24Routes.get('/callback', async (c) => {
     return c.json({ success: false, error: 'Cafe24 환경변수 누락' }, 500);
   }
 
-  const redirectUri = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24/callback`;
+  const redirectUri = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24/callback`;
 
   try {
     const tokens = await exchangeCodeForTokens(
@@ -114,11 +114,11 @@ cafe24Routes.get('/callback', async (c) => {
     await saveTokens(DB, CAFE24_MALL_ID, tokens, c.env.DATA_ENCRYPTION_KEY);
 
     // Redirect back to admin Cafe24 page with success
-    const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?connected=true`;
+    const adminUrl = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24?connected=true`;
     return c.redirect(adminUrl);
   } catch (err) {
     console.error('[Cafe24] OAuth callback error:', err);
-    const adminUrl = `${FRONTEND_URL || 'https://live.ur-team.com'}/admin/cafe24?error=token_exchange_failed`;
+    const adminUrl = `${FRONTEND_URL || 'https://urdeal.kr'}/admin/cafe24?error=token_exchange_failed`;
     return c.redirect(adminUrl);
   }
 });

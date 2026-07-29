@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { Pin } from 'lucide-react'
-// 🏁 2026-06-25 (대표 신고 — "상품쪽이 깨졌다"): 다크 전용 하드코딩 카드(bg-[#121212]/text-white)가
+// 🏁 2026-06-25 (대표 신고 — "상품쪽이 깨졌다"): 다크 전용 하드코딩 카드(bg-[#1A2334]/text-white)가
 //   라이트 페이지에서 까맣게 깨져 보임 → 큐레이터 페이지·picker 와 동일한 표준 BrowseProductCard(테마 자동) 로 통일.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import { seededColor } from '@/utils/card-gradient'

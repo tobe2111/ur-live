@@ -3,266 +3,23 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import {
-  LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
-  BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText,
-  type LucideIcon
+  LogOut, Menu, X, Search, ChevronDown, Star,
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
 import { normalizeAdminRole, ADMIN_ROLE_LABEL, type AdminRole } from '@/shared/admin-roles'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import BrandLoader from '@/components/brand/BrandLoader'
+// 🧱 2026-07-20: nav 데이터/섹션/RBAC 경로 상수는 admin-nav-config 로 분리(AdminLayout 슬림화 + 즐겨찾기 여유).
+import {
+  type NavItem, type NavGroup,
+  VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf,
+  ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
+} from '@/components/admin/admin-nav-config'
+import AdminCommandPalette, { type CommandItem } from '@/components/admin/AdminCommandPalette'
 
-interface NavItem {
-  path: string
-  label: string
-  icon: LucideIcon
-  exact?: boolean
-  /** 🧭 탭으로 묶인 형제 라우트 — 이 경로들에서도 본 항목을 활성 표시. */
-  also?: string[]
-}
-
-interface NavGroup {
-  title: string
-  items: NavItem[]
-  /** 🆕 도메인 태그 — 도메인-한정 역할(wholesale)에게 이 도메인 그룹만 노출. */
-  domain?: 'wholesale'
-  /** 🔧 진단성 그룹 등 평소 접어둘 그룹 (사용자 토글이 항상 우선). */
-  defaultCollapsed?: boolean
-}
-
-// 🏭 2026-06-04 (사용자 결정): 3개 사업라인 중심 IA — 도매몰 / 오프라인 공구 / 온라인 쇼핑 + 공통.
-//   ⚠️ 라우트/아이콘/라벨 전부 보존 — 그룹 배치만 변경(데이터 reorder, 로직 불변). 라이브 항목은
-//   VISIBLE_NAV_GROUPS 필터에서 별도 숨김(잠정 중단).
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: '운영',
-    items: [
-      { path: '/admin',                  label: '대시보드',      icon: LayoutDashboard, exact: true },
-      { path: '/admin/insights',         label: '운영 인사이트', icon: AlertTriangle },
-      { path: '/admin/funnel',           label: '소비자 퍼널',   icon: TrendingUp },
-      { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
-      { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
-      { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
-      { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
-      { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
-      { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
-      { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Wrench },
-    ],
-  },
-  {
-    // 🎯 유어애즈(UR Ads) — 마케팅 서비스 운영
-    title: '🎯 유어애즈 · 운영',
-    items: [
-      { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
-    ],
-  },
-  {
-    // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
-    title: '🏭 도매몰 · 운영',
-    domain: 'wholesale',
-    items: [
-      { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      // 🏭 2026-06-29 (대표 — 판매사 승인 통합): '판매사 승인' 별도 항목 제거 → '판매사 관리'(아래) 의 '승인' 탭으로 통합.
-      // 🗂️ 2026-07-02 (IA 통합): '제조사 출금'(/admin/wholesale-withdrawals)은 이 페이지의 '출금 처리' 탭으로
-      //   통합 — also 로 딥링크/RBAC 허용 + 활성 표시.
-      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store, also: ['/admin/wholesale-withdrawals'] },
-      // 🗂️ 2026-06-26 (대표 요청): 4개 탭이 한 페이지(AdminDistributorGradesPage)라 nav 1개 통합.
-      //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 — 페이지 탭이 사용.
-      // 🗂️ 2026-07-02 (대표 요청): 판매사 관리를 제조사 관리 바로 아래로 이동(회원 관리 짝 배치).
-      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'(/admin/wholesale-deposits)도 '예치금' 탭으로 통합 — also 에 추가.
-      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply', '/admin/wholesale-deposits'] },
-      { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
-      { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
-      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
-      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
-      { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
-    ],
-  },
-  {
-    // 🏭 도매몰 — 정산/머니
-    title: '💰 도매몰 · 정산',
-    domain: 'wholesale',
-    items: [
-      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'은 '판매사 관리'의 '예치금' 탭, '제조사 출금'은 '제조사 관리'의
-      //   '출금 처리' 탭으로 이동 — 중복 nav 항목 제거(딥링크 라우트는 각 컨테이너 페이지의 탭으로 열림).
-      { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
-      // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
-    ],
-  },
-  {
-    // 🏭 도매몰 — CS / 콘텐츠
-    title: '🛟 도매몰 · CS·콘텐츠',
-    domain: 'wholesale',
-    items: [
-      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
-      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
-      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
-      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
-      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
-      { path: '/admin/wholesale-guide',    label: '도매몰 운영 가이드', icon: BookOpen },
-    ],
-  },
-  {
-    // 🏪 오프라인 공구 (매장 공구 / 교환권 / 숙소)
-    title: '🏪 오프라인 공구',
-    items: [
-      { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
-      { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
-      { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
-      { path: '/admin/voucher-disputes', label: '사용처리 분쟁',  icon: AlertOctagon },
-      { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
-      { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
-      { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
-      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
-      { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
-    ],
-  },
-  {
-    // 🛒 온라인 쇼핑 (일반 상품 / 주문 / 교환권 발행)
-    title: '🛒 온라인 쇼핑',
-    items: [
-      { path: '/admin/products',         label: '상품 관리',     icon: Package },
-      { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
-      // 🧭 2026-06-09 IA 정리: nav 미노출 고아 라우트 등재 — 반품/교환권 추적은 주문 운영 실무 페이지.
-      { path: '/admin/returns',          label: '반품 검수',     icon: RotateCcw },
-      { path: '/admin/kt-alpha',         label: 'KT Alpha (교환권)', icon: Gift },
-      { path: '/admin/voucher-orders',   label: 'KT 발송 추적',  icon: Send },
-      { path: '/admin/voucher-transactions', label: '교환권 거래', icon: Ticket },
-      { path: '/admin/banners',          label: '배너 관리',     icon: Image },
-    ],
-  },
-  {
-    title: '회원/파트너',
-    items: [
-      { path: '/admin/users',           label: '유저 관리',     icon: Users },
-      { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
-      { path: '/admin/agency-creator-approval', label: '에이전시 셀러 심사', icon: UserCheck },
-      { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
-      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
-    ],
-  },
-  {
-    title: '💰 정산/재무',
-    items: [
-      // 🧭 2026-06-09 IA 정리: 정산 4페이지(개별/일괄/Ledger/추천출금)는 페이지 상단 AdminFinanceTabs 로
-      //   상호 이동 — nav 는 진입점 1개만. 라우트는 전부 보존(북마크 안전).
-      { path: '/admin/settlement',       label: '정산 센터',     icon: DollarSign, also: ['/admin/settlements-bulk', '/admin/payouts', '/admin/commission-withdrawals', '/admin/payout-center'] },
-      // 돈 관련 고아 라우트를 재무 그룹으로 — URL 직접 입력 없이 도달 가능하게.
-      { path: '/admin/influencer-payouts', label: '인플루언서 송금', icon: Wallet },
-      { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
-      { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
-      { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
-      // 🔧 2026-07-01 (대표 "무슨 말인지 모르겠어"): '수수료 규칙 비교'(fee-resolver 그림자검증 — 개발/검증 전용,
-      //   기본 OFF·돈 안 움직임)는 재무 실무 메뉴에서 오해 소지 → 아래 '개발자 도구' 그룹으로 이동.
-    ],
-  },
-  {
-    title: '검증/CS',
-    items: [
-      { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      { path: '/admin/influencer-disputes', label: '인플루언서 분쟁', icon: AlertOctagon },
-      { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
-      { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
-      { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
-      { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },
-    ],
-  },
-  {
-    title: '콘텐츠',
-    items: [
-      { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
-      { path: '/admin/notices',           label: '공지사항',      icon: Send },
-      { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
-      { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },
-    ],
-  },
-  {
-    // 📺 라이브커머스 — 잠정 중단(LIVE_COMMERCE_SUSPENDED). 그룹째 숨김, 재개 시 플래그만 false → 복원.
-    title: '📺 라이브커머스',
-    items: [
-      { path: '/admin/live-monitor',     label: '라이브 모니터', icon: Radio },
-      { path: '/admin/ad-slots',         label: '광고 슬롯',     icon: Megaphone },
-      { path: '/admin/castings',         label: '캐스팅',        icon: Megaphone },
-      { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
-      { path: '/admin/replay',           label: '다시보기 관리', icon: Play },
-    ],
-  },
-  {
-    title: '시스템',
-    items: [
-      { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
-      { path: '/admin/login-history',     label: '로그인 이력(IP)', icon: History },
-      { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
-      { path: '/admin/set-pin',           label: '로그인 PIN',    icon: Shield },
-      { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
-      { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
-      { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
-      { path: '/admin/sample-requests',   label: '샘플 신청',     icon: ClipboardList },
-      { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
-    ],
-  },
-  {
-    // 🔧 2026-06-09 IA 정리: 진단/디버그성 고아 라우트 — 평소엔 접어두는 개발자 도구 그룹.
-    title: '🔧 개발자 도구',
-    defaultCollapsed: true,
-    items: [
-      { path: '/admin/system-monitoring', label: '시스템 모니터링', icon: Monitor },
-      { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
-      { path: '/admin/health',            label: '헬스 체크',     icon: Shield },
-      { path: '/admin/errors',            label: '에러 로그',     icon: AlertTriangle },
-      { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },
-      { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Wrench },
-      { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Play },
-      { path: '/admin/fee-breakdown',     label: '수수료 규칙 검증(개발)', icon: Scale },
-    ],
-  },
-]
-
-// 🏭 2026-06-04 라이브커머스 잠정 중단 — 어드민 nav 에서 라이브 전용 항목 숨김 (플래그 재사용, 복원 가능).
-//   라이브 모니터 / 광고 슬롯(입찰) / 캐스팅 / TikTok 발굴 / 다시보기(라이브 replay).
-const LIVE_ADMIN_PATHS = new Set<string>([
-  '/admin/live-monitor', '/admin/ad-slots', '/admin/castings', '/admin/tiktok-discovery', '/admin/replay',
-  // 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") YouTube 쿼터는 YouTube-라이브 전용 진단 → 라이브 중단 시 숨김.
-  '/admin/youtube-quota',
-])
-const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
-  ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
-  : NAV_GROUPS
-
-// 🎟️🏭 2026-07-01 (대표 "유어딜·도매몰 철저히 UX/UI 분리 — 전체적으로"): 좌측 nav 를 서비스 밴드로 구획.
-//   super 어드민은 전 그룹을 보는데 유어딜(소비자)·유통스타트(도매몰)·공통 그룹이 섞여 보였음(구분=이모지 뿐) →
-//   섹션 헤더 밴드로 3분할(운영 '홈'은 최상단 무밴드). 그룹 정의/RBAC(도매 role=wholesale 그룹만)/collapse/active 전부 불변 — 렌더 구획만.
-type NavSectionKey = 'home' | 'urdeal' | 'wholesale' | 'common'
-const navSectionOf = (g: NavGroup): NavSectionKey =>
-  g.domain === 'wholesale' ? 'wholesale'
-    : g.title === '운영' ? 'home'
-      : (g.title === '🏪 오프라인 공구' || g.title === '🛒 온라인 쇼핑') ? 'urdeal'
-        : 'common'
-const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: string }> = [
-  { key: 'home' },
-  { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#a5b4fc' },
-  { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#fbbf24' },
-  { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#94a3b8' },
-]
-
-// 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는
-//   역할과 무관하게 항상 도달 가능해야 한다. 도매 RBAC 리다이렉트(아래)가 강제 PIN 게이트
-//   (/admin/set-pin)와 충돌하면 /admin/set-pin ⟷ /admin/wholesale-overview 무한 루프 →
-//   AdminLayout remount 반복 → 화면 깜빡 + dashboard-notifications 폭주(429). 이 경로들은 RBAC 리다이렉트에서 면제.
-const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
-// 🆕 2026-06-24: '도매 통합 현황'의 승인 큐 카드가 가리키는 비-도매-nav 경로 — 도매 파트너도 도달 허용.
-//   (상품 승인/가격변경 = /admin/products 의 '제조사 등록 상품' 탭 / 판매사 승인 = /admin/seller-approval)
-//   nav 에는 노출 안 하되(소비자 어드민 메뉴는 계속 숨김), 큐 클릭 시 wholesale-overview 로 바운스되던 것 차단.
-//   /admin/products 진입 시 AdminProductsPage 가 도매 파트너에게는 '제조사 등록 상품' 탭만 노출(소비자 상품관리 차단).
-// 🗂️ 2026-07-02 (1페이지화): 예치금/출금 nav 항목이 판매사·제조사 관리의 탭으로 흡수되며 딥링크
-//   경로가 nav 주항목에서 사라짐 → wholesale role 도달성 명시 허용(탭으로 열림).
-const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity', '/admin/wholesale-deposits', '/admin/wholesale-withdrawals']
 
 interface AdminLayoutProps {
   title: string
@@ -338,6 +95,19 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 그룹 접힘 시 합계 배지
   const groupBadgeTotal = (items: { path: string }[]) => items.reduce((s, it) => s + (navBadges[it.path] || 0), 0)
 
+  // ⌘K 2026-07-20: 커맨드 팔레트(메뉴 빠른 이동). ⌘K/Ctrl+K 로 토글.
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // 🛡️ 2026-04-28: 전역 검색 — 실제 input + Enter 키로 분기 navigate.
   const [searchQuery, setSearchQuery] = useState('')
   const handleSearch = (e: React.FormEvent) => {
@@ -372,29 +142,66 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       ? stripSuperOnly(VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale'))
       : stripSuperOnly(VISIBLE_NAV_GROUPS)
 
+  // ⭐ 2026-07-20 (대표 — "자주 쓰는 페이지를 좌측 상단에"): 즐겨찾기(고정). 각 메뉴의 ★ 토글로 고정하면
+  //   사이드바 맨 위 '즐겨찾기' 섹션에 pin 순서대로 모임. 역할별로 보이는 항목만 고정 가능(roleNavGroups 해석).
+  //   localStorage 영속. 최초(미설정)엔 역할별 기본값 시드 → 바로 유용하게 보이되 이후 자유 큐레이션.
+  const allVisibleItems = roleNavGroups.flatMap((g) => g.items)
+  // ⌘K 커맨드 팔레트 대상 — 역할 가시 항목 flat + 그룹명(맥락 표시/검색용).
+  const commandItems: CommandItem[] = roleNavGroups.flatMap((g) =>
+    g.items.map((it) => ({ path: it.path, label: it.label, icon: it.icon, group: g.title })),
+  )
+  const DEFAULT_PINS = adminRole === 'wholesale'
+    ? ['/admin/wholesale-overview', '/admin/wholesale-orders', '/admin/suppliers']
+    : ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
+  const [pinnedPaths, setPinnedPaths] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('admin_nav_pinned_v1')
+      if (raw == null) return DEFAULT_PINS // 최초 진입: 기본값 시드(저장은 첫 토글 때)
+      const arr = JSON.parse(raw)
+      return Array.isArray(arr) ? arr.filter((p): p is string => typeof p === 'string') : []
+    } catch { return [] }
+  })
+  const togglePin = (path: string) => {
+    setPinnedPaths((prev) => {
+      const next = prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
+      try { localStorage.setItem('admin_nav_pinned_v1', JSON.stringify(next)) } catch { /* quota */ }
+      return next
+    })
+  }
+  const isPinned = (path: string) => pinnedPaths.includes(path)
+  // 고정 항목을 pin 순서대로 해석(역할 가시 항목만 — 역할 전환/메뉴 변경 시 사라진 경로는 조용히 제외).
+  const pinnedItems = pinnedPaths
+    .map((p) => allVisibleItems.find((it) => it.path === p))
+    .filter((it): it is NavItem => !!it)
+
   // 🆕 도매 파트너가 비-도매 어드민 경로(/admin 소비자 홈, /admin/users 등)로 직접 진입 시 도매 현황으로 리다이렉트.
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
-  useEffect(() => {
-    if (adminRole !== 'wholesale') return
-    // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
-    //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
-    //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
+  // 🚑 2026-07-10 (로딩 전수조사 — 바운스 전 오화면 플래시 제거): 리다이렉트 조건을 렌더 시점에 동기
+  //   계산(willBounce*)해, 리다이렉트가 예정된 프레임엔 콘솔 대신 라이트 로더를 그림(아래 render 가드).
+  //   조건·effect·ALWAYS_ALLOWED 면제는 전부 기존과 동일(무한루프 사고 방지 로직 불변) — 페인트만 억제.
+  // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
+  //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
+  //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
+  const willBounceWholesale = (() => {
+    if (adminRole !== 'wholesale') return false
     const allowed = [
       ...roleNavGroups.flatMap((g) => g.items.flatMap((it) => [it.path, ...(it.also || [])])),
       ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS,
     ]
-    const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
-    if (!ok) navigate('/admin/wholesale-overview', { replace: true })
+    return !allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
+  })()
+  useEffect(() => {
+    if (willBounceWholesale) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
 
   // 🆕 보안 PIN 강제 설정 게이트 — 강제 대상(도매 파트너/슈퍼)인데 미설정이면 PIN 설정 페이지로 가둠.
   //   로그인 시 must_set_pin 플래그 설정 → 설정 성공 시 해제. /admin/set-pin 자신은 면제(루프 방지).
+  const willBouncePin = typeof window !== 'undefined'
+    && localStorage.getItem('admin_must_set_pin') === '1'
+    && location.pathname !== '/admin/set-pin'
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (localStorage.getItem('admin_must_set_pin') === '1' && location.pathname !== '/admin/set-pin') {
-      navigate('/admin/set-pin', { replace: true })
-    }
+    if (willBouncePin) navigate('/admin/set-pin', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
@@ -410,6 +217,53 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   function isActive(path: string, exact?: boolean, also?: string[]) {
     if (also?.some((p) => location.pathname.startsWith(p))) return true
     return exact ? location.pathname === path : location.pathname.startsWith(path)
+  }
+
+  // ⭐ 2026-07-20: nav 한 줄 렌더러 — 즐겨찾기 섹션과 그룹 목록이 동일 마크업 공유(중복 제거).
+  //   행 = [Link(아이콘·라벨·배지)] + [★ 토글(호버 시 노출, 고정 시 상시 노출)]. 별 클릭은 네비게이션 안 함.
+  const renderNavItem = (item: NavItem) => {
+    const { path, label, icon: Icon, exact, also } = item
+    const active = isActive(path, exact, also)
+    const pinned = isPinned(path)
+    return (
+      <div
+        key={path}
+        className={`group/nav flex items-center border-l-[2.5px] ${
+          active ? 'border-amber-300 ur-admin-nav-active' : 'border-transparent'
+        }`}
+      >
+        <Link
+          to={path}
+          onClick={() => setSidebarOpen(false)}
+          // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline). amber 강조는 .ur-admin-nav-active.
+          className={`flex-1 min-w-0 flex items-center gap-2.5 pl-4 pr-1 py-[7px] text-[12px] font-semibold transition-colors ${
+            active ? 'text-white' : 'text-white/55 group-hover/nav:text-white'
+          }`}
+        >
+          <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
+          <span className="flex-1 truncate">{label}</span>
+          {label === '주문 관리' && pendingCount > 0 && (
+            <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">{pendingCount}</span>
+          )}
+          {/* 🏁 2026-06-14: 신규 이슈(미읽음 알림) 배지 */}
+          {(navBadges[path] || 0) > 0 && (
+            <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] flex-shrink-0">{navBadges[path]}</span>
+          )}
+        </Link>
+        <button
+          type="button"
+          onClick={() => togglePin(path)}
+          aria-pressed={pinned}
+          aria-label={pinned ? `${label} 즐겨찾기 해제` : `${label} 즐겨찾기 추가`}
+          title={pinned ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+          className={`flex-shrink-0 px-2 py-[7px] transition-opacity ${
+            pinned ? 'opacity-100' : 'opacity-0 group-hover/nav:opacity-100 focus:opacity-100'
+          }`}
+        >
+          <Star size={12} strokeWidth={2} className={pinned ? 'fill-amber-300 text-amber-300' : 'text-white/30 hover:text-white/60'} />
+        </button>
+      </div>
+    )
   }
 
   // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 — re-render 시 새 함수 참조 방지
@@ -466,8 +320,30 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </form>
       )}
 
+      {/* ⌘K 메뉴 빠른 이동 — 60여 개 메뉴를 이름으로 즉시 점프(전 역할). */}
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
+        className={`mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left ${adminRole === 'wholesale' ? 'mt-3' : ''}`}
+        style={{ background: 'rgba(255,255,255,0.03)' }}
+      >
+        <Search size={12} className="text-white/35 flex-shrink-0" />
+        <span className="flex-1 text-[11px] text-white/40">메뉴 빠른 이동</span>
+        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+      </button>
+
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+        {/* ⭐ 즐겨찾기(고정) — 대표 "자주 쓰는 페이지를 좌측 상단에". 각 메뉴 ★ 토글로 큐레이션. */}
+        {pinnedItems.length > 0 && (
+          <div className="mt-1 mb-1 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="px-4 py-1.5 flex items-center gap-1.5 font-extrabold uppercase text-amber-300/80" style={{ fontSize: '9px', letterSpacing: '0.12em' }}>
+              <Star size={10} strokeWidth={2.5} className="fill-amber-300/80" />
+              <span>즐겨찾기</span>
+            </div>
+            {pinnedItems.map((item) => renderNavItem(item))}
+          </div>
+        )}
         {NAV_SECTIONS.map((sec) => {
           const secGroups = roleNavGroups.filter((g) => navSectionOf(g) === sec.key)
           if (secGroups.length === 0) return null
@@ -500,37 +376,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
                 <ChevronDown size={11} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
               </span>
             </button>
-            {!collapsed && group.items.map(({ path, label, icon: Icon, exact, also }) => {
-              const active = isActive(path, exact, also)
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  onClick={() => setSidebarOpen(false)}
-                  // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline).
-                  //   amber 강조 gradient 는 index.css .ur-admin-nav-active (border 색은 amber-300).
-                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
-                    active
-                      ? 'text-white border-amber-300 ur-admin-nav-active'
-                      : 'text-white/55 hover:text-white border-transparent'
-                  }`}
-                >
-                  <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
-                  <span className="flex-1 truncate">{label}</span>
-                  {label === '주문 관리' && pendingCount > 0 && (
-                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">
-                      {pendingCount}
-                    </span>
-                  )}
-                  {/* 🏁 2026-06-14: 신규 이슈(미읽음 알림) 배지 */}
-                  {(navBadges[path] || 0) > 0 && (
-                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] flex-shrink-0">
-                      {navBadges[path]}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
+            {!collapsed && group.items.map((item) => renderNavItem(item))}
           </div>
           )
             })}
@@ -570,8 +416,20 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     </aside>
   )
 
+  // 🚑 2026-07-10 (로딩 전수조사): 리다이렉트 예정 프레임엔 콘솔 대신 라이트 로더 — 도매 RBAC/PIN 게이트
+  //   바운스 직전에 다른 어드민 화면이 한 번 그려지던 플래시 제거. effect 가 즉시 navigate (조건 동일 — 위 주석).
+  if (willBounceWholesale || willBouncePin) {
+    return (
+      <div className="admin-light-theme [color-scheme:light]" style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
+
   return (
     <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">
+      {/* ⌘K 커맨드 팔레트 — 전 어드민 페이지 공통(레이아웃 마운트). */}
+      <AdminCommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}

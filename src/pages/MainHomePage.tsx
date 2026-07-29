@@ -25,6 +25,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import HomeTopHeader from '@/components/main/HomeTopHeader'
 import DealEarnStrip from '@/components/main/DealEarnStrip'
+import NewOpeningsStrip from '@/components/main/NewOpeningsStrip'
 import HomeProductsRail from '@/components/main/HomeProductsRail'
 import GroupBuyFeed from './main-home/GroupBuyFeed'
 
@@ -54,11 +55,14 @@ export default function MainHomePage() {
       {/* ═══ 🛍️ 일반 상품 레일 — 실제 상품 미리보기 */}
       <HomeProductsRail />
 
+      {/* ═══ 🎉 우리 동네 새 가게 — 공공 인허가 개업 감지(데이터 없으면 자동 미표시, additive) */}
+      <NewOpeningsStrip />
+
       {/* ═══ 📱 교환권(기프티콘) — 홈에서 강등: 딜 소진 옵션 entry → /vouchers ═══ */}
       <div className="ur-content-wide px-4 lg:px-8 mt-5">
         <button
           onClick={() => navigate('/vouchers')}
-          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3.5 active:scale-[0.99] transition-transform"
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] px-4 py-3.5 active:scale-[0.99] transition-transform"
         >
           <span className="flex items-center gap-2.5 min-w-0">
             <span className="text-[20px]">📱</span>

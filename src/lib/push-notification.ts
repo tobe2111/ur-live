@@ -443,8 +443,8 @@ export async function sendOrderNotification(
   await notifyUser(DB, sellerId, 'seller', {
     title: '새 주문이 접수되었습니다!',
     body: `주문번호: ${orderNumber}, 금액: ${Number(totalAmount ?? 0).toLocaleString('ko-KR')}원`,
-    icon: '/static/icon-order.png',
-    badge: '/static/badge-order.png',
+    icon: '/icon-biz-192.png',
+    badge: '/favicon-biz-32.png',
     data: {
       type: 'order',
       orderNumber: orderNumber
@@ -476,8 +476,8 @@ export async function sendLiveStartNotification(
     await notifyUser(DB, follower.user_id, 'user', {
       title: `${sellerName}님이 라이브 방송을 시작했습니다!`,
       body: streamTitle,
-      icon: '/static/icon-live.png',
-      badge: '/static/badge-live.png',
+      icon: '/icon-biz-192.png',
+      badge: '/favicon-biz-32.png',
       data: {
         type: 'live',
         streamId: streamId
@@ -503,8 +503,8 @@ export async function sendLowStockNotification(
   await notifyUser(DB, sellerId, 'seller', {
     title: '재고 부족 알림',
     body: `${productName}의 재고가 ${currentStock}개 남았습니다.`,
-    icon: '/static/icon-stock.png',
-    badge: '/static/badge-stock.png',
+    icon: '/icon-biz-192.png',
+    badge: '/favicon-biz-32.png',
     data: {
       type: 'stock',
       productName: productName
@@ -529,8 +529,8 @@ export async function sendSettlementNotification(
   await notifyUser(DB, sellerId, 'seller', {
     title: '정산이 완료되었습니다',
     body: `${period} 정산금액: ${Number(settlementAmount ?? 0).toLocaleString('ko-KR')}원`,
-    icon: '/static/icon-settlement.png',
-    badge: '/static/badge-settlement.png',
+    icon: '/icon-biz-192.png',
+    badge: '/favicon-biz-32.png',
     data: {
       type: 'settlement',
       amount: settlementAmount

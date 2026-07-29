@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
@@ -143,20 +144,14 @@ export default function CouponClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 dark:from-[#0F151D] to-white dark:to-[#0F151D] flex items-center justify-center px-4">
       <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
       {/* 🛡️ 2026-05-20: PC 에서 cramped 안 보이도록 form 폭 확장 + 좌우 padding */}
       <div className="w-full max-w-sm lg:max-w-md text-center px-4 lg:px-8 relative z-10">
-        {status === 'loading' && (
-          <div className="animate-pulse">
-            <div className="w-20 h-20 mx-auto bg-pink-100 dark:bg-pink-900/20 rounded-full flex items-center justify-center mb-4">
-              <Gift className="w-10 h-10 text-pink-400 animate-bounce" />
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">{t('couponClaim.claiming')}</p>
-          </div>
-        )}
+        {/* 🎯 2026-07-18 로딩 단일화 — 커스텀 Gift 애니메이션 → 유어딜 BrandLoader(라벨). */}
+        {status === 'loading' && <BrandLoader label={t('couponClaim.claiming')} />}
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -168,8 +163,8 @@ export default function CouponClaimPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
             <div className="relative bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0F151D] to-white dark:to-[#0F151D] rounded-full" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0F151D] to-white dark:to-[#0F151D] rounded-full" />
 
               <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
