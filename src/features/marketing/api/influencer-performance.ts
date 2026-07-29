@@ -338,10 +338,10 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
   //    통과한 뒤 아래에서 전량 스킵됐다. channel_id/url 을 함께 읽어 그 자리에서 진짜 id 를 되살린다.
   type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null
-    category: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
+    name: string | null; category: string | null; category_source: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
       ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
     rows = res?.results || []
   } catch (err) {
@@ -406,6 +406,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     }
     const sets: string[] = [`perf_checked_at = datetime('now')`]
     const binds: (string | number)[] = []
+    let descForClass = r.description || '' // 🏷️ 재분류용 본문 — 아래에서 최신 글 제목으로 갱신되면 그 값을 쓴다
     if (rssXml !== null) {
       diag.measured++
       const pubDates = extractPubDates(rssXml)
@@ -415,7 +416,8 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       const titles = extractRssTitles(rssXml)
       if (titles.length) { // 글 제목 꼬리 갱신 — 기존 꼬리 제거 후 최신으로 교체(분류 신호 신선 유지)
         const bare = stripVideoTitles(r.description || '').trim()
-        sets.push('description = ?'); binds.push(`${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500))
+        descForClass = `${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500)
+        sets.push('description = ?'); binds.push(descForClass)
       }
     }
     let emailAfter = r.email
@@ -429,6 +431,18 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }
       if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]); instaAfter = instaAfter || c.instagram[0] }
       if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+    }
+    // 🏷️ **측정한 그 자리에서 재분류**(2026-07-29) — 추가 fetch 0.
+    //   배경: 풀의 74%(28,673명)가 네이버 블로거인데 이들의 업종은 거의 전부 **수집 키워드 상속**이다
+    //   (실측 `cat_keyword 30,747` vs `cat_content 5,251`). "강남 맛집"으로 발굴됐다고 맛집 블로거인 건
+    //   아니다 — 서비스몰이 파는 것이 **지역×업종 맞춤 매칭**이라 이 축이 틀리면 이행 품질이 무너진다.
+    //   유튜브 경로는 이미 About 으로 재분류하는데(reconcileCategory) 네이버만 빠져 있었다.
+    //   방금 받은 최신 글 제목이 블로거가 실제로 쓰는 주제라 키워드 상속보다 훨씬 정직한 신호다.
+    //   ⚠️ live 가 null 이면 기존 값을 유지한다(reconcile 규칙 동일) — 못 알아본 것을 '없음'으로 덮지 않는다.
+    const liveCat = classifyCategory(r.name || '', descForClass)
+    if (liveCat && !NON_CATEGORIES.has(liveCat)) {
+      const finalCat = reconcileCategory(r.category, liveCat, null)
+      if (finalCat) { sets.push('category = ?', `category_source = 'content'`); binds.push(finalCat) }
     }
     // 🏅 측정한 그 자리에서 재채점(2026-07-29) — 활동성(최대 25점)은 `recent_posts_30d` 에서 오는데,
     //   블로거는 핸들 손상으로 그동안 **전원 미측정 = activity 0점**이었다(실측: 블로거 최고 33점,
