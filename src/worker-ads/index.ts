@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, phaseGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, scheduleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -545,7 +545,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
       const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')
       return runMaintenancePhase(env, phase)
-    }, { gap: phaseGapMinutes(PHASES.length) })
+    }, { gap: scheduleGapMinutes(PHASES) })
   }
   // 🧭 라이브 재보정(YouTube 쿼터 소비)은 기존대로 하루 1회(19:00 UTC = KST 04시)만.
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {

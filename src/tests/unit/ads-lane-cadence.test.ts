@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
-  maxPhaseGapHours, phaseGapMinutes, makeHourGates,
+  maxPhaseGapHours, phaseGapMinutes, maxScheduleGapHours, scheduleGapMinutes, makeHourGates,
   neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
@@ -34,6 +34,25 @@ describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
   it('0/음수는 최소 1분으로 클램프 — 0 을 넘겨도 즉시-stale 이 되지 않는다', () => {
     expect(staleGapMinutes(0)).toBe(32)
     expect(everyNHoursGapMinutes(0)).toBe(150)
+  })
+})
+
+describe('maxScheduleGapHours — 가중 배정표의 실제 간격', () => {
+  it('균등 배정은 maxPhaseGapHours 와 동치 — 공식을 두 벌 두지 않는다', () => {
+    for (const n of [1, 4, 5, 6, 7, 10]) {
+      expect(maxScheduleGapHours(Array.from({ length: n }, (_, i) => i))).toBe(maxPhaseGapHours(n))
+    }
+  })
+
+  it('같은 단계가 여러 슬롯을 차지하면 간격이 줄어든다 — 슬롯 수만으로는 못 보는 값', () => {
+    // 4슬롯 중 a 가 3자리: a 는 0·1·2시… 로 촘촘하고, b 는 3시마다 → 최대 간격은 b 의 4시간.
+    expect(maxScheduleGapHours(['a', 'a', 'a', 'b'])).toBe(4)
+    // 단계가 하나뿐이면 매시간.
+    expect(maxScheduleGapHours(['a', 'a'])).toBe(1)
+  })
+
+  it('빈 배정표는 24시간으로 폴백 — 0 을 넘겨 즉시-stale 이 되지 않게', () => {
+    expect(maxScheduleGapHours([])).toBe(24)
   })
 })
 
@@ -110,8 +129,10 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
     expect((src.match(/gates\.(dailyAt|everyNHours)\(/g) || []).length).toBeGreaterThanOrEqual(10)
   })
 
-  it('단계 순환 레인은 단계 수에서 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
-    expect(src).toMatch(/phaseGapMinutes\(PHASES\.length\)/)
+  it('단계 순환 레인은 **배정표에서** 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
+    // 슬롯 수(`PHASES.length`)로 유도하면 가중 배정표에서 과대추정 → stale 경보가 조용히 느슨해진다.
+    expect(src).toMatch(/scheduleGapMinutes\(PHASES\)/)
+    expect(src).not.toMatch(/phaseGapMinutes\(PHASES/)
   })
 })
 
@@ -146,6 +167,14 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
 
   it('🔒 배정표에 정의 밖 단계가 섞이지 않는다(오타는 그 슬롯을 통째로 버린다)', () => {
     expect(MAINT_SCHEDULE.filter(p => !MAINT_PHASES.includes(p))).toEqual([])
+  })
+
+  it('⏰ stale 기준은 배정표의 **실제** 최대 간격에서 나온다 — 슬롯 수 기준보다 촘촘하다', () => {
+    // 이 배정표의 실제 최대 간격은 merge·reextract 의 10시간(24 를 10 으로 나눈 자정 불연속 포함).
+    expect(maxScheduleGapHours(MAINT_SCHEDULE)).toBe(10)
+    // 슬롯 수만 보면 14시간 — 그대로 쓰면 경보 창이 28.5h 로 벌어진다(멈춤을 그만큼 늦게 안다).
+    expect(maxPhaseGapHours(MAINT_SCHEDULE.length)).toBe(14)
+    expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThan(phaseGapMinutes(MAINT_SCHEDULE.length))
   })
 
   it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
