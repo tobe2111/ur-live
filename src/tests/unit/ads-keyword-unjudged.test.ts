@@ -58,3 +58,39 @@ describe('오염된 streak 의 대가 — 왜 무판정이 중요한가', () => 
     expect(pickYtKeywords([{ ...good, barren_streak: 0 }, meh], 1, now)[0].id).toBe(1)
   })
 })
+
+/**
+ * 🍽️ **기록용 예약분** — 2026-07-29 라이브 실측.
+ *
+ *   증상: 어드민 수집 진단(`run`)이 05:00 에 멈춰 있는데 리드는 08:00 에도 저장되고 있었다.
+ *   레인은 도는데 *자기 기록만* 못 남긴 것 — 발굴 루프가 예산을 0 까지 쓰고, 그 뒤의 D1 쓰기
+ *   (키워드 성과·학습상한·스냅샷·리스 해제)가 플랫폼 한도에 걸려 `.catch(() => null)` 로 사라졌다.
+ *   실측: `spent 55 = budget_total 55` · `limit_hit: true` · 스냅샷은 3시간 전.
+ *
+ *   여기서 잠그는 것은 **회계 항등식**이다 — 예약분을 도입해도 밖으로 보고하는 `spent` 와
+ *   AIMD 가 학습하는 값이 예전과 같은 의미(시작값 기준 총소비)로 남아야 한다. 안 그러면
+ *   백오프가 실제보다 낮게 잡혀 다음 틱이 필요 이상으로 굶는다.
+ */
+describe('수집 예산 — 기록용 예약분 회계', () => {
+  const RESERVE = 8
+  const alloc = (budgetTotal: number) => Math.max(6, budgetTotal - RESERVE)
+  const spentTotal = (budgetTotal: number, left: number) => (alloc(budgetTotal) - left) + RESERVE
+
+  it('🔒 발굴 배정분은 항상 총예산보다 작다 — 후처리 쓰기 자리가 남는다', () => {
+    for (const t of [40, 50, 55, 60]) expect(alloc(t)).toBeLessThan(t)
+  })
+
+  it('🔒 완전 소진 시 보고값 = 총예산 (예약분 도입 전과 동일한 회계)', () => {
+    for (const t of [40, 50, 55, 60]) expect(spentTotal(t, 0)).toBe(t)
+  })
+
+  it('부분 사용도 시작값 기준으로 센다(백오프 방향 보존)', () => {
+    expect(spentTotal(55, 47)).toBe(8)   // 발굴 0 + 예약 8
+    expect(spentTotal(55, 20)).toBe(35)  // 27 + 8
+  })
+
+  it('예산이 아주 작아도 발굴 몫이 음수가 되지 않는다', () => {
+    expect(alloc(10)).toBe(6)
+    expect(alloc(0)).toBe(6)
+  })
+})

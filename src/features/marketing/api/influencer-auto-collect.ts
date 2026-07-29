@@ -171,7 +171,9 @@ const LEASE_KEY = COLLECT_LEASE_KEY
 const LEASE_TTL_MS = COLLECT_LEASE_TTL_MS
 
 /** 크래시 경로에서도 필요한 값들(래퍼가 catch 에서 읽는다) — 정해지는 즉시 채운다. */
-interface CollectCtx { budgetTotal: number; learnedCap: number; envBudget: number; budget?: FetchBudget; release?: () => Promise<void> }
+interface CollectCtx { budgetTotal: number; learnedCap: number; envBudget: number; budget?: FetchBudget
+  /** 발굴에 실제로 배정한 양(= budgetTotal − 기록용 예약분). spent 계산의 기준점. */ fetchTotal?: number
+  release?: () => Promise<void> }
 
 /**
  * 🛡️ 2026-07-28 **자가 회복 래퍼** — 라이브에서 인플루언서 수집이 15:01 이후 매시간 조용히 죽고 있었다
@@ -191,11 +193,14 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   } catch (err) {
     const e = err as { name?: string; message?: string } | null
     const crash = `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}`
-    const spent = ctx.budget ? Math.max(0, ctx.budgetTotal - ctx.budget.left) : 0
+    // 실사용 = 발굴 배정분에서 쓴 만큼 + 예약분(후처리 쓰기). 예약분을 빼먹으면 학습 상한이 실제보다
+    //   낮게 잡혀 다음 틱이 필요 이상으로 굶는다.
+    const reserve = Math.max(0, ctx.budgetTotal - (ctx.fetchTotal ?? ctx.budgetTotal))
+    const spent = ctx.budget && ctx.fetchTotal != null ? Math.max(0, ctx.fetchTotal - ctx.budget.left) + reserve : 0
     // ② 한도 신호 → 상한 하향(이번에 쓴 양보다 확실히 아래로). 여기서 안 낮추면 다음 틱도 같은 곳에서 죽는다.
     if (isSubrequestLimitError(crash) && spent > 0) {
-      // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
-      //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
+      // `spent` 는 위에서 시작값 기준 실사용 + 예약분으로 계산 — 가드가 요구하는 의미와 같지만
+      //   예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
       const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget, platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)) // subreq-cap-lane-ok
       if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
     }
@@ -326,8 +331,27 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
-  const budget: FetchBudget = { left: budgetTotal }
-  ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
+  /**
+   * 🍽️ **기록용 예약분** (2026-07-29 라이브 실측 — 정비 레인의 `RESERVE_OPS` 와 같은 처방).
+   *
+   *   증상: 어드민의 수집 진단(`run`)이 **05:00 에 멈춰 있는데 리드는 08:00 에도 저장되고 있었다.**
+   *   즉 레인은 도는데 *자기 기록만* 못 남긴다 — 실패할 때 진단이 정확히 같이 눈이 먼다.
+   *   원인: 발굴 루프가 예산을 **0 까지** 쓰고, 그 뒤의 D1 쓰기(키워드 성과 batch · 학습상한 ·
+   *   YT 카운터 · 스냅샷 · 리스 해제)가 전부 플랫폼 서브리퀘스트 한도에 걸려
+   *   `.catch(() => null)` 로 조용히 사라진다. 실측이 그 모양이다 — `spent 55 = budget_total 55`,
+   *   `limit_hit: true`, 그리고 스냅샷은 3시간 전 것.
+   *   ⇒ 정비 레인은 이미 같은 이유로 6 ops 를 남겨 둔다("이게 없으면 *기록조차 못 하는* 원래 병이 재발").
+   *   발굴은 후처리 쓰기가 더 많아(해시태그 승격 batch 포함) 8 로 잡는다.
+   *
+   *   ⚠️ 회계 호환: 밖으로 보고하는 `spent`/`budget_total` 과 AIMD 가 학습하는 값은 **예약분을 포함한
+   *   총소비**여야 한다(학습 상한은 '플랫폼 예산'을 뜻하므로). 아래 `spentTotal` 이 그 역할.
+   */
+  const RESERVE_OPS = 8
+  // platform-cap-ok: `budgetTotal` 이 이미 resolveSubreqBudget(=천장 통과)의 결과이고, 여기서는
+  //   예약분을 **빼기만** 한다 — 천장을 넘길 수 없다(항상 fetchTotal ≤ budgetTotal ≤ 천장).
+  const fetchTotal = Math.max(6, budgetTotal - RESERVE_OPS)
+  const budget: FetchBudget = { left: fetchTotal }
+  ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget; ctx.fetchTotal = fetchTotal
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
   //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
   //
@@ -439,7 +463,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget, pcap)
+  // 실사용 = 발굴이 쓴 만큼 + 예약분(후처리 쓰기) — 학습 상한은 '플랫폼 예산' 이라 총소비로 재야 한다.
+  //   subreq-cap-lane-ok: 가드는 `budgetTotal - budget.left` 리터럴을 기대하지만, 예약분 도입 후
+  //   그 식은 **예약분을 빼먹어** 실제보다 적게 학습한다(다음 틱이 필요 이상으로 굶는다).
+  //   `spentTotal` 은 같은 '시작값 기준' 이고 완전 소진 시 정확히 budgetTotal 이 된다 — 백오프 방향 동일.
+  const spentTotal = (fetchTotal - budget.left) + RESERVE_OPS
+  const nextCap = nextSubreqCap(spentTotal, hitLimit, learnedCap, envBudget, pcap) // subreq-cap-lane-ok
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
@@ -519,7 +548,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     ...(starvedIds.size ? { kw_unjudged: starvedIds.size } : {}),
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
-    spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
+    spent: spentTotal, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
