@@ -335,7 +335,21 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
           const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
           await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, '유어애즈 구글시트 동기화 실패', `${r.error || 'unknown'}\n(해결 전까지 시트 미러 정지 — 어드민 정비 도구에서 수동 재시도 가능)`, 'warn').catch(() => null)
         }
-      } catch { /* fail-soft */ }
+      } catch (err) {
+        // 🔎 2026-07-29: 여기서 통째로 삼키던 것이 **3세션을 잡아먹었다**. 실패의 실제 양식은
+        //   "러너가 돌다 실패"가 아니라 **"러너가 시작조차 못 함"** 이었다 — 위 `SELF.fetch` 는 이 부모
+        //   인보케이션의 서브리퀘스트 1개이고, 부모가 인라인 레인(백필 최대 192 fetch/시간)에 예산을
+        //   다 쓰면 그 1개조차 못 써서 throw 한다. 그러면 sheets-sync 는 진입하지 않으니 자기 스탬프도
+        //   못 남기고, 화면엔 **옛 `ok:true` 가 그대로** 남는다(실측: 48시간 정지인데 성공 표시).
+        //   ⇒ 부모 쪽에서도 스탬프를 남긴다. best-effort(한도가 원인이면 이 D1 쓰기도 실패할 수 있다)지만,
+        //   성공하는 회차엔 "kick 이 못 떴다"가 그대로 보인다 — 원인이 정반대인 두 경우가 갈린다.
+        const msg = String((err as { message?: string } | null)?.message || err || '').slice(0, 200)
+        await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+          .bind('ads_sheets_last_sync', JSON.stringify({
+            at: new Date().toISOString(), ok: false, rows: null,
+            error: `KICK_FAILED: 동기화 러너를 띄우지 못했습니다(부모 인보케이션 예산 소진 의심) — ${msg}`,
+          })).run().catch(() => null)
+      }
     })())
   }
   // 🔁 동의 리드 리마인드 — 매시간 시도(러너가 게이트 OFF/야간/무대상이면 no-op). 1인 1회(reminded_at CAS).
