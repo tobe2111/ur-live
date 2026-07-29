@@ -19,6 +19,7 @@ import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortli
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch } from './beat-batch'
+import { laneUrl, readBeatParams, writeSelfBeat } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
@@ -36,6 +37,20 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', async (c, next) => {
   await next()
   try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
+})
+
+// 🫀 **레인이 자기 하트비트를 쓴다** — 부모가 응답을 기다리다 먼저 회수되면 기록이 사라지던 것
+//   (실측: `reclassify` 자기 스탬프 16:01 ↔ 하트비트 13:01 · `collect-commerce` 기록 아예 없음).
+//   부모가 `_beat`/`_gap` 을 넘긴 호출에서만 동작한다 — 수동 트리거는 무영향(근거는 self-beat.ts).
+app.use('/__ads/*', async (c, next) => {
+  const t0 = Date.now()
+  const p = readBeatParams(c.req.url)
+  if (!p) return next()
+  let ok = true
+  try { await next() } catch (err) { ok = false; throw err } finally {
+    // 응답 직전에 기록 — 여기까지 왔다는 것은 **레인이 일을 끝냈다**는 뜻이다.
+    await writeSelfBeat(c.env, p.beat, ok && (c.res?.status ?? 500) < 500, Date.now() - t0, p.gap)
+  }
 })
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
@@ -102,23 +117,6 @@ app.post('/__ads/match-registry', async (c) => {
     const e = err as { name?: string; message?: string } | null
     return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
   }
-})
-
-// 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.
-app.post('/__ads/collect-work24', async (c) => {
-  try {
-    const { runWork24JobsCollect } = await import('@/features/marketing/api/work24-jobs-collect')
-    return c.json({ ok: true, stats: await runWork24JobsCollect(c.env) })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 👥 국민연금 규모 검증 — 기존 리드(대행사 우선)의 직원수(가입자수) 조회(엄격 매칭, 허위 0).
-app.post('/__ads/collect-nps', async (c) => {
-  try {
-    const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
-    const stats = await runNpsWorkplaceEnrich(c.env, 100) // 40→100(2026-07-27 대표 "더 정확히" — data.go.kr 쿼터 여유)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
 // 🏭 도매몰 제조사·판매사 후보 수집 — 게이트 `SUPPLY_MAKER_COLLECT_ENABLED`(cron 측에서 검사, 수동은 무관).
@@ -276,7 +274,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     const p = (async () => {
       const t0 = Date.now()
       try {
-        if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
+        // 🫀 이름·주기를 함께 넘긴다 — 레인이 **자기 하트비트를 스스로** 쓰게(self-beat.ts 참조).
+        //   부모가 응답 전에 회수돼도 '일을 끝냈다'는 사실이 남는다. 부모 쪽 쓰기는 폴백으로 유지.
+        if (env.SELF?.fetch) await env.SELF.fetch(new Request(laneUrl(path, beat, opts?.gap), { method: 'POST' }))
         else await fallback()
         await adsBeat(beat, true, Date.now() - t0, undefined, opts?.gap)
       } catch (err) {
