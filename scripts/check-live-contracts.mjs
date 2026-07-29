@@ -5,7 +5,7 @@
  * ## 왜 정적 가드로는 부족한가
  *
  * 이 레포에는 URL 목록이 **코드 안에 선언**돼 있다: 예열 대상(`HOT_PATHS`), SSR 전역 워밍
- * 키(`SSR_KV_PATHS`), 색인 요청(`sitemap.xml`). 정적 가드(`check-sitemap-routes`)는
+ * 키(`SSR_KV_PATHS`), 색인 요청(`sitemap.xml`), 크롤 정책(`public/robots.txt`). 정적 가드(`check-sitemap-routes`)는
  * **라우트가 존재하는가**만 본다. 그런데 라우트가 있어도 실제로는 죽어 있을 수 있다:
  *
  *   · **번들 분리** — 도매 라우트는 `__INCLUDE_WHOLESALE__` 빌드에만 있다. 소비자 오리진에선 404.
@@ -29,6 +29,8 @@
  *     `urdeal.kr`·`utongstart.com` 을 CONNECT 403 으로 막는다 — 그건 URL 이 죽은 게 아니라
  *     환경 문제다. 같은 오리진에서 *일부만* 실패하면 그건 진짜 죽은 URL 이라 잡는다.
  *   · 실패는 **1회 재시도** 후에만 확정한다(일시 5xx/타임아웃 흡수).
+ *   · `robots.txt` 는 **응답 본문이 레포 선언을 담고 있는지**까지 본다 — 파일이 200 이어도
+ *     내용이 딴 것일 수 있다(아래 checkRobots 주석의 실측 참조).
  *
  * ## 어떻게 쓰나
  *
@@ -143,6 +145,37 @@ function verdict(t, r) {
   return 'fail'
 }
 
+/**
+ * `public/robots.txt` 는 **선언**이고, 크롤러가 실제로 받는 것은 오리진이 주는 응답이다.
+ * 그 둘이 갈릴 수 있다 — 2026-07-29 실측: `live.ur-team.com/robots.txt` 는 200 이지만 내용이
+ * **Cloudflare Managed robots.txt**(AI 크롤러 차단 목록)로 통째 대체돼 있어, 레포의 규칙 52줄이
+ * **하나도 서빙되지 않고** `Sitemap:` 줄도 없다. 이러면 `check-robots-private-routes` 가
+ * 지키는 대상이 *현실에 없는 파일*이 된다 — 가드는 초록인데 크롤러는 다른 걸 본다.
+ * 그래서 "선언 vs 현실" 검사에 robots 도 포함한다.
+ */
+async function checkRobots(origin) {
+  if (!existsSync('public/robots.txt')) return null
+  const declared = readFileSync('public/robots.txt', 'utf8').split('\n').map((l) => l.trim())
+  const rules = declared.filter((l) => /^(Disallow|Allow):/i.test(l))
+  const wantsSitemap = declared.some((l) => /^Sitemap:/i.test(l))
+  if (rules.length === 0) return null
+
+  const r = await probe({ origin, path: '/robots.txt' })
+  if (r.status !== 200) return { origin, status: r.status, reason: 'robots.txt 를 200 으로 받지 못했다' }
+
+  let served = ''
+  try {
+    const res = await fetch(`${origin}/robots.txt`, { headers: { 'User-Agent': UA } })
+    served = await res.text()
+  } catch { return null } // 본문을 못 읽으면 판정하지 않는다(오탐보다 침묵)
+
+  const missing = rules.filter((l) => !served.includes(l))
+  const sitemapMissing = wantsSitemap && !/^Sitemap:/im.test(served)
+  const managed = /Cloudflare Managed content/i.test(served)
+  if (missing.length === 0 && !sitemapMissing) return null
+  return { origin, missing: missing.length, total: rules.length, sitemapMissing, managed, sample: missing.slice(0, 5) }
+}
+
 const results = []
 const queue = [...targets]
 // 동시성 2 + 요청 간 페이싱 — 라이브를 두드리는 것이고, 실측상 동시요청을 올리면 중계 구간이
@@ -175,8 +208,11 @@ const live = results.filter((r) => !deadOrigins.has(r.origin))
 const failures = live.filter((r) => r.verdict === 'fail' || r.verdict === 'unreachable')
 const skipped = results.filter((r) => deadOrigins.has(r.origin))
 
+// robots 는 기본 오리진에서만 본다(도매 오리진은 자체 sitemap/robots 정책이 따로다).
+const robots = deadOrigins.has(BASE) ? null : await checkRobots(BASE)
+
 if (JSON_OUT) {
-  console.log(JSON.stringify({ base: BASE, checked: results.length, failures, skipped, results }, null, 2))
+  console.log(JSON.stringify({ base: BASE, checked: results.length, failures, skipped, robots, results }, null, 2))
 } else {
   console.log(`🌐 라이브 계약 검증 — 선언 URL ${results.length}건 (오리진 ${origins.length}개)`)
   const redirected = live.filter((r) => r.verdict === 'ok-redirect').length
@@ -199,6 +235,22 @@ if (JSON_OUT) {
   } else {
     console.log(`\n✅ 검사한 ${live.length}건 전부 살아 있음.`)
   }
+
+  if (robots) {
+    console.error(`\n❌ robots.txt — 레포의 선언이 실제로 서빙되지 않는다 (${BASE}):`)
+    if (robots.reason) console.error(`   ${robots.reason} (status ${robots.status})`)
+    else {
+      console.error(`   규칙 ${robots.total}줄 중 ${robots.missing}줄이 응답에 없다`
+        + `${robots.sitemapMissing ? ' · Sitemap: 줄도 없다' : ''}`)
+      for (const l of robots.sample) console.error(`      누락: ${l}`)
+      if (robots.managed) {
+        console.error(`   ⚠️ 응답이 **Cloudflare Managed robots.txt** 다 — 오리진 파일을 통째로 대체한다.`)
+        console.error(`      대시보드에서 그 기능을 끄거나, 관리 규칙에 우리 Disallow/Sitemap 을 합쳐야 한다.`)
+      }
+      console.error(`   → 이걸 안 고치면 \`check-robots-private-routes\` 가 지키는 대상이 *현실에 없는 파일*이 된다`)
+      console.error(`     (가드는 초록인데 크롤러는 다른 걸 본다).`)
+    }
+  }
 }
 
-process.exit(failures.length ? 1 : 0)
+process.exit(failures.length || robots ? 1 : 0)
