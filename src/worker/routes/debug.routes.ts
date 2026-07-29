@@ -36,14 +36,26 @@ debugRoutes.get('/build-info', requireAdmin(), (c) => {
 // Worker 환경 바인딩 상태 진단 (DB/KV 등 키 확인).
 debugRoutes.get('/bindings', requireAdmin(), (c) => {
   const env = c.env as Env
+  const e = env as any
+  // 🆕 2026-07-01 (Cloudflare 전수조사): KV/R2/Durable Objects 바인딩을 빠짐없이 노출.
+  //   기존엔 CACHE_KV/ANALYTICS_KV/MEDIA_BUCKET/PUBLIC_R2_URL/Durable Objects 가 빠져
+  //   "프로덕션이 이상적으로 바인딩됐는지" 한 번에 확인 불가했음. 상세 진단은 /api/health/env-readiness.
+  const kv = { SESSION_KV: !!e.SESSION_KV, RATE_LIMIT_KV: !!e.RATE_LIMIT_KV, CACHE_KV: !!e.CACHE_KV, ANALYTICS_KV: !!e.ANALYTICS_KV }
+  const r2 = { MEDIA_BUCKET: !!e.MEDIA_BUCKET, BACKUP_BUCKET: !!e.BACKUP_BUCKET }
+  const durableObjects = { LIVE_STREAM: !!e.LIVE_STREAM, RATE_LIMITER: !!e.RATE_LIMITER }
   return c.json({
     hasDB: !!env.DB,
-    hasSessionKV: !!(env as any).SESSION_KV,
-    hasRateLimitKV: !!(env as any).RATE_LIMIT_KV,
-    hasBackupBucket: !!(env as any).BACKUP_BUCKET,
-    // 🆕 2026-06-18 (운영 인프라 점검): 1인 운영 핵심 env 가시화 — env-check 페이지가 ✅/❌ 로 표시.
-    hasDiscordWebhook: !!(env as any).DISCORD_WEBHOOK_URL,
-    ktAlphaPinMode: (env as any).KT_ALPHA_PIN_MODE === '1',
+    // 하위호환(기존 필드 유지 — env-check 페이지가 참조).
+    hasSessionKV: kv.SESSION_KV,
+    hasRateLimitKV: kv.RATE_LIMIT_KV,
+    hasBackupBucket: r2.BACKUP_BUCKET,
+    hasDiscordWebhook: !!e.DISCORD_WEBHOOK_URL,
+    ktAlphaPinMode: e.KT_ALPHA_PIN_MODE === '1',
+    // 🆕 전체 Cloudflare 인프라 바인딩 그룹.
+    kv,
+    r2,
+    durableObjects,
+    publicR2Url: e.PUBLIC_R2_URL || null,   // 있으면 media.ur-team.com 서빙(워커 과금 회피)
     environment: env.ENVIRONMENT,
     frontendUrl: env.FRONTEND_URL,
     region: env.REGION,
