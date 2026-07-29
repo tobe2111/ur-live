@@ -164,6 +164,9 @@ import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blo
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
+// 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
+import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
+import { applySurfaceMeta, buildSellerSurfaceMeta } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -917,18 +920,12 @@ app.use('*', async (c, next) => {
           //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
           //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
           const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}`;
-          rb = rb
-            .on('title', { element(el) { el.setInnerContent(cTitle); } })
-            .on('meta[name="description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', cTitle); } })
-            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
-            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'profile'); } })
-            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogCard); } })
-            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', cTitle); } })
-            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogCard); } })
-            .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+          // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
+          //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
+          rb = applySurfaceMeta(rb, {
+            pageTitle: cTitle, title: cTitle, description: cDesc,
+            canonical: canon, ogType: 'profile', ogImage: ogCard,
+          });
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
@@ -956,44 +953,15 @@ app.use('*', async (c, next) => {
     if (ssrSlot === 'DETAIL' && ssrPayload) {
       const dm = buildDetailMeta(ssrPayload, origin2, url.pathname);
       if (dm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(dm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', dm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', dm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', dm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', dm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${dm.canonical}">`, { html: true });
-            if (dm.jsonLd) el.append(`<script type="application/ld+json">${dm.jsonLd}</script>`, { html: true });
-          } });
-        // 교환권(/vouchers/:id)은 색인 제외 — index.html 기본 robots(index,follow)를 noindex 로 rewrite.
-        if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+        // 교환권(/vouchers/:id)의 noindex 도 applySurfaceMeta 가 처리(meta.noindex).
+        rb = applySurfaceMeta(rb, dm);
       }
     }
     // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD(DETAIL 과 동일 패턴, 페이로드만 다름).
     if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
       const sm = buildStayDetailMeta(ssrPayload, origin2, url.pathname);
       if (sm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(sm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', sm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', sm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', sm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', sm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${sm.canonical}">`, { html: true });
-            if (sm.jsonLd) el.append(`<script type="application/ld+json">${sm.jsonLd}</script>`, { html: true });
-          } });
+        rb = applySurfaceMeta(rb, sm);
       }
     }
     // 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타 — DETAIL 과 동일 패턴.
@@ -1002,22 +970,25 @@ app.use('*', async (c, next) => {
     if (ssrSlot === 'PRODUCT' && ssrPayload) {
       const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
       if (pm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(pm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', pm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', pm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', pm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', pm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${pm.canonical}">`, { html: true });
-            if (pm.jsonLd) el.append(`<script type="application/ld+json">${pm.jsonLd}</script>`, { html: true });
-          } });
+        rb = applySurfaceMeta(rb, pm);
       }
+    }
+    // 🔎 2026-07-29 [UNLOCK_LOADING] (대표 "소비자 쪽 성능·SEO·UX 점검" — 라이브 실측 수리):
+    //   **정적 소비자 표면(`/`·`/vouchers`·`/browse`·`/map`)** + **셀러 링크샵(SELLER slot)** 서버 메타/canonical.
+    //   실측: 앞 셋은 홈 메타를 그대로 서빙(title/description 동일, `og:url` 전부 `https://urdeal.kr`,
+    //   canonical 없음)인데 sitemap 은 priority 0.9 로 제출 → 비-JS 크롤러엔 홈의 중복. `/s/*` 도 같은 상태
+    //   (`/u/:handle` 만 2026-07-01 에 개인화됨). DETAIL/PRODUCT/CURATOR 와 **동일한 additive 패턴**.
+    //   ⚠️ 정적 표면은 ssrSlot 이 아니라 **pathname** 으로 판정한다: `/vouchers?category=…` 는 슬롯 조건
+    //   (`!url.search`)에 안 걸려 ssrSlot 이 'MAIN' 으로 떨어지지만 메타는 교환권 것이어야 한다(sitemap 이 제출).
+    //   문구 SSOT = shared/seo/consumer-surfaces · 배선/빌더 = utils/surface-ssr-meta(god 파일 방지).
+    //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
+    if (!isWholesaleSurface && !needsRootBlank) {
+      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
+      if (sm) rb = applySurfaceMeta(rb, sm);
+    }
+    if (ssrSlot === 'SELLER' && ssrPayload) {
+      const sellerMeta = buildSellerSurfaceMeta(ssrPayload, origin2, url.pathname);
+      if (sellerMeta) rb = applySurfaceMeta(rb, sellerMeta);
     }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).

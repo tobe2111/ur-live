@@ -124,11 +124,25 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
 
       // 활성 셀러 공개 프로필 — 🔗 2026-06-17 링크샵 URL 통일: 연결 유저 handle 있으면 /u/{handle}(통일 canonical),
       //   없으면 기존 /s/{username} (둘 다 워커가 처리). 검색엔진이 통일 URL 을 인덱싱.
+      // 🔎 2026-07-29 (대표 "소비자 SEO 점검" — 라이브 실측): **내용이 있는 링크샵만** 제출한다.
+      //   실측: sitemap 의 storefront 8건이 전부 `active_products = 0` 이었고, 그중 6건은 QA 계정이었다
+      //   (`테스트 상점`·`테스트상호001`·`검증상호`·`최종테스트상호`·`테스트상호4`·`최종확인상호`).
+      //   `status='approved'` 만 보면 승인은 났으나 아직 아무것도 안 올린 매장까지 전부 들어온다 →
+      //   크롤러는 빈 페이지를 받아 soft-404 로 집계하고 그만큼 크롤 예산이 진짜 상품에서 빠진다.
+      //   ⚠️ 이름 패턴('테스트' 등)으로 거르지 않는다 — 상호에 '테스트'가 든 실제 사업자를 지우게 되고,
+      //      새 QA 계정 이름은 또 다르다. **콘텐츠 유무**가 유일하게 자기유지되는 기준이다:
+      //      상품 1개 이상 || 링크샵 핀 1개 이상(핀만 있는 큐레이터형 링크샵 보존 — `/u/jiwon1228` 이 그 경우).
+      //      매장이 상품을 올리면 다음 sitemap 부터 자동으로 다시 들어온다(수동 관리 0).
+      //   `product_pins` 는 lazy CREATE 라 없는 환경이 있을 수 있어 실패해도 뒤 블록(블로그)이 죽지 않게 catch.
       const sellers = await DB.prepare(
         `SELECT s.id AS id, s.username AS username, u.handle AS handle
            FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
-          WHERE s.status = 'approved'${sellerScope} ORDER BY s.id DESC LIMIT 200`
-      ).all<{ id: number; username: string; handle: string | null }>();
+          WHERE s.status = 'approved'${sellerScope}
+            AND ( EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.is_active = 1)
+               OR EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = s.linked_user_id) )
+          ORDER BY s.id DESC LIMIT 200`
+      ).all<{ id: number; username: string; handle: string | null }>()
+        .catch(() => ({ results: [] as Array<{ id: number; username: string; handle: string | null }> }));
       for (const s of sellers.results || []) {
         const loc = s.handle ? `/u/${s.handle}` : `/s/${s.username || s.id}`;
         urls.push({ loc, priority: 0.7, changefreq: 'weekly' });

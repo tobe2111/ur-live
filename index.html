@@ -359,7 +359,7 @@
       @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
       @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
       #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
-      #ud-inapp-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
+      #ud-inapp-block .blk-title { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
       #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
       #ud-inapp-block a.open-btn { display: inline-block; padding: 14px 28px; background: #FEE500; color: #3C1E1E; border-radius: 28px; font-weight: 800; text-decoration: none; font-size: 15px; margin: 4px 0 12px; box-shadow: 0 4px 12px rgba(254,229,0,0.35); }
       #ud-inapp-block .url-box { background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px; margin: 12px 0 8px; width: 100%; max-width: 340px; word-break: break-all; font-size: 11px; box-sizing: border-box; }
@@ -523,9 +523,13 @@
     <div id="ud-inapp-block" role="alert" aria-live="polite">
       <div class="wrap">
         <div class="ulogo">유어딜</div>
-        <div class="tagline">UR · DEAL</div>
+        <div class="tagline">urdeal.kr</div>
         <div class="icon">🌐</div>
-        <h1 id="ud-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</h1>
+        <!-- 🔎 2026-07-29 (소비자 SEO 실측): h1 → p. 이 블록은 `display:none` 이라 사람에겐 안 보이는데,
+             서빙 HTML 에서 **문서 전체의 첫 h1**이었다. `/`·`/vouchers` 는 다른 h1 이 없어서 JS 를 안 돌리는
+             크롤러(네이버 Yeti)에겐 그 페이지의 대표 제목이 "인앱 브라우저에서는…" 이었다.
+             role="alert" 인 컨테이너라 제목 시맨틱이 필요 없다 — 스타일(.blk-title)은 동일. -->
+        <p id="ud-title" class="blk-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</p>
         <p class="desc">최적의 환경을 위해<br/><b>외부 브라우저(Chrome / Safari)</b> 에서 열어주세요.</p>
         <a id="ud-open-btn" href="#" class="open-btn">📲 외부 브라우저 열기</a>
         <div class="url-box" id="ud-url"></div>

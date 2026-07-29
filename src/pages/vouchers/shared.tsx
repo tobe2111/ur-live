@@ -211,3 +211,71 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
     </button>
   )
 })
+
+/**
+ * 🎁 2026-07-29 브랜드 칩 — PC 레일/모바일 스트립에 **같은 마크업이 두 벌** 있던 것을 하나로.
+ *
+ * 이 추출로 함께 고친 실측 결함(라이브):
+ *   원본 브랜드 로고를 **32×32 로 렌더하면서 원본 그대로** 받고 있었다.
+ *   실측 1장 176,870B → 자체 리사이저 경유 5,261B (`cf-resized: internal=ok`, 33배).
+ *   교환권 탭의 브랜드 칩은 82개라 전량 스크롤 시 ~1.8MB 가 ~80KB 가 된다.
+ *   `cfImage` 는 2026-07-13 에 giftishow 를 cdn-cgi 로 되돌려 놨는데(감사 로그) **이 자리만 안 쓰고 있었다.**
+ *   width/height 를 명시해 뒤늦게 도착한 이미지가 칸을 흔들지 않게 한다.
+ */
+export interface VoucherBrandSummary {
+  brand_name: string
+  brand_icon_url: string | null
+  cnt: number
+}
+
+export const BrandChip = memo(function BrandChip({
+  brand,
+  selected,
+  onSelect,
+  labelWidthClass = 'max-w-[56px]',
+}: {
+  brand: VoucherBrandSummary
+  selected: boolean
+  onSelect: () => void
+  /** PC 레일(56px)과 모바일 스트립(60px)의 라벨 폭 차이만 외부에서 지정. */
+  labelWidthClass?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className="flex flex-col items-center gap-1 active:scale-95 transition-transform shrink-0"
+    >
+      {/* 🎨 2026-06-10: 화이트 로고 타일 — 선택 시 모노크롬 ring + 살짝 확대(로고 본연 색 발색). */}
+      <div
+        className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
+          selected
+            ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
+            : 'border-gray-200 dark:border-white/10 opacity-90'
+        }`}
+      >
+        {brand.brand_icon_url ? (
+          <img
+            src={cfImage(brand.brand_icon_url, { width: 96, format: 'auto' }) || brand.brand_icon_url}
+            alt={brand.brand_name}
+            loading="lazy"
+            decoding="async"
+            width={32}
+            height={32}
+            className="w-8 h-8 object-contain"
+          />
+        ) : (
+          <span className="text-lg">🎁</span>
+        )}
+      </div>
+      <span
+        className={`text-[10px] line-clamp-1 ${labelWidthClass} text-center ${
+          selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
+        }`}
+      >
+        {brand.brand_name}
+      </span>
+    </button>
+  )
+})

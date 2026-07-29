@@ -25,7 +25,7 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherRow, BrandChip, type VoucherProduct } from './vouchers/shared'
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
@@ -305,6 +305,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
   //   첫 로드 시 cnt 가장 많은 카테고리 자동 선택. 카테고리 변경 시 브랜드 list 자동 갱신.
   const [sections, setSections] = useState<CategorySection[]>([])
+  // 📐 2026-07-29 (CLS 실측 0.188 수리): 카테고리/브랜드 블록이 **상품 목록보다 늦게** 도착해
+  //   목록을 아래로 밀어냈다. 상품은 SSR 시드로 즉시 그려지는데(`__SSR_INITIAL_VOUCHERS__`)
+  //   그 위 두 블록은 `/api/vouchers/categories` 응답을 기다리기 때문이다. 첫 방문(로컬 캐시 없음)
+  //   에서만 발생 — 재방문은 캐시로 즉시 그려져 시프트가 없다(그래서 눈에 잘 안 띄었다).
+  //   → 응답 전까지 **실측 높이만큼 자리를 잡아 둔다**(칩 행 50px · 브랜드 스트립 113px).
+  const [sectionsReady, setSectionsReady] = useState(false)
   const [products, setProducts] = useState<VoucherProduct[]>(() => ssrSeedRef.current ?? [])
   const [loading, setLoading] = useState(() => ssrSeedRef.current == null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -383,6 +389,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         const cached = JSON.parse(raw) as { ts: number; data: CategorySection[] }
         if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) {
           setSections(cached.data)
+          setSectionsReady(true)
           // 🏭 2026-06-04 (flash fix): embedded(홈)에서는 첫 카테고리 자동선택 X.
           //   기존: 홈 SSR(전체 deal) 표시 → JS 가 ?category=첫카테고리 로 교체 → 내용/URL 깜빡임.
           //   embedded 는 category 비워둬 SSR MAIN 즉시표시 유지 + 홈 URL 깨끗('/').
@@ -408,7 +415,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           setSearchParams(next, { replace: true })
         }
       }
-    }).catch(() => { /* graceful */ })
+    }).catch(() => { /* graceful */ }).finally(() => { if (!cancelled) setSectionsReady(true) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -557,6 +564,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
           url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
         />
+        {/* 🔎 2026-07-29 (소비자 SEO 실측): 이 페이지엔 h1 이 **하나도 없었다** — 서빙 HTML 의 유일한 h1 은
+            index.html 의 숨겨진 인앱 차단 화면이었다. 탭바의 "교환권"은 <button>(탭)이라 제목이 될 수 없어,
+            문서 제목용 h1 을 시각적으로 숨겨 둔다(스크린리더·크롤러엔 노출). */}
+        <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
         {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): 자체 PC 헤더 삭제 — 전역 DesktopTopNav(로고+검색+카테고리 바)가 담당. */}
         <div className="ur-content-wide px-8 py-6 grid grid-cols-[248px_minmax(0,1fr)] gap-8 items-start">
           {/* ── 좌측 필터 레일 (sticky — 전역 네비 2행(~101px) 아래) ── */}
@@ -618,32 +629,14 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2A3446]">
                 <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">인기 브랜드</h3>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
-                  {orderedBrands.map(b => {
-                    const selected = b.brand_name === brand
-                    return (
-                      <button
-                        key={b.brand_name}
-                        type="button"
-                        onClick={() => setBrand(selected ? '' : b.brand_name)}
-                        className="flex flex-col items-center gap-1 active:scale-95 transition-transform shrink-0"
-                      >
-                        <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
-                          selected
-                            ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
-                            : 'border-gray-200 dark:border-white/10 opacity-90'
-                        }`}>
-                          {b.brand_icon_url ? (
-                            <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-8 h-8 object-contain" />
-                          ) : (
-                            <span className="text-lg">🎁</span>
-                          )}
-                        </div>
-                        <span className={`text-[10px] line-clamp-1 max-w-[56px] text-center ${
-                          selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
-                        }`}>{b.brand_name}</span>
-                      </button>
-                    )
-                  })}
+                  {orderedBrands.map(b => (
+                    <BrandChip
+                      key={b.brand_name}
+                      brand={b}
+                      selected={b.brand_name === brand}
+                      onSelect={() => setBrand(b.brand_name === brand ? '' : b.brand_name)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -716,6 +709,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
         />
       )}
+      {/* 🔎 2026-07-29 (소비자 SEO 실측): 이 페이지엔 h1 이 **하나도 없었다** — 서빙 HTML 의 유일한 h1 은
+          index.html 의 숨겨진 인앱 차단 화면이었다. 탭바의 "교환권"은 <button>(탭)이라 제목이 될 수 없어,
+          문서 제목용 h1 을 시각적으로 숨겨 둔다(스크린리더·크롤러엔 노출). */}
+      <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
+
 
       {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
           BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
@@ -742,7 +740,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 )
               })}
             </div>
-            <button onClick={() => navigate('/search')} aria-label="검색" className="absolute right-3 top-1/2 -translate-y-1/2 p-1">
+            {/* 👆 2026-07-29 (UX 실측): 탭 타깃이 28×28 이었다 — iOS HIG 44pt 미만. 아이콘 크기는 그대로 두고 패딩만. */}
+            <button onClick={() => navigate('/search')} aria-label="검색" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <Search className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
           </div>
@@ -810,6 +809,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
             2026-05-28: 자체 sticky 제거 — 위 reveal 그룹(wrapper)이 sticky 담당. */}
+      {sections.length === 0 && !sectionsReady && (
+        /* 자리 예약 — 높이는 실측값(칩 행 50px). 시각적 스켈레톤은 두지 않는다(로더 통일 정책). */
+        <div className="h-[50px] border-b border-gray-100 dark:border-[#2A3446]" aria-hidden="true" />
+      )}
       {sections.length > 0 && (
         <div className="bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
@@ -849,6 +852,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
+      {currentBrands.length === 0 && !sectionsReady && (
+        /* 자리 예약 — 높이는 실측값(브랜드 스트립 113px). */
+        <div className="h-[113px]" aria-hidden="true" />
+      )}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
         <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">
@@ -863,34 +870,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
               12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
           <div className="flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
-            {orderedBrands.map(b => {
-              const selected = b.brand_name === brand
-              return (
-              <button
+            {orderedBrands.map(b => (
+              <BrandChip
                 key={b.brand_name}
-                type="button"
-                onClick={() => setBrand(selected ? '' : b.brand_name)}
-                className="flex flex-col items-center gap-1 active:scale-95 transition-transform shrink-0"
-              >
-                {/* 🎨 2026-06-10 (사용자 요청 — 세련화+잘림): 앰버 박스 → 화이트 로고 타일.
-                    선택 = 모노크롬 ring(라이트 검정/다크 흰색) + 살짝 확대 — 로고 본연 색 발색, B&W 톤 정합 */}
-                <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
-                  selected
-                    ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
-                    : 'border-gray-200 dark:border-white/10 opacity-90'
-                }`}>
-                  {b.brand_icon_url ? (
-                    <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-8 h-8 object-contain" />
-                  ) : (
-                    <span className="text-xl">🎁</span>
-                  )}
-                </div>
-                <span className={`text-[10px] line-clamp-1 max-w-[60px] text-center ${
-                  selected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-400'
-                }`}>{b.brand_name}</span>
-              </button>
-              )
-            })}
+                brand={b}
+                selected={b.brand_name === brand}
+                onSelect={() => setBrand(b.brand_name === brand ? '' : b.brand_name)}
+                labelWidthClass="max-w-[60px]"
+              />
+            ))}
           </div>
         </div>
       )}
