@@ -1,0 +1,17 @@
+{
+  "_why": "부모 cron 이 응답을 기다리는 레인(=목록 뒷부분을 굶길 수 있음). 아직 runDetachable 로 못 옮긴 부채. 추가 금지(래칫) — 하나씩 변환하며 이 목록에서 지운다.",
+  "_how": "라우트를 runDetachable 로 감싸고 kick 경로에 ?detach=1 + 하트비트 이름 고정(beat) → 여기서 제거.",
+  "paths": [
+    "/__ads/collect-chain",
+    "/__ads/collect-company",
+    "/__ads/collect-maker",
+    "/__ads/collect-nps",
+    "/__ads/collect-work24",
+    "/__ads/consented-reminder",
+    "/__ads/inbound-onboarding",
+    "/__ads/maintenance-rescan",
+    "/__ads/match-registry",
+    "/__ads/prefill-outreach-drafts",
+    "/__ads/reclassify-company?passes=5"
+  ]
+}

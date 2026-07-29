@@ -108,9 +108,19 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
   URL 이 말하게 하고 코드가 추측하지 않는다.
 - ⚠️ **하트비트 이름은 고정**(`opts.beat`) — 경로가 바뀌면 옛 행이 남아 stale watch 가 영원히 경보한다.
 
-**남은 범위(다음 세션)**: `index.ts`·`chain.routes.ts` 의 나머지 kick 대상
-(`collect-company`·`sweep-kakao-phone`·`maintenance?phase=*`·`match-registry`·`collect-store-kakao`·
-`collect-maker`·`reclassify-company`). 같은 헬퍼를 그대로 적용하면 된다.
+**적용 범위(이번 PR)**: public-data 계열 12개 전부(storeinfo·commerce·franchise·notices·
+enrich-prospects·nara·neis·hira·store-kakao·sweep-mx·sweep-nts·localdata) + 체인 2개
+(sweep-kakao-chain·collect-localdata-chain). 드라이버 2개는 이미 즉시 응답이라 `kick-fast-ok` 로 명시.
+
+**영구화 — 가드 `check-ads-kick-detach.mjs`**(audit-gate + verify strict, 73번째 불변식):
+- **R1** 모든 디스패치는 `?detach=1` · `kick-fast-ok` 주석 · 베이스라인(부채) 중 하나여야 한다.
+- **R2** 쿼리가 붙은 경로는 **하트비트 이름을 고정**해야 한다 — 안 하면 beat 가 개명돼 옛 행이 영원히
+  stale 경보가 된다. ⚠️ 이 규칙은 **필요해서 생겼다**: 이 가드를 만든 커밋에서 내가 그 실수를 냈고,
+  가드가 잡았다. 덤으로 **기존 결함**(`reclassify-company?passes=5`)도 잡아 현재 이름으로 고정했다.
+- 측정 대상 0건이면 스스로 실패한다(헛도는 가드 방지).
+- **남은 부채 11개**는 `scripts/ads-kick-detach-baseline.json` 에 명시 — 래칫이라 **새 위반은 불가**,
+  하나씩 변환하며 목록에서 지운다.
+
 **판정법**: 배포 1시간 뒤 `GET /api/admin/cron-heartbeats` 에서 위 계단이 **평평해졌는지**(전부 age≈0) 본다.
 
 ## 남은 결정 / 대기
