@@ -25,6 +25,24 @@ export const chainRoutes = new Hono<{ Bindings: Env }>()
 chainRoutes.post('/__ads/collect-chain', async (c) => {
   const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
   const pv = parseInt(c.req.query('pu') || '-1', 10); const prevUsed = Number.isFinite(pv) ? pv : -1
+  /**
+   * 🔔 '시작했다'는 **일 하기 전에** 남긴다 (2026-07-29 재수리).
+   *
+   *   이전 판(작업 뒤에 기록)은 10:00 틱에 다시 깨졌다 — 리드 **52건을 저장하고도**
+   *   `ads:collect` 하트비트도 `run.last_run` 도 없었다. 이유: 이 인보케이션의 실제 서브리퀘스트는
+   *   `budget.left` 가 세는 **발굴 fetch 만이 아니다**. 같은 인보케이션에 D1 호출이 18개 + 라우트 레벨
+   *   (체인 spawn·하트비트)이 예산 **밖**에 있어, 꼬리의 쓰기가 경계에서 떨어진다(09:00 통과·10:00 실패).
+   *
+   *   ⇒ 관측이 "일을 끝까지 마치고 살아남기"에 의존하면 안 된다. 이 기록의 의미는 원래
+   *   **"이번 시간에 이 레인이 시작했다"** 이고(그래서 `started: true`), 그건 지금 확정된 사실이다.
+   *   최종 결과는 부모 `kick` 의 하트비트가 같은 이름으로 덮어쓴다(살아 있으면) — 어느 쪽이든 기록이 남는다.
+   */
+  if (depth === 0) {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(c.env as never, 'ads:collect', true, 0, '0 * * * *', { started: true })
+    } catch { /* 관측 실패가 수집을 막지 않는다 */ }
+  }
   let stats: import('@/features/marketing/api/influencer-auto-collect').AutoCollectStats | null = null
   try {
     const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
@@ -58,21 +76,8 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
     chained = true
     c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${depth + 1}&pu=${used}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
   }
-  /**
-   * 🔔 **자기 인보케이션에서 직접** 하트비트(2026-07-29) — 부모의 기록에만 의존하지 않는다.
-   *   라이브 증거: 07:00 에 이 레인은 `ads:collect` 기록을 **아예 남기지 못했다**(06:00 은 FAIL 이라도 남았다).
-   *   부모 `kick` 의 하트비트는 부모 예산의 D1 쓰기라, 부모가 천장에 닿으면 *실패했다는 사실조차* 못 남긴다 —
-   *   그러면 메인 워커의 `cron-stale-watch` 는 "안 돈 것"과 "원래 없는 것"을 구분할 수 없다.
-   *   여기(첫 라운드)는 자기 예산이므로 쓰기가 성사된다. 부모가 살아 있으면 같은 이름으로 덮어써
-   *   최종 결과가 남고, 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 '이번 시간에 시작했다'는 남는다.**
-   *   depth 0 에서만 쓴다(체인 라운드마다 쓰면 같은 시간에 N번 덮어써 의미가 없다).
-   */
-  if (depth === 0) {
-    try {
-      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-      await recordCronBeat(c.env as never, 'ads:collect', true, 0, '0 * * * *', { started: true, chained })
-    } catch { /* 관측 실패가 수집을 막지 않는다 */ }
-  }
+  // 🔕 꼬리에서의 재기록은 하지 않는다 — 위(작업 전)에서 이미 남겼고, 최종 결과는 부모 kick 이 덮어쓴다.
+  //   여기서 또 쓰면 **가장 예산이 빠듯한 지점에** 쓰기를 하나 더 얹는 셈이라 자기 목적을 해친다.
   return c.json({ ok: true, stats, chained })
 })
 
