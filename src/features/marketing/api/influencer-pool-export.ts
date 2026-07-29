@@ -23,7 +23,20 @@ export const STATUS_KO: Record<string, string> = { new: '신규', contacted: '�
 export const MAIL_KO: Record<string, string> = { delivered: '발송됨', opened: '개봉', bounced: '반송⚠️', complained: '스팸신고⚠️', opt_out: '수신거부⚠️' }
 export const CATSRC_KO: Record<string, string> = { content: '콘텐츠분석', topic: '주제태그', keyword: '수집키워드' }
 
-export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string): Promise<Response> {
+/** 매체별 내려받기 화이트리스트 — 파일명/시트에도 쓰인다(임의 문자열 바인딩 방지). */
+export const EXPORT_PLATFORMS: Record<string, string> = {
+  youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페',
+  tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡',
+}
+
+/**
+ * 📇 2026-07-28 `contactable` 필터 — 대표가 **수기로 제휴 제안을 보내는** 워크플로용(자동 발송 안 씀).
+ *   전체 3.6만 행을 받아 손으로 거르는 대신 "지금 연락할 사람"만 뽑는다:
+ *     · 이메일 보유(수기 발송의 전제)          · 브랜드 공식채널 제외(제휴 대상 아님)
+ *     · 아직 연락 안 한 사람(contacted_at 없음)  · 반송·스팸신고 이력 제외(보내면 튕긴다)
+ *   정렬은 기존과 동일(점수순) — 파일 위에서부터 순서대로 연락하면 된다. 미지정 시 기존 동작(전체) 불변.
+ */
+export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number }): Promise<Response> {
   await ensureInfluencerSchema(DB)  // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
   await ensureQualityColumns(DB)    // lead_score/is_brand/category_source — SELECT·정렬이 참조
   await ensurePerfExtraColumns(DB)  // median_long_views/shorts_ratio/last_post_at
@@ -32,14 +45,24 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   //   5천행 페이지 읽기(D1 응답크기 안전)로 전환 + 상한 60000(현 풀 2배 여유 — 초과 시에만 잘림).
   type ExpRow = { platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null }
   const rows: ExpRow[] = []
+  // 🎯 매체별 분리 다운로드(2026-07-28 대표 요청) — 화이트리스트 밖 값은 무시하고 전체(기존 동작).
+  const plat = platform && EXPORT_PLATFORMS[platform] ? platform : ''
+  const platFilter = plat ? ' AND platform = ?' : ''
+  // 값 바인딩 없는 정적 조건만(문자열 조립 안전) — 임의 입력이 SQL 에 닿지 않는다.
+  const contactFilter = opts?.contactable
+    ? " AND email IS NOT NULL AND email != '' AND COALESCE(is_brand,0) = 0 AND contacted_at IS NULL"
+      + " AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))"
+    : ''
+  const minScore = Number.isFinite(opts?.minScore) ? Math.max(0, Math.min(100, Number(opts?.minScore))) : null
+  const scoreFilter = minScore != null ? ` AND COALESCE(lead_score,0) >= ${minScore}` : ''
   const PAGE = 5000, CAP = 60000
   for (let off = 0; off < CAP; off += PAGE) {
     // 정렬: 카테고리별 시트 분리 유지 + 시트 안은 리드점수순(미채점 후순위) — "누구부터 컨택?"이 파일 순서로 답 됨.
     const page = (await DB.prepare(`SELECT platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
-      FROM ad_influencer_leads WHERE account_id = ? ORDER BY category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
-      .bind(poolId, PAGE, off).all<ExpRow>().catch(() => null))?.results || []
+      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(...(plat ? [poolId, plat, PAGE, off] : [poolId, PAGE, off])).all<ExpRow>().catch(() => null))?.results || []
     rows.push(...page)
     if (page.length < PAGE) break
   }
@@ -56,11 +79,12 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     r.source_keyword || '', STATUS_KO[r.status] || r.status,
     CH_KO[r.contact_channel || ''] || '', r.contacted_at || '', r.follow_up_at || '', r.source === 'inbound' ? '신청·동의' : '자동수집', r.consented_at || '', r.memo || '', (r.collected_at || '').slice(0, 10)]
   const stamp = new Date().toISOString().slice(0, 10) // 파일명 날짜 — 다운로드 반복 시 버전 구분
+  const fname = `influencer-pool${plat ? '-' + plat : ''}-${stamp}` // 매체별 파일은 이름으로 구분(같은 폴더에 섞여도 헷갈리지 않게)
 
   if (format === 'csv') {
     const csvEscapeCell = (v: string | number) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
     const body = [HEAD.join(','), ...rows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
-    return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="influencer-pool-${stamp}.csv"` } })
+    return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="${fname}.csv"` } })
   }
 
   // SpreadsheetML — 카테고리별 시트 + 전체 시트. 시트명은 엑셀 제약(31자·특수문자) 정리.
@@ -89,5 +113,5 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const stream = new ReadableStream({
     pull(ctrl) { const { value, done } = it.next(); if (done) { ctrl.close(); return } ctrl.enqueue(enc.encode(value)) },
   })
-  return new Response(stream, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="influencer-pool-${stamp}.xls"` } })
+  return new Response(stream, { headers: { 'Content-Type': 'application/vnd.ms-excel', 'Content-Disposition': `attachment; filename="${fname}.xls"` } })
 }

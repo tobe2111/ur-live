@@ -14,10 +14,13 @@
  *   설계: docs/design/urads-worker-split.md §4 Phase E. 게이트: env `ADS_AUTO_COLLECT_ENABLED==='true'`.
  */
 import type { Env } from '@/worker/types/env'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
 import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
-import { enrichYouTubePerformance, enrichNaverActivity, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
+import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -77,63 +80,34 @@ export interface AutoCollectStats {
   total_runs: number; total_saved: number; cursor: number
   pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
   promoted?: string[]; youtube_quota_hit?: boolean
-  bio_enriched?: number // 🔗 이번 실행에서 링크인바이오 페이지로 이메일/인스타를 새로 채운 리드 수
-  perf_enriched?: number // 📈 이번 실행에서 성과 지표(YT 평균조회/네이버 활동성)를 채운 리드 수
+  /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
+   *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
+  bio_enriched?: number
+  /** @deprecated 2026-07-28 — 성과 보강도 `influencer-enrich-lane.ts` 로 이전. 옛 스냅샷 호환용. */
+  perf_enriched?: number
   /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
    *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
   diag?: {
     yt: { configured: boolean; found: number; saved: number; error?: string }
     naver: { configured: boolean; found: number; saved: number; error?: string }
     tistory?: { configured: boolean; found: number; saved: number; error?: string }
-    naver_enrich?: NaverEnrichDiag // 📝 블로거 활동성/연락처 보강 결과(측정 성공 0 반복 = 차단/형식변경 신호)
+    /** @deprecated 2026-07-28 — 블로거 보강은 전용 레인으로 이전. 옛 스냅샷 호환용. */
+    naver_enrich?: NaverEnrichDiag
   }
   /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
   yt_budget?: { used: number; total: number; day: string }
   /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
   busy?: boolean
+  /** 💥 이번 실행이 예외로 끝났다 — 원문/시각/그 시점 사용량. 성공하면 다음 스냅샷에서 사라진다. */
+  crash?: string
+  crash_at?: string
+  crash_spent?: number
+  crash_budget?: number
 }
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
-const ALERT_KEY = 'ads_autocollect_alert_at' // 🔔 조용한 실패 경보 throttle 상태(빈값=건강).
 
-type CollectDiag = { yt: { configured: boolean; found: number; saved: number; error?: string }; naver: { configured: boolean; found: number; saved: number; error?: string }; tistory?: { configured: boolean; found: number; saved: number; error?: string } }
-
-/** 🔔 조용한 실패 방어(2026-07-20 실사고 — wrangler deploy 가 시크릿 wipe, "신규 0건"이 며칠 무음) —
- *  키 소실(configured=false) 또는 전 플랫폼 발굴 0 이면 Discord 경보. 6h throttle + 회복 시 즉시 해제.
- *  전부 fail-soft(알림 실패가 수집을 안 막음), DISCORD_WEBHOOK_URL 미설정=no-op. */
-async function maybeAlertCollectHealth(env: Env, DB: D1Database, run: { diag: CollectDiag; saved: number; quotaHit: boolean }): Promise<void> {
-  const webhook = env.DISCORD_WEBHOOK_URL
-  if (!webhook) return
-  const { diag, saved, quotaHit } = run
-  const keyMissing = !diag.yt.configured || !diag.naver.configured
-  // 🛡️ 2026-07-23: 풀 포화(발굴은 되는데 전부 중복 → saved=0)는 정상인데 6시간마다 오경보 → found 까지 0 일 때만
-  //   불건강(진짜 죽음 = 발굴 자체가 0). 중복-only 상태는 무경보.
-  const foundTotal = diag.yt.found + diag.naver.found + (diag.tistory?.found || 0)
-  const unhealthy = keyMissing || (saved === 0 && foundTotal === 0)
-  const prevAt = await readSetting(DB, ALERT_KEY)
-  const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
-  if (!unhealthy) {
-    if (prevAt) { // 직전이 경보 상태였다 → 해제 + 회복 알림 1회.
-      await writeSetting(DB, ALERT_KEY, '')
-      await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 회복', `신규 ${saved}건 저장 — 정상 재개.`, 'info')
-    }
-    return
-  }
-  const last = prevAt ? Date.parse(prevAt) : 0
-  const now = Date.now()
-  if (prevAt && Number.isFinite(last) && now - last < 6 * 3600 * 1000) return // 6h throttle
-  await writeSetting(DB, ALERT_KEY, new Date(now).toISOString())
-  const lines = [
-    keyMissing ? '⚠️ API 키 미설정(시크릿 소실 의심 — ur-ads 워커 env 확인)' : '⚠️ 전 플랫폼 신규 0건',
-    `• YouTube: cfg=${diag.yt.configured} found=${diag.yt.found} saved=${diag.yt.saved}${diag.yt.error ? ` err=${diag.yt.error}` : ''}`,
-    `• Naver: cfg=${diag.naver.configured} found=${diag.naver.found} saved=${diag.naver.saved}${diag.naver.error ? ` err=${diag.naver.error}` : ''}`,
-    diag.tistory ? `• Tistory: cfg=${diag.tistory.configured} found=${diag.tistory.found} saved=${diag.tistory.saved}${diag.tistory.error ? ` err=${diag.tistory.error}` : ''}` : '',
-    quotaHit ? '• YouTube 일일 쿼터 소진(내일 자동 재개)' : '',
-    '어드민 인플루언서 풀에서 상세 확인.',
-  ].filter(Boolean)
-  await sendDiscordAlert(webhook, '유어애즈 인플루언서 수집 경보', lines.join('\n'), keyMissing ? 'error' : 'warn')
-}
 
 /**
  * 🚀 일괄 저장(DB.batch) — 청크당 1 batch(Free 한도 보호).
@@ -201,43 +175,9 @@ async function saveLeadsBatch(
   return saved
 }
 
-// 링크인바이오 서비스 자체 도메인 메일(support@linktr.ee 등) — 채널 주인 컨택 아님.
-const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|taplink\.cc|link\.bio)$/i
-
-/** 🔗 링크인바이오 백필(2026-07-20) — 이메일/인스타 없는 풀 리드의 linktr.ee 류 **공개 페이지**를 열어 컨택 보강.
- *  소개글엔 링크트리만 적고 이메일은 그 안에 두는 인플루언서 커버(합법·무료·쿼터 무관 — 무료 범위의 마지막 레버).
- *  매 실행 잔여 서브리퀘스트 예산으로 max 건(구독자 큰 순). 시도한 행은 성공/실패 무관 bio_checked_at 스탬프
- *  (재시도 폭주 방지) — 기존 풀 3천+ 도 매시간 순차 소진(자가치유). 채움은 빈 칸만(수동 데이터 불변). */
-export async function enrichPoolFromLinkInBio(DB: D1Database, budget: FetchBudget, max: number): Promise<number> {
-  if (max <= 0 || budget.left <= 0) return 0
-  const rows = (await DB.prepare(`SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads
-    WHERE account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)
-      AND links IS NOT NULL AND (links LIKE '%linktr.ee%' OR links LIKE '%litt.ly%' OR links LIKE '%inpock.co.kr%' OR links LIKE '%litelink.at%' OR links LIKE '%link.bio%' OR links LIKE '%taplink.cc%')
-    ORDER BY subscriber_count DESC, id DESC LIMIT ?`).bind(POOL_ACCOUNT_ID, max)
-    .all<{ id: number; links: string | null; email: string | null; instagram: string | null; tiktok: string | null }>().catch(() => null))?.results || []
-  if (!rows.length) return 0
-  let enriched = 0
-  const stmts: ReturnType<D1Database['prepare']>[] = []
-  for (const r of rows) {
-    if (budget.left <= 0) break // 예산 소진 — 스탬프 없이 중단(다음 틱이 이어받음)
-    budget.left -= 1
-    const link = (r.links || '').split(/\s+/).find(l => /^(?:https?:\/\/)?(?:linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|link\.bio|taplink\.cc)\//i.test(l)) || ''
-    const html = link ? await fetchLinkInBioText(link) : ''
-    const c = html ? extractContacts(html) : { emails: [], instagram: [], tiktok: [], links: [] }
-    let email = r.email
-    if (!email && html) {
-      const picked = pickBusinessEmail(html)
-      email = (picked && !PLATFORM_EMAIL_RE.test(picked) ? picked : null) || c.emails.find(e => !PLATFORM_EMAIL_RE.test(e)) || null
-    }
-    const insta = r.instagram || c.instagram[0] || null
-    const tt = r.tiktok || c.tiktok[0] || null
-    if ((email && !r.email) || (insta && !r.instagram) || (tt && !r.tiktok)) enriched++
-    stmts.push(DB.prepare("UPDATE ad_influencer_leads SET email = ?, instagram = ?, tiktok = ?, bio_checked_at = datetime('now') WHERE id = ? AND account_id = ?")
-      .bind(email, insta, tt, r.id, POOL_ACCOUNT_ID))
-  }
-  if (stmts.length) await DB.batch(stmts).catch(() => null)
-  return enriched
-}
+// 🔗 링크인바이오 백필(enrichPoolFromLinkInBio) · 📝 블로거 활동성 보강은 2026-07-28 에
+//   `influencer-enrich-lane.ts`(보강 전용 레인)로 이동했다 — 수집 인보케이션의 서브리퀘스트를
+//   발굴이 먼저 다 써서 **한 건도 못 돌던 것**이 라이브 실측으로 확인됐기 때문(그 파일 헤더 참조).
 
 export async function readSetting(DB: D1Database, key: string): Promise<string | null> {
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null)
@@ -353,10 +293,52 @@ const YT_USED_KEY = 'ads_yt_search_used' // 값 형식 "YYYY-MM-DD:count" — �
  *   활성 키워드를 커서로 batch 개 순환 → YouTube+네이버 발굴 → 공용 풀 저장(카테고리 태그).
  *   수집물의 #해시태그를 후보 적립 → 반복 등장 시 자동 활성화(자가성장). 전부 fail-soft.
  */
-const LEASE_KEY = 'ads_collect_lease' // 값 = 만료시각(ms). CAS 조건부 UPDATE 로 원자 획득.
-const LEASE_TTL_MS = 5 * 60_000       // 한 실행 최장 예상(수십 초) 대비 여유 — 크래시 시 5분 후 자동 해제.
+// 🔒 lease 키/TTL 은 collect-lease.ts 가 SSOT — 메인 워커 어드민도 같은 키로 '진행 중'을 읽는다
+//   (그쪽이 이 파일을 import 하면 수집 엔진이 메인 번들에 통째로 실림 → 키만 분리).
+const LEASE_KEY = COLLECT_LEASE_KEY
+const LEASE_TTL_MS = COLLECT_LEASE_TTL_MS
 
+/** 크래시 경로에서도 필요한 값들(래퍼가 catch 에서 읽는다) — 정해지는 즉시 채운다. */
+interface CollectCtx { budgetTotal: number; learnedCap: number; envBudget: number; budget?: FetchBudget; release?: () => Promise<void> }
+
+/**
+ * 🛡️ 2026-07-28 **자가 회복 래퍼** — 라이브에서 인플루언서 수집이 15:01 이후 매시간 조용히 죽고 있었다
+ *   (다른 레인은 17:01 정상 실행 = cron 은 살아 있었다). 죽으면 아무 기록도 안 남아 원인을 알 수 없었고,
+ *   더 나쁜 건 **학습 상한을 낮추는 코드(`nextSubreqCap` 쓰기)가 발굴 루프 *뒤*에 있어** 도중에 죽으면
+ *   상한이 그대로 → 다음 틱도 같은 지점에서 죽는 **영구 루프**였다는 것이다.
+ *
+ *   ⇒ ① 예외를 잡아 **crash 원문을 스냅샷에 남긴다**(옛 성공 스냅샷은 보존 — 마지막 성공 시각도 필요하다)
+ *     ② 한도 신호면 **그 자리에서 학습 상한을 낮춘다**(다음 틱은 적게 쓰고 통과 = 자가 회복)
+ *     ③ lease 를 즉시 해제한다(TTL 5분 백스톱에 의존하지 않음).
+ *   파트너풀 보강 레인(`recordEnrichCrash`)과 같은 철학 — 무증거 종료 금지.
+ */
 export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectStats> {
+  const ctx: CollectCtx = { budgetTotal: 0, learnedCap: 0, envBudget: 0 }
+  try {
+    return await _runAutoCollect(env, ctx)
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    const crash = `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}`
+    const spent = ctx.budget ? Math.max(0, ctx.budgetTotal - ctx.budget.left) : 0
+    // ② 한도 신호 → 상한 하향(이번에 쓴 양보다 확실히 아래로). 여기서 안 낮추면 다음 틱도 같은 곳에서 죽는다.
+    if (isSubrequestLimitError(crash) && spent > 0) {
+      // `spent` 는 위에서 `ctx.budgetTotal - ctx.budget.left`(시작값 기준 실사용)로 계산 — 가드가 요구하는
+      //   형태와 값이 같지만 예산 변수가 클로저 밖(ctx)이라 그 리터럴을 못 쓴다.
+      const next = nextSubreqCap(spent, true, ctx.learnedCap, ctx.envBudget) // subreq-cap-lane-ok
+      if (next != null) await writeSetting(env.DB, subreqCapKey('influencer'), String(next)).catch(() => undefined)
+    }
+    // ① 증거 — 옛 스냅샷 위에 crash 만 덧씌운다(마지막 성공 시각·누적치 보존).
+    const prev = await getAutoCollectStats(env.DB).catch(() => null)
+    const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const snap = { ...(prev || { last_run: '', last_saved: 0, last_keywords: [], total_runs: 0, total_saved: 0, cursor: 0 }),
+      crash, crash_at: stamp, crash_spent: spent, crash_budget: ctx.budgetTotal } as AutoCollectStats
+    await writeSetting(env.DB, STATS_KEY, JSON.stringify(snap)).catch(() => undefined)
+    await ctx.release?.().catch(() => undefined) // ③ 즉시 해제
+    return snap
+  }
+}
+
+async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectStats> {
   const DB = env.DB
   // 🔒 실행 단일화 lease(2026-07-23 전수조사 #1~#3·#11) — 매시간 cron·수동 버튼·self-chain 이 **동시에** 돌면
   //   YT 예산 카운터(ads_yt_search_used)·키워드 커서가 read-modify-write 레이스로 소실 갱신 → 같은 키워드 중복
@@ -373,6 +355,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     return { last_run: '', last_saved: 0, last_keywords: [], total_runs: prevStats?.total_runs || 0, total_saved: prevStats?.total_saved || 0, cursor: prevStats?.cursor || 0, busy: true }
   }
   const releaseLease = async () => { await DB.prepare(`UPDATE platform_settings SET value = '0' WHERE key = '${LEASE_KEY}'`).run().catch(() => null) }
+  ctx.release = releaseLease
   await ensureInfluencerSchema(DB) // 리드 테이블/컬럼 보장(신규 DB 안전 — saveLeadsBatch 는 ensure 안 함)
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
@@ -447,10 +430,21 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const ytAngle = YT_ANGLES[(prev?.total_runs || 0) % YT_ANGLES.length]
   // 네이버/티스토리도 정렬 교대(정확도↔최신) — 쿼터 여유라 순수 이득(최신순은 새 블로거 유입).
   const naverSort: 'sim' | 'date' = ((prev?.total_runs || 0) % 2 === 0) ? 'sim' : 'date'
-  // 🔒 서브리퀘스트 예산(2026-07-20 실사고 "Too many subrequests") — 한 cron 실행의 외부 fetch 총량 상한.
-  //   소진 시 이번 틱은 조기 종료(에러 아님), 커서가 다음 틱에서 이어받아 커버리지 손실 0(매시간 실행이라 총량 유지).
-  //   기본 300 — env ADS_SUBREQUEST_BUDGET 로 조정. D1 쓰기는 별도라 여유(1000 한도 대비 안전).
-  const budget: FetchBudget = { left: Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300) }
+  // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
+  //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
+  const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
+  const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  const budget: FetchBudget = { left: budgetTotal }
+  ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
+  // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
+  //   `influencer-enrich-lane.ts` 의 독립 인보케이션(시간당 N라운드)으로 이전했다.
+  //
+  //   경위: 보강이 여기 얹혀 있던 동안 발굴 루프가 예산을 **0 까지** 먹어 보강 4종이 매 실행 즉시 반환했고
+  //   (라이브: `naver_enrich.tried=0` · `bio_enriched=0` · `perf_enriched=0`), 예약분(`enrichReserve`)을 둬도
+  //   **키워드 경계에서만** 검사해 한 키워드(최대 16)가 예약분을 뚫고 0 까지 파고들었다.
+  //   ⇒ 예약분으로 지분을 나누는 대신 **레인을 분리**했다. 발굴은 예산 전부를 쓰고(처리량 원복),
+  //   보강은 자기 인보케이션에서 자기 예산을 쓴다. 서로 굶기지 않는 유일한 구조.
 
   let saved = 0
   let quotaHit = false
@@ -490,7 +484,7 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   let ytBudgetBlocked = false
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
   for (const k of finalPicks) {
-    if (budget.left <= 0) break // 🔒 서브리퀘스트 예산 소진 — 이번 틱 종료(다음 틱 커서 이어받음)
+    if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
@@ -526,6 +520,10 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
+  // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
+  const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget)
+  if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>
@@ -558,17 +556,6 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
     }
   }
 
-  // 🔗 링크인바이오 백필 — 남은 서브리퀘스트 예산으로 컨택 없는 리드의 링크트리 페이지 소진(틱당 최대 12).
-  let bioEnriched = 0
-  try { bioEnriched = await enrichPoolFromLinkInBio(DB, budget, Math.min(12, budget.left)) } catch { /* fail-soft */ }
-  // 📈 성과 지표 백필 — YT units 는 검색과 같은 쿼터: 검색 90회로 확보한 ~1,000 units/day 예약분 사용.
-  //   progress(신규) + refresh(평균0·무메일·미분류 우선 순환 — 0 각인 백로그 시간당 20 자동 치유).
-  let perfEnriched = 0
-  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 15) } catch { /* fail-soft */ }
-  try { perfEnriched += await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, 20, 'refresh') } catch { /* fail-soft */ }
-  let naverEnrich: NaverEnrichDiag | null = null
-  try { naverEnrich = await enrichNaverActivity(DB, budget, 20); perfEnriched += naverEnrich.measured } catch { /* fail-soft */ }
-
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
   //   (leapfrog). prefix 방식은 앞에서 처리 안 된 키워드가 나오면 멈춰, 못 돈 키워드를 다음 틱이 정확히 이어받음.
@@ -582,8 +569,9 @@ export async function runInfluencerAutoCollect(env: Env): Promise<AutoCollectSta
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, bio_enriched: bioEnriched, perf_enriched: perfEnriched, diag: { ...diag, naver_enrich: naverEnrich || undefined },
+    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, youtube_quota_hit: quotaHit, diag,
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
+    // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
   await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
   await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))

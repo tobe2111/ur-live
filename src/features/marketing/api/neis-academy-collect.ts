@@ -18,17 +18,28 @@ const NEIS_OFFICES: Array<[string, string]> = [
   ['G10', '대전'], ['H10', '울산'], ['I10', '세종'], ['K10', '강원'], ['M10', '충북'], ['N10', '충남'],
   ['P10', '전북'], ['Q10', '전남'], ['R10', '경북'], ['S10', '경남'], ['T10', '제주'],
 ]
-const NEIS_BASE = 'https://open.neis.go.kr/hub/acaInsttSc'
+// ⚠️ 2026-07-28 수리: 서비스명이 `acaInsttSc` 였는데 NEIS 가 34회 연속 `ERROR-310 해당하는 서비스를
+//   찾을 수 없습니다. 요청인자 중 SERVICE를 확인하십시오.` 로 거절 → 누적 저장 0. 학원교습소정보의 실제
+//   서비스 식별자는 `acaInsTiInfo`(NEIS 개방포털 데이터셋 + 공개 래퍼 라이브러리 교차확인).
+//   대소문자/표기가 또 흔들릴 경우를 대비해 `ADS_NEIS_SERVICE` 로 무배포 교정(franchise/nara 와 동일 패턴).
+const NEIS_HUB = 'https://open.neis.go.kr/hub'
+const NEIS_SERVICE_DEFAULT = 'acaInsTiInfo'
 const stripTag = (s: unknown): string => String(s ?? '').replace(/<[^>]+>/g, '').trim()
 type RawAca = Record<string, unknown>
 const g = (it: RawAca, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
 
-/** NEIS 봉투: {acaInsttSc:[{head:[…,{RESULT}]},{row:[…]}]} / 오류: {RESULT:{CODE,MESSAGE}}. */
-function parseNeis(data: Record<string, unknown> | null): { rows: RawAca[]; msg?: string } {
+/** NEIS 봉투: {<서비스명>:[{head:[…,{RESULT}]},{row:[…]}]} / 오류: {RESULT:{CODE,MESSAGE}}.
+ *  ⚠️ 봉투 최상위 키 = **서비스명**이라 서비스명을 바꾸면 키도 같이 바뀐다. 예전엔 `acaInsttSc` 를
+ *  하드코딩해서, 서비스명만 고치면 파서가 조용히 0행을 반환하는(오류도 없는) 함정이 있었다 →
+ *  지정 서비스명 우선 + 없으면 `row` 배열을 품은 아무 최상위 값으로 폴백(서비스명 비의존). */
+function parseNeis(data: Record<string, unknown> | null, service: string): { rows: RawAca[]; msg?: string } {
   if (!data) return { rows: [], msg: '비JSON 응답' }
   const top = (data.RESULT ?? null) as Record<string, unknown> | null
   if (top?.CODE && String(top.CODE) !== 'INFO-000') return { rows: [], msg: `${top.CODE} ${top.MESSAGE || ''}`.trim() }
-  const svc = data.acaInsttSc as unknown
+  let svc = data[service] as unknown
+  if (!Array.isArray(svc)) {
+    svc = Object.values(data).find(v => Array.isArray(v) && v.some(p => p && typeof p === 'object' && Array.isArray((p as Record<string, unknown>).row))) ?? null
+  }
   if (!Array.isArray(svc)) return { rows: [] }
   let rows: RawAca[] = []; let msg: string | undefined
   for (const part of svc) {
@@ -80,6 +91,7 @@ export async function runNeisAcademyCollect(env: Env, maxPages = 3): Promise<Nei
   const stamp = now.toISOString().slice(0, 19).replace('T', ' ')
   const todayYmd = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}`
   const key = (env as unknown as { NEIS_API_KEY?: string }).NEIS_API_KEY || ''
+  const service = (env as unknown as { ADS_NEIS_SERVICE?: string }).ADS_NEIS_SERVICE || NEIS_SERVICE_DEFAULT
   const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
   let prev: NeisStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as NeisStats : null } catch { prev = null }
@@ -95,11 +107,20 @@ export async function runNeisAcademyCollect(env: Env, maxPages = 3): Promise<Nei
 
   let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
   for (let i = 0; i < Math.max(1, maxPages); i++) {
-    const url = `${NEIS_BASE}?KEY=${encodeURIComponent(key)}&Type=json&pIndex=${page}&pSize=1000&ATPT_OFCDC_SC_CODE=${officeCode}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) }).catch(() => null)
+    const url = `${NEIS_HUB}/${service}?KEY=${encodeURIComponent(key)}&Type=json&pIndex=${page}&pSize=1000&ATPT_OFCDC_SC_CODE=${officeCode}`
+    // 실패 원인을 삼키지 않는다 — 원인 불명의 0건이 몇 주씩 방치되는 클래스(2026-07-28 전수점검).
+    let res: Response | null = null
+    let netMsg = '네트워크 오류'
+    try { res = await fetch(url, { signal: AbortSignal.timeout(20000) }) } catch (err) {
+      const m = err instanceof Error ? err.message : String(err || '')
+      if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달 — 한 번에 조회할 페이지 수를 줄일 것'
+      else if (m) netMsg = `네트워크 오류: ${m.slice(0, 80)}`
+    }
+    if (res && !res.ok) netMsg = `HTTP ${res.status}`
     const data = res && res.ok ? await res.json().catch(() => null) as Record<string, unknown> | null : null
-    const { rows, msg } = parseNeis(data)
+    const { rows, msg } = parseNeis(data, service)
     if (msg) lastMsg = msg
+    else if (!res || !res.ok) lastMsg = netMsg
     if (!sample && rows[0]) sample = rows[0]
     if (!rows.length) { oi = (oi + 1) % NEIS_OFFICES.length; page = 1; break } // 이 교육청 소진 → 다음 교육청
     const prospects = rows.map(it => toProspect(it, officeName)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)

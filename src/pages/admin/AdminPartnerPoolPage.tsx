@@ -17,7 +17,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
-import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info } from './partner-pool/StatusLines'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type Work24Info, type LocalDataInfo, type EnrichInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp } from './partner-pool/job-completion'
 
 interface Lead {
@@ -68,6 +68,12 @@ export default function AdminPartnerPoolPage() {
   const [npsInfo, setNpsInfo] = useState<NpsInfo | null>(null)
   const [reclassifyInfo, setReclassifyInfo] = useState<ReclassifyInfo | null>(null)
   const [work24Info, setWork24Info] = useState<Work24Info | null>(null)
+  const [enrichInfo, setEnrichInfo] = useState<EnrichInfo | null>(null) // 📧 보강 레인 계측(적중률)
+  const [registryMatch, setRegistryMatch] = useState<RegistryMatchInfo | null>(null) // 🔗 원부 이메일 이식(크롤 0회)
+  const [localdata, setLocaldata] = useState<LocalDataInfo | null>(null) // 🏪 매장 후보(인허가) — 공개면 데이터원
+  // ⏳ 서버 백그라운드 실행 상태(2026-07-27 대표 "실행 중 다른 페이지로 이동하면?") — 페이지를 떠났다
+  //   돌아와도 무엇이 돌고 있는지 보이게(잠금 하트비트 기반). 작업은 서버에서 계속되므로 표시만 복원.
+  const [running, setRunning] = useState<{ runAll?: boolean; enrich?: boolean; reclassify?: boolean } | null>(null)
   const [busy, setBusy] = useState('')          // 실행 중인 액션 키(수집/보강/정리 공통)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -94,7 +100,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null) }
+      if (r.data?.success) { setStats(r.data.stats); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setWork24Info(r.data.work24 || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -316,7 +322,7 @@ export default function AdminPartnerPoolPage() {
           <button onClick={() => runAction('run-all', '원클릭 전체 실행', 60)} disabled={busy !== ''}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
             title="수집 전 레인(네이버·카카오·상가정보·통신판매·프랜차이즈·나라장터·고용24·국민연금·폐업·메일검증) → 연락처 보강 → 분류 정리를 순서대로 전부 실행 — 완료되면 통합 결과를 알림">
-            {busy === 'run-all' ? '⏳ 전체 실행 중…' : '🚀 전체 실행'}
+            {busy === 'run-all' || running?.runAll ? '⏳ 전체 실행 중…' : '🚀 전체 실행'}
           </button>
           <ActionMenu label="🔍 수집" busy={busy.startsWith('collect')} items={[
             { label: '네이버 지역·웹 검색', desc: '대행사 등 tier1 — 지도 + 자체 사이트', onClick: () => runAction('collect', '레인 A 수집') },
@@ -326,8 +332,9 @@ export default function AdminPartnerPoolPage() {
             { label: '나라장터 조달업체', desc: '정부 용역 수주 광고·마케팅사', onClick: () => runAction('collect-nara', '조달업체 수집') },
             { label: '💼 채용기업(고용24)', desc: '채용 중 = 성장 신호 — 광고·판촉·인쇄 계열만', onClick: () => runAction('collect-work24', '고용24 채용기업 수집') },
           ]} />
-          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps'].includes(busy)} items={[
+          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps', 'match-registry?passes=5'].includes(busy)} items={[
             { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
+            { label: '🔗 원부 이메일 이식', desc: '통신판매 원부의 이메일을 상호+주소 확신 매칭으로 이식 — 크롤 0회·요청한도 무관(허위 0)', onClick: () => runAction('match-registry?passes=5', '원부 이메일 이식') },
             { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 60) },
             { label: '🧭 분류 정리 풀가동', desc: '공고·기사제목·정부기관 제거 + 업종 재분류 — 클릭당 최대 2.5만 행 소진', onClick: runReclassify },
             { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕') },
@@ -344,7 +351,14 @@ export default function AdminPartnerPoolPage() {
         </div>
 
         {/* 수집·정리 상태줄 묶음(레인A/정리진행률/퍼널/통신판매/프랜차이즈/폐업/국민연금) */}
-        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} />
+        {/* ⏳ 서버에서 도는 작업 표시 — 페이지를 떠났다 돌아와도 보임(작업은 브라우저와 무관하게 계속됨). */}
+        {(running?.runAll || running?.enrich || running?.reclassify) && (
+          <div className="mb-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+            ⏳ 백그라운드 실행 중: {[running.runAll && '전체 실행', running.enrich && '연락처 보강', running.reclassify && '분류 정리'].filter(Boolean).join(' · ')}
+            <span className="text-emerald-600"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
+          </div>
+        )}
+        <StatusLines collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} work24={work24Info} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />
 
         {/* 명부 붙여넣기(레인 B·C) */}
         {showImport && (

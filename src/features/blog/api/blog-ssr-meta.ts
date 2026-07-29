@@ -37,11 +37,16 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
     const canonical = `${origin}/blog/${post.slug || ''}`
     const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined
     const ogImage = `${origin}/blog/og/${encodeURIComponent(post.slug || '')}`
+    // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): publisher/isPartOf 를 index.html 의
+    //   사이트 전역 Organization·WebSite 노드(@id)에 **참조로 연결** — 기존엔 이름만 같은 분리 노드라
+    //   검색 AI 가 "이 글의 발행자 = 유어딜(urdeal.kr) 서비스"로 묶지 못했다. @id 로 그래프가 이어지면
+    //   블로그 22편이 전부 브랜드 엔티티의 근거 문서가 된다(동음이의 혼동 방지의 핵심).
     const article: Record<string, unknown> = {
       '@context': 'https://schema.org', '@type': 'BlogPosting',
       headline: title, description,
       author: { '@type': 'Organization', name: post.author || '유어딜' },
-      publisher: { '@type': 'Organization', name: '유어딜' },
+      publisher: { '@id': `${origin}/#organization` },
+      isPartOf: { '@id': `${origin}/#website` },
       mainEntityOfPage: canonical, url: canonical,
       ...(pub ? { datePublished: pub, dateModified: pub } : {}),
     }
@@ -64,14 +69,15 @@ export function buildBlogListJsonLd(ssrPayload: string | null, origin: string, c
         '@type': 'BlogPosting', headline: stripBold(String(p.title)), description: stripBold(String(p.summary || '')).slice(0, 200),
         url: `${origin}/blog/${p.slug}`, mainEntityOfPage: `${origin}/blog/${p.slug}`,
         author: { '@type': 'Organization', name: p.author || '유어딜' },
-        publisher: { '@type': 'Organization', name: '유어딜' },
+        publisher: { '@id': `${origin}/#organization` },
         ...(p.published_at ? { datePublished: new Date(p.published_at).toISOString() } : {}),
       },
     }))
     if (!items.length) return ''
     const graph = {
       '@context': 'https://schema.org', '@type': 'Blog', name, description, url: canonical,
-      publisher: { '@type': 'Organization', name: '유어딜' },
+      publisher: { '@id': `${origin}/#organization` },
+      isPartOf: { '@id': `${origin}/#website` },
       blogPost: items.map(it => it.item),
       mainEntity: { '@type': 'ItemList', itemListElement: items },
     }

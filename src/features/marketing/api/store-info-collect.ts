@@ -126,7 +126,7 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const hasNaver = !!(clientId && clientSecret)
   if (kakaoKey || hasNaver) {
-    const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 ORDER BY id DESC LIMIT 20")
+    const held = (await DB.prepare("SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 AND merged_into IS NULL ORDER BY id DESC LIMIT 20")
       .all<{ id: number; company_name: string; region: string | null; website: string | null; address: string | null }>().catch(() => null))?.results || []
     for (const h of held) {
       if (outOfBudget(budget)) break

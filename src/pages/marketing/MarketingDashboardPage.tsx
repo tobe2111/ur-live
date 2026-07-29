@@ -21,7 +21,7 @@ import ShortLinksPanel from './ShortLinksPanel'
 import InfluencerDiscoveryPanel from './InfluencerDiscoveryPanel'
 import InfluencerMatchingPanel from './InfluencerMatchingPanel'
 import OnboardingChecklist from './OnboardingChecklist'
-import { MATCHING_ENABLED } from '@/shared/feature-flags'
+import { MATCHING_ENABLED, ADS_AI_HIDDEN } from '@/shared/feature-flags'
 import LazyMount from './LazyMount'
 import { DASH_TABS, SEC_TO_TAB } from './dashboard-tabs'
 import HomeTab from './dashboard/HomeTab'
@@ -126,8 +126,8 @@ export default function MarketingDashboardPage() {
       {/* ── 🔎 키워드: 도구/연관/평판 + 기회 발굴 + 포트폴리오 ────────────── */}
       {hasToken && tab === 'keywords' && (
         <div className="mt-4">
-          <KeywordToolsSection />
-          <LazyMount id="sec-opportunity"><OpportunityPanel /></LazyMount>
+          <KeywordToolsSection onGo={goTab} />
+          <LazyMount id="sec-opportunity"><OpportunityPanel onGo={goTab} /></LazyMount>
           <LazyMount id="sec-portfolio"><SavedKeywordsPanel /></LazyMount>
         </div>
       )}
@@ -155,8 +155,8 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
-      {/* ── ✨ AI 스튜디오: 콘텐츠 생성 + AI 마케터 ───────────────────────── */}
-      {hasToken && tab === 'ai' && (
+      {/* ── ✨ AI 스튜디오: 콘텐츠 생성 + AI 마케터 (ADS_AI_HIDDEN 시 미노출 — 탭도 제거됨) ── */}
+      {!ADS_AI_HIDDEN && hasToken && tab === 'ai' && (
         <div className="mt-4">
           <section id="sec-content" style={{ scrollMarginTop: 76 }}><ContentStudioPanel /></section>
           <AiMarketerSection />

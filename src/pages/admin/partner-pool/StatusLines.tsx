@@ -4,21 +4,32 @@
  */
 import { formatNumber, kstShort } from '@/utils/format'
 
+/** 크롤 실패 사유 라벨(contact-enrich CrawlReason SSOT 미러) — 적중률 저하의 원인 진단용. */
+const CRAWL_REASON_LABEL: Record<string, string> = {
+  ok: '성공', no_contact: '이메일 미게시', fetch_fail: '페이지 못가져옴', robots: 'robots 차단',
+  dead_domain: '죽은 도메인', no_name: '상호 불일치', blocked_host: '제외 호스트', bad_url: '잘못된 주소', budget: '예산 소진',
+  http_403: '봇차단(403)', http_404: '경로없음(404)', http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)',
+  subreq_limit: '⛔ 플랫폼 요청한도', timeout: '⏱ 응답 시간초과(상대 서버)',
+}
+
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
 export interface Commerce { gate: boolean; run: (RunInfo & { diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string } }) | null }
 export interface NtsSweep { run: { last_run?: string; checked?: number; closed?: number; total_closed?: number; note?: string } | null }
-export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; no_site: number }
+export interface AgencyFunnel { total: number; with_email: number; site_no_email: number; site_tried?: number; no_site: number }
 export interface NpsInfo { gate: boolean; run: { last_run?: string; checked?: number; matched?: number; total_matched?: number; diag?: { error?: string } } | null }
 export interface ReclassifyInfo { run: { last_run?: string; scanned?: number; removed?: number; remaining_unclassified?: number; total_removed?: number; total_updated?: number } | null }
+export interface EnrichInfo { last_run?: string; processed?: number; enriched?: number; crawls?: number; hit_rate?: number; remaining?: number; crawl_reason?: Record<string, number>; fail_samples?: string[]; fetches?: number; budget_total?: number; spent?: number; limit_hit?: boolean; learned_cap?: number; partial?: boolean; d1?: number; deadline_hit?: boolean; elapsed_ms?: number }
+export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
+export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; diag?: { configured?: boolean; error?: string } } | null }
 export interface Work24Info { gate: boolean; run: { last_run?: string; keyword?: string; found?: number; matched?: number; saved?: number; total_saved?: number; diag?: { error?: string; sample?: unknown } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24 }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, work24, localdata, enrichLast, registryMatch }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
-  work24: Work24Info | null
+  work24: Work24Info | null; localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; registryMatch?: RegistryMatchInfo | null
 }) {
   return (
     <>
@@ -44,10 +55,72 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         <span className="font-semibold text-gray-700">📧 대행사 이메일 퍼널</span>
         <span> · 전체 {formatNumber(agencyFunnel.total)}</span>
         <span> · <span className="text-indigo-600 font-semibold">이메일 보유 {formatNumber(agencyFunnel.with_email)}</span></span>
-        <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음 — 매시간 보강 크롤이 채우는 중이거나, 문의폼·카톡채널만 쓰는 업체(공개 이메일 자체가 없어 공란이 정답)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}</span>
+        <span title="자체 사이트는 찾았는데 게시된 이메일이 아직 없음. 괄호=크롤 시도 완료분(시도했는데 이메일이 없으면 구조적 한계 — 문의폼·카톡채널만 쓰는 업체)"> · 사이트만 {formatNumber(agencyFunnel.site_no_email)}
+          <span className="text-gray-400">(시도 {formatNumber(agencyFunnel.site_tried ?? 0)} / 대기 {formatNumber(Math.max(0, (agencyFunnel.site_no_email || 0) - (agencyFunnel.site_tried || 0)))})</span></span>
         <span title="지도·웹 어디에도 자체 사이트가 안 잡힘 — 공개된 이메일이 존재하지 않아 전화·주소로 접촉(허위 0 원칙)"> · 사이트 미발견 {formatNumber(agencyFunnel.no_site)}</span>
       </div>
     )}
+
+    {/* 🔗 원부 이메일 이식 — 크롤 0회 레인(전수조사: 이메일의 99.8%가 원부 직행분인데 타깃엔 미적용이었음) */}
+    {registryMatch?.last_run && (
+      <div className="mb-3 text-xs text-gray-500">
+        🔗 원부 이메일 이식 <span className="text-gray-400">(크롤 0회)</span>
+        <span> · 최근 {kstShort(registryMatch.last_run)} · 대조 {formatNumber(registryMatch.scanned ?? 0)} · <b className="text-indigo-600">이식 {formatNumber(registryMatch.matched ?? 0)}</b> (누적 {formatNumber(registryMatch.total_matched ?? 0)})</span>
+        {registryMatch.skip_reason && Object.keys(registryMatch.skip_reason).length > 0 && (
+          <span className="text-gray-400" title="확신이 없으면 비워둔다(허위 0) — 건너뛴 사유 분포"> · 보류 {Object.entries(registryMatch.skip_reason).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${v}`).join(' / ')}</span>
+        )}
+      </div>
+    )}
+
+    {/* 📧 이메일 보강 레인 — **가장 중요한 레인인데 화면에 없었음**(2026-07-28: 이메일이 왜 안 느는지
+        판별 불가였던 원인). 처리/확보/크롤 적중률로 '시도량 부족' vs '추출력 부족'을 즉시 구분. */}
+    <div className="mb-3 text-xs text-gray-500">
+      📧 이메일 보강 레인
+      {enrichLast?.partial && <span className="ml-1 text-amber-600 font-semibold" title="실행 도중 저장된 스냅샷 — 인보케이션이 끝나기 전 상태(중도 종료 시에도 계측이 남도록 25건마다 저장)">⏳ 진행 중/중단 스냅샷</span>}
+      {enrichLast?.last_run
+        ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-indigo-600">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
+            {typeof enrichLast.crawls === 'number' && enrichLast.crawls > 0
+              ? <span> · 크롤 {formatNumber(enrichLast.crawls)}(이메일 적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
+              : <span className="text-amber-600"> · 크롤 0회 — 크롤까지 못 감(예산·대상 선정 확인 필요)</span>}
+            {typeof enrichLast.remaining === 'number' ? <span className="text-gray-400"> · 보류 잔여 {formatNumber(enrichLast.remaining)}</span> : null}
+            {/* 실사용 서브요청 — Workers 호출당 1,000 한도. 근접하면 이후 fetch 가 전부 즉시 throw(network) 로 보인다. */}
+            {typeof enrichLast.fetches === 'number' ? <span className="text-gray-400"> · 서브요청 {formatNumber(enrichLast.fetches)}</span> : null}
+            {/* 실패 사유 분포 — 적중률이 낮을 때 '사이트에 이메일이 없음(no_contact)' vs '페이지를 못 가져옴
+                (fetch_fail)' vs 'robots 차단' 을 구분해 다음 개선을 데이터가 고르게(2026-07-28 적중 0% 진단). */}
+            {enrichLast.crawl_reason && Object.keys(enrichLast.crawl_reason).length > 0 && (
+              <span className="text-gray-400"> · 사유 {Object.entries(enrichLast.crawl_reason).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CRAWL_REASON_LABEL[k] || k} ${v}`).join(' / ')}</span>
+            )}
+          </span>
+        : <span className="text-amber-600"> · 아직 실행 기록 없음 — 매시간 자동이 안 돌고 있을 수 있음</span>}
+      {/* 🩹 예산 실측 — "왜 조금밖에 못 돌았나"의 답. 한도에 부딪히면 그 뒤 fetch 는 전부 죽으므로
+          라운드를 중단하고 상한을 낮춰 학습한다(다음 실행부터 그 아래만 사용). */}
+      {typeof enrichLast?.spent === 'number' && (
+        <div className="mt-1 text-[11px] text-gray-400">
+          예산 {formatNumber(enrichLast.spent)}/{formatNumber(enrichLast.budget_total ?? 0)} 사용
+          {/* 🧮 내역 분해(2026-07-28) — D1 도 서브리퀘스트라 예산에서 함께 지불한다. 이 둘을 안 나누면
+              '예산 사용'과 '외부요청' 숫자가 어긋나 보여 읽는 사람이 오해한다. 어느 쪽이 예산을 먹는지가
+              곧 처방(크롤 축소 vs 대상 수 축소)을 가르므로 화면에 드러낸다. */}
+          {typeof enrichLast.d1 === 'number' && (
+            <span> (외부요청 {formatNumber(enrichLast.fetches ?? 0)} + DB쓰기 <b className={enrichLast.d1 > (enrichLast.fetches ?? 0) ? 'text-amber-600' : ''}>{formatNumber(enrichLast.d1)}</b>)</span>
+          )}
+          {enrichLast.limit_hit
+            ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 이번 라운드 중단(실패 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
+            : <span> · 한도 여유</span>}
+          {/* ⏱️ 벽시계 상한 도달 — 예산이 남아도 시간이 라운드를 끝냈다는 뜻(처방이 다르다: 캡 조정이 아니라
+              동시성·타임아웃). ADS_ENRICH_DEADLINE_MS 로 무배포 조정 가능. */}
+          {enrichLast.deadline_hit && (
+            <span className="text-amber-600 font-semibold"> · ⏱ 시간 상한 도달 → 정상 종료(남은 백로그는 다음 라운드)</span>
+          )}
+          {typeof enrichLast.elapsed_ms === 'number' && (
+            <span> · 소요 {(enrichLast.elapsed_ms / 1000).toFixed(1)}s</span>
+          )}
+        </div>
+      )}
+      {/* 실패 URL 샘플 — 호스트 형태/상태코드로 '왜 못 가져왔나'를 눈으로 특정 */}
+      {enrichLast?.fail_samples?.length ? (
+        <div className="mt-1 text-[11px] text-gray-400 break-all">실패 샘플: {enrichLast.fail_samples.join(' · ')}</div>
+      ) : null}
+    </div>
 
     {/* 🛒 통신판매 수집 진단 — 원본 응답 필드 + 이메일 필드 유무(추측 대신 실제 확인) */}
     {commerce?.run && (
@@ -99,6 +172,15 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         {npsInfo.run.diag?.error && <span className="text-amber-600"> · ⚠️ {npsInfo.run.diag.error}</span>}
       </div>
     )}
+      {/* 🏪 매장 후보(인허가) — 소비자 공개면(/new-openings·상권 리포트)·개업 웰컴 큐의 유일한 데이터원.
+          2026-07-28 실측: 이 라인이 없어 "0건"인 걸 아무도 몰랐음(전체 실행 목록에서도 누락돼 있었음). */}
+      <div className="mb-3 text-xs text-gray-500">
+        🏪 매장 후보(인허가) <span className={localdata?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{localdata?.gate ? 'ON · 05시' : 'OFF'}</span>
+        {localdata?.run?.last_run
+          ? <span> · 최근 {kstShort(localdata.run.last_run)} · 저장 {localdata.run.saved ?? 0} / 갱신 {localdata.run.updated ?? 0}{typeof localdata.run.closed === 'number' ? ` / 폐업 ${localdata.run.closed}` : ''}</span>
+          : <span className="text-amber-600"> · 아직 실행 안 됨 — 개업/상권 리포트 공개면이 빈 상태(전체 실행 1회로 채워짐)</span>}
+        {localdata?.run?.diag?.error && <span className="text-amber-600"> · ⚠️ {localdata.run.diag.error}</span>}
+      </div>
       {/* 💼 고용24 채용기업 수집 상태 — 첫 실행 diag 로 실응답 검증 */}
       {work24?.run && (
         <div className="mb-3 text-xs text-gray-500">

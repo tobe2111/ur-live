@@ -119,7 +119,11 @@ export async function runWork24JobsCollect(env: Env): Promise<Work24Stats> {
     if (page > 3) { ki = (ki + 1) % KEYWORDS.length; page = 1; break }
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, JSON.stringify({ ki, page })).run().catch(() => null)
-  const error = found === 0 && lastMsg ? `API: ${lastMsg}` : undefined
+  // 실측 확인된 차단 사유는 **다음 행동까지** 붙여 준다 — 어드민이 메시지만 보고 바로 처리하게(2026-07-27 진단).
+  const hint = lastMsg && /개인회원|사용할 수 없는/.test(lastMsg)
+    ? ' → 고용24에서 **기업회원으로 전환** 후 오픈API 키를 재발급받아 `WORK24_API_KEY` 를 교체하면 즉시 동작합니다(코드 변경 불필요).'
+    : ''
+  const error = found === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
   const s: Work24Stats = {
     last_run: stamp, keyword: kw, page, found, matched, saved,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,

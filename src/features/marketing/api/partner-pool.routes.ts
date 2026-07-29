@@ -17,9 +17,31 @@ import {
 } from './company-discovery'
 import { LEAD_TYPES, LEAD_TYPE_LABEL } from './company-classify'
 import { listCompanyKeywords, addCompanyKeyword } from './company-collect'
+import { partnerPoolDedupeRoutes } from './partner-pool-dedupe.routes'
 
 const app = new Hono<{ Bindings: Env }>()
+
 app.use('*', requireAdmin())
+// 🧬 중복 병합 라우트(별도 모듈 — 600줄 래칫 우회 대신 추출).
+//   ⚠️ **반드시 requireAdmin() 뒤에 마운트**한다 — 앞에 두면 이 라우트만 인증을 안 거친다(라이브 데이터 수정 경로).
+app.route('/', partnerPoolDedupeRoutes)
+
+/* 🔔 작업 완료 알림벨 공용(2026-07-27) — 백그라운드(waitUntil) 작업은 페이지를 떠나도 계속되지만
+ *   완료 토스트는 페이지와 함께 사라진다 → 결과를 알림벨에 남겨 어디서든/나중에 확인 가능하게. */
+const JOB_NUM_LABEL: Record<string, string> = {
+  found: '발견', saved: '저장', matched: '적합', enriched: '연락처 확보', processed: '처리', emailed: '이메일',
+  checked: '검증', cleared: '정리', crawls: '크롤', removed: '제거', updated: '갱신', scanned: '검사',
+}
+async function notifyJobDone(DB: D1Database, label: string, stats: Record<string, unknown> | null): Promise<void> {
+  try {
+    const nums = stats ? Object.entries(stats).filter(([k, v]) => typeof v === 'number' && JOB_NUM_LABEL[k])
+      .map(([k, v]) => `${JOB_NUM_LABEL[k]} ${(v as number).toLocaleString()}`).join(' · ') : ''
+    const err = (stats?.diag as { error?: string } | undefined)?.error
+    const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+    await createDashboardNotification(DB, 'admin', null, 'partner_pool_job', `${label} 완료`,
+      err ? `⚠️ ${err}` : (nums || '결과 없음'), '/admin/partner-pool')
+  } catch { /* 알림 실패가 작업 자체를 막지 않음 */ }
+}
 
 // GET /api/admin/partner-pool?category=&subcategory=&region=&tier=&status=&hasContact=1&hasEmail=1&q=&limit=
 app.get('/', async (c) => {
@@ -55,6 +77,7 @@ app.post('/:id/bounce', async (c) => {
   const id = intParam(c.req.param('id'), 0)
   if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
   await ensureCompanySchema(c.env.DB)
+  // merged-filter-ok — id 지정 단건 조회(어드민이 명시한 행).
   const row = await c.env.DB.prepare('SELECT email, phone FROM ad_company_leads WHERE id = ?').bind(id).first<{ email: string | null; phone: string | null }>().catch(() => null)
   const email = (row?.email || '').trim().toLowerCase()
   if (!email) return c.json({ success: false, error: '이 리드에 이메일이 없습니다' }, 400)
@@ -132,7 +155,9 @@ app.post('/run-all', async (c) => {
       } catch { return null }
     }
     // ① 수집 전 레인 병렬(각 호출 = ur-ads 의 독립 인보케이션 = 독립 예산 — 서로 안 갉아먹음).
-    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx']
+    // ⚠️ 2026-07-28 실측 수리: **매장 후보(인허가) 수집·보강이 목록에서 빠져** 있어 전체 실행을 눌러도
+    //   store_prospects 가 0건 → 소비자 공개면(/new-openings·/area-report)과 개업 웰컴 큐가 영구 빈 상태였음.
+    const COLLECTORS = ['collect-company', 'collect-storeinfo', 'collect-commerce', 'collect-franchise', 'collect-nara-vendor', 'collect-work24', 'collect-nps', 'sweep-nts', 'sweep-mx', 'collect-localdata', 'enrich-prospects']
     const collected = await Promise.all(COLLECTORS.map(p => call(p)))
     const collectSaved = collected.reduce((s: number, r) => s + num(r, 'saved'), 0)
     const collectFound = collected.reduce((s: number, r) => s + num(r, 'found'), 0)
@@ -227,22 +252,40 @@ app.get('/stats', async (c) => {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll] = await Promise.all([
-    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'),
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun] = await Promise.all([
+    readKey('ads_naravendor_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
+    readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
   ])
+  // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
+  //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
+  const fresh = (v: unknown): boolean => { const at = (v as { at?: string } | null)?.at; return !!at && Date.now() - Date.parse(at) < 240_000 }
+  const running = { runAll: fresh(lkAll), enrich: fresh(lkEnrich), reclassify: fresh(lkReclassify) }
+  // 🚦 게이트는 **ur-ads 워커 env** 가 진실(cron 이 거기서 돔) — 메인 env 를 읽어 표시하면 실제와 어긋난다
+  //   (2026-07-28 실측: 어드민 전부 OFF 표시). health 로 실값을 물어보고, 실패 시 메인 env 로 폴백.
+  let g: Record<string, boolean> | null = null
+  if (c.env.ADS?.fetch) {
+    try {
+      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+      g = ((await hr.json().catch(() => null)) as { gates?: Record<string, boolean> } | null)?.gates ?? null
+    } catch { g = null }
+  }
+  const gate = (k: string, fallback: boolean): boolean => (g && typeof g[k] === 'boolean') ? g[k] : fallback
   return c.json({
     success: true, ...s,
-    collect: { gate: c.env.ADS_COMPANY_COLLECT_ENABLED === 'true', adsBinding: !!c.env.ADS?.fetch, run },
-    storeinfo: { gate: c.env.ADS_STOREINFO_ENABLED === 'true', run: storeinfoRun },
-    commerce: { gate: (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true', run: commerceRun, probe: commerceProbe },
-    franchise: { gate: (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true', run: franchiseRun },
+    collect: { gate: gate('company_collect', c.env.ADS_COMPANY_COLLECT_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
+    storeinfo: { gate: gate('storeinfo', c.env.ADS_STOREINFO_ENABLED === 'true'), run: storeinfoRun },
+    commerce: { gate: gate('commerce', (c.env as { ADS_COMMERCE_ENABLED?: string }).ADS_COMMERCE_ENABLED === 'true'), run: commerceRun, probe: commerceProbe },
+    franchise: { gate: gate('franchise', (c.env as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED === 'true'), run: franchiseRun },
     nts: { run: ntsRun },
-    nps: { gate: (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true', run: npsRun },
+    nps: { gate: gate('nps', (c.env as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true'), run: npsRun },
     reclassify: { run: rcRun },
-    work24: { gate: (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true', run: w24Run },
+    registryMatch,   // 🔗 원부 이메일 이식 결과(크롤 0회 레인)
+    work24: { gate: gate('work24', (c.env as { ADS_WORK24_ENABLED?: string }).ADS_WORK24_ENABLED === 'true'), run: w24Run },
     nara: { run: naraRun },
     mx: { run: mxRun },
-    enrichLast, enrichBurst, reclassifyBurst, runAll,
+    enrichLast, enrichBurst, reclassifyBurst, runAll, running,
+    // 🏪 매장 후보(인허가) — 소비자 공개면/개업 웰컴의 데이터원. 상태줄에 없어 0건인 걸 아무도 몰랐음(2026-07-28).
+    localdata: { gate: gate('localdata', false), run: localdataRun },
   })
 })
 
@@ -252,7 +295,7 @@ app.get('/contact-list', async (c) => {
   const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
   const companies = (await c.env.DB.prepare(
     `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
-     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
+     WHERE active = 1 AND merged_into IS NULL AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
      ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
   ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
   const stores = (await c.env.DB.prepare(
@@ -263,35 +306,11 @@ app.get('/contact-list', async (c) => {
   return c.json({ success: true, companies, stores })
 })
 
-// POST /api/admin/partner-pool/collect-nara — 📑 나라장터 조달업체(대행사 계열) 수동 수집(ur-ads 위임).
-app.post('/collect-nara', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-nara-vendor', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-mx — 📮 기존 이메일 재검증(죽은 도메인 정리, ur-ads 위임).
-app.post('/sweep-mx', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-mx', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
-
-// POST /api/admin/partner-pool/sweep-nts — 국세청 폐업 스윕 수동 실행(활용신청 검증 겸, ur-ads 위임).
-app.post('/sweep-nts', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/sweep-nts', { method: 'POST' })) } catch { /* fail-soft */ } }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
-  try { await kick(); return c.json({ success: true, started: false }) }
-  catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
+// 위임 3종(나라장터 수집 · 이메일 재검증 · 폐업 정리) — 아래 delegateCollect 하나로 통일(같은 보일러플레이트였다).
+//   ⚠️ 함수 선언은 호이스팅되므로 정의(아래)보다 위에서 호출해도 안전하다.
+app.post('/collect-nara', delegateCollect('collect-nara-vendor', '📑 조달업체 수집'))
+app.post('/sweep-mx', delegateCollect('sweep-mx', '📮 이메일 재검증'))
+app.post('/sweep-nts', delegateCollect('sweep-nts', '🏛 폐업 정리'))
 
 // GET /api/admin/partner-pool/keywords — 레인 A 지역검색 키워드 풀(방배/서초/강남 × 업종 시드).
 app.get('/keywords', async (c) => c.json({ success: true, keywords: await listCompanyKeywords(c.env.DB) }))
@@ -308,38 +327,74 @@ app.post('/keywords', async (c) => {
 app.post('/collect', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/collect-company', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '🔍 레인 A 수집', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 // POST /api/admin/partner-pool/enrich — 보류(연락처 없음) 리드 이메일 보강(ur-ads 위임). 홈페이지 있는 것만.
+// POST /api/admin/partner-pool/match-registry — 🔗 원부 이메일 이식(크롤 0회·서브리퀘스트 0).
+//   전수조사 결과 이메일의 99.8%가 원부 직행분인데 타깃 카테고리는 조인 키(business_no)가 없어 못 쓰고 있었다.
+//   상호(+주소) 확신 매칭만 이식 — 판단이 안 서면 비워둔다(허위 0). 여러 패스로 백로그를 순회.
+app.post('/match-registry', async (c) => {
+  const passes = Math.min(20, Math.max(1, intParam(c.req.query('passes'), 5)))
+  const run = async () => {
+    const { matchRegistryEmails } = await import('./registry-email-match')
+    // 🪙 패스들이 **한 인보케이션을 공유**한다 — 예산도 공유해야 한다. 예전엔 패스마다 수백 쿼리를 날려
+    //   서브리퀘스트 한도에 눌렸고, 그 실패를 `.catch(() => null)` 가 삼켜 통계엔 '원부에 없음' 으로 남았다.
+    const budget = { left: 45 } // 플랫폼 한도(≈50) 안쪽. 부족하면 다음 호출/크론이 커서로 이어받는다.
+    for (let i = 0; i < passes; i++) {
+      const r = await matchRegistryEmails(c.env, 400, budget).catch(() => null)
+      if (!r || r.done || budget.left <= 8) break
+    }
+  }
+  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(run()); return c.json({ success: true, started: true }) }
+  await run()
+  return c.json({ success: true, started: false })
+})
+
 app.post('/enrich', async (c) => {
   const ads = c.env.ADS
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
-  const kick = async () => { try { await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' })) } catch { /* fail-soft */ } }
+  const kick = async () => { try {
+    const r = await ads.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
+    const b = (await r.json().catch(() => null)) as { stats?: Record<string, unknown> } | null
+    await notifyJobDone(c.env.DB, '📧 연락처 보강', b?.stats ?? null) // 페이지 이탈해도 결과가 알림벨에 남음
+  } catch { /* fail-soft */ } }
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
 })
 
 // 소스별 수동 수집 위임(ur-ads). 게이트 무관(수동=의도). storeinfo/commerce/franchise.
-function delegateCollect(path: string) {
+function delegateCollect(path: string, label: string) {
   return async (c: import('hono').Context<{ Bindings: Env }>) => {
     const ads = c.env.ADS
     if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-    const kick = async () => { try { await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' })) } catch { /* fail-soft */ } }
+    // 🔔 완료 알림벨(2026-07-27 대표 "실행 중 다른 페이지로 이동하면?") — 서버 작업은 waitUntil 로 계속되지만
+    //   페이지를 떠나면 완료 토스트를 못 봄 → 결과를 알림벨에 남겨 돌아와서도 확인 가능하게(풀가동 3종과 동일).
+    const kick = async () => {
+      try {
+        const r = await ads.fetch(new Request(`https://ur-ads/__ads/${path}`, { method: 'POST' }))
+        const body = (await r.json().catch(() => null)) as { ok?: boolean; stats?: Record<string, unknown> } | null
+        await notifyJobDone(c.env.DB, label, body?.stats ?? null)
+      } catch { /* fail-soft */ }
+    }
     if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
     try { await kick(); return c.json({ success: true, started: false }) }
     catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
   }
 }
-app.post('/collect-storeinfo', delegateCollect('collect-storeinfo')) // 소스① 상가정보
-app.post('/collect-commerce', delegateCollect('collect-commerce'))   // 통신판매사업자(전화+이메일)
-app.post('/collect-franchise', delegateCollect('collect-franchise')) // 공정위 가맹정보(프랜차이즈 본사)
-app.post('/collect-nps', delegateCollect('collect-nps'))             // 👥 국민연금 규모 검증(직원수)
-app.post('/collect-work24', delegateCollect('collect-work24'))       // 💼 고용24 채용기업(성장 신호)
+app.post('/collect-storeinfo', delegateCollect('collect-storeinfo', '🏪 상가정보 수집')) // 소스① 상가정보
+app.post('/collect-commerce', delegateCollect('collect-commerce', '🛒 통신판매 수집'))   // 통신판매사업자(전화+이메일)
+app.post('/collect-franchise', delegateCollect('collect-franchise', '🏢 프랜차이즈 수집')) // 공정위 가맹정보(프랜차이즈 본사)
+app.post('/collect-nps', delegateCollect('collect-nps', '👥 국민연금 규모 조회'))         // 👥 국민연금 규모 검증(직원수)
+app.post('/collect-work24', delegateCollect('collect-work24', '💼 채용기업(고용24) 수집')) // 💼 고용24 채용기업(성장 신호)
 
 // ── 🤝 파트너 매장 소개(리퍼럴) 접수·추적 — 머니 무접촉(지급 배선은 별도 세션, partner-referrals.ts 주석) ──
 app.get('/referrals', async (c) => {

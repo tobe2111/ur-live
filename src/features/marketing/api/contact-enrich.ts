@@ -6,9 +6,35 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
+import { isSubrequestLimitError } from './collect-budget'
 
-const outOfBudget = (b?: FetchBudget) => !!b && b.left <= 0
+// 예산 = 서브리퀘스트 수 + **시간**(budget.deadline). 정의는 influencer-discovery 의 FetchBudget 주석 참조.
+const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
 const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
+
+/**
+ * 🛑 외부 fetch 공용 래퍼 — 실패를 **삼키지 않고 원인을 남긴다**(2026-07-28 실측 진단).
+ *
+ *   배경: 크롤 59건 중 `no_contact`(이메일 미게시) 0건 · fetch 실패 45건 = **HTML 을 한 장도 못 받은**
+ *   전역 실패였는데, 모든 fetch 가 `.catch(() => …)` 로 에러를 버려서 "왜"가 영영 안 보였다.
+ *   플랫폼 서브리퀘스트 한도("Too many subrequests")에 부딪히면 그 인보케이션의 이후 fetch 가 **전부**
+ *   throw 하므로, 한 번 관측되면 남은 작업은 의미가 없다 → 예산 객체에 표식을 남겨 호출부가 즉시 중단한다.
+ *   (한도 자체는 코드가 알 수 없어 관측 학습 — collect-budget.ts)
+ */
+async function safeFetch(url: string, init: RequestInit & { timeoutMs?: number }, budget?: FetchBudget, errSink?: { msg: string }): Promise<Response | null> {
+  const { timeoutMs = 8000, ...rest } = init
+  try {
+    return await fetch(url, { ...rest, signal: AbortSignal.timeout(timeoutMs) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    const msg = String(e?.message || '')
+    // 예외 이름·메시지를 그대로 남긴다(추측 금지) — AbortError=상대 서버 무응답 · TypeError "Too many
+    //   subrequests"=워커 한도 소진 · 그 외=DNS/TLS/연결거부. 상태줄 실패 샘플에서 이 문자열로 판정한다.
+    if (errSink) errSink.msg = `${e?.name || 'Error'}: ${msg.slice(0, 70)}`
+    if (isSubrequestLimitError(msg) && budget) budget.limitHit = true
+    return null
+  }
+}
 const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
 const norm = (s: string) => s.replace(/\s+/g, '')
 
@@ -19,6 +45,19 @@ const JUNK_EMAIL = /@(?:sentry\.|wixpress\.com|example\.|your-?domain|yourdomain
 export const NEWSROOM_EMAIL_LOCAL = /^(?:press|news|newsroom|newsdesk|desk|reporter|editor|jebo|bodo)[\d._-]*@/i
 /** 📰 언론사성 호스트(수집 제외 + 크롤 거부 공용) — 뉴스 포털 루트에서 webmaster@ 류가 긁히는 것 차단. */
 export const NEWS_MEDIA_HOST = /(^|\.)((?:[a-z0-9-]*)(?:news|ilbo|daily|press|journal|times)[a-z0-9-]*)\.(?:co\.kr|com|kr|net)$/i
+/** 🔢 크롤/추출 규칙 버전 (2026-07-28 실측 — 개선한 크롤러가 7일 쿨다운에 막혀 기존 백로그를 못 만나던 문제).
+ *  보강 대상 쿼리가 `COALESCE(enrich_v,0) < CRAWL_RULES_VERSION` 인 행도 포함하므로, **크롤 경로·추출기를
+ *  개선하면 이 값을 +1** → 이전 크롤러로 실패한 전량이 즉시 재시도 대상이 된다(분류 규칙 버전과 동일 철학).
+ *  v2 = 엔티티/태그분할 복원 · JSON-LD · 사이트맵 발견 · 호스트 변형 폴백.
+ *  v3 (2026-07-28) = 사이트당 fetch 캡(5경로 + MAX_PAGES) — v2 의 12경로가 예산을 2배 먹어 크롤 사이트 수가
+ *  반토막나던 회귀 수리. 이전 v2 시도분(적중 0%)을 전량 재시도해야 하므로 버전 bump.
+ *  v4 (2026-07-28) = fetch 실패 상태코드 분류(403/404/5xx/network) + 실패 URL 샘플 — 원인 특정용 재시도.
+ *  v5 (2026-07-28) = 서브리퀘스트 한도 관측·중단(safeFetch). v4 까지의 '실패' 대다수는 사이트 문제가 아니라
+ *    **한도 초과 뒤 무의미하게 시도된 것**이고, 그 행들이 실패 도장(7일 쿨다운)까지 받아 재시도 풀에서
+ *    이탈해 있었다 → 버전 bump 로 그 오염분을 전량 즉시 재시도 대상으로 되돌린다.
+ *  v6 (2026-07-28) = 국내 수기 난독화 복원(골뱅이/(at)/[dot]) — `no_contact` 로 집계된 사이트 중 **실제로는
+ *    이메일이 있는데 못 읽은 것**을 회수. 추출기 개선이므로 이전 no_contact 판정분을 전량 재시도해야 한다. */
+export const CRAWL_RULES_VERSION = 6
 const EMAIL_STRICT = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i
 const MAILTO_RE = /mailto:([^"'?>\s]+)/gi
 /** 게시 가능 이메일 판정 공용(형식+정크+뉴스룸) — 추출기·JSON-LD 스캔이 같은 기준. */
@@ -27,6 +66,15 @@ const publishableEmail = (e: string, allowNewsroom = false): boolean =>
 /** HTML 엔티티형 이메일 난독 복원(&#64;→@ 등) — 국내 CMS 안티봇 출력에 흔함(2026-07-27 크롤 고도화). */
 const decodeEmailEntities = (s: string): string =>
   s.replace(/&#0*64;|&commat;/gi, '@').replace(/&#0*46;|&period;/gi, '.').replace(/&#0*45;/g, '-')
+    // 🇰🇷 국내 사이트 흔한 수기 난독화 — 스팸봇 회피용으로 @ 를 '골뱅이'·(at)·[@] 로 쓴다.
+    //   2026-07-28 실측: 크롤 적중률의 남은 손실이 `no_contact`(사이트에 이메일이 없음)인데, 그중 일부는
+    //   **실제로는 있는데 우리가 못 읽은 것**이다. 복원은 fetch 추가 0(문자열 처리)이라 예산 무관하게 순이득.
+    //   ⚠️ 조합·추측이 아니라 **표기 복원**만 — 없는 주소를 만들지 않는다(허위 0).
+    .replace(/\s*(?:골뱅이|앳)\s*/g, '@')
+    .replace(/\s*[[(<{]\s*(?:at|@)\s*[\])>}]\s*/gi, '@')
+    .replace(/\s+(?:at)\s+(?=[A-Za-z0-9.-]+\.[A-Za-z]{2,})/gi, '@')
+    .replace(/\s*[[(<{]\s*(?:dot|점)\s*[\])>}]\s*/gi, '.')
+    .replace(/(?<=@[A-Za-z0-9-]{2,})\s+dot\s+(?=[A-Za-z]{2,})/gi, '.')
 
 /**
  * 📧 HTML 에서 **게시된** 이메일 1개 추출 — 추측·조합 절대 없음.
@@ -92,7 +140,7 @@ export async function kakaoLocalLookup(key: string, name: string, region: string
   spendBudget(budget)
   const q = `${name} ${region || ''}`.trim()
   const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=5`
-  const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+  const res = await safeFetch(url, { headers: { Authorization: `KakaoAK ${key}` }, timeoutMs: 10000 }, budget)
   if (!res || !res.ok) return { phone: null, website: null }
   const data = await res.json().catch(() => null) as { documents?: Array<{ place_name?: string; phone?: string; road_address_name?: string; address_name?: string; place_url?: string }> } | null
   const want = norm(name)
@@ -116,7 +164,7 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
   spendBudget(budget)
   const q = `${name} ${region || ''}`.trim()
   const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(q)}&display=5&sort=random`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+  const res = await safeFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, timeoutMs: 10000 }, budget)
   if (!res || !res.ok) return { phone: null, website: null }
   const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; telephone?: string; link?: string; address?: string; roadAddress?: string }> } | null
   const want = norm(name)
@@ -138,6 +186,28 @@ export async function naverLocalLookup(clientId: string, clientSecret: string, n
 //   → 크롤 대상에서 제외(오귀속=허위 방지). 업체 *자체* 홈페이지만 발견 대상. (웹 발굴 레인도 재사용 — export)
 export const THIRD_PARTY_HOST = /(?:^|\.)(?:blog\.naver\.com|m\.blog\.naver\.com|cafe\.naver\.com|post\.naver\.com|in\.naver\.com|naver\.me|tistory\.com|brunch\.co\.kr|instagram\.com|facebook\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|band\.us|daum\.net|kakao\.com|kmong\.com|saramin\.co\.kr|jobkorea\.co\.kr|wanted\.co\.kr|albamon\.com|incruit\.com|namu\.wiki|wikipedia\.org)$/i
 
+/**
+ * 🔎 크롤 가능한 **자체 사이트**인가 — 지도/SNS/UGC/구인 플랫폼 URL 은 크롤해도 업체 이메일이 안 나온다.
+ *   (2026-07-28 실측: 사이트 보유 행의 **22.9%** 가 instagram·blog.naver·cafe.naver·youtube·facebook·
+ *    pf.kakao·soomgo 같은 플랫폼 URL — 크롤 예산을 여기에 태우고 있었다.)
+ *   ⚠️ 예전엔 enrich-lane 내부 클로저라 **수집 레인이 같은 판정을 못 썼다** → SSOT 로 승격.
+ *   website 컬럼 자체는 보존한다(사람이 수동 접촉할 땐 유용) — '크롤 대상이냐'만 판정.
+ */
+export function realSite(w: string | null | undefined): string | null {
+  if (!w || /kakao\.|place\.map|map\.naver|naver\.me/i.test(w)) return null
+  try { if (THIRD_PARTY_HOST.test(new URL(/^https?:\/\//i.test(w) ? w : `https://${w}`).hostname)) return null } catch { return null }
+  return w
+}
+
+/** SQL 선정 단계에서 쓰는 플랫폼 호스트 제외 목록 — `LIMIT n` 슬롯을 크롤 불가 URL 이 차지하지 않게 한다.
+ *  (JS `realSite` 가 최종 판정 — 여기서는 인덱스 없이도 값싸게 대부분을 걷어내는 1차 필터.) */
+export const PLATFORM_URL_SQL_EXCLUDE = [
+  '%instagram.com%', '%facebook.com%', '%youtube.com%', '%youtu.be%', '%blog.naver.com%', '%cafe.naver.com%',
+  '%post.naver.com%', '%naver.me%', '%place.map%', '%map.naver%', '%pf.kakao.com%', '%kakao.com%',
+  '%tistory.com%', '%brunch.co.kr%', '%band.us%', '%soomgo.com%', '%getmiso.com%', '%kmong.com%',
+  '%saramin.co.kr%', '%jobkorea.co.kr%', '%wanted.co.kr%', '%albamon.com%',
+]
+
 /** ①-c 네이버 웹문서 검색으로 **자체 홈페이지 발견** — 지역검색에 홈페이지가 없는 업체(세무사·소상공인 등)도
  *   웹엔 자기 사이트를 노출. 상호가 결과 제목/설명에 포함 + 제3자/UGC 도메인 제외. 발견 사이트의 이메일 채택은
  *   crawlContact 의 requireName 가드(페이지에 상호 존재)로 2중 검증 — 오귀속(허위) 구조적 차단. */
@@ -148,7 +218,7 @@ export async function naverHomepageSearch(clientId: string, clientSecret: string
   if (outOfBudget(budget)) return null
   spendBudget(budget)
   const url = `https://openapi.naver.com/v1/search/webkr.json?query=${encodeURIComponent(q)}&display=8`
-  const res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(10000) }).catch(() => null)
+  const res = await safeFetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, timeoutMs: 10000 }, budget)
   if (!res || !res.ok) return null
   const data = await res.json().catch(() => null) as { items?: Array<{ title?: string; link?: string; description?: string }> } | null
   for (const it of (data?.items || [])) {
@@ -176,7 +246,7 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
   if (KNOWN_MAIL_DOMAIN.test(domain)) return true
   if (outOfBudget(budget)) return true
   spendBudget(budget)
-  const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(6000) }).catch(() => null)
+  const res = await safeFetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`, { headers: { Accept: 'application/dns-json' }, timeoutMs: 6000 }, budget)
   if (!res || !res.ok) return true
   const j = await res.json().catch(() => null) as { Status?: number } | null
   return !(j && j.Status === 3) // 3 = NXDOMAIN — 도메인 소멸 → 반송 확정이라 버림
@@ -186,17 +256,27 @@ export async function domainAcceptsMail(email: string, budget?: FetchBudget): Pr
  *   requireName: **검색으로 발견한(등록 링크 아닌) 사이트**용 오귀속 가드 — 페이지 어디에도 상호가 없으면
  *   그 사이트의 연락처를 채택하지 않음(엉뚱한 회사 이메일 부착 = 허위 방지). */
 /** 크롤 결과 사유(적중률 계측용) — email/phone 못 찾은 이유를 집계해 다음 개선을 데이터로 고른다. */
-export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail'
-export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason }
+// ⚠️ 'network'(예외 발생)는 원인이 갈린다 — 표본 4건이 아니라 **분포 자체가 답하도록** 쪼갠다:
+//   subreq_limit(워커 한도 소진) / timeout(상대 서버 무응답 8s) / network(DNS·TLS·연결거부).
+//   셋은 처방이 전혀 다르다: 한도=예산 축소, 타임아웃=대기시간·동시성 조정, DNS=대상 URL 품질.
+export type CrawlReason = 'ok' | 'bad_url' | 'blocked_host' | 'budget' | 'robots' | 'no_name' | 'dead_domain' | 'no_contact' | 'fetch_fail' | 'http_403' | 'http_404' | 'http_5xx' | 'network' | 'subreq_limit' | 'timeout' | 'deadline'
+export interface CrawlResult { email: string | null; phone: string | null; siteName: string | null; reason: CrawlReason; failUrl?: string; failErr?: string }
 export async function crawlContact(website: string, budget?: FetchBudget, requireName?: string, allowNewsHost = false): Promise<CrawlResult> {
   let url: URL
   try { url = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`) } catch { return { email: null, phone: null, siteName: null, reason: 'bad_url' } }
   if (!/^https?:$/.test(url.protocol)) return { email: null, phone: null, siteName: null, reason: 'bad_url' }
   // 📰 언론사성 호스트는 크롤 자체 거부(심층방어) — 단, '미디어' 카테고리 리드(별도 수집 레인)는 예외로 허용.
   if ((!allowNewsHost && NEWS_MEDIA_HOST.test(url.hostname)) || THIRD_PARTY_HOST.test(url.hostname)) return { email: null, phone: null, siteName: null, reason: 'blocked_host' }
-  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: 'budget' }
+  // 예산 소진과 **시간 초과**를 구분해 기록 — 처방이 다르다(예산=캡 조정 / 시간=동시성·타임아웃 조정).
+  if (outOfBudget(budget)) return { email: null, phone: null, siteName: null, reason: budget?.deadline && Date.now() >= budget.deadline ? 'deadline' : 'budget' }
   spendBudget(budget)
-  const robots = await fetch(`${url.origin}/robots.txt`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
+  // ⚠️ 예산 회계는 **fetch 1회 = spend 1회**를 지킨다(과소평가하면 한도를 예산보다 먼저 치고, 과대평가하면
+  //   학습 상한이 실제보다 낮게 굳는다). 이 robots 요청은 바로 위 spendBudget 이 이미 계상한 몫이다 —
+  //   실사용과 회계가 어긋나는지는 company-collect 의 독립 카운터(fetches)와 대조해 화면에서 확인한다.
+  const robotsRes = await safeFetch(`${url.origin}/robots.txt`, { timeoutMs: 6000 }, budget)
+  // 한도에 부딪혔으면 이 사이트는 시도조차 못 한 것 — 실패로 기록해 도장 찍으면 7일간 재시도 못 한다.
+  if (budget?.limitHit) return { email: null, phone: null, siteName: null, reason: 'subreq_limit' }
+  const robots = robotsRes && robotsRes.ok ? await robotsRes.text().catch(() => '') : ''
   if (robots) {
     const star = robots.split(/user-agent:/i).find(b => /^\s*\*/.test(b)) || ''
     if (/(^|\n)\s*disallow:\s*\/\s*(#|$|\n)/i.test(star)) return { email: null, phone: null, siteName: null, reason: 'robots' }
@@ -207,8 +287,11 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   // 홈 + 국내 소상공인 사이트가 연락처를 두는 고수율 경로(영문/한글 슬러그).
   //   + 🧭 **홈에서 발견한 '문의/Contact' 링크 추적(≤3)** + 사이트맵 기반 연락처 페이지 발견(2026-07-27 고도화).
   //   국내 대행사/SME 는 그누보드·cafe24·아임웹 자체 경로가 흔해 고정 경로만으론 놓침. same-origin 만 + 파일 제외.
-  const queue = ['', '/contact', '/about', '/company', '/contact-us', '/company/contact',
-    '/sub/contact.html', '/bbs/content.php?co_id=contact', '/html/contact.html', '/kor/contact', '/introduce', '/company/info']
+  //   ⚠️ 2026-07-28 실측 회귀 수리: 경로를 12개로 늘렸더니 **사이트당 서브요청이 2배**가 되어 같은 예산으로
+  //   크롤 가능한 사이트 수가 반토막(처리 344 중 크롤 54회). 고수율 5경로로 축소 + 사이트당 fetch 캡(MAX_PAGES).
+  //   커스텀 경로는 홈에서 발견한 문의링크·사이트맵이 커버(그쪽이 정확도도 높음).
+  const queue = ['', '/contact', '/about', '/company', '/sub/contact.html']
+  const MAX_PAGES = 5
   const visited = new Set<string>()
   let discoveredLinks = 0
   const BROWSER_HEADERS = {
@@ -216,7 +299,17 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'ko,ko-KR;q=0.9,en;q=0.5',
   }
-  const fetchHtml = (u: string) => fetch(u, { signal: AbortSignal.timeout(8000), headers: BROWSER_HEADERS }).then(r => r.ok ? r.text() : '').catch(() => '')
+  // 실패를 상태코드로 구분(403 봇차단 / 404 경로없음 / 5xx / network) — '왜 못 가져왔나'를 데이터로 판정.
+  let lastStatus = 0
+  //   network 는 원인이 갈린다: AbortError=상대 서버 느림/무응답 · TypeError "Too many subrequests"=워커 한도 소진
+  //   · 그 외=DNS/TLS/연결거부. safeFetch 가 예외 이름·메시지를 errSink 에 그대로 남겨 상태줄에서 판정한다.
+  const errSink = { msg: '' }
+  const fetchHtml = async (u: string): Promise<string> => {
+    const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget, errSink)
+    if (!r) { lastStatus = -1; return '' }
+    lastStatus = r.status
+    return r.ok ? await r.text().catch(() => '') : ''
+  }
   // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
   //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
   let originResolved = false
@@ -224,7 +317,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     const path = queue[i]
     if (visited.has(path)) continue
     visited.add(path)
-    if ((email && phone) || outOfBudget(budget)) break
+    if (email || outOfBudget(budget) || visited.size > MAX_PAGES) break // 이메일 확보 시 즉시 종료(전화는 부가 — 카카오 레인이 전담)
     spendBudget(budget)
     // UA: 브라우저형(아임웹/카페24류가 낯선 봇 UA 에 403 → 푸터 이메일 수집 0 이던 갭). robots 존중은 위에서 그대로.
     let html = await fetchHtml(url.origin + path)
@@ -238,6 +331,7 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
         if (h) { html = h; try { url = new URL(alt) } catch { /* keep */ } break } // 살아있는 오리진으로 전환
       }
     }
+    if (budget?.limitHit) break // 한도 도달 — 이후 fetch 는 전부 throw 라 더 볼 것이 없다
     if (!html) continue
     anyPage = true
     const slice = html.slice(0, 200000)
@@ -275,7 +369,8 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
       //   찾아 큐에 추가(그누보드/워드프레스 등 자동 사이트맵 흔함). 홈에서 이메일 못 찾았을 때만(예산 절약).
       if (!email && discoveredLinks < 3 && budget && budget.left > 3) {
         spendBudget(budget)
-        const sm = await fetch(`${url.origin}/sitemap.xml`, { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.text() : '').catch(() => '')
+        const smRes = await safeFetch(`${url.origin}/sitemap.xml`, { timeoutMs: 6000 }, budget)
+        const sm = smRes && smRes.ok ? await smRes.text().catch(() => '') : ''
         for (const loc of sm.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
           if (discoveredLinks >= 3) break
           if (!/(contact|inquiry|about|company|intro|문의|소개)/i.test(loc[1])) continue
@@ -289,6 +384,15 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
   }
   if (!nameSeen) return { email: null, phone: null, siteName, reason: 'no_name' } // 발견 사이트에 상호 부재 → 남의 사이트일 수 있음 → 채택 안 함
   if (email && !(await domainAcceptsMail(email, budget))) { email = null; return { email: null, phone, siteName, reason: 'dead_domain' } } // 죽은 도메인(반송 확정) 배제
-  const reason: CrawlReason = email ? 'ok' : (!anyPage ? 'fetch_fail' : 'no_contact')
-  return { email, phone, siteName, reason }
+  // 한도 도달은 **사이트의 문제가 아니다** — 별도 사유로 분리해야 호출부가 '실패 도장' 대신 '중단'을 고른다.
+  //   타임아웃(AbortError)도 분리 — 우리 인프라(한도) vs 상대 서버(무응답) vs 주소 품질(DNS)을 분포로 판별.
+  const httpReason = (): CrawlReason => budget?.limitHit ? 'subreq_limit'
+    : lastStatus === -1 && /^AbortError|TimeoutError/.test(errSink.msg) ? 'timeout'
+    : lastStatus === 403 || lastStatus === 401 ? 'http_403'
+    : lastStatus === 404 ? 'http_404' : lastStatus >= 500 ? 'http_5xx' : lastStatus === -1 ? 'network' : 'fetch_fail'
+  // ⏱️ 시간으로 끊긴 걸 'no_contact'(이메일 미게시)로 적으면 **사이트 탓으로 오분류**된다 — 분포가 처방을
+  //   가리키게 하려면 별도 사유여야 한다(2026-07-28).
+  const timedOut = !!budget?.deadline && Date.now() >= budget.deadline
+  const reason: CrawlReason = email ? 'ok' : timedOut ? 'deadline' : (!anyPage ? httpReason() : 'no_contact')
+  return { email, phone, siteName, reason, failUrl: email ? undefined : url.origin, failErr: email || !errSink.msg ? undefined : errSink.msg }
 }

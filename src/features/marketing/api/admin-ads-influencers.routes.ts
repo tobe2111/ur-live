@@ -10,14 +10,16 @@ import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
-import { ensurePerfExtraColumns, personalEmailSqlClause, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
+import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
 import { ensureQualityColumns, runQualityPass } from './influencer-quality'
 import { buildCampaignBody, textToHtml, CONSENTED_SEND_MAX, withAdLabel, isNightKST } from './outreach-send'
+import { COLD_SEND_MAX, COLD_COOLDOWN_DAYS, coldDailyKey, evaluateColdGuards } from './outreach-cold'
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { buildInfluencerExportResponse } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
-import { getFunnelTailStats, getOrCreateClaimCode } from './lead-claim'
+import { getOrCreateClaimCode } from './lead-claim'
+import { buildInfluencerPoolStats, ensureRecruitColumn } from './influencer-pool-stats' // ⚠️ 수집 엔진(influencer-auto-collect) import 금지 — 메인 번들 경량 유지
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -27,12 +29,13 @@ app.use('*', requireAdmin())
 //   ⚠️ 메인 번들 경량 유지 위해 수집/발굴 코드는 import 안 하고 전부 inline SQL(공용 풀 = account_id 0).
 const POOL = 0
 
-// 📣 모집 캠페인 — 수집 리드에게 신청(동의)을 안내한 시점. 전환율 분모(recruited) / 분자(consented) 산출용.
-const _recruitColDone = new WeakSet<object>()
-async function ensureRecruitColumn(DB: D1Database) {
-  if (_recruitColDone.has(DB)) return
-  _recruitColDone.add(DB)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
+// 📨 캠페인 발송 시각 — **중복 발송 차단의 키**. contacted_at 은 COALESCE(최초 1회)라 재발송 판정에 못 쓴다.
+const RESEND_COOLDOWN_DAYS = 7
+const _campaignColDone = new WeakSet<object>()
+async function ensureCampaignColumn(DB: D1Database) {
+  if (_campaignColDone.has(DB)) return
+  _campaignColDone.add(DB)
+  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN campaign_sent_at TEXT').run().catch(() => null)
 }
 
 async function ensureKeywordTable(DB: D1Database) {
@@ -56,6 +59,12 @@ app.get('/influencer-pool', async (c) => {
   const where = ['account_id = ?']; const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'naver_cafe', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  // 🏘️ 2026-07-28 대표 지시 "별도 매체로 분리" — 네이버 카페는 **인플루언서가 아니라 커뮤니티**다
+  //   (표본: 맘카페·창업카페·여행카페·아파트카페·팬카페. "강남 맛집" 키워드로 보험·렌탈 카페가 들어온다).
+  //   개인 크리에이터 목록에 섞이면 리스트 신뢰도를 갉아먹으므로 **기본 목록에서 제외**하고,
+  //   `platform=naver_cafe` 로 **명시 조회할 때만** 보이게 한다(수집·데이터는 그대로 보존 — 지역 맘카페는
+  //   동네딜 홍보 채널로 가치가 있어 버리지 않는다). 다른 필터/검색은 전부 그대로 동작한다.
+  else where.push("platform != 'naver_cafe'")
   const category = (c.req.query('category') || '').trim()
   if (category) { where.push('category = ?'); binds.push(category) }
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
@@ -122,94 +131,8 @@ app.get('/influencer-pool', async (c) => {
 })
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
-app.get('/influencer-pool/stats', async (c) => {
-  await ensureInfluencerSchema(c.env.DB) // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
-  await ensureOutreachColumns(c.env.DB)  // opened/bounced 집계 컬럼 선보강
-  await ensureQualityColumns(c.env.DB)   // is_brand/lead_score 집계 선보강
-  await ensureRecruitColumn(c.env.DB)    // 📣 recruited_at(모집 전환 분모) — 아래 집계가 참조
-  const agg = await c.env.DB.prepare(`SELECT
-      COUNT(*) AS total,
-      SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
-      SUM(CASE WHEN platform='naver_blog' THEN 1 ELSE 0 END) AS naver_blog,
-      SUM(CASE WHEN email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL THEN 1 ELSE 0 END) AS with_contact,
-      SUM(CASE WHEN email IS NOT NULL THEN 1 ELSE 0 END) AS with_email,
-      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL THEN 1 ELSE 0 END) AS yt_with_email,
-      SUM(CASE WHEN platform='youtube' AND email IS NOT NULL AND (${personalEmailSqlClause()}) THEN 1 ELSE 0 END) AS yt_email_personal,
-      SUM(CASE WHEN platform='naver_cafe' THEN 1 ELSE 0 END) AS naver_cafe,
-      SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS st_new,
-      SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS st_contacted,
-      SUM(CASE WHEN status='interested' THEN 1 ELSE 0 END) AS st_interested,
-      SUM(CASE WHEN status='contracted' THEN 1 ELSE 0 END) AS st_contracted,
-      SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) AS st_rejected,
-      SUM(CASE WHEN status='hold' THEN 1 ELSE 0 END) AS st_hold,
-      -- 📊 아웃리치 퍼널: 한 번이라도 컨택한 리드(컨택/관심/계약) = 실제 아웃리치 모수
-      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
-      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
-      -- 📬 이메일 자동감지(Resend 웹훅): 개봉(engagement)·반송(죽은 주소)
-      SUM(CASE WHEN email_status='opened' THEN 1 ELSE 0 END) AS opened,
-      SUM(CASE WHEN email_status IN ('bounced','complained') THEN 1 ELSE 0 END) AS bounced,
-      -- 컨택 채널 분해(어느 채널이 먹히는지)
-      SUM(CASE WHEN contact_channel='email' THEN 1 ELSE 0 END) AS ch_email,
-      SUM(CASE WHEN contact_channel='dm' THEN 1 ELSE 0 END) AS ch_dm,
-      SUM(CASE WHEN contact_channel='note' THEN 1 ELSE 0 END) AS ch_note,
-      SUM(CASE WHEN contact_channel='kakao' THEN 1 ELSE 0 END) AS ch_kakao,
-      SUM(CASE WHEN contact_channel='call' THEN 1 ELSE 0 END) AS ch_call,
-      SUM(CASE WHEN contact_channel='other' THEN 1 ELSE 0 END) AS ch_other,
-      SUM(CASE WHEN contacted_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS contacted7,
-      SUM(CASE WHEN (follow_up_at IS NOT NULL AND follow_up_at <= date('now')) OR (status='contacted' AND contacted_at <= datetime('now','-5 days')) THEN 1 ELSE 0 END) AS need_followup,
-      SUM(CASE WHEN collected_at >= datetime('now','+9 hours','start of day','-9 hours') THEN 1 ELSE 0 END) AS today, -- '오늘' = KST 자정 기준(롤링 24h 아님)
-      SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7,
-      -- 📥 사전동의(자동발송 가능 모수) + 🏢 브랜드 공식 채널 태깅 수 + 🏅 채점 완료 수
-      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
-      SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
-      SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
-      SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot,
-      -- 🏷️ 분류 근거(정확도 가시화): content=이름·소개글 규칙 / topic=유튜브 자체분류 / keyword=수집 키워드 상속(재검증 대상)
-      SUM(CASE WHEN category IS NOT NULL THEN 1 ELSE 0 END) AS categorized,
-      SUM(CASE WHEN category IS NOT NULL AND category_source = 'content' THEN 1 ELSE 0 END) AS cat_content,
-      SUM(CASE WHEN category IS NOT NULL AND category_source = 'topic' THEN 1 ELSE 0 END) AS cat_topic,
-      SUM(CASE WHEN category IS NOT NULL AND COALESCE(category_source, 'keyword') = 'keyword' THEN 1 ELSE 0 END) AS cat_keyword,
-      -- 📣 모집 전환: 안내한 리드(분모) 대비 실제 신청(동의)한 리드(분자) — 풀이 '쓸 수 있는 재고'로 바뀌는 비율.
-      SUM(CASE WHEN recruited_at IS NOT NULL THEN 1 ELSE 0 END) AS recruited,
-      SUM(CASE WHEN recruited_at IS NOT NULL AND consented_at IS NOT NULL THEN 1 ELSE 0 END) AS recruit_converted
-    FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
-  // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
-  //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
-  const catFunnel = await c.env.DB.prepare(`SELECT COALESCE(category, '미분류') AS category,
-      COUNT(*) AS total,
-      SUM(CASE WHEN status IN ('contacted','interested','contracted') THEN 1 ELSE 0 END) AS reached,
-      SUM(CASE WHEN status IN ('interested','contracted') THEN 1 ELSE 0 END) AS replied,
-      SUM(CASE WHEN status = 'contracted' THEN 1 ELSE 0 END) AS contracted,
-      SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented
-    FROM ad_influencer_leads WHERE account_id = ?
-    GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
-    .bind(POOL).all().catch(() => null)
-  // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
-  const tail = await getFunnelTailStats(c.env.DB).catch(() => ({ joined: 0, first_sale: 0 }))
-  const stRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_autocollect_stats'").first<{ value: string }>().catch(() => null)
-  let run: unknown = null; try { run = stRow?.value ? JSON.parse(stRow.value) : null } catch { run = null }
-  // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 여기(메인)의
-  //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
-  //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
-  let gate = c.env.ADS_AUTO_COLLECT_ENABLED === 'true'
-  try {
-    if (c.env.ADS?.fetch) {
-      const hr = await c.env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
-      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean } } | null
-      if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
-    }
-  } catch { /* 폴백 유지 */ }
-  // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화) — 있으면 그대로 노출.
-  const sheetRow = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'").first<{ value: string }>().catch(() => null)
-  let sheets_sync: unknown = null; try { sheets_sync = sheetRow?.value ? JSON.parse(sheetRow.value) : null } catch { sheets_sync = null }
-  // 🌙 야간 자동 정비 결과(무음 실패 가시화 — 대표가 어드민에서 "어젯밤 뭐 돌았나"를 바로 확인).
-  const mRows = await c.env.DB.prepare("SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last')")
-    .all<{ key: string; value: string }>().catch(() => null)
-  const parseJson = (v?: string): unknown => { try { return v ? JSON.parse(v) : null } catch { return null } }
-  const maintenance = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_last')?.value)
-  const maintenance_rescan = parseJson(mRows?.results?.find(r => r.key === 'ads_maintenance_rescan_last')?.value)
-  return c.json({ success: true, stats: { ...(agg || {}), ...tail }, run, gate, sheets_sync, maintenance, maintenance_rescan, category_funnel: catFunnel?.results || [] })
-})
+//   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
+app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
 app.patch('/influencer-pool/:id', async (c) => {
@@ -276,12 +199,19 @@ app.post('/influencer-pool/send-consented', async (c) => {
   const template = String(b.body || '').trim().slice(0, 5000)
   if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
   if (!String(b.subject || '').trim() || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+  // 🔁 중복 발송 차단(2026-07-27) — 버튼을 다시 누르거나 청크 루프를 재실행하면 **같은 사람에게 같은 메일이
+  //   또 갔다**(외부에 직접 피해가 가는 유일한 중복 클릭). 최근 발송자는 조용히 제외하고 응답에 보고.
+  //   의도적 재발송(다른 내용)은 body.force 로 통과 — 사람이 명시할 때만.
+  await ensureCampaignColumn(c.env.DB)
+  const force = b.force === true
+  const dedupe = force ? '' : `AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${RESEND_COOLDOWN_DAYS} days'))`
   // ⚖️ 동의 강제: consented_at + email 있는 행만 — 미동의/이메일 없는 id 는 조용히 제외(응답에 skipped 로 보고).
   const ph = ids.map(() => '?').join(',')
   const rows = (await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
-    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL`)
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL ${dedupe}`)
     .bind(POOL, ...ids).all<{ id: number; name: string; email: string }>().catch(() => null))?.results || []
-  if (!rows.length) return c.json({ success: false, error: '선택한 리드 중 발송 가능한(사전동의 + 이메일 보유) 리드가 없습니다' }, 400)
+  if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, recent_skipped: ids.length,
+    note: force ? '발송 가능한 리드가 없습니다' : `선택한 리드가 모두 최근 ${RESEND_COOLDOWN_DAYS}일 내 발송 대상이거나 발송 조건(사전동의 + 이메일)을 만족하지 않습니다` })
   let sent = 0; const failedIds: number[] = []; const suppressedIds: number[] = []
   for (const r of rows) {
     const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부·전송자정보 강제
@@ -289,12 +219,76 @@ app.post('/influencer-pool/send-consented', async (c) => {
     if (res.success) {
       sent++
       await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
-        status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
+        campaign_sent_at = datetime('now'), status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
     } else if ((res as { error?: string }).error === 'suppressed') suppressedIds.push(r.id) // 반송/스팸신고/수신거부 억제 — 재시도 무의미(실패와 구분)
     else failedIds.push(r.id)
   }
   const eligible = new Set(rows.map(r => r.id))
-  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped: ids.filter(id => !eligible.has(id)) })
+  const skipped = ids.filter(id => !eligible.has(id))
+  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds, skipped, recent_skipped: force ? 0 : skipped.length })
+})
+
+// POST /api/admin/ads/influencer-pool/send-cold { ids, subject, body } — 📨 **콜드(미동의) 제휴 제안** 발송
+//   ⚖️ 2026-07-28 대표 결정으로 신설(그 전까지 "만들지 않는다"였다 — 경위·근거·잔여 리스크는 outreach-cold.ts 헤더).
+//   동의 경로(send-consented)와 **분리**한다: 저쪽은 consented_at 강제, 이쪽은 consented_at IS NULL 대상.
+//   법정 표시·차단은 동의 경로와 동일하게 코드가 강제((광고) 제목 · 수신거부 · 전송자정보 · 야간금지) +
+//   콜드 전용 제동(1일 상한 · 반송 회로차단 · 30일 쿨다운 · force 없음).
+app.post('/influencer-pool/send-cold', async (c) => {
+  await ensureInfluencerSchema(c.env.DB)
+  await ensureOutreachColumns(c.env.DB)
+  await ensureCampaignColumn(c.env.DB)
+  if (!c.env.RESEND_API_KEY) return c.json({ success: false, error: '발송은 RESEND_API_KEY 설정 후 사용할 수 있습니다 (Cloudflare → ur-live → Variables)' }, 400)
+  if (isNightKST(Date.now())) return c.json({ success: false, error: '야간(21시~익일 8시)에는 광고성 메일을 발송할 수 없습니다(정보통신망법). 오전 8시 이후 다시 시도해주세요' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const ids: number[] = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, COLD_SEND_MAX)
+  const subject = withAdLabel(String(b.subject || '').trim().slice(0, 140))
+  const template = String(b.body || '').trim().slice(0, 5000)
+  if (!ids.length) return c.json({ success: false, error: '발송할 리드를 선택해주세요' }, 400)
+  if (!String(b.subject || '').trim() || template.length < 20) return c.json({ success: false, error: '제목과 본문(20자 이상)을 입력해주세요' }, 400)
+
+  // 🚦 콜드 전용 게이트 — 1일 상한 + 반송 회로차단(둘 다 발송 시도 전에 판단).
+  const dayKey = coldDailyKey(Date.now())
+  const usedRow = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(dayKey).first<{ value: string }>().catch(() => null)
+  const used = Math.max(0, parseInt(usedRow?.value || '0', 10) || 0)
+  const sampleRow = await c.env.DB.prepare(`SELECT COUNT(*) AS sent,
+      SUM(CASE WHEN email_status IN ('bounced','complained') THEN 1 ELSE 0 END) AS bad
+    FROM ad_influencer_leads
+    WHERE account_id = ? AND consented_at IS NULL AND campaign_sent_at IS NOT NULL
+      AND campaign_sent_at > datetime('now', '-14 days')`).bind(POOL).first<{ sent: number; bad: number }>().catch(() => null)
+  const guard = evaluateColdGuards(used, { sent: Number(sampleRow?.sent) || 0, bad: Number(sampleRow?.bad) || 0 })
+  if (!guard.ok) return c.json({ success: false, error: guard.error }, 400)
+
+  // ⚖️ 대상 강제(클라 값 신뢰 X): 미동의 + 이메일 보유 + 반송/신고 이력 없음 + 쿨다운 경과. force 스위치 없음.
+  const ph = ids.map(() => '?').join(',')
+  const rows = ((await c.env.DB.prepare(`SELECT id, name, email FROM ad_influencer_leads
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NULL
+      AND email IS NOT NULL AND email != ''
+      AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))
+      AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${COLD_COOLDOWN_DAYS} days'))
+    LIMIT ?`).bind(POOL, ...ids, Math.min(ids.length, guard.remaining || 0))
+    .all<{ id: number; name: string; email: string }>().catch(() => null))?.results) || []
+  if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, remaining_today: guard.remaining,
+    note: `선택한 리드가 모두 발송 조건(이메일 보유 · 미동의 · 반송이력 없음 · 최근 ${COLD_COOLDOWN_DAYS}일 내 미발송)을 만족하지 않습니다` })
+
+  let sent = 0; const failedIds: number[] = []; const suppressedIds: number[] = []
+  for (const r of rows) {
+    const body = buildCampaignBody(template, r.name) // {name} 치환 + 수신거부·전송자정보 강제
+    const res = await sendEmail({ to: r.email, subject, html: textToHtml(body) }, c.env.RESEND_API_KEY, c.env.RESEND_FROM, c.env.DB).catch(() => ({ success: false as const, error: 'throw' }))
+    if (res.success) {
+      sent++
+      await c.env.DB.prepare(`UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
+        campaign_sent_at = datetime('now'), status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END WHERE id = ? AND account_id = ?`).bind(r.id, POOL).run().catch(() => null)
+    } else if ((res as { error?: string }).error === 'suppressed') suppressedIds.push(r.id)
+    else failedIds.push(r.id)
+  }
+  // 1일 카운터는 **실제 발송분만** 누적(실패·억제는 안 셈) — 상한이 '보낸 양'을 뜻하도록.
+  if (sent > 0) {
+    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(dayKey, String(used + sent)).run().catch(() => null)
+  }
+  const eligible = new Set(rows.map(r => r.id))
+  return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds,
+    skipped: ids.filter(id => !eligible.has(id)), remaining_today: Math.max(0, (guard.remaining || 0) - sent) })
 })
 
 // POST /api/admin/ads/influencer-pool/:id/track-link { target_url } — 🔗 리드별 협찬 추적링크(생성/조회)
@@ -502,63 +496,13 @@ app.patch('/influencer-pool/keywords/:id', async (c) => {
 
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")
 //   실체는 influencer-pool-export.ts(스트리밍 xls/csv 빌더) — 600줄 캡 준수 위해 분리.
-app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(c.env.DB, POOL, c.req.query('format') || 'xls'))
+//   ?platform=youtube|naver_blog|naver_cafe|… → 매체별 분리 파일(2026-07-28 대표 요청). 없으면 전체(기존).
+// GET /influencer-pool/export?format=&platform=&contactable=1&minScore=70 — 📇 내보내기
+//   contactable=1: 수기 제휴 제안용 "지금 연락할 사람"만(이메일 보유·브랜드 제외·미접촉·반송이력 없음).
+app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(
+  c.env.DB, POOL, c.req.query('format') || 'xls', c.req.query('platform') || '',
+  { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')) },
+))
 
-// (2026-07-23 전수조사: 구 단발 수집 /influencer-pool/collect 엔드포인트 제거 — UI 는 collect-burst 만 호출,
-//  유지되던 두 번째 트리거 경로가 lease 도입 후에도 표면만 넓혀 삭제. 필요 시 collect-burst 가 완전 상위 호환.)
-
-// POST /api/admin/ads/influencer-pool/collect-burst — 🔥 오늘 YT 검색 예산 즉시 소진(버스트)
-//   대표 "YT 검색 예산 최대한 바로 다 쓰는 방향". 배경: YT 무료 상한 = 하루 10k units = 검색 100회.
-//   워커 한 실행은 30s·서브리퀘스트 한도라 100회를 한 번에 못 쏨(2026-07-20 'Too many subrequests' 사고).
-//   병렬 실행은 공유 카운터(ads_yt_search_used)/커서를 경합해 중복 발굴로 쿼터 낭비 → **순차만 안전**.
-//   ⇒ 백그라운드에서 수집 런을 연달아(각각 fresh ur-ads 인보케이션 = fresh 예산) 돌려 예산 소진까지 태움.
-//   시간/횟수/진전 가드로 워커 과부하·무한루프 차단. 한 클릭에 다 못 태우면 카운터가 영속이라 재클릭/시간당 cron 이 이어받음.
-type BurstStats = { youtube_quota_hit?: boolean; yt_budget?: { used?: number; total?: number } }
-app.post('/influencer-pool/collect-burst', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 자동 cron 만 동작' }, 503)
-  const burn = async () => {
-    const startedAt = Date.now()
-    let prevUsed = -1
-    let reason = 'loop_cap' // 🔎 종료 사유 기록(전수조사 — "시작했어요" 이후 블랙박스이던 것 가시화)
-    for (let i = 0; i < 40; i++) {
-      if (Date.now() - startedAt > 220_000) { reason = 'time_cap'; break } // ⏱️ 시간 예산 — 남은 건 재클릭/cron 이 이어받음
-      let body: { chained?: boolean; stats?: BurstStats } | null = null
-      try {
-        // self-chain 엔드포인트 — ads 에 SELF 바인딩이 있으면 chained=true 로 백그라운드 자가전파(메인 루프 종료).
-        const r = await ads.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${i}&pu=${prevUsed}`, { method: 'POST' }))
-        body = (await r.json().catch(() => null)) as { chained?: boolean; stats?: BurstStats } | null
-      } catch { reason = 'fetch_error'; break }
-      if (!body) { reason = 'bad_response'; break }
-      if (body.chained) { reason = 'chained'; break }          // ads(SELF)가 백그라운드로 자가전파 — 중복발화 방지
-      const stats = body.stats
-      if (!stats) { reason = 'no_stats'; break }
-      if (stats.youtube_quota_hit) { reason = 'quota_hit'; break } // 구글이 초과 선언 — 오늘 끝
-      const yb = stats.yt_budget
-      if (!yb || typeof yb.used !== 'number' || typeof yb.total !== 'number') { reason = 'busy_or_no_budget'; break } // lease busy 포함
-      if (yb.used >= yb.total) { reason = 'budget_done'; break }   // 오늘 예산(기본 100회) 소진 — 완료
-      if (yb.used <= prevUsed) { reason = 'no_progress'; break }   // 진전 없음(YT 키워드 소진/YT 불가)
-      prevUsed = yb.used
-    }
-    await c.env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind('ads_burst_last', JSON.stringify({ at: new Date().toISOString(), reason, lastUsed: prevUsed })).run().catch(() => null)
-  }
-  if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(burn()); return c.json({ success: true, started: true }) }
-  await burn().catch(() => null) // 폴백(waitUntil 미지원): 동기 소진
-  return c.json({ success: true, started: false })
-})
-
-// POST /api/admin/ads/influencer-pool/sheets-sync — 📊 구글시트 수동 동기화(ur-ads 위임, 동기 응답).
-//   시트 미러는 수초 내라 결과(행수/에러)를 그대로 전달 — 설정 안내가 사용자에게 보여야 함.
-app.post('/influencer-pool/sheets-sync', async (c) => {
-  const ads = c.env.ADS
-  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
-  try {
-    const r = await ads.fetch(new Request('https://ur-ads/__ads/sheets-sync', { method: 'POST' }))
-    const j = await r.json().catch(() => null) as { ok?: boolean; rows?: number; error?: string } | null
-    if (j?.ok) return c.json({ success: true, rows: j.rows || 0 })
-    return c.json({ success: false, error: j?.error || '동기화 실패' }, 400)
-  } catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
-})
 
 export { app as adminAdsInfluencerRoutes }

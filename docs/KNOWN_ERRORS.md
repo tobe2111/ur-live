@@ -65,6 +65,17 @@
 
 ---
 
+## 수집 / 크롤 (유어애즈 파트너 풀 · 도매 제조사 풀)
+
+| 에러 메시지 (단어 그대로) | 발생 위치 | 진짜 원인 | 해결 |
+|---|---|---|---|
+| `Too many subrequests by single Worker invocation` | `enrichHeldLeads` 크롤 · `runCompanyAutoCollect` · 프랜차이즈 수집 — 어드민 상태줄 **실패 샘플**에 노출 | **한 인보케이션의 외부 fetch + D1 쿼리 합계가 Cloudflare 서브리퀘스트 한도 초과.** 초과 지점부터 **이후 모든 fetch 가 throw** → `.catch(() => '')` 들이 삼켜 `network`/`fetch_fail` 로 뭉뚱그려짐. ⚠️ **예산(env)은 외부 fetch 만 세는데 D1 쿼리도 같은 한도를 먹는다** → 고정 숫자로는 못 막음 | 관측 학습 상한(`collect-budget.ts` `resolveSubreqBudget`/`nextSubreqCap`) 배선 + `safeFetch` 로 한도 신호(`FetchBudget.limitHit`) 관측 → **도장 없이 즉시 중단** + 다음 실행 상한 자동 하향. 레인별 학습 키 분리(`ads_subreq_cap` / `supply_subreq_cap` — 워커가 다르면 한도도 다름). 2026-07-28 PR #784 |
+| 크롤 적중률 0% · 사유가 `network`/`페이지 못가져옴` 일색 · `이메일 미게시(no_contact)` **0건** | 어드민 파트너 풀 상태줄 | `no_contact` 0 = HTML 을 **한 장도 못 받음** → 추출이 아니라 **fetch 문제**. 네트워크가 필요 없는 `blocked_host` 만 정상 집계되면 **전역 실패** 확정 | 위 서브리퀘스트 한도 항목 참조. 판별은 **실패 샘플의 예외 이름**으로: `TypeError/Error: Too many subrequests`=워커 한도 · `AbortError`=상대 서버 무응답 · 그 외=DNS/TLS |
+| 실패가 전부 `network` 인데 타임아웃인지 한도인지 구분 불가 | `crawlContact` | 예외를 `.catch(() => '')` 로 삼켜 원인 정보가 소멸 | 사유 버킷 분해: `subreq_limit` / `timeout` / `network`(DNS·TLS). **표본 몇 건이 아니라 분포가 원인을 답하게** 한다 |
+| 크롤은 도는데 `blocked_host` 비중이 큼(실측 133 중 59 = 44%) | `enrichHeldLeads` Phase 2 | 저장된 `website` 가 블로그·SNS 등 **제3자 도메인** — 크롤은 거부되는데 대상 슬롯을 먹고 7일 쿨다운 도장까지 받음 | `realSite()` 가 `THIRD_PARTY_HOST` 도 걸러 `site=null` → 네이버 **발견 경로로 넘겨** 진짜 홈페이지를 찾게 함(슬롯 회수). `website` 컬럼은 보존(수동 접촉용) |
+| 개선했는데 기존 실패분이 재시도되지 않음 | 보강 대상 쿼리 | `enrich_checked_at` **7일 쿨다운**에 갇혀 있음 | **`CRAWL_RULES_VERSION` +1** — 대상 쿼리의 `COALESCE(enrich_v,0) < VERSION` 이 전량을 즉시 재시도 대상으로 되돌린다. 크롤 경로·추출기를 고치면 **반드시 버전 bump**(분류 규칙 `CLASSIFY_RULES_VERSION` 과 동일 철학) |
+| 어드민 API 가 `{"success":false,"error":"Forbidden"}` (키 2개, `code` 없음) | 모든 `/api/*` | **봇 감지**(`bot-detection.ts`)가 `curl` 등 비브라우저 User-Agent 차단. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트(`admin-security.ts`)로 **다른 원인** | 진단 호출 시 브라우저 User-Agent 헤더 사용(§ CLAUDE.md 어드민 진단 접근) |
+
 ## 새 사고 추가 템플릿
 
 ```

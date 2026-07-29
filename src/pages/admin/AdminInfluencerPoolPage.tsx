@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -7,12 +7,15 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
-import CollectDiagPanel, { type RunStats, type MaintenanceRecord } from './influencer-pool/CollectDiagPanel'
+import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLaneRecord } from './influencer-pool/CollectDiagPanel'
 import FulfillBanner from './influencer-pool/FulfillBanner'
 import { pickReach } from './influencer-pool/reach'
+import { useCollectRun } from './influencer-pool/useCollectRun'
 import KeywordManager, { type Keyword } from './influencer-pool/KeywordManager'
 import SendQueueModal from './influencer-pool/SendQueueModal'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
+import ColdSendPanel from './influencer-pool/ColdSendPanel'
+import ExcelExportButtons from './influencer-pool/ExcelExportButtons'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
@@ -43,7 +46,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
@@ -55,6 +58,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 }
 const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타', tiktok: '틱톡' }
 const POOL_CATEGORIES = ['맛집', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
+// 📊 매체별 엑셀 분리 다운로드 — 서버 EXPORT_PLATFORMS 화이트리스트와 같은 키(추가 시 양쪽 갱신).
 
 export default function AdminInfluencerPoolPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -64,6 +68,7 @@ export default function AdminInfluencerPoolPage() {
   const [sheetsSync, setSheetsSync] = useState<{ ok: boolean; at?: string; error?: string | null } | null>(null) // 📊 구글시트 마지막 동기화 상태(무음 실패 가시화)
   const [maintenance, setMaintenance] = useState<MaintenanceRecord | null>(null)          // 🌙 야간 자동 정비 결과(03시)
   const [maintenanceRescan, setMaintenanceRescan] = useState<MaintenanceRecord | null>(null) // 🌙 야간 라이브 재보정(04시)
+  const [enrichLane, setEnrichLane] = useState<EnrichLaneRecord | null>(null)             // 📝 보강 전용 레인(시간당 N라운드) 마지막 결과
   const [catFunnel, setCatFunnel] = useState<CategoryFunnelRow[]>([])                     // 📊 카테고리별 전환
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [platform, setPlatform] = useState('')
@@ -86,7 +91,10 @@ export default function AdminInfluencerPoolPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)   // 현재 필터의 전체 건수(페이지네이션)
-  const [collecting, setCollecting] = useState(false)
+  const [serverRunning, setServerRunning] = useState(false) // 🔒 서버 수집 lease(진행 중) — 화면 로컬 state 아님
+  // 🔧 2026-07-28: 정비 lease — '전체 정비' 를 눌러도 진행 중인지 끝났는지 화면에서 알 수 없었다(대표 신고).
+  //   수집과 달리 정비엔 진행 표시가 아예 없었다. 서버 lease 가 진실이라 새로고침·재진입해도 정확하다.
+  const [maintainRunning, setMaintainRunning] = useState(false)
 
   const PAGE = 200
   const buildParams = useCallback((offset: number) => { // 현재 필터 → 쿼리스트링(offset 만 페이지마다 다름)
@@ -124,49 +132,52 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('더 불러오지 못했습니다') } finally { setLoadingMore(false) }
   }, [buildParams, leads.length])
 
+  // stats 응답 반영 SSOT — 최초 로드와 수집 폴링(useCollectRun)이 같은 함수를 쓴다(둘이 갈라지면 화면 불일치).
+  const applyMeta = useCallback((d: Record<string, unknown>) => {
+    const g = <T,>(k: string) => d[k] as T
+    setStats(g<PoolStats>('stats') || {}); setRun(g<RunStats>('run') || null); setGate(!!d.gate); setSheetsSync(g<typeof sheetsSync>('sheets_sync') || null)
+    setServerRunning(!!d.collect_running) // 🔒 서버 lease — 페이지를 나갔다 와도 '진행 중'을 알 수 있다
+    setMaintainRunning(!!d.maintain_running)
+    setMaintenance(g<MaintenanceRecord>('maintenance') || null); setMaintenanceRescan(g<MaintenanceRecord>('maintenance_rescan') || null); setCatFunnel(g<CategoryFunnelRow[]>('category_funnel') || [])
+    setEnrichLane(g<EnrichLaneRecord>('enrich_lane') || null)
+  }, [])
+
+  // 🔁 2026-07-28: 정비가 도는 동안만 10초 폴링 — 끝나면 스스로 멈추고 완료를 알린다.
+  //   이게 없으면 '전체 정비' 를 눌러도 사용자가 수동 새로고침으로만 완료를 알 수 있었다(대표 신고).
+  //   상시 폴링이 아니라 lease 가 잡힌 동안만이라 평소 부하 0.
+  const wasMaintaining = useRef(false)
+  useEffect(() => {
+    if (!maintainRunning) {
+      if (wasMaintaining.current) {
+        wasMaintaining.current = false
+        toast.success('🧰 정비가 끝났습니다 — 결과가 아래 「자동 정비」 줄에 반영됐어요')
+      }
+      return
+    }
+    wasMaintaining.current = true
+    const t = setInterval(() => { void loadMeta() }, 10_000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maintainRunning])
+
   const loadMeta = useCallback(async () => {
     try {
       const [s, k] = await Promise.all([
         api.get('/api/admin/ads/influencer-pool/stats'),
         api.get('/api/admin/ads/influencer-pool/keywords'),
       ])
-      if (s.data?.success) {
-        setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
-        setMaintenance(s.data.maintenance || null); setMaintenanceRescan(s.data.maintenance_rescan || null); setCatFunnel(s.data.category_funnel || [])
-      }
+      if (s.data?.success) applyMeta(s.data)
       if (k.data?.success) setKeywords(k.data.keywords || [])
     } catch { /* soft */ }
-  }, [])
+  }, [applyMeta])
 
   useEffect(() => { loadMeta() }, [loadMeta])
   useEffect(() => { loadLeads() }, [loadLeads])
 
-  // 수동 수집 — 백그라운드 실행(수십 초)이라 즉시 '시작됨' 안내 후 stats(last_run) 폴링으로 완료를 따라잡음.
-  //   구 동기 대기는 브라우저 타임아웃→"실패" 오표시였음. started=false(폴백 동기)면 기존처럼 즉시 결과 반영.
-  // 🔥 지금 수집 = 오늘 YouTube 예산(하루 100회)을 소진할 때까지 백그라운드로 연속 수집(self-chain).
-  //   한 번 실행 = 예산 전부 소진(대표 요청 단순화 — 별도 버스트 버튼 통합). 진행은 통계 자동 갱신으로 따라잡음.
-  async function collectNow() {
-    setCollecting(true)
-    try {
-      const r = await api.post('/api/admin/ads/influencer-pool/collect-burst', {})
-      if (!r.data?.success) { toast.error(r.data?.error || '수집 시작 실패'); return }
-      toast.success('통합 수집을 시작했어요 — 유튜브·네이버·티스토리 전 매체, YouTube 예산 소진까지 백그라운드로 진행됩니다. 통계가 자동 갱신돼요')
-      // 예산 소진(used>=total)까지 버튼 잠금 유지(최대 5분) — 조기 재클릭이 진행 중 체인과 경합하던 것 방지
-      //   (서버도 실행 lease 로 병렬 차단하지만, UI 도 완료 전 재클릭을 유도하지 않게).
-      for (let i = 0; i < 25; i++) {
-        await new Promise(res => setTimeout(res, 12000))
-        try {
-          const s = await api.get('/api/admin/ads/influencer-pool/stats')
-          if (s.data?.success) {
-            setStats(s.data.stats || {}); setRun(s.data.run || null); setGate(!!s.data.gate); setSheetsSync(s.data.sheets_sync || null)
-            const yb = s.data.run?.yt_budget
-            if (yb && typeof yb.used === 'number' && typeof yb.total === 'number' && yb.used >= yb.total) { toast.success(`오늘 YouTube 예산 소진 완료 (${yb.used}/${yb.total}) — 수집 마감`); break }
-          }
-        } catch { /* 폴링 지속 */ }
-      }
-      await loadLeads()
-    } catch { toast.error('수집 시작 실패') } finally { setCollecting(false) }
-  }
+  // 🔥 통합 수집 = 오늘 YouTube 예산(하루 100회) 소진까지 백그라운드 연속 수집(self-chain).
+  //   실행/폴링/이탈 처리는 useCollectRun 이 소유 — 페이지를 떠나면 폴링만 멈추고 서버 작업은 계속된다.
+  const { starting, collectNow } = useCollectRun(applyMeta, loadLeads)
+  const collecting = starting || serverRunning // 재진입해도 진행 중이면 잠금(서버 lease 가 진실)
 
   async function setStatus(id: number, status: string) {
     try { await api.patch(`/api/admin/ads/influencer-pool/${id}`, { status }); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)); toast.success(`✅ 상태 변경 → ${STATUS_META[status]?.label || status}`) }
@@ -268,23 +279,6 @@ export default function AdminInfluencerPoolPage() {
     catch { toast.error('삭제 실패') }
   }
 
-  const [exporting, setExporting] = useState(false)
-  async function exportExcel() {
-    setExporting(true)
-    try {
-      // 서버 export — 화면 500개 제한 무관 풀 전체, 카테고리별 시트 분리(.xls).
-      //   ⚠️ 20k행이면 전체+카테고리별 시트로 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
-      //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
-      const r = await api.get('/api/admin/ads/influencer-pool/export?format=xls', { responseType: 'blob', timeout: 120000 })
-      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
-      const a = document.createElement('a'); a.href = url; a.download = `인플루언서풀-카테고리별-${new Date().toISOString().slice(0, 10)}.xls`; a.click(); URL.revokeObjectURL(url); toast.success(`📊 엑셀 다운로드 완료 (${(r.data as Blob).size > 1048576 ? `${(((r.data as Blob).size) / 1048576).toFixed(1)}MB` : `${Math.round(((r.data as Blob).size) / 1024)}KB`} · 카테고리별 시트)`)
-    } catch (e) {
-      const ax = e as { code?: string; response?: { status?: number } }
-      if (ax.code === 'ECONNABORTED') toast.error('엑셀 내보내기 시간 초과 — 데이터가 많습니다. 잠시 후 다시 시도하거나 CSV를 이용하세요')
-      else toast.error(`엑셀 내보내기 실패${ax.response?.status ? ` (HTTP ${ax.response.status})` : ''}`)
-    } finally { setExporting(false) }
-  }
-
   // 📤 CSV — 화면 로드분(200)만 나가던 결함 수리: 현재 필터 **전체**를 500개씩 끝까지 페치(공유 헬퍼, 22열).
   const [csvExporting, setCsvExporting] = useState(false)
   async function exportCsv() {
@@ -314,7 +308,7 @@ export default function AdminInfluencerPoolPage() {
             { label: '전체', value: stats.total },
             { label: '유튜브', value: stats.youtube },
             { label: '네이버블로그', value: stats.naver_blog },
-            { label: '네이버카페', value: stats.naver_cafe },
+            { label: '🏘️ 커뮤니티(카페)', value: stats.naver_cafe },
             { label: '이메일 보유', value: stats.with_email },
             { label: '오늘 수집', value: stats.today },
           ].map(s => (
@@ -364,12 +358,14 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
-        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} />
+        <CollectDiagPanel run={run} sheetsSync={sheetsSync} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
+          enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} />
 
         {/* 핵심 액션 — 항상 보임(수집 + 내보내기 + 서비스몰 바로가기). 나머지(정비·발송)는 아래 접이식으로 정리해 UI 단순화(대표 요청). */}
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={collectNow} disabled={collecting} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50" title="유튜브·네이버블로그·네이버카페 전 매체를 한 번에 수집 — YouTube 검색 예산 소진할 때까지 백그라운드로 연속 실행">{collecting ? '수집 중…' : '🔄 통합 수집'}</button>
-          <button onClick={exportExcel} disabled={exporting} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">{exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (카테고리별 시트)'}</button>
+          {collecting ? <span className="text-[11px] text-gray-500 self-center">백그라운드로 진행 중 — 페이지를 떠나도 계속됩니다</span> : null}
+          <ExcelExportButtons variant="all" />
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 29열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
           {/* 🛍️ 최근 구현한 서비스 표면 바로가기 — 이 풀이 이행 재고인 서비스몰(광고주 주문 화면)과 주문 접수함 */}
           <a href="/ads/dashboard?tab=services" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium" title="광고주가 보는 유어애즈 대시보드(서비스몰 주문 화면) — 새 탭">🛍️ 서비스몰 (광고주 화면)</a>
@@ -396,6 +392,8 @@ export default function AdminInfluencerPoolPage() {
               🚀 발송 모드{selected.size ? ` (선택 ${selected.size})` : ` (${leads.length})`}
             </button>
             <ConsentedSendPanel />
+            <ColdSendPanel />
+            <ExcelExportButtons variant="contactable" />
           </div>
         </details>
 
@@ -404,10 +402,11 @@ export default function AdminInfluencerPoolPage() {
         {/* 필터 */}
         <div className="flex flex-wrap gap-2 mb-3">
           <select value={platform} onChange={e => setPlatform(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
-            <option value="">전체 플랫폼</option>
+            {/* 🏘️ 카페는 인플루언서가 아니라 커뮤니티라 기본 목록에서 빠진다(서버가 제외) — 여기서 골라야 보인다. */}
+            <option value="">전체(카페 제외)</option>
             <option value="youtube">유튜브</option>
             <option value="naver_blog">네이버 블로그</option>
-            <option value="naver_cafe">네이버 카페</option>
+            <option value="naver_cafe">🏘️ 지역·커뮤니티 매체(카페)</option>
             <option value="tistory">티스토리</option>
           </select>
           <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">

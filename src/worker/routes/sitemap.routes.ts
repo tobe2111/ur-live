@@ -50,8 +50,10 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/', priority: 1.0, changefreq: 'daily' },
     { loc: '/browse', priority: 0.9, changefreq: 'daily' },
     // 🚫 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) — /live·/shorts 는 sitemap 미노출(폐기 기능 URL 크롤 방지).
-    { loc: '/search', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/login', priority: 0.5, changefreq: 'monthly' },
+    // 🔎 2026-07-28 (네이버 수집 점검): '/search' 제거 — robots.txt 가 `Disallow: /search` 로 막는데
+    //   사이트맵이 제출하고 있었음(상호 모순 → 서치어드바이저/서치콘솔 '수집제한' 오류 유발, 사이트맵
+    //   신뢰도 하락). '/login' 도 제거 — 로그인 폼은 색인 가치 0(검색 유입 대상 아님).
+    //   ⚠️ 사이트맵에 URL 추가 시 robots.txt Disallow 와 교차 확인할 것.
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
     // 🆕 2026-07-27 모집/소개 표면 — 그간 sitemap 미등재라 **구글이 존재 자체를 몰랐음**(푸터 링크만
     //   있어 사실상 유입 0). 크리에이터 모집은 동의 리드 확보의 유일한 정문이라 우선순위 높게.

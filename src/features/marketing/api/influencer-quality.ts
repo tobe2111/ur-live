@@ -9,6 +9,8 @@
  *   ⚠️ 서비스 분리: ad_* 테이블 + platform_settings 만 접촉(소비자/도매 무관).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { runDdlOnce } from './ads-schema-guard'
+import type { OpBudget } from './maintenance-budget'
 import { isPersonalEmail } from './influencer-performance'
 
 // ── ① 브랜드 공식 채널 판별 ──────────────────────────────────────────────
@@ -126,15 +128,17 @@ export function scoreLead(l: ScoreInput): ScoreResult {
 // ── ③ 스키마 + 일괄 갱신 패스 ────────────────────────────────────────────
 const _qualityColPromise = new WeakMap<object, Promise<void>>()
 /** is_brand(브랜드 공식 채널 추정) · lead_score(0~100) 컬럼 보장 — 멱등·memoized. */
+/** 🧱 2026-07-28: 매 인보케이션 3 ALTER → 체크섬 1회 조회(무료 플랜 예산 회수). 목록 변경 시 자동 재적용. */
+export const AD_QUALITY_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN is_brand INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN lead_score INTEGER',
+  // 🏷️ 분류 근거(2026-07-27 대표 "정확하게 분류되고 있어?") — content(이름·소개글 규칙)/topic(유튜브
+  //   자체분류)/keyword(수집 키워드 상속 = 재검증 대상). NULL(구데이터)은 keyword 로 간주해 집계.
+  'ALTER TABLE ad_influencer_leads ADD COLUMN category_source TEXT',
+]
 export function ensureQualityColumns(DB: D1Database): Promise<void> {
   const c = _qualityColPromise.get(DB); if (c) return c
-  const p = (async () => {
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN is_brand INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN lead_score INTEGER').run().catch(() => null)
-    // 🏷️ 분류 근거(2026-07-27 대표 "정확하게 분류되고 있어?") — content(이름·소개글 규칙)/topic(유튜브
-    //   자체분류)/keyword(수집 키워드 상속 = 재검증 대상). NULL(구데이터)은 keyword 로 간주해 집계.
-    await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN category_source TEXT').run().catch(() => null)
-  })()
+  const p = runDdlOnce(DB, 'ads_ddl_influencer_quality', AD_QUALITY_DDL).then(() => undefined)
   _qualityColPromise.set(DB, p); return p
 }
 
@@ -145,7 +149,7 @@ const QUALITY_CURSOR_KEY = 'ads_quality_cursor'
  *   한 실행 상한(기본 8000행)에 걸리면 커서를 남겨 다음 밤에 이어받고, 끝까지 돌면 0 으로 리셋해
  *   다음 회차에 전체를 다시 검증(성과·연락처가 갱신되면 점수도 따라 움직여야 하므로 순환이 정답).
  */
-export async function runQualityPass(DB: D1Database, opts?: { max?: number }): Promise<{ scanned: number; branded: number; scored: number; done: boolean }> {
+export async function runQualityPass(DB: D1Database, opts?: { max?: number; budget?: OpBudget }): Promise<{ scanned: number; branded: number; scored: number; done: boolean }> {
   await ensureQualityColumns(DB)
   const MAX = Math.max(200, Math.min(40_000, opts?.max ?? 8000))
   const PAGE = 500
@@ -160,7 +164,10 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number }): P
         median_long_views, recent_posts_30d, email, instagram, links, category, is_brand, consented_at, source
       FROM ad_influencer_leads WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`)
       .bind(cursor, PAGE).all<ScoreInput & { id: number; name: string | null; description: string | null }>().catch(() => null))?.results || []
-    if (!rows.length) { done = true; break }
+    // ⚠️ 2026-07-28: 예산 소진으로 빈 배열이 온 것을 "끝났다"로 오판하면 아래에서 커서를 0 으로 리셋해
+    //   **매번 같은 앞부분만 돌고 영원히 전진하지 못한다**(전화 스윕 커서 버그와 같은 클래스).
+    if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
+    const pageStart = cursor // 이 페이지 쓰기가 예산에 잘리면 커서를 여기로 되돌린다(미기록 행 건너뜀 방지)
     const stmts = []
     for (const r of rows) {
       cursor = Math.max(cursor, r.id); scanned++
@@ -171,6 +178,7 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number }): P
       stmts.push(DB.prepare('UPDATE ad_influencer_leads SET is_brand = ?, lead_score = ? WHERE id = ?').bind(brand, score, r.id))
     }
     for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
+    if (opts?.budget?.exhausted) { cursor = pageStart; break } // 갱신이 잘렸으면 이 페이지를 다음 회차에 다시
     if (rows.length < PAGE) { done = true; break }
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')

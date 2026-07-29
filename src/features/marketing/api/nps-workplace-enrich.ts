@@ -49,7 +49,7 @@ export async function runNpsWorkplaceEnrich(env: Env, maxLeads = 40): Promise<Np
 
   // 대상: 규모 미조회 활성 리드 — 대행사(tier1 접점) 우선, 그다음 tier 순.
   const targets = (await DB.prepare(`SELECT id, company_name, business_no, region, address FROM ad_company_leads
-      WHERE active = 1 AND nps_checked_at IS NULL AND length(company_name) >= 2
+      WHERE active = 1 AND merged_into IS NULL AND nps_checked_at IS NULL AND length(company_name) >= 2
       ORDER BY (CASE WHEN category = '대행사' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id ASC LIMIT ?`)
     .bind(Math.min(100, Math.max(1, maxLeads)))
     .all<{ id: number; company_name: string; business_no: string | null; region: string | null; address: string | null }>()

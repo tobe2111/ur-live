@@ -54,7 +54,7 @@ export const PROMO_TOPICS: readonly PromoTopic[] = [
   { slug: 'discover-neighborhood-deals', title: '우리 동네 숨은 혜택, 동네딜로 발견하기', angle: '동네딜로 생활 반경 안의 좋은 매장·혜택을 찾는 방법', tags: ['동네딜', '로컬', '발견'] },
   { slug: 'linkshop-share-your-taste', title: '내 취향을 링크 하나로, 링크샵 자랑하기', angle: '링크샵에 좋아하는 혜택을 핀으로 모아 친구와 공유하는 재미', tags: ['링크샵', '공유', '취향'] },
   { slug: 'family-outing-savings', title: '가족 나들이, 이용권으로 알뜰하게 즐기기', angle: '주말 가족 외식·체험을 이용권과 동네딜로 알뜰하게 계획', tags: ['이용권', '가족', '나들이'] },
-  { slug: 'first-time-yourdeal', title: '유어딜 처음이라면? 5분이면 끝나는 첫 사용 가이드', angle: '신규 유저가 이용권·교환권·동네딜을 처음 써보는 아주 쉬운 안내', tags: ['가이드', '입문', '유어딜'] },
+  { slug: 'first-time-urdeal', title: '유어딜 처음이라면? 5분이면 끝나는 첫 사용 가이드', angle: '신규 유저가 이용권·교환권·동네딜을 처음 써보는 아주 쉬운 안내', tags: ['가이드', '입문', '유어딜'] },
   { slug: 'rainy-day-indoor', title: '비 오는 날 실내 데이트, 이렇게 즐기세요', angle: '비 오는 날 카페·실내 액티비티 이용권으로 알찬 하루 보내기', tags: ['이용권', '실내', '데이트'] },
   { slug: 'solo-treat-yourself', title: '혼자여도 충분히 즐거운, 나만의 이용권 코스', angle: '혼밥·혼카페·혼놀이를 이용권으로 근사하게 즐기는 법', tags: ['이용권', '혼자', '라이프'] },
   { slug: 'season-recommend', title: '이번 계절에 딱 맞는 이용권·동네딜 고르기', angle: '계절 감성에 맞춘 식사·나들이·뷰티 혜택 큐레이션', tags: ['이용권', '동네딜', '시즌'] },

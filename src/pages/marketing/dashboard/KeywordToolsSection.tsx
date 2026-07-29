@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from '../PanelError'
+import SearchAdRequiredNotice from '../SearchAdRequiredNotice'
 import { downloadCsv } from '@/utils/csv-download'
 import { CARD_CLS, INPUT_CLS } from '../dashboard-tabs'
 
@@ -22,7 +23,7 @@ const authHeader = () => {
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 
-export default function KeywordToolsSection() {
+export default function KeywordToolsSection({ onGo }: { onGo?: (anchor: string) => void }) {
   const [kw, setKw] = useState('')
   const [kwBusy, setKwBusy] = useState(false)
   const [kwErr, setKwErr] = useState(false)
@@ -111,9 +112,7 @@ export default function KeywordToolsSection() {
             </div>
           </div>
         )}
-        {relatedOff && (
-          <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-500">연관키워드(검색량)는 네이버 검색광고 키 설정 후 표시됩니다.</p>
-        )}
+        {relatedOff && <SearchAdRequiredNotice feature="연관키워드(월 검색량)" onGo={onGo} />}
       </div>
 
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
