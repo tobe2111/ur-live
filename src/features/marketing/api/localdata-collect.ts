@@ -27,6 +27,7 @@ import {
   buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
   shouldProbe, type ProbeAttempt, type VariantState,
 } from './license-url'
+import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -136,6 +137,38 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
   return { rows: [], msg }
 }
 
+/**
+ * 🔬 요청 형태 프로브 1회 — **일일/백필 두 레인이 공유**한다 (2026-07-29).
+ *
+ *   왜 공유하나: 처음엔 "판정은 한 곳(일일 레인)에서만" 으로 뒀는데, 일일 레인은 **하루 1회**(KST 05시)라
+ *   500 의 정체를 아는 데 최대 24시간이 걸린다. 백필은 **매시간** 도는데 같은 500 을 맞으면서도
+ *   아무것도 알아내지 못한다 — 관측 기회를 하루 23번 버리는 셈이다.
+ *
+ *   ⚠️ 그래도 "판정은 한 곳" 원칙은 지킨다: **쿨다운(`probed_at`)과 DB 키를 공유**하므로 한쪽이 먼저
+ *   돌면 다른 쪽은 구조적으로 건너뛴다(중복 프로브·엇갈린 답이 불가능). 예산도 각 레인이 자기 것에서 낸다.
+ */
+async function maybeProbeVariant(opts: {
+  DB: D1Database; base: string; endpoint: string; key: string; day: string
+  sizeEnv: string | null; envVariant: string; variantId: string
+  vState: VariantState | null; budget: FetchBudget; stamp: string
+  fetchUrl: (u: string) => Promise<{ count: number; msg?: string }>
+  spendD1: () => void
+}): Promise<{ winner: string | null; info: { at: string; winner: string | null; attempts: ProbeAttempt[] }; state: VariantState } | null> {
+  if (opts.envVariant) return null                                     // 대표가 고정한 결정을 자동 탐색이 덮지 않는다
+  if (!shouldProbe(opts.vState, Date.now())) return null               // 쿨다운 — 두 레인이 이 값을 공유한다
+  if (opts.budget.left <= LICENSE_VARIANT_PROBE_COST) return null      // 반쯤 하다 끊기면 판정이 안 된다
+  const pr = await probeLicenseVariants({
+    base: opts.base, endpoint: opts.endpoint, keyParam: serviceKeyParam(opts.key), day: opts.day,
+    sizeOverride: opts.sizeEnv, skip: [opts.variantId],
+    canSpend: () => !outOfBudget(opts.budget),
+    fetchPage: async (u) => { const r = await opts.fetchUrl(u); return { ok: !r.msg, rows: r.count, msg: r.msg } },
+  })
+  const state: VariantState = { id: pr.winner || opts.variantId, probed_at: Date.now(), attempts: pr.attempts }
+  opts.spendD1()
+  await opts.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(VARIANT_KEY, JSON.stringify(state)).run().catch(() => null)
+  return { winner: pr.winner, info: { at: opts.stamp, winner: pr.winner, attempts: pr.attempts }, state }
+}
+
 /** 인허가 1페이지 조회(URL 을 그대로 받는다 — 형태 후보 프로브와 같은 경로를 쓰기 위해). */
 async function fetchLicenseUrl(url: string, budget?: FetchBudget): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
   // ⚠️ 2026-07-28 수리: 예전엔 실패 시 `{items:[],count:0}` 만 반환해 **원인을 통째로 삼켰다** →
@@ -216,6 +249,9 @@ export interface LocalDataStats {
     fail_probe?: { url: string; endpoint: string; day: string; page: number; msg?: string }
     /** 🔬 형태 후보 시도 이력(라이브 판정 근거). */
     probe?: { at: string; winner: string | null; attempts: ProbeAttempt[] }
+    /** 📊 원본 필드 채움률 + 형식 예시(가려짐) — 필드 이름을 추측으로 쓰지 않기 위한 근거. 추가 요청 0. */
+    coverage?: FieldCoverage[]
+    coverage_note?: string
   }
 }
 const STATS_KEY = 'ads_localdata_stats'
@@ -264,6 +300,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   spendD1() // 위 설정 3키 일괄 조회(1회)
   let found = 0, saved = 0, closed = 0
   let sample: unknown; let lastMsg: string | undefined
+  let coverage: FieldCoverage[] = [] // 📊 마지막으로 받은 페이지 기준(누적 안 함 — 스냅샷 비대화 방지)
 
   // 🔬 요청 형태(변종) — env 가 있으면 고정(프로브 금지), 없으면 DB 에 적힌 것, 그것도 없으면 현행 v1.
   //   env 고정은 "대표가 스펙을 확인했다" 는 뜻이므로 자동 탐색이 그 결정을 덮어쓰지 않는다.
@@ -310,23 +347,22 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
         //   구분이 안 돼 다음 틱이 이 업종을 건너뛴다 = 그 업종 데이터 영구 누락(유닛테스트가 잡은 실버그).
         if (budget.limitHit) { stoppedAt = ei; break }
         if (!sample && items[0]) sample = items[0]
+        if (items.length) coverage = fieldCoverage(items)
         // 🩺 첫 실패의 실제 요청을 **키를 가려** 남긴다 — 500 은 본문에 원인 코드가 없어, 이게 없으면
         //   "무엇을 보냈길래 500 인가"를 이 환경(외부 CONNECT 차단)에서 판정할 방법이 아예 없다.
         if (msg && !failProbe) failProbe = { url: redactServiceKey(url), endpoint, day: item.day, page, msg: msg.slice(0, 200) }
         // 🔬 형태 후보 프로브 — 1페이지가 실패했고, env 고정이 아니고, 쿨다운이 지났고, 예산이 남았을 때만.
         //   추측으로 URL 을 바꾸는 대신 **라이브가 고르게** 한다. 승자가 나오면 그 자리에서 재시도.
-        if (msg && page === 1 && !count && !probedThisRun && !envVariant && shouldProbe(vState, Date.now()) && budget.left > LICENSE_VARIANT_PROBE_COST) {
+        if (msg && page === 1 && !count && !probedThisRun) {
           probedThisRun = true
-          const pr = await probeLicenseVariants({
-            base, endpoint, keyParam: serviceKeyParam(key), day: item.day, sizeOverride: sizeEnv, skip: [variantId],
-            canSpend: () => !outOfBudget(budget),
-            fetchPage: async (u) => { const r = await fetchLicenseUrl(u, budget); return { ok: !r.msg, rows: r.count, msg: r.msg } },
+          const pr = await maybeProbeVariant({
+            DB, base, endpoint, key, day: item.day, sizeEnv, envVariant, variantId, vState, budget, stamp,
+            fetchUrl: (u) => fetchLicenseUrl(u, budget), spendD1,
           })
-          probeInfo = { at: stamp, winner: pr.winner, attempts: pr.attempts }
-          vState = { id: pr.winner || variantId, probed_at: Date.now(), attempts: pr.attempts }
-          spendD1()
-          await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(VARIANT_KEY, JSON.stringify(vState)).run().catch(() => null)
-          if (pr.winner && pr.winner !== variantId) { variantId = pr.winner; page--; continue } // 승자로 이 페이지 재시도
+          if (pr) {
+            probeInfo = pr.info; vState = pr.state
+            if (pr.winner && pr.winner !== variantId) { variantId = pr.winner; page--; continue } // 승자로 이 페이지 재시도
+          }
         }
         if (!count) break
         const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
@@ -370,6 +406,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       configured: true, error: err, sample, endpoints: Object.keys(endpoints),
       // 🔬 "무엇을 어떻게 보내고 있고, 무엇이 실패했는가" — 추측 없이 판정하기 위한 최소 증거 3종.
       variant: variantId, fail_probe: failProbe, probe: probeInfo,
+      coverage, coverage_note: coverageNote(coverage) || undefined,
     },
   }
   await persist(s)
@@ -411,8 +448,12 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
   let startIdx = Math.max(0, parseInt(String(bfSetting(BF_IDX_KEY) || ''), 10) || 0)
   // 🔬 백필도 **일일 레인이 라이브에서 확인한 요청 형태**를 그대로 쓴다(형태가 갈리면 한쪽만 조용히 0건).
   //   프로브는 여기서 돌리지 않는다 — 판정은 한 곳(일일 레인)에서만 하고 결과를 공유한다.
-  let bfVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
-  if (!bfVariant) { try { bfVariant = (JSON.parse(bfSetting(VARIANT_KEY) || '{}') as VariantState)?.id || '' } catch { bfVariant = '' } }
+  const bfEnvVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
+  let bfVariant = bfEnvVariant
+  let bfState: VariantState | null = null
+  try { bfState = JSON.parse(bfSetting(VARIANT_KEY) || 'null') as VariantState | null } catch { bfState = null }
+  if (!bfVariant) bfVariant = bfState?.id || ''
+  let bfProbed = false // 이번 실행 1회만(예산 보호)
   const bfSizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
   const eps = Object.entries(endpoints)
   let found = 0, saved = 0
@@ -426,8 +467,21 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
       const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break }
-        const { items, count, size } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget)
+        const { items, count, size, msg } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget)
         if (budget.limitHit) { stoppedAt = ei; break } // 한도로 실패한 업종은 완료가 아니다(위 일일 레인과 동일)
+        // 🔬 백필도 프로브한다 — 이 레인은 **매시간** 돌지만 일일 레인은 하루 1회다. 판정을 일일 레인에만
+        //   맡기면 500 의 정체를 아는 데 최대 24시간이 걸린다(관측 기회를 하루 23번 버리는 셈).
+        //   쿨다운·DB 키를 공유하므로 두 레인이 동시에 찌르거나 서로 다른 답을 쓰는 일은 구조적으로 없다.
+        if (msg && page === 1 && !count && !bfProbed) {
+          bfProbed = true
+          const pr = await maybeProbeVariant({
+            DB, base, endpoint, key, day: cur, sizeEnv: bfSizeEnv, envVariant: bfEnvVariant,
+            variantId: findVariant(bfVariant).id, vState: bfState, budget,
+            stamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            fetchUrl: (u) => fetchLicenseUrl(u, budget), spendD1,
+          })
+          if (pr) { bfState = pr.state; if (pr.winner) { bfVariant = pr.winner; page--; continue } }
+        }
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length

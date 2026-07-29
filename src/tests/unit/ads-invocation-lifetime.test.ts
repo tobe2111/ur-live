@@ -22,7 +22,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
-import { sliceDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
@@ -198,29 +198,28 @@ describe('수집 진단 — 카페는 따로 센다', () => {
  *   앞선 세션이 같은 자리에서 **예산** 굶주림을 고쳤다(`naverRoomFromRemaining`). 구속 자원이
  *   예산에서 시계로 옮겨갔을 뿐 병은 같다 — **순서가 고정되면 마지막 레인은 무엇이 구속하든 굶는다.**
  */
-describe('보강 레인 — 구간 시계 몫', () => {
+describe('보강 레인 — 앞 레인 사전 마감(블로거 시간 바닥)', () => {
   const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
 
-  it('sliceDeadline 이 시작시각 + 비율만큼을 돌려준다', () => {
-    expect(sliceDeadline(1_000, 20_000, 0.5)).toBe(11_000)
-    expect(sliceDeadline(1_000, 20_000, 0.25)).toBe(6_000)
+  it('바닥 비율만큼을 블로거 몫으로 남긴다', () => {
+    expect(frontStageDeadline(1_000, 20_000, 40)).toBe(13_000) // 앞 레인은 60% 까지
+    expect(frontStageDeadline(0, 20_000, 50)).toBe(10_000)
   })
 
-  it('비율은 0~1 로 클램프되고 비정상 입력은 안전한 값이 된다', () => {
-    expect(sliceDeadline(0, 20_000, 2)).toBe(20_000)     // >1 → 전체
-    expect(sliceDeadline(0, 20_000, -1)).toBe(0)         // <0 → 0
-    expect(sliceDeadline(0, Number.NaN, 0.5)).toBe(0)    // NaN span → 0
-    expect(sliceDeadline(0, 20_000, Number.NaN)).toBe(20_000) // NaN frac → 전체(기존 동작)
+  it('비율은 10~80 으로 클램프되고 비정상 입력은 기본값(40)이 된다', () => {
+    expect(frontStageDeadline(0, 20_000, 0)).toBe(18_000)    // <10 → 10
+    expect(frontStageDeadline(0, 20_000, 99)).toBe(4_000)    // >80 → 80
+    expect(frontStageDeadline(0, 20_000, Number.NaN)).toBe(12_000) // NaN → 40
+    expect(frontStageDeadline(0, Number.NaN, 40)).toBe(0)
   })
 
-  it('yt 구간에 몫을 걸고 그 뒤 라운드 데드라인을 복원한다 — naver 가 나머지를 전부 받는다', () => {
-    expect(lane).toMatch(/budget\.deadline\s*=\s*Math\.min\(roundDeadline[\s\S]{0,80}sliceDeadline\(started, deadlineMs, 0\.5\)/)
-    // 복원이 없으면 naver 도 yt 몫에 갇힌다 — 이 한 줄이 빠지면 고친 게 무효가 된다.
-    expect(lane).toMatch(/budget\.deadline\s*=\s*roundDeadline/)
+  it('앞 레인에 사전 마감을 씌우고 블로거 직전에 푼다 — 복원이 빠지면 블로거도 갇힌다', () => {
+    expect(lane).toMatch(/budget\.deadline = frontStageDeadline\(started, deadlineMs, naverFloorPct\)/)
+    expect(lane).toMatch(/budget\.deadline = started \+ deadlineMs/)
   })
 
-  it('naver 호출이 데드라인 복원 **뒤에** 온다(순서가 뒤집히면 무효)', () => {
-    const restore = lane.indexOf('budget.deadline = roundDeadline')
+  it('복원이 블로거 호출 **앞**에 온다(순서가 뒤집히면 무효)', () => {
+    const restore = lane.indexOf('budget.deadline = started + deadlineMs')
     const naverCall = lane.indexOf('enrichNaverActivity(DB, budget')
     expect(restore).toBeGreaterThan(0)
     expect(naverCall).toBeGreaterThan(restore)

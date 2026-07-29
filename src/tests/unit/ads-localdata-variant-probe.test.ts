@@ -7,7 +7,7 @@
  *   ① 실제로 스스로 회복하고 ② 회복한 답을 기억하고 ③ **키를 흘리지 않는가** 이다.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { runLocalDataCollect } from '@/features/marketing/api/localdata-collect'
+import { runLocalDataCollect, runLocalDataBackfill } from '@/features/marketing/api/localdata-collect'
 
 const VARIANT_KEY = 'ads_localdata_variant'
 const SERVICE_KEY = 'super-secret-key-value'
@@ -124,5 +124,30 @@ describe('인허가 요청 형태 프로브', () => {
     await runLocalDataCollect(makeEnv(db, { ADS_LOCALDATA_PAGE_SIZE: '50', ADS_LOCALDATA_MAX_PAGES: '2' }))
 
     expect(pages.some(u => u.includes('pageIndex=2'))).toBe(true)
+  })
+
+  // ⏱️ 판정 속도 — 일일 레인은 **하루 1회**(KST 05시)다. 백필이 매시간 도는데 프로브를 안 하면
+  //   500 의 정체를 아는 데 최대 24시간이 걸린다(관측 기회를 하루 23번 버림).
+  it('백필 레인도 프로브해서 형태를 찾는다 — 판정이 하루가 아니라 한 시간 안에 난다', async () => {
+    const { db, kv } = makeDB()
+    vi.stubGlobal('fetch', vi.fn(async (u: string) => {
+      if (String(u).includes('pageSize=500')) return new Response('Unexpected errors', { status: 500 })
+      return new Response(JSON.stringify({ svc: { row: [ROW] } }), { status: 200 })
+    }))
+
+    await runLocalDataBackfill(makeEnv(db, { ADS_LOCALDATA_BACKFILL_DAYS: '3' }), 1)
+
+    expect(JSON.parse(kv[VARIANT_KEY] || '{}').id).toBe('v2') // 백필이 스스로 찾아 기억한다
+  })
+
+  it('쿨다운을 **공유**하므로 두 레인이 같은 창에서 중복으로 찌르지 않는다', async () => {
+    const { db } = makeDB({ [VARIANT_KEY]: JSON.stringify({ id: 'v1', probed_at: Date.now() }) })
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (u: string) => { urls.push(String(u)); return new Response('Unexpected errors', { status: 500 }) }))
+
+    await runLocalDataBackfill(makeEnv(db, { ADS_LOCALDATA_BACKFILL_DAYS: '3' }), 1)
+
+    // 일일 레인이 방금 찔렀으므로(쿨다운 내) 백필은 후보를 하나도 쏘지 않는다 — 현행 형태만 시도.
+    expect(urls.every(u => u.includes('pageSize=500'))).toBe(true)
   })
 })
