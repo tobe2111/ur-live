@@ -5494,8 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 66건 · 최신순 · 이 목록은 자동 생성된다._
-_총 67건 · 최신순 · 이 목록은 자동 생성된다._
+_총 68건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
@@ -5513,6 +5512,7 @@ _총 67건 · 최신순 · 이 목록은 자동 생성된다._
 - [수집량 계측 정정 + 유어딜 4대 업종 우선 (대표 지시 반영)](handoff/2026-07-29-collect-truth-and-priority.md)
 - [2026-07-29 — 번들 critical path: app-components 를 엔트리 preload 에서 분리](handoff/2026-07-29-bundle-critical-path.md)
 - [부모 cron 의 부기 비용을 절반으로 — 레인 굶주림의 *산수* (2026-07-29)](handoff/2026-07-29-beat-batch-subrequest.md)
+- [지역 축이 사실상 없었다 + 고아 함수 배선 (오후 세션)](handoff/2026-07-29-ads-region-axis-and-orphans.md)
 - [자동승격 적합성 게이트 + 골프 축 신설 (대표 승인 2건)](handoff/2026-07-29-ads-promote-gate-golf.md)
 - [유어애즈 정비 슬롯 재배분 — 균등 순환이 "일이 남은 곳"을 못 보고 있었다](handoff/2026-07-29-ads-maintenance-slots.md)
 - [✅ 2026-07-29 (9차-e) — **cron 경보가 매일 오탐을 울리고 있었다 (ur-ads 레인 주기 신고)**](handoff/2026-07-29-ads-lane-cadence.md)
