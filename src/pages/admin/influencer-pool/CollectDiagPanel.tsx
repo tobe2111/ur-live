@@ -11,6 +11,8 @@ export interface RunStats {
   crash?: string; crash_at?: string; crash_spent?: number; crash_budget?: number
   diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
+  /** 🎯 픽 소진 실태 — 계획한 키워드 중 실제로 몇 개를 돌았고, 그게 어느 경로에서 왔는지(성과가중/커서). */
+  picks?: { planned: number; processed: number; from_yt: number; from_cursor: number }
 }
 /** 야간 정비 기록(platform_settings) — 실행된 단계만 키가 존재. *_error 는 그 단계 실패. */
 export interface MaintenanceRecord {
@@ -61,6 +63,13 @@ export interface EnrichLaneRecord {
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
   total_measured?: number; total_contacts?: number
+  /**
+   * 📧 누적 이메일 — **이 레인이 '쓸 수 있는 리드'를 만드는지** 판정하는 값.
+   *   ⚠️ `total_contacts` 를 대신 보면 안 된다: 2026-07-29 까지 그 값은 네이버 블로거의 **자기 블로그 링크**를
+   *   연락처로 세어 부풀어 있었다(실측: 이메일 없는 303명 중 295명이 자기링크만 보유). 유입은 막았지만
+   *   기존 누적치는 그대로다 — 화면엔 **이메일만** 보여 오독을 원천 차단한다.
+   */
+  total_emails?: number
   crash?: string; crash_at?: string
 }
 
@@ -123,6 +132,18 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
         )
       ) : null}
 
+      {/* 🎯 계획 대비 실행 — 예산이 앞 몇 개에서 끝나면 뒤쪽(커서픽)은 영영 안 돈다. 숫자로 보여야
+          "왜 같은 키워드만 도나"를 코드를 뒤지지 않고 알 수 있다(2026-07-29 실측: 16개 계획 / 3개 실행). */}
+      {run?.picks ? (
+        <div className="mb-2 mt-1 text-[11px] text-gray-500">
+          🎯 이번 회차 키워드 {formatNumber(run.picks.processed)}개 실행 / {formatNumber(run.picks.planned)}개 계획
+          {` · 성과가중 ${formatNumber(run.picks.from_yt)} · 커서순환 ${formatNumber(run.picks.from_cursor)}`}
+          {run.picks.from_cursor === 0 && run.picks.planned > run.picks.processed
+            ? ' — 커서순환 키워드가 한 개도 도달하지 못했습니다(예산이 앞쪽에서 소진). 순환 폭이 성과가중 픽에만 의존합니다.'
+            : ''}
+        </div>
+      ) : null}
+
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
         <div className="mb-2 mt-1 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
       ) : null}
@@ -162,6 +183,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
           {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
+          {enrichLane.total_emails != null ? <span className="text-emerald-700">{` · 📧 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
         </div>
       ) : null}
       {enrichLane?.crash ? (
