@@ -317,6 +317,19 @@ TX: #{tx_id}
 누적 ₩#{total_earned} — 정산 페이지에서 환급 가능합니다.
 ```
 
+#### `affiliate_sale_credited` — 추천 링크 판매 실시간 적립 (크리에이터에게) · 2026-07-21 신규
+발송: 크리에이터 추천 링크로 결제가 귀속돼 적립될 때 (`affiliate-credit.ts` `creditAffiliateForOrder`,
+쇼핑/공구 일반 어필리에이트 — 위 `referral_commission_earned` 숙소 경로와 별개). **게이트 뒤**:
+`AFFILIATE_SALE_ALIMTALK_ENABLED=true` (기본 OFF — 콘솔 등록·승인 후 활성). `#{deal_name}` = 상품명
+(없으면 "내 추천 상품"), `#{amount}` = 적립 예정 딜(천단위 콤마). 인앱/웹푸시 "적립 예정"은 게이트 무관 상시.
+```
+[유어딜] 💰 추천 링크 실시간 적립
+
+회원님의 추천 링크로 '#{deal_name}' 1건이 판매되어 #{amount}딜이 적립 예정입니다.
+
+▶ 내 성과 보기: urdeal.kr/u/me/earnings
+```
+
 ### 이용권 사용 · 체험단 (2026-07 신규 — 콘솔 등록 필요)
 
 #### `voucher_used` — 이용권 사용 완료 (구매자에게)

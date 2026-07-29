@@ -109,6 +109,10 @@ export default function DesktopTopNav() {
   //   위에서 이미 return null. isHome 은 이 풀너비-네비 판정으로 일반화.
   const isHome = isFullBleedPcPath(location.pathname) && !hasOwnHeaderPc(location.pathname)
 
+  // 🗺️ 2026-07-20 (대표 — "지도에서 검색하면 지도에서 계속 나와야"): /map 은 지도 위 MapTopBar 가 자체
+  //   검색(입력 시 지도 재중심, 페이지 이탈 없음)을 담당 → 전역 상단바의 /search 튕김 검색 인풋은 숨김(이중 검색바 제거).
+  const isMapSurface = location.pathname === '/map'
+
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">
       <div className={isHome
@@ -146,20 +150,24 @@ export default function DesktopTopNav() {
           })}
         </nav>
 
-        {/* 검색 인풋 — xl+ 에서 넓게 */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md xl:max-w-lg">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            <input
-              ref={searchRef}
-              type="search"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
-              className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-gray-400/40 dark:focus:ring-white/20"
-            />
-          </div>
-        </form>
+        {/* 검색 인풋 — xl+ 에서 넓게. /map 은 지도 위 MapTopBar 검색이 담당 → 여기선 숨김(이중 검색바 제거). */}
+        {isMapSurface ? (
+          <div className="flex-1" />
+        ) : (
+          <form onSubmit={handleSearch} className="flex-1 max-w-md xl:max-w-lg">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                ref={searchRef}
+                type="search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
+                className="w-full pl-9 pr-4 py-2 text-[13px] bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-none outline-none focus:ring-2 focus:ring-gray-400/40 dark:focus:ring-white/20"
+              />
+            </div>
+          </form>
+        )}
 
         {/* 우측 액션 */}
         <div className="flex items-center gap-1 shrink-0 ml-auto">

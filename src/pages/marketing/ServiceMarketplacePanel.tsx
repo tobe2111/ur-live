@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from './PanelError'
+import { readServicesCache, warmServices } from './services-warm'
+const AdsTossPayModal = lazy(() => import('./AdsTossPayModal')) // 💳 열 때만 SDK 청크 로드
 
 /**
  * 🆕 2026-07-02 유어애즈 — 마케팅 서비스몰(카탈로그 + 주문요청, 무결제).
@@ -27,9 +29,12 @@ const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '
 const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400' }
 
 export default function ServiceMarketplacePanel() {
-  const [services, setServices] = useState<Service[]>([])
+  // ⚡ 세션 캐시 즉시 페인트(services-warm) — 탭 열자마자 카드 표시, 신선분은 load()가 교체.
+  const [services, setServices] = useState<Service[]>(() => (readServicesCache() as Service[] | null) || [])
   const [orders, setOrders] = useState<Order[]>([])
   const [bankInfo, setBankInfo] = useState<string | null>(null)
+  const [tossEnabled, setTossEnabled] = useState(false) // 💳 서버 게이트(ADS_TOSS_ENABLED) — OFF 면 버튼 미노출
+  const [payOrder, setPayOrder] = useState<Order | null>(null) // 결제 모달 대상
   const [sel, setSel] = useState<Service | null>(null)
   const [qty, setQty] = useState(1)
   const [preset, setPreset] = useState<string | null>(null)
@@ -39,6 +44,9 @@ export default function ServiceMarketplacePanel() {
   const [phone, setPhone] = useState('')
   const [target, setTarget] = useState('')
   const [memo, setMemo] = useState('')
+  const [bizRegion, setBizRegion] = useState('') // 🎯 매칭/아웃리치 상품 — 타겟 지역(선별 기준)
+  const [bizCategory, setBizCategory] = useState('') // 🎯 타겟 업종
+  const [bizStore, setBizStore] = useState('') // 🎯 매장/회사명 — 발송 시 "의뢰: ○○" 병기(명의 규칙)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
   // 리뷰
@@ -52,12 +60,38 @@ export default function ServiceMarketplacePanel() {
   const load = useCallback(async () => {
     setErr(false)
     try {
-      const [s, o] = await Promise.all([api.get('/api/ads/services', { headers: authHeader() }), api.get('/api/ads/services/order-history', { headers: authHeader() })])
-      if (s.data?.success) setServices(s.data.services || []); else setErr(true)
+      // ⚡ 서비스 목록은 워밍 in-flight 이어받기(대시보드 진입 시 선요청) — 탭 클릭 시 왕복 0에 수렴.
+      const [s, o, pc] = await Promise.all([
+        warmServices(),
+        api.get('/api/ads/services/order-history', { headers: authHeader() }),
+        api.get('/api/ads-pay/config', { headers: authHeader() }).catch(() => null),
+      ])
+      if (pc?.data?.success) setTossEnabled(!!pc.data.enabled)
+      if (s) setServices(s as Service[]); else if (!readServicesCache()) setErr(true)
       if (o.data?.success) { setOrders(o.data.orders || []); setBankInfo(o.data.bank_info || null) }
     } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
+
+  // 💳 토스 리다이렉트 복귀 — 서버 confirm(금액은 서버 DB 권위) 후 쿼리 청소. 실패 복귀는 안내만.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    // 탭 재편(2026-07-27): 결제 파라미터만 청소하고 서비스몰 탭 유지(?tab=services) — 홈으로 튕김 방지.
+    const clean = () => window.history.replaceState({}, '', `${window.location.pathname}?tab=services`)
+    if (sp.get('adsPayFail')) { toast.error(sp.get('message') || '결제가 취소되었거나 실패했습니다'); clean(); return }
+    const svcOrder = sp.get('adsPaySvc')
+    if (!svcOrder) return
+    const paymentKey = sp.get('paymentKey'), tossOrderId = sp.get('orderId')
+    clean()
+    if (!paymentKey || !tossOrderId) return
+    ;(async () => {
+      try {
+        const r = await api.post('/api/ads-pay/confirm', { order_id: Number(svcOrder), payment_key: paymentKey, toss_order_id: tossOrderId }, { headers: authHeader() })
+        if (r.data?.success) { toast.success('결제가 완료되었습니다. 담당자가 확인 후 진행합니다!'); await load() }
+        else toast.error(r.data?.error || '결제 확인에 실패했습니다')
+      } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '결제 확인에 실패했습니다') }
+    })()
+  }, [load])
 
   const loadReviews = useCallback(async (serviceId: number, page = 1) => {
     try {
@@ -89,21 +123,32 @@ export default function ServiceMarketplacePanel() {
     return () => { cancelled = true }
   }, [sel, qty, opts])
 
+  // 🎯 매칭/아웃리치 상품 — 지역·업종이 선별 기준이라 필수 입력. 메모에 [지역:][업종:] 로 구조화(어드민 이행 버튼이 파싱).
+  const isTargeted = !!sel && (sel.category === '매칭' || sel.category === '아웃리치')
   async function submit() {
     if (!sel) return
     if (!kakao.trim() && !phone.trim()) { toast.error('연락처(카카오 ID 또는 전화)를 입력해주세요'); return }
+    if (isTargeted && (!bizRegion.trim() || !bizCategory.trim() || !bizStore.trim())) { toast.error('매장/회사명·타겟 지역·업종을 입력해주세요 (선별·발송 명의 기준)'); return }
     setBusy(true)
     try {
-      const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo }, { headers: authHeader() })
-      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); await load() }
+      const memoOut = isTargeted ? `[매장:${bizStore.trim()}] [지역:${bizRegion.trim()}] [업종:${bizCategory.trim()}]${memo.trim() ? ' ' + memo.trim() : ''}` : memo
+      const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo: memoOut }, { headers: authHeader() })
+      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); setBizRegion(''); setBizCategory(''); setBizStore(''); await load() }
       else toast.error(r.data?.error || '접수 실패')
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '접수 실패') } finally { setBusy(false) }
   }
 
   const toggleOpt = (k: string) => setOpts(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })
 
+  const payModal = payOrder ? (
+    <Suspense fallback={null}>
+      <AdsTossPayModal order={payOrder} authHeader={() => authHeader() || {}} onClose={() => setPayOrder(null)} />
+    </Suspense>
+  ) : null
+
   return (
     <div className={`mt-3 ${card}`}>
+      {payModal}
       <div className="text-[14px] font-bold text-gray-900 dark:text-white">마케팅 서비스몰</div>
       <p className="mt-0.5 text-[11.5px] text-gray-400 dark:text-gray-500">SNS 성장·상위노출·체험단 등 마케팅 실행을 패키지로 주문하세요. 봇/가짜 없이 실제 광고·콘텐츠로 진행합니다. (결제 없이 요청 접수 → 담당자 확인)</p>
 
@@ -125,7 +170,7 @@ export default function ServiceMarketplacePanel() {
               <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1.5">내 주문</div>
               {bankInfo && orders.some(o => o.payment_status === 'unpaid' && o.status !== 'cancelled') && (
                 <div className="mb-2 rounded-lg border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/5 p-2.5 text-[12px] text-amber-700 dark:text-amber-400">
-                  <b>입금 안내</b> · {bankInfo} — 주문 금액을 입금해주시면 확인 후 진행됩니다.
+                  <b>입금 안내</b> · {bankInfo} — 주문 금액을 입금해주시면 확인 후 진행됩니다.{tossEnabled ? ' 카드 결제도 가능합니다(주문의 💳 버튼).' : ''}
                 </div>
               )}
               <div className="space-y-1.5">
@@ -135,6 +180,9 @@ export default function ServiceMarketplacePanel() {
                     <div className="shrink-0 flex flex-col items-end gap-1">
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${PAY_CLS[o.payment_status] || PAY_CLS.unpaid}`}>{PAY_KO[o.payment_status] || o.payment_status}</span>
+                      {tossEnabled && o.payment_status === 'unpaid' && o.status !== 'cancelled' && (
+                        <button onClick={() => setPayOrder(o)} className="px-1.5 py-0.5 rounded bg-gray-900 dark:bg-white text-[10.5px] font-bold text-white dark:text-[#0F151D]">💳 카드 결제</button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -189,6 +237,22 @@ export default function ServiceMarketplacePanel() {
             <input className={input} placeholder="전화번호" value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
           <input className={`${input} mt-2`} placeholder="대상 URL/계정 (선택, 예: 인스타 주소)" value={target} onChange={e => setTarget(e.target.value)} />
+          {isTargeted && (
+            <>
+              <div className="mt-2 flex gap-2">
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="매장/회사명 * (제안서에 '의뢰: ○○' 로 표기)" value={bizStore} onChange={e => setBizStore(e.target.value)} />
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="타겟 지역 * (예: 방배동)" value={bizRegion} onChange={e => setBizRegion(e.target.value)} />
+                <input className="flex-1 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white" placeholder="업종 * (예: 맛집·뷰티)" value={bizCategory} onChange={e => setBizCategory(e.target.value)} />
+              </div>
+              {/* ⚖️ 기대 관리(대표 운영수칙 ②) — 과금 기준·비보장·보정을 주문 시점에 명시(환불 분쟁 예방). */}
+              <div className="mt-2 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#0F151D] p-2.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                <b className="text-gray-700 dark:text-gray-300">진행 조건</b> · 본 서비스는 <b>제안 발송 대행</b>이며 발송 완료 기준으로 과금됩니다. 회신·성사는 보장되지 않습니다.
+                단, <b>회신이 1건도 없으면 동일 규모로 1회 무상 재발송</b>해 드립니다. 발송은 유어애즈 명의(+의뢰 매장 병기)로 나가며, 수신거부 요청자는 즉시 제외됩니다.
+              </div>
+            </>
+          )}
           <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
           <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
 

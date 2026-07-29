@@ -14,7 +14,7 @@ const DISMISS_KEY = 'ads_onboarding_dismissed'
 
 interface Steps { connected: boolean; hasKeywords: boolean; hasAutomation: boolean }
 
-export default function OnboardingChecklist() {
+export default function OnboardingChecklist({ onGo }: { onGo?: (anchor: string) => void }) {
   const [steps, setSteps] = useState<Steps | null>(null)
   const [hidden, setHidden] = useState(() => typeof window !== 'undefined' && localStorage.getItem(DISMISS_KEY) === '1')
 
@@ -41,7 +41,8 @@ export default function OnboardingChecklist() {
   const done = [steps.connected, steps.hasKeywords, steps.hasAutomation].filter(Boolean).length
   if (done === 3) return null // 전부 완료 — 안내 불필요
 
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // 탭 재편(2026-07-27) 후엔 부모가 앵커→탭 매핑(onGo) — 미전달 시 기존 앵커 스크롤 폴백.
+  const go = (id: string) => { if (onGo) { onGo(id); return } document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   const items: Array<{ ok: boolean; label: string; hint: string; anchor: string }> = [
     { ok: steps.connected, label: '광고계정 연동', hint: '검색광고 API 키로 고객사 계정을 연결하면 실적·자동입찰이 열립니다', anchor: 'sec-searchad' },
     { ok: steps.hasKeywords, label: '키워드 담기', hint: '연관키워드·기회 발굴에서 타겟 키워드를 포트폴리오에 저장하세요', anchor: 'sec-keyword' },

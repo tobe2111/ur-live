@@ -2,8 +2,11 @@
  * 📨 2026-07-21 유어애즈 — **동의 리드 한정** 이메일 자동 발송 헬퍼 (순수 — 테스트 가능).
  *   ⚖️ [LEGAL] 자동 발송은 **사전 수신동의자에게만**(정보통신망법). 호출부(admin 라우트)가
  *   SQL 로 `consented_at IS NOT NULL` 을 강제하고, 이 모듈은 본문에 수신거부 안내를 코드로 강제한다.
- *   콜드 리드(미동의 수집 풀) 자동 발송 경로는 구조적으로 없음 — 만들지 않는다(2026-07-20 대표 합의,
- *   2026-07-21 재확인: 동의 풀만 자동, 콜드는 사람이 1건씩).
+ *   ⚠️ 2026-07-28 **규칙 변경**: 위 "콜드 자동 발송 경로는 만들지 않는다"(2026-07-20 합의 · 07-21 재확인)를
+ *   대표가 명시적으로 뒤집었다 — 수집 대상이 **공개된 비즈니스 문의 이메일**(제휴 제안을 받으려고 본인이
+ *   공개한 주소)이라는 근거. 콜드 경로는 `outreach-cold.ts` + `send-cold` 엔드포인트로 **분리 신설**했고,
+ *   이 모듈의 강제 장치((광고) 표기 · 수신거부 · 전송자정보 · 야간금지)를 그대로 재사용한다.
+ *   이 파일의 함수들은 두 경로가 공유하므로 **약화 금지**(약화 시 양쪽 법정 표시가 동시에 무너진다).
  */
 import { OPT_OUT_LINE } from './influencer-outreach'
 
@@ -20,6 +23,23 @@ export function withOptOut(body: string): string {
   return body.includes(OPT_OUT_LINE) ? body : `${body}\n\n${OPT_OUT_LINE}`
 }
 
+/** ⚖️ 전송자 정보 표기(정보통신망법 — 영리 광고 전송 시 전송자 명칭·연락처 명시 의무). 본문 하단에 코드로 강제. */
+export const SENDER_INFO_LINE = '보낸 곳: 유어딜(UR Team) · https://urdeal.kr · 문의: urteam.corp@gmail.com'
+export function withSenderInfo(body: string): string {
+  return body.includes(SENDER_INFO_LINE) ? body : `${body}\n${SENDER_INFO_LINE}`
+}
+
+/** ⚖️ 광고 메일 제목 "(광고)" 표기 강제(정보통신망법 표기 의무 — 사람이 빠뜨려도 코드가 붙임). */
+export function withAdLabel(subject: string): string {
+  return /^\s*\(광고\)/.test(subject) ? subject : `(광고) ${subject}`
+}
+
+/** ⚖️ 야간 광고 전송 제한(KST 21:00~익일 08:00 — 야간 전송은 별도 동의 필요, 우리는 야간 동의를 안 받음) 판정. */
+export function isNightKST(nowMs: number): boolean {
+  const kstHour = new Date(nowMs + 9 * 3600_000).getUTCHours()
+  return kstHour >= 21 || kstHour < 8
+}
+
 /** plain text → 안전한 HTML(이스케이프 + 줄바꿈) — Resend 는 html 필드를 받음. */
 export function textToHtml(text: string): string {
   const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -34,7 +54,7 @@ export function welcomeEmail(name: string): { subject: string; body: string } {
   }
 }
 
-/** 캠페인 발송용 최종 본문 조립 — 개인화 + 수신거부 강제(순서 보장: 치환 후 강제). */
+/** 캠페인 발송용 최종 본문 조립 — 개인화 + 수신거부 + 전송자 정보 강제(순서 보장: 치환 후 강제). */
 export function buildCampaignBody(template: string, name: string): string {
-  return withOptOut(personalize(template, name))
+  return withSenderInfo(withOptOut(personalize(template, name)))
 }

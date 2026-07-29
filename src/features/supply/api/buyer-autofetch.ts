@@ -16,15 +16,34 @@ import { saveBuyerLeads, type BuyerLead } from './buyer-discovery'
 const CK_KEY = 'buyer_af_cookies', SRC_KEY = 'buyer_af_sources'
 export function hostOf(url: string): string { try { return new URL(url).host } catch { return '' } }
 
-// SSRF/사설망 차단 — 쿠키 실린 서버 fetch 는 반드시 공개 http(s) 호스트만(내부/메타데이터 IP 차단).
-const PRIVATE_HOST_RE = /^(?:localhost|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|\[?::1\]?|metadata\.google|169\.254\.169\.254)|\.(?:local|internal|lan)$/i
+// SSRF/사설망 차단 — 쿠키 실린 서버 fetch 는 반드시 공개 http(s) 호스트만.
+//   IPv4 사설/루프백/링크로컬/CGNAT + IPv6 루프백/ULA(fc00::/7)/링크로컬(fe80::/10)/매핑(::ffff:)/멀티캐스트 + 내부 호스트명 차단.
+//   ⚠️ DNS-rebinding(공개 호스트명이 내부 IP 로 해석)은 이 레이어로 못 막음(호스트명만 검사) — Worker fetch 특성상 잔여 리스크(문서화).
+const PRIV4_RE = /^(?:0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/
 export function isPublicHttpUrl(u: string): boolean {
-  try {
-    const x = new URL(u)
-    if (x.protocol !== 'https:' && x.protocol !== 'http:') return false
-    if (!x.hostname || PRIVATE_HOST_RE.test(x.hostname)) return false
+  let x: URL
+  try { x = new URL(u) } catch { return false }
+  if (x.protocol !== 'https:' && x.protocol !== 'http:') return false
+  const host = x.hostname.toLowerCase()
+  if (!host) return false
+  // 내부 호스트명(localhost/*.localhost/.local/.internal/.lan) + 클라우드 메타데이터
+  if (host === 'localhost' || host.endsWith('.localhost') || /\.(?:local|internal|lan)$/.test(host)) return false
+  if (host.startsWith('metadata.google')) return false
+  // IPv6 (URL.hostname 은 대괄호 포함해서 반환)
+  if (host.startsWith('[') || host.includes(':')) {
+    const v6 = host.replace(/^\[|\]$/g, '')
+    const mapped = v6.match(/::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i) // IPv4-mapped ::ffff:a.b.c.d
+    if (mapped) return !PRIV4_RE.test(mapped[1])
+    if (v6 === '::1' || v6 === '::') return false          // loopback / unspecified
+    if (/^f[cd]/i.test(v6)) return false                    // fc00::/7 ULA
+    if (/^fe[89ab]/i.test(v6)) return false                 // fe80::/10 link-local
+    if (/^ff/i.test(v6)) return false                       // ff00::/8 multicast
+    if (/^::ffff:/i.test(v6)) return false                  // hex-form mapped(파싱 못한 것) 보수적 차단
     return true
-  } catch { return false }
+  }
+  // IPv4 (URL 이 10진수/16진수/8진수를 dotted 로 정규화 — 예: http://2130706433/ → 127.0.0.1)
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return !PRIV4_RE.test(host)
+  return true
 }
 
 async function getSetting(env: Env, key: string): Promise<string> {
@@ -40,6 +59,10 @@ async function loadCookieMap(env: Env): Promise<Record<string, string>> {
 }
 export async function saveCookieForHost(env: Env, host: string, cookie: string): Promise<void> {
   if (!host || !cookie) return
+  // 로그인 세션 쿠키는 민감정보 — KEK(DATA_ENCRYPTION_KEY) 없으면 평문 저장 대신 거부(encryptAtRest 는 KEK 없을 때 평문 폴백).
+  if (!env.DATA_ENCRYPTION_KEY || env.DATA_ENCRYPTION_KEY.length < 16) {
+    throw new Error('NO_ENCRYPTION_KEY — 쿠키 저장에 DATA_ENCRYPTION_KEY(≥16자)가 필요합니다(평문 저장 방지).')
+  }
   const map = await loadCookieMap(env)
   map[host] = await encryptAtRest(cookie, env.DATA_ENCRYPTION_KEY)
   await setSetting(env, CK_KEY, JSON.stringify(map))
@@ -93,11 +116,17 @@ export async function verifyIngestToken(env: Env, token: string): Promise<boolea
   return !!t && t === token
 }
 /** 북마클릿이 보낸 상세 HTML 배열을 파싱·저장(리스트 행 보강 포함). */
-export async function ingestHtmls(env: Env, htmls: string[]): Promise<{ parsed: number; saved: number }> {
+export async function ingestHtmls(env: Env, htmls: string[], refs?: string[]): Promise<{ parsed: number; saved: number }> {
   const leads: BuyerLead[] = []
-  for (const html of htmls.slice(0, 80)) {
+  const list = htmls.slice(0, 200)
+  for (let i = 0; i < list.length; i++) {
+    const html = list[i]
     if (typeof html !== 'string' || !html) continue
-    leads.push(...parseBuyKoreaInquiries(htmlToText(html)))
+    const ref = Array.isArray(refs) ? String(refs[i] || '').slice(0, 200) || null : null
+    const got = parseBuyKoreaInquiries(htmlToText(html))
+    // 재수집 건너뛰기용 소스 참조를 이 상세에서 나온 리드에 태깅(북마클릿 known 조회와 대칭).
+    if (ref) for (const g of got) g.source_ref = ref
+    leads.push(...got)
   }
   const saved = await saveBuyerLeads(env.DB, leads).catch(() => 0)
   return { parsed: leads.length, saved }
@@ -139,6 +168,16 @@ export function htmlToText(html: string): string {
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
+// AbortController 로 행(hang) 방지 — 응답 없는 origin 이 worker 를 무한 점유하는 것 차단(8s).
+async function fetchHtml(url: string, init: RequestInit): Promise<string> {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), 8000)
+  try {
+    const r = await fetch(url, { ...init, signal: ac.signal })
+    return r.ok ? await r.text() : ''
+  } catch { return '' } finally { clearTimeout(t) }
+}
+
 export interface AutoFetchResult { ran: boolean; reason?: string; urls_found: number; fetched: number; parsed: number; saved: number; errors: number; sample: string[] }
 
 /** 리스트 URL(+쿠키)로 상세 링크를 뽑아 각 상세를 자동 fetch·파싱·저장. urls[] 직접 지정도 가능. */
@@ -162,7 +201,7 @@ export async function runBuyerAutoFetch(env: Env, opts: { cookie: string; listUr
   // ⚠️ 쿠키 유출/SSRF 방어: 쿠키는 primaryHost 세션이므로 **primaryHost + 공개호스트** URL 에만 붙인다.
   //   redirect:'manual' — 외부로 302 시 쿠키 따라가는 것 차단(2xx 만 파싱).
   if (opts.listUrl && isPublicHttpUrl(opts.listUrl) && hostOf(opts.listUrl) === primaryHost) {
-    const listHtml = await fetch(opts.listUrl, { headers, redirect: 'manual' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
+    const listHtml = await fetchHtml(opts.listUrl, { headers, redirect: 'manual' })
     const found = listHtml ? extractDetailUrls(listHtml, opts.listUrl) : []
     if (!found.length && LOGIN_MARKER.test(listHtml)) return { ...empty, ran: true, reason: 'COOKIE_EXPIRED — 로그인 쿠키가 만료된 것 같습니다. 쿠키를 다시 붙여넣어 주세요.' }
     urls = urls.concat(found)
@@ -173,7 +212,7 @@ export async function runBuyerAutoFetch(env: Env, opts: { cookie: string; listUr
   let fetched = 0, errors = 0
   const sample: string[] = []
   for (const u of urls) {
-    const html = await fetch(u, { headers, redirect: 'manual' }).then(r => (r.ok ? r.text() : '')).catch(() => '')
+    const html = await fetchHtml(u, { headers, redirect: 'manual' })
     if (!html) { errors++; await delay(400); continue }
     fetched++
     const got = parseBuyKoreaInquiries(htmlToText(html))
@@ -187,19 +226,22 @@ export async function runBuyerAutoFetch(env: Env, opts: { cookie: string; listUr
 export interface SavedRunResult { ran: boolean; reason?: string; saved: number; sources: Array<{ url: string; label: string; saved: number; parsed: number; reason?: string }> }
 
 /** 저장된 소스(리스트 URL) 전부를 저장된 쿠키로 자동 수집 — 버튼 한 번(또는 크론)으로. */
-export async function runSavedSources(env: Env, max?: number): Promise<SavedRunResult> {
+export async function runSavedSources(env: Env, max?: number, budgetCap?: number): Promise<SavedRunResult> {
   if (env.BUYER_AUTO_FETCH_ENABLED !== 'true') return { ran: false, reason: 'DISABLED', saved: 0, sources: [] }
   // 밴/subrequest 보호: 한 실행 최대 8소스 + 전체 공유 fetch 예산(소스마다 예산 재설정하던 폭발 차단).
+  //   budgetCap 지정 시 그 값으로 상한(크론이 collect+enrich 합계를 ~50 아래로 나눠 씀).
   const sources = (await loadSources(env)).slice(0, 8)
   if (!sources.length) return { ran: false, reason: 'NO_SOURCES — 저장된 리스트 URL 이 없습니다(자동 수집 실행 시 "저장" 체크).', saved: 0, sources: [] }
-  let saved = 0, remaining = Math.max(10, Math.min(40, parseInt(env.BUYER_SUBREQUEST_BUDGET || '40', 10) || 40))
+  const cap = budgetCap ?? (parseInt(env.BUYER_SUBREQUEST_BUDGET || '40', 10) || 40)
+  let saved = 0, remaining = Math.max(6, Math.min(40, cap))
   const out: SavedRunResult['sources'] = []
   for (const s of sources) {
     if (remaining <= 2) { out.push({ url: s.url, label: s.label, saved: 0, parsed: 0, reason: 'BUDGET_EXHAUSTED' }); continue }
     const perMax = Math.min(max || 15, Math.max(1, remaining - 1))
     const r = await runBuyerAutoFetch(env, { cookie: '', listUrl: s.url, max: perMax }).catch(() => null)
     saved += r?.saved || 0
-    remaining -= (r?.fetched || 0) + 1 // 리스트 1 + 상세 fetch 수
+    // 시도한 subrequest 전부 차감(성공 fetched + 실패 errors + 리스트 1) — 성공만 세면 밴/403 다발 시 예산 초과(1101).
+    remaining -= (r?.fetched || 0) + (r?.errors || 0) + 1
     out.push({ url: s.url, label: s.label, saved: r?.saved || 0, parsed: r?.parsed || 0, reason: r?.reason })
   }
   return { ran: true, saved, sources: out }

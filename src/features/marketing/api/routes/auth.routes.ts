@@ -5,7 +5,8 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount } from '../ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount, requestAdsAccess, getAdsAccessRequest } from '../ads-account'
+import { sendDiscordAlert } from '@/worker/utils/discord-alert'
 import { adsAccessCode } from './helpers'
 
 const adsAuthRoutes = new Hono<{ Bindings: Env }>()
@@ -77,9 +78,45 @@ adsAuthRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, wi
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  // env 코드 미설정 = 코드 입력 경로 자체가 닫힘(어떤 코드도 실패) → 승인제 안내로 명확화(무한 재시도 방지).
+  if (!adsAccessCode(c.env)) return c.json({ success: false, error: '지금은 승인제로만 운영됩니다 — 아래 "입장 요청하기"를 눌러주세요. 승인되면 자동 입장됩니다.' }, 400)
   const r = await unlockAdsAccount(c.env.DB, id, String(body.code || ''), adsAccessCode(c.env))
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, unlocked: true })
+})
+
+// POST /api/ads/auth/request-access — 📥 액세스 입장 요청(코드 없는 가입자 데드엔드 해소).
+//   어드민 승인 큐(/admin/ads-accounts)로 접수 + 디스코드 알림(best-effort). 멱등 — 중복 요청 무해.
+adsAuthRoutes.post('/auth/request-access', rateLimit({ action: 'ads-access-req', max: 5, windowSec: 600 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await requestAdsAccess(c.env.DB, id, body.note ? String(body.note) : undefined)
+  if (r === 'unlocked') return c.json({ success: true, unlocked: true })
+  if (r === 'created') {
+    const acc = await getAdsAccount(c.env.DB, id)
+    const who = `${acc?.company_name || '?'} (${acc?.email || `#${id}`})`
+    // 🔔 어드민 벨 — Discord 미설정/미확인이어도 요청이 조용히 묻히지 않게(승인 큐의 존재 이유).
+    //    partner-pool.routes 와 동일 패턴(같은 D1 공유 — ads 워커에서도 호출 가능).
+    await import('../../../notifications/api/dashboard-notifications.routes')
+      .then(({ createDashboardNotification }) => createDashboardNotification(
+        c.env.DB, 'admin', null, 'ads_access_request', '🔑 유어애즈 입장 요청',
+        `${who} — 승인 대기 중`, '/admin/ads-accounts'))
+      .catch(() => null)
+    if (c.env.DISCORD_WEBHOOK_URL) {
+      await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, '🔑 유어애즈 입장 요청',
+        `${who} — /admin/ads-accounts 에서 승인/거절`, 'warn').catch(() => null)
+    }
+  }
+  return c.json({ success: true, requested: true })
+})
+
+// GET /api/ads/auth/request-access — 내 요청 상태(pending/approved/rejected 또는 없음)
+adsAuthRoutes.get('/auth/request-access', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const req = await getAdsAccessRequest(c.env.DB, id)
+  return c.json({ success: true, request: req })
 })
 
 // POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.

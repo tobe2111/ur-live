@@ -80,7 +80,7 @@ import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-g
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
-import { googleRoutes } from '../features/auth/api/google.routes';
+// import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
@@ -161,6 +161,8 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
+import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
+import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
@@ -190,13 +192,22 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 // import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
 // /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { adsPayRoutes, adminAdsPayRoutes } from '../features/marketing/api/ads-pay.routes'; // 💳 서비스몰 토스(게이트 OFF 기본)
+import { adsKakaoAuthRoutes } from '../features/marketing/api/ads-kakao-auth.routes'; // 🟡 유어애즈 카카오 로그인
+// 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
+import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
+import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
+import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-public.routes';
+import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
+import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
+import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
+import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
-// 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
-import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
+import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes'; // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -373,11 +384,14 @@ app.use('*', logger());
 // 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
 //    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
 const _bodyLimit1m = bodyLimit(1_000_000);
-const _bodyLimit8m = bodyLimit(8_000_000);
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimit8m(c, next) : _bodyLimit1m(c, next));
+// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 큰 캡은 무인증 파싱 증폭(DoS) 표면 → 1.5MB 로 축소.
+//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 1.5MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
+//   토큰 검사가 바디 파싱 이후라, 캡이 낮을수록 무토큰 공격자의 사전-파싱 비용이 작아짐.
+const _bodyLimitIngest = bodyLimit(1_500_000);
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
-// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지).
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : (rateLimiterMiddleware as any)(c, next));
+// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
+app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -402,8 +416,8 @@ const _globalCors = cors({
   credentials: true,
   maxAge: 86400,
 });
-// 🔖 북마클릿 인제스트(/api/buyer-ingest)는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
-app.use('*', (c, next) => c.req.path === '/api/buyer-ingest' ? next() : _globalCors(c, next));
+// 🔖 북마클릿 인제스트(/api/buyer-ingest[/known])는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
+app.use('*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : _globalCors(c, next));
 
 // ============================================================
 // Security Headers (CSP etc.)
@@ -1013,9 +1027,12 @@ app.use('*', async (c, next) => {
         },
       });
     } else if (isBlogSurface) {
-      // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+      // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
+      //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
+      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
+        : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent('', { html: true }); },
+        element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
@@ -1423,8 +1440,8 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 
-// Feature: Google/Firebase auth
-app.route('/api/auth/google', googleRoutes);
+// 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
+// app.route('/api/auth/google', googleRoutes);
 
 // ============================================================
 // Users Routes  ← /api/users/role, /api/users/init
@@ -1536,7 +1553,13 @@ app.route('/api/products', featureProductsRoutes);
 // 🎯 [urads-split Phase D] /api/ads 로컬 폴백 제거 — Service Binding 프록시(env.ADS→ur-ads)가 전담. 재도입=원복.
 // app.route('/api/ads', marketingRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
-app.route('/api/creator-apply', influencerApplyRoutes);
+app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
+// 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
+//   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
+app.route('/api/ads-pay', adsPayRoutes);
+app.route('/api/admin/ads-pay', adminAdsPayRoutes);
+// 🟡 유어애즈 카카오 로그인(+유어딜 세션 브리지) — 메인 전용(KAKAO 키·ur_session 이 여기). 소비자 카카오(잠금) 무접촉.
+app.route('/api/ads-auth', adsKakaoAuthRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
@@ -1610,11 +1633,18 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 // app.route('/api/admin/castings', adminCastingRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
+app.route('/api/admin/partner-pool', partnerPoolRoutes); // 🤝 B2B 파트너(업체) 풀 — 메인 어드민 JWT(프록시 비위임), ad_company_leads 격리
+app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 후보 — 인허가 발굴(store_prospects 격리), 메인 어드민 JWT
+app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
+app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
+app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
 // 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
 // ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
 //   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
 app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
+// ⏳ [TEMP-TEST 2026-07-28] 제조사·판매사 후보 풀 — 도매 워커 배포 전까지 라이브 어드민에서 검증(admin 전용·격리 테이블).
+app.route('/api/admin/maker-pool', makerPoolTestRoutes);
 // 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
 app.route('/api/buyer-ingest', buyerIngestRoutes);
 // app.route('/api/seller/castings', sellerCastingRoutes);
@@ -2526,6 +2556,11 @@ export default {
       ) {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
       }
+      // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const renamed = resolveRenamedBlogPath(url.pathname);
+        if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
+      }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
       if (!isWhHost && !CONSUMER_FAST_PATH.has(host)) {
@@ -2558,8 +2593,25 @@ export default {
         } catch { /* 조회 실패 — 기존 /profile 서빙으로 통과 */ }
       }
     } catch { /* URL 파싱 시 통과 */ }
+    // 📊 2026-07-22 (대표 "모두 진행"): D1 rows_read 집계 프록시 — **저율 자동 샘플링(상시)**.
+    //   토글(`D1_PROFILE_ENABLED='true'`)=100% 강제, 아니면 기본 2%(`D1_PROFILE_SAMPLE` 로 조정, '0'=OFF).
+    //   샘플된 요청만 프록시 → 오버헤드 사실상 0인데 데이터는 상시 축적(수동 토글 불필요). 저장 쓰기 0.
+    let fenv: unknown = env;
+    try {
+      const pe = env as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+      const forceOn = pe?.D1_PROFILE_ENABLED === 'true';
+      const rawSample = pe?.D1_PROFILE_SAMPLE;
+      const sampleRate = forceOn ? 1 : (rawSample != null && rawSample !== '' ? Number(rawSample) : 0.02);
+      if (sampleRate > 0 && (forceOn || Math.random() < sampleRate)) {
+        const dbEnv = env as { DB?: D1Database };
+        if (dbEnv.DB) {
+          const { profileD1 } = await import('./utils/d1-profiler');
+          fenv = { ...(env as object), DB: profileD1(dbEnv.DB, new URL(request.url).pathname) };
+        }
+      }
+    } catch { /* 프로파일 배선 실패 — 원본 env 로 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
-    return app.fetch(request, env, ctx);
+    return app.fetch(request, fenv, ctx);
   },
   scheduled: handleCronScheduled,
 };

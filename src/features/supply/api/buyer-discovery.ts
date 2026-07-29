@@ -54,6 +54,8 @@ export interface BuyerLead {
   address?: string | null
   /** buyKorea 등 인콰이어리(구매요청) 제목 — 리스트↔상세 매칭 키(상세 붙여넣기가 리스트 행을 보강). 파서 전용. */
   inquiry_title?: string | null
+  /** 소스 상세 참조 키(북마클릿이 보낸 host|id) — 재수집 시 이미 읽은 상세 건너뛰기용. */
+  source_ref?: string | null
 }
 
 /* ── 컨택 추출(자립 — 유어애즈 의존 제거, 인라인) ───────────────────────────── */
@@ -135,11 +137,20 @@ export function scoreBuyerFit(lead: Pick<BuyerLead, 'intent_signal' | 'category'
 
 // 회사명 키 — 구두점/공백만 제거하고 **단어는 보존**(Trading/Import/Ltd 를 떼면 서로 다른 회사가 병합됨).
 //   비면(구두점만) 붕괴 방지 폴백. 유니코드 문자/숫자 보존(아랍/키릴 회사명도 키 생성).
+// 법인격 접미어(같은 회사의 다른 표기를 유발) — 정규화 시 제거해 "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 통합.
+// ⚠️ 'spa'/'sas'/'aps' 제외 — 실단어/브랜드와 충돌해 서로 다른 회사를 오병합함:
+//   'spa'=미용 업종(대상 카테고리!) 실명("Bliss Spa"≠"Bliss"), 'sas'=항공/브랜드, 'aps'=희귀 덴마크 법인격.
+//   명확한 법인격 접미어만 유지(오병합보다 미병합이 안전 — 미병합은 손실 0, 오병합은 리드 유실).
+const LEGAL_SUFFIX_RE = /\b(private|pvt|limited|ltd|inc|incorporated|llc|co|corp|corporation|company|gmbh|srl|plc|llp|pte|pty|sdn|bhd|sarl)\b/g
 export function normalizeCompanyKey(company: string, country?: string | null): string {
   const raw = String(company || '')
-  let base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
-  if (!base) base = 'x' + raw.trim().toLowerCase().replace(/\s+/g, '') || 'x'
-  const c = String(country || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+  // 법인격 접미어 제거 후 영숫자만 — 표기 차이(Pvt. Ltd. / , / .)에 강건한 dedup 키.
+  const stripped = raw.toLowerCase().replace(/[.,]/g, ' ').replace(LEGAL_SUFFIX_RE, ' ')
+  let base = stripped.replace(/[^\p{L}\p{N}]/gu, '')
+  if (!base) base = raw.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') // 접미어 제거로 비면 원문 폴백
+  if (!base) base = ('x' + raw.trim().toLowerCase().replace(/\s+/g, '')) || 'x'
+  // 국가는 별칭 정규화(normCountryKey) — 'US'/'USA'/'United States'/'미국' 이 같은 키가 되게(피드·붙여넣기 소스간 중복 방지).
+  const c = normCountryKey(country)
   return `${base}|${c}`.slice(0, 160)
 }
 
@@ -173,17 +184,36 @@ export async function ensureBuyerSchema(DB: D1Database): Promise<void> {
     source_keyword TEXT,
     status TEXT NOT NULL DEFAULT 'lead',
     memo TEXT,
+    source_ref TEXT,
     contacted_at DATETIME,
     follow_up_at DATETIME,
     collected_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(company_key)
   )`).run().catch(() => null)
-  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키 + 회사 주소.
+  // 기존 테이블(컬럼 없던 배포분) 보강 — 상세 붙여넣기 매칭 키 + 회사 주소 + 재수집 건너뛰기용 소스 참조.
   await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN inquiry_title TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN address TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE overseas_buyer_leads ADD COLUMN source_ref TEXT').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_score ON overseas_buyer_leads(match_score DESC, id DESC)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_ctry ON overseas_buyer_leads(country, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_inq ON overseas_buyer_leads(inquiry_title)').run().catch(() => null)
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_buyer_leads_ref ON overseas_buyer_leads(source_ref)').run().catch(() => null)
+}
+
+/** 재수집 시 이미 저장된 상세(북마클릿이 보낸 source_ref)를 건너뛰기 위한 조회 — 존재하는 ref 집합 반환. */
+export async function listKnownRefs(DB: D1Database, refs: string[]): Promise<string[]> {
+  await ensureBuyerSchema(DB)
+  const clean = Array.from(new Set((refs || []).map(r => String(r || '').slice(0, 200)).filter(Boolean)))
+  if (!clean.length) return []
+  const out: string[] = []
+  for (let i = 0; i < clean.length; i += 200) {
+    const chunk = clean.slice(i, i + 200)
+    const ph = chunk.map(() => '?').join(',')
+    const rs = await DB.prepare(`SELECT DISTINCT source_ref FROM overseas_buyer_leads WHERE source_ref IN (${ph})`)
+      .bind(...chunk).all<{ source_ref: string }>().catch(() => null)
+    if (rs?.results) for (const r of rs.results) if (r.source_ref) out.push(r.source_ref)
+  }
+  return out
 }
 
 export interface BuyerTarget { id: number; category: string; country: string; keyword: string | null; active: number; hits: number; source: string; found_total: number; saved_total: number; last_run_at: string | null; created_at: string }
@@ -247,10 +277,14 @@ async function getActiveTargets(DB: D1Database): Promise<ActiveTarget[]> {
 async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active: ActiveTarget[]): Promise<boolean> {
   const title = (l.inquiry_title || '').slice(0, 200)
   if (!title) return false
+  // 국가까지 일치해야 매칭 — 같은 제목("Skincare products")의 다른 국가 바이어에 엉뚱한 연락처가 붙던 HIGH 버그 차단.
+  //   상세 국가가 있으면 국가 일치(또는 플레이스홀더 국가 미상)만, 상세 국가가 없으면 제목 매칭 유지(최선).
+  const lc = (l.country || '').trim()
   const existing = await DB.prepare(
     `SELECT id, country FROM overseas_buyer_leads
      WHERE inquiry_title = ? AND email IS NULL AND decision_maker_email IS NULL
-       AND (company IS NULL OR company = inquiry_title) LIMIT 1`).bind(title)
+       AND (company IS NULL OR company = inquiry_title)
+       AND (? = '' OR country IS NULL OR country = ?) LIMIT 1`).bind(title, lc, lc)
     .first<{ id: number; country: string | null }>().catch(() => null)
   if (!existing) return false
   const intent = INTENT_KEYS.includes(l.intent_signal) ? l.intent_signal : 'buying_lead'
@@ -266,6 +300,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       decision_maker_email = COALESCE(decision_maker_email, ?), imports_from_korea = COALESCE(imports_from_korea, ?),
       category = COALESCE(category, ?), est_volume = COALESCE(est_volume, ?), target_market = COALESCE(target_market, ?),
       country = COALESCE(country, ?), address = COALESCE(address, ?),
+      source_ref = COALESCE(source_ref, ?),
       description = CASE WHEN LENGTH(COALESCE(description,'')) < ? THEN ? ELSE description END,
       source = ?, intent_signal = ?, match_score = MAX(COALESCE(match_score,0), ?)
     WHERE id = ?`)
@@ -273,7 +308,7 @@ async function enrichExistingLeadByInquiry(DB: D1Database, l: BuyerLead, active:
       company, company, newKey,
       l.email, l.phone, l.website, l.decision_maker, l.decision_maker_title, l.decision_maker_email,
       l.imports_from_korea, l.category, l.est_volume, l.target_market, l.country,
-      (l.address || '').slice(0, 300) || null,
+      (l.address || '').slice(0, 300) || null, (l.source_ref || '').slice(0, 200) || null,
       desc.length, desc, l.source, intent, score, existing.id,
     ).run().catch(() => null)
   return !!(r && (r.meta?.changes ?? 0) > 0)
@@ -292,9 +327,10 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
     toInsert.push(l)
   }
   const sql = `INSERT INTO overseas_buyer_leads
-    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (company_key, source, intent_signal, company, country, target_market, category, imports_from_korea, website, email, phone, decision_maker, decision_maker_title, decision_maker_email, est_volume, inquiry_title, address, match_score, description, source_keyword, source_ref)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(company_key) DO UPDATE SET
+      source_ref = COALESCE(overseas_buyer_leads.source_ref, excluded.source_ref),
       address = COALESCE(overseas_buyer_leads.address, excluded.address),
       email = COALESCE(overseas_buyer_leads.email, excluded.email),
       phone = COALESCE(overseas_buyer_leads.phone, excluded.phone),
@@ -318,6 +354,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
        OR (overseas_buyer_leads.category IS NULL AND excluded.category IS NOT NULL)
        OR (overseas_buyer_leads.country IS NULL AND excluded.country IS NOT NULL)
        OR (overseas_buyer_leads.address IS NULL AND excluded.address IS NOT NULL)
+       OR (overseas_buyer_leads.source_ref IS NULL AND excluded.source_ref IS NOT NULL)
        OR (COALESCE(excluded.match_score,0) > COALESCE(overseas_buyer_leads.match_score,0))`
   const CHUNK = 50
   for (let i = 0; i < toInsert.length; i += CHUNK) {
@@ -329,7 +366,7 @@ export async function saveBuyerLeads(DB: D1Database, leads: BuyerLead[], targets
         l.country, l.target_market, l.category, l.imports_from_korea, l.website, l.email, l.phone,
         l.decision_maker, l.decision_maker_title, l.decision_maker_email, l.est_volume,
         (l.inquiry_title || '').slice(0, 200) || null, (l.address || '').slice(0, 300) || null, score,
-        (l.description || '').slice(0, 800), l.source_keyword,
+        (l.description || '').slice(0, 800), l.source_keyword, (l.source_ref || '').slice(0, 200) || null,
       )
     })
     const rs = await DB.batch(stmts).catch(() => null)
@@ -362,9 +399,11 @@ export async function listBuyerLeads(DB: D1Database, filter: { status?: string; 
   if (filter.hasContact) where.push('(email IS NOT NULL OR decision_maker_email IS NOT NULL OR phone IS NOT NULL)')
   if (filter.q) { where.push('(LOWER(company) LIKE ? OR LOWER(email) LIKE ? OR LOWER(decision_maker) LIKE ?)'); const like = `%${filter.q.toLowerCase()}%`; binds.push(like, like, like) }
   const limit = Math.min(1000, Math.max(1, filter.limit || 500))
+  // ⚠️ DB 에러를 []로 삼키지 않음 — 삼키면 '조회 실패'가 '바이어 0건'으로 오표시돼 대표가 데이터 유실로 오해.
+  //   throw → 라우트 500 → 프런트 오류 배너(빈 상태 아님). (UI isError 불변식 준수.)
   const r = await DB.prepare(`SELECT ${SELECT_COLS} FROM overseas_buyer_leads WHERE ${where.join(' AND ')} ORDER BY COALESCE(match_score,0) DESC, collected_at DESC, id DESC LIMIT ?`)
-    .bind(...binds, limit).all<BuyerLeadRow>().catch(() => null)
-  return r?.results || []
+    .bind(...binds, limit).all<BuyerLeadRow>()
+  return r.results || []
 }
 
 export async function updateBuyerLead(DB: D1Database, id: number, patch: { status?: string; memo?: string; follow_up_at?: string | null }): Promise<{ ok: boolean; error?: string }> {
@@ -396,10 +435,35 @@ export async function deleteBuyerLead(DB: D1Database, id: number): Promise<{ ok:
   return { ok: true }
 }
 
-export async function rescoreBuyerLeads(DB: D1Database): Promise<number> {
+// 선택 삭제(체크박스 다건). 유효 정수 id 만, 한 번에 최대 500개(D1 IN 절/subrequest 안전) — 초과분은 청크 반복.
+export async function deleteBuyerLeads(DB: D1Database, ids: number[]): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const clean = Array.from(new Set((ids || []).map(n => Number(n)).filter(n => Number.isInteger(n) && n > 0)))
+  if (!clean.length) return { ok: false, deleted: 0 }
+  let deleted = 0
+  for (let i = 0; i < clean.length; i += 500) {
+    const chunk = clean.slice(i, i + 500)
+    const ph = chunk.map(() => '?').join(',')
+    const r = await DB.prepare(`DELETE FROM overseas_buyer_leads WHERE id IN (${ph})`).bind(...chunk).run().catch(() => null)
+    deleted += (r?.meta?.changes as number) || 0
+  }
+  return { ok: true, deleted }
+}
+
+// 전체 삭제(풀 비우기) — 어드민이 명시 확인 후에만 호출. 격리 테이블이라 유어딜/도매 무관.
+export async function deleteAllBuyerLeads(DB: D1Database): Promise<{ ok: boolean; deleted: number }> {
+  await ensureBuyerSchema(DB)
+  const r = await DB.prepare('DELETE FROM overseas_buyer_leads').run().catch(() => null)
+  return { ok: !!r, deleted: (r?.meta?.changes as number) || 0 }
+}
+
+// 최신 리드 우선 재스코어 — 전체 무제한 SELECT+UPDATE 는 대량 시 Worker CPU/subrequest 한도 초과(타깃 토글마다 동기 실행).
+//   최근 5000행으로 캡(스코어에 중요한 신규분 우선). 호출부는 waitUntil 로 비동기 실행 권장.
+export async function rescoreBuyerLeads(DB: D1Database, cap = 5000): Promise<number> {
   await ensureBuyerSchema(DB)
   const targets = await getActiveTargets(DB)
-  const rows = (await DB.prepare('SELECT id, intent_signal, category, country, target_market, imports_from_korea, decision_maker_email FROM overseas_buyer_leads')
+  const rows = (await DB.prepare('SELECT id, intent_signal, category, country, target_market, imports_from_korea, decision_maker_email FROM overseas_buyer_leads ORDER BY id DESC LIMIT ?')
+    .bind(Math.max(100, Math.min(20000, cap)))
     .all<Pick<BuyerLeadRow, 'id' | 'intent_signal' | 'category' | 'country' | 'target_market' | 'imports_from_korea' | 'decision_maker_email'>>().catch(() => null))?.results || []
   let n = 0
   const CHUNK = 100
@@ -424,6 +488,42 @@ const truthy = (v: unknown): number | null => {
 }
 
 /** 응답에서 항목 배열을 찾는다 — 최상위 배열 / data|items|list|results / data.go.kr response.body.items 형태. */
+// data.go.kr XML 응답의 <item> 블록을 평면 객체 배열로 추출(워커-safe, DOM 불필요). CDATA 지원.
+//   ⚠️ item *내부* 콘텐츠만(그룹1) 필드 파싱 — 안 그러면 백레퍼런스가 <item>…</item> 래퍼 자체를 한 필드로 삼킴.
+function parseXmlItems(xml: string): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  const blockRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi
+  let bm: RegExpExecArray | null
+  while ((bm = blockRe.exec(xml)) !== null) {
+    const inner = bm[1]
+    const obj: Record<string, unknown> = {}
+    for (const m of inner.matchAll(/<([A-Za-z_][\w.-]*)>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/\1>/g)) {
+      const v = m[2].trim()
+      if (v) obj[m[1]] = v
+    }
+    if (Object.keys(obj).length) out.push(obj)
+  }
+  return out
+}
+
+/**
+ * 응답 본문(JSON 배열/객체 · data.go.kr XML · NDJSON) → 항목 배열. 형식 자동판별.
+ *   fetchFeeds 와 수요통계(trade-demand) 가 공유하는 SSOT — 파싱 구현 중복 방지.
+ */
+export function parseFeedItems(text: string): Record<string, unknown>[] {
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return []
+  try {
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) return digArray(JSON.parse(trimmed))
+    // data.go.kr 오픈API 는 dataType 미지정 시 XML 반환 — <item> 블록을 평면 객체로 추출.
+    if (trimmed.startsWith('<')) return parseXmlItems(trimmed)
+    // NDJSON — 줄별 개별 파싱(한 줄 깨져도 나머지 유지).
+    return trimmed.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(l => { try { return JSON.parse(l) } catch { return null } })
+      .filter(Boolean) as Record<string, unknown>[]
+  } catch { return [] }
+}
+
 function digArray(root: unknown): Record<string, unknown>[] {
   if (Array.isArray(root)) return root as Record<string, unknown>[]
   if (root && typeof root === 'object') {
@@ -461,34 +561,31 @@ export async function fetchFeeds(env: Env, budget: FetchBudget, target: { catego
     const text = await fetch(url, { headers })
       .then(r => (r.ok ? r.text() : '')).catch(() => '')
     if (!text) continue
-    let items: Record<string, unknown>[] = []
-    const trimmed = text.trim()
-    try {
-      if (trimmed.startsWith('[') || trimmed.startsWith('{')) items = digArray(JSON.parse(trimmed))
-      else items = trimmed.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l))
-    } catch { items = [] }
+    const items = parseFeedItems(text) // JSON/XML(data.go.kr)/NDJSON 자동판별 — 공용 SSOT
     for (const it of items.slice(0, 500)) {
-      // 회사명 — 일반 피드는 company/name, 미국 ITA Trade Leads 는 title(입찰/기관명)이 회사 자리.
-      const company = String(it.company || it.name || it.company_name || it.corpNm || it.buyerNm || it.title || '').trim()
+      // 첫 비어있지 않은 필드값 선택(피드/ITA/data.go.kr 필드명 편차 흡수). data.go.kr 은 camelCase 한글약어(corpNm/telNo/emlAddr…).
+      const g = (...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return String(v).trim() } return '' }
+      // 회사명 — 일반 피드 company/name, ITA 는 title, data.go.kr 은 corpNm/cmpnyNm/entrpsNm 등.
+      const company = g('company', 'name', 'company_name', 'corpNm', 'cmpnyNm', 'entrpsNm', 'entNm', 'coNm', 'bzentyNm', 'buyerNm', 'title')
       if (!company) continue
-      const description = String(it.description || it.inquiry || it.note || it.product || it.item || '')
-      let email = it.email ? String(it.email) : null
+      const description = g('description', 'inquiry', 'note', 'product', 'item', 'prdlstNm', 'itemNm', 'induty', 'bizType', 'ksicNm', 'epmtKsicNm', 'entTyNm', 'jobNm', 'induEntNm')
+      let email = g('email', 'emlAddr', 'eml', 'contact_email') || null
       if (!email && description) email = pickBusinessEmail(description)
-      // intent — 항목이 명시하면 그 값. 없고 입찰/계약 날짜(ITA 조달리드 신호)가 있으면 buying_lead, 아니면 directory.
       const intent = INTENT_KEYS.includes(String(it.intent)) ? String(it.intent)
         : (it.tender_start_date || it.tender_end_date || it.contract_start_date) ? 'buying_lead' : 'directory'
       out.push({
         source: 'feed', intent_signal: intent, company: company.slice(0, 200),
-        country: it.country ? String(it.country) : (it.country_code ? String(it.country_code) : target.country),
-        target_market: it.target_market ? String(it.target_market) : null,
-        category: it.category ? String(it.category) : target.category,
+        country: g('country', 'country_code', 'natnNm', 'cntyNm', 'nationNm', 'entNationNm', 'natnCd') || target.country,
+        target_market: g('target_market') || null,
+        category: g('category') || target.category,
         imports_from_korea: truthy(it.imports_from_korea ?? it.imports_korea),
-        website: it.website ? String(it.website) : (it.homepage ? String(it.homepage) : (it.url ? String(it.url) : null)),
-        email, phone: it.phone ? String(it.phone) : (it.tel ? String(it.tel) : (description ? pickPhone(description) : null)),
-        decision_maker: it.contact_name ? String(it.contact_name).slice(0, 80) : null,
-        decision_maker_title: it.contact_title ? String(it.contact_title).slice(0, 80) : null,
-        decision_maker_email: it.contact_email ? String(it.contact_email) : null,
-        est_volume: it.est_volume ? String(it.est_volume).slice(0, 60) : null,
+        website: g('website', 'homepage', 'url', 'homepgUrl', 'hmpgUrl', 'hmpgAddr', 'siteUrl') || null,
+        email, phone: g('phone', 'tel', 'telNo', 'telno', 'phoneNumber', 'rprsTelno') || (description ? pickPhone(description) : null),
+        decision_maker: g('contact_name', 'chrgrNm', 'picNm').slice(0, 80) || null,
+        decision_maker_title: g('contact_title', 'chrgrJbps').slice(0, 80) || null,
+        decision_maker_email: g('contact_email', 'chrgrEml') || null,
+        est_volume: g('est_volume').slice(0, 60) || null,
+        address: g('address', 'addr', 'location', 'adres', 'rdnmadr', 'lctnAddr').slice(0, 300) || null,
         description, source_keyword: `${target.category} · ${target.country}`,
       })
     }
@@ -512,9 +609,14 @@ export async function runBuyerCollection(env: Env, opts: { force?: boolean } = {
 
   const cursorRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'buyer_collect_cursor'").first<{ value: string }>().catch(() => null)
   let cursor = parseInt(cursorRow?.value || '0', 10) || 0
-  const active = (await DB.prepare('SELECT id, category, country FROM buyer_discovery_targets WHERE active = 1 ORDER BY id ASC')
+  let active = (await DB.prepare('SELECT id, category, country FROM buyer_discovery_targets WHERE active = 1 ORDER BY id ASC')
     .all<{ id: number; category: string; country: string }>().catch(() => null))?.results || []
-  if (!active.length) return { ...empty, ran: true, reason: 'NO_TARGETS' }
+  // 발굴 타깃이 없어도 무료 피드(BUYER_FEED_URLS)가 있으면 기본 타깃 1개로 1회 수집 — data.go.kr 등 자립형 피드는
+  //   타깃 설정 없이도 동작(피드 항목이 국가/카테고리를 자체 제공). 타깃은 매칭 스코어링용 fallback 일 뿐.
+  if (!active.length) {
+    if ((env.BUYER_FEED_URLS || '').trim()) active = [{ id: 0, category: '', country: '' }]
+    else return { ...empty, ran: true, reason: 'NO_TARGETS' }
+  }
   const activeKeys: ActiveTarget[] = active.map(t => ({ category: t.category, country: t.country }))
 
   let saved = 0, found = 0, feed = 0

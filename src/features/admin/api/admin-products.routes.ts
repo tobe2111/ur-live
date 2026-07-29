@@ -2131,8 +2131,9 @@ adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
   try {
     const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
     const body = (await c.req.json().catch(() => ({}))) as { count?: number };
-    // ⚡ 524 방지: 커버 1장/상품 × 소량(최대 6). 각 요청이 CF 엣지 한도(~100s) 훨씬 안쪽에서 끝나게.
-    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 5), 5)));
+    // ⚡ 병렬 fetch(요청당 6개). 대용량 커버(카카오/다음 1~3MB)를 12+개 동시에 받으면 워커 메모리 압박 →
+    //   요청 실패("멈춤"). 6개면 ≤~18MB 로 안전하면서도 순차 대비 6× 빠름.
+    const perRun = Math.min(8, Math.max(1, intParam(String(body.count ?? 6), 6)));
     const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
     if (r.rehosted > 0) {
       await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
@@ -2164,18 +2165,47 @@ adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
       const timer = setTimeout(() => ctrl.abort(), 8000);
       let ok = false, status = 0, contentType = '', bytes = 0, reason = '';
       try {
+        // 실제 이관과 동일하게 원본 직접 fetch(서버측 리사이즈는 외부 호스트 미지원 확인) → 11MB 캡.
         const res = await fetch(row.image_url, { signal: ctrl.signal });
         status = res.status;
         contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
         if (!res.ok) reason = `HTTP ${status}`;
         else if (!contentType.startsWith('image/')) reason = `이미지 아님(${contentType || '무형식'})`;
-        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 6 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
+        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 11 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
       } catch (e) { reason = (e as Error)?.name === 'AbortError' ? '타임아웃(8s)' : '연결 실패'; }
       finally { clearTimeout(timer); }
       samples.push({ id: row.id, host, ok, status, contentType, bytes, reason: ok ? '정상' : reason });
     }
     const okCount = samples.filter((s) => s.ok).length;
     return c.json({ success: true, bucketBound, okCount, total: samples.length, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /d1-profile — 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): rows_read 상위 쿼리 조회(isolate-로컬).
+//   ?reset=1 로 집계 초기화. D1_PROFILE_ENABLED='true' 여야 데이터가 쌓임(기본 OFF).
+adminProductsRoutes.get('/d1-profile', cors(), async (c) => {
+  try {
+    const { getD1Profile, resetD1Profile } = await import('../../../worker/utils/d1-profiler');
+    if (c.req.query('reset') === '1') { resetD1Profile(); return c.json({ success: true, reset: true }); }
+    const pe = c.env as unknown as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+    const forceOn = pe.D1_PROFILE_ENABLED === 'true';
+    const sampleRate = forceOn ? 1 : (pe.D1_PROFILE_SAMPLE != null && pe.D1_PROFILE_SAMPLE !== '' ? Number(pe.D1_PROFILE_SAMPLE) : 0.02);
+    // 샘플링이라 isolate-로컬 집계(전량 아님). 상시 2% 자동 수집 — 무거운 쿼리는 rows≥2000 콘솔 로그로도 포착.
+    return c.json({ success: true, mode: forceOn ? 'forced-100%' : `sampling-${Math.round(sampleRate * 100)}%`, sampleRate, top: getD1Profile(30) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /r2-orphan-report — 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 리포트(온디맨드). 기본 삭제 안 함
+//   (R2_ORPHAN_CLEANUP_ENABLED='true' 여야 실제 삭제). 참조 없는 60일+ 객체 수/용량만 집계해 반환.
+adminProductsRoutes.get('/r2-orphan-report', cors(), async (c) => {
+  try {
+    const { r2OrphanCleanup } = await import('../../../worker/cron/r2-orphan-cleanup');
+    const report = await r2OrphanCleanup(c.env as unknown as Env);
+    return c.json({ success: true, ...report, candidateMB: Math.round((report.candidateBytes / 1024 / 1024) * 10) / 10 });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

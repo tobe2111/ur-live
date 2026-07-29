@@ -70,6 +70,14 @@ const KO_COUNTRY: Record<string, string> = {
   '콜롬비아': 'Colombia', '캄보디아': 'Cambodia', '이집트': 'Egypt', '도미니카 공화국': 'Dominican Republic',
   '스위스': 'Switzerland', '핀란드': 'Finland', '에스토니아': 'Estonia', '남아프리카 공화국': 'South Africa',
   '루마니아': 'Romania', '모로코': 'Morocco', '우크라이나': 'Ukraine', '말라위': 'Malawi', '이스라엘': 'Israel',
+  '방글라데시': 'Bangladesh', '네덜란드': 'Netherlands', '폴란드': 'Poland', '아르헨티나': 'Argentina', '칠레': 'Chile',
+  '페루': 'Peru', '스웨덴': 'Sweden', '노르웨이': 'Norway', '덴마크': 'Denmark', '뉴질랜드': 'New Zealand',
+  '미얀마': 'Myanmar', '몽골': 'Mongolia', '스리랑카': 'Sri Lanka', '네팔': 'Nepal', '카자흐스탄': 'Kazakhstan',
+  '오스트리아': 'Austria', '벨기에': 'Belgium', '포르투갈': 'Portugal', '그리스': 'Greece', '체코': 'Czech Republic',
+  '헝가리': 'Hungary', '아일랜드': 'Ireland', '가나': 'Ghana', '탄자니아': 'Tanzania', '우간다': 'Uganda',
+  '에티오피아': 'Ethiopia', '알제리': 'Algeria', '튀니지': 'Tunisia', '레바논': 'Lebanon', '쿠웨이트': 'Kuwait',
+  '카타르': 'Qatar', '바레인': 'Bahrain', '오만': 'Oman', '이라크': 'Iraq', '이란': 'Iran',
+  '베네수엘라': 'Venezuela', '볼리비아': 'Bolivia', '과테말라': 'Guatemala', '온두라스': 'Honduras', '파나마': 'Panama',
 }
 function normCountry(s: string | null | undefined): string | null {
   // 괄호 병기 제거(예: "튀르키예(터키)" → "튀르키예") 후 매핑.
@@ -84,6 +92,11 @@ export const BK_CATEGORIES = [
   '제약', '조선기자재', '항공부품', '서비스',
 ]
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+
+// 사이트 자체 브랜딩/센터명 + UI 컨트롤 라벨 — 회사명/제목으로 오인 금지(로그인 사용자가 보는 크롬).
+//   "바이코리아 | 판매자센터" · "레이어 열기/닫기"(아코디언 토글) · "더보기"/"자세히" 등.
+//   ⚠️ JS \b 는 한글 뒤에서 불안정 → 센터 접두(판매자/셀러/구매자/바이어) + 브랜드-단독 + UI토글만 매칭.
+const BK_SITE_CHROME = /(?:판매자|셀러|구매자|바이어)\s*센터|(?:seller|buyer)\s*center|^\s*(?:바이\s*코리아|buy\s?korea|tradekorea|ec21|ecplaza|gobizkorea|kotra)\s*(?:[|·ㆍ\-–—]|$)|레이어\s*[열닫]|열기\s*[／/]\s*닫기|^\s*(?:열기|닫기|더보기|접기|펼치기|자세히보기|자세히|목록보기|목록|이전|다음|처음|마지막|layer|toggle|expand|collapse|more|prev|next|prev\s*next)\s*$|(?:show|read|view)\s*more/i
 
 /** 붙여넣은 buyKorea 페이지의 최상위 카테고리 판별 — 리스트 H1("미용\n전체 88") 우선, 상세 브레드크럼(일반상품 다음) 폴백. */
 export function detectBkCategory(text: string): string | null {
@@ -163,10 +176,11 @@ export function parseDatedLeadList(text: string): BuyerLead[] {
     const country = unMd(lines[i - 1])
     const title = unMd(lines[i - 2]).replace(/^\(공개\)\s*/, '')
     if (isNoise(title) || isNoise(country)) continue
-    const key = title.toLowerCase()
+    const c = normCountry(country)
+    // dedup 키에 국가 포함 — 제목만으로 dedup 하면 "Cosmetics"(베트남/인도/미국)처럼 흔한 제목의 서로 다른 바이어가 유실됨.
+    const key = title.toLowerCase() + '|' + String(c || '').toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    const c = normCountry(country)
     out.push({
       source: 'buykorea', intent_signal: 'buying_lead', company: title.slice(0, 200),
       country: c, target_market: c, category: pageCat, imports_from_korea: null,
@@ -224,17 +238,27 @@ export function jsonLdFields(text: string): Partial<Record<'company' | 'email' |
   const m = String(text || '').match(/__JSONLD__([\s\S]*?)__JSONLD__/)
   const blob = m ? m[1] : ''
   if (!blob) return out
-  const pick = (re: RegExp) => { const x = blob.match(re); return x ? x[1].trim() : '' }
-  const org = pick(/"(?:legalName|name)"\s*:\s*"([^"]{2,120})"/i)
-  const email = pick(/"email"\s*:\s*"(?:mailto:)?([^"]{5,80})"/i)
-  const tel = pick(/"telephone"\s*:\s*"([^"]{6,40})"/i)
-  const url = pick(/"url"\s*:\s*"(https?:\/\/[^"]{4,150})"/i)
-  const street = pick(/"streetAddress"\s*:\s*"([^"]{4,180})"/i)
-  const locality = pick(/"addressLocality"\s*:\s*"([^"]{2,80})"/i)
-  const ctry = pick(/"addressCountry"\s*:\s*"?([^",}]{2,60})"?/i)
+  // 회사 정보는 Organization/Business 블록 우선 — 페이지가 WebPage/Breadcrumb/Product 스키마를 먼저 emit 하면
+  //   첫 "name" 이 "Inquiry Detail" 같은 페이지 제목이라 오귀속됨. org 블록 창(600자) 안에서만 회사명/연락처 추출.
+  const orgIdx = blob.search(/"@type"\s*:\s*"(?:Organization|Corporation|LocalBusiness|[A-Za-z]*Business|Store|WholesaleStore|Manufacturer)"/i)
+  // 스코프는 org 객체가 시작되는 '{' 부터(이전 객체의 name 이 새지 않게) org+700자 까지.
+  const objStart = orgIdx >= 0 ? blob.lastIndexOf('{', orgIdx) : -1
+  const scope = orgIdx >= 0 ? blob.slice(objStart >= 0 ? objStart : orgIdx, orgIdx + 700) : blob
+  const pick = (s: string, re: RegExp) => { const x = s.match(re); return x && x[1] ? x[1].trim() : '' }
+  const GENERIC = /^(inquiry|detail|home|main|web\s?page|web\s?site|search|list|breadcrumb|product|page|untitled|바이코리아|인콰이어리|buykorea)/i
+  // Organization 블록이 있을 때만 회사명 신뢰(없으면 제목/라벨에 맡김). 제네릭 페이지명 제외.
+  let org = orgIdx >= 0 ? pick(scope, /"(?:legalName|name)"\s*:\s*"([^"]{2,120})"/i) : ''
+  if (org && GENERIC.test(org)) org = ''
+  const email = pick(scope, /"email"\s*:\s*"(?:mailto:)?([^"]{5,80})"/i)
+  const tel = pick(scope, /"telephone"\s*:\s*"([^"]{6,40})"/i)
+  const url = pick(scope, /"url"\s*:\s*"(https?:\/\/[^"]{4,150})"/i)
+  const street = pick(scope, /"streetAddress"\s*:\s*"([^"]{4,180})"/i)
+  const locality = pick(scope, /"addressLocality"\s*:\s*"([^"]{2,80})"/i)
+  // addressCountry 는 문자열 또는 {name:"US"} 중첩 — 둘 다 지원.
+  const ctry = pick(scope, /"addressCountry"\s*:\s*"([^",}]{2,60})"/i) || pick(scope, /"addressCountry"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"]{2,60})"/i)
   if (org) out.company = org
   if (email && !email.includes('*') && email.includes('@')) out.email = email.toLowerCase()
-  if (tel) out.phone = tel
+  if (tel && !tel.includes('*')) out.phone = tel
   if (url) out.website = url
   const addr = [street, locality].filter(Boolean).join(', ')
   if (addr) out.address = addr
@@ -247,25 +271,32 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   const rawLines = chunk.split(/\r?\n/).map(l => l.replace(/^[\s>*\-•·]+/, '').trim())
   const row: Record<string, string> = {}
   let title = ''
+  // 마스킹 흔적이 있으면(바이어 연락처를 사이트가 가림) 페이지의 언마스킹 이메일은 *로그인 판매자 본인*의
+  //   크롬 이메일(헤더/마이페이지 위젯)일 가능성 → 라벨 경로로 들어온 이메일도 마스킹 페이지에선 신뢰 X.
+  //   (폴백 경로만 막던 것을 라벨 경로까지 확장 — hongseungkyun@naver.com 오인 클래스의 잔여 구멍.)
+  const hasMask = /\*{3,}|[A-Za-z0-9]\*{2,}|\*{2,}@|@\*{2,}/.test(chunk)
+  const emailBlockedByMask = (f: string) => f === 'email' && hasMask
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]
     if (!line) continue
-    // "라벨: 값" (한 줄)
-    const m = line.match(/^([^:：]{1,24})[:：]\s*(.+)$/)
+    // "라벨: 값" 또는 "라벨 → 값"(화살표·불릿·탭 구분 — buyKorea 등 사이트가 콜론 대신 씀) (한 줄)
+    const m = line.match(/^([^:：→▶»►·|\t]{1,24})\s*[:：→▶»►·|\t]\s*(.+)$/)
     if (m && looksLabel(m[1])) {
       const f = labelField(m[1]); const v = m[2].trim()
-      if (f && v && !v.includes('*') && !row[f]) row[f] = v
+      if (f && v && !v.includes('*') && !row[f] && !emailBlockedByMask(f)) row[f] = v
       continue
     }
     // "라벨"(줄) → 다음 줄 값
     if (looksLabel(line)) {
       const f = labelField(line); const v = (rawLines[i + 1] || '').trim()
-      if (f && v && !looksLabel(v) && !v.includes('*') && !row[f]) { row[f] = v; i++ }
+      if (f && v && !looksLabel(v) && !v.includes('*') && !row[f] && !emailBlockedByMask(f)) { row[f] = v; i++ }
       continue
     }
-    // 제목 후보 — 마스킹(*)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
-    if (!title && line.length > 3 && !line.includes('*') && !BK_CATEGORIES.includes(line)
-      && !/인콰이어리|게시기간|번호|메세지|favorites|^view$|^\d+$|[:：]$|^(home|sign ?in|sign ?up|login|logout|my ?page|menu|search|list|back|목록|검색|메뉴|로그인|로그아웃|판매자센터|바이코리아)$/i.test(line)) title = line
+    // 제목 후보 — 마스킹(*)·이메일(@)·breadcrumb 카테고리·네비/크롬 라인 제외(엉뚱한 값이 회사명/inquiry_title 되는 것 방지).
+    //   BK_SITE_CHROME 는 사이트 브랜딩/센터명(예 "바이코리아 | 판매자센터") — 위치 무관 제외. 이메일 라인은 제목 아님(로그인 크롬 이메일 오인).
+    if (!title && line.length > 3 && !line.includes('*') && !/@/.test(line) && !BK_CATEGORIES.includes(line)
+      && !BK_SITE_CHROME.test(line)
+      && !/인콰이어리|게시기간|번호|메세지|favorites|^view$|^\d+$|[:：]$|^(home|sign ?in|sign ?up|login|logout|my ?page|menu|search|list|back|목록|검색|메뉴|로그인|로그아웃)$/i.test(line)) title = line
   }
   // 제목 꼬리의 UI 버튼 텍스트 제거(예: "제목 좋아요"/"제목 공유하기") → 리스트 제목과 매칭 정합.
   title = title.replace(/\s*(좋아요|공유하기|공유|관심|북마크|스크랩|찜|like|share|save)\s*$/i, '').trim()
@@ -280,19 +311,35 @@ function extractDetail(chunk: string, pageCat: string | null): BuyerLead | null 
   if (!row.phone && jl.phone) row.phone = jl.phone
   if (!row.address && jl.address) row.address = jl.address
   if (!row.country && jl.country) row.country = jl.country
-  // 폴백(라벨·JSON-LD 없을 때) — 플랫폼 이메일 제외. 전화 폴백은 제거(마스킹/인콰이어리번호/KOTRA 푸터 오인식 → 라벨 전화만 신뢰).
-  if (!row.email) { const e = pickBusinessEmail(chunk); if (e && !PLATFORM_EMAIL.test(e)) row.email = e }
   if (!row.website) {
     const url = (chunk.match(URL_RE) || []).find(u => !B2B_HOST_RE.test(u) && !PLATFORM_HOST.test(u))
     if (url) row.website = url.replace(/[.,)]+$/, '')
   }
-  const company = (row.company || jl.company || '').trim()
+  // 🔑 이메일 폴백 — buyKorea/tradeKorea 등은 바이어 연락처를 마스킹(mu*****·+593***·ke****@****)한다.
+  //   그래서 페이지에 *마스킹* 흔적이 있으면, 언마스킹 이메일은 사실상 *로그인한 판매자 본인*의 크롬 이메일
+  //   (헤더/마이페이지)이다 → 절대 바이어로 채우지 않는다. 마스킹이 없을 때도, 폴백 이메일은 바이어 웹사이트
+  //   도메인과 일치할 때만 신뢰(프리메일 크롬 이메일 hongseungkyun@naver.com 오인 방지). 실제 바이어 이메일은
+  //   라벨·JSON-LD(Organization) 또는 웹사이트 보강으로만 채운다.
+  let candidateEmail = '' // corroboration 실패분 — 버리지 않고 '확인필요'로 남겨 재현율 보전(대표 판단).
+  if (!row.email && !hasMask) {
+    const e = pickBusinessEmail(chunk)
+    if (e && !PLATFORM_EMAIL.test(e)) {
+      const dom = (e.split('@')[1] || '').toLowerCase().replace(/^www\./, '')
+      const site = (row.website || jl.website || '').toLowerCase()
+      if (dom && site && site.includes(dom)) row.email = e // 도메인 corroboration 통과분만 확정
+      else candidateEmail = e // 미corroboration → 후보로만(크롬 오인 가능성 있어 확정 X)
+    }
+  }
+  let company = (row.company || jl.company || '').trim()
+  if (company && BK_SITE_CHROME.test(company)) company = '' // 사이트 크롬(판매자센터 등)은 회사명 아님
   const email = (row.email || '').trim()
   const website = (row.website || '').trim()
   // 회사명도 이메일도 없으면 리드로 볼 수 없음(웹사이트만 있는 크롬/네비 페이지 = 가비지, 저장 안 함).
   if (company.length < 2 && !email) return null
   const country = normCountry((row.country || '').split(/[/,]/)[0].trim())
-  const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : ''].filter(Boolean).join(' · ')
+  // 확정 이메일이 없고 후보(미corroboration)만 있으면 설명에 '확인필요'로 노출 — 대표가 승격 판단.
+  const candNote = (!email && candidateEmail) ? `후보이메일(확인필요): ${candidateEmail}` : ''
+  const desc = [title, row.ptype, row.use, row.category_raw, row.rfq, row.address, row.current_import ? `현재 수입국: ${row.current_import}` : '', candNote].filter(Boolean).join(' · ')
   const isEmailName = (row.decision_maker || '').includes('@')
   // 회사명 폴백 — 프리메일 도메인(gmail/naver 등)은 회사명으로 쓰지 않음.
   const FREEMAIL = /^(gmail|googlemail|yahoo|ymail|hotmail|outlook|live|icloud|naver|daum|hanmail|qq|163|126|aol|proton|protonmail|gmx|mail|yandex)\./i

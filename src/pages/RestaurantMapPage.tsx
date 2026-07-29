@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -11,7 +11,7 @@ import { storage } from '@/shared/utils/storage'
 
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
-// 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
+// 🛡️ 2026-05-06: TD-006 추가 분할 — SheetFilterBar 추출. (MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.)
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
@@ -26,11 +26,12 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
 import { type MapVoucherType } from './restaurant-map/voucher-types'
 import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
+import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { panToRegionAccurate } from './restaurant-map/pan-to-region'
+import { panToRegionAccurate, panToPlaceQuery } from './restaurant-map/pan-to-region'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
@@ -47,7 +48,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [region, setRegion] = useState('')
   // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
   const [district, setDistrict] = useState('')
-  const [search, setSearch] = useState('')
+  // 🔎 2026-07-20 (대표 — "지도 검색은 지도에서 계속"): 검색어를 URL(?q=)에 반영 → 뒤로가기·공유·새로고침
+  //   일관 + 지역명이면 지도 재중심(panToPlaceQuery). 초기값은 ?q= 에서 시드.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') || '')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
@@ -153,8 +157,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     storage.getJSON<string[]>('restaurant_search_history', [])
   )
   const [searchFocused, setSearchFocused] = useState(false)
-  const dragStartY = useRef<number | null>(null)
-  const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
   // 🗺️ idle/dragend 리스너가 재구독 없이 현재 지역필터를 읽도록 ref 미러(사용자 드래그 시 필터 해제 판단용).
   const regionRef = useRef(region); regionRef.current = region
   const districtRef = useRef(district); districtRef.current = district
@@ -169,37 +171,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       storage.setJSON('restaurant_search_history', next)
       return next
     })
-  }
-
-  // 🛡️ 2026-04-30 v2: 실시간 드래그 따라가기 + snap (사용자 신고 — 스크롤 조절 불편)
-  const [dragDeltaY, setDragDeltaY] = useState(0) // 드래그 중 손가락 위치 (px)
-  function handleSheetDragStart(clientY: number) {
-    dragStartY.current = clientY
-    dragStartSnap.current = sheetSnap
-    setDragDeltaY(0)
-  }
-  function handleSheetDragMove(clientY: number) {
-    if (dragStartY.current == null) return
-    setDragDeltaY(clientY - dragStartY.current)
-  }
-  function handleSheetDragEnd(clientY: number) {
-    if (dragStartY.current == null) return
-    const dy = clientY - dragStartY.current
-    dragStartY.current = null
-    setDragDeltaY(0)
-    const order: Array<'peek' | 'mid' | 'full'> = ['peek', 'mid', 'full']
-    const idx = order.indexOf(dragStartSnap.current)
-    // 50px 이상 드래그 시 한 단계 이동, 150px 이상이면 두 단계 점프
-    if (Math.abs(dy) < 30) return
-    let next: typeof sheetSnap
-    if (dy > 0) {
-      // 아래로 드래그 → 시트 작아짐
-      next = Math.abs(dy) > 150 ? order[0] : order[Math.max(0, idx - 1)]
-    } else {
-      // 위로 드래그 → 시트 커짐
-      next = Math.abs(dy) > 150 ? order[2] : order[Math.min(2, idx + 1)]
-    }
-    setSheetSnap(next)
   }
 
   const kr = isKorea()
@@ -506,6 +477,25 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }
   }, [])
 
+  // 🔎 2026-07-20 (대표 — 지도 검색 URL 반영): search ↔ ?q= 동기(replace, 히스토리 오염 X). 카테고리(?category)는 보존.
+  useEffect(() => {
+    const cur = searchParams.get('q') || ''
+    const q = search.trim()
+    if (cur === q) return
+    const p = new URLSearchParams(searchParams)
+    if (q) p.set('q', q); else p.delete('q')
+    setSearchParams(p, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
+
+  // 🗺️ 2026-07-20 (대표 — "부산 검색하면 지도가 부산으로"): 검색 제출(Enter/최근검색 선택) 시 지역/장소명이면
+  //   지도를 그 위치로 재중심. 매칭 실패면 no-op(딜 이름/매장명 텍스트 필터는 그대로 동작).
+  const submitMapSearch = useCallback((q: string) => {
+    const query = (q || '').trim()
+    if (!query || !mapInstance.current || !window.kakao?.maps) return
+    void panToPlaceQuery(mapInstance.current, query)
+  }, [])
+
   // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
   //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
   //     매장 수만 개여도 다운로드·오버레이가 격자 수(수십 개)로 고정.
@@ -595,31 +585,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     if (next) selectAndPan(next)
   }
 
-  // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
-  //   peek = 12vh 만 보임 (결과 카운트 + 첫 카드 일부)
-  //   peek = 28vh (필터 + 첫 결과 한 줄 보임)
-  //   mid  = 60vh
-  //   full = 92vh (거의 풀스크린)
-  // 🛡️ 2026-04-30 v2: peek 18vh → 28vh — 결과 카드 안 보이던 문제 (사용자 신고).
-  // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
-  // 🛡️ 2026-05-17 (PC wheel zoom 영역 확보): 데스크톱에서 lg+ 클래스로 더 작게 — wheel zoom 영역 확보.
-  const sheetTopByState: Record<typeof sheetSnap, string> = {
-    // 🗺️ 2026-06-22 (대표 — "하단 상품 섹션 높이 줄이기"): 칩이 상단(MapTopBar)으로 빠져 시트엔
-    //   드래그핸들+카운트/정렬+리스트만 → peek 을 320→240px 로 낮춰 지도 영역 확대. 네비(56) 위로
-    //   카운트/정렬 + 카드 1개가 보이고, 더 보려면 위로 드래그(mid/full).
-    peek: 'calc(100dvh - 240px)',
-    mid: 'calc(100dvh - 60dvh)',
-    // 🗺️ 2026-06-23 (대표 — 스크롤 시 상단 버튼과 겹침): full 을 상단 플로팅바(검색+칩 ~100px) 아래로
-    //   제한(8dvh→고정 104px+노치). 시트가 상단바를 덮어 겹쳐 보이던 것 차단.
-    full: 'calc(env(safe-area-inset-top, 0px) + 104px)',
-  }
-  // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
-  //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
-  const sheetTopByStateLg: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 240px)',
-    mid: 'calc(100dvh - 40dvh)',
-    full: 'calc(100dvh - 80dvh)',
-  }
+  // 🗺️ 2026-07-25 (전수조사 H1/H2/H4/M1/M2): 시트 드래그/스냅은 useSheetDrag 훅으로 —
+  //   top 은 full 위치 고정(SHEET_BASE_TOP) + snap 이동/드래그 전부 transform(translateY, 컴포지터 전용).
+  //   시각적 snap top 설계값(peek 100dvh-240px · mid 40dvh · full safe+104px)은 기존과 동일 —
+  //   useKakaoMap centerOffsetForSheet 미러 유지.
   // 🗺️ 2026-07-16: 동기 초기화(첫 프레임 flash 방지 — PC 분할 레이아웃이 마운트 후 깜빡이지 않게). SSR-safe.
   const [isLgViewport, setIsLgViewport] = useState(
     () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(min-width: 1024px)').matches
@@ -643,7 +612,28 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     const id = setTimeout(() => { try { map.relayout(); if (c) map.setCenter(c) } catch { /* silent */ } }, 60)
     return () => clearTimeout(id)
   }, [isLgViewport, sdkLoaded])
-  const currentSheetTop = (isLgViewport ? sheetTopByStateLg : sheetTopByState)[sheetSnap]
+  // 🗺️ 2026-07-25 (전수조사 M7): Kakao 는 컨테이너 리사이즈를 자동 감지 안 함 — 모바일 회전/주소창
+  //   변화/PC 창 조절 후 드래그 좌표·히트영역 드리프트. ResizeObserver → relayout(중심 보존, 150ms 디바운스).
+  useEffect(() => {
+    const el = mapRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const ro = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        const map = mapInstance.current
+        if (!map || !window.kakao?.maps) return
+        try { const c = map.getCenter?.(); map.relayout(); if (c) map.setCenter(c) } catch { /* silent */ }
+      }, 150)
+    })
+    ro.observe(el)
+    return () => { if (timer) clearTimeout(timer); ro.disconnect() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdkLoaded])
+  // 시트 드래그 훅 — 모바일(<lg)만. listScrollRef 는 H4 콘텐츠 드래그 위임 대상.
+  const { sheetRef, dragging: sheetDragging, handleProps: sheetHandleProps } = useSheetDrag({
+    sheetSnap, setSheetSnap, enabled: !isLgViewport, listRef: listScrollRef,
+  })
 
   // 🏠 2026-06-20 (대표 — 홈=당근식 1줄 리스트 + 지도 강조버튼): 리스트 모드. 데이터/지오코딩/정렬/필터는
   //   동일(위 hooks 공유), 지도 대신 1줄 리스트(RestaurantList) 풀페이지 + 상단 지역선택 + 하단 플로팅 '지도' 버튼.
@@ -740,7 +730,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
-        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
+        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 이용권 사용 가능 맛집을 지도에서 찾아보세요. 내 주변 동네 가게 할인 이용권.' })}
         url={home ? '/' : '/map'}
       />
 
@@ -773,6 +763,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       <MapTopBar
         search={search}
         setSearch={setSearch}
+        onSubmitSearch={submitMapSearch}
         searchFocused={searchFocused}
         setSearchFocused={setSearchFocused}
         searchHistory={searchHistory}
@@ -836,25 +827,23 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
            🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서는 하단 시트가 아니라 좌측 400px 고정 리스트 패널로
            도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */
         <div
+          ref={sheetRef}
           className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0F151D] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2A3446]"
           style={isLgViewport ? { top: 0 } : {
-            top: currentSheetTop,
-            transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
-            transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+            // H2: top 은 full 위치 고정 — snap 이동/드래그는 전부 transform(컴포지터 전용). 드래그 중엔
+            //   useSheetDrag 가 rAF 로 DOM transform 을 직접 갱신(transform 문자열이 안 바뀌어 React 무간섭).
+            top: SHEET_BASE_TOP,
+            transform: SHEET_SNAP_TRANSLATE[sheetSnap],
+            transition: sheetDragging ? 'none' : SHEET_SNAP_TRANSITION,
+            willChange: 'transform',
           }}
           role="dialog"
           aria-label={t('restaurantMap.listAria', { defaultValue: '맛집 목록' })}
         >
-          {/* Drag handle — 실시간 추적 + snap (lg+ 좌측 패널에선 드래그 불필요 → 숨김) */}
+          {/* Drag handle — Pointer Events + 캡처(M1). 리스트 위 스와이프도 시트를 움직임(H4 — useSheetDrag 위임). */}
           <div
             className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none lg:hidden"
-            onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
-            onTouchMove={(e) => handleSheetDragMove(e.touches[0].clientY)}
-            onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}
-            onMouseDown={(e) => handleSheetDragStart(e.clientY)}
-            onMouseMove={(e) => { if (dragStartY.current != null) handleSheetDragMove(e.clientY) }}
-            onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
-            onMouseLeave={(e) => { if (dragStartY.current != null) handleSheetDragEnd(e.clientY) }}
+            {...sheetHandleProps}
             role="slider"
             aria-label={t('restaurantMap.sheetResizeAria', { defaultValue: '시트 크기 조절' })}
             aria-valuemin={0}
@@ -884,8 +873,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             hideChips
           />
 
-          {/* ═══ 시트 안 스크롤 결과 리스트 (ScrollArea = flex-1 min-h-0 overflow 내장 → 하단 잘림 함정 제거) ═══ */}
-          <ScrollArea ref={listScrollRef} className="px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+          {/* ═══ 시트 안 스크롤 결과 리스트 (ScrollArea = flex-1 min-h-0 overflow 내장 → 하단 잘림 함정 제거)
+               H4: 비-full 스냅에선 touch-action none — 리스트 위 스와이프가 시트 확장/축소로 위임(당근식).
+               full 에선 네이티브 스크롤(pan-y) + scrollTop 0 하향 제스처만 시트 축소로 라우팅. ═══ */}
+          <ScrollArea
+            ref={listScrollRef}
+            className="px-3 pt-3 pb-24"
+            style={{ overscrollBehavior: 'contain', touchAction: !isLgViewport && sheetSnap !== 'full' ? 'none' : undefined }}
+          >
             {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
             {!loading && (
               <HeroCarousel

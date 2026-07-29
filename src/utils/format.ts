@@ -15,6 +15,21 @@
  *   formatPrice(product.price)          // → "1,234원"
  */
 
+/**
+ * UTC 로 저장된 타임스탬프("YYYY-MM-DD HH:MM:SS")를 **한국시간(KST, +9h)** 짧은 표기("MM-DD HH:MM")로.
+ *   서버 통계는 `new Date().toISOString()`(UTC)로 저장 → 화면에선 KST 로 보여줘야 한국 대표에게 맞음.
+ *   브라우저 타임존에 의존하지 않도록 +9h 를 직접 더해 UTC getter 로 포맷(결정적).
+ */
+export function kstShort(utc: unknown): string {
+  const s = String(utc || '').trim()
+  if (!s) return ''
+  const d = new Date(s.replace(' ', 'T') + (/[zZ]|[+\-]\d\d:?\d\d$/.test(s) ? '' : 'Z'))
+  if (isNaN(d.getTime())) return s.slice(5, 16)
+  const k = new Date(d.getTime() + 9 * 3600 * 1000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(k.getUTCMonth() + 1)}-${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`
+}
+
 export function formatNumber(value: unknown, locale: string = 'ko-KR'): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return '0'

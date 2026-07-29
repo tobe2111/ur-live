@@ -78,26 +78,17 @@ authTokenRoutes.post('/id-token', rateLimit({ action: 'auth_id_token', max: 20, 
       }
     } catch { /* fall through to method B */ }
 
-    // Method B: Firebase ID token
-    if (!authVerifiedUid) {
-      const authHeader = c.req.header('Authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const { verifyFirebaseIdToken } = await import('../../lib/firebase-token-verify');
-          const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-          if (!firebaseProjectId) throw new Error('FIREBASE_PROJECT_ID not configured');
-          const payload = await verifyFirebaseIdToken(authHeader.slice(7), firebaseProjectId);
-          if (payload?.sub && String(payload.sub) === String(uid)) {
-            authVerifiedUid = String(payload.sub);
-          }
-        } catch { /* invalid firebase token */ }
-      }
-    }
+    // 🔒 2026-07-28: Method B(Firebase ID token) 제거.
+    //   Firebase 서비스계정 개인키가 archive/ 문서에 3개월간 public 노출됐고(#798), 그 키로
+    //   [커스텀 토큰 발급 → Firebase 공개 API 로 ID 토큰 교환] 하면 **임의 uid 의 소유권을 증명**해
+    //   이 엔드포인트에서 그 uid 의 토큰을 받아낼 수 있었다. 키 폐기와 별개로 경로를 닫는다.
+    //   KR 은 카카오 세션(Method A) 전용이고 GLOBAL 은 미런칭·폐기(#804)라 실사용 경로 없음.
+    //   롤백: 이 커밋 revert.
 
     if (!authVerifiedUid) {
       return c.json({
         success: false,
-        error: '인증되지 않았습니다 — 세션 쿠키 또는 Firebase ID token 필요',
+        error: '인증되지 않았습니다 — 세션 쿠키가 필요합니다',
         code: 'AUTH_REQUIRED'
       }, 401);
     }

@@ -85,6 +85,9 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   // 🧰 2026-07-19 운영 자동화 백로그 — 콘솔 등록·심사 대기(게이트 뒤: 시퀀스 2종은
   //   OPS_SEQUENCES_ENABLED, 다이제스트는 OPS_DIGEST_ALIMTALK_ENABLED + ops_digest_phone).
   'drop_d1_reminder', 'experience_post_reminder', 'ops_daily_digest',
+  // 📣 2026-07-21 크리에이터 잔존 장치 — 추천 링크 판매 시 실시간 적립 알림톡. 콘솔 등록·심사 대기
+  //   (게이트 뒤: AFFILIATE_SALE_ALIMTALK_ENABLED). 문안: docs/kakao-alimtalk-templates.md.
+  'affiliate_sale_credited',
   // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
   //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
   'order_confirm', 'shipping_start', 'delivery_completed', 'low_stock_alert',

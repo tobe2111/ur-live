@@ -60,14 +60,18 @@ export async function rehostDemoImagesBulk(env: Env, perRun = 8): Promise<{ reho
   if (!bucketBound) return { rehosted: 0, images: 0, failed: 0, remaining: await countExternal(), bucketBound }
   const { results } = await DB.prepare(
     `SELECT id, slug, image_url, images FROM products WHERE ${WHERE} ORDER BY id LIMIT ?`
-  ).bind(Math.max(1, Math.min(6, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
+  ).bind(Math.max(1, Math.min(8, perRun))).all<{ id: number; slug: string; image_url: string | null; images: string | null }>()
     .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null }[] }))
   let rehosted = 0, failed = 0
-  for (const row of (results || [])) {
-    // ⚡ 524 방지: **커버 1장만** 이관(요청당 상품 6개 × 1 fetch). 갤러리 2~N번째는 시간당 cron 이
-    //   점진 이관(handleDemoImageRehost) — 배너/카드가 보는 건 커버라 여기선 커버에 집중해 요청을 짧게.
-    if (!isExternalImageUrl(row.image_url)) { await setSupplyMeta(DB, row.id, { rehost_skip: '1' }); failed++; continue }
-    const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost')
+  // ⚡ 속도: 커버 fetch 를 **병렬**로(요청당 최대 16개 동시) — 순차면 상품수×느린CDN(최대 10s)라 오래
+  //   걸리던 것을 max(개별시간)≈10s 로 단축. 커버 1장만 이관(갤러리는 시간당 cron 점진). fetch 병렬 →
+  //   DB 반영 순차(D1 트랜잭션 안전). 라운드당 소요 ≈ 가장 느린 커버 1개 시간이라 라운드 수↓·체감 속도↑.
+  const fetched = await Promise.all((results || []).map(async (row) => {
+    if (!isExternalImageUrl(row.image_url)) return { row, hosted: null as string | null }
+    const hosted = await rehostImageToR2(bucketEnv, row.image_url, 'demo-bulk-rehost').catch(() => null)
+    return { row, hosted }
+  }))
+  for (const { row, hosted } of fetched) {
     if (hosted) {
       await DB.prepare(`UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?`)
         .bind(hosted, row.id).run().catch(() => {})
@@ -313,5 +317,19 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
       await setSupplyMeta(DB, row.id, { img_rehost_tries: healRefetched ? '0' : String(tries + 1) }).catch(() => {})
     }
   }
+
+  // ⚡ 커버 대량 자동 수렴 (2026-07-22 대표 "버튼 반복 클릭 없이 다 되게"): 시간당 일정량을 병렬 이관.
+  //   skip 마킹 리셋 후 메모리 안전 배치(6, 대용량 3MB 커버도 안전)로 최대 6라운드(~36개/시간) → 며칠 내
+  //   도달 가능한 커버 전량 자동 내부화(reachable=영구 수렴). 403 등 항구적 실패만 잔존(heal 이 대표사진
+  //   교체로 별도 수렴). 어드민 버튼은 '즉시' 가속용일 뿐, 안 눌러도 크론이 끝냄.
+  try {
+    await DB.prepare(`DELETE FROM product_supply_meta WHERE key='rehost_skip'`).run().catch(() => {})
+    for (let i = 0; i < 6; i++) {
+      const b = await rehostDemoImagesBulk(env, 6)
+      result.migrated += b.rehosted
+      if (b.remaining <= 0) break
+    }
+  } catch { /* fail-soft — 크론은 절대 throw 안 함 */ }
+
   return result
 }

@@ -83,6 +83,14 @@ bash scripts/check-no-secrets.sh || {
   exit 1
 }
 
+# 🚨 2026-07-28: 위 검사는 '정해진 키 이름 패턴' 위주라 .md/.txt 안의 실제 키 본문을 못 잡았다.
+#   archive/ 19개 파일에 Firebase 서비스계정 개인키·Toss live·Stripe 시크릿이 추적된 채 남아 있었음.
+echo "==> Pre-commit: 시크릿 자재 전수 검사 (추적 파일)..."
+node scripts/check-secret-material.mjs || {
+  echo "❌ Commit blocked. 실제 키 본문이 파일에 있습니다 — public repo 는 커밋 즉시 영구 노출."
+  exit 1
+}
+
 # ⚠️ Silent error swallowing 검출 (warn-only)
 echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
 bash scripts/check-silent-errors.sh || true
@@ -280,6 +288,10 @@ fi
 
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
+
+# 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
+#   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
+node scripts/check-current-work-sync.mjs || true
 
 # 🛡️ 마이그레이션 ↔ repair-schema drift (warn-only) — prod D1 은 .sql 자동적용 X, repair-schema 가 SSOT.
 echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."

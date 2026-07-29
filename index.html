@@ -78,8 +78,8 @@
             var bg = dark ? '#0F151D' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
             var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
             var desc = hard
-              ? '앱이 업데이트되어 저장된 옛 버전이 남아 있을 수 있어요. 아래 버튼을 누르면 캐시를 비우고 최신 화면으로 복구합니다.'
-              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 아래 버튼으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
+              ? '앱이 업데이트되는 중이에요. 잠시 뒤 자동으로 다시 시도합니다 — 바로 시도하려면 아래 버튼을 눌러주세요.'
+              : '네트워크가 느리거나 일시적인 문제일 수 있어요. 잠시 뒤 자동으로 다시 시도하고, 계속 안 되면 캐시를 비워 복구할 수 있어요.';
             var primaryLabel = hard ? '최신 화면으로 새로고침' : '다시 시도';
             var d = document.createElement('div');
             d.id = 'ur-stuck-recover';
@@ -96,6 +96,11 @@
             if (pb) pb.addEventListener('click', function () { if (hard) hardRecover(); else bustReload(); });
             var hb = document.getElementById('ur-stuck-hard');
             if (hb) hb.addEventListener('click', function () { hardRecover(); });
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 오버레이 자동 재시도 — 배포 전파 창
+            //   클래스는 시간이 지나면 저절로 낫는다(대표 실측 "시간 지나니까 정상"). 사용자가 버튼을 안 눌러도
+            //   30초 뒤 __cb reload 로 스스로 복구 시도(전파 완료 시점에 자동 정상화). 실패해도 다음 문서의
+            //   오버레이가 다시 30초 타이머를 재장전 → 주기적 자동 치유(무한 고속 루프 아님 — 30s 간격).
+            setTimeout(bustReload, 30000);
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
@@ -124,16 +129,18 @@
           try {
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
-            var within = now - st.t < 90000;
-            if (within && st.n >= 3) { showStuckUI('chunk'); return; } // 90초 내 3회 — stale 고착 → 무한 reload 대신 복구 UI
+            var within = now - st.t < 300000;
+            if (within && st.n >= 8) { showStuckUI('chunk'); return; } // 5분 내 8회 — stale 고착 → 무한 reload 대신 복구 UI
             var attempt = within ? st.n + 1 : 1;
             sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
-            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기). 배포 직후 새 index.html 은
-            //   서빙되나 새 청크가 엣지에 아직 안 퍼진 수초의 창에서 *즉시* reload 하면 또 404 → 연속 실패 → 수동 UI.
-            //   짧게(시도마다 0.7~2.5s) 기다렸다 __cb reload 하면 전파 완료 후 통과 → 사용자는 수동 복구 화면을 거의
-            //   안 본다. 유예 중엔 워커가 심은 URDEAL 로더가 계속 회전(무해). 무한루프는 3회 캡이 여전히 차단.
+            // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
+            // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창이 '수초' 가정(0.7~2.5s×3회/90s)
+            //   보다 실제(수십 초~수분)로 길어, 창 안에서 재시도 소진 → 오버레이 + 버튼도 창 안이라 무효 →
+            //   시간 지나면 저절로 정상(= /admin/influencer-pool 실사례). **지수 백오프 8회/5분 창**(0.7→30s,
+            //   누적 ~104s)으로 전파 창을 URDEAL 로더 상태로 통과 — 고객은 오버레이를 거의 못 봄.
+            //   무한루프는 8회 캡이 여전히 차단. chunk-error.ts recoverFromChunkError 와 SSOT 미러(함께 갱신).
             reloadPending = true;
-            var grace = Math.min(700 * attempt, 2500);
+            var grace = Math.min(700 * Math.pow(2, attempt - 1), 30000);
             setTimeout(function () {
               try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
               catch (e) { try { location.reload(); } catch (_) {} }
@@ -192,6 +199,9 @@
         setTimeout(function () {
           try {
             if (window.__urMounted) return;
+            // 🛡️ 2026-07-27: 재시도 유예(지수 백오프) 중이면 오버레이 억제 — 예약된 __cb reload 가 곧 실행됨.
+            //   유예가 12s 를 넘는 후반 시도에서 워치독이 끼어들어 '고객용 복구 화면'을 띄우던 것 차단(로더 유지).
+            if (reloadPending) return;
             // reason 3분류로 진단 정밀화: chunk(확증된 404/MIME) / entry-stalled(엔트리 미실행 = 다운로드/차단/
             //   네트워크) / mount-slow(엔트리는 돌았는데 마운트 미완 = 무거운 렌더·행·렌더에러). 셋 다 gentle 1단계
             //   부터(=캐시 안 지움) — 청크 확증이나 세션 내 재발 시에만 showStuckUI 가 완전복구로 승격.
@@ -370,10 +380,54 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://urdeal.kr" />
     <meta property="og:site_name" content="유어딜" />
+
+    <!-- 🧠 2026-07-27 GEO/엔티티 SEO (대표 — "구글 AI 개요에 우리 서비스가 나와야"): 브랜드 엔티티
+         구조화 데이터. 상품/블로그엔 JSON-LD 가 있었지만 '유어딜 = 무엇' 을 선언하는 Organization/
+         WebSite 스키마가 사이트 전체에 없어, 검색 AI 가 동음이의(유어딜라잇 등)로 흘러가던 갭을 마감.
+         프리렌더 정적 삽입 — JS 렌더 없이 모든 크롤러/AI 봇에 전달. 사실만 기재(푸터 법적 고지와 동일 SSOT).
+         ⚠️ 도메인 이전(2026-07-20) 직후라 AI 개요 반영은 수주 소요 — 오프사이트 신호(공식 SNS sameAs·
+         뉴스 보도·비즈니스 프로필)는 별도 대표 액션(사이트 밖). 공식 프로필 확정 시 sameAs 배열 추가할 것. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://urdeal.kr/#organization",
+          "name": "유어딜",
+          "alternateName": ["urdeal", "UrDeal", "유어딜 urdeal.kr"],
+          "url": "https://urdeal.kr/",
+          "logo": "https://urdeal.kr/icon-512.png",
+          "description": "유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권, 기프티콘 교환권, 내 주변 동네딜 지도, 누구나 만드는 링크샵을 제공합니다.",
+          "email": "jiwon@ur-team.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "남부순환로359길 14, 3층(도곡동)",
+            "addressLocality": "강남구",
+            "addressRegion": "서울특별시",
+            "addressCountry": "KR"
+          },
+          "parentOrganization": { "@type": "Organization", "name": "리스터코퍼레이션" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://urdeal.kr/#website",
+          "url": "https://urdeal.kr/",
+          "name": "유어딜",
+          "alternateName": "urdeal",
+          "inLanguage": "ko",
+          "publisher": { "@id": "https://urdeal.kr/#organization" }
+        }
+      ]
+    }
+    </script>
     <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
     <meta name="twitter:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
+    <!-- 🔎 네이버 사이트 소유확인 SSOT (서치어드바이저 urdeal.kr 등록분). **반드시 이 정적 HTML 에만** 둘 것 —
+         SEO.tsx(react-helmet=JS 렌더)에 두면 Yeti(네이버 크롤러)가 못 본다. 실측(2026-07): 7/20 JS 토큰만
+         있을 땐 수집 0 → 7/22 이 정적 토큰 배포 당일 수집 2·색인 1 발생. 토큰 교체 시 여기만 수정. -->
     <meta name="naver-site-verification" content="cad39baa7e707a1c538fe915fd9eeef8f104b842" />
     <meta property="og:image" content="https://urdeal.kr/og-image.png" />
     <meta property="og:image:width" content="1200" />
@@ -533,39 +587,19 @@
             return;
           }
 
-          // 🛡️ 2026-04-30: 풀스크린 block 안 띄움 (사용자 신고). app 정상 렌더 + InAppBrowserBanner 가 dismissible 안내.
-
-          // OS 별 자동 호출 스킴 (1회 시도)
-          var url = window.location.href;
-          // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리 데스크톱 UA(Macintosh+touch)도 iOS 로 판별 — in-app-browser.ts 와 일치.
-          var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
-          var isAndroid = /Android/i.test(ua);
-          var scheme = '';
-          if (isKakao && isIOS) {
-            scheme = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
-          } else if (isLine && (isIOS || isAndroid)) {
-            scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
-          } else if (isAndroid) {
-            // 🛡️ 2026-06-20 (C1): S.browser_fallback_url 추가 — Chrome 미설치(삼성인터넷 기본 등,
-            //   한국 점유율 높음) 단말에서 intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지.
-            //   sessionStorage 가드(REDIRECT_KEY)가 재이동을 막아 그 로드에서 React 정상 마운트.
-            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal/openInExternalBrowser) 와
-            //   동일 형식 유지(SSOT) — 한쪽 변경 시 양쪽 같이 갱신. 가드 키도 공유.
-            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
-          }
-
-          // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.
-          //   카톡 in-app 에서 kakaotalk:// 스킴이 외부 브라우저 호출 후
-          //   webview 가 reload 되면 이 스크립트가 다시 실행됨. 가드 없으면
-          //   "유저 로그인 무한 루프" 증상 발생 (mobile only).
-          //   key 는 main.tsx 의 autoRedirectKakaoToExternal 와 공유.
-          var REDIRECT_KEY = 'ur_kakao_external_redirect_v1';
-          var alreadyTried = false;
-          try { alreadyTried = sessionStorage.getItem(REDIRECT_KEY) === '1'; } catch (e) {}
-          if (scheme && !alreadyTried) {
-            try { sessionStorage.setItem(REDIRECT_KEY, '1'); } catch (e) {}
-            try { window.location.href = scheme; } catch (e) {}
-          }
+          // 🛡️ 2026-07-25 (대표 지시 "카톡도 그냥 열리게"): 인앱 브라우저에서 외부 브라우저로
+          //   자동 이동/팝업("외부 앱을 열려고 합니다")을 더 이상 시도하지 않음. 카카오톡 포함 모든
+          //   인앱(카톡/인스타/페북/네이버/라인)은 앱을 그대로 렌더.
+          //   React 쪽 autoRedirectKakaoToExternal 도 no-op 으로 정렬(SSOT).
+          //   배경: 무한 reload 는 sessionStorage 가드로, 흰화면의 근본 원인이던 Service Worker 는
+          //     2026-04-27 제거로 해소 + 부팅/청크 자가복구 견고화 → 강제 이동 불필요. 카카오 로그인은
+          //     카톡 인앱(자체 세션) 안에서가 오히려 제일 잘 됨(App.tsx 2026-06-20 배너 제거 주석 참조).
+          //   안내 배너(InAppBrowserBanner)도 2026-06-20 대표 요청으로 미마운트(노이즈) — 인앱에서 정말
+          //     막히는 기능(충전/결제 등)은 기능 단위 게이트(IosTopupGate/InAppFeatureBlockedModal)가
+          //     그 시점에만 외부 브라우저(openInExternalBrowser)를 안내.
+          //   ⚠️ 회귀(카톡 흰화면) 시 롤백: git 이력에서 이 블록의 카톡 scheme 자동 이동 + REDIRECT_KEY
+          //     가드 복원 + in-app-browser.ts autoRedirectKakaoToExternal 본문 복원(SSOT 쌍).
+          //   (inApp 이면 위 8초 슬로우 힌트도 건너뜀 — 그대로 유지.)
         } catch (e) { /* never break the page */ }
       })();
     </script>

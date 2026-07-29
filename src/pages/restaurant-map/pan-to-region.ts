@@ -76,6 +76,27 @@ function geocode(query: string): Promise<LL | null> {
 }
 
 /**
+ * 🔎 2026-07-20 (대표 — "지도에서 검색하면 지도에서 계속 나와야"): 자유 검색어(예 "부산", "해운대",
+ *   "강남역")를 지오코딩해 지도를 그 위치로 이동. 지역/장소명이면 이동, 매칭 실패 시 no-op(딜 텍스트 필터만).
+ *   @returns 이동했으면 true(지역/장소로 해석됨), 실패 시 false.
+ */
+export async function panToPlaceQuery(map: any, query: string): Promise<boolean> {
+  const kakao = (window as unknown as { kakao?: any }).kakao
+  const q = (query || '').trim()
+  if (!map || !kakao?.maps || q.length < 2) return false
+  // 시/도 표기 정규화(부산→부산, 전북→전라북도 등)만 가볍게 — 그 외는 원문 지오코딩.
+  const norm = q === '전북' ? '전라북도' : q === '충남' ? '충청남도' : q === '경남' ? '경상남도'
+    : q === '경북' ? '경상북도' : q === '전남' ? '전라남도' : q === '충북' ? '충청북도' : q
+  const geo = await geocode(norm)
+  if (!geo) return false
+  map.setCenter(new kakao.maps.LatLng(geo.lat, geo.lng))
+  // 시/도 단독이면 넓게, 그 외(구/동/역/장소)면 동네 줌.
+  const isProvince = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청|전라|경상|제주)/.test(norm) && norm.length <= 5
+  map.setLevel(isProvince ? (PROVINCE_CENTERS[q]?.level ?? 8) : 5)
+  return true
+}
+
+/**
  * 지도(map)를 regionKey/districtKey 위치로 정확히 이동.
  * @param pins 이 필터에 매칭되는 딜(좌표 보유). 있으면 그 bounds 에 fit(가장 정확).
  */

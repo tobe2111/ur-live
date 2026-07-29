@@ -80,6 +80,76 @@ describe('buyer-parsers — 상세(parseBuyKoreaInquiries, 북마클릿 경로)'
     const garbage = leads.filter(l => /바이코리아|판매자센터|kotra/i.test((l.company || '') + (l.email || '')))
     expect(garbage.length).toBe(0)
   })
+
+  // 🔑 로그인 판매자 본인 크롬 이메일 오수집 방지 — buyKorea 는 바이어 연락처를 마스킹(mu*****)하므로
+  //   페이지의 언마스킹 이메일(hongseungkyun@naver.com)은 헤더/마이페이지의 *본인* 이메일이다.
+  const realDetail = [
+    '바이코리아 | 판매자센터',            // 사이트 크롬(회사명 오인 금지)
+    'hongseungkyun@naver.com',           // 로그인 판매자 본인 이메일(헤더 크롬)
+    'HOME 인콰이어리 일반상품',
+    '인콰이어리 번호 : inq260426-000011',
+    '이름 → Mr*****',
+    '이메일 → mu*****',
+    '회사명 → Al Dayagem for Trading agencies',
+    '국가/도시 → JORDAN',
+    '웹사이트 → https://www.power-bob.com',
+    '메세지0 Favorites0 view7',
+  ].join('\n')
+
+  it('마스킹 바이어 상세: 회사명은 라벨값, 사이트 크롬("판매자센터")은 회사명 아님', () => {
+    const leads = parseBuyKoreaInquiries(realDetail)
+    expect(leads.length).toBe(1)
+    const l = leads[0]
+    expect(l.company).toBe('Al Dayagem for Trading agencies')
+    expect(/바이코리아|판매자센터/.test(l.company)).toBe(false)
+    expect(l.country).toBe('JORDAN')
+    expect(l.website).toMatch(/power-bob\.com/)
+  })
+
+  it('로그인 판매자 본인 이메일(hongseungkyun@naver.com)을 바이어로 저장하지 않음', () => {
+    const l = parseBuyKoreaInquiries(realDetail)[0]
+    expect(l.email == null || !/hongseungkyun|@naver\.com/i.test(l.email)).toBe(true)
+  })
+
+  it('크롬만(바이어 없음)인 상세 조각은 리드로 저장하지 않음', () => {
+    const chromeOnly = ['바이코리아 | 판매자센터', 'hongseungkyun@naver.com', 'my page', 'view', '가공식품'].join('\n')
+    const leads = parseBuyKoreaInquiries(chromeOnly)
+    const garbage = leads.filter(l => /바이코리아|판매자센터|hongseungkyun|가공식품/i.test((l.company || '') + (l.email || '')))
+    expect(garbage.length).toBe(0)
+  })
+
+  // ④ 연락처 재현율 — 마스킹 없는 상세에서 본문 이메일이 웹사이트 도메인과 일치하면 확정, 아니면 '확인필요' 후보로만.
+  it('본문 이메일이 웹사이트 도메인과 일치하면 확정', () => {
+    const corr = ['회사명 : Global Traders Inc', '국가 : Germany', '웹사이트 : https://globaltraders.de', '문의하기 sales@globaltraders.de 로 연락'].join('\n')
+    expect(parseBuyKoreaInquiries(corr)[0].email).toBe('sales@globaltraders.de')
+  })
+  it('도메인 불일치 이메일은 확정 안 하고 설명에 "후보이메일(확인필요)"로 보전', () => {
+    const nc = ['회사명 : Foo Trading Ltd', '국가 : Germany', '웹사이트 : https://footrading.de', '연락 buyer.foo@gmail.com 으로'].join('\n')
+    const l = parseBuyKoreaInquiries(nc)[0]
+    expect(l.email).toBeNull()
+    expect(l.description).toMatch(/후보이메일.*buyer\.foo@gmail\.com/)
+  })
+  it('마스킹 상세(buyKorea)는 크롬 이메일을 후보로도 새지 않음', () => {
+    const mk = ['바이코리아 | 판매자센터', 'hongseungkyun@naver.com', '회사명 → Al Dayagem', '국가/도시 → JORDAN', '이메일 → mu*****', '웹사이트 → https://power-bob.com'].join('\n')
+    const l = parseBuyKoreaInquiries(mk)[0]
+    expect(/hongseungkyun|후보이메일/.test((l.email || '') + (l.description || ''))).toBe(false)
+  })
+  // 감사 발견(2026-07-25): 마스킹 페이지에서 *라벨*로 들어온 언마스킹 이메일도 판매자 본인 크롬 이메일일 수 있어 차단.
+  it('마스킹 상세에서 라벨 이메일도 저장 안 함(판매자 본인 이메일 차단)', () => {
+    const mk = ['회사명 : Al Dayagem', '국가 : JORDAN', '현재수입 : mu*****', '이메일 : seller-self@mycorp.com'].join('\n')
+    const l = parseBuyKoreaInquiries(mk)[0]
+    expect(l != null && (l.email == null || l.email === '')).toBe(true)
+  })
+  // UI 아코디언 토글 라벨("레이어 열기/닫기")이 회사명으로 잡히던 것 차단(대표 신고).
+  it('회사명 라벨이 있으면 UI 토글 라벨이 아니라 라벨값이 회사명', () => {
+    const withCo = ['레이어 열기/닫기', '회사명 : Poly-ion engineering services', '국가 : Ecuador', '웹사이트 : https://www.poly-ion.org'].join('\n')
+    expect(parseBuyKoreaInquiries(withCo)[0].company).toBe('Poly-ion engineering services')
+  })
+  it('UI 토글만 있는 크롬 조각은 회사명으로 저장하지 않음', () => {
+    const noCo = ['레이어 열기/닫기', '이름 : Alejandro Calvache', '전화 : +593 999', '국가 : Ecuador'].join('\n')
+    const l = parseBuyKoreaInquiries(noCo)[0]
+    expect(l == null || !/레이어|열기|닫기/.test(l.company)).toBe(true)
+  })
 })
 
 describe('buyer-parsers — 5개 B2B 사이트 상세 HTML (다른 사이트들도 되게끔)', () => {
@@ -160,5 +230,61 @@ describe('buyer-parsers — JSON-LD 구조화 데이터 우선(더 정확히)', 
   })
   it('JSON-LD 없으면 무해(빈 객체)', () => {
     expect(Object.keys(jsonLdFields('no structured data here')).length).toBe(0)
+  })
+})
+
+import { normalizeCompanyKey } from '@/features/supply/api/buyer-discovery'
+import { isPublicHttpUrl } from '@/features/supply/api/buyer-autofetch'
+
+describe('buyer-pool — 전수조사 감사 수정 회귀', () => {
+  it('H1: 같은 제목·다른 국가 리드가 유실되지 않음(제목+국가 dedup)', () => {
+    const list = ['일반상품 전체 3', 'Cosmetics', '베트남', '게시기간 : 2026.07.20~2026.08.19',
+      'Cosmetics', '인도', '게시기간 : 2026.07.20~2026.08.19', 'Cosmetics', '미국', '게시기간 : 2026.07.20~2026.08.19'].join('\n')
+    expect(parseDatedLeadList(list).length).toBe(3)
+  })
+  it('M4: JSON-LD 회사명은 Organization 블록에서만(WebPage name 오귀속 방지)', () => {
+    expect(jsonLdFields('__JSONLD__ {"@type":"WebPage","name":"Inquiry Detail"} {"@type":"Organization","legalName":"ABC Corp"} __JSONLD__').company).toBe('ABC Corp')
+    expect(jsonLdFields('__JSONLD__ {"@type":"WebPage","name":"Home"} __JSONLD__').company).toBeUndefined()
+  })
+  it('M4: 중첩 addressCountry {name} 추출', () => {
+    expect(jsonLdFields('__JSONLD__ {"@type":"Organization","name":"N","addressCountry":{"@type":"Country","name":"Kenya"}} __JSONLD__').country).toBe('Kenya')
+  })
+  it('M3: US / United States / 미국 이 같은 company_key(중복 방지)', () => {
+    expect(normalizeCompanyKey('ABC', 'US')).toBe(normalizeCompanyKey('ABC', 'United States'))
+  })
+  it('법인격 접미어 정규화 — "Zarya Impex" ↔ "Zarya Impex Pvt. Ltd." 같은 키(퍼지 중복 통합)', () => {
+    expect(normalizeCompanyKey('Zarya Impex', 'India')).toBe(normalizeCompanyKey('Zarya Impex Pvt. Ltd.', 'India'))
+    expect(normalizeCompanyKey('GAMZEN INFRASTRUCTURE', 'India')).toBe(normalizeCompanyKey('GAMZEN INFRASTRUCTURE PVT LTD', 'India'))
+    // 서로 다른 회사는 여전히 구분(과잉 병합 금지).
+    expect(normalizeCompanyKey('Global Corp', 'US')).not.toBe(normalizeCompanyKey('Global Trading', 'US'))
+  })
+  // 감사 발견(2026-07-25): 'spa'/'sas'/'aps' 를 접미어로 떼면 실단어/브랜드가 오병합 → 접미어 목록에서 제외.
+  it('과잉병합 방지 — "Bliss Spa"(미용업)는 "Bliss"와 다른 키(spa 미제거)', () => {
+    expect(normalizeCompanyKey('Bliss Spa', 'US')).not.toBe(normalizeCompanyKey('Bliss', 'US'))
+    expect(normalizeCompanyKey('Sunny SAS', 'France')).not.toBe(normalizeCompanyKey('Sunny', 'France'))
+  })
+  it('E1: SSRF — 내부/사설 호스트 차단, 공개 호스트 허용', () => {
+    for (const u of ['http://127.0.0.1/', 'http://[fd00::1]/', 'http://[::ffff:127.0.0.1]/', 'http://169.254.169.254/', 'http://100.64.0.1/', 'http://foo.localhost/', 'http://2130706433/'])
+      expect(isPublicHttpUrl(u)).toBe(false)
+    for (const u of ['https://buyer.example.com/', 'http://8.8.8.8/', 'http://[2606:4700::1111]/'])
+      expect(isPublicHttpUrl(u)).toBe(true)
+  })
+})
+
+describe('buyer-parsers — buyKorea 실제 상세 구조(라이브 검증 기반)', () => {
+  // 대표 라이브 확인: 회사명 Al Dayagem / 국가 JORDAN / 웹사이트 power-bob / 이메일·이름 마스킹.
+  const h2t = (h: string) => String(h).replace(/<\/(?:tr|div|p|li|h[1-6]|table|dt|dd|th|td|section|button)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').split('\n').map(l => l.trim()).filter((l, i, a) => l || (a[i - 1] || '').length > 0).join('\n')
+  it('table 구조(th/td): 회사명·국가·웹사이트 추출 + 마스킹 이메일 제외', () => {
+    const l = parseBuyKoreaInquiries(h2t('<h1>Fertilizer</h1><table><tr><th>회사명</th><td>Al Dayagem for Trading agencies</td></tr><tr><th>국가/도시</th><td>JORDAN / All areas</td></tr><tr><th>웹사이트</th><td>https://www.power-bob.com</td></tr><tr><th>이메일</th><td>mu**************</td></tr></table>'))[0]
+    expect(l.company).toBe('Al Dayagem for Trading agencies')
+    expect(l.country).toBe('JORDAN')
+    expect(l.website).toMatch(/power-bob\.com/)
+    expect(l.email == null || !l.email.includes('*')).toBe(true)
+  })
+  it('화살표 구분(라벨 → 값): 콜론 없는 사이트도 추출', () => {
+    const l = parseBuyKoreaInquiries(h2t('<div>회사명 → Zhome Co</div><div>국가/도시 → 베트남</div><div>웹사이트 → https://zhome.vn</div>'))[0]
+    expect(l.company).toBe('Zhome Co')
+    expect(l.country).toBe('Vietnam')
+    expect(l.website).toMatch(/zhome\.vn/)
   })
 })

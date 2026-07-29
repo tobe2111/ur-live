@@ -434,8 +434,8 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   const { email, password } = body
   if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400)
 
-  // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
-  {
+  const TURNSTILE_LOGIN_ENABLED = false // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — sitekey↔secret/도메인 불일치 잠금 해소(재도입=true; rate-limit+비번 방어).
+  if (TURNSTILE_LOGIN_ENABLED) {
     const ip = c.req.header('cf-connecting-ip') || undefined
     const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip)
     if (!ok) {

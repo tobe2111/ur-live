@@ -8,6 +8,8 @@ import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 interface Props {
   search: string
   setSearch: (v: string) => void
+  /** 🔎 2026-07-20: 검색 제출(Enter/최근검색 선택) — 지역/장소명이면 지도 재중심. */
+  onSubmitSearch?: (q: string) => void
   searchFocused: boolean
   setSearchFocused: (v: boolean) => void
   searchHistory: string[]
@@ -31,6 +33,7 @@ interface Props {
 export default function MapTopBar({
   search,
   setSearch,
+  onSubmitSearch,
   searchFocused,
   setSearchFocused,
   searchHistory,
@@ -81,7 +84,7 @@ export default function MapTopBar({
               onChange={e => setSearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); (e.target as HTMLInputElement).blur() } }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { pushSearchHistory(search); onSubmitSearch?.(search); (e.target as HTMLInputElement).blur() } }}
               placeholder={t('restaurantMap.searchPlaceholder')}
               aria-label={t('map.search.ariaLabel', { defaultValue: '검색' })}
               className="w-full h-11 pl-11 pr-9 bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-200 dark:border-[#2A3446] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
@@ -107,7 +110,7 @@ export default function MapTopBar({
                   {searchHistory.map((q) => (
                     <button
                       key={q}
-                      onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q) }}
+                      onMouseDown={(e) => { e.preventDefault(); setSearch(q); pushSearchHistory(q); onSubmitSearch?.(q) }}
                       className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334] flex items-center gap-2"
                     >
                       <Search className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />

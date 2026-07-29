@@ -30,7 +30,7 @@ export default function SellerAnalyticsPage() {
     : tab === 'commission' ? '/api/seller/analytics/referral-commissions/summary'
     : tab === 'funnel' ? '/api/seller/funnel-kpi?days=30'
     : '/api/seller/analytics/products/monthly-trend'
-  const { data = null, isLoading: loading } = useApiQuery<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | FunnelKpi | null>(
+  const { data = null, isLoading: loading, isError } = useApiQuery<RevenueDataPoint[] | CustomerData | ProductPerformanceItem[] | CommissionSummary | MonthlyTrend[] | FunnelKpi | null>(
     ['seller', 'analytics', tab, days], analyticsUrl, { select: (r: any) => (r?.success ? r.data : null) },
   )
   const { data: detailedData = null } = useApiQuery<DetailedAnalytics | null>(
@@ -340,6 +340,12 @@ export default function SellerAnalyticsPage() {
                 </div>
               )
             })()}
+            {/* 🛡️ 2026-07-20 (셀러 감사): 퍼널 탭도 다른 탭처럼 빈/오류 상태 표시(기존엔 data 없으면 무표시 → 빈 화면). */}
+            {tab === 'funnel' && !loading && !data && (
+              <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-sm text-gray-500">
+                {isError ? '데이터를 불러오지 못했습니다' : '표시할 데이터가 없습니다'}
+              </div>
+            )}
           </>
         )}
       </div>

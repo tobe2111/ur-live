@@ -20,11 +20,13 @@ interface Stats { total: number; unlocked: number; suspended: number; recent7: n
 interface Media { enabled: boolean; image: string | null; voice: string | null; video: string | null }
 
 const fmtD = (s: string | null) => { const d = safeDate(s); return d ? d.toLocaleDateString('ko-KR') : '—' }
+interface AccessReq { id: number; account_id: number; note: string | null; status: string; created_at: string; email: string; company_name: string | null; phone: string | null }
 
 export default function AdminAdsAccountsPage() {
   const [rows, setRows] = useState<AdsAccountRow[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [media, setMedia] = useState<Media | null>(null)
+  const [reqs, setReqs] = useState<AccessReq[]>([])
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
@@ -32,17 +34,32 @@ export default function AdminAdsAccountsPage() {
   const load = useCallback(async (query = '') => {
     setLoading(true)
     try {
-      const [a, s] = await Promise.all([
+      const [a, s, ar] = await Promise.all([
         api.get(`/api/admin/ads/accounts${query ? `?q=${encodeURIComponent(query)}` : ''}`),
         api.get('/api/admin/ads/stats'),
+        api.get('/api/admin/ads/access-requests'),
       ])
       if (a.data?.success) setRows(a.data.accounts || [])
       if (s.data?.success) { setStats(s.data.stats || null); setMedia(s.data.media || null) }
+      if (ar.data?.success) setReqs(ar.data.requests || [])
     } catch {
       toast.error('가입자 정보를 불러오지 못했습니다')
     } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
+
+  // 📥 입장 요청 승인/거절 — 승인 = access_unlocked 1 + (Resend 설정 시) 안내 메일.
+  async function decide(r: AccessReq, approve: boolean) {
+    setBusy(r.id)
+    try {
+      const res = await api.post(`/api/admin/ads/access-requests/${r.id}/decide`, { approve })
+      if (res.data?.success) { toast.success(approve ? `✅ ${r.company_name || r.email} 입장 승인 — 재로그인 시 자동 입장` : `⛔ ${r.company_name || r.email} 요청 거절`); await load(q) }
+      else toast.error(res.data?.error || '처리 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '처리 실패')
+    } finally { setBusy(null) }
+  }
+  const pendingReqs = reqs.filter(r => r.status === 'pending')
 
   async function patch(id: number, body: { access_unlocked?: number; status?: string; plan?: string }, label: string) {
     setBusy(id)
@@ -92,6 +109,28 @@ export default function AdminAdsAccountsPage() {
           {(['image', 'voice', 'video'] as const).map(k => (
             <span key={k} className="ml-2 text-gray-500">{k}: <b className={media[k] ? 'text-emerald-600' : 'text-gray-400'}>{media[k] || '미설정'}</b></span>
           ))}
+        </div>
+      )}
+
+      {/* 📥 입장 요청 대기열 — 신규 가입자의 '코드 없음' 데드엔드를 승인 큐로 해소 */}
+      {pendingReqs.length > 0 && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <div className="text-[13.5px] font-bold text-amber-800">🔑 입장 요청 대기 {pendingReqs.length}건</div>
+          <div className="mt-2 space-y-2">
+            {pendingReqs.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg bg-white border border-amber-200 px-3 py-2">
+                <div className="text-[12.5px] text-gray-800 min-w-0">
+                  <b>{r.company_name || '—'}</b> <span className="text-gray-500">{r.email}{r.phone ? ` · ${r.phone}` : ''}</span>
+                  <span className="ml-2 text-[11px] text-gray-400">{fmtD(r.created_at)}</span>
+                  {r.note && <div className="text-[11.5px] text-gray-500 truncate">요청 메모: {r.note}</div>}
+                </div>
+                <div className="shrink-0 flex gap-2">
+                  <button disabled={busy === r.id} onClick={() => decide(r, true)} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-bold disabled:opacity-50">승인</button>
+                  <button disabled={busy === r.id} onClick={() => decide(r, false)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 text-[12px] font-semibold disabled:opacity-50">거절</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

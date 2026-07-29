@@ -9,13 +9,14 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import {
-  ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, rescoreBuyerLeads,
+  ensureBuyerSchema, listBuyerLeads, updateBuyerLead, deleteBuyerLead, deleteBuyerLeads, deleteAllBuyerLeads, rescoreBuyerLeads,
   listBuyerTargets, addBuyerTarget, setBuyerTargetActive, runBuyerCollection, saveBuyerLeads,
   INTENT_TIERS, type BuyerLead,
 } from './buyer-discovery'
 import { parseBulkBuyers, parseBuyKoreaInquiries, parseB2BLeadList, parseDatedLeadList } from './buyer-parsers'
 import { runBuyerAutoFetch, runSavedSources, getAutofetchConfig, saveCookieForHost, addSource, removeSource, hostOf, getIngestToken, resetIngestToken, setCronEnabled } from './buyer-autofetch'
-import { enrichLeadsFromWebsites } from './buyer-web-enrich'
+import { enrichLeadsFromWebsites, diagnoseWebEnrich } from './buyer-web-enrich'
+import { collectTradeDemand, listTradeDemand, aggregateInquiryDemand, diagnoseTradeFeed, demandDimSummary, listTradeReference } from './trade-demand'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -96,7 +97,7 @@ app.post('/auto-fetch', async (c) => {
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
   const listUrl = b.listUrl ? String(b.listUrl) : undefined
   const result = await runBuyerAutoFetch(c.env, { cookie: String(b.cookie || ''), listUrl, urls, max })
-    .catch((e) => ({ ran: false, reason: String(e), urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
+    .catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', urls_found: 0, fetched: 0, parsed: 0, saved: 0, errors: 0, sample: [] }))
   // 저장 옵션: 쿠키(호스트별 암호화)·리스트 URL 저장 → 다음부터 재입력 없이 재사용.
   if (b.save && result.ran) {
     if (b.cookie && listUrl) await saveCookieForHost(c.env, hostOf(listUrl), String(b.cookie)).catch(() => null)
@@ -112,7 +113,7 @@ app.get('/auto-fetch/config', async (c) => c.json({ success: true, ...(await get
 app.post('/auto-fetch/run-saved', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { max?: number }
   const max = Number.isFinite(b.max) ? Math.min(30, Math.max(1, Number(b.max))) : undefined
-  const result = await runSavedSources(c.env, max).catch((e) => ({ ran: false, reason: String(e), saved: 0, sources: [] }))
+  const result = await runSavedSources(c.env, max).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, sources: [] }))
   return c.json({ success: true, result })
 })
 
@@ -140,8 +141,52 @@ app.post('/ingest-token/reset', async (c) => c.json({ success: true, token: awai
 app.post('/enrich-websites', async (c) => {
   const b = await c.req.json().catch(() => ({})) as { max?: number }
   const max = Number.isFinite(b.max) ? Math.min(40, Math.max(1, Number(b.max))) : undefined
-  const result = await enrichLeadsFromWebsites(c.env, { max }).catch((e) => ({ ran: false, reason: String(e), scanned: 0, enriched: 0, fetches: 0, sample: [] }))
+  const result = await enrichLeadsFromWebsites(c.env, { max }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', scanned: 0, enriched: 0, fetches: 0, sample: [] }))
   return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/enrich-diag — 이메일 보강 진단(왜 안 나오나 ground truth). 추측 대신 실측.
+app.get('/enrich-diag', async (c) => {
+  const diag = await diagnoseWebEnrich(c.env).catch((e) => ({ error: '진단 실행 오류', detail: String(e) }))
+  return c.json({ success: true, diag })
+})
+
+// ── 📊 수요 인텔리전스 — "어느 나라가 무엇을 사는가"(연락처 무관, 공개 통계) ─────────────
+// POST /api/admin/buyer-pool/demand/collect — 관세청 무역통계(TRADE_STATS_URLS) 수집.
+app.post('/demand/collect', async (c) => {
+  const result = await collectTradeDemand(c.env).catch(() => ({ ran: false, reason: '수집 중 오류가 발생했습니다', fetched: 0, mapped: 0, saved: 0, perUrl: [] }))
+  return c.json({ success: true, result })
+})
+
+// GET /api/admin/buyer-pool/demand — 국가별 한국산 수요 상위. ?country= 면 그 나라 품목별, ?dim= 면 축별.
+app.get('/demand', async (c) => {
+  const country = (c.req.query('country') || '').trim() || undefined
+  const dim = (c.req.query('dim') || '').trim() || undefined
+  const limit = intParam(c.req.query('limit'), 50)
+  const [rows, dims] = await Promise.all([
+    listTradeDemand(c.env.DB, { country, dim, limit }),
+    demandDimSummary(c.env.DB),
+  ])
+  return c.json({ success: true, rows, dims })
+})
+
+// GET /api/admin/buyer-pool/demand/reference?kind=fx|restriction — 관세환율·규제품목(참조 데이터).
+app.get('/demand/reference', async (c) => {
+  const kind = (c.req.query('kind') || 'fx').trim()
+  const rows = await listTradeReference(c.env.DB, kind, intParam(c.req.query('limit'), 50))
+  return c.json({ success: true, rows })
+})
+
+// GET /api/admin/buyer-pool/demand/inquiries — 수집된 인콰이어리의 수요 집계(품목·국가, 연락처 무관).
+app.get('/demand/inquiries', async (c) => {
+  const agg = await aggregateInquiryDemand(c.env.DB, intParam(c.req.query('limit'), 50))
+  return c.json({ success: true, ...agg })
+})
+
+// GET /api/admin/buyer-pool/demand/diag — 무역통계 원본 응답의 실제 필드명 확인(매핑 교정용).
+app.get('/demand/diag', async (c) => {
+  const diag = await diagnoseTradeFeed(c.env).catch((e) => ({ ok: false, error: '진단 실행 오류', detail: String(e) }))
+  return c.json({ success: true, diag })
 })
 
 // GET /api/admin/buyer-pool/stats
@@ -156,6 +201,8 @@ app.get('/stats', async (c) => {
       SUM(CASE WHEN status NOT IN ('lead','lost') THEN 1 ELSE 0 END) AS active_pipeline,
       SUM(CASE WHEN collected_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent7
     FROM overseas_buyer_leads`).first<Record<string, number>>().catch(() => null)
+  // 집계는 COUNT 라 정상이면 항상 1행 반환 → null 이면 조회 실패 확정. 0건으로 위장하지 말고 오류로 알림.
+  if (!t) return c.json({ success: false, error: '통계 조회에 실패했습니다. 잠시 후 다시 시도하세요.' }, 500)
   const byIntent = (await c.env.DB.prepare("SELECT COALESCE(intent_signal,'directory') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY intent_signal ORDER BY n DESC").all<{ k: string; n: number }>().catch(() => null))?.results || []
   const byCountry = (await c.env.DB.prepare("SELECT COALESCE(country,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY country ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
   const byCategory = (await c.env.DB.prepare("SELECT COALESCE(category,'?') AS k, COUNT(*) AS n FROM overseas_buyer_leads GROUP BY category ORDER BY n DESC LIMIT 20").all<{ k: string; n: number }>().catch(() => null))?.results || []
@@ -190,6 +237,21 @@ app.delete('/:id', async (c) => {
   return c.json({ success: r.ok, error: r.error }, r.ok ? 200 : 400)
 })
 
+// POST /api/admin/buyer-pool/bulk-delete { ids?: number[] } | { all: true } — 선택/전체 삭제.
+//   전체 삭제는 파괴적이므로 { all:true, confirm:'DELETE_ALL' } 이중 확인 필요(오클릭 방지).
+app.post('/bulk-delete', async (c) => {
+  const b = await c.req.json().catch(() => ({})) as { ids?: unknown; all?: boolean; confirm?: string }
+  if (b.all === true) {
+    if (b.confirm !== 'DELETE_ALL') return c.json({ success: false, error: 'CONFIRM_REQUIRED' }, 400)
+    const r = await deleteAllBuyerLeads(c.env.DB)
+    return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
+  }
+  const ids = Array.isArray(b.ids) ? (b.ids as unknown[]).map(Number).filter(n => Number.isInteger(n) && n > 0) : []
+  if (!ids.length) return c.json({ success: false, error: 'NO_IDS' }, 400)
+  const r = await deleteBuyerLeads(c.env.DB, ids)
+  return c.json({ success: r.ok, deleted: r.deleted }, r.ok ? 200 : 400)
+})
+
 // GET /api/admin/buyer-pool/targets
 app.get('/targets', async (c) => {
   const targets = await listBuyerTargets(c.env.DB)
@@ -209,6 +271,9 @@ app.patch('/targets/:id', async (c) => {
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'INVALID_ID' }, 400)
   const b = await c.req.json().catch(() => ({})) as { active?: boolean }
   await setBuyerTargetActive(c.env.DB, id, !!b.active)
+  // 재스코어는 무겁고(수천 UPDATE) 토글마다 실행 → 응답을 막지 않게 waitUntil 로 백그라운드(ctx 없으면 동기 폴백).
+  const ctx = c.executionCtx as { waitUntil?: (p: Promise<unknown>) => void } | undefined
+  if (ctx?.waitUntil) { ctx.waitUntil(rescoreBuyerLeads(c.env.DB).catch(() => 0)); return c.json({ success: true, rescored: null, rescoring: true }) }
   const rescored = await rescoreBuyerLeads(c.env.DB).catch(() => 0)
   return c.json({ success: true, rescored })
 })
@@ -221,7 +286,7 @@ app.post('/rescore', async (c) => {
 
 // POST /api/admin/buyer-pool/collect — 무료 수집 1회(force). 피드 미설정이면 found:0(정상).
 app.post('/collect', async (c) => {
-  const r = await runBuyerCollection(c.env, { force: true }).catch((e) => ({ ran: false, reason: String(e), saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
+  const r = await runBuyerCollection(c.env, { force: true }).catch(() => ({ ran: false, reason: '처리 중 오류가 발생했습니다', saved: 0, found: 0, targets: [], diag: { feed: 0 } }))
   return c.json({ success: true, result: r })
 })
 

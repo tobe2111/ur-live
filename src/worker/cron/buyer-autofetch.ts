@@ -11,9 +11,9 @@ import { enrichLeadsFromWebsites } from '../../features/supply/api/buyer-web-enr
 export async function handleBuyerAutofetchCron(env: Env): Promise<{ ran: boolean; saved: number; enriched: number }> {
   if (env.BUYER_AUTO_FETCH_ENABLED !== 'true') return { ran: false, saved: 0, enriched: 0 }
   if (!(await getCronEnabled(env).catch(() => false))) return { ran: false, saved: 0, enriched: 0 }
-  // 1) 저장된 소스 자동 수집(저장 쿠키 사용).
-  const collect = await runSavedSources(env, 20).catch(() => ({ saved: 0 }))
-  // 2) 수집분 + 기존 리드의 웹사이트에서 이메일/전화 보강.
-  const enrich = await enrichLeadsFromWebsites(env, { max: 20 }).catch(() => ({ enriched: 0 }))
+  // 1) 저장된 소스 자동 수집(저장 쿠키 사용). 2) 웹사이트 이메일 보강.
+  //   ⚠️ 두 단계 subrequest 합계를 ~50(Cloudflare 한도) 아래로: collect 24 + enrich 14 ≈ 38.
+  const collect = await runSavedSources(env, 15, 24).catch(() => ({ saved: 0 }))
+  const enrich = await enrichLeadsFromWebsites(env, { max: 15, budget: 14 }).catch(() => ({ enriched: 0 }))
   return { ran: true, saved: collect?.saved || 0, enriched: enrich?.enriched || 0 }
 }

@@ -164,6 +164,83 @@ export interface Env {
   //   공개 데이터·공식 API 만 사용(수집 ≠ 발송 — 마케팅 발송은 정보통신망법상 사전동의 별도).
   ADS_AUTO_COLLECT_ENABLED?: string;
   ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
+  // 🌙 야간 자동 정비(중복통합→연락처 재추출→재분류 / 재보정→재조회) — 기본 ON. 'false' 로만 끔.
+  ADS_AUTO_MAINTENANCE_ENABLED?: string;
+  // 🔁 동의 리드 리마인드 시퀀스(1차 발송 N일 후 무회신 시 1회) — 기본 OFF. ⚖️ 동의 리드 한정·야간 금지.
+  ADS_REMINDER_ENABLED?: string;
+  // 🎓 신청자 온보딩 안내(신청 익일 1회) — 기본 ON(접수 메일이 약속한 안내 이행). 'true' 로만 끔.
+  ADS_ONBOARDING_DISABLED?: string;
+  // 💳 유어애즈 서비스몰 토스 결제 게이트(기본 OFF) — ⚠️ staging 실결제 검증 후에만 'true'.
+  //   OFF = 계좌이체 흐름 그대로(버튼 미노출). 메인 워커 전용(/api/ads-pay — TOSS 키가 메인에 있음).
+  ADS_TOSS_ENABLED?: string;
+  // ---- 🤝 B2B 파트너(업체) 자동 수집 (레인 A 네이버 지역검색, 2026-07-21) ----
+  ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
+  ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
+  ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
+  ADS_COMPANY_WEB_PAGES?: string;       // tier1(대행사) 웹문서 검색 페이지 수(기본 2, 최대 5) — 30건/페이지.
+                                        //   이메일 수율이 가장 높은 레인이라 깊이가 곧 이메일 보유 대행사 수.
+  ADS_COMPANY_WEB_TIER_MAX?: string;    // 웹문서 레인을 붙일 최대 tier(기본 2 = 대행사+간판 계열).
+                                        //   1 이면 대행사 전용(구 동작), 올리면 세무·POS 까지 웹 발굴.
+  ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
+  ADS_ENRICH_DEADLINE_MS?: string;        // 보강 1라운드 벽시계 상한(기본 20000, 5000~120000). 가드가 너무 일찍/늦게 끊으면 무배포 재조정.
+  ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
+                                          //   ⚠️ D1 쿼리도 서브리퀘스트 한도를 쓴다(2026-07-28 확증) → 이 값이 실효 상한을 넘으면 학습이 자동으로 내린다.
+                                          //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
+                                          //   두면 한도 초과 후 전 fetch 가 throw → 크롤 전멸). 실효 상한은 관측 학습값(platform_settings
+                                          //   `ads_subreq_cap_company_enrich` — 레인별 키, collect-budget.ts)과 min 으로 결정되므로
+                                          //   올려도 안전하지만 효과는 학습값이 정한다.
+  ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
+  // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
+  ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_STOREINFO_BATCH?: string;           // 1회 실행당 (업종×지역) 페어 수(기본 3).
+  PUBLIC_DATA_SERVICE_KEY?: string;       // data.go.kr 일반 인증키. 미설정 시 NTS_API_KEY(동일 계정 serviceKey) 폴백.
+  // 🏪 매장 후보 — 지방행정 인허가정보(store_prospects). 기본 OFF, 활용신청 후 ON.
+  ADS_LOCALDATA_ENABLED?: string;         // ur-ads 일1회 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_LOCALDATA_SERVICE_KEY?: string;     // 인허가 전용 인증키. 미설정 시 PUBLIC_DATA_SERVICE_KEY 폴백(같은 계정이면 공유).
+  ADS_LOCALDATA_ENDPOINT?: string;        // 공통 베이스 override(기본 https://apis.data.go.kr/1741000). 업종 슬러그는 뒤에 append.
+  ADS_LOCALDATA_ENDPOINTS?: string;       // 업종 슬러그→카테고리 JSON 병합(무배포 추가). 예: {"beauty_shops":"미용업","lodging":"숙박업"}
+  ADS_LOCALDATA_MAX_PAGES?: string;       // 업종당 페이지 상한(기본 6, 페이지당 500).
+  ADS_LOCALDATA_BACKFILL_DAYS?: string;   // 과거 백필 일수(기본 0=OFF, 예: 180) — 시간당 2일씩 역방향 소급 수집(수량 확대).
+  NEIS_API_KEY?: string;                  // 🎓 나이스(open.neis.go.kr) 학원·교습소 인증키 — 인허가에 없는 학원 갭 커버.
+  ADS_NEIS_ENABLED?: string;              // 학원 매시간 소량 수집 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_HIRA_ENABLED?: string;              // 🏥 심평원 병원정보 매시간 소량 수집 게이트(기본 OFF) — 전화+홈페이지 직접.
+  ADS_NARA_VENDOR_ENABLED?: string;       // 📑 나라장터 조달업체(대행사 계열) 일1회 게이트(기본 OFF).
+  ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_KAKAO_SWEEP_CAP?: string;           // ☎️ 카카오 전화 스윕 시간당 건수(기본 600, 상한 600 클램프 — 무료 10만/일 대비 여유).
+  // 🏭 도매몰 제조사(브랜드사)·판매사 후보 수집 게이트(기본 OFF). 수동 버튼은 게이트 무관.
+  SUPPLY_MAKER_COLLECT_ENABLED?: string;
+  SUPPLY_ENRICH_BUDGET?: string;          // 📧 도매 이메일 보강 1라운드 fetch 상한(기본 120, 상한 400). 실효 상한은
+                                          //   관측 학습값(platform_settings `supply_subreq_cap`)과 min — 유어애즈와 별개 워커라 별도 학습.
+  ADS_ENRICH_ROUNDS?: string;             // 📧 이메일 보강 시간당 라운드 수(기본 8, 상한 20). 각 라운드 = 독립 인보케이션 =
+                                          //   새 서브리퀘스트 예산. 2026-07-28 실측: 실효 상한 29 → 라운드당 11건이 천장이라
+                                          //   **라운드 수가 처리량의 유일한 정직한 레버**(백로그 12만+).
+  ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
+  ADS_INFLUENCER_ENRICH_ROUNDS?: string;  // 📝 인플루언서 풀 보강(블로거 활동성·링크인바이오) 시간당 라운드(기본 6, 상한 20).
+                                          //   라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산 → 처리량의 정직한 레버.
+  ADS_INFLUENCER_ENRICH_DISABLED?: string; // 📝 같은 레인 킬스위치('true'=끔). 기본 ON — 수집 게이트와 무관.
+  ADS_INFLUENCER_ENRICH_BUDGET?: string;  // 📝 그 레인 1라운드 fetch 상한(기본 45, 10~400). 실효값은 학습 상한
+                                          //   (`ads_subreq_cap_influencer_enrich`)과 min. 블로거 1건=fetch 2.
+  ADS_YT_PERF_UNITS?: string;             // 📈 유튜브 **성과 보강**의 일일 units 상한(기본 2000, 상한 9000).
+                                          //   발굴 검색(ADS_YT_SEARCH_BUDGET×100 units)과 같은 10,000 풀을 나눠 쓴다 —
+                                          //   검색 예산을 크게 올리면 이 값을 함께 낮출 것(2026-07-28 실측: 검색 22회=2,200).
+  WORK24_API_KEY?: string;                // 💼 고용24 오픈API 인증키(채용정보 — 대표 승인 2026-07-27). Cloudflare env 전용.
+  ADS_WORK24_ENABLED?: string;            // 💼 고용24 채용기업 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
+                                          //   ⚠️ 이전엔 ADS_ENRICH_BUDGET(800)을 빌려 써 서브리퀘스트 한도에 부딪히는 구조였음(2026-07-28 수리).
+  ADS_WORK24_LIST_URL?: string;           // 💼 고용24 채용목록 URL 오버라이드(통합 후 표기 흔들림 대비).
+  ADS_NARA_VENDOR_OP?: string;            // 오퍼레이션 override(기본 getPrcrmntCorpBasicInfo — 오류 시 무배포 교정).
+  ADS_NARA_VENDOR_DAYS?: string;          // 조회 구간 일수(기본 90) — 최근 등록/변경 업체.
+  // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.
+  ADS_COMMERCE_OP?: string;               // 통신판매 operation override(기본 getMllBsInfoDetail_3 = MllBsDtl_3Service).
+  ADS_COMMERCE_ENABLED?: string;          // 통신판매사업자 크론 게이트. ADS_COMMERCE_ENDPOINT override.
+  ADS_COMMERCE_ENDPOINT?: string;
+  ADS_FRANCHISE_ENABLED?: string;         // 공정위 가맹정보 크론 게이트. ADS_FRANCHISE_ENDPOINT override.
+  ADS_FRANCHISE_ENDPOINT?: string;
+  ADS_FRANCHISE_OP?: string;              // 가맹 operation override(기본 getBrandList = FftcBrandRlsInfo2_Service).
+  ADS_FRANCHISE_YEAR?: string;            // 브랜드 기준년도(yr) — API 가 필수 요구 시 설정(예: 2024). 미설정 시 생략.
+  ADS_NOTICE_ENABLED?: string;            // 공고 스캐너 크론 게이트. ADS_NARA_ENDPOINT / ADS_BIZINFO_ENDPOINT override.
+  ADS_NARA_ENDPOINT?: string;
+  ADS_BIZINFO_ENDPOINT?: string;
 
   // ---- 🌐 해외 수출 바이어 자동 수집 (유통스타트 B2B, 2026-07-20) ----
   //   유어딜과 무관 — 유통스타트(도매/수출) 소관. features/supply 자립 엔진(mount-wholesale 마운트 =
@@ -315,6 +392,10 @@ export interface Env {
   //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
   //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
   ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 🔁 ur-ads 자기참조 서비스바인딩(wrangler-ads.toml [[services]] SELF→ur-ads) — YT 예산 버스트 self-chain 용.
+  //   각 수집 인보케이션이 다음 인보케이션(fresh 서브리퀘스트 예산)을 던지고 즉시 종료 → 오케스트레이터 시간제한 없이
+  //   하루 예산을 백그라운드에서 끝까지 소진. 미바인딩 시 chained=false → 메인 오케스트레이터가 시간예산 내 폴백.
+  SELF?: { fetch: (req: Request) => Promise<Response> };
   // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
   //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
   ADS_WORKER_ENABLED?: string;

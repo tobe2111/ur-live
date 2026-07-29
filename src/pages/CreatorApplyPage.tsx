@@ -11,13 +11,15 @@ const PLATFORMS = [
   { v: 'youtube', label: '유튜브' }, { v: 'instagram', label: '인스타그램' }, { v: 'naver_blog', label: '네이버 블로그' },
   { v: 'tistory', label: '티스토리' }, { v: 'tiktok', label: '틱톡' }, { v: 'etc', label: '기타' },
 ]
-const CATEGORIES = ['맛집', '카페', '뷰티', '네일', '숙소', '패션', '여행', '육아', '기타']
+// 서버(influencer-apply.routes CATEGORIES)와 동일 택소노미 — 불일치 시 '기타'로 강등되므로 함께 갱신할 것.
+const CATEGORIES = ['맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
 
 export default function CreatorApplyPage() {
-  const [f, setF] = useState({ name: '', platform: 'youtube', url: '', category: '맛집', email: '', contact: '', message: '' })
+  const [f, setF] = useState({ name: '', platform: 'youtube', url: '', category: '맛집', region: '', followers: '', rate: '', email: '', contact: '', message: '' })
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [claimCode, setClaimCode] = useState<string | null>(null) // 신청 응답의 가입 추적 코드(없으면 일반 로그인)
   const [err, setErr] = useState('')
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF(p => ({ ...p, [k]: e.target.value }))
 
@@ -27,7 +29,7 @@ export default function CreatorApplyPage() {
     setBusy(true)
     try {
       const r = await api.post('/api/creator-apply', { ...f, agree })
-      if (r.data?.success) setDone(true)
+      if (r.data?.success) { setClaimCode(typeof r.data.claim_code === 'string' ? r.data.claim_code : null); setDone(true) }
       else setErr(r.data?.error || '신청에 실패했습니다. 잠시 후 다시 시도해주세요.')
     } catch (e) {
       const ax = e as { response?: { data?: { error?: string } } }
@@ -51,6 +53,12 @@ export default function CreatorApplyPage() {
             <div className="text-4xl mb-3">✅</div>
             <div className="text-lg font-semibold text-gray-900">신청이 접수되었습니다</div>
             <p className="mt-2 text-sm text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
+            {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}
+            <a href={claimCode ? `/creators/start?ic=${claimCode}` : '/login'}
+              className="mt-5 inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white">
+              지금 바로 시작하기 (카카오 1분)
+            </a>
+            <p className="mt-2 text-xs text-gray-500">가입하면 내 링크샵이 자동으로 생기고, 딜을 담아 링크만 공유하면 됩니다.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
@@ -72,6 +80,21 @@ export default function CreatorApplyPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">채널 주소(URL) <span className="text-rose-500">*</span></label>
               <input value={f.url} onChange={set('url')} placeholder="https://..." className={input} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">활동 지역</label>
+                <input value={f.region} onChange={set('region')} placeholder="예: 서울 서초구" className={input} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">구독자·팔로워 수</label>
+                <input value={f.followers} onChange={set('followers')} inputMode="numeric" placeholder="예: 12000" className={input} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">희망 협찬 조건 <span className="text-gray-400 font-normal">(선택)</span></label>
+              <input value={f.rate} onChange={set('rate')} placeholder="예: 30만원~ / 제품 제공 / 협의 가능" className={input} />
+              <p className="mt-1 text-xs text-gray-400">지역·규모·조건을 적어주시면 조건에 맞는 제안만 골라서 보내드립니다.</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
               <input value={f.email} onChange={set('email')} placeholder="business@example.com" className={input} />
@@ -83,7 +106,7 @@ export default function CreatorApplyPage() {
             <p className="text-xs text-gray-400 -mt-2">※ 이메일 또는 연락처 중 하나는 꼭 입력해주세요.</p>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">하고 싶은 말 <span className="text-gray-400 font-normal">(선택)</span></label>
-              <textarea value={f.message} onChange={set('message')} rows={3} placeholder="구독자 규모, 활동 지역, 협업 희망사항 등" className={input} />
+              <textarea value={f.message} onChange={set('message')} rows={3} placeholder="협업 희망사항, 대표 콘텐츠 등" className={input} />
             </div>
             <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer">
               <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-0.5" />
