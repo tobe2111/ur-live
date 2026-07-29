@@ -306,7 +306,18 @@ export async function enrichYouTubePerformance(
 }
 
 /** 네이버 블로거 보강 결과 — 어드민 진단용(측정 성공 0 이 반복되면 차단/형식변경 신호). */
-export interface NaverEnrichDiag { tried: number; measured: number; contacts: number; failed: number }
+export interface NaverEnrichDiag {
+  tried: number; measured: number; contacts: number; failed: number
+  /**
+   * 🔎 2026-07-29 무음 실패 제거 — `tried:0` 이 **왜** 0 인지 구분되지 않아 라이브에서 원인 규명이 막혔다.
+   *   (대상이 없는 것 / 쿼리가 깨진 것 / 핸들이 전부 형식 밖인 것 / 예산·시간이 먼저 끝난 것이 전부 같은 모양)
+   *   아래 값이 있으면 스냅샷만 보고 판정된다 — 추측 금지 룰의 실행판.
+   */
+  selected?: number            // 후보 쿼리가 고른 행 수(0 = 대상 없음이 **확정**)
+  bad_handle?: number          // 형식 밖 핸들이라 시도 없이 스탬프만 찍은 수
+  stopped?: 'budget' | 'deadline' // 루프가 중간에 멈춘 이유(끝까지 돌았으면 없음)
+  query_error?: string         // 후보 조회 자체가 실패(예전엔 빈 배열로 삼켜 원인 불명)
+}
 
 /**
  * 네이버 블로거 활동성+정보 보강 — RSS(30일 포스팅 수·최근 글 제목) + 홈 HTML(이웃수·프로필 연락처).
@@ -322,19 +333,32 @@ export interface NaverEnrichDiag { tried: number; measured: number; contacts: nu
  */
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
-  if (max <= 0 || budget.left <= 1) return diag
-  const rows = (await DB.prepare(`SELECT id, handle, email, instagram, links, description FROM ad_influencer_leads
+  // 진입조차 못 한 경우도 사유를 남긴다(예산 배분이 0 이었는지, 앞 레인이 다 썼는지 구분).
+  if (max <= 0) { diag.selected = 0; diag.stopped = 'budget'; return diag }
+  if (budget.left <= 1) { diag.stopped = 'budget'; return diag }
+  // ⚠️ 조회 실패를 빈 배열로 삼키지 않는다 — 삼키면 '대상 없음'과 구분이 사라져 라이브 진단이 막힌다.
+  let rows: Array<{ id: number; handle: string; email: string | null; instagram: string | null; links: string | null; description: string | null }> = []
+  try {
+    const res = await DB.prepare(`SELECT id, handle, email, instagram, links, description FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'naver_blog' AND handle IS NOT NULL
       ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30))
-    .all<{ id: number; handle: string; email: string | null; instagram: string | null; links: string | null; description: string | null }>().catch(() => null))?.results || []
+      .all<{ id: number; handle: string; email: string | null; instagram: string | null; links: string | null; description: string | null }>()
+    rows = res?.results || []
+  } catch (err) {
+    diag.query_error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
+    return diag
+  }
+  diag.selected = rows.length
   if (!rows.length) return diag
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
     // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
-    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
+    if (budget.left <= 1) { diag.stopped = 'budget'; break }
+    if (budget.deadline && Date.now() >= budget.deadline) { diag.stopped = 'deadline'; break }
     if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
+      diag.bad_handle = (diag.bad_handle || 0) + 1
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
     }
