@@ -170,6 +170,29 @@ export default defineConfig({
           if (id.includes('/src/hooks/useSearch')) return 'app-search'
           // 셀러/어드민/에이전시 Layout 의 토큰 자동 갱신 — Layout 진입 시만 필요.
           if (id.includes('/src/hooks/useTokenAutoRefresh')) return 'app-auth'
+          // 🛡️ 2026-07-29 (critical path): `cn()` + tailwind-merge 를 app-utils 에서 들어낸다.
+          //   `src/lib/utils.ts` 는 아래 catch-all(`/src/lib/`)에 걸려 app-utils 로 갔는데,
+          //   **app-utils 는 엔트리가 쓰는 청크(api.ts·auth.ts 등)라 preload 된다** → 같이 실려 올라갔다.
+          //   그런데 실측하면 `src/lib/utils.ts` 는 **엔트리에서 도달 불가**다 —
+          //   importer 가 `components/ui/skeleton.tsx` · `separator.tsx` **둘뿐**이고 둘 다 lazy.
+          //   더 큰 문제는 딸려오는 것: `tailwind-merge` 는 manualChunks 규칙이 **없어서**
+          //   rollup 이 "importer 가 있는 청크"에 넣는데, 그 유일한 importer 가 이 파일이라
+          //   **97.1 KB raw 가 통째로 크리티컬 패스에 있었다**(app-utils 285.2 KB 의 34%).
+          //   → 전용 leaf 청크로 빼면 tailwind-merge 가 규칙이 없어 **이 청크를 따라 나간다**.
+          //   ⚠️ `/src/lib/utils` 는 `/src/lib/` 보다 **먼저** 와야 한다(먼저 매칭되는 규칙이 이긴다).
+          //   ⚠️⚠️ **왜 기존 청크(app-components)에 합치지 않고 전용 청크인가 — 실측으로 걸러낸 함정.**
+          //   `manualChunks` 는 `build:ssr`(`vite build --ssr`, **같은 vite.config**)에도 적용돼
+          //   **SSR 모듈 초기화 순서를 바꾼다.** 이 모듈을 `app-components` 로 보냈더니
+          //   `prerender:main` 출력이 **25,718 → 2,873 chars 로 붕괴**했다(SSR 중 컴포넌트가 던져
+          //   React 가 서브트리를 스트립 → "SSR-unsafe 경계" 경고). **빌드는 exit 0, tsc 도 0** 이라
+          //   조용히 지나갈 뻔했다. 전용 leaf 청크로 두면 25,718 chars 그대로 + 같은 이득(216 KB).
+          //   ⇒ 청크를 옮길 때는 **번들 크기만 보지 말고 `prerender:main` 의 chars 도 같이 볼 것.**
+          if (id.includes('/src/lib/utils')) return 'app-ui-utils'
+          // 🛡️ 2026-07-29 (서비스 분리 + critical path): 도매(B2B) 훅을 소비자 크리티컬 패스에서 제거.
+          //   useWholesale(12.0 KB) · useWholesaleChat(3.7 KB) 이 `/src/hooks/` catch-all 로 app-utils 에
+          //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
+          //   도매 페이지는 각자 lazy 청크라 그쪽에서 이 청크를 받으면 된다.
+          if (id.includes('/src/hooks/queries/useWholesale')) return 'app-wholesale-hooks'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
