@@ -170,7 +170,17 @@ app.get('/influencer-pool/send-queue', async (c) => {
   const binds: (string | number)[] = [POOL]
   const platform = (c.req.query('platform') || '').trim()
   if (['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
-  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, email_status
+  // 🎯 2026-07-29 **이행용 좁히기** — 서비스몰이 파는 건 「지역·업종 맞춤 매칭」인데, 정작 발송 큐를
+  //   그 축으로 못 좁혔다("강남 맛집 10명" 주문이 오면 전체 점수순 목록에서 사람이 눈으로 골라야 했다).
+  //   목록 API 와 같은 필터를 큐에도 준다(같은 의미·같은 이름 — 두 곳이 갈라지면 결과가 달라 보인다).
+  const category = (c.req.query('category') || '').trim()
+  if (category) { where.push('category = ?'); binds.push(category.slice(0, 20)) }
+  const region = (c.req.query('region') || '').trim()
+  if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
+  // 📧 이메일 전용 — 대표 아웃리치 채널이 이메일이라, 인스타/URL 만 있는 리드는 '오늘 보낼 20명'을
+  //   채우고도 실제로 못 보낸다. 기본은 기존 동작(열 수 있는 채널 전부) 유지 — 옵션으로만.
+  if (c.req.query('emailOnly') === '1') where.push('email IS NOT NULL')
+  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, region, email_status
     FROM ad_influencer_leads WHERE ${where.join(' AND ')}
     ORDER BY (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
