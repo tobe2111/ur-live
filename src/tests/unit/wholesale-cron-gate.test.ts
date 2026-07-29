@@ -45,16 +45,19 @@ describe('도매 번들 cron no-op 게이트 — 이중성숙 차단', () => {
     expect(whenConsumer).toBe('handleCronScheduled')  // 소비자 → 실제 cron
   })
 
+  // no-op 본체는 cron 진입점을 소유한 scheduled.ts 에 있다(index.ts 는 래칫상 성장 불가).
+  const scheduled = readFileSync(resolve(process.cwd(), 'src/worker/scheduled.ts'), 'utf8')
+  const noopBody = (scheduled.match(/async function wholesaleCronNoop[\s\S]{0,300}?\n\}/) || [])[0] ?? ''
+
   it('no-op 은 정산/예치금 로직을 부르지 않는다 (실행 주체만 가름, 로직 무접촉)', () => {
-    const body = (index.match(/async function wholesaleCronNoop[\s\S]{0,300}?\n\}/) || [])[0] ?? ''
-    expect(body).not.toBe('')
+    expect(noopBody).not.toBe('')
     for (const f of ['matureSupplierSettlements', 'reconcile', 'payout']) {
-      expect(body.includes(f)).toBe(false)
+      expect(noopBody.includes(f)).toBe(false)
     }
   })
 
   it('no-op 은 무음이 아니다 — 잘못된 cron 설정이 로그로 드러난다', () => {
-    expect(index).toContain('wholesale-cron-gate')
-    expect(/async function wholesaleCronNoop[\s\S]{0,200}console\.error/.test(index)).toBe(true)
+    expect(scheduled).toContain('wholesale-cron-gate')
+    expect(/async function wholesaleCronNoop[\s\S]{0,200}console\.error/.test(scheduled)).toBe(true)
   })
 })

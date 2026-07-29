@@ -98,7 +98,9 @@ describe('정산 cron 은 소비자 워커에서만 — 이중성숙 차단', ()
   it('cron 진입점(scheduled export)은 공유 entry 한 곳에만 있다', () => {
     // 두 번째 scheduled export 가 생기면 번들별로 다른 cron 이 붙을 수 있다.
     const idx = readRepo(SHARED_ENTRY)
-    expect(/scheduled:\s*handleCronScheduled/.test(idx)).toBe(true)
+    // 2026-07-29: 게이트 도입으로 바인딩이 삼항이 됐다 — 거짓 분기(소비자)가 실제 핸들러여야 한다.
+    //   극성/분기 세부 검증은 wholesale-cron-gate.test.ts 가 담당(여기선 진입점 존재만).
+    expect(/scheduled:.*handleCronScheduled/.test(idx)).toBe(true)
     // 도매 전용 코드(features/supply)는 자체 scheduled 핸들러를 export 하지 않는다.
     for (const f of ['src/worker/mount-wholesale.ts']) {
       expect(/export\s+(default\s+)?\{[^}]*scheduled|scheduled\s*:/.test(readRepo(f))).toBe(false)
