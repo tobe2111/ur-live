@@ -202,6 +202,43 @@ naver: FAILED: 블로그 검색 호출 실패 — Error: Too many subrequests by
   있고 남은 건 동의/PIPA 절차와 "누가 언제 보내는가"다. **이제 이게 유일한 병목이다.**
 
 ---
+## ✅ 2026-07-29 — 가드를 지키는 가드: "검사가 안 도는" 클래스 박제 (대표 "개선점 더 찾아")
+
+PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 실패하는 것이 아니라 검사가 아예 안 도는 것**이라는
+관찰(#793·#826·#828·#834·#839 전부 같은 모양)을 가드로 환원했다. **실측 3건에서 도출**했고 추측은 없다.
+
+### 찾은 것 (전부 실측)
+| # | 발견 | 왜 안 보였나 |
+|---|---|---|
+| ⓐ | `check-bundle-size` gzip 총량 예산이 **항상 0** | `.gz` 사이드카를 읽는데 vite 는 그 파일을 안 만든다 → `0 > 1.5` 영원히 거짓. 예산 상향 4번의 근거가 전부 이 죽은 값이었다("gzip 은 여유 있다") |
+| ⓑ | `check-input-text-color` 가 **어디에도 미등록** | `\btext-white\b` 가 `dark:text-white` 안에서도 매치 → CLAUDE.md 가 요구하는 정상 패턴을 위반으로 신고(실측 6건 전부 오탐). 켜면 정상 코드가 빨간불이라 아무도 못 켰다. 파일은 있으니 보호받는 것처럼 보였다 |
+| ⓒ | `check-linkshop-ownership` 이 대상 부재를 조용히 `continue` | 파일 이름만 바뀌어도 그 불변식이 소리 없이 사라지는 구조. 실제로 VideosTab 항목이 죽어 있었다(라이브커머스 중단으로 파일 삭제) |
+| ⓓ | `check:i18n` 은 package.json 에 **정의만** 되고 아무도 호출 안 함 | 내가 만든 R1 이 처음엔 이걸 통과시켰다 — "정의됨"을 "실행됨"으로 오판. 전이적 `npm run` 해석으로 교정 |
+
+### 한 것
+- **신규 `scripts/check-guard-registry.mjs`** — R1 모든 `check-*.{mjs,sh}` 가 실제 실행 경로에 등록 · R2 가드가
+  코드에서 지목한 고정 파일 경로 존재(주석 속 경로는 제외). verify.yml(strict) + audit-gate 등록.
+- `check-input-text-color.mjs` **variant-aware 수리**(`:` 포함 토큰 제외) → 위반 0 확인 후 **최초 등록**.
+- `check-linkshop-ownership.mjs` 대상 부재를 **실패로 승격** + 죽은 VideosTab 항목 삭제.
+- 미등록 가드 3개(`i18n-sync`·`weakset-primitive`·`input-text-color`) audit-gate 등록.
+- 각 가드에 **"측정 대상 0건이면 통과가 아니라 실패"** 선언 추가(ⓐ 재발 차단).
+
+### ⚠️ 이번에 틀린 판단 (이게 제일 값지다)
+1. **`CuratorHeader.tsx` 경로가 낡았다고 보고했는데 틀렸다.** 가드에는 올바른 경로가 들어 있었고,
+   MISSING 은 내가 검증용으로 **손으로 적은 목록의 오타**였다. → 대상 목록은 손으로 적지 말고
+   **가드 파일에서 직접 추출**할 것(`grep -oE "file: '[^']+'"`). 바로 그렇게 다시 세서 정정했다.
+2. **`CLAUDE.md` 의 "npm 정상화(2026-07-28 실측)" 는 이 컨테이너에 해당하지 않는다.** 여기선 `npm ping` 이
+   403 이다. 컨테이너마다 다르므로 **"문서가 된다고 했으니 된다"로 넘기지 말고 매번 확인**할 것.
+
+### 다음 세션 첫 액션
+1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
+2. **번들 gzip 예산 되살리기(ⓐ, 유일한 미완)** — `npm ping` 이 되는 환경에서:
+   `npm ci && npm run build:client && node scripts/check-bundle-size.mjs --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['js']['total_gzip_bytes'])"`
+   → `check-bundle-size.mjs` 의 `f.gzip` 을 critical-path 처럼 `zlib.gzipSync` 로 직접 계산하도록 바꾸고,
+   **실측값 기준으로** `totalGzipMB` 를 재설정한다. ⚠️ 측정 없이 그냥 켜면 실제 총량이 1.5MB 를 넘어
+   **전 PR 이 red** 가 된다(raw 8.8MB 기준 추정 2.2~2.5MB). 반드시 재보정 후 켤 것.
+3. 남은 개선 후보: 이 파일이 **4,900줄** — union 병합으로 충돌은 없어졌지만 읽기 비용이 크다. 세션별 파일 분리 + 본문 목차화.
+
 
 ## ✅ 2026-07-02 — 카카오맵 리뷰 게이미피케이션 v1 (대표 컨셉 → "추천대로 진행해줘. 가장 이상적으로")
 "유저가 카카오맵에 후기 작성 → 매장에서 확인 → 점수/레벨 상승 → 레벨 전용 이용권 구매 자격" 플로우 전체 구현. 설계+결정표: `docs/design/kakao-review-gamification.md` (결정 4건 전부 추천안 확정 — 매장승인+어드민샘플링 / 리뷰 전용 레벨 / 전용 이용권 게이트만 / 별점무관+대가표시).
