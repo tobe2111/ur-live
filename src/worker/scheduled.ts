@@ -73,6 +73,7 @@ import { getFeatureFlags } from './utils/feature-flags';
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
+import { recordCronBeat } from './utils/cron-heartbeat';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -107,11 +108,21 @@ export async function handleCronScheduled(
 ): Promise<void> {
   const cron = event.cron;
 
+  // 💓 2026-07-28: 성공·실패 무관 하트비트. safeCron 은 **예외가 날 때만** 기록했는데,
+  //   실제로 아픈 정지는 예외가 없다(cron 미발화 / 게이트 OFF 조기 return / 내부 .catch 로 전부 삼킴).
+  //   유어애즈 자동 정비가 셋째 경우로 07-26 부터 멈춘 걸 아무도 몰랐다(#793).
+  //   여기 한 곳이 68개 작업 전부의 진입점이라, 이 줄들이 곧 전체 커버리지다.
   const safeCron = async (name: string, task: () => Promise<unknown>) => {
+    const t0 = Date.now();
+    let ok = true;
     try {
       await task();
     } catch (err) {
+      ok = false;
       await notifyCronFailure(env, name, err);
+    } finally {
+      // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
+      await recordCronBeat(env, name, ok, Date.now() - t0);
     }
   };
 
