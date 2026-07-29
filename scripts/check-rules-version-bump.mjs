@@ -108,6 +108,18 @@ for (const { file, name, severity, why } of TARGETS) {
   if (prev.value !== cur.value) continue           // 올렸다 — 통과
   if (meaningful(old, name) === meaningful(now, name)) continue  // 주석/공백만 — 통과
 
+  // main 과 내용이 같으면 **이 브랜치가 쓴 게 아니다** — main 을 병합해 물려받았을 뿐이다.
+  // 이 조건이 없으면, 규칙이 main 에 들어가기 *전에* 갈라진 브랜치가 나중에 main 을 병합하는
+  // 순간 전부 걸린다(자기 잘못이 아닌데). 소음이 되면 아무도 안 본다 — 시드 가드와 같은 교훈.
+  let mainSrc = null
+  for (const r of ['origin/main', 'main']) {
+    try {
+      mainSrc = execSync(`git show ${r}:${file}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
+      break
+    } catch { /* 다음 후보 */ }
+  }
+  if (mainSrc !== null && meaningful(mainSrc, name) === meaningful(now, name)) continue
+
   problems.push({ file, name, value: cur.value, severity, why })
 }
 
