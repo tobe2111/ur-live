@@ -69,6 +69,29 @@ export const CLASSIFIED_CATEGORIES: string[] = Array.from(new Set(RULES.map(r =>
 export const NON_CATEGORIES = new Set(['자동', '일반', '', null as unknown as string])
 
 /**
+ * 🧹 **저장된 카테고리를 지워야 하는가** — 재분류가 `null` 을 받았을 때의 판단(순수).
+ *
+ * ## 왜 필요한가 (2026-07-29 실측 — 내 앞선 설명이 틀렸던 자리)
+ * 재분류(`runReclassifyPool`)는 `classifyCategory` 가 **값을 주면 덮고, `null` 이면 그대로 둔다.**
+ * 그래서 "예전엔 맞았지만 지금 규칙은 거부하는" 값이 **영구히 굳는다.**
+ * 입주 시공업체 27명에 새 가드를 적용해 봤더니 **6명만 교정되고 21명이 공동구매로 남았다** —
+ * 다른 규칙에도 안 걸려 `null` 이 나왔기 때문이다. "측정하면 점진 교정된다"는 낙관은 틀렸다.
+ *
+ * ⇒ `null` 이어도 **현재 규칙이 그 값을 거부한다는 사실을 아는 경우**엔 지운다.
+ *   지우면 키워드 상속/라이브 재보정이 다시 채울 기회를 얻는다(잘못된 값이 그 자리를 막지 않는다).
+ *
+ * ⚠️ 넓히지 말 것: "현재 규칙이 거부한다"를 **아는** 경우만이다. 모르는 값을 지우면
+ *    사람이 손으로 고친 분류까지 날린다.
+ */
+export function shouldClearCategory(stored: string | null | undefined, name: string, description?: string | null): boolean {
+  if (!stored) return false
+  if (NON_CATEGORIES.has(stored)) return true
+  // 공동구매인데 입주 시공업체 신호 → 현재 규칙이 명시적으로 거부하는 조합(위 isFitoutBulkBuy).
+  if (stored === '공동구매' && isFitoutBulkBuy(`${name} ${description || ''}`)) return true
+  return false
+}
+
+/**
  * 🚪 **해시태그 자동승격 허용 업종** (2026-07-29 대표 승인 — "적합성 게이트 걸자").
  *
  * ## 무엇이 문제였나 (라이브 실측)

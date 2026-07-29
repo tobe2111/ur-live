@@ -9,7 +9,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
-import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+import { classifyCategory, classifyCategoryByHits, reconcileCategory, NON_CATEGORIES, shouldClearCategory } from './influencer-classify'
 // 🧩 순수 파서는 `influencer-parse.ts` — 기존 import 경로 호환을 위해 재수출.
 export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso,
   avgStats, parseIsoDurationSec, SHORTS_MAX_SEC, medianOf, videoMetrics } from './influencer-parse'
@@ -566,7 +566,9 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
       cursor = Math.max(cursor, r.id)
       const byContent = classifyCategory(r.name, r.description)
       if (byContent && byContent !== r.category) ups.push(DB.prepare("UPDATE ad_influencer_leads SET category = ?, category_source = 'content' WHERE id = ? AND account_id = 0").bind(byContent, r.id))
-      else if (!byContent && r.category && NON_CATEGORIES.has(r.category)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
+      // 🧹 값이 안 나와도 **현재 규칙이 그 값을 거부한다는 걸 아는 경우**엔 지운다(shouldClearCategory 참조).
+      //   안 지우면 옛 규칙으로 붙은 값이 영구히 굳는다 — 실측: 입주업체 27명 중 21명이 그 상태였다.
+      else if (!byContent && shouldClearCategory(r.category, r.name, r.description)) ups.push(DB.prepare('UPDATE ad_influencer_leads SET category = NULL WHERE id = ? AND account_id = 0').bind(r.id))
     }
     for (let i = 0; i < ups.length; i += 100) await DB.batch(ups.slice(i, i + 100)).catch(() => null)
     changed += ups.length
