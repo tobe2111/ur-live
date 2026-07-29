@@ -1793,7 +1793,8 @@
       "promoSpend": "Dépenses promo",
       "influencerDeals": "Collabs influenceurs",
       "experienceCampaigns": "Campagnes d'essai",
-      "myLinkshop": "Ma boutique"
+      "myLinkshop": "Ma boutique",
+      "reviewVerifications": "Vérifier les avis"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2381,6 +2382,26 @@
       "drawPrompt": "Nombre à sélectionner (places : {{slots}})",
       "drawConfirm": "Lancer le tirage ? Les gagnants recevront automatiquement un coupon à 0 ₩.\n(Tirage équitable — graine, liste et résultats enregistrés définitivement, irréversible.)",
       "drawDone": "Tirage terminé — {{winners}} sélectionnés sur {{pool}} inscrits, {{issued}} coupons émis"
+    },
+    "reviewVerify": {
+      "title": "Vérification des avis Kakao Map",
+      "subtitle": "Vérifiez les avis Kakao Map soumis par les clients ayant utilisé un coupon. En approuvant, le client reçoit des deals bonus + des points de niveau.",
+      "tabPending": "En attente",
+      "tabPaid": "Payés",
+      "tabRejected": "Refusés",
+      "empty": "Aucun historique",
+      "emptyPending": "Aucune preuve d’avis en attente",
+      "approve": "Confirmer (payer le bonus)",
+      "reject": "Refuser",
+      "rejectConfirm": "Confirmer le refus",
+      "reasonPlaceholder": "Motif du refus (envoyé au client)",
+      "reasonRequired": "Veuillez saisir un motif de refus",
+      "approvedToast": "Confirmé — bonus et points envoyés au client",
+      "rejectedToast": "Refusé",
+      "ocrPassed": "Vérification auto réussie (référence)",
+      "openReview": "Voir la preuve",
+      "footNote": "Les bonus sont versés pour la vérification de visite, quel que soit la note ou le contenu. L’équipe opérations peut auditer par échantillonnage.",
+      "loadError": "Impossible de charger la liste"
     }
   },
   "admin": {

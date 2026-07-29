@@ -1,5 +1,141 @@
 # 🚧 진행 중 작업
 
+## 🟡 2026-07-29 (10차) — **도매몰 용도 변경 조사: 공구 운영자 SaaS 갭 판정(코드 0)**
+
+대표 「신규 공구 서비스 사업설계(개정판)」 — 도매몰을 *B2B 유통* → *공구 운영자에게 자기 이름의 판*.
+산출물 `docs/design/operator-mall-saas-gap.md` (8항목 각각 된다/안된다/최소변경 판정).
+
+### 🔑 예상과 달랐던 것 (다음 세션이 이걸로 오판하지 말 것)
+- ❌ **"소비자 결제가 최대 갭" → 아니다.** 몰 주문을 **소비자 `orders` 레일**로 태우면 구조적 장애 0
+  (`payment.routes` 잠금 무수정). 몰 귀속은 `product_id → products.mall_id` 조인이라 **`orders` ALTER 불필요**.
+  도매 레일(`wholesale_orders` + `/orders/confirm`)로 태우려 하면 막힌다 — `seller_token` 필수 ·
+  `distributor_seller_id` 스코프 · B2B 테이블.
+- 🔴 **진짜 최대 갭 = 운영자 자체 상품 등록.** 판매사에겐 자체 상품 생성 경로가 **아예 없다**
+  (유일 경로 = 재판매 복제 `supply.routes.ts:333`). 제조사·소비자셀러엔 있음.
+  ⇒ 최소 변경은 도매에 등록 경로 신설이 아니라 **운영자를 소비자 셀러로 두고 `products.mall_id` 스탬프**
+  (결제·공구·픽업·5% 레일이 전부 따라붙음).
+- ❌ **"메디스타트 3커밋 선례" → 커밋 3개 못 찾음.** 실체는 `repair-schema:1997` 시드 행 1개 +
+  어드민 CRUD API(`POST /api/admin/wholesale-malls`). 결론(신규개발 거의 0)은 유지, **근거를 바꿔 말 것**.
+- ❌ **"도매몰은 PG 미사용"(CLAUDE.md) → 전면 참 아님.** `wholesale.routes.ts:1775` 에 Toss confirm 존재
+  (판매사 B2B용). 그 서술은 `wholesale-plus` 기준.
+
+### 🔴 추가 판정 — `mall_id` 격리 축 (§8-B)
+**지시서 전제 하나가 성립하지 않았다**: `mall_id IS NULL` 인 행은 **사실상 없다** —
+`ALTER … ADD COLUMN mall_id INTEGER **DEFAULT 1**`(repair-schema:949, sellers 947)이라
+**기존 소비자 상품 전부가 이미 `mall_id=1`** 이고 **몰 1 = 유통스타트**다. `IS NULL` 판별자는 아무것도 못 거른다.
+- 💡 **구조적 사실**: 오늘 본진↔도매를 갈라주는 건 `mall_id` 가 아니라 **`is_supply_product`**(불변식 ①).
+  운영자 몰 상품은 `is_supply_product=0` 이라 **그 보호막 밖으로 나온다** — 새 축이 위험한 근본 이유.
+- (a) 본진에서 몰 조건 누락 → 운영자 상품이 홈·browse·검색·**sitemap(SEO 색인)**·링크샵·피드캐시로 샌다
+- (b) 몰 조회에서 누락 → 기본값 1 때문에 **유어딜 본진 카탈로그가 그 몰에 통째로** 뜬다
+- 판별자 권고: 본진 = 기존 ① AND `COALESCE(mall_id,1)=1` / 몰 = `mall_id=:id`(신규 몰 **id ≥ 3** 보장)
+- (c) 환원 🟡**부분**: 실측 — 소비자 디렉터리에서 `FROM products` 읽는 파일 **37개** vs 불변식 ①~③ 검사 **6개**.
+  ⇒ **행위 테스트(발행 SQL 캡처, 정확성) + 래칫(baseline JSON, 새 파일 자동 검출)** 2축으로 나눌 것.
+  열거식(④ 방식)을 반복하지 말 것. 래칫이 보장하는 건 "새로 생긴 게 조용히 빠지지 않음"이지 "모든 경로가 옳음"이 아님(주석 명시).
+
+### ✅ 2026-07-29 대표 확정 (§8-B/8-C 반영)
+- **판별자 채택**: 본진 = ① AND `COALESCE(mall_id,1)=1` / 몰 = `mall_id=:id` / **신규 몰 id ≥ 3**
+- 🔴 **sitemap 별도 순위** — 다른 유출 경로는 배포로 되돌아가지만 **색인은 안 된다**(회수 시점·통제권이
+  검색엔진 쪽). ⇒ **sitemap 몰 가드가 첫 운영자 몰 개설보다 먼저** 들어가야 한다. 대상 `sitemap.routes.ts`
+- 🧊 **몰 1 의미 겸용(본진+유통스타트) 분리는 보류**(§8-C 항목으로만) — 착수 전 라이브 스키마 변경 금지.
+  현재 판별자는 "유통스타트 상품이 `is_supply_product=1` 이라 ①이 걸러준다"에 기대고 있다(우연한 정합).
+  전제: **신규 몰에 id 1·2 재사용 금지**
+- ✅ **불변식 ④ 래칫 승격 완료** — 파일 열거식 폐기. 소비자 4개 디렉터리 glob 스캔 +
+  `scripts/consumer-cost-column-baseline.json` 예외. **새 몰 라우트 자동 검출** ⇒ 착수 시 ④ 목록
+  수동 갱신 **불필요**(이전 지시 무효). 되돌려-검증 3종(새 파일 노출 / 스캔 헛돎 / 죽은 예외) 전부 빨강 확인.
+  한계는 baseline 파일 + 테스트 주석 **양쪽에** 명시("새 파일이 조용히 빠지지 않음"까지만 보장)
+
+### 🛡️ 신규 가드 3 — 래칫 헛돎 방지 + mall_id 격리 전제 (2026-07-29)
+**① 기존 래칫에 "몇 개 봤나" 가드 없음 → 추가.** `check-utc-date-parse`·`check-products-column-budget` 은
+전수 walk 를 하면서 스캔 개수를 확인하지 않았다 — 경로/필터가 회귀하면 **0개 훑고 초록불**.
+하한 200(실측 1,946/1,163 대비 넉넉) + `check-file-size` 는 전수(-a) 모드에서만 0 을 에러로
+(changed-only 의 0 은 정상). 되돌려-검증: 확장자 필터를 망가뜨려 0개 스캔 → 둘 다 exit=1.
+⚠️ 첫 시도는 "없는 디렉터리"로 깨뜨렸는데 `readdirSync` 가 먼저 throw 해 가드까지 못 갔다 —
+**실제 위험 모드는 '경로는 살아 있고 필터만 회귀'** 라 그쪽으로 다시 검증했다.
+
+**② `mall-id-isolation.test.ts` 신설**(§8-C 전제를 코드로).
+- (a1) 몰 생성 INSERT 가 `id` 미명시(AUTOINCREMENT → 신규 3+) · (a2) PATCH 가 `id` 재배정 불가 ·
+  (a3) 시드가 1·2 점유 → **(a)는 이미 구조적으로 성립**했고, 가드는 그 상태를 못 벗어나게 고정하는 형태.
+- 🔴 **(b)는 지시 원문대로 구현하면 안 된다** — *"is_supply_product=0 이 mall_id IN (1,2) 로 저장되는 것 차단"* 은
+  **오늘의 정상 상태**다(`mall_id DEFAULT 1` + 소비자 상품은 =0). 런타임 차단을 넣으면
+  **소비자 상품 등록이 즉시 전부 막힌다.** 실제 위험은 기본값이 아니라 *"스탬프 경로가 1·2 를 명시"* 다.
+- ⚠️ **첫 구현이 헛돌았다**: 리터럴 인접 정규식이라 `INSERT … (mall_id) VALUES (?, 1)` 을 **놓쳤다**
+  (되돌려-검증에서 발견). ⇒ 정규식 판정을 버리고 **`mall_id` 언급 자체를 검토 대상으로**(래칫, baseline 현재 빈값).
+  스탬프 경로가 생기면 먼저 빨강 → 작성자가 값 출처를 확인하고 등록.
+
+### 📝 문구 정정 (다음 세션 오판 방지)
+*"도매몰은 PG 미사용"*(`wholesale-plus.routes.ts:4` 주석)은 **그 파일 맥락이지 도매 전체가 아니다.**
+도매에도 Toss 경로 존재(`wholesale.routes.ts:1775`). 소비자가 못 타는 진짜 이유는 PG 부재가 아니라
+`seller_token` 필수 · `distributor_seller_id` 스코프 · `wholesale_orders`(B2B) 다.
+→ CLAUDE.md 서비스분리 절 + `pickup-groupbuy-wholesale-link.md` §B.2 양쪽에 정정 기재.
+⚠️ **소스 주석 자체는 미수정**(조사 단계 코드 무접촉) — 착수 커밋에서 고칠 것.
+
+### 판정 요약
+셀프개설 🟡최소변경(몰=데이터행, 신청→자동프로비저닝만 없음) · 자체상품등록 🔴안됨(레일 교체 필요) ·
+소비자결제 🟢됨(소비자 레일) · gb_mode 🟢됨(K-V라 몰과 직교) · 픽업 🟢됨(스키마 0) ·
+정산 🟢**운영자=merchant**(`recordVoucherUsedLedger` 의 merchant_id=이행주체, seller_id=인플루언서),
+**5% 불변식 그대로·새 요율 금지** · 예치금 🟢새 용도는 안 씀(동결과 충돌 0, 단 `wholesale/plus` 1건 걸림) ·
+덜어낼것 9축(예치금·등급·견적·클레임·오픈마켓연동·최저가·역발행·채팅·plus) / 존치 6축 / 보류 1축(제조사=P2 부활).
+
+### ➡️ 착수 조건
+**gb 가격 소비자 결제 경로 배선 완료 후.** 조사는 완료. 착수 시 §7.2 3줄 보고
+(a)양쪽 레일 (b)머니 접촉(요율 신설 0) (c)게이트 OFF+마운트 제거.
+⚠️ 착수 시 **불변식 ④ 파일 목록에 새 몰 라우트 추가**(그 테스트는 열거된 파일만 본다 — 자동 아님).
+⚠️ 예치금 숫자 확보 시 `wholesale_deposits` 뿐 아니라 **활성 plus 구독 건수**도 함께 볼 것.
+## ✅ 2026-07-29 — 가드를 지키는 가드: "검사가 안 도는" 클래스 박제 (대표 "개선점 더 찾아")
+
+PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 실패하는 것이 아니라 검사가 아예 안 도는 것**이라는
+관찰(#793·#826·#828·#834·#839 전부 같은 모양)을 가드로 환원했다. **실측 3건에서 도출**했고 추측은 없다.
+
+### 찾은 것 (전부 실측)
+| # | 발견 | 왜 안 보였나 |
+|---|---|---|
+| ⓐ | `check-bundle-size` gzip 총량 예산이 **항상 0** | `.gz` 사이드카를 읽는데 vite 는 그 파일을 안 만든다 → `0 > 1.5` 영원히 거짓. 예산 상향 4번의 근거가 전부 이 죽은 값이었다("gzip 은 여유 있다") |
+| ⓑ | `check-input-text-color` 가 **어디에도 미등록** | `\btext-white\b` 가 `dark:text-white` 안에서도 매치 → CLAUDE.md 가 요구하는 정상 패턴을 위반으로 신고(실측 6건 전부 오탐). 켜면 정상 코드가 빨간불이라 아무도 못 켰다. 파일은 있으니 보호받는 것처럼 보였다 |
+| ⓒ | `check-linkshop-ownership` 이 대상 부재를 조용히 `continue` | 파일 이름만 바뀌어도 그 불변식이 소리 없이 사라지는 구조. 실제로 VideosTab 항목이 죽어 있었다(라이브커머스 중단으로 파일 삭제) |
+| ⓓ | `check:i18n` 은 package.json 에 **정의만** 되고 아무도 호출 안 함 | 내가 만든 R1 이 처음엔 이걸 통과시켰다 — "정의됨"을 "실행됨"으로 오판. 전이적 `npm run` 해석으로 교정 |
+
+### 한 것
+- **신규 `scripts/check-guard-registry.mjs`** — R1 모든 `check-*.{mjs,sh}` 가 실제 실행 경로에 등록 · R2 가드가
+  코드에서 지목한 고정 파일 경로 존재(주석 속 경로는 제외). verify.yml(strict) + audit-gate 등록.
+- `check-input-text-color.mjs` **variant-aware 수리**(`:` 포함 토큰 제외) → 위반 0 확인 후 **최초 등록**.
+- `check-linkshop-ownership.mjs` 대상 부재를 **실패로 승격** + 죽은 VideosTab 항목 삭제.
+- 미등록 가드 3개(`i18n-sync`·`weakset-primitive`·`input-text-color`) audit-gate 등록.
+- 각 가드에 **"측정 대상 0건이면 통과가 아니라 실패"** 선언 추가(ⓐ 재발 차단).
+
+### ⚠️ 이번에 틀린 판단 (이게 제일 값지다)
+1. **`CuratorHeader.tsx` 경로가 낡았다고 보고했는데 틀렸다.** 가드에는 올바른 경로가 들어 있었고,
+   MISSING 은 내가 검증용으로 **손으로 적은 목록의 오타**였다. → 대상 목록은 손으로 적지 말고
+   **가드 파일에서 직접 추출**할 것(`grep -oE "file: '[^']+'"`). 바로 그렇게 다시 세서 정정했다.
+2. **`CLAUDE.md` 의 "npm 정상화(2026-07-28 실측)" 는 이 컨테이너에 해당하지 않는다.** 여기선 `npm ping` 이
+   403 이다. 컨테이너마다 다르므로 **"문서가 된다고 했으니 된다"로 넘기지 말고 매번 확인**할 것.
+
+### 다음 세션 첫 액션
+1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
+2. **번들 gzip 예산 되살리기(ⓐ, 유일한 미완)** — `npm ping` 이 되는 환경에서:
+   `npm ci && npm run build:client && node scripts/check-bundle-size.mjs --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['js']['total_gzip_bytes'])"`
+   → `check-bundle-size.mjs` 의 `f.gzip` 을 critical-path 처럼 `zlib.gzipSync` 로 직접 계산하도록 바꾸고,
+   **실측값 기준으로** `totalGzipMB` 를 재설정한다. ⚠️ 측정 없이 그냥 켜면 실제 총량이 1.5MB 를 넘어
+   **전 PR 이 red** 가 된다(raw 8.8MB 기준 추정 2.2~2.5MB). 반드시 재보정 후 켤 것.
+3. 남은 개선 후보: 이 파일이 **4,900줄** — union 병합으로 충돌은 없어졌지만 읽기 비용이 크다. 세션별 파일 분리 + 본문 목차화.
+
+
+## ✅ 2026-07-02 — 카카오맵 리뷰 게이미피케이션 v1 (대표 컨셉 → "추천대로 진행해줘. 가장 이상적으로")
+"유저가 카카오맵에 후기 작성 → 매장에서 확인 → 점수/레벨 상승 → 레벨 전용 이용권 구매 자격" 플로우 전체 구현. 설계+결정표: `docs/design/kakao-review-gamification.md` (결정 4건 전부 추천안 확정 — 매장승인+어드민샘플링 / 리뷰 전용 레벨 / 전용 이용권 게이트만 / 별점무관+대가표시).
+- **점수/레벨 SSOT**: 신규 `worker/utils/review-level.ts` — `user_review_scores`(ensure 패턴) + `platform_settings`(`review_level_thresholds` 기본 Lv2=3/Lv3=10/Lv4=25/Lv5=50 · `review_score_per_approval` 기본 10) + 레벨업 notifyUser. 적립은 승인 CAS 승자에서만(멱등).
+- **매장 확인 큐**: `/api/seller/review-verifications`(requireSeller + seller_id 소유권) + `SellerReviewVerificationsPage`(`/seller/review-verifications`, 메뉴 등록, i18n 6언어 `seller.reviewVerify.*`). 어드민 큐는 샘플링 감사로 병행.
+- **머니 교정(동반)**: 기존 어드민 approve 가 pre-check→지급→UPDATE 순서라 **동시 승인 이중지급 레이스** → 공용 헬퍼로 CAS(claim-before-credit) + 지급실패 보상원복. **OCR 자동지급 강등**(대표 "OCR 너무 무거운 거 아니야?" — 위조 스크린샷에 퍼지 모델이 돈 판정하던 구조 제거, 라벨만. 어드민 명시 `kakao_review_auto_approve` 는 유지).
+- **레벨 전용 이용권**: `product_supply_meta.min_review_level`(2~5) — join+confirm-toss **이중 게이트**(`REVIEW_LEVEL_REQUIRED`, per-person-limit 패턴·기존 metaMap 재사용=추가조회 0) + 상세 API/공구·교환권 상세 배지 + 어드민 동네딜 폼(등록/수정/목록) 셀렉트.
+- **유저 표면**: 제출 모달(`ReviewBonusButton`)에 내 레벨(`GET /api/review-bonus/my-level`) + 별점무관·대가표시 안내 + "AI 즉시지급" 문구 제거.
+- **문서/시드**: 셀러·어드민 가이드 섹션 추가, 블로그 리뷰 리워드 글에 레벨 섹션(`BLOG_SEED_VERSION` 4→5).
+- 검증: 변경 파일 개별 구문검사 0 · sql-bind/column/table/not-null 0 · theme/blog/pagination/modal-zindex/crossrole 등 가드 GREEN (⚠️ 이 원격환경 npm 403 — 전체 tsc/build 미실행, staging 필수: 제출→매장 승인→보너스+점수→레벨업 알림→레벨 전용 구매 게이트 E2E).
+- v2 잔여: 홍보 자격(배지 노출·핀 부스트) · 사용완료 카드 kakao_place_url 딥링크 CTA · 셀러 폼 min_review_level.
+
+
+## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
+2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
+- `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).
+- 배선 추가 불필요 — 기존 pre-commit(warn)/verify.yml(strict)/audit-gate 에 이미 등재된 스크립트 확장. CLAUDE.md 방어선 표 갱신.
+- 검증: 레포 전체 0건(현행 클린) + 음성테스트(실사고 형태 `.all<T>().catch()` 포함 2건 차단, 정상 3패턴 통과, strict exit 1).
 ## ✅ 2026-07-02 — 쇼핑 상품 전 구간 전수조사 + 일괄 수리 (대표 "전부", PR #429)
 일반 온라인 쇼핑 상품(교환권/동네딜/도매 제외) 셀러등록~상세~카트~주문/결제~환불~정산 6세그먼트 병렬 감사(에이전트 6 + audit-gate 41). **P0(돈유출) 0 확인**(서버 가격/할인/재고 권위 재계산 + Toss confirm strict 금액검증) — 대신 "표시금액≠서버금액 → 결제 400" 클래스 + 배선 끊김 다수 수리. 3커밋(857bb73·9ccdee5·4dd8675).
 - **결제 금액 정합(Toss confirm 400 클래스)**: `shipping.ts` free_shipping_threshold=0="무료배송 없음"(클라/points 정합) + `order.routes` 비배송(교환권/이용권) 배송비 0(threshold 수정과 상쇄짝 — 동일커밋) + `POST /orders/shipping-quote`(주문생성과 동일 함수·데이터 견적) + 미결제취소 CAS+재고/쿠폰 복원. `CheckoutPage/useBeforePayment` 서버 견적 사용·쿠폰 최대그룹 배정(멀티셀러 UNIQUE 회피)·Σ(서버 total) 검증 후 승인·stale snapshot 최신가. `scheduled-cleanup` AWAITING_PAYMENT 스위핑+쿠폰 복원.
@@ -18,6 +154,99 @@
 - **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
 - **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
 - 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+## ✅ 2026-07-29 — **열린 PR 20건 일괄 정리 + 병합 마찰 제거 가드 2종** (대표 "PR 정리 계속 / 더 개선점")
+
+밤새 쌓인 열린 PR 을 CI 통과분부터 순차 머지했다. 그 과정에서 **같은 수작업이 반복되는 지점**을
+두 개 발견해 가드/자동화로 바꿨다 — 이게 이 세션의 실질 산출물이다.
+
+### 머지 완료 (16건)
+`#771`(어드민 최근활동+KST 정합) · `#829`(매장 픽업 공구) · `#830`(무인매장 수집 — 타 세션) ·
+`#451`(cron dead-man's switch) · `#425`(카카오맵 리뷰) · `#429`(상품 옵션) ·
+`#834`(시드 버전 가드) · `#836`(병합 자동화) 외.
+**닫음 4건 · 보류 1건(`#445`).**
+
+### 🛡️ 신규 가드 — 시드 버전 재사용 (`#834`, `check-seed-version-monotonic.mjs`)
+가이드/블로그 시드는 **"코드 버전 > DB 저장 버전"일 때만** 재시드된다. 이미 쓴 번호를 다시 쓰면
+**조건이 거짓이라 에러 없이 아무 일도 안 일어난다** — 배포는 초록불이고 라이브 문서만 옛날 것으로 남는다.
+가정이 아니라 **이미 두 번 났다**: `GUIDE_SEED_VERSION = 8` 이 2026-07-20 서로 다른 두 커밋에서 쓰였고
+(v11 주석이 그 수습을 기록 — "병행 배포 양쪽(각자 v8)이 모두 재시드되도록 9 로 합침"), `= 4` 도 두 번.
+오늘도 `#451`·`#425` 가 동시에 12 를 잡았다(머지 직전 수동 발견 → `#425` 를 13 으로).
+판정 = main 히스토리가 쓴 적 없는 더 큰 번호. **상수를 실제로 건드린 브랜치만** 검사(안 그러면
+main 안 당겨온 브랜치가 전부 걸려 소음) + **병합 진행 중(MERGE_HEAD)에는 생략**(merge-base 가 낡아 오판).
+⚠️ 한계: 아직 머지 안 된 다른 브랜치의 번호는 못 본다 — 나중에 머지하는 쪽이 CI 에서 걸려 +1 하면 된다.
+
+### 🔀 병합 자동화 (`#836`, `.gitattributes` + `merge-file-size-baseline.mjs`)
+`scripts/file-size-baseline.json` 을 **하루에 10번 넘게 손으로 병합**했다. 내용 충돌이 아니라
+서로 다른 브랜치가 서로 다른 키를 올려서 나는 충돌이다. → 전용 드라이버(**키별 최대값**).
+baseline 은 래칫 *상한*이라 작은 쪽을 고르면 병합 직후 CI 가 곧바로 빨간불이 된다(실제로 그랬다).
+`docs/CURRENT_WORK.md` 는 git 내장 `union`(양쪽 보존 — 지금까지 하던 keep-both 와 같은 결과).
+안전판: JSON 파싱 실패 시 **자동 병합을 포기하고 평소대로 충돌**을 낸다. 드라이버 미등록 환경도
+그냥 충돌이 날 뿐이라 조용한 오작동이 없다. 등록은 `install-git-hooks.sh`.
+⚠️ 파일을 줄여 baseline 을 *낮춘* 작업은 병합에서 되돌아갈 수 있다(높은 쪽이 이긴다) → 병합 후 `--rebaseline`.
+
+### 🐛 `#425` 에서 찾은 실제 버그 2건 (브랜치 원본 결함, main 은 정상이었음)
+1. `guide-seed-seller.ts` 에서 백슬래시 **2개** + 백틱(`\\` 다음에 백틱) — 템플릿 리터럴이 **그 자리에서 닫혀**
+   이후 객체 리터럴이 전부 문(statement)으로 파싱 → TS1005/1109/1128 줄줄이.
+2. `admin-products.routes.ts` 리뷰 레벨 블록의 **닫는 중괄호 누락** — 이후 코드를 통째로 삼켜
+   라우트의 `try/catch` 경계가 무너짐(TS1005 'try' expected).
+
+### ⚠️ 이번에 내가 틀린 것 (같은 실수 반복 방지 — 제일 값진 항목)
+- 🚨 **이 환경의 로컬 tsc 는 죽어 있다 — "tsc 에러 0" 을 믿지 말 것.**
+  로컬 TypeScript 가 **6.0.2** 로 올라가 있고, 이 버전은 `tsconfig.json` 의 `baseUrl` deprecation 을
+  **설정 오류로 판정해 즉시 중단**한다 → **파일을 단 하나도 검사하지 않는다.**
+  일부러 `const x: number = "문자열"` 을 넣고 돌려도 **0건**으로 나온다(실측). `package.json` 지정은 `^5.5.4` 인데
+  실제 설치본이 6.0.2 다. 복구 시도(`npm ci` · 개별 설치) 전부 **npm 403** 으로 실패 —
+  이 세션에서는 되살릴 수 없었다. ⇒ **CI 가 유일한 타입 검증 수단이다.**
+  · 그래서 내가 이 세션에서 보고한 "tsc 에러 0" 은 **전부 무의미했다**(#425 를 두 번 GREEN 이라 오판한 원인).
+  · 다음 세션은 먼저 이걸 확인할 것: `npx tsc --version` → 6.x 면 로컬 검증 불가.
+    `npx tsc --noEmit --skipLibCheck 2>&1 | head -3` 에 `tsconfig.json(...): error TS5101` 만 나오고 끝나면 그게 증상이다.
+  · 근본 수리 후보(별도): `tsconfig.json` 에 `"ignoreDeprecations": "6.0"` 추가 또는 typescript 5.x 고정.
+    ⚠️ 단 `ignoreDeprecations` 만 넣으면 6.0.2 가 `baseUrl` 을 계속 쓰긴 하나, 이 환경은 node_modules 도
+    깨져 있어(react 타입 소실, 64,706 에러) 그것만으로는 안 낫는다. npm 접근이 되는 환경에서 처리할 것.
+- **검증 명령의 `echo` 를 조건 없이 출력해 "에러 없음"으로 오판하고 버그를 담은 커밋을 푸시했다.**
+  → 판정은 반드시 **개수/종료코드**로. 다만 위 항목 때문에 이 명령조차 이 환경에선 무의미하다:
+  `ERR=$(npx tsc --noEmit --skipLibCheck 2>&1 | grep "error TS" | grep -vc baseUrl)`
+- **브랜치 단독 tsc 는 CI 와 다르다.** CI 는 **main 병합 결과**를 검사한다.
+  `#425` 가 그래서 깨졌다 — main 이 `SellerLayout.title` 을 required 로 바꿨는데 브랜치는 모르고 있었다.
+  로컬 검증은 반드시 `git merge origin/main` **후에** 할 것.
+- **`ur-live-global` 빌드가 매 PR 실패한다고 말했는데 틀렸다.** 그건 대표가 07-28 에 삭제했다.
+  실제로 보이는 건 `Cloudflare Pages / ur-wholesale` 체크가 **실패가 아니라 영원히 in_progress** 로
+  남는 것이다(1시간 전 머지된 `#830` 도 그 상태). **머지를 막지는 않는다.**
+  CF 토큰에 Pages 권한이 없어(`Authentication error`) 원인은 대시보드 확인 필요 — 대표 판단 사항.
+- `get_job_logs(failed_only=true)` 가 **실패 스텝을 못 집어낼 때가 있다**(로그 꼬리만 반환).
+  실패 원인은 `get_job_logs(job_id=..., tail_lines=60)` 로 직접 볼 것.
+
+### 🔎 가드가 만들어지자마자 잡은 현재형 사례 (조치 필요)
+
+`#818`(2026-07-29 머지)이 `company-classify.ts` 에 **새 기관 판정 규칙**을 추가했다 —
+`ORG_WORD_STRICT`(구청/시청/도청/군청/주민센터/행정복지센터/진흥원/재단/협회/교육청/보건소/의회/청사 …)
+→ `lead_type='org'` 조기 반환. **그런데 `CLASSIFY_RULES_VERSION` 은 3 그대로다**(마지막 bump 07-27).
+
+재검사 쿼리가 `classified_v IS NULL OR classified_v < CLASSIFY_RULES_VERSION` **뿐이고 시간 폴백이 없어**,
+이미 `classified_v=3` 이 찍힌 행은 **영원히** 이 규칙을 못 받는다. 즉 **새 기관 규칙이 지금 사실상 죽어 있다**
+(신규 유입 행에만 적용). 07-27 에 이 방식을 도입한 이유가 바로 그 구멍을 막으려던 것이었다.
+
+**📊 라이브 실측 (2026-07-29 04:4x, 어드민 `/api/admin/partner-pool/stats`)** — 추측이 아니라 숫자다:
+- `stats.total` = **171,028** 건
+- `reclassify.run.remaining_unclassified` = **0** ← 재분류 레인이 **이미 한 바퀴를 끝냈다**
+  ⇒ 기존 풀 전량이 `classified_v = 3` 이고, 재검사 쿼리(`classified_v < 3`)는 **아무것도 안 잡는다**.
+- 따라서 `#818` 의 기관 규칙은 **171,028건 중 0건에 적용**된다. 신규 유입분(직전 실행 기준 하루 93건)에만 붙는다.
+- 참고 분포: `byLeadType` = partner 167,839 / unknown 2,451 / **org 738**, `byCategory` 지역조직 18.
+  구청·시청·주민센터류가 지금 `partner` 쪽에 섞여 있을 가능성이 큰데, 그걸 걸러내려던 게 그 규칙이었다.
+
+**조치**: `CLASSIFY_RULES_VERSION` 3 → 4.
+⚠️ **단, 부작용을 알고 올릴 것** — bump 는 전량 재검사를 트리거하고, `reclassifyCompanyLeads` 의
+housekeeping 은 `ok=false`(공고·정부페이지) 로 판정된 **미큐레이션 행을 삭제**한다(대표가 손댄 행은 보류).
+새 규칙은 기관을 `ok=true, lead_type='org'` 로 살리는 방향이라 대량 삭제가 의도는 아니지만,
+**리드 데이터를 건드리는 변경이라 이번 세션에서 임의로 올리지 않았다.** 대표 확인 후 1줄 bump.
+
+### 다음 세션 첫 액션
+1. `#425` CI 확인 → GREEN 이면 머지(이 항목 작성 시점 in_progress).
+2. `#445` — 에이전시 약관이 **두 벌**(main `AgencyPartnerTermsPage` vs PR `AgencyTermsPage`, 둘 다 `/terms/agency`).
+   **법적 문안이라 임의 선택 금지 — 대표 답변 대기.** '벤더사' 치환은 revert 완료(`fc3b71a11`).
+3. 남은 개선 후보: `CURRENT_WORK.md` 를 세션별 파일(`docs/handoff/<날짜>-<슬러그>.md`)로 쪼개고
+   본 문서는 목차만 — union 병합으로 충돌은 사라졌지만 **파일이 4,800줄**이라 읽기 비용이 크다.
+
 ## 🟡 2026-07-29 (9차) — **A1 폐기 확정 + §4/§5 개정 · 예치금 동결 검토(잔액 실측 미완, 코드 0)**
 
 8차(#819, 머지 `e75b433`)가 올린 판단에 대표가 답했다. **결정을 문서에 반영했고 코드는 여전히 0.**
@@ -79,7 +308,43 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
 
 **가드**: `wholesale-cron-gate.test.ts`(극성·분기·무음금지·로직무접촉 5검사).
 
-### ➡️ staging 검증 (배포 후 — 세션이 못 함, 대표/운영 확인 필요)
+### ✅ staging 검증 결과 (2026-07-29, PR #829 머지 `e8e29c8` 배포 후 실측)
+
+**① 소비자 cron 생존 — 확인됨.** 배포 감지(`/api/version` `index-Cnt2hP-3.js` → `index-DHLNQdeB.js`) 후
+`/api/_healthcheck/cron` 의 `latest_heartbeat_at` 이 **04:01:54Z → 04:05:53Z 전진**, `ok=true` ·
+`stale=[]` · `missing=[]`(하트비트 기록 26건). **게이트가 소비자 cron 을 죽이지 않았다.**
+> ⚠️ **남은 1건**: `supplier-settlement-mature` 는 **일 1회(`0 18 * * *`)** 분기라 배포 후 아직 미발화 —
+> 하트비트 목록에 없는 이유가 그것이다(**관측 밖이 아님**. `scheduled.ts:298` 에서 `safeCron` 정상 경유).
+> **18:00 UTC 이후** `/api/admin/cron-heartbeats` 에서 `supplier-settlement-mature` 등장 확인이 남는다.
+> ⇒ 이번에 한 번 오판했다: 목록에 없길래 "관측 밖"으로 읽었으나 실제로는 주기 문제였다.
+
+**② 도매 cron no-op — 코드 레벨 증명 완료 / 플랫폼 부착 미검증.**
+빌드 산출물을 Node 에서 직접 `scheduled()` 호출(`env.DB` = 접촉 시 throw 하는 Proxy):
+
+| 번들 | no-op 로그 | DB 접촉 |
+|---|---|---|
+| 도매(`WHOLESALE_BUNDLE=1`) | `[wholesale-cron-gate] skipped cron…` | **없음** |
+| 소비자(대조군) | 없음 | **있음 — `[cron:supplier-settlement-mature]`** |
+
+⇒ 하네스가 차이를 실제로 감지(무음 통과 아님) + **게이트가 없었으면 도매에서도 정산이 돌았다는 직접 증거**.
+미검증분은 *"cron trigger 부착 시 Cloudflare 가 배포된 scheduled export 를 호출하는가"* 하나 —
+**우리 코드가 아니라 플랫폼 동작**이다.
+
+**🔴 ②의 플랫폼 부착 = 보류(2026-07-29 대표 판단). 순서가 바뀌었다.**
+
+- **CF 토큰은 이 용도로 제공하지 않는다** — 프로덕션 cron 부착은 **대표가 대시보드에서 직접** 하고 즉시 제거.
+  토큰 재발급은 **D1 읽기 전용**으로 별건 유지(§B.12).
+- **부착은 예치금 숫자 확보 후**. ⚠️ 이전에 세션이 *"GMV 0 이라 지금이 창"* 이라고 한 것은 **너무 넓은 논거였다** —
+  cron 에는 정산 성숙만 있는 게 아니라 **매시간 분기(`0 * * * *`)에
+  `wholesale-deposit-reconcile`·`wholesale-withdrawal-reconcile`** 이 있고, 그중
+  `reconcileOrphanedDepositOrders` 는 조회가 아니라 **환불(`refunded`)** 을 수행한다(판매사 예치금 잔액을 실제로 씀).
+  **GMV 0 은 주문에서 성숙하는 공급자 정산에만 해당**하고, 예치금은 선불로 이미 들어와 있어 GMV 와 무관하다.
+  잔액을 모르는 채 부착하면 폭발반경이 미지수다.
+
+**확정 순서**: ① 18:00 UTC 이후 `supplier-settlement-mature` 하트비트 확인 → 예치금 숫자 확보 →
+② 부착(대표 직접, 즉시 제거) → **gb 가격 결제 배선**(머니 경로 → 단독 세션).
+
+### ➡️ (이전 기록) staging 검증 계획
 1. 🔴 **소비자 cron 정상 발화**(이게 훨씬 중요) — 하트비트 갱신이 가장 빠른 판정.
    `/api/admin/system-monitoring` 의 cron 하트비트가 계속 최신인지. **멈추면 즉시 롤백**(아래).
 2. 도매에 cron 을 시험 삼아 걸었을 때 정산이 **안 돌고** `[wholesale-cron-gate] skipped cron` 로그만 남는지.

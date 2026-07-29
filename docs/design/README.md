@@ -25,6 +25,7 @@
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
 | **🌏 해외판(GLOBAL) 실행 준비 상태** — "켜려면 실제로 뭐가 필요한가" 실측 체크리스트 | 2026-07-28 | 🅿️ 파킹(결정 대기) — 배포구조는 이미 해결(런타임 hostname 판정, 배포 1개+도메인 N개). **현 상태로 켜면 사고**: Stripe 가 주문 확정만 하고 이행(재고·발급·정산·알림) 0. 대표 결정 3건(무엇을 팔까·통화정책·유료전환) 후 착수. `ur-live-global` 은 폐기 확정 — **다시 만들지 말 것** | [global-launch-readiness.md](./global-launch-readiness.md) |
+| **🏪 도매몰 용도 변경 — 공구 운영자 SaaS 갭 판정**(B2B 유통 → 공구 운영자에게 자기 이름의 판. 셀프개설·자체상품등록·소비자결제·gb엔진·픽업·정산·예치금·덜어낼것 8항목) | 2026-07-29 | 🟡 조사·판정 완료(코드 0) — **최대 갭은 결제가 아니라 §2 운영자 자체 상품 등록 경로 부재**(판매사는 재판매 복제만 가능). 소비자 결제는 **소비자 레일로 태우면 됨**(도매 레일은 인증·스코프·테이블 불가). 운영자=**merchant**, 5% 불변식 그대로. 착수 조건 = gb 가격 결제 배선 완료 | [operator-mall-saas-gap.md](./operator-mall-saas-gap.md) |
 | **🔗 픽업 공구 + 도매몰 연계**(대표 원문 아카이브 + 코드 대조 검증. 모드 A/B/C · 역할분담 · 정산 분리) | 2026-07-29 | 🟡 설계 · **대표 확인 A1 대기**(§4 HTTP 연계 폐기 제안 — 같은 D1 이라 불필요·역효과). 모드 C(상권 공동몰)는 `wholesale_malls` 멀티테넌트로 **신규 개발 거의 0 사실 확인** | [pickup-groupbuy-wholesale-link.md](./pickup-groupbuy-wholesale-link.md) |
 | **🏪 매장 상품 픽업 공구 — 설계 판정**(매장이 자기 물리 상품을 공구로 팔고 매장에서 픽업. 재사용 범위·gb_mode 파손 지점·픽업확인·정산 판정) | 2026-07-28 | 🟡 조사·판정 완료(코드 0) — **대표 결정 D1(미수령 손실 귀속) 대기 = 블로킹**. 결론: 쇼핑 재오픈 아님, **이용권 레일 위 하위종**(`stay_voucher` 선례). 5%·promo 레일은 무변경 성립 | [store-pickup-group-buy.md](./store-pickup-group-buy.md) |
 | **💸 벤더 커미션 Pass-through 분할**(소속 여부 자동분기 A/B + 딜단위 per-promo, order-commissions.ts 위에 얹기) | 2026-07-08 | 🅿️ 설계/구현 파킹 — 실벤더 1곳 이주 의사 시 그 벤더 분배방식에 맞춰 착수(단독 세션+staging). 규모 ≈10~14일 | [vendor-commission-passthrough.md](./vendor-commission-passthrough.md) |
@@ -56,6 +57,7 @@
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
 | **🏭 도매몰 통합 셸 — 카탈로그↔판매사↔제조사 한 제품화** | 2026-06-29 | ⏳ 제안 / 착수 승인 대기 (Phase 1 권장) | [wholesale-unified-shell.md](./wholesale-unified-shell.md) |
 | **💸 정산 정합(소비자 셀러) — 3중 회계 통합 + 지급 SSOT** (아키텍처) | 2026-07-01 | 🟡 수수료 5% 통일 ✅ 배포 / 머니-이동(payout 단일화·정산신청 폐기) 대표 정책 결정 + staging 대기 | [settlement-reconciliation.md](./settlement-reconciliation.md) |
+| **🗺️ 카카오맵 리뷰 게이미피케이션 — 리뷰 점수·레벨 → 전용 이용권/홍보 자격** | 2026-07-02 | ✅ v1 구현 완료 (매장 확인 큐 + 레벨 + 전용 이용권 게이트 / 홍보 자격·딥링크 CTA 는 v2) | [kakao-review-gamification.md](./kakao-review-gamification.md) |
 | **🏦 이용권 에스크로 & 정산 안전판 (티몬 붕괴 회피)** | 2026-07-03 | 🟡 "사용 후 정산" ✅ / 진짜 신탁분리(Phase 2a 회계분리 코드가능·2b PG/은행 결정)·기본 redemption 모드 대표 결정 대기 | [voucher-escrow.md](./voucher-escrow.md) |
 | **🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 3레인(자동/레지스트리/수동)** | 2026-07-21 | 🟢 **1단계+레인 A(지역검색+이메일 크롤)+B/C(명부 임포트) 구현 완료** / 웹문서 보충·API 피드는 후속 | [partner-company-collection.md](./partner-company-collection.md) |
 | **🎯 전환추적(진짜 ROAS) — QR 실방문 증명 통합** | 2026-07-21 | 🟡 설계 SSOT / **착수 10월**(8월 실판매 데이터로 귀속 규칙 캘리브레이션 후) · 픽셀·조인 파이프라인 선설계 | [conversion-tracking-roas.md](./conversion-tracking-roas.md) |
