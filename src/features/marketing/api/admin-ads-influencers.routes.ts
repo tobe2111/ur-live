@@ -9,6 +9,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
 import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY, OUTREACH_NOISE_WORDS } from './outreach-queue'
+import { outreachSubject, outreachBody } from './outreach-template'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -195,7 +196,22 @@ app.get('/influencer-pool/send-queue', async (c) => {
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
+  /**
+   * ✉️ **문안 동봉**(2026-07-29) — 화면에서 바로 복사할 것이 없어 접촉이 0이던 것.
+   *   실측: 큐 상위 5명이 전부 점수 99~100·이메일 보유인데 `outreach_draft` 는 **전원 비어 있음**.
+   *   AI 초안 레인은 비용 때문에 기본 OFF(대표 방침)라, 화면엔 붙여넣을 문구가 아예 없었다.
+   *   ⇒ 엑셀 내보내기와 **같은 SSOT**(`outreach-template`)로 제목/본문을 만들어 함께 내려준다.
+   *   AI 초안이 있으면 그게 우선 — 이 값은 **없을 때의 기본 문안**이다.
+   */
+  const leads = (rows?.results || []).map(r => {
+    const x = r as Record<string, unknown>
+    return {
+      ...x,
+      mail_subject: outreachSubject(String(x.name || '')),
+      mail_body: outreachBody(String(x.name || ''), String(x.platform || ''), (x.category as string) ?? null),
+    }
+  })
+  return c.json({ success: true, leads, remaining: totalRow?.n ?? 0, limit })
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
