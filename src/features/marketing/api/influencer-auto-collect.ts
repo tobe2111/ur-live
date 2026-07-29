@@ -25,6 +25,7 @@ import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-perfo
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
+import { KW_DDL } from './influencer-keyword-ddl'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
@@ -62,29 +63,6 @@ const STATS_KEY = 'ads_autocollect_stats'
 // ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
-
-/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
-const KW_DDL: string[] = [
-  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword TEXT NOT NULL UNIQUE,
-    category TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    hits INTEGER NOT NULL DEFAULT 0,
-    source TEXT NOT NULL DEFAULT 'seed',
-    created_at DATETIME DEFAULT (datetime('now'))
-  )`,
-  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
-  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
-  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
-  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
-  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
-]
 
 const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
 
