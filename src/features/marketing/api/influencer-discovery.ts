@@ -14,19 +14,9 @@
 
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
+import { fetchWithErr, outOfBudget, spendBudget } from './fetch-with-err'
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3'
-
-/**
- * 🔎 2026-07-29 예외 원문 보존 — 발굴 fetch 가 `.catch(() => null)` 로 사유를 버려 어드민에는
- *   "블로그 검색 호출 실패 (네트워크)" 라는 뭉뚱그린 문구만 남았다. 같은 인보케이션의 유튜브가
- *   `Too many subrequests` 를 내고 있어도 네이버는 '네트워크'로 보여 **같은 원인인지 구분이 불가**했다.
- *   AbortError=상대 무응답 / TypeError "Too many subrequests"=플랫폼 한도 / 그 외=DNS·TLS 로 갈린다.
- */
-function fetchErrText(err: unknown): string {
-  const e = err as { name?: string; message?: string } | null
-  return `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 160)}`
-}
 
 export interface ExtractedContacts { emails: string[]; instagram: string[]; tiktok: string[]; links: string[] }
 
@@ -216,8 +206,6 @@ export type DiscoverResult =
  *   호출자가 공유 객체를 넘기면 각 외부 fetch 전에 소진 → 0 이 되면 발굴을 우아하게 조기 종료(에러 아님).
  *   미전달이면 무제한(단건 수동 발굴 등 기존 동작 불변). `limitHit`(2026-07-28) = 이번 실행에서 **플랫폼 한도 오류를 실제로 관측**했나 — 예산(left)은 우리가 세는 숫자일 뿐 실제 한도가 아니라, 한도에 부딪힌 사실은 fetch 실패 메시지로만 알 수 있다. 각 레인이 이 플래그를 세우고 호출부가 즉시 중단 + 학습 상한 하향(collect-budget.ts)에 쓴다. */
 export type FetchBudget = { left: number; limitHit?: boolean; deadline?: number } // deadline(2026-07-28, epoch ms)=이후 새 fetch 금지(벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다). 미설정=무제한, 기존 레인 동작 불변
-const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
-const spendBudget = (b?: FetchBudget) => { if (b) b.left -= 1 }
 
 /** YouTube Data API 로 키워드 채널 발굴 + 컨택 추출.
  *  quota: search=100 units/page · channels.list=1/50ch · playlistItems(enrich)=1/ch.
@@ -388,9 +376,7 @@ export async function discoverNaverBloggers(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim' // sim=정확도(관련) / date=최신(신규 블로거 유입)
   const url = `${NAVER_OPENAPI}/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  let res: Response | null = null
-  let fetchErr: string | undefined
-  try { res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  const { res, err: fetchErr } = await fetchWithErr(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) })
   if (!res) return { ok: false, error: 'FAILED', message: `블로그 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `블로그 검색 오류 (HTTP ${res.status})` }
@@ -472,9 +458,7 @@ export async function discoverNaverCafes(
   const display = Math.min(100, Math.max(10, Math.round(opts.display || 50)))
   const sort = opts.sort === 'date' ? 'date' : 'sim'
   const url = `${NAVER_OPENAPI}/v1/search/cafearticle.json?query=${encodeURIComponent(q)}&display=${display}&sort=${sort}`
-  let res: Response | null = null
-  let fetchErr: string | undefined
-  try { res = await fetch(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  const { res, err: fetchErr } = await fetchWithErr(url, { headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }, signal: AbortSignal.timeout(12000) })
   if (!res) return { ok: false, error: 'FAILED', message: `카페 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { items?: Array<{ title?: string; link?: string; description?: string; cafename?: string; cafeurl?: string }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.errorMessage || `카페 검색 오류 (HTTP ${res.status})` }
@@ -515,9 +499,7 @@ export async function discoverTistoryBloggers(
   const size = Math.min(50, Math.max(10, Math.round(opts.size || 50)))
   const sort = opts.sort === 'recency' ? 'recency' : 'accuracy'
   const url = `${KAKAO_DAPI}/v2/search/blog?query=${encodeURIComponent(q)}&size=${size}&sort=${sort}`
-  let res: Response | null = null
-  let fetchErr: string | undefined
-  try { res = await fetch(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) }) } catch (err) { fetchErr = fetchErrText(err) }
+  const { res, err: fetchErr } = await fetchWithErr(url, { headers: { Authorization: `KakaoAK ${restKey}` }, signal: AbortSignal.timeout(12000) })
   if (!res) return { ok: false, error: 'FAILED', message: `티스토리 검색 호출 실패 — ${fetchErr || '네트워크'}` }
   const data = (await res.json().catch(() => null)) as { documents?: Array<{ title?: string; contents?: string; url?: string; blogname?: string; thumbnail?: string }>; message?: string } | null
   if (!res.ok) return { ok: false, error: 'FAILED', message: data?.message || `티스토리 검색 오류 (HTTP ${res.status})` }
