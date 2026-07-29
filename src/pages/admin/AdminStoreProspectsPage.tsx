@@ -17,7 +17,16 @@ interface Prospect {
 }
 interface Stats { total: number; operating: number; new_open: number; closed: number; with_phone: number; with_email: number; onboarded: number }
 const SRC_LABEL: Record<string, string> = { govreg: '인허가', kakao: '카카오', naver: '네이버', homepage: '홈페이지' }
-interface RunInfo { last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number; diag?: { error?: string } }
+interface RunInfo {
+  last_run?: string; day?: string; found?: number; saved?: number; new_open?: number; closed?: number; office?: string; total_saved?: number
+  diag?: {
+    error?: string
+    /** 🔬 지금 쓰는 요청 형태 + 실패한 실제 요청(키는 서버에서 가려서 온다) + 후보 시도 이력. */
+    variant?: string
+    fail_probe?: { url?: string; endpoint?: string; day?: string; page?: number; msg?: string }
+    probe?: { at?: string; winner?: string | null; attempts?: { id: string; ok: boolean; rows: number; msg?: string }[] }
+  }
+}
 interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 interface SubSource { gate: boolean; run: RunInfo | null }
 
@@ -170,6 +179,25 @@ export default function AdminStoreProspectsPage() {
               <><span className="mx-2 text-gray-300">|</span>🏥 병원 <span className={hira.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{hira.gate ? 'ON' : 'OFF'}</span>
                 {hira.run.diag?.error ? <span className="text-amber-600"> · {hira.run.diag.error}</span>
                   : <span> · 최근 {kstShort(hira.run.last_run)} · 저장 {hira.run.saved ?? 0} (누적 {hira.run.total_saved ?? 0})</span>}</>
+            )}
+          </div>
+        )}
+
+        {/* 🔬 인허가가 실패했을 때 **무엇을 보냈고 무엇을 시도했는지** — 추측 대신 증거를 그대로 보여준다.
+            (서비스키는 서버에서 가려서 온다. 이 화면이 없으면 500 의 원인을 물어볼 곳이 없다.) */}
+        {collect?.run?.diag?.error && (collect.run.diag.fail_probe || collect.run.diag.probe) && (
+          <div className="mb-3 p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 break-all">
+            <span className="font-semibold">요청 형태</span> {collect.run.diag.variant || 'v1'}
+            {collect.run.diag.probe && (
+              <> · <span className="font-semibold">후보 탐색</span>{' '}
+                {collect.run.diag.probe.winner
+                  ? <>→ <b>{collect.run.diag.probe.winner}</b> 로 자동 전환</>
+                  : <>전 후보 실패 = <b>형태 문제가 아님</b>(키·활용신청·기관 장애 쪽)</>}
+                {' '}[{(collect.run.diag.probe.attempts || []).map(a => `${a.id}:${a.ok ? `${a.rows}행` : '실패'}`).join(' ')}]
+              </>
+            )}
+            {collect.run.diag.fail_probe?.url && (
+              <div className="mt-1 text-amber-700">실패 요청 · {collect.run.diag.fail_probe.endpoint} p{collect.run.diag.fail_probe.page} — {collect.run.diag.fail_probe.url}</div>
             )}
           </div>
         )}

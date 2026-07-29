@@ -1,0 +1,130 @@
+/**
+ * 🔬 인허가 API 요청 형태(변종) SSOT + 자가 진단 프로브 — 2026-07-29.
+ *
+ *   **왜 필요한가**: 인허가 레인의 예산 문제를 고치고 나니(스키마 비용 회수 → spent 20/40) 남은 벽은
+ *   상대편이었다 — `API: HTTP 500 — Unexpected errors`, `found: 0`. 500 은 본문에 원인 코드가 없어
+ *   `public-data-diag` 의 코드 매핑으로도 "무엇이 틀렸는지"를 알 수 없다.
+ *
+ *   ⚠️ 그리고 이 환경은 `apis.data.go.kr` 로 나가는 CONNECT 가 프록시에서 막혀 있어 **직접 호출로
+ *   확인할 방법이 없다.** 그렇다고 URL 을 추측으로 바꾸는 건 CLAUDE.md 개발 룰 #1 위반이고, 실제로
+ *   이 레포에서 반복 실패한 방식이다(추측 fix → 다음 세션이 또 추측).
+ *
+ *   ⇒ **추측하지 않고 라이브가 판정하게 한다.** 요청 형태를 후보 몇 개로 명시하고, 실패했을 때
+ *   후보를 한 번씩 찔러 **어느 것이 200+행을 주는지 라이브에서 확인**한 뒤 그 답을 DB 에 적어 둔다.
+ *   다음 실행부터는 곧장 그 형태로 간다(무배포 자가 치유). 시도 이력은 `diag.probe` 로 남겨,
+ *   "왜 이 형태를 쓰는가"가 증거와 함께 화면에 보이게 한다.
+ *
+ *   비용: 프로브는 **실패했을 때만·쿨다운(기본 6h) 안에서 1회**, 후보 수만큼의 요청(현재 4)만 쓴다.
+ */
+
+/** 요청 형태 후보. **한 후보는 한 가지만 다르게** 한다 — 그래야 결과가 원인을 지목한다. */
+export interface LicenseUrlVariant {
+  id: string
+  /** 페이지 번호 파라미터명 */
+  pageParam: string
+  /** 페이지 크기 파라미터명 */
+  sizeParam: string
+  /** 이 후보가 쓰는 기본 페이지 크기 */
+  size: number
+  /** 응답 형식 파라미터(포털/기관마다 `type`·`resultType` 이 갈린다) */
+  format: Record<string, string>
+  /** 변동일 필터(lastModTsBgn/End) 사용 여부 */
+  dateFilter: boolean
+  /** 이 후보가 무엇을 시험하는가 — 진단 화면에 그대로 노출된다 */
+  why: string
+}
+
+/**
+ * 후보 목록. **첫 번째가 현행**이고, 나머지는 500 의 원인으로 실제로 가능성 있는 것들이다.
+ * 순서 = 시도 순서(가장 가능성 높은 것부터). 새 후보를 넣을 땐 반드시 *한 가지만* 바꿔라.
+ */
+export const LICENSE_VARIANTS: LicenseUrlVariant[] = [
+  { id: 'v1', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 500, format: { type: 'json', resultType: 'json' }, dateFilter: true, why: '현행(대표 스펙 2026-07-22)' },
+  { id: 'v2', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { type: 'json', resultType: 'json' }, dateFilter: true, why: '페이지 크기 상한 의심 — 500 → 100' },
+  { id: 'v3', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { resultType: 'json' }, dateFilter: true, why: '형식 파라미터 중복 의심 — type 제거' },
+  { id: 'v4', pageParam: 'pageNo', sizeParam: 'numOfRows', size: 100, format: { type: 'json' }, dateFilter: true, why: 'data.go.kr 표준 페이징(pageNo/numOfRows)' },
+  { id: 'v5', pageParam: 'pageIndex', sizeParam: 'pageSize', size: 100, format: { type: 'json', resultType: 'json' }, dateFilter: false, why: '변동일 필터가 원인인지 — 날짜 파라미터 제거' },
+]
+
+export const DEFAULT_VARIANT_ID = LICENSE_VARIANTS[0].id
+
+export function findVariant(id: string | null | undefined): LicenseUrlVariant {
+  return LICENSE_VARIANTS.find(v => v.id === String(id || '')) || LICENSE_VARIANTS[0]
+}
+
+/**
+ * 페이지 크기 결정 — env(`ADS_LOCALDATA_PAGE_SIZE`)가 있으면 그 값, 없으면 후보 기본값.
+ * **무배포 조정 레버**: 500 이 문제라는 게 라이브에서 확인되면 배포 없이 내릴 수 있어야 한다.
+ */
+export function resolveLicensePageSize(raw: string | undefined | null, variant: LicenseUrlVariant): number {
+  const n = parseInt(String(raw || ''), 10)
+  if (Number.isFinite(n) && n > 0) return Math.min(1000, Math.max(1, n))
+  return variant.size
+}
+
+/** 요청 URL 조립(SSOT — 일일/백필/프로브 공용). `keyParam` 은 **이미 인코딩된** 서비스키 문자열. */
+export function buildLicenseUrl(opts: {
+  base: string; endpoint: string; keyParam: string; day: string; page: number
+  variant: LicenseUrlVariant; size: number
+}): string {
+  const { base, endpoint, keyParam, day, page, variant, size } = opts
+  const parts = [`serviceKey=${keyParam}`, `${variant.pageParam}=${page}`, `${variant.sizeParam}=${size}`]
+  for (const [k, v] of Object.entries(variant.format)) parts.push(`${k}=${v}`)
+  if (variant.dateFilter) parts.push(`lastModTsBgn=${day}`, `lastModTsEnd=${day}`)
+  return `${base}/${endpoint}?${parts.join('&')}`
+}
+
+/**
+ * 🔐 서비스키 가리기 — 진단에 URL 을 남기려면 **반드시** 통과시킨다.
+ *   이 레포는 public 이고 진단 스냅샷은 어드민 화면·핸드오프 문서로 흘러간다.
+ *   키가 한 번이라도 그 경로에 실리면 회수 불가다(= 회전밖에 답이 없다).
+ */
+export function redactServiceKey(url: string): string {
+  return String(url || '').replace(/([?&](?:serviceKey|authKey|ServiceKey)=)[^&]*/gi, '$1***')
+}
+
+/** 프로브 1회 결과. */
+export interface ProbeAttempt { id: string; ok: boolean; rows: number; msg?: string }
+
+/** DB(`ads_localdata_variant`)에 저장되는 상태 — 어느 형태를 왜 쓰는지 + 언제 확인했는지. */
+export interface VariantState { id: string; probed_at?: number; attempts?: ProbeAttempt[] }
+
+/** 프로브 재시도 쿨다운(기본 6h) — 실패가 상대편 일시 장애일 때 매 라운드 4발씩 쏘지 않게. */
+export const PROBE_COOLDOWN_MS = 6 * 3_600_000
+
+export function shouldProbe(state: VariantState | null | undefined, nowMs: number, cooldownMs = PROBE_COOLDOWN_MS): boolean {
+  const at = Number(state?.probed_at)
+  if (!Number.isFinite(at) || at <= 0) return true
+  return nowMs - at >= cooldownMs
+}
+
+/**
+ * 후보들을 한 번씩 찔러 **행을 주는 형태**를 찾는다. 판정은 라이브가 한다(우리가 추측하지 않는다).
+ *
+ *   @param fetchPage 주입 — 테스트에서 네트워크 없이 검증하기 위함(그리고 예산 차감은 호출부 책임).
+ *   @param skip      이미 이번 실행에서 실패한 형태(다시 쏘지 않는다).
+ *   @returns winner  행을 준 형태의 id. 아무도 못 주면 null(= 형태 문제가 아니다 → 키·활용신청 쪽).
+ */
+export async function probeLicenseVariants(opts: {
+  base: string; endpoint: string; keyParam: string; day: string
+  sizeOverride?: string | null
+  skip?: string[]
+  fetchPage: (url: string) => Promise<{ ok: boolean; rows: number; msg?: string }>
+  canSpend?: () => boolean
+}): Promise<{ winner: string | null; attempts: ProbeAttempt[] }> {
+  const attempts: ProbeAttempt[] = []
+  const skip = new Set(opts.skip || [])
+  for (const v of LICENSE_VARIANTS) {
+    if (skip.has(v.id)) continue
+    if (opts.canSpend && !opts.canSpend()) break
+    const url = buildLicenseUrl({
+      base: opts.base, endpoint: opts.endpoint, keyParam: opts.keyParam, day: opts.day, page: 1,
+      variant: v, size: resolveLicensePageSize(opts.sizeOverride, v),
+    })
+    const r = await opts.fetchPage(url).catch(() => ({ ok: false, rows: 0, msg: '프로브 예외' }))
+    attempts.push({ id: v.id, ok: !!r.ok, rows: r.rows | 0, msg: r.msg ? String(r.msg).slice(0, 120) : undefined })
+    // ✅ '행이 왔다' 만 승리로 친다. 200 인데 0행은 **그날 변동이 없어서**일 수도 있어 판정 근거가 못 된다.
+    if (r.ok && r.rows > 0) return { winner: v.id, attempts }
+  }
+  return { winner: null, attempts }
+}
