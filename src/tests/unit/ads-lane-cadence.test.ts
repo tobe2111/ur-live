@@ -15,6 +15,7 @@ import {
   neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
+import { MAINT_PHASES, MAINT_SCHEDULE } from '../../features/marketing/api/influencer-maintenance'
 
 describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
   it('기대주기 × 2 + 30', () => {
@@ -111,6 +112,51 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
 
   it('단계 순환 레인은 단계 수에서 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
     expect(src).toMatch(/phaseGapMinutes\(PHASES\.length\)/)
+  })
+})
+
+/**
+ * 🗓️ 정비 **배정표**가 SSOT 와 어긋나지 않게 — 주석의 약속을 빨간불로 바꾼다.
+ *
+ *   그동안 이 관계를 지킨 건 worker-ads 의 주석 한 줄("추가 시 두 곳을 함께 고칠 것")뿐이었다.
+ *   이 레포가 반복해 만난 실패는 "검사가 실패한다"가 아니라 **"검사가 아예 없다"** 이고,
+ *   여기가 정확히 그 모양이었다 — 배정표에서 빠진 단계는 에러도 경보도 없이 **영원히 안 돈다**
+ *   (`cron-stale-watch` 는 기록이 아예 없는 이름을 판정 대상으로 잡지 못한다).
+ *
+ *   ⚠️ 이 테스트가 못 막는 것: 배정표의 **비중**이 타당한지는 못 본다(라이브 수율은 코드 밖 사실이다).
+ *   비중을 바꿀 땐 `MAINT_SCHEDULE` 주석의 실측 근거도 함께 갱신할 것.
+ */
+describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  /** worker-ads 의 `const PHASES = [...] as const` 리터럴을 그대로 읽는다(정적 import 불가라 복제돼 있다). */
+  const cronSchedule = (): string[] => {
+    const m = /const PHASES = \[([\s\S]*?)\] as const/.exec(src)
+    expect(m, 'worker-ads/index.ts 의 PHASES 리터럴을 못 찾음 — 형태가 바뀌었으면 이 정규식도 함께').toBeTruthy()
+    return [...m![1].matchAll(/'([a-z]+)'/g)].map(x => x[1])
+  }
+
+  it('🔒 두 리터럴이 순서까지 동일하다', () => {
+    expect(cronSchedule()).toEqual(MAINT_SCHEDULE)
+  })
+
+  it('🔒 모든 단계가 배정표에 최소 1번 — 빠진 단계는 조용히 영원히 안 돈다', () => {
+    const missing = MAINT_PHASES.filter(p => !MAINT_SCHEDULE.includes(p))
+    expect(missing, `배정표에서 누락된 단계: ${missing.join(', ')}`).toEqual([])
+  })
+
+  it('🔒 배정표에 정의 밖 단계가 섞이지 않는다(오타는 그 슬롯을 통째로 버린다)', () => {
+    expect(MAINT_SCHEDULE.filter(p => !MAINT_PHASES.includes(p))).toEqual([])
+  })
+
+  it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
+    const share = (p: string) => MAINT_SCHEDULE.filter(x => x === p).length
+    for (const busy of ['reclassify', 'handle']) {
+      for (const idle of ['reextract', 'merge']) {
+        expect(share(idle), `${idle} 가 ${busy} 보다 많이 받고 있다`).toBeLessThan(share(busy))
+      }
+    }
+    // 0 으로 만들지 않는다 — 지금 filled:0 은 '고장'이 아니라 '다 했다'라, 새 미추출 행이 생기면 다시 돌아야 한다.
+    for (const p of MAINT_PHASES) expect(share(p), `${p} 배정 0`).toBeGreaterThan(0)
   })
 })
 
