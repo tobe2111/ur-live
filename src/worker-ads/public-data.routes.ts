@@ -11,12 +11,28 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { runDetachable } from './detach'
 
 export const publicDataRoutes = new Hono<{ Bindings: Env }>()
 
-/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다). */
-const lane = (run: (env: Env) => Promise<unknown>) => async (c: { env: Env; json: (b: unknown, s?: number) => Response }) => {
-  try { return c.json({ ok: true, stats: await run(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+/**
+ * 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다).
+ *
+ * 🚀 2026-07-29: cron(`?detach=1`)이면 **즉시 응답**하고 작업은 이 인보케이션의 waitUntil 에서 계속한다.
+ *   부모 `scheduled()` 의 `kick` 은 응답을 기다리므로, 레인이 20초를 붙들면 목록 뒷부분이 **디스패치조차
+ *   안 된다**(라이브 하트비트가 6시간 계단을 보여줬다 — 근거는 `detach.ts` 헤더).
+ *   ⚠️ 어드민 수동 버튼은 detach 하지 않는다 — 눌렀는데 결과가 안 뜨면 UX 후퇴다.
+ */
+const lane = (run: (env: Env) => Promise<unknown>) => async (c: {
+  env: Env
+  req: { query: (k: string) => string | undefined }
+  executionCtx?: { waitUntil: (p: Promise<unknown>) => void }
+  json: (b: unknown, s?: number) => Response
+}) => {
+  try {
+    const r = await runDetachable(c, () => run(c.env))
+    return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, stats: r.result })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 }
 
 // 🏪 상가정보(공공데이터) 수집.
@@ -45,11 +61,14 @@ publicDataRoutes.post('/__ads/collect-localdata', async (c) => {
   try {
     const mode = c.req.query('mode') // 'collect' | 'backfill' | (없음)=둘 다
     const { runLocalDataCollect, runLocalDataBackfill } = await import('@/features/marketing/api/localdata-collect')
-    if (mode === 'backfill') return c.json({ ok: true, backfill: await runLocalDataBackfill(c.env, 2) })
-    const stats = await runLocalDataCollect(c.env)
-    if (mode === 'collect') return c.json({ ok: true, stats })
-    const backfill = await runLocalDataBackfill(c.env, 2).catch(() => null)
-    return c.json({ ok: true, stats, backfill })
+    // 🚀 cron 은 즉시 응답(위 lane 주석과 같은 이유) — 이 레인은 20초 예산을 다 쓰므로 부모를 가장 오래 붙든다.
+    const r = await runDetachable(c, async () => {
+      if (mode === 'backfill') return { backfill: await runLocalDataBackfill(c.env, 2) }
+      const stats = await runLocalDataCollect(c.env)
+      if (mode === 'collect') return { stats }
+      return { stats, backfill: await runLocalDataBackfill(c.env, 2).catch(() => null) }
+    })
+    return r.detached ? c.json({ ok: true, detached: true }) : c.json({ ok: true, ...r.result })
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 

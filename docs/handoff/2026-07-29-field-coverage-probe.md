@@ -81,6 +81,38 @@ curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorizati
 위 표대로 갈라라. `no_site` 가 압도적이면 발견 경로 확대, `crawl_*` 이 많으면 크롤러, 
 `crawl_no_contact` 가 많으면 **이 경로 자체를 접고** 전화 기반 접촉으로 방향을 튼다.
 
+
+## 네 번째 건 (이번 세션 최대) — **레인들이 아예 안 돌고 있었다**
+
+한 시각의 `ads:*` 하트비트를 오래된 순으로 세우면 **완벽한 계단**이 나온다:
+
+```
+11:00 (이번 시간)  enrich-company · enrich-influencer-driver     ← 즉시 응답으로 바뀐 레인(#863)
+10:00 (1시간 전)   match-registry · collect-store-kakao · collect-maker · reclassify-company
+09:00 (2시간 전)   enrich-prospects · collect-neis · collect-hira · collect-localdata(백필)
+08:00 (3시간 전)   collect-storeinfo
+05:00 (6시간 전)   collect-company · sweep-kakao-phone
+```
+
+우연이 아니다. 부모 `scheduled()` 는 매시간 ~15개 레인을 `kick()` 하는데 `kick` 은
+`await env.SELF.fetch(path)` — **레인이 일을 다 끝내고 응답할 때까지 부모가 살아 있어야 한다.**
+레인 하나가 20초면 목록 뒷부분은 부모 수명 안에 **디스패치조차 안 된다.**
+`collect-company` 는 **6시간째** 안 돌았다. 수집이 0인 게 당연했다.
+
+**결정적 근거**: 11:00 에 돈 두 레인은 정확히 #863 이 즉시 응답으로 바꾼 것들이다. 같은 처방을 나머지에.
+
+- `detach.ts` 신설 — cron(`?detach=1`)이면 **즉시 응답**하고 작업은 그 인보케이션의 waitUntil 에서 계속.
+- 이번 PR 적용 범위: `public-data.routes.ts` 의 `lane()` 전체(storeinfo·commerce·franchise·notices·
+  enrich-prospects·nara·neis·hira) + `collect-localdata`. cron kick 4곳에 `?detach=1`.
+- ⚠️ **어드민 수동 버튼은 detach 하지 않는다** — 눌렀는데 결과가 안 뜨면 UX 후퇴다. "누가 불렀나"를
+  URL 이 말하게 하고 코드가 추측하지 않는다.
+- ⚠️ **하트비트 이름은 고정**(`opts.beat`) — 경로가 바뀌면 옛 행이 남아 stale watch 가 영원히 경보한다.
+
+**남은 범위(다음 세션)**: `index.ts`·`chain.routes.ts` 의 나머지 kick 대상
+(`collect-company`·`sweep-kakao-phone`·`maintenance?phase=*`·`match-registry`·`collect-store-kakao`·
+`collect-maker`·`reclassify-company`). 같은 헬퍼를 그대로 적용하면 된다.
+**판정법**: 배포 1시간 뒤 `GET /api/admin/cron-heartbeats` 에서 위 계단이 **평평해졌는지**(전부 age≈0) 본다.
+
 ## 남은 결정 / 대기
 
 - 인허가 500: PR #860 의 형태 프로브가 배포됨 → 다음 실행에서 `diag.probe.winner` 로 갈린다.
