@@ -10,6 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 인허가 정보만. 자동 발송 경로 부존재.
  */
 import type { Env } from '@/worker/types/env'
+import { runDdlOnce } from './ads-schema-guard'
 
 /**
  * 인허가 업종 ↔ REST 엔드포인트 슬러그(SSOT). 지방행정 인허가는 **업종별 개별 엔드포인트**다(단일 아님):
@@ -81,20 +82,12 @@ const SELECT_COLS = 'id, opn_svc_id, opn_sf_team_code, mgt_no, biz_name, categor
 
 const _schemaDone = new WeakSet<object>()
 /**
- * 스키마 보장. @returns **이번 호출이 실제로 쓴 D1 쿼리 수**(이미 보장돼 있으면 0).
- *
- *   ⚠️ 2026-07-29: 이 함수는 DDL 을 **9개** 실행하는데 그 비용이 **어느 레인의 예산에도 안 잡혔다.**
- *   인허가 레인은 자기 예산을 40 으로 세면서 실제로는 40+9=49 를 썼고, 무료 플랜 인보케이션 천장이
- *   그 언저리라 매번 `⛔ 플랫폼 요청한도 도달` 로 죽으며 **total_saved: 0** 이었다.
- *   (같은 클래스를 회사 키워드 시드에서 이미 한 번 고쳤다 — 부기 비용을 예산에서 빼지 않으면
- *    "우리가 세는 숫자"와 "플랫폼이 세는 숫자"가 갈라지고, 그 차이만큼 조용히 죽는다.)
- *   ⇒ 호출부가 예산에서 뺄 수 있게 실제 비용을 돌려준다.
+ * 🧾 매장 후보 스키마 DDL — `runDdlOnce` 로 한 번만 적용(2026-07-29, 회사 풀과 동일 처방).
+ *   ⚠️ 여기엔 **DDL 만** 넣는다. 체크섬이 같으면 전부 건너뛰므로 1회성 데이터 정리를 넣으면
+ *   체크섬이 바뀔 때마다 다시 돌아 라이브 데이터를 예상 밖으로 건드린다.
  */
-export async function ensureProspectSchema(DB: D1Database): Promise<number> {
-  if (_schemaDone.has(DB)) return 0
-  _schemaDone.add(DB)
-  let spent = 0
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS store_prospects (
+export const PROSPECT_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS store_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     opn_svc_id TEXT NOT NULL,
     opn_sf_team_code TEXT NOT NULL,
@@ -125,19 +118,23 @@ export async function ensureProspectSchema(DB: D1Database): Promise<number> {
     collected_at DATETIME DEFAULT (datetime('now')),
     last_verified_at DATETIME,
     UNIQUE(opn_svc_id, opn_sf_team_code, mgt_no)
-  )`).run().catch(() => null)
-  // 기존 테이블 보강(연락처 확장 — 인허가엔 없어 크롤로만 채움).
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN email TEXT').run().catch(() => null)
-  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프 없이는 같은 상위 40행만 매시간 공회전(뒷줄 미도달).
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 크롤러 버전(< CRAWL_RULES_VERSION 이면 재시도)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN website TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN contact_source TEXT').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)').run().catch(() => null)
-  spent += 9 // 위 DDL 9개(각각 서브리퀘스트 1)
-  return spent
+  )`,
+  'ALTER TABLE store_prospects ADD COLUMN email TEXT',
+  'ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME',
+  'ALTER TABLE store_prospects ADD COLUMN enrich_v INTEGER',
+  'ALTER TABLE store_prospects ADD COLUMN website TEXT',
+  'ALTER TABLE store_prospects ADD COLUMN contact_source TEXT',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)',
+]
+
+export async function ensureProspectSchema(DB: D1Database): Promise<number> {
+  if (_schemaDone.has(DB)) return 0
+  _schemaDone.add(DB)
+  const { ran } = await runDdlOnce(DB, 'ads_ddl_prospects', PROSPECT_DDL)
+  // 실비: 체크섬 SELECT 1 + (적용했다면 문장수 + platform_settings 보장 1 + 체크섬 쓰기 1)
+  return 1 + (ran ? PROSPECT_DDL.length + 2 : 0)
 }
 
 /** 영업상태구분코드 → active(01 영업중만 1). */

@@ -9,6 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { COMPANY_DDL } from '@/features/marketing/api/company-discovery'
+import { PROSPECT_DDL } from '@/features/marketing/api/store-prospects'
 
 describe('COMPANY_DDL', () => {
   it('문장 수가 유지된다(이관 시 흘림 0)', () => {
@@ -47,6 +48,34 @@ describe('COMPANY_DDL', () => {
     // runDdlOnce 는 체크섬이 같으면 **전부 건너뛴다**. 1회성 데이터 정리를 여기 넣으면
     // 체크섬이 바뀔 때마다 다시 돌아 라이브 데이터를 예상 밖으로 건드린다.
     for (const sql of COMPANY_DDL) {
+      expect(/^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)/i.test(sql.trim())).toBe(true)
+    }
+  })
+})
+
+/** 매장 후보도 같은 이관(9 DDL) — 대표 우선순위(음식점·카페·미용실·숙박)가 얹히는 테이블이라 더 중요하다. */
+describe('PROSPECT_DDL', () => {
+  it('문장 수가 유지된다', () => {
+    expect(PROSPECT_DDL).toHaveLength(9)
+  })
+
+  it('🔒 보강 파이프라인이 의존하는 컬럼이 전부 있다', () => {
+    const joined = PROSPECT_DDL.join('\n')
+    expect(joined).toContain('CREATE TABLE IF NOT EXISTS store_prospects')
+    for (const col of ['email', 'website', 'enrich_checked_at', 'enrich_v', 'contact_source']) {
+      expect(joined).toContain(col)
+    }
+  })
+
+  it('정렬·필터가 쓰는 인덱스가 유지된다(우선 업종 정렬은 category 인덱스를 탄다)', () => {
+    const joined = PROSPECT_DDL.join('\n')
+    for (const idx of ['idx_prospects_region', 'idx_prospects_active', 'idx_prospects_newopen']) {
+      expect(joined).toContain(idx)
+    }
+  })
+
+  it('DDL 만 담는다', () => {
+    for (const sql of PROSPECT_DDL) {
       expect(/^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)/i.test(sql.trim())).toBe(true)
     }
   })
