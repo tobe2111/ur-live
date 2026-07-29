@@ -72,6 +72,7 @@ if domain money; then
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
   run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
+  run "동시 세션 겹침"                   node scripts/check-branch-overlap.mjs
 fi
 
 if domain schema; then
@@ -125,6 +126,7 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
+  run "공공데이터 자리표시자(N/A) 판정"  env STRICT_PUBLIC_DATA_SENTINEL=1 node scripts/check-public-data-sentinel.mjs
   run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
   # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.

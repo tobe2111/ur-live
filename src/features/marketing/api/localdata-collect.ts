@@ -20,9 +20,13 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, PRIORITY_UPJONG, type StoreProspect } from './store-prospects'
-import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import {
+  buildLicenseUrl, findVariant, probeLicenseVariants, redactServiceKey, resolveLicensePageSize,
+  shouldProbe, type ProbeAttempt, type VariantState,
+} from './license-url'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -47,6 +51,8 @@ const PENDING_KEY = 'ads_localdata_pending'
 /** 백필의 업종 인덱스(현재 커서 날짜 내부) — 날짜가 넘어가면 0 으로 리셋. */
 const BF_IDX_KEY = 'ads_localdata_backfill_idx'
 const MAX_PENDING_DAYS = 14 // 미완 일자 적체 상한(그 이상은 백필 레인이 담당)
+/** 프로브가 쓸 수 있는 최대 요청 수 — 이만큼 여유가 없으면 아예 시작하지 않는다(반쯤 하다 끊기면 판정 불가). */
+const LICENSE_VARIANT_PROBE_COST = 6
 
 interface PendingDay { day: string; idx: number }
 
@@ -88,7 +94,9 @@ type RawLicense = Record<string, unknown>
 
 /** 첫 매칭 키의 값(태그 제거). 소문자 우선 + 카멜/구필드 폴백. */
 function g(it: RawLicense, ...keys: string[]): string {
-  for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) }
+  // ⚠️ '값 없음' 자리표시자("N/A" 등)는 값이 아니다 — 앞 별칭에서 걸리면 뒤 별칭의 진짜 값을 놓친다
+  //   (통신판매 레인에서 실제로 31.7% 의 주소를 그렇게 잃고 있었다). 판정 SSOT 는 public-data-diag.
+  for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) }
   return ''
 }
 
@@ -128,10 +136,8 @@ function extractRows(data: Record<string, unknown> | null): { rows: RawLicense[]
   return { rows: [], msg }
 }
 
-/** 인허가 1페이지(1업종 엔드포인트) 조회 → RawLicense[]. */
-async function fetchLicensePage(base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number, budget?: FetchBudget): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
-  // 🔑 serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 저장돼 있어도 이중 인코딩되지 않게(public-data-diag SSOT).
-  const url = `${base}/${endpoint}?serviceKey=${serviceKeyParam(key)}&pageIndex=${pageIndex}&pageSize=500&type=json&resultType=json&lastModTsBgn=${dayYmd}&lastModTsEnd=${dayYmd}`
+/** 인허가 1페이지 조회(URL 을 그대로 받는다 — 형태 후보 프로브와 같은 경로를 쓰기 위해). */
+async function fetchLicenseUrl(url: string, budget?: FetchBudget): Promise<{ items: RawLicense[]; count: number; msg?: string }> {
   // ⚠️ 2026-07-28 수리: 예전엔 실패 시 `{items:[],count:0}` 만 반환해 **원인을 통째로 삼켰다** →
   //   stats 의 error 가 항상 undefined → 5회 실행 0건인데 화면상 "정상 0건"과 구분 불가(진단 실명).
   //   franchise-collect 가 이미 지키는 룰("실패 원인을 삼키지 않는다")을 이 레인에도 적용.
@@ -153,6 +159,23 @@ async function fetchLicensePage(base: string, endpoint: string, key: string, day
   const data = await res.json().catch(() => null) as Record<string, unknown> | null
   const { rows, msg } = extractRows(data)
   return { items: rows, count: rows.length, msg }
+}
+
+/**
+ * 1업종 1페이지 — 활성 요청 형태(변종)로 URL 을 만들어 조회한다.
+ * `size` 를 함께 돌려주는 이유: '마지막 페이지' 판정이 페이지 크기와 같아야 하는데, 크기가 이제
+ * 변종/env 로 달라지기 때문이다(예전엔 500 하드코딩이라 크기를 바꾸는 순간 조용히 틀어졌다).
+ */
+async function fetchLicensePage(
+  base: string, endpoint: string, key: string, dayYmd: string, pageIndex: number,
+  variantId: string, sizeEnv: string | null | undefined, budget?: FetchBudget,
+): Promise<{ items: RawLicense[]; count: number; msg?: string; size: number; url: string }> {
+  const variant = findVariant(variantId)
+  const size = resolveLicensePageSize(sizeEnv, variant)
+  // 🔑 serviceKeyParam — 인코딩/디코딩 키 어느 쪽이 저장돼 있어도 이중 인코딩되지 않게(public-data-diag SSOT).
+  const url = buildLicenseUrl({ base, endpoint, keyParam: serviceKeyParam(key), day: dayYmd, page: pageIndex, variant, size })
+  const r = await fetchLicenseUrl(url, budget)
+  return { ...r, size, url }
 }
 
 /** 원항목 → StoreProspect 매핑(SSOT — 일일 변동분·백필 공용). 소문자 우선 + 카멜 폴백. */
@@ -185,10 +208,20 @@ export interface LocalDataStats {
   budget_total?: number; spent?: number; limit_hit?: boolean; pending_days?: number
   /** 📦 과거 백필 창(일). **0 = OFF** — 이 경우 유입은 '전일 변동분' 트리클뿐이다(2026-07-29). */
   backfill_days?: number
-  diag: { configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string }
+  diag: {
+    configured: boolean; error?: string; sample?: unknown; endpoints?: string[]; backfill?: string
+    /** 🔬 지금 쓰는 요청 형태(license-url SSOT) — "왜 이 URL 인가"의 답. */
+    variant?: string
+    /** 🩺 첫 실패의 **키를 가린** 실제 요청 — 500 처럼 본문이 원인을 안 알려줄 때 유일한 단서. */
+    fail_probe?: { url: string; endpoint: string; day: string; page: number; msg?: string }
+    /** 🔬 형태 후보 시도 이력(라이브 판정 근거). */
+    probe?: { at: string; winner: string | null; attempts: ProbeAttempt[] }
+  }
 }
 const STATS_KEY = 'ads_localdata_stats'
 const BF_CURSOR_KEY = 'ads_localdata_backfill_ymd'
+/** 활성 요청 형태 + 마지막 프로브 시각/이력(license-url `VariantState`). */
+const VARIANT_KEY = 'ads_localdata_variant'
 
 /** env 병합 엔드포인트 맵: 코드 SSOT(LICENSE_UPJONG) + ADS_LOCALDATA_ENDPOINTS(JSON) — 무배포로 미용업·숙박업 추가. */
 function resolveEndpoints(env: Env): Record<string, string> {
@@ -212,9 +245,12 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const base = (env as unknown as { ADS_LOCALDATA_ENDPOINT?: string }).ADS_LOCALDATA_ENDPOINT || LOCALDATA_BASE
   const endpoints = resolveEndpoints(env)
 
-  const prevRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STATS_KEY).first<{ value: string }>().catch(() => null)
+  // 🧾 세 키를 한 번에 읽는다(예전엔 각각 1 서브리퀘스트 = 3). D1 도 같은 지갑이라 이 절약이 곧 수집량이다.
+  const settingRows = await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
+    .bind(STATS_KEY, PENDING_KEY, VARIANT_KEY).all<{ key: string; value: string }>().catch(() => null)
+  const setting = (k: string): string | null => (settingRows?.results || []).find(r => r.key === k)?.value ?? null
   let prev: LocalDataStats | null = null
-  try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as LocalDataStats : null } catch { prev = null }
+  try { const v = setting(STATS_KEY); prev = v ? JSON.parse(v) as LocalDataStats : null } catch { prev = null }
   const persist = async (s: LocalDataStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
   const base0 = (err?: string, sample?: unknown): LocalDataStats => ({ last_run: stamp, day: dayYmd, found: 0, saved: 0, new_open: 0, closed: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: !err, error: err, sample, endpoints: Object.keys(endpoints) } })
 
@@ -225,18 +261,27 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
   const { budget, envBudget, learnedCap, total: budgetTotal } = await resolveLocalDataBudget(env)
   const spendD1 = () => { budget.left -= 1 } // D1 도 같은 지갑에서 지불(분모를 진실로)
   budget.left -= schemaSpent // 스키마 DDL 실비(위 주석)
-  spendD1() // 위 prev 조회
+  spendD1() // 위 설정 3키 일괄 조회(1회)
   let found = 0, saved = 0, closed = 0
   let sample: unknown; let lastMsg: string | undefined
+
+  // 🔬 요청 형태(변종) — env 가 있으면 고정(프로브 금지), 없으면 DB 에 적힌 것, 그것도 없으면 현행 v1.
+  //   env 고정은 "대표가 스펙을 확인했다" 는 뜻이므로 자동 탐색이 그 결정을 덮어쓰지 않는다.
+  const envVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
+  const sizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
+  let vState: VariantState | null = null
+  try { const v = setting(VARIANT_KEY); vState = v ? JSON.parse(v) as VariantState : null } catch { vState = null }
+  let variantId = findVariant(envVariant || vState?.id).id
+  let probeInfo: { at: string; winner: string | null; attempts: ProbeAttempt[] } | undefined
+  let failProbe: LocalDataStats['diag']['fail_probe']
+  let probedThisRun = false
 
   // 📋 처리 대상 일자 = [미완으로 남겨둔 날들] + [이번 틱의 전일 변동분]. 앞에서부터 드레인하고,
   //   예산이 끊긴 지점(업종 인덱스)을 그대로 되남겨 다음 틱이 **같은 날의 남은 업종부터** 이어받는다.
   //   (이 커서가 없으면 예산이 짧은 날 뒤쪽 업종은 영영 미도달 — 전화 스윕이 `ORDER BY id ASC` 로
   //    tier1 에 영영 못 닿던 것과 같은 클래스의 버그.)
-  const pendRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(PENDING_KEY).first<{ value: string }>().catch(() => null)
-  spendD1()
   let pending: PendingDay[] = []
-  try { const p = JSON.parse(pendRaw?.value || '[]'); if (Array.isArray(p)) pending = p.filter(x => /^\d{8}$/.test(String(x?.day))).map(x => ({ day: String(x.day), idx: Math.max(0, Number(x.idx) || 0) })) } catch { pending = [] }
+  try { const p = JSON.parse(setting(PENDING_KEY) || '[]'); if (Array.isArray(p)) pending = p.filter(x => /^\d{8}$/.test(String(x?.day))).map(x => ({ day: String(x.day), idx: Math.max(0, Number(x.idx) || 0) })) } catch { pending = [] }
   const queue: PendingDay[] = [...pending]
   if (!queue.some(q => q.day === dayYmd)) queue.push({ day: dayYmd, idx: 0 })
 
@@ -259,19 +304,37 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
       const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break } // 이 업종은 아직 안 끝났다 → 다음 틱이 이 업종부터
-        const { items, count, msg } = await fetchLicensePage(base, endpoint, key, item.day, page, budget)
+        const { items, count, msg, size, url } = await fetchLicensePage(base, endpoint, key, item.day, page, variantId, sizeEnv, budget)
         if (msg) lastMsg = msg
         // ⚠️ 한도로 **이 요청이 실패**했으면 이 업종은 '완료'가 아니다. `!count` 로 빠져나가면 정상 0건과
         //   구분이 안 돼 다음 틱이 이 업종을 건너뛴다 = 그 업종 데이터 영구 누락(유닛테스트가 잡은 실버그).
         if (budget.limitHit) { stoppedAt = ei; break }
         if (!sample && items[0]) sample = items[0]
+        // 🩺 첫 실패의 실제 요청을 **키를 가려** 남긴다 — 500 은 본문에 원인 코드가 없어, 이게 없으면
+        //   "무엇을 보냈길래 500 인가"를 이 환경(외부 CONNECT 차단)에서 판정할 방법이 아예 없다.
+        if (msg && !failProbe) failProbe = { url: redactServiceKey(url), endpoint, day: item.day, page, msg: msg.slice(0, 200) }
+        // 🔬 형태 후보 프로브 — 1페이지가 실패했고, env 고정이 아니고, 쿨다운이 지났고, 예산이 남았을 때만.
+        //   추측으로 URL 을 바꾸는 대신 **라이브가 고르게** 한다. 승자가 나오면 그 자리에서 재시도.
+        if (msg && page === 1 && !count && !probedThisRun && !envVariant && shouldProbe(vState, Date.now()) && budget.left > LICENSE_VARIANT_PROBE_COST) {
+          probedThisRun = true
+          const pr = await probeLicenseVariants({
+            base, endpoint, keyParam: serviceKeyParam(key), day: item.day, sizeOverride: sizeEnv, skip: [variantId],
+            canSpend: () => !outOfBudget(budget),
+            fetchPage: async (u) => { const r = await fetchLicenseUrl(u, budget); return { ok: !r.msg, rows: r.count, msg: r.msg } },
+          })
+          probeInfo = { at: stamp, winner: pr.winner, attempts: pr.attempts }
+          vState = { id: pr.winner || variantId, probed_at: Date.now(), attempts: pr.attempts }
+          spendD1()
+          await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(VARIANT_KEY, JSON.stringify(vState)).run().catch(() => null)
+          if (pr.winner && pr.winner !== variantId) { variantId = pr.winner; page--; continue } // 승자로 이 페이지 재시도
+        }
         if (!count) break
         const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
         found += rows.length
         spendD1()
         saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
-        if (count < 500) break // 마지막 페이지
+        if (count < size) break // 마지막 페이지(⚠️ 페이지 크기는 변종/env 로 달라진다 — 상수 비교 금지)
       }
       if (stoppedAt != null) break
     }
@@ -303,7 +366,11 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
     //   '전일 변동분'(하루 수백 건 트리클)뿐이다. 전국 음식점을 쌓으려면 백필이 켜져야 하는데
     //   화면에 그 사실이 안 보여 "왜 안 쌓이지"가 판정 불가였다. 숫자를 그대로 노출한다.
     backfill_days: Math.max(0, parseInt((env as unknown as { ADS_LOCALDATA_BACKFILL_DAYS?: string }).ADS_LOCALDATA_BACKFILL_DAYS || '0', 10) || 0),
-    diag: { configured: true, error: err, sample, endpoints: Object.keys(endpoints) },
+    diag: {
+      configured: true, error: err, sample, endpoints: Object.keys(endpoints),
+      // 🔬 "무엇을 어떻게 보내고 있고, 무엇이 실패했는가" — 추측 없이 판정하기 위한 최소 증거 3종.
+      variant: variantId, fail_probe: failProbe, probe: probeInfo,
+    },
   }
   await persist(s)
   return s
@@ -337,9 +404,16 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
   budget.left -= schemaSpent // 스키마 DDL 실비(위 주석) — 안 빼면 이 레인도 조용히 천장을 넘는다
   const spendD1 = () => { budget.left -= 1 }
   spendD1() // 위 커서 조회
-  const idxRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(BF_IDX_KEY).first<{ value: string }>().catch(() => null)
+  const idxRaw = await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?)').bind(BF_IDX_KEY, VARIANT_KEY)
+    .all<{ key: string; value: string }>().catch(() => null)
   spendD1()
-  let startIdx = Math.max(0, parseInt(String(idxRaw?.value || ''), 10) || 0)
+  const bfSetting = (k: string): string | null => (idxRaw?.results || []).find(r => r.key === k)?.value ?? null
+  let startIdx = Math.max(0, parseInt(String(bfSetting(BF_IDX_KEY) || ''), 10) || 0)
+  // 🔬 백필도 **일일 레인이 라이브에서 확인한 요청 형태**를 그대로 쓴다(형태가 갈리면 한쪽만 조용히 0건).
+  //   프로브는 여기서 돌리지 않는다 — 판정은 한 곳(일일 레인)에서만 하고 결과를 공유한다.
+  let bfVariant = String((env as unknown as { ADS_LOCALDATA_VARIANT?: string }).ADS_LOCALDATA_VARIANT || '').trim()
+  if (!bfVariant) { try { bfVariant = (JSON.parse(bfSetting(VARIANT_KEY) || '{}') as VariantState)?.id || '' } catch { bfVariant = '' } }
+  const bfSizeEnv = (env as unknown as { ADS_LOCALDATA_PAGE_SIZE?: string }).ADS_LOCALDATA_PAGE_SIZE || null
   const eps = Object.entries(endpoints)
   let found = 0, saved = 0
   const days: string[] = []
@@ -352,14 +426,14 @@ export async function runLocalDataBackfill(env: Env, maxDaysPerRun = 2): Promise
       const [endpoint, category] = eps[ei]
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break }
-        const { items, count } = await fetchLicensePage(base, endpoint, key, cur, page, budget)
+        const { items, count, size } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget)
         if (budget.limitHit) { stoppedAt = ei; break } // 한도로 실패한 업종은 완료가 아니다(위 일일 레인과 동일)
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length
         spendD1()
         saved += await saveProspects(DB, rows, todayYmd).catch(() => 0)
-        if (count < 500) break
+        if (count < size) break
       }
       if (stoppedAt != null) break
     }

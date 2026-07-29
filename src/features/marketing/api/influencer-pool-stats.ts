@@ -68,6 +68,8 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
       -- 📥 사전동의(자동발송 가능 모수) + 🏢 브랜드 공식 채널 태깅 수 + 🏅 채점 완료 수
       SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented,
       SUM(CASE WHEN is_brand = 1 THEN 1 ELSE 0 END) AS brand_tagged,
+      -- 🚫 소개글에 제안 거부를 명시한 리드(발송 큐 제외 대상) — 태깅만, 삭제 아님.
+      SUM(CASE WHEN opted_out = 1 THEN 1 ELSE 0 END) AS opted_out,
       SUM(CASE WHEN lead_score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
       SUM(CASE WHEN lead_score >= 70 THEN 1 ELSE 0 END) AS score_hot,
       -- 🏷️ 분류 근거(정확도 가시화): content=이름·소개글 규칙 / topic=유튜브 자체분류 / keyword=수집 키워드 상속(재검증 대상)

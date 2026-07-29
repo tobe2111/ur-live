@@ -62,6 +62,12 @@ export interface CompanyLead {
   contact_source?: string | null // 연락처 출처(provenance): govreg/kakao/homepage/naver/commerce/franchise/registry
   source?: string | null        // 'manual' | 'local' | 'webkr' | 'registry' | 'storeinfo'(공공 상가정보)
   source_keyword?: string | null
+  /**
+   * 🪦 **폐업/말소/휴업 업체** — 등록부가 그렇게 알려준 경우에만 true(추측 금지).
+   *   저장은 하되 접촉 풀에서 뺀다(`active=0`). 삭제하지 않는 이유: 나중에 재개업하면 등록부가
+   *   다시 '정상'으로 알려주고, 그때 되살아나야 하기 때문(멱등 자가 치유).
+   */
+  closed?: boolean
 }
 
 export interface CompanyLeadRow {

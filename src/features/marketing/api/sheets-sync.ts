@@ -80,7 +80,7 @@ async function getToken(env: Env): Promise<string | null> {
 //   2026-07-27 엑셀 다운로드(influencer-pool-export)와 "같은 열 세계"로 확장 — 🏅점수·롱폼중앙값·쇼츠%·
 //   마지막글·메일상태·분류근거·브랜드. 시트는 **기계값 미러**(status='new' 등 raw — 필터/재활용용,
 //   한국어 라벨은 엑셀 다운로드 담당).
-export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '점수', '구독자수', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '분류근거', '브랜드', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
+export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '점수', '구독자수', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '분류근거', '제외태그', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
 export interface SheetLead {
   id: number; platform: string; name: string; handle: string | null; url: string
   subscriber_count: number; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null
@@ -90,10 +90,14 @@ export interface SheetLead {
   memo: string | null; collected_at: string
   lead_score?: number | null; median_long_views?: number | null; shorts_ratio?: number | null
   is_brand?: number | null; email_status?: string | null; last_post_at?: string | null; category_source?: string | null
+  /** 🚫 소개글에 제안 거부를 명시(`declinesOutreach`) — 시트에서 손으로 고를 때도 걸러지도록 미러한다. */
+  opted_out?: number | null
 }
 export function leadToRow(l: SheetLead): (string | number)[] {
   return [l.id, l.platform, l.name, l.handle || '', l.url, l.lead_score ?? '', l.subscriber_count || 0, l.recent_avg_views ?? '', l.median_long_views ?? '', l.shorts_ratio ?? '', l.recent_avg_comments ?? '', l.recent_posts_30d ?? '', l.last_post_at || '', l.email || '', l.email_status || '', l.instagram || '',
-    l.tiktok || '', l.links || '', l.category || '', l.category ? (l.category_source || 'keyword') : '', l.is_brand ? 1 : '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
+    l.tiktok || '', l.links || '', l.category || '', l.category ? (l.category_source || 'keyword') : '',     // 🚫 '제외태그'(구 '브랜드') — 거부 명시가 브랜드보다 강한 신호라 우선. 열 추가 없이 한 칸에 담는다
+    //   (시트는 기계값 미러라 라벨이 아니라 코드값: 'optout' / 'brand' / '').
+    l.opted_out ? 'optout' : l.is_brand ? 'brand' : '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
     l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at]
 }
 
@@ -187,7 +191,7 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<{ ok: bool
   for (let off = 0; ; off += PAGE) {
     const res = await env.DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
-        lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source
+        lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
       FROM ad_influencer_leads WHERE account_id = 0 ORDER BY id ASC LIMIT ? OFFSET ?`)
       .bind(PAGE, off).all<SheetLead>().catch(() => null)
     cost.subreq += 1
