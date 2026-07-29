@@ -94,8 +94,11 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
   const cls = (p: PlatformDiag) => !p.configured ? 'missing' : (p.error && p.saved === 0) ? 'failed' : (p.error && p.saved > 0) ? 'partial' : 'ok'
   const d = run?.diag
   const yt = d ? cls(d.yt) : 'ok', nv = d ? cls(d.naver) : 'ok'
-  const hard = yt === 'missing' || yt === 'failed' || nv === 'missing' || nv === 'failed'
-  const soft = yt === 'partial' || nv === 'partial'
+  // 🆕 티스토리(카카오 Daum 검색) — 옛 스냅샷엔 이 슬롯이 없다. 없으면 'ok' 로 둬서 **옛 기록이 빨간불을
+  //   내지 않게** 한다(배선 전 회차와 배선 후 회차가 같은 화면에 섞인다).
+  const ts = d?.tistory ? cls(d.tistory) : 'ok'
+  const hard = [yt, nv, ts].some(x => x === 'missing' || x === 'failed')
+  const soft = [yt, nv, ts].some(x => x === 'partial')
   const line = (label: string, p: PlatformDiag, st: string) => (
     <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
       {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ⚠️ ${p.error}` : ''}</div>
@@ -218,6 +221,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
           {line('유튜브', d.yt, yt)}
           {line('네이버', d.naver, nv)}
+          {d.tistory ? line('티스토리', d.tistory, ts) : null}
           {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers &amp; Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
         </div>
       )}

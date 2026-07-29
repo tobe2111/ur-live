@@ -19,7 +19,7 @@ import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태�
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
-import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, stripVideoTitles, type FetchBudget } from './influencer-discovery'
+import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, discoverTistoryBloggers, ensureInfluencerSchema, stripVideoTitles, type FetchBudget } from './influencer-discovery'
 import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
@@ -379,9 +379,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     }
   }
   // 🔎 플랫폼별 진단 누적 — fail-soft 로 삼키더라도 *사유는 기록*해 어드민에서 0건 원인 확인 가능.
+  const hasKakao = !!(env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
   const diag = {
     yt: { configured: hasYouTube, found: 0, saved: 0, error: undefined as string | undefined },
     naver: { configured: hasNaver, found: 0, saved: 0, error: undefined as string | undefined },
+    tistory: { configured: hasKakao, found: 0, saved: 0, error: undefined as string | undefined },
   }
   if (!hasYouTube) diag.yt.error = 'NOT_CONFIGURED: ur-ads 워커에 YOUTUBE_API_KEY 미설정'
   if (!hasNaver) diag.naver.error = 'NOT_CONFIGURED: ur-ads 워커에 NAVER_SEARCH_CLIENT_ID/SECRET 미설정'
@@ -444,6 +446,28 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
+    /**
+     * 🆕 티스토리 — **만들어 놓고 부르는 줄이 없던 소스**(2026-07-29 배선).
+     *   `discoverTistoryBloggers` 는 완성돼 있고 `diag.tistory` 타입도 발송 큐의 `tistory` 항목도 이미
+     *   배선돼 있는데 **호출자가 0** 이라 풀에 tistory 리드가 **0건**이었다. 에러가 아니라 부재라 아무도 몰랐다
+     *   (CLAUDE.md 의 '제조사 수집 cron 누락'과 같은 클래스).
+     *
+     *   왜 지금 넣나 — 이 레인에서 **가장 싼 소스인데 연락 경로가 있다**:
+     *     · 비용 **키워드당 1 서브리퀘스트**(검색 1회로 끝, 연락처는 스니펫에서 추출).
+     *       네이버 블로그는 1 + 최대 10(홈/RSS 보강), 카페는 1인데 **연락 경로가 없다**.
+     *     · 쿼터는 카카오 Daum 검색(무료 3만/일)이라 희소자원인 YT 검색(90/일)과 **경쟁하지 않는다**.
+     *     · 풀의 82%가 네이버 블로그라 소스 편중이 심하다 — 다변화 자체가 값이다.
+     *
+     *   ⚠️ 기본 ON + 킬스위치(`ADS_COLLECT_TISTORY_DISABLED='true'`). '켜야 도는 구조'로 두면
+     *   "켠 줄 알았는데 안 돌던" 사고를 반복한다 — 지금 tistory 가 0건인 것이 정확히 그 결과다.
+     */
+    if (hasKakao && (env as unknown as { ADS_COLLECT_TISTORY_DISABLED?: string }).ADS_COLLECT_TISTORY_DISABLED !== 'true') try {
+      const r = await discoverTistoryBloggers((env as unknown as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY, k.keyword, { size: 50, budget, sort: naverSort === 'date' ? 'recency' : 'accuracy' })
+      if (r.ok) {
+        diag.tistory.found += r.leads?.length || 0; kFound += r.leads?.length || 0
+        if (r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.tistory.saved += s; kSaved += s; mine(r.leads) }
+      } else if (!diag.tistory.error) diag.tistory.error = `${r.error}${r.message ? `: ${r.message}` : ''}`
+    } catch (e) { if (!diag.tistory.error) diag.tistory.error = `THROW: ${(e as Error)?.message || 'unknown'}` }
     // 🌵 **공정한 시도였나** — 예산이 이 키워드 도중에 바닥났거나 한도 오류를 봤으면 '무수확'이 아니라 '굶은'
     //   것이다. 루프는 키워드 *시작 전*에만 예산을 보므로, 남은 예산 1로 시작한 키워드도 모든 fetch 를
     //   시도하고 전부 실패한다 → kFound 0 → 아래 UPDATE 가 barren_streak 를 올린다.
