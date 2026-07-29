@@ -99,6 +99,11 @@ app.post('/influencer-pool/maintain-all', async (c) => {
 /**
  * 📝 POST /influencer-pool/enrich-run — **보강 레인 수동 실행**(ur-ads 위임, 동기 응답).
  *
+ * 🔗 **실제 URL 은 `/api/admin/ads/influencer-pool/enrich-run`** — 이 라우터는 `admin-ads.routes` 를 거쳐
+ *   `/api/admin/ads` 에 마운트된다. 파일 안의 경로만 보고 `/api/admin/influencer-pool/...` 로 치면
+ *   `{"success":false,"error":"Not found"}` 가 오는데, 이게 **인증 실패나 미배포와 구분이 안 돼**
+ *   엉뚱한 곳을 파게 된다(이 커밋을 쓰면서 실제로 그랬다).
+ *
  * ## 왜 필요했나 (2026-07-29)
  * 수집엔 `collect-burst`, 정비엔 `maintain-all` 이 있는데 **보강 레인만 트리거가 없었다.**
  * 그래서 이 레인의 변경은 **매시 정각 cron 을 기다려야만** 검증됐다 — 오늘 하루 이 레인을 네 번 고치는 동안
