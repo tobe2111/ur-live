@@ -396,6 +396,13 @@ curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -
 3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
 4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
 
+> 🔴 **2026-07-29 무효 표기 (대표 지시)**: 아래 "확인된 사실(2026-07-28 실측)" 중 **이 토큰으로 조회에
+> 성공했다는 기록은 지금 유효하지 않다.** 2026-07-29 실측에서 `platform_settings.cf_api_token` 이
+> **`GET /user/tokens/verify` 자체를 실패**한다(`Authentication error` code 10000 — D1 권한 부족이 아니라
+> 토큰이 죽음). **재발급 예정이며 스코프는 D1 읽기 전용 최소**로 좁힌다(`docs/design/pickup-groupbuy-wholesale-link.md` §B.12).
+> ⇒ 이 절의 절차는 그대로 유효하지만, **"토큰은 살아 있다"를 전제하지 말고 `verify` 로 먼저 확인**할 것.
+> (아래 `usage_model` 정정과 같은 성격 — 낡은 실측을 믿고 오진한 사례가 반복됐다.)
+
 **확인된 사실(2026-07-28 실측 — 추측 대체)**:
 - ⚠️ **정정(2026-07-28 후속)**: 아래 "유료 → 1,000" 은 **틀렸다. 믿지 말 것.** `usage_model: standard` 는
   Workers **과금 모델**(bundled/unbound 세대 구분)이지 free/paid 구분이 아니다 — 무료 계정도 `standard` 로 나온다.

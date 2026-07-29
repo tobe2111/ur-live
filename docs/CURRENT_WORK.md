@@ -13,20 +13,31 @@
 - **예치금 = 폐지 아님, 동결 검토.**
 - **법무 묶음 순서** ① 예치금 선불충전 전금법 해당 여부 → ② 모드 B 대금흐름 → ③ 미수령 청약철회 고지 문구.
 - **§9 열린 3건(브랜드명·모드 B 수수료율·법무 문구) 임의 결정 금지.**
+- **예치금 조회 = ②(대표 직접 확인).** ③ 진단 엔드포인트 **금지**.
+- **동결 순서 §9 명시** — 게이트 선차단 금지.
+- **supply_price 노출은 문서가 아니라 가드 테스트로 고정** → 아래.
 
-### ➡️ 다음 세션 첫 액션 — **예치금 잔액 실측(막혀 있음)**
-대표 지시는 *"먼저 잔액 보유 계정과 총 잔액을 조회해 보고. 코드 변경은 그 뒤에 지시한다."* 인데
-**이 환경에서 조회 경로 3개가 전부 막혔다**(§B.11). **숫자를 추정하지 말 것.**
+### 🛡️ 신규 가드 — 매입가 컬럼 누수(불변식 ④)
+`src/tests/unit/consumer-wholesale-separation.test.ts` 에 **④** 추가(기존 ①~③ 은 *행* 누수, ④는 **컬럼** 누수).
+재판매 복제본은 `supply_price` 를 **행에 실제로 저장**하므로(`supply.routes.ts:333~344`) 격리는 *행의 부재*가
+아니라 **SELECT 컬럼 선택**으로만 이뤄진다 — 노출면에 컬럼 하나 얹으면 매장이 마진 구조를 본다.
+- 정적: `PRODUCT_DETAIL_FIELDS` / `productDetailCols(Healed)` · 라우트 3종 SELECT 목록 · products `SELECT *` 금지
+- **행위**: fake D1 로 `findById`/`findAll` **발행 SQL 캡처** — 인라인 `baseCols` 는 정적 검사로 못 잡아서 필요
+- **되돌려-검증 완료**(CLAUDE.md 룰): `PRODUCT_DETAIL_FIELDS` 에 `supply_price` 주입 → 정적+`findById` 2건 실패
+  확인, 인라인 `baseCols` 에만 주입 → `findAll` 1건 실패 확인. **가드가 실제로 잡는다.** 복원 후 15/15 green
 
-| 경로 | 결과 | 원인 |
-|---|---|---|
-| CF D1 query API | ❌ `Authentication error` | `platform_settings.cf_api_token` 이 **`/user/tokens/verify` 자체 실패** — 만료/무효 |
-| `live.ur-team.com/api/admin/wholesale-overview/` | ❌ 404 | 도매 라우트는 `WHOLESALE_BUNDLE=1` 빌드에만 마운트 — 소비자 배포는 DCE |
-| `utongstart.com` · `ur-wholesale.pages.dev` | ❌ 000 | 이 환경 프록시 CONNECT 차단 |
+### ➡️ 다음 세션 첫 액션 — **대표가 넘길 예치금 숫자를 기다린다**
+조회 경로는 **②로 확정**: 대표가 도매 어드민 `/admin/wholesale-overview` 의 `deposit_liability` +
+`pending_charge_requests` 를 직접 확인해 전달한다(코드 0). **③ 진단 엔드포인트는 만들지 말 것**(대표 명시).
+이 환경에선 CF D1 API(토큰 무효)·소비자 배포 어드민(404, 도매 라우트 DCE)·도매 호스트(프록시 차단) 전부 막혔다.
+**숫자를 추정하지 말 것.** 필요: `balance>0` 계정수 · `SUM(balance)` · 최대잔액 · `pending` 충전요청수.
 
-해소: ① **CF 토큰 재발급**(D1 읽기 포함) — 가장 확실 / ② 대표가 도매 어드민 `/admin/wholesale-overview` 의
-`deposit_liability` + `pending_charge_requests` 직접 확인(코드 0) / ③ 진단 엔드포인트 추가 — **지시 전 금지**.
-필요 숫자: `balance>0` 계정수 · `SUM(balance)` · 최대잔액 · `pending` 충전요청수.
+**숫자 받은 뒤 동결 순서(대표 확정 — 이 순서 고정)**:
+`① 신규 충전요청 차단 → ② pending 전건 처리 → ③ 잔액 소진·환급 → ④ 기능 OFF`.
+🔴 **게이트 선차단 금지** — ④를 먼저 하면 ②③ 경로가 같이 닫혀 **판매사 잔액이 회수 불가로 갇힌다.**
+
+**CF 토큰**: 예치금과 **별건**. 재발급하되 **D1 읽기 전용 최소 스코프**(§B.12). CLAUDE.md 의 07-28 실측 기록은
+**무효 표기 완료** — 그 절을 믿고 "토큰 살아 있다" 전제하지 말고 `verify` 로 먼저 확인할 것.
 
 > ⚠️ **이번에 틀렸던 판단**: src 무변경 근거로 `git diff origin/main -- src/` 를 썼는데, **main 이 앞서면
 > main 의 새 src 가 섞여 들어와 오염된다.** 정확한 기준은 `git diff $(git merge-base origin/main HEAD)..HEAD`.
