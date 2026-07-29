@@ -283,6 +283,10 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
+# 🔢 시드 버전 단조증가 — 이미 쓴 번호를 다시 쓰면 재시드가 에러 없이 그냥 안 돈다(무음).
+#   느린 검사(git log)라 상수를 실제로 건드린 커밋에서만 의미가 있고, 아니면 즉시 통과한다.
+node scripts/check-seed-version-monotonic.mjs || true
+
 # 🔄 인계 문서(CURRENT_WORK.md) 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
 #   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
 node scripts/check-current-work-sync.mjs || true

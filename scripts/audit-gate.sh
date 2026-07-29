@@ -115,6 +115,7 @@ if domain deploy; then
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
+  run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

@@ -149,6 +149,14 @@ jobs:
         run: node scripts/check-cron-heartbeat.mjs
         continue-on-error: false
 
+      # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**
+      #   그냥 안 돈다 — 배포는 성공하고 라이브 문서만 옛날 것으로 남는다(무음 정지).
+      #   이 레포에서 이미 두 번 났다(v8 중복 → v11 주석이 그 수습을 기록 / v4 중복).
+      #   세션이 동시에 여러 개 도는 한 계속 난다 → main 히스토리 대비 단조증가를 강제한다.
+      - name: 시드 버전 단조증가 (strict)
+        run: node scripts/check-seed-version-monotonic.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
