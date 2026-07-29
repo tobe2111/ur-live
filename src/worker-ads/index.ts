@@ -248,10 +248,31 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⇒ 메인의 safeCron 과 같은 계약을 여기에도 준다: **성공·실패 무관 하트비트 + 실패 통지**.
   //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
   //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
+  /**
+   * 🏷️ 실패 사유를 **짧은 코드 한 개**로 — 2026-07-29 실측 갭.
+   *
+   *   06:00 회차에 ur-ads 4개 레인(reextract·collect-neis·collect-storeinfo·collect)이 **동시에**
+   *   `ok:false` 로 죽었는데 어드민 하트비트에는 `result: null` 뿐이라 *왜* 가 없었다. 전부 2~6초 만에
+   *   끝난 걸 보면 정상 완료가 아니라 초기 사망인데, 예산 고갈인지 다른 예외인지 화면에서 구분되지 않았다
+   *   (원문은 Discord 로만 갔다 — 즉 **어드민만 보는 사람에겐 무증거**였다).
+   *
+   *   ⚠️ 원문을 그대로 넘기면 안 된다: `summarizeResult` 는 **24자 초과 문자열을 버린다**
+   *   (`Too many subrequests by single Worker invocation` = 47자 → 통째로 사라진다).
+   *   그래서 분류 코드로 줄인다 — 한도/타임아웃 구분이면 다음 행동을 정하기에 충분하고,
+   *   전체 원문은 여전히 Discord 통지에 실린다.
+   */
+  const errCode = (e: unknown): string => {
+    const msg = String((e as { message?: string } | null)?.message || e || '')
+    if (/too many (subrequests|api requests)/i.test(msg)) return 'limit' // 예산 고갈 — AIMD 가 대응할 신호
+    const name = (e as { name?: string } | null)?.name
+    if (name === 'TimeoutError' || /timeout|aborted/i.test(msg)) return 'timeout'
+    return (name || 'Error').slice(0, 24)
+  }
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown): Promise<void> => {
     try {
       const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
-      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron)
+      // 실패면 사유 코드를 결과 요약 자리에 실어 어드민 하트비트에서 바로 보이게 한다.
+      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron, ok ? undefined : { err: errCode(err) })
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {
       try {

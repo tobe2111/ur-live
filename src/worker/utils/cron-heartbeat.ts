@@ -25,7 +25,12 @@ import type { Env } from '../types/env'
  * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
  * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
  */
-function summarizeResult(v: unknown): string | null {
+/**
+ * 결과 요약(순수 — 유닛 잠금). ⚠️ **24자 초과 문자열은 버린다** — 이 계약에 의존하는 호출부가 있다:
+ *   worker-ads 의 `errCode` 는 실패 원문(예: 47자짜리 `Too many subrequests…`)이 여기서 사라지기
+ *   때문에 짧은 분류 코드로 줄여서 넘긴다. 제한을 바꾸려면 그 호출부를 함께 보라.
+ */
+export function summarizeResult(v: unknown): string | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
