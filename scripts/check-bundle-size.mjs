@@ -142,7 +142,16 @@ if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
 if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
   violations.push(`총 gzip JS ${(totalGzip / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalGzipMB} MB`);
 }
-if (criticalGzip > 0 && criticalGzip / 1024 > BUDGET.criticalGzipKB) {
+// 🛡️ 2026-07-29: "못 쟀다" 를 "예산 안" 으로 읽지 않는다.
+//   criticalGzip 이 0 이 되는 경로는 두 가지이고 **둘 다 고장이다**:
+//     ① dist/index.html 을 못 찾음(빌드 산출물 레이아웃 변경)
+//     ② 위 정규식이 안 맞음(vite 가 script/link 속성 순서·형태를 바꾸면 조용히 0건 매칭)
+//   예전엔 `criticalGzip > 0 &&` 가드가 이 경우를 **조용히 통과**시켰다 — 같은 파일의 gzip 총량
+//   예산이 정확히 그렇게 죽어 있었다(항상 0 → 영원히 통과). 마지막 남은 살아있는 검사까지
+//   같은 방식으로 잃지 않도록, 측정 실패는 통과가 아니라 **위반**으로 올린다.
+if (criticalGzip === 0) {
+  violations.push('critical path 를 측정하지 못했다 (dist/index.html 미발견 또는 script/modulepreload 매칭 0건) — 예산 검사가 무력화된 상태다');
+} else if (criticalGzip / 1024 > BUDGET.criticalGzipKB) {
   violations.push(`critical path gzip ${(criticalGzip / 1024).toFixed(1)} KB > ${BUDGET.criticalGzipKB} KB (entry+modulepreload ${criticalFiles.length}개)`);
 }
 const overSized = jsFiles.filter(f => f.size / 1024 > BUDGET.singleRawKB);

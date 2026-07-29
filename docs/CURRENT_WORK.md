@@ -35,6 +35,99 @@
 - **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
 - **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
 - 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+## ✅ 2026-07-29 — **열린 PR 20건 일괄 정리 + 병합 마찰 제거 가드 2종** (대표 "PR 정리 계속 / 더 개선점")
+
+밤새 쌓인 열린 PR 을 CI 통과분부터 순차 머지했다. 그 과정에서 **같은 수작업이 반복되는 지점**을
+두 개 발견해 가드/자동화로 바꿨다 — 이게 이 세션의 실질 산출물이다.
+
+### 머지 완료 (16건)
+`#771`(어드민 최근활동+KST 정합) · `#829`(매장 픽업 공구) · `#830`(무인매장 수집 — 타 세션) ·
+`#451`(cron dead-man's switch) · `#425`(카카오맵 리뷰) · `#429`(상품 옵션) ·
+`#834`(시드 버전 가드) · `#836`(병합 자동화) 외.
+**닫음 4건 · 보류 1건(`#445`).**
+
+### 🛡️ 신규 가드 — 시드 버전 재사용 (`#834`, `check-seed-version-monotonic.mjs`)
+가이드/블로그 시드는 **"코드 버전 > DB 저장 버전"일 때만** 재시드된다. 이미 쓴 번호를 다시 쓰면
+**조건이 거짓이라 에러 없이 아무 일도 안 일어난다** — 배포는 초록불이고 라이브 문서만 옛날 것으로 남는다.
+가정이 아니라 **이미 두 번 났다**: `GUIDE_SEED_VERSION = 8` 이 2026-07-20 서로 다른 두 커밋에서 쓰였고
+(v11 주석이 그 수습을 기록 — "병행 배포 양쪽(각자 v8)이 모두 재시드되도록 9 로 합침"), `= 4` 도 두 번.
+오늘도 `#451`·`#425` 가 동시에 12 를 잡았다(머지 직전 수동 발견 → `#425` 를 13 으로).
+판정 = main 히스토리가 쓴 적 없는 더 큰 번호. **상수를 실제로 건드린 브랜치만** 검사(안 그러면
+main 안 당겨온 브랜치가 전부 걸려 소음) + **병합 진행 중(MERGE_HEAD)에는 생략**(merge-base 가 낡아 오판).
+⚠️ 한계: 아직 머지 안 된 다른 브랜치의 번호는 못 본다 — 나중에 머지하는 쪽이 CI 에서 걸려 +1 하면 된다.
+
+### 🔀 병합 자동화 (`#836`, `.gitattributes` + `merge-file-size-baseline.mjs`)
+`scripts/file-size-baseline.json` 을 **하루에 10번 넘게 손으로 병합**했다. 내용 충돌이 아니라
+서로 다른 브랜치가 서로 다른 키를 올려서 나는 충돌이다. → 전용 드라이버(**키별 최대값**).
+baseline 은 래칫 *상한*이라 작은 쪽을 고르면 병합 직후 CI 가 곧바로 빨간불이 된다(실제로 그랬다).
+`docs/CURRENT_WORK.md` 는 git 내장 `union`(양쪽 보존 — 지금까지 하던 keep-both 와 같은 결과).
+안전판: JSON 파싱 실패 시 **자동 병합을 포기하고 평소대로 충돌**을 낸다. 드라이버 미등록 환경도
+그냥 충돌이 날 뿐이라 조용한 오작동이 없다. 등록은 `install-git-hooks.sh`.
+⚠️ 파일을 줄여 baseline 을 *낮춘* 작업은 병합에서 되돌아갈 수 있다(높은 쪽이 이긴다) → 병합 후 `--rebaseline`.
+
+### 🐛 `#425` 에서 찾은 실제 버그 2건 (브랜치 원본 결함, main 은 정상이었음)
+1. `guide-seed-seller.ts` 에서 백슬래시 **2개** + 백틱(`\\` 다음에 백틱) — 템플릿 리터럴이 **그 자리에서 닫혀**
+   이후 객체 리터럴이 전부 문(statement)으로 파싱 → TS1005/1109/1128 줄줄이.
+2. `admin-products.routes.ts` 리뷰 레벨 블록의 **닫는 중괄호 누락** — 이후 코드를 통째로 삼켜
+   라우트의 `try/catch` 경계가 무너짐(TS1005 'try' expected).
+
+### ⚠️ 이번에 내가 틀린 것 (같은 실수 반복 방지 — 제일 값진 항목)
+- 🚨 **이 환경의 로컬 tsc 는 죽어 있다 — "tsc 에러 0" 을 믿지 말 것.**
+  로컬 TypeScript 가 **6.0.2** 로 올라가 있고, 이 버전은 `tsconfig.json` 의 `baseUrl` deprecation 을
+  **설정 오류로 판정해 즉시 중단**한다 → **파일을 단 하나도 검사하지 않는다.**
+  일부러 `const x: number = "문자열"` 을 넣고 돌려도 **0건**으로 나온다(실측). `package.json` 지정은 `^5.5.4` 인데
+  실제 설치본이 6.0.2 다. 복구 시도(`npm ci` · 개별 설치) 전부 **npm 403** 으로 실패 —
+  이 세션에서는 되살릴 수 없었다. ⇒ **CI 가 유일한 타입 검증 수단이다.**
+  · 그래서 내가 이 세션에서 보고한 "tsc 에러 0" 은 **전부 무의미했다**(#425 를 두 번 GREEN 이라 오판한 원인).
+  · 다음 세션은 먼저 이걸 확인할 것: `npx tsc --version` → 6.x 면 로컬 검증 불가.
+    `npx tsc --noEmit --skipLibCheck 2>&1 | head -3` 에 `tsconfig.json(...): error TS5101` 만 나오고 끝나면 그게 증상이다.
+  · 근본 수리 후보(별도): `tsconfig.json` 에 `"ignoreDeprecations": "6.0"` 추가 또는 typescript 5.x 고정.
+    ⚠️ 단 `ignoreDeprecations` 만 넣으면 6.0.2 가 `baseUrl` 을 계속 쓰긴 하나, 이 환경은 node_modules 도
+    깨져 있어(react 타입 소실, 64,706 에러) 그것만으로는 안 낫는다. npm 접근이 되는 환경에서 처리할 것.
+- **검증 명령의 `echo` 를 조건 없이 출력해 "에러 없음"으로 오판하고 버그를 담은 커밋을 푸시했다.**
+  → 판정은 반드시 **개수/종료코드**로. 다만 위 항목 때문에 이 명령조차 이 환경에선 무의미하다:
+  `ERR=$(npx tsc --noEmit --skipLibCheck 2>&1 | grep "error TS" | grep -vc baseUrl)`
+- **브랜치 단독 tsc 는 CI 와 다르다.** CI 는 **main 병합 결과**를 검사한다.
+  `#425` 가 그래서 깨졌다 — main 이 `SellerLayout.title` 을 required 로 바꿨는데 브랜치는 모르고 있었다.
+  로컬 검증은 반드시 `git merge origin/main` **후에** 할 것.
+- **`ur-live-global` 빌드가 매 PR 실패한다고 말했는데 틀렸다.** 그건 대표가 07-28 에 삭제했다.
+  실제로 보이는 건 `Cloudflare Pages / ur-wholesale` 체크가 **실패가 아니라 영원히 in_progress** 로
+  남는 것이다(1시간 전 머지된 `#830` 도 그 상태). **머지를 막지는 않는다.**
+  CF 토큰에 Pages 권한이 없어(`Authentication error`) 원인은 대시보드 확인 필요 — 대표 판단 사항.
+- `get_job_logs(failed_only=true)` 가 **실패 스텝을 못 집어낼 때가 있다**(로그 꼬리만 반환).
+  실패 원인은 `get_job_logs(job_id=..., tail_lines=60)` 로 직접 볼 것.
+
+### 🔎 가드가 만들어지자마자 잡은 현재형 사례 (조치 필요)
+
+`#818`(2026-07-29 머지)이 `company-classify.ts` 에 **새 기관 판정 규칙**을 추가했다 —
+`ORG_WORD_STRICT`(구청/시청/도청/군청/주민센터/행정복지센터/진흥원/재단/협회/교육청/보건소/의회/청사 …)
+→ `lead_type='org'` 조기 반환. **그런데 `CLASSIFY_RULES_VERSION` 은 3 그대로다**(마지막 bump 07-27).
+
+재검사 쿼리가 `classified_v IS NULL OR classified_v < CLASSIFY_RULES_VERSION` **뿐이고 시간 폴백이 없어**,
+이미 `classified_v=3` 이 찍힌 행은 **영원히** 이 규칙을 못 받는다. 즉 **새 기관 규칙이 지금 사실상 죽어 있다**
+(신규 유입 행에만 적용). 07-27 에 이 방식을 도입한 이유가 바로 그 구멍을 막으려던 것이었다.
+
+**📊 라이브 실측 (2026-07-29 04:4x, 어드민 `/api/admin/partner-pool/stats`)** — 추측이 아니라 숫자다:
+- `stats.total` = **171,028** 건
+- `reclassify.run.remaining_unclassified` = **0** ← 재분류 레인이 **이미 한 바퀴를 끝냈다**
+  ⇒ 기존 풀 전량이 `classified_v = 3` 이고, 재검사 쿼리(`classified_v < 3`)는 **아무것도 안 잡는다**.
+- 따라서 `#818` 의 기관 규칙은 **171,028건 중 0건에 적용**된다. 신규 유입분(직전 실행 기준 하루 93건)에만 붙는다.
+- 참고 분포: `byLeadType` = partner 167,839 / unknown 2,451 / **org 738**, `byCategory` 지역조직 18.
+  구청·시청·주민센터류가 지금 `partner` 쪽에 섞여 있을 가능성이 큰데, 그걸 걸러내려던 게 그 규칙이었다.
+
+**조치**: `CLASSIFY_RULES_VERSION` 3 → 4.
+⚠️ **단, 부작용을 알고 올릴 것** — bump 는 전량 재검사를 트리거하고, `reclassifyCompanyLeads` 의
+housekeeping 은 `ok=false`(공고·정부페이지) 로 판정된 **미큐레이션 행을 삭제**한다(대표가 손댄 행은 보류).
+새 규칙은 기관을 `ok=true, lead_type='org'` 로 살리는 방향이라 대량 삭제가 의도는 아니지만,
+**리드 데이터를 건드리는 변경이라 이번 세션에서 임의로 올리지 않았다.** 대표 확인 후 1줄 bump.
+
+### 다음 세션 첫 액션
+1. `#425` CI 확인 → GREEN 이면 머지(이 항목 작성 시점 in_progress).
+2. `#445` — 에이전시 약관이 **두 벌**(main `AgencyPartnerTermsPage` vs PR `AgencyTermsPage`, 둘 다 `/terms/agency`).
+   **법적 문안이라 임의 선택 금지 — 대표 답변 대기.** '벤더사' 치환은 revert 완료(`fc3b71a11`).
+3. 남은 개선 후보: `CURRENT_WORK.md` 를 세션별 파일(`docs/handoff/<날짜>-<슬러그>.md`)로 쪼개고
+   본 문서는 목차만 — union 병합으로 충돌은 사라졌지만 **파일이 4,800줄**이라 읽기 비용이 크다.
+
 ## 🟡 2026-07-29 (9차) — **A1 폐기 확정 + §4/§5 개정 · 예치금 동결 검토(잔액 실측 미완, 코드 0)**
 
 8차(#819, 머지 `e75b433`)가 올린 판단에 대표가 답했다. **결정을 문서에 반영했고 코드는 여전히 0.**
