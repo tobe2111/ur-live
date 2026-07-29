@@ -35,7 +35,7 @@ export default function ReferralEarnedCard() {
 
   return (
     <Link
-      to="/influencer"
+      to="/influencer/dashboard"
       className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
       <span className="text-lg" aria-hidden="true">💸</span>

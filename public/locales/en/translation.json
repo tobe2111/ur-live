@@ -242,7 +242,8 @@
       "linked": "Kakao account linked!",
       "unlinked": "Kakao link removed",
       "passwordRequired": "Password setup required. Please set a password from your profile first."
-    }
+    },
+    "forgotPasswordUseKakao": "Forgot your password? Please sign in with Kakao"
   },
   "notifications": {
     "title": "Notifications",

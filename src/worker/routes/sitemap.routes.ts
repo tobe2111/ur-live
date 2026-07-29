@@ -61,16 +61,21 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/creators/apply', priority: 0.8, changefreq: 'weekly' },
     { loc: '/partners', priority: 0.7, changefreq: 'weekly' },
     { loc: '/about', priority: 0.6, changefreq: 'monthly' },
-    // 🛡️ 2026-05-15: 공동구매 hub
-    { loc: '/group-buy', priority: 0.95, changefreq: 'hourly' },
+    // 🚫 2026-07-29: '/group-buy' 제거 — 그 라우트는 실제로 `<Navigate to="/" replace/>`(App.tsx:726)
+    //   라 **콘텐츠가 없는 리다이렉트**다. 그런데 sitemap 은 priority 0.95·hourly 로 두 번째로 높게
+    //   제출하고 있었다(이미 있는 '/' 와 중복 신호 + 리다이렉트 URL 제출은 수집 신뢰도를 깎는다).
+    //   동네딜 목록은 홈('/')이 담당한다 — 2026-07-10 에 GroupBuyListPage 가 미라우팅으로 정리됐다.
     // 🛡️ 2026-05-21: 교환권 (KT Alpha 기프티쇼) 메인 + 주요 카테고리 명시
     { loc: '/vouchers', priority: 0.9, changefreq: 'daily' },
-    { loc: '/vouchers?category=cafe', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/vouchers?category=convenience', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/vouchers?category=restaurant', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/vouchers?category=beauty', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
+    // 🔎 2026-07-29 **카테고리 값 전면 교체 — 기존 6개는 전부 0건이었다(soft-404).**
+    //   `/vouchers?category=` 는 **한글 표시 카테고리**로 필터하는데(VouchersPage:287, 워커 MAIN 슬롯도
+    //   `&category=커피/음료`), sitemap 은 영문 슬러그(cafe·convenience·restaurant·beauty·department·
+    //   mobile)를 제출하고 있었다 → 어느 상품과도 매칭되지 않아 **빈 목록 6개를 색인 요청**한 셈이다.
+    //   아래는 라이브 실측(`/api/products?deal_only=1`) 상위 카테고리만 남긴 것 — 재고가 실제로 있는 값.
+    //   ⚠️ 값을 바꿀 때는 반드시 라이브 분포를 다시 확인할 것(카테고리는 공급사 데이터라 바뀐다).
+    { loc: `/vouchers?category=${encodeURIComponent('편의점')}`, priority: 0.75, changefreq: 'weekly' },
+    { loc: `/vouchers?category=${encodeURIComponent('커피/음료')}`, priority: 0.7, changefreq: 'weekly' },
+    { loc: `/vouchers?category=${encodeURIComponent('베이커리/도넛')}`, priority: 0.65, changefreq: 'weekly' },
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
     // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(urdeal.kr) sitemap 에서 제거.
     //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
@@ -121,13 +126,13 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
         urls.push({ loc, priority: 0.7, changefreq: 'weekly' });
       }
 
-      // 최근 라이브 스트림
-      const streams = await DB.prepare(
-        `SELECT id FROM live_streams WHERE status IN ('live','scheduled','ended') ORDER BY id DESC LIMIT 100`
-      ).all<{ id: number }>();
-      for (const s of streams.results || []) {
-        urls.push({ loc: `/live/${s.id}`, priority: 0.6, changefreq: 'hourly' });
-      }
+      // 🚫 2026-07-29: 라이브 스트림 블록 제거 — **전부 404 를 제출하고 있었다.**
+      //   `LIVE_COMMERCE_SUSPENDED = true`(영구 중단, 2026-06-17 대표 확정)이고 앱에 `/live` 라우트가
+      //   **아예 없는데**(App.tsx·routes 전수 0건), 여기서 `live_streams` 를 읽어 `/live/{id}` 를 최대 100개,
+      //   그것도 `changefreq: 'hourly'`(이 사이트맵에서 가장 잦은 주기)로 발행하고 있었다.
+      //   위 정적 목록(line 52)은 "라이브커머스 영구중단 → /live·/shorts 미노출"이라고 **이미 적어 놨는데**
+      //   동적 섹션만 정리에서 빠졌다 — 주석과 코드가 어긋난 채 남은 전형적인 형태다.
+      //   되살릴 일이 생기면 라우트부터 복구할 것(URL 이 없으면 사이트맵 신뢰도만 깎인다).
 
       // 블로그 글
       const blogs = await DB.prepare(

@@ -45,6 +45,7 @@ if domain auth; then
   run "OAuth 쿠키 iOS 영속 패턴"         bash scripts/check-auth-cookie-pattern.sh
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
+  run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
   run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs
   run "도매 자동재로그인 억제(로그아웃)"   env STRICT_WHS_AUTOLOGIN=1    node scripts/check-wholesale-autologin-guarded.mjs
@@ -127,6 +128,8 @@ if domain deploy; then
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
   # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.
   run "가드 레지스트리(안 도는 가드)"     env STRICT_GUARD_REGISTRY=1   node scripts/check-guard-registry.mjs
+  run "잠금표 심볼 실재(낡은 지도)"      env STRICT_LOCK_TABLE=1       node scripts/check-lock-table-symbols.mjs
+  run "sitemap 죽은 URL 제출"            env STRICT_SITEMAP=1          node scripts/check-sitemap-routes.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

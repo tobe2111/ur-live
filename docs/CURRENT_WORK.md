@@ -317,9 +317,83 @@ PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 �
 2. **`CLAUDE.md` 의 "npm 정상화(2026-07-28 실측)" 는 이 컨테이너에 해당하지 않는다.** 여기선 `npm ping` 이
    403 이다. 컨테이너마다 다르므로 **"문서가 된다고 했으니 된다"로 넘기지 말고 매번 확인**할 것.
 
+### 이어서 (같은 날, 대표 "모두 진행하고 가장 이상적으로")
+
+- **번들 gzip 예산 교정 완료** — CI 를 계측기로 써서(이 컨테이너는 npm 403) 실측 **2.707 MB** 확보 →
+  임계 **2.9 MB**(헤드룸 ~7%) 확정. ⚠️ 교정 전 내 추정치 "2.2~2.5MB" 는 **틀렸다** — 그대로 켰으면 전 PR 이 red.
+  임계값은 지어내지 말고 CI "Bundle size report" 로그에서 읽을 것.
+- **`/influencer` 중복 라우트 수리** — 대시보드와 B2B 영입 랜딩이 같은 경로에 등록돼 랜딩이 **두 달간 도달 불가**였다.
+  대표 확정: 랜딩이 `/influencer`, 대시보드는 `/influencer/dashboard`. 소비자 인바운드 3곳 함께 이동.
+  신규 가드 `check-duplicate-routes`.
+- **대표 대기 2건은 손대지 않는 것이 맞았다** — 실측으로 판정이 뒤집혔다:
+  · `CLASSIFY_RULES_VERSION` 3→4 는 **#837 이 이미 하고 있다**(공동구매 규칙과 함께). 내가 또 올리면
+    두 세션이 같은 번호를 잡는 사고 — #834 가드가 잡으려던 바로 그것. **#837 머지가 곧 이 항목의 처리다.**
+  · `#445` 약관 "두 벌" 은 **법적 선택이 아니었다.** 같은 v1.0·같은 시행일·같은 12개 조문이고,
+    main 쪽이 나중에 다듬어진 판이다(제4조 커미션 24개월 기산점 `귀속 등록일` → **`첫 판매 확정일`**).
+    #445 를 그대로 머지하면 그 개선이 **되돌아간다** → PR 의 `src/shared/legal/*` 약관 파일은 버리고
+    main 의 `src/pages/terms/` SSOT 를 쓰면 된다.
+
+### 추가 발견 (대표 "더 개선할 것들 찾아")
+
+- **`/influencer` 중복 라우트** — B2B 영입 랜딩이 두 달간 도달 불가. 수리 + 가드 `check-duplicate-routes`.
+- **`CLAUDE.md` 잠금표가 사라진 심볼을 지키고 있었다(2건)** — `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임,
+  동작은 유지) · `MainHomePage`(홈이 `HomeRoute` 로 바뀌며 **참조 0인 죽은 파일**이 됐는데 표는 "eager import 유지" 요구
+  → 따르면 죽은 컴포넌트를 되살림). 둘 다 표를 사실에 맞게 고치고 가드 `check-lock-table-symbols` 신설.
+- **`src/pages/MainHomePage.tsx`(85줄)는 참조 0인 죽은 파일** — 삭제하지 않고 남겨 뒀다(레포의 코드 보존 관행,
+  `GroupBuyListPage` 선례). 정리하려면 별도 판단.
+
+### ⚠️ 이번에 틀린 판단 (추가)
+
+3. **"라우팅 안 된 페이지 256개"라고 셌는데 틀렸다.** `App.tsx` 만 보고 `src/routes/*.routes.tsx` 4개를 빠뜨렸다.
+   제대로 세니 6개였고 그중 5개는 탭 임베드·의도적 보존이라 **진짜 고아는 1개**(`MainHomePage`)였다.
+   → 라우트 정의는 `App.tsx` 에만 있지 않다. `grep -rl "<Route" src/` 로 먼저 파일 목록을 잡을 것.
+4. **번들 gzip 총량을 2.2~2.5MB 로 추정했는데 실측은 2.707MB.** 추정값으로 임계를 켰으면 전 PR 이 red.
+
+### 소비자 비밀번호 재설정이 항상 실패하고 있었다 (수리: 입구 차단)
+
+`LoginPage` → "이메일로 로그인"(**isKR 게이트 없음** — 한국 사용자도 도달) → "비밀번호 찾기" →
+`sendPasswordResetEmail` → `POST /api/auth/forgot-password` → **서버에 없음** → 404 →
+"비밀번호 재설정 요청 실패". `useAuthKR.ts` 주석은 *"백엔드는 enumerate 방어를 위해 항상 200 반환"* 이라
+적혀 있는데, **있지도 않은 백엔드를 가정한 문장**이었다.
+
+- 셀러(`seller.routes.ts:662`)·에이전시(`agency.routes.ts:604`)에만 있고 **소비자만 없다.**
+- 대표 확정: **입구를 먼저 가림**(거짓 기능 제거). 핸들러·폼 블록은 재사용하도록 남겨 뒀다.
+- 되살리려면 **서버부터**: `/api/auth/forgot-password` + `/api/auth/reset-password` + `/reset-password`
+  페이지/라우트. **인프라는 이미 있다** — Resend(`RESEND_API_KEY`/`RESEND_FROM`) + `password_reset_tokens`
+  테이블에 `user_type` 컬럼까지 있어 셀러 흐름을 그대로 미러하면 된다.
+
+### 클라↔서버 API 대조는 이 레포에서 정적으로 신뢰하기 어렵다 (시도 기록)
+
+`/api/*` 호출을 서버 라우트 그래프와 대조해 봤다. 서버 등록 방식이 **세 가지**라 단순 스캔은 전부 틀린다:
+① `app.route(prefix, router)` ② 로컬 Hono 인스턴스(`adminApp`) ③ **registrar 패턴**(`registerXxxRoutes(app)`)
++ 조건부 동적 마운트(`__INCLUDE_WHOLESALE__` → `await import('./mount-wholesale')`).
+셋 다 배선하니 미매칭이 264 → 70 → (호출 표현식만 추출 시) 29 로 줄었지만, `/api/admin/banners` 처럼
+**실재하는데 못 찾는 오탐이 남아** 가드로 만들지 않았다. 재시도할 사람을 위해 스크립트는 `/tmp` 에만 뒀다.
+⚠️ 문자열 추출만으로는 **허용목록/캐시키/상수**(`PUBLIC_API_PATTERNS` 등)를 호출로 오인한다 — 실제로
+"Firebase 엔드포인트를 아직 부른다"는 오판을 한 번 했다(그건 허용목록 항목이었다).
+
+### sitemap 이 죽은 URL 을 검색엔진에 제출하고 있었다 (3종 · 가드 신설)
+
+| 항목 | 문제 |
+|---|---|
+| `/group-buy` | 실제로는 `<Navigate to="/">`(App.tsx:726) 인데 **priority 0.95·hourly** 로 두 번째로 높게 제출 |
+| `/vouchers?category=` ×6 | 영문 슬러그(cafe·convenience·restaurant·beauty·department·mobile)인데 필터는 **한글 표시 카테고리** → **전부 0건(soft-404)**. 라이브 실측(`편의점` 157 · `커피/음료` 12 · `베이커리/도넛` 9)으로 교체 |
+| `/live/{id}` ×100 | 라이브커머스 영구중단으로 **라우트 자체가 없는데** `changefreq: hourly` 로 발행. 같은 파일 정적 목록엔 "미노출"이라 적혀 있었고 **동적 섹션만 정리에서 빠졌다** |
+
+가드 `check-sitemap-routes` 신설. **만들면서 내 가드가 스스로 무의미해진 것도 잡았다** — catch-all(`*`) 라우트를
+매칭에 포함하면 모든 URL 이 통과한다(죽은 `/live/1` 주입에 초록불이 떴다). 제외 처리 + 주석 명시.
+
+### ⚠️ 이번에 틀린 판단 (추가 3건 — 전부 보고 전에 표본 확인해서 잡음)
+
+5. **"SEO 없는 소비자 페이지 3건"** → 약관 페이지들은 공용 `TermsDocument` 안에 `<SEO>` 가 있다. **실제 0건.**
+6. **"raw i18n 키 노출 1건"** → 내 정규식이 옵션 객체 안의 `formatNumber(...)` 괄호에서 끊겨 `defaultValue` 를 못 봤다. **실제 0건.**
+7. **"`/s/:username` 라우트 없음"** → `src/routes/seller.routes.tsx` 에 있다. App.tsx 만 본 실수(3번과 같은 실수 반복).
+
+⇒ 공통 교훈: **측정 결과는 발표 전에 한 건씩 열어볼 것.** 오늘 셈이 틀린 게 6번이고, 전부 표본 확인에서 걸렸다.
+
 ### 다음 세션 첫 액션
 1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
-2. **번들 gzip 예산 되살리기(ⓐ, 유일한 미완)** — `npm ping` 이 되는 환경에서:
+2. ~~번들 gzip 예산 되살리기(ⓐ)~~ — **같은 날 완료**(실측 2.707MB → 임계 2.9). 아래는 방법 기록용 — `npm ping` 이 되는 환경에서:
    `npm ci && npm run build:client && node scripts/check-bundle-size.mjs --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['js']['total_gzip_bytes'])"`
    → `check-bundle-size.mjs` 의 `f.gzip` 을 critical-path 처럼 `zlib.gzipSync` 로 직접 계산하도록 바꾸고,
    **실측값 기준으로** `totalGzipMB` 를 재설정한다. ⚠️ 측정 없이 그냥 켜면 실제 총량이 1.5MB 를 넘어
