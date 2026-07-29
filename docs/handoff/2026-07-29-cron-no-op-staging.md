@@ -191,3 +191,37 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
   (CLAUDE.md 기재는 code 10000 이었으나 실측은 **1000**). ⇒ D1 직접 조회 불가.
 - **도매 배포는 이 환경에서 도달 불가** — `utongstart.com`·`ur-wholesale.pages.dev` 둘 다 프록시 CONNECT 차단(000).
   ⇒ 예치금 4숫자(X2)는 **구조적으로 대표만 확인 가능**하다(우회로 없음을 실측으로 확인).
+
+---
+
+## ✅ 2026-07-29 09:10Z — cron 판정 **종결** (CF API + 하트비트 교차확인)
+
+대표가 읽기 전용 CF 토큰(Read 4스코프, 8/9 만료)을 발급 → **직접 조회로 확정**했다.
+09:00 UTC 경과 후 하트비트 재조회에서 `0 9` 블록이 **하나도 안 나타나** CF API 결과를 **런타임이 독립 확인**.
+
+### 확정 사실
+
+| 항목 | 결과 |
+|---|---|
+| `ur-live` **Worker** cron | `0 18` · `0 19` · `*/5` — **3개** (누락 7) |
+| 🔴 치명 누락 | `0 0 * * 1`(**payouts-generate 주간 지급**) · `0 20 * * 0`(**d1-backup**) · `0 * * * *`(환불재시도·자가복구·감시자) |
+| 🔴 **캐리어 바인딩 5개뿐** | `DB`·`FRONTEND_URL`·`LIVE_STREAM`·`RATE_LIMITER`·`SCRAPER_URL` (Pages 는 env 63개) |
+| staging | **`ur-live-staging` 없음** → X1 수행 불가 확정 |
+| preview D1 | **= production**(`d9530ba6`) → 프리뷰 결제는 라이브에 쓴다 |
+| 알림 | `DISCORD_WEBHOOK_URL`·`SENTRY_DSN` **어디에도 없음**(`VITE_SENTRY_DSN`은 클라 전용) |
+| `ur-live-cleanup-cron` | 2026-02 워커가 `*/5` 로 **존재하지 않는 엔드포인트**(`/api/cleanup/expired-reservations`, 라이브 404)를 호출만 함. D1 미사용 → **삭제 안전** |
+
+### ⚠️ 다음 세션이 오판하지 말 것
+
+1. **"일간 블록도 안 돈다"는 틀렸다.** `0 18`·`0 19` 는 등록돼 있어 `auto-settlement`·
+   `supplier-settlement-mature`·`ledger-*`·`influencer-payout` 은 **돈다.** 하트비트에 없던 건
+   추적 시작(03:42Z)이 늦어서였다 — **"판정 불가"로 남긴 판단이 맞았다.**
+2. **트리거보다 바인딩이 먼저다.** 캐리어 Worker 에 키가 없어 `toss-refund-retry` 는 트리거를 켜도
+   환불을 못 하고, `cache-prewarm` 의 **SSR KV 워밍(2026-07-12 작업)은 `CACHE_KV` 부재로 한 번도 안 먹혔다**.
+3. **하트비트 `ok:true` 를 성공으로 읽지 말 것.** 키 부재 작업은 조용히 조기반환/삼킴 → 성공으로 기록된다.
+   `scheduled-cleanup` 이 실제 결과를 남긴 건 **DB 만 쓰기 때문**이다.
+4. **`ur-live` 가 정확히 3개**인 건 무료 플랜 Worker 당 상한(3)일 가능성 — **확정 아님**(구독 조회는 권한 밖).
+   4번째 추가 시도로 판명된다.
+
+수습 순서(바인딩→알림→백업→자가복구→지급)와 Plan B: `docs/design/cron-trigger-remediation.md` §F.
+**쓰기는 전부 대표 몫**(CLAUDE.md 토큰 규율 축소 — 조회 한정).
