@@ -13,6 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger } from '@/worker/utils/ledger'
+import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
@@ -989,7 +990,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         const voucherList = (vouchers.results ?? []).map(v => `
           <tr>
             <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:monospace;font-size:13px;color:#6b7280;font-weight:700;">${v.code}</td>
-            <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px;color:#6b7280;">${v.expires_at ? new Date(v.expires_at).toLocaleDateString('ko-KR') + ' 까지' : '-'}</td>
+            <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px;color:#6b7280;">${v.expires_at ? formatKSTDate(v.expires_at) + ' 까지' : '-'}</td>
           </tr>`).join('')
         // 🔔 2026-07-01: 셀러/유저 제어 문자열(상품명·매장명·닉네임) 이메일 HTML 이스케이프(인젝션 방지).
         const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')

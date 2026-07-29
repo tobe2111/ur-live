@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-27 — 🕘 어드민 '최근 활동' 구매자 표시 + **DB 타임스탬프 KST 정합 클래스** 근본수리 (대표 "누가 결제했는지 알 수 없어" → "모두 이상적으로")
+브랜치 `claude/payment-history-review-i7tdep` (PR #771).
+- **직접 원인(표시 결함)**: `AdminActivityFeed` 가 `order_number`+`total_amount` 만 렌더 — `/api/admin/orders` 는 `user_name`/`user_email`/`shipping_name`/`shipping_phone` 을 **이미 내려주고 있었는데** 화면이 버림. 구매자 표기(회원명>수취인명>이메일>회원#id, 이용권 자리표시자 '이용권 구매자' 는 실명 취급 X) + 보조줄(이메일·수취인·마스킹 연락처·주문번호·상품명) + 행 클릭 → `/admin/orders?q={주문번호}` + '실결제만' 토글 + 상태 라벨 정식화(FAILED=결제 실패) + 새 주문 사운드 버그(limit 고정이라 `list.length` 가 8에서 안 변해 **영영 미발동**) 수리.
+  - ⚠️ 대표가 본 8건 중 **실결제는 `GB-1779591345327-3XKE · 1,800원` 1건**, 나머지는 결제 실패/취소. 전부 2026-05-23~06-26 주문인데 날짜 없이 시:분만 찍혀 '오늘 활동'처럼 보였음.
+- **클래스 근본수리(KST 정합)**: D1 `CURRENT_TIMESTAMP`/`datetime('now')` = `'YYYY-MM-DD HH:MM:SS'`(UTC, **Z 없음**) → 브라우저 `new Date()` 는 로컬(KST) 오해석, 워커(TZ=UTC) `.toLocaleString('ko-KR')` 은 UTC 시각을 한국어로 표기 → **9시간 어긋남**. 실사고 4건 수리: ① 연속 주문 감지가 9h 차이로 **영구 미발동**(AdminPage) ② 고객 **알림톡 주문일시** 9h 이름(alimtalk-auto) ③ 셀러 **주문 날짜필터** 경계 누락(SellerOrdersPage) ④ **교환권 만료일 안내 메일** 하루 이름(group-buy.routes). + 정산 CSV·교환권 주문/거래·에이전시 주문·정산/원장 표면 시각 정합.
+- **SSOT 보강**: `src/utils/date.ts` — `formatKST`/`formatKSTShort` 에 Intl-timeZone 미지원 폴백(수동 +9h, KST 는 DST 없음) + 신규 `kstDayStartMs`/`kstDayEndMs`(날짜 입력 경계 — 서버 `DATE(created_at,'+9 hours')` 와 동일 규약).
+- **영구 가드 신설**: `scripts/check-utc-date-parse.mjs` (47번째 불변식, verify.yml strict + audit-gate). 규칙 A(어디서든 `new Date(x.created_at).toLocale*` 금지) + 규칙 B(pages/components/hooks 는 비교·정렬까지 금지). **래칫** `scripts/utc-date-baseline.json` — **서버/워커측 잔여 0**, 클라 87건 동결(점진 정리 대상, 줄인 뒤 `--rebaseline`). 예외 `utc-date-ok`.
+- 검증: audit-gate **47 ALL GREEN**. ⚠️ npm 403 환경 — tsc/build 는 CI(main.yml Typecheck gate). `Workers Builds: ur-live-global` 실패는 **base 선재**(머지된 #770 도 동일).
+- **다음(선택)**: 클라 87건 burn-down — 대부분 `new Date(x.created_at).toLocaleDateString('ko-KR')` → `formatKSTDate(x)` 기계적 치환. 가드가 신규 유입을 이미 막고 있으므로 급하지 않음.
 ## ✅ 2026-07-05 — 1인 운영 관측 보강: cron dead-man's switch + 게이트 현황판 + staging 체크리스트 SSOT (대표 "모두 이상적으로 진행")
 "에러를 대표가 먼저 발견"하는 마지막 축들을 자동 관측으로 전환. 결제/잠금 파일 무수정 — 전부 additive 관측 계층.
 - **🫀 Cron 침묵 감지(dead-man's switch)**: `scheduled.ts safeCron`(전 cron 단일 관문)이 실행당 `cron_heartbeats` 1 upsert(신규 util `cron-heartbeat.ts`, repair-schema 등록). 핵심 cron 13종(5분/시간/일/주간별 허용 간격) stale 판정 → ① 신규 공개 프로브 `GET /api/_healthcheck/cron`(비정상 503) ② `uptime.yml`(외부 GitHub Actions 10분)에 프로브 추가 → 침묵 시 이슈+이메일(**cron 내부 자가진단은 cron 전면 사망 시 같이 죽으므로 외부 관측이 진짜 스위치**) ③ daily-self-diagnostic 에 부분 침묵 섹션.
