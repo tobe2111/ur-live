@@ -10,7 +10,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
-import { serviceKeyParam } from './public-data-diag'
+import { serviceKeyParam, isNoValue } from './public-data-diag'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -65,7 +65,10 @@ const EMAIL_RE = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i
 const DOMAIN_RE = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9.\-]+\.[a-z]{2,}(?:\/\S*)?$/i
 
 /** 첫 매칭 키의 값(태그 제거). 표준 필드명이 API 버전마다 달라 다중 별칭. */
-function g(it: RawCommerce, ...keys: string[]): string { for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) } return '' }
+//   ⚠️ `isNoValue` 를 반드시 통과시킨다 — 포털은 '값 없음'을 `"N/A"` 문자열로 주는데 그게 truthy 라
+//   앞 별칭에서 걸리면 **진짜 값이 있는 뒤 별칭을 건너뛴다**(실측: 리드 31.7% 가 주소 "N/A" + region null,
+//   같은 행 지번주소엔 실제 주소가 있었다). 판정 SSOT 는 public-data-diag.
+function g(it: RawCommerce, ...keys: string[]): string { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 /** ⚠️ 필드명 불확실 대비 — **어떤 필드든 이메일 형태면** 회수(통신판매 신고본은 전자우편이 있음, 키 이름만 버전차).
  *   `*` 포함 값은 통째 스킵 — 마스킹("ab**cd@x.com")에서 부분매칭("cd@x.com")으로 **잘린 가짜 이메일**을 만들 위험 차단. */
 function anyEmail(it: RawCommerce): string { for (const v of Object.values(it)) { const s = stripTag(v); if (!s || s.includes('*')) continue; const m = s.match(EMAIL_RE); if (m && !/@(?:example|test|sample)\./i.test(m[0])) return m[0].toLowerCase() } return '' }
@@ -118,6 +121,12 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
 
   // 🧹 기존에 저장된 마스킹 이메일(발송 불가) 정리 — NULL 처리 + 전화 없으면 보류로 되돌려 재보강(홈페이지 크롤로 진짜 이메일).
   await DB.prepare("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN contact_source = 'commerce' THEN NULL ELSE contact_source END, active = CASE WHEN (phone IS NULL OR phone = '') THEN 0 ELSE active END WHERE email LIKE '%*%'").run().catch(() => null)
+
+  // 🕳️ 이미 저장된 자리표시자 주소("N/A")를 비운다 — **원부 재순회가 진짜 주소로 채우게 하려면 필수**다.
+  //   upsert 가 `address = COALESCE(기존, 신규)` 라, "N/A" 가 남아 있으면 진짜 주소가 와도 **영원히 안 들어간다.**
+  //   실측: 온라인판매 리드의 31.7% 가 이 상태(주소 "N/A" + region null)였고, 카카오 전화 스윕은
+  //   `address != ''` 로 걸러 이 행들을 **없는 주소로 조회**하느라 예산을 태우고 있었다.
+  await DB.prepare("UPDATE ad_company_leads SET address = NULL WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')").run().catch(() => null)
 
   // 🪦 이미 저장된 폐업 업체를 접촉 풀에서 뺀다(위 마스킹 정리와 같은 성격의 자가 치유).
   //   description 에 `대표 X · 폐업처리` 형태로 등록부 상태가 이미 들어가 있다 — 새 수집을 기다리지 않고

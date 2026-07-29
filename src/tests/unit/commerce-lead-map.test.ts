@@ -64,4 +64,26 @@ describe('mapCommerceLead', () => {
     expect(l.company_name).toBe('테스트상회')
     expect(l.email).toBe('ceo@shop.co.kr')
   })
+
+  // 🕳️ '값 없음'을 문자열로 주는 포털 습성 — 라이브 표본 1,000건 중 **31.7% 가 address="N/A"** 였고
+  //   그 전부가 region=null 이었다. 같은 행의 지번주소엔 실제 주소가 있었는데 앞 별칭의 "N/A" 가
+  //   truthy 라 뒤 별칭을 건너뛴 것이다. 게다가 카카오 스윕은 `address != ''` 로 걸러 "N/A" 를
+  //   통과시켜 **없는 주소로 조회**를 날렸다(실측 47건 시도 0건 발견).
+  it('앞 별칭이 "N/A" 면 **뒤 별칭의 진짜 주소**를 쓴다(정보를 버리지 않는다)', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', rnAddr: 'N/A', lctnAddr: '서울특별시 광진구 군자동 367-4' })
+    expect(l.address).toBe('서울특별시 광진구 군자동 367-4')
+    expect(l.region).toBe('서울') // 주소를 살려야 지역 필터가 산다(pickRegion 은 시도 단위)
+  })
+
+  it('모든 별칭이 자리표시자면 주소는 null — "N/A" 를 주소로 저장하지 않는다', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', rnAddr: 'N/A', lctnAddr: '-' })
+    expect(l.address).toBeNull()
+    expect(l.region).toBeNull()
+  })
+
+  it('자리표시자는 사업자번호·대표명에도 적용된다(쓰레기 값 저장 금지)', () => {
+    const l = mapCommerceLead({ bzmnNm: '테스트상회', brno: 'N/A', rprsvNm: '없음', lctnAddr: '서울특별시 강남구 역삼동 1' })
+    expect(l.business_no).toBeNull()
+    expect(l.description || '').not.toContain('없음')
+  })
 })

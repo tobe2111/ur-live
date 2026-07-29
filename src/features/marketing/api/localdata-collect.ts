@@ -20,7 +20,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema, saveProspects, LICENSE_UPJONG, PRIORITY_UPJONG, type StoreProspect } from './store-prospects'
-import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
+import { describePublicDataFailure, serviceKeyParam, isNoValue } from './public-data-diag'
 import { type FetchBudget } from './influencer-discovery'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 import {
@@ -94,7 +94,9 @@ type RawLicense = Record<string, unknown>
 
 /** 첫 매칭 키의 값(태그 제거). 소문자 우선 + 카멜/구필드 폴백. */
 function g(it: RawLicense, ...keys: string[]): string {
-  for (const k of keys) { const v = it[k]; if (v != null && String(v).trim()) return stripTag(v) }
+  // ⚠️ '값 없음' 자리표시자("N/A" 등)는 값이 아니다 — 앞 별칭에서 걸리면 뒤 별칭의 진짜 값을 놓친다
+  //   (통신판매 레인에서 실제로 31.7% 의 주소를 그렇게 잃고 있었다). 판정 SSOT 는 public-data-diag.
+  for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) }
   return ''
 }
 

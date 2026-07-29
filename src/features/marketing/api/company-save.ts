@@ -74,6 +74,9 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
          phone = COALESCE(ad_company_leads.phone, excluded.phone),
          website = COALESCE(ad_company_leads.website, excluded.website),
          address = COALESCE(ad_company_leads.address, excluded.address),
+         -- 🗺️ region 도 채운다(2026-07-29) — 예전엔 conflict 시 갱신 대상이 아니라, 주소가 나중에
+         --   채워져도 **지역은 영영 NULL** 이었다("N/A" 주소 31.7% 를 치유해도 필터가 안 살아나는 원인).
+         region = COALESCE(ad_company_leads.region, excluded.region),
          business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
          contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
          active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
