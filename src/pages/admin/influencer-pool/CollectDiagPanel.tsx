@@ -63,6 +63,13 @@ export interface EnrichLaneRecord {
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
   total_measured?: number; total_contacts?: number
+  /**
+   * 📧 누적 이메일 — **이 레인이 '쓸 수 있는 리드'를 만드는지** 판정하는 값.
+   *   ⚠️ `total_contacts` 를 대신 보면 안 된다: 2026-07-29 까지 그 값은 네이버 블로거의 **자기 블로그 링크**를
+   *   연락처로 세어 부풀어 있었다(실측: 이메일 없는 303명 중 295명이 자기링크만 보유). 유입은 막았지만
+   *   기존 누적치는 그대로다 — 화면엔 **이메일만** 보여 오독을 원천 차단한다.
+   */
+  total_emails?: number
   crash?: string; crash_at?: string
 }
 
@@ -176,6 +183,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
           {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
+          {enrichLane.total_emails != null ? <span className="text-emerald-700">{` · 📧 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
         </div>
       ) : null}
       {enrichLane?.crash ? (
