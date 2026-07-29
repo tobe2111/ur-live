@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { Mail, Lock, Eye, EyeOff, User, Phone, Building2, CheckCircle } from 'lucide-react'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { AGENCY_CORE_TERMS_SUMMARY } from './terms/agency-terms-content'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 export default function AgencyRegisterPage() {
   const { t } = useTranslation()
@@ -15,6 +18,9 @@ export default function AgencyRegisterPage() {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [done, setDone] = useState(false)
+  // 📜 2026-07-05 파트너 약관 v1.0: 전체 동의 + 핵심조항(제4·5·9·10조) 개별 동의 — 둘 다 필수
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [coreAgreed, setCoreAgreed] = useState(false)
   // 🔢 2026-06-26 (대표 가입폼 UX): 첫 문제 필드 포커스 + 이메일/전화 완성형 검증.
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
@@ -36,6 +42,10 @@ export default function AgencyRegisterPage() {
     if (form.phone.trim() && !isValidKrPhone(form.phone)) { failAt('phone', t('agency.agencyRegister.errPhone', { defaultValue: '전화번호를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
     if (form.password.length < 8) { failAt('password', t('agency.agencyRegister.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다.' })); return }
     if (form.password !== form.password_confirm) { failAt('password_confirm', t('agency.agencyRegister.passwordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' })); return }
+    if (!termsAgreed || !coreAgreed) {
+      setError(t('agency.agencyRegister.termsRequired', { defaultValue: '파트너 약관과 핵심 조항에 모두 동의해주세요' }))
+      return
+    }
     setLoading(true)
     try {
       await api.post('/api/agency/register', {
@@ -44,6 +54,8 @@ export default function AgencyRegisterPage() {
         email: form.email,
         password: form.password,
         phone: form.phone,
+        terms_agreed_version: TERMS_CURRENT_VERSION,
+        core_terms_agreed: true,
       })
       setDone(true)
     } catch (err: unknown) {
@@ -222,6 +234,19 @@ export default function AgencyRegisterPage() {
                   <p className="text-xs text-red-500 mt-1">{t('agency.agencyRegister.passwordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' })}</p>
                 )}
               </div>
+
+              <TermsConsentBox
+                termsLabel={t('agency.agencyRegister.termsAgree', { defaultValue: '유어딜 에이전시 파트너 약관(v1.0)에 동의합니다' })}
+                termsPath="/terms/agency"
+                agreed={termsAgreed}
+                onAgreedChange={setTermsAgreed}
+                core={{
+                  label: t('agency.agencyRegister.coreAgree', { defaultValue: '위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다' }),
+                  items: AGENCY_CORE_TERMS_SUMMARY,
+                  agreed: coreAgreed,
+                  onChange: setCoreAgreed,
+                }}
+              />
 
               <button
                 type="submit"

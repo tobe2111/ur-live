@@ -1,86 +1,55 @@
 /**
- * UR·DEAL wordmark — single source of truth.
+ * urdeal. 워드마크 — single source of truth.
  *
- * By default the colors auto-toggle via the global `dark:` Tailwind variant:
- * - light surface: UR=black, DEAL=black (monochrome)
- * - dark surface:  UR=red,   DEAL=white
+ * 🎨 2026-07-19 대표 확정 로고(Ur Deal 로고 Final 핸드오프) 반영:
+ *   - 소문자 "urdeal" + 로즈 원 마침표(베이스라인 위, 지름 = 획 굵기) — 이전 "UR·DEAL"(이탤릭+▶) 폐기
+ *   - Poppins 800 · 자간 −3.5% · 플랫(이탤릭/장식 없음)
+ *   - 색: 라이트=네이비 #1A2C42 / 다크=웜화이트 #FAF7F5, 점은 항상 로즈 #E0526B
+ *   - 원본 규정: docs/design/brand-assets/ (핸드오프 납품본 아카이브)
  *
- * Pass `forceDark` when the surface is always dark (e.g. live video
- * overlay, color CTA buttons) regardless of the global theme.
- *
- * The U has a tiny ▶ play marker baked in to hint at the live identity.
+ * Poppins 는 index.html 에서 urdeal 6글자 서브셋(&text=)만 로드 — 미로딩/폴백 시 Pretendard 800.
  */
 interface UrDealLogoProps {
   size?: number
-  /** Force dark-surface coloring (UR=red, DEAL=white) regardless of theme. */
+  /** Force dark-surface coloring (웜화이트 텍스트) regardless of theme. */
   forceDark?: boolean
-  /** Force light-surface coloring (all black) regardless of theme. */
+  /** Force light-surface coloring (네이비 텍스트) regardless of theme. */
   forceLight?: boolean
   className?: string
 }
 
 export default function UrDealLogo({ size = 20, forceDark = false, forceLight = false, className = '' }: UrDealLogoProps) {
-  // Three modes: forceDark (always white), forceLight (always black), auto (theme-driven).
-  // 🖤 2026-06-19 (대표 — 블랙앤화이트): UR 도 빨강 폐기 → 다크 표면=흰색, 라이트 표면=검정 (완전 모노크롬).
-  const urClass = forceDark
-    ? 'text-white'
+  const textClass = forceDark
+    ? 'text-[#FAF7F5]'
     : forceLight
-    ? 'text-[#0A0A0A]'
-    : 'text-[#0A0A0A] dark:text-white'
-
-  const dealClass = forceDark
-    ? 'text-white'
-    : forceLight
-    ? 'text-[#0A0A0A]'
-    : 'text-[#0A0A0A] dark:text-white'
+    ? 'text-[#1A2C42]'
+    : 'text-[#1A2C42] dark:text-[#FAF7F5]'
 
   return (
     <span
-      aria-label="UR·DEAL"
-      className={`inline-flex items-center select-none ${className}`}
+      aria-label="urdeal — 유어딜"
+      className={`inline-flex items-baseline select-none ${textClass} ${className}`}
       style={{
-        fontFamily: "'Pretendard Variable', system-ui, sans-serif",
-        fontWeight: 900,
+        fontFamily: "'Poppins', 'Pretendard Variable', system-ui, sans-serif",
+        fontWeight: 800,
         fontSize: size,
-        letterSpacing: '-0.055em',
+        letterSpacing: '-0.035em',
         lineHeight: 1,
-        fontStyle: 'italic',
       }}
     >
-      {/* UR with embedded ▶ play marker */}
-      <span className={`relative inline-flex items-baseline ${urClass}`}>
-        <span>UR</span>
-        <span
-          aria-hidden
-          className={urClass}
-          style={{
-            position: 'absolute',
-            left: size * 0.18,
-            top: size * 0.28,
-            width: 0,
-            height: 0,
-            borderLeft: `${size * 0.14}px solid currentColor`,
-            borderTop: `${size * 0.09}px solid transparent`,
-            borderBottom: `${size * 0.09}px solid transparent`,
-            opacity: 0.85,
-          }}
-        />
-      </span>
-      {/* Middle dot — picks accent color */}
+      urdeal
+      {/* 로즈 원 마침표 — 베이스라인 위(items-baseline 로 점 하단 = 베이스라인) */}
       <span
         aria-hidden
-        className={urClass}
+        className="bg-brand"
         style={{
           display: 'inline-block',
-          width: size * 0.14,
-          height: size * 0.14,
-          background: 'currentColor',
+          width: Math.max(2, size * 0.18),
+          height: Math.max(2, size * 0.18),
           borderRadius: '50%',
-          margin: `0 ${size * 0.08}px`,
-          transform: `translateY(-${size * 0.06}px)`,
+          marginLeft: size * 0.08,
         }}
       />
-      <span className={dealClass}>DEAL</span>
     </span>
   )
 }

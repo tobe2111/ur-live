@@ -1,0 +1,157 @@
+/**
+ * 🧬 파트너풀 중복 병합 — 안전 불변식 고정 (2026-07-28).
+ *
+ *   이 코드는 **라이브 리드 테이블을 수정**한다. 잘못 접으면 대표가 손댄 큐레이션이 사라지거나
+ *   연락처가 유실된다. 되돌릴 수 있게 설계했지만(merged_into), 애초에 안 틀리게 여기서 못박는다.
+ */
+import { describe, it, expect } from 'vitest'
+import { dedupeCompanyLeads } from '@/features/marketing/api/company-dedupe'
+
+type Stmt = { sql: string; binds: unknown[] }
+
+/** D1 최소 스텁 — 그룹 SELECT / 행 SELECT / batch 를 순서대로 응답하고 실행문을 기록한다. */
+function fakeDB(rows: Array<Record<string, unknown>>) {
+  const executed: Stmt[] = []
+  let batched: Stmt[] = []
+  const norm = (s: string) => (s || '').toLowerCase().replace(/[\s　]/g, '')
+  const db = {
+    prepare(sql: string) {
+      // ⚠️ 스텁 주의: 실제 D1 은 bind() 가 **문장 객체**를 반환하고 그게 batch() 로 넘어간다.
+      //   api 래퍼를 반환하면 batch 가 sql 을 못 봐서 테스트가 헛돈다(첫 작성 때 실제로 그랬다).
+      const api: Stmt & Record<string, unknown> = { sql, binds: [] } as Stmt & Record<string, unknown>
+      const st = api
+      Object.assign(api, {
+        bind(...b: unknown[]) { st.binds = b; return api },
+        async run() { executed.push(st); return { meta: { changes: 1 } } },
+        async all() {
+          // ⚠️ 실제 D1 은 문장당 바인딩 **100개**까지다(라이브 실측). 스텁도 똑같이 거절해야
+          //   "한 IN 절에 전화 전부" 회귀를 테스트가 잡는다 — 안 그러면 조용히 통과한다.
+          if (st.binds.length > 100) throw new Error('too many SQL variables')
+          if (/GROUP BY ph, nk/.test(sql)) {
+            const m = new Map<string, number>()
+            for (const r of rows) {
+              if (!r.phone || Number(r.active ?? 1) !== 1 || r.merged_into != null) continue
+              const k = `${r.phone}\x00${norm(String(r.company_name))}`
+              m.set(k, (m.get(k) || 0) + 1)
+            }
+            return { results: [...m].filter(([, n]) => n > 1).map(([k, n]) => ({ ph: k.split('\x00')[0], nk: k.split('\x00')[1], n })) }
+          }
+          // 행 SELECT — `phone IN (…)` 를 스텁도 실제로 적용한다(안 하면 청크마다 전량 반환돼 헛돈다).
+          return {
+            results: rows.filter(r =>
+              Number(r.active ?? 1) === 1 && r.merged_into == null && st.binds.includes(r.phone)),
+          }
+        },
+        async first() { return null },
+      })
+      return api as unknown as { bind: (...b: unknown[]) => unknown }
+    },
+    async batch(stmts: Stmt[]) { batched = stmts; return [] },
+    _executed: () => executed,
+    _batched: () => batched,
+  }
+  return db as unknown as Parameters<typeof dedupeCompanyLeads>[0] & { _batched: () => Stmt[]; _executed: () => Stmt[] }
+}
+
+const base = { status: 'new', memo: null, email: null, website: null, address: null, business_no: null, active: 1, merged_into: null }
+
+describe('dedupeCompanyLeads — 안전 불변식', () => {
+  it('🔒 dryRun 이면 batch 를 절대 실행하지 않는다', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: '펀플랜', phone: '0507-1' },
+      { ...base, id: 2, company_name: '펀플랜', phone: '0507-1' },
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: true })
+    expect(r.dry_run).toBe(true)
+    expect(r.rows_folded).toBe(1)      // 세기는 한다
+    expect(db._batched()).toHaveLength(0) // 쓰지는 않는다
+  })
+
+  it('🔒 큐레이션 행이 둘 이상이면 그룹째 보류(기계가 고르지 않는다)', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: 'A', phone: '02-1', status: 'contacted' },
+      { ...base, id: 2, company_name: 'A', phone: '02-1', memo: '대표 메모' },
+      { ...base, id: 3, company_name: 'A', phone: '02-1' },
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.groups_merged).toBe(0)
+    expect(r.skipped['큐레이션_다수_보류']).toBe(1)
+    expect(db._batched()).toHaveLength(0)
+  })
+
+  it('큐레이션 행이 하나면 그 행이 승자 — 정보량이 적어도', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: 'B', phone: '02-2', email: 'a@b.com', website: 'x.com' }, // 정보 많음
+      { ...base, id: 2, company_name: 'B', phone: '02-2', memo: '대표 확인함' },                 // 큐레이션
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.sample[0].keep).toBe(2)
+    expect(r.sample[0].fold).toEqual([1])
+  })
+
+  it('큐레이션이 없으면 정보량 많은 행이 승자(동점이면 오래된 id)', async () => {
+    const db = fakeDB([
+      { ...base, id: 5, company_name: 'C', phone: '02-3' },
+      { ...base, id: 6, company_name: 'C', phone: '02-3', email: 'c@d.com' },
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.sample[0].keep).toBe(6)
+  })
+
+  it('🔒 삭제문(DELETE)을 절대 만들지 않는다 — 표시만(active=0, merged_into)', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: 'D', phone: '02-4' },
+      { ...base, id: 2, company_name: 'D', phone: '02-4' },
+    ])
+    await dedupeCompanyLeads(db, { dryRun: false })
+    const sqls = db._batched().map(s => s.sql).join(' ')
+    expect(sqls).not.toMatch(/DELETE/i)
+    expect(sqls).toMatch(/merged_into = \?/)
+    expect(sqls).toMatch(/active = 0/)
+  })
+
+  it('승자의 빈 연락처를 그룹 최선값으로 backfill (COALESCE — 기존값 불변)', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: 'E', phone: '02-5', website: 'e.com' }, // 승자(정보 많음)
+      { ...base, id: 2, company_name: 'E', phone: '02-5', email: 'e@e.com' }, // 이메일은 이쪽에만
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.backfilled).toBe(1)
+    const fill = db._batched().find(s => /COALESCE\(email/.test(s.sql))
+    expect(fill).toBeTruthy()
+    expect(fill!.binds[0]).toBe('e@e.com') // 접히는 행의 이메일이 승자에게 옮겨간다
+  })
+
+  it('전화가 같아도 상호가 다르면 접지 않는다(동명이업 오병합 방지)', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: '가나기획', phone: '02-6' },
+      { ...base, id: 2, company_name: '다라기획', phone: '02-6' },
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.groups_found).toBe(0)
+    expect(r.rows_folded).toBe(0)
+  })
+
+  it('🔒 그룹이 100개를 넘어도 접는다 — D1 바인딩 100개 제한(실사고: 조용히 0건)', async () => {
+    // 실사고: maxGroups=200 dry-run 이 `groups_found:200 / rows_folded:0` 을 냈다. 전화 200개를
+    //   한 IN 절에 넣어 D1 이 거절했고, `.catch(() => null)` 가 그 실패를 삼켰다. 이제 90개씩 쪼갠다.
+    const many = Array.from({ length: 150 }, (_, i) => i).flatMap(i => [
+      { ...base, id: i * 2 + 1, company_name: `업체${i}`, phone: `010-${i}` },
+      { ...base, id: i * 2 + 2, company_name: `업체${i}`, phone: `010-${i}` },
+    ])
+    const db = fakeDB(many)
+    const r = await dedupeCompanyLeads(db, { dryRun: true, maxGroups: 200 })
+    expect(r.groups_found).toBe(150)
+    expect(r.rows_folded).toBe(150)          // 그룹당 1행씩 접힌다
+    expect(r.skipped['행_조회_실패']).toBeUndefined() // 삼킨 실패 0
+  })
+
+  it('상호의 공백 차이는 같은 업체로 본다', async () => {
+    const db = fakeDB([
+      { ...base, id: 1, company_name: '신한 종합기획', phone: '02-7' },
+      { ...base, id: 2, company_name: '신한종합기획', phone: '02-7' },
+    ])
+    const r = await dedupeCompanyLeads(db, { dryRun: false })
+    expect(r.rows_folded).toBe(1)
+  })
+})

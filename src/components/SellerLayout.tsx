@@ -1,20 +1,18 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
-} from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket, Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Home } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
-import { HOSTING_HIDDEN } from '@/shared/feature-flags'
-import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import { toast } from '@/hooks/useToast'
+import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
+import { getRoleShortLabel, isStoreOwner, isStoreOnly } from '@/shared/seller-roles'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
+import SellerSimpleNav from './seller-layout/SellerSimpleNav'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
 
@@ -49,22 +47,24 @@ const NAV_GROUPS: {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
       { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
+      // 🏪 2026-07-19 (대표 확정 — "상품은 링크샵에서만"): 상품(물건) 판매 표면 = 링크샵. nav 최상단 진입.
+      ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
     ],
   },
   // 🏭 2026-06-04 (사용자 요청): 방송 그룹(라이브 방송/송출 키/쇼츠/라이브 분석) 숨김 — 셀러 대시보드 간소화.
-  {
+  // 🏪 2026-07-19 (대표 확정 — SELLER_STORE_ONLY_MODE): 상품·소싱 그룹(온라인 상품 관리/도매 소싱) 숨김 —
+  //   셀러 대시보드 = 순수 매장(이용권) 콘솔. 상품 판매는 링크샵으로 일원화. 라우트/코드 보존(가역).
+  ...(SELLER_STORE_ONLY_MODE ? [] : [{
     // 🛡️ 2026-06-01: '판매'(12) → 상품·소싱 / 공구·숙소 / 주문·고객 3그룹 분할 (탐색성). mode/hideFor 보존.
     labelKey: 'seller.layout.products',
     items: [
       // 🧭 2026-06-09 IA 정리: 묶음/재고는 상품 페이지 상단 SellerProductTabs 로 이동 — nav 1항목.
       //   라우트는 보존(딥링크 안전), also 로 탭 형제 라우트에서도 활성 표시.
-      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common', also: ['/seller/bundles', '/seller/inventory'] },
-      // 🏁 2026-06-12 (4차 감사 D5): /seller/proxy-products 고아 라우트 진입점 — 크리에이터 대행 등록 검토/승인 (매장).
-      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
+      { path: '/seller/products', labelKey: 'seller.nav.products', icon: Package, mode: 'common' as SellerMode, also: ['/seller/bundles', '/seller/inventory'] },
       // 🛡️ 2026-06-01 도매몰 노출: 셀러가 도매 카탈로그에서 상품 소싱 → 내 스토어 등록.
-      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' },
+      { path: '/seller/supply', labelKey: 'seller.nav.supply', icon: Boxes, mode: 'common' as SellerMode },
     ],
-  },
+  }]),
   {
     labelKey: 'seller.layout.groupbuy',
     mode: 'store',
@@ -73,6 +73,9 @@ const NAV_GROUPS: {
       // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
       { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
+      // 🏁 2026-06-12 (4차 감사 D5) → 🏪 2026-07-19 상품그룹 숨김에 따라 이용권 그룹으로 이동:
+      //   크리에이터 대행 등록 검토/승인(매장) — 이용권 운영의 일부.
+      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
       // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
       { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store', hideFor: ['influencer'] },
@@ -85,6 +88,10 @@ const NAV_GROUPS: {
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
+      // 🤝 2026-07-10: 인플루언서 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
+      { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
+      // 🎁 2026-07-12 WP-A: 체험 캠페인(무료 응모·추첨 체험단). 생성은 게이트 뒤, 관리는 상시.
+      { path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', icon: Gift, mode: 'common' },
       { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
     ],
   },
@@ -93,6 +100,9 @@ const NAV_GROUPS: {
     items: [
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
+      // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
+      { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
+      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
@@ -163,6 +173,23 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   //        (분류기 오분류 — 예: 홍보전용 인플루언서, 상품 0 — 이어도 영구 트랩 불가).
   //     ③ `?as=seller`(도매몰의 '셀러 대시보드' 링크 등) 명시 진입은 강제이동 영구 면제.
   const [wholesaleOnly, setWholesaleOnly] = useState(false)
+  // 🚑 2026-07-10 (로딩 전수조사 — 첫 진입 오표면 플래시 제거): 판정이 필요한 조건(아래 effect 와 동일)이면
+  //   서버 판정(/api/seller/surface) 이 끝날 때까지 셀러 대시보드를 그리지 않고 라이트 로더 유지.
+  //   기존엔 도매전용 계정 첫 진입 시 [셀러 대시보드 풀 렌더 → /wholesale 바운스] 플래시가 세션당 1회 났음.
+  //   판정 불필요(비판매사/캐시/명시진입)면 false 로 시작 = 기존과 byte-동일. fail-open 유지(로더가 셀러 화면으로 풀림).
+  const [surfacePending, setSurfacePending] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      if (localStorage.getItem('is_distributor') !== '1') return false
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('as') === 'seller') return false
+      if (sessionStorage.getItem('ur_force_seller') === '1') return false
+      if (sessionStorage.getItem('ur_seller_bounced') === '1') return false
+      if (sessionStorage.getItem('ur_seller_surface') === 'seller') return false
+      return true
+    } catch { return false }
+  })
+  useEffect(() => { applyBizFavicon(); return restoreDefaultFavicon }, []) // 🎨 확정 로고: 셀러 탭=biz 파비콘(이탈 원복)
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (localStorage.getItem('is_distributor') !== '1') return // 도매 접근권 없으면 절대 도매 전용 아님
@@ -187,9 +214,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       .then((r) => {
         if (!alive) return
         if ((r?.data as { wholesale_only?: boolean })?.wholesale_only) bounce()
-        else sessionStorage.setItem('ur_seller_surface', 'seller') // 겸업 — 이후 재조회 skip
+        else {
+          sessionStorage.setItem('ur_seller_surface', 'seller') // 겸업 — 이후 재조회 skip
+          setSurfacePending(false) // 🚑 2026-07-10: 판정 완료 — 셀러 대시보드 렌더
+        }
       })
-      .catch(() => { /* fail-open: 대시보드 유지(lock-out 금지) */ })
+      .catch(() => { if (alive) setSurfacePending(false) /* fail-open: 대시보드 유지(lock-out 금지) */ })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
@@ -258,14 +288,11 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
   const orderedNavGroups = [...filteredNavGroups].sort((a, b) => orderRank(a) - orderRank(b))
 
-  const languages = [
-    { code: 'ko', label: '한국어', flag: '🇰🇷' },
-    { code: 'en', label: 'English', flag: '🇺🇸' },
-    { code: 'ja', label: '日本語', flag: '🇯🇵' },
-    { code: 'zh', label: '中文', flag: '🇨🇳' },
-    { code: 'es', label: 'Español', flag: '🇪🇸' },
-    { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  ]
+  const simpleMode = isStoreOnly(sellerType) // 🧭 심플 모드(SellerSimpleNav): 매장 단독 기본 3메뉴 + 전체 메뉴 접힘
+  const [fullMenuOpen, setFullMenuOpen] = useState(() => { try { return localStorage.getItem('ur_seller_full_menu') === '1' } catch { return false } })
+  const toggleFullMenu = () => setFullMenuOpen(v => { try { localStorage.setItem('ur_seller_full_menu', v ? '0' : '1') } catch { /* noop */ } return !v })
+
+  const languages = [{ code: 'ko', label: '한국어', flag: '🇰🇷' }, { code: 'en', label: 'English', flag: '🇺🇸' }, { code: 'ja', label: '日本語', flag: '🇯🇵' }, { code: 'zh', label: '中文', flag: '🇨🇳' }, { code: 'es', label: 'Español', flag: '🇪🇸' }, { code: 'fr', label: 'Français', flag: '🇫🇷' }]
 
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
 
@@ -370,9 +397,12 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </div>
       )}
 
-      {/* Grouped navigation */}
-      <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {orderedNavGroups.map((group, gi) => (
+      {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
+      <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
+        {simpleMode && (
+          <SellerSimpleNav isActive={isActive} onNavigate={() => setSidebarOpen(false)} fullMenuOpen={fullMenuOpen} onToggleFullMenu={toggleFullMenu} />
+        )}
+        {(!simpleMode || fullMenuOpen) && orderedNavGroups.map((group, gi) => (
           <div key={gi} className="mt-3 first:mt-1">
             {(group.label || group.labelKey) && (
               <div
@@ -434,11 +464,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           {t('seller.settings')}
         </Link>
         {(() => {
-          const publicSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
-          if (!publicSlug) return null
+          // 🔗 2026-07-02 (대표 신고 — 공개 프로필 보기 워터폴): 링크샵은 /u/{handle} 로 통일됨.
+          //   기존엔 /profile/{seller_username}(SellerPublicPage) 로 가서 /u/{handle}(CuratorPage) 로
+          //   재라우팅 → "다른 페이지 뜬 뒤 링크샵" 워터폴. 소비자 핸들 있으면 /u/{handle} 직행.
+          //   (useLinkshopPath / BottomNav 우선순위와 동일 — 셀러-only 만 /profile 폴백.)
+          const handle = localStorage.getItem('user_handle')
+          const goodHandle = !!handle && handle.length >= 3 && !['user', 'me', 'admin', 'seller', 'api', 'host', 'new'].includes(handle.toLowerCase())
+          const sellerSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
+          const target = goodHandle ? `/u/${handle}` : (sellerSlug ? `/profile/${sellerSlug}` : null)
+          if (!target) return null
           return (
             <Link
-              to={`/profile/${publicSlug}`}
+              to={target}
               state={{ preserveScroll: true }}
               onClick={() => setSidebarOpen(false)}
               className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
@@ -448,19 +485,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             </Link>
           )
         })()}
-        {localStorage.getItem('user_id') && (
-          <button
-            onClick={() => {
-              toast.success(t('seller.layout.backToUser'))
-              setSidebarOpen(false)
-              navigate('/user/profile', { state: { preserveScroll: true } })
-            }}
-            className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            <Globe size={13} strokeWidth={2} />
-            {t('seller.layout.backToUser')}
-          </button>
-        )}
+        {/* 🔗 2026-07-02 (대표 지시 — 셀러 모드 영구 유지): '유저로 돌아가기' 제거.
+            승인된 셀러는 하나의 계정으로 셀러 능력이 상시 켜진 상태 유지(유저→사업자 유저=레이어 추가).
+            소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 링크샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
           className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
@@ -475,9 +502,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 셀러 대시보드 렌더 X (깜빡임 방지).
   //   ⚠️ is_distributor 직접 비교 금지(겸업 lock-out) — 서버 권위 판정 결과(wholesaleOnly)로만 차단.
   if (wholesaleOnly) return null
+  // 🚑 2026-07-10 (로딩 전수조사): 표면 판정 대기 중엔 라이트 로더 — 도매전용 계정 첫 진입 시
+  //   [셀러 대시보드 풀 렌더 → /wholesale 바운스] 오표면 플래시 제거. 판정/실패 시 즉시 해제(fail-open).
+  if (surfacePending) {
+    return (
+      <div className="seller-light-theme" style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
 
   return (
-    <div className="seller-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="seller-light-theme flex h-[100dvh] overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -507,6 +543,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🏠 2026-07-16 (대표 요청 — 셀러 대시보드에서 메인 서비스로 이동 버튼): 유어딜 소비자 홈(/)으로. */}
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600 text-xs font-semibold"
+              aria-label={t('seller.goMainService', { defaultValue: '유어딜 메인 서비스로 이동' })}
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('seller.mainService', { defaultValue: '유어딜 홈' })}</span>
+            </Link>
             {/* Language Switcher */}
             <div className="relative">
               <button
@@ -542,7 +587,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
+        <main className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
           {children}

@@ -66,6 +66,46 @@ async function upsertRegion(DB: D1Database, productId: number, lat: number, lng:
   }
 }
 
+/**
+ * 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 상품 **등록/수정 시점** 단일 지오코딩.
+ *   일일 cron 전의 갭(당일 등록 딜은 좌표 없음 → 방문자마다 클라 지오코딩 폴백)을 원천 제거 —
+ *   등록 직후 waitUntil 로 좌표+동 태깅을 즉시 저장하면 클라 폴백이 애초에 발동하지 않음.
+ *
+ * - force=false(생성): 좌표가 이미 있으면 skip (클라가 좌표를 함께 보낸 경우 중복 호출 0).
+ * - force=true(주소 수정): 기존 좌표를 새 주소 기준으로 재계산·덮어씀 (수정 경로엔 lat/lng
+ *   필드가 없어 주소 변경 시 좌표가 영구 stale 이던 갭 해결). 카카오 실패 시 기존 좌표 유지.
+ * - fail-soft: 어떤 실패도 등록/수정 자체를 막지 않음 — 좌표 NULL 이면 일일 cron 이 자연 재시도.
+ */
+export async function geocodeProductNow(env: Env, productId: number, opts?: { force?: boolean }): Promise<boolean> {
+  try {
+    const key = env.KAKAO_REST_API_KEY
+    if (!key || !Number.isFinite(productId) || productId <= 0) return false
+    const p = await env.DB.prepare(
+      `SELECT restaurant_address AS addr, restaurant_lat AS lat, restaurant_lng AS lng
+         FROM products WHERE id = ?`,
+    ).bind(productId).first<{ addr: string | null; lat: number | null; lng: number | null }>()
+    if (!p?.addr) return false
+    if (!opts?.force && p.lat != null && p.lng != null) return false
+    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(p.addr)}`
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
+    if (!res.ok) return false
+    const data = await res.json() as { documents?: Array<{ x?: string; y?: string }> }
+    const doc = data.documents?.[0]
+    const lng = Number(doc?.x); const lat = Number(doc?.y)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+    await env.DB.prepare(
+      `UPDATE products SET restaurant_lat = ?, restaurant_lng = ?, updated_at = datetime('now') WHERE id = ?`,
+    ).bind(lat, lng, productId).run()
+    // 동 태깅 (cron Pass A 와 동일 — 하이퍼로컬 "내 동네 딜" 토대). best-effort.
+    await ensureProductRegions(env.DB)
+    const region = await fetchRegion(lng, lat, key)
+    if (region) await upsertRegion(env.DB, productId, lat, lng, region)
+    return true
+  } catch {
+    return false  // fail-soft — 좌표 NULL 이면 일일 cron 이 다음 실행에서 재시도
+  }
+}
+
 export async function runRestaurantGeocode(env: Env): Promise<{
   total: number; updated: number; failed: number; skipped: number; tagged: number;
 }> {

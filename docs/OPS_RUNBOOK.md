@@ -110,12 +110,13 @@ SSOT: `wrangler.toml` `[triggers] crons` + 분배 로직 `src/worker/scheduled.t
 
 ## 7. DB 백업 현황 — 📌 기록 2026-06-23 (⚠️ 바인딩 확인 필요)
 
-**2겹 백업 구조:**
+**3겹 백업 구조:**
 
 | 레이어 | 무엇 | 주기/보관 | 설정 |
 |---|---|---|---|
 | **① Cloudflare D1 Time Travel** (기본 제공) | D1 전체 point-in-time 복구(초 단위) | **최근 30일 자동** | **설정 불필요 — 항상 켜짐**. 1차 안전망 |
 | **② 커스텀 SQL 덤프 → R2** (`d1-backup.ts`) | 전 테이블 schema+data → `backups/d1-YYYY-MM-DD.sql` | **주 1회(일 20:00 UTC)**, R2 lifecycle 30일 | **`BACKUP_BUCKET` R2 바인딩 필요** (대시보드) |
+| **③ GitHub Actions 주간 export** (`.github/workflows/d1-backup.yml`, 2026-07-11) | `wrangler d1 export --remote` → gzip → GH artifact | **주 1회(수 20:00 UTC)**, artifact 90일 | Worker 와 **완전 독립** 경로. 기존 secrets(`CLOUDFLARE_API_TOKEN`/`ACCOUNT_ID`) 재사용 — 추가 설정 불필요. 실패 시 워크플로 RED + Discord |
 
 **복구(restore):**
 - ① Time Travel: `wrangler d1 time-travel restore ur-live --timestamp=<ISO>` (또는 대시보드) → 30일 내 임의 시점.

@@ -1,10 +1,11 @@
 // 🧭 2026-07-01 (대표 — "수기로 진짜 매장 올리기"): 동네딜 직접 등록 폼(1건씩).
 //   카카오 매장 검색(`/api/kakao/place/search`)으로 매장명·주소·좌표(x/y)·전화 자동완성 →
 //   POST `/api/admin/dongnedeal/create` (좌표 저장 → 지도에 바로 마커). 라이트 테마(어드민, dark: 미사용).
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon } from 'lucide-react'
+import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil } from 'lucide-react'
+import type { DealRow } from './types'
 
 interface KakaoPlace {
   place_name: string
@@ -14,18 +15,22 @@ interface KakaoPlace {
   x: string // lng
   y: string // lat
   category_name?: string
+  // 🎯 2026-07-01: 카카오 장소 페이지 직접 링크 — place_url(place.map.kakao.com/{id}) 또는 id.
+  id?: string
+  place_url?: string
 }
 
 const CATS = [
   { v: 'meal_voucher', label: '식사' },
   { v: 'beauty_voucher', label: '미용' },
   { v: 'etc_voucher', label: '기타' },
-  { v: 'general', label: '일반' },
 ]
 
-const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '' }
+import { cfImage } from '@/utils/cf-image'
 
-export default function ManualDealForm({ onCreated }: { onCreated: () => void }) {
+const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '' }
+
+export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [q, setQ] = useState('')
   const [searching, setSearching] = useState(false)
@@ -35,8 +40,38 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState<{ link: string; thumbnail: string }[]>([])
   const [photoBusy, setPhotoBusy] = useState(false)
+  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 선택 — 첫 장 = 대표(image_url), 전체 = image_urls(JSON, 상세 갤러리).
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
+
+  const isEdit = !!editDeal
+
+  // 🖊️ 수정 모드: editDeal 이 바뀌면 폼에 채우고 위로 스크롤(부모가 스크롤). 좌표도 복원.
+  useEffect(() => {
+    if (!editDeal) return
+    setF({
+      name: editDeal.name || '',
+      category: editDeal.category || 'meal_voucher',
+      price: String(editDeal.price ?? ''),
+      original_price: editDeal.original_price ? String(editDeal.original_price) : '',
+      restaurant_name: editDeal.restaurant_name || '',
+      restaurant_address: editDeal.restaurant_address || '',
+      restaurant_phone: '',
+      image_url: editDeal.image_url || '',
+      description: '',
+      max_per_person: editDeal.max_per_person ? String(editDeal.max_per_person) : '',
+      kakao_place_url: editDeal.kakao_place_url || '',
+    })
+    setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
+    setPlaces([]); setPhotos([]); setQ('')
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 현재 갤러리를 선택 상태로 프리필 —
+    //   그대로 두면 유지, 빼거나('현재 사진' X 버튼) 네이버 검색으로 추가하면 저장 시 교체.
+    //   (이전엔 여기서 selectedPhotos 를 안 건드려 직전 작업 선택이 잔존하는 leak 도 있었음 — 함께 해소.)
+    setSelectedPhotos(editDeal.gallery && editDeal.gallery.length > 0 ? editDeal.gallery : (editDeal.image_url ? [editDeal.image_url] : []))
+  }, [editDeal])
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
+
+  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]); setSelectedPhotos([]) }
 
   // 🖼️ 네이버 이미지 검색으로 매장 대표 사진 후보 가져오기 (카카오=정보·좌표, 네이버=사진).
   const fetchPhotos = async () => {
@@ -46,7 +81,16 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      const mapped = items.map((it) => ({ link: it.link || '', thumbnail: it.thumbnail || it.link || '' })).filter((x) => x.link)
+      // 🛡️ 2026-07-02 v2: search.pstatic 프록시가 외부발 src 에 404(콘솔 실측) → 저장은 **원본**
+      //   (toNaverSafeImageUrl v2 = un-wrap/정규화), 표시·렌더는 cfImage(zone 리사이저)가 담당.
+      const { toNaverSafeImageUrl } = await import('@/shared/naver-safe-image')
+      const mapped = items
+        .map((it) => {
+          const big = toNaverSafeImageUrl(it.link, it.thumbnail)          // 저장용(대형)
+          const small = toNaverSafeImageUrl(it.link, it.thumbnail, 'b400') // 그리드 표시용
+          return big ? { link: big, thumbnail: small || big } : null
+        })
+        .filter((x): x is { link: string; thumbnail: string } => !!x)
       setPhotos(mapped)
       if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
     } catch (e: unknown) {
@@ -77,6 +121,8 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
       restaurant_address: p.road_address_name || p.address_name || '',
       restaurant_phone: p.phone || '',
       name: prev.name || p.place_name || '', // 상품명 비면 매장명으로 시드
+      // 🎯 2026-07-01: 카카오 장소 페이지 URL 캡처 → 상세 지도가 매장 페이지 직접 연결.
+      kakao_place_url: p.place_url || (p.id ? `https://place.map.kakao.com/${p.id}` : ''),
     }))
     setQ(p.place_name || '')
     setPlaces([])
@@ -87,14 +133,23 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
     if (!(Number(f.price.replace(/[^\d]/g, '')) > 0)) { toast.error('판매가를 입력하세요'); return }
     setBusy(true)
     try {
-      const res = await api.post('/api/admin/dongnedeal/create', { ...f, lat: coord?.lat, lng: coord?.lng }, h)
-      if (res.data?.success) {
-        toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
-        setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([])
-        onCreated()
-      } else toast.error(res.data?.error || '등록 실패')
+      // 🖼️ 다중 선택분 전달 — 서버가 갤러리(detail_images/images JSON) 저장 → 상세 스와이프 갤러리 표시.
+      //   수정 모드는 빈 배열도 전송(전부 제거 = 갤러리 해제) / 신규는 선택 있을 때만.
+      const payload = { ...f, lat: coord?.lat, lng: coord?.lng, image_urls: isEdit ? selectedPhotos : (selectedPhotos.length > 0 ? selectedPhotos : undefined) }
+      if (isEdit && editDeal) {
+        const res = await api.patch(`/api/admin/dongnedeal/${editDeal.id}`, payload, h)
+        if (res.data?.success) { toast.success('수정 저장됨'); onSaved() }
+        else toast.error(res.data?.error || '수정 실패')
+      } else {
+        const res = await api.post('/api/admin/dongnedeal/create', payload, h)
+        if (res.data?.success) {
+          toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
+          setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]); setSelectedPhotos([])
+          onSaved()
+        } else toast.error(res.data?.error || '등록 실패')
+      }
     } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '등록 중 오류')
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || (isEdit ? '수정 중 오류' : '등록 중 오류'))
     } finally { setBusy(false) }
   }
 
@@ -103,10 +158,17 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
   const lbl = 'block text-xs font-semibold text-gray-500 mb-1'
 
   return (
-    <div className={card}>
-      <div className="flex items-center gap-2 mb-1">
-        <Store className="w-4 h-4 text-gray-700" />
-        <p className="text-sm font-bold text-gray-900">동네딜 직접 등록 (수기 · 1건씩)</p>
+    <div className={`${card} ${isEdit ? 'ring-2 ring-gray-900' : ''}`}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 min-w-0">
+          {isEdit ? <Pencil className="w-4 h-4 text-gray-700" /> : <Store className="w-4 h-4 text-gray-700" />}
+          <p className="text-sm font-bold text-gray-900 truncate">{isEdit ? `동네딜 수정 (#${editDeal?.id})` : '동네딜 직접 등록 (수기 · 1건씩)'}</p>
+        </div>
+        {isEdit && (
+          <button onClick={() => { resetForm(); onCancelEdit?.() }} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800 shrink-0">
+            <X className="w-3.5 h-3.5" /> 수정 취소
+          </button>
+        )}
       </div>
       <p className="text-[12px] text-gray-500 mb-4">카카오맵에서 <b>매장을 검색해 선택</b>하면 매장명·주소·좌표·전화가 자동으로 채워집니다. (좌표가 있어야 지도에 마커로 떠요)</p>
 
@@ -166,6 +228,11 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
           <label className={lbl}>정가(원, 선택 · 취소선)</label>
           <input value={f.original_price} onChange={(e) => set('original_price', e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="140000" className={input} />
         </div>
+        {/* 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 최대 구매 수량 (0=무제한, 최대 99). */}
+        <div>
+          <label className={lbl}>1인당 최대 구매 수량 (0=무제한)</label>
+          <input value={f.max_per_person} onChange={(e) => set('max_per_person', e.target.value.replace(/[^\d]/g, '').slice(0, 2))} inputMode="numeric" placeholder="0" className={input} />
+        </div>
         <div>
           <label className={lbl}>매장명</label>
           <input value={f.restaurant_name} onChange={(e) => set('restaurant_name', e.target.value)} placeholder="한우공방 강남점" className={input} />
@@ -186,24 +253,71 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
             </button>
           </div>
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
+          {/* 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 현재 갤러리 스트립 —
+              수정 진입 시 기존 사진이 여기 프리필됨. X 로 빼고, 아래 네이버 검색으로 추가. ①=대표. */}
+          {selectedPhotos.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, X로 제거</p>
+              <div className="flex gap-2 flex-wrap">
+                {selectedPhotos.map((u, i) => (
+                  <div key={u} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                    <img src={cfImage(u, { width: 128, quality: 80, format: 'auto' }) || u} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+                    <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-900/80 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                    <button
+                      type="button"
+                      aria-label="사진 제거"
+                      onClick={() => {
+                        setSelectedPhotos((prev) => {
+                          const next = prev.filter((x) => x !== u)
+                          set('image_url', next[0] || '')
+                          return next
+                        })
+                      }}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {photos.length > 0 && (
             <div className="grid grid-cols-4 gap-2 mt-2">
-              {photos.map((p, i) => (
-                <button
-                  type="button" key={i}
-                  onClick={() => { set('image_url', p.link); setPhotos([]) }}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${f.image_url === p.link ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
-                >
-                  <img src={p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
-                    onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
-                </button>
-              ))}
+              {photos.map((p, i) => {
+                const sel = selectedPhotos.indexOf(p.link)
+                return (
+                  <button
+                    type="button" key={i}
+                    onClick={() => {
+                      // 토글 다중 선택 — 첫 장이 대표. 그리드는 유지해 여러 장 고르게.
+                      setSelectedPhotos((prev) => {
+                        const next = prev.includes(p.link) ? prev.filter((u) => u !== p.link) : [...prev, p.link]
+                        set('image_url', next[0] || '')
+                        return next
+                      })
+                    }}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 ${sel >= 0 ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
+                  >
+                    <img src={cfImage(p.thumbnail, { width: 200, quality: 80, format: 'auto' }) || p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
+                      onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
+                    {sel >= 0 && (
+                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center">
+                        {sel + 1}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
+          )}
+          {photos.length > 0 && (
+            <p className="text-[11px] text-gray-400 mt-1.5">여러 장 클릭해 고르세요 — ①번이 대표 사진, 나머지는 상세 갤러리에 함께 표시돼요.</p>
           )}
           {f.image_url && (
             <div className="mt-2 flex items-center gap-2">
-              <img src={f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
-              <span className="text-[11px] text-gray-400">선택된 대표 사진 미리보기 — 흐리게 보이면 안 열리는 이미지예요(다른 사진 선택)</span>
+              <img src={cfImage(f.image_url, { width: 128, quality: 80, format: 'auto' }) || f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+              <span className="text-[11px] text-gray-400">대표 사진 미리보기{selectedPhotos.length > 1 ? ` · 갤러리 ${selectedPhotos.length}장` : ''} — 흐리게 보이면 안 열리는 이미지예요</span>
             </div>
           )}
         </div>
@@ -211,13 +325,19 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
           <label className={lbl}>설명(선택)</label>
           <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="2인 한우 코스 · 결제 즉시 이용권 발급" className={input} />
         </div>
+        {/* 🎯 2026-07-01 (대표 예시 — 김밥천국 kko.to): 카카오맵 매장 페이지 직접 연결 링크. */}
+        <div className="sm:col-span-2">
+          <label className={lbl}>카카오맵 링크(선택) — 매장 지도 정확 연결</label>
+          <input value={f.kakao_place_url} onChange={(e) => set('kakao_place_url', e.target.value)} placeholder="https://kko.to/… 또는 place.map.kakao.com/…" className={input} />
+          <p className="text-[11px] text-gray-400 mt-1">매장 검색·선택 시 자동 입력. 안 맞으면 카카오맵에서 매장 &lsquo;공유&rsquo; → 링크 복사해 붙여넣으세요.</p>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-3">
         <button onClick={submit} disabled={busy} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-black disabled:opacity-50">
-          <PlusCircle className="w-4 h-4" /> {busy ? '등록 중…' : '동네딜 추가'}
+          {isEdit ? <Pencil className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />} {busy ? '저장 중…' : isEdit ? '수정 저장' : '동네딜 추가'}
         </button>
-        <span className="text-[11px] text-gray-400">등록 즉시 동네딜(홈·리스트·지도)에 노출됩니다.</span>
+        <span className="text-[11px] text-gray-400">{isEdit ? '변경 즉시 반영됩니다.' : '등록 즉시 동네딜(홈·리스트·지도)에 노출됩니다.'}</span>
       </div>
     </div>
   )

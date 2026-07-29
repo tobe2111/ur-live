@@ -26,6 +26,7 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
+import { intParam } from '@/shared/pagination'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -78,6 +79,9 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
     // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
     'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
+    // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 링크샵 하단
+    //   "추천(핀)" 섹션 opt-in — 0(기본 off)/1. sellers 는 컬럼 한도(100) 도달이라 users 에.
+    'ALTER TABLE users ADD COLUMN linkshop_show_recommend INTEGER DEFAULT 0',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -99,11 +103,13 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
       UNIQUE(user_id, product_id)
     )`).run()
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)`).run().catch(() => null)
-    // users.handle / bio / linkshop_theme 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    // users.handle / bio 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    // 🔗 2026-07-01 (대표 결정 — 링크샵 전수조사): linkshop_theme 필드 제거. 링크샵은 방문자 전역 테마
+    //   (useTheme, /account/settings 토글)를 따르므로 큐레이터별 theme 은 안 쓰이던 죽은 필드였음.
+    //   기존 DB 컬럼은 D1 DROP 위험이라 그대로 방치(무해) — 읽기/반환/신규 ALTER 만 제거.
     for (const sql of [
       "ALTER TABLE users ADD COLUMN handle TEXT",
       "ALTER TABLE users ADD COLUMN bio TEXT",
-      "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'",
     ]) {
       await DB.prepare(sql).run().catch(() => null)
     }
@@ -136,18 +142,18 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   🏭 2026-06-04: 컬럼 존재 여부 모듈 캐시(_bannerUrlCol) — 없는 환경에서 매 요청 2회 user 쿼리 방지.
     type CuratorUser = {
       id: number; handle: string; name: string; bio: string | null;
-      profile_image: string | null; linkshop_theme: string; banner_url?: string | null;
+      profile_image: string | null; banner_url?: string | null;
       youtube_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null
     }
     // 🎨 2026-06-16: banner_url + SNS 포함 전체 SELECT 우선 — 컬럼 없는 레거시 DB 면 throw → undefined →
     //   최소 컬럼 폴백(과거 _bannerUrlCol 분기 대체, 같은 1-query 정상상태 + 컬럼 부재시 graceful).
     let user = await DB.prepare(
-      `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url, youtube_url, instagram_url, tiktok_url
+      `SELECT id, handle, name, bio, profile_image, banner_url, youtube_url, instagram_url, tiktok_url
        FROM users WHERE handle = ? LIMIT 1`,
     ).bind(handle).first<CuratorUser>().catch(() => undefined)
     if (user === undefined) {
       user = await DB.prepare(
-        `SELECT id, handle, name, bio, profile_image, linkshop_theme
+        `SELECT id, handle, name, bio, profile_image
          FROM users WHERE handle = ? LIMIT 1`,
       ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
     }
@@ -196,11 +202,13 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
     let headline: string | null = null
     let accent: string | null = null
+    let showRecommend = 0
     try {
-      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null }>()
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null; show_recommend: number }>()
       headline = h?.linkshop_headline ?? null
       accent = h?.linkshop_accent ?? null
+      showRecommend = Number(h?.show_recommend) === 1 ? 1 : 0
     } catch {
       // linkshop_accent 컬럼 없는 env — headline 만이라도.
       try {
@@ -227,6 +235,20 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
     }
 
+    // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지, 가장 이상적으로"): 사업자 링크샵 1-RTT 화.
+    //   linked seller 가 있으면 셀러 공개 페이로드를 **이 응답에 동봉**(additive) — 기존엔 클라가
+    //   [curator fetch → SellerPublicPage 마운트 → seller /public fetch] 직렬 2-RTT 였음.
+    //   buildSellerPublicPayload = seller.routes `GET /:id/public` 와 같은 SSOT(쿼리/KV캐시/enrich 공유,
+    //   드리프트 0) + KV 300s 캐시라 콜드 비용도 낮음. 실패 시 조용히 생략(클라가 기존 fetch 폴백).
+    //   SSR CURATOR 슬롯/edge 캐시에 그대로 실리므로 하드로드는 셀러 데이터까지 0-RTT.
+    let linkedSellerPublic: Record<string, unknown> | null = null
+    if (linkedSeller?.username) {
+      try {
+        const { buildSellerPublicPayload } = await import('../utils/seller-public-payload')
+        linkedSellerPublic = await buildSellerPublicPayload(c.env, linkedSeller.username)
+      } catch { /* additive — 생략 시 클라 폴백 fetch */ }
+    }
+
     return c.json({
       success: true,
       curator: {
@@ -239,7 +261,6 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
         // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
         banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
-        theme: user.linkshop_theme || 'dark',
         // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
@@ -247,6 +268,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
         accent,
+        // ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
+        linkshop_show_recommend: showRecommend,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -255,6 +278,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         username: linkedSeller.username,
         name: linkedSeller.name,
       } : null,
+      // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
+      linked_seller_public: linkedSellerPublic,
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
@@ -414,8 +439,8 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
     let handle = user.handle
     if (!handle) {
       handle = await generateUniqueHandle(DB, user.name, undefined, userId)
-      await DB.prepare('UPDATE users SET handle = ?, linkshop_theme = COALESCE(linkshop_theme, ?) WHERE id = ?')
-        .bind(handle, 'dark', userId)
+      await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
+        .bind(handle, userId)
         .run()
       handleJustCreated = true
     }
@@ -632,7 +657,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string; show_recommend?: boolean }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -687,6 +712,11 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
       updates.push('linkshop_accent = ?')
       binds.push(v)
+    }
+    // ✨ 2026-07-04 링크샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
+    if (typeof body.show_recommend === 'boolean') {
+      updates.push('linkshop_show_recommend = ?')
+      binds.push(body.show_recommend ? 1 : 0)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 
@@ -891,7 +921,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
       : { results: [] as { product_id: number }[] }
     const excludeIds = (pinned ?? []).map(p => p.product_id)
 
-    const limit = Math.max(5, Math.min(50, Number(c.req.query('limit')) || 20))
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
     const exclusion = excludeIds.length
       ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
       : ''
@@ -1006,12 +1036,16 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
       }
       // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      // 💸 2026-07-05 버킷 (약관 강제): 현금 환급은 유상(balance - free_balance) 한도로만 —
+      //   무상(리워드) 딜의 현금 인출 차단. free_balance 무변경 (출금은 유상에서만 나감).
+      const { ensureDealBuckets, PAID_BALANCE_SQL } = await import('../utils/point-buckets')
+      await ensureDealBuckets(DB)
       const dealDeduct = await DB.prepare(
-        "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?"
+        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
       ).bind(amount, String(userId), amount).run().catch(() => null)
       if (!dealDeduct?.meta?.changes) {
         await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
-        return c.json({ success: false, error: '딜 잔액이 부족합니다 (이미 사용된 딜은 환급할 수 없어요)', available }, 409)
+        return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)', available }, 409)
       }
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)

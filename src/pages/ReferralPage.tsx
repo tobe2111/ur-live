@@ -10,6 +10,8 @@ import { formatNumber } from '@/utils/format'
 import { useReferral, type Tier, type Member, type ReferralGroup, type ProductInfo } from '@/hooks/queries/useReferral'
 import { hasConsumerSession } from '@/utils/auth'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 /** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
@@ -113,10 +115,11 @@ export default function ReferralPage() {
     navigate(`/checkout?product_id=${group.product_id}&referral_code=${group.invite_code}`)
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
@@ -132,14 +135,14 @@ export default function ReferralPage() {
       ? Math.min(100, Math.round((community.current_count / community.target_count) * 100))
       : 0
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334]">
         <SEO
           title={t('groupbuy.detailSeoTitle', { defaultValue: `${community.restaurant_name} 맛집 공구` })}
           description={(community.description || `${community.restaurant_name} 공동구매 · ${community.current_count}/${community.target_count}명 참여 중`).slice(0, 150)}
           url={`/community-group-buy/${community.invite_code}`}
         />
         {/* Header */}
-        <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
           <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
             <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -151,7 +154,7 @@ export default function ReferralPage() {
 
         <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
-          <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+          <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-200 dark:border-[#2A3446]">
             <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
@@ -164,14 +167,14 @@ export default function ReferralPage() {
               <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <span><span className="font-bold text-gray-900 dark:text-white">{community.current_count}</span> / {community.target_count}명 참여</span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden">
+            <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-[#1A2334] overflow-hidden">
               <div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${cgProgress}%` }} />
             </div>
           </section>
 
           {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치한 사람이 작성한 소개글 노출 */}
           {community.description && (
-            <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+            <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-200 dark:border-[#2A3446]">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center text-[11px] font-bold">
                   {community.creator_name?.slice(0, 1) || '제'}
@@ -187,7 +190,7 @@ export default function ReferralPage() {
           )}
 
           {/* 보증금 안내 */}
-          <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+          <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-200 dark:border-[#2A3446]">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
               <span className="text-[14px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
@@ -199,7 +202,7 @@ export default function ReferralPage() {
         </div>
 
         {/* 하단 참여 CTA */}
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] px-4 py-3 z-50">
           <div className="ur-content-narrow">
             <button
               onClick={handleJoinCommunity}
@@ -222,7 +225,7 @@ export default function ReferralPage() {
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center px-4">
         <Gift className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-900 dark:text-white font-bold text-lg">유효하지 않은 초대입니다</p>
         <Link to="/" className="mt-4 text-gray-900 dark:text-white text-sm font-medium underline">홈으로 돌아가기</Link>
@@ -255,10 +258,10 @@ export default function ReferralPage() {
     : `지금 ${group.current_count}/${group.target_count}명 모였어요. 친구 초대하면 최대 ${topTier?.discount ?? 0}% 할인!`
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334]">
       <SEO title={t('referralPage.seoTitle')} description={t('referralPage.seoDesc')} url="/referral" />
       {/* v4 Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -270,11 +273,11 @@ export default function ReferralPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
-        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-200 dark:border-[#2A2A2A]">
+        <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-200 dark:border-[#2A3446]">
           {product && (
             <div className="flex gap-3 mb-4">
               {product.image_url && (
-                <img src={product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#1A1A1A]" loading="lazy" />
+                <img src={cfImage(product.image_url, { width: 200, quality: 82, format: 'auto' }) || product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#2A3446]" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
@@ -291,7 +294,7 @@ export default function ReferralPage() {
               </div>
             </div>
           )}
-          <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-[#2A3446]">
             <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
               {group.creator_name.slice(0, 1)}
             </div>
@@ -322,7 +325,7 @@ export default function ReferralPage() {
         {/* 2. Tier Progress Bar — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일).
               참여 인원은 아래 Participants 섹션에서 소셜 증거로 노출. */}
         {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
-        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
+        <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-5 border border-gray-200 dark:border-[#2A3446]">
           {/* 현재 할인 표시 */}
           <div className="text-center mb-5">
             {currentDiscount > 0 ? (
@@ -358,7 +361,7 @@ export default function ReferralPage() {
         )}
 
         {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
-        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
+        <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-100 dark:border-[#2A3446]">
           <div className="flex items-center gap-1.5 mb-3">
             <Users className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
@@ -411,7 +414,7 @@ export default function ReferralPage() {
 
         {/* v4 티어별 할인표 — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일). */}
         {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
-        <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
+        <section className="bg-white dark:bg-[#0F151D] rounded-2xl p-4 border border-gray-100 dark:border-[#2A3446]">
           <div className="flex items-center gap-1.5 mb-3">
             <span className="text-sm">🎁</span>
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">티어별 할인</p>
@@ -437,7 +440,7 @@ export default function ReferralPage() {
       </div>
 
       {/* 4. Action Buttons (fixed bottom) */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-4 safe-area-bottom">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white dark:bg-[#0F151D] border-t border-gray-200 dark:border-[#2A3446] p-4 safe-area-bottom">
         <div className="max-w-md mx-auto">
           {isAchieved ? (
             <button
@@ -454,7 +457,7 @@ export default function ReferralPage() {
           ) : isExpired ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 dark:bg-[#2A2A2A] text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
+              className="w-full py-3.5 bg-gray-200 dark:bg-[#2A3446] text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
             >
               마감된 공동구매
             </button>
@@ -538,7 +541,7 @@ function TierProgressBar({
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   reached
                     ? 'bg-pink-500 border-pink-500 shadow-md shadow-pink-200'
-                    : 'bg-white dark:bg-[#0A0A0A] border-gray-300 dark:border-[#3A3A3A]'
+                    : 'bg-white dark:bg-[#0F151D] border-gray-300 dark:border-[#3A3A3A]'
                 }`}
               >
                 {reached && <CheckCircle className="w-3 h-3 text-white" />}

@@ -26,6 +26,7 @@ import { parseSessionCookie } from '@/worker/utils/session'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { requireAgencyPermission } from './agency-role-guard'
+import { intParam } from '@/shared/pagination'
 
 type AgencyCtx = {
   Bindings: Env
@@ -145,7 +146,7 @@ async function recomputeParticipants(
 app.get('/', async (c) => {
   const agencyId = c.get('agency').id
   const status = c.req.query('status') || 'all'
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
+  const limit = Math.min(intParam(c.req.query('limit'), 50), 200)
 
   let where = 'agency_id = ?'
   const binds: unknown[] = [agencyId]

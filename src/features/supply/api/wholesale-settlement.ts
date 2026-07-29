@@ -46,6 +46,24 @@ export async function loadPlatformCommissionPct(DB: D1Database): Promise<number>
   return Number.isFinite(v) && v >= 0 && v <= 90 ? v : DEFAULT_PLATFORM_COMMISSION_PCT
 }
 
+/**
+ * 🏬 2026-07-04 (대표 — 몰별 조정): 몰별 수수료(마진%) override — wholesale_malls.commission_rate.
+ *   유효(0~90)면 그 몰 값, 아니면 null(전역 사용). per-isolate 몰 캐시 read 라 D1 추가 0회.
+ *   기존엔 어드민 몰 폼의 '수수료율'이 저장만 되고 가격에 미적용(write-only 함정)이던 것을 실배선.
+ */
+export async function mallCommissionPctOverride(DB: D1Database, mallId?: number | null): Promise<number | null> {
+  if (mallId == null) return null
+  const { loadMallById } = await import('./wholesale-malls')
+  const m = await loadMallById(DB, mallId).catch(() => null)
+  const v = Number(m?.commission_rate)
+  return Number.isFinite(v) && v >= 0 && v <= 90 ? v : null
+}
+
+/** 몰별 수수료(override ?? 전역). 표시·청구 전 지점이 이 로더(또는 override 패턴)로 정합 — 몰 미설정=전역(기존 byte-동일). */
+export async function loadMallCommissionPct(DB: D1Database, mallId?: number | null): Promise<number> {
+  return (await mallCommissionPctOverride(DB, mallId)) ?? loadPlatformCommissionPct(DB)
+}
+
 /** 라인 단가 정산 분해 — 제조사 = 공급원가 전액(입력가), 플랫폼 = 공급가 − 공급원가. 주문생성·정산 공용 SSOT.
  *  (🆕 2026-06-17: 마진은 공급가 산출 시 이미 붙으므로 commPct 미사용 — 시그니처 호환 위해 인자만 보존.) */
 export function splitWholesaleUnit(distributorUnit: number, costFloor: number, _commPct?: number): { manufacturerUnit: number; platformUnit: number } {

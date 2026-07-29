@@ -94,7 +94,7 @@ export async function addRankTarget(env: Env, accountId: number, keyword: string
 export async function deleteRankTarget(DB: D1Database, accountId: number, id: number): Promise<void> {
   await ensureRankTrackerSchema(DB)
   await DB.prepare('DELETE FROM ad_rank_targets WHERE id = ? AND account_id = ?').bind(id, accountId).run().catch(() => null)
-  await DB.prepare('DELETE FROM ad_shop_rank_snapshots WHERE target_id = ?').bind(id).run().catch(() => null)
+  await DB.prepare('DELETE FROM ad_shop_rank_snapshots WHERE target_id = ? AND account_id = ?').bind(id, accountId).run().catch(() => null)
 }
 
 /** 한 타겟 순위 갱신 + 오늘 스냅샷 기록(멱등). */
@@ -102,8 +102,8 @@ export async function refreshRankTarget(env: Env, accountId: number, id: number,
   const r = await findShopRank(naverOpenId(env), naverOpenSecret(env), keyword, mallMatch)
   if (!r.ok) return
   const today = new Date().toISOString().slice(0, 10)
-  await env.DB.prepare("UPDATE ad_rank_targets SET last_rank = ?, last_total = ?, last_title = ?, last_checked_at = datetime('now') WHERE id = ?")
-    .bind(r.rank ?? null, r.total ?? null, r.title ?? null, id).run().catch(() => null)
+  await env.DB.prepare("UPDATE ad_rank_targets SET last_rank = ?, last_total = ?, last_title = ?, last_checked_at = datetime('now') WHERE id = ? AND account_id = ?")
+    .bind(r.rank ?? null, r.total ?? null, r.title ?? null, id, accountId).run().catch(() => null)
   await env.DB.prepare(`INSERT INTO ad_shop_rank_snapshots (target_id, account_id, rank, snap_date) VALUES (?, ?, ?, ?)
     ON CONFLICT(target_id, snap_date) DO UPDATE SET rank = excluded.rank`)
     .bind(id, accountId, r.rank ?? null, today).run().catch(() => null)

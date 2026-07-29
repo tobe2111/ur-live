@@ -61,7 +61,8 @@ export default function TossWidgetPayPage() {
     initializedRef.current = true
 
     // 🛡️ 2026-05-23 영구 fix — 단계별 timeout (silent hang 방어).
-    const STEP_TIMEOUT_MS = 8000
+    // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): 8000 → 4000ms — 주문 위젯(TossPaymentWidget:114)과 정합.
+    const STEP_TIMEOUT_MS = 4000
     const withTimeout = <T,>(p: Promise<T>, label: string): Promise<T> =>
       Promise.race([
         p,
@@ -73,6 +74,17 @@ export default function TossWidgetPayPage() {
     let cancelled = false
     ;(async () => {
       try {
+        // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): variantKey 조회를 SDK 로드와 **병렬** 시작.
+        //   기존엔 렌더 시퀀스 중간에 직렬 await — 이 왕복(~200-400ms)이 renderPaymentMethods 를 막았음.
+        //   응답 의미/fallback(빈값 → build-time VITE_TOSS_VARIANT_*) 불변 — 시작 시점만 앞당김.
+        const variantPromise: Promise<{ p: string; a: string }> = (async () => {
+          try {
+            const r = await fetch('/api/payments/client-key', { cache: 'no-store' })
+            const j = await r.json() as { data?: { variant_payment?: string; variant_agreement?: string } }
+            return { p: String(j?.data?.variant_payment || ''), a: String(j?.data?.variant_agreement || '') }
+          } catch { return { p: '', a: '' } /* server fetch 실패 — build-time fallback 사용 */ }
+        })()
+
         const sdk = await withTimeout(getTossPayments(clientKey), 'SDK_LOAD')
         if (cancelled) return
         const sanitized = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
@@ -81,19 +93,11 @@ export default function TossWidgetPayPage() {
 
         await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(amount) }), 'SET_AMOUNT')
 
-        // 🛡️ 2026-05-24: server-side variantKey 우선 (TOSS_VARIANT_PAYMENT/AGREEMENT env).
-        //   /api/payments/client-key 가 variant_payment/agreement 반환 — 재빌드 없이 Cloudflare env 변경으로 즉시 반영.
-        //   server 응답 실패 시 build-time VITE_TOSS_VARIANT_* fallback.
-        let svPayment = ''
-        let svAgreement = ''
-        try {
-          const r = await fetch('/api/payments/client-key', { cache: 'no-store' })
-          const j = await r.json() as { data?: { variant_payment?: string; variant_agreement?: string } }
-          svPayment = String(j?.data?.variant_payment || '')
-          svAgreement = String(j?.data?.variant_agreement || '')
-        } catch { /* server fetch 실패 — build-time fallback 사용 */ }
-        const VK_PAYMENT = svPayment || ((import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || '')
-        const VK_AGREEMENT = svAgreement || ((import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || '')
+        // 🛡️ 2026-05-24: server-side variantKey 우선 (TOSS_VARIANT_PAYMENT/AGREEMENT env) — 위에서 병렬 시작한
+        //   variantPromise 를 여기서 소비 (SDK 로드/setAmount 와 이미 겹쳐 실행됨). 지연/실패 시 빈값 → build-time fallback.
+        const sv = await withTimeout(variantPromise, 'VARIANT_KEY').catch(() => ({ p: '', a: '' }))
+        const VK_PAYMENT = sv.p || ((import.meta.env.VITE_TOSS_VARIANT_PAYMENT as string) || '')
+        const VK_AGREEMENT = sv.a || ((import.meta.env.VITE_TOSS_VARIANT_AGREEMENT as string) || '')
 
         // Toss V2 SDK: variantKey 옵션 — 미설정 시 SDK 내부 default ('DEFAULT') 사용.
         //   콘솔에 해당 variantKey 등록 안 됐으면 404 → 사용자가 콘솔에서 직접 추가 필요.
@@ -108,7 +112,11 @@ export default function TossWidgetPayPage() {
           await withTimeout(widgets[method]({ selector }) as unknown as Promise<void>, `${method}:default`)
         }
         await tryRender('renderPaymentMethods', '#toss-widget-pay-method', VK_PAYMENT)
-        await tryRender('renderAgreement', '#toss-widget-pay-agreement', VK_AGREEMENT)
+        // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): 약관 위젯은 **비대기** — 주문 위젯
+        //   (TossPaymentWidget:170)과 동일 패턴. 버튼은 결제수단 렌더 즉시 활성(이 페이지 버튼은 원래
+        //   약관에 안 묶임 — 미동의 결제는 Toss requestPayment 가 NEED_AGREEMENT 로 강제 차단).
+        tryRender('renderAgreement', '#toss-widget-pay-agreement', VK_AGREEMENT)
+          .catch(() => { /* 백그라운드 렌더 실패 — requestPayment 의 Toss 강제가 백스톱 */ })
 
         if (cancelled) return
         widgetsRef.current = widgets

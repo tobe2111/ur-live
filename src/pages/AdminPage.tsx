@@ -22,7 +22,6 @@ import AdminActivityFeed from './admin-page/AdminActivityFeed'
 const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
 const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
-import StreamsTable from './admin-page/StreamsTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
@@ -45,18 +44,15 @@ function readAdminDashCache(): AdminBundle | undefined {
 }
 
 async function fetchAdminDashboard(): Promise<AdminBundle> {
-  const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
+  // 🗑️ 2026-07-07 라이브커머스 제거: 스트림 2종 fetch 삭제(UI 블록 제거됨 + /api/streams 엔드포인트 제거됨).
+  const [sellersRes, pendingRes] = await Promise.allSettled([
     api.get('/api/admin/sellers?limit=200'),
     api.get('/api/admin/sellers/pending?limit=100'),
-    // 🛡️ 2026-06-17: 관리 테이블은 admin 엔드포인트 사용 — 소프트 삭제(deleted_at) 스트림 제외
-    //   → 단건/일괄 삭제 후 행이 실제로 사라짐. (public /api/streams 는 deleted_at 미필터)
-    api.get('/api/admin/streams?limit=100'),
-    api.get('/api/streams?status=live&limit=50'),
   ])
   const sellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
   const pending = pendingRes.status === 'fulfilled' ? (pendingRes.value.data.data || []) : []
-  const streams = streamsRes.status === 'fulfilled' ? (streamsRes.value.data.data || []) : []
-  const liveStreams = liveStreamsRes.status === 'fulfilled' ? (liveStreamsRes.value.data.data || []) : []
+  const streams: never[] = []
+  const liveStreams: never[] = []
   const bundle = { sellers, pending, streams, liveStreams }
   try { sessionStorage.setItem('admin_dashboard_cache', JSON.stringify({ ts: Date.now(), ...bundle })) } catch { /* quota 무시 */ }
   return bundle
@@ -428,8 +424,8 @@ export default function AdminPage() {
           { label: t('admin.dashboard.k023', { defaultValue: '오늘 매출' }), value: fmtPrice(dashboardStats.todaySales), sub: t('admin.dashboard.k024', { defaultValue: '실시간' }), icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: '라이브 방송', value: `${formatNumber(dashboardStats.liveStreams || 0)}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
-        ].filter(card => !(LIVE_COMMERCE_SUSPENDED && card.label === '라이브 방송')).map(card => (
+          // 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송' 실시간 KPI 카드 삭제.
+        ].map(card => (
           <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
@@ -559,9 +555,8 @@ export default function AdminPage() {
         {[
           { label: t('admin.dashboard.k027', { defaultValue: '총 판매자' }), value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/seller-approval' },
           { label: t('admin.dashboard.k028', { defaultValue: '승인된 판매자' }), value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
-          { label: t('admin.dashboard.k029', { defaultValue: '총 라이브' }), value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50', link: '/admin/live-monitor' },
-          { label: t('admin.dashboard.k030', { defaultValue: '진행 중 라이브' }), value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50', link: '/admin/live-monitor?status=live' },
-        ].filter(card => !(LIVE_COMMERCE_SUSPENDED && card.link.startsWith('/admin/live-monitor'))).map(card => (
+          // 🗑️ 2026-07-07 라이브커머스 제거: '총 라이브'/'진행 중 라이브' KPI 카드 삭제.
+        ].map(card => (
           <button
             key={card.label}
             onClick={() => navigate(card.link)}
@@ -578,50 +573,7 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* ── 진행 중인 라이브 ── 🏭 2026-06-04 라이브 잠정 중단 시 숨김 (복원 가능) */}
-      {!LIVE_COMMERCE_SUSPENDED && (
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
-          <Play className="w-4 h-4 text-red-500" />
-          <h2 className="text-sm font-semibold text-gray-900">{t('admin.dashboard.k031', { defaultValue: '진행 중인 라이브' })}</h2>
-          <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-            {liveStreams.length}개
-          </span>
-        </div>
-        {liveStreams.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k032', { defaultValue: '현재 진행 중인 라이브가 없습니다' })}</div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {liveStreams.map(stream => (
-              <div key={stream.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">
-                    🔴 라이브
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{stream.title}</p>
-                    <p className="text-xs text-gray-500">{stream.seller_name || `판매자 #${stream.seller_id}`}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{formatNumber(stream.viewer_count || 0)}명</span>
-                  </div>
-                  <a
-                    href={`/live/${stream.id}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                  >
-                    보기
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: '진행 중인 라이브' 관리 블록 삭제. */}
 
       {/* ── 수수료 설정 ── */}
       {commissionSettings.length > 0 && (
@@ -670,15 +622,7 @@ export default function AdminPage() {
         onReject={openRejectModal}
       />
 
-      {/* ── 라이브 스트림 관리 ── 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") 라이브 중단 시 숨김(복원 가능) */}
-      {!LIVE_COMMERCE_SUSPENDED && (
-      <StreamsTable
-        streams={streams}
-        loading={loading}
-        onDelete={deleteStream}
-        onBulkDelete={bulkDeleteStreams}
-      />
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: StreamsTable(라이브 스트림 관리) 제거. */}
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (
         <Suspense fallback={null}>

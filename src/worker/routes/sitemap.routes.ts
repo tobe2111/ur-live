@@ -11,7 +11,7 @@ import type { Env } from '@/worker/types/env';
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
 // 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 호스트면 도매 전용 sitemap 발행.
-//   소비자(live.ur-team.com) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
+//   소비자(urdeal.kr) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
 const WHOLESALE_HOSTS = ['utongstart.com', 'www.utongstart.com'];
 const WHOLESALE_BASE = 'https://utongstart.com';
 
@@ -49,11 +49,18 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     // 정적 페이지
     { loc: '/', priority: 1.0, changefreq: 'daily' },
     { loc: '/browse', priority: 0.9, changefreq: 'daily' },
-    { loc: '/live', priority: 0.9, changefreq: 'hourly' },
-    { loc: '/shorts', priority: 0.8, changefreq: 'hourly' },
-    { loc: '/search', priority: 0.7, changefreq: 'weekly' },
-    { loc: '/login', priority: 0.5, changefreq: 'monthly' },
+    // 🚫 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) — /live·/shorts 는 sitemap 미노출(폐기 기능 URL 크롤 방지).
+    // 🔎 2026-07-28 (네이버 수집 점검): '/search' 제거 — robots.txt 가 `Disallow: /search` 로 막는데
+    //   사이트맵이 제출하고 있었음(상호 모순 → 서치어드바이저/서치콘솔 '수집제한' 오류 유발, 사이트맵
+    //   신뢰도 하락). '/login' 도 제거 — 로그인 폼은 색인 가치 0(검색 유입 대상 아님).
+    //   ⚠️ 사이트맵에 URL 추가 시 robots.txt Disallow 와 교차 확인할 것.
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
+    // 🆕 2026-07-27 모집/소개 표면 — 그간 sitemap 미등재라 **구글이 존재 자체를 몰랐음**(푸터 링크만
+    //   있어 사실상 유입 0). 크리에이터 모집은 동의 리드 확보의 유일한 정문이라 우선순위 높게.
+    { loc: '/creators', priority: 0.85, changefreq: 'weekly' },
+    { loc: '/creators/apply', priority: 0.8, changefreq: 'weekly' },
+    { loc: '/partners', priority: 0.7, changefreq: 'weekly' },
+    { loc: '/about', priority: 0.6, changefreq: 'monthly' },
     // 🛡️ 2026-05-15: 공동구매 hub
     { loc: '/group-buy', priority: 0.95, changefreq: 'hourly' },
     // 🛡️ 2026-05-21: 교환권 (KT Alpha 기프티쇼) 메인 + 주요 카테고리 명시
@@ -65,7 +72,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
     { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
-    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(live.ur-team.com) sitemap 에서 제거.
+    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(urdeal.kr) sitemap 에서 제거.
     //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
   ];
 
@@ -134,12 +141,23 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     }
   }
 
+  // 🔎 2026-07-20 XML 이스케이프 — 상품 이미지 URL 의 `&`(예: ?width=836&height=607) 등이
+  //   미이스케이프로 들어가면 sitemap XML 이 깨져 네이버/구글이 파싱 실패("시스템 오류").
+  //   loc/image:loc 에 반드시 적용. & 를 가장 먼저 치환(이중 이스케이프 방지).
+  const xmlEscape = (s: string) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls.map(u => {
-    const imageBlock = u.image ? `\n    <image:image><image:loc>${u.image.startsWith('http') ? u.image : origin + u.image}</image:loc></image:image>` : '';
-    const lastmodBlock = u.lastmod ? `\n    <lastmod>${u.lastmod.replace(' ', 'T')}Z</lastmod>` : '';
-    return `  <url>\n    <loc>${origin}${u.loc}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
+    const imgLoc = u.image ? (u.image.startsWith('http') ? u.image : origin + u.image) : '';
+    const imageBlock = imgLoc ? `\n    <image:image><image:loc>${xmlEscape(imgLoc)}</image:loc></image:image>` : '';
+    const lastmodBlock = u.lastmod ? `\n    <lastmod>${xmlEscape(u.lastmod.replace(' ', 'T'))}Z</lastmod>` : '';
+    return `  <url>\n    <loc>${xmlEscape(origin + u.loc)}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
   }).join('\n')}
 </urlset>`;
 

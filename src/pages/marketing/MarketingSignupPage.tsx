@@ -10,13 +10,15 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { ADS_AI_HIDDEN } from '@/shared/feature-flags'
 
 const DEFAULT_DEST = '/ads/dashboard'
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
 .ua-auth{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 100% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
+  font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
 .ua-auth a{text-decoration:none;}
 .ua-auth-card{width:100%;max-width:400px;background:#FFFFFF;border:1px solid #ECEDF1;border-radius:20px;
   padding:34px 28px;box-shadow:0 20px 54px -26px rgba(20,30,60,.28);}
@@ -28,7 +30,10 @@ const SCOPED_CSS = `
   transition:filter .15s,transform .05s;}
 .ua-auth-btn:hover{filter:brightness(1.06);} .ua-auth-btn:active{transform:translateY(1px);}
 .ua-auth-btn:disabled{opacity:.55;}
-.ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-auth-mono{font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-kakao-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:13px;
+  background:#FEE500;color:#191919 !important;font-size:15px;font-weight:800;transition:filter .15s,transform .05s;}
+.ua-kakao-btn:hover{filter:brightness(.97);} .ua-kakao-btn:active{transform:translateY(1px);}
 `
 
 export default function MarketingSignupPage() {
@@ -68,11 +73,31 @@ export default function MarketingSignupPage() {
     } finally { setBusy(false) }
   }
 
+  // 🟡 카카오: 유어딜 세션 브리지 우선(로그인 페이지와 동일) — 계정 없으면 자동 생성.
+  async function kakaoStart() {
+    setBusy(true); setErr(null)
+    try {
+      const r = await api.post('/api/ads-auth/kakao/bridge', {})
+      if (r.data?.success && r.data.token) {
+        localStorage.setItem('ads_token', r.data.token)
+        localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
+        localStorage.setItem('ads_company', r.data.account?.company_name || '')
+        if (r.data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
+        else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
+        return
+      }
+    } catch (e2: unknown) {
+      const ax = e2 as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status !== 401) { setErr(ax.response?.data?.error || '카카오 가입에 실패했습니다'); setBusy(false); return }
+    }
+    window.location.href = `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`
+  }
+
   const loginHref = `/ads/login${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
 
   return (
     <div className="ua-auth force-light-theme">
-      <SEO title="유어애즈 회원가입 - UR Ads" description="유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·AI 마케터를 시작하세요." url="/ads/signup" />
+      <SEO title="유어애즈 회원가입 - UR Ads" description={`유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}를 시작하세요.`} url="/ads/signup" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <form className="ua-auth-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -80,18 +105,24 @@ export default function MarketingSignupPage() {
         </div>
         <p className="ua-auth-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN UP</p>
         <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#0B0E14' }}>유어애즈 시작하기</h1>
-        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#565E6C' }}>광고 계정을 연동하면 자동입찰·통합 실적·AI 마케터를 바로 사용할 수 있어요.</p>
+        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#565E6C' }}>{`광고 계정을 연동하면 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}를 바로 사용할 수 있어요.`}</p>
 
         <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input className="ua-auth-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
           <input className="ua-auth-input" type="email" autoComplete="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="ua-auth-input" type="password" autoComplete="new-password" placeholder="비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="ua-auth-input" type="password" autoComplete="new-password" placeholder="비밀번호 (8자 이상·영문·숫자·특수문자 중 2종 이상)" value={password} onChange={(e) => setPassword(e.target.value)} />
           <input className="ua-auth-input" type="tel" autoComplete="tel" placeholder="연락처 (선택)" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 
         {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626' }}>{err}</p>}
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
+
+        {/* 🟡 카카오로 가입/로그인 — 유어딜 로그인 공유(브리지), 계정 없으면 자동 생성 */}
+        <button type="button" onClick={kakaoStart} disabled={busy} className="ua-kakao-btn" style={{ marginTop: 10, border: 'none', cursor: 'pointer' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
+          카카오로 시작하기 (유어딜 계정)
+        </button>
 
         <p style={{ marginTop: 12, textAlign: 'center', fontSize: 11.5, lineHeight: 1.6, color: '#8A93A3' }}>
           가입 시 <Link to="/ads/terms" style={{ color: '#2A56D4' }}>이용약관</Link> 및 <Link to="/ads/privacy" style={{ color: '#2A56D4' }}>개인정보처리방침</Link>에 동의하게 됩니다.

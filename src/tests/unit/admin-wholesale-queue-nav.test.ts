@@ -8,18 +8,20 @@ import { resolve } from 'path'
 //   wholesale-role RBAC 가드가 /admin/wholesale-overview 로 **바운스** → 클릭이 안 먹히는 것처럼 보임.
 //   불변식: 큐 카드의 모든 목적지는 wholesale-role 어드민이 도달 가능해야 한다(정적 검사 — import 무게 없음).
 
-const layout = readFileSync(resolve(process.cwd(), 'src/components/AdminLayout.tsx'), 'utf8')
+// 🧱 2026-07-20: nav 그룹 데이터 + 허용경로 상수(WHOLESALE_EXTRA/ALWAYS_ALLOWED)가 AdminLayout.tsx →
+//   admin-nav-config.ts 로 분리됨(즐겨찾기 기능 추가 시 슬림화). 정적 스캔 소스도 config 로 이동.
+const navConfig = readFileSync(resolve(process.cwd(), 'src/components/admin/admin-nav-config.ts'), 'utf8')
 const overview = readFileSync(resolve(process.cwd(), 'src/pages/admin/AdminWholesaleOverviewPage.tsx'), 'utf8')
 
-/** AdminLayout 에서 wholesale-role 어드민에게 허용되는 /admin 경로 집합을 정적으로 재구성. */
+/** admin-nav-config 에서 wholesale-role 어드민에게 허용되는 /admin 경로 집합을 정적으로 재구성. */
 function wholesaleAllowedPaths(): Set<string> {
   const allowed = new Set<string>()
   // 1) domain: 'wholesale' 그룹의 nav 경로 — domain 표식부터 다음 그룹(title:)까지가 그 그룹의 items.
   const re = /domain:\s*'wholesale'/g
   let m: RegExpExecArray | null
-  while ((m = re.exec(layout))) {
-    const nextTitle = layout.indexOf('title:', m.index + 1)
-    const block = layout.slice(m.index, nextTitle === -1 ? m.index + 4000 : nextTitle)
+  while ((m = re.exec(navConfig))) {
+    const nextTitle = navConfig.indexOf('title:', m.index + 1)
+    const block = navConfig.slice(m.index, nextTitle === -1 ? m.index + 4000 : nextTitle)
     for (const pm of block.matchAll(/path:\s*'(\/admin\/[^']+)'/g)) allowed.add(pm[1])
     // 🏭 2026-06-29: nav item 의 `also: [...]` 딥링크/통합 서브탭도 도달 가능(런타임 RBAC 가드가 also 를 허용 —
     //   AdminLayout 의 allowed 계산이 `...(it.also || [])` 를 포함). 테스트가 런타임을 충실히 미러링.
@@ -29,7 +31,7 @@ function wholesaleAllowedPaths(): Set<string> {
   }
   // 2) 명시적 추가 허용 목록(큐 카드 목적지) + 전역 허용.
   for (const name of ['WHOLESALE_EXTRA_ALLOWED_PATHS', 'ALWAYS_ALLOWED_ADMIN_PATHS']) {
-    const arr = layout.match(new RegExp(`${name}\\s*=\\s*\\[([^\\]]*)\\]`))
+    const arr = navConfig.match(new RegExp(`${name}\\s*=\\s*\\[([^\\]]*)\\]`))
     if (arr) for (const pm of arr[1].matchAll(/'(\/admin\/[^']+)'/g)) allowed.add(pm[1])
   }
   return allowed

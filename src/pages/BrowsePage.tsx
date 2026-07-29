@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
@@ -22,6 +23,25 @@ interface BrowsePageProps {
 // 🛡️ 2026-06-01 (loading): 상품 카드 React.memo — 2026-06-10 ./browse/BrowseProductCard 로 추출
 //   (홈 상품 레일과 카드 공유 — 사용자 요청 "쇼핑 페이지에서 썼던 그대로"). 코드/렌더 결과 불변.
 
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_BROWSE__)를 useState 초기값에서
+//   동기 소비 — 기존엔 useEffect(페인트 후) 소비라 시드가 있어도 풀스크린 로더 1프레임이 떴음
+//   (VouchersPage/GroupBuyListPage 동기 패턴과 비대칭). 기본 상태(category=all·sort=popular)에서만 유효.
+//   기존 effect 의 소비 로직은 그대로(hasMore 세팅·파라미터 변경 대응) — 초기 페인트만 앞당김.
+function readBrowseSeed(defaultCategory?: string): Product[] | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const cat = defaultCategory || sp.get('category') || 'all'
+    const sort = sp.get('sort') || 'popular'
+    if (cat !== 'all' || sort !== 'popular') return null
+    const el = document.getElementById('__SSR_INITIAL_BROWSE__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    if (parsed?.success && Array.isArray(parsed.data)) return parsed.data as Product[]
+  } catch { /* 손상된 inject — fetch fallback */ }
+  return null
+}
+
 export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -29,8 +49,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   const prefetchProduct = usePrefetchProduct()
   // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (URL ?seller=ID) sessionStorage 저장.
   useEffect(() => { captureTrackingFromUrl() }, [])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  // 🚑 2026-07-10: SSR 시드 동기 소비 — 시드 있으면 로더 프레임 0 (위 readBrowseSeed 주석 참조).
+  const [initialSeed] = useState<Product[] | null>(() => readBrowseSeed(defaultCategory))
+  const [products, setProducts] = useState<Product[]>(initialSeed ?? [])
+  const [loading, setLoading] = useState(initialSeed == null)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -328,8 +350,11 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.
   const canShowMore = showCount < sorted.length || hasMore
 
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): 로딩 중 전체화면 BrandLoader early-return
+  //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  if (loading) return <BrandLoader fullScreen />
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
+    <div className="bg-white dark:bg-[#0F151D] min-h-screen">
       <SEO
         title={t('browse.title')}
         description={t('browse.seoDesc')}
@@ -344,13 +369,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         ) : undefined}
       />
       {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
-      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-wide px-4 py-2.5 lg:px-8">
           <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1A1A1A] rounded-full px-4 py-2.5 cursor-pointer"
+            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1A2334] rounded-full px-4 py-2.5 cursor-pointer"
             aria-label={t('browse.searchAria')}
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -369,10 +394,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       {/* 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 위로 조금 올리면 재노출 (동네딜/교환권 패턴).
             sticky top-[60px](모바일 헤더 아래)/md:top-14(데스크톱 탑네비 아래) + revealTop 따라 translateY. */}
       <div
-        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#0A0A0A]"
+        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#0F151D]"
         style={{ transform: revealTop ? 'translateY(0)' : 'translateY(-110%)', transition: 'transform 0.25s ease', willChange: 'transform' }}
       >
-      <div className="border-b border-gray-100 dark:border-[#1A1A1A] overflow-x-auto scrollbar-hide">
+      <div className="border-b border-gray-100 dark:border-[#2A3446] overflow-x-auto scrollbar-hide">
         <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
             { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       emoji: '🛍️' },
@@ -394,7 +419,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
-                    : 'bg-gray-100 dark:bg-[#1A1A1A]'
+                    : 'bg-gray-100 dark:bg-[#1A2334]'
                 }`}>
                   {c.emoji}
                 </div>
@@ -424,13 +449,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]'}`}>
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A3446]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-xs text-gray-500 dark:text-gray-400">{sorted.length}개</span>
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A]'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446]'}`}>
                 {mapView ? <><List className="w-3 h-3" /> {t('browse.viewList')}</> : <><Map className="w-3 h-3" /> {t('browse.viewMap')}</>}
               </button>
             )}
@@ -444,13 +469,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
                     className={`w-full text-left px-3 py-2.5 text-sm ${
-                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212]'
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334]'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -463,19 +488,19 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 필터 패널 */}
         {showFilter && (
-          <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3 mb-4 space-y-3">
+          <div className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-3 mb-4 space-y-3">
             <div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1.5">가격대</p>
               <div className="flex flex-wrap gap-1.5">
                 {([['all', t('browse.priceAll')],['under10', t('browse.priceUnder10')],['under30', t('browse.priceUnder30')],['under50', t('browse.priceUnder50')],['over50', t('browse.priceOver50')]] as const).map(([v, l]) => (
                   <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>{l}</button>
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>{l}</button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-blue-600 text-white' : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A3446]'}`}>
                 <Truck className="w-3 h-3" /> 무료배송만
               </button>
               {(priceRange !== 'all' || freeShipOnly) && (
@@ -489,8 +514,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 지도 뷰 (이용권 카테고리일 때) */}
         {isMealVoucher && mapView && (
-          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
-            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1A1A1A]" />
+          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A3446]">
+            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1A2334]" />
           </div>
         )}
 
@@ -498,17 +523,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
-          <div className="space-y-4">
-            <div className="w-full lg:max-w-md aspect-[4/3] lg:aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i}>
-                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
-                  <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-full" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <BrandLoader />
         ) : error ? (
           /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
           <div className="text-center py-16">
@@ -551,7 +566,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
                   else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
                 }}
-                  className="px-8 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212]">
+                  className="px-8 py-3 border border-gray-200 dark:border-[#2A3446] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>

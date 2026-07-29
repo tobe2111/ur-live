@@ -33,7 +33,7 @@ self.addEventListener('push', (event) => {
   let title = '유어딜';
   let body = '새 알림이 도착했어요';
   let url = '/';
-  let icon = '/icons/icon-192.png';
+  let icon = '/icon-192.png';
 
   try {
     if (event.data) {

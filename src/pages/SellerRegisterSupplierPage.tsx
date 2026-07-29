@@ -1,16 +1,17 @@
 /**
- * 🛡️ 2026-05-20: 공급자 (가게 사장님) 자체 onboarding 페이지.
+ * 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 유저 → 사업자 유저 전환의 **단일 관문**.
  *
- * 기존 /seller/register/business 는 인플루언서 (라이브 송출자) 용.
- * 본 페이지는 매장 운영자 — 라이브 안 함, 상품/이용권만 등록 + 정산 받음.
+ * 이전엔 진입점 5곳이 서로 다른 3개 가입 화면(레거시 별도계정 /seller/register ·
+ * 막다른 /seller/register/business · 본 페이지)으로 흩어져 유저가 헷갈렸음 → 전부 여기로 통일.
+ * 명칭 SSOT: "사업자 유저"(유저 + 사업자등록·판매승인) / 타겟 언어 "내 쇼핑몰".
+ * 크리에이터(추천·커미션만)는 가입 불필요 — 상단 탈출구로 링크샵 안내(JoinChoice 모델).
  *
  * 흐름:
- *   1. 카카오 로그인 필수 (세션 쿠키 기반 — SellerRegisterBusinessPage 와 동일)
- *   2. 매장 정보 (가게명, 사업자번호, 연락처, 매장 카테고리, 주소) 입력
- *   3. POST /api/seller/register-from-user 에 seller_type='store_owner' 로 전송
- *   4. 'pending' 상태로 어드민 승인 대기 → 승인 시 /seller 진입 (라이브 메뉴 자동 숨김)
- *
- * 어드민 quick-register (handleStoreOwnerQuickAdd) 대신 셀프 가입 제공으로 확장성 ↑.
+ *   1. 카카오 로그인 필수 — 미로그인 시 마운트에서 즉시 /login?returnUrl (제출 401 발견 X)
+ *   2. 사업자 정보 입력 (국세청 진위확인용 대표자명+개업일 포함 — 일치 시 자동 승인)
+ *   3. POST /api/seller/register-from-user, seller_type='store_owner' (같은 계정 업그레이드,
+ *      linked_user_id 즉시 연결 + 큐레이터 프로필 승계)
+ *   4. 'pending' → /seller/waiting (자동 갱신) → 승인 시 소비자 알림 + 대시보드 진입
  */
 
 import { useEffect, useState } from 'react'
@@ -20,6 +21,8 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 const STORE_CATEGORIES = [
   { value: 'restaurant', label: '음식점' },
@@ -40,6 +43,8 @@ export default function SellerRegisterSupplierPage() {
   const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
+  // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
+  const [termsAgreed, setTermsAgreed] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
   const [form, setForm] = useState({
@@ -78,21 +83,55 @@ export default function SellerRegisterSupplierPage() {
   }
 
   useEffect(() => {
+    // 🏁 2026-07-02 단일 퍼널: 로그인 게이트를 마운트로 — 폼 다 채운 뒤 401 로 발견하는 좌절 제거.
+    //   토큰 존재 검사만(로그인 유도는 !token 으로만 — login-gate 룰). returnUrl 로 쿼리(?agency=) 보존.
+    if (typeof window !== 'undefined' && !localStorage.getItem('user_id')) {
+      navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/supplier' + window.location.search), { replace: true })
+      return
+    }
     (async () => {
       try {
         const res = await api.get('/api/seller/my-seller-status')
         if (res.data?.success && res.data.data?.linked) {
           setExistingStatus(res.data.data.seller?.status || 'pending')
         }
-      } catch { /* 미로그인 — submit 시 401 */ }
+      } catch { /* 상태조회 실패 — submit 시 재확인 */ }
       finally { setStatusChecked(true) }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 🏁 2026-06-17 (#1 이중입력 제거): 크리에이터 콘솔에서 진입(?from=curator) 시 큐레이터 사업자
   //   정보(이미 입력한 상호/사업자번호)로 매장 등록 폼 자동채움 — 같은 정보 두 번 입력 방지.
   //   curator /me/business 는 representative/start_date 미저장 → 겹치는 2필드만. 빈 필드에만 채워
   //   사용자 입력 보존. 무인증/사업자정보 없으면 조용히 skip(매장 폼 그대로).
+  // 🏁 2026-07-02 (에이전시 대리 등록): ?prospect=ID&pt=TOKEN — 에이전시가 미리 등록한 매장 정보로
+  //   폼 자동완성(빈 필드만). 사장님은 확인·제출만. 배너로 "OO 에이전시가 준비" 명시(신뢰+투명).
+  const prospectId = searchParams.get('prospect')
+  const prospectPt = searchParams.get('pt')
+  const [prospectIntro, setProspectIntro] = useState<string | null>(null)
+  useEffect(() => {
+    if (!prospectId || !prospectPt) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await api.get(`/api/prospects/prefill/${encodeURIComponent(prospectId)}?pt=${encodeURIComponent(prospectPt)}`)
+        const d = res.data?.data as { store_name?: string; contact_name?: string; contact_phone?: string; business_address?: string; introducer_name?: string } | undefined
+        if (!d || cancelled) return
+        setForm(f => ({
+          ...f,
+          business_name: f.business_name || (d.store_name || ''),
+          representative_name: f.representative_name || (d.contact_name || ''),
+          phone: f.phone || (d.contact_phone ? formatPhone(d.contact_phone) : ''),
+          address: f.address || (d.business_address || ''),
+        }))
+        if (d.introducer_name) setProspectIntro(d.introducer_name)
+      } catch { /* 무효 링크 — 빈 폼 그대로 */ }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prospectId, prospectPt])
+
   const fromCurator = searchParams.get('from') === 'curator'
   useEffect(() => {
     if (!fromCurator) return
@@ -121,6 +160,10 @@ export default function SellerRegisterSupplierPage() {
       toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
       return
     }
+    if (!termsAgreed) {
+      toast.error(t('seller.gateway.termsRequired', { defaultValue: '판매자 이용약관에 동의해주세요' }))
+      return
+    }
 
     setLoading(true)
     try {
@@ -141,12 +184,14 @@ export default function SellerRegisterSupplierPage() {
         seller_type: 'store_owner',
         description: descWithMeta,
         agency_intro_code: form.agency_intro_code.trim() || undefined,
+        terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
-        toast.success(t('supplier.applied', {
-          defaultValue: '공급자 가입 신청 완료. 관리자 승인을 기다려주세요.',
+        toast.success(t('seller.gateway.applied', {
+          defaultValue: '사업자 가입 신청 완료! 심사 상태 페이지로 이동합니다.',
         }))
-        setExistingStatus('pending')
+        // 🏁 단일 퍼널: 신청 후 상태의 정본은 /seller/waiting (자동 갱신 + 승인 시 대시보드 자동 진입).
+        navigate('/seller/waiting', { replace: true })
       } else {
         const rawErr = res.data?.error as string | { message?: string } | undefined
         const errMsg = typeof rawErr === 'string' ? rawErr : (rawErr?.message || '신청 실패')
@@ -176,7 +221,7 @@ export default function SellerRegisterSupplierPage() {
   if (existingStatus === 'pending' || existingStatus === 'active') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <SEO title="공급자 가입 - 유어딜" description="가게 사장님 자체 가입" url="/seller/register/supplier" noindex />
+        <SEO title="사업자 유저 가입 - 유어딜" description="내 쇼핑몰 열기 — 사업자 인증" url="/seller/register/supplier" noindex />
         <div className="bg-white rounded-2xl ur-content-narrow w-full p-6 text-center space-y-4 shadow-sm">
           <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
             existingStatus === 'active' ? 'bg-emerald-100' : 'bg-amber-100'
@@ -187,18 +232,22 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-gray-900">
-              {existingStatus === 'active' ? '이미 활성 셀러' : '승인 대기 중'}
+              {existingStatus === 'active'
+                ? t('seller.gateway.alreadyActive', { defaultValue: '이미 사업자 유저예요' })
+                : t('seller.gateway.pendingTitle', { defaultValue: '승인 대기 중' })}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               {existingStatus === 'active'
-                ? '셀러 대시보드로 바로 이동할 수 있습니다.'
-                : '관리자가 검토 후 알림톡으로 안내드립니다 (1-2 영업일).'}
+                ? t('seller.gateway.alreadyActiveDesc', { defaultValue: '셀러 대시보드로 바로 이동할 수 있습니다.' })
+                : t('seller.gateway.pendingDesc', { defaultValue: '관리자가 검토 후 앱 알림·알림톡으로 안내드립니다 (1-2 영업일).' })}
             </p>
           </div>
           <button
-            onClick={() => navigate(existingStatus === 'active' ? '/seller' : '/')}
+            onClick={() => navigate(existingStatus === 'active' ? '/seller' : '/seller/waiting')}
             className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
-            {existingStatus === 'active' ? '셀러 대시보드' : '홈으로'}
+            {existingStatus === 'active'
+              ? t('seller.gateway.goDashboard', { defaultValue: '셀러 대시보드' })
+              : t('seller.gateway.viewStatus', { defaultValue: '심사 상태 보기' })}
           </button>
         </div>
       </div>
@@ -207,21 +256,27 @@ export default function SellerRegisterSupplierPage() {
 
   return (
     <div className="force-light-theme min-h-screen bg-gray-50 pb-20">
-      <SEO title="공급자 가입 - 유어딜" description="가게 사장님 자체 가입 — 공동구매 제휴" url="/seller/register/supplier" noindex />
+      <SEO title="사업자 유저 가입 - 유어딜" description="내 쇼핑몰 열기 — 사업자 인증 후 상품·이용권 판매" url="/seller/register/supplier" noindex />
 
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
             <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-base font-bold text-gray-900 flex-1">공급자 가입 (가게 사장님)</h1>
+          <h1 className="text-base font-bold text-gray-900 flex-1">{t('seller.gateway.title', { defaultValue: '사업자 유저 가입 — 내 쇼핑몰 열기' })}</h1>
         </div>
       </div>
 
       <div className="ur-content-narrow px-4 lg:px-8 py-4 lg:py-6 space-y-4">
         {userName && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
-            <strong>{userName}</strong> 카카오 계정으로 가입합니다. 다른 계정이면 먼저 로그아웃 후 진행하세요.
+            <strong>{userName}</strong> {t('seller.gateway.kakaoBanner', { defaultValue: '카카오 계정에 판매 기능이 추가됩니다. 링크샵·구매내역은 그대로 유지돼요.' })}
+          </div>
+        )}
+
+        {prospectIntro && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
+            🤝 <strong>{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}
           </div>
         )}
 
@@ -229,13 +284,20 @@ export default function SellerRegisterSupplierPage() {
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-emerald-600" />
           </div>
-          <h2 className="text-base font-bold text-gray-900">매장 공동구매 시작하기</h2>
+          <h2 className="text-base font-bold text-gray-900">{t('seller.gateway.heroTitle', { defaultValue: '내 쇼핑몰에서 직접 판매하기' })}</h2>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            라이브 방송 없이도 OK. 이용권을 발행하면 인플루언서가 자동 추천 + 손님 모객 → 매출 ↑
-            <br />
-            플랫폼 수수료 5% (기본) — 인플 수수료 별도 협상.
+            {t('seller.gateway.heroDesc', { defaultValue: '사업자 인증 한 번이면 내 링크샵이 진짜 쇼핑몰이 됩니다. 상품·이용권 등록 + 현금 정산 (플랫폼 수수료 기본 5%).' })}
           </p>
         </div>
+
+        {/* 🏁 탈출구: 크리에이터(추천·커미션만)는 가입 불필요 — JoinChoice 모델과 동일 안내 */}
+        <p className="text-[11px] text-gray-500 text-center">
+          {t('seller.gateway.escape', { defaultValue: '상품 추천·커미션만 원하시나요? 가입 없이' })}{' '}
+          <button onClick={() => navigate('/u/me')} className="font-bold text-emerald-700 underline underline-offset-2">
+            {t('seller.gateway.escapeLink', { defaultValue: '내 링크샵' })}
+          </button>
+          {t('seller.gateway.escapeSuffix', { defaultValue: '에서 바로 시작할 수 있어요.' })}
+        </p>
 
         <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
           <Field label="가게명" required>
@@ -336,16 +398,28 @@ export default function SellerRegisterSupplierPage() {
           </Field>
         </div>
 
+        <TermsConsentBox
+          termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
+          termsPath="/terms/seller"
+          agreed={termsAgreed}
+          onAgreedChange={setTermsAgreed}
+        />
+
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-          신청 후 1-2 영업일 내 관리자가 검토 → 알림톡으로 결과 안내.
+          {t('seller.gateway.reviewNote', { defaultValue: '신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.' })}
           <br />
-          승인 시 셀러 대시보드 (/seller) 에서 상품/이용권 등록 가능.
+          {t('seller.gateway.reviewNote2', { defaultValue: '승인되면 셀러 대시보드에서 상품·이용권을 등록할 수 있어요.' })}
+          <br />
+          {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 정산 직전에야 벽을 만나던 것 → 가입 시점에 고지 */}
+          {t('seller.gateway.secondGate', { defaultValue: '💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
         </p>
 
         <button onClick={submit} disabled={loading}
           className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-          {loading ? '신청 중...' : '공급자 가입 신청'}
+          {loading
+            ? t('seller.gateway.submitting', { defaultValue: '신청 중...' })
+            : t('seller.gateway.submit', { defaultValue: '사업자 가입 신청' })}
         </button>
       </div>
     </div>

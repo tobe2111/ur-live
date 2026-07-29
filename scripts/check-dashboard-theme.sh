@@ -22,12 +22,39 @@ PATTERNS=(
 
 echo "🔍 대시보드 dark: variants 검사 (셀러/어드민/에이전시)"
 
+# 🛡️ 2026-07-04 오탐 수정: ① 주석 속 "dark:" 언급(라이트 고정 룰을 적어둔 주석 자체)이 걸리던 것 제외 —
+#   실제 코드는 className 문자열 안 `dark:` 만 위반. ② SellerPublicPage 는 대시보드가 아니라 소비자
+#   공개 링크샵(/profile/*·/s/* — CLAUDE.md 다크 테마 대상)이라 제외. ③ 파일별 grep 로 실코드 검사.
+EXCLUDE_FILES=("src/pages/SellerPublicPage.tsx")
+
+is_excluded() {
+  local f="$1"
+  for ex in "${EXCLUDE_FILES[@]}"; do
+    [ "$f" = "$ex" ] && return 0
+  done
+  return 1
+}
+
+# 실코드 위반 = 주석(//, /*, *) 제거 후 dark: 잔존 라인
+has_code_dark() {
+  grep -n "dark:" "$1" 2>/dev/null | grep -vE '^\s*[0-9]+:\s*(//|/\*|\*)' | grep -q "dark:"
+}
+
 for pattern in "${PATTERNS[@]}"; do
   if [ -d "$pattern" ]; then
-    matches=$(grep -rln "dark:" "$pattern" 2>/dev/null || true)
+    candidates=$(grep -rln "dark:" "$pattern" 2>/dev/null || true)
   else
-    matches=$(ls $pattern 2>/dev/null | xargs grep -ln "dark:" 2>/dev/null || true)
+    candidates=$(ls $pattern 2>/dev/null | xargs grep -ln "dark:" 2>/dev/null || true)
   fi
+
+  matches=""
+  for f in $candidates; do
+    is_excluded "$f" && continue
+    if has_code_dark "$f"; then
+      matches="$matches$f\n"
+    fi
+  done
+  matches=$(printf "$matches" | sed '/^$/d')
 
   if [ -n "$matches" ]; then
     echo "❌ dark: variant 발견:"

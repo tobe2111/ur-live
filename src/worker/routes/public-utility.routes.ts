@@ -81,8 +81,8 @@ publicUtilityRoutes.get('/manifest.webmanifest', async (c) => {
     short_name: '유어딜',
     start_url: '/',
     display: 'standalone',
-    background_color: '#020202',
-    theme_color: '#020202',
+    background_color: '#0F151D',
+    theme_color: '#0F151D',
     orientation: 'portrait',
     icons: [
       { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
@@ -107,11 +107,16 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     FIREBASE_CLIENT_EMAIL: !!env.FIREBASE_CLIENT_EMAIL,
     FIREBASE_PROJECT_ID: !!env.FIREBASE_PROJECT_ID,
     TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
-    // 🔔 2026-07-01: 웹푸시(VAPID)·네이티브푸시(FCM) 설정 가시성 — 셋 다 있어야 웹푸시 발송/구독 동작.
-    //   빠지면 sendSystemPush 웹경로가 조용히 no-op(라이브 전수조사에서 전부 미설정 확인).
+    // 🔔 2026-07-01: 알림 채널 설정 가시성 — 각 채널은 키 미설정 시 조용히 no-op 하므로
+    //   어느 채널이 죽었는지 표준 진단에서 한눈에 보이게 한다(값은 미노출, 존재여부 boolean).
+    //   웹푸시(VAPID 3종)·네이티브푸시(FCM)·이메일(Resend)·알림톡(Aligo).
     VAPID_PUBLIC_KEY: !!env.VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: !!env.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: !!env.VAPID_SUBJECT,
+    RESEND_API_KEY: !!env.RESEND_API_KEY,
+    ALIGO_API_KEY: !!env.ALIGO_API_KEY,
+    ALIGO_USER_ID: !!env.ALIGO_USER_ID,
+    ALIGO_SENDER_KEY: !!env.ALIGO_SENDER_KEY,
     DB: !!env.DB,
   }
   try {

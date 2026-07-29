@@ -36,7 +36,7 @@ interface SellerRegisterRequest {
   phone: string
   address?: string
   description?: string
-  youtube_email: string
+  youtube_email?: string  // 🏁 2026-07-01: 라이브커머스 중단으로 선택 필드(미입력 허용)
   seller_type?: 'influencer' | 'store_owner' | 'both'
   invite_code?: string
 }
@@ -68,8 +68,8 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const representative_name = body.representative_name?.trim()
     const business_start_date = body.business_start_date?.trim()
 
-    // 필수 필드 검증
-    if (!username || !email || !password || !name || !business_name || !business_number || !phone || !youtube_email) {
+    // 필수 필드 검증 (youtube_email 은 라이브커머스 중단으로 선택 필드)
+    if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
       return c.json({
         success: false,
         error: 'Missing required fields'
@@ -85,11 +85,11 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }, 400);
     }
 
-    // 유튜브 구글 계정 이메일 형식 검증
-    if (!emailRegex.test(youtube_email)) {
+    // youtube_email 은 입력됐을 때만 형식 검증 (선택 필드)
+    if (youtube_email && !emailRegex.test(youtube_email)) {
       return c.json({
         success: false,
-        error: '유튜브 라이브에 사용할 구글 계정 이메일 형식이 올바르지 않습니다'
+        error: '구글 계정 이메일 형식이 올바르지 않습니다'
       }, 400);
     }
 
@@ -167,7 +167,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       phone,
       address || null,
       description || null,
-      youtube_email,
+      youtube_email || null,
       resolvedSellerType,
       representative_name || null,
       business_start_date || null,
@@ -371,12 +371,20 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
+      // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
+      terms_agreed_version?: string;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
+    }
+
+    // 📜 2026-07-05 판매자 이용약관 v1.0: 동의 없이는 판매 신청 불가 (동의 기록은 INSERT 후).
+    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent');
+    if (!isValidTermsVersion(body.terms_agreed_version)) {
+      return c.json({ success: false, error: '판매자 이용약관 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400);
     }
 
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
@@ -505,6 +513,16 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
     //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
     const newSellerId = result?.meta?.last_row_id;
+
+    // 📜 판매자 이용약관 동의 기록 (fail-soft — 검증은 상단에서 이미 통과)
+    recordTermsConsent(db, {
+      subjectType: 'seller',
+      subjectId: newSellerId ?? null,
+      userId,
+      slug: 'seller',
+      version: body.terms_agreed_version as string,
+      ip: c.req.header('CF-Connecting-IP') || null,
+    }).catch(() => null);
     if (newSellerId && curatorProfile) {
       const sets: string[] = [];
       const vals: any[] = [];

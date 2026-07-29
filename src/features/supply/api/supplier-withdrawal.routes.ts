@@ -16,6 +16,9 @@ import { sanitizeString } from '@/worker/utils/validation'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { requireSupplier, requireAdminRole } from '@/worker/middleware/auth'
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 출금 승인(돈 액션) require2FA — 옵트인
+//   (2FA 미등록 관리자는 no-op 통과, 등록 시 X-2FA-Code 헤더 필수). 핸들러 본문 불변.
+import { require2FA } from '@/worker/middleware/require-2fa'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -157,7 +160,7 @@ admin.get('/wholesale-withdrawals', cors(), async (c) => {
 // ── POST /:id/approve — 출금 승인(송금 완료) ── 💰 머니-크리티컬, 멱등 ──────────
 //   예약(reserved)은 신청 시 이미 잔액에서 빠졌으므로, 승인은 'requested→paid' 전환 +
 //   예약을 실제 available 차감으로 확정(settleWithdrawalLedger). 어드민이 은행 송금을 직접 수행.
-admin.post('/wholesale-withdrawals/:id/approve', requireAdminRole('finance'), rateLimit({ action: 'admin-supplier-withdrawal-approve', max: 30, windowSec: 60 }), async (c) => {
+admin.post('/wholesale-withdrawals/:id/approve', requireAdminRole('finance'), require2FA(), rateLimit({ action: 'admin-supplier-withdrawal-approve', max: 30, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청 ID' }, 400)
@@ -176,8 +179,17 @@ admin.post('/wholesale-withdrawals/:id/approve', requireAdminRole('finance'), ra
     }
 
     const amount = Math.floor(Number(row.amount) || 0)
-    // 💰 예약 → 실제 available 차감 확정(클로백 net-out row + 즉시 차감). 이 호출에서 1회만.
-    await settleWithdrawalLedger(DB, row.supplier_id, id, amount)
+    // 💰 예약 → 실제 available 차감 확정(net-out row + 즉시 차감). 멱등·검증됨(이 호출에서 1회만).
+    //   🛡️ 2026-07-02: settle 실패(음수 row 미확정) 시 reserved 는 잠긴 채 유지 → 재출금 불가(안전).
+    //   status 는 paid 유지(어드민이 이미 송금) — 시간별 스윕(reconcileWithdrawalLedgers)이 후속 완료.
+    const settled = await settleWithdrawalLedger(DB, row.supplier_id, id, amount)
+    if (!settled) {
+      createDashboardNotification(
+        DB, 'admin', null, 'supplier_withdrawal_settle_pending', '출금 정산 원장 확정 지연',
+        `출금 #${id}(제조사 #${row.supplier_id}, ${amount.toLocaleString('ko-KR')}원) 송금은 완료됐으나 정산 원장 확정이 지연됐습니다. 자동 스윕이 곧 완료합니다(재출금 불가 — 잔액 잠금 유지).`,
+        '/admin/wholesale-withdrawals',
+      ).catch(swallow('supplier-withdrawal:notify-settle-pending'))
+    }
 
     createDashboardNotification(
       DB, 'supplier', String(row.supplier_id), 'supplier_withdrawal_approved', '출금 완료',

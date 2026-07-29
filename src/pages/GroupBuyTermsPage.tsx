@@ -11,9 +11,9 @@ import SEO from '@/components/SEO'
 export default function GroupBuyTermsPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
       <SEO title="공동구매 약관 - 유어딜" description="유어딜 이용권 공동구매 / voucher 사용 / 환불 약관" url="/terms/group-buy" />
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">공동구매 약관</h1>
@@ -38,13 +38,13 @@ export default function GroupBuyTermsPage() {
         <ul className="text-sm list-disc pl-5 space-y-1">
           <li>매장에 QR 코드 또는 코드 직접 보여줌 → 매장이 사용 처리.</li>
           <li>사용 처리 후 변경 / 환불 불가.</li>
-          <li>유효기간 내 미사용 → 자동 만료 + 결제 금액 전액 환불 (딜 포인트).</li>
+          <li>유효기간 내 미사용 → 만료 시 결제 수단으로 전액 자동 환불 (딜 결제는 딜 포인트, 카드 결제는 카드 결제 취소). 별도 신청 불요.</li>
           <li>부분 사용 시 차액 환불 자동 처리.</li>
         </ul>
 
         <h2 className="text-lg font-bold mt-6 mb-2">제4조 (환불 정책)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">
-          <li><strong>사용 전 환불</strong>: 결제 후 voucher 미사용 상태에서 즉시 환불 가능 (딜 포인트 전액).</li>
+          <li><strong>사용 전 환불</strong>: voucher 발급(결제) 후 <strong>7일 이내</strong> 미사용 상태에서 전액 환불 가능 (청약철회). 7일 경과 후 미사용분은 유효기간 만료 시 결제 수단으로 자동 환불.</li>
           <li><strong>사용 후 환불</strong>: 매장 음식 / 서비스 문제 시 사용 후 7일 이내 어드민 분쟁 신청. 검토 후 환불.</li>
           <li><strong>공구 미달성 자동 환불</strong>: 공구가 목표 미달성 시 자동 환불 (마감 후 1일 이내).</li>
           <li>매장 강제 종료 / 폐업 시 어드민이 일괄 환불 처리.</li>

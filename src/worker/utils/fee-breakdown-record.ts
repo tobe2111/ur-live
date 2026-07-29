@@ -8,7 +8,8 @@
  *   안전: 순수 additive(INSERT OR IGNORE) + fail-soft. FEE_RESOLVER_ENABLED='true' 일 때만 호출.
  *   per-agency 율·기간(어드민 설정)을 그대로 반영 — pctOverride + withinTerm 판정.
  *   공급가(supplyCost)도 order_items 공급라인에서 계산해 주입 → 그림자 owner_net 이 authoritative
- *   전환 후 값과 동일(검증 유효). promo(핀 소개비)만 미모델링(0) — 주인 자율값이라 per-order 권위 없음.
+ *   전환 후 값과 동일(검증 유효). promo(핀 소개비)는 affiliate_earnings 실측값 주입(2026-07-04 —
+ *   [INV-CB §3-D] owner-펀딩 검증용. 기록 시점에 적립분이 있으면 반영, 없으면 0 — 기록 전용·정산 무변경).
  *
  *   ⚠️ 멱등 INSERT OR IGNORE: 요율을 바꾼 뒤 같은 주문을 다시 기록해도 *덮어쓰지 않음*. 새 요율로
  *   재계산하려면 백필(admin-fee-breakdown.routes recompute=1) 로 해당 주문 row 를 갱신.
@@ -88,8 +89,19 @@ export async function recordOrderFeeBreakdown(
       supplyCost = Number.isFinite(t) && t > 0 ? t : 0
     }
 
+    // promo(핀 소개비) — affiliate_earnings 실측 합(유효분). 없으면 0(현행과 동일 결과).
+    let promo: { promoterId: string; amount: number } | null = null
+    try {
+      const pr = await DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+          WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`,
+      ).bind(order.id).first<{ total: number }>()
+      const t = Math.round(Number(pr?.total) || 0)
+      if (t > 0) promo = { promoterId: 'affiliate', amount: t }
+    } catch { /* promo 0 */ }
+
     const rates = await loadFeeRates(DB)
-    const b = resolveOrderFees({ amount, ownership, productKind: 'shopping', supplyCost, agency }, rates)
+    const b = resolveOrderFees({ amount, ownership, productKind: 'shopping', supplyCost, agency, promo }, rates)
     await ensureFeeBreakdownSchema(DB)
     await DB.prepare(
       `INSERT OR IGNORE INTO order_fee_breakdown

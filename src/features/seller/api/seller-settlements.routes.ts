@@ -20,6 +20,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
+import { intParam } from '@/shared/pagination'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SettlementStatsRow {
@@ -50,8 +51,8 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
-    const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
-    const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.max(1, Math.min(200, intParam(c.req.query('limit'), 20)));
+    const offset = Math.max(0, intParam(c.req.query('offset'), 0));
     // 🩹 2026-06-25: 정산 테이블이 전부 ₩0 + 날짜 '오늘' 로 뜨던 버그 — 기존 SELECT 가 amount 만 반환해
     //   클라(SettlementsTable)가 읽는 settlement_amount/total_sales/commission_*/period_*/requested_at 가 전부 undefined →
     //   formatNumber(undefined)=0, formatKSTDate(undefined)=오늘. 실제 컬럼으로 매핑.
@@ -308,6 +309,59 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
   }
 });
 
+// 💸 2026-07-01 (정산 정합 — 대표 승인 "자동 정산 하나로 통일"): 셀러 실제 지급 현황(읽기 전용).
+//   진실원천 = 이중원장(ledger_entries) 의 seller:N credit − payouts 지급분(getPayablePending).
+//   동네딜 공구/이용권 매출이 원장에 적립 → 주간 집계 크론(payouts-generate) 이 payouts(pending) 생성 →
+//   어드민이 검토 후 송금(approved→sent). 이 엔드포인트는 그 실데이터를 그대로 노출(머니-이동 없음).
+//   ⚠️ 일반 쇼핑 상품 주문은 아직 원장 미배선(payment.routes 잠금) → orders 기반 매출은 매출 캘린더로 별도 표시.
+sellerSettlementsRoutes.get('/payouts', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+
+    // 순 receivable(지급 이력 제외) — (credit − fee_amount) − debit. ledger.ts SSOT.
+    const { getLedgerReceivable } = await import('../../../worker/utils/ledger');
+    const receivable = await getLedgerReceivable(c.env.DB, `seller:${sellerId}`).catch(() => 0);
+
+    // 실제 지급 기록 (payouts) — 이 셀러 건만.
+    const rows = await c.env.DB.prepare(
+      `SELECT id, amount, period_start, period_end, status,
+              account_number, account_holder, admin_memo,
+              created_at, approved_at, sent_at
+         FROM payouts
+        WHERE payee_type = 'seller' AND payee_id = ?
+        ORDER BY created_at DESC LIMIT 50`
+    ).bind(String(sellerId)).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+    const list = rows.results || [];
+
+    // 상태별 합계 — 지급 예정(pending+approved) vs 지급 완료(sent).
+    const sum = (st: string[]) => list
+      .filter(r => st.includes(String(r.status)))
+      .reduce((a, r) => a + Number(r.amount || 0), 0);
+    const scheduledTotal = sum(['pending', 'approved']);
+    const sentTotal = sum(['sent']);
+    // 미지급 = 순 receivable − (지급예정 + 지급완료). 세 버킷이 겹치지 않게 분할.
+    const payable = Math.max(0, Number(receivable) - scheduledTotal - sentTotal);
+
+    return c.json({
+      success: true,
+      data: {
+        payable,                          // 아직 payout 에 안 잡힌 순수 외상
+        scheduled_total: scheduledTotal,  // 집계됐고 송금 대기중
+        sent_total: sentTotal,            // 송금 완료
+        payouts: list,
+        auto: true,                       // 자동 정산 파이프라인 사용
+      },
+    });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
 // 🛡️ 2026-05-19: 비사업자 셀러용 — 적립금을 기프티쇼 교환권으로 받기.
 //   사업자 등록 X 인 셀러가 적립금 (gated_deal_amount) 을 voucher 로 교환.
 //   markup_pct (어드민 설정) 적용 — 우리 마진 확보.
@@ -329,7 +383,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
     const q = c.req.query('q') || ''
-    const limit = Math.min(60, Number(c.req.query('limit')) || 30)
+    const limit = Math.min(60, intParam(c.req.query('limit'), 30))
     let sql = `SELECT gift_code, name, brand_name, brand_icon_url,
                       sale_price, real_price, discount_rate,
                       image_url_small, image_url_large,

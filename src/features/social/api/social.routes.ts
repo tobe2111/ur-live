@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 const socialRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -75,8 +76,8 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
   // 🏁 2026-06-12 (감사 🟢): limit/offset additive — 기본(무파라미터)은 기존과 동일 50/0.
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10) || 50))
-  const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10) || 0)
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0))
   const userId = String(user.id)
   const need = limit + offset
   const all: any[] = []

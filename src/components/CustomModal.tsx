@@ -83,20 +83,20 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`bg-white dark:bg-[#0A0A0A] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
+        className={`bg-white dark:bg-[#0F151D] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (
           <>
             {/* Custom Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#2A2A2A]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#2A3446]">
               <h3 id="modal-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
                 {title}
               </h3>
               <button
                 onClick={onClose}
                 aria-label={t('common.close')}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2A2A2A] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2A3446] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
               >
                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
@@ -139,7 +139,7 @@ export function CustomModal({
                 <>
                   <button
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
                   >
                     취소
                   </button>

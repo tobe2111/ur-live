@@ -20,6 +20,7 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { intParam } from '@/shared/pagination'
 
 export const adminMiscRoutes = new Hono<{ Bindings: Env }>();
 
@@ -163,6 +164,42 @@ adminMiscRoutes.get('/deals/stats', async (c) => {
       WHERE type = 'donate'
     `).first();
 
+    // ─── 전금법(선불전자지급수단) 모니터링 입력값 — additive, fail-soft ───
+    // 배경: docs/design/pre-flip-risk-audit-2026-07.md §① — 선불업 등록 기준(발행잔액/연간 발행총액)
+    // 대비 현재 위치 모니터링. 임계값은 법무 확인 전 코드화 금지(수치 집계만).
+    //
+    // 발행잔액 = 전 유저 미상환 딜 잔액 총계(user_points.balance 합).
+    // 유상/무상 구분은 point-buckets.ts SSOT: 유상 = balance - free_balance (파생, 불변식 0 ≤ free ≤ balance).
+    // 방식 주석: SQLite(D1) scalar MAX(a,b) 지원 → per-user MAX(0, balance - free) 클램프 후 SUM.
+    // 불변식 위반 행(free > balance)이 있어도 유상분이 음수로 상쇄되지 않음
+    // (SUM(balance)-SUM(free) 전체 차감 방식보다 정확). 쿼리 실패 시 null → 클라 '—' 표시.
+    const outstanding = await DB.prepare(`
+      SELECT
+        COALESCE(SUM(balance), 0) as outstanding_balance,
+        COALESCE(SUM(COALESCE(free_balance, 0)), 0) as outstanding_free_balance,
+        COALESCE(SUM(MAX(0, balance - COALESCE(free_balance, 0))), 0) as outstanding_paid_balance
+      FROM user_points
+    `).first<{ outstanding_balance: number; outstanding_free_balance: number; outstanding_paid_balance: number }>()
+      .catch(() => null);
+
+    // 올해 발행액(충전) — 기존 오늘/이번달 쿼리와 동일 소스·WHERE(type='charge' AND payment_key IS NOT NULL)
+    const chargedThisYear = await DB.prepare(`
+      SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as amount
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now', 'start of year')
+    `).first<{ count: number; amount: number }>().catch(() => null);
+
+    // 연도별 충전 총액 — 최근 3년(올해 포함)
+    const chargedByYear = await DB.prepare(`
+      SELECT strftime('%Y', created_at) as year, COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now', 'start of year', '-2 years')
+      GROUP BY strftime('%Y', created_at)
+      ORDER BY year DESC
+    `).all<{ year: string; count: number; total: number }>().catch(() => null);
+
     return c.json({
       success: true,
       data: {
@@ -170,6 +207,12 @@ adminMiscRoutes.get('/deals/stats', async (c) => {
         today: today ?? {},
         thisMonth: thisMonth ?? {},
         donations: donations ?? {},
+        // 전금법 모니터링 (additive — 개별 쿼리 실패 시 null, 기존 stats 불파손)
+        outstanding_balance: outstanding ? Number(outstanding.outstanding_balance) || 0 : null,
+        outstanding_free_balance: outstanding ? Number(outstanding.outstanding_free_balance) || 0 : null,
+        outstanding_paid_balance: outstanding ? Number(outstanding.outstanding_paid_balance) || 0 : null,
+        charged_this_year: chargedThisYear ? Number(chargedThisYear.amount) || 0 : null,
+        charged_by_year: chargedByYear ? (chargedByYear.results ?? []) : null,
       },
     });
   } catch (err) {
@@ -179,8 +222,8 @@ adminMiscRoutes.get('/deals/stats', async (c) => {
 
 adminMiscRoutes.get('/deals/charges', async (c) => {
   const { DB } = c.env;
-  const page = Math.max(1, Number(c.req.query('page')) || 1);
-  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(10, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const search = c.req.query('search') || '';
 
@@ -232,8 +275,8 @@ adminMiscRoutes.get('/deals/charges', async (c) => {
 
 adminMiscRoutes.get('/deals/users', async (c) => {
   const { DB } = c.env;
-  const page = Math.max(1, Number(c.req.query('page')) || 1);
-  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(10, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const sort = c.req.query('sort') || 'total_charged';
   const allowedSorts = ['total_charged', 'total_donated', 'balance', 'last_charged'];
@@ -340,8 +383,8 @@ adminMiscRoutes.put('/settings/commission', cors(), async (c) => {
 adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
     const adminId = c.req.query('admin_id');
     const action = c.req.query('action');
@@ -389,8 +432,8 @@ adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
 adminMiscRoutes.get('/login-history', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
     const totalRow = await DB.prepare('SELECT COUNT(*) AS c FROM admin_login_history').first<{ c: number }>().catch(() => null);
     const rows = await DB.prepare(

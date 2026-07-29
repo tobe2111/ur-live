@@ -140,12 +140,8 @@ export default function CatalogHeader({
             <button onClick={() => navigate('/wholesale/brands')} className="whitespace-nowrap font-bold" style={{ color: navColor('/wholesale/brands') }}>{t('wholesale.nav.brands', { defaultValue: '브랜드관' })}</button>
             <button onClick={() => navigate('/wholesale/best')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/best') }}>{t('wholesale.nav.best', { defaultValue: '월간 베스트' })}</button>
             <button onClick={() => navigate('/wholesale/new')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/new') }}>{t('wholesale.nav.new', { defaultValue: '신상품' })}</button>
-            {/* 🏭 2026-06-29 (대표 재지시): 고마진 특가·프리미엄 전용관 버튼은 *항상 노출*(업셀) — 단 Basic(C, 일반회원)은
-                클릭해 들어가면 페이지가 '등급 전용' 잠금 안내로 막힘(WholesaleCatalogPage 의 gradeBlocked). 등급은 페이지가 판정. */}
-            <button onClick={() => navigate('/wholesale/margin')} className="whitespace-nowrap inline-flex items-center gap-1" style={{ color: navColor('/wholesale/margin') }}>
-              {t('wholesale.nav.margin', { defaultValue: '고마진 특가' })}
-              {grade === 'C' && <Lock className="w-3 h-3" style={{ color: WT.ink4 }} />}
-            </button>
+            {/* 🏭 2026-07-03 (대표): '고마진 특가'(/wholesale/margin) 나브 진입 제거 — 완전 숨김(라우트도 /wholesale 로 리다이렉트).
+                프리미엄 전용관은 유지(업셀). */}
             <button onClick={() => navigate('/wholesale/premium')} className="whitespace-nowrap inline-flex items-center gap-1 font-bold" style={{ color: navColor('/wholesale/premium') }}>
               {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
               {grade === 'C' && <Lock className="w-3 h-3" style={{ color: WT.ink4 }} />}

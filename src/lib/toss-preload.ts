@@ -21,9 +21,26 @@ const CLIENT_KEY = (import.meta.env.VITE_TOSS_CLIENT_KEY || '') as string
 
 let preloadPromise: Promise<TossPayments> | null = null
 
+// ⚡ 2026-07-02 (결제 체감속도): js.tosspayments.com 동적 preconnect — index.html 의 정적 preconnect 를
+//   제거하며 예고했던 "결제 페이지 진입 시 동적 preconnect" 의 실제 구현 (index.html:63-68 주석 참조).
+//   SDK 스크립트 + 위젯 iframe 리소스의 TCP+TLS 핸드셰이크(~100-200ms)를 fetch 전에 워밍.
+//   결제 의도가 있는 페이지(이 모듈을 import 하는 곳)에서만 발생 — 일반 방문자 낭비 0.
+let preconnected = false
+function preconnectToss(): void {
+  if (preconnected || typeof document === 'undefined') return
+  preconnected = true
+  try {
+    const link = document.createElement('link')
+    link.rel = 'preconnect'
+    link.href = 'https://js.tosspayments.com'
+    document.head.appendChild(link)
+  } catch { /* noop */ }
+}
+
 function startPreload(): Promise<TossPayments> | null {
   if (preloadPromise) return preloadPromise
   if (!CLIENT_KEY || typeof window === 'undefined') return null
+  preconnectToss()
   preloadPromise = loadTossPayments(CLIENT_KEY).catch((err) => {
     if (import.meta.env.DEV) console.warn('[toss-preload] failed:', err)
     preloadPromise = null

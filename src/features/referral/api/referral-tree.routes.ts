@@ -22,6 +22,8 @@ import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 import { adjustUserPoints } from '@/worker/utils/point-ledger'
+import { allocateCommissions } from '@/worker/utils/commission-budget'
+import { intParam } from '@/shared/pagination'
 
 // ---------------------------------------------------------------------------
 // Router
@@ -192,12 +194,17 @@ async function getBeneficiaryType(DB: D1Database, userId: string): Promise<strin
 // Core: Calculate multi-tier commissions (exported for internal use)
 // ---------------------------------------------------------------------------
 
-export async function calculateMultiTierCommission(
+/**
+ * 💸 2026-07-04 [INV-CB] (커미션 예산 아비터): 적립(INSERT) 없이 "이 주문의 트리 커미션 엔트리"만
+ *   계산(read-only). 판정(자기추천/셀프구매/중복/affiliate 상호배타/15% 자체캡)은 기존 계산부를
+ *   그대로 분리한 것 — 1:1 동일. 오케스트레이터(order-commissions.ts)가 예산 요청액 산출에 사용.
+ */
+export async function computeMultiTierEntries(
   DB: D1Database,
   orderId: number,
   orderAmount: number,
   buyerUserId: string,
-): Promise<Array<{ tier: number; beneficiary_id: string; commission_amount: number }>> {
+): Promise<Array<{ tier: number; beneficiary_id: string; rate: number; amount: number }>> {
   await ensureReferralTreeTables(DB)
 
   // 1. Look up buyer in referral_tree
@@ -320,7 +327,35 @@ export async function calculateMultiTierCommission(
   //   }
   // }
 
+  return commissions
+}
+
+/**
+ * 트리 커미션 적립 (compute → INSERT). 기존 시그니처/동작 100% 호환 — opts 미전달 시 현행 동일.
+ * 💸 [INV-CB] opts.totalCapKrw: 예산 아비터가 배분한 총액 상한 — tier 간 비례 축소(largest-remainder).
+ *   축소 후 0원이 된 tier 는 INSERT 자체를 생략(0원 row 오염 방지).
+ */
+export async function calculateMultiTierCommission(
+  DB: D1Database,
+  orderId: number,
+  orderAmount: number,
+  buyerUserId: string,
+  opts?: { totalCapKrw?: number },
+): Promise<Array<{ tier: number; beneficiary_id: string; commission_amount: number }>> {
+  let commissions = await computeMultiTierEntries(DB, orderId, orderAmount, buyerUserId)
   if (commissions.length === 0) return []
+
+  if (opts?.totalCapKrw != null) {
+    const cap = Math.max(0, Math.floor(opts.totalCapKrw))
+    const grants = allocateCommissions(
+      commissions.map((c, i) => ({ key: String(i), amountKrw: c.amount })),
+      cap,
+    )
+    commissions = commissions
+      .map((c, i) => ({ ...c, amount: grants[i]?.grantedKrw ?? 0 }))
+      .filter(c => c.amount > 0)
+    if (commissions.length === 0) return []
+  }
 
   // Ensure user_points table exists (production users table has no deal_balance column)
   await ensureUserPointsTable(DB)
@@ -695,8 +730,8 @@ referralTreeRoutes.get('/my-commissions', requireAuth(), async (c) => {
   await ensureReferralTreeTables(DB)
 
   const userId = String(user.id)
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-  const pageSize = Math.min(50, Math.max(1, parseInt(c.req.query('page_size') || '20', 10)))
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const pageSize = Math.min(50, Math.max(1, intParam(c.req.query('page_size'), 20)))
   const offset = (page - 1) * pageSize
 
   // Optional filters

@@ -20,10 +20,16 @@ import type { D1Database } from '@cloudflare/workers-types';
 export const ORDER_TRANSITIONS: Record<string, readonly string[]> = {
   PENDING:           ['PAID', 'DONE', 'AWAITING_PAYMENT', 'CANCELLED', 'FAILED'],
   AWAITING_PAYMENT:  ['PAID', 'DONE', 'CANCELLED', 'FAILED'],
-  // PAID / DONE are synonyms — both can progress to SHIPPING/CANCELLED/REFUNDED.
-  PAID:              ['DONE', 'PREPARING', 'SHIPPING', 'CANCELLED', 'REFUNDED'],
-  DONE:              ['PAID', 'PREPARING', 'SHIPPING', 'CANCELLED', 'REFUNDED'],
-  PREPARING:         ['SHIPPING', 'CANCELLED', 'REFUNDED'],
+  // PAID / DONE are synonyms — both can progress to any *forward* fulfillment state.
+  // 🛡️ 2026-07-05 (대표 신고 — 관리자가 결제완료 주문을 '배송 완료'로 못 바꿈): 결제 이후
+  //   이행 상태(PREPARING/SHIPPING/DELIVERED)로의 **전진 건너뛰기**를 허용. 관리자/셀러가
+  //   PAID 주문을 곧장 DELIVERED 로 표시(교환권·매장픽업·외부 송장 등 SHIPPING 단계가 없는
+  //   케이스)할 수 있어야 함. 머니-안전 불변 유지: 뒤로가기(DELIVERED→SHIPPING) 차단,
+  //   종결상태 유지, 미결제(PENDING/AWAITING_PAYMENT)는 여전히 이행상태로 점프 불가(선결제),
+  //   CANCELLED/REFUNDED 는 계속 refundOrderFully 경유(여기 추가 안 함).
+  PAID:              ['DONE', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'REFUNDED'],
+  DONE:              ['PAID', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'REFUNDED'],
+  PREPARING:         ['SHIPPING', 'DELIVERED', 'CANCELLED', 'REFUNDED'],
   SHIPPING:          ['DELIVERED', 'CANCELLED', 'REFUNDED'],
   DELIVERED:         ['REFUNDED'],
   // Terminal states — no outgoing transitions.

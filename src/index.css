@@ -53,21 +53,44 @@
     background-size: 200% 100%;
     animation: shimmer-sweep 1.4s ease-in-out infinite;
   }
+
+  /* 🔥 2026-07-07 (대표 — 추첨 배지 "생동감나게 움직이는"): 불꽃 깜빡임 + 지원 숫자 스파크 글로우. */
+  @keyframes fcfs-flame {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    20% { transform: scale(1.22) rotate(-8deg); }
+    40% { transform: scale(0.93) rotate(6deg); }
+    60% { transform: scale(1.15) rotate(-4deg); }
+    80% { transform: scale(1.03) rotate(3deg); }
+  }
+  .animate-fcfs-flame {
+    display: inline-block;
+    transform-origin: 50% 85%;
+    animation: fcfs-flame 1s ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes fcfs-spark {
+    0%, 100% { text-shadow: 0 0 0 rgba(249, 115, 22, 0); }
+    50% { text-shadow: 0 0 9px rgba(249, 115, 22, 0.6); }
+  }
+  .animate-fcfs-spark { animation: fcfs-spark 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fcfs-flame, .animate-fcfs-spark { animation: none; }
+  }
 }
 
 @layer base {
   :root {
-    /* Dark Theme — #020202 base */
-    --background: 0 0% 1%;        /* #020202 */
-    --foreground: 0 0% 100%;
+    /* 🎨 2026-07-19 지시서 §6 — 다크 = 네이비 혈통 근검정(#0F151D 계열) + 웜 화이트 잉크 */
+    --background: 214 32% 9%;     /* #0F151D */
+    --foreground: 30 17% 95%;     /* #F5F3F1 (순백 아닌 웜 화이트) */
 
-    --card: 0 0% 7%;              /* #121212 */
-    --card-foreground: 0 0% 100%;
+    --card: 219 33% 15%;          /* #1A2334 */
+    --card-foreground: 30 17% 95%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 219 33% 15%;
+    --popover-foreground: 30 17% 95%;
 
-    --primary: 345 100% 65%;      /* #FF4D6D */
+    --primary: 349 70% 60%;       /* 🎨 #E0526B 브랜드 웜로즈 (2026-07-19 지시서, 구 #FF4D6D) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 10%;
@@ -76,17 +99,42 @@
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 50%;
 
-    --accent: 345 100% 65%;
+    --accent: 349 70% 60%;        /* 🎨 = --primary (#E0526B) */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 12%;           /* #1F1F1F */
-    --input: 0 0% 12%;
-    --ring: 345 100% 65%;
+    --border: 219 25% 22%;        /* #2A3446 */
+    --input: 219 25% 22%;
+    --ring: 349 70% 60%;          /* 🎨 #E0526B */
 
     --radius: 0.75rem;
+
+    /* 🎨 2026-07-19 브랜드 토큰 (대표 지시서 §1 — 리터럴 hex, tailwind brand/ink/gray 스케일과 동일 SSOT) */
+    --brand: #E0526B;       /* 웜 로즈 — 주요 행동 버튼·강조·활성 */
+    --brand-dark: #C43D55;  /* hover/pressed */
+    --brand-tint: #FBEDF0;  /* 옅은 로즈 배경 — 뱃지·선택됨 */
+    --ink: #1A2C42;         /* 딥네이비 — 제목/본문/가격 */
+    --ink-soft: #5F6B7A;    /* 보조 텍스트 */
+    --ink-faint: #8A8580;   /* 비활성/플레이스홀더 */
+    --bg: #FAF7F5;          /* 페이지 배경(웜 화이트) */
+    --surface: #FFFFFF;     /* 카드/시트/입력창 */
+    --line: #EAE4E0;        /* 구분선/테두리 */
+    --brand-text: #E0526B;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
+  }
+
+  /* 🎨 2026-07-19 지시서 §6 STEP B — 다크 테마 토큰 (html.dark = 기존 토글/시스템 감지, data-theme 별칭 겸용).
+     로즈가 '면'(버튼 배경)일 땐 --brand+흰 글자(라이트와 동일), '글자·뱃지'일 땐 --brand-text(밝힌 로즈). */
+  .dark, [data-theme="dark"] {
+    --bg: #0F151D;          /* 네이비 혈통 근검정 (#1A2C42 전면 사용 금지) */
+    --surface: #1A2334;     /* 카드/시트 */
+    --line: #2A3446;
+    --ink: #F5F3F1;         /* 순백 아닌 웜 화이트 */
+    --ink-soft: #9AA5B5;
+    --ink-faint: #6B7686;
+    --brand-text: #EF6E85;  /* 다크 배경 위 로즈 글자·뱃지 (보정값) */
+    --brand-tint: #3A2530;  /* 로즈 옅은 배경의 다크 대응 */
   }
 
 }
@@ -153,17 +201,13 @@
     letter-spacing: -0.022em;
   }
 
-  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #020202. light 모드는 #ffffff (위 body 규칙). */
+  /* 🛡️ 2026-05-04: 다크 모드일 때만 body 배경 #0F151D. light 모드는 #ffffff (위 body 규칙). */
   html.dark body {
-    background-color: #020202;
+    background-color: #0F151D;
   }
 
-  /* Footer tiny text override */
-  .footer-tiny,
-  .footer-tiny * {
-    font-size: 8px !important;
-    line-height: 1.4 !important;
-  }
+  /* 🗑️ 2026-07-20: .footer-tiny(전체 강제 8px !important) 제거 — SiteFooter 재설계로 사용처 0.
+     푸터 가독성 불만("글씨 크기")의 근본 원인이던 함정 클래스라 재사용 방지 위해 삭제. */
 }
 
 /* 셀러/어드민 대시보드: 라이트 CSS 변수 오버라이드 */
@@ -184,6 +228,12 @@
   --border: 0 0% 89%;
   --input: 0 0% 89%;
   --ring: 211 100% 50%;
+}
+/* 🎨 2026-07-19 브랜드(지시서 §5): 셀러 대시보드 액센트만 로즈 — 어드민은 "후순위 무접촉"이라
+   공용 셀렉터에서 분리해 셀러에만 override (bg #F4F5F7 구조·어드민 파랑 불변). */
+.seller-light-theme {
+  --primary: 349 70% 60%;   /* #E0526B */
+  --ring: 349 70% 60%;
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -408,7 +458,7 @@
 
 /* Card with subtle shadow */
 .apple-card {
-  background: #121212;
+  background: #1A2334;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -717,9 +767,9 @@ html.native-app nav {
      PC viewport 보다 넓은 그리드는 의도적으로 가로 스크롤 (Vite/Tailwind 표준 동작). */
 }
 
-/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #020202. */
+/* 🛡️ 2026-05-04: 다크 모드일 때만 .mobile-app-container 배경 #0F151D. */
 html.dark .mobile-app-container {
-  background-color: #020202;
+  background-color: #0F151D;
 }
 
 /* 🛡️ 2026-05-14 revert: 라이브/쇼츠 액자 항상 430px 모바일 폰 크기 (확대 X).
@@ -749,15 +799,17 @@ html.dark .mobile-app-container {
 
 /* 🎨 2026-06-16 공구 상세 리디자인 토큰 (docs/design/group-buy-detail.md) — .gbd 스코프 + html.dark 듀얼.
    Claude Design 핸드오프(프리미엄 커머스: 잉크블랙 CTA·헤어라인·정직한 즉시구매)를 var 로 포팅. */
+/* 🎨 2026-07-19 브랜드 적용: 라이트=웜화이트+네이비 잉크+로즈 CTA/액센트(지시서 60-30-10),
+   다크=서피스 유지+액센트만 로즈(대표 확정). danger(기능색)는 유지. */
 .gbd {
-  --gbd-bg:#EDEEF1; --gbd-card:#ffffff; --gbd-ink:#16181B; --gbd-ink2:#3D424A; --gbd-sub:#8B929C; --gbd-sub2:#AFB4BC;
-  --gbd-line2:#E6E8EC; --gbd-chip:#F5F6F8; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
-  --gbd-cta-bg:#16181B; --gbd-cta-fg:#ffffff; --gbd-accent:#2B6FF0;
+  --gbd-bg:#FAF7F5; --gbd-card:#ffffff; --gbd-ink:#1A2C42; --gbd-ink2:#3D4C60; --gbd-sub:#5F6B7A; --gbd-sub2:#8A8580;
+  --gbd-line2:#EAE4E0; --gbd-chip:#F3EEEA; --gbd-danger:#F23E4D; --gbd-danger-soft:#FFF0F1;
+  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#E0526B;
 }
 html.dark .gbd {
   --gbd-bg:#070809; --gbd-card:#141517; --gbd-ink:#F3F4F6; --gbd-ink2:#C5C9D0; --gbd-sub:#888F99; --gbd-sub2:#5E646D;
   --gbd-line2:#2A2D31; --gbd-chip:#1E2023; --gbd-danger:#FF5C69; --gbd-danger-soft:#2E1518;
-  --gbd-cta-bg:#F3F4F6; --gbd-cta-fg:#16181B; --gbd-accent:#5B93F7;
+  --gbd-cta-bg:#E0526B; --gbd-cta-fg:#ffffff; --gbd-accent:#EF6E85;
 }
 .gbd .noscroll::-webkit-scrollbar{display:none;}
 .gbd .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
@@ -838,6 +890,13 @@ html.dark .gbd {
   .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
 }
 
+/* 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): 풀블리드 홈(`body.pc-home`)에선 lg+(≥1024)에서
+   하단 모바일 네비(BottomNav = `.app-frame-bar`)를 숨긴다. PC 홈은 상단 DesktopTopNav + 좌측 레일이
+   네비를 담당. 모바일/태블릿(<lg)은 하단 네비 그대로(RestaurantMapPage 홈). */
+@media (min-width: 1024px) {
+  body.pc-fullbleed .app-frame-bar { display: none !important; }
+}
+
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
    `class="ur-content-narrow"` 같은 형태로 사용 (form / 상세 폼).
    `class="ur-content-wide"` (그리드 카드 페이지).
@@ -857,7 +916,9 @@ html.dark .gbd {
 }
 .ur-content-wide {
   width: 100%;
-  max-width: 1280px;
+  /* 🖥️ 2026-07-16 (대표 — 당근처럼 넓게): 1280 → 1600. 프레임(app-framed) 페이지는 430 캡이라 무영향,
+     풀너비(pc-fullbleed) 카탈로그 페이지만 넓어짐. 홈(inline max-w-[1600px])과 폭 정합. */
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1043,4 +1104,45 @@ html.dark .gbd {
 .ur-loader-sweep { animation: ur-loader-sweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 @media (prefers-reduced-motion: reduce) {
   .ur-loader-breathe, .ur-loader-sweep { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🏭 2026-07-01 도매 카테고리 타일 — CSS 3D + 마이크로 애니메이션 (대표 요청).
+   의존성 0. 잉크/모노톤 브랜드에 맞춰 컬러 대신 입체 음영(gradient+shadow+depth) +
+   상시 float + hover 3D 틸트. prefers-reduced-motion 존중.
+   ────────────────────────────────────────────────────────────── */
+@keyframes ws-cat-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.ws-cat-tile { perspective: 620px; }
+.ws-cat-badge {
+  background: linear-gradient(145deg, #ffffff 0%, #eceff4 55%, #e4e8ee 100%);
+  box-shadow:
+    0 5px 12px -4px rgba(12, 36, 84, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 5px rgba(12, 36, 84, 0.06);
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1.35), box-shadow 0.28s ease;
+  animation: ws-cat-float 3.4s ease-in-out infinite;
+}
+.ws-cat-badge > svg {
+  filter: drop-shadow(0 2px 2.5px rgba(12, 36, 84, 0.28));
+  transition: transform 0.28s ease;
+}
+.ws-cat-tile:nth-child(2) .ws-cat-badge { animation-delay: 0.55s; }
+.ws-cat-tile:nth-child(3) .ws-cat-badge { animation-delay: 1.1s; }
+.ws-cat-tile:hover .ws-cat-badge {
+  transform: translateY(-4px) rotateX(13deg) rotateY(-11deg) scale(1.07);
+  box-shadow:
+    0 14px 24px -7px rgba(12, 36, 84, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -2px 6px rgba(12, 36, 84, 0.08);
+}
+.ws-cat-tile:hover .ws-cat-badge > svg { transform: translateZ(10px) scale(1.06); }
+.ws-cat-tile:active .ws-cat-badge { transform: translateY(-1px) scale(1.02); }
+@media (prefers-reduced-motion: reduce) {
+  .ws-cat-badge { animation: none; }
+  .ws-cat-tile:hover .ws-cat-badge { transform: scale(1.04); }
 }

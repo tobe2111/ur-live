@@ -79,16 +79,31 @@ export async function shoppingCategoryTrends(clientId: string | undefined, clien
   const today = new Date()
   const endDate = today.toISOString().slice(0, 10)
   const startDate = new Date(today.getTime() - 365 * 86400000).toISOString().slice(0, 10)
-  const res = await fetch(`${OPENAPI}/v1/datalab/shopping/categories`, {
-    method: 'POST',
-    headers: { ...hdr(clientId, clientSecret), 'content-type': 'application/json' },
-    body: JSON.stringify({ startDate, endDate, timeUnit: 'month', category: SHOPPING_CATEGORIES.map(c => ({ name: c.name, param: [c.cid] })) }),
-  }).catch(() => null)
-  if (!res) return { ok: false, error: '쇼핑인사이트 호출 실패 (네트워크)' }
-  const data = (await res.json().catch(() => null)) as { results?: Array<{ title?: string; data?: Array<{ period: string; ratio: number }> }>; errorMessage?: string } | null
-  if (!res.ok) return { ok: false, error: data?.errorMessage || `쇼핑인사이트 오류 (HTTP ${res.status})` }
+  // ⚠️ 데이터랩 쇼핑인사이트 분야 API 는 요청당 category 최대 3개 → 초과 시 HTTP 400.
+  //   10개 대표 카테고리를 3개씩 분할해 병렬 호출 후 병합(하나라도 성공하면 그 결과 사용).
+  type Row = { title?: string; data?: Array<{ period: string; ratio: number }> }
+  const CHUNK = 3
+  const chunks: Array<typeof SHOPPING_CATEGORIES> = []
+  for (let i = 0; i < SHOPPING_CATEGORIES.length; i += CHUNK) chunks.push(SHOPPING_CATEGORIES.slice(i, i + CHUNK))
+  const fetchChunk = async (cats: typeof SHOPPING_CATEGORIES): Promise<{ ok: boolean; rows?: Row[]; error?: string }> => {
+    const res = await fetch(`${OPENAPI}/v1/datalab/shopping/categories`, {
+      method: 'POST',
+      headers: { ...hdr(clientId, clientSecret), 'content-type': 'application/json' },
+      body: JSON.stringify({ startDate, endDate, timeUnit: 'month', category: cats.map(c => ({ name: c.name, param: [c.cid] })) }),
+    }).catch(() => null)
+    if (!res) return { ok: false, error: '쇼핑인사이트 호출 실패 (네트워크)' }
+    const data = (await res.json().catch(() => null)) as { results?: Row[]; errorMessage?: string } | null
+    if (!res.ok) return { ok: false, error: data?.errorMessage || `쇼핑인사이트 오류 (HTTP ${res.status})` }
+    return { ok: true, rows: data?.results || [] }
+  }
+  const settled = await Promise.all(chunks.map(fetchChunk))
+  const rows: Row[] = settled.filter(s => s.ok).flatMap(s => s.rows || [])
+  if (!rows.length) {
+    const firstErr = settled.find(s => !s.ok)
+    return { ok: false, error: firstErr?.error || '쇼핑인사이트 데이터가 없습니다' }
+  }
   const cidByName = new Map(SHOPPING_CATEGORIES.map(c => [c.name, c.cid]))
-  const results: CategoryTrend[] = (data?.results || []).map(r => {
+  const results: CategoryTrend[] = rows.map(r => {
     const pts = (r.data || []).map(p => Number(p.ratio) || 0)
     const latest = pts.length ? pts[pts.length - 1] : 0
     const first = pts.length ? pts[0] : 0

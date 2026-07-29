@@ -16,8 +16,12 @@ import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL} from '@/shared/constants';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
+import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
+import { intParam } from '@/shared/pagination'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -80,6 +84,8 @@ async function ensureTables(DB: D1Database) {
       )
     `).run();
   } catch { /* 이미 존재 */ }
+  // 💸 2026-07-05 유상/무상 버킷 컬럼 보장 (free_balance / free_delta — point-buckets.ts SSOT)
+  await ensureDealBuckets(DB)
   _ensuredTables = true
 }
 
@@ -94,15 +100,24 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 
   const { DB } = c.env;
   // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일하여 TEXT/INTEGER 혼용 방지
+  // 💸 2026-07-05 버킷: free_balance(무상)·withdrawable(유상=출금가능) 노출. 컬럼 부재 레거시는 폴백 쿼리.
   const userId = String(user.id);
-  const row = await DB.prepare('SELECT balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
-    .bind(userId).first<{ balance: number; total_charged: number; total_donated: number }>()
-    .catch(() => null);  // table 부재 시 0 반환 (Cold-start 추가 query 없음)
+  const row = await DB.prepare('SELECT balance, COALESCE(free_balance, 0) AS free_balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
+    .bind(userId).first<{ balance: number; free_balance: number; total_charged: number; total_donated: number }>()
+    .catch(async () =>
+      DB.prepare('SELECT balance, 0 AS free_balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
+        .bind(userId).first<{ balance: number; free_balance: number; total_charged: number; total_donated: number }>()
+        .catch(() => null),  // table 부재 시 0 반환 (Cold-start 추가 query 없음)
+    );
 
+  const balance = row?.balance ?? 0;
+  const freeBalance = Math.max(0, Math.min(row?.free_balance ?? 0, balance));
   return c.json({
     success: true,
     data: {
-      balance: row?.balance ?? 0,
+      balance,
+      free_balance: freeBalance,
+      withdrawable: Math.max(0, balance - freeBalance),
       total_charged: row?.total_charged ?? 0,
       total_donated: row?.total_donated ?? 0,
     },
@@ -111,6 +126,11 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 
 // ── POST /api/points/charge/init ─────────────────────────────────────
 pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+  // 🛡️ 2026-07-18 (대표 확정 "충전 자체를 빼자"): 유상 충전 서비스 종료 — 신규 충전 시작 차단.
+  //   ⚠️ /charge/confirm 은 열어둠(배포 시점 진행 중이던 결제의 승인 완결 — 돈 안전). 가역(플래그).
+  if (TOPUP_DISABLED) {
+    return c.json({ success: false, error: '딜 충전 서비스가 종료되었습니다. 딜은 친구 초대·추천으로 적립할 수 있어요.' }, 403);
+  }
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -441,23 +461,27 @@ async function executeDonate(
   if (!stream) return { status: 404, body: { success: false, error: '스트림을 찾을 수 없습니다' } };
 
   // 포인트 차감 (atomic: balance >= amount 조건으로 race condition 방지)
+  // 💸 2026-07-05 버킷: 무상 우선 차감 (free_balance MAX(0,…) 절 — 원자성/가드 불변). 사전 free 조회는 원장 기록용.
+  const freeBefore = await DB.prepare('SELECT COALESCE(free_balance, 0) AS fb FROM user_points WHERE user_id = ?')
+    .bind(userId).first<{ fb: number }>().catch(() => null);
   const deductResult = await DB.prepare(
-    'UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ? AND balance >= ?'
-  ).bind(amount, amount, userId, amount).run();
+    'UPDATE user_points SET balance = balance - ?, free_balance = MAX(0, COALESCE(free_balance, 0) - ?), total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ? AND balance >= ?'
+  ).bind(amount, amount, amount, userId, amount).run();
   if (!deductResult.meta.changes) {
     return { status: 400, body: { success: false, error: '딜이 부족합니다 (동시 결제 충돌)' } };
   }
+  const freeUsed = Math.min(Math.max(0, Number(freeBefore?.fb ?? 0)), amount);
   const updatedWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(userId).first<{ balance: number }>();
   const newBalance = updatedWallet?.balance ?? 0;
 
   // 트랜잭션 기록
   await DB.prepare(`
-    INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, stream_id, seller_id)
-    VALUES (?, 'donate', ?, ?, ?, ?, ?, ?)
+    INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, stream_id, seller_id, free_delta)
+    VALUES (?, 'donate', ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     userId, amount, amount, newBalance,
     `${stream.seller_name ?? '셀러'} 라이브 후원`,
-    stream_id, stream.seller_id
+    stream_id, stream.seller_id, -freeUsed
   ).run();
 
   // donations 테이블에도 기록 (셀러 정산 시 platform_settings.commission_rate_default 적용, 기본 10%)
@@ -505,8 +529,8 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const userId = String(user.id);
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
-  const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0));
   const type = c.req.query('type') || ''; // 'charge'|'donate'|'refund'|'referral_bonus' 등
 
   const conditions: string[] = ['user_id = ?'];
@@ -576,24 +600,26 @@ pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, 
 
     // v24 FIX: lost-update 방지. 원자적 UPSERT (balance = balance + ?)로 전환.
     // SELECT-then-UPDATE 패턴은 동시 광고 보상 요청 시 잔액 덮어쓰기 발생.
+    // 💸 2026-07-05 버킷: 광고 리워드 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감 대상).
     await DB.prepare(`
-      INSERT INTO user_points (user_id, balance, total_charged, total_donated)
-      VALUES (?, ?, 0, 0)
+      INSERT INTO user_points (user_id, balance, free_balance, total_charged, total_donated)
+      VALUES (?, ?, ?, 0, 0)
       ON CONFLICT(user_id) DO UPDATE SET
         balance = balance + excluded.balance,
+        free_balance = COALESCE(free_balance, 0) + excluded.free_balance,
         updated_at = CURRENT_TIMESTAMP
-    `).bind(userId, AD_REWARD_POINTS).run();
+    `).bind(userId, AD_REWARD_POINTS, AD_REWARD_POINTS).run();
 
     // 거래 기록용 최신 잔액 조회 (원자적 UPSERT 후)
     const afterRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(userId).first<{ balance: number }>();
     const newBalance = afterRow?.balance ?? AD_REWARD_POINTS;
 
-    // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분)
+    // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분 — free_delta 로 무상 태깅)
     await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
-       VALUES (?, 'charge', 0, 0, ?, ?, ?)`
-    ).bind(userId, AD_REWARD_POINTS, newBalance, `${AD_REWARD_DESC_PREFIX} 광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
+      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, free_delta)
+       VALUES (?, 'charge', 0, 0, ?, ?, ?, ?)`
+    ).bind(userId, AD_REWARD_POINTS, newBalance, `${AD_REWARD_DESC_PREFIX} 광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`, AD_REWARD_POINTS).run();
 
     return c.json({
       success: true,
@@ -646,6 +672,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   await ensureTables(DB);
 
   const userId = String(user.id);
+  // 🔑 완결고리 조인키(데이터 감사 1단계): orders.user_id 는 정규화된 DB users.id 로 기록.
+  //   지갑(user_points/point_transactions/coupon_uses)은 raw userId 유지 — 잔액 키 미변경(오프라이브
+  //   Firebase 잔액 stranding 방지). 주문 클러스터(멱등 조회 + INSERT)만 orderUserId 로 통일해
+  //   멱등 read↔write 일치(이중발급 0). live(카카오)=두 값 동일→무동작.
+  const orderUserId = await resolveUserIdString(DB, user.id, user.isDbId);
 
   // ✅ SECURITY FIX: Ignore client-supplied total_amount/price. Recompute server-side.
   const { order_number, items, shipping, live_stream_id, coupon_id } = await c.req.json<{
@@ -697,7 +728,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
        WHERE (order_number = ? OR order_number LIKE ?)
          AND user_id = ?
        LIMIT 1`
-    ).bind(order_number, `${order_number}_s%`, userId)
+    ).bind(order_number, `${order_number}_s%`, orderUserId)
      .first<{ id: number; order_number: string; total_amount: number }>();
     if (existingOrder) {
       const wallet2 = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
@@ -875,8 +906,9 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   };
 
   // ✅ Validate balance BEFORE deducting
-  const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-    .bind(userId).first<{ balance: number }>();
+  // 💸 2026-07-05 버킷: free_balance 동시 조회 — 무상 우선 차감의 원장(free_delta) 기록용.
+  const wallet = await DB.prepare('SELECT balance, COALESCE(free_balance, 0) AS free_balance FROM user_points WHERE user_id = ?')
+    .bind(userId).first<{ balance: number; free_balance: number }>();
 
   if (!wallet || wallet.balance < authoritativeTotal) {
     await rollbackCoupon();
@@ -887,14 +919,15 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     }, 400);
   }
 
-  // ✅ Atomic deduct (balance >= authoritativeTotal guard)
+  // ✅ Atomic deduct (balance >= authoritativeTotal guard) — 무상 우선 소진 (약관 강제)
   const deductRes = await DB.prepare(
-    'UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?'
-  ).bind(authoritativeTotal, userId, authoritativeTotal).run();
+    'UPDATE user_points SET balance = balance - ?, free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?'
+  ).bind(authoritativeTotal, authoritativeTotal, userId, authoritativeTotal).run();
   if (!deductRes.meta.changes) {
     await rollbackCoupon();
     return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400);
   }
+  const freeUsedForPay = Math.min(Math.max(0, Number(wallet.free_balance ?? 0)), authoritativeTotal);
 
   // Track stock reservations so we can roll back on failure
   const stockReserved: Array<{ product_id: number; quantity: number }> = [];
@@ -923,11 +956,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       });
     }
 
-    // Transaction record
+    // Transaction record (💸 free_delta = 무상 차감분 — 환불 시 무상 복원 근거)
     await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
-       VALUES (?, 'donate', ?, 0, ?, ?, ?, ?)`
-    ).bind(userId, authoritativeTotal, authoritativeTotal, newBalance, `상품 구매 (${normalizedItems.length}건)`, order_number).run();
+      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
+       VALUES (?, 'donate', ?, 0, ?, ?, ?, ?, ?)`
+    ).bind(userId, authoritativeTotal, authoritativeTotal, newBalance, `상품 구매 (${normalizedItems.length}건)`, order_number, -freeUsedForPay).run();
 
     // Create orders per seller
     // ✅ PERF: use INSERT meta.last_row_id (avoids a separate SELECT per order)
@@ -965,7 +998,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo, live_stream_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '', ?)
         `).bind(
-          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          sellerOrderNumber, orderUserId, sellerId === '0' ? null : sellerId,
           groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' }),
@@ -976,7 +1009,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
           INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
           VALUES (?, ?, ?, ?, ?, ?, ?, 'KRW', 'PAID', 'deal_points', ?, ?, ?, '')
         `).bind(
-          sellerOrderNumber, userId, sellerId === '0' ? null : sellerId,
+          sellerOrderNumber, orderUserId, sellerId === '0' ? null : sellerId,
           groupSubtotal, shippingFee, groupDiscount, groupTotal,
           shipping.name, shipping.phone,
           JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
@@ -1012,21 +1045,44 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
     // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 — 딜 교환 전용 상품 결제 시.
-    try {
-      const ktOrders = await DB.prepare(
-        `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`
-      ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
-        .catch(() => ({ results: [] }))
-      if (ktOrders.results && ktOrders.results.length > 0) {
-        const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
-        await autoSendKtAlphaVouchersForOrders(
-          c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-          ktOrders.results,
-          userId,
-        )
+    // ⚡ 2026-07-02 (대표 승인 — 결제 체감속도): 응답 후(waitUntil) 실행으로 이동. KT/기프티쇼 외부 HTTP
+    //   (prod 실측 1~4.5s)가 교환권 메인 결제 응답을 동기로 막던 것 제거 — 내용/에러처리 불변, 시점만.
+    //   안전판: fail-soft + per-order 멱등 + kt-alpha-voucher-retry cron(failed 재시도 + 미발송 스위퍼).
+    {
+      const _ktBg = async () => {
+        try {
+          const ktOrders = await DB.prepare(
+            `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`
+          ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
+            .catch(() => ({ results: [] }))
+          if (ktOrders.results && ktOrders.results.length > 0) {
+            const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
+            await autoSendKtAlphaVouchersForOrders(
+              c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+              ktOrders.results,
+              userId,
+            )
+          }
+        } catch (e) {
+          console.error('[points/pay] kt-alpha auto-send failed:', e)
+        }
       }
-    } catch (e) {
-      console.error('[points/pay] kt-alpha auto-send failed:', e)
+      let _ktDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_ktBg()); _ktDeferred = true } } catch { /* no ctx */ }
+      if (!_ktDeferred) await _ktBg()
+    }
+
+    // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (랜딩→가입→첫구매 퍼널, 멱등·fail-soft — 응답 후 실행).
+    {
+      const _acqBg = async () => {
+        try {
+          const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+          await markAcquisitionFirstPurchase(DB, userId, order_number)
+        } catch { /* fail-soft */ }
+      }
+      let _acqDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_acqBg()); _acqDeferred = true } } catch { /* no ctx */ }
+      if (!_acqDeferred) await _acqBg()
     }
 
     return c.json({
@@ -1041,11 +1097,11 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     });
   } catch (err) {
     console.error('[points/pay] Error:', err);
-    // ✅ Refund deals on any failure
+    // ✅ Refund deals on any failure (💸 버킷 대칭 — 방금 무상에서 차감된 만큼 무상으로 복원)
     try {
       await DB.prepare(
-        'UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?'
-      ).bind(authoritativeTotal, userId).run();
+        'UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?'
+      ).bind(authoritativeTotal, freeUsedForPay, userId).run();
     } catch (refundErr) {
       console.error('[points/pay] Refund failed:', refundErr);
     }
@@ -1100,13 +1156,16 @@ pointsRoutes.post('/withdraw',
     const { DB } = c.env
     const userId = String(user.id)
 
-    // 잔액 확인 + 차감 (atomic — UPDATE WHERE balance >= amount).
+    // 잔액 확인 + 차감 (atomic — UPDATE WHERE 유상잔액 >= amount).
+    // 💸 2026-07-05 버킷 (약관 강제): 현금 출금은 유상(balance - free_balance) 한도로만 —
+    //   무상(리워드) 딜의 현금 인출 차단. free_balance 는 무변경 (출금은 유상에서만 나감).
+    await ensureDealBuckets(DB)
     const decResult = await DB.prepare(
       `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now')
-       WHERE user_id = ? AND balance >= ?`
+       WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
     ).bind(amount, userId, amount).run().catch(() => null)
     if (!decResult || (decResult.meta?.changes ?? 0) === 0) {
-      return c.json({ success: false, error: '딜 잔액 부족' }, 400)
+      return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)' }, 400)
     }
 
     // 🛡️ 2026-05-21 정책 중앙화: 딜 환급 = 기타소득 (이벤트성) — WITHHOLDING_RATES.other_income.
@@ -1115,10 +1174,15 @@ pointsRoutes.post('/withdraw',
     const net = amount - tax
 
     try {
+      // 🛡️ 2026-07-01 (어드민 라이브 감사 — 머니 대칭): 위에서 딜을 즉시 차감(balance - amount)했으므로
+      //   deal_deducted=1 로 기록해야 지급센터 반려 시 딜이 복원됨(admin-payout-center reject 는 =1 만 복원).
+      //   누락 시 반려된 출금의 딜이 영구 미복원 = 유저 손실. curator.routes 경로와 동일 대칭.
+      //   컬럼 보장(멱등, repair-schema 에도 등록됨).
+      await DB.prepare('ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0').run().catch(() => {})
       const result = await DB.prepare(`
         INSERT INTO user_withdrawals
-          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, deal_deducted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
       `).bind(userId, amount, tax, net, bankName, bankAccount, holder).run()
 
       return c.json({

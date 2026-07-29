@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info } from 'lucide-react'
 import api from '@/lib/api'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
@@ -12,6 +15,11 @@ import { formatPhone } from '@/utils/format-phone'
 import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import BrandLoader from '@/components/brand/BrandLoader'
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 시드를 useEffect(페인트 후)가 아닌 useState 초기값에서
+//   동기 소비 — 같은 DETAIL 슬롯을 쓰는 GroupBuyDetailPage(pickSeedDetail)와 동일 패턴으로 정렬.
+//   기존엔 SSR/프리페치 데이터가 있어도 첫 프레임에 풀스크린 로더가 떴음(형제 페이지와 비대칭).
+import { pickSeedDetail } from './group-buy/seed-detail'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -46,6 +54,8 @@ interface VoucherProduct {
   restaurant_address?: string | null
   seller_id?: number
   seller_name?: string | null
+  /** 🎯 1인당 최대 구매 수량 (설정 시, 없으면 무제한). */
+  max_per_person?: number
 }
 
 /**
@@ -123,14 +133,24 @@ export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
+  const qc = useQueryClient()
   // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시.
   // 🛠️ 2026-06-17 (사용자 신고 — "딜 부족"으로 잘못 뜸): 기본 useBalance() 는 initialData(localStorage,
   //   기본 0)를 staleTime(60s) 동안 fresh 로 간주 → 이 페이지를 직접 진입(잔액 미캐시 브라우저)하면
   //   refetch 없이 0 표시 → '딜 부족' 오표시. 결제 판단 페이지라 PointsChargePage 와 동일하게 fresh
   //   fetch(0s stale + mount 마다 refetch + focus refetch)로 항상 최신 잔액 반영.
   const { data: balance = 0, isFetching: balanceFetching } = useBalance({ fresh: true })
-  const [product, setProduct] = useState<VoucherProduct | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: 첫 render 에 RQ 캐시(카드 프리페치) > SSR inject 를 동기 시드 —
+  //   시드가 있으면 로더 프레임 0 (GroupBuyDetailPage 와 동일). 없으면 기존 로더+fetch fallback.
+  const [product, setProduct] = useState<VoucherProduct | null>(() =>
+    id
+      ? pickSeedDetail<VoucherProduct>(Number(id), {
+          rqCached: qc.getQueryData(queryKeys.groupBuyProduct(id)),
+          ssrText: typeof document !== 'undefined' ? document.getElementById('__SSR_INITIAL_DETAIL__')?.textContent : null,
+        })
+      : null,
+  )
+  const [loading, setLoading] = useState(product == null)
   const [error, setError] = useState('')
   const [exchanging, setExchanging] = useState(false)
   const [quantity, setQuantity] = useState(1)
@@ -139,44 +159,42 @@ export default function VoucherDetailPage() {
   const [phoneConsent, setPhoneConsent] = useState(false)
 
   // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff= → affiliate_ref 저장 (물리 ?ref= 와 동일 키)
+  // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) fallback — GroupBuyDetailPage 와 정합. aff 우선.
   useEffect(() => {
-    try { storeAffiliateRef(new URLSearchParams(window.location.search).get('aff')) } catch { /* noop */ }
+    try {
+      const q = new URLSearchParams(window.location.search)
+      storeAffiliateRef(q.get('aff') || q.get('ref'))
+    } catch { /* noop */ }
   }, [])
 
   useEffect(() => {
     if (!id) return
     let cancelled = false
 
-    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
-    //   /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint → 같은 __SSR_INITIAL_DETAIL__ slot.
-    //   효과: 첫 paint 부터 상품 표시 (axios fetch waterfall ~200-500ms 제거).
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && String(parsed?.data?.id) === String(id)) {
-            setProduct(parsed.data)
-            setLoading(false)
-          }
-        }
-      }
-    } catch { /* SSR 누락 — fallback */ }
+    // 🛡️ SSR inject(`__SSR_INITIAL_DETAIL__`) 소비는 2026-07-10 부터 useState 초기값(동기, 위 pickSeedDetail)
+    //   에서 수행 — 페인트 후 effect 소비(로더 1프레임)를 제거. 여기선 fetchQuery 신선화만.
 
-    api.get(`/api/group-buy/products/${id}`)
-      .then(r => {
-        if (cancelled) return
-        if (r.data?.success) setProduct(r.data.data)
-        else setError(r.data?.error || '교환권을 찾을 수 없습니다')
-      })
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): raw axios → RQ fetchQuery(staleTime 60s)로 dedupe.
+    //   /group-buy/:id 와 같은 key(groupBuyProduct) → 홈 카드 touch-prefetch·GroupBuyDetailPage 의
+    //   in-flight/캐시를 그대로 이어받아 SSR seed 위에 얹히던 중복 왕복 제거. (GroupBuyDetailPage 동일 패턴.)
+    qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(id),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${id}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '교환권을 찾을 수 없습니다')
+        return r.data.data as VoucherProduct
+      },
+      staleTime: 60_000,
+    })
+      .then(data => { if (!cancelled) setProduct(data) })
       .catch(err => {
         if (cancelled) return
-        const msg = err?.response?.data?.error || '교환권 로드 실패'
+        const msg = err?.response?.data?.error || err?.message || '교환권 로드 실패'
         setError(msg)
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [id])
+  }, [id, qc])
 
   async function handleExchange() {
     if (!product) return
@@ -208,6 +226,11 @@ export default function VoucherDetailPage() {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } } }
       const code = e?.response?.data?.code
       if (code === 'INSUFFICIENT_POINTS') {
+        // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+        if (TOPUP_DISABLED) {
+          toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+          return
+        }
         const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
         if (charge) {
           localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -260,17 +283,14 @@ export default function VoucherDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 유어딜 BrandLoader(SSOT)로 통일.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] p-4">
-        <button onClick={() => navigate(-1)} className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
+      <div className="min-h-screen bg-white dark:bg-[#0F151D] p-4">
+        <button onClick={() => navigate(-1)} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
           <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
           <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">교환권 목록으로</button>
@@ -295,12 +315,12 @@ export default function VoucherDetailPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-52 lg:pb-40">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-52 lg:pb-40">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur">
-        <div className="ur-content-narrow h-14 px-2 flex items-center">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur">
+        <div className="ur-content-narrow lg:max-w-[1000px] h-14 px-2 flex items-center">
           <button
             onClick={() => navigate(-1)}
             aria-label="뒤로"
@@ -311,10 +331,12 @@ export default function VoucherDetailPage() {
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4">
+      {/* 🖥️ 2026-07-16 (대표 — 상세 PC 2단): lg+ 에서 좌 이미지(sticky) + 우 정보 2단(교환권 상세).
+          모바일(<lg)은 기존 720 단일 컬럼 그대로(lg: no-op). */}
+      <div className="ur-content-narrow lg:max-w-[1000px] px-4 lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start lg:pt-6">
         {/* 🎨 상품 카드 — 사용자 요청: 사진이 카드를 가득 채움(object-cover, 정사각 풀블리드).
             그라데이션은 로딩 중/투명 이미지 대비 base 로만 유지(채워지면 안 보임). */}
-        <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]">
+        <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115] lg:sticky lg:top-20">
           {product.image_url && (
             // 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP. LCP 우선 → eager.
             <img
@@ -331,7 +353,7 @@ export default function VoucherDetailPage() {
         </div>
 
         {/* 정보 */}
-        <div className="pt-[18px]">
+        <div className="pt-[18px] lg:pt-0">
           <div className="flex items-center">
             <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
@@ -353,7 +375,7 @@ export default function VoucherDetailPage() {
             )}
           </div>
 
-          <div className="h-px bg-[#EEF0F3] dark:bg-[#1A1A1A] my-4" />
+          <div className="h-px bg-[#EEF0F3] dark:bg-[#1A2334] my-4" />
 
           <div className="flex flex-col gap-[11px]">
             <div className="flex justify-between items-start text-[13.5px]">
@@ -379,7 +401,7 @@ export default function VoucherDetailPage() {
           {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에.
               + 가시성 개선 — 평문 → 구조화 렌더(VoucherNotice). 데이터 무변경, 표시만. */}
           {cleanDescription && (
-            <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#1A1A1A]">
+            <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#2A3446]">
               <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2.5">상품 안내</p>
               <VoucherNotice text={cleanDescription} />
             </div>
@@ -389,13 +411,13 @@ export default function VoucherDetailPage() {
 
       {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
       <div
-        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-[10002] lg:bottom-0"
+        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446] z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow px-4 pt-3">
+        <div className="ur-content-narrow lg:max-w-[1000px] px-4 pt-3">
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
-            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#121212] rounded-xl px-3.5 py-2.5 mb-3">
+            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1A2334] rounded-xl px-3.5 py-2.5 mb-3">
               <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{balancePending ? '…' : `${formatNumber(balance)}딜`}</b></span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
@@ -410,10 +432,11 @@ export default function VoucherDetailPage() {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A2A2A] rounded-2xl px-3.5 h-[54px] shrink-0">
+            <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A3446] rounded-2xl px-3.5 h-[54px] shrink-0">
+              {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
               <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
               <span className="min-w-[14px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => setQuantity(q => q + 1)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white">+</button>
+              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}
@@ -430,7 +453,7 @@ export default function VoucherDetailPage() {
       {/* 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 시 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#0F151D] rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">📱 휴대폰 번호 등록</h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>

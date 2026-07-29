@@ -38,14 +38,14 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
           </div>
           {/* 🧭 2026-06-22: dead '팔로우' 버튼 제거(onClick·팔로우 API 없음) — 셀러명 링크로 스토어 진입. */}
           {sellerId && (
-            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-1.5 border border-gray-300 dark:border-[#2A2A2A] text-[11px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
+            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-1.5 border border-gray-300 dark:border-[#2A3446] text-[11px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
               스토어
             </Link>
           )}
         </div>
       )}
 
-      <div className="h-px bg-gray-100 dark:bg-[#1A1A1A]" />
+      <div className="h-px bg-gray-100 dark:bg-[#1A2334]" />
 
       {/* v4 Product info */}
       <section className="px-5 pt-5 pb-6">

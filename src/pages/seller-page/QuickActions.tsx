@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Utensils, Gift, Users, Radio } from 'lucide-react'
-import { isStoreOwner as isStoreOwnerRole } from '@/shared/seller-roles'
+import { ChevronRight, Utensils, Gift } from 'lucide-react'
 
 interface Props {
   hasMealVouchers: boolean
@@ -14,85 +13,42 @@ interface Props {
 /**
  * 셀러 빠른 액션 — 활동 데이터 기반 동적 배치.
  * 🛡️ TD-006 추출 (2026-05-06).
+ * 🖥️ 2026-07-16 (대표 — "공동구매 만들기 필요한가?"): '공동구매 만들기'와 '이용권 등록'이 둘 다
+ *   /seller/meal-voucher/new 로 가는 **중복 액션**이라 '공동구매 만들기' 제거. '이용권 등록'을 항상
+ *   단일 primary 로 두고, 진행 중 공구가 있으면 '공동구매 관리'만 추가 노출(필요한 것 우선).
  */
-export default function QuickActions({
-  hasMealVouchers, sellerType, activeGroupBuys, isInfluencer, hasLiveHistory
-}: Props) {
+export default function QuickActions({ activeGroupBuys }: Props) {
   const { t } = useTranslation()
-  // 🛡️ 2026-05-21 Phase D-5: isStoreOwner helper 사용.
-  const isVoucherFirst = hasMealVouchers || isStoreOwnerRole(sellerType)
 
   return (
     <div>
       <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.quickActions')}</h2>
       <div className="space-y-2">
-        {isVoucherFirst && (
-          <>
-            <Link to="/seller/meal-voucher/new"
-              className="flex items-center justify-between p-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
-              <div className="flex items-center gap-3">
-                <Utensils className="w-4 h-4" />
-                <div>
-                  <p className="text-[13px] font-bold">{t('seller.registerVoucher')}</p>
-                  <p className="text-[11px] text-gray-400">{t('seller.selectOnKakaoMap')}</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </Link>
-            {activeGroupBuys > 0 && (
-              <Link to="/seller/group-buy"
-                className="flex items-center justify-between p-3.5 bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Gift className="w-4 h-4 text-pink-600" />
-                  <div>
-                    <p className="text-[13px] font-bold text-gray-900">{t('seller.groupBuyManage')}</p>
-                    <p className="text-[11px] text-pink-600">{t('seller.activeGroupBuyCount', { count: activeGroupBuys })}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-            )}
-          </>
-        )}
-
-        {/* 공동구매 만들기 (항상 표시) */}
+        {/* 이용권 등록 — 항상 primary (이용권 발행 = 매장 공구 등록, 같은 흐름) */}
         <Link to="/seller/meal-voucher/new"
-          className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${
-            isVoucherFirst
-              ? 'bg-white border border-gray-200 hover:bg-gray-50'
-              : 'bg-gray-900 text-white hover:bg-gray-800'
-          }`}>
+          className="flex items-center justify-between p-3.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
           <div className="flex items-center gap-3">
-            <Users className={`w-4 h-4 ${isVoucherFirst ? 'text-gray-600' : ''}`} />
+            <Utensils className="w-4 h-4" />
             <div>
-              <p className={`text-[13px] font-bold ${isVoucherFirst ? 'text-gray-900' : ''}`}>{t('seller.createGroupBuy')}</p>
-              <p className={`text-[11px] ${isVoucherFirst ? 'text-gray-500' : 'text-gray-400'}`}>{t('seller.tierBasedDiscount')}</p>
+              <p className="text-[13px] font-bold">{t('seller.registerVoucher')}</p>
+              <p className="text-[11px] text-gray-400">{t('seller.selectOnKakaoMap')}</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
 
-        {isInfluencer && (
-          <Link to="/seller/live-broadcast"
-            className={`flex items-center justify-between p-4 rounded-xl transition-all ${
-              hasLiveHistory
-                ? 'bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg'
-                : 'bg-white border border-gray-200 hover:bg-gray-50'
-            }`}>
+        {/* 공동구매 관리 — 진행 중 공구가 있을 때만 */}
+        {activeGroupBuys > 0 && (
+          <Link to="/seller/group-buy"
+            className="flex items-center justify-between p-3.5 bg-pink-50 border border-pink-200 rounded-xl hover:bg-pink-100 transition-colors">
             <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${hasLiveHistory ? 'bg-white/20' : 'bg-red-50'}`}>
-                <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-white' : 'text-red-500'} ${hasLiveHistory ? 'animate-pulse' : ''}`} />
-              </div>
+              <Gift className="w-4 h-4 text-pink-600" />
               <div>
-                <p className={`text-[14px] font-bold ${hasLiveHistory ? 'text-white' : 'text-gray-900'}`}>
-                  {hasLiveHistory ? '🔴 라이브 방송 시작' : t('seller.live')}
-                </p>
-                <p className={`text-[11px] ${hasLiveHistory ? 'text-red-100' : 'text-gray-500'}`}>
-                  {hasLiveHistory ? '지난 방송 정보 자동 불러오기' : t('seller.startFirstLive')}
-                </p>
+                <p className="text-[13px] font-bold text-gray-900">{t('seller.groupBuyManage')}</p>
+                <p className="text-[11px] text-pink-600">{t('seller.activeGroupBuyCount', { count: activeGroupBuys })}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 ${hasLiveHistory ? 'text-white/70' : 'text-gray-400'}`} />
+            <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
         )}
       </div>

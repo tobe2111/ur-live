@@ -29,7 +29,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 </div>
                 <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
                   {showcaseCards.map((c, i) => (
-                    <div key={i} className={`bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
+                    <div key={i} className={`bg-white dark:bg-[#0F151D] border-2 border-dashed border-gray-200 dark:border-[#2A3446] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
                       <p className="text-3xl mb-1.5">{c.emoji}</p>
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
@@ -47,7 +47,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                   {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
                   <button
                     onClick={() => navigate(SHOPPING_TAB_HIDDEN ? '/' : '/browse')}
-                    className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                    className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
                   >
                     {SHOPPING_TAB_HIDDEN
                       ? t('groupBuy.ctaVouchers', { defaultValue: '교환권 보러가기' })

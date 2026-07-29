@@ -47,7 +47,7 @@ interface LedgerData {
 const EVENT_LABEL: Record<string, { label: string; emoji: string }> = {
   voucher_used: { label: '바우처 사용', emoji: '✅' },
   voucher_refund: { label: '환불', emoji: '↩️' },
-  agency_commission: { label: '에이전시 commission', emoji: '🤵' },
+  agency_commission: { label: '에이전시 수수료', emoji: '🤵' },
   group_buy_join: { label: '공구 참여', emoji: '🤝' },
   charge: { label: '충전', emoji: '💳' },
   refund: { label: '환불', emoji: '↩️' },
@@ -141,7 +141,8 @@ export default function MyLedgerPage() {
                 </thead>
                 <tbody>
                   {data.recent_payouts.map(p => {
-                    const meta = PAYOUT_STATUS[p.status]
+                    // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
+                    const meta = PAYOUT_STATUS[p.status] ?? { label: p.status || '처리 중', cls: 'bg-gray-100 text-gray-600' }
                     return (
                       <tr key={p.id} className="border-t border-gray-100">
                         <td className="px-4 py-2 text-gray-700">{p.period_start} ~ {p.period_end}</td>

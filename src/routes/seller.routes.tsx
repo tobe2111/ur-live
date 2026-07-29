@@ -3,16 +3,22 @@
  * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
  */
 import { lazy } from 'react'
-import { Route, Navigate } from 'react-router-dom'
+import { Route, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const SellerPage = lazy(() => import('@/pages/SellerPage'))
-const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage'))
-const SellerRegisterPage = lazy(() => import('@/pages/SellerRegisterPage'))
-const SellerRegisterBusinessPage = lazy(() => import('@/pages/SellerRegisterBusinessPage'))
-// 🛡️ 2026-05-20: 공급자 (가게 사장님) 자체 가입 — 기존 어드민 quick-register 보완.
+const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
+// 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
+//   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
+//   쿼리 보존 리다이렉트로 폐쇄 — 어디서 눌러도 같은 화면(카카오 계정 업그레이드)에 도착.
 const SellerRegisterSupplierPage = lazy(() => import('@/pages/SellerRegisterSupplierPage'))
+
+/** 레거시 셀러 가입 경로 → 단일 관문 리다이렉트 (에이전시 ?agency= 등 쿼리 보존). */
+function LegacySellerRegisterRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: '/seller/register/supplier', search: location.search }} replace />
+}
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
 const SellerForgotPasswordPage = lazy(() => import('@/pages/SellerForgotPasswordPage'))
@@ -29,21 +35,13 @@ const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage
 const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
-const SellerStreamNewPage = lazy(() => import('@/pages/SellerStreamNewPage'))
-const SellerStreamEditPage = lazy(() => import('@/pages/SellerStreamEditPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
 const SellerPublicPage = lazy(() => import('@/pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
-const SellerDonationsPage = lazy(() => import('@/pages/SellerDonationsPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
-const SellerShortsPage = lazy(() => import('@/pages/SellerShortsPage'))
-const SellerLiveBroadcastPage = lazy(() => import('@/pages/SellerLiveBroadcastPage'))
-const SellerVerifyWhipProxyPage = lazy(() => import('@/pages/SellerVerifyWhipProxyPage'))
-const SellerStreamingSetupPage = lazy(() => import('@/pages/SellerStreamingSetupPage'))
-const SellerLiveAnalyticsPage = lazy(() => import('@/pages/SellerLiveAnalyticsPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
 const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
@@ -66,12 +64,15 @@ const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPa
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
-const SellerStreamingGuidePage = lazy(() => import('@/pages/SellerStreamingGuidePage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
-const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
+// 🤝 2026-07-10: 3단 위임/promo 투명성 모델 (docs/design/vendor-commission-passthrough.md §4.3)
+const SellerAgencyDelegationPage = lazy(() => import('@/pages/SellerAgencyDelegationPage'))
+const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
+const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
+const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
 
 export function SellerRoutes() {
   return (
@@ -82,9 +83,11 @@ export function SellerRoutes() {
           <SellerLoginPage />
         </PublicRoute>
       } />
-      <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-      <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-      <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
+      <Route path="/seller/relink" element={<ErrorBoundary><SellerRelinkPage /></ErrorBoundary>} />{/* 🔁 카카오 계정 교체 재연결(비보호) */}
+      {/* 🏁 2026-07-02 단일 퍼널: 레거시 가입 경로 전부 → /seller/register/supplier (쿼리 보존) */}
+      <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/signup" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/register/business" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/register/supplier" element={<ErrorBoundary><SellerRegisterSupplierPage /></ErrorBoundary>} />
       <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
@@ -108,11 +111,6 @@ export function SellerRoutes() {
       <Route path="/seller/business-info" element={
         <ProtectedRoute requireSeller>
           <SellerBusinessInfoPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/castings" element={
-        <ProtectedRoute requireSeller>
-          <SellerCastingsPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/promote-boosts" element={
@@ -186,18 +184,6 @@ export function SellerRoutes() {
           <StoreOwnerDashboardPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/live" element={<Navigate to="/seller/live-broadcast" replace />} />
-      <Route path="/seller/live-control" element={<Navigate to="/seller/live-broadcast" replace />} />
-      <Route path="/seller/streams/new" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamNewPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/streams/:id" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamEditPage />
-        </ProtectedRoute>
-      } />
       <Route path="/seller/profile" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
@@ -223,19 +209,9 @@ export function SellerRoutes() {
           <SellerAlimtalkPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/donations" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/seller/transfers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/shorts" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerShortsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/group-buy" element={
@@ -323,12 +299,6 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerMiniShopPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): PRISM/OBS 송출 가이드 */}
-      <Route path="/seller/streaming-guide" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerStreamingGuidePage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
       <Route path="/seller/promo-codes" element={
         <ProtectedRoute requireSeller>
@@ -341,39 +311,30 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerFollowersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/seller/streaming-setup" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamingSetupPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-broadcast" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveBroadcastPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/verify-whip-proxy" element={
-        <ProtectedRoute requireSeller>
-          <SellerVerifyWhipProxyPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-broadcast/:streamId" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveBroadcastPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-analytics" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveAnalyticsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-analytics/:streamId" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveAnalyticsPage />
-        </ProtectedRoute>
-      } />
       <Route path="/seller/supply" element={
         <ProtectedRoute requireSeller>
           <SellerSupplyPage />
+        </ProtectedRoute>
+      } />
+      {/* 🤝 2026-07-10: 에이전시 위임(3단 모델) + promo 지출 투명성 + 인플 협업 deal */}
+      <Route path="/seller/agency-delegation" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerAgencyDelegationPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/promo-spend" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerPromoSpendPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/influencer-deals" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerInfluencerDealsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/experience-campaigns" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerExperienceCampaignsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/youtube/callback" element={

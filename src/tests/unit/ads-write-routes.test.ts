@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
-import { signAdsToken } from '@/features/marketing/api/ads-account'
+import { signAdsToken, ensureAdsAccountSchema } from '@/features/marketing/api/ads-account'
 import { saveSearchAdConnection } from '@/features/marketing/api/searchad-connection'
 
 /**
@@ -24,6 +24,11 @@ function makeD1(): D1Database {
 }
 const JWT = 'test-jwt-secret-0123456789'
 const KEK = 'k'.repeat(32)
+// 서버측 베타 게이트(access_unlocked) 통과용 — unlock·active 계정 시딩.
+async function seedUnlocked(DB: D1Database, id: number): Promise<void> {
+  await ensureAdsAccountSchema(DB)
+  await DB.prepare("INSERT OR IGNORE INTO ad_accounts (id, email, password_hash, company_name, status, access_unlocked) VALUES (?, ?, 'x', 'co', 'active', 1)").bind(id, 'u' + id + '@x.com').run()
+}
 type Ev = Parameters<typeof marketingRoutes.request>[2]
 const req = (path: string, method: string, token: string | null, body?: unknown, env?: Ev) =>
   marketingRoutes.request(path, {
@@ -34,7 +39,11 @@ const req = (path: string, method: string, token: string | null, body?: unknown,
 
 describe('WRITE 라우트 — 인증/검증(연결 전)', () => {
   let env: Ev, token: string
-  beforeEach(async () => { env = { DB: makeD1(), JWT_SECRET: JWT, DATA_ENCRYPTION_KEY: KEK } as unknown as Ev; token = await signAdsToken(7, JWT) })
+  beforeEach(async () => {
+    const DB = makeD1()
+    await seedUnlocked(DB, 7)
+    env = { DB, JWT_SECRET: JWT, DATA_ENCRYPTION_KEY: KEK } as unknown as Ev; token = await signAdsToken(7, JWT)
+  })
 
   it('PATCH /searchad/campaign: 미인증 401 / 캠페인 없음 400 / 미연결 400', async () => {
     expect((await req('/searchad/campaign', 'PATCH', null, { campaign_id: 'c1', action: 'pause' }, env)).status).toBe(401)
@@ -58,6 +67,7 @@ describe('WRITE 라우트 — 연결 후 정상경로(fetch 스텁)', () => {
   let calls: Array<{ url: string; method: string; body?: string }>
   beforeEach(async () => {
     const DB = makeD1()
+    await seedUnlocked(DB, 7)
     await saveSearchAdConnection(DB, 7, { customerId: '123', accessLicense: 'lic', secretKey: 'supersecretkey' }, KEK)
     env = { DB, JWT_SECRET: JWT, DATA_ENCRYPTION_KEY: KEK } as unknown as Ev
     token = await signAdsToken(7, JWT)

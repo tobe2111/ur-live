@@ -14,6 +14,7 @@ import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리 후속 정리 대상)
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
@@ -73,7 +74,14 @@ app.get('/settlements', async (c) => {
       total_agency_commission: totalAgencyCommission,
     }
 
-    return c.json({ success: true, data: enriched, summary })
+    // 💡 2026-07-11 (flip 체크리스트 B1 선반영 — additive): 재원 스위치 동봉 —
+    //   클라 프레이밍 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
+    //   fail-soft — read 실패해도 정산 응답 불변 (agency-delegation.routes.ts 패턴).
+    const fund = await c.env.DB.prepare(
+      `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
+    ).first<{ value: string }>().catch(() => null)
+
+    return c.json({ success: true, data: enriched, summary, funding_source: fund?.value || 'platform' })
   } catch {
     return c.json({ success: true, data: [], summary: { total: 0, pending: 0, confirmed: 0, completed: 0, total_amount: 0, agency_commission_rate: 2, total_agency_commission: 0 } })
   }
@@ -85,7 +93,7 @@ app.get('/settlements', async (c) => {
 // 참조: src/worker/cron/agency-monthly-invoices.ts
 app.get('/settlement-invoices', async (c) => {
   const agencyId = c.get('agency').id
-  const limit = Math.min(parseInt(c.req.query('limit') || '24'), 60)
+  const limit = Math.min(intParam(c.req.query('limit'), 24), 60)
 
   try {
     const { results } = await c.env.DB.prepare(`

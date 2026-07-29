@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight, Scale } from 'lucide-react'
 import { formatKST } from '@/utils/date'
-import { formatNumber } from '@/utils/format'
+import { formatNumber, formatWon } from '@/utils/format'
 
 interface DealStats {
   totals: {
@@ -19,6 +19,12 @@ interface DealStats {
   today: { count: number; amount: number; commission: number }
   thisMonth: { count: number; amount: number; commission: number }
   donations: { total_donations: number; total_donated: number }
+  // 전금법 모니터링 (additive — 서버 개별 쿼리 실패 시 null → '—' 표시)
+  outstanding_balance?: number | null
+  outstanding_free_balance?: number | null
+  outstanding_paid_balance?: number | null
+  charged_this_year?: number | null
+  charged_by_year?: { year: string; count: number; total: number }[] | null
 }
 
 interface ChargeRecord {
@@ -58,6 +64,11 @@ type Tab = 'charges' | 'users'
 
 function fmt(n: number | null | undefined): string {
   return formatNumber(n ?? 0)
+}
+
+// 전금법 카드: 집계 실패(null)·미도착(undefined)은 0 으로 위장하지 않고 '—' (silent 0 금지)
+function wonOrDash(n: number | null | undefined): string {
+  return n == null ? '—' : formatWon(n)
 }
 
 export default function AdminDealMonitorPage() {
@@ -115,6 +126,68 @@ export default function AdminDealMonitorPage() {
           subtitle={t('admin.dealMonitor.k001', { defaultValue: "유저 포인트 충전 및 소비 현황" })}
           icon={<Gift className="h-5 w-5" />}
         />
+      {/* 전금법(선불업) 모니터링 — 발행잔액/연간 발행 집계 (docs/design/pre-flip-risk-audit-2026-07.md §①) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-indigo-600" />
+          <h2 className="text-sm font-semibold text-gray-900">전금법 모니터링 — 선불전자지급수단 발행 집계</h2>
+        </div>
+        <p className="text-xs text-gray-500 mt-1 mb-4">
+          선불업 등록 기준은 법무 확인 후 이 카드에 임계 경보 추가 예정 — 현재는 수치 모니터링만
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MiniStat
+            label="발행잔액 (총)"
+            value={wonOrDash(s?.outstanding_balance)}
+            sub="전 유저 미상환 딜 잔액 합계"
+          />
+          <MiniStat
+            label="발행잔액 (유상)"
+            value={wonOrDash(s?.outstanding_paid_balance)}
+            sub="충전분 (총 − 무상)"
+          />
+          <MiniStat
+            label="발행잔액 (무상)"
+            value={wonOrDash(s?.outstanding_free_balance)}
+            sub="리워드·이벤트 지급분"
+          />
+          <MiniStat
+            label="올해 발행액 (충전)"
+            value={wonOrDash(s?.charged_this_year)}
+            sub={`${new Date().getFullYear()}년 1월 1일 이후 충전 총액`}
+          />
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-medium text-gray-600 mb-2">연도별 충전(발행) 총액 — 최근 3년</p>
+          {s?.charged_by_year == null ? (
+            <p className="text-sm text-gray-400">—</p>
+          ) : s.charged_by_year.length === 0 ? (
+            <p className="text-sm text-gray-400">충전 데이터가 없습니다</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm max-w-md">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">연도</th>
+                    <th className="px-3 py-2 text-right font-medium">충전 건수</th>
+                    <th className="px-3 py-2 text-right font-medium">발행(충전) 총액</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {s.charged_by_year.map(y => (
+                    <tr key={y.year}>
+                      <td className="px-3 py-2 text-gray-900 font-medium">{y.year}년</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{fmt(y.count)}건</td>
+                      <td className="px-3 py-2 text-right text-gray-900 font-medium">{formatWon(y.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -317,6 +390,16 @@ export default function AdminDealMonitorPage() {
       </div>
       </div>
     </AdminLayout>
+  )
+}
+
+function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+      <p className="text-xs text-gray-600 font-medium">{label}</p>
+      <p className="text-lg font-bold text-gray-900 mt-1">{value}</p>
+      <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>
+    </div>
   )
 }
 

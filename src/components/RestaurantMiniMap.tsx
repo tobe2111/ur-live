@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MapPin, ExternalLink } from 'lucide-react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { escapeHtml } from '@/shared/utils/html'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 
 declare global {
   interface Window { kakao: any }
@@ -27,11 +28,13 @@ interface Props {
   address?: string
   lat?: number | null
   lng?: number | null
+  /** 🎯 2026-07-01: 카카오 장소 페이지 URL(place.map.kakao.com/{id}) — 등록 시 캡처. 있으면 매장 페이지 직접 연결. */
+  placeUrl?: string | null
   /** 지도 높이 (px). 기본 220px */
   height?: number
 }
 
-export default function RestaurantMiniMap({ name, address, lat, lng, height = 220 }: Props) {
+export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, height = 220 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -106,10 +109,15 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
     if (!loaded || !resolvedCoord || !mapRef.current || mapInstance.current) return
     try {
       const pos = new window.kakao.maps.LatLng(resolvedCoord.lat, resolvedCoord.lng)
+      // 🗺️ 2026-07-25 (전수조사 M4): 터치 기기는 draggable=false — 기존엔 컨테이너 touch-action:pan-y
+      //   (세로는 페이지 스크롤)와 카카오 드래그가 동시에 활성이라, 대각선 제스처에서 지도가 찔끔
+      //   움직이다 페이지가 스크롤되는 지터 + 한 손가락 세로 팬 불가(가로만 됨). 미니맵은 위치 확인용 —
+      //   모바일 탐색은 "카카오맵" 링크로 유도(구글맵 cooperative 철학). PC(마우스) 드래그는 유지.
+      const coarsePointer = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
       mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
         center: pos,
         level: 4,
-        draggable: true,
+        draggable: !coarsePointer,
         scrollwheel: false, // 미니맵은 페이지 스크롤 보호 (사용자가 카카오맵 앱으로 이동 가능)
       })
       mapInstance.current.setZoomable(true)
@@ -127,17 +135,27 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   }, [loaded, resolvedCoord, name])
 
   // 카카오맵 외부 링크 URL
-  const kakaoMapUrl = resolvedCoord
-    ? `https://map.kakao.com/link/map/${encodeURIComponent(name || address || '매장')},${resolvedCoord.lat},${resolvedCoord.lng}`
-    : address
-    ? `https://map.kakao.com/?q=${encodeURIComponent(address)}`
+  // 🛡️ 2026-07-01 (대표 신고 — "카카오맵에 매장 페이지가 안 나옴"): `link/map/{name},{lat},{lng}` 는
+  //   좌표에 핀만 찍고 등록된 장소 페이지(정보/리뷰 카드)를 안 엶 + 좌표 오차 시 빈자리 핀.
+  //   → 매장명+주소로 `link/search` — 카카오에 등록된 실제 장소가 떠서 매장 페이지로 연결(좌표 정밀도 무관).
+  // 🎯 2026-07-01 (대표 "매장의 카카오맵 페이지와 연결"): 우선순위 —
+  //   ① 등록 시 캡처한 place_url(정확한 매장 페이지 직접 열림) ② 매장명+주소 link/search(등록 장소 surfacing)
+  //   ③ 좌표 map(폴백). place_url 은 place.map.kakao.com/{id} 형식만 허용(임의 URL 주입 방지).
+  const normalizedPlaceUrl = normalizeKakaoPlaceUrl(placeUrl)  // place.map.kakao.com / map.kakao.com / kko.to 만
+  const kakaoSearchQuery = [name, address].filter(Boolean).join(' ').trim()
+  const kakaoMapUrl = normalizedPlaceUrl
+    ? normalizedPlaceUrl
+    : kakaoSearchQuery
+    ? `https://map.kakao.com/link/search/${encodeURIComponent(kakaoSearchQuery)}`
+    : resolvedCoord
+    ? `https://map.kakao.com/link/map/${resolvedCoord.lat},${resolvedCoord.lng}`
     : null
 
   if (!address && !resolvedCoord) return null
 
   return (
-    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#0A0A0A] overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#1A1A1A]">
+    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] overflow-hidden">
+      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
           <div className="min-w-0">

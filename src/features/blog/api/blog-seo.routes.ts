@@ -44,23 +44,25 @@ app.get('/blog/og/:slug', async (c) => {
     const row = await c.env.DB.prepare(
       `SELECT title, tags FROM blog_posts WHERE slug = ? AND is_published = 1`
     ).bind(slug).first<{ title: string; tags: string }>()
-    if (row?.title) title = row.title
+    if (row?.title) title = row.title.replace(/\*\*/g, '')
     if (row?.tags) { try { tags = JSON.parse(row.tags) } catch { tags = [] } }
   } catch { /* fallback 기본값 */ }
 
   const lines = wrapTitle(title, 16, 3)
   const tagText = tags.slice(0, 3).map((t) => `#${t}`).join('   ')
+  // 🎨 2026-07-19 확정 브랜드(Ur Deal Final): 네이비 #1A2C42 배경(마케팅 배너) + 로즈 액센트 —
+  //   다크 배경 로즈 글자는 밝힌 로즈 #EF6E85(지시서 §6), 본문 웜화이트 #FAF7F5. 구 핑크(#ec4899)/검정 폐기.
   const titleSvg = lines
-    .map((ln, i) => `<text x="90" y="${260 + i * 84}" font-size="66" font-weight="800" fill="#ffffff">${xmlEscape(ln)}</text>`)
+    .map((ln, i) => `<text x="90" y="${260 + i * 84}" font-size="66" font-weight="800" fill="#FAF7F5">${xmlEscape(ln)}</text>`)
     .join('')
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0b0b0d"/>
-  <rect x="0" y="0" width="12" height="630" fill="#ec4899"/>
-  <text x="90" y="140" font-size="34" font-weight="700" fill="#ec4899" letter-spacing="2">유어딜 블로그</text>
+  <rect width="1200" height="630" fill="#1A2C42"/>
+  <rect x="0" y="0" width="12" height="630" fill="#E0526B"/>
+  <text x="90" y="140" font-size="34" font-weight="700" fill="#EF6E85" letter-spacing="2">유어딜 블로그</text>
   ${titleSvg}
-  <text x="90" y="560" font-size="30" font-weight="600" fill="#9ca3af">${xmlEscape(tagText)}</text>
-  <text x="1110" y="560" font-size="28" font-weight="700" fill="#6b7280" text-anchor="end">live.ur-team.com</text>
+  <text x="90" y="560" font-size="30" font-weight="600" fill="#9AA5B5">${xmlEscape(tagText)}</text>
+  <text x="1110" y="560" font-size="28" font-weight="700" fill="#6B7686" text-anchor="end">urdeal.kr</text>
 </svg>`
 
   return new Response(svg, {
@@ -83,10 +85,10 @@ app.get('/blog/rss', async (c) => {
       const link = `${origin}/blog/${p.slug}`
       const date = p.published_at ? new Date(p.published_at).toUTCString() : ''
       return `    <item>
-      <title>${xmlEscape(p.title)}</title>
+      <title>${xmlEscape((p.title || '').replace(/\*\*/g, ''))}</title>
       <link>${xmlEscape(link)}</link>
       <guid isPermaLink="true">${xmlEscape(link)}</guid>
-      <description>${xmlEscape(p.summary || '')}</description>${date ? `\n      <pubDate>${date}</pubDate>` : ''}
+      <description>${xmlEscape((p.summary || '').replace(/\*\*/g, ''))}</description>${date ? `\n      <pubDate>${date}</pubDate>` : ''}
     </item>`
     }).join('\n')
   } catch { /* 비어도 유효한 피드 반환 */ }

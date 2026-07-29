@@ -13,7 +13,9 @@
 
 set -e
 
+# 시드 콘텐츠(blog-seed.ts) 또는 버전/동기 로직(blog.routes.ts) 중 하나가 함께 바뀌면 OK.
 BLOG_FILE="src/features/blog/api/blog.routes.ts"
+BLOG_SEED_FILE="src/features/blog/api/blog-seed.ts"
 
 # fact SSOT 파일 (블로그가 서술하는 수치의 출처)
 FACT_FILES=(
@@ -35,9 +37,9 @@ fi
 
 [ -z "$staged" ] && exit 0
 
-# 블로그 시드가 이미 같이 변경됐으면 OK
-if echo "$staged" | grep -q "^${BLOG_FILE}$"; then
-  echo "✅ 블로그 fact 동기화 OK (${BLOG_FILE} 함께 변경됨)"
+# 블로그 시드(또는 버전/동기 로직)가 이미 같이 변경됐으면 OK
+if echo "$staged" | grep -qE "^(${BLOG_FILE}|${BLOG_SEED_FILE})$"; then
+  echo "✅ 블로그 fact 동기화 OK (블로그 시드/라우트 함께 변경됨)"
   exit 0
 fi
 
@@ -55,7 +57,7 @@ hits=$(echo "$hits" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
 echo ""
 echo "⚠️  블로그 시드 fact 업데이트 누락 의심"
 echo "================================="
-echo "핵심 수치 SSOT 가 변경됐는데 블로그 시드(${BLOG_FILE})는 안 바뀌었습니다:"
+echo "핵심 수치 SSOT 가 변경됐는데 블로그 시드(${BLOG_SEED_FILE})는 안 바뀌었습니다:"
 for f in $hits; do echo "  - $f"; done
 echo ""
 echo "블로그 글에 수수료율/원천징수/딜포인트/최소후원 등이 서술돼 있으면 시드도 고치고"

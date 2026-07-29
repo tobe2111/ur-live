@@ -48,6 +48,24 @@ export async function handleAgencyAutoSettle(env: Env): Promise<{ processed: num
   let settled = 0;
   let totalCommission = 0;
 
+  // 🧯 2026-07-05 (운영 감사 Q7 — 에이전시 정산 rail 충돌 해소): 이 cron 은 **레거시 rail**.
+  //   canonical rail(사용시점 셰어 recordAgencyCommissionShare + 매장영입 agency_store_intro_commissions,
+  //   둘 다 예산 아비터/월보너스 경유)과 별개로 소속 셀러 GMV × commission_rate 를 또 정산해
+  //   **이중 지급** 소지 + 사업자 여부 무관 **일률 3.3% 원천징수**(사업자는 세금계산서 대상 — 부정확).
+  //   → platform_settings.agency_auto_settle_legacy_enabled === 'true' 일 때만 실행(기본 OFF = 봉인).
+  //   레거시 계약(구 에이전시)이 정말 필요하면 어드민이 명시적으로 켠다. agencies.auto_settle 개별
+  //   플래그는 그대로 존중(글로벌 게이트 AND 개별 opt-in).
+  try {
+    const gate = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'agency_auto_settle_legacy_enabled'")
+      .first<{ value: string }>();
+    if (gate?.value !== 'true') {
+      logInfo('[cron:agency-auto-settle] legacy rail 봉인됨 (agency_auto_settle_legacy_enabled != true) — canonical rail(사용시점 셰어+매장영입)이 정산 담당');
+      return { processed: 0, settled: 0, total_commission: 0 };
+    }
+  } catch {
+    return { processed: 0, settled: 0, total_commission: 0 }; // 설정 조회 실패 → 봉인 유지(안전)
+  }
+
   // 1. auto_settle=1 인 활성 에이전시 조회
   let agencies: AgencyRow[] = [];
   try {

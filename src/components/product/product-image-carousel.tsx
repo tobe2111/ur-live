@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 
 interface ProductImageCarouselProps {
   images: string[];
@@ -22,7 +23,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
 
   if (!images || images.length === 0) {
     return (
-      <div className="relative w-full bg-gray-50 dark:bg-[#121212] aspect-square flex items-center justify-center">
+      <div className="relative w-full bg-gray-50 dark:bg-[#1A2334] aspect-square flex items-center justify-center">
         <span className="text-gray-400 dark:text-gray-500 text-sm">이미지 없음</span>
       </div>
     )
@@ -34,8 +35,10 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
         <div className="flex">
           {images.map((src, index) => (
             <div key={src || `slide-${index}`} className="relative aspect-square w-full flex-none">
+              {/* 🚑 2026-07-02 (상세 리뷰): raw 원본(최대 1MB+) → cfImage 리사이즈 — LCP 단축 */}
               <img
-                src={src}
+                src={cfImage(src, { width: 800, quality: 85, format: 'auto' }) || src}
+                srcSet={cfSrcSet(src, 800) || undefined}
                 alt={`Product image ${index + 1}`}
                 className="w-full h-full object-cover"
                 loading={index === 0 ? 'eager' : 'lazy'}

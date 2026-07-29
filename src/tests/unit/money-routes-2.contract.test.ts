@@ -19,7 +19,8 @@ function mounted(app: { routes: { method: string; path: string }[] }): Set<strin
 
 describe('wholesale(도매 B2B) 라우트 계약 + 인증', () => {
   const EXPECTED = [
-    'GET /catalog', 'GET /catalog/:id', 'GET /me', 'GET /orders', 'GET /orders/:id',
+    // 🛡️ 2026-07-02: /catalog/:id 는 /catalog/export 와의 라우트 섀도잉 방지를 위해 숫자-only 제약(:id{[0-9]+}).
+    'GET /catalog', 'GET /catalog/:id{[0-9]+}', 'GET /me', 'GET /orders', 'GET /orders/:id',
     'GET /proposals', 'GET /statement', 'POST /orders', 'POST /orders/confirm',
   ]
   it('엔드포인트 전부 마운트', () => {

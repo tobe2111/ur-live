@@ -58,8 +58,17 @@ if domain money; then
   run "CHECK 제약 위반"                 node scripts/check-status-constraints.mjs
   run "쿼리 isError(빈화면 위장)"        node scripts/check-query-iserror.mjs
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
+  run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
+  run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
+  run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
+  run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
+  run "크롤 재시도 쿨다운"                node scripts/check-crawl-cooldown.mjs -s
+  run "접힌 리드(중복병합) 누수"          node scripts/check-merged-lead-filter.mjs
+  run "수집 러너 스케줄 누락"            node scripts/check-collector-cron.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
+  run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
+  run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
 fi
 
 if domain schema; then
@@ -71,11 +80,13 @@ if domain schema; then
   run "products SELECT * 금지"          bash scripts/check-no-select-star-products.sh
   run "products/sellers 컬럼 예산"       node scripts/check-products-column-budget.mjs
   run "PRODUCT_DETAIL_FIELDS 복구가능"   node scripts/check-product-detail-fields-repairable.mjs
+  run "pagination NaN 크래시(page=abc)"  node scripts/check-pagination-nan.mjs -s
 fi
 
 if domain classify; then
   echo "🏷️  상품 종류 판별 · 라우팅"
   run "group_buy_status 종류판별 금지"   node scripts/check-groupbuy-status-classify.mjs
+  run "동네딜↔쇼핑 완전분리(general)"    node scripts/check-dongnedeal-separation.mjs
   run "도매주문 상태 무결성"             env STRICT_WHS_STATUS=1       node scripts/check-wholesale-order-status.mjs
 fi
 
@@ -84,10 +95,14 @@ if domain ui; then
   run "테마 일관성(dark variant)"        node scripts/check-theme-consistency.mjs
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
+  run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
+  run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
 fi
 
 if domain structure; then
   echo "🧹 코드 구조 (god 파일 방지)"
+  # 의도적으로 전수(-a) 유지 — 게이트는 repo 전체 건강 뷰. PR CI(verify.yml)만 --changed-only
+  # (main 드리프트가 무관한 PR 을 실패시키던 문제, 2026-07-11). 드리프트는 --rebaseline 으로 정렬.
   run "파일 크기 래칫(god 파일)"          env STRICT_FILE_SIZE=1        node scripts/check-file-size.mjs -a
 fi
 
@@ -97,6 +112,9 @@ if domain deploy; then
   run "Hono 라우터 패턴(405)"            bash scripts/check-router-patterns.sh
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
+  run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
+  run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
+  run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

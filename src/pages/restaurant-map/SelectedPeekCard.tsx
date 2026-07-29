@@ -1,6 +1,7 @@
 import { Radio, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Restaurant } from './types'
 
 interface Props {
@@ -14,13 +15,13 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
   const { t } = useTranslation()
   return (
     <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-xl border border-gray-100 dark:border-[#1A1A1A] p-3.5 relative">
-        <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1A1A]">
+      <div className="bg-white dark:bg-[#0F151D] rounded-2xl shadow-xl border border-gray-100 dark:border-[#2A3446] p-3.5 relative">
+        <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A2334]">
           <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
         </button>
         <div className="flex gap-3 pr-6">
           {selected.image_url ? (
-            <img src={selected.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+            <img src={cfImage(selected.image_url, { width: 200, quality: 82, format: 'auto' }) || selected.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
           ) : (
             <div className="w-16 h-16 rounded-xl bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center shrink-0">
               <span className="text-xl">🍽️</span>
@@ -37,8 +38,9 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
             </p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-base font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+              {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
               {selected.original_price > selected.price && (
-                <span className="text-[10px] bg-red-500 text-white font-bold px-1 py-0.5 rounded">
+                <span className="text-[10px] bg-brand text-white font-bold px-1 py-0.5 rounded">
                   -{Math.round((1 - selected.price / selected.original_price) * 100)}%
                 </span>
               )}
@@ -46,7 +48,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
           </div>
           <button
             onClick={() => navigate(`/products/${selected.id}`)}
-            className="self-center px-3 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+            className="self-center px-3 py-2 bg-brand text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
           >
             {t('map.detail.buy', { defaultValue: '구매' })}
           </button>
