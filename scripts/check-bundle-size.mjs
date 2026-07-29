@@ -48,16 +48,31 @@ if (!distDir) {
 
 const files = fs.readdirSync(distDir);
 
+/**
+ * gzip 크기를 **직접 계산**한다.
+ *
+ * ⚠️ 2026-07-29: 예전엔 디스크의 `.gz` 사이드카만 읽었다(`existsSync(f + '.gz') ? … : 0`).
+ *   **vite 는 `.gz` 를 만들지 않는다** → 모든 파일의 gzip 이 0 → totalGzip 이 항상 0 →
+ *   `0 > 1.5` 는 영원히 거짓 → **gzip 예산이 몇 달간 통과만 했다.**
+ *   그 죽은 값이 raw 예산 상향 4번의 근거로 인용됐다("gzip 은 여유 있으니 감지력은 유지된다").
+ *   critical-path 예산은 같은 파일에서 이미 `zlib.gzipSync` 로 직접 재고 있었다 — 그 방식으로 통일한다.
+ *   사이드카가 있으면(압축 산출물을 만드는 빌드) 그걸 우선 쓴다: 실제 배포 바이트에 더 가깝다.
+ */
+const gzipOf = (fileName) => {
+  const gzPath = path.join(distDir, fileName + '.gz');
+  if (fs.existsSync(gzPath)) return fs.statSync(gzPath).size;
+  return zlib.gzipSync(fs.readFileSync(path.join(distDir, fileName))).length;
+};
+
 const jsFiles = files
   .filter(f => f.endsWith('.js'))
   .map(f => {
     const stats = fs.statSync(path.join(distDir, f));
-    const gzPath = path.join(distDir, f + '.gz');
     const brPath = path.join(distDir, f + '.br');
     return {
       name: f,
       size: stats.size,
-      gzip: fs.existsSync(gzPath) ? fs.statSync(gzPath).size : 0,
+      gzip: gzipOf(f),
       brotli: fs.existsSync(brPath) ? fs.statSync(brPath).size : 0,
     };
   })
@@ -68,8 +83,7 @@ const cssFiles = files
   .map(f => ({
     name: f,
     size: fs.statSync(path.join(distDir, f)).size,
-    gzip: fs.existsSync(path.join(distDir, f + '.gz'))
-      ? fs.statSync(path.join(distDir, f + '.gz')).size : 0,
+    gzip: gzipOf(f),
   }));
 
 // ── Critical path: index.html 의 entry <script type="module"> + <link rel="modulepreload"> 합 ──
@@ -115,11 +129,14 @@ const BUDGET = {
   //   근거로 들었는데, **그 gzip 예산은 죽어 있다**: `f.gzip` 은 디스크의 `.gz` 파일에서만 읽고(line 60·71)
   //   vite 는 `.gz` 를 만들지 않는다 → totalGzip 이 **항상 0** → `0 > 1.5` 는 영원히 거짓이다.
   //   즉 지금 살아 있는 감지기는 **critical-path 하나뿐**이다(294.5/300 — 여유 5.5KB, 이쪽이 진짜 위험선).
-  //   TODO(별도, 빌드 가능한 환경 필요): critical-path 가 이미 쓰는 방식(line 91 `zlib.gzipSync`)으로
-  //   totalGzip 을 실제 계산하고, 실측값 기준으로 totalGzipMB 를 재설정해 되살릴 것.
-  //   (지금 그냥 켜면 실제 gzip 총량이 1.5MB 를 넘어 전 PR 이 red 가 된다 — 측정 없이 켜면 안 된다.)
+  //   ✅ 2026-07-29 후속: 측정은 되살렸다(`gzipOf` — zlib 직접 계산). 남은 것은 **임계값 교정**뿐이다.
   totalRawMB: 8.8,
-  totalGzipMB: 1.5,
+  // 🔴 CALIBRATION PENDING — 측정은 살아났지만 임계값이 아직 실측 기준이 아니다.
+  //   `null` = "아직 교정 안 됨" → 예산 위반으로 올리지 않고, 대신 측정값을 **크게 찍는다**.
+  //   옛 값 1.5 를 그대로 켜면 실제 총량(raw 8.8MB 기준 추정 2.2~2.5MB)이 넘어 **전 PR 이 red** 가 된다.
+  //   교정 절차: CI 의 "Bundle size report" 로그에서 측정값을 읽고 → 여기에 [측정값 + 헤드룸] 을 넣는다.
+  //   ⚠️ 이 null 상태를 오래 두지 말 것 — 그 자체가 "죽은 예산" 이다(이 파일이 겪은 바로 그 상태).
+  totalGzipMB: null,
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
   // 비대 감지 임계는 유지 (900KB 넘으면 진짜 코드 분할 필요).
@@ -139,7 +156,14 @@ const violations = [];
 if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
   violations.push(`총 raw JS ${(totalSize / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalRawMB} MB`);
 }
-if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
+// 🛡️ 측정 실패는 통과가 아니다 — 이 파일이 정확히 그렇게 몇 달을 통과했다(항상 0).
+if (totalGzip === 0) {
+  violations.push('총 gzip 을 측정하지 못했다 (js 산출물 0건 또는 압축 실패) — 예산 검사가 무력화된 상태다');
+} else if (BUDGET.totalGzipMB == null) {
+  // 교정 대기: 위반으로 올리지 않되, 측정값을 눈에 띄게 남겨 다음 커밋이 임계값을 확정하게 한다.
+  console.error(`\n🔴 [CALIBRATION PENDING] 총 gzip JS 실측 = ${(totalGzip / 1024 / 1024).toFixed(3)} MB (${(totalGzip / 1024).toFixed(1)} KB)`);
+  console.error(`   → scripts/check-bundle-size.mjs 의 BUDGET.totalGzipMB 를 이 값 + 헤드룸으로 설정하세요.`);
+} else if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
   violations.push(`총 gzip JS ${(totalGzip / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalGzipMB} MB`);
 }
 // 🛡️ 2026-07-29: "못 쟀다" 를 "예산 안" 으로 읽지 않는다.
@@ -215,7 +239,7 @@ if (jsonMode) {
 
   console.log('\n💰 Budget:');
   console.log(`   Total raw JS:  ${(totalSize / 1024 / 1024).toFixed(2)} / ${BUDGET.totalRawMB} MB`);
-  console.log(`   Total gzip JS: ${(totalGzip / 1024 / 1024).toFixed(2)} / ${BUDGET.totalGzipMB} MB`);
+  console.log(`   Total gzip JS: ${(totalGzip / 1024 / 1024).toFixed(3)} / ${BUDGET.totalGzipMB ?? '미교정(CALIBRATION PENDING)'} MB`);
   console.log(`   Single max KB: ${BUDGET.singleRawKB} KB`);
   if (criticalGzip > 0) {
     console.log(`   Critical path: ${(criticalGzip / 1024).toFixed(1)} / ${BUDGET.criticalGzipKB} KB gzip (entry+modulepreload ${criticalFiles.length} files)`);
