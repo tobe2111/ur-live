@@ -38,6 +38,15 @@ export interface AutoCollectStats {
     yt: { configured: boolean; found: number; saved: number; error?: string }
     naver: { configured: boolean; found: number; saved: number; error?: string }
     tistory?: { configured: boolean; found: number; saved: number; error?: string }
+    /**
+     * 🏘️ 카페 — **네이버 블로그와 분리해서 센다**(2026-07-29). 그전엔 카페 수확이 `diag.naver` 에 합산돼
+     *   블로그 성과처럼 보였다. 카페는 성격이 다르다: 라이브 표본 200건에서 **연락 가능 2건**
+     *   (이메일 0 · 인스타 0 · 외부링크 2)이고 보강 경로도 없다(`enrichNaverActivity` 는 blog 만 본다).
+     *   즉 **연락 불가인데 키워드마다 예산을 쓴다.**
+     *   ⇒ 끌지 말지는 수집 정책(대표 결정, `ADS_COLLECT_CAFE_ENABLED='false'`)이지만, **판단에 필요한
+     *     비용/수확이 합산에 가려 안 보이던 것**은 결함이다. 결정하는 자리에 숫자를 놓는다.
+     */
+    cafe?: { found: number; saved: number }
     /** @deprecated 2026-07-28 — 블로거 보강은 전용 레인으로 이전. 옛 스냅샷 호환용. */
     naver_enrich?: NaverEnrichDiag
   }

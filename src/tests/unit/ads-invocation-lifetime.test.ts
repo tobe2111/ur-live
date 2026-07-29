@@ -159,3 +159,29 @@ describe('재조우 보강 스킵 — 배선과 예산 회계', () => {
     expect((col.match(/alreadyContacted\s*\}/g) || []).length).toBeGreaterThanOrEqual(2)
   })
 })
+
+/**
+ * 🏘️ **카페 수확을 블로그에 합산하지 않는다** — 결정하는 자리에 숫자를 놓기 위해 (2026-07-29).
+ *
+ *   카페는 성격이 다르다. 라이브 표본 200건에서 **연락 가능 2건**(이메일 0 · 인스타 0 · 외부링크 2)이고
+ *   보강 경로도 없다(`enrichNaverActivity` 는 `platform='naver_blog'` 만 본다). 즉 연락 불가인데
+ *   키워드마다 예산을 쓴다. 끌지 말지는 **수집 정책(대표 결정)** 이지만, 그 판단에 필요한 수치가
+ *   `diag.naver` 에 합산돼 **블로그 성과처럼 보이던 것**은 결함이다.
+ *
+ *   ⚠️ 이 테스트는 카페를 끄지 않는다 — 기본값은 그대로다(`ADS_COLLECT_CAFE_ENABLED`).
+ */
+describe('수집 진단 — 카페는 따로 센다', () => {
+  const col = read('src/features/marketing/api/influencer-auto-collect.ts')
+
+  it('카페 저장 결과가 diag.cafe 로 간다(diag.naver 합산 금지)', () => {
+    const block = /discoverNaverCafes\([\s\S]{0,600}?catch/.exec(col)?.[0] || ''
+    expect(block, 'discoverNaverCafes 호출부를 못 찾았다').toBeTruthy()
+    expect(block).toMatch(/diag\.cafe\.found/)
+    expect(block).toMatch(/diag\.cafe\.saved/)
+    expect(block).not.toMatch(/diag\.naver\.(found|saved)/)
+  })
+
+  it('diag 초기값에 cafe 가 있다 — 없으면 런타임에 undefined 증가로 조용히 NaN 이 된다', () => {
+    expect(col).toMatch(/cafe:\s*\{\s*found:\s*0,\s*saved:\s*0\s*\}/)
+  })
+})
