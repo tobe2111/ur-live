@@ -43,7 +43,7 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
     return (
       <button onClick={() => exportExcel(undefined, true)} disabled={exporting}
         className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-40"
-        title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음만, 점수 높은 순">
+        title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음. 유어딜 적합 카테고리(맛집·뷰티·여행·숙소·카페 등)가 위, 그 안에서 점수 높은 순">
         {exporting ? '내보내는 중…' : '📇 연락 대상만 받기'}
       </button>
     )
