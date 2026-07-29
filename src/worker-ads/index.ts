@@ -47,6 +47,16 @@ app.get('/__ads/health', (c) => {
       neis: on('ADS_NEIS_ENABLED'), hira: on('ADS_HIRA_ENABLED'), store_kakao: on('ADS_STORE_KAKAO_ENABLED'),
       enrich_disabled: on('ADS_ENRICH_DISABLED'),
     },
+    // 🎛️ 튜닝값(비밀 아님) — 2026-07-29 신설. 게이트는 켜졌는지만 보여 주는데, 대표가 대시보드에서
+    //   라운드·카페 스위치를 바꿔도 **적용됐는지 밖에서 확인할 방법이 없었다**(실제로 오늘 그 질문에 답을
+    //   못 했다). 미설정이면 코드 기본값이 무엇인지까지 같이 보여 준다.
+    tuning: {
+      collect_rounds: e.ADS_COLLECT_ROUNDS ?? '(미설정 → 기본 4)',
+      influencer_enrich_rounds: e.ADS_INFLUENCER_ENRICH_ROUNDS ?? '(미설정 → 기본 12)',
+      collect_cafe: e.ADS_COLLECT_CAFE_ENABLED ?? '(미설정 → 켜짐)',
+      subrequest_budget: e.ADS_SUBREQUEST_BUDGET ?? '(미설정 → 기본 300, 실효는 학습 상한과 min)',
+      yt_search_budget: e.ADS_YT_SEARCH_BUDGET ?? '(미설정 → 기본 90)',
+    },
   })
 })
 
