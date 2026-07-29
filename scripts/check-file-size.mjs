@@ -81,13 +81,25 @@ if (REBASELINE) {
 let baseline = {}
 try { baseline = JSON.parse(readFileSync(join(ROOT, BASELINE_PATH), 'utf8')) } catch { baseline = {} }
 
-// commit 메시지 [SKIP_SIZE] (pre-commit 시)
-try {
-  if (existsSync(join(ROOT, '.git/COMMIT_EDITMSG'))) {
-    const msg = readFileSync(join(ROOT, '.git/COMMIT_EDITMSG'), 'utf8')
-    if (/\[SKIP_SIZE\]/.test(msg)) { console.log('✅ file-size: [SKIP_SIZE] — skip.'); process.exit(0) }
-  }
-} catch { /* ignore */ }
+/**
+ * commit 메시지 우회 (pre-commit 전용).
+ *
+ * 🕳️ **게이트/CI 모드에서는 읽지 않는다** (2026-07-29 실사고). `.git/COMMIT_EDITMSG` 는 *지금 쓰는* 메시지가
+ *   아니라 **마지막으로 쓴** 메시지다 — pre-commit 훅 안에서는 둘이 같지만, 그 밖에서는 **이전 커밋의 것**이
+ *   남아 있다. 그래서 한 번 우회 토큰이 들어가면 **그 뒤의 모든 로컬 실행이 조용히 통과**한다.
+ *   실제로 그렇게 됐다: 커밋 메시지에 "…(`[SKIP_SIZE]` 미사용)" 이라고 *안 썼다는 설명*을 적었는데
+ *   부분 문자열 매칭이라 그게 우회로 잡혔고, 그 뒤 `-a`·`--changed-only` 가 전부 skip 을 찍었다.
+ *   위반(605줄)은 CI 가 잡았다 — CI 는 fresh checkout 이라 그 파일이 없었기 때문이지, 판정이 달라서가 아니다.
+ *   ⇒ 우회는 **그 커밋 한 번**에만 유효해야 한다. 전수(-a)·PR(--changed-only) 판정은 우회 불가.
+ */
+if (!ALL && !CHANGED_ONLY) {
+  try {
+    if (existsSync(join(ROOT, '.git/COMMIT_EDITMSG'))) {
+      const msg = readFileSync(join(ROOT, '.git/COMMIT_EDITMSG'), 'utf8')
+      if (/\[SKIP_SIZE\]/.test(msg)) { console.log('✅ file-size: [SKIP_SIZE] — skip (pre-commit).'); process.exit(0) }
+    }
+  } catch { /* ignore */ }
+}
 
 // --changed-only: 이 브랜치(merge-base(base, HEAD)..HEAD)가 실제 바꾼 파일만.
 // base ref 미해석(얕은 clone / remote 없음)이면 전수(-a) 폴백 — 조용히 축소 판정하지 않음.

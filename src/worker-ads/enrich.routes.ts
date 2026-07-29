@@ -68,8 +68,16 @@ export function resolveEnrichRounds(raw: string | undefined, fallback = 12): num
  *
  * ⚠️ 아직 확실히 모르는 것: spawn 을 `waitUntil` 로 걸었을 때 **체인이 depth 1 너머로 이어지는지**.
  *   이어지면 계획대로 N라운드, 안 이어지면 틱당 1라운드(구 동작과 동일 — 최악도 회귀는 아니다).
- *   그래서 ③으로 **깊이를 계측**한다: 다음 틱에 하트비트의 `depth` 가 0 이면 체인이 안 이어지는 것이고,
- *   그때 처방은 "라운드를 체인이 아니라 cron 이 직접 N번 kick"(루트가 수명을 쥔다)이다.
+ *   판정은 **레인 스냅샷의 `enrich_lane.depth`** 로 한다. 0 이면 체인이 안 이어지는 것이고, 그때 처방은
+ *   "라운드를 체인이 아니라 cron 이 직접 N번 kick"(루트가 수명을 쥔다)이다.
+ *
+ * 🕳️ **하트비트로는 못 본다**(2026-07-29 12:00 실측 — 내 계측 설계 결함). 같은 이름
+ *   `ads:enrich-influencer-driver` 에 부모(`kick` 의 `adsBeat`)와 자식(아래 `driverBeat`)이 **둘 다** 쓰는데,
+ *   부모는 자식 응답 *뒤에* 쓰므로 **언제나 부모가 마지막 writer** 다. 실측에서 `result: null` 로 찍혔다 —
+ *   내가 실은 `{planned, depth, chained}` 가 통째로 덮인 것이다. `ads:collect` 의 `"started=true"` 가
+ *   살아남은 건 그 부모가 아직 응답을 기다리는 중이라 못 덮었기 때문이지, 구조가 달라서가 아니다.
+ *   ⇒ 깊이는 이름을 다투지 않는 곳(레인 스냅샷)에 싣는다. `driverBeat` 은 그대로 두되(부모가 죽었을 때의
+ *     유일한 기록이라 가치가 있다) **판정 근거로 삼지 않는다.**
  *
  * ⚠️ 순차성 유지: 다음 라운드는 이번 **작업이 끝난 뒤** spawn 되므로 `perf_checked_at` 도장 이후에
  *   다음 구간을 집는다(동시 실행 아님). 💥 실패하면 다음을 안 낳는다 — 다음 정각이 이어받는다.
@@ -157,9 +165,11 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
+  // 🔢 depth 를 레인 스냅샷에 실어 보낸다 — 하트비트에 실으면 부모(`kick`)가 덮어써 안 보인다(실측 12:00).
+  const d = parseInt(c.req.query('depth') || '0', 10)
   return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer-driver', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-    return runInfluencerEnrich(c.env)
+    return runInfluencerEnrich(c.env, Number.isFinite(d) && d > 0 ? d : 0)
   })
 })
 

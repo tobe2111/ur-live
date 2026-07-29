@@ -24,6 +24,7 @@ import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-perfo
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS, acquireLeaseDetect } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap, platformSubreqCap, capAfterAbandonedRun } from './collect-budget'
 import { makeAlreadyContacted } from './influencer-known-contacts'
+import { KW_DDL } from './influencer-keyword-ddl'
 import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
@@ -39,7 +40,7 @@ import { promoteHashtagKeywords } from './influencer-keyword-promote'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, interleavePicks } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -62,29 +63,6 @@ const STATS_KEY = 'ads_autocollect_stats'
 // ⚙️ 설정 읽기/쓰기(배치 포함)는 `influencer-settings.ts` — 기존 import 경로 호환 위해 재수출.
 export { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
 import { readSetting, readSettings, writeSetting, writeSettings } from './influencer-settings'
-
-/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
-const KW_DDL: string[] = [
-  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    keyword TEXT NOT NULL UNIQUE,
-    category TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    hits INTEGER NOT NULL DEFAULT 0,
-    source TEXT NOT NULL DEFAULT 'seed',
-    created_at DATETIME DEFAULT (datetime('now'))
-  )`,
-  // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
-  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
-  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
-  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
-  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
-]
 
 const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
 
@@ -299,7 +277,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   커서 순환(picks)은 네이버 폭 커버 담당 그대로 — YT 픽과 중복만 제거해 총량(totalPick) 유지.
   const ytPicks = pickYtKeywords(kws, batch, Date.now())
   const ytIds = new Set(ytPicks.map(k => k.id))
-  const finalPicks = [...ytPicks, ...picks.filter(p => !ytIds.has(p.id))].slice(0, totalPick)
+  // 🔀 번갈아 배치 — 꼬리의 커서 픽이 영영 안 돌던 것(실측 `from_cursor: 0`). 근거는 `interleavePicks` docblock.
+  const finalPicks = interleavePicks(ytPicks, picks.filter(p => !ytIds.has(p.id)), totalPick)
 
   const hasYouTube = !!env.YOUTUBE_API_KEY
   const naverId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
@@ -403,8 +382,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
-    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
-    if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages <= ytBudgetTotal) {
+    // 🎯 YT 슬롯은 **성과가중 픽에만**(멤버십) — 위치 기반이면 배치 순서가 쿼터 배분까지 바꾼다(위 docblock).
+    const ytSlot = ytIds.has(k.id) && ytUsed < batch
+    if (hasYouTube && !quotaHit && ytSlot && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
+    if (hasYouTube && !quotaHit && ytSlot && ytSearchUsed + ytPages <= ytBudgetTotal) {
       ytUsed++
       ytSearchUsed += ytPages // 검색 1페이지 = search.list 1회(예산 차감은 시도 기준 — 실패 호출도 구글이 카운트)
       try {
