@@ -231,13 +231,15 @@ describe('worker-ads — 생 waitUntil 레인은 관측 밖이다(래칫)', () =
     expect(rawLanes().length).toBeGreaterThanOrEqual(5)
   })
 
-  it('🔒 하트비트 없는 생 레인이 늘어나지 않는다(현재 5 — 새 레인은 반드시 kick 또는 adsBeat)', () => {
+  it('🔒 하트비트 없는 생 레인이 하나도 없다 — 새 레인은 반드시 kick 또는 adsBeat', () => {
     // ⚠️ 본문을 모듈로 분리하고 `adsBeat` 을 **인자로 넘기는** 형태도 관측된 것으로 본다
     //   (`runSheetsMirrorLane(env, adsBeat)`). 호출만 보면 놓치므로 토큰 뒤 `(`·`,`·`)` 를 모두 받는다.
     //   그 형태의 진짜 보증은 아래 짝 검사다 — 넘긴 쪽이 실제로 하트비트를 남기는지 모듈에서 확인한다.
+    // 🔒 2026-07-29 후속: 남아 있던 5개(social-maintenance · autobid · 18시 일일배치 · 23시 팔로업 ·
+    //   주간 리포트)를 전부 배선해 **허용치가 0** 이 됐다. 비용 우려는 구조로 해소된다 —
+    //   시간 게이트 레인은 한 시각에 하나씩만 켜지므로 정각당 실제 증가는 +1~2 D1 쓰기다.
     const blind = rawLanes().filter(b => !/adsBeat[(,)]/.test(b))
-    expect(blind.length, `관측 밖 레인이 늘었다(${blind.length}개) — 새 레인은 kick() 을 쓰거나 adsBeat 을 남겨라`)
-      .toBeLessThanOrEqual(5)
+    expect(blind.length, `관측 밖 레인 ${blind.length}개 — kick() 을 쓰거나 adsBeat 을 남겨라`).toBe(0)
   })
 
   it('🔒 시트 미러는 하트비트를 남긴다 — 09:00 이후 멈춘 걸 아무도 못 보던 자리', () => {
