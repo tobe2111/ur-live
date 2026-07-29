@@ -57,12 +57,26 @@ async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
   try {
     const su = await parseSessionCookie(c.req.header('Cookie'), secret, ['admin']);
     if (su && su.type === 'admin' && su.userId) {
-      const row = await (c.env as { DB: D1Database }).DB
-        .prepare('SELECT role FROM admins WHERE id = ?')
-        .bind(su.userId).first<{ role?: string }>();
-      if (row) return normalizeAdminRole(row.role);
+      const DB = (c.env as { DB: D1Database }).DB;
+      try {
+        const row = await DB.prepare('SELECT role FROM admins WHERE id = ?')
+          .bind(su.userId).first<{ role?: string }>();
+        if (row) return normalizeAdminRole(row.role);
+        // 세션은 유효한데 admins row 없음 → 라우트 requireAdmin 이 판단(null).
+      } catch {
+        // 🔐 2026-07-12 (RBAC 감사 F): 인증된 어드민 쿠키인데 role 조회가 DB 오류 → 1회 재시도,
+        //   그래도 실패면 fail-CLOSED(viewer). 기존엔 catch→null→상위 `if(!role) next()` 로 떨어져
+        //   role 스코핑이 통째로 사라지는 fail-OPEN(제한역할이 쿠키+D1블립 창에서 전권 획득)이었음.
+        //   requireAdminRole(auth.ts) 의 fail-CLOSED 정책과 통일.
+        try {
+          const retry = await DB.prepare('SELECT role FROM admins WHERE id = ?')
+            .bind(su.userId).first<{ role?: string }>();
+          if (retry) return normalizeAdminRole(retry.role);
+        } catch { /* 재시도도 실패 — 아래 안전차단 */ }
+        return 'viewer';
+      }
     }
-  } catch { /* DB/parse 오류 → null (라우트 requireAdmin 이 인증 처리) */ }
+  } catch { /* 쿠키 파싱 자체 실패 → 미인증(null) — 라우트 requireAdmin 이 401 처리 */ }
 
   return null;
 }
@@ -95,8 +109,13 @@ export function adminRbacMiddleware() {
         : c.json({ success: false, error: '담당 도메인 밖의 영역입니다 (도매 전용 계정)', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
     }
 
+    // 🔐 2026-07-12 (RBAC 감사 D): GET 이지만 상태를 바꾸는(DDL/유지보수) 경로는 읽기 예외에서 제외 —
+    //   viewer 등 읽기전용/제한역할이 GET 으로 우회해 변경하지 못하게 mutate 검사로 넘긴다.
+    //   (/api/admin/optimize-db 는 CREATE INDEX DDL 실행 — 세그먼트가 어떤 WRITE_DOMAINS 에도 없어
+    //    canAdminRoleMutate 가 super/admin 만 통과시킴 → viewer/ops/cs/finance 403.)
+    const isGetMutation = /\/optimize-db(?:$|[/?])/.test(pathname);
     // 읽기는 허용(대시보드 조회).
-    if (method === 'GET' || method === 'HEAD') return next();
+    if ((method === 'GET' || method === 'HEAD') && !isGetMutation) return next();
 
     // 변경 — 역할별 도메인 검사.
     if (canAdminRoleMutate(role, pathname)) return next();

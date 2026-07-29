@@ -1,0 +1,96 @@
+# 🛡️ 2026-07-18 앱 출시 대비: Android 앱 빌드 파이프라인 (Capacitor 래퍼).
+#
+# 트리거: 수동(workflow_dispatch) 또는 `app-v*` 태그 push.
+# - debug APK: 항상 빌드 → Artifacts 업로드 (실기기 테스트용 — adb install 또는 파일 전송 설치)
+# - release AAB: ANDROID_KEYSTORE_BASE64 시크릿이 등록된 경우에만 서명 빌드 (Play 스토어 제출용)
+#
+# 필요한 GitHub Secrets (release 용 — 없으면 debug 만 빌드):
+#   ANDROID_KEYSTORE_BASE64  — keystore 파일 base64 (`base64 -w0 release.keystore`)
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+#
+# 상세 절차: docs/APP_STORE_LAUNCH_RUNBOOK.md
+name: App Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['app-v*']
+    # 🛡️ 네이티브/설정 변경 시 자동 검증 — 이 환경(원격 세션)은 dispatch 권한/태그 push 가 막혀 있어
+    #   path 트리거가 유일한 자동 실행 수단이기도 함. 웹 배포(main.yml)와 무관(앱 파일만 매칭).
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - '.github/workflows/app-android.yml'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build web (client + worker)
+        run: npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourdeal-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      - name: Check release keystore
+        id: keystore
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "ℹ️ ANDROID_KEYSTORE_BASE64 미등록 — release AAB 스킵 (debug APK 만 업로드)"; fi
+
+      - name: Decode keystore
+        if: steps.keystore.outputs.present == 'true'
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$KS" | base64 -d > android/release.keystore
+
+      - name: Build signed release AAB
+        if: steps.keystore.outputs.present == 'true'
+        working-directory: android
+        run: |
+          ./gradlew bundleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=$PWD/release.keystore \
+            -Pandroid.injected.signing.store.password='${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            -Pandroid.injected.signing.key.alias='${{ secrets.ANDROID_KEY_ALIAS }}' \
+            -Pandroid.injected.signing.key.password='${{ secrets.ANDROID_KEY_PASSWORD }}'
+
+      - name: Upload release AAB
+        if: steps.keystore.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourdeal-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14

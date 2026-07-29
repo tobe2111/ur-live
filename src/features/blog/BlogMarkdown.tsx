@@ -47,7 +47,21 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
 
 const stripBold = (s: string) => s.replace(/\*\*/g, '')
 
+// 📝 목차(TOC) 추출 — BlogMarkdown 과 동일 블록 파싱으로 H2/H3 를 순서대로 뽑아
+//   같은 `sec-{n}` id 를 부여(렌더러의 헤딩 id 와 1:1 매칭). 좌측 Contents 사이드바가 사용.
+export function blogToc(content: string): Array<{ level: 2 | 3; text: string; id: string }> {
+  const out: Array<{ level: 2 | 3; text: string; id: string }> = []
+  let h = 0
+  ;(content || '').split('\n\n').forEach(block => {
+    const t = block.trim()
+    if (t.startsWith('## ')) out.push({ level: 2, text: stripBold(t.slice(3)), id: `sec-${h++}` })
+    else if (t.startsWith('### ')) out.push({ level: 3, text: stripBold(t.slice(4)), id: `sec-${h++}` })
+  })
+  return out
+}
+
 export function BlogMarkdown({ content }: { content: string }) {
+  let hIdx = 0 // 헤딩 순번 — blogToc 와 동일 순서로 sec-{n} id 부여(앵커 매칭).
   const blocks = (content || '').split('\n\n').map((block, i) => {
     const trimmed = block.trim()
     if (!trimmed) return null
@@ -62,11 +76,11 @@ export function BlogMarkdown({ content }: { content: string }) {
           <div key={i} className="overflow-x-auto my-4">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
+                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border-b border-gray-200 dark:border-[#2A3446] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((row, ri) => (
-                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#1A1A1A] text-gray-600 dark:text-gray-300">{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
+                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#2A3446] text-gray-600 dark:text-gray-300">{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
                 ))}
               </tbody>
             </table>
@@ -75,9 +89,9 @@ export function BlogMarkdown({ content }: { content: string }) {
       }
     }
 
-    // 헤딩 (이미 굵게 — ** 제거)
-    if (trimmed.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{stripBold(trimmed.slice(3))}</h2>
-    if (trimmed.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{stripBold(trimmed.slice(4))}</h3>
+    // 헤딩 (이미 굵게 — ** 제거) + 목차 앵커 id · sticky 헤더 대응 scroll-mt
+    if (trimmed.startsWith('## ')) return <h2 id={`sec-${hIdx++}`} key={i} className="scroll-mt-24 text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{stripBold(trimmed.slice(3))}</h2>
+    if (trimmed.startsWith('### ')) return <h3 id={`sec-${hIdx++}`} key={i} className="scroll-mt-24 text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{stripBold(trimmed.slice(4))}</h3>
 
     // 불릿 리스트
     if (trimmed.startsWith('- ')) {
@@ -116,14 +130,14 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (trimmed.startsWith('> ')) {
       const body = trimmed.split('\n').map(l => l.replace(/^>\s?/, '')).join(' ')
       return (
-        <blockquote key={i} className="my-4 pl-4 border-l-4 border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300 italic">
+        <blockquote key={i} className="my-4 pl-4 border-l-4 border-gray-200 dark:border-[#2A3446] text-gray-600 dark:text-gray-300 italic">
           {renderInline(body, `q${i}`)}
         </blockquote>
       )
     }
 
     // 구분선
-    if (trimmed === '---') return <hr key={i} className="my-8 border-gray-200 dark:border-[#2A2A2A]" />
+    if (trimmed === '---') return <hr key={i} className="my-8 border-gray-200 dark:border-[#2A3446]" />
 
     // 일반 단락
     return <p key={i} className="text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3">{renderInline(trimmed, `p${i}`)}</p>

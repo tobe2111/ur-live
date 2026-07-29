@@ -25,7 +25,8 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
     // 비로그인이면 401 — 무시(응모 상태 없음).
     api.get(`/api/fcfs/${productId}/me`).then((r) => {
       const st = r.data?.data?.status
-      if (alive && r.data?.success && (st === 'applied' || st === 'selected' || st === 'paid')) {
+      // 'demo' = 데모 상품 응모(추첨 풀 제외 전용 상태) — 유저에겐 일반 응모 완료와 동일 표시.
+      if (alive && r.data?.success && (st === 'applied' || st === 'selected' || st === 'paid' || st === 'demo')) {
         setApplied(true)
         setMyStatus(String(st))
       }

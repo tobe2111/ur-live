@@ -48,11 +48,21 @@ const KNOWN_TABLES_EXTRA = new Set([
   'interest_list',                       // 관심상품 (group-buy)
   'ad_searchad_connections',             // 네이버 검색광고 연동 (searchad)
   'live_chat',                           // 라이브 채팅 (live-notify / viewer-loyalty / metrics)
+  // 2026-07-07 라이브커머스 제거: CREATE 정의를 갖던 라이브 라우트 삭제 후에도 프로덕션 존재 +
+  //   비라이브 소비처가 참조하는 레거시 테이블 → 예외 등록(정리크론/계정삭제/알림이 안전 참조).
+  'broadcast_subscriptions',             // 방송 알림 구독 (kakao-social / notifications / delete-account / scheduled-cleanup)
+  'stream_product_timestamps',           // 라이브 상품 타임스탬프 (admin-moderation)
+  'admin_alerts',                        // 어드민 경보 (admin-moderation / scheduled-cleanup — 삭제된 라이브 크론이 CREATE 보유했으나 비라이브 소비처 존재)
   'product_views',                       // 상품 조회수 (seller-analytics / delete-account)
   'social_follows', 'user_follows',      // 팔로우 (notifications / push)
   'search_history',                      // 검색 이력 (delete-account)
   'schema_repair_history',               // repair-schema 실행 이력 (internal-admin-tools)
   'refund_history',                      // 레거시 감사 write-only(읽기 0, swallow 처리) — 존재무관 무해(refund.ts recordRefundHistory)
+  // 2026-07-14 데이터 감사 2단계(#514) 이벤트 테이블 — write path(ensureInflowClicksTable/
+  //   ensureVoucherVisitsTable)가 CREATE 보유하나 별도 브랜치. 매칭 엔진은 읽기 전용 참조(없으면
+  //   safeAll 이 빈 결과). #514 머지 시 inline CREATE 로 자동 인식 → 이 등록은 그때 무해·잉여.
+  'inflow_clicks',                       // 인플루언서 유입 클릭 이벤트 (marketing/matching)
+  'voucher_visits',                      // 이용권 사용(매장 방문) 이벤트 (matching)
   // 참고: admin_notifications·admin_dashboard_notifications 는 오타였음(실제=dashboard_notifications).
   //   2026-07-01 교정 완료 → 더는 참조 없음(여기 등록 불필요).
 ])

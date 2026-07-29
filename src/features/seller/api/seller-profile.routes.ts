@@ -258,6 +258,30 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
     }
 
+    // 🛡️ 2026-07-11 (런칭 前 보안감사 R4 — 계좌 탈취 변경 조기 감지): 계좌 변경이 실제로 저장된 뒤
+    //   셀러 본인에게 즉시 통지 (대시보드 알림 + 알림톡, 둘 다 fail-soft — 알림 실패가 저장을 안 막음).
+    //   본인이 아닌 변경(세션/이메일 탈취)을 셀러가 조기 발견 → 어드민 재검증 전 신고 가능.
+    //   ⚠️ NON-MONEY: 알림만 — is_verified=0 차단/재검증 흐름·정산 로직 무변경.
+    if (bankChanged && updates.length > 0) {
+      try {
+        const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes');
+        await createDashboardNotification(db, 'seller', String(sellerId), 'bank_account_changed',
+          '⚠️ 정산 계좌 변경 알림',
+          '정산 계좌 정보가 방금 변경되었습니다. 본인이 변경하지 않았다면 즉시 비밀번호·PIN을 변경하고 문의해주세요. 보안을 위해 관리자 재확인 전까지 출금이 일시 제한됩니다.',
+          '/seller/profile');
+      } catch { /* fail-soft */ }
+      try {
+        const sRow = await db.prepare('SELECT name, phone FROM sellers WHERE id = ?')
+          .bind(sellerId).first<{ name: string | null; phone: string | null }>();
+        const phone = (sRow?.phone || '').replace(/\D/g, '');
+        if (/^01\d{8,9}$/.test(phone)) {
+          const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+          await sendSystemAlimtalk(c.env, phone, 'seller_bank_changed',
+            `[유어딜] ${sRow?.name || '셀러'}님, 정산 계좌 정보가 방금 변경되었습니다.\n본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.\n(보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)`);
+        }
+      } catch { /* fail-soft — ALIGO env 미설정/발송 실패 무시 */ }
+    }
+
     // 배송비 — 후보 컬럼 순서대로 시도, 첫 성공 시 중단(컬럼 없음/한도면 다음 후보).
     for (const w of shipWrites) {
       for (const col of w.cands) {
@@ -332,6 +356,13 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       (businessInfo as Record<string, unknown>).mail_order_number = mo?.mail_order_number ?? null;
     } catch { /* additive — 컬럼 미존재 환경 graceful */ }
 
+    // 🏪 2026-07-05 온누리 가맹 플래그 additive 동봉 (seller_meta K-V).
+    try {
+      const { getSellerMeta } = await import('../../../worker/utils/seller-meta');
+      const sm = await getSellerMeta(db, [Number(sellerId)]);
+      (businessInfo as Record<string, unknown>).onnuri_merchant = sm.get(Number(sellerId))?.onnuri_merchant === '1';
+    } catch { /* additive — fail-soft */ }
+
     return c.json({ success: true, data: businessInfo });
 
   } catch (error: unknown) {
@@ -362,6 +393,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       phone?: string;
       email?: string;
       mail_order_number?: string; // 🖼️ 2026-07-01 통신판매업신고번호 (side-table 컬럼, additive 저장)
+      onnuri_merchant?: boolean;  // 🏪 2026-07-05 온누리상품권 가맹 여부 (seller_meta K-V, additive 저장)
     }>();
 
     // 사업자번호 형식 검증
@@ -498,6 +530,15 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
         await db.prepare('UPDATE seller_business_info SET mail_order_number = ? WHERE seller_id = ?')
           .bind(body.mail_order_number || null, sellerId).run();
       } catch { /* additive — 컬럼 미존재 환경 graceful */ }
+    }
+
+    // 🏪 2026-07-05 온누리 가맹 플래그 — sellers 컬럼 한도(100=D1 한도) 회피, seller_meta K-V 저장.
+    //   소비자 표면(동네딜 카드/상세/상권관)이 이 키로 뱃지 렌더. 메인 UPSERT 와 분리(additive).
+    if (body.onnuri_merchant !== undefined) {
+      try {
+        const { setSellerMeta } = await import('../../../worker/utils/seller-meta');
+        await setSellerMeta(db, Number(sellerId), { onnuri_merchant: body.onnuri_merchant ? '1' : null });
+      } catch { /* additive — fail-soft */ }
     }
 
     // 저장 확인 (address_detail 유무에 따라 쿼리 분기)

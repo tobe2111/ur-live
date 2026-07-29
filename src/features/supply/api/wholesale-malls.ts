@@ -46,6 +46,10 @@ export interface WholesaleMall {
   // 🧩 2026-07-03 (대표 — "이상적 제외 레이어"): 몰별 기능 토글 JSON. { "dropship": false, ... } 형태.
   //   키 부재 = 기본 켜짐(feature ON). 특정 몰에서 기능을 빼려면 그 키를 false 로. → 코드 0, 어드민 데이터 토글.
   features_json?: string | null
+  // 🏢 2026-07-04 (대표 — "푸터 사업자정보·로고도 몰마다 다름"): 몰별 회사(푸터) 정보 JSON.
+  //   { company, ceo, bizRegNo, mailOrderNo, address, tel, fax, csEmail, bankName, bankNo, bankHolder }
+  //   미설정 키는 기본(유통스타트 BUSINESS_INFO) 폴백 — 기본 몰 byte-불변.
+  company_json?: string | null
   active: number
   created_at?: string | null
 }
@@ -83,6 +87,7 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
     requires_license INTEGER DEFAULT 0,
     license_label TEXT,
     features_json TEXT,
+    company_json TEXT,
     active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('wholesale-malls:ensure'))
@@ -90,6 +95,7 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT').run().catch(() => { /* 이미 존재 */ })
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN company_json TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL').run().catch(swallow('wholesale-malls:idx-host'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)').run().catch(swallow('wholesale-malls:idx-active'))
   // 기본 몰(id=1) 시드 — 행이 하나도 없을 때만(기존 유통스타트 = 기본 몰). host=현 도매 호스트.
@@ -132,7 +138,7 @@ async function buildMallCache(DB: D1Database): Promise<MallCache> {
   const byId = new Map<number, WholesaleMall>()
   const bySlug = new Map<string, WholesaleMall>()
   const { results } = await DB.prepare(
-    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, active, created_at FROM wholesale_malls'
+    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active, created_at FROM wholesale_malls'
   ).all<WholesaleMall>().catch(() => ({ results: [] as WholesaleMall[] }))
   for (const m of results || []) {
     byId.set(m.id, m)
@@ -179,6 +185,12 @@ export async function loadMallById(DB: D1Database, mallId: number): Promise<Whol
 export async function loadMallBySlug(DB: D1Database, slug: string): Promise<WholesaleMall | null> {
   const cache = await getMallCache(DB)
   return cache.bySlug.get(slug) ?? null
+}
+
+/** 🏬 판매사 소속 몰 id (없으면 1) — 회원 표면(문서/보고서/수수료)의 몰별 설정 기준. */
+export async function sellerMallIdOf(DB: D1Database, sellerId: number): Promise<number> {
+  const r = await DB.prepare('SELECT COALESCE(mall_id, 1) AS m FROM sellers WHERE id = ?').bind(sellerId).first<{ m: number }>().catch(() => null)
+  return Math.floor(Number(r?.m)) || 1
 }
 
 /** host → mall_id (없으면 기본 1). 가입(register) 이 "어느 몰에 가입하는가" 결정에 사용. */

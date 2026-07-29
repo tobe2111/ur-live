@@ -58,7 +58,7 @@ emailRoutes.post('/order-confirmation', async (c) => {
       <p><strong>Order #:</strong> ${order_number}</p>
       <p><strong>Total:</strong> ${Number(total_amount ?? 0).toLocaleString('ko-KR')} KRW</p>
       <hr style="border:1px solid #eee;margin:20px 0">
-      <a href="https://live.ur-team.com/my-orders" style="display:inline-block;padding:12px 24px;background:#007aff;color:white;text-decoration:none;border-radius:8px">View Order</a>
+      <a href="https://urdeal.kr/my-orders" style="display:inline-block;padding:12px 24px;background:#007aff;color:white;text-decoration:none;border-radius:8px">View Order</a>
     </div>
   `
   const sent = await sendEmail(c.env, { to: email, subject: `Order Confirmed - #${order_number}`, html })
@@ -77,7 +77,7 @@ emailRoutes.post('/shipping-notification', async (c) => {
       <p><strong>Carrier:</strong> ${courier || 'N/A'}</p>
       <p><strong>Tracking:</strong> ${tracking_number}</p>
       <hr style="border:1px solid #eee;margin:20px 0">
-      <a href="https://live.ur-team.com/my-orders" style="display:inline-block;padding:12px 24px;background:#007aff;color:white;text-decoration:none;border-radius:8px">Track Order</a>
+      <a href="https://urdeal.kr/my-orders" style="display:inline-block;padding:12px 24px;background:#007aff;color:white;text-decoration:none;border-radius:8px">Track Order</a>
     </div>
   `
   const sent = await sendEmail(c.env, { to: email, subject: `Order Shipped - #${order_number}`, html })
@@ -96,7 +96,7 @@ emailRoutes.post('/broadcast-reminder', async (c) => {
       <p style="font-size:18px;font-weight:bold">${stream_title}</p>
       <p>Scheduled: ${new Date(scheduled_at).toLocaleString()}</p>
       <hr style="border:1px solid #eee;margin:20px 0">
-      <a href="https://live.ur-team.com/live/${stream_id}" style="display:inline-block;padding:12px 24px;background:#ff3b30;color:white;text-decoration:none;border-radius:8px">Watch Live</a>
+      <a href="https://urdeal.kr/live/${stream_id}" style="display:inline-block;padding:12px 24px;background:#ff3b30;color:white;text-decoration:none;border-radius:8px">Watch Live</a>
     </div>
   `
   const sent = await sendEmail(c.env, { to: email, subject: `🔴 ${seller_name} is going live: ${stream_title}`, html })

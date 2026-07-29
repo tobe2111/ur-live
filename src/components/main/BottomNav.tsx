@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
+import { Home, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -38,7 +38,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onDone()
             window.location.href = '/seller'
           }}
-          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
@@ -200,7 +200,10 @@ export default function BottomNav() {
     //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
     // 🛍️ 2026-06-20 (대표 결정 — 홈=동네딜지도 / 일반상품을 교환권 탭에 통합): 탭2 = '쇼핑'(교환권 기프티콘 + 일반상품).
     //   라벨 교환권→쇼핑, 아이콘 Gift→ShoppingBag. path 는 /vouchers 그대로(페이지가 교환권+일반상품 포괄).
-    { icon: ShoppingBag, label: t('nav.shopping', { defaultValue: '쇼핑' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    // 🎟️ 2026-07-10 [UNLOCK_LOADING] (대표 결정 — 일반상품 SHOPPING_TAB_HIDDEN 게이트로 숨김·교환권 유지):
+    //   /vouchers 가 순수 교환권 페이지로 복귀(06-19 형태) → 라벨 쇼핑→교환권, 아이콘 ShoppingBag→Gift.
+    //   path/prefetch 불변. SHOPPING_TAB_HIDDEN=false 로 일반상품 복원 시 라벨 재검토.
+    { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
@@ -261,8 +264,8 @@ export default function BottomNav() {
           aria-label={label}
           aria-haspopup="dialog"
         >
-          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-gray-900 dark:bg-white">
-            <Icon size={20} className="text-white dark:text-[#020202]" strokeWidth={2.25} />
+          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-brand">
+            <Icon size={20} className="text-white" strokeWidth={2.25} />
           </span>
           <span className="text-[9px] mt-0.5 text-gray-500">{label}</span>
         </button>
@@ -283,7 +286,7 @@ export default function BottomNav() {
             src={cfImage(profileImage, { width: 96 })}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
+              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0F151D]' : 'opacity-60'
             }`}
             loading="lazy"
             decoding="async"
@@ -292,12 +295,12 @@ export default function BottomNav() {
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-500'}
+            className={active ? 'text-brand-text' : 'text-gray-400'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
         <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500'
+          active ? 'font-bold text-brand' : 'text-gray-400'
         }`}>
           {label}
         </span>
@@ -326,7 +329,7 @@ export default function BottomNav() {
           로직은 무변경(표시 위치만). */}
       <div data-testid="bottom-nav" className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
         {/* 🛡️ 2026-05-19: 사용자 요청 — 진한 border-t (검정색 선) 제거. 다크 모드는 그대로, 라이트는 미세 회색 (gray-100). */}
-        <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]"
+        <div className="pointer-events-auto bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
@@ -353,7 +356,7 @@ export default function BottomNav() {
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
             <div>
               <div
-                className="bg-gray-50 dark:bg-[#121212] rounded-t-3xl"
+                className="bg-gray-50 dark:bg-[#1A2334] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
@@ -409,22 +412,7 @@ export default function BottomNav() {
                        'DISPLAY 는 active_role 로만' 룰은 탭/내비 표시용 — ➕ 시트는 역할 행동 메뉴라 토큰 기준. */}
                   {(isSeller || hasSellerToken) && (
                     <div className="space-y-3">
-                      {/* 🏭 2026-06-04 라이브커머스 잠정 중단 — '라이브 방송 시작하기' 진입 숨김. */}
-                      {!LIVE_COMMERCE_SUSPENDED && (
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Radio className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">{t('bottomNav.liveBroadcastStart', { defaultValue: '라이브 방송 시작하기' })}</p>
-                          <p className="text-[12px] text-white/70 mt-0.5">{t('bottomNav.liveBroadcastDesc', { defaultValue: 'YouTube 연동으로 바로 방송 시작' })}</p>
-                        </div>
-                      </button>
-                      )}
-
+                      {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작하기' 진입 삭제. */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
                         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
@@ -440,7 +428,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1A2334] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
@@ -457,7 +445,7 @@ export default function BottomNav() {
                   {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
+                      className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A2334] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
                     >
                       <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
                         <span className="text-lg">💼</span>
@@ -503,7 +491,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
@@ -512,7 +500,7 @@ export default function BottomNav() {
                       {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/supplier')) }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A2334] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
                         {t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}

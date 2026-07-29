@@ -6,6 +6,7 @@ export interface Voucher {
   product_name: string
   restaurant_name?: string
   restaurant_address?: string
+  restaurant_phone?: string  // 🎟️ 2026-07-06 이용 안내 — 매장 전화(/vouchers/my 가 p.restaurant_phone 반환)
   restaurant_lat?: number
   restaurant_lng?: number
   product_image?: string

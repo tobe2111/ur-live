@@ -31,16 +31,7 @@ export default function PrimaryActions({ pendingOrders, isInfluencer, settlement
     badgeBg?: string
     show: boolean
   }> = [
-    {
-      to: '/seller/live-broadcast',
-      title: t('seller.primary.startLive', { defaultValue: '라이브 시작' }),
-      subtitle: t('seller.primary.startLiveDesc', { defaultValue: '바로 송출' }),
-      icon: Radio,
-      bg: 'bg-gradient-to-br from-gray-800 to-gray-800 text-white hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg',
-      iconBg: 'bg-white/20',
-      iconColor: 'text-white',
-      show: isInfluencer,
-    },
+    // 🗑️ 2026-07-07 라이브커머스 제거: '라이브 시작' CTA 카드 삭제.
     {
       to: '/seller/orders',
       title: t('seller.primary.orders', { defaultValue: '주문 확인' }),
@@ -60,7 +51,8 @@ export default function PrimaryActions({ pendingOrders, isInfluencer, settlement
     {
       to: '/seller/products/new',
       title: t('seller.primary.addProduct', { defaultValue: '상품 등록' }),
-      subtitle: t('seller.primary.addProductDesc', { defaultValue: '쇼핑/공구 모두' }),
+      // 🏷️ 2026-07-10 (정체성 — 이용권 중심, 쇼핑탭 숨김): '쇼핑/공구 모두' → '이용권·공구 등록'
+      subtitle: t('seller.primary.addProductDesc', { defaultValue: '이용권·공구 등록' }),
       icon: PackagePlus,
       bg: 'bg-white border border-gray-200 hover:bg-gray-50',
       iconBg: 'bg-violet-50',

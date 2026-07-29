@@ -126,5 +126,28 @@ resendWebhookRoutes.post('/', async (c) => {
     }
   }
 
+  // 🆕 2026-07-21 유어애즈 아웃리치 자동 감지 — Resend 는 한 계정의 모든 이벤트를 이 단일 URL 로 보낸다.
+  //   발신 이벤트(bounce/complain/open/delivered)를 공용 풀(account_id=0) 리드에 반영 + 인바운드 회신 승격.
+  //   ⚖️ [LEGAL] 신규 발송 0 — 이미 보낸 메일의 결과만 소비. ad_influencer_leads 만 만짐(서비스 분리).
+  try {
+    const t = body.type || ''
+    const { applyResendEventToPool, applyInboundReplyToPool } = await import('../../marketing/api/outreach-webhook')
+    if (t === 'email.bounced' || t === 'email.complained' || t === 'email.opened' || t === 'email.delivered') {
+      const to = body.data?.to
+      const email = Array.isArray(to) ? to[0] : to
+      if (email) await applyResendEventToPool(c.env.DB, t, email)
+    } else if (/inbound|received|reply/i.test(t)) {
+      // Resend Inbound(MX) 설정 시 도달 — 보낸사람(from) 기준으로 관심 리드 승격.
+      //   ⚖️ 제목+본문을 함께 넘겨 수신거부 표현("보내지 마세요" 등) 감지 → rejected+억제(내용 무관 interested 승격 방지).
+      const from = (body.data?.from as string | { email?: string } | undefined)
+      const fromEmail = typeof from === 'string' ? from : (from?.email || '')
+      const subj = typeof body.data?.subject === 'string' ? body.data.subject : ''
+      const text = typeof body.data?.text === 'string' ? body.data.text : (typeof body.data?.html === 'string' ? body.data.html : '')
+      if (fromEmail) await applyInboundReplyToPool(c.env.DB, fromEmail, `${subj}\n${String(text).slice(0, 4000)}`)
+    }
+  } catch (err) {
+    console.error('[ResendWebhook] pool sync error:', err)
+  }
+
   return c.json({ success: true })
 })

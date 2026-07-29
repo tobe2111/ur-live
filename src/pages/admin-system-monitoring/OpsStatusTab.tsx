@@ -4,7 +4,7 @@
  * - 게이트: 검증 대기 스위치(커미션 예산/쇼핑 원장/fee-resolver 등)가 env·platform_settings 에
  *   흩어져 있어 "뭐가 켜져 있는지" 볼 곳이 없었음 → 열람 전용 현황판 (값 변경은 여기서 안 함 —
  *   staging 검증(docs/STAGING_CHECKLIST.md) 전 실수 활성화 방지가 목적).
- * - heartbeat: safeCron 이 기록하는 cron_heartbeats 로 "cron 이 실제로 돌고 있는가"를 표시.
+ * - heartbeat: safeCron 이 기록하는 `platform_settings.cron_hb:*` 로 "cron 이 실제로 돌고 있는가"를 표시.
  *   침묵(stale) cron 은 상단에 빨간 배지 — 외부 감시는 uptime.yml(/api/_healthcheck/cron)이 담당.
  */
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -38,7 +38,8 @@ interface Heartbeat {
   last_finished_at: string | null
   last_duration_ms: number | null
   last_error: string | null
-  run_count: number
+  /** 하트비트 저장소(platform_settings)는 누적 횟수를 보관하지 않는다 — 없으면 null. */
+  run_count: number | null
 }
 
 interface OpsStatusData {
@@ -173,7 +174,7 @@ export default function OpsStatusTab() {
                   {h.last_error && <span className="text-red-500 truncate text-[10px]">{h.last_error}</span>}
                 </div>
                 <span className="shrink-0 text-gray-500">
-                  {fmtAgo(h.last_finished_at)} · {h.last_duration_ms != null ? `${h.last_duration_ms}ms` : '—'} · {h.run_count}회
+                  {fmtAgo(h.last_finished_at)} · {h.last_duration_ms != null ? `${h.last_duration_ms}ms` : '—'} · {h.run_count != null ? `${h.run_count}회` : '—'}
                 </span>
               </div>
             ))}

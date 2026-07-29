@@ -149,6 +149,38 @@ try {
   violations.push('   - [R3] src/worker/utils/ledger.ts 읽기 실패')
 }
 
+// ── R4: 불변식 #44 — owner-redirect 무결성 (2026-07-12 S7, 8월 flip) ─────────────
+//   "성장 커미션이 원장 platform:revenue 를 debit 해 5% 를 잠식하지 않는다."
+//   범위(현 단계): **딜 지급 축(확정시점 C1~C4)** 헬퍼는 user_points 로만 지급(platform:revenue
+//   debit 0). owner 되갚기(debitOwnerPromoForOrder)는 merchant→platform:revenue 를 **credit**(회수).
+//   ⚠️ 사용시점 셰어(recordAgency/IntroductionCommissionShare, creditUserCommission)는 아직
+//   platform:revenue 를 debit → **S4b(직접 redirect + 환불 대칭 rework, staging 검증) 후** R4 범위 확장.
+//   그 전까지 범위 밖(false-positive 방지 — 설계 SSOT §불변식 #44 "리팩토링 후 추가" 지침).
+const R4_DEALFUNDED_FILES = [
+  'src/worker/utils/affiliate-credit.ts',
+  'src/worker/utils/influencer-store-intro-commission.ts',
+  'src/worker/utils/agency-store-intro-commission.ts',
+]
+const PLATREV_DEBIT_RE = /debit_account\s*:\s*['"]platform:revenue['"]/
+for (const suffix of R4_DEALFUNDED_FILES) {
+  const file = files.find((f) => f.replace(/\\/g, '/').endsWith(suffix))
+  if (!file) { violations.push(`   - [R4] ${suffix} 미발견 — 딜지급 축 파일 이동?`); continue }
+  const src = stripComments(readFileSync(file, 'utf8'))
+  if (PLATREV_DEBIT_RE.test(src)) {
+    violations.push(
+      `   - [R4] ${suffix} — 딜지급 축이 platform:revenue 를 debit(5% 잠식) — #44 위반. 딜(user_points) 지급 유지 + owner 되갚기(debitOwnerPromoForOrder)로.`,
+    )
+  }
+}
+// owner 되갚기는 promo_fee 를 platform:revenue 로 **credit**(회수)해야 함 — debit 이면 방향 역전.
+try {
+  const ledgerSrc = stripComments(readFileSync('src/worker/utils/ledger.ts', 'utf8'))
+  const promoBlock = ledgerSrc.slice(ledgerSrc.indexOf('event_type: \'promo_fee\''), ledgerSrc.indexOf('event_type: \'promo_fee\'') + 400)
+  if (promoBlock && !/credit_account\s*:\s*['"]platform:revenue['"]/.test(promoBlock)) {
+    violations.push('   - [R4] ledger.ts debitOwnerPromoForOrder — promo_fee 가 platform:revenue 를 credit(회수)하지 않음 — owner 되갚기 방향 역전')
+  }
+} catch { violations.push('   - [R4] ledger.ts 읽기 실패(owner 되갚기 검증)') }
+
 if (violations.length) {
   console.error('❌ [INV-CB] 커미션 예산 아비터 우회 감지 (docs/design/commission-funding-restructure.md):')
   for (const v of violations) console.error(v)

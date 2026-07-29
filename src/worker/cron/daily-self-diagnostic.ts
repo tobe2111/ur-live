@@ -60,6 +60,22 @@ export async function runDailySelfDiagnostic(env: Env) {
       if (row.total > 10 && row.failed / row.total > 0.05) {
         issues.push(`⚠️ 결제 실패율 높음: ${Math.round((row.failed / row.total) * 100)}%`);
       }
+      // 🔔 2026-07-02 (감사 29 — 무소식 이상): "있어야 할 이벤트가 없음" 감지.
+      //   전날 결제완료 0건인데 직전 7일 일평균 > 0 → info 가 아니라 issue 로 승격(잠든 운영자 깨움).
+      //   결제 파이프가 조용히 죽은 케이스("3일째 결제가 안 되는데 아무도 몰랐다") 조기 포착.
+      if (Number(row.paid) === 0) {
+        try {
+          const prev = await DB.prepare(`
+            SELECT COUNT(*) as paid7 FROM orders
+            WHERE payment_status = 'approved'
+              AND created_at >= datetime('now', '-8 days') AND created_at < datetime('now', '-24 hours')
+          `).first<{ paid7: number }>();
+          const avg7 = Number(prev?.paid7 || 0) / 7;
+          if (avg7 > 0) {
+            issues.push(`🔴 무소식 이상: 전날 결제완료 0건 (직전 7일 일평균 ${avg7.toFixed(1)}건) — 결제 파이프 점검 필요`);
+          }
+        } catch { /* best-effort */ }
+      }
     }
   } catch {}
 

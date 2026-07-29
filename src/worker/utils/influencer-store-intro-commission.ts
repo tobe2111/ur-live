@@ -50,6 +50,10 @@ export async function computeInfluencerStoreIntroRequest(
       "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL LIMIT 1"
     ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
     if (blocked) return 0
+    // 🛡️ 2026-07-12 (§0-2 본인구매 가드 — credit 쪽과 동일 미러): 구매자==영입자면 요청액 0.
+    const buyer = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+      .bind(order.id).first<{ user_id: string | number | null }>().catch(() => null)
+    if (buyer?.user_id != null && String(buyer.user_id) === influencerIdStr) return 0
     const existing = await DB.prepare(
       "SELECT 1 FROM influencer_attributions WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro' LIMIT 1"
     ).bind(order.id, influencerIdStr).first().catch(() => null)
@@ -83,6 +87,20 @@ export async function creditInfluencerStoreIntroCommission(
       "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL LIMIT 1"
     ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
     if (blocked) return
+
+    // 2.5 🛡️ 2026-07-12 (§0-2 본인구매 가드 — 대표 [UNLOCK], pre-flip-risk-audit §③-3):
+    //   위 주석의 "self-매장 skip" 약속과 달리 **구매자==영입 인플 체크가 코드에 없어**, 영입자가
+    //   자기 영입 매장에서 본인 구매하면 매출 1.5% 를 스스로에게 적립할 수 있었음(자가 커미션 루프 —
+    //   promo flip 후 %가 커지면 기대수익 양수). 구매자 user_id 가 영입자면 skip + 어뷰즈 기록.
+    const buyer = await DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+      .bind(order.id).first<{ user_id: string | number | null }>().catch(() => null)
+    if (buyer?.user_id != null && String(buyer.user_id) === influencerIdStr) {
+      await DB.prepare(
+        `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+         VALUES ('self_store_intro_purchase', ?, 'order', ?, ?, 'medium')`
+      ).bind(influencerIdStr, String(order.id), JSON.stringify({ seller_id: order.seller_id })).run().catch(() => {})
+      return
+    }
 
     // 3. 멱등 — 같은 주문의 store_intro 적립 이미 있으면 skip.
     const existing = await DB.prepare(

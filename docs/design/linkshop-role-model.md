@@ -58,6 +58,8 @@
 ### 원칙 2 · 경제 엔진은 하나, 그리고 **stack(중첩)**
 핀 2% + 판매 −5% + 영입 1.5% 는 **동시에 쌓인다.** 한 사람이 매장도 하고 남의 상품도 추천하면 **둘 다 적립.**
 → **운영업체(유어딜)에 최적**: 추천이든 판매든 모든 행위가 거래를 만들고 take rate가 붙는다.
+
+> ⭐ **재원 확정 원칙 (2026-07-08)**: 핀 2%·영입 1.5% **그리고 에이전시 커미션(§4)까지 전부 매장 promo(5% 밖) 재원**(`promo_funding_source=owner`) — 유어딜 5% 를 **어떤 축도** 안 건드린다(8월 flip, 예외 없음). 에이전시는 매장-인플 조율로 promo 마진에서 스스로 먹는 독립 사업자(= 쇼핑 벤더의 오프라인판). 상세: `commission-funding-restructure.md` §확정 원칙.
 → 그래서 운영 관점에선 **"핀을 숨기는 것 = 발견·거래 기회를 끄는 손해"**. 숨기지 말고 *배치*로 해결한다.
 
 ### 원칙 3 · "+" 핀 버튼은 모두에게 유지, 목적지만 명확히
@@ -124,6 +126,33 @@
 | **4** | 부류별 온보딩 분기 (가입 시 "추천할래요 / 팔래요"로 초기 모드 힌트) | 온보딩 모달 | 낮음 |
 
 > 각 단계는 독립 배포 가능. 1단계만으로도 "막다른 골목" 혼란은 해소된다.
+
+---
+
+## 5.5 소유권 모델 (SSOT — CI 가드 강제, 2026-07-07)
+
+> **왜 이 섹션이 생겼나**: 링크샵이 반복적으로 "내 가게인데 방문자로 보임 / 편집 기능이 사라짐"으로
+> 깨졌다. 근본 원인은 `/u/{handle}` 이 **두 페이지 컴포넌트**로 렌더되는데(일반 유저=`CuratorPage`,
+> 사업자=인라인 `SellerPublicPage`), **소유자 판정 신호가 서로 달랐기** 때문이다. 세션마다 한쪽만
+> 패치하니 다른 쪽 seam 이 계속 터졌다. 아래를 **불변식**으로 고정한다.
+
+**단일 불변식**: **`/u/{handle}` 링크샵의 주인 = 로그인한 소비자 유저** (`user_id === curator.id`, 단일 신호).
+- `seller_token` 은 **셀러 대시보드(`/seller/*`) 접근용일 뿐**, 링크샵 *뷰/편집* 을 가르지 않는다.
+- 프로필·소개·SNS·배너·주소(handle)·핀 편집은 전부 **소비자 API `/api/curator/me/*`** (ur_session 쿠키)로 처리.
+- 소유권 계산은 `CuratorPage.isOwner`(소비자 정체성)에서 **한 번** 하고, 인라인 `SellerPublicPage` 에는
+  `ownerOverride` prop 으로 **내려준다**. `SellerPublicPage.isOwner = !!ownerOverride || tokenOwner`
+  (tokenOwner = seller_token 폴백, **레거시 standalone `/profile`·`/s` 진입 + 소비자 계정 없는 셀러-only** 전용).
+- 순수 뷰 자식(`CuratorHeader`/`InfoTab`/`VouchersTab`/`VideosTab`)은 소유/편집을 **prop 으로만** 게이트 —
+  `localStorage` 의 `seller_token`/`seller_id` 를 직접 읽지 않는다.
+- 셀러 API 를 요구하는 유일한 링크샵 필드(`kakao_chat_link` 인라인 편집)만 `canSellerEdit`(=`!!seller_token`)로
+  별도 게이트(토큰 없으면 어포던스 숨김 → 401 방지). 나머지는 토큰 무관.
+
+**강제**: `scripts/check-linkshop-ownership.mjs` (audit-gate + `verify.yml` strict) — 위 3 불변식(①신호전달
+②isOwner 가 ownerOverride 포함 ③뷰자식 prop 구동)을 검사. 되돌리면 CI 차단. 예외 `linkshop-ownership-ok`.
+
+> 이 클래스 외 링크샵 반복 버그도 각각 가드 보유: **로더 블링크**=`check-loader-continuity.mjs`,
+> **테마**=`check-theme-consistency.mjs`, **OG/메타**=worker SSR CURATOR 슬롯. 새 링크샵 불변식을 발견하면
+> 패치가 아니라 **가드부터** 만든다(CLAUDE.md 철학).
 
 ---
 

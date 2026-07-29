@@ -170,7 +170,7 @@ app.post('/export', rateLimit({ action: 'coupang-export', max: 30, windowSec: 60
     const returnCenter = (returnsRes.items || []).find(r => r.code === returnCenterCode)
     if (!returnCenter) return c.json({ success: false, error: '선택한 반품지를 찾을 수 없습니다 — 새로고침 후 다시 선택해주세요' }, 400)
 
-    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://live.ur-team.com${prod.image_url}`
+    const imageAbs = prod.image_url.startsWith('http') ? prod.image_url : `https://urdeal.kr${prod.image_url}`
     const detailHtml = `<p>${(prod.description || prod.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p><p>※ 원산지: 상세설명 및 상품 라벨 참조</p>`
     const payload = buildCoupangProductPayload({
       vendorId: conn.vendor_id,

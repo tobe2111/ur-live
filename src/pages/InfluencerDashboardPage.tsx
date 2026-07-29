@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Share2, TrendingUp, Users, DollarSign, Copy, Building2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { hasConsumerSession } from '@/utils/auth'
 
 interface Stats {
@@ -108,7 +109,7 @@ export default function InfluencerDashboardPage() {
             content: {
               title: item.name,
               description,
-              imageUrl: item.image_url || 'https://live.ur-team.com/og-default.png',
+              imageUrl: item.image_url || 'https://urdeal.kr/og-default.png',
               link: { mobileWebUrl: url, webUrl: url },
             },
             buttons: [{ title: '바로 보기', link: { mobileWebUrl: url, webUrl: url } }],
@@ -144,10 +145,10 @@ export default function InfluencerDashboardPage() {
   if (!hasToken) return null
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white pb-safe-nav">
+    <div className="min-h-screen bg-[#0F151D] text-white pb-safe-nav">
       <SEO title="인플 대시보드 - 유어딜" description="referral 실적" url="/influencer" />
 
-      <div className="sticky top-0 z-30 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-30 bg-[#0F151D]/95 backdrop-blur-md border-b border-[#2A3446]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-base font-bold flex-1">{t('influencer.dashTitle', { defaultValue: '💸 인플 대시보드' })}</h1>
@@ -179,7 +180,7 @@ export default function InfluencerDashboardPage() {
 
             {/* 펀넬 */}
             {funnel && (
-              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-4">
+              <div className="bg-[#0F151D] border border-[#2A3446] rounded-2xl p-4">
                 <h2 className="text-sm font-bold mb-3">{t('influencer.funnelTitle', { defaultValue: '📊 추천 funnel' })}</h2>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
@@ -201,7 +202,7 @@ export default function InfluencerDashboardPage() {
             )}
 
             {/* 추천 권장 (상위 공구/숙소) */}
-            <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-2xl p-4">
+            <div className="bg-[#0F151D] border border-[#2A3446] rounded-2xl p-4">
               <h2 className="text-sm font-bold mb-3">{t('influencer.topShare', { defaultValue: '🔥 지금 share 권장' })}</h2>
               {topItems.length === 0 ? (
                 <p className="text-xs text-gray-500">{t('influencer.noTop', { defaultValue: '권장 상품 없음' })}</p>
@@ -214,8 +215,8 @@ export default function InfluencerDashboardPage() {
                         item.type === 'live' ? `/live/${item.id}` :
                         item.type === 'group-buy' ? `/group-buy/${item.id}` :
                         `/products/${item.id}`
-                      } className="w-12 h-12 shrink-0 rounded bg-[#1A1A1A] overflow-hidden">
-                        {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" /> : null}
+                      } className="w-12 h-12 shrink-0 rounded bg-[#1A2334] overflow-hidden">
+                        {item.image_url ? <img src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} /> : null}
                       </Link>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold line-clamp-1">{item.name}</p>

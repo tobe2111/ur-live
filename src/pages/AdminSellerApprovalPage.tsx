@@ -165,7 +165,7 @@ export default function AdminSellerApprovalPage() {
           `✅ 공급자 등록 완료\n\n` +
           `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
           `[로그인 정보 — 가게에 전달]\n` +
-          `URL: https://live.ur-team.com${d.login_url}\n` +
+          `URL: https://urdeal.kr${d.login_url}\n` +
           `Username: ${d.username}\n` +
           `Password: ${d.temp_password}\n\n` +
           `* 가게가 로그인 후 비밀번호 변경 권장.`

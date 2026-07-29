@@ -14,7 +14,7 @@ import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatPhoneKr } from '@/utils/format-kr'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
-import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { useWholesaleMall, currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 export default function SupplierRegisterPage() {
@@ -114,7 +114,10 @@ export default function SupplierRegisterPage() {
     setLoading(true)
     try {
       // 카카오 유저 → /become(세션 인증, 사업자 정보만), 그 외 → /register(이메일/비번).
-      const url = kakaoUser ? '/api/supplier/become' : '/api/supplier/register'
+      // 🏬 2026-07-04 (몰별 별도 회원가입): 현재 몰 slug 를 ?mall= 로 전달 — 서버 registrationMallId 최우선.
+      //   미전달 시 host 폴백(기본 1)이라 메디스타트 폼에서 가입해도 유통스타트로 가입되던 갭 차단.
+      const mallSlug = currentWholesaleMallSlug()
+      const url = (kakaoUser ? '/api/supplier/become' : '/api/supplier/register') + (mallSlug ? `?mall=${encodeURIComponent(mallSlug)}` : '')
       // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.
       const managerEmail = (form.manager_email.trim() || form.email.trim()) || undefined
       // 대표자/담당자 공통 필드 (양 모드 동일).

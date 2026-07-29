@@ -13,7 +13,10 @@ import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'cart-count'
 
-export function useCartCount() {
+// 🗑️ 2026-07-07 (로딩 낭비 감사): enabledExtra 로 호출부가 추가 게이트(예: 데스크탑 뷰포트) 제공 가능.
+//   기본 true → 기존 호출부(홈) 동작 불변. DesktopTopNav 는 모바일에서 display:none 이라 카운트 배지가
+//   안 보이는데도 마운트돼 /api/cart 를 치던 것을 막기 위해 isDesktop 을 넘긴다.
+export function useCartCount(enabledExtra = true) {
   return useQuery<number>({
     queryKey: queryKeys.cartCount(),
     queryFn: () =>
@@ -30,7 +33,7 @@ export function useCartCount() {
     // 🛠️ 2026-06-17 (useBalance 와 동일 근본수정): 캐시 seed 를 즉시 stale 처리 → refetchOnMount 가
     //   cold mount 1회 서버 보정. 없으면 initialData(0)가 fresh 로 간주돼 60초간 잘못된 0 뱃지.
     initialDataUpdatedAt: 0,
-    enabled: isLoggedInSync(),
+    enabled: enabledExtra && isLoggedInSync(),
     staleTime: 60_000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

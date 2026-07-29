@@ -60,6 +60,18 @@
 | **임계값 알림** 🆕(예산 소진·최저가 역전→이메일) | `alerts.ts`(설정+일일 cron+Resend, 계정+날짜 멱등) | `/alerts/settings`·`/alerts/preview` |
 | **독립 계정 + 계정관리** 🆕 | `ads-account.ts`(가입/로그인/프로필/비번, PBKDF2) | `/auth/signup`·`login`·`me`·`account`·`password` |
 | **대시보드 KPI 요약 홈** 🆕 | `MarketingDashboardPage`(30일 실적 스트립) | (stats·autobid 재사용) |
+| **키워드 기회 발굴기** 🆕(2026-07-01) | `keyword-opportunities.ts`(scoreOpportunities 순수 — 검색량×경쟁가중 · 보유 제외) + `OpportunityPanel.tsx` | GET `/keywords/opportunities?seed=` |
+| **AI 마케터 grounding 확장** 🆕(2026-07-01) | ai-marketer 컨텍스트에 효율(낭비키워드)·쇼핑순위·부정클릭·최저가역전 4종 주입(fail-soft) | (기존 `/ai-marketer` 강화) |
+| **수익화 엔타이틀먼트 뼈대** 🆕(2026-07-01, **집행 기본 OFF**) | `ads-entitlements.ts`(PLAN_LIMITS·checkCapacity·meterDaily — `ADS_BILLING_ENFORCED='true'` 일 때만 강제) + 어드민 플랜 셀렉터 | (규칙/사이트/순위/워치 생성 + AI 에 게이트) |
+| **자동입찰 섀도우 모드** 🆕(2026-07-01, 킬스위치 기본 OFF) | `autobid.ts` `runAutobidShadowAll`(dryRun 일일 기록, PUT 0 — `ADS_AUTOBID_SHADOW_ENABLED='true'`) + AutobidPanel 섹션 | GET `/searchad/autobid/shadow` + cron |
+| **온보딩 체크리스트** 🆕(2026-07-01) | `OnboardingChecklist.tsx`(연동→키워드→자동화 3스텝, 완료/닫기 시 자동 숨김) | (기존 status/saved/rules 재사용) |
+| **AI 콘텐츠 스튜디오** 🆕(2026-07-02) | `content-studio.ts`(생성/리퍼포징/답변/분석·순수파서) + `claude-client.ts`(공유 Claude 헬퍼) + `ContentStudioPanel.tsx`(5모드) | `/content/generate`·`repurpose`·`reply`·`analyze`·`save`·`list`·(DELETE)`content` |
+| ├ 리퍼포징(원문1→멀티팩) | 원문→요약+블로그+인스타+틱톡+광고문구+SEO **1회 호출**(JSON) | POST `/content/repurpose` |
+| ├ 생성(블로그/인스타/틱톡/광고문구) | 타입별 시스템프롬프트 + 네이버 소재 규격(제목15·설명45) 검증 | POST `/content/generate` |
+| ├ 댓글/리뷰 답변 초안 | 톤 선택(정중/친근/사과/간결) — 답변 초안(자동게시 X) | POST `/content/reply` |
+| └ 성과분석(콘텐츠 관점) | 실적(stats+효율)근거 메시지 분석 + 콘텐츠 방향 제안(연동 시) | POST `/content/analyze` |
+| **미디어 생성 게이트웨이** 🆕(2026-07-02, **킬스위치 기본 OFF**) | `media-gateway.ts`(provider-agnostic: 이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen · 잡모델 `ad_media_jobs`) — 토스게이트웨이 철학(직접 fetch 금지). ⚠️ egress 차단으로 실호출 미검증 | `/content/media/status`·`image`·`voice`·`video`(submit)·`video/:id`(poll) |
+| **마케팅 서비스몰** 🆕(2026-07-02, **무결제 주문접수**) | `ad-services.ts`(카탈로그+주문큐+순수 `computeServicePrice`+시드3) + `routes/services.routes.ts` + `ServiceMarketplacePanel.tsx` + admin `AdminAdsServicesPage`(접수함·상품관리). 이행=정당한 마케팅 실행(광고/콘텐츠/인플루언서, `fulfillment_method` 기록). **봇/가짜 미구현** | `/services`·`/services/:id`·`/services/quote`·`/services/order`·`/services/order-history` + admin `/service-orders`·`/services` |
 | 발주수집(**보류**) | `order-collection.ts` | `/orders/sync`·`/orders` |
 
 UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel`·`WeeklyReportPanel`·`PricePanel`·`SourcingPanel`·`AlertsPanel`·`ClickGuardPanel`. 인증/계정: `MarketingLoginPage`·`MarketingSignupPage`·`MarketingAccountPage`(라이트, force-light-theme).
@@ -72,6 +84,12 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 | `ANTHROPIC_API_KEY` | AI마케터 + 주간리포트 | AI만 숨김 |
 | `RESEND_API_KEY`/`RESEND_FROM` | 주간리포트 + **임계값 알림** 이메일(선택) | 이메일만 skip(저장/계산은 됨) |
 | `ADS_AUTOBID_ENABLED='true'` | 자율 자동입찰 cron 킬스위치 | **기본 OFF**(수동 '지금 적용'만) |
+| `ADS_AUTOBID_SHADOW_ENABLED='true'` | 섀도우 모드(dryRun 일일 기록, PUT 0) — 실엔진 켜기 전 신뢰 축적용 | **기본 OFF** · 실엔진 ON 이면 자동 skip |
+| `ADS_BILLING_ENFORCED='true'` | 플랜 한도 집행(엔타이틀먼트) — 가격/모델 확정 후 | **기본 OFF**(전 기능 무제한 = 현행) |
+| `ADS_MEDIA_ENABLED='true'` | 미디어 생성(이미지/음성/영상) 전면 킬스위치 | **기본 OFF**(미디어 UI 자동 숨김) |
+| `OPENAI_API_KEY` | 콘텐츠 스튜디오 이미지 생성 | 없으면 이미지 미설정 |
+| `ELEVENLABS_API_KEY` | AI 음성(TTS) | 없으면 음성 미설정 |
+| `REPLICATE_API_TOKEN`/`HEYGEN_API_KEY` | 숏폼 영상/아바타(`ADS_VIDEO_PROVIDER`로 선택) | 없으면 영상 미설정 |
 | `DATA_ENCRYPTION_KEY` | 연결 자격증명 암호화 | (이미 보유) |
 
 ## 6. ⚠️ 안전장치 (건드릴 때 주의)
@@ -96,6 +114,16 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 - 🟡 잔여 하드닝(미수정, 낮음): unlock 코드 전역상수/비상수시간 비교 · clickguard `domainMatches` null-Origin 허용 · rank 스냅샷/refresh `account_id` 방어스코프.
 - 🧹 `marketing.routes.ts` 965줄(god파일 래칫 RED) — `routes/` 서브 Hono 분할 권장(별도 작업).
 
+## 6.7 2차 전수감사 (2026-07-01) — 4축 병렬 심층감사 + 하드닝 2건
+
+audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축(인증·IDOR / 머니 하드캡 / 런타임크래시 / 서비스분리)을 병렬 심층 재감사. **결과: 6.6 이후 신규 확정 결함 0 — unlock 은 이미 `timingSafeEqual`(상수시간)로 수정됨, IDOR·크래시·분리 전부 클린.** 예방적 하드닝 2건만 반영:
+- ✅ **[하드닝] `refreshWatch` 자기-스코프화**(price-monitor.ts) — 헬퍼 UPDATE 가 `WHERE id=?` 뿐이라 테넌트 미포함(라우트 사전검사로 차폐된 *잠재* IDOR). `sellerId` 인자 추가 → `AND seller_id=?` (전 호출부 3곳 배선). 헬퍼가 스스로 안전(미래 호출자 회귀 방지). 머니룰 "side-effect WHERE 에 항상 tenant 포함" 정합.
+- ✅ **[하드닝] 자동입찰 규칙 생성 시 활성 고객사 필수**(marketing.routes.ts `/searchad/autobid/rule`·`/rules/bulk`) — 활성 고객사 없이 만든 `tenant=NULL` 규칙이 cron 에서 '그때 활성인' 고객사 자격증명으로 실행 → **잘못된 계정 과금** 벡터. 생성 전 `getActiveTenantId` 필수(null 이면 400). planBid 하드캡은 유지되므로 초과입찰은 원래 불가 — 이건 *어느 계정에* 적용되냐의 격리 문제. (autobid 는 `ADS_AUTOBID_ENABLED` 기본 OFF 라 라이브 영향 현재 0, 켜기 전 예방.)
+- ✅ **[하드닝, 대표 "응 원해" 후속] `access_unlocked` 서버측 강제** — 그간 게이트가 **클라 전용**(대시보드 redirect)이라 토큰만 있으면 데이터 API 직접호출로 우회 가능했음. `requireAdsUnlocked` 미들웨어(routes/helpers.ts) 신설 → `marketingRoutes.use('*')` 로 데이터 엔드포인트 전체 게이트. 면제=`/ping`·`/auth/*`(unlock 포함)·공개 픽셀(`/clickguard/pixel.js`·`hit`). 유효토큰 + `access_unlocked=1` + `status='active'` 필수(**정지 계정의 옛 토큰 재사용도 차단** — login 만 막던 것 보강). 베타 코드 `358533`(helpers.ts 폴백)은 여전히 공개값이라 결정된 우회는 가능하나, 이제 최소한 "가입만 하고 unlock 안 한" 토큰의 데이터 접근은 서버가 막음(라이브 대시보드 UX 와 동일 흐름).
+- ✅ **[하드닝] clickguard `domainMatches` null-Origin 거부** — `if(!originOrReferer) return true`→`false`. 픽셀은 광고주 사이트→우리 도메인 cross-origin POST 라 브라우저가 Origin 을 항상 붙임 → 정상 hit 은 헤더 보유. 헤더 없는 요청(curl/봇 위조로 의심리포트 오염)은 기록 안 함(탐지 정확도 우선). (Origin 을 스푸핑하는 결정된 위조는 여전히 가능 — 공개픽셀+노출키의 구조적 한계라 자동차단 없는 반자동 설계로 완화.)
+- 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination/crossrole/api-auth 가드 0. 게이트로 HTTP 데이터 라우트를 타는 ads 단위테스트 5개(ads-write-routes/competitor/keyword-portfolio/metrics-history/account-flow)에 unlock·active 계정 시딩(`seedUnlocked`) 추가 + 게이트 자체 회귀테스트(잠금→403 locked / 해제→200) 신설 · clickguard null-Origin 테스트 기대값 갱신. ⚠️ 환경상 vitest/worker-build 미실행(네트워크·의존성 제약) — CI(verify.yml)가 실행 검증.
+- 🧹 marketing.routes.ts 447줄(baseline 440 +7, `use()` 배선+머니가드) — HANDOFF 기존 권고대로 `routes/` 추가 분할 시 자연 해소(커밋 `[SKIP_SIZE]`).
+
 ## 7. 남은 일 (우선순위)
 
 ### A. 보류 — 외부 제약/실계정 검증 대기 (코드는 준비됨, 기능은 안 만들어도 됨)
@@ -105,8 +133,12 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 4. **발주수집** — 커머스 '상품주문/배송' 권한 + **고정 egress IP**(`wrangler-proxy.toml`) 필요 → 보류. 코드 배선됨.
 
 ### B. 코드로 가능 — 남은 것(선택)
-- **랜딩 더미요소** — 수치(ROAS 412%)·후기·로고 실데이터 교체(라이브 검증 후 자연스럽게).
-- (그 외 아이디어) 키워드 그룹/태그, 경쟁사 추적 확장, 다계정 팀원 초대 등 — 필요 시.
+- ~~랜딩 더미요소 라벨링~~ ✅(2026-07-01 — hero '예시 화면'·수치/후기 각주. 실데이터 *교체*는 라이브 검증 후 별도).
+- **전환 추적(진짜 ROAS)** — 부정클릭 픽셀 인프라 재활용해 구매완료 픽셀 → 실전환/매출 귀속(convAmt=0 계정 해소). 설계 필요(다음 후보 1순위).
+- ~~콘텐츠 스튜디오 미디어(영상/음성/아바타/이미지)~~ ✅ **게이트웨이 배선 완료**(2026-07-02, `media-gateway.ts`). 이미지(OpenAI)·음성(ElevenLabs)·영상(Replicate/HeyGen) provider-agnostic + 킬스위치 `ADS_MEDIA_ENABLED`(기본 OFF) + 잡모델(`ad_media_jobs`). **남은 건 대표의 (1) provider 키 설정 (2) `ADS_MEDIA_ENABLED='true'` (3) 단가/구독 정책**뿐. ⚠️ egress 차단으로 실호출 미검증 — 키 설정 후 provider별 요청/응답 스펙(특히 Replicate 모델버전·HeyGen 페이로드)을 1회 실검증 필요.
+- **소재 A/B 관리** — 네이버 Ad(소재) write. / **다매체(구글/메타/카카오)** — 큰 통합, 후순위.
+- **유어딜 판매채널 번들** — `urads-yourdeal-channel-bundle.md` 설계 존재. ⚠️ 크로스서비스(분리 룰) — 정산·CS·소유권 대표 결정 선행.
+- 수익화 **집행**: 대표가 티어 가격 확정 → `PLAN_LIMITS` 숫자 조정 + `ADS_BILLING_ENFORCED='true'` + `/ads/pricing` 결제 연동(유어딜 Toss helper 호출).
 
 ### C. 완료 (재작업 금지)
 ~~독립 계정+계정관리(가입/로그인/프로필/비번/로그아웃)~~ ✅ · ~~비밀번호 재설정(이메일 토큰)~~ ✅ · ~~라이트 통일(인증·대시보드 기본 화이트)~~ ✅ · ~~유어애즈 전용 약관·개인정보 페이지~~ ✅(`/ads/terms`·`/ads/privacy`, ⚠️법무검토 권장) · ~~KPI 요약 홈~~ ✅ · ~~소싱 인구통계 세분화~~ ✅ · ~~임계값 알림(예산·가격·**순위하락**)~~ ✅ · ~~데이터 CSV 내보내기(실적·연관키워드)~~ ✅ · ~~멀티테넌트 고객사 전환~~ ✅ · ~~견고성(PanelError·ErrorBoundary)~~ ✅ · ~~헤더 계정 드롭다운/직접 로그아웃~~ ✅ · ~~하단 탭바 제거~~ ✅.

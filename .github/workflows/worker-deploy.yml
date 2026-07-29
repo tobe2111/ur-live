@@ -1,0 +1,84 @@
+# 🕐 Workers(cron) 프로젝트 배포 — scheduled.ts / cron 코드 동기화 전용.
+#
+# 배경 (2026-07-05): main.yml 은 Pages(_worker.js)만 배포 — cron(scheduled handler)은
+#   별도 Workers 프로젝트(`wrangler deploy`)라 **수동 배포 없이는 cron 코드가 낡은 채 돌았음**
+#   (실사고: auto-seed 리뷰 cron 이 옛 게이트로 오픈예정 데모에 generic 리뷰 재주입,
+#    신설 demo-fcfs-renew cron 미탑재). 이 워크플로가 그 수동 단계를 버튼/자동으로 만든다.
+#
+# 트리거:
+#   - workflow_dispatch: 어드민/에이전트가 수동 실행 (Actions 탭 → Run workflow)
+#   - push(main) 중 cron/scheduled 파일 변경 시 자동
+#
+# 요구 secret: CLOUDFLARE_API_TOKEN (Workers Scripts:Edit 권한 포함), CLOUDFLARE_ACCOUNT_ID
+#   — main.yml Pages 배포와 동일 secret 재사용. 권한 부족 시 이 워크플로만 실패(안내 로그).
+name: Deploy Worker (cron sync)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/worker/scheduled.ts'
+      - 'src/worker/cron/**'
+      - 'wrangler.toml'
+
+concurrency:
+  group: worker-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Workers (cron)
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN 미설정 — Workers 배포 불가"
+            exit 1
+          fi
+          # 🎯 이 워크플로의 목적은 cron *스크립트 코드* 동기화. cron *스케줄*(triggers)은
+          #   Cloudflare 대시보드/기존 상태로 관리됨(schedules PUT 은 원자적 — 실패해도 기존 유지).
+          #   wrangler 가 wrangler.toml 의 crons 를 매번 재푸시하는데, 계정 cron 파서가
+          #   특정 문자열(예: '0 20 * * 0')을 거부하면 전체 PUT 이 거부되나 **스크립트 업로드는
+          #   이미 성공**한 상태(로그의 "Uploaded ur-live" 마커). 그 경우 배포 성공으로 간주한다.
+          MAX_RETRY=3
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== wrangler deploy attempt $i/$MAX_RETRY ==="
+            OUT=$(npx wrangler@3 deploy 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then
+              echo "✅ Workers(cron) deploy 완전 성공 (스크립트 + 스케줄) — attempt $i"
+              exit 0
+            fi
+            if echo "$OUT" | grep -q "Uploaded ur-live"; then
+              echo "::warning::스크립트는 업로드됐으나 스케줄 동기화 실패(기존 스케줄 원자적 보존)."
+              echo "::warning::cron 코드는 배포 완료 — 새 로직이 다음 트리거부터 적용됨."
+              echo "::warning::스케줄 자체를 바꾸려면 Cloudflare 대시보드에서 crons 조정 필요."
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              SLEEP=$((i * 10))
+              echo "⚠️ Attempt $i 실패(스크립트 미업로드). ${SLEEP}s 후 재시도..."
+              sleep $SLEEP
+            fi
+          done
+          echo "❌ 스크립트 업로드 자체가 $MAX_RETRY 회 실패 (토큰 Workers Scripts:Edit 권한 확인)"
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

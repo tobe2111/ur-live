@@ -32,16 +32,16 @@ jobs:
             esac
           }
           # POST /api/version — 캐시 우회(POST) → worker 생존의 진짜 신호
-          check "API worker (POST /api/version)" -X POST "https://live.ur-team.com/api/version"
+          check "API worker (POST /api/version)" -X POST "https://urdeal.kr/api/version"
           # 핵심 상거래 API 2종
-          check "교환권/상품 목록" "https://live.ur-team.com/api/products?limit=1"
-          check "도매 카탈로그" "https://live.ur-team.com/api/wholesale/catalog?limit=1"
+          check "교환권/상품 목록" "https://urdeal.kr/api/products?limit=1"
+          check "도매 카탈로그" "https://urdeal.kr/api/wholesale/catalog?limit=1"
           # HTML 셸
-          check "메인 페이지 HTML" "https://live.ur-team.com/"
-          # 🫀 2026-07-05: cron 침묵 감지 (dead-man's switch) — 핵심 cron heartbeat 가
-          #   허용 간격을 넘기면 worker 가 503 반환 → 여기서 다운으로 잡혀 이슈 생성.
-          #   cron 내부 자가진단은 cron 전면 사망 시 같이 죽으므로 외부 관측이 필수.
-          check "Cron heartbeat (침묵 감지)" "https://live.ur-team.com/api/_healthcheck/cron"
+          check "메인 페이지 HTML" "https://urdeal.kr/"
+          # 🫀 cron 침묵 감지 (dead-man's switch) — 핵심 cron 이 허용 간격을 넘기면
+          #   worker 가 503 → 여기서 다운으로 잡혀 이슈 생성. cron 내부 자가진단은
+          #   cron 전면 사망 시 같이 죽으므로 **외부 관측이 유일한 진짜 감시**다.
+          check "Cron heartbeat (침묵 감지)" "https://urdeal.kr/api/_healthcheck/cron"
           if [ -n "$FAILS" ]; then
             echo "down=true" >> "$GITHUB_OUTPUT"
             printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
@@ -71,7 +71,7 @@ jobs:
               } else {
                 await github.rest.issues.create({
                   owner: context.repo.owner, repo: context.repo.repo,
-                  title: `🔴 [장애] live.ur-team.com 다운 감지 — ${now}`,
+                  title: `🔴 [장애] urdeal.kr 다운 감지 — ${now}`,
                   body, labels: ['uptime'],
                 })
               }

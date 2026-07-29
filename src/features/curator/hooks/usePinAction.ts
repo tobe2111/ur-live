@@ -74,7 +74,7 @@ export function usePinAction(): UsePinActionResult {
       let linkCopied = false
       try {
         const handle = result.handle || (user as { handle?: string })?.handle
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'
         const shareUrl = handle
           ? `${origin}/u/${handle}/p/${productId}`
           : `${origin}/products/${productId}?ref=${user.id}`

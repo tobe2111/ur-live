@@ -17,7 +17,8 @@
 
 // 소비자 홍보용 서비스 사실 brief (grounding). ⚠️ 운영/내부 수치(수수료·정산·원천징수 등)는
 //   의도적으로 제외 — 모델이 근거로 삼을 수 없게 해서 유출 자체를 차단한다.
-const PROMO_BRIEF = [
+// 🔗 2026-07-15: social 자동화(features/social)가 SSOT 로 재사용 → export.
+export const PROMO_BRIEF = [
   '너는 소비자 혜택 플랫폼 "유어딜"의 블로그 마케터다. 아래 사실만 근거로 소비자 대상 홍보/활용 글을 쓴다.',
   '',
   '## 유어딜 서비스 사실(이것만 사용)',
@@ -53,21 +54,22 @@ export const PROMO_TOPICS: readonly PromoTopic[] = [
   { slug: 'discover-neighborhood-deals', title: '우리 동네 숨은 혜택, 동네딜로 발견하기', angle: '동네딜로 생활 반경 안의 좋은 매장·혜택을 찾는 방법', tags: ['동네딜', '로컬', '발견'] },
   { slug: 'linkshop-share-your-taste', title: '내 취향을 링크 하나로, 링크샵 자랑하기', angle: '링크샵에 좋아하는 혜택을 핀으로 모아 친구와 공유하는 재미', tags: ['링크샵', '공유', '취향'] },
   { slug: 'family-outing-savings', title: '가족 나들이, 이용권으로 알뜰하게 즐기기', angle: '주말 가족 외식·체험을 이용권과 동네딜로 알뜰하게 계획', tags: ['이용권', '가족', '나들이'] },
-  { slug: 'first-time-yourdeal', title: '유어딜 처음이라면? 5분이면 끝나는 첫 사용 가이드', angle: '신규 유저가 이용권·교환권·동네딜을 처음 써보는 아주 쉬운 안내', tags: ['가이드', '입문', '유어딜'] },
+  { slug: 'first-time-urdeal', title: '유어딜 처음이라면? 5분이면 끝나는 첫 사용 가이드', angle: '신규 유저가 이용권·교환권·동네딜을 처음 써보는 아주 쉬운 안내', tags: ['가이드', '입문', '유어딜'] },
   { slug: 'rainy-day-indoor', title: '비 오는 날 실내 데이트, 이렇게 즐기세요', angle: '비 오는 날 카페·실내 액티비티 이용권으로 알찬 하루 보내기', tags: ['이용권', '실내', '데이트'] },
   { slug: 'solo-treat-yourself', title: '혼자여도 충분히 즐거운, 나만의 이용권 코스', angle: '혼밥·혼카페·혼놀이를 이용권으로 근사하게 즐기는 법', tags: ['이용권', '혼자', '라이프'] },
   { slug: 'season-recommend', title: '이번 계절에 딱 맞는 이용권·동네딜 고르기', angle: '계절 감성에 맞춘 식사·나들이·뷰티 혜택 큐레이션', tags: ['이용권', '동네딜', '시즌'] },
 ] as const
 
 // 출력 검증: 운영/내부 정보 유출 + 폐기 용어 + 도매몰 유입을 거부.
-const OUTPUT_FORBIDDEN: RegExp[] = [
+// 🔗 2026-07-15: social 자동화가 동일 검증 재사용 → export.
+export const OUTPUT_FORBIDDEN: RegExp[] = [
   /수수료/, /정산/, /원천징수/, /커미션/, /세금계산서/, /매출/, /백오피스/, /관리자/,
   /도매/, /유통스타트/, /판매사/, /제조사/, /공급가/, /\bB2B\b/,
   /식사권/, /공구권/, /인플루언서/, /크리에이터/, /큐레이터/, /셀러/,
   /라이브\s?커머스/, /라이브\s?방송/, /쇼츠/,
 ]
 
-function findForbidden(text: string): string | null {
+export function findForbidden(text: string): string | null {
   for (const re of OUTPUT_FORBIDDEN) {
     if (re.test(text)) return re.source
   }

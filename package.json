@@ -9,7 +9,7 @@
     "dev:client": "vite",
     "build": "npm run build:client && npm run build:ssr && (npm run prerender:main || echo '[build] prerender skip (graceful)') && npm run build:worker && npm run build:prepare",
     "build:client": "vite build",
-    "build:worker": "node scripts/build-worker.js",
+    "build:worker": "node scripts/generate-route-chunk-map.mjs && node scripts/build-worker.js",
     "build:prepare": "node scripts/build-prepare.mjs",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "prerender:main": "node scripts/prerender-main.mjs",

@@ -34,7 +34,7 @@ export default function SellerTransfersPage() {
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState<number | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Transfer[]>(
+  const { data: items = [], isLoading: loading, isError, refetch } = useApiQuery<Transfer[]>(
     ['seller', 'transfers'], '/api/seller/transfers',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -74,6 +74,11 @@ export default function SellerTransfersPage() {
 
         {loading ? (
           <div className="text-center text-sm text-gray-400 py-12">{t('seller.transfers.loading', { defaultValue: '불러오는 중...' })}</div>
+        ) : isError ? (
+          <div className="text-center text-sm text-gray-500 py-12 bg-white rounded-xl border border-gray-100">
+            {t('seller.transfers.loadError', { defaultValue: '이전 요청을 불러오지 못했습니다.' })}{' '}
+            <button onClick={() => refetch()} className="underline text-gray-700">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          </div>
         ) : items.length === 0 ? (
           <div className="text-center text-sm text-gray-400 py-12 bg-white rounded-xl border border-gray-100">
             {t('seller.transfers.noTransfers', { defaultValue: '아직 이전 요청이 없습니다.' })}

@@ -42,12 +42,14 @@ export function adminIpWhitelist() {
     const ip = c.req.header('CF-Connecting-IP');
     if (!ip) {
       console.warn('[Admin] No CF-Connecting-IP header — denying (spoofing prevention)');
-      return c.json({ success: false, error: 'IP verification failed' }, 403);
+      // 🛡️ 2026-07-04: code 추가 — 프론트/진단(/recover)이 'IP 차단'을 role 부족·2FA 등 다른 403 과
+      //   구별해 명확한 안내(현재 IP + ADMIN_IP_WHITELIST 갱신)를 띄울 수 있게. 본문 형태 그 외 불변.
+      return c.json({ success: false, error: 'IP verification failed', code: 'ADMIN_IP_BLOCKED' }, 403);
     }
 
     if (!isIpAllowed(ip, whitelist)) {
       console.warn('[Admin] IP blocked:', ip);
-      return c.json({ success: false, error: 'Forbidden' }, 403);
+      return c.json({ success: false, error: 'Forbidden', code: 'ADMIN_IP_BLOCKED' }, 403);
     }
 
     return next();

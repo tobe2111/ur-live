@@ -80,7 +80,7 @@ function buildReportHTML(opts: {
       </div>
 
       <div style="margin-top: 24px; text-align: center;">
-        <a href="https://live.ur-team.com/agency" style="display: inline-block; padding: 12px 24px; background: #4b5563; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 열기 →</a>
+        <a href="https://urdeal.kr/agency" style="display: inline-block; padding: 12px 24px; background: #4b5563; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 열기 →</a>
       </div>
     </div>
     <div style="padding: 16px; background: #f9fafb; text-align: center; font-size: 11px; color: #9ca3af;">

@@ -62,7 +62,7 @@ jobs:
 
       - name: Trigger repair-schema (idempotent)
         env:
-          REPAIR_URL: https://live.ur-team.com/api/_internal/repair-schema
+          REPAIR_URL: https://urdeal.kr/api/_internal/repair-schema
           ADMIN_TOKEN: ${{ secrets.ADMIN_REPAIR_TOKEN }}
         run: |
           if [ -n "$ADMIN_TOKEN" ]; then

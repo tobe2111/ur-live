@@ -66,11 +66,33 @@ async function readSetting(DB: D1Database, key: string): Promise<string | null> 
   }
 }
 
+// 📊 2026-07-05 (운영 감사 Q10 — 캡 관측성): 캡이 실제로 깎은 주문을 영구 기록.
+//   "캡이 발동했는가/누가 얼마 깎였는가"가 로그 없이는 어드민이 알 수 없어(적립액만 보임)
+//   요율 조정·에이전시 소명 대응이 불가했음. 발동(Σ요청>예산) 시에만 1행 — 평시 write 0.
+const _capLogEnsured = new WeakSet<object>()
+async function ensureCapLogTable(DB: D1Database): Promise<void> {
+  if (_capLogEnsured.has(DB)) return
+  _capLogEnsured.add(DB)
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS commission_budget_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      budget_krw INTEGER NOT NULL,
+      requested_krw INTEGER NOT NULL,
+      granted_krw INTEGER NOT NULL,
+      detail TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )`).run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_cb_logs_order ON commission_budget_logs(order_id)').run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_cb_logs_created ON commission_budget_logs(created_at)').run()
+  } catch { /* fail-soft */ }
+}
+
 /** 주문의 플랫폼 수수료(원) — order-ledger-credit 와 동일 규칙(orders.commission_rate ?? 기본 5%). */
 async function resolveOrderPlatformFeeKrw(DB: D1Database, order: OrderLike): Promise<number> {
   const total = Number(order.total_amount || 0)
   if (!(total > 0)) return 0
-  let rate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+  let rate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT  // as-const 리터럴(5) 추론 방지 — 재대입 number
   try {
     const row = await DB.prepare('SELECT COALESCE(commission_rate, ?) AS rate FROM orders WHERE id = ?')
       .bind(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT, order.id).first<{ rate: number }>()
@@ -127,6 +149,7 @@ async function budgetedCreditForOrder(
   order: OrderLike,
   pgReservePct: number,
   promoOwnerFunded: boolean,
+  priorityKeys: string[],
   opts?: CreditOrderCommissionsOpts,
 ): Promise<void> {
   const total = Number(order.total_amount || 0)
@@ -166,17 +189,31 @@ async function budgetedCreditForOrder(
       const entries = await computeMultiTierEntries(DB, oid, total, String(opts.buyerUserId))
       mtReq = entries.reduce((s, e) => s + (Number(e.amount) || 0), 0)
     } catch { mtReq = 0 }
-    if (mtReq > 0) requests.push({ key: 'multi_tier', amountKrw: mtReq })
+    // 💸 2026-07-12 (S4a per-axis owner-redirect): owner-펀딩이면 C2 도 C1 처럼 셀러(promo) 부담 →
+    //   플랫폼 예산 대상 아님(push 안 함, 아래에서 전액 적립). owner 되갚기는 debitOwnerPromoForOrder.
+    if (mtReq > 0 && !promoOwnerFunded) requests.push({ key: 'multi_tier', amountKrw: mtReq })
   }
   const infReq = axisOn(opts, 'influencer_intro') ? await computeInfluencerStoreIntroRequest(DB, order) : 0
-  if (infReq > 0) requests.push({ key: 'influencer_intro', amountKrw: infReq })
+  if (infReq > 0 && !promoOwnerFunded) requests.push({ key: 'influencer_intro', amountKrw: infReq })
   const agReq = axisOn(opts, 'agency_intro') ? await computeAgencyStoreIntroRequest(DB, order) : 0
-  if (agReq > 0) requests.push({ key: 'agency_intro', amountKrw: agReq })
+  if (agReq > 0 && !promoOwnerFunded) requests.push({ key: 'agency_intro', amountKrw: agReq })
 
   // ── 예산 배분 ([INV-CB]) ────────────────────────────────────────────────
   const platformFeeKrw = await resolveOrderPlatformFeeKrw(DB, order)
   const budget = computeCommissionBudget({ amountKrw: total, platformFeeKrw, pgReservePct })
-  const grants = allocateCommissions(requests, budget)
+  // 🥇 Q10: 에이전시 매장영입 1% 는 계약 기반(24개월 약속) — 캡 발동 시에도 최우선 보전.
+  const grants = allocateCommissions(requests, budget, { priorityKeys })
+  // 📊 Q10 관측성: 캡이 실제 깎은 주문만 기록(Σ요청 > 예산) — 평시 write 0, fail-soft.
+  const requestedSum = requests.reduce((s, r) => s + r.amountKrw, 0)
+  if (requestedSum > budget) {
+    try {
+      await ensureCapLogTable(DB)
+      const grantedSum = grants.reduce((s, g) => s + g.grantedKrw, 0)
+      await DB.prepare(
+        'INSERT INTO commission_budget_logs (order_id, budget_krw, requested_krw, granted_krw, detail) VALUES (?, ?, ?, ?, ?)'
+      ).bind(oid, budget, requestedSum, grantedSum, JSON.stringify(grants)).run()
+    } catch { /* 로그 실패가 적립을 막지 않음 */ }
+  }
   try {
     assertCommissionBudgetInvariants(grants, budget)
   } catch {
@@ -193,12 +230,14 @@ async function budgetedCreditForOrder(
     await creditAffiliateFromIntent(DB, opts?.env, oid, promoOwnerFunded ? undefined : { amountOverride: granted('affiliate') }).catch(() => {})
   }
   if (mtReq > 0 && opts?.buyerUserId) {
-    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: granted('multi_tier') }).catch(() => {})
+    // owner-펀딩이면 전액(셀러 부담 — 예산 캡 비대상), 아니면 배분액.
+    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: promoOwnerFunded ? mtReq : granted('multi_tier') }).catch(() => {})
   }
   // C3/C4 는 요청 0(부적격)이어도 호출 — helper 자체가 안전 skip 하고, C4 는 signup 보너스
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.
-  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, { amountOverride: granted('influencer_intro') }).catch(() => {})
-  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, { amountOverride: granted('agency_intro') }).catch(() => {})
+  // 💸 owner-펀딩이면 amountOverride 미전달=전액(셀러 promo 부담, C1 과 동일 패턴). 되갚기는 debitOwnerPromoForOrder.
+  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('influencer_intro') }).catch(() => {})
+  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('agency_intro') }).catch(() => {})
 }
 
 export async function creditOrderCommissions(
@@ -211,30 +250,53 @@ export async function creditOrderCommissions(
   let gateOn = false
   let pgReservePct = DEFAULT_PG_RESERVE_PCT
   let promoOwnerFunded = false
+  // 🥇 Q10 기본: agency_intro 최우선("에이전시 1% 보호" 자문) — platform_settings 로 조정 가능.
+  let priorityKeys: string[] = ['agency_intro']
+  // 💸 2026-07-12 파일럿 매장 스코프 — 전역 스위치 OFF 여도 지정 매장 주문만 flip 검증(프로덕션 실카드).
+  let pilotIds = new Set<number>()
   try {
     gateOn = (await readSetting(DB, 'commission_budget_enabled')) === 'true'
-    if (gateOn) {
+    const { readFlipPilotSellerIds } = await import('./flip-pilot')
+    pilotIds = await readFlipPilotSellerIds(DB)
+    // 전역 ON 또는 파일럿 존재 시에만 flip 파라미터 조회(그 외 = 현행 경로).
+    if (gateOn || pilotIds.size > 0) {
       const pg = Number(await readSetting(DB, 'pg_reserve_pct'))
       if (Number.isFinite(pg) && pg >= 0 && pg <= 100) pgReservePct = pg
       promoOwnerFunded = (await readSetting(DB, 'promo_funding_source')) === 'owner'
+      const prioRaw = await readSetting(DB, 'commission_priority_axes')
+      if (prioRaw !== null) {
+        // CSV — 빈 문자열이면 '우선 없음(전 축 비례)' 의도로 존중.
+        priorityKeys = prioRaw.split(',').map(s => s.trim()).filter(Boolean)
+      }
     }
   } catch {
     gateOn = false // 설정 조회 실패 → 현행 경로(안전)
   }
 
-  if (!gateOn) {
+  const isPilot = (o: OrderLike): boolean => o.seller_id != null && pilotIds.has(Number(o.seller_id))
+
+  // 전역 OFF + 파일럿 해당 없음 = 완전 현행(byte-동일).
+  if (!gateOn && !orders.some(isPilot)) {
     await legacyCredit(DB, orders, opts)
     return
   }
 
+  // 주문별 라우팅: 전역 ON 또는 파일럿 매장 → 예산 아비터(파일럿은 owner 펀딩 강제). 그 외 → 현행.
+  const legacyOrders: OrderLike[] = []
   for (const o of orders) {
-    await budgetedCreditForOrder(DB, o, pgReservePct, promoOwnerFunded, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
+    if (gateOn || isPilot(o)) {
+      const ownerFunded = isPilot(o) ? true : promoOwnerFunded
+      await budgetedCreditForOrder(DB, o, pgReservePct, ownerFunded, priorityKeys, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
+    } else {
+      legacyOrders.push(o)
+    }
   }
-  // 공급자(B2B) 정산 — 플랫폼 부담 아님(예산 무관), 기존대로 항상(only 필터만 존중).
+  if (legacyOrders.length) await legacyCredit(DB, legacyOrders, opts) // supplier 포함
+  // 공급자(B2B) 정산 — budgeted 경로 주문분(legacyCredit 은 legacyOrders 만 처리). 플랫폼 부담 아님(예산 무관).
   if (axisOn(opts, 'supplier')) try {
     const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
     for (const o of orders) {
-      await creditSupplierOnOrder(DB, Number(o.id))
+      if (gateOn || isPilot(o)) await creditSupplierOnOrder(DB, Number(o.id))
     }
   } catch { /* fail-soft */ }
 }

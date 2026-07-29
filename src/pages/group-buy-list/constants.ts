@@ -14,7 +14,7 @@ export const SORT_LABELS: Record<SortOption, string> = {
 }
 
 export const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  proposed: { label: '모집중', className: 'bg-pink-500 text-white' },
+  proposed: { label: '모집중', className: 'bg-brand text-white' },
   negotiating: { label: '협상중', className: 'bg-amber-500 text-white' },
   confirmed: { label: '확정', className: 'bg-emerald-500 text-white' },
   achieved: { label: '달성', className: 'bg-blue-500 text-white' },

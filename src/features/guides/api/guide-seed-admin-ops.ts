@@ -10,7 +10,7 @@ export const ADMIN_OPS_SECTIONS: SeedSection[] = [
   {
     key: 'observability', icon: '🫀', title: '자동 관측 체계 (cron 침묵·게이트·백업)', order: 111,
     content: `### Cron 침묵 감지 (dead-man's switch)
-- 모든 cron 이 실행마다 heartbeat 를 기록합니다 (\`cron_heartbeats\`).
+- 모든 cron 이 실행마다 heartbeat 를 기록합니다 (\`platform_settings.cron_hb:*\`).
 - 확인: \`/admin/system-monitoring\` → **"게이트·하트비트" 탭** — cron 별 마지막 실행/상태/소요시간.
 - 핵심 cron 이 허용 간격을 넘기면 \`/api/_healthcheck/cron\` 이 503 → **GitHub uptime 워크플로(10분)가 이슈 생성 + 이메일**. cron 내부 진단은 cron 이 죽으면 같이 죽으므로 외부 관측이 진짜 안전망입니다.
 

@@ -13,8 +13,15 @@
  * 설계 SSOT: docs/design/commission-funding-restructure.md
  */
 
-/** PG 준비금 기본 % — platform_settings.pg_reserve_pct 미설정 시 폴백(카드 수수료 보수 추정). */
-export const DEFAULT_PG_RESERVE_PCT = 2.5
+/**
+ * PG 준비금 기본 % — platform_settings.pg_reserve_pct 미설정 시 폴백.
+ * 💸 2026-07-12 (8월 flip 준비, 대표 지시): 2.5 → **2.75 (VAT 포함 실측)**.
+ *   토스 정가 3.4% 는 리스트가이고 볼륨 협상 실효는 카드 2%대 + VAT — 실측 2.75% 를 예산 산출의
+ *   보수적 PG 준비금으로 채택(예산 = 수수료 − 2.75% → 커미션 상한이 더 보수적 = 플랫폼 안전).
+ *   ⚠️ 이 상수는 commission_budget_enabled 게이트 ON + pg_reserve_pct 설정 미존재 시에만 사용 →
+ *      게이트 OFF(현행 라이브)에선 미참조 = 라이브 영향 0. flip 시 platform_settings 로 재확정 가능.
+ */
+export const DEFAULT_PG_RESERVE_PCT = 2.75
 
 export interface CommissionRequest {
   /** 커미션 식별 키 (예: 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro') */
@@ -59,8 +66,17 @@ export function computeCommissionBudget(p: {
  *    소수부 큰 순으로 분배(요청액 초과 금지). Σgranted ≤ budget 이 수학적으로 보장.
  *  - 예산 ≤ 0 → 전부 0.
  * 결정적(같은 입력 → 같은 출력) — 환불 역전은 기록값 기준이라 대칭에 영향 없음.
+ *
+ * 🥇 2026-07-05 (운영 감사 Q10 — "에이전시 1% 보호 최우선" 자문 반영):
+ *   opts.priorityKeys(순서 보존)에 든 축은 예산에서 **먼저 전액**(min(요청, 잔여예산)) 배정하고,
+ *   나머지 축들이 잔여 예산을 비례 배분. 미전달 시 기존과 byte-동일(전 축 비례).
+ *   [INV-CB] (Σ≤budget, granted≤requested) 은 어느 모드든 동일하게 성립.
  */
-export function allocateCommissions(requests: CommissionRequest[], budgetKrw: number): CommissionGrant[] {
+export function allocateCommissions(
+  requests: CommissionRequest[],
+  budgetKrw: number,
+  opts?: { priorityKeys?: string[] },
+): CommissionGrant[] {
   const budget = toNonNegInt(budgetKrw)
   const items = (requests || []).map((r) => ({
     key: String(r?.key ?? ''),
@@ -73,6 +89,33 @@ export function allocateCommissions(requests: CommissionRequest[], budgetKrw: nu
   }
   if (total <= budget) {
     return items.map((it) => ({ ...it, grantedKrw: it.requestedKrw }))
+  }
+
+  // ── 우선 축 선배정 → 나머지를 잔여 예산으로 재귀(비례) ──────────────────
+  const prio = (opts?.priorityKeys || []).filter(Boolean)
+  if (prio.length > 0 && items.some((it) => prio.includes(it.key))) {
+    let remaining = budget
+    const grantedByIdx = new Map<number, number>() // 인덱스 기반 — 같은 key 중복 요청에도 이중배정 불가
+    for (const pk of prio) {
+      items.forEach((it, idx) => {
+        if (it.key !== pk || grantedByIdx.has(idx)) return
+        const g = Math.min(it.requestedKrw, remaining)
+        grantedByIdx.set(idx, g)
+        remaining -= g
+      })
+    }
+    const rest = items.filter((_, idx) => !grantedByIdx.has(idx))
+    const restGrants = allocateCommissions(
+      rest.map((it) => ({ key: it.key, amountKrw: it.requestedKrw })),
+      remaining,
+    )
+    let restCursor = 0
+    return items.map((it, idx) => {
+      if (grantedByIdx.has(idx)) {
+        return { key: it.key, requestedKrw: it.requestedKrw, grantedKrw: grantedByIdx.get(idx)! }
+      }
+      return { key: it.key, requestedKrw: it.requestedKrw, grantedKrw: restGrants[restCursor++]?.grantedKrw ?? 0 }
+    })
   }
 
   const scale = budget / total

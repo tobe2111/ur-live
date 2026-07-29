@@ -1,6 +1,7 @@
 /**
  * 🛡️ 2026-05-07: 시스템 운영 모니터링 (admin 전용).
  *
+ * - GET /api/admin/cron-heartbeats    — cron 마지막 실행 시각(오래된 순) — '안 돌았다' 탐지
  * - GET /api/admin/cron-failures      — Cron job 실패 목록 + 미해결 카운트
  * - PATCH /api/admin/cron-failures/:id/resolve  — 실패 해결 처리
  * - GET /api/admin/alimtalk-failures  — 알림톡 발송 실패 목록 + retry 상태
@@ -8,7 +9,7 @@
  */
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
-import { getCronHealth } from '@/worker/utils/cron-heartbeat'
+import { getCronHealth, listCronHeartbeats } from '@/worker/utils/cron-heartbeat'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 
@@ -42,6 +43,18 @@ adminSystemMonitoringRoutes.get('/cron-failures', async (c) => {
     // 테이블 없으면 빈 결과
     return c.json({ success: true, data: { items: [], unresolved_counts: [] } })
   }
+})
+
+// ── GET /cron-heartbeats ────────────────────────────────────────
+// 💓 2026-07-28: cron_failures 는 **예외가 났을 때만** 남는다. 예외 없이 멈춘 경우
+//   (미발화 / 게이트 OFF / 내부 .catch 로 삼킴)는 여기서만 보인다 — 오래된 순 정렬이라
+//   맨 위가 곧 '멈췄을 가능성이 가장 높은 작업'이다. 상세 배경: worker/utils/cron-heartbeat.ts
+adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
+  const items = await listCronHeartbeats(c.env.DB)
+  // 하루 넘게 기록이 없으면 눈에 띄게(대부분 cron 이 일 1회 이상이다 — 주간/월간 작업은 오탐이므로
+  // 화면에서 사람이 판단하도록 표시만 하고 서버는 단정하지 않는다).
+  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)
+  return c.json({ success: true, data: { items, stale, count: items.length } })
 })
 
 adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {
@@ -251,11 +264,20 @@ adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
 
     // cron heartbeat 전체 + 핵심 stale 판정
     const health = await getCronHealth(DB)
-    const hb = await DB.prepare(
-      `SELECT cron_name, last_status, last_finished_at, last_duration_ms, last_error, run_count
-       FROM cron_heartbeats WHERE substr(cron_name, 1, 2) != '__'
-       ORDER BY last_finished_at DESC LIMIT 200`,
-    ).all().catch(() => ({ results: [] }))
+    // 🫀 하트비트 저장소는 `platform_settings.cron_hb:*` 다(별도 테이블 아님 —
+    //   이 레포는 D1 마이그레이션이 CI 에서 안 돌아 새 테이블은 생성 보장이 없다).
+    //   OpsStatusTab 이 기대하는 모양으로만 변환한다. run_count 는 저장하지 않으므로 null.
+    const beats = await listCronHeartbeats(DB)
+    const hb = {
+      results: beats.map(b => ({
+        cron_name: b.name,
+        last_status: b.ok === null ? 'unknown' : b.ok ? 'ok' : 'fail',
+        last_finished_at: b.at,
+        last_duration_ms: b.ms,
+        last_error: null as string | null,
+        run_count: null as number | null,
+      })),
+    }
 
     return c.json({
       success: true,

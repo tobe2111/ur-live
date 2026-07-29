@@ -57,9 +57,23 @@ const SEVERITY_BADGE: Record<string, string> = {
 const CHANNEL_ROWS: Array<{ label: string; keys: string[] }> = [
   { label: '웹푸시', keys: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'] },
   { label: '이메일', keys: ['RESEND_API_KEY'] },
-  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID'] },
+  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID', 'ALIGO_SENDER_KEY'] },
   { label: '네이티브푸시', keys: ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'] },
 ]
+
+/** 💓 cron 실행 기록 — 서버 GET /api/admin/cron-heartbeats 응답 형태. */
+interface CronHeartbeat {
+  name: string
+  at: string | null
+  ok: boolean | null
+  ms: number | null
+  age_minutes: number | null
+  cron?: string | null
+  /** 기대 주기 대비 '멈춤'으로 보이는가. 판단 불가면 null. */
+  stale?: boolean | null
+  /** 마지막 실행이 무엇을 했는지 한 줄 요약. */
+  result?: string | null
+}
 
 export default function AdminSystemMonitoringPage() {
   const navigate = useNavigate()
@@ -114,6 +128,14 @@ export default function AdminSystemMonitoringPage() {
     ['admin', 'delivery-failures', showResolved], '/api/admin/delivery-failures',
     { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'delivery', select: (r: any) => ({ push: r?.success ? (r.data.push || EMPTY_DELIVERY) : EMPTY_DELIVERY, email: r?.success ? (r.data.email || EMPTY_DELIVERY) : EMPTY_DELIVERY }) },
   )
+  // 💓 2026-07-28: cron 실행 하트비트 — cron_failures 는 '예외가 났을 때만' 남는다.
+  //   예외 없이 멈춘 경우(미발화 / 게이트 OFF / 내부 .catch 로 삼킴)는 여기서만 보인다(#826).
+  const heartbeatQ = useApiQuery<{ items: CronHeartbeat[]; stale: string[] }>(
+    ['admin', 'cron-heartbeats'], '/api/admin/cron-heartbeats',
+    { enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], stale: r?.success ? (r.data.stale || []) : [] }) },
+  )
+  const heartbeats = heartbeatQ.data?.items ?? []
+
   const cronFailures = cronQ.data?.items ?? []
   const cronCounts = cronQ.data?.counts ?? []
   const alimtalkFailures = alimtalkQ.data?.items ?? []
@@ -121,8 +143,13 @@ export default function AdminSystemMonitoringPage() {
   const alimtalkByTemplate = alimtalkQ.data?.by_template ?? []
   const deliveryPush = deliveryQ.data?.push ?? EMPTY_DELIVERY
   const deliveryEmail = deliveryQ.data?.email ?? EMPTY_DELIVERY
+  // 탭이 4개(cron/alimtalk/delivery/ops)라 else 폴백을 쓰면 ops 탭이 delivery 상태를 읽는다 — 명시 분기.
   const loading = tab === 'cron' ? cronQ.isLoading : tab === 'alimtalk' ? alimtalkQ.isLoading : tab === 'delivery' ? deliveryQ.isLoading : false
-  const load = () => { if (tab === 'cron') cronQ.refetch(); else if (tab === 'alimtalk') alimtalkQ.refetch(); else if (tab === 'delivery') deliveryQ.refetch() }
+  const load = () => {
+    if (tab === 'cron') { cronQ.refetch(); heartbeatQ.refetch() }
+    else if (tab === 'alimtalk') alimtalkQ.refetch()
+    else if (tab === 'delivery') deliveryQ.refetch()
+  }
 
   const retryDelivery = async (kind: 'push' | 'email', id: number) => {
     setActing(id)
@@ -247,6 +274,33 @@ export default function AdminSystemMonitoringPage() {
             </div>
           </DashboardCard>
         )}
+        {/* 💓 실행 하트비트 — '멈춤' 은 실패 목록에 안 나온다(예외가 없으니까). 여기서만 보인다. */}
+        {tab === 'cron' && heartbeats.length > 0 && (
+          <DashboardCard className="!p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-gray-900">💓 cron 실행 기록</h3>
+              <span className="text-[11px] text-gray-500">오래된 순 — 맨 위가 멈춤 의심 1순위</span>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+              {heartbeats.map(h => (
+                <div key={h.name} className="py-1.5 flex items-center gap-2 text-xs">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.stale ? 'bg-red-500' : h.ok === false ? 'bg-amber-500' : 'bg-green-500'}`} />
+                  <span className="font-medium text-gray-900 truncate max-w-[190px]" title={h.name}>{h.name}</span>
+                  <span className={`shrink-0 ${h.stale ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                    {h.age_minutes == null ? '기록 없음'
+                      : h.age_minutes < 60 ? `${h.age_minutes}분 전`
+                      : h.age_minutes < 60 * 24 ? `${Math.round(h.age_minutes / 60)}시간 전`
+                      : `${Math.round(h.age_minutes / 60 / 24)}일 전`}
+                  </span>
+                  {h.stale && <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-bold">멈춤 의심</span>}
+                  {h.result && <span className="text-gray-400 truncate" title={h.result}>{h.result}</span>}
+                  {h.cron && <span className="ml-auto shrink-0 text-gray-300 font-mono">{h.cron}</span>}
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        )}
+
         {tab === 'alimtalk' && (
           <DashboardCard className="!p-3">
             <div className="grid grid-cols-3 gap-2 text-center">

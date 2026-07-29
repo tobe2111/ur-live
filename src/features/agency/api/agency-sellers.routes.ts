@@ -21,6 +21,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { intParam } from '@/shared/pagination'
+import { maskPersonName } from '@/lib/mask'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
@@ -133,9 +134,15 @@ app.get('/orders', async (c) => {
     `).bind(...(sellerId ? [agencyId, Number(sellerId)] : [agencyId])).first<{ cnt: number }>(),
   ])
 
+  // 🔐 2026-07-05 (Q8 PII): 수령인 실명은 에이전시 업무(성과 관리)에 불필요 — 마스킹해 전달.
+  const rows = (orders.results || []).map((o) => ({
+    ...(o as Record<string, unknown>),
+    shipping_name: maskPersonName((o as Record<string, unknown>).shipping_name as string | null),
+  }))
+
   return c.json({
     success: true,
-    data: orders.results,
+    data: rows,
     meta: { total: total?.cnt ?? 0, page, limit },
   })
 })

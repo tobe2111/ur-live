@@ -6,9 +6,9 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
@@ -24,6 +24,9 @@ export default function SellerLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도 전 토큰 재발급 — 일회용 Turnstile 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   // 🔗 2026-06-26 카카오 단일로그인 통일 (Step 2a): 카카오 우선, 이메일 폼은 기존 셀러용 fallback.
   //   저장된 remember_email 이 있으면(=기존 이메일 셀러) 폼을 자동으로 펼쳐 회귀 0.
   const [showEmailLogin, setShowEmailLogin] = useState(false)
@@ -99,6 +102,8 @@ export default function SellerLoginPage() {
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
       setError(err_.response?.data?.error || t('seller.loginErrorDefault'))
+      // 🛡️ 실패 → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -175,6 +180,9 @@ export default function SellerLoginPage() {
             {/* 🔗 카카오 로그인 = 기본(권장). 카카오 한 번으로 셀러 권한 자동 복원/신청 */}
             <a
               href={`/auth/kakao/start?redirect=${encodeURIComponent(returnUrl || '/seller')}&intent=seller`}
+              /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 사이 무반응 구간에 공용 브랜드
+                 오버레이(순수 DOM — navigation 방해 0) — 소비자 LoginPage 와 동일 UX. 라이트 고정 표면. */
+              onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
               className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
             >
               <span className="text-lg">💬</span>
@@ -280,10 +288,12 @@ export default function SellerLoginPage() {
                 >
                   {t('auth.forgotPassword')}
                 </Link>
+                <Link to="/seller/relink" className="block mt-1.5 text-brand font-bold hover:underline">
+                  {t('seller.relink.entry', { defaultValue: '카카오 계정이 바뀌셨나요? 계정 재연결 →' })}
+                </Link>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               {/* Login button */}
               <button

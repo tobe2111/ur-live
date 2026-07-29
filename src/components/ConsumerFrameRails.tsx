@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { QRCodeSVG } from 'qrcode.react'
-import { Home, ShoppingBag, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin } from 'lucide-react'
+// 🟢 2026-07-13 [UNLOCK_LOADING]: qrcode.react static → lazy (LinkshopVisitorRails 와 동일 패턴).
+//   이 static import 때문에 route-chunk-map 이 홈 표면 폐쇄에 `codes`(qrcode/barcode 18KB) 를 포함 →
+//   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱
+//   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
+const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
+import { Home, ShoppingBag, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -59,23 +63,46 @@ export default function ConsumerFrameRails() {
             </p>
           </div>
 
-          <div className={`${cardCls} p-4`}>
-            <div className="flex items-center gap-1.5 mb-3">
+          {/* 🎨 2026-07-07 (대표 — "PC 거터 휑함"): 큰 QR 하나만 있던 좌측을 브랜드 가치 3종 + 작은 QR 로 재구성. */}
+          <div className={`${cardCls} p-3.5 space-y-2.5`}>
+            {[
+              { icon: ShieldCheck, title: t('frameRails.valTrust', { defaultValue: '유어딜 안전결제' }), desc: t('frameRails.valTrustDesc', { defaultValue: '결제·정산을 보증해요' }) },
+              { icon: Percent, title: t('frameRails.valDeal', { defaultValue: '매일 새로운 동네 딜' }), desc: t('frameRails.valDealDesc', { defaultValue: '할인가로 발견·구매' }) },
+              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 쇼핑몰, 링크샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '누구나 5분이면 오픈' }) },
+            ].map((v) => (
+              <div key={v.title} className="flex items-start gap-2.5">
+                <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">
+                  <v.icon className="w-[15px] h-[15px]" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-bold text-gray-900 dark:text-white leading-tight">{v.title}</span>
+                  <span className="block text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{v.desc}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className={`${cardCls} p-3.5`}>
+            <div className="flex items-center gap-1.5 mb-2.5">
               <Smartphone className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
               <p className="text-[11px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
                 {t('frameRails.openMobile', { defaultValue: '모바일로 보기' })}
               </p>
             </div>
-            <div className="rounded-xl bg-white dark:bg-white p-3 flex items-center justify-center">
-              {url ? (
-                <QRCodeSVG value={url} size={132} fgColor="#0A0A0A" bgColor="#ffffff" level="M" />
-              ) : (
-                <div className="w-[132px] h-[132px]" />
-              )}
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-white dark:bg-white p-2 flex items-center justify-center shrink-0">
+                {url ? (
+                  <Suspense fallback={<div className="w-[84px] h-[84px]" />}>
+                    <QRCodeSVG value={url} size={84} fgColor="#0F151D" bgColor="#ffffff" level="M" />
+                  </Suspense>
+                ) : (
+                  <div className="w-[84px] h-[84px]" />
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t('frameRails.scanInline', { defaultValue: '카메라로 스캔하면 모바일에서 이어서 볼 수 있어요' })}
+              </p>
             </div>
-            <p className="mt-2.5 text-[11px] text-center text-gray-500 dark:text-gray-400">
-              {t('frameRails.scan', { defaultValue: '카메라로 스캔하세요' })}
-            </p>
           </div>
         </div>
       </aside>

@@ -57,7 +57,7 @@ export function deriveDashboardSeat(p: {
 }
 
 const _ensured = new WeakSet<object>()
-async function ensureDashboardSessionsTable(DB: D1Database): Promise<void> {
+export async function ensureDashboardSessionsTable(DB: D1Database): Promise<void> {
   if (_ensured.has(DB)) return
   _ensured.add(DB)
   try {
@@ -73,6 +73,8 @@ async function ensureDashboardSessionsTable(DB: D1Database): Promise<void> {
       )`,
     ).run()
   } catch { /* 이미 존재 */ }
+  // 🤝 2026-07-28 동시 로그인 허용 플래그(대표 지시). 기존 테이블에도 붙도록 best-effort ALTER.
+  try { await DB.prepare('ALTER TABLE dashboard_sessions ADD COLUMN multi_session INTEGER NOT NULL DEFAULT 0').run() } catch { /* 이미 존재 */ }
 }
 
 /**
@@ -94,11 +96,15 @@ export async function startDashboardSession(
   if (!Number.isFinite(loginIatSec)) return
   try {
     await ensureDashboardSessionsTable(DB)
+    // 🤝 multi_session=1 시트는 **경계를 올리지 않는다** — 새 로그인이 기존 세션을 밀어내지 않아야
+    //   여러 곳(자동화 세션 + 사람 브라우저)이 동시에 살아 있다. 나머지 필드는 최신 로그인 정보로 갱신.
     await DB.prepare(
       `INSERT INTO dashboard_sessions (account_type, account_id, min_valid_iat, updated_at, user_agent, ip)
        VALUES (?, ?, ?, datetime('now'), ?, ?)
        ON CONFLICT(account_type, account_id) DO UPDATE SET
-         min_valid_iat = excluded.min_valid_iat,
+         min_valid_iat = CASE WHEN COALESCE(dashboard_sessions.multi_session, 0) = 1
+                              THEN dashboard_sessions.min_valid_iat
+                              ELSE excluded.min_valid_iat END,
          updated_at    = excluded.updated_at,
          user_agent    = excluded.user_agent,
          ip            = excluded.ip`,
@@ -125,10 +131,13 @@ export async function isDashboardSessionCurrent(
   if (!Number.isFinite(id) || id <= 0) return true
   try {
     await ensureDashboardSessionsTable(DB)
+    // ⚠️ 이 조회는 **인증된 매 요청**에서 돈다 — 플래그를 같은 SELECT 에 실어 추가 왕복을 만들지 않는다.
     const row = await DB.prepare(
-      `SELECT min_valid_iat FROM dashboard_sessions WHERE account_type = ? AND account_id = ?`,
-    ).bind(role, id).first<{ min_valid_iat: number }>()
+      `SELECT min_valid_iat, COALESCE(multi_session, 0) AS multi_session
+         FROM dashboard_sessions WHERE account_type = ? AND account_id = ?`,
+    ).bind(role, id).first<{ min_valid_iat: number; multi_session: number }>()
     if (!row) return true                           // 추적행 없음(롤아웃 전 로그인) = grandfather
+    if (Number(row.multi_session) === 1) return true // 🤝 동시 로그인 허용 시트(자동화 계정 등)
     return tokenIatSec >= (Number(row.min_valid_iat) - 1)  // 1초 skew 허용
   } catch {
     return true                                     // fail-open — D1 장애로 대시보드 락아웃 방지

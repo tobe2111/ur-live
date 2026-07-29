@@ -71,6 +71,32 @@ describe('Worker safeRedirect (kakao.routes.ts)', () => {
     })
   })
 
+  // 🧭 2026-07-11 (감사 §R2): ref/aff/invite 화이트리스트 보존 — frontend 와 동일 spec
+  describe('어트리뷰션 화이트리스트 보존 (ref/aff/invite)', () => {
+    it('?ref= 보존', () => {
+      expect(safeRedirect('/group-buy/33?ref=123')).toBe('/group-buy/33?ref=123')
+    })
+    it('?aff= / ?invite= 보존', () => {
+      expect(safeRedirect('/vouchers/9?aff=45')).toBe('/vouchers/9?aff=45')
+      expect(safeRedirect('/?invite=77')).toBe('/?invite=77')
+    })
+    it('비화이트리스트 param 은 계속 제거', () => {
+      expect(safeRedirect('/checkout?step=2')).toBe('/checkout')
+      expect(safeRedirect('/group-buy/33?ref=123&error=x')).toBe('/group-buy/33?ref=123')
+    })
+    it('hash 는 계속 제거', () => {
+      expect(safeRedirect('/group-buy/33?ref=123#h')).toBe('/group-buy/33?ref=123')
+    })
+    it('안전하지 않은 값은 보존 안 함', () => {
+      expect(safeRedirect('/x?ref=<script>')).toBe('/x')
+    })
+    it('금지 path 는 ref 있어도 여전히 / fallback', () => {
+      expect(safeRedirect('/login?ref=123')).toBe('/')
+      expect(safeRedirect('/auth/kakao/start?ref=123')).toBe('/')
+      expect(safeRedirect('//evil.com?ref=123')).toBe('/')
+    })
+  })
+
   describe('frontend safeInternalPath 와 양쪽 spec 동기화 회귀', () => {
     // 양쪽이 동일하게 차단해야 함. 만약 어느 한 쪽만 빼먹으면 OAuth hop 루프 재발 가능.
     it('양쪽 동일하게 차단: /auth/* 모든 경로', () => {

@@ -57,12 +57,12 @@ function buildReportHTML(opts: {
           '꾸준한 활동 감사합니다 🎉'}
       </div>
       <div style="margin-top: 20px; text-align: center;">
-        <a href="https://live.ur-team.com/seller" style="display: inline-block; padding: 10px 20px; background: #374151; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 →</a>
+        <a href="https://urdeal.kr/seller" style="display: inline-block; padding: 10px 20px; background: #374151; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 →</a>
       </div>
     </div>
     <div style="padding: 12px; background: #f9fafb; text-align: center; font-size: 10px; color: #9ca3af;">
       유어딜 일일 리포트 ·
-      <a href="https://live.ur-team.com/seller/settings" style="color: #6b7280;">수신 거부</a>
+      <a href="https://urdeal.kr/seller/settings" style="color: #6b7280;">수신 거부</a>
     </div>
   </div>
 </body>

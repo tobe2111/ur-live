@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
 import api from '@/lib/api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface SearchStatesProps {
   loading: boolean
@@ -67,15 +68,8 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     saveRecent([])
   }
 
-  // Loading State
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-[#007aff] animate-spin mb-4" />
-        <p className="text-[15px] text-[#6e6e73]">검색 중...</p>
-      </div>
-    )
-  }
+  // Loading State — 🎯 2026-07-18 로딩 단일화 (검색 결과 영역 인라인)
+  if (loading) return <BrandLoader label="검색 중" />
 
   // Error State
   if (error) {
@@ -95,7 +89,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           </button>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-2.5 bg-[#007aff] text-white rounded-full text-[15px] font-semibold hover:bg-[#0051d5] transition-colors"
+            className="px-6 py-2.5 bg-brand text-white rounded-full text-[15px] font-semibold hover:bg-brand-dark transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -126,7 +120,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
               {recent.map(q => (
                 <div
                   key={q}
-                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
+                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1.5 bg-gray-100 dark:bg-[#1A2334] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
                 >
                   <button
                     onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
@@ -137,7 +131,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   <button
                     onClick={() => removeOne(q)}
                     aria-label={`'${q}' 삭제`}
-                    className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors"
+                    className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#2A3446] transition-colors"
                   >
                     <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                   </button>

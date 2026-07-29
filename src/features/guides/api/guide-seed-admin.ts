@@ -93,11 +93,11 @@ export const ADMIN_SEED: SeedSection[] = [
 - 승인 후 에이전시는 \`/seller/register?agency=<id>\` 링크로 셀러 초대 가능
 - 초대로 가입한 셀러는 **agency_id** 가 자동 연결 → 에이전시 수수료 적용
 
-### 수수료 구조
-- 기본 2% (에이전시가 유치한 셀러의 매출에서 플랫폼 수수료와 별도)
-- 플랫폼 수익 = 총매출 × 10%
-- 에이전시 수익 = 총매출 × 2%
-- 셀러 수익 = 총매출 × 88%
+### 수수료 구조 (2026-07-05 개편)
+- **매장 영입 커미션 기본 1%** — 에이전시별 조정: 에이전시 관리의 store_intro_commission_pct
+- 기간: 매장별 첫 판매 확정일로부터 **기본 24개월** (commission_term_months, NULL=무제한 — 신규는 24 자동)
+- 캡 발동 시 에이전시 커미션 최우선 보전 (플랫폼 설정 → 커미션 캡 발동 이력에서 확인)
+- 레거시 자동정산 rail (소속 셀러 매출 2% + 일률 3.3% 원천징수) 은 봉인됨 — agency_auto_settle_legacy_enabled 기본 OFF
 
 ### 🛡️ 셀러 심사 워크플로우 (2026-04-26 추가)
 - 에이전시가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨
@@ -179,7 +179,15 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 셀러는 \`/seller/settlements\` 에서 **승인** → 발행 확정. 비사업자/미검증 셀러는 대상 아님(원천징수 경로).
 - 현황/재발행: \`GET /api/admin/tax/settlement-invoices\`, \`POST /api/admin/tax/settlement-invoices/:id/reissue\`.
 - **실 발행 활성화**: 환경변수 \`REVERSE_INVOICE_PROVIDER\`(\`unipost\`/\`stub\`) + \`UNIPOST_API_URL\`/\`UNIPOST_API_KEY\`/\`UNIPOST_CORP_NUM\` 설정.
-  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.`,
+  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.
+
+### 🛡️ 정산 지급 가드 (2026-07 머니 감사 — 통합정산 payouts)
+- **승인/송금 CAS**: 승인·송금완료는 status 조건부 UPDATE(CAS)라 동시 클릭 이중 실행이 구조적으로 차단됩니다(409 "이미 처리됨" = 정상 방어이니 당황 금지).
+- **계좌 누락 차단**: 수령자 계좌번호가 없으면 송금완료 마킹 불가 → \`PAYOUT_NO_ACCOUNT\` 409. 수령자 계좌 등록 확인 후 재시도.
+- **동일 수령자·기간 중복 송금 차단**: 같은 수령자·기간에 이미 'sent' 건이 있으면 \`PAYOUT_ALREADY_SENT_PERIOD\` 409 — 이중지급 방어(정말 별건인지 먼저 확인).
+- **과다지급 가드**: 승인 시 현재 원장 net receivable 을 재검증 — 초과분은 \`PAYOUT_EXCEEDS_RECEIVABLE\` 로 차단(오래된 gross 건은 취소 후 재생성).
+- **미회수 clawback 조회**: 지급 후 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨 — \`GET /api/admin/payouts/clawbacks\` 로 pending 회수 대상·금액 합계를 확인하고 회수/상계 처리.
+- **두 레일 대사**: 같은 매장이 restaurant_settlements 와 payouts 양쪽에 미지급 노출되면 이중지급 위험 — \`GET /api/admin/payouts/rail-reconciliation\` 으로 확인 후 **한 레일에서만** 지급.`,
   },
   {
     key: 'live', icon: '🔴', title: '라이브 방송 운영', order: 70,
@@ -379,7 +387,7 @@ Cloudflare Dashboard → Pages → Deployments → 이전 버전 "Rollback"
     key: 'deploy', icon: '🚀', title: '배포 절차', order: 140,
     content: `### 배포 구조
 - **Cloudflare Pages** 프로젝트 \`ur-live\`
-- 커스텀 도메인: \`live.ur-team.com\`
+- 커스텀 도메인: \`urdeal.kr\`
 - 자동 배포: feature 브랜치 → main 머지 시 GitHub Actions 가 Pages 에 배포
 
 ### 배포 명령
@@ -570,7 +578,7 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 **위치**: \`/account/settings\` "화면 테마" 섹션 — 시스템/라이트/다크 3-way
 
 **구현**: \`html\` 태그에 \`.dark\` class 토글 + \`src/index.css\` 글로벌 override.
-- 다크 모드: 기존 \`bg-[#020202]\` / \`text-white\` 등 그대로
+- 다크 모드: 기존 \`bg-[#0F151D]\` / \`text-white\` 등 그대로
 - 라이트 모드: \`html:not(.dark)\` selector 가 hardcoded 다크 색상을 light 로 invert
 - 셀러/어드민/에이전시 대시보드는 토글 무영향 (강제 화이트 유지)
 
@@ -771,6 +779,54 @@ WHERE account LIKE 'user:%' GROUP BY account HAVING SUM(net) < 0;
 - **결제 시점 phone 강제**: KT Alpha 상품 결제 시 phone 없으면 PHONE_REQUIRED 에러 → 클라이언트 phone 모달 자동 표시 → 동의 후 저장 → 자동 retry
 - **kakao phone 자동 저장**: 카카오 OAuth 시 phone_number scope 받으면 users.phone INSERT (기존값 보존 — COALESCE)
 - **kt_alpha_admin_seller_id 필수화**: /admin/kt-alpha 페이지에 빨간 필수 표시 — 미설정 시 voucher_orders INSERT silent fail`,
+  },
+  // 🎁 2026-07-12 WP-A: 체험 캠페인 운영 (대행생성 1순위)
+  {
+    key: 'experience-campaign-admin', icon: '🎁', title: '체험 캠페인 운영 — 대행생성·추첨·리포트 (2026-07-12)', order: 175,
+    content: `### 개요 (\`/admin/experience-campaigns\`)
+- 매장 체험단 모듈: **어드민이 매장을 대신해 개설**(1순위 경로 — 사장님 직접 개설은 게이트 \`experience_campaign_seller_create\` 뒤, 기본 OFF).
+- 흐름: 대행 개설 → 소비자 응모(\`/experience\`, 1인 1회) → **공정 추첨** → 선정자 **0원 체험권 자동 발급** → QR 사용 → 리포트.
+
+### 대행 개설
+- 필수: 매장 ID(seller_id) · 제공 이용권 상품 ID(그 매장 소유 상품만 — 서버 검증) · 제목 · 모집 인원.
+- 선택: 응모 마감 · 미션(예: 블로그 후기 게시) · 설명.
+
+### 공정 추첨 (B2G 증빙)
+- CSPRNG 추첨 + **시드·응모풀 스냅샷·당첨자를 영구 기록**(\`experience_draw_logs\`) — 조작 불가 증명. 이력은 캠페인 상세 "추첨 이력"에서 확인.
+- 추첨은 캠페인당 1회(CAS — 이중 추첨 차단), 실행 후 되돌릴 수 없음.
+- 선정자에게 체험권 발급 + 알림 / 미선정자에게도 결과 알림 자동 발송.
+
+### 💰 머니 규칙 (반드시 이해)
+- 0원 체험권 = **매장 자기부담 제공**. 정산·커미션·유어딜 5% **전부 무관**(발급 order \`payment_method='experience'\`, voucher \`is_experience=1\` → auto-settlement 제외 + 사용시점 원장 amount>0 게이트 자동 skip).
+- \`/admin/promo-ledger\` 에 **"비정산 — 0원 체험권"** 패널로 월별 건수 표시. **결제액 합이 0원이 아니면 발급 경로 회귀 의심** — 즉시 조사.
+- 만료 시 소멸(무상이라 환불 대상 아님 — 자동환불 파이프라인 미탑승).
+
+### 리포트
+- 캠페인별 응모/선정/방문(사용)/링크전환 집계 + **CSV export**(\`/admin/experience-campaigns/:id/report.csv\`) — 재단/기관 제출용.`,
+  },
+  // 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — B2G 골목형상점가
+  {
+    key: 'district-coupon-admin', icon: '🧾', title: '상권 쿠폰(영수증 페이백) 운영 (2026-07-13)', order: 176,
+    content: `### 개요 (\`/admin/district-coupons\`)
+- B2G 상권 사업: 참여 점포에서 기준액 이상 구매 → 소비자가 영수증 등록 → **어드민 검수·승인 → 무상 쿠폰 자동 지급** → 상권 내 참여 점포 어디서든 사용 → **사용 매장으로 정산(수수료 0)**.
+- 소비자 링크: \`/district/{slug}\` (랜딩+영수증 등록) · \`/district/my\` (쿠폰 지갑·사용).
+
+### 운영 순서
+1. **캠페인 생성**: slug·이름·총 예산·보상 구간(예: 3만↑→3천 / 5만↑→1만)·쿠폰 유효기간.
+2. **매장 일괄 등록**: 한 줄에 한 매장(\`이름|주소|전화|은행|계좌|예금주\`) — **6자리 PIN 자동 발급**. PIN 을 각 매장 카운터에 전달. **매장은 셀러 계정·로그인이 전혀 필요 없음**(소비자가 PIN 으로 self-redeem).
+3. **영수증 검수**: 사진 열람 → 금액·매장·카드 승인번호 대조 → 승인(쿠폰 즉시 지급+알림) / 반려(사유 필수).
+4. **정산**: 리포트 탭(발급/사용/미사용/소멸) + **정산 CSV**(점포별 사용액·계좌 — 이체/재단 제출용).
+
+### 💰 머니 규칙 (반드시 이해)
+- 무상 쿠폰 = **예산(사업비) 재원** — 소비자 결제·딜·유어딜 5% 와 완전 분리(병렬 엔티티, vouchers 무접촉).
+- **만료 = 소멸**(이용권의 만료 자동환불과 무관 — 무상이라 환불 대상 아님). 소멸액은 리포트 '미집행액'으로 재단 보고.
+- 예산 소진 가드: 발급 총액이 캠페인 예산을 넘으면 승인이 차단됨(예산 상향 또는 종료).
+- 사용 시점에 매장 귀속(redeemed_store) — 정산은 이 기준. 원장/자동 payout 합류는 별도 격리 PR(스테이징 검증 후).
+
+### 부정 방지 1단계
+- 카드 승인번호 **캠페인 내 유니크**(돌려쓰기 구조 차단, 표기 변형 정규화) + 계정당 월 등록 한도(\`platform_settings.district_receipt_monthly_cap\`, 기본 4건) + PIN 오입력 rate-limit(브루트포스 차단).
+- 검수 화면에 신청자의 기존 승인 건수 표시 — 반복 수령자는 영수증을 더 꼼꼼히.
+- OCR 자동검증·이상탐지 연동은 2단계.`,
   },
   {
     key: 'admin-users-page', icon: '👥', title: '/admin/users 페이지 운영 (2026-05-24)', order: 180,
@@ -1036,5 +1092,50 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 5. **진행 확인**: 최근 작업 목록에서 큐 진척(발송/대기/실패)을 확인합니다.
 
 > ⚠️ 스팸/수신거부 정책을 준수하고, 광고성 메일은 표기 의무를 지키세요. 민감 정보(가격/계좌 등)는 본문에 직접 넣지 말고 페이지 링크로 안내하세요.`,
+  },
+  // 🧾 2026-07-10 (PR #479+#483): promo 재원 원장 — 불변식 #44 감사 콕핏
+  {
+    key: 'promo-ledger-admin', icon: '🧾', title: 'promo 재원 원장 (불변식 #44 콕핏)', order: 850,
+    content: `### promo 재원 원장 (\`/admin/promo-ledger\`) — read-only
+8월 promo flip(재원 owner 전환) staging 검증 조종석입니다. 돈 이동 0 · 정산 로직 무변경.
+
+- **재원 스위치 상태**: \`promo_funding_source\`(platform/owner) · \`commission_budget_enabled\` · \`pg_reserve_pct\` · \`seller_promo_field_enabled\` 를 칩으로 표시.
+- **월별 분배 집계**: 주문 수/금액 · affiliate promo 합계 · order_fee_breakdown(플랫폼/promo/에이전시/owner net) 월 단위 대사.
+- **불변식 #44 패널**: "원장 platform:revenue = 5% 전액 · 성장 커미션 debit 0" 검증.
+  - **전환 전(platform)엔 커미션 debit 항목이 파란 정보 톤 = 정상**(예상된 현행 항목 — 위반 아님).
+  - 전환 후(owner)에 debit 존재 = 🔴 위반 — 즉시 조사 대상.
+- 데이터: \`GET /api/admin/promo-ledger/summary?month=\` · \`GET /api/admin/promo-ledger/orders?month=&page=\`
+- 재원 확정 원칙(유어딜 5% 는 어떤 커미션에도 안 쓴다)·flip 체크리스트: \`docs/design/commission-funding-restructure.md\``,
+  },
+  // 🧰 2026-07-19 운영 자동화 백로그 (일일 다이제스트·시퀀스·CS 봇·코호트)
+  {
+    key: 'ops-automation-admin', icon: '🧰', title: '운영 자동화 — 다이제스트·시퀀스·CS 봇·코호트 (2026-07-19)', order: 855,
+    content: `### 개요 (전부 read-only 수집 / 발송 게이트 기본 OFF — "판단은 내가, 수집은 기계가")
+운영 자동화 4종. 소비자 대상 발송은 전부 게이트 뒤라 **켜기 전까지 라이브 영향 0**.
+
+### ① 일일 다이제스트 (매일 KST 07:00)
+- 어제(KST) 판매 건수/금액 · 이용권 발급 · QR 사용 · 신규 가입 + 이상 신호(환불 급증 ⚠️ / 미사용 임박 / cron 실패 / 어뷰징 high).
+- 배달: 어드민 벨(항상) + Discord(webhook 설정 시) + **이메일**(platform_settings \`ops_digest_email\` 등록 시) + **알림톡**(env \`OPS_DIGEST_ALIMTALK_ENABLED=true\` + \`ops_digest_phone\` — 기본 OFF).
+- 수신처 등록: \`platform_settings\` 에 key \`ops_digest_email\` / \`ops_digest_phone\` 저장(미설정 = 벨+Discord 만).
+
+### ② 알림톡 시퀀스 3종 (소비자/체험단)
+- **게이트: env \`OPS_SEQUENCES_ENABLED=true\`** (기본 OFF — 인앱 알림 포함 전체 미발송).
+- 드랍 전날 예고: fcfs 응모 상품의 마감(D-1) 저녁 KST 18:00 응모자에게 예고 (cron \`drop-d1-reminder\`).
+- 체험단 게시 리마인드: 당첨(\`selected\`) 48시간 경과 + 콘텐츠 인증 없음 → 미션 리마인드 **평생 1회** (cron \`experience-post-reminder\`).
+- 이용권 만료 임박: **기존 cron \`meal-voucher-expire\`(D-30/7/3/1)** 이 담당 — 신규 아님, 게이트 무관 상시.
+- 알림톡 템플릿(\`drop_d1_reminder\`/\`experience_post_reminder\`)은 Aligo 콘솔 등록·승인 후 실발송 — 미등록이면 인앱 알림만 나가고 알림톡은 실패 적재(무해).
+
+### ③ CS 자동응답 FAQ 봇 (카카오채널)
+- 카카오 i 오픈빌더 스킬 서버: \`POST /api/cs/kakao-skill\` — QR 사용법·환불·정산일·유효기간·딜 포인트 5문항 키워드 자동응답 + 미매칭 시 상담원 안내 폴백. **read-only(DB 접근 0)**.
+- **게이트: env \`KAKAO_SKILL_SECRET\` 미설정 = 404(비활성)**. 활성: 오픈빌더 챗봇 생성 → 폴백 블록에 스킬 URL + 헤더 \`x-skill-secret\` 등록 → env 에 같은 값 → 배포.
+- FAQ 문안 SSOT: \`src/features/cs/api/cs-faq.ts\` — **서비스 사실 바뀌면 같은 커밋에서 갱신**(블로그 시드 룰과 동일).
+
+### ④ 주간 코호트 리포트 (매주 월요일 KST 09:00)
+- 최근 8주 **가입 주차별** 가입 → 구매전환 → 14일 내 구매 → 재구매 → QR 사용 표 1장 (cron \`weekly-cohort-report\`).
+- 주간 지표 요약(스냅샷 5개)과 상보 — 이쪽은 유저 질(전환·리텐션) **추세**. 배달 경로는 ①과 동일(벨+Discord+설정 시 메일).
+
+### 문제 시
+- 다이제스트/리포트가 안 오면: \`/admin/system-monitoring\` cron 실패 탭 → \`ops-daily-digest\`/\`weekly-cohort-report\` 확인.
+- 알림톡 미발송: Aligo 3종 env + 템플릿 콘솔 등록 여부(\`docs/kakao-alimtalk-templates.md\` §운영 자동화).`,
   },
 ]

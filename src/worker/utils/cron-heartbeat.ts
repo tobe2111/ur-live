@@ -1,39 +1,183 @@
 /**
- * 🫀 2026-07-05: Cron heartbeat — "cron 침묵" dead-man's switch (1인 운영 관측 보강).
+ * 💓 cron 하트비트 — "안 돌았다"를 보이게 한다 (2026-07-28 신설)
  *
- * 배경: cron_failures(실패 기록)·safeCron Discord 알림은 *실행됐는데 터진* 경우만 잡는다.
- * cron 시스템 자체가 조용히 멈추면(예: Workers cron 프로젝트 미배포 drift — Pages 와 이중 배포,
- * wrangler.toml triggers 누락, isolate 전면 장애) 아무 신호가 없다 — 백업/정산/KT 스위퍼가
- * 침묵 속에 멈춰도 아무도 모름.
+ * 왜 필요한가 — `safeCron` 은 작업이 **예외를 던질 때만** 기록한다(cron_failures + 어드민 벨 + Discord).
+ *   그런데 실제로 아픈 정지는 예외가 없다:
+ *     ① cron 이 아예 안 울림  ② 게이트 OFF 로 조용히 return
+ *     ③ 내부에서 `.catch(() => null)` 로 전부 삼켜 **성공으로 집계**
+ *   2026-07-28 유어애즈 자동 정비가 정확히 ③ 이었다 — 예산 소진으로 아무 일도 못 했는데 예외가 없어
+ *   07-26 부터 멈춘 걸 아무도 몰랐다(#793). 당시 cron 70개 중 실행 기록을 남기는 건 3개뿐이었다.
  *
- * 처리:
- *   1. scheduled.ts `safeCron` (모든 cron 의 단일 관문) 이 매 실행 종료 시
- *      `recordCronHeartbeat()` 1 write — cron_heartbeats 에 이름별 최종 실행 시각/상태 upsert.
- *   2. `getCronHealth()` 가 핵심 cron(아래 CRITICAL_CRON_EXPECTATIONS) 의 최종 실행이
- *      허용 간격을 넘겼는지 판정.
- *   3. 외부 관측: GET /api/_healthcheck/cron (healthcheck.routes.ts) → uptime.yml (GitHub
- *      Actions, 10분마다) 이 ok:false 면 'uptime' 이슈 생성 → 이메일 알림.
- *      ⚠️ daily-self-diagnostic 의 stale 체크는 cron *내부* 실행이라 cron 전면 사망 시
- *      스스로 못 알림 — 반드시 외부(uptime.yml) 관측이 진짜 dead-man's switch.
+ * 무엇을 남기나 — 성공·실패 **무관하게** 매 실행마다 `platform_settings` 에 한 줄:
+ *   `cron_hb:{name}` = {"at":ISO, "ok":bool, "ms":숫자}
+ *   → 어드민이 "이 작업 마지막 실행 언제?" 를 pull 로 확인할 수 있다(GET /api/admin/cron-heartbeats).
  *
- * 정합성: 돈/상태 아님(관측 전용) — 기록 실패는 무조건 fail-soft (cron 본연 작업 불막음).
- * 쓰기 볼륨: cron 실행당 D1 write 1회 (KV 미사용 — 무료 1K/day 한도 무관).
+ * 왜 새 테이블이 아니라 platform_settings 인가 — 이 레포는 **D1 마이그레이션이 CI 에서 안 돈다**
+ *   (TECHNICAL_DEBT 🔴). 새 테이블은 배포돼도 생성 보장이 없어 조용히 실패한다. 기존 스탬프들
+ *   (`ads_maintenance_last`·`ads_autocollect_stats`)과 같은 자리에 두는 것이 확실하다.
+ *
+ * 비용 — 작업당 UPSERT 1회. cron 작업들은 이미 수십~수백 쿼리를 쓰므로 상대적으로 무시할 수준이고,
+ *   대신 **기록 누락이 없다**(모아서 쓰면 waitUntil 이 먼저 끝나 유실될 수 있다).
  */
+import type { Env } from '../types/env'
 
-import { logError } from './logger'
-
-export interface CronHeartbeatRow {
-  cron_name: string
-  last_status: string
-  last_started_at: string | null
-  last_finished_at: string | null
-  last_duration_ms: number | null
-  last_error: string | null
-  run_count: number
+/**
+ * 작업 반환값을 한 줄 요약으로. 평면 객체의 숫자·불리언·짧은 문자열만 추린다
+ * (배열·중첩 객체는 길어지기만 하고 판단에 도움이 안 된다).
+ */
+function summarizeResult(v: unknown): string | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const parts: string[] = []
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
+    else if (typeof val === 'string' && val.length <= 24) parts.push(`${k}=${val}`)
+    else if (Array.isArray(val)) parts.push(`${k}[${val.length}]`)
+    if (parts.join(' ').length > MAX_NOTE) break
+  }
+  return parts.length ? parts.join(' ').slice(0, MAX_NOTE) : null
 }
+
+/** 값 상한 — 이름이 길거나 이상값이 와도 platform_settings 를 오염시키지 않게. */
+const MAX_VALUE = 400
+/** 결과 요약 상한 — 하트비트는 '무엇을 했나' 한 줄이지 로그가 아니다. */
+const MAX_NOTE = 160
+
+/**
+ * 한 cron 작업의 실행 사실을 기록한다. **절대 throw 하지 않는다** — 하트비트 실패가
+ * 본 작업을 망가뜨리면 안 된다(기록은 관측용이지 기능이 아니다).
+ */
+export async function recordCronBeat(
+  env: Env,
+  name: string,
+  ok: boolean,
+  ms: number,
+  /**
+   * 이번 실행을 유발한 cron 식(`event.cron`). **기대 주기를 손으로 관리하는 표를 만들지 않기 위해**
+   * 여기 함께 기록한다 — 68개짜리 수동 표는 금방 낡아 오탐/누락을 만든다.
+   * 경보(cron-stale-watch)가 이 값으로 "얼마나 안 돌면 이상한가"를 스스로 계산한다.
+   */
+  cronExpr?: string,
+  /**
+   * 작업이 반환한 결과 요약(선택). "돌았다"와 "무엇을 했다"는 다르다 —
+   * 예: payouts-generate 가 0건으로 끝난 게 '할 일이 없어서'인지 '조용히 실패해서'인지 구분한다.
+   * 작은 평면 객체만 받는다(로그가 아니라 한 줄 요약).
+   */
+  result?: unknown,
+): Promise<void> {
+  try {
+    const DB = (env as unknown as { DB?: D1Database }).DB
+    if (!DB || !name) return
+    const value = JSON.stringify({
+      at: new Date().toISOString(),
+      ok,
+      ms: Math.max(0, Math.round(ms)),
+      ...(cronExpr ? { cron: cronExpr.slice(0, 40) } : {}),
+      ...(summarizeResult(result) ? { r: summarizeResult(result) } : {}),
+    }).slice(0, MAX_VALUE)
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(`cron_hb:${name.slice(0, 80)}`, value)
+      .run()
+  } catch { /* fail-soft — 관측 실패가 작업을 막지 않는다 */ }
+}
+
+export interface CronHeartbeat {
+  name: string
+  at: string | null
+  ok: boolean | null
+  ms: number | null
+  /** 마지막 실행 이후 경과(분). 오래될수록 '멈춤' 의심. */
+  age_minutes: number | null
+  /** 실행을 유발한 cron 식(있으면). 기대 주기 계산에 쓴다. */
+  cron?: string | null
+  /** 이 작업이 '멈춤'으로 보이는가(기대 주기 대비). 판단 불가면 null. */
+  stale?: boolean | null
+  /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
+  result?: string | null
+}
+
+/**
+ * cron 식으로부터 **"이 시간을 넘기면 이상하다"** 기준(분)을 계산한다. 순수함수 — 테스트 가능.
+ *
+ * 넉넉하게 잡는다(기대주기 × 2 + 30분 여유): 배포·재시도·지연으로 한두 번 밀리는 것까지
+ * 경보로 올리면 곧 아무도 안 본다. "확실히 이상한 것만" 울리는 게 목적이다.
+ * 해석 불가한 식은 null → **경보하지 않는다**(모르면 조용히 있는 편이 오탐보다 낫다).
+ */
+export function expectedMaxAgeMinutes(cronExpr?: string | null): number | null {
+  if (!cronExpr || typeof cronExpr !== 'string') return null
+  const f = cronExpr.trim().split(/\s+/)
+  if (f.length !== 5) return null
+  const [min, hour, dom, , dow] = f
+  let base: number
+  const everyN = /^\*\/(\d{1,3})$/.exec(min || '')
+  if (everyN && hour === '*') base = Math.max(1, Number(everyN[1]))
+  else if (hour === '*') base = 60              // 매시 (분 고정)
+  else if (dow !== '*') base = 60 * 24 * 7      // 주간
+  else if (dom !== '*') base = 60 * 24 * 31     // 월간
+  else base = 60 * 24                           // 매일
+  return base * 2 + 30
+}
+
+/** 어드민 조회용 — 오래된 것부터. 실패해도 빈 배열(화면이 죽지 않게). */
+export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[]> {
+  try {
+    const { results } = await DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key LIKE 'cron_hb:%'",
+    ).all<{ key: string; value: string }>()
+    const now = Date.now()
+    const rows = (results || []).map((r) => {
+      let at: string | null = null, ok: boolean | null = null, ms: number | null = null, cron: string | null = null, note: string | null = null
+      try {
+        const v = JSON.parse(r.value) as { at?: string; ok?: boolean; ms?: number; cron?: string; r?: string }
+        at = v.at ?? null; ok = typeof v.ok === 'boolean' ? v.ok : null
+        ms = typeof v.ms === 'number' ? v.ms : null; cron = v.cron ?? null; note = v.r ?? null
+      } catch { /* 깨진 값은 null 로 */ }
+      const t = at ? Date.parse(at) : NaN
+      const age = Number.isFinite(t) ? Math.round((now - t) / 60000) : null
+      const limit = expectedMaxAgeMinutes(cron)
+      return {
+        name: r.key.slice('cron_hb:'.length),
+        at, ok, ms, cron, result: note,
+        age_minutes: age,
+        stale: (limit != null && age != null) ? age > limit : null,
+      }
+    })
+    // 오래된 것 먼저 = 멈췄을 가능성이 높은 것 먼저.
+    rows.sort((a, b) => (b.age_minutes ?? Number.MAX_SAFE_INTEGER) - (a.age_minutes ?? Number.MAX_SAFE_INTEGER))
+    return rows
+  } catch {
+    return []
+  }
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🫀 외부 dead-man's switch — "cron 전체가 조용히 죽은 것"을 밖에서 잡는다
+ *
+ * `cron-stale-watch` 는 **cron 안에서** 도는 감시라, cron 시스템 자체가 멈추면 감시도 같이
+ * 멈춘다(watchdog 의 고전적 한계). 그래서 밖에서 때리는 프로브가 하나 더 필요하다:
+ *   `GET /api/_healthcheck/cron` → uptime.yml(GitHub Actions, 10분) → 실패 시 이슈+메일.
+ *
+ * 판정 두 가지:
+ *   ① **개별 침묵** — 어떤 작업이 자기 기대주기를 넘겼다.
+ *   ② **전면 침묵** — 가장 최근 하트비트조차 오래됐다(= cron 이 통째로 안 돈다).
+ *      ①만으로는 못 잡는다. 아예 안 돌면 새 기록이 없어 낡은 기록만 남고 판정이 굳는다.
+ *
+ * ⚠️ 손으로 관리하는 '핵심 cron 기대표'는 두지 않는다 — 69개짜리 표는 금방 낡아
+ * 오탐(이름 바뀜)과 누락(새 cron 미등록)을 **동시에** 만든다. 기록된 cron 식이 SSOT.
+ * 그래서 `label` 은 작업 이름 그대로다(없는 친절함을 지어내지 않는다).
+ *
+ * 오탐 방지: 첫 배포 직후엔 기록이 0이라 '전면 침묵'처럼 보인다 → 추적 시작 시각(sentinel)을
+ * 남겨, 유예 안에서는 `bootstrapping: true` 로 ok 를 유지한다.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 추적 시작 시각 — "한 번도 안 돈 것"과 "이제 막 배포된 것"을 가른다. */
+const TRACKING_KEY = 'cron_hb_tracking_since'
+/** 전면 침묵 판정 유예(분). 가장 빈번한 cron 이 2분 주기라 넉넉하다. */
+const TOTAL_SILENCE_MIN = 90
 
 export interface CronStaleEntry {
   name: string
+  /** 사람이 읽는 이름. 수동 표를 두지 않으므로 작업 이름과 같다. */
   label: string
   max_gap_min: number
   last_finished_at: string | null
@@ -42,176 +186,78 @@ export interface CronStaleEntry {
 
 export interface CronHealth {
   ok: boolean
-  /** 아직 heartbeat 가 하나도 없음 (첫 배포 직후 등) — 오탐 방지 위해 ok:true 유지 */
+  /** 추적 유예 안(기록 없음) — 첫 배포 오탐 방지용. true 면 ok 를 신뢰하지 말 것. */
   bootstrapping: boolean
   latest_heartbeat_at: string | null
   latest_age_min: number | null
   stale: CronStaleEntry[]
-  /** 기록이 아예 없는 핵심 cron (정보성 — 주간 cron 은 첫 주 동안 자연스럽게 비어있음) */
+  /** cron 식이 없거나 해석 불가해 **판정을 못 한** 작업들(모르면 조용히 있는다). */
   missing: string[]
 }
 
-/**
- * 침묵 감지 대상 핵심 cron + 허용 간격 (스케줄 주기 × 여유배수).
- * ❗ scheduled.ts 의 safeCron name 과 정확히 일치해야 함 (이름으로 매칭).
- * 새 핵심 cron 추가 시 여기에 등록 — daily-self-diagnostic + /api/_healthcheck/cron 이 자동 감시.
- */
-export const CRITICAL_CRON_EXPECTATIONS: Array<{ name: string; label: string; maxGapMin: number }> = [
-  // 5분 주기군 — 60분 내 미실행이면 cron 시스템 이상
-  { name: 'scheduled-cleanup', label: '정리 배치(5분)', maxGapMin: 60 },
-  { name: 'cache-prewarm', label: '캐시 프리웜(5분)', maxGapMin: 60 },
-  { name: 'retry-alimtalk', label: '알림톡 재시도(5분)', maxGapMin: 60 },
-  // 매시 주기군 — 3시간 여유
-  { name: 'anomaly-detect', label: '이상치 탐지(매시)', maxGapMin: 180 },
-  { name: 'kt-alpha-voucher-retry', label: 'KT 교환권 재발송 스위퍼(매시)', maxGapMin: 180 },
-  { name: 'toss-refund-retry', label: 'Toss 환불 재시도(매시)', maxGapMin: 180 },
-  // 일일 주기군 — 26시간 여유
-  { name: 'auto-settlement', label: '자동 정산(일일)', maxGapMin: 26 * 60 },
-  { name: 'daily-self-diagnostic', label: '자가진단(일일)', maxGapMin: 26 * 60 },
-  { name: 'schema-repair-daily', label: '스키마 자동수리(일일)', maxGapMin: 26 * 60 },
-  { name: 'ledger-reconcile', label: '원장 정합 검증(일일)', maxGapMin: 26 * 60 },
-  { name: 'reconciliation', label: '대사(일일)', maxGapMin: 26 * 60 },
-  // 주간 주기군 — 8일 여유
-  { name: 'payouts-generate', label: '주간 정산 생성(월)', maxGapMin: 8 * 24 * 60 },
-  { name: 'd1-backup', label: 'D1 주간 백업(일)', maxGapMin: 8 * 24 * 60 },
-]
-
-const _ensured = new WeakSet<object>()
-
-/** 추적 시작 시점 sentinel — "한 번도 안 돈 cron" 을 stale 로 승격하는 기준점 (아래 getCronHealth). */
-const TRACKING_SENTINEL = '__tracking_since'
-
-async function ensureCronHeartbeats(DB: D1Database): Promise<void> {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
-  try {
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS cron_heartbeats (
-        cron_name TEXT PRIMARY KEY,
-        last_status TEXT NOT NULL DEFAULT 'ok',
-        last_started_at DATETIME,
-        last_finished_at DATETIME,
-        last_duration_ms INTEGER,
-        last_error TEXT,
-        run_count INTEGER NOT NULL DEFAULT 0
-      )
-    `).run()
-    // 최초 1회만 삽입(OR IGNORE) — 이후 절대 갱신 안 함 = "추적이 시작된 시각".
-    await DB.prepare(
-      `INSERT OR IGNORE INTO cron_heartbeats (cron_name, last_status, last_finished_at, run_count) VALUES (?, 'meta', datetime('now'), 0)`,
-    ).bind(TRACKING_SENTINEL).run()
-  } catch { /* 테이블 생성 실패해도 cron 본연 작업은 계속 — 다음 호출/스케줄에서 재시도 */ }
-}
-
-/**
- * cron 실행 종료 시 1회 호출 (safeCron 관문). 실행당 D1 write 1회.
- * 어떤 실패도 삼킨다 — heartbeat 가 cron 을 죽이면 본말전도.
- */
-export async function recordCronHeartbeat(
-  DB: D1Database | undefined,
-  name: string,
-  status: 'ok' | 'fail',
-  durationMs: number,
-  error?: unknown,
-): Promise<void> {
-  if (!DB) return
-  try {
-    await ensureCronHeartbeats(DB)
-    const startedIso = new Date(Date.now() - Math.max(0, durationMs)).toISOString()
-    const errMsg = status === 'fail'
-      ? ((error as Error)?.message || String(error ?? '')).slice(0, 500)
-      : null
-    await DB.prepare(`
-      INSERT INTO cron_heartbeats (cron_name, last_status, last_started_at, last_finished_at, last_duration_ms, last_error, run_count)
-      VALUES (?, ?, ?, datetime('now'), ?, ?, 1)
-      ON CONFLICT(cron_name) DO UPDATE SET
-        last_status = excluded.last_status,
-        last_started_at = excluded.last_started_at,
-        last_finished_at = excluded.last_finished_at,
-        last_duration_ms = excluded.last_duration_ms,
-        last_error = excluded.last_error,
-        run_count = cron_heartbeats.run_count + 1
-    `).bind(name, status, startedIso, Math.round(durationMs), errMsg).run()
-  } catch (e) {
-    logError('[cron-heartbeat] record failed', { name, error: String(e) })
-  }
-}
-
-/** ISO/SQLite datetime → 경과 분. 파싱 불가면 null. */
-function ageMinutes(datetime: string | null | undefined, nowMs: number): number | null {
-  if (!datetime) return null
-  // SQLite datetime('now') 는 'YYYY-MM-DD HH:MM:SS' (UTC, 타임존 표기 없음) — Z 보정
-  const iso = datetime.includes('T') ? datetime : datetime.replace(' ', 'T') + 'Z'
-  const t = Date.parse(iso)
-  if (!Number.isFinite(t)) return null
-  return Math.floor((nowMs - t) / 60_000)
-}
-
-/**
- * 핵심 cron stale 판정.
- * ok:false 조건 =
- *   ① 기록된 핵심 cron 이 허용 간격 초과, 또는
- *   ② **한 번도 기록 없는 핵심 cron 인데 추적 기간(sentinel)이 이미 허용 간격을 초과**
- *      — 트리거 자체 누락(wrangler.toml drift)으로 주간 백업 등이 영영 안 도는 케이스도 잡음, 또는
- *   ③ 전체 heartbeat 최신값이 90분 초과 (5분 주기군이 항상 돌아야 하므로 90분 침묵 = cron 전면 사망).
- * 기록이 하나도 없으면 bootstrapping (첫 배포 직후 5분 내 채워짐 — 오탐 방지 위해 ok:true).
- */
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
-  const now = Date.now()
-  let allRows: CronHeartbeatRow[] = []
+  const beats = await listCronHeartbeats(DB)
+
+  // 추적 시작 시각 (최초 1회만 기록 — 이후 갱신하지 않는다).
+  let trackingSinceMs = NaN
   try {
-    await ensureCronHeartbeats(DB)
-    const r = await DB.prepare(
-      `SELECT cron_name, last_status, last_started_at, last_finished_at, last_duration_ms, last_error, run_count
-       FROM cron_heartbeats`,
-    ).all<CronHeartbeatRow>()
-    allRows = r.results || []
-  } catch (e) {
-    logError('[cron-heartbeat] health read failed', { error: String(e) })
-    // 조회 자체가 실패하면 판정 불가 — DB 장애는 별도 프로브(/api/version 등)가 잡음
-    return { ok: true, bootstrapping: true, latest_heartbeat_at: null, latest_age_min: null, stale: [], missing: [] }
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(TRACKING_KEY).first<{ value: string }>()
+    if (row?.value) trackingSinceMs = Date.parse(row.value)
+    else {
+      await DB.prepare('INSERT OR IGNORE INTO platform_settings (key, value) VALUES (?, ?)')
+        .bind(TRACKING_KEY, new Date().toISOString()).run()
+      trackingSinceMs = Date.now()
+    }
+  } catch { /* 관측용 — 실패해도 아래 판정은 계속한다 */ }
+  const trackedMin = Number.isFinite(trackingSinceMs) ? (Date.now() - trackingSinceMs) / 60000 : 0
+
+  const empty = (bootstrapping: boolean): CronHealth => ({
+    ok: bootstrapping, bootstrapping, latest_heartbeat_at: null, latest_age_min: null,
+    stale: bootstrapping ? [] : [{
+      name: '(전체)', label: 'cron 전체', max_gap_min: TOTAL_SILENCE_MIN,
+      last_finished_at: null, age_min: null,
+    }],
+    missing: [],
+  })
+  if (!beats.length) return empty(trackedMin < TOTAL_SILENCE_MIN)
+
+  // listCronHeartbeats 는 오래된 순 정렬 → 마지막이 가장 최근.
+  const withAge = beats.filter(b => b.age_minutes != null)
+  const newest = withAge.length ? withAge[withAge.length - 1]! : null
+  const latestAge = newest?.age_minutes ?? null
+
+  // ② 전면 침묵 — 가장 최근 기록조차 오래됐다.
+  if (latestAge != null && latestAge > TOTAL_SILENCE_MIN) {
+    return {
+      ok: false, bootstrapping: false,
+      latest_heartbeat_at: newest?.at ?? null, latest_age_min: latestAge,
+      stale: [{
+        name: '(전체)', label: 'cron 전체 — 아무 작업도 안 돌고 있음',
+        max_gap_min: TOTAL_SILENCE_MIN, last_finished_at: newest?.at ?? null, age_min: latestAge,
+      }],
+      missing: [],
+    }
   }
 
-  const sentinel = allRows.find(r => r.cron_name === TRACKING_SENTINEL)
-  const trackingAgeMin = sentinel ? ageMinutes(sentinel.last_finished_at, now) : null
-  const rows = allRows.filter(r => r.cron_name !== TRACKING_SENTINEL && !r.cron_name.startsWith('__'))
-
-  if (rows.length === 0) {
-    return { ok: true, bootstrapping: true, latest_heartbeat_at: null, latest_age_min: null, stale: [], missing: CRITICAL_CRON_EXPECTATIONS.map(x => x.name) }
-  }
-
-  const byName = new Map(rows.map(r => [r.cron_name, r]))
+  // ① 개별 침묵 — 기대주기(기록된 cron 식 기반)를 넘긴 작업.
   const stale: CronStaleEntry[] = []
   const missing: string[] = []
-  for (const exp of CRITICAL_CRON_EXPECTATIONS) {
-    const row = byName.get(exp.name)
-    if (!row || !row.last_finished_at) {
-      // 기록 자체가 없는 핵심 cron — 추적 기간이 허용 간격을 넘었으면 "안 돌고 있음" 확정 → stale 승격.
-      if (trackingAgeMin !== null && trackingAgeMin > exp.maxGapMin) {
-        stale.push({ name: exp.name, label: exp.label, max_gap_min: exp.maxGapMin, last_finished_at: null, age_min: null })
-      } else {
-        missing.push(exp.name)
-      }
-      continue
-    }
-    const age = ageMinutes(row.last_finished_at, now)
-    if (age !== null && age > exp.maxGapMin) {
-      stale.push({ name: exp.name, label: exp.label, max_gap_min: exp.maxGapMin, last_finished_at: row.last_finished_at, age_min: age })
+  for (const b of beats) {
+    const limit = expectedMaxAgeMinutes(b.cron)
+    if (limit == null || b.age_minutes == null) { missing.push(b.name); continue }
+    if (b.age_minutes > limit) {
+      stale.push({
+        name: b.name, label: b.name, max_gap_min: limit,
+        last_finished_at: b.at, age_min: b.age_minutes,
+      })
     }
   }
 
-  let latestAt: string | null = null
-  let latestAge: number | null = null
-  for (const r of rows) {
-    const age = ageMinutes(r.last_finished_at, now)
-    if (age !== null && (latestAge === null || age < latestAge)) { latestAge = age; latestAt = r.last_finished_at }
-  }
-
-  const systemSilent = latestAge !== null && latestAge > 90
   return {
-    ok: stale.length === 0 && !systemSilent,
+    ok: stale.length === 0,
     bootstrapping: false,
-    latest_heartbeat_at: latestAt,
+    latest_heartbeat_at: newest?.at ?? null,
     latest_age_min: latestAge,
     stale,
     missing,

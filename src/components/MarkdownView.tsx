@@ -17,7 +17,7 @@ function renderInline(text: string): ReactNode[] {
     if (m[2] !== undefined) {
       nodes.push(<strong key={key++} className="font-semibold text-gray-900 dark:text-white">{m[2]}</strong>)
     } else if (m[3] !== undefined) {
-      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1A1A1A] text-[0.85em] text-pink-600 dark:text-pink-400 font-mono break-all">{m[3]}</code>)
+      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1A2334] text-[0.85em] text-pink-600 dark:text-pink-400 font-mono break-all">{m[3]}</code>)
     } else if (m[4] !== undefined) {
       const href = m[5]
       const external = /^https?:\/\//.test(href)
@@ -49,7 +49,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (t === '') { i++; continue }
 
     // 구분선
-    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-6 border-gray-200 dark:border-[#2A2A2A]" />); i++; continue }
+    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-6 border-gray-200 dark:border-[#2A3446]" />); i++; continue }
 
     // 제목
     const h = t.match(/^(#{1,4})\s+(.*)$/)
@@ -57,7 +57,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const lvl = h[1].length
       const txt = h[2]
       const cls = lvl === 1 ? 'text-2xl font-extrabold mt-2 mb-4'
-        : lvl === 2 ? 'text-lg font-bold mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#1A1A1A]'
+        : lvl === 2 ? 'text-lg font-bold mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2A3446]'
         : lvl === 3 ? 'text-[15px] font-bold mt-5 mb-2'
         : 'text-[13px] font-bold mt-4 mb-1.5 text-gray-600 dark:text-gray-300'
       blocks.push(<div key={key++} className={`text-gray-900 dark:text-white ${cls}`}>{renderInline(txt)}</div>)
@@ -71,14 +71,14 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const rows: string[][] = []
       while (i < lines.length && isTableRow(lines[i])) { rows.push(cells(lines[i])); i++ }
       blocks.push(
-        <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
+        <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2A3446]">
           <table className="w-full text-[12.5px] border-collapse">
             <thead>
-              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
+              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A2334] border-b border-gray-200 dark:border-[#2A3446] font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((r, ri) => (
-                <tr key={ri} className="align-top">{r.map((c, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#1A1A1A] text-gray-600 dark:text-gray-300">{renderInline(c)}</td>)}</tr>
+                <tr key={ri} className="align-top">{r.map((c, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#2A3446] text-gray-600 dark:text-gray-300">{renderInline(c)}</td>)}</tr>
               ))}
             </tbody>
           </table>
@@ -92,7 +92,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const buf: string[] = []
       while (i < lines.length && /^>\s?/.test(lines[i].trim())) { buf.push(lines[i].trim().replace(/^>\s?/, '')); i++ }
       blocks.push(
-        <blockquote key={key++} className="my-3 border-l-4 border-gray-300 dark:border-[#3A3A3A] bg-gray-50 dark:bg-[#121212] px-3 py-2 text-[13px] text-gray-600 dark:text-gray-300 rounded-r-lg">
+        <blockquote key={key++} className="my-3 border-l-4 border-gray-300 dark:border-[#3A3A3A] bg-gray-50 dark:bg-[#1A2334] px-3 py-2 text-[13px] text-gray-600 dark:text-gray-300 rounded-r-lg">
           {buf.map((b, bi) => <p key={bi} className={bi ? 'mt-1' : ''}>{renderInline(b)}</p>)}
         </blockquote>,
       )

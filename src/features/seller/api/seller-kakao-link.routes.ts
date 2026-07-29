@@ -12,6 +12,7 @@ import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 
 type Bindings = {
   DB: D1Database
@@ -96,6 +97,79 @@ sellerKakaoLinkRoutes.post('/link-kakao', async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '카카오 연동 중 오류가 발생했습니다', '[seller link-kakao]')
+  }
+})
+
+/**
+ * POST /api/seller/relink-kakao — 🔁 2026-07-20 (대표 "가장 이상적으로") 카카오 계정 교체 원스텝 재연결.
+ *
+ * 시나리오: 사장님이 폰/카카오 계정이 바뀌어 옛 카카오로 로그인 불가 → 기존엔
+ *   [이메일 로그인 → unlink(비번) → link] 3단계 + 발견 불가. 이걸 한 번에:
+ *   새 카카오로 소비자 로그인(세션 쿠키) 상태에서 기존 셀러 이메일+비밀번호만 넣으면
+ *   셀러 연결을 새 카카오 계정으로 이전 + 셀러 토큰 즉시 발급.
+ *
+ * 보안: ① 새 카카오 세션 필수(쿠키 — same-origin, iOS-safe) ② 비밀번호 검증(소유 증명)
+ *   ③ 이메일/비번 오류 메시지 통일(계정 열거 방지) ④ rate limit 5/15분
+ *   ⑤ 이전 연결 유저에게 보안 통지(탈취 감지) ⑥ 새 유저가 이미 다른 셀러 보유면 409(1:1 유지)
+ * 카카오로만 만들어 비밀번호가 없는 계정은 이 경로 불가 → 카카오채널 문의(어드민 수동 — UI 안내).
+ */
+sellerKakaoLinkRoutes.post('/relink-kakao', rateLimit({ action: 'seller_relink', max: 5, windowSec: 900 }), async (c) => {
+  try {
+    // ① 새 카카오 소비자 세션
+    const { parseSessionCookie } = await import('../../../worker/utils/session')
+    const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user'])
+    const newUserId = sessionUser ? Number(sessionUser.userId) : NaN
+    if (!Number.isFinite(newUserId)) {
+      return c.json({ success: false, code: 'KAKAO_LOGIN_REQUIRED', error: '새 카카오 계정으로 먼저 로그인해주세요.' }, 401)
+    }
+    const body = await c.req.json<{ email?: string; password?: string }>().catch(() => ({} as { email?: string; password?: string }))
+    const email = String(body.email || '').trim()
+    const password = String(body.password || '')
+    if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400)
+
+    // ②③ 비밀번호 검증 — 실패 사유 불문 동일 메시지(열거 방지)
+    const FAIL = { success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }
+    const seller = await c.env.DB.prepare(
+      'SELECT id, username, business_name, is_distributor, linked_user_id, password_hash FROM sellers WHERE LOWER(email) = LOWER(?)'
+    ).bind(email).first<{ id: number; username: string | null; business_name: string | null; is_distributor: number; linked_user_id: number | null; password_hash: string | null }>()
+    if (!seller?.password_hash) return c.json(FAIL, 401)
+    const { verifyPassword } = await import('../../../lib/password')
+    const { valid } = await verifyPassword(password, seller.password_hash)
+    if (!valid) return c.json(FAIL, 401)
+
+    // ⑥ 새 카카오 유저가 이미 다른 셀러와 연결(1:1 UNIQUE)
+    const otherLink = await c.env.DB.prepare(
+      'SELECT id FROM sellers WHERE linked_user_id = ? AND id != ?'
+    ).bind(newUserId, seller.id).first<{ id: number }>()
+    if (otherLink) {
+      return c.json({ success: false, error: '이 카카오 계정은 이미 다른 셀러 계정에 연결되어 있습니다. 카카오채널로 문의해주세요.' }, 409)
+    }
+
+    const prevUserId = seller.linked_user_id
+    if (prevUserId !== newUserId) {
+      await c.env.DB.prepare(
+        "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(newUserId, seller.id).run()
+      // ⑤ 이전 계정 보안 통지 — fail-soft(통지 실패가 재연결을 막지 않음)
+      if (prevUserId) {
+        c.executionCtx?.waitUntil((async () => {
+          try {
+            const { notifyUser } = await import('../../../lib/notifications')
+            await notifyUser(c.env.DB, String(prevUserId), 'security',
+              '셀러 계정 연결이 변경되었습니다',
+              `${seller.business_name || '내 매장'} 셀러 계정이 다른 카카오 계정으로 재연결되었습니다. 본인이 아니라면 즉시 카카오채널로 문의해주세요.`,
+              '/seller/login')
+          } catch { /* fail-soft */ }
+        })())
+      }
+    }
+
+    // 셀러 토큰 즉시 발급 — 카카오 로그인과 동일 함수(발급 게이트/형식 재사용)
+    const { issueLinkedRoleTokens } = await import('../../auth/api/kakao.routes')
+    const tokens = await issueLinkedRoleTokens(c.env.DB, c.env.JWT_SECRET, newUserId)
+    return c.json({ success: true, message: '재연결 완료 — 새 카카오 계정으로 셀러 대시보드를 쓸 수 있어요.', data: tokens })
+  } catch (err) {
+    return safeError(c, err, '재연결 처리 중 오류가 발생했습니다', '[seller relink-kakao]')
   }
 })
 

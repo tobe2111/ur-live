@@ -235,6 +235,20 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
     }
 
+    // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지, 가장 이상적으로"): 사업자 링크샵 1-RTT 화.
+    //   linked seller 가 있으면 셀러 공개 페이로드를 **이 응답에 동봉**(additive) — 기존엔 클라가
+    //   [curator fetch → SellerPublicPage 마운트 → seller /public fetch] 직렬 2-RTT 였음.
+    //   buildSellerPublicPayload = seller.routes `GET /:id/public` 와 같은 SSOT(쿼리/KV캐시/enrich 공유,
+    //   드리프트 0) + KV 300s 캐시라 콜드 비용도 낮음. 실패 시 조용히 생략(클라가 기존 fetch 폴백).
+    //   SSR CURATOR 슬롯/edge 캐시에 그대로 실리므로 하드로드는 셀러 데이터까지 0-RTT.
+    let linkedSellerPublic: Record<string, unknown> | null = null
+    if (linkedSeller?.username) {
+      try {
+        const { buildSellerPublicPayload } = await import('../utils/seller-public-payload')
+        linkedSellerPublic = await buildSellerPublicPayload(c.env, linkedSeller.username)
+      } catch { /* additive — 생략 시 클라 폴백 fetch */ }
+    }
+
     return c.json({
       success: true,
       curator: {
@@ -264,6 +278,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         username: linkedSeller.username,
         name: linkedSeller.name,
       } : null,
+      // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
+      linked_seller_public: linkedSellerPublic,
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
@@ -641,7 +657,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string; show_recommend?: boolean }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -1020,12 +1036,16 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
       }
       // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      // 💸 2026-07-05 버킷 (약관 강제): 현금 환급은 유상(balance - free_balance) 한도로만 —
+      //   무상(리워드) 딜의 현금 인출 차단. free_balance 무변경 (출금은 유상에서만 나감).
+      const { ensureDealBuckets, PAID_BALANCE_SQL } = await import('../utils/point-buckets')
+      await ensureDealBuckets(DB)
       const dealDeduct = await DB.prepare(
-        "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?"
+        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
       ).bind(amount, String(userId), amount).run().catch(() => null)
       if (!dealDeduct?.meta?.changes) {
         await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
-        return c.json({ success: false, error: '딜 잔액이 부족합니다 (이미 사용된 딜은 환급할 수 없어요)', available }, 409)
+        return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)', available }, 409)
       }
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)

@@ -107,8 +107,11 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
 
   const userId = String(user.id)
   const rate = (await resolveCommissionRate(DB, null)) ?? 0.05
+  // ⏳ 확정 유예일(T+N) — 정산 예정일 파생용. platform_settings.affiliate_hold_days(기본 7).
+  const hdRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_hold_days'").first<{ value: string }>().catch(() => null)
+  const holdDays = Math.min(90, Math.max(0, parseInt(hdRow?.value || '', 10) || 7))
 
-  const [total, monthly, recent] = await Promise.all([
+  const [total, monthly, recent, clicks, pending] = await Promise.all([
     DB.prepare(`
       SELECT COUNT(*) AS total_referrals,
         COALESCE(SUM(commission), 0) AS total_earned,
@@ -124,19 +127,33 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
       FROM affiliate_earnings WHERE referrer_id = ?
       ORDER BY created_at DESC LIMIT 20
     `).bind(userId).all(),
+    // 🔗 내 링크 클릭 수(inflow_clicks, ref_id=나) — 신규 DB/미유입이면 0(fail-soft).
+    DB.prepare('SELECT COUNT(DISTINCT anon_id) AS n FROM inflow_clicks WHERE ref_id = ?').bind(userId).first<{ n: number }>().catch(() => null),
+    // ⏳ 적립 예정(holding) 합 + 정산 예정일(가장 이른 holding + hold_days). 교환권은 사용 시 조기 확정 가능 → '최대' 개념.
+    DB.prepare("SELECT COUNT(*) AS pending_count, COALESCE(SUM(commission), 0) AS pending_amount, date(MIN(created_at), '+' || ? || ' days') AS next_settlement_date FROM affiliate_earnings WHERE referrer_id = ? AND status = 'holding'")
+      .bind(holdDays, userId).first<{ pending_count: number; pending_amount: number; next_settlement_date: string | null }>().catch(() => null),
   ])
+  const clickN = clicks?.n || 0
+  const salesN = total?.total_referrals || 0
 
   return c.json({
     success: true,
     data: {
-      total_referrals: total?.total_referrals || 0,
+      total_referrals: salesN,
       total_earned: total?.total_earned || 0,
       total_sales: total?.total_sales || 0,
       monthly_count: monthly?.count || 0,
       monthly_earned: monthly?.earned || 0,
       commission_rate: rate * 100,
       recent: recent?.results || [],
-      share_url: `https://live.ur-team.com?ref=${userId}`,
+      // 🆕 내 성과(잔존 장치 ⓑ) — 클릭·전환율·적립예정·정산예정일. 전부 본인 ref 한정 읽기전용.
+      clicks: clickN,
+      conversion_rate: clickN > 0 ? Math.round((salesN / clickN) * 1000) / 10 : null,
+      pending_count: pending?.pending_count || 0,
+      pending_amount: pending?.pending_amount || 0,
+      next_settlement_date: pending?.next_settlement_date || null,
+      hold_days: holdDays,
+      share_url: `https://urdeal.kr?ref=${userId}`,
     },
   })
 })
@@ -241,7 +258,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
     const data = (results ?? []).map((r: any) => ({
       ...r,
       type: 'group-buy' as const,
-      share_url: `https://live.ur-team.com/group-buy/${r.id}?ref=${userId}`,
+      share_url: `https://urdeal.kr/group-buy/${r.id}?ref=${userId}`,
     }))
 
     // 🛡️ 2026-05-18: referral 활성화된 stay 도 같이 추가 (top 10).
@@ -263,7 +280,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
     const stayData = (stays ?? []).map((r: any) => ({
       ...r,
       type: 'stay' as const,
-      share_url: `https://live.ur-team.com/stays/${r.id}?ref=${userId}`,
+      share_url: `https://urdeal.kr/stays/${r.id}?ref=${userId}`,
     }))
 
     return c.json({ success: true, data: [...stayData, ...data] })
@@ -286,7 +303,7 @@ affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
     : `/products/${id}`
   return c.json({
     success: true,
-    data: { url: `https://live.ur-team.com${path}?ref=${user.id}` },
+    data: { url: `https://urdeal.kr${path}?ref=${user.id}` },
   })
 })
 
