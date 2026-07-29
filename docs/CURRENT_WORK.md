@@ -174,8 +174,17 @@ export → 도매 번들도 cron 핸들러를 그대로 실었다. 도매 Pages 
   ⇒ 오케스트레이터 비용은 1건 그대로 두고 체인이 스스로 잇게 했다.
 - **하트비트 이름을 경로 따라 바꿀 뻔했다.** `cron_hb:ads:collect` 가 남아 stale watch 가 영원히
   '침묵' 경보를 냈을 것이다(작업은 멀쩡한데 알람만 울림) → `kick(..., beatName)` 으로 이름 고정.
-- **이 컨테이너는 npm registry 403** 이라 vitest/build 를 못 돌렸다(07-28 세션과 다름). tsc·가드만
-  로컬, 나머지는 CI. CLAUDE.md 의 "npm 정상화" 는 세션마다 다시 확인할 것.
+- **🔴 "tsc 0" 을 세 번 보고했는데 tsc 가 아무것도 검사하지 않고 있었다.** 이 컨테이너의
+  `npx tsc` 는 전역 **TypeScript 6.0.2**(`/opt/node22/bin/tsc`)를 잡는데, 레포 tsconfig 의
+  `baseUrl` 이 6.0 에서 **에러**라 tsc 가 **설정 파싱 단계에서 exit 2** 로 죽는다 — 파일을 한 개도
+  타입체크하지 않고. 출력이 그 한 줄뿐이라 "에러 없음"처럼 보였다. CI 가 `Cannot find name 'POOL'`
+  4건을 잡아 드러났다(0fc2a85). ⇒ **로컬 타입체크는 이렇게 돌릴 것**:
+  `npx tsc --noEmit --skipLibCheck --ignoreDeprecations 6.0`
+  단 `npm ci` 가 403 으로 실패하면서 **node_modules 를 비워** 의존성 타입이 전부 없다 → TS2307/
+  TS7006/TS7026/TS2875 는 잡음이니 걸러내고 **TS2304 같은 파일 내부 오류만** 본다.
+  ⚠️ `npm ci` 를 함부로 돌리지 말 것 — 실패해도 node_modules 는 이미 지워진 뒤다(vitest 도 같이 죽는다).
+- **npm registry 403** — vitest/build 미실행(07-28 세션과 다르다). CLAUDE.md 의 "npm 정상화" 는
+  세션마다 다시 확인할 것. 순수 함수는 `node --experimental-strip-types` 로 직접 호출해 검증했다.
 
 ### 다음 세션 첫 액션
 배포 후 정각 +5분에 아래를 읽는다. **`last_keywords` 길이가 판정선이다.**

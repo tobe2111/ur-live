@@ -39,6 +39,9 @@ import { ensureInfluencerSchema } from './influencer-discovery'
 export { NAVER_HANDLE_RE, naverBlogUrl, deriveNaverHandle } from './influencer-handle'
 import { NAVER_HANDLE_RE, deriveNaverHandle, naverBlogUrl } from './influencer-handle'
 
+/** 공용 풀 계정 id — 이 파일의 모든 쿼리가 쓰는 상수(규칙 분리 때 딸려 나갔던 것). */
+const POOL = 0
+
 export interface HandleHealResult {
   scanned: number     // 이번 회차에 검사한 손상 후보 행
   fixed: number       // 핸들을 복구한 행
