@@ -127,11 +127,22 @@ async function ensurePoolSheet(token: string, sheetId: string, needRows: number,
   }).catch(() => null)
 }
 
+/** 이 회차를 누가 돌렸는지 — 스탬프에 남는다(아래 trigger 기록 사유 참조). */
+export type SyncTrigger = 'cron' | 'manual' | 'unknown'
+
 /**
  * 인플루언서 공용 풀 전량 → 시트 미러. 반환 {ok, rows} — 실패는 error 문자열(fail-soft, 절대 throw 안 함).
  *   🛡️ 결과를 platform_settings('ads_sheets_last_sync')에 항상 기록 — cron 실패가 무음으로 사라지지 않게(관측성).
+ *
+ *   🔎 2026-07-29 `trigger` 기록 신설 — **스탬프만 보고는 원인을 못 가리던 실사고**:
+ *     라이브 스탬프가 `{at: 07-27T06:49, ok:true}` 로 41시간 굳어 있었는데, cron 과 어드민 수동 버튼이
+ *     **같은 `/__ads/sheets-sync` 라우트**를 쓰는 탓에 그 한 줄이 두 가지로 읽혔다:
+ *       ⓐ cron 이 돌다 죽었다(게이트 ON · 고장)  ⓑ cron 은 한 번도 안 돌았고 그때 사람이 눌렀다(게이트 OFF)
+ *     둘은 다음 행동이 정반대인데(원인 규명 vs env 켜기) 증거가 없어 **추측 외엔 방법이 없었다**.
+ *     ⇒ 출처를 한 글자 남기면 이 모호성이 영구히 사라진다. 게이트 값(`sheets_gate`)과 조합하면
+ *       "켰는데 cron 기록이 없다" = 고장, "꺼졌고 마지막이 manual" = 설정 — 단정 없이 판정된다.
  */
-export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolean; rows?: number; error?: string }> {
+export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger = 'unknown'): Promise<{ ok: boolean; rows?: number; error?: string }> {
   // 💥 예외도 **결과로 기록**한다 — 2026-07-28 실사고: `_syncCore` 가 throw 하면(서브리퀘스트 한도 등)
   //   아래 스탬프 쓰기에 도달하지 못해 **옛 `ok:true` 스탬프가 그대로 남아** 34시간 정지가 성공처럼 보였다.
   //   (파트너풀 보강 레인의 `recordEnrichCrash` 와 같은 철학 — 무증거 종료 금지.)
@@ -146,8 +157,14 @@ export async function syncInfluencerPoolToSheets(env: Env): Promise<{ ok: boolea
   await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_sheets_last_sync', JSON.stringify({
       at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null,
-      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq,
+      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger,
     })).run().catch(() => null)
+  // 🕘 cron 회차는 **성공/실패 무관** 별도 키에도 마지막 시각을 남긴다 — 위 스탬프는 수동 실행이 덮어쓰므로
+  //   "자동으로 돈 적이 있는가"를 보존하지 못한다(바로 그 덮어쓰기가 41시간 오진의 원인이었다).
+  if (trigger === 'cron') {
+    await env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_sheets_last_cron', JSON.stringify({ at: new Date().toISOString(), ok: r.ok })).run().catch(() => null)
+  }
   return r
 }
 

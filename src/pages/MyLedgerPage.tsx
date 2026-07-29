@@ -8,6 +8,7 @@
  * 두 dashboard 컨텍스트 공통 페이지 — token type 으로 자동 분기.
  */
 import { useEffect, useState } from 'react'
+import { formatKSTDate } from '@/utils/date'
 import { useLocation, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
@@ -149,7 +150,7 @@ export default function MyLedgerPage() {
                         <td className="px-4 py-2 text-right font-bold text-gray-900">{formatWon(p.amount)}</td>
                         <td className="px-4 py-2 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
-                          {p.sent_at && <div className="text-[10px] text-gray-400 mt-0.5">{new Date(p.sent_at).toLocaleDateString('ko-KR')}</div>}
+                          {p.sent_at && <div className="text-[10px] text-gray-400 mt-0.5">{formatKSTDate(p.sent_at)}</div>}
                         </td>
                         <td className="px-4 py-2 text-gray-700 font-mono">{p.transaction_id || '-'}</td>
                       </tr>
@@ -182,7 +183,7 @@ export default function MyLedgerPage() {
                       </div>
                       <div className="text-right shrink-0 ml-2">
                         <p className="font-bold text-gray-900">{formatWon(e.amount)}</p>
-                        <p className="text-[10px] text-gray-400">{new Date(e.created_at).toLocaleDateString('ko-KR')}</p>
+                        <p className="text-[10px] text-gray-400">{formatKSTDate(e.created_at)}</p>
                       </div>
                     </div>
                   )

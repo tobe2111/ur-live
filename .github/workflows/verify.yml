@@ -149,6 +149,10 @@ jobs:
         run: node scripts/check-cron-heartbeat.mjs
         continue-on-error: false
 
+      # 🧮 2026-07-29: 유어애즈 수집 레인 격리. 인라인 ctx.waitUntil 로 붙은 레인은 한 인보케이션의
+      #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
+      - name: 유어애즈 레인 격리 (strict)
+        run: node scripts/check-ads-lane-isolation.mjs
       # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**
       #   그냥 안 돈다 — 배포는 성공하고 라이브 문서만 옛날 것으로 남는다(무음 정지).
       #   이 레포에서 이미 두 번 났다(v8 중복 → v11 주석이 그 수습을 기록 / v4 중복).
@@ -288,6 +292,11 @@ jobs:
         run: node scripts/check-commission-budget.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 초과 방지 — cacheInvalidate 의 KV.delete 는
+      #   L2_KV_ENABLED 게이트 뒤에 있어야(쓰기 OFF 면 삭제도 skip) + fan-out KV.delete 무방비 금지.
+      #   cacheGet L2 OFF 인데 삭제만 살아 존재않는 키를 28/호출 지워 한도 폭식한 사고(대표 신고).
+      - name: KV delete budget guard (strict)
+        run: node scripts/check-kv-delete-budget.mjs -s
       # 🛡️ 2026-07-28: 서브리퀘스트 학습 상한 키를 레인끼리 공유 금지 — 건당 비용이 다른 레인이 한 키를
       #   같이 쓰면 서로의 관측을 덮어써 어느 레인도 자기 한도를 학습 못 한다(보강 레인이 남의 백오프로
       #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.
@@ -399,6 +408,16 @@ jobs:
       #   ③ 순수 뷰 자식은 prop 구동(seller_token 직접 read 금지). 예외 `linkshop-ownership-ok`.
       - name: Linkshop ownership unification guard (strict)
         run: STRICT_LINKSHOP_OWNERSHIP=1 node scripts/check-linkshop-ownership.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-27: UTC-naive DB 타임스탬프의 순진한 `new Date()` 파싱 — 9시간 어긋남 클래스.
+      #   D1 `CURRENT_TIMESTAMP`/`datetime('now')` 는 'YYYY-MM-DD HH:MM:SS'(UTC, Z 없음) →
+      #   브라우저는 로컬(KST)로 오해석, 워커는 `.toLocaleString('ko-KR')` 이 UTC 시각을 한국어로 표기.
+      #   실사고: 연속 주문 감지 영구 미발동 · 알림톡 주문일시 9h 이름 · 주문 날짜필터 경계 누락 ·
+      #   교환권 만료일 안내 하루 이름. SSOT = src/utils/date.ts (parseUTCDate/formatKST*/kstDay*Ms).
+      #   래칫(scripts/utc-date-baseline.json): 신규/증가만 차단, 잔여분은 점진 정리. 예외 `utc-date-ok`.
+      - name: UTC timestamp parse guard (strict)
+        run: STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
         continue-on-error: false
 
       # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").

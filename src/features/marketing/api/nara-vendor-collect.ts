@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { describePublicDataFailure, serviceKeyParam } from './public-data-diag'
 
 const NARA_VENDOR_BASE = 'https://apis.data.go.kr/1230000/ao/UsrInfoService02'
 const NARA_VENDOR_OP = 'getPrcrmntCorpBasicInfo'
@@ -22,9 +23,10 @@ const g = (it: RawV, ...keys: string[]): string => { for (const k of keys) { con
 const pickRegion = (addr: string): string | null => { const m = addr.match(/([가-힣]+?)(시|군|구)\s/); return m ? m[1].replace(/특별|광역|자치|도$/g, '').slice(0, 20) : null }
 
 async function fetchVendorPage(base: string, op: string, key: string, page: number, bgnDt: string, endDt: string): Promise<{ items: RawV[]; msg?: string }> {
-  const url = `${base}/${op}?serviceKey=${encodeURIComponent(key)}&pageNo=${page}&numOfRows=200&type=json&inqryDiv=1&inqryBgnDt=${bgnDt}&inqryEndDt=${endDt}`
+  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=200&type=json&inqryDiv=1&inqryBgnDt=${bgnDt}&inqryEndDt=${endDt}`
   const res = await fetch(url, { signal: AbortSignal.timeout(20000) }).catch(() => null)
-  if (!res || !res.ok) return { items: [], msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], msg: await describePublicDataFailure(res) }
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }

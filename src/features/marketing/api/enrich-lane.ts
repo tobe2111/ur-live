@@ -163,8 +163,15 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   (`sweep-kakao-phone`, 시간당 600건)이 이미 전담하므로 여기서의 전화 조회는 **중복**이다. 무료 플랜의
   //   인보케이션당 50 서브리퀘스트에서 1/6(≈8)을 중복 작업에 쓰면 크롤 2사이트를 통째로 잃는다
   //   (이 레인의 존재 이유는 이메일이다). 예산이 넉넉할 때만 보조로 수행.
-  const PHONE_MIN_BUDGET = 120 // 이 아래면 전 예산을 이메일에 — 전화는 전용 레인이 커버
-  const phoneCap = budget.left >= PHONE_MIN_BUDGET ? Math.floor(budget.left / 6) : 0
+  // 🩹 2026-07-28 라이브 실측 수리 — **예산이 커지자 이 게이트가 거꾸로 작동했다.**
+  //   학습 상한이 회복해 `budget.left` 가 267 이 되자 위 조건이 열려 `left/6 = 44` 건의 전화 조회를 했고,
+  //   그 사이 **벽시계 20s 가 소진돼 Phase 2(이메일)는 단 1건**만 봤다. 실측 스냅샷:
+  //     `processed:1 · fetches:48 · spent:57/269 · deadline_hit:true · elapsed 21.3s`
+  //   즉 **진짜 병목은 서브리퀘스트가 아니라 시간**인데, 비율 게이트는 예산만 보고 시간을 안 봤다.
+  //   전화는 같은 크론의 전용 스윕(`runKakaoPhoneSweep`, 2026-07-28 부터 tier 우선순위)이 전담한다 —
+  //   여기서의 전화 조회는 **중복**이고, 그 중복이 이 레인의 존재 이유(이메일)를 굶겼다.
+  //   ⇒ 기본 0. 되살리려면 `ADS_ENRICH_PHONE_CAP` 에 **절대 건수**를 준다(비율 금지 — 그게 이 사고의 원인).
+  const phoneCap = Math.max(0, Math.min(20, parseInt((env as unknown as { ADS_ENRICH_PHONE_CAP?: string }).ADS_ENRICH_PHONE_CAP || '', 10) || 0))
   let phoneSpent = 0
   for (const t of targets) {
     if (outOfBudget(budget) || budget.limitHit || phoneSpent >= phoneCap) break

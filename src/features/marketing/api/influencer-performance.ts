@@ -11,6 +11,7 @@ import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
 import { runDdlOnce } from './ads-schema-guard'
+import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
 
 const _reEsc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /**
@@ -305,8 +306,19 @@ export async function enrichYouTubePerformance(
   return rows.length
 }
 
-/** 네이버 블로거 보강 결과 — 어드민 진단용(측정 성공 0 이 반복되면 차단/형식변경 신호). */
-export interface NaverEnrichDiag { tried: number; measured: number; contacts: number; failed: number }
+/** 네이버 블로거 보강 결과 — 어드민 진단용(측정 성공 0 이 반복되면 차단/형식변경 신호).
+ *  🩹 2026-07-28 추가된 3필드는 "0 인데 이유를 모르겠다"를 없애기 위한 것이다. 실제로 이 레인은
+ *  라운드마다 `tried:0` 만 내보내며 멈춰 있었고(손상 핸들 12,357행을 뽑아서 버리는 중), 원인을 찾는 데
+ *  스냅샷이 아니라 라이브 행을 직접 조회해야 했다. `selected/skipped` 만 있었으면 한 번에 보였다. */
+export interface NaverEnrichDiag {
+  tried: number; measured: number; contacts: number; failed: number
+  selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
+  skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
+  healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
+  /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
+   *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
+  query_error?: string
+}
 
 /**
  * 네이버 블로거 활동성+정보 보강 — RSS(30일 포스팅 수·최근 글 제목) + 홈 HTML(이웃수·프로필 연락처).
@@ -323,10 +335,22 @@ export interface NaverEnrichDiag { tried: number; measured: number; contacts: nu
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
   const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
   if (max <= 0 || budget.left <= 1) return diag
-  const rows = (await DB.prepare(`SELECT id, handle, email, instagram, links, description FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'naver_blog' AND handle IS NOT NULL
-      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30))
-    .all<{ id: number; handle: string; email: string | null; instagram: string | null; links: string | null; description: string | null }>().catch(() => null))?.results || []
+  // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
+  //    통과한 뒤 아래에서 전량 스킵됐다. channel_id/url 을 함께 읽어 그 자리에서 진짜 id 를 되살린다.
+  type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null }
+  let rows: NaverRow[] = []
+  try {
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description FROM ad_influencer_leads
+      WHERE account_id = 0 AND platform = 'naver_blog'
+      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    rows = res?.results || []
+  } catch (err) {
+    // 삼키면 `selected:0` 이 되어 '큐가 빔'과 구분이 사라진다 — 이 레인이 tried:0 으로 멈춰 있던 동안
+    // 원인 규명이 막혔던 이유가 정확히 이 종류의 무음이었다.
+    diag.query_error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
+    return diag
+  }
+  diag.selected = rows.length
   if (!rows.length) return diag
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
@@ -334,28 +358,44 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
     if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
-    if (!/^[A-Za-z0-9_-]{2,40}$/.test(r.handle)) { // 형식 밖 핸들 — 측정 불가 확정, 스탬프만(재선택 뒤로)
+    // 🩹 손상 핸들 자가복구 — 일괄 힐(healNaverHandles)이 전수를 도는 데 몇 시간 걸리므로, 레인이 만나는
+    //    행은 그 자리에서 살린다. 되살리면 handle/url 을 함께 고쳐 다음부터는 손상 상태로 안 돌아온다.
+    const handle = deriveNaverHandle(r)
+    if (!handle) { // channel_id/url 어디에도 id 가 없다 — 측정 불가 확정, 스탬프만(재선택 뒤로)
+      diag.skipped = (diag.skipped || 0) + 1
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))
       continue
     }
-    diag.tried++
-    // ① RSS — 포스팅 수 + 글 제목 + 마지막 글 날짜. 실패(null)와 "진짜 글 0"(성공·항목 0)을 구분.
-    budget.left--
-    let rssXml: string | null = null
-    try {
-      const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(r.handle)}.xml`, { signal: AbortSignal.timeout(8000) })
-      if (res.ok) rssXml = (await res.text()).slice(0, 120_000)
-      else if (res.status === 404 || res.status === 410) rssXml = '' // 블로그 삭제/비공개 — "측정 성공·글 0" 취급(터미널)
-    } catch { /* rssXml=null = 측정 실패 */ }
-    // ② 홈 HTML — 이웃수 + 프로필 연락처(같은 응답에서 둘 다).
-    let homeText: string | null = null
-    if (budget.left > 0) {
-      budget.left--
-      try {
-        const hr = await fetch(`https://m.blog.naver.com/${r.handle}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
-        if (hr.ok) homeText = (await hr.text()).slice(0, 80_000)
-      } catch { /* fail-soft */ }
+    if (handle !== r.handle) {
+      diag.healed = (diag.healed || 0) + 1
+      stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET handle = ?, url = ? WHERE id = ?`).bind(handle, naverBlogUrl(handle), r.id))
     }
+    diag.tried++
+    // ①② RSS(포스팅 수·글 제목·마지막 글) + 홈 HTML(이웃수·프로필 연락처) — **병렬**.
+    //   ⏱️ 2026-07-28: 두 요청은 서로의 결과를 안 쓰는데 직렬로 기다리고 있었다(건당 최대 8+8=16s).
+    //   라운드는 벽시계 20s 가 상한이라 직렬이면 **한 라운드에 1~2명**밖에 못 재고, cron 도 라운드를
+    //   6회 예약해 놓고 2회에서 시간이 끝난다(라이브 실측: 라운드 13.8s / 9.1s 후 정지).
+    //   병렬로 바꾸면 건당 상한이 8s — 같은 서브리퀘스트 수로 처리량이 배가 된다.
+    const wantHome = budget.left >= 2 // 예산이 1 남으면 RSS(활동성)를 우선 — 연락처보다 측정이 먼저다
+    budget.left -= wantHome ? 2 : 1
+    const [rssXml, homeText] = await Promise.all([
+      (async (): Promise<string | null> => {
+        try {
+          const res = await fetch(`https://rss.blog.naver.com/${encodeURIComponent(handle)}.xml`, { signal: AbortSignal.timeout(8000) })
+          if (res.ok) return (await res.text()).slice(0, 120_000)
+          if (res.status === 404 || res.status === 410) return '' // 블로그 삭제/비공개 — "측정 성공·글 0"(터미널)
+        } catch { /* null = 측정 실패 */ }
+        return null
+      })(),
+      (async (): Promise<string | null> => {
+        if (!wantHome) return null
+        try {
+          const hr = await fetch(`https://m.blog.naver.com/${handle}`, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': HOME_UA, accept: 'text/html' }, redirect: 'follow' })
+          if (hr.ok) return (await hr.text()).slice(0, 80_000)
+        } catch { /* fail-soft */ }
+        return null
+      })(),
+    ])
     if (rssXml === null && homeText === null) { // 둘 다 실패 — 아무것도 안 쓰고 스탬프만(다음 순환에 재시도, 0-각인 금지)
       diag.failed++
       stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET perf_checked_at = datetime('now') WHERE id = ?`).bind(r.id))

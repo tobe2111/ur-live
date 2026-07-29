@@ -5,6 +5,7 @@
  *   여기서 캡처해서 KT Alpha 상용 Key 신청 첨부.
  */
 import { useEffect } from 'react'
+import { formatKST } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
@@ -144,7 +145,7 @@ export default function SellerVoucherOrdersPage() {
                         <td className="px-3 py-3 text-gray-500 text-[11px]">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            {o.sent_at ? new Date(o.sent_at).toLocaleString('ko-KR') : new Date(o.created_at).toLocaleString('ko-KR')}
+                            {o.sent_at ? formatKST(o.sent_at) : formatKST(o.created_at)}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-gray-400 text-[10px] font-mono">

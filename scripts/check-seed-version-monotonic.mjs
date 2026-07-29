@@ -38,6 +38,16 @@ const ALLOW_MARK = 'seed-version-ok'
 let fail = 0
 const problems = []
 
+// 병합 진행 중(MERGE_HEAD 존재)이면 검사하지 않는다.
+// 그 상태의 HEAD 는 아직 병합 전 커밋이라 merge-base 가 낡았고, 작업트리에는 main 이
+// 가져온 값이 들어와 있다 → "내가 바꿨다"로 오판한다. 실제 판정은 병합 커밋이 생긴
+// 다음 실행(그리고 CI)에서 정확하게 이뤄진다. 병합마다 우는 가드는 결국 무시당한다.
+try {
+  execSync('git rev-parse -q --verify MERGE_HEAD', { stdio: 'ignore' })
+  console.log('⏭️  병합 진행 중 — 시드 버전 검사 생략(병합 커밋 후 정확히 판정된다).')
+  process.exit(0)
+} catch { /* 병합 중 아님 — 정상 진행 */ }
+
 /** main 히스토리에서 이 상수에 쓰인 적 있는 모든 값. main 을 못 읽으면 null(검사 생략). */
 function historicalValues(file, name) {
   for (const ref of ['origin/main', 'main']) {

@@ -134,6 +134,47 @@ app.get('/influencer-pool', async (c) => {
 //   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
 app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
 
+/**
+ * 🚀 GET /api/admin/ads/influencer-pool/send-queue?limit=20 — **오늘 보낼 사람만** 골라주는 발송 큐.
+ *
+ *   배경(2026-07-29 라이브 실측): 풀 37,937명을 모으는 동안 실제 접촉은 **1건**이었다(`ch_note:1`).
+ *   도구(초안 생성·발송 모드·채널 폴백)는 이미 다 있었는데도 안 돌아간 이유는 **"누구부터?"를 사람이
+ *   매번 필터로 만들어야 했고**, 그렇게 만든 큐에 *연락 수단이 아예 없는 리드*가 대량으로 섞여 있었다는 것이다
+ *   (손상 핸들 12,357건은 `url` 에 스킴이 없어 `pickReach` 가 null → 화면엔 "연락 채널 없음 — 건너뛰세요"만 반복).
+ *   ⇒ 병목이 수집·보강이 아니라 **사람의 발송 시간**으로 옮겨간 이상, 그 시간을 낭비하지 않는 게 유일한 레버다.
+ *
+ *   선별 규칙(전부 SQL — 클라가 다시 거를 필요 없음):
+ *     ① 실제로 열 수 있는 채널 보유 — email · instagram · **스킴 있는 url**(쪽지/댓글 경로)
+ *     ② 아직 접촉 안 함(status='new' AND contacted_at IS NULL) — 재접촉 사고 방지
+ *     ③ 거절·바운스·스팸신고·브랜드 공식계정·카페(커뮤니티) 제외
+ *     ④ 점수 높은 순(미채점은 후순위) — score_hot 부터 소진
+ *   ⚖️ [LEGAL] 이 라우트는 **목록만** 준다. 발송은 기존대로 사람이 한 건씩 열어서 직접 한다(자동발송 아님).
+ */
+app.get('/influencer-pool/send-queue', async (c) => {
+  await ensureInfluencerSchema(c.env.DB); await ensureOutreachColumns(c.env.DB); await ensureQualityColumns(c.env.DB)
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)))
+  const where = [
+    'account_id = ?',
+    "platform != 'naver_cafe'",
+    "status = 'new'", 'contacted_at IS NULL',
+    // ① 열 수 있는 채널 — url 은 **스킴이 있어야** 실제로 열린다(pickReach 와 동일 기준).
+    "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
+    "COALESCE(email_status,'') NOT IN ('bounced','complained')",
+    'COALESCE(is_brand, 0) = 0',
+  ]
+  const binds: (string | number)[] = [POOL]
+  const platform = (c.req.query('platform') || '').trim()
+  if (['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, email_status
+    FROM ad_influencer_leads WHERE ${where.join(' AND ')}
+    ORDER BY (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ?`)
+    .bind(...binds, limit).all().catch(() => null)
+  // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
+    .bind(...binds).first<{ n: number }>().catch(() => null)
+  return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
+})
+
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
 app.patch('/influencer-pool/:id', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
