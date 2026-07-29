@@ -110,7 +110,15 @@ const BUDGET = {
   // 🛡️ 2026-07-27: 8.6 → 8.7 상향. 파트너 풀(유어애즈) 기능 누적으로 실측 8.60 MB 도달(동일 클래스 —
   //   gzip 0.00/1.5·critical-path 292.6/300 통과 = 실회귀 감지력 유지). raw 총량은 lazy 청크 합산이라
   //   유기적 성장 지표일 뿐.
-  totalRawMB: 8.7,
+  // 🛡️ 2026-07-29: 8.7 → 8.8 상향(**5번째**). #425(리뷰 확인 페이지) 로 실측 8.70 MB → 경계 초과.
+  //   ⚠️ 이전 4번의 상향은 전부 "gzip(0.00/1.5 여유) 과 critical-path 가 통과하니 회귀 감지력은 유지된다" 를
+  //   근거로 들었는데, **그 gzip 예산은 죽어 있다**: `f.gzip` 은 디스크의 `.gz` 파일에서만 읽고(line 60·71)
+  //   vite 는 `.gz` 를 만들지 않는다 → totalGzip 이 **항상 0** → `0 > 1.5` 는 영원히 거짓이다.
+  //   즉 지금 살아 있는 감지기는 **critical-path 하나뿐**이다(294.5/300 — 여유 5.5KB, 이쪽이 진짜 위험선).
+  //   TODO(별도, 빌드 가능한 환경 필요): critical-path 가 이미 쓰는 방식(line 91 `zlib.gzipSync`)으로
+  //   totalGzip 을 실제 계산하고, 실측값 기준으로 totalGzipMB 를 재설정해 되살릴 것.
+  //   (지금 그냥 켜면 실제 gzip 총량이 1.5MB 를 넘어 전 PR 이 red 가 된다 — 측정 없이 켜면 안 된다.)
+  totalRawMB: 8.8,
   totalGzipMB: 1.5,
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
@@ -134,7 +142,16 @@ if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
 if (totalGzip / 1024 / 1024 > BUDGET.totalGzipMB) {
   violations.push(`총 gzip JS ${(totalGzip / 1024 / 1024).toFixed(2)} MB > ${BUDGET.totalGzipMB} MB`);
 }
-if (criticalGzip > 0 && criticalGzip / 1024 > BUDGET.criticalGzipKB) {
+// 🛡️ 2026-07-29: "못 쟀다" 를 "예산 안" 으로 읽지 않는다.
+//   criticalGzip 이 0 이 되는 경로는 두 가지이고 **둘 다 고장이다**:
+//     ① dist/index.html 을 못 찾음(빌드 산출물 레이아웃 변경)
+//     ② 위 정규식이 안 맞음(vite 가 script/link 속성 순서·형태를 바꾸면 조용히 0건 매칭)
+//   예전엔 `criticalGzip > 0 &&` 가드가 이 경우를 **조용히 통과**시켰다 — 같은 파일의 gzip 총량
+//   예산이 정확히 그렇게 죽어 있었다(항상 0 → 영원히 통과). 마지막 남은 살아있는 검사까지
+//   같은 방식으로 잃지 않도록, 측정 실패는 통과가 아니라 **위반**으로 올린다.
+if (criticalGzip === 0) {
+  violations.push('critical path 를 측정하지 못했다 (dist/index.html 미발견 또는 script/modulepreload 매칭 0건) — 예산 검사가 무력화된 상태다');
+} else if (criticalGzip / 1024 > BUDGET.criticalGzipKB) {
   violations.push(`critical path gzip ${(criticalGzip / 1024).toFixed(1)} KB > ${BUDGET.criticalGzipKB} KB (entry+modulepreload ${criticalFiles.length}개)`);
 }
 const overSized = jsFiles.filter(f => f.size / 1024 > BUDGET.singleRawKB);

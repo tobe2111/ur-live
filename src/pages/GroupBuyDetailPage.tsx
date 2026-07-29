@@ -86,6 +86,7 @@ interface GroupBuyDetail {
   current_discount_pct: number
   /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
   max_per_person?: number
+  min_review_level?: number
   /** 🏷️ 오픈 예정형 데모 — 구매 대신 사전 응모 CTA */
   prelaunch?: boolean
   /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
@@ -957,6 +958,10 @@ export default function GroupBuyDetailPage() {
             </span>
             {detail?.max_per_person && detail.max_per_person > 0 ? (
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>1인당 최대 {detail.max_per_person}개</span>
+            ) : null}
+            {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 이용권 배지 (서버 게이트의 UX 안내) */}
+            {detail?.min_review_level && detail.min_review_level > 1 ? (
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>🏅 동네 리뷰어 Lv.{detail.min_review_level} 전용</span>
             ) : null}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">

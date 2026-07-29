@@ -2472,7 +2472,8 @@
       "promoSpend": "促销支出",
       "influencerDeals": "达人合作",
       "experienceCampaigns": "体验活动",
-      "myLinkshop": "我的链接商店"
+      "myLinkshop": "我的链接商店",
+      "reviewVerifications": "评价确认"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3060,6 +3061,26 @@
       "drawPrompt": "抽选人数（招募 {{slots}}名）",
       "drawConfirm": "将执行抽选。中选者将自动获得0元体验券。\n（公平抽选 — 种子·名单·结果永久记录，无法撤销。）",
       "drawDone": "抽选完成 — {{pool}}名报名中选出{{winners}}名，发放体验券{{issued}}张"
+    },
+    "reviewVerify": {
+      "title": "Kakao地图评价确认",
+      "subtitle": "请确认使用过使用券的顾客提交的Kakao地图评价。确认后顾客将获得奖励Deal＋评价者等级积分。",
+      "tabPending": "待确认",
+      "tabPaid": "已发放",
+      "tabRejected": "已拒绝",
+      "empty": "暂无记录",
+      "emptyPending": "没有待确认的评价认证",
+      "approve": "确认（发放奖励）",
+      "reject": "拒绝",
+      "rejectConfirm": "确认拒绝",
+      "reasonPlaceholder": "拒绝原因（将发送给顾客）",
+      "reasonRequired": "请输入拒绝原因",
+      "approvedToast": "确认完成 — 已向顾客发放奖励和评价积分",
+      "rejectedToast": "已拒绝",
+      "ocrPassed": "自动验证通过（参考）",
+      "openReview": "查看认证",
+      "footNote": "奖励与评分和内容无关，仅针对到店认证发放。运营团队可能会抽样审核。",
+      "loadError": "无法加载列表"
     }
   },
   "admin": {

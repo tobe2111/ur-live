@@ -53,6 +53,134 @@
 ⚠️ 예치금 숫자 확보 시 `wholesale_deposits` 뿐 아니라 **활성 plus 구독 건수**도 함께 볼 것.
 
 
+## ✅ 2026-07-02 — 카카오맵 리뷰 게이미피케이션 v1 (대표 컨셉 → "추천대로 진행해줘. 가장 이상적으로")
+"유저가 카카오맵에 후기 작성 → 매장에서 확인 → 점수/레벨 상승 → 레벨 전용 이용권 구매 자격" 플로우 전체 구현. 설계+결정표: `docs/design/kakao-review-gamification.md` (결정 4건 전부 추천안 확정 — 매장승인+어드민샘플링 / 리뷰 전용 레벨 / 전용 이용권 게이트만 / 별점무관+대가표시).
+- **점수/레벨 SSOT**: 신규 `worker/utils/review-level.ts` — `user_review_scores`(ensure 패턴) + `platform_settings`(`review_level_thresholds` 기본 Lv2=3/Lv3=10/Lv4=25/Lv5=50 · `review_score_per_approval` 기본 10) + 레벨업 notifyUser. 적립은 승인 CAS 승자에서만(멱등).
+- **매장 확인 큐**: `/api/seller/review-verifications`(requireSeller + seller_id 소유권) + `SellerReviewVerificationsPage`(`/seller/review-verifications`, 메뉴 등록, i18n 6언어 `seller.reviewVerify.*`). 어드민 큐는 샘플링 감사로 병행.
+- **머니 교정(동반)**: 기존 어드민 approve 가 pre-check→지급→UPDATE 순서라 **동시 승인 이중지급 레이스** → 공용 헬퍼로 CAS(claim-before-credit) + 지급실패 보상원복. **OCR 자동지급 강등**(대표 "OCR 너무 무거운 거 아니야?" — 위조 스크린샷에 퍼지 모델이 돈 판정하던 구조 제거, 라벨만. 어드민 명시 `kakao_review_auto_approve` 는 유지).
+- **레벨 전용 이용권**: `product_supply_meta.min_review_level`(2~5) — join+confirm-toss **이중 게이트**(`REVIEW_LEVEL_REQUIRED`, per-person-limit 패턴·기존 metaMap 재사용=추가조회 0) + 상세 API/공구·교환권 상세 배지 + 어드민 동네딜 폼(등록/수정/목록) 셀렉트.
+- **유저 표면**: 제출 모달(`ReviewBonusButton`)에 내 레벨(`GET /api/review-bonus/my-level`) + 별점무관·대가표시 안내 + "AI 즉시지급" 문구 제거.
+- **문서/시드**: 셀러·어드민 가이드 섹션 추가, 블로그 리뷰 리워드 글에 레벨 섹션(`BLOG_SEED_VERSION` 4→5).
+- 검증: 변경 파일 개별 구문검사 0 · sql-bind/column/table/not-null 0 · theme/blog/pagination/modal-zindex/crossrole 등 가드 GREEN (⚠️ 이 원격환경 npm 403 — 전체 tsc/build 미실행, staging 필수: 제출→매장 승인→보너스+점수→레벨업 알림→레벨 전용 구매 게이트 E2E).
+- v2 잔여: 홍보 자격(배지 노출·핀 부스트) · 사용완료 카드 kakao_place_url 딥링크 CTA · 셀러 폼 min_review_level.
+
+
+## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
+2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
+- `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).
+- 배선 추가 불필요 — 기존 pre-commit(warn)/verify.yml(strict)/audit-gate 에 이미 등재된 스크립트 확장. CLAUDE.md 방어선 표 갱신.
+- 검증: 레포 전체 0건(현행 클린) + 음성테스트(실사고 형태 `.all<T>().catch()` 포함 2건 차단, 정상 3패턴 통과, strict exit 1).
+## ✅ 2026-07-02 — 쇼핑 상품 전 구간 전수조사 + 일괄 수리 (대표 "전부", PR #429)
+일반 온라인 쇼핑 상품(교환권/동네딜/도매 제외) 셀러등록~상세~카트~주문/결제~환불~정산 6세그먼트 병렬 감사(에이전트 6 + audit-gate 41). **P0(돈유출) 0 확인**(서버 가격/할인/재고 권위 재계산 + Toss confirm strict 금액검증) — 대신 "표시금액≠서버금액 → 결제 400" 클래스 + 배선 끊김 다수 수리. 3커밋(857bb73·9ccdee5·4dd8675).
+- **결제 금액 정합(Toss confirm 400 클래스)**: `shipping.ts` free_shipping_threshold=0="무료배송 없음"(클라/points 정합) + `order.routes` 비배송(교환권/이용권) 배송비 0(threshold 수정과 상쇄짝 — 동일커밋) + `POST /orders/shipping-quote`(주문생성과 동일 함수·데이터 견적) + 미결제취소 CAS+재고/쿠폰 복원. `CheckoutPage/useBeforePayment` 서버 견적 사용·쿠폰 최대그룹 배정(멀티셀러 UNIQUE 회피)·Σ(서버 total) 검증 후 승인·stale snapshot 최신가. `scheduled-cleanup` AWAITING_PAYMENT 스위핑+쿠폰 복원.
+- **옵션 파이프라인 재건(전 구간 사망→복구)**: `useProduct` 응답형태(항상 [] 였음)·셀러 GET/POST 컬럼·필드명 정합(수정저장 시 옵션 전멸+재고 0 저장 수정)·order.routes 옵션가 서버 재계산+option_id 소유권검증+옵션재고 CAS 차감/복원·카트 option_id 저장/표시(join)/변경(PUT)·상세 UI 추가금/품절·useCart id 타입 정합.
+- **환불/취소 상태머신**: 부분취소가 주문 전체 CANCELLED+전 재고/커미션 회수 → refunded_amount CAS만(status 유지)·refundOrderFully 잔여액 기준(이중환급/EXCEED 방지)·`/orders/refund` DELIVERED 제거(반품 절차 경유)+전액시만 플립.
+- **셀러 대시보드 진실**: 상품목록 is_active 반환·재고 COALESCE 순서·비활성 표시(재활성화 가능)·토글 enum(PAUSED→HIDDEN)·삭제 status=DELETED 실세팅(구매 차단)·주문 order_items/payment_status 반환·50→200 cap·송장/일괄 상태 전이 가드(취소·미결제 부활 차단)·delivered_at 기록.
+- **소비자 표시**: 검색 카드/정렬/필터 이중할인 제거(price=최종가)·자동완성 형태 정합·prefetch 키 String·카트 선택리셋/수량감소 수정·PRODUCT_DETAIL_FIELDS 에 detail_images/long_description(+repair 등록)로 상세정보 빈렌더 복구+셀러 저장 배선.
+- **[UNLOCK] 정산/재고(대표 AskUserQuestion 2건 승인)**: `webhook.routes handlePaymentFailed` 재고복원을 전이 성공분(status='FAILED')만(지연 실패 webhook이 DONE 주문 재고 부풀리던 초과판매 차단). `handlePaymentConfirmed`+`returns.routes` 에 쇼핑 원장 credit/reverse 대칭(SHOPPING_LEDGER_ENABLED 게이트 OFF=현행 동일, 재오픈 선행 수리). CLAUDE.md audit log 2건.
+- 검증: audit-gate **41 invariants ALL GREEN**. ⚠️ **이 원격환경 npm 403 → 전체 tsc/build 미실행. 잠금파일 회귀 + 결제 정합은 staging 실결제 E2E 필수**: 옵션상품(선택→담기→결제→옵션재고 차감→환불복원)·배송비(제주/무료배송/멀티셀러)·멀티셀러+쿠폰·부분취소(주문유지·잔여 추가취소)·셀러 상품 비활성/재활성·주문 상품목록 표시. 🔵 미완(별도): 쇼핑탭 재오픈 시 정산 게이트 ON + 이중계상 가드 확정, 옵션 조합(색상×사이즈) 모델, 리뷰 사진 업로드(소비자용 엔드포인트)·카트 뱃지 invalidate(P2).
+
+## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
+`/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
+- **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
+- **🔴 MyStaysPage 다크 전용 하드코딩** → 라이트 기본+`dark:` 전면 전환(마이 위성 유일한 테마 규칙 전면 위반이었음) + `refund_rate` NaN% 가드 + 핑크→B&W.
+- **🔴 주문 현황 바 반쪽 동작**: 별도 fetch → `useMyOrders` 재사용(RQ 캐시 공유), 5칸 전부 무필터 `/my-orders` → **상태 필터(`?status=`) 배선 + MyOrdersPage 에 필터 칩 신설**, 항상 0이던 '리뷰' → 리뷰 가능 주문 수(DELIVERED/DONE, MyReviews 기준) + `/my-reviews` 이동.
+- **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
+- **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
+- 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+## ✅ 2026-07-29 — **열린 PR 20건 일괄 정리 + 병합 마찰 제거 가드 2종** (대표 "PR 정리 계속 / 더 개선점")
+
+밤새 쌓인 열린 PR 을 CI 통과분부터 순차 머지했다. 그 과정에서 **같은 수작업이 반복되는 지점**을
+두 개 발견해 가드/자동화로 바꿨다 — 이게 이 세션의 실질 산출물이다.
+
+### 머지 완료 (16건)
+`#771`(어드민 최근활동+KST 정합) · `#829`(매장 픽업 공구) · `#830`(무인매장 수집 — 타 세션) ·
+`#451`(cron dead-man's switch) · `#425`(카카오맵 리뷰) · `#429`(상품 옵션) ·
+`#834`(시드 버전 가드) · `#836`(병합 자동화) 외.
+**닫음 4건 · 보류 1건(`#445`).**
+
+### 🛡️ 신규 가드 — 시드 버전 재사용 (`#834`, `check-seed-version-monotonic.mjs`)
+가이드/블로그 시드는 **"코드 버전 > DB 저장 버전"일 때만** 재시드된다. 이미 쓴 번호를 다시 쓰면
+**조건이 거짓이라 에러 없이 아무 일도 안 일어난다** — 배포는 초록불이고 라이브 문서만 옛날 것으로 남는다.
+가정이 아니라 **이미 두 번 났다**: `GUIDE_SEED_VERSION = 8` 이 2026-07-20 서로 다른 두 커밋에서 쓰였고
+(v11 주석이 그 수습을 기록 — "병행 배포 양쪽(각자 v8)이 모두 재시드되도록 9 로 합침"), `= 4` 도 두 번.
+오늘도 `#451`·`#425` 가 동시에 12 를 잡았다(머지 직전 수동 발견 → `#425` 를 13 으로).
+판정 = main 히스토리가 쓴 적 없는 더 큰 번호. **상수를 실제로 건드린 브랜치만** 검사(안 그러면
+main 안 당겨온 브랜치가 전부 걸려 소음) + **병합 진행 중(MERGE_HEAD)에는 생략**(merge-base 가 낡아 오판).
+⚠️ 한계: 아직 머지 안 된 다른 브랜치의 번호는 못 본다 — 나중에 머지하는 쪽이 CI 에서 걸려 +1 하면 된다.
+
+### 🔀 병합 자동화 (`#836`, `.gitattributes` + `merge-file-size-baseline.mjs`)
+`scripts/file-size-baseline.json` 을 **하루에 10번 넘게 손으로 병합**했다. 내용 충돌이 아니라
+서로 다른 브랜치가 서로 다른 키를 올려서 나는 충돌이다. → 전용 드라이버(**키별 최대값**).
+baseline 은 래칫 *상한*이라 작은 쪽을 고르면 병합 직후 CI 가 곧바로 빨간불이 된다(실제로 그랬다).
+`docs/CURRENT_WORK.md` 는 git 내장 `union`(양쪽 보존 — 지금까지 하던 keep-both 와 같은 결과).
+안전판: JSON 파싱 실패 시 **자동 병합을 포기하고 평소대로 충돌**을 낸다. 드라이버 미등록 환경도
+그냥 충돌이 날 뿐이라 조용한 오작동이 없다. 등록은 `install-git-hooks.sh`.
+⚠️ 파일을 줄여 baseline 을 *낮춘* 작업은 병합에서 되돌아갈 수 있다(높은 쪽이 이긴다) → 병합 후 `--rebaseline`.
+
+### 🐛 `#425` 에서 찾은 실제 버그 2건 (브랜치 원본 결함, main 은 정상이었음)
+1. `guide-seed-seller.ts` 에서 백슬래시 **2개** + 백틱(`\\` 다음에 백틱) — 템플릿 리터럴이 **그 자리에서 닫혀**
+   이후 객체 리터럴이 전부 문(statement)으로 파싱 → TS1005/1109/1128 줄줄이.
+2. `admin-products.routes.ts` 리뷰 레벨 블록의 **닫는 중괄호 누락** — 이후 코드를 통째로 삼켜
+   라우트의 `try/catch` 경계가 무너짐(TS1005 'try' expected).
+
+### ⚠️ 이번에 내가 틀린 것 (같은 실수 반복 방지 — 제일 값진 항목)
+- 🚨 **이 환경의 로컬 tsc 는 죽어 있다 — "tsc 에러 0" 을 믿지 말 것.**
+  로컬 TypeScript 가 **6.0.2** 로 올라가 있고, 이 버전은 `tsconfig.json` 의 `baseUrl` deprecation 을
+  **설정 오류로 판정해 즉시 중단**한다 → **파일을 단 하나도 검사하지 않는다.**
+  일부러 `const x: number = "문자열"` 을 넣고 돌려도 **0건**으로 나온다(실측). `package.json` 지정은 `^5.5.4` 인데
+  실제 설치본이 6.0.2 다. 복구 시도(`npm ci` · 개별 설치) 전부 **npm 403** 으로 실패 —
+  이 세션에서는 되살릴 수 없었다. ⇒ **CI 가 유일한 타입 검증 수단이다.**
+  · 그래서 내가 이 세션에서 보고한 "tsc 에러 0" 은 **전부 무의미했다**(#425 를 두 번 GREEN 이라 오판한 원인).
+  · 다음 세션은 먼저 이걸 확인할 것: `npx tsc --version` → 6.x 면 로컬 검증 불가.
+    `npx tsc --noEmit --skipLibCheck 2>&1 | head -3` 에 `tsconfig.json(...): error TS5101` 만 나오고 끝나면 그게 증상이다.
+  · 근본 수리 후보(별도): `tsconfig.json` 에 `"ignoreDeprecations": "6.0"` 추가 또는 typescript 5.x 고정.
+    ⚠️ 단 `ignoreDeprecations` 만 넣으면 6.0.2 가 `baseUrl` 을 계속 쓰긴 하나, 이 환경은 node_modules 도
+    깨져 있어(react 타입 소실, 64,706 에러) 그것만으로는 안 낫는다. npm 접근이 되는 환경에서 처리할 것.
+- **검증 명령의 `echo` 를 조건 없이 출력해 "에러 없음"으로 오판하고 버그를 담은 커밋을 푸시했다.**
+  → 판정은 반드시 **개수/종료코드**로. 다만 위 항목 때문에 이 명령조차 이 환경에선 무의미하다:
+  `ERR=$(npx tsc --noEmit --skipLibCheck 2>&1 | grep "error TS" | grep -vc baseUrl)`
+- **브랜치 단독 tsc 는 CI 와 다르다.** CI 는 **main 병합 결과**를 검사한다.
+  `#425` 가 그래서 깨졌다 — main 이 `SellerLayout.title` 을 required 로 바꿨는데 브랜치는 모르고 있었다.
+  로컬 검증은 반드시 `git merge origin/main` **후에** 할 것.
+- **`ur-live-global` 빌드가 매 PR 실패한다고 말했는데 틀렸다.** 그건 대표가 07-28 에 삭제했다.
+  실제로 보이는 건 `Cloudflare Pages / ur-wholesale` 체크가 **실패가 아니라 영원히 in_progress** 로
+  남는 것이다(1시간 전 머지된 `#830` 도 그 상태). **머지를 막지는 않는다.**
+  CF 토큰에 Pages 권한이 없어(`Authentication error`) 원인은 대시보드 확인 필요 — 대표 판단 사항.
+- `get_job_logs(failed_only=true)` 가 **실패 스텝을 못 집어낼 때가 있다**(로그 꼬리만 반환).
+  실패 원인은 `get_job_logs(job_id=..., tail_lines=60)` 로 직접 볼 것.
+
+### 🔎 가드가 만들어지자마자 잡은 현재형 사례 (조치 필요)
+
+`#818`(2026-07-29 머지)이 `company-classify.ts` 에 **새 기관 판정 규칙**을 추가했다 —
+`ORG_WORD_STRICT`(구청/시청/도청/군청/주민센터/행정복지센터/진흥원/재단/협회/교육청/보건소/의회/청사 …)
+→ `lead_type='org'` 조기 반환. **그런데 `CLASSIFY_RULES_VERSION` 은 3 그대로다**(마지막 bump 07-27).
+
+재검사 쿼리가 `classified_v IS NULL OR classified_v < CLASSIFY_RULES_VERSION` **뿐이고 시간 폴백이 없어**,
+이미 `classified_v=3` 이 찍힌 행은 **영원히** 이 규칙을 못 받는다. 즉 **새 기관 규칙이 지금 사실상 죽어 있다**
+(신규 유입 행에만 적용). 07-27 에 이 방식을 도입한 이유가 바로 그 구멍을 막으려던 것이었다.
+
+**📊 라이브 실측 (2026-07-29 04:4x, 어드민 `/api/admin/partner-pool/stats`)** — 추측이 아니라 숫자다:
+- `stats.total` = **171,028** 건
+- `reclassify.run.remaining_unclassified` = **0** ← 재분류 레인이 **이미 한 바퀴를 끝냈다**
+  ⇒ 기존 풀 전량이 `classified_v = 3` 이고, 재검사 쿼리(`classified_v < 3`)는 **아무것도 안 잡는다**.
+- 따라서 `#818` 의 기관 규칙은 **171,028건 중 0건에 적용**된다. 신규 유입분(직전 실행 기준 하루 93건)에만 붙는다.
+- 참고 분포: `byLeadType` = partner 167,839 / unknown 2,451 / **org 738**, `byCategory` 지역조직 18.
+  구청·시청·주민센터류가 지금 `partner` 쪽에 섞여 있을 가능성이 큰데, 그걸 걸러내려던 게 그 규칙이었다.
+
+**조치**: `CLASSIFY_RULES_VERSION` 3 → 4.
+⚠️ **단, 부작용을 알고 올릴 것** — bump 는 전량 재검사를 트리거하고, `reclassifyCompanyLeads` 의
+housekeeping 은 `ok=false`(공고·정부페이지) 로 판정된 **미큐레이션 행을 삭제**한다(대표가 손댄 행은 보류).
+새 규칙은 기관을 `ok=true, lead_type='org'` 로 살리는 방향이라 대량 삭제가 의도는 아니지만,
+**리드 데이터를 건드리는 변경이라 이번 세션에서 임의로 올리지 않았다.** 대표 확인 후 1줄 bump.
+
+### 다음 세션 첫 액션
+1. `#425` CI 확인 → GREEN 이면 머지(이 항목 작성 시점 in_progress).
+2. `#445` — 에이전시 약관이 **두 벌**(main `AgencyPartnerTermsPage` vs PR `AgencyTermsPage`, 둘 다 `/terms/agency`).
+   **법적 문안이라 임의 선택 금지 — 대표 답변 대기.** '벤더사' 치환은 revert 완료(`fc3b71a11`).
+3. 남은 개선 후보: `CURRENT_WORK.md` 를 세션별 파일(`docs/handoff/<날짜>-<슬러그>.md`)로 쪼개고
+   본 문서는 목차만 — union 병합으로 충돌은 사라졌지만 **파일이 4,800줄**이라 읽기 비용이 크다.
+
 ## 🟡 2026-07-29 (9차) — **A1 폐기 확정 + §4/§5 개정 · 예치금 동결 검토(잔액 실측 미완, 코드 0)**
 
 8차(#819, 머지 `e75b433`)가 올린 판단에 대표가 답했다. **결정을 문서에 반영했고 코드는 여전히 0.**
