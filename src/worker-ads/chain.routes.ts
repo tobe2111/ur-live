@@ -47,6 +47,21 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
     chained = true
     c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${depth + 1}&pu=${used}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
   }
+  /**
+   * 🔔 **자기 인보케이션에서 직접** 하트비트(2026-07-29) — 부모의 기록에만 의존하지 않는다.
+   *   라이브 증거: 07:00 에 이 레인은 `ads:collect` 기록을 **아예 남기지 못했다**(06:00 은 FAIL 이라도 남았다).
+   *   부모 `kick` 의 하트비트는 부모 예산의 D1 쓰기라, 부모가 천장에 닿으면 *실패했다는 사실조차* 못 남긴다 —
+   *   그러면 메인 워커의 `cron-stale-watch` 는 "안 돈 것"과 "원래 없는 것"을 구분할 수 없다.
+   *   여기(첫 라운드)는 자기 예산이므로 쓰기가 성사된다. 부모가 살아 있으면 같은 이름으로 덮어써
+   *   최종 결과가 남고, 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 '이번 시간에 시작했다'는 남는다.**
+   *   depth 0 에서만 쓴다(체인 라운드마다 쓰면 같은 시간에 N번 덮어써 의미가 없다).
+   */
+  if (depth === 0) {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(c.env as never, 'ads:collect', true, 0, '0 * * * *', { started: true, chained })
+    } catch { /* 관측 실패가 수집을 막지 않는다 */ }
+  }
   return c.json({ ok: true, stats, chained })
 })
 

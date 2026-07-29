@@ -66,6 +66,27 @@ async function runRoundChain(
   return { done }
 }
 
+/**
+ * 🔔 드라이버가 **자기 인보케이션에서 직접** 하트비트를 남긴다 (2026-07-29).
+ *
+ *   왜 부모(kick)의 기록만으로 부족한가: `kick` 은 체인 **응답을 기다린 뒤** 기록한다. 그래서
+ *   *오래 걸리는 레인일수록 기록이 먼저 사라진다* — 부모가 예산/수명을 다 쓰면 하트비트 D1 쓰기조차 못 한다.
+ *   라이브 증거: 07:00 에 인플루언서 수집·보강은 **실패 기록조차 없었고**, 31초짜리 `sweep-kakao-chain` 은
+ *   레인이 실제로 돌았는데도(내부 기록 존재) 부모의 하트비트는 **한 번도 남은 적이 없다.**
+ *   ⇒ 가장 관측이 필요한 레인이 가장 먼저 관측 밖으로 나가는 구조였다.
+ *
+ *   드라이버는 자기 예산이 있으므로 이 쓰기는 성사된다. 부모가 살아 있으면 부모 기록이 나중에 덮어쓰고
+ *   (같은 이름·같은 진실), 부모가 죽으면 이 기록이 남는다 — **어느 쪽이든 기록이 남는다.**
+ *   ⚠️ 이 보강이 있어야 메인 워커의 `cron-stale-watch` 가 이 레인의 정지를 알릴 수 있다
+ *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
+ */
+async function driverBeat(env: unknown, name: string, ok: boolean, ms: number): Promise<void> {
+  try {
+    const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+    await recordCronBeat(env as never, `ads:${name}`, ok, ms, '0 * * * *')
+  } catch { /* 관측 실패가 작업을 막지 않는다 */ }
+}
+
 /** 드라이버 응답 — 한 라운드도 못 돌았으면 500 으로 알린다(kick 의 하트비트가 ok:false 로 기록해야 관측된다). */
 const driverJson = (c: { json: (b: unknown, s?: number) => Response }, r: { done: number; error?: string }, planned: number): Response =>
   (!r.done && r.error)
@@ -101,11 +122,13 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
+  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
   const r = await runRoundChain(c.env, '/__ads/enrich-influencer', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
   })
+  await driverBeat(c.env, 'enrich-influencer-driver', !(!r.done && r.error), Date.now() - t0)
   return driverJson(c, r, rounds)
 })
 
@@ -126,10 +149,12 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
  *   `ads:enrich-company` 이름으로 관측 대상이 된다.
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
+  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS, 8)
   const r = await runRoundChain(c.env, '/__ads/enrich-company', rounds, async () => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
   })
+  await driverBeat(c.env, 'enrich-company', !(!r.done && r.error), Date.now() - t0)
   return driverJson(c, r, rounds)
 })
