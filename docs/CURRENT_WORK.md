@@ -32,6 +32,26 @@
 
 ---
 
+## 🔴 2026-07-29 — **머지 중 `git stash` 금지 (남의 하루치 작업을 조용히 지울 뻔했다)**
+
+충돌 해소 중 가드 오탐을 조사하려고 `git stash` / `git stash pop` 을 썼다. 그게 **`MERGE_HEAD` 를 깨뜨렸고**,
+이후 `git commit` 은 에러 없이 **부모가 1개인 평범한 커밋**을 만들었다. 커밋 메시지는 "merge: …" 라
+겉보기엔 머지였다. 실제로는 main 쪽 26개 파일이 언스테이지된 채 빠져 `git diff origin/main HEAD` 가
+**−693줄**(#847·#853 통째 되돌림)이었다. **CI 는 초록이었을 것이다** — 코드는 컴파일되니까.
+
+**증상이 '실패'가 아니라 '부재'** 라는 점에서 오늘 하루 반복한 클래스와 같다. 발견은 가드가 아니라
+"미커밋 변경이 있다"는 훅 알림이었다.
+
+**규칙**: 머지 충돌 해소 중에는 `git stash` 를 쓰지 마라. 조사가 필요하면 파일 복사나 `git worktree`.
+**확인법**(머지 커밋을 만들었다고 생각할 때마다):
+```
+git cat-file -p HEAD | grep -c '^parent'      # 2 여야 한다
+git diff origin/main HEAD --stat | tail -3    # 내 작업분만 나와야 한다(대량 삭제면 사고)
+```
+복구: 해소본을 따로 저장 → `git reset --hard <머지전>` → `git merge origin/main --no-commit` → 해소본 복원 → 커밋.
+
+---
+
 ## 🟢 2026-07-29 (12차) — **수리 확인 + DB 퀄리티 전수 점검 + 커서 고착의 정체**
 
 > **다음 세션의 첫 액션**: `GET /api/admin/ads/influencer-pool/stats` 에서 **`run.picks`** 를 보라
