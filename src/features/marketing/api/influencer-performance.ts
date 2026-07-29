@@ -342,7 +342,11 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   let rows: NaverRow[] = []
   try {
     const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
-      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+      ORDER BY perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    // ⬆️ 2026-07-29: `(perf_checked_at IS NULL) DESC, perf_checked_at ASC` 를 `perf_checked_at ASC` 로 —
+    //   SQLite 는 NULL 을 가장 작은 값으로 보므로 ASC 가 이미 **미측정 우선**이다(정렬 결과 동일).
+    //   식(expression)이 앞에 있으면 인덱스로 정렬을 만족시키지 못해 매 라운드 계정 전체(38k행)를 스캔·정렬했다.
+    //   `idx_ad_inf_leads_perf(account_id, platform, perf_checked_at)` 와 형태를 맞춰 읽기를 LIMIT 만큼으로 떨어뜨린다.
     rows = res?.results || []
   } catch (err) {
     // 삼키면 `selected:0` 이 되어 '큐가 빔'과 구분이 사라진다 — 이 레인이 tried:0 으로 멈춰 있던 동안
