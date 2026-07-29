@@ -22,6 +22,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
+import { sliceDeadline } from '@/features/marketing/api/influencer-enrich-lane'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -183,5 +184,62 @@ describe('수집 진단 — 카페는 따로 센다', () => {
 
   it('diag 초기값에 cafe 가 있다 — 없으면 런타임에 undefined 증가로 조용히 NaN 이 된다', () => {
     expect(col).toMatch(/cafe:\s*\{\s*found:\s*0,\s*saved:\s*0\s*\}/)
+  })
+})
+
+/**
+ * ⏱️ **마지막 레인이 시계를 굶지 않는다** (2026-07-29 12:00 실측).
+ *
+ *   실측: `spent 18 / budget_total 45` · `deadline_hit: true` · `elapsed 23.4s` ·
+ *   `naver { selected: 13, tried: 0 }` — **예산의 60%를 남긴 채 시계로 끝났고**, 13건을 뽑아 놓고
+ *   한 건도 못 돌렸다. 순서가 bio → yt → **naver(마지막)** 인데 yt 가 20초를 다 썼기 때문이다.
+ *
+ *   앞선 세션이 같은 자리에서 **예산** 굶주림을 고쳤다(`naverRoomFromRemaining`). 구속 자원이
+ *   예산에서 시계로 옮겨갔을 뿐 병은 같다 — **순서가 고정되면 마지막 레인은 무엇이 구속하든 굶는다.**
+ */
+describe('보강 레인 — 구간 시계 몫', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+
+  it('sliceDeadline 이 시작시각 + 비율만큼을 돌려준다', () => {
+    expect(sliceDeadline(1_000, 20_000, 0.5)).toBe(11_000)
+    expect(sliceDeadline(1_000, 20_000, 0.25)).toBe(6_000)
+  })
+
+  it('비율은 0~1 로 클램프되고 비정상 입력은 안전한 값이 된다', () => {
+    expect(sliceDeadline(0, 20_000, 2)).toBe(20_000)     // >1 → 전체
+    expect(sliceDeadline(0, 20_000, -1)).toBe(0)         // <0 → 0
+    expect(sliceDeadline(0, Number.NaN, 0.5)).toBe(0)    // NaN span → 0
+    expect(sliceDeadline(0, 20_000, Number.NaN)).toBe(20_000) // NaN frac → 전체(기존 동작)
+  })
+
+  it('yt 구간에 몫을 걸고 그 뒤 라운드 데드라인을 복원한다 — naver 가 나머지를 전부 받는다', () => {
+    expect(lane).toMatch(/budget\.deadline\s*=\s*Math\.min\(roundDeadline[\s\S]{0,80}sliceDeadline\(started, deadlineMs, 0\.5\)/)
+    // 복원이 없으면 naver 도 yt 몫에 갇힌다 — 이 한 줄이 빠지면 고친 게 무효가 된다.
+    expect(lane).toMatch(/budget\.deadline\s*=\s*roundDeadline/)
+  })
+
+  it('naver 호출이 데드라인 복원 **뒤에** 온다(순서가 뒤집히면 무효)', () => {
+    const restore = lane.indexOf('budget.deadline = roundDeadline')
+    const naverCall = lane.indexOf('enrichNaverActivity(DB, budget')
+    expect(restore).toBeGreaterThan(0)
+    expect(naverCall).toBeGreaterThan(restore)
+  })
+})
+
+/**
+ * 🕳️ **깊이는 하트비트로 못 본다** — 같은 이름에 부모가 나중에 쓰기 때문(12:00 실측 `result: null`).
+ *   판정 창은 레인 스냅샷이어야 한다.
+ */
+describe('self-chain 깊이 관측 — 이름을 다투지 않는 곳에 싣는다', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+  const routes = read('src/worker-ads/enrich.routes.ts')
+
+  it('레인 스냅샷이 depth 를 싣는다', () => {
+    expect(lane).toMatch(/depth\?:\s*number/)
+    expect(lane).toMatch(/budget_total:\s*budgetTotal,\s*depth/)
+  })
+
+  it('드라이버가 쿼리의 depth 를 레인으로 넘긴다', () => {
+    expect(routes).toMatch(/runInfluencerEnrich\(c\.env,\s*Number\.isFinite\(d\)/)
   })
 })

@@ -54,6 +54,15 @@ export interface InfluencerEnrichSnapshot {
   budget_total: number
   limit_hit: boolean          // 플랫폼 서브리퀘스트 한도 관측(학습 상한 자동 하향)
   deadline_hit: boolean       // 벽시계 상한으로 끊음(예산이 남아도 시간이 인보케이션을 끝낸다)
+  /**
+   * 🔢 이 라운드의 self-chain 깊이 — **체인이 이어졌는지를 밖에서 보는 유일한 창**(2026-07-29).
+   *
+   *   원래 하트비트(`ads:enrich-influencer-driver`)에 실었는데 **보이지 않았다**: 같은 이름에 부모(`kick`)와
+   *   자식(드라이버)이 둘 다 쓰고, 부모는 자식 응답 *뒤에* 쓰므로 **항상 부모가 마지막 writer** 다
+   *   (실측 12:00: `result: null` — 내가 실은 `{planned, depth, chained}` 가 통째로 덮였다).
+   *   ⇒ 이름을 다투지 않는 곳(이 스냅샷)에 싣는다. 어차피 라운드마다 쓰는 값이라 **추가 쓰기 0**.
+   */
+  depth?: number
   elapsed_ms: number
   total_measured?: number     // 누적 — "얼마나 진행됐나"를 라운드 하나가 아니라 전체로 본다
   total_contacts?: number
@@ -91,6 +100,34 @@ export function planInfluencerEnrich(budgetTotal: number): { bioMax: number; nav
  *   `/2` 는 블로거 건당 fetch 2(RSS + 모바일 홈). 상한 30 은 `enrichNaverActivity` 의 SELECT LIMIT 과 동일.
  *   ⚠️ 배정은 상한일 뿐 실제 중단은 여전히 `budget.left`/deadline 이 한다 — 과배정해도 초과 지출은 없다.
  */
+/**
+ * ⏱️ **앞 레인이 시계를 다 쓰지 못하게** 하는 구간 데드라인 (2026-07-29 실측 후 신설).
+ *
+ *   실측(12:00 틱): `spent 18 / budget_total 45` · **`deadline_hit: true`** · `elapsed 23.4s` ·
+ *   `naver { selected: 13, tried: 0 }`. 즉 **예산의 60%를 남긴 채 시계로 끝났고**, 13건을 뽑아 놓고
+ *   한 건도 못 돌렸다. 이유는 실행 순서다 — bio → yt → **naver(마지막)** 인데 yt 가 20초 데드라인을
+ *   다 써서, 백로그가 가장 큰 레인(미측정 블로거 **26,694건**)이 시간을 한 톨도 못 받았다.
+ *
+ *   ⚠️ 앞선 세션이 같은 자리에서 **예산** 굶주림을 고쳤다(`naverRoomFromRemaining` — 앞 레인이 안 쓴
+ *   예산을 naver 가 물려받게). 그런데 구속하는 자원이 예산에서 **시계로** 옮겨갔고, 시계에는 같은 처방이
+ *   없었다. 순서가 고정된 한 **마지막 레인은 구속 자원이 무엇이든 굶는다.**
+ *
+ *   ⇒ 각 구간에 시계 몫을 준다. yt 가 일찍 끝나면 naver 가 남은 시간을 전부 쓰고(상한이 아니라 *보장*),
+ *     오래 끌면 여기서 잘려 naver 몫이 남는다.
+ *
+ * ⚠️ 못 막는 것: 한 건이 8초 타임아웃을 두 번 물면(RSS+홈) 그 한 건이 몫을 초과할 수 있다 —
+ *   중단은 건 사이에서만 일어난다. 몫은 '언제부터 새 건을 시작하지 않는가'이지 강제 중단이 아니다.
+ *
+ * @param started    라운드 시작(ms)
+ * @param deadlineMs 라운드 전체 시계 예산
+ * @param frac       이 구간까지 허용할 비율(0~1)
+ */
+export function sliceDeadline(started: number, deadlineMs: number, frac: number): number {
+  const f = Number.isFinite(frac) ? Math.min(1, Math.max(0, frac)) : 1
+  const span = Number.isFinite(deadlineMs) ? Math.max(0, deadlineMs) : 0
+  return started + Math.floor(span * f)
+}
+
 export function naverRoomFromRemaining(remaining: number, plannedMax: number): number {
   const left = Number.isFinite(remaining) ? remaining : 0
   const planned = Number.isFinite(plannedMax) ? plannedMax : 0
@@ -162,7 +199,7 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   실패해도 throw 하지 않는다(호출부는 fail-soft) — 대신 **crash 원문을 스냅샷에 남긴다**.
  *   증거 없는 종료가 진단을 몇 세션씩 잡아먹은 것이 2026-07-28 파트너풀 레인의 교훈이다.
  */
-export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSnapshot> {
+export async function runInfluencerEnrich(env: Env, depth = 0): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -195,13 +232,19 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
     if (isSubrequestLimitError(msg)) limitHit = true
     if (!crash) crash = msg
   }
+  // ⏱️ 구간 시계 몫 — 마지막 레인(naver)이 시계 굶주림을 겪지 않게(`sliceDeadline` docblock 이 근거).
+  //   bio 25% · yt 50% → naver 는 **최소 50%** 를 보장받고, 앞 레인이 일찍 끝나면 그만큼 더 쓴다.
+  const roundDeadline = budget.deadline
   // 🔗 링크인바이오 먼저(백로그가 작고 건당 1 fetch — 블로거 백로그에 영원히 밀리지 않게).
+  budget.deadline = Math.min(roundDeadline ?? Infinity, sliceDeadline(started, deadlineMs, 0.25))
   try { bio = await enrichPoolFromLinkInBio(DB, budget, bioMax) } catch (err) { note(err) }
   // 📈 유튜브 성과 — 남은 일일 units 안에서만. 소모 units 는 실제 쓴 fetch 수로 계산(list 호출 1회 = 1 unit).
   const beforeYt = budget.left
+  budget.deadline = Math.min(roundDeadline ?? Infinity, sliceDeadline(started, deadlineMs, 0.5))
   if (ytMax > 0 && ytRoom > 0 && env.YOUTUBE_API_KEY) {
     try { yt = await enrichYouTubePerformance(env.YOUTUBE_API_KEY, DB, budget, Math.min(ytMax, ytRoom)) } catch (err) { note(err) }
   }
+  budget.deadline = roundDeadline // 나머지 시간은 전부 블로거 몫(백로그 26,694건)
   const ytUnits = Math.max(0, beforeYt - budget.left)
   if (ytUnits > 0) await writeSetting(DB, YT_PERF_UNITS_KEY, `${ytDay}:${ytUnitsUsed + ytUnits}`).catch(() => undefined)
   // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 앞 레인이 남긴 예산 전부를 쓴다.
@@ -218,7 +261,7 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
 
   const prev = await readSnapshot(DB)
   const snap: InfluencerEnrichSnapshot = {
-    last_run: nowStamp(), bio, yt, naver, spent, budget_total: budgetTotal,
+    last_run: nowStamp(), bio, yt, naver, spent, budget_total: budgetTotal, depth,
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,
     yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
     total_measured: (prev?.total_measured || 0) + naver.measured + yt,
