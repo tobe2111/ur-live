@@ -90,6 +90,14 @@ describe('도매 머니/데이터 훅 — 에러 삼킴 회귀 방지 (정적 �
  *     ⇒ 하네스가 차이를 실제로 감지함(무음 통과 아님) + 게이트 없었으면 도매에서도 정산이 돌았다는 직증.
  *     미검증분은 "cron trigger 부착 시 Cloudflare 가 배포된 scheduled export 를 호출하는가"뿐 —
  *     **우리 코드가 아니라 플랫폼 동작**이며, 대시보드 접근(이 환경 프록시 차단 + CF 토큰 무효)이 필요하다.
+ *
+ *   🔴 **②의 플랫폼 부착은 예치금 잔액 확인 전까지 보류**(2026-07-29 대표 판단 — 이전의 "GMV 0 이라
+ *     지금이 창" 은 **너무 넓은 논거였다**). 이유: cron 에는 정산 성숙만 있는 게 아니라
+ *     **매시간 분기(`0 * * * *`)에 `wholesale-deposit-reconcile`·`wholesale-withdrawal-reconcile`** 이 있고,
+ *     그중 `reconcileOrphanedDepositOrders` 는 조회가 아니라 **환불(refunded)** 을 수행한다 —
+ *     판매사 예치금 잔액을 실제로 쓴다. **GMV 0 은 주문에서 성숙하는 공급자 정산에만 해당**하고,
+ *     예치금은 선불로 이미 들어와 있어 GMV 와 무관하다. 잔액을 모르는 상태로 부착하면 폭발반경이 미지수다.
+ *     ⇒ 순서: 예치금 숫자 확보 → ② 부착(대표가 대시보드에서 직접, 즉시 제거) → gb 가격 결제 배선.
  */
 describe('정산 cron 은 소비자 워커에서만 — 이중성숙 차단', () => {
   const readRepo = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
