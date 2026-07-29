@@ -29,6 +29,68 @@ enrichRoutes.post('/__ads/prefill-outreach-drafts', async (c) => {
   }
 })
 
+
+/**
+ * 🚀 라운드를 **응답 뒤로** 돌린다 — 드라이버의 핵심.
+ *
+ * ## 왜 (2026-07-29 라이브 실측으로 드러난 #835 의 미완)
+ * 부모의 `kick` 은 `await env.SELF.fetch(...)` 다 — **응답을 기다린다.** 그런데 드라이버가
+ * 라운드를 전부 돌고 나서 응답하면, 부모는 그 12라운드(각 라운드가 외부 크롤) 내내 살아 있어야 한다.
+ * #835 는 라운드를 부모의 *서브리퀘스트 예산*에서 뺐지만 부모의 *수명*에서는 못 뺐다.
+ *
+ * 실측(07:00 틱): 발화한 8개는 전부 **빠른 레인**(D1 전용)이고, 빠진 것은 전부 **느린 레인**
+ * (외부 크롤)이었다. `enrich_lane.last_run` 은 05:02 에서 멈춰 두 틱을 통째로 걸렀다.
+ * 즉 부모의 수명이 천장이었고, 느린 레인은 일도 못 하고 하트비트도 못 남겼다.
+ *
+ * ## 처방
+ * 드라이버는 **즉시 응답**하고(부모의 kick 은 곧바로 풀린다) 라운드는 자기 인보케이션의
+ * `waitUntil` 에서 돈다. 부모는 다음 레인을 바로 디스패치한다.
+ *
+ * ⚠️ 관측을 잃지 않는다 — 라운드 결과를 **자기 하트비트**(`ads:{lane}-rounds`)로 남긴다.
+ *   즉시 응답만 하고 결과를 안 남기면 "돌긴 했나"를 다시 알 수 없게 된다(고치려던 그 병).
+ */
+async function runRoundsDetached(
+  c: { env: Env; executionCtx?: { waitUntil(p: Promise<unknown>): void } },
+  lane: string,
+  rounds: number,
+  once: () => Promise<unknown>,
+  roundPath: string,
+): Promise<{ ok: boolean; rounds: number; planned: number; error?: string }> {
+  const env = c.env
+  const work = async () => {
+    const t0 = Date.now()
+    let done = 0
+    let error: string | undefined
+    for (let i = 0; i < rounds; i++) {
+      if (!env.SELF?.fetch) { // SELF 미바인딩(로컬) — 체인 불가라 1회 직접 실행
+        try { await once(); done++ } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
+        break
+      }
+      try {
+        const r = await env.SELF.fetch(new Request(`https://ur-ads${roundPath}`, { method: 'POST' }))
+        if (!r.ok) { error = `round${i + 1}: HTTP ${r.status}`; break }
+        done++
+      } catch (err) {
+        error = `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
+        break
+      }
+    }
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      // 매시간 도는 레인이라 기대 간격은 매시간 기준(cron 식 대신 명시 — lane-cadence.ts 참조).
+      await recordCronBeat(env as never, `ads:${lane}-rounds`, !!done, Date.now() - t0, undefined,
+        { rounds: done, planned: rounds, ...(error ? { error } : {}) }, 150)
+    } catch { /* 관측 실패가 라운드를 망치지 않는다 */ }
+    return { ok: !!done, rounds: done, planned: rounds, ...(error ? { error } : {}) }
+  }
+
+  if (c.executionCtx?.waitUntil) {
+    c.executionCtx.waitUntil(work())
+    return { ok: true, rounds: 0, planned: rounds } // 디스패치 성공(결과는 위 하트비트로)
+  }
+  return work() // 로컬/미지원 — 기존처럼 동기 실행
+}
+
 /** 라운드 상한 — env 로 조정(1~20). 기본 12: 아래 드라이버 주석의 실측 근거 참조. */
 export function resolveEnrichRounds(raw: string | undefined): number {
   return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 12))
@@ -68,30 +130,12 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
-  const env = c.env
-  const rounds = resolveEnrichRounds((env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
-  let done = 0
-  let error: string | undefined
-  for (let i = 0; i < rounds; i++) {
-    if (!env.SELF?.fetch) { // SELF 미바인딩(로컬) — 라운드 체인 불가라 1회 직접 실행
-      try {
-        const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-        await runInfluencerEnrich(env); done++
-      } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
-      break
-    }
-    try {
-      const r = await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-influencer', { method: 'POST' }))
-      if (!r.ok) { error = `round${i + 1}: HTTP ${r.status}`; break }
-      done++
-    } catch (err) {
-      error = `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
-      break
-    }
-  }
-  // 라운드를 한 번도 못 돌았으면 실패로 알린다 — kick 의 하트비트가 ok:false 로 기록해야 관측된다.
-  if (!done && error) return c.json({ ok: false, rounds: done, planned: rounds, error }, 500)
-  return c.json({ ok: true, rounds: done, planned: rounds, ...(error ? { error } : {}) })
+  const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
+  const r = await runRoundsDetached(c, 'enrich-influencer', rounds, async () => {
+    const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
+    return runInfluencerEnrich(c.env)
+  }, '/__ads/enrich-influencer')
+  return c.json(r, r.ok ? 200 : 500)
 })
 
 /**
@@ -120,27 +164,10 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
  * 💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
-  const env = c.env
-  const rounds = resolveCompanyEnrichRounds((env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS)
-  let done = 0
-  let error: string | undefined
-  for (let i = 0; i < rounds; i++) {
-    if (!env.SELF?.fetch) { // SELF 미바인딩(로컬) — 체인 불가라 1회 직접 실행
-      try {
-        const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
-        await enrichHeldLeads(env); done++
-      } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
-      break
-    }
-    try {
-      const r = await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
-      if (!r.ok) { error = `round${i + 1}: HTTP ${r.status}`; break }
-      done++
-    } catch (err) {
-      error = `round${i + 1}: ${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
-      break
-    }
-  }
-  if (!done && error) return c.json({ ok: false, rounds: done, planned: rounds, error }, 500)
-  return c.json({ ok: true, rounds: done, planned: rounds, ...(error ? { error } : {}) })
+  const rounds = resolveCompanyEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS)
+  const r = await runRoundsDetached(c, 'enrich-company', rounds, async () => {
+    const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+    return enrichHeldLeads(c.env)
+  }, '/__ads/enrich-company')
+  return c.json(r, r.ok ? 200 : 500)
 })

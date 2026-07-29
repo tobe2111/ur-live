@@ -206,3 +206,33 @@ describe('worker-ads/index.ts — 부모는 라운드 루프를 돌리지 않는
     expect(src).toMatch(/kick\('\/__ads\/enrich-company-driver'/)
   })
 })
+
+/**
+ * 🛡️ 드라이버는 **응답을 라운드 뒤로 미루지 않는다**.
+ *
+ * 부모의 `kick` 은 SELF fetch 를 await 한다 → 드라이버가 라운드를 다 돌고 응답하면
+ * 부모가 그 시간 내내 묶인다. #835 가 라운드를 부모의 *서브리퀘스트 예산*에서는 뺐지만
+ * *수명*에서는 못 뺐던 이유이고, 그래서 07:00 틱에 느린 레인이 통째로 굶었다.
+ * ⚠️ 못 막는 것: 드라이버가 아닌 **단발 느린 레인**(collect 등)은 여전히 부모를 붙잡는다.
+ */
+describe('enrich.routes.ts — 드라이버는 즉시 응답한다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/enrich.routes.ts'), 'utf8')
+
+  it('드라이버 핸들러 본문에 라운드 for 루프가 직접 들어있지 않다', () => {
+    const offenders: string[] = []
+    for (const m of src.matchAll(/enrichRoutes\.post\('\/__ads\/[a-z-]*-driver'[\s\S]{0,600}?\n\}\)/g)) {
+      if (/\bfor\s*\(/.test(m[0])) offenders.push(m[0].split('\n')[0].slice(0, 70))
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('라운드는 waitUntil 로 분리되고 결과를 하트비트로 남긴다(관측 유실 금지)', () => {
+    expect(src).toMatch(/executionCtx\?\.waitUntil/)
+    expect(src).toMatch(/recordCronBeat\(/)
+    expect(src).toMatch(/-rounds`/)
+  })
+
+  it('드라이버가 두 개 다 분리 헬퍼를 쓴다(검사 대상 존재 확인)', () => {
+    expect((src.match(/runRoundsDetached\(/g) || []).length).toBeGreaterThanOrEqual(3)
+  })
+})
