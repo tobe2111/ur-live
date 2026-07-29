@@ -120,3 +120,24 @@ export function buildSellerSurfaceMeta(
     ogType: 'profile',
   }
 }
+
+/**
+ * 🪦 개별 엔티티를 렌더하는 SSR 슬롯 — 이들만 "대상이 없으면 noindex" 대상이다.
+ *   목록 슬롯(MAIN/VOUCHERS/BROWSE/BLOG)은 API 가 404 여도 페이지 자체는 유효하므로 제외.
+ */
+const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST'])
+
+/**
+ * 사라진 상세 페이지를 색인에서 빼야 하는가.
+ *
+ * 실측: `/group-buy/99999999` 가 **200 + 제네릭 홈 메타 + `robots: index, follow`** 로 나갔다.
+ * 워커의 SSR self-fetch 는 그 순간 404 를 받고 있었는데(`X-SSR-Status: DETAIL:self-fetch-404`) 쓰지 않았다.
+ * sitemap 이 상세 URL 829건(공구 329·상품 500)을 제출하고 상품은 내려가므로, 내려갈 때마다
+ * "홈과 똑같은 색인 가능한 URL" 이 하나씩 생기는 구조였다.
+ *
+ * ⚠️ **타임아웃은 포함하지 않는다** — `self-fetch-timeout` 은 "없다" 가 아니라 "느리다" 이고,
+ *    콜드 콜로에서 흔하다. 그걸로 noindex 를 내면 멀쩡한 상품이 색인에서 빠진다(더 큰 사고).
+ */
+export function shouldNoindexMissingEntity(slot: string, ssrStatus: string): boolean {
+  return ENTITY_SLOTS.has(slot) && ssrStatus === 'self-fetch-404'
+}

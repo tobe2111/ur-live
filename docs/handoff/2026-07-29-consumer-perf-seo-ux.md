@@ -45,6 +45,7 @@
 | 6 | `/vouchers` **CLS 0.188**(첫 방문). 카테고리 칩(50px)+브랜드 스트립(113px)이 SSR 로 먼저 그려진 목록 위로 늦게 삽입 | `sectionsReady` 로 자리 예약(높이는 실측값) |
 | 7 | 비로그인이 딜 상세를 열 때마다 콘솔 401 (`/api/fcfs/:id/me`) | 비로그인이면 호출 안 함 |
 | 8 | sitemap 의 storefront 8건이 **전부 상품 0개**, 그중 6건이 QA 계정(`테스트 상점`·`검증상호`…) | **콘텐츠 게이트**(상품≥1 OR 핀≥1). 이름 패턴으로 거르지 않음 — 자기유지되는 기준 |
+| 9 | **사라진 상세가 `200 + index,follow`** — `/group-buy/99999999` 가 제네릭 홈 메타로 색인 가능. 워커 self-fetch 는 그 순간 404 를 받고도(`X-SSR-Status: DETAIL:self-fetch-404`) 안 썼다. sitemap 이 상세 829건 제출 → 내려갈 때마다 홈 중복 1개 | `shouldNoindexMissingEntity` — 엔티티 슬롯 + `self-fetch-404` 일 때만 noindex. **타임아웃은 제외**("느리다"≠"없다") |
 
 부수: DETAIL/STAYDETAIL/PRODUCT/CURATOR 의 **똑같은 `.on()` 체인 4벌**을 `applySurfaceMeta` 하나로 통일
 (`worker/index.ts` 2620→2591줄, 파일크기 래칫 준수). 출력 불변 — 셀렉터·순서·값 동일.
@@ -52,7 +53,7 @@
 ### 🧪 가드 (규율은 문서가 아니라 테스트로)
 
 - `src/tests/unit/consumer-surface-seo.test.ts` (17) — 접미사 1회·canonical 자기참조·표면별 상이·추적파라미터 제거.
-- `src/tests/unit/surface-ssr-meta.test.ts` (11) — **배선**까지: 가짜 HTMLRewriter 로 어떤 셀렉터에 무엇이 들어가는지.
+- `src/tests/unit/surface-ssr-meta.test.ts` (15) — **배선**까지: 가짜 HTMLRewriter 로 어떤 셀렉터에 무엇이 들어가는지.
 - 되돌려-검증 완료: `withSiteName` 의 중복 흡수 1줄 제거 → 4개 빨강, 복원 → 17개 초록.
 - ⚠️ **못 막는 것**: `worker/index.ts` 가 `applySurfaceMeta` 를 *호출하지 않게* 되는 회귀. HTMLRewriter 는
   Workers 런타임 전용이라 여기서 실행 못 한다. **배포 후 아래 명령이 유일한 판정**이다.
@@ -74,14 +75,16 @@ done
 1. **랜딩 4종(`/about`·`/creators`·`/creators/apply`·`/partners`) 은 여전히 서버 메타가 제네릭 홈**이다.
    sitemap 에 priority 0.6~0.85 로 제출 중. 고치려면 `CONSUMER_SURFACE_SEO` 에 항목을 추가하고
    **그 페이지의 `<SEO>` 도 같은 상수를 읽게** 바꿀 것(문구가 두 벌이 되면 반드시 갈라진다).
-2. **sitemap 의 `/products` 500건** — 쇼핑 탭은 `SHOPPING_TAB_HIDDEN` 으로 숨겨져 있는데 색인은 요청 중이다.
+2. **사라진 상세의 HTTP 상태는 200 그대로 뒀다** — SPA 셸·청크 로딩·클라 라우팅을 건드리지 않기 위해서다.
+   진짜 404 상태로 바꾸면 soft-404 가 완전히 사라지지만 프리렌더/캐시/클라 부트와의 상호작용을 별도로 검증해야 한다. **대표 결정 필요.**
+3. **sitemap 의 `/products` 500건** — 쇼핑 탭은 `SHOPPING_TAB_HIDDEN` 으로 숨겨져 있는데 색인은 요청 중이다.
    `/products/1` 은 데모(`무선 이어폰 프리미엄`, og:image 가 unsplash). **대표 결정 필요**: 숨긴 표면을
    계속 색인 요청할 것인가.
-3. **홈 첫 페인트가 지도**라 Kakao SDK 101KB + 타일 PNG ~500KB 가 붙는다. 홈=지도는 대표 결정(2026-07-15)이라
+4. **홈 첫 페인트가 지도**라 Kakao SDK 101KB + 타일 PNG ~500KB 가 붙는다. 홈=지도는 대표 결정(2026-07-15)이라
    건드리지 않았다. 줄이려면 타일 레벨/초기 줌 또는 리스트-우선 진입이 레버.
-4. **`useMapProducts` 가 page 2→7 을 순차 호출**(329곳 → 6 왕복). 설계대로(progressive, SOFT_CAP 500)라
+5. **`useMapProducts` 가 page 2→7 을 순차 호출**(329곳 → 6 왕복). 설계대로(progressive, SOFT_CAP 500)라
    지금은 정상이지만, 상품이 늘면 이 순차가 먼저 아플 자리다.
-5. **감사 게이트가 main 에서 이미 RED 1건** — `src/features/marketing/api/influencer-auto-collect.ts` 602줄
+6. **감사 게이트가 main 에서 이미 RED 1건** — `src/features/marketing/api/influencer-auto-collect.ts` 602줄
    (600 초과, #875 에서 넘었다). 유어애즈 레인이라 이번 PR 범위 밖으로 뒀다. CI(`--changed-only`)는 영향 없다.
 
 ### ❌ 이번에 기각한 것 (다음 세션이 다시 파지 않게)
@@ -91,6 +94,8 @@ done
 - **"width/height 누락 → CLS"** — 홈 CLS 는 **0.025**(양호)다. 카드가 CSS 로 고정 박스를 잡아 두기 때문에
   속성이 없어도 안 흔들린다. CLS 문제는 이미지가 아니라 **늦게 삽입되는 블록**이었다(위 #6).
 - **"Sentry 431KB 가 critical path"** — 아니다. `main.tsx` 가 idle 5s 로 지연하고 있고 실제 전송은 137KB gz다.
+- **"404 페이지가 200"(임의 경로)** — `/nonexistent-page-xyz` 도 200 이지만 이건 SPA catch-all 의 정상 동작이고
+  robots 가 막지도 않는다. 다만 **엔티티 상세**는 다르다(대상이 실제로 사라진 것이라 위 #9 로 처리했다).
 - **"`/s/*` 가 soft-404"** — 아니다. 내가 존재하지 않는 엔드포인트(`/api/sellers/by-username/…`)로 찔러 404 를
   봤다. 올바른 경로(`/api/sellers/:id/public`)로는 **전부 200**이고 실제 페이지다. 문제는 "죽은 URL" 이 아니라
   **내용이 비어 있고 QA 계정** 이라는 것이다(그래서 콘텐츠 게이트로 고쳤다).

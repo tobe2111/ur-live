@@ -166,7 +166,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
-import { applySurfaceMeta, buildSellerSurfaceMeta } from './utils/surface-ssr-meta';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -985,6 +985,16 @@ app.use('*', async (c, next) => {
     if (!isWholesaleSurface && !needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
       if (sm) rb = applySurfaceMeta(rb, sm);
+    }
+    // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
+    //   `/group-buy/99999999` → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
+    //   self-fetch 는 그 순간 **404 를 받고 있었다**(`X-SSR-Status: DETAIL:self-fetch-404`) — 알고도 안 썼다.
+    //   sitemap 이 상세 URL 을 829건(공구 329·상품 500) 제출하는데 상품은 내려간다. 내려갈 때마다
+    //   "홈과 똑같은 내용의 색인 가능한 URL" 이 하나씩 생기는 구조였다(soft-404 — 에러가 없어 안 보인다).
+    //   ⚠️ HTTP 상태는 200 그대로 둔다 — SPA 셸/청크 로딩·클라 라우팅에 영향을 주지 않기 위해서다.
+    //   색인만 막는다. (진짜 404 상태 전환은 별개 결정 — handoff 참조.)
+    if (shouldNoindexMissingEntity(ssrSlot, ssrStatus)) {
+      rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
     }
     if (ssrSlot === 'SELLER' && ssrPayload) {
       const sellerMeta = buildSellerSurfaceMeta(ssrPayload, origin2, url.pathname);

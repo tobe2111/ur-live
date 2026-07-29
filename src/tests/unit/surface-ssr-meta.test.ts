@@ -9,7 +9,7 @@
  *    그건 배포 후 `curl https://urdeal.kr/vouchers | grep -c canonical` 로 본다.
  */
 import { describe, it, expect } from 'vitest'
-import { applySurfaceMeta, buildSellerSurfaceMeta } from '@/worker/utils/surface-ssr-meta'
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from '@/worker/utils/surface-ssr-meta'
 
 /** HTMLRewriter 흉내 — `.on()` 호출을 기록하고 핸들러를 즉시 실행해 결과를 수집한다. */
 function fakeRewriter() {
@@ -121,5 +121,29 @@ describe('buildSellerSurfaceMeta — 셀러 링크샵', () => {
   it('깨진 페이로드에도 던지지 않는다 (기본 메타 유지)', () => {
     expect(buildSellerSurfaceMeta('not json', 'https://urdeal.kr', '/s/x')).toBeNull()
     expect(buildSellerSurfaceMeta('null', 'https://urdeal.kr', '/s/x')).toBeNull()
+  })
+})
+
+describe('shouldNoindexMissingEntity — 사라진 상세 페이지', () => {
+  it('엔티티 슬롯이 404 를 받으면 색인에서 뺀다 (라이브 버그: 200 + index,follow)', () => {
+    for (const slot of ['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST']) {
+      expect(shouldNoindexMissingEntity(slot, 'self-fetch-404'), slot).toBe(true)
+    }
+  })
+
+  it('목록 슬롯은 API 가 404 여도 페이지 자체는 유효하다', () => {
+    for (const slot of ['MAIN', 'VOUCHERS', 'BROWSE', 'BLOG', 'WHOLESALE']) {
+      expect(shouldNoindexMissingEntity(slot, 'self-fetch-404'), slot).toBe(false)
+    }
+  })
+
+  it('타임아웃으로는 절대 noindex 하지 않는다 — "느리다"는 "없다"가 아니다', () => {
+    expect(shouldNoindexMissingEntity('DETAIL', 'self-fetch-timeout')).toBe(false)
+  })
+
+  it('정상 응답·캐시 적중은 당연히 색인 유지', () => {
+    for (const st of ['self-fetch-hit', 'edge-hit', 'kv-hit', 'skip', 'self-fetch-500']) {
+      expect(shouldNoindexMissingEntity('DETAIL', st), st).toBe(false)
+    }
   })
 })
