@@ -387,7 +387,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const learnedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
+  /**
+   * 🧾 **마감 기록용 예산 예약**(2026-07-29) — 이 레인이 자기가 한 일을 기록하지 못하던 근본 원인.
+   *   증거(라이브 08:00): 블로거 **163명을 실제로 저장**했는데 `run.last_run` 은 05:00 에 멈춰 있고
+   *   `ads:collect` 하트비트도 없었다. 저장은 루프 안(예산 안)이고 **마감 기록은 예산을 다 쓴 뒤**인데,
+   *   커서·통계·키워드성과·학습상한은 전부 D1 쓰기 = 서브리퀘스트다. `spent === budget_total`(실측 55/55)
+   *   인 회차는 마감이 **구조적으로 실패**한다. ⚠️ 관측만의 문제가 아니다 — 커서가 안 밀려 다음 회차가
+   *   같은 키워드를 다시 돌고, 학습상한도 영영 갱신되지 않는다("안 돌았다"가 아니라 "못 남겼다"였다).
+   *   마감 쓰기: 학습상한 1 · 키워드성과 batch 1 · 커서/통계 batch 1 · 경보 조회 1 → 4 를 뗀다.
+   */
+  const BOOKKEEPING_RESERVE = 4
+  const budgetTotal = Math.max(5, resolveSubreqBudget(envBudget, learnedCap, pcap) - BOOKKEEPING_RESERVE)
   const budget: FetchBudget = { left: budgetTotal }
   ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
   // 🍽️ 2026-07-28: **이 실행은 발굴만 한다.** 보강(블로거 활동성·링크인바이오·YT 성과)은 전부
@@ -492,7 +502,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
   const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget, pcap)
-  if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
+  // 🧯 마감 기록은 **낱개로 fail-soft** — 하나가 실패하면 뒤의 커서·통계·리스해제까지 통째로 날아간다
+  //   (오늘 실측한 유실의 연쇄 경로가 정확히 이것). 예산 예약으로 실패 확률은 줄였지만, 실패해도
+  //   나머지는 남아야 다음 회차가 이어받는다.
+  if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap)).catch(() => undefined)
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) => starvedIds.has(id)
@@ -577,7 +590,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
     [STATS_KEY, JSON.stringify(stats)],
-  ])
+  ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
