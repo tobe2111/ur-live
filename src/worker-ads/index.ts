@@ -543,6 +543,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     const PHASES = [
       'merge', 'reextract', 'reclassify', 'quality', 'handle',
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
+      'selflink',
     ] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {

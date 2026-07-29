@@ -24,6 +24,7 @@ import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
 import { frontStageDeadline } from '@/features/marketing/api/influencer-enrich-lane'
 import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
+import { isSelfBlogLink, cleanSelfLinks } from '@/features/marketing/api/influencer-self-link'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -292,5 +293,58 @@ describe('키워드 픽 — 커서가 순번을 받는다', () => {
     expect(col).toMatch(/const ytSlot = ytIds\.has\(k\.id\) && ytUsed < batch/)
     // 위치 단독 게이트가 되살아나면 희석이 재발한다.
     expect(col).not.toMatch(/!quotaHit && ytUsed < batch &&/)
+  })
+})
+
+/**
+ * 🧹 **자기링크 정리** — 노이즈가 진짜 연락처의 자리를 막던 것 (2026-07-29 대표 승인).
+ *
+ *   실측(`platform=naver_blog&hasContact=1`, total **1,029**): 표본 200건 중 `links` 보유 198,
+ *   그중 **197건이 자기링크뿐**(외부 1). **117건(58%)** 은 이메일도 인스타도 없이 links 만 차 있었다 —
+ *   '연락처 보유'로 집계되는데 실제 연락 수단이 없고, `COALESCE(links, ?)` 백필이 **영영 막힌** 상태다.
+ *
+ *   ⚠️ 못 막는 것: 라이브에서 실제로 몇 행이 정리되는지는 여기서 알 수 없다. 판정 규칙과 배선만 고정한다.
+ */
+describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
+  it('네이버 블로그 자기 주소를 잡는다(m./blog.me 포함)', () => {
+    expect(isSelfBlogLink('https://blog.naver.com/abc')).toBe(true)
+    expect(isSelfBlogLink('https://m.blog.naver.com/abc/123')).toBe(true)
+    expect(isSelfBlogLink('https://abc.blog.me/1')).toBe(true)
+  })
+
+  it('연락처가 되는 외부 링크는 건드리지 않는다', () => {
+    expect(isSelfBlogLink('https://linktr.ee/abc')).toBe(false)
+    expect(isSelfBlogLink('https://instagram.com/abc')).toBe(false)
+    // 카페는 블로그가 아니다(별도 플랫폼) — 여기서 자기링크로 치면 안 된다.
+    expect(isSelfBlogLink('https://cafe.naver.com/abc')).toBe(false)
+    // 유사 도메인 오탐 금지 — 경계가 없으면 남의 사이트를 지운다.
+    expect(isSelfBlogLink('https://myblog.naver.company.com/x')).toBe(false)
+  })
+
+  it('전부 자기링크면 비우고, 섞여 있으면 외부만 남기고, 외부만이면 손대지 않는다', () => {
+    expect(cleanSelfLinks('https://blog.naver.com/a https://m.blog.naver.com/b')).toBe(null)
+    expect(cleanSelfLinks('https://blog.naver.com/a https://linktr.ee/x')).toBe('https://linktr.ee/x')
+    expect(cleanSelfLinks('https://linktr.ee/x')).toBeUndefined()
+    expect(cleanSelfLinks('')).toBeUndefined()
+    expect(cleanSelfLinks(null)).toBeUndefined()
+  })
+
+  it('멱등 — 정리 결과를 다시 넣으면 변경 없음(정비 패스가 매 바퀴 같은 행을 갱신하지 않게)', () => {
+    const once = cleanSelfLinks('https://blog.naver.com/a https://linktr.ee/x')
+    expect(cleanSelfLinks(once as string)).toBeUndefined()
+  })
+
+  it('판정을 네 벌로 두지 않는다 — 발굴·측정이 SSOT 를 import 한다', () => {
+    for (const f of ['influencer-discovery', 'influencer-performance']) {
+      const src = read(`src/features/marketing/api/${f}.ts`)
+      expect(src, `${f} 가 SSOT 를 안 쓴다`).toMatch(/from '\.\/influencer-self-link'/)
+      expect(src, `${f} 에 인라인 사본이 남아 있다`).not.toMatch(/!\/blog\\\.naver\\\.com\/i\.test/)
+    }
+  })
+
+  /** ⚠️ 이 표에서 빠진 단계는 **영원히 안 돈다** — 침묵이 아니라 부재라 경보에도 안 잡힌다. */
+  it('정비 스케줄과 cron 리터럴 양쪽에 selflink 가 있다', () => {
+    expect(read('src/features/marketing/api/influencer-maintenance.ts')).toMatch(/'selflink',/)
+    expect(read('src/worker-ads/index.ts')).toMatch(/'selflink',/)
   })
 })
