@@ -23,6 +23,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
+import { runDdlOnce, ddlChecksum } from './ads-schema-guard'
 import { maybeAlertCollectHealth } from './collect-health-alert'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
@@ -134,13 +135,34 @@ export async function readSetting(DB: D1Database, key: string): Promise<string |
   const v = row?.value
   return v === undefined || v === null || v === '' ? null : String(v)
 }
+/**
+ * 🧮 여러 설정을 **1 서브리퀘스트로** 읽는다 (2026-07-29).
+ *   D1 호출은 인보케이션당 서브리퀘스트 한도(무료 50)에 포함된다(#784). 이 레인은 커서·예산·쿼터를
+ *   낱개 `readSetting` 으로 읽어 **읽기에만 4~5개**를 썼고, 그만큼 발굴 fetch 여력이 줄었다.
+ */
+export async function readSettings(DB: D1Database, keys: string[]): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {}
+  for (const k of keys) out[k] = null
+  if (!keys.length) return out
+  const ph = keys.map(() => '?').join(',')
+  const rows = (await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN (${ph})`)
+    .bind(...keys).all<{ key: string; value: string }>().catch(() => null))?.results || []
+  for (const r of rows) out[r.key] = r.value === undefined || r.value === null || r.value === '' ? null : String(r.value)
+  return out
+}
 export async function writeSetting(DB: D1Database, key: string, value: string): Promise<void> {
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value).run().catch(() => null)
 }
+/** 🧮 여러 설정을 1 batch(=1 서브리퀘스트)로 저장 — 위 `readSettings` 와 같은 이유. */
+export async function writeSettings(DB: D1Database, kv: [string, string][]): Promise<void> {
+  if (!kv.length) return
+  await DB.batch(kv.map(([k, v]) =>
+    DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(k, v))).catch(() => null)
+}
 
-/** 키워드 테이블 보장 + 시드(최초 1회, 멱등 INSERT OR IGNORE). */
-export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
+/** 키워드 테이블 DDL — 체크섬 1회 조회로 갈음(`runDdlOnce`). 문장을 바꾸면 체크섬이 바뀌어 자동 재적용. */
+const KW_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS ad_discovery_keywords (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     keyword TEXT NOT NULL UNIQUE,
     category TEXT,
@@ -148,22 +170,49 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
     hits INTEGER NOT NULL DEFAULT 0,
     source TEXT NOT NULL DEFAULT 'seed',
     created_at DATETIME DEFAULT (datetime('now'))
-  )`).run().catch(() => null)
+  )`,
   // 📊 키워드별 성과(누적 발굴/저장 + 직전 실행 저장 + 마지막 실행 시각) — "어느 지역 키워드가 잘 무는지" 관측용.
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN found_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME',
   // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
   //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
   //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
   //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
-  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
-  // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
-  const stmts = [...SEED, ...REGION_SEED, ...BANGBAE_SEED].flatMap(g => g.keywords.map(kw =>
-    DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
-      .bind(kw, g.category, 'seed')))
-  await DB.batch(stmts).catch(() => null)
+  'ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0',
+]
+
+const _kwSchemaPromise = new WeakMap<D1Database, Promise<void>>()
+
+/**
+ * 키워드 테이블 보장 + 시드(멱등 INSERT OR IGNORE).
+ *
+ * 🧱 2026-07-29 — **매 인보케이션 7 쿼리 → 1 쿼리**. D1 호출도 서브리퀘스트 한도에 포함되는데(#784),
+ *   이 함수는 CREATE 1 + ALTER 6 + 시드 batch 1 을 *매시간 영원히* 재실행하고 있었다. 몇 달 전에 만들어진
+ *   테이블에 대한 no-op 이 발굴 fetch 예산을 먹은 것이다 — `ensureInfluencerSchema` 가 이미 같은 이유로
+ *   `runDdlOnce` 로 바뀌었는데(2026-07-28) 이 함수만 남아 있었다.
+ *
+ *   시드는 별도 문장으로 넣지 않는다(키워드 200개 = 200 서브리퀘스트 = 그 실행이 즉사). DDL 체크섬에
+ *   **시드 목록의 체크섬을 마커로 섞어** 시드가 바뀐 회차에만 1 batch 로 적용한다.
+ */
+export function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
+  const cached = _kwSchemaPromise.get(DB)
+  if (cached) return cached
+  const p = (async () => {
+    const seeds = [...SEED, ...REGION_SEED, ...BANGBAE_SEED]
+    const seedSum = ddlChecksum(seeds.flatMap(g => g.keywords.map(kw => `${g.category}:${kw}`)))
+    // 마커는 실행돼도 무해한 SELECT — 체크섬 입력에 섞이는 것이 목적(시드 변경 감지).
+    const { ran } = await runDdlOnce(DB, 'ads_ddl_discovery_keywords', [...KW_DDL, `SELECT '${seedSum}' AS seed_marker`])
+    if (!ran) return // ✅ 최신 — DDL·시드 전부 생략(읽기 1회로 끝)
+    // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
+    const stmts = seeds.flatMap(g => g.keywords.map(kw =>
+      DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
+        .bind(kw, g.category, 'seed')))
+    await DB.batch(stmts).catch(() => null)
+  })()
+  _kwSchemaPromise.set(DB, p)
+  return p
 }
 
 export async function listDiscoveryKeywords(DB: D1Database): Promise<DiscoveryKeyword[]> {
@@ -298,17 +347,25 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureQualityColumns(DB)   // is_brand(저장 시점 태깅)·lead_score 컬럼 — INSERT 가 참조하므로 선보강
   await ensurePerfExtraColumns(DB) // last_post_at(블로거 마지막 글 날짜) — INSERT/백필이 참조
   await ensureDiscoveryKeywords(DB)
-  // 💤 자동확장 키워드 회수(F-30) — 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
-  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')").run().catch(() => null)
-  // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
-  //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
-  //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
-  //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
-  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8").run().catch(() => null)
+  // 💤 자동확장 키워드 회수 2종 — 1 batch(=1 서브리퀘스트)로 묶는다(2026-07-29 예산 절약).
+  await DB.batch([
+    // (F-30) 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
+    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')"),
+    // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
+    //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
+    //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
+    //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
+    DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
+  ]).catch(() => null)
   const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
-  const prev = await getAutoCollectStats(DB)
+  // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서2·학습상한·YT카운터를 낱개로 읽으면
+  //   읽기에만 5 서브리퀘스트, 그만큼 발굴 fetch 가 줄어든다(D1 도 한도에 포함, #784).
+  const SETTING_KEYS = [STATS_KEY, 'ads_autocollect_cursor_pri', CURSOR_KEY, subreqCapKey('influencer'), YT_USED_KEY]
+  const settings = await readSettings(DB, SETTING_KEYS)
+  let prev: AutoCollectStats | null = null
+  try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   if (!kws.length) {
     const empty: AutoCollectStats = { last_run: stamp, last_saved: 0, last_keywords: [], total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, cursor: 0 }
@@ -326,9 +383,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
   const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
   const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
-  let priCursor = parseInt((await readSetting(DB, 'ads_autocollect_cursor_pri')) || '0', 10)
+  let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
-  let cursor = parseInt((await readSetting(DB, CURSOR_KEY)) || '0', 10)
+  let cursor = parseInt(settings[CURSOR_KEY] || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
   //   **네이버 전용 추가 키워드**(NAVER_EXTRA)를 같은 순환에서 더 돌림. YT 는 앞 batch 개만.
@@ -376,7 +433,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🔒 서브리퀘스트 예산(2026-07-20 실사고) — 한 실행의 외부 fetch 상한. 소진 시 조기 종료(에러 아님),
   //   커서가 다음 틱에 이어받아 손실 0. 기본 300(env ADS_SUBREQUEST_BUDGET), 실제 한도는 관측 학습 → collect-budget.ts.
   const envBudget = Math.max(20, parseInt(env.ADS_SUBREQUEST_BUDGET || '', 10) || 300)
-  const learnedCap = Math.max(0, parseInt((await readSetting(DB, subreqCapKey('influencer'))) || '', 10) || 0)
+  const learnedCap = Math.max(0, parseInt(settings[subreqCapKey('influencer')] || '', 10) || 0)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
   const budget: FetchBudget = { left: budgetTotal }
   ctx.budgetTotal = budgetTotal; ctx.learnedCap = learnedCap; ctx.envBudget = envBudget; ctx.budget = budget
@@ -421,7 +478,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const ytDay = ytQuotaDayKey(Date.now())
   let ytSearchUsed = 0
   {
-    const raw = await readSetting(DB, YT_USED_KEY)
+    const raw = settings[YT_USED_KEY]
     if (raw) { const i = raw.indexOf(':'); if (i > 0 && raw.slice(0, i) === ytDay) ytSearchUsed = Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) }
   }
   let ytBudgetBlocked = false
@@ -529,10 +586,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
     // ✅ 성공했으면 옛 crash 표식을 남기지 않는다(회복 후에도 빨간 줄이 남으면 다음 사람이 오진한다).
   }
-  await writeSetting(DB, YT_USED_KEY, `${ytDay}:${ytSearchUsed}`)
-  await writeSetting(DB, 'ads_autocollect_cursor_pri', String(nextPriCursor))
-  await writeSetting(DB, CURSOR_KEY, String(nextCursor))
-  await writeSetting(DB, STATS_KEY, JSON.stringify(stats))
+  // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
+  await writeSettings(DB, [
+    [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
+    ['ads_autocollect_cursor_pri', String(nextPriCursor)],
+    [CURSOR_KEY, String(nextCursor)],
+    [STATS_KEY, JSON.stringify(stats)],
+  ])
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
