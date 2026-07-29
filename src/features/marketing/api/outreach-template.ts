@@ -38,3 +38,19 @@ export function outreachBody(name: string, platform: string, category: string | 
     + '감사합니다.\n유어딜 드림',
   ))
 }
+
+/**
+ * 📨 발송 큐 행에 **문안을 붙여** 내려준다 — 화면이 붙여넣을 것을 서버가 만든다.
+ *
+ *   화면(`reach.ts`)에도 폴백 문안이 있지만 그쪽엔 `(광고)` 표기·전송자 정보가 없었다(2026-07-29 발견).
+ *   대표가 실제로 쓰는 경로가 화면이라, **의무 표기가 빠진 쪽이 실사용 경로**였다.
+ *   ⇒ 서버가 SSOT 문안을 실어 보내고 화면은 그걸 우선한다(AI 초안 > 이 값 > 화면 폴백).
+ *   AI 초안 레인은 비용 때문에 기본 OFF 라, 사실상 **이 값이 기본 문안**이다.
+ */
+export function withOutreachTemplate<T extends Record<string, unknown>>(rows: T[]): (T & { mail_subject: string; mail_body: string })[] {
+  return rows.map(r => ({
+    ...r,
+    mail_subject: outreachSubject(String(r.name || '')),
+    mail_body: outreachBody(String(r.name || ''), String(r.platform || ''), (r.category as string) ?? null),
+  }))
+}
