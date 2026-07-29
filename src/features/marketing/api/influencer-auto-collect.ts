@@ -30,8 +30,19 @@ import { maybeAlertCollectHealth } from './collect-health-alert'
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
 
-/** 자동확장 활성 키워드 상한(런어웨이 방지) + 후보 자동승격 임계(반복 등장 횟수). */
-const MAX_ACTIVE_KEYWORDS = 200
+/**
+ * 자동확장 상한 — 🐛 2026-07-29 **의미 교정**.
+ *
+ *   원래 `MAX_ACTIVE_KEYWORDS = 200` 을 **활성 전체**에 걸었는데, 대표가 큐레이션한 seed 가 190개까지
+ *   늘면서 `room = 200 - 210 = 0` 이 되어 **자동 승격이 영구 차단**됐다. 아무 신호도 없이.
+ *   실측 피해: 비활성 auto 후보 **790개**가 쌓였고 상위가 서울맛집(hits 701)·서초카페(342)·강남맛집(327)·
+ *   방배동맛집(273) — 임계는 5인데 수백 회씩 쌓이고도 한 번도 활성화되지 않았다. 8월 방배 시딩을
+ *   준비하는 중에 '방배동맛집'이 그 상태였다.
+ *
+ *   ⇒ 상한은 **런어웨이 방지**가 목적이므로 *자동 생성분(auto)* 에만 건다. seed 는 대표가 정한 축이라
+ *   런어웨이가 아니고, 밀어내야 할 대상도 아니다. 전체 활성은 seed + 최대 40 으로 유계.
+ */
+const MAX_AUTO_KEYWORDS = 40
 const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입과 함께 3→5 — '서로 다른 채널 5곳'이 쓴 태그만 승격(단일 실행 폭주 승격 방지)
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
@@ -319,7 +330,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
     DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8"),
   ]).catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  const active = await DB.prepare('SELECT id, keyword, category, source, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
   // 🧮 이 실행이 쓰는 설정을 **한 번에** 읽는다(2026-07-29) — 통계·커서2·학습상한·YT카운터를 낱개로 읽으면
@@ -525,7 +536,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
       ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
     await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
     // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
-    const room = Math.max(0, MAX_ACTIVE_KEYWORDS - kws.length)
+    // 🌱 auto 자리만 센다(seed 는 상한 대상이 아니다 — 위 상수 주석 참조).
+    const autoActive = kws.filter(k => k.source === 'auto').length
+    const room = Math.max(0, MAX_AUTO_KEYWORDS - autoActive)
     if (room > 0) {
       const ph = topTags.map(() => '?').join(',')
       const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
