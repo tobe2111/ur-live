@@ -243,6 +243,12 @@ jobs:
         run: node scripts/check-audit-registry-sync.mjs -s
         continue-on-error: false
 
+      # 🔬 2026-07-29: 새 가드가 "대상이 비어도 초록" 인 채로 태어나는 것 차단(래칫).
+      #   오늘 실측 3건이 정확히 그 상태였다(번들 gzip 예산 · 도매 어드민 nav/api 가드).
+      - name: 가드 자기검증 — 측정 0 = 실패 (strict)
+        run: node scripts/check-guard-selfcheck.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
