@@ -33,7 +33,9 @@ export const MIN_YT_SUBSCRIBERS = 1000
 
 // ⭐ 우선 카테고리(대표 2026-07-20 "맛집·숙소·네일·뷰티 최우선") — 유어딜 연관(동네딜·매장·외식/자영업 결,
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
-export const PRIORITY_CATEGORIES = ['맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
+//   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
+export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 
 /** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
 const SEED: { category: string; keywords: string[] }[] = [
@@ -204,6 +206,11 @@ export async function ensureDiscoveryKeywords(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN saved_total INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_saved INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN last_run_at DATETIME').run().catch(() => null)
+  // 🌵 2026-07-29 고갈 카운터 — **연속** 무수확 횟수. `last_saved`(직전 1회)만으로는 "한때 잘 물었지만
+  //   이제 다 훑은" 키워드를 구분할 수 없다. 실측: 유튜브가 `found 5 → saved 0` 인데 쿼터는 39/90만 씀 —
+  //   `saved_total` 이 큰 옛 성공 키워드가 점수 상위를 계속 차지해 **이미 수확한 채널을 재방문**하고 있었다.
+  //   (기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 영원히 못 걸러낸다.)
+  await DB.prepare('ALTER TABLE ad_discovery_keywords ADD COLUMN barren_streak INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   // 시드(일반 ~90 + 지역그리드 100 + 방배 11) — 개별 INSERT 대신 1 batch (Free 한도 절약). 멱등 INSERT OR IGNORE.
   const stmts = [...SEED, ...REGION_SEED, ...BANGBAE_SEED].flatMap(g => g.keywords.map(kw =>
     DB.prepare('INSERT OR IGNORE INTO ad_discovery_keywords (keyword, category, active, source) VALUES (?, ?, 1, ?)')
@@ -256,27 +263,10 @@ function mineHashtags(text: string): string[] {
   return out
 }
 
-// ── 🎯 YT 검색 슬롯 성과 가중 선택 (2026-07-21 — 실병목 발견: Search Queries/day = 100회) ──
-//   희소한 YT 검색을 균등 순환 대신 "잘 무는 키워드 + 신규 탐색" 에 배정. 네이버 폭 커버는 기존 커서 순환 유지.
-export interface YtPickKeyword { id: number; keyword: string; category: string | null; saved_total?: number; last_saved?: number; last_run_at?: string | null }
-const YT_PICK_COOLDOWN_MS = 6 * 3600 * 1000 // 같은 키워드 최소 6h 간격(하루 최대 4회 — 5각도 회전과 조합)
-
-/** 성과 가중 YT 키워드 선택(순수 — 테스트 가능). 탐색 슬롯 1개(미실행 키워드) + 나머지는 성과순(쿨다운 준수). */
-export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, priorityCats: string[] = PRIORITY_CATEGORIES): YtPickKeyword[] {
-  if (n <= 0 || !kws.length) return []
-  const ranAt = (k: YtPickKeyword) => k.last_run_at ? Date.parse(k.last_run_at.replace(' ', 'T') + (/[zZ+]/.test(k.last_run_at.slice(10)) ? '' : 'Z')) : NaN
-  const score = (k: YtPickKeyword) => (k.last_saved || 0) * 3 + Math.min(k.saved_total || 0, 100) + (k.category && priorityCats.includes(k.category) ? 50 : 0)
-  const neverRun = kws.filter(k => !k.last_run_at).sort((a, b) => a.id - b.id)
-  const cooled = kws.filter(k => { const t = ranAt(k); return Number.isFinite(t) && nowMs - t >= YT_PICK_COOLDOWN_MS })
-    .sort((a, b) => score(b) - score(a) || ranAt(a) - ranAt(b))
-  const picks: YtPickKeyword[] = []; const seen = new Set<number>()
-  const take = (k?: YtPickKeyword) => { if (k && !seen.has(k.id) && picks.length < n) { seen.add(k.id); picks.push(k) } }
-  take(neverRun[0]) // 탐색 보장 — 새 키워드가 영영 안 돌지 않게(있을 때만)
-  for (const k of cooled) take(k)
-  for (const k of neverRun) take(k)
-  if (picks.length < n) for (const k of kws.slice().sort((a, b) => score(b) - score(a))) take(k) // 쿨다운 무시 폴백(풀이 작을 때)
-  return picks
-}
+// ── 🎯 YT 검색 슬롯 성과 가중 선택 → `influencer-keyword-rotation.ts` 로 분리(600줄 래칫).
+//   기존 import 경로 호환을 위해 그대로 재수출한다(테스트·호출부 무변경).
+export { pickYtKeywords, ytCooldownMs, BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS, type YtPickKeyword } from './influencer-keyword-rotation'
+import { pickYtKeywords, type YtPickKeyword } from './influencer-keyword-rotation'
 
 // ── 📅 YT 쿼터 하루 경계 — 구글 쿼터는 태평양 자정(한국 오후 4~5시) 리셋. 카운터 키에 사용. ──
 // ⚠️ 쿼터 경제(2026-07-27 "평균 0회 대부분" 실사고): search.list 1회=100 units → 검색 100회=일일 쿼터(10,000) 전부
@@ -362,7 +352,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   await ensureDiscoveryKeywords(DB)
   // 💤 자동확장 키워드 회수(F-30) — 활성 이틀+ 인데 성과 0 인 auto 키워드 비활성(탐색 슬롯 영구 점유 차단, 멱등).
   await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND saved_total = 0 AND last_run_at IS NOT NULL AND last_run_at <= datetime('now','-2 days')").run().catch(() => null)
-  const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
+  // 🌵 **고갈** 회수(2026-07-29) — 위 조건은 `saved_total = 0`(한 번도 못 문 키워드)만 잡아서, *예전엔 잘 물었지만
+  //   지금은 다 훑은* auto 키워드를 영원히 놓친다. 연속 무수확 8회+면 비활성(성과가 있었어도 지금은 고갈).
+  //   ⚠️ seed 키워드는 비활성화하지 않는다 — 대표가 고른 지역/업종 축이라 사라지면 커버리지에 구멍이 난다.
+  //   대신 `ytCooldownMs` 가 간격을 최대 4일까지 벌려 슬롯 점유만 막는다(수확이 생기면 즉시 복귀).
+  await DB.prepare("UPDATE ad_discovery_keywords SET active = 0 WHERE source = 'auto' AND active = 1 AND COALESCE(barren_streak, 0) >= 8").run().catch(() => null)
+  const active = await DB.prepare('SELECT id, keyword, category, saved_total, last_saved, last_run_at, barren_streak FROM ad_discovery_keywords WHERE active = 1 ORDER BY id ASC')
     .all<YtPickKeyword>().catch(() => null)
   const kws = active?.results || []
   const prev = await getAutoCollectStats(DB)
@@ -527,8 +522,10 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>
-      DB.prepare("UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?, last_run_at = datetime('now') WHERE id = ?")
-        .bind(v.found, v.saved, v.saved, id))).catch(() => null)
+      // 🌵 무수확이면 연속 카운터 +1, 한 명이라도 건지면 0 으로 리셋(고갈 판정의 유일한 근거).
+      DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
+        barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, last_run_at = datetime('now') WHERE id = ?`)
+        .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
 
   // ③ 해시태그 자동확장 — 후보 hits 적립 + 임계 도달 시 활성화(상한 내에서).

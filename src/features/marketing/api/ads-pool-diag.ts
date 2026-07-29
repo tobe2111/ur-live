@@ -34,6 +34,12 @@ export interface AdsPoolDiag {
    * "이번 시간에 블로거를 몇 명 실제로 측정했나"가 화면에 없으면 또 무음으로 죽는다.
    */
   enrich_lane: unknown
+  /**
+   * 🕘 시트 미러 **cron 회차만**의 마지막 시각(`ads_sheets_last_cron`). 2026-07-29 신설 —
+   * `sheets_sync` 는 수동 버튼이 덮어써서 "자동으로 돈 적이 있나"를 보존하지 못한다.
+   * 게이트 값과 조합해 '고장'(켜졌는데 cron 기록 없음)과 '꺼짐'(설정)을 단정 없이 가른다.
+   */
+  sheets_cron: unknown
 }
 
 /** 진단용 스탬프·lease 를 한 번에 조회. 개별 실패는 null/false 로 떨어지고 throw 하지 않는다. */
@@ -45,7 +51,7 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
       .first<{ value: string }>().catch(() => null),
     DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'")
       .first<{ value: string }>().catch(() => null),
-    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
+    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
       .all<{ key: string; value: string }>().catch(() => null),
   ])
   const find = (k: string) => mRows?.results?.find(r => r.key === k)?.value
@@ -54,6 +60,8 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
     collect_running,
     maintain_running,
     sheets_sync: parseJson(sheetRow?.value),
+    // 🕘 cron 전용 마지막 시각 — 위 sheets_sync 는 수동 실행이 덮어쓰므로 "자동으로 돈 적 있나"를 못 답한다.
+    sheets_cron: parseJson(find('ads_sheets_last_cron')),
     maintenance: parseJson(find('ads_maintenance_last')),
     maintenance_rescan: parseJson(find('ads_maintenance_rescan_last')),
     enrich_lane: parseJson(find(INFLUENCER_ENRICH_SNAPSHOT_KEY)),
