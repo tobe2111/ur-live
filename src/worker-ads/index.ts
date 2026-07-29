@@ -331,6 +331,17 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return runInfluencerEnrich(env) // SELF 미바인딩(로컬) — 1라운드만
     })
   }
+  // ✍ 발송 큐 상위 초안 미리 채우기 — 실측: 발송가능 22,533명인데 접촉 0명, 큐 상위 표본은 전원 초안 없음.
+  //   사람이 10명마다 AI 를 기다리는 구조라 수집·보강을 아무리 빨리 해도 접촉 수가 안 는다.
+  //   💰 **AI 호출 = 비용**이라 기본 OFF(블로그 AI 초안 `BLOG_AI_DRAFTS_ENABLED` 와 같은 하우스 패턴).
+  //   켜도 버퍼 상한(기본 100)까지만 — 22,533명 전량 생성은 레인 자체가 구조적으로 못 한다.
+  //   ⚖️ [LEGAL] 생성만, 발송 없음(콜드 리드 자동발송 경로 없음 — 사람이 1건씩 검토·발송).
+  if ((env as unknown as { ADS_OUTREACH_PREFILL_ENABLED?: string }).ADS_OUTREACH_PREFILL_ENABLED === 'true') {
+    kick('/__ads/prefill-outreach-drafts', async () => {
+      const { runOutreachDraftPrefill } = await import('@/features/marketing/api/outreach-draft-prefill')
+      return runOutreachDraftPrefill(env)
+    })
+  }
   // 📊 매시간 구글시트 미러(수집 게이트와 독립 — 수집이 꺼져 있어도 큐레이션 변경분 반영).
   //   🛡️ 2026-07-23: 실패가 무음으로 사라지던 것 — 결과는 sheets-sync 가 platform_settings 에 기록하고,
   //   여기서 **에러가 바뀐 첫 회에만** Discord 경보(같은 에러 매시간 스팸 방지 · 회복되면 기록이 ok 로 리셋).

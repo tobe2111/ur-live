@@ -16,6 +16,19 @@ import type { Env } from '@/worker/types/env'
 
 export const enrichRoutes = new Hono<{ Bindings: Env }>()
 
+// ✍ 발송 큐 상위 초안 미리 채우기 — 근거/안전장치는 `outreach-draft-prefill.ts` 헤더 참조.
+//   ⚖️ [LEGAL] 생성만, 발송 없음. 게이트(ADS_OUTREACH_PREFILL_ENABLED)는 cron 쪽에서 — 여기(수동 호출)는
+//   기존 `/outreach-drafts` 와 같은 취급(수동=의도)이라 게이트 무관.
+enrichRoutes.post('/__ads/prefill-outreach-drafts', async (c) => {
+  try {
+    const { runOutreachDraftPrefill } = await import('@/features/marketing/api/outreach-draft-prefill')
+    return c.json({ ok: true, stats: await runOutreachDraftPrefill(c.env) })
+  } catch (err) {
+    const e = err as { name?: string; message?: string } | null
+    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
+  }
+})
+
 /** 라운드 상한 — env 로 조정(1~20). 기본 12: 아래 드라이버 주석의 실측 근거 참조. */
 export function resolveEnrichRounds(raw: string | undefined): number {
   return Math.min(20, Math.max(1, parseInt(raw || '', 10) || 12))

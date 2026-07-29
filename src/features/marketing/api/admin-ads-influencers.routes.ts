@@ -8,6 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateOutreachDrafts, OUTREACH_BATCH_MAX, type OutreachLeadInput } from './influencer-outreach'
+import { buildSendQueueWhere, SEND_QUEUE_ORDER_BY } from './outreach-queue'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, runReclassifyPool, runYtLiveRefetch, runCategoryRescan } from './influencer-performance'
@@ -153,24 +154,15 @@ app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await 
 app.get('/influencer-pool/send-queue', async (c) => {
   await ensureInfluencerSchema(c.env.DB); await ensureOutreachColumns(c.env.DB); await ensureQualityColumns(c.env.DB)
   const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)))
-  const where = [
-    'account_id = ?',
-    "platform != 'naver_cafe'",
-    "status = 'new'", 'contacted_at IS NULL',
-    // ① 열 수 있는 채널 — url 은 **스킴이 있어야** 실제로 열린다(pickReach 와 동일 기준).
-    "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
-    "COALESCE(email_status,'') NOT IN ('bounced','complained')",
-    'COALESCE(is_brand, 0) = 0',
-  ]
-  const binds: (string | number)[] = [POOL]
-  const platform = (c.req.query('platform') || '').trim()
-  if (['youtube', 'naver_blog', 'tistory', 'instagram', 'tiktok'].includes(platform)) { where.push('platform = ?'); binds.push(platform) }
+  // 🔗 선별 기준은 `outreach-queue.ts` SSOT — **초안 프리필 레인이 같은 술어를 써야** 사람이 실제로 보는
+  //   큐와 미리 초안을 만들어 둔 대상이 일치한다(갈리면 프리필은 돌았는데 화면 상단은 계속 빈 초안).
+  const { where, binds } = buildSendQueueWhere(POOL, c.req.query('platform'))
   const rows = await c.env.DB.prepare(`SELECT id, platform, name, url, email, instagram, status, outreach_draft, lead_score, subscriber_count, category, email_status
-    FROM ad_influencer_leads WHERE ${where.join(' AND ')}
-    ORDER BY (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ?`)
+    FROM ad_influencer_leads WHERE ${where}
+    ORDER BY ${SEND_QUEUE_ORDER_BY} LIMIT ?`)
     .bind(...binds, limit).all().catch(() => null)
   // 남은 총량 — "오늘 20명" 을 눌렀을 때 뒤에 몇 명이 더 있는지(동기부여 + 소진 판단).
-  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where.join(' AND ')}`)
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${where}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], remaining: totalRow?.n ?? 0, limit })
 })
