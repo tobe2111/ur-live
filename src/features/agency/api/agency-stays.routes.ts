@@ -12,6 +12,7 @@ import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import { executeQuery } from '@/worker/utils/database'
 import { safeError } from '@/worker/utils/safe-error';
+import { maskPersonName } from '@/lib/mask'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 export const agencyStaysRoutes = new Hono<{ Bindings: Bindings }>()
@@ -89,7 +90,9 @@ agencyStaysRoutes.get('/stays/bookings', cors(), async (c) => {
     sql += ' ORDER BY b.check_in_date DESC LIMIT 200'
 
     const rows = await executeQuery<Record<string, unknown>>(c.env.DB, sql, params).catch(() => [])
-    return c.json({ success: true, data: rows })
+    // 🔐 2026-07-05 (Q8 PII): 투숙객 실명은 에이전시 업무에 불필요 — 마스킹해 전달(집계 무영향).
+    const masked = rows.map((b) => ({ ...b, guest_name: maskPersonName(b.guest_name as string | null) }))
+    return c.json({ success: true, data: masked })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[agency-stays]')
   }

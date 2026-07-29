@@ -4,6 +4,7 @@
 //   판매사별 분리 키(seller_token 해시 불필요 — origin+token 로컬이라 단순 키 사용).
 // ──────────────────────────────────────────────────────────────
 import { useSyncExternalStore, useCallback } from 'react'
+import { currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
 
 // 🚚 제조사별 배송/주문 정책 스냅샷(비식별 — group key + 정책 숫자). 서버가 청구 시 재계산(SSOT) — 표시용.
 export interface WCartSupplierPolicy {
@@ -21,34 +22,46 @@ export interface WCartItem {
   price?: number // 담을 당시 등급 공급가
   moq?: number   // 최소 주문 수량 (스텝퍼 단위/하한)
   order_multiple?: number // 🏭 2026-07-01 주문 배수(박스 단위) — 결제 시 서버 ORDER_MULTIPLE_VIOLATION 사전 차단용
+  // 🚚 상품별 배송비(product_supply_meta.wholesale_shipping_fee). 설정 시(>=0, 0=무료) 제조사 정책 배송비보다
+  //   우선(서버 computeSupplierShipping 미러). 미설정(null/undefined)이면 정책 배송비 폴백.
+  product_shipping_fee?: number | null
   // 🚚 제조사별 그룹 표시용(비식별 group key s{id}) + 정책. 카트/체크아웃이 제조사별 최소주문금액/배송비 계산.
   supplier_group?: string | null
   supplier_policy?: WCartSupplierPolicy | null
 }
 
 const KEY = 'ut_wholesale_cart_v1'
+// 🏬 2026-07-04 (몰별 분리): 장바구니도 몰 단위 — 기본 몰은 기존 키 그대로(하위호환, byte-동일),
+//   타 몰(?mall=medi 프리뷰/별도 도메인 전환기)은 `ut_wholesale_cart_v1:<slug>` 로 분리.
+//   같은 키를 쓰면 메디스타트에 담은 상품이 유통스타트 카트에 섞여 보임(주문은 서버 몰스코프가 거르지만 UX 혼입).
+function cartKey(): string {
+  const s = currentWholesaleMallSlug()
+  return s && s !== 'default' ? `${KEY}:${s}` : KEY
+}
 const listeners = new Set<() => void>()
-let cache: WCartItem[] | null = null
+let cache: { key: string; items: WCartItem[] } | null = null
 
 function read(): WCartItem[] {
-  if (cache) return cache
+  const k = cartKey()
+  if (cache && cache.key === k) return cache.items
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(KEY)
-    cache = raw ? (JSON.parse(raw) as WCartItem[]) : []
-  } catch { cache = [] }
-  return cache!
+    const raw = localStorage.getItem(k)
+    cache = { key: k, items: raw ? (JSON.parse(raw) as WCartItem[]) : [] }
+  } catch { cache = { key: k, items: [] } }
+  return cache!.items
 }
 
 function write(next: WCartItem[]) {
-  cache = next
-  try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { /* quota — ignore */ }
+  const k = cartKey()
+  cache = { key: k, items: next }
+  try { localStorage.setItem(k, JSON.stringify(next)) } catch { /* quota — ignore */ }
   listeners.forEach((l) => l())
 }
 
 function subscribe(cb: () => void) {
   listeners.add(cb)
-  const onStorage = (e: StorageEvent) => { if (e.key === KEY) { cache = null; cb() } }
+  const onStorage = (e: StorageEvent) => { if (e.key === cartKey()) { cache = null; cb() } }
   if (typeof window !== 'undefined') window.addEventListener('storage', onStorage)
   return () => { listeners.delete(cb); if (typeof window !== 'undefined') window.removeEventListener('storage', onStorage) }
 }
@@ -119,7 +132,16 @@ export function groupBySupplier(items: WCartItem[]): {
     const sub = arr.reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 0), 0)
     const pol = arr.find((x) => x.supplier_policy)?.supplier_policy || {}
     const minOrderAmount = Math.max(0, Math.floor(Number(pol.min_order_amount) || 0))
-    const shippingFee = Math.max(0, Math.floor(Number(pol.shipping_fee) || 0))
+    const policyFee = Math.max(0, Math.floor(Number(pol.shipping_fee) || 0))
+    // 🚚 2026-07-02 (감사 — 표시=청구 정합): 서버 computeSupplierShipping 미러 — 상품별 배송비(설정 시) 우선,
+    //   미설정 라인은 정책 배송비 폴백, 그룹 배송비 = 라인 유효배송비의 최댓값(묶음배송 1회 청구).
+    //   (기존엔 정책 배송비만 써서, 상품별 배송비 설정 상품을 담으면 체크아웃 배송비가 서버 청구액과 어긋났음.)
+    let shippingFee = 0
+    for (const x of arr) {
+      const pf = x.product_shipping_fee
+      const lineFee = (pf != null && Number.isFinite(Number(pf))) ? Math.max(0, Math.floor(Number(pf))) : policyFee
+      shippingFee = Math.max(shippingFee, lineFee)
+    }
     const freeShipThreshold = Math.max(0, Math.floor(Number(pol.free_ship_threshold) || 0))
     const meetsMin = !(minOrderAmount > 0 && sub < minOrderAmount)
     const shortfall = meetsMin ? 0 : Math.max(0, minOrderAmount - sub)

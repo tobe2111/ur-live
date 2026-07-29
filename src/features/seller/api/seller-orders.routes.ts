@@ -739,6 +739,10 @@ sellerOrdersRoutes.post('/products', async (c) => {
       preview_url?: string | null;
       // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
       menu?: Array<{ name: string; price?: string; desc?: string }>;
+      // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러가 설정한 소개비 % (fraction 0~0.5) → 어필리에이트 override.
+      //   ⚠️ platform_settings.seller_promo_field_enabled==='true' 일 때만 저장(owner-funding 검증 전 누수 방지).
+      referral_enabled?: boolean;
+      referral_commission_rate?: number;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -800,6 +804,23 @@ sellerOrdersRoutes.post('/products', async (c) => {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
     }
 
+    // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
+    //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
+    //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
+    //   되므로, owner-funding(promo_funding_source='owner')이 스테이징 검증돼 켜진 뒤에만 이 게이트 ON.
+    //   범위 0~0.5(=0~50%) clamp. fail-soft(컬럼 부재 대비). 클라 플래그 우회해도 서버가 최종 차단.
+    if (body.referral_commission_rate !== undefined && body.referral_commission_rate !== null) {
+      try {
+        const gate = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_promo_field_enabled'")
+          .first<{ value: string }>().catch(() => null)
+        const rate = Number(body.referral_commission_rate)
+        if (gate?.value === 'true' && Number.isFinite(rate) && rate >= 0 && rate <= 0.5) {
+          await db.prepare(`UPDATE products SET referral_enabled = ?, referral_commission_rate = ? WHERE id = ?`)
+            .bind(body.referral_enabled === false || rate === 0 ? 0 : 1, rate, productId).run()
+        }
+      } catch { /* 게이트 OFF / 컬럼 부재 — 저장 생략(현행과 동일) */ }
+    }
+
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
     if (Array.isArray(body.menu) && body.menu.length > 0) {
       try {
@@ -858,6 +879,19 @@ sellerOrdersRoutes.post('/products', async (c) => {
         }
       }
 
+      // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 주소만 있고 좌표 없이 등록되면 즉시 지오코딩
+      //   (waitUntil, fail-soft) — 일일 cron 전의 갭 동안 방문자마다 클라 지오코딩 폴백이 발동하던
+      //   것을 원천 제거. 좌표를 함께 보낸 등록은 helper 가 스스로 skip.
+      if (body.restaurant_address) {
+        try {
+          c.executionCtx.waitUntil(
+            import('../../../worker/cron/restaurant-geocode').then(m =>
+              m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId))
+            ).catch(swallow('seller:product-geocode'))
+          );
+        } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
+      }
+
       // 🛡️ 2026-04-27: Magic Link — 사장님 전용 영구 token 자동 생성 + 알림톡 발송.
       try {
         const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
@@ -866,7 +900,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
         const phone = body.restaurant_phone;
         const restaurantName = body.restaurant_name;
         if (phone && restaurantName) {
-          const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+          const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
           // fire-and-forget — 알림톡 실패해도 등록은 진행
           c.executionCtx.waitUntil(
             (async () => {
@@ -1026,6 +1060,18 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       if (val !== undefined) {
         try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ? AND seller_id = ?`).bind(val === '' ? null : val, productId, sellerId).run() } catch { /* column may not exist */ }
       }
+    }
+
+    // 🧭 2026-07-02: 주소가 *변경*됐는데 수정 경로엔 lat/lng 필드가 없어 좌표가 옛 주소로 영구
+    //   stale 이던 갭 — 새 주소 기준 즉시 재지오코딩(force, waitUntil, fail-soft. 실패 시 기존 좌표 유지).
+    if (typeof body.restaurant_address === 'string' && body.restaurant_address.trim() !== '') {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then(m =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId), { force: true })
+          ).catch(swallow('seller:product-geocode-edit'))
+        );
+      } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
     }
 
     // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): product_supply_meta.max_per_person.
@@ -1216,7 +1262,7 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
       try { await db.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, productId).run(); } catch { /* column may not exist */ }
     }
 
-    const statsUrl = `https://live.ur-team.com/store/stats/${productId}?t=${token}`;
+    const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
     const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
     await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',
@@ -1230,3 +1276,72 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
+
+// ─── 공구(group-buy) 상태 세션 — 매장이 이용권에 공구 열기/닫기 (2026-07-06 §2-A) ──────────
+//   ⚠️ 게이트: platform_settings.gb_engine_enabled==='true' 일 때만 동작(이중 안전 — 클라 GB_ENGINE_ENABLED
+//   와 별개). 세션은 product_supply_meta gb_* 키에 저장(gb-session-store). 실제 소비자가/커미션 authoritative
+//   적용(consumer 상세·resolver)은 owner-funding 검증 후 별도 슬라이스 — 여기선 상태 저장만.
+async function gbEngineOn(db: D1Database): Promise<boolean> {
+  const row = await db.prepare("SELECT value FROM platform_settings WHERE key = 'gb_engine_enabled'")
+    .first<{ value: string }>().catch(() => null)
+  return row?.value === 'true'
+}
+
+async function loadOwnedVoucher(c: { req: { header: (k: string) => string | undefined; param: (k: string) => string }; env: { DB: D1Database; JWT_SECRET: string } }) {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return { error: '로그인 필요' as const, status: 401 as const }
+  const { isVoucherCategory } = await import('../../../shared/constants/voucher-categories')
+  const productId = Number(c.req.param('id'))
+  if (!Number.isFinite(productId) || productId <= 0) return { error: '잘못된 상품 ID' as const, status: 400 as const }
+  const product = await c.env.DB.prepare('SELECT id, seller_id, price, category FROM products WHERE id = ? AND seller_id = ?')
+    .bind(productId, sellerId).first<{ id: number; seller_id: number; price: number; category: string }>()
+  if (!product) return { error: '상품을 찾을 수 없습니다' as const, status: 404 as const }
+  if (!isVoucherCategory(product.category)) return { error: '공구는 이용권 상품에만 열 수 있습니다' as const, status: 400 as const }
+  return { sellerId, productId, product }
+}
+
+// GET — 현재 공구 세션 조회
+sellerOrdersRoutes.get('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const { getGbSession } = await import('../../../worker/utils/gb-session-store')
+    const session = await getGbSession(c.env.DB, owned.productId)
+    return c.json({ success: true, data: { session, list_price: owned.product.price } })
+  } catch { return c.json({ success: false, error: '조회 중 오류가 발생했습니다' }, 500) }
+})
+
+// POST — 공구 열기/수정/닫기 (action: 'open' | 'close')
+sellerOrdersRoutes.post('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const body = await c.req.json<{
+      action?: 'open' | 'close'; startAt?: string | null; deadline?: string | null
+      target?: number | null; price?: number | null; promoPct?: number | null; linkOnly?: boolean
+    }>().catch(() => ({} as Record<string, never>))
+    const { validateGbSession } = await import('../../../shared/gb-session')
+    const { saveGbSession } = await import('../../../worker/utils/gb-session-store')
+
+    if (body.action === 'close') {
+      await saveGbSession(c.env.DB, owned.productId, { mode: 'off' })
+      return c.json({ success: true, data: { session: { mode: 'off' } } })
+    }
+    // open (기본): 즉시 live (예약 시작은 startAt 있으면 scheduled 로)
+    const session = {
+      mode: (body.startAt && Date.parse(body.startAt) > Date.now() ? 'scheduled' : 'live') as 'scheduled' | 'live',
+      startAt: body.startAt ?? null,
+      deadline: body.deadline ?? null,
+      target: body.target != null && Number.isFinite(Number(body.target)) ? Math.floor(Number(body.target)) : null,
+      price: body.price != null && Number.isFinite(Number(body.price)) ? Math.floor(Number(body.price)) : null,
+      promoPct: body.promoPct != null && Number.isFinite(Number(body.promoPct)) ? Number(body.promoPct) : null,
+      linkOnly: body.linkOnly === true,
+    }
+    const v = validateGbSession(session, Number(owned.product.price))
+    if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+    await saveGbSession(c.env.DB, owned.productId, session)
+    return c.json({ success: true, data: { session } })
+  } catch { return c.json({ success: false, error: '공구 설정 중 오류가 발생했습니다' }, 500) }
+})

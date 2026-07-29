@@ -15,6 +15,7 @@ import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -179,21 +180,22 @@ export default function AddressManagementPage() {
     setFormData(EMPTY_FORM)
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
       <SEO title={t('address.seoTitle')} description={t('address.seoDesc')} url="/mypage/addresses" noindex />
       {/* ✅ UX H15 FIX: Daum Postcode script는 useEffect에서 1회만 로드 */}
 
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label={t('address.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -228,7 +230,7 @@ export default function AddressManagementPage() {
 
         {/* 배송지 목록 */}
         {addresses.length === 0 ? (
-          <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#121212]">
+          <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#1A2334]">
             <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center">
               <MapPin className="w-10 h-10 text-pink-400" strokeWidth={1.5} />
             </div>
@@ -255,7 +257,7 @@ export default function AddressManagementPage() {
                   className={`relative overflow-hidden rounded-2xl transition-all ${
                     isDefault
                       ? 'bg-gradient-to-br from-gray-50 to-gray-50 dark:from-gray-900/15 dark:to-gray-900/15 border border-pink-200 dark:border-pink-900/40 shadow-sm'
-                      : 'bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]'
+                      : 'bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446]'
                   }`}
                 >
                   {/* 기본 배송지 좌측 그라데이션 액센트 bar */}
@@ -290,10 +292,10 @@ export default function AddressManagementPage() {
                           </p>
                         )}
                         {(address.delivery_note || (address.entry_method && address.entry_method !== 'free')) && (
-                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A2A2A] space-y-1">
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2A3446] space-y-1">
                             {address.entry_method && address.entry_method !== 'free' && (
                               <p className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A1A1A] font-semibold">출입</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A2334] font-semibold">출입</span>
                                 {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
                                 {address.entry_method === 'password' && address.entry_code && (
                                   <span className="text-gray-400 dark:text-gray-500">· 비번 등록됨</span>
@@ -302,7 +304,7 @@ export default function AddressManagementPage() {
                             )}
                             {address.delivery_note && (
                               <p className="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2 flex items-start gap-1.5">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A1A1A] font-semibold flex-shrink-0">메모</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1A2334] font-semibold flex-shrink-0">메모</span>
                                 <span className="flex-1">{address.delivery_note}</span>
                               </p>
                             )}
@@ -329,7 +331,7 @@ export default function AddressManagementPage() {
                         <button
                           onClick={() => handleDeleteAddress(address.id)}
                           aria-label={t('address.ariaDelete')}
-                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-white/60 dark:bg-[#0A0A0A]/60 dark:hover:bg-white/[0.06]"
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-white/60 dark:bg-[#0F151D]/60 dark:hover:bg-white/[0.06]"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -390,13 +392,13 @@ export default function AddressManagementPage() {
                 type="text"
                 value={formData.postal_code}
                 readOnly
-                className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+                className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#1A2334] text-[15px] text-gray-600 dark:text-gray-300"
                 placeholder={t('address.postalPlaceholder')}
               />
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#121212] transition-all whitespace-nowrap"
+                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A2334] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -404,7 +406,7 @@ export default function AddressManagementPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A]">
+            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A3446]">
               <div id="daum-postcode-container" style={{ width: '100%', height: '400px' }}></div>
             </div>
           )}
@@ -418,7 +420,7 @@ export default function AddressManagementPage() {
               type="text"
               value={formData.address}
               readOnly
-              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#121212] text-[15px] text-gray-600 dark:text-gray-300"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl bg-gray-50 dark:bg-[#1A2334] text-[15px] text-gray-600 dark:text-gray-300"
               placeholder={t('address.addressPlaceholder')}
             />
           </div>
@@ -451,7 +453,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.label === preset
                       ? 'bg-pink-500 text-white border-pink-500'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-[#1A2334]'
                   }`}
                 >
                   {preset}
@@ -483,7 +485,7 @@ export default function AddressManagementPage() {
                   className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
                     formData.entry_method === opt.value
                       ? 'bg-pink-50 text-pink-600 border-pink-500'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0F151D] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-[#1A2334]'
                   }`}
                 >
                   {opt.label}
@@ -527,7 +529,7 @@ export default function AddressManagementPage() {
                   className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
                     formData.delivery_note === preset
                       ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white dark:bg-[#0A0A0A] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
+                      : 'bg-white dark:bg-[#0F151D] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2A3446] hover:bg-gray-50 dark:hover:bg-[#1A2334]'
                   }`}
                 >
                   {preset}
@@ -569,7 +571,7 @@ export default function AddressManagementPage() {
             <button
               type="button"
               onClick={closeForm}
-              className="flex-1 py-4 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

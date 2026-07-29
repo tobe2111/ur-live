@@ -236,7 +236,8 @@ export default function SupplierDashboardPage() {
       <SEO title={t('supplier.dashTitle', { defaultValue: '제조사 대시보드' }) + ' - 유어딜'} description="유어딜 도매 제조사 대시보드" url="/supplier" />
 
       {loading ? (
-        <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
+        /* 🚑 2026-07-10 로더 통일: 맨 텍스트 → WholesaleLoading (도매 표면 인-페이지 로딩 SSOT) */
+        <WholesaleLoading label={t('common.loading', { defaultValue: '불러오는 중...' })} />
       ) : tab === 'overview' ? (
         <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} pendingShipCount={pendingShipCount} />
       ) : tab === 'orders' ? (

@@ -222,7 +222,7 @@ appointmentsRoutes.post('/appointments/book', requireAuth(), async (c) => {
         const userRow = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(String(user.id)).first<{ phone: string }>().catch(() => null)
         const userPhone = body.user_phone || userRow?.phone
         if (userPhone) {
-          const msg = `[유어딜] 예약 확정 — ${product.name}\n일시: ${bookingDate} ${startTime}~${endTime}\n예약 확인 / 변경: live.ur-team.com/my-appointments`
+          const msg = `[유어딜] 예약 확정 — ${product.name}\n일시: ${bookingDate} ${startTime}~${endTime}\n예약 확인 / 변경: urdeal.kr/my-appointments`
           await sendSystemAlimtalk(env, userPhone, 'appointment_user_confirmed', msg)
         }
       } catch (e) {
@@ -383,14 +383,20 @@ appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) =>
           ).bind(order.id).run().catch(() => null)
           if (orderClaim && (orderClaim.meta?.changes ?? 0) > 0) {
             // 즉시 딜 환급 — 독립 write 원자 배치(라운드트립 절감 + 부분실패 방지).
+            // 💸 2026-07-05 버킷: 원거래(주문 원장) 무상 차감분 산출 후 대칭 복원.
+            const { computeFreeRestorePortion, bucketRestoreUpsertStatement, ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
+            await ensureDealBuckets(DB)
+            const orderNumRow = await DB.prepare('SELECT order_number FROM orders WHERE id = ?')
+              .bind(order.id).first<{ order_number: string }>().catch(() => null)
+            const freePortion = await computeFreeRestorePortion(
+              DB, [orderNumRow?.order_number, String(order.id)], order.total_amount, String(user.id),
+            )
             await DB.batch([
               DB.prepare(
-                `INSERT INTO point_transactions (user_id, amount, type, description, created_at)
-                 VALUES (?, ?, 'refund', ?, datetime('now'))`,
-              ).bind(String(user.id), order.total_amount, `예약 취소 환불 (appointment #${id})`),
-              DB.prepare(
-                `UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?`,
-              ).bind(order.total_amount, String(user.id)),
+                `INSERT INTO point_transactions (user_id, amount, type, description, order_id, free_delta, created_at)
+                 VALUES (?, ?, 'refund', ?, ?, ?, datetime('now'))`,
+              ).bind(String(user.id), order.total_amount, `예약 취소 환불 (appointment #${id})`, orderNumRow?.order_number || null, freePortion),
+              bucketRestoreUpsertStatement(DB, { userId: String(user.id), amount: order.total_amount, freePortion }),
               DB.prepare(
                 `UPDATE appointment_bookings SET refund_status = 'refunded', refund_processed_at = datetime('now') WHERE id = ?`,
               ).bind(id),

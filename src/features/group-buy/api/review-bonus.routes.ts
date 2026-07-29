@@ -48,15 +48,14 @@ async function ensureTable(DB: D1Database) {
 async function payBonus(DB: D1Database, userId: string, amount: number, voucherId: number): Promise<boolean> {
   try {
     await DB.prepare("CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run()
-    await DB.prepare(
-      `INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
-    ).bind(userId, amount, amount).run()
-    await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
-       VALUES (?, 'kakao_review_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-    ).bind(userId, amount, amount, userId, `카카오맵 후기 작성 보너스 (voucher ${voucherId})`).run().catch(swallow('review-bonus:kakao-review-tx'))
-    return true
+    // 💸 2026-07-05 버킷: 후기 보너스 = 무상 딜 (creditFreePoints SSOT — 출금 제외·우선 차감, 원장 free_delta 포함)
+    const { creditFreePoints } = await import('../../../worker/utils/point-buckets')
+    return await creditFreePoints(DB, {
+      userId,
+      amount,
+      type: 'kakao_review_bonus',
+      description: `카카오맵 후기 작성 보너스 (voucher ${voucherId})`,
+    })
   } catch {
     return false
   }

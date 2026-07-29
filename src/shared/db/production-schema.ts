@@ -475,11 +475,14 @@ export interface TaxWithholdingLogTable {
 // ============================================================
 export interface UserPointsTable {
   user_id: string                  // TEXT PRIMARY KEY
-  balance: number                  // INTEGER NOT NULL DEFAULT 0
+  balance: number                  // INTEGER NOT NULL DEFAULT 0 — 총 잔액 (유상+무상)
   total_charged: number            // INTEGER NOT NULL DEFAULT 0
   total_donated: number            // INTEGER NOT NULL DEFAULT 0
   // 🛡️ 2026-05-23: repair-schema 배포로 추가 — 총 사용 누적 (충전 vs 사용 추적).
   total_used: number               // INTEGER DEFAULT 0
+  // 💸 2026-07-05: 무상(리워드·이벤트·초대) 잔액. 불변식 0 ≤ free_balance ≤ balance.
+  //   유상 잔액 = balance - free_balance (파생). SSOT: worker/utils/point-buckets.ts
+  free_balance: number             // INTEGER NOT NULL DEFAULT 0
   created_at: string
   updated_at: string
 }

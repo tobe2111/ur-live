@@ -27,9 +27,13 @@ export function searchAdCredsFrom(env: {
   NAVER_SEARCHAD_ACCESS_LICENSE?: string
   NAVER_SEARCHAD_SECRET_KEY?: string
 }): SearchAdCreds | null {
-  const customerId = (env.NAVER_SEARCHAD_CUSTOMER_ID || '').trim()
-  const accessLicense = (env.NAVER_SEARCHAD_ACCESS_LICENSE || '').trim()
-  const secretKey = (env.NAVER_SEARCHAD_SECRET_KEY || '').trim()
+  // 🧼 2026-07-28: `.trim()` 은 앞뒤만 지운다 — 대시보드에 붙여넣을 때 값 **중간/끝에 섞인 줄바꿈**이
+  //   남아 HMAC 서명이 어긋나면 네이버가 인증 실패로 되돌려준다(원인 표시가 없어 진단이 오래 걸림).
+  //   세 값 모두 토큰/숫자ID 라 공백이 정상적으로 포함될 수 없으므로 전부 제거한다.
+  const clean = (v?: string) => (v || '').replace(/\s+/g, '')
+  const customerId = clean(env.NAVER_SEARCHAD_CUSTOMER_ID)
+  const accessLicense = clean(env.NAVER_SEARCHAD_ACCESS_LICENSE)
+  const secretKey = clean(env.NAVER_SEARCHAD_SECRET_KEY)
   if (!customerId || !accessLicense || !secretKey) return null
   return { customerId, accessLicense, secretKey }
 }
@@ -82,7 +86,8 @@ async function searchAdRequest(creds: SearchAdCreds, method: 'GET' | 'POST' | 'P
     const leaksCred = !!creds.accessLicense && raw.includes(creds.accessLicense)
     let error: string
     if (leaksCred) {
-      error = '검색광고 API 인증에 실패했습니다. 액세스라이선스·비밀키·고객ID 설정을 확인해주세요.'
+      // 상태코드는 자격증명이 아니다 — 남겨야 401(서명/비밀키 불일치)과 403(권한 없음)을 구분할 수 있다.
+      error = `검색광고 API 인증에 실패했습니다 (HTTP ${res.status}). 액세스라이선스·비밀키·고객ID 설정을 확인해주세요.`
     } else {
       error = raw
       if (creds.accessLicense) error = error.split(creds.accessLicense).join('••••')

@@ -41,7 +41,7 @@ describe('buildCoupangProductPayload', () => {
     salePrice: 12900,
     originalPrice: 19900,
     stock: 50,
-    imageUrl: 'https://live.ur-team.com/api/media/x.jpg',
+    imageUrl: 'https://urdeal.kr/api/media/x.jpg',
     detailHtml: '<p>설명</p>',
     outboundShippingPlaceCode: '777',
     returnCenterCode: 'RC1',

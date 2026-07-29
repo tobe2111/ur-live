@@ -12,6 +12,10 @@ export interface RateLimitOptions {
   max: number;        // max requests per window
   windowSec: number;  // window size in seconds
   keyFn?: (c: Context) => string; // custom key extractor
+  // Force fail-CLOSED on store errors even when the action name doesn't match the
+  // auth-sensitive heuristic. Use for brute-forceable endpoints whose action label
+  // isn't a login/password variant (e.g. access-code unlock, token reset).
+  sensitive?: boolean;
 }
 
 function defaultKey(c: Context, action: string): string {
@@ -55,7 +59,7 @@ function isAuthSensitive(action: string): boolean {
 export function rateLimit(opts: RateLimitOptions) {
   return async (c: Context, next: Next) => {
     const db: D1Database | undefined = (c.env as Record<string, unknown>).DB as D1Database | undefined;
-    const authSensitive = isAuthSensitive(opts.action);
+    const authSensitive = opts.sensitive === true || isAuthSensitive(opts.action);
 
     if (!db) {
       // No DB binding: for auth-sensitive actions we fail CLOSED

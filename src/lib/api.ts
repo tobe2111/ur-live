@@ -279,6 +279,17 @@ api.interceptors.request.use(
       // fallthrough → user token / cookie
     }
 
+    // ── Admin 내부 도구 (/api/_errors/recent, /api/_internal/*) ──────────────
+    // 🛡️ 2026-07-20: underscore 경로는 아래 admin 패턴(/api/admin/* · /api/<feature>/admin/*)에
+    //   안 걸려 admin_token 미부착 → 서버 JWT 검증 401 (어드민 에러 대시보드가 로그인해도 항상 401).
+    //   AdminKakaoLoginDiagPage 는 수동 헤더로 개별 우회했던 같은 클래스 — 여기서 구조적으로 부착.
+    //   (/api/_errors/log 는 공개 telemetry 라 제외 — recent 만 매칭.)
+    if (url.startsWith('/api/_errors/recent') || url.startsWith('/api/_internal/')) {
+      const token = localStorage.getItem('admin_token');
+      if (token) config.headers['Authorization'] = `Bearer ${token}`;
+      return config;
+    }
+
     // ── Admin API (/api/admin/* + 하이픈 마운트 /api/admin-payouts, /api/admin-review-bonus) ──
     // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
     // throw 제거 — cookie 만으로도 서버에서 인증 통과.
@@ -506,6 +517,20 @@ api.interceptors.response.use(
             originalRequest.headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
             return api(originalRequest);
           }
+          // 🛡️ 2026-07-04 (대표 "수시로 로그아웃"): 탭/코드경로 경합 가드 — refresh 실패가
+          //   '다른 탭(또는 useTokenAutoRefresh)이 먼저 회전(rotation)시켜 내 refresh 토큰이
+          //   폐기됨'인 경우, 저장소(localStorage 는 탭 공유)엔 이미 *새* 토큰이 있다.
+          //   기존엔 무조건 강제 로그아웃 + clearAuthData 가 그 새 토큰까지 삭제 → 이긴 탭도
+          //   동반 로그아웃(전 탭 로그아웃 연쇄). 저장소가 내가 시도한 값과 달라졌으면
+          //   로그아웃 대신 새 access 토큰으로 원요청 재시도.
+          try {
+            const latestRefresh = localStorage.getItem(refreshTokenKey);
+            const latestAccess = localStorage.getItem(tokenKey);
+            if (latestAccess && latestRefresh && latestRefresh !== refreshToken) {
+              originalRequest.headers['Authorization'] = `Bearer ${latestAccess}`;
+              return api(originalRequest);
+            }
+          } catch { /* storage 접근 불가 — 기존 로그아웃 흐름 */ }
           // null 이면 refresh 실패 → 아래 강제 로그아웃 fallthrough
         }
 
@@ -707,6 +732,18 @@ api.interceptors.response.use(
           try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); } catch { /* noop */ }
           window.location.href = '/admin/login?error=session_expired';
           return Promise.reject(error);
+        }
+      }
+      // 🛡️ 2026-07-04 (대표 "/admin 무한로딩" 전수조사): IP 화이트리스트 차단은 인증 *이전* 403 이라
+      //   401 인터셉터/재로그인으로 절대 안 풀림 — 조용한 빈 대시보드 대신 원인+해결을 명시(30초 디바운스).
+      if (_code === 'ADMIN_IP_BLOCKED') {
+        const _k = 'ip-blocked';
+        const _last = _recent5xx.get(_k) ?? 0;
+        if (Date.now() - _last > 30_000) {
+          _recent5xx.set(_k, Date.now());
+          import('@/hooks/useToast').then(({ toast }) =>
+            toast.error('현재 네트워크(IP)가 어드민 허용목록에 없어 서버가 차단했습니다. urdeal.kr/recover 에서 현재 IP 확인 후 Cloudflare 환경변수 ADMIN_IP_WHITELIST 에 추가하세요.', { duration: 10000 })
+          ).catch(() => { /* toast 불가 환경 — console 만 */ });
         }
       }
       console.warn('[API] 접근 권한 없음:', url);

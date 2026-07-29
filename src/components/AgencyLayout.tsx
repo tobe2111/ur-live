@@ -14,6 +14,7 @@ import {
   TrendingUp, Radio, UserPlus, BookOpen, Megaphone, Award, MessageSquare, Ticket, QrCode, Swords, ArrowRightLeft, Trophy, Rocket,
   Building2,
   Store,
+  Handshake,
   type LucideIcon
 } from 'lucide-react'
 
@@ -56,6 +57,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: '매장 영입', i18nKey: 'agency.nav.storeRecruit',
     items: [
       { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
+      // 🤝 2026-07-10: 3단 위임 모델 (§4.3) — 매장 위임 조회/요청
+      { path: '/agency/delegations', label: '매장 위임', i18nKey: 'agency.nav.delegations', icon: Handshake, mode: 'common' },
       { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: UserPlus, mode: 'common' },
       { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
       // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.

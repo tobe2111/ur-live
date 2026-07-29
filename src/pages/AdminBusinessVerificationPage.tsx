@@ -94,7 +94,7 @@ export default function AdminBusinessVerificationPage() {
           <div className="space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
               ⚠️ <strong>{sellers.length}건</strong> 검증 대기 — 보통 1-3 영업일 내 처리 권장.
-              승인 시 셀러는 현금 정산 + 딜 환급 가능 (8.8% 원천징수 자동 적용).
+              승인 시 셀러는 현금 정산 + 딜 환급 가능 (세법 기준 원천징수 자동 적용 — 사업소득 3.3% / 기타소득 8.8%).
             </div>
 
             {sellers.map((s) => (

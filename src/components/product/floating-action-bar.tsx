@@ -28,7 +28,7 @@ export function FloatingActionBar({
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A]"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-[430px] lg:max-w-screen-md app-frame-bar bg-white dark:bg-[#0F151D] border-t border-gray-100 dark:border-[#2A3446]"
       style={{
         paddingLeft: 14,
         paddingRight: 14,
@@ -41,7 +41,7 @@ export function FloatingActionBar({
         {onToggleWishlist && (
           <button
             onClick={onToggleWishlist}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-[#2A2A2A] transition-all active:scale-95"
+            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-[#2A3446] transition-all active:scale-95"
           >
             <Heart
               className={`h-[18px] w-[18px] transition-colors ${
@@ -53,11 +53,11 @@ export function FloatingActionBar({
 
         {!dealOnly && (
           <button
-            className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] transition-all active:scale-[0.98] disabled:opacity-40"
+            className="flex items-center justify-center gap-1 h-12 flex-1 rounded-xl bg-gray-100 dark:bg-[#1A2334] transition-all active:scale-[0.98] disabled:opacity-40"
             onClick={onAddToCart}
             disabled={disabled}
           >
-            <span className="text-[13px] font-bold text-gray-900 dark:text-white">장바구니</span>
+            <span className="text-[13px] font-bold text-gray-900 dark:text-white">{disabled ? '품절' : '장바구니'}</span>
           </button>
         )}
 
@@ -75,7 +75,7 @@ export function FloatingActionBar({
               <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
             </>
           ) : (
-            <span className="text-[14px] font-extrabold text-white">바로 구매</span>
+            <span className="text-[14px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
           )}
         </button>
       </div>

@@ -43,7 +43,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       className={`px-3 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all ${
         active
           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-          : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
+          : 'bg-gray-100 dark:bg-[#1A2334] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
       }`}
     >
       {children}
@@ -75,13 +75,13 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
   return (
     <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-[2px] flex items-end justify-center" onClick={onClose} role="presentation">
       <div
-        className="bg-white dark:bg-[#0A0A0A] rounded-t-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:rounded-[28px] sm:my-auto shadow-2xl"
+        className="bg-white dark:bg-[#0F151D] rounded-t-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:rounded-[28px] sm:my-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-label={t('map.filter.ariaLabel', { defaultValue: '필터 설정' })}
       >
         {/* grabber + header */}
         <div className="pt-2.5 shrink-0">
-          <div className="w-9 h-1 rounded-full bg-gray-200 dark:bg-[#2A2A2A] mx-auto" />
+          <div className="w-9 h-1 rounded-full bg-gray-200 dark:bg-[#2A3446] mx-auto" />
         </div>
         <div className="px-5 pt-3 pb-3 flex items-center justify-between shrink-0">
           <h3 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('map.filter.title', { defaultValue: '필터' })}</h3>
@@ -97,18 +97,18 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           {/* 지역 — 2단(좌: 시/도 / 우: 동네 리스트). 당근/배민 패턴 — pill 벽보다 깔끔·확장성. */}
           <section>
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>
-            <div className="flex rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden h-[248px]">
+            <div className="flex rounded-2xl border border-gray-100 dark:border-[#2A3446] overflow-hidden h-[248px]">
               {/* 시/도 좌측 레일 */}
-              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#121212] border-r border-gray-100 dark:border-[#1A1A1A]">
+              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#1A2334] border-r border-gray-100 dark:border-[#2A3446]">
                 <button
                   onClick={() => { setRegion(''); setDistrict('') }}
-                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#0A0A0A] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#0F151D] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                 >전국</button>
                 {KOREA_REGIONS.map(r => (
                   <button
                     key={r.key}
                     onClick={() => { setRegion(r.key); setDistrict('') }}
-                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#0A0A0A] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#0F151D] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                   >{r.label}</button>
                 ))}
               </div>
@@ -167,7 +167,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
         </ScrollArea>
 
         {/* apply with live count */}
-        <div className="px-5 py-4 border-t border-gray-100 dark:border-[#1A1A1A] shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <div className="px-5 py-4 border-t border-gray-100 dark:border-[#2A3446] shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
           <button
             data-testid="filter-apply"
             onClick={() => onApply(region, district, sort, radius, price)}

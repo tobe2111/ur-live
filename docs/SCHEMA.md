@@ -63,3 +63,17 @@ bash scripts/quality-check.sh      # 위 둘 + TS + 빌드
 🔴 **CI 자동 적용 미작동** (D1 권한 없음)
 - 응급 처치: `/api/_internal/repair-schema`
 - 적용 상태 확인: `/api/_internal/migration-status` (admin, 읽기 전용)
+
+## 🧱 seller_meta 사이드테이블 (2026-07-05 — sellers 100컬럼 한도 도달)
+
+sellers 가 D1 결과셋 한도(100)에 **정확히 도달** — 다음 ALTER 는 `SELECT s.*` 류를 500 으로
+만들 수 있다(products 2026-06-10 사고와 동일 클래스). 새 셀러 메타는 무조건:
+
+```ts
+import { getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta' // 워커에선 상대경로
+const meta = await getSellerMeta(DB, [sellerId])   // Map<seller_id, Record<key,value>>
+await setSellerMeta(DB, sellerId, { some_flag: '1' })
+```
+
+- (seller_id, key, value) K-V — 스키마 변경 0 으로 확장. value TEXT(호출측 캐스팅), null=키 삭제.
+- sellers ALTER 는 `check-products-column-budget.mjs`(sellers-column-baseline.json)가 CI 차단.

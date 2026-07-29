@@ -17,7 +17,7 @@ jobs:
         run: |
           echo "##### baseline: /api/version x6 (cold→warm) #####"
           for i in 1 2 3 4 5 6; do
-            curl -s -o /dev/null -w "version#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/version" || true
+            curl -s -o /dev/null -w "version#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://urdeal.kr/api/version" || true
           done
           echo
           echo "##### wholesale 엔드포인트 (2회씩 — cold→warm/cache) #####"
@@ -30,51 +30,51 @@ jobs:
             "/api/wholesale/catalog?brands=1" ; do
             for i in 1 2; do
               echo "===== [$i] $u ====="
-              curl -s -o /tmp/b -D /tmp/hh -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com$u" -H 'accept: application/json' || true
+              curl -s -o /tmp/b -D /tmp/hh -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://urdeal.kr$u" -H 'accept: application/json' || true
               grep -i "cf-cache-status\|x-grade-cache\|x-ws-cache\|x-ws-total\|x-ws-mall\|x-ws-guest\|^cache-control\|cdn-cache-control\|server-timing" /tmp/hh || true
             done
           done
           echo
           echo "##### 소비자 비교 (warm) #####"
-          curl -s -o /dev/null -w "products  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/products?page=1&limit=24&deal_only=1&sort=price_low" || true
-          curl -s -o /dev/null -w "groupbuy  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/group-buy/products?status=active" || true
+          curl -s -o /dev/null -w "products  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://urdeal.kr/api/products?page=1&limit=24&deal_only=1&sort=price_low" || true
+          curl -s -o /dev/null -w "groupbuy  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://urdeal.kr/api/group-buy/products?status=active" || true
           echo
           echo "##### /wholesale HTML server-timing x2 #####"
           for i in 1 2; do
-            curl -s -o /dev/null -D /tmp/h -w "wholesale-html#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
+            curl -s -o /dev/null -D /tmp/h -w "wholesale-html#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://urdeal.kr/wholesale" || true
             grep -i "server-timing\|x-ssr-status\|cf-cache" /tmp/h || true
           done
 
       - name: 카드 이미지 로딩 타이밍 (교환권/상품)
         run: |
           # 교환권 리스트에서 실제 image_url 추출 → 원본/CF변환/워커프록시 각각 타이밍
-          curl -s --max-time 20 "https://live.ur-team.com/api/products?page=1&limit=6&deal_only=1&sort=price_low" -H 'accept: application/json' > /tmp/prods.json
+          curl -s --max-time 20 "https://urdeal.kr/api/products?page=1&limit=6&deal_only=1&sort=price_low" -H 'accept: application/json' > /tmp/prods.json
           jq -r '.data.items[]?.image_url // .items[]?.image_url // empty' /tmp/prods.json 2>/dev/null | head -4 > /tmp/imgs.txt || true
           [ -s /tmp/imgs.txt ] || jq -r '.. | .image_url? // empty' /tmp/prods.json | head -4 > /tmp/imgs.txt
           echo "--- 추출된 이미지 URL ---"; cat /tmp/imgs.txt
           while read -r IMG; do
             [ -z "$IMG" ] && continue
-            case "$IMG" in /*) IMG="https://live.ur-team.com$IMG";; esac
+            case "$IMG" in /*) IMG="https://urdeal.kr$IMG";; esac
             echo "===== 원본: $IMG ====="
             curl -s -o /dev/null -D /tmp/ih -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "$IMG" || true
             grep -i "cache-control\|cf-cache-status\|age:" /tmp/ih || true
             ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$IMG")
             echo "--- cdn-cgi 변환 ---"
-            curl -s -o /dev/null -D /tmp/ih2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/cdn-cgi/image/width=400,quality=75,format=auto/$IMG" || true
+            curl -s -o /dev/null -D /tmp/ih2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://urdeal.kr/cdn-cgi/image/width=400,quality=75,format=auto/$IMG" || true
             grep -i "cf-resized\|cache-control\|cf-cache-status" /tmp/ih2 || true
             echo "--- 워커 프록시 /api/image/resize ---"
-            curl -s -o /dev/null -D /tmp/ih3 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/api/image/resize?url=$ENC&w=400" || true
+            curl -s -o /dev/null -D /tmp/ih3 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://urdeal.kr/api/image/resize?url=$ENC&w=400" || true
             grep -i "cache-control\|cf-cache-status" /tmp/ih3 || true
           done < /tmp/imgs.txt
 
       - name: user2 프로필 이미지 실값 + 로드 테스트
         run: |
-          curl -s --max-time 20 "https://live.ur-team.com/api/curator/user2" -H 'accept: application/json' > /tmp/cur.json
+          curl -s --max-time 20 "https://urdeal.kr/api/curator/user2" -H 'accept: application/json' > /tmp/cur.json
           echo "--- curator 응답 profile_image ---"
           PI=$(jq -r '.. | .profile_image? // empty' /tmp/cur.json | head -1)
           echo "value: [$PI]"
           if [ -n "$PI" ]; then
-            case "$PI" in /*) PI_URL="https://live.ur-team.com$PI";; *) PI_URL="$PI";; esac
+            case "$PI" in /*) PI_URL="https://urdeal.kr$PI";; *) PI_URL="$PI";; esac
             echo "--- 이미지 직접 로드 ---"
             curl -s -o /dev/null -D /tmp/pih -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "$PI_URL" || true
             grep -i "cache-control\|location" /tmp/pih || true
@@ -87,11 +87,11 @@ jobs:
           curl -s -o /dev/null -D /tmp/m1 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://media.ur-team.com/$K" || true
           grep -i "cache-control\|cf-cache-status\|etag" /tmp/m1 || true
           echo "--- 리사이저 래핑 (128px) ---"
-          curl -s -o /dev/null -D /tmp/m2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://live.ur-team.com/cdn-cgi/image/width=128,quality=80,format=auto/https://media.ur-team.com/$K" || true
+          curl -s -o /dev/null -D /tmp/m2 -w "HTTP %{http_code} | total %{time_total}s | size %{size_download} | ct %{content_type}\n" --max-time 25 "https://urdeal.kr/cdn-cgi/image/width=128,quality=80,format=auto/https://media.ur-team.com/$K" || true
           grep -i "cf-resized\|cache-control\|cf-cache-status" /tmp/m2 || true
 
       - name: wholesale HTML (SSR slot + 체감 로딩)
         run: |
-          curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
+          curl -s -D /tmp/h -o /tmp/html -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://urdeal.kr/wholesale" || true
           grep -i "x-ssr-status\|server-timing\|cache-control" /tmp/h || true
           grep -c "__SSR_INITIAL_WHOLESALE__" /tmp/html || echo "SSR slot 없음"

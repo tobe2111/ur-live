@@ -17,6 +17,7 @@ import { ArrowLeft, Loader2, AlertCircle, Calendar, Users } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
 
 interface StayOrderBooking {
@@ -108,7 +109,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
   const notPayable = !!order && !alreadyPaid && String(order.status).toUpperCase() !== 'PENDING'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-[100dvh] bg-gray-50">
       <SEO title="숙소 결제 - 유어딜" description="숙소 예약 결제" url="/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
@@ -143,7 +144,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
               {bookings.map((b) => (
                 <div key={b.id} className="flex items-start gap-3 pt-1">
                   <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                    {b.image_url ? <img src={b.image_url} alt={b.product_name || ''} className="w-full h-full object-cover" loading="lazy" /> : null}
+                    {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name || ''} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-bold text-gray-900 line-clamp-1">{b.product_name || '숙소'}</p>

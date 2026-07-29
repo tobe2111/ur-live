@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
 const TEST_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || ''
-const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
+const TEST_REDIRECT_URI = 'https://urdeal.kr/admin/kakao-test/callback'
 
 export default function AdminKakaoTestCallbackPage() {
   const navigate = useNavigate()

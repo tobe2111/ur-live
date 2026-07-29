@@ -2,6 +2,11 @@
 //   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
 import { isChunkLoadError, isAppChunkUrl, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error'
+// 🛡️ 2026-07-20 (대표 신고 전수조사): 엔트리 번들 실행 신호. ES 모듈은 import 가 전부 resolve 된 뒤에야
+//   모듈 본문이 실행되므로, 엔트리(또는 그 정적 의존 청크)가 404/CSP/네트워크로 못 뜨면 이 줄이 아예 안 돈다.
+//   index.html 부트가드 워치독/진단이 '엔트리가 아예 안 돌았나(=stale/404/차단) vs 돌았는데 마운트가
+//   느리거나 막혔나(무거운 렌더/행/에러)'를 구분 → 진짜 원인 특정(캐시버스트로 못 고치는 부류 판별).
+try { (window as unknown as { __urBootStarted?: number }).__urBootStarted = Date.now() } catch { /* window 차단 환경 — 무시 */ }
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
 // 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
@@ -66,7 +71,7 @@ import ThemeProvider from '@/components/ThemeProvider'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
 // 🛡️ 2026-05-23 Frontend 에러 telemetry — window.onerror + unhandledrejection 캐치 → /api/_errors/log
-import { installErrorTelemetry } from '@/lib/error-telemetry'
+import { installErrorTelemetry, reportError } from '@/lib/error-telemetry'
 installErrorTelemetry()
 import { logRegionInfo, isKorea } from '@/shared/config/region'
 // 🛡️ 2026-05-27 (loading P1): env-validator (zod ~52KB) dynamic import — critical path 제거.
@@ -118,9 +123,16 @@ try {
 //     수정: ① `__cb` 캐시버스트 파라미터 + location.replace 로 옛 문서 재서빙 우회(항상 새 HTML→새 청크 해시),
 //           ② 가드를 60초 윈도 내 2회로 — 그 안에서 못 고치면 진짜 에러로 보고 멈춤(무한 reload 차단),
 //              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
-// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(60초 2회)·캐시버스트 reload 를
+// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(90초 3회·유예)·캐시버스트 reload 를
 //   ErrorBoundary·인라인 부트가드와 공유(이중 카운트·무한 reload 0). 로직 중복 제거.
-const reloadOnceForChunk = () => { recoverFromChunkError() }
+//   복구 한도(60초 내 2회) 초과 = stale 고착(예: 잔존 캐시-우선 SW) → 무한 reload/무한로딩 대신 인라인
+//   부트가드의 정적 복구 UI(캐시 완전삭제 후 새로고침 버튼)를 띄운다. React ErrorBoundary 밖(window
+//   리스너·unhandledrejection)에서 난 청크 실패도 "응답 없는 페이지"/무한 스피너에 갇히지 않게 함.
+const reloadOnceForChunk = () => {
+  if (!recoverFromChunkError()) {
+    try { (window as { __urShowStuckUI?: () => void }).__urShowStuckUI?.() } catch { /* silent */ }
+  }
+}
 window.addEventListener('error', (e) => {
   if (isChunkLoadError(e.message)) { reloadOnceForChunk(); return }
   // modulepreload/script 리소스 로드 실패 (message 없음 — target 검사). 우리 청크(/assets/*.js)만.
@@ -353,7 +365,7 @@ async function bootApp() {
         <div style="text-align: center; padding: 2rem;">
           <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
           <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
-          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #E0526B; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
         </div>
       </div>
     `
@@ -373,6 +385,17 @@ async function bootApp() {
         </ThemeProvider>
       )
 
+      // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
+      //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).
+      //   청크404/stale-SW 로 엔트리 번들이 아예 안 돌면 이 라인에 도달 못함 → 워치독이 1클릭 복구 UI 제공.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+        // 🛡️ 2026-07-20: 정상 마운트 → 이 세션의 '복구 UI 본 적 있음' 플래그 해제(다음 느린 로드는
+        //   다시 부드러운 1단계부터 안내). 부트가드 showStuckUI 의 에스컬레이션 상태와 짝.
+        sessionStorage.removeItem('__ur_stuck_shown__')
+      } catch { /* silent */ }
+
       // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
       import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
 
@@ -381,16 +404,32 @@ async function bootApp() {
       setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
     } catch (error) {
       console.error('[App] ❌ React 렌더링 실패:', error)
+      // 🛡️ 2026-07-20 (대표 신고 "새로고침 버튼 눌러도 계속 안됨" 전수조사): 렌더 실패는 *캐시 문제가 아니라*
+      //   결정적(deterministic) 에러다. __urMounted 를 안 세우면 index.html 부트가드의 12초 워치독이 '앱 미마운트'
+      //   로 오판해 "저장된 옛 버전이 남아 있어요" 복구 오버레이(z-index max)를 이 실제 에러 화면 위에 덮어씌운다
+      //   → 사용자는 진짜 원인 대신 캐시-복구 안내만 보고, __cb 캐시버스트로는 못 고치는 에러라 무한 새로고침
+      //   루프에 갇힌다. 마운트 신호를 세워 워치독을 잠재우고(진짜 에러 화면 노출) + 진단 beacon 을 남긴다.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+      } catch { /* silent */ }
+      try {
+        reportError('React render failed: ' + String((error as Error)?.message || error), {
+          stack: (error as Error)?.stack, tag: 'boot-render',
+        })
+      } catch { /* telemetry 실패 무시 */ }
       rootElement.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
           <div style="text-align: center; padding: 2rem;">
             <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
             <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
             <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
-            <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+            <button id="ur-render-fail-reload" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #E0526B; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
           </div>
         </div>
       `
+      // 🛡️ 2026-07-16: 인라인 onclick 은 CSP 차단 가능 + plain reload 는 stale HTML 재서빙 → 캐시버스트 복구로.
+      try { document.getElementById('ur-render-fail-reload')?.addEventListener('click', () => reloadWithCacheBust()) } catch { /* silent */ }
     }
   }
 }

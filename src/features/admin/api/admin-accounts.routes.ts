@@ -18,8 +18,24 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
+import { startDashboardSession, ensureDashboardSessionsTable } from '@/worker/utils/dashboard-session';
 
 export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
+
+// 🛡️ 2026-07-05: 소프트 삭제 컬럼 보장 — per-request DDL 방지(WeakSet 메모이즈).
+//   is_active/status/deleted_at 미존재 DB 에서 목록·로그인 필터가 'no such column' 나지 않게 1회 ALTER.
+const _softDelEnsured = new WeakSet<object>();
+async function ensureAdminSoftDeleteColumns(DB: D1Database): Promise<void> {
+  if (_softDelEnsured.has(DB)) return;
+  _softDelEnsured.add(DB);
+  for (const sql of [
+    `ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1`,
+    `ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'`,
+    `ALTER TABLE admins ADD COLUMN deleted_at DATETIME`,
+  ]) {
+    try { await DB.prepare(sql).run(); } catch { /* 이미 존재 */ }
+  }
+}
 
 // 🛡️ 2026-06-14: 관리자 역할 — 전권 + 제한 권한 세분화 (사용자 요구: 제한된 접근 권한 분리).
 //   super_admin: 전체 권한 / admin: 일반 운영 / ops: 주문·상품·배송 / cs: 고객 응대(주문 조회/반품) /
@@ -46,9 +62,14 @@ interface CountRow { count: number }
 adminAccountsRoutes.get('/admins', cors(), async (c) => {
   try {
     const DB = c.env.DB;
+    await ensureAdminSoftDeleteColumns(DB);
+    // 🛡️ 2026-07-05 (대표 신고 — 삭제해도 목록에 남아 재삭제 시 _deleted_ 이중 접미사):
+    //   소프트 삭제(is_active=0 / status='deleted') 계정은 목록에서 제외. COALESCE 로 컬럼
+    //   미존재(레거시 DB)여도 안전 — 그 경우 전부 활성 취급(기존 동작 보존).
     const admins = await executeQuery<AdminRow>(DB,
       `SELECT id, username, email, name, role, created_at
        FROM admins
+       WHERE COALESCE(is_active, 1) = 1 AND COALESCE(status, 'active') != 'deleted'
        ORDER BY created_at DESC`
     );
     return c.json({ success: true, data: admins });
@@ -224,16 +245,22 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
       return c.json({ success: false, error: '자기 자신을 삭제할 수 없습니다' }, 403);
     }
 
-    const rows = await executeQuery<AdminRow>(DB,
-      `SELECT id, username, email, name, role, created_at FROM admins WHERE id = ?`, [adminId]
+    await ensureAdminSoftDeleteColumns(DB);
+    const rows = await executeQuery<AdminRow & { is_active?: number; status?: string }>(DB,
+      `SELECT id, username, email, name, role, created_at, is_active, status FROM admins WHERE id = ?`, [adminId]
     );
     if (rows.length === 0) {
       return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
     }
 
+    // 🛡️ 2026-07-05: 이미 삭제된 계정이면 멱등 반환 — _deleted_ 접미사 이중부착 방지(대표 신고).
+    if (Number(rows[0].is_active) === 0 || String(rows[0].status) === 'deleted') {
+      return c.json({ success: true, message: '이미 삭제된 관리자입니다', already: true });
+    }
+
     if (rows[0].role === 'super_admin') {
       const superAdminCount = await executeQuery<CountRow>(DB,
-        `SELECT COUNT(*) as count FROM admins WHERE role = 'super_admin'`
+        `SELECT COUNT(*) as count FROM admins WHERE role = 'super_admin' AND COALESCE(is_active, 1) = 1 AND COALESCE(status, 'active') != 'deleted'`
       );
       if ((superAdminCount[0]?.count || 0) <= 1) {
         return c.json({ success: false, error: '마지막 super_admin은 삭제할 수 없습니다' }, 403);
@@ -244,22 +271,30 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
     //   영구 데이터 분실 방지. audit log / 결제 / 분쟁 대응 위해 admin row 자체는 보존.
     //   is_active=0 + status='deleted' 로 비활성화 (재사용 시 같은 이메일 재가입 충돌 방지).
     //   email 에 _deleted_<timestamp> 접미사로 unique constraint 회피.
-    try {
-      await executeRun(DB, `ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1`, []);
-    } catch { /* exists */ }
-    try {
-      await executeRun(DB, `ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'`, []);
-    } catch { /* exists */ }
-    try {
-      await executeRun(DB, `ALTER TABLE admins ADD COLUMN deleted_at DATETIME`, []);
-    } catch { /* exists */ }
+    //   🛡️ 2026-07-05: 이미 _deleted_ 접미사가 있으면(방어적) 재부착 안 함 — status 게이트로 도달 안 하지만 안전판.
     const ts = Date.now();
+    const emailExpr = String(rows[0].email).includes('_deleted_') ? 'email' : `email || '_deleted_' || ?`;
+    const userExpr = String(rows[0].username || '').includes('_deleted_') ? 'username' : `username || '_deleted_' || ?`;
+    const suffixParams: (string | number)[] = [];
+    if (emailExpr !== 'email') suffixParams.push(ts);
+    if (userExpr !== 'username') suffixParams.push(ts);
     await executeRun(DB,
       `UPDATE admins SET is_active = 0, status = 'deleted', deleted_at = datetime('now'),
-       email = email || '_deleted_' || ?, username = username || '_deleted_' || ?
+       email = ${emailExpr}, username = ${userExpr}
        WHERE id = ?`,
-      [ts, ts, adminId]
+      [...suffixParams, adminId]
     );
+
+    // 🔐 2026-07-05 (대표 지시 — "삭제하면 로그인 못하게 막아야"): 삭제 즉시 세션·토큰 전면 무효화.
+    //   ① 저장된 refresh 토큰 삭제 → 롤링 세션 재발급 차단.
+    //   ② dashboard_sessions.min_valid_iat 를 현재 시각으로 bump → 이미 발급된 access 토큰/세션쿠키가
+    //      requireAuth 의 단일세션 검사(isDashboardSessionCurrent)에서 거부 → 즉시 로그아웃(최대 24h 잔존 제거).
+    //   삭제 계정은 로그인·리프레시 쿼리의 is_active/status 게이트로 재로그인 불가라 영구 차단.
+    await executeRun(DB, `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?`, [adminId])
+      .catch(() => { /* best-effort */ });
+    try {
+      await startDashboardSession(DB, 'admin', Number(adminId), Math.floor(Date.now() / 1000));
+    } catch { /* best-effort — 로그인/리프레시 게이트가 백스톱 */ }
 
     await writeAuditLog(c, {
       action: 'delete_admin',
@@ -369,6 +404,54 @@ adminAccountsRoutes.post('/admins/:id/reset-pin', cors(), rateLimit({ action: 'a
     return c.json({ success: true, message: '보안 PIN이 초기화되었습니다. 해당 관리자는 다음 로그인 시 새 PIN을 설정합니다.' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] reset pin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+/**
+ * 🤝 PATCH /admins/:id/multi-session { enabled: boolean } — 동시 로그인 허용 토글 (super_admin 전용).
+ *
+ * 배경(2026-07-28 대표 "동시 로그인되게 하고"): 대시보드는 시트별 **단일 세션**이라 같은 계정으로 다른
+ *   곳에서 로그인하면 기존 세션이 즉시 무효(SESSION_SUPERSEDED). 자동화 계정(claude@…)은 여러 세션이
+ *   동시에 쓰도록 문서화돼 있어 서로를 계속 밀어냈고, 대표가 브라우저로 들어오면 자동화가 끊겼다.
+ *
+ * ⚠️ 보안 트레이드오프: 단일 세션은 계정 공유·도용의 **탐지 신호**이기도 하다(남이 쓰면 내가 튕긴다).
+ *   그래서 **계정별 opt-in**(기본 0)이며, 사람이 쓰는 운영 계정에는 켜지 말 것 — 자동화 계정 전용.
+ */
+adminAccountsRoutes.patch('/admins/:id/multi-session', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(currentUser?.id).first<{ role: string }>();
+    if (!me || me.role !== 'super_admin') {
+      return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+    }
+    const adminId = Number(c.req.param('id'));
+    if (!Number.isFinite(adminId) || adminId <= 0) return c.json({ success: false, error: '유효하지 않은 id 입니다' }, 400);
+    const body = await c.req.json<{ enabled?: boolean }>().catch(() => ({} as { enabled?: boolean }));
+    const enabled = body.enabled === true ? 1 : 0;
+
+    const target = await DB.prepare('SELECT id, email FROM admins WHERE id = ?').bind(adminId).first<{ id: number; email: string }>();
+    if (!target) return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+
+    // 세션 추적행이 아직 없을 수 있다(그 계정이 아직 로그인한 적 없음) → 행을 만들되 **플래그만** 건드린다.
+    //   ⚠️ min_valid_iat 은 절대 덮어쓰지 않는다 — 0 으로 되돌리면 이전에 무효화됐던 옛 토큰이 되살아난다.
+    await ensureDashboardSessionsTable(DB);
+    const r = await DB.prepare(
+      `INSERT INTO dashboard_sessions (account_type, account_id, min_valid_iat, updated_at, multi_session)
+       VALUES ('admin', ?, 0, datetime('now'), ?)
+       ON CONFLICT(account_type, account_id) DO UPDATE SET
+         multi_session = excluded.multi_session,
+         updated_at    = excluded.updated_at`,
+    ).bind(adminId, enabled).run().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: { admin_id: adminId, email: target.email, multi_session: enabled === 1 },
+      changed: (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] multi-session toggle error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

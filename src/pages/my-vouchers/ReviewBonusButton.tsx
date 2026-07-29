@@ -1,35 +1,15 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 카카오맵 후기 보너스 버튼/모달(verbatim 추출). 동작 불변.
-// 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션 — 대표 "추천대로"): 레벨 표시 + 대가표시 안내 +
-//   OCR 즉시지급 문구 제거(지급 판정은 매장/운영팀 — 설계문서 §3-3).
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 
-type MyLevel = { level: number; label: string; approved_count: number; next_level: number | null; remaining: number | null }
-
-/** 🗺️ 2026-07-02: 매장명(+주소)로 카카오맵 실제 장소 페이지 딥링크 — RestaurantMiniMap 폴백 ②와 동일 패턴.
- *   place_url 없이도 등록된 장소가 떠서 후기 작성 페이지로 바로 연결(수동 검색 제거). */
-function kakaoStoreLink(name?: string, address?: string): string | null {
-  const q = [name, address].filter(Boolean).join(' ').trim()
-  if (!q) return null
-  return `https://map.kakao.com/link/search/${encodeURIComponent(q)}`
-}
-
-export default function ReviewBonusButton({ voucherCode, restaurantName, restaurantAddress }: { voucherCode: string; restaurantName?: string; restaurantAddress?: string }) {
+export default function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'url' | 'screenshot'>('url')
   const [reviewUrl, setReviewUrl] = useState('')
   const [screenshotUrl, setScreenshotUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [myLevel, setMyLevel] = useState<MyLevel | null>(null)
-
-  useEffect(() => {
-    if (!open || myLevel) return
-    api.get('/api/review-bonus/my-level').then((res) => {
-      if (res.data?.success && res.data.data) setMyLevel(res.data.data as MyLevel)
-    }).catch(() => { /* fail-soft — 레벨 표시는 부가 정보 */ })
-  }, [open, myLevel])
 
   async function uploadScreenshot(file: File) {
     if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만'); return }
@@ -77,43 +57,25 @@ export default function ReviewBonusButton({ voucherCode, restaurantName, restaur
       </button>
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#0F151D] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">⭐ 카카오맵 후기 작성 보너스</h3>
-            {myLevel && (
-              <div className="flex items-center justify-between bg-gray-50 dark:bg-[#121212] rounded-xl px-3 py-2 mb-3">
-                <span className="text-[11px] font-bold text-gray-900 dark:text-white">🏅 동네 리뷰어 Lv.{myLevel.level} · {myLevel.label}</span>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                  {myLevel.next_level ? `Lv.${myLevel.next_level}까지 후기 ${myLevel.remaining}건` : '최고 레벨'}
-                </span>
-              </div>
-            )}
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
-              매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 + 리뷰 점수(레벨) 지급.
-              <br/>1) 아래 버튼으로 우리 매장 카카오맵 열기 → 후기 작성
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4">
+              매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
+              <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성
               <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐
-              <br/>3) 아래에 제출 → 매장/운영팀 확인 후 지급
-            </p>
-            {kakaoStoreLink(restaurantName, restaurantAddress) && (
-              <a href={kakaoStoreLink(restaurantName, restaurantAddress)!} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 mb-3 rounded-xl bg-[#FEE500] text-[#191600] text-xs font-bold">
-                📍 카카오맵에서 {restaurantName ? `'${restaurantName}'` : '우리 매장'} 열기
-              </a>
-            )}
-            <p className="text-[10px] text-amber-600 dark:text-amber-500 mb-4 leading-relaxed">
-              보너스는 별점·내용과 <b>무관하게</b> 방문 인증에 대해 지급돼요. 솔직하게 써주시고,
-              후기에 &quot;포인트를 받고 작성했어요&quot; 같은 대가 표시를 남겨주시면 카카오맵 정책에도 안전해요.
+              <br/>3) 아래에 제출
             </p>
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200'}`}>스크린샷 제출</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">카카오맵 후기 URL</label>
                 <input value={reviewUrl} onChange={(e) => setReviewUrl(e.target.value)}
                   placeholder="https://place.map.kakao.com/..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1A1A1A]" />
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">매장/운영팀 확인 후 1~3일 내 보너스 지급</p>
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1A2334]" />
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">어드민 검증 후 1~3일 내 보너스 지급</p>
               </div>
             ) : (
               <div>
@@ -124,11 +86,11 @@ export default function ReviewBonusButton({ voucherCode, restaurantName, restaur
                 {screenshotUrl && screenshotUrl.startsWith('data:') && (
                   <img src={screenshotUrl} alt="preview" className="mt-2 max-h-40 rounded" />
                 )}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">매장/운영팀 확인 후 1~3일 내 보너스 지급 (자동검증 통과 시 더 빨라요)</p>
+                <p className="text-[10px] text-emerald-600 mt-1">✨ AI 가 매장명/후기 내용 확인 시 즉시 보너스 지급</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
+              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2A3446] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
                 className="py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}

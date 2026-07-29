@@ -1,0 +1,159 @@
+name: Copy Watch (무단 복제 탐지)
+
+# 🕵️ 2026-07-28 신설 — public 레포는 복제를 *막을* 수 없다. 대신 *탐지*는 자동화된다.
+#   주 1회: ① 새로 생긴 fork ② 외부 레포에 우리 고유 문자열(카나리)이 나타났는지.
+#   발견될 때만 이슈를 만든다 — 조용한 주엔 아무 것도 안 남긴다(알림 피로 방지).
+#   비용: 월 4회 × ~1분. 절차 문서: docs/ops/copy-tracking.md
+#
+# ⚠️ fork 자체는 public 레포의 정상 동작이라 '침해'가 아니다. 이 워크플로의 가치는
+#   "누가 언제 가져갔는지 기록이 남는다" 이지 차단이 아니다. LICENSE 가 사용·배포를 금지한다.
+
+on:
+  schedule:
+    - cron: '20 0 * * 1'   # 매주 월요일 00:20 UTC (09:20 KST)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          # 선택: 코드검색용 PAT(public repo 읽기 권한이면 충분).
+          #   미설정이면 fork 감시만 수행한다 — 워크플로는 실패하지 않는다.
+          COPY_WATCH_TOKEN: ${{ secrets.COPY_WATCH_TOKEN }}
+        with:
+          script: |
+            const OWNER = context.repo.owner, REPO = context.repo.repo
+            const SELF = `${OWNER}/${REPO}`.toLowerCase()
+            const WINDOW_DAYS = 8   // 주간 실행 + 하루 여유(실행 지연·재시도 대비)
+            const since = Date.now() - WINDOW_DAYS * 24 * 3600 * 1000
+
+            // ── ① 새 fork ────────────────────────────────────────────────
+            let freshForks = []
+            try {
+              const forks = await github.paginate(github.rest.repos.listForks, {
+                owner: OWNER, repo: REPO, per_page: 100, sort: 'newest',
+              })
+              freshForks = forks.filter(f => new Date(f.created_at).getTime() > since)
+              core.info(`fork 총 ${forks.length}개 · 최근 ${WINDOW_DAYS}일 신규 ${freshForks.length}개`)
+            } catch (e) {
+              core.warning(`fork 조회 실패: ${e.message}`)
+            }
+
+            // ── ② 카나리 문자열 코드검색 (PAT 있을 때만) ──────────────────
+            // 새로 심을 필요 없이 이미 충분히 특이한 식별자들 — 일반 명사가 아니라 오탐이 적다.
+            const CANARIES = [
+              '__SSR_INITIAL_CURATOR__',
+              'ur-loader-breathe',
+              'product_supply_meta',
+              'DEAL_CATEGORY_ALIAS',
+            ]
+            const hits = []
+            const token = process.env.COPY_WATCH_TOKEN
+            // 🔔 토큰이 죽으면 코드검색만 조용히 멈춘다 — fork 감시는 계속 성공하므로 아무도 모른다.
+            //   유어애즈 자동정비 '무음 정지'(#793)와 같은 클래스라 여기서도 감지해 알린다.
+            let searchOk = 0, authProblem = null
+            if (!token) {
+              core.info('COPY_WATCH_TOKEN 미설정 — 코드검색 생략(fork 감시만 수행)')
+            } else {
+              for (const q of CANARIES) {
+                try {
+                  const res = await fetch(
+                    `https://api.github.com/search/code?q=${encodeURIComponent(`"${q}"`)}&per_page=20`,
+                    { headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/vnd.github+json',
+                        'User-Agent': 'ur-live-copy-watch',
+                    } },
+                  )
+                  if (!res.ok) {
+                    const txt = await res.text().catch(() => '')
+                    // 429/403-rate-limit 은 일시적이라 알리지 않는다(오탐이 되면 알림을 무시하게 된다).
+                    const rateLimited = res.status === 429 || (res.status === 403 && /rate limit|secondary/i.test(txt))
+                    if (!rateLimited && (res.status === 401 || res.status === 403)) {
+                      authProblem = `HTTP ${res.status}`
+                    }
+                    core.warning(`코드검색 "${q}" → HTTP ${res.status}${rateLimited ? ' (rate limit — 일시적)' : ''}`)
+                    continue
+                  }
+                  searchOk++
+                  const json = await res.json()
+                  for (const item of (json.items || [])) {
+                    const full = (item.repository?.full_name || '').toLowerCase()
+                    if (!full || full === SELF) continue   // 우리 레포는 당연히 나온다
+                    hits.push({ canary: q, repo: item.repository.full_name,
+                                fork: !!item.repository.fork, path: item.path,
+                                url: item.html_url })
+                  }
+                } catch (e) {
+                  core.warning(`코드검색 "${q}" 실패: ${e.message}`)
+                }
+              }
+              core.info(`코드검색 외부 히트 ${hits.length}건`)
+            }
+
+            // 토큰은 있는데 **한 번도 성공하지 못했고** 인증 오류였다면 = 토큰이 죽은 것.
+            const tokenDead = !!token && searchOk === 0 && !!authProblem
+
+            // ── ③ 발견된 게 없으면 조용히 종료 ────────────────────────────
+            if (!freshForks.length && !hits.length && !tokenDead) {
+              core.info('신규 fork·외부 히트 없음 — 이슈 생성 안 함')
+              return
+            }
+
+            // ── ④ 보고 ───────────────────────────────────────────────────
+            const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+            let body = `🕵️ **무단 복제 감시 결과** (${now} KST)\n\n`
+            if (tokenDead) {
+              body += [
+                `### ⚠️ 코드검색이 멈췄습니다 — \`COPY_WATCH_TOKEN\` 교체 필요 (${authProblem})`,
+                `카나리 문자열 검색이 **한 건도 성공하지 못했습니다.** 토큰이 만료·삭제·무효화된 것으로 보입니다.`,
+                `그동안 **fork 감시만** 동작합니다(외부 레포 복제는 못 잡습니다).`,
+                ``,
+                `**교체**: GitHub → Settings → Developer settings → Personal access tokens →`,
+                `\`Public Repositories (read-only)\` 로 새 토큰 발급 → 레포 Secrets 의 \`COPY_WATCH_TOKEN\` 갱신.`,
+                `⚠️ 권한을 넓게 주지 말 것 — 읽기 전용이면 유출돼도 피해가 사실상 없다.`,
+                ``,
+              ].join('\n')
+            }
+            if (freshForks.length) {
+              body += `### 새 fork ${freshForks.length}건 (최근 ${WINDOW_DAYS}일)\n`
+              for (const f of freshForks.slice(0, 30)) {
+                body += `- [${f.full_name}](${f.html_url}) — ${f.owner?.login} · ${f.created_at.slice(0, 10)}\n`
+              }
+              body += `\n`
+            }
+            if (hits.length) {
+              body += `### 외부 레포에서 우리 고유 문자열 발견 ${hits.length}건\n`
+              for (const h of hits.slice(0, 30)) {
+                body += `- \`${h.canary}\` → [${h.repo}](${h.url}) \`${h.path}\`${h.fork ? ' _(fork)_' : ''}\n`
+              }
+              body += `\n`
+            }
+            body += [
+              `---`,
+              `**판단 기준**: fork 자체는 public 레포의 정상 동작이라 침해가 아니다.`,
+              `문제는 **사용·배포**이고 그건 [LICENSE](../blob/main/LICENSE)가 금지한다.`,
+              `실제 서비스로 배포된 정황이 보이면 증거(URL·스크린샷·날짜)를 보존하고 절차는`,
+              `[docs/ops/copy-tracking.md](../blob/main/docs/ops/copy-tracking.md) 참조.`,
+            ].join('\n')
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: OWNER, repo: REPO, state: 'open', labels: 'copy-watch',
+            })
+            if (open.length) {
+              await github.rest.issues.createComment({
+                owner: OWNER, repo: REPO, issue_number: open[0].number, body,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: OWNER, repo: REPO,
+                title: `🕵️ 무단 복제 감시 — ${now} KST`,
+                body, labels: ['copy-watch'],
+              })
+            }

@@ -29,7 +29,7 @@ export default function JoinChoicePage() {
   return (
     <>
       <SEO title="시작하기 - 유어딜" description="동네 핫플, 친구랑 공동구매. 매장 가입 또는 로그인으로 시작하세요." url="/join" />
-      <div className="min-h-screen bg-[#020202] text-white px-4 py-10">
+      <div className="min-h-screen bg-[#0F151D] text-white px-4 py-10">
         <div className="ur-content-narrow mx-auto">
           <h1 className="text-2xl font-bold mb-1">동네 핫플, 친구랑 공동구매</h1>
           <p className="text-gray-400 text-sm mb-8">어떻게 시작하시겠어요?</p>
@@ -39,7 +39,7 @@ export default function JoinChoicePage() {
               <Link
                 key={ch.to}
                 to={ch.to}
-                className="block rounded-2xl bg-[#121212] border border-[#1A1A1A] p-5 hover:border-[#2A2A2A] transition-colors"
+                className="block rounded-2xl bg-[#1A2334] border border-[#2A3446] p-5 hover:border-[#2A3446] transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="shrink-0 w-12 h-12 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-2xl">

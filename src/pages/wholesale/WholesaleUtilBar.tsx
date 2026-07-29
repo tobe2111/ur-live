@@ -98,6 +98,16 @@ export default function WholesaleUtilBar() {
             </>
           ) : (
             <>
+              {/* 🏷️ 2026-07-06 (대표 — 상단바에 로그인 역할 표시): 판매사(seller_token) vs 제조사(supplier_token)
+                  역할 배지. 신원 칩(md+)은 숨겨져도 배지는 **항상**(모바일 포함) 보여 로그인 종류를 즉시 인지. */}
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold whitespace-nowrap"
+                style={loggedIn
+                  ? { background: 'rgba(255,255,255,0.14)', color: '#fff' }
+                  : { background: 'rgba(14,165,233,0.22)', color: '#7dd3fc' }}>
+                {loggedIn
+                  ? <><Store className="w-3 h-3" strokeWidth={2} />{t('wholesale.role.distributor', { defaultValue: '판매사' })}</>
+                  : <><Factory className="w-3 h-3" strokeWidth={2} />{t('wholesale.role.manufacturer', { defaultValue: '제조사' })}</>}
+              </span>
               {/* 신원 + 잔액 칩 (역할별) */}
               {loggedIn ? (
                 <>

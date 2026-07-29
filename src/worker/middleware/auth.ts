@@ -2,7 +2,8 @@
  * Authentication Middleware
  * 
  * Provides authentication and authorization middleware for API routes
- * Supports JWT (seller/admin) and Firebase (users) authentication
+ * Supports JWT (seller/admin) and httpOnly session cookie (users — Kakao) authentication
+ * 🔒 2026-07-28: Firebase 수용 경로 제거 — 아래 requireAuth 주석 참조
  * 
  * Created: 2026-03-09
  * Purpose: Backend refactoring - Centralized auth middleware
@@ -106,172 +107,12 @@ async function verifyJWT(
 }
 
 /**
- * Firebase JWK 공개키 캐시 (Cloudflare Worker 인스턴스 수명 동안 유지)
- * JWK 엔드포인트 사용: X.509 PEM 대신 Web Crypto API와 직접 호환되는 JWK 형식
+ * 🔒 2026-07-28: Firebase ID token 검증기 제거 (verifyFirebaseToken / JWK 캐시 / base64 헬퍼).
+ *   수용 경로를 requireAuth·optionalAuth·auth-token.routes 에서 모두 닫아 호출자가 없다.
+ *   함수만 남기면 다음 세션이 '있으니 쓰자' 로 되살릴 수 있어 파일에서 제거한다.
+ *   배경: Firebase 서비스계정 개인키가 archive/ 문서에 3개월간 public 노출(#798) → 그 키로
+ *   임의 uid 로그인이 가능했다. 복원이 필요하면 이 커밋을 revert 할 것.
  */
-const firebaseJwkCache: { keys: JsonWebKey[]; expiresAt: number } = {
-  keys: [],
-  expiresAt: 0,
-};
-
-/**
- * Firebase JWK 공개키 조회 (캐시 포함)
- * JWK 엔드포인트는 Web Crypto importKey('jwk') 와 직접 호환됨
- */
-async function getFirebaseJwkKeys(): Promise<JsonWebKey[]> {
-  const now = Date.now();
-  if (now < firebaseJwkCache.expiresAt && firebaseJwkCache.keys.length > 0) {
-    return firebaseJwkCache.keys;
-  }
-
-  const res = await fetch(
-    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
-    {
-      cf: { cacheTtl: 3600, cacheEverything: true },
-      // 🛡️ 2026-04-22: Firebase JWK 느리면 5초 후 중단 (auth middleware CPU 보호)
-      signal: AbortSignal.timeout(5000),
-    } as RequestInit
-  );
-
-  if (!res.ok) {
-    throw new Error(`Firebase JWK fetch failed: ${res.status}`);
-  }
-
-  const json = await res.json() as { keys: JsonWebKey[] };
-
-  // Cache-Control 헤더에서 max-age 파싱
-  const cacheControl = res.headers.get('cache-control') || '';
-  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
-  const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1] ?? '3600', 10) * 1000 : 3600 * 1000;
-
-  firebaseJwkCache.keys = json.keys;
-  firebaseJwkCache.expiresAt = now + maxAge;
-
-  return json.keys;
-}
-
-/**
- * Base64URL → Uint8Array 변환 (JWT 서명 검증용)
- */
-function base64UrlToUint8Array(base64Url: string): Uint8Array {
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
-  const binary = atob(padded);
-  return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
-}
-
-/**
- * Verify Firebase ID token using Google's public keys (RS256 signature validation)
- *
- * 검증 항목:
- * 1. RS256 서명 검증 (Google 공개키)
- * 2. exp(만료시간) 확인
- * 3. iat(발급시간) 확인 (미래 발급 방지)
- * 4. iss(발급자) 확인
- * 5. aud(수신자) = Firebase Project ID 확인
- * 6. sub(사용자 UID) 존재 확인
- */
-async function verifyFirebaseToken(
-  token: string,
-  projectId: string
-): Promise<JwtPayload | null> {
-  try {
-    if (!projectId) {
-      return null;
-    }
-
-    // JWT 구조 파싱
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const [headerB64, payloadB64, signatureB64] = parts;
-    if (!headerB64 || !payloadB64 || !signatureB64) {
-      return null;
-    }
-
-    // 헤더 파싱
-    const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
-
-    if (header.alg !== 'RS256') {
-      return null;
-    }
-
-    const kid: string = header.kid;
-    if (!kid) {
-      return null;
-    }
-
-    // JWK 공개키 조회
-    const jwkKeys = await getFirebaseJwkKeys();
-    const jwk = jwkKeys.find((k) => (k as { kid?: string }).kid === kid);
-    if (!jwk) {
-      return null;
-    }
-
-    // 서명 검증 (Web Crypto API - JWK 직접 임포트)
-    const publicKey = await crypto.subtle.importKey(
-      'jwk',
-      jwk,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-    const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    const signature = base64UrlToUint8Array(signatureB64);
-
-    const isValid = await crypto.subtle.verify(
-      'RSASSA-PKCS1-v1_5',
-      publicKey,
-      signature.buffer as ArrayBuffer,
-      signedData
-    );
-
-    if (!isValid) {
-      return null;
-    }
-
-    // 페이로드 파싱
-    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
-    const now = Math.floor(Date.now() / 1000);
-
-    // exp 검증
-    if (!payload.exp || payload.exp < now) {
-      return null;
-    }
-
-    // iat 검증 (미래 발급 방지, 10분 허용)
-    if (!payload.iat || payload.iat > now + 600) {
-      return null;
-    }
-
-    // iss 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
-    const expectedIss = `https://securetoken.google.com/${projectId}`;
-    const isAdminSDK = payload.iss && payload.iss.includes('firebase-adminsdk');
-
-    if (!isAdminSDK && payload.iss !== expectedIss) {
-      return null;
-    }
-
-    // aud 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
-    const expectedAud = projectId;
-    const isAdminSDKAud = payload.aud && payload.aud.includes('identitytoolkit.googleapis.com');
-
-    if (!isAdminSDKAud && payload.aud !== expectedAud) {
-      return null;
-    }
-
-    // sub 검증 (UID)
-    if (!payload.sub) {
-      return null;
-    }
-
-    return payload;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Authentication middleware - requires any valid authentication
@@ -279,7 +120,6 @@ async function verifyFirebaseToken(
  * Priority:
  * 1. httpOnly session cookie (ur_session) — user login via Kakao
  * 2. Bearer JWT (seller/admin)
- * 3. Bearer Firebase ID token (user — legacy fallback)
  */
 export function requireAuth() {
   return async (c: Context, next: Next) => {
@@ -323,25 +163,13 @@ export function requireAuth() {
         return next();
       }
 
-      // Try Firebase token (users)
-      const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-      if (firebaseProjectId) {
-        const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-        if (firebasePayload) {
-          const firebaseId = firebasePayload.sub ?? firebasePayload.user_id;
-          if (!firebaseId) {
-            return c.json(unauthorizedResponse('Invalid token: missing user identifier'), 401);
-          }
-          const user: AuthUser = {
-            id: firebaseId as string,
-            email: firebasePayload.email as string,
-            name: firebasePayload.name,
-            type: 'user',
-          };
-          c.set('user', user);
-          return next();
-        }
-      }
+      // 🔒 2026-07-28: Firebase ID token 수용 경로 제거 (대표 확인 "구글 로그인 쓰는 사람 없음").
+      //   왜: Firebase 서비스계정 개인키가 archive/ 문서에 3개월간 public 노출됐고(#798),
+      //   그 키로 [커스텀 토큰 발급 → Firebase 공개 API 로 ID 토큰 교환 → 여기로 제출] 하면
+      //   **임의의 uid 로 로그인**이 됐다. 키 폐기와 별개로 이 문 자체를 닫는다
+      //   (키를 다시 발급해도, 그 프로젝트 토큰이면 누구든 통과하던 구조였다).
+      //   KR 은 카카오 세션 전용이고 GLOBAL 은 미런칭·폐기(#804)라 실사용 경로 없음.
+      //   롤백: 이 블록을 verifyFirebaseToken 호출로 환원(함수는 아래에서 함께 제거됨).
     }
 
     // ── 2. Try httpOnly session cookies (user, seller, admin, agency) ──
@@ -442,6 +270,26 @@ export function requireUserType(...types: UserType[]) {
     const currentUser = c.get('user') as AuthUser;
 
     if (!types.includes(currentUser.type)) {
+      // 🛡️ 2026-07-04 (실사고 — /admin 무한 403): Bearer 가 '요구 타입'(예: admin)을 자칭하는데
+      //   검증 실패(만료/무효)해서 하위 우선순위 신원(예: 소비자 세션쿠키)으로 인증된 경우 —
+      //   의미상 '권한 부족(403)'이 아니라 '토큰 만료(401)'다. 403 을 주면 클라 401-refresh
+      //   인터셉터가 영영 안 돌아 refresh_token 이 있어도 대시보드가 죽은 채 유지된다
+      //   (만료 admin Bearer + 상시 카카오 소비자 쿠키 조합 — 대표 /recover 진단 실측 FORBIDDEN).
+      //   401 이면 인터셉터가 자동 갱신·재시도 → 무개입 자가치유. 서명 검증 없는 디코드지만
+      //   *거부 status 선택*에만 쓰므로 권한 부여와 무관(위조해도 401 vs 403 차이뿐).
+      try {
+        const authHeader = c.req.header('Authorization') || '';
+        const rawBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        const seg = rawBearer.split('.')[1];
+        if (seg) {
+          const b64 = seg.replace(/-/g, '+').replace(/_/g, '/');
+          const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+          const claimType = (JSON.parse(atob(pad)) as { type?: string }).type;
+          if (claimType && types.includes(claimType as UserType) && currentUser.type !== claimType) {
+            return c.json(unauthorizedResponse('토큰이 만료되었습니다. 다시 로그인해주세요'), 401);
+          }
+        }
+      } catch { /* 디코드 실패 — 기존 403 유지 */ }
       return c.json(
         forbiddenResponse(`Access denied. Required user type: ${types.join(' or ')}`),
         403
@@ -513,11 +361,22 @@ export function requireAdminRole(...allowed: AdminRole[]) {
       if (allowed.includes(role)) { await next(); return; }
       return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
     } catch (err) {
-      // role 컬럼 없거나 조회 실패 — 기본은 super 로 fallback (역호환).
-      // 🔐 2026-06-11 (보안 감사 🟡#3): fail-open 이라 finance 게이트가 DB 에러로 무력화 가능 →
-      //   경보 로그(운영 안전상 통과는 유지 — fail-closed 면 정산 마비 위험).
-      try { if (typeof console !== 'undefined') console.error('[requireAdminRole] role 조회 실패 — super fallback (finance 게이트 우회 가능):', String(err)); } catch { /* */ }
-      await next();
+      // 🔐 2026-07-01 (보안 감사 ③): 이전엔 DB 오류 시 super 로 fail-OPEN → 일시적 D1 오류로
+      //   역할 게이트가 무력화(제한역할이 전권 획득)될 수 있었음. 이제 1회 재시도 후 fail-CLOSED.
+      //   (프로덕션은 admins.role 컬럼을 repair-schema/로그인이 보장하므로 정상 경로는 영향 없음.)
+      try {
+        const retry = await (c.env as { DB: D1Database }).DB
+          .prepare('SELECT role FROM admins WHERE id = ?')
+          .bind(String(user.id))
+          .first<{ role?: string }>();
+        const rawRole = retry?.role || 'super';
+        const role = (rawRole === 'super_admin' ? 'super' : rawRole) as AdminRole;
+        if (role === 'super' || allowed.includes(role)) { await next(); return; }
+        return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
+      } catch (err2) {
+        try { if (typeof console !== 'undefined') console.error('[requireAdminRole] role 조회 실패(재시도 포함) — 안전차단(403):', String(err), String(err2)); } catch { /* */ }
+        return c.json(forbiddenResponse('권한 확인 중 일시적 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'ADMIN_ROLE_CHECK_FAILED'), 403);
+      }
     }
   };
 }
@@ -589,20 +448,8 @@ export function optionalAuth() {
       return next();
     }
 
-    // Try Firebase
-    const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-    const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-
-    if (firebasePayload) {
-      const user: AuthUser = {
-        id: (firebasePayload.sub || firebasePayload.user_id) as string,
-        email: firebasePayload.email as string,
-        name: firebasePayload.name,
-        type: 'user',
-      };
-
-      c.set('user', user);
-    }
+    // 🔒 2026-07-28: Firebase 수용 경로 제거 — requireAuth 와 동일 사유(위 주석 참조).
+    //   optionalAuth 는 인증 실패해도 통과시키므로, 여기서는 그냥 익명으로 진행한다.
 
     return next();
   };

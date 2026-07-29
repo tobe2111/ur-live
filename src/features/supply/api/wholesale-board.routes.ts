@@ -24,6 +24,8 @@ import { swallow } from '@/worker/utils/swallow'
 import { resolveMallId } from './wholesale-malls'
 import { resolveDistributorPrice } from '@/lib/distributor-pricing'
 import { loadGradeTable, loadSellerGrade } from './wholesale.routes'
+import { loadMallCommissionPct } from './wholesale-settlement'
+import { sellerMallIdOf } from './wholesale-malls'
 import { intParam } from '@/shared/pagination'
 
 type D1Database = Env['DB']
@@ -157,10 +159,11 @@ wish.get('/', async (c) => {
     }>()
     const rows = results ?? []
     // 🏷️ 등급 공급가 enrich — 카탈로그와 동일 SSOT(resolveDistributorPrice). 공급상품이고 원가>0 일 때만.
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)]) // 🏬 2026-07-04: 몰별 수수료
     const items = rows.map((r) => {
       const distributor_price = r.is_supply_product && r.supply_price > 0
-        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override }).price
+        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct }).price
         : null
       return {
         product_id: r.product_id, created_at: r.created_at, name: r.name, image_url: r.image_url,

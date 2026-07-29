@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +39,7 @@ interface Product {
   image_url: string
   is_active: boolean
   live_stream_title?: string
+  category?: string
   created_at: string
 }
 
@@ -47,6 +49,8 @@ export default function SellerProductsPage() {
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [activeTab, setActiveTab] = useState<'my' | 'supply'>('my')
+  // 🔗 2026-07-02 (대표 #2 — 온라인 상품 판매 ↔ 이용권 철저 분리): '내 상품' 안에서 종류 구분.
+  const [myKind, setMyKind] = useState<'product' | 'voucher'>('product')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.allSettled → useApiQuery 2개(transform 은 select 에서).
   const productsQ = useApiQuery<Product[]>(['seller', 'products-mine'], '/api/seller/products', {
     select: (r: any) => (r?.success ? (r.data || []).filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product) : []),
@@ -66,6 +70,10 @@ export default function SellerProductsPage() {
   })
   const products = productsQ.data ?? []
   const supplyProducts = supplyQ.data ?? []
+  // 🔗 2026-07-02 (#2): 온라인 상품(쇼핑몰) vs 이용권(오프라인 카테고리) 분리 — SSOT isVoucherCategory.
+  const myOnline = products.filter(p => !isVoucherCategory(p.category || ''))
+  const myVouchers = products.filter(p => isVoucherCategory(p.category || ''))
+  const displayList = activeTab === 'supply' ? supplyProducts : (myKind === 'voucher' ? myVouchers : myOnline)
   const loading = productsQ.isLoading || supplyQ.isLoading
   const error = productsQ.isError ? t('seller.productListLoadFailed') : ''
   const loadProducts = () => { productsQ.refetch(); supplyQ.refetch() }
@@ -206,13 +214,36 @@ export default function SellerProductsPage() {
           </button>
         </div>
 
+        {/* 🔗 2026-07-02 (대표 #2 — 온라인 상품 ↔ 이용권 철저 분리): '내 상품' 종류 서브탭.
+            온라인 상품(쇼핑몰)이 주인공, 이용권은 부가 채널로 명확히 구분. */}
+        {activeTab === 'my' && (
+          <div className="mb-4 inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+            <button
+              onClick={() => setMyKind('product')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                myKind === 'product' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              🛍️ {t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
+            </button>
+            <button
+              onClick={() => setMyKind('voucher')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                myKind === 'voucher' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              🎟️ {t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
+            </button>
+          </div>
+        )}
+
         {/* Loading */}
         {loading ? (
           <DashboardLoading variant="skeleton" rows={4} />
         ) : (
           /* Products List */
           <div>
-            {(activeTab === 'my' ? products : supplyProducts).length === 0 ? (
+            {displayList.length === 0 ? (
               <DashboardEmptyState
                 icon={<Package className="h-7 w-7" />}
                 title={t('seller.noProductsRegistered')}
@@ -243,7 +274,7 @@ export default function SellerProductsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {(activeTab === 'my' ? products : supplyProducts).map((product) => (
+                      {displayList.map((product) => (
                         <tr key={product.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
@@ -325,7 +356,7 @@ export default function SellerProductsPage() {
 
                 {/* Mobile Card View - Shown on mobile/tablet */}
                 <div className="lg:hidden space-y-3 sm:space-y-4">
-                  {(activeTab === 'my' ? products : supplyProducts).map((product) => (
+                  {displayList.map((product) => (
                     <div key={product.id} className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
                       <div className="flex gap-3 sm:gap-4">
                         {/* Product Image */}

@@ -3,7 +3,7 @@
  *
  * 모드 3종:
  *  - 'scan_only'  : 직원 확인만 — 손님 셀프 사용 비활성(QR 스캔/코드 직접입력만). 가장 엄격.
- *  - 'store_code' : 셀프 사용 시 매장 확인코드(4자리, 카운터 스티커) 입력 필수 — 매장에 실제
+ *  - 'store_code' : 셀프 사용 시 매장 확인코드(숫자, 카운터 스티커 — 신규 발급 6자리, 기존 4자리 유효) 입력 필수 — 매장에 실제
  *                   있어야만 사용 가능(원격 오사용·60초 취소 악용 구조적 차단). 유저 셀프취소 불가.
  *  - 'self_free'  : 자유 셀프 사용(현행 기본 — 카운터 느슨한 매장). 60초 셀프취소 허용.
  * 미설정 매장 = 'self_free' (기존 동작 보존).
@@ -27,11 +27,18 @@ export async function ensureRedemptionSettingsTable(DB: D1Database): Promise<voi
   } catch { /* exists */ }
 }
 
-/** 매장 확인코드 생성 — 4자리 숫자(스티커/구두 전달용, 혼동 문자 없음). */
+/**
+ * 매장 확인코드 생성 — 6자리 숫자(스티커/구두 전달용, 혼동 문자 없음).
+ *
+ * 🛡️ 2026-07-11 보안(R1, docs/design/pre-launch-security-audit-2026-07.md): 4자리(9,000조합)
+ *   → 6자리(900,000조합) 확대 — self-redeem 원격 브루트포스 여지 축소(rate limit 와 이중 방어).
+ *   ⚠️ 하위호환: 검증부(self-redeem)는 문자열 정확일치라 기존 발급된 4자리 코드도 그대로 유효
+ *   (재발급 불필요) — 이 함수는 신규/재발급분에만 적용되어 그 분부터 6자리로 강해짐.
+ */
 export function generateStoreCode(): string {
   const buf = new Uint32Array(1)
   crypto.getRandomValues(buf)
-  return String(1000 + (buf[0] % 9000))
+  return String(100000 + (buf[0] % 900000))
 }
 
 export async function getRedemptionSettings(

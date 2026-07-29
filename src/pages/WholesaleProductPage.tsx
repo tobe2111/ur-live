@@ -169,7 +169,7 @@ export default function WholesaleProductPage() {
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
@@ -185,7 +185,7 @@ export default function WholesaleProductPage() {
     // 현재 수량 구간 단가 스냅샷(표시용 — 결제액은 체크아웃에서 서버 재계산 SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
     navigate('/wholesale/checkout')
   }
 
@@ -312,7 +312,7 @@ export default function WholesaleProductPage() {
               <div className="flex items-center gap-2 text-[14px] font-bold" style={{ color: WT.ink }}>
                 <Lock className="w-4 h-4" style={{ color: WT.brand }} /> 등급 공급가는 로그인 후 확인할 수 있어요
               </div>
-              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>판매사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
+              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>사업자 정보 확인 후 승인되면 내 등급 공급가로 사입할 수 있어요</p>
               <div className="mt-3 flex gap-2.5">
                 <button onClick={goLogin} className="flex-1 h-12 rounded-xl text-[15px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>로그인</button>
                 <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>판매사 가입</button>

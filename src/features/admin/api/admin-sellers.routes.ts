@@ -9,6 +9,7 @@
  * - GET    /sellers/:id                      — 판매자 상세
  * - PATCH  /sellers/:id/business-info/approve — 사업자 정보 승인
  * - PATCH  /sellers/:id/business-info/reject  — 사업자 정보 반려
+ * - POST   /sellers/:id/verify-account        — 계좌 재검증 승인 (sellers.is_verified=1 복원 → 출금 재개)
  * - PATCH  /sellers/:id/approve              — 판매자 승인
  * - PATCH  /sellers/:id/reject               — 판매자 거부
  * - DELETE /sellers/:id                      — 판매자 정지 (soft delete)
@@ -151,7 +152,9 @@ adminSellersRoutes.get('/sellers/pending', cors(), async (c) => {
   }
 });
 
-adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
+// 🛡️ 2026-07-02 (감사 #4): :id 를 숫자로 제약 → 정적 경로(/sellers/unlinked 등)를 param 이
+//   가로채 400 내던 shadow 제거. 숫자 id 만 이 핸들러, 그 외는 뒤에 등록된 정적 라우트로 흘러감.
+adminSellersRoutes.get('/sellers/:id{[0-9]+}', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
@@ -243,6 +246,68 @@ adminSellersRoutes.patch('/sellers/:id/business-info/reject', cors(), async (c) 
     `).bind(sellerId).run();
     await writeAuditLog(c, { action: 'reject_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: false, reason } });
     return c.json({ success: true, message: '사업자 정보를 반려했습니다' });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-07-11 (런칭 前 보안감사 R4 — 계좌 재검증 복원 경로 신설): 셀러가 정산 계좌를 바꾸면
+//   seller-profile.routes.ts 가 sellers.is_verified=0 으로 내려 출금을 차단하는데
+//   (seller-settlements.routes.ts ACCOUNT_REVERIFICATION_REQUIRED 412), 이를 1 로 복원하는 코드가
+//   저장소에 없었음 → 계좌 바꾼 셀러가 정상 경로로 출금 재개 불가(수동 DB 조작 의존).
+//   위 business-info/approve 는 별개 테이블(seller_business_info.is_verified) + '이미 승인' 400 가드라
+//   계좌-변경 셀러의 통상 상태(사업자정보 기승인)에선 재사용 불가 → 별도 명시 엔드포인트.
+//   어드민이 변경된 계좌(예금주·계좌번호)를 육안 대조 확인한 뒤 이 버튼으로 재검증 승인.
+//   ⚠️ NON-MONEY: 검증 플래그 복원 + 알림만 — 정산 금액/payout 로직 무변경.
+//   (인증: worker/index.ts adminApp 체인 — CORS + IP whitelist + requireAdmin() + audit.)
+adminSellersRoutes.post('/sellers/:id/verify-account', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+
+    // 현재 값 조회 (감사로그 before + 존재 확인). is_verified 컬럼이 없는 구 env 는
+    // 출금 게이트 자체가 꺼져 있으므로(settlements 쪽 SELECT .catch) 복원할 것이 없음 — no-op 성공.
+    let row: { id: number; is_verified: number | null } | null = null;
+    let hasColumn = true;
+    try {
+      row = await DB.prepare('SELECT id, is_verified FROM sellers WHERE id = ?')
+        .bind(sellerId).first<{ id: number; is_verified: number | null }>();
+    } catch {
+      hasColumn = false;
+      row = await DB.prepare('SELECT id FROM sellers WHERE id = ?')
+        .bind(sellerId).first<{ id: number; is_verified: number | null }>();
+    }
+    if (!row) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    if (!hasColumn) {
+      return c.json({ success: true, data: { id: Number(sellerId), is_verified: 1, noop: true }, message: '이 환경엔 계좌 재검증 게이트가 없습니다 (복원 불필요)' });
+    }
+    if (Number(row.is_verified ?? 1) === 1) {
+      // 멱등 — 이미 검증 상태면 알림 중복 없이 성공 반환.
+      return c.json({ success: true, data: { id: Number(sellerId), is_verified: 1, already: true }, message: '이미 재검증된 계좌입니다' });
+    }
+
+    // ⚠️ check-sql-column-exists 가 warn 하는 known false-positive: sellers.is_verified 는
+    //   레포 DDL 미기록 production-drift 컬럼 (기존 setter 인 seller-profile.routes.ts 는 동적 UPDATE 라
+    //   분석 제외, settlements 게이트는 .catch 방어). 이 핸들러는 위 hasColumn 가드로 컬럼 없는 env 에선
+    //   여기 도달 자체가 안 함 — 런타임 'no such column' 불가.
+    await DB.prepare(`UPDATE sellers SET is_verified = 1, updated_at = datetime('now') WHERE id = ?`)
+      .bind(sellerId).run();
+
+    await writeAuditLog(c, {
+      action: 'verify_seller_account',
+      targetType: 'seller',
+      targetId: sellerId,
+      before: { is_verified: 0 },
+      after: { is_verified: 1 },
+    });
+
+    // 셀러에게 출금 재개 통지 (fail-soft — 알림 실패가 복원을 막지 않음).
+    createDashboardNotification(DB, 'seller', String(sellerId), 'account_verified',
+      '계좌 재검증 완료', '변경하신 정산 계좌 확인이 완료되어 정산 신청(출금)이 다시 가능합니다',
+      '/seller/settlements').catch(() => { /* fail-soft */ });
+
+    return c.json({ success: true, data: { id: Number(sellerId), is_verified: 1 } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -427,7 +492,10 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
       const sellerName = sellerInfo[0]?.name || '';
       if (phone) {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
-        sendSystemAlimtalk(c.env, phone, 'seller_approved',
+        // 🔔 2026-07-01: 카카오 알림톡은 1코드=1고정본문 → 신규승인/재활성을 별도 tpl_code 로 분리
+        //   (seller_approved / seller_reactivated). 각 본문이 승인 템플릿과 글자 일치해야 발송됨.
+        sendSystemAlimtalk(c.env, phone,
+          isReactivation ? 'seller_reactivated' : 'seller_approved',
           isReactivation
             ? `[유어딜] ${sellerName}님,\n계정이 다시 활성화되었어요.\n판매를 이어가실 수 있습니다.`
             : `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
@@ -657,7 +725,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
       token = generateStoreOwnerToken();
       try { await DB.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, product.id).run(); } catch { /* graceful */ }
     }
-    const statsUrl = `https://live.ur-team.com/store/stats/${product.id}?t=${token}`;
+    const statsUrl = `https://urdeal.kr/store/stats/${product.id}?t=${token}`;
     await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',
       productName: product.name,
@@ -832,7 +900,11 @@ async function sendBusinessRegistrationAlimtalk(
   const apiKey = env.ALIGO_API_KEY
   const userId = env.ALIGO_USER_ID
   const senderKey = env.ALIGO_SENDER_KEY
-  const templateCode = env.ALIGO_BUSINESS_REGISTRATION_RESULT || 'business_registration_result'
+  // 🔔 2026-07-01: 승인/반려 본문이 완전히 달라 1코드=1본문 원칙상 tpl_code 분리
+  //   (business_registration_verified / business_registration_rejected). env override 도 action 별.
+  const templateCode = action === 'verify'
+    ? (env.ALIGO_BUSINESS_REGISTRATION_VERIFIED || 'business_registration_verified')
+    : (env.ALIGO_BUSINESS_REGISTRATION_REJECTED || 'business_registration_rejected')
   if (!apiKey || !userId || !senderKey) return  // env 미설정 → skip
 
   const seller = await env.DB.prepare(

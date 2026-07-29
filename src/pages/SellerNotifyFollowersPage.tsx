@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, Bell, Loader2, Megaphone, AlertCircle } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -121,7 +122,9 @@ export default function SellerNotifyFollowersPage() {
               { key: 'live_start', label: '📺 라이브', desc: '라이브 시작 알림' },
               { key: 'group_buy', label: '🔥 공구', desc: '공동구매 시작' },
               { key: 'custom', label: '✍️ 커스텀', desc: '직접 작성' },
-            ] as Array<{ key: Reason; label: string; desc: string }>).map(p => (
+            ] as Array<{ key: Reason; label: string; desc: string }>)
+              // 🏭 라이브커머스 영구중단: '라이브 시작' 발송 프리셋 숨김.
+              .filter(p => !(LIVE_COMMERCE_SUSPENDED && p.key === 'live_start')).map(p => (
               <button
                 key={p.key}
                 onClick={() => selectPreset(p.key)}

@@ -8,6 +8,7 @@ import { isKorea } from '@/config/region'
 import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -105,19 +106,17 @@ export default function RegisterPage() {
     }
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#111] mx-auto"></div>
-          <p className="mt-4 text-[13px] text-[#999]">{t('register.loading', { defaultValue: '로딩 중...' })}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+        <BrandLoader fullScreen />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] flex flex-col items-center justify-center px-5 py-12">
       <SEO title={t('register.seoTitle', { defaultValue: '회원가입 - 유어딜' })} description={t('register.seoDesc', { defaultValue: '유어딜에 가입하고 라이브 쇼핑을 시작하세요' })} url="/register" noindex />
       <div className="w-full max-w-[360px] md:max-w-[420px]">
 

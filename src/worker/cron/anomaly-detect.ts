@@ -201,6 +201,71 @@ async function detectRapidSignupsSameIp(DB: D1Database): Promise<void> {
   }
 }
 
+// 🛡️ 2026-07-12 (§0-4 커미션 레일 이상탐지 — flip 선행 조건, 대표 [UNLOCK]):
+//   기존 cron 은 후원+가입 IP 만 봄 — 커미션/이용권 사용 패턴 탐지 0 (pre-flip-risk-audit §③-4).
+//   promo flip 후 커미션 %가 커지면 아래 두 패턴이 주 어뷰즈 벡터:
+
+// Pattern E: 같은 referrer 24h ≥5건 어필리에이트 적립 (부계정 뭉치/공모 의심 — 시스템 전역)
+async function detectCommissionVelocity(DB: D1Database): Promise<void> {
+  const rows = await DB.prepare(`
+    SELECT referrer_id, COUNT(*) AS cnt, COALESCE(SUM(commission), 0) AS total
+    FROM affiliate_earnings
+    WHERE created_at >= ? AND COALESCE(status, '') != 'refunded'
+    GROUP BY referrer_id
+    HAVING cnt >= 5
+    LIMIT 100
+  `).bind(SINCE_24H()).all<{ referrer_id: string; cnt: number; total: number }>().catch(() => null);
+
+  for (const r of rows?.results || []) {
+    try {
+      const dup = await DB.prepare(`
+        SELECT 1 AS x FROM abuse_detections
+        WHERE pattern = 'commission_velocity_referrer' AND user_id = ?
+          AND created_at >= datetime('now', '-24 hours')
+        LIMIT 1
+      `).bind(r.referrer_id).first<{ x: number }>();
+      if (dup) continue;
+    } catch { /* fall through */ }
+    const severity = r.cnt >= 15 ? 'high' : r.cnt >= 8 ? 'medium' : 'low';
+    await flagAbuse(DB, 'commission_velocity_referrer', {
+      referrerId: r.referrer_id, count: r.cnt, totalKrw: r.total, windowHours: 24,
+    }, severity, r.referrer_id);
+  }
+}
+
+// Pattern F: 구매→사용 간격 초단기(≤10분) 이용권이 같은 매장에 24h ≥3건 (매장 공모 콤보 시그널 —
+//   §0-1 확정보류 게이트의 관측 짝: 게이트가 OFF 여도 이 탐지는 항상 돈다)
+async function detectVoucherFastUse(DB: D1Database): Promise<void> {
+  const rows = await DB.prepare(`
+    SELECT p.seller_id AS seller_id, COUNT(*) AS cnt
+    FROM vouchers v
+    JOIN orders o ON o.id = v.order_id
+    JOIN products p ON p.id = v.product_id
+    WHERE v.status = 'used' AND v.used_at >= ?
+      AND (julianday(v.used_at) - julianday(o.created_at)) * 24 * 60 <= 10
+      AND p.seller_id IS NOT NULL
+    GROUP BY p.seller_id
+    HAVING cnt >= 3
+    LIMIT 100
+  `).bind(SINCE_24H()).all<{ seller_id: number; cnt: number }>().catch(() => null);
+
+  for (const r of rows?.results || []) {
+    try {
+      const dup = await DB.prepare(`
+        SELECT 1 AS x FROM abuse_detections
+        WHERE pattern = 'voucher_fast_use_store' AND ref_type = 'seller' AND ref_id = ?
+          AND created_at >= datetime('now', '-24 hours')
+        LIMIT 1
+      `).bind(String(r.seller_id)).first<{ x: number }>();
+      if (dup) continue;
+    } catch { /* fall through */ }
+    const severity = r.cnt >= 10 ? 'high' : r.cnt >= 5 ? 'medium' : 'low';
+    await flagAbuse(DB, 'voucher_fast_use_store', {
+      sellerId: r.seller_id, count: r.cnt, maxIntervalMin: 10, windowHours: 24,
+    }, severity, undefined, 'seller', String(r.seller_id));
+  }
+}
+
 export async function handleAnomalyDetection(env: Env): Promise<void> {
   const DB = env.DB;
   if (!DB) return;
@@ -240,6 +305,14 @@ export async function handleAnomalyDetection(env: Env): Promise<void> {
   // 전역 IP 패턴
   await detectRapidSignupsSameIp(DB).catch((err) => {
     logError('[cron:anomaly-detect] rapid_signups failed', { error: String(err) });
+  });
+
+  // §0-4 커미션 레일 패턴 (전역)
+  await detectCommissionVelocity(DB).catch((err) => {
+    logError('[cron:anomaly-detect] commission_velocity failed', { error: String(err) });
+  });
+  await detectVoucherFastUse(DB).catch((err) => {
+    logError('[cron:anomaly-detect] voucher_fast_use failed', { error: String(err) });
   });
 
   logInfo('[cron:anomaly-detect] done', {

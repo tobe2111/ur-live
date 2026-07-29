@@ -35,6 +35,18 @@ const CATEGORY_EMOJI: Record<string, string> = {
   pet_voucher: '🐶',
   stay_voucher: '🏨',
   activity_voucher: '🎯',
+  etc_voucher: '🎫',
+}
+
+// 🏷️ 2026-07-07: 카테고리 라벨(이용권 명칭 SSOT 대칭 — "식사/미용/…")
+const CATEGORY_LABEL: Record<string, string> = {
+  meal_voucher: '식사 이용권',
+  beauty_voucher: '미용 이용권',
+  health_voucher: '건강 이용권',
+  pet_voucher: '반려 이용권',
+  stay_voucher: '숙소 이용권',
+  activity_voucher: '액티비티 이용권',
+  etc_voucher: '이용권',
 }
 
 function escapeXml(s: string): string {
@@ -50,68 +62,68 @@ function getMaxTierDiscount(tiersJson: string | null): number {
   } catch { return 0 }
 }
 
-function generateSVG(p: ProductForOG): string {
+/** 상대 이미지 URL → 절대 (Kakao/OG 스크래퍼가 fetch 가능하게). http 아니면 origin 접두. */
+function absImageUrl(raw: string | null, origin: string): string {
+  const s = String(raw || '')
+  if (!s) return ''
+  if (s.startsWith('http')) return s
+  if (s.startsWith('/')) return `${origin}${s}`
+  return ''
+}
+
+/**
+ * 🔎 2026-07-07 (대표 "이용권 메인 이미지 + 이용권 문구로"): 즉시판매 이용권 모델에 맞춰 재설계.
+ *   좌측 = 매장 실사진(네이버지도/사장 업로드) 히어로 + 우측 = 이용권 라벨·매장명·상품명·가격·할인.
+ *   폐기: 공동구매 진행바/목표 N명/참여중/딜~ (동적 tier 모델 잔재 — 즉시판매엔 부정확).
+ */
+function generateSVG(p: ProductForOG, imageAbs: string): string {
   const emoji = CATEGORY_EMOJI[p.category] || '🎫'
-  const progress = p.group_buy_target > 0
-    ? Math.min(100, Math.round((p.group_buy_current / p.group_buy_target) * 100))
-    : 0
+  const label = CATEGORY_LABEL[p.category] || '이용권'
   const maxDiscount = getMaxTierDiscount(p.group_buy_tiers)
-  const isAchieved = p.group_buy_status === 'achieved'
-  const remaining = Math.max(0, p.group_buy_target - p.group_buy_current)
-  const truncatedName = p.name.length > 32 ? p.name.slice(0, 30) + '…' : p.name
-  const truncatedRestaurant = (p.restaurant_name || '').length > 28
-    ? (p.restaurant_name || '').slice(0, 26) + '…'
-    : (p.restaurant_name || '')
+  // 상품명 2줄 wrap (한 줄 ~13자)
+  const name = p.name
+  const line1 = name.length > 13 ? name.slice(0, 13) : name
+  const line2 = name.length > 13 ? (name.length > 25 ? name.slice(13, 24) + '…' : name.slice(13)) : ''
+  const store = (p.restaurant_name || '').length > 22 ? (p.restaurant_name || '').slice(0, 21) + '…' : (p.restaurant_name || '')
+  const hasPhoto = !!imageAbs
+
+  const photoPanel = hasPhoto
+    ? `<clipPath id="photoClip"><rect x="0" y="0" width="520" height="630"/></clipPath>
+       <image href="${escapeXml(imageAbs)}" x="0" y="0" width="520" height="630" clip-path="url(#photoClip)" preserveAspectRatio="xMidYMid slice"/>`
+    : `<rect x="0" y="0" width="520" height="630" fill="#F3F4F6"/>
+       <text x="260" y="345" font-size="140" text-anchor="middle" font-family="-apple-system,system-ui,sans-serif">${emoji}</text>`
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f3f4f6"/>
-      <stop offset="100%" stop-color="#FFFFFF"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#6b7280"/>
-      <stop offset="100%" stop-color="#6b7280"/>
-    </linearGradient>
-  </defs>
-
   <!-- 배경 -->
-  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="#FFFFFF"/>
 
-  <!-- 좌측 80px 핑크 바 -->
-  <rect x="0" y="0" width="14" height="630" fill="url(#accent)"/>
+  <!-- 좌측 매장 실사진 히어로 -->
+  ${photoPanel}
 
-  <!-- 카테고리 emoji + 라벨 -->
-  <text x="80" y="120" font-size="80" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif">${emoji}</text>
-  <text x="190" y="100" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280" letter-spacing="3">공동구매</text>
-  ${truncatedRestaurant ? `<text x="190" y="130" font-size="22" font-family="-apple-system,system-ui,sans-serif" font-weight="500" fill="#6B7280">${escapeXml(truncatedRestaurant)}</text>` : ''}
+  <!-- 우측 텍스트 패널 -->
+  <g>
+    <!-- 이용권 라벨 pill -->
+    <rect x="580" y="80" width="${170 + label.length * 6}" height="52" rx="26" fill="#111827"/>
+    <text x="606" y="115" font-size="26" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF">${emoji} ${escapeXml(label)}</text>
 
-  <!-- 상품명 (큰 글씨) -->
-  <text x="80" y="220" font-size="62" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#111827">${escapeXml(truncatedName)}</text>
+    <!-- 매장명 -->
+    ${store ? `<text x="580" y="200" font-size="30" font-family="-apple-system,system-ui,sans-serif" font-weight="600" fill="#6B7280">${escapeXml(store)}</text>` : ''}
 
-  <!-- 가격 + 할인 -->
-  <text x="80" y="310" font-size="56" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="url(#accent)">${p.price.toLocaleString('ko-KR')}<tspan font-size="32" font-weight="700">딜~</tspan></text>
-  ${maxDiscount > 0 ? `
-  <rect x="380" y="265" width="180" height="56" rx="28" fill="#6b7280"/>
-  <text x="470" y="304" font-size="28" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF" text-anchor="middle">최대 ${maxDiscount}% 할인</text>` : ''}
+    <!-- 상품명 (최대 2줄) -->
+    <text x="580" y="278" font-size="60" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#111827">${escapeXml(line1)}</text>
+    ${line2 ? `<text x="580" y="348" font-size="60" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#111827">${escapeXml(line2)}</text>` : ''}
 
-  <!-- 진행 현황 박스 -->
-  <rect x="80" y="380" width="1040" height="160" rx="20" fill="#FFFFFF" stroke="#e5e7eb" stroke-width="2"/>
+    <!-- 가격 + 할인 배지 -->
+    <text x="580" y="${line2 ? 450 : 420}" font-size="58" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#111827">${p.price.toLocaleString('ko-KR')}<tspan font-size="34" font-weight="700" fill="#6B7280">원</tspan></text>
+    ${maxDiscount > 0 ? `<rect x="${580 + String(p.price.toLocaleString('ko-KR')).length * 34 + 60}" y="${line2 ? 408 : 378}" width="164" height="54" rx="27" fill="#DC2626"/>
+    <text x="${580 + String(p.price.toLocaleString('ko-KR')).length * 34 + 142}" y="${line2 ? 446 : 416}" font-size="28" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF" text-anchor="middle">${maxDiscount}% 할인</text>` : ''}
 
-  <text x="110" y="425" font-size="24" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#374151">
-    ${isAchieved ? '🎉 공구 성공!' : remaining === 1 ? '🔥 1명만 더 모이면 성공!' : `${p.group_buy_current}명 참여중 · ${remaining}명 남음`}
-  </text>
-  <text x="1090" y="425" font-size="40" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#6b7280" text-anchor="end">${progress}%</text>
+    <!-- 사용 안내 -->
+    <text x="580" y="${line2 ? 520 : 490}" font-size="26" font-family="-apple-system,system-ui,sans-serif" font-weight="600" fill="#374151">📍 매장에서 QR·코드로 바로 사용</text>
+  </g>
 
-  <!-- 진행 바 -->
-  <rect x="110" y="450" width="980" height="20" rx="10" fill="#F3F4F6"/>
-  <rect x="110" y="450" width="${Math.max(20, 980 * progress / 100)}" height="20" rx="10" fill="${isAchieved ? '#6b7280' : 'url(#accent)'}"/>
-
-  <!-- 목표 텍스트 -->
-  <text x="110" y="510" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF">목표 ${p.group_buy_target}명</text>
-
-  <!-- 우측 하단 브랜드 -->
-  <text x="1120" y="600" font-size="22" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#9CA3AF" text-anchor="end">유어딜 · live.ur-team.com</text>
+  <!-- 하단 브랜드 -->
+  <text x="580" y="588" font-size="24" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#9CA3AF">유어딜 · urdeal.kr</text>
 </svg>`
 }
 
@@ -133,7 +145,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
   const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 링크샵`).slice(0, 80))
   const profile = curator.profile_image
     ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
-    : `<circle cx="160" cy="160" r="80" fill="#1A1A1A"/>
+    : `<circle cx="160" cy="160" r="80" fill="#1A2334"/>
        <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#6b7280" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
 
   // 핀 thumbnail grid — 우측 4칸 (2x2)
@@ -145,15 +157,15 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
     const y = 80 + row * 240
     return url
       ? `<image href="${escapeXml(url)}" x="${x}" y="${y}" width="220" height="220" preserveAspectRatio="xMidYMid slice"/>`
-      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#121212" rx="12"/>`
+      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#1A2334" rx="12"/>`
   }).join('\n  ')
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <clipPath id="cprofile"><circle cx="160" cy="160" r="80"/></clipPath>
   </defs>
-  <rect width="1200" height="630" fill="#020202"/>
-  <rect x="40" y="40" width="1120" height="550" fill="#0A0A0A" rx="24" stroke="#1A1A1A" stroke-width="2"/>
+  <rect width="1200" height="630" fill="#0F151D"/>
+  <rect x="40" y="40" width="1120" height="550" fill="#0F151D" rx="24" stroke="#1A2334" stroke-width="2"/>
 
   ${profile}
 
@@ -164,7 +176,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
   ${tiles}
 
   <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 링크샵</text>
-  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">live.ur-team.com/u/${safeHandle}</text>
+  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${safeHandle}</text>
 </svg>`
 }
 
@@ -179,7 +191,7 @@ ogRoutes.get('/curator/:handle', async (c) => {
 
     if (!curator) {
       return new Response(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#020202"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#9CA3AF" text-anchor="middle">큐레이터를 찾을 수 없어요</text></svg>',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#0F151D"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#9CA3AF" text-anchor="middle">큐레이터를 찾을 수 없어요</text></svg>',
         { status: 404, headers: { 'Content-Type': 'image/svg+xml' } },
       )
     }
@@ -229,7 +241,8 @@ ogRoutes.get('/group-buy/:id', async (c) => {
       )
     }
 
-    const svg = generateSVG(product)
+    const origin = new URL(c.req.url).origin
+    const svg = generateSVG(product, absImageUrl(product.image_url, origin))
     return new Response(svg, {
       headers: {
         'Content-Type': 'image/svg+xml; charset=utf-8',

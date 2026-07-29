@@ -13,6 +13,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Bell, TrendingUp, Megaphone } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -87,7 +88,8 @@ export default function SellerFollowersPage() {
           ) : (
             <div className="space-y-3">
               {([
-                { key: 'live_start', label: '📺 라이브 시작', value: data.notify_on.live_start },
+                // 🏭 라이브커머스 영구중단: '라이브 시작' 알림 종류 숨김.
+                ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'live_start', label: '📺 라이브 시작', value: data.notify_on.live_start }]),
                 { key: 'group_buy', label: '🔥 공구 시작', value: data.notify_on.group_buy },
                 { key: 'new_product', label: '🎁 신상품', value: data.notify_on.new_product },
               ]).map(item => (
