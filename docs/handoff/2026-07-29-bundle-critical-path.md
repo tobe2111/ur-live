@@ -4,15 +4,40 @@
 
 ## 1. 다음 세션의 첫 액션
 
-PR #878 CI 확인 → 초록이면 머지 검토. 머지 후 라이브에서 실측:
+PR #878 CI 확인 → 초록이면 머지 검토. 머지 후 라이브 실측은 **아래 방법으로** 할 것.
+
+> ⚠️ **이 문서의 최초 검증 명령은 틀렸다(2026-07-29 세션 내 실측으로 정정).**
+> 원래 *"`curl https://urdeal.kr/` 에 app-components 가 없으면 OK"* 라고 적었는데 **오판이다.**
+> 프로덕션 HTML 은 정적 index.html 이 아니라 **워커가 표면별 preload 를 주입한 결과**다
+> (실측: 홈에 `RestaurantMapPage`·`app-features`·`app-misc` 등 정적 빌드엔 없는 청크가 보인다).
+> 머지 후에도 **홈은 app-components 를 계속 preload 한다** — `generate-route-chunk-map.mjs` 가
+> 7개 표면 폐쇄에 그것을 포함하기 때문이고, **이건 회귀가 아니라 의도된 병렬 preload** 다.
+> 홈으로 판정하면 "배포가 안 됐다"고 **잘못 결론내게 된다.**
+
+**올바른 신호 = 7개 표면(home/gbDetail/voucherDetail/product/linkshop/vouchers/browse) *밖*의
+소비자 라우트**에서 app-components 가 사라지는 것:
 
 ```bash
-curl -s https://urdeal.kr/ | grep -o 'modulepreload[^>]*app-components' || echo "OK: app-components 가 엔트리 preload 에 없음"
+for p in /blog /notifications /search; do
+  printf "%-16s " "$p"
+  curl -sS "https://urdeal.kr$p" | grep -q 'app-components' && echo "❌ 아직 preload" || echo "✅ 빠짐"
+done
 ```
 
-`OK` 가 나오면 의도대로 배포된 것. 나오지 않으면(=app-components 가 여전히 preload)
-`generate-route-chunk-map.mjs` 가 CI 빌드에서 표면 폐쇄를 다르게 계산한 것이므로
-`src/worker/generated/route-chunk-map.ts` 의 CI 산출물을 먼저 볼 것.
+**머지 전 실측 기준값(2026-07-29)** — 비교용:
+`/`=24종 · `/blog`·`/notifications`·`/search`=각 23종, **전부 app-components 포함**.
+머지 후 기대: 비-표면 3개에서 app-components 빠짐(홈은 유지되는 게 정상).
+
+> 💡 사실 이 수동 확인은 **필수는 아니다.** 3단계에서 넣은 `check-critical-chunks` 가드가
+> 매 빌드마다 정적 preload 구성을 강제하므로, CI 초록 = 구성 유지다. 수동 확인은 보너스.
+
+### 이 컨테이너에서 되는 것 / 안 되는 것 (실측)
+
+| 대상 | 결과 |
+|---|---|
+| `https://urdeal.kr/` | **200 — 열린다.** ⚠️ CLAUDE.md 는 "프록시가 urdeal.kr 차단(CONNECT 403)" 이라고 적고 있는데 **지금은 사실이 아니다** |
+| `https://live.ur-team.com/` | 301(→urdeal.kr, 정상 동작) |
+| `https://*.pages.dev` (PR 프리뷰) | **CONNECT 403 — 차단.** 프리뷰 URL 검증은 이 환경에서 불가(대표 브라우저 필요) |
 
 ## 2. 완료분
 
@@ -116,7 +141,10 @@ node scripts/check-critical-chunks.mjs --rebaseline # 의도적 변경 시 + _me
   현재 헤드룸 23.8KB(216.2/240) 라 급하지 않다.
 - `dist/` 빌드가 재생성하는 `src/worker/generated/route-chunk-map.ts` 는 **커밋 대상 아님**
   (이번에도 `git checkout --` 로 되돌렸다).
-- **미수정으로 남긴 것(의도적)**: `CLAUDE.md` 의 "현재 47개 불변식 GREEN" 은 실제 76개와 어긋난다.
-  이 세션 변경과 무관한 선재 staleness 이고, CLAUDE.md 는 여러 세션이 동시에 고치는 파일이라
-  충돌을 만들지 않으려고 건드리지 않았다. 다음에 CLAUDE.md 를 어차피 만지는 세션이 함께 고칠 것.
-  (권위 있는 목록은 `docs/AUDIT_INVARIANTS.md` 이고 그쪽은 정확하다.)
+- **CLAUDE.md 의 낡은 사실 2건(미수정, 의도적)** — 여러 세션이 동시에 만지는 파일이라 충돌을
+  만들지 않으려고 뒀다. 다음에 CLAUDE.md 를 어차피 만지는 세션이 함께 고칠 것:
+  1. **"프록시가 `urdeal.kr` 을 차단(CONNECT 403)"** → 2026-07-29 실측 **200, 열린다**.
+     이 오기를 믿으면 라이브 실측을 포기하고 대표에게 화면 복사를 요청하게 된다(불필요한 왕복).
+     실제로 차단된 것은 **`*.pages.dev`**(PR 프리뷰)와 `dash.cloudflare.com` 이다.
+  2. "현재 47개 불변식 GREEN" 은 실제 76개와 어긋난다.
+  (권위 있는 불변식 목록은 `docs/AUDIT_INVARIANTS.md` 이고 그쪽은 정확하다.)
