@@ -11,6 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { serviceKeyParam, isNoValue } from './public-data-diag'
+import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 
 // ✅ 두 서비스 모두 수집(사업자번호로 자동 병합, 대표 확인 2026-07-23):
 //   ① 등록현황 MllBs_2Service/getMllBsInfo_2 = **전자우편(이메일) 포함** (이메일 핵심)
@@ -149,7 +150,13 @@ export interface CommerceStats {
   upserted?: number
   /** 🪦 이번 회차에서 **폐업으로 판정돼 접촉 풀에서 빠진** 건수(2026-07-29). 저장은 되고 active=0 만 된다. */
   closed?: number
-  diag: { configured: boolean; error?: string; sample?: unknown }
+  diag: {
+    configured: boolean; error?: string; sample?: unknown
+    /** 📊 원본 필드가 **실제로 몇 % 채워져 오는가** + 형식 예시(가려짐). 추가 요청 0(받아온 응답을 셀 뿐). */
+    coverage?: FieldCoverage[]
+    /** 빈 필드 한 줄 요약 — 상태줄용. */
+    coverage_note?: string
+  }
 }
 const STATS_KEY = 'ads_commerce_stats'
 const CURSOR_KEY = 'ads_commerce_cursor'
@@ -191,6 +198,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
   let found = 0, saved = 0, upserted = 0, closed = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
+  // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
+  //   다를 이유도 없다). 이 값이 "필드 이름을 추측으로 쓰던" 반복 실패를 끝내는 유일한 근거다.
+  let coverage: FieldCoverage[] = []
   const msgs: string[] = []
   for (const svc of services) {
     const ck = `${CURSOR_KEY}_${svc.name}`
@@ -200,6 +210,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
+      if (items.length) coverage = fieldCoverage(items)
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
@@ -214,7 +225,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
   await persist(s)
   return s
 }
