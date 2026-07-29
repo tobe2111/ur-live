@@ -399,3 +399,35 @@ describe('보강 레인 — 라운드마다 선두 교대', () => {
     expect((lane.match(/enrichNaverActivity\(DB, budget/g) || []).length).toBe(1)
   })
 })
+
+/**
+ * 🔧 **보강 레인 수동 트리거** — 되돌려 볼 수 없으면 고치는 속도가 안 난다 (2026-07-29).
+ *
+ *   수집엔 `collect-burst`, 정비엔 `maintain-all` 이 있는데 보강 레인만 트리거가 없었다.
+ *   그래서 이 레인의 변경은 **매시 정각 cron 을 기다려야만** 검증됐고, 오늘 네 번 고치는 동안
+ *   확인 사이클이 매번 1시간씩 들었다(그중 두 번은 헛짚어 잘못된 처방이 그대로 서 있었다).
+ */
+describe('보강 레인 수동 트리거 — depth 가 실제로 전달된다', () => {
+  it('어드민이 ur-ads 보강 엔드포인트로 위임한다', () => {
+    const ops = read('src/features/marketing/api/admin-ads-pool-ops.routes.ts')
+    expect(ops).toMatch(/influencer-pool\/enrich-run/)
+    expect(ops).toMatch(/__ads\/enrich-influencer\?depth=/)
+  })
+
+  /** ⚠️ 받는 쪽이 안 읽으면 파라미터가 조용히 무시된다 — "시험했는데 왜 같지?" 가 되는 자리다. */
+  it('ur-ads 쪽이 depth 를 읽어 레인에 넘긴다(무시 금지)', () => {
+    const routes = read('src/worker-ads/enrich.routes.ts')
+    // 상한은 넉넉히 — 좁게 잡으면 **주석 몇 줄만 늘어도** 매치가 끊겨 "코드는 맞는데 빨간불"이 된다
+    // (실제로 이 테스트를 처음 쓸 때 600 으로 잡아 그렇게 됐다). 게으른 `?` 라 넓혀도 다음 핸들러까진 안 먹는다.
+    const h = /enrichRoutes\.post\('\/__ads\/enrich-influencer'[\s\S]{0,2000}?\n\}\)/.exec(routes)?.[0] || ''
+    expect(h, '핸들러를 못 찾았다').toBeTruthy()
+    expect(h).toMatch(/c\.req\.query\('depth'\)/)
+    expect(h).toMatch(/runInfluencerEnrich\(c\.env,/)
+  })
+
+  /** ⚠️ 드라이버(체인)를 부르면 백그라운드 체인이 cron 과 겹쳐 같은 구간을 중복 조회한다. */
+  it('수동 트리거는 드라이버(체인)가 아니라 단일 라운드를 부른다', () => {
+    const ops = read('src/features/marketing/api/admin-ads-pool-ops.routes.ts')
+    expect(ops).not.toMatch(/enrich-run[\s\S]{0,900}enrich-influencer-driver/)
+  })
+})

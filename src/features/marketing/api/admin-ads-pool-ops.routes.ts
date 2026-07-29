@@ -96,6 +96,40 @@ app.post('/influencer-pool/maintain-all', async (c) => {
   return c.json({ success: true, started: false, skipped_rescan: collecting })
 })
 
+/**
+ * 📝 POST /influencer-pool/enrich-run — **보강 레인 수동 실행**(ur-ads 위임, 동기 응답).
+ *
+ * ## 왜 필요했나 (2026-07-29)
+ * 수집엔 `collect-burst`, 정비엔 `maintain-all` 이 있는데 **보강 레인만 트리거가 없었다.**
+ * 그래서 이 레인의 변경은 **매시 정각 cron 을 기다려야만** 검증됐다 — 오늘 하루 이 레인을 네 번 고치는 동안
+ * 확인 사이클이 매번 1시간씩 들었고, 그 사이 잘못된 처방이 라이브에 그대로 서 있었다.
+ * (실제로 두 번 헛짚었다: 몫 보장 → 여전히 0건, 홀수 교대 → 단일 라운드 틱에서 여전히 0건.)
+ *
+ * ⇒ 관측만으로는 부족하다. **되돌려 볼 수 있어야** 고치는 속도가 난다.
+ *
+ * ## 형태
+ * 동기 응답 — 한 라운드는 실측 ~20초라 기다릴 수 있고, **결과(tried/measured/emails)를 그대로 돌려줘야**
+ * "먹혔나"를 그 자리에서 판정한다(시트 동기화와 같은 이유로 동기).
+ * `depth` 를 받아 특정 라운드를 지정할 수 있다 — 선두 교대가 depth 홀짝으로 갈리므로 양쪽을 다 시험한다.
+ *
+ * ⚠️ 체인은 타지 않는다(`/__ads/enrich-influencer`, 드라이버 아님) — 수동 실행이 백그라운드 체인을 낳아
+ *   cron 과 겹치면 같은 구간을 중복 조회한다. 한 번에 한 라운드만.
+ */
+app.post('/influencer-pool/enrich-run', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 시간당 cron 만 동작' }, 503)
+  const raw = parseInt(c.req.query('depth') || '0', 10)
+  const depth = Number.isFinite(raw) && raw > 0 ? Math.min(19, raw) : 0
+  try {
+    const r = await ads.fetch(new Request(`https://ur-ads/__ads/enrich-influencer?depth=${depth}`, { method: 'POST' }))
+    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string } | null
+    if (!j?.ok) return c.json({ success: false, error: j?.error || '보강 레인 실행 실패', depth }, 502)
+    return c.json({ success: true, depth, stats: j.stats })
+  } catch (err) {
+    return c.json({ success: false, error: `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`, depth }, 502)
+  }
+})
+
 // POST /api/admin/ads/influencer-pool/sheets-sync — 📊 구글시트 수동 동기화(ur-ads 위임, 동기 응답).
 //   시트 미러는 수초 내라 결과(행수/에러)를 그대로 전달 — 설정 안내가 사용자에게 보여야 함.
 app.post('/influencer-pool/sheets-sync', async (c) => {
