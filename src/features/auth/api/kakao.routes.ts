@@ -867,7 +867,7 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
       return c.json({ success: false, error: 'Server configuration error' }, 500);
     }
     
-    const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
+    const redirectUri = redirect_uri || 'https://urdeal.kr/auth/kakao/callback';
 
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
     // 🛡️ 2026-05-01: Firebase 인스턴스 생성 제거 (Firebase 100% 미사용)

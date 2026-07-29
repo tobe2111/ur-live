@@ -13,7 +13,9 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
+import { stripStorePrefix } from '@/utils/deal-title'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
@@ -28,6 +30,8 @@ const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
 }
 
 interface FeedCardProduct extends Product {
+  /* 🏷️ 2026-07-19 (대표 UI v2 P2): 제목 매장명 프리픽스 제거용 — 리스트 API 가 이미 내려줌 */
+  restaurant_name?: string
   group_buy_current?: number
   group_buy_target?: number
   group_buy_status?: string
@@ -150,6 +154,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
     const dLat = toRad(la - userLoc.lat), dLng = toRad(ln - userLoc.lng)
     const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(userLoc.lat)) * Math.cos(toRad(la)) * Math.sin(dLng / 2) ** 2
     const km = 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+    if (km >= 10) return null // 📍 2026-07-19 (대표 UI v2 P1): 10km+ 는 km 대신 지역명(addrShort) 우선
     return km < 1 ? `${Math.round(km * 10) / 10}` : `${Math.round(km)}`
   })()
   const remaining = timeRemaining(p.expires_at)
@@ -165,16 +170,18 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
   const tAccent = pc ? undefined : { color: grad.accent }
   const cSub = pc ? 'text-gray-500 dark:text-gray-400' : ''
   const cText = pc ? 'text-gray-900 dark:text-white' : ''
-  const cAccent = pc ? 'text-[#fb2d3f] dark:text-[#ff7a4f]' : ''
+  const cAccent = pc ? 'text-brand-text' : ''
 
   return (
     <Link
       ref={linkRef}
-      to={`/group-buy/${p.id}`}
+      // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
+      //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
+      to={canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A2A2A] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
+      className={`block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col ${pc ? 'bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#2A3446] hover:shadow-lg hover:border-gray-300 dark:hover:border-[#3A3A3A]' : ''}`}
       style={pc ? undefined : { backgroundColor: grad.base }}
     >
       {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩.
@@ -222,7 +229,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
 
         {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
         {isUrgent && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm">
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-[10px] font-extrabold text-white shadow-sm">
             ⏰ {remaining}
           </span>
         )}
@@ -252,7 +259,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
 
         {/* 제목 — 2줄 max */}
         <p className={`${pc ? 'text-[14.5px]' : 'text-[13px]'} font-semibold line-clamp-2 leading-tight mt-0.5 ${cText}`} style={tText}>
-          {p.name}
+          {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
 
         {/* 할인% + 최종가 — 핵심 강조 */}
@@ -263,13 +270,17 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, pc = false, userLoc }: {
           <span className={`${pc ? 'text-[17px]' : 'text-[15px]'} font-extrabold ${cText}`} style={tText}>
             {formatNumber(price)}원
           </span>
+          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
+          {p.category === 'stay_voucher' && price > 0 && (
+            <span className={`text-[11px] font-semibold ${cSub}`} style={tSub}>/1박~</span>
+          )}
         </p>
 
         {/* 📍 주소 + 거리 (동네딜 — 대표 요청: PC 카드도 모바일처럼) */}
-        {(addrShort || distKm != null) && (
+        {(p.restaurant_name || addrShort || distKm != null) && (
           <p className={`flex items-center gap-1 mt-0.5 text-[11px] min-w-0 ${cSub}`} style={tSub}>
             <span className="shrink-0">📍</span>
-            {addrShort && <span className="truncate">{addrShort}</span>}
+            <span className="truncate">{[p.restaurant_name, addrShort].filter(Boolean).join(' · ')}</span>
             {distKm != null && <span className={`shrink-0 whitespace-nowrap font-bold ${cText}`} style={tText}>· {distKm}km</span>}
           </p>
         )}

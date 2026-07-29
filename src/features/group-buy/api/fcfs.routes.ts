@@ -363,8 +363,8 @@ adminApp.post('/:productId/select', async (c) => {
           ).bind(...winnerIds).all<{ id: string; phone: string }>().catch(() => ({ results: [] as Array<{ id: string; phone: string }> }))
           const tpl = isReplacement ? 'fcfs_replacement' : 'fcfs_selected'
           const msg = isReplacement
-            ? `[유어딜] ${dealName} 체험단 참여 기회가 회원님께 넘어왔어요!\n\n앞선 선정자의 미결제로 예비 순번이 승계되었습니다. 기한 내 결제하시면 참여가 확정됩니다.\n\n확정하기: https://live.ur-team.com${buyPath}`
-            : `[유어딜] ${dealName} 체험단에 선정되셨습니다! 🎉\n\n기한 내 결제하시면 참여가 확정됩니다. (미결제 시 예비 선정자에게 기회가 넘어갈 수 있어요)\n\n확정하기: https://live.ur-team.com${buyPath}`
+            ? `[유어딜] ${dealName} 체험단 참여 기회가 회원님께 넘어왔어요!\n\n앞선 선정자의 미결제로 예비 순번이 승계되었습니다. 기한 내 결제하시면 참여가 확정됩니다.\n\n확정하기: https://urdeal.kr${buyPath}`
+            : `[유어딜] ${dealName} 체험단에 선정되셨습니다! 🎉\n\n기한 내 결제하시면 참여가 확정됩니다. (미결제 시 예비 선정자에게 기회가 넘어갈 수 있어요)\n\n확정하기: https://urdeal.kr${buyPath}`
           for (const p of phones || []) {
             await sendSystemAlimtalk(c.env, p.phone, tpl, msg).catch(() => {})
           }

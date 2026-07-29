@@ -725,7 +725,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
       token = generateStoreOwnerToken();
       try { await DB.prepare(`UPDATE products SET store_owner_token = ? WHERE id = ?`).bind(token, product.id).run(); } catch { /* graceful */ }
     }
-    const statsUrl = `https://live.ur-team.com/store/stats/${product.id}?t=${token}`;
+    const statsUrl = `https://urdeal.kr/store/stats/${product.id}?t=${token}`;
     await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',
       productName: product.name,

@@ -2,7 +2,7 @@
  * 회원 탈퇴 안내 페이지
  *
  * 🛡️ 2026-05-01: 디자인 시스템 정렬 + Option B 반영.
- *   - AccountSettingsPage 와 일관된 다크 테마 (bg-white dark:bg-[#020202])
+ *   - AccountSettingsPage 와 일관된 다크 테마 (bg-white dark:bg-[#0F151D])
  *   - 카드 스타일: rounded-2xl bg-gray-100 dark:bg-white/[0.04], 미니멀 보더
  *   - 텍스트 정정: 30일 soft delete + 복원 가능 명시 (이전엔 "영구 삭제" 만 강조)
  *   - 이모지 과다 → 아이콘 시스템 통일
@@ -105,11 +105,11 @@ export default function AccountDeleteWarningPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] pb-32">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-32">
       <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
 
       {/* 헤더 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 → 라이트에서 본문과 불일치) */}
-      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#0a0a0a]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
+      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#0F151D]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -288,7 +288,7 @@ export default function AccountDeleteWarningPage() {
       </main>
 
       {/* 하단 고정 버튼 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 그라데이션 → 라이트 본문과 불일치) */}
-      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
+      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
         <div className="ur-content-narrow space-y-2">
           <button
             type="button"

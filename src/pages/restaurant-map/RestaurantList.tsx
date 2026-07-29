@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { distanceKm } from './utils'
+import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
@@ -27,14 +27,14 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
     return (
       /* 🛡️ 2026-04-30 CLS: 단일 스피너 → 카드 skeleton 으로 교체. layout shift 0.
          🎨 2026-06-22 (대표 — 당근 리스트형): 카드 박스 제거 → full-bleed 행 + 구분선 skeleton. */
-      <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]" aria-hidden="true">
+      <div className="divide-y divide-gray-100 dark:divide-[#2A3446]" aria-hidden="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex gap-3 py-4">
-            <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] animate-pulse shrink-0" />
+            <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A2334] animate-pulse shrink-0" />
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-              <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-              <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />
-              <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mt-1" />
+              <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
+              <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse" />
+              <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1A2334] animate-pulse mt-1" />
             </div>
           </div>
         ))}
@@ -89,7 +89,7 @@ function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, vouch
   }, [hasMore, visibleCount])
 
   return (
-    <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]">
+    <div className="divide-y divide-gray-100 dark:divide-[#2A3446]">
       {filtered.slice(0, visibleCount).map(r => (
         <RestaurantRow key={r.id} r={r} isSelected={selected?.id === r.id} userLoc={userLoc} onSelect={onSelect} fcfs={fcfsMap?.get(r.id)} />
       ))}
@@ -107,12 +107,18 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
   fcfs?: { spots: number; appliedDisplay: number }
 }) {
   const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0
+  // 🗺️ 2026-07-19 (대표 — 거리 표시 로직): 10km 이상 원거리 딜은 "42km" 강조가 "동네딜" 컨셉과
+  //   충돌 → 지역명("서울 중구") 우선, 거리는 흐린 보조 표기로 강등. 근거리(<10km)는 기존 강조 유지.
+  const dist = userLoc && r.restaurant_lat && r.restaurant_lng
+    ? distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng)
+    : null
+  const isFar = dist != null && dist >= 10
   return (
     <button
       onClick={() => onSelect(r)}
       className={`w-full flex gap-3 py-4 text-left transition-colors ${
         isSelected
-          ? 'bg-gray-50 dark:bg-[#121212]'
+          ? 'bg-gray-50 dark:bg-[#1A2334]'
           : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'
       }`}
     >
@@ -120,28 +126,34 @@ const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSe
         /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
         <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
       ) : (
-        <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center shrink-0">
+        <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A2334] flex items-center justify-center shrink-0">
           <span className="text-2xl">🍽️</span>
         </div>
       )}
       <div className="flex-1 min-w-0">
         {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(r.name)을 볼드 제목으로, 매장명은 보조 줄로.
-            🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 선명한
-            모집현황 chip("N명 모집 · M명 지원", FcfsBadge)로 전용 줄에 배치(긴 제목 안 찌그러뜨림). */}
-        <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
+            🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 소셜프루프
+            라인(FcfsBadge)으로 전용 줄에 배치(긴 제목 안 찌그러뜨림).
+            🏷️ 2026-07-19 (대표 — 제목 중복 제거): 제목의 "매장명 · " 프리픽스 제거 — 매장명은 아랫줄 한 곳에만. */}
+        <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
           <MapPin className="w-3 h-3 shrink-0" />
-          {r.restaurant_address || '주소 미등록'}
-          {userLoc && r.restaurant_lat && r.restaurant_lng && (
+          {isFar
+            ? (regionShort(r.restaurant_address) || r.restaurant_address || '주소 미등록')
+            : (r.restaurant_address || '주소 미등록')}
+          {dist != null && (isFar ? (
+            <span className="ml-1 shrink-0">· {Math.round(dist)}km</span>
+          ) : (
             <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">
-              · {distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km
+              · {dist.toFixed(1)}km
             </span>
-          )}
+          ))}
         </p>
         <div className="flex items-baseline gap-1.5 mt-1.5">
+          {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 순수 빨강 → 웜 로즈 brand 토큰(라이트/다크 var 보정). */}
           {discount > 0 && (
-            <span className="text-[16px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>
+            <span className="text-[16px] font-extrabold text-brand-text">{discount}%</span>
           )}
           <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
           {r.original_price > r.price && (

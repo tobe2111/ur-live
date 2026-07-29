@@ -65,6 +65,12 @@ const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitori
 const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPage'))
 // 🎯 2026-07-02: 유어애즈 마케팅 서비스몰 운영(주문 접수함·상품 관리).
 const AdminAdsServicesPage = lazy(() => import('@/pages/admin/AdminAdsServicesPage'))
+const AdminInfluencerPoolPage = lazy(() => import('@/pages/admin/AdminInfluencerPoolPage'))
+const AdminBuyerPoolPage = lazy(() => import('@/pages/admin/AdminBuyerPoolPage'))
+const AdminMakerPoolPage = lazy(() => import('@/pages/admin/AdminMakerPoolPage'))
+const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPage'))
+const AdminStoreProspectsPage = lazy(() => import('@/pages/admin/AdminStoreProspectsPage'))
+const AdminGovNoticesPage = lazy(() => import('@/pages/admin/AdminGovNoticesPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 // 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) — 어드민 Bearer 로 조회
@@ -174,6 +180,36 @@ export function AdminRoutes() {
       <Route path="/admin/ads-services" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAdsServicesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/influencer-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminInfluencerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/buyer-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminBuyerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/maker-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminMakerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/partner-pool" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPartnerPoolPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/store-prospects" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminStoreProspectsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/gov-notices" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminGovNoticesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지 */}

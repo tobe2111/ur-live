@@ -36,6 +36,79 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🖼️ 2026-07-21 (대표 "임시 버튼 많고 UI 복잡 — 정리 필요"): 사진 문제를 **한 버튼**으로 통합.
+  //   기존 3버튼(재적용/R2이관/복구)을 순차 오케스트레이션 — ① 외부 커버를 R2(우리 서버)로 영구 이관해
+  //   원본 삭제·핫링크 차단에도 안 깨지게 → ② 그래도 안 뜨는(이관 불가·죽은) 커버는 매장 대표사진으로
+  //   재획득. 정상 사진 무접촉. (데모를 "현재 컨디션"으로 맞추는 재조정은 cron 이 버전게이트로 자동 수렴.)
+  const [fixing, setFixing] = useState<{ running: boolean; phase: string; rehosted: number; healed: number; remaining: number | null }>(
+    { running: false, phase: '', rehosted: 0, healed: 0, remaining: null })
+  // 🔍 진단 결과(서버가 외부 커버를 실제로 못 가져올 때 그 이유를 화면에 표시).
+  type DiagSample = { id: number; host: string; ok: boolean; status: number; contentType: string; bytes: number; reason: string }
+  const [diag, setDiag] = useState<{ okCount: number; total: number; samples: DiagSample[] } | null>(null)
+  const fixImages = async () => {
+    if (fixing.running) return
+    if (!confirm('데모 사진을 정리할까요?\n① 외부(네이버/카카오) 커버 → 우리 서버(R2) 영구 이관: 원본이 삭제·차단돼도 안 깨짐\n② 그래도 안 뜨는 커버는 매장 대표사진으로 새로 받아옴\n· 정상 사진은 건드리지 않습니다 (수 분 소요).')) return
+    setDiag(null)
+    setFixing({ running: true, phase: '진단', rehosted: 0, healed: 0, remaining: null })
+    let rehosted = 0, healed = 0
+    try {
+      // 🔍 0. 프로브 — 이전 실패 마킹 초기화 후, 서버가 외부 커버를 실제로 가져올 수 있는지 먼저 실측.
+      //   전부 실패면(네이버/카카오가 서버fetch 차단) 헛도는 대신 원인을 화면에 보여주고 중단.
+      await api.post('/api/admin/dongnedeal/rehost-reset-skip', {}, h).catch(() => {})
+      const probe = await api.get('/api/admin/dongnedeal/rehost-diagnose', h).catch(() => null)
+      if (probe?.data?.success) {
+        if (probe.data.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); setFixing((s) => ({ ...s, running: false })); return }
+        setDiag({ okCount: Number(probe.data.okCount ?? 0), total: Number(probe.data.total ?? 0), samples: probe.data.samples || [] })
+        if (Number(probe.data.total ?? 0) > 0 && Number(probe.data.okCount ?? 0) === 0) {
+          toast.error('서버가 외부(네이버/카카오) 사진을 하나도 못 가져와요 — 아래 진단 결과를 확인하세요.')
+          setFixing((s) => ({ ...s, running: false }))
+          return
+        }
+      }
+      setFixing((s) => ({ ...s, phase: 'R2 영구 이관' }))
+      // ① 외부 커버 → R2 이관. 워커가 커버 fetch 를 **병렬**(요청당 6개 — 대용량 커버 메모리 안전)로 처리.
+      //   **라운드별 내구성**: 느린 CDN 배치가 524/타임아웃 나도 전체를 죽이지 않고 그 라운드만 건너뛰고
+      //   계속(연속 에러 6회면 중단 — 다시 눌러 이어서). 안 눌러도 시간당 cron 이 자동 수렴.
+      let errs1 = 0
+      for (let i = 0; i < 800; i++) {
+        try {
+          const r = await api.post('/api/admin/dongnedeal/rehost-images', { count: 6 }, { ...h, timeout: 90000 })
+          if (r.data?.bucketBound === false) { toast.error('R2(MEDIA_BUCKET) 미바인딩 — 대시보드에서 바인딩 먼저 필요'); break }
+          if (!r.data?.success) { if (++errs1 >= 6) { toast.error(r.data?.error || '이관 지연 — 잠시 후 다시 시도하세요'); break } continue }
+          errs1 = 0
+          rehosted += Number(r.data.rehosted ?? 0)
+          const remaining = Number(r.data.remaining ?? 0)
+          setFixing({ running: true, phase: 'R2 영구 이관', rehosted, healed, remaining })
+          if (i % 4 === 0) loadImgHealth()
+          if (remaining <= 0) break
+        } catch {
+          if (++errs1 >= 6) { toast.error('네트워크 지연으로 일시 중단 — 다시 눌러 이어서 진행하세요'); break }
+          await new Promise((res) => setTimeout(res, 1500))  // 백오프 후 다음 라운드 재시도
+        }
+      }
+      // ② 남은 깨진 커버 재획득 (대표사진으로) — 동일하게 라운드별 내구성 + 작은 배치(2).
+      setFixing((s) => ({ ...s, phase: '깨진 사진 복구', remaining: null }))
+      let errs2 = 0
+      for (let i = 0; i < 800; i++) {
+        try {
+          const r = await api.post('/api/admin/dongnedeal/heal-broken-images', { count: 2 }, { ...h, timeout: 90000 })
+          if (!r.data?.success) { if (++errs2 >= 6) break; continue }
+          errs2 = 0
+          healed += Number(r.data.healed ?? 0)
+          const remaining = Number(r.data.remaining ?? 0)
+          setFixing({ running: true, phase: '깨진 사진 복구', rehosted, healed, remaining })
+          if (remaining <= 0 || Number(r.data.checked ?? 0) === 0) break
+        } catch {
+          if (++errs2 >= 6) break
+          await new Promise((res) => setTimeout(res, 1500))
+        }
+      }
+      toast.success(`사진 정리 완료 — R2 이관 ${rehosted}개 · 복구 ${healed}개`)
+      loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
+    } catch { toast.error('사진 정리 중 오류') } finally {
+      setFixing((s) => ({ ...s, running: false }))
+    }
+  }
   // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
   const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
   const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
@@ -92,7 +165,14 @@ export default function AdminDongnedealImportPage() {
       .then(r => { if (r.data?.success) setStats(r.data as DealStats) })
       .catch(() => { /* 현황 실패는 무시 */ })
   }
-  useEffect(() => { loadStats(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 건강 진단 — R2 바인딩 + 커버 내부/외부 비율.
+  const [imgHealth, setImgHealth] = useState<{ bucketBound: boolean; cover: { total: number; internal_r2: number; external: number; naver: number; none: number }; hint: string } | null>(null)
+  const loadImgHealth = () => {
+    api.get('/api/admin/dongnedeal/image-health', h)
+      .then(r => { if (r.data?.success) setImgHealth(r.data) })
+      .catch(() => { /* 무시 */ })
+  }
+  useEffect(() => { loadStats(); loadImgHealth(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
   const clearDemo = async () => {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
@@ -108,6 +188,34 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const regionParam = buildRegionParam(seedSido, seedDistrict)
+      // 🏨 2026-07-20 (대표 — 카테고리로 숙소 통합): 숙소 선택 시 전용 생성형 시드(객실 2종·좌표·주중/주말가
+      //   자동 — /stays 검색 스키마). 지역/개수 옵션 공유. 일정·인원 옵션 불필요: 캘린더 무행 = 전 날짜
+      //   가용(검색 NOT EXISTS) + 객실 인원 2~6 자동 분산이라 날짜·인원 필터가 항상 유효.
+      if (seedCategory === 'stay_voucher') {
+        // 실숙소 매칭+실사진(카카오/네이버 외부호출) — 요청당 한도 보호 위해 6개씩 청크(동네딜 8개 청크와 동일 이유).
+        let sCreated = 0, sSkipped = 0, sPhotos = 0, sHealed = 0, sPhotoHealed = 0, sVaried = 0, sReviewed = 0
+        const SCHUNK = 6
+        for (let done = 0; done < seedCount; done += SCHUNK) {
+          const r = await api.post('/api/admin/stays/seed-demo', {
+            region: regionParam || undefined,
+            count: Math.min(SCHUNK, seedCount - done),
+          }, { ...h, timeout: 300000 })
+          const d = r.data?.data || {}
+          sCreated += Number(d.created ?? 0); sSkipped += Number(d.skipped ?? 0); sPhotos += Number(d.realPhotos ?? 0)
+          sHealed += Number(d.healed ?? 0); sPhotoHealed += Number(d.photoHealed ?? 0); sVaried += Number(d.varied ?? 0); sReviewed += Number(d.reviewed ?? 0)
+        }
+        const healNote = `${sHealed ? ` · 기존 ${sHealed}개 보정(좌표·가격·이용권명)` : ''}${sPhotoHealed ? ` · 사진·지도링크 보정 ${sPhotoHealed}개` : ''}${sVaried ? ` · 오퍼 다양화 ${sVaried}개` : ''}${sReviewed ? ` · 리뷰 생성 ${sReviewed}개(응답 후 반영)` : ''}`
+        if (sCreated > 0) {
+          toast.success(`데모 숙소 ${sCreated}개 생성 · 실사진 ${sPhotos}${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀(실숙소 미매칭/중복)` : ''}`)
+        } else if (sHealed > 0 || sPhotoHealed > 0 || sVaried > 0 || sReviewed > 0) {
+          toast.success(`신규 생성 0 — 기존 데모 정비 완료${healNote}${sSkipped ? ` · ${sSkipped}개 건너뜀` : ''}`)
+        } else {
+          toast.error(sSkipped ? `생성 0 — ${sSkipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
+        }
+        loadStats(); setListNonce((nn) => nn + 1)
+        setCleaning(false)
+        return
+      }
       const aMin = parseInt(seedApplicantsMin, 10)
       const aMax = parseInt(seedApplicantsMax, 10)
       // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요 → 요청당 5분 명시.
@@ -143,6 +251,16 @@ export default function AdminDongnedealImportPage() {
       }
       loadStats(); setListNonce((n) => n + 1)
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
+  }
+
+  // 🏨 2026-07-20: 숙소 데모 생성은 seedDemo() 카테고리 분기(stay_voucher)로 통합 — 여긴 정리만.
+  const clearStays = async () => {
+    if (!confirm('데모 숙소(demo-stay-*)를 비활성 처리할까요?')) return
+    setCleaning(true)
+    try {
+      const r = await api.delete('/api/admin/stays/seed-demo', { ...h, timeout: 60000 })
+      toast.success(`데모 숙소 ${r.data?.data?.retired ?? 0}개 비활성`)
+    } catch { toast.error('숙소 데모 정리 중 오류') } finally { setCleaning(false) }
   }
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,6 +305,45 @@ export default function AdminDongnedealImportPage() {
       <div className="ur-content-wide px-4 lg:px-6 py-5 space-y-5">
         <DashboardPageHeader title="동네딜 상품 일괄 등록" subtitle="CSV로 동네딜(오프라인 공동구매) 상품을 한 번에 등록 — 즉시 동네딜에 노출됩니다." />
 
+        {/* 🩺 이미지 건강 진단 — 사진 반복 깨짐의 근본원인(R2 미바인딩/외부 커버) 가시화 */}
+        {imgHealth && (
+          <div className={`rounded-2xl border p-4 ${!imgHealth.bucketBound ? 'bg-red-50 border-red-200' : imgHealth.cover.external > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex items-start gap-2">
+              <span className="text-lg">{!imgHealth.bucketBound ? '🛑' : imgHealth.cover.external > 0 ? '⚠️' : '✅'}</span>
+              <div className="min-w-0">
+                <p className={`text-sm font-bold ${!imgHealth.bucketBound ? 'text-red-700' : imgHealth.cover.external > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  데모 사진 상태 — 커버 {imgHealth.cover.total}개 중 안전(R2) <b>{imgHealth.cover.internal_r2}</b> · 외부 URL <b>{imgHealth.cover.external}</b>{imgHealth.cover.naver > 0 ? ` (네이버 ${imgHealth.cover.naver})` : ''}{imgHealth.cover.none > 0 ? ` · 커버없음 ${imgHealth.cover.none}` : ''}
+                </p>
+                <p className="text-[12px] text-gray-600 mt-1">{imgHealth.hint}</p>
+                {!imgHealth.bucketBound && (
+                  <p className="text-[12px] text-red-700 font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🔍 진단 결과 — 서버가 외부 커버를 실제로 가져올 수 있는지 실측 샘플(이관 0 원인 규명) */}
+        {diag && (
+          <div className={`rounded-2xl border p-4 ${diag.okCount === 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+            <p className={`text-sm font-bold ${diag.okCount === 0 ? 'text-red-700' : 'text-slate-700'}`}>
+              🔍 사진 가져오기 실측 — 샘플 {diag.total}개 중 성공 <b>{diag.okCount}</b> / 실패 <b>{diag.total - diag.okCount}</b>
+            </p>
+            {diag.okCount === 0 && (
+              <p className="text-[12px] text-red-700 mt-1">서버(Cloudflare)에서 이 CDN들이 사진 요청을 차단하고 있어요 → R2 이관 불가. 아래 사유 참고. (대표사진 재획득/다른 소스로 우회 필요)</p>
+            )}
+            <div className="mt-2 space-y-1">
+              {diag.samples.map((s) => (
+                <div key={s.id} className="text-[11px] font-mono flex items-center gap-2">
+                  <span className={s.ok ? 'text-emerald-600' : 'text-red-600'}>{s.ok ? '✓' : '✗'}</span>
+                  <span className="text-gray-500 truncate max-w-[220px]">{s.host}</span>
+                  <span className={s.ok ? 'text-gray-600' : 'text-red-600 font-semibold'}>{s.reason}{s.status ? ` · HTTP ${s.status}` : ''}{s.bytes ? ` · ${Math.round(s.bytes / 1024)}KB` : ''}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {stats && (
           <div className={card}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -198,6 +355,12 @@ export default function AdminDongnedealImportPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
+                )}
+                {/* 🖼️ 사진 정리 — 한 버튼(외부 커버 R2 영구 이관 → 남은 깨진 커버 대표사진 재획득) */}
+                {stats.demo > 0 && (
+                  <button onClick={fixImages} disabled={fixing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50" title="데모 사진을 정리합니다 — ① 외부(네이버/카카오) 커버를 우리 서버(R2)로 영구 이관해 안 깨지게 → ② 그래도 안 뜨는 커버는 매장 대표사진으로 재획득. 정상 사진 무접촉.">
+                    {fixing.running ? `사진 정리 중… ${fixing.phase} · 이관 ${fixing.rehosted}·복구 ${fixing.healed}${fixing.remaining != null ? ` · 남은 ${fixing.remaining}` : ''}` : '🖼️ 사진 정리'}
+                  </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
                     1차 시/도 → 2차 동네그룹. 선택값을 카카오 지오코딩 → 그 동네 실매장 매칭. */}
@@ -233,6 +396,9 @@ export default function AdminDongnedealImportPage() {
                   <option value="meal_voucher">맛집 이용권</option>
                   <option value="beauty_voucher">미용</option>
                   <option value="etc_voucher">기타</option>
+                  {/* 🏨 2026-07-20 (대표 — "데모 채우기 카테고리에서 숙소도"): 숙소는 별도 시드(/stays 검색용
+                      객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
+                  <option value="stay_voucher">🏨 숙소</option>
                   <option value="general">일반 상품</option>
                 </select>
                 {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
@@ -270,6 +436,8 @@ export default function AdminDongnedealImportPage() {
                 <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
                 <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
+                {/* 🏨 숙소 생성은 카테고리 '🏨 숙소' 선택 후 '데모 채우기' — 정리 버튼만 별도. */}
+                <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">숙소 데모 정리</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
@@ -382,19 +550,38 @@ export default function AdminDongnedealImportPage() {
           )}
         </div>
 
-        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
+        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼 (신규 등록 전용).
+            🖊️ 2026-07-21 (대표 "수정하려면 스크롤 위로 올라가야 해 불편"): 수정은 목록 제자리 모달로 분리 —
+            아래 editing 모달 참조. 상단 폼은 더 이상 수정 모드로 전환되지 않음. */}
         <ManualDealForm
-          editDeal={editing}
-          onCancelEdit={() => setEditing(null)}
-          onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+          onSaved={() => { loadStats(); setListNonce((n) => n + 1) }}
         />
 
-        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정 / 삭제 */}
+        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정(모달) / 삭제 */}
         <DealList
           nonce={listNonce}
-          onEdit={(d) => { setEditing(d); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onEdit={(d) => setEditing(d)}
           onChanged={() => { loadStats(); setListNonce((n) => n + 1) }}
         />
+
+        {/* 🖊️ 수정 모달 — 스크롤 위치 유지한 채 제자리 편집(표준 z-index 모달 스케일). 배경 클릭/취소로 닫힘. */}
+        {editing && (
+          <div
+            className="fixed inset-0 z-[10500] bg-black/50 overflow-y-auto overscroll-contain p-4"
+            onClick={() => setEditing(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="동네딜 수정"
+          >
+            <div className="max-w-3xl mx-auto my-6" onClick={(e) => e.stopPropagation()}>
+              <ManualDealForm
+                editDeal={editing}
+                onCancelEdit={() => setEditing(null)}
+                onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

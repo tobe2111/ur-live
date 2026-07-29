@@ -22,13 +22,9 @@ import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
 import FeaturedCard from './seller-public/FeaturedCard'
-// ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장 링크샵 하단 추천(핀) opt-in 섹션.
-import CuratorPinsSection from './seller-public/CuratorPinsSection'
-import type { CuratorPin } from '@/features/curator/api/curator-api'
 import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import type { Seller, LiveStream, Product, Short } from './seller-public/types'
+import type { Seller, Product } from './seller-public/types'
 import { fetchSellerPublicShared } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
@@ -47,9 +43,6 @@ interface SellerPublicPageProps {
   /** 🏁 2026-06-26 [UNLOCK_LOADING] (대표 — 로딩 워터폴 제거): CuratorPage 가 가진 linked_seller.id(숫자).
    *  넘기면 셀러 /public 응답을 기다리지 않고 상품 fetch 를 병렬로 시작(RTT 1개 절감). */
   sellerNumericId?: number
-  /** ✨ 2026-07-04 링크샵 1단계: CuratorPage 가 이미 보유한 핀 목록 — opt-in 켜진 매장 링크샵
-   *  하단 "추천" 섹션에 재사용(추가 fetch 0). 미전달이면 섹션이 자체 fetch. */
-  curatorPins?: CuratorPin[] | null
   /** 🔑 2026-07-07 (대표 — "복잡하게 꼬여있다"): 링크샵 소유권 단일화. `/u/{handle}` 의 주인은 **로그인 유저**
    *  (user_id === curator.id)이며 CuratorPage 가 이미 그걸 안다. 그 신호를 내려주면, 별도 seller_token 이
    *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
@@ -89,7 +82,7 @@ function matchSellerSeedProp(seed: Record<string, unknown> | null | undefined, s
   return ok ? (seed as unknown as Seller) : null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride, sellerSeed }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, ownerOverride, sellerSeed }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -100,8 +93,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🚀 2026-07-11: 서버 동봉 시드(prop, /u/ 사업자 경로)도 동기 소비 — 둘 중 있는 쪽으로 즉시 페인트.
   const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId))
   const [products, setProducts] = useState<Product[]>([])
-  const [streams, setStreams] = useState<LiveStream[]>([])
-  const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(seller == null)
 
   // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
@@ -123,24 +114,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
-  // ✨ 2026-07-04 링크샵 1단계: 하단 추천(핀) 섹션 opt-in — 서버값 시드 + 낙관적 토글.
-  const [showRecommend, setShowRecommend] = useState<boolean>(Number(curator?.linkshop_show_recommend) === 1)
-  useEffect(() => { setShowRecommend(Number(curator?.linkshop_show_recommend) === 1) }, [curator?.linkshop_show_recommend])
-  const toggleRecommend = async () => {
-    const next = !showRecommend
-    setShowRecommend(next) // 낙관적 — 실패 시 롤백
-    try {
-      // 유저 토큰/세션(same-origin 쿠키) 인증 — 매장 업주는 linked_user 본인이라 통과.
-      const r = await api.patch('/api/curator/me/profile', { show_recommend: next }, { withCredentials: true })
-      if (!r.data?.success) throw new Error(r.data?.error || 'save failed')
-      toast.success(next
-        ? t('seller.publicPage.recommendOn', { defaultValue: '하단 "추천" 섹션이 켜졌어요 — 담은 핀이 링크샵 맨 아래에 노출됩니다' })
-        : t('seller.publicPage.recommendOff', { defaultValue: '하단 "추천" 섹션을 껐어요' }))
-    } catch {
-      setShowRecommend(!next)
-      toast.error(t('seller.publicPage.recommendSaveFail', { defaultValue: '설정 저장 실패 — 소비자 계정 로그인 상태를 확인해주세요' }))
-    }
-  }
+  // 🧹 2026-07-20 (대표 — "추천템 필요없음"): 사업자 링크샵 = 본인 상품이 주인공(2026-06-18 타겟 포지셔닝).
+  //   하단 추천(핀) opt-in 섹션 + 토글 제거. (추천 적립 동선은 크리에이터 콘솔/CuratorEarningsPage 에서 유지.)
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
   }
@@ -159,9 +134,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     String(seller.username || '') === rawParam  // 본인이 본인 URL 로 진입한 경우
   )
   const isOwner = !!ownerOverride || tokenOwner
-  // 셀러 대시보드 토큰 보유 여부 — 카카오 채팅 링크 인라인 편집(PUT /api/seller/profile)만 이걸 요구.
-  //   토큰 없는 소유자는 그 필드를 seller 대시보드(사업자 정보)에서 관리 → 링크샵에선 편집 어포던스 숨김(401 방지).
-  const canSellerEdit = !!sellerToken
   // 🛡️ 2026-05-16: DEV 디버그 — isOwner 가 false 일 때 콘솔에 이유 표시 (운영자가 진단 용이)
   if (typeof window !== 'undefined' && import.meta.env.DEV && seller && !isOwner) {
     console.log('[SellerPublicPage] isOwner=false:', {
@@ -179,37 +151,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
-  // 🖼️ 2026-07-01 (대표 신고 — 소개 섹션 헤더와 중복): InfoTab 의 bio/Instagram/YouTube 인라인 편집 폐기
-  //   (CuratorHeader 가 표시+편집 전담). 여기 남는 인라인 편집은 카카오 채팅 링크(헤더에 없는 유일 항목)뿐.
-  const [editingField, setEditingField] = useState<string | null>(null)
-  const [editKakao, setEditKakao] = useState('')
-  const [saving, setSaving] = useState(false)
+  // 🧹 2026-07-20 (대표 — "카카오 채팅 링크 추가 없어도 됨"): InfoTab 카카오 인라인 편집 machinery
+  //   (editingField/editKakao/saving state + startEdit/saveEdit)·canSellerEdit 제거. 연락처 편집은
+  //   셀러 대시보드 전담 → 링크샵 InfoTab 은 표시 전용. (bio/SNS 는 CuratorHeader 가 이미 편집 전담.)
   // 전역 테마 토글 연동 (useTheme 스토어)
   const { applied } = useTheme()
   const isDark = applied === 'dark'
   const T = getThemeTokens(isDark)
-
-  const startEdit = (field: string) => {
-    if (!isOwner) return
-    setEditingField(field)
-    if (field === 'kakao') setEditKakao(seller?.kakao_chat_link || '')
-  }
-
-  const saveEdit = async (field: string, value: string) => {
-    setSaving(true)
-    const token = localStorage.getItem('seller_token')
-    try {
-      const payload: Record<string, string> = {}
-      if (field === 'kakao') payload.kakao_chat_link = value
-
-      await api.put('/api/seller/profile', payload, { headers: { Authorization: `Bearer ${token}` } })
-      // 로컬 상태 업데이트
-      setSeller(prev => prev ? { ...prev, ...payload } : prev)
-      setEditingField(null)
-      toast.success(t('common.saveSuccess'))
-    } catch { toast.error(t('common.saveFailed')) }
-    finally { setSaving(false) }
-  }
 
   useEffect(() => {
     if (!sellerId) return
@@ -228,23 +176,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       setLoading(false)
     }
 
-    // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch — 홈탭이 셋 다 프리뷰하므로 모두 즉시(비차단).
-    //   로딩 속도는 prewarm(products) + /api/shorts/feed edge cache 로 해결(cold D1 제거). lazy-탭은 홈 프리뷰 회귀라 미적용.
+    // 🛡️ 셀러 상품 background fetch(비차단). 로딩 속도는 prewarm(products)로 해결(cold D1 제거).
+    //   🧹 2026-07-20 (링크샵 전수조사): 라이브/쇼츠 fetch 제거 — 영구중단(LIVE_COMMERCE_SUSPENDED)이라
+    //   상품만 필요. streams/shorts 배선·30초 폴링·관련 state/타입 통째 제거(도달불가 코드 청소).
     const fetchSubData = (numericId: number) => {
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))
-        .catch(() => { /* graceful */ })
-      // 🏁 2026-06-25 (대표 신고 — 로딩 김): 라이브 영구중단이면 영상/라이브 섹션 미렌더라
-      //   streams/shorts fetch 는 순수 낭비 → 스킵 (요청 2개 + 30초 폴링 제거).
-      if (LIVE_COMMERCE_SUSPENDED) return
-      api.get(`/api/streams?seller_id=${numericId}&limit=20`)
-        .then(r => setStreams(r.data.data || []))
-        .catch(() => { /* graceful */ })
-      api.get(`/api/shorts/feed?limit=20&seller_id=${numericId}`)
-        .then(r => {
-          const list = r.data.data || []
-          setShorts(list.filter((s: Short & { seller_id?: number }) => String(s.seller_id) === String(numericId)))
-        })
         .catch(() => { /* graceful */ })
     }
 
@@ -272,42 +209,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     }).catch(() => { setSeller(null); setLoading(false) })
   }, [sellerId, sellerNumericId])
 
-  // 실시간 라이브 감지 — 공개 페이지 머물러 있을 때 셀러가 라이브 시작하면 즉시 반영
-  // 30초마다 streams 만 재조회 (가벼운 쿼리)
-  useEffect(() => {
-    if (!seller) return
-    if (LIVE_COMMERCE_SUSPENDED) return  // 🏁 2026-06-25 라이브 영구중단 — 30초 streams 폴링 낭비 제거
-    const numericId = seller.id
-    let prevLiveCount = streams.filter(s => s.status === 'live').length
-
-    const poll = async () => {
-      try {
-        const res = await api.get(`/api/streams?seller_id=${numericId}&limit=20`)
-        const fresh: LiveStream[] = res.data.data || []
-        const freshLiveCount = fresh.filter(s => s.status === 'live').length
-        setStreams(fresh)
-
-        // 라이브 시작 감지 (0 → 1+)
-        if (prevLiveCount === 0 && freshLiveCount > 0) {
-          const liveStream = fresh.find(s => s.status === 'live')
-          toast.success(`${seller.name} 셀러의 라이브가 시작됐어요!`)
-          if (liveStream) {
-            // 배너 확인 용이하게 소리 없는 vibration (모바일)
-            try { if ('vibrate' in navigator) navigator.vibrate(200) } catch { /* ignore */ }
-          }
-        }
-        // 라이브 종료 감지 (1+ → 0)
-        if (prevLiveCount > 0 && freshLiveCount === 0) {
-          toast.info(t('seller.public.liveEnded', { defaultValue: '라이브 방송이 종료됐어요.' }))
-        }
-        prevLiveCount = freshLiveCount
-      } catch { /* silent */ }
-    }
-
-    const id = setInterval(() => { if (!document.hidden) poll() }, 30000)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seller?.id])
+  // 🧹 2026-07-20 (링크샵 전수조사): 라이브커머스 영구중단으로 '실시간 라이브 감지 30초 폴링' effect 제거
+  //   (LIVE_COMMERCE_SUSPENDED 조기반환이라 원래 미실행 — 도달불가 코드 청소).
 
   // 🏁 2026-06-25 (대표 신고 — 로딩 김): 헤더 정체성(curator 우선·seller 폴백) 객체. seller 로드 전에도
   //   curator 만으로 헤더를 즉시 렌더 → /u/ 사업자 진입 시 콜드 seller fetch 동안 빈 스피너 대신 헤더 표시.
@@ -333,12 +236,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   if (!seller) return (
     <div className={`min-h-screen ${T.bg} flex flex-col items-center justify-center`}>
       <p className={T.textMuted}>{t('seller.sellerNotFound')}</p>
-      <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">{t('seller.goToHome')}</button>
+      <button onClick={() => navigate('/')} className="mt-3 text-sm text-brand-text font-semibold">{t('seller.goToHome')}</button>
     </div>
   )
-
-  const liveNow = streams.find(s => s.status === 'live')
-  const recentStreams = streams.slice(0, 6)
 
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
@@ -350,9 +250,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
   const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
-  // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
-  //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
-  //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
@@ -369,19 +266,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             >
               {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
             </button>
-            {/* ✨ 2026-07-04 링크샵 1단계: 하단 추천(핀) 섹션 opt-in 토글 — 기본 off(정체성 보수). */}
-            {curator?.handle && (
-              <button
-                type="button"
-                onClick={toggleRecommend}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${showRecommend ? 'bg-white text-[#141A2E]' : 'bg-white/15 hover:bg-white/25'}`}
-                title={t('seller.publicPage.recommendToggleHint', { defaultValue: '담은 핀을 링크샵 하단 "추천" 섹션에 표시' })}
-              >
-                {showRecommend
-                  ? t('seller.publicPage.recommendToggleOn', { defaultValue: '✨ 추천 ON' })
-                  : t('seller.publicPage.recommendToggleOff', { defaultValue: '추천 OFF' })}
-              </button>
-            )}
             <button
               type="button"
               onClick={() => setPreviewAsVisitor(true)}
@@ -407,7 +291,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {ownerView && showAddSheet && (
         <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
           <div
-            className="w-full max-w-[430px] bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8"
+            className="w-full max-w-[430px] bg-white dark:bg-[#1A2334] rounded-t-3xl px-5 pt-5 pb-8"
             onClick={(e) => e.stopPropagation()}
             role="dialog" aria-modal="true" aria-label={t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}
           >
@@ -418,7 +302,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <div className="space-y-2.5">
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/products/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
                 <span className="min-w-0">
@@ -428,7 +312,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               </button>
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/meal-voucher/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
                 <span className="min-w-0">
@@ -460,7 +344,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           name: seller.name || seller.username || '유어딜 링크샵',
           description: seller.bio || `${seller.name || seller.username || ''}의 링크샵 — 상품·이용권 모음`,
           image: seller.profile_image || undefined,
-          url: `https://live.ur-team.com/profile/${seller.username || seller.slug || seller.id}`,
+          url: `https://urdeal.kr/profile/${seller.username || seller.slug || seller.id}`,
           ...((seller as any).follower_count != null && { interactionStatistic: { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: (seller as any).follower_count } }),
         }}
       />
@@ -470,7 +354,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
       <CuratorHeader
         curator={headerCurator}
-        pinCount={products.length}
         isOwner={ownerView}
         accountType="business"
         onCopyLink={copyLink}
@@ -491,7 +374,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               <button
                 key={chip.label}
                 onClick={() => chip.to ? document.getElementById(chip.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
+                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
               >
                 {chip.label}
               </button>
@@ -514,14 +397,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
             //   내 상품이 링크샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
             <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] flex items-center justify-center">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </div>
               <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 상품을 올려 쇼핑몰을 채워보세요' })}</h3>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 링크샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
-                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold active:scale-95"
+                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0F151D] text-[13px] font-bold active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
               </button>
@@ -531,7 +414,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <h3 id="ls-shop" className="scroll-mt-4 text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
             {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
             {shopProducts.length >= 6 && (
-            <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
+            <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-gray-50 dark:bg-[#1A2334]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
@@ -557,64 +440,20 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         {gridVouchers.length > 0 && (
           <section id="ls-vou" className="scroll-mt-4 pt-7">
             <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
-            <VouchersTab mealVouchers={gridVouchers} isOwner={ownerView} textClass={T.text} />
+            <VouchersTab mealVouchers={gridVouchers} />
           </section>
         )}
 
         {/* 🗑️ 2026-07-07 라이브커머스 제거: 영상(VideosTab)·라이브(StreamCard) 섹션 제거. */}
 
-        {/* ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 하단 "추천(핀)" opt-in 섹션.
-            본인 상품이 hero 인 스토어프론트 정체성은 유지 — 맨 아래, 명확한 라벨, 기본 off.
-            CuratorPinsSection 은 pins 0개면 자체 null 반환(fail-soft). 오너뷰에선 off 여도
-            토글 안내를 위해 흐리게 미리보기. */}
-        {curator?.handle && (showRecommend || ownerView) && (
-          <section className={`pt-7 ${!showRecommend ? 'opacity-40' : ''}`}>
-            {!showRecommend && ownerView && (
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">
-                {t('seller.publicPage.recommendPreviewNote', { defaultValue: '방문자에게는 숨겨져 있어요 — 상단 "추천 OFF" 버튼으로 켤 수 있습니다' })}
-              </p>
-            )}
-            <CuratorPinsSection handle={curator.handle} initialPins={curatorPins ?? null} />
-          </section>
-        )}
-
-        {/* 🎨 2026-07-07 리디자인(휑함 해소 + 전환): 상품/이용권이 있을 때 구매 신뢰 배지 2종 —
-            "유어딜 안전결제 · 사업자 인증 판매자". 콘텐츠 아래 공간을 가치로 채우고 전환율을 올린다. */}
-        {(shopProducts.length > 0 || mealVouchers.length > 0) && (
-          <div className="mt-8 grid grid-cols-2 gap-2.5">
-            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
-              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
-                <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-                {t('seller.publicPage.trustPay', { defaultValue: '유어딜 안전결제' })}
-              </div>
-              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustPayDesc', { defaultValue: '결제·정산을 유어딜이 보증해요' })}</p>
-            </div>
-            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
-              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
-                <svg className="w-4 h-4 text-[#1d9bf0]" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0"/><path d="M9.8 15.6l-3-3 1.2-1.2 1.8 1.8 4.4-4.4 1.2 1.2z" fill="#fff"/></svg>
-                {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 판매자' })}
-              </div>
-              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인된 판매자예요' })}</p>
-            </div>
-          </div>
-        )}
+        {/* 🧹 2026-07-20 (대표 — "추천템·신뢰배지 다 필요없음"): 하단 추천(핀) opt-in 섹션 + 정적 신뢰배지
+            (유어딜 안전결제 / 사업자 인증 완료) 제거. 사업자 링크샵 = 본인 상품이 주인공(정체성 명료화) +
+            사업자 인증은 헤더 U 씰이 이미 전담(중복 제거). 결제 안전성은 결제 단계에서 안내. */}
 
         {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
-        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
-          <InfoTab
-            seller={seller}
-            isOwner={ownerView}
-            canSellerEdit={canSellerEdit}
-            T={T}
-            editingField={editingField}
-            setEditingField={setEditingField}
-            editKakao={editKakao}
-            setEditKakao={setEditKakao}
-            saving={saving}
-            startEdit={startEdit}
-            saveEdit={saveEdit}
-          />
+        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2A3446]">
+          <InfoTab seller={seller} isOwner={ownerView} T={T} />
         </footer>
       </div>
 

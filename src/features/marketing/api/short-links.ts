@@ -2,7 +2,7 @@
  * 🆕 2026-07-12 유어애즈 — 무료 단축 링크 서비스 (대표 요청 "무료 단축 링크 서비스").
  *
  *   결정(AskUserQuestion): 생성 = **유어애즈 무료 가입자**(익명 생성 금지 — 피싱/스팸 살포 방어의 핵심:
- *   생성자가 계정으로 추적되고 정지 가능) · 단축 URL = **live.ur-team.com/l/{code}** (`/s/*` 는 셀러
+ *   생성자가 계정으로 추적되고 정지 가능) · 단축 URL = **urdeal.kr/l/{code}** (`/s/*` 는 셀러
  *   공개페이지가 선점이라 `/l/`). 리다이렉트 자체는 공개(무인증 302) + 클릭 일별 집계.
  *
  *   ⚠️ 오픈 리다이렉트 방어: 이 기능은 *의도된* 외부 리다이렉트다. 대신
@@ -45,6 +45,26 @@ export async function ensureShortLinkSchema(DB: D1Database): Promise<void> {
     UNIQUE(link_id, day)
   )`).run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_short_links_acct ON ad_short_links(account_id, id)').run().catch(() => null)
+  // 🔗 2026-07-27 협찬 성과 추적 — 인플루언서 리드별 고유 링크(ad_influencer_leads.id). 소유 링크엔 NULL.
+  await DB.prepare('ALTER TABLE ad_short_links ADD COLUMN lead_id INTEGER').run().catch(() => null)
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_short_links_lead ON ad_short_links(lead_id) WHERE lead_id IS NOT NULL').run().catch(() => null)
+}
+
+/**
+ * 🔗 리드별 협찬 추적링크 — 이미 있으면 그대로 반환(멱등 · 인플루언서에게 이미 보낸 링크가 바뀌면 안 됨).
+ *   account_id=0(공용 풀 센티넬)로 저장해 어드민 풀 소유임을 표시. 클릭 집계는 기존 /l/{code} 파이프라인 공용.
+ */
+export async function getOrCreateLeadTrackLink(
+  DB: D1Database, leadId: number, targetUrl: string, title?: string,
+): Promise<{ ok: true; code: string; click_count: number; created: boolean } | { ok: false; error: string }> {
+  await ensureShortLinkSchema(DB)
+  const existing = await DB.prepare('SELECT code, click_count FROM ad_short_links WHERE lead_id = ?')
+    .bind(leadId).first<{ code: string; click_count: number }>().catch(() => null)
+  if (existing) return { ok: true, code: existing.code, click_count: Number(existing.click_count) || 0, created: false }
+  const r = await createShortLink(DB, 0, { target_url: targetUrl, title })
+  if (!r.ok) return { ok: false, error: r.error }
+  await DB.prepare('UPDATE ad_short_links SET lead_id = ? WHERE id = ? AND lead_id IS NULL').bind(leadId, r.link.id).run().catch(() => null)
+  return { ok: true, code: r.link.code, click_count: 0, created: true }
 }
 
 /** target URL 검증 — http/https 만, 길이 캡, 자기 자신(/l/) 재귀 차단. 실패 시 에러 메시지 반환. */

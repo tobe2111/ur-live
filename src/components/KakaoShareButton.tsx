@@ -16,21 +16,64 @@ interface ShareButtonProps {
   className?: string
   style?: React.CSSProperties
   compact?: boolean
+  /**
+   * 💰 커머스 카드(카카오 commerce 템플릿) — 가격이 있으면 공유 카드가 쇼핑몰 상품처럼 렌더:
+   *   정가 취소선 → 할인가 강조 + 할인율 배지 + 버튼 2개. 가격이 없으면 자동으로 기존 feed 카드.
+   *   ⚠️ 딜(원화 아님) 결제 상품은 넘기지 말 것 — 카카오 커머스는 '원' 표기 전용.
+   */
+  regularPrice?: number   // 정가(원). salePrice 와 함께면 취소선. 없고 salePrice 만 있으면 그 값이 정가.
+  salePrice?: number      // 할인/판매가(원)
+  discountRate?: number   // 할인율(%). 없어도 regular>sale 이면 자동 계산.
+  secondaryButtonText?: string // 커머스 카드 2번째 버튼(기본 '자세히 보기')
 }
 
-async function shareKakao(title: string, description: string, imageUrl: string | undefined, fullUrl: string, buttonText?: string) {
+/** 가격 props → 카카오 commerce 객체(또는 null). 정가만/할인가만/할인율만 어떤 조합이든 안전 처리. */
+function buildCommerce(regularPrice?: number, salePrice?: number, discountRate?: number): { regularPrice: number; discountPrice?: number; discountRate?: number } | null {
+  const sale = Math.round(Number(salePrice) || 0)
+  let regular = Math.round(Number(regularPrice) || 0)
+  let rate = Math.round(Number(discountRate) || 0)
+  // 할인율만 주어지고 정가가 없으면 판매가에서 역산.
+  if (sale > 0 && rate > 0 && regular <= sale) regular = Math.round(sale / (1 - Math.min(rate, 95) / 100))
+  const hasDiscount = sale > 0 && regular > sale
+  if (hasDiscount && rate <= 0) rate = Math.round((1 - sale / regular) * 100)
+  const base = regular || sale
+  if (!base || base <= 0) return null
+  const commerce: { regularPrice: number; discountPrice?: number; discountRate?: number } = { regularPrice: base }
+  if (hasDiscount) {
+    commerce.discountPrice = sale
+    if (rate > 0) commerce.discountRate = rate // 카카오: discountRate 는 discountPrice 있을 때만 유효
+  }
+  return commerce
+}
+
+async function shareKakao(
+  title: string, description: string, imageUrl: string | undefined, fullUrl: string,
+  buttonText: string | undefined,
+  commerce: ReturnType<typeof buildCommerce>, secondaryButtonText?: string,
+) {
   const { ensureKakaoSdk } = await import('@/lib/kakao-sdk')
   await ensureKakaoSdk()
+  const link = { mobileWebUrl: fullUrl, webUrl: fullUrl }
+  const img = imageUrl || 'https://urdeal.kr/icons/og-default.png'
+  if (commerce) {
+    // 🛒 커머스 카드 — 가격/할인율 강조 + 버튼 2개(중복 라벨이면 1개).
+    const primary = buttonText || '구매하기'
+    const secondary = secondaryButtonText || '자세히 보기'
+    const buttons = [{ title: primary, link }]
+    if (secondary && secondary !== primary) buttons.push({ title: secondary, link })
+    ;(window as any).Kakao.Share.sendDefault({
+      objectType: 'commerce',
+      content: { title, imageUrl: img, link },
+      commerce,
+      buttons,
+    })
+    return
+  }
   ;(window as any).Kakao.Share.sendDefault({
     objectType: 'feed',
-    content: {
-      title,
-      description,
-      imageUrl: imageUrl || 'https://live.ur-team.com/icons/og-default.png',
-      link: { mobileWebUrl: fullUrl, webUrl: fullUrl },
-    },
+    content: { title, description, imageUrl: img, link },
     buttons: [
-      { title: buttonText || '유어딜에서 보기', link: { mobileWebUrl: fullUrl, webUrl: fullUrl } },
+      { title: buttonText || '유어딜에서 보기', link },
     ],
   })
 }
@@ -44,15 +87,16 @@ async function shareNative(title: string, description: string, fullUrl: string) 
   }
 }
 
-export default function KakaoShareButton({ title, description, imageUrl, link, buttonText, className, compact, style }: ShareButtonProps) {
+export default function KakaoShareButton({ title, description, imageUrl, link, buttonText, className, compact, style, regularPrice, salePrice, discountRate, secondaryButtonText }: ShareButtonProps) {
   const { t } = useTranslation()
-  const fullUrl = `https://live.ur-team.com${link}`
+  const fullUrl = `https://urdeal.kr${link}`
   const kr = isKorea()
+  const commerce = buildCommerce(regularPrice, salePrice, discountRate)
 
   const handleShare = async () => {
     if (kr) {
       try {
-        await shareKakao(title, description, imageUrl, fullUrl, buttonText)
+        await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText)
       } catch {
         // 카카오 실패 시 일반 공유로 폴백
         await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })

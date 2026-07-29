@@ -37,6 +37,8 @@ for f in $staged; do
   if echo "$f" | grep -qE '\.test\.|\.spec\.|/tests/|/__tests__/|/fixtures/'; then
     continue
   fi
+  # 이 스크립트 자신은 제외 — 탐지 패턴 문자열("BEGIN PRIVATE KEY" 등)을 담고 있어 자기 자신을 잡는다(오탐).
+  case "$f" in scripts/check-no-secrets.sh) continue ;; esac
 
   # 패턴 1: Stripe live key
   m=$(grep -nE "sk_live_[A-Za-z0-9]{20,}" "$f" 2>/dev/null || true)
@@ -46,14 +48,27 @@ for f in $staged; do
   m=$(grep -nE "['\"](live|test)_sk_[A-Za-z0-9]{20,}['\"]" "$f" 2>/dev/null || true)
   [ -n "$m" ] && violations="$violations\n[$f] Toss secret key:\n$m"
 
+  # 패턴 0: dotenv 파일 자체를 커밋 — 🚨 2026-07-28 실사고. `.env.deploy` 가 살아있는 CLOUDFLARE_API_TOKEN
+  #   을 담은 채 **public 레포**에 커밋돼 있었다(#737). 아래 값 패턴들은 전부 따옴표를 요구해서
+  #   dotenv 형식(`KEY=value`, 따옴표 없음)을 통째로 놓쳤다 — 형식이 아니라 **파일 자체**를 막는다.
+  #   예외: *.example / *.template(자리표시자) · .env.production(VITE_* 공개 클라이언트 값만).
+  #   🚨 2026-07-28 보강: `.dev.vars`(Cloudflare 로컬 시크릿 파일)도 포함 — **실제로 유출된 적 있는데**
+  #     (commit 96f502d, `1665681ae` 에서 untrack) 위 `.env` 정규식엔 안 걸려 재커밋을 못 막고 있었다.
+  #     `.dev.vars.production` 같은 변종도 같이 막는다.
+  if echo "$f" | grep -qE '(^|/)(\.env|\.dev\.vars)($|\.)' \
+    && ! echo "$f" | grep -qE '\.(example|template)$|(^|/)\.env\.production$'; then
+    violations="$violations\n[$f] dotenv 파일이 커밋됨 — 실제 자격증명 유출 위험(.gitignore 로 제외하고 값은 대시보드/Secret 으로):\n$(grep -nE '^[A-Z0-9_]+=.+' "$f" 2>/dev/null | sed -E 's/=.*/=<redacted>/' | head -5)"
+  fi
+
   # 패턴 3: Cloudflare API Token (40 char alphanumeric + - + _) — 단, env var 참조 X
-  m=$(grep -nE "(CLOUDFLARE_API_TOKEN|CF_API_TOKEN)\s*[:=]\s*['\"][A-Za-z0-9_-]{30,}['\"]" "$f" 2>/dev/null \
-    | grep -v "your-api-token\|YOUR_TOKEN\|\\$\\{" || true)
+  #   ⚠️ 따옴표는 **선택**(dotenv 는 안 씀 — 위 실사고의 직접 원인).
+  m=$(grep -nE "(CLOUDFLARE_API_TOKEN|CF_API_TOKEN)\s*[:=]\s*['\"]?[A-Za-z0-9_-]{30,}['\"]?" "$f" 2>/dev/null \
+    | grep -vE "your-api-token|YOUR_TOKEN|[$][{]" || true)
   [ -n "$m" ] && violations="$violations\n[$f] Cloudflare API Token:\n$m"
 
-  # 패턴 4: JWT_SECRET 에 실제 값 (32+ char) — env / template 제외
-  m=$(grep -nE "JWT_SECRET\s*[:=]\s*['\"][A-Za-z0-9+/=_-]{32,}['\"]" "$f" 2>/dev/null \
-    | grep -v "test-\|dummy-\|example-\|<.*>\|\\$\\{\|랜덤하고\|YOUR_\|REPLACE_" || true)
+  # 패턴 4: JWT_SECRET 에 실제 값 (32+ char) — env / template 제외. 따옴표 선택(패턴 3 과 동일 사유).
+  m=$(grep -nE "JWT_SECRET\s*[:=]\s*['\"]?[A-Za-z0-9+/=_-]{32,}['\"]?" "$f" 2>/dev/null \
+    | grep -vE "test-|dummy-|example-|<.*>|[$][{]|랜덤하고|YOUR_|REPLACE_" || true)
   [ -n "$m" ] && violations="$violations\n[$f] JWT_SECRET hardcoded:\n$m"
 
   # 패턴 5: Firebase service account private key

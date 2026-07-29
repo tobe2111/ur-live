@@ -870,6 +870,45 @@
     "seoDesc": "気になる商品をまとめて見る"
   },
   "seller": {
+    "relink": {
+      "title": "カカオアカウントを変更しましたか？",
+      "desc": "セラーアカウントはそのままです。新しいカカオでログイン後、既存のメールとパスワードを確認するだけで続行できます。",
+      "step1": "新しいカカオでログイン",
+      "step2": "既存セラーアカウント確認",
+      "kakaoBtn": "カカオログイン",
+      "emailPh": "セラーメール",
+      "pwPh": "パスワード",
+      "submit": "再連携してダッシュボードを開く",
+      "busy": "再連携中…",
+      "fail": "再連携に失敗しました",
+      "needKakao": "まず新しいカカオでログインしてください。",
+      "noPw": "カカオのみで登録しパスワードがない場合は、本人確認後に直接連携します。",
+      "channel": "カカオチャンネルで問い合わせ",
+      "entry": "カカオ変更？再連携 →"
+    },
+    "scanDevices": {
+      "title": "スタッフ・共用端末用スキャンリンク",
+      "issue": "リンク発行",
+      "desc": "オーナーのログインなしでスキャンだけできるリンクです。QRをその端末で読み取るか、リンクを送ってください。紛失時は即時回収できます。",
+      "oneTime": "この画面のみ表示（再表示不可）",
+      "copyLink": "リンクをコピー",
+      "lastUsed": "最終使用",
+      "neverUsed": "未使用",
+      "revoke": "回収",
+      "revoked": "回収完了",
+      "revokeConfirm": "この端末のリンクを回収しますか？その端末ではスキャンできなくなります。",
+      "revokeFail": "回収に失敗しました",
+      "issueFail": "発行に失敗しました"
+    },
+    "simple": {
+      "scan": "QRスキャン",
+      "settlement": "精算",
+      "myDeals": "マイディール",
+      "fullMenu": "全メニュー",
+      "scanSub": "バウチャー使用処理",
+      "settlementSub": "売上・支払確認",
+      "myDealsSub": "承認待ち含む"
+    },
     "dashboard": "ダッシュボード",
     "dashboardSubtitle": "セラーダッシュボード — 売上 / 注文 / ライブ状況",
     "products": {
@@ -911,7 +950,7 @@
       "kindPdfGuide": "📚 Info guide",
       "kindPdfGuideDesc": "Guide, know-how documents",
       "contentUrlLabel": "Content URL",
-      "contentUrlPlaceholder": "https://r2.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
+      "contentUrlPlaceholder": "https://media.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
       "contentUrlHint": "⚠️ R2 or external CDN URL. Signed URL auto-issued for buyers only.",
       "contentFormatLabel": "File format",
       "contentFormatSelect": "Select",
@@ -2336,7 +2375,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "紹介手数料 (%)",
       "promoRecommend": "推奨 {{min}}~{{max}}%",
-      "promoHint": "インフルエンサーが紹介リンクで販売するとこの割合を紹介料として支払います。割引と合わせて一つのマーケティング予算として設計してください。紹介販売がなければ発生しません。"
+      "promoHint": "インフルエンサーが紹介リンクで販売するとこの割合を紹介料として支払います。割引と合わせて一つのマーケティング予算として設計してください。紹介販売がなければ発生しません。",
+      "photoGuideTitle": "💡 看板・メニュー表より、料理や施術結果の写真の方がよく売れます",
+      "photoGuideGood": "✅ おすすめ例: 看板メニューのクローズアップ · 施術結果(ビフォー/アフター) · 実際に提供される様子",
+      "photoGuideBad": "❌ 避けてください: 看板 · メニュー表 · 建物の外観写真"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2432,7 +2474,8 @@
       "agencyDelegation": "店舗委任",
       "promoSpend": "プロモ支出",
       "influencerDeals": "インフル協業",
-      "experienceCampaigns": "体験キャンペーン"
+      "experienceCampaigns": "体験キャンペーン",
+      "myLinkshop": "マイリンクショップ"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",
@@ -3439,7 +3482,7 @@
       "k013": "비공개로 변경됨",
       "k014": "발행됨",
       "k015": "변경 실패",
-      "k016": "글을 작성하고 docs.ur-team.com에 발행하세요",
+      "k016": "글을 작성하고 urdeal.kr/blog에 발행하세요",
       "k017": "작성된 글이 없습니다",
       "k018": "임시저장",
       "k019": "비공개로 변경",
@@ -4645,20 +4688,21 @@
     "tabGroupBuy": "利用券",
     "tabGifticon": "ギフト券",
     "emptyGbTitle": "受け取った食事券がありません",
-    "emptyGbDesc": "近所のグルメ共同購入に参加すると\n前払い食事券がここに貯まります",
-    "emptyGbCta": "共同購入を見る",
+    "emptyGbDesc": "地元のクーポンを割引価格で購入すると\nここに届き、店舗ですぐ使えます",
+    "emptyGbCta": "地元クーポンを見る",
     "emptyGiftTitle": "受け取った引換券がありません",
     "emptyGiftDesc": "引換券を購入すると携帯電話に送信され\nここでもまとめて確認できます",
     "emptyGiftCta": "引換券を見る",
-    "stepGb1": "共同購入\n参加",
-    "stepGb2": "ウォレットに\n食事券",
+    "stepGb1": "クーポン\n購入",
+    "stepGb2": "ウォレット\nに到着",
     "stepGb3": "店舗で\nQR提示",
     "stepGift1": "引換券\n購入",
     "stepGift2": "MMS\n送信",
     "stepGift3": "店舗で\n提示",
     "deal": "ディール",
     "heroBalanceLabelGift": "保有ギフト券の金額",
-    "loadFailed": "利用券を読み込めませんでした"
+    "loadFailed": "利用券を読み込めませんでした",
+    "totalCount": "合計{{count}}枚"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",
@@ -5204,6 +5248,7 @@
     "catExchange": "[TODO:ja] 교환/환불",
     "catMember": "[TODO:ja] 회원",
     "catLive": "[TODO:ja] 라이브",
+    "catService": "サービス",
     "q1": "[TODO:ja] 주문을 취소하고 싶어요",
     "a1": "[TODO:ja] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "[TODO:ja] 결제가 완료되지 않았어요",
@@ -5220,10 +5265,10 @@
     "a7": "[TODO:ja] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "[TODO:ja] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:ja] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "[TODO:ja] 라이브 방송은 어떻게 시청하나요?",
-    "a9": "[TODO:ja] 메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "[TODO:ja] 라이브 중 상품을 구매하려면?",
-    "a10": "[TODO:ja] 라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다."
+    "q9": "ユアディール(UrDeal)とはどんなサービスですか？",
+    "a9": "ユアディール(urdeal.kr)は、近所のお店の利用券を割引価格で購入し、店舗でQRコードですぐ使えるローカルコマースプラットフォームです。飲食・美容・宿泊の利用券、ギフト交換券、近くのディールマップ、自分のリンクショップを提供します。",
+    "q10": "利用券はどうやって使いますか？",
+    "a10": "購入した利用券はマイページ > 利用券で確認でき、店舗でQRまたはPINを提示するとすぐ使えます。交換券（ギフト券）は決済後すぐ発行されます。"
   },
   "introduce": {
     "navStart": "始める",

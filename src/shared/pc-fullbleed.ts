@@ -24,15 +24,20 @@ const FULLBLEED_PC_PATHS = new Set<string>([
 // 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.
 //   ⚠️ 여기 등재하려면 그 페이지의 하단 구매바가 `.app-frame-bar` 를 쓰지 않아야 함(pc-fullbleed 가 숨김).
 //   교환권 상세(VoucherDetailPage)는 구매바가 app-frame-bar 미사용(ur-content-narrow lg:max-w) → 안전.
-const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/group-buy/']
+//   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
+const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/group-buy/', '/stays/']
 
 /** 이 경로는 lg+ 에서 풀너비(프레임/사이드바/거터 제외 + 하단네비 숨김). */
 export function isFullBleedPcPath(pathname: string): boolean {
   return FULLBLEED_PC_PATHS.has(pathname) || FULLBLEED_PC_PREFIXES.some((p) => pathname.startsWith(p))
 }
 
-/** 풀너비지만 페이지 자체 상단 헤더를 쓰는 경로 → 전역 DesktopTopNav 숨김. */
-const OWN_HEADER_PC_PATHS = ['/vouchers', '/stays', '/map', '/group-buy']
+/** 풀너비지만 페이지 자체 상단 헤더를 쓰는 경로 → 전역 DesktopTopNav 숨김.
+ *  🖥️ 2026-07-19 (대표 — "상단은 어느 페이지든 공통, /map 도"): 예외 전부 제거 — 전역 상단 네비
+ *  (로고+검색+앱/판매+카테고리 바)가 PC(lg+) 전 소비자 페이지 공통. 지도(/map)도 여기어때식으로
+ *  [전역 네비 위 + 지도 분할 아래]. lg 미만(모바일/태블릿)의 자체 헤더 유지는 DesktopTopNav 내부
+ *  LEGACY_OWN_HEADER 게이트가 담당(이중 헤더 방지). */
+const OWN_HEADER_PC_PATHS: string[] = []
 export function hasOwnHeaderPc(pathname: string): boolean {
   return OWN_HEADER_PC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }

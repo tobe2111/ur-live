@@ -297,6 +297,42 @@ export function findDistrictGroup(regionKey: string | null | undefined, district
 }
 
 /**
+ * 🗺️ 2026-07-20 (지역 매칭 좌표 고도화 — 대표 "부산인데 연남버거" 후속): 시/도 중심좌표 + 대략 반경(km).
+ *   용도: **주소 텍스트가 없는 딜**의 지역 필터 폴백 — 좌표(restaurant_lat/lng)가 있으면 시/도 반경으로
+ *   포함/제외 판정(텍스트 매칭이 항상 1순위, 좌표는 주소-미상일 때만). 반경은 행정 경계가 아닌 근사값 —
+ *   피드 필터 용도(오차 수 km 허용). district(역세권 그룹) 단위는 텍스트 전용(좌표 미지원).
+ */
+const REGION_CENTROIDS: Record<string, { lat: number; lng: number; radiusKm: number }> = {
+  '서울': { lat: 37.5665, lng: 126.978, radiusKm: 25 },
+  '경기': { lat: 37.4138, lng: 127.5183, radiusKm: 70 },
+  '인천': { lat: 37.4563, lng: 126.7052, radiusKm: 25 },
+  '강원': { lat: 37.8228, lng: 128.1555, radiusKm: 95 },
+  '제주': { lat: 33.4996, lng: 126.5312, radiusKm: 45 },
+  '대전': { lat: 36.3504, lng: 127.3845, radiusKm: 18 },
+  '충북': { lat: 36.6357, lng: 127.4914, radiusKm: 65 },
+  '충남세종': { lat: 36.5184, lng: 126.8, radiusKm: 70 },
+  '부산': { lat: 35.1796, lng: 129.0756, radiusKm: 25 },
+  '울산': { lat: 35.5384, lng: 129.3114, radiusKm: 22 },
+  '경남': { lat: 35.4606, lng: 128.2132, radiusKm: 80 },
+  '대구': { lat: 35.8714, lng: 128.6014, radiusKm: 20 },
+  '경북': { lat: 36.4919, lng: 128.8889, radiusKm: 100 },
+  '광주': { lat: 35.1595, lng: 126.8526, radiusKm: 18 },
+  '전남': { lat: 34.8679, lng: 126.991, radiusKm: 90 },
+  '전북': { lat: 35.7175, lng: 127.153, radiusKm: 65 },
+}
+
+/** 좌표가 시/도 반경 안인지. regionKey 미등재/무효 좌표면 null(판정 불가 — 호출부가 보수적으로 처리). */
+export function matchRegionCoords(lat: number, lng: number, regionKey: string | null | undefined): boolean | null {
+  if (!regionKey) return null
+  const c = REGION_CENTROIDS[regionKey]
+  if (!c || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  // equirectangular 근사(피드 필터 정밀도 충분) — 위도 1도 ≈ 111km, 경도는 cos(lat) 보정.
+  const dy = (lat - c.lat) * 111
+  const dx = (lng - c.lng) * 111 * Math.cos((c.lat * Math.PI) / 180)
+  return dy * dy + dx * dx <= c.radiusKm * c.radiusKm
+}
+
+/**
  * 주소가 region 또는 districtGroup 에 매칭되는지 확인.
  *   - region 지정 + district 지정: 두 조건 모두 매칭
  *   - region 만 지정: 주소에 region label 포함 또는 region 의 그룹 키워드 중 하나라도 매칭

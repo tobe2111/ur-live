@@ -29,6 +29,7 @@ import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { seedDemoReviews } from '@/worker/utils/demo-review-generator';
+import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories';
 import type { Env } from '@/worker/types/env';
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
@@ -259,12 +260,18 @@ productsRoutes.get('/suggestions', cors(), async (c) => {
   if (!q || q.length < 2) return c.json({ success: true, data: [] });
   if (q.length > 200) return c.json({ success: true, data: [] });
   try {
+    // 🔎 2026-07-20 (대표 "이용권만"): 자동완성도 검색 결과(SearchPage 이용권-스코프)와 정확히 일치시켜
+    //   교환권(deal_only=1)/쇼핑(비-voucher 카테고리) 이름 제안 제거 — 눌러도 0건 나오는 불일치 방지.
+    //   결과 필터(SearchPage: deal_only!==1 AND (category null OR isVoucherCategory))의 SQL 미러.
+    const vc = voucherCategoriesSqlClause();
     const result = await DB.prepare(
       `SELECT DISTINCT name as suggestion FROM products
        WHERE name LIKE ? AND is_active = 1
          AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
+         AND (deal_only IS NULL OR deal_only = 0)
+         AND (category IS NULL OR category IN (${vc.placeholders}))
        ORDER BY name ASC LIMIT 10`
-    ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
+    ).bind(`%${q}%`, ...vc.values).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
   } catch {
     return c.json({ success: true, data: [] });

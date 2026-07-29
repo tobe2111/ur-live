@@ -63,6 +63,10 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     })
     setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
     setPlaces([]); setPhotos([]); setQ('')
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 현재 갤러리를 선택 상태로 프리필 —
+    //   그대로 두면 유지, 빼거나('현재 사진' X 버튼) 네이버 검색으로 추가하면 저장 시 교체.
+    //   (이전엔 여기서 selectedPhotos 를 안 건드려 직전 작업 선택이 잔존하는 leak 도 있었음 — 함께 해소.)
+    setSelectedPhotos(editDeal.gallery && editDeal.gallery.length > 0 ? editDeal.gallery : (editDeal.image_url ? [editDeal.image_url] : []))
   }, [editDeal])
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
@@ -129,8 +133,9 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     if (!(Number(f.price.replace(/[^\d]/g, '')) > 0)) { toast.error('판매가를 입력하세요'); return }
     setBusy(true)
     try {
-      // 🖼️ 다중 선택분 전달 — 서버가 products.image_urls(JSON) 저장 → 상세 스와이프 갤러리 표시.
-      const payload = { ...f, lat: coord?.lat, lng: coord?.lng, image_urls: selectedPhotos.length > 0 ? selectedPhotos : undefined }
+      // 🖼️ 다중 선택분 전달 — 서버가 갤러리(detail_images/images JSON) 저장 → 상세 스와이프 갤러리 표시.
+      //   수정 모드는 빈 배열도 전송(전부 제거 = 갤러리 해제) / 신규는 선택 있을 때만.
+      const payload = { ...f, lat: coord?.lat, lng: coord?.lng, image_urls: isEdit ? selectedPhotos : (selectedPhotos.length > 0 ? selectedPhotos : undefined) }
       if (isEdit && editDeal) {
         const res = await api.patch(`/api/admin/dongnedeal/${editDeal.id}`, payload, h)
         if (res.data?.success) { toast.success('수정 저장됨'); onSaved() }
@@ -139,7 +144,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
         const res = await api.post('/api/admin/dongnedeal/create', payload, h)
         if (res.data?.success) {
           toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
-          setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([])
+          setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]); setSelectedPhotos([])
           onSaved()
         } else toast.error(res.data?.error || '등록 실패')
       }
@@ -248,6 +253,35 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
             </button>
           </div>
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
+          {/* 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 현재 갤러리 스트립 —
+              수정 진입 시 기존 사진이 여기 프리필됨. X 로 빼고, 아래 네이버 검색으로 추가. ①=대표. */}
+          {selectedPhotos.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, X로 제거</p>
+              <div className="flex gap-2 flex-wrap">
+                {selectedPhotos.map((u, i) => (
+                  <div key={u} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                    <img src={cfImage(u, { width: 128, quality: 80, format: 'auto' }) || u} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+                    <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-900/80 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                    <button
+                      type="button"
+                      aria-label="사진 제거"
+                      onClick={() => {
+                        setSelectedPhotos((prev) => {
+                          const next = prev.filter((x) => x !== u)
+                          set('image_url', next[0] || '')
+                          return next
+                        })
+                      }}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {photos.length > 0 && (
             <div className="grid grid-cols-4 gap-2 mt-2">
               {photos.map((p, i) => {

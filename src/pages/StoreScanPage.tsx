@@ -9,19 +9,37 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Store } from 'lucide-react'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
 
+// 📟 2026-07-20 (대표 — 직원 폰/공기계): 스캔 전용 기기 링크(?dk=)로 진입하면 로그인 없이 스캔.
+//   키는 localStorage 보관(1회 수신 후 주소창에서 제거 — 링크 공유/히스토리 노출 방지).
+function captureDeviceKey(): void {
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const dk = sp.get('dk')
+    if (dk) {
+      localStorage.setItem('scan_device_key', dk)
+      sp.delete('dk')
+      const q = sp.toString()
+      window.history.replaceState(null, '', window.location.pathname + (q ? `?${q}` : ''))
+    }
+  } catch { /* noop */ }
+}
+
 export default function StoreScanPage() {
   const navigate = useNavigate()
-  // 사업자 유저(seller_token 보유)만 — 아니면 마이로 돌려보냄(로그인 자체는 ProtectedRoute 가 보장).
+  if (typeof window !== 'undefined') captureDeviceKey()
+  // 사업자 유저(seller_token) 또는 스캔 전용 기기 키 — 둘 다 없으면 마이로.
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  const hasDeviceKey = typeof window !== 'undefined' && !!localStorage.getItem('scan_device_key')
+  const allowed = hasSeller || hasDeviceKey
   useEffect(() => {
-    if (!hasSeller) navigate('/user/profile', { replace: true })
-  }, [hasSeller, navigate])
-  if (!hasSeller) return null
+    if (!allowed) navigate('/user/profile', { replace: true })
+  }, [allowed, navigate])
+  if (!allowed) return null
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#020202]">
-      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#1A1A1A] bg-white/90 dark:bg-[#020202]/90 backdrop-blur">
-        <button onClick={() => navigate(-1)} aria-label="뒤로" className="p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#1A1A1A]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D]">
+      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2A3446] bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur">
+        <button onClick={() => navigate(-1)} aria-label="뒤로" className="p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#1A2334]">
           <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
         </button>
         <div className="flex items-center gap-1.5">

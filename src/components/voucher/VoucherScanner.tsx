@@ -55,8 +55,10 @@ export default function VoucherScanner() {
     setBusy(true)
     try {
       const token = localStorage.getItem('seller_token')
+      // 📟 2026-07-20: 직원 폰/공기계 = 스캔 전용 기기 키(X-Scan-Device-Key) — seller 토큰 없을 때만
+      const deviceKey = !token ? localStorage.getItem('scan_device_key') : null
       const res = await api.post(`/api/group-buy/${encodeURIComponent(code)}/use-by-seller`, {}, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : (deviceKey ? { 'X-Scan-Device-Key': deviceKey } : {}),
       })
       const d = res.data || {}
       setResults((prev) => [{
@@ -206,7 +208,7 @@ export default function VoucherScanner() {
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '바우처 코드 직접 입력' })}
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-sm text-gray-900 dark:text-white bg-white dark:bg-[#121212] focus:outline-none focus:ring-2 focus:ring-gray-400/40"
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2A3446] text-sm text-gray-900 dark:text-white bg-white dark:bg-[#1A2334] focus:outline-none focus:ring-2 focus:ring-gray-400/40"
           />
         </div>
         <button type="submit" disabled={busy || !extractCode(manualCode)}
@@ -232,7 +234,7 @@ export default function VoucherScanner() {
         </div>
       )}
       {results.length > 1 && (
-        <div className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] divide-y divide-gray-100 dark:divide-[#1F1F1F]">
+        <div className="rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] divide-y divide-gray-100 dark:divide-[#2A3446]">
           {results.slice(1).map((r, i) => (
             <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-xs">
               {r.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}

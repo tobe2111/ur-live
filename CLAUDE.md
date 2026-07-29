@@ -27,7 +27,7 @@
 | 라우트(페이지) | `/wholesale/*` · `/supplier/*` · `/admin/wholesale-*` · `/admin/distributor*` · `/admin/suppliers` · `/admin/distributor-approval` | `/` · `/group-buy` · `/community-group-buy` · `/vouchers` · `/products` · `/browse` · `/u/*` · `/seller/*`(소비자 셀러) |
 | API 네임스페이스 | `/api/wholesale/*` · `/api/supplier/*` · `/api/admin/wholesale-*` · `/api/admin/distributor*` · `/api/admin/suppliers` · `/api/admin/supplier-products` | `/api/group-buy/*` · `/api/community-group-buy/*` · `/api/products` · `/api/vouchers` · `/api/orders`(소비자) |
 | 코드 | `src/features/supply/**` · `src/pages/wholesale*/**` · `src/pages/supplier-dashboard/**` · `src/components/wholesale/**` | `src/features/group-buy/**` · `src/features/community-group-buy/**` · `src/pages/main-home/**` · `src/pages/GroupBuy*.tsx` · `src/pages/Vouchers*.tsx` |
-| 브랜드/도메인 | 유통스타트 · `utongstart.com` | 유어딜 · `live.ur-team.com` |
+| 브랜드/도메인 | 유통스타트 · `utongstart.com` | 유어딜 · `urdeal.kr` (2026-07-20 이전 — 구 `live.ur-team.com` 은 영구 301) |
 
 **룰**:
 1. **한 서비스 작업 시 다른 서비스 파일/라우트/네임스페이스를 건드리지 말 것.** 예: 도매 정산 수정이 소비자 정산을, 도매 상품등록이 소비자 카탈로그를 바꾸면 안 됨.
@@ -68,6 +68,8 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-07-19 `[UNLOCK]` `TossPaymentWidget.tsx` **결제하기 버튼 색만 브랜드 로즈** (대표 브랜드 컬러 전면 적용 지시서 + AskUserQuestion "색만 [UNLOCK] 허용" 명시 승인). ready 상태 버튼 `bg-blue-600 hover:bg-blue-700 active:bg-blue-800` → `bg-brand hover:bg-brand-dark`(#E0526B/#C43D55) — **className 색상 1곳만**. requestPayment/약관 클릭시점 검증/orderName 100자/customerEmail·Name·Phone/setAmount/widgets() 키분기/Toss SDK 위젯 영역 전부 byte-불변(지시서 금지선: SDK 위젯 무접촉). disabled 상태(bg-gray-300)는 gray 리매핑(웜 스케일)만 승계. 매핑 SSOT: `docs/design/brand-color-rollout.md`. 롤백: 클래스 1곳 환원.
+- 2026-07-18 `[UNLOCK]` `PaymentSuccessPage.tsx` **로딩 스피너 → 유어딜 BrandLoader 단일화** (대표 명시 승인 "통일해" — 소비자 로딩 전수 통일의 마지막 1건). **배경**: 대표 지시 "로딩 중엔 무조건 하나로 통일(도매몰 제외)" 전수조사에서 소비자 PAGE-level 커스텀 로더 11곳을 BrandLoader 로 교체했는데, 이 파일만 Toss V2 감사-잠금이라 보류 → 명시 승인 후 처리. **수정(로더 1블록만)**: `if (loading)` 의 border-spinner + `paymentSuccess.approving` 텍스트 블록 → `<BrandLoader fullScreen label={t('paymentSuccess.approving')} />`. **⚠️ 결제 확정/금액검증/TossPaymentObject 필드 표시(receipt.url/cashReceipt/easyPay/card/approvedAt)/pendingBookings 조회 전부 byte-불변** — 표시 로직은 `loading=false` 이후라 무접촉, `loading=true` 동안의 스피너 비주얼만 교체. 검증: tsc 0·theme·consumer-loader-unify 가드 GREEN(예외목록에서 해제). 롤백: 로더 블록 환원.
 - 2026-07-13 `[UNLOCK]` `payment.routes.ts` `/confirm` **상권 쿠폰 경로 B(온라인 결제 자동발급) 게이트드 배선** (대표 승인 "(b) 전면 구현, 게이트 OFF·별도 draft PR·main 머지 금지·staging 실결제 후"). **배경**: 상권 페이백 쿠폰(병렬 엔티티 `district_coupons` — 딜/유어딜 5%/원장 무접촉)에 **경로 A(오프라인 영수증 등록→어드민 승인)** 에 더해 **경로 B(참여 매장에서 유어딜로 결제→기준액 이상이면 무승인 자동발급)** 추가. 발급 트리거 = 결제 완료 이벤트(경로 A 의 '어드민 승인' 자리를 '결제 감지'가 대체). **수정(additive 게이트드 1블록)**: `_confirmSideFx`(waitUntil) 끝의 `SHOPPING_LEDGER_ENABLED` 블록 다음에 `DISTRICT_AUTO_ISSUE_ENABLED==='true'`(env, 기본 OFF) 게이트로 `autoIssueDistrictCouponForOrder`(district-coupon.routes) 호출 — 참여 매장(`district_stores.seller_id` 연결) + `auto_issue_enabled` 캠페인 + **행사 기간 내**(상시 아님) + reward_tiers 기준액 이상이면 상권 쿠폰 자동발급. **④ 결제 성공 경로 영향 0**: waitUntil 후처리 + autoIssue 자체가 **완전 fail-soft(절대 throw 안 함)** → 쿠폰 발급 실패가 결제 확정/응답을 롤백 못 함. **③ 경로 B = source='online' 자동승인 영수증 행 모델** → 1인 월 한도가 경로 A 와 **자동 합산**(`district_receipts` 카운트, 한도 로직 byte-불변) + 결제건 1회 발급(`source_ref=order_number` UNIQUE 멱등, `card_approval_no` 유지 비파괴). **② 재원 분리** = `funding_source` 태그(캠페인 `auto_issue_funding_source`, 쿠폰 스탬프) + 예산 가드 2풀(`budget_total`=재단/`budget_urteam`=유어팀, 원장 무접촉 — 컬럼+집계). 리포트 A/B×재원 GROUP BY. **⚠️ Toss confirm/금액검증/confirmClaim CAS/재고·딜차감/기존 커미션·알림·KT발송·fee-resolver·쇼핑원장 게이트 전부 byte-불변 — 게이트드 side-effect 1블록 추가만. 기본 OFF(env 미설정)=`/confirm` byte-동일.** 신규 env `DISTRICT_AUTO_ISSUE_ENABLED`. 검증: sql bind/column/table/not-null·theme·modal·light-input·mobile·csv·pagination 0. **⚠️ 활성 전 staging 실결제 필수**(대표 조건 ①): `DISTRICT_AUTO_ISSUE_ENABLED=true` + 캠페인 `auto_issue_enabled` + 파일럿 매장 결제 → 쿠폰 1장 발급 + 1인 한도 A/B 합산 + 재원별 예산 가드 + 중복 결제 재발급 0 확인 후에만 머지. 설계: `docs/design/district-coupon-estimate-2026-07.md §경로 B`. 롤백: `/confirm` 게이트드 블록 1개 제거(게이트 OFF 라 유지도 무해).
 - 2026-07-04 `[UNLOCK]` `payment.routes.ts` `/confirm` **커미션 예산 아비터 통합 [INV-CB]** (대표 승인 "구현 하자 가장 이상적이고 영구적으로" — 수수료율 동결·재원 구조 수정). **배경**: 플랫폼 부담 성장 커미션 4축(어필리에이트 2%·멀티티어 트리 10/3/1%·영입자 1.5%·에이전시 1~2%)이 서로 캡을 모른 채 GMV % 로 얹혀 **트리 경유 주문 최악 −14%**(수수료 5% − PG 2.5% − 커미션 스택) 구조 노출. **수정(호출부 통합만)**: `_confirmSideFx` 의 개별 4블록(affiliate intent/agency/influencer/supplier) + `_postConfirmBg` 의 multiTier 를 → **`creditOrderCommissions`(order-commissions.ts, webhook 과 동일 진입점) 1회 호출**로 통합. 오케스트레이터가 `commission_budget_enabled==='true'`(platform_settings, 기본 OFF) 게이트로 3P 주문당 예산(수수료−`pg_reserve_pct`) 안에서 비례 배분(`commission-budget.ts` 순수함수 + 유닛테스트) — **기본 OFF = 기존과 동일 순서/인자로 각 헬퍼 위임(행동 0 변화)**. 부수효과: C1(affiliate)↔C2(multiTier) 상호배타 dedup 이 별개 waitUntil 병주로 이론상 이중지급 가능하던 레이스가 순차 실행으로 구조적 제거. 동반(비잠금): 적립 헬퍼 4종 compute/override 리팩토링(멱등·역전 대칭 불변, override 는 min-clamp 축소만) · promo owner-펀딩 스위치(`promo_funding_source`, 이용권 사용시 원장 debit + 쇼핑 원장 fee 합산 + 환불 역전) · 정액 보상 월예산 캡(초대/에이전시 signup) · 영구 가드 `check-commission-budget.mjs`(audit-gate+verify strict — 아비터 우회 차단). **⚠️ Toss confirm/금액검증/confirmClaim CAS/재고·딜차감/알림/KT발송/fee-resolver 그림자/쇼핑원장 게이트 전부 byte-불변 — side-effect 커미션 호출부만 통합.** 설계 SSOT: `docs/design/commission-funding-restructure.md`. ⚠️ **활성 전 staging 실결제 필수**: `commission_budget_enabled=true` 로 영입+트리 겹친 주문 → Σ적립 ≤ 예산 + 환불 역전 / `promo_funding_source=owner` 로 이용권 구매→사용→매장 원장 promo debit 1회 + 환불 복원. 롤백: `/confirm` 통합 1블록 → 기존 개별 블록 환원(오케스트레이터는 게이트 OFF 라 유지 무해).
 - 2026-07-01 `[UNLOCK]` `payment.routes.ts` `/confirm` **일반 쇼핑 주문 → 이중원장 net 크레딧 그림자 배선** (대표 승인 "진행해줘 가장 이상적으로" — 정산 자동화 완성). 배경: 소비자 셀러 매출 중 동네딜 공구·이용권은 원장(`ledger_entries` seller:N)에 적립돼 주간 자동 payout(`payouts-generate`)으로 정산되나, **일반 쇼핑 주문은 원장 미기록 → 자동 payout 누락**. **수정(그림자 게이트 1블록 additive)**: `_confirmSideFx`(confirmClaim CAS 후 waitUntil) 의 fee-resolver 그림자 블록 다음에 `SHOPPING_LEDGER_ENABLED==='true'` 게이트로 `creditSellerOrderToLedger(order.id)` 호출 — 셀러 매출을 원장에 net 크레딧(`amount=gross + fee_amount=플랫폼수수료`, 집계식이 net 산출). **기본 OFF**=현행 100% 동일(fee-resolver 그림자와 동일 2단 스위치). **이중적립 0**: 멱등(order:N/order_number dedup) + 이용권/deal_only 아이템 주문 skip(voucher 사용시 원장 기록됨) + 공구는 group-buy.routes 가 order_number 로 이미 크레딧→dedup skip. **환불 역전 대칭**: `order-refund.ts reverseOrderAncillaryOnRefund` 에 `reverseSellerOrderLedger`(seller:N net debit, 게이트 무관 멱등) 배선. **⚠️ Toss confirm/금액검증/confirmClaim/confirmPaymentAtomic/reduceStock/딜차감/기존 side-effect 전부 byte-불변 — 게이트 그림자 블록 1개 추가만.** 새 helper `order-ledger-credit.ts`, env `SHOPPING_LEDGER_ENABLED`. 동반(비잠금): payout 집계 net 정합(`ledger.ts getLedgerReceivable`=Σ(credit−fee)−Σ(debit), `payouts-generate` net 쿼리, 어드민 approve 과다지급 가드). 검증: 단위 2446 pass(신규 ledger-payable-net 12)·tsc 0·build 0·sql bind/table 0·money-pattern 0. ⚠️ **활성 전 staging 실결제 필수**: SHOPPING_LEDGER_ENABLED=true 로 쇼핑 결제 → 원장 net 크레딧 1회 + 환불 시 역전 → receivable 0 확인. (쇼핑탭 숨김이라 현재 라이브 영향 0 — 재오픈 전 검증.)
@@ -145,6 +147,11 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-07-21 `[UNLOCK_LOADING]` `cf-image.ts` **네이버 블로그 CDN 핫링크 403 우회 — 워커 프록시 라우팅** (대표 신고 "네이버 사진 안 뜸 403 · 이용권 많음" — 라이브 실측). **원인**: 데모/셀러 이미지의 네이버 블로그 CDN(`postfiles`/`mblogthumb-phinf`/`dthumb-phinf`/`blogfiles`/`blogpfthumb-phinf`.pstatic.net)이 **우리 도메인 referer 요청만 403** 핫링크 차단(실측: no-referer→200, `Referer: urdeal.kr`→403, `Referer: blog.naver.com`→200). `pstatic.net` apex 가 `CDN_CGI_VERIFIED` 라 이 블로그 호스트도 cdn-cgi 직결(`/cdn-cgi/image/…/onerror=redirect/<naver>`)로 갔는데, 리사이저가 페이지 referer(urdeal.kr)를 달고 네이버 fetch → 403 + `onerror=redirect` 폴백도 브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403 → **사진 영구 안 뜸**. **수정(additive 분기 1개)**: `HOTLINK_BLOCKED_HOSTS`(블로그 CDN 5개) 는 `CDN_CGI_VERIFIED` 체크 **전에** `/api/image/resize` 워커 프록시로 강제 — 워커가 **referer 없이 서버측 fetch → 200**(프록시 폴백 경로, 엣지+R2 썸네일 캐시로 반복비용 0). **네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)·기타 pstatic·giftishow·kt·media.ur-team 전부 cdn-cgi 유지 불변 — 블로그 5호스트만 프록시 리라우팅.** SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS/Save-Data 목록 무변경(제거 0). 재적용 불필요 — 렌더 시점 cfImage 가 경로 바꿔 다음 로드에 즉시 표시. 검증: theme/loader-continuity GREEN. 롤백: HOTLINK_BLOCKED_HOSTS 분기 제거.
+- 2026-07-20 `[UNLOCK_LOADING]` `worker/index.ts` **쇼핑 상품(`/products/:id` · PRODUCT slot) 서버 메타/OG rewrite 신설** (대표 "카카오 공유 예쁘게 — 가장 이상적으로"). 그간 PRODUCT 슬롯은 `__SSR_INITIAL_PRODUCT__` 데이터만 주입하고 title/OG/JSON-LD 는 index.html 제네릭 홈을 서빙 → 카톡/소셜/네이버가 상품 링크를 "유어딜 홈" 카드로 봄(가장 약한 서버 OG). DETAIL(공구/이용권) 블록과 **동일 additive 패턴**으로 `buildProductMeta`(detail-ssr-meta.ts 순수함수) 결과를 서빙경로 HTMLRewriter 로 주입 — 가격·할인율 description + Product/Offer JSON-LD(딜=원화아님 상품은 offer 가격 생략). **SSR inject(`__SSR_INITIAL_PRODUCT__`)·0-RTT·`caches.default`·#root 정적 로더·edgeCache 전부 불변 — 메타 rewrite만 additive**(DETAIL rewrite 와 대칭). 동반(비잠금): `KakaoShareButton` 카카오 공유를 feed→**commerce 템플릿**(가격 있으면 정가취소선+할인가+할인율배지+버튼2개, 없으면 feed 폴백)으로 승격 + Product/GroupBuyDetail 가격 배선(딜 상품은 '원' 표기 부적합이라 feed 유지). 검증: tsc 0(로컬 tsconfig baseUrl deprecation 1건은 CI 무관 기존 경고)·loader-continuity 14·theme GREEN·file-size rebaseline(정당 additive). 롤백: worker PRODUCT 블록 + import 제거(KakaoShareButton 은 가격 props 미전달 시 기존 feed 동일).
+- 2026-07-19 `[UNLOCK_LOADING]` `worker/index.ts` **정적 로더 워드마크 → 대표 확정 로고(urdeal.+로즈 점)** (대표 핸드오프 번들 "Ur Deal 로고 Final" 수령 — "적용할 수 있는 모든걸 적용해줘"). `urdealLoaderHtml` 워드마크 블록을 재작성된 `UrDealLogo`(SSOT — 소문자 `urdeal` + 로즈 원 마침표, Poppins 800·자간 −3.5%, 이전 "UR·DEAL" 이탤릭+▶ 폐기)와 픽셀 동일하게 미러(size34: 점 6.12px/좌 2.72px, `text-[#1A2C42] dark:text-[#FAF7F5]`). **로더 구조(min-h/gap/스윕바)·위상동기(음수 delay)·`ur-loader-breathe/sweep` 클래스·SSR inject·`caches.default` 전부 불변 — 워드마크 마크업 내용만.** Poppins 는 index.html 에서 `&text=urdeal` 6글자 서브셋(~2KB)만 로드(preconnect 2개 추가 — 잠금 예외 '추가 OK', CSP style/font-src 기허용). loader-continuity 14불변식 GREEN. 롤백: 워드마크 블록 환원 + 폰트 링크 3줄 제거.
+- 2026-07-19 `[UNLOCK_LOADING]` `worker/index.ts` **(STEP B 추가) 정적 로더 워드마크 잉크 hex 색만 다크 팔레트 이행** — 지시서 §6 일괄 마이그레이션(`#0A0A0A`→`#0F151D` 등, 소비자+셀러 스코프 263파일)의 일부. 로더 마크업/위상동기/SSR inject 구조 불변, 색 리터럴만. loader-continuity 14불변식 GREEN. (동일 일괄분에 Toss 잠금 `PaymentSuccessPage`·`TossWidgetPayPage` 의 다크 hex 도 색만 이행 — 기승인 '색만 [UNLOCK]' 범위.)
+- 2026-07-19 `[UNLOCK_LOADING]` `worker/index.ts` **정적 URDEAL 로더 스윕바 색만 브랜드 로즈** (대표 브랜드 컬러 지시서 "로딩 애니메이션까지"). `urdealLoaderHtml` 의 스윕바 클래스 `bg-gray-900 dark:bg-white` → `bg-brand dark:bg-brand`(#E0526B) — React `BrandLoader` 기본/forceDark 스윕과 동일 값으로 로더 연속성 유지(forceLight 대시보드 로더는 중립 유지 — 어드민 무접촉). **SSR inject·caches.default·#root 분기·로더 마크업 구조·위상동기 클래스(ur-loader-*) 전부 byte-불변 — 클래스 색상 1곳만.** loader-continuity 14불변식 GREEN. 롤백: 클래스 1곳 환원.
 - 2026-07-13 `[UNLOCK_LOADING]` `ConsumerFrameRails.tsx` **QR 라이브러리 lazy화 — 홈 첫페인트에서 `codes`(18KB) 제거** (대표 "계속 해줘 가장 이상적으로" — 첫방문 JS 다이어트). **배경(진단)**: 홈 modulepreload에 `codes` 청크(qrcode/jsbarcode/html5-qrcode 18KB)가 딸려오는데, 홈(교환권 피드)엔 QR 불필요. 소스 추적: PC 소비자 액자 거터 레일 `ConsumerFrameRails`(홈에도 씌워짐)가 `qrcode.react`를 **static import** → route-chunk-map(생성기가 static `imports`만 폐쇄, `dynamicImports` 제외 — generate-route-chunk-map.mjs:67)이 홈 표면 폐쇄에 `codes` 포함 → PC/모바일 홈 preload에 18KB(모바일은 xl+ 레일 미렌더라 안 쓰는데도). **수정**: `import {QRCodeSVG} from 'qrcode.react'` → `lazy(() => import('qrcode.react'))` (형제 `LinkshopVisitorRails`가 이미 쓰는 검증된 패턴) + QR 사용부에 `<Suspense fallback={84×84 placeholder}>`(레일은 유지, QR만 지연). QR은 장식용 모바일-앱 다운로드 코드라 첫 페인트 비필수. **결과**: 홈 static 폐쇄에서 qrcode 제거 → CI 재빌드 시 route-chunk-map이 `codes`를 홈 preload에서 자동 제외(남은 static qrcode importer는 admin/seller 전용 lazy 라우트뿐 — 홈·엔트리 폐쇄 무관). 렌더 로직·레일 레이아웃·타 청크 불변. 검증: theme·loader-continuity 14불변식 GREEN. ⚠️ 이 환경 npm 403 → 실제 preload 축소는 CI 빌드 후 라이브 실측(`curl / | grep codes` 부재 확인). 롤백: static import 환원.
 - 2026-07-13 `[UNLOCK_LOADING]` `cf-image.ts` **giftishow cdn-cgi 이미지 변환 복원 — 홈 첫방문 이미지 가속** (대표 신고 "홈 첫방문 느림" → 라이브 전수 실측 후 대표 승인 "가장 이상적이고 서버 부담 없이"). **배경(실측)**: 홈=교환권 피드라 **첫 화면 이미지 100% `bizimg.giftishow.com`**. 2026-06-17 에 giftishow 가 CF/데이터센터 IP 를 차단해 cdn-cgi 리사이저·워커 프록시 둘 다 524/403 → **raw 강제**(원본 20~86KB, origin TTFB 1~2.4s)로 두었는데, **현재 그 차단이 해제됨** — prod 재실측 5/5 이미지 `cf-resized: internal=ok`(원본→3~12KB, **4~6× 축소**, 2회 재시도 안정). **수정**: `cfImage()` 외부호스트 분기에서 giftishow **raw 조기반환(`if host==giftishow return src`) 제거** + `CDN_CGI_VERIFIED` 에 `giftishow.com` 추가 → `/cdn-cgi/image/…,onerror=redirect/…`(same-origin + 엣지캐시). **서버 부담 0**: Cloudflare 엣지 리사이저 오프로드(워커/D1/origin-반복 무접촉) + 6× 작아져 대역폭↓ + 변환본 엣지캐시(원본은 이미지당 1회만 fetch). **안전판 `onerror=redirect`**: 향후 재차단 시 리사이저 실패→원본 302 폴백(사용자 브라우저 IP 는 미차단이라 raw 로 표시) = 2026-06-17 raw 동작과 동일 → **최악의 경우 다운사이드 0**. `cfSrcSet` 는 `cfImage` 위임이라 자동 상속. **SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS·Save-Data·`/api/media` 프록시 분기·타 CDN_CGI_VERIFIED 호스트 전부 불변 — giftishow raw 분기 제거 + 검증목록 1개 추가만.** same-origin cdn-cgi 라 canvas 대표색 추출(2026-06-05 프록시 사유)도 유지. 검증: loader-continuity 14불변식 GREEN·prod 다중샘플 실측(cf-resized internal=ok). ⚠️ 재차단 감지는 `prod-diag.yml` 지속 관측 권장(재발 시 raw 로 자동 폴백이라 안 깨지나 가속 무효화). 롤백: giftishow raw 조기반환 복원 + CDN_CGI_VERIFIED 에서 제거.
 - 2026-07-12 `[UNLOCK_LOADING]` **SSR 페이로드 전역(KV) 워밍 — 콜드 콜로 TTFB 마감** (대표 "계속 진행. 이상적으로" — 로딩 전수 최적화의 마지막 레버). **배경(실측)**: `caches.default` 는 **콜로별**이라 cron prewarm 이 다른 지역 콜로엔 안 미침 → 콜드 콜로 하드로드는 워커가 self-fetch(콜드 D1, 0.5~1.5s)를 응답 전에 대기 → HTML TTFB 1.1~1.9s. 진단 중 발견: `CACHE_KV` 는 env 선언·대시보드 안내만 있고 **SSR 경로에서 아무도 KV 를 읽지도 쓰지도 않음**(`useKv:false` 잠금이라 publicCache 도 안 씀 — 바인딩만 해선 no-op). **수정(계층 1개 additive)**: ① `cache-prewarm.ts` — HOT_PATHS 성공 응답 중 **SSR 슬롯 6키만**(`SSR_KV_PATHS`: MAIN/VOUCHERS/BROWSE/LIVE/WHOLESALE/BLOG — worker `ssrTarget.path` 와 byte-일치) `ssr:{path}` 로 KV put(TTL 30분). **💰 KV 비용 잠금 준수: 쓰기는 cron 전용 + 15분 표본화**(`minutes%15<5` — 6키×96창/day=576 writes < 무료 1K) + JSON `"success":true` 검증 + 500KB 캡. ② `worker/index.ts` SSR 읽기에 [edge miss → **KV read** → self-fetch] 계층 — kv-hit 면 self-fetch 생략(콜드 콜로도 ~수십 ms), miss/미바인딩이면 기존 경로 100% 동일. `X-SSR-Status: *:kv-hit` + `Server-Timing: kv;dur=` 로 관측 가능. **잠긴 caches.default read·self-fetch 타임아웃·HTMLRewriter inject·HOT_PATHS 기존 key·`useKv:false` 전부 byte-불변.** 검증: per-file 구문 0·loader-continuity 14 GREEN·sql/머니 가드 무관(비머니). ⚠️ **효과 발생엔 대시보드 1스텝 필요**: Workers & Pages → ur-live → Settings → Bindings → KV `CACHE_KV` 바인딩(미바인딩=현행 동일, 코드 선배포 안전). 롤백: worker KV read 블록 + cron SSR_KV_PATHS put 블록 제거.
@@ -281,7 +288,152 @@
 3. 사용자가 새 요구 추가 시 → 즉시 표에 반영
 4. 매 commit 의 변경 파일에 코어 기능 (송출/결제/인증) 포함 시 → 같은 commit 에 `docs/CURRENT_WORK.md` 갱신 함께 staged
 
+**세션을 끝낼 때(또는 PR 을 머지할 때) 반드시 남길 4가지** — 다음 세션이 이것만 읽고 이어갈 수 있어야 한다:
+1. **다음 세션의 첫 액션** — 명령/쿼리까지 구체적으로. "무엇을 보면 무엇이 판정되는가"까지.
+2. **완료분 + commit/PR 해시** — 이미 된 것을 또 파지 않게.
+3. **이번에 틀렸던 판단** — 같은 오진 반복 방지. **이게 제일 값지다**(문서의 오기를 믿고 오진한 사례가 실제로 있었다).
+4. **남은 결정/대기 항목** — 대표 판단이 필요한 것.
+
+🛡️ **자동 강제 (2026-07-28 신설)**: `scripts/check-current-work-sync.mjs` — 브랜치가 `src/` 를 바꿨는데
+`docs/CURRENT_WORK.md` 를 **한 번도** 안 건드렸으면 경고(pre-commit + audit-gate). 문서/테스트만 바꾼 브랜치는
+검사 대상 아님(소음 억제). 차단: `STRICT_HANDOFF=1` · 우회: 커밋 메시지 `[SKIP_HANDOFF]`.
+> 이 가드는 **실제 사고 후** 만들어졌다 — 2026-07-28 세션이 보강 레인 수리 5건을 머지하는 동안 인계를 한 번도
+> 갱신하지 않아, 문서가 이전 세션에 멈춰 있었다. 룰만 있고 강제가 없으면 결국 놓친다.
+
 > ⚠️ 이 룰 안 지키면: 다음 세션이 진행 상태 모름 → 중복 구현 / 누락 / 사용자 "왜 이거 안 됐어?" 반복.
+
+## 🔑 어드민 진단 접근 (2026-07-28 대표 지시 — "모든 세션에서 자동으로")
+
+라이브 데이터를 **추측 대신 실측**으로 확인하기 위해 어드민 API 읽기 접근을 상시 사용한다.
+대표가 전용 계정 `claude@ur-team.com`(super_admin)을 발급했다.
+
+**🚫 절대 룰**: **비밀번호를 레포에 커밋하지 말 것**(공개 레포 — 영구 노출). 코드·문서·커밋 메시지·주석 어디에도 금지.
+`check-no-secrets.sh` 가 일부 패턴만 잡으므로 최종 방어는 이 룰이다.
+
+**자격증명 위치**: Claude Code **환경변수**(Cloudflare env 아님 — 세션 환경변수) — 대표가 2026-07-28 등록 완료.
+`URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD`. **모든 세션이 자동 사용**한다.
+⚠️ 환경변수는 **컨테이너 시작 시점에 주입**되므로 등록 직후 실행 중이던 세션엔 안 보인다(다음 세션부터 적용).
+미주입 세션이면 대표에게 값을 요청하지 말고 **다음 세션에서 수행**하거나 대표에게 상태줄을 요청한다.
+
+**접속 절차(3가지 함정 주의)**:
+1. **도메인**: 이 환경의 에이전트 프록시는 `urdeal.kr` 을 차단(CONNECT 403)한다. **`live.ur-team.com` 을 쓸 것** —
+   도메인 이전 시 `/api/*` 는 301 제외라 구 도메인 API 가 살아 있다.
+2. **User-Agent**: `botProtection()`(`bot-detection.ts`)이 curl UA 를 차단하고 `{"success":false,"error":"Forbidden"}`
+   (키 2개, `code` 없음)를 준다. **브라우저 UA 헤더 필수**. `code:'ADMIN_IP_BLOCKED'` 가 있으면 그건 IP 화이트리스트로 **다른 원인**.
+3. **토큰**: `POST /api/admin/login` {email,password} → 응답 토큰 필드가 **한 가지가 아니다** — 실측상
+   `data.accessToken` / `data.token` / 최상위 `token` 중 하나로 온다. **존재하는 것을 골라 쓸 것**
+   (`data['token']` 만 꺼내면 KeyError). 이후 `Authorization: Bearer <token>`. 계정은 `admins.id=10`.
+
+**🤝 동시 로그인(2026-07-28 대표 지시 "동시 로그인되게 하고")**: 대시보드는 시트별 **단일 세션**이라 같은
+계정으로 다른 곳에서 로그인하면 기존 세션이 즉시 `SESSION_SUPERSEDED` 로 끊긴다. 자동화 계정은 **여러 세션이
+동시에** 쓰므로(이 문서가 "모든 세션이 자동 사용"이라 규정) 서로를 계속 밀어냈고, 대표가 브라우저로 들어오면
+자동화가 끊겼다. → `dashboard_sessions.multi_session=1` 인 시트는 **세션 경계를 올리지 않아 동시 접속 유지**.
+
+```bash
+# super_admin 토큰으로 1회만 켜면 영구 적용(계정별 opt-in, 기본 OFF)
+curl -sS -X PATCH "https://live.ur-team.com/api/admin/admins/10/multi-session" \
+  -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" -H 'Content-Type: application/json' \
+  --data '{"enabled":true}'
+```
+> ⚠️ **자동화 계정에만 켤 것.** 단일 세션은 계정 공유·도용의 *탐지 신호*이기도 하다(남이 쓰면 내가 튕겨서
+> 알게 된다). 사람이 쓰는 운영 계정에 켜면 그 신호를 잃는다.
+
+```bash
+UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")
+TOK=$(curl -sS -X POST https://live.ur-team.com/api/admin/login -H 'Content-Type: application/json' -H "User-Agent: $UA" \
+  --data-binary "$BODY" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['token'])")
+# ⚠️ 단일 세션 정책: 같은 계정으로 다른 곳(대표 브라우저 등)에서 로그인하면 이 토큰이 무효화된다
+#    (SESSION_SUPERSEDED). 긴 작업 중 끊기면 재로그인 후 재시도.
+curl -sS "https://live.ur-team.com/api/admin/partner-pool/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"
+```
+
+**⚠️ 유어애즈(`/api/ads/*`)는 별도 워커(ur-ads)** — env 가 메인 Pages(ur-live)와 **분리**돼 있다.
+메인 `/api/version` 의 시크릿 목록에 없다고 ur-ads 에도 없는 것이 아니고, 그 반대도 아니다.
+ur-ads 쪽 설정 확인은 기능 호출로 판정할 것(예: `/api/ads/keywords/related` → `NOT_CONFIGURED` = 키 없음).
+
+**사용 원칙**: 기본 **읽기 전용**(stats·목록·진단). 쓰기(큐레이션·수집 트리거·설정 변경)는 대표가 명시로 지시할 때만.
+토큰·응답 파일은 스크래치패드에만 두고 작업 후 삭제. 세션 종료 시 남기지 않는다.
+
+> ⚠️ 이 접근이 없으면: 라이브 원인 규명이 "대표가 상태줄 복사 → 붙여넣기" 왕복에 묶여 한 사이클에 수십 분씩 소모된다
+> (2026-07-28 크롤 전멸 규명이 실제로 그랬고, 직접 조회로 전환하자 예외 원문 확보에 1분 걸렸다).
+
+## ☁️ Cloudflare API 접근 (2026-07-28 대표 지시 — "영구적으로, 다른 세션에서도")
+
+라이브 인프라(환경변수·배포·빌드로그·D1·KV)를 **대시보드 왕복 없이 직접** 확인·조정한다.
+
+**자격증명 — 2026-07-28 대표 지시로 D1 보관이 SSOT**: 토큰은 **`platform_settings` 의 `cf_api_token` /
+`cf_account_id`** 에 저장돼 있다. 어드민 자격(위 섹션)만 있으면 **모든 세션이 자동으로** 꺼내 쓴다 —
+대표가 세션마다 환경변수를 만질 필요가 없다(그게 이 방식을 택한 이유).
+
+```bash
+# 표준 취득 절차 — 어드민 토큰($TOK) 확보 후
+CFJSON=$(curl -sS "https://live.ur-team.com/api/admin/tools/settings" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA")
+export CLOUDFLARE_API_TOKEN=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_api_token',''))")
+export CLOUDFLARE_ACCOUNT_ID=$(echo "$CFJSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['data'].get('cf_account_id',''))")
+```
+
+환경변수 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 가 이미 주입돼 있으면 그걸 우선 쓰고, 없으면 위 절차로 D1 에서 취득한다.
+**🚫 레포에 값 커밋 절대 금지**(공개 레포 — `visibility: public` 확인됨. 커밋하면 git 히스토리에 영구 잔존 + 스캐너가 수분 내 수집).
+값이 아니라 **키 이름만** 문서에 남긴다.
+
+**⚠️ 프록시**: `dash.cloudflare.com` 은 이 환경에서 차단(000). **`api.cloudflare.com` 은 통과** — API 만 쓴다.
+
+```bash
+CF=https://api.cloudflare.com/client/v4
+AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+curl -sS "$CF/user/tokens/verify" -H "$AUTH"                                    # 토큰 유효성
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" -H "$AUTH"       # 워커 목록
+# 워커 환경변수(시크릿 아님) 조회/설정은 settings 엔드포인트 — 값 교체 시 기존 바인딩 전체를 함께 보내야
+# 덮어써지지 않는다(부분 PATCH 아님). 반드시 조회 → 병합 → 전송 순서.
+curl -sS "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ur-ads/settings" -H "$AUTH"
+```
+
+**🚫 자율 규율 (대표가 넓은 권한을 줬어도 지킨다)**:
+1. **코드 배포는 이 토큰으로 하지 않는다.** 반드시 PR → CI(46 불변식) → 대표 승인 → 머지 경유.
+   토큰으로 직접 배포하면 오늘 실제로 실수를 잡아낸 게이트(파일크기 래칫·타입체크)를 통째로 우회하게 된다.
+2. 토큰 용도는 **① 진단(빌드로그·배포상태·플랜/한도 확인) ② 게이트 env 토글 ③ D1/KV 읽기** 로 한정.
+3. **삭제·purge·바인딩 제거는 대표 명시 지시가 있을 때만.** 되돌리기 어려운 작업은 먼저 확인.
+4. 토큰 값을 파일·로그·커밋·PR 본문에 남기지 않는다. 응답 파일은 스크래치패드에만, 작업 후 삭제.
+
+**확인된 사실(2026-07-28 실측 — 추측 대체)**:
+- ⚠️ **정정(2026-07-28 후속)**: 아래 "유료 → 1,000" 은 **틀렸다. 믿지 말 것.** `usage_model: standard` 는
+  Workers **과금 모델**(bundled/unbound 세대 구분)이지 free/paid 구분이 아니다 — 무료 계정도 `standard` 로 나온다.
+  같은 날 `docs/CURRENT_WORK.md` 가 기록한 **"대표 확정 '일단 무료' → 인보케이션당 서브리퀘스트 50(D1 포함)"** 이 맞고,
+  보강 레인의 학습 상한이 **29~55 에서 맴돈 것은 고장이 아니라 실제 천장(50)으로의 정상 수렴**이었다.
+  ⇒ 이 줄을 믿고 "상한이 갇혔다"를 결함으로 오진한 사례가 실제로 있었다(PR #800 의 최초 서술). 계획을 세울 땐
+  **50 을 전제**로 하라 — 크롤 1사이트가 4~8 서브리퀘스트라 라운드당 실효 5~8사이트다. 처방은 회계 수정이 아니라
+  **건당 비용 절감**(부기 배치화·중복 레인 제거)이거나 **유료 전환**이다.
+- ~~계정 `usage_model: standard` = **Workers 유료** → 서브리퀘스트 한도 **1,000**(50 아님).~~ ← 위 정정 참조
+- `ur-ads` 바인딩 31개에 `NAVER_SEARCH_CLIENT_ID/SECRET`·`KAKAO_REST_API_KEY` **모두 존재** —
+  "크롤이 0인 건 네이버 키 부재" 가설도 **기각**.
+- `tail` 세션 생성은 되지만 **wss 업그레이드를 이 환경 프록시가 막는다**(non-101) → 실시간 로그는 불가.
+  ⇒ 라이브 원인 규명은 **D1 스냅샷 계측**에 의존해야 한다(그래서 `ads_enrich_last` 에 phase/p2/crash 추가).
+- Observability(telemetry) API 는 현재 토큰 권한 밖(`Authentication error`) — 필요해지면 권한 추가 요청.
+
+> 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
+> 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
+> 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
+## 🧪 원격 세션 검증 능력 — **npm 정상화** (2026-07-28 실측 정정)
+
+**`npm` 은 이제 이 원격환경에서 정상 동작한다.** 과거 audit log 곳곳의 *"이 환경 npm 조직정책 403 으로
+`npm run build`·vitest 미실행 — CI 에서 검증"* 은 **더 이상 유효하지 않다**(그 항목들은 작성 당시
+historical record 라 소급 수정하지 않는다 — 현재 사실은 이 섹션이 SSOT).
+
+2026-07-28 실측: `npm ci` exit 0(895 packages/30s) · `npx tsc --noEmit --skipLibCheck` 에러 0 ·
+`npm run build` exit 0(client→worker→prepare 3단계, `_worker.js` 갱신 확인).
+
+> ⚠️ **그러므로 "CI 에서 확인하겠다" 로 미루지 말 것.** 잠금파일(Toss·로딩)을 건드렸으면 **이 세션에서**
+> tsc·build·vitest 를 돌려 회귀검증까지 끝내고 커밋한다. (staging 실결제 검증이 필요한 머니 경로는 그대로 별도 —
+> 빌드가 된다고 실결제 검증이 대체되지 않는다.)
+
+**빌드 산출물 주의**: `npm run build` 는 `src/worker/generated/route-chunk-map.ts` 를 **재생성**한다(로컬 청크 해시).
+이건 커밋 대상이 아니다 — 검증 후 `git checkout -- src/worker/generated/route-chunk-map.ts` 로 되돌릴 것.
+
+**여전히 막힌 것(프록시)**: `dash.cloudflare.com` · `urdeal.kr` · **한국 공공 API 도메인 전반**
+(`apis.data.go.kr` · `open.neis.go.kr` 등 CONNECT 403). 공공 API 스펙 검증은 이 환경에서 직접 호출로 못 한다 →
+**라이브 워커의 `diag.error` 원문**(어드민 stats)이 사실상 유일한 ground truth. `data.go.kr` 문서 페이지는
+WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필요하다.
 
 ## 🛡️ 감사 게이트 — 전수감사 전 필수 (2026-06-26 대표 지시 "이상적이면 이후 감사에선 안 보고 넘어가게 환경 설정")
 
@@ -830,7 +982,10 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 타입 에러 라이브 유출 (배포 타입체크 게이트) | - | `main.yml` "Typecheck gate"(배포 차단) + `verify.yml` frontend tsc strict | 2026-07-12 BrandLoader import 누락(타입 에러)이 그대로 배포 → 블로그 상세 전면 크래시. vite build 는 타입검사 안 함 + verify tsc 가 warn-only + 배포는 Verify 와 독립이라 어디서도 못 막았음. **main.yml 의 Typecheck gate·verify 의 `continue-on-error: false` 제거/약화 금지**(제거하면 이 사고 재발). worker 전용 tsconfig 체크는 선재 에러 정리 후 strict 승격 예정(현재 warn) |
 | `vite build` 단독 사용 | `check-build-command.sh` | `verify.yml` | 2026-05-12 _worker.js 미갱신 |
 | `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
-| Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험 |
+| Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험. 2026-07-28 보강: **dotenv/`.dev.vars` 파일 자체를 커밋 금지**(패턴 0) — `.env.deploy` 가 살아있는 CF 토큰을 담은 채 커밋돼 있었고(#737), 기존 값 패턴들이 전부 따옴표를 요구해 dotenv 형식(`KEY=value`)을 통째로 놓쳤다 |
+| cron 무음 정지(실행기록 없음) | `check-cron-heartbeat.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `safeCron` 이 **예외 발생 시에만** 기록해, 예외 없는 정지(cron 미발화·게이트 OFF 조기 return·내부 `.catch(() => null)` 로 삼킴)가 **성공으로 집계**됐다. 유어애즈 자동 정비가 그 경우로 07-26 부터 멈췄는데 아무도 몰랐고(#793), 당시 cron 70개 중 실행기록을 남기는 건 3개뿐이었다. safeCron 에 성공·실패 무관 하트비트(`platform_settings` 의 `cron_hb:{name}`) + 어드민 `GET /api/admin/cron-heartbeats`. **새 cron 은 반드시 `ctx.waitUntil(safeCron('이름', () => 작업(env)))` 형태로 등록** — 우회하면 그 작업만 관측 밖으로 나간다. 예외 `cron-heartbeat-ok` 주석 |
+| Firebase 토큰 인증 수용 | `check-no-firebase-auth.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — Firebase 서비스계정 개인키가 `archive/` 문서에 3개월간 public 노출(#798). 그 키로 **커스텀 토큰 발급 → Firebase 공개 REST 로 ID 토큰 교환 → Bearer 제출** 하면 서명이 Google 공개키로 정상 검증돼 **임의 uid 로 로그인**이 됐다. **키 폐기만으로는 부족** — 수용 경로가 남으면 새 키가 또 유출될 때 재발한다. `requireAuth`/`optionalAuth`/`auth-token.routes` 의 Firebase 분기 제거 + `googleRoutes` 마운트 해제. KR=카카오 세션·셀러/어드민=JWT·GLOBAL 미런칭(#804)이라 실사용자 0(대표 확인). 되살리려면 `firebase-auth-ok` 주석 + 새 키 발급 |
+| 시크릿 자재(키 본문) 유입 | `check-secret-material.mjs` | `verify.yml` (strict) + audit-gate | 2026-07-28 — `archive/` **19개 `.md`/`.txt`** 에 Google 서비스계정 개인키·Toss live·Stripe 시크릿이 **추적된 채** 3월부터 public 노출(#798). 기존 가드가 둘 다 통과시켰다: `verify.yml` 의 검사는 **`src/` 의 `.ts/.tsx` 만** 보고, `check-no-secrets.sh` 는 **키 이름 패턴** 위주라 문서 안의 *키 본문*이 사각지대였다. 폴더명이 `secrets-redacted/` 라 처리된 것처럼 보였으나 원문 그대로였다. **확장자·경로 무관 전수 스캔**(PEM 실본문·Toss live·Stripe·AWS·Slack·Anthropic·OpenAI·GitHub PAT), 자리표시자는 오탐 제외, 예외는 `secret-material-ok` 주석. ⚠️ **작업트리만 본다 — history 유출은 스캔이 아니라 *회전*으로만 해결된다** |
 | Schema drift | `check-schema-refs.sh` | `verify.yml` | DB 컬럼 부정확 |
 | API 인증 누락 | `check-api-auth.sh` | `verify.yml` | IDOR |
 | 대시보드 dark variant | `check-dashboard-theme.sh` | `verify.yml` | 사용자 룰 |

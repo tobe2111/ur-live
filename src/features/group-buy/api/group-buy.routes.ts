@@ -14,6 +14,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger } from '@/worker/utils/ledger'
 import { swallow } from '@/worker/utils/swallow'
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { getCommissionRates, calcInfluencerCommissionPct } from './commission-rates'
 import type { Env } from '@/worker/types/env'
@@ -64,7 +65,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
   }
   const productId = productIdNum
-  const userId = String(user.id)
+  // 🔑 user_id 정규화(데이터 감사 1단계): 읽기·쓰기가 동일 DB users.id 를 쓰게 해 이중키 분열 차단.
+  //   live(카카오 세션)=이미 숫자→무동작 / Firebase 유저만 교정. 실패 시 raw 폴백(결제 무중단).
+  const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
   const body = await c.req.json<{
     quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
   }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined }))
@@ -713,7 +716,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         ).bind(product.seller_id).first<{ phone: string | null; business_name: string; notified: number; store_owner_token: string | null }>()
         if (seller && Number(seller.notified) === 0 && seller.phone) {
           const token = seller.store_owner_token || ''
-          const statsUrl = `https://live.ur-team.com/store/stats/${productId}${token ? `?t=${token}` : ''}`
+          const statsUrl = `https://urdeal.kr/store/stats/${productId}${token ? `?t=${token}` : ''}`
           c.executionCtx.waitUntil(
             sendSellerFirstVoucherAlimtalk(
               c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
@@ -994,7 +997,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fff;">
             <div style="text-align:center;padding:20px 0;border-bottom:1px solid #e5e7eb;">
               <h1 style="margin:0;font-size:22px;color:#111827;">🎫 공동구매 참여 영수증</h1>
-              <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">유어딜 (live.ur-team.com)</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">유어딜 (urdeal.kr)</p>
             </div>
             <div style="padding:20px 0;">
               <p style="margin:0 0 12px;font-size:15px;color:#111827;">${esc(userRow?.display_name || '고객')}님, 공동구매 참여를 확인했어요!</p>
@@ -1012,10 +1015,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
                 <tbody>${voucherList}</tbody>
               </table>
               <div style="margin:24px 0;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
-                <p style="margin:0;font-size:13px;color:#991b1b;">💡 매장 방문 시 위 코드를 보여주세요. QR 코드는 <a href="https://live.ur-team.com/my-vouchers" style="color:#6b7280;text-decoration:none;font-weight:700;">내 바우처</a> 페이지에서 확인 가능합니다.</p>
+                <p style="margin:0;font-size:13px;color:#991b1b;">💡 매장 방문 시 위 코드를 보여주세요. QR 코드는 <a href="https://urdeal.kr/my-vouchers" style="color:#6b7280;text-decoration:none;font-weight:700;">내 바우처</a> 페이지에서 확인 가능합니다.</p>
               </div>
               <p style="margin:16px 0 0;text-align:center;">
-                <a href="https://live.ur-team.com/my-vouchers" style="display:inline-block;padding:12px 24px;background:#6b7280;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;">내 바우처 보기</a>
+                <a href="https://urdeal.kr/my-vouchers" style="display:inline-block;padding:12px 24px;background:#6b7280;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;">내 바우처 보기</a>
               </p>
             </div>
             <div style="padding:16px 0;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
@@ -1109,7 +1112,8 @@ registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /vouch
 groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const userId = String(user.id)
+  // 🔑 user_id 정규화(데이터 감사 1단계) — /join 과 동일(이중키 분열 차단, 카카오=무동작, Firebase 교정).
+  const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
 
   const body = await c.req.json<{ paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }>().catch(() => ({} as { paymentKey?: string; orderId?: string; amount?: number; productId?: number; qty?: number; promoCode?: string; ref?: string }))
   const { paymentKey, orderId, amount, productId, qty: rawQty } = body

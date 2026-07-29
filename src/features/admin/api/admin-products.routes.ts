@@ -26,6 +26,8 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
+// 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
+import { rehostImageToR2 } from '@/worker/utils/rehost-image';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -1239,12 +1241,13 @@ async function resolveRegionCenter(
   } catch { return null; }
 }
 
-async function kakaoPlaceLookup(
+// 🏨 2026-07-20: 숙소 데모 시드(admin-stays.routes)도 동일한 실매장 매칭을 쓰도록 export.
+export async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
   pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
   center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
-): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null; placeId: string | null; phone: string | null; categoryName: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
@@ -1258,7 +1261,7 @@ async function kakaoPlaceLookup(
     if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
-    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; phone?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
     let docs = data?.documents || [];
     if (!docs.length) return null;
     // 🎯 2026-07-05 (오매칭 축소 — 갈비집에 샤브샤브): 랜덤 모드에선 카카오 카테고리/상호에
@@ -1277,6 +1280,11 @@ async function kakaoPlaceLookup(
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
       placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+      placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
+      // 📞 2026-07-21 (대표 "다 넣어줘 — 최대한 다 긁어와"): 카카오 키워드 API 가 주는 실전화·실업종을
+      //   그간 흘리던 것 → 캡처. 전화=restaurant_phone(상세 노출), 업종=meta(참조/추후 활용).
+      phone: doc.phone || null,
+      categoryName: doc.category_name || null,  // 예 "음식점 > 한식 > 곰탕,설렁탕"
     };
   } catch { return null; }
 }
@@ -1306,31 +1314,8 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 //   저장되는 건 항상 우리 URL 이라 렌더 시 cfImage(zone 리사이저)가 same-origin 으로 리사이즈.
 //   이 함수가 URL 을 돌려주면 = "정상 이미지 확보"(검증+영구화 동시). 실패(키·네트워크·비이미지·과대/과소)
 //   → null → 호출측이 좌표없음과 결합해 '유령 데모' 스킵 판정에 사용.
-async function rehostImageToR2(env: { MEDIA_BUCKET?: R2Bucket }, srcUrl: string | null | undefined): Promise<string | null> {
-  if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    let res: Response;
-    try {
-      res = await fetch(srcUrl, { signal: ctrl.signal });  // 인증서오류/DNS → throw → null
-    } finally { clearTimeout(timer); }
-    if (!res.ok) return null;
-    const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
-    if (!ct.startsWith('image/')) return null;
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null; // 아이콘/깨짐 or 과대
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg';
-    const yyyymm = new Date().toISOString().slice(0, 7);
-    const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const key = `uploads/demo/${yyyymm}/${rand}.${ext}`;
-    await env.MEDIA_BUCKET.put(key, buf, {
-      httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
-      customMetadata: { source: 'dongnedeal-demo', at: new Date().toISOString() },
-    });
-    return `/api/media/${key}`;  // upload.routes 의 same-origin 서빙 규약과 동일(PUBLIC_R2_URL 무관하게 표시)
-  } catch { return null; }
-}
+// 🎯 2026-07-21: rehostImageToR2 본체를 worker/utils/rehost-image.ts 로 추출(공용 SSOT — 시드 커버 +
+//   demo-image-rehost cron 이 공유). import 는 파일 상단(파일 중간 import 금지 룰) — 동작/시그니처 불변.
 
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
@@ -1388,7 +1373,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       }
     } catch { /* best-effort */ }
 
-    // 🏷️ 2026-07-06 (대표 "기존 데모 데이터 많은데"): 옛 '[구] 오퍼' 이름을 '{실매장명} · {오퍼}' 신형으로
+    // 🏷️ 2026-07-19 (대표 — 제목 중복 제거): 옛 '{실매장명} · 오퍼'/'[구] 오퍼' 이름을 '오퍼만' 신형으로
     //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
     await healDemoNamesInPlace(DB).catch(() => {});
 
@@ -1421,7 +1406,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
-    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
@@ -1478,17 +1463,29 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           regionCenter,
         ).catch(() => null))
       );
-      // 🖼️ 2단계: **그 매장 이름으로** 실사진 검색(진짜 그 가게 사진 확률 ↑) → 실패 시 업종 일반 사진 폴백.
-      const resolvedImgs = await Promise.all(
-        work.map((w, i) => resolvedPlaces[i]?.name
-          ? fetchNaverImageUrl(c.env, `${resolvedPlaces[i]!.name} ${w.t.pq}`, 0)
-              .then((u) => u || fetchNaverImageUrl(c.env, w.t.iq || w.t.pq, Math.floor(Math.random() * 8)))
-              .catch(() => null)
-          : Promise.resolve(null))
+      // 🖼️ 2단계: 실사진 3~5장(랜덤) — 2026-07-20 대표("연관없는 사진 가끔" + "3~5장 랜덤" +
+      //   "카카오 플레이스 사진도 함께"). fetchDemoPhotos = 카카오 플레이스 등록 사진(그 매장 실제 사진,
+      //   관련도 100%) 우선 → 부족분 네이버 매장명 스코어링 → 업종 일반 폴백.
+      const resolvedImgSets = await Promise.all(
+        work.map(async (w, i) => {
+          const pl = resolvedPlaces[i]
+          if (!pl?.name) return [] as string[]
+          try {
+            return await fetchDemoPhotos(c.env, {
+              placeId: pl.placeId,
+              nameQuery: pl.name,
+              address: pl.address,  // 🖼️ 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
+              naverQuery: `${pl.name} ${w.t.pq}`,
+              fallbackQuery: w.t.iq || w.t.pq,
+              count: 3 + Math.floor(Math.random() * 3),
+            })
+          } catch { return [] as string[] }
+        })
       );
-      // 🎯 2026-07-03: 검색된 실사진을 우리 R2 로 재호스팅 → 저장 URL 은 항상 우리 도메인(/api/media/…).
+      // 🎯 2026-07-03: 대표(카드) 사진 1장만 우리 R2 로 재호스팅(/api/media/…) — 서브리퀘스트 한도 보호.
+      //   추가 갤러리 사진(2~5번째)은 search.pstatic(네이버 자체 CDN, 인증서·핫링크 안전) URL 그대로 사용.
       const validImgs = await Promise.all(
-        resolvedImgs.map((u) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, u)),
+        resolvedImgSets.map((arr) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)),
       );
       for (let i = 0; i < work.length && seeded < reqCount; i++) {
         const t = work[i].t;
@@ -1507,29 +1504,33 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1, usedOffers);
         usedOffers.add(offer.name);
         usedTypes.add(t.pq);  // 이 업종은 시드됨 → 다음 라운드 nextWork 에서 뒤로
-        const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
+        // 🖼️ 커버 = 대표사진 우선순위: ① R2 재호스팅본(카카오 대표사진→우리 도메인) → ② 재호스팅 실패 시
+        //   대표사진 원본 URL(resolvedImgSets[0] = 카카오 대표사진, 없으면 네이버 top) → ③ 최후 picsum.
+        //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
+        //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
+        const img = realPhoto || resolvedImgSets[i][0] || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
-        // 🎯 2026-07-06 (대표 "가장 현실적인 느낌"): 상품명 = **실매장명 · 오퍼** (쿠팡/카카오 이용권 스타일).
-        //   홈 피드는 상품명만 노출 → 매장명을 앞세워야 (a) 매장마다 유니크(매장 dedup) (b) 진짜 이용권 느낌.
-        //   지역 프리픽스([구])는 제거 — 실 매장명이 지점명(…마포점)으로 지역을 담고, 주소/거리는 카드·상세가 별도 표시.
-        const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
-        const dispName = restName ? `${restName} · ${offer.name}` : (realRegion ? `[${realRegion}] ${offer.name}` : offer.name);
+        // 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 2026-07-06 '매장명 · 오퍼' 역전): 상품명 = **오퍼(메뉴명)만**.
+        //   홈 리스트가 제목 아랫줄에 매장명(restaurant_name)을 별도 표시하므로 제목의 매장명 프리픽스는
+        //   중복이었음("한성식당 · 곱창전골 2인" + 아랫줄 "한성식당"). 매장 구분은 restaurant_name 컬럼 전담.
+        const dispName = offer.name;
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
+        const restPhone = place?.phone || null;  // 📞 카카오 실전화(있으면) — 상세 노출
         let res;
         try {
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, place?.lat ?? null, place?.lng ?? null, slug).run();
         } catch {
           // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
+               is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone, slug, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, restPhone, slug).run();
         }
         seeded++;
         // 🧹 2026-07-05 (리뷰 57~119개 부풀림 근본원인): SQLite 가 삭제된 옛 데모의 rowid 를 재사용 →
@@ -1555,9 +1556,21 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             ...(isPrelaunch ? { prelaunch: '1' } : {}),  // 🏷️ 오픈 예정형 표시(소비자 배지·CTA 분기)
           }).catch(() => {});
         }
-        // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
+        // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) + 실업종(참조/추후 활용) — 매칭 성공 시만.
         if (pid > 0 && place?.placeUrl) {
-          await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
+          await setSupplyMeta(DB, pid, {
+            kakao_place_url: place.placeUrl,
+            ...(place.categoryName ? { kakao_category: place.categoryName } : {}),
+          }).catch(() => {});
+        }
+        // 🖼️ 2026-07-20 (대표 "사진 3~5장 랜덤"): 갤러리 = [대표(R2 재호스팅)] + 추가 실사진(pstatic CDN)
+        //   → products.images(JSON, 상세 스와이프 갤러리 소비). 컬럼 미존재 환경 조용히 skip.
+        {
+          const extraImgs = resolvedImgSets[i].slice(1, 5);
+          if (pid > 0 && extraImgs.length > 0) {
+            await DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+              .bind(JSON.stringify([img, ...extraImgs]), pid).run().catch(() => {});
+          }
         }
         // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
         if (pid > 0 && !isPrelaunch) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });  // 🏷️ 오픈 예정형 = 리뷰 미부착
@@ -1908,6 +1921,18 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
 
     const whereClause = where.join(' AND ');
+    // 🔃 2026-07-20 (대표 — "최신순으로도 보고 싶다"): 정렬 화이트리스트. 기본 최신순은 기존과 동일하되
+    //   **id DESC tie-break 추가** — 한 배치로 시드된 데모는 created_at(초 단위)이 동일해 동순위 순서가
+    //   임의였음(최신순처럼 안 보이던 원인). id 는 단조증가라 배치 내에서도 진짜 등록순 보장.
+    const sortParam = String(c.req.query('sort') || '').trim();
+    const ORDER_SQL: Record<string, string> = {
+      newest: 'created_at DESC, id DESC',
+      oldest: 'created_at ASC, id ASC',
+      name: 'name ASC, id DESC',
+      price_high: 'price DESC, id DESC',
+      price_low: 'price ASC, id DESC',
+    };
+    const orderBy = ORDER_SQL[sortParam] || ORDER_SQL.newest;
     // 전체 개수(같은 WHERE) — '더 보기' 판정 + 헤더 표시용.
     const totalRow = await c.env.DB.prepare(
       `SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`
@@ -1915,14 +1940,24 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const total = Number(totalRow?.total ?? 0);
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
-              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
-         FROM products WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug,
+              images, detail_images
+         FROM products WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
+    // 🖼️ 2026-07-21 (대표 "어드민이 사진 직접 수정"): 갤러리(images=데모 시드 / detail_images=수기·수정)
+    //   병합 → gallery(string[]) 로 동봉 — 수정 폼이 현재 사진을 보여주고 교체할 수 있게. raw 는 제거.
     for (const r of rows) {
       r.is_demo = String(r.slug || '').startsWith('demo-deal-') ? 1 : 0;
       delete r.slug;
+      const g: string[] = [];
+      for (const raw of [r.images, r.detail_images]) {
+        if (typeof raw !== 'string' || !raw) continue;
+        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u && !g.includes(u)) g.push(u); } catch { /* not json */ }
+      }
+      r.gallery = g.slice(0, 8);
+      delete r.images; delete r.detail_images;
     }
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
     try {
@@ -1944,10 +1979,10 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   }
 });
 
-// 🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
-//   기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정** — 좌표·R2사진·리뷰·응모·
-//   수요인사이트 전부 보존한 채 이름만 신형으로. 멱등(이미 ' · ' 신형이면 skip).
-//   엔드포인트(수동) + 시드 heal 블록(자동) + 후속 데모 유지 cron 어디서든 재사용.
+// 🏷️ 2026-07-19 (대표 — 카드 제목 중복 제거, 07-06 정정 방향 역전): 기존 데모 상품명의
+//   '{실매장명} · ' 프리픽스를 **제자리(in-place)에서 제거** — 좌표·R2사진·리뷰·응모·수요인사이트
+//   전부 보존한 채 이름만 '오퍼(메뉴명)만' 신형으로. 옛 '[구] ' 지역 프리픽스도 함께 정리.
+//   멱등(프리픽스 없으면 skip). 엔드포인트(수동) + 시드 heal 블록(자동) + 데모 유지 cron 재사용.
 export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: number; skipped: number; samples: Array<{ id: number; from: string; to: string }> }> {
   const { results } = await DB.prepare(
     `SELECT id, name, restaurant_name FROM products
@@ -1959,12 +1994,11 @@ export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: nu
   for (const r of (results || [])) {
     const store = (r.restaurant_name || '').trim();
     const cur = (r.name || '').trim();
-    if (!store || !cur) { skipped++; continue; }
-    if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
-    const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
-    if (!offer) { skipped++; continue; }
-    const next = `${store} · ${offer}`;
-    if (next === cur) { skipped++; continue; }
+    if (!cur) { skipped++; continue; }
+    let next = cur;
+    if (store && next.startsWith(`${store} · `)) next = next.slice(`${store} · `.length).trim(); // 매장명 프리픽스 제거
+    next = next.replace(/^\[[^\]]+\]\s*/, '').trim();             // 옛 '[구] ' 프리픽스 제거
+    if (!next || next === cur) { skipped++; continue; }           // 이미 신형(프리픽스 없음)
     const res = await DB.prepare(
       `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(next, r.id).run().catch(() => null);
@@ -2005,6 +2039,223 @@ adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
   }
 });
 
+// POST /dongnedeal/recondition-images — 🖼️ 2026-07-21 (대표 "이미 만들어진 데모도 모두 지금 컨디션으로,
+//   갤러리 있는 것까지 전부"): 기존 데모(동네딜+숙소)를 즉시 현재 컨디션으로 재적용(카카오 대표사진 커버 +
+//   3~5장 갤러리). cron(demo-image-rehost)이 시간당 소량 자동 수렴하는 것과 동일 로직(reconditionDemos SSOT)을
+//   어드민이 온디맨드로 청크(회당 6개, 서브리퀘스트 예산 안)로 돌린다. 클라가 remaining>0 이면 반복 호출.
+adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => {
+  try {
+    const { reconditionDemos, DEMO_COND_V } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const r = await reconditionDemos(c.env as unknown as Env, perRun);
+    // 남은 대상 수(버전 마커 미보유 데모) — 클라 진행바/반복 종료 판정용.
+    const remainRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?)`
+    ).bind(DEMO_COND_V).first<{ n: number }>().catch(() => ({ n: 0 }));
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, reconditioned: r.reconditioned, skipped: r.skipped, remaining: Number(remainRow?.n ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/heal-broken-images — 🩹 2026-07-21 (대표 "가끔 안 뜨는 게 있네"): 깨진 사진만
+//   즉시 감지·재획득. 커버를 서버측 검증(referer 없이 fetch)해 죽었으면(404/삭제) 대표사진 재획득 +
+//   갤러리에서 깨진 것 제거. 성한 커버는 건드리지 않음(working 사진 churn 0). img_heal_ck 마커로 수렴.
+adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const { validateImageLoads } = await import('../../../worker/utils/rehost-image');
+    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    const HEAL_CK = '1';  // 검증 완료 마커 버전(재검증 필요 시 bump)
+    const rows = (await DB.prepare(
+      `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
+         FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)
+        ORDER BY p.id LIMIT ?`
+    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
+      .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
+    let checked = 0, healed = 0;
+    const metaMap = await getSupplyMeta(DB, rows.map(r => r.id)).catch(() => new Map<number, Record<string, string>>());
+    for (const row of rows) {
+      checked++;
+      const coverOk = await validateImageLoads(row.image_url);
+      if (!coverOk) {
+        // 커버가 죽음 → 대표사진 재획득(카카오/네이버 대표사진 우선).
+        const fresh = await fetchDemoPhotos(c.env, {
+          placeId: metaMap.get(row.id)?.kakao_place_url || null,
+          nameQuery: row.restaurant_name,
+          address: row.restaurant_address,
+          count: 3 + Math.floor(Math.random() * 3),
+        }).catch(() => [] as string[]);
+        if (fresh.length > 0) {
+          await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(fresh[0], JSON.stringify(fresh.slice(0, 5)), row.id).run().catch(() => {});
+          // 새 외부 URL 을 R2 로 이관하도록 rehost 재큐잉.
+          await setSupplyMeta(DB, row.id, { img_rehost_done: '0' }).catch(() => {});
+          healed++;
+        }
+      }
+      await setSupplyMeta(DB, row.id, { img_heal_ck: HEAL_CK }).catch(() => {});
+    }
+    const remainRow = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM products p
+        WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
+          AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)`
+    ).bind(HEAL_CK).first<{ n: number }>().catch(() => ({ n: 0 }));
+    if (healed > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    // 🩹 R2 바인딩 상태 동봉 — 미바인딩이면 rehost(영구화) 전멸이라 사진 반복 깨짐의 근본 원인.
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    return c.json({ success: true, checked, healed, remaining: Number(remainRow?.n ?? 0), bucketBound });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/rehost-images — ☁️ 2026-07-21 (대표 스샷 "커버 294개 중 R2 1 · 외부 293"): 외부 커버를
+//   즉시 대량 R2 이관(cron 2/시간이라 느림 → 온디맨드 청크). 클라가 remaining 0까지 반복.
+adminProductsRoutes.post('/dongnedeal/rehost-images', cors(), async (c) => {
+  try {
+    const { rehostDemoImagesBulk } = await import('../../../worker/cron/demo-image-rehost');
+    const body = (await c.req.json().catch(() => ({}))) as { count?: number };
+    // ⚡ 병렬 fetch(요청당 6개). 대용량 커버(카카오/다음 1~3MB)를 12+개 동시에 받으면 워커 메모리 압박 →
+    //   요청 실패("멈춤"). 6개면 ≤~18MB 로 안전하면서도 순차 대비 6× 빠름.
+    const perRun = Math.min(8, Math.max(1, intParam(String(body.count ?? 6), 6)));
+    const r = await rehostDemoImagesBulk(c.env as unknown as Env, perRun);
+    if (r.rehosted > 0) {
+      await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    }
+    return c.json({ success: true, ...r });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/rehost-diagnose — 🔍 2026-07-21 (대표 "되는거 아닌 것 같은데?"): R2 이관 0 의 진짜 원인
+//   규명 — 외부 커버 몇 개를 서버가 실제로 fetch 해보고 상태/컨텐츠타입/바이트/실패사유를 그대로 반환.
+//   (네이버/카카오 CDN 이 CF 워커 서버fetch 를 403/HTML차단/타임아웃 하는지 실측 — 추측 금지 원칙.)
+adminProductsRoutes.get('/dongnedeal/rehost-diagnose', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const rows = ((await DB.prepare(
+      `SELECT id, image_url FROM products
+        WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1
+          AND image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' AND image_url NOT LIKE '%picsum.photos%'
+        ORDER BY RANDOM() LIMIT 6`
+    ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }))).results) || [];
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const samples: Array<{ id: number; host: string; ok: boolean; status: number; contentType: string; bytes: number; reason: string }> = [];
+    for (const row of rows) {
+      let host = ''; try { host = new URL(row.image_url).hostname; } catch { /* noop */ }
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      let ok = false, status = 0, contentType = '', bytes = 0, reason = '';
+      try {
+        // 실제 이관과 동일하게 원본 직접 fetch(서버측 리사이즈는 외부 호스트 미지원 확인) → 11MB 캡.
+        const res = await fetch(row.image_url, { signal: ctrl.signal });
+        status = res.status;
+        contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!res.ok) reason = `HTTP ${status}`;
+        else if (!contentType.startsWith('image/')) reason = `이미지 아님(${contentType || '무형식'})`;
+        else { const buf = await res.arrayBuffer(); bytes = buf.byteLength; ok = bytes >= 500 && bytes <= 11 * 1024 * 1024; if (!ok) reason = `크기 이상(${bytes}B)`; }
+      } catch (e) { reason = (e as Error)?.name === 'AbortError' ? '타임아웃(8s)' : '연결 실패'; }
+      finally { clearTimeout(timer); }
+      samples.push({ id: row.id, host, ok, status, contentType, bytes, reason: ok ? '정상' : reason });
+    }
+    const okCount = samples.filter((s) => s.ok).length;
+    return c.json({ success: true, bucketBound, okCount, total: samples.length, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /d1-profile — 📊 2026-07-22 (대표 "D1 프로파일링 무비용"): rows_read 상위 쿼리 조회(isolate-로컬).
+//   ?reset=1 로 집계 초기화. D1_PROFILE_ENABLED='true' 여야 데이터가 쌓임(기본 OFF).
+adminProductsRoutes.get('/d1-profile', cors(), async (c) => {
+  try {
+    const { getD1Profile, resetD1Profile } = await import('../../../worker/utils/d1-profiler');
+    if (c.req.query('reset') === '1') { resetD1Profile(); return c.json({ success: true, reset: true }); }
+    const pe = c.env as unknown as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+    const forceOn = pe.D1_PROFILE_ENABLED === 'true';
+    const sampleRate = forceOn ? 1 : (pe.D1_PROFILE_SAMPLE != null && pe.D1_PROFILE_SAMPLE !== '' ? Number(pe.D1_PROFILE_SAMPLE) : 0.02);
+    // 샘플링이라 isolate-로컬 집계(전량 아님). 상시 2% 자동 수집 — 무거운 쿼리는 rows≥2000 콘솔 로그로도 포착.
+    return c.json({ success: true, mode: forceOn ? 'forced-100%' : `sampling-${Math.round(sampleRate * 100)}%`, sampleRate, top: getD1Profile(30) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /r2-orphan-report — 🗑️ 2026-07-22 (R2 최적화 #3): 고아 R2 객체 리포트(온디맨드). 기본 삭제 안 함
+//   (R2_ORPHAN_CLEANUP_ENABLED='true' 여야 실제 삭제). 참조 없는 60일+ 객체 수/용량만 집계해 반환.
+adminProductsRoutes.get('/r2-orphan-report', cors(), async (c) => {
+  try {
+    const { r2OrphanCleanup } = await import('../../../worker/cron/r2-orphan-cleanup');
+    const report = await r2OrphanCleanup(c.env as unknown as Env);
+    return c.json({ success: true, ...report, candidateMB: Math.round((report.candidateBytes / 1024 / 1024) * 10) / 10 });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/rehost-reset-skip — 🔄 이전 실패 런이 남긴 'rehost_skip'(이관 불가 마킹)을 전부 해제 →
+//   근본원인 수정 후 모든 커버를 다시 이관 시도할 수 있게. (사진 정리 시작 시 클라가 먼저 호출.)
+adminProductsRoutes.post('/dongnedeal/rehost-reset-skip', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`DELETE FROM product_supply_meta WHERE key='rehost_skip'`).run().catch(() => ({ meta: { changes: 0 } }));
+    return c.json({ success: true, cleared: Number((r as { meta?: { changes?: number } })?.meta?.changes ?? 0) });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/image-health — 🩺 2026-07-21 (대표 "계속 문제 나옴" 전수조사): 데모 이미지 진단.
+//   R2 바인딩 여부(rehost 가능성) + 커버가 외부 URL(깨질 위험) vs 내부(/api/media, 안전) 비율.
+adminProductsRoutes.get('/dongnedeal/image-health', cors(), async (c) => {
+  try {
+    const bucketBound = !!(c.env as unknown as { MEDIA_BUCKET?: unknown }).MEDIA_BUCKET;
+    const row = await c.env.DB.prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN COALESCE(image_url,'') = '' THEN 1 ELSE 0 END) AS no_cover,
+         SUM(CASE WHEN image_url LIKE '/api/media/%' OR image_url LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS internal_cover,
+         SUM(CASE WHEN image_url LIKE 'http%' AND image_url NOT LIKE '%media.ur-team.com%' THEN 1 ELSE 0 END) AS external_cover,
+         SUM(CASE WHEN image_url LIKE '%pstatic.net%' OR image_url LIKE '%phinf%' THEN 1 ELSE 0 END) AS naver_cover
+       FROM products
+      WHERE (slug LIKE 'demo-deal-%' OR slug LIKE 'demo-stay-%') AND COALESCE(is_active,1)=1`
+    ).first<{ total: number; no_cover: number; internal_cover: number; external_cover: number; naver_cover: number }>().catch(() => null);
+    return c.json({
+      success: true,
+      bucketBound,
+      cover: {
+        total: Number(row?.total ?? 0),
+        internal_r2: Number(row?.internal_cover ?? 0),   // 안전(우리 도메인) — 안 깨짐
+        external: Number(row?.external_cover ?? 0),        // 외부 URL — 핫링크/삭제 시 깨질 위험
+        naver: Number(row?.naver_cover ?? 0),              // 그중 네이버 CDN
+        none: Number(row?.no_cover ?? 0),
+      },
+      hint: bucketBound
+        ? '외부 커버는 rehost cron/재적용으로 R2(내부) 이관 시 영구 안정화.'
+        : '⚠️ MEDIA_BUCKET(R2) 미바인딩 — 사진 R2 이관이 전부 안 됨. Cloudflare 대시보드 → ur-live → Settings → Bindings → R2 → MEDIA_BUCKET 바인딩 필요(근본 해결).',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
 adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
   try {
@@ -2019,11 +2270,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
     // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    let galleryArr: string[] | null = null;
     if (b.image_urls !== undefined) {
       const arr = Array.isArray(b.image_urls)
         ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
         : [];
       put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
+      galleryArr = arr;  // 🖼️ 2026-07-21: 데모 시드 갤러리(images 컬럼)도 아래에서 동기 — 옛 시드 사진 잔존 방지
     }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
@@ -2057,6 +2310,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (params.length > 0) {
       params.push(id);
       await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
+    // 🖼️ 2026-07-21 (대표 "어드민이 네이버 사진 직접 고르게"): 어드민이 갤러리를 바꾸면 데모 시드가 쓴
+    //   images 컬럼도 같은 값으로 교체 — 상세 병합 렌더에서 옛 시드 사진이 섞여 남지 않게.
+    //   별도 문(best-effort) — images 컬럼 미존재 환경에서도 본 수정은 성공.
+    if (galleryArr !== null) {
+      await c.env.DB.prepare(`UPDATE products SET images = ? WHERE id = ?`)
+        .bind(galleryArr.length > 0 ? JSON.stringify(galleryArr) : null, id).run().catch(() => {});
     }
     await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영

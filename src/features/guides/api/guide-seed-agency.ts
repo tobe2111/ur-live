@@ -75,7 +75,7 @@ export const AGENCY_SEED: SeedSection[] = [
     key: 'recruit', icon: '🎯', title: '셀러 모집하기', order: 20,
     content: `### 셀러 초대 프로세스
 1. \`/agency/sellers\` → **"셀러 초대하기"** 패널 열기
-2. 초대 URL 복사: \`https://live.ur-team.com/seller/register?agency=<id>\`
+2. 초대 URL 복사: \`https://urdeal.kr/seller/register?agency=<id>\`
 3. 카카오톡/이메일/SNS로 예비 셀러에게 전달
 4. 셀러가 링크로 가입하면 **자동으로 에이전시 연결**
 

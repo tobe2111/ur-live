@@ -8,7 +8,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const SellerPage = lazy(() => import('@/pages/SellerPage'))
-const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage'))
+const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
 // 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
 //   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
 //   쿼리 보존 리다이렉트로 폐쇄 — 어디서 눌러도 같은 화면(카카오 계정 업그레이드)에 도착.
@@ -83,6 +83,7 @@ export function SellerRoutes() {
           <SellerLoginPage />
         </PublicRoute>
       } />
+      <Route path="/seller/relink" element={<ErrorBoundary><SellerRelinkPage /></ErrorBoundary>} />{/* 🔁 카카오 계정 교체 재연결(비보호) */}
       {/* 🏁 2026-07-02 단일 퍼널: 레거시 가입 경로 전부 → /seller/register/supplier (쿼리 보존) */}
       <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/signup" element={<LegacySellerRegisterRedirect />} />

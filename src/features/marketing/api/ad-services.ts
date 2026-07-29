@@ -94,6 +94,10 @@ export async function ensureServicesSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_cost INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   // 수기 결제(계좌이체) 상태 — unpaid(입금 대기) / paid(입금 확인) / refunded(환불). PG 미연동, 어드민이 확인 후 마킹.
   await DB.prepare("ALTER TABLE ad_service_orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'").run().catch(() => null)
+  // 💳 토스 결제 배선(2026-07-27) — 결제 주문 식별/환불용. 계좌이체 주문은 NULL 유지.
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN toss_order_id TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN toss_payment_key TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN paid_at DATETIME').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_acct ON ad_service_orders(account_id, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_status ON ad_service_orders(status, id)').run().catch(() => null)
 }
@@ -120,14 +124,48 @@ const SERVICE_SEED: Array<Omit<ServiceRow, 'id' | 'active' | 'sort_order'> & { s
   },
 ]
 
+// 🆕 2026-07-27 서비스화(대표 "모두 개발하자") — 인플루언서 풀·업체 리드 엔진을 상품으로.
+//   테이블이 비어있지 않아도 **이름 기준 업서트**로 자동 등록(기존 시드는 빈 테이블 1회 정책 유지).
+//   ⚠️ 가격은 시드 기본값 — 어드민 상품 관리에서 조정 전제. 이행은 사람이(풀 매칭+발송 모드), DB 판매 아님.
+const NAMED_SERVICE_SEED: typeof SERVICE_SEED = [
+  {
+    category: '매칭', name: '동네 인플루언서 협찬 매칭', subtitle: '지역·업종 맞춤 인플루언서에게 협찬 제안 대행',
+    description: '## 서비스 소개\n유어딜이 보유한 **지역·업종별 인플루언서 데이터**(유튜브·네이버 블로그)에서 우리 매장에 맞는 인플루언서를 골라, **개인화된 협찬 제안을 대신 보내고 회신을 연결**해 드립니다.\n\n## 진행 방식\n- 매장 지역·업종 기준 인플루언서 선별(활동성·적합도 점수 기반)\n- 제안 발송(**유어애즈 명의 + \"의뢰: 우리매장\" 병기** — 매장 사칭 없이 안전하게)\n- 회신 시 매장과 직접 연결 + 발송/개봉/회신 결과 리포트\n\n## 진행 조건 (주문 전 꼭 읽어주세요)\n- 본 서비스는 **제안 발송 대행**이며 **발송 완료 기준으로 과금**됩니다. 회신·성사는 보장되지 않습니다.\n- 단, **회신이 1건도 없으면 동일 규모로 1회 무상 재발송**해 드립니다.\n- 협찬비·조건은 매장↔인플루언서 직접 협의(별도)입니다.\n- 수신거부 요청자는 즉시 발송 대상에서 제외되며(재발송 차단), 관련 법규를 준수해 발송합니다.',
+    pricing: { unit: '명', unitPrice: 15000, minQty: 5, maxQty: 100, presets: [{ label: '10명 제안', qty: 10 }, { label: '30명 제안', qty: 30 }, { label: '50명 제안', qty: 50 }], qtyDiscounts: [{ min: 5, pct: 0 }, { min: 30, pct: 10 }, { min: 50, pct: 15 }], options: [{ key: 'draft', label: '제안 문구 맞춤 작성', price: 50000 }, { key: 'nego', label: '조건 조율 대행', price: 100000 }] },
+    sort_order: 5,
+  },
+  {
+    category: '아웃리치', name: '지역 업체 타겟 아웃리치 대행', subtitle: '타겟 업체 발굴부터 제안·응대까지 대행',
+    description: '## 서비스 소개\n공공데이터·지역검색 기반 **업체 데이터베이스**에서 타겟(지역·업종)을 발굴해, 제휴/입점/영업 제안을 **대신 발송하고 1차 응대까지** 진행합니다.\n\n## 주간 제공 범위 (명확한 숫자로 약속합니다)\n- 주당 **신규 제안 발송 최대 30건**(타겟 정의·리스트 선별 포함)\n- 회신 **1차 응대 + 미팅/통화 연결까지** — 이후 협상·계약은 고객이 직접 진행합니다\n- 주간 진행 리포트(발송·회신 현황)\n\n## 진행 조건\n- **발송·응대 실행 기준 과금**이며 성사(계약)를 보장하지 않습니다.\n- 리스트(연락처 DB) 자체는 제공하지 않습니다 — 실행 대행 서비스입니다(개인정보보호법 준수).\n- 수신거부 의사를 밝힌 업체는 즉시 제외됩니다.',
+    pricing: { unit: '주', unitPrice: 150000, minQty: 2, maxQty: 52, presets: [{ label: '1개월', qty: 4 }, { label: '3개월', qty: 12 }], qtyDiscounts: [{ min: 2, pct: 0 }, { min: 8, pct: 10 }, { min: 24, pct: 18 }], options: [{ key: 'report', label: '주간 상세 리포트', price: 30000 }] },
+    sort_order: 6,
+  },
+]
+
 let _seedChecked = new WeakSet<object>()
 export async function maybeSeedServices(DB: D1Database): Promise<void> {
   await ensureServicesSchema(DB)
   if (_seedChecked.has(DB)) return
   _seedChecked.add(DB)
   const cnt = await DB.prepare('SELECT COUNT(*) AS c FROM ad_services').first<{ c: number }>().catch(() => null)
-  if ((Number(cnt?.c) || 0) > 0) return
-  for (const s of SERVICE_SEED) {
+  if ((Number(cnt?.c) || 0) === 0) {
+    for (const s of SERVICE_SEED) {
+      await DB.prepare('INSERT INTO ad_services (category, name, subtitle, description, pricing_json, active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)')
+        .bind(s.category, s.name, s.subtitle, s.description, JSON.stringify(s.pricing), s.sort_order).run().catch(() => null)
+    }
+  }
+  // 네임드 업서트 — 없을 때만 INSERT(멱등). 어드민이 이름 그대로 두고 가격/설명을 수정하면 보존됨(재INSERT 없음).
+  for (const s of NAMED_SERVICE_SEED) {
+    const ex = await DB.prepare('SELECT id, description FROM ad_services WHERE name = ?').bind(s.name).first<{ id: number; description: string | null }>().catch(() => null)
+    if (ex?.id) {
+      // 📝 v2 문구 승격(2026-07-27 운영수칙 ①②⑤: 명의·과금기준·범위숫자) — **v1 원문 그대로인 행만**
+      //   갱신(센티널 = v1 특유 문장). 어드민이 한 글자라도 고쳤으면 보존(수동 편집 우선 원칙).
+      const v1Sentinel = ex.description?.includes('회신·계약을 보장하지 않습니다') || ex.description?.includes('성사(계약)를 보장하지 않습니다.\n')
+      if (v1Sentinel && ex.description !== s.description) {
+        await DB.prepare('UPDATE ad_services SET description = ? WHERE id = ?').bind(s.description, ex.id).run().catch(() => null)
+      }
+      continue
+    }
     await DB.prepare('INSERT INTO ad_services (category, name, subtitle, description, pricing_json, active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)')
       .bind(s.category, s.name, s.subtitle, s.description, JSON.stringify(s.pricing), s.sort_order).run().catch(() => null)
   }
@@ -189,11 +227,11 @@ export async function listMyOrders(DB: D1Database, accountId: number): Promise<O
 }
 
 // ── 어드민 ───────────────────────────────────────────────────────────────────
-export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number; supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number }
+export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number; supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number; toss_payment_key: string | null }
 export async function adminListOrders(DB: D1Database, status?: string, limit = 200): Promise<AdminOrderRow[]> {
   await ensureServicesSchema(DB)
   const valid = status && SERVICE_ORDER_STATUSES.includes(status as ServiceOrderStatus)
-  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, payment_status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, created_at'
+  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, payment_status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, toss_payment_key, created_at'
   const stmt = valid
     ? DB.prepare(`SELECT ${cols} FROM ad_service_orders WHERE status = ? ORDER BY id DESC LIMIT ?`).bind(status, Math.min(500, limit))
     : DB.prepare(`SELECT ${cols} FROM ad_service_orders ORDER BY id DESC LIMIT ?`).bind(Math.min(500, limit))

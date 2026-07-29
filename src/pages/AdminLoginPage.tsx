@@ -6,7 +6,6 @@ import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Shield, BarChart2, Settings } from 'lucide-react'
-import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function AdminLoginPage() {
@@ -17,6 +16,9 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   // 🛡️ 2026-05-03: Turnstile token (TURNSTILE_SITE_KEY 미설정 시 'disabled' 자동 통과)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🛡️ 2026-07-21: 실패/재시도(특히 비번→PIN 2단계) 전 토큰 재발급 — 일회용 토큰 재사용 403 방지.
+  const [turnstileReset, setTurnstileReset] = useState(0)
+  const refreshTurnstile = () => setTurnstileReset(n => n + 1)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -92,6 +94,8 @@ export default function AdminLoginPage() {
         setNeedPin(true)
         setError(response.data.error || response.data.message || '6자리 보안 PIN을 입력하세요')
         setLoading(false)
+        // 🛡️ 1차 제출이 Turnstile 토큰을 이미 소비 → PIN 재제출 전 새 토큰 발급(재사용 403 방지).
+        refreshTurnstile()
         return
       }
 
@@ -148,6 +152,8 @@ export default function AdminLoginPage() {
       // 🔐 2FA 등록 계정: ADMIN_2FA_REQUIRED(코드 부재)/ADMIN_2FA_INVALID(불일치) → OTP 입력 칸 노출 후 재제출.
       if (err.response?.data?.totp_required) setNeedOtp(true)
       setError(err.response?.data?.message || err.response?.data?.error || t('admin.login.failed'))
+      // 🛡️ 실패(비번/PIN/OTP 오류 또는 Turnstile 403) → 재시도 전 새 토큰 발급(일회용 토큰 재사용 방지).
+      refreshTurnstile()
     } finally {
       setLoading(false)
     }
@@ -324,8 +330,7 @@ export default function AdminLoginPage() {
                 </label>
               </div>
 
-              {/* 🛡️ Cloudflare Turnstile — invisible bot challenge (VITE_TURNSTILE_SITE_KEY 미설정 시 자동 통과) */}
-              <TurnstileWidget onVerify={setTurnstileToken} size="invisible" />
+              {/* 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — Turnstile 위젯 제거(서버 게이트도 비활성). */}
 
               <button
                 type="submit"

@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-r
 import { toast } from '@/hooks/useToast'
 
 const TEST_REST_API_KEY = import.meta.env.VITE_KAKAO_TEST_REST_API_KEY || ''
-const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
+const TEST_REDIRECT_URI = 'https://urdeal.kr/admin/kakao-test/callback'
 
 const badgeBgMap: Record<string, string> = {
   blue: 'bg-blue-500',
@@ -55,10 +55,10 @@ export default function AdminKakaoTestPage() {
         content: {
           title: '🔴 유어딜 라이브 커머스',
           description: '테스트 메시지입니다.',
-          image_url: 'https://live.ur-team.com/og-image.png',
-          link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+          image_url: 'https://urdeal.kr/og-image.png',
+          link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
         },
-        buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+        buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' } }],
       })
       const data = await kakaoApi(
         'https://kapi.kakao.com/v2/api/talk/memo/default/send',
@@ -104,10 +104,10 @@ export default function AdminKakaoTestPage() {
         content: {
           title: '🔴 유어딜 라이브 커머스',
           description: '친구에게 보내는 테스트 메시지입니다.',
-          image_url: 'https://live.ur-team.com/og-image.png',
-          link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+          image_url: 'https://urdeal.kr/og-image.png',
+          link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
         },
-        buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+        buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' } }],
       })
       const data = await kakaoApi(
         'https://kapi.kakao.com/v1/api/talk/friends/message/default/send',

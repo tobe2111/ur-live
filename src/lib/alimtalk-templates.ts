@@ -23,12 +23,12 @@
  *   새 알림톡 트리거 추가 시: (1) 여기 ALL_USED 에 코드 추가, (2) docs 에 본문(#{변수}) 추가,
  *   (3) Aligo 콘솔에 동일 tpl_code + 동일 본문 등록·승인.
  *
- * 🧱 서비스 분리: 소비자(유어딜, live.ur-team.com)와 도매(유통스타트, utongstart.com)는
+ * 🧱 서비스 분리: 소비자(유어딜, urdeal.kr)와 도매(유통스타트, utongstart.com)는
  *   **발신 프로필(카카오 채널)이 다르다.** 아래 WHOLESALE 코드는 유통스타트 채널에 등록.
  */
 
 /**
- * 소비자(유어딜) platform 알림톡 코드 — live.ur-team.com 발신 프로필.
+ * 소비자(유어딜) platform 알림톡 코드 — urdeal.kr 발신 프로필.
  * 문안: docs/kakao-alimtalk-templates.md 참조.
  */
 export const CONSUMER_ALIMTALK_TEMPLATES: readonly string[] = [
@@ -82,6 +82,12 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   //   dispatchNotification templateCode 와 동일 문자열이 Aligo tpl_code. (아직 DOCUMENTED 아님 → 진단이 '미등록' 표시)
   'fcfs_selected', 'fcfs_replacement',
   'district_coupon_issued', 'district_coupon_rejected', 'district_coupon_expiring',
+  // 🧰 2026-07-19 운영 자동화 백로그 — 콘솔 등록·심사 대기(게이트 뒤: 시퀀스 2종은
+  //   OPS_SEQUENCES_ENABLED, 다이제스트는 OPS_DIGEST_ALIMTALK_ENABLED + ops_digest_phone).
+  'drop_d1_reminder', 'experience_post_reminder', 'ops_daily_digest',
+  // 📣 2026-07-21 크리에이터 잔존 장치 — 추천 링크 판매 시 실시간 적립 알림톡. 콘솔 등록·심사 대기
+  //   (게이트 뒤: AFFILIATE_SALE_ALIMTALK_ENABLED). 문안: docs/kakao-alimtalk-templates.md.
+  'affiliate_sale_credited',
   // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
   //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
   'order_confirm', 'shipping_start', 'delivery_completed', 'low_stock_alert',

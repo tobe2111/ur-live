@@ -7,6 +7,7 @@ import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import SellerVoucherPhotoGuide from '@/components/SellerVoucherPhotoGuide'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { compressForUpload } from '@/lib/image-compress'
@@ -487,7 +488,9 @@ export default function SellerMealVoucherNewPage() {
                 <span className="text-lg">📸</span>
                 <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
               </div>
-              <p className="text-[11px] text-gray-500 mb-4">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+              <p className="text-[11px] text-gray-500 mb-3">{t('seller.mealVoucher.imageAiNotice', { defaultValue: 'AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.' })}</p>
+              {/* 📸 2026-07-19 (대표 — 대표사진 가이드): 판매 전환이 잘 되는 사진 유형 안내(등록 플로우 개선). */}
+              <SellerVoucherPhotoGuide />
 
               <div className="space-y-3">
                 {/* 미리보기 */}

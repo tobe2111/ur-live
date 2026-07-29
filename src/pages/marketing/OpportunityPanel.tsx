@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import PanelError from './PanelError'
+import SearchAdRequiredNotice from './SearchAdRequiredNotice'
 
 /**
  * 🆕 2026-07-01 유어애즈 — 키워드 기회 발굴기.
@@ -14,31 +15,35 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
 const COMP_BADGE: Record<string, string> = {
   낮음: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400',
   중간: 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400',
   높음: 'bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400',
 }
 
-export default function OpportunityPanel() {
+export default function OpportunityPanel({ onGo }: { onGo?: (anchor: string) => void }) {
   const [seed, setSeed] = useState('')
   const [items, setItems] = useState<Opportunity[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // 검색광고 자격증명 부재(503/SEARCHAD_REQUIRED) — '재시도'가 무의미한 상태라 안내+연결 CTA 로 분리.
+  const [credsOff, setCredsOff] = useState(false)
   const [saved, setSaved] = useState<Set<string>>(new Set())
 
   async function search() {
     const s = seed.trim()
     if (!s) { toast.error('기준 키워드를 입력해주세요'); return }
-    setLoading(true); setErr(null)
+    setLoading(true); setErr(null); setCredsOff(false)
     try {
       const r = await api.get(`/api/ads/keywords/opportunities?seed=${encodeURIComponent(s)}`, { headers: authHeader() })
       if (r.data?.success) { setItems(r.data.items || []); setSaved(new Set()) }
+      else if (r.data?.code === 'SEARCHAD_REQUIRED') setCredsOff(true)
       else setErr(r.data?.error || '조회 실패')
     } catch (e) {
-      const msg = (e as { response?: { data?: { error?: string }; status?: number } })?.response
-      setErr(msg?.status === 503 ? '검색광고 키가 설정되지 않았습니다' : (msg?.data?.error || '조회 실패'))
+      const msg = (e as { response?: { data?: { error?: string; code?: string }; status?: number } })?.response
+      if (msg?.status === 503 || msg?.data?.code === 'SEARCHAD_REQUIRED') setCredsOff(true)
+      else setErr(msg?.data?.error || '조회 실패')
     } finally { setLoading(false) }
   }
 
@@ -60,14 +65,15 @@ export default function OpportunityPanel() {
       <div className="mt-2.5 flex gap-2">
         <input value={seed} onChange={e => setSeed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') search() }}
           placeholder="기준 키워드 (예: 무선청소기)" maxLength={40}
-          className="flex-1 h-9 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400" />
+          className="flex-1 h-9 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400" />
         <button onClick={search} disabled={loading}
-          className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 text-[12.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">
+          className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 text-[12.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">
           {loading ? '분석 중…' : '발굴'}
         </button>
       </div>
 
-      {err && <PanelError onRetry={search} busy={loading} label={err} />}
+      {credsOff && <SearchAdRequiredNotice feature="기회 키워드 발굴" onGo={onGo} />}
+      {err && !credsOff && <PanelError onRetry={search} busy={loading} label={err} />}
       {items && !err && (
         items.length === 0 ? (
           <p className="mt-3 text-[12px] text-gray-400 dark:text-gray-500">조건(검색량 100+ · 미보유)에 맞는 기회 키워드가 없습니다. 다른 기준 키워드로 시도해보세요.</p>
@@ -79,7 +85,7 @@ export default function OpportunityPanel() {
               </tr></thead>
               <tbody>
                 {items.map((k, i) => (
-                  <tr key={k.keyword} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                  <tr key={k.keyword} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                     <td className="py-1.5 pr-2 text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}</td>
                     <td className="py-1.5 pr-2 font-medium text-gray-900 dark:text-white">{k.keyword}</td>
                     <td className="py-1.5 pr-2 text-right tabular-nums">{formatNumber(k.monthlyTotal)}</td>

@@ -37,8 +37,12 @@ const CHECKS = [
       /addEventListener\(\s*['"]error['"]/,   // 리소스 에러 리스너
       /\/assets\//,                            // 우리 청크 경로만 처리
       /location\.(?:replace|reload)/,          // reload 복구
+      // 🛡️ 2026-07-20 (대표 신고 "고질적" 전수조사): 복구 UI 가 왜 떴는지 진단 beacon 이 반드시 있어야
+      //   한다(reason/entryRan/lastErr → /admin/errors). 이게 없으면 원인 불명으로 또 반복 수정만 하게 됨.
+      /_errors\/log/,                          // 진단 beacon (frontend_errors 로 원인 기록)
+      /securitypolicyviolation/,               // 조용한 CSP 차단(엔트리 스톨)도 진단되게
     ],
-    hint: 'index.html <head> 의 인라인 부트가드가 제거/약화됨 — 번들 안 복구코드가 로드조차 안 되는 닭/달걀 케이스(엔트리 청크 실패)에서 자가복구 불능 → 영구 흰화면.',
+    hint: 'index.html <head> 의 인라인 부트가드가 제거/약화됨 — 번들 안 복구코드가 로드조차 안 되는 닭/달걀 케이스(엔트리 청크 실패)에서 자가복구 불능 → 영구 흰화면. + 진단 beacon(_errors/log)/CSP 차단 감지가 빠지면 "왜 안 뜨는지" 원인 불명으로 재발.',
   },
   {
     file: 'src/utils/chunk-error.ts',
@@ -59,8 +63,10 @@ const CHECKS = [
       /isChunkLoadError/,
       /addEventListener\(\s*['"]error['"]/,
       /unhandledrejection/,                    // dynamic import() reject(React.lazy) 복구
+      // 🛡️ 2026-07-20: 엔트리 번들 실행 신호 — '엔트리 미실행(404/CSP/네트워크) vs 마운트 느림/에러' 구분의 핵심.
+      /__urBootStarted/,
     ],
-    hint: 'main.tsx 의 error/unhandledrejection 핸들러가 빠지면 부팅 후 lazy 라우트 청크 실패 시 자동복구 불능.',
+    hint: 'main.tsx 의 error/unhandledrejection 핸들러가 빠지면 부팅 후 lazy 라우트 청크 실패 시 자동복구 불능. + __urBootStarted(엔트리 실행 신호)가 빠지면 stuck 원인(엔트리 미실행 vs 마운트 느림) 구분 불능.',
   },
   {
     file: 'src/worker/index.ts',

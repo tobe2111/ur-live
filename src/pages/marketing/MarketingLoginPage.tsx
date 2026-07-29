@@ -10,13 +10,15 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { ADS_AI_HIDDEN } from '@/shared/feature-flags'
 
 const DEFAULT_DEST = '/ads/dashboard'
 
 const SCOPED_CSS = `
+@font-face{font-family:'PretendardV';src:url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format('woff2-variations');font-weight:45 920;font-style:normal;font-display:swap}
 .ua-auth{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 100% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
+  font-family:"Pretendard Variable","PretendardV",Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
 .ua-auth a{text-decoration:none;}
 .ua-auth-card{width:100%;max-width:400px;background:#FFFFFF;border:1px solid #ECEDF1;border-radius:20px;
   padding:34px 28px;box-shadow:0 20px 54px -26px rgba(20,30,60,.28);}
@@ -28,8 +30,20 @@ const SCOPED_CSS = `
   transition:filter .15s,transform .05s;}
 .ua-auth-btn:hover{filter:brightness(1.06);} .ua-auth-btn:active{transform:translateY(1px);}
 .ua-auth-btn:disabled{opacity:.55;}
-.ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-auth-mono{font-size:11px;letter-spacing:.18em;color:#8A93A3;}
+.ua-kakao-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:13px;
+  background:#FEE500;color:#191919 !important;font-size:15px;font-weight:800;transition:filter .15s,transform .05s;}
+.ua-kakao-btn:hover{filter:brightness(.97);} .ua-kakao-btn:active{transform:translateY(1px);}
 `
+
+// 카카오 콜백 실패 사유(→ /ads/login?error=) 한국어화 — 미지정 코드는 일반 메시지.
+const KAKAO_ERR: Record<string, string> = {
+  kakao_denied: '카카오 로그인이 취소되었습니다',
+  state_mismatch: '보안 검증에 실패했습니다 — 다시 시도해주세요',
+  kakao_env: '카카오 로그인이 아직 설정되지 않았습니다',
+  kakao_token: '카카오 인증에 실패했습니다 — 다시 시도해주세요',
+  kakao_profile: '카카오 프로필을 불러오지 못했습니다',
+}
 
 export default function MarketingLoginPage() {
   useUrAdsFavicon()
@@ -41,11 +55,22 @@ export default function MarketingLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  // 카카오 콜백 실패(?error=)는 초기 에러로 표시 — 이후 입력 시도가 지움.
+  const kakaoErr = params.get('error')
+  const [err, setErr] = useState<string | null>(kakaoErr ? (KAKAO_ERR[kakaoErr] || '카카오 로그인에 실패했습니다') : null)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('ads_token')) navigate(dest, { replace: true })
   }, [navigate, dest])
+
+  // 로그인 성공 공통 후처리 — 이메일/카카오(브리지) 동일: 토큰 저장 + 베타 액세스 게이트 분기.
+  function finishLogin(data: { token: string; account?: { id?: number; company_name?: string | null; access_unlocked?: number } }) {
+    localStorage.setItem('ads_token', data.token)
+    localStorage.setItem('ads_account_id', String(data.account?.id ?? ''))
+    localStorage.setItem('ads_company', data.account?.company_name || '')
+    if (data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
+    else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -53,24 +78,32 @@ export default function MarketingLoginPage() {
     setBusy(true); setErr(null)
     try {
       const r = await api.post('/api/ads/auth/login', { email: email.trim(), password })
-      if (r.data?.success && r.data.token) {
-        localStorage.setItem('ads_token', r.data.token)
-        localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
-        localStorage.setItem('ads_company', r.data.account?.company_name || '')
-        // 베타 액세스 코드 게이트: 해제된 계정만 대시보드로, 아니면 코드 입력 화면.
-        if (r.data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
-        else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
-      } else setErr(r.data?.error || '로그인에 실패했습니다')
+      if (r.data?.success && r.data.token) finishLogin(r.data)
+      else setErr(r.data?.error || '로그인에 실패했습니다')
     } catch (e2: unknown) {
       setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '로그인에 실패했습니다')
     } finally { setBusy(false) }
+  }
+
+  // 🟡 카카오: 유어딜 세션 브리지 우선(이미 urdeal.kr 카카오 로그인이면 왕복 0으로 즉시) →
+  //   미로그인(401)일 때만 기존 소비자 카카오 시작(콜백 기등록 — 콘솔 추가 불필요) 후 /ads/kakao 재시도.
+  async function kakaoStart() {
+    setBusy(true); setErr(null)
+    try {
+      const r = await api.post('/api/ads-auth/kakao/bridge', {})
+      if (r.data?.success && r.data.token) { finishLogin(r.data); return }
+    } catch (e2: unknown) {
+      const ax = e2 as { response?: { status?: number; data?: { need_login?: boolean; error?: string } } }
+      if (ax.response?.status !== 401) { setErr(ax.response?.data?.error || '카카오 로그인에 실패했습니다'); setBusy(false); return }
+    }
+    window.location.href = `/auth/kakao/start?redirect=${encodeURIComponent('/ads/kakao')}`
   }
 
   const signupHref = `/ads/signup${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
 
   return (
     <div className="ua-auth force-light-theme">
-      <SEO title="유어애즈 로그인 - UR Ads" description="유어애즈에 로그인하세요. 네이버 검색광고 자동입찰·통합 실적·AI 마케터." url="/ads/login" />
+      <SEO title="유어애즈 로그인 - UR Ads" description={`유어애즈에 로그인하세요. 네이버 검색광고 자동입찰·통합 실적·${ADS_AI_HIDDEN ? '순위 모니터링' : 'AI 마케터'}.`} url="/ads/login" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <form className="ua-auth-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -87,6 +120,12 @@ export default function MarketingLoginPage() {
         {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626' }}>{err}</p>}
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
+
+        {/* 🟡 카카오 — 유어딜 로그인 공유(브리지 우선, 미로그인 시 기존 소비자 카카오 플로우) */}
+        <button type="button" onClick={kakaoStart} disabled={busy} className="ua-kakao-btn" style={{ marginTop: 10, border: 'none', cursor: 'pointer' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden><path d="M12 3C6.48 3 2 6.54 2 10.9c0 2.8 1.86 5.26 4.66 6.65l-.95 3.54c-.08.31.27.56.54.38l4.19-2.79c.51.05 1.03.08 1.56.08 5.52 0 10-3.54 10-7.86C22 6.54 17.52 3 12 3z" /></svg>
+          카카오로 시작하기 (유어딜 계정)
+        </button>
 
         <div style={{ marginTop: 12, textAlign: 'center' }}>
           <Link to="/ads/forgot" style={{ fontSize: 12.5, color: '#8A93A3' }}>비밀번호를 잊으셨나요?</Link>

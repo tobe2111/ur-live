@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -81,21 +82,21 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   }, [])
   return (
     <>
-      <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+      <div className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://live.ur-team.com/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
+          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://urdeal.kr/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
         ) : (
           <ul className="space-y-2">
             {referred.map(s => {
               const remaining = s.referral_bonus_until ? Math.max(0, Math.ceil((new Date(s.referral_bonus_until).getTime() - Date.now()) / (30 * 86400_000))) : 0
               return (
-                <li key={s.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
+                <li key={s.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A3446] pb-2 last:border-0 last:pb-0">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.name}</p>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">누적 commission {s.total_commission.toLocaleString()}원</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'}`}>
+                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400'}`}>
                     {remaining > 0 ? `보너스 ${remaining}개월 남음` : '보너스 종료'}
                   </span>
                 </li>
@@ -105,7 +106,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+      <div className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 표기 — platform 동안 미렌더(기존 화면 불변) */}
         {ownerFunded && (
@@ -118,7 +119,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
         ) : (
           <ul className="space-y-2">
             {deals.map(d => (
-              <li key={d.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
+              <li key={d.id} className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A3446] pb-2 last:border-0 last:pb-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.seller_name || `매장 ${d.seller_id}`}</p>
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">우대 {d.commission_pct}% · {d.proposed_by === 'seller' ? '매장 제안' : '내가 신청'}</p>
@@ -126,7 +127,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
                 <span className={`text-[10px] px-2 py-1 rounded font-bold ${
                   d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                   d.status === 'proposed' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'
+                  'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400'
                 }`}>
                   {d.status === 'active' ? '활성' : d.status === 'proposed' ? '대기' : d.status}
                 </span>
@@ -208,15 +209,13 @@ export default function InfluencerSettlementPage() {
     } finally { setSaving(false) }
   }
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121212]"><p className="text-sm text-gray-500 dark:text-gray-400">로딩 중...</p></div>
-  }
+  if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] pb-20">
       {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
       <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
-      <header className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446] px-4 py-3 flex items-center gap-2">
         <Wallet className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
         <button
@@ -291,7 +290,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5 space-y-4">
+        <div className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
@@ -300,7 +299,7 @@ export default function InfluencerSettlementPage() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white dark:bg-[#0A0A0A]'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white dark:bg-[#0F151D]'}`}
               >
                 <p className="text-sm font-bold text-gray-900 dark:text-white">현금 송금</p>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">원천징수 후 계좌 입금</p>
@@ -308,7 +307,7 @@ export default function InfluencerSettlementPage() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white dark:bg-[#0A0A0A]'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white dark:bg-[#0F151D]'}`}
               >
                 <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-pink-600">+20%</span></p>
                 {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 병기 — platform 은 기존 문구 byte-동일 */}
@@ -348,7 +347,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.tax_type}
               onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0A0A0A]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0F151D]"
             >
               <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
               <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
@@ -361,7 +360,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.bank_name}
               onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0A0A0A]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#0F151D]"
             >
               <option value="">은행 선택</option>
               {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
@@ -403,16 +402,16 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
           ) : (
             <ul className="space-y-2">
               {recent.map(r => {
-                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200' }
+                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200' }
                 return (
-                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#1A1A1A] pb-2 last:border-0 last:pb-0">
+                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2A3446] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {new Date(r.created_at).toLocaleDateString('ko-KR')}</p>

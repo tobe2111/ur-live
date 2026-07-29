@@ -11,7 +11,7 @@ interface Props {
 export default function CheckoutHeader({ onBack }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-0 z-10">
+    <div className="bg-white dark:bg-[#0F151D] border-b border-gray-100 dark:border-[#2A3446] sticky top-0 z-10">
       <div className="mx-auto max-w-md flex items-center justify-between px-3 py-3">
         <button
           onClick={onBack}

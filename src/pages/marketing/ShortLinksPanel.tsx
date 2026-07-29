@@ -17,15 +17,14 @@ const authHeader = () => {
 
 interface LinkRow { id: number; code: string; target_url: string; title: string | null; active: number; click_count: number; last_click_at: string | null; created_at: string }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
-const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
-const shortUrl = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'}/l/${code}`
+const shortUrl = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'}/l/${code}`
 
 export default function ShortLinksPanel() {
   const [links, setLinks] = useState<LinkRow[]>([])
   const [target, setTarget] = useState('')
-  const [title, setTitle] = useState('')
   const [customCode, setCustomCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
@@ -45,10 +44,10 @@ export default function ShortLinksPanel() {
     if (!target.trim()) { toast.error('이동할 URL을 입력해주세요'); return }
     setBusy(true)
     try {
-      const r = await api.post('/api/ads/links', { target_url: target.trim(), title: title.trim() || undefined, custom_code: customCode.trim() || undefined }, { headers: authHeader() })
+      const r = await api.post('/api/ads/links', { target_url: target.trim(), custom_code: customCode.trim() || undefined }, { headers: authHeader() })
       if (r.data?.success) {
         setLinks(r.data.links || [])
-        setTarget(''); setTitle(''); setCustomCode('')
+        setTarget(''); setCustomCode('')
         const code = r.data.link?.code
         if (code) { await copy(shortUrl(code)); toast.success('생성 완료 — 단축 주소가 복사되었습니다') }
       } else toast.error(r.data?.error || '생성 실패')
@@ -94,16 +93,15 @@ export default function ShortLinksPanel() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-[14px] font-bold text-gray-900 dark:text-white">무료 단축 링크</h3>
-          <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">긴 URL을 <span className="font-semibold">{typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'}/l/코드</span> 로 줄이고 클릭수를 추적하세요. 무료 · 100개까지.</p>
+          <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">긴 URL을 <span className="font-semibold">{typeof window !== 'undefined' ? window.location.host : 'urdeal.kr'}/l/코드</span> 로 줄이고 클릭수를 추적하세요. 무료 · 100개까지.</p>
         </div>
       </div>
 
-      {/* 생성 폼 */}
-      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_180px_150px_auto]">
+      {/* 생성 폼 — 2026-07-27 대표 "메모 필요없어": URL + (선택)커스텀 코드만 */}
+      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_150px_auto]">
         <input className={input} placeholder="https:// 이동할 전체 URL" value={target} onChange={e => setTarget(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') create() }} />
-        <input className={input} placeholder="메모 (선택)" value={title} onChange={e => setTitle(e.target.value)} />
         <input className={input} placeholder="커스텀 코드 (선택)" value={customCode} onChange={e => setCustomCode(e.target.value)} />
-        <button onClick={create} disabled={busy} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '생성 중…' : '단축하기'}</button>
+        <button onClick={create} disabled={busy} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '생성 중…' : '단축하기'}</button>
       </div>
 
       {err && <PanelError onRetry={load} />}
@@ -123,6 +121,9 @@ export default function ShortLinksPanel() {
                 <div className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500 truncate max-w-[420px]">{l.target_url}</div>
               </div>
               <div className="flex items-center gap-2.5 shrink-0 text-[12px]">
+                {/* 2026-07-27 대표 "복사하기 버튼만 있으면 되잖아" — 숨은 텍스트 클릭 대신 명시 버튼 */}
+                <button onClick={() => { copy(shortUrl(l.code)); toast.success(`복사됨 — ${shortUrl(l.code)}`) }}
+                  className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11.5px] font-bold">📋 복사하기</button>
                 <button onClick={() => showStats(l)} className="font-bold text-gray-900 dark:text-white tabular-nums hover:underline" title="일별 통계 보기">{formatNumber(l.click_count)} 클릭</button>
                 <button onClick={() => toggleActive(l)} className="font-semibold text-gray-500 dark:text-gray-400 hover:underline">{l.active ? '끄기' : '켜기'}</button>
                 <button onClick={() => remove(l)} className="font-semibold text-red-500 hover:underline">삭제</button>

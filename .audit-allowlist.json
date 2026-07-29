@@ -48,6 +48,78 @@
       "accepted_by": "대표(urteam.corp) 승인 — 2026-07-15 (AskUserQuestion 명시 승인, dev-WebSocket 도달불가 클래스)",
       "date": "2026-07-15",
       "review": "wrangler/miniflare 업그레이드로 faye-websocket 갱신 시 재확인 후 제거."
+    },
+    {
+      "ghsa": "GHSA-23hp-3jrh-7fpw",
+      "pkg": "tar",
+      "reason": "dev/빌드툴 전용 transitive(node-tar, wrangler/npm 툴체인 경유). package.json 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함, 런타임 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·2026-07-15 선례와 동일)",
+      "date": "2026-07-21",
+      "review": "wrangler/npm 툴체인 업그레이드로 tar 갱신 시 재확인 후 제거."
+    },
+    {
+      "ghsa": "GHSA-8x88-c5mf-7j5w",
+      "pkg": "tar",
+      "reason": "dev/빌드툴 전용 transitive(node-tar 아카이브 replace 무한루프). 위 GHSA-23hp 와 동일 패키지·동일 도달불가 근거 — production 트리 미포함.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
+      "date": "2026-07-21",
+      "review": "tar 갱신 시 재확인."
+    },
+    {
+      "ghsa": "GHSA-52cp-r559-cp3m",
+      "pkg": "js-yaml",
+      "reason": "dev/빌드툴 전용 transitive(YAML merge-key 이차 CPU DoS, 빌드 설정 파서 경유). 직접 의존 아님 + src/ 미참조 → production 번들 미포함, 신뢰된 빌드 입력만 파싱 → 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
+      "date": "2026-07-21",
+      "review": "transitive 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-3jxr-9vmj-r5cp",
+      "pkg": "brace-expansion",
+      "reason": "dev/빌드툴 전용 transitive(glob/minimatch 경유 DoS). 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함, 런타임 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
+      "date": "2026-07-21",
+      "review": "minimatch/glob 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-395f-4hp3-45gv",
+      "pkg": "shell-quote",
+      "reason": "빌드 스크립트 전용(parse() 이차 DoS). package.json 직접 의존이나 src/ 미참조 → production Workers/브라우저 번들 미포함. 자체 스크립트가 신뢰된 입력만 parse → 외부 공격자 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
+      "date": "2026-07-21",
+      "review": "shell-quote 1.8.x 패치 릴리스 나오면 업그레이드 후 제거."
+    },
+    {
+      "ghsa": "GHSA-gcfj-64vw-6mp9",
+      "pkg": "axios",
+      "reason": "취약 경로 = axios **Node HTTP 어댑터**의 프록시 상속(인터셉터 config clone 시). 유어딜 axios(1.17.0)는 브라우저 클라이언트(src/lib/api.ts 등)에서만 사용 → 브라우저는 XHR 어댑터, Cloudflare Workers 는 node:http 부재 → **Node 어댑터 코드경로가 production 에서 실행 안 됨** → 도달 불가. ⚠️ 순수 도달불가라 등재하나, 다음 npm 설치 가능 시점에 axios 패치 버전 상향 권장(review).",
+      "accepted_by": "대표(urteam.corp) 승인 — Node-어댑터 전용 취약점, 브라우저/Workers 런타임 도달불가",
+      "date": "2026-07-21",
+      "review": "npm 설치 가능 환경에서 axios 패치 버전(GHSA-gcfj 수정본) 상향 후 제거 — 근본 해결 우선."
+    },
+    {
+      "ghsa": "GHSA-mh99-v99m-4gvg",
+      "pkg": "brace-expansion",
+      "reason": "dev/빌드툴 전용 transitive(glob/minimatch 경유, 무한 확장 OOM DoS). 기등재 GHSA-3jxr-9vmj-r5cp 와 동일 패키지·동일 도달불가 근거 — 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함. 2026-07-25 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일, 동일 패키지 기승인)",
+      "date": "2026-07-25",
+      "review": "minimatch/glob 갱신 시 제거."
+    },
+    {
+      "ghsa": "GHSA-r28c-9q8g-f849",
+      "pkg": "postcss",
+      "reason": "dev/빌드툴 전용(devDependencies, vite/tailwind CSS 파이프라인). 취약점 = 소스맵 자동로딩 path traversal — 빌드 시 **자체 신뢰된 CSS 만** 처리(외부 입력 CSS 부재) + production Workers/브라우저 번들에 postcss 미포함(src/ 미참조 확인) → 런타임 도달 불가. 2026-07-25 신규 published advisory 가 전 PR 배포를 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
+      "date": "2026-07-25",
+      "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거 — 근본 해결 우선."
+    },
+    {
+      "ghsa": "GHSA-f88m-g3jw-g9cj",
+      "pkg": "sharp",
+      "reason": "dev/빌드툴 전용 transitive(libvips 상속 취약점 — CVE-2026-33327/33328/35590/35591). package.json 직접 의존 아님 + src/ 미참조. sharp 는 Node 네이티브 모듈이라 Cloudflare Workers/Pages 런타임에서 실행 불가 → production 번들 미포함, 도달 불가. 2026-07 신규 published advisory 가 전 PR 배포를 차단해 등재(undici/tar/ws 등과 동일 도달불가 클래스).",
+      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
+      "date": "2026-07-22",
+      "review": "sharp/libvips 제공 패키지 업그레이드(npm 설치 가능 시) 후 재확인 → 제거."
     }
   ]
 }

@@ -191,6 +191,45 @@
     "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo"
   },
   "seller": {
+    "relink": {
+      "title": "¿Cambió su cuenta de Kakao?",
+      "desc": "Su cuenta de vendedor se conserva. Inicie sesión con su nuevo Kakao y confirme su correo y contraseña de vendedor.",
+      "step1": "Iniciar sesión con nuevo Kakao",
+      "step2": "Verificar cuenta de vendedor",
+      "kakaoBtn": "Login Kakao",
+      "emailPh": "Correo del vendedor",
+      "pwPh": "Contraseña",
+      "submit": "Reconectar y abrir panel",
+      "busy": "Reconectando…",
+      "fail": "Error al reconectar",
+      "needKakao": "Primero inicie sesión con su nuevo Kakao.",
+      "noPw": "¿Sin contraseña (solo Kakao)? Lo reconectamos tras verificar su identidad.",
+      "channel": "Consultar por canal Kakao",
+      "entry": "¿Cambió de Kakao? Reconectar →"
+    },
+    "scanDevices": {
+      "title": "Enlace de escaneo para personal",
+      "issue": "Emitir enlace",
+      "desc": "Enlace solo-escaneo para el móvil del personal o un dispositivo de la tienda, sin login del dueño. Escanee el QR con ese dispositivo o envíe el enlace. Revoque al instante si se pierde.",
+      "oneTime": "Se muestra solo una vez",
+      "copyLink": "Copiar enlace",
+      "lastUsed": "Último uso",
+      "neverUsed": "Sin usar",
+      "revoke": "Revocar",
+      "revoked": "Revocado",
+      "revokeConfirm": "¿Revocar este enlace? Ese dispositivo ya no podrá escanear.",
+      "revokeFail": "Error al revocar",
+      "issueFail": "Error al emitir"
+    },
+    "simple": {
+      "scan": "Escanear QR",
+      "settlement": "Liquidación",
+      "myDeals": "Mis ofertas",
+      "fullMenu": "Menú completo",
+      "scanSub": "Canjear vales",
+      "settlementSub": "Ventas y pagos",
+      "myDealsSub": "Incl. pendientes"
+    },
     "dashboard": "Panel",
     "dashboardSubtitle": "Panel del vendedor — Ventas / Pedidos / Estado en vivo",
     "products": {
@@ -232,7 +271,7 @@
       "kindPdfGuide": "📚 Info guide",
       "kindPdfGuideDesc": "Guide, know-how documents",
       "contentUrlLabel": "Content URL",
-      "contentUrlPlaceholder": "https://r2.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
+      "contentUrlPlaceholder": "https://media.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
       "contentUrlHint": "⚠️ R2 or external CDN URL. Signed URL auto-issued for buyers only.",
       "contentFormatLabel": "File format",
       "contentFormatSelect": "Select",
@@ -1657,7 +1696,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "Comisión de recomendación (%)",
       "promoRecommend": "Recomendado {{min}}~{{max}}%",
-      "promoHint": "Cuando un influencer vende por su enlace, pagas esta parte como comisión. Diséñala junto al descuento como un solo presupuesto de marketing. Sin venta referida, sin costo."
+      "promoHint": "Cuando un influencer vende por su enlace, pagas esta parte como comisión. Diséñala junto al descuento como un solo presupuesto de marketing. Sin venta referida, sin costo.",
+      "photoGuideTitle": "💡 Las fotos de la comida o del resultado del servicio venden más que las del letrero o el menú",
+      "photoGuideGood": "✅ Recomendado: primer plano del plato estrella · resultados del servicio (antes/después) · lo que realmente se ofrece",
+      "photoGuideBad": "❌ Evita: letreros · tableros de menú · fachadas del edificio"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -1737,7 +1779,8 @@
       "agencyDelegation": "Delegación de agencia",
       "promoSpend": "Gasto promo",
       "influencerDeals": "Colabs influencers",
-      "experienceCampaigns": "Campañas de prueba"
+      "experienceCampaigns": "Campañas de prueba",
+      "myLinkshop": "Mi Linkshop"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2760,7 +2803,7 @@
       "k013": "비공개로 변경됨",
       "k014": "발행됨",
       "k015": "변경 실패",
-      "k016": "글을 작성하고 docs.ur-team.com에 발행하세요",
+      "k016": "글을 작성하고 urdeal.kr/blog에 발행하세요",
       "k017": "작성된 글이 없습니다",
       "k018": "임시저장",
       "k019": "비공개로 변경",
@@ -4645,20 +4688,21 @@
     "tabGroupBuy": "Vales",
     "tabGifticon": "Gifticon",
     "emptyGbTitle": "Aún no tienes vales de comida",
-    "emptyGbDesc": "Únete a una compra grupal de restaurantes locales\ny tus vales de comida prepagados se acumularán aquí",
-    "emptyGbCta": "Ver compras grupales",
+    "emptyGbDesc": "Compra vales locales con descuento:\naparecen aquí, listos para usar en tienda",
+    "emptyGbCta": "Ver vales locales",
     "emptyGiftTitle": "Aún no tienes vales de regalo",
     "emptyGiftDesc": "Cuando compras un vale, se envía a tu móvil\ny también se guarda aquí",
     "emptyGiftCta": "Ver vales de regalo",
-    "stepGb1": "Unirse a\nla compra",
-    "stepGb2": "Vale en\nla cartera",
-    "stepGb3": "Mostrar QR\nen tienda",
+    "stepGb1": "Comprar\nvale",
+    "stepGb2": "Llega a\ntu cartera",
+    "stepGb3": "Muestra el QR\nen tienda",
     "stepGift1": "Comprar\nvale",
     "stepGift2": "Enviado\npor MMS",
     "stepGift3": "Mostrar\nen tienda",
     "deal": "deal",
     "heroBalanceLabelGift": "Saldo de vales regalo",
-    "loadFailed": "No se pudieron cargar tus cupones"
+    "loadFailed": "No se pudieron cargar tus cupones",
+    "totalCount": "{{count}} en total"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
@@ -5204,6 +5248,7 @@
     "catExchange": "[TODO:es] 교환/환불",
     "catMember": "[TODO:es] 회원",
     "catLive": "[TODO:es] 라이브",
+    "catService": "Servicio",
     "q1": "[TODO:es] 주문을 취소하고 싶어요",
     "a1": "[TODO:es] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "[TODO:es] 결제가 완료되지 않았어요",
@@ -5220,10 +5265,10 @@
     "a7": "[TODO:es] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "[TODO:es] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:es] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "[TODO:es] 라이브 방송은 어떻게 시청하나요?",
-    "a9": "[TODO:es] 메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "[TODO:es] 라이브 중 상품을 구매하려면?",
-    "a10": "[TODO:es] 라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다."
+    "q9": "¿Qué es UrDeal?",
+    "a9": "UrDeal (urdeal.kr) es una plataforma de comercio local: compra vales de tiendas de tu barrio con descuento y úsalos en la tienda con un código QR. Ofrece vales de comida, belleza y alojamiento, cupones de intercambio (gifticon), un mapa de ofertas cercanas y tu propia tienda de enlaces.",
+    "q10": "¿Cómo uso un vale?",
+    "a10": "Los vales comprados aparecen en Mi página > Mis vales; muestra el QR o el PIN en la tienda para usarlos. Los cupones de intercambio se emiten justo después del pago."
   },
   "introduce": {
     "navStart": "Comenzar",

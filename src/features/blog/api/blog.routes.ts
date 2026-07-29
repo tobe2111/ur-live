@@ -22,7 +22,8 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 올리면 배포 후 첫 접근 시 라이브 DB 에 자동 재반영됩니다.
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
 // 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
-const BLOG_SEED_VERSION = 5
+// v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
+const BLOG_SEED_VERSION = 8
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
@@ -239,6 +240,7 @@ app.delete('/:id', async (c) => {
 const LEGACY_SEED_SLUGS = [
   'why-live-commerce', 'seller-start-guide', 'meal-voucher-business', 'agency-partnership',
   'live-auction-timedeal', 'friend-invite-group-buy', 'yourdeal-vs-others', 'review-reward-system',
+  'what-is-yourdeal',  // 2026-07-28 → 'what-is-urdeal' 로 리네임(브랜드/도메인 정합). 구 URL 은 worker 301.
   'deal-points-guide', 'seller-settlement-guide', 'live-broadcast-tips', 'consumer-shopping-guide',
   'seller-tier-system', 'supporter-ranking-system', 'voucher-how-to-use', 'influencer-live-commerce',
   'group-buy-success-tips', 'safe-payment-system', 'restaurant-map-guide', 'shorts-content-strategy',

@@ -2,7 +2,7 @@
  * 📡 2026-07-05 유입 소스 어트리뷰션 (B2G 상권 패키지 — "시설물별 스캔·유입 성과 측정" 약속 이행).
  *
  * URL 규격 (인쇄물 SSOT — 시설물 QR 은 이 형식으로 제작):
- *   https://live.ur-team.com/local/{지역코드}?src={소스}
+ *   https://urdeal.kr/local/{지역코드}?src={소스}
  *   소스 네이밍: 소문자·숫자·하이픈 (예: photozone, banner-01, flag-1234, insta, danggn).
  *   광고 UTM 유입은 src 부재 시 utm_source 를 같은 체계로 흡수 (클라 acquisition.ts).
  *

@@ -73,6 +73,18 @@ export const SELLER_PROMO_FIELD_ENABLED = false
 export const GB_ENGINE_ENABLED = false
 
 /**
+ * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정
+ *   "딜 포인트 충전 자체를 빼자 우리 서비스에서" — 앱 전환 시 Apple IAP 30% 이슈 원천 제거).
+ *   딜 = **적립 전용 리워드 통화**로 전환: 친구초대·추천(핀)·커미션 등 무상 적립과 딜 *사용*
+ *   (교환권 딜결제·혼합결제 차감)·환불 복원은 전부 불변 — 유상 충전 *진입*만 닫는다.
+ *   true: 충전 진입점 전부 숨김/안내 전환(/points/charge 라우트 게이트 + 홈 딜모으는법 · 마이 ·
+ *         교환권 잔액카드 · 딜내역 · 잔액부족 CTA) + 서버 /api/points/charge/init 403.
+ *   보존: 충전 코드·라우트·성공/확인 페이지(/points/charge/success — 배포 시점 진행중 결제 완결용)·
+ *         어드민 충전 모니터링(과거 데이터). false 로 바꾸면 즉시 복원(가역).
+ */
+export const TOPUP_DISABLED = true
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권
@@ -83,3 +95,39 @@ export const GB_ENGINE_ENABLED = false
  */
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
+/**
+ * SELLER_STORE_ONLY_MODE — 셀러 대시보드 = 순수 '매장 운영 콘솔' (2026-07-19 대표 확정
+ *   "온라인 판매·소싱은 필요없다 — 이용권 파는 매장 업주만을 위한 형태로. 상품은 링크샵에서만").
+ *   true: 셀러 nav 에서 **온라인 상품 관리(/seller/products)·도매 소싱(/seller/supply)** 을 전 셀러
+ *         타입에서 숨김(심플모드 여부 무관). 상품(물건) 판매는 링크샵(/u/{handle})으로 일원화 —
+ *         nav 에 '내 링크샵' 진입 추가. 대납 검토(/seller/proxy-products)는 이용권 그룹으로 이동.
+ *         라우트·API·데이터 전부 보존(직접 URL 진입 가능) — false 로 바꾸면 즉시 복원(가역).
+ *   ⚠️ 도매몰(판매사/제조사)은 별도 서비스(/wholesale) — 이 플래그와 무관(서비스 분리).
+ */
+export const SELLER_STORE_ONLY_MODE = true
+
+/**
+ * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
+ *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
+ *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
+ *         매장·인플루언서 공개 뷰는 데이터·법무 충분해지면(나중).
+ *   ✅ 2026-07-18 true 전환(대표 "자동으로 켜둬") — **실질 게이트는 어드민 잠금**: 이 플래그가 true 여도
+ *      **어드민 로그인(admin_token) + 서버 `requireAdmin`(비어드민 403)** 이라 소비자/광고주 노출 0.
+ *      읽기 전용·머니 무접촉이라 상시 ON 이 안전 — 데이터 없으면 목업 미리보기, 쌓이면 실측 자동 전환.
+ *      false 로 내리면 어드민에게도 즉시 숨김(가역).
+ *      정산(머니)은 별도 스위치(env MATCHING_SETTLEMENT_ENABLED, 기본 OFF 유지) — 이 플래그와 독립.
+ */
+export const MATCHING_ENABLED = true
+
+
+/**
+ * ADS_AI_HIDDEN — 유어애즈 **AI 기능 노출 숨김** (2026-07-28 대표 결정 "AI 기능 안 쓸 거야").
+ *   배경: 라이브 점검에서 `/api/ads/ai-marketer`·`/content/generate` 가 전 계정 503 `NOT_CONFIGURED`
+ *         (ur-ads 워커에 ANTHROPIC_API_KEY 미설정). 대표가 **키를 넣지 않기로 확정** → 화면에만 남은
+ *         AI 메뉴가 광고주에겐 '눌러도 안 되는 버튼' + 내부 문구("Anthropic API 키 설정 후 사용") 노출.
+ *   true: 대시보드 'AI 스튜디오' 탭(콘텐츠 생성·AI 마케터)과 소개 페이지(/ads)의 AI 홍보(기능 섹션·
+ *         요금제 문구·푸터 링크·메타 description)를 숨김. 옛 딥링크(?tab=ai·#sec-ai)는 홈 탭으로 폴백.
+ *   ⚠️ 서버 라우트(/api/ads/ai-marketer·/content/*)·컴포넌트·엔타이틀먼트는 **전부 보존** — 키를 넣고
+ *      이 플래그만 false 로 되돌리면 즉시 복원(가역). 어드민 매칭 AI 근거(admin-matching)는 별개(무관).
+ */
+export const ADS_AI_HIDDEN = true

@@ -36,19 +36,23 @@ interface DetailData {
   restaurant_lat?: number
   restaurant_lng?: number
   seller_name?: string
+  brand_name?: string
   price?: number
+  original_price?: number
+  deal_only?: number
   current_discount_pct?: number
   description?: string
   image_url?: string
+  category?: string
   group_buy_status?: string
   group_buy_deadline?: string
 }
 
-/** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → 동적 OG 카드). */
-function absImage(raw: string, origin: string, id: number | string | undefined): string {
+/** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → fallback). */
+function absImage(raw: string, origin: string, id: number | string | undefined, fallback?: string): string {
   if (raw.startsWith('http')) return raw
   if (raw.startsWith('/')) return `${origin}${raw}`
-  return `${origin}/api/og/group-buy/${id ?? ''}.png`
+  return fallback || `${origin}/api/og/group-buy/${id ?? ''}.png`
 }
 
 /**
@@ -111,6 +115,130 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ],
     }
     const jsonLd = escapeScript(JSON.stringify([product, breadcrumb]))
+    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+  } catch { return null }
+}
+
+interface StayData {
+  id?: number | string
+  name?: string
+  restaurant_name?: string
+  description?: string
+  description_full?: string
+  image_url?: string
+  region_sido?: string
+  region_sigungu?: string
+  address?: string
+  property_type?: string
+  star_rating?: number
+  avg_rating?: number
+  review_count?: number
+  latitude?: number
+  longitude?: number
+}
+const STAY_TYPE_LABEL: Record<string, string> = {
+  pension: '펜션', hotel: '호텔', guesthouse: '게스트하우스', resort: '리조트', glamping: '글램핑',
+}
+
+/**
+ * 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD. 응답 형태가 DETAIL 과 달라
+ *   `{ data: { product, rooms } }` — product + rooms(최저가) 로 빌드. 숙소명(restaurant_name) 우선 타이틀,
+ *   지역·유형·평점 설명, LodgingBusiness/Offer JSON-LD. id 는 pathname 에서 추출(psi.* 컬럼 충돌 회피).
+ */
+export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname: string): DetailMeta | null {
+  try {
+    const parsed = JSON.parse(ssrPayload) as { data?: { product?: StayData; rooms?: Array<{ base_price_weekday?: number }> } }
+    const p = parsed?.data?.product
+    if (!p || !(p.restaurant_name || p.name)) return null
+    const idm = pathname.match(/\/stays\/(\d+)/)
+    const id = idm ? idm[1] : (p.id ?? '')
+    const stayName = String(p.restaurant_name || p.name).trim()
+    const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
+    const typeLabel = p.property_type ? (STAY_TYPE_LABEL[p.property_type] || '숙소') : '숙소'
+    const rooms = parsed?.data?.rooms || []
+    const fromPrice = rooms.reduce((min, r) => {
+      const v = Number(r.base_price_weekday) || 0
+      return v > 0 && (min === 0 || v < min) ? v : min
+    }, 0)
+    const canonical = `${origin}/stays/${id}`
+    const ogImage = absImage(String(p.image_url || ''), origin, id)
+    const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
+    const priceStr = fromPrice > 0 ? `1박 ${fromPrice.toLocaleString('ko-KR')}원~ ` : ''
+    const rating = Number(p.avg_rating) || 0
+    const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
+    const baseDesc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
+    const description = (`${ratingStr}${region ? region + ' ' : ''}${typeLabel} · ${priceStr}${baseDesc}`
+      || `${stayName} — 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
+
+    const lodging: Record<string, unknown> = {
+      '@context': 'https://schema.org', '@type': 'LodgingBusiness',
+      name: stayName,
+      ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
+      ...(p.image_url ? { image: [ogImage] } : {}),
+      ...(p.address ? { address: { '@type': 'PostalAddress', streetAddress: String(p.address), addressRegion: p.region_sido || undefined, addressCountry: 'KR' } } : {}),
+      ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
+      ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
+      ...(rating > 0 && Number(p.review_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) } } : {}),
+      ...(fromPrice > 0 ? { priceRange: `₩${fromPrice.toLocaleString('ko-KR')}~` } : {}),
+      url: canonical,
+    }
+    const breadcrumb = {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
+        { '@type': 'ListItem', position: 2, name: '숙소', item: `${origin}/stays` },
+        { '@type': 'ListItem', position: 3, name: stayName, item: canonical },
+      ],
+    }
+    const jsonLd = escapeScript(JSON.stringify([lodging, breadcrumb]))
+    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+  } catch { return null }
+}
+
+/**
+ * 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타.
+ *   그간 PRODUCT 슬롯은 데이터(`__SSR_INITIAL_PRODUCT__`)만 주입하고 메타는 index.html 기본(제네릭 홈)을
+ *   서빙 → 카톡/소셜/네이버가 상품 링크를 "유어딜 홈" 카드로 봄(가장 약한 서버 OG). DETAIL(공구/이용권)과
+ *   동일 패턴으로 가격·할인율이 들어간 정밀 OG + Product/Offer JSON-LD 주입.
+ *   딜(원화 아님) 상품은 offer 가격을 생략(KRW 전용 스키마). payload 파싱 실패 시 null(기본 메타 유지).
+ */
+export function buildProductMeta(ssrPayload: string, origin: string, pathname: string): DetailMeta | null {
+  try {
+    const d = (JSON.parse(ssrPayload) as { data?: DetailData })?.data
+    if (!d || !d.name) return null
+    const id = d.id
+    const name = String(d.name).trim()
+    const brand = String(d.brand_name || '').trim()
+    const price = Number(d.price) || 0
+    const original = Number(d.original_price) || 0
+    const isDeal = Number(d.deal_only) === 1
+    const unit = isDeal ? '딜' : '원'
+    const rate = original > price && price > 0 ? Math.round((1 - price / original) * 100) : 0
+    const canonical = `${origin}${pathname}`
+    const ogImage = absImage(String(d.image_url || ''), origin, id, `${origin}/og-image.png`)
+    const priceStr = price.toLocaleString('ko-KR')
+
+    const pageTitle = `${name} - 유어딜`
+    const description = (rate > 0
+      ? `🎉 ${rate}% 할인! ${name} — ${priceStr}${unit}, 유어딜에서 바로 구매`
+      : `${name} — ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+
+    const product: Record<string, unknown> = {
+      '@context': 'https://schema.org', '@type': 'Product',
+      name,
+      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      ...(d.image_url ? { image: [ogImage] } : {}),
+      ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
+      // 💰 KRW 상품만 offer 가격 노출(딜 상품은 통화 스키마 부적합 → 가격 생략).
+      ...(!isDeal && price > 0 ? {
+        offers: {
+          '@type': 'Offer', url: canonical, priceCurrency: 'KRW', price,
+          availability: 'https://schema.org/InStock',
+          ...(d.seller_name ? { seller: { '@type': 'Organization', name: String(d.seller_name) } } : {}),
+        },
+      } : {}),
+    }
+    const jsonLd = escapeScript(JSON.stringify([product]))
     return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }

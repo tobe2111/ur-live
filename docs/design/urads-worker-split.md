@@ -62,11 +62,18 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
    - **D1**: 바인딩명 `DB` → 데이터베이스 `toss-live-commerce-db` (**id `d9530ba6-7a26-4c02-9295-3ce5aef112a3`** — 메인과 동일해야 데이터 공유).
    - **KV**(있으면): `RATE_LIMIT_KV` · `SESSION_KV` · `CACHE_KV` → 메인과 동일 namespace.
 3. **Settings → Variables and Secrets**:
+   > 🚨 **2026-07-20 실사고**: 여기 넣은 값이 **일반 텍스트(Variable) 타입**이면 CI 의 `wrangler deploy` 가
+   > 배포마다 **삭제**함(toml [vars] 로 통째 교체 — Secret 타입만 생존). Phase B 값들이 이렇게 wipe 되어
+   > 유어애즈 로그인 "서버 설정 오류(JWT_SECRET)" + 인플루언서 수집 0건 발생. 조치: `wrangler-ads.toml`
+   > `keep_vars = true`(보존) + **값은 반드시 "Encrypt"(Secret) 타입으로 재입력**.
    - `JWT_SECRET` — ⚠️ **메인 값이 분실(Cloudflare 시크릿은 쓰기전용·복구불가)** 되어 ur-ads 는 **자체 새 값**을 사용.
      결과: `ads_token` 은 **ur-ads 안에서만** 발급·검증되므로 문제없음. 단 **컷오버(게이트 ON) 시점에 기존 유어애즈
      베타 로그인 사용자는 1회 재로그인** 필요(그전 토큰은 메인 JWT 로 서명됨). `/api/admin/ads/*` 는 메인 어드민 JWT
      라 무관.
    - `YOUTUBE_API_KEY` · `NAVER_SEARCH_CLIENT_ID/SECRET`(또는 `NAVER_CLIENT_ID/SECRET`) · `DATA_ENCRYPTION_KEY` · `ANTHROPIC_API_KEY` · `ADS_*` 플래그 · `RESEND_*`(선택) 등 유어애즈가 쓰는 것.
+   - 📌 **계정 메모(대표 지시 2026-07-20 "꼭 기억해줘")**: `YOUTUBE_API_KEY` 는 **Google Cloud Console 을
+     `urteam.corp@gmail.com` 계정으로 로그인**해서 확인(APIs & Services → Credentials → SHOW KEY).
+     네이버 키는 developers.naver.com(동일 맥락). 키 분실 시 이 계정으로 재확인.
 4. **메인 Pages(ur-live) → Settings → Functions → Service bindings**: 바인딩명 `ADS` → Worker `ur-ads`.
    ⚠️ 이 바인딩은 **ur-ads 가 아니라 *메인 ur-live Pages* 프로젝트**에 만든다(ur-ads 의 Bindings 탭엔 안 보임).
 5. **메인 Pages(ur-live) → Settings → Variables**: `ADS_WORKER_ENABLED` = `true`(컷오버). 미설정/기타값이면 OFF(현행).
@@ -75,6 +82,11 @@ live.ur-team.com  ──▶  [메인 Pages Worker: 유어딜 + 도매]
 
 > ⚠️ **2026-04-22 사고 교훈(wrangler.toml)**: Worker 가 Custom Domain 을 가로채면 시크릿 없이 동작 → 장애.
 > ur-ads Worker 에는 **Custom Domain 을 붙이지 않는다**(Service Binding 으로만 접근). `live.ur-team.com` 은 계속 Pages(ur-live) 전용.
+
+> 🔐 **workers.dev 라우트 (2026-07-20 발견)**: ur-ads 는 `ur-ads.jiwon-1a2.workers.dev` 가 **활성**이라
+> `/__ads/collect`(무인증 수집 트리거)가 공개 도달 가능(악용 시 YouTube 쿼터 소모 — 머니/데이터 위험은 없음).
+> **권장**: 대시보드 ur-ads → Settings → Domains & Routes 에서 workers.dev 라우트 **비활성**(Service Binding 은
+> 라우트 불필요라 메인 위임·cron 전부 무영향). 비활성 전까지는 낮은 리스크로 허용.
 
 ## 6. 리스크 & 완화
 
@@ -111,3 +123,22 @@ curl -s -D - -o /dev/null https://live.ur-team.com/api/ads/ping | grep -i x-serv
 - Phase B (배포 파이프라인): commit `2324c0da` — `build-worker-ads.js` + `deploy-ads.yml`(ur-ads `wrangler deploy`).
   대표 Cloudflare 셋업(ur-ads Worker + D1 바인딩 + 시크릿) 완료 → 첫 배포 성공(Actions run "success").
 - Phase C (게이트드 프록시): commit `<이 커밋>` — 메인 `index.ts` `app.use('*')` 위임 미들웨어 + Env `ADS`/`ADS_WORKER_ENABLED`. 기본 OFF = 라이브 byte-동일.
+- **Phase E (광고 cron 이관)**: 2026-07-18 — 메인 `scheduled.ts` 의 유어애즈 cron 7종(ads-autobid "*/5" ·
+  일일 배치 5종 "0 18": price-refresh/rank-track/metrics-snapshot/alerts/autobid-shadow · AI 주간 리포트
+  "0 0 * * 1")을 `src/worker-ads/index.ts` `scheduled()` + `wrangler-ads.toml` crons 로 이관. 같은 커밋에서
+  메인 블록 제거(이중실행 방지, 주석 보존=원복). 게이트(`ADS_AUTOBID_ENABLED`)·멱등(계정+날짜/주당 1회)·순서
+  (가격→순위→스냅샷→알림→섀도우) 전부 동일. env 의존(NAVER_SEARCH_*·DATA_ENCRYPTION_KEY·ANTHROPIC_API_KEY)은
+  Phase B 에서 대표가 이미 설정 — **대시보드 추가작업 0**(Worker cron 은 wrangler deploy 가 toml 로 자동 등록).
+  ALIGO/RESEND 미설정 시 알림·메일만 fail-soft 스킵(cron 자체는 정상). 메인의 marketing 활성 참조 =
+  `admin-ads.routes` 1개만 잔류(의도 — 메인 어드민 JWT).
+- **Phase D (메인 폴백 제거)**: 2026-07-16 — 사전 검증: prod `curl /api/ads/ping` → **`x-served-by: ur-ads` 확인(컷오버 ON 상태)** → §4 순서 충족. 메인 `index.ts` 에서 `marketingRoutes`(/api/ads)·`shortLinkRedirectRoutes`(/l) import+mount 제거(주석 보존, 재도입=원복). **잔류**: ① `/api/admin/ads`(`adminAdsRoutes` + ads-account/entitlements/media-gateway/ad-services/reviews/short-links 서브그래프 ~81KB 소스) — 프록시 비위임 설계(메인 어드민 JWT) 유지 ② `scheduled.ts` ads-* cron 5종(autobid/price-monitor/rank-tracker/metrics-history/alerts ~53KB+전이) — 현행 라이브 동작 보존, ur-ads 이전은 Phase E. ⚠️ 이후 `ADS_WORKER_ENABLED`/`ADS` 바인딩은 **끄면 유어애즈 404**(폴백 없음) — 롤백은 이 커밋 revert.
+- **Phase E (인플루언서 자동 수집)**: 2026-07-20 — "무료 프리미엄"(대표 선택). ur-ads 일일 cron("0 18")에
+  `runInfluencerAutoCollect`(`influencer-auto-collect.ts`) 게이트 `ADS_AUTO_COLLECT_ENABLED='true'`(기본 OFF).
+  무료 공식 API(YouTube Data v3·네이버 검색)로 **동적 키워드 테이블**(`ad_discovery_keywords`, 시드+어드민추가)
+  을 커서 순환 발굴 → **공용 풀 `ad_influencer_leads.account_id=0`** 누적(카테고리/출처키워드 태그). 자가성장:
+  수집물 소개글 #해시태그를 후보 적립→반복 등장(≥3회) 시 자동 활성화(상한 200). YouTube 공유 한도 보호(QUOTA
+  응답 시 네이버만 계속) + 멱등(UNIQUE(account_id,platform,channel_id) INSERT OR IGNORE). 어드민 열람/큐레이션/
+  키워드관리/**수동 수집**은 메인 `/api/admin/ads/influencer-pool/*`(어드민 JWT) — 수동 트리거는 `env.ADS`
+  서비스바인딩으로 ur-ads `/__ads/collect` 위임(발굴 코드는 ur-ads 에만 → 메인 번들 무영향, inline SQL 만 추가).
+  UI: `/admin/influencer-pool`(AdminInfluencerPoolPage). ⚠️ [PIPA] 공개 데이터·공식 API 수집만 — 마케팅 발송은
+  사전동의 별도(수집 ≠ 발송). 활성: 대표가 `ADS_AUTO_COLLECT_ENABLED=true` 설정+재배포(또는 "지금 수집" 버튼).

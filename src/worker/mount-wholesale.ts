@@ -42,6 +42,8 @@ import { wholesaleMainPublicRoutes, adminWholesaleBannerRoutes, adminWholesalePr
 import { wholesaleBoardPublicRoutes, wholesaleWishlistRoutes, adminWholesaleBoardRoutes } from '../features/supply/api/wholesale-board.routes';
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminWholesaleOverviewRoutes } from '../features/supply/api/wholesale-overview-admin.routes';
+import { buyerPoolRoutes } from '../features/supply/api/buyer-pool.routes';
+import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes';
 
 type App = Hono<{ Bindings: Env }>;
 
@@ -95,4 +97,6 @@ export function mountWholesale(app: App, adminApp: App): void {
   app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes); // 어드민 예치금 입금계좌 설정
   app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes); // 🏬 어드민 멀티-몰 관리 CRUD
   app.route('/api/admin/wholesale-overview', adminWholesaleOverviewRoutes); // 🏬 어드민 도매 통합 현황
+  app.route('/api/admin/buyer-pool', buyerPoolRoutes); // 🌐 해외 수출 바이어 파이프라인(무료 수집·유어딜 무관·격리 테이블·게이트 OFF)
+  app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사(브랜드사)·판매사 후보 풀(도매 격리 테이블·게이트 OFF)
 }

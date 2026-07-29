@@ -6,7 +6,7 @@ import { useState } from 'react'
 export default function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="border-t border-gray-200 dark:border-[#2A2A2A]">
+    <div className="border-t border-gray-200 dark:border-[#2A3446]">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 text-left"

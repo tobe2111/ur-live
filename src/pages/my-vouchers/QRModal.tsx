@@ -24,8 +24,8 @@ const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCo
 
 function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
   return (
-    <div className="mx-auto bg-white dark:bg-[#0A0A0A] p-2 rounded">
-      <Suspense fallback={<div style={{ width: size, height: size }} className="animate-pulse bg-gray-100 dark:bg-[#1A1A1A] rounded" />}>
+    <div className="mx-auto bg-white dark:bg-[#0F151D] p-2 rounded">
+      <Suspense fallback={<div style={{ width: size, height: size }} className="animate-pulse bg-gray-100 dark:bg-[#1A2334] rounded" />}>
         <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
       </Suspense>
     </div>
@@ -39,7 +39,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const [voucher, setVoucher] = useState(initialVoucher)
   const [now, setNow] = useState(Date.now())
   const [wakeActive, setWakeActive] = useState(false)  // 🎨 개선 #3: 화면 꺼짐 방지 활성 표시
-  const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
+  const qrUrl = `https://urdeal.kr/v/${voucher.code}`
 
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 사용자 셀프 구매취소(청약철회). 미사용 + 구매 7일 이내만.
   const invalidateVouchers = useInvalidateMyVouchers()
@@ -177,10 +177,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div className="bg-white dark:bg-[#0F151D] rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
-        <div className="sm:hidden mx-auto mb-4 h-1 w-9 rounded-full bg-gray-200 dark:bg-[#2A2A2A]" aria-hidden />
-        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
+        <div className="sm:hidden mx-auto mb-4 h-1 w-9 rounded-full bg-gray-200 dark:bg-[#2A3446]" aria-hidden />
+        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A2334] dark:bg-[#1A2334]">
           <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
         <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
@@ -196,7 +196,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           </p>
         )}
         <div className="flex justify-center mb-4">
-          <div className="relative p-4 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
+          <div className="relative p-4 rounded-2xl bg-white dark:bg-[#0F151D] border border-gray-100 dark:border-[#2A3446]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
             {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
             {!isUsed && !isExpired && (
               <>
@@ -239,7 +239,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             )}
           </div>
         </div>
-        <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-xl px-3 py-2.5 text-center">
+        <div className="bg-gray-100 dark:bg-[#1A2334] rounded-xl px-3 py-2.5 text-center">
           <code className={`text-[15px] font-mono font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
         </div>
         {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
@@ -267,8 +267,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
         {/* 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별 단계) + 유효기간 + 매장 정보 + 주의사항 통합. */}
         {voucher.status === 'unused' && (
-          <div className="mt-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden text-left">
-            <div className="px-3.5 py-2 border-b border-gray-100 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#141414]">
+          <div className="mt-4 rounded-xl border border-gray-200 dark:border-[#2A3446] overflow-hidden text-left">
+            <div className="px-3.5 py-2 border-b border-gray-100 dark:border-[#2A3446] bg-gray-50 dark:bg-[#141414]">
               <p className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('voucher.usageInfo', { defaultValue: '이용 안내' })}</p>
             </div>
             <div className="px-3.5 py-3 space-y-3">
@@ -368,12 +368,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </button>
             <div className={`mt-2 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <button onClick={shareVoucher}
-                className="py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                className="py-3 rounded-xl border border-gray-200 dark:border-[#2A3446] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
                 <Share2 className="w-4 h-4" /> {t('voucher.share')}
               </button>
               {canSelfCancel && (
                 <button onClick={handleSelfCancel} disabled={cancelling}
-                  className="py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
+                  className="py-3 rounded-xl border border-gray-200 dark:border-[#2A3446] text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
                   {cancelling ? t('voucher.cancelling', { defaultValue: '취소 처리 중…' }) : t('voucher.cancelRefund', { defaultValue: '구매 취소·환불' })}
                 </button>
               )}

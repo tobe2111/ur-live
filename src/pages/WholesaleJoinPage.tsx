@@ -17,7 +17,7 @@ import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validator
 import { useWholesaleMall, currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
 
 // 🏬 2026-07-04 (대표 신고 — 몰별 별도 회원가입): 가입/전환 POST 에 현재 몰 slug 전달.
-//   서버 registrationMallId 가 ?mall= 을 최우선으로 읽음 — 미전달 시 host(live.ur-team.com=기본 1) 폴백이라
+//   서버 registrationMallId 가 ?mall= 을 최우선으로 읽음 — 미전달 시 host(urdeal.kr=기본 1) 폴백이라
 //   메디스타트(?mall=medi) 가입 폼에서 가입해도 유통스타트(mall 1)로 가입되던 갭 차단.
 const mallQS = () => { const s = currentWholesaleMallSlug(); return s ? `?mall=${encodeURIComponent(s)}` : '' }
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'

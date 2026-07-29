@@ -7,7 +7,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Link2, Store, UserPlus, Wallet } from 'lucide-react'
-import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function DealEarnStrip() {
   const navigate = useNavigate()
@@ -38,13 +38,14 @@ export default function DealEarnStrip() {
       to: REFERRAL_GROUP_DISCOUNT_DISABLED ? '/user/profile' : '/referral',
       tint: 'bg-sky-50 text-sky-500 dark:bg-sky-500/12 dark:text-sky-400',
     },
-    {
+    // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 딜 충전 카드 — TOPUP_DISABLED 시 제외 (딜=적립 전용).
+    ...(TOPUP_DISABLED ? [] : [{
       icon: Wallet,
       label: t('dealEarn.charge', { defaultValue: '딜 충전' }),
       desc: t('dealEarn.chargeDesc', { defaultValue: '1원 = 1딜' }),
       to: '/points/charge',
       tint: 'bg-amber-50 text-amber-500 dark:bg-amber-500/12 dark:text-amber-400',
-    },
+    }]),
   ]
 
   return (
@@ -57,7 +58,7 @@ export default function DealEarnStrip() {
           {t('dealEarn.subtitle', { defaultValue: '모아서 교환권으로 바꾸세요' })}
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className={`grid ${items.length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
         {items.map(({ icon: Icon, label, desc, to, tint }) => (
           <button
             key={label}

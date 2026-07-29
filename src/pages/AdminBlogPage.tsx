@@ -211,7 +211,7 @@ export default function AdminBlogPage() {
       <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('admin.pages.blog')}
-          subtitle={t('admin.blog.k016', { defaultValue: "글을 작성하고 docs.ur-team.com에 발행하세요" })}
+          subtitle={t('admin.blog.k016', { defaultValue: "글을 작성하고 urdeal.kr/blog에 발행하세요" })}
           icon={<FileText className="h-5 w-5" />}
           actions={
             <div className="flex items-center gap-2">
@@ -360,7 +360,7 @@ export default function AdminBlogPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k023', { defaultValue: '슬러그 (URL)' })}</label>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 shrink-0">docs.ur-team.com/blog/</span>
+              <span className="text-xs text-gray-400 shrink-0">urdeal.kr/blog/</span>
               <input
                 value={form.slug}
                 onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}

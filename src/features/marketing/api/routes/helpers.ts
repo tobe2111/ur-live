@@ -31,8 +31,10 @@ export async function requireAdsUnlocked(c: Context<{ Bindings: Env }>, next: Ne
   return next()
 }
 
-/** 베타 액세스 코드(대표 지정). env 로 교체 가능, 기본 358533. */
-export const adsAccessCode = (env: Env) => (env as unknown as { ADS_ACCESS_CODE?: string }).ADS_ACCESS_CODE || '358533'
+/** 베타 액세스 코드 — env `ADS_ACCESS_CODE` 전용(2026-07-21 대표 "즉시 교체": 공개 폴백 358533 제거·우회 차단).
+ *   미설정이면 빈 문자열 → `unlockAdsAccount` 의 `!expected` 가드가 모든 unlock 을 거부(fail-closed).
+ *   이미 unlock 된 계정은 `ad_accounts.access_unlocked` DB 플래그 기반이라 영향 없음(코드는 신규 unlock 에만 사용). */
+export const adsAccessCode = (env: Env) => (env as unknown as { ADS_ACCESS_CODE?: string }).ADS_ACCESS_CODE || ''
 
 // 오픈API 자격증명 — NAVER_SEARCH_* 우선, 없으면 NAVER_* 폴백.
 export const naverOpenId = (env: Env) => env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID

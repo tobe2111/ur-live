@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { useSellerMode } from '@/hooks/useSellerMode'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
@@ -27,6 +27,7 @@ import MonthlyGoalCard from './seller-page/MonthlyGoalCard'
 import NewSellerSteps from './seller-page/NewSellerSteps'
 import ConversionFunnel from './seller-page/ConversionFunnel'
 import QuickActions from './seller-page/QuickActions'
+import StoreQuickTrio from './seller-page/StoreQuickTrio'
 import AlertsGrid from './seller-page/AlertsGrid'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
@@ -261,7 +262,7 @@ export default function SellerPage() {
               if (Notification.permission === 'granted') {
                 new Notification(t('seller.newOrderNotifTitle', { defaultValue: '🛒 새 주문이 들어왔어요!' }), {
                   body: t('seller.newOrderNotifBody', { defaultValue: '{{count}}건의 새 주문을 확인하세요', count: newIds.size }),
-                  icon: '/favicon.ico',
+                  icon: '/icon-biz-192.png',
                 })
               } else if (Notification.permission === 'default') {
                 Notification.requestPermission()
@@ -461,25 +462,9 @@ export default function SellerPage() {
         {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
             대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
 
+        {/* 🧭 2026-07-19 (대표 UI v2 P2 — 심플 모드): 🏪 스캔 안내 카드 → 3액션 트리오(QR스캔·정산·내 딜)로 대체 */}
         <RoleGate showFor="store-or-both">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🏪</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-emerald-900">{t('seller.scan.homeCardTitle', { defaultValue: '매장 사장님 — 손님 바우처는 여기서 스캔' })}</p>
-                <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
-                  {t('seller.scan.homeCardDesc', { defaultValue: '손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)' })}
-                </p>
-                {/* 🧭 2026-06-10 (현장 동선 갭): 문구만 있고 누를 곳이 없던 것 → 스캔 화면 직행 버튼 */}
-                <button
-                  onClick={() => navigate('/seller/scan')}
-                  className="mt-2.5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold active:scale-[0.98] transition-transform"
-                >
-                  📷 {t('seller.scan.homeCardBtn', { defaultValue: '바우처 스캔 열기' })}
-                </button>
-              </div>
-            </div>
-          </div>
+          <StoreQuickTrio />
         </RoleGate>
 
         {/* 🏭 2026-06-04 (사용자 요청): 시작 가이드(온보딩 체크리스트) 제거 — 대시보드 간소화. */}
@@ -672,11 +657,14 @@ export default function SellerPage() {
               fmtShort={fmtShort}
             />
 
-            {/* 전환 퍼널 — 실제 데이터만 표시 (추정값 사용 금지) */}
-            <ConversionFunnel
-              totalViewers={stats.totalViewers}
-              totalOrders={stats.totalOrders}
-            />
+            {/* 전환 퍼널(시청자→주문 — 라이브커머스 지표) — 🏪 2026-07-19 SELLER_STORE_ONLY_MODE:
+                매장 콘솔에선 숨김(라이브 영구중단 + 매장 업주에게 무의미한 '시청자' 지표 = 정신없음의 일부). */}
+            {!SELLER_STORE_ONLY_MODE && (
+              <ConversionFunnel
+                totalViewers={stats.totalViewers}
+                totalOrders={stats.totalOrders}
+              />
+            )}
 
             {/* 내 공개 페이지 미리보기 */}
             <PublicPagePreview />

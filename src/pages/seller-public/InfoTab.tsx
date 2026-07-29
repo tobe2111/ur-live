@@ -8,32 +8,19 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Plus, Check, X, MessageCircle, Phone, Pencil } from 'lucide-react'
+import { MessageCircle, Phone, Pencil } from 'lucide-react'
 import type { Seller } from './types'
 import type { ThemeTokens } from './theme'
 
 interface Props {
   seller: Seller
   isOwner: boolean
-  /** 🔑 2026-07-07: 카카오 채팅 링크 인라인 편집(PUT /api/seller/profile)은 seller_token 필요.
-   *  링크샵 소유자여도 셀러 토큰이 없으면(소비자 로그인만) 편집 어포던스 숨김 → 401 방지. */
-  canSellerEdit?: boolean
   T: ThemeTokens
-  // 인라인 편집 상태 (카카오 채팅 링크 전용 — bio/SNS 는 CuratorHeader 전담)
-  editingField: string | null
-  setEditingField: (v: string | null) => void
-  editKakao: string
-  setEditKakao: (v: string) => void
-  saving: boolean
-  startEdit: (field: string) => void
-  saveEdit: (field: string, value: string) => void
 }
 
-export default function InfoTab({
-  seller, isOwner, canSellerEdit = false, T,
-  editingField, setEditingField, editKakao, setEditKakao,
-  saving, startEdit, saveEdit,
-}: Props) {
+// 🧹 2026-07-20 (링크샵 전수조사): 카카오 채팅 링크 인라인 편집 props(canSellerEdit/editingField/editKakao/
+//   saving/startEdit/saveEdit) 제거 — 연락처 편집은 셀러 대시보드 전담. InfoTab 은 표시 전용.
+export default function InfoTab({ seller, isOwner, T }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -59,37 +46,24 @@ export default function InfoTab({
 
   return (
     <div className="space-y-3">
-      {/* 연락 수단 — 카카오 채팅 링크(헤더 SNS 에 없는 유일 항목)만 여기서 인라인 편집 */}
-      {editingField === 'kakao' ? (
+      {/* 연락 수단 — 🧹 2026-07-20 (대표 — "카카오 채팅 링크 추가 없어도 됨"): 오너 인라인 편집/추가
+          어포던스 제거(연락처는 셀러 대시보드에서 관리). 방문자에겐 기존 링크가 있으면 표시만. */}
+      {(seller.kakao_chat_link || seller.phone) && (
         <div className="flex gap-2">
-          <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
-            className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white" />
-          <button onClick={() => saveEdit('kakao', editKakao)} disabled={saving} aria-label={t('common.save', { defaultValue: '저장' })} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-          <button onClick={() => setEditingField(null)} aria-label={t('common.cancel', { defaultValue: '취소' })} className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
-        </div>
-      ) : (seller.kakao_chat_link || seller.phone || canSellerEdit) ? (
-        <div className="flex gap-2">
-          {seller.kakao_chat_link ? (
+          {seller.kakao_chat_link && (
             <a href={seller.kakao_chat_link} target="_blank" rel="noopener"
-              onClick={e => { if (canSellerEdit) { e.preventDefault(); startEdit('kakao') } }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold active:scale-[0.97]">
               <MessageCircle className="w-3.5 h-3.5" /> {t('seller.publicPage.kakaoInquiry', { defaultValue: '카카오 문의' })}
-              {canSellerEdit && <Pencil className="w-3 h-3 opacity-50" />}
             </a>
-          ) : canSellerEdit ? (
-            <button onClick={() => startEdit('kakao')}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-gray-300 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold active:scale-[0.97]">
-              <Plus className="w-3.5 h-3.5" /> {t('seller.publicPage.addKakaoChat', { defaultValue: '카카오 채팅 링크 추가' })}
-            </button>
-          ) : null}
+          )}
           {seller.phone && (
             <a href={`tel:${seller.phone}`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#020202] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#0F151D] border border-gray-200 dark:border-[#2A3446] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
               <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry', { defaultValue: '전화 문의' })}
             </a>
           )}
         </div>
-      ) : null}
+      )}
 
       {/* 🧾 판매자(사업자) 정보 — 쇼핑몰 푸터식 "MORE INFO +" 접이식 (전자상거래법 표시 항목) */}
       {(hasAnyInfo || isOwner) && (

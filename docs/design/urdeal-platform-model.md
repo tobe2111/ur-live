@@ -38,7 +38,7 @@
 
 | 서비스 | 정체성 | 행위자 | 도메인 | 코드 경계 |
 |---|---|---|---|---|
-| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `live.ur-team.com` | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
+| **🎟️ 유어딜 공구** (소비자) | 공동구매·이용권·교환권·동네딜·쇼핑 (딜포인트/결제) | 유저·인플루언서·매장 업주·에이전시·운영 | `urdeal.kr` (2026-07-20 이전, 구 `live.ur-team.com`=영구 301) | `features/{group-buy,community-group-buy,curator,products,vouchers,...}` |
 | **🏭 도매몰** (유통스타트) | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 제조사·판매사·도매 어드민 | `utongstart.com` | `features/supply/**`, `pages/wholesale*`, `pages/supplier-dashboard` |
 | **📣 유어애즈** (마케팅) | 광고·자동입찰·부정클릭방지·통합실적 | 광고주(매장/셀러)·운영 | `/ads` | `features/marketing`, urads-* 문서 |
 
@@ -56,7 +56,7 @@
 | **인플루언서** | 판매승인 셀러 `seller_type='influencer'` | 팔로워에 **추천**·매장 **영입** | 추천 클릭→구매 커미션, 영입 매장 매출 | 추천 2% · 매장영입 **1.5%**(성숙 T+7, 원천징수 후) |
 | **매장 업주** | 사업자 유저 `seller_type='store_owner'` | **본인 상품/이용권** 판매 | 판매액·현금 정산 | 판매 플랫폼 수수료 **3P 5%**(이용권/쇼핑), **1P 0%**(유어딜 직판) |
 | **에이전시** | `agencies` (B2B 조직) | 매장-인플 **조율**(= 쇼핑 벤더의 오프라인판) | 관리 매장 GMV rollup, 조율 수수료 | 영입 가게 GMV **1%** (오늘 5%재원 → **8월 flip 시 매장 promo(조율 마진), 유어딜 5% 무관**), **24개월** 한도, 실판매 시만 |
-| **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** + 충전 마진 |
+| **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** (충전 마진은 2026-07-18 충전 종료로 소멸) |
 
 > **능력 레이어 모델**: 유저 →(사업자등록·판매승인)→ 사업자 유저. 같은 `/u/{handle}`에 기능이 *레이어로 추가*(신분 교체 아님). `seller_type`은 `influencer | store_owner | both`.
 > **원천징수**: 사업소득 3.3% / 기타소득 8.8% (`tax-withholding.ts`) — 커미션 지급 시.
@@ -104,6 +104,11 @@
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- 🏪 **2026-07-19 대표 확정 — 셀러 대시보드 = 순수 '매장 운영 콘솔'** (`SELLER_STORE_ONLY_MODE`, 가역):
+  온라인 상품 관리(`/seller/products`)·도매 소싱(`/seller/supply`) nav 숨김(전 셀러 타입). **상품(물건)
+  판매 표면 = 링크샵(`/u/{handle}`) 일원화** — nav 최상단 '내 링크샵' 진입. 대시보드 핵심 동선 =
+  이용권 등록/관리 · QR 스캔 · 정산 · 리뷰 · 매장 통계(심플모드 SellerSimpleNav 와 정합). 전환퍼널
+  (시청자→주문, 라이브 잔재)은 홈에서 숨김. 라우트/API/데이터 보존 — 플래그 false 로 즉시 복원.
 - **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
 ### 에이전시 / 운영 / 도매
@@ -115,7 +120,10 @@
 ## 5. 경제 엔진 (Money Flows) — 전부 어드민 조정 기본값
 
 ### 5-1. 딜포인트
-- **충전**: 1원 = 1딜 (수수료 없음). 고액 패키지(5/10/20만) 권장 — PG 수수료(~2.5%) 흡수 위해 결제 횟수↓.
+- **~~충전~~ 종료** (2026-07-18 대표 확정 "충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거):
+  딜 = **활동 적립 전용 리워드 통화**(초대·추천 커미션·리뷰·이벤트·상권 방문 리워드). 유상 충전 진입 전부 게이트
+  (`TOPUP_DISABLED`, shared/feature-flags — 가역) + 서버 `/api/points/charge/init` 403. 기보유 유상 딜은 사용·환급 불변,
+  `/charge/confirm` 은 진행중 결제 완결 위해 유지. 가치 앵커는 그대로 **1딜 = 1원**.
 - **사용**: 후원·상품결제·이용권 구매 시 즉시 차감 (`adjustUserPoints` CAS guardBalance).
 - **최소 후원**: 500딜 · **후원 수수료**: 15%.
 - **유상/무상 이중 버킷** (2026-07-05, 약관 강제 — SSOT `worker/utils/point-buckets.ts`):

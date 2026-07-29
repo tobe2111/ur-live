@@ -317,6 +317,19 @@ TX: #{tx_id}
 누적 ₩#{total_earned} — 정산 페이지에서 환급 가능합니다.
 ```
 
+#### `affiliate_sale_credited` — 추천 링크 판매 실시간 적립 (크리에이터에게) · 2026-07-21 신규
+발송: 크리에이터 추천 링크로 결제가 귀속돼 적립될 때 (`affiliate-credit.ts` `creditAffiliateForOrder`,
+쇼핑/공구 일반 어필리에이트 — 위 `referral_commission_earned` 숙소 경로와 별개). **게이트 뒤**:
+`AFFILIATE_SALE_ALIMTALK_ENABLED=true` (기본 OFF — 콘솔 등록·승인 후 활성). `#{deal_name}` = 상품명
+(없으면 "내 추천 상품"), `#{amount}` = 적립 예정 딜(천단위 콤마). 인앱/웹푸시 "적립 예정"은 게이트 무관 상시.
+```
+[유어딜] 💰 추천 링크 실시간 적립
+
+회원님의 추천 링크로 '#{deal_name}' 1건이 판매되어 #{amount}딜이 적립 예정입니다.
+
+▶ 내 성과 보기: urdeal.kr/u/me/earnings
+```
+
 ### 이용권 사용 · 체험단 (2026-07 신규 — 콘솔 등록 필요)
 
 #### `voucher_used` — 이용권 사용 완료 (구매자에게)
@@ -360,6 +373,40 @@ https://live.ur-team.com/my-vouchers
 > 상권 쿠폰(district coupon)은 **게이트 뒤 신규 기능**(`DISTRICT_ALIMTALK_ENABLED` + 채널설정).
 > tpl_code는 위 3개(지급/반려/만료임박)로 배선돼 있으나 **본문은 `src/features/district/` 발송부에서
 > 확정** — 등록 전 담당자에게 최종 문안 확인 요청. (일반 소비자 대상은 아니고 상권 캠페인 참여자 한정.)
+
+### 운영 자동화 (2026-07-19 신규 — 게이트 뒤, 콘솔 등록 필요)
+
+> 시퀀스 2종은 env `OPS_SEQUENCES_ENABLED='true'` 일 때만 발송(기본 OFF, 인앱 알림 포함 전체 게이트).
+> 다이제스트는 env `OPS_DIGEST_ALIMTALK_ENABLED='true'` + platform_settings `ops_digest_phone` 필요.
+> 콘솔이 tpl_code 자동부여 시 env override: `ALIGO_DROP_D1_REMINDER` / `ALIGO_EXPERIENCE_POST_REMINDER` / `ALIGO_OPS_DAILY_DIGEST`.
+
+#### `drop_d1_reminder` — 드랍 마감 전날 예고 (응모자에게, cron `drop-d1-reminder` KST 18:00)
+```
+[유어딜] 드랍 마감 전날 안내
+
+응모하신 #{product_name} 이(가) 내일 마감됩니다.
+
+· 마감일: #{deadline}
+
+마감 후 추첨 결과를 알려드릴게요.
+```
+
+#### `experience_post_reminder` — 체험단 게시 리마인드 (당첨 48시간 경과, 평생 1회)
+```
+[유어딜] 체험단 미션 안내
+
+#{campaign_name} 체험단에 당첨되신 지 48시간이 지났습니다.
+
+· 미션: #{mission}
+
+방문·이용 후 콘텐츠 게시를 부탁드려요. 이용권은 앱 '내 지갑'에서 확인하실 수 있습니다.
+```
+> `#{mission}` 줄은 캠페인에 미션이 있을 때만 — **변수가 빈 값이 될 수 있는 줄**이라 콘솔 등록 시 유의.
+
+#### `ops_daily_digest` — 어드민 일일 다이제스트 (운영자 번호 1개, cron `ops-daily-digest` KST 07:00)
+> 수신자 = platform_settings `ops_digest_phone`(운영자 본인) 1명. 본문은 일자별 집계 숫자라
+> 가변 — 콘솔 등록 시 전체를 `#{digest}` 변수 1개로 등록 권장. 이메일(`ops_digest_email`)이
+> 더 유연하므로 알림톡은 선택 채널.
 
 ---
 

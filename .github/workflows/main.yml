@@ -62,7 +62,7 @@ jobs:
           NODE_VERSION: 20
           VITE_REGION: KR
           VITE_DEFAULT_LANGUAGE: ko
-          VITE_API_BASE_URL: https://live.ur-team.com
+          VITE_API_BASE_URL: https://urdeal.kr
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'AIzaSyCxmgG3NEXsWtHKbE425dvq5EWs3WHXOh8' }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'urteam-live-commerce-5b284.firebaseapp.com' }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL || 'https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app' }}
@@ -75,6 +75,9 @@ jobs:
           VITE_KAKAO_JAVASCRIPT_KEY: ${{ secrets.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865' }}
           # KAKAO_REST_API_KEY 는 서버 전용 (wrangler secret). 클라이언트 번들 금지.
           VITE_TOSS_CLIENT_KEY: ${{ secrets.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY' }}
+          # 🛡️ 2026-07-20 Turnstile 활성(대표 "봇 방어도 하자"): sitekey 는 공개값(위젯 렌더용).
+          #   서버 짝(TURNSTILE_SECRET)은 Pages 대시보드 Secret — 클라 배포 후 대표가 등록(순서: 위젯 먼저).
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD5rMDAJvQnAWr0w' }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488' }}
           VITE_SENTRY_ENVIRONMENT: production
           # 🛡️ 2026-04-27: Sentry release 와 source map upload 의 release 이름 통일.
@@ -194,7 +197,7 @@ jobs:
 
       # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
       # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.
-      # `live.ur-team.com` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
+      # `urdeal.kr` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
       # 이후 이 Action은 Pages에만 배포하고 production promote도 즉시 수행.
 
       # 🛡️ 2026-05-22 사고 fix: wrangler@4 (4.84.1) 가 CF API 응답을 malformed 로 받는 known 회귀.
@@ -237,7 +240,7 @@ jobs:
             exit 0
           fi
           sleep 10
-          RES=$(curl -s --max-time 60 -X POST "https://live.ur-team.com/api/_internal/repair-schema/auto" \
+          RES=$(curl -s --max-time 60 -X POST "https://urdeal.kr/api/_internal/repair-schema/auto" \
             -H "X-Repair-Token: ${{ secrets.REPAIR_SCHEMA_TOKEN }}" || echo '{}')
           echo "repair-schema 응답: $RES"
           if echo "$RES" | grep -q '"success":true'; then
@@ -256,7 +259,7 @@ jobs:
           echo "=== Post-deploy smoke test ==="
           sleep 15
 
-          PROD=https://live.ur-team.com
+          PROD=https://urdeal.kr
           FAIL=0
           FAIL_DETAILS=""
 
@@ -283,6 +286,12 @@ jobs:
           check "/api/admin/login"  "Admin login"
           check "/api/agency/login" "Agency login"
           # 2026-05-23: 결제 핵심 endpoint smoke
+          # 🔗 2026-07-28 유어애즈 모집 퍼널 신규 표면 — "라우트가 마운트됐나 / 모듈이 로드되나"를 매 배포 검증.
+          #   원격 세션은 prod egress 가 막혀 있어 여기(러너)가 유일한 실측 지점.
+          #   4xx(인증/형식)는 정상 — 5xx 만 실패로 잡는다(모듈 로드 실패·스키마 오류의 신호).
+          check "/creators/start" "크리에이터 시작(초대코드 클레임 페이지)"
+          check "/creators/apply" "크리에이터 신청"
+          check "/api/admin/ads/influencer-pool/stats" "인플루언서 풀 통계(퍼널 집계)"
           check "/checkout"       "Checkout page"
           check "/api/payments/client-key" "Payments client-key"
           check "/toss-debug"     "Toss debug page"
@@ -302,6 +311,18 @@ jobs:
             echo "⚠️ 상품 목록 파싱 실패 — 상품 상세 smoke skip"
           fi
           check "/api/wholesale/mall" "Wholesale mall info"
+
+          # 🔗 초대코드 클레임(POST) — 스키마 ALTER(claim_code/linked_user_id/joined_at)가 prod D1 에 실제로
+          #   적용됐는지 확인하는 유일한 무인증 경로. 존재할 수 없는 코드라 **아무 행도 안 바뀜**(읽기와 동등).
+          #   기대: 401(로그인 필요) — 라우트·모듈·스키마가 다 살아있다는 뜻. 5xx 면 스키마/모듈 문제.
+          CLAIM=$(curl -s --max-time 10 -o /dev/null -w "%{http_code}" -X POST "$PROD/api/creator-claim" \
+            -H 'content-type: application/json' -d '{"code":"ZZZZZZZZZZZZ"}' || echo "000")
+          if [ "$CLAIM" -ge 500 ] 2>/dev/null || [ "$CLAIM" = "000" ]; then
+            echo "❌ 초대코드 클레임 (POST /api/creator-claim) → $CLAIM (스키마 ALTER 또는 모듈 로드 실패 의심)"
+            FAIL=$((FAIL + 1)); FAIL_DETAILS="$FAIL_DETAILS\n  - creator-claim POST: $CLAIM"
+          else
+            echo "✅ 초대코드 클레임 (POST /api/creator-claim) → $CLAIM (스키마·라우트 정상)"
+          fi
 
           # 결제 healthcheck — 503 (env mismatch) 은 fail 처리 안 함, 별도 curl + 본문 파싱.
           PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')

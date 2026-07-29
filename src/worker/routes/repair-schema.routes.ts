@@ -2371,6 +2371,27 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
   return c.json({ success: true, ...result });
 });
 
+// 🔧 2026-07-13 (데이터 감사 3단계): off-live user_id 이력 backfill (firebase_uid → 숫자 users.id).
+//   GET(또는 apply 미지정)=dry-run 카운트만. apply 실행은 POST + body {confirm:true}. 멱등·admin 전용.
+//   live(카카오)=대상 0(무동작). user_points 충돌(숫자 잔액행 이미 존재)은 건드리지 않고 conflict 보고.
+repairSchemaRoutes.get('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, false); // dry-run
+  return c.json({ success: true, dry_run: true, ...result });
+});
+
+repairSchemaRoutes.post('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const body = await c.req.json<{ confirm?: boolean }>().catch(() => ({} as { confirm?: boolean }));
+  const apply = body.confirm === true;
+  const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
+  const result = await backfillUserIdMapping(DB, apply);
+  return c.json({ success: true, dry_run: !apply, ...result });
+});
+
 export { repairSchemaRoutes };
 
 

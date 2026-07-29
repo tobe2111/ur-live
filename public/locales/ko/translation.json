@@ -870,6 +870,45 @@
     "seoDesc": "관심 상품을 모아보세요"
   },
   "seller": {
+    "relink": {
+      "title": "카카오 계정이 바뀌셨나요?",
+      "desc": "폰이나 카카오 계정이 바뀌어도 셀러 계정은 그대로예요. 새 카카오로 로그인한 뒤, 기존 셀러 이메일과 비밀번호만 확인하면 바로 이어서 쓸 수 있어요.",
+      "step1": "새 카카오 계정으로 로그인",
+      "step2": "기존 셀러 계정 확인",
+      "kakaoBtn": "카카오 로그인",
+      "emailPh": "기존 셀러 이메일",
+      "pwPh": "비밀번호",
+      "submit": "재연결하고 대시보드 열기",
+      "busy": "재연결 중…",
+      "fail": "재연결에 실패했습니다",
+      "needKakao": "새 카카오 계정으로 먼저 로그인해주세요.",
+      "noPw": "카카오로만 가입해서 비밀번호가 없나요? 본인 확인 후 저희가 직접 연결해 드릴게요.",
+      "channel": "카카오채널로 문의하기",
+      "entry": "카카오 계정이 바뀌셨나요? 계정 재연결 →"
+    },
+    "scanDevices": {
+      "title": "직원·공기계용 스캔 링크",
+      "issue": "링크 발급",
+      "desc": "직원 폰이나 매장 공기계에서 사장님 로그인 없이 스캔만 할 수 있는 링크예요. QR을 그 기기로 찍거나 링크를 보내 홈 화면에 추가하세요. 분실하면 즉시 회수하면 돼요.",
+      "oneTime": "이 화면에서만 표시돼요 (다시 못 봄)",
+      "copyLink": "링크 복사 (카톡으로 보내기)",
+      "lastUsed": "마지막 사용",
+      "neverUsed": "아직 사용 전",
+      "revoke": "회수",
+      "revoked": "회수 완료",
+      "revokeConfirm": "이 기기의 스캔 링크를 회수할까요? 그 기기에선 더 이상 스캔할 수 없어요.",
+      "revokeFail": "회수에 실패했습니다",
+      "issueFail": "발급에 실패했습니다"
+    },
+    "simple": {
+      "scan": "QR 스캔",
+      "settlement": "정산",
+      "myDeals": "내 딜",
+      "fullMenu": "전체 메뉴",
+      "scanSub": "손님 바우처 사용 처리",
+      "settlementSub": "매출·지급 확인",
+      "myDealsSub": "승인 대기 포함"
+    },
     "kakaoNotify": {
       "confirmResend": "이미 발송했습니다. 다시 발송하시겠습니까?",
       "defaultMessage": "지금 라이브가 시작됐어요! 같이 봐요 🔴",
@@ -936,7 +975,7 @@
       "kindPdfGuide": "📚 정보 가이드",
       "kindPdfGuideDesc": "가이드·노하우 문서",
       "contentUrlLabel": "콘텐츠 URL",
-      "contentUrlPlaceholder": "https://r2.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크",
+      "contentUrlPlaceholder": "https://media.ur-team.com/digital/abc.pdf 또는 YouTube/Vimeo 링크",
       "contentUrlHint": "⚠️ R2 또는 외부 CDN URL. 구매자만 접근 가능한 signed URL이 자동 발급됩니다.",
       "contentFormatLabel": "파일 형식",
       "contentFormatSelect": "선택",
@@ -2367,7 +2406,10 @@
       "imageSearchPlaceholder": "다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)",
       "promoLabel": "추천 소개비 (%)",
       "promoRecommend": "권장 {{min}}~{{max}}%",
-      "promoHint": "인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요."
+      "promoHint": "인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.",
+      "photoGuideTitle": "💡 음식·시술 결과 사진이 간판·메뉴판 사진보다 판매가 잘 돼요",
+      "photoGuideGood": "✅ 추천 예시: 대표 메뉴 클로즈업 · 시술 결과(전/후) · 실제 제공되는 모습",
+      "photoGuideBad": "❌ 피해주세요: 간판 · 메뉴판 · 건물 외관 사진"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -2456,7 +2498,8 @@
       "agencyDelegation": "매장 위임",
       "promoSpend": "promo 지출",
       "influencerDeals": "인플 협업",
-      "experienceCampaigns": "체험 캠페인"
+      "experienceCampaigns": "체험 캠페인",
+      "myLinkshop": "내 링크샵"
     },
     "guide": {
       "title": "셀러 운영 가이드",
@@ -3439,7 +3482,7 @@
       "k013": "비공개로 변경됨",
       "k014": "발행됨",
       "k015": "변경 실패",
-      "k016": "글을 작성하고 docs.ur-team.com에 발행하세요",
+      "k016": "글을 작성하고 urdeal.kr/blog에 발행하세요",
       "k017": "작성된 글이 없습니다",
       "k018": "임시저장",
       "k019": "비공개로 변경",
@@ -4647,18 +4690,19 @@
     "tabGroupBuy": "이용권",
     "tabGifticon": "교환권",
     "emptyGbTitle": "받아둔 이용권이 없어요",
-    "emptyGbDesc": "동네 맛집 공동구매에 참여하면\n선결제 이용권이 여기에 쌓여요",
-    "emptyGbCta": "공구 보러가기",
+    "emptyGbDesc": "동네 이용권을 할인가로 구매하면\n여기에 담기고 매장에서 바로 써요",
+    "emptyGbCta": "동네 이용권 보러가기",
     "emptyGiftTitle": "받아둔 교환권이 없어요",
     "emptyGiftDesc": "교환권을 구매하면 휴대폰으로 발송되고\n여기에서도 모아볼 수 있어요",
     "emptyGiftCta": "교환권 보러가기",
-    "stepGb1": "공구\n참여",
-    "stepGb2": "지갑에\n이용권",
-    "stepGb3": "매장에서\nQR 제시",
+    "stepGb1": "이용권\n구매",
+    "stepGb2": "지갑에\n도착",
+    "stepGb3": "매장에서\nQR 사용",
     "stepGift1": "교환권\n구매",
     "stepGift2": "MMS\n발송",
     "stepGift3": "매장에서\n제시",
-    "loadFailed": "이용권을 불러오지 못했어요"
+    "loadFailed": "이용권을 불러오지 못했어요",
+    "totalCount": "총 {{count}}장"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
@@ -5314,6 +5358,7 @@
     "catExchange": "교환/환불",
     "catMember": "회원",
     "catLive": "라이브",
+    "catService": "서비스",
     "q1": "주문을 취소하고 싶어요",
     "a1": "배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "결제가 완료되지 않았어요",
@@ -5330,10 +5375,10 @@
     "a7": "카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "개인정보를 수정하고 싶어요",
     "a8": "마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "라이브 방송은 어떻게 시청하나요?",
-    "a9": "메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "라이브 중 상품을 구매하려면?",
-    "a10": "라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다.",
+    "q9": "유어딜은 어떤 서비스인가요?",
+    "a9": "유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 링크샵을 제공합니다.",
+    "q10": "이용권은 어떻게 사용하나요?",
+    "a10": "구매한 이용권은 마이페이지 > 내 이용권에서 확인할 수 있고, 매장에서 QR 또는 PIN을 제시하면 바로 사용됩니다. 교환권(기프티콘)은 결제 즉시 발급됩니다.",
     "catAll": "전체"
   },
   "following": {
@@ -5970,7 +6015,7 @@
     "convRate": "전환율"
   },
   "curator": {
-    "notFound": "큐레이터를 찾을 수 없어요",
+    "notFound": "링크샵을 찾을 수 없어요",
     "notFoundTitle": "😢 링크샵을 찾을 수 없어요",
     "fetchError": "불러오기 실패",
     "goHome": "홈으로",
@@ -6032,7 +6077,7 @@
     "stepHandle": "주소 설정",
     "stepFirstProduct": "첫 상품 추가",
     "verifiedBusinessUser": "사업자 인증이 된 유저예요",
-    "verifiedBusinessDesc": "사업자등록 정보가 확인된 판매자예요."
+    "verifiedBusinessDesc": "사업자등록 정보가 확인되었어요."
   },
   "shipping": {
     "trackingTitle": "배송 추적",

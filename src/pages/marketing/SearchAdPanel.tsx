@@ -29,11 +29,11 @@ const PACE_LABEL: Record<string, { t: string; c: string }> = {
   over: { t: '소진임박', c: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
   under: { t: '저소진', c: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   ok: { t: '정상', c: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  no_budget: { t: '무제한', c: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400' },
+  no_budget: { t: '무제한', c: 'bg-gray-100 dark:bg-[#1A2334] text-gray-500 dark:text-gray-400' },
 }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
-const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#1A2334] p-4'
+const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 export default function SearchAdPanel() {
   const [connected, setConnected] = useState<boolean | null>(null)
@@ -279,17 +279,17 @@ export default function SearchAdPanel() {
       {statusErr && <PanelError onRetry={loadStatus} label="연동 상태 불러오기 실패" />}
 
       {/* 목표순위 예상 입찰가 (자동입찰 미리보기 — 읽기, 돈 변경 없음) */}
-      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
         <div className="text-[12.5px] font-bold text-gray-900 dark:text-white">목표순위 예상 입찰가</div>
         <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">"이 키워드를 N위에 노출하려면 입찰가 얼마?" — 자동입찰의 핵심. 실제 입찰 변경은 없습니다.</p>
         <div className="mt-2 flex gap-2">
           <input className={input} placeholder="키워드 (예: 무선이어폰)" value={estKw} onChange={e => setEstKw(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') runEstimate() }} />
-          <div className="shrink-0 flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+          <div className="shrink-0 flex rounded-lg border border-gray-200 dark:border-[#2A3446] overflow-hidden">
             {(['PC', 'MOBILE'] as const).map(d => (
-              <button key={d} onClick={() => setEstDevice(d)} className={`px-2.5 text-[11.5px] font-semibold ${estDevice === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d === 'PC' ? 'PC' : '모바일'}</button>
+              <button key={d} onClick={() => setEstDevice(d)} className={`px-2.5 text-[11.5px] font-semibold ${estDevice === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'text-gray-500 dark:text-gray-400'}`}>{d === 'PC' ? 'PC' : '모바일'}</button>
             ))}
           </div>
-          <button onClick={runEstimate} disabled={estBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-3 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{estBusy ? '…' : '추정'}</button>
+          <button onClick={runEstimate} disabled={estBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-3 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{estBusy ? '…' : '추정'}</button>
         </div>
         {estOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">검색광고 키 설정 후 사용할 수 있습니다.</p>}
         {estimates && (estimates.length === 0 ? (
@@ -297,7 +297,7 @@ export default function SearchAdPanel() {
         ) : (
           <div className="mt-2 grid grid-cols-5 gap-1.5">
             {estimates.map(e => (
-              <div key={e.position} className="rounded-lg bg-gray-50 dark:bg-[#0A0A0A] p-2 text-center">
+              <div key={e.position} className="rounded-lg bg-gray-50 dark:bg-[#0F151D] p-2 text-center">
                 <div className="text-[10px] text-gray-400 dark:text-gray-500">{e.position}위</div>
                 <div className="text-[12px] font-bold text-gray-900 dark:text-white tabular-nums">₩{formatNumber(e.bid)}</div>
               </div>
@@ -317,7 +317,7 @@ export default function SearchAdPanel() {
           <input className={input} placeholder="액세스라이선스" value={form.access_license} onChange={e => setForm(f => ({ ...f, access_license: e.target.value }))} />
           <input className={input} placeholder="비밀키" type="password" value={form.secret_key} onChange={e => setForm(f => ({ ...f, secret_key: e.target.value }))} />
           <div className="flex gap-2">
-            <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '연결 중…' : '연결'}</button>
+            <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0F151D] disabled:opacity-50">{busy ? '연결 중…' : '연결'}</button>
             {addMode && <button onClick={() => setAddMode(false)} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>}
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function SearchAdPanel() {
           <p className="text-[12px] text-gray-600 dark:text-gray-300">연결됨 <span className="text-gray-400 dark:text-gray-500">(고객 ID {customerId})</span></p>
 
           {/* 통합실적 */}
-          <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+          <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
             <div className="flex items-center justify-between">
               <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">통합실적</span>
               <div className="flex items-center gap-1.5">
@@ -340,11 +340,11 @@ export default function SearchAdPanel() {
                   <button onClick={() => downloadCsv(`유어애즈_실적_${statsDays}일.csv`,
                     ['캠페인', '노출', '클릭', '광고비', '전환', 'CTR', 'CPC', '평균순위'],
                     stats.campaigns.map(cs => [cs.name, cs.impCnt, cs.clkCnt, cs.salesAmt, cs.ccnt, pct(cs.ctr), cs.cpc, cs.avgRnk > 0 ? cs.avgRnk.toFixed(1) : '']))}
-                    className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-0.5 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+                    className="rounded-lg border border-gray-200 dark:border-[#2A3446] px-2 py-0.5 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
                 )}
-                <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+                <div className="flex rounded-lg border border-gray-200 dark:border-[#2A3446] overflow-hidden">
                   {([7, 30] as const).map(d => (
-                    <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
+                    <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0F151D]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
                   ))}
                 </div>
               </div>
@@ -362,7 +362,7 @@ export default function SearchAdPanel() {
                     { l: 'CTR', v: pct(stats.totals.ctr) },
                     { l: 'CPC', v: `₩${formatNumber(stats.totals.cpc)}` },
                   ].map(m => (
-                    <div key={m.l} className="rounded-lg bg-gray-50 dark:bg-[#0A0A0A] p-2 text-center">
+                    <div key={m.l} className="rounded-lg bg-gray-50 dark:bg-[#0F151D] p-2 text-center">
                       <div className="text-[10px] text-gray-400 dark:text-gray-500">{m.l}</div>
                       <div className="text-[12.5px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
                     </div>
@@ -376,7 +376,7 @@ export default function SearchAdPanel() {
                       </tr></thead>
                       <tbody>
                         {stats.campaigns.slice(0, 10).map(cs => (
-                          <tr key={cs.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                          <tr key={cs.id} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                             <td className="py-1 pr-2 truncate max-w-[140px]">{cs.name}</td>
                             <td className="py-1 pr-2 text-right tabular-nums">{formatNumber(cs.impCnt)}</td>
                             <td className="py-1 pr-2 text-right tabular-nums">{formatNumber(cs.clkCnt)}</td>
@@ -397,7 +397,7 @@ export default function SearchAdPanel() {
 
           {/* 예산 페이싱(오늘) */}
           {pacing && pacing.length > 0 && (
-            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2A3446] p-3">
               <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">예산 페이싱 <span className="text-gray-400 dark:text-gray-500 font-medium">(오늘 소진)</span></span>
               <div className="mt-2 space-y-1.5">
                 {pacing.slice(0, 10).map(p => (
@@ -416,7 +416,7 @@ export default function SearchAdPanel() {
           ) : (
             <div className="mt-3 space-y-1.5">
               {campaigns.map(cp => (
-                <div key={cp.id} className="rounded-lg border border-gray-100 dark:border-[#1A1A1A]">
+                <div key={cp.id} className="rounded-lg border border-gray-100 dark:border-[#2A3446]">
                   <button onClick={() => toggleCampaign(cp.id)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left">
                     <span className="text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">{openCampaign === cp.id ? '▾' : '▸'} {cp.name}</span>
                     <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">{cp.type}{cp.dailyBudget > 0 ? ` · 일예산 ₩${formatNumber(cp.dailyBudget)}` : ''}</span>
@@ -424,23 +424,23 @@ export default function SearchAdPanel() {
                   {openCampaign === cp.id && (
                     <div className="px-3 pb-2 space-y-1">
                       {/* 캠페인 제어(정지/재개·일예산, write) */}
-                      <div className="flex flex-wrap items-center gap-1.5 pb-1.5 mb-1 border-b border-gray-100 dark:border-[#1A1A1A]">
+                      <div className="flex flex-wrap items-center gap-1.5 pb-1.5 mb-1 border-b border-gray-100 dark:border-[#2A3446]">
                         <button onClick={() => campaignControl(cp, 'pause')} disabled={campBusy === cp.id}
-                          className="rounded border border-gray-300 dark:border-[#2A2A2A] px-2 h-7 text-[10.5px] font-bold text-amber-600 dark:text-amber-500 disabled:opacity-40">일시정지</button>
+                          className="rounded border border-gray-300 dark:border-[#2A3446] px-2 h-7 text-[10.5px] font-bold text-amber-600 dark:text-amber-500 disabled:opacity-40">일시정지</button>
                         <button onClick={() => campaignControl(cp, 'resume')} disabled={campBusy === cp.id}
-                          className="rounded border border-gray-300 dark:border-[#2A2A2A] px-2 h-7 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-500 disabled:opacity-40">재개</button>
+                          className="rounded border border-gray-300 dark:border-[#2A3446] px-2 h-7 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-500 disabled:opacity-40">재개</button>
                         <span className="ml-auto flex items-center gap-1">
                           <input type="number" min={100} max={10000000} placeholder="일예산₩"
                             value={budgetEdit[cp.id] ?? ''} onChange={e => setBudgetEdit(prev => ({ ...prev, [cp.id]: e.target.value }))}
-                            className="w-24 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                            className="w-24 h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
                           <button onClick={() => campaignControl(cp, 'budget')} disabled={campBusy === cp.id || !budgetEdit[cp.id]}
-                            className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">예산변경</button>
+                            className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">예산변경</button>
                         </span>
                       </div>
                       {(adgroups[cp.id] || []).length === 0 ? (
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 py-1">광고그룹 없음</p>
                       ) : (adgroups[cp.id] || []).map(g => (
-                        <div key={g.id} className="rounded border border-gray-100 dark:border-[#1A1A1A]">
+                        <div key={g.id} className="rounded border border-gray-100 dark:border-[#2A3446]">
                           <button onClick={() => toggleGroup(g.id)} className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-left">
                             <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">{openGroup === g.id ? '▾' : '▸'} {g.name}</span>
                             <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">그룹입찰 ₩{formatNumber(g.bidAmt)}</span>
@@ -454,29 +454,29 @@ export default function SearchAdPanel() {
                                   <thead><tr className="text-gray-400 dark:text-gray-500 text-left"><th className="py-1">키워드</th><th className="py-1 text-right">현재 입찰가</th><th className="py-1 text-right">입찰가 변경</th><th className="py-1 text-right">목표순위 자동입찰</th></tr></thead>
                                   <tbody>
                                     {(keywords[g.id] || []).map(k => (
-                                      <tr key={k.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                                      <tr key={k.id} className="border-t border-gray-100 dark:border-[#2A3446] text-gray-700 dark:text-gray-300">
                                         <td className="py-1 pr-2 truncate">{k.keyword}</td>
                                         <td className="py-1 text-right tabular-nums">{k.useGroupBid ? <span className="text-gray-400 dark:text-gray-500">그룹입찰</span> : `₩${formatNumber(k.bidAmt)}`}</td>
                                         <td className="py-1">
                                           <div className="flex items-center justify-end gap-1">
                                             <input type="number" min={70} max={100000} placeholder="70~"
                                               value={bidEdit[k.id] ?? ''} onChange={e => setBidEdit(prev => ({ ...prev, [k.id]: e.target.value }))}
-                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
                                             <button onClick={() => applyBid(g.id, k)} disabled={bidBusy === k.id || !bidEdit[k.id]}
-                                              className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{bidBusy === k.id ? '…' : '적용'}</button>
+                                              className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0F151D] disabled:opacity-40">{bidBusy === k.id ? '…' : '적용'}</button>
                                           </div>
                                         </td>
                                         <td className="py-1">
                                           <div className="flex items-center justify-end gap-1">
                                             <select value={abRank[k.id] ?? '1'} onChange={e => setAbRank(prev => ({ ...prev, [k.id]: e.target.value }))}
-                                              className="h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1 text-[10.5px] text-gray-900 dark:text-white">
+                                              className="h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1 text-[10.5px] text-gray-900 dark:text-white">
                                               {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}위</option>)}
                                             </select>
                                             <input type="number" min={70} max={100000} placeholder="최대₩"
                                               value={abMax[k.id] ?? ''} onChange={e => setAbMax(prev => ({ ...prev, [k.id]: e.target.value }))}
-                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
                                             <button onClick={() => createAutobid(k, g.id)} disabled={abBusy === k.id || !abMax[k.id]}
-                                              className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-1.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{abBusy === k.id ? '…' : '자동입찰'}</button>
+                                              className="shrink-0 rounded border border-gray-300 dark:border-[#2A3446] px-1.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{abBusy === k.id ? '…' : '자동입찰'}</button>
                                           </div>
                                         </td>
                                       </tr>
@@ -488,15 +488,15 @@ export default function SearchAdPanel() {
                               <div className="mt-2 flex gap-1.5">
                                 <input placeholder="키워드 추가 (쉼표로 구분, 최대 20)"
                                   value={kwAdd[g.id] ?? ''} onChange={e => setKwAdd(prev => ({ ...prev, [g.id]: e.target.value }))}
-                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
+                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
                                 <button onClick={() => addKeywords(g.id)} disabled={kwAddBusy === g.id || !kwAdd[g.id]}
-                                  className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-2.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{kwAddBusy === g.id ? '…' : '+ 등록'}</button>
+                                  className="shrink-0 rounded border border-gray-300 dark:border-[#2A3446] px-2.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{kwAddBusy === g.id ? '…' : '+ 등록'}</button>
                               </div>
                               {/* 제외(네거티브) 키워드 등록(write) — 낭비 검색어에 광고 미노출 */}
                               <div className="mt-1.5 flex gap-1.5">
                                 <input placeholder="제외 키워드 (쉼표로 구분, 최대 20)"
                                   value={negAdd[g.id] ?? ''} onChange={e => setNegAdd(prev => ({ ...prev, [g.id]: e.target.value }))}
-                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
+                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
                                 <button onClick={() => addNegatives(g.id)} disabled={negBusy === g.id || !negAdd[g.id]}
                                   className="shrink-0 rounded border border-red-200 dark:border-red-500/30 px-2.5 h-7 text-[10.5px] font-bold text-red-600 dark:text-red-400 disabled:opacity-40">{negBusy === g.id ? '…' : '− 제외'}</button>
                               </div>

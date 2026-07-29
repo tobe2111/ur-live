@@ -133,7 +133,7 @@ function getPasswordResetEmailHTML(resetUrl: string): string {
         본 메일은 비밀번호 재설정 요청에 의한 발송입니다.<br>
         <strong>리스터코퍼레이션</strong> | 사업자등록번호: 783-87-03224<br>
         문의: <a href="mailto:contact@ur-team.com" style="color:#666;">contact@ur-team.com</a><br>
-        <a href="https://live.ur-team.com/account/notifications" style="color:#666;">알림 설정 변경</a>
+        <a href="https://urdeal.kr/account/notifications" style="color:#666;">알림 설정 변경</a>
       </p>
     </div>
   `
@@ -434,8 +434,8 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   const { email, password } = body
   if (!email || !password) return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400)
 
-  // 🛡️ 2026-05-03: Turnstile (분산 봇 brute-force 방어). TURNSTILE_SECRET 미설정 시 fail-open.
-  {
+  const TURNSTILE_LOGIN_ENABLED = false // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — sitekey↔secret/도메인 불일치 잠금 해소(재도입=true; rate-limit+비번 방어).
+  if (TURNSTILE_LOGIN_ENABLED) {
     const ip = c.req.header('cf-connecting-ip') || undefined
     const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip)
     if (!ok) {
@@ -624,7 +624,7 @@ app.post('/forgot-password', cors(), rateLimit({ action: 'agency_forgot_password
         VALUES ('agency', ?, ?, ?)
       `).bind(agency.id, token, expiresAt).run()
 
-      const baseUrl = FRONTEND_URL || 'https://live.ur-team.com'
+      const baseUrl = FRONTEND_URL || 'https://urdeal.kr'
       // 🛡️ token URL-encode + trailing slash 정리
       const resetUrl = `${baseUrl.replace(/\/+$/, '')}/agency/reset-password?token=${encodeURIComponent(token)}`
 

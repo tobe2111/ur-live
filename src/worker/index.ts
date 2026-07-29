@@ -25,6 +25,7 @@ import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
 import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
+import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -41,6 +42,7 @@ import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { meRegionRoutes, adminRegionRoutes, publicRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도 + 좌표해석
+import { adminMatchingRoutes } from '../features/marketing/api/admin-matching.routes'; // 🤝 성과기반 매칭(어드민 전용 내부 도구)
 import { acquisitionRoutes } from './routes/acquisition.routes'; // 📡 유입 소스 어트리뷰션 (?src= 퍼널)
 import { termsRoutes } from './routes/terms.routes'; // 📜 약관 동의 로그 (누가·언제·몇 버전)
 import { i18nMiddleware } from './middleware/i18n.middleware';
@@ -78,7 +80,7 @@ import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-g
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
-import { googleRoutes } from '../features/auth/api/google.routes';
+// import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
@@ -90,6 +92,7 @@ import { pushRoutes } from '../features/push/api/push.routes';
 import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
 import { sellerAdSlotsRoutes } from '../features/seller/api/seller-ad-slots.routes';
 import { sellerKakaoLinkRoutes } from '../features/seller/api/seller-kakao-link.routes';
+import { sellerScanDevicesRoutes } from '../features/seller/api/seller-scan-devices.routes';
 import { sellerAlimtalkMgmtRoutes } from '../features/seller/api/seller-alimtalk-mgmt.routes';
 import { sellerRegistrationRoutes } from '../features/seller/api/seller-registration.routes';
 import { sellerProfileRoutes } from '../features/seller/api/seller-profile.routes';
@@ -158,7 +161,9 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
-import { buildDetailMeta } from './utils/detail-ssr-meta';
+import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
+import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
+import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -179,13 +184,30 @@ import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.rou
 import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
-// 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스. /api/ads/* (유어딜/도매몰과 분리된 네임스페이스).
-import { marketingRoutes } from '../features/marketing/api/marketing.routes';
-import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
+// 🎯 [urads-split Phase D 2026-07-16] 유어애즈 로컬 폴백(marketingRoutes·shortLinkRedirectRoutes) 제거 —
+//   prod 컷오버 확인(`x-served-by: ur-ads`) 후 설계(docs/design/urads-worker-split.md §4 Phase D)대로.
+//   /api/ads/*·/l/* 는 Service Binding 프록시(env.ADS)가 ur-ads 워커로 위임(아래 app.use('*') 블록).
+//   ⚠️ ADS_WORKER_ENABLED=true + ADS 바인딩이 이제 필수(폴백 없음) — 끄면 유어애즈 다운. 재도입=원복.
+// import { marketingRoutes } from '../features/marketing/api/marketing.routes';
+// import { shortLinkRedirectRoutes } from '../features/marketing/api/routes/shortlink-redirect.routes';
+// /api/admin/ads 는 메인 어드민 JWT 사용이라 잔류(프록시 비위임 설계 유지).
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
+import { adsPayRoutes, adminAdsPayRoutes } from '../features/marketing/api/ads-pay.routes'; // 💳 서비스몰 토스(게이트 OFF 기본)
+import { adsKakaoAuthRoutes } from '../features/marketing/api/ads-kakao-auth.routes'; // 🟡 유어애즈 카카오 로그인
+// 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
+import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
+import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
+import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-public.routes';
+import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
+import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
+import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
+import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
+// ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
+import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
+import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
+import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
-// 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
-import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
+import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes'; // 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -306,6 +328,38 @@ declare const __INCLUDE_WHOLESALE__: boolean;
 const app = new Hono<{ Bindings: Env }>();
 
 // ============================================================
+// 🛡️ 2026-07-20 (대표 신고 — urdeal.kr 에서 /assets/*.js 가 text/html 반환 → "Expected a JavaScript
+//   module ... MIME type text/html" → 앱 로드 불능): 도메인 이전 후 '새 존' 정적 서빙 404 우회.
+//   근본원인(#598 이 robots.txt·네이버 파일로 이미 확인): urdeal.kr 신규 존에서 _routes.json exclude 로
+//   워커를 우회한 정적 경로가 404 → SPA HTML 폴백. /assets/* 도 exclude 라 동일 증상(청크 404→HTML→MIME).
+//   → 워커가 env.ASSETS 로 직접 서빙(존재하면 원본 MIME + immutable, 없으면 깔끔한 404 로 정정해
+//   HTML-as-JS MIME 에러 재발 차단 + 클라 청크-복구가 정상 동작). _routes.json 에서 /assets/* 를 exclude
+//   에서 제거해 이 핸들러로 라우팅. ⚠️ 반드시 전-라우트 미들웨어(CSP/SSR/nonce) *앞*에 등록 —
+//   에셋은 오버헤드 0 로 즉시 서빙 + 응답을 가로채는 rewriter 를 안 탐. immutable 라 엣지/브라우저 캐시.
+// ============================================================
+app.get('/assets/*', async (c) => {
+  try {
+    const assets = (c.env as unknown as { ASSETS?: { fetch: (r: Request) => Promise<Response> } }).ASSETS;
+    if (!assets?.fetch) return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    const res = await assets.fetch(c.req.raw);
+    const ctype = res.headers.get('content-type') || '';
+    // env.ASSETS 는 미존재 파일에 SPA index.html(text/html)을 200 으로 돌려줌 → 그건 에셋이 아니므로 404 로
+    //   정정(HTML 을 .js 로 주면 브라우저가 "Expected a JavaScript module ... text/html" 로 거부 = 원래 버그).
+    //   404 면 클라(chunk-error.ts)가 __cb 캐시버스트로 최신 HTML(새 해시)을 받아 자가복구.
+    if (!res.ok || ctype.includes('text/html')) {
+      return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+    }
+    // ⚠️ res 를 init 으로 그대로 복제 → Content-Type/Content-Encoding/ETag 등 body 와 정합 유지
+    //   (headers 재조립 시 인코딩 헤더/본문 불일치로 브라우저 디코드 오류 나는 footgun 회피). Cache-Control 만 override.
+    const out = new Response(res.body, res);
+    out.headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // content-hash 파일 — _headers /assets/* 와 동일(워커 서빙 시 _headers 미적용이라 명시)
+    return out;
+  } catch {
+    return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+  }
+});
+
+// ============================================================
 // Admin Sub-Application (code-level separation)
 // All admin routes go through their own Hono app with:
 //   1. CORS
@@ -327,12 +381,20 @@ app.use('*', timing());
 app.use('*', logger());
 // Reject any request body larger than 1MB before it hits route handlers.
 // Bulk-upload routes apply a larger limit locally if needed.
-app.use('/api/*', bodyLimit(1_000_000));
+// 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
+//    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
+const _bodyLimit1m = bodyLimit(1_000_000);
+// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 큰 캡은 무인증 파싱 증폭(DoS) 표면 → 1.5MB 로 축소.
+//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 1.5MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
+//   토큰 검사가 바디 파싱 이후라, 캡이 낮을수록 무토큰 공격자의 사전-파싱 비용이 작아짐.
+const _bodyLimitIngest = bodyLimit(1_500_000);
+app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
-app.use('/api/*', rateLimiterMiddleware as any);
+// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
+app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
-app.use('*', cors({
+const _globalCors = cors({
   origin: (origin, c) => {
     const env = (c as any).env as Env;
     const allowed: string[] = [
@@ -353,7 +415,9 @@ app.use('*', cors({
   exposeHeaders: ['X-Request-ID', 'Server-Timing'],
   credentials: true,
   maxAge: 86400,
-}));
+});
+// 🔖 북마클릿 인제스트(/api/buyer-ingest[/known])는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
+app.use('*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : _globalCors(c, next));
 
 // ============================================================
 // Security Headers (CSP etc.)
@@ -424,6 +488,9 @@ app.use('*', async (c, next) => {
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     `connect-src 'self' https: wss: https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app wss://${new URL(FIREBASE_RTDB_URL).host}; ` +
     "frame-src 'self' " +
+      // 🛡️ 2026-07-20: Turnstile 위젯은 challenges.cloudflare.com iframe 필수 — 누락 시
+      //   위젯 렌더 실패 → 토큰 없음 → (TURNSTILE_SECRET 설정 후) 로그인 전면 차단.
+      "https://challenges.cloudflare.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       `https://*.firebaseapp.com ${FIREBASE_APP_URL} ` +
@@ -539,10 +606,14 @@ app.use('*', async (c, next) => {
       const productMatch = url.pathname.match(/^\/products\/(\d+)(?:[/?#]|$)/);
       // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
       const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
+      // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 도 DETAIL 패턴으로 0-RTT + 서버 메타.
+      const stayMatch = url.pathname.match(/^\/stays\/(\d+)(?:[/?#]|$)/);
       if (productMatch) {
         ssrTarget = { slot: 'PRODUCT', path: `/api/products/${productMatch[1]}` };
       } else if (detailMatch) {
         ssrTarget = { slot: 'DETAIL', path: `/api/group-buy/products/${detailMatch[1]}` };
+      } else if (stayMatch) {
+        ssrTarget = { slot: 'STAYDETAIL', path: `/api/group-buy/stays/${stayMatch[1]}` };
       } else {
         // 🛡️ 2026-05-27: /profile/:sellerId 외 /s/:sellerId 도 동일 SellerPublicPage — SSR inject 확장.
         const profileMatch = url.pathname.match(/^\/(?:profile|s)\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
@@ -613,7 +684,7 @@ app.use('*', async (c, next) => {
         //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
         //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
         //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG') ? 2000
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG' || ssrTarget.slot === 'STAYDETAIL') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
@@ -862,19 +933,18 @@ app.use('*', async (c, next) => {
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
     // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
-    //   ▶ 플레이 마커 + 블록 도트(size34 사전계산). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 미세 점프.
+    //   size34 사전계산. 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 미세 점프.
     //   테마 가변 대응: dark: variant 로 다크/라이트 자동. CSS(ur-loader-breathe/sweep)는 번들에 존재.
+    // 🎨 2026-07-19 [UNLOCK_LOADING] 대표 확정 로고(Final 핸드오프): "urdeal"+로즈 점 — UrDealLogo 재작성과 픽셀 동일
+    //   (Poppins 800 · 자간 −3.5% · 점 6.12px/좌 2.72px = 34px 기준). 구조·위상동기·ur-loader-* 클래스 불변.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
-          '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
-            '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
-          '</span>' +
-          '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
-          '<span>DEAL</span>' +
+        '<div class="ur-loader-breathe text-[#1A2C42] dark:text-[#FAF7F5]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
+          'urdeal' +
+          '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
         '</div>' +
         '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
-          '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
+          '<div class="ur-loader-sweep bg-brand dark:bg-brand" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
         '</div>' +
       '</div>';
     // 🔎 2026-07-07 [UNLOCK_LOADING] (대표 "각 이용권 페이지마다 SEO 다 잘 되지?"): 공구/이용권/교환권 상세
@@ -905,6 +975,50 @@ app.use('*', async (c, next) => {
         if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
       }
     }
+    // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD(DETAIL 과 동일 패턴, 페이로드만 다름).
+    if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
+      const sm = buildStayDetailMeta(ssrPayload, origin2, url.pathname);
+      if (sm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(sm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', sm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', sm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', sm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', sm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', sm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${sm.canonical}">`, { html: true });
+            if (sm.jsonLd) el.append(`<script type="application/ld+json">${sm.jsonLd}</script>`, { html: true });
+          } });
+      }
+    }
+    // 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타 — DETAIL 과 동일 패턴.
+    //   그간 PRODUCT 는 데이터만 주입하고 메타는 제네릭 홈 → 카톡/소셜 공유 시 상품 대신 '유어딜 홈' 카드.
+    //   가격·할인율 OG + Product JSON-LD 주입(카톡 커머스 공유 카드와 정합). SSR inject·0-RTT·로더 전부 불변 — 메타 rewrite만 additive.
+    if (ssrSlot === 'PRODUCT' && ssrPayload) {
+      const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
+      if (pm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(pm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', pm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', pm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', pm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', pm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', pm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${pm.canonical}">`, { html: true });
+            if (pm.jsonLd) el.append(`<script type="application/ld+json">${pm.jsonLd}</script>`, { html: true });
+          } });
+      }
+    }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
@@ -913,9 +1027,12 @@ app.use('*', async (c, next) => {
         },
       });
     } else if (isBlogSurface) {
-      // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+      // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
+      //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
+      const blogBody = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
+        : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent('', { html: true }); },
+        element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
@@ -977,8 +1094,8 @@ app.route('/', blogSeoRoutes);
 // 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
 //   설계 SSOT: docs/design/urads-worker-split.md.
 //   ADS_WORKER_ENABLED==='true' + env.ADS 바인딩이 있으면 /api/ads/* · /l/* 를 ur-ads 로 위임.
-//   ⚠️ 기본 OFF(미설정/미바인딩) = 아래 로컬 마운트(marketingRoutes/shortLinkRedirectRoutes)가 그대로
-//      처리 → 라이브 byte-동일. 위임 중 예외가 나면 next() 로 폴백(로컬 처리) — 안전망.
+//   🎯 [Phase D 2026-07-16] 로컬 폴백(marketingRoutes/shortLinkRedirectRoutes) 제거됨 — 이 프록시가 유일 경로.
+//      ⚠️ ADS_WORKER_ENABLED=true + ADS 바인딩을 끄면 유어애즈 404(폴백 없음). 위임 예외 시 next()=SPA 셸.
 //   /api/admin/ads/* 는 위임하지 않고 메인 유지(메인 어드민 JWT 사용).
 app.use('*', async (c, next) => {
   const ads = c.env.ADS;
@@ -999,11 +1116,12 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-app.route('/', shortLinkRedirectRoutes); // 🔗 유어애즈 단축링크 공개 리다이렉트 /l/{code} (생성은 /api/ads/links)
+// 🎯 [urads-split Phase D] /l/{code} 단축링크 로컬 폴백 제거 — 위 프록시가 ur-ads 로 위임(컷오버 검증됨).
+// app.route('/', shortLinkRedirectRoutes);
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
 //   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
-//   live.ur-team.com 등 다른 호스트는 원본 그대로(회귀 0).
+//   urdeal.kr 등 다른 호스트는 원본 그대로(회귀 0).
 app.get('/robots.txt', async (c) => {
   const host = new URL(c.req.url).hostname.toLowerCase();
   const isWholesaleHost = host === 'utongstart.com' || host === 'www.utongstart.com';
@@ -1013,16 +1131,27 @@ app.get('/robots.txt', async (c) => {
     const res = await (c.env as { ASSETS?: { fetch?: (u: string) => Promise<Response> } }).ASSETS?.fetch?.(assetUrl.toString());
     if (res && res.ok) body = await res.text();
   } catch { /* ASSETS 미바인딩 — 아래 fallback */ }
-  if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://live.ur-team.com/sitemap.xml\n';
+  if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://urdeal.kr/sitemap.xml\n';
   if (isWholesaleHost) {
     body = body.replace(/Sitemap:\s*https?:\/\/\S+/i, 'Sitemap: https://utongstart.com/sitemap.xml');
   }
   return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
+
+// 🔎 2026-07-20 네이버 서치어드바이저 소유확인 파일 — 워커가 직접 서빙(정적 자산 서빙이 새 존에서 404 나는 문제 우회).
+//   _routes.json exclude 에서 빼서 이 라우트가 처리하도록 함. 내용은 네이버 발급 파일 본문 그대로(파일명=값).
+//   ⚠️ Cloudflare Pages 가 `.html` URL 을 확장자 없는 경로로 308 리다이렉트하므로(html_handling),
+//      네이버가 리다이렉트를 따라가도 통과되도록 두 경로(.html + 확장자 없음) 모두 동일 본문 서빙.
+const naverVerifyBody = 'naver-site-verification: naverd3ccc68d1f14dc53e76aa95f4a02bb68.html';
+const serveNaverVerify = (c: { text: (b: string, s: number, h: Record<string, string>) => Response }) =>
+  c.text(naverVerifyBody, 200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c));
+app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
+app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
 app.route('/', repairSchemaRoutes);
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
@@ -1101,7 +1230,7 @@ app.route('/api/health', healthRoutes);
 //   미세팅 시 404 로 엔드포인트 자체 숨김.
 //
 // 사용법:
-//   curl -X POST https://live.ur-team.com/api/_bootstrap/reset-dashboard-password \
+//   curl -X POST https://urdeal.kr/api/_bootstrap/reset-dashboard-password \
 //     -H "X-Bootstrap-Token: <BOOTSTRAP_TOKEN>" \
 //     -H "Content-Type: application/json" \
 //     -d '{"email":"...","password":"...","role":"all|admin|seller|agency"}'
@@ -1311,8 +1440,8 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 
-// Feature: Google/Firebase auth
-app.route('/api/auth/google', googleRoutes);
+// 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
+// app.route('/api/auth/google', googleRoutes);
 
 // ============================================================
 // Users Routes  ← /api/users/role, /api/users/init
@@ -1322,6 +1451,7 @@ app.route('/api/users', usersRouter);
 app.route('/api/me', meRegionRoutes);              // 🗺️ 내 동네 설정/조회
 app.route('/api/region', publicRegionRoutes);      // 🗺️ 좌표 → 동네 해석 (공개, 비로그인 자동감지)
 app.route('/api/admin/region', adminRegionRoutes); // 🗺️ 동별 딜 밀도 (영입 타겟)
+app.route('/api/admin/matching', adminMatchingRoutes); // 🤝 성과기반 매칭 — 어드민 전용(requireAdmin)
 app.route('/api/acquisition', acquisitionRoutes);  // 📡 유입 소스 어트리뷰션 (시설물 QR ?src= 퍼널)
 app.route('/api/terms', termsRoutes);              // 📜 약관 동의 로그 (버전 스탬프 + 재동의 골격)
 
@@ -1420,7 +1550,16 @@ app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec
 
 // Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
-app.route('/api/ads', marketingRoutes);  // 🆕 통합 마케팅 서비스(3번째) — /api/ads/*
+// 🎯 [urads-split Phase D] /api/ads 로컬 폴백 제거 — Service Binding 프록시(env.ADS→ur-ads)가 전담. 재도입=원복.
+// app.route('/api/ads', marketingRoutes);
+// 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
+app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
+// 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
+//   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
+app.route('/api/ads-pay', adsPayRoutes);
+app.route('/api/admin/ads-pay', adminAdsPayRoutes);
+// 🟡 유어애즈 카카오 로그인(+유어딜 세션 브리지) — 메인 전용(KAKAO 키·ur_session 이 여기). 소비자 카카오(잠금) 무접촉.
+app.route('/api/ads-auth', adsKakaoAuthRoutes);
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
@@ -1445,6 +1584,7 @@ app.route('/api/seller', sellerStaysRoutes);
 app.route('/api/seller', sellerAccountRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /link-kakao, /unlink-kakao, /kakao-link-status
 app.route('/api/seller', sellerKakaoLinkRoutes);
+app.route('/api/seller', sellerScanDevicesRoutes); // 📟 2026-07-20 직원 폰/공기계 스캔 전용 기기 링크
 // 🛡️ 2026-04-28 TD-006 (split): /alimtalk* (account/balance/test/send/messages/charge)
 app.route('/api/seller', sellerAlimtalkMgmtRoutes);
 // 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업)
@@ -1493,6 +1633,20 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 // app.route('/api/admin/castings', adminCastingRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
+app.route('/api/admin/partner-pool', partnerPoolRoutes); // 🤝 B2B 파트너(업체) 풀 — 메인 어드민 JWT(프록시 비위임), ad_company_leads 격리
+app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 후보 — 인허가 발굴(store_prospects 격리), 메인 어드민 JWT
+app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
+app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
+app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
+// 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
+// ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스
+//   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
+//   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
+app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
+// ⏳ [TEMP-TEST 2026-07-28] 제조사·판매사 후보 풀 — 도매 워커 배포 전까지 라이브 어드민에서 검증(admin 전용·격리 테이블).
+app.route('/api/admin/maker-pool', makerPoolTestRoutes);
+// 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
+app.route('/api/buyer-ingest', buyerIngestRoutes);
 // app.route('/api/seller/castings', sellerCastingRoutes);
 // 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
 // app.route('/api/donation-boosters', donationBoosterRoutes);
@@ -2024,7 +2178,7 @@ app.get('/api/image/resize', async (c) => {
   //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
   const ALLOWED_HOSTS = [
     'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
-    'live.ur-team.com', 'ur-live.pages.dev',
+    'urdeal.kr', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
     'giftishow.com', // KT Alpha (image / imghub / bizapi / mall / gift / static)
@@ -2033,6 +2187,8 @@ app.get('/api/image/resize', async (c) => {
     'googleusercontent.com', // Google 프로필 (lh3.googleusercontent.com)
     'kakaocdn.net',  // 🛡️ 2026-05-27 (메인 페이지 카드 이미지 403 사고): img1/img2/k.kakaocdn.net 카카오 이미지 호스트.
                      //   cf-image.ts EXTERNAL_PROXY_HOSTS 에 추가했는데 worker ALLOWED_HOSTS 미추가 → /api/image/resize 403 → 카드 이미지 안 보임.
+    'naver.net',     // 🩹 2026-07-21 전수조사: phinf.naver.net/imgnews.naver.net 가 향후 hotlink-proxy 로
+                     //   가도 워커 403 안 나게 선제 등록(현재는 cdn-cgi 경유라 미도달이나 방어).
   ]
   try {
     const parsed = new URL(url)
@@ -2127,7 +2283,7 @@ app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 //       link card 의 제목/이미지/설명 표시. 일반 카톡 인앱 'KAKAOTALK' 와 다른 UA.
 const BOT_UA_REGEX = /googlebot|bingbot|yandex|baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link|showyoubot|outbrain|pinterest|slackbot|vkshare|w3c_validator|yeti|naverbot|daumoa|telegram|whatsapp|discord|KakaoTalk-Scrap/i;
 
-const BASE_URL = 'https://live.ur-team.com';
+const BASE_URL = 'https://urdeal.kr';
 // 🛡️ 2026-05-21: 사용자 요청 — "돈버는 쇼핑" 키워드 노출 + 오프라인 공동구매 우선.
 //   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
@@ -2327,7 +2483,7 @@ import { swallow } from './utils/swallow';
 // 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
 //   utongstart.com = 도매몰 전용. 도매몰 surface 밖의 페이지 경로는 /wholesale/intro 로 서버 302.
 //   ⚠️ 잠긴 SSR inject / caches.default 블록은 미수정 — fetch 진입부에 additive 가드만.
-//   live.ur-team.com 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
+//   urdeal.kr 등 다른 호스트는 즉시 app.fetch 로 통과(no-op).
 const WHOLESALE_HOSTS = new Set(['utongstart.com', 'www.utongstart.com']);
 
 // 🏭 2026-06-04 도매몰 도메인 게이팅 (사용자 승인 "가장 이상적이고 근본적으로").
@@ -2353,7 +2509,9 @@ function isWholesaleAllowedPath(pathname: string): boolean {
 
 // 🏬 2026-06-09 멀티몰: wholesale_malls 에 등록된 host 도 '도매몰 전용'으로 인식(루트→/wholesale).
 //   ⚠️ 소비자 호스트는 fast-path 로 DB 조회 skip(핫패스 byte-identical). 미지 호스트만 캐시된 몰-호스트 set 조회.
-const CONSUMER_FAST_PATH = new Set(['live.ur-team.com', 'ur-live.pages.dev', 'localhost']);
+const CONSUMER_FAST_PATH = new Set(['urdeal.kr', 'www.urdeal.kr', 'live.ur-team.com', 'ur-live.pages.dev', 'localhost']);
+// 🌐 2026-07-20 도메인 이전 (대표 확정 urdeal.kr): 구 소비자 도메인 — 내비게이션만 301, API 는 계속 서빙.
+const LEGACY_CONSUMER_HOSTS = new Set(['live.ur-team.com']);
 let _mallHostCache: { hosts: Set<string>; at: number } | null = null;
 async function getWholesaleMallHosts(env: unknown): Promise<Set<string>> {
   const now = Date.now();
@@ -2380,6 +2538,29 @@ export default {
     try {
       const url = new URL(request.url);
       const host = url.hostname.toLowerCase();
+      // 🌐 2026-07-20 도메인 이전 [UNLOCK_LOADING] (대표 확정 urdeal.kr — "같이 작업, 빠짐없이"):
+      //   구 도메인 GET/HEAD 내비게이션 → https://urdeal.kr 301 (영구). 발급된 QR(/v/*)·카톡/MMS 링크·
+      //   검색 색인 전부 이 한 블록이 새 도메인으로 인계.
+      //   ❗ 제외 3종 (도메인 이전 문서 §C 근거):
+      //   - /api/*  : 토스 웹훅(POST, 301 추종 미보장 — 머니) · 구 도메인에 열린 SPA 의 same-origin
+      //               fetch(cross-origin 301 = CORS 실패) · 카카오 콘솔 등록 콜백 보존
+      //   - /assets/*: 전환 순간 열려 있던 구 SPA 탭의 청크 lazy-load 보호 (문서 GET 은 어차피 301)
+      //   - /.well-known/*: 딥링크 검증 파일은 각 호스트에서 직접 서빙
+      //   www.urdeal.kr → urdeal.kr 정규화도 동일 블록이 처리.
+      if (
+        (LEGACY_CONSUMER_HOSTS.has(host) || host === 'www.urdeal.kr') &&
+        (request.method === 'GET' || request.method === 'HEAD') &&
+        !url.pathname.startsWith('/api/') &&
+        !url.pathname.startsWith('/assets/') &&
+        !url.pathname.startsWith('/.well-known/')
+      ) {
+        return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
+      }
+      // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const renamed = resolveRenamedBlogPath(url.pathname);
+        if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
+      }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
       if (!isWhHost && !CONSUMER_FAST_PATH.has(host)) {
@@ -2412,8 +2593,25 @@ export default {
         } catch { /* 조회 실패 — 기존 /profile 서빙으로 통과 */ }
       }
     } catch { /* URL 파싱 시 통과 */ }
+    // 📊 2026-07-22 (대표 "모두 진행"): D1 rows_read 집계 프록시 — **저율 자동 샘플링(상시)**.
+    //   토글(`D1_PROFILE_ENABLED='true'`)=100% 강제, 아니면 기본 2%(`D1_PROFILE_SAMPLE` 로 조정, '0'=OFF).
+    //   샘플된 요청만 프록시 → 오버헤드 사실상 0인데 데이터는 상시 축적(수동 토글 불필요). 저장 쓰기 0.
+    let fenv: unknown = env;
+    try {
+      const pe = env as { D1_PROFILE_ENABLED?: string; D1_PROFILE_SAMPLE?: string };
+      const forceOn = pe?.D1_PROFILE_ENABLED === 'true';
+      const rawSample = pe?.D1_PROFILE_SAMPLE;
+      const sampleRate = forceOn ? 1 : (rawSample != null && rawSample !== '' ? Number(rawSample) : 0.02);
+      if (sampleRate > 0 && (forceOn || Math.random() < sampleRate)) {
+        const dbEnv = env as { DB?: D1Database };
+        if (dbEnv.DB) {
+          const { profileD1 } = await import('./utils/d1-profiler');
+          fenv = { ...(env as object), DB: profileD1(dbEnv.DB, new URL(request.url).pathname) };
+        }
+      }
+    } catch { /* 프로파일 배선 실패 — 원본 env 로 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
-    return app.fetch(request, env, ctx);
+    return app.fetch(request, fenv, ctx);
   },
   scheduled: handleCronScheduled,
 };

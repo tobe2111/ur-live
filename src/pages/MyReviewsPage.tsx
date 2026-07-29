@@ -31,10 +31,10 @@ export default function MyReviewsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D]">
       <SEO title={t('myReviews.seoTitle')} description={t('myReviews.seoDesc')} url="/my-reviews" noindex />
 
-      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-4 h-[52px]">
           <button
             onClick={() => navigate(-1)}
@@ -64,8 +64,8 @@ export default function MyReviewsPage() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] py-16 text-center">
-            <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
+          <div className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] py-16 text-center">
+            <div className="w-20 h-20 bg-gray-50 dark:bg-[#1A2334] rounded-full flex items-center justify-center mx-auto mb-5">
               <MessageSquare className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
             </div>
             <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">{t('myReviews.empty')}</h2>
@@ -84,7 +84,7 @@ export default function MyReviewsPage() {
               return items.map((item: any, idx: number) => (
                 <article
                   key={`${order.id}-${idx}`}
-                  className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4"
+                  className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-4"
                 >
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
                     {t('myReviews.purchaseDate', { date: new Date(order.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) })}

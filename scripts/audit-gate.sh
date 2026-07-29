@@ -61,9 +61,14 @@ if domain money; then
   run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
   run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
+  run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
+  run "크롤 재시도 쿨다운"                node scripts/check-crawl-cooldown.mjs -s
+  run "접힌 리드(중복병합) 누수"          node scripts/check-merged-lead-filter.mjs
+  run "수집 러너 스케줄 누락"            node scripts/check-collector-cron.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
   run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
+  run "인계 문서 동기화"                 node scripts/check-current-work-sync.mjs
 fi
 
 if domain schema; then
@@ -91,6 +96,7 @@ if domain ui; then
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
+  run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
 fi
 
 if domain structure; then
@@ -106,6 +112,9 @@ if domain deploy; then
   run "Hono 라우터 패턴(405)"            bash scripts/check-router-patterns.sh
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
+  run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
+  run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
+  run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

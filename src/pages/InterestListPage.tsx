@@ -26,11 +26,11 @@ export default function InterestListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
       <SEO title={t('interestList.seoTitle', { defaultValue: '관심 맛집 - 유어딜' })} description={t('interestList.seoDesc', { defaultValue: '관심 등록한 맛집과 공동구매 알림 목록' })} url="/interest-list" />
 
       {/* 헤더 */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#020202]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -44,7 +44,7 @@ export default function InterestListPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-50 dark:bg-[#121212] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2A2A2A]">
+              <div key={i} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2A3446]">
                 <div className="h-4 bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
@@ -71,7 +71,7 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-gray-50 dark:bg-[#121212] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2A2A2A]"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#1A2334] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2A3446]"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">

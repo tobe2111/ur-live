@@ -870,6 +870,45 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
+    "relink": {
+      "title": "更换了 Kakao 账号？",
+      "desc": "卖家账号不会丢失。用新 Kakao 登录后，确认原卖家邮箱和密码即可继续使用。",
+      "step1": "用新 Kakao 登录",
+      "step2": "验证原卖家账号",
+      "kakaoBtn": "Kakao 登录",
+      "emailPh": "卖家邮箱",
+      "pwPh": "密码",
+      "submit": "重新绑定并打开面板",
+      "busy": "绑定中…",
+      "fail": "重新绑定失败",
+      "needKakao": "请先用新 Kakao 账号登录。",
+      "noPw": "仅用 Kakao 注册没有密码？身份确认后我们为您绑定。",
+      "channel": "通过 Kakao 频道咨询",
+      "entry": "换了 Kakao？重新绑定 →"
+    },
+    "scanDevices": {
+      "title": "员工/备用机扫码链接",
+      "issue": "生成链接",
+      "desc": "员工手机或店内备用机无需老板登录即可扫码的专用链接。用该设备扫二维码或发送链接。丢失可立即撤销。",
+      "oneTime": "仅此一次显示（无法再次查看）",
+      "copyLink": "复制链接",
+      "lastUsed": "最近使用",
+      "neverUsed": "尚未使用",
+      "revoke": "撤销",
+      "revoked": "已撤销",
+      "revokeConfirm": "撤销该设备链接？该设备将无法再扫码。",
+      "revokeFail": "撤销失败",
+      "issueFail": "生成失败"
+    },
+    "simple": {
+      "scan": "扫码",
+      "settlement": "结算",
+      "myDeals": "我的优惠",
+      "fullMenu": "全部菜单",
+      "scanSub": "核销顾客券",
+      "settlementSub": "销售与结算",
+      "myDealsSub": "含待审批"
+    },
     "dashboard": "仪表盘",
     "dashboardSubtitle": "卖家仪表盘 — 销售 / 订单 / 直播状态",
     "products": {
@@ -911,7 +950,7 @@
       "kindPdfGuide": "📚 Info guide",
       "kindPdfGuideDesc": "Guide, know-how documents",
       "contentUrlLabel": "Content URL",
-      "contentUrlPlaceholder": "https://r2.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
+      "contentUrlPlaceholder": "https://media.ur-team.com/digital/abc.pdf or YouTube/Vimeo link",
       "contentUrlHint": "⚠️ R2 or external CDN URL. Signed URL auto-issued for buyers only.",
       "contentFormatLabel": "File format",
       "contentFormatSelect": "Select",
@@ -2336,7 +2375,10 @@
       "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
       "promoLabel": "推荐佣金 (%)",
       "promoRecommend": "建议 {{min}}~{{max}}%",
-      "promoHint": "网红通过推荐链接售出时，您按此比例支付佣金。请与折扣一起作为一个营销预算来设计。没有推荐销售就不产生费用。"
+      "promoHint": "网红通过推荐链接售出时，您按此比例支付佣金。请与折扣一起作为一个营销预算来设计。没有推荐销售就不产生费用。",
+      "photoGuideTitle": "💡 食物·服务效果照片比招牌·菜单照片更能带动销量",
+      "photoGuideGood": "✅ 推荐示例: 招牌菜特写 · 服务效果(前/后) · 实际提供的样子",
+      "photoGuideBad": "❌ 请避免: 招牌 · 菜单板 · 建筑外观照片"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2416,7 +2458,8 @@
       "agencyDelegation": "门店委托",
       "promoSpend": "促销支出",
       "influencerDeals": "达人合作",
-      "experienceCampaigns": "体验活动"
+      "experienceCampaigns": "体验活动",
+      "myLinkshop": "我的链接商店"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -3439,7 +3482,7 @@
       "k013": "비공개로 변경됨",
       "k014": "발행됨",
       "k015": "변경 실패",
-      "k016": "글을 작성하고 docs.ur-team.com에 발행하세요",
+      "k016": "글을 작성하고 urdeal.kr/blog에 발행하세요",
       "k017": "작성된 글이 없습니다",
       "k018": "임시저장",
       "k019": "비공개로 변경",
@@ -4645,20 +4688,21 @@
     "tabGroupBuy": "使用券",
     "tabGifticon": "礼品券",
     "emptyGbTitle": "还没有领取的餐券",
-    "emptyGbDesc": "参与社区美食拼团\n预付餐券就会收集到这里",
-    "emptyGbCta": "去看拼团",
+    "emptyGbDesc": "以优惠价购买本地优惠券\n会存放在这里，到店即可使用",
+    "emptyGbCta": "去看看本地优惠券",
     "emptyGiftTitle": "还没有领取的兑换券",
     "emptyGiftDesc": "购买兑换券后会发送到手机\n也可以在这里集中查看",
     "emptyGiftCta": "去看兑换券",
-    "stepGb1": "参与\n拼团",
-    "stepGb2": "餐券\n入钱包",
-    "stepGb3": "门店\n出示二维码",
+    "stepGb1": "购买\n优惠券",
+    "stepGb2": "存入\n钱包",
+    "stepGb3": "到店出示\n二维码",
     "stepGift1": "购买\n兑换券",
     "stepGift2": "MMS\n发送",
     "stepGift3": "门店\n出示",
     "deal": "积分",
     "heroBalanceLabelGift": "持有礼券金额",
-    "loadFailed": "无法加载使用券"
+    "loadFailed": "无法加载使用券",
+    "totalCount": "共{{count}}张"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
@@ -5204,6 +5248,7 @@
     "catExchange": "[TODO:zh] 교환/환불",
     "catMember": "[TODO:zh] 회원",
     "catLive": "[TODO:zh] 라이브",
+    "catService": "服务",
     "q1": "[TODO:zh] 주문을 취소하고 싶어요",
     "a1": "[TODO:zh] 배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 판매자와 협의가 필요합니다.",
     "q2": "[TODO:zh] 결제가 완료되지 않았어요",
@@ -5220,10 +5265,10 @@
     "a7": "[TODO:zh] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
     "q8": "[TODO:zh] 개인정보를 수정하고 싶어요",
     "a8": "[TODO:zh] 마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.",
-    "q9": "[TODO:zh] 라이브 방송은 어떻게 시청하나요?",
-    "a9": "[TODO:zh] 메인 페이지에서 진행 중인 라이브 방송을 확인하고 클릭하시면 바로 시청하실 수 있습니다.",
-    "q10": "[TODO:zh] 라이브 중 상품을 구매하려면?",
-    "a10": "[TODO:zh] 라이브 화면 하단에 표시되는 상품 카드를 클릭하여 장바구니에 담거나 바로 구매하실 수 있습니다."
+    "q9": "UrDeal是什么服务？",
+    "a9": "UrDeal(urdeal.kr)是本地生活电商平台：以优惠价购买附近商家的使用券，到店出示二维码即可使用。提供餐饮·美容·住宿使用券、礼品兑换券、附近优惠地图和个人链接小店。",
+    "q10": "使用券如何使用？",
+    "a10": "购买的使用券可在我的页面 > 我的使用券中查看，到店出示二维码或PIN即可使用。兑换券（礼品券）支付后立即发放。"
   },
   "introduce": {
     "navStart": "开始",

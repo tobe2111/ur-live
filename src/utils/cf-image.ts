@@ -16,7 +16,7 @@
  *   <img src={cfImage(p.image_url, { width: 400, format: 'auto' })} ... />
  *
  * 주의:
- *   - 같은 도메인 (live.ur-team.com) 이미지만 동작 (외부 URL X)
+ *   - 같은 도메인 (urdeal.kr) 이미지만 동작 (외부 URL X)
  *   - 외부 URL (i.ibb.co 등) 는 그대로 반환
  *   - SVG 는 변환 불가 — 그대로 반환
  */
@@ -30,7 +30,7 @@ interface ResizeOptions {
 }
 
 const SUPPORTED_HOSTS = new Set([
-  'live.ur-team.com',
+  'urdeal.kr',
   'ur-live.pages.dev',
 ])
 
@@ -137,7 +137,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
   //   리사이즈가 워커 서브요청 소스를 못 풀어 404 가 났음. 외부 이미지(Firebase 등)와 동일하게
   //   검증된 워커 프록시(/api/image/resize, cf.image fetch)로 경유 — 리사이즈가 비활성이어도 원본을
-  //   200 으로 반환(절대 404 안 남). live.ur-team.com/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
+  //   200 으로 반환(절대 404 안 남). urdeal.kr/ur-live.pages.dev 는 worker ALLOWED_HOSTS 포함.
   //   (ADD only — SUPPORTED_HOSTS/EXTERNAL_PROXY_HOSTS·Save-Data 동작 불변)
   // 🏁 2026-06-11 [LOADING_ADDITIVE] (사용자 승인 — R2 커스텀 도메인 media.ur-team.com 연결):
   //   prod 실측(diag): https://media.ur-team.com/<key> 200 image/jpeg + zone 리사이저 래핑 시
@@ -171,7 +171,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (isAbsolute) {
     try { host = new URL(src).hostname } catch { return src }
   } else {
-    host = 'live.ur-team.com'  // 상대 경로는 같은 도메인 가정
+    host = 'urdeal.kr'  // 상대 경로는 같은 도메인 가정
   }
 
   // 외부 도메인 (Firebase Storage 등) → worker proxy 경유
@@ -206,6 +206,20 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
+      // 🚑 2026-07-21 [UNLOCK_LOADING] (대표 신고 "네이버 사진 안 뜸 403" — 라이브 실측):
+      //   네이버 **블로그 CDN**(postfiles/mblogthumb/dthumb/blogfiles.pstatic.net)은 **우리 도메인
+      //   referer 요청만 403** 핫링크 차단(실측: no-referer→200, referer=urdeal.kr→403). cdn-cgi
+      //   리사이저는 페이지 referer 를 달고 네이버에 요청 → 403 → 사진 안 뜸. `onerror=redirect` 도
+      //   브라우저가 원본을 우리 도메인 referer 로 재요청 → 또 403. → 이 호스트들만 **워커 프록시**
+      //   (/api/image/resize)로 강제: 워커가 **referer 없이 서버측 fetch → 200**(폴백 경로). 엣지+R2
+      //   캐시로 반복 비용 0. 네이버 플레이스 CDN(ldb/shop/naverbooking-phinf)은 차단 안 해 cdn-cgi 유지.
+      // 2026-07-21 전수조사 보강: 블로그 CDN(실측 403) + shop/booking-phinf(미실측이나 핫링크 위험 —
+      //   워커 프록시는 안전하면 cdn-cgi 통과·막히면 no-referer 폴백이라 어느 쪽이든 안전). place CDN
+      //   (ldb-phinf)은 대표사진 출처라 제외(cdn-cgi 유지).
+      const HOTLINK_BLOCKED_HOSTS = ['postfiles.pstatic.net', 'mblogthumb-phinf.pstatic.net', 'dthumb-phinf.pstatic.net', 'blogfiles.pstatic.net', 'blogpfthumb-phinf.pstatic.net', 'shop-phinf.pstatic.net', 'naverbooking-phinf.pstatic.net']
+      if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
+        return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
+      }
       const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com']  // giftishow 2026-07-13 재실측 복원(onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
@@ -265,11 +279,21 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number): str
  * 사용: `<img onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} .../>`
  */
 export function cfImageOnError(img: HTMLImageElement | null | undefined, originalSrc?: string | null): void {
-  if (!img || img.dataset.cfFallback === '1') return
-  img.dataset.cfFallback = '1'
-  img.style.opacity = '1'
-  if (originalSrc && img.getAttribute('src') !== originalSrc) {
-    img.removeAttribute('srcset')
-    img.src = originalSrc
+  if (!img) return
+  // 1단계: cfImage 변환 실패 → 원본으로 1회 교체(리사이저 우회).
+  if (img.dataset.cfFallback !== '1' && img.dataset.cfFallback !== '2') {
+    img.dataset.cfFallback = '1'
+    img.style.opacity = '1'
+    if (originalSrc && img.getAttribute('src') !== originalSrc) {
+      img.removeAttribute('srcset')
+      img.src = originalSrc
+      return  // 원본 재시도 — 이것도 실패하면 onError 재발화 → 아래 2단계.
+    }
+  }
+  // 2단계 (2026-07-21 대표 "사진 깨지는 경우 처리"): 원본까지 죽음(404/삭제/핫링크차단) →
+  //   깨진 아이콘 박스 대신 **이미지 숨김**으로 부모(카테고리색/스켈레톤 배경)가 보이게. 무한루프 0.
+  if (img.dataset.cfFallback !== '2') {
+    img.dataset.cfFallback = '2'
+    img.style.visibility = 'hidden'
   }
 }

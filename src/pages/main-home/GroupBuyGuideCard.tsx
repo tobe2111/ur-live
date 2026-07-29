@@ -31,7 +31,7 @@ export default function GroupBuyGuideCard() {
   if (dismissed) return null
 
   return (
-    <div className="mx-4 mt-3 mb-1 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3">
+    <div className="mx-4 mt-3 mb-1 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A3446] p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="flex items-center gap-1.5 text-[12px] font-extrabold text-gray-900 dark:text-white">
           <Sparkles className="w-3.5 h-3.5" />
@@ -50,21 +50,21 @@ export default function GroupBuyGuideCard() {
       {/* 3-step horizontal flow */}
       <ol className="grid grid-cols-3 gap-2 text-center">
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-base mb-1">
             🛒
           </div>
           <p className="text-[10px] font-bold text-gray-900 dark:text-white">결제</p>
           <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 이용권 결제</p>
         </li>
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-base mb-1">
             💌
           </div>
           <p className="text-[10px] font-bold text-gray-900 dark:text-white">공유</p>
           <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">친구가 결제 시 자동 적립</p>
         </li>
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A2334] border border-gray-200 dark:border-[#2A3446] flex items-center justify-center text-base mb-1">
             💰
           </div>
           <p className="text-[10px] font-bold text-gray-900 dark:text-white">적립</p>

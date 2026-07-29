@@ -42,6 +42,19 @@ VITE_ENV_VARS_QUICK_COPY.txt
 ```
 → 워킹 트리에서는 `archive/secrets-redacted/` 로 격리 (코드 변경으로 처리). git history 정리는 BFG 별도 실행 필요.
 
+> 🚨 **2026-07-28 정정 — 이 "격리"는 실제로는 값이 지워지지 않았다.** 폴더 이름만 `secrets-redacted/`
+> 였을 뿐 **Firebase 서비스계정 개인키 원문이 그대로 남아 있었고**, 2026-07-28 전수 스캔 전까지
+> **HEAD 에 추적된 채 public 으로 노출**돼 있었다(3월~7월). 관련 19개 파일은 #798 에서 제거했고,
+> 재발 방지 가드 `scripts/check-secret-material.mjs` 를 신설(verify strict + audit-gate + pre-commit)했다.
+>
+> **아래 작업 순서 중 실제 완료 여부(2026-07-28 확인)**:
+> - ✅ 4·5 `JWT_SECRET`/`REFRESH_TOKEN_SECRET` — 2026-04-27 회전 완료(유출본 해시 ≠ 라이브 값, 실측)
+> - ✅ 2 Toss — 2026-04-27 `live sk/ck` 재발급 완료
+> - ❌ **1 Firebase 서비스계정 키 — 회전 기록 없음. 유효하다고 가정하고 GCP 콘솔에서 *삭제* 필요**
+>   (한국 서비스는 카카오 전용이므로 교체 없이 삭제로 끝날 가능성이 높다)
+> - ❌ Stripe 시크릿 — 회전 기록 없음(글로벌 미런칭이라 영향은 낮으나 폐기 권장)
+> - ⚠️ 파일 제거는 절반이다. git history·포크·스캐너 캐시에 남으므로 **회전만이 실제 조치**다.
+
 **노출된 값**:
 - `JWT_SECRET`
 - `REFRESH_TOKEN_SECRET`  

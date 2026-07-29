@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, ShieldCheck, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
+import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -25,6 +26,10 @@ import { queryKeys } from '@/hooks/queries/queryKeys'
 import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
+// 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): PC 우측 sticky 구매 박스 + 섹션 추출(파일크기 래칫).
+import DealPurchaseBox from './group-buy/DealPurchaseBox'
+import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
+import OtherDealsRow from './group-buy/OtherDealsRow'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -197,7 +202,7 @@ export default function GroupBuyDetailPage() {
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
       toast.error('잘못된 ID')
-      navigate('/group-buy')
+      navigate('/map') // 🧹 2026-07-20: /group-buy 는 홈 리다이렉트(죽은 경로) → 동네딜 지도로
       return
     }
     let cancelled = false
@@ -334,13 +339,14 @@ export default function GroupBuyDetailPage() {
   const isPrelaunch = !!detail?.prelaunch
   const buyable = isJoinable && !isPrelaunch
 
-  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + detail_images/image_urls(JSON) 병합·중복제거.
+  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
+  //   🖼️ 2026-07-20: products.images(PRODUCT_DETAIL_FIELDS 기포함 — 데모 시드 3~5장) 병합 추가.
   const galleryImages: string[] = (() => {
     if (!detail) return []
     const out: string[] = []
     if (detail.image_url) out.push(detail.image_url)
-    const extra = detail as { detail_images?: string | null; image_urls?: string | null }
-    for (const raw of [extra.image_urls, extra.detail_images]) {
+    const extra = detail as { detail_images?: string | null; image_urls?: string | null; images?: string | null }
+    for (const raw of [extra.images, extra.image_urls, extra.detail_images]) {
       if (!raw) continue
       try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
     }
@@ -396,6 +402,11 @@ export default function GroupBuyDetailPage() {
         const e = err as { response?: { data?: { error?: string; code?: string } } }
         const code = e?.response?.data?.code
         if (code === 'INSUFFICIENT_POINTS') {
+          // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
+          if (TOPUP_DISABLED) {
+            toast.error('딜이 부족해요. 딜은 친구 초대·링크샵 추천으로 모을 수 있어요.')
+            return
+          }
           const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
           if (charge) {
             localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -476,25 +487,25 @@ export default function GroupBuyDetailPage() {
   }
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/group-buy')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
       </div>
     )
   }
 
   return (
-    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100vh' }}>
+    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100dvh' }}>
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
           detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${unitPrice.toLocaleString('ko-KR')}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${detail.price.toLocaleString('ko-KR')}원`
+            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
         url={`/group-buy/${productId}`}
-        image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
+        image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
         type="product"
         jsonLd={[{
           '@context': 'https://schema.org',
@@ -505,7 +516,7 @@ export default function GroupBuyDetailPage() {
           brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
           offers: {
             '@type': 'Offer',
-            url: `https://live.ur-team.com/group-buy/${productId}`,
+            url: `https://urdeal.kr/group-buy/${productId}`,
             priceCurrency: 'KRW',
             price: unitPrice,
             availability: detail.group_buy_status === 'active' || detail.group_buy_status === 'achieved'
@@ -531,9 +542,9 @@ export default function GroupBuyDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://live.ur-team.com/' },
-            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://live.ur-team.com/group-buy' },
-            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://live.ur-team.com/group-buy/${productId}` },
+            { '@type': 'ListItem', position: 1, name: '홈', item: 'https://urdeal.kr/' },
+            { '@type': 'ListItem', position: 2, name: '공동구매', item: 'https://urdeal.kr/group-buy' },
+            { '@type': 'ListItem', position: 3, name: detail.name, item: `https://urdeal.kr/group-buy/${productId}` },
           ],
         }]}
       />
@@ -545,10 +556,12 @@ export default function GroupBuyDetailPage() {
 
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
+      {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): PC(lg+)는 전역 DesktopTopNav 가 상단 담당 → 이 플로팅 헤더는
+          모바일 전용(lg:hidden). 핀/공유는 lg 섹션 탭 우측에 별도 렌더. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:hidden ${
           headerSolid
-            ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
+            ? 'bg-white/90 dark:bg-[#0F151D]/95 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]'
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
@@ -558,7 +571,7 @@ export default function GroupBuyDetailPage() {
           <button
             onClick={() => navigate(-1)}
             className={`w-9 h-9 flex items-center justify-center rounded-full shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
             aria-label="뒤로가기"
           >
@@ -583,26 +596,32 @@ export default function GroupBuyDetailPage() {
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
             description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-            imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
+            imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
+            {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+              salePrice: detail.price,
+              discountRate: detail.current_discount_pct,
+              secondaryButtonText: '자세히 보기',
+            })}
             compact
             className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
-              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A1A1A]' : 'bg-black/25 backdrop-blur-sm'
+              headerSolid ? 'hover:bg-gray-100 dark:hover:bg-[#1A2334]' : 'bg-black/25 backdrop-blur-sm'
             }`}
           />
         </div>
       </header>
 
-      {/* 🖥️ 2026-07-16 (대표 — 동네딜 상세 PC 2단): lg+ 에서 좌 갤러리(sticky) + 우 본문 2단(1080).
-          🖼️ 2026-07-16 (대표 신고 — PC 이미지가 상단에 너무 붙음): lg 에서 상단 여백(pt-6) + 갤러리 카드화
-          (rounded + 헤더 높이만큼 sticky top). 모바일(<lg)은 갤러리→본문 세로 1열 + 몰입형 풀블리드 그대로. */}
-      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:max-w-[1080px] lg:mx-auto lg:items-start lg:pt-[72px]">
+      {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
+          이전 2단(좌 sticky 갤러리 | 우 본문)에서 그루폰 딜 상세 구조로 전환. 모바일(<lg)은 세로 1열 +
+          하단 고정 구매바 그대로(불변). */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-5">
+      <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
       {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
-      <div ref={heroRef} className="relative lg:sticky lg:top-[72px] lg:self-start lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#1A1A1A]" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2A3446]" style={{ background: 'var(--gbd-card)' }}>
         <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
           {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
-            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1A2334', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {!src && <CategoryEmoji cat={detail.category} />}
             </div>
           ))}
@@ -629,6 +648,37 @@ export default function GroupBuyDetailPage() {
       </div>
 
       <main id="gb-main" role="main">
+        {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
+        <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
+          {[
+            { id: 'gb-sec-info', label: '이용권 정보' },
+            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
+            { id: 'gb-sec-reviews', label: '리뷰' },
+          ].map((tab) => (
+            <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              {tab.label}
+            </button>
+          ))}
+          {/* 핀/공유 — 모바일 플로팅 헤더가 lg:hidden 이라 PC 는 여기서 제공 */}
+          <span className="ml-auto flex items-center gap-1 pb-1">
+            <PinButton productId={detail.id} price={detail.price} variant="detail-floating" className="!w-9 !h-9 shrink-0" />
+            <KakaoShareButton
+              title={`${detail.name} 공구 참여하기`}
+              description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
+              imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
+              link={shareLink}
+              buttonText="나도 참여하기"
+              {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
+                salePrice: detail.price,
+                discountRate: detail.current_discount_pct,
+                secondaryButtonText: '자세히 보기',
+              })}
+              compact
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-[#1A2334]"
+            />
+          </span>
+        </nav>
         {/* 추천 진입 배너 (?ref=) — 어트리뷰션 유지 */}
         {isInfluencerLanding && (
           <div style={{ margin: '14px 18px 0', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--gbd-ink)', color: 'var(--gbd-card)' }}>
@@ -742,9 +792,9 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 상품 안내 */}
-        <div style={{ padding: '22px 18px' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 안내</div>
+        {/* 상품 안내 — 🖥️ 2026-07-19 그루폰식 헤더('무엇을 기대하세요?') + 탭 앵커 */}
+        <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>무엇을 기대하세요?</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
             {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
               <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
@@ -755,43 +805,14 @@ export default function GroupBuyDetailPage() {
           {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
 
-        {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md) */}
-        {(() => {
-          const menuItems = ((detail as { menu?: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> }).menu) || []
-          if (!menuItems.length) return null
-          return (
-            <>
-              <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-              <div style={{ padding: '22px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
-                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>교환권으로 주문 가능</span>
-                </div>
-                <div style={{ marginTop: 8, borderBottom: '1px solid var(--gbd-line2)' }}>
-                  {menuItems.map((m, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '12px 0', borderTop: '1px solid var(--gbd-line2)' }}>
-                      <div style={{ width: 56, height: 56, borderRadius: 11, flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: m.image ? `url("${cfImage(m.image, { width: 120, format: 'auto' }) || m.image}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                          {m.hot && <span style={{ flex: '0 0 auto', padding: '2px 6px', borderRadius: 5, background: 'var(--gbd-danger-soft)', color: 'var(--gbd-danger)', fontSize: 10.5, fontWeight: 800 }}>인기</span>}
-                        </div>
-                        {m.desc && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.desc}</div>}
-                      </div>
-                      {m.price && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{m.price}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )
-        })()}
+        {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
+        <DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} />
 
         {/* 매장 위치 — RestaurantMiniMap(잠금 lazy) + 주소 카드 + 길찾기 */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
             <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div style={{ padding: '22px 18px' }}>
+            <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
                 <DeferUntilVisible minHeight={172}>
@@ -862,7 +883,7 @@ export default function GroupBuyDetailPage() {
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-        <div style={{ padding: '22px 18px' }}>
+        <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
               <ProductReviews productId={productId} limit={5} />
@@ -888,49 +909,45 @@ export default function GroupBuyDetailPage() {
 
         {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
         <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
-        {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
-        {otherDeals.length > 0 && (
-          <>
-            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div style={{ padding: '22px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이 셀러의 다른 공구</div>
-                {(detail.seller_handle || detail.seller_username) && <a href={detail.seller_handle ? `/u/${detail.seller_handle}` : `/profile/${detail.seller_username}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
-              </div>
-              <div className="noscroll" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity' }}>
-                {otherDeals.map((o) => {
-                  const pct = o.discount_pct || (o.original_price && o.original_price > o.price ? Math.round((1 - o.price / o.original_price) * 100) : 0)
-                  return (
-                    <a key={o.id} href={`/group-buy/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
-                      <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                        {pct > 0 && <span style={{ position: 'absolute', left: 8, top: 8, padding: '3px 7px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 11, fontWeight: 800 }}>{pct}%</span>}
-                      </div>
-                      <div style={{ marginTop: 9, fontSize: 13, fontWeight: 600, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
-                        <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
-                        {o.original_price && o.original_price > o.price && <span style={{ fontSize: 11.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
-                      </div>
-                    </a>
-                  )
-                })}
-              </div>
-            </div>
-          </>
-        )}
+        {/* 이 셀러의 다른 공구 — 가로 스크롤. 추출: OtherDealsRow(fetch/IO 게이팅은 여기 소유 — 불변) */}
+        <OtherDealsRow deals={otherDeals} sellerHandle={detail.seller_handle} sellerUsername={detail.seller_username} />
 
-        <div style={{ height: 112 }} />
+        <div className="lg:hidden" style={{ height: 112 }} />
       </main>
-      </div>{/* /lg 2단 grid */}
+      </div>{/* /좌측 콘텐츠 컬럼 */}
+
+      {/* 🖥️ 우측 sticky 구매 박스 — PC 전용(모바일은 하단 고정 구매바). 상태/핸들러 공유(controlled). */}
+      <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:self-start lg:pb-10">
+        <DealPurchaseBox
+          name={detail.name}
+          discountPct={detail.current_discount_pct || 0}
+          unitPrice={unitPrice}
+          refPrice={refPrice}
+          unitSaving={unitSaving}
+          totalSaving={totalSaving}
+          total={total}
+          quantity={quantity}
+          setQuantity={setQuantity}
+          maxQty={maxQty}
+          maxPerPerson={detail.max_per_person}
+          buyable={buyable}
+          isJoinable={isJoinable}
+          isPrelaunch={isPrelaunch}
+          joining={joining}
+          onBuy={handleJoin}
+          onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        />
+      </aside>
+      </div>{/* /lg 그루폰식 그리드 */}
 
       {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
-            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속.
-            🖥️ 2026-07-16 (PC 2단): lg+ 에서 footer 는 1080 투명 포지셔너, 실제 바 박스는 우측 컬럼(정보 쪽)에 정렬. */}
+            fixed (BottomNav z-9999 위). gbd 자손이라 var() 상속.
+            🖥️ 2026-07-19 (그루폰식): PC(lg+)는 우측 sticky DealPurchaseBox 가 담당 → 이 바는 모바일 전용. */}
       <footer
-        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[1080px] lg:pointer-events-none"
+        className="fixed bottom-0 inset-x-0 z-[10002] lg:hidden"
         role="contentinfo" aria-label="결제 영역"
       >
       <div
-        className="lg:pointer-events-auto lg:ml-auto lg:w-[calc(50%-20px)] lg:rounded-t-2xl"
         style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
