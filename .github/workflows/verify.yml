@@ -181,6 +181,13 @@ jobs:
         run: node scripts/check-guard-registry.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-29: 같은 경로에 라우트를 두 번 달면 먼저 선언된 것만 렌더되고 나머지는
+      #   **에러 없이 조용히 죽는다**. 실측: `/influencer` 가 두 번 등록돼(대시보드 + B2B 영입 랜딩)
+      #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
+      - name: 라우트 경로 중복 차단 (strict)
+        run: node scripts/check-duplicate-routes.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

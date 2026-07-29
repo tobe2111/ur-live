@@ -28,9 +28,25 @@ PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 �
 2. **`CLAUDE.md` 의 "npm 정상화(2026-07-28 실측)" 는 이 컨테이너에 해당하지 않는다.** 여기선 `npm ping` 이
    403 이다. 컨테이너마다 다르므로 **"문서가 된다고 했으니 된다"로 넘기지 말고 매번 확인**할 것.
 
+### 이어서 (같은 날, 대표 "모두 진행하고 가장 이상적으로")
+
+- **번들 gzip 예산 교정 완료** — CI 를 계측기로 써서(이 컨테이너는 npm 403) 실측 **2.707 MB** 확보 →
+  임계 **2.9 MB**(헤드룸 ~7%) 확정. ⚠️ 교정 전 내 추정치 "2.2~2.5MB" 는 **틀렸다** — 그대로 켰으면 전 PR 이 red.
+  임계값은 지어내지 말고 CI "Bundle size report" 로그에서 읽을 것.
+- **`/influencer` 중복 라우트 수리** — 대시보드와 B2B 영입 랜딩이 같은 경로에 등록돼 랜딩이 **두 달간 도달 불가**였다.
+  대표 확정: 랜딩이 `/influencer`, 대시보드는 `/influencer/dashboard`. 소비자 인바운드 3곳 함께 이동.
+  신규 가드 `check-duplicate-routes`.
+- **대표 대기 2건은 손대지 않는 것이 맞았다** — 실측으로 판정이 뒤집혔다:
+  · `CLASSIFY_RULES_VERSION` 3→4 는 **#837 이 이미 하고 있다**(공동구매 규칙과 함께). 내가 또 올리면
+    두 세션이 같은 번호를 잡는 사고 — #834 가드가 잡으려던 바로 그것. **#837 머지가 곧 이 항목의 처리다.**
+  · `#445` 약관 "두 벌" 은 **법적 선택이 아니었다.** 같은 v1.0·같은 시행일·같은 12개 조문이고,
+    main 쪽이 나중에 다듬어진 판이다(제4조 커미션 24개월 기산점 `귀속 등록일` → **`첫 판매 확정일`**).
+    #445 를 그대로 머지하면 그 개선이 **되돌아간다** → PR 의 `src/shared/legal/*` 약관 파일은 버리고
+    main 의 `src/pages/terms/` SSOT 를 쓰면 된다.
+
 ### 다음 세션 첫 액션
 1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
-2. **번들 gzip 예산 되살리기(ⓐ, 유일한 미완)** — `npm ping` 이 되는 환경에서:
+2. ~~번들 gzip 예산 되살리기(ⓐ)~~ — **같은 날 완료**(실측 2.707MB → 임계 2.9). 아래는 방법 기록용 — `npm ping` 이 되는 환경에서:
    `npm ci && npm run build:client && node scripts/check-bundle-size.mjs --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['js']['total_gzip_bytes'])"`
    → `check-bundle-size.mjs` 의 `f.gzip` 을 critical-path 처럼 `zlib.gzipSync` 로 직접 계산하도록 바꾸고,
    **실측값 기준으로** `totalGzipMB` 를 재설정한다. ⚠️ 측정 없이 그냥 켜면 실제 총량이 1.5MB 를 넘어
