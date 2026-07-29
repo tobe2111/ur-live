@@ -483,10 +483,12 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
   const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget, pcap)
-  // 🧯 마감 기록은 **낱개로 fail-soft** — 하나가 실패하면 뒤의 커서·통계·리스해제까지 통째로 날아간다
-  //   (오늘 실측한 유실의 연쇄 경로가 정확히 이것). 예산 예약으로 실패 확률은 줄였지만, 실패해도
-  //   나머지는 남아야 다음 회차가 이어받는다.
-  if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap)).catch(() => undefined)
+  // 🧯 마감 기록은 **낱개로 fail-soft** — 하나가 실패하면 뒤의 커서·통계·리스해제까지 통째로 날아간다.
+  //   ⬇️ 2026-07-29 재수리: 학습상한 쓰기를 **아래 커서/통계 batch 에 합쳤다**(별도 write 1개 제거).
+  //   이유: 10:00 틱이 리드 52건을 저장하고도 커서·스탬프를 못 남겼다. 이 인보케이션의 실제 서브리퀘스트는
+  //   `budget.left` 가 세는 발굴 fetch 만이 아니라 D1 18개 + 라우트레벨까지인데, 그 초과분이 **전부 꼬리에**
+  //   몰려 있다. 꼬리를 1개 줄이면 그만큼 커서 전진이 살아남는다(커서가 안 밀리면 다음 회차가 같은 키워드를
+  //   다시 돈다 — 관측이 아니라 진행의 문제다). D1 batch 는 N문장이 1 서브리퀘스트다.
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
     await DB.batch(Array.from(kwStats.entries()).map(([id, v]) => starvedIds.has(id)
@@ -543,11 +545,6 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     }
   }
 
-  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
-  //   재판정은 **규칙 버전이 오른 회차에만 1회** 돈다(그 외엔 조회 1번으로 즉시 반환) — 규칙을 고쳐도
-  //   `''` 로 확정된 기존 행이 안 고쳐지던 구멍을 막는다. 상수만 올리고 이 호출이 없으면 아무 일도 안 난다.
-  try { await recheckBlankRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 재시도(멱등) */ }
-  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
 
   // 두 커서 각각 전진(우선/일반 풀 독립 순환) — 처리된 **연속 접두 길이**만큼만 전진(멤버십 카운트 아님).
   //   ⚠️ ytPicks(성과가중)가 커서 앞선 키워드를 처리하면 filter 카운트는 그 '중간' 처리를 세어 갭을 건너뛴다
@@ -575,7 +572,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     ['ads_autocollect_cursor_pri', String(nextPriCursor)],
     [CURSOR_KEY, String(nextCursor)],
     [STATS_KEY, JSON.stringify(stats)],
+    // 🩹 학습 상한도 같은 batch 로(위 주석) — 자가교정 상태와 커서는 같은 회차의 결과라 운명을 함께해도 된다.
+    ...(nextCap != null ? [[subreqCapKey('influencer'), String(nextCap)] as [string, string]] : []),
   ]).catch(() => undefined) // 🧯 위와 동일 — 실패해도 리스 해제까지는 간다(TTL 5분 백스톱에 기대지 않게)
+  // 📍 지역 백필 — DB 전용(외부 호출 0)이라 예산·수확에 영향 없음. fail-soft.
+  //   재판정은 **규칙 버전이 오른 회차에만 1회** 돈다(그 외엔 조회 1번으로 즉시 반환).
+  //   ⬇️ 2026-07-29 재수리: **커서/통계 저장 뒤로 옮겼다.** 그전엔 이 *선택적* 백필 2개가 결정적인
+  //   커서 저장보다 **앞**에 있어, 꼬리에서 예산이 끊기면 백필은 되고 **커서는 안 밀리는** 최악의 순서였다
+  //   (커서가 안 밀리면 다음 회차가 같은 키워드를 다시 돈다 — 10:00 틱이 정확히 그 상태였다).
+  //   백필은 커서와 달리 **다음 틱이 그대로 이어받는다**(멱등·커서리스) — 그래서 뒤가 맞다.
+  try { await recheckBlankRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 재시도(멱등) */ }
+  try { await backfillRegions(DB, POOL_ACCOUNT_ID) } catch { /* 다음 틱이 이어받음 */ }
   await releaseLease() // 🔒 상태 기록 후 해제(다음 실행이 최신 카운터/커서를 읽게) — 크래시 시 TTL 5분이 백스톱
   try { await maybeAlertCollectHealth(env, DB, { diag, saved, quotaHit }) } catch { /* fail-soft */ }
   return stats
