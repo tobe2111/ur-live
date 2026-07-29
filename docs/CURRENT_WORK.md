@@ -19,6 +19,26 @@
 - ❌ **"도매몰은 PG 미사용"(CLAUDE.md) → 전면 참 아님.** `wholesale.routes.ts:1775` 에 Toss confirm 존재
   (판매사 B2B용). 그 서술은 `wholesale-plus` 기준.
 
+### 🔴 추가 판정 — `mall_id` 격리 축 (§8-B)
+**지시서 전제 하나가 성립하지 않았다**: `mall_id IS NULL` 인 행은 **사실상 없다** —
+`ALTER … ADD COLUMN mall_id INTEGER **DEFAULT 1**`(repair-schema:949, sellers 947)이라
+**기존 소비자 상품 전부가 이미 `mall_id=1`** 이고 **몰 1 = 유통스타트**다. `IS NULL` 판별자는 아무것도 못 거른다.
+- 💡 **구조적 사실**: 오늘 본진↔도매를 갈라주는 건 `mall_id` 가 아니라 **`is_supply_product`**(불변식 ①).
+  운영자 몰 상품은 `is_supply_product=0` 이라 **그 보호막 밖으로 나온다** — 새 축이 위험한 근본 이유.
+- (a) 본진에서 몰 조건 누락 → 운영자 상품이 홈·browse·검색·**sitemap(SEO 색인)**·링크샵·피드캐시로 샌다
+- (b) 몰 조회에서 누락 → 기본값 1 때문에 **유어딜 본진 카탈로그가 그 몰에 통째로** 뜬다
+- 판별자 권고: 본진 = 기존 ① AND `COALESCE(mall_id,1)=1` / 몰 = `mall_id=:id`(신규 몰 **id ≥ 3** 보장)
+- (c) 환원 🟡**부분**: 실측 — 소비자 디렉터리에서 `FROM products` 읽는 파일 **37개** vs 불변식 ①~③ 검사 **6개**.
+  ⇒ **행위 테스트(발행 SQL 캡처, 정확성) + 래칫(baseline JSON, 새 파일 자동 검출)** 2축으로 나눌 것.
+  열거식(④ 방식)을 반복하지 말 것. 래칫이 보장하는 건 "새로 생긴 게 조용히 빠지지 않음"이지 "모든 경로가 옳음"이 아님(주석 명시).
+
+### 📝 문구 정정 (다음 세션 오판 방지)
+*"도매몰은 PG 미사용"*(`wholesale-plus.routes.ts:4` 주석)은 **그 파일 맥락이지 도매 전체가 아니다.**
+도매에도 Toss 경로 존재(`wholesale.routes.ts:1775`). 소비자가 못 타는 진짜 이유는 PG 부재가 아니라
+`seller_token` 필수 · `distributor_seller_id` 스코프 · `wholesale_orders`(B2B) 다.
+→ CLAUDE.md 서비스분리 절 + `pickup-groupbuy-wholesale-link.md` §B.2 양쪽에 정정 기재.
+⚠️ **소스 주석 자체는 미수정**(조사 단계 코드 무접촉) — 착수 커밋에서 고칠 것.
+
 ### 판정 요약
 셀프개설 🟡최소변경(몰=데이터행, 신청→자동프로비저닝만 없음) · 자체상품등록 🔴안됨(레일 교체 필요) ·
 소비자결제 🟢됨(소비자 레일) · gb_mode 🟢됨(K-V라 몰과 직교) · 픽업 🟢됨(스키마 0) ·
