@@ -143,6 +143,12 @@ jobs:
         run: node scripts/check-no-firebase-auth.mjs
         continue-on-error: false
 
+      # 💓 2026-07-28: cron 하트비트 커버리지. safeCron 은 '예외가 날 때만' 기록했는데 실제로 아픈
+      #   정지는 예외가 없다(미발화/게이트 OFF/내부 .catch 로 삼킴 — #793 이 그 사례).
+      - name: cron 하트비트 커버리지 (strict)
+        run: node scripts/check-cron-heartbeat.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
