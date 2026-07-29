@@ -406,17 +406,16 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     //   실제로 작동해 적중률 0%→45%(ok 5/11)가 됐지만, 학습된 실효 상한이 **29**(= 워커 호출당 한도가
     //   명목 1,000이 아니라 훨씬 낮고 D1 쿼리까지 나눠 씀) → **라운드당 11건**이 천장. 2라운드면 22건/시간인데
     //   백로그가 12만+ 이라 의미 있는 속도가 안 나온다. 라운드를 늘리는 것만이 정직한 증속(각 라운드가
-    //   새 예산을 받으므로). SELF fetch 자체는 이 cron 인보케이션의 서브요청 1개씩이라 20라운드도 안전.
-    const enrichRounds = Math.min(20, Math.max(1, parseInt((env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS || '', 10) || 8))
-    ctx.waitUntil((async () => {
-      try {
-        if (env.SELF?.fetch) {
-          for (let i = 0; i < enrichRounds; i++) {
-            await env.SELF.fetch(new Request('https://ur-ads/__ads/enrich-company', { method: 'POST' }))
-          }
-        } else { const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect'); await enrichHeldLeads(env) }
-      } catch { /* fail-soft — 다음 틱 재시도 */ }
-    })())
+    //   새 예산을 받으므로).
+    //   🔁 2026-07-29: 라운드 루프를 **드라이버 인보케이션**으로 옮겼다(`/__ads/enrich-company-driver`).
+    //     여기서 돌리면 라운드 수만큼 부모의 서브리퀘스트를 먹는데, 부모는 이미 11개 레인 kick 으로
+    //     천장 근처다 — 07:00 실측에서 인플루언서 수집이 **실패 기록조차 못 남겼다.** 드라이버로 넘기면
+    //     부모 비용은 라운드 수와 무관하게 kick 1개(+하트비트)로 고정된다. 근거는 그 라우트 주석 참조.
+    //     덤으로 이 레인도 드디어 하트비트가 찍힌다(그전엔 생 waitUntil 이라 조용히 멈춰도 몰랐다).
+    kick('/__ads/enrich-company-driver', async () => {
+      const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
+      return enrichHeldLeads(env) // SELF 미바인딩(로컬) — 1라운드만
+    }, 'enrich-company')
     // 🔗 원부 이메일 이식 — 매시간. **외부 API 0·D1 전용**이라 크롤 한도와 무관하고, 크롤 한 번 없이
     //   타깃(대행사·전문서비스)에 이메일/홈페이지를 붙인다. 2026-07-28 까지 **크론이 아예 없어서**
     //   어드민이 버튼을 누를 때만 돌았다 — 자동수집이 영구적으로 돌아야 한다는 원칙의 누락분.
