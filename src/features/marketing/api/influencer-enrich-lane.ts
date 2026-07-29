@@ -57,6 +57,7 @@ export interface InfluencerEnrichSnapshot {
   elapsed_ms: number
   total_measured?: number     // 누적 — "얼마나 진행됐나"를 라운드 하나가 아니라 전체로 본다
   total_contacts?: number
+  total_emails?: number       // 📧 그중 이메일만 누적(아웃리치 가능 리드의 실제 증가율)
   crash?: string              // 💥 예외 원문(무증거 종료 방지 — 파트너풀 레인과 같은 철학)
   crash_at?: string
 }
@@ -161,7 +162,7 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
 
   let bio = 0
   let yt = 0
-  let naver: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
+  let naver: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   let limitHit = false
   let crash: string | undefined
   const note = (err: unknown) => {
@@ -196,6 +197,8 @@ export async function runInfluencerEnrich(env: Env): Promise<InfluencerEnrichSna
     yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
     total_measured: (prev?.total_measured || 0) + naver.measured + yt,
     total_contacts: (prev?.total_contacts || 0) + naver.contacts + bio,
+    // 📧 누적 이메일 — 측정 스프린트가 '쓸 수 있는' 리드를 만드는지 판정하는 값(연락처 누적과 나란히 본다).
+    total_emails: (prev?.total_emails || 0) + (naver.emails || 0),
     ...(crash ? { crash, crash_at: nowStamp() } : {}),
   }
   await writeSetting(DB, INFLUENCER_ENRICH_SNAPSHOT_KEY, JSON.stringify(snap)).catch(() => undefined)
