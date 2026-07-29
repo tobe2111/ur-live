@@ -336,7 +336,13 @@ deadline_hit: true · elapsed_ms 20,296   ← 시간에 잘렸다
   스팸신고→rejected) + 콜드 전용 제동(1일 200 · 회당 30 · 반송 8% 회로차단 · 30일 쿨다운 · force 없음).
   ⇒ **"접촉을 시작할지"는 더 이상 판단 사항이 아니다.**
 
-**🔴 접촉 0의 진짜 원인 — `RESEND_API_KEY` 미설정 (판단이 아니라 설정)**
+> 🚫 **아래 두 블록(🔴·🟠 1번·4번)은 2026-07-29 대표 방향 확정으로 폐기됐다.**
+> **이메일 아웃리치는 하지 않는다.** `RESEND_API_KEY` 는 넣을 필요가 없고, 초안 프리필도 켜지 않는다.
+> 유어애즈는 **① DB 수집 · ② 카테고리화 · ③ 필터링 · ④ 정보 최대 수집** 네 축만 한다.
+> 사실 기록으로 남겨두되(왜 접촉이 0이었는지의 근거), **대기 항목으로 다시 옮겨 적지 말 것.**
+> → `docs/handoff/2026-07-29-influencer-db-throughput.md`
+
+**🔴 (폐기) 접촉 0의 진짜 원인 — `RESEND_API_KEY` 미설정 (판단이 아니라 설정)**
 안전 프로브(빈 `ids` POST → 아무것도 발송되지 않음)로 확정:
 ```
 POST /api/admin/ads/influencer-pool/send-cold {"ids":[]}
@@ -347,9 +353,10 @@ POST /api/admin/ads/influencer-pool/send-cold {"ids":[]}
 ⚠️ 다음 세션은 **이 프로브부터** 다시 돌려 키가 생겼는지 확인할 것(응답 문구가 바뀐다).
 
 **🟠 대표 액션으로 남은 것**
-1. `RESEND_API_KEY` (Cloudflare → ur-live → Variables) — 이것만으로 접촉이 열린다.
+1. ~~`RESEND_API_KEY` (Cloudflare → ur-live → Variables) — 이것만으로 접촉이 열린다.~~ 🚫 폐기(위 참조).
 2. **CF API 토큰 재발급** — 실측 `Invalid API Token`. 최소 스코프(D1 Read + Workers Scripts Edit) 권장.
    이게 되면 위 1번 확인·`CACHE_KV` 바인딩·게이트 값 확인을 세션이 직접 할 수 있다.
 3. **staging 실결제 6건**(P1·P3·P4·P5·P6·P8) — `docs/STAGING_CHECKLIST.md`. 실제 카드 필요.
    S1~S4 와 P2·P7 은 게이트 OFF + 쇼핑탭 숨김(`SHOPPING_TAB_HIDDEN=true`)이라 재오픈 전까지 대기 가능.
-4. (선택) `ADS_OUTREACH_PREFILL_ENABLED` — 큐 상위 초안 프리필. **AI 비용 발생**이라 1번 이후 판단.
+4. ~~(선택) `ADS_OUTREACH_PREFILL_ENABLED` — 큐 상위 초안 프리필. **AI 비용 발생**이라 1번 이후 판단.~~
+   🚫 폐기(위 참조) — 아웃리치를 안 하므로 초안도 필요 없다.
