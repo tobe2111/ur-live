@@ -3,6 +3,10 @@
 > **대표 지시 2026-07-29**: *"`DATA_ENCRYPTION_KEY` 는 별도 보안 트랙 — 평문 토큰 암호화 이행 계획을 따로 제시할 것."*
 >
 > cron 점화 계획(`cron-staged-ignition-plan-2026-07.md`)과 **의존관계 없음.** 독립 진행 가능.
+>
+> **2026-07-29 대표 승인 — 1~5단계 그대로 진행.** 대표 인계 순서상 **④번(마지막)**이다
+> (① Trigger Events 원문 → ② 예치금 숫자 → ③ 버킷 → **④ 키**). 키 등록 통보가 오면 세션이
+> `env-readiness` 로 확인하고 4단계(암호문 비율 관측)를 별도 PR 로 낸다.
 > 실측 근거: `GET /api/health/env-readiness` → `security_missing: ["DATA_ENCRYPTION_KEY", "INTERNAL_API_TOKEN"]`
 
 ---

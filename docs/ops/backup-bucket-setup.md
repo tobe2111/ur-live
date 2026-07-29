@@ -5,6 +5,10 @@
 >
 > 실측 근거: `GET /api/health/env-readiness` → `infra_missing: ["BACKUP_BUCKET", ...]` (2026-07-29 production).
 > 관련: `docs/design/cron-staged-ignition-plan-2026-07.md` §3 1단계의 **선행조건**.
+>
+> **2026-07-29 대표 승인 — 절차 그대로 진행.** 대표 인계 순서상 **③번**이다
+> (① Trigger Events 원문 → ② 예치금 숫자 → **③ 버킷** → ④ 키). 바인딩 완료 통보가 오면 세션이
+> `env-readiness` 로 확인하고, **트리거 추가는 1단계에서 별도로** 한다(바인딩 ≠ 백업 동작).
 
 ---
 

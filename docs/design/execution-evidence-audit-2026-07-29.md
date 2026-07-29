@@ -127,7 +127,7 @@ Uploaded ur-live (42.41 sec)
 | # | 단계 | 실행 증거 | 판정 | 막고 있는 것 |
 |---|---|---|---|---|
 | 1 | **매장 온보딩** | `sellers` 10건 · 최근 승인 2026-06-25 · `pending_sellers: 0` · 온보딩 헬스 7/8 | 🟢 있음 | (AI OCR 바인딩만 선택 미설정) |
-| 2 | **공구 개설** | `GET /api/gb-marketplace` → **`gb_engine: false`** · `platform_settings` 153키에 `gb_engine_enabled` **부재** · 클라 `GB_ENGINE_ENABLED = false` | 🔴 **없음** | **게이트가 서버·클라 양쪽 OFF** |
+| 2 | **공구 개설·노출** | `GET /api/gb-marketplace` → **`gb_engine: false`** · `platform_settings` 153키에 `gb_engine_enabled` **부재** · 클라 `GB_ENGINE_ENABLED = false` | 🔴 **없음** | **표시 게이트가 서버·클라 양쪽 OFF**(결제 단가는 게이트 밖 — §3.2) |
 | 3 | **소비자 결제 — 공구가** | main 에서 `resolveGbPricing` 소비처 = `gb-marketplace.routes.ts`(**표시**) 뿐 | 🔴 **없음** | PR #844 미머지 + staging(X1) |
 | 4 | **소비자 결제 — 일반** | 마지막 `DONE` **2026-03-31** · 마지막 `PAID` 2026-05-24(수단 `deal_points`) · `orders_24h: 0` · 최신 주문 #88 = `FAILED` | 🔴 없음(최근) | 트래픽 0 — **카드 결제 성공 기록은 4개월 전** |
 | 5 | **QR 사용확인(픽업)** | `voucher_transactions` **총 1건** · `used_at` 비어 있음 · 소각 **0건** | 🔴 **없음** | 픽업 분기 자체가 세션 ④ 미착수 |
@@ -149,11 +149,33 @@ platform_settings 153키  →  gb_engine_enabled 키 자체가 없음
 src/shared/feature-flags.ts:73  →  export const GB_ENGINE_ENABLED = false
 ```
 
-⇒ **#844 를 머지하고 staging 을 통과해도, 이 게이트가 OFF 인 한 공구가는 어디에도 적용되지 않는다.**
 게다가 `gb_engine_enabled` 는 `OPS_GATES`(게이트 현황판 명부)에 **등재돼 있지 않아** 화면에서도 안 보인다.
 
 > 이건 #856 이 O5 를 *"🟢 엔진 있음"* 으로 판정한 것에 대한 정정이다. 엔진은 있지만 **꺼져 있고**,
 > 켜는 절차가 어느 체크리스트에도 없다.
+
+### 3.2 ⚠️ 위 판정의 정정 — 게이트는 **노출**만 막는다 (2026-07-29 재확인)
+
+처음 이 문서는 *"게이트가 OFF 인 한 공구가는 **어디에도** 적용되지 않는다"* 고 적었다. **틀렸다.**
+#844 가 결제에 붙인 `loadGbOrderPricing`(`worker/utils/gb-order-pricing.ts`)은 `gb_engine_enabled` 를
+**조회하지 않는다** — 세션 데이터(`product_supply_meta` 의 `gb_mode`/`gb_price`)만 읽는다.
+
+| 경로 | 게이트 | 게이트 OFF 일 때 |
+|---|---|---|
+| 마켓플레이스 목록 (`gb-marketplace.routes`) | `gb_engine_enabled` | 빈 목록 |
+| 소비자 공구 UI 표면 | 클라 `GB_ENGINE_ENABLED` | 미노출 |
+| **결제 단가** (`order.routes` → `loadGbOrderPricing`) | **없음** | **세션이 열려 있으면 공구가로 결제** |
+
+⇒ 정확한 서술은 **"게이트 2겹은 표시 경로 전용이고, 결제 범위를 정하는 것은 세션 데이터"** 다.
+PR #872(프로덕션 실결제 절차서)가 *"이 배선에는 env 플래그가 없다 — 범위를 정하는 건 데이터"* 라고 한 것이 맞다.
+
+**왜 틀렸나**: `resolveGbPricing` 의 *소비처*를 세었을 때 마켓플레이스 라우트가 게이트 뒤에 있는 것을 보고
+**같은 함수를 쓰는 결제 경로도 같은 게이트 뒤일 것으로 추정**했다. #844 는 그 함수를 게이트 없는 새 헬퍼로
+감싸 호출한다. ⇒ **"같은 함수를 쓴다"가 "같은 게이트 뒤다"를 뜻하지 않는다.** 호출 체인마다 확인할 것.
+
+> 🟢 방향은 안전하다 — `validateGbSession`/`resolveGbPricing` 이 **가격을 낮추기만** 한다(과금 위험 0).
+> 다만 *"게이트가 꺼져 있으니 아무 일도 안 일어난다"* 는 전제로 세션을 열어 두면 **그 상품은 결제에서
+> 공구가가 붙는다.** 범위 통제는 세션 개폐로 한다.
 
 ---
 
