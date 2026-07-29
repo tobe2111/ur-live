@@ -15,7 +15,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { ensureQualityColumns, looksLikeBrandChannel, scoreLead } from './influencer-quality'
+import { declinesOutreach, ensureQualityColumns, looksLikeBrandChannel, scoreLead } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
@@ -112,8 +112,8 @@ async function saveLeadsBatch(
   //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
   //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, lead_score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, lead_score, opted_out)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
   //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
   //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
@@ -122,7 +122,8 @@ async function saveLeadsBatch(
       subscriber_count = CASE WHEN ? > 0 THEN ? ELSE subscriber_count END,
       view_count = CASE WHEN ? > 0 THEN ? ELSE view_count END,
       description = CASE WHEN ? != '' THEN ? ELSE description END,
-      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END
+      last_post_at = CASE WHEN ? IS NOT NULL AND (last_post_at IS NULL OR last_post_at < ?) THEN ? ELSE last_post_at END,
+      opted_out = CASE WHEN ? = 1 THEN 1 ELSE opted_out END
     WHERE account_id = ? AND platform = ? AND channel_id = ?`
   let saved = 0
   const CHUNK = 50
@@ -132,6 +133,9 @@ async function saveLeadsBatch(
       const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
       const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
       const brand = looksLikeBrandChannel(l.name, l.description) ? 1 : 0 // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+      // 🚫 "제안은 정중히 사양합니다" — 거부를 써 둔 사람은 저장은 하되 발송 큐에서 뺀다(거부 의사 존중).
+      //   ⚠️ 여기의 description 은 **원문**이다(DB 저장은 500자 절단) — 잘리기 전에 판정해야 뒤쪽 문구를 놓치지 않는다.
+      const optOut = declinesOutreach(l.name, l.description) ? 1 : 0
       /**
        * 🏅 **저장 시점 즉시 채점**(2026-07-29) — 신규 리드가 큐 뒤에 갇히던 것.
        *   `lead_score` 를 안 넣으면 NULL 인데, 발송 큐와 점수 정렬은 `(lead_score IS NULL) ASC` 로
@@ -144,7 +148,7 @@ async function saveLeadsBatch(
       const { score } = scoreLead({
         platform: l.platform, subscriber_count: l.subscriber_count, email: l.email,
         instagram: l.instagram, links: l.links, category: cat, is_brand: brand,
-        url: l.url, last_post_at: l.last_post_at ?? null,
+        url: l.url, last_post_at: l.last_post_at ?? null, opted_out: optOut,
       })
       return DB.prepare(insSql).bind(
         accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
@@ -155,6 +159,7 @@ async function saveLeadsBatch(
         l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
         catSrc,
         score,
+        optOut,
       )
     })
     const rs = await DB.batch(insStmts).catch(() => null)
@@ -167,6 +172,9 @@ async function saveLeadsBatch(
         return DB.prepare(backfillSql).bind(
           l.email, l.instagram, l.tiktok, l.links, l.subscriber_count, l.subscriber_count,
           l.view_count, l.view_count, d, d, lp, lp, lp,
+          // 🚫 재조우 시에도 거부 문구를 확인한다 — 나중에 소개글에 써 넣은 사람을 놓치지 않기 위해.
+          //   0 이면 기존 값 유지(sticky) — 한 번 선 태그를 소개글 편집·절단으로 되돌리지 않는다.
+          declinesOutreach(l.name, l.description) ? 1 : 0,
           accountId, l.platform, l.channel_id,
         )
       })).catch(() => null)

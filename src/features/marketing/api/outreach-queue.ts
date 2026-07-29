@@ -8,7 +8,7 @@
  *   선별 규칙(2026-07-29 라이브 실측 기준 — `send-queue` 라우트 주석에서 이관):
  *     ① 실제로 열 수 있는 채널 보유 — email · instagram · **스킴 있는 url**(쪽지/댓글 경로)
  *     ② 아직 접촉 안 함(status='new' AND contacted_at IS NULL) — 재접촉 사고 방지
- *     ③ 거절·바운스·스팸신고·브랜드 공식계정·카페(커뮤니티) 제외
+ *     ③ 거절·바운스·스팸신고·브랜드 공식계정·**제안 거부 명시(opted_out)**·카페(커뮤니티) 제외
  *   정렬(④ 점수 높은 순, 미채점 후순위)은 `SEND_QUEUE_ORDER_BY` 로 함께 고정 — 프리필이 다른 순서로
  *   훑으면 사람이 실제로 먼저 만나는 상단이 아니라 엉뚱한 구간에 초안이 쌓인다.
  *
@@ -56,6 +56,9 @@ export function buildSendQueueWhere(
     "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
     "COALESCE(email_status,'') NOT IN ('bounced','complained')",
     'COALESCE(is_brand, 0) = 0',
+    // 🚫 소개글에 제안 거부를 명시한 사람 제외 — 노이즈(낭비)와 달리 이건 **거부 의사 무시**라
+    //   보내면 안 된다. 태깅은 `declinesOutreach`(저장 시점 + 야간 품질 패스).
+    'COALESCE(opted_out, 0) = 0',
   ]
   const binds: (string | number)[] = [poolAccountId]
   // 🧹 이름 기반 노이즈 제외 — 목록 화면(`hideNoise=1`)과 **같은 기준**(위 상수 주석 참조).
