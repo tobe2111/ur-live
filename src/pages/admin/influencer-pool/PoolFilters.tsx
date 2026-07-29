@@ -15,6 +15,10 @@ export interface PoolFiltersProps {
   category: string; setCategory: (v: string) => void
   /** 📍 활동 지역 — 수집 키워드 접두에서 캡처된 값(거주지 아님). 지역×업종으로 매칭 후보를 좁힌다. */
   region: string; setRegion: (v: string) => void
+  /** 🏷️ 분류 신뢰도 — `content`(본문·소개글로 확인) vs `keyword`(발굴 키워드 상속 = 미확인). */
+  catSource: string; setCatSource: (v: string) => void
+  /** 📏 측정 여부 — 아직 한 번도 안 잰 리드는 연락처·본문분류가 통째로 비어 있다. */
+  measured: string; setMeasured: (v: string) => void
   tier: string; setTier: (v: string) => void
   sort: string; setSort: (v: string) => void
   hasEmail: boolean; setHasEmail: (v: boolean) => void
@@ -51,6 +55,19 @@ export default function PoolFilters(p: PoolFiltersProps) {
       <select value={p.region} onChange={e => p.setRegion(e.target.value)} className={SEL} title="수집 키워드에서 캡처된 활동 지역 — 거주지가 아니라 '그 지역을 다루는 콘텐츠'라는 신호">
         <option value="">📍 전체 지역</option>
         {REGION_TOKENS.map(r => <option key={r} value={r}>{r}</option>)}
+      </select>
+      {/* 🏷️ 분류 신뢰도 — 카테고리 값 자체는 이미 보이는데 **그게 믿을 만한 값인지**를 화면에서 못 갈랐다.
+          실측 84%가 키워드 상속("강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다) → 품질 작업의 대상 집합. */}
+      <select value={p.catSource} onChange={e => p.setCatSource(e.target.value)} className={SEL} title="본문·소개글로 확인된 분류인지, 발굴 키워드에서 물려받은 값인지">
+        <option value="">🏷️ 분류 신뢰도 전체</option>
+        <option value="content">✅ 본문 확인됨</option>
+        <option value="keyword">⚠️ 키워드 상속(미확인)</option>
+      </select>
+      {/* 📏 측정 여부 — 미측정 리드는 연락처·활동성·본문분류가 통째로 비어 있다(전체의 91%). */}
+      <select value={p.measured} onChange={e => p.setMeasured(e.target.value)} className={SEL} title="한 번이라도 활동성 측정(RSS·홈)을 한 적이 있는지 — 미측정이면 연락처·본문분류가 비어 있다">
+        <option value="">📏 측정 여부 전체</option>
+        <option value="1">✅ 측정됨</option>
+        <option value="0">⏳ 미측정(대기열)</option>
       </select>
       <select value={p.tier} onChange={e => p.setTier(e.target.value)} className={SEL} title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
         <option value="">전체 규모</option>

@@ -73,6 +73,21 @@ app.get('/influencer-pool', async (c) => {
   //   `''`(확인했지만 지역 없음)와 NULL(미확인)은 필터 대상 아님 — 실제 지역 토큰일 때만.
   const region = (c.req.query('region') || '').trim()
   if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
+  // 🏷️ **분류 신뢰도** 필터(2026-07-29) — 대표 4축 ②의 작업 도구.
+  //   `category_source` 는 이미 저장·CSV 에 나가는데 **쿼리할 수가 없었다.** 실측상 네이버 블로거의
+  //   84%가 `keyword`(발굴 키워드 상속: "강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다)인데,
+  //   화면에서 그 84%를 골라낼 방법이 없으니 품질 작업의 대상 자체를 특정할 수 없었다.
+  //   `content` = 본문·소개글로 확인된 것(신뢰) · `keyword` = 상속(미확인, 재측정 대상).
+  const catSource = (c.req.query('catSource') || '').trim()
+  if (catSource === 'content') where.push("category_source = 'content'")
+  else if (catSource === 'keyword') where.push("category IS NOT NULL AND COALESCE(category_source, 'keyword') <> 'content'")
+  // 📏 **측정 여부** 필터(2026-07-29) — 대표 4축 ④.
+  //   `perf_checked_at IS NULL` = 아직 한 번도 안 잰 리드(= 연락처·본문분류가 통째로 비어 있는 집합).
+  //   실측 91%가 여기 있는데 목록에서 분리할 수 없었다 — 백로그가 줄고 있는지조차 화면에서 못 봤다.
+  //   ⚠️ `account_id`(+platform) 뒤에 오므로 `idx_ad_inf_leads_perf` 를 그대로 탄다(풀스캔 아님).
+  const measured = (c.req.query('measured') || '').trim()
+  if (measured === '0') where.push('perf_checked_at IS NULL')
+  else if (measured === '1') where.push('perf_checked_at IS NOT NULL')
   if (c.req.query('hasContact') === '1') where.push('(email IS NOT NULL OR instagram IS NOT NULL OR tiktok IS NOT NULL OR links IS NOT NULL)')
   if (c.req.query('hasEmail') === '1') where.push('email IS NOT NULL')      // 아웃리치 리스트용(이메일 보유만)
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
@@ -132,7 +147,7 @@ app.get('/influencer-pool', async (c) => {
   // 현재 필터의 전체 건수(페이지네이션 UI "X / Y" + 더보기 판단) — 같은 where/binds 재사용.
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE ${whereSql}`)
     .bind(...binds).first<{ n: number }>().catch(() => null)
-  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source, region
+  const rows = await c.env.DB.prepare(`SELECT id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, status, memo, category, source_keyword, collected_at, contacted_at, follow_up_at, contact_channel, outreach_draft, source, consented_at, recent_avg_views, recent_avg_comments, recent_posts_30d, email_status, opened_at, replied_at, channel_published_at, median_long_views, shorts_ratio, is_brand, lead_score, last_post_at, category_source, region, perf_checked_at
     FROM ad_influencer_leads WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(...binds, limit, offset).all().catch(() => null)
   return c.json({ success: true, leads: rows?.results || [], total: totalRow?.n ?? 0, offset, limit })
