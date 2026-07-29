@@ -84,6 +84,35 @@ export function ytCooldownMs(k: YtPickKeyword): number {
   return Math.min(YT_PICK_COOLDOWN_MS + streak * BARREN_COOLDOWN_STEP_MS, BARREN_COOLDOWN_MAX_MS)
 }
 
+/**
+ * 🧭 **탐색 순번** — 한 번도 안 돈 키워드 중 누구를 먼저 보낼 것인가.
+ *
+ * ## 왜 FIFO 가 틀렸나 (2026-07-29 라이브 실측)
+ * 예전엔 `sort(a.id - b.id)`, 즉 **들어온 순서**였다. 그 결과:
+ * ```
+ *   미실행 키워드 703개 · 그중 자동확장(해시태그) 557개
+ *   대표가 오늘 07:00 시드한 '공동구매' 41개 → 큐 순번 582~622위
+ *   탐색 슬롯은 라운드당 1개 · 오늘 실행된 키워드는 전체 30개
+ *   ⇒ 첫 공동구매 키워드 차례까지 대략 **75일**
+ * ```
+ * 즉 **대표가 방금 지정한 전략 축이, 기계가 만든 해시태그 557개 뒤에 줄을 섰다.**
+ * 이건 우선순위 문제가 아니라 *줄 세우는 기준*이 없던 것이다 — `PRIORITY_CATEGORIES`(+50)는
+ * 이미 돌아본 키워드(`cooled`)의 점수에만 쓰이고, 미실행 큐는 아무 기준 없이 id 순이었다.
+ *
+ * ## 기준
+ * ① **사람이 고른 것 먼저**(`seed`/`manual`) — 자동확장은 기계의 추측이고, 시드는 대표의 축이다.
+ * ② 같은 등급이면 **우선 카테고리 먼저**. ③ 그 다음에야 id(들어온 순서).
+ *
+ * ⚠️ 이것이 **못 고치는 것**: 탐색 슬롯 수(라운드당 1)는 그대로다. 41개를 다 돌려면 여전히
+ *    41라운드(현 속도로 ~5일)가 걸린다. 슬롯을 늘리는 건 성과 키워드의 몫을 깎는 일이라
+ *    별도 판단이며, 지금 병목은 *순서*지 슬롯 수가 아니었다(75일 → 다음 라운드).
+ */
+export function exploreRank(k: YtPickKeyword, priorityCats: string[] = PRIORITY_CATEGORIES): number {
+  const curated = (k.source || '') === 'auto' ? 1 : 0   // source 미상은 사람 것으로 본다(보수적)
+  const prio = k.category && priorityCats.includes(k.category) ? 0 : 1
+  return curated * 2 + prio
+}
+
 /** 성과 가중 YT 키워드 선택(순수 — 테스트 가능). 탐색 슬롯 1개(미실행 키워드) + 나머지는 성과순(쿨다운 준수). */
 export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, priorityCats: string[] = PRIORITY_CATEGORIES): YtPickKeyword[] {
   if (n <= 0 || !kws.length) return []
@@ -94,7 +123,9 @@ export function pickYtKeywords(kws: YtPickKeyword[], n: number, nowMs: number, p
   const score = (k: YtPickKeyword) => (k.last_saved || 0) * 3 + Math.min(k.saved_total || 0, 100)
     + (k.category && priorityCats.includes(k.category) ? 50 : 0) - Math.max(0, k.barren_streak || 0) * 25
     - yieldPenalty(k)
-  const neverRun = kws.filter(k => !k.last_run_at).sort((a, b) => a.id - b.id)
+  // 🧭 미실행 큐는 **사람이 고른 것 → 우선 카테고리 → 들어온 순서**(위 exploreRank 의 실측 근거).
+  const neverRun = kws.filter(k => !k.last_run_at)
+    .sort((a, b) => exploreRank(a, priorityCats) - exploreRank(b, priorityCats) || a.id - b.id)
   const cooled = kws.filter(k => { const t = ranAt(k); return Number.isFinite(t) && nowMs - t >= ytCooldownMs(k) })
     .sort((a, b) => score(b) - score(a) || ranAt(a) - ranAt(b))
   const picks: YtPickKeyword[] = []; const seen = new Set<number>()
