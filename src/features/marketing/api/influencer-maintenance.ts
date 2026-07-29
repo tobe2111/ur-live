@@ -12,6 +12,7 @@ import { runQualityPass } from './influencer-quality'
 import { acquireLease, releaseLease, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { budgetedDb, newOpBudget, type OpBudget } from './maintenance-budget'
+import { healNaverHandles } from './influencer-handle-heal'
 
 const POOL = 0
 
@@ -193,8 +194,10 @@ export async function runNightlyMaintenance(env: Env): Promise<Record<string, un
 //   `.catch(() => null)` 이라 **마지막 결과 기록조차 실패** → 어드민엔 "아무것도 안 돎"으로만 보였다.
 //   ⇒ ① 단계당 1 인보케이션(fresh 예산) ② 예산 래퍼로 소진 시 안전 중단 ③ 커서로 다음 회차 이어받기
 //      ④ **결과 스탬프는 예산 밖에서 항상 기록**(무음 정지 구조적 불가).
-export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality'
-export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality']
+export type MaintPhase = 'merge' | 'reextract' | 'reclassify' | 'quality' | 'handle'
+// 🩹 'handle' = 손상 네이버 핸들 복구(2026-07-28 신설). 이 단계가 끝나기 전까지 블로거 보강 레인의
+//    큐 앞머리는 측정 불가 행으로 막혀 있다 — 정비 순환에서 가장 먼저 값을 내는 단계다.
+export const MAINT_PHASES: MaintPhase[] = ['merge', 'reextract', 'reclassify', 'quality', 'handle']
 export const isMaintPhase = (v: unknown): v is MaintPhase => MAINT_PHASES.includes(v as MaintPhase)
 
 /** 단계 실행 lease TTL — 단계 하나는 짧다(예산 상한이 있으므로). 전체 파이프라인 TTL 과 별개. */
@@ -224,6 +227,7 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
     if (phase === 'merge') out.merge = await mergeDuplicatePool(bdb, { groupCap: 150 })
     else if (phase === 'reextract') out.reextract = await reextractPoolContacts(bdb, { budget })
     else if (phase === 'reclassify') out.reclassify = await runReclassifyPool(bdb, { budget })
+    else if (phase === 'handle') out.handle = await healNaverHandles(bdb, { budget })
     else out.quality = await runQualityPass(bdb, { budget })
   } catch (e) {
     out[`${phase}_error`] = (e as Error)?.message || 'fail'

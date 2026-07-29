@@ -98,10 +98,9 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
   //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
   let gate = env.ADS_AUTO_COLLECT_ENABLED === 'true'
-  // 📊 2026-07-29: 시트 미러 게이트도 함께 읽는다. health 는 이미 `sheets_sync` 를 돌려주는데 여기서
-  //   `auto_collect` 만 꺼내 쓰고 있었다 → 미러가 멈췄을 때 **게이트가 꺼진 것인지 실행이 실패한 것인지**
-  //   화면에서 구분할 수 없었다(실측: 스탬프가 48시간째 `ok:true` 인 채 07-27 에 정지, crash 도 없음 =
-  //   러너가 아예 진입하지 않았다는 뜻인데 원인 후보 두 개를 못 가림). 조치 주체가 정반대인 두 원인이다.
+  // 📊 시트 미러 게이트도 같은 health 응답에서 가져온다(추가 왕복 0). 이게 없으면 어드민이 "34시간째
+  //   멈춰 있어요 — 매시간 도는 작업입니다"를 **꺼져 있을 때도** 띄운다(2026-07-28: 실제로 그랬다).
+  //   '고장'과 '꺼짐'은 다음 행동이 정반대라 반드시 구분돼야 한다.
   let sheetsGate: boolean | null = null
   try {
     if (env.ADS?.fetch) {
@@ -114,7 +113,7 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   return {
     stats: { ...(agg || {}), ...tail },
     gate,
-    sheets_gate: sheetsGate,
+    sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,
     category_funnel: catFunnel?.results || [],
   }

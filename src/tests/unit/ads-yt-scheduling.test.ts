@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickYtKeywords, ytQuotaDayKey, YT_SEARCH_BUDGET_DEFAULT, type YtPickKeyword } from '@/features/marketing/api/influencer-auto-collect'
+import { pickYtKeywords, ytQuotaDayKey, ytCooldownMs, BARREN_COOLDOWN_MAX_MS, YT_SEARCH_BUDGET_DEFAULT, type YtPickKeyword } from '@/features/marketing/api/influencer-auto-collect'
 
 /**
  * 🎯 2026-07-21 YT 검색 슬롯 성과 가중 선택 + 쿼터 하루 경계 잠금.
@@ -44,6 +44,39 @@ describe('pickYtKeywords — 성과 가중 + 탐색 보장', () => {
   it('n=0 / 빈 풀 → 빈 배열', () => {
     expect(pickYtKeywords([], 4, NOW)).toEqual([])
     expect(pickYtKeywords([kw(1)], 0, NOW)).toEqual([])
+  })
+})
+
+/**
+ * 🌵 2026-07-29 고갈 키워드 억제 — 라이브 실측 `found 5 → saved 0` 인데 쿼터는 39/90 만 소진.
+ *   원인: 누적 성과(`saved_total`)가 큰 옛 성공 키워드가 점수 상위를 지키며 **이미 수확한 채널을 재방문**.
+ *   기존 은퇴 조건은 `saved_total = 0` 이라 이 부류를 구조적으로 못 잡는다.
+ */
+describe('고갈(barren) 키워드 — 누적 성과가 커도 연속 무수확이면 물러난다', () => {
+  it('연속 무수확 키워드는 쿨다운이 길어져 같은 시점에 다시 안 뽑힌다', () => {
+    // 둘 다 12시간 전 실행. 고갈(streak 3 → 쿨다운 24h)은 아직 못 나오고, 멀쩡한 쪽이 뽑힌다.
+    const barren = kw(1, { saved_total: 100, last_saved: 0, barren_streak: 3, last_run_at: hoursAgo(12) })
+    const fresh = kw(2, { saved_total: 10, last_saved: 2, last_run_at: hoursAgo(12) })
+    const picks = pickYtKeywords([barren, fresh], 1, NOW)
+    expect(picks[0].id).toBe(2)
+  })
+
+  it('쿨다운은 무한정 늘지 않는다 — 상한(4일) 지나면 다시 기회를 받는다(키워드는 영구히 죽지 않는다)', () => {
+    expect(ytCooldownMs({ id: 1, keyword: 'k', category: null, barren_streak: 999 })).toBe(BARREN_COOLDOWN_MAX_MS)
+    const veryOld = kw(1, { saved_total: 100, barren_streak: 999, last_run_at: hoursAgo(24 * 5) })
+    expect(pickYtKeywords([veryOld], 1, NOW).map(k => k.id)).toEqual([1])
+  })
+
+  it('한 명이라도 건지면(streak=0) 즉시 우선순위를 회복한다', () => {
+    const recovered = kw(1, { saved_total: 100, last_saved: 5, barren_streak: 0 })
+    const other = kw(2, { saved_total: 20, last_saved: 1 })
+    expect(pickYtKeywords([recovered, other], 1, NOW)[0].id).toBe(1)
+  })
+
+  it('고갈 페널티가 누적 성과 가중을 실제로 이긴다 — 아니면 옛 성공 키워드가 슬롯을 영원히 점유한다', () => {
+    const stale = kw(1, { saved_total: 100, last_saved: 0, barren_streak: 5, last_run_at: hoursAgo(24 * 7) })
+    const modest = kw(2, { saved_total: 0, last_saved: 0, last_run_at: hoursAgo(24 * 7) })
+    expect(pickYtKeywords([stale, modest], 1, NOW)[0].id).toBe(2)
   })
 })
 

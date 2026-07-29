@@ -22,6 +22,8 @@ export interface MaintenanceRecord {
   //   paused=true 는 **정상**(커서로 다음 회차가 이어받음) — 이게 안 보이면 "왜 조금만 처리됐지?"를 오진하게 된다.
   phase?: string; ops?: number; cap?: number; paused?: boolean; limit_hit?: boolean
   naver?: { measured?: number; contacts?: number } // 📝 야간 블로거 스윕(활동성·프로필 연락처)
+  // 🩹 손상 핸들 복구 — 이 단계가 끝나기 전엔 블로거 보강 큐 앞머리가 측정 불가 행으로 막힌다.
+  handle?: { scanned?: number; fixed?: number; unfixable?: number; reopened?: number; done?: boolean }
   [k: string]: unknown
 }
 
@@ -41,6 +43,7 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   if (m.quality) parts.push(`품질채점 ${formatNumber(m.quality.scanned || 0)}${m.quality.branded ? ` · 브랜드태깅 +${formatNumber(m.quality.branded)}` : ''}`)
   add('카테고리재보정', m.rescan?.changed); add('라이브재조회', m.refetch?.processed)
   if (m.naver?.measured) parts.push(`블로거측정 ${formatNumber(m.naver.measured)}${m.naver.contacts ? `(연락처 +${formatNumber(m.naver.contacts)})` : ''}`)
+  if (m.handle?.fixed) parts.push(`🩹 핸들복구 ${formatNumber(m.handle.fixed)}${m.handle.reopened ? `(재측정 대기로 ${formatNumber(m.handle.reopened)} 복귀)` : ''}`)
   for (const k of Object.keys(m)) if (k.endsWith('_error')) err.push(k.replace('_error', ''))
   // 🧮 예산 상태 — 매시간 한 단계씩 순환하므로 "이번 회차에 얼마나 썼고 왜 멈췄는지"가 보여야 한다.
   if (typeof m.ops === 'number' && m.cap) parts.push(`연산 ${m.ops}/${m.cap}${m.paused ? ' · 예산소진(다음 회차 이어서)' : ''}`)
@@ -54,17 +57,19 @@ export interface EnrichLaneRecord {
   bio?: number
   yt?: number
   yt_units?: { used?: number; total?: number; day?: string }
-  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number }
+  naver?: { tried?: number; measured?: number; contacts?: number; failed?: number; selected?: number; skipped?: number; healed?: number }
   spent?: number; budget_total?: number
   limit_hit?: boolean; deadline_hit?: boolean; elapsed_ms?: number
   total_measured?: number; total_contacts?: number
   crash?: string; crash_at?: string
 }
 
-export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
+export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGate, maintenance, maintenanceRescan, maintainRunning, enrichLane, nbUnmeasured, naverBlogTotal }: {
   run: RunStats | null
-  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number } | null
-  /** 📊 ur-ads 워커 env 의 `ADS_SHEETS_SYNC_ENABLED` 실값(null=조회 실패). 멈춤의 조치 주체를 가른다. */
+  sheetsSync: { ok: boolean; at?: string; error?: string | null; rows?: number | null; subreq?: number; trigger?: string } | null
+  /** 🕘 cron 회차 전용 마지막 시각 — 수동 실행이 덮어쓰는 sheetsSync 로는 "자동으로 돈 적 있나"를 못 답한다. */
+  sheetsCron?: { at?: string; ok?: boolean } | null
+  /** 🚦 ur-ads env 의 시트 동기화 게이트 실값. null=알 수 없음 — 모를 때는 단정하지 않는다. */
   sheetsGate?: boolean | null
   maintenance?: MaintenanceRecord | null
   maintenanceRescan?: MaintenanceRecord | null
@@ -95,15 +100,27 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintena
       {sheetsSync && !sheetsSync.ok ? (
         <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
       ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
-        <div className="mb-2 mt-1 text-[11px] text-amber-600">
-          📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
-          {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''})
-          {/* 🔎 2026-07-29: 멈춤을 보여주는 것만으로는 **조치 주체**가 안 갈렸다 — 게이트가 꺼진 것(대표가 켜야 함)과
-              러너가 실패한 것(내가 고쳐야 함)은 정반대다. ur-ads 워커 env 의 실값을 그대로 표시한다. */}
-          {sheetsGate === false
-            ? ' — ⛔ 원인 확정: ur-ads 워커의 ADS_SHEETS_SYNC_ENABLED 가 꺼져 있어요. 켜야 매시간 자동으로 돕니다.'
-            : ' — 매시간 도는 작업입니다. 정비 도구에서 수동 동기화로 원인이 기록됩니다.'}
-        </div>
+        // 🚦 '꺼짐'과 '고장'을 나눠 말한다 — 다음 행동이 정반대다(env 를 켠다 vs 원인을 캔다).
+        //    2026-07-28: 게이트를 모른 채 "매시간 도는 작업입니다"라고 단정해, 꺼져 있을 때도 고장으로 읽혔다.
+        sheetsGate === false ? (
+          <div className="mb-2 mt-1 text-[11px] text-gray-500">
+            📊 구글시트 동기화가 <b>꺼져 있습니다</b>(ur-ads <code>ADS_SHEETS_SYNC_ENABLED</code>) — 마지막 {fmtKST(sheetsSync.at)}
+            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}. 고장이 아니라 설정입니다. 필요하면 정비 도구에서 수동 동기화하세요.
+          </div>
+        ) : (
+          <div className="mb-2 mt-1 text-[11px] text-amber-600">
+            📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
+            {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}
+            {sheetsSync.trigger ? ` · ${sheetsSync.trigger === 'cron' ? '자동' : sheetsSync.trigger === 'manual' ? '수동 실행' : '출처 미상'}` : ''})
+            {/* 🔎 cron 기록 유무가 '고장'과 '한 번도 안 돎'을 가른다 — 마지막 스탬프는 수동 실행이 덮어쓴다. */}
+            {sheetsGate === true
+              ? (sheetsCron?.at
+                ? ` — 게이트는 켜져 있고 자동 실행 기록도 있습니다(마지막 자동 ${fmtKST(sheetsCron.at)}) — 실행이 중간에 죽고 있는 것입니다.`
+                : ' — 게이트는 켜져 있는데 자동 실행 기록이 아예 없습니다(cron 이 이 잡에 도달하지 못하는 것).')
+              : ' — 매시간 도는 작업입니다(게이트 상태 확인 불가).'}
+            {' '}정비 도구에서 수동 동기화로 원인이 기록됩니다.
+          </div>
+        )
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
@@ -152,6 +169,11 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsGate, maintena
       ) : null}
       {enrichLane && (enrichLane.naver?.tried || 0) >= 5 && !enrichLane.naver?.measured ? (
         <div className="mb-2 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+      ) : null}
+      {/* 🩹 "뽑았는데 한 건도 시도 안 함" — 2026-07-28 에 실제로 이 상태로 멈춰 있었고, 스냅샷에 이 구분이
+          없어서 원인을 찾는 데 라이브 행을 직접 조회해야 했다. 이제 한 줄로 보인다. */}
+      {enrichLane && (enrichLane.naver?.selected || 0) > 0 && !(enrichLane.naver?.tried || 0) ? (
+        <div className="mb-2 text-[11px] text-amber-600">🩹 블로거 후보 {enrichLane.naver?.selected}건을 뽑았지만 전부 건너뜀(핸들 복구 불가 {enrichLane.naver?.skipped || 0}건) — 정비의 &apos;핸들복구&apos; 단계가 도는지 확인하세요.</div>
       ) : null}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}

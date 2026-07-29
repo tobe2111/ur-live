@@ -205,11 +205,13 @@ app.post('/__ads/reclassify-company', async (c) => {
 // 🏛️ 공공데이터 수집·스윕 수동 트리거 — 별 모듈로 추출(2026-07-28, god 파일 래칫). 경로/동작 불변.
 app.route('/', publicDataRoutes)
 
-// 📊 인플루언서 풀 → 구글시트 수동 동기화 — 메인 어드민이 서비스바인딩으로만 호출(외부 도달 불가).
+// 📊 인플루언서 풀 → 구글시트 동기화 — 메인 어드민(수동 버튼)과 아래 cron 이 **같은 라우트**를 쓴다.
+//   ⚠️ 그래서 `?by=cron` 으로 출처를 구분해 스탬프에 남긴다 — 이게 없어서 "마지막 동기화 07-27"이
+//   'cron 고장'인지 '사람이 한 번 누른 것'인지 갈리지 않아 41시간을 오진했다(sheets-sync.ts 주석 참조).
 app.post('/__ads/sheets-sync', async (c) => {
   try {
     const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-    const r = await syncInfluencerPoolToSheets(c.env)
+    const r = await syncInfluencerPoolToSheets(c.env, c.req.query('by') === 'cron' ? 'cron' : 'manual')
     return c.json(r, r.ok ? 200 : 400)
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
@@ -270,14 +272,41 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   인보케이션 한도를 넘어 늦게 실행되는 트랙(YT 검색·저장)이 중간에 죽음. 각 트랙을 SELF 서비스바인딩으로
   //   **자체 인보케이션**(fresh 한도)에 격리 — 야간 정비(18/19시)와 동일 패턴. SELF 미바인딩이면 직접 실행
   //   폴백(로컬 안전). 실패는 fail-soft(매시간 cron 이라 다음 틱 재시도).
+  // 💓🚨 2026-07-28: ur-ads 는 **실패를 어디에도 남기지 않았다** — 아래 catch 들이 전부 조용히 삼켜
+  //   cron_failures·어드민 벨에 한 건도 도달하지 않았다(메인 워커의 safeCron 과 달리 래퍼가 없었다).
+  //   게다가 실행 기록도 없어 "안 돌았다"조차 알 수 없었다 — 07-26~28 자동 정비 무음 정지가 그 결과다(#793/#826).
+  //   ⇒ 메인의 safeCron 과 같은 계약을 여기에도 준다: **성공·실패 무관 하트비트 + 실패 통지**.
+  //   ⚠️ 의미 주의: kick 은 SELF 로 '던지는' 것이라 이 하트비트는 **디스패치 성공**을 뜻한다
+  //      (트랙 자체의 완료는 각 트랙이 남기는 스탬프 — ads_maintenance_last 등 — 로 본다).
+  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown): Promise<void> => {
+    try {
+      const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
+      await recordCronBeat(env as never, `ads:${name}`, ok, ms, event.cron)
+    } catch { /* 관측 실패가 작업을 막지 않는다 */ }
+    if (!ok) {
+      try {
+        const { reportCronFailure } = await import('@/worker/utils/cron-reporter')
+        await reportCronFailure(env as never, `ads:${name}`, err, { cron: event.cron }, 'error')
+      } catch { /* 통지 실패도 삼킨다 */ }
+    }
+  }
+
   const kick = (path: string, fallback: () => Promise<unknown>): void => {
     ctx.waitUntil((async () => {
+      const t0 = Date.now()
       try {
         if (env.SELF?.fetch) await env.SELF.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
         else await fallback()
-      } catch { /* fail-soft */ }
+        await adsBeat(path.replace(/^\/__ads\//, ''), true, Date.now() - t0)
+      } catch (err) {
+        await adsBeat(path.replace(/^\/__ads\//, ''), false, Date.now() - t0, err)
+      }
     })())
   }
+
+  // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
+  //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
+  ctx.waitUntil(adsBeat('scheduled', true, 0))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
@@ -325,11 +354,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
         const prevErr = (() => { try { return (JSON.parse(prevRaw?.value || '{}') as { error?: string | null }).error || null } catch { return null } })()
         let r: { ok: boolean; error?: string | null }
         if (env.SELF?.fetch) {
-          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync', { method: 'POST' }))
+          const resp = await env.SELF.fetch(new Request('https://ur-ads/__ads/sheets-sync?by=cron', { method: 'POST' }))
           r = await resp.json().then(j => j as { ok: boolean; error?: string | null }).catch(() => ({ ok: false, error: 'SELF_RESPONSE_PARSE' }))
         } else {
           const { syncInfluencerPoolToSheets } = await import('@/features/marketing/api/sheets-sync')
-          r = await syncInfluencerPoolToSheets(env)
+          r = await syncInfluencerPoolToSheets(env, 'cron')
         }
         if (!r.ok && env.DISCORD_WEBHOOK_URL && (r.error || '') !== (prevErr || '')) {
           const { sendDiscordAlert } = await import('@/worker/utils/discord-alert')
@@ -508,7 +537,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   //   ⇒ ① 매시간 **한 단계씩 순환**(단계당 fresh 인보케이션 예산 — 하루 24회 ≈ 단계별 6회) ② 각 단계는 커서로
   //      다음 회차에 이어받는다 ③ 결과는 예산 밖에서 항상 기록. **새 cron 추가 없음**(무료 계정 cron 5/5 소진).
   if (env.ADS_AUTO_MAINTENANCE_ENABLED !== 'false') {
-    const PHASES = ['merge', 'reextract', 'reclassify', 'quality'] as const
+    // ⚠️ 단계 목록은 influencer-maintenance 의 MAINT_PHASES 가 SSOT — 여기 복제하면 단계를 늘려도
+    //    cron 이 모른다(실제로 'handle' 단계가 그렇게 누락될 뻔했다). 정적 import 를 피하려고 리터럴을
+    //    두되, 개수가 어긋나면 아래 순환이 어긋나므로 **추가 시 두 곳을 함께 고칠 것**(가드: 유닛테스트).
+    const PHASES = ['merge', 'reextract', 'reclassify', 'quality', 'handle'] as const
     const phase = PHASES[hourUTC % PHASES.length]
     kick(`/__ads/maintenance?phase=${phase}`, async () => {
       const { runMaintenancePhase } = await import('@/features/marketing/api/influencer-maintenance')

@@ -286,6 +286,11 @@ jobs:
         run: node scripts/check-commission-budget.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 초과 방지 — cacheInvalidate 의 KV.delete 는
+      #   L2_KV_ENABLED 게이트 뒤에 있어야(쓰기 OFF 면 삭제도 skip) + fan-out KV.delete 무방비 금지.
+      #   cacheGet L2 OFF 인데 삭제만 살아 존재않는 키를 28/호출 지워 한도 폭식한 사고(대표 신고).
+      - name: KV delete budget guard (strict)
+        run: node scripts/check-kv-delete-budget.mjs -s
       # 🛡️ 2026-07-28: 서브리퀘스트 학습 상한 키를 레인끼리 공유 금지 — 건당 비용이 다른 레인이 한 키를
       #   같이 쓰면 서로의 관측을 덮어써 어느 레인도 자기 한도를 학습 못 한다(보강 레인이 남의 백오프로
       #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.

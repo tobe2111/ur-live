@@ -112,6 +112,7 @@ if domain deploy; then
   run "Hono 라우터 패턴(405)"            bash scripts/check-router-patterns.sh
   run "Service Worker 등록 금지"         bash scripts/check-no-sw-register.sh
   run "하드코딩 시크릿"                  bash scripts/check-no-secrets.sh
+  run "KV delete 무료한도(fan-out)"      node scripts/check-kv-delete-budget.mjs -s
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
