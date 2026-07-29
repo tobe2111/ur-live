@@ -99,6 +99,35 @@
 **증거**: 픽업 주문 1건으로 소비자 여정 전 화면을 실제로 왕복(👤 대표 실계정 완주가 최종 판정).
 정적으로는 위 축들의 grep 목록 + 각 건의 판정 기록.
 
+### D 전수 결과 〔2026-07-29 실시〕
+
+**핵심 발견: SSOT 는 이미 있다.** `src/shared/order-type.ts` 가 `OrderKind = 'product'|'voucher'|'groupbuy'`
+와 `orderKindHasShipping(kind)` 를 제공하고, 소비자 주문 상세는 **이미 올바르게 쓰고 있다**
+(`my-orders/OrderDetailModal.tsx:34` — 2026-06-18 작업). ⇒ 고칠 것은 **새 개념 도입이 아니라
+"그 SSOT 를 안 쓰는 곳에 적용"** 이다.
+
+**SSOT 사용처(UI)**: `components/mypage/OrdersTab.tsx` · `pages/my-orders/OrderDetailModal.tsx` — **단 2곳.**
+
+| # | 대상 | 픽업 주문에서 | 판정 |
+|---|---|---|---|
+| D-1 | 소비자 주문 상세 — 배송 섹션·배송비·**배송 타임라인** | 전부 **안 보임** (`isProduct` 게이트 + 타임라인은 `tracking_number` 이중 게이트) | 🟢 **정상 — 이미 처리됨** |
+| D-2 | **소비자 반품 신청 입구** | **아예 없음** — 서버 `returns.routes.ts:121` 이 `status !== 'DELIVERED'` 거부. 픽업 주문은 **DELIVERED 에 도달하지 않는다**(픽업 완료는 `voucher_visits` 소각이지 주문 상태 전이가 아니다) | 🔴 **구멍 — 세션 ④** |
+| D-3 | 셀러 주문 화면 상태 드롭다운 | `SellerOrdersPage`·`seller-orders/OrderDetailModal` 이 **kind 판정 0** 인 채 `SHIPPING`/`DELIVERED` 선택지 제공 → 운영자가 픽업 주문에 "배송중"을 찍을 수 있다 | 🟡 **볼 것 — "선택지가 없는 게 정답"** |
+| D-4 | 배송 알림 (`order_shipped` user / `order_delivered` 셀러·어드민) | kind 무관하게 발송 가능 | 🟡 **볼 것** |
+| D-5 | 주문 숨기기(`order.routes:728` terminal) | `DONE` 이 terminal 에 있어 픽업 주문도 숨길 수 있다 | 🟢 **정상** |
+
+> ⚠️ **조사 중 스스로 정정한 것**: 처음엔 *"진행 단계 표시(상품준비→배송중→배송완료)가 픽업 주문에서
+> 1단계에 영원히 멈춘다"* 로 판단했다. **틀렸다** — 그 블록은 `order.tracking_number &&` 로 한 번,
+> 바깥 `isProduct` 로 또 한 번 이중 게이트돼 **아예 렌더되지 않는다.** 부분만 읽고 결론 내면
+> **클래스 C(거짓 양성)** 를 스스로 만든다. 코드 라인을 끝까지 따라간 뒤에 적어야 한다.
+
+**세션 ④ 로 넘기는 것**: D-2(픽업 주문용 반품·취소 요청 입구 — 픽업 확인 전=취소 / 후=보관구분 정책).
+**판단이 필요한 것**: D-3·D-4 는 *"안 보이는 게 정답"* 일 수 있다 — 픽업 주문엔 상태 전이 UI 와 배송
+알림이 애초에 불필요하다. **숨기는 방향**이 맞고, 배송 기능을 픽업에 이식하는 방향은 금지다.
+
+**적용 패턴(세션 ④ 착수 시)**: 배송 개념을 조건으로 쓰는 UI 는 `orderKindHasShipping(getOrderKind(order))`
+로 게이트한다. 새 플래그를 만들지 말 것 — SSOT 가 이미 있고, 안 쓰는 곳이 문제다.
+
 ---
 
 ## 감사 실행 순서
