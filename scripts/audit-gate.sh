@@ -74,6 +74,7 @@ fi
 if domain schema; then
   echo "🗄️  DB · 스키마"
   run "스키마 참조 정합"                 bash scripts/check-schema-refs.sh
+  run "WeakSet primitive 키(per-request DDL)" node scripts/check-weakset-primitive.mjs
   run "SQL bind param mismatch"        node scripts/check-sql-bind-params.mjs
   run "존재하지 않는 컬럼 참조"          node scripts/check-sql-column-exists.mjs
   run "NOT NULL INSERT 누락"           node scripts/check-sql-not-null-insert.mjs
@@ -98,6 +99,9 @@ if domain ui; then
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
   run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
+  # 2026-07-29 신규 등록 — 셋 다 파일은 예전부터 있었는데 어디에서도 실행되지 않고 있었다.
+  run "input 라이트 가시성(흰글자)"       env STRICT_INPUT_TEXT=1       node scripts/check-input-text-color.mjs
+  run "i18n 6개 언어 동기화"             node scripts/check-i18n-sync.mjs
 fi
 
 if domain structure; then
@@ -120,6 +124,8 @@ if domain deploy; then
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
   run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
+  # 가드를 지키는 가드 — "만들어만 두고 안 켠 검사" / "경로가 낡아 비어버린 검사" 차단.
+  run "가드 레지스트리(안 도는 가드)"     env STRICT_GUARD_REGISTRY=1   node scripts/check-guard-registry.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

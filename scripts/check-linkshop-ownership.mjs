@@ -85,22 +85,24 @@ const CHECKS = [
     ],
     hint: 'isOwner prop 으로만 게이트하세요.',
   },
-  {
-    file: 'src/pages/seller-public/VideosTab.tsx',
-    name: '③ VideosTab 은 seller_token/seller_id 직접 읽지 않음 (prop 구동)',
-    mustNot: [
-      /getItem\(\s*['"]seller_token['"]\s*\)/,
-      /getItem\(\s*['"]seller_id['"]\s*\)/,
-    ],
-    hint: 'isOwner prop 으로만 게이트하세요.',
-  },
+  // 🗑️ 2026-07-29: VideosTab 항목 제거 — 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED)으로
+  //   `src/pages/seller-public/VideosTab.tsx` 는 레포에서 삭제됐다(전수 검색 0건). 아래 "대상 부재는
+  //   실패" 규칙을 켜면서 함께 정리했다. 링크샵에 영상 탭이 다시 생기면 항목을 되살릴 것.
 ]
 
 let failures = 0
 for (const c of CHECKS) {
   const src = read(c.file)
   if (src == null) {
-    // 파일이 없으면(리팩토링으로 이동/삭제) skip — 존재하는 파일만 검사.
+    // 🛡️ 2026-07-29: 예전엔 여기서 조용히 `continue` 했다 — "파일이 없으면 검사할 것도 없다" 는
+    //   말이 맞아 보이지만, 실제로는 **파일이 이름만 바뀌어도 그 불변식이 소리 없이 사라진다**.
+    //   대상이 살아서 다른 경로로 옮겨간 경우와, 진짜로 없어진 경우를 이 코드는 구분할 수 없다.
+    //   그래서 부재를 통과가 아니라 **위반**으로 올린다. 진짜로 폐기된 대상이라면 CHECKS 에서
+    //   항목을 지우는 것이 옳다(그게 "이 불변식은 이제 없다" 는 명시적 기록이 된다).
+    failures++
+    console.error(`❌ [linkshop-ownership] 검사 대상 없음: ${c.file}`)
+    console.error(`   → 파일이 이동했으면 CHECKS 의 경로를 고치고, 폐기됐으면 항목을 삭제하세요.`)
+    console.error(`     (경로만 낡으면 이 불변식은 조용히 검사되지 않습니다.)`)
     continue
   }
   if (/linkshop-ownership-ok/.test(src)) continue // 의도적 예외
