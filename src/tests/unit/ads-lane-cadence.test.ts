@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import {
   staleGapMinutes, dailyGapMinutes, everyNHoursGapMinutes,
   maxPhaseGapHours, phaseGapMinutes, makeHourGates,
-  neverFiredLanes, createLaneRegistry, type KickFn,
+  neverFiredLanes, orphanLaneBeats, createLaneRegistry, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
 
@@ -281,5 +281,32 @@ describe('deploy-ads.yml — 배포 트리거가 ur-ads 의존 경로를 덮는�
   it('worker-ads 가 import 하는 모든 최상위 경로가 paths 에 있다', () => {
     const missing = [...prefixes].filter(p => !covered(p)).sort()
     expect(missing).toEqual([])
+  })
+})
+
+describe('orphanLaneBeats — 기록은 있는데 지금은 아무도 안 부르는 이름', () => {
+  it('알려진 목록에 없는 ads 기록을 고아로 잡는다', () => {
+    // 실측 사례: sweep-kakao-phone → sweep-kakao-chain 개명 후 옛 행이 영원히 stale
+    expect(orphanLaneBeats(['sweep-kakao-chain'], ['ads:sweep-kakao-phone', 'ads:sweep-kakao-chain']))
+      .toEqual(['ads:sweep-kakao-phone'])
+  })
+
+  it("스케줄러 자체 신호('scheduled')는 레인이 아니므로 고아로 보지 않는다", () => {
+    expect(orphanLaneBeats(['collect'], ['ads:scheduled', 'ads:collect'])).toEqual([])
+  })
+
+  it('쿼리가 붙은 이름도 레인 기준으로 판정한다', () => {
+    expect(orphanLaneBeats(['maintenance'], ['ads:maintenance?phase=merge'])).toEqual([])
+  })
+
+  it('메인 워커 cron 은 비교 대상이 아니다', () => {
+    expect(orphanLaneBeats([], ['cache-prewarm', 'retry-alimtalk'])).toEqual([])
+  })
+
+  it('never_fired 와 정확히 반대 방향이다 — 둘을 같이 봐야 "안 도는 것"과 "이제 없는 것"이 갈린다', () => {
+    const known = ['collect', 'collect-nps']
+    const beats = ['ads:collect', 'ads:old-lane']
+    expect(neverFiredLanes(known, beats)).toEqual(['collect-nps'])
+    expect(orphanLaneBeats(known, beats)).toEqual(['ads:old-lane'])
   })
 })

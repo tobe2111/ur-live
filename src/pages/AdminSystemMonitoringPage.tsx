@@ -132,16 +132,18 @@ export default function AdminSystemMonitoringPage() {
   )
   // 💓 2026-07-28: cron 실행 하트비트 — cron_failures 는 '예외가 났을 때만' 남는다.
   //   예외 없이 멈춘 경우(미발화 / 게이트 OFF / 내부 .catch 로 삼킴)는 여기서만 보인다(#826).
-  const heartbeatQ = useApiQuery<{ items: CronHeartbeat[]; stale: string[]; never_fired: string[] }>(
+  const heartbeatQ = useApiQuery<{ items: CronHeartbeat[]; stale: string[]; never_fired: string[]; orphan_lanes: string[] }>(
     ['admin', 'cron-heartbeats'], '/api/admin/cron-heartbeats',
     { enabled: tab === 'cron', select: (r: any) => ({
       items: r?.success ? (r.data.items || []) : [],
       stale: r?.success ? (r.data.stale || []) : [],
       never_fired: r?.success ? (r.data.never_fired || []) : [],
+      orphan_lanes: r?.success ? (r.data.orphan_lanes || []) : [],
     }) },
   )
   const heartbeats = heartbeatQ.data?.items ?? []
   const neverFired = heartbeatQ.data?.never_fired ?? []
+  const orphanLanes = heartbeatQ.data?.orphan_lanes ?? []
 
   const cronFailures = cronQ.data?.items ?? []
   const cronCounts = cronQ.data?.counts ?? []
@@ -296,6 +298,25 @@ export default function AdminSystemMonitoringPage() {
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
               실행 기록이 아예 없으면 '멈춤 의심' 판정 대상조차 되지 않는다 — 그래서 따로 보여준다.
+            </p>
+          </DashboardCard>
+        )}
+        {/* 🪦 고아 기록 — 이름이 바뀌었거나 게이트가 꺼진 레인. 아무도 갱신 안 하니 **영원히 stale** 이다.
+            실측(2026-07-29): `sweep-kakao-phone` 이 `sweep-kakao-chain` 으로 개명됐는데 옛 행이 계속 경보. */}
+        {tab === 'cron' && orphanLanes.length > 0 && (
+          <DashboardCard className="!p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-gray-900">🪦 고아 기록</h3>
+              <span className="text-[11px] text-gray-500">기록은 있는데 지금은 아무도 안 부른다</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {orphanLanes.map(n => (
+                <span key={n} className="px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs font-medium line-through">{n}</span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-gray-500">
+              이름이 바뀌었거나 게이트가 꺼진 레인이다. 아무도 갱신하지 않으니 영원히 &lsquo;멈춤 의심&rsquo; 으로 남는다 —
+              고칠 수 없는 경보는 곧 전체 경보를 무시하게 만든다. 지우기 전에 어느 쪽인지 확인할 것.
             </p>
           </DashboardCard>
         )}

@@ -122,6 +122,32 @@ export function neverFiredLanes(known: string[], beatNames: string[]): string[] 
 }
 
 /**
+ * 🪦 반대 방향 — **기록은 있는데 지금은 아무도 부르지 않는 레인**(고아 하트비트).
+ *
+ * ## 왜 (라이브 실측 2026-07-29)
+ * `ads:sweep-kakao-phone` 이 `age 196분 · stale` 로 경보 중이었는데, 그 레인은 **이름이 바뀌었다**
+ * (`sweep-kakao-chain`). 옛 이름의 행은 아무도 갱신하지 않으므로 **영원히 stale** 이다 —
+ * 고칠 수 없는 경보는 곧 전체 경보를 무시하게 만든다.
+ *
+ * `never_fired`(알려졌는데 기록 없음)의 정확한 반대다. 둘을 같이 보면
+ * "안 도는 것"과 "이제 없는 것"이 화면에서 갈린다.
+ *
+ * ⚠️ 해석 주의: 고아로 잡히는 이유는 **둘** 이다 — ① 레인이 없어짐/이름 바뀜 ② **게이트가 OFF**
+ *   (알려진 목록에는 게이트 통과 레인만 담기므로). 둘 다 "지금은 돌 예정이 아님"이라 경보 대상이
+ *   아니라는 점은 같지만, 지우기 전에 어느 쪽인지 확인할 것.
+ */
+export function orphanLaneBeats(known: string[], beatNames: string[]): string[] {
+  const k = new Set(known)
+  return beatNames
+    .filter(n => n.startsWith('ads:'))
+    .filter(n => {
+      const base = n.slice('ads:'.length).split('?')[0]
+      return base !== 'scheduled' && !k.has(base) // 'scheduled' 는 레인이 아니라 스케줄러 자체 신호
+    })
+    .sort()
+}
+
+/**
  * **시각 게이트와 주기 신고를 한 자리에 묶는다.**
  *
  * 이전엔 호출부가 `if (hourUTC === 16 && gate) kick(...)` 처럼 조건만 쓰고 주기는 아무도 안 알렸다.

@@ -12,7 +12,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 import { listCronHeartbeats, getCronHealth } from '@/worker/utils/cron-heartbeat'
-import { neverFiredLanes, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
+import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
 
@@ -61,6 +61,7 @@ adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
   //   ur-ads 스케줄러가 매 실행 남기는 '알고 있는 레인' 목록과 대조해 그 구멍을 메운다.
   //   실사례: `ads:collect-nps` — 게이트 ON 인데 기록이 없어 세션 여러 개가 같은 질문을 반복했다.
   let never_fired: string[] = []
+  let orphan_lanes: string[] = []
   let known_lanes_at: string | null = null
   try {
     const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
@@ -68,11 +69,16 @@ adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
     if (row?.value) {
       const v = JSON.parse(row.value) as { at?: string; lanes?: string[] }
       known_lanes_at = v.at ?? null
-      never_fired = neverFiredLanes(Array.isArray(v.lanes) ? v.lanes : [], items.map(i => i.name))
+      const lanes = Array.isArray(v.lanes) ? v.lanes : []
+      never_fired = neverFiredLanes(lanes, items.map(i => i.name))
+      // 🪦 반대 방향 — 기록은 있는데 지금 아무도 안 부르는 이름(이름 변경/삭제/게이트 OFF).
+      //   그런 행은 아무도 갱신하지 않으니 **영원히 stale** 이다. 실측: `ads:sweep-kakao-phone`
+      //   (레인이 `sweep-kakao-chain` 으로 개명됐는데 옛 행이 남아 계속 경보).
+      orphan_lanes = orphanLaneBeats(lanes, items.map(i => i.name))
     }
   } catch { /* 관측 보조 — 실패해도 본 목록은 그대로 준다 */ }
 
-  return c.json({ success: true, data: { items, stale, count: items.length, never_fired, known_lanes_at } })
+  return c.json({ success: true, data: { items, stale, count: items.length, never_fired, orphan_lanes, known_lanes_at } })
 })
 
 adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {
