@@ -242,7 +242,8 @@
       "linked": "Kakao账号已绑定!",
       "unlinked": "Kakao绑定已解除",
       "passwordRequired": "需要设置密码。请先在个人资料中设置密码。"
-    }
+    },
+    "forgotPasswordUseKakao": "忘记密码？请使用 Kakao 登录"
   },
   "notifications": {
     "title": "通知",

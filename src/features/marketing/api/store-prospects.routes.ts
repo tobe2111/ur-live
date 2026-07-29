@@ -55,6 +55,8 @@ app.get('/stats', async (c) => {
   const run = await readJson('ads_localdata_stats')
   const neisRun = await readJson('ads_neis_stats')
   const hiraRun = await readJson('ads_hira_stats')
+  // 📧 보강 레인 스냅샷(2026-07-28 신설) — 매장 이메일이 0 인 이유를 **묻지 않고 볼 수 있게**.
+  const enrichRun = await readJson('ads_prospect_enrich_stats')
   // 🚩 게이트는 **cron 이 도는 워커(ur-ads) env** 가 진실이다. 여기서 `c.env.*` 를 읽으면
   //   **메인 워커** 값이라 실제와 어긋난다 — 라이브 실측(2026-07-28): 화면은 `gate:false` 인데
   //   `run.last_run` 은 그날 크론 시각이었다(= 실제로는 켜져서 돌고 있었다). 파트너풀 상태줄은
@@ -73,6 +75,7 @@ app.get('/stats', async (c) => {
     collect: { gate: gate('localdata', (c.env as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true'), adsBinding: !!c.env.ADS?.fetch, run },
     neis: { gate: gate('neis', (c.env as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true'), run: neisRun },
     hira: { gate: gate('hira', (c.env as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true'), run: hiraRun },
+    enrich: { run: enrichRun }, // 킬스위치는 ADS_ENRICH_DISABLED(전역) — 별도 게이트 없음
   })
 })
 

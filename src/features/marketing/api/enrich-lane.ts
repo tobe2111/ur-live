@@ -10,8 +10,8 @@
  */
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError } from './collect-budget'
-import { writeEnrichSnapshot, recordEnrichCrash } from './enrich-telemetry'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
 
@@ -43,9 +43,17 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   아니라 **한도 초과 후 전 fetch throw**. 인플루언서 레인이 이미 쓰던 관측 학습 상한(collect-budget)을
   //   이 레인에도 적용 — 부딪히면 다음 실행부터 그 아래만 쓰고, 무사히 다 쓰면 조금씩 회복한다.
   const envBudget = Math.min(800, Math.max(20, parseInt(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET || '', 10) || 300))
-  const learnedCap = Math.max(0, parseInt((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(subreqCapKey('company_enrich'))
-    .first<{ value: string }>().catch(() => null))?.value || '', 10) || 0)
-  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap)
+  // 🧮 부팅 조회 1회로 3개 값을 함께 읽는다(학습 상한 + 직전 스냅샷 + 누적) — 쿼리 수는 그대로 1.
+  //   직전 스냅샷을 여기서 읽는 이유: **중도 사망한 라운드는 스스로를 누적할 수 없다**(종료 코드 미도달).
+  //   그 라운드가 남긴 마지막 부분 스냅샷을 다음 라운드가 접어야 죽은 라운드까지 세어진다.
+  const boot = (await DB.prepare('SELECT key, value FROM platform_settings WHERE key IN (?, ?, ?)')
+    .bind(subreqCapKey('company_enrich'), ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY)
+    .all<{ key: string; value: string }>().catch(() => null))?.results || []
+  const bootVal = (k: string) => boot.find(r => r.key === k)?.value || null
+  const learnedCap = Math.max(0, parseInt(bootVal(subreqCapKey('company_enrich')) || '', 10) || 0)
+  // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
+  const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
+  const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
   // ⏱️ 벽시계 가드(2026-07-28) — 서브리퀘스트가 남아도 **시간**이 인보케이션을 끝낼 수 있다(느린 사이트 1곳이
   //   8s 타임아웃을 여러 번 먹는 경우). 20s 이후엔 새 fetch 를 시작하지 않고 Phase 3 → 정상 종료로 빠진다:
   //   죽는 대신 깨끗이 넘기면 스냅샷·학습·도장이 전부 정상 작동하고 남은 백로그는 다음 라운드가 이어받는다.
@@ -61,7 +69,11 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   이후에도 남아 있던 잔여 원인). ⇒ D1 도 같은 지갑에서 지불해 분모를 진실로 만든다.
   let d1 = 0
   const spendD1 = (n = 1) => { budget.left -= n; d1 += n }
-  spendD1(2) // 위 learnedCap SELECT + 아래 targets SELECT(예산 생성 전 실행분 소급 계상)
+  spendD1(2) // 위 boot SELECT + 아래 targets SELECT(예산 생성 전 실행분 소급 계상)
+  // 직전 라운드 접기 — 접을 것이 없으면(같은 run_id·구형 스냅샷) 쓰지 않으므로 비용 0.
+  if (await foldEnrichRollup(DB, ENRICH_ROLLUP_KEY, bootVal(ENRICH_SNAPSHOT_KEY), bootVal(ENRICH_ROLLUP_KEY))) spendD1()
+  // 🆔 라운드 식별자 — 누적이 같은 라운드를 두 번 세지 않게 하는 유일한 수단(멱등 키).
+  const runId = (globalThis.crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
@@ -147,7 +159,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       crawl_reason: crawlReason, fail_samples: failSamples,
       // fetches=순수 외부 fetch · d1=DB 쿼리 · spent=둘의 합(학습 상한이 보는 진짜 소비량)
       fetches: budgetStart - budget.left - d1, d1, budget_total: budgetTotal, spent: budgetTotal - budget.left,
+      platform_cap: pcap, // 🧱 이 라운드가 절대 넘을 수 없는 천장(학습 상한과 별개) — 보는 사람이 다시 유추하지 않게
       limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
+      run_id: runId, // 누적(ads_enrich_rollup)의 멱등 키 — 다음 라운드가 이 스냅샷을 접을 때 쓴다
       phase, p2, at, elapsed_ms: Date.now() - t0, deadline_hit: outOfBudget(budget) && budget.left > 0, targets: targets.length,
       diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
     })
@@ -250,7 +264,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   const attempted = crawls - (crawlReason.blocked_host || 0) - (crawlReason.bad_url || 0)
   const result = { processed, enriched, remaining: Number(rem?.n) || 0, crawls, hit_rate: attempted > 0 ? Math.round(((crawlReason.ok || 0) / attempted) * 100) : 0 }
   // 🩹 서브리퀘스트 한도 자가 교정 — 부딪혔으면 쓴 양보다 낮게, 다 쓰고도 무사하면 조금 올린다(인플루언서 레인과 동일).
-  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget)
+  const nextCap = nextSubreqCap(budgetTotal - budget.left, !!budget.limitHit, learnedCap, envBudget, pcap)
   if (nextCap != null) {
     spendD1()
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(subreqCapKey('company_enrich'), String(nextCap)).run().catch(() => null)

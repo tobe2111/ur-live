@@ -103,14 +103,79 @@ export const S2_TRADES: Trade[] = [
   { kw: '현수막 제작', category: '간판', subcategory: '간판·광고물 제작', tier: 2 },
 ]
 
+// ── 3단계: 공동구매 생태계 (2026-07-29 대표 "창고형 공동구매, 공동구매 관련 키워드 업체들") ──────
+//
+//   왜 tier 1 인가: 이들은 **유어딜과 같은 언어를 쓴다**. 공동구매가 무엇인지, 왜 모아야 싼지,
+//   정산이 어떻게 도는지를 설명할 필요가 없다 — 파트너 전환에서 가장 비싼 단계가 통째로 빠진다.
+//
+//   ⚠️ 서비스 분리: 여기는 **유어딜 파트너 풀**(`ad_company_leads`)이다. B2B 도매 공급자(제조사) 발굴은
+//      `supply-maker-collect` 의 별개 레인이며 서로의 테이블·키워드를 건드리지 않는다(CLAUDE.md 분리 룰).
+
+/** 오프라인 축 — 창고형은 **지역성이 크다**(대형 부지·차량 접근). 지역 그리드에 얹는다. */
+export const S3_TRADES_LOCAL: Trade[] = [
+  { kw: '창고형 공동구매', category: '공동구매', subcategory: '창고형 공동구매', tier: 1 },
+  { kw: '창고형 할인매장', category: '공동구매', subcategory: '창고형 공동구매', tier: 2 },
+  { kw: '창고형 마트', category: '공동구매', subcategory: '창고형 공동구매', tier: 2 },
+]
+
+/**
+ * 온라인 축 — 총판·벤더·대행은 **지역이 의미 없다**(전국 상대 영업). 지역을 접두하면 오히려 리콜이 죽는다.
+ *   그래서 지역 그리드에 곱하지 않고 **키워드 1개씩만** 넣는다(235배 폭증 없이 커버).
+ */
+export const S3_TRADES_NATIONWIDE: Trade[] = [
+  { kw: '공동구매 총판', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 1 },
+  { kw: '공동구매 벤더', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 1 },
+  { kw: '공동구매 대행', category: '공동구매', subcategory: '공동구매 대행', tier: 1 },
+  { kw: '공동구매 플랫폼', category: '공동구매', subcategory: '공동구매 플랫폼', tier: 1 },
+  { kw: '공동구매 진행업체', category: '공동구매', subcategory: '공동구매 대행', tier: 1 },
+  { kw: '인플루언서 공동구매', category: '공동구매', subcategory: '공동구매 대행', tier: 1 },
+  { kw: '식품 공동구매', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 2 },
+  { kw: '생활용품 공동구매', category: '공동구매', subcategory: '공동구매 총판·벤더', tier: 2 },
+]
+
 export type KeywordSeedRow = { keyword: string; category: string; subcategory: string; region: string; tier: number }
 
-/** 시드 행 전체(1단계 → 2단계 순). 같은 keyword 는 UNIQUE + INSERT OR IGNORE 로 자동 dedup. */
+/** 시드 행 전체(1 → 2 → 3단계 순). 같은 keyword 는 UNIQUE + INSERT OR IGNORE 로 자동 dedup. */
 export function buildKeywordRows(): KeywordSeedRow[] {
   return [
     ...S1_REGIONS.flatMap(r => S1_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
     ...S2_REGIONS.flatMap(r => S2_TRADES.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    ...S2_REGIONS.flatMap(r => S3_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    // 전국 축은 지역 접두 없음 — region 은 빈 문자열(리드에 지역이 안 붙는다는 뜻, 거짓 지역 라벨 금지).
+    ...S3_TRADES_NATIONWIDE.map(t => ({ keyword: t.kw, category: t.category, subcategory: t.subcategory, region: '', tier: t.tier })),
   ]
+}
+
+/**
+ * 🔢 시드 진행 이어받기 (2026-07-29) — **버전을 올렸다고 처음부터 다시 넣지 않는다.**
+ *
+ *   문제: 진행값이 `"<version>:<seeded>"` 라 버전이 바뀌면 `seeded` 를 버리고 0 부터 다시 넣었다.
+ *   행이 4,500개고 회당 500행이면 **10회(≈10시간) 뒤에야 새 키워드가 들어간다** — 새 키워드는 배열 끝에
+ *   덧붙기 때문이다. 즉 "지금 이 업종을 수집하고 싶다"는 요청이 반나절 늦게 반영된다(INSERT OR IGNORE 라
+ *   앞의 3,600행은 아무것도 안 바뀌는데 그 자리를 다시 훑느라).
+ *
+ *   해법: 앞부분이 **정말 그대로인지**를 지문으로 확인하고, 그렇다면 이어받는다. 앞이 바뀌었으면(재정렬·삭제)
+ *   지문이 어긋나 안전하게 0 으로 떨어진다 — "아마 덧붙이기겠지"라고 **가정하지 않는다**.
+ */
+export function seedPrefixHash(rows: KeywordSeedRow[], upto: number): string {
+  let h = 0x811c9dc5 // FNV-1a 32bit — 암호용이 아니라 '앞부분이 그대로인가' 확인용(순수 CPU, D1 0)
+  const end = Math.max(0, Math.min(upto, rows.length))
+  for (let i = 0; i < end; i++) {
+    const k = rows[i].keyword
+    for (let j = 0; j < k.length; j++) { h ^= k.charCodeAt(j); h = Math.imul(h, 0x01000193) }
+  }
+  return (h >>> 0).toString(36)
+}
+
+/** 진행값 `"<ver>:<seeded>"` 또는 `"<ver>:<seeded>:<hash>"` → 이번 실행이 시작할 인덱스. */
+export function resumeSeedIndex(raw: string | null | undefined, version: number, rows: KeywordSeedRow[]): number {
+  const [ver, seededRaw, hash] = String(raw || '').split(':')
+  const seeded = Math.max(0, parseInt(seededRaw || '0', 10) || 0)
+  if (!seeded) return 0
+  if (ver === String(version)) return Math.min(seeded, rows.length) // 같은 버전 — 평소의 이어받기
+  // 버전이 올랐다: 앞부분이 그대로면(덧붙이기만 했다면) 거기서 이어받는다. 지문이 없거나 다르면 처음부터.
+  if (!hash) return 0
+  return hash === seedPrefixHash(rows, seeded) ? Math.min(seeded, rows.length) : 0
 }
 
 /**
