@@ -219,12 +219,17 @@ describe('보강 레인 — 앞 레인 사전 마감(블로거 시간 바닥)', 
     expect(lane).toMatch(/budget\.deadline = started \+ deadlineMs/)
   })
 
-  it('복원이 블로거 호출 **앞**에 온다(순서가 뒤집히면 무효)', () => {
-    const restore = lane.indexOf('budget.deadline = started + deadlineMs')
-    const naverCall = lane.indexOf('enrichNaverActivity(DB, budget')
-    expect(restore).toBeGreaterThan(0)
-    expect(naverCall).toBeGreaterThan(restore)
-  })
+  /**
+   * 🧨 여기 있던 "복원이 블로거 호출 **앞**에 온다" 검사는 **삭제했다**(2026-07-29, CI 가 잡음).
+   *
+   *   파일 전체에서 두 문자열의 **인덱스 대소**로 순서를 봤는데, 선두 교대를 넣으며 블로거 호출이
+   *   `runNaver()` 헬퍼 안으로 들어가 **분기보다 위**에 정의되자 그 전제가 깨졌다(13,666 < 14,676).
+   *   불변식 자체는 살아 있고 — 짝수 라운드에서 상한→복원→블로거 순서 — 아래 '선두 교대' describe 의
+   *   `짝수 라운드는 종전대로…` 가 **else 분기 안에서** 더 정확히 본다.
+   *
+   *   교훈(오늘 두 번째): 불변식을 **텍스트 위치**로 쓰면 리팩토링이 전제를 깬다. 지켜야 할 것은
+   *   *사실*(어느 분기에서 무엇이 먼저 도는가)이지 파일 안의 좌표가 아니다.
+   */
 })
 
 /**
