@@ -16,6 +16,7 @@ import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
 import ExcelExportButtons from './influencer-pool/ExcelExportButtons'
+import MarkContactedPanel from './influencer-pool/MarkContactedPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
@@ -392,6 +393,7 @@ export default function AdminInfluencerPoolPage() {
             <ConsentedSendPanel />
             <ColdSendPanel />
             <ExcelExportButtons variant="contactable" />
+            <MarkContactedPanel />
           </div>
         </details>
 

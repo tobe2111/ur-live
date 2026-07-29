@@ -433,3 +433,11 @@ echo "  6. 소개서 동기화 권고 + 자동 참조 재생성 (warn-only, 매 
 echo "  7. TypeScript (npx tsc)"
 echo "  8. 파일 중간 import 검출"
 echo "  9. Worker 번들 빌드 (런타임 crash catch)"
+
+# 🔀 병합 드라이버 등록 (.gitattributes 의 merge=filesize-baseline 이 이걸 필요로 한다).
+#   미등록 환경은 평소대로 충돌이 날 뿐이라 안전하다 — 조용한 오작동은 없다.
+git config merge.filesize-baseline.name "file-size baseline: 키별 최대값 병합"
+git config merge.filesize-baseline.driver "node scripts/merge-file-size-baseline.mjs %A %O %B %P"
+echo ""
+echo "==> 병합 드라이버 등록됨: scripts/file-size-baseline.json (키별 최대값 자동 병합)"
+echo "    docs/CURRENT_WORK.md 는 .gitattributes 의 merge=union (git 내장) 으로 양쪽 보존."

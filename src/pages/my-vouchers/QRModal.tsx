@@ -388,7 +388,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
         {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 */}
         {voucher.status === 'used' && (
-          <ReviewBonusButton voucherCode={voucher.code} />
+          <ReviewBonusButton voucherCode={voucher.code} restaurantName={voucher.restaurant_name} restaurantAddress={voucher.restaurant_address} />
         )}
       </div>
       {showRedeem && (

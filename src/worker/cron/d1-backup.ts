@@ -27,12 +27,22 @@ interface BackupEnv extends Env {
 
 interface R2Bucket {
   put(key: string, body: string | ArrayBuffer | ReadableStream, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
+  // 🫀 2026-07-05: 업로드 후 존재/크기 검증용 (Workers R2 binding 표준 메서드 — 미지원 환경 대비 optional)
+  head?(key: string): Promise<{ size: number } | null>;
+}
+
+// 🫀 2026-07-05: dump 무결성 메타 — "백업이 돌긴 했는데 알맹이가 빈" 상태를 잡기 위함.
+//   백업은 복구 검증 전까지 '있다고 믿는 것'에 불과 — 최소한 테이블 수/에러/크기는 기계가 본다.
+interface DumpResult {
+  sql: string;
+  tableCount: number;
+  errorTables: string[];
 }
 
 /**
  * 모든 테이블 dump → SQL INSERT 문으로 변환
  */
-async function dumpDatabase(DB: D1Database): Promise<string> {
+async function dumpDatabase(DB: D1Database): Promise<DumpResult> {
   const lines: string[] = [];
   lines.push(`-- D1 Backup: ${new Date().toISOString()}`);
   lines.push(`-- Database: ur-live D1`);
@@ -46,6 +56,7 @@ async function dumpDatabase(DB: D1Database): Promise<string> {
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
   ).all<{ name: string }>();
   const tables = (tablesResult.results || []).map((r) => r.name);
+  const errorTables: string[] = [];
 
   for (const table of tables) {
     try {
@@ -90,12 +101,13 @@ async function dumpDatabase(DB: D1Database): Promise<string> {
     } catch (err) {
       logError(`[Backup] Table ${table} dump failed`, { error: String(err) });
       lines.push(`-- ERROR dumping table ${table}: ${(err as Error).message}`);
+      errorTables.push(table);
     }
   }
 
   lines.push('COMMIT;');
   lines.push('PRAGMA foreign_keys = ON;');
-  return lines.join('\n');
+  return { sql: lines.join('\n'), tableCount: tables.length, errorTables };
 }
 
 /**
@@ -114,7 +126,7 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
 
   try {
     logInfo('[D1 Backup] Starting dump...');
-    const dump = await dumpDatabase(DB);
+    const { sql: dump, tableCount, errorTables } = await dumpDatabase(DB);
     const size = new TextEncoder().encode(dump).length;
 
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -124,19 +136,43 @@ export async function handleD1Backup(env: BackupEnv): Promise<{ success: boolean
       httpMetadata: { contentType: 'application/sql' },
     });
 
-    logInfo(`[D1 Backup] ✅ Saved ${key} (${(size / 1024).toFixed(1)} KB)`);
+    // 🫀 2026-07-05: 백업 무결성 검증 — "성공 알림이 왔는데 실제론 빈/깨진 백업" 차단.
+    //   ① dump 자체: 실패 테이블 0건 + 테이블 수 하한 + 크기 하한 (프로덕션 DB 는 100+ 테이블).
+    //   ② 업로드: R2 head 로 존재 + 크기 일치 재확인 (head 미지원 바인딩이면 skip).
+    const integrityWarns: string[] = [];
+    if (errorTables.length > 0) integrityWarns.push(`dump 실패 테이블 ${errorTables.length}개: ${errorTables.slice(0, 5).join(', ')}${errorTables.length > 5 ? '…' : ''}`);
+    if (tableCount < 30) integrityWarns.push(`테이블 수 비정상: ${tableCount}개 (프로덕션 기준 하한 30)`);
+    if (size < 256 * 1024) integrityWarns.push(`dump 크기 비정상: ${(size / 1024).toFixed(1)} KB (하한 256 KB)`);
+    try {
+      if (typeof env.BACKUP_BUCKET.head === 'function') {
+        const head = await env.BACKUP_BUCKET.head(key);
+        if (!head) integrityWarns.push('업로드 검증 실패: R2 head 에서 객체 미발견');
+        else if (head.size !== size) integrityWarns.push(`업로드 크기 불일치: dump ${size}B vs R2 ${head.size}B`);
+      }
+    } catch { /* head 검증 자체 실패는 무결성 판정에 안 섞음 (put 성공이 1차 신호) */ }
 
-    // Discord 알림 (있으면)
+    logInfo(`[D1 Backup] ✅ Saved ${key} (${(size / 1024).toFixed(1)} KB, ${tableCount} tables${integrityWarns.length ? `, ⚠️ ${integrityWarns.length} warns` : ''})`);
+
+    // Discord 알림 (있으면) — 무결성 경고가 있으면 warn 등급으로 승격 + 상세 포함.
     const webhook = env.DISCORD_WEBHOOK_URL;
     if (webhook) {
       try {
         const { sendDiscordAlert } = await import('../utils/discord-alert');
-        await sendDiscordAlert(
-          webhook,
-          '✅ D1 백업 완료',
-          `Key: ${key}\nSize: ${(size / 1024).toFixed(1)} KB`,
-          'info'
-        );
+        if (integrityWarns.length > 0) {
+          await sendDiscordAlert(
+            webhook,
+            '⚠️ D1 백업 완료 — 무결성 경고',
+            `Key: ${key}\nSize: ${(size / 1024).toFixed(1)} KB\nTables: ${tableCount}\n\n경고:\n${integrityWarns.map((w) => `- ${w}`).join('\n')}\n\n복구 리허설 절차: docs/BACKUP_RESTORE.md`,
+            'warn'
+          );
+        } else {
+          await sendDiscordAlert(
+            webhook,
+            '✅ D1 백업 완료',
+            `Key: ${key}\nSize: ${(size / 1024).toFixed(1)} KB\nTables: ${tableCount} (무결성 검증 통과)`,
+            'info'
+          );
+        }
       } catch {}
     }
 

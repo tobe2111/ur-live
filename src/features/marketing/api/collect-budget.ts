@@ -29,6 +29,7 @@ export type SubreqLane =
   | 'company_enrich'    // 파트너풀 연락처 보강 — 건당 fetch 4~6 + D1 다수(가장 비쌈)
   | 'kakao_sweep'       // 카카오 전화 스윕 — 건당 fetch 1
   | 'maintenance'       // 야간 풀 자동 정비 — D1 중심(통합/재추출/재분류) + 일부 재조회 fetch
+  | 'store_kakao'       // 무인매장 발굴(카카오 로컬 키워드) — 키워드당 fetch 1 + 저장 batch
   | 'localdata'         // 인허가(지방행정) 매장 후보 — 업종당 fetch 1~6 + 저장 D1(업종 16종 → 가장 폭발적)
 /** 레인별 학습 상한 저장 키(platform_settings). */
 export const subreqCapKey = (lane: SubreqLane): string => `ads_subreq_cap_${lane}`

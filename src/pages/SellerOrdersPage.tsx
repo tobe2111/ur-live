@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatKST } from '@/utils/date'
+import { formatKST, parseUTCDate, kstDayStartMs, kstDayEndMs } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
@@ -55,7 +55,9 @@ export default function SellerOrdersPage() {
         navigate('/seller/login')
         return []
       }
-      const response = await api.get('/api/seller/orders')
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): limit=200(서버 최대) — 이전엔 파라미터 없어 기본 50건 하드캡,
+      //   51건째부터 목록/검색/CSV 에서 구주문이 조용히 사라졌음. (200 초과는 후속 서버 페이지네이션 배선.)
+      const response = await api.get('/api/seller/orders', { params: { limit: 200 } })
       if (response.data.success) {
         return (response.data.data || response.data.orders || []) as Order[]
       }
@@ -125,15 +127,12 @@ export default function SellerOrdersPage() {
     }
 
     // Date filter
-    if (dateFilter.start) {
-      const startDate = new Date(dateFilter.start)
-      result = result.filter(order => new Date(order.created_at) >= startDate)
-    }
-    if (dateFilter.end) {
-      const endDate = new Date(dateFilter.end)
-      endDate.setHours(23, 59, 59, 999) // End of day
-      result = result.filter(order => new Date(order.created_at) <= endDate)
-    }
+    // 🛡️ 2026-07-27: KST 경계로 교정 — 이전엔 UTC 자정(date input)과 로컬 오해석(created_at)을
+    //   섞어 비교해 경계 주문이 9시간만큼 누락됐다. 서버 `DATE(created_at,'+9 hours')` 와 동일 규약.
+    const startMs = kstDayStartMs(dateFilter.start)
+    if (Number.isFinite(startMs)) result = result.filter(o => parseUTCDate(o.created_at).getTime() >= startMs)
+    const endMs = kstDayEndMs(dateFilter.end)
+    if (Number.isFinite(endMs)) result = result.filter(o => parseUTCDate(o.created_at).getTime() <= endMs)
 
     setFilteredOrders(result)
     setCurrentPage(1) // Reset to first page when filters change
@@ -166,7 +165,7 @@ export default function SellerOrdersPage() {
       order.shipping_address,
       order.total_amount,
       getStatusText(order.status),
-      order.payment_status === 'completed' ? 'Paid' : order.payment_status,
+      (order.payment_status === 'approved' || order.payment_status === 'completed') ? 'Paid' : order.payment_status,
       order.courier || '',
       order.tracking_number || '',
       formatKST(order.created_at)
@@ -528,8 +527,8 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">
-                            <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
-                              {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
+                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
+                              {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">

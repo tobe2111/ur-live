@@ -46,9 +46,13 @@ function highlightText(text: string, query: string) {
 }
 
 export default function ProductCard({ product, highlightQuery }: ProductCardProps) {
-  // 🛡️ 2026-04-22: 서버 라운딩과 통일 (Math.floor → Math.round)
-  const discountedPrice = Math.round(product.price * (1 - (product.discount_rate || 0) / 100))
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): price 는 이미 최종 판매가(서버 과금가 = order.routes unit_price).
+  //   이전엔 price × (1-rate) 를 판매가로 표시(이중 할인 — 실결제보다 싸게 표시) + price 를 취소선
+  //   원가로 표시. 수정: 판매가 = price, 취소선 = original_price(있으면), 할인% = discount_rate.
+  const salePrice = product.price
   const discount = product.discount_rate || 0
+  const originalPrice = (product as { original_price?: number }).original_price
+  const strikethrough = originalPrice && originalPrice > salePrice ? originalPrice : null
   const showDiscountBadge = discount >= 30
   const priceUnit = Number(product.deal_only) === 1 ? '딜' : '원'
   // 🧭 2026-07-20 (대표 — "페이지 이동 가장 이상적으로"): 종류별 정규 상세로 직접 링크(교환권 /vouchers,
@@ -118,20 +122,20 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
           {highlightQuery ? highlightText(product.name, highlightQuery) : product.name}
         </p>
 
-        {/* Original price (strikethrough) */}
-        {product.price > discountedPrice && (
+        {/* Original price (strikethrough) — original_price 있을 때만 */}
+        {strikethrough && (
           <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
-            {formatNumber(product.price)}{priceUnit === '딜' ? ' 딜' : '원'}
+            {formatNumber(strikethrough)}{priceUnit === '딜' ? ' 딜' : '원'}
           </p>
         )}
 
-        {/* Price row */}
+        {/* Price row — 최종 판매가(서버 과금가) */}
         <div className="flex items-baseline gap-1.5 mt-0.5">
           {discount > 0 && (
             <span className="text-[14px] font-extrabold text-red-500">{discount}%</span>
           )}
           <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">
-            {formatNumber(discountedPrice)}{priceUnit === '딜' ? ' 딜' : '원'}
+            {formatNumber(salePrice)}{priceUnit === '딜' ? ' 딜' : '원'}
           </span>
         </div>
 

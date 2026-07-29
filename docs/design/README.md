@@ -56,6 +56,7 @@
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
 | **🏭 도매몰 통합 셸 — 카탈로그↔판매사↔제조사 한 제품화** | 2026-06-29 | ⏳ 제안 / 착수 승인 대기 (Phase 1 권장) | [wholesale-unified-shell.md](./wholesale-unified-shell.md) |
 | **💸 정산 정합(소비자 셀러) — 3중 회계 통합 + 지급 SSOT** (아키텍처) | 2026-07-01 | 🟡 수수료 5% 통일 ✅ 배포 / 머니-이동(payout 단일화·정산신청 폐기) 대표 정책 결정 + staging 대기 | [settlement-reconciliation.md](./settlement-reconciliation.md) |
+| **🗺️ 카카오맵 리뷰 게이미피케이션 — 리뷰 점수·레벨 → 전용 이용권/홍보 자격** | 2026-07-02 | ✅ v1 구현 완료 (매장 확인 큐 + 레벨 + 전용 이용권 게이트 / 홍보 자격·딥링크 CTA 는 v2) | [kakao-review-gamification.md](./kakao-review-gamification.md) |
 | **🏦 이용권 에스크로 & 정산 안전판 (티몬 붕괴 회피)** | 2026-07-03 | 🟡 "사용 후 정산" ✅ / 진짜 신탁분리(Phase 2a 회계분리 코드가능·2b PG/은행 결정)·기본 redemption 모드 대표 결정 대기 | [voucher-escrow.md](./voucher-escrow.md) |
 | **🤝 유어애즈 B2B 파트너(업체) 수집 트랙 — 3레인(자동/레지스트리/수동)** | 2026-07-21 | 🟢 **1단계+레인 A(지역검색+이메일 크롤)+B/C(명부 임포트) 구현 완료** / 웹문서 보충·API 피드는 후속 | [partner-company-collection.md](./partner-company-collection.md) |
 | **🎯 전환추적(진짜 ROAS) — QR 실방문 증명 통합** | 2026-07-21 | 🟡 설계 SSOT / **착수 10월**(8월 실판매 데이터로 귀속 규칙 캘리브레이션 후) · 픽셀·조인 파이프라인 선설계 | [conversion-tracking-roas.md](./conversion-tracking-roas.md) |

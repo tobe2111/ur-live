@@ -148,7 +148,7 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
-import { requireAdmin, requireAuth } from './middleware/auth';
+import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { adminRbacMiddleware } from './middleware/admin-rbac';
 import { rateLimit } from './middleware/rate-limit';
@@ -245,11 +245,11 @@ import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
 import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
+import { reviewBonusUserRoutes, reviewBonusAdminRoutes, reviewBonusSellerRoutes } from '../features/group-buy/api/review-bonus.routes';
 // 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — 병렬 엔티티(vouchers 무접촉), district-coupon-estimate-2026-07.md
 import { districtPublicRoutes } from '../features/district/api/district-coupon.routes';
 import { districtAdminRoutes } from '../features/district/api/district-coupon-admin.routes';
 import { gbCockpitRoutes } from '../features/group-buy/api/gb-cockpit.routes';
-import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experienceCampaignSellerRoutes } from '../features/group-buy/api/experience-campaign.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
@@ -1905,6 +1905,9 @@ app.route('/api/influencer-rankings', influencerRankingsRoutes);
 app.route('/api/review-bonus', reviewBonusUserRoutes);
 app.use('/api/admin-review-bonus/*', requireAdmin());
 app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
+// 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 매장(셀러) 확인 큐 (대표 "매장에서 확인")
+app.use('/api/seller/review-verifications/*', requireSeller());
+app.route('/api/seller/review-verifications', reviewBonusSellerRoutes);
 // 🎯 2026-06-20 선착순 응모 상품 (대표) — 공개(목록/상태) + 유저(지원) + 어드민(설정/지원자/선정)
 app.route('/api/fcfs', fcfsRoutes);
 app.route('/api/admin/fcfs', fcfsAdminRoutes);
@@ -2477,7 +2480,7 @@ app.onError(errorHandler);
 
 // 🛡️ 2026-04-27 (TD-006 부분): scheduled handler 를 src/worker/scheduled.ts 로 분리.
 // worker/index.ts 가 90줄 줄어듦. cron 로직 변경 시 scheduled.ts 만 수정.
-import { handleCronScheduled } from './scheduled';
+import { handleCronScheduled, wholesaleCronNoop } from './scheduled';
 
 import { swallow } from './utils/swallow';
 // 🏭 2026-06-01 유통스타트 도메인 진입 라우팅 (Phase 5, lock-safe 추가).
@@ -2613,5 +2616,5 @@ export default {
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
     return app.fetch(request, fenv, ctx);
   },
-  scheduled: handleCronScheduled,
+  scheduled: __INCLUDE_WHOLESALE__ === true ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하게 바꾸면 소비자 cron 사망). 배경: scheduled.ts
 };
