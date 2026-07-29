@@ -35,60 +35,84 @@ export function resolveEnrichRounds(raw: string | undefined, fallback = 12): num
 }
 
 /**
- * 🔁 **self-chain 1라운드** — 라운드 하나를 돌고, 남았으면 *다음 라운드를 낳고* 즉시 반환한다.
+ * 🔁 **즉시 응답 + self-chain 1라운드** — 두 세션의 진단을 하나로 합친 형태(2026-07-29).
  *
- *   왜 루프가 아니라 체인인가(2026-07-29 실측으로 확정): 드라이버가 `await` 로 N라운드를 돌리자
- *   **1~2라운드에서 멈췄다.** 08:00 총측정 +17(=1라운드) · 09:00 +54(=2라운드) — 계획은 20 이었다.
- *   드라이버 하트비트는 `ok` 였으니 취소가 아니라 *정상 반환*이고, 즉 체인이 스스로 끊겼다.
- *   한 인보케이션이 라운드 수만큼 비용을 이고 가는 구조라 어딘가에서 천장에 닿는다.
+ * ## 두 가지가 동시에 문제였다
+ * **(A) 부모의 수명**(#847 진단): `kick` 은 `await env.SELF.fetch(...)` 라 드라이버가 응답할 때까지
+ *   부모가 살아 있어야 한다. 07:00 틱 실측 — 발화한 8개는 전부 빠른 레인(D1 전용), 빠진 것은 전부
+ *   느린 레인(외부 크롤). 부모 수명이 천장이었다.
+ * **(B) 드라이버 인보케이션의 용량**(이 세션 진단): 라운드를 한 인보케이션에서 `for` 로 돌리자
+ *   20 계획 중 **1~2라운드**에서 멈췄다(총측정 08:00 +17 = 1라운드 · 09:00 +54 = 2라운드).
+ *   하트비트가 `ok` 였으니 취소가 아니라 **정상 반환** — 체인이 스스로 끊긴 것이다.
  *
- *   이 레포엔 같은 문제를 이미 푼 패턴이 있다 — `collect-chain`·`sweep-kakao-chain`·`collect-localdata-chain`
- *   전부 **기다리지 않고 다음 라운드를 spawn** 한다. 각 라운드가 자기 인보케이션에서 자기 예산으로 돌고,
- *   호출자가 지는 비용은 언제나 fetch 1개다. 여기만 루프로 남아 있었다.
+ * (A)만 고치면 루프는 여전히 한 인보케이션 안이라 (B)가 남고, (B)만 고치면 depth 0 의 라운드를
+ * 부모가 기다려 (A)가 남는다. ⇒ **둘 다** 한다.
  *
- *   ⚠️ 순차성은 유지된다 — 다음 라운드는 이번 라운드의 **작업이 끝난 뒤** spawn 되므로,
- *   `perf_checked_at` 도장이 찍힌 다음에 다음 구간을 집는다(동시 실행이 아니다).
- *   💥 이번 라운드가 실패하면 다음을 안 낳는다 — 헛돌지 않고 다음 정각이 이어받는다.
+ * ## 형태
+ * ① 핸들러는 **즉시 응답**한다(부모의 kick 이 곧바로 풀린다 — (A) 해소).
+ * ② 라운드 작업은 이 인보케이션의 `waitUntil` 에서 돌고, 끝나면 **다음 라운드를 새 인보케이션으로**
+ *    spawn 한다 — 한 인보케이션이 N라운드를 이고 가지 않는다((B) 해소).
+ * ③ spawn 은 `waitUntil` 로 등록해 취소를 막되, **다음 depth 도 즉시 응답**하므로 이 대기는 찰나다
+ *    (중첩 await 가 체인 전체로 늘어지지 않는 이유 — 각 단계가 ACK 만 기다린다).
+ * ④ 하트비트는 depth 0 에서만 — 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다.
+ *
+ * ⚠️ 순차성 유지: 다음 라운드는 이번 **작업이 끝난 뒤** spawn 되므로 `perf_checked_at` 도장 이후에
+ *   다음 구간을 집는다(동시 실행 아님). 💥 실패하면 다음을 안 낳는다 — 다음 정각이 이어받는다.
+ * `executionCtx` 가 없으면(로컬/테스트) 동기 실행 — 동작 동일.
  */
-async function chainRound(
-  c: { env: Env; executionCtx?: { waitUntil: (p: Promise<unknown>) => void }; req: { query: (k: string) => string | undefined } },
+async function dispatchRoundChain(
+  c: {
+    env: Env
+    executionCtx?: { waitUntil: (p: Promise<unknown>) => void }
+    req: { query: (k: string) => string | undefined }
+    json: (b: unknown, s?: number) => Response
+  },
+  beatName: string,
   path: string,
   rounds: number,
-  run: () => Promise<unknown>,
-): Promise<{ depth: number; chained: boolean; error?: string }> {
+  local: () => Promise<unknown>,
+): Promise<Response> {
+  const t0 = Date.now()
   const raw = parseInt(c.req.query('depth') || '0', 10)
   const depth = Number.isFinite(raw) && raw > 0 ? raw : 0
-  try {
-    await run()
-  } catch (err) {
-    return { depth, chained: false, error: `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
-  }
   const env = c.env as unknown as { SELF?: { fetch: (r: Request) => Promise<Response> } }
-  const more = depth + 1 < rounds
-  let chained = false
-  if (more && env.SELF?.fetch && c.executionCtx?.waitUntil) {
-    chained = true
-    c.executionCtx.waitUntil(
-      env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
-        .then(() => undefined).catch(() => undefined),
-    )
+
+  const work = async (): Promise<{ chained: boolean; error?: string }> => {
+    let error: string | undefined
+    try { await local() } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
+    let chained = false
+    if (!error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
+      chained = true
+      // 다음 라운드는 **새 인보케이션**(새 예산). 다음 depth 도 즉시 응답하므로 이 대기는 찰나다.
+      c.executionCtx.waitUntil(
+        env.SELF.fetch(new Request(`https://ur-ads${path}?depth=${depth + 1}`, { method: 'POST' }))
+          .then(() => undefined).catch(() => undefined),
+      )
+    }
+    if (depth === 0) await driverBeat(c.env, beatName, Date.now() - t0, { chained, error }, rounds)
+    return { chained, error }
   }
-  return { depth, chained }
+
+  if (c.executionCtx?.waitUntil) {
+    c.executionCtx.waitUntil(work())
+    // 디스패치 성공만 알린다 — 실제 라운드 결과는 위 driverBeat 이 남긴다.
+    return c.json({ ok: true, dispatched: rounds, depth, detached: true })
+  }
+  const r = await work() // 로컬/테스트: 체인 불가 → 1라운드 동기 실행
+  return r.error ? c.json({ ok: false, depth, error: r.error }, 500) : c.json({ ok: true, depth, planned: rounds })
 }
 
 /**
- * 🔔 **첫 라운드가 자기 인보케이션에서 하트비트를 남긴다**(depth 0 에서만).
+ * 🔔 **드라이버가 자기 인보케이션에서 하트비트를 남긴다**(depth 0 에서만).
  *
- *   왜 부모(kick)의 기록만으로 부족한가: `kick` 은 응답을 기다린 뒤 기록하는데, 부모가 예산/수명을 다 쓰면
- *   하트비트 D1 쓰기조차 못 한다 — 라이브 07:00 에 인플루언서 레인들이 **실패 기록조차 못 남겼다.**
- *   여기서 쓰면 성사된다. 부모가 살아 있으면 같은 이름으로 덮어쓰고(같은 진실), 죽으면 이 기록이 남는다.
+ *   왜 부모(kick)의 기록만으로 부족한가: 부모가 예산/수명을 다 쓰면 하트비트 D1 쓰기조차 못 한다 —
+ *   라이브 07:00 에 인플루언서 레인들이 **실패 기록조차 못 남겼다.** 여기서 쓰면 성사된다.
  *   ⚠️ 이 보강이 있어야 메인 워커 `cron-stale-watch` 가 이 레인의 정지를 알린다
  *      (그 감시자는 **한 번도 기록이 없는 이름은 판정 대상으로 잡지 못한다**).
- *   📊 `planned/chained/error` 를 함께 남긴다 — "몇 라운드에서 왜 멈췄나"를 어드민 한 줄로 판정하기 위해
+ *   📊 `planned/chained/error` 동봉 — "몇 라운드에서 왜 멈췄나"를 어드민 한 줄로 판정하기 위해
  *      (이 환경은 wss 가 막혀 라이브 로그를 못 본다).
  */
-async function chainBeat(env: unknown, name: string, ms: number, r: { depth: number; chained: boolean; error?: string }, planned: number): Promise<void> {
-  if (r.depth !== 0) return // 체인 라운드마다 쓰면 같은 시간대를 N번 덮어써 의미가 없다
+async function driverBeat(env: unknown, name: string, ms: number, r: { chained: boolean; error?: string }, planned: number): Promise<void> {
   try {
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
     await recordCronBeat(env as never, `ads:${name}`, !r.error, ms, '0 * * * *',
@@ -125,14 +149,11 @@ enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
  *   💥 실패하면 그 자리에서 멈추고 원문을 돌려준다 — 남은 라운드를 헛돌리지 않고, 다음 정각이 이어받는다.
  */
 enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
-  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_INFLUENCER_ENRICH_ROUNDS?: string }).ADS_INFLUENCER_ENRICH_ROUNDS)
-  const r = await chainRound(c, '/__ads/enrich-influencer-driver', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-influencer-driver', '/__ads/enrich-influencer-driver', rounds, async () => {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
     return runInfluencerEnrich(c.env)
   })
-  await chainBeat(c.env, 'enrich-influencer-driver', Date.now() - t0, r, rounds)
-  return r.error ? c.json({ ok: false, ...r }, 500) : c.json({ ok: true, ...r, planned: rounds })
 })
 
 /**
@@ -152,12 +173,9 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
  *   `ads:enrich-company` 이름으로 관측 대상이 된다.
  */
 enrichRoutes.post('/__ads/enrich-company-driver', async (c) => {
-  const t0 = Date.now()
   const rounds = resolveEnrichRounds((c.env as unknown as { ADS_ENRICH_ROUNDS?: string }).ADS_ENRICH_ROUNDS, 8)
-  const r = await chainRound(c, '/__ads/enrich-company-driver', rounds, async () => {
+  return dispatchRoundChain(c, 'enrich-company', '/__ads/enrich-company-driver', rounds, async () => {
     const { enrichHeldLeads } = await import('@/features/marketing/api/company-collect')
     return enrichHeldLeads(c.env)
   })
-  await chainBeat(c.env, 'enrich-company', Date.now() - t0, r, rounds)
-  return r.error ? c.json({ ok: false, ...r }, 500) : c.json({ ok: true, ...r, planned: rounds })
 })
