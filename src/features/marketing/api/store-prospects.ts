@@ -10,6 +10,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 인허가 정보만. 자동 발송 경로 부존재.
  */
 import type { Env } from '@/worker/types/env'
+import { runDdlOnce } from './ads-schema-guard'
 
 /**
  * 인허가 업종 ↔ REST 엔드포인트 슬러그(SSOT). 지방행정 인허가는 **업종별 개별 엔드포인트**다(단일 아님):
@@ -37,6 +38,18 @@ export const LICENSE_UPJONG: Record<string, string> = {
 }
 /** 필터 드롭다운 표시용 카테고리(수집 업종). 학원=NEIS(neis-academy-collect) · 병원=인허가+심평원(hira-hospital-collect). */
 export const LICENSE_CATEGORIES = ['일반음식점', '휴게음식점', '미용업', '숙박업', '동물미용업', '약국', '병원', '이용업', '목욕장업', '동물병원', '동물약국', '체력단련장', '체육도장', '당구장', '골프연습장', '노래연습장', '학원']
+/**
+ * 🎯 유어딜이 **실제로 이용권을 파는** 업종 (2026-07-29 대표 지시 — "학원은 거의 안 써.
+ *   음식점, 카페, 미용실, 숙박에 힘을 써 앞으로").
+ *
+ *   왜 상수로 두나: 매장 풀이 **학원 99.5%**(24,038/24,160) 인데 이 넷은 0 건이었다. 앞으로 인허가 레인이
+ *   돌기 시작하면 두 종류가 한 큐에 섞이는데, 정렬이 없으면 **양 많은 쪽이 보강 예산을 먹는다**.
+ *   ⚠️ 여기 이름은 `LICENSE_UPJONG` 의 **값(한글 업종명)** 과 정확히 일치해야 한다 — 다르면 조용히 0 순위가 된다.
+ */
+export const PRIORITY_UPJONG = ['일반음식점', '휴게음식점', '미용업', '숙박업'] as const
+/** SQL `ORDER BY` 조각 — 우선 업종을 먼저. (문자열 리터럴은 위 상수에서 생성해 두 곳이 갈라지지 않게.) */
+export const PRIORITY_UPJONG_SQL = `(CASE WHEN category IN (${PRIORITY_UPJONG.map(c => `'${c}'`).join(', ')}) THEN 0 ELSE 1 END)`
+
 export const PROSPECT_STATUSES = ['new', 'contacted', 'interested', 'onboarded', 'rejected', 'hold']
 export const PROSPECT_CONTACT_CHANNELS = ['call', 'visit', 'sms', 'kakao', 'other']
 
@@ -68,10 +81,13 @@ export interface StoreProspectRow extends StoreProspect {
 const SELECT_COLS = 'id, opn_svc_id, opn_sf_team_code, mgt_no, biz_name, category, uptae, addr_road, addr_lot, phone, email, website, contact_source, local_code, region, trd_state, trd_state_nm, apv_perm_ymd, last_mod_ts, lon, lat, status, active, is_new_open, memo, contact_channel, follow_up_at, collected_at, last_verified_at'
 
 const _schemaDone = new WeakSet<object>()
-export async function ensureProspectSchema(DB: D1Database): Promise<void> {
-  if (_schemaDone.has(DB)) return
-  _schemaDone.add(DB)
-  await DB.prepare(`CREATE TABLE IF NOT EXISTS store_prospects (
+/**
+ * 🧾 매장 후보 스키마 DDL — `runDdlOnce` 로 한 번만 적용(2026-07-29, 회사 풀과 동일 처방).
+ *   ⚠️ 여기엔 **DDL 만** 넣는다. 체크섬이 같으면 전부 건너뛰므로 1회성 데이터 정리를 넣으면
+ *   체크섬이 바뀔 때마다 다시 돌아 라이브 데이터를 예상 밖으로 건드린다.
+ */
+export const PROSPECT_DDL: string[] = [
+  `CREATE TABLE IF NOT EXISTS store_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     opn_svc_id TEXT NOT NULL,
     opn_sf_team_code TEXT NOT NULL,
@@ -102,17 +118,23 @@ export async function ensureProspectSchema(DB: D1Database): Promise<void> {
     collected_at DATETIME DEFAULT (datetime('now')),
     last_verified_at DATETIME,
     UNIQUE(opn_svc_id, opn_sf_team_code, mgt_no)
-  )`).run().catch(() => null)
-  // 기존 테이블 보강(연락처 확장 — 인허가엔 없어 크롤로만 채움).
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN email TEXT').run().catch(() => null)
-  // 🔁 보강 재시도 쿨다운(2026-07-27) — 시도 스탬프 없이는 같은 상위 40행만 매시간 공회전(뒷줄 미도달).
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME').run().catch(() => null)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN enrich_v INTEGER').run().catch(() => null) // 크롤러 버전(< CRAWL_RULES_VERSION 이면 재시도)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN website TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE store_prospects ADD COLUMN contact_source TEXT').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)').run().catch(() => null)
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)').run().catch(() => null)
+  )`,
+  'ALTER TABLE store_prospects ADD COLUMN email TEXT',
+  'ALTER TABLE store_prospects ADD COLUMN enrich_checked_at DATETIME',
+  'ALTER TABLE store_prospects ADD COLUMN enrich_v INTEGER',
+  'ALTER TABLE store_prospects ADD COLUMN website TEXT',
+  'ALTER TABLE store_prospects ADD COLUMN contact_source TEXT',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)',
+  'CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)',
+]
+
+export async function ensureProspectSchema(DB: D1Database): Promise<number> {
+  if (_schemaDone.has(DB)) return 0
+  _schemaDone.add(DB)
+  const { ran } = await runDdlOnce(DB, 'ads_ddl_prospects', PROSPECT_DDL)
+  // 실비: 체크섬 SELECT 1 + (적용했다면 문장수 + platform_settings 보장 1 + 체크섬 쓰기 1)
+  return 1 + (ran ? PROSPECT_DDL.length + 2 : 0)
 }
 
 /** 영업상태구분코드 → active(01 영업중만 1). */

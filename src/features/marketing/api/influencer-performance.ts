@@ -10,6 +10,9 @@ import type { OpBudget } from './maintenance-budget'
 import type { Env } from '@/worker/types/env'
 import { pickBusinessEmail, extractContacts, stripVideoTitles, isPlatformLabelEmail, type FetchBudget } from './influencer-discovery'
 import { classifyCategory, reconcileCategory, NON_CATEGORIES } from './influencer-classify'
+// 🧩 순수 파서는 `influencer-parse.ts` — 기존 import 경로 호환을 위해 재수출.
+export { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount, naverPostdateToIso } from './influencer-parse'
+import { countRecentPosts, extractPubDates, extractRssTitles, parseNaverNeighborCount } from './influencer-parse'
 import { runDdlOnce } from './ads-schema-guard'
 import { deriveNaverHandle, naverBlogUrl } from './influencer-handle-heal'
 import { platformSubreqCap } from './collect-budget'
@@ -104,60 +107,6 @@ export function videoMetrics(videos: { views: number; comments: number; duration
   }
 }
 
-/** RSS pubDate 목록 → 최근 N일 내 포스팅 수. 파싱 불가 날짜는 무시. */
-export function countRecentPosts(pubDates: string[], nowMs: number, days = 30): number {
-  const cutoff = nowMs - days * 86400_000
-  let n = 0
-  for (const d of pubDates) { const t = Date.parse(d); if (Number.isFinite(t) && t >= cutoff && t <= nowMs + 86400_000) n++ }
-  return n
-}
-
-/** RSS XML 에서 pubDate 텍스트 추출(정규식 — 외부 파서 없음). */
-export function extractPubDates(xml: string): string[] {
-  const out: string[] = []
-  const re = /<pubDate>([^<]{5,60})<\/pubDate>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(xml)) !== null) out.push(m[1].trim())
-  return out
-}
-
-/** RSS XML 에서 글 제목 추출(채널 자체 title 은 제외 — <item> 안의 것만). CDATA/일반 둘 다.
- *  블로그 카테고리 분류의 핵심 신호 — 검색 스니펫 1건보다 최근 글 제목 묶음이 훨씬 정확. */
-export function extractRssTitles(xml: string, max = 6): string[] {
-  const out: string[] = []
-  const itemRe = /<item>([\s\S]*?)<\/item>/gi
-  let m: RegExpExecArray | null
-  while ((m = itemRe.exec(xml)) !== null && out.length < max) {
-    const t = /<title>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]{1,120}))<\/title>/i.exec(m[1])
-    const title = (t?.[1] || t?.[2] || '').trim()
-    if (title) out.push(title.slice(0, 80))
-  }
-  return out
-}
-
-/** 네이버 검색 API postdate(YYYYMMDD) → 'YYYY-MM-DD'. 형식 불일치는 null. */
-export function naverPostdateToIso(postdate?: string | null): string | null {
-  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(postdate || '').trim())
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : null
-}
-
-/** 네이버 블로그 홈 HTML 에서 이웃수(규모 프록시) 파싱 — best-effort. 네이버 오픈API 는 구독/이웃수를
- *  안 줘서(비공개) 이미 받는 홈 HTML 에서 긁는 게 무료 최선. 여러 레이아웃 대비 다중 패턴, 못 찾으면 0. */
-export function parseNaverNeighborCount(html: string): number {
-  if (!html) return 0
-  const pats: RegExp[] = [
-    /"buddyCount"\s*:\s*"?(\d{1,9})"?/i,         // 상태 JSON blob
-    /buddyCount['"]?\s*[:=]\s*['"]?(\d{1,9})/i,
-    /이웃\s*<[^>]*>\s*([\d,]{1,12})/,            // "이웃 <em>1,234</em>"
-    /이웃[^0-9]{0,6}([\d,]{2,12})\s*명/,         // "이웃 1,234명"
-    /([\d,]{2,12})\s*명의?\s*이웃/,              // "1,234명의 이웃"
-  ]
-  for (const re of pats) {
-    const m = html.match(re)
-    if (m) { const n = parseInt(m[1].replace(/,/g, ''), 10); if (Number.isFinite(n) && n > 0 && n < 100_000_000) return n }
-  }
-  return 0
-}
 
 // 성과 보강 전용 추가 컬럼(동결 ensureInfluencerSchema 무접촉 — 여기서 소유). 멱등·동시성 안전.
 //   channel_published_at(개설일) + pub_checked_at(개설일 조회 시도 스탬프 — 응답없는 좀비채널 무한 재선택 방지)
@@ -313,6 +262,9 @@ export async function enrichYouTubePerformance(
  *  스냅샷이 아니라 라이브 행을 직접 조회해야 했다. `selected/skipped` 만 있었으면 한 번에 보였다. */
 export interface NaverEnrichDiag {
   tried: number; measured: number; contacts: number; failed: number
+  /** 📧 그중 **이메일**만(2026-07-29) — `contacts` 는 인스타·링크만 채워도 +1 이라 '쓸 수 있는 리드'를 못 센다.
+   *  실제로 풀에서 with_contact(3,542)가 with_email(2,359)보다 빨리 늘고 있었는데 그 격차가 안 보였다. */
+  emails?: number
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
@@ -334,16 +286,20 @@ export interface NaverEnrichDiag {
  *      야간 재분류가 실제 콘텐츠로 판정(검색 스니펫 1건 상속보다 정확).
  */
 export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, max: number): Promise<NaverEnrichDiag> {
-  const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0 }
+  const diag: NaverEnrichDiag = { tried: 0, measured: 0, contacts: 0, failed: 0, emails: 0 }
   if (max <= 0 || budget.left <= 1) return diag
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
   //    통과한 뒤 아래에서 전량 스킵됐다. channel_id/url 을 함께 읽어 그 자리에서 진짜 id 를 되살린다.
   type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null
-    category: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
+    name: string | null; category: string | null; category_source: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
-      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, name, email, instagram, links, description, category, category_source, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
+      ORDER BY perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    // ⬆️ 2026-07-29: `(perf_checked_at IS NULL) DESC, perf_checked_at ASC` 를 `perf_checked_at ASC` 로 —
+    //   SQLite 는 NULL 을 가장 작은 값으로 보므로 ASC 가 이미 **미측정 우선**이다(정렬 결과 동일).
+    //   식(expression)이 앞에 있으면 인덱스로 정렬을 만족시키지 못해 매 라운드 계정 전체(38k행)를 스캔·정렬했다.
+    //   `idx_ad_inf_leads_perf(account_id, platform, perf_checked_at)` 와 형태를 맞춰 읽기를 LIMIT 만큼으로 떨어뜨린다.
     rows = res?.results || []
   } catch (err) {
     // 삼키면 `selected:0` 이 되어 '큐가 빔'과 구분이 사라진다 — 이 레인이 tried:0 으로 멈춰 있던 동안
@@ -357,11 +313,33 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   //   import 하므로 정적 import 는 순환이 된다. 상대경로 동적 import 는 레포 규칙상 허용되는 형태.
   const { scoreLead } = await import('./influencer-quality')
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
-  const stmts = []
-  for (const r of rows) {
+  // 타입 명시 필수 — 아래 push 가 워커 클로저 안에서 일어나 추론이 안 된다(동시화 이전엔 같은 스코프라 추론됐다).
+  const stmts: ReturnType<D1Database['prepare']>[] = []
+  /**
+   * 🏃 **블로거 단위 동시 처리**(2026-07-29) — 라운드가 예산을 남긴 채 시간에 끊기던 것.
+   *
+   *   실측(08:00 라운드): `selected 12 · tried 3 · spent 25/45 · deadline_hit true · elapsed 20.3s`.
+   *   즉 **예산의 44%를 못 쓰고** 벽시계로 끝났다. 건당 두 fetch 는 이미 병렬인데(아래) 블로거는
+   *   한 명씩 순차라, 네이버 응답이 건당 ~6.8s 면 20s 안에 3명이 천장이다. 예산이 아니라 **직렬화**가
+   *   병목이었다 — 같은 서브리퀘스트로 처리량만 버리고 있었다.
+   *
+   *   ⚠️ 동시성 3 으로 **보수적**으로 잡는다: 우리가 때리는 호스트는 둘(rss./m.blog.naver.com)이고
+   *   호스트당 동시 연결을 과하게 올리면 차단·지연으로 되돌아온다 — 그건 처리량을 늘리는 게 아니라
+   *   레인을 통째로 죽이는 방향이다. 3 이면 호스트당 3 으로, 흔한 6-per-host 한도 아래에 머문다.
+   *   (더 올리기 전에 `failed` 카운터가 안 오르는지부터 확인할 것 — 추측으로 올리면 조용히 악화된다.)
+   *
+   *   ✅ 예산 정합: 아래 [잔량 검사 → 차감] 사이에 `await` 가 없다(전부 동기 구문). JS 는 단일 스레드라
+   *   그 구간이 원자적으로 실행되므로 동시 워커가 같은 잔량을 두 번 쓰는 초과 지출이 생기지 않는다.
+   */
+  const NAVER_CONCURRENCY = 3
+  let cursor = 0
+  const worker = async (): Promise<void> => {
+   for (;;) {
     // ⏱️ 예산 또는 **벽시계** 소진 — 블로그 fetch 는 건당 최대 16s(RSS 8 + 홈 8)라 예산이 남아도 시간이 먼저 끝난다.
     //   (2026-07-28 파트너풀 레인의 deadline 가드와 같은 이유 — 죽는 대신 여기까지 쓰고 깨끗이 넘긴다.)
-    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) break
+    if (budget.left <= 1 || (budget.deadline && Date.now() >= budget.deadline)) return
+    const r = rows[cursor++]
+    if (!r) return
     // 🩹 손상 핸들 자가복구 — 일괄 힐(healNaverHandles)이 전수를 도는 데 몇 시간 걸리므로, 레인이 만나는
     //    행은 그 자리에서 살린다. 되살리면 handle/url 을 함께 고쳐 다음부터는 손상 상태로 안 돌아온다.
     const handle = deriveNaverHandle(r)
@@ -407,6 +385,7 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     }
     const sets: string[] = [`perf_checked_at = datetime('now')`]
     const binds: (string | number)[] = []
+    let descForClass = r.description || '' // 🏷️ 재분류용 본문 — 아래에서 최신 글 제목으로 갱신되면 그 값을 쓴다
     if (rssXml !== null) {
       diag.measured++
       const pubDates = extractPubDates(rssXml)
@@ -416,20 +395,39 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
       const titles = extractRssTitles(rssXml)
       if (titles.length) { // 글 제목 꼬리 갱신 — 기존 꼬리 제거 후 최신으로 교체(분류 신호 신선 유지)
         const bare = stripVideoTitles(r.description || '').trim()
-        sets.push('description = ?'); binds.push(`${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500))
+        descForClass = `${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500)
+        sets.push('description = ?'); binds.push(descForClass)
       }
     }
     let emailAfter = r.email
     let instaAfter = r.instagram
+    // 🐛 2026-07-29: 아래 재채점이 email/instagram 은 **갱신 후** 값을 쓰면서 이웃수만 갱신 *전* 값을 썼다.
+    //   방금 측정한 이웃수를 자기 점수에 반영하지 못해, 이웃 3,000+ 블로거가 규모 22 대신 13(미측정 기본)으로
+    //   채점된다 — 9점 손해가 야간 정비(커서 4,500/일 → 최대 8일)까지 그대로 남는다. 대표가 점수순으로
+    //   연락 대상을 고르므로, 하필 **방금 측정된 신선한 리드**가 뒤로 밀리는 방향의 오차다.
+    let subsAfter = r.subscriber_count
     if (homeText !== null) {
       const neighbors = parseNaverNeighborCount(homeText)
-      if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors) }
+      if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors); if (!subsAfter || subsAfter <= 0) subsAfter = neighbors }
       const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
       const c = extractContacts(homeText)
       if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
+      if (biz && !r.email) diag.emails = (diag.emails || 0) + 1
       if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }
       if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]); instaAfter = instaAfter || c.instagram[0] }
       if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+    }
+    // 🏷️ **측정한 그 자리에서 재분류**(2026-07-29) — 추가 fetch 0.
+    //   배경: 풀의 74%(28,673명)가 네이버 블로거인데 이들의 업종은 거의 전부 **수집 키워드 상속**이다
+    //   (실측 `cat_keyword 30,747` vs `cat_content 5,251`). "강남 맛집"으로 발굴됐다고 맛집 블로거인 건
+    //   아니다 — 서비스몰이 파는 것이 **지역×업종 맞춤 매칭**이라 이 축이 틀리면 이행 품질이 무너진다.
+    //   유튜브 경로는 이미 About 으로 재분류하는데(reconcileCategory) 네이버만 빠져 있었다.
+    //   방금 받은 최신 글 제목이 블로거가 실제로 쓰는 주제라 키워드 상속보다 훨씬 정직한 신호다.
+    //   ⚠️ live 가 null 이면 기존 값을 유지한다(reconcile 규칙 동일) — 못 알아본 것을 '없음'으로 덮지 않는다.
+    const liveCat = classifyCategory(r.name || '', descForClass)
+    if (liveCat && !NON_CATEGORIES.has(liveCat)) {
+      const finalCat = reconcileCategory(r.category, liveCat, null)
+      if (finalCat) { sets.push('category = ?', `category_source = 'content'`); binds.push(finalCat) }
     }
     // 🏅 측정한 그 자리에서 재채점(2026-07-29) — 활동성(최대 25점)은 `recent_posts_30d` 에서 오는데,
     //   블로거는 핸들 손상으로 그동안 **전원 미측정 = activity 0점**이었다(실측: 블로거 최고 33점,
@@ -440,14 +438,16 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
     if (posts30 !== undefined) {
       const { score } = scoreLead({
         platform: 'naver_blog', email: emailAfter, instagram: instaAfter, links: r.links,
-        subscriber_count: r.subscriber_count, recent_posts_30d: posts30,
+        subscriber_count: subsAfter, recent_posts_30d: posts30,
         recent_avg_views: r.recent_avg_views, median_long_views: r.median_long_views,
         category: r.category, is_brand: r.is_brand, consented_at: r.consented_at, source: r.source,
       })
       sets.push('lead_score = ?'); binds.push(score)
     }
     stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, r.id))
+   }
   }
+  await Promise.all(Array.from({ length: Math.min(NAVER_CONCURRENCY, rows.length) }, () => worker()))
   if (stmts.length) await DB.batch(stmts).catch(() => null)
   return diag
 }

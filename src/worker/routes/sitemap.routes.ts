@@ -7,6 +7,10 @@
  */
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
+// 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
+//   색인은 배포로 못 되돌린다(회수 시점의 통제권이 검색엔진에 있음) → 첫 몰 개설보다 먼저 들어가야 하는 가드.
+//   ⚠️ worker 값(value) import 는 alias 금지 — 상대경로(esbuild worker 빌드가 alias 를 못 푼다).
+import { mainScopeFor } from '../utils/consumer-scope';
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
@@ -83,13 +87,17 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
 
   if (DB) {
     try {
+      // 🏠 본진 몰 격리 조건(운영자 몰 상품/셀러 제외). 컬럼 부재 환경이면 빈 문자열 — 그 경우 몰 자체가 없다.
+      const productScope = await mainScopeFor(DB, 'products');
+      const sellerScope = await mainScopeFor(DB, 'sellers', 's');
+
       // 🛡️ 2026-05-15: 진행 중 공동구매 — 가장 높은 우선순위 (시간 민감)
       const groupBuys = await DB.prepare(
         `SELECT id, image_url, updated_at FROM products
          WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
+           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
          ORDER BY updated_at DESC LIMIT 500`
       ).all<{ id: number; image_url: string | null; updated_at: string }>().catch(() => ({ results: [] as Array<{ id: number; image_url: string | null; updated_at: string }> }));
       for (const g of groupBuys.results || []) {
@@ -107,7 +115,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
         `SELECT id FROM products
          WHERE is_active = 1
            AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
+           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {
@@ -119,7 +127,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
       const sellers = await DB.prepare(
         `SELECT s.id AS id, s.username AS username, u.handle AS handle
            FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
-          WHERE s.status = 'approved' ORDER BY s.id DESC LIMIT 200`
+          WHERE s.status = 'approved'${sellerScope} ORDER BY s.id DESC LIMIT 200`
       ).all<{ id: number; username: string; handle: string | null }>();
       for (const s of sellers.results || []) {
         const loc = s.handle ? `/u/${s.handle}` : `/s/${s.username || s.id}`;

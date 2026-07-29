@@ -21,6 +21,7 @@ import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
 import { exportFilteredCsv } from './influencer-pool/export-csv'
 import TrackLinkButton from './influencer-pool/TrackLinkButton'
 import RecruitButton from './influencer-pool/RecruitButton'
+import PoolFilters from './influencer-pool/PoolFilters'
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -84,6 +85,8 @@ export default function AdminInfluencerPoolPage() {
     const raw = new URLSearchParams(window.location.search).get('category') || ''
     return POOL_CATEGORIES.includes(raw) ? raw : (POOL_CATEGORIES.find(c => raw.includes(c)) || '')
   })
+  // 📍 활동 지역 필터 — 수집 키워드 접두에서 캡처된 값(거주지 아님). 지역×업종으로 매칭 후보를 좁힌다.
+  const [region, setRegion] = useState('')
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
@@ -109,6 +112,7 @@ export default function AdminInfluencerPoolPage() {
     if (hasEmail) params.set('hasEmail', '1')
     if (hasInstagram) params.set('hasInstagram', '1')
     if (category) params.set('category', category)
+    if (region) params.set('region', region)
     if (tier) params.set('tier', tier)
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
@@ -119,7 +123,7 @@ export default function AdminInfluencerPoolPage() {
     if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, region, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -402,59 +406,23 @@ export default function AdminInfluencerPoolPage() {
 
         <KeywordManager keywords={keywords} onChanged={loadMeta} />{/* 키워드 관리 — influencer-pool/ 추출(600줄 캡) */}
 
-        {/* 필터 */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <select value={platform} onChange={e => setPlatform(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
-            {/* 🏘️ 카페는 인플루언서가 아니라 커뮤니티라 기본 목록에서 빠진다(서버가 제외) — 여기서 골라야 보인다. */}
-            <option value="">전체(카페 제외)</option>
-            <option value="youtube">유튜브</option>
-            <option value="naver_blog">네이버 블로그</option>
-            <option value="naver_cafe">🏘️ 지역·커뮤니티 매체(카페)</option>
-            <option value="tistory">티스토리</option>
-          </select>
-          <select value={category} onChange={e => setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
-            <option value="">전체 카테고리</option>
-            {POOL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={tier} onChange={e => setTier(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
-            <option value="">전체 규모</option>
-            <option value="sweet">⭐ 스위트스팟 (1만~50만)</option>
-            <option value="nano">나노 (~1만)</option>
-            <option value="micro">마이크로 (1만~10만)</option>
-            <option value="mid">중형 (10만~50만)</option>
-            <option value="macro">대형 (50만+)</option>
-          </select>
-          <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900">
-            <option value="fit">유어딜 핏순</option>
-            <option value="score">🏅 리드 점수순</option>
-            <option value="perf">📈 조회수순(롱폼 중앙값)</option>
-            <option value="subscribers">구독자순</option>
-            <option value="recent">최근 수집순</option>
-          </select>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
-            <input type="checkbox" checked={hasEmail} onChange={e => setHasEmail(e.target.checked)} /> ✉ 이메일 있음
-          </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
-            <input type="checkbox" checked={hasInstagram} onChange={e => setHasInstagram(e.target.checked)} /> IG 인스타 있음
-          </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer">
-            <input type="checkbox" checked={hasContact} onChange={e => setHasContact(e.target.checked)} /> 아무 연락처
-          </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white cursor-pointer" title="뉴스·방송·기관·체험단모집·대행 + 브랜드 공식 채널 숨김(삭제 아님)">
-            <input type="checkbox" checked={hideNoise} onChange={e => { setHideNoise(e.target.checked); if (e.target.checked) setBrandOnly(false) }} /> 🧹 노이즈 숨김
-          </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 bg-white cursor-pointer" title="브랜드/기업 공식 채널로 태깅된 리드만 — 오탐 검수용">
-            <input type="checkbox" checked={brandOnly} onChange={e => { setBrandOnly(e.target.checked); if (e.target.checked) setHideNoise(false) }} /> 🏢 브랜드만
-          </label>
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-300 text-sm text-violet-700 bg-violet-50 cursor-pointer" title="스스로 신청한 리드(사전동의 — 자유 연락 가능)">
-            <input type="checkbox" checked={inboundOnly} onChange={e => setInboundOnly(e.target.checked)} /> 📥 신청·동의
-          </label>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름·핸들·이메일·카테고리·소개 검색 (예: 강남 카페)" title="여러 단어를 넣으면 모두 포함된 채널만 나옵니다. 채널 소개글까지 검색합니다." className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
-          <input value={matchRegion} onChange={e => setMatchRegion(e.target.value)} placeholder="지역(예: 강남·서울)" className="w-[140px] px-3 py-2 rounded-lg border border-indigo-200 text-sm text-gray-900" title="유어딜 매장 매칭 시 지역(시/군구/동) 필터" />
-          <button onClick={loadSellerMatch} disabled={matchLoading} className="px-3 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium disabled:opacity-50" title="선택 카테고리(+지역)의 유어딜 매장 목록(읽기 전용)">
-            {matchLoading ? '조회 중…' : '🔗 유어딜 매장 매칭'}
-          </button>
-        </div>
+        {/* 필터 — 입력 UI 는 `influencer-pool/PoolFilters` 로 분리(페이지 600줄 캡). 상태는 여기 유지. */}
+        <PoolFilters
+          platform={platform} setPlatform={setPlatform}
+          category={category} setCategory={setCategory}
+          region={region} setRegion={setRegion}
+          tier={tier} setTier={setTier}
+          sort={sort} setSort={setSort}
+          hasEmail={hasEmail} setHasEmail={setHasEmail}
+          hasInstagram={hasInstagram} setHasInstagram={setHasInstagram}
+          hasContact={hasContact} setHasContact={setHasContact}
+          hideNoise={hideNoise} setHideNoise={setHideNoise}
+          brandOnly={brandOnly} setBrandOnly={setBrandOnly}
+          inboundOnly={inboundOnly} setInboundOnly={setInboundOnly}
+          q={q} setQ={setQ}
+          matchRegion={matchRegion} setMatchRegion={setMatchRegion}
+          matchLoading={matchLoading} onSellerMatch={loadSellerMatch}
+        />
 
         {/* 🔗 유어딜 셀러 매칭 결과(읽기 전용) */}
         {matchSellers && (
