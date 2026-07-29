@@ -16,6 +16,7 @@ import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
+import { influencerRoutes } from './influencer.routes' // 🎯 인플루언서 수집·보강 트리거(600줄 래칫으로 분리)
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
@@ -47,61 +48,6 @@ app.get('/__ads/health', (c) => {
       enrich_disabled: on('ADS_ENRICH_DISABLED'),
     },
   })
-})
-
-// 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
-//   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
-app.post('/__ads/collect', async (c) => {
-  try {
-    const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
-    const stats = await runInfluencerAutoCollect(c.env)
-    return c.json({ ok: true, stats })
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-})
-
-// 🔁 인플루언서 수집 self-chain — YT 예산 버스트용. 한 인보케이션이 1회 수집 후, 예산이 남고 SELF 바인딩이 있으면
-//   다음 인보케이션(fresh 서브리퀘스트 예산)을 waitUntil 로 던지고 즉시 반환 → 오케스트레이터 시간제한 없이
-//   하루 예산(기본 100회)을 백그라운드에서 끝까지 소진. 가드: depth 40 상한 + 예산소진/쿼터초과/진전없음 시 중단.
-//   SELF 미바인딩이면 chained=false 로 1회만 실행(메인 오케스트레이터가 시간예산 내 폴백). 메인 어드민/자기자신만 호출.
-app.post('/__ads/collect-chain', async (c) => {
-  const depth = Math.max(0, parseInt(c.req.query('depth') || '0', 10) || 0)
-  const pv = parseInt(c.req.query('pu') || '-1', 10); const prevUsed = Number.isFinite(pv) ? pv : -1
-  let stats: import('@/features/marketing/api/influencer-auto-collect').AutoCollectStats | null = null
-  try {
-    const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
-    stats = await runInfluencerAutoCollect(c.env)
-  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
-  const yb = stats?.yt_budget
-  const used = yb && typeof yb.used === 'number' ? yb.used : -1
-  const total = yb && typeof yb.total === 'number' ? yb.total : 0
-  const ytDone = !!stats?.youtube_quota_hit || !yb || used >= total || used <= prevUsed // YT 소진/쿼터/진전없음
-  // 🔁 2026-07-29 **최소 라운드 바닥(floor)** — 기존 중단조건은 전부 *YT* 기준이라, YT 일일 예산(기본 90)이
-  //   떨어진 뒤(하루의 대부분)엔 첫 호출이 즉시 done → 매시간 **1라운드**로 주저앉았다. 그런데 볼륨의 주력은
-  //   쿼터가 남아도는 네이버(25k/day, 실측 ~2% 사용)고, 네이버를 막는 건 쿼터가 아니라 **인보케이션당
-  //   서브리퀘스트 예산**이다. 실측 04:00: 키워드 16개 중 3개만 처리 → 활성 210개 한 바퀴 70시간.
-  //   ⇒ YT 와 무관하게 최소 N라운드는 잇는다(각 라운드 = 새 예산). 커서가 처리한 만큼만 전진하므로 중복 0.
-  const rounds = Math.min(12, Math.max(1, parseInt((c.env as unknown as { ADS_COLLECT_ROUNDS?: string }).ADS_COLLECT_ROUNDS || '', 10) || 4))
-  //   ⛔ busy(다른 실행이 lease 보유)면 더 이어도 전부 busy 로 튕긴다 — 즉시 중단.
-  const done = !!stats?.busy || depth >= 40 || (depth + 1 >= rounds && ytDone)
-  let chained = false
-  if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {
-    chained = true
-    c.executionCtx.waitUntil(c.env.SELF.fetch(new Request(`https://ur-ads/__ads/collect-chain?depth=${depth + 1}&pu=${used}`, { method: 'POST' })).then(() => undefined).catch(() => undefined))
-  }
-  return c.json({ ok: true, stats, chained })
-})
-
-// 📝 인플루언서 풀 보강 1라운드(블로거 활동성·연락처 + 링크인바이오) — 수집과 **분리된 인보케이션**.
-//   왜 분리했는지는 `influencer-enrich-lane.ts` 헤더(라이브 실측: 수집에 얹혀 있어 한 건도 못 돌았음).
-//   💥 원문 릴레이 — 'FAILED' 로 뭉개면 라운드가 왜 안 도는지 라이브에서 알 길이 없다(파트너풀 레인과 동일).
-app.post('/__ads/enrich-influencer', async (c) => {
-  try {
-    const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-    return c.json({ ok: true, stats: await runInfluencerEnrich(c.env) })
-  } catch (err) {
-    const e = err as { name?: string; message?: string } | null
-    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
-  }
 })
 
 // 🔀 업체형 블로그/카페 → B2B 파트너풀 라우팅(수동 전용). **기본 dry-run** — `?apply=1` 이어야 실제 저장.
@@ -213,6 +159,7 @@ app.post('/__ads/reclassify-company', async (c) => {
 
 // 🏛️ 공공데이터 수집·스윕 수동 트리거 — 별 모듈로 추출(2026-07-28, god 파일 래칫). 경로/동작 불변.
 app.route('/', publicDataRoutes)
+app.route('/', influencerRoutes)
 
 // 📊 인플루언서 풀 → 구글시트 동기화 — 메인 어드민(수동 버튼)과 아래 cron 이 **같은 라우트**를 쓴다.
 //   ⚠️ 그래서 `?by=cron` 으로 출처를 구분해 스탬프에 남긴다 — 이게 없어서 "마지막 동기화 07-27"이
@@ -300,8 +247,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     }
   }
 
-  //   `beatName` — 하트비트 이름을 경로와 다르게 고정해야 할 때. 이름을 바꾸면 옛 `cron_hb:ads:<옛이름>`
-  //   행이 그대로 남아 **stale watch 가 영원히 '침묵'으로 경보**한다(작업은 멀쩡한데 알람만 울림).
+  //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
   const kick = (path: string, fallback: () => Promise<unknown>, beatName?: string): void => {
     const beat = beatName || path.replace(/^\/__ads\//, '')
     ctx.waitUntil((async () => {
@@ -329,22 +275,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   })())
   // 🎯 인플루언서 자동 수집 — 대표 "무한하게, 가능할 때까지". 매시간 순환 발굴 → 공용 풀 누적.
   //   YT 쿼터 소진 시 그 틱부터 네이버만(quotaHit 가드) → 다음날 자동 재개. 게이트 ADS_AUTO_COLLECT_ENABLED.
-  //
-  //   🔁 2026-07-29 **시간당 N라운드** — 보강 레인(아래)이 이미 쓰는 처방을 수집에도 적용한다.
-  //   배경(라이브 실측 04:00): 키워드 16개를 뽑고 **3개만 처리**하고 끝났다. 에러가 아니라 서브리퀘스트
-  //   예산 소진이다(D1 호출도 한도에 포함 — #784). 활성 키워드 210개 ÷ 3 = **한 바퀴 70시간**,
-  //   그래서 124개가 이틀째 순번을 못 받고 있었다. 한 인보케이션의 예산은 늘릴 수 없다(무료 플랜 천장 50).
-  //   ⇒ 늘릴 수 있는 건 **인보케이션 수**다. 라운드 = 독립 인보케이션 = 새 예산.
-  //   커서가 처리한 만큼만 전진하므로 라운드는 자연히 다음 구간을 이어받는다(중복 0).
-  //   lease 는 각 실행 끝에 해제되고 라운드는 **순차 await** 이라 서로 밀어내지 않는다.
-  //   ⚠️ YT 검색 일일 예산(기본 90)은 그대로다 — 하루 총량은 같고 소진이 앞당겨질 뿐이며,
-  //   `ytCooldownMs` 가 같은 키워드 재검색을 막는다. 볼륨의 실제 수혜자는 쿼터가 남아도는 네이버다.
-  //   ⚠️ 라운드를 **오케스트레이터에서 N번 부르지 않는다**. 이 scheduled 핸들러 자체도 서브리퀘스트 50 을
-  //   공유하는데(SELF.fetch 1건 = 1 서브리퀘스트), 이미 보강 레인 둘이 14 라운드를 던지고 kick 도 여럿이다.
-  //   여기서 더 부풀리면 **waitUntil 목록의 꼬리**(다른 레인)가 조용히 죽는다 — 그건 이 세션 범위 밖이다.
-  //   ⇒ 오케스트레이터는 1건만 던지고(`collect-chain`), 라운드는 **각 인보케이션이 스스로 다음을 잇는다**.
+  //   🔁 2026-07-29 시간당 N라운드(`collect-chain`) — 1라운드로는 키워드 3개에서 예산이 끊겨 활성 210개
+  //   한 바퀴에 70시간이었다. ⚠️ 라운드를 **여기서 N번 부르지 않는다**: 이 핸들러도 서브리퀘스트 50 을
+  //   공유하는데 이미 보강 레인 둘이 14 라운드를 던진다 — 더 부풀리면 waitUntil 꼬리(다른 레인)가 조용히
+  //   죽는다. 오케스트레이터는 1건만 던지고 체인이 스스로 잇는다. 하트비트 이름은 'collect' 고정(바꾸면
+  //   옛 `cron_hb:ads:collect` 가 남아 침묵 경보). 경위: docs/CURRENT_WORK.md 10차.
   if (env.ADS_AUTO_COLLECT_ENABLED === 'true') {
-    // 하트비트는 'collect' 로 고정 — 경로만 chain 으로 바뀐 것이라 이름을 바꾸면 옛 계열이 침묵 경보를 낸다.
     kick('/__ads/collect-chain', async () => { const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect'); return runInfluencerAutoCollect(env) }, 'collect')
   }
   // 📝 인플루언서 풀 보강 시간당 N라운드 — **수집 게이트와 분리**(2026-07-28).

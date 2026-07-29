@@ -22,7 +22,7 @@
  *
  * 예외가 정말 필요하면(예: 외부 요청이 없는 D1 전용 잡) 해당 블록에 `ads-lane-ok` 주석.
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 
 const FILE = 'src/worker-ads/index.ts'
 const ALLOW_MARK = 'ads-lane-ok'
@@ -78,12 +78,18 @@ while (true) {
   if (!isolated) {
     err(`${FILE}:${lineOf(at)} — 수집·스윕 레인(${m[1]})이 인라인 ctx.waitUntil 로 돕니다.\n`
       + `      한 인보케이션의 서브리퀘스트 예산을 다른 레인과 다퉈 조용히 0건이 됩니다(2026-07-29 실사고).\n`
-      + `      → public-data.routes.ts 의 '/__ads/...' 라우트를 kick() 으로 부르세요(라우트는 대개 이미 있습니다).`)
+      + `      → worker-ads 의 '/__ads/...' 라우트를 kick() 으로 부르세요(라우트는 대개 이미 있습니다).`)
   }
 }
 
 // kick 이 가리키는 경로가 실제로 존재하는지 — 오타 하나면 그 레인이 조용히 사라진다(fallback 은 로컬 전용).
-const routeFiles = ['src/worker-ads/index.ts', 'src/worker-ads/public-data.routes.ts'].filter(existsSync)
+// ⚠️ 목록을 손으로 유지하지 않는다 — index.ts 가 600줄 래칫에 닿을 때마다 라우트가 새 모듈로 빠지는데
+//   (public-data 2026-07-28 · influencer 2026-07-29), 그때마다 여기 추가하는 걸 잊으면 **가드가 멀쩡한
+//   라우트를 '없다'고 오탐**한다(실제로 났다). `src/worker-ads/*.routes.ts` 를 전부 훑는다.
+const routeFiles = [
+  'src/worker-ads/index.ts',
+  ...(existsSync('src/worker-ads') ? readdirSync('src/worker-ads').filter(f => f.endsWith('.routes.ts')).map(f => `src/worker-ads/${f}`) : []),
+].filter(existsSync)
 const routes = new Set()
 for (const f of routeFiles) {
   for (const m of readFileSync(f, 'utf8').matchAll(/\.post\('(\/__ads\/[^'?]+)'/g)) routes.add(m[1])
