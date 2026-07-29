@@ -90,6 +90,24 @@ curl -s https://urdeal.kr/ | grep -o 'modulepreload[^>]*app-components' || echo 
 > 참고: `NO_I18NEXT_INSTANCE` 경고는 **이 작업 이전부터 있던 것**이다. 중간에 이걸 새 회귀로
 > 오해했다가 첫 빌드 로그를 다시 grep 해서 정정했다 — 경고 유무가 아니라 **chars 수**가 신호다.
 
+## 3-3. 3단계 — 재발 방지 가드 (commit `be0567c`)
+
+**이 문제는 세 번째였다.** 두 번의 대규모 분리(−248KB·−305KB) 뒤에도 다시 찼다.
+원인은 총합 예산이 **후행 감지기**라는 것: 임계값을 넘어야 울리니 "청크 하나가 통째로
+크리티컬에 새로 들어옴" 이라는 **구조 변화**를 여유가 있는 동안 놓친다.
+
+→ `scripts/check-critical-chunks.mjs` — 총합이 아니라 **구성**(청크 이름 집합, 현재 17개)을
+동결. 새 이름이 들어오면 **바이트가 아니라 이름으로** 알려준다. `verify.yml` build 직후 +
+audit-gate 배선, `AUDIT_INVARIANTS.md` 등재(76개째).
+
+```bash
+node scripts/check-critical-chunks.mjs              # 검사(빌드 후)
+node scripts/check-critical-chunks.mjs --rebaseline # 의도적 변경 시 + _measured 에 이유 기록
+```
+
+⚠️ **이 가드가 못 잡는 것**: 이미 크리티컬인 청크가 **이름 그대로 내부에서 커지는 것**.
+그건 총합 예산의 몫이다 — 둘은 짝이다. 가드를 과신하지 말 것.
+
 ## 4. 남은 결정 / 대기
 
 - **대표 판단 대기**: PR #878 머지 여부(draft).
@@ -98,3 +116,7 @@ curl -s https://urdeal.kr/ | grep -o 'modulepreload[^>]*app-components' || echo 
   현재 헤드룸 23.8KB(216.2/240) 라 급하지 않다.
 - `dist/` 빌드가 재생성하는 `src/worker/generated/route-chunk-map.ts` 는 **커밋 대상 아님**
   (이번에도 `git checkout --` 로 되돌렸다).
+- **미수정으로 남긴 것(의도적)**: `CLAUDE.md` 의 "현재 47개 불변식 GREEN" 은 실제 76개와 어긋난다.
+  이 세션 변경과 무관한 선재 staleness 이고, CLAUDE.md 는 여러 세션이 동시에 고치는 파일이라
+  충돌을 만들지 않으려고 건드리지 않았다. 다음에 CLAUDE.md 를 어차피 만지는 세션이 함께 고칠 것.
+  (권위 있는 목록은 `docs/AUDIT_INVARIANTS.md` 이고 그쪽은 정확하다.)
