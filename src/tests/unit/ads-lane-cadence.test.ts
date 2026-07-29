@@ -152,3 +152,27 @@ describe('createLaneRegistry — 발화하지 않는 시각에도 레인을 알�
     expect(reg.list()).toEqual(['maintenance'])
   })
 })
+
+/**
+ * 🛡️ 순서 불변식 — 레인 등록은 `recordKnownLanes` **이전**에 끝나야 한다.
+ *
+ * 나중에 누가 kick 을 파일 아래쪽에 추가하면 그 레인은 목록에서 조용히 빠지고,
+ * "게이트 ON 인데 기록 없음" 판정이 그 레인에 대해서만 영영 안 나온다(가드가 헛도는 클래스).
+ */
+describe('worker-ads/index.ts — 레인 등록은 저장보다 먼저 끝난다', () => {
+  const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  const lines = src.split('\n')
+  const persistAt = lines.findIndex(l => l.includes('recordKnownLanes(env'))
+
+  it('recordKnownLanes 호출이 존재한다', () => {
+    expect(persistAt).toBeGreaterThan(0)
+  })
+
+  it('그 뒤로는 kick/gates 호출이 없다 — 있으면 그 레인이 목록에서 누락된다', () => {
+    const after = lines.slice(persistAt + 1)
+      .map((l, i) => ({ n: persistAt + 2 + i, l }))
+      .filter(x => /\bkick\(|gates\.(dailyAt|everyNHours)\(/.test(x.l))
+      .map(x => `${x.n}: ${x.l.trim().slice(0, 80)}`)
+    expect(after).toEqual([])
+  })
+})
