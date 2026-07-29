@@ -105,6 +105,34 @@ describe('makeHourGates — 발화 조건과 주기 신고가 같은 자리에�
     for (let h = 0; h < 24; h++) makeHourGates(h, s.kick).dailyAt(20, '/__ads/collect-localdata', noop)
     expect(s.calls).toHaveLength(1)
   })
+
+  /**
+   * 🤝 `hourlySchedule` — 양보 시각과 주기 신고가 **같은 입력**에서 나온다.
+   *   손으로 `if (hourUTC !== 19) { kick(…, { gap: … }) }` 를 쓰면 두 군데가 되고, 한쪽만 고치면
+   *   *"안 도는데 경보는 안 울리는"* 상태가 된다 — 위 'raw kick 금지' 불변식이 막는 그 형태다.
+   */
+  const SCHED = ['a', 'b', 'a', 'b'] as const
+  const pathOf = (p: string) => `/__ads/maintenance?phase=${p}`
+  const fallbackOf = () => noop
+
+  it('양보 시각엔 발화하지 않고, 나머지 시각엔 배정된 단계로 발화한다', () => {
+    const s = spy()
+    for (let h = 0; h < 24; h++) makeHourGates(h, s.kick).hourlySchedule(SCHED, [19], pathOf, fallbackOf)
+    expect(s.calls).toHaveLength(23)                                   // 24시간 − 양보 1
+    expect(s.calls.some(c => c.path === pathOf(SCHED[19 % SCHED.length]))).toBe(true) // 그 단계 자체는 다른 시각에 돈다
+  })
+
+  it('신고하는 주기가 **양보를 반영한** 값과 정확히 같다(손계산과 갈라질 수 없다)', () => {
+    const s = spy()
+    makeHourGates(0, s.kick).hourlySchedule(SCHED, [19], pathOf, fallbackOf)
+    expect(s.calls[0]?.gap).toBe(scheduleGapMinutes(SCHED, [19]))
+  })
+
+  it('빈 배정표는 아무것도 발화하지 않는다(0 주기로 즉시-stale 이 되지 않게)', () => {
+    const s = spy()
+    makeHourGates(0, s.kick).hourlySchedule([], [], pathOf, fallbackOf)
+    expect(s.calls).toEqual([])
+  })
 })
 
 /**
@@ -131,8 +159,13 @@ describe('worker-ads/index.ts — 시각 게이트는 반드시 gates 헬퍼를 
 
   it('단계 순환 레인은 **배정표에서** 유도한 주기를 신고한다(리터럴 하드코딩 금지)', () => {
     // 슬롯 수(`PHASES.length`)로 유도하면 가중 배정표에서 과대추정 → stale 경보가 조용히 느슨해진다.
-    expect(src).toMatch(/scheduleGapMinutes\(PHASES\)/)
+    // 🔁 2026-07-29: 호출부에서 `scheduleGapMinutes(PHASES)` 를 직접 쓰던 것을 `gates.hourlySchedule` 안으로
+    //   옮겼다(양보 시각과 주기를 **한 입력**에서 유도하기 위해 — 위 'raw kick 금지' 불변식이 요구한 형태).
+    //   따라서 검사 대상은 "호출부가 그 게이트를 쓰는가" 로 바뀐다. 유도 자체의 정합은 아래 유닛이 본다.
+    expect(src).toMatch(/gates\.hourlySchedule\(PHASES,/)
     expect(src).not.toMatch(/phaseGapMinutes\(PHASES/)
+    // 호출부가 주기를 **손으로** 계산해 넘기면 다시 두 군데가 된다 — 그 형태를 금지한다.
+    expect(src).not.toMatch(/gap: scheduleGapMinutes\(/)
   })
 })
 
@@ -503,6 +536,73 @@ describe('레인 등록 — beat 이름을 덮어쓰면 그 이름으로 등록�
     // 이 레포가 반복해 만난 형태: 함수는 고쳤는데 호출부가 안 넘겨 **조용히 예전 동작** 유지.
     const idx = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
     expect(idx).toMatch(/laneReg\.note\(path,\s*opts\?\.beat\)/)
+  })
+})
+
+/**
+ * 🤝 **19시 양보** — 시간별 정비 순환과 야간 재보정이 같은 lease 를 다투던 것 (2026-07-29).
+ *
+ *   `runMaintenancePhase` 와 `runNightlyRescan` 은 의도적으로 같은 `MAINT_LEASE_KEY` 를 잡는다
+ *   (둘 다 YouTube 쿼터를 써서 동시 실행이 곧 하루 예산 낭비). 그런데 시간별 순환이 도입된
+ *   2026-07-28 부터 19시에 **둘 다** 발화했고, 먼저 dispatch 되는 순환이 항상 이겼다.
+ *   진 쪽은 스냅샷도 안 남기고 돌아가 어드민에서는 "한 번도 안 돔"으로 보였다
+ *   (실측: `maintenance_rescan.at` 이 2026-07-27T19:00 에서 정지 — 순환 배포 당일부터).
+ *
+ *   ⚠️ 양보는 공짜가 아니다 — 그 시각 슬롯의 단계가 한 번 덜 돈다. 그래서 **양보 후에도**
+ *   ① 모든 단계가 하루에 최소 한 번 돌고 ② 실제 최대 간격이 경보 임계 안에 있어야 한다.
+ *   이 둘을 계산으로 고정한다(배정표를 나중에 바꿔도 자동으로 재검사된다).
+ */
+describe('🤝 야간 재보정에 19시를 양보해도 정비 순환이 굶지 않는다', () => {
+  const YIELD = [19]
+  const slotAt = (h: number) => MAINT_SCHEDULE[h % MAINT_SCHEDULE.length]
+
+  it('양보한 시각의 단계가 다른 시각에도 배정돼 있다 — 아니면 그 단계가 영영 안 돈다', () => {
+    const yielded = slotAt(19)
+    const remaining = Array.from({ length: 24 }, (_, h) => h).filter(h => !YIELD.includes(h) && slotAt(h) === yielded)
+    expect(remaining.length, `${yielded} 가 19시에만 배정돼 있다 — 양보하면 사라진다`).toBeGreaterThan(0)
+  })
+
+  /**
+   * ⚠️ **지금 배정표(12슬롯)에서는 이 검사가 절대 안 깨진다** — 24 % 12 === 0 이라 모든 슬롯이 하루 2회
+   *   돌고, 19시 슬롯은 7시에도 돈다. 그러니 "늘 초록"을 "검사가 헛돈다"로 읽지 말 것:
+   *   길이를 **20 이상**으로 바꾸면 19시에만 도는 슬롯이 생기고(19+20 > 23) 그때 빨간불이 뜬다(실측 확인).
+   *   즉 이 검사는 지금이 아니라 **다음 사람이 배정표 길이를 바꿀 때** 값을 한다.
+   */
+  it('양보 후에도 모든 단계가 하루 안에 최소 한 번 돈다', () => {
+    const ran = new Set(Array.from({ length: 24 }, (_, h) => h).filter(h => !YIELD.includes(h)).map(slotAt))
+    const missing = MAINT_PHASES.filter(p => !ran.has(p))
+    expect(missing, `양보로 하루 동안 사라지는 단계: ${missing.join(', ')}`).toEqual([])
+  })
+
+  /**
+   * 경보 임계는 **양보를 모르는** 값(`scheduleGapMinutes(PHASES, [19])`)으로 계산돼 워커에 들어간다.
+   * 실제 간격이 그 값을 넘으면 정상 동작이 stale 로 신고된다 — 경보를 무디게 만드는 것만큼이나 나쁘다
+   * (거짓 경보가 반복되면 사람이 경보를 끈다).
+   */
+  it('양보를 반영한 임계가 양보 전 임계보다 느슨해지지 않거나, 느슨해졌다면 그만큼만이다', () => {
+    const before = maxScheduleGapHours(MAINT_SCHEDULE)
+    const after = maxScheduleGapHours(MAINT_SCHEDULE, YIELD)
+    expect(after).toBeGreaterThanOrEqual(before)      // 양보는 간격을 넓히기만 한다
+    expect(after, `양보 후 최대 간격 ${after}h — 하루를 넘으면 그 단계는 사실상 정지다`).toBeLessThanOrEqual(24)
+    expect(scheduleGapMinutes(MAINT_SCHEDULE, YIELD)).toBe(staleGapMinutes(after * 60))
+  })
+
+  it('🔒 스케줄러가 실제로 양보한다 — 상수 공유(두 벌로 두면 한쪽만 옮겨져 다시 겹친다)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+    expect(src).toMatch(/export const RESCAN_HOUR_UTC = 19/)
+    // 양보는 `gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC], …)` 한 자리에서 표현된다 —
+    // 조건과 주기를 따로 쓰면(첫 판이 그랬다) 'raw kick 금지' 불변식이 먼저 잡는다.
+    expect(src, '순환이 19시를 양보하지 않는다').toMatch(/gates\.hourlySchedule\(PHASES, \[RESCAN_HOUR_UTC\]/)
+    expect(src, '재보정 시각이 상수를 안 쓴다').toMatch(/dailyAt\(RESCAN_HOUR_UTC,/)
+  })
+
+  it('🔒 경합에 진 재보정이 흔적을 남긴다 — 무음이면 "안 돎"과 구분되지 않는다', () => {
+    const src = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
+    const block = /export async function runNightlyRescan[\s\S]{0,2000}?\n\}/.exec(src)?.[0] || ''
+    expect(block, 'runNightlyRescan 을 못 찾았다').toBeTruthy()
+    // busy 반환 경로에서 스냅샷 키를 쓴다
+    const busyPath = /acquireLease\([\s\S]{0,900}?\n  \}/.exec(block)?.[0] || ''
+    expect(busyPath).toMatch(/ads_maintenance_rescan_last/)
   })
 })
 

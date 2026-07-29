@@ -397,10 +397,15 @@ describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
 describe('보강 레인 — 라운드마다 선두 교대', () => {
   const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
 
-  it('depth 홀짝으로 선두를 가른다', () => {
-    expect(lane).toMatch(/const naverFirst = depth % 2 === 1/)
-  })
-
+  /**
+   * 🔁 **선두 조건 자체는 여기서 고정하지 않는다** — `ads-influencer-enrich-lane.test.ts` 가 SSOT.
+   *
+   *   나는 같은 14:00 실측(`depth: 0` 인 틱에서 블로거가 또 굶음)을 보고 `depth % 2 === 0` 으로
+   *   뒤집으려 했는데, **다른 세션의 `depth % 2 === 1 || starvedLastRound(prev)` 가 더 낫다**:
+   *   내 판은 체인이 계속 안 이어지면 이번엔 **앞 레인(링크인바이오·YT)이 영구히** 굶는다 —
+   *   굶는 쪽을 바꿨을 뿐 굶주림 자체는 그대로다. 저쪽은 결정적 교대 + 자기교정이라 양쪽을 다 살린다.
+   *   ⇒ 조건을 두 파일에서 각각 고정하면 서로를 되돌리는 싸움이 된다. 여기서는 **분기의 성질**만 본다.
+   */
   it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
     const branch = /if \(naverFirst\) \{[\s\S]{0,300}?\n  \} else \{/.exec(lane)?.[0] || ''
     expect(branch, 'naverFirst 분기를 못 찾았다').toBeTruthy()
@@ -420,5 +425,95 @@ describe('보강 레인 — 라운드마다 선두 교대', () => {
 
   it('블로거 호출이 한 곳뿐이다 — 두 벌로 두면 한쪽만 고쳐진다', () => {
     expect((lane.match(/enrichNaverActivity\(DB, budget/g) || []).length).toBe(1)
+  })
+})
+
+/**
+ * 🔧 **보강 레인 수동 트리거** — 되돌려 볼 수 없으면 고치는 속도가 안 난다 (2026-07-29).
+ *
+ *   수집엔 `collect-burst`, 정비엔 `maintain-all` 이 있는데 보강 레인만 트리거가 없었다.
+ *   그래서 이 레인의 변경은 **매시 정각 cron 을 기다려야만** 검증됐고, 오늘 네 번 고치는 동안
+ *   확인 사이클이 매번 1시간씩 들었다(그중 두 번은 헛짚어 잘못된 처방이 그대로 서 있었다).
+ */
+describe('보강 레인 수동 트리거 — depth 가 실제로 전달된다', () => {
+  it('어드민이 ur-ads 보강 엔드포인트로 위임한다', () => {
+    const ops = read('src/features/marketing/api/admin-ads-pool-ops.routes.ts')
+    expect(ops).toMatch(/influencer-pool\/enrich-run/)
+    expect(ops).toMatch(/__ads\/enrich-influencer\?depth=/)
+  })
+
+  /** ⚠️ 받는 쪽이 안 읽으면 파라미터가 조용히 무시된다 — "시험했는데 왜 같지?" 가 되는 자리다. */
+  it('ur-ads 쪽이 depth 를 읽어 레인에 넘긴다(무시 금지)', () => {
+    const routes = read('src/worker-ads/enrich.routes.ts')
+    // 상한은 넉넉히 — 좁게 잡으면 **주석 몇 줄만 늘어도** 매치가 끊겨 "코드는 맞는데 빨간불"이 된다
+    // (실제로 이 테스트를 처음 쓸 때 600 으로 잡아 그렇게 됐다). 게으른 `?` 라 넓혀도 다음 핸들러까진 안 먹는다.
+    const h = /enrichRoutes\.post\('\/__ads\/enrich-influencer'[\s\S]{0,2000}?\n\}\)/.exec(routes)?.[0] || ''
+    expect(h, '핸들러를 못 찾았다').toBeTruthy()
+    expect(h).toMatch(/c\.req\.query\('depth'\)/)
+    expect(h).toMatch(/runInfluencerEnrich\(c\.env,/)
+  })
+
+  /** ⚠️ 드라이버(체인)를 부르면 백그라운드 체인이 cron 과 겹쳐 같은 구간을 중복 조회한다. */
+  it('수동 트리거는 드라이버(체인)가 아니라 단일 라운드를 부른다', () => {
+    const ops = read('src/features/marketing/api/admin-ads-pool-ops.routes.ts')
+    expect(ops).not.toMatch(/enrich-run[\s\S]{0,900}enrich-influencer-driver/)
+  })
+})
+
+
+/**
+ * 🧱 **`runDdlOnce` 키를 공유하는 두 호출부는 같은 DDL 을 봐야 한다** (2026-07-29).
+ *
+ *   `ads_ddl_discovery_keywords` 키를 `influencer-auto-collect` 와 `influencer-keyword-store` 가
+ *   **함께** 쓰는데, 각자 `KW_DDL` 배열을 들고 있었다. 내용이 같아 그날은 무해했지만 — 한쪽만 고치면
+ *   체크섬이 호출부마다 달라져 **매 인보케이션 서로의 기록을 덮어쓰며 DDL + 시드 200문장이 영원히
+ *   재실행**된다. 무료 플랜에서 서브리퀘스트가 천장인데, 그 재실행을 없애려고 만든 최적화가 통째로
+ *   뒤집히는 형태다(그리고 에러가 안 나서 아무도 모른다 — 이 레포의 반복 실패형).
+ *
+ *   ⚠️ 못 막는 것: 다른 키에서 같은 구조가 생기는 것. 지금 공유 키는 이것 하나라(전수 확인) 그것만 고정한다.
+ */
+describe('🧱 DDL SSOT — 공유 키의 문장 목록은 한 벌이다', () => {
+  const DIR = 'src/features/marketing/api'
+
+  it('KW_DDL 정의는 레포에 정확히 하나', () => {
+    const defs = ['influencer-keyword-ddl.ts', 'influencer-keyword-store.ts', 'influencer-auto-collect.ts']
+      .filter(f => /^(export )?const KW_DDL/m.test(read(`${DIR}/${f}`)))
+    expect(defs, `KW_DDL 을 두 곳 이상에서 정의하고 있다: ${defs.join(', ')}`).toEqual(['influencer-keyword-ddl.ts'])
+  })
+
+  it('두 호출부 모두 그 SSOT 를 import 한다', () => {
+    for (const f of ['influencer-keyword-store.ts', 'influencer-auto-collect.ts']) {
+      expect(read(`${DIR}/${f}`), `${f} 가 KW_DDL 을 자체 정의하거나 안 쓴다`)
+        .toMatch(/import \{ KW_DDL \} from '\.\/influencer-keyword-ddl'/)
+    }
+  })
+})
+
+/**
+ * 🔍 **소스에 생 NUL 바이트를 두지 않는다** — 그 파일은 grep/ripgrep 이 통째로 건너뛴다 (2026-07-29).
+ *
+ *   `ads-schema-guard.ts` 에 `statements.join(NUL)` 이 **생 바이트로** 박혀 있었다. 구분자 선택 자체는
+ *   옳다(NUL 은 SQL 문에 못 들어가니 모호성이 없다) — 문제는 **표기**다. 그 한 바이트 때문에 `file(1)` 이
+ *   이 파일을 `data` 로 보고, **grep 기반 검사 전부가 이 파일만 못 봤다**(가드가 "있는데 안 도는" 것과
+ *   결과가 같다). 이스케이프(`U+0000`)로 적으면 문자열은 **동일**하고(체크섬 불변 — 실측 확인)
+ *   파일은 텍스트로 남는다.
+ *
+ *   ⚠️ 이 테스트 자신도 NUL 을 **생으로 쓰지 않는다**(`String.fromCharCode(0)`) — 그랬다간 검사 파일이
+ *   같은 사각지대로 들어간다.
+ */
+describe('🔍 소스에 생 NUL 바이트 없음 — grep 사각지대 방지', () => {
+  const NUL = String.fromCharCode(0)
+  const FILES = [
+    'src/features/marketing/api/ads-schema-guard.ts',
+    'src/features/marketing/api/influencer-keyword-ddl.ts',
+    'src/worker-ads/lane-cadence.ts',
+  ]
+
+  it('검사 대상이 실제로 존재한다(경로가 낡아 0건이 되는 것 차단)', () => {
+    for (const f of FILES) expect(read(f).length, `${f} 를 못 읽었다`).toBeGreaterThan(0)
+  })
+
+  it('어느 파일에도 U+0000 이 생으로 들어 있지 않다', () => {
+    for (const f of FILES) expect(read(f).includes(NUL), `${f} 에 생 NUL 이 있다`).toBe(false)
   })
 })
