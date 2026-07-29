@@ -15,7 +15,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { backfillRegions, recheckBlankRegions } from './influencer-region'
-import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론
+import { classifyCategory, canAutoPromote } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론 + 적합성 게이트
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -540,11 +540,16 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     const room = autoPromotionRoom(autoRow?.n ?? 0)
     kwAuto = { active: autoRow?.n ?? 0, room, cap: MAX_AUTO_KEYWORDS } // 자리 0 이면 발굴이 굶는 중 — 밖에서 보이게
     if (room > 0) {
-      const ph = topTags.map(() => '?').join(',')
-      const cands = await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
+      // 🚪 적합성 게이트(2026-07-29 대표 승인) — 승격 후보를 **거래가 일어나는 축**으로 좁힌다.
+      //   근거·왜 "분류 가능 여부"만으론 부족한지는 `AUTO_PROMOTE_CATEGORIES` 주석(실측 수치 포함).
+      //   ⚠️ SQL 이 아니라 여기서 거른다: 후보의 `category` 는 위 upsert 가 방금 채운 값이라
+      //   같은 판정을 두 벌로 두지 않으려면 `promoCat` 과 **같은 함수**를 써야 한다.
+      const gated = topTags.filter(([t]) => canAutoPromote(promoCat(t)))
+      const ph = gated.map(() => '?').join(',')
+      const cands = gated.length ? await DB.prepare(`SELECT id, keyword FROM ad_discovery_keywords
         WHERE active = 0 AND hits >= ? AND keyword IN (${ph}) ORDER BY hits DESC LIMIT ?`)
-        .bind(AUTO_PROMOTE_HITS, ...topTags.map(([t]) => t), room)
-        .all<{ id: number; keyword: string }>().catch(() => null)
+        .bind(AUTO_PROMOTE_HITS, ...gated.map(([t]) => t), room)
+        .all<{ id: number; keyword: string }>().catch(() => null) : null
       const rows = cands?.results || []
       if (rows.length) {
         await DB.batch(rows.map(r => DB.prepare('UPDATE ad_discovery_keywords SET active = 1 WHERE id = ?').bind(r.id))).catch(() => null)

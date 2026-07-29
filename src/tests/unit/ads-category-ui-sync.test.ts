@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { PRIORITY_CATEGORIES } from '@/features/marketing/api/influencer-keyword-rotation'
 import { CLASSIFIED_CATEGORIES } from '@/features/marketing/api/influencer-classify'
 import { SEED, REGION_SEED, BANGBAE_SEED } from '@/features/marketing/api/influencer-seed-keywords'
@@ -18,6 +20,38 @@ import { PRIORITY_CATS } from '@/pages/admin/influencer-pool/KeywordManager'
  *   ②는 이제 서버 SSOT 를 **재수출**하므로 구조적으로 못 갈라진다(아래는 그 재수출이 유지되는지 확인).
  *   ①은 표시 순서/부가 항목('자동') 때문에 별도 목록이 불가피하므로, **포함 관계**로 강제한다.
  */
+/**
+ * 📝 2026-07-29 — **인바운드 신청 폼**의 세 번째 사본. 서버 검증(`influencer-apply.routes`)과
+ *   화면(`CreatorApplyPage`)이 손으로 복제된 같은 배열이라, 한쪽만 고치면 **신청자가 고른 값을
+ *   서버가 거부**하거나(400) 반대로 화면에 없는 값이 통과한다. 실제로 둘 다 낡아 있었다 —
+ *   서버가 '공동구매' 축을 신설한 뒤에도 신청 폼엔 그 선택지가 없다(아래에서 그 사실을 고정한다).
+ *   ⚠️ 이 테스트가 못 보는 것: 목록이 *타당한지*(어떤 축을 신청 폼에 열지)는 정책이라 코드가 모른다.
+ */
+const APPLY_RE = /const CATEGORIES = \[([^\]]+)\]/
+const applyList = (path: string): string[] => {
+  const m = APPLY_RE.exec(readFileSync(join(process.cwd(), path), 'utf8'))
+  expect(m, `${path} 의 CATEGORIES 리터럴을 못 찾음 — 형태가 바뀌었으면 이 정규식도 함께`).toBeTruthy()
+  return [...m![1].matchAll(/'([^']+)'/g)].map(x => x[1]!)
+}
+
+describe('인바운드 신청 폼 카테고리 — 서버 검증 ↔ 화면', () => {
+  const server = applyList('src/features/marketing/api/influencer-apply.routes.ts')
+  const client = applyList('src/pages/CreatorApplyPage.tsx')
+
+  it('🔒 두 사본이 순서까지 동일하다 — 갈리면 신청이 400 으로 막힌다', () => {
+    expect(client).toEqual(server)
+  })
+
+  it("🔒 '기타'를 뺀 전 항목이 어드민 필터에 있다 — 신청받고 화면에서 못 고르는 축이 없게", () => {
+    const missing = server.filter(c => c !== '기타' && !POOL_CATEGORIES.includes(c))
+    expect(missing, `신청 폼에만 있고 어드민 필터엔 없는 축: ${missing.join(', ')}`).toEqual([])
+  })
+
+  it('📌 신설 축(골프)이 신청 폼에도 반영돼 있다', () => {
+    expect(server).toContain('골프')
+  })
+})
+
 describe('카테고리 축 — 서버 SSOT ↔ 어드민 화면', () => {
   it('① 우선 카테고리는 서버 SSOT 를 그대로 쓴다(사본 금지)', () => {
     expect(PRIORITY_CATS).toBe(PRIORITY_CATEGORIES) // 재수출이면 참조 동일 — 복제하면 깨진다
