@@ -15,12 +15,13 @@
  */
 import type { Env } from '@/worker/types/env'
 import { discoverYouTubeInfluencers, discoverNaverBloggers, discoverNaverCafes, ensureInfluencerSchema, isLikelyNoise, stripVideoTitles, type InfluencerLead, type FetchBudget } from './influencer-discovery'
-import { ensureQualityColumns, looksLikeBrandChannel } from './influencer-quality'
+import { ensureQualityColumns, looksLikeBrandChannel, scoreLead } from './influencer-quality'
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
 import { COLLECT_LEASE_KEY, COLLECT_LEASE_TTL_MS } from './collect-lease'
 import { subreqCapKey, isSubrequestLimitError, resolveSubreqBudget, nextSubreqCap } from './collect-budget'
 import { maybeAlertCollectHealth } from './collect-health-alert'
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
 /** 공용 풀 계정 id — 실제 ad_accounts.id 는 1부터라 0 은 시스템 풀 전용 센티넬(충돌 없음). */
 export const POOL_ACCOUNT_ID = 0
@@ -36,45 +37,6 @@ export const MIN_YT_SUBSCRIBERS = 1000
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-
-/** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
-const SEED: { category: string; keywords: string[] }[] = [
-  // ⭐ 우선 분야 (대폭 보강)
-  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천', '헤어 스타일링', '피부관리 루틴', '뷰티 하울', '왁싱 후기'] },
-  { category: '네일', keywords: ['네일아트', '셀프네일', '젤네일 디자인', '네일샵 추천', '네일 튜토리얼'] },
-  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집', '로컬 맛집', '숨은 맛집', '노포 맛집', '골목식당'] },
-  { category: '푸드', keywords: ['맛집 브이로그', '먹방', '홈카페', '베이킹 레시피', '자취요리'] },
-  // ⭐ 외식/자영업 — 유어딜 매장(셀러) 결. 홍석천·이원일 류 외식업 인플루언서·매장 사장·창업 채널.
-  { category: '외식창업', keywords: ['외식업', '자영업', '소상공인', '식당 창업', '카페 창업', '장사 노하우', '가게 홍보', '매장 마케팅', '요식업', '음식점 사장', '동네 가게', '소상공인 창업'] },
-  { category: '숙소', keywords: ['숙소 추천', '펜션 추천', '풀빌라 후기', '호텔 리뷰', '감성숙소', '글램핑 후기', '한옥스테이'] },
-  // 일반 분야
-  { category: '패션', keywords: ['패션 하울', '데일리룩', '코디 추천', '빈티지 패션'] },
-  { category: '여행', keywords: ['국내여행 브이로그', '호캉스 후기', '캠핑 브이로그', '해외여행 팁'] },
-  { category: '육아', keywords: ['육아 브이로그', '아기용품 리뷰', '엄마표 놀이'] },
-  { category: '운동', keywords: ['홈트레이닝', '헬스 브이로그', '다이어트 기록', '요가 스트레칭'] },
-  { category: '반려동물', keywords: ['강아지 브이로그', '고양이 채널', '반려동물 용품'] },
-  { category: '리빙', keywords: ['자취 인테리어', '살림 꿀팁', '홈스타일링'] },
-  { category: 'IT/재테크', keywords: ['IT 리뷰', '가전 리뷰', '앱 추천', '재테크 브이로그', '주식 초보'] },
-  { category: '취미', keywords: ['캘리그라피', '그림 그리기', '독서 추천', '차박 브이로그'] },
-]
-
-// 🗺️ 지역×업종 그리드 — 서울 25구 × {맛집·카페·뷰티·네일}. 소스 추가 없이 로컬 커버리지 극대화(유어딜 동네딜 결).
-//   카페는 맛집 카테고리로 태깅(우선 커서). 커서 순환이라 쿼터 부담 없이 며칠에 걸쳐 도는 구조.
-const SEOUL_GU = ['강남', '서초', '송파', '강동', '마포', '용산', '성동', '광진', '영등포', '동작', '관악', '강서', '양천', '구로', '금천', '종로', '중구', '성북', '동대문', '중랑', '노원', '도봉', '강북', '은평', '서대문']
-const REGION_SEED: { category: string; keywords: string[] }[] = [
-  { category: '맛집', keywords: SEOUL_GU.flatMap(gu => [`${gu} 맛집`, `${gu} 카페`]) },
-  { category: '뷰티', keywords: SEOUL_GU.map(gu => `${gu} 뷰티`) },
-  { category: '네일', keywords: SEOUL_GU.map(gu => `${gu} 네일`) },
-]
-
-// 📍 방배 국지 시딩(2026-07-21 대표 — 8월 방배 시드 크리에이터 소싱). 동/역세권 단위(서울 25구 그리드보다 좁음).
-//   전부 우선풀 업종(맛집/뷰티/네일)으로 태깅 → 우선 커서(3/4 배정)를 탄다(전국 확대보다 방배가 먼저 커버).
-//   '카페'는 REGION_SEED 관례대로 맛집 태깅 · '피티'(PT)는 운동이 우선풀에 없어 매장 결의 뷰티로 태깅(우선 커서 편입 목적).
-const BANGBAE_SEED: { category: string; keywords: string[] }[] = [
-  { category: '맛집', keywords: ['방배 맛집', '방배동 맛집', '방배 카페', '방배역 맛집', '이수역 맛집', '내방역 맛집', '사당역 맛집', '서리풀공원 맛집'] },
-  { category: '뷰티', keywords: ['방배 미용실', '방배 피티'] },
-  { category: '네일', keywords: ['방배 네일'] },
-]
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
@@ -142,8 +104,8 @@ async function saveLeadsBatch(
   //   기존 upsert 의 ON CONFLICT DO UPDATE 는 백필도 changes=1 이라 saved 가 부풀어 saved===0 헬스체크를 가림).
   //   ② 이미 있던(changes=0) 행만 별도 UPDATE 로 연락처 백필 — 신규 카운트에 포함 안 함(기존 백필 의미 동일).
   const insSql = `INSERT OR IGNORE INTO ad_influencer_leads
-    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    (account_id, platform, channel_id, handle, name, url, subscriber_count, view_count, video_count, country, thumbnail, email, instagram, tiktok, links, description, category, source_keyword, is_brand, last_post_at, category_source, lead_score)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   // 🛡️ 2026-07-23 전수조사(F-32): 기존엔 "채울 컨택이 있을 때만" UPDATE 라 이미 컨택 있는 리드는 구독자수·소개글이
   //   영원히 수집 당시 값(스테일) → 재분류가 낡은 소개글로 판정. 재조우 시 구독자/총조회/소개글은 항상 최신화
   //   (컨택은 COALESCE 빈칸만, status/memo/category 수동 큐레이션 불변).
@@ -161,14 +123,30 @@ async function saveLeadsBatch(
     const insStmts = slice.map(l => {
       const cat = resolveCategory(l.name, l.description, meta.category) // 🏷️ 콘텐츠 신호 우선 분류
       const catSrc = cat ? (classifyCategory(l.name, l.description) ? 'content' : 'keyword') : null // 분류 근거(정확도 가시화)
+      const brand = looksLikeBrandChannel(l.name, l.description) ? 1 : 0 // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+      /**
+       * 🏅 **저장 시점 즉시 채점**(2026-07-29) — 신규 리드가 큐 뒤에 갇히던 것.
+       *   `lead_score` 를 안 넣으면 NULL 인데, 발송 큐와 점수 정렬은 `(lead_score IS NULL) ASC` 로
+       *   **미채점을 후순위**로 민다. 점수는 야간 정비(quality 패스)가 4,500명씩 커서로 도는데
+       *   38,374명이면 한 바퀴에 8~9라운드 = 실측 기준 **최대 ~42시간**. 그동안 하루 700명씩 들어오는
+       *   신규는 아무리 좋은 리드여도 목록에 안 나온다 — 발송이 수동(하루 N명)이라 그 지연이 곧 손실이다.
+       *   ⇒ scoreLead 는 **순수함수**라 DB 왕복이 0 이다. 저장하면서 같이 계산하지 않을 이유가 없다.
+       *   측정 전이라 활동성은 중립으로 잡히고, 이후 quality 패스가 실측값으로 덮어쓴다(멱등).
+       */
+      const { score } = scoreLead({
+        platform: l.platform, subscriber_count: l.subscriber_count, email: l.email,
+        instagram: l.instagram, links: l.links, category: cat, is_brand: brand,
+        url: l.url, last_post_at: l.last_post_at ?? null,
+      })
       return DB.prepare(insSql).bind(
         accountId, l.platform, l.channel_id, l.handle, l.name.slice(0, 120), l.url,
         l.subscriber_count, l.view_count, l.video_count, l.country, l.thumbnail,
         l.email, l.instagram, l.tiktok, l.links, l.description.slice(0, 500),
         cat, meta.sourceKeyword ?? null,
-        looksLikeBrandChannel(l.name, l.description) ? 1 : 0, // 🏢 브랜드 공식 채널 태깅(삭제 아님 — 숨김 필터용)
+        brand,
         l.last_post_at ?? null, // 📝 블로거 마지막 글 날짜(검색 postdate — RSS 차단 무관 활동 신호)
         catSrc,
+        score,
       )
     })
     const rs = await DB.batch(insStmts).catch(() => null)
