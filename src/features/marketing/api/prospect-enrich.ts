@@ -16,7 +16,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import type { FetchBudget } from './influencer-discovery'
-import { ensureProspectSchema } from './store-prospects'
+import { ensureProspectSchema, PRIORITY_UPJONG_SQL } from './store-prospects'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
 import { foldEnrichRollup, PROSPECT_ROLLUP_KEY } from './enrich-telemetry'
 
@@ -34,7 +34,8 @@ const STATS_KEY = 'ads_prospect_enrich_stats'
 /** 보류 없이 active 매장 후보의 이메일/홈페이지/전화를 예산 내에서 채운다. 신규개업·홈페이지보유 우선. */
 export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichResult> {
   const DB = env.DB
-  await ensureProspectSchema(DB)
+  // 스키마 DDL 실비도 예산에서 차감(localdata 와 동일 — store-prospects 주석 참조).
+  const schemaSpent = await ensureProspectSchema(DB)
   const { crawlContact, naverLocalLookup, naverHomepageSearch, kakaoLocalLookup, CRAWL_RULES_VERSION } = await import('./contact-enrich')
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
   const nvSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET || ''
@@ -58,6 +59,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   const budget: FetchBudget = { left: budgetTotal, deadline: t0 + deadlineMs }
   let d1 = 0
   const spendD1 = (n = 1) => { budget.left -= n; d1 += n }
+  budget.left -= schemaSpent
   spendD1() // 위 boot SELECT
   if (await foldEnrichRollup(DB, PROSPECT_ROLLUP_KEY, bootVal(STATS_KEY), bootVal(PROSPECT_ROLLUP_KEY))) spendD1()
   const runId = (globalThis.crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)
@@ -99,7 +101,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).
   const cap1 = Math.min(120, Math.max(40, Math.floor(budget.left / 6)))
   const withSite = (await DB.prepare(
-    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap1}`
+    `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap1}`
   ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
   spendD1()
   for (const p of withSite) {
@@ -119,7 +121,7 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
     const cap2 = Math.min(60, Math.max(25, Math.floor(budget.left / 12)))
     spendD1()
     const noSite = (await DB.prepare(
-      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY is_new_open DESC, id DESC LIMIT ${cap2}`
+      `SELECT id, biz_name, region, addr_road, addr_lot, phone FROM store_prospects WHERE active = 1 AND (website IS NULL OR website = '') AND (email IS NULL OR email = '') ${COOL} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap2}`
     ).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; phone: string | null }>().catch(() => null))?.results || []
     for (const p of noSite) {
       if (budget.left <= 4 || budget.limitHit || outOfTime()) break

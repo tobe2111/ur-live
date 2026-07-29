@@ -29,7 +29,9 @@ export async function enrichHeldLeads(env: Env): Promise<{ processed: number; en
 
 async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enriched: number; remaining: number }> {
   const DB = env.DB
-  await ensureCompanySchema(DB)
+  // 🧾 스키마 DDL 35개 실비를 예산에서 뺀다(2026-07-29) — 안 빼면 콜드 격리에서 우리 계수 60 vs
+  //   플랫폼 계수 95 로 갈라져 라운드가 잡을 예외 없이 죽는다(partial:true 조기 사망의 유력한 실체).
+  const schemaSpent = await ensureCompanySchema(DB)
   const { kakaoLocalLookup, naverLocalLookup, naverHomepageSearch, crawlContact, CRAWL_RULES_VERSION, realSite } = await import('./contact-enrich')
   const kakaoKey = env.KAKAO_REST_API_KEY || ''
   const nvId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID || ''
@@ -69,6 +71,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   이후에도 남아 있던 잔여 원인). ⇒ D1 도 같은 지갑에서 지불해 분모를 진실로 만든다.
   let d1 = 0
   const spendD1 = (n = 1) => { budget.left -= n; d1 += n }
+  budget.left -= schemaSpent // 스키마 DDL 실비(위 주석)
   spendD1(2) // 위 boot SELECT + 아래 targets SELECT(예산 생성 전 실행분 소급 계상)
   // 직전 라운드 접기 — 접을 것이 없으면(같은 run_id·구형 스냅샷) 쓰지 않으므로 비용 0.
   if (await foldEnrichRollup(DB, ENRICH_ROLLUP_KEY, bootVal(ENRICH_SNAPSHOT_KEY), bootVal(ENRICH_ROLLUP_KEY))) spendD1()

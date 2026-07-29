@@ -545,50 +545,8 @@ export function ensureInfluencerSchema(DB: D1Database): Promise<void> {
 }
 /** DDL 전체(순서 보존) — 🧱 2026-07-28: 매 인보케이션 16쿼리 → 체크섬 1회 조회(무료 플랜 예산 회수).
  *  ⚠️ 문장을 추가/수정하면 체크섬이 자동으로 바뀌어 다음 실행에 전부 재적용된다(수동 버전 bump 불필요). */
-export const AD_INFLUENCER_DDL: string[] = [
-  `CREATE TABLE IF NOT EXISTS ad_influencer_leads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account_id INTEGER NOT NULL,
-    platform TEXT NOT NULL DEFAULT 'youtube',
-    channel_id TEXT NOT NULL,
-    handle TEXT,
-    name TEXT NOT NULL,
-    url TEXT NOT NULL,
-    subscriber_count INTEGER NOT NULL DEFAULT 0,
-    view_count INTEGER NOT NULL DEFAULT 0,
-    video_count INTEGER NOT NULL DEFAULT 0,
-    country TEXT,
-    thumbnail TEXT,
-    email TEXT,
-    instagram TEXT,
-    tiktok TEXT,
-    links TEXT,
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'new',
-    memo TEXT,
-    category TEXT,
-    source_keyword TEXT,
-    collected_at DATETIME DEFAULT (datetime('now')),
-    UNIQUE(account_id, platform, channel_id)
-  )`,
-  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_acct ON ad_influencer_leads(account_id, id)',
-  // 구버전 테이블 대비 컬럼 보강(이미 있으면 catch 로 무시): 출처 분류 · 아웃리치 후속(컨택시점/팔로업/채널) ·
-  //   ✍ 개인화 초안(생성만·발송 없음, 정보통신망법) · 🔗 링크인바이오 시도 스탬프 · 📥 유입출처+사전동의 시각.
-  'ALTER TABLE ad_influencer_leads ADD COLUMN category TEXT',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN source_keyword TEXT',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN contacted_at DATETIME',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN follow_up_at DATETIME',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN contact_channel TEXT',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN outreach_draft TEXT',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN bio_checked_at DATETIME',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN source TEXT',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN consented_at DATETIME',
-  // 📈 성과 지표(2026-07-21) — YT 최근 영상 ≤10 평균 조회/댓글, 네이버 RSS 30일 포스팅 수, 수집 스탬프.
-  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_views INTEGER',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_avg_comments INTEGER',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN recent_posts_30d INTEGER',
-  'ALTER TABLE ad_influencer_leads ADD COLUMN perf_checked_at DATETIME',
-]
+export { AD_INFLUENCER_DDL } from './influencer-schema'
+import { AD_INFLUENCER_DDL } from './influencer-schema'
 
 
 /** 발굴 결과를 계정 DB 에 저장(멱등 — 이미 있는 채널은 skip, 수동편집 보존). 반환: 신규 저장 수. */
