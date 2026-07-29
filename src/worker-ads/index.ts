@@ -58,6 +58,11 @@ app.get('/__ads/health', (c) => {
       collect_cafe: e.ADS_COLLECT_CAFE_ENABLED ?? '(미설정 → 켜짐)',
       subrequest_budget: e.ADS_SUBREQUEST_BUDGET ?? '(미설정 → 기본 300, 실효는 학습 상한과 min)',
       yt_search_budget: e.ADS_YT_SEARCH_BUDGET ?? '(미설정 → 기본 90)',
+      enrich_rounds: e.ADS_ENRICH_ROUNDS ?? '(미설정 → 기본 8)',
+      // 🔬 인허가 요청 형태 — 비우면 라이브가 후보를 찔러 스스로 고른다(license-url.ts). 값을 넣으면 고정.
+      localdata_variant: e.ADS_LOCALDATA_VARIANT ?? '(미설정 → 자동 탐색)',
+      localdata_page_size: e.ADS_LOCALDATA_PAGE_SIZE ?? '(미설정 → 형태별 기본값)',
+      localdata_backfill_days: e.ADS_LOCALDATA_BACKFILL_DAYS ?? '(미설정 → 0=OFF)',
     },
   })
 })
