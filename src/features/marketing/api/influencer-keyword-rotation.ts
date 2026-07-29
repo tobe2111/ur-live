@@ -18,6 +18,8 @@ export interface YtPickKeyword {
   id: number
   keyword: string
   category: string | null
+  /** 'seed'(대표 큐레이션) | 'auto'(해시태그 자동확장) | 'manual' — 자동확장 상한을 auto 에만 적용하기 위해 필요. */
+  source?: string | null
   saved_total?: number
   last_saved?: number
   last_run_at?: string | null

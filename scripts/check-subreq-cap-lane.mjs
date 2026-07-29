@@ -112,7 +112,16 @@ for (const file of walk(path.join(ROOT, 'src'))) {
   if (!raw.includes('nextSubreqCap(')) continue
   const src = stripComments(raw)
   // 이 파일에서 resolveSubreqBudget 결과를 담은 변수명들(= 정당한 시작값).
-  const totals = [...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*resolveSubreqBudget\(/g)].map(m => m[1])
+  //   ⚠️ 2026-07-29: 이것만 보면 **대리 지표**다. 진짜 불변식은 "budget.left 를 초기화한 그 값"이고,
+  //   `resolveSubreqBudget` 직접 대입은 그 중 한 가지 형태일 뿐이다. 실제로 마감 기록용 예산을 떼면서
+  //   `const budgetTotal = Math.max(5, resolveSubreqBudget(...) - RESERVE)` 로 바꾸자, 산술이 **정확한데도**
+  //   이 가드가 위반으로 신고했다(false positive). ⇒ `{ left: X }` 초기화 값도 정당한 시작값으로 인정한다.
+  //   원래 잡으려던 사고(kakao_sweep: left 는 resolveSubreqBudget(...) 으로 시작해놓고 소비량은 `cap - left`)
+  //   는 여전히 잡힌다 — 그 `cap` 은 left 초기화에 쓰인 식별자가 아니기 때문이다.
+  const totals = [
+    ...[...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*resolveSubreqBudget\(/g)].map(m => m[1]),
+    ...[...src.matchAll(/FetchBudget\s*=\s*\{\s*left:\s*([A-Za-z_$][\w$]*)\s*[,}]/g)].map(m => m[1]),
+  ]
   for (const m of src.matchAll(CALL_RE)) {
     const arg = m[1].trim()
     const line = src.slice(0, m.index).split('\n').length

@@ -369,6 +369,12 @@ jobs:
         run: node scripts/check-subreq-platform-cap.mjs -s
         continue-on-error: false
 
+      # 🧾 2026-07-29: 스키마 DDL(회사 35 / 매장 9) 비용이 어느 레인 예산에도 안 잡혀, 우리 계수와
+      #   플랫폼 계수가 갈라진 만큼 라운드가 **잡을 예외도 없이** 죽었다(인허가 total_saved:0, 보강 partial:true).
+      - name: 부기 비용 예산 차감 (strict)
+        run: node scripts/check-schema-cost-counted.mjs -s
+        continue-on-error: false
+
       # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
       #   없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 다음 회차에도 또 선두 → 매시간 같은 앞줄만
       #   재크롤하고 백로그는 영영 미도달(에러도 로그도 안 남는다). 같은 사고가 보강 레인·수집 레인에서

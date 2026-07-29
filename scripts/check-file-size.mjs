@@ -124,7 +124,12 @@ const modeLabel = CHANGED_ONLY
 if (files.length === 0) {
   // 🛡️ 2026-07-29 (대표 지시): changed-only 는 '바뀐 파일 없음'이 정상이지만,
   //   전수 모드에서 0개는 스캔이 헛도는 것이다(경로/필터 회귀) — 초록불로 넘기면 안 된다.
-  if (!CHANGED_ONLY) {
+  //   ⚠️ 같은 날 후속 수정: 조건이 `!CHANGED_ONLY` 라 **기본(staged) 모드까지** 이 자기검사에 걸렸다.
+  //     staged 0개는 헛도는 게 아니라 정상이다 — 이 가드는 `.test.ts`/`.d.ts`/비-src 를 대상에서 빼므로
+  //     **테스트만 · 문서만 바꾼 커밋**은 staged 대상이 0개가 된다(실측: 이 파일 커밋 직전 그 상태였다).
+  //     그대로 두면 pre-commit 이 정당한 커밋을 막는다. 자기검사는 **명시적 전수(-a)** 에서만 의미가 있다
+  //     (audit-gate 가 -a, verify 가 --changed-only 로 부르므로 두 실행 경로의 보호는 그대로 유지된다).
+  if (ALL) {
     console.error('❌ file-size: 전수 스캔인데 대상 0개 — 검사가 헛돌고 있다(경로/필터 확인).')
     process.exit(1)
   }
