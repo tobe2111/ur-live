@@ -13,7 +13,100 @@
 
 ---
 
-## 1. 대시보드에서 확인할 것 (대표)
+
+---
+
+# ✅ 실측 확정 (2026-07-29 09:0x, CF API 읽기 토큰)
+
+> 아래는 **추정이 아니라 API 응답**이다. §1 의 "확인할 것"은 **끝났다** — 그 절은 이력으로 남긴다.
+
+## A. cron 트리거 — `ur-live` **Worker** 에 3개뿐
+
+| Worker | 등록된 cron |
+|---|---|
+| **`ur-live`** (소비자 cron 캐리어) | `0 18 * * *` · `0 19 * * *` · `*/5 * * * *` — **3개** |
+| `ur-ads` | `0 * * * *` |
+| `ur-live-cleanup-cron` | `*/5 * * * *` ← ⚠️ **2026-02 코드가 아직 5분마다 돈다** |
+| `ur-ssr-pilot` · `global-marketplace` | 없음 |
+
+### 내 가설 중 **틀린 것부터**
+
+🟡 *"일간 블록도 안 돌 것"* → **틀렸다. `0 18`·`0 19` 는 등록돼 있다.**
+⇒ `auto-settlement` · `supplier-settlement-mature` · `expired-voucher-refund` · `affiliate-mature` ·
+`ledger-integrity-check` · `ledger-reconcile` · `reconciliation` · `influencer-payout` 은 **돈다.**
+(하트비트에 안 보였던 건 추적 시작이 03:42Z 라 **아직 18시가 안 왔기 때문**이었다 — 그래서 "판정 불가"로
+남겨둔 것이 맞았다. 단정했으면 오진이었다.)
+
+### 맞은 것 — **누락 7개**
+
+| 누락 cron | 안 도는 것 | 심각도 |
+|---|---|---|
+| **`0 0 * * 1`** | **`payouts-generate`** — 주간 정산 **지급 생성** | 🔴 **O8 차단. 돈이 안 나간다** |
+| **`0 20 * * 0`** | **`d1-backup`** — 주간 백업 | 🔴 **되돌릴 수 없는 축** |
+| **`0 * * * *`** | `toss-refund-retry` · `webhook-failed-drain` · `kt-alpha-voucher-retry` · 예치금/출금 원장 자가복구 · **`cron-stale-watch`(감시자 자신)** | 🔴 |
+| `0 3 * * *` | 교환권 카탈로그 sync · 지오코딩 · R2 정리 | 🟡 |
+| `0 9 * * *` / `0 0 * * *` | 예약·숙박 리마인더 · 이용권 만료 | 🟡 |
+| `*/2 * * * *` | 단체메일 drain | 🟢 |
+
+> 💡 **`ur-live` 가 정확히 3개**라는 것 자체가 신호다 — Cloudflare **무료 플랜의 Worker 당 cron 상한이 3** 이다.
+> 이미 상한에 닿아 있을 가능성이 높다(**확정 아님** — 구독 조회는 권한 밖이라 하지 않았다).
+> **결정적 시험**: 4번째 트리거를 추가해 본다. 거부되면 상한 확정 → **Plan B 로 간다.**
+
+## B. 🔴 더 큰 것 — **cron 캐리어의 바인딩이 5개뿐**
+
+| 대상 | 바인딩/env |
+|---|---|
+| `ur-live` **Pages**(웹 요청 처리) | env **63개** + D1 `DB` + KV `CACHE_KV`·`RATE_LIMIT_KV`·`SESSION_KV` |
+| `ur-live` **Worker**(cron 실행) | **5개뿐** — `DB` · `FRONTEND_URL` · `LIVE_STREAM` · `RATE_LIMITER` · `SCRAPER_URL` |
+
+**cron 은 Worker 에서 돈다.** 즉 **DB 만 쓰는 작업은 정상이고, 외부 키·KV 가 필요한 작업은 전부 무력화**돼 있다:
+
+| 없는 것 | 그래서 안 되는 것 |
+|---|---|
+| `TOSS_SECRET_KEY` | `toss-refund-retry` — **트리거를 켜도 환불을 못 한다**(`toss-refund-retry.ts:54` 가 env 에서 읽음) |
+| `CACHE_KV` | `cache-prewarm` 의 **SSR KV 워밍이 한 번도 안 먹혔다**(`cache-prewarm.ts:159` `env.CACHE_KV` 부재 → 전량 skip). 2026-07-12 작업이 통째로 무효 |
+| `ALIGO_*` | `retry-alimtalk` — 재발송 불가 |
+| `VAPID_*` | `retry-push-failures` — 재발송 불가 |
+| `KT_ALPHA_*` | `kt-alpha-voucher-retry` · 카탈로그 sync |
+| `IMGBB_API_KEY`·`PUBLIC_R2_URL` | 이미지 계열 cron |
+
+> ⚠️ **하트비트 `ok:true` 에 속지 말 것.** 키가 없으면 대부분 조용히 조기 반환하거나 내부에서 삼켜져
+> **성공으로 기록된다.** `scheduled-cleanup` 이 실제 결과를 남긴 건 그게 **DB 만 쓰기 때문**이다.
+> ⇒ 트리거만 추가하면 된다고 보면 **절반만 고치는 것**이다. **바인딩이 먼저다.**
+
+## C. staging — **존재하지 않는다**
+
+Pages 프로젝트 목록: `ur-wholesale` · `ur-live` · `fortune` · `webapp` · `toss-weather-look` ·
+`crypto-exchange-hub` · `toss-beauty-care`. **`ur-live-staging` 없음.**
+⇒ **X1(staging 실결제)은 지금 수행 불가.** `scripts/deploy-staging.sh` 의 전제가 성립하지 않는다.
+
+## D. 프리뷰 = 프로덕션 DB (경고가 실측으로 확정)
+
+`ur-live` Pages 의 **preview D1 = production D1** (둘 다 `d9530ba6…`).
+⇒ **PR 프리뷰 URL 에서 결제하면 라이브 주문·원장·재고에 진짜로 쓴다.** 추측이 아니라 확인된 사실이다.
+
+## E. 알림 — **사람에게 도달하는 경로가 0**
+
+Pages env 63개, Worker 바인딩 5개 **어디에도** `DISCORD_WEBHOOK_URL`·`SENTRY_DSN` 이 **없다.**
+`VITE_SENTRY_DSN` 은 있으나 **클라이언트 전용**이라 워커 런타임 에러와 무관하다.
+⇒ 5xx 개별 알림 · 에러 스파이크 알림 · 일일 자가진단 **전부 무음**.
+
+## F. 수습 순서 — **바인딩 → 트리거** 〔실측 반영〕
+
+| # | 할 일 | 왜 이 자리인가 |
+|---|---|---|
+| 1 | `ur-live` **Worker** 에 누락 바인딩 추가(최소 `CACHE_KV`·`TOSS_SECRET_KEY`·`ALIGO_*`·`VAPID_*`·`KT_ALPHA_*`) | 이게 없으면 트리거를 켜도 **작업이 자기 일을 못 한다** |
+| 2 | `DISCORD_WEBHOOK_URL`·`SENTRY_DSN` 추가(**Pages·Worker 양쪽**) | 3~5 를 켜면 밀린 배치가 도는데, **터져도 아무도 모른다** |
+| 3 | `0 20 * * 0`(백업) | 잃으면 못 되돌리는 유일한 축 |
+| 4 | `0 * * * *`(자가복구·감시자) | 감시자가 살아야 이후 침묵을 탐지한다 |
+| 5 | `0 0 * * 1`(**지급**) | **마지막.** 앞이 정상인 걸 보고 켠다 |
+| — | `ur-live-cleanup-cron` 처리 | 2026-02 코드가 5분마다 도는 중 — **무엇을 하는지 확인 후** 정리 |
+
+> 상한 3에 걸리면 3·4·5 를 트리거로 못 늘리므로 **Plan B(매시 디스패치)** 로 간다.
+> 그 경우 슬롯 배치는 `*/5` + `0 * * * *` + 여유 1 이 최적이다(현재 `0 18`·`0 19` 두 슬롯을 회수).
+
+---
+## 1. (이력) 대시보드에서 확인할 것 — **위 실측으로 종료됨**
 
 > 🔴 **자기정정(2026-07-29)**: 앞서 *"`ur-live` **Pages** 프로젝트 → Settings"* 로 적었는데 **그 자리엔 Cron 항목이
 > 없을 가능성이 높다.** **Cron Trigger 는 Workers 기능이고 Pages 프로젝트엔 없다.** 이 레포도
