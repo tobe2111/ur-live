@@ -141,7 +141,10 @@ async function driverBeat(env: unknown, name: string, ms: number, r: { chained: 
 enrichRoutes.post('/__ads/enrich-influencer', async (c) => {
   try {
     const { runInfluencerEnrich } = await import('@/features/marketing/api/influencer-enrich-lane')
-    return c.json({ ok: true, stats: await runInfluencerEnrich(c.env) })
+    // 🔢 `depth` 전달 — 선두 교대가 depth 홀짝으로 갈리므로, 수동 실행이 양쪽을 다 시험할 수 있어야 한다.
+    //   안 읽으면 파라미터가 **조용히 무시**돼 "시험했는데 왜 같지?" 가 된다(오늘 반복해 만난 형태).
+    const raw = parseInt(c.req.query('depth') || '0', 10)
+    return c.json({ ok: true, stats: await runInfluencerEnrich(c.env, Number.isFinite(raw) && raw > 0 ? raw : 0) })
   } catch (err) {
     const e = err as { name?: string; message?: string } | null
     return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)

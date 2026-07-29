@@ -350,7 +350,22 @@ export async function runMaintenancePhase(env: Env, phase: MaintPhase): Promise<
 export async function runNightlyRescan(env: Env): Promise<Record<string, unknown>> {
   const DB = env.DB
   // 🔒 정비와 같은 lease — 이쪽은 **YouTube 쿼터를 쓰기 때문에** 중복 실행이 곧 하루 예산 낭비(수집 몫 잠식).
-  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) return { at: new Date().toISOString(), kind: 'rescan', busy: true }
+  if (!await acquireLease(DB, MAINTAIN_LEASE_KEY, MAINTAIN_LEASE_TTL_MS)) {
+    /**
+     * 🔇 **진 쪽도 흔적을 남긴다** — 안 남기면 '경합에 졌다'가 '한 번도 안 돌았다'와 구분되지 않는다.
+     *
+     *   2026-07-27 19:00 이후 이 레인의 스냅샷이 멈춰 있었다. 고장이 아니라 **시간별 정비 순환(07-28 도입)과
+     *   같은 lease 를 다투다 매번 졌기 때문**인데, 진 경로가 조용히 돌아가서 어드민에는 *"never fired"* 로만
+     *   보였다 — 원인 규명이 이틀 막힌 이유가 그 무음이다.
+     *
+     *   경합 자체는 스케줄러가 19시를 양보해 없앴다(`RESCAN_HOUR_UTC`). 이 기록은 **재발했을 때 즉시
+     *   알아보기 위한 것**이라, 경합이 사라진 뒤에도 남겨 둔다(하루 1회 쓰기 — 비용 무시 가능).
+     */
+    const busy = { at: new Date().toISOString(), kind: 'rescan', busy: true }
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind('ads_maintenance_rescan_last', JSON.stringify(busy)).run().catch(() => null)
+    return busy
+  }
   const out: Record<string, unknown> = { at: new Date().toISOString(), kind: 'rescan' }
   try {
     try { out.rescan = await runCategoryRescan(env) } catch (e) { out.rescan_error = (e as Error)?.message || 'fail' }
