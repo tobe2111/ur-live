@@ -29,6 +29,37 @@ tier1·2(실제 콜드 접촉할 풀) 5,218곳 중 전화 없는 행은 **2,594�
 **가드 확장**: `check-crawl-cooldown` 이 크롤(ⓐ website+email)만 보던 것을 **전화 조회(ⓑ phone+address)**
 까지 확장. 쿨다운을 지우면 실제로 잡히는 것 확인(음성 테스트) — 확장 전에는 이 스윕을 **전혀 안 보고 있었다.**
 
+### 🩺 같은 커밋: 죽은 수집 레인 5개를 **진단 가능하게** (대표 "다른 곳에서 더 긁어올 수 있을텐데")
+
+새 소스를 붙이기 전에, **이미 배선됐는데 0건인 레인**부터 봤다:
+
+| 소스 | 상태줄 | 조치 주체 |
+|---|---|---|
+| 공정위 가맹정보(프랜차이즈 본사) | `HTTP 404` | **불명** ← 이게 문제 |
+| 나라장터 조달업체 | `HTTP 404` | **불명** |
+| 고용24 채용기업 | `개인회원은 사용할 수 없는 OPEN-API` | 대표(기업회원 전환) |
+| 국세청 폐업조회 | `HTTP 503` | 대표(활용신청) |
+| 인허가(LOCALDATA) | `found 0` | **불명** |
+
+**핵심 결함**: 호출부가 `res.ok` 만 보고 **실패 응답 본문을 통째로 버렸다.** data.go.kr 은 실패해도
+본문에 원인 코드(`NO_OPENAPI_SERVICE_ERROR` / `SERVICE_KEY_IS_NOT_REGISTERED_ERROR` …)를 담아 주는데,
+상태줄엔 `HTTP 404` 만 남아 **"내가 URL 을 틀렸나 / 대표가 활용신청을 안 했나"** 를 구분할 수 없었다.
+조치 주체가 정반대인데도.
+
+⚠️ **이 환경에서는 확인할 방법이 없다** — `apis.data.go.kr` CONNECT 가 프록시에서 막히고 문서 페이지는
+봇 차단이다. **라이브가 받은 본문이 유일한 ground truth** 이므로, 추측으로 오퍼레이션명을 바꾸지 않고
+(CLAUDE.md 개발 룰 #1) **본문을 계측에 남기는 쪽**을 택했다.
+
+- 신규 SSOT `public-data-diag.ts` — 표준 에러코드 8종 + 숫자 변종(returnReasonCode 30/31/22/12)을
+  **"누가 무엇을 해야 하는지"** 한 줄로 변환. 코드가 없으면 본문 앞 180자를 그대로 남긴다.
+- franchise · nara · localdata 호출부에 배선(추가 요청 0 — 이미 받은 응답을 읽기만 한다).
+- 유닛 8개로 매핑 고정(`public-data-diag.test.ts`).
+
+**다음 세션 첫 액션**: 배포 후 상태줄의 `diag.error` 를 읽으면 **1분 안에** 갈린다 —
+`NO_OPENAPI_SERVICE_ERROR` 면 내가 엔드포인트를 고치면 되고(env `ADS_FRANCHISE_ENDPOINT`/`ADS_FRANCHISE_OP`
+/`ADS_NARA_VENDOR_ENDPOINT` 로 무배포 교체 가능), `SERVICE_KEY_IS_NOT_REGISTERED_ERROR` 면 대표가
+data.go.kr 에서 활용신청을 해야 한다.
+
 **다음 세션 확인**: 배포 1~2일 뒤 `tier=1&hasContact=1` 이 1,519 에서 얼마나 올랐는지.
 ```bash
 curl -sS "https://live.ur-team.com/api/admin/partner-pool?tier=1&hasContact=1&limit=1" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" | python3 -c "import sys,json;print(json.load(sys.stdin)['total'])"

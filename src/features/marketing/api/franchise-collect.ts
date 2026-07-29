@@ -13,6 +13,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { describePublicDataFailure } from './public-data-diag'
 
 const FRANCHISE_BASE = 'https://apis.data.go.kr/1130000/FftcBrandRlsInfo2_Service'
 const FRANCHISE_OP = 'getBrandList'
@@ -33,7 +34,8 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
     const m = err instanceof Error ? err.message : String(err || '')
     if (/too many subrequests/i.test(m)) netMsg = '⛔ 플랫폼 요청한도 도달(한 번에 너무 많은 페이지) — 페이지 수를 줄여 여러 번 나눠 수집'
   }
-  if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : netMsg }
+  // 🩺 실패 본문을 버리지 않는다 — data.go.kr 은 원인 코드를 본문에 담아 준다(public-data-diag SSOT).
+  if (!res || !res.ok) return { items: [], count: 0, msg: await describePublicDataFailure(res, netMsg) }
   const raw = await res.text().catch(() => '')
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(raw) as Record<string, unknown> } catch { data = null }
