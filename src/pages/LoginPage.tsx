@@ -476,17 +476,19 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* 🛡️ 2026-07-29: '비밀번호 찾기' 입구를 가림(대표 확정) — **누르면 항상 실패했다.**
+                `sendPasswordResetEmail` 은 `POST /api/auth/forgot-password` 를 부르는데 소비자용
+                서버 엔드포인트가 존재하지 않는다(셀러 `seller.routes.ts:662` · 에이전시
+                `agency.routes.ts:604` 에만 있음) → 404 → "비밀번호 재설정 요청 실패" 만 떴다.
+                코드의 "백엔드는 항상 200 반환" 주석(useAuthKR.ts)은 있지도 않은 백엔드를 가정한 것.
+                ⚠️ 되살리려면 **서버부터** 만들 것: `/api/auth/forgot-password` + `/api/auth/reset-password`
+                + `/reset-password` 페이지/라우트. 인프라는 이미 있다(Resend + `password_reset_tokens`
+                의 `user_type` 컬럼) — 셀러 흐름을 그대로 미러하면 된다.
+                핸들러(`handleResetPassword`)와 폼 블록은 그때 재사용하도록 남겨 둔다. */}
             <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForgotPassword(true)
-                  setShowEmailLogin(false)
-                }}
-                className="text-[12px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light"
-              >
-                {t('auth.forgotPassword')}
-              </button>
+              <span className="text-[12px] text-gray-400 dark:text-gray-500 font-light">
+                {t('auth.forgotPasswordUseKakao', { defaultValue: '비밀번호를 잊으셨나요? 카카오로 로그인해 주세요' })}
+              </span>
             </div>
 
             <button

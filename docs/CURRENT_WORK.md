@@ -60,6 +60,29 @@ PR #839 머지 후 이어서. 이 레포에서 반복된 사고는 **검사가 �
    → 라우트 정의는 `App.tsx` 에만 있지 않다. `grep -rl "<Route" src/` 로 먼저 파일 목록을 잡을 것.
 4. **번들 gzip 총량을 2.2~2.5MB 로 추정했는데 실측은 2.707MB.** 추정값으로 임계를 켰으면 전 PR 이 red.
 
+### 소비자 비밀번호 재설정이 항상 실패하고 있었다 (수리: 입구 차단)
+
+`LoginPage` → "이메일로 로그인"(**isKR 게이트 없음** — 한국 사용자도 도달) → "비밀번호 찾기" →
+`sendPasswordResetEmail` → `POST /api/auth/forgot-password` → **서버에 없음** → 404 →
+"비밀번호 재설정 요청 실패". `useAuthKR.ts` 주석은 *"백엔드는 enumerate 방어를 위해 항상 200 반환"* 이라
+적혀 있는데, **있지도 않은 백엔드를 가정한 문장**이었다.
+
+- 셀러(`seller.routes.ts:662`)·에이전시(`agency.routes.ts:604`)에만 있고 **소비자만 없다.**
+- 대표 확정: **입구를 먼저 가림**(거짓 기능 제거). 핸들러·폼 블록은 재사용하도록 남겨 뒀다.
+- 되살리려면 **서버부터**: `/api/auth/forgot-password` + `/api/auth/reset-password` + `/reset-password`
+  페이지/라우트. **인프라는 이미 있다** — Resend(`RESEND_API_KEY`/`RESEND_FROM`) + `password_reset_tokens`
+  테이블에 `user_type` 컬럼까지 있어 셀러 흐름을 그대로 미러하면 된다.
+
+### 클라↔서버 API 대조는 이 레포에서 정적으로 신뢰하기 어렵다 (시도 기록)
+
+`/api/*` 호출을 서버 라우트 그래프와 대조해 봤다. 서버 등록 방식이 **세 가지**라 단순 스캔은 전부 틀린다:
+① `app.route(prefix, router)` ② 로컬 Hono 인스턴스(`adminApp`) ③ **registrar 패턴**(`registerXxxRoutes(app)`)
++ 조건부 동적 마운트(`__INCLUDE_WHOLESALE__` → `await import('./mount-wholesale')`).
+셋 다 배선하니 미매칭이 264 → 70 → (호출 표현식만 추출 시) 29 로 줄었지만, `/api/admin/banners` 처럼
+**실재하는데 못 찾는 오탐이 남아** 가드로 만들지 않았다. 재시도할 사람을 위해 스크립트는 `/tmp` 에만 뒀다.
+⚠️ 문자열 추출만으로는 **허용목록/캐시키/상수**(`PUBLIC_API_PATTERNS` 등)를 호출로 오인한다 — 실제로
+"Firebase 엔드포인트를 아직 부른다"는 오판을 한 번 했다(그건 허용목록 항목이었다).
+
 ### 다음 세션 첫 액션
 1. `bash scripts/audit-gate.sh` → 63 GREEN 확인(이 세션 기준값).
 2. ~~번들 gzip 예산 되살리기(ⓐ)~~ — **같은 날 완료**(실측 2.707MB → 임계 2.9). 아래는 방법 기록용 — `npm ping` 이 되는 환경에서:
