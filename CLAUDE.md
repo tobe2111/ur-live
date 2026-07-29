@@ -341,7 +341,6 @@ curl -sS -X PATCH "https://live.ur-team.com/api/admin/admins/10/multi-session" \
 ```
 > ⚠️ **자동화 계정에만 켤 것.** 단일 세션은 계정 공유·도용의 *탐지 신호*이기도 하다(남이 쓰면 내가 튕겨서
 > 알게 된다). 사람이 쓰는 운영 계정에 켜면 그 신호를 잃는다.
-
 ```bash
 UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 BODY=$(python3 -c "import json,os;print(json.dumps({'email':os.environ['URDEAL_ADMIN_EMAIL'],'password':os.environ['URDEAL_ADMIN_PASSWORD']}))")

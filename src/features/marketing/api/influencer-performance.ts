@@ -315,6 +315,9 @@ export interface NaverEnrichDiag {
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행
+  /** 후보 조회 자체가 실패한 경우의 사유. 없으면 조회는 성공한 것 — `selected:0` 이 '큐가 빔'을 **확정**한다.
+   *  (이게 없으면 조회 실패도 `selected:0` 으로 보여 "큐가 비었다"와 구분되지 않는다.) */
+  query_error?: string
 }
 
 /**
@@ -334,10 +337,19 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   if (max <= 0 || budget.left <= 1) return diag
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
   //    통과한 뒤 아래에서 전량 스킵됐다. channel_id/url 을 함께 읽어 그 자리에서 진짜 id 를 되살린다.
-  const rows = (await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description FROM ad_influencer_leads
+  type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null }
+  let rows: NaverRow[] = []
+  try {
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description FROM ad_influencer_leads
       WHERE account_id = 0 AND platform = 'naver_blog'
-      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30))
-    .all<{ id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null }>().catch(() => null))?.results || []
+      ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
+    rows = res?.results || []
+  } catch (err) {
+    // 삼키면 `selected:0` 이 되어 '큐가 빔'과 구분이 사라진다 — 이 레인이 tried:0 으로 멈춰 있던 동안
+    // 원인 규명이 막혔던 이유가 정확히 이 종류의 무음이었다.
+    diag.query_error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`
+    return diag
+  }
   diag.selected = rows.length
   if (!rows.length) return diag
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
