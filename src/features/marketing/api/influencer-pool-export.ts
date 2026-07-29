@@ -4,7 +4,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 // ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
-import { withAdLabel, withOptOut, withSenderInfo } from './outreach-send'
+import { outreachSubject, outreachBody } from './outreach-template'
 
 /**
  * 🎯 인플루언서 풀 전체 다운로드 응답 빌더 (admin-ads-influencers.routes 에서 추출 — 600줄 캡 준수).
@@ -97,26 +97,14 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
    *   `(광고)` 표기 · 수신거부 안내 · 전송자 정보 — 셋 다 발송 경로와 **같은 함수**(SSOT)로 만든다.
    *   ⚠️ 이건 표기 의무를 돕는 것이지 사전동의를 대체하지 않는다. 발송 여부·범위는 대표 판단이다.
    */
-  const mailSubject = (name: string): string => withAdLabel(`${(name || '').slice(0, 20)}님께 유어딜 제휴 제안 드립니다`)
-  const mailBody = (name: string, platform: string, category: string | null): string => {
-    const ch = PLAT[platform] || platform
-    const cat = category && category !== '기타' ? `${category} ` : ''
-    return withSenderInfo(withOptOut(
-      `안녕하세요, ${(name || '').slice(0, 20)}님.\n유어딜(UR Team) 제휴 담당자입니다.\n\n`
-      + `${ch}에서 ${cat}콘텐츠를 꾸준히 올리시는 것을 보고 연락드립니다.\n\n`
-      + '유어딜은 동네 매장의 이용권·공동구매를 소개하는 서비스입니다. 지역 매장 협찬을 원하는 사장님과 '
-      + '크리에이터를 연결해 드리고, 성사되면 협찬비와 별도로 판매 성과에 따른 수익을 드립니다.\n\n'
-      + '관심 있으시면 이 메일에 회신 주세요. 진행 방식과 조건을 자세히 안내드리겠습니다.\n\n'
-      + '감사합니다.\n유어딜 드림',
-    ))
-  }
+  // ✉️ 문안은 `outreach-template.ts` SSOT — 발송 큐 화면과 **같은 문구**를 쓴다(두 벌이면 조용히 갈라진다).
   const noSub = (p: string) => ['naver_blog', 'naver_cafe', 'tistory'].includes(p) // 구독자 지표 없는 플랫폼
   // 셀 값: number 는 숫자 그대로(xls Number 타입/csv 는 문자열화), 빈값은 '' — "null"/0 오염 없음.
   const cells = (r: ExpRow): (string | number)[] => [r.id, PLAT[r.platform] || r.platform, r.name, r.handle || '', r.url,
     r.lead_score ?? '', noSub(r.platform) ? '' : (r.subscriber_count || 0),
     r.recent_avg_views ?? '', r.median_long_views ?? '', r.shorts_ratio ?? '', r.recent_avg_comments ?? '', r.recent_posts_30d ?? '', r.last_post_at || '',
     r.email || '', MAIL_KO[r.email_status || ''] || r.email_status || '', r.instagram ? `@${r.instagram}` : '', r.tiktok ? `@${r.tiktok}` : '', r.links || '',
-    mailSubject(r.name), mailBody(r.name, r.platform, r.category), r.region || '', r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '',
+    outreachSubject(r.name), outreachBody(r.name, r.platform, r.category), r.region || '', r.category || '기타', r.category ? (CATSRC_KO[r.category_source || 'keyword'] || r.category_source || '') : '',
     // 🚫 거부 명시가 브랜드보다 강한 신호 — 한 칸에 우선순위로 표기(열 추가 없이 헤더 정렬 유지).
     r.opted_out ? '제안거부🚫' : r.is_brand ? '브랜드⚠️' : '',
     r.source_keyword || '', STATUS_KO[r.status] || r.status,

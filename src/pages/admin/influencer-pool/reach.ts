@@ -11,6 +11,14 @@ export interface ReachLead {
   email: string | null
   instagram: string | null
   outreach_draft?: string | null   // 리드 행에서 optional 이라 undefined 허용
+  /**
+   * ⚖️ 서버가 만들어 준 **법정 표기 포함** 문안(`outreach-template` SSOT).
+   *   ⚠️ 아래 fallback* 보다 **항상 우선**한다. 화면 폴백엔 `(광고)` 표기와 전송자 정보가 없었는데,
+   *   대표가 실제로 쓰는 경로가 화면이라 **의무 표기가 빠진 쪽이 실사용 경로**였다(2026-07-29 발견).
+   *   엑셀 내보내기는 이미 SSOT 를 쓰고 있었다 — 두 경로가 갈라져 있던 것.
+   */
+  mail_subject?: string | null
+  mail_body?: string | null
 }
 export interface ReachDraft { subject: string; body: string; dm: string }
 
@@ -38,7 +46,9 @@ export function parseReachDraft(raw: string | null | undefined): ReachDraft | nu
 
 /** 초안이 없을 때 쓰는 공통 폴백 문구(수신거부 안내 포함). */
 export function fallbackSubject(name: string): string {
-  return `[유어딜] ${name}님 제휴 제안 — 동네 맛집·뷰티 공동구매 딜`
+  // ⚖️ `(광고)` 는 정보통신망법상 영리 목적 광고성 정보의 **제목 의무 표기**다. 서버 문안(`mail_subject`)이
+  //   오면 그쪽이 우선이고, 이건 그게 못 왔을 때의 안전망 — 안전망에도 표기가 있어야 의미가 있다.
+  return `(광고) [유어딜] ${name}님 제휴 제안 — 동네 맛집·뷰티 공동구매 딜`
 }
 export function fallbackBody(name: string): string {
   return `안녕하세요, ${name}님.\n유어딜(동네 맛집·카페·뷰티·네일·숙소 공동구매 딜 플랫폼) 제휴 담당자입니다.\n${name}님 채널과 결이 잘 맞아 협업을 제안드리고자 연락드립니다.\n\n- 제안: 유어딜 딜 콘텐츠 제휴 / 공동 프로모션\n- 조건은 협의 가능합니다.\n\n관심 있으시면 회신 부탁드립니다. 감사합니다.\n\n(수신을 원치 않으시면 회신으로 알려주세요.)`
@@ -68,8 +78,9 @@ export function pickReach(lead: ReachLead): ReachPlan | null {
   const dm = (d?.dm && d.dm.trim()) || fallbackDm(lead.name)
 
   if (lead.email) {
-    const subject = d?.subject || fallbackSubject(lead.name)
-    const body = d?.body || fallbackBody(lead.name)
+    // 우선순위: AI 초안 > **서버 SSOT 문안(법정 표기 포함)** > 화면 폴백(구버전 응답 호환)
+    const subject = d?.subject || lead.mail_subject || fallbackSubject(lead.name)
+    const body = d?.body || lead.mail_body || fallbackBody(lead.name)
     return {
       channel: 'email',
       href: `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,

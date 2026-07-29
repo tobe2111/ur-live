@@ -52,7 +52,7 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   if (!raw) return null
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
-interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; opted_out?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
+interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; opted_out?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; region_filled?: number; region_none?: number; region_pending?: number; nb_with_subs?: number; yt_with_subs?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
@@ -68,7 +68,7 @@ const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blo
 //   '공동구매' 는 2026-07-29 신설(대표 지시) — 이미 자기 팔로워에게 파는 층이라 링크샵 전환 1순위.
 //   '카페' 도 2026-07-29 추가 — 분류기는 만드는데 여기 없어서 **4,675명(풀의 12%)이 화면에서 안 보였다**
 //   (기존 유닛이 *우선 카테고리만* 검사해 놓친 자리 — 이제 분류기 전체 축을 검사한다).
-export const POOL_CATEGORIES = ['공동구매', '맛집', '카페', '외식창업', '숙소', '네일', '뷰티', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
+export const POOL_CATEGORIES = ['공동구매', '맛집', '카페', '외식창업', '숙소', '네일', '뷰티', '골프', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
 // 📊 매체별 엑셀 분리 다운로드 — 서버 EXPORT_PLATFORMS 화이트리스트와 같은 키(추가 시 양쪽 갱신).
 
 export default function AdminInfluencerPoolPage() {
@@ -375,6 +375,23 @@ export default function AdminInfluencerPoolPage() {
         {Number(stats.categorized) > 0 ? (() => {
           const tot = Number(stats.total) || 1, cat = Number(stats.categorized) || 0, ver = (Number(stats.cat_content) || 0) + (Number(stats.cat_topic) || 0), inh = Number(stats.cat_keyword) || 0
           return <div className="text-[11px] text-gray-500 mt-0.5">🏷️ 카테고리 분류 {formatNumber(cat)}/{formatNumber(tot)} ({Math.round(cat / tot * 100)}%) · 근거 검증됨 {formatNumber(ver)} ({Math.round(ver / Math.max(1, cat) * 100)}%){inh > 0 ? <span className="text-amber-600"> · 키워드 상속 {formatNumber(inh)} — 야간 재보정이 실제 콘텐츠로 재검증 중</span> : null}</div>
+        })() : null}
+
+        {/* 📊 **필터가 기대는 데이터의 채움률** — "필터가 0건인데 고장인가?"를 화면에서 가른다.
+            2026-07-29 실측에서 이걸 착각할 뻔했다: 지역 토큰 58개 중 56개가 0건이라 필터가 죽은 줄 알았는데,
+            실제로는 백필이 막 시작돼 앞부분만 훑은 상태였다. 진행률이 안 보이면 멀쩡한 코드를 판다. */}
+        {(Number(stats.region_filled) || 0) + (Number(stats.region_pending) || 0) + (Number(stats.region_none) || 0) > 0 ? (() => {
+          const f = Number(stats.region_filled) || 0, p = Number(stats.region_pending) || 0, n = Number(stats.region_none) || 0
+          const done = f + n, tot = done + p
+          return (
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              📍 지역 판정 {formatNumber(done)}/{formatNumber(tot)} ({Math.round(done / Math.max(1, tot) * 100)}%) · 지역 있음 <b>{formatNumber(f)}</b> · 지역 없는 키워드 {formatNumber(n)}
+              {p > 0 ? <span className="text-amber-600"> · 백필 대기 {formatNumber(p)} — 지역 필터가 아직 좁게 나오는 건 정상(수집 틱마다 채워짐)</span> : null}
+              {(Number(stats.nb_with_subs) || 0) >= 0 && Number(stats.naver_blog) ? (
+                <span className="text-gray-400"> · 📏 규모(이웃수) 보유 — 나블 {formatNumber(stats.nb_with_subs)}/{formatNumber(stats.naver_blog)} · 유튜브 {formatNumber(stats.yt_with_subs)}/{formatNumber(stats.youtube)}</span>
+              ) : null}
+            </div>
+          )
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}

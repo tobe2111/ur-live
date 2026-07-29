@@ -14,7 +14,13 @@ import type { Env } from '@/worker/types/env'
 
 export const publicDataRoutes = new Hono<{ Bindings: Env }>()
 
-/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다). */
+/** 얇은 위임 핸들러 공통 — 실패는 500 + 'FAILED'(원문은 각 러너가 stats.diag.error 로 남긴다).
+ *
+ *  ⚠️ 2026-07-29: 한때 cron 호출을 "즉시 응답 + waitUntil" 로 바꿨다가 **되돌렸다.**
+ *  서비스 바인딩 피호출자는 **호출자보다 오래 살 수 없다** — 즉시 응답하면 부모의 await 이 풀리고
+ *  부모 인보케이션이 끝나면서 이쪽 waitUntil 작업이 **취소**된다(#874 라이브 실측: 라운드 0회).
+ *  ⇒ 작업은 **응답 전에**, 호출자가 살아 있는 동안 한다.
+ */
 const lane = (run: (env: Env) => Promise<unknown>) => async (c: { env: Env; json: (b: unknown, s?: number) => Response }) => {
   try { return c.json({ ok: true, stats: await run(c.env) }) } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 }

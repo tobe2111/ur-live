@@ -38,6 +38,31 @@ export async function acquireLease(DB: D1Database, key: string, ttlMs: number): 
   return r?.meta?.changes === 1
 }
 
+/**
+ * 🪦 획득 + **직전 실행이 유기됐는지** 동시 판정 (2026-07-29).
+ *
+ *   정상 종료는 lease 를 `'0'` 으로 반납한다. 인보케이션이 통째로 사라지면(서브리퀘스트 한도 등) 반납이
+ *   없어 만료된 타임스탬프가 남는다 — **말없이 죽었다는 유일한 흔적**이다. 죽은 회차는 아무것도 못 남기므로
+ *   그 사실은 다음 회차가 대신 읽어야 한다(예산 상한 하향의 트리거 — `capAfterAbandonedRun` 참조).
+ *
+ *   seed 와 직전값 읽기를 **1 batch(=1 서브리퀘스트)** 로 묶어 `acquireLease` 대비 추가 비용 0.
+ *   ⚠️ `abandoned` 는 **CAS 를 이겼을 때만** 참이다 — 졌으면 그 값은 살아 있는 실행의 것이지 시체가 아니다.
+ *   ⚠️ 오탐: 한 회차가 TTL 보다 오래 정상 실행되면 다음 회차가 유기로 오독한다(안전한 방향의 오차).
+ */
+export async function acquireLeaseDetect(DB: D1Database, key: string, ttlMs: number): Promise<{ acquired: boolean; abandoned: boolean }> {
+  await DB.prepare('CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)').run().catch(() => null)
+  const seed = await DB.batch<{ value: string }>([
+    DB.prepare('INSERT OR IGNORE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, '0'),
+    DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key),
+  ]).catch(() => null)
+  const prior = parseInt(String(seed?.[1]?.results?.[0]?.value ?? '0'), 10) || 0
+  const now = Date.now()
+  const r = await DB.prepare('UPDATE platform_settings SET value = ? WHERE key = ? AND CAST(value AS INTEGER) < ?')
+    .bind(String(now + ttlMs), key, now).run().catch(() => null)
+  const acquired = r?.meta?.changes === 1
+  return { acquired, abandoned: acquired && prior > 0 }
+}
+
 /** lease 해제 — 반드시 finally 에서(크래시 시엔 TTL 만료가 백스톱). */
 export async function releaseLease(DB: D1Database, key: string): Promise<void> {
   await DB.prepare("UPDATE platform_settings SET value = '0' WHERE key = ?").bind(key).run().catch(() => null)

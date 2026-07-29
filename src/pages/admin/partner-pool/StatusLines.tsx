@@ -15,7 +15,8 @@ const CRAWL_REASON_LABEL: Record<string, string> = {
 export interface RunInfo { last_run?: string; found?: number; saved?: number; enriched?: number; total_saved?: number; target?: string; diag?: { configured?: boolean; error?: string; kakao?: boolean; naver?: boolean; enrich_note?: string } }
 export interface Collect { gate: boolean; adsBinding: boolean; run: RunInfo | null }
 export interface StoreInfo { gate: boolean; run: RunInfo | null }
-export interface Commerce { gate: boolean; run: (RunInfo & { upserted?: number; closed?: number; diag?: { error?: string; sample?: unknown } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
+export interface FieldCov { key: string; filled: number; pct: number; ex?: string }
+export interface Commerce { gate: boolean; run: (RunInfo & { upserted?: number; closed?: number; diag?: { error?: string; sample?: unknown; coverage?: FieldCov[]; coverage_note?: string } }) | null; probe?: { keys?: string[]; hasEmail?: boolean; emailField?: string } }
 /** 하드 실패 백오프 상태(2026-07-29) — '왜 지금 안 도는가'를 대표가 읽을 수 있게. */
 export interface LaneHealthInfo { fail_streak?: number; first_failed_at?: string; next_probe_at?: number; last_error?: string }
 export interface Franchise { gate: boolean; run: (RunInfo & { diag?: { error?: string }; health?: LaneHealthInfo }) | null }
@@ -184,6 +185,24 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
         )}
         {commerce.probe?.keys?.length ? (
           <div className="mt-1 text-[11px] text-gray-400 break-all">원본 필드: {commerce.probe.keys.join(', ')}</div>
+        ) : null}
+        {/* 📊 필드 채움률 — "이 필드가 실제로 오긴 하나"를 추측 대신 숫자로. 필드 이름을 스펙 추정으로
+            썼다가 분류가 100% 상수로 굳고 주소 31.7% 를 잃은 뒤 만든 계측이다. */}
+        {commerce.run?.diag?.coverage?.length ? (
+          <details className="mt-1">
+            <summary className="text-[11px] text-gray-500 cursor-pointer">
+              📊 필드 채움률 — {commerce.run.diag.coverage_note || `${commerce.run.diag.coverage.length}개 필드`}
+            </summary>
+            <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4 text-[11px]">
+              {commerce.run.diag.coverage.map(c => (
+                <div key={c.key} className="flex gap-1.5 py-0.5 border-b border-gray-100">
+                  <span className={c.pct === 0 ? 'text-red-500 font-medium w-40 shrink-0' : 'text-gray-600 w-40 shrink-0'}>{c.key}</span>
+                  <span className={c.pct === 0 ? 'text-red-500 w-10 text-right' : 'text-gray-500 w-10 text-right'}>{c.pct}%</span>
+                  <span className="text-gray-400 truncate">{c.ex || ''}</span>
+                </div>
+              ))}
+            </div>
+          </details>
         ) : null}
       </div>
     )}
