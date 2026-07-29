@@ -11,6 +11,8 @@ export interface RunStats {
   crash?: string; crash_at?: string; crash_spent?: number; crash_budget?: number
   diag?: { yt: PlatformDiag; naver: PlatformDiag; tistory?: PlatformDiag; naver_enrich?: { tried: number; measured: number; contacts: number; failed: number } }
   yt_budget?: { used: number; total: number; day?: string }
+  /** 🎯 픽 소진 실태 — 계획한 키워드 중 실제로 몇 개를 돌았고, 그게 어느 경로에서 왔는지(성과가중/커서). */
+  picks?: { planned: number; processed: number; from_yt: number; from_cursor: number }
 }
 /** 야간 정비 기록(platform_settings) — 실행된 단계만 키가 존재. *_error 는 그 단계 실패. */
 export interface MaintenanceRecord {
@@ -121,6 +123,18 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
             {' '}정비 도구에서 수동 동기화로 원인이 기록됩니다.
           </div>
         )
+      ) : null}
+
+      {/* 🎯 계획 대비 실행 — 예산이 앞 몇 개에서 끝나면 뒤쪽(커서픽)은 영영 안 돈다. 숫자로 보여야
+          "왜 같은 키워드만 도나"를 코드를 뒤지지 않고 알 수 있다(2026-07-29 실측: 16개 계획 / 3개 실행). */}
+      {run?.picks ? (
+        <div className="mb-2 mt-1 text-[11px] text-gray-500">
+          🎯 이번 회차 키워드 {formatNumber(run.picks.processed)}개 실행 / {formatNumber(run.picks.planned)}개 계획
+          {` · 성과가중 ${formatNumber(run.picks.from_yt)} · 커서순환 ${formatNumber(run.picks.from_cursor)}`}
+          {run.picks.from_cursor === 0 && run.picks.planned > run.picks.processed
+            ? ' — 커서순환 키워드가 한 개도 도달하지 못했습니다(예산이 앞쪽에서 소진). 순환 폭이 성과가중 픽에만 의존합니다.'
+            : ''}
+        </div>
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (

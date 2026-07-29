@@ -45,54 +45,9 @@ import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 //   조용히 갈라지므로** main 이름 하나로 통일하고 이쪽 파일은 삭제했다.
 import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seed-keywords'
 
-export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
-export interface AutoCollectStats {
-  last_run: string; last_saved: number; last_keywords: string[]
-  total_runs: number; total_saved: number; cursor: number
-  pri_cursor?: number // ⭐ 우선 풀(맛집·뷰티 등) 커서 — 배치 3/4 를 배정하는 풀의 순환 위치(관측용)
-  promoted?: string[]; youtube_quota_hit?: boolean
-  /**
-   * 🌱 신규 키워드 승격 자리(2026-07-29) — `promoted: []` 가 "후보가 없어서"인지 **"자리가 없어서"**인지
-   *   밖에서 갈리게. 이 값이 없어서 auto 승격이 영구 0 인 걸 몇 세션 동안 못 봤다(활성 210 > 상한 200).
-   *   room 이 0 으로 붙박이면 발굴이 굶고 있는 것 — 수집은 도는데 풀이 안 크는 조용한 실패다.
-   */
-  kw_auto?: { active: number; room: number; cap: number }
-  /** @deprecated 2026-07-28 — 링크인바이오/블로거 보강은 `influencer-enrich-lane.ts` 로 이전(스냅샷 `ads_influencer_enrich_last`).
-   *  옛 실행이 남긴 값을 읽는 화면이 있어 타입은 유지(신규 실행은 안 채움). */
-  bio_enriched?: number
-  /** @deprecated 2026-07-28 — 성과 보강도 `influencer-enrich-lane.ts` 로 이전. 옛 스냅샷 호환용. */
-  perf_enriched?: number
-  /** 🔎 진단(2026-07-20 "신규 0건" 사후) — 0건의 원인을 밖에서 알 수 있게 플랫폼별 결과를 기록.
-   *  configured=키 존재 여부(ur-ads env), found=발굴 합계, saved=신규 저장, error=첫 실패 사유. */
-  diag?: {
-    yt: { configured: boolean; found: number; saved: number; error?: string }
-    naver: { configured: boolean; found: number; saved: number; error?: string }
-    tistory?: { configured: boolean; found: number; saved: number; error?: string }
-    /** @deprecated 2026-07-28 — 블로거 보강은 전용 레인으로 이전. 옛 스냅샷 호환용. */
-    naver_enrich?: NaverEnrichDiag
-  }
-  /** 🎯 YT 검색 예산(진짜 병목 = Search Queries/day, 기본 100회) — 어드민 "오늘 n/100" 표시용. */
-  yt_budget?: { used: number; total: number; day: string }
-  /** 🔒 다른 실행이 진행 중이라 이번 호출은 아무것도 안 함(lease busy) — 체인/버스트는 yt_budget 부재로 자연 종료. */
-  busy?: boolean
-  /**
-   * 🔒 서브리퀘스트 예산 — **정상 실행에도** 남긴다(2026-07-29).
-   *   이 레인은 매시간 `Too many subrequests` 로 수확을 버리는데, 예산 수치는 **크래시 때만**(`crash_spent`)
-   *   기록돼 왔다. 즉 *정작 실패하는 경로*에서 "얼마를 썼고 상한이 얼마였는지"가 화면에 안 보였다.
-   *   보강 레인(`enrich_lane`)은 이미 spent/budget_total/limit_hit 를 남긴다 — 그 비대칭을 없앤다.
-   */
-  spent?: number
-  budget_total?: number
-  /** 관측된 학습 상한(0 = 미학습). 이 값이 계속 내려가면 한도가 실제로 낮다는 뜻. */
-  learned_cap?: number
-  /** 이번 실행에서 한도 신호를 봤나(레인이 fail-soft 로 삼켜도 여기서 드러난다). */
-  limit_hit?: boolean
-  /** 💥 이번 실행이 예외로 끝났다 — 원문/시각/그 시점 사용량. 성공하면 다음 스냅샷에서 사라진다. */
-  crash?: string
-  crash_at?: string
-  crash_spent?: number
-  crash_budget?: number
-}
+// 📊 결과 타입은 `influencer-collect-types.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
+export type { DiscoveryKeyword, AutoCollectStats } from './influencer-collect-types'
+import type { AutoCollectStats, DiscoveryKeyword } from './influencer-collect-types'
 
 const CURSOR_KEY = 'ads_autocollect_cursor'
 const STATS_KEY = 'ads_autocollect_stats'
@@ -447,9 +402,11 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   }
   let ytBudgetBlocked = false
   const processedIds = new Set<number>() // 실제 처리된 키워드 id — 커서를 '처리한 만큼만' 전진(예산 소진 leapfrog 방지)
+  let fromYt = 0, fromCursor = 0 // 🎯 처리된 픽의 출처 — 커서픽이 실제로 도달되는지 보이게(위 `picks` 주석)
   for (const k of finalPicks) {
     if (budget.left <= 0) break // 🔒 예산 소진 — 이번 틱 종료(다음 틱 커서가 못 돈 키워드를 이어받음)
     used.push(k.keyword); processedIds.add(k.id)
+    if (ytIds.has(k.id)) fromYt++; else fromCursor++
     let kFound = 0, kSaved = 0 // 이 키워드의 이번 실행 발굴/저장
     // YT 는 배치 상한(batch)개 키워드만(쿼터 예산) — 나머지는 네이버 전용. maxResults 50 × pages 로 깊이 확장.
     if (hasYouTube && !quotaHit && ytUsed < batch && ytSearchUsed + ytPages > ytBudgetTotal) ytBudgetBlocked = true // 예산 소진 — YT 만 스킵(네이버 계속)
@@ -582,6 +539,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
     cursor: nextCursor, pri_cursor: nextPriCursor, promoted, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
+    picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).
     spent: budgetTotal - budget.left, budget_total: budgetTotal, learned_cap: learnedCap, limit_hit: hitLimit,
