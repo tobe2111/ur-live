@@ -889,6 +889,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     }
     if (typeof body.detail_images === 'string' && body.detail_images.length <= 100000) {
       try { await db.prepare(`UPDATE products SET detail_images = ? WHERE id = ?`).bind(body.detail_images, productId).run() } catch { /* column may not exist */ }
+    }
+
     // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
     //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
     //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
