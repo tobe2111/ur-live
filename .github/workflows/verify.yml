@@ -161,6 +161,14 @@ jobs:
         run: node scripts/check-seed-version-monotonic.mjs -s
         continue-on-error: false
 
+      # 🔁 2026-07-29: 유어애즈 리드 파이프라인은 행마다 "어느 버전 규칙으로 처리됐나"를 스탬프하고
+      #   재처리를 `COALESCE(v,0) < 상수` 로 고른다. 규칙만 고치고 상수를 안 올리면 **에러 없이**
+      #   옛 판정이 굳는다. 특히 classify 는 시간 폴백이 없어 **영구**다(2026-07-27 사고의 수습이
+      #   바로 이 classified_v 방식이라, 메커니즘 전체가 "상수 올리기"에 걸려 있다).
+      - name: 규칙 버전 bump (strict)
+        run: node scripts/check-rules-version-bump.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
       #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
       #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.

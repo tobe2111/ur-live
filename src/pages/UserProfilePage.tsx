@@ -18,6 +18,7 @@ import MyReferralCard from '@/components/MyReferralCard'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
+import ReviewLevelCard from './user-profile/ReviewLevelCard'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
@@ -176,6 +177,9 @@ export default function UserProfilePage() {
 
       {/* v4 주문 현황 */}
       <OrderStatusBar />
+
+      {/* 🗺️ 2026-07-02 동네 리뷰어 레벨 (카카오맵 리뷰 게이미피케이션) — 자산 흐름 안에서 동기부여 노출 */}
+      <ReviewLevelCard />
 
       {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
       <ShoppingGroup counts={counts} />
