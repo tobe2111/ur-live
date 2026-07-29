@@ -268,6 +268,8 @@ deadline_hit: true · elapsed_ms 20,296   ← 시간에 잘렸다
 
 ### 남은 결정 / 대기 (대표 판단) — 9차-d 에서 이월
 
-- 🔴 **`CLASSIFY_RULES_VERSION` 3 → 4 bump** 미결. #818 의 기관 판정 규칙이 **171,028건 중 0건에 적용** 중.
-  bump 는 전량 재검사를 트리거하고 housekeeping 이 미큐레이션 행을 삭제하므로 임의로 올리지 않았다.
+- ✅ **`CLASSIFY_RULES_VERSION` 3 → 4 — 해결됨(다른 세션).** 2026-07-29 08:3x 실측 확인:
+  코드 상수 **4**(`company-classify.ts:56`), 라이브 `reclassify.remaining_unclassified` = **159,383**
+  (bump 전엔 0 이었다 = 전량 재검사가 실제로 돌기 시작). 우려했던 **대량 삭제는 없었다** —
+  `total_removed` 누적 **129건**(171,307 중). ⚠️ 이 항목을 '미결'로 다시 적지 말 것.
 - **접촉 0명** — 발송 가능 22,533명, 큐·초안 인프라 준비됨. 동의/PIPA 절차 포함 대표 판단.
