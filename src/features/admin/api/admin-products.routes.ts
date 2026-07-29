@@ -1861,6 +1861,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       if (r.meta?.last_row_id && Number.isFinite(mrl) && mrl >= 2 && mrl <= 5) {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { min_review_level: String(Math.floor(mrl)) }).catch(() => {});
       }
+    }
     // 🧭 2026-07-02: 좌표 없이 등록 시 즉시 지오코딩(waitUntil, fail-soft) — cron 전 갭 제거.
     if (!hasCoord && addr && r.meta?.last_row_id) {
       try {
