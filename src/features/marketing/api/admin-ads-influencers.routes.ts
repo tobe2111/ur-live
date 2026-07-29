@@ -512,7 +512,9 @@ app.delete('/influencer-pool/:id', async (c) => {
 app.get('/influencer-pool/keywords', async (c) => {
   await ensureKeywordTable(c.env.DB)
   // 성과순(saved_total) 정렬 — "잘 무는" 키워드가 위로. 지역 시딩 조정용.
-  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
+  // 🌵 barren_streak 노출(2026-07-29) — 이 값이 키워드를 **비활성**시키고(auto 8회+) 쿨다운을 최대 4일까지
+  //   벌리는데 정작 API 에 없어서, "이 키워드가 왜 안 도는가"를 밖에서 판정할 수 없었다(라이브에서 실제로 막혔다).
+  const r = await c.env.DB.prepare('SELECT id, keyword, category, active, hits, source, created_at, found_total, saved_total, last_saved, last_run_at, COALESCE(barren_streak, 0) AS barren_streak FROM ad_discovery_keywords ORDER BY active DESC, saved_total DESC, hits DESC, id ASC LIMIT 1000').all().catch(() => null)
   return c.json({ success: true, keywords: r?.results || [] })
 })
 

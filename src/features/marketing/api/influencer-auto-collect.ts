@@ -15,6 +15,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { backfillRegions } from './influencer-region'
+import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seeds' // 🌱 탐색 범위(순수 데이터) — 자유 확장
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -38,45 +39,6 @@ const AUTO_PROMOTE_HITS = 5 // 🛡️ 2026-07-23: 채널 단위 dedupe 도입�
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-
-/** 카테고리별 시드 키워드(한국). 탐색 *범위*라 구조 문서 갱신 대상 아님(자유 확장). */
-const SEED: { category: string; keywords: string[] }[] = [
-  // ⭐ 우선 분야 (대폭 보강)
-  { category: '뷰티', keywords: ['뷰티 유튜버', '메이크업 튜토리얼', '스킨케어 리뷰', '코스메틱 추천', '헤어 스타일링', '피부관리 루틴', '뷰티 하울', '왁싱 후기'] },
-  { category: '네일', keywords: ['네일아트', '셀프네일', '젤네일 디자인', '네일샵 추천', '네일 튜토리얼'] },
-  { category: '맛집', keywords: ['맛집 추천', '서울 맛집', '부산 맛집', '맛집 리뷰', '동네 맛집', '카페 추천', '맛집 투어', '데이트 맛집', '로컬 맛집', '숨은 맛집', '노포 맛집', '골목식당'] },
-  { category: '푸드', keywords: ['맛집 브이로그', '먹방', '홈카페', '베이킹 레시피', '자취요리'] },
-  // ⭐ 외식/자영업 — 유어딜 매장(셀러) 결. 홍석천·이원일 류 외식업 인플루언서·매장 사장·창업 채널.
-  { category: '외식창업', keywords: ['외식업', '자영업', '소상공인', '식당 창업', '카페 창업', '장사 노하우', '가게 홍보', '매장 마케팅', '요식업', '음식점 사장', '동네 가게', '소상공인 창업'] },
-  { category: '숙소', keywords: ['숙소 추천', '펜션 추천', '풀빌라 후기', '호텔 리뷰', '감성숙소', '글램핑 후기', '한옥스테이'] },
-  // 일반 분야
-  { category: '패션', keywords: ['패션 하울', '데일리룩', '코디 추천', '빈티지 패션'] },
-  { category: '여행', keywords: ['국내여행 브이로그', '호캉스 후기', '캠핑 브이로그', '해외여행 팁'] },
-  { category: '육아', keywords: ['육아 브이로그', '아기용품 리뷰', '엄마표 놀이'] },
-  { category: '운동', keywords: ['홈트레이닝', '헬스 브이로그', '다이어트 기록', '요가 스트레칭'] },
-  { category: '반려동물', keywords: ['강아지 브이로그', '고양이 채널', '반려동물 용품'] },
-  { category: '리빙', keywords: ['자취 인테리어', '살림 꿀팁', '홈스타일링'] },
-  { category: 'IT/재테크', keywords: ['IT 리뷰', '가전 리뷰', '앱 추천', '재테크 브이로그', '주식 초보'] },
-  { category: '취미', keywords: ['캘리그라피', '그림 그리기', '독서 추천', '차박 브이로그'] },
-]
-
-// 🗺️ 지역×업종 그리드 — 서울 25구 × {맛집·카페·뷰티·네일}. 소스 추가 없이 로컬 커버리지 극대화(유어딜 동네딜 결).
-//   카페는 맛집 카테고리로 태깅(우선 커서). 커서 순환이라 쿼터 부담 없이 며칠에 걸쳐 도는 구조.
-const SEOUL_GU = ['강남', '서초', '송파', '강동', '마포', '용산', '성동', '광진', '영등포', '동작', '관악', '강서', '양천', '구로', '금천', '종로', '중구', '성북', '동대문', '중랑', '노원', '도봉', '강북', '은평', '서대문']
-const REGION_SEED: { category: string; keywords: string[] }[] = [
-  { category: '맛집', keywords: SEOUL_GU.flatMap(gu => [`${gu} 맛집`, `${gu} 카페`]) },
-  { category: '뷰티', keywords: SEOUL_GU.map(gu => `${gu} 뷰티`) },
-  { category: '네일', keywords: SEOUL_GU.map(gu => `${gu} 네일`) },
-]
-
-// 📍 방배 국지 시딩(2026-07-21 대표 — 8월 방배 시드 크리에이터 소싱). 동/역세권 단위(서울 25구 그리드보다 좁음).
-//   전부 우선풀 업종(맛집/뷰티/네일)으로 태깅 → 우선 커서(3/4 배정)를 탄다(전국 확대보다 방배가 먼저 커버).
-//   '카페'는 REGION_SEED 관례대로 맛집 태깅 · '피티'(PT)는 운동이 우선풀에 없어 매장 결의 뷰티로 태깅(우선 커서 편입 목적).
-const BANGBAE_SEED: { category: string; keywords: string[] }[] = [
-  { category: '맛집', keywords: ['방배 맛집', '방배동 맛집', '방배 카페', '방배역 맛집', '이수역 맛집', '내방역 맛집', '사당역 맛집', '서리풀공원 맛집'] },
-  { category: '뷰티', keywords: ['방배 미용실', '방배 피티'] },
-  { category: '네일', keywords: ['방배 네일'] },
-]
 
 export interface DiscoveryKeyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; created_at: string }
 export interface AutoCollectStats {
@@ -450,6 +412,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   let quotaHit = false
   const used: string[] = []
   const kwStats = new Map<number, { found: number; saved: number }>() // 📊 키워드별 발굴/저장(성과 관측)
+  const starvedIds = new Set<number>() // 🌵 예산 고갈/한도 오류로 '공정한 시도'가 못 된 키워드(무판정 대상)
   const hashtagFreq = new Map<string, number>()
   const mine = (leads: { description: string; links: string | null; name: string }[]) => {
     // 🛡️ F-29: 출현 횟수가 아니라 **채널(리드) 단위**로 카운트(같은 소개글의 #맛집 #맛집 #맛집 이 3히트가 되던 것 차단)
@@ -523,6 +486,15 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
         if (r.ok && r.leads?.length) { const s = await saveLeadsBatch(DB, POOL_ACCOUNT_ID, r.leads, { category: k.category, sourceKeyword: k.keyword }); saved += s; diag.naver.found += r.leads.length; diag.naver.saved += s; kFound += r.leads.length; kSaved += s; mine(r.leads) }
       } catch { /* fail-soft */ }
     }
+    // 🌵 **공정한 시도였나** — 예산이 이 키워드 도중에 바닥났거나 한도 오류를 봤으면 '무수확'이 아니라 '굶은'
+    //   것이다. 루프는 키워드 *시작 전*에만 예산을 보므로, 남은 예산 1로 시작한 키워드도 모든 fetch 를
+    //   시도하고 전부 실패한다 → kFound 0 → 아래 UPDATE 가 barren_streak 를 올린다.
+    //   그 결과가 가볍지 않다: 점수에서 streak×25 를 깎고(`pickYtKeywords`), 쿨다운을 최대 4일까지 벌리고,
+    //   auto 키워드는 8회면 **비활성**된다. 게다가 굶는 자리는 픽 목록의 꼬리로 **결정적**이라 특정 키워드가
+    //   반복해서 맞는다 — 예산 부족이 키워드 품질로 오기록되는 자기강화 루프다.
+    //   ⇒ 굶은 회차는 발굴/저장 누적만 반영하고 streak·last_saved·last_run_at 은 건드리지 않는다(= 무판정).
+    const starved = budget.left <= 0 || isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
+    if (starved) starvedIds.add(k.id); else starvedIds.delete(k.id) // 같은 실행에 재등장하면 마지막 판정이 유효
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
@@ -532,9 +504,13 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   if (nextCap != null) await writeSetting(DB, subreqCapKey('influencer'), String(nextCap))
   // 📊 키워드별 성과 누적 저장(1 batch) — 어드민 키워드 칩에서 "어느 지역 키워드가 잘 무는지" 확인.
   if (kwStats.size) {
-    await DB.batch(Array.from(kwStats.entries()).map(([id, v]) =>
+    await DB.batch(Array.from(kwStats.entries()).map(([id, v]) => starvedIds.has(id)
+      // 🌵 굶은 회차 — 수확만 누적하고 **판정은 보류**(streak/last_saved/last_run_at 불변).
+      //   last_run_at 을 안 건드리는 것이 핵심이다: 순번을 못 받았으니 여전히 '실행 대기'로 남아야 한다.
+      ? DB.prepare('UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ? WHERE id = ?')
+        .bind(v.found, v.saved, id)
       // 🌵 무수확이면 연속 카운터 +1, 한 명이라도 건지면 0 으로 리셋(고갈 판정의 유일한 근거).
-      DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
+      : DB.prepare(`UPDATE ad_discovery_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_saved = ?,
         barren_streak = CASE WHEN ? > 0 THEN 0 ELSE COALESCE(barren_streak, 0) + 1 END, last_run_at = datetime('now') WHERE id = ?`)
         .bind(v.found, v.saved, v.saved, v.saved, id))).catch(() => null)
   }
