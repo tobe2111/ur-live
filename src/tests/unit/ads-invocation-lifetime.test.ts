@@ -348,3 +348,43 @@ describe('자기링크 판정 — SSOT 와 정리 규칙', () => {
     expect(read('src/worker-ads/index.ts')).toMatch(/'selflink',/)
   })
 })
+
+/**
+ * 🔁 **선두 교대** — 몫 보장으로 못 푼 굶주림을 순서로 푼다 (2026-07-29 13:00 실측).
+ *
+ *   사전 마감(`frontStageDeadline`, 앞 레인 60% 상한)을 넣은 **뒤에도** 결과가 같았다:
+ *   `naver { selected: 12, tried: 0 } · deadline_hit · elapsed 20.8s · spent 19/45`.
+ *   중단은 **건 사이에서만** 일어나므로, YT 한 건이 마감 직전에 시작해 타임아웃(~9s)을 물면
+ *   창을 넘겨 버린다 — **상한으로는 못 막는 종류**다(상한을 낮춰도 한 건이 창보다 길 수 있다).
+ *
+ *   ⇒ 홀수 라운드는 블로거가 먼저. 체인이 depth 2+ 로 도는 것이 같은 틱에 확인됐으므로(`depth: 2`)
+ *     틱마다 블로거 선두 라운드가 최소 한 번 온다.
+ */
+describe('보강 레인 — 라운드마다 선두 교대', () => {
+  const lane = read('src/features/marketing/api/influencer-enrich-lane.ts')
+
+  it('depth 홀짝으로 선두를 가른다', () => {
+    expect(lane).toMatch(/const naverFirst = depth % 2 === 1/)
+  })
+
+  it('블로거 선두 라운드에는 사전 마감을 씌우지 않는다 — 마감 전체를 쓴다', () => {
+    const branch = /if \(naverFirst\) \{[\s\S]{0,300}?\n  \} else \{/.exec(lane)?.[0] || ''
+    expect(branch, 'naverFirst 분기를 못 찾았다').toBeTruthy()
+    expect(branch).toMatch(/runNaver\(\)[\s\S]{0,80}runFront\(\)/)
+    expect(branch).not.toMatch(/frontStageDeadline/)
+  })
+
+  it('짝수 라운드는 종전대로 사전 마감 + 복원 순서를 지킨다', () => {
+    const el = lane.slice(lane.indexOf('} else {'))
+    const cap = el.indexOf('frontStageDeadline')
+    const restore = el.indexOf('budget.deadline = started + deadlineMs')
+    const naver = el.indexOf('runNaver()')
+    expect(cap).toBeGreaterThan(-1)
+    expect(restore).toBeGreaterThan(cap)   // 상한 뒤에 복원
+    expect(naver).toBeGreaterThan(restore) // 복원 뒤에 블로거
+  })
+
+  it('블로거 호출이 한 곳뿐이다 — 두 벌로 두면 한쪽만 고쳐진다', () => {
+    expect((lane.match(/enrichNaverActivity\(DB, budget/g) || []).length).toBe(1)
+  })
+})
