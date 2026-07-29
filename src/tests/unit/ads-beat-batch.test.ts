@@ -93,3 +93,57 @@ describe('봉인 뒤에는 즉시 쓴다', () => {
     expect(b.size).toBe(2)
   })
 })
+
+/**
+ * ⏳ **나이 상한** — 2026-07-29 라이브가 가르쳐 준 것.
+ *
+ *   임계치와 마지막 flush 만 두면, 임계치에 못 닿은 뒷부분은 **모든 디스패치가 끝날 때까지** 대기한다.
+ *   부모가 그 전에 회수되면 통째로 사라진다 — 실측: `reclassify` 가 자기 스탬프상 14:01 에 돌았는데
+ *   하트비트는 13:01 그대로였다(= 돌았지만 기록이 없다 = 멈춘 것과 똑같이 생겼다).
+ *
+ *   ⚠️ 타이머로 풀지 않는다 — 타이머는 부모 **수명**을 건드리고, 그건 이 세션이 이미 한 번 데인 선이다.
+ *   `add()` 시점 검사라 비용 0이고, 아무 기록도 안 들어오면 여전히 마지막 flush 가 처리한다(그 한계는 남는다).
+ */
+describe('나이 상한 — 오래 들고 있지 않는다', () => {
+  it('임계치에 못 닿아도 상한이 지나면 내보낸다 — 시간을 실제로 흘려 확인', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-07-29T14:00:00Z'))
+      const write = vi.fn(async (_l: PendingBeat[]) => {})
+      const b = createBeatBatch(write, 100, 3_000)
+      b.add(beat('a'))
+      vi.advanceTimersByTime(1_000)
+      b.add(beat('b'))
+      expect(write, '상한 안에서는 계속 모은다').not.toHaveBeenCalled()
+      vi.advanceTimersByTime(2_500)   // 첫 기록이 3.5초째 — 상한 초과
+      b.add(beat('c'))
+      expect(write).toHaveBeenCalledTimes(1)
+      expect(write.mock.calls[0][0]).toHaveLength(3) // 모인 것을 한 번에
+    } finally { vi.useRealTimers() }
+  })
+
+  it('상한 0 은 "들고 있지 않는다" — 매 건 즉시(배칭 이전과 동일한 안전 동작)', () => {
+    const write = vi.fn(async (_l: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 100, 0)
+    b.add(beat('a'))
+    expect(write).toHaveBeenCalledTimes(1)
+  })
+
+  it('상한 안이면 계속 모은다 — 절약이 사라지면 안 된다', () => {
+    const write = vi.fn(async (_l: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 100, 60_000)
+    for (let i = 0; i < 5; i++) b.add(beat(`a${i}`))
+    expect(write).not.toHaveBeenCalled()
+    expect(b.size).toBe(5)
+  })
+
+  it('flush 후 다시 모으면 나이는 새 묶음 기준으로 다시 센다', async () => {
+    const write = vi.fn(async (_l: PendingBeat[]) => {})
+    const b = createBeatBatch(write, 100, 60_000)
+    b.add(beat('a'))
+    await b.flush()
+    expect(write).toHaveBeenCalledTimes(1)
+    b.add(beat('b')) // 봉인 뒤라 즉시 나간다
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+})

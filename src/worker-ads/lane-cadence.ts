@@ -249,3 +249,32 @@ export async function recordKnownLanes(env: unknown, lanes: string[]): Promise<v
       .bind(KNOWN_LANES_KEY, value).run()
   } catch { /* fail-soft */ }
 }
+
+/**
+ * 🕐 **이 회차가 새 배포 직후인가** — 관측을 오염시키는 가장 흔한 원인을 하트비트가 스스로 말하게 한다.
+ *
+ * ## 왜 (2026-07-29, 같은 실수를 세 번)
+ * 배포는 진행 중인 isolate 를 죽인다. 그래서 **배포 창에 걸린 정각 회차는 아무 일도 못 하고 사라진다** —
+ * 하트비트엔 `ms=0`, 카운터는 `+0`. 그 모양은 **코드 결함과 구분되지 않는다.**
+ * 실제로 이 세션은 그걸 보고
+ *   ① "self-chain 이 수집을 죽였다"(11:00) ② "#880 의 바닥이 부족하다"(13:00)
+ * 로 두 번 오진했고, 두 번 다 **GitHub 배포 로그를 파러 가서야** 사실을 알았다.
+ * 그런데 그 정보는 워커가 이미 갖고 있다 — 자기 번들이 언제 만들어졌는지.
+ *
+ * ## 읽는 법
+ * `build_age_min` 이 **0~2** 면 그 회차는 배포와 겹쳤을 가능성이 높다 ⇒ **판정 근거로 쓰지 말 것.**
+ * 값이 없으면(로컬/테스트 번들) 스탬프가 주입되지 않은 것 — 그때도 조용히 비운다(관측이 실행을 막지 않는다).
+ */
+export function buildAgeInfo(nowMs: number = Date.now()): { build_age_min?: number } {
+  try {
+    const raw = (globalThis as { __ADS_BUILD_AT__?: string }).__ADS_BUILD_AT__
+      ?? (typeof __ADS_BUILD_AT__ === 'string' ? __ADS_BUILD_AT__ : undefined)
+    if (!raw) return {}
+    const t = Date.parse(raw)
+    if (!Number.isFinite(t)) return {}
+    return { build_age_min: Math.max(0, Math.round((nowMs - t) / 60000)) }
+  } catch { return {} }
+}
+
+/** esbuild `define` 이 주입하는 빌드 시각(ISO). 주입 안 된 환경(로컬·테스트)에선 존재하지 않는다. */
+declare const __ADS_BUILD_AT__: string | undefined

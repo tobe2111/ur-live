@@ -12,7 +12,7 @@
 import { Hono } from 'hono'
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import type { Env } from '@/worker/types/env'
-import { makeHourGates, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes } from './lane-cadence'
+import { makeHourGates, dailyGapMinutes, staleGapMinutes, createLaneRegistry, recordKnownLanes, buildAgeInfo } from './lane-cadence'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
@@ -25,11 +25,8 @@ import { healthRoutes } from './health.routes'
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
 import { socialMediaRoutes } from '@/features/social-media/api/social-media.routes'
 
-/**
- * 🌙 야간 라이브 재보정 시각(UTC) = KST 04시.
- *   시간별 정비 순환이 **이 시각을 양보**한다 — 둘이 같은 lease 를 다투기 때문(아래 스케줄러 docblock).
- *   두 곳이 같은 값을 봐야 하므로 상수로 둔다(따로 적으면 한쪽만 옮겨져 다시 겹친다).
- */
+/** 🌙 야간 재보정 시각(UTC) = KST 04시. 시간별 정비 순환이 이 시각을 **양보**한다(같은 lease 경합).
+ *  두 곳이 같은 값을 봐야 하므로 상수 — 따로 적으면 한쪽만 옮겨져 다시 겹친다. */
 export const RESCAN_HOUR_UTC = 19
 
 const app = new Hono<{ Bindings: Env }>()
@@ -249,10 +246,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value)
     }))
   })
-  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number): Promise<void> => {
+  // 📦 `extra` = 실패 사유와 **독립**인 부가 관측(예: 배포 직후 회차를 스스로 신고하는 build_age_min).
+  //   오늘 세 번의 오진이 전부 "이 회차가 배포와 겹쳤나"를 사후에 못 봐서 났다 — 성공 회차에도 실어야 한다.
+  const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>): Promise<void> => {
     try {
       const { cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
-      beats.add({ name: `ads:${name}`, ok, ms, cron: event.cron, result: ok ? undefined : { err: cronErrorCode(err) }, maxGapMin })
+      const result = ok ? extra : { err: cronErrorCode(err), ...(extra || {}) }
+      beats.add({ name: `ads:${name}`, ok, ms, cron: event.cron, result, maxGapMin })
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {
       try {
@@ -290,7 +290,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   // 🔔 이 워커의 cron 이 '울리기는 했다'는 사실 자체를 남긴다 — 개별 트랙이 전부 게이트 OFF 여도
   //   ur-ads 스케줄러가 살아있는지 구분할 수 있어야 한다(멈춤 경보의 최소 신호).
-  ctx.waitUntil(adsBeat('scheduled', true, 0))
+  //   🕐 이 회차가 **새 배포 직후인지**를 함께 남긴다 — 배포는 진행 중인 isolate 를 죽이므로
+  //   배포 창에 걸린 정각 회차는 아무 일도 못 하고 사라진다(2026-07-29 에 그걸 세 번 오진했다:
+  //   `ms=0` · 카운터 +0 을 보고 코드 결함으로 읽었는데 실제로는 배포와 겹친 것이었다).
+  //   `build_age_min` 이 작으면(≈0~2) 그 회차의 관측은 **판정 근거로 쓰면 안 된다.**
+  ctx.waitUntil(adsBeat('scheduled', true, 0, undefined, undefined, buildAgeInfo()))
 
   // ── 매시간(정각) — 소셜 유지보수 + 인플루언서 자동수집 ──────────────────────
   ctx.waitUntil((async () => {
@@ -543,14 +547,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       'reclassify', 'handle', 'quality', 'reclassify', 'handle',
       'reclassify',
     ] as const
-    // 🤝 **19시는 야간 재보정에 양보한다** — 둘이 같은 `MAINT_LEASE_KEY` 를 다투다(의도적 공유: 둘 다
-    //   YouTube 쿼터를 쓴다) 진 쪽이 스냅샷도 안 남기고 사라지고 있었다. 실측이 정확히 그 모양이다:
-    //   `maintenance_rescan.at` 이 2026-07-27T19:00 에서 정지 — **시간별 순환이 배포된 그날부터**다.
-    //   고장이 아니라 경합이었다. 하루 1회뿐이라 미루면 그날치가 통째로 날아가는 쪽에 이 시각을 준다.
-    //   양보 비용 0(계산 확인): `handle` 은 4·7·10·16·22시에 그대로 돌고 최대 간격은 merge 의 12h 불변.
-    //   ⚠️ 양보와 주기 신고를 **손으로 따로 쓰지 않는다** — `gates.hourlySchedule` 이 배정표와 양보목록
-    //     하나에서 둘 다 유도한다. 첫 판은 `if (hourUTC !== …) { kick(…) }` 으로 썼다가, 바로 그 드리프트를
-    //     막으려고 만들어져 있던 유닛에 걸렸다(조건과 주기가 두 군데가 되는 순간 조용히 어긋난다).
+    // 🤝 **19시는 야간 재보정에 양보한다**(`RESCAN_HOUR_UTC`) — 둘이 같은 `MAINT_LEASE_KEY` 를 다투다
+    //   진 쪽이 스냅샷도 안 남기고 사라지고 있었다(`maintenance_rescan.at` 이 07-27 에서 정지 — 순환 배포일).
+    //   양보 비용 0: `handle` 은 4·7·10·16·22시에 그대로 돈다. 근거·설계는 `gates.hourlySchedule` docblock.
     gates.hourlySchedule(PHASES, [RESCAN_HOUR_UTC],
       (phase) => `/__ads/maintenance?phase=${phase}`,
       (phase) => async () => {

@@ -45,12 +45,27 @@ export interface PendingBeat {
 export const FLUSH_AT = 10
 
 /**
+ * 가장 오래된 미기록 하트비트를 이보다 오래 들고 있지 않는다 (2026-07-29 **라이브 실측 후 추가**).
+ *
+ * 처음엔 임계치(10)와 마지막 flush 만 뒀는데, 라이브에서 **기록이 실제로 사라졌다**:
+ * 14:00 회차에 `reclassify` 는 자기 스탬프가 `14:01:09` 인데(= 돌았다) 하트비트는 13:01 그대로였다.
+ * 원인은 마지막 flush 가 **모든 디스패치가 끝나기를** 기다리는 데 있다 — 부모가 그 전에 회수되면
+ * 임계치에 못 닿은 뒷부분이 통째로 사라진다. 내가 문서에 "한계"로 적어 둔 그 모드가 그대로 발생했다.
+ *
+ * ⇒ 나이 상한을 둔다. 타이머는 쓰지 않는다(타이머는 부모 **수명**을 건드린다 — 이 모듈이 절대
+ *   넘지 않기로 한 선이다). `add()` 시점에만 검사하므로 비용 0이고, 손실 창이 라운드 전체에서
+ *   이 값으로 줄어든다. 절약도 대부분 유지된다(레인 완료는 몰려서 오므로 여전히 묶인다).
+ */
+export const MAX_HOLD_MS = 3_000
+
+/**
  * 하트비트 누적기. `add()` 는 쓰지 않고 모으기만 하고, 임계치에 닿거나 `flush()` 될 때 **한 번에** 쓴다.
  *
  * @param write 실제 쓰기(주입 — 테스트에서 D1 없이 검증). 반환값은 무시한다(fail-soft).
  */
-export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, flushAt = FLUSH_AT) {
+export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, flushAt = FLUSH_AT, maxHoldMs = MAX_HOLD_MS) {
   let pending: PendingBeat[] = []
+  let oldestAt = 0 // 지금 묶음의 첫 기록이 들어온 시각 — 나이 상한 판정용
   let sealed = false // flush 를 한 번 지난 뒤 — 이제 모으기만 하면 아무도 안 내보낸다
   const inflight: Promise<unknown>[] = []
 
@@ -65,9 +80,11 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
 
   return {
     add(beat: PendingBeat): void {
+      if (!pending.length) oldestAt = Date.now()
       pending.push(beat)
       // 봉인 뒤에는 임계치를 기다리지 않는다 — 기다리면 그 기록은 영영 안 나간다.
-      if (sealed || pending.length >= flushAt) void flushNow()
+      // 나이 상한: 임계치에 못 닿아도 오래 들고 있지 않는다(라이브에서 실제로 잃은 그 경우).
+      if (sealed || pending.length >= flushAt || Date.now() - oldestAt >= maxHoldMs) void flushNow()
     },
     /** 남은 것을 쓰고, 이미 시작된 쓰기까지 모두 끝나기를 기다린다. 이후 도착분은 즉시 쓰기로 전환. */
     async flush(): Promise<void> {
