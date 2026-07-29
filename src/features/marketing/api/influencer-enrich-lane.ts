@@ -46,6 +46,16 @@ const PLATFORM_EMAIL_RE = /@(linktr\.ee|litt\.ly|inpock\.co\.kr|litelink\.at|tap
 /** 🔗 한 체인(정각 1회 = 라운드 N개)의 합계. 라운드 하나가 아니라 **그 시간에 실제로 일어난 일**. */
 export interface EnrichChainRollup {
   rounds: number            // 스냅샷을 쓴 라운드 수. `depth + 1` 보다 작으면 중간 라운드가 죽은 것이다.
+  /**
+   * 🧱 드라이버가 **계획한** 라운드 수(기본 12). `rounds` 와의 격차가 곧 **체인 수명 천장**이다.
+   *
+   *   2026-07-29 실측: 계획 12 · 도달 `depth 2`(라운드 3) — 13:00:0x 시작 → 13:01:36 마지막 기록,
+   *   즉 이 레인이 정각마다 실제로 확보하는 벽시계는 **~90초**뿐이다. 그동안 여러 세션이
+   *   "라운드를 12로 늘렸다"를 처리량 근거로 삼았는데, **9라운드는 한 번도 존재한 적이 없다.**
+   *   ⇒ 라운드 상한(`ADS_INFLUENCER_ENRICH_ROUNDS`)이나 라운드 창(`ADS_ENRICH_DEADLINE_MS`)을
+   *     키우는 처방은 이 격차가 메워진 뒤에야 의미가 있다. 창을 키우면 라운드가 **줄어든다**.
+   */
+  rounds_planned?: number
   max_depth: number
   bio: number
   yt: number
@@ -169,15 +179,19 @@ export function frontStageDeadline(started: number, deadlineMs: number, naverFlo
 export function rollupChain(
   prev: EnrichChainRollup | undefined,
   depth: number,
-  round: { bio: number; yt: number; naver: NaverEnrichDiag; spent: number; deadlineHit: boolean; at: string },
+  round: { bio: number; yt: number; naver: NaverEnrichDiag; spent: number; deadlineHit: boolean; at: string; roundsPlanned?: number },
 ): EnrichChainRollup {
   const d = Number.isFinite(depth) && depth > 0 ? Math.floor(depth) : 0
   const base: EnrichChainRollup = d === 0 || !prev
     ? { rounds: 0, max_depth: 0, bio: 0, yt: 0, naver_selected: 0, naver_tried: 0, naver_measured: 0, naver_contacts: 0, deadline_hits: 0, spent: 0, started_at: round.at }
     : prev
   const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : 0)
+  const planned = Number.isFinite(round.roundsPlanned) && (round.roundsPlanned as number) > 0
+    ? Math.floor(round.roundsPlanned as number)
+    : base.rounds_planned   // 로컬 호출(계획 미전달)이 앞 라운드의 계획을 지우지 않게
   return {
     rounds: n(base.rounds) + 1,
+    ...(planned ? { rounds_planned: planned } : {}),
     max_depth: Math.max(n(base.max_depth), d),
     bio: n(base.bio) + n(round.bio),
     yt: n(base.yt) + n(round.yt),
@@ -262,7 +276,7 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   실패해도 throw 하지 않는다(호출부는 fail-soft) — 대신 **crash 원문을 스냅샷에 남긴다**.
  *   증거 없는 종료가 진단을 몇 세션씩 잡아먹은 것이 2026-07-28 파트너풀 레인의 교훈이다.
  */
-export async function runInfluencerEnrich(env: Env, depth = 0): Promise<InfluencerEnrichSnapshot> {
+export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -326,7 +340,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0): Promise<Influenc
   const snap: InfluencerEnrichSnapshot = {
     last_run: stamp, bio, yt, naver, spent, budget_total: budgetTotal, depth,
     // 🔗 이번 정각 전체의 합 — 마지막 라운드 한 장으로 판정하던 오독을 끝낸다(위 `chain` 주석의 실측 근거).
-    chain: rollupChain(prev?.chain, depth, { bio, yt, naver, spent, deadlineHit, at: stamp }),
+    chain: rollupChain(prev?.chain, depth, { bio, yt, naver, spent, deadlineHit, at: stamp, roundsPlanned }),
     limit_hit: limitHit, deadline_hit: deadlineHit, elapsed_ms: Date.now() - started,
     yt_units: { used: ytUnitsUsed + ytUnits, total: ytUnitCap, day: ytDay },
     total_measured: (prev?.total_measured || 0) + naver.measured + yt,

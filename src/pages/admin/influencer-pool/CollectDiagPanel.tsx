@@ -77,7 +77,7 @@ export interface EnrichLaneRecord {
    *      그때 합계 0 은 '못 쟀다'가 아니라 '기록이 없다'는 뜻이다.
    */
   chain?: {
-    rounds?: number; max_depth?: number; bio?: number; yt?: number
+    rounds?: number; rounds_planned?: number; max_depth?: number; bio?: number; yt?: number
     naver_selected?: number; naver_tried?: number; naver_measured?: number; naver_contacts?: number
     deadline_hits?: number; spent?: number; started_at?: string
   }
@@ -205,6 +205,12 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
       {enrichLane?.chain?.rounds ? (
         <div className="mb-1 text-xs text-gray-500">
           {`🔗 이번 회차 합계 — 라운드 ${formatNumber(enrichLane.chain.rounds)}`}
+          {/* 🧱 계획 대비 도달 — 격차가 곧 체인 수명 천장이다(계획 12에 도달 3이면 9라운드는 존재한 적이 없다). */}
+          {enrichLane.chain.rounds_planned
+            ? <span className={(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? 'text-amber-600' : ''}>
+                {`/${formatNumber(enrichLane.chain.rounds_planned)}`}
+                {(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? ' (수명으로 조기 종료)' : ''}
+              </span> : ''}
           {(enrichLane.chain.rounds || 0) < (enrichLane.chain.max_depth || 0) + 1
             ? <span className="text-amber-600">{` (⚠️ 깊이 ${enrichLane.chain.max_depth} — 중간 라운드 기록 없음)`}</span> : ''}
           {` · 블로거 ${formatNumber(enrichLane.chain.naver_measured || 0)}/${formatNumber(enrichLane.chain.naver_tried || 0)}`}

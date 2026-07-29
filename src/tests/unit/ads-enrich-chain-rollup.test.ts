@@ -19,7 +19,7 @@ import type { NaverEnrichDiag } from '@/features/marketing/api/influencer-perfor
 const nv = (o: Partial<NaverEnrichDiag> = {}): NaverEnrichDiag =>
   ({ tried: 0, measured: 0, contacts: 0, failed: 0, ...o })
 
-const round = (o: Partial<{ bio: number; yt: number; naver: NaverEnrichDiag; spent: number; deadlineHit: boolean; at: string }> = {}) =>
+const round = (o: Partial<{ bio: number; yt: number; naver: NaverEnrichDiag; spent: number; deadlineHit: boolean; at: string; roundsPlanned: number }> = {}) =>
   ({ bio: 0, yt: 0, naver: nv(), spent: 0, deadlineHit: false, at: '2026-07-29 14:00:10', ...o })
 
 describe('rollupChain — 정각 하나의 합', () => {
@@ -67,6 +67,26 @@ describe('rollupChain — 정각 하나의 합', () => {
     expect(c.rounds).toBeLessThan(c.max_depth + 1)
   })
 
+  /**
+   * 🧱 계획 vs 도달 — 2026-07-29 실측에서 계획 12 · 도달 3 이었다. 그 격차가 **체인 수명 천장**이고,
+   *    안 보이면 다음 세션도 "라운드를 12로 늘렸다"를 처리량 근거로 쓴다(9라운드는 존재한 적이 없다).
+   */
+  it('계획 라운드 수가 합계에 남는다 — 도달과의 격차가 천장이다', () => {
+    let c = rollupChain(undefined, 0, round({ roundsPlanned: 12 }))
+    c = rollupChain(c, 1, round({ roundsPlanned: 12 }))
+    c = rollupChain(c, 2, round({ roundsPlanned: 12 }))
+    expect(c.rounds_planned).toBe(12)
+    expect(c.rounds).toBe(3)              // 계획 12 · 도달 3 = 수명으로 조기 종료
+  })
+
+  it('계획을 안 넘기는 호출(로컬)이 앞 라운드의 계획을 지우지 않는다', () => {
+    const c0 = rollupChain(undefined, 0, round({ roundsPlanned: 12 }))
+    const c1 = rollupChain(c0, 1, round())          // roundsPlanned 미전달
+    expect(c1.rounds_planned).toBe(12)
+    // 처음부터 계획이 없으면 필드 자체가 없다(0 으로 찍혀 '계획 0회'로 오독되지 않게).
+    expect(rollupChain(undefined, 0, round()).rounds_planned).toBeUndefined()
+  })
+
   it('prev 없음 / 손상값에 throw 하지 않는다 — 첫 배포와 옛 스냅샷을 견딘다', () => {
     expect(rollupChain(undefined, 2, round({ yt: 3 })).rounds).toBe(1)
     const broken = { rounds: NaN, yt: undefined } as unknown as EnrichChainRollup
@@ -92,9 +112,16 @@ describe('배선 — 합계가 스냅샷에 실리고 화면이 읽는가', () =
     // 순수함수만 만들고 호출을 안 하면 **에러 없이** 필드가 영원히 안 생긴다.
     expect(src).toMatch(/chain:\s*rollupChain\(/)
   })
+  it('드라이버가 계획 라운드 수를 레인에 넘긴다 — 안 넘기면 격차가 영원히 안 보인다', () => {
+    // 순수함수·화면을 다 만들어 놓고 이 인자 하나가 빠지면 `rounds_planned` 는 **에러 없이** 영영 없다.
+    // (이 검사가 없던 사이에 회귀 주입을 해 봤는데 10개 전부 초록이었다 — 그래서 이 검사가 생겼다.)
+    const src = readFileSync('src/worker-ads/enrich.routes.ts', 'utf8')
+    // ⚠️ `[^)]*` 로 쓰면 인자 안의 `Number.isFinite(d)` 괄호에서 끊긴다 — 실제로 그렇게 써서 헛돌았다.
+    expect(src).toMatch(/runInfluencerEnrich\(\s*c\.env,[^;\n]*,\s*rounds\s*\)/)
+  })
   it('어드민 화면이 chain 을 실제로 렌더한다', () => {
     const ui = readFileSync('src/pages/admin/influencer-pool/CollectDiagPanel.tsx', 'utf8')
-    for (const k of ['rounds', 'naver_measured', 'naver_tried', 'naver_selected', 'max_depth']) {
+    for (const k of ['rounds', 'rounds_planned', 'naver_measured', 'naver_tried', 'naver_selected', 'max_depth']) {
       // 경계까지 본다 — `naver_tried_typo` 도 포함하는 느슨한 매칭은 가드가 아니라 초록불 기계다.
       expect(ui).toMatch(new RegExp(`enrichLane\\??\\.chain\\??\\.${k}\\b(?!_)`))
     }
