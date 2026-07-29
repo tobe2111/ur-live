@@ -97,6 +97,7 @@ if domain ui; then
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
+  run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
 fi
 
 if domain structure; then
@@ -117,6 +118,8 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
+  run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
+  run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
 fi
 
 echo "────────────────────────────────────────────────────"

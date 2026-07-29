@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { parseUTCDate } from '@/utils/date'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import AgencyLayout from '@/components/AgencyLayout'
@@ -679,7 +680,7 @@ export default function AgencyPage() {
                   <div className="ml-3 flex-shrink-0">
                     <PayBadge status={o.payment_status} />
                     <p className="text-xs text-gray-400 mt-1 text-right">
-                      {new Date(o.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      {parseUTCDate(o.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}
                     </p>
                   </div>
                 </div>

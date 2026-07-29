@@ -2482,7 +2482,8 @@
       "promoSpend": "Promo Spend",
       "influencerDeals": "Influencer Deals",
       "experienceCampaigns": "Experience Campaigns",
-      "myLinkshop": "My Linkshop"
+      "myLinkshop": "My Linkshop",
+      "reviewVerifications": "Review Checks"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -3060,6 +3061,26 @@
       "drawPrompt": "Number to select (slots: {{slots}})",
       "drawConfirm": "Run the draw? Winners will automatically receive a ₩0 experience voucher.\n(Fair draw — seed, pool and results are permanently recorded and cannot be undone.)",
       "drawDone": "Draw complete — {{winners}} selected from {{pool}} entries, {{issued}} vouchers issued"
+    },
+    "reviewVerify": {
+      "title": "Kakao Map Review Checks",
+      "subtitle": "Verify Kakao Map reviews submitted by customers who used a voucher. Approving grants the customer bonus deals + reviewer level points.",
+      "tabPending": "Pending",
+      "tabPaid": "Paid",
+      "tabRejected": "Rejected",
+      "empty": "Nothing here yet",
+      "emptyPending": "No review proofs waiting for confirmation",
+      "approve": "Confirm (pay bonus)",
+      "reject": "Reject",
+      "rejectConfirm": "Confirm rejection",
+      "reasonPlaceholder": "Rejection reason (sent to the customer)",
+      "reasonRequired": "Please enter a rejection reason",
+      "approvedToast": "Confirmed — bonus and review points sent to the customer",
+      "rejectedToast": "Rejected",
+      "ocrPassed": "Auto-check passed (reference)",
+      "openReview": "View proof",
+      "footNote": "Bonuses are paid for visit verification regardless of rating or content. The operations team may audit approvals by sampling.",
+      "loadError": "Failed to load the list"
     }
   },
   "admin": {

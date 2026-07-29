@@ -680,6 +680,22 @@ async function handlePaymentConfirmed(
         console.error('[WEBHOOK] KT-Alpha send failed:', String(e).slice(0, 200))
       }
     }
+
+    // ③ 💸 2026-07-02 [UNLOCK] (쇼핑 전수조사 — 대표 승인 "선행 수리까지"): 쇼핑 매출 원장 net 크레딧 —
+    //   webhook 경로. 이전엔 payment.routes `/confirm` 에만 있어 confirmPaymentAtomic CAS 로 webhook 이
+    //   이기면(브라우저 confirm 누락) 그 주문이 원장에 영구 미적립 → 주간 payout 누락. `/confirm` 과 동일
+    //   게이트(SHOPPING_LEDGER_ENABLED, 기본 OFF) + 동일 멱등(order:N/이용권·공구 skip). result.confirmed>0
+    //   가드라 confirm↔webhook 단일실행 → 이중적립 없음. ⚠️ confirmPaymentAtomic/금액검증 무수정 — 게이트 블록만.
+    if (env && env.SHOPPING_LEDGER_ENABLED === 'true') {
+      try {
+        const { creditSellerOrderToLedger } = await import('../utils/order-ledger-credit')
+        const ledgerOrders = await DB.prepare('SELECT id FROM orders WHERE order_number = ?')
+          .bind(orderNumber).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))
+        for (const o of (ledgerOrders?.results ?? [])) {
+          await creditSellerOrderToLedger(DB, Number(o.id)).catch(() => {})
+        }
+      } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
+    }
   }
 
   // 🔔 2026-06-26 [UNLOCK] (대표 승인 "모두 해줘" — 소비자 감사 D): 결제완료 buyer 인앱 알림 — webhook 경로.
@@ -904,9 +920,18 @@ async function handlePaymentFailed(
     cancel_reason: `${data.failureCode ?? 'UNKNOWN'}: ${data.failureMessage ?? 'Payment failed'}`,
   });
 
-  // Restore stock — reserveStock() was called at order creation (PENDING).
+  // 🛡️ 2026-07-02 [UNLOCK] (쇼핑 전수조사 — 대표 승인 "지금 수정"): 재고 복원을 '이 webhook 이 실제로
+  //   FAILED 로 전이시킨 주문'에만 한정. 이전엔 updateStatus(내부 CAS 로 PENDING/AWAITING 만 FAILED 전이)
+  //   결과와 무관하게 무조건 restoreStock → 지연 도착한 실패 webhook 이 이미 확정(DONE)된 주문의 재고를
+  //   부풀려 초과판매 가능 + items 를 CANCELLED 로 오염(이후 환불 시 복원 skip). handlePaymentCancelled 의
+  //   paid-guard 와 동일 원칙. updateStatus/Toss 검증 로직 자체는 불변 — restoreStock 호출 게이트만 추가.
+  //   재조회 status='FAILED' 인 주문만 복원(전이 성공분). CANCELLED/REFUNDED/DONE 등은 skip.
   const failedOrders = await orderRepo.findByOrderNumber(orderNumber);
   for (const order of failedOrders) {
+    if (String(order.status).toUpperCase() !== 'FAILED') {
+      if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] STOCK_RESTORE_SKIPPED (not transitioned to FAILED)', { orderId: order.id, status: order.status });
+      continue;
+    }
     await orderRepo.restoreStock(order.id);
     if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] STOCK_RESTORED_ON_FAILURE', { orderId: order.id });
   }

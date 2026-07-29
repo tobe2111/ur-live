@@ -22,12 +22,31 @@ export function parseUTCDate(dateStr: string | null | undefined): Date {
 }
 
 /**
+ * 🛡️ 2026-07-27: Intl timeZone 미지원 런타임 대비 폴백.
+ *   Cloudflare Workers(workerd)는 full-ICU 라 `timeZone: 'Asia/Seoul'` 이 동작하지만,
+ *   이 모듈이 워커/프리렌더/테스트 등 어디서 평가될지 모르므로 실패 시 수동 +9h 로 계산한다.
+ *   (폴백은 KST 가 DST 없는 고정 UTC+9 이라 정확하다.)
+ */
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+function kstSafe(date: Date, fn: (d: Date) => string, fallback: (shifted: Date) => string): string {
+  try {
+    return fn(date)
+  } catch {
+    return fallback(new Date(date.getTime() + KST_OFFSET_MS))
+  }
+}
+
+/**
  * UTC datetime → 한국시간 문자열 (날짜 + 시간)
  * 예: '2026. 3. 30. 오후 9:00:00'
  */
 export function formatKST(dateStr: string | null | undefined): string {
   const date = parseUTCDate(dateStr)
-  return date.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+  return kstSafe(
+    date,
+    d => d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+    d => d.toISOString().replace('T', ' ').slice(0, 19),
+  )
 }
 
 /**
@@ -54,8 +73,30 @@ export function formatKSTTime(dateStr: string | null | undefined): string {
  */
 export function formatKSTShort(dateStr: string | null | undefined): string {
   const date = parseUTCDate(dateStr)
-  const m = String(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul', month: '2-digit' }))
-  const d = String(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul', day: '2-digit' }))
-  const t = date.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false })
-  return `${m}/${d} ${t}`
+  return kstSafe(
+    date,
+    d => {
+      const m = String(d.toLocaleString('en-US', { timeZone: 'Asia/Seoul', month: '2-digit' }))
+      const day = String(d.toLocaleString('en-US', { timeZone: 'Asia/Seoul', day: '2-digit' }))
+      const t = d.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false })
+      return `${m}/${day} ${t}`
+    },
+    d => `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`,
+  )
+}
+
+/**
+ * 사용자가 고른 'YYYY-MM-DD'(한국 날짜)를 그날 **KST 00:00** 의 epoch(ms)로.
+ * ⚠️ `new Date('2026-07-27')` 는 스펙상 **UTC 자정**이라 KST 기준 필터에 쓰면 9시간 어긋난다.
+ *   서버 필터가 `DATE(created_at, '+9 hours')` 로 KST 기준인 것과 맞추기 위한 SSOT.
+ */
+export function kstDayStartMs(ymd: string | null | undefined): number {
+  if (!ymd) return NaN
+  return Date.parse(`${ymd}T00:00:00+09:00`)
+}
+
+/** 같은 날 **KST 23:59:59.999** 의 epoch(ms). */
+export function kstDayEndMs(ymd: string | null | undefined): number {
+  if (!ymd) return NaN
+  return Date.parse(`${ymd}T23:59:59.999+09:00`)
 }

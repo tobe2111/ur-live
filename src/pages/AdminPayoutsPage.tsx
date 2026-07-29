@@ -7,6 +7,7 @@
  * - 각 payout: 승인 → 송금 완료 (transaction_id 입력) → audit
  */
 import { useEffect, useState } from 'react'
+import { formatKSTDate } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -247,7 +248,7 @@ export default function AdminPayoutsPage() {
                     const meta = STATUS_LABEL[p.status]
                     return (
                       <tr key={p.id} className="border-t border-gray-100 text-xs">
-                        <td className="px-4 py-3 text-gray-700">{new Date(p.created_at).toLocaleDateString('ko-KR')}</td>
+                        <td className="px-4 py-3 text-gray-700">{formatKSTDate(p.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="font-mono">{p.payee_type}:{p.payee_id}</div>
                           <div className="text-[10px] text-gray-400">{p.period_start} ~ {p.period_end}</div>

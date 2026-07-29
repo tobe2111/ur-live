@@ -44,6 +44,7 @@ app.get('/__ads/health', (c) => {
       company_collect: on('ADS_COMPANY_COLLECT_ENABLED'), storeinfo: on('ADS_STOREINFO_ENABLED'),
       commerce: on('ADS_COMMERCE_ENABLED'), franchise: on('ADS_FRANCHISE_ENABLED'),
       nps: on('ADS_NPS_ENABLED'), work24: on('ADS_WORK24_ENABLED'), localdata: on('ADS_LOCALDATA_ENABLED'),
+      neis: on('ADS_NEIS_ENABLED'), hira: on('ADS_HIRA_ENABLED'), store_kakao: on('ADS_STORE_KAKAO_ENABLED'),
       enrich_disabled: on('ADS_ENRICH_DISABLED'),
     },
   })
@@ -446,6 +447,14 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return runMakerCollect(env)
     })
   }
+  // 🏪 무인매장(아이스크림 할인점·무인판매점) — 매시간. 카카오 로컬 키워드 검색이라 인허가 승인과 무관하고
+  //   **전화가 함께 들어온다**(네이버 지역검색은 전화가 빈값). 게이트 ADS_STORE_KAKAO_ENABLED(기본 OFF).
+  if ((env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {
+    kick('/__ads/collect-store-kakao', async () => {
+      const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect')
+      return runStoreKakaoCollect(env)
+    })
+  }
   // 🏪 상가정보(공공데이터) 자동수집 — 짝수시만(company-collect 홀수시와 분리, 예산 반토막 방지).
   //   게이트 ADS_STOREINFO_ENABLED(기본 OFF). 별도 커서/예산 → 다른 트랙 무영향. 연락처는 네이버 역조회로 보강.
   if (hourUTC % 2 === 0 && env.ADS_STOREINFO_ENABLED === 'true') {
@@ -473,6 +482,9 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     kick('/__ads/sweep-nts', async () => { const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env) })
   }
   // 🏪 매장 후보(인허가) 변동분 — **일 1회**(hourUTC===20 = KST 05시, 전일 변동분 마감 후). 게이트 ADS_LOCALDATA_ENABLED.
+  //   ⚠️ 2026-07-28: 직접 await → **kick(독립 인보케이션)**. 이 스케줄 핸들러의 waitUntil 블록들은
+  //   **하나의 인보케이션**을 공유하므로, 인허가(업종 16 × 페이지) + NEIS + 심평원 + 백필이 서로의
+  //   서브리퀘스트를 잡아먹어 라이브가 `⛔ 요청한도 도달` 로 `found:0` 에 고착했다. kick 은 각자 새 예산을 받는다.
   if (hourUTC === 20 && (env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED === 'true') {
     kick('/__ads/collect-localdata?mode=collect', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }

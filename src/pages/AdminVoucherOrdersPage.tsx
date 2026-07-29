@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react'
+import { formatKST } from '@/utils/date'
 import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -266,7 +267,7 @@ export default function AdminVoucherOrdersPage() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                       {STATUS_META[r.status]?.label || r.status}
                     </span>
-                    <span className="text-[11px] text-gray-500">주문일시 {new Date(r.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-[11px] text-gray-500">주문일시 {formatKST(r.created_at)}</span>
                   </div>
                   <p className="text-sm font-bold text-gray-900 truncate">{r.goods_name}</p>
                   <p className="text-xs text-gray-600 mt-1">
@@ -277,7 +278,7 @@ export default function AdminVoucherOrdersPage() {
                     <span className="text-gray-400">수량</span> {r.quantity}개
                   </p>
                   {r.sent_at && r.status === 'sent' && (
-                    <p className="text-[11px] text-green-600 mt-0.5">✅ 발송 완료: {new Date(r.sent_at).toLocaleString('ko-KR')}</p>
+                    <p className="text-[11px] text-green-600 mt-0.5">✅ 발송 완료: {formatKST(r.sent_at)}</p>
                   )}
                   {r.external_order_id && <p className="text-[10px] text-gray-400 font-mono mt-1">KT 주문번호: {r.external_order_id}</p>}
                   {r.failure_reason && (

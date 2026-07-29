@@ -11,7 +11,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
-import { listCronHeartbeats } from '@/worker/utils/cron-heartbeat'
+import { listCronHeartbeats, getCronHealth } from '@/worker/utils/cron-heartbeat'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
 
@@ -209,6 +209,85 @@ adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
       WHERE id = ? AND resolved = 0
     `).bind(id).run()
     return c.json({ success: true, message: '5분 이내 자동 재시도됩니다' })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
+//   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
+//   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.
+//   staging 검증 전 실수 활성화 방지 + cron 침묵을 어드민에서 한눈에.
+//   게이트 자체의 SSOT 는 각 소비처(코드) — 여기는 *열람 전용 레지스트리* (값 변경 없음).
+//   staging 시나리오 상세: docs/STAGING_CHECKLIST.md
+
+interface OpsGate {
+  key: string
+  kind: 'env' | 'setting'
+  label: string
+  default_value: string
+  /** docs/STAGING_CHECKLIST.md 의 항목 ID — null 이면 staging 실결제 검증 불필요 */
+  staging_ref: string | null
+}
+
+const OPS_GATES: OpsGate[] = [
+  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1' },
+  { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2' },
+  { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3' },
+  { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4' },
+  { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null },
+  { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null },
+  { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null },
+]
+
+adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
+  const { DB } = c.env
+  try {
+    // platform_settings 게이트 값
+    const settingKeys = OPS_GATES.filter(g => g.kind === 'setting').map(g => g.key)
+    const settingRows = await DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN (${settingKeys.map(() => '?').join(',')})`,
+    ).bind(...settingKeys).all<{ key: string; value: string }>().catch(() => ({ results: [] as Array<{ key: string; value: string }> }))
+    const settingMap = new Map((settingRows.results || []).map(r => [r.key, r.value]))
+
+    const envRecord = c.env as unknown as Record<string, unknown>
+    const gates = OPS_GATES.map(g => {
+      const raw = g.kind === 'env' ? envRecord[g.key] : settingMap.get(g.key)
+      const value = raw === undefined || raw === null ? null : String(raw)
+      return {
+        ...g,
+        value,
+        // 미설정(null)은 기본값과 동일 취급 — "기본값에서 벗어남" = 활성 배지 대상
+        is_default: value === null || value === g.default_value,
+      }
+    })
+
+    // cron heartbeat 전체 + 핵심 stale 판정
+    const health = await getCronHealth(DB)
+    // 🫀 하트비트 저장소는 `platform_settings.cron_hb:*` 다(별도 테이블 아님 —
+    //   이 레포는 D1 마이그레이션이 CI 에서 안 돌아 새 테이블은 생성 보장이 없다).
+    //   OpsStatusTab 이 기대하는 모양으로만 변환한다. run_count 는 저장하지 않으므로 null.
+    const beats = await listCronHeartbeats(DB)
+    const hb = {
+      results: beats.map(b => ({
+        cron_name: b.name,
+        last_status: b.ok === null ? 'unknown' : b.ok ? 'ok' : 'fail',
+        last_finished_at: b.at,
+        last_duration_ms: b.ms,
+        last_error: null as string | null,
+        run_count: null as number | null,
+      })),
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        gates,
+        cron_health: health,
+        heartbeats: hb.results || [],
+        checklist_doc: 'docs/STAGING_CHECKLIST.md',
+      },
+    })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }

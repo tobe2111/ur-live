@@ -337,11 +337,11 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   if (max <= 0 || budget.left <= 1) return diag
   // 🩹 `handle IS NOT NULL` 만으로는 부족하다 — 손상 행은 handle 이 `'blog.naver.com'`(호스트)이라 이 조건을
   //    통과한 뒤 아래에서 전량 스킵됐다. channel_id/url 을 함께 읽어 그 자리에서 진짜 id 를 되살린다.
-  type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null }
+  type NaverRow = { id: number; handle: string | null; channel_id: string | null; url: string | null; email: string | null; instagram: string | null; links: string | null; description: string | null
+    category: string | null; subscriber_count: number | null; is_brand: number | null; consented_at: string | null; source: string | null; recent_avg_views: number | null; median_long_views: number | null }
   let rows: NaverRow[] = []
   try {
-    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description FROM ad_influencer_leads
-      WHERE account_id = 0 AND platform = 'naver_blog'
+    const res = await DB.prepare(`SELECT id, handle, channel_id, url, email, instagram, links, description, category, subscriber_count, is_brand, consented_at, source, recent_avg_views, median_long_views FROM ad_influencer_leads      WHERE account_id = 0 AND platform = 'naver_blog'
       ORDER BY (perf_checked_at IS NULL) DESC, perf_checked_at ASC LIMIT ?`).bind(Math.min(max, 30)).all<NaverRow>()
     rows = res?.results || []
   } catch (err) {
@@ -352,6 +352,9 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
   }
   diag.selected = rows.length
   if (!rows.length) return diag
+  // 🏅 재채점 함수는 **동적 import**(루프 밖 1회) — `influencer-quality` 가 이 파일의 isPersonalEmail 을
+  //   import 하므로 정적 import 는 순환이 된다. 상대경로 동적 import 는 레포 규칙상 허용되는 형태.
+  const { scoreLead } = await import('./influencer-quality')
   const HOME_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
   const stmts = []
   for (const r of rows) {
@@ -415,15 +418,32 @@ export async function enrichNaverActivity(DB: D1Database, budget: FetchBudget, m
         sets.push('description = ?'); binds.push(`${bare.slice(0, 300)} | 글: ${titles.join(' · ')}`.slice(0, 500))
       }
     }
+    let emailAfter = r.email
+    let instaAfter = r.instagram
     if (homeText !== null) {
       const neighbors = parseNaverNeighborCount(homeText)
       if (neighbors > 0) { sets.push('subscriber_count = CASE WHEN subscriber_count > 0 THEN subscriber_count ELSE ? END'); binds.push(neighbors) }
       const biz = pickBusinessEmail(homeText) // 프로필/위젯 = 본인 페이지 — 본인 연락처(discovery 홈 보강과 동일 기준)
       const c = extractContacts(homeText)
       if ((biz && !r.email) || (c.instagram[0] && !r.instagram) || (c.links.length && !r.links)) diag.contacts++
-      if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz) }
-      if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]) }
+      if (biz) { sets.push('email = COALESCE(email, ?)'); binds.push(biz); emailAfter = emailAfter || biz }
+      if (c.instagram[0]) { sets.push('instagram = COALESCE(instagram, ?)'); binds.push(c.instagram[0]); instaAfter = instaAfter || c.instagram[0] }
       if (c.links.length) { sets.push('links = COALESCE(links, ?)'); binds.push(c.links.slice(0, 8).join(' ')) }
+    }
+    // 🏅 측정한 그 자리에서 재채점(2026-07-29) — 활동성(최대 25점)은 `recent_posts_30d` 에서 오는데,
+    //   블로거는 핸들 손상으로 그동안 **전원 미측정 = activity 0점**이었다(실측: 블로거 최고 33점,
+    //   전체 70+ 는 사실상 유튜브뿐). 그래서 점수순 목록에서 블로거가 구조적으로 뒤로 밀렸다.
+    //   측정이 시작돼도 재채점이 야간 정비(커서 4,500/일)뿐이면 반영까지 최대 8일 — 그 사이 대표가
+    //   뽑는 "연락 대상" 정렬이 계속 틀린다. 방금 얻은 값으로 여기서 갱신한다(추가 조회 0).
+    const posts30 = rssXml !== null ? countRecentPosts(extractPubDates(rssXml), Date.now()) : (undefined as number | undefined)
+    if (posts30 !== undefined) {
+      const { score } = scoreLead({
+        platform: 'naver_blog', email: emailAfter, instagram: instaAfter, links: r.links,
+        subscriber_count: r.subscriber_count, recent_posts_30d: posts30,
+        recent_avg_views: r.recent_avg_views, median_long_views: r.median_long_views,
+        category: r.category, is_brand: r.is_brand, consented_at: r.consented_at, source: r.source,
+      })
+      sets.push('lead_score = ?'); binds.push(score)
     }
     stmts.push(DB.prepare(`UPDATE ad_influencer_leads SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, r.id))
   }

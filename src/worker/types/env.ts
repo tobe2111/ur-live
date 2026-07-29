@@ -183,6 +183,8 @@ export interface Env {
                                         //   1 이면 대행사 전용(구 동작), 올리면 세무·POS 까지 웹 발굴.
   ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
   ADS_ENRICH_DEADLINE_MS?: string;        // 보강 1라운드 벽시계 상한(기본 20000, 5000~120000). 가드가 너무 일찍/늦게 끊으면 무배포 재조정.
+  ADS_ENRICH_PHONE_CAP?: string;          // 보강 레인 Phase1(전화) **절대 건수** 상한(기본 0 — 전용 스윕이 전담).
+                                          //   ⚠️ 비율(예산÷N) 금지 — 예산이 커지면 시간을 다 먹어 이메일이 굶는다(2026-07-28 실사고).
   ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
                                           //   ⚠️ D1 쿼리도 서브리퀘스트 한도를 쓴다(2026-07-28 확증) → 이 값이 실효 상한을 넘으면 학습이 자동으로 내린다.
                                           //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
@@ -192,6 +194,8 @@ export interface Env {
   ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
   // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
   ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_STORE_KAKAO_ENABLED?: string;       // 🏪 무인매장(아이스크림 할인점·무인판매점) 카카오 키워드 수집 게이트(기본 OFF).
+  ADS_STORE_KAKAO_BUDGET?: string;        // 위 레인 서브리퀘스트 예산(기본 30, 5~80). 학습 상한과 더 작은 쪽 적용.
   ADS_STOREINFO_BATCH?: string;           // 1회 실행당 (업종×지역) 페어 수(기본 3).
   PUBLIC_DATA_SERVICE_KEY?: string;       // data.go.kr 일반 인증키. 미설정 시 NTS_API_KEY(동일 계정 serviceKey) 폴백.
   // 🏪 매장 후보 — 지방행정 인허가정보(store_prospects). 기본 OFF, 활용신청 후 ON.

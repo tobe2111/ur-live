@@ -71,6 +71,11 @@ publicDataRoutes.post('/__ads/collect-hira', lane(async (env) => {
   const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6)
 }))
 
+// 🏪 무인매장(아이스크림 할인점·무인판매점) — 카카오 로컬 키워드 검색. 인허가와 달리 **전화가 함께 온다**.
+publicDataRoutes.post('/__ads/collect-store-kakao', lane(async (env) => {
+  const { runStoreKakaoCollect } = await import('@/features/marketing/api/store-kakao-collect'); return runStoreKakaoCollect(env)
+}))
+
 // 📮 이메일 재검증 스윕 — 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
 publicDataRoutes.post('/__ads/sweep-mx', lane(async (env) => {
   const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep'); return sweepEmailMx(env)

@@ -11,6 +11,9 @@ export const PRODUCT_DETAIL_FIELDS = [
   'id', 'seller_id', 'name', 'description', 'price', 'original_price', 'discount_rate',
   'image_url', 'thumbnail', 'images', 'category', 'stock', 'stock_quantity', 'is_active',
   'deal_only', 'sold_count', 'review_count', 'avg_rating', 'dominant_color',
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 이미지/상세 설명 — 이전엔 목록에 없어 소비자 상세 응답에서
+  //   빠져 "상세 정보" 섹션이 전 상품 빈 렌더였음. repair-schema 등록 + 자가치유(withColumnPruning) 대상.
+  'detail_images', 'long_description',
   'group_buy_target', 'group_buy_current', 'group_buy_status', 'group_buy_deadline', 'group_buy_tiers',
   'restaurant_name', 'restaurant_address', 'restaurant_phone', 'restaurant_lat', 'restaurant_lng',
   'voucher_expiry', 'voucher_terms', 'referral_commission_rate',
