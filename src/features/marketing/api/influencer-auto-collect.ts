@@ -16,6 +16,7 @@
 import type { Env } from '@/worker/types/env'
 import { backfillRegions } from './influencer-region'
 import { SEED, REGION_SEED, BANGBAE_SEED } from './influencer-seeds' // 🌱 탐색 범위(순수 데이터) — 자유 확장
+import { classifyCategory } from './influencer-classify' // 🏷️ 승격 태그의 업종 추론
 // 💾 저장(필터·2패스 upsert·백필)은 `influencer-save.ts` 로 분리(600줄 캡) — 호출부 호환 위해 재수출.
 export { MIN_YT_SUBSCRIBERS } from './influencer-save'
 import { saveLeadsBatch } from './influencer-save'
@@ -531,10 +532,20 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const promoted: string[] = []
   const topTags = Array.from(hashtagFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 50)
   if (topTags.length) {
+    // 🏷️ 2026-07-29 승격 태그에 업종 부여 — 전부 `'자동'` 이면 ① 우선 풀(슬롯 3/4)에 영영 못 들고
+    //   ② `resolveCategory` 가 NON_CATEGORIES 로 버려 그 리드가 카테고리 미분류(fit 0)가 된다.
+    //   실측: 상위 후보 13/13 정확히 분류됨(서울맛집→맛집 …). 카페→맛집은 REGION_SEED 관례 그대로
+    //   ('카페'는 CORE_CATEGORIES 에 없어 두면 fit 20→10).
+    const promoCat = (tag: string): string => {
+      const c = classifyCategory(tag)
+      return !c ? '자동' : c === '카페' ? '맛집' : c
+    }
     const upsertSql = `INSERT INTO ad_discovery_keywords (keyword, category, active, hits, source)
-      VALUES (?, '자동', 0, ?, 'auto')
-      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits`
-    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, freq))).catch(() => null)
+      VALUES (?, ?, 0, ?, 'auto')
+      ON CONFLICT(keyword) DO UPDATE SET hits = hits + excluded.hits,
+        -- 이미 쌓인 후보 790개는 전부 '자동' 이라, 다시 마이닝될 때 업종을 채워 준다(수동 지정은 보존).
+        category = CASE WHEN category IS NULL OR category IN ('자동', '') THEN excluded.category ELSE category END`
+    await DB.batch(topTags.map(([tag, freq]) => DB.prepare(upsertSql).bind(tag, promoCat(tag), freq))).catch(() => null)
     // 임계 도달 후보를 한 번에 조회 → 상한 여유 내에서 batch 활성화.
     // 🌱 auto 자리만 센다(seed 는 상한 대상이 아니다 — 위 상수 주석 참조).
     const autoActive = kws.filter(k => k.source === 'auto').length
