@@ -136,6 +136,7 @@ if domain deploy; then
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
   run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs
   run "구 도메인 사용자 노출"            env STRICT_LEGACY_DOMAIN=1    node scripts/check-legacy-domain.mjs
+  run "감사 레지스트리 동기화"          env STRICT_AUDIT_REGISTRY=1   node scripts/check-audit-registry-sync.mjs
 fi
 
 echo "────────────────────────────────────────────────────"
