@@ -23,6 +23,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { capAfterAbandonedRun } from '@/features/marketing/api/collect-budget'
 import { sliceDeadline } from '@/features/marketing/api/influencer-enrich-lane'
+import { interleavePicks } from '@/features/marketing/api/influencer-keyword-rotation'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -241,5 +242,56 @@ describe('self-chain 깊이 관측 — 이름을 다투지 않는 곳에 싣는�
 
   it('드라이버가 쿼리의 depth 를 레인으로 넘긴다', () => {
     expect(routes).toMatch(/runInfluencerEnrich\(c\.env,\s*Number\.isFinite\(d\)/)
+  })
+})
+
+/**
+ * 🔀 **커서 픽이 꼬리에 몰려 영영 안 돌던 것** (2026-07-29 12:00 실측).
+ *
+ *   `picks { planned: 16, processed: 2, from_yt: 2, from_cursor: 0 }` — 예산으로 2개만 돌았고 둘 다 YT 픽.
+ *   배열이 `[...ytPicks, ...cursorPicks]` 였기 때문이다. 그런데 커서 전진은 `prefixDone`(처리된 **선행
+ *   구간** 길이)으로 계산하므로, 커서 픽이 한 번도 처리되지 않으면 `nextCursor = cursor + 0` —
+ *   **커서가 영원히 제자리**다. 활성 키워드 330개 중 매 회차 같은 소수만 돈다.
+ *
+ *   오늘 세 번째 같은 병이다(보강 레인의 시계 · 그 전엔 예산 · 여기선 순번).
+ *   **줄을 세우면 꼬리가 굶는다 — 자원이 무엇이든.**
+ */
+describe('키워드 픽 — 커서가 순번을 받는다', () => {
+  const col = read('src/features/marketing/api/influencer-auto-collect.ts')
+
+  it('YT 픽과 커서 픽을 번갈아 놓는다 — 2개만 돌아도 커서가 1개는 받는다', () => {
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 6)).toEqual(['y1', 'c1', 'y2', 'c2', 'y3', 'c3'])
+    expect(interleavePicks(['y1', 'y2', 'y3'], ['c1', 'c2', 'c3'], 2)).toEqual(['y1', 'c1'])
+  })
+
+  it('한쪽이 비어도 나머지로 채운다(총량 유지)', () => {
+    expect(interleavePicks([], ['c1', 'c2'], 5)).toEqual(['c1', 'c2'])
+    expect(interleavePicks(['y1', 'y2'], [], 5)).toEqual(['y1', 'y2'])
+  })
+
+  it('상대 순서를 보존한다 — prefixDone 이 선행 구간을 세므로 뒤섞으면 커서 계산이 깨진다', () => {
+    const r = interleavePicks(['y1', 'y2'], ['c1', 'c2'], 4)
+    expect(r.filter(x => x.startsWith('y'))).toEqual(['y1', 'y2'])
+    expect(r.filter(x => x.startsWith('c'))).toEqual(['c1', 'c2'])
+  })
+
+  it('total 이 비정상이어도 안전하다', () => {
+    expect(interleavePicks(['y1'], ['c1'], 0)).toEqual([])
+    expect(interleavePicks(['y1'], ['c1'], Number.NaN)).toEqual([])
+  })
+
+  it('호출부가 번갈아 배치를 쓴다(concat 회귀 금지)', () => {
+    expect(col).toMatch(/interleavePicks\(ytPicks,/)
+    expect(col).not.toMatch(/\[\.\.\.ytPicks,\s*\.\.\.picks\.filter/)
+  })
+
+  /**
+   * ⚠️ 짝이 되는 변경 — 순서만 바꾸면 커서 픽이 희소한 YT 쿼터를 가져가 성과가중 선택이 희석된다.
+   *   위치 기반(`ytUsed < batch` 단독)은 "앞에서 batch 개"라는 뜻이라 배치 순서와 쿼터 배분이 얽혀 있었다.
+   */
+  it('YT 슬롯은 멤버십으로 준다 — 순서와 쿼터 배분을 분리한다', () => {
+    expect(col).toMatch(/const ytSlot = ytIds\.has\(k\.id\) && ytUsed < batch/)
+    // 위치 단독 게이트가 되살아나면 희석이 재발한다.
+    expect(col).not.toMatch(/!quotaHit && ytUsed < batch &&/)
   })
 })
