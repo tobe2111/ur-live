@@ -47,9 +47,11 @@ app.use('/__ads/*', async (c, next) => {
   const p = readBeatParams(c.req.url)
   if (!p) return next()
   let ok = true
-  try { await next() } catch (err) { ok = false; throw err } finally {
+  let thrown: unknown
+  try { await next() } catch (err) { ok = false; thrown = err; throw err } finally {
     // 응답 직전에 기록 — 여기까지 왔다는 것은 **레인이 일을 끝냈다**는 뜻이다.
-    await writeSelfBeat(c.env, p.beat, ok && (c.res?.status ?? 500) < 500, Date.now() - t0, p.gap)
+    //   💥 던진 에러를 **함께** 넘긴다 — 부모는 자식이 왜 죽었는지 구조적으로 볼 수 없다(self-beat.ts 참조).
+    await writeSelfBeat(c.env, p.beat, ok && (c.res?.status ?? 500) < 500, Date.now() - t0, p.gap, thrown)
   }
 })
 

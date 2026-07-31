@@ -62,11 +62,36 @@ export function readBeatParams(url: string): { beat: string; gap?: number } | nu
  * 레인 응답 직전에 자기 하트비트를 남긴다. **절대 던지지 않는다**(관측이 작업을 막으면 안 된다).
  * @param ok 핸들러가 정상 종료했는가(예외 없이 응답에 도달했는가)
  */
-export async function writeSelfBeat(env: Env, beat: string, ok: boolean, ms: number, gap?: number): Promise<void> {
+export async function writeSelfBeat(env: Env, beat: string, ok: boolean, ms: number, gap?: number, err?: unknown): Promise<void> {
   try {
     const { recordCronBeat } = await import('@/worker/utils/cron-heartbeat')
     // ⚠️ cronExpr 은 넘기지 않는다 — 레인은 자기를 부른 cron 식을 모르고, 넘겨봐야 매시간으로 오인된다.
     //   주기는 부모가 넘긴 `gap`(maxGapMin)만 신뢰한다(그게 이 파라미터가 생긴 이유다).
-    await recordCronBeat(env, `ads:${beat}`, ok, ms, undefined, ok ? undefined : { err: 'LANE_ERROR' }, gap)
+    await recordCronBeat(env, `ads:${beat}`, ok, ms, undefined, ok ? undefined : failNote(err), gap)
   } catch { /* 관측 실패는 삼킨다 */ }
+}
+
+/**
+ * 🔎 **실패 사유를 자식이 남긴다** — 부모는 구조적으로 볼 수 없기 때문이다 (2026-07-31 라이브 장애).
+ *
+ *   07-31 06:15 실측: ads 레인 **15개**가 매시간 `err=Error` 로 실패하는데, 같은 레인을 수동 트리거로
+ *   직접 부르면 **완벽히 정상**이었다(`tried 19 · spent 44/45 · 13.1s`). 즉 고장은 레인 본문이 아니라
+ *   부모의 kick ↔ 자식 인보케이션 사이인데, **왜 죽었는지는 어디에도 없었다**:
+ *     · `kick` 은 `SELF.fetch` 의 status 를 안 본다 → 자식이 500 을 주면 `ok:true` 로 기록된다.
+ *       즉 `ok:false` 는 **fetch 자체가 거부**된 것 = 자식이 죽은 것이고, 그 메시지는 자식과 함께 사라진다.
+ *     · 부모가 남기는 `cronErrorCode` 는 **부모가 본** 에러만 본다 → 전부 `err=Error` 로 뭉개진다
+ *       (그래서 "한도인가 아닌가"조차 구분되지 않는다 — 그 구분이 처방을 정하는 값인데도).
+ *   기존 코드는 여기에 `{ err: 'LANE_ERROR' }` 상수를 넣고 있었다. 부모의 `err=Error` 와 **정확히 같은
+ *   양의 정보**, 즉 0 이다.
+ *
+ *   ⚠️ **못 잡는 것**: 인보케이션이 통째로 강제 종료되면 이 코드는 실행되지 않는다.
+ *     그 경우 기록이 **없다**는 사실 자체가 신호다 — "핸들러가 던졌다"(기록 있음)와 갈린다.
+ *   ⚠️ 핸들러가 스스로 잡아 5xx 를 **반환**한 경우도 err 가 없다 → 상태코드만 남는다(본문은 안 읽는다,
+ *     읽으면 응답 스트림을 소비한다).
+ */
+function failNote(err: unknown): Record<string, unknown> {
+  if (err === undefined) return { err: 'STATUS_5XX' } // 던지지 않고 5xx 를 반환한 경우
+  const e = err as { name?: string; message?: string } | null
+  const msg = String(e?.message || err || '')
+  return { err: e?.name || 'Error', ...(msg ? { detail: msg.slice(0, 160) } : {}) }
 }
