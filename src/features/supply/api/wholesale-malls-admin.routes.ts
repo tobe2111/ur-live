@@ -18,6 +18,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
 import { normalizeAdminRole } from '@/shared/admin-roles'
+import { RESERVED_SLUGS, validateMallSlug, auditMallSlugs } from '@/shared/mall/slug'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
@@ -42,6 +43,24 @@ function cleanSlug(raw: unknown): string | null {
   const s = String(raw ?? '').trim().toLowerCase().slice(0, 40)
   if (!s || !/^[a-z0-9-]+$/.test(s)) return null
   return s
+}
+
+/**
+ * 🔴 세션 ③-a 〔대표 경계조건 ② — "가드는 양방향이어야 합니다"〕
+ *
+ * 슬러그는 `urdeal.kr/{슬러그}` 자리에 앉는다 ⇒ **예약어와 겹치면 그 라우트가 죽는다.**
+ * CI 는 `라우트 ⊆ 예약어`(mall-branding.test)를 보지만 **라이브 DB 는 못 읽는다**.
+ * 여기가 그 반쪽 — **쓰기 시점 차단**이다.
+ *
+ * ⚠️ 왜 `cleanSlug` 로 안 끝나는가: `cleanSlug` 는 문자 집합만 본다(1~40자, 예약어 무검사).
+ *   그래서 지금까지 `admin`·`products` 같은 슬러그를 **만들 수 있었다.**
+ * ⚠️ 3~30자 하한/상한은 취향이 아니라 **리졸버와의 정합**이다 — `firstPathSegment` 가
+ *   `/^[a-z0-9-]{3,30}$/` 로 후보를 거르므로, 그 밖의 슬러그는 **경로로 영영 도달할 수 없다**.
+ *   만들 수는 있는데 열리지는 않는 몰을 허용하지 않는다.
+ */
+function rejectReservedSlug(s: string): string | null {
+  const v = validateMallSlug(s)
+  return v.ok ? null : v.reason
 }
 // host: 다중 호스트 'a.com,b.com' 허용. 소문자·공백제거. 길이 cap. 빈 값 → null.
 function cleanHost(raw: unknown): string | null {
@@ -108,6 +127,34 @@ app.get('/', async (c) => {
   }
 })
 
+/**
+ * ── GET /slug-conflicts — 🔴 **양방향 가드의 런타임 절반** 〔대표 경계조건 ②〕 ──────────────
+ *
+ * CI 는 `라우트 ⊆ 예약어` 만 본다. 반대 방향 — **이미 존재하는 몰 슬러그가 라우트를 먹고 있는가** —
+ * 는 **라이브 DB 를 읽어야** 알 수 있고 CI 는 그걸 못 한다. 여기가 그 절반이다.
+ *
+ * ⚠️ **쓰기 차단(위 `rejectReservedSlug`)만으로는 부족한 이유**: 그 가드는 **오늘 이후** 생성분에만 걸린다.
+ *   가드 이전에 만들어진 행은 그대로 남아 있고, **조회하지 않으면 영영 모른다.**
+ *   (이 레포가 오늘 하루에만 두 번 만난 클래스 — "실패가 아니라 조용한 부재".)
+ *
+ * 응답 `ok:false` 면 그 슬러그가 앉은 자리의 페이지가 **몰에 가려져 있다**는 뜻이다.
+ */
+app.get('/slug-conflicts', async (c) => {
+  const { DB } = c.env
+  try {
+    await ensureMallSchema(DB)
+    const { results } = await DB.prepare(
+      `SELECT id, slug, name, COALESCE(active,1) AS active FROM wholesale_malls WHERE slug IS NOT NULL LIMIT 500`
+    ).all<{ id: number; slug: string; name: string; active: number }>()
+    // 판정은 순수함수(`auditMallSlugs`)가 한다 — 라우트는 조회·전달만.
+    //   그래야 이 불변식이 **테스트로 고정**된다(라우트 안에 있으면 D1 없이는 못 돈다).
+    const audit = auditMallSlugs(results ?? [])
+    return c.json({ success: true, ...audit, reserved_count: RESERVED_SLUGS.length })
+  } catch (err) {
+    return safeError(c, err, '몰 슬러그 점검 중 오류가 발생했습니다', '[admin-wholesale-malls]')
+  }
+})
+
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────
 app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
   const { DB } = c.env
@@ -116,6 +163,8 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const slug = cleanSlug(body.slug)
     if (!slug) return c.json({ success: false, error: 'slug 는 영소문자/숫자/하이픈만 사용할 수 있습니다' }, 400)
+    const reserved = rejectReservedSlug(slug)
+    if (reserved) return c.json({ success: false, error: reserved, code: 'SLUG_RESERVED' }, 400)
     const name = cleanText(body.name, 80)
     if (!name) return c.json({ success: false, error: '몰 이름을 입력해주세요' }, 400)
     const host = cleanHost(body.host)
@@ -164,6 +213,8 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('slug' in body) {
       const s = cleanSlug(body.slug)
       if (!s) return c.json({ success: false, error: 'slug 는 영소문자/숫자/하이픈만 사용할 수 있습니다' }, 400)
+      const reserved = rejectReservedSlug(s)
+      if (reserved) return c.json({ success: false, error: reserved, code: 'SLUG_RESERVED' }, 400)
       // slug 중복(다른 몰) 차단.
       const dupe = await DB.prepare('SELECT id FROM wholesale_malls WHERE slug = ? AND id <> ?').bind(s, id).first<{ id: number }>().catch(() => null)
       if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)

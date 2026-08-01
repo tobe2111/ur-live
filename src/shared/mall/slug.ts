@@ -55,3 +55,41 @@ export function validateMallSlug(raw: string): { ok: true } | { ok: false; reaso
   if (RESERVED_SLUGS.includes(s)) return { ok: false, reason: '이미 사용 중인 주소입니다' }
   return { ok: true }
 }
+
+/** 경로 후보로 인정되는 슬러그 문법 — `firstPathSegment`(resolve.ts) 와 **같은 식**이어야 한다. */
+const PATH_CANDIDATE_RE = /^[a-z0-9-]{3,30}$/
+
+export interface MallSlugRow { id: number; slug: string; name?: string; active?: number | boolean }
+export interface SlugAuditRow { id: number; slug: string; name?: string; active?: boolean }
+export interface SlugAudit {
+  ok: boolean
+  checked: number
+  /** 🔴 예약어(=실 라우트)를 먹고 있는 몰 — 그 페이지가 몰에 가려진다. */
+  conflicts: SlugAuditRow[]
+  /** 🟡 만들어졌지만 **경로로 도달 불가**(리졸버 문법 밖) — 충돌은 아니나 열리지 않는다. */
+  unreachable: SlugAuditRow[]
+}
+
+/**
+ * 🔴 **양방향 가드의 런타임 절반** 〔대표 경계조건 ② 2026-07-29〕
+ *
+ * CI 는 `라우트 ⊆ 예약어` 만 본다(mall-branding.test). 반대 방향 —
+ * **이미 존재하는 몰 슬러그가 라우트를 먹고 있는가** — 는 **라이브 DB** 를 읽어야 하고 CI 는 못 읽는다.
+ *
+ * ⚠️ 생성 시점 차단만으로는 부족하다 — 그건 **가드 이후** 행에만 걸린다.
+ *   이전에 만들어진 행은 남아 있고, **조회하지 않으면 영영 모른다.**
+ */
+export function auditMallSlugs(rows: readonly MallSlugRow[]): SlugAudit {
+  const reserved = new Set(RESERVED_SLUGS)
+  const conflicts: SlugAuditRow[] = []
+  const unreachable: SlugAuditRow[] = []
+  for (const r of rows) {
+    const s = String(r?.slug ?? '').trim().toLowerCase()
+    if (!s) continue
+    const row: SlugAuditRow = { id: Number(r.id), slug: s, name: r.name, active: r.active === undefined ? undefined : Boolean(Number(r.active)) }
+    if (reserved.has(s)) conflicts.push(row)
+    if (!PATH_CANDIDATE_RE.test(s)) unreachable.push(row)
+  }
+  // `ok` 는 **충돌만** 본다 — 도달 불가는 경고이지 라우트를 깨뜨리지 않는다.
+  return { ok: conflicts.length === 0, checked: rows.length, conflicts, unreachable }
+}
