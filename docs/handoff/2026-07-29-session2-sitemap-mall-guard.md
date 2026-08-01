@@ -73,3 +73,47 @@
 ### 남은 것 — ③-a 마지막 단계
 **워커 배선**(`worker/index.ts` HTMLRewriter 에 몰 OG 메타 + 몰 스코프). 그 파일은 **로딩 잠금** 대상이라
 `[UNLOCK_LOADING]` 절차(대표 확인)가 먼저다. 배선 전까지 `buildMallMeta`·`decideMallSource` 는 **휴면**이다.
+
+---
+
+## 🏬 2026-08-01 — 소비자 경로 몰 조회 (③-a O2 토대)
+
+`urdeal.kr/{슬러그}` 를 몰로 해석하는 **판정 계층**. 아직 **워커 미배선**(순수 모듈 + 조회 함수).
+
+### 왜 도매 모듈을 안 쓰고 새로 만들었나 (실측)
+
+`features/supply/api/wholesale-malls.ts`(`resolveMallId`·`ensureMallSchema`)는
+**`__INCLUDE_WHOLESALE__=false` 인 소비자 번들에서 DCE 로 빠진다.** 거기서 import 하면
+**도매 그래프 전체(~200KB gzip)가 되살아난다.**
+⇒ `worker/utils/mall-consumer.ts` 는 **테이블만 직접 읽는다.** 같은 파일의 host→도매몰 판별
+(`getWholesaleMallHosts`, `worker/index.ts:2519`)이 이미 쓰는 방식이라 선례가 있다.
+
+**빌드 실측**: 소비자 번들에 `ensureMallSchema` **0건** — 도매 그래프 미유입 확인.
+(`mall-consumer` 자체도 0건 — **아직 아무도 안 부르기 때문**. 배선 PR 에서 다시 볼 것.)
+
+### 불변식 2개
+
+**① 핫패스 불변** — 예약어는 **DB 를 아예 안 본다**. 기존 소비자 라우트는 전부 `RESERVED_SLUGS` 에 있고
+CI 가 `라우트 ⊆ 예약어` 를 강제하므로, **DB 를 보는 건 어차피 404 로 가던 경로뿐**이다.
+⚠️ 검사 **순서**가 중요하다 — 예약어가 문법 검사보다 **먼저**여야 조회가 0이 된다(테스트가 순서를 고정).
+
+**② 서비스 분리 (fail-closed)** — `consumer_path = 1` 인 몰만 경로로 연다.
+신규 컬럼 `wholesale_malls.consumer_path INTEGER DEFAULT 0`(repair-schema + ensureMallSchema 자가치유).
+
+> 🔴 **왜 `host IS NULL` 로 추론하지 않았나**: 메디스타트(id=2)는 **host 가 NULL 인 도매몰**이다.
+> 추론했으면 `urdeal.kr/medi` 로 **B2B 도매몰이 소비자 도메인에 열렸을 것**이다.
+> **추론 대신 표시.** 기존 행은 전부 기본값 0 → **새로 열리는 것 0**.
+
+### 되돌려-검증 2종
+- 예약어 조기탈출 제거 → **2 fail** ✅ (핫패스가 DB 를 보게 됨)
+- `consumer_path` 게이트 제거 → **3 fail** ✅ (도매몰이 열림)
+
+### 다음 세션의 첫 액션
+1. **대표가 몰을 만들 때 `consumer_path:1` 을 켜야 한다** — 어드민 CRUD 에 필드는 뚫었지만
+   **화면(체크박스)은 없다**(대표 지시 ⑥ *"디자인 개선 금지"* 준수). PATCH 로 켤 수 있다:
+   `PATCH /api/admin/wholesale-malls/{id} {"consumer_path":1}` (utongstart.com, 슈퍼어드민).
+2. **워커 배선**이 남았다 — `worker/index.ts` 에 ⓐ `lookupConsumerMall` 로 몰 컨텍스트 확정
+   ⓑ `buildMallMeta` 로 OG 메타 rewrite. 그 파일은 **로딩 잠금**이지만 잠금표의 예외 절
+   *"새 페이지 / 새 SSR slot 추가(기존 4페이지 inject 패턴 따라)"* 에 해당한다.
+   ⚠️ **단 SPA 라우트(`/:mallSlug`)가 먼저다** — 지금 OG 메타만 붙이면 **존재하지 않는 페이지의
+   미리보기**를 만들게 된다. 순서: SPA 몰 화면 → 워커 메타.

@@ -115,7 +115,7 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | # | 단계 | 지금 | 세션 | 완료 판정 — **누가 어떻게** |
 |---|---|---|---|---|
 | **O1** | 신청한다 | 🔴 없음 (P0 는 어드민 수동) | ⑤ | 👤 대표가 신청 폼에서 제출 → 어드민 목록에 신청 1건. **P0 에선 "대표가 대신 등록했다"로 green** |
-| **O2** | 몰이 열린다 (`urdeal.kr/{몰}`) | 🟡 데이터 행 1개 + 어드민 CRUD 있음 | ③-a | 👤 대표가 몰 생성 → **비로그인 브라우저**로 그 URL 진입 시 몰 화면. 🤖 `mall-id-isolation.test.ts`(id≥3) |
+| **O2** | 몰이 열린다 (`urdeal.kr/{몰}`) | 🟡 조회 계층 완료(`lookupConsumerMall`) · **SPA 라우트·워커 배선 미완** | ③-a | 👤 대표가 몰 생성 **＋ `consumer_path:1`** → **비로그인 브라우저**로 그 URL 진입 시 몰 화면. 🤖 `mall-consumer-lookup.test.ts`(예약어 조회 0 · 도매몰 미노출) |
 | **O3** | 로그인한다 | 🟢 있음 (카카오 → 셀러 대시보드) | — | 👤 신규 카카오 계정으로 `/seller` 진입. 🤖 `check-seller-wholesale-redirect`(겸업 lock-out 없음) |
 | **O4** | 상품을 3분에 올린다 | 🟡 풀 폼만 있음(`SellerProductNewPage`) | ③-b | 👤 대표가 사진·가격·마감·픽업일만으로 **3분 내** 등록 완주. 🤖 저장 INSERT 에 `mall_id` 포함 |
 | **O5** | 공구를 연다 (마감·특가) | 🟢 엔진 있음 (`gb_mode`/`gb_price`) | ① 완료 | 👤 등록한 상품에 공구 설정 → 소비자 화면에 특가 표시. 🤖 `gb-price-payment-wiring.test.ts` |
