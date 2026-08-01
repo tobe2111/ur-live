@@ -5494,8 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 71건 · 최신순 · 이 목록은 자동 생성된다._
 _총 72건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-08-01**
+- [12개 레인이 매시간 죽는데 기록은 `err=Error` 한 단어 (2026-08-01)](handoff/2026-08-01-lane-failure-detail.md)
 **2026-07-30**
 - [예산 루프가 자기 기록을 삼키던 자리 — 하루에 세 번 만난 실패 (2026-07-30)](handoff/2026-07-30-budget-bookkeeping-ratchet.md)
 **2026-07-29**

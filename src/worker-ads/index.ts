@@ -239,7 +239,13 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   const adsBeat = async (name: string, ok: boolean, ms: number, err?: unknown, maxGapMin?: number, extra?: Record<string, unknown>): Promise<void> => {
     try {
       const { cronErrorCode } = await import('@/worker/utils/cron-heartbeat')
-      const result = ok ? extra : { err: cronErrorCode(err), ...(extra || {}) }
+      // 💥 **분류만 남기면 아무것도 못 고친다** — `cronErrorCode` 는 `name || 'Error'` 라, 평범한 Error 는
+      //   메시지를 통째로 잃고 `err=Error` 한 단어가 된다. 2026-08-01 라이브가 정확히 그 상태였다:
+      //   외부 HTTP 를 쓰는 레인 **12개**가 매시간 죽는데 기록이 전부 `err=Error` 라 원인 후보를 하나도
+      //   못 좁혔다(자식이 죽으면 #904 의 자식측 기록도 안 남는다 — 그 경우 부모의 이 한 줄이 유일하다).
+      //   ⇒ 분류(limit/timeout/…)는 그대로 두고 **원문을 함께** 싣는다. `summarizeResult` 가 72자로 자른다.
+      const detail = ok ? '' : String((err as { message?: string } | null)?.message || err || '').slice(0, 160)
+      const result = ok ? extra : { err: cronErrorCode(err), ...(detail ? { detail } : {}), ...(extra || {}) }
       beats.add({ name: `ads:${name}`, ok, ms, cron: event.cron, result, maxGapMin })
     } catch { /* 관측 실패가 작업을 막지 않는다 */ }
     if (!ok) {

@@ -95,6 +95,7 @@ describe('worker-ads — self-beat 이 실제로 배선돼 있다', () => {
     const MW = readFileSync(resolve(process.cwd(), 'src/worker-ads/self-beat.ts'), 'utf8')
     expect(MW).toMatch(/writeSelfBeat\(/)
     expect(MW, 'beat 를 await 하면 자식 수명이 늘어 느린 레인이 죽는다').toMatch(/waitUntil\(beat\)/)
+    expect(MW, '5xx 반환도 실패로 봐야 한다').toMatch(/status \?\? 500\) < 500/)
   })
 
   it('🔒 부모의 쓰기는 폴백으로 남아 있다 — 한쪽만 남기면 다른 실패 모드가 열린다', () => {
