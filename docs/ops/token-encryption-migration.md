@@ -93,6 +93,40 @@ GET /api/health/env-readiness  →  summary.security_missing 에서 DATA_ENCRYPT
 - 비용: 전 행 재작성 + 실패 시 부분 상태
 ⇒ 4단계 지표가 충분히 올라가면 **불필요할 가능성이 높다.** 지표를 보고 그때 판단한다.
 
+## 4-b. 🔴 같은 세션에서 반드시 함께 — **Workers 쪽 `TOSS_SECRET_KEY`** (2026-08-01 발견)
+
+키를 등록하러 대시보드에 들어간 김에 **이것부터** 처리해야 한다. 성격이 다르다 —
+`DATA_ENCRYPTION_KEY` 는 *앞으로 쌓일 것*을 막는 일이지만, 이건 **지금 이 순간 돌고 있는 머니 작업이
+조용히 일을 안 하고 있는** 것이다.
+
+cron 은 Workers `ur-live` 에서 도는데 그쪽 시크릿이 **0개**다. 그런데 지금 등록된 세 블록 안에:
+
+| cron | 작업 | 키가 없으면 (에러 없이) |
+|---|---|---|
+| `*/5` | `scheduled-cleanup` | 만료 선물 자동 환불 **통째 스킵** |
+| `0 18` | `auto-settlement` | 만료 바우처 **환불 취소 호출 실패** |
+| `0 19` | `reconciliation` | 막힌 주문 **영원히 stuck** |
+
+### 절차 (👤 대표)
+
+1. Workers & Pages → **`ur-live`(Workers 쪽 — Pages 아님)** → Settings → Variables and Secrets
+2. Add → **Secret** → Name `TOSS_SECRET_KEY`
+3. 값은 **Pages 에 있는 것과 동일**해야 한다.
+   🔴 **복사이지 이동이 아니다 — Pages 에서 지우면 소비자 결제가 즉시 죽는다.**
+   Cloudflare 는 저장된 시크릿 값을 다시 보여주지 않으므로, 값을 모르면 **토스 개발자센터에서 다시 확인**한다.
+4. 같은 화면에서 `DATA_ENCRYPTION_KEY`·`DISCORD_WEBHOOK_URL` 도 함께(둘 다 양쪽 런타임 필요).
+
+### 확인 (🤖 세션)
+
+`GET /api/admin/cron-heartbeats` 에서 **`cron-env-missing` 이 사라지면** 완료.
+`*/5` 라 등록 후 5분 안에 판정된다.
+
+> ⚠️ **이 항목은 아직 확정이 아니다**(2026-08-01 기준). `wrangler deploy` 출력이 대시보드 시크릿을
+> 원래 안 찍을 가능성이 남아 있어, 배포 로그의 침묵만으로는 증거가 못 된다.
+> **`cron-env-missing` 하트비트가 실제로 뜨는지가 판정**이고, 안 뜨면 이 절은 삭제한다.
+
+---
+
 ## 5. 함께 처리할 것 — `INTERNAL_API_TOKEN`
 
 같은 `security_missing` 에 있다. 키 생성·등록 절차가 동일하므로 **같은 작업 세션에서 함께** 처리하면 된다.

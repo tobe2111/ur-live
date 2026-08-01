@@ -75,6 +75,7 @@ import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat } from './utils/cron-heartbeat';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
+import { missingEnvFor, formatMissingEnv } from './utils/cron-required-env';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -170,6 +171,15 @@ export async function handleCronScheduled(
   //   비용: 매칭 실패했을 때만 1 write. 정상 발화에는 아무것도 하지 않는다.
   if (!HANDLED_CRONS.has(cron)) {
     ctx.waitUntil(safeCron('cron-unmatched', async () => `cron=${cron} 에 대응하는 핸들러가 없다`));
+  }
+
+  // 🔑 2026-08-01: **돌긴 도는데 못 하는 일**을 남긴다. cron 캐리어(Workers)는 시크릿이 0개인데
+  //   `*/5`·`0 18`·`0 19` 안의 머니 작업 셋이 TOSS_SECRET_KEY 를 읽는다 — 없으면 환불·정합이
+  //   **에러 없이 스킵**되고 하트비트엔 `ok:true` 만 남는다. 배포 로그도 시크릿은 안 찍으므로
+  //   판정할 수 있는 자리는 여기뿐이다. 있으면 아무것도 쓰지 않는다(정상 시 비용 0).
+  const missingEnv = missingEnvFor(cron, env as unknown as Record<string, unknown>);
+  if (missingEnv.length > 0) {
+    ctx.waitUntil(safeCron('cron-env-missing', async () => formatMissingEnv(missingEnv)));
   }
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
