@@ -5494,8 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 51건 · 최신순 · 이 목록은 자동 생성된다._
-_총 69건 · 최신순 · 이 목록은 자동 생성된다._
+_총 70건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
@@ -5505,10 +5504,10 @@ _총 69건 · 최신순 · 이 목록은 자동 생성된다._
 - [🔴 2026-07-29 — **같은 날 3건을 중복 개발하고 버렸다: 착수 전 `origin/main` 을 보라**](handoff/2026-07-29-origin-main.md)
 - [✅ 2026-07-29 — 가드를 지키는 가드: "검사가 안 도는" 클래스 박제 (대표 "개선점 더 찾아")](handoff/2026-07-29-note.md)
 - [✅ 2026-07-29 — **열린 PR 20건 일괄 정리 + 병합 마찰 제거 가드 2종** (대표 "PR 정리 계속 / 더 개선점")](handoff/2026-07-29-note-2.md)
-- [🔬 2026-07-29 — 실행 증거 감사 (방배 전 건강검진 · 코드 변경 0)](handoff/2026-07-29-execution-evidence-audit.md)
 - [인허가 500 — 추측 대신 라이브가 판정하게 (2026-07-29)](handoff/2026-07-29-localdata-500-selfprobe.md)
 - [🎯 2026-07-29 (9차-f) — **인플루언서 DB 4축의 병목은 하나다: 측정 처리량이 유입의 1/5**](handoff/2026-07-29-influencer-db-throughput.md)
 - [필드 커버리지 프로브 — "무엇이 실제로 채워져 오는가" (2026-07-29)](handoff/2026-07-29-field-coverage-probe.md)
+- [🔬 2026-07-29 — 실행 증거 감사 (방배 전 건강검진 · 코드 변경 0)](handoff/2026-07-29-execution-evidence-audit.md)
 - [인허가 500 판정 — **우리 코드 문제가 아니다** (2026-07-29, 대표 지시로 수동 실행)](handoff/2026-07-29-datagokr-service-verdict.md)
 - [🔴 2026-07-29 — **도매 번들 cron no-op 게이트 (머니 경로, staging 검증 대기)**](handoff/2026-07-29-cron-no-op-staging.md)
 - [🛡️ 2026-07-29 — "한 번도 안 뛴 cron" 탐지 가드 (실사고 후 환원)](handoff/2026-07-29-cron-never-fired-guard.md)
