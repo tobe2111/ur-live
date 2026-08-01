@@ -218,6 +218,25 @@ export async function creditFreePoints(
       input.orderId != null ? String(input.orderId) : null,
       amount,
     ).run()
-  } catch { /* audit fail-soft */ }
+  } catch {
+    // 🔴 2026-08-01 (원장 불일치 4건 추적): 여기서 조용히 삼키면 **잔액은 늘었는데 거래 기록이 없는
+    //   유저**가 생긴다. 잔액 upsert 는 위에서 이미 끝났기 때문이다.
+    //   실측: 라이브에 정확히 그 모양인 유저 3명(각 3,000·3,000·100딜, `computed=0`).
+    //   정합 검사 cron 이 매일 잡아냈지만 **원인을 못 찾던 이유가 이 catch** 였다.
+    //   확장 컬럼(points_amount·balance_after·order_id·free_delta)은 base CREATE 에 없고
+    //   repair-schema 에도 free_delta 만 있었다 → 컬럼이 없는 창에서는 이 INSERT 가 통째로 실패한다.
+    //   그래서 **base CREATE 가 보장하는 최소 컬럼으로 한 번 더** 시도한다. 원장 행이 없는 것보다
+    //   열이 덜 채워진 행이 낫다(정합 검사는 amount·type 만으로 계산한다).
+    try {
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)`,
+      ).bind(
+        uid,
+        String(input.type).slice(0, 50),
+        amount,
+        input.description ? String(input.description).slice(0, 300) : null,
+      ).run()
+    } catch { /* 여기까지 실패면 테이블 자체가 없다 — repair-schema 소관 */ }
+  }
   return true
 }
