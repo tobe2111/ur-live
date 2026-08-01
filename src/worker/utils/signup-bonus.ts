@@ -1,7 +1,12 @@
 /**
- * 🛡️ 2026-05-20: 신규 가입 보너스 (3000딜).
+ * 🛡️ 2026-05-20: 신규 가입 보너스.
  *
- * 사용자 요청: 신규 가입자에게 3000딜 (= ₩3,000) 자동 적립.
+ * 🔴 **2026-08-01 대표 지시 "신규 가입 보너스 없애자 3000딜 너무 세다" → 기본 중단(0딜).**
+ *   금액을 코드에 박지 않고 `platform_settings.signup_bonus_amount` 로 옮겼다 —
+ *   CLAUDE.md 가 "수치(%·기간·금액)는 어드민(platform_settings) 조정 대상" 이라고 규정한다.
+ *   **미설정/0/음수 = 지급 안 함**(현재 상태). 나중에 500 이든 1000 이든 배포 없이 되살릴 수 있다.
+ *   지급하지 않으면 `granted:false` 라 `kakao.routes` 가 `?bonus=` 를 안 붙이고,
+ *   환영 모달의 보너스 카드도 `bonusAmount > 0` 조건이라 **자동으로 사라진다**(UI 수정 불필요).
  *
  * 정책:
  *   - 카카오 신규 가입 시 1회 자동 적립.
@@ -12,7 +17,16 @@
  * 호출 시점: KakaoAuthService.upsertUser() 가 isNewUser=true 반환 직후 (kakao.routes.ts).
  */
 
-const SIGNUP_BONUS_AMOUNT = 3000
+/** 미설정 시 지급 안 함. 어드민이 `platform_settings.signup_bonus_amount` 로 켠다. */
+const SIGNUP_BONUS_DEFAULT = 0
+
+async function resolveBonusAmount(DB: D1Database): Promise<number> {
+  const row = await DB.prepare(
+    `SELECT value FROM platform_settings WHERE key = 'signup_bonus_amount' LIMIT 1`,
+  ).first<{ value: string }>().catch(() => null)
+  const n = Math.round(Number(row?.value))
+  return Number.isFinite(n) && n > 0 ? n : SIGNUP_BONUS_DEFAULT
+}
 
 export async function grantSignupBonus(DB: D1Database, userId: string | number, kakaoId?: string | null): Promise<{
   granted: boolean
@@ -21,6 +35,10 @@ export async function grantSignupBonus(DB: D1Database, userId: string | number, 
 }> {
   try {
     const uid = String(userId)
+
+    // 🔴 2026-08-01: 기본 0 = 지급 중단(대표 지시). 잔액도 원장도 건드리지 않고 즉시 종료.
+    const SIGNUP_BONUS_AMOUNT = await resolveBonusAmount(DB)
+    if (SIGNUP_BONUS_AMOUNT <= 0) return { granted: false, reason: 'disabled' }
 
     // 이중 적립 방지 — 이미 signup_bonus 받았으면 skip.
     const existing = await DB.prepare(
