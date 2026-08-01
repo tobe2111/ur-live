@@ -542,6 +542,33 @@ export async function runCategoryRescan(env: Env, opts?: { maxChannels?: number 
 }
 
 /** 🏷️ 풀 카테고리 재분류(백필, 멱등) — 콘텐츠 신호로 교정 + 레거시 '자동'/'일반' → NULL 정리. */
+/**
+ * ⏱️ **풀 전수 스캔 한 인보케이션의 작업 상한**(재분류·재추출 공용) — 순수 판정(유닛으로 고정).
+ *
+ * ## 왜 (2026-07-31 라이브 실측 — CF 대시보드가 확정)
+ * ```
+ *   Errors by invocation status → Exceeded CPU Time Limits: 168 (다른 항목 전부 0)
+ *   Error Rate 30.3% · CPU P50 10.1ms / P90 64.78ms / P99 189ms (스파이크 ~1초)
+ * ```
+ * 실패 레인은 전부 **대량 파싱·직렬화**였고 재분류가 그중 가장 무겁다:
+ * 루프가 `for(;;)` 로 **D1 예산이 바닥날 때까지** 돌아, 풀 40,375행을 한 인보케이션에서
+ * 다 훑을 수 있다 → 행당 정규식 ~20개 = **80만 회**. CPU 한도를 넘는다.
+ *
+ * ⚠️ **페이지 크기(PAGE)를 줄이는 건 답이 아니다** — 루프가 더 돌 뿐 총량이 같다.
+ *    막아야 하는 것은 페이지가 아니라 **인보케이션당 총 작업량**이다.
+ *
+ * ✅ 커서가 이미 이어받기를 지원하므로 **커버리지 손실 0** — 덜 하고 다음 회차가 잇는다.
+ *    (그래서 조기 중단 시 `done` 을 false 로 남겨 커서를 0 으로 리셋하지 않는다.)
+ */
+export const POOL_SCAN_MAX_ROWS = 4000
+export const POOL_SCAN_MAX_MS = 3000
+export function poolScanShouldStop(scanned: number, startedMs: number, nowMs: number): boolean {
+  const n = Number.isFinite(scanned) ? scanned : 0
+  if (n >= POOL_SCAN_MAX_ROWS) return true
+  const started = Number.isFinite(startedMs) ? startedMs : nowMs
+  return nowMs - started >= POOL_SCAN_MAX_MS
+}
+
 export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudget }): Promise<{ scanned: number; changed: number; done: boolean }> {
   // 🧭 2026-07-28: OFFSET 전수스캔 → **id 커서**. 무료 플랜 예산(인보케이션당 ~29 D1 연산)에선 한 번에
   //   3.6만 행을 못 돈다 — 커서가 없으면 매 실행이 늘 같은 앞부분만 훑고 뒤쪽은 영원히 미분류로 남는다
@@ -554,6 +581,7 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
   if (raw?.value) cursor = Math.max(0, parseInt(raw.value, 10) || 0)
 
   let scanned = 0, changed = 0, done = false
+  const startedMs = Date.now()   // ⏱️ 인보케이션당 작업 상한(위 poolScanShouldStop) — CPU 한도 초과 방지
   for (;;) {
     const rows = (await DB.prepare(`SELECT id, name, description, category FROM ad_influencer_leads
         WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`).bind(cursor, PAGE)
@@ -574,6 +602,8 @@ export async function runReclassifyPool(DB: D1Database, opts?: { budget?: OpBudg
     changed += ups.length
     if (opts?.budget?.exhausted) { cursor = pageStart; scanned -= rows.length; break } // 쓰기가 잘림 → 이 페이지 재시도
     if (rows.length < PAGE) { done = true; break }
+    // ⏱️ 여기까지가 이 인보케이션의 몫 — `done` 을 false 로 남겨 커서가 다음 회차로 이어진다(커버리지 손실 0).
+    if (poolScanShouldStop(scanned, startedMs, Date.now())) break
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind(CURSOR_KEY, String(done ? 0 : cursor)).run().catch(() => null)
