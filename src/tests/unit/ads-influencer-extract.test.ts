@@ -198,3 +198,40 @@ describe('stripVideoTitles — 제목 세그먼트 분리', () => {
     expect(stripVideoTitles('세그먼트 없음')).toBe('세그먼트 없음')
   })
 })
+
+/**
+ * 📷📧 2026-07-29 대표 지시 — "네이버블로그에서 인스타그램 아이디, 이메일을 더 알아보는데에 집중".
+ *
+ *   블로그는 이메일 보유가 사실상 0 이다(풀 이메일 2,4xx 중 대부분이 유튜브). 원인의 일부는 수집이
+ *   아니라 **표기**였다: 한국 블로거가 실제로 쓰는 두 가지를 추출기가 못 읽고 있었다.
+ *     ① `쩜` — 구어체 dot. 기존 난독화 해제는 `점`·`dot` 만 알았다.
+ *     ② `@` 없는 라벨형 아이디 — "인스타그램 아이디 abc_123". 기존 규칙은 `@` 를 요구했다.
+ */
+describe('네이버 블로그 표기 — 쩜 · @ 없는 인스타 아이디', () => {
+  it('🔒 쩜(구어체 dot)을 복원한다', () => {
+    expect(deobfuscateEmail('abc골뱅이naver쩜com')).toContain('abc@naver.com')
+    expect(extractContacts('연락은 mystore골뱅이gmail쩜com 으로').emails).toContain('mystore@gmail.com')
+  })
+
+  it('🔒 대괄호형 [쩜] 도 받는다', () => {
+    expect(deobfuscateEmail('hello[at]daum[쩜]net')).toContain('hello@daum.net')
+  })
+
+  it('🔒 @ 없는 라벨형 인스타 아이디를 잡는다', () => {
+    expect(extractContacts('인스타그램 아이디 foodie_seoul 입니다').instagram).toContain('foodie_seoul')
+    expect(extractContacts('인스타 계정: cafe.daily').instagram).toContain('cafe.daily')
+  })
+
+  /**
+   * 🐛 라벨(아이디/계정/주소)을 **요구하는 이유** — 없으면 해시태그성 문구의 다음 단어를 아이디로 집는다.
+   *   잘못된 핸들은 빈칸보다 나쁘다(발송이 엉뚱한 사람에게 간다).
+   */
+  it('🐛 라벨 없는 "인스타 daily" 류를 아이디로 오인하지 않는다', () => {
+    expect(extractContacts('인스타 daily 소통해요').instagram).not.toContain('daily')
+    expect(extractContacts('인스타 ootd 자주 올려요').instagram).not.toContain('ootd')
+  })
+
+  it('🐛 문장 속 일반 마침표를 이메일로 날조하지 않는다', () => {
+    expect(extractContacts('오늘은 여기까지. 다음에 또 만나요').emails).toEqual([])
+  })
+})

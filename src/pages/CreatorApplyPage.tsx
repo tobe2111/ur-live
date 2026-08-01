@@ -12,7 +12,7 @@ const PLATFORMS = [
   { v: 'tistory', label: '티스토리' }, { v: 'tiktok', label: '틱톡' }, { v: 'etc', label: '기타' },
 ]
 // 서버(influencer-apply.routes CATEGORIES)와 동일 택소노미 — 불일치 시 '기타'로 강등되므로 함께 갱신할 것.
-const CATEGORIES = ['공동구매', '맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '골프', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
+const CATEGORIES = ['공동구매', '마케팅대행사', '맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '골프', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
 
 export default function CreatorApplyPage() {
   const [f, setF] = useState({ name: '', platform: 'youtube', url: '', category: '맛집', region: '', followers: '', rate: '', email: '', contact: '', message: '' })
