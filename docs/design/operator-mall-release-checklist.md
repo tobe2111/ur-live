@@ -117,8 +117,8 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | **O1** | 신청한다 | 🔴 없음 (P0 는 어드민 수동) | ⑤ | 👤 대표가 신청 폼에서 제출 → 어드민 목록에 신청 1건. **P0 에선 "대표가 대신 등록했다"로 green** |
 | **O2** | 몰이 열린다 (`urdeal.kr/{몰}`) | 🟢 화면·API·어드민 스위치 완료 (워커 OG 메타만 남음) | ③-a | 👤 몰 생성 시 **"소비자 도메인에서 열기" 체크** → **비로그인 브라우저**로 그 URL 진입 시 몰 화면. 🤖 `mall-consumer-lookup.test.ts` · `mall-no-mainland-entry.test.ts`(라우트 자리) |
 | **O3** | 로그인한다 | 🟢 있음 (카카오 → 셀러 대시보드) | — | 👤 신규 카카오 계정으로 `/seller` 진입. 🤖 `check-seller-wholesale-redirect`(겸업 lock-out 없음) |
-| **O4** | 상품을 3분에 올린다 | 🟡 풀 폼만 있음(`SellerProductNewPage`) | ③-b | 👤 대표가 사진·가격·마감·픽업일만으로 **3분 내** 등록 완주. 🤖 저장 INSERT 에 `mall_id` 포함 |
-| **O5** | 공구를 연다 (마감·특가) | 🟢 엔진 있음 (`gb_mode`/`gb_price`) | ① 완료 | 👤 등록한 상품에 공구 설정 → 소비자 화면에 특가 표시. 🤖 `gb-price-payment-wiring.test.ts` |
+| **O4** | 상품을 3분에 올린다 | 🟢 `/seller/products/quick`(사진·가격·마감) + `mall_id` 스탬프 | ③-b | 👤 대표가 **3분 내** 등록 완주 → 그 몰 화면에 뜨는지 확인. 🤖 `mall-product-stamp` · `quick-gb-form`(한 손 조작·실패 노출) |
+| **O5** | 공구를 연다 (마감·특가) | 🟢 엔진 + **셀러 권한 API**(`/api/seller/gb/:id`) | ①·③-b 완료 | 👤 등록한 상품에 공구 설정 → 소비자 화면에 특가 표시. 🤖 `gb-price-payment-wiring` · `seller-gb-ownership`(IDOR·검증 SSOT) |
 | **O6** | 주문을 본다 | 🟢 `/seller/orders` | ⑤(스코프) | 👤 소비자가 산 주문이 **몰 필터로** 보임 |
 | **O7** | 픽업을 확인한다 (QR/PIN) | 🟢 `/seller/scan` · `voucher_visits` | ④ | 👤 실제 QR 스캔 → 소각 1회 · 재스캔 시 거부 |
 | **O8** | 정산을 받는다 | 🟢 파이프 있음 (`payouts-generate` 가 `merchant:%` 포함) | ④ + ⑤(화면) | 👤 **대표가 실제로 송금 실행**하고 운영자 계좌 입금 확인. 🤖 원장 `merchant:` 잔액 = 결제액 − 5% |
