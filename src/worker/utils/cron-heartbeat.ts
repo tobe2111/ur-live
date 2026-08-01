@@ -151,6 +151,45 @@ export interface CronHeartbeat {
   max_gap_min?: number | null
   /** 마지막 실행이 '무엇을 했나' 한 줄 요약(작업이 결과를 반환한 경우). */
   result?: string | null
+  /**
+   * ⏱️ 이 작업이 **CPU 한도에 다가가고 있는가**(2026-08-02 신설). `null` = 판단 불가(ms 없음).
+   *   `'danger'` = 이미 죽는 구간 · `'warn'` = 여유가 얼마 안 남음.
+   */
+  cpu_risk?: 'warn' | 'danger' | null
+}
+
+/**
+ * ⏱️ **죽기 전에 알린다** — CPU 한도 근접 판정 (2026-08-02 라이브 실측 후 신설). 순수함수.
+ *
+ * ## 왜
+ * 08-02 01:00 KST 에 레인 셋이 `Worker exceeded CPU time limit` 로 죽었다(26.0~26.6초).
+ * 그 셋은 고쳤지만 — **인플루언서 자동수집(`ads:collect`)이 15.4초**로 돌고 있다. 지금은 살아 있고
+ * 화면 어디에도 경고가 없다. 데이터가 늘면 같은 벽에 닿을 텐데, **죽어야 알게 된다.**
+ * 그건 이 레포가 반복해 만난 실패다: 부재는 침묵과 다르게 생겼는데, 여기선 *임박*이 정상과 같게 생겼다.
+ *
+ * ## 기준을 어디서 가져왔나 (추측 아님)
+ * 실측 사망 지점 **26,027 / 26,039 / 26,563 ms** → 관측된 천장을 **26,000** 으로 잡는다.
+ * 그 아래에서 성공한 최장은 21,026ms(`reclassify-company`) 이므로 warn 선을 그 사이에 둔다.
+ *
+ * ## ⚠️ 못 하는 것 (과신 금지)
+ * - **벽시계는 CPU 가 아니다.** 외부 응답이 느려 벽시계만 긴 회차는 CPU 여유가 있어도 warn 이 뜬다
+ *   (그건 오탐이 아니라 '알아둘 값'이다 — 그 회차도 죽을 자리에 가까이 있었다).
+ * - 반대로 **짧은 벽시계인데 CPU 를 태우는** 경우는 못 잡는다(순수 계산 위주 레인). 워커 런타임이
+ *   CPU 실측치를 주지 않으므로 이 근사가 현재 가능한 최선이다.
+ */
+export const CPU_WALL_MS = 26_000
+/**
+ * 경고선 = 벽의 **약 58%**. 18,000 으로 잡았다가 이 모듈의 유닛이 잡아냈다 — 정작 이걸 만든 이유였던
+ * `ads:collect`(15,425ms)가 그 아래라 조용히 통과했다. 목표를 못 잡는 임계값은 임계값이 아니다.
+ * 실측 정상군(2,374~10,418ms)은 이 아래로 충분히 떨어져 신호가 죽지 않는다.
+ */
+export const CPU_WARN_MS = 15_000
+
+export function cpuRisk(ms: number | null | undefined): 'warn' | 'danger' | null {
+  if (!Number.isFinite(ms as number) || (ms as number) <= 0) return null
+  const v = ms as number
+  if (v >= CPU_WALL_MS) return 'danger'
+  return v >= CPU_WARN_MS ? 'warn' : null
 }
 
 /**
@@ -201,6 +240,8 @@ export async function listCronHeartbeats(DB: D1Database): Promise<CronHeartbeat[
         age_minutes: age,
         max_gap_min: limit,
         stale: (limit != null && age != null) ? age > limit : null,
+        // ⏱️ 죽기 전에 보이게 — 이 값이 warn 이면 그 레인은 다음 성장 때 죽는다(위 cpuRisk 주석).
+        cpu_risk: cpuRisk(ms),
       }
     })
     // 오래된 것 먼저 = 멈췄을 가능성이 높은 것 먼저.
