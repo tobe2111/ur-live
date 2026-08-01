@@ -398,3 +398,22 @@ Deployed ur-live triggers (0.36 sec)
 | B8(키 부재) | `cron-env-missing` **6회 연속**(13:10·15·20·25·30·35) |
 | `0 18` 정상 | 07-29·30·31 3일 연속 |
 | cron 캐리어 바인딩 | 배포 로그 — DO 2 + D1 1 + 평문 var 2 |
+
+### 🔴 또 하나 — cron 워커가 **조용히 낡는 경로**가 있었다 (2026-08-01, 같은 클래스 세 번째)
+
+#914(`summarizeResult` 수리)를 머지했는데 라이브 `result` 가 계속 null 이었다. **수리가 안 먹은 게
+아니라 배포가 아예 안 됐다** — `worker-deploy.yml` 의 트리거 경로가 세 줄뿐이라
+(`scheduled.ts`·`cron/**`·`wrangler.toml`) `src/worker/utils/cron-heartbeat.ts` 변경이 안 걸렸다.
+
+근본 원인: cron 워커는 `worker/index.ts` 를 **통째로 번들**한다(utils·features 포함). 그런데
+트리거는 그중 둘만 봤다. ⇒ **번들 범위 ≠ 트리거 범위** 였고, 그 차이만큼 cron 이 낡을 수 있었다.
+Pages 는 정상 배포되고 머지도 초록불이라 **반영된 것처럼 보인다.**
+
+**수리**: 트리거를 `src/**`(테스트 제외) + `wrangler.toml` + `package.json` + 워크플로 자신으로 확대.
+넓게 잡는 비용은 2분 job 이 더 자주 도는 것(멱등)이고, 좁게 잡는 비용은 **머니 cron 이 낡은 코드로 도는 것**이다.
+
+> ⚠️ **이 정정 전의 모든 "cron 에 반영됐다" 판정은 재확인 대상**이다. `scheduled.ts`·`cron/**` 를
+> 함께 건드린 PR 만 실제로 배포됐다. 오늘 것 중 #862·#910 은 둘 다 그 경로를 건드려 배포됐다(확인함).
+
+**판정 방법(다음에도 동일)**: worker-deploy 의 **최신 run 의 head_sha 가 그 PR 의 머지 커밋인지** 본다.
+없으면 트리거가 안 걸린 것이다. `git log` 나 PR 초록불로는 절대 알 수 없다.

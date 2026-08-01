@@ -136,6 +136,11 @@ export async function wholesaleCronNoop(event: ScheduledEvent): Promise<void> {
  */
 const HANDLED_CRONS = new Set(ACCEPTED_CRON_EXPRESSIONS)
 
+/**
+ * ⚠️ cron 워커는 이 파일만이 아니라 `worker/index.ts` **번들 전체**로 배포된다(utils·features 포함).
+ * 2026-08-01 까지 `worker-deploy.yml` 트리거가 세 경로뿐이라 그 밖의 변경은 **Pages 에만 가고
+ * cron 은 옛 코드로 돌았다**(#914 가 그렇게 안 올라갔다). 사유·수리는 그 워크플로 주석 참조.
+ */
 export async function handleCronScheduled(
   event: ScheduledEvent,
   env: Env,
