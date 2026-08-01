@@ -12,6 +12,8 @@
  *   - `mall_id` 가 **잘못 스탬프된** 경우(등록 경로 → ③-b)
  */
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import { buildMallMeta } from '@/worker/utils/mall-ssr-meta'
 
 const origin = 'https://urdeal.kr'
@@ -103,5 +105,49 @@ describe('이미지·canonical', () => {
 
   it('canonical 은 요청 경로 그대로', () => {
     expect(buildMallMeta(base)!.canonical).toBe('https://urdeal.kr/my-shop/group-buy/10')
+  })
+})
+
+/**
+ * 🔴 **워커 MALL 슬롯의 배선 불변식** 〔세션 ③-a, 2026-08-01〕
+ *
+ * `buildMallMeta` 가 아무리 옳아도 **호출부가 틀리면 소용없다**(위 주석의 "못 막는 것" 1번).
+ * 여기서 그 배선 자체를 값으로 고정한다. 지키는 것은 두 가지다:
+ *
+ * ① **핫패스** — 몰 매처는 `isMallLookupCandidate` 로 예약어·문법 밖을 먼저 잘라야 한다.
+ *    안 그러면 **모든 미지 경로가 SSR self-fetch 를 유발**한다(콜드 D1 왕복 — 404 트래픽에 비용을 낸다).
+ * ② **순서** — 몰 매처가 앞서면 `/u/:handle`·`/products/:id` 같은 기존 슬롯을 가로챈다.
+ *
+ * ⚠️ 이 테스트는 **텍스트 검사**다. 로직이 같은 뜻으로 리팩터되면 헛돌 수 있다 —
+ *   그때는 이 테스트를 고치지 말고 **불변식이 여전히 성립하는지 먼저 확인**할 것.
+ */
+describe('🔴 워커 MALL 슬롯 배선', () => {
+  const src = readFileSync(resolve(process.cwd(), 'src/worker/index.ts'), 'utf8')
+
+  it('몰 매처는 후보 필터를 통과한 세그먼트에만 붙는다', () => {
+    // 🔴 **주석을 먼저 지운다.** 안 그러면 `if` 에서 필터를 빼도 위 설명 주석에 남은 이름 때문에
+    //   초록이 뜬다 — 되돌려-검증에서 실제로 그랬다(이 레포의 `check-lock-table-symbols` 가
+    //   경고한 것과 같은 함정: *"심볼이 주석에만 남아도 통과한다"*).
+    const code = src.replace(/\/\/[^\n]*/g, '')
+    const lines = code.split('\n')
+    const i = lines.findIndex((l) => l.includes(`slot: 'MALL'`))
+    expect(i, 'MALL 슬롯 배선이 사라졌다').toBeGreaterThan(-1)
+    // 그 배선을 감싸는 가장 가까운 `if (` 조건문에 후보 필터가 있어야 한다.
+    const guard = lines.slice(Math.max(0, i - 6), i).reverse().find((l) => l.includes('if ('))
+    expect(guard, 'MALL 배선을 감싸는 조건문을 못 찾았다').toBeTruthy()
+    expect(guard).toContain('isMallLookupCandidate')
+  })
+
+  it('몰 매처는 기존 슬롯(PRODUCT·DETAIL·SELLER·CURATOR)보다 **뒤**에 있다', () => {
+    const at = (needle: string) => src.indexOf(needle)
+    const mall = at(`slot: 'MALL'`)
+    for (const s of [`slot: 'PRODUCT'`, `slot: 'DETAIL'`, `slot: 'SELLER'`, `slot: 'CURATOR'`]) {
+      expect(at(s), `${s} 배선이 없다`).toBeGreaterThan(-1)
+      expect(mall, `${s} 보다 앞서면 그 슬롯을 가로챈다`).toBeGreaterThan(at(s))
+    }
+  })
+
+  it('payload 가 없으면 메타를 건드리지 않는다 — 카톡 캐시 박제 방지', () => {
+    expect(src).toContain(`ssrSlot === 'MALL' && ssrPayload`)
   })
 })

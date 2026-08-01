@@ -31,6 +31,7 @@ interface MallRow {
   categories_json: string | null
   // 🏥 규제 몰(인허가) + 🧩 기능 토글 + 🏢 회사(푸터) 정보 — 2026-07-03/04 몰별 설정.
   requires_license?: number | null
+  consumer_path?: number | null
   license_label?: string | null
   features_json?: string | null
   company_json?: string | null
@@ -63,6 +64,7 @@ interface MallForm {
   commission_rate: string
   categories_json: string
   requires_license: boolean
+  consumer_path: boolean
   license_label: string
   features_json: string
   company: Record<string, string>
@@ -72,7 +74,7 @@ interface MallForm {
 const EMPTY: MallForm = {
   slug: '', name: '', host: '', brand_name: '', brand_color: '#111827',
   logo_url: '', deposit_account: '', commission_rate: '', categories_json: '',
-  requires_license: false, license_label: '', features_json: '', company: {}, active: true,
+  requires_license: false, consumer_path: false, license_label: '', features_json: '', company: {}, active: true,
 }
 
 const DEFAULT_MALL_ID = 1
@@ -117,6 +119,7 @@ export default function AdminWholesaleMallsPage() {
       commission_rate: m.commission_rate != null ? String(m.commission_rate) : '',
       categories_json: m.categories_json || '',
       requires_license: !!m.requires_license,
+      consumer_path: !!m.consumer_path,
       license_label: m.license_label || '',
       features_json: m.features_json || '',
       company: (() => { try { const cj = JSON.parse(m.company_json || ''); return (cj && typeof cj === 'object' && !Array.isArray(cj)) ? cj : {} } catch { return {} } })(),
@@ -146,6 +149,7 @@ export default function AdminWholesaleMallsPage() {
       categories_json: form.categories_json.trim() || null,
       // 🏥 인허가 게이트 + 🧩 기능 토글 + 🏢 회사(푸터) 정보.
       requires_license: form.requires_license ? 1 : 0,
+      consumer_path: form.consumer_path ? 1 : 0,
       license_label: form.license_label.trim() || null,
       features_json: form.features_json.trim() || null,
       company_json: (() => {
@@ -236,6 +240,9 @@ export default function AdminWholesaleMallsPage() {
                     <span className="text-xs font-mono text-gray-500">{m.slug}</span>
                     {m.id === DEFAULT_MALL_ID && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">기본 몰</span>}
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{m.active ? '활성' : '비활성'}</span>
+                    {!!m.consumer_path && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700" title="소비자 도메인 경로로 열림">소비자 공개</span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1 truncate inline-flex items-center gap-1">
                     <Globe className="w-3 h-3" /> {m.host || t('admin.mall.noHost', { defaultValue: '호스트 미지정 (기본 fallback)' })}
@@ -328,6 +335,19 @@ export default function AdminWholesaleMallsPage() {
                     className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="10" />
                   <p className="text-[11px] text-gray-400 mt-1">이 몰의 플랫폼 마진%(공급가 = 원가×(1+%)). 비우면 전역 수수료 사용 — 표시가·결제가에 즉시 적용.</p>
                 </div>
+              </div>
+
+              {/* 🏬 2026-08-01 세션 ③-a — 소비자 도메인 경로 개방.
+                  ⚠️ 기본 OFF(fail-closed). 켜지 않으면 `urdeal.kr/{슬러그}` 로 열리지 않는다.
+                  도매몰(유통스타트·메디스타트)은 자기 호스트에 살므로 **끈 채로 둔다**. */}
+              <div className="rounded-lg border border-gray-200 p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700 font-semibold">
+                  <input type="checkbox" checked={form.consumer_path} onChange={(e) => setForm((f) => ({ ...f, consumer_path: e.target.checked }))} className="w-4 h-4" />
+                  소비자 도메인에서 열기 — <code className="text-xs bg-gray-100 px-1 rounded">urdeal.kr/{form.slug || '{주소}'}</code>
+                </label>
+                <p className="text-[11px] text-gray-400">
+                  운영자 몰(공구)만 켠다. <b>도매몰은 끈 채로 둘 것</b> — 켜면 B2B 몰이 소비자 도메인 경로로 노출된다.
+                </p>
               </div>
 
               {/* 🏥 규제 몰(인허가) — 가입 시 신고번호 필수 여부 + 필드 라벨 */}

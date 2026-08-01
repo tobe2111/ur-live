@@ -955,6 +955,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'wholesale_malls.license_label', sql: "ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT" },
     { desc: 'wholesale_malls.features_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT" },
     { desc: 'wholesale_malls.company_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN company_json TEXT" },
+    // 🏬 소비자 경로(`urdeal.kr/{슬러그}`) 개방 표시. DEFAULT 0 = fail-closed(서비스 분리) — mall-consumer.ts 참조.
+    { desc: 'wholesale_malls.consumer_path', sql: "ALTER TABLE wholesale_malls ADD COLUMN consumer_path INTEGER DEFAULT 0" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.

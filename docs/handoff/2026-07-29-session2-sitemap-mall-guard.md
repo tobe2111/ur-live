@@ -73,3 +73,106 @@
 ### 남은 것 — ③-a 마지막 단계
 **워커 배선**(`worker/index.ts` HTMLRewriter 에 몰 OG 메타 + 몰 스코프). 그 파일은 **로딩 잠금** 대상이라
 `[UNLOCK_LOADING]` 절차(대표 확인)가 먼저다. 배선 전까지 `buildMallMeta`·`decideMallSource` 는 **휴면**이다.
+
+---
+
+## 🏬 2026-08-01 — 소비자 경로 몰 조회 (③-a O2 토대)
+
+`urdeal.kr/{슬러그}` 를 몰로 해석하는 **판정 계층**. 아직 **워커 미배선**(순수 모듈 + 조회 함수).
+
+### 왜 도매 모듈을 안 쓰고 새로 만들었나 (실측)
+
+`features/supply/api/wholesale-malls.ts`(`resolveMallId`·`ensureMallSchema`)는
+**`__INCLUDE_WHOLESALE__=false` 인 소비자 번들에서 DCE 로 빠진다.** 거기서 import 하면
+**도매 그래프 전체(~200KB gzip)가 되살아난다.**
+⇒ `worker/utils/mall-consumer.ts` 는 **테이블만 직접 읽는다.** 같은 파일의 host→도매몰 판별
+(`getWholesaleMallHosts`, `worker/index.ts:2519`)이 이미 쓰는 방식이라 선례가 있다.
+
+**빌드 실측**: 소비자 번들에 `ensureMallSchema` **0건** — 도매 그래프 미유입 확인.
+(`mall-consumer` 자체도 0건 — **아직 아무도 안 부르기 때문**. 배선 PR 에서 다시 볼 것.)
+
+### 불변식 2개
+
+**① 핫패스 불변** — 예약어는 **DB 를 아예 안 본다**. 기존 소비자 라우트는 전부 `RESERVED_SLUGS` 에 있고
+CI 가 `라우트 ⊆ 예약어` 를 강제하므로, **DB 를 보는 건 어차피 404 로 가던 경로뿐**이다.
+⚠️ 검사 **순서**가 중요하다 — 예약어가 문법 검사보다 **먼저**여야 조회가 0이 된다(테스트가 순서를 고정).
+
+**② 서비스 분리 (fail-closed)** — `consumer_path = 1` 인 몰만 경로로 연다.
+신규 컬럼 `wholesale_malls.consumer_path INTEGER DEFAULT 0`(repair-schema + ensureMallSchema 자가치유).
+
+> 🔴 **왜 `host IS NULL` 로 추론하지 않았나**: 메디스타트(id=2)는 **host 가 NULL 인 도매몰**이다.
+> 추론했으면 `urdeal.kr/medi` 로 **B2B 도매몰이 소비자 도메인에 열렸을 것**이다.
+> **추론 대신 표시.** 기존 행은 전부 기본값 0 → **새로 열리는 것 0**.
+
+### 되돌려-검증 2종
+- 예약어 조기탈출 제거 → **2 fail** ✅ (핫패스가 DB 를 보게 됨)
+- `consumer_path` 게이트 제거 → **3 fail** ✅ (도매몰이 열림)
+
+### 다음 세션의 첫 액션
+1. **대표가 몰을 만들 때 `consumer_path:1` 을 켜야 한다** — 어드민 CRUD 에 필드는 뚫었지만
+   **화면(체크박스)은 없다**(대표 지시 ⑥ *"디자인 개선 금지"* 준수). PATCH 로 켤 수 있다:
+   `PATCH /api/admin/wholesale-malls/{id} {"consumer_path":1}` (utongstart.com, 슈퍼어드민).
+2. **워커 배선**이 남았다 — `worker/index.ts` 에 ⓐ `lookupConsumerMall` 로 몰 컨텍스트 확정
+   ⓑ `buildMallMeta` 로 OG 메타 rewrite. 그 파일은 **로딩 잠금**이지만 잠금표의 예외 절
+   *"새 페이지 / 새 SSR slot 추가(기존 4페이지 inject 패턴 따라)"* 에 해당한다.
+   ⚠️ **단 SPA 라우트(`/:mallSlug`)가 먼저다** — 지금 OG 메타만 붙이면 **존재하지 않는 페이지의
+   미리보기**를 만들게 된다. 순서: SPA 몰 화면 → 워커 메타.
+
+### 2026-08-01 후속 — **몰이 실제로 열린다** (③-a O2 본체)
+
+앞선 항목은 "판정 계층"까지였다. 여기서 **화면·API·어드민 스위치**를 붙여 O2 를 닫는다.
+
+| | 무엇 |
+|---|---|
+| 소비자 화면 | `src/pages/MallHomePage.tsx` — `/:mallSlug`. 브랜딩 헤더 + 진행 중 공구 그리드 |
+| 공개 API | `GET /api/mall/:slug` · `/:slug/products` (`features/mall/api/mall-public.routes.ts`) |
+| 어드민 스위치 | `AdminWholesaleMallsPage` 체크박스 *"소비자 도메인에서 열기"* + 목록 배지 |
+
+**대표 UX 기준 반영**: ① 비로그인·카톡 인앱 전제(왕복 2회를 **병렬**로) ③ 마감 잔여시간·잔여수량을
+**이미지 위 배지**로 — 카드에서 제일 먼저 읽히는 자리 ⑤ 본진 링크 0(`powered by 유어딜` 은 **문자열**, 링크 아님)
+⑥ 기존 토큰만 사용.
+
+**수수료 비노출**(대표 확정): 소비자 API 는 `promo_pct`·`per_unit_commission` 을 **의도적으로 안 싣는다.**
+`gb-marketplace`(인플루언서 뷰)를 재사용하지 않고 따로 쓴 이유가 이것이다.
+
+#### 🔴 라우트 자리가 곧 안전성이다
+`/:mallSlug` 는 **1-세그먼트 URL 을 전부 매치**한다. catch-all 바로 앞이 아니면 **뒤 라우트가 조용히 죽는다**
+(`/influencer` 두 달 미렌더 사고와 같은 클래스 — 에러도 경고도 안 난다).
+⇒ `mall-no-mainland-entry.test.ts` 에 자리 불변식 2건 추가(뒤에 `*` 하나뿐 · 1-세그먼트 param 라우트 유일).
+
+#### 🔴 sitemap 가드가 무력화될 뻔했다 (배포 전 발견)
+`/:mallSlug` 가 라우트 목록에 들어가면서 **죽은 1-세그먼트 URL 이 "라우트 있음"으로 통과**하게 됐다.
+`check-sitemap-routes.mjs` 의 catch-all 제외에 `/:mallSlug` 를 추가해 막았다.
+**실측**: 제외 없이 `/totally-dead-route` 를 사이트맵에 넣으면 **초록불**, 제외를 넣으면 **빨강**.
+그 가드의 주석이 경고하던 *"포함하면 검사가 통째로 무의미해진다"* 가 그대로 재현됐다.
+
+#### 자잘한 정정
+`products.stock_quantity` 로 썼다가 `schema-refs` 테스트에 걸렸다 — **SSOT 는 `products.stock`**
+(CLAUDE.md 가 기록한 이중화 컬럼 부채). 가드가 잡아줬다.
+
+#### 다음
+**워커 OG 메타 배선**이 이제 의미가 있다(페이지가 생겼으므로). `buildMallMeta` 는 준비돼 있고,
+`worker/index.ts` 의 DETAIL/PRODUCT 슬롯 패턴을 그대로 따르면 된다.
+
+### 2026-08-01 마지막 — **워커 OG 메타 배선** (③-a 종료)
+
+`worker/index.ts` 에 `MALL` SSR 슬롯 + 메타 rewrite. 잠금표 **예외 절**("새 SSR slot 추가, 기존 4페이지 패턴")에
+해당하고 실제로 DETAIL/PRODUCT/CURATOR 와 같은 모양이다. CLAUDE.md audit log 에 `[UNLOCK_LOADING]` 기록함.
+
+**핫패스**: 매처가 **가장 마지막**이고 `isMallLookupCandidate` 를 먼저 통과해야 한다 ⇒ 기존 소비자 경로는
+그 분기에 **도달조차 안 하고 self-fetch 도 안 생긴다**. 몰이 아니면 API 가 404 → payload 없음 →
+**기본 메타 그대로**(추측해서 박제하지 않는다).
+
+#### ⚠️ 되돌려-검증에서 내 가드가 헛돌았다 (기록해 둘 가치가 있음)
+처음 쓴 판정은 `slot: 'MALL'` 앞 400자에 `isMallLookupCandidate` 가 있는지 보는 **텍스트 근접검사**였다.
+`if` 에서 필터를 빼도 **위 설명 주석에 이름이 남아** 초록이 떴다 —
+CLAUDE.md 의 `check-lock-table-symbols` 항목이 경고한 *"심볼이 주석에만 남아도 통과한다"* 와 **정확히 같은 함정**이다.
+⇒ **주석을 먼저 제거하고 조건문 라인 자체를 검사**하도록 고쳐 red 를 확인했다.
+> 교훈: 텍스트 기반 가드를 쓸 때 **주석은 코드가 아니다.** 되돌려-검증을 안 했으면 그대로 나갔다.
+
+#### 남은 것 — 다음 세션 판단 필요
+**몰 상품 링크의 URL 구조.** 지금 `MallHomePage` 의 카드는 `/products/:id`(본진 상세)로 나간다.
+기능은 되지만 두 가지가 걸린다: ⓐ 고객이 **매장 밖(유어딜 본진 셸)으로 튕겨나간다** ⓑ 그 링크를 공유하면
+OG 카드에 **몰 이름이 안 실린다**(`buildMallMeta` 는 몰 경로 전제라 아직 호출부가 없다).
+⇒ `/:mallSlug/products/:id` 를 만들지 여부는 **링크 구조 결정**이라 임의로 정하지 않았다. 대표 판단 항목.
+(`buildMallMeta` 는 그 결정이 나면 바로 쓸 수 있게 준비돼 있다.)
