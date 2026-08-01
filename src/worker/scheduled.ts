@@ -74,6 +74,8 @@ import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat } from './utils/cron-heartbeat';
+import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
+import { missingEnvFor, formatMissingEnv } from './utils/cron-required-env';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -125,6 +127,15 @@ export async function wholesaleCronNoop(event: ScheduledEvent): Promise<void> {
   console.error(WHOLESALE_CRON_NOOP_MARKER, event?.cron ?? '')
 }
 
+/**
+ * 이 디스패처가 받는 cron 문자열 전체 — **명부는 `cron-expected.ts` 가 SSOT** 다.
+ *
+ * 여기에 목록을 다시 두지 않는다. 같은 목록이 두 곳에 있으면 반드시 갈라지고, 갈라진 쪽이
+ * 조용한 오탐(정상 발화를 `cron-unmatched` 로 기록)이나 조용한 사각지대(침묵을 못 봄)가 된다.
+ * 드리프트는 `cron-expected.test.ts` 가 소스의 분기를 파싱해 강제한다.
+ */
+const HANDLED_CRONS = new Set(ACCEPTED_CRON_EXPRESSIONS)
+
 export async function handleCronScheduled(
   event: ScheduledEvent,
   env: Env,
@@ -152,6 +163,24 @@ export async function handleCronScheduled(
       await recordCronBeat(env, name, ok, Date.now() - t0, cron, out);
     }
   };
+
+  // 🔇 2026-07-29: **매칭되지 않은 트리거**를 기록한다. 지금까지 이 침묵은 완전히 안 보였다 —
+  //   CF 에 등록은 됐는데 아래 `cron === '...'` 중 어디에도 안 걸리면 하트비트도 실패도 남지 않아,
+  //   "등록했으니 돌겠지"와 "등록했는데 무동작"이 관측상 **구분 불가**였다.
+  //   0단계(표기 교정) 판정을 오염시키는 것이 정확히 이 침묵이라, 표기를 바꾸기 전에 먼저 넣는다.
+  //   비용: 매칭 실패했을 때만 1 write. 정상 발화에는 아무것도 하지 않는다.
+  if (!HANDLED_CRONS.has(cron)) {
+    ctx.waitUntil(safeCron('cron-unmatched', async () => `cron=${cron} 에 대응하는 핸들러가 없다`));
+  }
+
+  // 🔑 2026-08-01: **돌긴 도는데 못 하는 일**을 남긴다. cron 캐리어(Workers)는 시크릿이 0개인데
+  //   `*/5`·`0 18`·`0 19` 안의 머니 작업 셋이 TOSS_SECRET_KEY 를 읽는다 — 없으면 환불·정합이
+  //   **에러 없이 스킵**되고 하트비트엔 `ok:true` 만 남는다. 배포 로그도 시크릿은 안 찍으므로
+  //   판정할 수 있는 자리는 여기뿐이다. 있으면 아무것도 쓰지 않는다(정상 시 비용 0).
+  const missingEnv = missingEnvFor(cron, env as unknown as Record<string, unknown>);
+  if (missingEnv.length > 0) {
+    ctx.waitUntil(safeCron('cron-env-missing', async () => formatMissingEnv(missingEnv)));
+  }
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
   //   요청 안에서 수천 명 발송하던 것을 cron 으로 이전 (CPU/wall 한도 + per-recipient 멱등 hardening).
@@ -489,7 +518,10 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('influencer-payout', () => handleInfluencerPayout(env)));
   }
 
-  if (cron === '0 20 * * 0') {
+  // 🔴 2026-07-29: 세 표기를 전부 받는다. CF 는 **등록된 문자열 그대로** event.cron 에 넣기 때문에,
+  //   `0 20 * * 0`(CF 가 거부하는 표기)을 `0 20 * * SUN` 으로 교정해 등록하는 순간 이 분기가
+  //   조용히 매칭 실패한다 — 등록은 됐는데 아무 일도 안 일어나는, 이 감사가 다룬 바로 그 클래스.
+  if (cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
     ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
   }
 

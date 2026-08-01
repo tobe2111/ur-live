@@ -18,15 +18,23 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { EXPECTED_CRON_EXPRESSIONS, findNeverFired } from '@/worker/utils/cron-expected'
+import { EXPECTED_CRON_EXPRESSIONS, findNeverFired, canonicalCron } from '@/worker/utils/cron-expected'
 import { expectedMaxAgeMinutes } from '@/worker/utils/cron-heartbeat'
 
 const MIN = 60
 const DAY = 24 * 60
 
 describe('기대 목록 ↔ scheduled.ts 동기 (드리프트 차단)', () => {
+  // 주석을 먼저 걷어낸다 — 설명문이 `cron === '...'` 패턴을 **인용만 해도** 유령 식이 잡혀
+  // 가드가 빨강이 된다(실제로 그렇게 깨졌다). 가드는 자기가 설명되는 것에 부서지면 안 된다.
   const src = readFileSync(resolve(process.cwd(), 'src/worker/scheduled.ts'), 'utf8')
-  const branched = new Set(Array.from(src.matchAll(/cron === '([^']+)'/g), (m) => m[1]!))
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  // 별칭(`0 20 * * SUN` 등)은 카노니컬로 되돌려 비교한다 — 같은 일정의 다른 표기일 뿐이고,
+  // 기대 목록은 *일정 하나당 한 줄*이어야 never-fired 판정이 오염되지 않는다.
+  const branched = new Set(
+    Array.from(src.matchAll(/cron === '([^']+)'/g), (m) => canonicalCron(m[1]!)),
+  )
 
   it('scheduled.ts 가 분기하는 cron 식을 실제로 찾는다 (빈 스캔 방지)', () => {
     // 정규식이 깨지거나 파일이 옮겨지면 0개가 잡히고, 그러면 아래 동일성 검사가 **무의미하게 통과**한다.

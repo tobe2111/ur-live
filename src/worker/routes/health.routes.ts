@@ -196,9 +196,13 @@ healthRoutes.get('/migrations', requireAuth(), async (c) => {
  *
  *   severity:
  *     - blocking : 없으면 그 기능 자체가 깨짐(대시보드 로그인 등) → ready=false
- *     - security : fail-open(동작하나 보안 약화 — brute-force/봇/평문토큰)
+ *     - security : 보안 관련. ⚠️ **그룹 이름이 곧 동작이 아니다** — fail-open 인 것(RATE_LIMIT_KV,
+ *                  TURNSTILE_SECRET)과 fail-CLOSED 인 것(INTERNAL_API_TOKEN)이 섞여 있다.
+ *                  **판단은 각 항목의 note 로 할 것.** (2026-07-29: 이 줄의 옛 설명 "fail-open" 을
+ *                  항목의 동작으로 읽어 INTERNAL_API_TOKEN 을 "무방비"로 오판한 적이 있다.)
  *     - perf     : degraded(느려지나 동작)
  *     - payments : 소비자 결제(도매몰 예치금은 무관)
+ *     - infra    : Cloudflare 바인딩 + **장애가 사람에게 도달하는 경로**(알림 채널 포함)
  *     - optional : 선택 기능(fail-soft)
  */
 healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
@@ -220,7 +224,9 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     { key: 'RATE_LIMIT_KV', group: 'security', note: '로그인/결제 brute-force 방어. 없으면 fail-open(무제한 시도).' },
     { key: 'TURNSTILE_SECRET', group: 'security', note: '봇 차단(CAPTCHA). 없으면 fail-open.' },
     { key: 'DATA_ENCRYPTION_KEY', group: 'security', note: '카카오/외부 토큰 at-rest 암호화. 없으면 평문 저장 위험.' },
-    { key: 'INTERNAL_API_TOKEN', group: 'security', note: '내부 전용 엔드포인트(cron/정산) 보호.' },
+    // ⚠️ 이 그룹 설명은 fail-open 이지만 이 키만은 **fail-closed** 다(소비처 4곳 전부 `!token → 403`).
+    //   미설정은 무방비가 아니라 복구 레버가 잠긴 상태다 — 2026-07-29 조사에서 반대로 읽힌 적이 있다.
+    { key: 'INTERNAL_API_TOKEN', group: 'security', note: '내부 전용 엔드포인트(어드민 복구/정산) 보호. ⚠️ 미설정 시 fail-CLOSED — 무방비가 아니라 복구 경로가 잠긴다.' },
     // 성능 — degraded.
     { key: 'SESSION_KV', group: 'perf', note: '세션/카운트 캐시. 없으면 동작하나 D1 부하.' },
     { key: 'CACHE_KV', group: 'perf', note: '전역 public API 캐시. 없으면 edge 캐시만(region cold 시 D1 hit).' },
@@ -232,6 +238,10 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     { key: 'PUBLIC_R2_URL', group: 'infra', note: 'R2 커스텀 도메인(media.ur-team.com). 없으면 /api/media 워커 서빙(요청당 워커 과금).' },
     { key: 'LIVE_STREAM', group: 'infra', note: '라이브 채팅 Durable Object 바인딩.' },
     { key: 'RATE_LIMITER', group: 'infra', note: '글로벌 rate-limit Durable Object 바인딩(미바인딩 시 in-memory 폴백).' },
+    // 🔔 2026-07-29 (실행 증거 감사): cron 실패 알림의 push 채널. 없으면 실패가 **찾아와야 보이는 것**만
+    //   남는다(어드민 벨 + cron_failures 테이블 — pull). 아무도 안 보면 며칠씩 안 들킨다.
+    //   이게 목록에 없어서 "미설정"이라는 사실 자체가 어디에도 안 떴다 — 관측의 관측 갭.
+    { key: 'DISCORD_WEBHOOK_URL', group: 'infra', note: 'cron 실패/원장 불일치 push 알림. 없으면 실패가 어드민 벨·DB 에만 남아(pull) 무음에 가깝다.' },
     // 소비자 결제 — 도매몰 무관.
     { key: 'TOSS_SECRET_KEY', group: 'payments', note: '소비자 결제 승인/취소.' },
     { key: 'TOSS_CLIENT_KEY', group: 'payments', note: '소비자 결제 위젯.' },
@@ -267,8 +277,8 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     db_ok: dbOk,
     summary: {
       blocking_missing: blockingMissing,   // 비어야 함 — 있으면 로그인 자체가 깨짐
-      security_missing: securityMissing,   // 비어야 안전 — 있으면 fail-open(동작은 함)
-      infra_missing: infraMissing,         // Cloudflare 인프라 바인딩(R2/DO/분석KV) — 있으면 백업/업로드/비용 영향
+      security_missing: securityMissing,   // 비어야 안전 — 동작 영향은 항목마다 다르다(note 를 볼 것)
+      infra_missing: infraMissing,         // Cloudflare 바인딩(R2/DO/KV) + 장애 알림 채널 — 백업/업로드/비용/무음
     },
     groups,
     environment: c.env.ENVIRONMENT ?? 'unknown',
