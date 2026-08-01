@@ -15,7 +15,8 @@ import {
   neverFiredLanes, orphanLaneBeats, createLaneRegistry, buildAgeInfo, type KickFn,
 } from '../../worker-ads/lane-cadence'
 import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
-import { MAINT_PHASES, MAINT_SCHEDULE } from '../../features/marketing/api/influencer-maintenance'
+import { MAINT_PHASES, MAINT_SCHEDULE, MAINT_SLOT_INTENT } from '../../features/marketing/api/influencer-maintenance'
+import { RESCAN_HOUR_UTC } from '../../worker-ads/index'
 
 describe('staleGapMinutes — cron-heartbeat 와 같은 공식', () => {
   it('기대주기 × 2 + 30', () => {
@@ -215,15 +216,43 @@ describe('정비 배정표 — cron 리터럴 ↔ MAINT_SCHEDULE(SSOT)', () => {
     expect(scheduleGapMinutes(MAINT_SCHEDULE)).toBeLessThanOrEqual(phaseGapMinutes(MAINT_SCHEDULE.length))
   })
 
-  it('📏 배분 의도: 할 일이 남은 단계(reclassify·handle)가 끝난 단계(reextract·merge)보다 많이 받는다', () => {
+  /**
+   * 📏 배분 의도 — **선언표(`MAINT_SLOT_INTENT`)와 실제 배정표가 같은가**만 본다.
+   *
+   *   ⚠️ 이전 판은 여기에 `busy=['reclassify','handle']` / `idle=['reextract','merge']` 로
+   *     **2026-07-29 의 라이브 사실을 박아** 뒀다. 08-02 에 그 사실이 뒤집히자(`handle` done:true·
+   *     unfixable 34 / `reextract` 가 지역·카페 백로그를 떠안음) 이 테스트가 *정당한 재배분을 막았다.*
+   *     테스트가 코드 밖 사실을 소유하면 그 사실이 늙는 순간 방해물이 된다 —
+   *     사실은 코드 옆(`MAINT_SLOT_INTENT.why`)에 두고, 여기선 **둘의 일치**만 강제한다.
+   */
+  it('📏 배분 의도: 선언한 슬롯 수와 실제 배정표가 정확히 일치한다', () => {
     const share = (p: string) => MAINT_SCHEDULE.filter(x => x === p).length
-    for (const busy of ['reclassify', 'handle']) {
-      for (const idle of ['reextract', 'merge']) {
-        expect(share(idle), `${idle} 가 ${busy} 보다 많이 받고 있다`).toBeLessThan(share(busy))
-      }
+    for (const p of MAINT_PHASES) {
+      expect(share(p), `${p}: 배정표 ${share(p)} ≠ 선언 ${MAINT_SLOT_INTENT[p].slots} — 둘 중 하나를 고쳐라`)
+        .toBe(MAINT_SLOT_INTENT[p].slots)
+      // 0 으로 만들지 않는다 — done:true 는 '고장'이 아니라 '다 했다'라, 새 행이 생기면 다시 돌아야 한다.
+      expect(MAINT_SLOT_INTENT[p].slots, `${p} 배정 0`).toBeGreaterThan(0)
+      expect(MAINT_SLOT_INTENT[p].why.trim(), `${p} 근거 없음 — 왜 이 개수인지 한 줄이라도 남겨라`).not.toBe('')
     }
-    // 0 으로 만들지 않는다 — 지금 filled:0 은 '고장'이 아니라 '다 했다'라, 새 미추출 행이 생기면 다시 돌아야 한다.
-    for (const p of MAINT_PHASES) expect(share(p), `${p} 배정 0`).toBeGreaterThan(0)
+    const declared = MAINT_PHASES.reduce((s, p) => s + MAINT_SLOT_INTENT[p].slots, 0)
+    expect(declared, '선언 합계가 배정표 길이와 다르다').toBe(MAINT_SCHEDULE.length)
+  })
+
+  /**
+   * 🕘 **양보 시각에 걸린 슬롯은 하루 1회다** — 1슬롯 단계를 거기 두면 간격이 조용히 24h 로 벌어진다.
+   *
+   *   19시(`RESCAN_HOUR_UTC`)는 야간 재보정에 양보한다. 인덱스 `19 % 12 = 7` 의 단계는 그래서
+   *   hour 7 에만 돈다. 그 자리에 슬롯이 하나뿐인 단계를 두면 경보 창(12h)을 깨는데,
+   *   `maxScheduleGapHours(MAINT_SCHEDULE)` 를 **양보 없이** 재면 12 가 나와 통과해 버린다 —
+   *   그래서 별도 검사가 필요하다(실제로 08-02 재배분 첫 판이 `handle` 을 인덱스 7 에 둘 뻔했다).
+   */
+  it('🕘 19시 양보 슬롯(인덱스 7)에는 슬롯이 2개 이상인 단계만 둔다', () => {
+    const idx = RESCAN_HOUR_UTC % MAINT_SCHEDULE.length
+    const phase = MAINT_SCHEDULE[idx]!
+    expect(MAINT_SLOT_INTENT[phase].slots, `${phase} 는 슬롯이 1개인데 양보 시각(인덱스 ${idx})에 있다 — 하루 1회로 떨어진다`)
+      .toBeGreaterThan(1)
+    // 양보를 반영한 실제 최대 간격도 경보 창 안이어야 한다.
+    expect(maxScheduleGapHours(MAINT_SCHEDULE, [RESCAN_HOUR_UTC])).toBeLessThanOrEqual(12)
   })
 })
 
@@ -682,12 +711,16 @@ describe('지역 백필 — 한 곳에서만, 정비 인보케이션에서', () 
   })
 
   it('🔒 정비의 reextract 단계가 스윕을 돈다 — 할 일 0이던 슬롯이 실제 일을 갖는다', () => {
-    expect(maint).toMatch(/out\.region = await sweepRegions\(bdb, budget\)/)
+    // 🅰️ 2026-08-02: 뒤 작업(카페) 몫을 예약하는 3번째 인자가 붙었다. 예약 자체는 `ads-reextract-cursor`
+    //    가 동작으로 검증하고, 여기선 **호출이 살아 있는지**만 본다(인자를 고정하면 조율 때마다 빨간불).
+    expect(maint).toMatch(/out\.region = await sweepRegions\(bdb, budget[^)]*\)/)
     expect(maint).toMatch(/await backfillRegions\(DB, POOL, 500\)/)
   })
 
   it('🔒 예산이 남는 동안 반복한다 — 한 청크로 끝나면 옮긴 의미가 없다', () => {
-    expect(maint).toMatch(/while \(!budget\.exhausted && budget\.left >= 6\)/)
+    // `6` 은 이제 하한(`floor`)의 바닥값이다 — 예약이 0 이면 예전과 같은 조건으로 돈다.
+    expect(maint).toMatch(/const floor = Math\.max\(6,/)
+    expect(maint).toMatch(/while \(!budget\.exhausted && budget\.left >= floor\)/)
   })
 })
 
@@ -705,7 +738,9 @@ describe('카페 회원수 — 배정표를 늘리지 않고 얹는다', () => {
   const maint = readFileSync(join(process.cwd(), 'src/features/marketing/api/influencer-maintenance.ts'), 'utf8')
 
   it('🔒 reextract 단계가 회원수 채우기를 돈다', () => {
-    expect(maint).toMatch(/out\.cafemembers = await fillCafeMemberCounts\(bdb, POOL, budget, \d+\)/)
+    // 📈 2026-08-02: 4번째 인자가 상수 → **남은 예산에서 유도**로 바뀌었다(지역이 끝나면 그 몫을 승계).
+    //    상수를 고정하면 그 개선이 빨간불이 되므로 호출 존재만 잠근다.
+    expect(maint).toMatch(/out\.cafemembers = await fillCafeMemberCounts\(bdb, POOL, budget,[^)]*\)/)
   })
 
   it('🔒 배정표에 별도 슬롯을 만들지 않는다 — 12(24의 약수) 성질을 지킨다', () => {
