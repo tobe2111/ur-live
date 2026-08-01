@@ -262,7 +262,12 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     const ck = `${CURSOR_KEY}_${svc.name}`
     const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(ck).first<{ value: string }>().catch(() => null)
     let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
-    for (let p = 0; p < perService && budget.left > 0; p++) {
+    // 🧾 **부기 몫을 남긴다**(2026-07-30 라이브 실측). 루프를 `budget.left > 0` 까지 돌리면 뒤따르는
+    //   D1 쓰기 — 서비스별 커서 + 마지막 `persist(s)` — 가 예산 밖이 되어 **조용히 사라진다**.
+    //   실측: 00:00 회차가 하트비트는 남겼는데(= 완주) `ads_commerce_stats` 는 전날 14:00 그대로였다.
+    //   그래서 우리가 기다리던 `diag.error` 원문이 매 회차 유실됐다 — 원인 규명이 하루 늦어진 이유다.
+    //   ⚠️ 예약분 = 커서(서비스 수) + 스냅샷 1. 뒤에 쓰기를 추가하면 이 식도 함께 고칠 것.
+    for (let p = 0; p < perService && budget.left > services.length + 1; p++) {
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
