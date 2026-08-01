@@ -5494,18 +5494,17 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 71건 · 최신순 · 이 목록은 자동 생성된다._
-_총 72건 · 최신순 · 이 목록은 자동 생성된다._
-_총 73건 · 최신순 · 이 목록은 자동 생성된다._
+_총 75건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-01**
+- [08-01 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)
 - [08-01 — 레인은 살아 있었다. 죽은 건 관측이다](handoff/2026-08-01-lane-observation-cut.md)
 - [12개 레인이 매시간 죽는데 기록은 `err=Error` 한 단어 (2026-08-01)](handoff/2026-08-01-lane-failure-detail.md)
 **2026-07-30**
 - [예산 루프가 자기 기록을 삼키던 자리 — 하루에 세 번 만난 실패 (2026-07-30)](handoff/2026-07-30-budget-bookkeeping-ratchet.md)
 **2026-07-29**
 - [🧨 2026-07-29 — **도매몰 전면 종료 결정** (유통스타트 id=1 + 메디스타트 id=2 둘 다)](handoff/2026-07-29-wholesale-teardown.md)
-- [🔴 2026-07-29 — 세션 ②: sitemap 몰 격리 가드 (SEO 되돌림 불가 → 최우선)](handoff/2026-07-29-session2-sitemap-mall-guard.md)
+- [🏬 운영자 몰 — 세션 ②③④-a 인계](handoff/2026-07-29-session2-sitemap-mall-guard.md)
 - [스키마 DDL 비용이 어느 예산에도 안 잡혀 있었다 — `partial:true` 조기 사망의 실체](handoff/2026-07-29-schema-cost-uncounted.md)
 - [🎯 2026-07-29 (9차-g) — **파트너풀 17만 건: 병목은 보강 속도가 아니라 수집:보강 비율**](handoff/2026-07-29-partner-pool-enrich-bottleneck.md)
 - [🔴 2026-07-29 — **같은 날 3건을 중복 개발하고 버렸다: 착수 전 `origin/main` 을 보라**](handoff/2026-07-29-origin-main.md)

@@ -32,6 +32,8 @@ import AccordionSection from './product-detail/AccordionSection'
 import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
+import { STORAGE_NOTICE } from '@/shared/pickup'
+import { parseUTCDate } from '@/utils/date'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
 //   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
@@ -41,6 +43,14 @@ import ReferralSection from './product-detail/ReferralSection'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
+
+/** 픽업일 라벨 — UTC-naive 를 로컬로 오해석하면 하루가 밀려 "어제 픽업" 이 된다(반복 사고 클래스). */
+function pickupDayLabel(iso: string): string {
+  const d = parseUTCDate(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const kst = new Date(d.getTime() + 9 * 3600 * 1000)
+  return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
+}
 
 export default function ProductDetailPage() {
   const { t } = useTranslation()
@@ -602,6 +612,25 @@ export default function ProductDetailPage() {
               <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
+          {/* 📦 2026-08-01 세션 ④-a — 픽업 안내. **픽업 공구는 배송이 없다.**
+              여기 없으면 소비자가 배송으로 오해하고, 그 오해는 전부 운영자 문의로 돌아온다.
+              🔴 몰 상품인지로 가르지 않는다 — **픽업 정보가 있으면 보여준다**(데이터가 결정).
+              ⚠️ 보관 고지 문구는 법무 확인 대기(X4c) 임시 표기. */}
+          {product.pickup && (product.pickup.date || product.pickup.place || product.pickup.storage) && (
+            <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A3446] p-3 space-y-1">
+              <p className="text-[12px] font-bold text-gray-900 dark:text-white">📦 픽업 안내</p>
+              {product.pickup.date && (
+                <p className="text-[12px] text-gray-600 dark:text-gray-300">받는 날 · {pickupDayLabel(product.pickup.date)}</p>
+              )}
+              {product.pickup.place && (
+                <p className="text-[12px] text-gray-600 dark:text-gray-300">받는 곳 · {product.pickup.place}</p>
+              )}
+              {product.pickup.storage && (
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">{STORAGE_NOTICE[product.pickup.storage]}</p>
+              )}
+            </div>
+          )}
+
           {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
           <div className="flex items-center justify-between mt-3">
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.quantity', { defaultValue: '수량' })}</span>

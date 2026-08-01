@@ -79,7 +79,10 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
     //   운영자 몰 스탬프 경로가 생기면 이 테스트가 먼저 빨강이 되고, 작성자는
     //   "1·2 가 아니라 운영자 몰 id 를 넣는다"를 확인한 뒤 baseline 에 등록한다.
     const MENTION_BASELINE: Record<string, string> = {
-      // 예) 'src/features/products/api/products.routes.ts': '운영자 몰 스탬프 — sellerMallIdOf 결과 사용(리터럴 아님)'
+      // ✅ 2026-08-01 세션 ③-b — 셀러 상품 생성의 몰 스탬프.
+      //   값의 출처: 서버가 읽은 `sellers.mall_id` → `mallIdForSeller()`(순수, 유닛 테스트됨).
+      //   **리터럴 1·2 를 쓰지 않는다.** body 입력도 받지 않는다(남의 몰에 꽂기 차단 — mall-product-stamp.test).
+      'src/features/seller/api/seller-orders.routes.ts': '운영자 몰 스탬프 — sellers.mall_id → mallIdForSeller() 결과 bind',
     }
     const mentions = files.filter((f) => /\bmall_id\b/.test(read(f)) && !(f in MENTION_BASELINE))
     expect(mentions, 'mall_id 를 쓰는 새 경로 — 1·2 가 아닌 운영자 몰 id 인지 확인 후 baseline 등록').toEqual([])
