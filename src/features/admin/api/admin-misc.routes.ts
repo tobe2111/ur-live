@@ -13,6 +13,7 @@
  * - GET    /settings/commission         — 플랫폼 수수료 설정
  * - PUT    /settings/commission         — 수수료 변경
  * - GET    /audit-logs                  — 감사 로그
+ * - GET    /ledger-integrity            — 원장/잔액 불일치 즉시 조회(읽기 전용)
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -21,6 +22,7 @@ import { executeQuery } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { intParam } from '@/shared/pagination'
+import { findBalanceMismatches, classifyMismatch } from '@/worker/utils/ledger-integrity-checks'
 
 export const adminMiscRoutes = new Hono<{ Bindings: Env }>();
 
@@ -479,6 +481,29 @@ adminMiscRoutes.post('/_run-cron', cors(), rateLimit({ action: 'admin_run_cron',
       error: `허용되지 않은 cron name: ${name}`,
       allowed: ['restaurant-geocode', 'kt-alpha-catalog-sync'],
     }, 400);
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🔎 2026-08-01 (대표 "점검할 거 있나"): 원장 불일치 **즉시 조회**.
+//   cron 은 매일 18 UTC 한 번만 돌고, 지금까지는 그마저도 "몇 건"만 남기고 **누가 어긋났는지 안 남겼다**.
+//   그래서 몇 주째 `Ledger mismatch (4)` 만 쌓이고 조사가 시작조차 못 됐다.
+//   이 엔드포인트는 cron 과 **같은 SQL**(utils/ledger-integrity-checks)로 지금 상태를 보여 준다.
+//   ⚠️ 읽기 전용 — 잔액을 고치지 않는다. 교정은 머니 경로라 사람이 판단해야 한다.
+adminMiscRoutes.get('/ledger-integrity', cors(), async (c) => {
+  try {
+    const limit = intParam(c.req.query('limit'), 50);
+    const { total, rows } = await findBalanceMismatches(c.env.DB, limit);
+    return c.json({
+      success: true,
+      data: {
+        balance_mismatch: {
+          total,
+          rows: rows.map(r => ({ ...r, note: classifyMismatch(r) })),
+        },
+      },
+    });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
