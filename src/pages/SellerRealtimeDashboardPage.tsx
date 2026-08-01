@@ -13,6 +13,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken } from '@/lib/seller-auth'
 import { TrendingUp, Ticket, Users, RefreshCw } from 'lucide-react'
 import { formatNumber, safeNum } from '@/utils/format'
+import { parseUTCDate } from '@/utils/date'
 
 interface RealtimeStats {
   today: { cnt: number; amt: number }
@@ -134,7 +135,7 @@ export default function SellerRealtimeDashboardPage() {
                 <li key={v.id} className="flex items-center justify-between text-xs border-b border-gray-100 pb-1.5 last:border-0 last:pb-0">
                   <span className="text-gray-900 truncate flex-1">{v.product_name}</span>
                   <span className="text-gray-500 font-mono text-[10px] mx-2">{v.code}</span>
-                  <span className="text-gray-400 text-[10px]">{v.used_at ? new Date(v.used_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  <span className="text-gray-400 text-[10px]">{v.used_at ? parseUTCDate(v.used_at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 </li>
               ))}
             </ul>

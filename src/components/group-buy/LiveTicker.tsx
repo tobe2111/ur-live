@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { parseUTCDate } from '@/utils/date'
 
 interface TickerEntry {
   masked_name: string
@@ -32,7 +33,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 }
 
 function timeAgo(iso: string): string {
-  const diff = Math.max(0, Date.now() - new Date(iso).getTime())
+  const diff = Math.max(0, Date.now() - parseUTCDate(iso).getTime())  // UTC-naive(created_at)
   const m = Math.floor(diff / 60000)
   if (m < 1) return '방금'
   if (m < 60) return `${m}분 전`

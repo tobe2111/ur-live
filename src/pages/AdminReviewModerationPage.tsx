@@ -9,6 +9,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Star, Eye, EyeOff, Trash2, MessageSquare, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 interface Review {
   id: number
@@ -178,7 +179,7 @@ export default function AdminReviewModerationPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <Stars rating={review.rating} />
                       <span className="text-xs text-gray-500">{review.user_name}</span>
-                      <span className="text-xs text-gray-400">{new Date(review.created_at).toLocaleDateString('ko-KR')}</span>
+                      <span className="text-xs text-gray-400">{formatKSTDate(review.created_at)}</span>
                       {!review.is_visible && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium">{t('admin.reviewModeration.hiddenBadge', { defaultValue: '숨김' })}</span>
                       )}

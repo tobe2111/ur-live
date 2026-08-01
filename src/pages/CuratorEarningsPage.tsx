@@ -18,6 +18,7 @@ import { cfImage } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
+import { parseUTCDate } from '@/utils/date'
 
 interface WithdrawalInfo {
   lifetime_earnings: number
@@ -551,7 +552,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
                 )}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                {new Date(e.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                {parseUTCDate(e.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}
                 {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
               </p>
             </div>

@@ -20,6 +20,7 @@ import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
+import { parseUTCDate } from '@/utils/date'
 
 interface Analytics {
   total: number
@@ -156,7 +157,7 @@ export default function SellerFollowersPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-gray-900">{f.masked_name}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{new Date(f.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{parseUTCDate(f.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
               ))}

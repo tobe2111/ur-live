@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SharePrompt from '@/components/SharePrompt'
+import { formatKSTDate } from '@/utils/date'
 
 function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
   const { t } = useTranslation()
@@ -285,7 +286,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatKSTDate(r.created_at)}</span>
               </div>
               {r.content && <p className="text-xs text-gray-900 dark:text-white leading-relaxed">{r.content}</p>}
               {/* 🏁 2026-06-12 (전수조사 🟡): 셀러 답글 — 셀러는 달 수 있는데 구매자에겐 비노출이던 갭 */}

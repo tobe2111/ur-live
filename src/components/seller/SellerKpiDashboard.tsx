@@ -18,6 +18,7 @@ import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { formatNumber } from '@/utils/format'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { parseUTCDate } from '@/utils/date'
 
 interface KpiData {
   followers: { total: number; recent_7d: number }
@@ -47,7 +48,7 @@ export default function SellerKpiDashboard() {
       // 이번 달 GMV (active + achieved 의 진행 합계 × 95% 셀러 수령)
       const monthlyEst = vouchers.reduce((sum: number, p: { price?: number; group_buy_current?: number; updated_at?: string }) => {
         if (!p.updated_at) return sum
-        const updated = new Date(p.updated_at)
+        const updated = parseUTCDate(p.updated_at)
         const now = new Date()
         if (updated.getFullYear() === now.getFullYear() && updated.getMonth() === now.getMonth()) {
           return sum + ((p.price ?? 0) * (p.group_buy_current ?? 0))

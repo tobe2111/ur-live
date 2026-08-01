@@ -11,6 +11,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { parseUTCDate } from '@/utils/date'
 
 // 📝 제목/요약 등 일반 텍스트에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
 const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')
@@ -187,7 +188,7 @@ export default function BlogDetailPage() {
           <div className="flex items-center gap-3 mt-4 pb-6 text-sm text-gray-400 dark:text-gray-500">
             <span>{post.author}</span>
             <span>·</span>
-            <span>{new Date(post.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span>{parseUTCDate(post.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             <span>·</span>
             <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{readMin}분 읽기</span>
           </div>

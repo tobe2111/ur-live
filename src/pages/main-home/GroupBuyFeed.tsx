@@ -14,6 +14,7 @@ import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
+import { parseUTCDate } from '@/utils/date'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -185,14 +186,14 @@ export default function GroupBuyFeed({
       }
       case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
       case 'deadline': return a.sort((x, y) => {
-        const ax = x.expires_at ? new Date(x.expires_at).getTime() : Infinity
-        const bx = y.expires_at ? new Date(y.expires_at).getTime() : Infinity
+        const ax = x.expires_at ? parseUTCDate(x.expires_at).getTime() : Infinity
+        const bx = y.expires_at ? parseUTCDate(y.expires_at).getTime() : Infinity
         return ax - bx
       })
       case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
       case 'newest': return a.sort((x, y) => {
-        const ax = x.created_at ? new Date(x.created_at).getTime() : 0
-        const bx = y.created_at ? new Date(y.created_at).getTime() : 0
+        const ax = x.created_at ? parseUTCDate(x.created_at).getTime() : 0
+        const bx = y.created_at ? parseUTCDate(y.created_at).getTime() : 0
         return bx - ax
       })
       default: return a

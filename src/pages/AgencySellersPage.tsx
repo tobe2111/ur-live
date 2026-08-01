@@ -9,6 +9,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Search, TrendingUp, ShoppingBag, Play, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 interface Seller {
   id: number
@@ -315,7 +316,7 @@ export default function AgencySellersPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>가입일</span>
-                      <span className="font-medium text-gray-700">{new Date(selected.created_at).toLocaleDateString('ko-KR')}</span>
+                      <span className="font-medium text-gray-700">{formatKSTDate(selected.created_at)}</span>
                     </div>
                   </div>
                 </div>

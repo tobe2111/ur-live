@@ -11,6 +11,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
 import { TicketPercent, RefreshCw, Store, FileDown, Check, X, ImageIcon } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface Campaign {
   id: number; slug: string; name: string; status: string; budget_total: number
@@ -234,7 +235,7 @@ export default function AdminDistrictCouponsPage() {
                             <a href={`/api/media/${r.image_key}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-bold text-blue-600 underline shrink-0"><ImageIcon className="w-3.5 h-3.5" />사진</a>
                             <div className="flex-1 min-w-[180px]">
                               <p className="text-[12.5px] font-semibold text-gray-900">{formatWon(r.amount)} · {r.store_name || '매장?'} <span className="font-mono text-[10px] text-gray-400">{r.card_approval_no}</span></p>
-                              <p className="text-[10.5px] text-gray-500">{r.user_name || r.user_id} · 기승인 {r.user_approved_count ?? 0}건 · {new Date(r.created_at).toLocaleString('ko-KR')}</p>
+                              <p className="text-[10.5px] text-gray-500">{r.user_name || r.user_id} · 기승인 {r.user_approved_count ?? 0}건 · {formatKST(r.created_at)}</p>
                             </div>
                             <button type="button" onClick={() => void decide(c.id, r.id, 'approve')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 text-emerald-600 text-[11px] font-bold hover:bg-emerald-50"><Check className="w-3 h-3" />승인·지급</button>
                             <button type="button" onClick={() => void decide(c.id, r.id, 'reject')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-red-200 text-red-600 text-[11px] font-bold hover:bg-red-50"><X className="w-3 h-3" />반려</button>

@@ -9,6 +9,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Youtube, Loader2, CheckCircle, Clock, XCircle, Users } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
 
@@ -307,7 +308,7 @@ export default function SellerYoutubeGrowthPage() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${style.color}`}>
                         <Icon className="w-3 h-3" /> {t(`seller.${style.label}`)}
                       </span>
-                      <span className="text-xs text-gray-400">{new Date(req.requested_at).toLocaleDateString('ko-KR')}</span>
+                      <span className="text-xs text-gray-400">{formatKSTDate(req.requested_at)}</span>
                     </div>
                     <p className="text-sm text-gray-900 truncate">{req.channel_url}</p>
                     <div className="flex items-center gap-3 mt-1">

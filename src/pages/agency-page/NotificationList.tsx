@@ -3,6 +3,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { parseUTCDate } from '@/utils/date'
 
 interface NotificationRow {
   title: string
@@ -25,7 +26,7 @@ export default function NotificationList() {
           <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 shrink-0" />
           <div>
             <p className="text-gray-700 font-medium">{n.title}</p>
-            <p className="text-gray-400">{new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p className="text-gray-400">{parseUTCDate(n.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
         </div>
       ))}

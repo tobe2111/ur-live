@@ -17,6 +17,7 @@ import TrackingModal from '@/components/shipping/TrackingModal'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { useMyReturns, useApplyReturnTracking, type ReturnRecord } from '@/hooks/queries/useMyReturns'
+import { formatKSTDate } from '@/utils/date'
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   requested: { label: '요청', color: 'bg-gray-100 dark:bg-[#1A2334] text-gray-700 dark:text-gray-200' },
@@ -76,7 +77,7 @@ export default function MyReturnsPage() {
                   <article key={r.id} className="bg-gray-50 dark:bg-[#1A2334] rounded-xl p-4 border border-gray-100 dark:border-[#2A3446]">
                     <header className="flex items-center justify-between mb-2">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${status.color}`}>{status.label}</span>
-                      <time className="text-[11px] text-gray-400">{new Date(r.requested_at).toLocaleDateString('ko-KR')}</time>
+                      <time className="text-[11px] text-gray-400">{formatKSTDate(r.requested_at)}</time>
                     </header>
 
                     <p className="text-sm font-medium mb-1">주문 {r.order_number}</p>

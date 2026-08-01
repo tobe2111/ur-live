@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { parseUTCDate } from '@/utils/date'
 
 /**
  * Parse voucher code from QR scanned content.
@@ -178,7 +179,7 @@ export default function VoucherVerifyPage() {
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>
               </div>
               {voucher.expires_at && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">{t('voucher.expiresAt')}: {new Date(voucher.expires_at).toLocaleDateString(locale)}{t('voucher.until')}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">{t('voucher.expiresAt')}: {parseUTCDate(voucher.expires_at).toLocaleDateString(locale, { timeZone: 'Asia/Seoul' })}{t('voucher.until')}</p>
               )}
             </div>
 

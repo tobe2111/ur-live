@@ -11,6 +11,7 @@ import { Activity, AlertTriangle, RefreshCw, CheckCircle2, MessageSquare, Loader
 import { toast } from '@/hooks/useToast'
 // 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat (1인 운영 관측 보강)
 import OpsStatusTab from './admin-system-monitoring/OpsStatusTab'
+import { formatKST } from '@/utils/date'
 
 interface CronFailure {
   id: number
@@ -435,7 +436,7 @@ export default function AdminSystemMonitoringPage() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-700 break-words">{f.error_message}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">{new Date(f.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{formatKST(f.created_at)}</p>
                     </div>
                     {!f.resolved && (
                       <button onClick={() => resolveCron(f.id)} disabled={acting === f.id}
@@ -466,7 +467,7 @@ export default function AdminSystemMonitoringPage() {
                       </div>
                       <p className="text-xs text-gray-600 line-clamp-2">{f.body}</p>
                       <p className="text-[10px] text-gray-400 mt-1">
-                        {f.user_type}#{f.user_id} · 구독 {f.subscription_count} · {new Date(f.created_at).toLocaleString('ko-KR')}
+                        {f.user_type}#{f.user_id} · 구독 {f.subscription_count} · {formatKST(f.created_at)}
                       </p>
                     </div>
                     {!f.resolved && (
@@ -491,7 +492,7 @@ export default function AdminSystemMonitoringPage() {
                       </div>
                       <p className="text-xs text-gray-600 truncate">{f.recipient}</p>
                       {f.error && <p className="text-[10px] text-red-500 mt-1">에러: {f.error}</p>}
-                      <p className="text-[10px] text-gray-400 mt-1">{new Date(f.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{formatKST(f.created_at)}</p>
                     </div>
                     {!f.resolved && (
                       <button onClick={() => retryDelivery('email', f.id)} disabled={acting === f.id}
@@ -527,7 +528,7 @@ export default function AdminSystemMonitoringPage() {
                         <p className="text-xs text-gray-600 line-clamp-2">{f.message}</p>
                         {f.error && <p className="text-[10px] text-red-500 mt-1">에러: {f.error}</p>}
                         <p className="text-[10px] text-gray-400 mt-1">
-                          생성: {new Date(f.created_at).toLocaleString('ko-KR')} · 다음 시도: {new Date(f.next_retry_at).toLocaleString('ko-KR')}
+                          생성: {formatKST(f.created_at)} · 다음 시도: {new Date(f.next_retry_at).toLocaleString('ko-KR')}
                         </p>
                       </div>
                       {!f.resolved && (

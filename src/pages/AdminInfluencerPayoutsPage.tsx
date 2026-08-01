@@ -16,6 +16,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, RefreshCw } from 'lucide-react'
+import { parseUTCDate } from '@/utils/date'
 
 interface PayoutRow {
   influencer_id: string
@@ -128,7 +129,7 @@ export default function AdminInfluencerPayoutsPage() {
       switch (sortBy) {
         case 'available_asc': return a.available_amount - b.available_amount
         case 'paid_desc': return b.total_paid_out - a.total_paid_out
-        case 'updated_desc': return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        case 'updated_desc': return parseUTCDate(b.updated_at).getTime() - parseUTCDate(a.updated_at).getTime()
         case 'available_desc':
         default: return b.available_amount - a.available_amount
       }
