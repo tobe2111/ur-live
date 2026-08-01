@@ -105,6 +105,7 @@ import { giftsRoutes } from '../features/gifts/api/gifts.routes';
 import { fundingRoutes } from '../features/funding/api/funding.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
+import { sellerGbRoutes } from '../features/seller/api/seller-gb.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
 import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
@@ -1602,6 +1603,8 @@ app.route('/api/sellers', sellersRouter);
 
 // Feature seller management (see /api/seller routing note above — non-overlapping sub-routes)
 app.route('/api/seller', sellerManagementRoutes);
+// 🎟️ 2026-08-01 세션 ③-b — 운영자가 자기 상품 공구를 직접 연다(소유권 검증 + 어드민과 동일 검증 SSOT).
+app.route('/api/seller/gb', sellerGbRoutes);
 // 2026-05-05: 광고 슬롯 입찰 (/ad-slots, /ad-slots/my-bids, /ad-slots/:id/bid)
 app.route('/api/seller', sellerAdSlotsRoutes);
 // 🛡️ 2026-04-28 TD-006 (split): /register, /register-from-user, /my-seller-status, /switch-to-*

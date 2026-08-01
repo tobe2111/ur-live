@@ -14,6 +14,7 @@ import { getSellerId } from '@/lib/seller-auth'
 import {
   Package,
   Plus,
+  Zap,
   Edit,
   Trash2,
   Eye,
@@ -169,6 +170,18 @@ export default function SellerProductsPage() {
               >
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 <span>{t('seller.bulkUpload')}</span>
+              </Button>
+              {/* ⚡ 2026-08-01 세션 ③-b — 3분 등록 진입점.
+                  🔴 이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
+                     (라우트만 있고 링크가 0인 상태 — 이 레포가 반복해 만난 "조용한 부재" 클래스).
+                     내부-링크 가드는 링크→라우트 방향만 보므로 **이 방향은 잡아주지 않는다.**
+                  풀 등록(옆 버튼)은 그대로 둔다 — 배송·옵션이 필요한 상품은 그쪽이 맞다. */}
+              <Button
+                onClick={() => navigate('/seller/products/quick')}
+                className="h-9 bg-gray-900 px-3 text-xs text-white hover:bg-gray-800"
+              >
+                <Zap className="mr-1.5 h-3.5 w-3.5" />
+                <span>빠른 공구</span>
               </Button>
               <Button
                 onClick={() => navigate('/seller/products/new')}

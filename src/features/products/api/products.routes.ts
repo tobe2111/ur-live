@@ -31,6 +31,8 @@ import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../t
 import { seedDemoReviews } from '@/worker/utils/demo-review-generator';
 import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories';
 import type { Env } from '@/worker/types/env';
+import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
+import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
 const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
@@ -514,7 +516,19 @@ productsRoutes.get('/:id', cors(), async (c) => {
         throw new Error('Product not found');
       }
       const service = new ProductService(DB);
-      return await service.getProduct(id);
+      const p = await service.getProduct(id);
+      // 📦 2026-08-01 세션 ④-a — 픽업 정보 동봉(additive). 픽업 공구는 **배송이 없어서**
+      //   상세에 언제·어디서 받는지가 없으면 소비자가 배송으로 오해한다.
+      //   ⚠️ 몰 상품인지로 가르지 않는다 — **픽업 정보가 있으면 보여준다**(데이터가 결정).
+      //      그래야 본진 픽업 상품에도 그대로 적용되고, 몰 결합이 안 생긴다.
+      //   비어 있으면 `pickup: null` → 화면이 블록 자체를 안 그린다(빈 껍데기 금지).
+      //   Cache-Control / CDN-Cache-Control 분리·TTL 전부 불변 — 응답 **본문**에 필드 1개 추가만.
+      if (p) {
+        const metaMap = await getSupplyMeta(DB, [id]).catch(() => null);
+        const pk = parsePickup(metaMap?.get(id) ?? null);
+        (p as unknown as Record<string, unknown>).pickup = isEmptyPickup(pk) ? null : pk;
+      }
+      return p;
     }, { ttl: 60, staleWhileRevalidate: 30 });
 
     return c.json({

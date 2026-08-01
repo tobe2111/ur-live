@@ -939,6 +939,35 @@ async function handlePaymentFailed(
   await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));
 
+  // 🔔 2026-08-01 [UNLOCK] (대표 AskUserQuestion 승인 "지금 수정" — 세션 ③-c, 체크리스트 C5):
+  //   결제 **실패** 시 구매자 앱 알림함이 **0건**이었다. 위 `sendOrderNotification` 은 이름과 달리
+  //   **Discord 임베드 전용**(운영 채널)이고, 어드민 벨(아래)은 대표만 본다 — 소비자는 브라우저를
+  //   닫았거나 앱을 벗어났으면 **자기 결제가 왜 실패했는지 영영 모른다**(비동기 실패는 화면이 없다).
+  //   2026-07-01 에 `handlePaymentCancelled` 에 넣은 buyer 알림과 **정확히 대칭**인 누락이다.
+  //   ⚠️ Toss 시그니처/금액검증/updateStatus(내부 CAS)/재고 복원 게이트/어드민 알림 전부 byte-불변
+  //      — notifyUser side-effect 1블록 추가만. 실패해도 `.catch` 로 삼켜 결제 흐름에 영향 0.
+  try {
+    const { notifyUser } = await import('../../lib/notifications');
+    // 이 핸들러는 `DB` 를 인자로 받지 않는다 — 취소 핸들러와 달리 `env.DB` 를 쓴다.
+    const orow = await env.DB.prepare(
+      'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
+    ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null);
+    if (orow?.user_id) {
+      // 실패 사유는 그대로 옮긴다 — "실패했습니다"만 보내면 소비자가 할 수 있는 게 없다.
+      const reason = String(data.failureMessage ?? '').trim();
+      await notifyUser(
+        env.DB,
+        String(orow.user_id),
+        'payment_failed',
+        '결제가 완료되지 않았습니다',
+        `주문 ${orderNumber} 결제가 실패했습니다.${reason ? ` (${reason})` : ''} 장바구니에서 다시 시도할 수 있습니다.`,
+        '/my-orders',
+      ).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[WEBHOOK] payment_failed buyer notification failed:', String(e).slice(0, 200));
+  }
+
   // 🛡️ 2026-04-28: 어드민에 결제 실패 대시보드 알림
   createDashboardNotification(
     env.DB,
