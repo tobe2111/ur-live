@@ -127,8 +127,12 @@ async function dispatchRoundChain(
   let error: string | undefined
   try { await local() } catch (err) { error = `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 200)}` }
 
+  // 🤝 `sync=1`(수동 실행) 이면 **릴레이를 걸지 않는다** — 호출자가 응답을 받는 즉시 이 인보케이션이
+  //   끝나므로 그 릴레이는 태어나자마자 취소된다. 없는 자식을 낳느라 fetch 한 번을 버리는 셈이고,
+  //   `chained: true` 로 찍혀 **관측까지 오염**시킨다(실제론 0라운드인데 이어진 것처럼 보인다).
+  const sync = c.req.query('sync') === '1'
   let chained = false
-  if (!error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
+  if (!sync && !error && depth + 1 < rounds && env.SELF?.fetch && c.executionCtx?.waitUntil) {
     chained = true
     // 다음 라운드는 **새 인보케이션**(새 예산·새 서브리퀘스트 한도). 응답을 막지 않게 waitUntil 로 건다.
     c.executionCtx.waitUntil(
@@ -219,14 +223,38 @@ enrichRoutes.post('/__ads/enrich-influencer-driver', async (c) => {
    */
   const sliceRaw = c.req.query('slice')
   const K = resolveEnrichFanout(env.ADS_INFLUENCER_ENRICH_FANOUT)
-  if (sliceRaw === undefined && K > 1 && env.SELF?.fetch && c.executionCtx?.waitUntil) {
-    for (let i = 0; i < K; i++) {
-      c.executionCtx.waitUntil(
-        env.SELF.fetch(new Request(`https://ur-ads/__ads/enrich-influencer-driver?slice=${i}&k=${K}`, { method: 'POST' }))
-          .then(() => undefined).catch(() => undefined),
-      )
+  /**
+   * 🤝 **`sync=1` — 자식을 `await` 한다**(2026-08-02, 라이브 실측으로 되돌린 회귀).
+   *
+   *   ## 무슨 일이 있었나
+   *   08-02 에 수동 버튼을 드라이버로 돌렸더니(#930) 버튼이 **0건을 처리하게 됐다.**
+   *   실측: 킥 응답 `{fanout:4}` 즉시 반환 → 30초 뒤 `nb_unmeasured` **변화 0**.
+   *   그 전(단발 경로)엔 한 번에 22명이 줄었다. 즉 버튼이 *더 많이*가 아니라 *아무것도* 안 하게 됐다.
+   *
+   *   ## 왜 — 이 파일이 이미 적어 둔 규칙을 내가 어겼다
+   *   위 `dispatchRoundChain` docblock: **"서비스 바인딩 피호출자는 호출자보다 오래 살 수 없다."**
+   *   cron 경로는 부모 scheduled 인보케이션이 다른 레인을 kick 하느라 살아 있어 자식이 돌 시간이 있지만,
+   *   **어드민 버튼은 응답을 받는 순간 메인 워커 요청이 끝난다** → ur-ads 의 `waitUntil` 자식이 통째로 취소.
+   *   같은 코드가 호출자에 따라 다르게 죽는다 — cron 에선 depth 3 까지 갔는데 버튼은 0 이었던 이유다.
+   *
+   *   ⇒ 수동 경로는 **기다린다.** 자식 K개가 각자 한 라운드를 돌고 돌아올 때까지(실측 라운드 ~7초)
+   *     응답을 붙잡는다. 버튼 한 번 = K라운드(옛 단발의 K배)이고, 무엇보다 **실제로 돈다.**
+   *   ⚠️ 자식에게도 `sync=1` 을 넘겨 **릴레이를 걸지 않게** 한다 — 어차피 취소될 자식이라 fetch 낭비다.
+   *   ⚠️ cron 경로(`sync` 없음)는 **동작 불변** — 거긴 waitUntil 이 맞다(부모가 살아 있다).
+   */
+  const syncFanout = c.req.query('sync') === '1'
+  // ⚠️ `typeof … === 'function'` — Hono 타입상 `executionCtx.waitUntil` 은 '항상 정의됨'이라
+  //   truthy 검사를 `||` 안에 두면 TS2774 가 난다(런타임엔 미제공 환경이 있어 검사 자체는 필요하다).
+  const canDefer = typeof c.executionCtx?.waitUntil === 'function'
+  if (sliceRaw === undefined && K > 1 && env.SELF?.fetch && (syncFanout || canDefer)) {
+    const kids = Array.from({ length: K }, (_, i) => env.SELF!.fetch(
+      new Request(`https://ur-ads/__ads/enrich-influencer-driver?slice=${i}&k=${K}${syncFanout ? '&sync=1' : ''}`, { method: 'POST' })))
+    if (syncFanout) {
+      const slices = await Promise.all(kids.map(p => p.then(r => r.json()).catch(() => null)))
+      return c.json({ ok: true, fanout: K, sync: true, slices })
     }
     // 자식들이 각자 자기 하트비트/스냅샷을 남긴다 — 이 응답은 '띄웠다'만 뜻한다.
+    for (const p of kids) c.executionCtx!.waitUntil(p.then(() => undefined).catch(() => undefined))
     return c.json({ ok: true, fanout: K, planned: rounds })
   }
   const kRaw = parseInt(c.req.query('k') || '', 10)
