@@ -32,6 +32,7 @@ import AlertsGrid from './seller-page/AlertsGrid'
 import PrimaryActions from './seller-page/PrimaryActions'
 import PublicPagePreview from './seller-page/PublicPagePreview'
 import type { DashboardStats, DailyStats, TopProduct, Order, LiveStream } from './seller-page/types'
+import SellerSupportContact from '@/components/seller/SellerSupportContact'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / LazyChart / OnboardingChecklist / RealtimeOrdersPanel
 //   를 ./seller-page/ 디렉토리로 추출. STATUS_CONFIG_BASE 는 RealtimeOrdersPanel 내부로 이동.
@@ -713,6 +714,9 @@ export default function SellerPage() {
               )}
             </div>
           )}
+
+        {/* ☎️ 2026-08-01 O9 — 운영자 문의 경로(X8 확정 ⓒ). 미설정이면 자기가 안 그린다. */}
+        <SellerSupportContact />
 
       </div>
     </SellerLayout>

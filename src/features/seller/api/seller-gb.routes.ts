@@ -130,4 +130,28 @@ app.put('/:id', async (c) => {
   }
 })
 
+/**
+ * ── GET /support-contact — ☎️ 운영자 문의처 (체크리스트 O9 · X8 확정 ⓒ) ──────────────
+ *
+ * 대표 확정은 *"파일럿은 대표 연락처"* 인데 **표시할 곳이 없어** O9 가 🔴 로 남아 있었다.
+ * 🔴 값은 코드가 아니라 `platform_settings.operator_support_contact` 에 있다 —
+ *   개인정보이고, 운영자가 늘면 **카톡 채널로 값만 바꿔** 승격한다(코드 변경 0).
+ * 미설정이면 `null` → 화면이 **아무것도 안 그린다**(빈 껍데기 금지).
+ *
+ * ⚠️ 셀러 인증 뒤에 둔다 — 연락처가 공개 크롤에 노출되면 스팸 표적이 된다.
+ */
+app.get('/support-contact', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const row = await c.env.DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'operator_support_contact'"
+    ).first<{ value: string }>().catch(() => null)
+    const contact = String(row?.value ?? '').trim().slice(0, 200)
+    return c.json({ success: true, contact: contact || null })
+  } catch (err) {
+    return safeError(c, err, '문의처를 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
 export { app as sellerGbRoutes }
