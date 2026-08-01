@@ -19,7 +19,7 @@ import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortli
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch } from './beat-batch'
-import { laneUrl, readBeatParams, writeSelfBeat } from './self-beat'
+import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { healthRoutes } from './health.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
@@ -39,21 +39,8 @@ app.use('*', async (c, next) => {
   try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
 })
 
-// 🫀 **레인이 자기 하트비트를 쓴다** — 부모가 응답을 기다리다 먼저 회수되면 기록이 사라지던 것
-//   (실측: `reclassify` 자기 스탬프 16:01 ↔ 하트비트 13:01 · `collect-commerce` 기록 아예 없음).
-//   부모가 `_beat`/`_gap` 을 넘긴 호출에서만 동작한다 — 수동 트리거는 무영향(근거는 self-beat.ts).
-app.use('/__ads/*', async (c, next) => {
-  const t0 = Date.now()
-  const p = readBeatParams(c.req.url)
-  if (!p) return next()
-  let ok = true
-  let thrown: unknown
-  try { await next() } catch (err) { ok = false; thrown = err; throw err } finally {
-    // 응답 직전에 기록 — 여기까지 왔다는 것은 **레인이 일을 끝냈다**는 뜻이다.
-    //   💥 던진 에러를 **함께** 넘긴다 — 부모는 자식이 왜 죽었는지 구조적으로 볼 수 없다(self-beat.ts 참조).
-    await writeSelfBeat(c.env, p.beat, ok && (c.res?.status ?? 500) < 500, Date.now() - t0, p.gap, thrown)
-  }
-})
+// 🫀 레인이 자기 하트비트를 쓴다 — 미들웨어 본체와 근거는 `self-beat.ts`(그 모듈의 관심사다).
+app.use('/__ads/*', selfBeatMiddleware())
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
 //   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
