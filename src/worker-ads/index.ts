@@ -430,7 +430,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
   // 👥 국민연금 규모 검증 — 일 1회(hourUTC===16 = KST 01시). 게이트 ADS_NPS_ENABLED(기본 OFF).
   if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED === 'true') {
-    gates.dailyAt(16, '/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 100) })
+    // ⏱️ 100 → 40 **되돌림** (2026-08-02 01:00 KST 실측 — CPU 한도로 26.6초에 사망).
+    //   40→100 은 07-28(#768)이고 이 레인의 **마지막 성공은 07-27** 이다. 즉 올린 뒤로 한 번도
+    //   성공한 적이 없다. "쿼터 여유" 는 맞았지만 병목이 쿼터가 아니라 CPU 였다.
+    gates.dailyAt(16, '/__ads/collect-nps', async () => { const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich'); return runNpsWorkplaceEnrich(env, 40) })
   }
   // 📮 이메일 재검증 스윕 — 일 1회(hourUTC===17 = KST 02시). 기존 저장 이메일의 죽은 도메인(반송 확정) 정리.
   if (env.ADS_COMPANY_COLLECT_ENABLED === 'true') {
@@ -454,8 +457,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     gates.dailyAt(20, '/__ads/collect-localdata-chain', async () => { const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect'); return runLocalDataCollect(env) })
   }
   // 🎓 학원(NEIS) · 🏥 병원(심평원) 매시간 소량 수집 — 각자 게이트(기본 OFF), 커서 순환으로 전국을 며칠에 커버.
+  // ⏱️ 6 → 3 페이지 **되돌림** (2026-08-02 01:00 KST 실측). 이 레인은 `Worker exceeded CPU time limit`
+  //   으로 26.0초에 죽고 있었다. 6페이지로 올린 것이 07-29 인데 그 뒤로 성공 기록이 없다 —
+  //   슬라이스를 올린 날 죽었고 회복이 없었다. 3 은 이 함수의 원래 기본값이다.
+  //   ⚠️ 다시 올리려면 하트비트의 `ms` 를 먼저 볼 것. 26,000 근처면 그게 천장이다.
   if ((env as unknown as { ADS_NEIS_ENABLED?: string }).ADS_NEIS_ENABLED === 'true') {
-    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 6) })
+    kick('/__ads/collect-neis', async () => { const { runNeisAcademyCollect } = await import('@/features/marketing/api/neis-academy-collect'); return runNeisAcademyCollect(env, 3) })
   }
   if ((env as unknown as { ADS_HIRA_ENABLED?: string }).ADS_HIRA_ENABLED === 'true') {
     kick('/__ads/collect-hira', async () => { const { runHiraHospitalCollect } = await import('@/features/marketing/api/hira-hospital-collect'); return runHiraHospitalCollect(env, 6) })

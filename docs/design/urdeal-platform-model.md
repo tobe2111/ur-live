@@ -42,6 +42,22 @@
 | **🏭 도매몰** (유통스타트) | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 제조사·판매사·도매 어드민 | `utongstart.com` | `features/supply/**`, `pages/wholesale*`, `pages/supplier-dashboard` |
 | **📣 유어애즈** (마케팅) | 광고·자동입찰·부정클릭방지·통합실적 | 광고주(매장/셀러)·운영 | `/ads` | `features/marketing`, urads-* 문서 |
 
+### 🏬 운영자 몰 (2026-08-01 신설 — 유어딜 공구 **안**의 새 표면)
+
+**별도 서비스가 아니다.** 유어딜 공구의 **소비자 결제 레일 위에** 얹힌 *운영자별 상점 표면*이다
+(도매몰의 **예치금** 레일과 무관 — 그 격리는 `mall-no-deposit.test.ts` 가 값으로 고정한다).
+
+| 축 | 내용 |
+|---|---|
+| **주소** | `urdeal.kr/{슬러그}` — 경로 기반. 호스트가 몰에 매핑되면 **호스트 단독 결정**(하이재킹 차단) |
+| **개방 조건** | `wholesale_malls.consumer_path = 1` **인 몰만**. 기본 0 = fail-closed ⇒ **도매몰은 안 열린다** |
+| **돈** | 소비자 카드결제(`orders` + Toss). **유어딜 5% 불변**, 나머지는 운영자 |
+| **경계** | 본진에 **입구를 만들지 않는다**(대표 확정 ⑤) — 진입은 운영자가 뿌린 링크뿐 |
+| **코드** | `shared/mall/**` · `features/mall/**` · `worker/utils/mall-{consumer,ssr-meta}.ts` · `pages/MallHomePage` |
+
+> 🔴 **본진↔몰 판별자**: 본진 = `COALESCE(mall_id,1) = 1` / 몰 = `mall_id = :id`(신규 ≥ 3).
+> `mall_id IS NULL` 은 **쓰지 않는다** — `DEFAULT 1` 이라 기존 행이 전부 1 이고 NULL 은 0건이다.
+
 > 이 문서의 **주 대상은 유어딜 공구(소비자)**. 도매몰·유어애즈는 인접 서비스로 §12에서 관계만 정리(각자 별도 SSOT 문서 보유).
 
 ---
@@ -101,9 +117,18 @@
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
 - **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
+- 🏬 **운영자 몰 (2026-08-01)**: **`/:mallSlug`** — 몰 홈. ⚠️ **catch-all 바로 앞**이 이 라우트의 자리다
+  (1-세그먼트를 전부 매치하므로 뒤에 두는 라우트는 조용히 죽는다). 몰이 아니면 `NotFoundPage` 를 렌더 —
+  **기존 404 동작 불변**. 슬러그는 실제 라우트에서 뽑은 예약어(`shared/mall/slug.ts`)와 겹칠 수 없다(양방향 가드)
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
+- ⚡ **2026-08-01 운영자 몰 동선**: `/seller/products/quick`(**3분 등록** — 사진·가격·마감만, 모바일 한 손) ·
+  `/seller/returns`(**반품 큐** — 승인·거절만, **환불=돈은 어드민**) · 셀러 홈의 **문의처 블록**
+  (`platform_settings.operator_support_contact` — 미설정이면 미렌더)
+- 🎟️ **공구 설정 API**: `PUT /api/seller/gb/:id` — 운영자가 **자기 상품** 공구가·마감을 직접 연다.
+  소유권은 쿼리에서(`seller_id = ?`), 검증은 **어드민 조종석과 같은 함수**(`validateGbSession`) —
+  갈리면 *"셀러 경로로만 통과하는 값"*(공구가 > 상시가)이 생긴다
 - 🏪 **2026-07-19 대표 확정 — 셀러 대시보드 = 순수 '매장 운영 콘솔'** (`SELLER_STORE_ONLY_MODE`, 가역):
   온라인 상품 관리(`/seller/products`)·도매 소싱(`/seller/supply`) nav 숨김(전 셀러 타입). **상품(물건)
   판매 표면 = 링크샵(`/u/{handle}`) 일원화** — nav 최상단 '내 링크샵' 진입. 대시보드 핵심 동선 =

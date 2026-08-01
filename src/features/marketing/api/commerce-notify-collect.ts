@@ -178,10 +178,36 @@ export function describeNonJson(raw: string, max = 200): string {
   return text.slice(0, max)
 }
 
+/**
+ * 📄 페이지당 건수. **사다리 실측(2026-08-02 01:12 KST)으로 500 이 정상임을 확인**했다 —
+ *   rows 1·50·100·200·500 전부 `HTTP 200 · JSON · resultCode "00"`. 즉 이 값은 범인이 아니다.
+ *   (며칠간 화면에 떠 있던 "비JSON 응답" 은 낡은 진단이었고, 진짜 원인은 CPU 한도였다.)
+ *   그래도 상수로 빼 둔다 — 다음에 의심될 때 코드 수정 없이 흔들 수 있어야 한다.
+ */
+const PAGE_ROWS = 500
+
+/**
+ * ⏱️ **이 인보케이션에서 더 해도 되는가** — CPU 한도에 닿기 전에 스스로 멈추기 위한 마감선.
+ *
+ *   2026-08-02 01:00 KST 실측: 이 레인이 `Worker exceeded CPU time limit` 로 죽었다(벽시계 26.0초).
+ *   같은 틱에서 학원·국민연금도 26.0~26.6초에 같은 사유로 죽었다 — 셋 다 "인보케이션당 N단위" 구조다.
+ *
+ *   왜 이게 치명적인가: 죽으면 루프 **뒤의 커서 저장이 실행되지 않는다.** 다음 회차가 같은 페이지를
+ *   또 훑고 또 죽는다 ⇒ **영원히 전진 0**. `total_saved` 가 얼어붙어 있던 진짜 이유가 이것이다
+ *   (수집이 '느린' 게 아니라 '전진하지 않는' 상태였다).
+ *
+ *   ⇒ 마감선에서 **끊고 커서를 남긴다.** 한 회차가 덜 훑어도, 매 회차가 전진하면 결국 다 훑는다.
+ *   ⚠️ 벽시계로 CPU 를 대신 재는 것은 근사다(둘은 다르다). 죽는 지점(26초)의 절반 이하로 잡아
+ *     외부 응답이 느린 회차에도 여유를 둔다. 정확한 CPU 계측은 워커 런타임이 안 준다.
+ */
+const RUN_DEADLINE_MS = 12_000
+/** 한 회차에 다루는 최대 레코드 수 — 마감선의 짝(응답이 빨라 마감선에 안 걸려도 파싱량이 CPU 를 먹는다). */
+const MAX_RECORDS_PER_RUN = 1_500
+
 async function fetchCommercePage(base: string, op: string, key: string, page: number, budget: { left: number }): Promise<{ items: RawCommerce[]; count: number; msg?: string }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
-  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=500&type=json&_type=json&resultType=json`
+  const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=${PAGE_ROWS}&type=json&_type=json&resultType=json`
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) }).catch(() => null)
   if (!res || !res.ok) return { items: [], count: 0, msg: res ? `HTTP ${res.status}` : '네트워크 오류' }
   const raw = await res.text().catch(() => '')
@@ -206,6 +232,10 @@ export interface CommerceStats {
   upserted?: number
   /** 🪦 이번 회차에서 **폐업으로 판정돼 접촉 풀에서 빠진** 건수(2026-07-29). 저장은 되고 active=0 만 된다. */
   closed?: number
+  /** ⏱️ 왜 일찍 끊었나 — 없으면 할 일을 다 한 것이다. 이게 매번 'deadline' 이면 슬라이스를 더 줄여야 한다. */
+  stopped_by?: 'deadline' | 'records'
+  /** 이번 회차 벽시계(ms). 26,000 근처로 오르면 다시 CPU 한도에 닿는다는 뜻이다. */
+  elapsed_ms?: number
   diag: {
     configured: boolean; error?: string; sample?: unknown
     /** 📊 원본 필드가 **실제로 몇 % 채워져 오는가** + 형식 예시(가려짐). 추가 요청 0(받아온 응답을 셀 뿐). */
@@ -253,12 +283,16 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
 
+  const startedAt = Date.now()
+  let stoppedBy: 'deadline' | 'records' | undefined
   let found = 0, saved = 0, upserted = 0, closed = 0, sample: unknown, sampleHasEmail = false, lastPage = 0
   // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
   //   다를 이유도 없다). 이 값이 "필드 이름을 추측으로 쓰던" 반복 실패를 끝내는 유일한 근거다.
   let coverage: FieldCoverage[] = []
   const msgs: string[] = []
   for (const svc of services) {
+    // 첫 서비스가 마감선을 다 썼으면 두 번째는 시작하지 않는다(시작하면 그 회차가 통째로 죽는다).
+    if (stoppedBy === 'deadline') break
     const ck = `${CURSOR_KEY}_${svc.name}`
     const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(ck).first<{ value: string }>().catch(() => null)
     let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
@@ -268,6 +302,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     //   그래서 우리가 기다리던 `diag.error` 원문이 매 회차 유실됐다 — 원인 규명이 하루 늦어진 이유다.
     //   ⚠️ 예약분 = 커서(서비스 수) + 스냅샷 1. 뒤에 쓰기를 추가하면 이 식도 함께 고칠 것.
     for (let p = 0; p < perService && budget.left > services.length + 1; p++) {
+      // ⏱️ CPU 한도에 닿기 전에 끊는다 — 끊어야 아래 커서 저장이 실행되고, 그래야 다음 회차가 전진한다.
+      if (Date.now() - startedAt > RUN_DEADLINE_MS) { stoppedBy = 'deadline'; break }
+      if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
@@ -286,7 +323,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, stopped_by: stoppedBy, elapsed_ms: Date.now() - startedAt, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
   await persist(s)
   return s
 }

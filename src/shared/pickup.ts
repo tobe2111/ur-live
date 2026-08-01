@@ -107,3 +107,56 @@ export function validatePickup(p: PickupInfo, deadlineIso?: string | null): { ok
   if (p.place && p.place.length > 200) return { ok: false, error: '픽업 장소는 200자 이하여야 합니다' }
   return { ok: true }
 }
+
+/**
+ * 🔴 **반품 신청 자격** — 픽업 주문은 `DELIVERED` 에 도달하지 않는다 (세션 ④-a 후속, 체크리스트 C8)
+ *
+ * 기존 게이트는 **배송 전제**다: `status === 'DELIVERED'` + 배송완료 7일 이내.
+ * 픽업 주문은 결제(`PAID`/`DONE`) 후 **매장에서 QR 로 소각**될 뿐 `DELIVERED` 를 거치지 않는다.
+ * ⇒ 소비자가 **반품을 올릴 입구가 아예 없다.** 문제가 생겨도 말할 방법이 없다는 뜻이다.
+ *
+ * ## 🔴 이 함수는 **접수 자격**만 정한다 — 환불액이 아니다
+ * 얼마를 돌려줄지는 **세션 ④-b**(보관구분 정책)다. 여기서 여는 건 *"요청을 넣을 수 있는가"* 뿐이고,
+ * 받아줄지·얼마를 줄지는 운영자/어드민이 판단한다. **돈은 이 함수 밖에서 움직인다.**
+ *
+ * 기준일: 픽업일이 있으면 **픽업일**, 없으면 결제일. 배송 주문의 `delivered_at` 자리다.
+ */
+export interface ReturnEligibilityInput {
+  /** 주문 상태(대문자 정규화 전이어도 됨). */
+  status: string
+  /** 픽업 주문인가(주문 안에 픽업 상품이 있는가). */
+  isPickup: boolean
+  /** 기준일 ISO — 배송이면 `delivered_at`, 픽업이면 픽업일(없으면 결제일). */
+  basisIso?: string | null
+  /** 지금(ms). 테스트가 고정하기 위해 주입받는다. */
+  nowMs: number
+  /** 허용 일수(기본 7). */
+  windowDays?: number
+}
+
+export function canRequestReturn(i: ReturnEligibilityInput): { ok: true } | { ok: false; error: string } {
+  const st = String(i.status || '').toUpperCase()
+  const days = i.windowDays ?? 7
+
+  if (i.isPickup) {
+    // 픽업: 결제가 끝난 주문이면 접수한다. 아직 안 찾아갔어도 문제 제기는 할 수 있어야 한다.
+    if (st !== 'PAID' && st !== 'DONE' && st !== 'DELIVERED') {
+      return { ok: false, error: '결제가 완료된 주문만 반품 신청이 가능합니다' }
+    }
+  } else if (st !== 'DELIVERED') {
+    return { ok: false, error: '배송완료된 주문만 반품 신청이 가능합니다' }
+  }
+
+  // 기준일이 없으면 **막지 않는다** — 기준을 모른다고 소비자 권리를 닫지 않는다(fail-open on window).
+  //   ⚠️ 상태 게이트(위)는 fail-closed 다. 여는 것과 닫는 것의 방향이 다르다는 점에 주의.
+  if (i.basisIso) {
+    const t = Date.parse(i.basisIso)
+    if (!Number.isNaN(t)) {
+      const diffDays = (i.nowMs - t) / 86400_000
+      if (diffDays > days) {
+        return { ok: false, error: `${i.isPickup ? '픽업일' : '배송완료'} 후 ${days}일 이내에만 반품 신청이 가능합니다` }
+      }
+    }
+  }
+  return { ok: true }
+}
