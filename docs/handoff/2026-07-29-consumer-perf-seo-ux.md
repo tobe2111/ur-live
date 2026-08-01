@@ -157,3 +157,62 @@ noindex·jsonLd·ogImage 를 이미 지원한다. 체인이 또 늘면 같은 �
 - **"`/s/*` 가 soft-404"** — 아니다. 내가 존재하지 않는 엔드포인트(`/api/sellers/by-username/…`)로 찔러 404 를
   봤다. 올바른 경로(`/api/sellers/:id/public`)로는 **전부 200**이고 실제 페이지다. 문제는 "죽은 URL" 이 아니라
   **내용이 비어 있고 QA 계정** 이라는 것이다(그래서 콘텐츠 게이트로 고쳤다).
+
+---
+
+## 🔧 2026-08-01 후속 — 어드민 전수 수리 (대표 지시 묶음)
+
+대표 지시: `/admin/errors`·`/admin/system-monitoring` 자가수리 · `/admin/reviews` 매장명+스크롤 대안 ·
+`/admin/social` 등록방법+Anthropic 없이 초안 · `/admin/policy` 최신화 · `/admin/commission-settings` 설명 ·
+구글 AI 검색/파비콘.
+
+### 🔴 이번에 배운 것 — **선언을 실측보다 믿으면 반대로 고친다**
+
+`/admin/reviews` 500 은 2026-07-01 에 이미 "수리"된 이력이 있는데도 **한 달째 500** 이었다.
+원인: 그 수리가 `repair-schema` 의 `CREATE TABLE ... is_hidden` **선언**을 실제 스키마로 믿고
+`is_visible → is_hidden` 으로 바꿔 놨다. **라이브에는 `is_hidden` 이 없다.**
+- 실측 방법(다음에도 그대로 쓸 것): `GET /api/admin/reviews/product/2847` 이 `SELECT *` 라
+  **라이브 컬럼 목록이 그대로 나온다**. 1분이면 끝난다.
+- 실제 컬럼: content·created_at·id·images·is_generated·is_sponsored·**is_visible**·order_id·
+  product_id·rating·selected_option·seller_reply·seller_reply_at·updated_at·user_id·user_name
+- 테이블을 실제로 만드는 곳은 `features/reviews/api/reviews.routes.ts ensureTable` — **그쪽이 정본**.
+- 수리하면서 **repair-schema 선언 자체를 현실에 맞췄다**. 안 고치면 다음 사람이 또 반대로 간다.
+  (부수효과: `check-sql-column-exists` 가 이제 `is_hidden` 참조를 잡을 수 있게 됐다 — 선언이 맞아야 가드가 산다.)
+
+### ✅ 고친 것 (커밋 `4db72ff`, `04d8e84`)
+
+| 대상 | 문제(실측) | 수리 |
+|---|---|---|
+| `/admin/reviews` | stats·list 둘 다 500 | 가시성 컬럼 6곳 is_visible 로 되돌림 + repair-schema 선언 교정 |
+| `/admin/reviews` | 상품 `<select>` 에 이름만, 서버 100건에서 **잘림** | `ProductPicker` — 매장명 검색(서버 `restaurant_name`)·카테고리 칩·"리뷰 없는 것만"·카드에 매장명/리뷰현황 |
+| 구글 지구본 | **`/favicon.ico` 404** + 48배수 아이콘 없음 + `_routes.json` exclude 미등재 | ico(16/32/48) 신설 + 48/96/144 PNG + 선언 + exclude. 가드 `favicon-serving.test.ts`(24) |
+| `/admin/policy` | policy.ts 8그룹 중 **4그룹 + 커미션 3키가 화면에 없음** | 행을 `admin-policy/policy-rows.ts` 로 모으고 `policy-dashboard-sync.test.ts`(13)가 전 키 대조 |
+| `/admin/social` | 키 없으면 초안 **503 으로 아예 못 만듦** | `social-compose.ts` 조합형 결정론 작성기 + 전수 가드(11, 216조합) |
+| `/admin/commission-settings` | 무슨 값인지 화면이 안 말함 | 설명 카드(무엇을·누가 읽는지·여기가 아닌 것·재원 원칙 관계). **머니 무변경** |
+
+### 📌 대표 액션이 필요한 것 (코드로 못 고침)
+
+1. **구글 AI 개요에 안 뜨는 진짜 이유** — `robots.txt` 의 **Cloudflare Managed 블록**(레포 아님)이
+   `User-agent: Google-Extended → Disallow: /` + `Content-Signal: ai-train=no` 를 넣고 있다.
+   `GPTBot`·`ClaudeBot`·`CCBot`·`Bytespider`·`meta-externalagent`·`Applebot-Extended`·`Amazonbot` 도 전면 차단.
+   → **Cloudflare 대시보드 → AI Crawl Control / Managed robots.txt** 에서 조정해야 한다.
+   Organization JSON-LD 는 이미 홈에 정상 출력 중이라 **데이터 문제가 아니다**.
+2. **`/admin/system-monitoring` 실패 12건 + stale 15건이 전부 `ads:*`** 이고 원인은 하나 —
+   **`Worker exceeded CPU time limit`**(ur-ads). 소비자/도매 cron 은 전부 정상.
+   `wrangler-ads.toml` 에 `[limits]` 가 없고 무료 플랜이면 CPU 10ms 라 무거운 작업은 구조적으로 못 넘긴다.
+   → 플랜 전환 또는 **작업당 배치 축소**(별도 작업 — 12개 잡을 손대야 해서 이번 범위 밖).
+3. **`/admin/errors`**: 47건 중 36건이 `[boot-stuck]`. 그중 상당수 URL 이 `/group-buy/99999999?__cb=…` —
+   **직전 세션의 내 SEO 진단(Playwright 인터셉트)이 만든 것**이다. 진짜 사용자 신호와 섞여 있다.
+   ⚠️ **미해결 수수께끼**: 12초 워치독에서만 나오는 `entry-stalled` 인데 `t=257~751ms` 인 건이 다수다.
+   `performance.now()` 는 문서마다 리셋되므로 설명이 안 된다 — **추측하지 말고** 다음 세션이
+   beacon 에 `navigation type`(navigate/reload/back_forward/prerender)을 추가해 판별할 것.
+   또 `frontend_errors.user_agent` 는 **저장은 되는데 `/api/_errors/recent` 가 안 돌려준다**(triage 불가).
+4. `Ledger mismatch (4): user_points_balance_mismatch: 4` — 머니 경로. 4명의 딜 잔액이 원장과 불일치.
+   cron 이 매일 감지만 하고 있다. 별도 단독 세션 대상(머니 룰).
+
+### ▶️ 배포 후 판정 (추가분)
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' https://urdeal.kr/favicon.ico          # → 200 (이전 404)
+curl -sS "https://live.ur-team.com/api/admin/reviews/stats" -H "Authorization: Bearer $TOK" -H "User-Agent: $UA"   # → success:true
+```
