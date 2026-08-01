@@ -5494,12 +5494,13 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 78건 · 최신순 · 이 목록은 자동 생성된다._
+_총 79건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 **2026-08-01**
 - [08-01~02 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)
+- [인계 — 운영자 몰 ④-b 미수령 환불 · 도달불가 라우트 래칫 (2026-08-01)](handoff/2026-08-01-operator-mall-pickup-refund.md)
 - [08-01 — 레인은 살아 있었다. 죽은 건 관측이다](handoff/2026-08-01-lane-observation-cut.md)
 - [12개 레인이 매시간 죽는데 기록은 `err=Error` 한 단어 (2026-08-01)](handoff/2026-08-01-lane-failure-detail.md)
 - [2026-08-01 — 소비자 실측(성능·SEO·UX) → 어드민 수리 → **딜 원장 전수조사**](handoff/2026-08-01-consumer-seo-admin-ledger.md)
