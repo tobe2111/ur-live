@@ -37,6 +37,22 @@ export function readRaw(relPath: string): string {
 }
 
 /**
+ * ## ③ **심볼이 다른 이유로도 존재한다**
+ * `expect(code).toContain('parseUTCDate')` 는 **import 문**이 남아 있으면 통과한다 —
+ * 실제 호출을 지워도 초록이다(되돌려-검증에서 두 번 겪었다).
+ * `usesSymbol` 은 **import 라인을 빼고** 본다.
+ * ⚠️ 그래도 *"쓰긴 쓰는데 엉뚱한 데서"* 는 못 막는다 — 그건 `sliceFrom` 으로 범위를 좁혀야 한다.
+ */
+export function stripImports(code: string): string {
+  return code.replace(/^\s*import\s[\s\S]*?(?:from\s+['"][^'"]+['"];?|['"][^'"]+['"];?)\s*$/gm, '')
+}
+
+/** import 를 뺀 코드에서 심볼이 **실제로 쓰이는가**. */
+export function usesSymbol(code: string, name: string): boolean {
+  return new RegExp(`\\b${name}\\s*[(<.[]`).test(stripImports(code))
+}
+
+/**
  * `anchor` 부터 시작하는 구간을 잘라낸다 — **남의 핸들러를 검사하지 않기 위해.**
  * @param end 선택. 주면 anchor 이후 첫 `end` 까지, 없으면 `maxLen` 만큼.
  */

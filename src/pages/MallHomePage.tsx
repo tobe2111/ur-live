@@ -19,6 +19,7 @@ import { POWERED_BY, PAYMENT_TRUST_NOTE } from '@/shared/mall/branding'
 import { cfImage } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
+import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 
 interface MallInfo {
   id: number; slug: string; name: string; initial: string
@@ -28,6 +29,8 @@ interface MallItem {
   product_id: number; name: string; image_url: string | null
   list_price: number; gb_price: number; discount_pct: number
   deadline: string | null; stock: number | null
+  /** 📦 픽업 — 없으면 `null`(빈 껍데기를 그리지 않는다). */
+  pickup: { date: string | null; place: string | null; storage: StorageKind | null } | null
 }
 
 /** 남은 시간 — "2일 3시간" / "5시간 12분" / "곧 마감". 분 단위 미만은 굳이 안 센다(재렌더 비용). */
@@ -42,6 +45,14 @@ function remainLabel(iso: string | null): string | null {
   const hr = Math.floor(min / 60)
   if (hr < 24) return `${hr}시간 ${min % 60}분 남음`
   return `${Math.floor(hr / 24)}일 ${hr % 24}시간 남음`
+}
+
+/** 픽업일 라벨 — "8월 10일". UTC-naive 오해석을 피해 `parseUTCDate` 를 쓴다(이 레포 반복 사고 클래스). */
+function pickupDayLabel(iso: string): string {
+  const d = parseUTCDate(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const kst = new Date(d.getTime() + 9 * 3600 * 1000)
+  return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
 }
 
 export default function MallHomePage() {
@@ -138,6 +149,18 @@ export default function MallHomePage() {
                         <span className="text-xs text-gray-400 line-through">{formatWon(it.list_price)}</span>
                       )}
                     </p>
+                    {/* 📦 픽업 — **언제 받는지**가 카드에서 보여야 "배송인가?" 문의가 안 쏟아진다.
+                        보관구분은 배지로 짧게(고지 전문은 상세에서). */}
+                    {it.pickup && (it.pickup.date || it.pickup.storage) && (
+                      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
+                        {it.pickup.date && <span>📦 {pickupDayLabel(it.pickup.date)} 픽업</span>}
+                        {it.pickup.storage && (
+                          <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
+                            {STORAGE_LABEL[it.pickup.storage]}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </Link>
                 </li>
               )
@@ -145,6 +168,20 @@ export default function MallHomePage() {
           </ul>
         )}
       </main>
+
+      {/* 📦 보관 고지 — **카드마다 반복하지 않고** 목록에 한 번. 카드가 시끄러워지면 마감·가격이 묻힌다.
+          ⚠️ 문구는 법무 확인 대기(체크리스트 X4c) 임시 표기다. */}
+      {(() => {
+        const kinds = Array.from(new Set(items.map((i) => i.pickup?.storage).filter(Boolean))) as StorageKind[]
+        if (kinds.length === 0) return null
+        return (
+          <aside className="px-4 pb-6 ur-content-wide mx-auto space-y-1">
+            {kinds.map((k) => (
+              <p key={k} className="text-[11px] text-gray-500 dark:text-gray-400">· {STORAGE_NOTICE[k]}</p>
+            ))}
+          </aside>
+        )
+      })()}
 
       {/* ⑤ 본진 입구 금지 — 링크가 아니라 **문자열**이다(클릭 안 됨). */}
       <footer className="px-4 pb-10 text-center">

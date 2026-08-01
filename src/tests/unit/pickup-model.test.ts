@@ -87,3 +87,47 @@ describe('🔴 픽업일은 공구 마감 이후여야 한다', () => {
     expect(validatePickup({ date: '내일', place: null, storage: null }).ok).toBe(false)
   })
 })
+
+/**
+ * 📦 **소비자 표시 배선** 〔세션 ④-a, 체크리스트 C3〕
+ *
+ * 픽업 공구는 **배송이 없다.** 카드에 *언제 받는지*가 안 보이면 소비자는 배송으로 오해하고,
+ * 그 오해는 **전부 운영자에게 문의로 돌아온다**(P0 운영자는 대표 연락처 하나뿐이다 — X8).
+ *
+ * ⚠️ 못 막는 것: 실제 렌더 · 상품 **상세 페이지** 표시(아직 미완 — 공용 소비자 페이지라 범위가 넓다).
+ */
+import { readCode, sliceFrom, usesSymbol } from '../helpers/source-text'
+
+describe('📦 소비자 표시 (C3)', () => {
+  const api = readCode('src/features/mall/api/mall-public.routes.ts')
+  const page = readCode('src/pages/MallHomePage.tsx')
+
+  it('API 가 픽업을 함께 내려준다', () => {
+    expect(api).toContain('parsePickup')
+    expect(api).toMatch(/pickup:/)
+  })
+
+  it('🔴 비어 있으면 `null` — 화면이 빈 껍데기를 그리지 않는다', () => {
+    // 기획 확정: "미수령 고지 블록 **미렌더**". 빈 박스를 남기면 그 확정을 어기는 것이다.
+    // ⚠️ `toContain` 으로 쓰면 **import 문**만으로 통과한다(되돌려-검증에서 실제로 그랬다).
+    expect(usesSymbol(api, 'isEmptyPickup'), 'import 만 있고 실제로 안 쓰고 있다').toBe(true)
+  })
+
+  it('카드가 픽업일과 보관구분을 보여준다', () => {
+    expect(page).toContain('STORAGE_LABEL')
+    expect(page).toContain('픽업')
+  })
+
+  it('🔴 보관 고지는 **카드마다 반복하지 않는다** — 마감·가격이 묻힌다', () => {
+    // 고지 전문(STORAGE_NOTICE)은 목록 하단에 한 번. 카드 안에서 쓰면 위반.
+    const cardBlock = sliceFrom(page, 'items.map((it)', '</ul>', 3000)
+    expect(cardBlock).not.toContain('STORAGE_NOTICE')
+    expect(page).toContain('STORAGE_NOTICE')   // 어딘가엔 있어야 한다
+  })
+
+  it('픽업일 표기가 UTC-naive 를 로컬로 오해석하지 않는다', () => {
+    // 이 레포의 반복 사고 클래스 — 하루가 밀리면 "어제 픽업"이 된다.
+    // ⚠️ 여기도 import 만으로 통과하던 것을 `usesSymbol` 로 바꿨다.
+    expect(usesSymbol(page, 'parseUTCDate'), 'import 만 있고 new Date() 를 쓰고 있다').toBe(true)
+  })
+})
