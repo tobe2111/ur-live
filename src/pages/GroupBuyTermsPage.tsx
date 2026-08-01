@@ -7,12 +7,16 @@
 import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+
+// 메타 SSOT — 서버(비-JS 크롤러)와 같은 표를 읽는다.
+const SEO_META = CONSUMER_SURFACE_SEO['/terms/group-buy']
 
 export default function GroupBuyTermsPage() {
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
-      <SEO title="공동구매 약관 - 유어딜" description="유어딜 이용권 공동구매 / voucher 사용 / 환불 약관" url="/terms/group-buy" />
+      <SEO title={SEO_META.title} description={SEO_META.description} url="/terms/group-buy" />
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>

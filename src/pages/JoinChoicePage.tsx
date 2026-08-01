@@ -7,6 +7,7 @@
 
 import { Link } from 'react-router-dom'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const CHOICES = [
   {
@@ -28,7 +29,7 @@ const CHOICES = [
 export default function JoinChoicePage() {
   return (
     <>
-      <SEO title="시작하기 - 유어딜" description="동네 핫플, 친구랑 공동구매. 매장 가입 또는 로그인으로 시작하세요." url="/join" />
+      <SEO title={CONSUMER_SURFACE_SEO['/join'].title} description={CONSUMER_SURFACE_SEO['/join'].description} url="/join" />
       <div className="min-h-screen bg-[#0F151D] text-white px-4 py-10">
         <div className="ur-content-narrow mx-auto">
           <h1 className="text-2xl font-bold mb-1">동네 핫플, 친구랑 공동구매</h1>

@@ -17,6 +17,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { Receipt, RefreshCw, Eye, Users } from 'lucide-react'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 // ─── 응답 shape (seller-promo-spend.routes.ts GET / 와 1:1) ──────────────────
 interface PromoSpendRow {
@@ -281,7 +282,7 @@ export default function SellerPromoSpendPage() {
                         <p className="mt-0.5 text-[11px] text-gray-500">
                           {recipientLabel(row.referrer_name, row.referrer_handle, row.referrer_id)}
                           {' · '}
-                          {new Date(row.created_at).toLocaleDateString('ko-KR')}
+                          {formatKSTDate(row.created_at)}
                         </p>
                       </div>
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusCls(row.status)}`}>

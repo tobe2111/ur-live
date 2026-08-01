@@ -12,6 +12,7 @@ import { hasConsumerSession } from '@/utils/auth'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { parseUTCDate } from '@/utils/date'
 
 /** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
@@ -128,7 +129,7 @@ export default function ReferralPage() {
   //   공구를 유치(제안)한 사람이 작성한 소개글 + 식당 정보 + 참여 현황을 보여줌.
   if (!group && community) {
     const cgPrice = community.confirmed_price ?? community.proposed_price
-    const cgExpired = !!community.expires_at && new Date(community.expires_at) < new Date()
+    const cgExpired = !!community.expires_at && parseUTCDate(community.expires_at) < new Date()
     const cgFull = community.current_count >= community.target_count
     const cgJoinable = (community.status === 'proposed' || community.status === 'confirmed') && !cgExpired && !cgFull
     const cgProgress = community.target_count > 0
@@ -234,7 +235,7 @@ export default function ReferralPage() {
   }
 
   const isAchieved = group.status === 'achieved'
-  const isExpired = group.status === 'expired' || new Date(group.expires_at) < new Date()
+  const isExpired = group.status === 'expired' || parseUTCDate(group.expires_at) < new Date()
   const isOpen = group.status === 'open' && !isExpired
   const alreadyJoined = !!userId && group.members.some(m => m.user_name)
     && group.members.some(m => {
@@ -402,7 +403,7 @@ export default function ReferralPage() {
                 <span className="text-[12px] text-gray-900 dark:text-white font-medium">{m.user_name}</span>
                 {i === 0 && <span className="rounded-full px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold">방장</span>}
                 <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
-                  {m.joined_at ? new Date(m.joined_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : ''}
+                  {m.joined_at ? parseUTCDate(m.joined_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }) : ''}
                 </span>
               </div>
             ))}

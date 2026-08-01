@@ -239,6 +239,11 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       } : {}),
     }
     const jsonLd = escapeScript(JSON.stringify([product]))
-    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+    // 🔎 2026-07-29 (소비자 SEO 실측): **교환권이 두 URL 로 갈려 한쪽만 noindex 였다.**
+    //   같은 상품 id 2192 가 `/vouchers/2192` 에선 `noindex, follow`(2026-07-07 결정)인데
+    //   `/products/2192` 에선 `index, follow` 로 나갔고, sitemap 이 후자를 500건 제출하고 있었다
+    //   — 즉 교환권 색인 제외 결정이 다른 URL 로 **우회**되고 있었다(실측 확인).
+    //   deal_only 상품은 어느 경로로 오든 색인하지 않는다(DETAIL 슬롯의 교환권 처리와 대칭).
+    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: isDeal, jsonLd }
   } catch { return null }
 }

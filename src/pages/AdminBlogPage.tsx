@@ -18,6 +18,7 @@ import {
   Plus, Edit2, Trash2, Eye, EyeOff,
   Loader2, ArrowLeft, Save, Send, FileText, ExternalLink, Sparkles
 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface BlogPost {
   id: number
@@ -269,8 +270,8 @@ export default function AdminBlogPage() {
                   <p className="text-sm font-semibold text-gray-900 truncate">{post.title}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {post.author} · {post.published_at
-                      ? new Date(post.published_at).toLocaleDateString('ko-KR')
-                      : new Date(post.created_at).toLocaleDateString('ko-KR')}
+                      ? formatKSTDate(post.published_at)
+                      : formatKSTDate(post.created_at)}
                     {' · '}👁 {(post.view_count ?? 0).toLocaleString()}
                   </p>
                 </div>

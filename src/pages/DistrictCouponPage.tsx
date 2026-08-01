@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { formatWon } from '@/utils/format'
 import { ArrowLeft, Camera, MapPin, Receipt, Store, TicketPercent, Wallet } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface Tier { min_amount: number; face_value: number }
 interface Campaign { id: number; slug: string; name: string; description?: string | null; status: string; reward_tiers: Tier[]; coupon_expires_days: number }
@@ -283,7 +284,7 @@ export default function DistrictCouponPage() {
                   <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatWon(cp.face_value)}
                     {cp.source === 'online' && <span className="ml-1.5 align-middle rounded bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 text-[9.5px] font-semibold text-blue-600 dark:text-blue-300">결제 자동지급</span>}
                   </p>
-                  <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{cp.campaign_name} · {new Date(cp.expires_at).toLocaleDateString('ko-KR')}까지</p>
+                  <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{cp.campaign_name} · {formatKSTDate(cp.expires_at)}까지</p>
                 </div>
                 <span className="shrink-0 rounded-full bg-gray-900 dark:bg-white px-3 py-1.5 text-[11px] font-bold text-white dark:text-gray-900">사용하기</span>
               </button>
@@ -299,7 +300,7 @@ export default function DistrictCouponPage() {
                 <div key={r.id} className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-[#2A3446] bg-white dark:bg-[#0F151D] px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white">{formatWon(r.amount)} <span className="font-normal text-gray-400 dark:text-gray-500">· {r.store_name || '매장'}</span></p>
-                    <p className="text-[10.5px] text-gray-400 dark:text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}{r.status === 'rejected' && r.reject_reason ? ` · ${r.reject_reason}` : ''}</p>
+                    <p className="text-[10.5px] text-gray-400 dark:text-gray-500">{formatKSTDate(r.created_at)}{r.status === 'rejected' && r.reject_reason ? ` · ${r.reject_reason}` : ''}</p>
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${st.cls}`}>{st.label}</span>
                 </div>

@@ -10,6 +10,7 @@ import { Plus, Trash2, Play, ExternalLink, Search, Edit2, X, Check, Youtube } fr
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 interface Stream {
   id: number; title: string; description?: string; youtube_video_id?: string
@@ -327,7 +328,7 @@ export default function AdminReplayPage() {
                   <p className="text-sm font-bold text-gray-900 line-clamp-1">{s.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{s.seller_name || `셀러 #${s.seller_id}`}</p>
                   <p className="text-[10px] text-gray-400 mt-1">
-                    {new Date(s.created_at).toLocaleDateString('ko-KR')}
+                    {formatKSTDate(s.created_at)}
                   </p>
 
                   <div className="flex gap-1.5 mt-3">

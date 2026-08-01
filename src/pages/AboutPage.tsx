@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 /**
  * 공개 서비스 소개 페이지
@@ -48,11 +49,8 @@ export default function AboutPage() {
 
   return (
     <>
-      <SEO
-        title="서비스 소개 - 유어딜"
-        description="우리 동네 맛집·뷰티·숙소를 그룹 특가로. 함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급. 소상공인·크리에이터·소비자 모두에게 최고의 가치를."
-        url="/about"
-      />
+      {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
+      <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
 
       <div className="bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white min-h-screen">
         {/* ========== Hero ========== */}

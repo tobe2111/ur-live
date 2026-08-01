@@ -7,6 +7,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Star, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { formatKSTDate } from '@/utils/date'
 
 const REVIEWS_KEY = ['seller', 'reviews'] as const
 
@@ -57,7 +58,7 @@ export default function SellerReviewsPage() {
                       <span className="text-xs text-gray-500 ml-1">{r.user_name || t('seller.reviews.customer')}</span>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                  <span className="text-xs text-gray-400">{formatKSTDate(r.created_at)}</span>
                 </div>
                 <p className="text-sm text-gray-700">{r.content}</p>
                 {r.seller_reply ? (

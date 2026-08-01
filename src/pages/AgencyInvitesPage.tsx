@@ -7,6 +7,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { QrCode, Copy, Plus, Trash2, ExternalLink, Users } from 'lucide-react'
+import { parseUTCDate } from '@/utils/date'
 
 interface InviteCode {
   code: string
@@ -160,7 +161,7 @@ export default function AgencyInvitesPage() {
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {it.label || '메모 없음'} · <Users className="inline w-3 h-3" /> {it.used_count}/{it.max_uses} ·
-                        만료: {new Date(it.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        만료: {parseUTCDate(it.expires_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">

@@ -5,13 +5,21 @@
 import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import type { TermsDoc } from './terms-types'
 
 export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string }) {
   const navigate = useNavigate()
+  // 메타는 서버(비-JS 크롤러)와 같은 표에서 읽는다 — 두 벌이면 갈라진다.
+  // 표에 없는 약관(도매 등 향후 추가분)은 기존처럼 문서에서 파생.
+  const seo = CONSUMER_SURFACE_SEO[url]
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-20">
-      <SEO title={`${doc.title} - 유어딜`} description={`${doc.title} (시행 ${doc.effective} · v${doc.version})`} url={url} />
+      <SEO
+        title={seo?.title ?? doc.title}
+        description={seo?.description ?? `${doc.title} (시행 ${doc.effective} · v${doc.version})`}
+        url={url}
+      />
 
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">

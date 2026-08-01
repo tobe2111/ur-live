@@ -77,6 +77,17 @@ if (_scanned.length < 200) {
   console.error(`❌ utc-date: 스캔 대상이 ${_scanned.length}개뿐 — 검사가 헛돌고 있다(경로/필터 확인).`)
   process.exit(1)
 }
+/**
+ * 🕘 2026-08-01 (대표 "한국 시간으로 해줘"): **규칙 C — 간접 파싱.**
+ * 규칙 A/B 는 `new Date(x.created_at)` 처럼 **호출 지점에 컬럼명이 보이는** 경우만 잡는다. 그런데 실제
+ * 사고는 한 겹 감싼 헬퍼에서 났다: `timeLabel(n.created_at)` → 내부에서 `new Date(iso)`.
+ * 컬럼명이 파라미터로 가려져 가드가 통과시켰고, 알림 목록의 "방금"이 **"9시간 전"** 으로 보이고 있었다
+ * (같은 클래스 7건: 알림·딜 히스토리·라이브 티커·정산·이용권 지도·에이전시 매칭).
+ * → 파라미터 이름이 시간 문자열 관례(iso/dateStr/…)인 `new Date(param)` 도 위반으로 본다.
+ * ⚠️ 못 잡는 것: 파라미터 이름이 관례를 벗어나면(예: `x`) 여전히 통과한다 — 이름 규칙에 기대는 검사다.
+ */
+const RE_INDIRECT = /new Date\(\s*(iso|isoStr|dateStr|dateString|timestamp|ts|when|createdAt|updatedAt)\s*\)/g
+
 for (const abs of _scanned) {
   const rel = path.relative(ROOT, abs).split(path.sep).join('/')
   if (EXEMPT_FILES.has(rel) || EXEMPT_DIRS.some(d => rel.startsWith(d))) continue
@@ -84,6 +95,17 @@ for (const abs of _scanned) {
   const lines = src.split('\n')
   const isClient = CLIENT_PREFIXES.some(p => rel.startsWith(p))
   let m
+  if (isClient) {
+    RE_INDIRECT.lastIndex = 0
+    let mi
+    while ((mi = RE_INDIRECT.exec(src))) {
+      const lineNo = src.slice(0, mi.index).split('\n').length
+      const line = lines[lineNo - 1] ?? ''
+      const prev = lines[lineNo - 2] ?? ''
+      if (line.includes('utc-date-ok') || prev.includes('utc-date-ok')) continue
+      violations.push({ rel, lineNo, rule: 'C', expr: mi[1] })
+    }
+  }
   RE.lastIndex = 0
   while ((m = RE.exec(src))) {
     const lineNo = src.slice(0, m.index).split('\n').length

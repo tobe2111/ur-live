@@ -17,6 +17,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 interface PendingSeller {
   id: number
@@ -139,7 +140,7 @@ export default function AdminBusinessVerificationPage() {
                       </div>
                       <div className="flex">
                         <dt className="text-gray-500 w-24 shrink-0">제출일</dt>
-                        <dd className="text-gray-700">{new Date(s.updated_at).toLocaleString('ko-KR')}</dd>
+                        <dd className="text-gray-700">{formatKST(s.updated_at)}</dd>
                       </div>
                     </dl>
 

@@ -7,6 +7,7 @@ import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { useMyOrders } from '@/hooks/queries/useMyData'
 import type { Order } from '@/types/order'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { parseUTCDate } from '@/utils/date'
 
 export default function MyReviewsPage() {
   const { t } = useTranslation()
@@ -87,7 +88,7 @@ export default function MyReviewsPage() {
                   className="bg-white dark:bg-[#0F151D] rounded-2xl border border-gray-100 dark:border-[#2A3446] p-4"
                 >
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
-                    {t('myReviews.purchaseDate', { date: new Date(order.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) })}
+                    {t('myReviews.purchaseDate', { date: parseUTCDate(order.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }) })}
                   </p>
                   <p className="text-[14px] font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
                     {item.product_name}

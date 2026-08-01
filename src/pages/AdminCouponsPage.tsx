@@ -9,6 +9,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate, parseUTCDate } from '@/utils/date'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -333,7 +334,7 @@ export default function AdminCouponsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {coupons.map(c => {
-                    const isExpired = c.expires_at && new Date(c.expires_at) < new Date()
+                    const isExpired = c.expires_at && parseUTCDate(c.expires_at) < new Date()
                     const isSoldOut = c.total_count > 0 && c.used_count >= c.total_count
                     return (
                       <tr key={c.id} className={`${isExpired || isSoldOut ? 'opacity-50' : ''}`}>
@@ -358,7 +359,7 @@ export default function AdminCouponsPage() {
                           {c.used_count}{c.total_count > 0 ? `/${c.total_count}` : ''}
                         </td>
                         <td className="px-4 py-3 text-gray-500 text-xs">
-                          {c.expires_at ? new Date(c.expires_at).toLocaleDateString('ko-KR') : t('admin.coupons.k036', { defaultValue: '무기한' })}
+                          {c.expires_at ? formatKSTDate(c.expires_at) : t('admin.coupons.k036', { defaultValue: '무기한' })}
                         </td>
                         <td className="px-4 py-3">
                           {isExpired ? (

@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { formatWon } from '@/utils/format'
 import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
+import { formatKST, formatKSTDate } from '@/utils/date'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
   pending: { label: '심사 대기', cls: 'bg-amber-100 text-amber-700', icon: Clock },
@@ -159,7 +160,7 @@ export default function MyCommissionsPage() {
                       </span>
                     </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                      {new Date(w.requested_at).toLocaleString('ko-KR')} · {w.bank_name} {w.account_number}
+                      {formatKST(w.requested_at)} · {w.bank_name} {w.account_number}
                     </p>
                     {w.rejection_reason && (
                       <p className="text-[11px] text-red-500 mt-1">거절 사유: {w.rejection_reason}</p>
@@ -184,7 +185,7 @@ export default function MyCommissionsPage() {
                 <div key={c.id} className="flex items-center justify-between px-3 py-2.5 text-[12px]">
                   <div>
                     <p className="text-gray-900 dark:text-white">주문 #{c.order_id} · {c.tier}단계</p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(c.created_at).toLocaleDateString('ko-KR')} · {c.status}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{formatKSTDate(c.created_at)} · {c.status}</p>
                   </div>
                   <span className="font-bold text-gray-900 dark:text-white">{formatWon(c.commission_amount)}</span>
                 </div>

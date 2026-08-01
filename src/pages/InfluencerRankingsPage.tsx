@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Trophy, Award } from 'lucide-react'
 
 interface Ranked {
@@ -48,7 +49,7 @@ export default function InfluencerRankingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#1A2334] pb-20">
-      <SEO title="인플루언서 랭킹 - 유어딜" description="지역별 매출 Top 인플루언서 — 실시간 ranking" url="/influencer/rankings" />
+      <SEO title={CONSUMER_SURFACE_SEO['/influencer/rankings'].title} description={CONSUMER_SURFACE_SEO['/influencer/rankings'].description} url="/influencer/rankings" />
 
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">

@@ -2,20 +2,16 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { Star, Loader2, Trash2, Sparkles, FileText } from 'lucide-react'
+import { Star, Loader2, Sparkles, FileText } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-
-interface Product {
-  id: number; name: string; image_url?: string; price?: number; category?: string
-}
+import ProductPicker, { storeLabel, type PickerProduct } from './admin-reviews/ProductPicker'
 
 export default function AdminReviewsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [selectedProduct, setSelectedProduct] = useState<number | null>(null)
+  const [selected, setSelected] = useState<PickerProduct | null>(null)
   const [count, setCount] = useState(50)
   const [avgRating, setAvgRating] = useState(4.5)
   const [options, setOptions] = useState('')
@@ -31,25 +27,22 @@ export default function AdminReviewsPage() {
     }
   }, [navigate])
 
-  // 🛡️ 2026-06-03 Tier2(대시보드): mount 페칭 → useApiQuery.
-  const productsQ = useApiQuery<Product[]>(['admin', 'reviews-products'], '/api/admin/products', { select: (r: any) => (r?.success ? r.data || [] : []) })
-  const products = productsQ.data ?? []
-  const loading = productsQ.isLoading
+  // 🔎 2026-08-01: 전 상품을 한 번에 받아 `<select>` 에 붓던 것을 ProductPicker(검색·필터)로 대체.
+  //   목록 페칭은 그 안에서 검색어와 함께 이뤄진다 — 페이지 진입 시 통짜 로딩이 사라졌다.
 
   async function generateReviews() {
-    if (!selectedProduct) { toast.error('상품을 선택해주세요'); return }
+    if (!selected) { toast.error('상품을 선택해주세요'); return }
     if (count < 1 || count > 20000) { toast.error('1~20000 사이로 입력해주세요'); return }
 
     setGenerating(true)
     setProgress(mode === 'ai' ? 'AI가 리뷰를 작성하고 있습니다...' : '리뷰 생성 중...')
 
     try {
-      const product = products.find(p => p.id === selectedProduct)
       const res = await api.post('/api/admin/reviews/generate', {
-        product_id: selectedProduct,
-        product_name: product?.name,
-        product_price: product?.price,
-        product_category: product?.category,
+        product_id: selected.id,
+        product_name: selected.name,
+        product_price: selected.price,
+        product_category: selected.category,
         count,
         avg_rating: avgRating,
         options: options ? options.split(',').map(o => o.trim()) : [],
@@ -69,12 +62,6 @@ export default function AdminReviewsPage() {
       setGenerating(false)
       setProgress('')
     }
-  }
-
-  const selectedProductInfo = products.find(p => p.id === selectedProduct)
-
-  if (loading) {
-    return <AdminLayout title={t('admin.pages.reviews')}><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div></AdminLayout>
   }
 
   return (
@@ -128,19 +115,10 @@ export default function AdminReviewsPage() {
               </div>
             </div>
 
-            {/* 상품 선택 */}
+            {/* 상품 선택 — 검색·필터형(스크롤로 훑지 않는다) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">상품 선택 *</label>
-              <select
-                value={selectedProduct || ''}
-                onChange={e => setSelectedProduct(Number(e.target.value) || null)}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
-              >
-                <option value="">상품을 선택하세요</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <ProductPicker selected={selected} onSelect={setSelected} />
             </div>
 
             {/* 생성 개수 + 평점 */}
@@ -177,7 +155,8 @@ export default function AdminReviewsPage() {
             {/* 미리보기 */}
             <div className={`rounded-lg p-4 text-sm ${mode === 'ai' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-600'}`}>
               <p><strong>미리보기:</strong></p>
-              <p>• 상품: {selectedProductInfo?.name || '미선택'}</p>
+              <p>• 매장: {selected ? (storeLabel(selected) || '매장명 없음') : '미선택'}</p>
+              <p>• 상품: {selected?.name || '미선택'}</p>
               <p>• {count}개 리뷰, 평균 {avgRating}점</p>
               <p>• 방식: {mode === 'ai' ? '🤖 AI (Claude Haiku)' : '📝 템플릿 (36개 패턴)'}</p>
               {mode === 'ai' && <p>• 예상 비용: ~{Math.ceil(count / 50 * 2.5)}원</p>}
@@ -187,7 +166,7 @@ export default function AdminReviewsPage() {
             {/* 생성 버튼 */}
             <button
               onClick={generateReviews}
-              disabled={!selectedProduct || generating}
+              disabled={!selected || generating}
               className={`w-full py-3 font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] text-white ${
                 mode === 'ai' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-yellow-500 hover:bg-yellow-600'
               }`}

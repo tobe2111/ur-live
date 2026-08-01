@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { DashboardCard, DashboardStatCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { Clock, Send, CheckCircle, CalendarClock } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 // 💸 2026-07-01 (정산 정합 — 대표 승인 "자동 정산 하나로 통일"):
 //   셀러가 보는 정산 = 실제 자동 지급 파이프라인(payouts)의 진짜 숫자.
@@ -120,7 +121,7 @@ export default function AutoPayoutSection() {
                     <p className="text-sm font-medium text-gray-900">₩{formatNumber(p.amount)}</p>
                     <p className="text-xs text-gray-500">
                       {p.period_start} ~ {p.period_end}
-                      {p.sent_at ? ` · ${new Date(p.sent_at).toLocaleDateString('ko-KR')} 송금` : ''}
+                      {p.sent_at ? ` · ${formatKSTDate(p.sent_at)} 송금` : ''}
                     </p>
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${s.cls}`}>{s.label}</span>

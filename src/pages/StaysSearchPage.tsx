@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Search, MapPin, Calendar, Users, Star, SlidersHorizontal, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -69,7 +70,7 @@ export default function StaysSearchPage() {
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white pb-safe-nav">
       {/* 🏷️ 2026-07-20 (대표 — "숙소 공구 표현 맞나?"): '공구' 프레이밍 폐기(즉시판매 전환·명칭 SSOT) → '숙소'. */}
-      <SEO title="숙소 - 유어딜" description="펜션·호텔·풀빌라 숙소 이용권 — 할인가로 예약하고 매장에서 바로 사용" url="/stays" />
+      <SEO title={CONSUMER_SURFACE_SEO['/stays'].title} description={CONSUMER_SURFACE_SEO['/stays'].description} url="/stays" />
 
       {/* Sticky Top Bar */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0F151D]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2A3446]">

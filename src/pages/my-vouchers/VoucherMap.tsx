@@ -10,6 +10,7 @@
 import { useEffect, useRef } from 'react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
+import { parseUTCDate } from '@/utils/date'
 
 interface VoucherMapItem {
   id: number | string
@@ -45,7 +46,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
     // D-N 라벨용 남은 일수
     const daysLeft = (iso?: string): number | null => {
       if (!iso) return null
-      const d = Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)
+      const d = Math.ceil((parseUTCDate(iso).getTime() - Date.now()) / 86400000)  // UTC-naive(expires_at)
       return Number.isFinite(d) ? Math.max(0, d) : null
     }
 

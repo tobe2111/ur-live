@@ -7,6 +7,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowRightLeft, ArrowRight, Check, X } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface Transfer {
   id: number
@@ -157,7 +158,7 @@ function TransferCard(props: {
           {t(`agency.transfers.status.${transfer.status}`, { defaultValue: transfer.status })}
         </span>
         <span className="text-xs text-gray-500">
-          {new Date(transfer.created_at).toLocaleDateString('ko-KR')}
+          {formatKSTDate(transfer.created_at)}
         </span>
       </div>
       <div className="flex items-center gap-2 text-sm">

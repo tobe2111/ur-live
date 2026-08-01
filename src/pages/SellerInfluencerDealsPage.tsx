@@ -20,6 +20,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { getSellerToken } from '@/lib/seller-auth'
 import { Handshake, RefreshCw, Send, Check, X, Info } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 // ─── 응답 shape (marketing.routes.ts sellerApp GET /deals 와 1:1) ────────────
 interface Deal {
@@ -342,7 +343,7 @@ export default function SellerInfluencerDealsPage() {
                             : t('seller.influencerDeals.proposedByInfluencer', { defaultValue: '인플이 신청' })}
                           {' · '}
                           {t('seller.influencerDeals.createdAt', { defaultValue: '제안일' })}{' '}
-                          {new Date(d.created_at).toLocaleDateString('ko-KR')}
+                          {formatKSTDate(d.created_at)}
                           {d.ends_at && (
                             <>
                               {' · '}

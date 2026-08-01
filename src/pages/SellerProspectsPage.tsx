@@ -16,6 +16,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 interface Prospect {
   id: number
@@ -211,7 +212,7 @@ export default function SellerProspectsPage() {
                   {p.status === 'visiting' && (
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-[10px] text-gray-400">
-                        만료: {p.expires_at ? new Date(p.expires_at).toLocaleDateString('ko-KR') : '없음'}
+                        만료: {p.expires_at ? formatKSTDate(p.expires_at) : '없음'}
                       </span>
                       <div className="flex items-center gap-3">
                         {/* 🏁 2026-07-02 대리 등록: 사장님은 이 링크로 카카오 로그인+확인만 — 정보 재입력 0 */}

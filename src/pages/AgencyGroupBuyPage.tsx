@@ -9,6 +9,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown, MessageCircle, Send } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { parseUTCDate } from '@/utils/date'
 
 interface GroupBuy {
   id: number
@@ -146,7 +147,7 @@ function MessagesModal({ groupBuy, headers, onClose }: {
                   {!isMine && <p className="text-[10px] text-gray-500 mb-0.5">{m.sender_name || m.sender_type}</p>}
                   <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>
                   <p className={`text-[10px] mt-0.5 ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
-                    {new Date(m.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {parseUTCDate(m.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
@@ -340,7 +341,7 @@ export default function AgencyGroupBuyPage() {
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-2">
                   <p className="text-[10px] text-gray-400">
-                    {g.expires_at ? `만료 ${new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
+                    {g.expires_at ? `만료 ${parseUTCDate(g.expires_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}` : ''}
                   </p>
                   <div className="flex gap-1.5">
                     {/* 🔧 2026-06-24 (전수조사): 상태변경/딜확정 백엔드는 어드민 전용(에이전시 토큰 403) + 동네공구에
@@ -408,7 +409,7 @@ export default function AgencyGroupBuyPage() {
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CLS_GB[g.status] || 'bg-gray-100 text-gray-600'}`}>{t(`agency.groupBuy.status.${g.status}`, { defaultValue: g.status })}</span></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {g.expires_at
-                      ? new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+                      ? parseUTCDate(g.expires_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
                       : '-'}
                   </td>
                   <td className="px-4 py-3">

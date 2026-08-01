@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
 import { parseHashtags, PLATFORMS, type SocialPost } from './types'
+import { parseUTCDate } from '@/utils/date'
 
 interface Props {
   post: SocialPost
@@ -25,7 +26,7 @@ export default function SocialDraftEditor({ post, onBack, onSaved }: Props) {
   // 예약 발행 시각 — datetime-local(로컬 표시) ↔ 저장은 ISO(UTC).
   const [scheduledAt, setScheduledAt] = useState(() => {
     if (!post.scheduled_at) return ''
-    const d = new Date(post.scheduled_at)
+    const d = parseUTCDate(post.scheduled_at)
     if (isNaN(d.getTime())) return ''
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`

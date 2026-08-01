@@ -70,16 +70,38 @@ errorTelemetryRoutes.get('/api/_errors/recent', requireAdmin(), async (c) => {
   const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '1')), 168)
   const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 100)), 1000)
 
+  // 🔎 2026-08-01 (대표 "/admin/errors 에러들 직접 보고 자가 수리"): `user_agent` 를 **저장은 하는데
+  //   여기서 안 돌려주고 있었다**(POST 는 200자까지 저장 중). 그래서 어떤 브라우저/인앱웹뷰에서 나는
+  //   에러인지 화면에서 알 수 없었고, boot-stuck 같은 부팅 실패는 UA 없이는 사실상 분류가 불가능하다.
+  //   `stack` 도 같은 이유로 추가(있으면 원인 파일이 바로 보인다).
+  //   ⚠️ `ip` 는 일부러 뺀다 — 트리아지에 필요 없고 PII 노출만 늘린다.
   try {
     const rows = await c.env.DB.prepare(
-      `SELECT id, message, type, url, user_id, created_at
+      `SELECT id, message, type, url, user_id, user_agent, stack, created_at
        FROM frontend_errors
        WHERE created_at > datetime('now', '-${hours} hours')
        ORDER BY created_at DESC
        LIMIT ?`,
-    ).bind(limit).all<{ id: number; message: string; type: string; url: string; user_id: string; created_at: string }>()
+    ).bind(limit).all<{
+      id: number; message: string; type: string; url: string
+      user_id: string; user_agent: string | null; stack: string | null; created_at: string
+    }>()
     return c.json({ success: true, data: rows.results || [] })
   } catch (e) {
-    return c.json({ success: false, error: (e as Error).message, code: 'TABLE_MISSING_PROBABLY' }, 500)
+    // 컬럼/테이블이 없는 옛 환경 폴백 — 진단 화면이 통째로 죽는 것보다 낫다.
+    try {
+      const rows = await c.env.DB.prepare(
+        `SELECT id, message, type, url, user_id, created_at
+         FROM frontend_errors
+         WHERE created_at > datetime('now', '-${hours} hours')
+         ORDER BY created_at DESC
+         LIMIT ?`,
+      ).bind(limit).all()
+      return c.json({ success: true, data: rows.results || [], degraded: 'user_agent/stack 컬럼 없음' })
+    } catch {
+      // ⚠️ 원문 메시지를 클라이언트로 돌려주지 않는다(CLAUDE.md 안전 에러 룰).
+      console.error('[frontend_errors] recent 조회 실패:', (e as Error).message)
+      return c.json({ success: false, error: '에러 목록을 불러오지 못했습니다', code: 'TABLE_MISSING_PROBABLY' }, 500)
+    }
   }
 })

@@ -17,6 +17,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 interface PendingSeller {
   id: number
@@ -314,7 +315,7 @@ export default function AdminPendingSellersPage() {
                   </div>
 
                   <p className="text-[10px] text-gray-400 mt-2">
-                    가입: {new Date(s.created_at).toLocaleString('ko-KR')}
+                    가입: {formatKST(s.created_at)}
                   </p>
                 </div>
               )

@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
+import { withSiteName } from '@/shared/seo/consumer-surfaces'
 
 // v39 FIX: og:locale 동적화 — i18n 언어 코드를 BCP47로 변환
 const LOCALE_MAP: Record<string, string> = {
@@ -61,8 +62,12 @@ export default function SEO({
   const resolvedDescription = description ?? DEFAULT_DESC
   const resolvedImage = image ?? (isWholesale ? WHOLESALE_DEFAULT_IMAGE : DEFAULT_IMAGE)
 
+  // 🐛 2026-07-29 (라이브 실측 — `/vouchers` 의 <title> 이 `교환권 - 유어딜 - 유어딜` 이었다):
+  //   접미사를 붙이는 자리가 여기 하나인데, 호출부 다수가 이미 `- 유어딜` 을 포함한 문자열을 넘긴다
+  //   (VouchersPage·JoinChoicePage·CreatorApplyPage·랜딩 3종…). 호출부를 하나씩 고치면 새로 생긴다.
+  //   → `withSiteName`(SSOT)이 중복을 흡수한다. 접미사 없는 title 의 결과는 기존과 byte-동일.
   const fullTitle = title
-    ? `${title} - ${siteName}`
+    ? withSiteName(title, siteName)
     : (isWholesale
       ? `${siteName} - B2B 도매사이트, 제조사 직거래 도매가 사입`
       : `${siteName} - 돈버는 쇼핑, 동네 가게 공동구매 · 이용권`)

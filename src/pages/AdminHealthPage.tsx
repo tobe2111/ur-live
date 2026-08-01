@@ -11,6 +11,7 @@ import SEO from '@/components/SEO'
 import { Activity, RefreshCw, Database, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 interface Metrics {
   active_streams: number | null
@@ -574,7 +575,7 @@ function WebhookFailuresSection() {
                   {r.error_message && (
                     <p className="text-[10px] text-red-600 mt-1 line-clamp-2">{r.error_message}</p>
                   )}
-                  <p className="text-[10px] text-gray-400 mt-0.5">{new Date(r.created_at).toLocaleString('ko-KR')}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{formatKST(r.created_at)}</p>
                 </div>
               ))}
             </div>

@@ -10,6 +10,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { Gift, RefreshCw, Dice5, FileDown, ShieldCheck } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface Campaign {
   id: number; title: string; status: string; slots: number
@@ -175,7 +176,7 @@ export default function AdminExperienceCampaignsPage() {
                     <p className="text-[12px] font-bold text-gray-900 flex items-center gap-1 mb-2"><ShieldCheck className="w-3.5 h-3.5 text-blue-600" />추첨 이력 (조작불가 증빙)</p>
                     {draws.map(d => (
                       <div key={d.id} className="text-[11px] text-gray-600 border-t border-gray-100 py-1.5 first:border-t-0">
-                        <span className="text-gray-400">{new Date(d.created_at).toLocaleString('ko-KR')}</span> · 방식 {d.method} · 풀 {d.pool_size}명 · 당첨 {(() => { try { return JSON.parse(d.winners).length } catch { return '?' } })()}명
+                        <span className="text-gray-400">{formatKST(d.created_at)}</span> · 방식 {d.method} · 풀 {d.pool_size}명 · 당첨 {(() => { try { return JSON.parse(d.winners).length } catch { return '?' } })()}명
                         <div className="text-[10px] text-gray-400 font-mono break-all">seed: {d.seed}</div>
                       </div>
                     ))}

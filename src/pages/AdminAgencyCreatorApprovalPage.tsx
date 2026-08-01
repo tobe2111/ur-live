@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { UserCheck, UserX, Building2, Mail, Phone } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -170,7 +171,7 @@ export default function AdminAgencyCreatorApprovalPage() {
                     </p>
 
                     <p className="text-xs text-gray-400 mt-1">
-                      {t('admin.agencyCreatorApproval.appliedAt', { defaultValue: '신청일' })}: {new Date(item.created_at).toLocaleString('ko-KR')}
+                      {t('admin.agencyCreatorApproval.appliedAt', { defaultValue: '신청일' })}: {formatKST(item.created_at)}
                       {item.reviewed_at && (
                         <span className="ml-2">| {t('admin.agencyCreatorApproval.processedAt', { defaultValue: '처리일' })}: {new Date(item.reviewed_at).toLocaleString('ko-KR')}</span>
                       )}

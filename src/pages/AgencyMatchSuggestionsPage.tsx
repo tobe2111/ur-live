@@ -14,6 +14,7 @@ import { UserPlus, CheckCircle2, XCircle, Clock, TrendingUp, Star } from 'lucide
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { parseUTCDate } from '@/utils/date'
 
 interface MatchSuggestion {
   id: number
@@ -32,7 +33,7 @@ interface MatchSuggestion {
 }
 
 function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400_000)
+  return Math.floor((Date.now() - parseUTCDate(dateStr).getTime()) / 86400_000)  // UTC-naive(seller_created_at)
 }
 
 function hoursLeft(expiresAt: string): string {

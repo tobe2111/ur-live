@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { getUserIdSync } from '@/utils/auth'
 
 interface FcfsDetail { enabled: boolean; spots: number; appliedDisplay: number; deadline: string | null }
 
@@ -22,7 +23,11 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
     if (!Number.isFinite(productId)) return
     let alive = true
     api.get(`/api/fcfs/${productId}`).then((r) => { if (alive && r.data?.success) setInfo(r.data.data as FcfsDetail) }).catch(() => {})
-    // 비로그인이면 401 — 무시(응모 상태 없음).
+    // 🔇 2026-07-29 (소비자 UX 실측): 예전엔 비로그인도 호출하고 401 을 catch 로 삼켰다 — 조용하지 않다.
+    //   브라우저는 **가로챌 수 없는** "Failed to load resource: 401" 을 콘솔에 남기므로, 로그인 안 한
+    //   방문자가 딜 상세를 열 때마다 콘솔에 에러가 찍혔다(실측 확인). 응모 상태는 로그인해야만 존재하니
+    //   비로그인이면 호출 자체를 하지 않는다 — 서버 왕복도 1회 줄어든다.
+    if (!getUserIdSync()) return () => { alive = false }
     api.get(`/api/fcfs/${productId}/me`).then((r) => {
       const st = r.data?.data?.status
       // 'demo' = 데모 상품 응모(추첨 풀 제외 전용 상태) — 유저에겐 일반 응모 완료와 동일 표시.

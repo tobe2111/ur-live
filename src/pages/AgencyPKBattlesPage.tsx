@@ -6,6 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Swords, Plus, Trophy, X, Play, XCircle } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface Battle {
   id: number
@@ -183,7 +184,7 @@ export default function AgencyPKBattlesPage() {
                         {status.label}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {b.duration_minutes}분 · {new Date(b.created_at).toLocaleDateString('ko-KR')}
+                        {b.duration_minutes}분 · {formatKSTDate(b.created_at)}
                       </span>
                     </div>
                     <div className="grid grid-cols-3 items-center gap-2">

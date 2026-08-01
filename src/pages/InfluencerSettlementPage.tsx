@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
+import { formatKSTDate } from '@/utils/date'
 
 interface Balance {
   pending_amount: number
@@ -414,7 +415,7 @@ export default function InfluencerSettlementPage() {
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2A3446] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {new Date(r.created_at).toLocaleDateString('ko-KR')}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {formatKSTDate(r.created_at)}</p>
                     </div>
                     <span className={`text-[10px] px-2 py-1 rounded font-bold ${status.color}`}>{status.label}</span>
                   </li>

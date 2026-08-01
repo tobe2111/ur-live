@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Plus, AlertCircle, MessageCircle, Star, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST, parseUTCDate } from '@/utils/date'
 
 interface CalendarStream {
   id: number
@@ -217,7 +218,7 @@ export default function AgencyCalendarPage() {
                           </div>
                           <p className="text-xs text-gray-500">
                             {s.seller_business_name || s.seller_name}
-                            {s.scheduled_at && ` · ${new Date(s.scheduled_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`}
+                            {s.scheduled_at && ` · ${parseUTCDate(s.scheduled_at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}`}
                             {s.peak_viewers > 0 && ` · ${t('agency.calendar.peak', { defaultValue: '피크' })} ${s.peak_viewers}${t('agency.calendar.viewers', { defaultValue: '명' })}`}
                           </p>
                         </div>
@@ -326,7 +327,7 @@ export default function AgencyCalendarPage() {
                       <p className="text-xs text-gray-700 whitespace-pre-wrap">{n.content}</p>
                       <p className="text-[10px] text-gray-400 mt-1">
                         {n.author_email && `${n.author_email} · `}
-                        {new Date(n.created_at).toLocaleString('ko-KR')}
+                        {formatKST(n.created_at)}
                       </p>
                     </div>
                   )

@@ -7,6 +7,7 @@
 import type { Env } from '../../../worker/types/env'
 import { PROMO_TOPICS, PLATFORM_MEDIA, type PromoTopic, type SocialPlatform } from './social-brief'
 import { generateSocialDraft } from './social-content'
+import { composeSocialDraft } from './social-compose'
 import { createPost, countDrafts, usedTopicSlugs } from './social-store'
 
 const MAX_PENDING = 8 // 플랫폼별 미검토 초안 상한
@@ -29,19 +30,27 @@ export type CreateDraftResult =
   | { ok: false; error?: string; skipped?: string }
 
 export async function createSocialDraft(env: Env, platform: SocialPlatform, topicSlug?: string): Promise<CreateDraftResult> {
-  if (!env.ANTHROPIC_API_KEY) return { ok: false, error: 'NOT_CONFIGURED' }
   // 과다 초안 방지
   const pending = await countDrafts(env.DB, platform)
   if (pending >= MAX_PENDING) return { ok: false, skipped: `미검토 초안이 ${pending}개 — 검토 후 생성` }
 
   const topic = await pickTopic(env, platform, topicSlug)
-  const gen = await generateSocialDraft(env.ANTHROPIC_API_KEY, platform, topic)
-  if (!gen.ok) return { ok: false, error: gen.error }
+
+  // ✍️ 2026-08-01 (대표 "앤트로픽 없이도 초안 최대한 자연스럽게"): 키가 없으면 실패시키지 않고
+  //   결정론 작성기(social-compose)로 만든다. 리뷰 생성기(buildStoreReviews)와 같은 구조 —
+  //   키 있으면 Claude, 없으면 조합형. 두 경로 모두 같은 findForbidden 검증을 통과한다.
+  //   AI 실패(호출/파싱/금지어)도 조용히 죽지 않고 조합형으로 내려간다.
+  const gen = env.ANTHROPIC_API_KEY
+    ? await generateSocialDraft(env.ANTHROPIC_API_KEY, platform, topic)
+    : { ok: false as const, error: 'NOT_CONFIGURED' }
+  const composed = gen.ok ? gen : composeSocialDraft(platform, topic, pending)
+  if (!composed.ok) return { ok: false, error: composed.error }
+  const usedAi = gen.ok
 
   const created = await createPost(env.DB, {
-    platform, topic_slug: topic.slug, title: gen.draft.title, body: gen.draft.body,
-    hashtags: gen.draft.hashtags, media_kind: PLATFORM_MEDIA[platform], ai_generated: true,
+    platform, topic_slug: topic.slug, title: composed.draft.title, body: composed.draft.body,
+    hashtags: composed.draft.hashtags, media_kind: PLATFORM_MEDIA[platform], ai_generated: usedAi,
   })
   if (!created.ok || !created.id) return { ok: false, error: created.error || '저장 실패' }
-  return { ok: true, id: created.id, title: gen.draft.title, platform }
+  return { ok: true, id: created.id, title: composed.draft.title, platform }
 }
