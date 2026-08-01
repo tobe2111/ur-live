@@ -67,6 +67,10 @@ interface ProductRow {
   seller_id: number | null;
   created_at: string;
   seller_name: string | null;
+  /** 오프라인 매장명 — 이용권·동네딜의 실질 식별자(셀러 없이 등록된 건도 있어 seller_name 과 별개). */
+  restaurant_name?: string | null;
+  review_count?: number;
+  avg_rating?: number;
 }
 interface IdRow { id: number; status?: string }
 
@@ -88,7 +92,9 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
 
     const where: string[] = [];
     const params: unknown[] = [];
-    if (q) { where.push('(p.name LIKE ? OR p.description LIKE ?)'); params.push(`%${q}%`, `%${q}%`); }
+    // 🔎 2026-08-01 (대표 "상품 선택 시 매장명"): 이용권·동네딜은 상품명이 서로 비슷해서
+    //   ("버섯 샤브 2인" 류) **매장명이 사실상 식별자**다. 검색이 그걸 못 훑으면 이름으로 못 찾는다.
+    if (q) { where.push('(p.name LIKE ? OR p.description LIKE ? OR COALESCE(p.restaurant_name, \'\') LIKE ?)'); params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
     if (category) { where.push('p.category = ?'); params.push(category); }
     if (status === 'active') where.push('p.is_active = 1');
     else if (status === 'inactive') where.push('p.is_active = 0');
@@ -147,6 +153,7 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
                p.referral_enabled, p.referral_commission_rate,
                COALESCE(p.supply_price, 0) AS supply_price,
                COALESCE(p.is_supply_product, 0) AS is_supply_product,
+               p.restaurant_name, COALESCE(p.review_count, 0) AS review_count, COALESCE(p.avg_rating, 0) AS avg_rating,
                p.seller_id, p.created_at, s.business_name as seller_name
         FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
         ${whereClause}
@@ -160,6 +167,7 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
                p.sold_count, p.kt_alpha_gift_code, p.deal_only,
                COALESCE(p.supply_price, 0) AS supply_price,
                COALESCE(p.is_supply_product, 0) AS is_supply_product,
+               p.restaurant_name, COALESCE(p.review_count, 0) AS review_count, COALESCE(p.avg_rating, 0) AS avg_rating,
                p.seller_id, p.created_at, s.business_name as seller_name
         FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
         ${whereClause}
