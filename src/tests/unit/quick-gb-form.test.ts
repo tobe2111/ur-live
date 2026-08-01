@@ -88,3 +88,25 @@ describe('몰 스탬프는 서버 몫', () => {
     expect(code).not.toMatch(/\bmall_id\b/)
   })
 })
+
+/**
+ * 🔴 **진입점이 있어야 페이지가 존재한다** 〔2026-08-01〕
+ *
+ * `/seller/products/quick` 은 라우트를 달아도 **아무도 못 찾으면 없는 것과 같다.**
+ * 이 레포는 그 사고를 이미 겪었다 — `/influencer` 랜딩이 두 달간 렌더된 적이 없었다.
+ *
+ * ⚠️ **내부-링크 가드(`check-internal-links`)는 이 방향을 안 본다.**
+ *   그건 *링크 → 라우트*(죽은 링크)를 보고, 여기 필요한 건 *라우트 → 링크*(고아 라우트)다.
+ *   방향이 반대라 그 가드가 초록이어도 페이지는 죽어 있을 수 있다.
+ */
+describe('🔴 3분 등록에 진입점이 있다', () => {
+  it('셀러 상품 목록에서 갈 수 있다', () => {
+    const list = readCode('src/pages/SellerProductsPage.tsx')
+    expect(list, '진입 버튼이 없으면 라우트만 있고 아무도 못 찾는다').toContain("'/seller/products/quick'")
+  })
+
+  it('풀 등록 경로는 그대로 남아 있다 — 배송·옵션 상품은 그쪽이 맞다', () => {
+    const list = readCode('src/pages/SellerProductsPage.tsx')
+    expect(list).toContain("'/seller/products/new'")
+  })
+})
