@@ -15,6 +15,56 @@ import { isSubrequestLimitError } from './collect-budget'
 //   가장 낮다. 우선풀에 넣어야 희소한 YT 검색 슬롯이 실제로 이 축에 배정된다(시드만 늘리면 균등 순환에 묻힌다).
 export const PRIORITY_CATEGORIES = ['공동구매', '맛집', '푸드', '외식창업', '숙소', '네일', '뷰티']
 
+/**
+ * 🎯 **집중 축(focus)** — 배치의 일부를 통째로 떼어 주는 전용 슬롯 (2026-08-02 대표 확정 "C안").
+ *
+ *   ## 왜 우선 풀에 얹지 않고 따로 떼나
+ *   우선 풀(3/4)에 한 축을 더 넣으면 그 축은 **7분의 1**만 받는다. 마케팅대행사는 절대 수가 적어
+ *   (전국 수천 곳) 그 속도로는 몇 주가 걸린다. 반대로 전용 슬롯이면 며칠이면 훑는다.
+ *
+ *   ## 왜 이 축인가
+ *   대행사 리드 1건은 **매장 N건으로 곱해진다** — 다른 축은 전부 1:1이다. 유어딜 입장에서 한 사람이
+ *   여러 매장을 물어오는 유일한 부류라, 같은 예산으로 가장 많은 매장을 만든다.
+ *
+ *   ## ⚠️ 자기 반납이 이 설계의 핵심이다
+ *   전용 슬롯은 **비어 있으면 스스로 반납**한다(`planKeywordSplit` 이 실제 가용 키워드 수로 clamp).
+ *   대행사 키워드가 고갈되면(무수확이 쌓여 자동 비활성) 그 슬롯은 다음 회차부터 우선/일반 풀로 돌아간다.
+ *   ⇒ "다 훑고 나서도 1/4을 영원히 낭비"하는 상태가 구조적으로 안 생긴다.
+ *   ⚠️ 축을 늘릴 땐 신중히 — 여기 넣는 만큼 맛집·뷰티 같은 본업 축의 순번이 뒤로 밀린다.
+ */
+export const FOCUS_CATEGORIES = ['마케팅대행사']
+
+/** 집중 축이 가져가는 몫(배치 대비). 1/4 — 나머지를 기존 3:1(우선:일반)로 다시 나눈다. */
+export const FOCUS_SHARE = 0.25
+
+/**
+ * 배치를 [집중 · 우선 · 일반] 으로 나눈다 — **순수**(유닛으로 고정).
+ *
+ *   불변식 셋:
+ *     ① 합계는 `total` 을 절대 안 넘는다
+ *     ② 슬롯을 버리지 않는다 — 가용 키워드가 있으면 `min(total, 가용합계)` 만큼 꽉 채운다
+ *     ③ 각 몫은 그 풀의 **실제 가용 수**를 안 넘는다(= 빈 풀은 자동 반납)
+ */
+export function planKeywordSplit(
+  total: number, focusAvail: number, priAvail: number, genAvail: number, focusShare = FOCUS_SHARE,
+): { nFocus: number; nPri: number; nGen: number } {
+  const cap = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
+  const av = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
+  const fA = av(focusAvail), pA = av(priAvail), gA = av(genAvail)
+  // ① 집중 축 — 가용분까지만(비면 0 → 그대로 아래로 흘러간다)
+  let nFocus = Math.min(fA, Math.ceil(cap * focusShare))
+  const rest = cap - nFocus
+  // ② 남은 몫을 기존 규칙(우선 3/4)대로. 일반이 모자라면 우선이 더 가져간다(기존 동작 보존).
+  const nGen0 = Math.min(gA, rest - Math.min(pA, Math.ceil(rest * 3 / 4)))
+  const nPri = Math.min(pA, rest - Math.max(0, nGen0))
+  const nGen = Math.max(0, Math.min(gA, rest - nPri))
+  // ③ 그래도 남으면 집중 축이 더 가져간다 — **슬롯을 버리지 않는다**.
+  //   🐛 이게 없으면 우선·일반이 비었을 때(예: 다른 축이 전부 고갈) 집중 축은 1/4 만 돌고
+  //   나머지 3/4 이 통째로 놀았다. 유닛이 `planKeywordSplit(8, 8, 0, 0)` 에서 그걸 잡았다.
+  nFocus = Math.min(fA, nFocus + (cap - nFocus - nPri - nGen))
+  return { nFocus, nPri, nGen }
+}
+
 export interface YtPickKeyword {
   id: number
   keyword: string
