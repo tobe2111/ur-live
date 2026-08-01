@@ -264,6 +264,28 @@ name: cron-env-missing   at: 2026-08-01T13:10:59.765Z   cron: */5 * * * *
 정확히 그 이유로 사라졌다"*). **관측을 만들면서 그 관측의 값이 사라지는 경로를 밟았다.**
 원시값(문자열·숫자·불리언·배열)도 남기도록 고치고 유닛으로 고정했다. 다음 발화부터 키 이름이 보인다.
 
+### 🔑 빠진 키 확정 (2026-08-01 14:35:59Z — 배포 14:32:52Z 이후 첫 발화)
+
+```
+cron-env-missing  cron=*/5 * * * *
+result: TOSS_SECRET_KEY(scheduled-cleanup)
+        ALIGO_API_KEY(scheduled-cleanup,retry-alimtalk)
+        CACHE_KV(cache-prewarm)
+```
+
+**요구하는 셋이 전부 없다.** 그리고 이 한 줄이 **그동안 따로 열려 있던 세 항목을 동시에 설명한다**:
+
+| 키 | 그동안의 미스터리 | 이제 알게 된 것 |
+|---|---|---|
+| `TOSS_SECRET_KEY` | B8 — 만료 환불·정합이 왜 안 되나 | cron 캐리어에 키가 없다 |
+| `ALIGO_API_KEY` | **L6 — 알림톡 발송 0건** | cron 쪽 발송·재시도(`retry-alimtalk` dead-letter 포함)가 통째로 skip 된다 |
+| `CACHE_KV` | **SSR 전역 워밍이 한 번도 안 돌았다**(2026-07-12 기능) | `cache-prewarm` 이 KV 없이 돈다 — 기능이 죽어 있던 게 아니라 **바인딩이 없었다** |
+
+> ⚠️ **정밀하게**: 이건 **cron 캐리어(Workers)** 의 이야기다. 요청 경로(Pages)에서 나가는 알림톡은
+> 별개이고 여기서 판정되지 않는다. 측정된 것은 *cron 이 그 키를 못 본다* 까지다.
+
+`0 18`·`0 19` 블록은 아직 오늘 발화 전이라, 18:00Z·19:00Z 에 `DISCORD_WEBHOOK_URL` 부재도 같은 방식으로 찍힐 것이다.
+
 ### 조치
 
 Workers `ur-live` → Settings → Variables and Secrets 에 **`TOSS_SECRET_KEY` 를 Secret 으로 추가**.
