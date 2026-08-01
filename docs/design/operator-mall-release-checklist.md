@@ -240,13 +240,17 @@ Pages 프리뷰는 별도 preview 바인딩을 명시하지 않으면 **프로�
 | **운영자(셀러)** | `SellerOrdersPage.tsx:226` | `POST /api/seller/orders/:n/refund` → `refundOrderFully(expectSellerId)` | ✅ **붙는다** — 몰 주문이 소비자 `orders` 라서 |
 | 어드민 | `AdminOrdersPage.tsx:271` | `refundOrderFully`(전액) | ✅ |
 | 어드민(반품 검수) | `AdminReturnsPage.tsx:109` | `PUT /api/returns/:id/refund` | ✅ |
-| 소비자 요청 입구 | `MyOrdersPage.tsx:295` "반품 신청" → `POST /api/returns/request` · 조회 `MyReturnsPage` | | 🔴 **픽업엔 안 붙는다** — 아래 |
+| 소비자 요청 입구 | `MyOrdersPage.tsx:295` "반품 신청" → `POST /api/returns/request` · 조회 `MyReturnsPage` | | 🟢 **2026-08-01 픽업도 접수** — `canRequestReturn`(픽업=PAID/DONE, 창은 픽업일 기준) |
 
 > 🔴 **P0 픽업 전용 확정(2026-07-29)이 만든 새 구멍**: 소비자 반품 신청 입구는 게이트가
 > **`DELIVERED` + 7일 이내**다(`ReturnRequestModal.tsx:4` — 서버 스펙도 동일). **픽업 주문은
 > `DELIVERED` 에 도달하지 않으므로 소비자가 반품을 올릴 입구가 아예 없다.**
-> ⇒ 세션 ④ 범위에 **픽업 주문용 요청 입구**를 넣는다(픽업 확인 전=취소 / 확인 후=보관구분 정책 §C7).
-> 이건 배송 전제로 만들어진 화면이 픽업에 그대로 안 붙는 첫 사례다 — 다른 화면도 같은 눈으로 볼 것.
+> ✅ **2026-08-01 해소** — 서버 게이트를 `canRequestReturn`(순수)로 교체. 픽업 주문은 **결제 완료(PAID/DONE)**
+> 만으로 접수되고, 7일 창은 **픽업일** 기준(배송의 `delivered_at` 자리). **배송 주문 규칙은 byte-불변.**
+> 🔴 **여는 건 접수 자격뿐 — 환불액이 아니다**(그건 §C7·④-b). 받아줄지·얼마를 줄지는 운영자/어드민 판단.
+> 🔎 설계 요점: **상태 게이트는 fail-closed, 기간 게이트는 fail-open** — 기준일을 모른다고 소비자 권리를 닫지 않는다.
+>
+> (이력) 이건 배송 전제로 만들어진 화면이 픽업에 그대로 안 붙는 첫 사례다 — 다른 화면도 같은 눈으로 볼 것.
 
 | 🟡 구멍 | 판정 |
 |---|---|
