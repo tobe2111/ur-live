@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 export default function RefundPolicyPage() {
   const navigate = useNavigate()
@@ -9,7 +10,8 @@ export default function RefundPolicyPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
-      <SEO title={t('refundPolicy.seoTitle', { defaultValue: '환불정책 - 유어딜' })} description={t('refundPolicy.seoDesc', { defaultValue: '유어딜 환불 및 반품 정책을 안내합니다.' })} url="/refund-policy" />
+      {/* 🔗 url 을 `/refund-policy` → `/refund` 로 정정: 전자는 2026-07-29 부터 서버 301 별칭이라 canonical 이 리다이렉트를 가리키고 있었다. */}
+      <SEO title={t('refundPolicy.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/refund'].title })} description={t('refundPolicy.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/refund'].description })} url="/refund" />
 
       {/* Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">

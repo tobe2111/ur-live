@@ -22,6 +22,22 @@
         var lastErr = '';
         var chunkSeen = false;
         var reloadPending = false; // 🛡️ 재시도 유예(setTimeout) 중 다중 청크에러가 카운트를 소진하지 않게(재진입 가드).
+        // 🔎 2026-08-01: 이 문서가 어떻게 열렸는지. **`t` 만으로는 설명이 안 되는 기록이 실제로 있었다** —
+        //   12초 워치독에서만 나오는 reason 인데 `t=257~751ms` 인 건이 다수였다(performance.now 는 문서마다
+        //   0부터라 같은 문서라면 나올 수 없는 값). prerender·bfcache 복원·재방문이면 그 값이 설명되고,
+        //   아니면 다른 원인이다. 추측 대신 **판별 가능한 신호를 남긴다**.
+        function navKind() {
+          try {
+            var e = (performance.getEntriesByType && performance.getEntriesByType('navigation')) || [];
+            var t = e[0] && e[0].type ? String(e[0].type) : '?';
+            if (document.prerendering) t += '+prerendering';
+            if (window.__urWasRestored) t += '+bfcache';
+            return t;
+          } catch (e) { return '?'; }
+        }
+        // bfcache 복원 표시 — 복원된 문서에서 타이머가 뒤늦게 터지는 경우를 구분하기 위해.
+        try { addEventListener('pageshow', function (ev) { if (ev && ev.persisted) window.__urWasRestored = 1; }); } catch (e) {}
+
         function beaconStuck(reason) {
           try {
             var t = 0;
@@ -29,8 +45,9 @@
             // 엔트리 번들이 실행됐는지(=main.tsx 가 window.__urBootStarted 세팅). 안 돌았으면 청크404/CSP/네트워크,
             //   돌았으면 마운트가 느리거나 막힌 것(무거운 렌더/행/렌더에러) — 진짜 원인 구분의 핵심 신호.
             var bs = 0; try { bs = window.__urBootStarted || 0; } catch (e) {}
+            var vis = '?'; try { vis = document.visibilityState || '?'; } catch (e) {}
             var payload = JSON.stringify({
-              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' entryRan=' + (bs ? 'y' : 'n') + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
+              message: '[boot-stuck] reason=' + reason + ' chunkSeen=' + chunkSeen + ' entryRan=' + (bs ? 'y' : 'n') + ' t=' + t + 'ms ready=' + (document.readyState || '?') + ' nav=' + navKind() + ' vis=' + vis + ' lastErr=' + String(lastErr || '(none)').slice(0, 240),
               url: location.pathname + location.search,
               type: 'manual',
               user_agent: navigator.userAgent
@@ -196,7 +213,7 @@
         //   main.tsx 가 오버레이를 제거(느린 회선 false-positive 자동 해제). 정상 부팅엔 no-op.
         //   전 표면 커버: main.tsx 는 라우트 무관 성공 부팅 시 __urMounted=1 을 세팅하므로, #root 가 소비자
         //   로더든 대시보드/도매/블로그 placeholder 든 상관없이 '앱 미마운트' 하나로 판정(로더 마크업 의존 X).
-        setTimeout(function () {
+        function bootWatchdog() {
           try {
             if (window.__urMounted) return;
             // 🛡️ 2026-07-27: 재시도 유예(지수 백오프) 중이면 오버레이 억제 — 예약된 __cb reload 가 곧 실행됨.
@@ -208,7 +225,19 @@
             var reason = chunkSeen ? 'chunk' : (window.__urBootStarted ? 'mount-slow' : 'entry-stalled');
             showStuckUI(reason);
           } catch (e) { /* silent */ }
-        }, 12000);
+        }
+        // 🔎 2026-08-01: **prerender 중에는 워치독을 돌리지 않는다.** 사용자가 보고 있는 화면이 아니라
+        //   복구 오버레이도 beacon 도 의미가 없고, 그대로 두면 "아무도 안 본 화면"이 에러 통계를 채운다
+        //   (index.html 의 Speculation Rules 가 상세 경로를 prerender 한다). 활성화되면 그때부터 12초를 센다.
+        //   ⚠️ 백그라운드 탭(hidden)은 **억제하지 않는다** — 진짜 실패를 놓칠 수 있어, 대신 beacon 에
+        //   `vis=` 로 기록만 하고 판단은 데이터를 보고 한다.
+        if (document.prerendering) {
+          try {
+            document.addEventListener('prerenderingchange', function () { setTimeout(bootWatchdog, 12000); }, { once: true });
+          } catch (e) { setTimeout(bootWatchdog, 12000); }
+        } else {
+          setTimeout(bootWatchdog, 12000);
+        }
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -222,7 +251,17 @@
     <meta name="theme-color" content="#0F151D" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- 🎯 파비콘 (브라우저 탭) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본). PNG 실치수 우선 -->
+    <!-- 🎯 파비콘 (브라우저 탭 + 검색결과) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본).
+         🔴 2026-08-01 (대표: "우리 저 아이콘 디자인이 적용이 안됐네? 지구본모양으로 남아있는 상태야"):
+           실측 결과 **`/favicon.ico` 가 404** 였다. 구글 검색결과의 파비콘은 이 링크 태그들만 보는 게 아니라
+           **`/favicon.ico` 로 폴백**하고, 게다가 문서상 "48px의 배수인 정사각형"을 요구한다 —
+           우리가 선언한 건 16·32(배수 아님)와 192·512뿐이라 폴백도 크기 요건도 동시에 어긋나 있었다.
+           → `/favicon.ico`(16·32·48 PNG-in-ICO) 신설 + 48 배수 PNG(48/96/144) 추가 선언.
+         ⚠️ 구글이 파비콘을 다시 가져갈 때까지는 시간이 걸린다(홈 재크롤 시점). 즉시 반영 아님. -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="144x144" href="/favicon-144.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -359,7 +398,7 @@
       @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
       @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
       #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
-      #ud-inapp-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
+      #ud-inapp-block .blk-title { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
       #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
       #ud-inapp-block a.open-btn { display: inline-block; padding: 14px 28px; background: #FEE500; color: #3C1E1E; border-radius: 28px; font-weight: 800; text-decoration: none; font-size: 15px; margin: 4px 0 12px; box-shadow: 0 4px 12px rgba(254,229,0,0.35); }
       #ud-inapp-block .url-box { background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px; margin: 12px 0 8px; width: 100%; max-width: 340px; word-break: break-all; font-size: 11px; box-sizing: border-box; }
@@ -523,9 +562,13 @@
     <div id="ud-inapp-block" role="alert" aria-live="polite">
       <div class="wrap">
         <div class="ulogo">유어딜</div>
-        <div class="tagline">UR · DEAL</div>
+        <div class="tagline">urdeal.kr</div>
         <div class="icon">🌐</div>
-        <h1 id="ud-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</h1>
+        <!-- 🔎 2026-07-29 (소비자 SEO 실측): h1 → p. 이 블록은 `display:none` 이라 사람에겐 안 보이는데,
+             서빙 HTML 에서 **문서 전체의 첫 h1**이었다. `/`·`/vouchers` 는 다른 h1 이 없어서 JS 를 안 돌리는
+             크롤러(네이버 Yeti)에겐 그 페이지의 대표 제목이 "인앱 브라우저에서는…" 이었다.
+             role="alert" 인 컨테이너라 제목 시맨틱이 필요 없다 — 스타일(.blk-title)은 동일. -->
+        <p id="ud-title" class="blk-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</p>
         <p class="desc">최적의 환경을 위해<br/><b>외부 브라우저(Chrome / Safari)</b> 에서 열어주세요.</p>
         <a id="ud-open-btn" href="#" class="open-btn">📲 외부 브라우저 열기</a>
         <div class="url-box" id="ud-url"></div>

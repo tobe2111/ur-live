@@ -9,6 +9,7 @@ import { Ticket, Plus, X, BarChart3, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 interface Distribution {
   parent_coupon_id: number
@@ -148,7 +149,7 @@ export default function AgencyCouponsPage() {
                         <span>셀러 {d.distributed_to_sellers}명</span>
                         <span>총 {d.total_quantity}장</span>
                         <span className="font-bold text-emerald-600">사용 {d.total_used}장 ({usagePct}%)</span>
-                        {d.expires_at && <span>만료: {new Date(d.expires_at).toLocaleDateString('ko-KR')}</span>}
+                        {d.expires_at && <span>만료: {formatKSTDate(d.expires_at)}</span>}
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                         <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${usagePct}%` }} />

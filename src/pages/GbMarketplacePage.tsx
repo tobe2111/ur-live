@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Megaphone, Loader2, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
@@ -44,7 +45,7 @@ export default function GbMarketplacePage() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0F151D] pb-24">
-      <SEO title="공구 마켓 - 유어딜" description="지금 소개비가 걸린 공구를 찾아 내 링크샵에 담으세요." url="/gb-market" noindex />
+      <SEO title={CONSUMER_SURFACE_SEO['/gb-market'].title} description={CONSUMER_SURFACE_SEO['/gb-market'].description} url="/gb-market" noindex />
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>

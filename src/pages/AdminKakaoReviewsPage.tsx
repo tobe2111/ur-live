@@ -13,6 +13,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Star, ExternalLink, CheckCircle, XCircle } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface Submission {
   id: number
@@ -99,7 +100,7 @@ export default function AdminKakaoReviewsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{s.restaurant_name || '-'} · {s.product_name || '-'}</p>
                     <p className="text-[10px] text-gray-500 font-mono mt-0.5">user: {s.user_id} · voucher: {s.voucher_id}</p>
-                    <p className="text-[10px] text-gray-400">{new Date(s.created_at).toLocaleString('ko-KR')}</p>
+                    <p className="text-[10px] text-gray-400">{formatKST(s.created_at)}</p>
                   </div>
                 </div>
                 <a href={s.review_url} target="_blank" rel="noopener noreferrer"

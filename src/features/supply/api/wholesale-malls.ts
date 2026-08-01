@@ -96,6 +96,9 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN company_json TEXT').run().catch(() => { /* 이미 존재 */ })
+  // 🏬 2026-08-01 세션 ③-a — `urdeal.kr/{슬러그}` 경로로 열 몰 표시. DEFAULT 0 = fail-closed
+  //   (기존 도매몰은 자기 호스트에 그대로, 소비자 도메인 경로로 새로 열리는 것 0).
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN consumer_path INTEGER DEFAULT 0').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL').run().catch(swallow('wholesale-malls:idx-host'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)').run().catch(swallow('wholesale-malls:idx-active'))
   // 기본 몰(id=1) 시드 — 행이 하나도 없을 때만(기존 유통스타트 = 기본 몰). host=현 도매 호스트.

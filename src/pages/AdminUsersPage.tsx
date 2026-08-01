@@ -6,7 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { formatKST } from '@/utils/date'
+import { formatKST, parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -331,7 +331,7 @@ export default function AdminUsersPage() {
                                             <span className={tx.amount > 0 ? 'font-bold text-emerald-600' : 'font-bold text-red-600'}>
                                               {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}딜
                                             </span>
-                                            <span className="text-gray-400 text-[10px]">{new Date(tx.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                            <span className="text-gray-400 text-[10px]">{parseUTCDate(tx.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short' })}</span>
                                           </div>
                                         </div>
                                       ))}

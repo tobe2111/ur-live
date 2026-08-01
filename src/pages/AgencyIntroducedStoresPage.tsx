@@ -19,6 +19,7 @@ import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { Store, Users, Wallet, Sparkles, Copy, CheckCircle2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 interface Summary {
   total_stores: number
@@ -315,7 +316,7 @@ export default function AgencyIntroducedStoresPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-extrabold text-emerald-600">+₩{formatNumber(c.commission_amount)}</p>
-                        <p className="text-[10px] text-gray-400">{STATUS_LABEL[c.status]} · {new Date(c.created_at).toLocaleDateString('ko-KR')}</p>
+                        <p className="text-[10px] text-gray-400">{STATUS_LABEL[c.status]} · {formatKSTDate(c.created_at)}</p>
                       </div>
                     </div>
                   ))}

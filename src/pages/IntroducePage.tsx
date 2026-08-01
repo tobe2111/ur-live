@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, Check, Star, Users, Zap, ShoppingBag, MapPin, Ticket, Gift } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import { cfImage } from '@/utils/cf-image'
@@ -89,7 +90,7 @@ export default function IntroducePage() {
 
   return (
     <div className="bg-[#0F151D] text-white min-h-screen">
-      <SEO title={t('introduce.seoTitle', { defaultValue: '유어딜 - 우리 동네 공동구매 (맛집·뷰티·숙소)' })} description={t('introduce.seoDesc', { defaultValue: '우리 동네 맛집·뷰티·숙소를 그룹 특가로. 함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.' })} url="/introduce" />
+      <SEO title={t('introduce.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].title })} description={t('introduce.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].description })} url="/introduce" />
 
       {/* ─── NAV ─── */}
       <header className="sticky top-0 z-50 bg-[#0F151D]/90 backdrop-blur-md border-b border-[#2A3446]">

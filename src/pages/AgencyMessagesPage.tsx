@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { MessageSquare, Plus, Trash2, Send, X, History } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 type Category = 'invite' | 'follow_up' | 'reactivation' | 'announcement' | 'general'
 
@@ -213,7 +214,7 @@ export default function AgencyMessagesPage() {
                 <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-3">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-bold text-gray-900">{s.template_name || t('agency.messages.templateDeleted', { defaultValue: '템플릿 삭제됨' })}</p>
-                    <span className="text-[10px] text-gray-400">{new Date(s.sent_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-[10px] text-gray-400">{formatKST(s.sent_at)}</span>
                   </div>
                   <p className="text-xs text-gray-500 line-clamp-1">{s.rendered_body}</p>
                   <p className="text-[10px] text-gray-400 mt-1">{t('agency.messages.sellerNum', { defaultValue: '셀러' })} #{s.recipient_seller_id} · {s.channel} · {s.status}</p>

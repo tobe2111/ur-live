@@ -9,6 +9,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 /**
  * 🛡️ 2026-04-28: 셀러 관리 통합 페이지
@@ -370,7 +371,7 @@ export default function AdminSellerApprovalPage() {
                       {s.manager_name && <>담당자 {s.manager_name}{s.manager_phone ? ` (${s.manager_phone})` : ''}</>}
                     </p>
                   )}
-                  <p className="text-[10px] text-gray-400 mt-0.5">가입일: {new Date(s.created_at).toLocaleDateString('ko-KR')}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">가입일: {formatKSTDate(s.created_at)}</p>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
                   {s.status === 'pending' && (

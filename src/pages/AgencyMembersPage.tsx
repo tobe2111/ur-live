@@ -8,6 +8,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { Users, UserPlus, X, Pause, Play, Trash2, Copy, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 type Role = 'owner' | 'manager' | 'agent' | 'analyst'
 
@@ -199,7 +200,7 @@ export default function AgencyMembersPage() {
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">
                       {t('agency.members.invited', { defaultValue: '초대' })}: {new Date(m.invited_at).toLocaleDateString('ko-KR')}
-                      {m.joined_at && ` · ${t('agency.members.joined', { defaultValue: '가입' })}: ${new Date(m.joined_at).toLocaleDateString('ko-KR')}`}
+                      {m.joined_at && ` · ${t('agency.members.joined', { defaultValue: '가입' })}: ${formatKSTDate(m.joined_at)}`}
                     </p>
                   </div>
 

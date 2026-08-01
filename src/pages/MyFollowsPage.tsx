@@ -23,6 +23,7 @@ import {
   useUnfollowSeller,
   type FollowNotifyKey,
 } from '@/hooks/queries/useMyFollows'
+import { formatKSTDate } from '@/utils/date'
 
 export default function MyFollowsPage() {
   const navigate = useNavigate()
@@ -116,7 +117,7 @@ export default function MyFollowsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        {new Date(f.created_at).toLocaleDateString('ko-KR')} 부터 단골
+                        {formatKSTDate(f.created_at)} 부터 단골
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />

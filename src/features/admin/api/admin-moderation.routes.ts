@@ -79,11 +79,18 @@ adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    // 🛡️ 2026-07-01 (대표 "reviews 500"): 실제 테이블은 product_reviews (가시성=is_hidden, 이미지=images).
-    //   기존 'reviews'(존재 안 함)/'is_visible'/'image_urls' 참조 → "no such table: reviews" 로 항상 500.
-    //   정확 테이블·컬럼으로 교정 + 프론트 계약(is_visible/image_urls)은 SQL alias 로 그대로 유지.
-    if (status === 'visible') { conditions.push('COALESCE(r.is_hidden, 0) = 0'); }
-    else if (status === 'hidden') { conditions.push('COALESCE(r.is_hidden, 0) = 1'); }
+    // 🛡️ 2026-07-01 (대표 "reviews 500"): 테이블명 `reviews` → `product_reviews` 교정.
+    // 🔴 2026-08-01 (대표 "reviews 500" 재신고 — 한 달 뒤에도 500): 위 수리가 **가시성 컬럼을 반대로**
+    //   바꿔 놨다. `repair-schema` 의 CREATE 선언(`is_hidden`)을 실제 스키마로 믿고 `is_visible` →
+    //   `is_hidden` 으로 고쳤는데, **라이브 테이블에는 `is_hidden` 이 없다.**
+    //   실측(GET /api/admin/reviews/product/2847 → `SELECT *`): content·created_at·id·images·
+    //   is_generated·is_sponsored·**is_visible**·order_id·product_id·rating·selected_option·
+    //   seller_reply·seller_reply_at·updated_at·user_id·user_name. → "no such column: is_hidden" 로 항상 500.
+    //   테이블을 실제로 만드는 곳은 `features/reviews/api/reviews.routes.ts ensureTable`(is_visible DEFAULT 1)
+    //   이고 소비자 조회 경로도 전부 is_visible 이다 — **그쪽이 정본**. repair-schema 의 CREATE 를 이 커밋에서
+    //   같은 모양으로 맞춘다(선언이 현실과 달라 다음 사람이 또 반대로 고치는 걸 막는다).
+    if (status === 'visible') { conditions.push('COALESCE(r.is_visible, 1) = 1'); }
+    else if (status === 'hidden') { conditions.push('COALESCE(r.is_visible, 1) = 0'); }
 
     if (productId) { conditions.push('r.product_id = ?'); params.push(productId); }
     if (rating) { conditions.push('r.rating = ?'); params.push(parseInt(rating)); }
@@ -105,7 +112,7 @@ adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
 
     const reviews = await executeQuery<ReviewRow>(DB,
       `SELECT r.id, r.product_id, r.user_id, r.user_name, r.rating, r.content,
-              r.images AS image_urls, (1 - COALESCE(r.is_hidden, 0)) AS is_visible, r.created_at,
+              r.images AS image_urls, COALESCE(r.is_visible, 1) AS is_visible, r.created_at,
               p.name as product_name
        FROM product_reviews r
        LEFT JOIN products p ON p.id = r.product_id
@@ -137,14 +144,13 @@ adminModerationRoutes.patch('/reviews/:id/visibility', cors(), async (c) => {
     }
 
     const rows = await executeQuery<{ id: number; is_visible: number }>(DB,
-      `SELECT id, (1 - COALESCE(is_hidden, 0)) AS is_visible FROM product_reviews WHERE id = ?`, [reviewId]
+      `SELECT id, COALESCE(is_visible, 1) AS is_visible FROM product_reviews WHERE id = ?`, [reviewId]
     );
     if (rows.length === 0) {
       return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
     }
 
-    // is_visible(0/1) → is_hidden(반전) 저장.
-    await executeRun(DB, `UPDATE product_reviews SET is_hidden = ? WHERE id = ?`, [is_visible ? 0 : 1, reviewId]);
+    await executeRun(DB, `UPDATE product_reviews SET is_visible = ? WHERE id = ?`, [is_visible ? 1 : 0, reviewId]);
 
     await writeAuditLog(c, {
       action: is_visible ? 'show_review' : 'hide_review',
@@ -169,7 +175,7 @@ adminModerationRoutes.delete('/reviews/:id{[0-9]+}', cors(), async (c) => {
     const reviewId = c.req.param('id');
 
     const rows = await executeQuery<ReviewRow>(DB,
-      `SELECT id, product_id, user_id, user_name, rating, content, images AS image_urls, (1 - COALESCE(is_hidden, 0)) AS is_visible, created_at
+      `SELECT id, product_id, user_id, user_name, rating, content, images AS image_urls, COALESCE(is_visible, 1) AS is_visible, created_at
        FROM product_reviews WHERE id = ?`, [reviewId]
     );
     if (rows.length === 0) {
@@ -200,7 +206,7 @@ adminModerationRoutes.get('/reviews/stats', cors(), async (c) => {
       `SELECT
         COUNT(*) as total,
         COALESCE(AVG(rating), 0) as avg_rating,
-        SUM(CASE WHEN COALESCE(is_hidden, 0) = 1 THEN 1 ELSE 0 END) as hidden_count,
+        SUM(CASE WHEN COALESCE(is_visible, 1) = 0 THEN 1 ELSE 0 END) as hidden_count,
         SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as rating_1,
         SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as rating_2,
         SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as rating_3,

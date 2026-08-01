@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
@@ -9,7 +10,7 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D] pb-20">
-      <SEO title="개인정보처리방침 - 유어딜" description="유어딜 개인정보처리방침입니다." url="/privacy" />
+      <SEO title={CONSUMER_SURFACE_SEO['/privacy'].title} description={CONSUMER_SURFACE_SEO['/privacy'].description} url="/privacy" />
 
       {/* Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0F151D]/90 backdrop-blur border-b border-gray-100 dark:border-[#2A3446]">

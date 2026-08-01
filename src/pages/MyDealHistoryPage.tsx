@@ -14,7 +14,7 @@ import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory
 import { formatNumber } from '@/utils/format'
 import { ChevronLeft } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
-
+import { parseUTCDate } from '@/utils/date'
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
 
 const FILTER_OPTIONS: { value: FilterType; label: string; emoji: string }[] = [
@@ -37,13 +37,13 @@ const TYPE_EMOJI: Record<string, string> = {
 }
 
 function relativeTime(iso: string): string {
-  const d = new Date(iso).getTime()
+  const d = parseUTCDate(iso).getTime()  // UTC-naive(created_at) — 로컬 파싱하면 '9시간 전'이 된다
   const diff = Date.now() - d
   if (diff < 60_000) return '방금'
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`
   if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`
-  return new Date(iso).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+  return parseUTCDate(iso).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
 }
 
 const PAGE_SIZE = 50

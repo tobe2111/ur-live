@@ -9,6 +9,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 export default function AgencyNoticesPage() {
   const { t } = useTranslation()
@@ -85,7 +86,7 @@ export default function AgencyNoticesPage() {
                   <span className="text-sm font-bold text-gray-900">{n.title}</span>
                 </div>
                 <p className="text-sm text-gray-600 ml-6">{n.message}</p>
-                <p className="text-xs text-gray-400 ml-6 mt-1">{new Date(n.created_at).toLocaleString('ko-KR')}</p>
+                <p className="text-xs text-gray-400 ml-6 mt-1">{formatKST(n.created_at)}</p>
               </div>
             ))}
           </div>

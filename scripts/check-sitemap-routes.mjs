@@ -67,7 +67,12 @@ const toRe = (p) => new RegExp('^' + p.replace(/:[A-Za-z0-9_]+/g, '[^/]+').repla
  *   첫 구현이 실제로 그랬고, 죽은 `/live/1` 을 주입했는데 초록불이 떴다.
  *   catch-all 에만 걸린다는 건 **그 URL 이 404 페이지로 간다**는 뜻이므로 오히려 위반이다.
  */
-const realRoutes = routes.filter((r) => r.path !== '*' && r.path !== '/*')
+// 🏬 2026-08-01 `/:mallSlug`(운영자 몰, catch-all 직전) 도 **제외**한다.
+//   `*` 는 아니지만 **1-세그먼트 URL 을 전부 매치**하므로, 포함하면 죽은 1-세그먼트 URL
+//   (예: 삭제된 `/group-buy`)이 "라우트 있음"으로 통과해 이 검사가 무의미해진다.
+//   — 위 catch-all 제외와 정확히 같은 논리다. 몰 URL 은 사이트맵에 넣지 않는다(운영자별 링크 배포).
+const NEAR_CATCH_ALL = new Set(['*', '/*', '/:mallSlug'])
+const realRoutes = routes.filter((r) => !NEAR_CATCH_ALL.has(r.path))
 const matchRoute = (path) => realRoutes.find((r) => toRe(r.path).test(path))
 
 const sitemap = readFileSync(SITEMAP, 'utf8')

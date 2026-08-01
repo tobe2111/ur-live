@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus } fro
 import { toast } from '@/hooks/useToast'
 import DOMPurify from 'dompurify'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKST } from '@/utils/date'
 
 /**
  * 운영 가이드 공통 뷰어 — 어드민/셀러/에이전시 모두 사용
@@ -373,7 +374,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                 )}
                 {s.updated_at && (
                   <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-[#2A3446]">
-                    최종 수정: {new Date(s.updated_at).toLocaleString('ko-KR')}
+                    최종 수정: {formatKST(s.updated_at)}
                   </p>
                 )}
               </div>

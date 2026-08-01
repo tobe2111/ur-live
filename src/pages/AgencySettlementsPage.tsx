@@ -9,6 +9,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DollarSign, CheckCircle, Clock } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { formatKSTDate } from '@/utils/date'
 
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
@@ -109,7 +110,7 @@ export default function AgencySettlementsPage() {
                         'bg-yellow-100 text-yellow-700'
                       }`}>{r.settlement_status === 'completed' ? t('agency.settlements.statusCompleted', { defaultValue: '완료' }) : r.settlement_status === 'confirmed' ? t('agency.settlements.statusConfirmed', { defaultValue: '확정' }) : t('agency.settlements.statusPending', { defaultValue: '대기' })}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatKSTDate(r.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

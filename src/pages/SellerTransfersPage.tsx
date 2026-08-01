@@ -7,6 +7,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { ArrowRightLeft, Check, X, ArrowRight, Building2 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 /**
  * 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부하는 페이지.
@@ -149,7 +150,7 @@ function TransferCard({
           {status.label}
         </span>
         <span className="text-xs text-gray-500">
-          {new Date(transfer.created_at).toLocaleDateString('ko-KR')}
+          {formatKSTDate(transfer.created_at)}
         </span>
       </div>
       <div className="flex items-center gap-2 text-sm">

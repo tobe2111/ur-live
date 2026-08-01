@@ -18,6 +18,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { isLoggedInSync } from '@/utils/auth'
 import { useDigitalLibrary, type DigitalAccess } from '@/hooks/queries/useDigitalLibrary'
+import { parseUTCDate } from '@/utils/date'
 
 const KIND_LABEL: Record<string, string> = {
   digital: '📄 디지털 파일',
@@ -133,8 +134,8 @@ export default function MyDigitalLibraryPage() {
           <ul className="space-y-3">
             {items.map(it => {
               const Icon = FORMAT_ICON[it.content_format || ''] || Download
-              const isExpiringSoon = it.expires_at && new Date(it.expires_at).getTime() - Date.now() < 7 * 86400000
-              const isExpired = it.status === 'expired' || (it.expires_at && new Date(it.expires_at).getTime() < Date.now())
+              const isExpiringSoon = it.expires_at && parseUTCDate(it.expires_at).getTime() - Date.now() < 7 * 86400000
+              const isExpired = it.status === 'expired' || (it.expires_at && parseUTCDate(it.expires_at).getTime() < Date.now())
               const remainingDownloads = Math.max(0, it.download_limit - it.download_count)
 
               return (

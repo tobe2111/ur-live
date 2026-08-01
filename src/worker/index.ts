@@ -164,6 +164,10 @@ import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blo
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
+// 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
+import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity } from './utils/surface-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -253,6 +257,8 @@ import { gbCockpitRoutes } from '../features/group-buy/api/gb-cockpit.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experienceCampaignSellerRoutes } from '../features/group-buy/api/experience-campaign.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
+import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
+import { isMallLookupCandidate } from './utils/mall-consumer';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -624,6 +630,16 @@ app.use('*', async (c, next) => {
           const curatorMatch = url.pathname.match(/^\/u\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
           if (curatorMatch && curatorMatch[1] !== 'me') {
             ssrTarget = { slot: 'CURATOR', path: `/api/curator/${curatorMatch[1]}` };
+          } else {
+            // 🏬 2026-08-01 세션 ③-a — 운영자 몰 `urdeal.kr/{슬러그}`.
+            //   🔴 **매처 중 가장 마지막**이다. 1-세그먼트를 전부 후보로 볼 수 있으므로,
+            //      `isMallLookupCandidate` 로 **예약어(=실 라우트)와 문법 밖을 먼저 잘라낸다.**
+            //      그래서 기존 소비자 경로는 이 분기에 **도달조차 하지 않고**, self-fetch 도 안 생긴다.
+            //   ⚠️ 몰이 아니면 `/api/mall/:slug` 가 404 → ssrPayload 없음 → **기본 메타 그대로**(fail-soft).
+            const mallSeg = url.pathname.split('/')[1] || '';
+            if (isMallLookupCandidate(mallSeg) && !url.pathname.slice(1).includes('/')) {
+              ssrTarget = { slot: 'MALL', path: `/api/mall/${encodeURIComponent(mallSeg)}` };
+            }
           }
         }
       }
@@ -905,6 +921,33 @@ app.use('*', async (c, next) => {
     //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 링크샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
     //   실제 안 타는 app.get('*') fallback 에만 있었음(무효). WHOLESALE/BLOGPOST 와 동일하게 서빙 경로(HTMLRewriter)
     //   에서 rewrite. **SSR inject(__SSR_INITIAL_CURATOR__)·0-RTT·#root 비움·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    // 🏬 2026-08-01 세션 ③-a 〔대표 UX 기준 ② — "OG 메타가 곧 매대다"〕
+    //   카톡방에 몰 링크가 붙을 때 **누구의 판인지**가 먼저 읽혀야 한다. 몰 이름이 title 앞에 온다.
+    //   ⚠️ 잘못 나간 미리보기는 카톡 스크랩 캐시에 **박제**된다 — 그래서 payload 가 없으면
+    //      추측하지 않고 **기본 메타를 그대로 둔다**(mall-ssr-meta.ts 의 fail-closed 와 같은 방침).
+    if (ssrSlot === 'MALL' && ssrPayload) {
+      try {
+        const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null } })?.mall;
+        if (m && m.name) {
+          const mTitle = `${m.name} - 공동구매`;
+          const mDesc = String(m.intro || '').slice(0, 200) || `${m.name}의 공동구매`;
+          const mCanon = `${origin2}/${m.slug || ''}`;
+          const mImg = m.logoUrl ? (String(m.logoUrl).startsWith('http') ? String(m.logoUrl) : `${origin2}${m.logoUrl}`) : `${origin2}/og-image.svg`;
+          rb = rb
+            .on('title', { element(el) { el.setInnerContent(mTitle); } })
+            .on('meta[name="description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', mTitle); } })
+            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', mCanon); } })
+            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', mImg); } })
+            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', mTitle); } })
+            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', mImg); } })
+            .on('link[rel="canonical"]', { element(el) { el.setAttribute('href', mCanon); } });
+        }
+      } catch { /* 파싱 실패 — 기본 메타 유지 */ }
+    }
+
     if (ssrSlot === 'CURATOR' && ssrPayload) {
       try {
         const cur = (JSON.parse(ssrPayload) as { curator?: { name?: string; bio?: string; handle?: string; profile_image?: string | null } })?.curator;
@@ -917,18 +960,12 @@ app.use('*', async (c, next) => {
           //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
           //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
           const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}`;
-          rb = rb
-            .on('title', { element(el) { el.setInnerContent(cTitle); } })
-            .on('meta[name="description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', cTitle); } })
-            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
-            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'profile'); } })
-            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogCard); } })
-            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', cTitle); } })
-            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', cDesc); } })
-            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogCard); } })
-            .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+          // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
+          //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
+          rb = applySurfaceMeta(rb, {
+            pageTitle: cTitle, title: cTitle, description: cDesc,
+            canonical: canon, ogType: 'profile', ogImage: ogCard,
+          });
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
@@ -956,44 +993,15 @@ app.use('*', async (c, next) => {
     if (ssrSlot === 'DETAIL' && ssrPayload) {
       const dm = buildDetailMeta(ssrPayload, origin2, url.pathname);
       if (dm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(dm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', dm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', dm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', dm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', dm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', dm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${dm.canonical}">`, { html: true });
-            if (dm.jsonLd) el.append(`<script type="application/ld+json">${dm.jsonLd}</script>`, { html: true });
-          } });
-        // 교환권(/vouchers/:id)은 색인 제외 — index.html 기본 robots(index,follow)를 noindex 로 rewrite.
-        if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+        // 교환권(/vouchers/:id)의 noindex 도 applySurfaceMeta 가 처리(meta.noindex).
+        rb = applySurfaceMeta(rb, dm);
       }
     }
     // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD(DETAIL 과 동일 패턴, 페이로드만 다름).
     if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
       const sm = buildStayDetailMeta(ssrPayload, origin2, url.pathname);
       if (sm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(sm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', sm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', sm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', sm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', sm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', sm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', sm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${sm.canonical}">`, { html: true });
-            if (sm.jsonLd) el.append(`<script type="application/ld+json">${sm.jsonLd}</script>`, { html: true });
-          } });
+        rb = applySurfaceMeta(rb, sm);
       }
     }
     // 🔎 2026-07-20 [UNLOCK_LOADING] 쇼핑 상품 상세(/products/:id · PRODUCT slot) 서버 메타 — DETAIL 과 동일 패턴.
@@ -1002,22 +1010,38 @@ app.use('*', async (c, next) => {
     if (ssrSlot === 'PRODUCT' && ssrPayload) {
       const pm = buildProductMeta(ssrPayload, origin2, url.pathname);
       if (pm) {
-        rb = rb
-          .on('title', { element(el) { el.setInnerContent(pm.pageTitle); } })
-          .on('meta[name="description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', pm.title); } })
-          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', pm.canonical); } })
-          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', pm.ogType); } })
-          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
-          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', pm.title); } })
-          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', pm.description); } })
-          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', pm.ogImage); } })
-          .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${pm.canonical}">`, { html: true });
-            if (pm.jsonLd) el.append(`<script type="application/ld+json">${pm.jsonLd}</script>`, { html: true });
-          } });
+        rb = applySurfaceMeta(rb, pm);
       }
+    }
+    // 🔎 2026-07-29 [UNLOCK_LOADING] (대표 "소비자 쪽 성능·SEO·UX 점검" — 라이브 실측 수리):
+    //   **정적 소비자 표면(`/`·`/vouchers`·`/browse`·`/map`)** + **셀러 링크샵(SELLER slot)** 서버 메타/canonical.
+    //   실측: 앞 셋은 홈 메타를 그대로 서빙(title/description 동일, `og:url` 전부 `https://urdeal.kr`,
+    //   canonical 없음)인데 sitemap 은 priority 0.9 로 제출 → 비-JS 크롤러엔 홈의 중복. `/s/*` 도 같은 상태
+    //   (`/u/:handle` 만 2026-07-01 에 개인화됨). DETAIL/PRODUCT/CURATOR 와 **동일한 additive 패턴**.
+    //   ⚠️ 정적 표면은 ssrSlot 이 아니라 **pathname** 으로 판정한다: `/vouchers?category=…` 는 슬롯 조건
+    //   (`!url.search`)에 안 걸려 ssrSlot 이 'MAIN' 으로 떨어지지만 메타는 교환권 것이어야 한다(sitemap 이 제출).
+    //   문구 SSOT = shared/seo/consumer-surfaces · 배선/빌더 = utils/surface-ssr-meta(god 파일 방지).
+    //   `/area-report/:region` 은 그 표의 **동적 항목** — 지역명이 경로에 있어 조회 없이 메타가 나오고,
+    //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
+    //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
+    if (!isWholesaleSurface && !needsRootBlank) {
+      const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2);
+      if (sm) rb = applySurfaceMeta(rb, sm);
+    }
+    // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
+    //   `/group-buy/99999999` → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
+    //   self-fetch 는 그 순간 **404 를 받고 있었다**(`X-SSR-Status: DETAIL:self-fetch-404`) — 알고도 안 썼다.
+    //   sitemap 이 상세 URL 을 829건(공구 329·상품 500) 제출하는데 상품은 내려간다. 내려갈 때마다
+    //   "홈과 똑같은 내용의 색인 가능한 URL" 이 하나씩 생기는 구조였다(soft-404 — 에러가 없어 안 보인다).
+    //   ⚠️ HTTP 상태는 200 그대로 둔다 — SPA 셸/청크 로딩·클라 라우팅에 영향을 주지 않기 위해서다.
+    //   색인만 막는다. (진짜 404 상태 전환은 별개 결정 — handoff 참조.)
+    const entityGone = shouldNoindexMissingEntity(ssrSlot, ssrStatus);
+    if (entityGone) {
+      rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+    }
+    if (ssrSlot === 'SELLER' && ssrPayload) {
+      const sellerMeta = buildSellerSurfaceMeta(ssrPayload, origin2, url.pathname);
+      if (sellerMeta) rb = applySurfaceMeta(rb, sellerMeta);
     }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
@@ -1049,7 +1073,15 @@ app.use('*', async (c, next) => {
       });
     }
     const rewritten = rb.transform(c.res);
-    c.res = new Response(rewritten.body, rewritten);
+    // 🪦 2026-07-29 사라진 엔티티는 **HTTP 404** 로 응답한다(본문은 SPA 셸 그대로).
+    //   noindex 만으로는 이미 색인된 URL 이 늦게 빠지고 서치콘솔엔 계속 soft-404 로 잡힌다.
+    //   404 는 "없어졌다"를 명시하는 유일한 신호다. 본문을 그대로 두므로 브라우저는 SPA 를 부팅해
+    //   "없는 상품" 화면을 정상 렌더한다(HTTP 상태는 렌더를 막지 않는다).
+    //   ⚠️ 판정 근거는 **우리 API 의 404** 뿐이다 — 타임아웃/5xx 는 제외(shouldNoindexMissingEntity).
+    //   ⚠️ 정적 자산은 이 경로를 타지 않는다(text/html 청크포인트 안) → 청크 404 자가복구와 무관.
+    c.res = entityGone
+      ? new Response(rewritten.body, { status: 404, statusText: 'Not Found', headers: rewritten.headers })
+      : new Response(rewritten.body, rewritten);
     // 🛡️ 2026-06-25 [UNLOCK_LOADING] (대표 승인 "가장 이상적으로 모두"): SPA HTML 셸은 항상 재검증.
     //   옛 HTML(옛 청크 해시)이 브라우저/bfcache 에 잔존 → 새 배포 후 그 청크 404 → 흰화면/안넘어감을
     //   *근본* 차단(서버가 매 하드로드마다 fresh HTML → fresh 청크 해시 보장). 클라 캐시버스트 복구와 이중 방어.
@@ -1917,6 +1949,8 @@ app.route('/api/admin/experience-campaigns', experienceCampaignAdminRoutes);
 app.route('/api/seller-experience-campaigns', experienceCampaignSellerRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §4 — 인플루언서 공구 탐색(promo 순). platform_settings.gb_engine_enabled 게이트.
 app.route('/api/gb-marketplace', gbMarketplaceRoutes);
+// 🏬 2026-08-01 세션 ③-a — 운영자 몰 소비자 공개 API(비로그인). consumer_path=1 인 몰만 200.
+app.route('/api/mall', mallPublicRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §2-B — 양방향 공구 제안(인플↔매장). 상대방 승인 시 gb open.
 app.route('/api/gb-proposals', gbProposalsRoutes);
 // 🎟️ 2026-06-22 사용처리 분쟁(매장 "안 왔어요" 신고 → 정산 보류 + 어드민 중재)
@@ -2563,6 +2597,13 @@ export default {
       if (request.method === 'GET' || request.method === 'HEAD') {
         const renamed = resolveRenamedBlogPath(url.pathname);
         if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
+        // 🔀 2026-07-29 별칭 경로 301 (SSOT: shared/seo/consumer-redirects).
+        //   `App.tsx` 에 `<Navigate>` 로만 있던 경로들 — 서버는 그 URL 에도 SPA 셸을 200 + index,follow
+        //   로 내주고 있어서 크롤러에겐 "홈과 같은 내용의 색인 가능 URL" 이 7개 더 있는 셈이었다.
+        //   클라 리다이렉트는 JS 를 돌리는 방문자에게만 통한다. SPA 내부 이동은 서버를 안 타므로
+        //   App.tsx 의 <Navigate> 는 그대로 둔다(지우면 앱 안에서 갈 곳이 없어진다).
+        const alias = resolveConsumerAlias(url.pathname);
+        if (alias) return Response.redirect(`${url.origin}${alias}${url.search || ''}`, 301);
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).

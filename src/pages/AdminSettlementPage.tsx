@@ -9,6 +9,7 @@ import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { parseUTCDate } from '@/utils/date'
 
 interface SettlementStats {
   total_orders: number
@@ -140,7 +141,8 @@ export default function AdminSettlementPage() {
   }
   function fmtDate(s: string) {
     if (!s) return '-'
-    return new Date(s).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    // 🕘 2026-08-01: 인자가 DB 의 UTC-naive 문자열(record.created_at) — new Date 로 파싱하면 9시간 어긋난다.
+    return parseUTCDate(s).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
   }
 
   if (loading) {

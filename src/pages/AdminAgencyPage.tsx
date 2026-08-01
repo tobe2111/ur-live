@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle, KeyRound, Users } from 'lucide-react'
 import { tierLabel, tierBadgeClass } from '@/shared/utils/agency-tier'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 interface Agency {
   id: number
@@ -258,7 +259,7 @@ export default function AdminAgencyPage() {
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{t('admin.agency.k012', { defaultValue: '대기중' })}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{a.contact_name} · {a.email} {a.phone && `· ${a.phone}`}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">신청일: {new Date(a.created_at).toLocaleDateString('ko-KR')}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">신청일: {formatKSTDate(a.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                     <button

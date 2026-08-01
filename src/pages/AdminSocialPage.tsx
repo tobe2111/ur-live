@@ -23,6 +23,7 @@ import {
   PLATFORMS, STATUS_META, parseHashtags,
   type SocialAccount, type SocialGate, type SocialPost, type SocialPlatform,
 } from './admin-social/types'
+import { parseUTCDate } from '@/utils/date'
 
 export default function AdminSocialPage() {
   const navigate = useNavigate()
@@ -183,7 +184,7 @@ export default function AdminSocialPage() {
                       {post.media_kind === 'video' && <Video className="h-3.5 w-3.5 text-gray-400" />}
                       {post.scheduled_at && post.status !== 'published' && (
                         <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">
-                          <Clock className="h-3 w-3" /> {new Date(post.scheduled_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 예약
+                          <Clock className="h-3 w-3" /> {parseUTCDate(post.scheduled_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 예약
                         </span>
                       )}
                     </div>

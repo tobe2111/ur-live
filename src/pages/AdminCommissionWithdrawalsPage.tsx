@@ -14,6 +14,7 @@ import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatWon } from '@/utils/format'
+import { formatKST, formatKSTDate, formatKSTTime } from '@/utils/date'
 
 interface Withdrawal {
   id: number
@@ -148,8 +149,8 @@ export default function AdminCommissionWithdrawalsPage() {
                 return (
                   <tr key={w.id} className="border-t border-gray-100 text-xs">
                     <td className="px-4 py-3 text-gray-700">
-                      <div>{new Date(w.requested_at).toLocaleDateString('ko-KR')}</div>
-                      <div className="text-[10px] text-gray-400">{new Date(w.requested_at).toLocaleTimeString('ko-KR')}</div>
+                      <div>{formatKSTDate(w.requested_at)}</div>
+                      <div className="text-[10px] text-gray-400">{formatKSTTime(w.requested_at)}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{w.beneficiary_name || w.beneficiary_id}</div>
@@ -189,7 +190,7 @@ export default function AdminCommissionWithdrawalsPage() {
                           </button>
                         </div>
                       ) : w.processed_at ? (
-                        <div className="text-[10px] text-gray-500">{new Date(w.processed_at).toLocaleString('ko-KR')}</div>
+                        <div className="text-[10px] text-gray-500">{formatKST(w.processed_at)}</div>
                       ) : null}
                     </td>
                   </tr>

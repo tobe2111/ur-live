@@ -11,9 +11,10 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, Check } from 'lucide-react'
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/queries/useNotifications'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { parseUTCDate } from '@/utils/date'
 
 function timeLabel(iso: string): string {
-  const d = new Date(iso)
+  const d = parseUTCDate(iso)  // UTC-naive(created_at) — 방금 온 알림이 '9시간 전'으로 보이던 원인
   if (isNaN(d.getTime())) return ''
   const diff = Date.now() - d.getTime()
   const min = Math.floor(diff / 60000)

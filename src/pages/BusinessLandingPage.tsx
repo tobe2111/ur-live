@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Clock, Zap, Shield, TrendingUp, Phone, Sparkles, CheckCircle2 } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 export default function BusinessLandingPage() {
   const navigate = useNavigate()
@@ -26,8 +27,7 @@ export default function BusinessLandingPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F151D] text-gray-900 dark:text-white">
       <SEO
-        title="유어딜 사장님 — 3분이면 매장 매출이 시작됩니다"
-        description="자영업자를 위한 모바일 우선 공동구매 플랫폼. Magic Link 로 PIN 없이 통계 확인, 자동 환불, 카카오톡 알림톡까지. 수수료 3-5%."
+        title={CONSUMER_SURFACE_SEO['/business'].title} description={CONSUMER_SURFACE_SEO['/business'].description}
         url="/business"
         type="website"
       />

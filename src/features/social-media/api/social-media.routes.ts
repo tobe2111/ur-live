@@ -65,9 +65,11 @@ socialMediaRoutes.get('/posts', async (c) => {
   return c.json({ success: true, posts: await listPosts(c.env.DB, { platform, status }) })
 })
 
-// POST /posts/generate  body: { platform, topicSlug? } — AI 초안 생성(draft)
+// POST /posts/generate  body: { platform, topicSlug? } — 초안 생성(draft)
+//   ✍️ 2026-08-01: ANTHROPIC_API_KEY 게이트 제거. 키가 없으면 createSocialDraft 가 결정론
+//   작성기(social-compose)로 만든다 — 키 없다고 버튼이 죽어 있으면 안 된다는 대표 지시.
+//   (영상 생성 경로 :137 은 그대로 — 스토리보드는 폴백이 없다.)
 socialMediaRoutes.post('/posts/generate', async (c) => {
-  if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const platform = String(b.platform || '')
   if (!isSocialPlatform(platform)) return c.json({ success: false, error: '지원하지 않는 플랫폼' }, 400)

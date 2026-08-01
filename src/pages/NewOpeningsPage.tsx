@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrandLoader from '@/components/brand/BrandLoader'
 
 interface Opening { biz_name: string; category: string | null; uptae: string | null; region: string | null; addr_road: string | null; apv_perm_ymd: string | null }
@@ -44,7 +45,7 @@ export default function NewOpeningsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
-      <SEO title="우리 동네 새 가게 - 유어딜" description="이번 달 우리 동네에 새로 문을 연 가게들 — 공공 인허가 데이터 기반 신규 개업 소식." url="/new-openings" />
+      <SEO title={CONSUMER_SURFACE_SEO['/new-openings'].title} description={CONSUMER_SURFACE_SEO['/new-openings'].description} url="/new-openings" />
       <div className="ur-content-wide px-4 lg:px-8 py-6">
         <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">🎉 우리 동네 새 가게</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">최근 30일 신규 개업 — 공공 인허가 데이터 기반이라 매일 자동 갱신됩니다.</p>

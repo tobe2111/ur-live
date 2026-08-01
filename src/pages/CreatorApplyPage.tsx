@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 /**
  * 📥 유어딜 제휴 크리에이터 모집 (공개 신청 페이지, /creators).
@@ -12,7 +13,7 @@ const PLATFORMS = [
   { v: 'tistory', label: '티스토리' }, { v: 'tiktok', label: '틱톡' }, { v: 'etc', label: '기타' },
 ]
 // 서버(influencer-apply.routes CATEGORIES)와 동일 택소노미 — 불일치 시 '기타'로 강등되므로 함께 갱신할 것.
-const CATEGORIES = ['공동구매', '맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '골프', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
+const CATEGORIES = ['공동구매', '마케팅대행사', '맛집', '카페', '푸드', '외식창업', '뷰티', '네일', '골프', '숙소', '여행', '패션', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '기타']
 
 export default function CreatorApplyPage() {
   const [f, setF] = useState({ name: '', platform: 'youtube', url: '', category: '맛집', region: '', followers: '', rate: '', email: '', contact: '', message: '' })
@@ -41,7 +42,8 @@ export default function CreatorApplyPage() {
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-4">
-      <SEO title="유어딜 제휴 크리에이터 모집 - 유어딜" description="동네 맛집·카페·뷰티·숙소 딜을 소개할 크리에이터를 찾습니다. 지금 제휴 신청하세요." url="/creators/apply" />
+      {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
+      <SEO title={CONSUMER_SURFACE_SEO['/creators/apply'].title} description={CONSUMER_SURFACE_SEO['/creators/apply'].description} url="/creators/apply" />
       <div className="mx-auto max-w-lg">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-gray-900">유어딜 제휴 크리에이터 모집</h1>

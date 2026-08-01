@@ -20,6 +20,7 @@ import SEO from '@/components/SEO'
 import { Gift, Loader2, CheckCircle2, XCircle, MapPin, Phone, Sparkles } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import { parseUTCDate } from '@/utils/date'
 
 interface GiftInfo {
   id: number
@@ -131,7 +132,7 @@ export default function GiftClaimPage() {
               components={[<span key="0" className="text-pink-500" />, <br key="1" />]}
             />
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{new Date(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US')}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{parseUTCDate(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' })}</p>
         </div>
 
         {/* 상품 카드 */}
@@ -233,7 +234,7 @@ export default function GiftClaimPage() {
               {t('giftClaim.submit')}
             </button>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-3">
-              {t('giftClaim.expiresAt', { date: new Date(gift.expires_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US') })}
+              {t('giftClaim.expiresAt', { date: parseUTCDate(gift.expires_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' }) })}
             </p>
           </form>
         )}

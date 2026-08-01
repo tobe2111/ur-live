@@ -82,9 +82,19 @@ describe('worker-ads — self-beat 이 실제로 배선돼 있다', () => {
     expect(SRC).toMatch(/deps\.selfFetch\(new Request\(deps\.laneUrl\(lane\.path, lane\.beat, lane\.gapMin\)/)
   })
 
-  it('레인 미들웨어가 응답 전에 기록한다', () => {
-    expect(SRC).toMatch(/app\.use\('\/__ads\/\*'/)
-    expect(SRC).toMatch(/writeSelfBeat\(/)
+  /**
+   * 🔁 2026-08-01: 미들웨어 본체가 `index.ts` → `self-beat.ts` 로 옮겨졌다(그 모듈의 관심사이고,
+   *   index.ts 가 600줄 캡에 닿아 있었다). **불변식은 그대로다** — 바뀐 것은 어느 파일을 보느냐뿐이다.
+   *
+   * 📌 그리고 제목의 "응답 **전에**"는 이제 틀리다: beat 쓰기는 `waitUntil` 로 **응답 경로 밖**에 있다.
+   *   `await` 였을 때 그 한 줄이 자식 수명을 핸들러 종료 뒤로 늘렸고, 부모 수명 가장자리의 느린 레인이
+   *   그만큼 넘어가 죽었다(죽으면 `finally` 도 안 돌아 **기록조차 안 남는다**). 근거는 self-beat.ts docblock.
+   */
+  it('레인 미들웨어가 배선돼 있고, 기록은 응답 경로 밖이다', () => {
+    expect(SRC, '엔트리가 미들웨어를 안 붙인다 — 관측이 통째로 사라진다').toMatch(/app\.use\('\/__ads\/\*', selfBeatMiddleware\(\)\)/)
+    const MW = readFileSync(resolve(process.cwd(), 'src/worker-ads/self-beat.ts'), 'utf8')
+    expect(MW).toMatch(/writeSelfBeat\(/)
+    expect(MW, 'beat 를 await 하면 자식 수명이 늘어 느린 레인이 죽는다').toMatch(/waitUntil\(beat\)/)
   })
 
   it('🔒 부모의 쓰기는 폴백으로 남아 있다 — 한쪽만 남기면 다른 실패 모드가 열린다', () => {

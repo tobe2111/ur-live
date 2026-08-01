@@ -95,3 +95,40 @@ function failNote(err: unknown): Record<string, unknown> {
   const msg = String(e?.message || err || '')
   return { err: e?.name || 'Error', ...(msg ? { detail: msg.slice(0, 160) } : {}) }
 }
+
+/**
+ * 🫀 `/__ads/*` 미들웨어 — 레인이 **자기** 하트비트를 쓴다. 부모가 `_beat`/`_gap` 을 넘긴 호출에서만 동작한다
+ *   (수동 트리거는 파라미터가 없어 무영향 — 그 비대칭이 2026-08-01 장애 진단의 결정적 단서였다).
+ *
+ * ⏳ **beat 쓰기를 응답 경로에 두지 않는다.** 처음엔 `finally` 에서 `await` 했는데, 그 한 줄이 자식의 수명을
+ *   핸들러 종료 **이후로** 늘렸다. 피호출자는 호출자보다 오래 못 산다(#874) — 부모는 ~20개 레인의
+ *   `SELF.fetch` 를 동시에 붙잡고 있어 수명 가장자리가 얇고, 거기 있던 느린 레인이 D1 쓰기 1회만큼 넘어가
+ *   죽는다. 죽으면 이 `finally` 도 실행되지 않아 **기록조차 안 남는다** — 관측 코드가 관측 대상을 죽이고
+ *   자기 기록까지 지우는 형태다.
+ *
+ * ⚠️ 이 인과는 **정황이다**(반증 재료 있음: 11.5초에 실패를 기록한 레인도 있었다). 원인 규명은 `detail`
+ *   관측에 맡기고, 여기서는 어느 쪽이든 옳은 것만 한다 — **관측은 응답을 느리게 만들면 안 된다.**
+ * ⚠️ 트레이드오프: `waitUntil` 도 인보케이션 종료 시 취소될 수 있어 일부 beat 를 놓칠 수 있다. 다만 지금
+ *   그 레인들은 beat 를 **아예 못 남기고** 있으므로 나빠질 여지가 없다.
+ */
+export function selfBeatMiddleware() {
+  return async (c: BeatCtx, next: () => Promise<void>): Promise<void> => {
+    const t0 = Date.now()
+    const p = readBeatParams(c.req.url)
+    if (!p) return next()
+    let ok = true
+    let thrown: unknown
+    try { await next() } catch (err) { ok = false; thrown = err; throw err } finally {
+      const beat = writeSelfBeat(c.env, p.beat, ok && (c.res?.status ?? 500) < 500, Date.now() - t0, p.gap, thrown)
+      try { c.executionCtx.waitUntil(beat) } catch { await beat } // executionCtx 없으면(테스트 등) 종전대로
+    }
+  }
+}
+
+/** 미들웨어가 실제로 쓰는 것만 — Hono Context 전체 타입을 끌어오지 않는다(이 파일은 워커 엔트리와 독립이다). */
+interface BeatCtx {
+  req: { url: string }
+  env: Env
+  res?: { status?: number }
+  executionCtx: { waitUntil(p: Promise<unknown>): void }
+}

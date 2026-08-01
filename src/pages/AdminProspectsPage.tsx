@@ -15,6 +15,7 @@ import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
+import { formatKST, formatKSTDate } from '@/utils/date'
 
 type ProspectStatus = 'visiting' | 'converted' | 'expired'
 
@@ -157,8 +158,8 @@ export default function AdminProspectsPage() {
                   )}
 
                   <p className="text-[10px] text-gray-400 mt-2">
-                    등록: {new Date(p.created_at).toLocaleString('ko-KR')}
-                    {p.expires_at && p.status === 'visiting' && <span> · 만료: {new Date(p.expires_at).toLocaleDateString('ko-KR')}</span>}
+                    등록: {formatKST(p.created_at)}
+                    {p.expires_at && p.status === 'visiting' && <span> · 만료: {formatKSTDate(p.expires_at)}</span>}
                   </p>
                 </div>
               )

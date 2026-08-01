@@ -21,6 +21,7 @@ import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
 
 interface PromoCode {
   id: number
@@ -284,7 +285,7 @@ export default function SellerPromoCodesPage() {
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> 사용 {c.redemption_count}{c.max_uses > 0 && `/${c.max_uses}`}</span>
                       <span>1인당 {c.per_user_limit}회</span>
-                      {c.expires_at && <span>~{new Date(c.expires_at).toLocaleDateString('ko-KR')}</span>}
+                      {c.expires_at && <span>~{formatKSTDate(c.expires_at)}</span>}
                     </div>
                   </div>
                   {c.is_active && (

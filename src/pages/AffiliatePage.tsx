@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { parseUTCDate } from '@/utils/date'
 
 export default function AffiliatePage() {
   const { t } = useTranslation()
@@ -173,7 +174,7 @@ export default function AffiliatePage() {
                   <div key={i} className="flex items-center justify-between px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{r.product_name || t('affiliate.productFallback')}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{parseUTCDate(r.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                     <div className="text-right ml-3">
                       <p className="text-sm font-bold text-green-600">{t('affiliate.earnedDeal', { amount: formatNumber(r.commission) })}</p>

@@ -11,6 +11,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Megaphone, Trophy, Clock, TrendingUp, RefreshCw } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { parseUTCDate } from '@/utils/date'
 
 interface AdSlot {
   slot_id: string
@@ -196,7 +197,7 @@ export default function AdminAdSlotsPage() {
                     </td>
                     <td className="px-4 py-3 text-[11px] text-gray-500">{b.payment_status}</td>
                     <td className="px-4 py-3 text-[11px] text-gray-500 whitespace-nowrap">
-                      {new Date(b.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      {parseUTCDate(b.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
                   </tr>
                 ))}
