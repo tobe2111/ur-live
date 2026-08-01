@@ -143,6 +143,12 @@ export interface Seller {
 
 // ---- Product ----
 export interface Product {
+  /**
+   * 📦 2026-08-01 세션 ④-a — 픽업 정보(픽업 공구). **없으면 `null`**.
+   * 서버가 `product_supply_meta` 에서 읽어 상세 응답에 동봉한다(`products.routes` GET /:id).
+   * 🔴 몰 상품인지로 가르지 않는다 — **있으면 보여준다**(데이터가 결정, 몰 결합 없음).
+   */
+  pickup?: { date: string | null; place: string | null; storage: 'cold' | 'room' | null } | null;
   id: string;
   seller_id: string;
   category_id?: string;

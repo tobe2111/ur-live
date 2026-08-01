@@ -131,3 +131,41 @@ describe('📦 소비자 표시 (C3)', () => {
     expect(usesSymbol(page, 'parseUTCDate'), 'import 만 있고 new Date() 를 쓰고 있다').toBe(true)
   })
 })
+
+/**
+ * 📦 **상품 상세 픽업 표시** 〔세션 ④-a, C3 마감〕
+ *
+ * 🔴 **몰 상품인지로 가르지 않는다 — 픽업 정보가 있으면 보여준다.**
+ * "몰 상품만 조건부"로 짜면 ⓐ 공용 소비자 페이지에 **몰 결합**이 생기고
+ * ⓑ 본진의 픽업 상품은 안내를 못 받는다. **데이터가 결정하게** 두는 쪽이 둘 다 없다.
+ *
+ * ⚠️ 못 막는 것: 실제 렌더 · 캐시 TTL(60s) 동안 픽업 변경이 안 보이는 것(허용 가능한 지연).
+ */
+describe('📦 상품 상세 (C3)', () => {
+  const api = readCode('src/features/products/api/products.routes.ts')
+  const page = readCode('src/pages/ProductDetailPage.tsx')
+
+  it('상세 API 가 픽업을 동봉한다', () => {
+    expect(usesSymbol(api, 'parsePickup')).toBe(true)
+    expect(api).toMatch(/\.pickup = /)
+  })
+
+  it('🔴 비어 있으면 null — 빈 껍데기를 안 그린다', () => {
+    expect(usesSymbol(api, 'isEmptyPickup')).toBe(true)
+  })
+
+  it('🔴 몰 여부로 가르지 않는다 — 데이터가 결정한다', () => {
+    // 상세 페이지에 mall 조건이 들어가면 공용 페이지에 몰 결합이 생긴다.
+    const block = sliceFrom(page, 'product.pickup &&', '수량 스텝퍼', 1500)
+    expect(block, '픽업 블록을 못 찾았다').not.toBe('')
+    expect(block).not.toMatch(/mall_id|mallSlug|isMall/)
+  })
+
+  it('보관 고지를 상세에서 보여준다 — 카드는 배지, 상세는 전문', () => {
+    expect(usesSymbol(page, 'STORAGE_NOTICE')).toBe(true)
+  })
+
+  it('픽업일이 UTC-naive 오해석을 피한다', () => {
+    expect(usesSymbol(page, 'parseUTCDate')).toBe(true)
+  })
+})
