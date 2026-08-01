@@ -18,11 +18,7 @@ import { adminAdsRoutes } from '@/features/marketing/api/admin-ads.routes'
 import { shortLinkRedirectRoutes } from '@/features/marketing/api/routes/shortlink-redirect.routes'
 import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
-<<<<<<< HEAD
-import { createBeatBatch } from './beat-batch'
-=======
 import { createBeatBatch, makeBeatWriter } from './beat-batch'
->>>>>>> origin/main
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl, selfBeatMiddleware } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
