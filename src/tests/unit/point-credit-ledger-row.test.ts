@@ -27,9 +27,26 @@ describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방�
       '빈 catch 가 되살아났다 — 적립만 되고 기록이 사라진다').toBe(false)
   })
 
-  it('실패 시 최소 컬럼으로 다시 INSERT 한다', () => {
-    const fallback = /INSERT INTO point_transactions \(user_id, type, amount, description\)/
-    expect(fallback.test(SRC), '최소 컬럼 폴백 INSERT 가 없다').toBe(true)
+  it('실패 시 최소 컬럼으로 다시 INSERT 한다 (SSOT 헬퍼 위임도 인정)', () => {
+    // 폴백이 4곳에 복붙되던 것을 `recordPointTxMinimal`(point-ledger SSOT)로 모았다.
+    // 호출부는 위임만 하면 되고, **실제 INSERT 는 SSOT 에 있어야** 한다(아래 테스트가 그걸 본다).
+    const inlineOrDelegate = /INSERT INTO point_transactions \(user_id, type, amount, description\)|recordPointTxMinimal\s*\(/
+    expect(inlineOrDelegate.test(SRC), '최소 컬럼 폴백도, SSOT 위임도 없다').toBe(true)
+  })
+
+  it('SSOT(`recordPointTxMinimal`)가 실제로 최소 컬럼 INSERT 를 한다', () => {
+    // 위임만 하고 SSOT 가 비어 있으면 전부 무의미해진다 — 위임 검사와 짝이다.
+    const ledger = readFileSync('src/worker/utils/point-ledger.ts', 'utf8')
+    expect(ledger, 'recordPointTxMinimal 이 없다').toContain('export async function recordPointTxMinimal')
+    expect(ledger, 'SSOT 에 최소 컬럼 INSERT 가 없다')
+      .toContain('INSERT INTO point_transactions (user_id, type, amount, description)')
+  })
+
+  it('기록 SSOT `recordPointTransaction` 도 실패를 그냥 삼키지 않는다', () => {
+    // 이 함수가 `catch { return false }` 로 끝나던 것이 같은 사고의 상류였다.
+    const ledger = readFileSync('src/worker/utils/point-ledger.ts', 'utf8')
+    const tail = ledger.slice(ledger.indexOf('export async function recordPointTransaction'))
+    expect(tail.slice(0, 1600), 'catch 에서 폴백 없이 false 만 돌려준다').toContain('recordPointTxMinimal(')
   })
 
   it('폴백이 base CREATE 가 보장하는 컬럼만 쓴다 (그래야 항상 성공한다)', () => {

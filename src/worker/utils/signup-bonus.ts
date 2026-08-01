@@ -62,11 +62,24 @@ export async function grantSignupBonus(DB: D1Database, userId: string | number, 
     const balanceAfter = row?.balance ?? SIGNUP_BONUS_AMOUNT
 
     // point_transactions ledger 기록.
-    await DB.prepare(`
-      INSERT INTO point_transactions
-        (user_id, type, amount, points_amount, balance_after, description, free_delta)
-      VALUES (?, 'signup_bonus', ?, ?, ?, '신규 가입 환영 보너스', ?)
-    `).bind(uid, SIGNUP_BONUS_AMOUNT, SIGNUP_BONUS_AMOUNT, balanceAfter, SIGNUP_BONUS_AMOUNT).run().catch(() => null)
+    // 🔴 2026-08-01: 여기가 **잔액만 3,000 있고 거래 기록이 0 인 유저**를 만든 자리다.
+    //   위 UPSERT 로 잔액은 이미 늘었는데 이 INSERT 를 `.catch(() => null)` 로 삼켰다.
+    //   확장 컬럼(points_amount·balance_after·free_delta)이 base CREATE 에 없고 repair-schema 에도
+    //   free_delta 만 등록돼 있어, 컬럼이 없는 배포 창에서는 이 INSERT 가 통째로 실패한다.
+    //   라이브 실측: 정확히 이 모양인 유저 2명(user 32·33, 각 3,000딜 = SIGNUP_BONUS_AMOUNT).
+    //   ⚠️ 원장 행이 없으면 **위쪽 이중적립 dedup(`type='signup_bonus'` 조회)도 무력화**된다 —
+    //      기록이 없으니 "이미 받았다"를 알 수 없다. 그래서 폴백은 정합성뿐 아니라 중복지급 방어이기도 하다.
+    //   → 실패하면 base CREATE 가 보장하는 최소 컬럼으로 반드시 한 번 더 남긴다.
+    try {
+      await DB.prepare(`
+        INSERT INTO point_transactions
+          (user_id, type, amount, points_amount, balance_after, description, free_delta)
+        VALUES (?, 'signup_bonus', ?, ?, ?, '신규 가입 환영 보너스', ?)
+      `).bind(uid, SIGNUP_BONUS_AMOUNT, SIGNUP_BONUS_AMOUNT, balanceAfter, SIGNUP_BONUS_AMOUNT).run()
+    } catch {
+      const { recordPointTxMinimal } = await import('./point-ledger')
+      await recordPointTxMinimal(DB, uid, 'signup_bonus', SIGNUP_BONUS_AMOUNT, '신규 가입 환영 보너스')
+    }
 
     return { granted: true, amount: SIGNUP_BONUS_AMOUNT }
   } catch {
