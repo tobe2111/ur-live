@@ -26,8 +26,14 @@ const baseCols = new Set(
     .filter(Boolean).map(m => m[1]),
 )
 
-// (b) repair-schema 등록분
-const repairSrc = readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8')
+// (b) repair-schema 등록분.
+//   ⚠️ 2026-08-01: 컬럼 ALTER 목록이 `repair-schema/column-repairs.ts` 로 분리됐다. 라우트 파일만
+//   읽으면 등록분을 한 개도 못 봐서 **전부 미등록으로 보인다**(실제로 그렇게 빨간불이 났다).
+//   파일이 갈릴 때 조용히 통과하는 게 아니라 조용히 실패하는 쪽이라 눈에는 띄었지만, 어느 쪽이든
+//   경로를 하드코딩한 가드는 코드 이동에 약하다 — 두 파일을 합쳐서 본다.
+const repairSrc =
+  readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8') +
+  readFileSync('src/worker/routes/repair-schema/column-repairs.ts', 'utf8')
 const repairCols = new Set(
   [...repairSrc.matchAll(/ALTER TABLE products ADD COLUMN ([A-Za-z_0-9]+)/g)].map(m => m[1]),
 )

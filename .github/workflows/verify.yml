@@ -149,6 +149,29 @@ jobs:
         run: node scripts/check-cron-heartbeat.mjs
         continue-on-error: false
 
+      # 🩹 2026-08-02: 머지 충돌 마커가 커밋되는 것을 막는다. 이 레포에서 두 번 났다
+      #   (07-11 CLAUDE.md · 08-02 세션이 `git add -A` 로 마커째 푸시). `git add -A` 는 충돌 파일도
+      #   '해결됨'으로 표시하므로 git 은 막아 주지 않는다.
+      - name: 머지 충돌 마커 (strict)
+        run: node scripts/check-conflict-markers.mjs -s
+        continue-on-error: false
+
+      # 🚦 2026-08-02: 레인이 예산을 우회하는 것을 막는다(인플루언서·B2B 공통).
+      #   생 `ctx.waitUntil(await import(…))` 은 **부모 CPU 를 직접 태우면서 예산 분산엔 안 잡힌다**.
+      #   `kick` 은 SELF.fetch = 자식 인보케이션 = 자기 예산이라 성격이 정반대다.
+      - name: 유어애즈 예산 우회 래칫 (strict)
+        run: node scripts/check-ads-dispatch-bypass.mjs -s
+        continue-on-error: false
+
+      # 🧬 2026-08-02: **가드가 실제로 실패할 수 있는지** 기계가 확인한다(되돌려-검증 자동화).
+      #   이 레포의 반복 사고는 "검사가 실패한다"가 아니라 **"검사가 실패할 수 없다"** 이고,
+      #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).
+      #   셋 다 손으로 주입해 보고서야 알았다 — 손으로 하면 다음 세션은 안 한다.
+      #   ⚠️ 소스를 잠깐 고쳤다 되돌리므로 **다른 스텝과 병렬로 돌리지 말 것**.
+      - name: 가드 주입 검증 (strict)
+        run: node scripts/check-guard-mutations.mjs -s
+        continue-on-error: false
+
       # 🧾 2026-07-30: 예산 루프가 **자기 기록을 쓸 몫**을 남기는가. 루프 뒤에는 반드시 D1 쓰기가 있다
       #   (커서·학습상한·자기 스탬프). 예산을 0까지 쓰면 그 쓰기들이 조용히 사라져 **돌았는데 "안 돈 것"**
       #   처럼 보인다. 하루에 세 번 만난 실패 양식이라 래칫으로 고정한다(기존 2건 동결).
@@ -386,6 +409,11 @@ jobs:
       #   원자 증감(x=x±?) 또는 CAS(WHERE x=?)만. 미수금 상환 race 사고(머니 룰 #1).
       - name: Balance absolute-write guard (strict)
         run: node scripts/check-balance-absolute-write.mjs -s
+
+      - name: 잔액↑ 원장기록 삼킴 (strict)
+        env:
+          STRICT_BALANCE_LEDGER: '1'
+        run: node scripts/check-balance-without-ledger.mjs
         continue-on-error: false
 
       # 🛡️ 2026-07-04 [INV-CB]: 커미션 예산 아비터 우회 금지 — 플랫폼 부담 성장 커미션(어필리에이트/

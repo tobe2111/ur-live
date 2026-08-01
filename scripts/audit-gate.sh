@@ -62,6 +62,7 @@ if domain money; then
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
   run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
   run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
+  run "잔액↑ 원장기록 삼킴"            node scripts/check-balance-without-ledger.mjs
   run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "서브리퀘스트 상한 키 레인공유"     node scripts/check-subreq-cap-lane.mjs -s
   run "서브리퀘스트 플랫폼 천장 우회"     node scripts/check-subreq-platform-cap.mjs -s
@@ -126,6 +127,8 @@ if domain deploy; then
   run "시크릿 자재 전수(추적 파일)"       node scripts/check-secret-material.mjs
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
+  run "머지 충돌 마커"                  node scripts/check-conflict-markers.mjs -s
+  run "유어애즈 예산 우회(부모 CPU)"    node scripts/check-ads-dispatch-bypass.mjs -s
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
   run "예산 루프 부기 몫(자기 기록)"     env STRICT_BUDGET_BOOKKEEPING=1 node scripts/check-budget-bookkeeping.mjs
   run "공공데이터 자리표시자(N/A) 판정"  env STRICT_PUBLIC_DATA_SENTINEL=1 node scripts/check-public-data-sentinel.mjs

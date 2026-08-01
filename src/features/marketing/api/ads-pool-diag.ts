@@ -29,6 +29,13 @@ export interface AdsPoolDiag {
   /** 🌙 라이브 재보정 결과(`ads_maintenance_rescan_last`) */
   maintenance_rescan: unknown
   /**
+   * 🚦 이번 정각의 디스패치 선별 결과(`ads_dispatch_last`) — 무료 CPU 예산 분산(#919).
+   * 미룬 레인이 있을 때만 기록된다(없으면 undefined = 전부 돌았다).
+   * ⚠️ 이게 없으면 **미룬 것과 죽은 것이 똑같이 "기록 없음"** 으로 보인다 — 실제로 #919 첫 판정에서
+   *   스냅샷을 쓰기만 하고 노출을 안 해 ran/deferred 를 못 봤다.
+   */
+  dispatch: unknown
+  /**
    * 📝 인플루언서 풀 보강 레인 결과(`ads_influencer_enrich_last`). 2026-07-28 신설 —
    * 보강이 수집과 같은 인보케이션에 얹혀 **한 건도 못 돌던** 것을 전용 레인으로 분리하면서,
    * "이번 시간에 블로거를 몇 명 실제로 측정했나"가 화면에 없으면 또 무음으로 죽는다.
@@ -51,7 +58,7 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
       .first<{ value: string }>().catch(() => null),
     DB.prepare("SELECT value FROM platform_settings WHERE key = 'ads_sheets_last_sync'")
       .first<{ value: string }>().catch(() => null),
-    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
+    DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('ads_maintenance_last','ads_maintenance_rescan_last','ads_sheets_last_cron','ads_dispatch_last','${INFLUENCER_ENRICH_SNAPSHOT_KEY}')`)
       .all<{ key: string; value: string }>().catch(() => null),
   ])
   const find = (k: string) => mRows?.results?.find(r => r.key === k)?.value
@@ -65,5 +72,8 @@ export async function getAdsPoolDiag(DB: D1Database): Promise<AdsPoolDiag> {
     maintenance: parseJson(find('ads_maintenance_last')),
     maintenance_rescan: parseJson(find('ads_maintenance_rescan_last')),
     enrich_lane: parseJson(find(INFLUENCER_ENRICH_SNAPSHOT_KEY)),
+    // 🚦 이번 회차가 무엇을 돌리고 무엇을 미뤘는가(예산 분산). 이걸 안 내보내면 **미룬 것과 죽은 것을
+    //   구분할 수단이 없다** — 스냅샷을 쓰기만 하고 노출을 안 해서 첫 판정에서 실제로 못 봤다.
+    dispatch: parseJson(find('ads_dispatch_last')),
   }
 }

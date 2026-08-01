@@ -19,7 +19,13 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const REPAIR_REL = 'src/worker/routes/repair-schema.routes.ts';
+// 2026-08-01: 컬럼 ALTER 목록이 `repair-schema/column-repairs.ts` 로 분리됐다.
+// 새 컬럼은 거의 항상 *분리된 쪽*에 들어가므로, 라우트 파일만 보면 이 가드가 늘 "반영 안 됨"으로 읽는다.
+const REPAIR_RELS = [
+  'src/worker/routes/repair-schema.routes.ts',
+  'src/worker/routes/repair-schema/column-repairs.ts',
+];
+const REPAIR_REL = REPAIR_RELS.join(' / ');
 const STRICT = process.env.STRICT_MIGRATION_DRIFT === '1';
 
 function sh(cmd) { try { return execSync(cmd, { cwd: ROOT, encoding: 'utf8' }); } catch { return ''; } }
@@ -35,8 +41,8 @@ if (stagedMigrations.length === 0) {
   process.exit(0);
 }
 
-const repairStaged = staged.includes(REPAIR_REL);
-const repairText = read(REPAIR_REL);
+const repairStaged = REPAIR_RELS.some((f) => staged.includes(f));
+const repairText = REPAIR_RELS.map(read).join('\n');
 
 const addColRe = /ALTER\s+TABLE\s+[`"']?(\w+)[`"']?\s+ADD\s+COLUMN\s+[`"']?(\w+)[`"']?/gi;
 const createTblRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?(\w+)[`"']?/gi;
