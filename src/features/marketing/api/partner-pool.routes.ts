@@ -209,6 +209,13 @@ app.get('/meta', (c) => c.json({
   leadTypes: LEAD_TYPES.map(k => ({ k, label: LEAD_TYPE_LABEL[k] })),
 }))
 
+// 📅 GET /api/admin/partner-pool/timeline?days=30 — 업체 풀의 일자별 수집(KST). 인플루언서와 같은 SSOT.
+//   ⚠️ 이 테이블의 시각 컬럼은 `created_at` 이다(인플루언서는 `collected_at`) — pool-timeline.ts 표 참조.
+app.get('/timeline', async (c) => {
+  const { getPoolTimeline, resolveDays } = await import('./pool-timeline')
+  return c.json({ success: true, timeline: await getPoolTimeline(c.env.DB, 'company', resolveDays(c.req.query('days'))) })
+})
+
 // GET /api/admin/partner-pool/stats
 app.get('/stats', async (c) => {
   const s = await companyStats(c.env.DB)

@@ -165,6 +165,13 @@ app.get('/influencer-pool', async (c) => {
 //   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
 app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
 
+// 📅 GET /api/admin/ads/influencer-pool/timeline?days=30 — **며칠에 얼마나 수집됐나**(KST 달력일).
+//   누적 총계만으로는 "언제 멈췄나"를 못 본다 — 라이브 판정에서 매번 하트비트를 손으로 뒤지던 자리다.
+app.get('/influencer-pool/timeline', async (c) => {
+  const { getPoolTimeline, resolveDays } = await import('./pool-timeline')
+  return c.json({ success: true, timeline: await getPoolTimeline(c.env.DB, 'influencer', resolveDays(c.req.query('days'))) })
+})
+
 /**
  * 🚀 GET /api/admin/ads/influencer-pool/send-queue?limit=20 — **오늘 보낼 사람만** 골라주는 발송 큐.
  *
