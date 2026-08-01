@@ -126,6 +126,7 @@ if domain deploy; then
   run "Firebase 인증 수용 금지"          node scripts/check-no-firebase-auth.mjs
   run "cron 하트비트 커버리지"           node scripts/check-cron-heartbeat.mjs
   run "유어애즈 레인 격리"              node scripts/check-ads-lane-isolation.mjs
+  run "예산 루프 부기 몫(자기 기록)"     env STRICT_BUDGET_BOOKKEEPING=1 node scripts/check-budget-bookkeeping.mjs
   run "공공데이터 자리표시자(N/A) 판정"  env STRICT_PUBLIC_DATA_SENTINEL=1 node scripts/check-public-data-sentinel.mjs
   run "시드 버전 단조증가"              env STRICT_SEED_VERSION=1     node scripts/check-seed-version-monotonic.mjs
   run "규칙 버전 bump"                  env STRICT_RULES_VERSION=1    node scripts/check-rules-version-bump.mjs
