@@ -254,6 +254,7 @@ import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.rout
 import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes, experienceCampaignSellerRoutes } from '../features/group-buy/api/experience-campaign.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
 import { mallPublicRoutes } from '../features/mall/api/mall-public.routes';
+import { isMallLookupCandidate } from './utils/mall-consumer';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -625,6 +626,16 @@ app.use('*', async (c, next) => {
           const curatorMatch = url.pathname.match(/^\/u\/([A-Za-z0-9_-]{1,40})(?:[/?#]|$)/);
           if (curatorMatch && curatorMatch[1] !== 'me') {
             ssrTarget = { slot: 'CURATOR', path: `/api/curator/${curatorMatch[1]}` };
+          } else {
+            // 🏬 2026-08-01 세션 ③-a — 운영자 몰 `urdeal.kr/{슬러그}`.
+            //   🔴 **매처 중 가장 마지막**이다. 1-세그먼트를 전부 후보로 볼 수 있으므로,
+            //      `isMallLookupCandidate` 로 **예약어(=실 라우트)와 문법 밖을 먼저 잘라낸다.**
+            //      그래서 기존 소비자 경로는 이 분기에 **도달조차 하지 않고**, self-fetch 도 안 생긴다.
+            //   ⚠️ 몰이 아니면 `/api/mall/:slug` 가 404 → ssrPayload 없음 → **기본 메타 그대로**(fail-soft).
+            const mallSeg = url.pathname.split('/')[1] || '';
+            if (isMallLookupCandidate(mallSeg) && !url.pathname.slice(1).includes('/')) {
+              ssrTarget = { slot: 'MALL', path: `/api/mall/${encodeURIComponent(mallSeg)}` };
+            }
           }
         }
       }
@@ -906,6 +917,33 @@ app.use('*', async (c, next) => {
     //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 링크샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
     //   실제 안 타는 app.get('*') fallback 에만 있었음(무효). WHOLESALE/BLOGPOST 와 동일하게 서빙 경로(HTMLRewriter)
     //   에서 rewrite. **SSR inject(__SSR_INITIAL_CURATOR__)·0-RTT·#root 비움·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    // 🏬 2026-08-01 세션 ③-a 〔대표 UX 기준 ② — "OG 메타가 곧 매대다"〕
+    //   카톡방에 몰 링크가 붙을 때 **누구의 판인지**가 먼저 읽혀야 한다. 몰 이름이 title 앞에 온다.
+    //   ⚠️ 잘못 나간 미리보기는 카톡 스크랩 캐시에 **박제**된다 — 그래서 payload 가 없으면
+    //      추측하지 않고 **기본 메타를 그대로 둔다**(mall-ssr-meta.ts 의 fail-closed 와 같은 방침).
+    if (ssrSlot === 'MALL' && ssrPayload) {
+      try {
+        const m = (JSON.parse(ssrPayload) as { mall?: { name?: string; slug?: string; intro?: string; logoUrl?: string | null } })?.mall;
+        if (m && m.name) {
+          const mTitle = `${m.name} - 공동구매`;
+          const mDesc = String(m.intro || '').slice(0, 200) || `${m.name}의 공동구매`;
+          const mCanon = `${origin2}/${m.slug || ''}`;
+          const mImg = m.logoUrl ? (String(m.logoUrl).startsWith('http') ? String(m.logoUrl) : `${origin2}${m.logoUrl}`) : `${origin2}/og-image.svg`;
+          rb = rb
+            .on('title', { element(el) { el.setInnerContent(mTitle); } })
+            .on('meta[name="description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', mTitle); } })
+            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', mCanon); } })
+            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', mImg); } })
+            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', mTitle); } })
+            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', mDesc); } })
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', mImg); } })
+            .on('link[rel="canonical"]', { element(el) { el.setAttribute('href', mCanon); } });
+        }
+      } catch { /* 파싱 실패 — 기본 메타 유지 */ }
+    }
+
     if (ssrSlot === 'CURATOR' && ssrPayload) {
       try {
         const cur = (JSON.parse(ssrPayload) as { curator?: { name?: string; bio?: string; handle?: string; profile_image?: string | null } })?.curator;
