@@ -5498,14 +5498,17 @@ _총 77건 · 최신순 · 이 목록은 자동 생성된다._
 _총 74건 · 최신순 · 이 목록은 자동 생성된다._
 _총 75건 · 최신순 · 이 목록은 자동 생성된다._
 _총 77건 · 최신순 · 이 목록은 자동 생성된다._
+_총 79건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-08-02**
 - [대표 지시 두 건이 "머지됐는데 실행된 적이 없었다" — 재추출 단계의 굶주림](handoff/2026-08-02-ads-reextract-starvation.md)
 - [08-02 — 수량 실측: 양은 문제가 아니다. **연락처가 안 채워진다**](handoff/2026-08-02-collection-volume-verdict.md)
 **2026-08-01**
 - [08-01~02 — 통신판매 API 는 멀쩡했다. 고장은 우리 쪽 파라미터다](handoff/2026-08-01-public-data-probe-verdict.md)
+- [인계 — 운영자 몰 ④-b 미수령 환불 · 도달불가 라우트 래칫 (2026-08-01)](handoff/2026-08-01-operator-mall-pickup-refund.md)
 - [08-01 — 레인은 살아 있었다. 죽은 건 관측이다](handoff/2026-08-01-lane-observation-cut.md)
 - [12개 레인이 매시간 죽는데 기록은 `err=Error` 한 단어 (2026-08-01)](handoff/2026-08-01-lane-failure-detail.md)
+- [2026-08-01 — 소비자 실측(성능·SEO·UX) → 어드민 수리 → **딜 원장 전수조사**](handoff/2026-08-01-consumer-seo-admin-ledger.md)
 - [보강 라운드: 릴레이 → 슬라이스 팬아웃 (무료 최대치 + 유료 전환 대비)](handoff/2026-08-01-ads-enrich-fanout.md)
 **2026-07-30**
 - [예산 루프가 자기 기록을 삼키던 자리 — 하루에 세 번 만난 실패 (2026-07-30)](handoff/2026-07-30-budget-bookkeeping-ratchet.md)
