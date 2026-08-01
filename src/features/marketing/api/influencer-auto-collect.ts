@@ -39,7 +39,7 @@ import { promoteHashtagKeywords } from './influencer-keyword-promote'
 //   홍석천·이원일 류). 매 배치의 3/4 를 이 풀에 배정(별도 커서 순환), 나머지 1/4 이 전체 일반 순환.
 //   SSOT 는 `influencer-keyword-rotation.ts`(선택 점수도 이 목록을 쓴다) — 두 벌로 두면 조용히 갈라진다.
 export { PRIORITY_CATEGORIES } from './influencer-keyword-rotation'
-import { PRIORITY_CATEGORIES, interleavePicks, isUnjudgedRound } from './influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES, FOCUS_CATEGORIES, planKeywordSplit, interleavePicks, isUnjudgedRound } from './influencer-keyword-rotation'
 
 // 🌱 시드 키워드(데이터) → `influencer-seed-keywords.ts` 로 분리(600줄 래칫). 탐색 *범위*라 자유 확장.
 //   🔀 병합 메모: 이 브랜치도 같은 분리를 `influencer-seeds.ts` 로 했었다 — **같은 것을 두 벌 두면
@@ -246,10 +246,16 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
 
   // ⭐ 우선 카테고리 배정 — 배치의 ceil(3/4)은 우선 풀(맛집·푸드·외식창업·숙소·네일·뷰티, 별도 커서),
   //   나머지는 일반 풀 순환. 한쪽 풀이 모자라면 다른 쪽이 잔여 슬롯을 채움(총 batch 개 유지).
-  const priPool = kws.filter(k => k.category && PRIORITY_CATEGORIES.includes(k.category))
-  const genPool = kws.filter(k => !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
+  // 🎯 집중 축(마케팅대행사) 전용 풀 — 우선/일반보다 **앞에서** 뗀다. 근거는 `FOCUS_CATEGORIES` 주석.
+  //   ⚠️ 세 풀은 서로 배타여야 한다 — 겹치면 같은 키워드가 한 배치에 두 번 들어간다.
+  const inFocus = (k: { category: string | null }) => !!k.category && FOCUS_CATEGORIES.includes(k.category)
+  const focusPool = kws.filter(inFocus)
+  const priPool = kws.filter(k => !inFocus(k) && k.category && PRIORITY_CATEGORIES.includes(k.category))
+  const genPool = kws.filter(k => !inFocus(k) && !(k.category && PRIORITY_CATEGORIES.includes(k.category)))
   let priCursor = parseInt(settings['ads_autocollect_cursor_pri'] || '0', 10)
   if (!Number.isFinite(priCursor) || priCursor < 0) priCursor = 0
+  let focusCursor = parseInt(settings['ads_autocollect_cursor_focus'] || '0', 10)
+  if (!Number.isFinite(focusCursor) || focusCursor < 0) focusCursor = 0
   let cursor = parseInt(settings[CURSOR_KEY] || '0', 10)
   if (!Number.isFinite(cursor) || cursor < 0) cursor = 0
   // 🚀 "최대한 많이"(2026-07-20): 네이버 쿼터(25k/day)는 남아돌아 — YT 배정(batch)에 더해
@@ -258,16 +264,17 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   서브리퀘스트 예산(아래 300)이 실제 상한이라 초과분은 커서가 다음 틱에서 이어받음(커버리지 손실 0). 런어웨이 방지 max 40.
   const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
   const totalPick = batch + NAVER_EXTRA
-  // 유어딜 연관(맛집·외식창업·뷰티·네일·숙소) 우선 — 배치의 3/4 를 우선 풀에(나머지 1/4 일반: 자가확장용 다양성).
-  const basePri = priPool.length ? Math.min(priPool.length, Math.ceil(totalPick * 3 / 4)) : 0
-  const nGen = Math.min(genPool.length, totalPick - basePri)
-  const nPri = Math.min(priPool.length, totalPick - nGen) // 일반 풀이 모자라면 우선 풀이 추가로 채움
-  // 우선/일반 인터리브 — YT 슬롯(앞 batch 개)에 우선·일반이 골고루 들어가게.
+  // 🎯 [집중 · 우선 · 일반] 3분할 — 배분 규칙은 순수함수 SSOT(`planKeywordSplit`).
+  //   집중 축이 비면(고갈로 자동 비활성) 그 몫이 **자동으로** 우선/일반에 돌아간다 — 그게 이 설계의 핵심이다.
+  const { nFocus, nPri, nGen } = planKeywordSplit(totalPick, focusPool.length, priPool.length, genPool.length)
+  const focusPicks: { id: number; keyword: string; category: string | null }[] = []
   const priPicks: { id: number; keyword: string; category: string | null }[] = []
   const genPicks: { id: number; keyword: string; category: string | null }[] = []
+  for (let i = 0; i < nFocus; i++) focusPicks.push(focusPool[(focusCursor + i) % focusPool.length])
   for (let i = 0; i < nPri; i++) priPicks.push(priPool[(priCursor + i) % priPool.length])
   for (let i = 0; i < nGen; i++) genPicks.push(genPool[(cursor + i) % genPool.length])
-  const picks: { id: number; keyword: string; category: string | null }[] = []
+  // 집중 축을 **앞머리**에 둔다 — YT 슬롯(희소, 앞 batch 개)에 확실히 들어가게.
+  const picks: { id: number; keyword: string; category: string | null }[] = [...focusPicks]
   for (let i = 0; i < Math.max(priPicks.length, genPicks.length); i++) {
     if (i < priPicks.length) picks.push(priPicks[i])
     if (i < genPicks.length) picks.push(genPicks[i])
@@ -499,13 +506,14 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const priDone = prefixDone(priPicks)
   const genDone = prefixDone(genPicks)
   const nextPriCursor = priPool.length ? (priCursor + priDone) % priPool.length : 0
+  const nextFocusCursor = focusPool.length ? (focusCursor + nFocus) % focusPool.length : 0
   const nextCursor = genPool.length ? (cursor + genDone) % genPool.length : 0
   // 🎯 YT 예산 소진으로 스킵됐고 다른 에러가 없으면 사유 노출(QUOTA 프리픽스 = 기존 배너 스타일 재사용).
   if (ytBudgetBlocked && !diag.yt.error) diag.yt.error = `QUOTA: 오늘 YT 검색 예산(${ytBudgetTotal}회) 소진 — 쿼터 리셋(한국 오후 4~5시) 후 자동 재개`
   const stats: AutoCollectStats = {
     last_run: stamp, last_saved: saved, last_keywords: used,
     total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved,
-    cursor: nextCursor, pri_cursor: nextPriCursor, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
+    cursor: nextCursor, pri_cursor: nextPriCursor, focus_cursor: nextFocusCursor, focus_n: nFocus, promoted, kw_unjudged: starvedIds.size, ...(kwAuto ? { kw_auto: kwAuto } : {}), youtube_quota_hit: quotaHit, diag,
     picks: { planned: finalPicks.length, processed: processedIds.size, from_yt: fromYt, from_cursor: fromCursor },
     yt_budget: { used: ytSearchUsed, total: ytBudgetTotal, day: ytDay },
     // 🔒 예산 실사용/상한/한도관측 — 정상 실행에도 남긴다(위 필드 주석 참조).

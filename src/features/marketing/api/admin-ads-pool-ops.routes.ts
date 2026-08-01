@@ -125,11 +125,24 @@ app.post('/influencer-pool/enrich-run', async (c) => {
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정 — 시간당 cron 만 동작' }, 503)
   const raw = parseInt(c.req.query('depth') || '0', 10)
   const depth = Number.isFinite(raw) && raw > 0 ? Math.min(19, raw) : 0
+  /**
+   * 🍰 **버튼은 드라이버를 부른다**(2026-08-02) — 그전엔 단발 라운드(`/__ads/enrich-influencer`)를 불러서,
+   *   사람이 눌러도 **cron 이 하는 일의 일부**만 돌았다. 실측(08-02 01:06 수동 실행):
+   *   `naver measured 18 · spent 44/45 · elapsed 6.9s · deadline_hit false` — 한 라운드는 **예산으로 끝난다**
+   *   (시간이 아니라). 즉 남는 건 시간뿐이고, 그걸 쓰는 방법이 팬아웃이다.
+   *   드라이버가 조각 K개를 동시에 띄우므로 같은 대기시간에 K배를 돈다(`resolveEnrichFanout` 주석).
+   *
+   *   ⚠️ 팬아웃일 땐 응답에 `stats` 가 없다 — 자식들이 각자 자기 스냅샷을 남기기 때문이다.
+   *   그래서 `fanout` 개수를 그대로 돌려준다(화면이 "몇 개 띄웠다"를 말할 수 있게).
+   *   `?single=1` 이면 옛 단발 경로 — 한 라운드의 숫자를 그 자리에서 보고 싶을 때(디버깅)만 쓴다.
+   */
+  const single = c.req.query('single') === '1'
+  const path = single ? `/__ads/enrich-influencer?depth=${depth}` : '/__ads/enrich-influencer-driver'
   try {
-    const r = await ads.fetch(new Request(`https://ur-ads/__ads/enrich-influencer?depth=${depth}`, { method: 'POST' }))
-    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string } | null
+    const r = await ads.fetch(new Request(`https://ur-ads${path}`, { method: 'POST' }))
+    const j = await r.json().catch(() => null) as { ok?: boolean; stats?: unknown; error?: string; fanout?: number; planned?: number } | null
     if (!j?.ok) return c.json({ success: false, error: j?.error || '보강 레인 실행 실패', depth }, 502)
-    return c.json({ success: true, depth, stats: j.stats })
+    return c.json({ success: true, depth, stats: j.stats, fanout: j.fanout, planned: j.planned })
   } catch (err) {
     return c.json({ success: false, error: `${(err as Error)?.name || 'Error'}: ${String((err as Error)?.message || '').slice(0, 160)}`, depth }, 502)
   }
