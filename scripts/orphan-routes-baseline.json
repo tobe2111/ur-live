@@ -1,0 +1,25 @@
+{
+  "orphans": [
+    "/account/settings",
+    "/admin/kakao-test/callback",
+    "/admin/maker-pool",
+    "/agency/ledger",
+    "/auth/kakao/callback",
+    "/auth/kakao/consent/callback",
+    "/fail",
+    "/kakao-debug",
+    "/mypage/wishlist",
+    "/seller/2fa",
+    "/seller/consignment",
+    "/seller/marketing",
+    "/seller/realtime",
+    "/seller/store-dashboard",
+    "/seller/tiktok-callback",
+    "/seller/voucher-orders",
+    "/seller/youtube-growth/success",
+    "/seller/youtube/callback",
+    "/success",
+    "/toss-debug",
+    "/wholesale/margin"
+  ]
+}
