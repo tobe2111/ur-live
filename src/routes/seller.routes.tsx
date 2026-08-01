@@ -30,6 +30,8 @@ const SellerConsignmentPage = lazy(() => import('@/pages/SellerConsignmentPage')
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
+// ⚡ 2026-08-01 세션 ③-b — 3분 등록(사진·가격·마감만). 풀 폼(위)은 그대로 둔다.
+const SellerQuickGbPage = lazy(() => import('@/pages/SellerQuickGbPage'))
 const SellerProductEditPage = lazy(() => import('@/pages/SellerProductEditPage'))
 const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage'))
 const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
@@ -158,6 +160,12 @@ export function SellerRoutes() {
       <Route path="/seller/products/new" element={
         <ProtectedRoute requireSeller>
           <SellerProductNewPage />
+        </ProtectedRoute>
+      } />
+      {/* ⚡ 3분 등록 — `/new` 보다 **뒤**에 둘 필요는 없다(정적 경로라 겹치지 않는다). */}
+      <Route path="/seller/products/quick" element={
+        <ProtectedRoute requireSeller>
+          <SellerQuickGbPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/products/:id/edit" element={

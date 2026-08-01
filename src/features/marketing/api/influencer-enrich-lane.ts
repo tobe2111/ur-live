@@ -34,9 +34,9 @@ import type { Env } from '@/worker/types/env'
 import {
   ensureInfluencerSchema, extractContacts, pickBusinessEmail, fetchLinkInBioText, type FetchBudget,
 } from './influencer-discovery'
-import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag } from './influencer-performance'
+import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap, resolveEnrichDeadlineMs } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
 
@@ -317,7 +317,12 @@ async function readSnapshot(DB: D1Database): Promise<InfluencerEnrichSnapshot | 
  *   실패해도 throw 하지 않는다(호출부는 fail-soft) — 대신 **crash 원문을 스냅샷에 남긴다**.
  *   증거 없는 종료가 진단을 몇 세션씩 잡아먹은 것이 2026-07-28 파트너풀 레인의 교훈이다.
  */
-export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number): Promise<InfluencerEnrichSnapshot> {
+/**
+ * @param slice 여러 자식이 **동시에** 돌 때 각자 맡을 조각(`id % k = i`). 없거나 `k<=1` 이면 기존 동작.
+ *   근거는 `sliceClause`(influencer-performance) 주석 — 이 큐는 선점이 아니라 정렬+LIMIT 이라
+ *   조각 없이 병렬로 돌리면 같은 사람을 여러 자식이 중복 측정한다.
+ */
+export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: number, slice?: EnrichSlice | null): Promise<InfluencerEnrichSnapshot> {
   const DB = env.DB
   const started = Date.now()
   await ensureInfluencerSchema(DB)   // bio_checked_at · perf_checked_at · recent_posts_30d
@@ -328,9 +333,29 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   // 🧱 플랫폼 천장 — 학습 상한이 이 값을 넘지 못한다(기본 60, 근거·조정법은 collect-budget 주석).
   const pcap = platformSubreqCap(env.ADS_SUBREQ_PLATFORM_CAP)
   const budgetTotal = resolveSubreqBudget(envBudget, learnedCap, pcap)
-  // ⏱️ 벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다(블로그 fetch 타임아웃 8s × N).
-  //   파트너풀 레인과 같은 env 를 공유(둘 다 "보강 1라운드 상한"이라 의미가 같다).
-  const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt(env.ADS_ENRICH_DEADLINE_MS || '', 10) || 20_000))
+  /**
+   * ⏱️ 벽시계 가드 — 서브리퀘스트가 남아도 시간이 인보케이션을 끝낸다.
+   *   파트너풀 레인과 같은 env 를 공유(둘 다 "보강 1라운드 상한"이라 의미가 같다).
+   *
+   * 🩸 **기본값 20s → 7s** (2026-08-02 KST 실측). cron 경로에서 **20초 창은 도달 불가능**했다:
+   *   부모 인보케이션이 약 **10.5초**에 회수되고, 그 순간 살아 있던 자식이 전부 함께 죽는다
+   *   (피호출자는 호출자보다 오래 못 산다 — #874 의 규칙이 여기서 상한으로 나타난다).
+   *
+   *   두 틱 연속 **성공 최대 8,316ms / 8,050ms ↔ 실패 최소 10,505ms · 겹침 0**, 실패는 전부 같은 초에 몰림.
+   *   이 레인의 마지막 기록도 `elapsed 21,899ms · deadline_hit true` — 창을 다 쓰고 죽은 모양 그대로다.
+   *   그래서 `enrich_lane.last_run` 이 며칠째 멈춰 있었다(스냅샷 쓰기 전에 죽으니 기록이 안 남는다).
+   *   ⚠️ 수동 트리거(어드민 요청 경로)에서는 13.1초·17.2초로 **멀쩡히 돌았다** — 부모 cron 수명에 안 묶이기
+   *     때문이다. "레인이 멀쩡한데 cron 에서만 죽는" 비대칭의 정체가 이것이다.
+   *
+   * ⚠️ **이 값만으로는 부족하다.** 마감은 *항목 사이*에서만 검사되는데 블로그 fetch 는 건당 최대 8s라,
+   *   6.9초에 시작한 한 건이 14.9초에 끝나면 여전히 절단된다. 건당 타임아웃(8s)도 함께 내려야 완결인데,
+   *   그건 수집 품질에 직접 닿아(느린 블로그를 놓친다) `naver.failed` 분포를 보고 정할 일이다 — 아직 안 했다.
+   *   그때까지 이 값은 **"항상 죽음" → "대개 산다"** 로 옮기는 것까지만 한다.
+   *
+   * ⚠️ env 로 언제든 되돌린다(`ADS_ENRICH_DEADLINE_MS`). 상한 10.5초가 플랫폼/플랜에 따라 달라지면
+   *   이 기본값도 다시 재야 한다 — 숫자를 믿지 말고 **성공 max ↔ 실패 min 경계**를 다시 측정할 것.
+   */
+  const deadlineMs = resolveEnrichDeadlineMs(env.ADS_ENRICH_DEADLINE_MS)
   const budget: FetchBudget = { left: budgetTotal, deadline: started + deadlineMs }
   const { bioMax, naverMax, ytMax } = planInfluencerEnrich(budgetTotal)
   // 📈 유튜브 성과 — 서브리퀘스트(위 예산)와 **일일 units**(검색과 공유하는 10,000 풀) 둘 다 통과해야 돈다.
@@ -382,7 +407,7 @@ export async function runInfluencerEnrich(env: Env, depth = 0, roundsPlanned?: n
   const naverFirst = depth % 2 === 1 || starvedLastRound(prev)
   const runNaver = async (): Promise<void> => {
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
-    try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax)) } catch (err) { note(err) }
+    try { naver = await enrichNaverActivity(DB, budget, naverRoomFromRemaining(budget.left, naverMax), slice) } catch (err) { note(err) }
   }
   const runFront = async (): Promise<void> => {
     // 🔗 링크인바이오(건당 1 fetch) → 📈 유튜브 성과(남은 일일 units 안에서만).

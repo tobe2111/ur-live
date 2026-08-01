@@ -31,6 +31,7 @@
  * - 레인 자신의 완료 기록(각 러너의 `stats.diag`)은 이 경로와 무관하다 — 그쪽이 진짜 관측이다.
  */
 
+import type { Env } from '@/worker/types/env'
 /** 한 건의 하트비트 — `recordCronBeat` 과 같은 정보를 담되 쓰기를 미룬다. */
 export interface PendingBeat {
   name: string
@@ -101,5 +102,47 @@ export function createBeatBatch(write: (beats: PendingBeat[]) => Promise<void>, 
     },
     /** 테스트/진단용 — 아직 안 쓴 건수. */
     get size(): number { return pending.length },
+  }
+}
+
+/**
+ * 🛡️ **부모의 실패 기록이 자식의 성공 기록을 덮지 않는다** (2026-08-01 14:00 실측).
+ *
+ *   부모 기록은 설계상 *폴백*이라고 주석에 적혀 있었지만 실제 SQL 은 `INSERT OR REPLACE` —
+ *   즉 **무조건 덮어쓰기**였다. 그날 틱에서:
+ *
+ *   | 레인 | 자식 스탬프(= 일을 끝냈다) | 부모가 덮어쓴 것 |
+ *   |---|---|---|
+ *   | `match-registry` | 14:01:05 | 14:01:10 `ok=false` |
+ *   | `reclassify-company?passes=5` | 14:01:09 | 14:01:10 `ok=false` |
+ *
+ *   부모가 `await SELF.fetch` 응답을 못 받은 것은 **부모가 죽었기 때문**이지 레인이 실패해서가 아니다
+ *   (같은 틱에 레인 7개가 **같은 순간** 같은 벽 ms 10505~10663 에서 끊겼다 — 코드에 10초 타임아웃은
+ *   없으니 밖에서 한 번에 죽인 것이다). 그런데 화면에는 "이 레인 실패"로 남아 **멀쩡히 도는 수집기를
+ *   고장으로 오진**하게 만든다. 실제로 그렇게 오진했다.
+ *
+ *   ⇒ 실패 쓰기는 **이번 틱 안에 이미 기록이 있으면 물러난다.** 자식 기록이 더 정확하다 —
+ *     자식은 자기가 무엇을 했는지 알고 `failNote` 로 사유 원문까지 남긴다.
+ *   ⚠️ 성공 쓰기는 **무조건** — 자식이 기록을 못 남긴 경우 부모의 성공 기록이 유일한 증거다.
+ *   ⚠️ `COALESCE` 가 필요한 이유: 값이 JSON 이 아니거나 `at` 이 없으면 `json_extract` 는 NULL 이고,
+ *     SQL 에서 `NULL < ?` 는 거짓이 아니라 **NULL** 이라 조건 전체가 성립하지 않는다 → 부모가 영영 못 쓴다.
+ *   ⚠️ 못 막는 것: 자식이 **틱 시작 이전**에 쓴 낡은 기록은 이 가드가 안 본다(그건 덮는 게 맞다).
+ *
+ * @param tickStartIso 이 cron 틱이 시작한 시각(ISO). **배치 flush 시점이 아니라 틱 시작**이어야 한다 —
+ *   flush 시점으로 잡으면 자식 기록보다 나중이 되어 가드가 통째로 무력해진다.
+ */
+export function makeBeatWriter(env: Env, tickStartIso: string) {
+  return async (list: PendingBeat[]): Promise<void> => {
+    const { buildCronBeatRow } = await import('@/worker/utils/cron-heartbeat')
+    await env.DB.batch(list.map((b) => {
+      const { key, value } = buildCronBeatRow(b.name, b.ok, b.ms, b.cron, b.result, b.maxGapMin)
+      if (b.ok) return env.DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, value)
+      // 실패 쓰기만 가드 — 이번 틱에 이미 누가(=자식이) 썼으면 그것을 남긴다.
+      return env.DB.prepare(
+        `INSERT INTO platform_settings (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = ?2
+          WHERE COALESCE(json_extract(platform_settings.value, '$.at'), '') < ?3`,
+      ).bind(key, value, tickStartIso)
+    }))
   }
 }

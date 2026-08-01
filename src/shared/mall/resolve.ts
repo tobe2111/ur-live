@@ -80,3 +80,22 @@ export function firstPathSegment(url: string): string | null {
   if (!/^[a-z0-9-]{3,30}$/.test(s)) return null
   return s
 }
+
+/** 본진(기본 몰) id. 몰이 정해지지 않은 모든 것이 여기로 간다. */
+export const MAIN_MALL = 1
+
+/**
+ * 🏬 **상품이 꽂힐 몰** — 운영자(셀러)의 몰을 그대로 따른다 (세션 ③-b, O4).
+ *
+ * `products.mall_id` 는 `DEFAULT 1`(본진)이라 **스탬프하지 않으면 운영자 상품이 전부 본진으로 간다.**
+ * 그러면 등록은 성공하고 셀러 목록에도 보이는데 **소비자 몰 화면만 비어 있다** — 조용한 실패다.
+ *
+ * 🔴 **값의 출처는 서버가 읽은 `sellers.mall_id` 하나뿐이다.** 요청 body 로 받으면
+ *   셀러가 **남의 몰에 상품을 꽂을 수 있다**(권한 상승). 그래서 인자가 하나다.
+ *
+ * 몰이 없는 셀러(기존 본진 셀러 — `mall_id` NULL)는 본진으로. 그게 맞는 자리다.
+ */
+export function mallIdForSeller(sellerMallId: number | null | undefined): number {
+  const n = Number(sellerMallId)
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : MAIN_MALL
+}

@@ -21,6 +21,8 @@ import { getGbSessions } from '../../../worker/utils/gb-session-store'
 import { resolveGbPricing } from '../../../shared/gb-session'
 import { intParam } from '../../../shared/pagination'
 import { resolveMallBranding } from '../../../shared/mall/branding'
+import { parsePickup, isEmptyPickup } from '../../../shared/pickup'
+import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -75,7 +77,11 @@ app.get('/:slug/products', async (c) => {
     const rows = prodRows.results || []
     if (rows.length === 0) return c.json({ success: true, data: [] })
 
-    const sessions = await getGbSessions(db, rows.map((r) => Number(r.id)))
+    const ids = rows.map((r) => Number(r.id))
+    const sessions = await getGbSessions(db, ids)
+    // 📦 세션 ④-a — 픽업 정보(픽업일·보관구분). 카드에서 **언제 받는지**가 보여야 문의가 안 쏟아진다.
+    //   같은 사이드테이블이라 왕복이 한 번 더 늘지 않는다(gb 세션과 별개 조회지만 둘 다 배치).
+    const metaMap = await getSupplyMeta(db, ids).catch(() => null)
     const items = rows
       .map((p) => {
         const s = sessions.get(Number(p.id))
@@ -92,7 +98,9 @@ app.get('/:slug/products', async (c) => {
           discount_pct: pr.discountPct,
           // 🔴 대표 UX 기준 ③ — 소비자 화면은 **신뢰 + 마감·잔여**를 강조한다. 그 둘을 응답에 싣는다.
           deadline: s.deadline ?? null,
-          stock: p.stock == null ? null : Number(p.stock),   // ⚠️ SSOT 는 products.stock (stock_quantity 아님 — schema-refs 가드)
+          stock: p.stock == null ? null : Number(p.stock),
+          // 📦 픽업 — 비어 있으면 **키 자체를 null** 로 내려 화면이 빈 껍데기를 안 그리게 한다.
+          pickup: (() => { const pk = parsePickup(metaMap?.get(Number(p.id)) ?? null); return isEmptyPickup(pk) ? null : pk })(),   // ⚠️ SSOT 는 products.stock (stock_quantity 아님 — schema-refs 가드)
           // ⚠️ promo_pct · per_unit_commission 은 **의도적으로 없다**(소비자에게 수수료 비노출 — 대표 확정).
         }
       })

@@ -191,3 +191,31 @@ export function nextSubreqCap(
   if (learnedCap > 0 && learnedCap < ceiling) return Math.min(ceiling, learnedCap + RECOVER_STEP)
   return null
 }
+
+/**
+ * ⏱️ **보강 1라운드 벽시계 상한** — 세 보강 레인(인플루언서·회사·매장 후보)이 **같은 env 를 공유**하는데
+ *   기본값은 각자 파일에 **세 벌**로 박혀 있었다. 하나만 고치면 나머지 둘은 조용히 옛 값으로 남는다
+ *   (이 레포가 반복해 만난 "같은 규칙, 여러 벌" 클래스 — `KW_DDL` 이 같은 형태였다).
+ *
+ * 🩸 **기본값 20s → 7s** (2026-08-02 KST 실측): cron 경로에서 **20초 창은 도달 불가능**하다.
+ *   부모 인보케이션이 약 **10.5초**에 회수되고 그때 살아 있던 자식이 전부 함께 죽는다
+ *   (피호출자는 호출자보다 오래 못 산다 — #874 의 규칙이 여기서 상한으로 나타난다).
+ *   두 틱 연속 **성공 최대 8,316 / 8,050ms ↔ 실패 최소 10,505ms · 겹침 0**, 실패는 전부 같은 초에 몰렸다.
+ *   그 실패 목록에 `enrich-company`(10,505ms)·`enrich-prospects`(10,513ms)가 **정확히 들어 있다** —
+ *   즉 세 레인 모두 같은 이유로 죽고 있었다.
+ *
+ * ⚠️ **이 값만으로는 부족하다.** 마감은 *항목 사이*에서만 검사되는데 건당 fetch 는 최대 8s라,
+ *   6.9초에 시작한 한 건이 14.9초에 끝나면 여전히 절단된다. 건당 타임아웃도 함께 내려야 완결이고,
+ *   그건 수집 품질에 직접 닿아(느린 사이트를 놓친다) 실패 분포를 보고 정할 일이다.
+ *   그때까지 이 값은 **"항상 죽음" → "대개 산다"** 로 옮기는 것까지만 한다.
+ *
+ * ⚠️ 상한 10.5초가 플랫폼/플랜에 따라 달라지면 이 기본값도 다시 재야 한다 — 숫자를 믿지 말고
+ *   **성공 max ↔ 실패 min 경계**를 다시 측정할 것.
+ */
+export const ENRICH_DEADLINE_MS_DEFAULT = 7_000
+
+/** env(`ADS_ENRICH_DEADLINE_MS`) → 유효 상한(ms). 범위 5s~120s 로 클램프, 비숫자·부재는 기본값. */
+export function resolveEnrichDeadlineMs(raw: unknown): number {
+  const n = parseInt(String(raw ?? ''), 10)
+  return Math.min(120_000, Math.max(5_000, Number.isFinite(n) && n > 0 ? n : ENRICH_DEADLINE_MS_DEFAULT))
+}
