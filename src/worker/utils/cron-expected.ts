@@ -42,6 +42,34 @@ export const EXPECTED_CRON_EXPRESSIONS: readonly string[] = [
   '0 9 * * *',
 ]
 
+/**
+ * 같은 일정의 **다른 표기**. 카노니컬(위 목록) → 별칭.
+ *
+ * 왜 필요한가: CF 의 day-of-week 는 **1-7 또는 MON-SUN** 이라 `0 20 * * 0` 을 **거부**한다
+ * (code 10100 — 그리고 스케줄 PUT 은 원자적이라 이 한 줄이 배열 전체를 막았다).
+ * 교정 표기로 등록하면 CF 는 **등록된 문자열 그대로** `event.cron` 에 넣으므로, 디스패처가
+ * `0 20 * * 0` 만 보고 있으면 **등록도 됐고 발화도 하는데 아무 핸들러도 안 도는** 상태가 된다.
+ * 실패보다 더 안 보이는 상태라 미리 셋 다 받는다.
+ *
+ * ⚠️ 별칭은 `EXPECTED_CRON_EXPRESSIONS` 에 **넣지 않는다.** 넣으면 한 작업이 never-fired 목록에
+ * 3줄로 나와 판정을 오염시킨다. 기대 목록은 *일정 하나당 한 줄*을 유지한다.
+ */
+export const CRON_EXPRESSION_ALIASES: Readonly<Record<string, string>> = {
+  '0 20 * * SUN': '0 20 * * 0',
+  '0 20 * * 7': '0 20 * * 0',
+}
+
+/** 디스패처가 **받아야 하는** 문자열 전부 = 기대 목록 + 별칭. */
+export const ACCEPTED_CRON_EXPRESSIONS: readonly string[] = [
+  ...EXPECTED_CRON_EXPRESSIONS,
+  ...Object.keys(CRON_EXPRESSION_ALIASES),
+]
+
+/** 별칭을 기대 목록의 표기로 되돌린다(드리프트 검사용). */
+export function canonicalCron(cron: string): string {
+  return CRON_EXPRESSION_ALIASES[cron] ?? cron
+}
+
 export interface NeverFiredEntry {
   /** 기대했지만 기록이 0인 cron 식. */
   cron: string

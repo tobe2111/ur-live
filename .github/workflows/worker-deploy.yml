@@ -15,6 +15,11 @@ name: Deploy Worker (cron sync)
 
 on:
   workflow_dispatch:
+    inputs:
+      allow_schedule_drift:
+        description: '스케줄 동기화 실패를 경고로 낮춘다(비상용). 기본 false = 실패하면 워크플로도 실패.'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -51,12 +56,25 @@ jobs:
             echo "::error::CLOUDFLARE_API_TOKEN 미설정 — Workers 배포 불가"
             exit 1
           fi
-          # 🎯 이 워크플로의 목적은 cron *스크립트 코드* 동기화. cron *스케줄*(triggers)은
-          #   Cloudflare 대시보드/기존 상태로 관리됨(schedules PUT 은 원자적 — 실패해도 기존 유지).
-          #   wrangler 가 wrangler.toml 의 crons 를 매번 재푸시하는데, 계정 cron 파서가
-          #   특정 문자열(예: '0 20 * * 0')을 거부하면 전체 PUT 이 거부되나 **스크립트 업로드는
-          #   이미 성공**한 상태(로그의 "Uploaded ur-live" 마커). 그 경우 배포 성공으로 간주한다.
+          # 🎯 두 가지를 배포한다: cron *스크립트 코드* + cron *스케줄*(triggers).
+          #
+          # 🔴 2026-07-29 (실행 증거 감사): 이 스텝은 원래 "스크립트만 올라가면 성공"으로 처리했다.
+          #   그 결과 **스케줄 PUT 이 매번 거부되는데도 30 run 연속 초록불**이었고
+          #   (`invalid cron string: 0 20 * * 0 [code: 10100]`), `wrangler.toml` 의 crons 가
+          #   **한 번도 반영된 적 없다는 사실이 아무 신호 없이 숨어 있었다.**
+          #   실제 등록은 대시보드의 옛 상태 그대로였고, 69개 cron 작업 중 9개만 돌고 있었다.
+          #   ⇒ 근본 원인은 잘못된 cron 문자열이 아니라 **그 실패를 삼킨 것**이다. 이제 실패시킨다.
+          #
+          # ⚠️ 스케줄 PUT 은 **전체 교체**다(부분 갱신 아님). 그래서 실패는 두 방향 모두 위험하다:
+          #   - 실패를 삼키면 → 선언과 현실이 조용히 갈라진다(위 사고).
+          #   - 성공하면 → wrangler.toml 의 목록이 **현재 등록분을 통째로 대체**한다.
+          #     목록에서 빠진 트리거는 그 순간 사라진다. crons 를 줄일 때는 그게 의도인지 확인할 것.
+          #
+          # 비상 탈출구: workflow_dispatch 의 `allow_schedule_drift=true`.
+          #   파일을 고치지 않고 1회만 경고로 낮춘다(스케줄 API 간헐 장애 때 배포를 풀기 위한 것).
+          ALLOW_DRIFT="${{ inputs.allow_schedule_drift }}"
           MAX_RETRY=3
+          SCHED_ERR=""
           for i in $(seq 1 $MAX_RETRY); do
             echo "=== wrangler deploy attempt $i/$MAX_RETRY ==="
             OUT=$(npx wrangler@3 deploy 2>&1) && RC=0 || RC=$?
@@ -66,18 +84,33 @@ jobs:
               exit 0
             fi
             if echo "$OUT" | grep -q "Uploaded ur-live"; then
-              echo "::warning::스크립트는 업로드됐으나 스케줄 동기화 실패(기존 스케줄 원자적 보존)."
-              echo "::warning::cron 코드는 배포 완료 — 새 로직이 다음 트리거부터 적용됨."
-              echo "::warning::스케줄 자체를 바꾸려면 Cloudflare 대시보드에서 crons 조정 필요."
-              exit 0
+              # 스크립트는 올라갔고 스케줄만 실패 — 간헐 장애일 수 있으니 재시도 대상에 포함한다.
+              SCHED_ERR=$(echo "$OUT" | grep -iE "invalid cron string|/schedules" | head -3)
+              echo "⚠️ Attempt $i — 스크립트 업로드 성공, 스케줄 동기화 실패."
+            else
+              echo "⚠️ Attempt $i 실패(스크립트 미업로드)."
             fi
             if [ $i -lt $MAX_RETRY ]; then
               SLEEP=$((i * 10))
-              echo "⚠️ Attempt $i 실패(스크립트 미업로드). ${SLEEP}s 후 재시도..."
+              echo "${SLEEP}s 후 재시도..."
               sleep $SLEEP
             fi
           done
-          echo "❌ 스크립트 업로드 자체가 $MAX_RETRY 회 실패 (토큰 Workers Scripts:Edit 권한 확인)"
+
+          if [ -n "$SCHED_ERR" ]; then
+            echo "::error::스케줄 동기화가 ${MAX_RETRY}회 실패했다. wrangler.toml 의 crons 가 반영되지 않았다."
+            echo "::error::$SCHED_ERR"
+            echo "::error::스케줄 PUT 은 원자적이라 **거부된 문자열 하나가 전체 목록을 막는다**."
+            echo "::error::확인: Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Trigger Events."
+            echo "::error::비상 우회가 필요하면 workflow_dispatch 에서 allow_schedule_drift=true 로 재실행."
+            if [ "$ALLOW_DRIFT" = "true" ]; then
+              echo "::warning::allow_schedule_drift=true — 실패를 경고로 낮춘다. 스크립트는 배포됨, 스케줄은 옛 상태 그대로."
+              exit 0
+            fi
+            exit 1
+          fi
+
+          echo "::error::스크립트 업로드 자체가 ${MAX_RETRY}회 실패 (토큰 Workers Scripts:Edit 권한 확인)"
           exit 1
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
