@@ -18,7 +18,11 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const SRC = readFileSync('src/worker/utils/point-buckets.ts', 'utf8')
-const REPAIR = readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8')
+// repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸다.
+// 검사는 둘을 합쳐서 본다 — 한쪽만 읽으면 파일이 갈리는 순간 조용히 통과해 버린다.
+const REPAIR =
+  readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8') +
+  readFileSync('src/worker/routes/repair-schema/column-repairs.ts', 'utf8')
 
 describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방지', () => {
   it('원장 INSERT 실패를 그냥 삼키지 않는다 (빈 catch 금지)', () => {
