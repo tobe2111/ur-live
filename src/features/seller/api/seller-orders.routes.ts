@@ -26,6 +26,7 @@ import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys'
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 import { intParam } from '@/shared/pagination'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { mallIdForSeller } from '../../../shared/mall/resolve';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -850,18 +851,27 @@ sellerOrdersRoutes.post('/products', async (c) => {
     //   migration 0233 적용 후 stock_quantity 컬럼 drop 되어도 동작 유지.
     //   기존엔 신규(slug+stock_quantity) → 프로덕션(stock) → 최소 3-tier fallback 이었지만
     //   실제 production 은 0001 base 라 첫 시도는 항상 실패해 wasteful.
+    // 🏬 2026-08-01 세션 ③-b — 상품이 꽂힐 몰. **서버가 sellers 에서 읽은 값만** 쓴다
+    //   (body 로 받으면 셀러가 남의 몰에 상품을 꽂을 수 있다 — 권한 상승).
+    //   조회 실패/컬럼 부재는 본진(1) — mallIdForSeller 가 그 판단을 갖는다(순수·테스트됨).
+    const sellerMallRow = await db.prepare('SELECT mall_id FROM sellers WHERE id = ?')
+      .bind(sellerId).first<{ mall_id: number | null }>().catch(() => null);
+    const productMallId = mallIdForSeller(sellerMallRow?.mall_id);
+
     let result: D1Result;
     try {
       result = await db.prepare(`
         INSERT INTO products
-          (seller_id, name, description, price, stock, image_url, category, product_type, status, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
+          (seller_id, name, description, price, stock, image_url, category, mall_id, product_type, status, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
       `).bind(
         sellerId, name, description || null, price,
-        stock ?? 0, image_url || null, category || null
+        stock ?? 0, image_url || null, category || null, productMallId
       ).run();
     } catch {
-      // 최소 스키마 fallback: status 컬럼 없는 매우 옛 버전
+      // 최소 스키마 fallback: status/mall_id 컬럼 없는 매우 옛 버전 → 기본 몰(1)로 들어간다.
+      //   ⚠️ 여기로 떨어지면 **운영자 몰 상품이 본진에 꽂힌다.** 실환경은 repair-schema 가
+      //      두 컬럼을 보장하므로 도달하지 않지만, 도달했다면 스키마 복구가 먼저다.
       result = await db.prepare(`
         INSERT INTO products
           (seller_id, name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
