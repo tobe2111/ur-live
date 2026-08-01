@@ -24,6 +24,8 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
+import { parsePickup, isEmptyPickup, canRequestReturn } from '../../../shared/pickup';
+import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -117,20 +119,27 @@ returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, wi
     return c.json({ success: false, error: '본인의 주문만 반품 신청할 수 있습니다' }, 403);
   }
 
-  // 2. DELIVERED 상태 확인
-  if (order.status.toUpperCase() !== 'DELIVERED') {
-    return c.json({ success: false, error: '배송완료된 주문만 반품 신청이 가능합니다' }, 400);
-  }
-
-  // 3. 7일 이내 확인
-  if (order.delivered_at) {
-    const deliveredDate = new Date(order.delivered_at);
-    const now = new Date();
-    const diffDays = (now.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24);
-    if (diffDays > 7) {
-      return c.json({ success: false, error: '배송완료 후 7일 이내에만 반품 신청이 가능합니다' }, 400);
-    }
-  }
+  // 2·3. 접수 자격 — 🔴 2026-08-01 (체크리스트 C8): **픽업 주문은 `DELIVERED` 에 도달하지 않는다.**
+  //   결제 후 매장에서 QR 로 소각될 뿐이라, 기존 배송 전제 게이트에서는 소비자가 **반품을 올릴 입구가
+  //   아예 없었다** — 문제가 생겨도 말할 방법이 없다는 뜻이다.
+  //   ⚠️ 여기서 여는 건 **접수 자격**뿐이고 **환불액이 아니다**(그건 세션 ④-b 보관구분 정책).
+  //      받아줄지·얼마를 줄지는 운영자/어드민이 판단한다 — **돈은 이 분기 밖에서 움직인다.**
+  //   판정은 순수함수(`canRequestReturn`)가 갖는다 — 라우트 안에 있으면 D1 없이는 못 돈다.
+  //   ⚠️ 주문에는 `product_id` 가 없다 — **품목(order_items)** 에 있다. 한 건이라도 픽업이면 픽업 주문으로 본다.
+  const itemRows = await DB.prepare('SELECT product_id FROM order_items WHERE order_id = ?')
+    .bind(order.id).all<{ product_id: number | null }>().catch(() => ({ results: [] as Array<{ product_id: number | null }> }));
+  const pids = (itemRows.results || []).map((r) => Number(r.product_id)).filter((n) => Number.isFinite(n) && n > 0);
+  const metaMap = pids.length ? await getSupplyMeta(DB, pids).catch(() => null) : null;
+  const pickups = pids.map((id) => parsePickup(metaMap?.get(id) ?? null)).filter((p) => !isEmptyPickup(p));
+  const isPickup = pickups.length > 0;
+  // 기준일: 픽업일 중 **가장 이른 것**(여러 품목이면 먼저 오는 날이 기준). 없으면 창 검사를 건너뛴다.
+  const basisIso = isPickup
+    ? (pickups.map((p) => p.date).filter(Boolean).sort()[0] ?? null)
+    : (order.delivered_at || null);
+  const elig = canRequestReturn({
+    status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(),
+  });
+  if (!elig.ok) return c.json({ success: false, error: elig.error }, 400);
 
   // 4. 중복 신청 확인
   const existing = await DB.prepare(

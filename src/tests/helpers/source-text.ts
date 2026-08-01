@@ -47,9 +47,18 @@ export function stripImports(code: string): string {
   return code.replace(/^\s*import\s[\s\S]*?(?:from\s+['"][^'"]+['"];?|['"][^'"]+['"];?)\s*$/gm, '')
 }
 
-/** import 를 뺀 코드에서 심볼이 **실제로 쓰이는가**. */
+/**
+ * import 를 뺀 코드에서 심볼이 **실제로 쓰이는가**.
+ *
+ * ⚠️ **JSX 를 잊지 말 것** — `<Name />` 는 `<` 가 이름 **앞**에 온다.
+ *   호출 형태(`Name(`·`Name<`·`Name.`·`Name[`)만 보면 **컴포넌트 사용을 통째로 놓친다**
+ *   (실제로 `SellerSupportContact` 에서 걸렸다 — 렌더되고 있는데 "안 쓴다"고 판정했다).
+ */
 export function usesSymbol(code: string, name: string): boolean {
-  return new RegExp(`\\b${name}\\s*[(<.[]`).test(stripImports(code))
+  const body = stripImports(code)
+  const asValue = new RegExp(`\\b${name}\\s*[(<.[]`).test(body)
+  const asJsx = new RegExp(`<\\/?${name}[\\s/>]`).test(body)
+  return asValue || asJsx
 }
 
 /**
