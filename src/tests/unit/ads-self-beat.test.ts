@@ -67,10 +67,19 @@ describe('readBeatParams — 레인이 읽는다', () => {
  * ⚠️ 못 막는 것: 실제 쓰기 성공 여부는 라이브 하트비트로만 확인된다.
  */
 describe('worker-ads — self-beat 이 실제로 배선돼 있다', () => {
-  const SRC = readFileSync(resolve(process.cwd(), 'src/worker-ads/index.ts'), 'utf8')
+  /**
+   * ⚠️ 2026-08-01: 디스패치 본문이 `index.ts` → `lane-runner.ts` 로 **옮겨갔다**(예산 분산 도입).
+   *   불변식은 그대로인데 **가드가 옛 파일만 보고 있어서** 빨간불이 났다 — 이 레포가 잠금표에서
+   *   겪은 "낡은 지도" 클래스와 같다. 약화하지 말고 **두 파일을 함께** 본다(어디로 옮겨도 계약은 유지).
+   */
+  const FILES = ['src/worker-ads/index.ts', 'src/worker-ads/lane-runner.ts']
+  const SRC = FILES.map(f => readFileSync(resolve(process.cwd(), f), 'utf8')).join('\n')
+  it('🔒 검사 대상이 비어 있지 않다 — 파일이 옮겨가면 통과가 아니라 실패여야 한다', () => {
+    expect(SRC.length).toBeGreaterThan(2000)
+  })
 
   it('kick 이 laneUrl 로 이름·주기를 넘긴다(raw 경로로 부르면 레인이 이름을 모른다)', () => {
-    expect(SRC).toMatch(/env\.SELF\.fetch\(new Request\(laneUrl\(path, beat, opts\?\.gap\)/)
+    expect(SRC).toMatch(/deps\.selfFetch\(new Request\(deps\.laneUrl\(lane\.path, lane\.beat, lane\.gapMin\)/)
   })
 
   it('레인 미들웨어가 응답 전에 기록한다', () => {
@@ -79,7 +88,7 @@ describe('worker-ads — self-beat 이 실제로 배선돼 있다', () => {
   })
 
   it('🔒 부모의 쓰기는 폴백으로 남아 있다 — 한쪽만 남기면 다른 실패 모드가 열린다', () => {
-    expect(SRC).toMatch(/adsBeat\(beat, true/)
-    expect(SRC).toMatch(/adsBeat\(beat, false/)
+    expect(SRC).toMatch(/deps\.beat\(lane\.beat, true/)
+    expect(SRC).toMatch(/deps\.beat\(lane\.beat, false/)
   })
 })
