@@ -11,7 +11,7 @@
 import type { Env } from '@/worker/types/env'
 import { type FetchBudget } from './influencer-discovery'
 import { runPooled, resolveConcurrency } from './lane-pool'
-import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap } from './collect-budget'
+import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, platformSubreqCap, resolveEnrichDeadlineMs } from './collect-budget'
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
@@ -100,7 +100,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   죽는 대신 깨끗이 넘기면 스냅샷·학습·도장이 전부 정상 작동하고 남은 백로그는 다음 라운드가 이어받는다.
   //   ⏱️ 상한은 env 로 조정 가능(ADS_ENRICH_DEADLINE_MS) — 이 20s 는 **추정치**다. 가드가 너무 일찍 끊으면
   //   (스냅샷 deadline_hit:true 인데 예산이 많이 남음) 올리고, 라운드가 여전히 무증거로 죽으면 내린다. 무배포 재조정.
-  const deadlineMs = Math.min(120_000, Math.max(5_000, parseInt(env.ADS_ENRICH_DEADLINE_MS || '', 10) || 20_000))
+  const deadlineMs = resolveEnrichDeadlineMs(env.ADS_ENRICH_DEADLINE_MS)
   const budget: FetchBudget = { left: budgetTotal, deadline: Date.now() + deadlineMs }
   const budgetStart = budget.left // 실사용 서브요청 계측 — 한도 근접 여부를 숫자로 판정(상태줄 '서브요청')
   // 🧮 D1 도 서브리퀘스트다(2026-07-28 근본수리) — 이 레인은 대상 1건당 도장 1회 + 저장 최대 2회 + 주기 스냅샷을
