@@ -1050,7 +1050,7 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
          VALUES (?, 'cash_withdraw', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-      ).bind(String(userId), amount, amount, String(userId), `현금 환급 신청 — 딜 차감 (#${result.meta.last_row_id})`).run().catch(() => {})
+      ).bind(String(userId), amount, amount, String(userId), `현금 환급 신청 — 딜 차감 (#${result.meta.last_row_id})`).run().catch(async () => (await import('../utils/point-ledger')).recordPointTxMinimal(DB, userId, 'cash_withdraw', amount, '현금 환급 신청 — 딜 차감')) // 삼키면 `잔액 < 거래합`
 
       return c.json({
         success: true,

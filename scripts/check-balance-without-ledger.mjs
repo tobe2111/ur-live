@@ -44,8 +44,13 @@ function walk(dir, out = []) {
   return out
 }
 
-/** 잔액을 늘리는 SQL 이 있는가. */
-const CREDITS_BALANCE = /user_points[\s\S]{0,400}?balance\s*=\s*(?:COALESCE\([^)]*\)|balance)\s*\+/i
+/**
+ * 잔액을 **움직이는** SQL 이 있는가 — 적립(+)과 차감(−) 둘 다.
+ * ⚠️ 처음엔 `+` 만 봤다. 그래서 2026-08-01 전수조사에서 나온 **차감 케이스를 못 잡았다**:
+ *    `order.routes.ts` 의 추천 커미션 회수가 잔액만 줄이고 원장에 아무것도 안 남겨,
+ *    `잔액 < 거래합` 인 유저(라이브 user 3, 차이 −22,480)를 만들고 있었다.
+ */
+const MUTATES_BALANCE = /user_points[\s\S]{0,400}?balance\s*=\s*(?:MAX\([^)]*|COALESCE\([^)]*\)|balance)?\s*[\s\S]{0,20}?balance\s*[+-]\s*\?/i
 /** 원장 INSERT 뒤에 곧바로 오는 '삼키는' 마무리. */
 const SWALLOW = [
   /INSERT INTO point_transactions[\s\S]{0,900}?\)\s*\.run\(\)\s*\.catch\(\s*\(\)\s*=>\s*(?:null|\{\s*\})\s*\)/,
@@ -56,6 +61,8 @@ const SWALLOW = [
  * ⚠️ 헬퍼 이름을 바꾸면 여기도 바꿔야 한다 — 안 바꾸면 정상 코드가 빨간불이 된다.
  */
 const HAS_FALLBACK = /INSERT INTO point_transactions \(user_id, type, amount, description\)|recordPointTxMinimal\s*\(/
+/** 원장 기록을 SSOT 헬퍼에 위임하는 형태(직접 INSERT 를 안 써도 안전). */
+const VIA_SSOT = /adjustUserPoints\s*\(|recordPointTransaction\s*\(|creditFreePoints\s*\(|recordPointTxMinimal\s*\(/
 
 const files = walk(path.join(ROOT, 'src'))
 if (files.length < 200) {
@@ -68,16 +75,26 @@ let scannedCredit = 0
 for (const abs of files) {
   const rel = path.relative(ROOT, abs).split(path.sep).join('/')
   const src = fs.readFileSync(abs, 'utf8')
-  if (!src.includes('point_transactions')) continue
-  if (!CREDITS_BALANCE.test(src)) continue
+  if (!MUTATES_BALANCE.test(src)) continue
   scannedCredit++
   if (src.includes('balance-ledger-ok')) continue
+
+  // 규칙 ①: 잔액을 움직이면서 **원장을 아예 언급조차 안 한다**(SSOT 위임도 없음).
+  //   2026-08-01 전수조사에서 이 모양이 실제로 1건 나왔다(추천 커미션 회수).
+  const recordsSomehow = src.includes('point_transactions') || VIA_SSOT.test(src)
+  if (!recordsSomehow) {
+    const m = MUTATES_BALANCE.exec(src)
+    violations.push({ rel, lineNo: src.slice(0, m.index).split('\n').length, kind: '원장 기록 자체가 없다' })
+    continue
+  }
+
+  // 규칙 ②: 원장 INSERT 는 하는데 실패를 삼킨다(폴백 없음).
   if (HAS_FALLBACK.test(src)) continue
   for (const re of SWALLOW) {
     const m = re.exec(src)
     if (m) {
       const lineNo = src.slice(0, m.index).split('\n').length
-      violations.push({ rel, lineNo })
+      violations.push({ rel, lineNo, kind: 'INSERT 실패를 삼킨다' })
       break
     }
   }
@@ -85,18 +102,18 @@ for (const abs of files) {
 
 // 측정 대상이 0 이면 통과가 아니라 실패 — 이 레포가 반복해 겪은 '가드가 헛도는' 실패 모드.
 if (scannedCredit === 0) {
-  console.error('❌ balance-ledger: 잔액 적립 파일을 한 개도 못 찾았다 — 패턴이 낡았다.')
+  console.error('❌ balance-ledger: 잔액 변동 파일을 한 개도 못 찾았다 — 패턴이 낡았다.')
   process.exit(1)
 }
 
 if (violations.length === 0) {
-  console.log(`✅ balance-ledger: 잔액 적립 ${scannedCredit}개 파일 — 원장 기록을 삼키는 곳 없음`)
+  console.log(`✅ balance-ledger: 잔액 변동 ${scannedCredit}개 파일 — 원장 기록 누락/삼킴 없음`)
   process.exit(0)
 }
 
-console.log('⚠️  잔액만 늘고 원장 기록이 사라질 수 있는 코드:')
+console.log('⚠️  잔액은 움직이는데 원장 기록이 남지 않을 수 있는 코드:')
 for (const v of violations) {
-  console.log(`   - ${v.rel}:${v.lineNo} — point_transactions INSERT 실패를 삼킨다`)
+  console.log(`   - ${v.rel}:${v.lineNo} — ${v.kind}`)
 }
 console.log('\n   고치는 법: 실패 시 base CREATE 가 보장하는 최소 컬럼으로 다시 INSERT.')
 console.log("     INSERT INTO point_transactions (user_id, type, amount, description) VALUES (?, ?, ?, ?)")
