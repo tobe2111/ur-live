@@ -76,10 +76,26 @@ describe('summarizeResult — 요약하되 버리지 않는다', () => {
     const out = summarizeResult({ a: 'x'.repeat(500), b: 'y'.repeat(500) })
     expect((out || '').length).toBeLessThanOrEqual(160)
   })
-  it('객체가 아니거나 비면 null', () => {
+  it('비었으면 null — 그러나 "객체가 아니다"는 버릴 이유가 아니다', () => {
     expect(summarizeResult(null)).toBeNull()
-    expect(summarizeResult('문자열')).toBeNull()
-    expect(summarizeResult([1, 2])).toBeNull()
+    expect(summarizeResult(undefined)).toBeNull()
     expect(summarizeResult({})).toBeNull()
+    expect(summarizeResult([])).toBeNull()
+    expect(summarizeResult('')).toBeNull()
+  })
+
+  // 🔁 2026-08-01 계약 변경(이 파일의 제목이 원래 요구하던 방향으로).
+  //   이 케이스는 원래 `summarizeResult('문자열') === null` 을 고정하고 있었다. 그런데 그건
+  //   안전장치가 아니라 **24자 드롭과 같은 클래스의 두 번째 구멍**이었다 — 라이브에서 물렸다:
+  //   `cron-env-missing`(없는 키 목록)과 `cron-unmatched`(매칭 안 된 cron 식)이 문자열을 반환했는데
+  //   여기서 null 이 되어 **하트비트에 이름만 남고 내용이 사라졌다.** "무엇이 없는지"가 그 관측의
+  //   존재 이유였는데 정확히 그것만 증발했다(2026-08-01 13:10:59Z 실측, result: null).
+  //   ⇒ 비었으면 버리고, 값이 있으면 자를지언정 남긴다.
+  it('원시값·배열도 남긴다 — 객체가 아니라는 이유로 사라지지 않는다', () => {
+    expect(summarizeResult('TOSS_SECRET_KEY(scheduled-cleanup)')).toContain('TOSS_SECRET_KEY')
+    expect(summarizeResult([1, 2])).toContain('[2]')
+    expect(summarizeResult(0)).toBe('0')       // 0건도 사실이다 — falsy 라고 버리면 안 된다
+    expect(summarizeResult(false)).toBe('false')
+    expect((summarizeResult('x'.repeat(500)) || '').length).toBeLessThanOrEqual(160)
   })
 })

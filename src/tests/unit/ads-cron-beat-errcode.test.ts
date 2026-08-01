@@ -63,4 +63,26 @@ describe('summarizeResult — 실패 사유가 실제로 남는가', () => {
     for (let i = 0; i < 100; i++) big[`k${i}`] = i
     expect((summarizeResult(big) || '').length).toBeLessThanOrEqual(160)
   })
+
+  // 🔒 2026-08-01 라이브 실측으로 잡힌 두 번째 증발. 24자 드롭과 같은 클래스다.
+  //   `cron-env-missing`(없는 키)·`cron-unmatched`(매칭 안 된 cron 식)이 문자열을 반환했는데
+  //   객체가 아니라는 이유로 null 이 되어, **하트비트에 이름만 남고 내용이 사라졌다.**
+  //   "무엇이 없는지"가 그 관측의 존재 이유였는데 정확히 그것만 없어졌다.
+  it('🔒 문자열 결과가 통째로 사라지지 않는다', () => {
+    expect(summarizeResult('TOSS_SECRET_KEY(scheduled-cleanup)')).toBe('TOSS_SECRET_KEY(scheduled-cleanup)')
+    expect(summarizeResult("cron='0 7 * * *' 에 대응하는 핸들러가 없다")).toContain('0 7 * * *')
+  })
+
+  it('문자열도 상한을 넘지 않고, 빈 문자열은 요약을 만들지 않는다', () => {
+    expect((summarizeResult('x'.repeat(500)) || '').length).toBeLessThanOrEqual(160)
+    expect(summarizeResult('')).toBeNull()
+    expect(summarizeResult('   ')).toBeNull()
+  })
+
+  it('숫자·불리언·배열 원시 반환도 남는다', () => {
+    expect(summarizeResult(0)).toBe('0')      // 0건도 사실이다 — falsy 라고 버리면 안 된다
+    expect(summarizeResult(false)).toBe('false')
+    expect(summarizeResult(['a', 'b'])).toContain('[2]')
+    expect(summarizeResult([])).toBeNull()
+  })
 })
