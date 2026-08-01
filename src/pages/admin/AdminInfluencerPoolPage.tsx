@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber } from '@/utils/format'
+import { formatKSTShort } from '@/utils/date' // 🕒 KST 표기 SSOT — 여기서 직접 new Date() 파싱 금지(9시간 어긋남)
 import DraftModal, { type OutreachDraftData } from './influencer-pool/DraftModal'
 import FunnelCard, { type CategoryFunnelRow } from './influencer-pool/FunnelCard'
 import CollectDiagPanel, { type RunStats, type MaintenanceRecord, type EnrichLaneRecord } from './influencer-pool/CollectDiagPanel'
@@ -23,6 +24,8 @@ import TrackLinkButton from './influencer-pool/TrackLinkButton'
 import RecruitButton from './influencer-pool/RecruitButton'
 import { LeadNameCell } from './influencer-pool/LeadNameCell'
 import PoolFilters from './influencer-pool/PoolFilters'
+import PoolStatCards from './influencer-pool/PoolStatCards'
+import AutoRunLog from './influencer-pool/AutoRunLog' // 🕒 '자동으로 도는가'를 한 표로 — 그 파일 헤더 참조
 
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -68,7 +71,7 @@ const PLATFORM_LABEL: Record<string, string> = { youtube: '유튜브', naver_blo
 //   '공동구매' 는 2026-07-29 신설(대표 지시) — 이미 자기 팔로워에게 파는 층이라 링크샵 전환 1순위.
 //   '카페' 도 2026-07-29 추가 — 분류기는 만드는데 여기 없어서 **4,675명(풀의 12%)이 화면에서 안 보였다**
 //   (기존 유닛이 *우선 카테고리만* 검사해 놓친 자리 — 이제 분류기 전체 축을 검사한다).
-export const POOL_CATEGORIES = ['공동구매', '맛집', '카페', '외식창업', '숙소', '네일', '뷰티', '골프', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
+export const POOL_CATEGORIES = ['공동구매', '마케팅대행사', '맛집', '카페', '외식창업', '숙소', '네일', '뷰티', '골프', '푸드', '패션', '여행', '육아', '운동', '반려동물', '리빙', 'IT/재테크', '취미', '자동']
 // 📊 매체별 엑셀 분리 다운로드 — 서버 EXPORT_PLATFORMS 화이트리스트와 같은 키(추가 시 양쪽 갱신).
 
 export default function AdminInfluencerPoolPage() {
@@ -96,6 +99,7 @@ export default function AdminInfluencerPoolPage() {
   const [catSource, setCatSource] = useState('')   // 🏷️ 분류 신뢰도(content/keyword) — 대표 4축 ② 작업 대상 특정용
   const [measured, setMeasured] = useState('')     // 📏 측정 여부(1/0) — 대표 4축 ④ 백로그 가시화
   const [optedOutOnly, setOptedOutOnly] = useState(false) // 🚫 거부 표시된 리드만 — 자동 태깅 오탐 검수용
+  const [collectedToday, setCollectedToday] = useState(false) // 📅 '오늘 수집' 카드 클릭 — KST 자정 기준(서버 통계와 동일 식)
   const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
@@ -125,6 +129,7 @@ export default function AdminInfluencerPoolPage() {
     if (catSource) params.set('catSource', catSource)
     if (measured) params.set('measured', measured)
     if (optedOutOnly) params.set('optedOutOnly', '1')
+    if (collectedToday) params.set('collectedToday', '1')
     if (tier) params.set('tier', tier)
     if (sort) params.set('sort', sort)
     if (statusFilter) params.set('status', statusFilter)
@@ -135,7 +140,7 @@ export default function AdminInfluencerPoolPage() {
     if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, optedOutOnly, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, optedOutOnly, collectedToday, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -231,7 +236,9 @@ export default function AdminInfluencerPoolPage() {
   const reloadAll = useCallback(async () => { await Promise.all([loadLeads(), loadMeta()]) }, [loadLeads, loadMeta])
   function daysAgo(dt?: string | null): number | null { if (!dt) return null; const d = Math.floor((Date.now() - new Date(dt.replace(' ', 'T') + 'Z').getTime()) / 86400000); return Number.isFinite(d) ? d : null }
   // 🕐 서버 저장 시각은 UTC(datetime('now')/toISOString) — 한국시간(KST)으로 표시.
-  function fmtKST(dt?: string | null): string { if (!dt) return '—'; const d = new Date(dt.replace(' ', 'T') + 'Z'); return Number.isFinite(d.getTime()) ? d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : dt }
+  // 🕒 시간 표기는 SSOT(`utils/date.ts`) 경유 — 여기 있던 사본은 `dt.replace(' ','T') + 'Z'` 라
+  //   이미 'Z'나 오프셋이 붙은 값이 오면 깨졌다. `parseUTCDate` 는 두 형태를 모두 처리한다.
+  const fmtKST = (dt?: string | null): string => (dt ? formatKSTShort(dt) : '—')
   // 🔗 유어딜 셀러 매칭(읽기 전용) — 선택 카테고리의 유어딜 승인 매장 목록(+지역 커버리지/필터).
   const [matchSellers, setMatchSellers] = useState<{ id: number; name: string; product_count: number; regions?: string | null }[] | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
@@ -322,22 +329,9 @@ export default function AdminInfluencerPoolPage() {
           </div>
         )}
 
-        {/* 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
-          {[
-            { label: '전체', value: stats.total },
-            { label: '유튜브', value: stats.youtube },
-            { label: '네이버블로그', value: stats.naver_blog },
-            { label: '🏘️ 커뮤니티(카페)', value: stats.naver_cafe },
-            { label: '이메일 보유', value: stats.with_email },
-            { label: '오늘 수집', value: stats.today },
-          ].map(s => (
-            <div key={s.label} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="text-xs text-gray-500">{s.label}</div>
-              <div className="text-2xl font-bold text-gray-900">{formatNumber(s.value)}</div>
-            </div>
-          ))}
-        </div>
+        {/* 📊 요약 카드(클릭 = 필터) — 컴포넌트로 분리(600줄 래칫). 근거는 그 파일 헤더. */}
+        <PoolStatCards stats={stats} platform={platform} setPlatform={setPlatform}
+          hasEmail={hasEmail} setHasEmail={setHasEmail} collectedToday={collectedToday} setCollectedToday={setCollectedToday} />
 
         {/* 📊 아웃리치 전환 퍼널 — '모은 게 성과로 이어지나' 측정(컨택 이력 있을 때만). */}
         <FunnelCard stats={stats} categories={catFunnel} />
@@ -395,6 +389,7 @@ export default function AdminInfluencerPoolPage() {
         })() : null}
 
         <FulfillBanner />{/* 🎯 서비스몰 주문 이행 컨텍스트(?store=) — 명의·의뢰 병기 템플릿 복사 */}
+        <AutoRunLog />{/* 🕒 자동 실행 내역(KST) — 기본은 한 줄 요약, 펼치면 레인별 표 */}
         <CollectDiagPanel run={run} sheetsSync={sheets.sync} sheetsCron={sheets.cron} sheetsGate={sheets.gate} maintenance={maintenance} maintenanceRescan={maintenanceRescan} maintainRunning={maintainRunning}
           enrichLane={enrichLane} nbUnmeasured={Number(stats.nb_unmeasured) || 0} naverBlogTotal={Number(stats.naver_blog) || 0} />
 

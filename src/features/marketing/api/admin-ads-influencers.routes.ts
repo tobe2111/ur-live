@@ -131,6 +131,10 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('brandOnly') === '1') where.push('is_brand = 1')
   // 🚫 거부 명시만 — 오탐 검수용. 태그가 sticky 라 해제는 사람이 여기서 확인하고 판단한다.
   if (c.req.query('optedOutOnly') === '1') where.push('opted_out = 1')
+  // 📅 '오늘 수집' 카드 클릭용 — **통계와 같은 식**이어야 한다. 카드 숫자와 목록 건수가 다르면
+  //   그 화면은 신뢰를 잃는다(이 레포가 '숫자가 안 맞는다'로 여러 번 겪은 클래스).
+  //   기준: KST 자정(롤링 24h 아님) — `influencer-pool-stats.ts` 의 `AS today` 와 리터럴까지 동일하게 유지할 것.
+  if (c.req.query('collectedToday') === '1') where.push("collected_at >= datetime('now','+9 hours','start of day','-9 hours')")
   const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)))
   const offset = Math.max(0, intParam(c.req.query('offset'), 0)) // 페이지네이션 — 풀 전체(1800+) 브라우징
   // 정렬: 기본 'fit'(유어딜 핏 — 스위트스팟 1만~50만 + 네이버블로그 최우선 → 준대형 → 나노 → 초대형).
