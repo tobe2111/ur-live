@@ -125,6 +125,28 @@ export async function wholesaleCronNoop(event: ScheduledEvent): Promise<void> {
   console.error(WHOLESALE_CRON_NOOP_MARKER, event?.cron ?? '')
 }
 
+/**
+ * 이 디스패처가 실제로 분기하는 cron 문자열 전체.
+ *
+ * ⚠️ 아래 `if (cron === '...')` 를 추가/수정하면 **여기도 같이 고쳐야 한다.** 안 고치면 정상 발화가
+ *    `cron-unmatched` 로 잘못 기록된다(오탐). 반대로 여기만 넓히면 침묵을 다시 못 보게 된다.
+ *    → `cron-dispatch.test.ts` 가 소스의 분기 목록과 이 집합의 일치를 강제한다.
+ */
+export const HANDLED_CRONS = new Set([
+  '*/2 * * * *',
+  '*/5 * * * *',
+  '0 * * * *',
+  '0 3 * * *',
+  '0 9 * * *',
+  '0 0 * * *',
+  '0 18 * * *',
+  '0 19 * * *',
+  '0 20 * * 0',
+  '0 20 * * SUN',
+  '0 20 * * 7',
+  '0 0 * * 1',
+])
+
 export async function handleCronScheduled(
   event: ScheduledEvent,
   env: Env,
@@ -152,6 +174,15 @@ export async function handleCronScheduled(
       await recordCronBeat(env, name, ok, Date.now() - t0, cron, out);
     }
   };
+
+  // 🔇 2026-07-29: **매칭되지 않은 트리거**를 기록한다. 지금까지 이 침묵은 완전히 안 보였다 —
+  //   CF 에 등록은 됐는데 아래 `cron === '...'` 중 어디에도 안 걸리면 하트비트도 실패도 남지 않아,
+  //   "등록했으니 돌겠지"와 "등록했는데 무동작"이 관측상 **구분 불가**였다.
+  //   0단계(표기 교정) 판정을 오염시키는 것이 정확히 이 침묵이라, 표기를 바꾸기 전에 먼저 넣는다.
+  //   비용: 매칭 실패했을 때만 1 write. 정상 발화에는 아무것도 하지 않는다.
+  if (!HANDLED_CRONS.has(cron)) {
+    ctx.waitUntil(safeCron('cron-unmatched', async () => `cron=${cron} 에 대응하는 핸들러가 없다`));
+  }
 
   // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer — 2분마다 한 batch 씩 멱등 발송.
   //   요청 안에서 수천 명 발송하던 것을 cron 으로 이전 (CPU/wall 한도 + per-recipient 멱등 hardening).
@@ -489,7 +520,10 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('influencer-payout', () => handleInfluencerPayout(env)));
   }
 
-  if (cron === '0 20 * * 0') {
+  // 🔴 2026-07-29: 세 표기를 전부 받는다. CF 는 **등록된 문자열 그대로** event.cron 에 넣기 때문에,
+  //   `0 20 * * 0`(CF 가 거부하는 표기)을 `0 20 * * SUN` 으로 교정해 등록하는 순간 이 분기가
+  //   조용히 매칭 실패한다 — 등록은 됐는데 아무 일도 안 일어나는, 이 감사가 다룬 바로 그 클래스.
+  if (cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7') {
     ctx.waitUntil(safeCron('d1-backup', () => handleD1Backup(env as any)));
   }
 
