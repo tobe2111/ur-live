@@ -48,7 +48,15 @@ export function cronErrorCode(e: unknown): string {
  * 유닛으로 고정하려고 export 한다 — **값이 조용히 사라지는 사고**를 실제로 겪었다(아래 ✂️ 주석).
  */
 export function summarizeResult(v: unknown): string | null {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  // ✂️ 2026-08-01: **원시값을 통째로 버리던 자리.** 위 24자 드롭과 정확히 같은 클래스이고,
+  //   같은 방식으로 물렸다 — `cron-env-missing`(없는 키 목록)과 `cron-unmatched`(매칭 안 된 cron 식)이
+  //   둘 다 문자열을 반환했는데, 여기서 null 이 되어 **하트비트에 이름만 남고 내용이 사라졌다.**
+  //   "무엇이 없는지"가 그 관측의 존재 이유였는데 정확히 그것만 증발한 것이다(라이브 실측).
+  //   ⇒ 객체가 아니어도 사람이 읽을 수 있으면 남긴다. 상한은 아래 객체 경로와 동일(MAX_NOTE).
+  if (typeof v === 'string') return v.trim() ? v.trim().slice(0, MAX_NOTE) : null
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (Array.isArray(v)) return v.length ? `[${v.length}] ${v.map(String).join(' ')}`.slice(0, MAX_NOTE) : null
+  if (!v || typeof v !== 'object') return null
   const parts: string[] = []
   for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
     if (typeof val === 'number' || typeof val === 'boolean') parts.push(`${k}=${val}`)
