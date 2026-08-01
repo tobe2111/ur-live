@@ -285,3 +285,33 @@ describe('배선 — 드라이버가 조각을 실제로 넘긴다', () => {
     expect(routes).toMatch(/path\.includes\('\?'\) \? '&' : '\?'/)
   })
 })
+
+/**
+ * 🔘 **수동 버튼도 팬아웃을 탄다** (2026-08-02).
+ *
+ *   그전엔 버튼이 단발 라운드(`/__ads/enrich-influencer`)를 불러서, 사람이 눌러도 **cron 이 하는 일의
+ *   일부**만 돌았다. 실측(08-02 01:06 수동 실행)이 그 자리를 정확히 보여줬다:
+ *     `naver measured 18 · spent 44/45 · elapsed 6.9s · deadline_hit false`
+ *   한 라운드는 **7초에 예산으로 끝난다** — 시간이 아니라 예산이 상한이다. 남는 건 시간뿐이고
+ *   그걸 쓰는 방법이 팬아웃이다(자식마다 자기 45 예산을 새로 받는다).
+ *
+ *   ⚠️ 이 측정이 앞선 판단 하나를 갱신한다: 같은 레인이 07-29 엔 `deadline_hit true · 20.3s` 였다.
+ *   그때의 처방(시간 바닥·선두 교대)은 그 조건에서 옳았지만, **지금 묶는 것은 예산**이다.
+ *   ⇒ 다음에 이 레인을 손볼 땐 `deadline_hit` 을 먼저 보고 어느 쪽이 상한인지 확정할 것.
+ */
+describe('수동 보강 버튼 — 드라이버(팬아웃) 경로', () => {
+  const ops = readFileSync(join(process.cwd(), 'src/features/marketing/api/admin-ads-pool-ops.routes.ts'), 'utf8')
+
+  it('🔒 기본 경로가 드라이버다 — 단발을 부르면 버튼이 1/K 만 돈다', () => {
+    expect(ops).toMatch(/'\/__ads\/enrich-influencer-driver'/)
+  })
+
+  it('🔒 단발 경로는 ?single=1 로만 — 디버깅용으로 남기되 기본이 되면 안 된다', () => {
+    expect(ops).toMatch(/const single = c\.req\.query\('single'\) === '1'/)
+    expect(ops).toMatch(/single \? `\/__ads\/enrich-influencer\?depth=\$\{depth\}` : '\/__ads\/enrich-influencer-driver'/)
+  })
+
+  it('🔒 팬아웃 개수를 응답에 실어 준다 — 그때는 stats 가 없어서 화면이 할 말이 없어진다', () => {
+    expect(ops).toMatch(/fanout: j\.fanout/)
+  })
+})
