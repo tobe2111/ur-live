@@ -406,7 +406,9 @@ app.post('/probe-public-data', async (c) => {
   if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
   const target = c.req.query('target') || 'all'
   try {
-    const r = await ads.fetch(new Request(`https://ur-ads/__ads/probe-public-data?target=${encodeURIComponent(target)}`, { method: 'POST', signal: AbortSignal.timeout(120_000) }))
+    const qs = new URLSearchParams({ target })
+    for (const k of ['rows', 'page', 'ladder']) { const v = c.req.query(k); if (v) qs.set(k, v) }
+    const r = await ads.fetch(new Request(`https://ur-ads/__ads/probe-public-data?${qs.toString()}`, { method: 'POST', signal: AbortSignal.timeout(120_000) }))
     const body = await r.json().catch(() => null)
     return c.json({ success: true, ...(body as Record<string, unknown> || {}) })
   } catch (e) {
