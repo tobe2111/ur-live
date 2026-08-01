@@ -92,6 +92,23 @@ publicDataRoutes.post('/__ads/sweep-nts', lane(async (env) => {
   const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep'); return sweepBusinessStatus(env)
 }))
 
+// 🔬 공공 API **한 방 프로브** — 레인을 거치지 않고 상대의 원문을 그 자리에서 돌려준다.
+//   `lane()` 을 쓰지 않는 이유가 핵심이다: 저 헬퍼는 결과를 D1 스탬프에 의존하는 레인용이고,
+//   지금 문제는 바로 **그 스탬프에 도달하기 전에 죽는다**는 것이다(08-01 수동 트리거 실측:
+//   `started:true` 인데 72초 뒤에도 `last_run` 이 07-29 그대로였다). 여기서는 fetch 1회 결과를
+//   **응답 본문으로 즉시** 준다 — 죽을 자리가 없다.
+//   🔐 URL·본문 모두 서비스키가 가려진 채로 나간다(public repo + 어드민 화면).
+publicDataRoutes.post('/__ads/probe-public-data', async (c) => {
+  const target = c.req.query('target') || 'all'
+  try {
+    const m = await import('@/features/marketing/api/public-data-probe')
+    const results = target === 'all' ? await m.probeAllPublicData(c.env) : [await m.probePublicData(c.env, target)]
+    return c.json({ ok: true, targets: m.probeTargetNames(), results })
+  } catch (e) {
+    return c.json({ ok: false, error: String((e as Error)?.message || e || '').slice(0, 200) }, 500)
+  }
+})
+
 export default publicDataRoutes
 
 // 💼 고용24 채용기업 수집 — 채용 중(성장 신호) 광고·마케팅·판촉 계열 기업 발굴. 수동=게이트 무관.

@@ -396,6 +396,24 @@ function delegateCollect(path: string, label: string) {
     catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
   }
 }
+// 🔬 공공 API 한 방 프로브 — **결과를 그 자리에서 돌려준다**(위 delegateCollect 와 정반대로 fire-and-forget 아님).
+//   그래야 하는 이유: 저 레인들은 D1 스탬프에 도달하기 전에 죽어서, 며칠째 원문을 한 번도 못 봤다
+//   (08-01 실측 — 통신판매 수동 트리거 후 72초를 봤지만 `last_run` 이 07-29 그대로였다).
+//   🔐 ur-ads 가 URL·본문의 서비스키를 이미 가려서 준다. 여기서는 그대로 전달만 한다(추가 가공 금지 —
+//   가공하다 가림이 풀리면 public repo·어드민 화면에 키가 실린다).
+app.post('/probe-public-data', async (c) => {
+  const ads = c.env.ADS
+  if (!ads?.fetch) return c.json({ success: false, error: 'ur-ads 서비스바인딩 미설정' }, 503)
+  const target = c.req.query('target') || 'all'
+  try {
+    const r = await ads.fetch(new Request(`https://ur-ads/__ads/probe-public-data?target=${encodeURIComponent(target)}`, { method: 'POST', signal: AbortSignal.timeout(120_000) }))
+    const body = await r.json().catch(() => null)
+    return c.json({ success: true, ...(body as Record<string, unknown> || {}) })
+  } catch (e) {
+    return c.json({ success: false, error: String((e as Error)?.message || e || '').slice(0, 200) }, 502)
+  }
+})
+
 app.post('/collect-storeinfo', delegateCollect('collect-storeinfo', '🏪 상가정보 수집')) // 소스① 상가정보
 app.post('/collect-commerce', delegateCollect('collect-commerce', '🛒 통신판매 수집'))   // 통신판매사업자(전화+이메일)
 app.post('/collect-franchise', delegateCollect('collect-franchise', '🏢 프랜차이즈 수집')) // 공정위 가맹정보(프랜차이즈 본사)
