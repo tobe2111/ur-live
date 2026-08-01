@@ -358,7 +358,10 @@ export default function VoucherDetailPage() {
           <div className="flex items-center">
             <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
-          <h2 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h2>
+          {/* ♿ 2026-08-01 (모바일 실측): 이 페이지에 **h1 이 하나도 없었다**(h2 로 시작).
+              스크린리더 랜드마크가 없고 검색엔진도 문서 주제를 못 잡는다. 상품명이 이 문서의 h1 이다.
+              시각적 크기는 그대로 — 태그만 바꾼다. */}
+          <h1 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h1>
           {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 배지 (서버 게이트의 UX 안내) */}
           {product.min_review_level && product.min_review_level > 1 ? (
             <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200">🏅 동네 리뷰어 Lv.{product.min_review_level} 전용</span>
@@ -437,11 +440,14 @@ export default function VoucherDetailPage() {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A3446] rounded-2xl px-3.5 h-[54px] shrink-0">
+            {/* 👆 2026-08-01 (모바일 390px 실측): ± 버튼의 실제 탭 영역이 **16×30 / 13×30** 이었다.
+                글자만 있고 크기가 없어서 손가락으로 누르기 어려웠다(WCAG 2.5.8 은 24×24 최소).
+                컨테이너 높이 54px·테두리·간격은 그대로 두고 **버튼 자체에 44×44 탭 영역**만 준다. */}
+            <div className="flex items-center border border-[#E6E9ED] dark:border-[#2A3446] rounded-2xl px-1 h-[54px] shrink-0">
               {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
-              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
-              <span className="min-w-[14px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
+              <span className="min-w-[20px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}
